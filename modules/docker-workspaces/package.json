@@ -1,0 +1,31 @@
+{
+	"name": "@dreamteamer/docker-workspaces",
+	"version": "0.1.0",
+	"description": "dt-docker — run a dreamteamer workspace as a local Docker container, and move its workspaces between containers as one encrypted file.",
+	"license": "Apache-2.0",
+	"type": "module",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/dreamteamer/dreamteamer-modules.git",
+		"directory": "modules/docker-workspaces"
+	},
+	"keywords": [
+		"dreamteamer",
+		"dreamteamer-module"
+	],
+	"bin": {
+		"dt-docker": "bin/dt-docker.js"
+	},
+	"files": [
+		"README.md",
+		"bin",
+		"src",
+		"docs",
+		"skills"
+	],
+	"dreamteamer": {
+		"title": "Docker workspaces",
+		"description": "Workspaces as local Docker containers. Installed globally, `dt-docker` needs no workspace: it checks Docker, pulls a template image, creates and starts a container with a code-server editor at a loopback URL over three named volumes, and exports or imports a container's workspaces as one encrypted file. Installed in a workspace as well, it adds the `running-workspaces-in-containers` skill, so the coding agent there knows the verbs.",
+		"engine": ">=0.30.0"
+	}
+}

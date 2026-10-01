@@ -18,14 +18,14 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const only = process.argv.slice(2).find((a) => a.startsWith('--only='))?.slice('--only='.length);
 
-/** Every `*.test.mjs` under `dir`, skipping installed and generated trees. */
+/** Every `*.test.mjs` and `*.test.js` under `dir`, skipping installed and generated trees. */
 function collect(dir, out = []) {
 	if (!fs.existsSync(dir)) return out;
 	for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
 		if (e.name === 'node_modules' || e.name.startsWith('.')) continue;
 		const p = path.join(dir, e.name);
 		if (e.isDirectory()) collect(p, out);
-		else if (e.name.endsWith('.test.mjs')) out.push(p);
+		else if (e.name.endsWith('.test.mjs') || e.name.endsWith('.test.js')) out.push(p);
 	}
 	return out;
 }

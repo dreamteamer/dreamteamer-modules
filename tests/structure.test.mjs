@@ -13,7 +13,7 @@ import yaml from 'js-yaml';
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const MODULES = path.join(ROOT, 'modules');
 const KINDS = new Set(['collections', 'skills', 'agents', 'commands', 'command-bindings', 'ui-views', 'collection-templates']);
-const NON_SOURCE = new Set(['bin', 'lib', 'tests', 'test', 'docs', 'scripts', 'node_modules']);
+const NON_SOURCE = new Set(['bin', 'src', 'lib', 'tests', 'test', 'docs', 'scripts', 'node_modules']);
 // The engine's own collections a module may reference without owning or declaring them.
 const CORE = new Set(['repos', 'modules', 'collections', 'skills', 'agents', 'commands', 'command-bindings', 'ui-views', 'collection-templates']);
 

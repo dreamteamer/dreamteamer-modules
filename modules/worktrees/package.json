@@ -1,0 +1,27 @@
+{
+	"name": "@dreamteamer/worktrees",
+	"version": "0.1.0",
+	"description": "dt worktree and dt land — cut a second checkout of a dreamteamer workspace, and bring its committed records home.",
+	"license": "Apache-2.0",
+	"type": "module",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/dreamteamer/dreamteamer-modules.git",
+		"directory": "modules/worktrees"
+	},
+	"keywords": [
+		"dreamteamer",
+		"dreamteamer-module"
+	],
+	"files": [
+		"README.md",
+		"src",
+		"skills"
+	],
+	"dreamteamer": {
+		"extension": "./src/extension.js",
+		"title": "Worktrees",
+		"description": "The worktree lifecycle: `dt worktree add|list|get|rm` cuts, lists, inspects and removes linked checkouts of the workspace (each installed and compiled, on branch `worktree-<name>`), and `dt land` rebases a worktree's commits onto the primary branch, resolves only conflicts inside a generated block, checks, fast-forwards, recompiles and retires it. Ships the WorktreeCreate / WorktreeRemove hooks for a coding agent and the `working-in-worktrees` skill.",
+		"engine": ">=0.31.0"
+	}
+}

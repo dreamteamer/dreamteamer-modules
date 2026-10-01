@@ -4,7 +4,7 @@ import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { api as engine } from '../../../test-support/fixture.mjs';
+import { api as engine } from '../../../tests/helpers/fixture.mjs';
 import { httpWorkspace, simpleCollection, mount, call } from './support.mjs';
 
 let h, srv, api, mine, theirs;

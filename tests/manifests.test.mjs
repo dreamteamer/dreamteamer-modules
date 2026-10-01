@@ -13,8 +13,8 @@ after(cleanup);
 const KINDS = ['collections', 'collection-templates', 'skills', 'commands', 'command-bindings', 'ui-views', 'agents'];
 const SEMVER = /^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/;
 
-test('the repo carries the first wave', () => {
-	assert.deepEqual(moduleIds(), ['assets', 'contacts', 'meetings', 'tasks', 'users']);
+test('the repo carries every module it is meant to', () => {
+	assert.deepEqual(moduleIds(), ['assets', 'contacts', 'docker-workspaces', 'http', 'meetings', 'notebooklm', 'proofs', 'tasks', 'users', 'worktrees']);
 });
 
 for (const m of moduleIds()) {
@@ -28,6 +28,10 @@ for (const m of moduleIds()) {
 			assert.equal(pkg.license, 'Apache-2.0');
 			assert.equal(pkg.repository?.directory, `modules/${m}`);
 			assert.ok(pkg.keywords?.includes('dreamteamer-module'), 'the keyword is how a search finds a module');
+		});
+		test('an extension entry, when declared, is a file the tarball ships', () => {
+			if (!dt.extension) return;
+			assert.ok(packedFiles(m).includes(dt.extension.replace(/^\.\//, '')), `${dt.extension} is not in the tarball`);
 		});
 		test('says what it is twice — one npm line, one orienting paragraph', () => {
 			assert.ok(pkg.description && pkg.description.length <= 160, 'npm description: one line');
@@ -44,7 +48,7 @@ for (const m of moduleIds()) {
 			}
 		});
 		test('`files` lists every folder the module carries, and the tarball ships them', () => {
-			const present = [...KINDS, 'bin'].filter((k) => fs.existsSync(path.join(MODULES, m, k)));
+			const present = [...KINDS, 'bin', 'src', 'lib'].filter((k) => fs.existsSync(path.join(MODULES, m, k)));
 			for (const k of present) assert.ok(pkg.files.includes(k), `${k}/ exists but is not in files — npm would leave it out`);
 			const shipped = new Set(packedFiles(m).map((f) => f.split('/')[0]));
 			for (const k of [...present, 'README.md', 'package.json']) assert.ok(shipped.has(k), `the tarball does not ship ${k}`);
@@ -65,7 +69,7 @@ for (const m of moduleIds()) {
 		const readme = fs.readFileSync(path.join(MODULES, m, 'README.md'), 'utf8');
 		const line = readme.split('\n').find((l) => l.startsWith('npm install '));
 		assert.ok(line, 'no `npm install` line');
-		const named = line.replace('npm install ', '').trim().split(/\s+/).sort();
+		const named = line.replace('npm install ', '').trim().split(/\s+/).filter((w) => !w.startsWith('-')).sort();
 		assert.deepEqual(named, [...closure(m)].map((x) => `@dreamteamer/${x}`).sort());
 	});
 }
