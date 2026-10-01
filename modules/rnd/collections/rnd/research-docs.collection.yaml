@@ -54,16 +54,13 @@ schema:
         Free strings, lowercase and hyphenated. Optionally `key:value` with NO space around the colon
         (`analysis:meeting-insights`, `enriched:web-search`) — a space makes YAML parse the entry as a map instead of a
         string. Nothing validates a tag; there is no `tags` collection. Reuse one already in use before inventing one: `dt values <collection> tags` lists them.
-    # ---- provenance: who made this record, from what, and how much to trust it. Inlined from the
-    # rnd-provenance template on 2026-10-01; one shared template per module was a copy of the same quad twelve times.
-    # free-text string, not x-reference: the target is polymorphic (users | agents) and
-    # x-reference cannot express that.
     author:
       type: string
+      pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
+      examples: ['agents/claude-code', 'scripts/read-git@2']
       description: >-
-        Which AGENT made this record — `agents/dreamteamer (claude-opus-5)`. Leave it ABSENT when the
-        operator wrote it themselves: there is no `users` collection to point at since engine 0.8.0, and
-        absent is the honest encoding of the default rather than a constant repeated on every record.
+        Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a
+        reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
     creation_context:
       type: string
       description: How and why this record came to be, in one line — and the reason whenever confidence is low.

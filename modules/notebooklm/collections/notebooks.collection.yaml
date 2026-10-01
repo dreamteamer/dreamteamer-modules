@@ -123,16 +123,13 @@ schema:
       format: markdown
       description: What it is for, what has been asked of it, what it answers badly. The source LIST is `sources`, not prose here — prose goes stale, the field is what `restore` reads.
       x-body: true
-    # ---- provenance: who made this record, from what, and how much to trust it. Inlined from the
-    # notebooklm-provenance template on 2026-10-01; one shared template per module was a copy of the same quad twelve times.
-    # free-text, not x-reference: the target is polymorphic (users | agents) and x-reference
-    # cannot express that — so `check` cannot catch a typo'd `agents/dreamtemer`. Accepted.
     author:
       type: string
+      pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
+      examples: ['agents/claude-code', 'scripts/read-git@2']
       description: >-
-        Which AGENT made this record — `agents/dreamteamer (claude-opus-5)`. Leave it ABSENT when the
-        operator wrote it themselves: there is no `users` collection to point at since engine 0.8.0, and
-        absent is the honest encoding of the default rather than a constant repeated on every record.
+        Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a
+        reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
     creation_context:
       type: string
       description: How and why this record came to be, in one line — and the reason whenever confidence is low.

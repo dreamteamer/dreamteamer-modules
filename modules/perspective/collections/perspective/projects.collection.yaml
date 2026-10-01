@@ -127,13 +127,13 @@ schema:
         never as a summary of the fields.
         ⚠ Every figure quoted here must be one of the fields above, unrounded and unembellished. A
         number in this body that is not in the frontmatter is a number nobody measured.
-    # ---- provenance: who made this record, from what, and how much to trust it. Inlined from the
-    # perspective-provenance template on 2026-10-01; one shared template per module was a copy of the same quad twelve times.
     author:
       type: string
+      pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
+      examples: ['agents/claude-code', 'scripts/read-git@2']
       description: >-
-        Which AGENT or SCRIPT made this record — `agents/dreamteamer (claude-fable-5)` or
-        `scripts/read-claude-transcripts@metrics/1`. Absent when the person wrote it themselves.
+        Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a
+        reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
     creation_context:
       type: string
       description: How and why this record came to be, in one line — and the reason whenever confidence is low.
