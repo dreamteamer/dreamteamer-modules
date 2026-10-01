@@ -1,10 +1,9 @@
-"""Meeting file I/O: read/write .meeting.md frontmatter+body, derive sibling paths.
+"""Record file I/O: read/write a markdown record's frontmatter + body, derive sibling paths.
 
-A .meeting.md is the single artifact per meeting: YAML frontmatter + a markdown
-body that (when transcribed) carries a `## Transcript` section directly — there
-is no separate .transcript.md sibling. Summaries live in a mirrored
-data/meeting-summaries/ tree; raw ASR JSON lives in this skill's local,
-gitignored cache — data/meetings/ never contains anything but .meeting.md files.
+A transcribed recording is one markdown record: YAML frontmatter plus a body
+that carries a `## Transcript` section directly — there is no separate
+transcript file. Raw ASR JSON lives in this skill's local, gitignored cache,
+never under data/.
 """
 import os
 import re
@@ -18,14 +17,14 @@ ASR_CACHE_DIR = os.path.join(HERE, ".cache", "asr")
 
 class _IndentDumper(yaml.SafeDumper):
     """Indent block-sequence items under their parent key (readable, matches
-    the vault's existing hand-written frontmatter style)."""
+    hand-written frontmatter style)."""
 
     def increase_indent(self, flow=False, indentless=False):
         return super().increase_indent(flow, False)
 
 
 def read_meeting(meeting_md):
-    """Read a .meeting.md file into (frontmatter: dict, body: str)."""
+    """Read a markdown record into (frontmatter: dict, body: str)."""
     with open(meeting_md, encoding="utf-8") as f:
         text = f.read()
     if not text.startswith("---\n"):
@@ -37,7 +36,7 @@ def read_meeting(meeting_md):
 
 
 def write_meeting(meeting_md, frontmatter, body):
-    """Write (frontmatter, body) back out to a .meeting.md file."""
+    """Write (frontmatter, body) back out to a markdown record."""
     fm_text = yaml.dump(
         frontmatter, Dumper=_IndentDumper, allow_unicode=True, sort_keys=False, width=100,
     )
@@ -59,10 +58,10 @@ def count_attendees(frontmatter):
 def summary_path_for(meeting_md):
     """Mirror a .meeting.md path into data/meeting-summaries/, same YYYY/MM shard.
 
-    A meeting may live INSIDE its company's folder (engine 0.32, `storage.under`:
+    A meeting may live INSIDE its company's folder (`storage.under`:
     `data/companies/<id>/meetings/2026/06/x.meeting.md`), so the summaries root is
     the DATA root plus `meeting-summaries`, not the `meetings` component swapped in
-    place — that would have put the summary inside the company folder too, where no
+    place — that would put the summary inside the company folder too, where no
     collection reads it. The shard is whatever sits between `meetings/` and the file.
     """
     if not meeting_md.endswith(".meeting.md"):
@@ -83,9 +82,8 @@ def asr_cache_path_for(record_md):
     """Local, gitignored cache path for a record's raw ASR JSON (not committed,
     regenerable — never written under data/).
 
-    Suffix-agnostic: transcripts moved onto .meeting-recording.md recording records
-    (meetings-v2, 2026-07-28), and a hardcoded ".meeting.md" slice would have
-    truncated those cache names mid-word instead of just dropping the suffix.
+    Suffix-agnostic: any `.<suffix>.md` record name (`.meeting-recording.md`, say)
+    loses just its suffix.
     """
     os.makedirs(ASR_CACHE_DIR, exist_ok=True)
     base = re.sub(r"\.[a-z-]+\.md$", "", os.path.basename(record_md))
@@ -93,7 +91,7 @@ def asr_cache_path_for(record_md):
 
 
 def replace_transcript_section(body, new_section):
-    """Replace the '## Transcript' section of a meeting body, or append it.
+    """Replace the '## Transcript' section of a record body, or append it.
 
     Everything from the first '## Transcript' heading to the end of the body
     is treated as the transcript and replaced; content before it (the title

@@ -2,35 +2,23 @@
 /**
  * detect.mjs — the mechanics behind /fetch-new-recordings.
  *
- * Two verbs, deliberately split so that judgment stays with the agent and side effects stay here:
+ * Two verbs, split so that judgment stays with the agent and side effects stay here:
  *
  *   scan                     walk every `${env:INBOX_FOLDERS}` root's `meeting-recordings/`, sha256
- *                            + ffprobe + parse each file, print JSON with a proposed record for each,
- *                            and whether it is already in the vault. Otherwise read-only — the one
- *                            exception is the inbox log's moot-log rule (spec §3.2b): a `*.log`
- *                            sidecar whose payload is already gone gets moved to `<root>/trash/` on
- *                            sight, tidying scratch space the log lifecycle itself owns rather than
- *                            touching any real payload or record.
- *                            `INBOX_FOLDERS` is a LIST (desktop: Drive + iCloud, for the phone's
- *                            zero-friction share sheet) — every root is scanned, and a duplicate
+ *                            + ffprobe + parse each file, and print JSON with a proposed record for
+ *                            each and whether the workspace already has it. Read-only, except that a
+ *                            `*.log` sidecar whose payload is gone is moved to `<root>/trash/`.
+ *                            `INBOX_FOLDERS` is a LIST — every root is scanned, and a duplicate
  *                            fingerprint across roots is flagged rather than double-counted.
- *   import <file> --id <id>  file the recording into its ONE durable home,
- *                            `${env:FILES_FOLDER}/meeting-recordings/<id>.<ext>` — flat, and named
- *                            after the RECORD id rather than whatever the inbox payload was called:
- *                            copy it there, prove the copy by sha256, and only then move the inbox
- *                            payload to that root's `trash/`. Prints `recording_file` + `fingerprint`
- *                            for the caller to set on the record. Writes the inbox log beside `<file>`
- *                            as it goes (`seen` at first touch, `refused` on any refusal) and DELETES
- *                            it once the payload is filed — the log is narrative-only working memory
- *                            (spec §3.2b), never a second source of truth.
- *                            ⚠ No `media/` copy since 23/08/2026 — see the note in the import branch.
- *
- * (`backfill-fingerprints` was the third verb until 23/08/2026. It hashed records that had a `media/`
- * path but no `fingerprint`; retiring `media/` left it nothing to read, so it went — see the note at
- * the bottom of the verb dispatch.)
+ *   import <file> --id <id>  copy the recording to `${env:FILES_FOLDER}/meeting-recordings/<id>.<ext>`,
+ *                            named after the RECORD id, prove the copy by sha256, and only then move
+ *                            the inbox payload to that root's `trash/`. Prints `recording_file` +
+ *                            `fingerprint` for the caller to set on the record. Writes the inbox log
+ *                            beside `<file>` as it goes (`seen` at first touch, `refused` on any
+ *                            refusal) and deletes it once the payload is filed — the log is working
+ *                            memory, never a second source of truth.
  *
  * Zero dependencies. Requires `ffprobe` on PATH (already a transcribing-recordings prerequisite).
- * Run from the repo root so `dt resolve` finds the workspace.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -40,33 +28,24 @@ import { fileURLToPath } from 'node:url';
 
 const AUDIO = new Set(['.m4a', '.mp3', '.wav', '.aac', '.mp4', '.m4b', '.ogg', '.opus', '.flac']);
 
-// ⚠ The vault root is WALKED, never taken from process.cwd(). Measured 2026-08-13: running this
-// from the module folder instead of the vault root reported `recordings_without_file: 0` where the
-// truth was 25, and every already-ingested file came back unknown — because knownFingerprints()
-// returns empty maps when data/meeting-recordings is absent, with no warning and exit 0. That mints
-// DUPLICATE recording records, which is the one failure this skill exists to prevent. The scan looked
-// entirely normal because `resolveVar` below runs the engine with an explicit `cwd: ROOT` and still
-// found the inbox.
-// package-lock.json, not package.json — every module carries the latter.
-// ⚠ a folder sitting directly inside `git_modules/` is a module clone, never the workspace, even when `npm install` left it a lockfile.
-const vaultRoot = () => {
+// The workspace root is WALKED up from this file, never taken from process.cwd(): run from another
+// folder, knownFingerprints() would find no records, every known file would come back new, and the
+// agent would mint duplicate records — the one failure this skill exists to prevent.
+// package-lock.json, not package.json — every module carries the latter; and a folder directly inside
+// `git_modules/` is a module clone, never the workspace, even when `npm install` left it a lockfile.
+const workspaceRoot = () => {
 	for (let d = path.dirname(fileURLToPath(import.meta.url)); ; d = path.dirname(d)) {
 		const inGitModules = path.basename(path.dirname(d)) === 'git_modules';
 		if (!inGitModules && fs.existsSync(path.join(d, 'package-lock.json'))) return d;
-		if (path.dirname(d) === d) throw new Error(`vault root (package-lock.json) not found above ${import.meta.url}`);
+		if (path.dirname(d) === d) throw new Error(`workspace root (package-lock.json) not found above ${import.meta.url}`);
 	}
 };
-const ROOT = vaultRoot();
-// (There was a `MEDIA = <root>/media/meeting-recordings` here until 23/08/2026. `media/` is retired —
-// the archive under FILES_FOLDER is the one durable copy, and Drive-for-Desktop uploading it is a
-// separate background concern. Nothing in this script writes or reads a second local copy any more.)
+const ROOT = workspaceRoot();
 const RECORDINGS_DIR = path.join(ROOT, 'data/meeting-recordings');
 
 // ---------------------------------------------------------------- declared vars
-// Resolved by the ENGINE, never by a second .env read — mirrors drive.mjs's `resolveVar`.
-// `FILES_FOLDER` is declared in the workspace package.json's `dreamteamer.vars`, so
-// `dt resolve '${env:FILES_FOLDER}'` is its one resolver; reading it out of `.env` directly here
-// would be a second resolver, the exact duplication that retired FILE_MOUNTS.
+// Resolved by the ENGINE (`dt resolve`), never by reading `.env` a second way, so a declared var has
+// exactly one resolver.
 function resolveVar(name) {
 	const engine = path.join(ROOT, 'node_modules/.bin/dreamteamer');
 	if (!fs.existsSync(engine)) return undefined;
@@ -77,13 +56,10 @@ function resolveVar(name) {
 }
 
 // ── INBOX_FOLDERS: a LIST of inbox roots, every one scanned ─────────────────────────────────────
-// Two variables now (design revision 2, 2026-08-22): `FILES_FOLDER` (one root, permanent) and
-// `INBOX_FOLDERS` (a newline-separated LIST of inbox roots, transient) — the phone's iOS share
-// sheet lands in iCloud with zero friction, so desktop carries a second root there while the web
-// has only one. Splits on newlines, trims, drops blanks, and SKIPS a root that does not exist on
-// this machine with a printed note rather than dying — a future machine may have more or fewer
-// roots than this one. `override` mirrors `--files-folder`: a fixture pins this without touching
-// `.env` or a real synced folder.
+// A newline-separated list — a desktop may carry a synced-drive root and a phone-share root, a cloud
+// session one. Splits on newlines, trims, drops blanks, and SKIPS a root that does not exist on this
+// machine with a printed note rather than dying. `override` mirrors `--files-folder`, so a fixture
+// pins this without touching `.env` or a real synced folder.
 function resolveInboxRoots(override) {
 	const raw = override ?? resolveVar('INBOX_FOLDERS');
 	if (!raw) return [];
@@ -97,10 +73,9 @@ function resolveInboxRoots(override) {
 	return roots;
 }
 
-// ── the inbox log — working memory beside the payload (spec §3.2b) ─────────────────────────────────
+// ── the inbox log — working memory beside the payload ────────────────────────────────────────────
 // `<exact-payload-filename>.log`, append-only, narrative only: the PAYLOAD's presence/location is
-// the only truth this script or anything downstream ever decides from. Copied verbatim into the
-// screenshots detect.mjs (self-contained scripts, no cross-skill import).
+// the only truth this script or anything downstream ever decides from.
 const logPathOf = (payload) => `${payload}.log`;
 function logEvent(payload, event, kv = {}, actor = 'recordings-detect@desktop') {
 	const parts = Object.entries(kv).map(([k, v]) => `${k}=${v}`).join(' ');
@@ -130,9 +105,8 @@ function walkFiles(dir, out = []) {
 	return out;
 }
 
-// At scan start: a `*.log` whose payload is gone is moot — move it to `<root>/trash/` (spec §3.2b).
-// Self-healing for a stray log any transport left behind. Removal is never a delete (design §3.2),
-// so this is a rename, never an unlink. Walks the subtree for the same reason `scan` does.
+// At scan start: a `*.log` whose payload is gone is moot — move it to `<root>/trash/`. Removal is
+// never a delete, so this is a rename, never an unlink. Walks the subtree for the same reason `scan` does.
 function cleanMootLogs(root, kind) {
 	for (const logP of walkFiles(path.join(root, kind))) {
 		if (!logP.endsWith('.log')) continue;
@@ -141,17 +115,6 @@ function cleanMootLogs(root, kind) {
 		fs.renameSync(logP, uniqueTrashPath(path.join(root, 'trash'), path.basename(logP)));
 	}
 }
-
-// ── the inbox no longer needs staging ────────────────────────────────────────────────────────────
-// Until 22/08/2026 `import` copied into `media/` and left the original exactly where it was —
-// staging it into the Drive inbox's `ingested/` and `processed/` folders was "the agent's job, not
-// this script's", which meant a processed original just lingered until someone did that by hand.
-// Since the 2026-08-22 files-folder restructure an inbox root (`${env:INBOX_FOLDERS}` entry + `meeting-recordings/`) and the
-// durable archive (`${env:FILES_FOLDER}/recordings/<year>/<month>/`) sit in the SAME synced tree when that
-// root is the Drive one, so `import` finishes the job itself: after the `media/` copy verifies, it
-// moves the original there directly — no second stage, no agent-run Drive upload. `--files-folder`
-// / `--inbox-folders` below are the override points a caller (or a test fixture) has, so
-// nothing here reads `.env` a second way.
 
 // ---------------------------------------------------------------- filename → date + hint
 const MONTHS = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 };
@@ -171,7 +134,7 @@ const iso = (y, m, d) => `${y}-${pad(m)}-${pad(d)}`;
 
 /**
  * Returns { date, time, hint, how, confident }.
- * The operator names files "[date] [context, company, contacts]" on purpose, in a few dialects.
+ * Recordings are named "[date] [context, company, contacts]" by hand, in a few dialects.
  */
 function parseName(stem, mtime) {
 	const clean = stem.replace(/[‎‏‪-‮⁦-⁩]/g, '').trim();
@@ -237,17 +200,9 @@ const walk = (d, out = []) => {
 };
 
 /**
- * Every fingerprint the vault already knows — the dedupe index, read from each record's STORED
- * `fingerprint` field.
- *
- * ⚠ It hashes NOTHING. Until 23/08/2026 this also returned an `unfingerprinted` list — records with a
- * `media/` path but no fingerprint — and `scan` hashed those files to complete the index. That was
- * the last thing in the whole scan path that read `media/`, and it is what made retiring the folder
- * a question at all. Two facts settled it: the list was empty (all 53 records with audio carry a
- * stored fingerprint, because `import` has always written one), and re-hashing was never the right
- * repair anyway — a record whose fingerprint is missing should get one written to it, not recomputed
- * on every scan forever. So the index is now purely what the records say, and a scan touches no
- * audio at all.
+ * Every fingerprint the workspace already knows — the dedupe index, read from each record's STORED
+ * `fingerprint` field. It hashes nothing: a record missing its fingerprint should have one written to
+ * it, not recomputed on every scan.
  */
 function knownFingerprints() {
 	const known = new Map();          // fingerprint -> recording id
@@ -297,8 +252,8 @@ function recordingsWithoutFile() {
 
 /**
  * The `storage` block of a compiled descriptor — `path`, `suffix` and the `under` placement — read with
- * the same frontmatter-grade line parsing this script uses everywhere, because this module declares no
- * YAML dependency (house rule 8) and these four keys are the only ones it needs.
+ * the same line parsing this script uses everywhere, because this module declares no YAML dependency
+ * and these four keys are the only ones it needs.
  */
 function compiledStorage(name) {
 	let text;
@@ -320,10 +275,10 @@ function compiledStorage(name) {
 }
 
 /**
- * The file a meeting id names, or null. The COMPILED descriptor says where meetings live — and since
- * engine 0.32 a meeting with a `company` may live INSIDE that company's folder (`storage.under`), so
- * after the collection's own root every parent record's child folder is probed too. A probe, not a
- * walk: this runs once per recording that lacks its binary.
+ * The file a meeting id names, or null. The COMPILED descriptor says where meetings live — and a
+ * meeting with a `company` may live INSIDE that company's folder (`storage.under`), so after the
+ * collection's own root every parent record's child folder is probed too. A probe, not a walk: this
+ * runs once per recording that lacks its binary.
  */
 function meetingFile(id) {
 	let parent = null;
@@ -360,8 +315,8 @@ function localDay(v) {
 
 // ---------------------------------------------------------------- verbs
 const verb = process.argv[2] ?? 'scan';
-// `--files-folder` overrides `resolveVar('FILES_FOLDER')` — see "the inbox no longer needs staging"
-// above. `--inbox-folders` is the matching override for `INBOX_FOLDERS` (a newline-separated list).
+// `--files-folder` and `--inbox-folders` (a newline-separated list) override the two declared vars,
+// so a caller or a test fixture never touches `.env` or a real synced folder.
 const argOf = (name) => { const i = process.argv.indexOf(name); return i > 0 ? process.argv[i + 1] : undefined; };
 const filesFolder = argOf('--files-folder') ?? resolveVar('FILES_FOLDER');
 const inboxFoldersOverride = argOf('--inbox-folders');
@@ -376,10 +331,10 @@ if (verb === 'scan') {
 	const seenFingerprints = new Map();   // fingerprint -> first inbox_path, for the cross-root duplicate note
 	for (const root of roots) cleanMootLogs(root, 'meeting-recordings');   // scan-start: heal any stray log
 	for (const inbox of inboxDirs) {
-		if (!fs.existsSync(inbox)) { console.error(`  (inbox root has no recordings/ yet: ${inbox})`); continue; }
+		if (!fs.existsSync(inbox)) { console.error(`  (inbox root has no meeting-recordings/ yet: ${inbox})`); continue; }
 		for (const p of walkFiles(inbox)) {
 			const name = path.basename(p);
-			if (name.endsWith('.log')) continue;                    // `*.log` is never a payload (spec §3.2b)
+			if (name.endsWith('.log')) continue;                    // `*.log` is never a payload
 			const ext = path.extname(name).toLowerCase();
 			if (!AUDIO.has(ext)) continue;
 			const stem = path.basename(name, path.extname(name));
@@ -388,9 +343,9 @@ if (verb === 'scan') {
 			const parsed = parseName(stem, st.mtime);
 			const [y, mo] = parsed.date.split('-');
 			const s = slug(parsed.hint) || 'recording';
-			// The same recording can be dropped into more than one inbox root (design §2.1: "dedupe
-			// by sha256, across roots"). The FIRST occurrence is the real candidate; every later one
-			// with the same fingerprint is flagged rather than proposed as a second import.
+			// The same recording can be dropped into more than one inbox root. The FIRST occurrence is the
+			// real candidate; every later one with the same fingerprint is flagged rather than proposed as a
+			// second import.
 			const duplicateOf = seenFingerprints.get(fingerprint) ?? null;
 			if (!duplicateOf) seenFingerprints.set(fingerprint, p);
 			out.push({
@@ -453,56 +408,30 @@ if (verb === 'scan') {
 	if (!src || idIdx === -1) die('usage: detect.mjs import <file> --id <recording-id>');
 	const id = process.argv[idIdx + 1];
 	if (!fs.existsSync(src)) die(`no such file: ${src}`);
-	// 'seen' at first touch, only if this payload has no log yet (spec §3.2b). Everything below that
-	// refuses also logs 'refused' before dying, so an inbox folder explains itself even mid-failure.
+	// 'seen' at first touch, only if this payload has no log yet. Everything below that refuses also
+	// logs 'refused' before dying, so an inbox folder explains itself even mid-failure.
 	if (!fs.existsSync(logPathOf(src))) logEvent(src, 'seen', { sha256: sha256(src), size: fs.statSync(src).size });
-	// ── no media/ copy any more (23/08/2026) ────────────────────────────────────────────────────────
-	// This used to copy into `media/meeting-recordings/<id>.<ext>` FIRST, verify that, and only then
-	// move the original into the archive — so every recording existed twice on this disk forever, once
-	// under a gitignored repo folder and once under FILES_FOLDER. The operator retired `media/` for
-	// exactly that reason: the archive IS the durable copy, and Drive-for-Desktop uploading it is a
-	// separate background concern, so a second local copy bought nothing.
-	//
-	// What made this safe to drop is that NOTHING in the scan path reads `media/`: `knownFingerprints`
-	// dedupes from each record's STORED `fingerprint` field and only hashes records that lack one —
-	// which was 0 of 53. The old `file` field was the last consumer, and it is gone from the schema.
 	const before = sha256(src);
 
-	// The recording's one durable home: meeting-recordings/<id>.<ext> — FLAT, because the id itself
-	// already carries the year/month split (`<year>/<month>/<date>--<slug>`); joining it under
-	// meeting-recordings/ recreates those same two directory levels as a side effect of the id's own
-	// shape, never a second date parse. Revision 2 (2026-08-22) drops the `files/` segment: FILES_FOLDER
-	// now points AT the files folder.
-	// ⚠ 2026-08-31, capture→recording terminology pass: the destination file is now named after the
-	// RECORD id, not the inbox payload's original filename — the archive is SELF-INDEXING. Given a
-	// record you can derive its file (`meeting-recordings/<id>.<ext>`) with no lookup; given a file you
-	// can derive its record the same way. This also folds the separate `<year>/<month>` extraction that
-	// used to sit here (added 23/08/2026, to unify the two shapes `<year>/` and `<year>/<month>/` this
-	// archive had accumulated) into the id itself — there is nothing left to extract.
+	// The recording's one durable home: meeting-recordings/<id>.<ext>. Named after the RECORD id, so the
+	// archive is self-indexing — a record names its file and a file names its record, with no lookup —
+	// and the id's own `<year>/<month>/` prefix becomes the folder split.
 	const ext = path.extname(src).toLowerCase();
 	// Nothing has been written yet at this point, so both guards below leave the inbox exactly as it
 	// was — the payload is still the only copy and it has not moved.
 	if (!filesFolder) { logEvent(src, 'refused', { reason: 'files-folder-unresolved' }); die('FILES_FOLDER does not resolve — cannot archive; the payload is untouched in the inbox'); }
-	// A `gdrive://…` value (`.env.web`'s shape for FILES_FOLDER, since a cloud session has no synced
-	// mount) is not a local path — `path.join`/`mkdirSync`/`copyFileSync` below would treat it as a
-	// RELATIVE path and silently create real directories inside the repo. Same guard doctor.mjs
-	// already applies to every declared var (`!val.startsWith('/')`) before it will stat one.
+	// A `gdrive://…` value (how a session with no synced mount may set FILES_FOLDER) is not a local
+	// path — `path.join`/`mkdirSync`/`copyFileSync` below would treat it as a RELATIVE path and silently
+	// create real directories inside the repo.
 	if (!filesFolder.startsWith('/')) {
 		logEvent(src, 'refused', { reason: 'files-folder-not-local' });
 		die(`FILES_FOLDER ("${filesFolder}") is not a local path — likely a gdrive:// address (.env.web);`
 			+ ' this script needs a local synced folder to archive into. The payload is untouched in the inbox.');
 	}
 	const archiveFile = path.join(filesFolder, 'meeting-recordings', `${id}${ext}`);
-	// The archive is named after the RECORD id, never the inbox payload's own filename — so a
-	// collision here means the SAME id is being imported a second time (almost certainly a mistake,
-	// e.g. a re-run after a crash whose trash-move step already succeeded), not two different phone
-	// auto-names (`Voice Memo.m4a`, `New Recording 3.m4a`) landing on the same original name the way
-	// they used to. Writing over it would silently DESTROY that recording's only archived copy — and
-	// since `media/` retired, there is no second local copy to recover from. So refuse and name both:
-	// "an error naming the choices, never a silent pick".
-	// The folders are created on demand — matching the screenshots twin's own
-	// `mkdirSync(dest, { recursive: true })`. Before that fix `meeting-recordings/` held only whichever
-	// years already existed by hand, so the first recording of a new year died here with ENOENT.
+	// The archive is named after the RECORD id, so a collision means the SAME id is being imported a
+	// second time (a re-run after a crash, say). Writing over it would destroy that recording's only
+	// archived copy, so refuse and say so. The folders are created on demand.
 	fs.mkdirSync(path.dirname(archiveFile), { recursive: true });
 	if (fs.existsSync(archiveFile)) {
 		logEvent(src, 'refused', { reason: 'archive-destination-already-exists' });
@@ -511,12 +440,9 @@ if (verb === 'scan') {
 			+ `  The payload is still in the inbox, untouched. Confirm whether this id was already imported before re-running.`);
 	}
 
-	// ⚠ COPY-VERIFY-then-remove, never a bare rename. `renameSync` was what this did until 23/08/2026,
-	// and it carried a latent bug: an inbox root and the archive are only sometimes on the same
-	// filesystem. The Drive root is; the **iCloud root is not**, so filing a recording the operator
-	// dropped from their phone would have died with EXDEV — after `media/` had already taken a copy,
-	// which is why nobody hit it. With `media/` gone there is no consolation copy, so the sequence has
-	// to be safe on its own: copy across, prove the copy by hash, and only then let go of the source.
+	// COPY-VERIFY-then-remove, never a bare rename: an inbox root and the archive are not always on the
+	// same filesystem, and a rename across filesystems fails with EXDEV. So copy across, prove the copy
+	// by hash, and only then let go of the source.
 	try {
 		fs.copyFileSync(src, archiveFile);
 	} catch (e) {
@@ -533,12 +459,12 @@ if (verb === 'scan') {
 	}
 
 	// Only now is it safe to let the source go — and letting go is a MOVE to this root's trash/, never
-	// an unlink (design §3.2). `trash/` is a sibling inside the same inbox root, so this rename is
-	// always same-filesystem even when the archive was not. The operator empties trash by hand, which
-	// is the undo.
-	// Which inbox root does this payload live under? Prefer a DECLARED root (so `trash/` lands where
-	// the gate and the doctor already look), and fall back to the nearest ancestor that has one — a
-	// payload passed in from outside any declared root still gets a sane home rather than a crash.
+	// an unlink. `trash/` sits inside the same inbox root, so this rename is always same-filesystem even
+	// when the archive was not. Nothing empties trash/ automatically: emptying it is yours, and until
+	// then it is the undo.
+	// Which inbox root does this payload live under? Prefer a DECLARED root, and fall back to the nearest
+	// ancestor that has a trash/ — a payload passed in from outside any declared root still gets a sane
+	// home rather than a crash.
 	const inboxRoot = (() => {
 		const declared = resolveInboxRoots(inboxFoldersOverride);
 		for (let d = path.dirname(src); d !== path.dirname(d); d = path.dirname(d)) {
@@ -553,20 +479,17 @@ if (verb === 'scan') {
 		fs.renameSync(src, uniqueTrashPath(path.join(inboxRoot, 'trash'), path.basename(src)));
 	} catch (e) {
 		logEvent(src, 'archived-but-source-not-trashed', { reason: e.message, recording_file: archiveFile });
-		console.error(`⚠ archived to ${archiveFile} and VERIFIED, but could not move the payload to trash: ${e.message}`);
+		console.error(`archived to ${archiveFile} and VERIFIED, but could not move the payload to trash: ${e.message}`);
 		console.error('  The archive copy is good. Remove the inbox payload by hand — it is now a duplicate.');
 	}
 
-	// Fully processed = payload filed + log DELETED (spec §3.2b). The log sits beside the OLD payload
-	// path, so it is unlinked directly: durable history lives on the record's own `recording_file` /
-	// `fingerprint`, not this scratch file.
+	// Fully processed = payload filed + log deleted. The log sits beside the OLD payload path, so it is
+	// unlinked directly: durable history lives on the record's own `recording_file` / `fingerprint`.
 	fs.rmSync(logPathOf(src), { force: true });
 
-	// `recording_file` is printed as the ${env:FILES_FOLDER} TEMPLATE, not the absolute path — the
-	// field on the record must be machine-portable, and every caller was converting by hand (or
-	// forgetting to). `recording_file_resolved` keeps the absolute path for anything local, e.g.
-	// transcribing next. (Renamed from `archive_file` / `archive_file_resolved` in the
-	// capture→recording terminology pass, 2026-08-31 — same two values, same intent.)
+	// `recording_file` is printed as the ${env:FILES_FOLDER} TEMPLATE, not the absolute path, so the
+	// field on the record is machine-portable. `recording_file_resolved` keeps the absolute path for
+	// anything local, e.g. transcribing next.
 	console.log(JSON.stringify({
 		fingerprint: after,
 		recording_file: '${env:FILES_FOLDER}' + archiveFile.slice(filesFolder.length),
@@ -574,10 +497,6 @@ if (verb === 'scan') {
 		duration: duration(archiveFile),
 	}, null, 2));
 } else {
-	// `backfill-fingerprints` lived here until 23/08/2026. It hashed every record that had a `media/`
-	// path but no `fingerprint` — and once `media/` retired there was nothing left for it to read, so
-	// it was provably dead rather than merely unused (CLAUDE.md: correctness is not usage; measure
-	// before you keep). Its job is done at write time now: `import` always prints a fingerprint.
 	die(`unknown verb "${verb}" (scan | import)`);
 }
 

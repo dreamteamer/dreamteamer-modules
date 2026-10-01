@@ -7,10 +7,10 @@ load `using-dreamteamer` (record rules: `references/records.md`). for each recor
 $ARGUMENTS — resolve the meeting
 it records, walking this ladder and **stopping at the first hit**:
 
-1. **already in the vault.** match on the recording's `date` plus the company/attendee hints in its
+1. **already in the workspace.** match on the recording's `date` plus the company/attendee hints in its
    `name`, cross-checked against `duration` vs the meeting's `ends - starts` (a ±5 min fit is strong
    evidence; a 20 min gap is not a match). if two meetings fit, **show both and ask** — never guess.
-2. **not in the vault.** load `fetching-meetings` and sync that single date first: the event may exist
+2. **not in the workspace.** load `fetching-meetings` and sync that single date first: the event may exist
    on a calendar nobody has snapshotted yet. then retry step 1.
 3. **still nothing.** create a **shim** meeting: `origin: recording`, `confidence: low`,
    `source: meeting-recordings/<id>`, `creation_context` saying no calendar event was found and that

@@ -16,9 +16,9 @@ from meeting_io import read_meeting, write_meeting, count_attendees, asr_cache_p
 from text_source import parse_labeled, log as log_text_source
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-# Beside the skill by default. `TRANSCRIBING_MODELS_DIR` moves the ~1.6 GB elsewhere — needed when this
-# skill arrives through npm (`node_modules/@dreamteamer/extensions/…`), where `npm ci` wipes the folder
-# and would re-download the weights on every install; a git-module or inline copy keeps the default.
+# Beside the skill by default. `TRANSCRIBING_MODELS_DIR` (an absolute path, read from the process
+# environment) moves the ~1.6 GB elsewhere — needed when the skill sits in a folder that gets
+# reinstalled, such as node_modules, where the weights would otherwise be re-downloaded every time.
 MODELS_DIR = os.environ.get("TRANSCRIBING_MODELS_DIR") or os.path.join(HERE, ".models")
 SEG_MODEL = os.path.join(MODELS_DIR, "segmentation.onnx")
 EMB_MODEL = os.path.join(MODELS_DIR, "embedding.onnx")
@@ -60,10 +60,8 @@ def setup():
 def decode_audio(src, dst_wav):
     """Decode anything ffmpeg can read to 16 kHz mono WAV.
 
-    ⚠ Both guards below exist because `check=True, capture_output=True` alone raises
-    CalledProcessError with ffmpeg's stderr captured into the exception and never printed — so a
-    missing file reported `returned non-zero exit status 254` and the words "No such file or
-    directory" appeared nowhere.
+    Both guards below print ffmpeg's own reason: `check=True, capture_output=True` alone raises
+    CalledProcessError with ffmpeg's stderr captured into the exception and never shown.
     """
     import shutil
     if shutil.which("ffmpeg") is None:
@@ -85,14 +83,10 @@ def decode_audio(src, dst_wav):
 def diarize_safe(wav, num_speakers=None):
     """Diarize without letting a native crash take the whole run down.
 
-    ⚠ sherpa-onnx 1.10.46 raises SIGBUS — not an exception, a **bus error** — whenever the
-    clustering resolves to a SINGLE speaker. Measured 2026-08-13 on this stack: `num_clusters=1`
-    crashes; `threshold=0.9` crashes (too strict, everything lands in one cluster); the default
-    `threshold=0.8` crashed on 45s of one dominant voice and succeeded on the same call's first
-    5 minutes once both voices were present (62 segments, 6 speakers). So the failure is not the
-    threshold path as such — it is a one-cluster outcome, which is exactly what a **voice memo or
-    any solo recording produces**. The audio route had 72 successes because the skill tells you to
-    pass `--speakers N` from the attendee list, and N was always ≥ 2.
+    sherpa-onnx 1.10.46 raises SIGBUS (a bus error, not an exception) whenever clustering
+    resolves to a single speaker: `num_clusters=1`, a strict threshold, or one dominant voice
+    under the default threshold all do it. A voice memo or any solo recording produces exactly
+    that outcome, so pass `--speakers N` whenever the count is known.
 
     A SIGBUS cannot be caught in-process, so the only robust guard is a child process: if it dies,
     we still have a transcript, just an undiarized one. Two layers:
@@ -115,7 +109,7 @@ def diarize_safe(wav, num_speakers=None):
             pass
     # -10 is SIGBUS on macOS, -7 on Linux; any abnormal exit gets the same treatment.
     print(
-        f"  ⚠ diarization failed (exit {proc.returncode}) — falling back to a single speaker.\n"
+        f"  diarization failed (exit {proc.returncode}) — falling back to a single speaker.\n"
         f"    This is the known sherpa-onnx one-cluster crash if the audio has one dominant voice.\n"
         f"    Pass --speakers N to force a count, or --speakers 1 to skip diarization cleanly.",
         file=sys.stderr,
@@ -162,8 +156,8 @@ def transcribe(wav, language=None):
         vad_filter=True,
         # Explicit when we know the call's language. Otherwise faster-whisper detects it
         # from ONE window (language_detection_segments=1) and applies that to the whole
-        # file — and the operator announces every recording in Hebrew, so an English call
-        # gets pinned to `he` by its own first sentence.
+        # file — so an English call that opens with a Hebrew greeting gets pinned to `he`
+        # by its own first sentence.
         language=language,
         # Whisper feeds each window's decoded text as the next window's prompt. When the
         # opening language differs from the rest of the call, that prompt keeps dragging
@@ -212,7 +206,7 @@ def run(meeting_md, audio, generated, num_speakers=None, language=None):
         "diarization": DIARIZATION,
         "language": asr["language"],
         # Whether the language was forced or detected — a detected one on a code-switched
-        # call is the thing that produced a transliterated transcript before 2026-08-04.
+        # call is what produces a transliterated transcript.
         "language_source": "forced" if language else "detected",
         "duration": fmt_ts(asr["duration"]),
         "speaker_count": len({t["speaker"] for t in turns}),

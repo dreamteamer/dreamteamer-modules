@@ -1,7 +1,6 @@
-# heavy assets live with the skill so its ignore rules travel with the folder. .models and .cache carry NO
-# trailing slash on purpose: in a linked worktree they are SYMLINKS to the primary's copies (dt install), and
-# a dir-only pattern ignores neither a symlink nor a path that does not exist yet (measured 2026-09-07).
-# (module extraction, copies) — never committed wherever the skill lands
+# Heavy assets live with the skill so its ignore rules travel with the folder. .models and .cache carry
+# NO trailing slash on purpose: they may be SYMLINKS to a shared copy, and a dir-only pattern ignores
+# neither a symlink nor a path that does not exist yet.
 .models
 .cache
 .venv/
