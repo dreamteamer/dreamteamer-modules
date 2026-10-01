@@ -9,7 +9,8 @@ load the `building-from-references` skill (section 1). for the capture in $ARGUM
    --company companies/<id> --audience … --observed_on <date>`; find or create the maker in `companies` first.
 2. a FILE moves out of the inbox into `${env:FILES_FOLDER}/rnd/references/<id>/` and the record gets
    `reference_file` as that template (never a machine path); a URL goes in `url`.
-3. a recording becomes frames: `bin/extract-frames.mjs --in … --out … --every 4 --sheet`, then set
+3. a recording becomes frames: `node .dreamteamer/skills/building-from-references/bin/extract-frames.mjs
+   --in … --out … --every 4 --sheet` from the workspace root, then set
    `screenshots_folder`. check the audio before transcribing anything — most screen recordings are mute.
 4. read the contact sheet, then write the body: the feature inventory, screen by screen, with frame numbers.
 

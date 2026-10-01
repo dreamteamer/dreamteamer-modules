@@ -1,5 +1,5 @@
 # What reading more cannot settle — the residue that closes only by a choice or by contact with a
-# real person. Sorted by severity, because that is the order to work them in.
+# real person. Sorted on `severity`, which groups the questions by it.
 path: /content/open-questions
 target: list
 collection: collections/rnd/open-questions

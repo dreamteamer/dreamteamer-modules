@@ -1,20 +1,20 @@
-# The HELD-OUT evaluation set: real product questions the operator asked, and what the real person
-# actually answered. A persona is asked the question cold and scored against the human's answer.
+# The HELD-OUT evaluation set: real product questions you asked, and what the real person actually
+# answered. A persona is asked the question cold and scored against the human's answer.
 #
-# ⚠ THIS COLLECTION MUST NEVER BE LOADED INTO A CONSULTATION CONTEXT. A persona that can see the
-# answers is sitting an open-book exam, and the score means nothing. Separating the records is
-# necessary but NOT sufficient — semantically adjacent quotes leak too, so a probe's own quote must
-# also be absent from its persona's quote bank. That invariant is the whole point of the split.
+# This collection is never loaded into a consultation context. A persona that can see the answers is
+# sitting an open-book exam, and the score means nothing. Separating the records is necessary but not
+# sufficient — semantically adjacent quotes leak too, so a probe's own quote is also kept out of its
+# persona's quote bank.
 #
-# It is also a standalone research asset independent of personas: ~N real product questions and how
-# real buyers answered them. It grows with every new interview, which is what makes it a collection
-# rather than a one-off extraction.
+# It is also a research asset in its own right: real product questions and how real buyers answered
+# them. It grows with every new interview, which is what makes it a collection rather than a one-off
+# extraction.
 name: rnd/persona-probes
 description: >-
-  The held-out evaluation set — a real question the operator asked, and what the real person actually
+  The held-out evaluation set — a real question you asked, and what the real person actually
   answered. A persona is scored against it cold.
 use_when: >-
-  the operator relays what a real person said in reply to something they asked — a client on a call, a
+  you relay what a real person said in reply to something you asked — a client on a call, a
   peer over coffee, a candidate in an interview — capture the pair here before it is paraphrased away,
   and BEFORE scoring or extending any persona: a panel's answer is judged against these, so a probe
   written from memory or invented is worse than none
@@ -39,7 +39,7 @@ schema:
 
     question:
       type: string
-      description: The question VERBATIM, as the operator actually phrased it. Their phrasing shapes the answer, so a cleaned-up version tests something that never happened.
+      description: The question VERBATIM, as you actually phrased it. The phrasing shapes the answer, so a cleaned-up version tests something that never happened.
     real_answer:
       type: string
       description: The human's answer, VERBATIM and in full. Never compressed. A non-English answer keeps the original with a gloss beside it.
@@ -59,7 +59,7 @@ schema:
     out_of_coverage:
       type: boolean
       default: false
-      description: A deliberately planted question the evidence does NOT cover. A correct refusal scores as a win. Personas fabricate on ~52% of these, so this is the most important thing measured here.
+      description: A deliberately planted question the evidence does NOT cover. A correct refusal scores as a win. Personas tend to fabricate an answer here, so this is the most important thing measured.
     reveals:
       type: string
       description: One line on what the answer exposes about how they think.
@@ -104,4 +104,4 @@ schema:
 
 order: 46
 list_fields: [name, asked, speaker, persona, verdict]
-icon: inspect   # not `question` — `perspective/questions` wears `question`; a probe is the held-out answer you score against
+icon: inspect

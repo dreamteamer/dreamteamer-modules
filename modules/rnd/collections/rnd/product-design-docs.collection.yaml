@@ -3,7 +3,7 @@ description: >-
   How a thing should work, decided — the design that implementation follows.
 use_when: >-
   how something should work is being decided — write the decision here before implementing, and read
-  the existing doc before proposing a change to a product; the workspace's decision log wins when they
+  the existing doc before proposing a change to a product; a later recorded decision wins when they
   disagree. A brainstormed spec is a record here, not a file beside the code
 storage: { path: data/rnd/product-design-docs, codec: md, shape: file, suffix: product-design-doc}
 id:
@@ -56,18 +56,18 @@ schema:
       x-body: true
       description: The design itself — the intended shape of the thing, and why it is shaped that way. When written from references, the PRD.
     tags:
-      examples: ['dreamteamer', 'capacity', 'crm']
+      examples: ['onboarding', 'pricing', 'portal']
       type: array
       items: { type: string }
       description: >-
         Free strings, lowercase and hyphenated. Optionally `key:value` with NO space around the
-        colon (`analysis:meeting-insights`, `enriched:web-search`) — a space makes YAML parse the
+        colon (`area:onboarding`, `source:interview`) — a space makes YAML parse the
         entry as a map instead of a string. Nothing validates a tag; there is no `tags` collection.
         Reuse one already in use before inventing one: `dt values <collection> tags` lists them.
     status:
       type: string
       enum: [draft, active, superseded]
-      description: '`active` is the design currently being built to. `superseded` means a later doc won — and the decision log wins over both.'
+      description: '`active` is the design currently being built to. `superseded` means a later doc won.'
     author:
       type: string
       pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'

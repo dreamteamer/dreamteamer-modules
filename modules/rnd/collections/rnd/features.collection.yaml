@@ -5,13 +5,11 @@
 # they are triaged on different questions — "is it real?" versus "is it worth it?" — and mixing them
 # makes both queues useless.
 #
-# ⚠ THE BAR IS A PROBLEM, NOT AN IDEA. `problem` is required for exactly the reason `evidence` is
-# required on an issue: without it this becomes a wishlist, and a wishlist is never read twice. A
+# The bar is a problem, not an idea. `problem` is required so this never becomes a wishlist: a
 # feature that cannot name who was blocked and by what is a `status: idea` at best.
 #
-# This collection is also the honest home for things REMOVED from core that someone still wants —
-# see the engine's standing rule that correctness is not usage. A record here is cheaper than an
-# abstraction kept alive on the argument that it might be needed.
+# It is also the home for a capability removed from a repo that someone still wants: a record here is
+# cheaper than an abstraction kept alive on the argument that it might be needed.
 name: rnd/features
 description: A wanted capability for one of this workspace's repos — the problem it solves, and who asked.
 use_when: >-
@@ -43,9 +41,8 @@ schema:
     requested_by:
       type: string
       description: >-
-        Who WANTS it, when that is not the operator — a `contacts/<id>` for a client ask, or
-        `agents/dreamteamer (claude-opus-5)`. ABSENT means the operator wanted it, which is the common
-        case and no longer worth writing down.
+        Who WANTS it, when that is not you — a `contacts/<id>` for a client ask, or `agents/<harness>`
+        (e.g. `agents/claude-code`) for an agent. Absent means you wanted it, which is the common case.
     for_client:
       type: string
       x-reference: companies
@@ -69,7 +66,7 @@ schema:
     problem:
       type: string
       format: markdown
-      description: ⚠ THE FIELD THAT EARNS THE RECORD. What was blocked, for whom, when — the concrete occasion, not the abstract benefit. "No way to see which step a record is on" is a problem; "better observability" is a wish.
+      description: The field that earns the record. What was blocked, for whom, when — the concrete occasion, not the abstract benefit. "No way to see which step a record is on" is a problem; "better observability" is a wish.
     today:
       type: string
       description: What is done INSTEAD right now. If the workaround is fine, that is the most useful thing this record can say — and a reason to decline rather than a gap.
@@ -119,5 +116,4 @@ schema:
       description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
 order: 46
 list_fields: [name, status, priority, repo, requested_by]
-icon: star-full   # WAS `star`, which is NOT a codicon — the vocabulary is `star-full`
-                      # in one nav is the same failure as no icon at all
+icon: star-full

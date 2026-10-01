@@ -6,7 +6,7 @@
 #
 # Four things belong here and nothing else does:
 #
-#   - a **decision** only the operator can make (what to call it, what to charge, what to cut)
+#   - a **decision** only you can make (what to call it, what to charge, what to cut)
 #   - an **assumption** that needs a real user to test, not a repo to read
 #   - a **tension** between two findings that both look true
 #   - a **risk** that is real, not yet realised, and worth naming before it is
@@ -46,7 +46,7 @@ schema:
       type: string
       enum: [needs-decision, needs-primary-research, needs-data, unresolved-tension, assumption-to-test, risk]
       description: >-
-        `needs-decision` = only the operator can settle it. `needs-primary-research` = requires
+        `needs-decision` = only you can settle it. `needs-primary-research` = requires
         talking to a human. `needs-data` = requires instrumenting something we do not yet run.
         `unresolved-tension` = two findings that both look true. `assumption-to-test` = something we
         are currently building on without evidence. `risk` = a named way this could go wrong.
@@ -60,16 +60,14 @@ schema:
       enum: [open, in-progress, resolved, parked, obsolete]
       default: open
       description: '`obsolete` = the question stopped mattering. Say why in `resolution` rather than deleting the record.'
-    # ⚠ NO `owner`. All 13 values were the operator — "usually the operator" was in fact always, so the
-    # field recorded nothing. Removed with the `users` collection in engine 0.8.0. An open question is
-    # the operator's to move unless a record says otherwise, and none did.
+    # No `owner`: an open question is yours to move unless its record says otherwise.
     blocks:
       type: array
       items:
         type: string
       description: >-
         Records that cannot be honestly answered while this stays open, as `<collection>/<id>`
-        strings. ⚠ A PLAIN string, not a reference: the targets may live in another workspace or in a
+        strings. A plain string, not a reference: the targets may live in another workspace or in a
         collection this module does not ship, so the value keeps its ref shape — greppable and
         re-linkable — without being validated. Anything else this blocks (a feature, a decision) goes
         in `description` and `content`.
@@ -109,7 +107,7 @@ schema:
       items: { type: string }
       description: >-
         Free strings, lowercase and hyphenated. Optionally `key:value` with NO space around the
-        colon (`analysis:meeting-insights`, `enriched:web-search`) — a space makes YAML parse the
+        colon (`area:onboarding`, `source:interview`) — a space makes YAML parse the
         entry as a map instead of a string. Nothing validates a tag; there is no `tags` collection.
         Reuse one already in use before inventing one: `dt values <collection> tags` lists them.
     content:

@@ -52,11 +52,9 @@ export function main(argv) {
 	return frames ? 0 : 1;
 }
 
-/** ⚠ RUN AS A SCRIPT — AND THROUGH A SYMLINK. `process.argv[1]` is the path as INVOKED and
- *  `import.meta.url` the path RESOLVED; under preview mode this module is reached through a
- *  `git_modules/<name>` symlink into a clone elsewhere, so the two are different strings for the same
- *  file and a `===` between them is false. The entry guard then never fires — no output, exit 0, and
- *  a reader sees a clean run. Measured 2026-09-11; `tests/script-entry.test.mjs` holds it. */
+/** Realpath both sides of the entry guard. `process.argv[1]` is the path as INVOKED and
+ *  `import.meta.url` the path RESOLVED; reached through a symlink, the two are different strings for
+ *  the same file, and an unresolved `===` would skip `main` and exit 0 with no output. */
 const isMain = () => {
 	if (!process.argv[1]) return false;
 	const real = (p) => { try { return fs.realpathSync(p); } catch { return path.resolve(p); } };

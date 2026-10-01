@@ -1,7 +1,7 @@
 {
 	"name": "@dreamteamer/rnd",
 	"version": "0.1.0",
-	"description": "What a dreamteamer workspace builds and investigates — products, design docs, stories, prototypes, issues, features, research and persona panels.",
+	"description": "What a workspace builds and investigates — products, design docs, stories, screens, prototypes, issues, features, research and persona panels.",
 	"license": "Apache-2.0",
 	"type": "module",
 	"repository": {
@@ -26,7 +26,7 @@
 		"namespaces": [
 			"rnd"
 		],
-		"description": "Everything this workspace builds and investigates. `products` — each a bounded effort, delivered under a `projects` plan where the plan module is installed; how they should work (`product-design-docs`, `user-stories`, `prototypes`); what is wanted and what is broken in the workspace's own repos (`features`, `issues`, both routed by `repos`); what was learned from outside (`research-docs`) and what reading cannot settle (`open-questions`); `experiments` on the workspace's own tooling; panels of real people (`personas`, scored cold against `persona-probes`); working `draft-docs`; and `references` — what a design was modelled ON, its spec reverse-engineered as a prompt. The factory chain reference → PRD (`product-design-docs` with `references` and `branding`) → clickable, deployed `prototypes` (`design_doc`, `live_url`, `iteration`) → `plan` is bound to its collections, so `dt next` names the missing hop; `building-from-references` is the procedure. Generated or captured media — explainer videos, audio overviews, decks — is a `media_folder` template on the record it belongs to, bytes under `${env:FILES_FOLDER}` and never in the repo. A brainstormed spec is a `product-design-docs` record and its implementation plan a `draft-docs` record — the R&D paper trail lives in records, not in files beside the code. Peers `companies`, so a project or a feature can say which customer it is for; the commercial funnel itself is deliberately not referenced.",
+		"description": "What a workspace builds and investigates: `products` and their `product-design-docs`, `user-stories`, `screens` and `prototypes`; `features` and `issues` per repo; `research-docs`, `open-questions` and `experiments`; `draft-docs`; `personas` scored against `persona-probes`; `references` to model on. `building-from-references` runs reference → PRD → prototype → plan, a field per hop for `dt next`.",
 		"engine": ">=0.30.0",
 		"peerDependencies": [
 			"companies",
