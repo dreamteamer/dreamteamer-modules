@@ -1,10 +1,12 @@
 name: release
 
-# Tag-only, on purpose — the same gate the engine uses. A merge to main can NEVER publish;
-# releasing means deliberately pushing a v* tag, which is the permission gate expressed in CI.
+# Tag-only, ONE MODULE PER TAG: `<id>-v<version>` (e.g. `contacts-v0.1.0`) publishes modules/<id> as
+# @dreamteamer/<id>. A merge to main can never publish; pushing a tag is the permission gate, the same
+# one the engine uses. Each module has its own version, so a breaking change in one never forces a
+# release of the others — the reason this repo exists instead of one package of ten modules.
 on:
   push:
-    tags: ['v*']
+    tags: ['*-v*']
 
 permissions:
   contents: read
@@ -18,6 +20,18 @@ jobs:
         with:
           # The ancestry gate below needs main's history; the default shallow tip cannot answer it.
           fetch-depth: 0
+
+      - name: which module, and the tag must match its version
+        id: mod
+        run: |
+          set -euo pipefail
+          ID="${GITHUB_REF_NAME%-v*}"; VERSION="${GITHUB_REF_NAME##*-v}"
+          [ -f "modules/$ID/package.json" ] || { echo "::error::tag $GITHUB_REF_NAME names no modules/$ID"; exit 1; }
+          PKG=$(node -p "require('./modules/$ID/package.json').version")
+          NAME=$(node -p "require('./modules/$ID/package.json').name")
+          echo "module=$ID name=$NAME tag=$VERSION package.json=$PKG"
+          [ "$PKG" = "$VERSION" ] || { echo "::error::tag version $VERSION does not match modules/$ID/package.json $PKG"; exit 1; }
+          echo "id=$ID" >> "$GITHUB_OUTPUT"
 
       # 🔴 THE LEAK GATE, ON THE PUBLISH PATH — added 2026-09-10.
       #
@@ -109,13 +123,6 @@ jobs:
 
       - run: npm ci
 
-      # ⚠ ONE DELIBERATE DIVERGENCE FROM THE ENGINE'S COPY, which hardcodes `--access public`.
-      # The engine is a public package in a public repo; this one is cut from a private work vault
-      # and lives in a private repo, so `public` and `restricted` are both plausible and npm's
-      # unconditional unpublish window is 72 hours. The choice is a repo VARIABLE and an unset one
-      # fails the release before it publishes, so neither answer is inherited from a file:
-      #   gh variable set NPM_ACCESS --repo dreamteamer/extensions --body public|restricted
-      # To drop the divergence, replace this step and the flag below with `--access public`.
       - name: the access decision must be recorded
         env:
           NPM_ACCESS: ${{ vars.NPM_ACCESS }}
@@ -123,55 +130,17 @@ jobs:
           set -euo pipefail
           case "${NPM_ACCESS:-}" in
             public|restricted) echo "publishing --access $NPM_ACCESS" ;;
-            "") echo "::error::vars.NPM_ACCESS is not set. This package comes out of a private vault, so nothing here guesses between a public registry entry and an org-restricted one. Set it deliberately: gh variable set NPM_ACCESS --repo \$GITHUB_REPOSITORY --body public|restricted"; exit 1 ;;
+            "") echo "::error::vars.NPM_ACCESS is not set. These modules come out of a private vault, so nothing here guesses between a public registry entry and an org-restricted one. Set it on the repo."; exit 1 ;;
             *) echo "::error::vars.NPM_ACCESS is \"$NPM_ACCESS\" — expected public or restricted"; exit 1 ;;
           esac
 
-      # A tag that disagrees with package.json publishes the wrong version under the right name.
-      - name: tag must match package.json version
-        run: |
-          set -euo pipefail
-          TAG="${GITHUB_REF_NAME#v}"
-          PKG=$(node -p "require('./package.json').version")
-          echo "tag=$TAG package.json=$PKG"
-          [ "$TAG" = "$PKG" ] || { echo "::error::tag $TAG does not match package.json $PKG"; exit 1; }
-
-      # A release must not be able to ship what CI would have rejected.
+      # The whole repo, not only this module: every module's compiles-alone run installs it from its
+      # PACKED tarball, so a folder missing from `files` fails here rather than in a stranger's install.
       - name: tests
         run: npm test
 
-      - name: first-run smoke — the npm channel
-        run: |
-          set -euo pipefail
-          PKG=$(npm pack --silent | tail -1)
-          PKG_PATH="$PWD/$PKG"
-          D=$(mktemp -d)
-          cd "$D"
-          git init -q && git config user.email ci@example.com && git config user.name CI
-          npm init -y >/dev/null
-          npm install --silent dreamteamer@^0.24.0
-          npx dreamteamer init --name smoke
-          npm install --silent "$PKG_PATH"
-          node -e '
-            const fs = require("fs");
-            const p = JSON.parse(fs.readFileSync("package.json", "utf8"));
-            p.dreamteamer.vars = ["FILES_FOLDER", "INBOX_FOLDERS", "REPOS_FOLDER"];
-            fs.writeFileSync("package.json", JSON.stringify(p, null, "\t") + "\n");
-          '
-          printf 'FILES_FOLDER=%s/files\nINBOX_FOLDERS=%s/inbox\nREPOS_FOLDER=%s\n' "$D" "$D" "$D" > .env
-          npx dreamteamer compile
-          npx dreamteamer check
-          for m in assets contacts projects meetings recordings perspective search; do
-            npx dreamteamer status | grep -qE "^\s+$m\s+node_modules" || { echo "::error::module $m was not discovered from the package"; exit 1; }
-          done
-
-      # ⚠ THE SECOND DIVERGENCE FROM THE ENGINE'S COPY, which publishes `--provenance` unconditionally.
-      # npm verifies the sigstore bundle against the SOURCE repo and refuses a private one outright —
-      # `E422 Unsupported GitHub Actions source repository visibility: "private"` (measured 2026-09-09,
-      # run 34343136517, after every gate above had passed). The engine's repo is public; this one is
-      # private, so the flag follows the visibility GitHub reports. Turning the repo public turns
-      # provenance on with no edit here.
       - name: publish
+        working-directory: modules/${{ steps.mod.outputs.id }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_ACCESS: ${{ vars.NPM_ACCESS }}

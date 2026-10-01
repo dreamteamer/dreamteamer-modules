@@ -28,7 +28,7 @@ an org member — including any CI that runs `npm ci` in a consuming workspace.
 ## every release
 
 ```bash
-cd ~/Documents/projects/giladkhen/dreamteamer/extensions
+cd <your clone of dreamteamer/extensions>
 git status --short && git log origin/main..HEAD --oneline   # what is actually shipping
 
 npm test                                                    # QUOTE THE EXIT CODE

@@ -19,8 +19,10 @@ import path from 'node:path';
 import { load } from 'js-yaml';
 import { renameKey, plan, RENAMED, KEPT_AS_CODE } from '../bin/migrate-code-to-slug.mjs';
 
-const PROJECTS = path.resolve(import.meta.dirname, '../modules/projects');
-const desc = (c) => load(fs.readFileSync(path.join(PROJECTS, 'collections', `${c}.collection.yaml`), 'utf8'));
+const PROJECTS = path.resolve(import.meta.dirname, '..');
+// tasks left projects for a module of its own on 2026-10-01; the other three are still here
+const TASKS = path.resolve(import.meta.dirname, '..', '..', 'tasks');
+const desc = (c) => load(fs.readFileSync(path.join(c === 'tasks' ? TASKS : PROJECTS, 'collections', `${c}.collection.yaml`), 'utf8'));
 
 describe('the descriptors after the rename', () => {
 	test('the four latin-handle collections carry an OPTIONAL `slug` and no `code`', () => {
@@ -61,14 +63,17 @@ describe('the descriptors after the rename', () => {
 		}
 	});
 
-	test('the module declares the engine floor the list form needs — 0.25.1, not 0.25.0', () => {
+	test('the module declares an engine floor at or above the one the list form needs — 0.25.1, not 0.25.0', () => {
 		// ⚠ 0.25.0 ACCEPTS the list and REFUSES it. `generateId` learned the ordered form there, but
 		// the meta-descriptor that validates a collection still said `type: string`, so a consumer on
 		// 0.25.0 installs this module, compiles clean, and then `check` rejects four descriptors with
 		// "must be string". 0.25.1 widened the schema. A floor of >=0.25.0 would be a promise this
 		// module cannot keep, and it would break at the CONSUMER's check — never in this repo's CI.
 		const pkg = JSON.parse(fs.readFileSync(path.join(PROJECTS, 'package.json'), 'utf8'));
-		assert.equal(pkg.dreamteamer.engine, '>=0.25.1');
+		const floor = /^>=(\d+)\.(\d+)\.(\d+)$/.exec(pkg.dreamteamer.engine)?.slice(1).map(Number);
+		assert.ok(floor, `engine floor ${pkg.dreamteamer.engine} is not a >=x.y.z range`);
+		const at = (v) => v[0] * 1e6 + v[1] * 1e3 + v[2];
+		assert.ok(at(floor) >= at([0, 25, 1]), `engine floor ${pkg.dreamteamer.engine} is below 0.25.1`);
 	});
 });
 

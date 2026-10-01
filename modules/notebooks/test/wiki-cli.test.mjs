@@ -21,7 +21,9 @@ import { virginWorkspace, installCopied as installModules, closure, run as engin
 // the repo root — these tests were written at the root of dreamteamer/extensions, whose modules/ layout
 // this repo keeps, so every `ROOT/modules/<m>/…` path still names the same file
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', '..', '..');
-const CLI = path.join(ROOT, 'bin', 'extensions.mjs');
+// `dt-wiki` — the module's own command since the pack's dispatcher was split by owner
+const CLI = path.join(ROOT, 'modules', 'notebooks', 'bin', 'wiki.mjs');
+const SETUP = path.join(ROOT, 'modules', 'setup', 'bin', 'setup.mjs');
 const made = [];
 after(() => { for (const d of made) fs.rmSync(d, { recursive: true, force: true }); });
 
@@ -37,7 +39,7 @@ function workspace({ env = 'FILES_FOLDER=@FILES@\n' } = {}) {
 
 /** ⚠ FILES_FOLDER is BLANKED in the spawned environment on purpose: an exported one would override
  *  the fixture's `.env` and the test would measure the developer's machine instead of the fixture. */
-const run = (ws, ...args) => spawnSync(process.execPath, [CLI, 'wiki', ...args], {
+const run = (ws, ...args) => spawnSync(process.execPath, [CLI, ...args], {
 	cwd: ws, encoding: 'utf8', env: { ...process.env, FILES_FOLDER: '', NO_COLOR: '1' },
 });
 
@@ -297,11 +299,11 @@ describe('refusals', () => {
 		assert.match(r.stderr, /wiki incomplete/);
 	});
 
-	test('the CLI\'s unknown-command message names `wiki` beside the other four', () => {
+	test('dt-setup, asked for a verb that moved, names where wiki and notebook went', () => {
 		const { ws } = workspace();
-		const r = spawnSync(process.execPath, [CLI, 'nonsense'], { cwd: ws, encoding: 'utf8' });
+		const r = spawnSync(process.execPath, [SETUP, 'wiki'], { cwd: ws, encoding: 'utf8' });
 		assert.equal(r.status, 2);
-		assert.match(r.stderr, /(?=.*\bsetup\b)(?=.*\bdoctor\b)(?=.*\bmigrate\b)(?=.*\bnotebook\b)(?=.*\bwiki\b)/);
+		assert.match(r.stderr, /(?=.*\bdt-wiki\b)(?=.*\bdt-notebook\b)/);
 	});
 });
 
@@ -337,7 +339,7 @@ describe('a corpus is markdown only', () => {
 describe('ask needs qmd; everything else survives without it', () => {
 	// PATH is emptied so qmd cannot be found even on a machine that has it — this is the contract on
 	// a fresh clone, and it must be tested there rather than assumed.
-	const runNoQmd = (ws, ...args) => spawnSync(process.execPath, [CLI, 'wiki', ...args], {
+	const runNoQmd = (ws, ...args) => spawnSync(process.execPath, [CLI, ...args], {
 		cwd: ws, encoding: 'utf8', env: { ...process.env, PATH: '/nonexistent', FILES_FOLDER: '', NO_COLOR: '1' },
 	});
 
@@ -377,7 +379,7 @@ describe('the record the CLI writes survives the real engine', () => {
 		fs.writeFileSync(path.join(root, 'package-lock.json'), '{}');
 		assert.equal(engine(root, ['compile']).status, 0);
 
-		const cli = (...args) => spawnSync(process.execPath, [CLI, 'wiki', ...args], {
+		const cli = (...args) => spawnSync(process.execPath, [CLI, ...args], {
 			cwd: root, encoding: 'utf8', env: { ...process.env, FILES_FOLDER: '', NO_COLOR: '1' },
 		});
 		assert.equal(cli('init', 'field-notes', '--title', 'Field Notes').status, 0);

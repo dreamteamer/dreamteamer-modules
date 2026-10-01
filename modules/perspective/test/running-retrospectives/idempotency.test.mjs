@@ -22,7 +22,7 @@ import { treeHash, treeDiff } from './helpers/tree-hash.mjs';
 import { fixtureWorkspace, REF, SLUG, BASE } from './helpers/fixture.mjs';
 import { readRecord, writeRecord, recordPath } from '../../skills/running-retrospectives/lib/records.mjs';
 
-const BIN = path.join(path.dirname(new URL(import.meta.url).pathname), '..', 'bin');
+const BIN = path.join(path.dirname(new URL(import.meta.url).pathname), '..', '..', 'skills', 'running-retrospectives', 'bin');
 
 /**
  * Every mechanical stage that writes records, with the flags it needs to stay off the network and

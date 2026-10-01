@@ -145,7 +145,7 @@ describe('the bindings name real commands and real fields', () => {
 
 describe('the doctor', () => {
 	test('an installed rnd module gets an rnd capability that names ffmpeg', async () => {
-		const { capabilities } = await import('../lib/capabilities.mjs');
+		const { capabilities } = await import('../../setup/lib/capabilities.mjs');   // the board lives in @dreamteamer/setup
 		const ws = fs.mkdtempSync(path.join(os.tmpdir(), 'ext-rnd-'));
 		fs.writeFileSync(path.join(ws, 'package.json'), JSON.stringify({ name: 'c', private: true, dependencies: { '@dreamteamer/extensions': '*' }, dreamteamer: {} }));
 		fs.writeFileSync(path.join(ws, 'package-lock.json'), '{}');

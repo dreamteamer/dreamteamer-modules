@@ -1,4 +1,4 @@
-// PREVIEW MODE — what a fixture can pin: the state machine at git_modules/extensions, what the
+// PREVIEW MODE — what a fixture can pin: the state machine at git_modules/dreamteamer-modules, what the
 // pre-commit guard refuses, and the shape of a clone we agree to link. The flip itself (symlink +
 // recompile + the editor windows noticing) is smoked by hand in a real workspace and quoted.
 import { test, describe } from 'node:test';
@@ -16,7 +16,7 @@ import {
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', '..', '..');
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'ext-link-'));
 
-describe('the link state at git_modules/extensions', () => {
+describe('the link state at git_modules/dreamteamer-modules', () => {
 	test('absent is off', () => {
 		assert.equal(linkState(tmp()), 'off');
 	});
@@ -93,9 +93,9 @@ describe('the pre-commit guard', () => {
 	// blocked every commit with a message about the wrong thing.
 	test('the hook prefers the LINKED clone\'s guard, exits 0 when nothing is linked, and installs nothing', () => {
 		assert.ok(HOOK.includes(`L="${LINK_DIR}/${LINK_NAME}"`), 'the hook must look at the link we install');
-		assert.ok(HOOK.includes('exec node "$L/bin/extensions.mjs" guard'), 'must run the clone we are previewing, not node_modules');
+		assert.ok(HOOK.includes('exec node "$L/modules/setup/bin/setup.mjs" guard'), 'must run the clone we are previewing, not node_modules');
 		assert.match(HOOK, /exit 0/, 'unlinked must be a true no-op, not a failed lookup');
 		assert.match(HOOK, /--no-install/, 'the npx fallback must never install a package inside a commit');
-		assert.ok(HOOK.indexOf('exit 0') < HOOK.indexOf('extensions.mjs" guard'), 'the no-op check comes first');
+		assert.ok(HOOK.indexOf('exit 0') < HOOK.indexOf('setup.mjs" guard'), 'the no-op check comes first');
 	});
 });

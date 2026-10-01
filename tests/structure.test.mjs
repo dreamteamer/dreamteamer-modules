@@ -22,13 +22,9 @@ const pkgOf = (m) => JSON.parse(fs.readFileSync(path.join(MODULES, m, 'package.j
 /** A dependency is spelled as the full package name; the folder is the name without the scope. */
 const folderOf = (dep) => dep.replace(/^@dreamteamer\//, '');
 
-// Collections a module here may PEER although no module in this repo provides them yet — each names the
-// module that does, and leaves this list when that module is carried in. A peer nothing provides
-// anywhere is a typo; a peer provided by a module still waiting its turn is the plan.
-const PROVIDED_ELSEWHERE = new Map([
-	['projects', 'projects (dreamteamer/extensions, not yet carried here)'],
-	['activities', 'projects (dreamteamer/extensions, not yet carried here)'],
-]);
+// Collections a module here may PEER although no module in this repo provides them — each names who
+// does. Empty since every official module lives here; a peer nothing provides is a typo.
+const PROVIDED_ELSEWHERE = new Map();
 
 function* files(dir, ext) {
 	if (!fs.existsSync(dir)) return;

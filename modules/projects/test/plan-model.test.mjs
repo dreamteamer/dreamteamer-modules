@@ -177,11 +177,13 @@ describe('one module, bare names — the fold the operator asked for', () => {
 	// which is the operator's instruction — the package is the canonical example, not a guest.
 	const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'modules/projects/package.json'), 'utf8'));
 	test('the plan module ships four collections bare, and users is its OWN module at the nav root', () => {
-		assert.equal(pkg.name, 'projects');
+		assert.equal(pkg.name, '@dreamteamer/projects');
 		assert.ok(!pkg.dreamteamer.namespaces, 'bare names, so a consumer overlays rather than being prefixed around');
-		for (const [f, n] of [['projects', 'projects'], ['activities', 'activities'], ['teams', 'teams'], ['tasks', 'tasks']]) {
+		for (const [f, n] of [['projects', 'projects'], ['activities', 'activities'], ['teams', 'teams']]) {
 			assert.equal(load(`projects/collections/${f}.collection.yaml`).name, n);
 		}
+		// tasks is bare too, in its own module since 2026-10-01
+		assert.equal(load('tasks/collections/tasks.collection.yaml').name, 'tasks');
 		assert.equal(load('users/collections/users.collection.yaml').name, 'users');
 	});
 	test('org and plan are gone — there is exactly one home for this model', () => {
@@ -204,7 +206,7 @@ describe('one module, bare names — the fold the operator asked for', () => {
 	// other collection points at belongs. Namespacing the plan instead would have renamed `activities` →
 	// `projects/activities` in every consumer that had just migrated onto it. Same nav, no renames.
 	test('the plan module ships its four collections, and users is its OWN module so it sits at the root', () => {
-		for (const c of ['teams', 'projects', 'activities', 'tasks']) {
+		for (const c of ['teams', 'projects', 'activities']) {   // tasks: its own module since 2026-10-01, asserted below
 			assert.ok(fs.existsSync(path.join(ROOT, `modules/projects/collections/${c}.collection.yaml`)), `missing ${c}`);
 		}
 		assert.ok(fs.existsSync(path.join(ROOT, 'modules/users/collections/users.collection.yaml')), 'users must be its own module');
@@ -239,7 +241,7 @@ describe('the views a person actually opens', () => {
 		assert.ok(v.options.columns.includes('lead'), 'who is accountable is still worth seeing');
 	});
 	test('the task board bands by assignee, for the same reason', () => {
-		const v = view('projects', 'tasks-by-assignee.ui-view.yaml');
+		const v = view('tasks', 'tasks-by-assignee.ui-view.yaml');
 		assert.equal(v.options.group_rows_by_field, 'assignee');
 		assert.equal(v.options.show_ungrouped_rows, true);
 	});

@@ -1,4 +1,15 @@
-# rnd — what a descriptor cannot say
+# @dreamteamer/rnd
+
+What a workspace builds and investigates: products, design docs, user stories, prototypes, issues and
+features in its own repos, outside research and the questions it could not settle, experiments, and
+panels of real people scored against what they actually said.
+
+```bash
+npm install @dreamteamer/rnd
+npx dreamteamer compile
+```
+
+## what a descriptor cannot say
 
 **The commercial funnel is not referenced, on purpose.** The workspace this was cut from points a
 project at its `leads`/`clients` record through an `engagement` field and a feature at a `clients`

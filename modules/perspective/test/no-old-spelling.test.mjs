@@ -17,9 +17,10 @@ import path from 'node:path';
 // the repo root — these tests were written at the root of dreamteamer/extensions, whose modules/ layout
 // this repo keeps, so every `ROOT/modules/<m>/…` path still names the same file
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', '..', '..');
-const EXEMPT = new Set(['CHANGELOG.md', 'bin/migrate.mjs', 'tests/migrate.test.mjs', 'tests/no-old-spelling.test.mjs', 'docs/2026-09-09-extensions-module-design.md']);
+// paths from the repo root; the docs/extensions-* files are the old pack's history, kept as written
+const EXEMPT = new Set(['docs/extensions-CHANGELOG.md', 'docs/extensions-README.md', 'docs/2026-09-09-extensions-module-design.md', 'modules/perspective/bin/migrate.mjs', 'modules/perspective/test/migrate.test.mjs', 'modules/perspective/test/no-old-spelling.test.mjs']);
 /** Exempt only within one named section, which the second test pins. */
-const README = 'README.md';
+const README = 'modules/perspective/README.md';
 const UPGRADE_HEADING = '### coming from 0.1.x with records already written';
 // ⚠ `.claude` HOLDS AGENT WORKTREES — a whole second checkout of this repo, gitignored, at
 // `.claude/worktrees/<agent>/`. Walking into it makes every tree-scanning gate here grade another

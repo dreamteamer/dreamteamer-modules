@@ -15,3 +15,6 @@
 # ⚠ `tests/leak-gate.test.mjs` is deliberately NOT exempt: it expresses the same range as an escape
 # sequence, so it can enforce the rule without tripping it. Keep it that way.
 modules/meetings/skills/fetching-meetings/SKILL.md	hebrew	one worked example of a non-latin calendar title and the conferencing placeholder it must strip
+modules/recordings/skills/ingesting-recordings/bin/detect.mjs	hebrew	the month-name and transliteration maps a non-latin recording filename is parsed with
+modules/perspective/skills/running-retrospectives/lib/gmail.mjs	hebrew	the reply/forward subject-prefix regex, which must match the localised prefixes too
+modules/perspective/test/running-retrospectives/import-paste-back.test.mjs	hebrew	pins that a non-latin line survives import unmangled — the assertion IS the literal

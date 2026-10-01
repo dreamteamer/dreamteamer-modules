@@ -23,7 +23,8 @@ function* walk(dir) {
 }
 
 const resolvers = [...walk(ROOT)]
-	.filter((f) => !f.includes(`${path.sep}tests${path.sep}`))
+	// tests are not resolvers a workspace runs: the repo's tests/ and every module's own test/ folder
+	.filter((f) => !f.includes(`${path.sep}tests${path.sep}`) && !f.includes(`${path.sep}test${path.sep}`))
 	// the RESOLVER shape — an existence test on the lockfile — not any mention of the filename. A CLI
 	// that says "the folder with package.json and package-lock.json" in an error message is not walking
 	// anywhere, and pinning prose would make this test fire on documentation.

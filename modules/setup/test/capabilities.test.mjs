@@ -13,12 +13,13 @@ import { findWorkspace, installedModules, capabilities, worst, capState, envKeys
 // the repo root — these tests were written at the root of dreamteamer/extensions, whose modules/ layout
 // this repo keeps, so every `ROOT/modules/<m>/…` path still names the same file
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', '..', '..');
-const CLI = path.join(ROOT, 'bin', 'extensions.mjs');
+const CLI = path.join(ROOT, 'modules', 'setup', 'bin', 'setup.mjs');
 const made = [];
 after(() => { for (const d of made) fs.rmSync(d, { recursive: true, force: true }); });
 
-/** A fake consumer: package.json + lockfile, the engine linked in, this package linked as a dependency. */
-function consumer({ engineVersion = '0.24.0', deps = true, vars = [], disable = [], env = '', harnesses, gitignore } = {}) {
+/** A fake consumer: package.json + lockfile, the engine linked in, and every official module linked as
+ *  its own @dreamteamer/<id> dependency — the per-module shape this repo publishes. */
+function consumer({ engineVersion = '0.31.0', deps = true, vars = [], disable = [], env = '', harnesses, gitignore } = {}) {
 	const ws = fs.mkdtempSync(path.join(os.tmpdir(), 'ext-cap-')); made.push(ws);
 	fs.mkdirSync(path.join(ws, 'node_modules', '@dreamteamer'), { recursive: true });
 	fs.mkdirSync(path.join(ws, 'node_modules', 'dreamteamer'), { recursive: true });
@@ -27,10 +28,10 @@ function consumer({ engineVersion = '0.24.0', deps = true, vars = [], disable = 
 	fs.writeFileSync(path.join(ws, "node_modules", "dreamteamer", "bin.js"), "#!/usr/bin/env node\nprocess.exit(0);\n", { mode: 0o755 });
 	fs.mkdirSync(path.join(ws, "node_modules", ".bin"), { recursive: true });
 	fs.symlinkSync(path.join("..", "dreamteamer", "bin.js"), path.join(ws, "node_modules", ".bin", "dreamteamer"));
-	if (deps) fs.symlinkSync(ROOT, path.join(ws, 'node_modules', '@dreamteamer', 'extensions'), 'dir');
+	if (deps) for (const m of OURS) fs.symlinkSync(path.join(ROOT, 'modules', m), path.join(ws, 'node_modules', '@dreamteamer', m), 'dir');
 	fs.writeFileSync(path.join(ws, 'package.json'), JSON.stringify({
 		name: 'consumer', private: true, scripts: { check: 'dreamteamer check' },
-		dependencies: { dreamteamer: '*', ...(deps ? { '@dreamteamer/extensions': '*' } : {}) },
+		dependencies: { dreamteamer: '*', ...(deps ? Object.fromEntries(OURS.map((m) => [`@dreamteamer/${m}`, '*'])) : {}) },
 		dreamteamer: { 'workspace-module': 'default', vars, disable, ...(harnesses ? { harnesses } : {}) },
 	}, null, '\t'));
 	fs.writeFileSync(path.join(ws, 'package-lock.json'), '{}');
@@ -60,16 +61,16 @@ describe('findWorkspace', () => {
 });
 
 describe('installedModules', () => {
-	test('unpacks this package from node_modules into its six modules', () => {
+	test('finds every official module from node_modules, keyed by its id rather than its package name', () => {
 		const found = installedModules(consumer());
-		// the engine is a module too and is always found — filter to this package's own
+		// the engine is a module too and is always found — filter to the official ones
 		assert.deepEqual([...found.keys()].filter((k) => OURS.includes(k)).sort(), [...OURS].sort());
 		assert.equal(found.get('projects').channel, 'node_modules');
 	});
-	test('finds a bundle under git_modules on that channel', () => {
+	test('finds a clone of this repo under git_modules, unpacked, on that channel (what `dt-setup link` makes)', () => {
 		const ws = consumer({ deps: false });
 		fs.mkdirSync(path.join(ws, 'git_modules'), { recursive: true });
-		fs.symlinkSync(ROOT, path.join(ws, 'git_modules', 'extensions'), 'dir');
+		fs.symlinkSync(ROOT, path.join(ws, 'git_modules', 'dreamteamer-modules'), 'dir');
 		assert.equal(installedModules(ws).get('meetings')?.channel, 'git_modules');
 	});
 	test('a workspace with none of them installed finds none of OURS (the engine still counts as a module)', () => {
@@ -77,12 +78,12 @@ describe('installedModules', () => {
 		assert.deepEqual([...found.keys()].filter((k) => OURS.includes(k)), []);
 		assert.ok(found.has('dreamteamer'), 'the engine is a module and must still be discovered');
 	});
-	test('the bundle floor does NOT fire for a copy-channel consumer on an old engine', () => {
-		const ws = consumer({ engineVersion: '0.23.0', deps: false });
+	test('the engine floor holds on the copy channel too — every official module is tested on it, however it arrived', () => {
+		const ws = consumer({ engineVersion: '0.29.0', deps: false });
 		fs.mkdirSync(path.join(ws, 'modules'), { recursive: true });
 		fs.symlinkSync(path.join(ROOT, 'modules', 'projects'), path.join(ws, 'modules', 'projects'), 'dir');
 		const c = capabilities(ws).find((x) => x.name === 'workspace').checks.find((x) => x.label === 'engine');
-		assert.equal(c.state, 'ok', 'a copied module needs no bundle discovery, so 0.23.0 is fine there');
+		assert.equal(c.state, 'bad');
 	});
 });
 
@@ -94,8 +95,8 @@ describe('envKeys reads names only, and only ones with a value', () => {
 });
 
 describe('the board', () => {
-	test('an engine below the bundle floor is UNAVAILABLE and the fix names the floor', () => {
-		const caps = capabilities(consumer({ engineVersion: '0.23.0' }));
+	test('an engine below the floor is UNAVAILABLE and the fix names the floor', () => {
+		const caps = capabilities(consumer({ engineVersion: '0.29.0' }));
 		const c = check(caps, 'workspace', 'engine');
 		assert.equal(c.state, 'bad');
 		assert.match(c.fix, new RegExp(BUNDLE_FLOOR.replace(/\./g, '\\.')));
@@ -122,7 +123,7 @@ describe('the board', () => {
 		const ws = consumer({ vars: ['FILES_FOLDER', 'INBOX_FOLDERS', 'REPOS_FOLDER'] });
 		assert.equal(check(capabilities(ws), 'record guard', 'chained').state, 'bad');
 		const p = JSON.parse(fs.readFileSync(path.join(ws, 'package.json'), 'utf8'));
-		p.scripts.check = 'dreamteamer check && node node_modules/@dreamteamer/extensions/modules/perspective/bin/check-records.mjs';
+		p.scripts.check = 'dreamteamer check && node node_modules/@dreamteamer/perspective/bin/check-records.mjs';
 		fs.writeFileSync(path.join(ws, 'package.json'), JSON.stringify(p));
 		assert.equal(check(capabilities(ws), 'record guard', 'chained').state, 'ok');
 	});
@@ -196,8 +197,9 @@ describe('the CLI', () => {
 });
 
 describe('the notebooks capability', () => {
-	test('OURS lists nine modules, notebooks and rnd among them, and the fixture consumer finds both', () => {
-		assert.equal(OURS.length, 9);
+	test('OURS names every module this repo ships except setup itself — a module added without a row is a module the board cannot see', () => {
+		const shipped = fs.readdirSync(path.join(ROOT, 'modules')).filter((m) => m !== 'setup' && fs.existsSync(path.join(ROOT, 'modules', m, 'package.json')));
+		assert.deepEqual([...OURS].sort(), shipped.sort());
 		assert.ok(OURS.includes('notebooks'));
 		assert.ok(OURS.includes('users'), 'users is its own module so it renders at the nav root');
 		assert.ok(OURS.includes('rnd'));

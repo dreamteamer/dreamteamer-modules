@@ -65,7 +65,11 @@ describe('the leak gate', () => {
 		// `git@github.com:…` is an SSH remote, not a person; the rest is case-insensitive because a fixture
 		// spelling `Ada@Example.com` is exactly what a lower-casing test needs.
 		const re = /(?<!git)\b(?!git@)[A-Za-z0-9._%+-]+@(?!(?:[a-z0-9-]+\.)*(?:example|example\.(?:com|org|net|invalid)|users\.noreply\.github\.com|gmail\.example)\b)[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.(?:com|io|co\.il|net|org|dev|ai)\b/i;
-		const keep = (file, line) => !/git@github\.com/.test(line);
+		// One fixture NEEDS a personal-mail domain: the thread reader must bucket `@gmail.com` as "not an
+		// organisation", and only a real personal domain exercises that branch. It is allow-listed by file
+		// and by exact address, so nothing else in that file gets a pass.
+		const PERSONAL_MAIL_FIXTURE = 'modules/perspective/test/running-retrospectives/cluster-threads-deliverables.test.mjs';
+		const keep = (file, line) => !/git@github\.com/.test(line) && !(file === PERSONAL_MAIL_FIXTURE && /friend@gmail\.com/.test(line));
 		assert.deepEqual(hits(re, keep), []);
 	});
 	test('no credential shape', () => {

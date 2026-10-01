@@ -34,8 +34,9 @@ import yaml from 'js-yaml';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PKG = path.resolve(HERE, '..');
-const COLLECTIONS = path.join(PKG, 'modules', 'perspective', 'collections', 'perspective');
-const TEMPLATE = path.join(PKG, 'modules', 'perspective', 'collection-templates', 'perspective-provenance.collection-template.yaml');
+// this module's own root (bin/..), the same place on every channel
+const COLLECTIONS = path.join(PKG, 'collections', 'perspective');
+const TEMPLATE = path.join(PKG, 'collection-templates', 'perspective-provenance.collection-template.yaml');
 
 /**
  * Old record folder → the collection it is TODAY. Two moves are folded into one migration on

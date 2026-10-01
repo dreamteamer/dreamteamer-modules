@@ -46,7 +46,8 @@ import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import yaml from 'js-yaml';
 
-const COLLECTIONS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'modules', 'perspective', 'collections', 'perspective');
+// this module's own descriptors, beside bin/ — the same place on every channel
+const COLLECTIONS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'collections', 'perspective');
 
 /** Old collection folder → new one, under `data/perspective/`. The suffix travels with it. */
 export const MOVES = [

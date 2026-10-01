@@ -49,7 +49,7 @@ const PAIRS = {
 	'world/phases': { real: 'phases', module: 'projects' },
 	'world/activity-lanes': { real: 'activity-lanes', module: 'projects' },
 	'world/activities': { real: 'activities', module: 'projects' },
-	'world/tasks': { real: 'tasks', module: 'projects' },
+	'world/tasks': { real: 'tasks', module: 'tasks' },   // tasks left projects for its own module on 2026-10-01
 	'world/goals': { real: 'goals', module: 'projects' },
 	'world/decisions': { real: 'decisions', module: 'projects' },
 	'world/deliverables': { real: 'deliverables', module: 'projects' },

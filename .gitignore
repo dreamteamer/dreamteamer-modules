@@ -9,3 +9,5 @@ __pycache__/
 .pytest_cache/
 # agent worktrees — a second checkout of this repo, one blanket add away from being committed
 .claude/
+# scratch the perspective readers rebuild while their tests run
+.perspective/

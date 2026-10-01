@@ -14,8 +14,8 @@ const wf = yaml.load(fs.readFileSync(path.join(ROOT, '.github', 'workflows', 're
 const steps = wf.jobs.publish.steps;
 const publish = steps.find((s) => s.name === 'publish');
 
-test('the workflow is tag-only', () => {
-	assert.deepEqual(wf.on, { push: { tags: ['v*'] } });
+test('the workflow is tag-only, one module per tag', () => {
+	assert.deepEqual(wf.on, { push: { tags: ['*-v*'] } });
 });
 
 test('the access level is a repo variable, gated before anything publishes', () => {
@@ -36,10 +36,10 @@ test('provenance is conditional on the source repo being public — npm refuses 
 	assert.match(publish.run, /if \[ "\$REPO_PRIVATE" = "false" \]/, 'the branch is on the repo being NOT private');
 });
 
-test('the gates run before publish: tag==version, tests, smoke', () => {
+test('the gates run before publish: tag==version, tests', () => {
 	const names = steps.map((s) => s.name ?? s.run ?? '');
 	const i = (re) => names.findIndex((n) => re.test(n));
-	for (const re of [/tag must match/, /^tests$/, /smoke/]) assert.ok(i(re) >= 0 && i(re) < names.indexOf('publish'), `${re} must precede publish`);
+	for (const re of [/tag must match/, /^tests$/]) assert.ok(i(re) >= 0 && i(re) < names.indexOf('publish'), `${re} must precede publish`);
 });
 
 // ── the leak gate on the publish path (added 2026-09-10) ────────────────────────────────────────
@@ -82,4 +82,10 @@ test('the gate scans the whole tree, honours .leak-scan-allow, and never prints 
 
 test('the checkout is deep enough for the ancestry gate to answer', () => {
 	assert.equal(steps[0].with?.['fetch-depth'], 0, 'a shallow tip cannot be tested for ancestry of main');
+});
+
+test('publish runs inside the ONE module the tag names, never at the repo root', () => {
+	assert.equal(publish['working-directory'], 'modules/${{ steps.mod.outputs.id }}');
+	const mod = steps.find((st) => st.id === 'mod');
+	assert.ok(mod && /modules\/\$ID\/package\.json/.test(mod.run), 'the tag must be resolved to modules/<id> and checked against its version');
 });

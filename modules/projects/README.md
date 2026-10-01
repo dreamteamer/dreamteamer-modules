@@ -1,4 +1,22 @@
-# projects — what a descriptor cannot say
+# @dreamteamer/projects
+
+The plan and everyone in it: projects, the phases and lanes they are read in, activities and gates,
+decisions, deliverables, risks and teams. Every owner, lead and seat field points at `users`.
+
+```bash
+npm install @dreamteamer/projects @dreamteamer/users
+npx dreamteamer compile
+```
+
+| alone | with others |
+|---|---|
+| the plan, its views (`/plan/by-lane`, `/plan/by-person`, the gantt) and the plan guard | **tasks** hangs small commitments off a project or an activity · **contacts** names who accepts a deliverable or owns an outside gate |
+
+Chain the plan guard into `npm run check` (`npx dt-setup setup` offers to):
+`node node_modules/@dreamteamer/projects/bin/check-records.mjs`. Migrations from the old pack:
+`node node_modules/@dreamteamer/projects/bin/migrate-plan.mjs` and `…/migrate-code-to-slug.mjs`.
+
+## what a descriptor cannot say
 
 **A gate is an activity.** One collection holds both, because a plan reads as one ordered list and
 splitting it made every question ask twice — "what happens in February" and "what blocks us" are the

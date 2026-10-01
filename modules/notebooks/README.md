@@ -1,4 +1,17 @@
-# notebooks — what a descriptor cannot say
+# @dreamteamer/notebooks
+
+A notebook and the corpora behind it. A **wiki** is a folder of markdown you can read and grep with
+nothing installed; `qmd` (optional, on-device) makes it answerable by meaning. NotebookLM is the extra
+adapter: a `notebooks` record is the spec a live notebook can be rebuilt from on any account.
+
+```bash
+npm install @dreamteamer/notebooks
+npx dreamteamer compile
+npx dt-wiki init <id>              # a notebook on a folder: no account, no network
+npx dt-notebook restore <id>       # rebuild a NotebookLM notebook from its record
+```
+
+## what a descriptor cannot say
 
 **`account` is a string, not a reference.** The workspace this was cut from types it as a reference
 into an accounts collection; this package ships none, and the structure gate refuses a reference

@@ -14,7 +14,10 @@ import { restorePlan, captureSources, sourceFromLive, readRecord, writeRecord, P
 // the repo root — these tests were written at the root of dreamteamer/extensions, whose modules/ layout
 // this repo keeps, so every `ROOT/modules/<m>/…` path still names the same file
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', '..', '..');
-const CLI = path.join(ROOT, 'bin', 'extensions.mjs');
+// `dt-notebook` — the module's own command since the pack's dispatcher was split by owner; the
+// wrapper below takes the old leading `notebook` word so every call site reads as it did
+const CLI = path.join(ROOT, 'modules', 'notebooks', 'bin', 'notebook.mjs');
+const SETUP = path.join(ROOT, 'modules', 'setup', 'bin', 'setup.mjs');
 const made = [];
 after(() => { for (const d of made) fs.rmSync(d, { recursive: true, force: true }); });
 
@@ -178,7 +181,7 @@ describe('npx dt-notebook restore / capture', () => {
 		return ws;
 	}
 	// `notebooklm` is deliberately NOT on PATH here — a dry run that reached for it would be a bug.
-	const cli = (ws, ...args) => spawnSync(process.execPath, [CLI, ...args], { cwd: ws, encoding: 'utf8', env: { PATH: path.dirname(process.execPath), NO_COLOR: '1', HOME: os.homedir() } });
+	const cli = (ws, ...args) => spawnSync(process.execPath, args[0] === 'notebook' ? [CLI, ...args.slice(1)] : [SETUP, ...args], { cwd: ws, encoding: 'utf8', env: { PATH: path.dirname(process.execPath), NO_COLOR: '1', HOME: os.homedir() } });
 
 	test('--dry-run prints the plan, one line per call, and touches no network', () => {
 		const ws = consumer('name: Desk\nsources:\n  - kind: url\n    ref: https://example.com\n    title: Ex\nchat:\n  persona: Be terse.\n');
