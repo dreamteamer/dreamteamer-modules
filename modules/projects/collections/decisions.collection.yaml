@@ -1,30 +1,12 @@
-# decisions — WHAT WAS DECIDED, BY WHOM, AND WHY. One table for both halves of the record a project
-# actually runs on: the forks an AGENT took while working unattended, and the calls a PERSON made in
-# a room. Until 2026-09-11 those were two collections in two vocabularies, and no reader could ask
-# "what has been decided about this project" without asking twice and merging by hand.
+# decisions — what was decided, by whom, and why. One table for both the forks an agent took while
+# working unattended and the calls a person made, so "what has been decided about this project" is
+# one question. The two have different standing (a person's decision is authority; an agent's is a
+# judgement made on somebody's behalf), so `decided_by` is required and `bin/check-records.mjs`
+# refuses a record whose matching identity field is empty.
 #
-# ⚠ THE FOLD, AND THE ONE FIELD THAT MAKES IT HONEST. Folding them is only safe if the record says
-# plainly which kind it is, because the two have very different standing: a person's decision is
-# authority, an agent's is a judgement call made on somebody's behalf while they were away, and
-# reading one as the other is the whole risk. So `decided_by` is REQUIRED, it is a closed two-value
-# enum, and `bin/check-records.mjs` refuses the record unless the matching identity field is filled —
-# `decider` (a `users` reference) for a person, `agent` (the agent and its model) for an agent. There
-# is no "unknown" value: a decision nobody can attribute is not a decision, it is a rumour.
-#
-# ⚠ WHAT THE AGENT HALF BRINGS WITH IT, and why it is not trimmed away for the human half. Four
-# fields exist because an unattended fork is hard to reverse-engineer out of a diff at 3am:
-#   · `alternatives` — a decision with none listed is a DESCRIPTION of what happened. If nothing else
-#     was considered, say that as the single item; that is information too.
-#   · `reversibility` — the first question anybody asks on reading one of these is "how expensive is
-#     it if you were wrong". Answer it in the record rather than making the reader work it out.
-#   · `wrong_if` — the PREDICTION. One observable, in this world, that would show the fork was wrong.
-#   · `outcome` — the RESULT, set after the fact. With `wrong_if` it closes the loop, so "was that a
-#     good call" can be CHECKED rather than re-argued.
-# They are every bit as useful on a human decision, and a plan whose human calls carry no
-# alternatives and no reversibility is exactly the plan that gets re-litigated in month four.
-#
-# Entries are append-only in spirit. A decision that turned out badly gets a NEW record superseding
-# it (`supersedes`); the wrong turn is the part worth keeping.
+# `alternatives`, `reversibility`, `wrong_if` and `outcome` turn "was that a good call" into a check
+# rather than an argument, on either kind of decision. A decision that turns out badly gets a new
+# record naming it in `supersedes`; the earlier one stays.
 name: decisions
 description: >-
   A decision made on a project, by a person or by an agent — what was chosen, what else was on the table, why,
@@ -33,18 +15,14 @@ use_when: >-
   a choice is made that somebody could later ask "why did you do it THAT way?" about — in a meeting, in a
   commit message, or by an agent working unattended on somebody's behalf. Write it here, with `alternatives`
   and `reversibility`, BEFORE moving on; asked what has been decided about an effort, list here by `project`
-  and read `decided_on`. ⚠ Search here before deciding the same thing twice, and before reversing one: the
+  and read `decided_on`. Search here before deciding the same thing twice, and before reversing one: the
   earlier record stays and the new one names it in `supersedes`
 storage: { path: data/decisions, codec: md, shape: file, suffix: decision }
-# decided-date + slug, the shape `agent-decision-log` used. `decided_on` is a DOMAIN instant somebody
-# sets, never `created`, so a decision written up a week later still files under the day it was made —
-# only the date part reaches the id.
+# `decided_on` is set by whoever records the decision, never taken from `created`, so a decision
+# written up a week later still files under the day it was made. Only its date part reaches the id.
 id:
-  # ⚠ AN ORDERED LIST (engine >=0.25.0): the first template whose fields are all
-  # present wins. `slug` when the record carries one, the name otherwise — which is
-  # what lets `slug` be OPTIONAL instead of forcing a handle onto every record.
-  # `{{ slug }}` is the FIELD; `{{ name | slug }}` is the name through the slug FILTER.
-  # Same word, two things, and the pipe is what tells them apart.
+  # The first template whose fields are all present wins: the `slug` field when set, else the name
+  # through the slug filter.
   generate:
     - '{{ decided_on | date }}--{{ slug }}'
     - '{{ decided_on | date }}--{{ name | slug }}'
@@ -53,7 +31,7 @@ schema:
   type: object
   required: [name, decided_on, decided_by, decision, alternatives, rationale, reversibility]
   properties:
-    slug: { type: string, pattern: '^[a-z0-9][a-z0-9-]*$', title: Slug, description: 'The latin handle that becomes the id. ⚠ A SLUG, NOT A CODE, and the pack keeps the two apart deliberately: `activities.code` (`a-01`) and `risks.code` (`rk-01`) are identifiers a room says out loud and reads in order, so they stay required and stay called codes. This one exists ONLY so a value in any script can have a readable, typeable id — it is never shown to a reader and never replaces the name. OPTIONAL since engine 0.25.0: `id.generate` takes an ordered list, so the id falls back to the name when this is empty, and a name with no latin characters still produces a hash id but now says so on the write.' }
+    slug: { type: string, pattern: '^[a-z0-9][a-z0-9-]*$', title: Slug, description: 'An optional Latin handle that becomes the id; when empty, the id comes from the name. Set it when the name has no Latin characters, which would otherwise slug to a hash. Unlike `activities.code`, it is never shown to a reader.' }
     name:
       type: string
       description: A short handle for the fork — what was being decided, not what was chosen. Drives the id.
@@ -61,19 +39,16 @@ schema:
       type: string
       format: date-time
       description: >-
-        The moment the call was made, as one instant with its LOCAL offset — a reader should see the clock the
-        decider saw. A DATE-TIME rather than a date because several decisions land in one day on a live project
-        and the order they landed in is usually the argument. Drives the id, date part only.
-    # ── WHO DECIDED, AND IT IS REQUIRED ────────────────────────────────────────────────────────────
-    # THE FIELD THE FOLD RESTS ON. Two values, no third: a decision nobody can attribute is a rumour.
+        The moment the call was made, with its local offset. A date-time so several decisions on one day keep
+        their order. Drives the id, date part only.
+    # ── WHO DECIDED ───────────────────────────────────────────────────────────────────────────────
     decided_by:
       type: string
       enum: [person, agent]
       description: >-
-        WHO MADE THE CALL — the field that makes one table safe for both kinds. `person` requires `decider`;
-        `agent` requires `agent`. `bin/check-records.mjs` refuses either half missing, because the standing of
-        the two is different: a person's decision is authority, an agent's is a judgement made on somebody's
-        behalf while they were away, and a reader must never have to guess which they are looking at.
+        Who made the call. `person` requires `decider` or `external_decider`; `agent` requires `agent`.
+        `bin/check-records.mjs` refuses either half missing, so a reader never has to guess which kind of
+        decision they are looking at.
     decider:
       type: string
       x-reference: users
@@ -81,25 +56,21 @@ schema:
         field: decisions
         description: The calls this person made — generated from `decisions.decider`.
       description: >-
-        Which PERSON OF OURS decided. Required when `decided_by` is `person` AND the decider is on the delivery
-        side; when the call was the CLIENT'S, fill `external_decider` instead and leave this empty.
+        Which person on your side decided. When the call was made outside, fill `external_decider` instead
+        and leave this empty.
     external_decider:
       type: string
       x-reference: contacts
       description: >-
-        WHO OUTSIDE THIS WORKSPACE DECIDED — the client approving a commercial shape, a partner choosing an
-        environment. A `contacts` reference precisely because they are not ours, exactly as
-        `activities.external_owner` is. ⚠ Added 2026-09-12 because the field was missing and the decisions it is
-        for are often the most consequential on an engagement — a pricing approval, a scope call — and `decider`
-        could hold neither: the schema could record the decision and not who made it. No `x-inverse`: a mirror would write a `decisions` field into the contacts module, which
-        this module does not own.
+        Who outside this workspace decided: the client approving a price or a scope, a partner choosing an
+        environment. A `contacts` reference, as `activities.external_owner` is. No `x-inverse`, because a
+        mirror would write a field into the contacts module, which this module does not own.
     agent:
       type: string
       description: >-
-        Which AGENT decided, with its model — `agents/dreamteamer (claude-opus-5)`. Required when `decided_by`
-        is `agent`; empty otherwise. Free text and not a reference because the model matters as much as the
-        agent and only one of the two is a record. Distinct from the provenance `author`, which says who wrote
-        the RECORD: an agent routinely writes up a decision a person made.
+        Which agent decided, with its model: `agents/claude-code (claude-opus-5)`. Required when `decided_by`
+        is `agent`; empty otherwise. Free text, because the model matters as much as the agent. Distinct from
+        `author`, which says who wrote the record: an agent often writes up a decision a person made.
     session:
       type: string
       description: >-
@@ -113,9 +84,8 @@ schema:
         field: decisions
         description: What has been decided on this effort, most recent first — generated from `decisions.project`.
       description: >-
-        The effort this decision belongs to. Empty is legitimate and common — a decision about how the workspace
-        itself is run belongs to no project — but a project decision with this left empty is invisible to the
-        one reader who needs it.
+        The effort this decision belongs to. Empty for a decision that belongs to no project, such as how the
+        workspace itself is run.
     activity:
       type: string
       x-reference: activities
@@ -127,56 +97,50 @@ schema:
       type: string
       enum: [data-model, scope, method, tooling, prioritization, fork-in-the-road, abandonment, cost, interpretation, commercial]
       description: >-
-        What sort of call. ⚠ `interpretation` is the one to watch on an agent decision: the instruction was
-        ambiguous and the agent picked a reading — those are the entries a person most wants to see, and
-        `instruction_quoted` is what makes them reviewable. `commercial` is the human half's own: a price, a
-        term, a concession.
+        What sort of call. `interpretation` means an instruction was ambiguous and the agent picked a
+        reading; `instruction_quoted` makes it reviewable. `commercial` is a price, a term or a concession.
     # ── THE SUBSTANCE ──────────────────────────────────────────────────────────────────────────────
     context:
       type: string
       description: What the situation actually was — the constraint, the ambiguity, or the thing that had just gone wrong.
     decision:
       type: string
-      description: REQUIRED. What was chosen, stated plainly and in the active voice.
+      description: What was chosen, stated plainly and in the active voice.
     alternatives:
       type: array
       items: { type: string }
       description: >-
-        REQUIRED. What else was on the table and why each lost. A decision with an empty `alternatives` is a
-        description of what happened; if nothing else was considered, write THAT as the single item.
+        What else was on the table and why each lost. If nothing else was considered, write that as the
+        single item.
     rationale:
       type: string
-      description: REQUIRED. Why this one. The load-bearing field — everything else here is scaffolding for it.
+      description: Why this one.
     reversibility:
       type: string
       enum: [trivial, easy, moderate, expensive, one-way-door]
       description: >-
-        REQUIRED. Cost of undoing it later. `one-way-door` on anything that writes many records, names a public
-        identifier, or is said out loud to a client — those are the ones to flag loudest.
+        Cost of undoing it later. `one-way-door` for anything that writes many records, names a public
+        identifier, or is said out loud to a client.
     instruction_quoted:
       type: string
       description: >-
-        When the decision was an INTERPRETATION, the words being interpreted, VERBATIM — so the person can see
-        exactly what was taken to be meant. The single most useful field on an agent decision.
+        When the decision was an interpretation, the words being interpreted, verbatim, so a reader can see
+        exactly what was taken to be meant.
     cost_note:
       type: string
       description: What it cost or saved — agents spawned, records written, tokens, wall time, money. An order of magnitude is the useful resolution.
-    # ── THE CLOSED LOOP: a prediction, and later a result ───────────────────────────────────────────
+    # ── A PREDICTION, AND LATER A RESULT ───────────────────────────────────────────────────────────
     wrong_if:
       type: string
       description: >-
-        ONE LINE: the observation, IN THIS WORLD, that would prove this was the wrong call — an event somebody
-        could actually notice. ⚠ NOT a counterfactual: the decider is the worst available narrator of life under
-        the branch they did not take, and the road not taken leaves no trace to contradict the story. A
-        prediction about this world is checkable; a story about the other one is not. Optional, because a fork
-        with no observable tell is a real category and inventing one is worse than leaving it empty — but reach
-        for it before you skip it. Pairs with `outcome`: this is the prediction, that is the result.
+        One line: an observable event that would show this was the wrong call. Not a counterfactual about the
+        branch not taken, which nothing can check. Leave it empty rather than invent one. This is the
+        prediction; `outcome` is the result.
     outcome:
       type: string
       enum: [ratified, overturned, superseded, moot]
       description: >-
-        Set AFTER the fact, when the fork has been judged. ABSENT is the normal state and means it stands
-        unreviewed. `ratified` — somebody with the authority adopted it. `overturned` — reversed with no
+        Set after the fact, when the call has been judged; absent means it stands unreviewed. `ratified` — somebody with the authority adopted it. `overturned` — reversed with no
         replacement. `superseded` — replaced by a later record naming this one in its `supersedes`. `moot` — the
         subject moved on before the call ever mattered.
     supersedes:
@@ -185,15 +149,13 @@ schema:
       x-inverse:
         field: superseded_by
         description: The later decision that replaced this one — generated from `decisions.supersedes`.
-      description: An earlier decision this one reverses or replaces. The earlier record STAYS; the wrong turn is the part worth keeping.
+      description: An earlier decision this one reverses or replaces. The earlier record stays.
     affects:
       type: array
       items: { type: string }
       description: >-
         What the decision landed on, written as `<collection>/<id>` (`collections/<name>` for a collection
-        itself). ⚠ A PLAIN string, not a reference, and deliberately: a decision outlives the thing it landed on,
-        and a record that dangles the moment its subject is deleted is a record that gets deleted with it. Keep
-        the ref shape so the values stay greppable and re-linkable.
+        itself). Plain strings rather than references, because a decision outlives what it landed on.
     tags:
       type: array
       items: { type: string }
@@ -203,9 +165,8 @@ schema:
       format: markdown
       x-body: true
       description: >-
-        Anything the fields cannot hold — the fuller reasoning, the numbers, the smaller forks taken inside the
-        same run, and later what actually happened once `outcome` is known. The one-line falsifiable tell belongs
-        in `wrong_if`; this is where it is elaborated if it needs more than a line.
+        Anything the fields cannot hold: the fuller reasoning, the numbers, smaller forks taken in the same
+        run, and later what happened once `outcome` is known.
     author:
       type: string
       pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'

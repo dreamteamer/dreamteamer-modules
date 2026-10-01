@@ -1,21 +1,16 @@
 name: goals
 description: >-
   An outcome somebody is trying to make true, with the observable test that says it happened. Not a piece of work
-  (`activities` is the plan, `tasks` the small commitment) and not a project: a goal is WHY the work is being done,
+  (`activities` is the plan) and not a project: a goal is WHY the work is being done,
   it outlives any one project, and it is met or missed rather than done.
 use_when: >-
   choosing between two pieces of work, or asked "why are we doing this" — the goal and the test that says it happened
   are here. Write one when an OUTCOME is stated that somebody could later be wrong about; never for a task, and never
   for a goal whose `done_when` cannot be written as one checkable sentence — that is a slogan, not a goal
 storage: { path: data/goals, codec: md, shape: file, suffix: goal }
-# ⚠ A NON-LATIN NAME YIELDS A HASH ID, NOT A REFUSAL, AND NOT AN EMPTY STRING — see the same warning
-# on `projects` and `users`. A workspace whose values are not Latin passes `--id` explicitly.
 id:
-  # ⚠ AN ORDERED LIST (engine >=0.25.0): the first template whose fields are all
-  # present wins. `slug` when the record carries one, the name otherwise — which is
-  # what lets `slug` be OPTIONAL instead of forcing a handle onto every record.
-  # `{{ slug }}` is the FIELD; `{{ name | slug }}` is the name through the slug FILTER.
-  # Same word, two things, and the pipe is what tells them apart.
+  # The first template whose fields are all present wins: the `slug` field when set, else the name
+  # through the slug filter.
   generate:
     - '{{ slug }}'
     - '{{ name | slug }}'
@@ -24,29 +19,21 @@ schema:
   type: object
   required: [name, done_when]
   properties:
-    slug: { type: string, pattern: '^[a-z0-9][a-z0-9-]*$', title: Slug, description: 'The latin handle that becomes the id. ⚠ A SLUG, NOT A CODE, and the pack keeps the two apart deliberately: `activities.code` (`a-01`) and `risks.code` (`rk-01`) are identifiers a room says out loud and reads in order, so they stay required and stay called codes. This one exists ONLY so a value in any script can have a readable, typeable id — it is never shown to a reader and never replaces the name. OPTIONAL since engine 0.25.0: `id.generate` takes an ordered list, so the id falls back to the name when this is empty, and a name with no latin characters still produces a hash id but now says so on the write.' }
+    slug: { type: string, pattern: '^[a-z0-9][a-z0-9-]*$', title: Slug, description: 'An optional Latin handle that becomes the id; when empty, the id comes from the name. Set it when the name has no Latin characters, which would otherwise slug to a hash. Unlike `activities.code`, it is never shown to a reader.' }
     name:
       type: string
-      description: The outcome in one line, stated as an OUTCOME and not a task — "the vault runs on any machine", never "port the scripts".
-    # ── THE FORCING FIELD, AND THE REASON THIS IS A COLLECTION RATHER THAN A KIND ─────────────────
-    # A gate folded into `activities` because a gate sits IN the plan: it has a date, a lead, a
-    # position in code order, and it is drawn on the same gantt. A goal has NONE of those — no
-    # position in the ordered list, no date it is judged on, and a many-to-many with projects where
-    # an activity's `project` is a required scalar. And `done_when` has no counterpart on an activity:
-    # `passes_when` is gate-only and is judged ONCE, on a day, by a named person; a goal's test is
-    # judged whenever anybody asks. One question activities cannot answer: "why is this work being
-    # done, and how will we know it worked" — across several projects, with no date.
+      description: The outcome in one line, stated as an outcome and not a task — "the workspace runs on any machine", never "port the scripts".
+    # A goal is not a kind of activity: it has no place in the ordered plan, it may serve several
+    # projects, and its test is judged whenever anybody asks rather than once on a day like a gate's.
     done_when:
       type: string
       description: >-
-        REQUIRED. The observable test that says this happened, as ONE checkable sentence — something a
-        person could later be shown to be wrong about. A goal whose test cannot be written down is a
-        slogan; refusing to write it here is cheaper than discovering it two quarters later.
+        The observable test that says this happened, as one checkable sentence that somebody could later
+        be shown to be wrong about.
     description:
       type: string
       description: One line on what this goal is for — the context a reader needs before the test makes sense.
-    # OWNER FIELDS ARE TYPED, and they point at `users`, exactly as they do on `projects` and
-    # `activities`. That is what makes a person's own record answer "what am I accountable for".
+    # Owner fields point at `users`, so a person's own record answers "what am I accountable for".
     owner:
       type: string
       x-reference: users
@@ -61,22 +48,20 @@ schema:
         field: goals
         description: The goals this project serves — generated from `goals.projects`.
       description: >-
-        The delivery efforts serving this goal. MANY-TO-MANY on purpose, and it is the second reason this is not a
-        kind on `activities`: one goal is served by several projects and one project serves several goals, where an
-        activity belongs to exactly one project and is required to.
+        The delivery efforts serving this goal. Many-to-many: one goal is served by several projects and one
+        project serves several goals.
     by:
       type: string
       format: date
-      description: The date the outcome is wanted by — a target, not a promise, and absent is normal. A goal with no date is still a goal; an activity without dates is not a plan rung.
+      description: The date the outcome is wanted by — a target, not a promise. Often absent.
     status:
       type: string
       enum: [proposed, active, met, missed, dropped]
       default: proposed
       description: >-
         `proposed` (stated, not yet being worked toward) · `active` (work is happening) · `met` (the `done_when` test
-        holds) · `missed` (the date passed and it does not) · `dropped` (deliberately abandoned). ⚠ `met` and `missed`
-        are both TERMINAL and both honest — a goal quietly moved to `dropped` because it was not reached is the one
-        use of this field that destroys its value.
+        holds) · `missed` (the date passed and it does not) · `dropped` (deliberately abandoned). A goal that
+        was not reached is `missed`, not `dropped`.
     tags:
       type: array
       items: { type: string }
