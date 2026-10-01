@@ -17,10 +17,6 @@ description: use when someone's own work should be read and an operating model b
 | how a digest is scored | `references/interest-score.md` |
 | what a transcript looks like · how acts are counted | `references/transcript-format.md` · `references/dialogue-acts.md` |
 
-The design is `rnd/product-design-docs/2026-09-08--perspective-v2-the-perspective-model` over
-`…/2026-09-07--the-perspective-module-a-recipe-that-arrives-with-a-job` (§3 stages, §13 decisions,
-both still binding). This file is the procedure; those records are the why.
-
 ## core principle
 
 **A run is one contributor's PERSPECTIVE** — their role as observed, the terms they actually use,
@@ -33,28 +29,23 @@ Seven rules hold at every stage:
    updates the model rather than copying it. `handles` is the list of addresses the evidence carries
    them under, and it is what every reader matches on. A second person is a second run, cross-linked
    through `perspective/users` and `perspective/activities` — there is no org-level record, because nobody has that view.
-2. **Every stage is idempotent, and `tests/idempotency.test.mjs` is what makes that true.** Running a
-   stage twice writes the same records, changes no id, and leaves the record tree BYTE-IDENTICAL
-   apart from a three-entry allowlist (`last_seen_in`, `inspected_at`, and the stage's own run-log
-   line). It was asserted in prose here for months and proved nowhere, and two defects came out of
-   that gap in one week: a reader that dropped a week's judged summary on every re-read because it
-   looked at the pre-rename path, and an attach pass whose receipt claimed a write it had not made.
-   Before any stage: `dt get perspective/retrospective-sessions/<id>`, then list what that stage
+2. **Every stage is idempotent.** Running a stage twice writes the same records, changes no id,
+   and leaves the record tree BYTE-IDENTICAL apart from `last_seen_in`, `inspected_at`, and the
+   stage's own run-log line. Before any stage: `dt get perspective/retrospective-sessions/<id>`, then list what that stage
    writes, filtered to this run. Every script honours `--dry-run`; run it first when unsure.
-   ⚠ The gate also refuses a stage that writes NOTHING — a stage given the wrong flags, or an empty
+   The gate also refuses a stage that writes NOTHING — a stage given the wrong flags, or an empty
    fixture, would otherwise pass by doing nothing at all.
 3. **The observed world uses the real world's own nouns, in this namespace.**
    `perspective/users` · `perspective/projects` · `perspective/activities` · `perspective/goals` ·
    `perspective/decisions` · `perspective/deliverables` share the shapes `users` and `projects` ship, in a SEPARATE store — never an `extends:` overlay, because a
    merged collection could not tell a record a run FOUND from one a person WROTE. Each carries
-   **`real`**, a one-way SOFT reference to the authored record it appears to be. ⚠ `real` is a
+   **`real`**, a one-way SOFT reference to the authored record it appears to be. `real` is a
    PROPOSAL a person confirms, exactly like `contact`: no script and no pass ever sets it, and the
    world object never enters the person's own collections.
-   ⚠ **Every OTHER reference stays inside the observed collections.** An observed activity's `project` and `lead`
+   **Every OTHER reference stays inside the observed collections.** An observed activity's `project` and `lead`
    name `perspective/projects` and `perspective/users`, never the real
-   collections — `real` is the only crossing there is, and `tests/world-model.test.mjs` holds that
-   over every observed-world collection so the next one added here cannot get it wrong quietly.
-   ⚠ **Four contributors on one project get four observed copies of the same real thing, on purpose.**
+   collections — `real` is the only crossing there is.
+   **Four contributors on one project get four observed copies of the same real thing, on purpose.**
    The contributor is the first segment of every world id, so a shared record would mean four runs
    writing one file and the last one silently winning. Four views of one activity that DISAGREE about
    its dates or its status is the most interesting output the exercise has; `real` is what joins them
@@ -62,10 +53,11 @@ Seven rules hold at every stage:
 4. **Nothing here is authored truth — observed or derived only.** An activity is RECONSTRUCTED from
    sessions, commits and tickets; a decision is EXTRACTED from a source; a workflow is IDENTIFIED
    across activities; a concept is a term the person was SEEN to use; a role is behaviour, never a
-   title. If you cannot name the evidence, do not write the record. This module never holds a domain
-   object — those belong to the person's own module.
-5. **Never read a raw transcript into your context.** One file on this machine is 156 MB and the
-   useful content sits at ~50:1 under tool noise. `bin/digest.mjs <conversation-id>` is the only
+   title. If you cannot name the evidence, do not write the record, and `confirmed` is reserved for
+   what a person actually answered. This module never holds a domain object — those belong to the
+   person's own module.
+5. **Never read a raw transcript into your context.** A single transcript can run to hundreds of
+   megabytes, with the useful content at roughly 50:1 under tool noise. `bin/digest.mjs <conversation-id>` is the only
    sanctioned way to read a conversation; readers return receipts and bounded artifacts.
 6. **Mechanical beats judged.** `conversations` fields are tiered MECHANICAL / HEURISTIC / JUDGED in
    their descriptions. Judged fields are written ONLY through `bin/record-judgement.mjs`, which
@@ -76,11 +68,10 @@ Seven rules hold at every stage:
    template belongs fails; `perspective/activities.collaborative` must agree with `collaborators`; a `real` that
    points at the wrong real collection fails, and one that resolves to nothing WARNS.
 
-⚠ **`dt` array fields: a repeated flag is one ELEMENT, and every value is ALSO split on commas.**
-Measured on engine 0.21.0 (2026-09-08): `--aliases one --aliases two --aliases three` yields
-`[one, two, three]`. So write one flag per element — `--evidence <ref> --evidence <ref>` — and keep
-commas OUT of item text (use ` — `), because `"a, b"` in one flag becomes two elements. An older engine
-overwrote on repeat; that is no longer true, and a claim either way is settled by `cat` on the record.
+**`dt` array fields: a repeated flag is one ELEMENT, and every value is ALSO split on commas.**
+`--aliases one --aliases two --aliases three` yields `[one, two, three]`. So write one flag per
+element — `--evidence <ref> --evidence <ref>` — and keep commas OUT of item text (use ` — `), because
+`"a, b"` in one flag becomes two elements. When in doubt, `cat` the record.
 
 ## the hint grammar — `/run-retrospective [hint]`
 
@@ -95,36 +86,33 @@ name the run's `label`, and it never silently changes a flag.
 | `weeks:N` | `weeks:8` | how far back the WEEKLY windows go — `--weeks N` on `read-git` and `read-claude-transcripts`, written to `activity_weeks_back`. Default **4**: a perspective is about the recent shape of the work, and all-of-history weekly records were the wrong first artefact. Conversations and tickets are never bounded by this; `since:` bounds those |
 | `until:YYYY-MM-DD` | `until:2026-08-31` | `period_end` only. **No reader takes `--until`** — the readers over-read and the cluster and synthesise passes drop evidence after the date. Say so in the receipt |
 | `sources:a,b` | `sources:git,asana` | which collect readers run THIS invocation, out of `git · asana · claude · paste-back`. It does NOT set `reach` — an unread source is simply not read yet, and a later run with a wider hint collects it |
-| `contributor:<email>` | `contributor:dev@example.test` | appended to `retrospective-sessions.handles`; `--contributor` on `read-git` and `read-asana`; and it selects WHICH retrospective a bare `/run-retrospective` resumes. ⚠ It does NOT set `contributor`, which is the slug the ids are keyed by — give every address the person commits, files and writes under, because a reader attributes a row it cannot match to somebody else |
+| `contributor:<email>` | `contributor:dev@example.test` | appended to `retrospective-sessions.handles`; `--contributor` on `read-git` and `read-asana`; and it selects WHICH retrospective a bare `/run-retrospective` resumes. It does NOT set `contributor`, which is the slug the ids are keyed by — give every address the person commits, files and writes under, because a reader attributes a row it cannot match to somebody else |
 | `repos:<slug>,<slug>` | `repos:api,web` | narrows `read-git` to those `repos` records — one invocation per repo with `--repo-path`. The inventory is untouched |
 
 ## the stages
 
-`SK=<perspective>/skills/running-retrospectives` — `<perspective>` is `node_modules/@dreamteamer/perspective` from npm, `modules/perspective` for a copy. ⚠ **Every script takes
-`--retrospective <ref>`** — there is no `--session` any more. It was a real split until 2026-09-09,
-when v1 and v2 collections carried different link fields; the rename collapsed both into one, and a
-script given the old flag now exits 2 with a usage line. `tests/skill-flags.test.mjs` reads the flags
-out of this file and asks each script whether it knows them, because this table IS the procedure.
-All take `--dry-run`.
+`SK=.dreamteamer/skills/running-retrospectives`, run from the workspace root. **Every script takes
+`--retrospective <ref>`**, and all take `--dry-run`. This table IS the procedure: every flag it names
+is one the script parses.
 
 | # | stage → sets `stage` | run | writes |
 |---|---|---|---|
-| 1 | **install** → `installed` | the module is present, `npm install && npm run compile` clean. `/run-retrospective` creates the run record | `retrospective-sessions` |
-| 2 | **inventory** → `inventoried` | `node $SK/bin/inventory.mjs --retrospective <ref>` — walks `${env:REPOS_FOLDER}` (depth 3) and this workspace for checkouts, every `~/.claude*` tree, `~/.codex/sessions`, `~/.gemini/tmp`, and `data/`; registers unknown checkouts in `repos`. Then ASK about every `available` source before reading it; a declined answer is `dt set perspective/sources/<id> reach=declined` and is never re-asked. ⚠ `sources.retrospectives` is a LIST and the readers APPEND this run to it — the session's own `sources[]` is the GENERATED mirror of it, so it needs no write. Append the stage's line to the session's body — a session that does not say what it saw is the defect this stage exists to prevent | `sources`, `repos` |
-| 3 | **read** → `read` | the readers the hint's `sources:` names, each quoting its receipt line: `read-claude-transcripts.mjs --retrospective <ref> [--since]` · `read-git.mjs --retrospective <ref> [--since] [--repo-path] [--contributor <email>]` · `read-asana.mjs --retrospective <ref> --contributor <email-or-gid> [--workspace] [--since]` (needs `ASANA_PAT` in `.env`) · then the **judging loop** (`references/collecting.md`). Then the paste-back: hand over the two prompts in `references/collecting.md` and `import-paste-back.mjs <file> --retrospective <ref> --origin paste-back-chatgpt\|paste-back-gemini\|paste-back-other` (the reply lands in the BODY of that tool's `sources` record — a second paste-back months later APPENDS under its own dated heading, because what the tool remembers CHANGING is the evidence). Declining the paste-back is normal — say so in that source's body and leave its `reach` as `declined`. ⚠ The WORKSPACE is a source too: `node $SK/bin/init.mjs --retrospective <ref>` reads this workspace's own collection and skill vocabulary into `terms` (`origin: workspace`, one per name the workspace already defines) and the `concepts` those terms express, its `agent-decision-log` and `DECISION-LOG.md` rows into `perspective/decisions` (`source_kind: decision-log`), and the perspective skeleton with its inline `commands · skills · routines`. It used to be a stage of its own, retired on 2026-09-09: reading the workspace is a source read like any other. A paste-back is a source too, which is why there is no longer a second paste-back stage value: `import-paste-back.mjs <file> --retrospective <ref> --origin …` lands the reply in that tool's `sources` body, and declining is normal | `conversations`, `activity-weeks`, `tickets`, `threads`, `deliverables`, `users`, `sources`, and from the workspace `terms`, `concepts`, `decisions`, `perspectives` |
-| 4 | **cluster** → `clustered` | `node $SK/bin/cluster-activities.mjs --retrospective <ref> [--gap-days 3] [--since]` writes CANDIDATES to `.perspective/activity-candidates/<base>.jsonl` and NO records — bounded by the run's `period_start`, which deletes nothing older, only leaves it unclustered. Then `node $SK/bin/build-candidate-digest.mjs <vault> <base> <out.md>` renders those candidates as readable blocks (session titles, commit subjects, ticket descriptions and comments) — ⚠ **not optional: this is where naming quality is decided.** A candidate rendered as `repo=api, 4 commits` gets named "worked on api". Then the **clustering pass** below turns candidates into records, followed by `node $SK/bin/attach-evidence.mjs --retrospective <ref>` (attaches every session, commit, branch and ticket from each activity's `from_candidate`) then `node $SK/bin/rollup-metrics.mjs --retrospective <ref>` (owns EVERY number on an activity and on a project). ⚠ In that order, and neither is optional | `activities`, `topics` |
-| 5 | **project** → `projected` | a model pass, after cluster, no script: read every activity, the ticket boards (`tickets.project`), the repos and the topics, and write `perspective/projects` — the logical efforts the work clusters into (kind from what it delivers: product · client · internal · venture · platform), each with `repo_names`, `ticket_projects`, `topics`, `collaborators`, `lead`, dates, counts — then set `project` on every activity (`dt set <activity> --project <ref>`). An Asana board and a repo for one effort are ONE project. Search before creating. ⚠ Never write `real` on a project | `projects` (and fills `activities.project`) |
-| 6 | **extract** → `extracted` | no script — the **extraction pass** below | `workflows`, `decisions`, `terms`, `concepts` — the last three are created twice on purpose: once from the WORKSPACE at stage 3, once from the EVIDENCE here |
-| 7 | **infer** → `inferred` | `node $SK/bin/infer-goals.mjs --retrospective <ref> [--dry-run]` proposes one goal per recurring purpose, out of the decisions, activities and projects of this run — `standing: inferred`, `evidence_count`, and the refs it inferred from. The rule is `references/inference-model.md`. ⚠ NEVER write a goal from what the person SAID about themselves: that is an answered question and belongs on the question. The interview moves `standing` to `corroborated` or `confirmed` | `goals` |
-| 8 | **find** → `found` | write each observation with `dt add perspective/findings --retrospective <ref> --name … --kind … --evidence "<ref>,<ref>" --evidence_count N --standing anecdote\|pattern --needs_confirmation true\|false`, then a body ending `(N sessions)`. Activities and decisions are legal evidence now — see `references/findings-to-proposals.md` §1. Two or more findings with one consequence is an `insights` record, not a third finding ⚠ **AND WRITE WHAT YOU HAD TO ASSUME.** Every observation rests on something the evidence did not settle — that two handles are one person, that the repos you could reach are the work that mattered, that a quiet fortnight was rest. Each one is a `perspective/assumptions` record with a REQUIRED `wrong_if` (the observation in THIS world that would prove it wrong — never a counterfactual), an `impact`, and `affects` naming the records that rest on it. An assumption with nothing under it did not need writing; a finding whose premise is unstated is the failure this catches. | `findings`, `insights`, `assumptions` |
-| 9 | **question** → `interviewed` | `references/interview-banks.md` is the whole procedure, including the min/max rule below. It also FILLS `standing` on the findings and goals the answers settle — it creates neither. ⚠ The ANSWER goes back onto the question record (`--answer` verbatim, `--answered_on`, `--answer_origin spoken\|typed\|relayed`) — `perspective/answers` was deleted 2026-09-08 ⚠ **ASSUMPTIONS ARE ASKED BEFORE GAPS.** Rank the bank by `assumptions.impact` first: an `invalidates` assumption with three `affects` is the cheapest question in the run, because one answer either steadies or re-derives everything under it. Each one asked sets `tested_by` and moves `status` to `unsettled`; the answer moves it to `confirmed` or `refuted`, and a refuted assumption's `affects` IS the re-derivation queue. Never settle one from more evidence of the kind that produced it — only a person's answer, or an observation matching `wrong_if`, counts. | `questions` |
+| 1 | **install** → `installed` | the module is present, `npx dreamteamer compile` clean. `/run-retrospective` creates the run record | `retrospective-sessions` |
+| 2 | **inventory** → `inventoried` | `node $SK/bin/inventory.mjs --retrospective <ref>` — walks `${env:REPOS_FOLDER}` (depth 3) and this workspace for checkouts, every `~/.claude*` tree, `~/.codex/sessions`, `~/.gemini/tmp`, and `data/`; registers unknown checkouts in `repos`. Then ASK about every `available` source before reading it; a declined answer is `dt set perspective/sources/<id> reach=declined` and is never re-asked. `sources.retrospectives` is a LIST and the readers APPEND this run to it — the session's own `sources[]` is the GENERATED mirror of it, so it needs no write. Append the stage's line to the session's body — a session that does not say what it saw is the defect this stage exists to prevent | `sources`, `repos` |
+| 3 | **read** → `read` | the readers the hint's `sources:` names, each quoting its receipt line: `read-claude-transcripts.mjs --retrospective <ref> [--since]` · `read-git.mjs --retrospective <ref> [--since] [--repo-path] [--contributor <email>]` · `read-asana.mjs --retrospective <ref> --contributor <email-or-gid> [--workspace] [--since]` (needs `ASANA_PAT` in `.env`) · then the **judging loop** (`references/collecting.md`). Then the paste-back: hand over the two prompts in `references/collecting.md` and `import-paste-back.mjs <file> --retrospective <ref> --origin paste-back-chatgpt\|paste-back-gemini\|paste-back-other` (the reply lands in the BODY of that tool's `sources` record — a second paste-back months later APPENDS under its own dated heading, because what the tool remembers CHANGING is the evidence). Declining the paste-back is normal — say so in that source's body and leave its `reach` as `declined`. The WORKSPACE is a source too: `node $SK/bin/init.mjs --retrospective <ref>` reads this workspace's own collection and skill vocabulary into `concepts` (`origin: workspace`, one per name the workspace already defines), its `agent-decision-log` and `DECISION-LOG.md` rows into `perspective/decisions` (`source_kind: decision-log`), and the perspective skeleton with its inline `commands · skills · routines`. Reading the workspace is a source read like any other, and so is a paste-back | `conversations`, `activity-weeks`, `tickets`, `threads`, `deliverables`, `users`, `sources`, and from the workspace `concepts`, `decisions`, `perspectives` |
+| 4 | **cluster** → `clustered` | `node $SK/bin/cluster-activities.mjs --retrospective <ref> [--gap-days 3] [--since]` writes CANDIDATES to `.perspective/activity-candidates/<base>.jsonl` and NO records — bounded by the run's `period_start`, which deletes nothing older, only leaves it unclustered. Then `node $SK/bin/build-candidate-digest.mjs <workspace> <base> <out.md>` renders those candidates as readable blocks (session titles, commit subjects, ticket descriptions and comments) — **not optional: this is where naming quality is decided.** A candidate rendered as `repo=api, 4 commits` gets named "worked on api". Then the **clustering pass** below turns candidates into records, followed by `node $SK/bin/attach-evidence.mjs --retrospective <ref>` (attaches every session, commit, branch and ticket from each activity's `from_candidate`) then `node $SK/bin/rollup-metrics.mjs --retrospective <ref>` (owns EVERY number on an activity and on a project). In that order, and neither is optional | `activities`, `topics` |
+| 5 | **project** → `projected` | a model pass, after cluster, no script: read every activity, the ticket boards (`tickets.project`), the repos and the topics, and write `perspective/projects` — the logical efforts the work clusters into (kind from what it delivers: product · client · internal · venture · platform), each with `repo_names`, `ticket_projects`, `topics`, `collaborators`, `lead`, dates, counts — then set `project` on every activity (`dt set <activity> --project <ref>`). An Asana board and a repo for one effort are ONE project. Search before creating. Never write `real` on a project | `projects` (and fills `activities.project`) |
+| 6 | **extract** → `extracted` | no script — the **extraction pass** below | `workflows`, `decisions`, `terms`, `concepts` — `decisions` and `concepts` are written twice on purpose: once from the WORKSPACE at stage 3, once from the EVIDENCE here |
+| 7 | **infer** → `inferred` | `node $SK/bin/infer-goals.mjs --retrospective <ref> [--dry-run]` proposes one goal per recurring purpose, out of the decisions, activities and projects of this run — `standing: inferred`, `evidence_count`, and the refs it inferred from. The rule is `references/inference-model.md`. NEVER write a goal from what the person SAID about themselves: that is an answered question and belongs on the question. The interview moves `standing` to `corroborated` or `confirmed` | `goals` |
+| 8 | **find** → `found` | write each observation with `dt add perspective/findings --retrospective <ref> --name … --kind … --evidence "<ref>,<ref>" --evidence_count N --standing anecdote\|pattern --needs_confirmation true\|false`, then a body ending `(N sessions)`. Activities and decisions are legal evidence now — see `references/findings-to-proposals.md` §1. Two or more findings with one consequence is an `insights` record, not a third finding **AND WRITE WHAT YOU HAD TO ASSUME.** Every observation rests on something the evidence did not settle — that two handles are one person, that the repos you could reach are the work that mattered, that a quiet fortnight was rest. Each one is a `perspective/assumptions` record with a REQUIRED `wrong_if` (the observation in THIS world that would prove it wrong — never a counterfactual), an `impact`, and `affects` naming the records that rest on it. An assumption with nothing under it did not need writing; a finding whose premise is unstated is the failure this catches. | `findings`, `insights`, `assumptions` |
+| 9 | **question** → `interviewed` | `references/interview-banks.md` is the whole procedure, including the min/max rule below. It also FILLS `standing` on the findings and goals the answers settle — it creates neither. The ANSWER goes back onto the question record (`--answer` verbatim, `--answered_on`, `--answer_origin spoken\|typed\|relayed`). **ASSUMPTIONS ARE ASKED BEFORE GAPS.** Rank the bank by `assumptions.impact` first: an `invalidates` assumption with three `affects` is the cheapest question in the run, because one answer either steadies or re-derives everything under it. Each one asked sets `tested_by` and moves `status` to `unsettled`; the answer moves it to `confirmed` or `refuted`, and a refuted assumption's `affects` IS the re-derivation queue. Never settle one from more evidence of the kind that produced it — only a person's answer, or an observation matching `wrong_if`, counts. | `questions` |
 | 10 | **propose** → `proposed` | `references/findings-to-proposals.md` §2. At most four collections and one skill; a collection proposal's body IS its draft descriptor; a confirmed `workflow` becomes a skill or a command chain, its `steps` becoming the command sequence. Put them one at a time: accept · edit · reject | `proposals` |
 | 11 | **synthesise** → `synthesised` | `node $SK/bin/synthesize-perspective.mjs --retrospective <ref>` fills the perspective's MECHANICAL fields — the counts, the refs, the period. Then the **role pass** below writes `role`, `summary` and the body with `dt set` and a body edit, and `dt set perspective/retrospective-sessions/<id> perspective=perspective/perspectives/<id>` | `perspectives` (created at stage 3, filled here) |
 | 12 | **materialise** → `materialised` | per accepted or edited collection proposal: `dt add collections --name <n> --module <target_module> --description … --use-when …`, then `dt add-field <n> --name … --type … --description …` per field (system writes commit themselves); a skill proposal lands as `modules/<target_module>/skills/<id>/SKILL.md`. Set `materialized_as` and `status=materialised` | descriptors, skills |
 | 13 | **seed** → `seeded` | three to five REAL records per new collection, each pulled from evidence and CONFIRMED before `dt add`. Never a test record | the person's records |
-| — | **done** → `done` / `abandoned` | `npm run compile && npm run check` (quote both), `dt commit <collection>/<id> …` scoped to what this run wrote, then `dt set perspective/retrospective-sessions/<id> stage=done finished=<today> produced="<collection>,skills/<id>"`. Say plainly: the test is whether a record gets added tomorrow without help | — |
+| — | **done** → `done` / `abandoned` | `npx dreamteamer compile && npm run check` (quote both), `dt commit <collection>/<id> …` scoped to what this run wrote, then `dt set perspective/retrospective-sessions/<id> stage=done finished=<today> produced="<collection>,skills/<id>"`. Say plainly: the test is whether a record gets added tomorrow without help | — |
 
-⚠ **EVERY STAGE BOUNDARY IS GATED, and the gates are records.** Before advancing past a stage, evaluate
+**EVERY STAGE BOUNDARY IS GATED, and the gates are records.** Before advancing past a stage, evaluate
 the `perspective/gates` whose `stage` names it and write one record each — `pass`, `unmet`, `waived`
 or `not-run`, every verdict but the last carrying `measured`: the count, the command's own line, or
 the person's words. `gates` is the one collection written at **every stage boundary** rather than by a
@@ -162,7 +150,7 @@ what it might write.
 > --branches "…" --tickets "…" --repos "…" --commit_count N --collaborative true|false`.
 > `collaborative` is true iff `collaborators` is non-empty — check-records enforces the agreement.
 > Report: activities written, topics created, topics reused, candidates merged, candidates split.
-> ⚠ Do NOT write `real` on anything. The join out to the workspace's own `activities`, `projects`,
+> Do NOT write `real` on anything. The join out to the workspace's own `activities`, `projects`,
 > `users`, `goals`, `decisions` and `deliverables` is a PROPOSAL a
 > person confirms — a run that sets it is authoring truth.
 
@@ -174,13 +162,13 @@ what it might write.
 > identifier, shaped for the kind: a conversation ref · a 7–40 hex SHA · agent-decision-log/<id> or
 > DECISION-LOG.md#<row> · a tickets ref · a meetings ref · a questions ref · a threads ref> --decided_on <date>
 > --decision "<what was decided, in the source's words>" [--rationale "<why, in the source's
-> words>"] --decided_by person|agent|unknown [--decider <world/users ref>] [--agent "<agent (model)>"]`.
+> words>"] --decided_by person|agent|unknown [--decider <perspective/users ref>] [--agent "<agent (model)>"]`.
 > **Omit `rationale` when the source gave none — never supply one.**
-> ⚠ **`--decided_by unknown` IS THE DEFAULT AND USUALLY THE RIGHT ANSWER.** A commit message states a
+> **`--decided_by unknown` IS THE DEFAULT AND USUALLY THE RIGHT ANSWER.** A commit message states a
 > choice and names nobody; whoever happened to author the commit is not evidence that they decided
 > it. Set `person` only where the source actually SAYS who decided, and `agent` only where the source
 > is an agent's own log. `collaborators` is who was present — a different claim, and a weaker one.
-> ⚠ **`alternatives`, `reversibility` and the decider's own `wrong_if` are NOT on this collection**,
+> **`alternatives`, `reversibility` and the decider's own `wrong_if` are NOT on this collection**,
 > deliberately: they are required on the authored `decisions` because a person can be asked for them,
 > and evidence does not contain them. Wanting them is a `questions` record, never a field you fill.
 > **Workflows.** Only where the SAME step order appears in **three or more activities**. Two is a
@@ -200,15 +188,15 @@ what it might write.
 > where none fits: `--definition` is what it means TO THEM, written FROM the quoted uses in the
 > terms' bodies and never ahead of them; `--kind`; `--origin`; `--related_to` for the real-world
 > records it names and `--classifies` for the observed-world objects it is about.
-> ⚠ **MANY TERMS, ONE CONCEPT.** Three spellings of one idea are three terms and one concept. A
+> **MANY TERMS, ONE CONCEPT.** Three spellings of one idea are three terms and one concept. A
 > concept per term is a glossary of near-duplicates, which is the shape this split exists to stop.
-> ⚠ **A TERM WHOSE MEANING DRIFTS BETWEEN USES IS `--classification ambiguous`**, not a concept and
+> **A TERM WHOSE MEANING DRIFTS BETWEEN USES IS `--classification ambiguous`**, not a concept and
 > not a guess: it generates a gap question. And a word that turned out to be a project name or
 > somebody's initials is `--classification discarded`.
-> ⚠ **LEAVING TERMS `identified` IS HONEST AND IS THE POINT.** The count left unclassified is the
+> **LEAVING TERMS `identified` IS HONEST AND IS THE POINT.** The count left unclassified is the
 > measure of how far this pass actually got. Driving it to zero by minting a concept per term has
 > not understood more, it has only hidden the residue. Report both numbers.
-> ⚠ **`terms.mentions` IS SELECTIVE.** Link a term to a world record only where a reader who does not
+> **`terms.mentions` IS SELECTIVE.** Link a term to a world record only where a reader who does not
 > know the word could not understand the record. A term used in ninety activities is this person's
 > vocabulary, not that record's, and linking all ninety makes the generated mirror worthless on every
 > one of them. `concepts.classifies` is the broad edge; this is the narrow one.
@@ -236,8 +224,7 @@ what it might write.
   `retrospective-sessions`, which a recipe compiles without because `contacts` is a declared PEER.
 - **`retrospective-sessions.handles` is the seed of the merge**, and the only identity a reader has
   on its FIRST pass, before any `perspective/users` record exists. `lib/identity.mjs` is the one place
-  the union is computed; it was four near-copies in four scripts until 2026-09-09, three of which
-  were comparing the slug to a list of email addresses and therefore matching nothing.
+  the union is computed.
 - **`retrospective-sessions.contributor` is a slug, never an address** — it is an id segment, and the
   descriptor's `pattern` refuses anything else.
 
@@ -248,8 +235,7 @@ what it might write.
 queue a later supervised run picks up, and the honest record of what the evidence could not settle.
 At `min 0` the run is unattended: nothing is asked, no finding can become `confirmed` or `refuted`,
 every proposal is honestly `basis: evidence-only`, and the run continues by taking each proposal's
-recommended option. Unchanged from v1 §13; the banks, order and stopping rule are in
-`references/interview-banks.md`.
+recommended option. The banks, order and stopping rule are in `references/interview-banks.md`.
 
 **Every generated question carries a `suggested_answer`** — what the run infers the person would say,
 read out of the records named in `suggestion_evidence` — and an EMPTY `answer`. The suggestion is
@@ -291,6 +277,6 @@ record with `reach: unavailable` is the record of that, never a failure.
 | a `suggested_answer` with no `suggestion_evidence` | a guess wearing a record; `check-records` refuses it |
 | one agent handed the whole corpus | it reads for tens of minutes and writes nothing — pre-cluster, slice small, parallelise the lenses (`references/inference-model.md`) |
 | running a reader whose source is not `available` | the reader refuses; fix the source or leave it |
-| re-running a stage and writing its records twice | every stage reads its own output first, and `tests/idempotency.test.mjs` runs each one twice and hashes the tree — a claim in prose is what let two re-run defects ship |
+| re-running a stage and writing its records twice | every stage reads its own output first and updates in place |
 | advancing `stage` before `npm run check` is clean | the stage is the gate; a dirty gate lies to the next run |
 | a machine path in `location` or `transcript_path` | `${userHome}` / `${env:REPOS_FOLDER}` / `${workspaceFolder}`; check-records refuses the rest |

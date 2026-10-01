@@ -1,13 +1,11 @@
 // A markdown numbered list, read as ITEMS rather than as lines.
 //
-// ⚠ THE BUG THIS EXISTS FOR. `init.mjs` used to read DECISION-LOG.md one physical line at a time and
-// match `<n>. **<date> — <title>**` against it. A row long enough to wrap — and a decision row that
-// says anything is long enough — carries its bold header across two lines, so the closing `**` is not
-// on the line the row starts on, the match fails, and a perfectly dated row is counted as
-// `skipped-undated`. Measured on one real log: 15 rows, 7 of them dated and skipped. The receipt was
-// not merely incomplete, it asserted the opposite of the truth about those seven rows.
+// WHY. Matching `<n>. **<date> — <title>**` one physical line at a time fails on a row long enough
+// to wrap — and a decision row that says anything is long enough — because its bold header crosses
+// two lines, so the closing `**` is not on the line the row starts on and a perfectly dated row is
+// counted as `skipped-undated`, a receipt asserting the opposite of the truth.
 //
-// The fix is to stop pretending a line is a unit. An item is the unit: it starts at its marker and
+// So a line is not the unit. An item is the unit: it starts at its marker and
 // runs until the next item at the same level or until the list ends, however many physical lines that
 // takes. Rejoining happens BEFORE anything is matched, so a wrapped heading and a single-line heading
 // are indistinguishable to every caller.

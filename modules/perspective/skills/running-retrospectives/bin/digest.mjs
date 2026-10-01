@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-// Ported from an earlier analyzer (decision 310); addressed by conversations id.
-// digest — a bounded, context-safe rendering of a conversation, for a model to JUDGE.
+// digest — a bounded, context-safe rendering of a conversation, addressed by conversations id, for a
+// model to JUDGE.
 //
 // This is the one script here whose output is MEANT to be read into a context window, so it has a
 // hard character budget and spends it deliberately:
-//   · every operator turn, in full order, clipped per-turn — the operator's words are the signal
+//   · every user turn, in full order, clipped per-turn — the person's words are the signal
 //   · assistant turns as openers only — enough to see what it did and where it wobbled
 //   · the mechanical metrics up front, so the model does not re-derive what was already counted
 //   · a sample of tool errors, because that is where the friction actually shows
@@ -14,7 +14,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { eachLine, textOf, toolUsesOf, toolResultsOf, classifyUserLine, assistantMessageId } from '../lib/transcript.mjs';
-import { DATA, render } from '../lib/vault.mjs';
+import { DATA, render } from '../lib/workspace.mjs';
 import { readRecord, recordPath } from '../lib/records.mjs';
 import { computeMetrics } from '../lib/metrics.mjs';
 
@@ -68,7 +68,7 @@ await eachLine(hit.path, (r) => {
 flush();
 
 // ---- spend the budget -------------------------------------------------------------------------
-// Operator turns get 70% and are never sampled away — losing one loses an intent. Assistant turns
+// User turns get 70% and are never sampled away — losing one loses an intent. Assistant turns
 // get the rest and ARE sampled, evenly, because their job here is only to show the shape of the work.
 const userBudget = Math.floor(BUDGET * 0.7);
 const perUser = Math.max(200, Math.floor(userBudget / Math.max(1, userTurns.length)));

@@ -1,9 +1,8 @@
 # THE TIMELINE — every reconstructed activity on one axis, banded by the project it belongs to.
 # The default answer to "what was this person doing, and when".
 #
-# ⚠ These views live in the MODULE, not in a workspace, because they draw the module's own
-# collections. They were `modules/default/ui-views/timeline*` in the dogfood vault until 2026-09-08
-# and the two colleague workspaces therefore had none — the same collections with no picture of them.
+# These views live in the MODULE, not in a workspace, because they draw the module's own
+# collections — every workspace that installs it gets the picture.
 options:
   start_field: started
   end_field: ended
@@ -12,9 +11,8 @@ options:
   group_template: '{{ name }}'
   # A project's own rolled-up numbers. `lifecycle_stage` first because a shut lane's most useful
   # fact is whether the effort is still moving; the two counts say how much is behind it.
-  # ⚠ NOT `activities_count`: that field was deleted in 0.2.0 (the generated `activities` mirror IS
-  # the count) and this template went on naming it for two releases, rendering an empty token that
-  # reads as "no activities". `lead` and `commit_count` are real fields on the record.
+  # `lead` and `commit_count` are fields on the project record; the generated `activities` mirror
+  # is the count, so no count field is named here.
   group_summary_template: '{{ lifecycle_stage }} · {{ lead }} · {{ commit_count }} commits'
   # And the bar says what the work was. `{{ name }}` alone, because an activity's name is already a
   # sentence — anything appended to it is pushed off the end of the track on a short bar.

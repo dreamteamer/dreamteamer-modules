@@ -1,16 +1,14 @@
-# questions — ONE INTERVIEW QUESTION AND WHAT IT GOT BACK. Three banks: the engine's modelling
+# perspective/questions — ONE INTERVIEW QUESTION AND WHAT IT GOT BACK. Three banks: the engine's modelling
 # questions rephrased for a person, a gap a finding left open, and a role bank.
 #
-# ⚠ THE ANSWER LIVES HERE, not in a collection of its own. `perspective/answers` existed until
-# 2026-09-08 and was deleted (operator: "delete answers, embed in question"): a question and its
-# answer are one fact, always read together and never separately, and splitting them bought a join
-# and a second id scheme in exchange for nothing. What an answers collection WOULD have earned —
-# several answers to one question over time — never happened once.
+# THE ANSWER LIVES HERE, not in a collection of its own: a question and its answer are one fact,
+# always read together and never separately, and splitting them would buy a join and a second id
+# scheme in exchange for nothing.
 name: perspective/questions
 description: One interview question and the verbatim answer it got — its bank, and the finding that generated it.
 use_when: >-
   the interview stage runs — every question asked is a record here BEFORE it is asked and its verbatim
-  answer is written back onto the SAME record after; asked "what did we ask", "what did he say" or
+  answer is written back onto the SAME record after; asked "what did we ask", "what did they say" or
   "what was skipped", list here by session. The findings pass reads `answer` to confirm or refute
 storage: { path: data/perspective/questions, codec: md, shape: file, suffix: question }
 id:
@@ -45,7 +43,7 @@ schema:
         words. Absent while `status` is pending or asked; required in practice once it is answered.
     answered_on: { type: string, format: date, description: When they answered. }
     # ── the SUGGESTION, structurally separated from the answer ───────────────────────────────────
-    # ⚠ THIS FIELD EXISTS SO `answer` NEVER HAS TO LIE. A run can very often infer what a person is
+    # THIS FIELD EXISTS SO `answer` NEVER HAS TO LIE. A run can very often infer what a person is
     # likely to say — that inference is useful, it makes the interview shorter, and it gives the
     # person something to correct rather than a blank page. What it is NOT is their words. `answer`
     # is the only place in this module where the person speaks, and `answer_origin` has no value

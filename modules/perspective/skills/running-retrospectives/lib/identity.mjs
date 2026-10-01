@@ -1,17 +1,16 @@
 // identity — WHICH OF THESE ROWS ARE THE CONTRIBUTOR'S. One question, asked by every reader, and
-// until 2026-09-09 answered by four near-copies of the same fifteen lines in four scripts.
+// answered here once.
 //
 // The contributor is a SLUG (`dana-o`) because that is what the ids are keyed by. The evidence
 // carries none of that: git has an author email, Asana a gid, mail an address. Deciding whether a
-// commit is theirs is therefore a HANDLE MATCH, never a slug comparison — and three of those four
-// copies were quietly comparing the slug to a list of email addresses after the re-keying, which
-// matches nothing and filters nothing.
+// commit is theirs is therefore a HANDLE MATCH, never a slug comparison: a slug compared to a list
+// of email addresses matches nothing and filters nothing.
 //
-// ⚠ The seed is the RUN RECORD's `handles`, not the collaborator record's, because the first reader
-// runs before any collaborator record exists. Once one does, its handles are the merge read-git
+// The seed is the RUN RECORD's `handles`, not the users record's, because the first reader runs
+// before any users record exists. Once one does, its handles are the merge read-git
 // already did, and they are unioned in. `references/identity.md` is the method; this is the code.
 import path from 'node:path';
-import { DATA } from './vault.mjs';
+import { DATA } from './workspace.mjs';
 import { recordPath, readRecord, listRecords, contributorOf, collectionDir } from './records.mjs';
 
 const lower = (s) => String(s ?? '').trim().toLowerCase();

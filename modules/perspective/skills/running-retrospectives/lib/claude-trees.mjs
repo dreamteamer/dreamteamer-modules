@@ -1,7 +1,6 @@
 // Which ~/.claude* trees exist and which .jsonl files in them are CONVERSATIONS (vs subagent sidecars).
 // The account is knowable only from the tree; nothing inside a transcript records it.
-// Port of an earlier analyzer's accounts.mjs listTranscripts (decision 310), without its hard-coded extra trees:
-// the perimeter is measured per machine, never declared.
+// There are no hard-coded extra trees: the perimeter is measured per machine, never declared.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

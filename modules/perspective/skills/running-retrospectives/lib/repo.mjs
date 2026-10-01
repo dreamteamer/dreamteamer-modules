@@ -1,8 +1,7 @@
-// Ported verbatim from an earlier conversation-analyzer module (decision 310). Edit here; the original is history.
 // Mapping a session to a repository — as TEXT, because most of these repos no longer exist here.
 //
-// The operator's trees move, get deleted, live under several account identities
-// (~/Documents/<vault>/projects/<identity>/<repo>) and get talked about from a PARENT folder. So:
+// The person's trees move, get deleted, live under several account identities
+// (~/Documents/<workspace>/projects/<identity>/<repo>) and get talked about from a PARENT folder. So:
 //   `repo`          = where the session RAN   (resolved from cwd, best effort, may be a parent)
 //   `subject_repos` = what it was ABOUT       (inferred from touched paths — computed in metrics.mjs)
 // Those two disagree constantly and that disagreement is the point.
@@ -42,7 +41,7 @@ export function shortRemote(url) {
 /**
  * Resolve a cwd to a text repo identifier, in descending order of trustworthiness:
  *   kind `git`      — a real .git on disk → the remote's owner/name, else the root's folder name
- *   kind `projects` — `…/projects/<identity>/<repo>/…`, the multi-identity layout under a vault
+ *   kind `projects` — `…/projects/<identity>/<repo>/…`, the multi-identity layout under a workspace
  *   kind `guess`    — just the last path segment. NOT a repo; callers filter these out of
  *                     `subject_repos`, or the field fills with "Documents" and "scratchpad".
  * Result is memoized: a scan hits the same handful of cwds thousands of times.
@@ -74,8 +73,8 @@ const BORING = /^\/(tmp|private|var|etc|usr|opt|bin|sbin|dev|proc|System|Library
 const BORING_SEG = /(^|\/)(node_modules|\.git|\.claude[^/]*|\.dreamteamer|\.cache|\.venv|__pycache__|dist|build|\.next|coverage)(\/|$)/;
 
 /** Is this a path worth attributing a session to? */
-// `home` defaults to os.homedir() rather than the HOME variable: the vault's env-contract test reads
-// every environment lookup as an undeclared key, and homedir() is the same answer without one.
+// `home` defaults to os.homedir() rather than the HOME variable: homedir() is the same answer
+// without an environment lookup a workspace would have to declare.
 export function interestingDir(dir, home = os.homedir()) {
 	if (!dir || dir === '/' || dir === '.') return false;
 	if (BORING.test(dir) || BORING_SEG.test(dir)) return false;

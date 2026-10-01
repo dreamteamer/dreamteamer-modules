@@ -5,7 +5,7 @@
 //   node cluster-activities.mjs --retrospective perspective/retrospective-sessions/<id>
 //        [--data-root d] [--scratch-root d] [--gap-days 3] [--dry-run]
 //
-// ⚠ THIS SCRIPT WRITES NO RECORDS. Writing `activities` and `topics` is the MODEL's job: it reads
+// THIS SCRIPT WRITES NO RECORDS. Writing `activities` and `topics` is the MODEL's job: it reads
 // the candidates file this produces, names each activity as a person would, decides which are one
 // piece of work and which are two, and writes them with `dt add`. A candidate is a proposal about
 // TIME AND REPO — nothing here judges what the work was.
@@ -25,7 +25,7 @@
 //        · meetings      — <scratch>/meetings/<base>.jsonl, one JSON per line, written by
 //                          read-meetings. Placed on `starts`, bucketed by `company` — a meeting has
 //                          no repo, and who it was WITH is the nearest thing to one, exactly as the
-//                          mail bucket is a domain. ⚠ Read from the scratch and never from the
+//                          mail bucket is a domain. Read from the scratch and never from the
 //                          `meetings` records themselves: those belong to a PEER module, and this
 //                          module holds no domain object. Like the commits dump the directory is
 //                          routinely ABSENT — that is 0 meetings and a normal run, never an error.
@@ -53,7 +53,7 @@
 // Output: <scratch>/activity-candidates/<base>.jsonl, rewritten whole on each run.
 import fs from 'node:fs';
 import path from 'node:path';
-import { DATA, SCRATCH, slug } from '../lib/vault.mjs';
+import { DATA, SCRATCH, slug } from '../lib/workspace.mjs';
 import { listRecords, readRecord, recordPath, contributorOf, collectionDir, recordId } from '../lib/records.mjs';
 import { contributorHandles as handlesOf, isContributor as isThem } from '../lib/identity.mjs';
 
@@ -70,21 +70,18 @@ const base = retrospective.split('/').pop();
 const dataRoot = opt('data-root', DATA);
 // Every evidence and model id is keyed by the CONTRIBUTOR, not by the run — a re-run must update
 // this person's records rather than write a parallel set beside them. Resolved LAZILY, on first
-// use: reading it eagerly made a script that should exit 2 on a bad argument crash on a missing
-// session instead, and write nothing was the contract it broke (read-asana, 2026-09-09).
+// use, so a bad argument exits 2 with a usage line before any session is read.
 let _who = null;
 const who = () => (_who ??= contributorOf(retrospective, dataRoot));
 const scratch = opt('scratch-root', SCRATCH);
 const gapDays = Number(opt('gap-days', '3'));
 // The ANALYSIS window, which is not the same thing as the evidence on disk. Weekly records are kept
-// for all of history deliberately (the operator, 2026-09-08: "keep full history, don't delete old
-// weeks") — but naming activities back to 2021 is a different job from describing this year's work,
-// and it triples the candidate count with singletons nobody will read. --since drops evidence older
-// than the date; without it, everything on disk is clustered, which is the v1 behaviour.
-// ⚠ An unquoted YAML date parses to a Date OBJECT, not a string — `period_start: 2025-09-08` comes
+// for all of history deliberately — but naming activities years back is a different job from
+// describing this year's work, and it multiplies the candidate count with singletons nobody will
+// read. --since drops evidence older than the date; without it, everything on disk is clustered.
+// An unquoted YAML date parses to a Date OBJECT, not a string — `period_start: 2025-09-08` comes
 // back as a Date, and `date + 'T00:00:00Z'` then produces an unparseable string, NaN, and a window
-// that silently does not apply. The receipt printing "window since Mon Sep 08 2025 03:00:00 GMT+0300"
-// is what gave it away. Normalise to YYYY-MM-DD before anything touches it.
+// that silently does not apply. Normalise to YYYY-MM-DD before anything touches it.
 const asDay = (v) => (v instanceof Date ? v.toISOString().slice(0, 10) : String(v ?? '').slice(0, 10));
 const since = asDay(opt('since') || (() => { try { return readRecord(recordPath('retrospective-sessions', base, 'retrospective-session', dataRoot)).fields.period_start || ''; } catch { return ''; } })());
 if (!Number.isFinite(gapDays) || gapDays < 0) { console.error('usage: --gap-days must be a non-negative number'); process.exit(2); }
@@ -145,13 +142,12 @@ for (const f of listRecords(collectionDir('tickets', dataRoot))) {
 	});
 }
 
-// ⚠ THE CONTRIBUTOR FILTER. A retrospective is ONE person's perspective, and the commits scratch holds
+// THE CONTRIBUTOR FILTER. A retrospective is ONE person's perspective, and the commits scratch holds
 // every author in the repo. Without this a candidate for a shared repo is a repo-wide window mixing the
-// contributor's commits with hundreds of other people's — found on the first multi-author run, where a
-// colleague sharing a first name and a near-identical work address landed inside the contributor's own
-// activities. Handles are the run record's, unioned with the collaborator record that already carries
+// contributor's commits with hundreds of other people's, and a colleague sharing a first name and a
+// near-identical work address lands inside the contributor's own activities. Handles are the run record's, unioned with the collaborator record that already carries
 // one of them; a run that declares none filters NOTHING, which is honest for a solo workspace rather
-// than an empty timeline. `lib/identity.mjs` holds the rule — it was four near-copies until 2026-09-09.
+// than an empty timeline. `lib/identity.mjs` holds the rule.
 const contributorHandles = handlesOf(retrospective, dataRoot);
 const isContributor = (email, name) => isThem(contributorHandles, email, name);
 let foreignCommits = 0;
@@ -165,7 +161,7 @@ for (const f of listRecords(collectionDir('threads', dataRoot))) {
 	// The bucket: the domain most counterparts share. `@gmail.com` and friends are not an organisation,
 	// so a thread whose counterparts are all on public mail lands in `mail:(personal)`.
 	const PUBLIC = new Set(['gmail.com', 'googlemail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'icloud.com', 'me.com', 'walla.co.il', 'walla.com']);
-	// ⚠ The contributor's OWN domain never votes — every thread has them on it, and a mailbox at
+	// The contributor's OWN domain never votes — every thread has them on it, and a mailbox at
 	// work.example would otherwise bucket every personal thread under the employer.
 	const domains = new Map();
 	for (const p of fields.participants ?? []) {
@@ -290,11 +286,10 @@ for (const key of [...buckets.keys()].sort()) {
 }
 
 // ── SPLIT WHAT IS TOO BIG TO NAME ──────────────────────────────────────────────────────────────
-// ⚠ A GAP RULE ALONE PRODUCES UNBOUNDED CANDIDATES, and an unbounded candidate cannot be named.
-// Measured 2026-09-08: one repo worked on at least every three days for six months collapsed into a
-// SINGLE candidate of 257 sessions and 1,753 commits, and the naming pass simply skipped it — along
-// with 44 others, together holding 616 sessions. They were not lost to a bug; they were lost because
-// nobody can answer "what task is this?" about six months of continuous work.
+// A GAP RULE ALONE PRODUCES UNBOUNDED CANDIDATES, and an unbounded candidate cannot be named.
+// A repo worked on every few days for six months collapses into a SINGLE candidate of hundreds of
+// sessions, and the naming pass skips it — nobody can answer "what task is this?" about six months
+// of continuous work.
 // So a candidate also splits on SIZE. The split point is the LARGEST INTERNAL GAP, recursively:
 // that is the most defensible seam available, because it is where the person actually paused.
 const MAX_ITEMS = Number(opt('max-items', '40'));
@@ -356,7 +351,7 @@ const lines = candidates.map((c) => {
 		tickets: tickets.map((i) => `perspective/tickets/${i.id}`).sort(),
 		threads: threads.map((i) => `perspective/threads/${i.id}`).sort(),
 		deliverables: deliverables.map((i) => `perspective/deliverables/${i.id}`).sort(),
-		// ⚠ ALREADY A QUALIFIED REF, unlike every other kind here: a meeting lives in a PEER
+		// ALREADY A QUALIFIED REF, unlike every other kind here: a meeting lives in a PEER
 		// collection, so the reader parks `meetings/<id>` and nothing prefixes it with `perspective/`.
 		meetings: meetings.map((i) => i.id).sort(),
 		handles: [...new Set([

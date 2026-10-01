@@ -1,7 +1,6 @@
 # the interview — banks, order, budget, stopping rule
 
-Design decisions 13.1–13.4 and 13.12–13.13 of the v1 design doc, made runnable, with the v2
-additions marked. The stage is **question** (`stage: interviewed`). Every question is an
+The stage is **question** (`stage: interviewed`). Every question is an
 `perspective/questions` record BEFORE it is asked (`bank`, `n`, `text`, `from_finding` for gaps);
 every answer written back onto the QUESTION it answers — `answer` verbatim, `answered_on`, `answer_origin`, linked back
 from the question. "skip" sets `status: skipped`. The interview is in the language of the person's
@@ -18,7 +17,7 @@ records; how many reach the person is a separate decision, taken per run.
 - **Supervised (`min > 0`).** Ask that many, in the order below, then stop and continue as above with
   the rest left pending. Say the number in the opening so the person knows the shape.
 
-⚠ **An unattended run cannot confirm anything, and must not pretend to.** `basis` on every proposal
+**An unattended run cannot confirm anything, and must not pretend to.** `basis` on every proposal
 it writes is `evidence-only`, and the report says how many questions are waiting.
 
 **Order:** modelling Q1 first · then every `gap` question by `evidence_count` descending (an
@@ -58,12 +57,12 @@ a thing that is) · **Q6 relations** (from nouns that appeared together in Q1 an
 forcing field** (the one field whose absence makes the record write-only — from Q2) · **Q8 units and
 time** (from the evidence; ask only when a number appeared with no unit) · **Q9 volume** (from
 `activity-weeks`; if asked at all, it is the last question and skippable) · **Q11 the module**
-(always the workspace module for a one-person brain — decision 13.11).
+(always the workspace module for a one-person workspace).
 
 ## bank 2 — gap questions, generated
 
-One per finding with `needs_confirmation: true`, highest `evidence_count` first. **v2: the evidence a
-gap question quotes may now be an `activities`, `decisions`, `topics` or `collaborators` record as
+One per finding with `needs_confirmation: true`, highest `evidence_count` first. The evidence a
+gap question quotes may be an `activities`, `decisions`, `topics` or `perspective/users` record as
 well as a conversation or an activity-week** — the template is the same, the count is still a count
 of DISTINCT records. Template:
 
@@ -89,12 +88,12 @@ person as the run's reading, after the two options, and what they say back is wh
 even when it is "yes, that". `check-records` refuses a suggestion with no evidence and an `answer`
 identical to the suggestion. The full argument is `references/inference-model.md` § suggestions.
 
-### identity questions (v2) — a gap question with no finding
+### identity questions — a gap question with no finding
 
 Two things only a person can settle, and neither has a finding behind it: **is `<handle A>` the same
 person as `<handle B>`** (`references/identity.md`), and **is this collaborator the `contacts` record
 that shares their name**. Both are written as `bank: gap` with `from_finding` EMPTY, the body saying
-why the question exists and quoting the counts. ⚠ `questions.bank` has no `identity` value yet — a
+why the question exists and quoting the counts. `questions.bank` has no `identity` value yet — a
 fourth enum value is **owed**; until it lands, `gap` with an empty `from_finding` is the honest
 spelling, and the body carries the distinction.
 
@@ -108,9 +107,9 @@ person's own turns near zero → the person describes and the agent writes (prod
 lead). `files_edited` high and `user_correction` high → the person reviews code (developer). Ambiguous
 → ask ONE role question, then the two follow-ups for that role only if the evidence is still thin.
 
-**v2: detection reads the activity shape too**, and must, because a contributor with no transcripts
+**Detection reads the activity shape too**, and must, because a contributor with no transcripts
 has no dialogue acts at all. `activities` whose evidence is tickets with no commits · `workflows`
-whose steps are all review and hand-off · `collaborators` with `roles_observed: reviewer` → the
+whose steps are all review and hand-off · `perspective/users` with `roles_observed: reviewer` → the
 person directs and reviews. Commits across many repos with few tickets → the person builds. The bank
 below is asked only when BOTH the act mix and the activity shape leave it open. Whatever the answer,
 `perspectives.role` is still written from behaviour — an answer here is evidence for it, not a

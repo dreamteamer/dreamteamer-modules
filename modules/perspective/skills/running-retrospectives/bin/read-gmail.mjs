@@ -7,17 +7,17 @@
 //        [--as <google-account-email>] [--since YYYY-MM-DD] [--limit N] [--concurrency 6]
 //        [--data-root d] [--dry-run]
 //
-// ⚠ WHY "WROTE IN" AND NOT "RECEIVED". A mailbox is mostly other people's noise — newsletters,
+// WHY "WROTE IN" AND NOT "RECEIVED". A mailbox is mostly other people's noise — newsletters,
 // notifications, threads one was copied on and never read. The evidence of a person's WORK is what
 // they sent, so the query is `from:<contributor>` and a thread with none of their messages is
 // dropped even if fetched. Reading is invisible here, exactly as it is in Drive.
 //
-// ⚠ WHAT IT KEEPS AND WHAT IT REFUSES TO. Subject, participants (as handles), counts, dates, the
+// WHAT IT KEEPS AND WHAT IT REFUSES TO. Subject, participants (as handles), counts, dates, the
 // thread URL. NO bodies, NO snippets, NO attachments, NO labels — `lib/gmail.mjs` says why. The
 // reader mints its token from the credential the google-workspace tool already holds (`lib/google-auth.mjs`):
 // no new grant, no browser, no broad permission. A missing credential is a `sources` record with
 // `reach: unavailable`, not an error.
-import { DATA, isoWeek, isoWeekRange, slug } from '../lib/vault.mjs';
+import { DATA, isoWeek, isoWeekRange, slug } from '../lib/workspace.mjs';
 import { recordPath, writeRecord, readRecord, listRecords, contributorOf, writeSource, collectionDir } from '../lib/records.mjs';
 import { accessTokenFor, googleAccounts, gmail } from '../lib/google-auth.mjs';
 import { summarizeThread } from '../lib/gmail.mjs';
@@ -36,8 +36,7 @@ const base = retrospective.split('/').pop();
 const dataRoot = opt('data-root', DATA);
 // Every evidence and model id is keyed by the CONTRIBUTOR, not by the run — a re-run must update
 // this person's records rather than write a parallel set beside them. Resolved LAZILY, on first
-// use: reading it eagerly made a script that should exit 2 on a bad argument crash on a missing
-// session instead, and write nothing was the contract it broke (read-asana, 2026-09-09).
+// use, so a bad argument exits 2 with a usage line before any session is read.
 let _who = null;
 const who = () => (_who ??= contributorOf(retrospective, dataRoot));
 const contributor = opt('contributor').toLowerCase();
@@ -152,8 +151,8 @@ if (!dry) {
 		try { summary = readRecord(recordPath('activity-weeks', wid, 'activity-week', dataRoot)).fields.summary || undefined; } catch { /* first write */ }
 		const { start, end } = isoWeekRange(period);
 		writeRecord(recordPath('activity-weeks', wid, 'activity-week', dataRoot), {
-			// `retrospective` is REQUIRED on all nineteen collections since 0.2.0; a week written
-			// without it fails `check` the moment it lands.
+			// `retrospective` is REQUIRED on every collection; a week written without it
+			// fails `check` the moment it lands.
 			retrospective,
 		contributor: who(),
 			source: sourceRef, period, start_date: start, end_date: end,

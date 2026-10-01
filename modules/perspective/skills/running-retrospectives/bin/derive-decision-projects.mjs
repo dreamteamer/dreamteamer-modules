@@ -9,19 +9,19 @@
 // "what did we decide about the engine this quarter" had no query, and a timeline of decisions had
 // no lane to draw them in.
 //
-// ⚠ THE JOIN IS THROUGH THE EVIDENCE, NEVER THROUGH THE DATE. An activity cites its sessions, its
+// THE JOIN IS THROUGH THE EVIDENCE, NEVER THROUGH THE DATE. An activity cites its sessions, its
 // commit SHAs, its threads and its tickets, and it already carries a project; a decision cites the
 // same artefacts. So a decision's project is the project of the activity that cites the same thing —
 // one hop, entirely mechanical. What it is NOT is "the project that was active that week": several
-// run in parallel in every week measured here, and a date is not a join. A decision whose evidence
+// routinely run in parallel in one week, and a date is not a join. A decision whose evidence
 // no activity cites is left EMPTY and counted, and the count is the honest measure of how much of
 // the decision record sits outside the reconstructed work.
 //
-// ⚠ ADDITIVE. A project set by hand outranks a derived one and is never overwritten without
+// ADDITIVE. A project set by hand outranks a derived one and is never overwritten without
 // `--force` — the same rule `derive-collaborators` learned when a replacing write would have deleted
 // 108 hand-attached refs.
 import path from 'node:path';
-import { DATA } from '../lib/vault.mjs';
+import { DATA } from '../lib/workspace.mjs';
 import { listRecords, readRecord, writeRecord, contributorOf, collectionDir } from '../lib/records.mjs';
 
 const argv = process.argv.slice(2);
@@ -36,8 +36,7 @@ const base = retrospective.split('/').pop();
 const dataRoot = opt('data-root', DATA);
 // Every evidence and model id is keyed by the CONTRIBUTOR, not by the run — a re-run must update
 // this person's records rather than write a parallel set beside them. Resolved LAZILY, on first
-// use: reading it eagerly made a script that should exit 2 on a bad argument crash on a missing
-// session instead, and "writes nothing" was the contract it broke (read-asana, 2026-09-09).
+// use, so a bad argument exits 2 with a usage line before any session is read.
 let _who = null;
 const who = () => (_who ??= contributorOf(retrospective, dataRoot));
 const dryRun = flag('dry-run');

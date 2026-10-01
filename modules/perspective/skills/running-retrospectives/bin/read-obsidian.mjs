@@ -1,31 +1,31 @@
 #!/usr/bin/env node
-// read-obsidian — a personal Obsidian vault as evidence. Counted, never judged, and never quoted.
+// read-obsidian — a personal Obsidian notes folder as evidence. Counted, never judged, and never quoted.
 //
-//   node read-obsidian.mjs --retrospective perspective/retrospective-sessions/<id> --vault <path>
+//   node read-obsidian.mjs --retrospective perspective/retrospective-sessions/<id> --notes <path>
 //        [--label <name>] [--since YYYY-MM-DD] [--data-root d] [--dry-run] [--force]
 //
-// ⚠ WHY THIS SOURCE IS DIFFERENT FROM EVERY OTHER ONE, and the rule that follows from it: an
-// Obsidian vault is a person's THINKING, not their output. A repo holds what they shipped, a ticket
-// board what they were assigned, a mailbox what they sent someone else — all of it already seen by
-// somebody. A private notes vault is the only source here that was never addressed to anyone, and it
-// is where the half-formed, the wrong and the abandoned live.
+// WHY THIS SOURCE IS DIFFERENT FROM EVERY OTHER ONE, and the rule that follows from it: a notes
+// folder is a person's THINKING, not their output. A repo holds what they shipped, a ticket board
+// what they were assigned, a mailbox what they sent someone else — all of it already seen by
+// somebody. Private notes are the only source here that was never addressed to anyone, and they are
+// where the half-formed, the wrong and the abandoned live.
 //
 // So: TITLES, TAGS, DATES, LINK COUNTS AND WORD COUNTS. Never a body, never a heading, never an
 // excerpt, never a first line as a "summary". The same discipline `read-gmail` applies to mail, for
 // a stronger reason — and unlike mail there is not even a counterpart to justify a subject line, so
 // the title is kept only because a filename is how the person themselves finds the note.
 //
-// ⚠ AND IT NEVER READS THE `.obsidian` FOLDER. That is configuration, plugin state and, in some
-// vaults, credentials for sync services. It is skipped by the same dot-prefix rule Obsidian itself
-// uses, and so is every other dot-directory in the vault.
+// AND IT NEVER READS THE `.obsidian` FOLDER. That is configuration, plugin state and, in some
+// setups, credentials for sync services. It is skipped by the same dot-prefix rule Obsidian itself
+// uses, and so is every other dot-directory in the folder.
 //
 // What it writes: one `deliverables` record per note (kind `note`, source_kind `obsidian`) and one
-// `activity-weeks` per ISO week, so a notes vault lands on the same timeline as the commits and the
+// `activity-weeks` per ISO week, so a notes folder lands on the same timeline as the commits and the
 // mail and can be compared with them — which is the question this source exists to answer: how much
 // of the thinking happened somewhere no other source can see.
 import fs from 'node:fs';
 import path from 'node:path';
-import { DATA, templatize, slug, isoWeek, isoWeekRange } from '../lib/vault.mjs';
+import { DATA, templatize, slug, isoWeek, isoWeekRange } from '../lib/workspace.mjs';
 import { recordPath, writeRecord, readRecord, contributorOf, writeSource } from '../lib/records.mjs';
 
 const READER = 'read-obsidian@1';
@@ -38,21 +38,22 @@ const base = retrospectiveRef.split('/').pop();
 const dataRoot = opt('data-root', DATA);
 // Every evidence and model id is keyed by the CONTRIBUTOR, not by the run — a re-run must update
 // this person's records rather than write a parallel set beside them. Resolved LAZILY, on first
-// use: reading it eagerly made a script that should exit 2 on a bad argument crash on a missing
-// session instead, and "writes nothing" was the contract it broke (read-asana, 2026-09-09).
+// use, so a bad argument exits 2 with a usage line before any session is read.
 let _who = null;
 const who = () => (_who ??= contributorOf(retrospectiveRef, dataRoot));
 const since = opt('since');
 const dryRun = flag('dry-run');
 
-const vault = path.resolve(opt('vault'));
-if (!opt('vault')) { console.error('usage: --vault <path to an Obsidian vault> is required'); process.exit(2); }
+// `--notes` is the documented spelling; Obsidian's own word for the folder is accepted as a flag too.
+const notesArg = opt('notes') || opt('vault');
+const vault = path.resolve(notesArg);
+if (!notesArg) { console.error('usage: --notes <path to an Obsidian notes folder> is required'); process.exit(2); }
 const label = opt('label', path.basename(vault));
 const sourceId = `${who()}/obsidian--${slug(label)}`;
 const sourceRef = `perspective/sources/${sourceId}`;
 
 /** Every markdown note, skipping EVERY dot-directory — `.obsidian` first, but also `.git`, `.trash`
- *  and whatever else a vault has accumulated. This is the same rule Obsidian applies, so what the
+ *  and whatever else the folder has accumulated. This is the same rule Obsidian applies, so what the
  *  reader sees is what the person sees. */
 function notes(dir, out = []) {
 	let entries;
@@ -66,7 +67,7 @@ function notes(dir, out = []) {
 	return out;
 }
 
-/** Frontmatter tags and inline `#tags`, and the counts. ⚠ Reads the file and keeps NO prose: the
+/** Frontmatter tags and inline `#tags`, and the counts. Reads the file and keeps NO prose: the
  *  text goes out of scope with this function, and only numbers and tags come back. */
 function measure(file) {
 	let text = '';
@@ -96,7 +97,7 @@ let first = '', last = '', words = 0, links = 0;
 for (const file of files) {
 	let stat;
 	try { stat = fs.statSync(file); } catch { unreadable++; continue; }
-	// ⚠ MTIME IS ALL A VAULT GIVES. A note carries no authored-on and no last-modified-by — there is
+	// MTIME IS ALL A NOTES FOLDER GIVES. A note carries no authored-on and no last-modified-by — there is
 	// only one author and the filesystem is the only clock. So `last_touched_on` is honest and
 	// `created_on` is the filesystem's birthtime where it has one, which on some filesystems is the
 	// mtime again; a `created_on` equal to `last_touched_on` means "the disk could not say", not
@@ -164,8 +165,8 @@ if (!dryRun) {
 		let summary;
 		try { summary = readRecord(recordPath('activity-weeks', wid, 'activity-week', dataRoot)).fields.summary || undefined; } catch { /* first write */ }
 		writeRecord(recordPath('activity-weeks', wid, 'activity-week', dataRoot), {
-			// `retrospective` is REQUIRED on all nineteen collections since 0.2.0; a week written
-			// without it fails `check` the moment it lands.
+			// `retrospective` is REQUIRED on every collection; a week written without it
+			// fails `check` the moment it lands.
 			retrospective: retrospectiveRef,
 		contributor: who(),
 			source: sourceRef,

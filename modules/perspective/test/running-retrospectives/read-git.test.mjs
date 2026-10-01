@@ -30,7 +30,7 @@ function seedSession(data) {
 	return data;
 }
 
-/** git with the operator's own global config kept out of it — a fixture must not read ~/.gitconfig. */
+/** git with the developer's own global config kept out of it — a fixture must not read ~/.gitconfig. */
 const git = (dir, args, when) =>
 	execFileSync('git', ['-c', 'user.name=Fixture', '-c', 'user.email=f@x.test', '-C', dir, ...args], {
 		encoding: 'utf8',
@@ -114,7 +114,7 @@ test('a repo with no commits is skipped, counted, and does not stop the repos af
 // week nothing was written. W39 below is exactly that commit and must read lines_new 0.
 const V2 = 'perspective/retrospective-sessions/2026-09-07--fx';
 
-/** git as a NAMED author, with the operator's own global config kept out of it. */
+/** git as a NAMED author, with the developer's own global config kept out of it. */
 const gitAs = (dir, who, args, when) =>
 	execFileSync('git', ['-c', `user.name=${who.name}`, '-c', `user.email=${who.email}`, '-C', dir, ...args], {
 		encoding: 'utf8',
@@ -243,8 +243,8 @@ test('v2 writes one collaborator per distinct git identity, and a second run add
 	fs.rmSync(tmp, { recursive: true, force: true });
 });
 
-// Regression, found on the first real run over 51 repos: a bridging identity arriving AFTER two groups
-// exist left one person in two records — the operator himself, under a work email and a personal one.
+// Regression: a bridging identity arriving AFTER two groups
+// exist left one person in two records — Sam Diaz, under a work email and a personal one.
 // A<e1>, then B<e2>, then B<e1>: the third author matches A by email and B by name, and without a
 // transitive union A and B never meet. check-records catches the result; the reader must not produce it.
 test('identities that meet only through a third one still become ONE collaborator', () => {
@@ -333,9 +333,9 @@ test('--repo-path writes the sources record its weeks and collaborators point at
 	assert.equal(week.source, 'perspective/sources/fx/git-repo--acme-portal');
 });
 
-// The contributor gate. The first real run wrote 120 collaborator records over an inventory that
-// includes cloned third-party repos; about a hundred were open-source contributors to a vendored
-// theme the operator had never opened. Sharing a checkout is not collaborating.
+// The contributor gate. Without it, an inventory that includes cloned third-party repos yields a
+// collaborator record for every open-source contributor to a vendored theme the contributor never
+// opened. Sharing a checkout is not collaborating.
 test('a collaborator is only kept when they share a repo with the contributor', () => {
 	const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'perspective-gate-'));
 	const data = seedSession(path.join(tmp, 'data'));
@@ -351,7 +351,7 @@ test('a collaborator is only kept when they share a repo with the contributor', 
 		}
 		writeRecord(recordPath('sources', `${SLUG}/git-repo--${name}`, 'source', data), { retrospective: SESSION, kind: 'git-repo', label: name, reach: 'available', location: repo });
 	};
-	// one repo the contributor works in with a real teammate, one vendored clone he never touched
+	// one repo the contributor works in with a real teammate, one vendored clone they never touched
 	mk('our-api', [['Me', 'me@work.test', 'ours one'], ['Team Mate', 'mate@work.test', 'ours two']]);
 	mk('vendored-theme', [['Stranger One', 's1@oss.test', 'theirs one'], ['Stranger Two', 's2@oss.test', 'theirs two']]);
 
@@ -400,7 +400,7 @@ test('a collaborator absent from the whole window is pruned, but only when the s
 
 	const stale = { retrospective: SESSION, name: 'Long Gone', handles: ['gone@old.test'], first_seen: '2019-01-01', last_seen: '2019-06-01', author: 'scripts/read-git@2' };
 	writeRecord(recordPath('users', 'fx/long-gone', 'user', data), stale);
-	writeRecord(recordPath('users', 'fx/hand-written', 'user', data), { ...stale, name: 'Hand Written', handles: ['hand@old.test'], author: 'the operator' });
+	writeRecord(recordPath('users', 'fx/hand-written', 'user', data), { ...stale, name: 'Hand Written', handles: ['hand@old.test'], author: 'agents/claude-code' });
 
 	const out = execFileSync('node', [BIN, '--retrospective', SESSION, '--data-root', data, '--since', '2026-01-01', '--contributor', 'me@work.test'], { encoding: 'utf8' });
 	assert.match(out, /gated out 1 \(deleted 1\)/);
@@ -437,11 +437,11 @@ test('the contributor\'s other declared git identities are adopted, not counted 
 
 	const out = execFileSync('node', [BIN, '--retrospective', SESSION, '--data-root', data, '--since', '2026-01-01', '--contributor', 'me@work.test', '--home', fakeHome], { encoding: 'utf8' });
 	assert.match(out, /own identities adopted 1/);
-	assert.match(out, /contributor commits 3/, 'his own three commits, across both addresses');
+	assert.match(out, /contributor commits 3/, 'their own three commits, across both addresses');
 	const kept = listRecords(path.join(data, 'perspective', 'users')).map((f) => readRecord(f).fields);
 	assert.deepEqual(kept.map((f) => f.name).sort(), ['Me', 'Real Teammate']);
 	const me = kept.find((f) => f.name === 'Me');
-	assert.ok(me.handles.includes('me@side.test'), 'the second address is now one of his handles');
+	assert.ok(me.handles.includes('me@side.test'), 'the second address is now one of their handles');
 });
 
 test('a declared-identity set that does not contain the contributor is adopted by nobody', () => {

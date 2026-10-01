@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { isoWeek, isoWeekRange } from '../../skills/running-retrospectives/lib/vault.mjs';
+import { isoWeek, isoWeekRange } from '../../skills/running-retrospectives/lib/workspace.mjs';
 import { recordPath, writeRecord, readRecord } from '../../skills/running-retrospectives/lib/records.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));

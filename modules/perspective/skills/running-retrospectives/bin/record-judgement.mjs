@@ -6,18 +6,14 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import yaml from 'js-yaml';
-import { DATA, VAULT } from '../lib/vault.mjs';
+import { DATA, WORKSPACE_ROOT } from '../lib/workspace.mjs';
 import { recordPath, readRecord, writeRecord } from '../lib/records.mjs';
 
-// ⚠ THE NAME WHITELIST IS HALF A GUARD, AND THE MISSING HALF COST 57 RECORDS.
-// Found 2026-09-07 by a peer session reading `npm run check`: eight judging workers, following a
-// prompt that asked for an outcome, wrote a PROSE SENTENCE into `outcome` — a closed six-value
-// enum. Every write was accepted, because this script only ever asked "is this key judged?" and
-// never "is this value legal?". `dt check` caught them afterwards, which is exactly the failure
-// this script exists to make impossible: a gate that lets the bad write land and relies on a later
-// pass to notice is not a gate. Values are now validated against the COMPILED descriptor, so the
-// schema stays the single source of truth and this can never drift from it.
-const DESCRIPTOR = path.join(VAULT, '.dreamteamer', 'collections', 'perspective', 'conversations.collection.yaml');
+// THE NAME WHITELIST IS HALF A GUARD. Asking only "is this key judged?" lets a judging worker write a
+// PROSE SENTENCE into `outcome`, a closed enum, and a gate that lets the bad write land and relies
+// on a later pass to notice is not a gate. So values are validated against the COMPILED descriptor
+// too, which keeps the schema the single source of truth.
+const DESCRIPTOR = path.join(WORKSPACE_ROOT, '.dreamteamer', 'collections', 'perspective', 'conversations.collection.yaml');
 const PROPS = (() => {
 	try { return yaml.load(fs.readFileSync(DESCRIPTOR, 'utf8'))?.schema?.properties ?? {}; }
 	catch { return {}; }   // an uncompiled runtime disables value checking rather than blocking a write
@@ -44,9 +40,8 @@ function valueProblems(payload) {
 	return bad;
 }
 
-// ⚠ THIS SET AND THE DESCRIPTOR MUST AGREE. A field the descriptor calls JUDGED but this set omits
-// is unwritable — it will simply stay empty forever while every instrument reports success. Four of
-// the four-layer metrics fields sat in exactly that state until 2026-09-08.
+// THIS SET AND THE DESCRIPTOR MUST AGREE. A field the descriptor calls JUDGED but this set omits
+// is unwritable — it will simply stay empty forever while every instrument reports success.
 // Two descriptor-judged fields are deliberately still absent, for the reason their own descriptions
 // give: `oneshot_prompt_words` is a MEASUREMENT (someone actually reran the artifact in one shot),
 // not something a reader of a digest may estimate; and `skill_tokens_active` has no honest source in
@@ -72,13 +67,11 @@ if (!fs.existsSync(file)) { console.error(`no record at ${file}`); process.exit(
 const { fields, body } = readRecord(file);
 const nextBody = opt('body-file') ? fs.readFileSync(opt('body-file'), 'utf8') : body;
 
-// ⚠ THIS WRITE FLIPS `depth` TO SUMMARIZED, and `check-records` requires a summarized conversation's
+// THIS WRITE FLIPS `depth` TO SUMMARIZED, and `check-records` requires a summarized conversation's
 // body to open with `# <title>` and carry a `## recap (no PII)` section — the paragraph that may be
 // shown outside the org. So a judgement landed with no --body-file, or with a body missing either
-// heading, leaves a record that FAILS the vault's own check the moment anyone runs it.
-// Measured 2026-09-08: one agent in a 785-record judging pass called this with no body at all. The
-// gate accepted it and `npm run check` found it afterwards — which is precisely the shape of failure
-// this script exists to make impossible. A gate that lets the bad write land is not a gate.
+// heading, would leave a record that FAILS the workspace's own check the moment anyone runs it. So
+// the body is checked here, before the write. A gate that lets the bad write land is not a gate.
 const bodyProblems = [];
 if (!/^\s*#\s+\S/.test(nextBody)) bodyProblems.push('the body must open with `# <title>` — the same string as the `title` field, so it stands alone when the frontmatter is stripped');
 if (!/^##\s+recap \(no PII\)\s*$/m.test(nextBody)) bodyProblems.push('the body must carry a `## recap (no PII)` section — three to six sentences with no person, company, repo, path, URL, ticket or identifying figure. Anything identifying goes under a later `## detail`');

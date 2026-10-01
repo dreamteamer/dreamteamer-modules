@@ -2,7 +2,7 @@
 # around topics into the thing a person would call 'that task'. Rendered as a gantt (x started, y
 # group-by). Commits are SHAs as text — git holds the record, this holds the pointer.
 #
-# ⚠ THE OBSERVED HALF OF `activities`, IN THE SAME SHAPE AND IN A SEPARATE STORE — the argument is
+# THE OBSERVED HALF OF `activities`, IN THE SAME SHAPE AND IN A SEPARATE STORE — the argument is
 # written out once, on `perspective/users.real`. Two shapes are deliberately NOT copied from the real
 # collection and both are the same distinction: `kind: work|gate` (a gate is something a person
 # DECIDES to judge — evidence never contains one) and `starts`/`ends` (a plan is written ahead; these
@@ -27,21 +27,14 @@ schema:
     contributor: { type: string, pattern: '^[a-z0-9-]+$', description: 'WHOSE this is, as a slug — and the FIRST SEGMENT OF THE ID. That is what makes a second retrospective UPDATE this record instead of writing one beside it. A plain slug rather than a reference, because an id segment cannot be one; the person''s own observed-world record is perspective/users/<contributor>/<their-name-slug>.' }
     name: { type: string, description: What the work was, as a person would name the task. }
     # ── WHOSE ────────────────────────────────────────────────────────────────────────────────────
-    # ⚠ THE ORG AXIS, AND IT IS ONE ID SEGMENT RATHER THAN A SECOND COPY OF THE MODEL. A run used to BE a
-    # person: `retrospective` keyed every record, so three contributors meant three parallel models
-    # in three workspaces, each one's collaborators strangers to the others, and no query that could
-    # ask "who else worked on this". Operator, 2026-09-08: "support multiple collaborators, minimal
-    # data structure, don't multiply".
+    # THE ORG AXIS IS ONE ID SEGMENT, NOT A SECOND COPY OF THE MODEL. The person is the FIRST SEGMENT
+    # OF THE ID, so several contributors share one model and "who else worked on this" is one query.
+    # `contributor` carries it as a bare slug, because an id segment cannot be a reference; the
+    # person's own record is `perspective/users/<contributor>/<their-name-slug>` — one hop, derived,
+    # never stored twice. `retrospective` says which RUN produced this, a different question.
     #
-    # So the person is the FIRST SEGMENT OF THE ID, and `contributor` above carries it as a bare slug.
-    # It WAS a `perspective/users` reference, for one day: an id segment cannot be one, and the
-    # slug pattern on the field is what refuses it now rather than a comment. The person's own record
-    # is `perspective/users/<contributor>/<their-name-slug>` — one hop, derived, never stored
-    # twice. `retrospective` still says which RUN produced this, a different question that stays.
-    #
-    # Empty means the run never said, not "everyone" — and a record whose contributor cannot be
-    # determined is not written, because there would be no id to write it under.
-    # ⚠ `started`/`ended`, NOT `starts`/`ends` — see the same note on `perspective/projects`. A plan rung is
+    # A record whose contributor cannot be determined is not written: there is no id to write it under.
+    # `started`/`ended`, NOT `starts`/`ends` — see the same note on `perspective/projects`. A plan rung is
     # scheduled; this is the window evidence exists in.
     started: { type: string, format: date, description: 'The gantt''s x. First evidence date — past tense on purpose; `activities.starts` is a plan.' }
     ended: { type: string, format: date, description: Last evidence date. Absent while ongoing. }
@@ -72,7 +65,7 @@ schema:
       type: array
       items: { type: string, x-reference: perspective/topics }
       x-inverse: activities
-    # ⚠ `collaborators`, NOT `seats` — the real collection's word for the same slot. A SEAT is
+    # `collaborators`, NOT `seats` — the real collection's word for the same slot. A SEAT is
     # allocated by whoever wrote the plan; a collaborator is somebody the evidence put here. Same
     # target, same cardinality, different verb, and the verb is the fact.
     collaborators:
@@ -84,10 +77,8 @@ schema:
       type: string
       description: >-
         The `key` of the cluster candidate this activity was named from — `<repo>--<YYYY-MM-DD>`, one
-        short string. ⚠ THIS IS HOW EVIDENCE IS ATTACHED, and it exists because the alternative
-        failed measurably: when the naming pass was asked to copy session refs by hand, 615 of 1,068
-        conversations were silently dropped — one candidate held 257 sessions and no model copies 257
-        refs onto a command line. So the model names and BOUNDS the work; `bin/attach-evidence.mjs`
+        short string. THIS IS HOW EVIDENCE IS ATTACHED: a candidate can hold hundreds of sessions, and
+        no model reliably copies that many refs onto a command line. So the model names and BOUNDS the work; `bin/attach-evidence.mjs`
         assigns the candidate's sessions, commits, branches and tickets deterministically, splitting
         by date window when one candidate produced several activities.
         Absent on a hand-written activity, which keeps whatever refs a person put on it.
@@ -103,8 +94,8 @@ schema:
       items: { type: string, x-reference: perspective/tickets }
       x-inverse: activities
     # A deliverable is the natural evidence for a document-shaped contributor's activity — the thing
-    # that came OUT of the work. Added 2026-09-08 with the drive reader: without it, an activity
-    # reconstructed from 53 specs could cite nothing at all and read as an unevidenced assertion.
+    # that came OUT of the work. Without it, an activity reconstructed from documents could cite
+    # nothing at all and would read as an unevidenced assertion.
     deliverables:
       type: array
       items: { type: string, x-reference: perspective/deliverables }
@@ -115,7 +106,7 @@ schema:
       items: { type: string, x-reference: perspective/threads }
       x-inverse: activities
       description: The mail threads this work ran through — the correspondence around it, cited as handles-and-counts records, never as mail.
-    # The calendar half of a piece of work. ⚠ A REFERENCE INTO A PEER COLLECTION, and no `x-inverse`:
+    # The calendar half of a piece of work. A REFERENCE INTO A PEER COLLECTION, and no `x-inverse`:
     # a peer excuses a reference, never a mirror — stamping `meetings.activities` onto another
     # module's collection is what makes an extraction uncompilable alone. So the edge is one-way and
     # the meeting record never learns about the activity, which is the correct trade: a workspace
@@ -134,17 +125,17 @@ schema:
     meeting_minutes: { type: integer, description: 'ROLLED UP — the scheduled minutes of this activity''s meetings, summed from the reader''s own parking lot. Absent when none of them carried an end time.' }
     session_count: { type: integer, description: 'ROLLED UP — how many conversations this activity rests on. Read beside `commit_count`: an activity with commits and no sessions was reconstructed from git alone, and its `active_minutes` being 0 is a fact about the evidence, not about the work.' }
     tokens_input: { type: integer, description: ROLLED UP from the sessions — input tokens this piece of work cost. }
-    tokens_output: { type: integer, description: "ROLLED UP from the sessions — output tokens. ⚠ The operator's own ranking: this matters LESS than turns. It is fine if it burns a billion tokens once and out comes the code; the expensive failure is having to talk to it a thousand times." }
+    tokens_output: { type: integer, description: "ROLLED UP from the sessions — output tokens. This matters LESS than turns: burning a billion tokens once is fine if the code comes out; having to talk to the agent a thousand times is the expensive failure." }
     tokens_cache_read: { type: integer, description: ROLLED UP — cached input tokens re-read across the sessions. Nearly the whole input bill on agentic work. }
     tokens_cache_write: { type: integer, description: ROLLED UP — tokens spent writing context into the cache. }
     tokens_total: { type: integer, description: "ROLLED UP — what this piece of work actually burned, all four components. The number to quote." }
-    input_words: { type: integer, description: ROLLED UP — words the operator had to type across this activity's sessions. The denominator of the productivity ratio. }
+    input_words: { type: integer, description: ROLLED UP — words the person had to type across this activity's sessions. The denominator of the productivity ratio. }
     output_words: { type: integer, description: ROLLED UP — words of assistant output across the sessions. Meaningless without `correction_ratio` beside it, which is why that is rolled up too. }
-    correction_ratio: { type: number, description: "ROLLED UP — this activity's corrected words over its produced words, computed from the SUMS rather than averaged across sessions (averaging a ratio weights a two-turn session like a two-hundred-turn one). ⚠ The direction is the point: it should FALL as the work matures." }
+    correction_ratio: { type: number, description: "ROLLED UP — this activity's corrected words over its produced words, computed from the SUMS rather than averaged across sessions (averaging a ratio weights a two-turn session like a two-hundred-turn one). The direction is the point: it should FALL as the work matures." }
     tool_calls: { type: integer, description: ROLLED UP from the sessions. }
     files_edited: { type: integer, description: ROLLED UP from the sessions — summed, so a file touched in two sessions counts twice. A volume signal, not a distinct-file count. }
     corrections: { type: integer, description: ROLLED UP — `user_correction` turns summed across the sessions. The expensive class of turn, and the one that says a skill is missing or the work arrived broken from an earlier stage. }
-    interruptions: { type: integer, description: ROLLED UP — times the operator stopped the agent mid-flight during this piece of work. }
+    interruptions: { type: integer, description: ROLLED UP — times the person stopped the agent mid-flight during this piece of work. }
     content: { type: string, format: markdown, x-body: true }
     author:
       type: string
@@ -165,5 +156,5 @@ schema:
       default: normal
       description: How much to trust this record. When low, the reason goes in creation_context.
 list_fields: [name, started, ended, status, lead, collaborative, real]
-icon: pulse   # not `milestone` — an observed activity is a TRACE of work; `plan/activities` owns the plan rung
+icon: pulse   # not `milestone` — an observed activity is a TRACE of work; the authored `activities` owns the plan rung
 order: 80   # nav position — the model it reconstructed; the pipeline order, ten apart so one can be inserted without renumbering

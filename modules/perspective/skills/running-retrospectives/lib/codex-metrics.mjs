@@ -1,7 +1,7 @@
 // The deterministic pass over a CODEX rollout — the same contract `lib/metrics.mjs` produces for a
 // Claude transcript, computed from a different wire format. COUNTED, never judged.
 //
-// ⚠ WHY A SECOND FILE AND NOT A BRANCH IN metrics.mjs: the two formats share no line shape. A Claude
+// WHY A SECOND FILE AND NOT A BRANCH IN metrics.mjs: the two formats share no line shape. A Claude
 // transcript is one object per message with `type: user|assistant` and a `message.content` array; a
 // codex rollout is one object per EVENT — `{timestamp, ordinal, type, payload}` — where a message is
 // a `response_item` whose payload carries the role, a tool call is a `custom_tool_call`, and the
@@ -23,7 +23,7 @@ export const CODEX_INSPECTOR_VERSION = 'codex-metrics/1';
 
 /** The same idle rule the Claude reader uses — a gap over ten minutes is not work, it is a break. */
 const IDLE_MS = 10 * 60_000;
-/** Absolute paths inside a tool's arguments. ⚠ A HEURISTIC, and the honest name for it: codex tools
+/** Absolute paths inside a tool's arguments. A HEURISTIC, and the honest name for it: codex tools
  *  are free-form (`exec` takes a line of JavaScript), so there is no structured file argument to
  *  read. This counts distinct absolute paths mentioned in tool input — a volume signal, never a
  *  claim that each was edited. `files_touched` is what the record calls it, not `files_edited`. */
@@ -31,12 +31,11 @@ const ABS_PATH = /\/(?:Users|home|opt|var|tmp|srv)\/[A-Za-z0-9._~@+-]+(?:\/[A-Za
 /** Conservative: only what the harness itself prints when a call did not run. */
 const TOOL_ERROR = /^(Script failed|Error:|error:)|\bScript error:/m;
 /**
- * ⚠ MOST CODEX "USER" MESSAGES ARE NOT THE USER. The desktop app injects its own context as messages
- * with `role: user`, each opening with a tag — measured over the real corpus: 398
- * `<realtime_delegation>`, 121 `<codex_delegation>`, 40 `<recommended_plugins>`, 25
- * `<environment_context>`, 12 `<heartbeat>`. 596 envelopes against a handful of typed lines, and 46
- * of 47 sessions OPENED with one, so counting them made every session look like a long human brief
- * and titled all fourteen new activity candidates `<recommended_plugins>`.
+ * MOST CODEX "USER" MESSAGES ARE NOT THE USER. The desktop app injects its own context as messages
+ * with `role: user`, each opening with a tag — `<realtime_delegation>`, `<codex_delegation>`,
+ * `<recommended_plugins>`, `<environment_context>`, `<heartbeat>`. They far outnumber the typed lines
+ * and most sessions OPEN with one, so counting them would make every session look like a long human
+ * brief and title its activity candidates `<recommended_plugins>`.
  *
  * The Claude reader has the same distinction (`classifyUserLine`'s `envelope` kind); this is the
  * codex spelling of it. An envelope is counted — as an envelope — and is never a turn, never words,
@@ -54,12 +53,11 @@ const textOf = (content) => {
  * The session id a rollout file belongs to, read from its first `session_meta`, or '' when it has
  * none. Cheap: it stops at the first line that answers.
  *
- * ⚠ A CODEX SESSION SPANS SEVERAL FILES. Continuing a thread writes a NEW rollout whose
- * `session_meta` repeats the original `session_id` and adds `parent_thread_id`. Measured on the
- * first read: 53 rollouts, 32 sessions — and a reader keyed one-record-per-FILE silently dropped
- * every continuation, because the second file's record landed on the first's path and was skipped as
- * already current. Its turns, tokens and tool calls went nowhere, and the weekly counters counted
- * 53 sessions that did not exist.
+ * A CODEX SESSION SPANS SEVERAL FILES. Continuing a thread writes a NEW rollout whose
+ * `session_meta` repeats the original `session_id` and adds `parent_thread_id`. A reader keyed
+ * one-record-per-FILE would silently drop every continuation — the second file's record lands on the
+ * first's path and is skipped as already current — and the weekly counters would count sessions that
+ * do not exist.
  */
 export async function sessionIdOf(file) {
 	const rl = readline.createInterface({ input: fs.createReadStream(file), crlfDelay: Infinity });
@@ -77,7 +75,7 @@ export async function sessionIdOf(file) {
 /**
  * Every rollout of ONE session → one conversation record's mechanical fields. Pass the files in the
  * order they were written; the counters are additive and the timestamps are min/max, so order only
- * matters for `title` (the first thing the operator actually typed).
+ * matters for `title` (the first thing the person actually typed).
  *
  * Returns null when no file in the group holds a `session_meta` — that is not a session, and
  * inventing an id for it would put a record in the collection nothing can ever join back to.
@@ -119,9 +117,9 @@ export async function computeCodexMetrics(files, { account = 'codex' } = {}) {
 			continue;
 		}
 		if (d.type === 'turn_context') { if (p.model) s.models.add(p.model); continue; }
-		// ⚠ THE OPERATOR SPOKE. A realtime voice session carries no typed user message at all — the
-		// human half is `transcript_segment` with `role: user`, and there were 348 of them against a
-		// single plain-text typed opener across the whole corpus. Segments are FRAGMENTS of one
+		// THE PERSON SPOKE. A realtime voice session carries no typed user message at all — the
+		// human half is `transcript_segment` with `role: user`, often hundreds of them against a
+		// single typed opener. Segments are FRAGMENTS of one
 		// utterance, so a contiguous RUN of them is one turn; counting each would inflate a two-minute
 		// exchange into forty turns.
 		if (d.type === 'realtime_item' && p.type === 'transcript_segment') {
@@ -136,14 +134,14 @@ export async function computeCodexMetrics(files, { account = 'codex' } = {}) {
 			else s.outputWords += words(text);
 			continue;
 		}
-		// ⚠ `total_token_usage` is cumulative WITHIN a rollout and restarts in the next one, so the
+		// `total_token_usage` is cumulative WITHIN a rollout and restarts in the next one, so the
 		// session's bill is the last figure of each file added up — taking the last of the group would
 		// report only the final sitting.
 		if (d.type === 'event_msg' && p.type === 'token_count') { if (p.info?.total_token_usage) fileTok = p.info.total_token_usage; continue; }
 		if (d.type !== 'response_item') continue;
 
 		if (p.type === 'message') {
-			// ⚠ `developer` is the harness's own context injection, not a person. Counting it as a user
+			// `developer` is the harness's own context injection, not a person. Counting it as a user
 			// turn would make every session look like it began with a long human brief.
 			const body = textOf(p.content);
 			if (p.role === 'user') {

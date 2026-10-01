@@ -1,4 +1,3 @@
-// Ported verbatim from an earlier conversation-analyzer module (decision 310). Edit here; the original is history.
 // Reading a Claude Code transcript, and the handful of facts about its format that everything else
 // here depends on. Format notes live in the skill's references/transcript-format.md.
 //
@@ -30,7 +29,7 @@ export function textOf(content) {
 }
 
 /**
- * ⚠ Usually EMPTY even when thinking happened. Newer models store the thinking block with only its
+ * Usually EMPTY even when thinking happened. Newer models store the thinking block with only its
  * `signature` and a blank `thinking` string — the reasoning text is not on disk. So this returns ''
  * for most recent sessions, and presence must be counted with countBlocks(c, 'thinking') instead.
  * Anything reasoning-shaped that a summary or analysis wants is therefore unavailable by default;
@@ -56,7 +55,7 @@ export function toolResultsOf(content) {
 	return content.filter((b) => b?.type === 'tool_result');
 }
 
-// Envelope noise the harness injects into the user role. None of it is the operator speaking, and
+// Envelope noise the harness injects into the user role. None of it is the person speaking, and
 // counting any of it as a user turn is the single easiest way to make every ratio in this module lie.
 const ENVELOPE = [
 	/<system-reminder>[\s\S]*?<\/system-reminder>/g,
@@ -68,7 +67,7 @@ const ENVELOPE = [
 	/<command-contents>[\s\S]*?<\/command-contents>/g,
 	/<user-prompt-submit-hook>[\s\S]*?<\/user-prompt-submit-hook>/g,
 	/<ide_selection>[\s\S]*?<\/ide_selection>/g,
-	// the IDE injects this when the operator opens a file; it is the editor speaking, not them,
+	// the IDE injects this when the person opens a file; it is the editor speaking, not them,
 	// and left in it becomes the record's title ("<ide_opened_file>The user opened…")
 	/<ide_opened_file>[\s\S]*?<\/ide_opened_file>/g,
 	/<ide_diagnostics>[\s\S]*?<\/ide_diagnostics>/g,
@@ -83,14 +82,13 @@ export function stripEnvelope(text) {
 export const INTERRUPT_RE = /\[Request interrupted by user/;
 const COMMAND_NAME_RE = /<command-name>\s*\/?([^<\s]+)\s*<\/command-name>/;
 
-// ── the two impostors that inflate turns_user, found by the dreamteamer-engine--dt analysis ──
-// Both wear the user role and neither is the operator speaking. On one 3-day unattended build they
-// turned 107 real turns into 358 — a 3.3× over-read, and worst on exactly the sessions that look
-// most engaged. Since turns_user IS the north-star metric, this poisoned the ratio, prior_score
-// and group priority all at once.
+// ── the two impostors that inflate turns_user ──
+// Both wear the user role and neither is the person speaking. On a long unattended build they can
+// triple the count, and worst on exactly the sessions that look most engaged. Since turns_user IS
+// the north-star metric, counting them would poison the ratio, prior_score and group priority at once.
 //   1. <task-notification> — the harness reporting a background agent finished.
 //   2. compaction replay   — /compact re-injects a summary of the prior conversation, verbatim
-//      operator history included. Real turns, already counted once.
+//      user history included. Real turns, already counted once.
 const TASK_NOTIFICATION_RE = /<task-notification>|\[SYSTEM NOTIFICATION - NOT USER INPUT\]/;
 const COMPACT_REPLAY_RE = /^This session is being continued from a previous conversation that ran out of context/m;
 
@@ -98,10 +96,10 @@ const COMPACT_REPLAY_RE = /^This session is being continued from a previous conv
  * Classify a `type: "user"` line into what it actually is.
  * Returns { kind, text, command } where kind is one of:
  *   tool_result | interruption | slash_command | envelope | turn
- * `envelope` means the harness spoke, not the operator — never counted as a turn.
+ * `envelope` means the harness spoke, not the person — never counted as a turn.
  *
- * ⚠ Order matters. task-notification and compaction replay are checked BEFORE the interrupt and
- * command probes, because a replayed compaction summary contains the operator's earlier text
+ * Order matters. task-notification and compaction replay are checked BEFORE the interrupt and
+ * command probes, because a replayed compaction summary contains the person's earlier text
  * verbatim — including any `[Request interrupted` or `<command-name>` in it — and would otherwise
  * be re-counted as a fresh turn every time the session compacts.
  */

@@ -1,17 +1,16 @@
 #!/usr/bin/env node
 // read-git — per repo per ISO week, counted from `git log`. No judged field, ever.
-//   v1:  node read-git.mjs --retrospective perspective/retrospective-sessions/<id> [--repo-path d] [--since YYYY-MM-DD]
-//                          [--data-root d] [--dry-run]
-//   v2:  --retrospective perspective/retrospective-sessions/<id> instead of --retrospective turns on: per-author
-//        attribution, the two convergence curves (lines_new · lines_modified) sliced by modules_touched,
-//        the commits scratch file the cluster stage reads (commits are deliberately NOT records — design
-//        doc §8), and `collaborators` records keyed on handles. [--contributor <email>] only LABELS the
-//        receipt with how many of this run's commits belong to that person's handles; it filters nothing.
-//        [--scratch-root d] redirects the commits JSONL away from the vault's own `.perspective`.
+//   node read-git.mjs --retrospective perspective/retrospective-sessions/<id> [--repo-path d] [--since YYYY-MM-DD]
+//        [--weeks N] [--all-refs] [--contributor <email>] [--scratch-root d] [--data-root d] [--dry-run]
+// Writes per-author attribution, the two convergence curves (lines_new · lines_modified) sliced by
+// modules_touched, the commits scratch file the cluster stage reads (commits are deliberately NOT
+// records), and `perspective/users` records keyed on handles. --contributor only LABELS the receipt
+// with how many of this run's commits belong to that person's handles; it filters nothing.
+// --scratch-root redirects the commits JSONL away from the workspace's own `.perspective`.
 // With no --repo-path it reads the run's own `sources` records: every git-repo whose reach is
 // `available`, its `location` template rendered for THIS machine.
 //
-// ⚠ GIT INVOCATION. `--numstat --name-status` in ONE call does NOT work: they are the same diff-format
+// GIT INVOCATION. `--numstat --name-status` in ONE call does NOT work: they are the same diff-format
 // switch and the LAST one wins, so asking for both silently returns only the status letters and every
 // line count becomes 0. `--raw --numstat` DOES emit both — the raw block (`:<modes> <shas> <status>\t
 // <path>[\t<newpath>]`) then the numstat block, one line each per file in the SAME order — so one pass
@@ -22,7 +21,7 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { DATA, SCRATCH, render, templatize, isoWeek, isoWeekRange, slug } from '../lib/vault.mjs';
+import { DATA, SCRATCH, render, templatize, isoWeek, isoWeekRange, slug } from '../lib/workspace.mjs';
 import { recordPath, writeRecord, listRecords, readRecord, contributorOf, writeSource, collectionDir } from '../lib/records.mjs';
 import { commitIntent } from '../lib/commit-intent.mjs';
 
@@ -34,18 +33,17 @@ const REF = 'perspective/retrospective-sessions/';
 const retrospective = opt('retrospective');
 const retrospectiveRef = retrospective;
 if (!retrospectiveRef.startsWith(REF)) { console.error(`usage: --retrospective ${REF}<id> is required (the v1 spelling --retrospective still works, without the v2 passes)`); process.exit(2); }
-/** v2 is opt-in by flag NAME so every v1 caller keeps its exact records and its exact receipt. */
+/** The per-author passes — on whenever a run is named, which the usage check above requires. */
 const v2 = Boolean(retrospective);
 const sessionBase = retrospectiveRef.split('/').pop();
 const dataRoot = opt('data-root', DATA);
 // Every evidence and model id is keyed by the CONTRIBUTOR, not by the run — a re-run must update
 // this person's records rather than write a parallel set beside them. Resolved LAZILY, on first
-// use: reading it eagerly made a script that should exit 2 on a bad argument crash on a missing
-// session instead, and "writes nothing" was the contract it broke (read-asana, 2026-09-09).
+// use, so a bad argument exits 2 with a usage line before any session is read.
 let _who = null;
 const who = () => (_who ??= contributorOf(retrospective, dataRoot));
-// The default window is the LAST N WEEKS, not all of history: 1,019 weekly records across 51 repos was
-// the wrong first artefact (operator, 2026-09-08). N comes from --weeks, else the retrospective record's
+// The default window is the LAST N WEEKS, not all of history: a perspective is about the recent shape
+// of the work. N comes from --weeks, else the retrospective record's
 // `activity_weeks_back`, else 4. An explicit --since always wins. Conversations are not bounded by this.
 function defaultSince() {
 	let weeks = Number(opt('weeks', '0')) || 0;
@@ -61,14 +59,13 @@ function defaultSince() {
 }
 const since = opt('since') || defaultSince();
 const contributor = opt('contributor');
-/** Where the commits JSONL lands. Defaults to the gitignored `<vault>/.perspective`; a test points it elsewhere. */
+/** Where the commits JSONL lands. Defaults to the gitignored `<workspace>/.perspective`; a test points it elsewhere. */
 const scratchRoot = opt('scratch-root', SCRATCH);
 const dry = flag('dry-run');
-// ⚠ `git log` reads HEAD, and HEAD is whatever branch this checkout happens to sit on. Reading
+// `git log` reads HEAD, and HEAD is whatever branch this checkout happens to sit on. Reading
 // ANOTHER person's work from a clone you never check out, that is almost always wrong: their recent
-// commits are on `origin/<their branch>` and a plain log sees none of them. Measured 2026-09-08 —
-// six freshly fetched clones of a client's repos whose HEADs stopped in June while the remotes ran to
-// September. --all-refs reads every ref instead (git dedupes a commit on several branches), which
+// commits are on `origin/<their branch>` and a plain log sees none of them — a fresh clone's HEAD can
+// stop months before its remotes do. --all-refs reads every ref instead (git dedupes a commit on several branches), which
 // is what a retrospective wants: a branch is work. Opt-in, because it changes every count.
 const allRefs = flag('all-refs');
 
@@ -93,7 +90,7 @@ function destPath(p) {
 /** Pair the raw block with the numstat block. Same order, one line each per file — index pairing;
  *  if git ever disagrees on the counts, fall back to matching on the destination path. */
 function zip(raws, nums, rich) {
-	// v1 has no --raw and no -M: its path is numstat's, verbatim, exactly as it always was.
+	// Without --raw and -M the path is numstat's, verbatim.
 	if (!raws.length) return nums.map((n) => ({ path: rich ? destPath(n.path) : n.path, status: '', add: n.add, del: n.del }));
 	if (raws.length === nums.length) return nums.map((n, i) => ({ path: raws[i].path, status: raws[i].status, add: n.add, del: n.del }));
 	const byPath = new Map(raws.map((r) => [r.path, r]));
@@ -148,13 +145,12 @@ function branchesOf(dec) {
 let windows = 0, commits = 0;
 const unreadable = [];
 /** "<name>\0<email>" → the one person git saw under that exact pair. Merging pairs is a PERSON's
- *  decision (design §4: four handles for one human is real data here), never this script's. */
+ *  decision (four handles for one human is real data), never this script's. */
 const authors = new Map();
 
 for (const t of targets) {
-	// ⚠ `git log` EXITS 128 on a repo with no commits ('your current branch does not have any
-	// commits yet'), and an unreadable repo must never cost the rest of the run — found on the
-	// first dogfood pass, where one empty checkout killed the reader before 40 other repos.
+	// `git log` EXITS 128 on a repo with no commits ('your current branch does not have any
+	// commits yet'), and an unreadable repo must never cost the rest of the run.
 	let log;
 	const args = v2
 		? ['-c', 'core.quotePath=false', '-C', t.dir, 'log', ...(allRefs ? ['--all'] : []), `--since=${since}`, `--format=${FMT_V2}`, '--raw', '--numstat', '-M']
@@ -163,9 +159,8 @@ for (const t of targets) {
 	catch (e) { unreadable.push(`${t.dir}: ${String(e.stderr ?? e.message).trim().split('\n')[0]}`); continue; }
 
 	const sourceRef = `perspective/sources/${t.sourceId}`;
-	// ⚠ With --repo-path there is no inventory to have written the `sources` record, so every
-	// activity-week and collaborator this run writes would dangle (found on the first fresh-workspace
-	// run: 77 dangling refs). Upsert it here: reach available, location as a template, counts.
+	// With --repo-path there is no inventory to have written the `sources` record, so every
+	// activity-week and collaborator this run writes would dangle. Upsert it here: reach available, location as a template, counts.
 	if (opt('repo-path') && v2 && !dry) {
 		const sfile = recordPath('sources', t.sourceId, 'source', dataRoot);
 		const priorSrc = fs.existsSync(sfile) ? readRecord(sfile) : { fields: {}, body: '' };
@@ -220,9 +215,8 @@ for (const t of targets) {
 	for (const [period, w] of weeks) {
 		windows++;
 		const { start: start_date, end: end_date } = isoWeekRange(period);
-		// `retrospective` is REQUIRED on all nineteen collections since 0.2.0. Its absence here wrote
-		// 1,429 invalid records on one workspace, and only a FRESH read shows it — the migration
-		// inserts a run link into records that lack one, so a migrated tree looks clean.
+		// `retrospective` is REQUIRED on every collection, and only a FRESH read shows its
+		// absence — a migrated tree looks clean.
 		const fields = { retrospective, contributor: who(), source: sourceRef, period, start_date, end_date, commits: w.commits, files_changed: w.files.size, lines_added: w.add, lines_deleted: w.del };
 		if (v2) {
 			fields.lines_new = w.lnew; fields.lines_modified = w.lmod; fields.modules_touched = [...w.modules].sort().slice(0, 30);
@@ -231,16 +225,14 @@ for (const t of targets) {
 		fields.authors = [...w.authors].sort();
 		fields.author = v2 ? 'scripts/read-git@2' : 'scripts/read-git@1';
 		const wid = `${who()}/${t.sourceId.split('/').pop()}/${period}`;
-		// ⚠ A RE-READ THAT SHRINKS A WEEK IS ALMOST ALWAYS A FLAG, NOT THE REPO. `git log` walks HEAD,
+		// A RE-READ THAT SHRINKS A WEEK IS ALMOST ALWAYS A FLAG, NOT THE REPO. `git log` walks HEAD,
 		// and HEAD is whatever branch this checkout sits on — so a run WITHOUT `--all-refs` over a repo
 		// whose work lives on feature branches quietly reports a fraction of it and drops the authors
-		// who only appear there. Measured 2026-09-08: a re-read without the flag took one week from 7
-		// commits and 2 authors to 3 and 1, and would have overwritten 100 weeks of a colleague's
-		// history with the narrower number, silently — the receipt said "commits 2060" where the
-		// previous run had said 6913, and nothing connected the two.
+		// who only appear there — and would overwrite a colleague's history with the narrower number,
+		// silently, with nothing in the receipt connecting the two counts.
 		// So a shrink is COUNTED and named at the end. It is not refused: a rebased or pruned repo
 		// legitimately loses commits, and the reader is not the place to adjudicate that.
-		// ⚠ It only catches a week the narrow read still WRITES. A week that disappears from the read
+		// It only catches a week the narrow read still WRITES. A week that disappears from the read
 		// entirely — every commit in it lived on the unseen branch — leaves its old record on disk
 		// untouched, so the data survives and there is nothing to warn about; the count below is a
 		// floor on the damage, never a total.
@@ -257,8 +249,8 @@ for (const t of targets) {
 // A developer with one machine routinely has several git identities on it — a personal address, a
 // work address, one per client — wired up with `includeIf "gitdir:…"` in ~/.gitconfig. `git log`
 // reports them as different authors, so without this the person appears in their own perspective as
-// a set of strangers. On the first real run the operator's LARGEST "collaborator", at 5,977 commits,
-// was himself under a venture address.
+// a set of strangers — often with their own largest "collaborator" being themselves under another
+// address.
 // The rule is narrow and safe: identities declared in THIS home's own git config belong to whoever
 // owns the home. They are adopted ONLY when the given --contributor is one of them — so a shared
 // machine, or a contributor being read by proxy, adopts nothing.
@@ -290,8 +282,8 @@ function ownGitIdentities(homeDir) {
 }
 
 // ── collaborators ──────────────────────────────────────────────────────────────────────────────
-// ⚠ NEVER merge two existing records. A wrong merge attributes one person's work to another, which is
-// the worst error this module can make (design §4), and the merge is a person's decision. So: at most
+// NEVER merge two existing records. A wrong merge attributes one person's work to another, which is
+// the worst error this module can make, and the merge is a person's decision. So: at most
 // ONE existing record is bound per author, email before display name, and overlapping `handles` are
 // left to be discovered rather than resolved here.
 const groups = [];
@@ -330,11 +322,11 @@ if (v2) {
 		for (const s of a.sources) g.sources.add(s);
 		g.roles.add('author');
 	}
-	// ⚠ TRANSITIVE UNION. The loop above binds each author to the FIRST group sharing an email or a
+	// TRANSITIVE UNION. The loop above binds each author to the FIRST group sharing an email or a
 	// name — but a bridging identity can arrive AFTER two groups already exist (A<e1>, then B<e2>, then
 	// B<e1>: B's second identity matches A by email and B by name, and the two groups never meet).
-	// Found on the first real run: the operator himself landed in two records, and so did a colleague
-	// with a work email and a personal one. So: merge until no two groups share a handle, keeping the
+	// Without it the person lands in two records, and so does a colleague with a work email and a
+	// personal one. So: merge until no two groups share a handle, keeping the
 	// group that already has a record on disk (else the first), summing what was seen this run.
 	for (let merged = true; merged;) {
 		merged = false;
@@ -357,15 +349,14 @@ if (v2) {
 	}
 	// ── THE CONTRIBUTOR GATE ───────────────────────────────────────────────────────────────────
 	// A retrospective is ONE person's perspective, and `authors` is every name `git log` returned —
-	// which, over an inventory that includes cloned third-party repos, is mostly strangers. The first
-	// real run wrote 120 collaborator records, of whom about a hundred were open-source contributors to
-	// a vendored blog theme. Someone who committed to a repo the contributor never touched is not their
+	// which, over an inventory that includes cloned third-party repos, is mostly strangers: the
+	// open-source contributors to a vendored theme are not collaborators. Someone who committed to a repo the contributor never touched is not their
 	// collaborator; they are a fact about a checkout.
 	// So when --contributor is given: keep a group only if it shares a SOURCE with the contributor's
 	// own group. Everyone else is dropped, and a stale record a previous run wrote is deleted — but
 	// ONLY when this script wrote it, never a hand-written or hand-merged one.
 	if (contributor) {
-		// Adopt the person's other declared identities BEFORE the gate runs — otherwise his own
+		// Adopt the person's other declared identities BEFORE the gate runs — otherwise their own
 		// commits under a second address read as a stranger's, and the gate keeps the stranger.
 		const declared = ownGitIdentities(opt('home', os.homedir()));
 		const mineDeclared = declared.some((i) => i.email === contributor || i.name === contributor)
@@ -402,7 +393,7 @@ if (v2) {
 	}
 	// The other half of staleness: a record a WIDER earlier run wrote, whose person did not commit at
 	// all inside this window. `groups` cannot see them — no author this run matched — so nothing above
-	// touches them, and 120 records survived a 52-week re-read that found 57 authors. Under
+	// touches them. Under
 	// --contributor, a person absent from the whole window is not part of this perspective: drop them,
 	// script-written only, and only when their own `last_seen` predates the window.
 	if (contributor) {
@@ -426,9 +417,8 @@ if (v2) {
 		writeRecord(g.file, {
 			...(g.prior ?? {}),
 			retrospective: `${REF}${sessionBase}`,
-			// ⚠ The spread above inherits NOTHING for a collaborator this run is meeting for the first
-			// time, so both keys have to be written here. 12 records on one workspace carried the run
-			// link and no contributor because only the first of them was.
+			// The spread above inherits NOTHING for a collaborator this run is meeting for the first
+			// time, so both keys have to be written here.
 			contributor: who(),
 			name: g.name,
 			handles: [...g.handles].filter(Boolean).sort(),
@@ -453,7 +443,7 @@ if (unreadable.length) process.stderr.write(unreadable.map((u) => `  ⚠ skipped
 let receipt = `✔ repos ${targets.length} · windows ${windows} · commits ${commits} · unreadable ${unreadable.length}`;
 if (v2) receipt += ` · authors ${authors.size} (+${newCollaborators} new collaborators) · contributor commits ${contributor ? contributorCommits : 'n/a'}`;
 if (v2 && contributor) receipt += ` · own identities adopted ${adopted} · gated out ${gatedOut} (deleted ${gatedDeleted})`;
-// ⚠ The DRY RUN marker goes on the COUNTS line, before the warning block — appended after a
+// The DRY RUN marker goes on the COUNTS line, before the warning block — appended after a
 // multi-line warning it reads as a note about the warning rather than about the run.
 if (dry) receipt += ' · DRY RUN';
 if (shrunk) {

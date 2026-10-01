@@ -1,4 +1,4 @@
-# activity-windows — ONE PERIOD × ONE SOURCE, mechanical counts only. The timeline every later
+# perspective/activity-weeks — ONE PERIOD × ONE SOURCE, mechanical counts only. The timeline every later
 # report is drawn on. No judged field lives here, ever.
 name: perspective/activity-weeks
 description: One ISO week of one source — commits and lines for a repo, sessions and turns for a transcripts tree. Counted, never judged.
@@ -29,21 +29,21 @@ schema:
     lines_deleted: { type: integer, description: git — from --numstat. }
     authors: { type: array, items: { type: string }, description: git — distinct author names in the week. }
     sessions: { type: integer, description: transcripts — conversations that started in the week. }
-    turns_user: { type: integer, description: transcripts — real operator turns, summed from conversation-summaries. }
+    turns_user: { type: integer, description: transcripts — real user turns, summed from conversation-summaries. }
     active_minutes: { type: number, description: transcripts — engaged minutes in the week, summed from the conversations that started in it. The honest time number; wall-clock between first and last message is not. }
     tool_calls: { type: integer, description: transcripts — tool calls in the week. }
     files_edited: { type: integer, description: transcripts — file-edit calls in the week, summed across sessions rather than deduplicated. }
     corrections: { type: integer, description: "transcripts — `user_correction` turns in the week. Plotted against `turns_user` this is the curve that is supposed to fall: the same work costing fewer corrections is the whole claim." }
-    interruptions: { type: integer, description: transcripts — times the operator stopped the agent mid-flight this week. }
-    input_words: { type: integer, description: transcripts — words the operator typed this week. The denominator. }
+    interruptions: { type: integer, description: transcripts — times the person stopped the agent mid-flight this week. }
+    input_words: { type: integer, description: transcripts — words the person typed this week. The denominator. }
     output_words: { type: integer, description: transcripts — words of assistant output this week. The numerator, and worthless without `corrections` beside it. }
-    correction_ratio: { type: number, description: "transcripts — the week's corrected words over its produced words, computed from the weekly SUMS, never averaged across sessions. ⚠ Direction is the metric: falling is improvement, rising means the output got cheaper to produce and worse." }
+    correction_ratio: { type: number, description: "transcripts — the week's corrected words over its produced words, computed from the weekly SUMS, never averaged across sessions. Direction is the metric: falling is improvement, rising means the output got cheaper to produce and worse." }
     lines_new:
       type: integer
-      description: "git — lines added in files that did not exist before this week. The first of a pair of curves: new code lines over time. ⚠ Distinct from `lines_added`, which counts every insertion including edits to existing files; the two curves only separate if this one does."
+      description: "git — lines added in files that did not exist before this week. The first of a pair of curves: new code lines over time. Distinct from `lines_added`, which counts every insertion including edits to existing files; the two curves only separate if this one does."
     lines_modified:
       type: integer
-      description: "git — lines changed inside files that already existed. CURVE TWO: existing code lines changed over time. The expected shape, in his words: at the start you produce a lot of code, then you produce little, then you edit a lot, then you edit little, and then you stop producing and stop editing. ⚠ When both curves FLATTEN the project is converging — that is what done looks like."
+      description: "git — lines changed inside files that already existed. CURVE TWO: existing code lines changed over time. The expected shape: at the start you produce a lot of code, then you produce little, then you edit a lot, then you edit little, and then you stop producing and stop editing. When both curves FLATTEN the project is converging — that is what done looks like."
     modules_touched:
       type: array
       items:
@@ -51,19 +51,19 @@ schema:
       description: git — which modules the week's commits landed in. The first of the three dimensions the two curves are sliced by (module · author · bug vs change-request).
     commits_bug:
       type: integer
-      description: "git — commits attributable to a DEFECT. The expensive dimension, and the operator said how to get it: dump the ticketing system's tickets to a folder and lay them on the same timeline, so a change can be attributed to a bug or to a requirement shift."
+      description: "git — commits attributable to a DEFECT. The expensive dimension: lay the ticketing system's tickets on the same timeline as the commits, so a change can be attributed to a bug or to a requirement shift."
     commits_change_request:
       type: integer
       description: "git — commits attributable to a REQUIREMENT SHIFT rather than a defect. Read beside `commits_bug`: a converging project's remaining changes should be requirement-driven, and a rising bug share late is the alarm."
     tokens_input:
       type: integer
-      description: transcripts — input tokens spent in the week, summed from the conversations that started in it. Tokens over time, daily or weekly buckets, from the 2026-09-06 session.
+      description: transcripts — input tokens spent in the week, summed from the conversations that started in it. Tokens over time, in weekly buckets.
     tokens_output:
       type: integer
-      description: "transcripts — output tokens spent in the week. ⚠ The operator's own argument for why this matters LESS than turns: it is fine if it burns a billion tokens once — out comes the code, thank you. But if you had to talk to it a thousand times."
+      description: "transcripts — output tokens spent in the week. This matters LESS than turns: burning a billion tokens once is fine if the code comes out; having to talk to the agent a thousand times is the expensive failure."
     tokens_cache_read:
       type: integer
-      description: "transcripts — cached input tokens re-read this week. ⚠ Nearly the whole input bill: `tokens_input` alone is the uncached remainder and reads two orders of magnitude too low."
+      description: "transcripts — cached input tokens re-read this week. Nearly the whole input bill: `tokens_input` alone is the uncached remainder and reads two orders of magnitude too low."
     tokens_cache_write:
       type: integer
       description: transcripts — tokens spent writing context into the cache this week.
@@ -77,16 +77,16 @@ schema:
     files_touched:
       type: integer
       description: >-
-        drive · obsidian — files in an artefact store this contributor modified during the week. ⚠ The
+        drive · obsidian — files in an artefact store this contributor modified during the week. The
         ceiling differs by store and the source says which: on Drive it means modified LAST and is never
-        proof of authorship (one last-modifier per file); in a personal notes vault there is only one
+        proof of authorship (one last-modifier per file); in a personal notes folder there is only one
         author, so it is authorship — but the clock is the filesystem's mtime and nothing finer exists.
     words_written:
       type: integer
       description: >-
-        obsidian — words in the notes touched this week. ⚠ Deliberately NOT `input_words` or
+        obsidian — words in the notes touched this week. Deliberately NOT `input_words` or
         `output_words`: those are one side of a conversation with an agent, and a note is neither. The
-        question this answers is the one a notes vault exists to answer — how much of the thinking
+        question this answers is the one a notes folder exists to answer — how much of the thinking
         happened somewhere no commit and no transcript can see.
     bytes_touched:
       type: integer
@@ -100,19 +100,19 @@ schema:
       description: gmail — messages the contributor sent in the week. Read beside `threads_touched` — many messages on few threads is one argument, few on many is a broadcast.
     # ── the calendar axis (read-meetings@1) ──────────────────────────────────────────────────────
     # A week of a meeting-shaped contributor has no commits, no sessions and no documents in it, and
-    # was until now indistinguishable from a week they did not work. ABSENT still means the reader
+    # is otherwise indistinguishable from a week they did not work. ABSENT still means the reader
     # did not run — never that the week was idle.
     meetings_attended:
       type: integer
       description: >-
-        meetings — meetings in the week the contributor is on. ⚠ ATTENDED, not participated: the
+        meetings — meetings in the week the contributor is on. ATTENDED, not participated: the
         evidence is an invite, so this counts rooms they were in and says nothing about whether they
         spoke, prepared or wanted to be there. Read beside `meeting_minutes`, which is the load.
     meeting_minutes:
       type: integer
       description: >-
         meetings — scheduled minutes those meetings took, summed from each meeting's `starts` and
-        `ends`. ⚠ SCHEDULED, not spent: a call that ran over or ended early leaves no trace in the
+        `ends`. SCHEDULED, not spent: a call that ran over or ended early leaves no trace in the
         calendar. Absent (never 0) when the meetings carry no end time — that is the calendar being
         unable to say, not a week of zero-length meetings.
     meeting_counterparts:
@@ -123,7 +123,7 @@ schema:
         module can key; the source's `counts.attendees_without_an_email` says how many were dropped.
     converging:
       type: boolean
-      description: "JUDGED — whether both code curves flattened this week. The finish line, in his words: when they flatten, you know you have finished. ⚠ Judged over TIME, never day to day — if you changed a thousand lines today and a hundred yesterday, something happened, and you are not converging."
+      description: "JUDGED — whether both code curves flattened this week. The finish line: when they flatten, the work is finished. Judged over TIME, never day to day — if you changed a thousand lines today and a hundred yesterday, something happened, and you are not converging."
     summary:
       type: string
       description: "JUDGED — what happened in this source's week, in a few sentences, generated from the SUMMARIES of the activities overlapping it (never from the raw evidence). The one field on this collection that is not counted: everything else here is mechanical, and this exists so a timeline can be read rather than decoded. Absent when the week has no activities — an empty week is silence, not a sentence about silence."

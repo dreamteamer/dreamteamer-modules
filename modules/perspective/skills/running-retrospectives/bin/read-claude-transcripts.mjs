@@ -7,12 +7,12 @@
 //                                   [--limit N] [--data-root <dir>] [--dry-run] [--force]
 import fs from 'node:fs';
 import os from 'node:os';
-import { DATA, templatize, isoWeek, isoWeekRange } from '../lib/vault.mjs';
+import { DATA, templatize, isoWeek, isoWeekRange } from '../lib/workspace.mjs';
 import { recordPath, writeRecord, readRecord, nowIso, contributorOf, writeSource } from '../lib/records.mjs';
 import { claudeHomes, listTranscripts, reconcile } from '../lib/claude-trees.mjs';
 import { computeMetrics, INSPECTOR_VERSION, JUDGED_KEYS } from '../lib/metrics.mjs';
 
-// Re-exported for anything that already imported it from here. ⚠ Nothing SHOULD: this module runs on
+// Re-exported for anything that already imported it from here. Nothing SHOULD: this module runs on
 // import and exits 2 without its arguments, so a consumer wanting the constant must take it from the
 // lib, which is where it now lives.
 export { JUDGED_KEYS };
@@ -27,8 +27,7 @@ const sessionBase = retrospectiveRef.split('/').pop();
 const dataRoot = opt('data-root', DATA);
 // Every evidence and model id is keyed by the CONTRIBUTOR, not by the run — a re-run must update
 // this person's records rather than write a parallel set beside them. Resolved LAZILY, on first
-// use: reading it eagerly made a script that should exit 2 on a bad argument crash on a missing
-// session instead, and "writes nothing" was the contract it broke (read-asana, 2026-09-09).
+// use, so a bad argument exits 2 with a usage line before any session is read.
 let _who = null;
 const who = () => (_who ??= contributorOf(retrospectiveRef, dataRoot));
 const since = opt('since');
@@ -134,7 +133,7 @@ for (const h of homes) {
 	});
 	for (const [period, w] of tree.weeks) {
 		writeRecord(recordPath('activity-weeks', `${who()}/claude-transcripts--${h.account}/${period}`, 'activity-week', dataRoot), {
-			// `retrospective` is REQUIRED on all nineteen collections since 0.2.0; without it every
+			// `retrospective` is REQUIRED on every collection; without it every
 			// record this writes fails `check` the moment it lands.
 			retrospective: retrospectiveRef,
 		contributor: who(),

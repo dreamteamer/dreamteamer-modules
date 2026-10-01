@@ -138,9 +138,8 @@ test('a project sums its activities, takes its code curves from its repos\' week
 	// ⚠ NOT activities_count. 0.2.0 deleted it from `projects` — the count comes off the generated
 	// `activities` mirror now — and this script kept writing it, so every rollup put a field back that
 	// the schema had removed. `dt set` on such a record then refuses the WHOLE write ("unknown
-	// field(s) for this collection: activities_count"), which is how it surfaced: a project could no
-	// longer be edited at all (a client workspace, 2026-09-10). `check` does not flag an unknown key, so
-	// nothing caught it in between.
+	// field(s) for this collection: activities_count"), so a project could no longer be edited at
+	// all. `check` does not flag an unknown key, so nothing else catches it.
 	assert.equal(p.activities_count, undefined, 'a field the descriptor deleted must not be written back');
 	assert.equal(p.commit_count, 3);
 	assert.equal(p.session_count, 1, 'only one activity carried a session');
@@ -169,9 +168,8 @@ test('a project sums its activities, takes its code curves from its repos\' week
 // something says which repos it touched — `activities.repos` or its own `repo_names`.
 //
 // ⚠ Nothing writes `activities.repos`. Grep the whole toolchain and the only match is this script
-// READING it. So the union was always just whatever `repo_names` a human had typed: on a real
-// workspace 4 of 8 projects had them and showed line curves, and 4 had none and showed blanks —
-// including one with 244 commits (a client workspace, 2026-09-10). The evidence was there the whole time:
+// READING it. So the union would be just whatever `repo_names` a human had typed, and a project
+// with none would show blank line curves however many commits it had. The evidence is on disk:
 // `read-git` parks every commit in `<scratch>/commits/<base>/<repo>.jsonl`, so each SHA already
 // knows its repo.
 test('a project takes its repos from the commits its activities cite, not only from a typed list', () => {
@@ -205,9 +203,9 @@ test('a project takes its repos from the commits its activities cite, not only f
 	const p = readRecord(path.join(data, 'perspective', 'projects', SLUG, 'delivery.project.md')).fields;
 	assert.deepEqual(p.repo_names, ['api'], 'the repo its commits actually live in');
 	// ⚠ EXACT, from this project's own commits — not the repo's weekly totals. Attributing a whole
-	// repo-week to every project that touches the repo gave one 6-commit project 1,775,984 lines_new
-	// on a real workspace, identical to three other projects sharing the same repo (a client workspace,
-	// 2026-09-10). A number that confident and that wrong is worse than the blank it replaced.
+	// repo-week to every project that touches the repo would give a six-commit project a million
+	// lines, identical to every other project sharing the repo. A number that confident and that
+	// wrong is worse than a blank.
 	assert.equal(p.lines_new, 120, 'added files only, from its own two commits');
 	assert.equal(p.lines_modified, 20, 'add+del on modified files: 5+3 then 10+2');
 	assert.equal(p.commits_bug, 1, 'the fix: commit');

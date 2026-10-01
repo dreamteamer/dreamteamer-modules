@@ -1,13 +1,7 @@
 // EVERY FLAG THE SKILL TELLS YOU TO PASS MUST BE A FLAG THE SCRIPT ACCEPTS.
 //
-// ⚠ SKILL.md is not prose about the tools, it IS the procedure an agent follows verbatim — so a flag
-// named there that a script rejects is a stage that cannot run. The v3 rename moved every script from
-// `--session` to `--retrospective` and updated the descriptors, the scripts and their tests; SKILL.md
-// kept saying `--session` in four places, including a sentence explaining the split as though it were
-// still real ("v1 scripts take `--session <ref>`, v2 scripts `--retrospective`"). Following it gives
-//     usage: --retrospective perspective/retrospective-sessions/<id> is required
-// which is how it surfaced — on the stage that owns every number on an activity and a project
-// (a client workspace, 2026-09-10).
+// SKILL.md is not prose about the tools, it IS the procedure an agent follows verbatim — so a flag
+// named there that a script rejects is a stage that cannot run.
 //
 // A doc is testable when it names commands. This reads the commands out of the table and asks each
 // script whether it knows the flag.

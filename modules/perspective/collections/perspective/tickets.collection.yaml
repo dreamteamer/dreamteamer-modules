@@ -22,7 +22,7 @@ schema:
     title: { type: string }
     project: { type: string, description: The project or board name, as text. }
     section: { type: string, description: The column or section it sat in when read. }
-    assignee_handle: { type: string, description: 'The assignee''s handle as the system reports it — an Asana gid or email. Joined to collaborators.handles, never to a name.' }
+    assignee_handle: { type: string, description: 'The assignee''s handle as the system reports it — an Asana gid or email. Joined to perspective/users.handles, never to a name.' }
     assignee:
       type: string
       x-reference: perspective/users
@@ -36,12 +36,10 @@ schema:
     url: { type: string }
     parent_external_id: { type: string, description: For a subtask — its parent's external id. }
     # ── WHAT THE TASK ACTUALLY HOLDS ───────────────────────────────────────────────────────────
-    # ⚠ Measured on a real board 2026-09-08: 344 of 933 tasks have an EMPTY description. The reader
-    # was right and the field was simply not there — people do not write descriptions. What those
-    # same tasks DO carry is a story trail (3–7 events each: assigned, moved between sections,
+    # Many tasks have an EMPTY description — people do not write them. What those same tasks DO carry is a story trail (3–7 events each: assigned, moved between sections,
     # completed) and sometimes a comment, and that is where the reasoning actually lives. A ticket
     # whose body is only its description is a ticket that says nothing about how the work went.
-    last_activity_on: { type: string, format: date, description: "Asana `modified_at`. ⚠ Read this, not `created_on`, when asking whether a ticket is live: a two-year-old open ticket nobody has touched is not current work." }
+    last_activity_on: { type: string, format: date, description: "Asana `modified_at`. Read this, not `created_on`, when asking whether a ticket is live: a two-year-old open ticket nobody has touched is not current work." }
     comment_count: { type: integer, description: Human comments on the task. The count is here so a ticket with discussion can be found without reading every body. }
     story_count: { type: integer, description: "Every event on the task, comments included — assignments, section moves, completions. A high count on a short task is churn." }
     subtask_count: { type: integer }

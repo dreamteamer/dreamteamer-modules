@@ -1,22 +1,15 @@
 # THE ORG PICTURE: every contributor's work on one axis, banded by the PERSON rather than the run.
 #
-# ⚠ This is the view the `contributor` field exists for. A run used to BE a person — `retrospective`
-# keyed every record, so three contributors meant three parallel models and no query could ask "who
-# else worked on this". The person is a field now, pointing at the `collaborators` record they
-# already have, so one workspace holds the org and this bands by it.
+# This is the view the `contributor` field exists for: one workspace holds every contributor's
+# model, and this bands by the person, so "who else worked on this" is a glance.
 #
-# The band draws their FACE: `group_icon_field` left blank probes the referenced record for `avatar`,
-# and a collaborator carries one wherever `link-collaborator-avatars` found an exact match.
-#
-# `show_ungrouped_rows` is ON: a record written before the field existed, or one the backfill could
-# not place, belongs to nobody and saying so is the honest picture.
+# `show_ungrouped_rows` is ON: a record with no contributor belongs to nobody, and saying so is the
+# honest picture.
 options:
   start_field: started
   end_field: ended
   group_rows_by_field: contributor
   group_template: '{{ name }}'
-  # The same collaborator record the by-collaborator view bands on, so a person reads identically
-  # whichever way in you came.
   group_summary_template: '{{ evidence_count }} pieces of evidence · {{ first_seen }} → {{ last_seen }}'
   template: '{{ name }}'
   color_by_field: status

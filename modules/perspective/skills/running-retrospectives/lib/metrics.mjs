@@ -1,18 +1,15 @@
 // The deterministic pass — COUNTED, never judged. One streaming read of a JSONL produces every
 // MECHANICAL and HEURISTIC field of a perspective/conversations record.
-// Ported from an earlier analyzer (metrics/3 there); metrics/1 here because the field set changed — bump when a
-// number's MEANING changes, not when a regex is tuned.
+// The version is `metrics/N` — bump it when a number's MEANING changes, not when a regex is tuned.
 //
-// metrics/2 (2026-09-08) added the SESSION-COST layer the operator asked for by name: the words the
-// human had to type against the words that came back (`input_words` / `output_words` and the
-// `correction_ratio` guard he named in the same breath), the tool and MCP mix, the skills actually
-// invoked rather than merely present, and `interruptions` — which the first dogfood run found is his
-// real stop button, 2.2× more frequent than a permission denial and until now counted nowhere.
-// ⚠ `skill_tokens_active` is deliberately NOT here. He said plainly he does not yet know how to
-// measure it, and a transcript does not carry per-skill token attribution; a guess would be worse
-// than the gap.
-// metrics/3 (2026-09-08) split the input bill. `input_tokens` alone is the uncached remainder and is
-// NOT what a session cost; `tokens_total` is the number to quote.
+// The SESSION-COST layer: the words the human had to type against the words that came back
+// (`input_words` / `output_words`, and the `correction_ratio` guard beside them), the tool and MCP
+// mix, the skills actually invoked rather than merely present, and `interruptions` — the person's
+// real stop button, typically more frequent than a permission denial.
+// `skill_tokens_active` is deliberately NOT here: a transcript does not carry per-skill token
+// attribution, and a guess would be worse than the gap.
+// The input bill is split: `input_tokens` alone is the uncached remainder and is NOT what a session
+// cost; `tokens_total` is the number to quote.
 import path from 'node:path';
 import { statSync as fsStatSync } from 'node:fs';
 import { eachLine, textOf, toolUsesOf, toolResultsOf, classifyUserLine, assistantMessageId, pathsInToolInput, SUBAGENT_TOOLS, SKILL_TOOLS, INTERRUPT_RE } from './transcript.mjs';
@@ -25,10 +22,9 @@ export const INSPECTOR_VERSION = 'metrics/3';
  * The fields on a conversation record that a COUNTER must never touch — written by a later judgement
  * pass and carried through every re-read, at every inspector version.
  *
- * ⚠ It lives here, in the file whose whole job is "counted, never judged", because it is the list of
- * what counting may not overwrite. It used to live in `bin/read-claude-transcripts.mjs`, and the
- * second reader that needed it could not have it: importing that module for one constant RUNS it,
- * and its argument check calls `process.exit(2)` at load. A shared constant belongs in a lib.
+ * It lives here, in the file whose whole job is "counted, never judged", because it is the list of
+ * what counting may not overwrite. A shared constant belongs in a lib: importing a reader for one
+ * constant RUNS it, and its argument check calls `process.exit(2)` at load.
  */
 export const JUDGED_KEYS = ['subject_repos', 'divergences', 'plan_changes', 'summary', 'goals', 'key_topics', 'outcome', 'knowledge_kinds', 'interest_score', 'interest_reason'];
 const DENIAL_RE = /(user doesn'?t want to (proceed|take this action)|tool use was rejected|user (rejected|denied|refused) (the|this))/i;
@@ -41,9 +37,8 @@ export const USER_ACTS_KEPT = ['directive', 'correction', 'rejection', 'approval
 export const AGENT_ACTS_KEPT = ['plan', 'question', 'refusal'];
 
 export async function computeMetrics(file, { session_id = '', account = '', subagent_paths = [], orphan_subagents = [] } = {}) {
-	// ⚠ Some .jsonl files carry NO timestamp on any line — a file of pure `/compact` checkpoints is the
-	// case found on the first dogfood pass (754 lines, every one `type: summary`, no conversation at
-	// all). started_at is required and is what the id and every window are keyed on, so it falls back
+	// Some .jsonl files carry NO timestamp on any line — a file of pure `/compact` checkpoints, every
+	// line `type: summary` and no conversation at all, is the case. started_at is required and is what the id and every window are keyed on, so it falls back
 	// to the file's mtime and `dated_from_mtime` says so rather than the record landing in 1970.
 	const s = {
 		cwds: new Map(), dirs: new Map(), skills: new Set(), commands: new Set(), filesEdited: new Set(),
@@ -78,7 +73,7 @@ export async function computeMetrics(file, { session_id = '', account = '', suba
 			if (n) {
 				const name = String(n).replace(/^\//, '');
 				s.skills.add(name);
-				// USED is the narrower set: a SlashCommand is a command the operator typed, and its
+				// USED is the narrower set: a SlashCommand is a command the person typed, and its
 				// body may never open a skill. Only the Skill verbs prove a skill's content ran.
 				if (t.name !== 'SlashCommand') s.skillsUsed.add(name);
 			}
@@ -104,10 +99,9 @@ export async function computeMetrics(file, { session_id = '', account = '', suba
 			const u = r.message?.usage;
 			if (u && !s.seenUsage.has(id)) {
 				s.seenUsage.add(id);
-				// ⚠ `input_tokens` is the UNCACHED remainder only. On a long agentic session almost the
+				// `input_tokens` is the UNCACHED remainder only. On a long agentic session almost the
 				// whole input bill is `cache_read_input_tokens`, so reading input_tokens as "what this
-				// cost" under-reports by two orders of magnitude — measured 13,949 against 2.7M output
-				// on one real week before these two were captured.
+				// cost" under-reports by two orders of magnitude.
 				s.tokIn += u.input_tokens ?? 0;
 				s.tokOut += u.output_tokens ?? 0;
 				s.tokCacheRead += u.cache_read_input_tokens ?? 0;
@@ -138,7 +132,7 @@ export async function computeMetrics(file, { session_id = '', account = '', suba
 		const act = classifyUserTurn(cls.text, { userTurns: s.turnsUser - 1, lastAgentAskedQuestion });
 		const w = words(cls.text);
 		s.inputWords += w;
-		// The ratio's numerator. A correction turn is the operator paying twice for the same output,
+		// The ratio's numerator. A correction turn is the person paying twice for the same output,
 		// so its words are the ones that must FALL while `output_words` holds.
 		if (act === 'correction' || act === 'rejection') s.correctionWords += w;
 		bump(s.userActs, act);
@@ -168,7 +162,7 @@ export async function computeMetrics(file, { session_id = '', account = '', suba
 		tokens_cache_read: s.tokCacheRead, tokens_cache_write: s.tokCacheWrite,
 		tokens_total: s.tokIn + s.tokOut + s.tokCacheRead + s.tokCacheWrite,
 		input_words: s.inputWords, output_words: s.outputWords,
-		// ⚠ Guard against a divide-by-zero reading as a perfect session: a session that produced no
+		// Guard against a divide-by-zero reading as a perfect session: a session that produced no
 		// words has no ratio at all, and the field is absent rather than 0.
 		correction_ratio: s.outputWords ? +(s.correctionWords / s.outputWords).toFixed(4) : undefined,
 		tools_used: [...s.tools].sort().slice(0, 40),

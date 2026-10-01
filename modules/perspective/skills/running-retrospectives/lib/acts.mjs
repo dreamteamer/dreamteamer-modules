@@ -1,4 +1,3 @@
-// Ported verbatim from an earlier conversation-analyzer module (decision 310). Edit here; the original is history.
 // Heuristic DIALOGUE ACT classification — the cheap prior the model later refines.
 //
 // Terminology: these are *dialogue acts* (speech-act theory / conversation analysis) — what a turn
@@ -7,7 +6,7 @@
 //
 // Rules are ORDERED and first-match-wins. That ordering is the classifier — a turn that both
 // corrects and adds work is a `correction`, because the correction is the expensive part.
-// Everything unmatched is a `directive`, which is the honest default for an operator turn.
+// Everything unmatched is a `directive`, which is the honest default for a user turn.
 
 const first = (rules, text, ctx) => {
 	for (const [name, test] of rules) if (test(text, ctx)) return name;
@@ -25,7 +24,7 @@ const USER_RULES = [
 	['meta', (t) => /\b(use (opus|sonnet|haiku|fable|the .{0,20}model)|switch to (opus|sonnet|haiku)|be (less|more) (verbose|concise|terse)|stop (being|doing|adding)|from now on|next time|always |never |remember (this|that)|add (this|that) to (claude\.md|the skill|memory))\b/i.test(t)],
 	['refinement', (t, c) => c.userTurns > 0 && /^(also|and |plus |additionally|now |then |next,? |instead|but |one more|another)\b/i.test(t)],
 	['answer', (t, c) => c.lastAgentAskedQuestion && shortish(t, 300)],
-	// a long paste with no imperative and no question is the operator handing over material
+	// a long paste with no imperative and no question is the person handing over material
 	['context', (t) => t.length > 500 && !/\?/.test(t) && !/^(add|make|create|write|fix|change|update|remove|delete|run|build|implement|refactor|do|use|check|find|show|give|let'?s|please|can you|i want|i need)\b/i.test(t)],
 ];
 

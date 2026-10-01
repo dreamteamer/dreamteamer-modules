@@ -9,7 +9,7 @@
 // other field on the record — including a model-written `summary` — is carried through unchanged.
 import fs from 'node:fs';
 import path from 'node:path';
-import { DATA, isoWeekRange } from '../lib/vault.mjs';
+import { DATA, isoWeekRange } from '../lib/workspace.mjs';
 import { readRecord, writeRecord, collectionDir } from '../lib/records.mjs';
 
 const argv = process.argv.slice(2);

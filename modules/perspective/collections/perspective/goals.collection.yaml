@@ -3,18 +3,18 @@
 # what they actually did: a goal here is the outcome that explains a run of decisions, a project's arc
 # and a cluster of activities, and it is only ever as good as the evidence under it.
 #
-# ⚠ THE OBSERVED HALF OF `goals`, IN THE SAME SHAPE AND IN A SEPARATE STORE — the argument is written
+# THE OBSERVED HALF OF `goals`, IN THE SAME SHAPE AND IN A SEPARATE STORE — the argument is written
 # out once, on `perspective/users.real`. It is the world object where the argument bites hardest: every
 # other one is reconstructed from evidence that NAMES its constituents (a commit exists, a ticket
 # exists, a handle exists), while a goal is read out of the SHAPE of what was done and nothing in the
 # evidence ever says "the goal was X". That is why `standing`, `evidence_count` and
 # `needs_confirmation` live here and on `findings` and NOWHERE ELSE among the observed-world collections — they are
 # not "the finding apparatus every world object needs", they are the apparatus the one BACKWARD
-# inference needs. ⚠ That reading is the fork in this design most open to argument: `perspective/projects`
+# inference needs. That reading is the fork in this design most open to argument: `perspective/projects`
 # is also called inferred, and the line between "inferred from records that name it" and "inferred
 # from the shape of the work" is a judgement, not a measurement.
 #
-# ⚠ THE FAILURE MODE THIS COLLECTION INVITES is writing down the obvious. "Ship the product" explains
+# THE FAILURE MODE THIS COLLECTION INVITES is writing down the obvious. "Ship the product" explains
 # everything and predicts nothing; it is a category, not a goal. A goal earns its record when it
 # EXCLUDES something — when knowing it would have let you predict which of two forks the person took.
 # `evidence` is the forcing field, exactly as it is on `findings`, and `standing` may not reach
@@ -25,7 +25,7 @@ description: An outcome a contributor was working toward, inferred from what the
 use_when: >-
   asked what a contributor was TRYING to do, why a run of decisions hangs together, or what a project
   was for — read here, then follow the refs to the evidence. The infer pass writes them from decisions,
-  activities and project arcs; search here before re-deriving a purpose from the same records. ⚠ Never
+  activities and project arcs; search here before re-deriving a purpose from the same records. Never
   write one from what the person SAID about themselves — that is an answered question, and it belongs
   on the question
 storage: { path: data/perspective/goals, codec: md, shape: file, suffix: goal }
@@ -39,22 +39,15 @@ schema:
     retrospective: { type: string, x-reference: perspective/retrospective-sessions, description: The retrospective session that FIRST wrote this record. }
     last_seen_in: { type: string, x-reference: perspective/retrospective-sessions, description: 'The most recent session that confirmed or updated it. Absent means exactly one session has ever touched it, which is how "new since last time" is answered without a diff.' }
     contributor: { type: string, pattern: '^[a-z0-9-]+$', description: 'WHOSE this is, as a slug — and the FIRST SEGMENT OF THE ID. That is what makes a second retrospective UPDATE this record instead of writing one beside it. A plain slug rather than a reference, because an id segment cannot be one; the person''s own observed-world record is perspective/users/<contributor>/<their-name-slug>.' }
-    name: { type: string, description: 'The outcome in one line, as an OUTCOME and not a task — "the vault runs on any machine", never "port the scripts".' }
+    name: { type: string, description: 'The outcome in one line, as an OUTCOME and not a task — "the workspace runs on any machine", never "port the scripts".' }
     # ── WHOSE ────────────────────────────────────────────────────────────────────────────────────
-    # ⚠ THE ORG AXIS, AND IT IS ONE ID SEGMENT RATHER THAN A SECOND COPY OF THE MODEL. A run used to BE a
-    # person: `retrospective` keyed every record, so three contributors meant three parallel models
-    # in three workspaces, each one's collaborators strangers to the others, and no query that could
-    # ask "who else worked on this". Operator, 2026-09-08: "support multiple collaborators, minimal
-    # data structure, don't multiply".
+    # THE ORG AXIS IS ONE ID SEGMENT, NOT A SECOND COPY OF THE MODEL. The person is the FIRST SEGMENT
+    # OF THE ID, so several contributors share one model and "who else worked on this" is one query.
+    # `contributor` carries it as a bare slug, because an id segment cannot be a reference; the
+    # person's own record is `perspective/users/<contributor>/<their-name-slug>` — one hop, derived,
+    # never stored twice. `retrospective` says which RUN produced this, a different question.
     #
-    # So the person is the FIRST SEGMENT OF THE ID, and `contributor` above carries it as a bare slug.
-    # It WAS a `perspective/users` reference, for one day: an id segment cannot be one, and the
-    # slug pattern on the field is what refuses it now rather than a comment. The person's own record
-    # is `perspective/users/<contributor>/<their-name-slug>` — one hop, derived, never stored
-    # twice. `retrospective` still says which RUN produced this, a different question that stays.
-    #
-    # Empty means the run never said, not "everyone" — and a record whose contributor cannot be
-    # determined is not written, because there would be no id to write it under.
+    # A record whose contributor cannot be determined is not written: there is no id to write it under.
     # `done_when` — the real collection's own word for the same slot.
     done_when:
       type: string
@@ -78,11 +71,10 @@ schema:
       type: string
       description: >-
         The `key` of the goal candidate this goal was named from — the project slug, or
-        `(unassigned)`. ⚠ THIS IS HOW EVIDENCE IS ATTACHED, and it exists for the reason
+        `(unassigned)`. THIS IS HOW EVIDENCE IS ATTACHED, and it exists for the reason
         `activities.from_candidate` does: the model NAMES the arc and bounds it, and
         `bin/infer-goals.mjs --attach` copies the activity, decision, project and topic refs onto
-        the record. Asking a naming pass to copy refs by hand is how 615 of 1,068 conversations were
-        once silently dropped.
+        the record. A naming pass asked to copy refs by hand drops them silently.
     inferred_from:
       type: array
       items:
@@ -97,7 +89,7 @@ schema:
       enum: [reached, in-flight, stalled, abandoned, unclear]
       default: unclear
       description: >-
-        OBSERVED, from whether the work serving it continued and what it produced. ⚠ `reached` needs
+        OBSERVED, from whether the work serving it continued and what it produced. `reached` needs
         evidence that the outcome HELD, not that the work stopped — those are the same silence, and
         `stalled` is the honest answer when you cannot tell them apart.
     # ── what serves it ───────────────────────────────────────────────────────────────────────────
@@ -166,5 +158,5 @@ schema:
       default: normal
       description: How much to trust this record. When low, the reason goes in creation_context.
 list_fields: [name, status, standing, evidence_count, real, first_seen, last_seen]
-icon: location   # WAS `north-star`, which is NOT a codicon and drew a blank
+icon: location   # `north-star` is not a codicon
 order: 150   # nav position — the model it reconstructed; the pipeline order, ten apart so one can be inserted without renumbering

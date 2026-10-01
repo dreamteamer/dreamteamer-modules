@@ -93,6 +93,13 @@ test('the source record says what was reachable, and re-running writes nothing n
 	assert.match(run(vault, data), /written 0 · unchanged 2/);
 });
 
+test('`--notes` and `--vault` name the same folder', () => {
+	const { vault, data } = fixture();
+	const receipt = execFileSync('node', [BIN, '--retrospective', SESSION, '--notes', vault, '--label', 'personal', '--data-root', data], { encoding: 'utf8' });
+	assert.match(receipt, /2 note\(s\)/);
+	assert.equal(deliverables(data).length, 2);
+});
+
 test('an empty vault is `unavailable`, which is a stated gap rather than a silent one', () => {
 	const { root, data } = fixture();
 	const empty = path.join(root, 'nothing');

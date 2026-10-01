@@ -4,20 +4,16 @@
 //   node compose-week-summaries.mjs --retrospective perspective/retrospective-sessions/<id>
 //        [--data-root d] [--scratch-root d] [--max-names 3] [--force] [--dry-run]
 //
-// ⚠ WHY EVERY WEEK WAS BLANK, found 2026-09-08: `activity-weeks.summary` had four careful READERS
-// and no WRITER. read-git, read-gmail, read-drive and read-claude-transcripts each re-read the
-// existing summary before rewriting a week, precisely so a re-run would not clobber it — and nothing
-// in the pipeline ever put one there. Every summary that existed had been typed by hand by a model
-// agent during one wave; 33 of 446 on the dogfood run, 0 of 540 across two colleague workspaces.
-// A field that only a human ever writes is a field that is empty.
+// `activity-weeks.summary` has four careful READERS — read-git, read-gmail, read-drive and
+// read-claude-transcripts each keep the existing summary when rewriting a week — and this is its one
+// WRITER. A field that only a human ever writes is a field that is empty.
 //
-// So this composes it, DETERMINISTICALLY, out of the names of the activities the week overlaps.
-// That is not a downgrade from the judged sentence the descriptor first asked for — the judgement
-// is already IN those names, performed once by the naming pass over the evidence, and quoting it is
-// truer than asking a second model to paraphrase a paraphrase. It is also re-runnable and free,
-// which is what a 986-week backfill has to be.
+// It composes the summary DETERMINISTICALLY, out of the names of the activities the week overlaps.
+// The judgement is already IN those names, performed once by the naming pass over the evidence, and
+// quoting it is truer than asking a second model to paraphrase a paraphrase. It is also re-runnable
+// and free, which is what a backfill of hundreds of weeks has to be.
 //
-// ⚠ AN ACTIVITY IS ATTRIBUTED TO A SOURCE, not merely to a date. The record's grain is source ×
+// AN ACTIVITY IS ATTRIBUTED TO A SOURCE, not merely to a date. The record's grain is source ×
 // week, so "the week of March 2nd" is the wrong answer for a git repo whose week held nothing while
 // the mailbox beside it held nine threads. Attribution walks the evidence the activity already
 // cites — every conversation, thread and ticket record carries its own `source`, and a deliverable
@@ -25,13 +21,12 @@
 // about the reader; this pass reports what it could not place rather than guessing).
 // Commits carry no record at all, so a git source is matched on the `from_candidate` repo prefix.
 //
-// ⚠ NEVER OVERWRITES A WRITTEN SUMMARY unless --force. A person's sentence about a week outranks a
-// composed one, and the whole reason this field survived four readers is that they refused to
-// clobber it. A week the pass cannot place stays EMPTY: an empty week is silence, not a sentence
+// NEVER OVERWRITES A WRITTEN SUMMARY unless --force. A person's sentence about a week outranks a
+// composed one. A week the pass cannot place stays EMPTY: an empty week is silence, not a sentence
 // about silence, and a bar with no label now falls through to `period` in the view.
 import fs from 'node:fs';
 import path from 'node:path';
-import { DATA, SCRATCH, slug } from '../lib/vault.mjs';
+import { DATA, SCRATCH, slug } from '../lib/workspace.mjs';
 import { listRecords, readRecord, writeRecord, contributorOf, collectionDir, recordId, recordPath } from '../lib/records.mjs';
 import { contributorHandles } from '../lib/identity.mjs';
 
@@ -47,8 +42,7 @@ const base = retrospective.split('/').pop();
 const dataRoot = opt('data-root', DATA);
 // Every evidence and model id is keyed by the CONTRIBUTOR, not by the run — a re-run must update
 // this person's records rather than write a parallel set beside them. Resolved LAZILY, on first
-// use: reading it eagerly made a script that should exit 2 on a bad argument crash on a missing
-// session instead, and "writes nothing" was the contract it broke (read-asana, 2026-09-09).
+// use, so a bad argument exits 2 with a usage line before any session is read.
 let _who = null;
 const who = () => (_who ??= contributorOf(retrospective, dataRoot));
 const scratch = opt('scratch-root', SCRATCH);
@@ -57,7 +51,7 @@ const dryRun = flag('dry-run');
 const force = flag('force');
 
 const list = (v) => (Array.isArray(v) ? v : v === undefined || v === null || v === '' ? [] : [v]);
-// ⚠ An unquoted YAML date parses to a Date, not a string. `period_start: 2025-09-08` in an
+// An unquoted YAML date parses to a Date, not a string. `period_start: 2025-09-08` in an
 // retrospective is written unquoted, so a string-only guard read it as absent and silently disabled
 // the whole out-of-period branch — 376 weeks kept being reported as quiet.
 const day = (v) => (v instanceof Date ? v.toISOString().slice(0, 10) : typeof v === 'string' && v.length >= 10 ? v.slice(0, 10) : '');
@@ -153,9 +147,8 @@ function compose(names) {
 // receipt that lumps them in with "quiet week" hides a fact worth knowing about the inventory.
 const myHandles = contributorHandles(retrospective, dataRoot);
 
-// The run's own window. ⚠ `read-git` indexes a repo's WHOLE history while a retrospective covers a
-// period, so most blank weeks on a long-lived repo are simply older than the run — 376 of 434 on one
-// colleague's workspace. Lumping those in with "quiet week" makes a legitimate boundary look like a
+// The run's own window. `read-git` indexes a repo's WHOLE history while a retrospective covers a
+// period, so most blank weeks on a long-lived repo are simply older than the run. Lumping those in with "quiet week" makes a legitimate boundary look like a
 // hole in the model, which is the reading that sends someone hunting for a bug.
 const period = (() => {
 	try { const f = readRecord(recordPath('retrospective-sessions', base, 'retrospective-session', dataRoot)).fields; return { from: day(f.period_start), to: day(f.period_end) }; }

@@ -5,10 +5,10 @@ below it — never out of thin air, and never out of what the person said about 
 is the ladder, written down once so that a run on a new contributor does not have to rediscover it,
 and so that a record found on the wrong rung can be named as the defect it is.
 
-It was written after three runs on three very different contributors: one with a thousand coding
-sessions and a full commit history, one with nine hundred tickets and no transcripts, and one with
-two dozen tickets whose actual output was a shelf of product specifications in a document store.
-The same ladder held for all three. **What changed was which rungs were empty and had to say so.**
+The same ladder holds for very different contributors: one with a thousand coding sessions and a
+full commit history, one with hundreds of tickets and no transcripts, and one with two dozen tickets
+whose actual output is a shelf of product specifications in a document store. **What changes is
+which rungs are empty and have to say so.**
 
 ## the ladder
 
@@ -16,7 +16,7 @@ The same ladder held for all three. **What changed was which rungs were empty an
   evidence      tickets · deliverables · threads · conversations · commits · activity-weeks · sources
      │            counted, never judged. A reader writes these and nothing else.
      ▼
-  observed      activities · topics · collaborators
+  observed      activities · topics · users
      │            RECONSTRUCTED: a bounded piece of work, named in the person's vocabulary, with
      │            every evidence ref that places it there attached. The rung most of the model rests on.
      ▼
@@ -73,7 +73,7 @@ Three rules make it a ladder and not a pile:
 |---|---|---|
 | activities | evidence records, pre-clustered mechanically (`cluster-activities.mjs`) then NAMED by judgement | named "worked on `<repo>`"; carrying fewer evidence refs than the candidate listed; `collaborative` disagreeing with `collaborators` |
 | topics | the subject several activities share | a second topic for a second spelling — that is an `alias` |
-| collaborators | EVERY handle a reader meets — commit author, ticket assignee, **ticket follower, comment author**, mail counterpart — keyed on an email or a system id | a merge on a display NAME (two people share one; the guard fails a handle on two records); a new record landing on an existing record's id and silently replacing it — measured once: a 738-commit author overwritten by a 10-mail counterpart with the same name, before `lib/collaborators.mjs` learned to step aside and say so in the body. ⚠ And a reader that writes only the person it was LOOKING AT: one wrote assignees alone, so a contributor who self-assigns every ticket finished a run with one collaborator — herself — while the same records already named eight counterparts in fields the reader had fetched and dropped |
+| users | EVERY handle a reader meets — commit author, ticket assignee, **ticket follower, comment author**, mail counterpart — keyed on an email or a system id | a merge on a display NAME (two people share one; the guard fails a handle on two records); a new record landing on an existing record's id and silently replacing it (`lib/collaborators.mjs` steps aside and says so in the body); a reader that writes only the person it was LOOKING AT — assignees alone leave a contributor who self-assigns every ticket with one collaborator, themselves, while the same records name their counterparts in fields the reader fetched |
 | projects | the effort a group of activities belongs to | an activity left with no project; a project with no lifecycle judgement in its body |
 | decisions | a source that STATES a choice — a ticket comment, a commit message, a digest, a log row, a mail thread (`email`, cited as the thread record; the body is read in the client, never copied). A spec is a decision record: its revisions say what it stopped doing | a `rationale` the source did not give; a `source_ref` whose shape does not match `source_kind` — and note a DELIVERABLE is not a legal source kind, so a document-only decision cites the ticket if one exists and otherwise names the document in the body |
 | concepts | a term with the same meaning across three or more uses | one striking use; a term whose meaning drifts (that is a topic) |
@@ -97,9 +97,8 @@ noise, exactly as a file they only read is in Drive.
 
 ## the document-shaped contributor
 
-The third run is the one this section exists for. A ticket board said one person did roughly a
-fortieth of another's work. The document store said the first person had written every product
-specification the second one built from. **An evidence source that is absent for a person is a fact
+A ticket board can say one person did a fortieth of another's work while the document store shows
+the first person wrote every product specification the second one built from. **An evidence source that is absent for a person is a fact
 about the SOURCE, not about the person** — and a module that can only read boards would have
 profiled a product owner as nearly idle.
 
@@ -123,7 +122,7 @@ What still measures cleanly when the board is thin — each with the question it
 | **partner-facing share** | activities on partner/integration topics ÷ all | how much of the role is outward-facing, from the artefacts alone |
 | **unreachable share** | deliverables whose `container` the reading account is not a member of ÷ all | how partial even the document view is |
 
-⚠ **Every one of these is a count over records that already exist.** None needs a new field, and
+**Every one of these is a count over records that already exist.** None needs a new field, and
 none is worth a record of its own — they belong in the perspective body, next to the claim each
 supports, with the filter that reproduces them.
 
@@ -140,11 +139,9 @@ people onto activities, counts onto everything. Each is written once and re-run 
 temptation every time is to make the write a REPLACEMENT — recompute the field, write the answer,
 done. That is correct exactly once, on a rung nothing else has touched.
 
-**On any rung a person may also have written, the write is a UNION.** Measured: a collaborator pass
-dry-run against a mature workspace previewed 44 of 421 activities touched — while 108 already
-carried collaborators a naming pass had typed by hand. A replacing write would have deleted every
-one the evidence could not re-derive, and the receipt would have said "touched 421" and looked like
-success. A person reading a ticket comment knows things the ticket record does not carry; the script
+**On any rung a person may also have written, the write is a UNION.** A mature workspace routinely
+holds collaborators a naming pass typed by hand. A replacing write deletes every one the evidence
+cannot re-derive, and its receipt says "touched" and looks like success. A person reading a ticket comment knows things the ticket record does not carry; the script
 does not. So:
 
 - **add what the evidence proves**, and
@@ -164,8 +161,8 @@ person**, however clearly a human can read it. A ticket's comment trail renders 
 wearing a regex, and it will attribute one person's work to another the first time two colleagues
 share a first name.
 
-The fix is at the READER, not the parser: the API had the email the whole time
-(`created_by.email`, `followers.email`), and the reader was throwing it away. **When a name is all
+The fix is at the READER, not the parser: the API carries the email (`created_by.email`,
+`followers.email`), and a reader that keeps only the name has thrown it away. **When a name is all
 you have, the gap is in what was stored — go back to the source, not to the string.**
 
 ## suggestions — the inference the interview runs on
@@ -188,9 +185,8 @@ the inference was — the one calibration signal this module gets, and it costs 
 
 ## the run shape that works, and the one that does not
 
-Measured across the three runs, the same failure every time a stage was given too much at once:
-**one agent handed a whole corpus reads for tens of minutes and writes nothing.** One instance read
-172 KB across nine minutes with zero records written before it was killed. The shape that works:
+The same failure recurs every time a stage is given too much at once: **one agent handed a whole
+corpus reads for tens of minutes and writes nothing.** The shape that works:
 
 1. **pre-cluster deterministically** (`cluster-activities.mjs` — shared tokens and dates), so the
    judgement stage names candidates rather than discovering them;

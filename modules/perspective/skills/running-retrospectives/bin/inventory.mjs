@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import yaml from 'js-yaml';
-import { VAULT, DATA, dt, readEnv, templatize, slug } from '../lib/vault.mjs';
+import { WORKSPACE_ROOT, DATA, dt, readEnv, templatize, slug } from '../lib/workspace.mjs';
 import { recordPath, writeRecord, listRecords, contributorOf, readRecord, nowIso, rebuildRelations, writeSource, compiledStorage, recordFilesOf } from '../lib/records.mjs';
 import { claudeHomes, walkJsonl } from '../lib/claude-trees.mjs';
 
@@ -35,7 +35,7 @@ if (reposRoot && fs.existsSync(reposRoot)) {
 	const walk = (d, depth) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { if (!e.isDirectory() || e.name.startsWith('.') || e.name === 'node_modules') continue; const p = path.join(d, e.name); if (fs.existsSync(path.join(p, '.git'))) checkouts.push(p); else if (depth < 3) walk(p, depth + 1); } };
 	walk(reposRoot, 1);
 } else add('git-repo', 'repos-folder', 'unavailable', { content: 'REPOS_FOLDER is unset or the folder does not exist on this machine.' });
-if (fs.existsSync(path.join(VAULT, '.git'))) checkouts.push(VAULT);
+if (fs.existsSync(path.join(WORKSPACE_ROOT, '.git'))) checkouts.push(WORKSPACE_ROOT);
 let registered = 0;
 const known = flag('no-register') ? [] : JSON.parse(dt(['list', 'repos', '--json']));
 for (const p of checkouts) {
@@ -61,7 +61,7 @@ add('codex-transcripts', 'codex', fs.existsSync(codex) ? 'available' : 'unavaila
 const gemini = path.join(home, '.gemini', 'tmp');
 add('gemini-cli-transcripts', 'gemini-cli', fs.existsSync(gemini) ? 'available' : 'unavailable', { location: homeTpl(gemini) });
 // the workspace's own records (use case 2)
-const workspaceRoot = path.resolve(opt('workspace-root', VAULT));
+const workspaceRoot = path.resolve(opt('workspace-root', WORKSPACE_ROOT));
 const dataDir = path.join(workspaceRoot, 'data');
 const nRecords = fs.existsSync(dataDir) ? listRecords(dataDir).length : 0;
 add('workspace-records', 'this-workspace', nRecords ? 'available' : 'unavailable', { location: '${workspaceFolder}/data', counts: { records: nRecords } });
@@ -102,14 +102,12 @@ for (const s of sources) {
 	if (!flag('dry-run')) writeSource(recordPath('sources', `${who()}/${s.kind}--${slug(s.label)}`, 'source', dataRoot), fields, content);
 }
 // ── the session says what it saw ───────────────────────────────────────────────────────────────
-// ⚠ THIS IS THE POINT OF THE STAGE, and until 2026-09-09 it did not happen: both live runs carried an
-// EMPTY source list, so a reader of the run could not answer "what did this see" — and nothing at all
-// recorded what it could NOT see.
+// THIS IS THE POINT OF THE STAGE: a reader of the run must be able to answer "what did this see",
+// and what it could NOT see.
 //
-// The LIST itself is no longer written here. `sources.retrospective` carries `x-inverse: sources`, so
-// the session's `sources[]` is a generated mirror the engine owns; this pass writes files directly, so
-// it asks the engine to refresh it rather than keeping a second hand-maintained copy — which is
-// exactly the pattern (four of them) that this release removed from the schema.
+// The LIST itself is not written here. `sources.retrospectives` carries the inverse, so the session's
+// `sources[]` is a generated mirror the engine owns; this pass writes files directly, so it asks the
+// engine to refresh it rather than keeping a second hand-maintained copy.
 //
 // The run LOG is still ours: it is prose about this pass, not a relation.
 if (!flag('dry-run')) {

@@ -1,8 +1,8 @@
-# terms — A WORD THE EVIDENCE ACTUALLY USES. The concrete half of the vocabulary: one surface form, as
+# perspective/terms — A WORD THE EVIDENCE ACTUALLY USES. The concrete half of the vocabulary: one surface form, as
 # it is literally written, with every spelling it appears under and a count of how often.
 #
-# ⚠ WHY THIS IS NOT `concepts`, and the split is the whole point of the pair. Before 2026-09-11 there
-# was one collection doing both jobs, and it could not do either well:
+# WHY THIS IS NOT `concepts`, and the split is the whole point of the pair. One collection cannot do
+# both jobs well:
 #
 #   A TERM IS OBSERVED. It is a token somebody typed — `RBAC`, `the RBAC thing`, `role gate`.
 #   Identifying it is nearly mechanical: it recurs, here is where, here is how often. Three spellings
@@ -10,12 +10,11 @@
 #   A CONCEPT IS ABSTRACTED. It is the meaning those terms share, written once, with a definition and
 #   links out to the concrete things it names. Three terms, ONE concept.
 #
-# Collapsing them forced a choice nobody should have to make: either write one `concepts` record per
-# spelling (and get a glossary with three near-duplicate entries, which the descriptor's own
-# `use_when` then had to warn against) or write one and silently drop the two spellings the person
+# Collapsing them forces a choice nobody should have to make: either write one `concepts` record per
+# spelling (and get a glossary with three near-duplicate entries) or write one and silently drop the two spellings the person
 # also uses — losing the ability to find the other two in the evidence at all.
 #
-# ⚠ SO THE PIPELINE IS TWO STEPS AND THE ORDER IS FIXED: the run IDENTIFIES terms (mechanically, from
+# SO THE PIPELINE IS TWO STEPS AND THE ORDER IS FIXED: the run IDENTIFIES terms (mechanically, from
 # frequency and recurrence, at the read and extract stages), then CLASSIFIES them — pointing each at
 # the concept it expresses, minting the concept where none fits. A term with no `concept` is not a
 # defect; it is a term that has been SEEN and not yet UNDERSTOOD, and how many of those are left is
@@ -31,15 +30,15 @@ use_when: >-
   a word recurs in sessions, tickets, commits or documents and is worth keeping as vocabulary — write it here
   FIRST, verbatim, with its spellings and counts, before deciding what it means. Then classify it: point
   `concept` at the meaning it expresses, minting a `concepts` record only when none of the existing ones fits.
-  Asked "what does this person call things" or "where is this word used", list here. ⚠ Three spellings of one
+  Asked "what does this person call things" or "where is this word used", list here. Three spellings of one
   idea are THREE terms and ONE concept — never one term per meaning, and never a concept per spelling. A term
   left `identified` is honest: it says the vocabulary pass saw the word and has not yet settled what it means
 storage: { path: data/perspective/terms, codec: md, shape: file, suffix: term }
-# ⚠ THE SLUG COMES FROM `key`, NOT FROM `name`, AND HERE IT MATTERS MOST. `name` is the term
+# THE SLUG COMES FROM `key`, NOT FROM `name`, AND HERE IT MATTERS MOST. `name` is the term
 # EXACTLY as the evidence writes it — which in a Hebrew-speaking contributor's corpus is Hebrew,
 # and the engine's `slug` filter is `slugOrHash`: it does not fail, it returns `x000w6xq`. That
 # destroys the one property this collection exists for — that a term can be grepped for in the
-# corpus it came from. Measured 2026-09-12: 22 of 35 terms hashed on the first write. `key` is a
+# corpus it came from. `key` is a
 # latin handle (a transliteration or a gloss); `name` stays verbatim.
 id:
   generate: "{{ contributor }}/{{ key }}"
@@ -57,7 +56,7 @@ schema:
       type: string
       description: >-
         The term EXACTLY as the evidence writes it, including case and punctuation — `RBAC`, `mono-repo`,
-        `the role gate`. ⚠ Never normalised, never translated, never expanded: the whole value of this
+        `the role gate`. Never normalised, never translated, never expanded: the whole value of this
         collection is that it can be grepped for in the corpus it came from. A tidied-up spelling is a
         different term the person never used.
     spellings:
@@ -65,7 +64,7 @@ schema:
       items: { type: string }
       description: >-
         OTHER surface forms of THIS same term that a reader should also match on — a plural, a casing, an
-        abbreviation, the same word in another script. ⚠ Not other terms for the same idea: those are their
+        abbreviation, the same word in another script. Not other terms for the same idea: those are their
         own records, joined through the shared `concept`. The test is whether a person would call it the
         same word or a different word for the same thing.
     # ── THE CLASSIFICATION STEP, AND WHAT IT REPORTS HONESTLY ─────────────────────────────────────
@@ -78,7 +77,7 @@ schema:
       description: >-
         The meaning this word expresses. MANY TERMS TO ONE CONCEPT, always — that cardinality is the reason
         the two collections exist. EMPTY IS A MEANING and it is the honest state of a term the run has seen
-        and not yet understood; read `classification` beside it. ⚠ Mint a new concept only when no existing
+        and not yet understood; read `classification` beside it. Mint a new concept only when no existing
         one fits: a concept per term is the glossary this split was made to stop.
     classification:
       type: string
@@ -90,11 +89,11 @@ schema:
         `concept`, and `bin/check-records.mjs` refuses the pair without it. `ambiguous` — the same word is
         used for two different things and a person has to say which, so it generates a gap question rather
         than a guess. `discarded` — looked like vocabulary and is not: a project name, a person's initials,
-        a library the person never talks about. ⚠ The count of `identified` terms left at the end of a run is
+        a library the person never talks about. The count of `identified` terms left at the end of a run is
         the measure of how complete the vocabulary is; a run that drives it to zero by minting a concept per
         term has not understood more, it has only hidden the residue.
     # ── WHERE IT IS USED ──────────────────────────────────────────────────────────────────────────
-    # ⚠ THE LOAD-BEARING EDGE, AND IT IS SELECTIVE. `concepts.classifies` says which observed objects a
+    # THE LOAD-BEARING EDGE, AND IT IS SELECTIVE. `concepts.classifies` says which observed objects a
     # MEANING is about; this says which ones a WORD is actually load-bearing in. Not every incidental
     # mention — a term that appears in ninety activities is a stopword in this person's world and
     # linking all ninety makes the mirror useless on every one of them. Link it where the record
@@ -115,7 +114,7 @@ schema:
           description: The words this record cannot be read without — generated from `terms.mentions`.
       description: >-
         The observed-world records this word is LOAD-BEARING in — where a reader who does not know the word
-        cannot understand the record. ⚠ Selective on purpose: a term used everywhere is this person's
+        cannot understand the record. Selective on purpose: a term used everywhere is this person's
         vocabulary rather than this record's, and linking every incidental use makes the generated `terms`
         mirror worthless on every record that has one. All targets are collections THIS module owns, so the
         mirror is never a write into somebody else's schema.

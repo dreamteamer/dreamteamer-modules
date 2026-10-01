@@ -383,7 +383,7 @@ function seedV2(root) {
 	writeRecord(recordPath('workflows', `${SLUG}/shipping-a-guard`, 'workflow', root), {
 		retrospective: RUN,
 		name: 'Shipping a guard',
-		steps: ['read the descriptors', 'extend the guard', 'run the suite', 'run it against the real vault'],
+		steps: ['read the descriptors', 'extend the guard', 'run the suite', 'run it against the real workspace'],
 		trigger: 'a design doc lands',
 		activities: [ACTIVITY],
 		frequency: 'per slice',
@@ -693,10 +693,10 @@ test('a goal under three pieces of evidence may not claim to be corroborated, an
 	// Borrowed wholesale from findings, and for the same reason: `confirmed` means a PERSON answered,
 	// and an unattended run writing it is claiming someone spoke who did not.
 	const root = seedClean(tmpDataRoot());
-	writeRecord(recordPath('goals', `${SLUG}/portable-vault`, 'goal', root), {
+	writeRecord(recordPath('goals', `${SLUG}/portable-workspace`, 'goal', root), {
 		retrospective: `perspective/retrospective-sessions/${SESSION}`,
-		name: 'the vault runs on any machine from a bare clone',
-		statement: 'A clone plus a .env is a working vault, with no second checkout and no host alias.',
+		name: 'the workspace runs on any machine from a bare clone',
+		statement: 'A clone plus a .env is a working workspace, with no second checkout and no host alias.',
 		// ⚠ The refs ARE the count. This fixture used to carry `evidence_count: 4` with nothing attached
 		// and passed — exactly the defect the goals guard now refuses.
 		decisions: ['a', 'b', 'c', 'd'].map((x) => `perspective/decisions/${SLUG}/${x}`),
@@ -736,11 +736,10 @@ test('a location may be an http(s) link, a template, or url: — and may never b
 });
 
 // ── WHERE IT LOOKS, AND WHAT IT DOES WHEN IT CANNOT FIND ANYTHING ───────────────────────────────
-// ⚠ MEASURED IN A REAL CONSUMER, 2026-09-11. Run from the workspace root with the module linked for
-// preview, this guard printed `✔ perspective records: 0 checked, 0 violations` and EXITED 0 over a
-// workspace holding 173 of them: the default data root resolved from the SCRIPT, and under preview
-// the script lives outside the workspace. A guard that reports success while checking nothing is
-// byte-identical to a guard that passed, which makes it the worst failure this repo can ship.
+// The data root resolves from the current directory, never from the SCRIPT: with the module linked
+// for preview the script lives outside the workspace, and a script-relative root reports
+// `0 checked, 0 violations` and exits 0 over a workspace full of records. A guard that reports
+// success while checking nothing is byte-identical to a guard that passed.
 describe('the data root', () => {
 	const tmpdir = (name) => fs.mkdtempSync(path.join(os.tmpdir(), name));
 
@@ -786,7 +785,7 @@ describe('the data root', () => {
 
 	// ⚠ THE SHAPE THE CLONE-AS-WORKSPACE RULE PROTECTS. `npm install` inside a module clone leaves a
 	// lockfile there, so a walk that stops at the first one resolves the CLONE as the workspace and
-	// checks a tree that is not the operator's. Measured on 2026-09-08 at a cost of 53 records.
+	// checks a tree that is not the person's.
 	test('a lockfile directly inside git_modules/ is skipped, not taken for the workspace', () => {
 		const ws = tmpdir('cr-gm-');
 		fs.writeFileSync(path.join(ws, 'package-lock.json'), '{}');

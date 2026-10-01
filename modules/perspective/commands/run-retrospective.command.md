@@ -33,7 +33,7 @@ observed-world collections are keyed by the contributor, so four runs over one s
 produce four views of the same real activities rather than one merged view — deliberately: a shared
 record would mean four runs writing one file and the last one silently winning, and where two views
 disagree the disagreement is the finding. The join between them is `real`, the one-way soft pointer
-at the workspace's own `users` · `projects` · `activities` · `goals` · `decisions` · `deliverables` record. ⚠ **Never set
+at the workspace's own `users` · `projects` · `activities` · `goals` · `decisions` · `deliverables` record. **Never set
 `real` yourself.** It is a proposal a person confirms, exactly like `contact`.
 
 **Run the NEXT stage after `stage`** — exactly one, unless the argument says "keep going". Advance

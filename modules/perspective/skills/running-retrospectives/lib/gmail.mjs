@@ -2,7 +2,7 @@
 // response into the record a `threads` collection keeps. No network here, so the shape is testable
 // from a fixture and the reader is a loop around this.
 //
-// ⚠ WHAT IS DELIBERATELY NOT KEPT. No body, no snippet, no attachment names, no labels. A thread
+// WHAT IS DELIBERATELY NOT KEPT. No body, no snippet, no attachment names, no labels. A thread
 // record is COUNTED evidence — who wrote to whom, how many times, when, under what subject — and
 // the subject is the ONE text field, kept because the clustering pass needs words to seed a label.
 // Everything else a mailbox holds is the person's correspondence, and this module has no business

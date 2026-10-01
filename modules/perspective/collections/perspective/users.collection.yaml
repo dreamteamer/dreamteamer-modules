@@ -1,10 +1,10 @@
-# perspective/users — A PERSON WHO APPEARS IN THE EVIDENCE. Not contacts (whom the operator deals with)
+# perspective/users — A PERSON WHO APPEARS IN THE EVIDENCE. Not contacts (whom the person deals with)
 # and not `users` (whom work is assigned to): this is who shows up in THIS contributor's commits,
 # tickets and sessions. Identity is the hard part and the data proves it: one person commits under
 # four handles across two machines and a GitHub noreply address. `handles` is the merge key; both
 # `contact` and `real` are PROPOSALS a person confirms.
 #
-# ⚠ THE OBSERVED HALF OF `users`, IN THE SAME SHAPE AND IN A SEPARATE STORE. It is not an `extends:`
+# THE OBSERVED HALF OF `users`, IN THE SAME SHAPE AND IN A SEPARATE STORE. It is not an `extends:`
 # overlay, and the reason is the module's own loudest rule: nothing here is authored truth. Merged
 # into `users`, a record a run FOUND would be indistinguishable from one a person WROTE, and the two
 # cannot even share an id shape — the real world keys on the name slug, the observed world on
@@ -53,23 +53,22 @@ schema:
       x-reference: contacts
       description: >-
         This person's record in the workspace's own CRM, where one exists and a person confirmed the
-        match. ⚠ It was a PLAIN STRING until 2026-09-09, with the comment "a recipe must compile where
-        no contacts collection exists" — true, and solved by declaring `contacts` a PEER rather than by
-        giving up the type. No `x-inverse`: a peer excuses a reference, not a mirror.
+        match. `contacts` is a declared PEER, so the module compiles where no contacts collection
+        exists without giving up the type. No `x-inverse`: a peer excuses a reference, not a mirror.
     # ── OUT INTO THE REAL WORLD ────────────────────────────────────────────────────────────────────
     # THE CANONICAL `real`, spelled identically on all four world collections so a guard, a view and a
     # reader have ONE field name to find. The other three point back here for the argument.
     #
-    # ⚠ ONE-WAY. There is no `x-inverse` and there must never be one: the real world is what a person
+    # ONE-WAY. There is no `x-inverse` and there must never be one: the real world is what a person
     # AUTHORED, and stamping `observed_as[]` onto their `users` record would be a finding writing into
     # somebody else's schema — the same rule that keeps `contact` above one-way.
     #
-    # ⚠ SOFT, and the word covers TWO different absences the engine already handles with TWO existing
+    # SOFT, and the word covers TWO different absences the engine already handles with TWO existing
     # mechanisms. Neither is new here and no new keyword was invented for this.
     #   1. THE COLLECTION IS NOT INSTALLED — the normal state, because a workspace running a
     #      retrospective need not own a plan at all. `users` is declared in
     #      `dreamteamer.peerDependencies`; compile stamps `unresolved_peers` onto this descriptor and
-    #      `check` reports `⚠ peer collection "users" is declared but not installed — N references
+    #      `check` reports `peer collection "users" is declared but not installed — N references
     #      unresolvable` rather than failing.
     #   2. THE RECORD IS GONE — `x-reference-soft: true` (src/ref.js: "resolve it if the target is
     #      present, ignore it if it is absent"), the same keyword the engine's own
@@ -131,6 +130,6 @@ order: 110   # nav position — the model it reconstructed; the pipeline order, 
 # The face, then the name — everywhere. A `title_template` is what a relation CELL, a group header,
 # a tooltip and a card all render for this record, so one line here puts a person's picture on every
 # surface that mentions them. `{{ avatar }}` holds `assets/avatars/<slug>`, which `DisplayTemplate`
-# draws as a thumbnail rather than spelling out (extension 0.14.5); a collaborator with no matched
+# draws as a thumbnail rather than spelling out; a collaborator with no matched
 # avatar renders the name alone, because an empty token renders to nothing.
 title_template: '{{ avatar }} {{ name }}'

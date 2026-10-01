@@ -10,19 +10,19 @@ not the number of refs.
 |---|---|
 | the same question opening several sessions | `recurring-question` |
 | the same repo, product or effort across many sessions and weeks | `workstream` |
-| the same sequence of steps done by hand more than once | `workflow` — **v2: write the sequence itself as an `perspective/workflows` record at the extract stage** (it has ordered `steps`, and a finding does not). A `workflow` FINDING now exists only to carry the observation ABOUT it — the count, the `standing`, the confirmation path — and cites the workflow's activities |
+| the same sequence of steps done by hand more than once | `workflow` — **write the sequence itself as an `perspective/workflows` record at the extract stage** (it has ordered `steps`, and a finding does not). A `workflow` FINDING now exists only to carry the observation ABOUT it — the count, the `standing`, the confirmation path — and cites the workflow's activities |
 | corrections, rejections, denials clustering on one thing | `friction` |
 | the person knew something the agent did not, repeatedly | `knowledge-gap` |
 | who they are / what they own, from behaviour not self-report | `role` · `responsibility` |
 | a number worth watching | `metric` |
-| anything else true and transferable | `insight` — **v2: a conclusion that cites two or more FINDINGS and states a consequence is an `perspective/insights` record**, not a third finding; `kind: insight` stays for a single observation |
+| anything else true and transferable | `insight` — **a conclusion that cites two or more FINDINGS and states a consequence is an `perspective/insights` record**, not a third finding; `kind: insight` stays for a single observation |
 
-**v2 — what may be cited as evidence.** `findings.evidence` is an array of qualified refs over
+**What may be cited as evidence.** `findings.evidence` is an array of qualified refs over
 `conversations`, `activity-weeks`, `questions`, `activities`, `tickets`, `threads` and `decisions` — that is
 `EVIDENCE_COLLECTIONS` in `bin/check-records.mjs`, and the body's closing count may use any of those
 as its unit (`(4 activities)`, `(7 tickets)`, `(3 decisions)`). An activity is the natural evidence
 for a `workstream` finding, a decision for a `recurring-question` one, a ticket for `friction`.
-⚠ A **deliverable** is NOT evidence — a document store keeps one last modifier per file, so a
+A **deliverable** is NOT evidence — a document store keeps one last modifier per file, so a
 deliverable proves the person touched a file last and nothing more. Cite the activity that carries
 the deliverable, and name the document in the body. The list and the count-tail regex are kept in
 step by a test; widening one without the other fails the suite.
@@ -35,17 +35,17 @@ that is `interview-only` evidence and the answer record is the finding's evidenc
 
 ## §2 — writing proposals (stage **propose**)
 
-**The rule (decision 13.6):**
+**The rule:**
 
 | finding `kind` + `standing: confirmed` | becomes |
 |---|---|
 | `recurring-question` · `workstream` | a **collection** |
-| `workflow` | a **skill** — or a **command** when the person names a trigger word for it. See "a workflow record becomes a proposal" below, which is the v2 path |
+| `workflow` | a **skill** — or a **command** when the person names a trigger word for it. See "a workflow record becomes a proposal" below |
 | `friction` | a **command**, or a line in the workspace's instructions (then no proposal record — write the line and cite the finding in the commit) |
 | `role` · `responsibility` · `metric` · `insight` · `knowledge-gap` | nothing on their own — they shape `description`, `use_when` and the skill's wording |
 | anything with `standing: anecdote` or `refuted` | nothing. Ever. |
 
-### a confirmed `workflow` record becomes a proposal (v2)
+### a confirmed `workflow` record becomes a proposal
 
 A `workflows` record already holds the thing a proposal needs: an ordered `steps` array in the
 person's own vocabulary, a `trigger`, the `activities` it was observed in, and a `frequency`. Once

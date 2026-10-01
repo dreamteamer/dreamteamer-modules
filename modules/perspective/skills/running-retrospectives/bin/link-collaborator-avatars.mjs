@@ -8,19 +8,19 @@
 // workspace's `assets` collection (`avatars/<slug>`, `codec: file`), so this matches them to the
 // people this run found and, with `--copy`, brings the matched files across.
 //
-// ⚠ THE MATCH IS EXACT, ON A SLUG, AND NEVER FUZZY. A collaborator matches an avatar when the slug
+// THE MATCH IS EXACT, ON A SLUG, AND NEVER FUZZY. A collaborator matches an avatar when the slug
 // of their `name` or of ANY of their `handles` equals the avatar's id — nothing else. Levenshtein,
 // first-name matching or "close enough" would put one real person's face on another, which is the
 // most visible error this module can make and the same class as the merge-by-name refusal in
 // `lib/collaborators.mjs`. A person with no exact match keeps no avatar, and the count is reported.
 //
-// ⚠ AND IT COPIES ONLY WHAT MATCHED. The origin workspace's avatar set is its own address book;
+// AND IT COPIES ONLY WHAT MATCHED. The origin workspace's avatar set is its own address book;
 // carrying all of it into a colleague's workspace would move pictures of people who appear nowhere
 // in that colleague's evidence. `--copy` brings across exactly the files the matched collaborators
 // point at, and says how many.
 import fs from 'node:fs';
 import path from 'node:path';
-import { DATA, slug } from '../lib/vault.mjs';
+import { DATA, slug } from '../lib/workspace.mjs';
 import { listRecords, readRecord, writeRecord, contributorOf, collectionDir } from '../lib/records.mjs';
 
 const argv = process.argv.slice(2);
@@ -35,15 +35,14 @@ const base = retrospective.split('/').pop();
 const dataRoot = opt('data-root', DATA);
 // Every evidence and model id is keyed by the CONTRIBUTOR, not by the run — a re-run must update
 // this person's records rather than write a parallel set beside them. Resolved LAZILY, on first
-// use: reading it eagerly made a script that should exit 2 on a bad argument crash on a missing
-// session instead, and write nothing was the contract it broke (read-asana, 2026-09-09).
+// use, so a bad argument exits 2 with a usage line before any session is read.
 let _who = null;
 const who = () => (_who ??= contributorOf(retrospective, dataRoot));
 const dryRun = flag('dry-run');
 const wantCopy = flag('copy');
 
 /** Where the pictures come from. Defaults to THIS workspace, which is right when the run is on the
- *  vault that owns the address book and is the only case needing no flag. */
+ *  workspace that owns the address book and is the only case needing no flag. */
 const fromRoot = opt('from', path.resolve(dataRoot, '..'));
 const fromAvatars = path.join(fromRoot, 'data', 'assets', 'avatars');
 if (!fs.existsSync(fromAvatars)) {
@@ -82,7 +81,7 @@ for (const file of listRecords(path.join(collectionDir('users', dataRoot), who()
 	const { fields, body } = readRecord(file);
 	const hit = [...keysOf(fields)].find((k) => available.has(k));
 	if (!hit) {
-		// ⚠ An avatar that no longer resolves is REMOVED, not left pointing at nothing: a broken
+		// An avatar that no longer resolves is REMOVED, not left pointing at nothing: a broken
 		// image in a board is worse than an initial, and a stale ref outlives the file it named.
 		if (fields.avatar) { const next = { ...fields }; delete next.avatar; if (!dryRun) writeRecord(file, next, body); cleared++; }
 		unmatched++;

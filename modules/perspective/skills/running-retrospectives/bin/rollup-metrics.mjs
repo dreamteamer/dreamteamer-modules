@@ -9,7 +9,7 @@
 //   node rollup-metrics.mjs --retrospective perspective/retrospective-sessions/<id> [--data-root <dir>] [--dry-run]
 import path from 'node:path';
 import fs from 'node:fs';
-import { DATA, SCRATCH } from '../lib/vault.mjs';
+import { DATA, SCRATCH } from '../lib/workspace.mjs';
 import { recordPath, readRecord, writeRecord, listRecords, contributorOf, collectionDir, recordId } from '../lib/records.mjs';
 import { commitIntent } from '../lib/commit-intent.mjs';
 
@@ -80,7 +80,7 @@ for (const file of listRecords(activityDir)) {
 		for (const [out, src] of Object.entries(SUM)) acc[out] += Number(c[src] ?? 0);
 		corrWords += Number(c.correction_ratio ?? 0) * Number(c.output_words ?? 0);
 	}
-	// ⚠ ABSENT AND ZERO ARE DIFFERENT CLAIMS, and only one of them is true here. An activity
+	// ABSENT AND ZERO ARE DIFFERENT CLAIMS, and only one of them is true here. An activity
 	// reconstructed from commits alone — every one of them, in a workspace with no transcripts —
 	// has no session evidence at all. Writing `tokens_input: 0` on it says the work cost nothing;
 	// writing nothing says nobody measured. The second is the fact. But a stale number left by an
@@ -126,13 +126,12 @@ const projDir = path.join(collectionDir('projects', dataRoot), who());
 const PROJ_SUM = ['active_minutes', 'turns_user', 'tokens_total', 'input_words', 'output_words', 'corrections', 'interruptions', 'session_count'];
 
 // ── which repo a commit lives in ─────────────────────────────────────────────────────────────────
-// ⚠ THE PROJECT→REPO EDGE HAS NO OTHER WRITER. Code curves are summed out of `activity-weeks`, which
-// are keyed by repo, so a project gets them only if something says which repos it touched. Grep the
-// toolchain for a writer of `activities.repos` and the only match is this file READING it — so the
-// set was always just whatever `repo_names` somebody had typed by hand, and a real workspace had 4
-// of 8 projects showing blank line columns, one of them with 244 commits (a client workspace, 2026-09-10).
+// THE PROJECT→REPO EDGE HAS NO OTHER WRITER. Code curves are summed out of `activity-weeks`, which
+// are keyed by repo, so a project gets them only if something says which repos it touched, and
+// nothing else writes `activities.repos` — hand-typed `repo_names` alone leave projects with blank
+// line columns.
 //
-// The evidence was never missing: `read-git` parks every commit it reads in
+// The evidence is already on disk: `read-git` parks every commit it reads in
 // `<scratch>/commits/<base>/<repo>.jsonl`, so each SHA already knows its repo. This reads that map
 // once and lets a project's own commits name its repos.
 const commitOfSha = new Map();
@@ -190,15 +189,15 @@ for (const file of listRecords(projDir)) {
 	const acc = byProject.get(`perspective/projects/${rel}`);
 	if (!acc) { orphanProjects++; continue; }   // a project no activity points at: left alone, and counted
 	// Code curves come from the repos the project's activities actually touched, plus any the
-	// project declares itself. ⚠ A repo shared by two projects contributes its lines to BOTH — the
+	// project declares itself. A repo shared by two projects contributes its lines to BOTH — the
 	// weekly record has no per-project attribution, and pretending otherwise would invent one.
 	const repos = new Set([...acc.repos, ...(fields.repo_names ?? [])].filter(Boolean));
-	// ⚠ FROM THIS PROJECT'S OWN COMMITS, not from its repos' weekly totals. The weekly records have no
+	// FROM THIS PROJECT'S OWN COMMITS, not from its repos' weekly totals. The weekly records have no
 	// per-project attribution, so summing them per repo handed every project sharing a repo that
-	// repo's ENTIRE history: on a real workspace a 6-commit project came out with 1,775,984 lines_new,
-	// identical to the three other projects touching the same repo (a client workspace, 2026-09-10). A number
-	// that confident and that wrong is worse than the blank it replaced. Each commit already carries
-	// its own per-file add/del in the scratch, so the honest sum needs no attribution at all.
+	// repo's ENTIRE history — a six-commit project would report a million lines, identical to every
+	// other project touching the same repo. A number that confident and that wrong is worse than a
+	// blank. Each commit already carries its own per-file add/del in the scratch, so the honest sum
+	// needs no attribution at all.
 	const code = {
 		lines_new: acc.lines_new, lines_modified: acc.lines_modified,
 		commits_bug: acc.commits_bug, commits_change_request: acc.commits_change_request,
@@ -206,11 +205,9 @@ for (const file of listRecords(projDir)) {
 	const has = (k) => acc[k] > 0;
 	const next = {
 		...fields,
-		// ⚠ NO `activities_count`. 0.2.0 deleted it from `projects` — the count comes off the generated
-		// `activities` mirror — and this kept writing it back on every rollup. `check` does not flag an
-		// unknown key, so nothing caught it; `dt set` does, and refuses the WHOLE write, so a project
-		// that had been rolled up could no longer be edited at all (a client workspace, 2026-09-10).
-		// `perspectives.activities_count` is a different field and still exists.
+		// NO `activities_count`: `projects` has no such field — the count comes off the generated
+		// `activities` mirror — and `dt set` refuses a WHOLE write that carries an unknown key.
+		// `perspectives.activities_count` is a different field.
 		commit_count: acc.commits,
 		ticket_count: acc.tickets,
 		// Written back so the record SAYS which repos its curves were summed from, rather than leaving

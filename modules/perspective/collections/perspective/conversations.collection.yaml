@@ -1,14 +1,14 @@
-# conversation-summaries — ONE CONDENSED CODING-AGENT SESSION. Ported from an earlier conversation analyzer,
-# agent-session-summaries, trimmed to what the findings pass and a later report read.
+# perspective/conversations — ONE CONDENSED CODING-AGENT SESSION, trimmed to what the findings pass
+# and a later report read.
 #
 # THREE TIERS OF FIELD, named in every description:
 #   MECHANICAL — counted off the JSONL by lib/metrics.mjs. Never guessed. Always present.
 #   HEURISTIC  — regex over turns (the dialogue-act counts). Cheap and knowingly approximate.
 #   JUDGED     — written by a model over a bounded digest, never the full text. Absent on depth: minimal.
-# ⚠ When a judged field disagrees with a mechanical one, the mechanical one is right.
-# ⚠ Judged fields are written ONLY through bin/record-judgement.mjs, which rejects any other key.
+# When a judged field disagrees with a mechanical one, the mechanical one is right.
+# Judged fields are written ONLY through bin/record-judgement.mjs, which rejects any other key.
 name: perspective/conversations
-description: One condensed coding-agent conversation — what was worked on, how many real operator turns, where the operator corrected the agent.
+description: One condensed coding-agent conversation — what was worked on, how many real user turns, where the person corrected the agent.
 use_when: >-
   the findings pass asks what recurs across a person's sessions, a gap question needs its evidence,
   or a report needs turns and corrections over time — read here, never the transcript; written by
@@ -34,28 +34,28 @@ schema:
       description: 'MECHANICAL — the tree the file was found in: `default` for ~/.claude, `<name>` for ~/.claude-<name>. Nothing inside a transcript records it.'
     title:
       type: string
-      description: MECHANICAL — the harness's generated title when present, else the first operator line, clipped to 140 chars.
+      description: MECHANICAL — the harness's generated title when present, else the first user line, clipped to 140 chars.
     transcript_path:
       type: string
       description: 'MECHANICAL — where the file is, as a template: `${userHome}/.claude/projects/<dir>/<id>.jsonl`. Never a machine path.'
       examples: ['${userHome}/.claude/projects/-Users-me-work-acme/0f3c…jsonl']
-    # ⚠ A SESSION IS NOT ALWAYS ONE FILE. Continuing a codex thread writes a NEW rollout carrying the
-    # same session_id, so one session's evidence can be spread across several files on disk — 53
-    # rollouts were 32 sessions on the first read. `transcript_path` points at where the session
+    # A SESSION IS NOT ALWAYS ONE FILE. Continuing a codex thread writes a NEW rollout carrying the
+    # same session_id, so one session's evidence can be spread across several files on disk.
+    # `transcript_path` points at where the session
     # BEGAN; this says how many files a reader would have to open to see all of it. Absent when the
     # session is one file, which is every Claude session and most codex ones.
     sittings: { type: integer, description: 'MECHANICAL — how many transcript FILES this one session was written across. Absent when it is one.' }
-    # ⚠ MOST "USER" MESSAGES IN A CODEX ROLLOUT ARE NOT THE USER — the desktop app injects its own
+    # MOST "USER" MESSAGES IN A CODEX ROLLOUT ARE NOT THE USER — the desktop app injects its own
     # context as `role: user` messages opening with a tag (`<realtime_delegation>`,
-    # `<codex_delegation>`, `<recommended_plugins>`, `<environment_context>`, `<heartbeat>`): 596 of
-    # them against a handful of typed lines, and 46 of 47 sessions OPENED with one. They are excluded
+    # `<codex_delegation>`, `<recommended_plugins>`, `<environment_context>`, `<heartbeat>`), often
+    # far outnumbering the typed lines, and most sessions open with one. They are excluded
     # from `turns_user` and counted here instead, because a hidden exclusion is how a number quietly
     # stops meaning what its name says.
     harness_envelopes: { type: integer, description: 'MECHANICAL — harness-injected messages wearing the user role, excluded from `turns_user`. Absent when there were none.' }
     # A realtime voice session has no typed user message at all: the human half is the spoken
     # transcript. A contiguous RUN of segments is one turn, since a segment is a fragment of an
     # utterance and counting each would turn a two-minute exchange into forty turns.
-    spoken_turns: { type: integer, description: 'MECHANICAL — how many of `turns_user` the operator SPOKE rather than typed. Absent when none.' }
+    spoken_turns: { type: integer, description: 'MECHANICAL — how many of `turns_user` the person SPOKE rather than typed. Absent when none.' }
     depth:
       type: string
       enum: [minimal, summarized]
@@ -86,42 +86,42 @@ schema:
     turns_user:
       type: integer
       description: >-
-        MECHANICAL — real operator turns ONLY. Tool results, system reminders, hook output, IDE notices,
+        MECHANICAL — real user turns ONLY. Tool results, system reminders, hook output, IDE notices,
         task notifications and compaction replay are all excluded. THE FORCING FIELD and the north star.
     turns_assistant: { type: integer, description: MECHANICAL — assistant turns folded on message.id (one turn spans several JSONL lines). }
     tool_calls: { type: integer, description: MECHANICAL. }
     tool_errors: { type: integer, description: MECHANICAL — tool results flagged is_error. }
     files_edited: { type: integer, description: MECHANICAL — distinct paths passed to Edit/Write/NotebookEdit. }
     skills_loaded: { type: array, items: { type: string }, description: MECHANICAL — skill and slash-command names invoked through tools. }
-    commands_invoked: { type: array, items: { type: string }, description: MECHANICAL — slash commands the operator typed. }
+    commands_invoked: { type: array, items: { type: string }, description: MECHANICAL — slash commands the person typed. }
     tokens_input: { type: integer, description: MECHANICAL — summed once per message.id. }
     tokens_output: { type: integer, description: MECHANICAL — summed once per message.id. }
     tokens_cache_read:
       type: integer
-      description: "MECHANICAL — `cache_read_input_tokens`, summed once per message.id. ⚠ On a long agentic session this is nearly the ENTIRE input bill: one real week measured 13,949 uncached input tokens against 2.7M output, because every turn re-reads a cached prompt. Reading `tokens_input` as what a session cost under-reports by two orders of magnitude."
+      description: "MECHANICAL — `cache_read_input_tokens`, summed once per message.id. On a long agentic session this is nearly the ENTIRE input bill: the uncached remainder is routinely orders of magnitude smaller than the output, because every turn re-reads a cached prompt. Reading `tokens_input` as what a session cost under-reports by two orders of magnitude."
     tokens_cache_write:
       type: integer
       description: MECHANICAL — `cache_creation_input_tokens`, summed once per message.id. What it cost to put the context into the cache the reads above then hit.
     tokens_total:
       type: integer
       description: "MECHANICAL — input + output + cache read + cache write. THE number to quote when someone asks what a session burned; the other four are the breakdown."
-    user_directive: { type: integer, description: HEURISTIC dialogue act — the operator asked for work. The default class. }
-    user_correction: { type: integer, description: HEURISTIC dialogue act — the operator said the agent got it wrong. The expensive class. }
+    user_directive: { type: integer, description: HEURISTIC dialogue act — the person asked for work. The default class. }
+    user_correction: { type: integer, description: HEURISTIC dialogue act — the person said the agent got it wrong. The expensive class. }
     user_rejection: { type: integer, description: HEURISTIC dialogue act — stop / no / revert. }
     user_approval: { type: integer, description: HEURISTIC dialogue act — yes / go ahead / lgtm. }
-    user_question: { type: integer, description: HEURISTIC dialogue act — the operator asked something. }
+    user_question: { type: integer, description: HEURISTIC dialogue act — the person asked something. }
     user_context: { type: integer, description: HEURISTIC dialogue act — a long paste handing over material. }
     agent_plan: { type: integer, description: HEURISTIC dialogue act — the agent laid out a plan. }
-    agent_question: { type: integer, description: HEURISTIC dialogue act — the agent asked the operator. }
+    agent_question: { type: integer, description: HEURISTIC dialogue act — the agent asked the person. }
     agent_refusal: { type: integer, description: HEURISTIC dialogue act — the agent declined. }
-    permission_denials: { type: integer, description: MECHANICAL — tool results saying the operator refused an action. }
+    permission_denials: { type: integer, description: MECHANICAL — tool results saying the person refused an action. }
     interruptions:
       type: integer
-      description: "MECHANICAL — times the operator hit the stop key mid-flight (`[Request interrupted by user`). ⚠ Read this BEFORE `permission_denials`: the first dogfood run measured 552 interruptions across a third of sessions, 2.2× more frequent than a denial, which makes this — not the permission prompt — the real stop button. An interruption still counts as a turn in `turns_user`, because the operator did speak; it is simply the cheapest thing they can say."
-    divergences: { type: integer, description: JUDGED — times the agent went somewhere the operator had not asked. }
+      description: "MECHANICAL — times the person hit the stop key mid-flight (`[Request interrupted by user`). Read this BEFORE `permission_denials`: interruptions are typically more frequent than denials, which makes this — not the permission prompt — the real stop button. An interruption still counts as a turn in `turns_user`, because the person did speak; it is simply the cheapest thing they can say."
+    divergences: { type: integer, description: JUDGED — times the agent went somewhere the person had not asked. }
     plan_changes: { type: integer, description: JUDGED — times the stated plan changed mid-session. }
     summary: { type: string, description: JUDGED — one paragraph, what was attempted and what came of it. }
-    goals: { type: array, items: { type: string }, description: JUDGED — what the OPERATOR was trying to achieve, in their terms. }
+    goals: { type: array, items: { type: string }, description: JUDGED — what the PERSON was trying to achieve, in their terms. }
     key_topics: { type: array, items: { type: string }, description: JUDGED. }
     outcome:
       type: string
@@ -130,32 +130,32 @@ schema:
     knowledge_kinds:
       type: array
       items: { type: string }
-      description: 'JUDGED — which of knowhow · facts · operator-bias · decisions · experience · technique · pitfall are actually present. Open, not an enum.'
+      description: 'JUDGED — which of knowhow · facts · person-bias · decisions · experience · technique · pitfall are actually present. Open, not an enum.'
     interest_score: { type: integer, minimum: 0, maximum: 100, description: JUDGED — extractable value that exists nowhere else, per references/interest-score.md. Never derived from volume. }
     interest_reason: { type: string, description: JUDGED — one line naming the specific thing. }
     dated_from_mtime:
       type: boolean
-      description: "MECHANICAL — true when the transcript carried no timestamp on any line and started_at fell back to the file's mtime. A file of pure /compact checkpoints is the case: 754 lines, no conversation. Absent means the dates came from the transcript."
+      description: "MECHANICAL — true when the transcript carried no timestamp on any line and started_at fell back to the file's mtime. A file of pure /compact checkpoints, with no conversation in it, is the case. Absent means the dates came from the transcript."
     turns_added_information:
       type: integer
       minimum: 0
-      description: "JUDGED — layer 2 of the four-layer structure, in the operator's own words: turns where he ADDED information the agent did not have. The converging kind — `okay more, and okay more`. Counted per turn from the digest, never inferred from the heuristic act counts, which is what `user_directive` already is."
+      description: "JUDGED — layer 2 of the four-layer structure: turns where the person ADDED information the agent did not have. The converging kind — `okay more, and okay more`. Counted per turn from the digest, never inferred from the heuristic act counts, which is what `user_directive` already is."
     turns_corrected:
       type: integer
       minimum: 0
-      description: "JUDGED — layer 2's other half: turns where he CORRECTED the agent or overrode its steering — `not like that, not like that`. The expensive kind, and the signal that a skill is missing, mis-tuned, or that the work arrived broken from an earlier stage. ⚠ Read against `turns_added_information`, never alone: the RATIO is the metric."
+      description: "JUDGED — layer 2's other half: turns where the person CORRECTED the agent or overrode its steering — `not like that, not like that`. The expensive kind, and the signal that a skill is missing, mis-tuned, or that the work arrived broken from an earlier stage. Read against `turns_added_information`, never alone: the RATIO is the metric."
     skill_tokens_active:
       type: integer
       description: "MECHANICAL where the transcript allows, else JUDGED — tokens spent by skills that were ACTIVELY USED, not merely loaded. The hypothesis: you start with no skills, you write skills, and you repeat yourself less and less as recurring knowledge distils into them, so this should RISE while turns fall."
     input_words:
       type: integer
-      description: "MECHANICAL — words the HUMAN had to type: the denominator. From the metrics brainstorm (skill `references/metrics.md`): everything normalises to words — a PRD is words, code is obviously words — so productivity is output words over input words."
+      description: "MECHANICAL — words the HUMAN had to type: the denominator. Everything normalises to words (skill `references/metrics.md`) — a PRD is words, code is obviously words — so productivity is output words over input words."
     output_words:
       type: integer
-      description: "MECHANICAL — words of deliverable the session produced: the numerator of the productivity ratio. ⚠ Guard, named in the same breath as the ratio: words can be gibberish, so this number means nothing without `correction_ratio` beside it."
+      description: "MECHANICAL — words of deliverable the session produced: the numerator of the productivity ratio. Guard, named in the same breath as the ratio: words can be gibberish, so this number means nothing without `correction_ratio` beside it."
     oneshot_prompt_words:
       type: integer
-      description: "JUDGED — LAYER 3, and the one the operator pushed hardest for: given the artifact this session produced, how SHORT a prompt would reproduce it blind, in one shot. His claim for it — it normalises the skill and normalises all the turns, folding skills, turns and harness into one number that answers what the artifact would have cost under lab conditions. Absent unless someone actually ran the one-shot reproduction; it is a measurement, not an estimate. ⚠ This layer has NOT been repeated in any telling since 2026-09-02 — the 09-06 versions renumber the layers and drop it — so whether it survives is an open decision, not a settled field."
+      description: "JUDGED — LAYER 3: given the artifact this session produced, how SHORT a prompt would reproduce it blind, in one shot. It normalises the skill and all the turns, folding skills, turns and harness into one number that answers what the artifact would have cost under lab conditions. Absent unless someone actually ran the one-shot reproduction; it is a measurement, not an estimate, and most runs leave it empty."
     deliverable_kind:
       type: string
       description: "The kind of thing this session produced — prd · code · design-doc · analysis · report · spec · none. LAYER 4 needs it because quality scoring is CONTEXTUAL: a scoring skill that has seen many PRDs knows a good one, and knows nothing about a good migration script. Free text on purpose; the vocabulary is discovered before it is closed."
@@ -163,7 +163,7 @@ schema:
       type: integer
       minimum: 0
       maximum: 100
-      description: "JUDGED, 0-100 — LAYER 4, contextual quality of the deliverable, scored per `deliverable_kind` by a skill calibrated to the reader's taste. ⚠ Both men agreed at the 2026-09-02 brainstorm that this layer is irreducibly subjective: quality will always be a subjective measure, you can only get close to objective. Never averaged with the other layers into one score — the layers sit on a subjectivity gradient and mixing them destroys the gradient."
+      description: "JUDGED, 0-100 — LAYER 4, contextual quality of the deliverable, scored per `deliverable_kind` by a skill calibrated to the reader's taste. This layer is irreducibly subjective: quality can get close to objective, never reach it. Never averaged with the other layers into one score — the layers sit on a subjectivity gradient and mixing them destroys the gradient."
     skills_used:
       type: array
       items:
@@ -173,7 +173,7 @@ schema:
       type: array
       items:
         type: string
-      description: MECHANICAL — the MCP servers whose tools were called. Tools and MCPs over time went onto the dashboard the moment a pilot confirmed he had connected more of them.
+      description: MECHANICAL — the MCP servers whose tools were called. Plotted over time beside `tools_used`.
     tools_used:
       type: array
       items:
@@ -181,7 +181,7 @@ schema:
       description: MECHANICAL — distinct tool names called, so the tool mix can be plotted over time beside the MCP servers.
     correction_ratio:
       type: number
-      description: "MECHANICAL where derivable — corrected words over produced words: the guard the operator named for the words ratio the instant he proposed it, because words can be gibberish. ⚠ THE DIRECTION IS THE POINT — you want this to FALL over time; a rising number means the output is getting cheaper to produce and worse."
+      description: "MECHANICAL where derivable — corrected words over produced words: the guard on the words ratio, because words can be gibberish. THE DIRECTION IS THE POINT — you want this to FALL over time; a rising number means the output is getting cheaper to produce and worse."
     content:
       type: string
       format: markdown
@@ -196,7 +196,7 @@ schema:
         `## recap (no PII)` — three to six sentences on what the conversation was about and what
         came of it, carrying NO personally identifying information: no person's name, no company or
         client, no repo or branch name, no path, no URL, no ticket key, no figure that identifies an
-        account. Write "the client", "the operator", "a service", "a repo". This is the paragraph
+        account. Write "the client", "the person", "a service", "a repo". This is the paragraph
         that may be shown outside the org, put in a report, or pasted into a deck.
 
         Anything identifying — who was on the call, which client, which repo, which number — goes

@@ -1,9 +1,8 @@
 // Three layers, and the layer decides the key.
 //
-// Before this release every model id began with the RUN — `activities/2026-09-08--dana/…` — so a
-// retrospective three months later wrote a SECOND copy of the same person's projects, topics and
-// goals beside the first. The module called itself idempotent and was, per record; it was not, per
-// model. Evidence and model records are keyed by the CONTRIBUTOR and updated in place by every later
+// A model id that began with the RUN — `activities/2026-09-08--dana-o/…` — would make a
+// retrospective three months later write a SECOND copy of the same person's projects, topics and
+// goals beside the first: idempotent per record, not per model. Evidence and model records are keyed by the CONTRIBUTOR and updated in place by every later
 // session. Questions and proposals stay keyed by the run, because they ARE the sitting: an interview
 // belongs to the day it happened and a proposal is what THAT session recommended.
 //
