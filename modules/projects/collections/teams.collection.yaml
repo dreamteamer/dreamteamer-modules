@@ -8,14 +8,8 @@ use_when: >-
   somebody is part of, read the generated `teams` on their user record. A team is not an owner of last resort: a
   task and an activity are still assigned to a PERSON, and the team says who is available to be that person
 storage: { path: data/teams, codec: md, shape: file, suffix: team }
-# ⚠ A NON-LATIN NAME YIELDS A HASH ID, NOT A REFUSAL, AND NOT AN EMPTY STRING. The engine's `slug`
-# FILTER is `slugOrHash` (src/template.js): a name with no a-z0-9 in it — Hebrew, Arabic, Cyrillic,
-# CJK — slugs to '' and falls back to a deterministic `x1a2b3c4`. So the write succeeds and the id is
-# unreadable, which is worse than a failure because nobody notices. A workspace whose VALUES are not
-# Latin should pass `--id` explicitly (`dt add teams --id <a-readable-latin-handle> --name "…"`), which
-# is what the engine's own error text recommends for the neighbouring case. ⚠ And `{{ code | default:
-# name | slug }}` does NOT work — the id generator has exactly five filters (date, datetime, slug,
-# pad, basename) and an unknown one throws, while a missing field throws before any fallback runs.
+# A name with no Latin characters (Hebrew, Arabic, Cyrillic, CJK) slugs to an unreadable hash id
+# rather than failing. Pass `--id` explicitly for those: `dt add teams --id <latin-handle> --name "…"`.
 id:
   generate: '{{ name | slug }}'
   pattern: ^[a-z0-9][a-z0-9-]*$
@@ -81,4 +75,4 @@ schema:
       description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
 order: 7
 list_fields: [name, lead, company, status, last-modified]
-icon: organization   # WAS `organization-filled`, which is NOT a codicon and drew a blank
+icon: organization

@@ -1,10 +1,7 @@
-# ⚠ THE VIEW THE MODEL EXISTS FOR: "what is mine". Banded by `seats` — the array of everyone ON a rung —
-# NOT by `lead`. Measured on a real 31-row plan before this shipped: one team member LED 3 rows and sat on
-# 16, so banding by lead hid three quarters of their work. `lead` stays a column, because who is
-# accountable is worth seeing; it is just not the answer to "what is mine".
-#
-# The other half of a person's work — their assigned tasks — is the tasks module's own by-assignee view;
-# both resolve to the same `users` record, which is what makes the person's own page the join.
+# "What is mine": the plan banded by `seats`, everyone on a rung, not by `lead`. A person usually sits
+# on far more rungs than they lead, so banding by lead would hide most of their work; `lead` stays a
+# column. A person's assigned tasks are the tasks module's by-assignee view, and both resolve to the
+# same `users` record.
 path: /plan/by-person
 target: list
 collection: collections/activities

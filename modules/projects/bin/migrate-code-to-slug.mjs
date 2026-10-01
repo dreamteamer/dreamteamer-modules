@@ -1,36 +1,24 @@
 #!/usr/bin/env node
-// migrate-code-to-slug — `code` becomes `slug` on the four collections where it was never a code.
+// migrate-code-to-slug — renames the frontmatter key `code` to `slug` on tasks, decisions, goals and
+// deliverables.
 //
 //   node node_modules/@dreamteamer/projects/bin/migrate-code-to-slug.mjs [--dry-run] [--allow-dirty] [--data-root <dir>]
 //
-// WHY THE RENAME. This module used ONE field name for two different things. `activities.code`
-// (`a-01`, `g-03`) and `risks.code` (`rk-01`) are identifiers a room says out loud and reads in
-// ORDER — they are codes, they stay required, and they are not touched here. On `tasks`,
-// `decisions`, `goals` and `deliverables` the same field existed for one reason only: a name in any
-// script has to produce a readable, typeable id, and the engine's `slug` filter returns a hash when
-// a value has no latin characters in it. That is a SLUG. Calling it a code made a workaround look
-// like a domain concept, and made it required on every record of four collections.
+// On those four collections the field exists only to give a non-Latin name a readable id, which is a
+// slug, and it is optional: the id template takes the slug when set and the name otherwise.
+// `activities.code` and `risks.code` are identifiers read in order, stay required, and are not
+// touched.
 //
-// WHY IT COULD ONLY HAPPEN NOW. `slug` is OPTIONAL, which is only expressible because engine 0.25.0
-// let `id.generate` take an ORDERED LIST — slug when a record carries one, the name otherwise.
-// Before that a missing field threw before any fallback could run, so the only way to guarantee a
-// latin id was to force the field onto every write. The module's engine floor moved to >=0.25.0 in
-// the same change.
+// What it does:
+//   - Renames the top-level frontmatter key on every record of the four collections. Nothing else.
+//   - Ids do not change: `{{ slug }}` renders the same value `{{ code }}` did, so no reference needs
+//     rewriting.
+//   - Refuses to run if `activities` or `risks` has records and none carries `code`, rather than operate on a tree
+//     it does not understand.
+//   - Invents no slug for a record that had no code.
 //
-// WHAT THIS DOES, AND WHAT IT DELIBERATELY DOES NOT.
-//   - It renames the frontmatter KEY on every record of the four collections. Nothing else.
-//   - IDS DO NOT CHANGE. The new template renders `{{ slug }}` where the old one rendered
-//     `{{ code }}`, from the same value, so every existing id is reproduced exactly and not one
-//     reference anywhere needs rewriting. That is the whole reason this is a key rename and not a
-//     `dt rename` sweep.
-//   - It does not touch `activities` or `risks`, and it refuses to run if it finds `code` on them
-//     looking like something it should have converted — better to stop than to flatten a real code.
-//   - It does not invent a slug for a record that had no code. The field is optional now; an absent
-//     value is correct, and the id already exists on disk either way.
-//
-// ⚠ RUN IT BEFORE `dreamteamer check`, NOT AFTER. The moment the descriptor drops `code`, a record
-// still carrying that key fails validation as an unknown field — hard, not as a warning. There is no
-// gradual path: the key either matches the schema or it does not.
+// Run it before `dreamteamer check`: a record still carrying `code` fails validation as an unknown
+// field.
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -45,10 +33,8 @@ const SUFFIX = { tasks: 'task', decisions: 'decision', goals: 'goal', deliverabl
 
 /** Rewrite the first top-level `code:` key inside the frontmatter block, and nothing else.
  *
- *  ⚠ FRONTMATTER ONLY, AND ONLY AT THE TOP LEVEL. A body can legitimately contain a line starting
- *  with `code:` — a decision's rationale quoting a config, a deliverable describing a field — and a
- *  whole-file replace would corrupt it silently. An indented `code:` is a key of some nested map,
- *  not this field. Returns null when there is nothing to do, so the caller can count honestly. */
+ *  Frontmatter only, and only at the top level: a body can contain a line starting with `code:`, and
+ *  an indented `code:` belongs to a nested map. Returns null when there is nothing to do. */
 export function renameKey(text, from = 'code', to = 'slug') {
 	if (!text.startsWith('---\n')) return null;
 	const end = text.indexOf('\n---', 4);
@@ -93,9 +79,8 @@ export function plan(root, dataRoot) {
 		}
 	}
 
-	// ⚠ If a collection that KEEPS its code has records without one, something upstream already
-	// renamed them and this run would be operating on a tree it does not understand. Say so and
-	// change nothing, rather than half-migrating.
+	// A collection that keeps its code but whose records carry none is a tree this script does not
+	// understand. Say so and change nothing, rather than half-migrate.
 	for (const coll of KEPT_AS_CODE) {
 		const files = walk(path.join(base, coll)).filter((f) => f.endsWith('.md'));
 		const missing = files.filter((f) => !/^code:/m.test(fs.readFileSync(f, 'utf8').split('\n---')[0] ?? ''));

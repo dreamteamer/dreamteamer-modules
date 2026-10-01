@@ -1,48 +1,23 @@
 #!/usr/bin/env node
-// migrate-plan — `activities.phase` becomes a REFERENCE, for a workspace whose plan was written
-// against 0.8.x or earlier, where it was free text.
+// migrate-plan — turns a free-text `activities.phase` into a reference to a `phases` record.
 //
 //   node node_modules/@dreamteamer/projects/bin/migrate-plan.mjs [--dry-run] [--allow-dirty] [--data-root <dir>]
 //                                  [--id "<phase text>=<id>"]...
 //
-// WHY THIS IS A MIGRATION AND NOT A NOTE IN A CHANGELOG. The moment `phase` carries
-// `x-reference: phases`, every existing value is a reference to a record that does not exist, and
-// `dreamteamer check` fails on every activity that has one. There is no gradual path and no
-// "compatible for one release": a reference either resolves or it does not. So the package that
-// changed the field ships the command that converts the data, exactly as `migrate-world` does — and
-// for the same reason `dt rename` cannot be used, since the engine refuses to write a descriptor
-// that ships from node_modules.
+// Once `phase` carries `x-reference: phases`, every free-text value is a reference to a record that
+// does not exist and `dreamteamer check` fails on it. This mints one `phases` record per project and
+// distinct value, and re-points every activity that carried it.
 //
-// WHAT IT DERIVES, AND WHAT IT REFUSES TO INVENT. A `phases` record REQUIRES `starts`, because a
-// phase with no dates is a lane wearing the wrong name — that is the whole argument for the
-// collection. The dates come from the ACTIVITIES that carried the value: `starts` is the earliest
-// `starts` among them and `ends` the latest `ends`. Where no activity in a group carries a `starts`
-// at all, the phase CANNOT be minted and the group is REFUSED by name — a date invented here would
-// be a number nobody measured, drawn on a gantt, indistinguishable from one somebody chose.
+// A phase requires `starts`. The dates come from the activities that carried the value: `starts` is
+// the earliest among them and `ends` the latest. A group where no activity has a `starts` is refused
+// by name rather than given an invented date. An activity with a `phase` and no `project` is refused
+// too, because a phase is scoped to one project.
 //
-// AND A PHASE IS PROJECT-SCOPED. Two plans that both said `phase: Discovery` get TWO records, which
-// is correct: a stretch of calendar belongs to one plan. An activity carrying a `phase` and no
-// `project` cannot be scoped and is refused by name rather than filed under a guess.
+// The slug filter keeps only `a-z0-9`, so a non-Latin phase name slugs to whatever Latin fragment it
+// contains, and two different names can land on one id. Such a collision is refused by name, and
+// `--id "<phase text>=<id>"` supplies an explicit id instead.
 //
-// AND THE TRAP THAT ONLY A REAL PLAN REVEALS. The engine's `slug` filter drops everything that is
-// not `a-z0-9`, so a plan whose phase names are not Latin does not slug to nothing — it slugs to
-// whatever Latin fragment happens to be embedded. Measured on the first consumer, 2026-09-11, whose
-// eight phase names were Hebrew with a Latin letter in most of them:
-//
-//     "<hebrew> A - <hebrew>"          -> "a"
-//     "<hebrew> A - <hebrew>"          -> "a"          <-- a DIFFERENT phase, the SAME id
-//     "<hebrew> A - hyper-care"        -> "a-hyper-care"
-//     "<hebrew>"                       -> ""
-//
-// Four of the eight collapsed onto two ids. Nothing in the original script noticed: both groups were
-// planned, both were written, and the second silently overwrote the first — one phase record where
-// two belonged, and half the activities pointing at the wrong stretch. So `plan` now REFUSES a
-// collision by name, and `--id "<phase text>=<id>"` is how a workspace says what it wants instead.
-// A hand-written id is the documented answer for a non-Latin value everywhere else in this package;
-// this makes it reachable from the migration rather than only from `dt add`.
-//
-// Idempotent: a value that already reads as a reference (`phases/...`) is left alone, so a second
-// run finds nothing and says so.
+// Idempotent: a value that already reads as a reference (`phases/...`) is left alone.
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -83,9 +58,8 @@ export function scalar(fm, key) {
 /**
  * Replace one scalar's VALUE in place, leaving every other byte of the frontmatter alone.
  *
- * EDITED BY LINE, never round-tripped through a YAML dumper — the same rule `migrate-world` states
- * and for the same reason: re-emitting a plan's records would requote every string and reflow every
- * block scalar, producing a diff nobody can review over records a person wrote.
+ * Edited by line, never round-tripped through a YAML dumper: re-emitting a record would requote every
+ * string and reflow every block scalar, producing a diff nobody can review.
  */
 export function setScalar(fm, key, value) {
 	return fm.replace(new RegExp(`^(${key}:)[ \\t]*.*$`, 'm'), `$1 ${value}`);
@@ -135,10 +109,8 @@ export function plan(root, { dataRoot, ids = new Map() } = {}) {
 		rewrites.push({ file, ref: `phases/${projectId}/${nameSlug}`, key });
 	}
 
-	// ⚠ TWO DIFFERENT PHASE NAMES ON ONE ID, IN ONE PROJECT. Checked BEFORE anything is planned,
-	// because the failure it prevents is silent: both groups plan, both write, the second overwrites
-	// the first, and the plan ends up with one stretch where two belonged and half its rungs pointing
-	// at the wrong one. Measured on the first real consumer — see the header.
+	// Two different phase names on one id in one project. Checked before anything is planned, because
+	// otherwise the second write silently overwrites the first.
 	const byId = new Map();
 	for (const g of groups.values()) {
 		const k = `${g.project}/${g.slug}`;
@@ -164,9 +136,8 @@ export function plan(root, { dataRoot, ids = new Map() } = {}) {
 			continue;
 		}
 		if (!g.starts.length) {
-			// THE ONE THING THIS SCRIPT WILL NOT DO. `starts` is required on a phase and there is
-			// nothing here to derive it from. An invented date draws a bar on a gantt that reads
-			// exactly like one somebody chose.
+			// `starts` is required on a phase and there is nothing to derive it from; an invented date
+			// would read on a gantt exactly like one somebody chose.
 			refusals.push(`phase "${g.name}" in project \`${g.project}\` has no \`starts\` on any of its ${g.files.length} activities — a phase REQUIRES a start and nothing here can derive one. Add \`starts\` to one of them, or mint the phase by hand: \`dt add phases --name "${g.name}" --project projects/${g.project} --starts <date>\``);
 			refusedKeys.add(key);
 			continue;
@@ -273,18 +244,9 @@ export function main(argv, root) {
 	return 0;
 }
 
-/** ⚠ RUN AS A SCRIPT — AND THROUGH A SYMLINK, WHICH IS THE HALF THAT WAS BROKEN.
- *
- *  `process.argv[1]` is the path as INVOKED; `import.meta.url` is the path RESOLVED. Under preview
- *  mode the module is reached through a `git_modules/<name>` symlink into a clone elsewhere, so the
- *  two are different strings for the same file and a `===` between them is false. The guard then
- *  never fires: no output at all, exit 0, and a reader sees a clean run.
- *
- *  Measured 2026-09-11 on a linked consumer holding 52 activities, 35 decisions and 8 phases: this
- *  file printed NOTHING and exited 0. It is the same defect the perspective guard was fixed for a
- *  day earlier from the other direction (its data root resolved from the SCRIPT), and the same
- *  lesson: a guard whose silence means "clean" must be forced to prove it ran. Both sides are
- *  realpath'd now, so the symlink and the real path compare equal. */
+/** True when run as a script. `process.argv[1]` is the path as invoked and `import.meta.url` the path
+ *  resolved; both are realpath'd so the script also runs when reached through a symlink such as
+ *  `git_modules/<name>`. */
 const isMain = () => {
 	if (!process.argv[1]) return false;
 	const real = (p) => { try { return fs.realpathSync(p); } catch { return path.resolve(p); } };

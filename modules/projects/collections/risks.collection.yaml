@@ -1,17 +1,14 @@
-# risks — WHAT COULD GO WRONG, CARRIED WITH AN OWNER AND AN INDICATOR rather than as prose worry.
-# Born 2026-09-12 in the workspace that dogfooded this module: 29 risks lived as table rows in a
-# dated note — unqueryable, unlinkable to the gates that retire them, invisible on any member's
-# page. A risk that cannot be listed by owner is a risk nobody is carrying.
+# risks — what could go wrong, carried with an owner and an indicator rather than as prose worry. A
+# risk that cannot be listed by owner is a risk nobody is carrying.
 #
-# ⚠ "UNASSESSED" IS A VALUE, NOT A GAP. The founding register's rule — likelihood and impact are
-# assessed only where the sources support it — is why `likelihood` and `impact` carry an `unassessed` value
-# instead of being optional: an absent field reads as "nobody looked", the value reads as "we looked
-# and the sources do not support a number". Those are different facts and the second is the honest one.
+# `unassessed` is a value, not a gap: likelihood and impact are assessed only where the sources
+# support it, and the value records "we looked and the sources do not support a level", which an
+# absent field cannot.
 #
-# ⚠ A RISK IS RETIRED BY A GATE, NOT BY OPTIMISM. Where the plan already carries a gate whose
-# `passes_when` tests exactly this exposure (the register's RK-14 → its gate g-06), `gate` names it — and `status` may only
-# reach `closed` when that gate passed or the exposure is gone in the world. `mitigation` records
-# what is DOCUMENTED as the treatment, never what someone hopes.
+# A risk is retired by a gate. Where the plan carries a gate whose `passes_when` tests exactly this
+# exposure, `gate` names it, and `status` reaches `closed` only when that gate passed or the exposure
+# is gone in the world. `mitigation` records what is documented as the treatment, never what someone
+# hopes.
 name: risks
 description: >-
   A named thing that could go wrong on a project — with an owner, the evidence it is real, how likely and how
@@ -19,13 +16,11 @@ description: >-
 use_when: >-
   an exposure is named — in a meeting, a review, an estimate that rests on an unverified claim — write it here
   with `owner` and `evidence`, never as a table row in a note; asked "what threatens this plan" or "what does
-  <person> carry", list here by `project` or `owner`. ⚠ Search here before re-deriving an exposure a review
+  <person> carry", list here by `project` or `owner`. Search here before re-deriving an exposure a review
   already named, and before calling anything de-risked: `status` only reaches `closed` through its `gate` or a
   change in the world, both quotable
 storage: { path: data/risks, codec: md, shape: file, suffix: risk }
-# The code IS the id, exactly as on decisions/goals/deliverables: this workspace names things in
-# Hebrew, where `slug` is `slugOrHash` and returns `x000w6xq` without failing. A register that already
-# speaks in RK-xx keeps its codes — they are load-bearing vocabulary, not an invention.
+# The register code is the id, as `activities.code` is: a register is read and spoken by its codes.
 id:
   generate: '{{ code }}'
   pattern: ^[a-z0-9][a-z0-9-]*$
@@ -74,20 +69,17 @@ schema:
         field: risks
         description: The exposures this person carries — generated from `risks.owner`.
       description: >-
-        WHO CARRIES IT — accountable for the mitigation moving, not necessarily the person who created the
-        exposure. Required: the founding register's worst finding was ownerless risks, and this field is
-        what makes that state impossible to write.
+        Who carries it: accountable for the mitigation moving, not necessarily the person who created the
+        exposure. Required, so an ownerless risk cannot be written.
     evidence:
       type: string
       description: >-
-        REQUIRED. Where this was seen — the meeting, the quote, the record, dated. A risk without evidence is
-        an anxiety; a register cites a source for every row and so does this.
+        Where this was seen — the meeting, the quote, the record, dated.
     indicator:
       type: string
       description: >-
-        The OBSERVABLE that says it is materialising — an event somebody could actually notice, in this world.
-        The workspace's own concept demands an indicator, and a risk without one can only be argued about,
-        never watched. Optional because inventing one is worse than leaving it empty.
+        The observable that says it is materialising — an event somebody could actually notice. Optional,
+        because inventing one is worse than leaving it empty.
     mitigation:
       type: string
       description: What is DOCUMENTED as the treatment and where that stands — never what someone hopes. Empty means none is documented, which is itself worth reading.
@@ -98,9 +90,8 @@ schema:
         field: retires_risks
         description: The exposures this gate's pass retires — generated from `risks.gate`.
       description: >-
-        The plan gate whose PASS retires this risk (an `activities` record with `kind: gate`). The strongest
-        state a risk can be in — a dated, owned condition instead of an intention. Empty for exposures no gate
-        yet tests, which is a plan gap worth seeing.
+        The plan gate whose pass retires this risk (an `activities` record with `kind: gate`). Empty for
+        exposures no gate yet tests.
     status:
       type: string
       enum: [open, mitigating, accepted, materialised, closed]
@@ -113,9 +104,8 @@ schema:
       type: array
       items: { type: string }
       description: >-
-        What it lands on, as `<collection>/<id>` strings — plain strings, not references, for the same reason
-        `decisions.affects` is: the risk outlives what it threatens, and a record that dangles on delete gets
-        deleted with it.
+        What it lands on, as `<collection>/<id>` strings. Plain strings rather than references, because the
+        risk outlives what it threatens.
     tags:
       type: array
       items: { type: string }
@@ -124,7 +114,7 @@ schema:
       type: string
       format: markdown
       x-body: true
-      description: The fuller story where one line cannot hold it — the numbers, the history, and later what actually happened.
+      description: The fuller story where one line cannot hold it — the numbers, the background, and later what actually happened.
     author:
       type: string
       pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'

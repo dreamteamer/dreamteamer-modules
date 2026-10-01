@@ -1,12 +1,6 @@
-# GATES BY OWNER — what blocks the plan, banded by who actually holds it.
-#
-# ⚠ Banded on `external_owner`, not on `lead`. A gate's lead is one of OURS — the person accountable for
-# checking it — but the question this view answers is "who are we waiting on", and for 12 of the 21 gates
-# on the plan this was folded from, that is somebody outside: the client approving, the partner supplying
-# an environment, the regulator. `show_ungrouped_rows` keeps the gates that depend on us alone visible as
-# their own band rather than hiding the half we CAN move.
-#
-# A saved filter over `plan/activities`, like /plan/gates — gates did not become a second collection.
+# Gates by owner — what blocks the plan, banded by who actually holds it. Banded on `external_owner`,
+# not `lead`: the question is "who are we waiting on", and that is often someone outside. Gates with no
+# outside owner stay visible as their own band. A saved filter over `activities`, like /plan/gates.
 path: /plan/gates/by-owner
 target: list
 collection: collections/activities
