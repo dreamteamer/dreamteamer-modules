@@ -3,7 +3,6 @@ collection: collections/meetings
 target: record
 # can-enter omitted deliberately: any meeting can be prepped, including one already held whose
 # follow-up is being planned. no relative-to-now comparison exists anyway.
-# can-exit omitted: "a meeting-prep referencing this meeting exists" is an INBOUND-ref condition —
-# tier 2, unsupported (decision 60), same as summarize-meeting. the command never shows "done";
-# re-running is handled inside the skill, which updates an existing prep rather than adding one.
+# can-exit is omitted, so the command never shows "done"; re-running updates the existing prep rather
+# than adding one.
 description: gather the client context and prior calls into this meeting's prep
