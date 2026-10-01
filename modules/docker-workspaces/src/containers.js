@@ -1,5 +1,5 @@
 // containers.js — a dreamteamer workspace as a running Docker container, over the Docker Engine API.
-// `dt-host start container <name> --template <t>` makes one; the person opens code-server at a
+// `dt-docker start container <name> --template <t>` makes one; the person opens code-server at a
 // loopback URL; `list · get · stop · open · rm` are the lifecycle, and images are pulled and removed
 // the same way. Containers are not records: nothing here writes a workspace file, Docker keeps the
 // history, and this runs BEFORE any workspace exists — on a machine with nothing but Node and Docker.
@@ -31,7 +31,7 @@ import { pipeline } from 'node:stream/promises';
 import { parseEnvValues } from './util.js';
 
 // ---- the two nouns, singular and plural --------------------------------------------------------
-// `dt-host start container hq-dana` and `dt-host list containers`; both spellings resolve, and so
+// `dt-docker start container hq-dana` and `dt-docker list containers`; both spellings resolve, and so
 // does `containers/<name>`.
 export const NOUNS = { containers: 'containers', container: 'containers', images: 'images', image: 'images' };
 
@@ -68,7 +68,7 @@ export function socketPath() {
 
 function unreachable(sock) {
 	const hint = process.platform === 'darwin' ? ' — is Docker Desktop running? `open -a Docker` starts it' : ' — is the Docker daemon running?';
-	return new Error(`Docker is not reachable at ${sock}${hint}. \`dt-host setup\` checks this and says what is missing.`);
+	return new Error(`Docker is not reachable at ${sock}${hint}. \`dt-docker setup\` checks this and says what is missing.`);
 }
 
 /** One request. Resolves { status, body } where body is parsed JSON when the response is JSON,
@@ -236,7 +236,7 @@ export async function inspectContainer(name) {
 	return c;
 }
 
-/** The shape `dt-host get container <name>` prints: the categorised view over `docker inspect`. */
+/** The shape `dt-docker get container <name>` prints: the categorised view over `docker inspect`. */
 export function containerDetail(c) {
 	const binding = Object.values(c.HostConfig?.PortBindings ?? {}).flat()[0];
 	const name = c.Name.replace(/^\//, '');
@@ -291,7 +291,7 @@ export async function startContainer(name, flags, log = console.log) {
 	let c = await inspectContainer(name);
 	if (!c) {
 		const template = typeof flags.template === 'string' ? flags.template : undefined;
-		if (!template) throw new Error(`container "${name}" does not exist yet — name the template that makes it: dt-host start container ${name} --template <t> (dt-host list images shows the templates present)`);
+		if (!template) throw new Error(`container "${name}" does not exist yet — name the template that makes it: dt-docker start container ${name} --template <t> (dt-docker list images shows the templates present)`);
 		const ref = imageRef(template, env);
 		let img = await inspectImage(ref);
 		if (!img) { log(`… pulling ${ref}`); await pullImage(ref, log); img = await inspectImage(ref); }
@@ -479,7 +479,7 @@ export function openUrl({ text, secret }, log) {
 
 export async function stopContainer(name) {
 	const c = await inspectContainer(name);
-	if (!c) throw new Error(`no container "${name}" — dt-host list containers`);
+	if (!c) throw new Error(`no container "${name}" — dt-docker list containers`);
 	const res = await api('POST', `/containers/${c.Id}/stop?t=10`);
 	if (res.status !== 204 && res.status !== 304) ok(res, `stop container ${name}`);
 	return containerDetail(await inspectContainer(name));
@@ -488,7 +488,7 @@ export async function stopContainer(name) {
 /** Plain `rm` keeps the three volumes — the workspace, the login, the files. `--force` removes them too. */
 export async function removeContainer(name, { force = false } = {}, log = console.log) {
 	const c = await inspectContainer(name);
-	if (!c) throw new Error(`no container "${name}" — dt-host list containers`);
+	if (!c) throw new Error(`no container "${name}" — dt-docker list containers`);
 	const vols = containerDetail(c).volumes;
 	// `restarting` too: a crash-looping container refuses DELETE until it is stopped (measured, Docker Desktop)
 	if (['running', 'restarting'].includes(c.State?.Status)) await api('POST', `/containers/${c.Id}/stop?t=10`);
@@ -500,7 +500,7 @@ export async function removeContainer(name, { force = false } = {}, log = consol
 		for (const v of named) { const r = await api('DELETE', `/volumes/${encodeURIComponent(v)}`); if (r.status !== 204 && r.status !== 404) ok(r, `rm volume ${v}`); }
 		log(`✔ removed ${name}, its network and its volumes ${named.join(', ')}`);
 	} else {
-		log(`✔ removed ${name} and its network · kept volumes ${named.join(', ')} (dt-host rm container ${name} --force removes them too; dt-host start container ${name} --template <t> reattaches them)`);
+		log(`✔ removed ${name} and its network · kept volumes ${named.join(', ')} (dt-docker rm container ${name} --force removes them too; dt-docker start container ${name} --template <t> reattaches them)`);
 	}
 }
 
@@ -515,7 +515,7 @@ export async function setup(flags, log = console.log) {
 	const existing = fs.existsSync(file) ? Object.fromEntries(parseEnvValues(fs.readFileSync(file, 'utf8'))) : {};
 	const missing = Object.entries(HOST_DEFAULTS).filter(([k]) => k !== 'DT_TEMPLATE_TAG' && !(k in existing));
 	if (missing.length) {
-		const header = fs.existsSync(file) ? '' : '# dreamteamer host configuration — read by `dt-host setup`, `dt-host start container` and friends.\n# DT_IMAGE_<template>=<ref> pins a template to an image; DT_PERSON_NAME / DT_PERSON_EMAIL are the git identity containers get.\n';
+		const header = fs.existsSync(file) ? '' : '# dreamteamer host configuration — read by `dt-docker setup`, `dt-docker start container` and friends.\n# DT_IMAGE_<template>=<ref> pins a template to an image; DT_PERSON_NAME / DT_PERSON_EMAIL are the git identity containers get.\n';
 		fs.appendFileSync(file, header + missing.map(([k, v]) => `${k}=${v}`).join('\n') + '\n');
 	}
 	const report = { host_env: file, defaults_written: missing.map(([k]) => k), docker: null, templates: [], pulled: null, running: [] };
@@ -531,7 +531,7 @@ export async function setup(flags, log = console.log) {
 	}
 	const images = await listImages();
 	report.templates = images.map((i) => ({ template: i.template, image: i.image }));
-	log(`templates   ${images.length ? images.map((i) => `${i.template} (${i.image})`).join(', ') : 'none present — dt-host add image --template <t> pulls one'}`);
+	log(`templates   ${images.length ? images.map((i) => `${i.template} (${i.image})`).join(', ') : 'none present — dt-docker add image --template <t> pulls one'}`);
 	const template = typeof flags.template === 'string' ? flags.template : undefined;
 	if (template) {
 		const ref = imageRef(template);

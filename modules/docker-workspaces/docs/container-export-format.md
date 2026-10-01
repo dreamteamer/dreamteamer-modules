@@ -1,6 +1,6 @@
 # The container export format (version 1)
 
-What `dt-host export container <name> --out <file>` writes and `dt-host import container <name> <file>`
+What `dt-docker export container <name> --out <file>` writes and `dt-docker import container <name> <file>`
 reads. Any other implementation that writes or reads a machine's workspaces (a hosted service, a
 backup store) implements exactly this. The code is `src/archive.js`; `test/fixtures/golden-v1.dtx`
 (passphrase `golden fixture passphrase`) and its plain twin `golden-v1.tar.gz` are a reference pair.

@@ -1,5 +1,5 @@
 // What every host test shares: the fake Engine API as a CHILD process (fake-docker.js says why), and
-// the real `dt-host` binary run against it with DT_HOME in a temp dir — so no test reads or writes the
+// the real `dt-docker` binary run against it with DT_HOME in a temp dir — so no test reads or writes the
 // real ~/.dreamteamer or reaches a real Docker. Every spawn and every request here carries a timer.
 import fs from 'node:fs';
 import os from 'node:os';
@@ -9,7 +9,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 export const PKG = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-export const BIN = path.join(PKG, 'bin', 'dt-host.js');
+export const BIN = path.join(PKG, 'bin', 'dt-docker.js');
 const FAKE = path.join(PKG, 'test', 'helpers', 'fake-docker.js');
 export const HQ = 'ghcr.io/dreamteamer/hq:0.6.0'; // the package's pinned default template tag
 export const SPAWN_TIMEOUT_MS = 30_000;

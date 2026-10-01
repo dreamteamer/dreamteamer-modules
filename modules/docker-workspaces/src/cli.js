@@ -1,4 +1,4 @@
-// cli.js — the `dt-host` verb surface: `dt-host <verb> <container|image>[/<id>] [<id>] [flags]`.
+// cli.js — the `dt-docker` verb surface: `dt-docker <verb> <container|image>[/<id>] [<id>] [flags]`.
 // Every flag is checked against the table below BEFORE Docker is asked anything, so a typo is a
 // refusal naming the flags that verb takes, never a flag silently ignored.
 import fs from 'node:fs';
@@ -10,7 +10,7 @@ import {
 } from './containers.js';
 import { exportContainer, importContainer } from './archive.js';
 
-export const USAGE = `dt-host — a dreamteamer workspace as a local Docker container (Docker Engine API over its socket;
+export const USAGE = `dt-docker — a dreamteamer workspace as a local Docker container (Docker Engine API over its socket;
 no workspace and no engine needed — Node and Docker are enough)
 
   setup       make THIS MACHINE ready: checks Docker, writes ~/.dreamteamer/.env with its defaults
@@ -104,7 +104,7 @@ export function parseFlags(args) {
 function refuseUnknown(flags, known, spelling) {
 	if ('passphrase' in flags) throw new Error('the passphrase is never a flag (every local user\'s `ps` reads argv) — set DT_EXPORT_PASSPHRASE, or let the prompt ask');
 	const bad = Object.keys(flags).find((f) => f !== 'workspaces' && !known.includes(f));
-	if (bad) throw new Error(`unknown flag "--${bad}" on \`dt-host ${spelling}\` — known: ${known.map((f) => `--${f}`).join(', ') || '(none)'}`);
+	if (bad) throw new Error(`unknown flag "--${bad}" on \`dt-docker ${spelling}\` — known: ${known.map((f) => `--${f}`).join(', ') || '(none)'}`);
 }
 
 /** `containers`, `container`, `containers/<id>` → { collection, id }; null when the word is not ours. */
@@ -124,7 +124,7 @@ const table = (rows, cols) => {
 const VERBS = new Set(['start', 'stop', 'open', 'rm', 'get', 'list', 'add', 'export', 'import']);
 
 // ---- dispatch ----------------------------------------------------------------------------------
-/** `dt-host …` → a promise of the exit code. Throws a sentence on a refusal. */
+/** `dt-docker …` → a promise of the exit code. Throws a sentence on a refusal. */
 export async function main(argv) {
 	const [cmd, ...rest] = argv;
 	if (cmd === '--version' || cmd === '-v' || cmd === 'version') {
@@ -141,13 +141,13 @@ export async function main(argv) {
 		if (json) emit(JSON.stringify(report, null, 2));
 		return code;
 	}
-	if (!VERBS.has(cmd)) throw new Error(`unknown command "${cmd}" — dt-host help lists the verbs`);
+	if (!VERBS.has(cmd)) throw new Error(`unknown command "${cmd}" — dt-docker help lists the verbs`);
 	const t = target(rest[0]);
-	if (!t) throw new Error(`dt-host ${cmd} takes container <name> or image <ref>${rest[0] ? ` — "${rest[0]}" is neither` : ''}. dt-host help`);
+	if (!t) throw new Error(`dt-docker ${cmd} takes container <name> or image <ref>${rest[0] ? ` — "${rest[0]}" is neither` : ''}. dt-docker help`);
 	const form = `${cmd} ${t.collection}`;
 	if (!FLAGS[form]) {
-		if (t.collection === 'images') throw new Error(`\`${cmd}\` is a container verb — an image is started by starting a container from it: dt-host start container <name> --template <t>`);
-		throw new Error(`\`${cmd}\` is not a container verb — a container is made by dt-host start container <name> --template <t>; dt-host add image --template <t> pulls an image`);
+		if (t.collection === 'images') throw new Error(`\`${cmd}\` is a container verb — an image is started by starting a container from it: dt-docker start container <name> --template <t>`);
+		throw new Error(`\`${cmd}\` is not a container verb — a container is made by dt-docker start container <name> --template <t>; dt-docker add image --template <t> pulls an image`);
 	}
 	const { flags, pos } = parseFlags(rest.slice(1));
 	refuseUnknown(flags, FLAGS[form], `${cmd} ${t.collection.slice(0, -1)}`);
@@ -162,25 +162,25 @@ export async function main(argv) {
 		if (cmd === 'list') { const rows = await listImages(); json ? out(rows) : console.log(table(rows, ['template', 'image', 'size_mb', 'ports', 'created'])); return 0; }
 		if (cmd === 'add') {
 			const tpl = typeof flags.template === 'string' ? flags.template : undefined;
-			if (!tpl) throw new Error('dt-host add image --template <t> pulls the template\'s image');
+			if (!tpl) throw new Error('dt-docker add image --template <t> pulls the template\'s image');
 			const ref = imageRef(tpl); console.log(`… pulling ${ref}`); await pullImage(ref); console.log(`✔ ${ref}`); return 0;
 		}
-		if (!id) throw new Error(`dt-host ${cmd} image <ref>`);
+		if (!id) throw new Error(`dt-docker ${cmd} image <ref>`);
 		if (cmd === 'get') { const i = await inspectImage(id); if (!i) throw new Error(`no image "${id}"`); out(json ? i : imageRow({ ...i, Labels: i.Config?.Labels, Created: Date.parse(i.Created) / 1000 })); return 0; }
 		ok(await api('DELETE', `/images/${encodeURIComponent(id)}${flags.force ? '?force=true' : ''}`), `rm image ${id}`);
 		console.log(`✔ removed image ${id}`); return 0;
 	}
 
 	if (cmd === 'list') { const rows = await listContainers(); json ? out(rows) : console.log(table(rows, ['name', 'template', 'state', 'editor_url', 'person', 'created'])); return 0; }
-	if (!id) throw new Error(`dt-host ${cmd} container <name>${cmd === 'start' ? ' --template <t>' : cmd === 'export' ? ' --out <file>' : cmd === 'import' ? ' <file>' : ''}`);
-	if (cmd === 'get') { const c = await inspectContainer(id); if (!c) throw new Error(`no container "${id}" — dt-host list containers`); out(json ? c : containerDetail(c)); return 0; }
+	if (!id) throw new Error(`dt-docker ${cmd} container <name>${cmd === 'start' ? ' --template <t>' : cmd === 'export' ? ' --out <file>' : cmd === 'import' ? ' <file>' : ''}`);
+	if (cmd === 'get') { const c = await inspectContainer(id); if (!c) throw new Error(`no container "${id}" — dt-docker list containers`); out(json ? c : containerDetail(c)); return 0; }
 	if (cmd === 'start') { const d = await startContainer(id, flags, say); if (json) out(d); return 0; }
 	if (cmd === 'stop') { const d = await stopContainer(id); say(`✔ stopped ${id} · volumes kept`); if (json) out(d); return 0; }
 	if (cmd === 'rm') { await removeContainer(id, { force: flags.force === true }); return 0; }
 	if (cmd === 'export') { const r = await exportContainer(id, flags, say); if (json) out(r); return 0; }
 	if (cmd === 'import') { const r = await importContainer(id, pos[0], flags, say); if (json) out(r); return 0; }
 	// open
-	const c = await inspectContainer(id); if (!c) throw new Error(`no container "${id}" — dt-host list containers`);
+	const c = await inspectContainer(id); if (!c) throw new Error(`no container "${id}" — dt-docker list containers`);
 	const d = containerDetail(c);
 	if (flags.vscode) {
 		// Dev Containers attach: the host's own VS Code opens the workspace INSIDE the container, and
@@ -192,7 +192,7 @@ export async function main(argv) {
 		return 0;
 	}
 	if (!d.editor_url) throw new Error(`${id} publishes no port`);
-	if (d.state !== 'running') throw new Error(`${id} is ${d.state} — dt-host start container ${id} starts it and prints its URL`);
+	if (d.state !== 'running') throw new Error(`${id} is ${d.state} — dt-docker start container ${id} starts it and prints its URL`);
 	const url = await launchUrl(d, flags);
 	say(url.text); if (!flags['no-open']) openUrl(url, say);
 	if (json) out(d); // containerDetail: its editor_url never carries the token

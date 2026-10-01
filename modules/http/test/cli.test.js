@@ -3,7 +3,7 @@
 import { test, describe, before } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { BIN, GIT_ENV, workspace } from '../../../test-support/fixture.mjs';
+import { BIN, GIT_ENV, workspace } from '../../../tests/helpers/fixture.mjs';
 
 const START_TIMEOUT_MS = 30_000;
 let h;

@@ -91,23 +91,54 @@ export function packedFiles(m) {
 	return execFileSync('tar', ['-tzf', packed(m)], { encoding: 'utf8' }).split('\n').filter(Boolean).map((f) => f.replace(/^package\//, ''));
 }
 
-/** Install modules the npm way: unpack each tarball and declare it as a direct dependency. */
+/** Install modules the npm way: unpack each tarball and declare it as a direct dependency. A
+ *  module's own npm `dependencies` (express, for http) are linked from this repo's install, where npm
+ *  put them — offline, and enough to prove the declared list is the whole list the code needs. */
 export function installPacked(root, names) {
 	for (const m of names) {
 		const dir = path.join(root, 'node_modules', SCOPE, m);
 		fs.mkdirSync(dir, { recursive: true });
 		execFileSync('tar', ['-xzf', packed(m), '-C', dir, '--strip-components', '1']);
+		linkNpmDeps(root, m);
 	}
 	editPkg(root, (pkg) => { for (const m of names) pkg.dependencies[`${SCOPE}/${m}`] = pkgOf(m).version; });
+}
+
+/** A module's own npm `dependencies`, linked into the workspace from this repo's install. Either
+ *  channel needs them: a copy under modules/ resolves `express` from the workspace's node_modules too. */
+function linkNpmDeps(root, m) {
+	for (const dep of Object.keys(pkgOf(m).dependencies ?? {})) {
+		const at = path.join(root, 'node_modules', dep);
+		if (fs.existsSync(at)) continue;
+		const from = path.join(ROOT, 'node_modules', dep);
+		assert.ok(fs.existsSync(from), `${m} depends on ${dep}, which this repo's npm install does not hold — run npm install`);
+		fs.mkdirSync(path.dirname(at), { recursive: true });
+		fs.symlinkSync(from, at, 'dir');
+	}
 }
 
 const NEVER_COPY = /node_modules|__pycache__|\.venv|\.pytest_cache/;
 /** Install modules the copy way: each folder under the workspace's `modules/`. */
 export function installCopied(root, names) {
-	for (const m of names) fs.cpSync(path.join(MODULES, m), path.join(root, 'modules', m), { recursive: true, filter: (src) => !NEVER_COPY.test(src) });
+	for (const m of names) {
+		fs.cpSync(path.join(MODULES, m), path.join(root, 'modules', m), { recursive: true, filter: (src) => !NEVER_COPY.test(src) });
+		linkNpmDeps(root, m);
+	}
 }
 
 export const CHANNELS = { npm: installPacked, copy: installCopied };
+
+/** The version of the engine under test. */
+export const ENGINE_VERSION = JSON.parse(fs.readFileSync(path.join(ENGINE, 'package.json'), 'utf8')).version;
+
+/** Does the engine under test meet a module's `dreamteamer.engine` floor (`>=x.y.z`)? */
+export function engineMeets(m) {
+	const floor = /^>=(\d+)\.(\d+)\.(\d+)$/.exec(pkgOf(m).dreamteamer.engine ?? '');
+	if (!floor) return true;
+	const have = ENGINE_VERSION.split('.').map(Number), want = floor.slice(1).map(Number);
+	for (let i = 0; i < 3; i++) if (have[i] !== want[i]) return have[i] > want[i];
+	return true;
+}
 
 /** compile, then check — asserting both exit 0 and that nothing printed is an error. */
 export function compileAndCheck(root) {

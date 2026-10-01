@@ -1,10 +1,10 @@
-// Tier-2 fixtures for every package in this repo: a REAL workspace made by the engine's own `init`,
+// Tier-2 fixtures for the modules that run code (proofs, worktrees, http, …): a REAL workspace made by the engine's own `init`,
 // with the engine and the packages under test installed the way a workspace installs them — as
 // dependencies under node_modules, so discovery, the extension loader and module content all run
 // exactly as they would for a stranger.
 //
-// The engine is the SIBLING clone (`../dreamteamer`) or whatever checkout DT_ENGINE_DIR names — never
-// an npm install: the packages here are tested against an engine that may not be released yet. Every package receives the engine as `activate(dt)`, so the
+// The engine is this repo's devDependency (node_modules/dreamteamer), or whatever checkout
+// DT_ENGINE_DIR names — set it to test against an engine that is not released yet. Every package receives the engine as `activate(dt)`, so the
 // ONLY place this repo reaches into an engine by path is here, in test support.
 //
 // SPEED: `init` + `git init` is paid once per engine into `.tmp/base-<key>` and copied per test.
@@ -12,19 +12,23 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
+import os from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 export const ENGINE_DIR = fs.realpathSync(process.env.DT_ENGINE_DIR
 	? path.resolve(process.env.DT_ENGINE_DIR)
-	: path.join(ROOT, '..', 'dreamteamer'));
+	: path.join(ROOT, 'node_modules', 'dreamteamer'));
 export const BIN = path.join(ENGINE_DIR, 'bin', 'dreamteamer.js');
 /** The engine's public API — what `activate(dt)` is handed in a real workspace. */
 export const api = await import(pathToFileURL(path.join(ENGINE_DIR, 'src', 'api.js')).href);
 
 /** Every spawn is bounded: a hung command fails its test instead of hanging the suite. */
 export const SPAWN_TIMEOUT_MS = 60_000;
-const TMP = path.join(ROOT, '.tmp');
+// outside the repo, so a fixture never sits inside the tree a scan walks
+// realpath'd: on macOS the temp dir is reached through the /var → /private/var symlink, and a git
+// worktree reports the resolved path, so an unresolved root makes every path comparison disagree
+const TMP = path.join(fs.realpathSync(os.tmpdir()), 'dreamteamer-modules-tests');
 
 export const GIT_ENV = {
 	...process.env,
@@ -36,8 +40,8 @@ export function git(root, args) {
 	return execFileSync('git', args, { cwd: root, env: GIT_ENV, stdio: ['ignore', 'pipe', 'pipe'] }).toString().trim();
 }
 
-/** The package directory of one tool in this repo, e.g. `packageDir('workflows')`. */
-export const packageDir = (name) => path.join(ROOT, 'packages', name);
+/** The folder of one module in this repo, e.g. `packageDir('proofs')`. */
+export const packageDir = (name) => path.join(ROOT, 'modules', name);
 
 function baseKey() {
 	const h = createHash('sha256');
@@ -90,7 +94,7 @@ process.on('exit', () => {
  * extension and makes its content a module).
  *
  * @param {object}   opts
- * @param {string[]} [opts.packages]  e.g. ['workflows']
+ * @param {string[]} [opts.packages]  e.g. ['proofs']
  * @param {object}   [opts.pkg]       keys merged into the workspace's `dreamteamer` section
  * @param {boolean}  [opts.compile]   false → leave it uncompiled
  */

@@ -1,32 +1,39 @@
-# @dreamteamer/host
+# @dreamteamer/docker-workspaces
 
-`dt-host` runs a dreamteamer workspace as a local Docker container — a code-server editor at a
+`dt-docker` runs a dreamteamer workspace as a local Docker container — a code-server editor at a
 loopback URL, over three named volumes — and moves a container's workspaces to another container as
 one encrypted file. It needs Node 20+ and Docker (Docker Desktop, or a daemon on its socket), and
 nothing else: no workspace, no engine, no dependency. It talks to the Docker Engine API directly over
 its socket.
 
 ```bash
-npm i -g @dreamteamer/host
-dt-host setup                                   # checks Docker, writes ~/.dreamteamer/.env defaults
-dt-host start container hq-dana --template hq   # pulls the image if needed, creates, starts, prints the URL
+npm i -g @dreamteamer/docker-workspaces
+dt-docker setup                                   # checks Docker, writes ~/.dreamteamer/.env defaults
+dt-docker start container hq-dana --template hq   # pulls the image if needed, creates, starts, prints the URL
+```
+
+Installed in a workspace as well, it brings the `running-workspaces-in-containers` skill, so the
+coding agent there knows these verbs:
+
+```bash
+npm install --save-dev @dreamteamer/docker-workspaces
 ```
 
 ## verbs
 
 | verb | what it does |
 |---|---|
-| `dt-host setup [--template <t>] [--json]` | check Docker, write the host defaults the `.env` lacks, list the templates present, pull one on request |
-| `dt-host start container <name> --template <t>` | create if absent, start, wait for the editor, print its URL. Idempotent. `--workspace [<w>]` · `--repo <git url>` · `--mount <src>:<target>[:ro]` (repeatable) · `--rotate-token` · `--name` · `--email` · `--no-open` · `--json` |
-| `dt-host stop container <name>` | stop it; the volumes stay |
-| `dt-host open container <name>` | print (and open) its URL, token included · `--workspace [<w>]` · `--vscode` (Dev Containers attach URI) · `--no-open` · `--json` |
-| `dt-host list containers` · `list images` | the containers and templates dreamteamer made, as a table or `--json` |
-| `dt-host get container <name>` · `get image <ref>` | the detail as JSON; `--json` the raw inspect |
-| `dt-host rm container <name> [--force]` | remove it and its network; `--force` removes its three volumes too |
-| `dt-host add image --template <t>` · `rm image <ref> [--force]` | pull or remove a template's image |
-| `dt-host export container <name> --out <file>` | every workspace under `/workspaces` as one file · `--workspace <w>`… · `--no-encrypt` · `--with-secrets` · `--json` |
-| `dt-host import container <name> <file>` | unpack an export into a running container · `--workspace <w>`… · `--replace` · `--as <name>` · `--json` |
-| `dt-host help` · `dt-host --version` | |
+| `dt-docker setup [--template <t>] [--json]` | check Docker, write the host defaults the `.env` lacks, list the templates present, pull one on request |
+| `dt-docker start container <name> --template <t>` | create if absent, start, wait for the editor, print its URL. Idempotent. `--workspace [<w>]` · `--repo <git url>` · `--mount <src>:<target>[:ro]` (repeatable) · `--rotate-token` · `--name` · `--email` · `--no-open` · `--json` |
+| `dt-docker stop container <name>` | stop it; the volumes stay |
+| `dt-docker open container <name>` | print (and open) its URL, token included · `--workspace [<w>]` · `--vscode` (Dev Containers attach URI) · `--no-open` · `--json` |
+| `dt-docker list containers` · `list images` | the containers and templates dreamteamer made, as a table or `--json` |
+| `dt-docker get container <name>` · `get image <ref>` | the detail as JSON; `--json` the raw inspect |
+| `dt-docker rm container <name> [--force]` | remove it and its network; `--force` removes its three volumes too |
+| `dt-docker add image --template <t>` · `rm image <ref> [--force]` | pull or remove a template's image |
+| `dt-docker export container <name> --out <file>` | every workspace under `/workspaces` as one file · `--workspace <w>`… · `--no-encrypt` · `--with-secrets` · `--json` |
+| `dt-docker import container <name> <file>` | unpack an export into a running container · `--workspace <w>`… · `--replace` · `--as <name>` · `--json` |
+| `dt-docker help` · `dt-docker --version` | |
 
 Every form refuses a flag it does not take. Under `--json`, stdout is exactly one JSON document and
 every human line goes to stderr.
@@ -54,7 +61,7 @@ global git config). `DT_HOME` moves `~/.dreamteamer`; `DT_DOCKER_SOCKET` names t
 
 ## the isolation model, and its limits
 
-What `dt-host` does:
+What `dt-docker` does:
 
 - It **binds to loopback** unless you change `DT_BIND`. Nothing on your network reaches the editor.
 - It **injects no credential.** You log in inside the container once; the home volume keeps the
@@ -116,10 +123,10 @@ The file format is a protocol any other implementation can read and write:
 ## develop
 
 ```bash
-npm install && npm test -- --only=host    # from the repository root; read the exit code
+npm install && npm test -- --only=docker-workspaces    # from the repository root; read the exit code
 ```
 
-The tests drive the real `dt-host` binary against a fake Docker Engine API (`test/helpers/fake-docker.js`,
+The tests drive the real `dt-docker` binary against a fake Docker Engine API (`test/helpers/fake-docker.js`,
 a child process whose container filesystems are real folders and whose archive routes are the system
 `tar`), with `DT_HOME` in a temp dir — no Docker, and nothing in your `~/.dreamteamer`.
 

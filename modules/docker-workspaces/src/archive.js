@@ -1,4 +1,4 @@
-// archive.js — `dt-host export container` and `dt-host import container`: a machine's WORKSPACES out
+// archive.js — `dt-docker export container` and `dt-docker import container`: a machine's WORKSPACES out
 // of one container and into another, as one file. The move primitive between two laptops (and, when
 // the other side implements docs/container-export-format.md, between a laptop and a hosted machine).
 //
@@ -161,7 +161,7 @@ export async function openSeal(file, pass) {
 	const h = Buffer.alloc(HEAD + MAC);
 	const n = fs.readSync(fd, h, 0, h.length, 0); fs.closeSync(fd);
 	if (n < h.length) throw new Error(`${file} is too short to be an encrypted export`);
-	if (h[8] !== 1) throw new Error(`${file} is export format version ${h[8]} — this dt-host reads version 1; upgrade @dreamteamer/host`);
+	if (h[8] !== 1) throw new Error(`${file} is export format version ${h[8]} — this dt-docker reads version 1; upgrade @dreamteamer/docker-workspaces`);
 	const [log2N, r, p, chunk] = [h[9], h[10], h[11], h.readUInt32BE(12)];
 	if (log2N !== KDF.log2N || r !== KDF.r || p !== KDF.p || chunk !== CHUNK) throw new Error(`${file}: its header asks for scrypt N=2^${log2N} r=${r} p=${p} and ${chunk}-byte chunks — version 1 is exactly N=2^${KDF.log2N} r=${KDF.r} p=${KDF.p}, ${CHUNK}; refusing these parameters before any work`);
 	const keys = await scryptKeys(typeof pass === 'function' ? await pass() : pass, h.subarray(16, 32), log2N, r, p);
@@ -231,12 +231,12 @@ export function leavesWorkspace(inner, linkname) {
 
 export async function exportContainer(name, flags, log = console.log) {
 	const out = typeof flags.out === 'string' ? path.resolve(flags.out) : null;
-	if (!out) throw new Error(`dt-host export container ${name} --out <file> — where the export is written`);
+	if (!out) throw new Error(`dt-docker export container ${name} --out <file> — where the export is written`);
 	if (fs.existsSync(out)) throw new Error(`${out} already exists — name a new file`);
 	const only = flags.workspaces ?? [];
 	for (const w of only) if (typeof w !== 'string' || !WS_NAME.test(w)) throw new Error(`--workspace takes a workspace folder name under ${ROOT} — got "${w}"`);
 	const c = await inspectContainer(name);
-	if (!c) throw new Error(`no container "${name}" — dt-host list containers`);
+	if (!c) throw new Error(`no container "${name}" — dt-docker list containers`);
 	const encrypt = flags['no-encrypt'] !== true;
 	const secrets = flags['with-secrets'] === true;
 	const sealer = encrypt ? await newSeal(await passphrase({ confirm: true })) : null;
@@ -319,10 +319,10 @@ function checkEntry(e, only, found, as, stage, checked) {
 }
 
 export async function importContainer(name, file, flags, log = console.log) {
-	if (!file) throw new Error(`dt-host import container ${name} <file>`);
+	if (!file) throw new Error(`dt-docker import container ${name} <file>`);
 	const c = await inspectContainer(name);
-	if (!c) throw new Error(`no container "${name}" — dt-host list containers`);
-	if (c.State?.Status !== 'running') throw new Error(`${name} is ${c.State?.Status} — import needs it running: dt-host start container ${name}`);
+	if (!c) throw new Error(`no container "${name}" — dt-docker list containers`);
+	if (c.State?.Status !== 'running') throw new Error(`${name} is ${c.State?.Status} — import needs it running: dt-docker start container ${name}`);
 	const head = Buffer.alloc(8); { const fd = fs.openSync(file, 'r'); fs.readSync(fd, head, 0, 8, 0); fs.closeSync(fd); }
 	const sealed = head.equals(MAGIC);
 	if (!sealed && !(head[0] === 0x1f && head[1] === 0x8b)) throw new Error(`${file} is neither a dreamteamer export nor a .tar.gz`);
@@ -347,7 +347,7 @@ export async function importContainer(name, file, flags, log = console.log) {
 	const mounts = (await exec(name, ['cat', '/proc/mounts'])).stdout.split('\n').map((l) => l.split(' ')).filter((m) => m[1]);
 	for (const t of targets) {
 		const m = mounts.filter(([, at]) => t === at || t.startsWith(at === '/' ? '/' : `${at}/`)).sort((a, b) => b[1].length - a[1].length)[0];
-		if (!m || ['overlay', 'tmpfs', 'ramfs'].includes(m[2])) throw new Error(`${t} would land on ${m ? m[2] : 'an unknown filesystem'}, not a volume, and vanish with the container — import into the container whose own workspace it is (dt-host start container <w> makes ${ROOT}/<w> a volume). Nothing was written`);
+		if (!m || ['overlay', 'tmpfs', 'ramfs'].includes(m[2])) throw new Error(`${t} would land on ${m ? m[2] : 'an unknown filesystem'}, not a volume, and vanish with the container — import into the container whose own workspace it is (dt-docker start container <w> makes ${ROOT}/<w> a volume). Nothing was written`);
 	}
 	const full = [];
 	for (const t of targets) { const r = await exec(name, ['find', t, '-mindepth', '1', '-maxdepth', '1', '-print', '-quit']); if (r.code === 0 && r.stdout.trim()) full.push(t); }

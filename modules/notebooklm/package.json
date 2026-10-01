@@ -1,15 +1,27 @@
 {
-	"name": "notebooklm",
-	"private": true,
+	"name": "@dreamteamer/notebooklm",
 	"version": "0.1.0",
+	"description": "dt notebooklm — export a dreamteamer workspace to a NotebookLM notebook, and keep NOTEBOOKLM.md current.",
+	"license": "Apache-2.0",
 	"type": "module",
-	"scripts": {
-		"test": "node --test \"tests/*.test.mjs\""
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/dreamteamer/dreamteamer-modules.git",
+		"directory": "modules/notebooklm"
 	},
+	"keywords": [
+		"dreamteamer",
+		"dreamteamer-module"
+	],
+	"files": [
+		"README.md",
+		"src",
+		"skills"
+	],
 	"dreamteamer": {
 		"extension": "./src/extension.js",
 		"title": "NotebookLM",
 		"engine": ">=0.31.0",
-		"description": "Renders the workspace for NotebookLM: `dt notebooklm` writes the schema, the records and a persona as a bounded set of sources (and, given a notebook, syncs them), and the `notebooklm` harness keeps NOTEBOOKLM.md's configuration block current. Collections marked `sensitive: true` and fields marked `x-sensitive: true` never travel. Inlined here as a workspace module with an extension entry: the package it was extracted as is not published."
+		"description": "Renders the workspace for NotebookLM: `dt notebooklm` writes the schema, the records and a persona as a bounded set of sources (and, given a notebook, syncs them), and the `notebooklm` harness keeps NOTEBOOKLM.md's configuration block current. Collections marked `sensitive: true` and fields marked `x-sensitive: true` never travel."
 	}
 }

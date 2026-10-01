@@ -1,4 +1,4 @@
-// The two small helpers this package needs from nowhere else. Copied, not imported: `dt-host` runs
+// The two small helpers this package needs from nowhere else. Copied, not imported: `dt-docker` runs
 // on a machine with no workspace and no engine installed, so it depends on nothing but Node.
 import fs from 'node:fs';
 

@@ -272,7 +272,7 @@ describe('dt notebooklm — the verb', () => {
 		const res = ws.dt('help');
 		assert.equal(res.code, 0);
 		const ext = res.stdout.split('installed extensions:')[1] ?? '';
-		assert.match(ext, /^notebooklm@0\.1\.0:/m);
+		assert.match(ext, /^@dreamteamer\/notebooklm@0\.1\.0:/m);
 		assert.match(ext, /notebooklm \[--out <dir>\] \[--plan standard\|plus\|pro\|ultra\|<n>\]/);
 	});
 

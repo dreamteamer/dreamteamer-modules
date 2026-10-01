@@ -1,4 +1,4 @@
-// dt-host's container and image verbs, driven through the real binary against a fake Engine API on a
+// dt-docker's container and image verbs, driven through the real binary against a fake Engine API on a
 // Unix socket. Every assertion is about BEHAVIOUR the operator depends on — what the create body
 // carries, which port the second workspace gets, that a token never travels — not about a code path
 // being reached. No Docker is needed to run this file.
@@ -140,9 +140,9 @@ describe('host mode — the verbs answer with NO workspace', () => {
 	test('a verb aimed at anything but a container or an image is refused by name, and so is a verb the noun does not take', () => {
 		const r = h.dt('start', 'tasks');
 		assert.equal(r.code, 1);
-		assert.match(r.stderr, /dt-host start takes container <name> or image <ref> — "tasks" is neither/);
+		assert.match(r.stderr, /dt-docker start takes container <name> or image <ref> — "tasks" is neither/);
 		assert.match(h.dt('stop', 'meetings/kickoff').stderr, /"meetings\/kickoff" is neither/);
-		assert.match(h.dt('add', 'container', 'hq-x').stderr, /`add` is not a container verb — a container is made by dt-host start container/);
+		assert.match(h.dt('add', 'container', 'hq-x').stderr, /`add` is not a container verb — a container is made by dt-docker start container/);
 		assert.match(h.dt('export', 'image', HQ).stderr, /`export` is a container verb/);
 		assert.match(h.dt('frobnicate').stderr, /unknown command "frobnicate"/);
 	});
@@ -152,7 +152,7 @@ describe('host mode — the verbs answer with NO workspace', () => {
 		for (const [args, flag] of [[['list', 'containers', '--force'], 'force'], [['rm', 'container', 'hq-dana', '--json'], 'json'], [['open', 'container', 'hq-dana', '--rotate-token'], 'rotate-token'], [['start', 'container', 'hq-dana', '--templte', 'hq'], 'templte'], [['add', 'image', '--template', 'x', '--force'], 'force']]) {
 			const r = h.dt(...args);
 			assert.equal(r.code, 1, `${args.join(' ')}: ${r.out}`);
-			assert.match(r.stderr, new RegExp(`unknown flag "--${flag}" on \`dt-host ${args[0]} ${args[1].replace(/s$/, '')}\` — known: `));
+			assert.match(r.stderr, new RegExp(`unknown flag "--${flag}" on \`dt-docker ${args[0]} ${args[1].replace(/s$/, '')}\` — known: `));
 		}
 		assert.equal((await fake.state()).requests.length, before, 'a refused flag still reached Docker');
 	});
@@ -209,7 +209,7 @@ describe('host mode — the verbs answer with NO workspace', () => {
 	test('open prints the editor URL — bare, or one workspace on --workspace — and refuses a stopped or absent container', () => {
 		const stopped = h.dt('open', 'container', 'hq-dana', '--no-open');
 		assert.equal(stopped.code, 1);
-		assert.match(stopped.stderr, /hq-dana is exited — dt-host start container hq-dana/);
+		assert.match(stopped.stderr, /hq-dana is exited — dt-docker start container hq-dana/);
 		assert.equal(h.dt('start', 'container', 'hq-dana', '--no-open').code, 0);
 		const r = h.dt('open', 'container', 'hq-dana', '--no-open');
 		assert.equal(r.code, 0, r.out);
@@ -288,7 +288,7 @@ describe('host mode — the verbs answer with NO workspace', () => {
 		const { FLAGS } = await import('../src/cli.js');
 		for (const f of new Set(Object.values(FLAGS).flat())) assert.match(help, new RegExp(`--${f}\\b`), `--${f} is accepted but not in help`);
 		const v = h.dt('--version');
-		assert.equal(v.stdout.trim(), `@dreamteamer/host@${JSON.parse(fs.readFileSync(path.join(PKG, 'package.json'), 'utf8')).version}`);
+		assert.equal(v.stdout.trim(), `@dreamteamer/docker-workspaces@${JSON.parse(fs.readFileSync(path.join(PKG, 'package.json'), 'utf8')).version}`);
 	});
 
 	test('--mount adds bind and volume mounts beside the three; a mount aimed at an own volume is refused', async () => {
@@ -332,7 +332,7 @@ describe('host mode — the verbs answer with NO workspace', () => {
 	test('setup --json refuses an unknown flag like every other verb', () => {
 		const r = h.dt('setup', '--templte', 'hq');
 		assert.equal(r.code, 1);
-		assert.match(r.stderr, /unknown flag "--templte" on `dt-host setup`/);
+		assert.match(r.stderr, /unknown flag "--templte" on `dt-docker setup`/);
 	});
 });
 
@@ -514,7 +514,7 @@ describe('when Docker is not there', () => {
 			const r = h.dt('list', 'containers');
 			assert.equal(r.code, 1);
 			assert.match(r.stderr, /Docker is not reachable at .*d\.sock/);
-			assert.match(r.stderr, /dt-host setup/);
+			assert.match(r.stderr, /dt-docker setup/);
 			const s = h.dt('setup');
 			assert.equal(s.code, 1);
 			assert.match(s.stdout + s.stderr, /docker\s+✖/);
@@ -552,13 +552,15 @@ describe('every request to Docker carries a timer', () => {
 });
 
 describe('the no-dependency promise', () => {
-	test('src imports node: modules and its own files only, package.json declares no dependency, and the bin is dt-host', () => {
+	test('src imports node: modules and its own files only, package.json declares no dependency and no engine extension, and the bin is dt-docker', () => {
 		for (const f of fs.readdirSync(path.join(PKG, 'src'))) {
 			const src = fs.readFileSync(path.join(PKG, 'src', f), 'utf8');
 			for (const m of src.matchAll(/^import [^;]* from '([^']+)';/gm)) assert.ok(m[1].startsWith('node:') || m[1].startsWith('./'), `${f} imports ${m[1]}`);
 		}
 		const pkg = JSON.parse(fs.readFileSync(path.join(PKG, 'package.json'), 'utf8'));
-		for (const k of ['dependencies', 'peerDependencies', 'optionalDependencies', 'dreamteamer']) assert.equal(pkg[k], undefined, `package.json declares ${k}`);
-		assert.deepEqual(pkg.bin, { 'dt-host': 'bin/dt-host.js' });
+		for (const k of ['dependencies', 'peerDependencies', 'optionalDependencies']) assert.equal(pkg[k], undefined, `package.json declares ${k}`);
+		// a module (it ships a skill), but never code the engine loads: dt-docker must run with no workspace
+		assert.equal(pkg.dreamteamer?.extension, undefined, 'host declares an engine extension');
+		assert.deepEqual(pkg.bin, { 'dt-docker': 'bin/dt-docker.js' });
 	});
 });

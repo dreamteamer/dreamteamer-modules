@@ -1,4 +1,4 @@
-// `dt-host export container` / `dt-host import container`, driven through the real binary against the
+// `dt-docker export container` / `dt-docker import container`, driven through the real binary against the
 // fake Engine API — whose container files are a real folder and whose …/archive routes are the system
 // `tar`, so the round trip is checked against a real tar on both ends. Every test asserts what reached
 // the container (or did NOT), not that a code path ran.
@@ -103,7 +103,7 @@ describe('export and import a container\'s workspaces', () => {
 		assert.equal(e.code, 0, e.out);
 		const i = dt('import', 'container', 'hq-dana', out('s.tgz'), '--replace');
 		assert.equal(i.code, 1);
-		assert.match(i.out, /exited — import needs it running: dt-host start container hq-dana/);
+		assert.match(i.out, /exited — import needs it running: dt-docker start container hq-dana/);
 		assert.equal(dt('start', 'container', 'hq-dana', '--no-open').code, 0);
 	});
 
@@ -534,7 +534,7 @@ describe('the v1 format is preserved byte for byte', () => {
 		assert.ok(Buffer.concat(back).equals(plain));
 	});
 
-	test('dt-host imports the pre-extraction export — encrypted and plain — into a fresh container', async () => {
+	test('dt-docker imports the pre-extraction export — encrypted and plain — into a fresh container', async () => {
 		const h = harness({ prefix: 'dth-g-' });
 		const fsRoot = path.join(h.dir, 'fs'); fs.mkdirSync(fsRoot);
 		const fake = await startFakeDocker(h.sock, { images: [{ ref: HQ, labels: { 'dreamteamer.template': 'hq', 'dreamteamer.ports': '8080' } }], fsRoot });

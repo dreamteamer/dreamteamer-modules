@@ -4,19 +4,14 @@
 	"description": "dt serve — the dreamteamer REST api at /api, over the same validating store the CLI uses",
 	"license": "Apache-2.0",
 	"type": "module",
-	"engines": {
-		"node": ">=20"
-	},
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/dreamteamer/dreamteamer-tools.git",
-		"directory": "packages/http"
+		"url": "git+https://github.com/dreamteamer/dreamteamer-modules.git",
+		"directory": "modules/http"
 	},
 	"keywords": [
 		"dreamteamer",
-		"dreamteamer-extension",
-		"rest",
-		"api"
+		"dreamteamer-module"
 	],
 	"exports": {
 		".": "./src/app.js",
@@ -24,17 +19,16 @@
 		"./package.json": "./package.json"
 	},
 	"files": [
+		"README.md",
 		"src"
 	],
 	"dependencies": {
 		"express": "^5.2.1"
 	},
-	"peerDependencies": {
-		"dreamteamer": "^0.31.0"
-	},
 	"dreamteamer": {
 		"extension": "./src/extension.js",
 		"title": "HTTP",
-		"description": "dt serve — the REST api at /api: records, schema writes behind the compile gate, history, presentation and bound commands, over the running engine's validating store."
+		"description": "dt serve — the REST api at /api: records, schema writes behind the compile gate, history, presentation and bound commands, over the running engine's validating store.",
+		"engine": ">=0.31.0"
 	}
 }

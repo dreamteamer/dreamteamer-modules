@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { api, packageDir, SPAWN_TIMEOUT_MS } from '../../../test-support/fixture.mjs';
+import { api, packageDir, SPAWN_TIMEOUT_MS } from '../../../tests/helpers/fixture.mjs';
 import activate, { apiVersion, parseServeArgs } from '../src/extension.js';
 
 const SRC = path.join(packageDir('http'), 'src');
