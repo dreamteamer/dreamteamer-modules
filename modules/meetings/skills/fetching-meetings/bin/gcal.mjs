@@ -1,27 +1,18 @@
 #!/usr/bin/env node
-// Read Google Calendar DIRECTLY from the Google API, using the credentials that
-// `workspace-mcp` already stores per account. Same account, same data, same credentials,
-// different transport — the substitution `fetching-meetings` explicitly sanctions.
+// Reads Google Calendar directly from the Calendar v3 API, with the per-account credentials
+// `workspace-mcp` stores, and prints the raw JSON.
 //
 //   node bin/gcal.mjs calendars <email>
 //   node bin/gcal.mjs events <email> <calendarId> <timeMin> <timeMax> [--show-deleted]
 //   node bin/gcal.mjs event <email> <calendarId> <eventId>
 //
-// Output is JSON on stdout — the whole point of this file.
-//
-// WHY THIS EXISTS RATHER THAN THE MCP CALENDAR TOOLS (verified in the installed source,
-// workspace-mcp 1.22.2, 2026-07-30): every tool returns `-> str`, a human-formatted string,
-// and the codebase has NO structured-output option. The formatter drops three fields the
-// meeting sync is built on:
-//   • `status`      — confirmed/cancelled/tentative. Never emitted, even for a single event.
-//                     Decision 97 used it to tell a CANCELLED instance from one that never
-//                     existed; without it the sync creates duplicate records.
-//   • `accessRole`  — `list_calendars` emits only summary/primary/id. This is step 3's guard:
-//                     a `freeBusyReader` result is a config bug, and undetectable without it.
+// Output is JSON on stdout. The meeting sync depends on three fields a formatted calendar tool drops:
+//   • `status`      — confirmed/cancelled/tentative. Tells a cancelled instance from one that never
+//                     existed, which keeps a re-sync from duplicating records.
+//   • `accessRole`  — a `freeBusyReader` result is a misconfigured calendar row, and is undetectable
+//                     without it.
 //   • attendee `resource` — how room bookings are excluded instead of becoming contacts.
-// It also has no `showDeleted` and no `timeZone` param, and hardcodes `singleEvents: True`.
-//
-// If upstream ever ships structured output, this file is the thing to delete.
+// It also passes `showDeleted` and `timeZone`.
 
 import { readFileSync, existsSync, writeSync } from 'node:fs';
 import { homedir } from 'node:os';
@@ -34,16 +25,10 @@ const KEYS_PATH = process.env.GOOGLE_CLIENT_SECRET_PATH
 
 const die = (m) => { console.error(m); process.exit(1); };
 
-// ⚠ JSON goes out through out(), NEVER console.log — and out() LOOPS. Two separate bugs bite
-// here, and fixing only the first still truncates at exactly the same byte:
-//   1. console.log to a PIPE is asynchronous, and every path here ends in process.exit(),
-//      which discards whatever is still buffered (decision 100).
-//   2. writeSync to a pipe performs ONE write(2), which returns a SHORT COUNT once the 64KB
-//      pipe buffer is full. A single writeSync therefore truncates too — measured at 65126
-//      bytes of a ~200KB range fetch, invalid JSON, zero exit status, both times.
-// So: write in a loop until every byte is out, retrying EAGAIN on a non-blocking pipe.
-// ⚠ Decision 100's engine fix is a single `fs.writeSync` and has bug 2 unfixed — `dt --json`
-// still truncates above ~64KB. Worth carrying this loop over there.
+// JSON goes out through out(), never console.log, and out() loops. console.log to a pipe is
+// asynchronous, and process.exit() discards whatever is still buffered. A single writeSync to a pipe
+// performs one write(2), which returns a short count once the 64KB pipe buffer is full. So write in
+// a loop until every byte is out, retrying EAGAIN on a non-blocking pipe.
 const out = (v) => {
   const buf = Buffer.from(JSON.stringify(v, null, 2) + '\n');
   let off = 0;
@@ -111,7 +96,7 @@ const token = await accessToken(email);
 
 if (cmd === 'calendars') {
   const items = await paged(token, 'users/me/calendarList', {});
-  // accessRole is the field the MCP formatter drops and step 3's guard depends on.
+  // accessRole is what the skill's degraded-read guard depends on.
   out(items.map((c) => ({
     id: c.id, summary: c.summary, primary: !!c.primary,
     accessRole: c.accessRole, timeZone: c.timeZone, selected: !!c.selected,
@@ -135,7 +120,7 @@ if (cmd === 'events') {
 if (cmd === 'event') {
   const [calendarId, eventId] = rest;
   if (!calendarId || !eventId) die('usage: gcal.mjs event <email> <calendarId> <eventId>');
-  // 404 here is what distinguishes "never existed" from `status: cancelled` (decision 97).
+  // 404 here is what distinguishes "never existed" from `status: cancelled`.
   out(await api(token, `calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`));
   process.exit(0);
 }

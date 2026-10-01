@@ -19,5 +19,5 @@ npx dreamteamer compile
 | `@dreamteamer/users` | the people of yours in the room |
 | `@dreamteamer/tags` | the `tags` field points at its script |
 | `@dreamteamer/assets` | contacts and companies need it for avatars and logos |
-| a Google account and `WORK_CALENDARS` in `.env` | calendar sync only; writing meetings by hand works without them |
+| a Google OAuth desktop client, each account authenticated through `workspace-mcp`, and `WORK_CALENDARS` in `.env` | calendar sync only (`fetching-meetings` has the setup); writing meetings by hand works without them |
 | `INBOX_FOLDERS` and `FILES_FOLDER` declared | filing screenshots only |

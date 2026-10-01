@@ -4,7 +4,7 @@
 //   node touch-contacts.mjs meetings/<id> [meetings/<id> …] [--dry-run] [--json]
 //   node touch-contacts.mjs --all [--dry-run] [--json]          # backfill from every meeting
 //
-// The rule (pure, tested in ../tests/touch-contacts.test.mjs):
+// The rule (pure, exported as `computeRecent`):
 //   a contact's recent meeting is the LATEST meeting by `starts` that (a) lists the contact in
 //   `attendees`, (b) has already started (`starts` <= now), and (c) is not `status: cancelled`.
 //   A contact is only ever moved FORWARD — a meeting older than what the record already holds is
@@ -16,8 +16,7 @@
 // pathspec-scoped exactly like a hand-run CLI call. No YAML parser, no direct file writes.
 //
 // The engine is invoked as `node <its bin.js>` resolved from node_modules, not via `npm run` or
-// `node_modules/.bin`, so this works in a shell where npm is not on PATH (measured 2026-08-30:
-// the agent harness's shell had node but not npm).
+// `node_modules/.bin`, so this works in a shell where npm is not on PATH.
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -124,11 +123,9 @@ function main(argv) {
 	}
 }
 
-/** ⚠ RUN AS A SCRIPT — AND THROUGH A SYMLINK. `process.argv[1]` is the path as INVOKED and
- *  `import.meta.url` the path RESOLVED; under preview mode this module is reached through a
- *  `git_modules/<name>` symlink into a clone elsewhere, so the two are different strings for the same
- *  file and a `===` between them is false. The entry guard then never fires — no output, exit 0, and
- *  a reader sees a clean run. Measured 2026-09-11; `tests/script-entry.test.mjs` holds it. */
+/** Run as a script, including through a symlink. `process.argv[1]` is the path as invoked and
+ *  `import.meta.url` the path resolved, so both are realpathed before they are compared; under a
+ *  `git_modules/<name>` symlink a plain `===` is false and the script would exit 0 having done nothing. */
 const isMain = () => {
 	if (!process.argv[1]) return false;
 	const real = (p) => { try { return fs.realpathSync(p); } catch { return path.resolve(p); } };

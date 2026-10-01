@@ -1,44 +1,28 @@
 #!/usr/bin/env node
-// Bring screenshots taken during meetings into the vault. Deliberately the same shape as
-// ingesting-recordings/bin/detect.mjs — scan → sha256 dedupe → file → done — so `dt sync` can
-// trigger it later with no redesign, and so the two inboxes behave identically.
+// Files screenshots taken during meetings beside the meeting they belong to.
 //
 //   node bin/detect.mjs scan [--from YYYY-MM-DD] [--to YYYY-MM-DD]   pure read, JSON, writes nothing
 //   node bin/detect.mjs archive <file> <meeting-id>                  move the original into
 //                                                                     meetings/<meeting id>/screenshots/
 //
-// ⚠ Every `${env:INBOX_FOLDERS}` root's `meeting-screenshots/` lives INSIDE the same synced tree as
-// the destination (`${env:FILES_FOLDER}/meetings/…`) when that root is the Drive one — so filing is a
-// local move there, no Drive API upload, no second `ingested/` copy (spec
-// the 2026-08-22 files-folder design §3.3, revision 2). `INBOX_FOLDERS` is a LIST —
-// desktop carries a second root under iCloud, for the phone's zero-friction share sheet — and every
-// scan iterates all of them.
+// Every `${env:INBOX_FOLDERS}` root's `meeting-screenshots/` is scanned; `INBOX_FOLDERS` is a list,
+// one root per line. When an inbox root sits in the same synced tree as `${env:FILES_FOLDER}`, filing
+// is one local move.
 //
-// The SCRIPT does mechanics (scan, hash, parse the capture time, propose a match, file the move).
-// The AGENT does judgment: confirming a match, then pointing the meeting at the folder. Same split
-// as recordings.
+// The script does mechanics (scan, hash, parse the capture time, propose a match, file the move).
+// The agent does judgment: confirming a match, then pointing the meeting at the folder.
 //
-// The inbox log (spec §3.2b): `archive` writes `<file>.log` beside the shot (`seen` at first touch,
-// `refused` if the destination is already taken) and DELETES it once the shot is fully filed — the
-// log is narrative-only working memory, never a second source of truth this script reads from.
-// `scan` heals a moot log (payload already gone) into `<root>/trash/` at the start of every run, and
-// never reads a `*.log` as a payload (the `walk` helper already filters to IMAGE extensions only).
+// The inbox log: `archive` writes `<file>.log` beside the shot (`seen` at first touch, `refused` if
+// the destination is already taken) and deletes it once the shot is filed. The log is narrative
+// only, never a source of truth this script reads from. `scan` moves a log whose payload is gone
+// into `<root>/trash/` at the start of every run, and never reads a `*.log` as a payload.
 //
-// ⚠ MATCHING IS ON THE CALENDAR SLOT, widened by SLACK. That is the only anchor that actually
-// exists: `recorded_at` has no automatic source (a recording file's creation_time is when the COPY
-// was written — the operator uploads to iCloud well after the call), so it is usually empty. When a
-// recording DOES carry a trustworthy recorded_at, the real span [recorded_at, +duration] is used
-// instead and `basis` says so.
-// Slack is needed because slots are routinely wrong in both directions: one call measured
-// started 9m40s late, and another ran 87 minutes in a 30-minute slot. So the window is
-// [starts - 1h, ends + 1h].
-// ⚠ ±1 hour is a HARD SCOPE BOUNDARY set by the operator (2026-08-02), not a heuristic to tune.
-// Anything outside every meeting's window is out of scope: reported, left in the inbox, never
-// filed — and the correct response to an ambiguous shot is to ASK, not to widen the window.
-// The trade is deliberate: this gives up the 87-minute overrun case in exchange for never
-// uploading one client's screen into another client's Drive folder. Omit rather than risk it.
-// Unmatched shots are REPORTED, never guessed into the nearest meeting — plenty of the
-// operator's screenshots have nothing to do with any call.
+// Matching is on the calendar slot, widened by SLACK. When a recording carries a trustworthy
+// `recorded_at`, its real span [recorded_at, +duration] is used instead and `basis` says so.
+// The ±1 hour window is a hard scope boundary, not a heuristic to tune: a shot outside every
+// meeting's window is reported, left in the inbox and never filed, because a wrong match puts one
+// client's screen in another client's folder. An ambiguous shot is a question for the person, never
+// a reason to widen the window. Unmatched shots are reported, never guessed into the nearest meeting.
 
 import { readFileSync, existsSync, readdirSync, statSync, renameSync, mkdirSync, appendFileSync, rmSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
@@ -46,23 +30,20 @@ import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-// ⚠ WALKED, never process.cwd() — same fix as the recordings scanner, for the same reason. Here the
-// wrong cwd used to fail loudly but for the WRONG reason: `resolveVar` runs the engine with an
-// explicit `cwd: ROOT`, but a wrong ROOT would still resolve against the wrong workspace's `.env`
-// and report a plausible-looking wrong answer rather than the real fault, the directory you ran
-// from. package-lock.json, not package.json — every module carries the latter.
-// ⚠ a folder sitting directly inside `git_modules/` is a module clone, never the workspace, even when `npm install` left it a lockfile.
-const vaultRoot = () => {
+// The workspace root is found by walking up from this file to `package-lock.json` (every module
+// carries a package.json), never from process.cwd(), so a run from another directory still reads
+// this workspace. A folder directly inside `git_modules/` is a module clone, never the workspace.
+const workspaceRoot = () => {
   for (let d = path.dirname(fileURLToPath(import.meta.url)); ; d = path.dirname(d)) {
     const inGitModules = path.basename(path.dirname(d)) === 'git_modules';
     if (!inGitModules && existsSync(path.join(d, 'package-lock.json'))) return d;
-    if (path.dirname(d) === d) throw new Error(`vault root (package-lock.json) not found above ${import.meta.url}`);
+    if (path.dirname(d) === d) throw new Error(`workspace root (package-lock.json) not found above ${import.meta.url}`);
   }
 };
 // `--workspace-root` is the same explicit-override shape as `--files-folder` below: a test fixture
 // (or a caller operating another checkout) points the record reads at a throwaway workspace.
 const rootOverride = (() => { const i = process.argv.indexOf('--workspace-root'); return i > 0 ? path.resolve(process.argv[i + 1]) : undefined; })();
-const ROOT = rootOverride ?? vaultRoot();
+const ROOT = rootOverride ?? workspaceRoot();
 const MEETINGS = path.join(ROOT, 'data/meetings');
 const RECORDINGS_DIR = path.join(ROOT, 'data/meeting-recordings');
 
@@ -92,9 +73,9 @@ function compiledStorage(name) {
 
 /**
  * Every folder a meeting record can sit in, as `[root, suffixTail]`: the collection's own root, and —
- * since engine 0.32 a meeting with a `company` may live INSIDE that company's folder
- * (`storage.under`) — each parent record's child folder. A meeting's id is its path inside WHICHEVER
- * root holds it, so filing under `meetings/<id>/screenshots/` is unchanged by where the record is.
+ * when the compiled descriptor places meetings under a parent record (`storage.under`), each parent
+ * record's child folder. A meeting's id is its path inside whichever root holds it, so filing under
+ * `meetings/<id>/screenshots/` does not depend on where the record is.
  */
 function meetingRoots() {
   const storage = compiledStorage('meetings');
@@ -118,11 +99,9 @@ const SLACK_MS = 60 * 60000;
 
 const die = (m) => { console.error(`✖ ${m}`); process.exit(1); };
 
-// ── declared vars: resolved by the ENGINE, never by a second .env read ───────────────────────────
-// Same shape as the recordings scanner's `resolveVar` (each skill script is self-contained — no
-// cross-skill import). `FILES_FOLDER` is declared in the workspace package.json's `dreamteamer.vars`, so
-// `dt resolve '${env:FILES_FOLDER}'` is its one resolver — reading it out of `.env` directly here
-// would be a second resolver, the exact duplication that retired FILE_MOUNTS.
+// ── declared vars: resolved by the engine, never by a second .env read ─────────────────────────────
+// `dt resolve '${env:NAME}'` is the one resolver for a declared var. Each skill script carries its
+// own copy of this helper rather than importing across skills.
 function resolveVar(name) {
   const engine = path.join(ROOT, 'node_modules/.bin/dreamteamer');
   if (!existsSync(engine)) return undefined;
@@ -132,14 +111,10 @@ function resolveVar(name) {
   } catch { return undefined; }   // undeclared, or no value on this machine
 }
 
-// ── INBOX_FOLDERS: a LIST of inbox roots, every one scanned ─────────────────────────────────────
-// Two variables now (design revision 2, 2026-08-22): `FILES_FOLDER` (one root, permanent) and
-// `INBOX_FOLDERS` (a newline-separated LIST of inbox roots, transient) — the phone's iOS share
-// sheet lands in iCloud with zero friction, so desktop carries a second root there while the web
-// has only one. Splits on newlines, trims, drops blanks, and SKIPS a root that does not exist on
-// this machine with a printed note rather than dying — a future machine may have more or fewer
-// roots than this one. `override` mirrors `--files-folder`: a fixture pins this without touching
-// `.env` or a real synced folder.
+// ── INBOX_FOLDERS: a list of inbox roots, every one scanned ─────────────────────────────────────────
+// Newline-separated. Splits on newlines, trims, drops blanks, and skips a root that does not exist on
+// this machine with a printed note rather than dying. `override` mirrors `--files-folder`: a fixture
+// pins this without touching `.env` or a real synced folder.
 function resolveInboxRoots(override) {
   const raw = override ?? resolveVar('INBOX_FOLDERS');
   if (!raw) return [];
@@ -153,10 +128,9 @@ function resolveInboxRoots(override) {
   return roots;
 }
 
-// ── the inbox log — working memory beside the payload (spec §3.2b) ─────────────────────────────────
-// `<exact-payload-filename>.log`, append-only, narrative only: the PAYLOAD's presence/location is
-// the only truth this script or anything downstream ever decides from. Copied verbatim from the
-// recordings detect.mjs (self-contained scripts, no cross-skill import).
+// ── the inbox log, working memory beside the payload ───────────────────────────────────────────────
+// `<exact-payload-filename>.log`, append-only, narrative only: the payload's presence and location is
+// the only truth this script or anything downstream decides from.
 const logPathOf = (payload) => `${payload}.log`;
 function logEvent(payload, event, kv = {}, actor = 'screenshots-detect@desktop') {
   const parts = Object.entries(kv).map(([k, v]) => `${k}=${v}`).join(' ');
@@ -174,9 +148,8 @@ function uniqueTrashPath(trashDir, name) {
   return dest;
 }
 
-// At scan start: a `*.log` whose payload is gone is moot — move it to `<root>/trash/` (spec §3.2b).
-// Self-healing for a stray log any transport left behind. Removal is never a delete (design §3.2),
-// so this is a rename, never an unlink.
+// At scan start: a `*.log` whose payload is gone is moot, so it moves to `<root>/trash/`. Removal is
+// always a rename, never an unlink.
 function cleanMootLogs(root, kind) {
   const dir = path.join(root, kind);
   if (!existsSync(dir)) return;
@@ -194,8 +167,7 @@ const walk = (d, out = []) => {
   for (const e of readdirSync(d, { withFileTypes: true })) {
     if (e.name.startsWith('.')) continue;
     const p = path.join(d, e.name);
-    // No `ingested/` any more — a filed shot MOVES out of the inbox entirely (see `archive` below),
-    // so there is nothing left to skip.
+    // A filed shot has moved out of the inbox entirely (see `archive` below), so nothing is skipped.
     if (e.isDirectory()) walk(p, out);
     else if (IMAGE.has(path.extname(e.name).toLowerCase())) out.push(p);
   }
@@ -205,7 +177,7 @@ const walk = (d, out = []) => {
 const sha256 = (f) => `sha256:${createHash('sha256').update(readFileSync(f)).digest('hex')}`;
 
 // ── the capture time ─────────────────────────────────────────────────────────────────────────────
-// macOS names a screenshot "Screenshot 2026-07-30 at 14.46.12.png": a wall-clock time with no zone.
+// macOS names a screenshot "Screenshot YYYY-MM-DD at HH.MM.SS.png": a wall-clock time with no zone.
 // It is kept as `wall` and turned into an instant per meeting, in that meeting's own zone, so the
 // match does not depend on the zone of the machine running the scan. A file whose name carries no
 // time falls back to mtime, which is already an instant, with `confident: false`.
@@ -250,7 +222,7 @@ function wallToInstant([y, mo, d, h, mi, s], { timezone, startsOffset } = {}) {
   return { instant: new Date(y, mo - 1, d, h, mi, s).getTime(), zone: 'machine' };
 }
 
-// ── vault reads (frontmatter only — no yaml dep, same approach as detect.mjs) ─────────────────────
+// ── record reads (frontmatter only, no yaml dependency) ─────────────────────────────────────────────
 const fmOf = (src) => (src.match(/^---\n([\s\S]*?)\n---/) ?? [])[1] ?? '';
 const field = (fm, k) => (fm.match(new RegExp(`^${k}:\\s*(.+)$`, 'm')) ?? [])[1]?.trim().replace(/^["']|["']$/g, '');
 const listOf = (fm, k) => {
@@ -306,18 +278,13 @@ function meetings() {
       from = st; to = Number.isNaN(en) ? st : en;
       basis = 'calendar-slot';
     }
-    // TWO windows, and the distinction is what keeps matching honest:
-    //   exact  — inside the slot (or the real recording span). A hit here is not negotiable.
-    //   slack  — the slot widened by ±SLACK_MS, to RESCUE a shot from a call that started late or
-    //            overran. Slack never competes with an exact hit: a generous window on a 12:00
-    //            meeting otherwise reaches into the 14:00 one and turns nine clean matches into
-    //            ambiguities — measured on 2026-07-30.
-    // ⚠ ±1 HOUR IS A HARD SCOPE BOUNDARY, not a tuning knob (operator instruction, 2026-08-02).
-    // A shot outside every meeting's ±1h window is OUT OF SCOPE: it is reported and left in the
-    // inbox, never filed. The window used to be asymmetric (15 min before / 90 after) to catch an
-    // 87-minute call in a 30-minute slot; that reach is deliberately given up. The operator's rule
-    // is omit rather than risk it — most of these are a client's screen, and a wrong match uploads
-    // one client's data into another client's folder. When in doubt, ASK; do not widen.
+    // Two windows:
+    //   exact  — inside the slot (or the real recording span). A hit here is trusted.
+    //   slack  — the slot widened by ±SLACK_MS, to rescue a shot from a call that started late or
+    //            overran. Slack never competes with an exact hit, so a generous window on a 12:00
+    //            meeting cannot reach into the 14:00 one.
+    // A shot outside every meeting's ±1h window is out of scope: reported, left in the inbox, never
+    // filed. When in doubt, ask; do not widen.
     out.push({ id, name: field(fm, 'name'), company: field(fm, 'company'),
       timezone: field(fm, 'timezone'), startsOffset: /(Z|[+-]\d{2}:?\d{2})$/.exec(field(fm, 'starts') ?? '')?.[1],
       from, to, slackFrom: from - SLACK_MS, slackTo: to + SLACK_MS,
@@ -326,32 +293,13 @@ function meetings() {
   return out.filter((m) => !Number.isNaN(m.from) && m.from !== null);
 }
 
-// ⚠ NO VAULT-SIDE FINGERPRINT INDEX ANY MORE. With per-file records gone (2026-07-31) the vault holds
-// only a folder pointer, so "is this shot already filed?" is answered by the FILESYSTEM, not by a
-// record: a filed shot has MOVED out of the inbox entirely, and `archive` REFUSES a same-name
-// collision at the destination rather than silently overwriting it. sha256 is still reported per
-// file so the caller can compare bytes if it wants, but nothing in the vault stores it. The trade: a
-// shot the operator RENAMES before re-adding will file a second time under the new name — visible in
-// the folder, and acceptable because macOS names screenshots by timestamp and they are not normally
-// renamed. (Recordings still hash-dedupe: those DO get renamed by hand, which is why that index
-// exists there.)
+// "Is this shot already filed?" is answered by the filesystem, not by a record: a filed shot has
+// moved out of the inbox, and `archive` refuses a same-name collision at the destination. sha256 is
+// reported per file so a caller can compare bytes; nothing stores it. A shot renamed before it is
+// re-added files again under the new name, which is visible in the folder.
 
-// WHERE the shots are filed: derived by NAME under `${env:FILES_FOLDER}`, never carried as its own
-// folder id — the filing is a local move (see `archive` below), and the relative name IS the
-// derivation. `scan` reports it as `files_subfolder` so a caller can see the derivation.
-//
-// The history, because this is the FIFTH shape and each previous one failed differently: it was a
-// Drive folder id hard-coded in this file (machine-invariant but install-specific — a copy of the
-// script in a second workspace pointed at the FIRST workspace's Drive; dropped when the skill was
-// extracted into a shared module, 2026-09-09), before that `meeting-files` under a vault root's own
-// .env-declared folder-id key (a second .env key to keep in sync with the root — retired 2026-08-22), before that a
-// screenshots-specific Drive-folder-id key (a second id to maintain), and before THAT a `mounts` record
-// id ($SCREENSHOTS_MOUNT_ID) resolved against data/mounts/ — a collection with one record, an
-// `adapter: gdrive|s3|git` enum in which only gdrive was implemented, and this as its only caller,
-// deleted 2026-07-31. (An even earlier version SCANNED data/mounts/ for `purpose: meeting-screenshots`
-// and took the first hit — silently picking one of two candidates in readdir order, and silently
-// returning null when none matched.) Revision 2 (2026-08-22) drops the `files/` segment: FILES_FOLDER
-// now points AT the files folder, so the sub-path is just `meetings`.
+// Where the shots are filed: `meetings/` under `${env:FILES_FOLDER}`, derived by name and never
+// carried as a folder id of its own. `scan` reports it as `files_subfolder`.
 const MEETING_FILES = 'meetings';
 
 // ── commands ─────────────────────────────────────────────────────────────────────────────────────
@@ -363,10 +311,9 @@ const argOf = (name) => { const i = process.argv.indexOf(name); return i > 0 ? p
 // (a newline-separated list, same shape as the declared var).
 const filesFolder = argOf('--files-folder') ?? resolveVar('FILES_FOLDER');
 if (!filesFolder) die('FILES_FOLDER does not resolve — declare it in dreamteamer.vars and set it in .env');
-// A `gdrive://…` value (`.env.web`'s shape for FILES_FOLDER — a cloud session has no synced mount)
-// is not a local path. `archive` below joins it straight into `mkdirSync`/`renameSync`, which would
-// treat it as a RELATIVE path and silently create real directories inside the repo. Same guard
-// doctor.mjs already applies to every declared var (`!val.startsWith('/')`) before it will stat one.
+// A `gdrive://…` value (what a cloud session without a synced folder resolves to) is not a local
+// path. `archive` would join it into `mkdirSync`/`renameSync` as a relative path and create
+// directories inside the repo, so anything that is not an absolute path is refused.
 if (!filesFolder.startsWith('/')) {
   die(`FILES_FOLDER ("${filesFolder}") is not a local path — likely a gdrive:// address (.env.web); `
     + 'this script needs a local synced folder, not a remote address.');
@@ -386,7 +333,7 @@ if (verb === 'scan') {
   for (const root of roots) {
     const inbox = path.join(root, 'meeting-screenshots');
     for (const file of walk(inbox).sort()) {
-      if (file.endsWith('.log')) continue;   // `*.log` is never a payload (spec §3.2b) — belt & suspenders, `walk` already filters by IMAGE extension
+      if (file.endsWith('.log')) continue;   // `*.log` is never a payload; `walk` already filters by image extension
       const c = capturedAt(file);
       if (from && c.at.slice(0, 10) < from) continue;
       if (to && c.at.slice(0, 10) > to) continue;
@@ -400,9 +347,8 @@ if (verb === 'scan') {
       const slack = ms_.filter((m) => tOf(m) >= m.slackFrom && tOf(m) <= m.slackTo && !exact.includes(m));
       const tier = exact.length ? 'exact' : 'slack';
       const hits = (exact.length ? exact : slack).sort((a, b) => (a.to - a.from) - (b.to - b.from));
-      // The same shot can be dropped into more than one inbox root (design §2.1: "dedupe by sha256,
-      // across roots"). The FIRST occurrence is the real candidate; every later one with the same
-      // fingerprint is flagged rather than double-counted as a second `new` row.
+      // The same shot can sit in more than one inbox root. The first occurrence is the candidate;
+      // every later one with the same fingerprint is flagged rather than counted as a second `new` row.
       const duplicateOf = seenFingerprints.get(fp) ?? null;
       if (!duplicateOf) seenFingerprints.set(fp, file);
       rows.push({
@@ -442,16 +388,10 @@ if (verb === 'archive') {
   const [, , , file, meetingId] = process.argv;
   if (!file || !meetingId) die('usage: detect.mjs archive <file> <meeting-id>');
   if (!existsSync(file)) die(`no such file: ${file}`);
-  // 'seen' at first touch, only if this payload has no log yet (spec §3.2b).
+  // 'seen' at first touch, only if this payload has no log yet.
   if (!existsSync(logPathOf(file))) logEvent(file, 'seen', { sha256: sha256(file), size: statSync(file).size });
-  // The inbox now lives INSIDE the same synced tree as the destination (spec §3.3), so filing a shot
-  // is one local move — no `drive.mjs write` upload, no second `ingested/` copy. One folder per
-  // meeting, nested under the FULL meeting id (`meetingId` carries the whole `<year>/<month>/<id>`
-  // reference, slashes and all) with a `screenshots/` leaf — meetings/<meeting id>/screenshots/.
-  // ⚠ 2026-08-31: this used to flatten to the meeting's BASENAME only (`meetings/<basename>/`), which
-  // meant two meetings sharing a title (a recurring 1:1, say) collided on the same folder. Nesting by
-  // the full id — mirroring meeting-recordings' own "the archive path IS the record id" rule — ends
-  // that collision risk; `screenshots_folder` (the field name) is unchanged.
+  // One local move into one folder per meeting, nested under the full meeting id (`<year>/<month>/<id>`,
+  // slashes and all) with a `screenshots/` leaf, so two meetings sharing a title never share a folder.
   const dest = path.join(filesFolder, MEETING_FILES, meetingId, 'screenshots');
   mkdirSync(dest, { recursive: true });
   const target = path.join(dest, path.basename(file));
@@ -460,8 +400,7 @@ if (verb === 'archive') {
     die(`already filed: ${target}`);
   }
   renameSync(file, target);
-  // Fully processed = payload filed + log DELETED (spec §3.2b) — durable history lives on the
-  // meeting's own `screenshots_folder`, not this scratch file.
+  // Fully processed = payload filed + log deleted; the meeting's `screenshots_folder` is the durable pointer.
   rmSync(logPathOf(file), { force: true });
   console.log(JSON.stringify({ archived_to: target }, null, 2));
   process.exit(0);

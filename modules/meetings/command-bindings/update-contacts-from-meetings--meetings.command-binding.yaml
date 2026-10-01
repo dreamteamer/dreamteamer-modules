@@ -6,8 +6,7 @@ target: record
 can-enter:
   attendees:
     _nempty: true
-# can-exit omitted on purpose: "every attendee's recent_meeting_date >= this meeting's starts" is a
-# condition on OTHER records — tier 2, not supported (see DECISION-LOG). The script is idempotent
-# and forward-only, so re-running on a meeting that already stamped everyone is a no-op, and the
-# command never needs to show "done".
+# can-exit is omitted: "every attendee's recent_meeting_date >= this meeting's starts" is a
+# condition on other records, which a binding cannot express. The script is idempotent and
+# forward-only, so re-running on a meeting that already stamped everyone is a no-op.
 description: stamp each attendee's contact with this meeting as their latest, if it is
