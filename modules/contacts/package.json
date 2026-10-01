@@ -1,7 +1,7 @@
 {
 	"name": "@dreamteamer/contacts",
 	"version": "0.1.0",
-	"description": "People you deal with, for a dreamteamer workspace — each pointing at their company, enriched from LinkedIn.",
+	"description": "People you deal with, each pointing at the company they work for and filled in from LinkedIn and the web.",
 	"license": "Apache-2.0",
 	"repository": {
 		"type": "git",
@@ -26,7 +26,7 @@
 	],
 	"dreamteamer": {
 		"title": "Contacts",
-		"description": "The people the operator deals with — `contacts`, each pointing at the `companies` record they work for (the companies module, which this one stamps `companies.contacts` onto) — enriched from LinkedIn through a batched, containerised MCP session (`scraping-contacts`, `/scrape-contact`), tagged by the workspace's own vocabulary (the tags module). Avatars are `assets`; a contact's latest meeting is a peer reference into `meetings`, so this module works without the meeting chain and joins it when present.",
+		"description": "People you deal with — `contacts`, each pointing at the `companies` record they work for, with an avatar from `assets` and tags from the tags module. The `scraping-contacts` skill and `/scrape-contact` fill a person in from LinkedIn, one batched container per run, and from web search. With `meetings` installed, each contact also carries the latest meeting they attended.",
 		"engine": ">=0.30.0",
 		"dependencies": [
 			"@dreamteamer/assets",

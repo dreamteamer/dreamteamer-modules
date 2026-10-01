@@ -3,19 +3,18 @@
 //
 //   node import-avatars.mjs harvested.json [--dry]
 //
-// ⚠ CHECKS THE BYTES, NOT THE STATUS. Filling the 13 company logos taught this the hard way: two
-// of seventeen fetches returned an HTML error page with HTTP 200, and one served a PNG named
-// `.svg`. So the mime type is sniffed from the magic bytes and the extension comes from THAT,
-// never from the URL.
+//   harvested.json: [{ "id": "<contact id>", "photo": "https://media.licdn.com/…" | null, "note"?: "…" }]
+//
+// Checks the bytes, not the status: an error page can arrive as HTTP 200 and a URL can name the wrong
+// type, so the image type is sniffed from the magic bytes and the extension comes from that.
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-// The vault root, found by walking up to the folder carrying package-lock.json — never hard-coded.
-// Scripts that hard-code a vault path break silently the day the vault moves. `package.json` alone is
-// not enough: a module folder has one too — and a clone under `git_modules/` is never the vault either.
-function vaultRoot(from = process.cwd()) {
+// The workspace root: the nearest folder carrying package-lock.json. `package.json` alone is not
+// enough, because a module folder has one too.
+function workspaceRoot(from = process.cwd()) {
 	let dir = path.resolve(from);
 	for (;;) {
 		// a folder sitting directly inside `git_modules/` is a module clone, never the workspace, even when `npm install` left it a lockfile
@@ -26,11 +25,11 @@ function vaultRoot(from = process.cwd()) {
 		dir = up;
 	}
 }
-const VAULT = vaultRoot(path.dirname(new URL(import.meta.url).pathname));
+const WORKSPACE = workspaceRoot(path.dirname(new URL(import.meta.url).pathname));
 const MAX = 204800; // the assets collection's own max_bytes
 const dry = process.argv.includes('--dry');
 const file = process.argv[2];
-if (!file) { console.error('usage: import-avatars.mjs <harvested.json> [--dry]'); process.exit(2); }
+if (!file) { console.error('usage: import-avatars.mjs <harvested.json> [--dry]\n  harvested.json: [{"id": "<contact id>", "photo": "https://media.licdn.com/…" | null, "note"?: "…"}]'); process.exit(2); }
 
 /** Magic-byte sniff → extension, or null when these bytes are not an image we accept. */
 function extOf(buf) {
@@ -45,7 +44,14 @@ function extOf(buf) {
 	return null; // an HTML error page lands here, which is the whole point
 }
 
-const dt = (...args) => execFileSync('npm', ['run', '--silent', 'dt', '--', ...args], { cwd: VAULT, encoding: 'utf8' });
+// The workspace's own installed engine, run directly: a workspace need not define an npm `dt` script.
+function engineBin(root) {
+	const pkgPath = path.join(root, 'node_modules', 'dreamteamer', 'package.json');
+	const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+	const bin = typeof pkg.bin === 'string' ? pkg.bin : (pkg.bin.dreamteamer ?? Object.values(pkg.bin)[0]);
+	return path.join(path.dirname(pkgPath), bin);
+}
+const dt = (...args) => execFileSync(process.execPath, [engineBin(WORKSPACE), ...args], { cwd: WORKSPACE, encoding: 'utf8' });
 
 const rows = JSON.parse(fs.readFileSync(file, 'utf8'));
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'avatars-'));
@@ -81,4 +87,4 @@ for (const row of rows) {
 }
 
 console.log(`\n${ok} imported · ${skipped} had no photo · ${failed} failed`);
-if (!dry && ok) console.log(`then: npm run check, and commit with\n  dt commit ${rows.filter((r) => r.photo).map((r) => `assets/avatars/${r.id} contacts/${r.id}`).slice(0, 3).join(' ')} …`);
+if (!dry && ok) console.log(`then: npx dt check, and commit with\n  npx dt commit ${rows.filter((r) => r.photo).map((r) => `assets/avatars/${r.id} contacts/${r.id}`).slice(0, 3).join(' ')} …`);

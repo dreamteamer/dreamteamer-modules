@@ -3,12 +3,11 @@
  * li.mjs — drive linkedin-mcp-server for ONE batch, in ONE ephemeral container, then exit.
  *
  * Why this exists instead of an `.mcp.json` entry: the LinkedIn session is a SINGLETON. A stdio MCP
- * entry spawns one container per Claude session, and two containers on the one ~/.linkedin-mcp
- * profile make LinkedIn invalidate the cookie — which costs a host re-login, not a retry
- * (decisions 84, 85). A stdio server cannot be shared between clients (one stdin/stdout pair), and
- * the alternative — a long-lived HTTP server — is a daemon the operator does not want. So: no
- * registered server, no idle container. The lock below is what makes "exactly one" true rather
- * than hoped for.
+ * entry spawns one container per agent session, and two containers on the one ~/.linkedin-mcp
+ * profile make LinkedIn invalidate the cookie — which costs a host re-login, not a retry. A stdio
+ * server cannot be shared between clients (one stdin/stdout pair), and a long-lived HTTP server would
+ * be a daemon holding a live session. So: no registered server, no idle container. The lock below is
+ * what makes "exactly one" true.
  *
  * Usage
  *   node li.mjs <tool> '<jsonArgs>'                     one call
@@ -86,7 +85,7 @@ function doctor() {
 	} catch { out.login_at = null; }
 
 	// the newest trace run's post-import screenshot is the ground truth: a real page is ~36KB,
-	// a bounce to the sign-in wall leaves it blank at ~4KB (decision 84).
+	// a bounce to the sign-in wall leaves it blank at ~4KB.
 	const loginMs = out.login_at ? Date.parse(out.login_at) : 0;
 	const runs = path.join(PROFILE, 'trace-runs');
 	if (fs.existsSync(runs)) {
@@ -103,8 +102,8 @@ function doctor() {
 			const bytes = fs.statSync(path.join(dir, '004-feed-after-goto.png')).size;
 			out.evidence_from = withShot.d;
 			out.last_feed_screenshot_bytes = bytes;
-			// A verdict from a run that PREDATES the current login is about the previous session, and
-			// reporting it as the current one is how you tell the operator their fresh login failed.
+			// A verdict from a run that PREDATES the current login is about the previous session, so it
+			// must not be reported as the current one.
 			if (loginMs && withShot.m < loginMs) {
 				out.evidence_is_stale = `trace is ${Math.round((loginMs - withShot.m) / 1000)}s older than the login`;
 				out.verdict = 'login is NEWER than any scraping evidence — session untested. Just run the batch.';
@@ -128,21 +127,13 @@ function doctor() {
 }
 
 /**
- * Stranded HOST-side clients — the thing that silently blocks every login.
+ * Stranded HOST-side clients. A `mcp-server-linkedin` process that never exited keeps the flock on
+ * `~/.linkedin-mcp/profile.lock`, and while it lives every `--import-from-browser` and `--login`
+ * refuses with `BrowserBusyError` — so a dead-session verdict must not send you to re-login.
  *
- * ⚠ THE FAILURE THIS EXISTS FOR (2026-08-29): a `mcp-server-linkedin` process from two days
- * earlier had never exited and still held the flock on `~/.linkedin-mcp/profile.lock`, so EVERY
- * `--import-from-browser` and `--login` refused with `BrowserBusyError: Another LinkedIn MCP
- * client is using the browser`. The doctor meanwhile reported `containers_running: 0`,
- * `batch_lock: free` and "session looks DEAD — run --import-from-browser": it advised the one
- * command that could not possibly work, because it checked Docker and its OWN batch lock and never
- * looked at the host. Two days of "the login keeps failing" came out of that gap.
- *
- * ⚠ Why this greps `ps` instead of reading the lock: macOS `lsof` reports an EMPTY lock field even
- * for a genuinely held flock (measured against a deliberately locked file), so it cannot tell a
- * holder from a process that merely has the file open — and Docker Desktop's VM always has it
- * open, because `~/.linkedin-mcp` is bind-mounted into the container. The lock file is unreadable
- * as evidence; the process is not.
+ * This greps `ps` rather than reading the lock: macOS `lsof` shows an empty lock field even for a
+ * held flock, and Docker Desktop's VM always has the file open because `~/.linkedin-mcp` is
+ * bind-mounted into the container.
  *
  * flock is released by the KERNEL when its holder dies, so anything found here is alive and `kill`
  * is the whole fix.
@@ -171,9 +162,8 @@ function strandedClients() {
 
 // ---------- one container, N calls ---------------------------------------------------------------
 async function runBatch(calls) {
-	// USER_AGENT exists specifically to reduce anti-scraping detection, and going without it is a
-	// plausible contributor to the ~6-page-load wall (decision 86). Set LINKEDIN_USER_AGENT in .env
-	// to your real browser's navigator.userAgent.
+	// USER_AGENT exists to reduce anti-scraping detection: the session is minted on the host and used
+	// from a Linux container. Set LINKEDIN_USER_AGENT in .env to the browser the session came from.
 	const ua = process.env.LINKEDIN_USER_AGENT || readEnvFile('LINKEDIN_USER_AGENT');
 	if (!ua) console.error('[li] no LINKEDIN_USER_AGENT set — see the skill; this may raise detection');
 	const args = [
@@ -228,7 +218,7 @@ async function runBatch(calls) {
 			else {
 				const text = (m.result?.content ?? []).filter((x) => x.type === 'text').map((x) => x.text).join('\n');
 				let parsed; try { parsed = JSON.parse(text); } catch { parsed = text; }
-				// a non-error response can still carry per-section failures — surface them (decision 83)
+				// a non-error response can still carry per-section failures — surface them
 				const partial = parsed?.section_errors ? Object.keys(parsed.section_errors) : [];
 				row = { ...row, ok: !m.result?.isError, result: parsed, ...(partial.length ? { failed_sections: partial } : {}) };
 			}
@@ -260,15 +250,15 @@ if (argv[0] === '--stdin') {
   echo '[{"tool":"get_person_profile","args":{"linkedin_username":"dana-oren"}}]' | li.mjs --stdin
   li.mjs --doctor
 
-NEVER call connect_with_person or send_message — they act publicly as the operator.`);
+NEVER call connect_with_person or send_message — they act publicly as you.`);
 	process.exit(2);
 }
 
 const BANNED = new Set(['connect_with_person', 'send_message']);
 const bad = calls.filter((c) => BANNED.has(c.tool));
 if (bad.length) {
-	console.error(`refusing ${bad.map((b) => b.tool).join(', ')} — these act publicly and irreversibly as the`
-		+ ' operator. If it is genuinely wanted, the operator does it by hand, not a scraper.');
+	console.error(`refusing ${bad.map((b) => b.tool).join(', ')} — these act publicly and irreversibly as`
+		+ ' you. If it is genuinely wanted, do it by hand, not through a scraper.');
 	process.exit(3);
 }
 
@@ -288,9 +278,8 @@ try {
 	console.error(`[li] batch failed: ${e.message}`);
 	code = 1;
 } finally {
-	// MUST release before exiting: process.exit() does NOT run finally blocks, so calling it
-	// inside the try leaked the lock on every successful batch. Found by --doctor reporting
-	// "HELD by pid 2732" long after that batch had exited.
+	// MUST release before exiting: process.exit() does NOT run finally blocks, so an exit inside
+	// the try would leave the lock held after the batch is gone.
 	release();
 }
 process.exit(code);
