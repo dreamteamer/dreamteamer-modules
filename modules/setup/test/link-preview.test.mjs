@@ -6,8 +6,10 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { main as linkMain } from '../bin/link.mjs';
 import {
-	HARNESS_FILES, HOOK, LINK_DIR, LINK_NAME,
+	HARNESS_FILES, HOOK, HOOK_MARKER, LINK_DIR, LINK_NAME,
 	guardVerdict, linkPath, linkState, linkTarget, looksLikeClone, refusedPaths,
 } from '../lib/link.mjs';
 
@@ -87,15 +89,104 @@ describe('the pre-commit guard', () => {
 		assert.deepEqual(refusedPaths(['data/a.md', 'src/b.js', ...HARNESS_FILES]), ['data/a.md', ...HARNESS_FILES]);
 		assert.deepEqual(HARNESS_FILES, ['CLAUDE.md', 'AGENTS.md', 'GEMINI.md']);
 	});
-	// The regression: the first hook was `npx --no-install npx dt-setup guard`, which resolves
-	// node_modules — the PUBLISHED copy. During preview that enforced the released rule, and on a
-	// workspace whose installed version predated the verb it died `unknown command "guard"` and
-	// blocked every commit with a message about the wrong thing.
-	test('the hook prefers the LINKED clone\'s guard, exits 0 when nothing is linked, and installs nothing', () => {
-		assert.ok(HOOK.includes(`L="${LINK_DIR}/${LINK_NAME}"`), 'the hook must look at the link we install');
-		assert.ok(HOOK.includes('exec node "$L/modules/setup/bin/setup.mjs" guard'), 'must run the clone we are previewing, not node_modules');
-		assert.match(HOOK, /exit 0/, 'unlinked must be a true no-op, not a failed lookup');
-		assert.match(HOOK, /--no-install/, 'the npx fallback must never install a package inside a commit');
-		assert.ok(HOOK.indexOf('exit 0') < HOOK.indexOf('setup.mjs" guard'), 'the no-op check comes first');
+	test('the hook is ours by its marker line and never names npx', () => {
+		assert.ok(HOOK.includes(HOOK_MARKER));
+		assert.doesNotMatch(HOOK, /\bnpx\b[^\n]*guard/);
+	});
+});
+
+// The generated hook, run by a real `git commit` in a temp repo, with the registry unreachable and
+// an `npx` on PATH that records any call — so a fallback that fetches a package fails the test.
+describe('the installed hook, run by git', () => {
+	const isolated = { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1', NO_COLOR: '1' };
+	const git = (cwd, args, env = isolated) => spawnSync('git', ['-c', 'user.name=Dana Oren', '-c', 'user.email=dana@northwind.example', ...args], { cwd, env, encoding: 'utf8', timeout: 30_000 });
+
+	async function quietly(fn) {
+		const out = [];
+		const log = console.log;
+		console.log = (...a) => out.push(a.join(' '));
+		try { await fn(); } finally { console.log = log; }
+		return out.join('\n');
+	}
+
+	/** A workspace linked to a bundle clone; the clone and the workspace each carry the setup guard on request. */
+	async function linkedRepo({ cloneGuard = false, installedGuard = false, hook = null } = {}) {
+		const ws = tmp();
+		assert.equal(git(ws, ['init', '-q']).status, 0);
+		fs.writeFileSync(path.join(ws, 'package.json'), '{"name":"ws","dreamteamer":{}}');
+		fs.writeFileSync(path.join(ws, 'package-lock.json'), '{}');
+		fs.mkdirSync(path.join(ws, 'data'));
+		fs.writeFileSync(path.join(ws, 'data', 'a.md'), 'a\n');
+		fs.writeFileSync(path.join(ws, 'README.md'), 'r\n');
+		const clone = tmp();
+		fs.writeFileSync(path.join(clone, 'package.json'), '{"name":"bundle","dreamteamer":{}}');
+		fs.mkdirSync(path.join(clone, 'modules'));
+		if (cloneGuard) fs.symlinkSync(path.join(ROOT, 'modules', 'setup'), path.join(clone, 'modules', 'setup'), 'dir');
+		if (installedGuard) {
+			fs.mkdirSync(path.join(ws, 'node_modules', '@dreamteamer'), { recursive: true });
+			fs.symlinkSync(path.join(ROOT, 'modules', 'setup'), path.join(ws, 'node_modules', '@dreamteamer', 'setup'), 'dir');
+		}
+		const hookFile = path.join(ws, '.git', 'hooks', 'pre-commit');
+		if (hook) { fs.mkdirSync(path.dirname(hookFile), { recursive: true }); fs.writeFileSync(hookFile, hook, { mode: 0o755 }); }
+		const out = await quietly(() => linkMain([clone], ws, 'link'));
+		return { ws, hookFile, out };
+	}
+
+	/** `git commit` with a recording `npx`/`npm` first on PATH and the registry pointed at a closed port. */
+	function commit(ws, paths) {
+		const fake = tmp();
+		const calls = path.join(fake, 'calls');
+		for (const bin of ['npx', 'npm']) fs.writeFileSync(path.join(fake, bin), `#!/bin/sh\necho "${bin} $*" >> "${calls}"\nexit 97\n`, { mode: 0o755 });
+		assert.equal(git(ws, ['add', '--', ...paths]).status, 0);
+		const env = { ...isolated, PATH: `${fake}${path.delimiter}${process.env.PATH}`, npm_config_registry: 'http://127.0.0.1:9' };
+		const r = git(ws, ['-c', `core.hooksPath=${path.join(ws, '.git', 'hooks')}`, 'commit', '-q', '-m', 'x'], env);
+		return { status: r.status, stderr: r.stderr, npx: fs.existsSync(calls) ? fs.readFileSync(calls, 'utf8') : '' };
+	}
+
+	test('a linked bundle with no guard, and none installed, refuses the commit without calling npx', async () => {
+		const { ws } = await linkedRepo();
+		const r = commit(ws, ['README.md']);
+		assert.equal(r.npx, '', 'the hook must never call npx or npm');
+		assert.equal(r.status, 1);
+		assert.match(r.stderr, /linked bundle has no guard — unlink or update it/);
+	});
+	test('a linked bundle with no guard falls back to the installed package\'s guard', async () => {
+		const { ws } = await linkedRepo({ installedGuard: true });
+		const refused = commit(ws, ['data/a.md']);
+		assert.equal(refused.npx, '');
+		assert.equal(refused.status, 1);
+		assert.match(refused.stderr, /data\/a\.md/);
+		assert.match(refused.stderr, /may not carry schema-shaped files/);
+		assert.equal(git(ws, ['reset', '-q']).status, 0);
+		const allowed = commit(ws, ['README.md']);
+		assert.equal(allowed.npx, '');
+		assert.equal(allowed.status, 0, allowed.stderr);
+	});
+	test('the linked clone\'s own guard runs first', async () => {
+		const { ws } = await linkedRepo({ cloneGuard: true });
+		const r = commit(ws, ['data/a.md']);
+		assert.equal(r.npx, '');
+		assert.equal(r.status, 1);
+		assert.match(r.stderr, /may not carry schema-shaped files/);
+	});
+	test('with nothing linked the hook is a no-op', async () => {
+		const { ws } = await linkedRepo();
+		fs.rmSync(linkPath(ws));
+		const r = commit(ws, ['data/a.md']);
+		assert.equal(r.npx, '');
+		assert.equal(r.status, 0, r.stderr);
+	});
+	test('link rewrites an earlier hook of ours, so its npx line is gone', async () => {
+		const old = `#!/bin/sh\n${HOOK_MARKER} — see lib/link.mjs.\nexec npx --no-install npx dt-setup guard\n`;
+		const { hookFile } = await linkedRepo({ hook: old });
+		assert.equal(fs.readFileSync(hookFile, 'utf8'), HOOK);
+	});
+	test('link leaves a foreign hook alone and offers lines that never call npx', async () => {
+		const mine = '#!/bin/sh\necho mine\n';
+		const { hookFile, out } = await linkedRepo({ hook: mine });
+		assert.equal(fs.readFileSync(hookFile, 'utf8'), mine);
+		assert.match(out, /append these lines/);
+		assert.match(out, /node_modules\/@dreamteamer\/setup\/bin\/setup\.mjs/);
+		assert.doesNotMatch(out, /\bnpx\b[^\n]*guard/);
 	});
 });

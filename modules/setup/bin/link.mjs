@@ -8,7 +8,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
 import {
-	HARNESS_FILES, HOOK, LINK_DIR, LINK_NAME,
+	HARNESS_FILES, HOOK, HOOK_MARKER, LINK_DIR, LINK_NAME,
 	guardVerdict, linkPath, linkState, linkTarget, looksLikeClone,
 } from '../lib/link.mjs';
 
@@ -50,8 +50,9 @@ function installHook(root) {
 	try { gitDir = execFileSync('git', ['rev-parse', '--absolute-git-dir'], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); }
 	catch { return 'not a git repo — no guard installed, so nothing stops a commit against the linked schema'; }
 	const f = path.join(gitDir, 'hooks', 'pre-commit');
-	if (fs.existsSync(f) && !fs.readFileSync(f, 'utf8').includes('npx dt-setup guard')) {
-		return `a pre-commit hook already exists at ${f} — left alone; add \`npx --no-install npx dt-setup guard\` to it yourself`;
+	if (fs.existsSync(f) && !fs.readFileSync(f, 'utf8').includes(HOOK_MARKER)) {
+		const lines = HOOK.split('\n').slice(1).join('\n');
+		return `a pre-commit hook already exists at ${f} — left alone; append these lines to the end of it yourself:\n\n${lines}`;
 	}
 	fs.mkdirSync(path.dirname(f), { recursive: true });
 	fs.writeFileSync(f, HOOK);
