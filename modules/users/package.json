@@ -1,11 +1,27 @@
 {
-	"name": "users",
-	"private": true,
+	"name": "@dreamteamer/users",
 	"version": "0.1.0",
+	"description": "The people work is assigned to in a dreamteamer workspace — the join every owner, assignee and attendee field points at.",
+	"license": "Apache-2.0",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/dreamteamer/dreamteamer-modules.git",
+		"directory": "modules/users"
+	},
+	"keywords": [
+		"dreamteamer",
+		"dreamteamer-module"
+	],
+	"files": [
+		"README.md",
+		"bin",
+		"collections",
+		"collection-templates"
+	],
 	"dreamteamer": {
 		"title": "Users",
 		"description": "The person work is assigned to — one collection, on purpose, and at the ROOT of the nav. Every owner, lead, seat, assignee and attendee field in every other module points here, so `users` is the join the whole workspace hangs off and must not sit inside anybody's folder. A user is NOT a contact (that is the outside world you deal with; `users.contact` joins them rather than merging them) and NOT an account — nothing here authenticates anybody, so a workspace with one person still has one user. Peers `contacts`, `companies` and `assets`.",
-		"engine": ">=0.24.0",
+		"engine": ">=0.30.0",
 		"peerDependencies": [
 			"contacts",
 			"companies",

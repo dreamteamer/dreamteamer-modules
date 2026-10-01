@@ -49,7 +49,7 @@ schema:
     # fields a person is — a parallel collection would fork every assignment field in the module.
     # What keeps the fold honest is the pair below: `kind` says which you are reading, and an agent
     # MUST carry `human_owner` — the babysitter, the human accountable for what it does. An agent
-    # with no owner is unsupervised automation, and `bin/check-records.mjs` refuses the record.
+    # with no owner is unsupervised automation, and this module's `bin/check-records.mjs` refuses the record.
     kind:
       type: string
       enum: [human, agent]
