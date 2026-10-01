@@ -48,3 +48,23 @@ test('a record stored inside its parent folder still gets its last-modified', as
 		for (const r of res.json.records) assert.ok(r['last-modified'], `${r.id} has no last-modified (placed: ${placed})`);
 	} finally { await srv.close(); }
 });
+
+// R4 of the relationship-storage review: the app keeps ONE Store until the manifest changes, so a
+// record another writer drops into an EXISTING company folder between two requests must still be
+// in the next listing. Engine 0.32 keys a placed collection's index on every directory's mtime;
+// the published 0.31 has no `recordDirs` and no placement, so there is nothing to assert there.
+test('an external add inside an existing company folder shows up on the next request', { skip: !api.Store.prototype.recordDirs && 'engine without recordDirs — placement not available' }, async () => {
+	const h = await httpWorkspace({ collections: { companies: COMPANIES, meetings: MEETINGS } });
+	const store = new api.Store(h.ws);
+	store.add('companies', { name: 'Northwind' });
+	store.add('meetings', { name: 'Kickoff', company: 'companies/northwind' });
+	const srv = await mount(h.ws);
+	try {
+		const first = await call('GET', `${srv.base}/collections/meetings/records`);
+		assert.equal(first.json.total, 1);
+		fs.writeFileSync(path.join(h.root, 'data/companies/northwind/meetings/external.meeting.md'), '---\nname: External\ncompany: companies/northwind\n---\n');
+		const second = await call('GET', `${srv.base}/collections/meetings/records`);
+		assert.equal(second.json.total, 2, 'the Store the app retained saw the external file');
+		assert.ok(second.json.records.some((r) => r.id === 'external'));
+	} finally { await srv.close(); }
+});
