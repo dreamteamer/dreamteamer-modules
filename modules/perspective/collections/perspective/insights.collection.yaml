@@ -2,7 +2,7 @@
 # cites at least two and states a consequence. The same grain distinction as meta-analyses over
 # meeting-analyses. check-records refuses one with fewer than two findings.
 name: perspective/insights
-templates: [collection-templates/perspective-provenance, collection-templates/perspective-observation]
+templates: [collection-templates/perspective-observation]
 description: A conclusion a retrospective draws across two or more findings, with the consequence it implies.
 use_when: >-
   several findings point the same way and the 'so what' is worth stating once; a perspective's summary
@@ -27,6 +27,24 @@ schema:
       description: AT LEAST TWO.
     consequence: { type: string, description: What follows for the person or the workspace. }
     content: { type: string, format: markdown, x-body: true }
+    # ---- provenance: who made this record, from what, and how much to trust it. Inlined from the
+    # perspective-provenance template on 2026-10-01; one shared template per module was a copy of the same quad twelve times.
+    author:
+      type: string
+      description: >-
+        Which AGENT or SCRIPT made this record — `agents/dreamteamer (claude-fable-5)` or
+        `scripts/read-claude-transcripts@metrics/1`. Absent when the person wrote it themselves.
+    creation_context:
+      type: string
+      description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+    source:
+      type: string
+      description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…>.'
+    confidence:
+      type: string
+      enum: [low, normal, high]
+      default: normal
+      description: How much to trust this record. When low, the reason goes in creation_context.
 list_fields: [name, confidence]
 icon: sparkle   # not `light-bulb` — not a codicon — the vocabulary is `lightbulb`, which `blurbs` already wears; an insight is the drawn-together conclusion
 order: 170   # nav position — what it concluded; the pipeline order, ten apart so one can be inserted without renumbering

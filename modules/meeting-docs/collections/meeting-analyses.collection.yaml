@@ -17,7 +17,6 @@ use_when: >-
   the operator asks how a call went, whether a claim held, why a deal was lost, or what the client
   actually asked for — the critique is here, built on the transcript. Also the first read before
   designing anything for that client
-templates: [collection-templates/meeting-docs-provenance]
 storage: { path: data/meeting-analyses, codec: md, shape: file, suffix: analysis }
 id:
   generate: "{{ created | date:YYYY/MM }}/{{ created | date }}--{{ name | slug }}"
@@ -93,6 +92,27 @@ schema:
     prompt:
       type: string
       description: A self-contained prompt that would regenerate this analysis from the same sources.
+    # ---- provenance: who made this record, from what, and how much to trust it. Inlined from the
+    # meeting-docs-provenance template on 2026-10-01; one shared template per module was a copy of the same quad twelve times.
+    # free-text, not x-reference: the target is polymorphic (users | agents) and x-reference
+    # cannot express that — so `check` cannot catch a typo'd `agents/dreamtemer`. Accepted.
+    author:
+      type: string
+      description: >-
+        Which AGENT made this record — `agents/dreamteamer (claude-opus-5)`. Leave it ABSENT when the
+        operator wrote it himself: there is no `users` collection to point at since engine 0.8.0, and
+        absent is the honest encoding of the default rather than a constant repeated on every record.
+    creation_context:
+      type: string
+      description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+    source:
+      type: string
+      description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: calendar:<id> · <collection>/<id> · file:<path> · url:<…> · linkedin:<slug> · migration:<id>.'
+    confidence:
+      type: string
+      enum: [low, normal, high]
+      default: normal
+      description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
 order: 15   # immediately after meeting-summaries (14) — it is the layer above it
 list_fields: [name, last-modified, date, about, status]
 icon: report

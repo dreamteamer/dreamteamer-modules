@@ -16,7 +16,7 @@
 # lane's order is a READING of the evidence (earliest first activity first), and a run that cannot
 # tell leaves it empty, exactly as it leaves `lead` and `ended` empty rather than inventing them.
 name: perspective/world/activity-lanes
-templates: [collection-templates/perspective-provenance, collection-templates/perspective-observation]
+templates: [collection-templates/perspective-observation]
 description: A band a contributor's work was observed running in — a workstream or track that several activities share. The observed half of `activity-lanes`.
 use_when: >-
   the projects pass groups activities into the efforts they belong to and then into the tracks WITHIN an
@@ -63,6 +63,24 @@ schema:
       format: markdown
       x-body: true
       description: What this band covers, how the pass decided its bounds, and which activities made it visible.
+    # ---- provenance: who made this record, from what, and how much to trust it. Inlined from the
+    # perspective-provenance template on 2026-10-01; one shared template per module was a copy of the same quad twelve times.
+    author:
+      type: string
+      description: >-
+        Which AGENT or SCRIPT made this record — `agents/dreamteamer (claude-fable-5)` or
+        `scripts/read-claude-transcripts@metrics/1`. Absent when the person wrote it themselves.
+    creation_context:
+      type: string
+      description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+    source:
+      type: string
+      description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…>.'
+    confidence:
+      type: string
+      enum: [low, normal, high]
+      default: normal
+      description: How much to trust this record. When low, the reason goes in creation_context.
 list_fields: [name, order, project, real]
 icon: split-horizontal   # the same bands, drawn from evidence; `three-bars` is the board a person authored
 order: 95   # nav position — written by the `projected` stage, right after `world/projects` at 90

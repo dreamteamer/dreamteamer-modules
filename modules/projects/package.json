@@ -18,7 +18,6 @@
 		"bin",
 		"lib",
 		"collections",
-		"collection-templates",
 		"ui-views"
 	],
 	"dreamteamer": {

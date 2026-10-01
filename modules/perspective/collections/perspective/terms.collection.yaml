@@ -23,7 +23,7 @@
 # below reports, and a run that hides them by inventing a concept per term is the failure this
 # collection exists to make visible.
 name: perspective/terms
-templates: [collection-templates/perspective-provenance, collection-templates/perspective-observation]
+templates: [collection-templates/perspective-observation]
 description: >-
   A word or phrase a contributor's evidence actually uses, with every spelling it appears under and where.
   The CONCRETE half of the vocabulary — `concepts` is the abstract meaning several terms share.
@@ -146,6 +146,24 @@ schema:
         text shows it to mean. This is the raw material the `concepts` definition is written FROM, which is
         why the quotes live here and the definition lives there. A body that only restates the name is a term
         nobody can classify later.
+    # ---- provenance: who made this record, from what, and how much to trust it. Inlined from the
+    # perspective-provenance template on 2026-10-01; one shared template per module was a copy of the same quad twelve times.
+    author:
+      type: string
+      description: >-
+        Which AGENT or SCRIPT made this record — `agents/dreamteamer (claude-fable-5)` or
+        `scripts/read-claude-transcripts@metrics/1`. Absent when the person wrote it themselves.
+    creation_context:
+      type: string
+      description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+    source:
+      type: string
+      description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…>.'
+    confidence:
+      type: string
+      enum: [low, normal, high]
+      default: normal
+      description: How much to trust this record. When low, the reason goes in creation_context.
 list_fields: [name, classification, concept, occurrences, first_used, last_used]
 icon: quote   # the word as somebody said it; `symbol-keyword` is the meaning behind it
 order: 115   # nav position — just before `concepts` at 120, because a term is identified before it is classified

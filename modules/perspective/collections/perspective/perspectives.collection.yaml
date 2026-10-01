@@ -3,7 +3,6 @@
 # routines serialized INLINE at description level with a usage count each, because the workspace
 # already holds the real ones and a copy would drift.
 name: perspective/perspectives
-templates: [collection-templates/perspective-provenance]
 description: One contributor's perspective — the synthesised output of one retrospective run.
 use_when: >-
   the synthesise stage writes it, once per run; asked who this contributor is as a worker, what
@@ -66,6 +65,24 @@ schema:
       items: { type: object, properties: { name: { type: string }, description: { type: string }, records: { type: integer } }, required: [name] }
       description: 'INLINE: every collection this workspace has, description level, with its record count — what the contributor has to keep things in.'
     content: { type: string, format: markdown, x-body: true, description: 'The perspective written out: role, DSL, topics, collaborators, operational model, what is proposed.' }
+    # ---- provenance: who made this record, from what, and how much to trust it. Inlined from the
+    # perspective-provenance template on 2026-10-01; one shared template per module was a copy of the same quad twelve times.
+    author:
+      type: string
+      description: >-
+        Which AGENT or SCRIPT made this record — `agents/dreamteamer (claude-fable-5)` or
+        `scripts/read-claude-transcripts@metrics/1`. Absent when the person wrote it themselves.
+    creation_context:
+      type: string
+      description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+    source:
+      type: string
+      description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…>.'
+    confidence:
+      type: string
+      enum: [low, normal, high]
+      default: normal
+      description: How much to trust this record. When low, the reason goes in creation_context.
 list_fields: [contributor, role, period_start, period_end]
 icon: compass   # not `account` — a perspective is an ORIENTATION on someone's work; `account` goes to `contacts`, which every workspace opens far more often
 order: 200   # nav position — the answer; the pipeline order, ten apart so one can be inserted without renumbering

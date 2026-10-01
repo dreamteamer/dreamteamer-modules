@@ -28,7 +28,6 @@ use_when: >-
   list here by `due` and by `status`. Link the `activity` that produces it where one does, and leave it empty when
   several do. ⚠ `accepted_by` is a CONTACT and not a user: acceptance is somebody else's act, and a deliverable
   this workspace signs off for itself is an `activities` gate, not an acceptance
-templates: [collection-templates/projects-provenance]
 storage: { path: data/deliverables, codec: md, shape: file, suffix: deliverable }
 # ⚠ A NON-LATIN NAME YIELDS A HASH ID, NOT A REFUSAL — see the same warning on `projects` and `phases`.
 # Project-scoped for the same reason `phases` is: `project` is REQUIRED, so it can be an id segment,
@@ -139,6 +138,27 @@ schema:
       description: >-
         What the artefact contains, what "good" looks like for it, and what it deliberately excludes — the
         acceptance criteria, written before it is built rather than argued after it is delivered.
+    # ---- provenance: who made this record, from what, and how much to trust it. Inlined from the
+    # projects-provenance template on 2026-10-01; one shared template per module was a copy of the same quad twelve times.
+    # free-text string, not x-reference: the target is polymorphic (users | agents) and
+    # x-reference cannot express that.
+    author:
+      type: string
+      description: >-
+        Which AGENT made this record — `agents/dreamteamer (claude-opus-5)`. Leave it ABSENT when the
+        operator wrote it themselves: there is no `users` collection to point at since engine 0.8.0, and
+        absent is the honest encoding of the default rather than a constant repeated on every record.
+    creation_context:
+      type: string
+      description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+    source:
+      type: string
+      description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…> · migration:<id>.'
+    confidence:
+      type: string
+      enum: [low, normal, high]
+      default: normal
+      description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
 order: 13
 list_fields: [name, project, kind, owner, due, status, accepted_by]
 icon: export   # the thing that leaves for the client; `package` is the product itself

@@ -8,7 +8,6 @@
 # ⚠ When a judged field disagrees with a mechanical one, the mechanical one is right.
 # ⚠ Judged fields are written ONLY through bin/record-judgement.mjs, which rejects any other key.
 name: perspective/conversations
-templates: [collection-templates/perspective-provenance]
 description: One condensed coding-agent conversation — what was worked on, how many real operator turns, where the operator corrected the agent.
 use_when: >-
   the findings pass asks what recurs across a person's sessions, a gap question needs its evidence,
@@ -204,6 +203,21 @@ schema:
         under a third `## detail` section or in `summary`, and is NEVER safe to export.
         `bin/check-records.mjs` fails a summarized conversation whose body lacks either required
         heading.
+    # ---- provenance: who made this record, from what, and how much to trust it. Inlined from the
+    # perspective-provenance template on 2026-10-01; one shared template per module was a copy of the same quad twelve times.
+    author:
+      type: string
+      description: >-
+        Which AGENT or SCRIPT made this record — `agents/dreamteamer (claude-fable-5)` or
+        `scripts/read-claude-transcripts@metrics/1`. Absent when the person wrote it themselves.
+    creation_context:
+      type: string
+      description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+    confidence:
+      type: string
+      enum: [low, normal, high]
+      default: normal
+      description: How much to trust this record. When low, the reason goes in creation_context.
 list_fields: [title, started_at, turns_user, user_correction, depth, interest_score]
 icon: comment-discussion
 order: 30   # nav position — the evidence it condensed; the pipeline order, ten apart so one can be inserted without renumbering

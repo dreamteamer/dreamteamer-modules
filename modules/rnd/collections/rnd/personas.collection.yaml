@@ -20,7 +20,6 @@ description: >-
 use_when: >-
   asked how a market, a role or a client type would react — read the panel here and answer as the
   SPREAD of its members; build or extend a panel only from verbatim quotes of real people
-templates: [collection-templates/rnd-provenance]
 storage: { path: data/rnd/personas, codec: md, shape: file, suffix: persona}
 id:
   generate: "{{ name | slug }}"
@@ -255,6 +254,27 @@ schema:
       format: markdown
       x-body: true
       description: The narrative for human readers, plus what this persona is a GOOD and a BAD proxy for. Non-authoritative — this is where invented detail accumulates, so the quote bank wins over anything written here.
+    # ---- provenance: who made this record, from what, and how much to trust it. Inlined from the
+    # rnd-provenance template on 2026-10-01; one shared template per module was a copy of the same quad twelve times.
+    # free-text string, not x-reference: the target is polymorphic (users | agents) and
+    # x-reference cannot express that.
+    author:
+      type: string
+      description: >-
+        Which AGENT made this record — `agents/dreamteamer (claude-opus-5)`. Leave it ABSENT when the
+        operator wrote it themselves: there is no `users` collection to point at since engine 0.8.0, and
+        absent is the honest encoding of the default rather than a constant repeated on every record.
+    creation_context:
+      type: string
+      description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+    source:
+      type: string
+      description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…> · migration:<id>.'
+    confidence:
+      type: string
+      enum: [low, normal, high]
+      default: normal
+      description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
 
 order: 45
 list_fields: [name, last-modified, n_meetings, fidelity]

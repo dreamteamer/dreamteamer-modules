@@ -7,7 +7,6 @@ use_when: >-
   choosing between two pieces of work, or asked "why are we doing this" — the goal and the test that says it happened
   are here. Write one when an OUTCOME is stated that somebody could later be wrong about; never for a task, and never
   for a goal whose `done_when` cannot be written as one checkable sentence — that is a slogan, not a goal
-templates: [collection-templates/projects-provenance]
 storage: { path: data/goals, codec: md, shape: file, suffix: goal }
 # ⚠ A NON-LATIN NAME YIELDS A HASH ID, NOT A REFUSAL, AND NOT AN EMPTY STRING — see the same warning
 # on `projects` and `users`. A workspace whose values are not Latin passes `--id` explicitly.
@@ -87,6 +86,27 @@ schema:
       format: markdown
       x-body: true
       description: The argument — why this outcome and not the adjacent one, what it EXCLUDES, and what would make it the wrong goal.
+    # ---- provenance: who made this record, from what, and how much to trust it. Inlined from the
+    # projects-provenance template on 2026-10-01; one shared template per module was a copy of the same quad twelve times.
+    # free-text string, not x-reference: the target is polymorphic (users | agents) and
+    # x-reference cannot express that.
+    author:
+      type: string
+      description: >-
+        Which AGENT made this record — `agents/dreamteamer (claude-opus-5)`. Leave it ABSENT when the
+        operator wrote it themselves: there is no `users` collection to point at since engine 0.8.0, and
+        absent is the honest encoding of the default rather than a constant repeated on every record.
+    creation_context:
+      type: string
+      description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+    source:
+      type: string
+      description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…> · migration:<id>.'
+    confidence:
+      type: string
+      enum: [low, normal, high]
+      default: normal
+      description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
 order: 11
 list_fields: [name, owner, status, by, done_when]
 icon: target

@@ -43,7 +43,6 @@ use_when: >-
   before inventing a new band: a lane that already exists under another spelling is the drift this collection
   removes. Leave `project` empty for a workstream that runs across more than one plan; a lane that is really a
   span of TIME rather than a track of work is `activities.phase`, not a record here
-templates: [collection-templates/projects-provenance]
 storage: { path: data/activity-lanes, codec: md, shape: file, suffix: activity-lane }
 # ⚠ A NON-LATIN NAME YIELDS A HASH ID, NOT A REFUSAL — the same warning that sits on `projects`,
 # `goals` and `users`, for the same reason (the engine's `slug` filter is `slugOrHash`). A workspace
@@ -90,6 +89,27 @@ schema:
       description: >-
         What this lane covers and — the half that earns the body — what it deliberately does NOT, so the
         band does not quietly become the row everything unfiled lands in.
+    # ---- provenance: who made this record, from what, and how much to trust it. Inlined from the
+    # projects-provenance template on 2026-10-01; one shared template per module was a copy of the same quad twelve times.
+    # free-text string, not x-reference: the target is polymorphic (users | agents) and
+    # x-reference cannot express that.
+    author:
+      type: string
+      description: >-
+        Which AGENT made this record — `agents/dreamteamer (claude-opus-5)`. Leave it ABSENT when the
+        operator wrote it themselves: there is no `users` collection to point at since engine 0.8.0, and
+        absent is the honest encoding of the default rather than a constant repeated on every record.
+    creation_context:
+      type: string
+      description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+    source:
+      type: string
+      description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…> · migration:<id>.'
+    confidence:
+      type: string
+      enum: [low, normal, high]
+      default: normal
+      description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
 order: 9
 list_fields: [name, order, project]
 icon: three-bars   # three horizontal bands IS a swimlane board; `milestone` is the rung that sits in one

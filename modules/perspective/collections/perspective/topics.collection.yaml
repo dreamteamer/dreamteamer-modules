@@ -1,7 +1,7 @@
 # topics — WHAT THE WORK IS ABOUT. A recurring subject, found by clustering sessions, commits and
 # tickets. Distinct from concepts: a topic is a thing you work ON, a concept is a word you use.
 name: perspective/topics
-templates: [collection-templates/perspective-provenance, collection-templates/perspective-observation]
+templates: [collection-templates/perspective-observation]
 description: A recurring subject a contributor's work is about — the axis activities cluster on.
 use_when: >-
   the cluster stage names what a group of sessions and commits share; an activity, decision or finding
@@ -29,6 +29,24 @@ schema:
       x-inverse: topics
       description: Terms of the DSL that belong to this subject.
     content: { type: string, format: markdown, x-body: true }
+    # ---- provenance: who made this record, from what, and how much to trust it. Inlined from the
+    # perspective-provenance template on 2026-10-01; one shared template per module was a copy of the same quad twelve times.
+    author:
+      type: string
+      description: >-
+        Which AGENT or SCRIPT made this record — `agents/dreamteamer (claude-fable-5)` or
+        `scripts/read-claude-transcripts@metrics/1`. Absent when the person wrote it themselves.
+    creation_context:
+      type: string
+      description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+    source:
+      type: string
+      description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…>.'
+    confidence:
+      type: string
+      enum: [low, normal, high]
+      default: normal
+      description: How much to trust this record. When low, the reason goes in creation_context.
 list_fields: [name, evidence_count, first_seen, last_seen]
 icon: tag
 order: 100   # nav position — the model it reconstructed; the pipeline order, ten apart so one can be inserted without renumbering

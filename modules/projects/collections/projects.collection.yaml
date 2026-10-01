@@ -7,7 +7,6 @@ use_when: >-
   a bounded piece of delivery is agreed and needs a plan — create it here first, then its `activities`; asked "where
   does this effort stand", "when does it start" or "who is on it", read here. The generated `activities` mirror is the
   plan itself, `lead` says who is accountable and `teams` who is staffed
-templates: [collection-templates/projects-provenance]
 storage: { path: data/projects, codec: md, shape: file, suffix: project }
 # ⚠ A NON-LATIN NAME YIELDS A HASH ID, NOT A REFUSAL, AND NOT AN EMPTY STRING. The engine's `slug`
 # FILTER is `slugOrHash` (src/template.js): a name with no a-z0-9 in it — Hebrew, Arabic, Cyrillic,
@@ -91,6 +90,27 @@ schema:
       format: markdown
       x-body: true
       description: The project's page — what it delivers, the commercial shape, what is deliberately out of scope.
+    # ---- provenance: who made this record, from what, and how much to trust it. Inlined from the
+    # projects-provenance template on 2026-10-01; one shared template per module was a copy of the same quad twelve times.
+    # free-text string, not x-reference: the target is polymorphic (users | agents) and
+    # x-reference cannot express that.
+    author:
+      type: string
+      description: >-
+        Which AGENT made this record — `agents/dreamteamer (claude-opus-5)`. Leave it ABSENT when the
+        operator wrote it themselves: there is no `users` collection to point at since engine 0.8.0, and
+        absent is the honest encoding of the default rather than a constant repeated on every record.
+    creation_context:
+      type: string
+      description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+    source:
+      type: string
+      description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…> · migration:<id>.'
+    confidence:
+      type: string
+      enum: [low, normal, high]
+      default: normal
+      description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
 order: 8
 list_fields: [name, company, lead, status, starts, ends]
 icon: rocket   # not `project` — perspective/world/projects already wears `project`; a delivery effort is the one that ships

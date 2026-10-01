@@ -36,7 +36,6 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PKG = path.resolve(HERE, '..');
 // this module's own root (bin/..), the same place on every channel
 const COLLECTIONS = path.join(PKG, 'collections', 'perspective');
-const TEMPLATE = path.join(PKG, 'collection-templates', 'perspective-provenance.collection-template.yaml');
 
 /**
  * Old record folder → the collection it is TODAY. Two moves are folded into one migration on
@@ -104,7 +103,7 @@ const DATE = /^(\d{4}-\d{2}-\d{2})--/;
 
 // ── reading the schema this migration targets ────────────────────────────────────────────────────
 function schema() {
-	const tpl = yaml.load(fs.readFileSync(TEMPLATE, 'utf8')).template.schema.properties;
+	// the provenance quad is declared inline in every descriptor since 2026-10-01 — no template to merge
 	const out = {};
 	// ⚠ RECURSIVE. `collections/perspective/world/*.collection.yaml` is a namespaced descriptor and
 	// compile enumerates the folder recursively; a flat readdir here saw four fewer collections than
@@ -117,7 +116,7 @@ function schema() {
 		const d = yaml.load(fs.readFileSync(full, 'utf8'));
 		const props = d.schema?.properties ?? {};
 		out[f.replace('.collection.yaml', '')] = {
-			props: new Set([...Object.keys(props), ...Object.keys(tpl)]),
+			props: new Set(Object.keys(props)),
 			suffix: d.storage.suffix,
 			// A collection with no `contributor` of its own is run-layer: the run names the person,
 			// and a question does not repeat it. That is the same rule tests/run-link.test.mjs asserts.

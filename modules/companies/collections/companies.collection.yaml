@@ -4,7 +4,6 @@ description: >-
 use_when: >-
   an organisation is named — in a meeting, a lead, a contact's employer, an invoice — find or create
   it here BEFORE the record that points at it; every funnel record joins through this one
-templates: [collection-templates/companies-provenance]
 storage: { path: data/companies, codec: md, shape: file, suffix: company }
 id: { generate: "{{ name | slug }}" }
 schema:
@@ -66,6 +65,27 @@ schema:
       format: markdown
       x-body: true
       description: The company's page — history with us, org shape, anything worth knowing before a call.
+    # ---- provenance: who made this record, from what, and how much to trust it. Inlined from the
+    # companies-provenance template on 2026-10-01; one shared template per module was a copy of the same quad twelve times.
+    # free-text, not x-reference: the target is polymorphic (users | agents) and x-reference
+    # cannot express that — so `check` cannot catch a typo'd `agents/dreamtemer`. Accepted.
+    author:
+      type: string
+      description: >-
+        Which AGENT made this record — `agents/dreamteamer (claude-opus-5)`. Leave it ABSENT when the
+        operator wrote it himself: there is no `users` collection to point at since engine 0.8.0, and
+        absent is the honest encoding of the default rather than a constant repeated on every record.
+    creation_context:
+      type: string
+      description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+    source:
+      type: string
+      description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: calendar:<id> · <collection>/<id> · file:<path> · url:<…> · linkedin:<slug> · migration:<id>.'
+    confidence:
+      type: string
+      enum: [low, normal, high]
+      default: normal
+      description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
 order: 11
 list_fields: [logo, name, last-modified, relation, website]
 icon: briefcase

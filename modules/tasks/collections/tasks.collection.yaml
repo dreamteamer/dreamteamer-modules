@@ -1,7 +1,6 @@
 name: tasks
 description: A concrete commitment, starting with a verb — what would be done, not the topic it is about.
 use_when: a concrete commitment surfaces — in a meeting, a chat, a plan — capture it here with a verb and, whenever a date was actually said, the absolute `due`; pass `--lane` when the domain is clear (the workspace's own lane vocabulary) and leave it empty when it is not — the field is optional and the board has an "unassigned" pile for the residue; asked "what do I owe", list here by due date
-templates: [collection-templates/tasks-provenance]
 storage:
   path: data/tasks
   codec: md
@@ -126,6 +125,22 @@ schema:
         than the obvious alternative. This field is ANALYSIS, not a UI hint: it is written when the record is examined,
         so the board can be read rather than re-derived. Absent means nobody has analysed this record yet, which is
         itself worth seeing.
+    # ---- provenance: who made this record, from what, and how much to trust it. Inlined from the
+    # tasks-provenance template on 2026-10-01; one shared template per module was a copy of the same quad twelve times.
+    # free-text string, not x-reference: the target is polymorphic (users | agents) and
+    # x-reference cannot express that.
+    author:
+      type: string
+      description: >-
+        Which AGENT made this record — `agents/dreamteamer (claude-opus-5)`. Leave it ABSENT when a
+        person wrote it themselves: absent is the honest encoding of the default rather than a constant
+        repeated on every record.
+    creation_context:
+      type: string
+      description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+    source:
+      type: string
+      description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…> · migration:<id>.'
 order: 3
 list_fields:
   - name

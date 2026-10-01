@@ -1,7 +1,6 @@
 # activity-windows — ONE PERIOD × ONE SOURCE, mechanical counts only. The timeline every later
 # report is drawn on. No judged field lives here, ever.
 name: perspective/activity-weeks
-templates: [collection-templates/perspective-provenance]
 description: One ISO week of one source — commits and lines for a repo, sessions and turns for a transcripts tree. Counted, never judged.
 use_when: >-
   asked what a person's hands have been on and when — filter by source and period; written by
@@ -133,6 +132,21 @@ schema:
       format: markdown
       x-body: true
       description: Rarely used — a note on an anomalous week.
+    # ---- provenance: who made this record, from what, and how much to trust it. Inlined from the
+    # perspective-provenance template on 2026-10-01; one shared template per module was a copy of the same quad twelve times.
+    author:
+      type: string
+      description: >-
+        Which AGENT or SCRIPT made this record — `agents/dreamteamer (claude-fable-5)` or
+        `scripts/read-claude-transcripts@metrics/1`. Absent when the person wrote it themselves.
+    creation_context:
+      type: string
+      description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+    confidence:
+      type: string
+      enum: [low, normal, high]
+      default: normal
+      description: How much to trust this record. When low, the reason goes in creation_context.
 list_fields: [source, period, start_date, commits, sessions, turns_user, files_touched]
 icon: graph-line
 order: 40   # nav position — the evidence it condensed; the pipeline order, ten apart so one can be inserted without renumbering

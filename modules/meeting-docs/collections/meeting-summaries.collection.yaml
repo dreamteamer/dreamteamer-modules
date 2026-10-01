@@ -5,7 +5,6 @@ use_when: >-
   asked what was said or agreed on a call — read here, not the transcript; written by
   /summarize-meeting once a recording is transcribed, and it is what tasks and engagement updates are
   extracted from
-templates: [collection-templates/meeting-docs-provenance]
 storage: { path: data/meeting-summaries, codec: md, shape: file, suffix: summary }
 id:
   # ⚠ The generator is a FALLBACK, not the convention. A summary's id MIRRORS its meeting's
@@ -74,6 +73,27 @@ schema:
       format: markdown
       x-body: true
       description: The summary itself — what was said, decided and left open.
+    # ---- provenance: who made this record, from what, and how much to trust it. Inlined from the
+    # meeting-docs-provenance template on 2026-10-01; one shared template per module was a copy of the same quad twelve times.
+    # free-text, not x-reference: the target is polymorphic (users | agents) and x-reference
+    # cannot express that — so `check` cannot catch a typo'd `agents/dreamtemer`. Accepted.
+    author:
+      type: string
+      description: >-
+        Which AGENT made this record — `agents/dreamteamer (claude-opus-5)`. Leave it ABSENT when the
+        operator wrote it himself: there is no `users` collection to point at since engine 0.8.0, and
+        absent is the honest encoding of the default rather than a constant repeated on every record.
+    creation_context:
+      type: string
+      description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+    source:
+      type: string
+      description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: calendar:<id> · <collection>/<id> · file:<path> · url:<…> · linkedin:<slug> · migration:<id>.'
+    confidence:
+      type: string
+      enum: [low, normal, high]
+      default: normal
+      description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
 order: 14
 list_fields: [name, last-modified, date, meeting]
 icon: note

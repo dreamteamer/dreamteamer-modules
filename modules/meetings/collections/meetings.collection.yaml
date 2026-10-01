@@ -6,7 +6,6 @@ use_when: >-
   anything with a date and attendees. Before planning work that spans more than one sitting, read the
   next seven days here; before writing a prep, summary or analysis, find the meeting it hangs off — or
   /fetch-meetings if it is not synced yet
-templates: [collection-templates/meetings-provenance]
 storage: { path: data/meetings, codec: md, shape: file, suffix: meeting }
 id:
   # Derived from `starts`, not `created`: `created` is the moment the record is WRITTEN, so a
@@ -196,6 +195,27 @@ schema:
         entry as a map instead of a string. Nothing validates a tag; there is no `tags` collection.
         Reuse one already in use before inventing one:
         `python3 .dreamteamer/skills/working-with-tags/bin/tags.py`.
+    # ---- provenance: who made this record, from what, and how much to trust it. Inlined from the
+    # meetings-provenance template on 2026-10-01; one shared template per module was a copy of the same quad twelve times.
+    # free-text, not x-reference: the target is polymorphic (users | agents) and x-reference
+    # cannot express that — so `check` cannot catch a typo'd `agents/dreamtemer`. Accepted.
+    author:
+      type: string
+      description: >-
+        Which AGENT made this record — `agents/dreamteamer (claude-opus-5)`. Leave it ABSENT when the
+        operator wrote it himself: there is no `users` collection to point at since engine 0.8.0, and
+        absent is the honest encoding of the default rather than a constant repeated on every record.
+    creation_context:
+      type: string
+      description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+    source:
+      type: string
+      description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: calendar:<id> · <collection>/<id> · file:<path> · url:<…> · linkedin:<slug> · migration:<id>.'
+    confidence:
+      type: string
+      enum: [low, normal, high]
+      default: normal
+      description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
 order: 12
 list_fields: [name, last-modified, starts, company, attendees]
 icon: calendar   # not `organization` — a meeting is a date before it is a room full of people

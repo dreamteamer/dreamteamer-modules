@@ -2,7 +2,6 @@
 # domain concept, and it does so in the engine's own language: the body of a `collection` proposal
 # IS the draft descriptor. Once materialised, `materialized_as` points at the real one.
 name: perspective/proposals
-templates: [collection-templates/perspective-provenance]
 description: One proposed collection, field, skill, command, routine or view — the findings that justify it, the person's decision, and where it landed.
 use_when: >-
   the propose stage writes what the brain should keep and do; the person accepts, edits or rejects each
@@ -52,6 +51,24 @@ schema:
       format: markdown
       x-body: true
       description: 'For a collection: the complete draft descriptor YAML, one sample `dt add` line, and the "deliberately not modelled" list. For a skill: the draft SKILL.md. An edit replaces this body.'
+    # ---- provenance: who made this record, from what, and how much to trust it. Inlined from the
+    # perspective-provenance template on 2026-10-01; one shared template per module was a copy of the same quad twelve times.
+    author:
+      type: string
+      description: >-
+        Which AGENT or SCRIPT made this record — `agents/dreamteamer (claude-fable-5)` or
+        `scripts/read-claude-transcripts@metrics/1`. Absent when the person wrote it themselves.
+    creation_context:
+      type: string
+      description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+    source:
+      type: string
+      description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…>.'
+    confidence:
+      type: string
+      enum: [low, normal, high]
+      default: normal
+      description: How much to trust this record. When low, the reason goes in creation_context.
 list_fields: [name, kind, status, basis, retrospective]
 icon: lightbulb
 order: 190   # nav position — what it concluded; the pipeline order, ten apart so one can be inserted without renumbering

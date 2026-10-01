@@ -26,7 +26,6 @@
 		"bin",
 		"lib",
 		"collections",
-		"collection-templates",
 		"skills",
 		"ui-views"
 	],

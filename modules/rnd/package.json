@@ -16,7 +16,6 @@
 	"files": [
 		"README.md",
 		"collections",
-		"collection-templates",
 		"skills",
 		"commands",
 		"command-bindings",

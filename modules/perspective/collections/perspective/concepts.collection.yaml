@@ -16,7 +16,7 @@
 # an `origin: workspace` concept is normal (the workspace defined it and the person may never say it)
 # and on any other is the concept to delete.
 name: perspective/concepts
-templates: [collection-templates/perspective-provenance, collection-templates/perspective-observation]
+templates: [collection-templates/perspective-observation]
 description: A term a contributor uses with a stable meaning — the vocabulary their work runs on, in their own words.
 use_when: >-
   init seeds one per collection and skill the workspace defines (origin workspace); the extract stage
@@ -134,6 +134,24 @@ schema:
     evidence: { type: array, items: { type: string }, description: Qualified refs to conversations, tickets or answered questions where it was used. }
     evidence_count: { type: integer }
     content: { type: string, format: markdown, x-body: true }
+    # ---- provenance: who made this record, from what, and how much to trust it. Inlined from the
+    # perspective-provenance template on 2026-10-01; one shared template per module was a copy of the same quad twelve times.
+    author:
+      type: string
+      description: >-
+        Which AGENT or SCRIPT made this record — `agents/dreamteamer (claude-fable-5)` or
+        `scripts/read-claude-transcripts@metrics/1`. Absent when the person wrote it themselves.
+    creation_context:
+      type: string
+      description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+    source:
+      type: string
+      description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…>.'
+    confidence:
+      type: string
+      enum: [low, normal, high]
+      default: normal
+      description: How much to trust this record. When low, the reason goes in creation_context.
 list_fields: [name, kind, origin, evidence_count, terms]
 icon: symbol-keyword
 order: 120   # nav position — the model it reconstructed; the pipeline order, ten apart so one can be inserted without renumbering

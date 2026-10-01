@@ -15,8 +15,7 @@
 	"files": [
 		"README.md",
 		"bin",
-		"collections",
-		"collection-templates"
+		"collections"
 	],
 	"dreamteamer": {
 		"title": "Users",

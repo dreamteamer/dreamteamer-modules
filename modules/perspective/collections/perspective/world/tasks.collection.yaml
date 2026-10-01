@@ -20,7 +20,7 @@
 # backlink into a workspace this module does not model) and `assistant_recommended_next_step` (an
 # analysis of a live commitment — a retrospective reads what already happened).
 name: perspective/world/tasks
-templates: [collection-templates/perspective-provenance, collection-templates/perspective-observation]
+templates: [collection-templates/perspective-observation]
 description: A commitment observed in a contributor's evidence — one ticket, read as the thing somebody owed. The observed half of `tasks`.
 use_when: >-
   the cluster stage derives them from the tickets a reader collected (`bin/derive-tasks.mjs`); asked
@@ -104,6 +104,24 @@ schema:
       description: >-
         What the task actually held, where the ticket carried more than a title — the description, and
         a line on what its trail says happened to it. Never a summary of the fields above.
+    # ---- provenance: who made this record, from what, and how much to trust it. Inlined from the
+    # perspective-provenance template on 2026-10-01; one shared template per module was a copy of the same quad twelve times.
+    author:
+      type: string
+      description: >-
+        Which AGENT or SCRIPT made this record — `agents/dreamteamer (claude-fable-5)` or
+        `scripts/read-claude-transcripts@metrics/1`. Absent when the person wrote it themselves.
+    creation_context:
+      type: string
+      description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+    source:
+      type: string
+      description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…>.'
+    confidence:
+      type: string
+      enum: [low, normal, high]
+      default: normal
+      description: How much to trust this record. When low, the reason goes in creation_context.
 list_fields: [name, assignee, status, due_on, completed_on, activity, real]
 icon: tasklist   # not `checklist` — `tasks` (the real one) wears that; an observed commitment is the list somebody else kept
 order: 85   # nav position — between the activity it served and the project it rolls into

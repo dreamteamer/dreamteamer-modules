@@ -304,9 +304,10 @@ describe('lanes — the grouping axis, as a record rather than a string', () => 
 		for (const dead of ['color', 'colour', 'lead', 'status', 'code', 'starts', 'ends']) {
 			assert.ok(!(dead in p), `activity-lanes.${dead} was invented — the argument for this collection is ORDER, nothing else`);
 		}
-		// What it DOES carry, and all of it: the entity shape plus the provenance quad.
-		assert.deepEqual(Object.keys(p), ['name', 'order', 'project', 'tags', 'content']);
-		assert.deepEqual(lanes.templates, ['collection-templates/projects-provenance']);
+		// What it DOES carry, and all of it: the entity shape plus the provenance quad, which is written
+		// inline since 2026-10-01 (there is no template any more).
+		assert.deepEqual(Object.keys(p), ['name', 'order', 'project', 'tags', 'content', 'author', 'creation_context', 'source', 'confidence']);
+		assert.equal(lanes.templates, undefined);
 	});
 
 	test('a rung points at a lane, and the lane gains the rungs in it', () => {
@@ -426,8 +427,8 @@ describe('phases — WHEN, as a record with its own dates', () => {
 	});
 
 	test('nothing was invented beyond the argument', () => {
-		assert.deepEqual(Object.keys(p), ['name', 'project', 'description', 'starts', 'ends', 'status', 'tags', 'content']);
-		assert.deepEqual(ph.templates, ['collection-templates/projects-provenance']);
+		assert.deepEqual(Object.keys(p), ['name', 'project', 'description', 'starts', 'ends', 'status', 'tags', 'content', 'author', 'creation_context', 'source', 'confidence']);
+		assert.equal(ph.templates, undefined);
 	});
 
 	test('a rung points at a phase, and the phase gains the rungs in it', () => {

@@ -9,7 +9,7 @@
 # soft join to the authored record; everything from `session_count` down is what OBSERVING is and has
 # no counterpart in the real collection, because nobody measures a plan they are still writing.
 name: perspective/world/projects
-templates: [collection-templates/perspective-provenance, collection-templates/perspective-observation]
+templates: [collection-templates/perspective-observation]
 description: A logical project a contributor's work clusters into — inferred from repos, ticket boards and topics, never declared. The observed half of `projects`.
 use_when: >-
   the projects pass groups activities into the efforts they belong to; an activity needs its `project`;
@@ -127,6 +127,24 @@ schema:
         never as a summary of the fields.
         ⚠ Every figure quoted here must be one of the fields above, unrounded and unembellished. A
         number in this body that is not in the frontmatter is a number nobody measured.
+    # ---- provenance: who made this record, from what, and how much to trust it. Inlined from the
+    # perspective-provenance template on 2026-10-01; one shared template per module was a copy of the same quad twelve times.
+    author:
+      type: string
+      description: >-
+        Which AGENT or SCRIPT made this record — `agents/dreamteamer (claude-fable-5)` or
+        `scripts/read-claude-transcripts@metrics/1`. Absent when the person wrote it themselves.
+    creation_context:
+      type: string
+      description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+    source:
+      type: string
+      description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…>.'
+    confidence:
+      type: string
+      enum: [low, normal, high]
+      default: normal
+      description: How much to trust this record. When low, the reason goes in creation_context.
 list_fields: [name, kind, lifecycle_stage, status, lead, real, active_minutes, tokens_total, started, ended]
 icon: project
 order: 90   # nav position — the model it reconstructed; the pipeline order, ten apart so one can be inserted without renumbering

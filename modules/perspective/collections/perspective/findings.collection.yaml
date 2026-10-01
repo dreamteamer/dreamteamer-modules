@@ -3,7 +3,7 @@
 # lives in the schema, not in advice: `evidence_count` is required, `standing` follows it, and the
 # body ends with `(n sessions)` — bin/check-records.mjs fails a body that does not.
 name: perspective/findings
-templates: [collection-templates/perspective-provenance, collection-templates/perspective-observation]
+templates: [collection-templates/perspective-observation]
 description: One observation about a person's work, with the evidence behind it and how many distinct sessions or windows support it.
 use_when: >-
   the findings pass runs over digests, windows and answers — write each observation here with its refs
@@ -54,6 +54,24 @@ schema:
       format: markdown
       x-body: true
       description: 'The observation, ending with `(n sessions)`.'
+    # ---- provenance: who made this record, from what, and how much to trust it. Inlined from the
+    # perspective-provenance template on 2026-10-01; one shared template per module was a copy of the same quad twelve times.
+    author:
+      type: string
+      description: >-
+        Which AGENT or SCRIPT made this record — `agents/dreamteamer (claude-fable-5)` or
+        `scripts/read-claude-transcripts@metrics/1`. Absent when the person wrote it themselves.
+    creation_context:
+      type: string
+      description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+    source:
+      type: string
+      description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…>.'
+    confidence:
+      type: string
+      enum: [low, normal, high]
+      default: normal
+      description: How much to trust this record. When low, the reason goes in creation_context.
 list_fields: [name, kind, standing, evidence_count, retrospective]
 icon: search
 order: 160   # nav position — what it concluded; the pipeline order, ten apart so one can be inserted without renumbering

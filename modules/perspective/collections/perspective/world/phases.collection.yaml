@@ -19,7 +19,7 @@
 # and an observed one that disagree by six weeks is one of the most useful findings a retrospective
 # produces, and it exists only because the two are separate records.
 name: perspective/world/phases
-templates: [collection-templates/perspective-provenance, collection-templates/perspective-observation]
+templates: [collection-templates/perspective-observation]
 description: >-
   A stretch of one observed effort's history — the era the evidence shows it passing through, with its own
   dates. The observed half of `phases`, and the shape `world/projects.lifecycle_stage` can only hold one
@@ -101,6 +101,24 @@ schema:
         What this era was like and HOW the boundary was decided — which numbers turned, by how much, and what
         the evidence says happened. Every figure quoted here must be one the rollup measured; a number in this
         body that is in no record is a number nobody measured.
+    # ---- provenance: who made this record, from what, and how much to trust it. Inlined from the
+    # perspective-provenance template on 2026-10-01; one shared template per module was a copy of the same quad twelve times.
+    author:
+      type: string
+      description: >-
+        Which AGENT or SCRIPT made this record — `agents/dreamteamer (claude-fable-5)` or
+        `scripts/read-claude-transcripts@metrics/1`. Absent when the person wrote it themselves.
+    creation_context:
+      type: string
+      description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+    source:
+      type: string
+      description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…>.'
+    confidence:
+      type: string
+      enum: [low, normal, high]
+      default: normal
+      description: How much to trust this record. When low, the reason goes in creation_context.
 list_fields: [name, project, stage, started, ended, turn, real]
 icon: history   # the era as it actually ran; `calendar` is the stretch a planner scheduled
 order: 92   # nav position — between `world/projects` at 90 and `world/activity-lanes` at 95

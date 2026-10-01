@@ -2,7 +2,6 @@
 # stage checks, so a run interrupted anywhere resumes from its record rather than from memory.
 # A session on a fresh workspace bootstraps it; a session on an existing one proposes changes.
 name: perspective/retrospective-sessions
-templates: [collection-templates/perspective-provenance]
 description: >-
   One retrospective session — one run of the workflow over a contributor's evidence: who it was about,
   when it ran, which stage it reached, and what it produced. The evidence and the model it writes are
@@ -138,6 +137,24 @@ schema:
       format: markdown
       x-body: true
       description: The running narrative — what each stage saw and decided, appended as the run goes.
+    # ---- provenance: who made this record, from what, and how much to trust it. Inlined from the
+    # perspective-provenance template on 2026-10-01; one shared template per module was a copy of the same quad twelve times.
+    author:
+      type: string
+      description: >-
+        Which AGENT or SCRIPT made this record — `agents/dreamteamer (claude-fable-5)` or
+        `scripts/read-claude-transcripts@metrics/1`. Absent when the person wrote it themselves.
+    creation_context:
+      type: string
+      description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+    source:
+      type: string
+      description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…>.'
+    confidence:
+      type: string
+      enum: [low, normal, high]
+      default: normal
+      description: How much to trust this record. When low, the reason goes in creation_context.
 list_fields: [contributor, started, stage, on_workspace]
 icon: telescope
 order: 10   # nav position — the run itself; the pipeline order, ten apart so one can be inserted without renumbering
