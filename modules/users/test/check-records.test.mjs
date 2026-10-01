@@ -1,5 +1,4 @@
-// The users guard — agents are users, and every agent has a human babysitter. Carried with the rule
-// from the projects module's plan guard, where these assertions were first pinned.
+// The users guard: agents are users, and every agent has a human owner.
 import { test, describe } from 'node:test';
 import assert from 'node:assert';
 import { spawnSync } from 'node:child_process';
