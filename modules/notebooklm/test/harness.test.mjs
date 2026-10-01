@@ -1,5 +1,5 @@
 // Tier 2 — the `notebooklm` harness. NOTEBOOKLM.md is a USER-OWNED root file carrying a managed
-// block, exactly like CLAUDE.md: the operator's own notes above and below must survive every compile,
+// block, exactly like CLAUDE.md: your own notes above and below must survive every compile,
 // and switching the harness off — or uninstalling this package — must remove the block without
 // deleting his file.
 import { test, describe } from 'node:test';
@@ -42,7 +42,7 @@ describe('NOTEBOOKLM.md is written when the harness is on', () => {
 		assert.match(ws.compileOut.stdout + ws.compileOut.stderr, /notebooklm → NOTEBOOKLM\.md block/, 'compile reports the harness');
 	});
 
-	test('⚠ the persona NAMES what was withheld, so the notebook can say "withheld" instead of "I don\'t know"', () => {
+	test('the persona NAMES what was withheld, so the notebook can say "withheld" instead of "I don\'t know"', () => {
 		const md = readFile(harness().root, 'NOTEBOOKLM.md');
 		assert.match(md, /the whole collection ledger/);
 		assert.match(md, /people\.email/);
@@ -101,7 +101,7 @@ describe('NOTEBOOKLM.md is written when the harness is on', () => {
 	});
 });
 
-describe('it is the operator\'s file, with a managed block inside', () => {
+describe('it is the user\'s file, with a managed block inside', () => {
 	test('notes above and below the block survive a recompile', () => {
 		const ws = harness();
 		const file = path.join(ws.root, 'NOTEBOOKLM.md');
@@ -121,11 +121,11 @@ describe('it is the operator\'s file, with a managed block inside', () => {
 		setPkg(ws, (pkg) => { pkg.dreamteamer.harnesses = ['claude-code']; });
 		assert.equal(ws.dt('compile').code, 0);
 		const after = fs.readFileSync(file, 'utf8');
-		assert.match(after, /^# my notes$/m, 'the operator\'s own file was deleted');
+		assert.match(after, /^# my notes$/m, 'the user\'s own file was deleted');
 		assert.ok(!after.includes('dreamteamer:begin'), 'the block should be gone');
 	});
 
-	test('removing the module removes the block on the next compile, and the operator\'s own text survives', () => {
+	test('removing the module removes the block on the next compile, and the user\'s own text survives', () => {
 		const ws = harness();
 		const file = path.join(ws.root, 'NOTEBOOKLM.md');
 		fs.writeFileSync(file, `# my notebook notes\n\nthe notebook id lives in the team wiki\n\n${fs.readFileSync(file, 'utf8')}\n\nafter the block\n`);

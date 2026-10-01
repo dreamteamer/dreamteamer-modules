@@ -1,7 +1,7 @@
 # @dreamteamer/projects
 
 The plan and everyone in it: projects, the phases and lanes they are read in, activities and gates,
-decisions, deliverables, risks and teams. Every owner, lead and seat field points at `users`.
+goals, decisions, deliverables, risks and teams. Every owner, lead and seat field points at `users`.
 
 ```bash
 npm install @dreamteamer/projects @dreamteamer/users
@@ -10,74 +10,49 @@ npx dreamteamer compile
 
 | alone | with others |
 |---|---|
-| the plan, its views (`/plan/by-lane`, `/plan/by-person`, the gantt) and the plan guard | **tasks** hangs small commitments off a project or an activity · **contacts** names who accepts a deliverable or owns an outside gate |
+| the plan, its views (`/plan/by-lane`, `/plan/by-person`, `/plan/gates`, the gantt) and the plan guard | **tasks** hangs small commitments off a project or an activity · **contacts** names who accepts a deliverable, owns an outside gate or made an outside decision · **companies** says whose project or team it is |
 
-Chain the plan guard into `npm run check` (`npx dt-setup setup` offers to):
-`node node_modules/@dreamteamer/projects/bin/check-records.mjs`. Migrations from the old pack:
-`node node_modules/@dreamteamer/projects/bin/migrate-plan.mjs` and `…/migrate-code-to-slug.mjs`.
+Chain the plan guard into your workspace's `check` script (`npx dt-setup setup` offers to):
+`node node_modules/@dreamteamer/projects/bin/check-records.mjs`. Two one-off migrations ship for
+workspaces holding records in an earlier shape: `bin/migrate-plan.mjs` turns a free-text
+`activities.phase` into `phases` records, and `bin/migrate-code-to-slug.mjs` renames `code` to `slug`
+on decisions, goals, deliverables and tasks.
 
 ## what a descriptor cannot say
 
-**A gate is an activity.** One collection holds both, because a plan reads as one ordered list and
-splitting it made every question ask twice — "what happens in February" and "what blocks us" are the
-same list filtered two ways. `kind` separates them and `/plan/gates` is a saved filter, so gates
-stayed addressable without being a second object.
+**A gate is an activity.** One collection holds both, because a plan reads as one ordered list:
+"what happens in February" and "what blocks us" are the same list filtered two ways. `kind` separates
+them, and `/plan/gates` is a saved filter, so a gate stays addressable without being a second object.
 
-**The fold is only honest because of `bin/check-records.mjs`.** A shape that can lie is worse than two
-collections: nothing in JSON Schema stops a `work` row carrying `passes_when`, or a gate reaching
-`done` with nothing behind it. The guard refuses both, and refusing a passed gate with no evidence is
-the single rule the object exists for. Chain it after `dreamteamer check`, as the perspective module's
-guard is chained.
+**`bin/check-records.mjs` keeps the fold honest.** Nothing in JSON Schema stops a `work` row carrying
+`passes_when`, or a gate reaching `done` with nothing behind it. The guard refuses both; refusing a
+passed gate with no evidence is the rule a gate exists for. It also refuses a decision that does not
+say who made it, an `accepted` deliverable with no `accepted_by`, and a `closed` risk with nothing
+quotable behind it. Chain it after `dreamteamer check`.
 
-**`external_owner` points at `contacts`, not `users`, and that asymmetry is the design.** Every other
-owner field names one of ours; this one names the person outside who actually holds the gate — the
-client approving, the partner supplying an environment, the regulator. It is the answer to "what
-schedule risk do we not control", measured on a real plan where 12 of 21 gates were held by someone
-else, and typing it as a user would have quietly claimed them as staff.
+**`external_owner` points at `contacts`, not `users`.** Every other owner field names one of yours;
+this one names the person outside who actually holds the gate: the client approving, the partner
+supplying an environment, the regulator. It answers "what schedule risk do we not control", and
+typing it as a user would claim those people as staff.
 
-**A gate needs no activity feeding it.** On the plan this was folded from, 4 of 21 gates had no
-activity at all — they existed precisely because nobody on the delivery side does work toward them.
-That is a fact about the plan, not a gap in it, so nothing here requires a feed.
+**A gate needs no activity feeding it.** Some gates exist precisely because nobody on the delivery
+side works toward them, so nothing here requires a feed.
 
-**`phase` is free text and `estimate` carries its own unit.** Every shop names its phases differently
-and prices in different units; a closed enum or a number field would have been right for exactly one
-workspace. `estimate_basis` is the honesty check — an estimate without one is a hand-wave.
+**`estimate` carries its own unit.** Every shop prices in different units, so the unit travels with
+the number as free text. `estimate_basis` says how it was arrived at.
 
-**A lane IS a collection, and a gate is NOT — the same test, opposite answers.** A gate was the same
-KIND of object as an activity: a rung with a date, a lead, a position in code order, drawn on the
-same gantt. It belonged in the list, so it folded in as `kind: gate`. A lane is not a rung; it is the
-AXIS the list is read on, and exactly one property earns it a record — **order**. A board draws its
-bands top to bottom and a free-text value has no order but its own spelling, so a plan running
-Discovery → Build → Hardening → Launch bands as Build · Discovery · Hardening · Launch. The number is
-a property of the band and there are many activities per band, so the only place it can live without
-being restated on every row is a record. Three consequences come free and none would have justified
-the collection alone: a typo is refused rather than drawn as a fourth band; `project` is OPTIONAL, so
-an empty one IS the workstream that crosses two plans (an activity has one project and cannot say
-this); and the body has somewhere to state what the band excludes. The whole argument, with what was
-proposed and refused, is `docs/2026-09-11-activity-lanes-design.md`.
+**`lane` is which track; `phase` is when.** A lane is a record because it carries an `order`: a board
+stacks its bands top to bottom, and a string has no order but its own spelling. A phase is a record
+because it carries its own `starts` and `ends`, so a stretch's span is stated once rather than taken
+from whatever rungs point at it. Use one of them as the grouping axis, not both, or the plan has two
+disagreeing ways to band. The full argument for lanes is in `docs/2026-09-11-activity-lanes-design.md`
+in the source repository.
 
-**`lane` and `phase` are two axes, not two spellings of one.** `lane` is which TRACK, `phase` is
-WHEN. Using both as the grouping axis gives a plan two disagreeing ways to band, so a workspace that
-has been using `phase` as a swimlane should move those values into lanes — nothing forces it, and
-`phase` is not deleted, because consumers hold records that set it.
+**The guard checks what crosses records.** A rung may not sit in a lane or a phase belonging to another
+project. Both fields are typed and both resolve, so `dreamteamer check` passes, and the board would
+draw this plan's rung inside another plan's band. `bin/check-records.mjs` refuses it, naming both
+projects.
 
-**The lane rule the schema cannot express:** a rung may not sit in a band belonging to another plan.
-Both fields are typed and both resolve, so `dreamteamer check` passes and the board draws this plan's
-rung inside somebody else's swimlane. `bin/check-records.mjs` refuses it, naming both plans.
-
-**A user is not a contact, and merging them is the mistake this module exists to prevent.** A contact
-is someone you have a relationship WITH; a user is someone work is assigned TO. The same human is
-routinely both, which is why `users.contact` joins them instead of one collection trying to be both —
-and why a workspace with no CRM installed still has somewhere to hang an assignment.
-
-**A user is not an account.** Nothing here authenticates anybody, holds a credential, or grants
-access. It is an identity the plan can address, so a solo workspace still has exactly one user and
-`assignee` can stay empty to mean "me".
-
-**`teams` exists, and it came BACK — this paragraph said the opposite until 2026-09-11.** It was
-dropped on 2026-09-10 ("a person is the unit work is assigned to; a group that owns nothing is a tag
-on the work") and restored the same day on the operator's second look, because membership lives on
-the TEAM: somebody joins by editing one record and their own page gains the mirror for free. The
-rule that survived both passes is the one that matters: **a team is never the assignee.** A task and
-an activity go to a PERSON; `activities.team` says which team CARRIES a rung, and `seats` still names
-the individuals.
+**A team is never the assignee.** Membership lives on the team, so somebody joins by editing one
+record and their own page gains the mirror. Activities and tasks still go to a person;
+`activities.team` says which team carries a rung, and `seats` names the individuals.

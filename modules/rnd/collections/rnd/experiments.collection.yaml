@@ -24,7 +24,7 @@ schema:
         tinkering, not an experiment — and the verdict below must answer exactly this.
     hypothesis:
       type: string
-      description: What the operator expects to be true, stated BEFORE the runs — so the result can surprise.
+      description: What you expect to be true, stated BEFORE the runs — so the result can surprise.
     status:
       type: string
       enum: [designed, running, analyzed, concluded, abandoned]
@@ -61,4 +61,4 @@ schema:
       description: 'The lab notebook: protocol, the run matrix, the numbers, the analysis — everything a re-run needs.'
 order: 58
 list_fields: [name, status, started, concluded]
-icon: beaker   # WAS `science`, which is NOT a codicon and drew a blank
+icon: beaker

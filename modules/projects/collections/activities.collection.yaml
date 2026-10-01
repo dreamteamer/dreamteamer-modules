@@ -7,8 +7,8 @@ use_when: >-
   building or re-cutting a plan, or asking "what happens in February", "who is loaded", "what blocks us", "what must
   the client supply and when" — all here, filtered by `kind`. A gate carries `passes_when` (the test), `evidence`
   (what proved it), `blocking` and `external_owner` (the person OUTSIDE this workspace who actually holds it — the
-  schedule risk you do not control). ⚠ A gate needs no activity feeding it: some gates exist precisely because nobody
-  here does work toward them, and that is a fact about the plan rather than a gap in it
+  schedule risk you do not control). A gate needs no activity feeding it: some gates exist precisely because nobody
+  here does work toward them
 storage: { path: data/activities, codec: md, shape: file, suffix: activity }
 id:
   generate: '{{ code }}'
@@ -30,8 +30,8 @@ schema:
         field: activities
         description: The plan — every activity and gate of this project, in code order.
       description: The project this rung belongs to.
-    # THE FOLD, and the whole reason this collection is one and not two. Everything below `kind` that is
-    # gate-only says so in its own description; `bin/check-records.mjs` refuses the combinations that would be a lie.
+    # Work and gates share one collection. Every gate-only field says so in its description, and
+    # `bin/check-records.mjs` refuses a gate-only field on a work row.
     kind:
       type: string
       enum: [work, gate]
@@ -41,10 +41,7 @@ schema:
       type: string
       enum: [commercial, regulatory, technical, quality, client-signoff, external-dependency]
       description: 'GATES ONLY — what sort of condition: an approval or a contract · a legal duty with a clock · proof that something works · a test or a sign-off on quality · the client saying yes · someone else supplying something.'
-    # ── THE TWO AXES A PLAN IS READ ON, and they are different questions. `lane` is WHICH TRACK (the
-    # swimlane, a typed record with an order of its own); `phase` is WHEN (the span of the plan this
-    # sits in). Using both as the grouping axis is what gives a board two disagreeing ways to band —
-    # so if you have been using `phase` as a swimlane, those values belong in `activity-lanes` now.
+    # The two axes a plan is read on: `lane` is which track, `phase` is when.
     lane:
       type: string
       x-reference: activity-lanes
@@ -52,10 +49,8 @@ schema:
         field: activities
         description: The rungs in this band, in code order — generated from `activities.lane`.
       description: >-
-        The band this rung is drawn in. A typed reference rather than a second free-text field, because a
-        lane carries an ORDER and a string carries only its own spelling — the whole argument is on the
-        `activity-lanes` descriptor. ⚠ If the lane names a `project`, it must be THIS rung's project;
-        `bin/check-records.mjs` refuses the mismatch, which is the one lane rule a schema cannot express.
+        The band this rung is drawn in. If the lane names a `project`, it must be this rung's project;
+        `bin/check-records.mjs` refuses the mismatch.
     phase:
       type: string
       x-reference: phases
@@ -63,14 +58,8 @@ schema:
         field: activities
         description: The rungs falling in this stretch, in code order — generated from `activities.phase`.
       description: >-
-        WHEN in the plan this sits — the stretch it falls in, not the track it runs on: `lane` is the track.
-        ⚠ A REFERENCE since 2026-09-11, where it was free text before, and the reason is the one thing a
-        string could not do: carry the stretch's OWN dates. A free-text phase repeated on forty rungs means
-        "when does Build end" can only be answered by taking the max of whatever points at it, which silently
-        changes the moment one rung is re-scoped. A `phases` record states the span once. ⚠ The phase must
-        belong to THIS rung's project; `bin/check-records.mjs` refuses the mismatch, exactly as it does for
-        `lane`. Migrating a workspace that used the free-text form: `node bin/migrate-plan.mjs <workspace>`
-        mints one `phases` record per distinct value and re-points every activity.
+        When in the plan this sits: the stretch it falls in, whose dates live on the `phases` record. The phase
+        must belong to this rung's project; `bin/check-records.mjs` refuses the mismatch.
     starts:
       type: string
       format: date
@@ -85,7 +74,7 @@ schema:
       x-inverse:
         field: led_activities
         description: The activities and gates this person is accountable for — generated from `activities.lead`.
-      description: Who is accountable for this happening or being checked. One person, always one of ours — a gate held by someone else uses `external_owner` as WELL.
+      description: Who is accountable for this happening or being checked. One person, always on your side; a gate held by someone outside also sets `external_owner`.
     seats:
       type: array
       items: { type: string, x-reference: users }
@@ -118,7 +107,7 @@ schema:
       x-reference: contacts
       description: >-
         GATES ONLY — who OUTSIDE this workspace actually holds the gate: the client approving, the partner supplying
-        an environment, the regulator. A `contacts` reference, not a user, precisely because they are not ours; this
+        an environment, the regulator. A `contacts` reference, not a user, because they are not yours; this
         field is the answer to "what schedule risk do we not control".
     depends_on:
       type: array
@@ -159,4 +148,4 @@ schema:
       description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
 order: 10
 list_fields: [code, name, kind, lane, phase, starts, ends, lead, status]
-icon: milestone   # not `list-ordered` — `perspective/workflows` wears `list-ordered`; a plan rung is a milestone on the way
+icon: milestone   # a plan rung is a milestone on the way; `list-ordered` is taken by perspective/workflows

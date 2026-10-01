@@ -8,14 +8,8 @@ use_when: >-
   does this effort stand", "when does it start" or "who is on it", read here. The generated `activities` mirror is the
   plan itself, `lead` says who is accountable and `teams` who is staffed
 storage: { path: data/projects, codec: md, shape: file, suffix: project }
-# ⚠ A NON-LATIN NAME YIELDS A HASH ID, NOT A REFUSAL, AND NOT AN EMPTY STRING. The engine's `slug`
-# FILTER is `slugOrHash` (src/template.js): a name with no a-z0-9 in it — Hebrew, Arabic, Cyrillic,
-# CJK — slugs to '' and falls back to a deterministic `x1a2b3c4`. So the write succeeds and the id is
-# unreadable, which is worse than a failure because nobody notices. A workspace whose VALUES are not
-# Latin should pass `--id` explicitly (`dt add projects --id <a-readable-latin-handle> --name "…"`), which
-# is what the engine's own error text recommends for the neighbouring case. ⚠ And `{{ code | default:
-# name | slug }}` does NOT work — the id generator has exactly five filters (date, datetime, slug,
-# pad, basename) and an unknown one throws, while a missing field throws before any fallback runs.
+# A name with no Latin characters (Hebrew, Arabic, Cyrillic, CJK) slugs to an unreadable hash id
+# rather than failing. Pass `--id` explicitly for those: `dt add projects --id <latin-handle> --name "…"`.
 id:
   generate: '{{ name | slug }}'
   pattern: ^[a-z0-9][a-z0-9-]*$
@@ -36,8 +30,7 @@ schema:
       type: string
       x-reference: companies
       description: Who it is for. A peer reference — a workspace with no CRM leaves it empty.
-    # OWNER FIELDS ARE TYPED, and they point at `users`, never at free text or at contacts. That is what makes
-    # "what is mine" answerable from the person's own record rather than from a search.
+    # Owner fields point at `users`, so "what is mine" is answered from the person's own record.
     lead:
       type: string
       x-reference: users
@@ -52,16 +45,12 @@ schema:
         field: projects
         description: The projects this team is staffed to — generated from `projects.teams`.
       description: The teams staffed to this project. Membership comes from the team, so staffing is not restated per activity.
-    # WHERE THE CODE LIVES. `repos` is a CORE collection — the engine ships it and binds two verbs to
-    # it (`dt install repos/<id>` materializes a working clone from the record, `dt status` reports
-    # each one present or absent) — so a project points AT it rather than the other way round: the
-    # engine cannot reference a collection a module ships. Singular and plural both earn their place:
-    # `repo` is the one a reader opens when they ask "where is this project's code", and every real
-    # engagement eventually grows a second (an infra repo, a client fork, the workspace itself).
+    # Where the code lives. `repos` is an engine collection (`dt install repos/<id>` clones one, `dt status`
+    # reports it), so a project points at it. `repo` is the front door; `repos` lists every one it touches.
     repo:
       type: string
       x-reference: repos
-      description: The project's PRIMARY repo — the one to open first. Also list it in `repos`.
+      description: The project's primary repo, the one to open first. Also list it in `repos`.
     repos:
       type: array
       items: { type: string, x-reference: repos }
@@ -110,4 +99,4 @@ schema:
       description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
 order: 8
 list_fields: [name, company, lead, status, starts, ends]
-icon: rocket   # not `project` — perspective/world/projects already wears `project`; a delivery effort is the one that ships
+icon: rocket   # a delivery effort is the one that ships; `project` is taken by perspective/projects

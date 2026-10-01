@@ -1,7 +1,7 @@
 {
 	"name": "@dreamteamer/notebooklm",
 	"version": "0.1.0",
-	"description": "NotebookLM for a dreamteamer workspace — the export, the harness, and notebooks records that rebuild a live notebook on any account.",
+	"description": "NotebookLM for a dreamteamer workspace: export and sync the workspace as notebook sources, and keep each notebook as a record it is restored from.",
 	"license": "Apache-2.0",
 	"type": "module",
 	"repository": {
@@ -38,7 +38,7 @@
 		"extension": "./src/extension.js",
 		"title": "NotebookLM",
 		"engine": ">=0.31.0",
-		"description": "Everything NotebookLM, in one module. The engine extension: `dt notebooklm` writes the schema, the records and a persona as a bounded set of sources (and, given a notebook, syncs them), and the `notebooklm` harness keeps NOTEBOOKLM.md's configuration block current on every compile — collections marked `sensitive: true` and fields marked `x-sensitive: true` never travel. The record: a `notebooks` record is the SPEC a live NotebookLM notebook can be rebuilt from on any Google account — its ordered `sources`, the one `configure` call in `chat`, the uuid and login of the live copy — and `npx dt-notebook restore` plays it, `capture` writes it from a live notebook, `persona` applies NOTEBOOKLM.md's persona in one safe call (a bare `configure` CLEARS it, measured twice). The rules: `using-notebooklm` defers to the vendor's own skill for every flag and adds only this workspace's. Peers `wikis` — a notebook points at the local corpora it is built on, and `wiki pull` is the one bridge between them — and `companies`, so a client corpus can say whose it is.",
+		"description": "NotebookLM for a dreamteamer workspace. `dt notebooklm` exports the schema and records as sources and syncs them into a notebook; the `notebooklm` harness keeps NOTEBOOKLM.md's persona and settings current. A `notebooks` record holds a notebook's ordered sources, chat settings, id and login, which `npx dt-notebook` restores and captures. Sensitive collections and fields never travel.",
 		"peerDependencies": [
 			"wikis",
 			"companies"

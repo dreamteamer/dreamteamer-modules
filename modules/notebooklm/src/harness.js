@@ -9,10 +9,10 @@
 // every contributed harness.
 import { PLANS } from './export.js';
 
-/** Chats per day, per plan — Google's published table, read 2026-09, beside the source cap the export
- *  budgets against. Stated because the number decides the SHAPE of the export: a workspace with more
- *  collections than the plan has slots has to be narrowed or packed, and that is a decision the
- *  operator makes before running anything. */
+/** Chats per day, per plan — Google's published table, beside the source cap the export budgets
+ *  against. Stated because the number decides the SHAPE of the export: a workspace with more
+ *  collections than the plan has slots has to be narrowed or packed, and that is a decision you make
+ *  before running anything. */
 const CHATS_PER_DAY = { standard: 50, plus: 200, pro: 500, ultra: 2500 };
 
 /** The notebook's configuration, generated: what to paste as custom instructions, which settings to
@@ -20,12 +20,11 @@ const CHATS_PER_DAY = { standard: 50, plus: 200, pro: 500, ultra: 2500 };
  *  never from `data/`, for the same reason the orientation block carries no record counts: this lands
  *  in a committed file and a count would re-dirty it on every write. */
 export function notebooklmBlock({ collections, modules, version }) {
-	// ⚠ `generated`, NOT `systemGroup`. The question here is a STORAGE question, because every number
+	// `generated`, NOT `systemGroup`. The question here is a STORAGE question, because every number
 	// and name below has to describe what `dt notebooklm` will actually ship, and the export ships by
-	// storage (`storage.base !== 'runtime'` — export.js). Reading the presentational partition made
-	// this file say "exports 1 collections" for a workspace whose export shipped `repos.md` as a
-	// second source — so the persona generated from this line would not know about a source it had
-	// been given. The count and the export are pinned to each other by a test (harness.test.js).
+	// storage (`storage.base !== 'runtime'` — export.js). The presentational partition would leave a
+	// shipped source out of the count, and the persona would not know about a source it was given.
+	// The count and the export are pinned to each other by a test (test/harness.test.mjs).
 	const data = collections.filter((c) => !c.generated);
 	const withheldCollections = data.filter((c) => c.sensitive).map((c) => c.name);
 	const withheldFields = data.flatMap((c) => c.sensitiveFields.map((f) => `${c.name}.${f}`));

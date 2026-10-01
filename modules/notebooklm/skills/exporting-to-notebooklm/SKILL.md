@@ -62,7 +62,7 @@ dropped-title bug leaves); a source added by hand is never touched. Every vendor
 notebook with `-n`; `notebooklm use` is never run.
 
 **Preflight is `notebooklm auth check --test`** — the bare check reports a stale session as valid —
-and an expired login is the operator's to renew (`notebooklm login` opens a browser). Needs
+and an expired login is yours to renew (`notebooklm login` opens a browser). Needs
 notebooklm-py >= 0.7.3 on PATH.
 
 ## NOTEBOOKLM.md
@@ -70,7 +70,7 @@ notebooklm-py >= 0.7.3 on PATH.
 A user-owned root file with one managed block: the settings to pick, the persona to paste, the plan
 limits, and how many collections the export ships (the number that decides the plan). Your own notes
 above and below the block survive every compile; removing the harness from `dreamteamer.harnesses`,
-or removing the module, removes only the block. ⚠ `notebooklm configure` REPLACES the whole
+or removing the module, removes only the block. `notebooklm configure` REPLACES the whole
 configuration, and `--mode` alongside a persona discards the persona — the block says so.
 
 ## asking

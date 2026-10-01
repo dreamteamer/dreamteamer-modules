@@ -2,17 +2,14 @@
 # their own verbatim quotes. When consulted, every member answers from THEIR OWN quotes separately
 # and the persona's answer is the spread across members — computed outside the model.
 #
-# Why: agents grounded in a person's own words score ~0.83 against that person's own test-retest
-# consistency; agents built from segment attributes score worse than a lookup table and inflate
-# demographic->attitude coupling ~40x. Averaging people into one voice moves from the regime that
-# works into the regime that fails, and makes the artifact unfalsifiable — a merged voice has no
-# held-out answers to test against. (Park et al. 2411.10109; benchmark 2607.26348.)
+# Why: an agent grounded in a person's own words tracks that person; an agent built from segment
+# attributes tracks a stereotype. Averaging people into one voice trades the first for the second
+# and makes the artifact unfalsifiable — a merged voice has no held-out answers to test against.
 #
-# Two hard rules the schema exists to enforce:
-#   1. NO CLAIM WITHOUT A QUOTE. Every substantive field cites `quotes`.
-#   2. NO ANSWER OUTSIDE `coverage`. Asked something the evidence does not cover, a persona must
-#      refuse. Personas fabricate plausible-but-wrong answers ~52% of the time on out-of-coverage
-#      questions, and "react to this product idea" is precisely the shape that triggers it.
+# Two rules the schema is shaped around:
+#   1. No claim without a quote. Every substantive field cites `quotes`.
+#   2. No answer outside `coverage`. Asked something the evidence does not cover, a persona refuses.
+#      "React to this product idea" is exactly the question that invites a plausible fabrication.
 name: rnd/personas
 description: >-
   A named PANEL of real people, each grounded in their own verbatim quotes — never a merged character. Its
@@ -46,7 +43,7 @@ schema:
       items:
         type: object
         properties:
-          person: { type: string, description: 'The real person, as `<collection>/<id>` — `contacts/<id>` where the contacts module is installed. ⚠ A PLAIN string, not a reference: a panel member may live in another workspace, so the value keeps its ref shape without being validated.' }
+          person: { type: string, description: 'The real person, as `<collection>/<id>` — `contacts/<id>` where the contacts module is installed. A plain string, not a reference: a panel member may live in another workspace, so the value keeps its ref shape without being validated.' }
           role: { type: string, description: Their job at the time of the evidence. }
           weight: { type: string, description: How much this member carries the panel — thick, moderate or thin evidence. }
 
@@ -151,18 +148,18 @@ schema:
       description: How much they can be asked to do themselves. Left free-text until the real vocabulary is derived from the data (`dt values rnd/personas technical_level`).
     ai_practice:
       type: string
-      description: 'Evidence-based: what they have actually done, not what their title suggests. The corpus''s central finding is that everyone has licences and almost nobody has practice — this field is where that distinction lives.'
+      description: 'Evidence-based: what they have actually done, not what their title suggests. Having a licence is not having practice, and this field is where that distinction lives.'
 
     # ---- EDUCATIONAL DIMENSION: what they understand, and what teaching actually works on them ----
     learning:
       type: object
       description: >-
         What this panel UNDERSTANDS and how it is taught — the substrate for asking a persona an
-        EDUCATIONAL question rather than a product one. ⚠ Ground every field below in OBSERVED
+        EDUCATIONAL question rather than a product one. Ground every field below in OBSERVED
         BEHAVIOUR, never in self-report. When the corpus is vendor conversations, asking
         someone what they understand returns PERFORMED competence, and that error runs the same
-        direction as model sycophancy (see `known_biases`). "Has nine recorded agent conversations
-        where colleagues have two hundred" is evidence; "says they are comfortable with agents" is
+        direction as model sycophancy (see `known_biases`). "Has a handful of recorded agent sessions
+        where colleagues have hundreds" is evidence; "says they are comfortable with agents" is
         not.
       properties:
         understands:
@@ -237,10 +234,10 @@ schema:
         overclaiming and the thing you would least want quoted out of this workspace. Personas take they/them.
     known_biases:
       type: string
-      description: 'How this persona is systematically wrong. State one for every panel. Where the evidence comes from sales and discovery calls with the operator in the room, it models how people talk to a vendor, not how they decide — and that courtesy bias runs the SAME direction as model sycophancy, so the two errors add.'
+      description: 'How this persona is systematically wrong. State one for every panel. Where the evidence comes from sales and discovery calls with you in the room, it models how people talk to a vendor, not how they decide — and that courtesy bias runs the SAME direction as model sycophancy, so the two errors add.'
     expert_reflections:
       type: string
-      description: Short syntheses written from named analyst viewpoints (buyer psychologist, budget owner, ops realist) inferring what the person did not say. This module is what lifted grounded agents above persona agents in the literature.
+      description: Short syntheses written from named analyst viewpoints (buyer psychologist, budget owner, ops realist) inferring what the person did not say.
     fidelity:
       type: string
       description: How this persona scored on its held-out probes, and when. EMPTY until evaluated — an unevaluated persona must say so rather than imply it was validated.
@@ -275,4 +272,4 @@ schema:
 
 order: 45
 list_fields: [name, last-modified, n_meetings, fidelity]
-icon: feedback   # not `organization` — `meetings` and `perspective/world/users` wear `organization`; a persona is a PANEL that answers
+icon: feedback

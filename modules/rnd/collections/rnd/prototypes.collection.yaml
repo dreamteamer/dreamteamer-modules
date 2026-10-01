@@ -5,11 +5,8 @@ description: >-
 use_when: >-
   a UI or an interaction is being designed — the living mockup lives here beside the product and is
   what to update when the design changes; it never graduates into the product
-# A thin UI mockup that serves as the LIVING reference
-# for intended design. A prototype never graduates: it is maintained and evolved alongside the
-# product, and the actual app built from it lands in its own dedicated repo. When an `apps`
-# collection exists it will carry `prototype: prototypes/<id>` — the later thing points at the
-# earlier one, so no `implemented_by` field is invented here for a collection that does not exist.
+# A prototype never graduates: it is maintained alongside the product, and the app built from it
+# lives in its own repo. The later thing points at the earlier one, so there is no `implemented_by`.
 storage: { path: data/rnd/prototypes, codec: md, shape: file, suffix: prototype}
 id:
   generate: "{{ created | date }}--{{ name | slug }}"
@@ -47,12 +44,8 @@ schema:
     design_doc:
       type: string
       x-reference: rnd/product-design-docs
-      # ⚠ NO `x-inverse` HERE. This side OWNS the relation, but the mirror is DECLARED on the design
-      # doc as `prototypes` with `x-inverse-of` (spelling B), which compile rewrites onto this field.
-      # Declaring both compiled fine and warned on every run in every consumer ("declared on both
-      # sides") — and two permanent warnings in everybody's output is how people learn to skim
-      # warnings. `rnd/products.design_docs` and `rnd/references.design_docs` were already this shape;
-      # this one now matches them.
+      # No `x-inverse` here: this side owns the relation, and the mirror is declared on the design doc
+      # as `prototypes` with `x-inverse-of`. Declaring both makes compile warn on every run.
       description: The design doc this prototype realises — the hop from PRD to something clickable. `explores` stays for the looser "what is this poking at".
     live_url:
       type: string
@@ -88,4 +81,4 @@ schema:
       description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
 order: 12
 list_fields: [name, status, iteration, live_url, product, last-modified]
-icon: preview   # not `edit` — `rnd/draft-docs` already wears `edit`; a prototype is a thing you LOOK at
+icon: preview

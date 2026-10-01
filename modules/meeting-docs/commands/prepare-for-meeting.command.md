@@ -12,8 +12,8 @@ downstream catches it. Two plausible candidates: ask. None: say so — `/create-
 meeting and its prep together, this one prepares for a meeting that already exists. Already prepped:
 update that record, do not add a second.
 
-Read the standing picture first — the account's standing record, where the workspace keeps one (a
-`clients`/`leads` funnel is NOT part of this module; skip the step when there is none) — then the last few
+Read the standing picture first — the account's standing record, if your workspace keeps one (this
+module does not ship one; skip the step when there is none) — then the last few
 `meeting-summaries` and the previous prep for the same thread, then the attendees' `contacts` and the
 open `tasks`. Summaries, not transcripts; the exception is a meeting whose recording never got
 summarized, which is a gap to read *and* to report.

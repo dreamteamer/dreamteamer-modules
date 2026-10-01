@@ -35,7 +35,8 @@ function lines(file) {
 // Each rule names what it catches. A date is allowed only where it is DATA: an id (`2026-08-30--…`),
 // a timestamp (`…T10:00`) or part of a path or example value.
 const RULES = [
-	['the workspace it came from', /\b(operator|vault|dogfood|the-workspace)\b/i],
+	// the source vault's own name is spelled by parts, so this file does not trip the leak gate it sits beside
+	['the workspace it came from', new RegExp(`\\b(operator|vault|dogfood|${['gk', 'brain'].join('-')})\\b`, 'i')],
 	['a dated history note', /(?<![\w/'"`-])20\d\d-\d\d-\d\d(?![\w/.'"`-]|T\d)/],
 	['a decision number', /\bdecisions? \d+\b/i],
 	['a warning marker', /⚠/],

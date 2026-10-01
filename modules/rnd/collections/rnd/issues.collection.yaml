@@ -1,4 +1,4 @@
-# Defects found while dogfooding — the bugs this workspace discovers in the tools it runs on.
+# Defects found while using the tools this workspace runs on.
 #
 # Why a collection rather than GitHub issues: the bugs worth keeping are the ones found by USING the
 # thing, and they are found mid-task, by an agent, with the evidence already on screen. A record
@@ -6,7 +6,7 @@
 # and usually gets a remembered paraphrase instead. What graduates to the tracker can be exported.
 #
 # `repo` is the point of the collection: an issue that does not name the repo it belongs to cannot be
-# routed, and this workspace runs four of them at once (engine, extension, recipes, this workspace).
+# routed when the workspace runs several repos at once.
 name: rnd/issues
 description: A defect found while using one of this workspace's own repos — with the evidence that proves it.
 use_when: >-
@@ -39,9 +39,9 @@ schema:
     reported_by:
       type: string
       description: >-
-        Who FOUND it — distinct from `author`, who wrote the record. An operator hits a bug and an agent
+        Who FOUND it — distinct from `author`, who wrote the record. A person hits a bug and an agent
         writes it up, so these genuinely differ. Name the agent when an agent found it
-        (`agents/dreamteamer (claude-opus-5)`); leave it absent when the operator did.
+        (`agents/<harness>`, e.g. `agents/claude-code`); leave it absent when you did.
 
     status:
       type: string
@@ -62,7 +62,7 @@ schema:
     evidence:
       type: string
       format: markdown
-      description: ⚠ THE FIELD THAT EARNS THE RECORD. The command run and the output it produced — not a description of the bug, the proof of it. An empty `evidence` makes this a hypothesis the next person has to rediscover.
+      description: The field that earns the record. The command run and the output it produced — not a description of the bug, the proof of it. An empty `evidence` makes this a hypothesis the next person has to rediscover.
     workaround:
       type: string
       description: What to do until it is fixed. Often the most valuable field in the record.

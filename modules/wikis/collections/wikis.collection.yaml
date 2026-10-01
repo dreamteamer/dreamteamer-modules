@@ -6,8 +6,8 @@ id:
   pattern: ^[a-z0-9][a-z0-9-]*$
 schema:
   type: object
-  # `folder` is required and `name` is required, and nothing else is: a wiki can exist as an empty
-  # folder waiting to be filled, which is exactly what `wiki init` writes.
+  # only `name` and `folder` are required: a wiki can exist as an empty folder waiting to be filled,
+  # which is what `dt-wiki init` writes.
   required:
     - name
     - folder
@@ -15,16 +15,13 @@ schema:
     name:
       type: string
       description: What this corpus is called — the record's id is its slug.
-    # ⚠ WORKSPACE-RELATIVE, and IN THE REPO since 2026-09-11. Never a machine path — that has not
-    # changed — but no longer an `${env:…}` template either: `wikis/<id>` needs no variable
-    # to be set and nothing to be rendered, so a corpus works on a bare clone, in a cloud session, and
-    # on a machine that has never had a `.env`. That is a stronger portability claim than the template
-    # it replaced, not a weaker one. A relative value resolves against the WORKSPACE ROOT, never the
-    # current directory. An ABSOLUTE value, including anything an old `${env:…}` template renders to,
-    # is still honoured exactly as before and nothing rewrites those records.
+    # workspace-relative and in the repo, never a machine path: `wikis/<id>` needs no variable set, so
+    # a corpus works on a bare clone and in a cloud session. A relative value resolves against the
+    # workspace root, never the current directory; an `${env:…}` template or an absolute value is
+    # still honoured.
     folder:
       type: string
-      description: "Where the markdown lives, relative to the workspace — `wikis/<id>`. Inside it: `index.md`, then `sources/<nn>--<slug>.md` nested into section subfolders. ⚠ THE SOURCES ARE COMMITTED, and that is the point: a wiki is markdown a coding agent GREPS and cites by `file:line`, so outside the clone the corpus was unreachable from a bare checkout and from any cloud session, and no citation could be reviewed in a diff or pinned to a commit. This is the ONE exception to keeping bytes out of the repo, and it is narrow — it covers text meant to be READ. A scraped PDF, a recording or a scan still lives under `${env:FILES_FOLDER}` with a record pointing at it. The cost is stated rather than discovered: a corpus is megabytes of text in every clone, forever, so split a large one into several wikis by subject rather than growing one."
+      description: "Where the markdown lives, relative to the workspace — `wikis/<id>`. Inside it: `index.md`, then `sources/<nn>--<slug>.md` nested into section subfolders. The sources are committed, so a `file:line` citation opens from a bare clone and reviews in a diff. Only text meant to be read lives here; a scraped PDF, a recording or a scan stays under `${env:FILES_FOLDER}` with a record pointing at it. A corpus is megabytes in every clone, so split a large one into several wikis by subject."
       examples:
         - 'wikis/share-based-payments'
         - '${env:FILES_FOLDER}/wikis/legacy-corpus'
@@ -37,7 +34,7 @@ schema:
         - local
         - notebooklm
       default: local
-      description: "Where the sources came from. `local` is a folder somebody filled — no login, no network, no prerequisite. `notebooklm` means `wiki pull` mirrored a live notebook into it, and `upstream` says which."
+      description: "Where the sources came from. `local` is a folder somebody filled — no login, no network, no prerequisite. `notebooklm` means `dt-wiki pull` mirrored a live notebook into it, and `upstream` says which."
     upstream:
       type: string
       description: The uuid of the notebook this corpus was pulled from, when `adapter` is `notebooklm`. Empty on a corpus that was only ever local.
@@ -55,13 +52,12 @@ schema:
       default: active
       description: "`throwaway` is a real state: a smoke pull and a spike corpus both live here, and neither should be read as something anyone maintains."
     # ─── THE ROLLUP ─────────────────────────────────────────────────────────────────────────────
-    # ⚠ These four are a CACHE, and the folder is the authority. They exist so a machine with no
-    # FILES_FOLDER mounted can still answer "which corpus is unfinished"; `npx dt-wiki
-    # verify` re-derives them from the files and NAMES the drift rather than hiding it. Never reason
-    # about a specific source from these — `wiki incomplete` is the query that reads the truth.
+    # These four are a cache, and the folder is the authority. They let a list view show which corpus
+    # is unfinished; `npx dt-wiki verify` re-derives them from the files and names the drift. Never
+    # reason about a specific source from these — `dt-wiki incomplete` reads the files.
     sources_total:
       type: integer
-      description: How many sources the folder held at `synced_at`. A cache — `wiki verify` re-derives it.
+      description: How many sources the folder held at `synced_at`. A cache — `dt-wiki verify` re-derives it.
     sources_complete:
       type: integer
       description: How many of them were fully fetched at `synced_at`. A cache.
@@ -79,7 +75,7 @@ schema:
     notes:
       type: string
       format: markdown
-      description: What this corpus is for, what it covers well, where it is thin. The source LIST is the folder, not prose here — prose goes stale, `wiki status` does not.
+      description: What this corpus is for, what it covers well, where it is thin. The source list is the folder, not prose here — prose goes stale, `dt-wiki status` does not.
       x-body: true
     author:
       type: string
@@ -105,7 +101,7 @@ storage:
   shape: file
   suffix: wiki
 description: "A collection of markdown sources serialised as a FOLDER — `index.md`, then `sources/<nn>--<slug>.md` nested into sections. Every source is a file, including one nothing has downloaded yet, which is a stub carrying `completeness: pending`; that is what makes a half-fetched corpus impossible to mistake for a finished one. A notebook points at many wikis, and a wiki serves many notebooks."
-use_when: a body of reference material has to be READ rather than asked — a corpus a coding agent greps, cites and follows links inside. Create one with `npx dt-wiki init`, or mirror a live NotebookLM notebook into one with `wiki pull <notebook-record>`; then `wiki incomplete` is the one command that says what still needs scraping. Read the folder, never this record, for what a source SAYS — the record holds where the corpus lives and how finished it is, and its counts are a cache the folder overrules
+use_when: a body of reference material has to be READ rather than asked — a corpus a coding agent greps, cites and follows links inside. Create one with `npx dt-wiki init`, or mirror a live NotebookLM notebook into one with `npx dt-wiki pull <notebook-record>`; then `npx dt-wiki incomplete` is the one command that says what still needs scraping. Read the folder, never this record, for what a source SAYS — the record holds where the corpus lives and how finished it is, and its counts are a cache the folder overrules
 icon: library
 list_fields:
   - name

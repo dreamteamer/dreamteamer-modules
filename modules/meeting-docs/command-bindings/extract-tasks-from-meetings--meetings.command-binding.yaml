@@ -8,6 +8,6 @@ can-enter:
   recordings:
     transcription:
       _nempty: true
-# can-exit omitted: "a task referencing this meeting exists" is an INBOUND-ref condition — tier 2,
-# unsupported (decision 60). the command never shows "done".
+# can-exit is omitted: a task points at its meeting, but no field on the meeting points back, so the
+# command never shows "done".
 description: extract action items from this meeting into tasks

@@ -4,7 +4,7 @@ path: /content/notebooks
 target: list
 collection: collections/notebooks
 layout: table
-# ⚠ every column below is a declared field or the engine's generated one; a column the schema LACKS is
+# every column below is a declared field or the engine's generated one; a column the schema LACKS is
 # dropped silently and tests/view-columns.test.mjs is what catches it.
 options:
   columns:

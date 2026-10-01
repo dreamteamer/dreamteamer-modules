@@ -1,18 +1,15 @@
-// THE RULES A WIKI IS JUDGED BY — pure, so a fixture can pin every one of them without a network
+// The rules a wiki is judged by — pure, so a fixture can pin every one of them without a network
 // call, a login or a folder. `bin/wiki.mjs` does the disk; this file does the deciding.
 //
-// A wiki is a collection of markdown sources serialised as a FOLDER: `wiki.yaml`, then
+// A wiki is a collection of markdown sources serialised as a FOLDER: `index.md`, then
 // `sources/<nn>--<slug>.md`, nested into subfolders when the corpus has sections. Every source is a
-// file — including one nothing has downloaded yet, which exists as a STUB carrying
+// file — including one nothing has downloaded yet, which exists as a stub carrying
 // `completeness: pending` and no body.
 //
-// ⚠ THE STUB IS THE WHOLE POINT. A corpus that is half fetched and looks finished is the failure this
-// design is against, and absence is the one state a reader cannot see. So the inventory is laid out
-// complete-and-empty first and filled second, and the marker travels in the frontmatter of the file it
-// judges — where copying the folder copies the truth, deleting the file deletes the claim, and
-// `grep -l 'completeness: pending'` still works when every tool here is gone.
-//
-// Nothing in this file knows anything about any particular person, machine, corpus or account.
+// The stub is what keeps a half-fetched corpus from looking finished: absence is the one state a
+// reader cannot see, so the inventory is laid out complete-and-empty first and filled second. The
+// marker travels in the frontmatter of the file it judges, so copying the folder copies it, deleting
+// the file deletes it, and `grep -l 'completeness: pending'` works with no tool installed.
 import fs from 'node:fs';
 import path from 'node:path';
 import yaml from 'js-yaml';
@@ -29,9 +26,8 @@ export const COMPLETENESS = ['pending', 'failed', 'empty', 'partial', 'complete'
  *  the file, so re-classifying never needs a re-download. */
 export const MIN_BYTES = 256;
 
-/** `notebooklm source fulltext` in TEXT mode truncates here (0.7.3, its own `--help` says so). A
- *  fetch that lands exactly on the cap is `partial`, not `complete` — this is the case the whole
- *  marker exists for, because it succeeds at exit 0 and looks like a finished source. */
+/** `notebooklm source fulltext` in text mode truncates its stdout here. A fetch that is known to have
+ *  hit the cap is `partial`, not `complete`, because it exits 0 and looks like a finished source. */
 export const TEXT_TRUNCATION = 2000;
 
 /**
@@ -76,12 +72,9 @@ export const ADAPTERS = ['local', 'notebooklm'];
 /**
  * The adapter a `notebooks` record is served by.
  *
- * ⚠ THERE IS NO DEFAULT ON THE FIELD, on purpose. Defaulting to `notebooklm` would contradict the
- * point of the local implementation — that a notebook needs no login — and defaulting to `local`
- * would silently relabel every record written before this release. So the field is optional and the
- * answer is DERIVED when it is absent: a record with a live uuid is served by NotebookLM, and one
- * without is a folder. The field exists only to override that, which is needed exactly once: when a
- * notebook that was restored upstream should stop being served from there.
+ * The field has no default: when it is absent the answer is derived — a record with a live uuid is
+ * served by NotebookLM, one without is a folder. Setting it overrides that, for a notebook that
+ * exists upstream but should be served from its folder.
  */
 export function adapterOf(record = {}, override) {
 	const pick = override ?? record.adapter;
@@ -95,42 +88,19 @@ export function adapterOf(record = {}, override) {
 // ─── the folder ─────────────────────────────────────────────────────────────────────────────────────
 
 /**
- * Where a new wiki's `folder` field points: `wikis/<id>`, INSIDE the workspace and at its ROOT.
+ * Where a new wiki's `folder` field points: `wikis/<id>`, inside the workspace and at its root.
  *
- * ⚠ THIS MOVED IN 2026-09-11, and the move is the point of the collection. It used to be
- * `${env:FILES_FOLDER}/wikis/<id>` — outside the repo, on a synced drive — on the general rule that
- * bytes are not committed. That rule is about MEDIA: a recording, a scan, a screenshot, a PDF.
- * A wiki is none of those. It is markdown a coding agent GREPS and cites by `file:line`, and putting
- * it outside the clone cost exactly the thing the module was built for:
+ * The corpus is committed: it is markdown a coding agent greps and cites by `file:line`, so it has to
+ * be in a bare clone, reachable from a cloud session, and reviewable in a diff. Scraped PDFs,
+ * recordings and scans stay under `${env:FILES_FOLDER}`; only text meant to be read lives here.
  *
- *   · a bare clone did not have the corpus, so "zero prerequisite" was false — the one claim the
- *     local adapter exists to make
- *   · a cloud session could not reach it at all (no Drive mount, by construction)
- *   · a citation could not be reviewed in a diff, or followed from a record, or pinned to a commit
+ * It is not under `data/`: every path there belongs to some collection's storage, and
+ * `dreamteamer check` warns on each file in a collection's folder that is not a record. `wikis/` is
+ * owned by no collection, so a corpus is invisible to the record layer.
  *
- * So the corpus is source, and it is versioned like source. The cost is real and is stated rather
- * than discovered: a corpus is megabytes of text and it lands in every clone forever. Keep scraped
- * PDFs and recordings where they were — under `${env:FILES_FOLDER}` — and keep here only what is
- * meant to be READ as text.
- *
- * ⚠ AND IT IS NOT UNDER `data/`, WHICH IS NOT A STYLE CHOICE. Every path under `data/` belongs to
- * some collection's storage, and `dreamteamer check` walks a collection's folder and WARNS on every
- * file in it that is not a record. Measured 2026-09-11: four corpora placed at `data/notebooks/<id>`
- * produced 42 warnings on every single check — one per source file plus one per manifest. The check
- * still passed, which is worse than failing: 42 permanent warnings is how people learn to skim
- * warnings, and that is how the next real one is missed. `wikis/` at the repo root is owned by no
- * collection, so a corpus is invisible to the record layer by construction rather than by exemption.
- *
- * ⚠ THE BETTER MODEL, NOT YET BUILT: make `wikis` a FOLDER-shaped collection (`shape: folder`,
- * `entry: wiki.md`). Check reads one level of a folder-shaped collection and looks only for the entry
- * file, so everything nested inside is invisible — the record and its corpus become ONE object, which
- * is what a wiki actually is. That is a record-model change with a migration behind it; this is the
- * correct cheap answer until it is made.
- *
- * ⚠ RELATIVE, not absolute, and not an `${env:…}` template. It resolves against the WORKSPACE ROOT
- * (see `resolveWiki`), so the same record works on every machine with no variable to set and nothing
- * to render — which is a stronger portability claim than the template it replaces, not a weaker one.
- * An existing record carrying the old template still renders and still works; nothing rewrites it.
+ * The value is relative and resolves against the workspace root (see `resolveWiki`), so the same
+ * record works on every machine with no variable to set. A record carrying an `${env:…}` template
+ * still renders and works.
  */
 export const defaultFolder = (id) => `wikis/${id}`;
 
@@ -141,11 +111,9 @@ export const WIKI_ROOT = 'wikis';
 export function wikiPaths(root) {
 	return {
 		root,
-		// ⚠ `index.md`, NOT `wiki.yaml`. A corpus is ONLY markdown: every file in it carries frontmatter
-		// and reads in an editor, so a YAML manifest was the one file in the folder a reader could not
-		// open the way they open everything else. The keys did not change — they moved into
-		// frontmatter. `legacyManifest` is still read so a folder written before 2026-09-11 works
-		// untouched; nothing rewrites one until the wiki is next written.
+		// `index.md`, so every file in a corpus is markdown with frontmatter. `legacyManifest` is a
+		// bare-YAML `wiki.yaml`, still read when a folder has no `index.md`; nothing rewrites one until
+		// the wiki is next written.
 		index: path.join(root, 'index.md'),
 		legacyManifest: path.join(root, 'wiki.yaml'),
 		sources: path.join(root, 'sources'),
@@ -165,9 +133,9 @@ export function slug(text, max = 48) {
 /**
  * `<nn>--<slug>.md`, or `<nn>.md` when the title slugs to nothing.
  *
- * ⚠ The number is the CORPUS ORDER and it is global, so `ls -R` is the order with no manifest lookup
- * and no second copy of the ordering to disagree with the first. A gap left by a delete is honest and
- * is never closed up: renumbering would move every file a link points at.
+ * The number is the corpus order and it is global, so `ls -R` is the order with no second copy of it
+ * to disagree. A gap left by a delete is never closed up: renumbering would move every file a link
+ * points at.
  */
 export function sourceFileName(index, title) {
 	const nn = String(index).padStart(3, '0');
@@ -184,14 +152,11 @@ export function sourcePath(index, title, section) {
 
 // ─── the file format ────────────────────────────────────────────────────────────────────────────────
 
-/** A source file → `{ fields, body, bodyLine }`. A file with no frontmatter is all body, which is how
- *  a hand-written markdown file dropped into `sources/` is still readable.
+/** A source file → `{ fields, body, bodyLine }`. A file with no frontmatter is all body, so a
+ *  hand-written markdown file dropped into `sources/` is still readable.
  *
- *  ⚠ `bodyLine` is the 1-based line of the FILE that `body` starts on, and it exists because leaving
- *  it out silently broke the one thing `wiki search` is for. Numbering a hit inside the body reports
- *  `<file>:<n>` where n is short by exactly the frontmatter's height — measured on a real corpus,
- *  reported line 44 against actual line 55, and 62 against 73. The number looks perfectly plausible,
- *  opens the wrong line, and nothing anywhere says so. A citation you cannot open is not a citation. */
+ *  `bodyLine` is the 1-based line of the file that `body` starts on. A hit numbered inside the body
+ *  alone would be short by the frontmatter's height and open the wrong line. */
 export function parseSource(text) {
 	const s = String(text ?? '');
 	if (!s.startsWith('---\n')) return { fields: {}, body: s, bodyLine: 1 };
@@ -218,20 +183,12 @@ export function stubFields({ kind, ref = '', title = '', upstream_id, adapter, s
 		kind,
 		ref,
 		title,
-		// ⚠ WHERE THE ORIGINAL IS KEPT — and an original is kept only when there is a REASON, never by
-		// default. A `${env:FILES_FOLDER}/…` TEMPLATE, never a machine path: the bytes stay out of the
-		// repo, the corpus carries the text, and this field carries the pointer.
-		//
-		// Keep an original when ONE of these is true, and say which in the body:
-		//   · RESTORING IT WOULD COST EFFORT — a paywalled or login-walled document, a one-off export,
-		//     a URL that has already moved once, a file somebody sent that exists nowhere else.
-		//   · IT HOLDS MORE THAN THE EXTRACTION DOES — figures, diagrams, a table the converter
-		//     flattened, a signature page, pagination a citation depends on. Text extraction loses
-		//     these silently, and the loss is invisible in the markdown that replaced them.
-		//
-		// Do NOT keep one for a document that can be re-fetched from a stable public URL: `ref` is
-		// already that pointer, and a second copy is a thing to keep in sync for no gain. Absent is
-		// the normal state and the honest one; a guessed path is a link that opens nothing.
+		// Where the original is kept, as a `${env:FILES_FOLDER}/…` template, never a machine path: the
+		// bytes stay out of the repo, the corpus carries the text, and this field carries the pointer.
+		// Keep an original only when restoring it would cost effort (a login-walled document, a one-off
+		// export, a file that exists nowhere else) or when it holds more than the extraction does
+		// (figures, tables, pagination a citation depends on). A document re-fetchable from a stable
+		// URL needs none: `ref` is already that pointer. Absent is the normal state.
 		...(source_file ? { source_file } : {}),
 		...(section ? { section } : {}),
 		...(adapter ? { adapter } : {}),
@@ -242,22 +199,13 @@ export function stubFields({ kind, ref = '', title = '', upstream_id, adapter, s
 }
 
 /**
- * `index.md` — the corpus's own page: identity, adapter, upstream and the counts AS OF the last sync
+ * `index.md` — the corpus's own page: identity, adapter, upstream and the counts as of the last sync
  * in frontmatter, then whatever a person wrote about what this corpus covers.
  *
- * ⚠ IT WAS `wiki.yaml` UNTIL 2026-09-11. The keys are identical; only the serialisation moved. The
- * reason is the rule the whole folder now obeys — a corpus is ONLY markdown, every file carrying
- * frontmatter — and a lone YAML file was the one thing in it that did not open the way everything
- * else does, in an editor, in a preview, in the same reader that renders the sources.
+ * It lists no sources: the folder already indexes itself by filename, and `dt-wiki status` renders
+ * the list from it on demand, so there is no second list to go stale.
  *
- * ⚠ AND IT STILL LISTS NO SOURCES. That was true of the manifest and it is truer of a file called
- * `index`: a list of the sources is a SECOND index of a folder that already indexes itself by
- * filename, and the day the two disagree one of them is quietly wrong with nothing to say which.
- * `wiki status` renders the list from the folder, on demand, and cannot go stale.
- *
- * ⚠ THE BODY IS A PERSON'S, AND IT IS PRESERVED. Re-rendering an index keeps whatever prose is
- * already under the frontmatter — this file is where "what this corpus covers, and what it
- * deliberately does not" belongs, and a writer that overwrote it would make it worthless to write.
+ * The body is a person's and is preserved: re-rendering keeps whatever prose is under the frontmatter.
  */
 export function renderIndex(m, body = '') {
 	const fm = yaml.dump({
@@ -273,8 +221,8 @@ export function renderIndex(m, body = '') {
 	return `---\n${fm}---\n${prose ? `\n${prose}\n` : '\n'}`;
 }
 
-/** The frontmatter of an `index.md`, or of a legacy bare-YAML `wiki.yaml` — both are accepted, and
- *  which one it is, is decided by whether the text opens a frontmatter fence. */
+/** The frontmatter of an `index.md`, or of a bare-YAML `wiki.yaml` — both are accepted, told apart
+ *  by whether the text opens a frontmatter fence. */
 export function parseIndex(text) {
 	const t = String(text ?? '');
 	const m = /^---\n([\s\S]*?)\n---\n?([\s\S]*)$/.exec(t);
@@ -282,9 +230,8 @@ export function parseIndex(text) {
 	return { fields: yaml.load(m[1]) ?? {}, body: m[2] };
 }
 
-/** ⚠ KEPT AS ALIASES so nothing that imported the old names breaks mid-release. `renderManifest`
- *  now writes markdown, which is the point — a caller that wanted YAML is a caller that wanted the
- *  shape this release removed. */
+/** Aliases of `renderIndex` and `parseIndex` under their manifest names; both read and write the
+ *  markdown `index.md`. */
 export const renderManifest = (m) => renderIndex(m);
 export const parseManifest = (text) => parseIndex(text).fields;
 
@@ -305,11 +252,10 @@ export function outline(body, maxLevel = 2) {
 }
 
 /** Every line of `body` matching `re`, as `{ line, text }` — numbered from `firstLine`, so a hit reads
- *  as a citation (`<file>:<line>`) rather than as an offset nobody can open.
+ *  as a citation (`<file>:<line>`).
  *
- *  ⚠ PASS THE SOURCE'S `bodyLine`. The default of 1 is correct only for a string that IS the whole
- *  file; for a parsed source the body starts below the frontmatter, and defaulting there is what
- *  produced line numbers that were plausible, wrong, and silent about it. */
+ *  Pass the source's `bodyLine`. The default of 1 is right only for a string that is the whole file;
+ *  for a parsed source the body starts below the frontmatter. */
 export function searchBody(body, re, cap = 200, firstLine = 1) {
 	const out = [];
 	String(body ?? '').split('\n').forEach((text, i) => {
@@ -322,9 +268,7 @@ export function searchBody(body, re, cap = 200, firstLine = 1) {
 // ─── templates and the environment ──────────────────────────────────────────────────────────────────
 
 /** `${env:NAME}` → its value, or a refusal naming the variable. Records carry the template; only the
- *  machine that runs the verb may render it.
- *  ⚠ Deliberately a second copy of `bin/notebook.mjs`'s private renderer: `lib/` may not import from
- *  `bin/`, and eight duplicated lines beat a dependency edge in the wrong direction. */
+ *  machine that runs the verb renders it. */
 export function renderTemplate(template, env = process.env) {
 	let missing = null;
 	const value = String(template ?? '').replace(/\$\{env:([A-Z0-9_]+)\}/g, (_, name) => {
@@ -336,9 +280,8 @@ export function renderTemplate(template, env = process.env) {
 		: { value };
 }
 
-/** `.env` text → its key/value pairs. Names AND values, unlike the doctor's `envKeys`: the doctor's
- *  rule is that a value never reaches an OUTPUT, and it still holds — a `wiki` verb renders
- *  `FILES_FOLDER` into a folder it is about to write to, on the operator's own machine. */
+/** `.env` text → its key/value pairs. Values are read so a verb can render `FILES_FOLDER` into a
+ *  folder it is about to write to on this machine; no value is ever printed. */
 export function parseEnv(text) {
 	const out = {};
 	for (const line of String(text ?? '').split('\n')) {
@@ -365,12 +308,9 @@ export function envFrom(root, base = process.env) {
 /**
  * One `notebooklm` invocation's raw result → `{ json }` or `{ error }`.
  *
- * ⚠ THE VENDOR REPORTS FAILURE AS A JSON PAYLOAD ON STDOUT, AND SOMETIMES AT EXIT 0. Measured
- * 2026-09-11 on notebooklm-py 0.7.3: `source fulltext --format markdown` answers
- * `{"error": true, "code": "UNEXPECTED_ERROR", "message": "…requires the 'markdownify' package…"}`
- * — exit 2 with `-o`, exit 0 without it, stderr empty either way. Branching on the exit code alone
- * gave 129 sources whose recorded reason was the command line echoed back, which named nothing; the
- * payload names the fix in one sentence. So the PAYLOAD is read first, whatever the exit code says.
+ * The vendor reports failure as a JSON payload on stdout (`{"error": true, "message": …}`), sometimes
+ * at exit 0 and with stderr empty, and the payload's message names the fix. So the payload is read
+ * first, whatever the exit code says.
  */
 export function vendorResult({ stdout = '', stderr = '', status = 0 } = {}) {
 	const i = String(stdout).indexOf('{');
@@ -399,15 +339,15 @@ export function kindFromUpstream(type) {
 }
 
 /**
- * The ordered work a `wiki pull` becomes — pure, so a fixture pins it without a network call.
+ * The ordered work a `dt-wiki pull` becomes — pure, so a fixture pins it without a network call.
  *
  * `live`      the upstream `source list --json` payload (or its `sources` array)
  * `existing`  the source files already on disk, as `{ upstream_id, completeness, path }`
  * `opts`      `refresh` re-fetches what is already complete · `limit` caps the run · `section(live)`
  *             assigns a subfolder
  *
- * ⚠ EVERY live source produces a step, including the ones being skipped. The plan IS the inventory,
- * and a step dropped because it looked finished is a source that stops being counted.
+ * Every live source produces a step, including the ones being skipped: the plan is the inventory,
+ * and a dropped step would be a source that stops being counted.
  */
 export function pullPlan(live, existing = [], opts = {}) {
 	const rows = Array.isArray(live) ? live : (live?.sources ?? []);

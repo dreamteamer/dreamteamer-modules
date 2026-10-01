@@ -1,7 +1,7 @@
 {
 	"name": "@dreamteamer/meetings",
 	"version": "0.1.0",
-	"description": "Calendar meetings for a dreamteamer workspace — synced from Google Calendar, attendees as contacts, screenshots filed beside each call.",
+	"description": "Your calendar meetings as records, synced from Google Calendar, with attendees as contacts and screenshots filed beside each call.",
 	"license": "Apache-2.0",
 	"repository": {
 		"type": "git",
@@ -26,7 +26,7 @@
 	],
 	"dreamteamer": {
 		"title": "Meetings",
-		"description": "Every calendar `meeting`, synced from Google Calendar direct to the API (`fetching-meetings`, `/fetch-meetings`), with the screenshots taken during a call filed beside it (`ingesting-meeting-screenshots`, `/fetch-meeting-screenshots`) and each attendee's contact stamped with its latest meeting (`/update-contacts-from-meetings`). The ANCHOR, and nothing more: attendees are `contacts`, the company is `companies`, the people of ours in the room are `users` (`ours`). The audio and transcript live in the `recordings` module and the prep, summary and critique in `meeting-docs`; each depends on this one and stamps its own fields onto `meetings` when installed, so a workspace that only syncs its calendar has meetings with none of them.",
+		"description": "Your calendar meetings as records: synced from Google Calendar (`/fetch-meetings`), with attendees as `contacts`, the company as `companies` and your own people in the room as `users` (`ours`). Files screenshots taken during a call beside its meeting (`/fetch-meeting-screenshots`) and stamps each attendee's contact with their latest meeting (`/update-contacts-from-meetings`).",
 		"engine": ">=0.30.0",
 		"dependencies": [
 			"@dreamteamer/contacts",

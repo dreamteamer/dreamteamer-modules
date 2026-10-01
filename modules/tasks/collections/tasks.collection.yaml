@@ -7,11 +7,8 @@ storage:
   shape: file
   suffix: task
 id:
-  # ⚠ AN ORDERED LIST (engine >=0.25.0): the first template whose fields are all
-  # present wins. `slug` when the record carries one, the name otherwise — which is
-  # what lets `slug` be OPTIONAL instead of forcing a handle onto every record.
-  # `{{ slug }}` is the FIELD; `{{ name | slug }}` is the name through the slug FILTER.
-  # Same word, two things, and the pipe is what tells them apart.
+  # The first template whose fields are all present wins: `slug` when set, the name otherwise.
+  # `{{ slug }}` is the field; `{{ name | slug }}` is the name through the slug filter.
   generate:
     - '{{ created | date }}--{{ slug }}'
     - '{{ created | date }}--{{ name | slug }}'
@@ -21,7 +18,7 @@ schema:
   required:
     - name
   properties:
-    slug: { type: string, pattern: '^[a-z0-9][a-z0-9-]*$', title: Slug, description: 'The latin handle that becomes the id. ⚠ A SLUG, NOT A CODE, and the pack keeps the two apart deliberately: `activities.code` (`a-01`) and `risks.code` (`rk-01`) are identifiers a room says out loud and reads in order, so they stay required and stay called codes. This one exists ONLY so a value in any script can have a readable, typeable id — it is never shown to a reader and never replaces the name. OPTIONAL since engine 0.25.0: `id.generate` takes an ordered list, so the id falls back to the name when this is empty, and a name with no latin characters still produces a hash id but now says so on the write.' }
+    slug: { type: string, pattern: '^[a-z0-9][a-z0-9-]*$', title: Slug, description: 'Optional latin handle that becomes the id. Set it when the name is not in latin script — otherwise the id is a hash nobody can read or type. Never shown in place of the name.' }
     name:
       type: string
       description: The commitment in one line, starting with a verb — what would be done, not the topic.
@@ -33,8 +30,8 @@ schema:
         module ships no enum, because every workspace splits its work differently (one by client, one by department,
         one by area of life). Pick a short set of display-ready values (`CRM`, `Finance`, `R&D`) and use them
         consistently: the board groups its rows by the raw value, so `finance` and `Finance` are two lanes. Infer from
-        the task's ACTUAL WORK, not where it was surfaced. To close the set, add an `enum` (and optionally an
-        `x-choices` block with a codicon and a theme colour per value) with `dt set-field tasks --name lane …`.
+        the task's ACTUAL WORK, not where it was surfaced. To close the set, give the field an `enum` in a workspace
+        overlay of this collection.
     description:
       type: string
       format: markdown
@@ -50,15 +47,11 @@ schema:
         - closed
       default: todo
       description: >-
-        Where this stands. `todo` is what the session greeting's inbox lists. `doing` is in flight. `blocked` means the
-        next move belongs to someone else and the operator is waiting on a named party — it stays on the board because
-        it needs chasing, but it is not work he can pick up. `done` means the commitment was met; `closed` means it left
+        Where this stands. `todo` is not started. `doing` is in flight. `blocked` means the next move belongs to a named
+        party you are waiting on — it stays on the board because it needs chasing, but it is not work you can pick up.
+        `done` means the commitment was met; `closed` means it left
         the board WITHOUT being met — superseded, split into others, overtaken by events, or decided against. `done` and
         `closed` are terminal; the distinction is what makes "what did I actually deliver" answerable later.
-    # THE ADDRESSBOOK EDGE. Until 2026-09-10 this collection modelled "the operator's own commitments"
-    # and had no assignee at all, which is why a person could not be asked what was theirs. It points at
-    # `users`, never at `contacts`: a task is assigned TO someone who does work, and the generated mirror
-    # is what makes the person's own record answer the question instead of a saved search.
     project:
       type: string
       x-reference: projects
@@ -73,6 +66,8 @@ schema:
         field: tasks
         description: The tasks raised under this plan rung — generated from `tasks.activity`.
       description: The plan rung this task came out of, when it did. A task is the small thing you do; an activity is the bounded piece of work it serves.
+    # `assignee` points at `users`, never `contacts`: a task is owed by someone who does work here, and
+    # the generated mirror lets that person's own record list what they owe.
     assignee:
       type: string
       x-reference: users
@@ -80,8 +75,8 @@ schema:
         field: tasks
         description: The tasks assigned to this person — generated from `tasks.assignee`.
       description: >-
-        Who owes this. Empty means the operator themselves, which is the honest default for a personal
-        task list — a workspace with one person never has to fill it in.
+        Who owes this. Empty means the workspace's own person, so a workspace with one person never has to
+        fill it in.
     due:
       type: string
       format: date
@@ -101,25 +96,22 @@ schema:
         - normal
         - high
       default: normal
-      description: How sure the extractor was that this really is a task the operator owns.
+      description: How sure the writer was that this really is a task someone in the workspace owns.
     tags:
-      examples: ['finance', 'tax', 'docs-missing']
+      examples: ['client:northwind', 'finance', 'decision']
       type: array
       items:
         type: string
       description: >-
-        What DOMAIN this task belongs to, in English, so the board can be split by kind rather than read end to end. The
-        vocabulary that earned its place: `finance` on everything money-touching, plus one of `tax` · `vat` ·
-        `insurance` · `pension` · `property` · `banking` · `credit-card` · `accountant` · `docs-missing` · `decision`. A
-        task with no tag reads as dev/ops work, which is the useful default. Free strings, lowercase and hyphenated;
-        `key:value` with NO space around the colon — a space makes YAML parse the entry as a map. Nothing validates a
-        tag: `python3 .dreamteamer/skills/working-with-tags/bin/tags.py` (the tags module's
-        `working-with-tags` skill) lists the tags in use.
+        What this task is about, so the board can be split by kind rather than read end to end. Free strings,
+        lowercase and hyphenated; `key:value` with no space around the colon, since a space makes YAML parse the
+        entry as a map. Nothing validates a tag: `python3 .dreamteamer/skills/working-with-tags/bin/tags.py` (the
+        tags module's `working-with-tags` skill) lists the tags in use.
     assistant_recommended_next_step:
       type: string
       format: markdown
       description: >-
-        The single next move the assistant recommends, written in the operator's language and refreshed whenever the record is
+        The single next move the assistant recommends, written in the reader's language and refreshed whenever the record is
         analysed. Opens with the CURRENT STATE in one line — what is true now, who holds the ball, how long it has sat —
         because a recommendation without its context reads as an order. Then the move itself, and why that one rather
         than the obvious alternative. This field is ANALYSIS, not a UI hint: it is written when the record is examined,

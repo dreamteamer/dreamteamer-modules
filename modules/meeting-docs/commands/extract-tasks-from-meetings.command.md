@@ -16,8 +16,8 @@ in the body rather than guessing a ref. `item` points at the meeting. `due` when
 **and when the task blocks a dated event, that event's date is the due date**, even if nobody said the
 words "due by".
 
-the quad: `author: agents/dreamteamer (<your model>)`, `source: meetings/<id>`, `creation_context`
-naming where in the call it came from, `confidence: low` for anything you inferred rather than heard.
+the quad: `author: agents/<harness>` (e.g. `agents/claude-code`), `source: meetings/<id>`,
+`creation_context` naming your model and where in the call it came from, `confidence: low` for anything you inferred rather than heard.
 
 skip aspirations ("we should think about…"), restatements of existing tasks, and anything already
 tracked — check `tasks list` before writing. report what you extracted and, explicitly, what you

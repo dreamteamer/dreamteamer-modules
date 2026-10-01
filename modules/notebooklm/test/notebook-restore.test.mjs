@@ -127,7 +127,7 @@ describe('captureSources — a live source list becomes record sources', () => {
 		assert.equal(sources[0].title, 'Example');
 	});
 	// The list does not carry a file's bytes, a pasted text's content or a Drive document's id — those
-	// are the operator's to fill, and the verb SAYS which rather than writing a restorable-looking record.
+	// are yours to fill, and the verb SAYS which rather than writing a restorable-looking record.
 	test('what the list cannot recover is named as unresolved, never silently blank', () => {
 		const { sources, unresolved } = captureSources(live);
 		assert.deepEqual(unresolved.map((u) => u.title), ['deck.pdf', 'Pasted', 'Plan']);

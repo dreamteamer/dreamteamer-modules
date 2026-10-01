@@ -53,7 +53,8 @@ schema:
       type: string
       description: >-
         Where the frames or screenshots live, as a FULL `${env:FILES_FOLDER}/rnd/references/<id>/screenshots` template —
-        the same shape `meetings` uses. `bin/extract-frames.mjs` fills it from `reference_file`.
+        the same shape `meetings` uses. `.dreamteamer/skills/building-from-references/bin/extract-frames.mjs`
+        fills it from `reference_file`.
     prd:
       type: string
       format: markdown

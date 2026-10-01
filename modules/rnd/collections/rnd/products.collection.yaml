@@ -33,18 +33,16 @@ schema:
         - retired
       description: Where the product stands in its own life — not where any one piece of work on it stands.
     project:
-      # ⚠ POINTS AT THE PLAN MODULE, and does so as a PEER — no `x-inverse`. `rnd/projects` was
-      # deleted because this pack shipped TWO collections that both meant "a project", and a name
-      # collision across two modules of one pack is the shape that leaves a workspace permanently
-      # stale. A PRODUCT is the effort; the plan that delivers it is `projects`, with its phases,
-      # gates, seats and risks. A mirror here would write a field into a module this one does not
-      # own, so `rnd` peers `projects` instead and stays installable without it.
+      # Points at the plan module as a PEER, with no `x-inverse`. A PRODUCT is the effort; the plan
+      # that delivers it is `projects`, with its phases, gates, seats and risks. A mirror here would
+      # write a field into a module this one does not own, so `rnd` peers `projects` and stays
+      # installable without it.
       type: string
       x-reference: projects
       description: The delivery plan this product is built under — empty for a product that is its own effort.
     company:
-      # Folded in from `rnd/projects` (deleted): with a product carrying the EFFORT, it has to be
-      # able to say whose effort it is. A plain reference and no mirror — `companies` is a peer.
+      # A product carries the effort, so it says whose effort it is. A plain reference and no
+      # mirror — `companies` is a peer.
       type: string
       x-reference: companies
       description: The client organisation this product is built for — empty for an internal one.

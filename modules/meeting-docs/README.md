@@ -19,7 +19,10 @@ npx dreamteamer compile
 | `@dreamteamer/recordings` | the transcript summarise, extract and analyse are gated on |
 | `@dreamteamer/tasks` | the follow-ups a call produces |
 | `@dreamteamer/contacts`, `@dreamteamer/companies` | who a prep is about |
-| `/meetings/pipeline` | the view: which recent meetings have a prep, a summary, a critique |
 
-A prep can be written for any meeting, with no recording. A summary and a critique need a
-transcribed recording, and their commands say so until one exists.
+The module also ships the `/meetings/pipeline` view: which recent meetings have a prep, a summary,
+a critique.
+
+A prep can be written for any meeting, with no recording. A summary, its tasks and a critique need a
+transcribed recording; their commands are offered on a meeting only once one of its recordings has
+been transcribed.

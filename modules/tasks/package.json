@@ -1,7 +1,7 @@
 {
 	"name": "@dreamteamer/tasks",
 	"version": "0.1.0",
-	"description": "Concrete commitments for a dreamteamer workspace — who owes what by when, an inbox, a board and a by-person view.",
+	"description": "Concrete commitments for a dreamteamer workspace — who owes what by when, with an inbox, a board and a by-person view.",
 	"license": "Apache-2.0",
 	"repository": {
 		"type": "git",
@@ -20,7 +20,7 @@
 	],
 	"dreamteamer": {
 		"title": "Tasks",
-		"description": "A concrete commitment, starting with a verb — `tasks`, each optionally owed by one `users` record (`assignee`; empty means the workspace's own person), with an absolute `due`, a free `lane` for the board, and an `item` backlink to the record it came out of. Ships the inbox (`/inbox`), the board (`/tasks/board`) and the by-person view (`/tasks/by-assignee`), and `working-with-tasks`, the procedure an agent follows to create, assign, triage and close one. Depends on the tags module, because `tasks.tags` points a writer at its script. Peers `projects` and `activities`: install the projects module and a task can hang off a plan rung, with the mirror stamped onto the plan; without it a write that sets either is refused, naming the missing collection.",
+		"description": "`tasks`: concrete commitments, each one verb-first line with an optional `assignee` (a `users` record), a `due` date, an `urgent` flag, a free `lane` and an `item` backlink to its source record. Ships the inbox (`/inbox`), the board (`/tasks/board`), the by-person view (`/tasks/by-assignee`) and the `working-with-tasks` skill. With the projects module, a task can name its project or activity.",
 		"engine": ">=0.30.0",
 		"dependencies": [
 			"@dreamteamer/users",

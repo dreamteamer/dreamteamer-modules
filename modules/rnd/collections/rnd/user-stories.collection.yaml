@@ -9,11 +9,9 @@ storage:
   codec: md
   shape: file
   suffix: user-story
-# ⚠ THE SLUG COMES FROM `key`, NOT FROM `name`. A story's `name` is the sentence the user would SAY,
-# and in this workspace that sentence is Hebrew — which the engine's `slug` filter (`slugOrHash`)
-# turns into an `x1a2b3c4` hash without failing. Every id would be unreadable and ungreppable. The
-# same trap is already documented on `projects` and on `rnd/screens`; this is the third instance, and
-# it is the reason `key` is required.
+# The slug comes from `key`, not from `name`. A story's `name` is the sentence the user would SAY, and
+# in a non-Latin script the engine's `slug` filter (`slugOrHash`) turns it into an `x1a2b3c4` hash, so
+# `key` is required to keep ids readable and greppable.
 id:
   generate: '{{ created | date }}--{{ key }}'
   pattern: ^\d{4}-\d{2}-\d{2}--[a-z0-9-]+$
@@ -25,7 +23,7 @@ schema:
   properties:
     key:
       type: string
-      description: The latin handle that becomes the id — `first-sign-in-otp`, `see-vesting-schedule`. Lowercase, hyphenated. It exists because `name` is Hebrew and would hash.
+      description: The latin handle that becomes the id — `first-sign-in-otp`, `see-vesting-schedule`. Lowercase, hyphenated. It exists because a `name` in a non-Latin script would hash.
     name:
       type: string
       description: The story in one line — what someone can do that they could not before.
@@ -38,13 +36,13 @@ schema:
       x-body: true
       description: The story itself, with whatever acceptance detail makes "done" unambiguous.
     tags:
-      examples: ['dreamteamer', 'v06']
+      examples: ['onboarding', 'v2']
       type: array
       items:
         type: string
       description: >-
         Free strings, lowercase and hyphenated. Optionally `key:value` with NO space around the colon
-        (`analysis:meeting-insights`, `enriched:web-search`) — a space makes YAML parse the entry as a map instead of a
+        (`area:onboarding`, `source:interview`) — a space makes YAML parse the entry as a map instead of a
         string. Nothing validates a tag; there is no `tags` collection. Reuse one already in use before inventing one: `dt values <collection> tags` lists them.
     status:
       type: string
@@ -66,9 +64,8 @@ schema:
         description: What users can do with this product — generated from `rnd/user-stories.product`.
       description: >-
         The PRODUCT this story belongs to, directly. The chain story → design doc → product exists, but a
-        product page that cannot list its own stories without a two-hop join is a product page that lies by
-        omission — and on a four-product engagement "which product is this story for" is the first question
-        a reviewer asks. Added 2026-09-12 when a workspace found all 57 of one product's stories unreachable from any product record.
+        product page lists its own stories without a two-hop join, and "which product is this story for" is
+        the first question a reviewer asks.
     source:
       type: string
       x-reference: rnd/draft-docs
@@ -76,8 +73,8 @@ schema:
     screen:
       type: string
       x-reference: rnd/screens
-      # ⚠ NO `x-inverse` here — `rnd/screens.user_stories` already carries `x-inverse-of`, and
-      # declaring both spellings compiles clean and then warns on EVERY compile, forever.
+      # No `x-inverse` here: `rnd/screens.user_stories` carries `x-inverse-of`, and declaring both makes
+      # compile warn on every run.
       description: The screen this story runs through. A story with no screen is a capability nobody has decided where to put.
     journey:
       type: string
@@ -111,4 +108,4 @@ list_fields:
   - last-modified
   - status
   - tags
-icon: comment   # not `book` — `notebooks` already wears `book`; a story is the sentence a user would SAY
+icon: comment

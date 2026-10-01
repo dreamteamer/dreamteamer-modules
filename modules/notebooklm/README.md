@@ -1,9 +1,10 @@
 # @dreamteamer/notebooklm
 
-Everything NotebookLM. `dt notebooklm` renders a [dreamteamer](https://github.com/dreamteamer/dreamteamer)
-workspace as a bounded set of sources and, given a notebook, syncs them; the `notebooklm` harness
-keeps `NOTEBOOKLM.md`'s configuration block current on every compile; and a `notebooks` record is the
-spec a live notebook can be rebuilt from on any Google account.
+NotebookLM for a [dreamteamer](https://github.com/dreamteamer/dreamteamer) workspace. `dt notebooklm`
+renders the workspace as a bounded set of sources and, given a notebook, syncs them; the `notebooklm`
+harness keeps `NOTEBOOKLM.md`'s configuration block current on every compile; and a `notebooks` record
+is the spec a notebook is restored from — its ordered sources, its chat settings, and the id and login
+of its live copy.
 
 ```bash
 npm install @dreamteamer/notebooklm
@@ -27,10 +28,9 @@ references to records that were withheld. Prose inside a record is not scanned; 
 
 ## what a descriptor cannot say
 
-**`account` is a string, not a reference.** The workspace this was cut from types it as a reference
-into an accounts collection; this package ships none, and the structure gate refuses a reference
-nobody provides. The fact survives, as an address or a label; a workspace with an accounts collection
-re-types the field in an overlay.
+**`account` is a string, not a reference.** This package ships no accounts collection, and a
+reference nobody provides does not compile. The fact is kept as an address or a label; a workspace
+with an accounts collection re-types the field in an overlay.
 
 **The vendor skill is a dependency, and it is installed by the vendor.** `notebooklm skill install`
 writes `~/.claude/skills/notebooklm/SKILL.md`; `using-notebooklm` here defers to it for every flag
@@ -38,8 +38,8 @@ and adds only this workspace's rules. Editing the vendor copy is how it drifts o
 
 **The record is a spec, and `chat` is write-only by nature.** `sources` and `chat` are what
 `restore` plays against a fresh notebook; `capture` can fill `sources` from the live list but never
-`chat`, because NotebookLM exposes no read of the persona and a bare `configure` CLEARS it (measured
-2026-09-08, twice). So the persona lives on the record (or in `persona_file`) and flows one way. A
+`chat`, because NotebookLM exposes no read of the persona and a bare `configure` clears it. So the
+persona lives on the record (or in `persona_file`) and flows one way. A
 `file` source is a `${env:FILES_FOLDER}/…` template: the record never carries a machine path.
 
 **Which adapter answers is DERIVED, not defaulted.** `notebooks.adapter` has no default: a record with
@@ -47,6 +47,6 @@ a `notebook_id` is served upstream, one without is served by its wikis. The fiel
 override that, needed exactly once, when a notebook restored upstream should stop being answered
 from there.
 
-**Tests** run `tests/*.test.mjs` against the engine in the repo's devDependencies, or the checkout
+**Tests** run `test/*.test.mjs` against the engine in the repo's devDependencies, or the checkout
 `DT_ENGINE_DIR` names. No test reaches the real `notebooklm` CLI: every spawn runs with a PATH whose
 only `notebooklm` is a stub.

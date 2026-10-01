@@ -1,38 +1,13 @@
-# activity-lanes — THE BANDS A PLAN IS READ IN. The swimlane on a board, the row-group on a gantt.
+# activity-lanes — the bands a plan is read in: the swimlane on a board, the row-group on a gantt.
+# A lane is a record because it carries an ORDER, which a free-text value cannot: a board stacks its
+# bands top to bottom, and alphabetical order is not the order a plan runs in. Being a record also
+# means a misspelt lane is refused rather than drawn as a new band, and the body can say what the
+# band deliberately excludes. `lane` is the track; `phase` (a `phases` record) is when.
 #
-# ⚠ WHY THIS IS A COLLECTION AND NOT A SECOND FREE-TEXT FIELD, which is the only question worth
-# asking about it. `activities.phase` is free text and already groups; `gates` was REMOVED as a
-# collection on 2026-09-10 and became `kind: gate`, because a plan reads as ONE ordered list. Run a
-# lane through the same test and exactly one thing comes back that a string cannot do:
-#
-#   ORDER. A board draws its lanes top to bottom, and a free-text value has no order but its own
-#   spelling. `Build · Discovery · Hardening · Launch` is what alphabetical gives you for a plan that
-#   runs Discovery → Build → Hardening → Launch. Nothing on the activity can fix that: the ordering
-#   is a property of the LANE, and there is one lane and many activities in it, so the only place the
-#   number can live without being restated (and contradicted) on every row is a record of its own.
-#
-# Three more follow from being a record rather than a string, and none of them would have been worth
-# a collection alone:
-#   · A TYPO IS REFUSED rather than drawn. `Phase 1`, `phase-1` and `Discovery` are three lanes on
-#     the board and one in somebody's head; a reference is checked, a string is not.
-#   · A LANE MAY SPAN PROJECTS. `project` below is OPTIONAL, and empty means exactly that — a
-#     workstream that runs across two plans (security, data migration, the thing the platform team
-#     owns everywhere). An activity has ONE project, so nothing on the activity can express it.
-#   · IT HAS SOMEWHERE TO SAY WHAT IT COVERS. The body, which is where "what is in this lane and what
-#     deliberately is not" belongs — the sentence that stops the lane quietly becoming a dumping row.
-#
-# ⚠ AND THE HONEST CONSEQUENCE: `phase` and `lane` must not both be used as the grouping axis, or a
-# plan has two disagreeing ways to band and the board picks one. `lane` is the GROUPING; `phase` is
-# kept as the time band it was always named for (see its description on `activities`). A workspace
-# that has been using `phase` as a swimlane should move those values here — nothing forces it, and
-# nothing here deletes `phase`.
-#
-# ⚠ THE ID IS FLAT (`{{ name | slug }}`), so lane names are unique ACROSS projects, and that is the
-# price of letting `project` be optional: an id generator throws on a missing field, so an optional
-# field cannot be an id segment. Two plans that each want a lane called "Discovery" either SHARE one
-# cross-project lane — which is legitimate and is half the reason this is a record — or name them
-# apart (`discovery-atlas`, `discovery-beacon`). `dt add` refuses the collision rather than merging
-# them silently, which is the failure mode worth having.
+# The id is flat (`{{ name | slug }}`) because `project` is optional and an id segment must be a
+# required field. Lane names are therefore unique across projects: two plans either share one
+# cross-project lane or name theirs apart (`discovery-atlas`, `discovery-beacon`), and `dt add`
+# refuses the collision.
 name: activity-lanes
 description: >-
   One band of a plan — the swimlane a board draws activities in, and the row-group a gantt stacks them by.
@@ -41,12 +16,10 @@ use_when: >-
   a plan needs bands a reader can see — workstreams, tracks, teams-of-work, the rows of a swimlane board — and
   the bands have an order somebody decided. Create the lanes BEFORE setting `activities.lane`, and read here
   before inventing a new band: a lane that already exists under another spelling is the drift this collection
-  removes. Leave `project` empty for a workstream that runs across more than one plan; a lane that is really a
-  span of TIME rather than a track of work is `activities.phase`, not a record here
+  removes. Leave `project` empty for a workstream that runs across more than one plan; a span of TIME rather
+  than a track of work is a `phases` record, not a lane
 storage: { path: data/activity-lanes, codec: md, shape: file, suffix: activity-lane }
-# ⚠ A NON-LATIN NAME YIELDS A HASH ID, NOT A REFUSAL — the same warning that sits on `projects`,
-# `goals` and `users`, for the same reason (the engine's `slug` filter is `slugOrHash`). A workspace
-# whose lane names are not Latin passes `--id` explicitly.
+# A name with no Latin characters slugs to a hash id; pass `--id` for a readable one.
 id:
   generate: '{{ name | slug }}'
   pattern: ^[a-z0-9][a-z0-9-]*$
@@ -57,16 +30,13 @@ schema:
     name:
       type: string
       description: What the band is called, as it should read in the lane header — "Discovery", "Platform", "Client onboarding".
-    # ── THE FORCING FIELD, AND THE REASON THIS IS A COLLECTION RATHER THAN A STRING ────────────────
-    # REQUIRED, and deliberately so: ordering is the whole argument above, and an unordered lane is a
-    # free-text `phase` with extra ceremony. Requiring it costs one `dt list activity-lanes` before
-    # adding the second lane, which is exactly the decision a person should be making at that moment.
+    # Required: the order is what a lane exists to carry.
     order:
       type: integer
       description: >-
-        REQUIRED. Where this band sits, top to bottom. Leave gaps (10, 20, 30) so a lane can be inserted
-        later without renumbering the rest — the same convention the nav uses. Two lanes on one number is
-        not refused by anything, and it means the board picks between them arbitrarily.
+        Where this band sits, top to bottom. Leave gaps (10, 20, 30) so a lane can be inserted later
+        without renumbering the rest. Two lanes on one number are not refused, and the board then orders
+        them arbitrarily.
     project:
       type: string
       x-reference: projects
@@ -74,10 +44,8 @@ schema:
         field: lanes
         description: The bands this project's plan is read in — generated from `activity-lanes.project`.
       description: >-
-        The plan this band belongs to. OPTIONAL, and EMPTY IS A MEANING: a lane with no project is a
-        workstream running across several plans, which is one of the two things a lane does that a field
-        on the activity cannot. A lane WITH a project may only hold that project's activities —
-        `bin/check-records.mjs` refuses the mismatch, because nothing in the schema can.
+        The plan this band belongs to. Empty means a workstream running across several plans. A lane with
+        a project may only hold that project's activities; `bin/check-records.mjs` refuses the mismatch.
     tags:
       type: array
       items: { type: string }
@@ -87,8 +55,8 @@ schema:
       format: markdown
       x-body: true
       description: >-
-        What this lane covers and — the half that earns the body — what it deliberately does NOT, so the
-        band does not quietly become the row everything unfiled lands in.
+        What this lane covers and what it deliberately does not, so the band does not become the row
+        everything unfiled lands in.
     author:
       type: string
       pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
