@@ -315,7 +315,7 @@ There is no per-call charge. What actually breaks:
    | `get_person_profile(slug)` | **1** |
    | `get_person_profile(slug, sections: "experience,education")` | **3** |
 
-   two profiles at 3 loads each = 6, and load 7 was refused. So `sections` is the expensive parameter,
+   Two profiles at 3 loads each = 6, and load 7 was refused. So `sections` is the expensive parameter,
    not the number of people. **Budget in loads.** Ask for no section you will not write down, take the
    top card alone on a first pass, and come back for sections only on people who matter.
 4. **Volume looks like automation.** LinkedIn restricts accounts for automated access — it's against
@@ -358,7 +358,7 @@ session: both a `network`-filtered and a plain keyword query returned `ERR_TOO_M
 entirely and use `WebSearch`:
 
 ```
-WebSearch: "Jane Doe" acme linkedin.com/in
+WebSearch: "Dana Oren" northwind linkedin.com/in
 ```
 
 Google indexes the public shell of most profiles, so the slug is usually right in the result URL.
