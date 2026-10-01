@@ -7,31 +7,24 @@ use_when: >-
   extracted from
 storage: { path: data/meeting-summaries, codec: md, shape: file, suffix: summary }
 id:
-  # ⚠ The generator is a FALLBACK, not the convention. A summary's id MIRRORS its meeting's
-  # basename — including the HH-MM segment the generator cannot produce (it only sees `created`,
-  # not the meeting's start). Always pass --id <meeting's YYYY/MM path and basename> on add, as
-  # /summarize-meeting instructs; a generated id sorts wrong beside its siblings and breaks the
-  # "rename the mirroring summary too" step in fetching-meetings. (One id was minted generator-
-  # shaped on 2026-08-30 and had to be renamed — the pattern accepts both shapes, so nothing
-  # catches it.)
+  # The generator is a FALLBACK, not the convention. A summary's id MIRRORS its meeting's path and
+  # basename, which the generator cannot produce (it only sees `created`, not the meeting's start),
+  # so /summarize-meeting passes --id. The pattern accepts both shapes, so nothing else catches a
+  # generated one.
   generate: "{{ created | date:YYYY/MM }}/{{ created | date }}--{{ name | slug }}"
   pattern: "^\\d{4}/\\d{2}/\\d{4}-\\d{2}-\\d{2}--[a-z0-9-]+$"
 schema:
   type: object
   required: [name]
   properties:
-    name:                                # was `subject` — normalized 2026-07-27
+    name:
       type: string
       description: What this summary is of — normally the meeting's own title.
     description:
       type: string
       description: One line on what the call was about, for a list view.
-    # A date-time since 23/08/2026 — same reason as `meeting-recordings.date` and
-    # `meeting-preps.date`: as a bare day it could not order the several summaries that share one
-    # date, so the list sorted to day precision only. Denormalized from `meeting.starts`, which is
-    # exact (Google Calendar). ⚠ This is the CALL's instant, never when the summary was written —
-    # that is what the id's `created` already carries, and conflating the two is what decision 69
-    # fixed on meetings.
+    # A date-time, not a day, so several summaries on one date sort in order. It is the CALL's
+    # instant, never when the summary was written.
     date:
       type: string
       format: date-time

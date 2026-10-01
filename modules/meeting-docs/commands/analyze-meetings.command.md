@@ -17,14 +17,15 @@ knowledge may be stale or the claim's truth changes the advice. Unverified asser
 findings are worse than no findings.
 
 Anchor every finding to a `[MM:SS]` timestamp with the words quoted, and give every finding its cheap
-fix. Split the suggestions into *the engagement* and *the operator*, and mark the highest-leverage one.
+fix. Split the suggestions into *the engagement* and *you*, and mark the highest-leverage one.
 
 If a lens was passed after the refs, weight the review toward it. Default lens: objective validation and
-scrutiny of everything the operator said — technical accuracy, compliance and factual framing, and
+scrutiny of everything you said — technical accuracy, compliance and factual framing, and
 commercial posture.
 
-Set `about` to the lead / client / company the meetings belong to, `reviewed` to whose conduct was
-scrutinised (the operator, `users/<operator-id>`, unless told otherwise), and leave `follow_up` empty.
+Set `about` to the company or engagement the meetings belong to, `reviewed` to whose conduct was
+scrutinised (your own `users/<id>` record unless told otherwise), the quad (`author: agents/<harness>`,
+the model in `creation_context`), and leave `follow_up` empty.
 
 Then report: the verdict in one line, the findings by severity, and — explicitly — **anything in the
 engagement's own records the review now contradicts** (a `next_steps` item the review says is the wrong

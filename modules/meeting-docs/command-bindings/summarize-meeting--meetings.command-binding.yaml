@@ -1,12 +1,10 @@
 command: commands/summarize-meeting
 collection: collections/meetings
 target: record
-# one-hop through the recordings ARRAY (_some semantics) — was `transcription: {_nempty: true}` on
-# the meeting itself until M2 moved the transcript onto the recording (meetings-v2, 2026-07-28).
+# one-hop through the recordings ARRAY (_some semantics): at least one recording must be transcribed.
 can-enter:
   recordings:
     transcription:
       _nempty: true
-# can-exit omitted: "a meeting-summary referencing this meeting exists" is an INBOUND-ref condition
-# — tier 2, not supported yet (see DECISION-LOG). the command never shows "done".
+# can-exit is omitted, so the command never shows "done"; a re-summary replaces the existing one.
 description: summarize this meeting's transcript into a meeting-summary record
