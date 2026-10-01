@@ -74,8 +74,7 @@ schema:
         `(unassigned)`. THIS IS HOW EVIDENCE IS ATTACHED, and it exists for the reason
         `activities.from_candidate` does: the model NAMES the arc and bounds it, and
         `bin/infer-goals.mjs --attach` copies the activity, decision, project and topic refs onto
-        the record. Asking a naming pass to copy refs by hand is how 615 of 1,068 conversations were
-        once silently dropped.
+        the record. A naming pass asked to copy refs by hand drops them silently.
     inferred_from:
       type: array
       items:

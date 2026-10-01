@@ -52,13 +52,13 @@ const TASK_FIELDS = ['name', 'gid', 'created_at', 'completed', 'completed_at', '
 	'custom_fields.name', 'custom_fields.display_value'].join(',');
 /** A task's event trail. `comment_added` is a person talking; everything else is the board moving. */
 const STORY_FIELDS = 'resource_subtype,text,created_at,created_by.name,created_by.email';
-/** How many story requests are in flight at once. Polite, and enough: 933 tasks finish in ~2 minutes. */
+/** How many story requests are in flight at once. Polite, and enough for a board of a thousand tasks. */
 const STORY_CONCURRENCY = 6;
 
 const token = fixture ? '' : (process.env.ASANA_PAT || readEnv().ASANA_PAT || '');
 if (!fixture && !token) {
 	console.error('ASANA_PAT is not set — add it to the workspace .env (see .env.sample) or export it for one command.\n' +
-	              'Mint one at https://app.asana.com/0/my-apps. `npm run doctor` reports the `perspective` capability.');
+	              'Mint one at https://app.asana.com/0/my-apps. `npx dt-setup doctor` reports the `perspective` capability.');
 	process.exit(2);
 }
 

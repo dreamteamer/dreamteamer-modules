@@ -148,8 +148,7 @@ function compose(names) {
 const myHandles = contributorHandles(retrospective, dataRoot);
 
 // The run's own window. `read-git` indexes a repo's WHOLE history while a retrospective covers a
-// period, so most blank weeks on a long-lived repo are simply older than the run — 376 of 434 on one
-// colleague's workspace. Lumping those in with "quiet week" makes a legitimate boundary look like a
+// period, so most blank weeks on a long-lived repo are simply older than the run. Lumping those in with "quiet week" makes a legitimate boundary look like a
 // hole in the model, which is the reading that sends someone hunting for a bug.
 const period = (() => {
 	try { const f = readRecord(recordPath('retrospective-sessions', base, 'retrospective-session', dataRoot)).fields; return { from: day(f.period_start), to: day(f.period_end) }; }

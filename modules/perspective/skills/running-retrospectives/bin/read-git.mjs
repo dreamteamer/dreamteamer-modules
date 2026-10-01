@@ -356,7 +356,7 @@ if (v2) {
 	// own group. Everyone else is dropped, and a stale record a previous run wrote is deleted — but
 	// ONLY when this script wrote it, never a hand-written or hand-merged one.
 	if (contributor) {
-		// Adopt the person's other declared identities BEFORE the gate runs — otherwise his own
+		// Adopt the person's other declared identities BEFORE the gate runs — otherwise their own
 		// commits under a second address read as a stranger's, and the gate keeps the stranger.
 		const declared = ownGitIdentities(opt('home', os.homedir()));
 		const mineDeclared = declared.some((i) => i.email === contributor || i.name === contributor)
@@ -418,8 +418,7 @@ if (v2) {
 			...(g.prior ?? {}),
 			retrospective: `${REF}${sessionBase}`,
 			// The spread above inherits NOTHING for a collaborator this run is meeting for the first
-			// time, so both keys have to be written here. 12 records on one workspace carried the run
-			// link and no contributor because only the first of them was.
+			// time, so both keys have to be written here.
 			contributor: who(),
 			name: g.name,
 			handles: [...g.handles].filter(Boolean).sort(),

@@ -63,7 +63,7 @@ export async function accessTokenFor(email, dir = CRED_DIR) {
 /** One authenticated Google API call. An ARRAY value is appended once per element — the Gmail API
  *  takes `metadataHeaders` repeated, and a `set` would keep only the last. A 429 or 5xx is retried
  *  three times with a growing pause, because a per-thread read of a year's mail WILL hit the
- *  per-user rate limit and a reader that dies at thread 1,400 of 1,600 has wasted the 1,400. */
+ *  per-user rate limit, and a reader that dies near the end has wasted everything before it. */
 export async function gapi(token, base, endpoint, params = {}, { retries = 3 } = {}) {
 	const url = new URL(`${base}/${endpoint}`);
 	for (const [k, v] of Object.entries(params)) {

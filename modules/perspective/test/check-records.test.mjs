@@ -736,11 +736,10 @@ test('a location may be an http(s) link, a template, or url: — and may never b
 });
 
 // ── WHERE IT LOOKS, AND WHAT IT DOES WHEN IT CANNOT FIND ANYTHING ───────────────────────────────
-// ⚠ MEASURED IN A REAL CONSUMER, 2026-09-11. Run from the workspace root with the module linked for
-// preview, this guard printed `✔ perspective records: 0 checked, 0 violations` and EXITED 0 over a
-// workspace holding 173 of them: the default data root resolved from the SCRIPT, and under preview
-// the script lives outside the workspace. A guard that reports success while checking nothing is
-// byte-identical to a guard that passed, which makes it the worst failure this repo can ship.
+// The data root resolves from the current directory, never from the SCRIPT: with the module linked
+// for preview the script lives outside the workspace, and a script-relative root reports
+// `0 checked, 0 violations` and exits 0 over a workspace full of records. A guard that reports
+// success while checking nothing is byte-identical to a guard that passed.
 describe('the data root', () => {
 	const tmpdir = (name) => fs.mkdtempSync(path.join(os.tmpdir(), name));
 

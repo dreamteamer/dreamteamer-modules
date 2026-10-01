@@ -72,9 +72,9 @@ const sessionsDir = path.join(home, '.codex', 'sessions');
 const found = fs.existsSync(sessionsDir) ? rollouts(sessionsDir) : [];
 
 // GROUP BY SESSION FIRST. Continuing a codex thread writes a NEW rollout carrying the SAME
-// `session_id`, so the unit on disk is a sitting and the unit in the collection is a session — 53
-// rollouts are 32 sessions here. One record per file put the continuations on the first file's path,
-// where they were skipped as already current and their turns, tokens and tools were simply lost.
+// `session_id`, so the unit on disk is a sitting and the unit in the collection is a session. One
+// record per file would put the continuations on the first file's path, where they are skipped as
+// already current and their turns, tokens and tools are lost.
 const bySession = new Map();
 let notASession = 0;
 for (const file of found) {
