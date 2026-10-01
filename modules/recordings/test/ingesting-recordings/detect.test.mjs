@@ -275,3 +275,113 @@ test('scan finds a payload nested in a SUBFOLDER — a stray folder must never s
 		fs.rmSync(root, { recursive: true, force: true });
 	}
 });
+
+// ── orphan candidates — a file-less `origin: audio` recording matched against a new inbox file ───
+// The script walks up to `package-lock.json` for its workspace, so each fixture is a throwaway
+// workspace holding a copy of the script, a compiled meetings descriptor and the records.
+const MEETINGS_STORAGE = [
+	'name: meetings', 'storage:', '  path: data/meetings', '  codec: md', '  shape: file', '  suffix: meeting',
+	'  under:', '    field: company', '    path: meetings', '    collection: companies', '',
+].join('\n');
+const COMPANIES_STORAGE = [
+	'name: companies', 'storage:', '  path: data/companies', '  codec: md', '  shape: folder', '  suffix: company', '',
+].join('\n');
+
+function orphanWorkspace({ recording, meeting }) {
+	const ws = fs.mkdtempSync(path.join(os.tmpdir(), 'detect-orphan-ws-'));
+	fs.writeFileSync(path.join(ws, 'package-lock.json'), '{}');
+	fs.mkdirSync(path.join(ws, 'bin'));
+	fs.copyFileSync(SCRIPT, path.join(ws, 'bin', 'detect.mjs'));
+	const compiled = path.join(ws, '.dreamteamer', 'collections');
+	fs.mkdirSync(compiled, { recursive: true });
+	fs.writeFileSync(path.join(compiled, 'meetings.collection.yaml'), MEETINGS_STORAGE);
+	fs.writeFileSync(path.join(compiled, 'companies.collection.yaml'), COMPANIES_STORAGE);
+	fs.mkdirSync(path.join(ws, 'data/companies/northwind'), { recursive: true });
+	fs.writeFileSync(path.join(ws, 'data/companies/northwind/northwind.company.md'), '---\nname: Northwind\n---\n');
+	if (meeting) {
+		const mf = path.join(ws, 'data/companies/northwind/meetings', `${meeting.id}.meeting.md`);
+		fs.mkdirSync(path.dirname(mf), { recursive: true });
+		fs.writeFileSync(mf, meeting.text);
+	}
+	const rf = path.join(ws, 'data/meeting-recordings', `${recording.id}.meeting-recording.md`);
+	fs.mkdirSync(path.dirname(rf), { recursive: true });
+	fs.writeFileSync(rf, recording.text);
+	const inbox = path.join(ws, 'inbox');
+	fs.mkdirSync(path.join(inbox, 'meeting-recordings'), { recursive: true });
+	return { ws, inbox, script: path.join(ws, 'bin', 'detect.mjs') };
+}
+
+// A silent 8-bit mono WAV at 100 Hz: ffprobe reads its duration from the header, and an hour is 360 KB.
+function silentWav(seconds, rate = 100) {
+	const n = seconds * rate;
+	const b = Buffer.alloc(44 + n, 128);
+	b.write('RIFF', 0); b.writeUInt32LE(36 + n, 4); b.write('WAVE', 8); b.write('fmt ', 12);
+	b.writeUInt32LE(16, 16); b.writeUInt16LE(1, 20); b.writeUInt16LE(1, 22); b.writeUInt32LE(rate, 24);
+	b.writeUInt32LE(rate, 28); b.writeUInt16LE(1, 32); b.writeUInt16LE(8, 34); b.write('data', 36); b.writeUInt32LE(n, 40);
+	return b;
+}
+const hasFfprobe = (() => {
+	try { execFileSync('ffprobe', ['-version'], { stdio: 'ignore' }); return true; } catch { return false; }
+})();
+
+test('scan offers a STRONG orphan candidate when the meeting, stored under its company folder, names the file', () => {
+	const { ws, inbox, script } = orphanWorkspace({
+		meeting: {
+			id: '2026/08/2026-08-20--northwind-weekly',
+			text: "---\nname: Northwind weekly\ncompany: companies/northwind\n---\nrecording file unreachable, original path: inbox/Dana Oren aug20.m4a\n",
+		},
+		recording: {
+			id: '2026/08/2026-08-20--northwind-weekly',
+			text: "---\nname: Northwind weekly\norigin: audio\nmeeting: 'meetings/2026/08/2026-08-20--northwind-weekly'\ndate: '2026-08-20T14:00:00+03:00'\n---\n",
+		},
+	});
+	fs.writeFileSync(path.join(inbox, 'meeting-recordings', 'Dana Oren aug20.m4a'), Buffer.from('not real audio, only bytes to hash'));
+	try {
+		const out = JSON.parse(execFileSync('node', [script, 'scan', '--inbox-folders', inbox],
+			{ cwd: ws, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }));
+		assert.equal(out.recordings_without_file, 1);
+		const [c] = out.recordings[0].orphan_candidates;
+		assert.equal(c?.strength, 'strong', `expected a strong candidate, got ${JSON.stringify(out.recordings[0].orphan_candidates)}`);
+		assert.equal(c.recording, '2026/08/2026-08-20--northwind-weekly');
+		assert.equal(c.meeting, 'meetings/2026/08/2026-08-20--northwind-weekly');
+		assert.ok(c.evidence.includes('NAMES this exact filename'));
+	} finally {
+		fs.rmSync(ws, { recursive: true, force: true });
+	}
+});
+
+test('scan offers a PLAUSIBLE orphan candidate for a same-day recording within 15 s, quoted date-time and h:mm:ss duration', { skip: !hasFfprobe && 'ffprobe not on PATH' }, () => {
+	const { ws, inbox, script } = orphanWorkspace({
+		recording: {
+			id: '2026/08/2026-08-20--harbor-mutual-review',
+			text: "---\nname: Harbor Mutual review\norigin: audio\ndate: '2026-08-20T14:00:00+03:00'\nduration: '1:00:05'\n---\n",
+		},
+	});
+	fs.writeFileSync(path.join(inbox, 'meeting-recordings', '2026 08 20 1400 harbor mutual.wav'), silentWav(3600));
+	try {
+		const out = JSON.parse(execFileSync('node', [script, 'scan', '--inbox-folders', inbox],
+			{ cwd: ws, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, TZ: 'Etc/GMT-3' } }));
+		const [r] = out.recordings;
+		assert.equal(r.date, '2026-08-20');
+		const [c] = r.orphan_candidates;
+		assert.equal(c?.strength, 'plausible', `expected a plausible candidate, got ${JSON.stringify(r.orphan_candidates)}`);
+		assert.equal(c.recording, '2026/08/2026-08-20--harbor-mutual-review');
+		assert.ok(c.evidence.includes('same date'));
+		assert.ok(c.evidence.some((e) => e.startsWith('duration within 15s')));
+	} finally {
+		fs.rmSync(ws, { recursive: true, force: true });
+	}
+});
+
+test('scan skips a trash/ folder inside the inbox — a discarded recording is never offered again', () => {
+	const root = fs.mkdtempSync(path.join(os.tmpdir(), 'detect-trash-'));
+	fs.mkdirSync(path.join(root, 'meeting-recordings/trash'), { recursive: true });
+	fs.writeFileSync(path.join(root, 'meeting-recordings/trash/2026 08 20 1400 discarded.m4a'), Buffer.from('discarded bytes'));
+	fs.writeFileSync(path.join(root, 'meeting-recordings/2026 08 21 0900 kept.m4a'), Buffer.from('kept bytes'));
+	try {
+		const out = JSON.parse(execFileSync('node', [SCRIPT, 'scan', '--inbox-folders', root], { encoding: 'utf8' }));
+		assert.deepEqual(out.recordings.map((c) => path.basename(c.inbox_path)), ['2026 08 21 0900 kept.m4a']);
+	} finally {
+		fs.rmSync(root, { recursive: true, force: true });
+	}
+});
