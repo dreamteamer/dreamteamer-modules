@@ -1,8 +1,8 @@
 // Tier-2 fixtures for this module: a REAL workspace made by the engine's own `init`, with this module
 // copied in as `modules/notebooklm` — an inline module carrying an extension entry, exactly the shape
-// it has in this vault — so discovery, the extension loader and module content all run for real.
+// it has in this repo — so discovery, the extension loader and module content all run for real.
 //
-// The engine is this vault's installed one (node_modules/dreamteamer), or whatever checkout
+// The engine is this repo's installed one (node_modules/dreamteamer), or whatever checkout
 // DT_ENGINE_DIR names. The module receives it as `activate(dt)`, so the ONLY place it reaches into an
 // engine by path is here, in test support.
 //
@@ -15,7 +15,7 @@ import os from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-/** The vault root: the directory carrying package-lock.json (a module folder carries a package.json). */
+/** The repo root: the directory carrying package-lock.json (a module folder carries a package.json). */
 const vaultRoot = () => {
 	for (let d = ROOT; d !== path.dirname(d); d = path.dirname(d)) if (fs.existsSync(path.join(d, 'package-lock.json'))) return d;
 	throw new Error(`no package-lock.json above ${ROOT}`);
