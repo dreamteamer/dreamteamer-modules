@@ -20,6 +20,20 @@ npm install @dreamteamer/tasks @dreamteamer/users
 npx dreamteamer compile
 ```
 
+**Making a module yours** — another label, an extra field — is an overlay in your own module, never
+an edit to the installed one. Name the module by its full package name, and quote it, because YAML
+reserves a leading `@`:
+
+```yaml
+# modules/mine/collections/contacts.collection.yaml   (and "dependencies": ["@dreamteamer/contacts"])
+name: contacts
+extends: "@dreamteamer/contacts/contacts"
+label: Kontakte
+schema:
+  properties:
+    pronouns: { type: string }
+```
+
 Nothing here is published yet. Until it is, a workspace can use a module by copying its folder into
 its own `modules/`.
 
