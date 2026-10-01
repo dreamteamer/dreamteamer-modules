@@ -1,18 +1,13 @@
 #!/usr/bin/env node
 // `npx dt-find` — the effort ladder over a workspace's own records.
 //
-// ⚠ WHY THIS IS NOT `wiki ask`. `wiki ask` searches ONE corpus of prose a person assembled. `find`
-// searches the WORKSPACE — every collection's records — which is a different thing in the one way
-// that matters: records carry REFERENCES, and a question about records is often a question about the
-// graph rather than about the prose. Rung 3 exists only here, because only here is there a graph.
+// Not `wiki ask`, which searches one assembled corpus of prose. This searches the workspace's records,
+// and records carry references, so a question about them is often a question about the graph. Rung 3
+// exists only here, because only here is there a graph.
 //
-// ⚠ IT PRINTS LOCATIONS AND NEVER AN ANSWER. Nothing here synthesises. The output is where to read,
-// and the reading is the caller's job — a paraphrase is what makes an answer uncheckable, which is the
-// failure the `file:line` citation was the fix for.
-//
-// ⚠ AND IT NEVER GUESSES PAST A REFUSAL. A rung that cannot run says so and names the rung below it;
-// an expansion with no agreed reference expands nothing. The measured failure mode this guards is a
-// confident set built on one coincidence, which looks exactly like an answer.
+// It prints locations and never an answer: the reading is the caller's job, because a paraphrase is
+// what makes an answer uncheckable. And it never guesses past a refusal: an expansion with no agreed
+// reference expands nothing, because a set built on one coincidence looks exactly like an answer.
 import __fs from 'node:fs';
 import __path from 'node:path';
 import { fileURLToPath as __fileURLToPath } from 'node:url';
@@ -25,12 +20,12 @@ const USAGE = [
 	'usage: npx dt-find <question> [--effort 0|1|2|3] [-c <collection>] [-n N]',
 	'                              [--lex "…"] [--vec "…"] [--hyde "…"] [--ref-field <field>] [--json]',
 	'',
-	'  --effort 0  lexical    exact words. MRR 1.00 in 9ms WHEN YOU ALREADY KNOW THE PHRASE',
-	'  --effort 1  vector     embeddings. best MRR and recall@1 of any single backend',
+	'  --effort 0  lexical    exact words. the cheapest exact answer when you already know the phrase',
+	'  --effort 1  vector     embeddings. the strongest single backend on a paraphrased question',
 	'  --effort 2  structured lex+vec+hyde in ONE call — hedges a vocabulary gap against an abstraction gap',
 	'  --effort 3  + graph    then close the set through the reference the hits agree on',
 	'',
-	'  ⚠ --lex/--vec/--hyde are where YOU supply the vocabulary the asker lacked. That is the whole',
+	'  --lex/--vec/--hyde are where YOU supply the vocabulary the asker lacked. That is the whole',
 	'    point of rung 2: the two questions no backend answers are rescued by OPPOSITE lanes, and',
 	'    only a caller who knows the domain can write them.',
 ].join('\n');
@@ -42,11 +37,10 @@ const opt = (a, f) => { const i = a.indexOf(`--${f}`); return i >= 0 ? a[i + 1] 
 const qmdPresent = () => spawnSync('qmd', ['--version'], { encoding: 'utf8' }).status === 0;
 
 const QMD_MISSING = [
-	'✖ `qmd` is not installed — it is the retrieval engine every rung above 0 needs.',
+	'✖ `qmd` is not installed — it is the search engine every rung runs on.',
 	'    npm install -g @tobilu/qmd',
 	'  It is fully on-device: no account, no key, no network.',
-	'  ⚠ Measured over 300 records: lexical recall 0.22 against vector\'s 0.80. Real gap — and still',
-	'    optional, because grep answers every question asked in the corpus\'s own words.',
+	'  Without it, grep still answers every question asked in the records\' own words.',
 ].join('\n');
 
 /** Read one record's frontmatter field, without a YAML parser — one flat scalar, first match wins. */
@@ -88,15 +82,14 @@ export function main(argv, root) {
 	const out = (r.stdout ?? '').trim();
 	if (!out) {
 		console.log('no passage matched.');
-		console.log(`  ⚠ Retrieval is SENSITIVE TO WORDING. At effort ${effort} the lanes were what you supplied or`);
+		console.log(`  Retrieval is SENSITIVE TO WORDING. At effort ${effort} the lanes were what you supplied or`);
 		console.log('    what could be derived from the question. Name the instrument, or pass --lex/--vec/--hyde.');
 		return 0;
 	}
 
-	// ⚠ KEEP THE COLLECTION NAME WITH THE PATH. A qmd collection can be rooted ANYWHERE — in one real
-	// workspace `gkrnd` is rooted at `data/rnd`, so a hit reads `issues/x.md` and resolving it against
-	// `data/` finds nothing. The collection is the only thing that says where its files actually live,
-	// and asking qmd is cheaper than guessing.
+	// Keep the qmd collection name with the path. A qmd collection can be rooted anywhere — one rooted
+	// at `data/notes` yields `drafts/x.md`, which resolves to nothing against `data/` — and only the
+	// collection says where its files actually live.
 	const hits = [...out.matchAll(/qmd:\/\/([a-z0-9-]+)\/(\S+)/g)].map((m) => ({ collection: m[1], file: stripLineAnchor(m[2]) }));
 	let expansion = null;
 	if (effort >= 3) expansion = expand(hits, root, argv);
@@ -109,13 +102,13 @@ export function main(argv, root) {
 	if (expansion) {
 		console.log(`\n─── rung 3: ${expansion.field} = ${expansion.ref}  (${expansion.agreeing} of ${expansion.carrying} hits agree) ───`);
 		for (const line of expansion.records) console.log(`    ${line}`);
-		console.log(`\n  ⚠ This set is EXACT and the ranking above is not. Retrieval returned ${hits.length}; the graph returned ${expansion.records.length}.`);
+		console.log(`\n  This set is EXACT and the ranking above is not. Retrieval returned ${hits.length}; the graph returned ${expansion.records.length}.`);
 	} else if (effort >= 3) {
 		console.log('\n─── rung 3: no expansion — the hits agree on no reference, so nothing was closed. ───');
-		console.log('    ⚠ That is a refusal, not an empty answer: expanding through a weak plurality would');
+		console.log('    That is a refusal, not an empty answer: expanding through a weak plurality would');
 		console.log('      hand back a confident set built on one coincidence.');
 	}
-	console.log(`\n  ⚠ These are LOCATIONS, not an answer. Open each cited line before citing it — a rank is not a fact.`);
+	console.log(`\n  These are LOCATIONS, not an answer. Open each cited line before citing it — a rank is not a fact.`);
 	return 0;
 }
 
@@ -132,12 +125,8 @@ function collectionRoot(name, cache) {
 function expand(hits, root, argv) {
 	const field = opt(argv, 'ref-field') ?? 'repo';
 	const cache = new Map();
-	// ⚠ COLLECT THE REFERENCE AND ITS COLLECTION TOGETHER. Taking the collection from the FIRST hit is
-	// the bug this replaced, and it failed in the one way that is hardest to see: the first hit was a
-	// draft-doc, which carries no `repo` field at all, so the expansion filtered the WRONG collection,
-	// `dt list` exited non-zero, and the whole rung reported "the hits agree on no reference" — a
-	// refusal that reads as principled and is actually a defect. The collection must come from the hits
-	// that CARRY the agreed reference, because those are the records the set is made of.
+	// Collect each hit's reference and its collection together: the collection to expand is the one the
+	// hits CARRYING the agreed reference live in, never simply the first hit's.
 	const carried = [];
 	for (const hit of hits) {
 		const base = collectionRoot(hit.collection, cache);

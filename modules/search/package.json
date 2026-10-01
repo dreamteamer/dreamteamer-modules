@@ -1,7 +1,7 @@
 {
 	"name": "@dreamteamer/search",
 	"version": "0.1.0",
-	"description": "dt-find — an effort ladder over a dreamteamer workspace's own records: lexical, semantic, hedged, then the reference graph.",
+	"description": "Search a workspace's own records with dt-find: exact words, meaning, a hedged three-lane query, then the reference graph.",
 	"license": "Apache-2.0",
 	"type": "module",
 	"repository": {
@@ -25,7 +25,7 @@
 	],
 	"dreamteamer": {
 		"title": "Search",
-		"description": "Finding things in a workspace, with the cost stated at every rung. `npx dt-find <question>` runs an EFFORT LADDER whose rungs were measured before they were built, over a 300-document corpus, with questions worded the way an asker phrases them BEFORE knowing the corpus's vocabulary. ⚠ RUNG 0 IS NOT A FALLBACK: on a question asked in the corpus's own words lexical search scores MRR 1.00 in 9ms and the full re-ranked pipeline scores the same in ~22,900ms, and vector alone is WORSE there — when you know the phrase, reaching for retrieval is a pure loss. Rung 1 is embeddings (recall 0.80 against lexical's 0.22 on paraphrase, and the best MRR of any single backend). ⚠ RUNG 2 IS A HEDGE, NOT A SMARTER QUERY: two questions that no backend answers fail for OPPOSITE reasons and are rescued by OPPOSITE lanes — a vocabulary gap goes lex 1 / vec 3, an abstraction gap goes lex MISS / vec 1 — and the asker cannot tell which they have, because not knowing the corpus's words is WHY they are asking; so all three lanes go in ONE invocation, which is what makes hedging affordable when cost is dominated by per-invocation model load. ⚠ RUNG 3 IS A ROUTE, NOT A RANK: for a question whose answer set is defined by a REFERENCE — 'what's broken in X' — retrieval returned 1 of 4 plain and 3 of 4 structured with TEN slots available for four answers, and the graph returned 4 of 4 in 0.347s, because similarity is the wrong relation for that question. The expansion key is DERIVED from the hits agreeing on it, never known in advance, and it REFUSES rather than expanding through a weak plurality. `qmd` is OPTIONAL and on-device: without it rung 0 still works and the rest report as unavailable. Nothing here synthesises — every rung prints `file:line` LOCATIONS, because a paraphrase is what makes an answer uncheckable. Peers `wikis`, which searches one assembled corpus; this searches the workspace's own records, which is where the graph lives.",
+		"description": "Search over a workspace's own records. `npx dt-find <question>` climbs an effort ladder on a local qmd index: exact words, embeddings, a hedged three-lane query, then the reference graph to close a set such as \"everything that points at X\". It prints file:line locations, never an answer. Use grep when you can quote the phrase; use this when you have the idea but not the words.",
 		"engine": ">=0.30.0",
 		"peerDependencies": [
 			"wikis"
