@@ -18,10 +18,9 @@ import path from 'node:path';
 // this repo keeps, so every `ROOT/modules/<m>/…` path still names the same file
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', '..', '..');
 // paths from the repo root; the docs/extensions-* files are the old pack's history, kept as written
-const EXEMPT = new Set(['docs/extensions-CHANGELOG.md', 'docs/extensions-README.md', 'docs/2026-09-09-extensions-module-design.md', 'modules/perspective/bin/migrate.mjs', 'modules/perspective/test/migrate.test.mjs', 'modules/perspective/test/no-old-spelling.test.mjs']);
+const EXEMPT = new Set(['docs/extensions-CHANGELOG.md', 'docs/extensions-README.md', 'docs/2026-09-09-extensions-module-design.md', 'modules/perspective/test/no-old-spelling.test.mjs']);
 /** Exempt only within one named section, which the second test pins. */
 const README = 'modules/perspective/README.md';
-const UPGRADE_HEADING = '### coming from 0.1.x with records already written';
 // ⚠ `.claude` HOLDS AGENT WORKTREES — a whole second checkout of this repo, gitignored, at
 // `.claude/worktrees/<agent>/`. Walking into it makes every tree-scanning gate here grade another
 // branch's files as if they were this one's: on 2026-09-11 this test failed with six offenders that
@@ -57,15 +56,7 @@ test('no file path or file content carries the old spelling', () => {
 	assert.deepEqual(offenders, [], `still spelled "introspect" in ${offenders.length} place(s):\n  ${offenders.slice(0, 30).join('\n  ')}`);
 });
 
-test('the readme says the old name only where an upgrader is looking for it', () => {
+test('the readme never names the old module', () => {
 	const body = fs.readFileSync(path.join(ROOT, README), 'utf8');
-	const at = body.indexOf(UPGRADE_HEADING);
-	assert.notEqual(at, -1, `${README} has no "${UPGRADE_HEADING}" section, so nothing here is scoped`);
-	// The section runs to the next heading of the same level or above.
-	const after = body.slice(at + UPGRADE_HEADING.length);
-	const end = after.search(/\n#{1,3} /);
-	const section = end === -1 ? after : after.slice(0, end);
-	const outside = (body.slice(0, at) + (end === -1 ? '' : after.slice(end))).match(/introspect\w*/gi) ?? [];
-	assert.deepEqual(outside, [], `the old spelling belongs in the upgrade section and nowhere else in ${README}: ${outside.join(', ')}`);
-	assert.ok(/introspect/i.test(section), 'the upgrade section must NAME the old module — that is the whole reason it is exempt');
+	assert.deepEqual(body.match(/introspect\w*/gi) ?? [], [], `${README} still names the old module`);
 });

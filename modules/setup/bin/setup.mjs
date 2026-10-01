@@ -5,8 +5,6 @@
 //   npx dt-setup doctor                      show the board and change nothing
 //   npx dt-setup link <clone>                preview a LOCAL clone of dreamteamer-modules instead of the published modules
 //   npx dt-setup unlink                      go back to the published one
-//   node node_modules/@dreamteamer/perspective/bin/migrate.mjs                     move a workspace whose records predate 0.2.0 onto perspective
-//   node node_modules/@dreamteamer/perspective/bin/migrate-world.mjs               move 0.2.x–0.8.x records into the perspective/world namespace
 //   node node_modules/@dreamteamer/projects/bin/migrate-plan.mjs                convert free-text activities.phase into `phases` records
 //   node node_modules/@dreamteamer/projects/bin/migrate-code-to-slug.mjs        rename `code` to `slug` where it was never a code
 //   npx dt-notebook persona <id>       apply NOTEBOOKLM.md's persona to one notebook, in one call

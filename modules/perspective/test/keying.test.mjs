@@ -7,7 +7,7 @@
 // session. Questions and proposals stay keyed by the run, because they ARE the sitting: an interview
 // belongs to the day it happened and a proposal is what THAT session recommended.
 //
-// bin/migrate.mjs reproduces this table exactly. If the two ever disagree, the migration writes ids
+// The keying table below is the one the readers use; a reader that disagreed would write ids
 // the descriptors reject, so keep them in one place: this test is that place.
 import { test } from 'node:test';
 import assert from 'node:assert';
