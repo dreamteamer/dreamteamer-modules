@@ -315,11 +315,9 @@ Match these keywords against the **translated/English meaning** of the title whe
       vs `16:30`, both real (2026-07-30). An exact wall-clock match misses them and silently creates
       duplicates.
    3. **by same start, when the existing record's `eventId` is NOT in the live fetch** — take it over
-      and write the new id. Google gives a **new `eventId`** to a recurring instance that was cancelled
-      and re-created: on 2026-07-30 the records for the 07-26 and 07-29 `[WEEKLY]` instances held ids that
-      `gcal.mjs event` returns as `status: cancelled`, while live events sat at the same or a nearby time
-      under different ids. Without this rule the sync writes a second record for a meeting it already
-      has. **`eventId` is stable for an event, NOT for a slot** — verify with a direct `gcal.mjs event` on
+      and write the new id. Google gives a **new `eventId`** to an instance of a weekly series that was
+      cancelled and re-created, and the old id then returns `status: cancelled` from `gcal.mjs event`.
+      **`eventId` is stable for an event, NOT for a slot** — verify with a direct `gcal.mjs event` on
       the recorded id before assuming a record is stale.
 
    ⚠ **A `freeBusyReader` `eventId` does not survive the access upgrade.** Both `busy-block` stubs
@@ -362,8 +360,8 @@ re-fetch of the single date hours later found the real event. So:
 - **A shim created this way is meant to be adopted, not deleted.** Re-syncing the date walks step 7's
   rule 2 and takes it over — which is why the shim carries `origin: recording` and the recording's ref
   survives the rename.
-- Use **`--show-deleted`** when a date looks wrong: it reveals cancelled instances sitting beside live
-  ones (on that same date, a cancelled 14:00 `[WEEKLY]` sat next to the confirmed one under a different id).
+- Use **`--show-deleted`** when a date looks wrong: it reveals cancelled instances of a weekly series
+  sitting beside the live ones under different ids.
 
 ## Correcting browser-era records (a finite, known backlog)
 

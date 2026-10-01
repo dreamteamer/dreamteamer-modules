@@ -205,22 +205,49 @@ const walk = (d, out = []) => {
 const sha256 = (f) => `sha256:${createHash('sha256').update(readFileSync(f)).digest('hex')}`;
 
 // ── the capture time ─────────────────────────────────────────────────────────────────────────────
-// macOS names screenshots "Screenshot 2026-07-30 at 14.46.12.png" — the absolute capture instant, to
-// the second, which is far better evidence than mtime (a copy re-stamps mtime; the name survives it).
-// Falls back to mtime and says which was used, because the format is macOS- and locale-specific.
+// macOS names a screenshot "Screenshot 2026-07-30 at 14.46.12.png": a wall-clock time with no zone.
+// It is kept as `wall` and turned into an instant per meeting, in that meeting's own zone, so the
+// match does not depend on the zone of the machine running the scan. A file whose name carries no
+// time falls back to mtime, which is already an instant, with `confident: false`.
 function capturedAt(file) {
   const stem = path.basename(file, path.extname(file));
   const m = stem.match(/(\d{4})-(\d{2})-(\d{2})[ _]+at[ _]+(\d{1,2})[.:](\d{2})[.:](\d{2})/i);
   if (m) {
     const [, y, mo, d, h, mi, s] = m;
-    return { at: `${y}-${mo}-${d}T${String(h).padStart(2, '0')}:${mi}:${s}`, source: 'filename', confident: true };
+    return { at: `${y}-${mo}-${d}T${String(h).padStart(2, '0')}:${mi}:${s}`, wall: [+y, +mo, +d, +h, +mi, +s], source: 'filename', confident: true };
   }
   const t = statSync(file).mtime;
-  const p = (n) => String(n).padStart(2, '0');
-  return {
-    at: `${t.getFullYear()}-${p(t.getMonth() + 1)}-${p(t.getDate())}T${p(t.getHours())}:${p(t.getMinutes())}:${p(t.getSeconds())}`,
-    source: 'mtime', confident: false,
-  };
+  return { at: t.toISOString(), instant: t.getTime(), source: 'mtime', confident: false };
+}
+
+// The UTC offset (ms) of an IANA zone at instant `t`.
+function zoneOffset(t, zone) {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-US', {
+    timeZone: zone, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+  }).formatToParts(new Date(t)).map((p) => [p.type, p.value]));
+  return Date.UTC(+parts.year, +parts.month - 1, +parts.day, +parts.hour, +parts.minute, +parts.second) - t;
+}
+
+/**
+ * The instant a wall-clock capture time names, read in a meeting's zone: its IANA `timezone` when it
+ * has a valid one, else the offset written on its `starts`, else the machine zone. Returns the
+ * instant and the zone used, so a scan row can say which reading it matched on.
+ */
+function wallToInstant([y, mo, d, h, mi, s], { timezone, startsOffset } = {}) {
+  const asUtc = Date.UTC(y, mo - 1, d, h, mi, s);
+  if (timezone) {
+    try {
+      const first = asUtc - zoneOffset(asUtc, timezone);
+      return { instant: asUtc - zoneOffset(first, timezone), zone: timezone };
+    } catch { /* not an IANA zone: fall through to the offset on starts */ }
+  }
+  if (startsOffset) {
+    const o = /^([+-])(\d{2}):?(\d{2})$/.exec(startsOffset);
+    const off = startsOffset === 'Z' ? 0 : o ? (o[1] === '-' ? -1 : 1) * (+o[2] * 60 + +o[3]) * 60000 : null;
+    if (off !== null) return { instant: asUtc - off, zone: startsOffset };
+  }
+  return { instant: new Date(y, mo - 1, d, h, mi, s).getTime(), zone: 'machine' };
 }
 
 // ── vault reads (frontmatter only — no yaml dep, same approach as detect.mjs) ─────────────────────
@@ -292,6 +319,7 @@ function meetings() {
     // is omit rather than risk it — most of these are a client's screen, and a wrong match uploads
     // one client's data into another client's folder. When in doubt, ASK; do not widen.
     out.push({ id, name: field(fm, 'name'), company: field(fm, 'company'),
+      timezone: field(fm, 'timezone'), startsOffset: /(Z|[+-]\d{2}:?\d{2})$/.exec(field(fm, 'starts') ?? '')?.[1],
       from, to, slackFrom: from - SLACK_MS, slackTo: to + SLACK_MS,
       basis, recordings: mine.map((c) => c.id), screenshots: listOf(fm, 'screenshots') });
   }
@@ -363,11 +391,13 @@ if (verb === 'scan') {
       if (from && c.at.slice(0, 10) < from) continue;
       if (to && c.at.slice(0, 10) > to) continue;
       const fp = sha256(file);
-      const t = Date.parse(c.at);
+      // The capture instant is read in each meeting's own zone (see `wallToInstant`).
+      const when = new Map(ms_.map((m) => [m, c.wall ? wallToInstant(c.wall, m) : { instant: c.instant, zone: 'mtime' }]));
+      const tOf = (m) => when.get(m).instant;
       // Exact hits first; only if there are none does slack get a say. Tightest window wins inside a
       // tier, so a 30-minute call beats an all-day block that happens to contain the same instant.
-      const exact = ms_.filter((m) => t >= m.from && t <= m.to);
-      const slack = ms_.filter((m) => t >= m.slackFrom && t <= m.slackTo && !exact.includes(m));
+      const exact = ms_.filter((m) => tOf(m) >= m.from && tOf(m) <= m.to);
+      const slack = ms_.filter((m) => tOf(m) >= m.slackFrom && tOf(m) <= m.slackTo && !exact.includes(m));
       const tier = exact.length ? 'exact' : 'slack';
       const hits = (exact.length ? exact : slack).sort((a, b) => (a.to - a.from) - (b.to - b.from));
       // The same shot can be dropped into more than one inbox root (design §2.1: "dedupe by sha256,
@@ -386,7 +416,8 @@ if (verb === 'scan') {
         out_of_scope: hits.length ? undefined : true,
         scope_note: hits.length ? undefined : 'no meeting within ±1h of capture time — out of scope, leave in inbox',
         matches: hits.map((m) => ({ meeting: m.id, name: m.name, basis: m.basis, tier,
-          offset_into_recording: m.basis === 'recording' ? `+${String(Math.floor((t - m.from) / 60000)).padStart(2, '0')}:${String(Math.floor(((t - m.from) % 60000) / 1000)).padStart(2, '0')}` : null })),
+          captured_instant: new Date(tOf(m)).toISOString(), zone: when.get(m).zone,
+          offset_into_recording: m.basis === 'recording' ? `+${String(Math.floor((tOf(m) - m.from) / 60000)).padStart(2, '0')}:${String(Math.floor(((tOf(m) - m.from) % 60000) / 1000)).padStart(2, '0')}` : null })),
       });
     }
   }

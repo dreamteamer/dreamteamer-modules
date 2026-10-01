@@ -19,10 +19,9 @@ sanity-check any shot whose `captured_at_source` is `mtime` rather than `filenam
 re-stamped by a copy, so its time may be wrong.
 
 ⚠ **look at each shot before filing it.** these are screenshots of a client's screen and routinely
-contain third parties' personal data — the first real run captured a signed fund LP signature page with
-an investor's passport number, address and capital commitment. **ask before filing anything showing
-identity documents, signatures, account numbers or addresses.** removal is a MOVE to that inbox
-root's own `trash/`, never a delete — agents never delete.
+contain third parties' personal data. **ask before filing anything showing identity documents,
+signatures, account numbers or addresses.** removal is a MOVE to that inbox root's own `trash/`,
+never a delete — agents never delete.
 
 then, per confirmed shot: **`archive` the file** — `node $DET archive "<local path>" "<meeting-id>"`
 moves it straight into `${env:FILES_FOLDER}/meetings/<meeting-basename>/`, keeping the original

@@ -31,27 +31,25 @@ hash-dedupe; those *do* get renamed by hand.)
 ## ⚠ LOOK AT A SHOT BEFORE FILING IT
 
 These are screenshots of whatever was on screen during a client call, so they routinely contain
-**other people's personal data** — and the pipeline will file anything in the inbox sight unseen.
-A shot taken during a call can hold a sensitive document someone shared on screen.
-
-So:
+**other people's personal data**, and the pipeline will file anything in the inbox sight unseen.
 
 - **Review each matched shot before `archive`.** `scan` is a pure read for exactly this reason.
 - **Ask before filing anything showing identity documents, signatures, account numbers or
   addresses of a third party.** The operator may want it excluded, cropped, or kept local.
-- **Never transcribe such content into a summary.** Reference it as *"a signed LP subscription page
-  (investor PII, not transcribed)"* and stop there.
+- **Never transcribe such content into a summary.** Reference it as *"a signed form (third-party
+  personal data, not transcribed)"* and stop there.
 - **Removal is a MOVE to that inbox root's `trash/`, never a delete.** Agents never delete — see
   `common mistakes` below.
 
 ## why the capture time is the whole point
 
 A screenshot exists so the summary can say **what was on screen when something was said**. The capture
-time is therefore load-bearing — and it needs no field, because macOS writes the absolute instant into
-the FILENAME: `Screenshot 2026-07-30 at 14.46.12.png`, to the second. That is why the filename is kept
-verbatim on filing. `scan` parses it and reports `captured_at` + `captured_at_source: filename`;
-anything else falls back to mtime with `confident: false`, because a copy re-stamps mtime while the
-name survives it.
+time needs no field: macOS writes it into the FILENAME, `Screenshot 2026-07-30 at 14.46.12.png`, to the
+second, which is why the filename is kept verbatim on filing. That time carries no zone, so `scan`
+reads it in each candidate meeting's own zone (its `timezone`, else the offset on its `starts`) and
+reports the instant and zone it matched on per match (`captured_instant`, `zone`). It reports
+`captured_at` + `captured_at_source: filename`; a name without a time falls back to mtime with
+`confident: false`, because a copy re-stamps mtime while the name survives it.
 
 ⚠ **The transcript OFFSET is a different question and usually unanswerable.** It needs
 `meeting-recordings.recorded_at`, which has **no automatic source** — a recording file's
