@@ -18,7 +18,7 @@ export default function activate(api) {
 			// 5 pending · 6 vacuous (2 stays reserved for a retired verb spelling, which the engine answers)
 			prove: { usage: PROVE_USAGE, run: (ws, argv) => { dt.warnIfStale(ws.root); return proveCommand(ws, argv).code; } },
 		},
-		// `proofs/fixtures/` holds RECORDS a `writes` proof runs against, not proofs
+		// `proofs/fixtures/` holds RECORDS a fixture proof runs against, not proofs
 		sourceKinds: [{ kind: 'proofs', exclude: ['fixtures'] }],
 		analyze,
 		orientation: 'before saying an artifact works, run `dt prove <artifact>` and quote its result.',

@@ -47,7 +47,7 @@ before(() => {
 	fixture.writeSource(ws.root, 'commands/close-note.command.md', '---\nname: close-note\ndescription: close a note\n---\n\nSet its status to done.\n');
 	fixture.writeSource(ws.root, 'proofs/check-clean.proof.yaml', fixture.api.dumpYaml({ name: 'check-clean', about: ['commands/close-note'], kind: 'gate', steps: [{ run: 'node node_modules/dreamteamer/bin/dreamteamer.js check' }] }));
 	fixture.writeSource(ws.root, 'proofs/closes-a-note.proof.yaml', fixture.api.dumpYaml({
-		name: 'closes-a-note', about: ['commands/close-note'], kind: 'live', mode: 'writes',
+		name: 'closes-a-note', about: ['commands/close-note'], kind: 'live',
 		given: { collection: 'notes', fixture: true, pick: 'fx-open' },
 		steps: [{ run: 'node node_modules/dreamteamer/bin/dreamteamer.js set {record} status=done' }],
 		expect: [{ record: '{record}', where: { status: { _eq: 'done' } } }],

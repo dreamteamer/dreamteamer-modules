@@ -16,8 +16,9 @@ dt compile                 # the proofs kind, the proofs collection and the prov
 | `dt prove --list [<proof\|artifact>] [--strict]` | runs nothing: availability here and the last verdict per proof |
 | `dt prove --list --missing` | the artifacts no proof is about |
 
-A `writes` proof runs in a throwaway checkout under `.worktrees/.tmp-*`, which this module creates,
-installs and removes itself. It needs no other module.
+A proof with `given.fixture: true` runs in a throwaway checkout under `.worktrees/.tmp-*`, which
+this module creates, installs and removes itself. Every other proof runs in the workspace, and a run
+whose steps change `data/` FAILS unless `--here` was passed. It needs no other module.
 
 Uninstall it and a workspace still holding `proofs/` folders fails compile on the unknown kind. That
 is deliberate: a proof nothing validates is a claim nothing checks.

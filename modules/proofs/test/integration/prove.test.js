@@ -19,7 +19,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { workspace, readFile, compileError, simpleCollection, writeCollection, dt, dtIn, api, writeProof } from '../helpers.mjs';
 import {
-	artifactRefs, PROOF_KINDS, PROOF_MODES,
+	artifactRefs, PROOF_KINDS,
 	countMatching, pickFixture, resolveRequires,
 	ledgerPath, readLedger, appendLedger, pendingFor, LEDGER_CAP, LEDGER_DIR, PROVE_USAGE, PROVE_FLAGS,
 } from '../../src/prove.js';
@@ -87,18 +87,15 @@ describe('the proofs kind', () => {
 		assert.match(ws.git(['log', '-1', '--format=%s']), /proofs set skill-loads description/);
 	});
 
-	// ⚠ A SYSTEM WRITE IS GATED BY A REAL COMPILE, and from Task 2 on that compile judges a proof's
-	// semantics — so `kind=live` on its own is REFUSED, because a live proof owes a `mode` and an
-	// `expect` that this one-key write cannot supply. The refusal rolls the source back: a proof that
-	// says `live` and carries neither is the "fails forever for a reason nothing names" shape the
-	// validation exists to prevent, and half-writing it would leave the workspace uncompilable.
+	// A system write is gated by a real compile, so `kind=live` on its own is refused — a live proof
+	// owes an `expect` this one-key write cannot supply — and the source is rolled back.
 	test('set is refused when the result would be an invalid proof, and the source is rolled back', () => {
 		const ws = workspace();
 		writeProof(ws.root, 'skill-loads');
 		assert.equal(ws.dt('compile').code, 0);
 		const res = ws.dt('set', 'proofs/skill-loads', 'kind=live');
 		assert.equal(res.code, 1);
-		assert.match(res.stderr, /a live proof declares mode: readonly \| writes/);
+		assert.match(res.stderr, /a live proof needs at least one step and one expectation/);
 		assert.match(readFile(ws.root, 'modules/default/proofs/skill-loads.proof.yaml'), /kind: gate/);
 	});
 
@@ -162,11 +159,10 @@ describe('the proofs kind', () => {
 		const ws = workspace();
 		writeProof(ws.root, 'live-proof', {
 			kind: 'live',
-			mode: 'readonly',
 			// a NAMED record, not `pick: latest` — `notes` declares no `sort_field`, and from Task 2
 			// on compile refuses `latest` on a collection that cannot be ordered.
 			given: { collection: 'notes', where: {}, pick: 'a-note' },
-			steps: [{ run: 'true' }],
+			steps: [{ perform: 'do a thing' }],
 			expect: [{ collection: 'notes', where: {}, count: { _gte: 0 } }],
 		});
 		assert.equal(ws.dt('compile').code, 0);
@@ -203,11 +199,11 @@ describe('the proofs kind', () => {
 	// staged, so ajv can never see it and the old assertion is unreachable. What is worth pinning is
 	// the thing that can actually drift: the descriptor's closed enums and the code constants that
 	// name the same vocabulary. Widen one without the other and this fails.
-	test('the descriptor\'s kind and mode enums ARE the code constants', () => {
+	test('the descriptor\'s kind enum IS the code constant, and it declares no mode', () => {
 		const ws = workspace();
 		const d = new Store(ws.ws).descriptors.get('proofs');
 		assert.deepEqual(d.schema.properties.kind.enum, PROOF_KINDS);
-		assert.deepEqual(d.schema.properties.mode.enum, PROOF_MODES);
+		assert.equal(d.schema.properties.mode, undefined);
 	});
 });
 
@@ -252,7 +248,6 @@ describe('compile validates proofs', () => {
 		const ws = workspace({ compile: false });
 		writeProof(ws.root, 'note-lives', {
 			kind: 'live',
-			mode: 'readonly',
 			given: { collection: 'notes', where: { titel: { _eq: 'x' } }, pick: 'a-note' },
 			steps: [{ run: 'true' }],
 			expect: [{ collection: 'notes', where: {}, count: { _gte: 1 } }],
@@ -802,7 +797,6 @@ const PROOFS = {
 	'needs-a-var': { kind: 'gate', requires: { env: ['PROVE_TEST_VAR'] }, steps: [{ run: 'true' }] },
 	'note-gets-closed': {
 		kind: 'live',
-		mode: 'readonly',
 		about: ['commands/close-note'],
 		given: { collection: 'notes', where: { status: { _eq: 'open' } }, pick: 'latest' },
 		steps: [{ perform: '/close-note {record}' }],
@@ -810,7 +804,6 @@ const PROOFS = {
 	},
 	'counts-a-new-note': {
 		kind: 'live',
-		mode: 'readonly',
 		about: ['commands/close-note'],
 		given: { collection: 'notes', where: { status: { _eq: 'open' } }, pick: 'latest' },
 		steps: [{ perform: 'add a note' }],
@@ -820,7 +813,6 @@ const PROOFS = {
 	// that cannot fail is not a proof.
 	'already-true': {
 		kind: 'live',
-		mode: 'readonly',
 		given: { collection: 'notes', where: {}, pick: 'latest' },
 		steps: [{ perform: 'do nothing' }],
 		expect: [{ record: '{record}', where: { name: { _nempty: true } } }],
@@ -1063,14 +1055,13 @@ describe('dt prove — _delta is judged against a FRESH store', () => {
 
 	// The behavioural half: the trap above, driven through the RUNNER in ONE process. A step writes a
 	// record deep, and `_delta: 1` must still be +1 — which it can only be if the after-count came off
-	// a Store constructed after the steps.
+	// a Store constructed after the steps. `--here` is what lets a run step write this store.
 	test('a run step that writes deep is still counted — the runner rebuilds its Store to judge', () => {
 		const ws = proveWorkspace({
 			proofs: {
 				'counts-a-deep-note': {
 					kind: 'live',
-					mode: 'readonly',
-					given: { collection: 'notes', where: {}, pick: 'latest' },
+					given: { collection: 'notes', fixture: true, pick: 'b' },
 					steps: [{ run: "printf '%s\\n' '---' 'name: y' 'status: open' '---' > data/notes/sub/y.note.md" }],
 					expect: [{ collection: 'notes', where: {}, count: { _delta: 1 } }],
 				},
@@ -1080,7 +1071,7 @@ describe('dt prove — _delta is judged against a FRESH store', () => {
 		fs.mkdirSync(sub, { recursive: true });
 		fs.writeFileSync(path.join(sub, 'x.note.md'), '---\nname: x\nstatus: open\n---\n');
 
-		const res = ws.dt('prove', 'counts-a-deep-note');
+		const res = ws.dt('prove', 'counts-a-deep-note', '--here');
 		assert.equal(res.code, 0, res.stdout + res.stderr);
 		assert.match(res.stdout, /count \+1 = \+1 ✔/);
 	});
@@ -1218,27 +1209,60 @@ describe('dt prove — the usage surface', () => {
 		const undocumented = PROVE_FLAGS.map((f) => f.slice(2)).filter((f) => !documented.has(f));
 		assert.deepEqual(undocumented, [], `dt prove accepts these and dt help never names them: ${undocumented.join(', ')}`);
 	});
+});
 
-	// A `writes` proof runs in a sandbox on its OWN fixtures — so one with a `given.where` (a filter
-	// over the REAL store) has nothing to run against but this checkout, and says so rather than
-	// writing to it. The sandbox itself is covered in `writes proofs are sandboxed`, below.
-	test('a writes proof without --here refuses rather than writing to the live workspace', () => {
-		const ws = proveWorkspace({
-			proofs: {
-				'writes-a-note': {
-					kind: 'live',
-					mode: 'writes',
-					given: { collection: 'notes', where: {}, pick: 'latest' },
-					steps: [{ run: 'true' }],
-					expect: [{ collection: 'notes', where: {}, count: { _delta: 1 } }],
-				},
-			},
-		});
-		const res = ws.dt('prove', 'writes-a-note');
-		// I2/R50 — it SETTLES unavailable (exit 3, with a row) rather than throwing: the artifact is
-		// fine and this invocation cannot answer for it, which is what code 3 means.
-		assert.equal(res.code, 3, res.stdout + res.stderr);
-		assert.match(res.stdout, /writes-a-note is a writes proof with no fixture — it runs only with --here/);
+describe('dt prove — a run outside a sandbox may not change data/', () => {
+	const GUARD = 'a step changed data/ outside a sandbox — use given.fixture: true, or --here to write this store';
+	const writeNote = "printf '%s\\n' '---' 'name: z' 'status: open' '---' > data/notes/z.note.md";
+	const writesLive = {
+		kind: 'live',
+		given: { collection: 'notes', where: {}, pick: 'b' },
+		steps: [{ run: writeNote }],
+		expect: [{ step: 1, exit: 0 }],
+	};
+
+	test('a live proof whose run step writes a record FAILS at code 1, and the row names why', () => {
+		const ws = proveWorkspace({ proofs: { 'writes-live': writesLive } });
+		const res = ws.dt('prove', 'writes-live');
+		assert.equal(res.code, 1, res.stdout + res.stderr);
+		assert.ok(res.stdout.includes(`FAIL  writes-live — ${GUARD}`), res.stdout);
+		assert.equal(tail(ws.root, 'writes-live').failure_reason, GUARD);
+	});
+
+	test('the same proof with --here PASSES, and says so before anything runs', () => {
+		const ws = proveWorkspace({ proofs: { 'writes-live': writesLive } });
+		const res = ws.dt('prove', 'writes-live', '--here');
+		assert.equal(res.code, 0, res.stdout + res.stderr);
+		assert.ok(res.stdout.indexOf("⚠ --here: writing to THIS checkout's store") < res.stdout.indexOf('RUN 1'), res.stdout);
+		assert.ok(fs.existsSync(path.join(ws.root, 'data', 'notes', 'z.note.md')));
+	});
+
+	test('a gate whose step writes data/ FAILS the same way', () => {
+		const ws = proveWorkspace({ proofs: { 'gate-writes': { kind: 'gate', steps: [{ run: writeNote }] } } });
+		const res = ws.dt('prove', 'gate-writes');
+		assert.equal(res.code, 1, res.stdout + res.stderr);
+		assert.equal(tail(ws.root, 'gate-writes').failure_reason, GUARD);
+	});
+
+	test('a second edit to a record that is already dirty is a change too', () => {
+		const ws = proveWorkspace({ proofs: { 'edits-dirty': { kind: 'gate', steps: [{ run: "printf 'more\\n' >> data/notes/a.note.md" }] } } });
+		assert.match(ws.git(['status', '--porcelain', '--untracked-files=all', '--', 'data/']), /data\/notes\/a\.note\.md/, 'the fixture record starts dirty');
+		const res = ws.dt('prove', 'edits-dirty');
+		assert.equal(res.code, 1, res.stdout + res.stderr);
+		assert.equal(tail(ws.root, 'edits-dirty').failure_reason, GUARD);
+	});
+
+	test('a failing step that also wrote data/ names both causes', () => {
+		const ws = proveWorkspace({ proofs: { 'writes-then-fails': { kind: 'gate', steps: [{ run: `${writeNote} && exit 2` }] } } });
+		const res = ws.dt('prove', 'writes-then-fails');
+		assert.equal(res.code, 1, res.stdout + res.stderr);
+		assert.equal(tail(ws.root, 'writes-then-fails').failure_reason, `step 1 exited 2; ${GUARD}`);
+	});
+
+	test('a step that writes outside data/, over a store that was already dirty, still PASSES', () => {
+		const ws = proveWorkspace({ proofs: { 'writes-elsewhere': { kind: 'gate', steps: [{ run: 'mkdir -p made && touch made/out.txt' }] } } });
+		const res = ws.dt('prove', 'writes-elsewhere');
+		assert.equal(res.code, 0, res.stdout + res.stderr);
 	});
 });
 
@@ -1253,7 +1277,7 @@ describe('dt prove — the usage surface', () => {
  *  `\n` escape, so the YAML round-trip through `dump` cannot change what the shell receives. */
 const JSON_STEP = "node -e \"console.log(JSON.stringify({a:{b:1},pad:Array.from({length:20},(_,i)=>i)},null,2))\"";
 const MARKER_STEP = "node -e \"console.log('HEAD-MARKER'); console.log(Array.from({length:25},(_,i)=>'filler '+i).join(String.fromCharCode(10)))\"";
-const LIVE = { kind: 'live', mode: 'readonly' };
+const LIVE = { kind: 'live' };
 
 describe('dt prove — the step expectation form', () => {
 	// ⚠ A `step:` EXPECTATION MAY WANT A NON-ZERO EXIT. A proof that a guard REFUSES is the commonest
@@ -1448,29 +1472,6 @@ describe('dt prove --all — a broken proof is FAILED, with a row (R24)', () => 
 		assert.match(res.stdout, /· 1 failed · /);
 		assert.equal(tail(ws.root, 'bad-var').verdict, 'FAIL');
 	});
-
-	// ⚠ AND THERE IS NO LONGER AN EXCEPTION TO IT (I2/R50). `--all` used to read an `unavailable`
-	// marker off the THROWN error, which is how the two forms of the same seam answered differently:
-	// exit 1 with no row for a single run, UNAVAILABLE with a row here. `proveOne` settles the state
-	// itself now, so both forms read the same settled verdict and this test asserts the same thing
-	// from the board's side.
-	test('a writes proof --all cannot run stays UNAVAILABLE, and still writes a row', () => {
-		const ws = proveWorkspace({
-			proofs: {
-				'writes-a-note': {
-					kind: 'live',
-					mode: 'writes',
-					steps: [{ run: 'true' }],
-					expect: [{ collection: 'notes', where: {}, count: { _delta: 1 } }],
-				},
-			},
-		});
-		const res = ws.dt('prove', '--all', '--kind', 'live');
-		assert.match(res.stdout, /^UNAVAILABLE  writes-a-note — writes-a-note is a writes proof with no fixture — it runs only with --here .*$/m);
-		assert.equal(tail(ws.root, 'writes-a-note').verdict, 'UNAVAILABLE');
-		// and the single-proof form answers the SAME state, with the same row — one seam, one verdict
-		assert.equal(ws.dt('prove', 'writes-a-note', '--json').code, 3, 'a single-proof run settles unavailable');
-	});
 });
 
 describe('dt prove — --kind is validated, and every pending record is named', () => {
@@ -1535,7 +1536,6 @@ describe('dt prove — a bare `where:` is caught at compile (R26)', () => {
 		writeProof(ws.root, 'nothing', {
 			about: ['skills/using-dreamteamer'],
 			kind: 'live',
-			mode: 'readonly',
 			given: { collection: 'notes', where: { status: { _eq: 'open' } }, pick: 'latest' },
 			steps: [{ perform: 'do a thing' }],
 			expect: [{ record: '{record}', where: null }],
@@ -1549,8 +1549,7 @@ describe('dt prove — a bare `where:` is caught at compile (R26)', () => {
 		writeProof(ws.root, 'counts-anything', {
 			about: ['skills/using-dreamteamer'],
 			kind: 'live',
-			mode: 'readonly',
-			steps: [{ run: 'true' }],
+			steps: [{ perform: 'add a note' }],
 			expect: [{ collection: 'notes', where: null, count: { _gte: 0 } }],
 		});
 		assert.equal(compileError(ws.root), null);
@@ -1564,7 +1563,6 @@ describe('dt prove — a throw while judging a RESUME still leaves a row (MINOR 
 	// protocol write a row now, not just the half that runs steps.
 	const BAD_RESUME = {
 		kind: 'live',
-		mode: 'readonly',
 		given: { collection: 'notes', where: { status: { _eq: 'open' } }, pick: 'latest' },
 		steps: [{ perform: 'do a thing' }],
 		expect: [{ path: '${env:NOPE}/x', exists: true }],
@@ -1589,7 +1587,7 @@ describe('dt prove — a throw while judging a RESUME still leaves a row (MINOR 
 	// the same throw must not produce TWO rows when `--all` catches it after proveOne already wrote one
 	test('exactly one row per run — the wrap and --all\'s catch do not both write', () => {
 		const ws = proveWorkspace({
-			proofs: { 'bad-var': { kind: 'live', mode: 'readonly', steps: [{ run: 'true' }], expect: [{ path: '${env:NOPE}/x', exists: true }] } },
+			proofs: { 'bad-var': { kind: 'live', steps: [{ run: 'true' }], expect: [{ path: '${env:NOPE}/x', exists: true }] } },
 		});
 		assert.equal(ws.dt('prove', '--all', '--kind', 'live').code, 1);
 		const rows = readLedger(ws.root, 'bad-var');
@@ -1608,7 +1606,6 @@ describe('dt prove — a step may print more than spawnSync\'s 1 MB default', ()
 			proofs: {
 				'big-output': {
 					kind: 'live',
-					mode: 'readonly',
 					steps: [{ run: 'node -e "process.stdout.write(\'x\'.repeat(2 * 1024 * 1024))"' }],
 					expect: [{ step: 1, exit: 0 }],
 				},
@@ -1646,7 +1643,6 @@ const FX_PATH = 'data/notes/fx-open.note.md';
 
 const SANDBOX_PROOF_SOURCE = {
 	kind: 'live',
-	mode: 'writes',
 	about: ['commands/close-note'],
 	given: { collection: 'notes', fixture: true, pick: 'fx-open' },
 	steps: [{ perform: '/close-note {record}' }],
@@ -1715,8 +1711,8 @@ function quietly(fn) {
 	try { return fn(); } finally { console.log = log; }
 }
 
-describe('writes proofs are sandboxed', () => {
-	test('a writes proof pends inside a throwaway worktree, and the primary store never sees the fixture', () => {
+describe('fixture proofs are sandboxed', () => {
+	test('a fixture proof pends inside a throwaway worktree, and the primary store never sees the fixture', () => {
 		const ws = sandboxWorkspace();
 		// the pinned path is the COMPILED path — assert it rather than trusting the default
 		const d = load(readFile(ws.root, '.dreamteamer/collections/notes.collection.yaml'));
@@ -1790,7 +1786,7 @@ describe('writes proofs are sandboxed', () => {
 	// by a relative path, so it resolves nowhere but the sandbox) and the verdict's own store — judged
 	// against the primary, `pickFixture` finds nothing and FALLS BACK to the record picked before the
 	// step ran, which is a confident PASS read off a stale copy.
-	test('a writes proof whose STEP does the writing passes with no actor, in the sandbox and only there', () => {
+	test('a fixture proof whose STEP does the writing passes with no actor, in the sandbox and only there', () => {
 		const ws = sandboxWorkspace({ proofs: { [STEP_WRITES]: STEP_WRITES_SOURCE }, fixturesFor: [SANDBOX_PROOF, STEP_WRITES] });
 		const res = ws.dt('prove', STEP_WRITES);
 		assert.equal(res.code, 0, res.stdout + res.stderr);
@@ -1947,15 +1943,11 @@ describe('writes proofs are sandboxed', () => {
 		quietly(() => removeWorktree(findWorkspace(ws.root), out.sandbox, { force: true }));
 	});
 
-	// ⚠ COMPILE ALLOWS THE SHAPE, because `--here` is a legitimate use of it. The runtime refusal is
-	// what protects the real store, and it SETTLES `UNAVAILABLE` (I2/R50) — the artifact is fine and
-	// this invocation cannot answer for it.
-	test('a writes proof with no fixture refuses at run time, and names both ways forward', () => {
+	test('a proof with no fixture runs in this checkout, and --here says so before anything runs', () => {
 		const ws = proveWorkspace({
 			proofs: {
 				'writes-in-place': {
 					kind: 'live',
-					mode: 'writes',
 					given: { collection: 'notes', where: { status: { _eq: 'open' } }, pick: 'latest' },
 					steps: [{ perform: 'close it' }],
 					expect: [{ record: '{record}', where: { status: { _eq: 'done' } } }],
@@ -1963,13 +1955,11 @@ describe('writes proofs are sandboxed', () => {
 			},
 		});
 		const res = ws.dt('prove', 'writes-in-place');
-		assert.equal(res.code, 3, res.stdout + res.stderr);
-		assert.match(res.stdout, /writes-in-place is a writes proof with no fixture — it runs only with --here/);
-		assert.match(res.stdout, /modules\/default\/proofs\/fixtures\/writes-in-place\//);
-		assert.equal(readLedger(ws.root, 'writes-in-place').length, 1, 'the attempt is recorded, as every terminal state is');
+		assert.equal(res.code, 5, res.stdout + res.stderr);
+		assert.doesNotMatch(res.stdout, /^in {7}/m, 'no fixture, no sandbox');
+		assert.equal(tail(ws.root, 'writes-in-place').sandbox, null);
 
-		// --here is the documented way in, and it says so BEFORE it writes anything
-		const here = ws.dt('prove', 'writes-in-place', '--here');
+		const here = ws.dt('prove', 'writes-in-place', '--restart', '--here');
 		assert.equal(here.code, 5, here.stdout + here.stderr);
 		assert.match(here.stdout, /^⚠ --here: writing to THIS checkout's store$/m);
 		assert.doesNotMatch(here.stdout, /^in {7}/m, '--here has no sandbox to name');
@@ -1989,7 +1979,6 @@ describe('writes proofs are sandboxed', () => {
  *  availability, and the one that is a fact about the DATA rather than about the machine. */
 const WANTS_A_CLOSED_NOTE = {
 	kind: 'live',
-	mode: 'readonly',
 	given: { collection: 'notes', where: { status: { _eq: 'done' } }, pick: 'latest' },
 	steps: [{ perform: 'reopen it' }],
 	expect: [{ record: '{record}', where: { status: { _eq: 'open' } } }],
@@ -2255,7 +2244,6 @@ describe('proof read surfaces — dt prove --list', () => {
 				name: 'picks-a-ghost',
 				about: ['skills/using-dreamteamer'],
 				kind: 'live',
-				mode: 'readonly',
 				given: { collection: 'notes', pick: 'ghost' },
 				steps: [{ perform: 'reopen it' }],
 				expect: [{ record: '{record}', where: { status: { _eq: 'open' } } }],
@@ -2315,9 +2303,8 @@ function ownerWorkspace(proofs) {
 /** `given` picks one person by id; the expectation counts the notes that point BACK at them. */
 const ownerProof = (pick, count) => ({
 	kind: 'live',
-	mode: 'readonly',
 	given: { collection: 'people', where: { name: { _nempty: true } }, pick },
-	steps: [count._delta === undefined ? { run: 'true' } : { perform: 'add a note owned by {record}' }],
+	steps: [{ perform: 'add a note owned by {record}' }],
 	expect: [{ collection: 'notes', where: { owner: { _eq: '{record}' } }, count }],
 });
 
@@ -2348,7 +2335,8 @@ describe('dt prove — a {record} literal inside a where is the picked record (R
 	// restatement.
 	test('the count is the picked record\'s own — not zero, and not the whole collection', () => {
 		const ws = ownerWorkspace({ 'owns-at-least-two': ownerProof('bob', { _gte: 2 }) });
-		const res = ws.dt('prove', 'owns-at-least-two');
+		assert.equal(ws.dt('prove', 'owns-at-least-two').code, 5);
+		const res = ws.dt('prove', 'owns-at-least-two', '--record', 'people/bob');
 		assert.equal(res.code, 1, res.stdout + res.stderr);
 		assert.match(res.stdout, /^ {2}count 1 ≥ 2 ✖$/m);
 	});
@@ -2433,7 +2421,6 @@ describe('dt prove — a row mixing two forms is refused at COMPILE (C1/I3/R48)'
 		writeProof(ws.root, 'mixed', {
 			about: ['skills/using-dreamteamer'],
 			kind: 'live',
-			mode: 'readonly',
 			given: { collection: 'notes', where: { status: { _eq: 'open' } }, pick: 'latest' },
 			steps: [{ run: 'true' }],
 			expect,
@@ -2461,9 +2448,8 @@ describe('dt prove — a row mixing two forms is refused at COMPILE (C1/I3/R48)'
 		writeProof(ws.root, 'four-forms', {
 			about: ['skills/using-dreamteamer'],
 			kind: 'live',
-			mode: 'readonly',
 			given: { collection: 'notes', where: { status: { _eq: 'open' } }, pick: 'latest' },
-			steps: [{ run: 'true' }],
+			steps: [{ run: 'true' }, { perform: 'do a thing' }],
 			expect: [
 				{ collection: 'notes', where: {}, count: { _gte: 1 } },
 				{ record: '{record}', where: { status: { _eq: 'open' } } },
@@ -2550,39 +2536,6 @@ describe('dt prove <artifact> — an artifact nothing proves is VACUOUS, not pro
 		const res = ws.dt('prove', '--all');
 		assert.equal(res.code, 0, res.stdout + res.stderr);
 		assert.match(res.stdout, /^proofs: 0 passed · 0 failed · 0 unavailable · 0 no-fixture · 0 vacuous · 0 need an actor$/m);
-	});
-});
-
-describe('dt prove — writes-without-a-fixture SETTLES unavailable (I2/R50)', () => {
-	const writesNoFixture = {
-		kind: 'live',
-		mode: 'writes',
-		given: { collection: 'notes', where: { status: { _eq: 'open' } }, pick: 'latest' },
-		steps: [{ perform: 'close it' }],
-		expect: [{ record: '{record}', where: { status: { _eq: 'done' } } }],
-	};
-
-	// ⚠ IT USED TO THROW. A single run answered exit 1 (FAIL — "the artifact is broken") and wrote NO
-	// ledger row, while `--all` read the same throw's `unavailable` marker and answered UNAVAILABLE
-	// WITH a row. One seam, two verdicts, and the more visible of them was the wrong one.
-	test('a single run is UNAVAILABLE at code 3, with a row, naming both ways forward', () => {
-		const ws = proveWorkspace({ proofs: { 'writes-in-place': writesNoFixture } });
-		const res = ws.dt('prove', 'writes-in-place');
-		assert.equal(res.code, 3, res.stdout + res.stderr);
-		assert.match(res.stdout, /^UNAVAILABLE  writes-in-place$/m);
-		assert.match(res.stdout, /writes-in-place is a writes proof with no fixture — it runs only with --here/);
-		assert.match(res.stdout, /modules\/default\/proofs\/fixtures\/writes-in-place\//);
-		const row = tail(ws.root, 'writes-in-place');
-		assert.equal(row.verdict, 'UNAVAILABLE');
-		assert.match(row.failure_reason, /is a writes proof with no fixture/);
-	});
-
-	test('--all counts it unavailable exactly as before, from the settled state', () => {
-		const ws = proveWorkspace({ proofs: { 'writes-in-place': { ...writesNoFixture, steps: [{ run: 'true' }] } } });
-		const res = ws.dt('prove', '--all', '--kind', 'live');
-		assert.match(res.stdout, /^UNAVAILABLE  writes-in-place — writes-in-place is a writes proof with no fixture/m);
-		assert.equal(tail(ws.root, 'writes-in-place').verdict, 'UNAVAILABLE');
-		assert.equal(ws.dt('prove', '--all', '--kind', 'live', '--strict').code, 1, '--strict is what makes it fatal');
 	});
 });
 

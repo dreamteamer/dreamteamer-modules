@@ -27,12 +27,6 @@ schema:
         - gate
         - live
       description: '`gate` — a static check with no fixture record; `live` — runs against a real record and is judged by `expect`.'
-    mode:
-      type: string
-      enum:
-        - readonly
-        - writes
-      description: Whether a `live` proof only reads the workspace or actually writes to it. Required when kind is live, forbidden on a gate.
     description:
       type: string
       description: What this proof asserts, in one line.
@@ -68,7 +62,7 @@ schema:
           description: '`latest` (the collection''s own `sort_field`, descending — refused when the collection declares none) or an explicit record id. `any` is refused. A `fixture` given REQUIRES a `pick: <id>` naming one of its records.'
         fixture:
           type: boolean
-          description: Read the record from this proof's own fixtures folder instead of the live workspace.
+          description: Run in a throwaway sandbox on this proof's own fixtures folder instead of the live workspace. Without it the steps may not change `data/`, unless `dt prove --here`.
     steps:
       type: array
       items:
@@ -78,7 +72,7 @@ schema:
       type: array
       items:
         type: object
-      description: 'What must hold for a `live` proof to PASS. Live only, and every row is exactly ONE of four forms — `collection`+`where`+`count` · `record`+`where` · `step` (`exit`/`stdout`/`stdout_json`) · `path`+`exists`. A row whose keys span two forms is a compile error, because compile and the judge would otherwise read it as different shapes. `count` takes its own closed operator set (`_eq _neq _gt _gte _lt _lte _delta`) and every operand must be an INTEGER; a `record:` row REQUIRES a non-empty `where` and takes only the literal `{record}` as its target; a `step:` index past the last step is refused; `stdout` and `stdout_json` are FILTER MAPS (`{ _contains: ''…'' }` · `{ ''a.b'': { _gte: 1 } }`) and a scalar, a list or a bare key is refused, because the judge reads only a map and a row it skips asserts nothing. A `where`''s string literals substitute `{record}` and `{record.<field>}` against the picked record before the filter runs — in an expectation only, never in `given.where`.'
+      description: 'What must hold for a `live` proof to PASS. Live only, and every row is exactly ONE of four forms — `collection`+`where`+`count` · `record`+`where` · `step` (`exit`/`stdout`/`stdout_json`) · `path`+`exists`. The two store forms (`collection`, `record`) need `given.fixture: true` or a `perform` step. A row whose keys span two forms is a compile error, because compile and the judge would otherwise read it as different shapes. `count` takes its own closed operator set (`_eq _neq _gt _gte _lt _lte _delta`) and every operand must be an INTEGER; a `record:` row REQUIRES a non-empty `where` and takes only the literal `{record}` as its target; a `step:` index past the last step is refused; `stdout` and `stdout_json` are FILTER MAPS (`{ _contains: ''…'' }` · `{ ''a.b'': { _gte: 1 } }`) and a scalar, a list or a bare key is refused, because the judge reads only a map and a row it skips asserts nothing. A `where`''s string literals substitute `{record}` and `{record.<field>}` against the picked record before the filter runs — in an expectation only, never in `given.where`.'
     timeout:
       type: integer
       description: Seconds allowed per `run` step before it is killed.
