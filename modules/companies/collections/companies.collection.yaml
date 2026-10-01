@@ -1,9 +1,10 @@
 name: companies
 description: >-
-  An organisation — the thing contacts, clients and leads all point at.
+  An organisation — the record a contact, meeting, project, user, product or notebook names when it
+  names a company.
 use_when: >-
-  an organisation is named — in a meeting, a lead, a contact's employer, an invoice — find or create
-  it here BEFORE the record that points at it; every funnel record joins through this one
+  an organisation is named — a contact's employer, a meeting's counterpart, a product's customer —
+  find or create it here before the record that points at it
 storage: { path: data/companies, codec: md, shape: file, suffix: company }
 id: { generate: "{{ name | slug }}" }
 schema:
@@ -18,43 +19,28 @@ schema:
       description: One line on what this company does, for someone who has never heard of it.
     relation:
       type: string
-      description: 'How this company relates to us: client, network, employer, vendor, prospect…'
+      description: 'How this company relates to you: client, network, employer, vendor, prospect…'
     website:
       type: string
       format: uri
       description: Their marketing site, with the scheme.
     domain:
       type: string
-      description: Primary email/web domain, bare — no scheme, no www. What an attendee address is matched against.
-    # Lives here rather than in a workspace overlay because it is generic CRM data, and because
-    # /scrape-contact's get_company_employees takes exactly this slug — which makes it the field
-    # that turns a company into a way of finding people.
+      description: Primary email/web domain, bare — no scheme, no www. The part of an email address that identifies this company.
     linkedin:
       type: string
       format: uri
       description: The company's LinkedIn PAGE (linkedin.com/company/<slug>) — the org-level twin of contacts.linkedin.
-    # An ordinary reference, not a new kind of field: `assets` is a `codec: file` collection, so the
-    # UI draws the file it points at wherever this company is named (decision 268). Usually
-    # `assets/logos/<simple-icons-slug>` — the slug is nearly always the bare `domain` above.
     logo:
       type: string
       x-reference: assets
-      description: The company's mark, as an asset record — usually `assets/logos/<simple-icons-slug>`. Drawn wherever this company is shown.
+      description: The company's mark, as an asset record — `assets/logos/<this company's id>` for an icon fetched from its site, or a Simple Icons slug when the brand is in that set. Drawn wherever this company is shown.
     parent:
       type: string
       x-reference: companies
       description: The parent org, when this one is a subsidiary, brand or business unit.
-    # `subsidiaries` is GENERATED — the far side of `parent`, which lives on the subsidiary
-    # (spelling B: `x-inverse-of` names the field that owns it). Declared here so that "what does a
-    # company have?" is answerable by reading this file, and READ-ONLY: set `parent` on the
-    # subsidiary and the engine maintains this in the same write. SELF-REFERENTIAL: a company's
-    # parent is a company, so both ends of the relation are this collection. `logo` above stays
-    # one-way on purpose — `assets` is a `codec: file` collection and cannot hold a mirror.
-    #
-    # `contacts` is NOT declared here. The contacts module owns that relation — `contacts.company`
-    # carries `x-inverse: contacts` — and the engine stamps the mirror onto this collection only when
-    # that module is installed. A workspace with companies and no contacts has companies with no
-    # people field, which is the truth of that workspace rather than a dangling reference.
+    # Read-only: the engine maintains it from `parent` on each subsidiary, in the same write.
+    # `contacts` is not declared here — the contacts module adds `companies.contacts` when installed.
     subsidiaries:
       type: array
       items: { type: string, x-reference: companies }
@@ -64,7 +50,7 @@ schema:
       type: string
       format: markdown
       x-body: true
-      description: The company's page — history with us, org shape, anything worth knowing before a call.
+      description: The company's page — your history with it, org shape, anything worth knowing before a call.
     author:
       type: string
       pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
