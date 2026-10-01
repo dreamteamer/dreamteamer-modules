@@ -1,20 +1,20 @@
-// Test support for @dreamteamer/workflows: the shared tier-2 fixture with THIS package installed.
+// Test support for @dreamteamer/worktrees: the shared tier-2 fixture with THIS package installed.
 //
-// `workspace()` is `test-support/fixture.mjs`'s workspace with `packages: ['workflows']` — the
+// `workspace()` is `tests/helpers/fixture.mjs`'s workspace with `packages: ['worktrees']` — the
 // package linked under node_modules and declared as a dependency, so the engine activates the
 // extension and discovers its content module exactly as it would in a stranger's workspace. Every
 // command runs through the real CLI (`ws.dt(...)`); an in-process call binds the SAME engine API the
 // fixture loaded (`bind(api)` below), never a second engine copy.
 import fs from 'node:fs';
 import path from 'node:path';
-import * as fixture from '../../../test-support/fixture.mjs';
+import * as fixture from '../../../tests/helpers/fixture.mjs';
 import { bind } from '../src/engine.js';
 
 export const { api, git, dt, dtStdin, dtIn, readFile, writeCollection, simpleCollection, compileError, GIT_ENV } = fixture;
 bind(api);
 
 /**
- * A fresh workspace with @dreamteamer/workflows installed.
+ * A fresh workspace with @dreamteamer/worktrees installed.
  *
  * @param {object} [opts]
  * @param {object} [opts.pkg]          keys merged into the workspace's `dreamteamer` section
@@ -23,10 +23,10 @@ bind(api);
  * @param {boolean}[opts.compile]      false → leave it uncompiled
  */
 export function workspace(opts = {}) {
-	const w = fixture.workspace({ packages: ['workflows'], pkg: opts.pkg ?? {}, compile: false });
+	const w = fixture.workspace({ packages: ['worktrees'], pkg: opts.pkg ?? {}, compile: false });
 	for (const [name, d] of Object.entries(opts.collections ?? {})) writeCollection(w.root, name, d);
 	const ws = api.findWorkspace(w.root);
-	const handle = { ...w, ws, land: (...a) => w.dt('land', ...a), prove: (...a) => w.dt('prove', ...a) };
+	const handle = { ...w, ws, land: (...a) => w.dt('land', ...a) };
 	if (opts.compile === false) return handle;
 	const out = w.dt('compile');
 	if (out.code !== 0) throw new Error(`fixture compile failed:\n${out.stdout}\n${out.stderr}`);
@@ -35,15 +35,6 @@ export function workspace(opts = {}) {
 		for (const fields of rows) store.add(collection, { ...fields });
 	}
 	return { ...handle, store, out };
-}
-
-/** Write a proof source at `modules/default/proofs/<id>.proof.yaml`. The default `about` names the
- *  one skill every fixture has (the engine's), and the default is the cheapest valid gate. */
-export function writeProof(root, id, fields = {}) {
-	const file = path.join(root, 'modules', 'default', 'proofs', `${id}.proof.yaml`);
-	fs.mkdirSync(path.dirname(file), { recursive: true });
-	fs.writeFileSync(file, api.dumpYaml({ name: id, about: ['skills/using-dreamteamer'], kind: 'gate', steps: [{ run: 'true' }], ...fields }));
-	return file;
 }
 
 /** Run `fn` with console output captured — for an in-process call whose chatter is not the point. */

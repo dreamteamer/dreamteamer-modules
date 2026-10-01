@@ -1,0 +1,28 @@
+{
+	"name": "@dreamteamer/proofs",
+	"version": "0.1.0",
+	"description": "dt prove — behaviour proofs for a dreamteamer workspace's skills, commands, bindings and scripts, answered by exit code.",
+	"license": "Apache-2.0",
+	"type": "module",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/dreamteamer/dreamteamer-modules.git",
+		"directory": "modules/proofs"
+	},
+	"keywords": [
+		"dreamteamer",
+		"dreamteamer-module"
+	],
+	"files": [
+		"README.md",
+		"src",
+		"collections",
+		"skills"
+	],
+	"dreamteamer": {
+		"extension": "./src/extension.js",
+		"title": "Proofs",
+		"description": "Behaviour proofs: `dt prove` runs a `proofs/` source against a skill, command, command-binding or module script and answers with an exit code — 0 pass · 1 fail · 3 unavailable · 4 no-fixture · 5 pending · 6 vacuous — and keeps the evidence per machine. Adds the `proofs` source kind (with `proofs/fixtures/` as the records a `writes` proof runs against), the `proofs` collection, an analysis that validates every proof at compile, and the `proving-artifacts` skill. A `writes` proof runs in a throwaway checkout this module creates and removes itself; it needs no other module.",
+		"engine": ">=0.31.0"
+	}
+}

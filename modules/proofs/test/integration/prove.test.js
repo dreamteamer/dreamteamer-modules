@@ -23,7 +23,7 @@ import {
 	countMatching, pickFixture, resolveRequires,
 	ledgerPath, readLedger, appendLedger, pendingFor, LEDGER_CAP, LEDGER_DIR, PROVE_USAGE, PROVE_FLAGS,
 } from '../../src/prove.js';
-import { removeWorktree } from '../../src/worktrees.js';
+import { removeWorktree } from '../../src/sandbox.js';
 
 const { readManifest, recordResolver, findWorkspace, Store } = api;
 const dump = api.dumpYaml;
@@ -229,8 +229,8 @@ describe('compile validates proofs', () => {
 	// ONE module script (that package's `bin/dreamteamer.js`); no commands, no bindings. The two
 	// lines differ in exactly one place — the skill numerator — which is the whole assertion.
 	// the skills: the engine's using-dreamteamer and this package's own two
-	const COVERED = 'proofs: 1 declared · commands 0/0 · skills 1/3 · scripts 0/2 · bindings 0/0';
-	const UNCOVERED = 'proofs: 0 declared · commands 0/0 · skills 0/3 · scripts 0/2 · bindings 0/0';
+	const COVERED = 'proofs: 1 declared · commands 0/0 · skills 1/2 · scripts 0/2 · bindings 0/0';
+	const UNCOVERED = 'proofs: 0 declared · commands 0/0 · skills 0/2 · scripts 0/2 · bindings 0/0';
 
 	test('an about that names no artifact FAILS compile, listing the four forms', () => {
 		const ws = workspace({ compile: false });
@@ -369,11 +369,11 @@ describe('compile validates proofs', () => {
 		assert.deepEqual(fromEntries, fromStore);
 
 		// and the shape both agree ON, so a matched pair of wrong answers cannot pass
-		assert.deepEqual(fromEntries.skills, ['skills/proving-artifacts', 'skills/using-dreamteamer', 'skills/working-in-worktrees'], 'a skill is its FOLDER, not its references/*.md');
+		assert.deepEqual(fromEntries.skills, ['skills/proving-artifacts', 'skills/using-dreamteamer'], 'a skill is its FOLDER, not its references/*.md');
 		assert.deepEqual(fromEntries.commands, ['commands/hello']);
 		assert.deepEqual(fromEntries.bindings, []);
 		assert.deepEqual(fromEntries.scripts, ['dreamteamer/bin/dreamteamer.js', 'dreamteamer/bin/dt-hook.sh'], 'a module script is <module-id>/bin/<file> — EVERY file in bin/, the sh shim included');
-		assert.equal(fromEntries.all.size, 6);
+		assert.equal(fromEntries.all.size, 5);   // 2 skills · 1 command · 2 scripts
 	});
 
 	// ⚠ THE ROOT LAYOUT, which every path-slicing derivation gets wrong. With no `workspace-module`
@@ -2100,8 +2100,8 @@ describe('proof read surfaces — dt prove --list', () => {
 		assert.equal(res.code, 0, res.stderr);
 		const missing = JSON.parse(res.stdout);
 		assert.ok(Array.isArray(missing) && missing.every((m) => typeof m === 'string'), res.stdout);
-		// this package's own two skills are artifacts nothing in the fixture proves — named, as they must be
-		assert.deepEqual(missing, ['commands/open-note', 'skills/proving-artifacts', 'skills/working-in-worktrees', 'dreamteamer/bin/dreamteamer.js', 'dreamteamer/bin/dt-hook.sh']);
+		// this module's own skill is an artifact nothing in the fixture proves — named, as they must be
+		assert.deepEqual(missing, ['commands/open-note', 'skills/proving-artifacts', 'dreamteamer/bin/dreamteamer.js', 'dreamteamer/bin/dt-hook.sh']);
 	});
 
 	// a flag that narrows PROOFS cannot narrow ARTIFACTS — accepting it silently would answer a

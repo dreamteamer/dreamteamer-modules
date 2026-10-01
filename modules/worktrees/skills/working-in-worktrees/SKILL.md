@@ -1,6 +1,6 @@
 ---
 name: working-in-worktrees
-description: Use when a second checkout of this workspace is involved — cutting, listing, inspecting or removing a linked git worktree (`dt worktree add|list|get|rm`), a throwaway `--temp` sandbox, bringing a worktree's committed records back onto the primary branch (`dt land`), a landing that refused or stopped on a conflict, a session running inside `.worktrees/<name>`, or wiring a harness's WorktreeCreate / WorktreeRemove hooks (`dt install --print-adapters`). From @dreamteamer/workflows.
+description: Use when a second checkout of this workspace is involved — cutting, listing, inspecting or removing a linked git worktree (`dt worktree add|list|get|rm`), a throwaway `--temp` sandbox, bringing a worktree's committed records back onto the primary branch (`dt land`), a landing that refused or stopped on a conflict, a session running inside `.worktrees/<name>`, or wiring a harness's WorktreeCreate / WorktreeRemove hooks (`dt install --print-adapters`). From @dreamteamer/worktrees.
 ---
 
 # working in worktrees — a second checkout, and the one verb that brings its records home
@@ -37,8 +37,8 @@ see the engine's `using-dreamteamer` skill for them.
 DIRECT dependency that is a symlink under `node_modules/` here — the engine, this package, anything
 `npm link`ed — is mirrored as the same link into the new tree, and so is every symlinked
 `git_modules/<name>` shadow. Without that the new tree would compile with a different compiler, or
-without this extension at all — and a tree holding `proofs/` fails compile when nothing installed
-knows that kind. Real directories are left to `dt install`; a real `git_modules/` clone is
+without this extension at all — and a tree holding `proofs/` fails compile when the proofs module
+is not mirrored with it. Real directories are left to `dt install`; a real `git_modules/` clone is
 per-checkout working state and is never linked.
 
 ## the four subcommands

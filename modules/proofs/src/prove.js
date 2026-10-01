@@ -15,7 +15,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { dt } from './engine.js';
-import { createWorktree, removeWorktree } from './worktrees.js';
+import { createWorktree, removeWorktree } from './sandbox.js';
 
 export const PROOF_KINDS = ['gate', 'live'];
 export const PROOF_MODES = ['readonly', 'writes'];

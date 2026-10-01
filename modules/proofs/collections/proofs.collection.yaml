@@ -92,5 +92,5 @@ list_fields:
   - name
   - kind
   - about
-icon: verified
+icon: workspace-trusted   # not `verified` — meeting-preps wears it; a proof is what makes an artifact trusted
 group: system

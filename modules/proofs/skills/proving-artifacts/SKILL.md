@@ -1,6 +1,6 @@
 ---
 name: proving-artifacts
-description: Use when an artifact's behaviour has to be SHOWN to work rather than claimed — before saying a skill, command, command-binding or module script works; when writing, running, resuming or reading a proof (`modules/<module>/proofs/<id>.proof.yaml`, `dt prove`); when `dt prove` answers an exit code (1 fail, 3 unavailable, 4 no-fixture, 5 pending, 6 vacuous) or prints PERFORM; when compile refuses or warns about a proof, or nudges "no proof yet"; when asked what has no proof or what failed on this machine (`dt prove --list`). From @dreamteamer/workflows.
+description: Use when an artifact's behaviour has to be SHOWN to work rather than claimed — before saying a skill, command, command-binding or module script works; when writing, running, resuming or reading a proof (`modules/<module>/proofs/<id>.proof.yaml`, `dt prove`); when `dt prove` answers an exit code (1 fail, 3 unavailable, 4 no-fixture, 5 pending, 6 vacuous) or prints PERFORM; when compile refuses or warns about a proof, or nudges "no proof yet"; when asked what has no proof or what failed on this machine (`dt prove --list`). From @dreamteamer/proofs.
 ---
 
 # proving artifacts — what a skill, a command or a script CLAIMS, and whether it still holds
@@ -440,4 +440,4 @@ WRITE (a closed enum, a required field) the prose never showed.
 | `{record}` in `given.where` | nothing substitutes there; the given is what picks the record |
 | a relative `path:` read as "beside where I typed dt" | it is resolved against the WORKSPACE root — the sandbox's, inside a `writes` proof |
 | `dt prove skills/x` exiting 0 as proof that the skill works | exit 6 when nothing is `about` it; check the code, not the absence of red |
-| `rm -rf node_modules/@dreamteamer/workflows` with proofs in the tree | compile fails on the unknown `proofs/` folder — deliberately: a proof nothing validates is a claim nothing checks |
+| `rm -rf node_modules/@dreamteamer/proofs` with proofs in the tree | compile fails on the unknown `proofs/` folder — deliberately: a proof nothing validates is a claim nothing checks |
