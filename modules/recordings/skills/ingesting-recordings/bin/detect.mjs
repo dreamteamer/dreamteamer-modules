@@ -118,24 +118,12 @@ function uniqueTrashPath(trashDir, name) {
 	return dest;
 }
 
-/**
- * Every file under `dir`, at any depth, sorted, dotfiles skipped.
- *
- * ⚠ RECURSIVE on purpose, since 23/08/2026. This scanned exactly one level until then — a
- * `statSync(p).isFile()` skip whose own comment said it "skips ingested/ by construction". That
- * staging folder was retired on 22/08/2026, so the skip had nothing left to skip and only stranded
- * files: two receipts sat in `inbox/invoices/ingested/` for a day, invisible to the drain that was
- * supposed to file them while `verify-drive-index` (which DOES walk) counted them as new. The other
- * three flows over this same inbox shape — screenshots' `walk`, and both finance drains' `rglob` —
- * were already recursive, and `drain-expenses-inbox.py` says why in its own comment: the operator
- * does create subfolders inside an inbox. One flow disagreeing is what makes a file disappear, so
- * all four now agree. Nothing legitimate lives in a subfolder here; the point is that a file put
- * into one is still FOUND rather than silently skipped.
- */
+/** Every file under `dir`, at any depth, sorted; dotfiles and any `trash/` folder (discards, never input) skipped. */
 function walkFiles(dir, out = []) {
 	if (!fs.existsSync(dir)) return out;
 	for (const e of fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
 		if (e.name.startsWith('.')) continue;
+		if (e.isDirectory() && e.name === 'trash') continue;
 		const p = path.join(dir, e.name);
 		if (e.isDirectory()) walkFiles(p, out); else out.push(p);
 	}
@@ -272,17 +260,14 @@ function knownFingerprints() {
 	return known;
 }
 
+/** A top-level frontmatter scalar with its surrounding quotes removed, or null. */
+const fmValue = (text, key) => (new RegExp(`^${key}:[ \\t]*(.*?)\\s*$`, 'm').exec(text)?.[1] ?? '').replace(/^(['"])(.*)\1$/, '$2') || null;
+
 /**
- * Recordings that are WAITING FOR A BINARY — a recording without a file: `origin: audio` with no
- * `recording_file:`. A hash cannot find these (there is nothing to hash), so an incoming file that
- * belongs to one of them looks brand new and gets a duplicate record. That happened for real on the
- * first run: `Sam jul23.m4a` had a recording since an earlier migration whose binary was unreachable,
- * and the recovered file created a second one.
- *
- * Returns candidates with the evidence for each, and never decides — the agent does. The strongest
- * signal is a record (the recording OR its meeting) that literally NAMES the incoming filename; date
- * + duration agreement is next. Note the durations here come from ASR, not ffprobe, so they agree to
- * a few seconds rather than exactly.
+ * Recordings waiting for a binary — `origin: audio` with no `recording_file`. A hash cannot find
+ * these, so scan offers each new file the ones it may belong to, with the evidence, and the agent
+ * decides. A record (the recording or its meeting) that names the incoming filename is the strong
+ * signal; the same day and a duration within 15 s is the plausible one (ASR durations drift by seconds).
  */
 function recordingsWithoutFile() {
 	const out = [];
@@ -292,18 +277,16 @@ function recordingsWithoutFile() {
 		if (/^recording_file:\s*\S/m.test(text)) continue;              // has its binary
 		if (!/^origin:\s*audio\s*$/m.test(text)) continue;              // pasted text needs no binary
 		const id = path.relative(RECORDINGS_DIR, f).replace(/\.meeting-recording\.md$/, '');
-		const meetingRef = (text.match(/^meeting:\s*(\S+)/m) ?? [])[1] ?? null;
-		// the original filename is usually recorded on the MEETING's description, not here — that is
-		// where an earlier migration left "recording file unreachable, original path: …"
-		let haystack = text;
+		const meetingRef = fmValue(text, 'meeting');
+		let haystack = text;   // the original filename is often written on the meeting, so search both
 		if (meetingRef) {
 			const mf = meetingFile(meetingRef.replace(/^meetings\//, ''));
 			if (mf) haystack += '\n' + fs.readFileSync(mf, 'utf8');
 		}
 		out.push({
 			id, meeting: meetingRef,
-			date: (text.match(/^date:\s*(\S+)/m) ?? [])[1] ?? null,
-			duration: ((text.match(/^duration:\s*(.+)$/m) ?? [])[1] ?? '').trim().replace(/^['"]|['"]$/g, '') || null,
+			date: fmValue(text, 'date'),
+			duration: fmValue(text, 'duration'),
 			// substring containment, NOT a filename regex: these names have spaces ("Sam jul23.m4a")
 			// and live inside a path in prose, so any tokenizer that stops at whitespace misses them.
 			_hay: haystack.toLowerCase(),
@@ -350,7 +333,7 @@ function meetingFile(id) {
 	const own = path.join(dir, name);
 	if (fs.existsSync(own)) return own;
 	const under = storage?.under;
-	if (!under?.collection || !under.path || !(parent = read(under.collection))?.path) return null;
+	if (!under?.collection || !under.path || !(parent = compiledStorage(under.collection))?.path) return null;
 	const parentDir = path.join(ROOT, String(parent.path));
 	if (!fs.existsSync(parentDir)) return null;
 	for (const e of fs.readdirSync(parentDir, { withFileTypes: true })) {
@@ -361,10 +344,18 @@ function meetingFile(id) {
 	return null;
 }
 
-/** minutes:seconds → seconds, for a tolerant duration comparison */
+/** `m:ss` or `h:mm:ss` → seconds, for a tolerant duration comparison */
 function secs(d) {
-	const m = String(d ?? '').match(/^(\d+):(\d{2})$/);
-	return m ? +m[1] * 60 + +m[2] : null;
+	const m = String(d ?? '').match(/^(?:(\d+):)?(\d+):(\d{2})$/);
+	return m ? (+(m[1] ?? 0) * 3600) + (+m[2] * 60) + +m[3] : null;
+}
+
+/** The local calendar day (`YYYY-MM-DD`) of a date or date-time value, or null. */
+function localDay(v) {
+	if (!v) return null;
+	if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+	const t = new Date(v);
+	return isNaN(t) ? String(v).slice(0, 10) : iso(t.getFullYear(), t.getMonth() + 1, t.getDate());
 }
 
 // ---------------------------------------------------------------- verbs
@@ -433,7 +424,7 @@ if (verb === 'scan') {
 				const named = o._hay.includes(base.toLowerCase());
 				const os_ = secs(o.duration);
 				const durClose = rs != null && os_ != null && Math.abs(rs - os_) <= 15;
-				const sameDate = o.date === r.date;
+				const sameDate = localDay(o.date) === r.date;
 				if (!named && !(sameDate && durClose)) return null;
 				return {
 					recording: o.id, meeting: o.meeting, date: o.date, duration: o.duration,
