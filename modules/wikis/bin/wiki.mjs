@@ -707,7 +707,7 @@ function pull(argv, root) {
 
 	console.log(`\n${s.total} source(s) · ${COMPLETENESS.map((c) => `${c} ${s.by[c]}`).join(' · ')}`);
 	if (s.incomplete) console.log(`⚠ ${s.incomplete} still need scraping — \`npx dt-wiki incomplete ${id}\``);
-	console.log(`run \`npx dreamteamer check\` and commit the records; the corpus itself is under ${w.dir} and is never committed`);
+	console.log(`run \`npx dreamteamer check\`, then commit the record ${path.relative(root, w.file)} and the corpus ${path.relative(root, w.dir)}/ together`);
 	return 0;
 }
 

@@ -7,8 +7,8 @@
 // designed for, and a green suite that never asserted the exit code would report success on a corpus
 // with holes in it.
 //
-// `pull` is not here: it is the one verb that reaches the network, so its rules are pinned as
-// `pullPlan` in wiki-model.test.mjs and the live run is smoked by hand and quoted.
+// `pull` runs here against a fake `notebooklm` on a private PATH; its planning rules are pinned as
+// `pullPlan` in wiki-model.test.mjs.
 import { test, describe, after } from 'node:test';
 import assert from 'node:assert';
 import fs from 'node:fs';
@@ -208,6 +208,40 @@ describe('verify leaves alone what a file cannot tell it', () => {
 	test('and both still count as incomplete, so nothing they hide gets lost', () => {
 		const { ws } = seed('partial', 2000, 'y'.repeat(4000));
 		assert.equal(run(ws, 'incomplete', 'w').status, 1);
+	});
+});
+
+describe('pull, against a fake vendor', () => {
+	/** A fake `notebooklm` answering the two calls pull makes: `source list` and `source fulltext -o`.
+	 *  PATH holds ONLY its folder, so a real vendor CLI on the machine is never reached. */
+	function fakeVendor(ws) {
+		const bin = path.join(ws, '.fake-nlm');
+		fs.mkdirSync(bin);
+		const script = `#!${process.execPath}
+const fs = require('node:fs');
+const args = process.argv.slice(2).filter((a) => a !== '--quiet');
+if (args[0] === 'source' && args[1] === 'list') {
+	console.log(JSON.stringify({ sources: [{ id: 'src-1', title: 'Harbor Mutual field guide', type: 'SourceType.PASTED_TEXT' }] }));
+} else if (args[0] === 'source' && args[1] === 'fulltext') {
+	fs.writeFileSync(args[args.indexOf('-o') + 1], '# Harbor Mutual field guide\\n\\n' + 'Dana Oren walks the claims floor every morning. '.repeat(20));
+	console.log('{}');
+} else { console.error('unexpected call: ' + args.join(' ')); process.exit(9); }
+`;
+		fs.writeFileSync(path.join(bin, 'notebooklm'), script, { mode: 0o755 });
+		return bin;
+	}
+
+	test('the closing line says to commit the record and the corpus folder', () => {
+		const { ws } = workspace();
+		const bin = fakeVendor(ws);
+		const r = spawnSync(process.execPath, [CLI, 'pull', '--notebook', 'nb-0000-fake', '--wiki', 'guide'], {
+			cwd: ws, encoding: 'utf8', env: { ...process.env, PATH: bin, FILES_FOLDER: '', NO_COLOR: '1' }, timeout: 30000,
+		});
+		assert.equal(r.status, 0, `${r.stdout}\n${r.stderr}`);
+		assert.ok(fs.existsSync(path.join(ws, 'wikis', 'guide', 'sources')), 'pull wrote no corpus');
+		const last = r.stdout.trim().split('\n').at(-1);
+		assert.match(last, /commit the record \S*guide\S* and the corpus wikis\/guide\//);
+		assert.doesNotMatch(r.stdout, /never committed/);
 	});
 });
 
