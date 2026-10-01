@@ -1,6 +1,6 @@
 ---
 name: searching-a-workspace
-description: use when looking for something in a workspace and grep is not obviously right — a half-remembered record, a question in your own words rather than the corpus's, or "everything we have about X". Owns the grep-vs-retrieval rule and the effort ladder (`dt-extensions find`). Not for searching one assembled corpus of prose — that is `working-with-wikis`.
+description: use when looking for something in a workspace and grep is not obviously right — a half-remembered record, a question in your own words rather than the corpus's, or "everything we have about X". Owns the grep-vs-retrieval rule and the effort ladder (`npx dt-find`). Not for searching one assembled corpus of prose — that is `working-with-wikis`.
 ---
 
 # searching a workspace
@@ -28,7 +28,7 @@ given you instantly and exactly.
 ## the ladder
 
 ```sh
-npx dt-extensions find "<question>" [--effort 0|1|2|3] [-c <collection>] [-n N]
+npx dt-find "<question>" [--effort 0|1|2|3] [-c <collection>] [-n N]
 ```
 
 **Rung 0 — lexical.** Exact words. Instant, deterministic, needs nothing installed.

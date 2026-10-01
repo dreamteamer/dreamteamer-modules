@@ -165,32 +165,6 @@ export function riskViolationsOf(id, record) {
 	return out;
 }
 
-/**
- * The violations in one `users` record. Pure. `usersById` maps user id → frontmatter, for the one
- * rule that reads a DIFFERENT record.
- *
- * ⚠ AN AGENT WITH NO OWNER IS UNSUPERVISED AUTOMATION. The fold that lets agents hold seats is only
- * safe while every agent row names its babysitter — a HUMAN one, because an agent owning an agent
- * is a loop with nobody at the end. Nothing in JSON Schema can require a field conditionally on
- * `kind`, or read the owner's own `kind`, so both rules live here.
- */
-export function userViolationsOf(id, record, usersById = new Map()) {
-	const out = [];
-	const has = (f) => record[f] !== undefined && record[f] !== null && record[f] !== '' && !(Array.isArray(record[f]) && !record[f].length);
-	const kind = record.kind ?? 'human';
-	if (kind === 'agent') {
-		if (!has('human_owner')) out.push(`${id}: \`kind: agent\` needs \`human_owner\` — the babysitter, the human accountable for what it does`);
-		else {
-			const owner = usersById.get(idOf(record.human_owner));
-			if (owner && (owner.kind ?? 'human') === 'agent') out.push(`${id}: \`human_owner\` points at \`${idOf(record.human_owner)}\`, which is itself an agent — the babysitter must be a human`);
-		}
-	} else {
-		if (has('human_owner')) out.push(`${id}: \`human_owner\` on a \`kind: ${kind}\` row — only an agent has a babysitter; drop the field or set \`kind: agent\``);
-		if (has('agent')) out.push(`${id}: \`agent\` on a \`kind: ${kind}\` row — only an agent row names its entity; drop the field or set \`kind: agent\``);
-	}
-	return out;
-}
-
 /** ⚠ EVERYTHING BELOW RUNS ONLY AS A SCRIPT. Without this guard, importing `violationsOf` from a test
  *  ran the whole scan at import time and called `process.exit(0)` — which killed the test file before a
  *  single assertion ran and reported it as 1 test, 1 passing. Measured 2026-09-10. */
@@ -238,9 +212,7 @@ function main() {
 	const decisions = records('decisions', 'decision');
 	const deliverables = records('deliverables', 'deliverable');
 	const risks = records('risks', 'risk');
-	const users = records('users', 'user');
-	const usersById = new Map(users.map(([id, fm]) => [idOf(id), fm]));
-	const checked = activities.length + decisions.length + deliverables.length + phases.size + risks.length + users.length;
+	const checked = activities.length + decisions.length + deliverables.length + phases.size + risks.length;
 
 	if (!checked) {
 		// A workspace with the module installed and no plan yet is not a failure.
@@ -253,16 +225,15 @@ function main() {
 		...decisions.flatMap(([id, fm]) => decisionViolationsOf(id, fm)),
 		...deliverables.flatMap(([id, fm]) => deliverableViolationsOf(id, fm, phases)),
 		...risks.flatMap(([id, fm]) => riskViolationsOf(id, fm)),
-		...users.flatMap(([id, fm]) => userViolationsOf(id, fm, usersById)),
 	];
 
 	if (argv.includes('--json')) {
-		console.log(JSON.stringify({ checked, activities: activities.length, decisions: decisions.length, deliverables: deliverables.length, phases: phases.size, risks: risks.length, users: users.length, violations }, null, 2));
+		console.log(JSON.stringify({ checked, activities: activities.length, decisions: decisions.length, deliverables: deliverables.length, phases: phases.size, risks: risks.length, violations }, null, 2));
 	} else if (violations.length) {
 		console.error(`✖ plan records: ${violations.length} violation(s) across ${checked} records`);
 		for (const v of violations) console.error(`  ${v}`);
 	} else {
-		console.log(`✔ plan records: ${checked} checked, 0 violations (${activities.length} activities, ${decisions.length} decisions, ${deliverables.length} deliverables, ${phases.size} phases, ${risks.length} risks, ${users.length} users)`);
+		console.log(`✔ plan records: ${checked} checked, 0 violations (${activities.length} activities, ${decisions.length} decisions, ${deliverables.length} deliverables, ${phases.size} phases, ${risks.length} risks)`);
 	}
 	process.exit(violations.length ? 1 : 0);
 }

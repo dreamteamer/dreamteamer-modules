@@ -6,8 +6,8 @@ argument-hint: <notebooks/id> [--account <label>] [--title <title>]
 load the `using-notebooklm` skill, then restore the notebook from its record:
 
 ```bash
-npx dt-extensions notebook restore <id> --dry-run            # the plan, one line per call, no network
-npx dt-extensions notebook restore <id> [--account <label>] [--title <title>] [--replace]
+npx dt-notebook restore <id> --dry-run            # the plan, one line per call, no network
+npx dt-notebook restore <id> [--account <label>] [--title <title>] [--replace]
 ```
 
 the verb does the work — `create`, one `source add` + `wait` + `rename` per entry of `sources` in

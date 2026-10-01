@@ -1,11 +1,40 @@
 {
-	"name": "notebooks",
-	"private": true,
-	"version": "0.2.0",
+	"name": "@dreamteamer/notebooks",
+	"version": "0.1.0",
+	"description": "Notebooks and the corpora behind them, for a dreamteamer workspace — a local wiki you can grep with nothing installed, and NotebookLM as an extra.",
+	"license": "Apache-2.0",
+	"type": "module",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/dreamteamer/dreamteamer-modules.git",
+		"directory": "modules/notebooks"
+	},
+	"keywords": [
+		"dreamteamer",
+		"dreamteamer-module"
+	],
+	"bin": {
+		"dt-wiki": "bin/wiki.mjs",
+		"dt-notebook": "bin/notebook.mjs"
+	},
+	"files": [
+		"README.md",
+		"bin",
+		"lib",
+		"collections",
+		"collection-templates",
+		"skills",
+		"commands",
+		"command-bindings",
+		"ui-views"
+	],
+	"dependencies": {
+		"js-yaml": "^4.1.0"
+	},
 	"dreamteamer": {
 		"title": "Notebooks",
-		"description": "A notebook and the corpora it is built on, behind TWO adapters. `local` is the default and its promise is ZERO GOOGLE PREREQUISITES — no account, no login, no network, ever. It has never meant no software, and it has no hard software requirement either: `wiki search` is grep and needs nothing at all. `qmd` (`npm install -g @tobilu/qmd`) is OPTIONAL and on-device, and it is what makes a corpus answerable rather than merely greppable — measured over 300 records, lexical recall 0.22 against vector's 0.80, so the gap is real and it is still not a prerequisite. `wiki ask` runs BM25 + vector search + an optional LLM re-rank locally through node-llama-cpp, because grep has no synonyms and a corpus whose own vocabulary differs from the reader's returns nothing, silently — measured on a real corpus, a practitioner's term for a statutory rule gave nine grep hits and not the rule itself. `wiki search` still needs nothing at all and is the floor. The answering procedure is FOUR passes (locate semantically, read the lines, confirm lexically, widen across corpora) and `wiki ask` prints LOCATIONS, never an answer — nothing here synthesises, because a paraphrase is what made the answer uncheckable in the first place. A `wikis` record is a folder of markdown sources (`index.md`, then `sources/<nn>--<slug>.md` nested into sections), every source is a file, and a source nothing has downloaded yet is a STUB carrying `completeness: pending` — so a half-fetched corpus cannot be mistaken for a finished one, and `npx dt-extensions wiki incomplete` names every one that still needs scraping and exits 1. `notebooklm` is the EXTRA adapter: a `notebooks` record is the SPEC a live NotebookLM notebook can be rebuilt from — its ordered `sources`, the one `configure` call in `chat`, the uuid and login of the live copy — and `notebook restore` plays it, `notebook capture` writes it, `notebook persona` applies `NOTEBOOKLM.md`'s persona in one safe call. `wiki pull <notebook-record>` is the bridge, mirroring a live notebook's sources into a folder. What the local adapter cannot do — ask a question over the corpus, generate audio or slides, research the web — is listed with its cost in README.md rather than faked; `wiki search` and `wiki outline` are the mechanical substitutes, and the agent reading the folder is the model. Peers `companies`, so a client corpus can say whose it is.",
-		"engine": ">=0.23.0",
+		"description": "A notebook and the corpora it is built on, behind TWO adapters. `local` is the default and its promise is ZERO GOOGLE PREREQUISITES — no account, no login, no network, ever. It has never meant no software, and it has no hard software requirement either: `wiki search` is grep and needs nothing at all. `qmd` (`npm install -g @tobilu/qmd`) is OPTIONAL and on-device, and it is what makes a corpus answerable rather than merely greppable — measured over 300 records, lexical recall 0.22 against vector's 0.80, so the gap is real and it is still not a prerequisite. `wiki ask` runs BM25 + vector search + an optional LLM re-rank locally through node-llama-cpp, because grep has no synonyms and a corpus whose own vocabulary differs from the reader's returns nothing, silently — measured on a real corpus, a practitioner's term for a statutory rule gave nine grep hits and not the rule itself. `wiki search` still needs nothing at all and is the floor. The answering procedure is FOUR passes (locate semantically, read the lines, confirm lexically, widen across corpora) and `wiki ask` prints LOCATIONS, never an answer — nothing here synthesises, because a paraphrase is what made the answer uncheckable in the first place. A `wikis` record is a folder of markdown sources (`index.md`, then `sources/<nn>--<slug>.md` nested into sections), every source is a file, and a source nothing has downloaded yet is a STUB carrying `completeness: pending` — so a half-fetched corpus cannot be mistaken for a finished one, and `npx dt-wiki incomplete` names every one that still needs scraping and exits 1. `notebooklm` is the EXTRA adapter: a `notebooks` record is the SPEC a live NotebookLM notebook can be rebuilt from — its ordered `sources`, the one `configure` call in `chat`, the uuid and login of the live copy — and `notebook restore` plays it, `notebook capture` writes it, `notebook persona` applies `NOTEBOOKLM.md`'s persona in one safe call. `wiki pull <notebook-record>` is the bridge, mirroring a live notebook's sources into a folder. What the local adapter cannot do — ask a question over the corpus, generate audio or slides, research the web — is listed with its cost in README.md rather than faked; `wiki search` and `wiki outline` are the mechanical substitutes, and the agent reading the folder is the model. Peers `companies`, so a client corpus can say whose it is.",
+		"engine": ">=0.30.0",
 		"peerDependencies": [
 			"companies"
 		]

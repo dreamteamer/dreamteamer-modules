@@ -64,7 +64,7 @@ contract. **Read back `mimeType` with `get_file_metadata` on the first upload of
 
 1. `dt add meeting-recordings --name "<who and what>" --date YYYY-MM-DD --origin audio`
 2. Transcribe straight from the uploaded path — `run` takes any path ffmpeg can open:
-   `cd <extensions>/modules/recordings/skills/transcribing-recordings && uv run python transcribe_meeting.py run "<abs record.md>" "<abs audio>" --speakers N --language he|en`
+   `cd <recordings>/skills/transcribing-recordings && uv run python transcribe_meeting.py run "<abs record.md>" "<abs audio>" --speakers N --language he|en`
 3. Optionally upload the bytes to `${env:FILES_FOLDER}/meeting-recordings/<year>/<month>/` with `create_file`
    (`base64Content` + `contentMimeType` + `disableConversionToGoogleType: true`).
 
@@ -122,7 +122,7 @@ This skill executes from its **module source**, not the generated `.claude/skill
 overwrites and prunes that one.
 
 ```bash
-DET=<extensions>/modules/recordings/skills/ingesting-recordings/bin/detect.mjs
+DET=.dreamteamer/skills/ingesting-recordings/bin/detect.mjs
 ```
 
 Zero dependencies. Needs `ffprobe` on PATH (already a `transcribing-recordings` prerequisite) and

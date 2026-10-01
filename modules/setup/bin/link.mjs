@@ -2,7 +2,7 @@
 // lib/link.mjs, which is pure and tested; this file is the part that touches disk, and it is
 // deliberately the only place that does.
 //
-// ⚠ EVERYTHING HERE RUNS ONLY THROUGH bin/extensions.mjs. There is no main guard because there is
+// ⚠ EVERYTHING HERE RUNS ONLY THROUGH bin/setup.mjs. There is no main guard because there is
 // no script path — importing this file defines functions and runs nothing.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -50,8 +50,8 @@ function installHook(root) {
 	try { gitDir = execFileSync('git', ['rev-parse', '--absolute-git-dir'], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); }
 	catch { return 'not a git repo — no guard installed, so nothing stops a commit against the linked schema'; }
 	const f = path.join(gitDir, 'hooks', 'pre-commit');
-	if (fs.existsSync(f) && !fs.readFileSync(f, 'utf8').includes('dt-extensions guard')) {
-		return `a pre-commit hook already exists at ${f} — left alone; add \`npx --no-install dt-extensions guard\` to it yourself`;
+	if (fs.existsSync(f) && !fs.readFileSync(f, 'utf8').includes('npx dt-setup guard')) {
+		return `a pre-commit hook already exists at ${f} — left alone; add \`npx --no-install npx dt-setup guard\` to it yourself`;
 	}
 	fs.mkdirSync(path.dirname(f), { recursive: true });
 	fs.writeFileSync(f, HOOK);
@@ -62,9 +62,9 @@ function installHook(root) {
 function status(root) {
 	const state = linkState(root);
 	if (state === 'off') {
-		const v = readPkg(root)?.dependencies?.['@dreamteamer/extensions'];
-		say(`  published   ${v ? `@dreamteamer/extensions ${v}` : dim('not a declared dependency here')}`);
-		say(dim(`  preview off · npx dt-extensions link <path-to-clone>`));
+		const deps = Object.entries(readPkg(root)?.dependencies ?? {}).filter(([n]) => n.startsWith('@dreamteamer/'));
+		say(`  published   ${deps.length ? deps.map(([n, v]) => `${n} ${v}`).join(' · ') : dim('no @dreamteamer module is a declared dependency here')}`);
+		say(dim(`  preview off · npx dt-setup link <path-to-clone>`));
 		return 0;
 	}
 	const target = state === 'link' ? linkTarget(root) : linkPath(root);

@@ -8,7 +8,7 @@ id:
 schema:
   type: object
   # `notebook_id` is NOT required (2026-09-10): a record can be the SPEC of a notebook before any
-  # live copy exists — `npx dt-extensions notebook restore <id>` creates one from `sources` + `chat`
+  # live copy exists — `npx dt-notebook restore <id>` creates one from `sources` + `chat`
   # and writes the uuid back. The binding on this collection reads an empty id as the queue.
   required:
     - name
@@ -41,7 +41,7 @@ schema:
         type: string
         x-reference: wikis
         x-inverse: notebooks
-      description: "The corpora this notebook is built on, in reading order — `wikis/share-based-payments`. A notebook points at MANY wikis and a wiki serves many notebooks, which is why a wiki is a record with its own folder rather than an array entry here. Fill it with `npx dt-extensions wiki pull <this-record>`, which mirrors the live notebook's sources into a folder and links the two."
+      description: "The corpora this notebook is built on, in reading order — `wikis/share-based-payments`. A notebook points at MANY wikis and a wiki serves many notebooks, which is why a wiki is a record with its own folder rather than an array entry here. Fill it with `npx dt-wiki pull <this-record>`, which mirrors the live notebook's sources into a folder and links the two."
     company:
       type: string
       x-reference: companies
@@ -72,7 +72,7 @@ schema:
     # plays it. `source_id` is per-copy and rewritten on every restore.
     sources:
       type: array
-      description: "The sources, in order — what `notebook restore` adds, one `source add` each. Fill it with `npx dt-extensions notebook capture <id>` for a notebook that already exists; a `file` source's `ref` is a `${env:FILES_FOLDER}/…` template, never a machine path."
+      description: "The sources, in order — what `notebook restore` adds, one `source add` each. Fill it with `npx dt-notebook capture <id>` for a notebook that already exists; a `file` source's `ref` is a `${env:FILES_FOLDER}/…` template, never a machine path."
       items:
         type: object
         required: [kind]
@@ -129,7 +129,7 @@ storage:
   codec: md
   shape: file
   suffix: notebook
-description: One NotebookLM notebook as the SPEC it can be rebuilt from on any Google account — its ordered `sources`, the one `configure` call in `chat`, and the uuid and login of its current live copy. `npx dt-extensions notebook restore <id>` plays the spec; `notebook capture <id>` writes it from a notebook that already exists.
+description: One NotebookLM notebook as the SPEC it can be rebuilt from on any Google account — its ordered `sources`, the one `configure` call in `chat`, and the uuid and login of its current live copy. `npx dt-notebook restore <id>` plays the spec; `notebook capture <id>` writes it from a notebook that already exists.
 use_when: a notebook is created, restored, or reached — every notebooklm call takes -n <id>, and `notebooklm list | grep` is a network call that breaks on duplicate titles, so find the id here first. Write the record the moment the notebook exists — including one made by `dt notebooklm --create`, which writes no record — then `notebook capture` its sources so it can be restored. A notebook that must exist on another account, or was lost with a login, is `notebook restore <id> --account <label>`; a record with no `notebook_id` is a spec waiting for that. The corpus PLAN and what it argues is a document record elsewhere
 icon: book
 list_fields:

@@ -64,16 +64,16 @@ copies the truth and deleting the file deletes the claim.
 ## the commands
 
 ```bash
-npx dt-extensions wiki init <id> --title "<title>"          # a corpus, and its record
-npx dt-extensions wiki add <id> <ref> --kind text|file|url  # one source
-npx dt-extensions wiki status [<id>]                        # counts by state
-npx dt-extensions wiki incomplete [<id>]                    # ⇦ what still needs scraping; exit 1 if any
-npx dt-extensions wiki ask <id> "<question>" [-n 10]        # ⇦ the passage that MEANS it — qmd
-npx dt-extensions wiki search <id> "<regex>"                # exact words only — grep, instant
-npx dt-extensions wiki index [<id>] [--embed]               # register corpora with qmd (once)
-npx dt-extensions wiki outline <id>                         # a table of contents, not a summary
-npx dt-extensions wiki verify [<id>] [--fix]                # re-derive markers from the files
-npx dt-extensions wiki pull <notebook-record> [--refresh]   # mirror a live notebook onto disk
+npx dt-wiki init <id> --title "<title>"          # a corpus, and its record
+npx dt-wiki add <id> <ref> --kind text|file|url  # one source
+npx dt-wiki status [<id>]                        # counts by state
+npx dt-wiki incomplete [<id>]                    # ⇦ what still needs scraping; exit 1 if any
+npx dt-wiki ask <id> "<question>" [-n 10]        # ⇦ the passage that MEANS it — qmd
+npx dt-wiki search <id> "<regex>"                # exact words only — grep, instant
+npx dt-wiki index [<id>] [--embed]               # register corpora with qmd (once)
+npx dt-wiki outline <id>                         # a table of contents, not a summary
+npx dt-wiki verify [<id>] [--fix]                # re-derive markers from the files
+npx dt-wiki pull <notebook-record> [--refresh]   # mirror a live notebook onto disk
 ```
 
 

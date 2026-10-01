@@ -1,13 +1,32 @@
 {
-	"name": "recordings",
-	"private": true,
+	"name": "@dreamteamer/recordings",
 	"version": "0.1.0",
+	"description": "Meeting recordings for a dreamteamer workspace — imported by content hash, matched to their meeting, and transcribed offline in Hebrew and English.",
+	"license": "Apache-2.0",
+	"type": "module",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/dreamteamer/dreamteamer-modules.git",
+		"directory": "modules/recordings"
+	},
+	"keywords": [
+		"dreamteamer",
+		"dreamteamer-module"
+	],
+	"files": [
+		"README.md",
+		"collections",
+		"collection-templates",
+		"skills",
+		"commands",
+		"command-bindings"
+	],
 	"dreamteamer": {
 		"title": "Recordings",
 		"description": "One captured audio file and its transcript per `meeting-recordings` record — pulled out of `${env:INBOX_FOLDERS}` by content hash, filed under `${env:FILES_FOLDER}`, matched to its meeting, transcribed offline (faster-whisper + diarisation, Hebrew and English), with the screenshots taken during the call filed beside it. Carries the transcript-gated bindings of the meeting pipeline (summarise · extract tasks · analyse), because those are only possible once a transcript exists. Depends on `meetings`.",
-		"engine": ">=0.23.0",
+		"engine": ">=0.30.0",
 		"dependencies": [
-			"meetings"
+			"@dreamteamer/meetings"
 		],
 		"env": [
 			"TRANSCRIBING_MODELS_DIR"

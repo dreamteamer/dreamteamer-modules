@@ -19,7 +19,7 @@ in here is how they go stale.
 account, a login and a network call, and it is worth that when you need what only it can do — a
 generated podcast, a video, a slide deck, a web research pass, or an answer from its own model. When
 the job is "read this material and cite it", the `wikis` collection is a folder of markdown on disk
-with none of those costs, and `working-with-wikis` is the skill. `npx dt-extensions wiki pull
+with none of those costs, and `working-with-wikis` is the skill. `npx dt-wiki pull
 <notebook-record>` mirrors a live notebook's sources into one, so the two are a command apart.
 
 ## the lib, and how it is set up
@@ -38,7 +38,7 @@ account is a second home: `NOTEBOOKLM_HOME=~/.notebooklm-work notebooklm login`.
 `uv tool upgrade notebooklm-py && notebooklm skill install` — the second command regenerates the
 vendor skill, which is why we never edit it.
 
-`npx dt-extensions doctor` reports all of this under **notebooks**, offline.
+`npx dt-setup doctor` reports all of this under **notebooks**, offline.
 
 ## preflight
 
@@ -63,7 +63,7 @@ file for commit. Always:
 notebooklm download audio .cache/notebooklm/<notebook>/overview.mp3 -a <artifact_id> -n <notebook_id>
 ```
 
-`.cache/` is gitignored (`dreamteamer init` writes the line; `npx dt-extensions setup` adds it to an
+`.cache/` is gitignored (`dreamteamer init` writes the line; `npx dt-setup setup` adds it to an
 older workspace) — the materialised-remote-artifact convention: a copy of something whose home is
 elsewhere, rebuilt on demand. Prose artifacts (report, mind-map, data-table, quiz as markdown) are
 text and may land in `data/` as records — but only where a real collection fits, never invented on
@@ -87,7 +87,7 @@ Write it the moment the notebook exists, not later. **The record is the SPEC the
 rebuilt from, not just its handle** — so once it exists, capture what it holds:
 
 ```bash
-npx dt-extensions notebook capture <id>          # writes `sources` from the live list, names what it cannot recover
+npx dt-notebook capture <id>          # writes `sources` from the live list, names what it cannot recover
 ```
 
 Four things about the shape: **`account`** says which Google login opens it — not derivable from
@@ -120,7 +120,7 @@ declares its `notebooklm` harness (`dreamteamer.harnesses`): a generated block t
 know. Apply it with **one** call:
 
 ```bash
-npx dt-extensions notebook persona <notebook-id>          # --print to see it without sending
+npx dt-notebook persona <notebook-id>          # --print to see it without sending
 ```
 
 It FAILS if the notebook does not echo back the same length. Never `configure` by hand.
@@ -139,9 +139,9 @@ corpus under their own Google account, a spike notebook is wanted again: the rec
 to add and how the chat is configured, so the verb plays it —
 
 ```bash
-npx dt-extensions notebook restore <id> --dry-run                  # the plan, one line per call; touches no network
-npx dt-extensions notebook restore <id> --account <label>          # a copy on another login (auth must BE that login)
-npx dt-extensions notebook restore <id> --replace                  # re-create on the same login
+npx dt-notebook restore <id> --dry-run                  # the plan, one line per call; touches no network
+npx dt-notebook restore <id> --account <label>          # a copy on another login (auth must BE that login)
+npx dt-notebook restore <id> --replace                  # re-create on the same login
 ```
 
 It creates, adds every source in order (`add` → `wait` → `rename`, or `dt notebooklm` from

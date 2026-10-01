@@ -93,9 +93,12 @@ export function envKeys(root) {
  *  "installed" in any sense a person means. A test pinned this after the first draft got it wrong. */
 export function installedModules(root) {
 	const wsPkg = readJson(path.join(root, 'package.json')) ?? {};
-	const disabled = new Set((wsPkg.dreamteamer?.disable ?? []).filter((d) => typeof d === 'string' && !d.includes('/')));
+	// keyed by MODULE ID: an official package `@dreamteamer/contacts` is `contacts` here, the id every
+	// capability below asks about. A disable entry may name either spelling.
+	const idOf = (n) => String(n).replace(/^@dreamteamer\//, '');
+	const disabled = new Set((wsPkg.dreamteamer?.disable ?? []).filter((d) => typeof d === 'string' && (!d.includes('/') || d.startsWith('@dreamteamer/'))).map(idOf));
 	const found = new Map();
-	const add = (name, channel, at) => { if (!disabled.has(name) && !found.has(name)) found.set(name, { channel, root: at }); };
+	const add = (name, channel, at) => { const id = idOf(name); if (!disabled.has(id) && !found.has(id)) found.set(id, { channel, root: at }); };
 	const scan = (dir, channel, unpack) => {
 		if (!fs.existsSync(dir)) return;
 		for (const name of fs.readdirSync(dir)) {
@@ -118,17 +121,16 @@ export function installedModules(root) {
 	return found;
 }
 
-export const OURS = ['assets', 'contacts', 'users', 'projects', 'meetings', 'recordings', 'perspective', 'notebooks', 'rnd'];
+export const OURS = ['assets', 'users', 'contacts', 'tasks', 'meetings', 'recordings', 'projects', 'perspective', 'notebooks', 'search', 'rnd', 'notebooklm', 'proofs', 'worktrees', 'http', 'docker-workspaces'];
 const cmp = (a, b) => { // returns -1/0/1 comparing dotted versions
 	const pa = String(a).split('.').map(Number), pb = String(b).split('.').map(Number);
 	for (let i = 0; i < 3; i++) { if ((pa[i] || 0) !== (pb[i] || 0)) return (pa[i] || 0) < (pb[i] || 0) ? -1 : 1; }
 	return 0;
 };
 
-/** THE BUNDLE FLOOR. Delivery as one package — npm or a git_modules clone — needs the engine
- *  release that taught discovery to unpack a `modules/` folder. Copying a module folder into
- *  `modules/` works on anything older, which is why this is checked per CHANNEL, not globally. */
-export const BUNDLE_FLOOR = '0.24.0';
+/** THE ENGINE FLOOR — the oldest engine every official module is tested on. Each module also
+ *  declares its own `dreamteamer.engine`, which compile enforces; this is the board's early warning. */
+export const BUNDLE_FLOOR = '0.30.0';
 
 export function capabilities(root) {
 	const pkg = readJson(path.join(root, 'package.json')) ?? {};
@@ -145,17 +147,13 @@ export function capabilities(root) {
 		const enginePkg = readJson(path.join(root, 'node_modules', 'dreamteamer', 'package.json'));
 		if (!enginePkg) c.bad('engine', 'npm install dreamteamer', 'no engine installed — nothing can compile', 'npm install dreamteamer');
 		else {
-			// ⚠ OURS only. The engine is itself a module and always sits on node_modules, so asking "is
-			// anything on node_modules" is always yes — the floor would fire for a workspace that copied
-			// a module folder into modules/ and needs no bundle discovery at all. A test caught this.
-			const bundled = mine.some((m) => ['node_modules', 'git_modules'].includes(mods.get(m).channel));
-			if (bundled && cmp(enginePkg.version, BUNDLE_FLOOR) < 0) {
+			if (mine.length && cmp(enginePkg.version, BUNDLE_FLOOR) < 0) {
 				c.bad('engine', `npm install dreamteamer@^${BUNDLE_FLOOR}`,
-					`${enginePkg.version} installed — a package of modules needs ${BUNDLE_FLOOR}+ to be unpacked at all`,
+					`${enginePkg.version} installed — the official modules are tested on ${BUNDLE_FLOOR}+`,
 					`npm install dreamteamer@^${BUNDLE_FLOOR}`);
 			} else c.ok('engine', `dreamteamer ${enginePkg.version}`);
 		}
-		if (!mine.length) c.bad('modules', 'npm install @dreamteamer/extensions', 'none of this package\'s modules are installed here');
+		if (!mine.length) c.bad('modules', 'npm install @dreamteamer/<module> and what it needs — each module\'s README has the line', 'no official module is installed here');
 		else c.ok('modules', `${mine.length} of ${OURS.length}: ${mine.join(' · ')}`);
 		const off = (dt.disable ?? []).filter((d) => !d.includes('/') && OURS.includes(d));
 		if (off.length) c.ok('disabled on purpose', off.join(' · '));
@@ -319,8 +317,8 @@ export function capabilities(root) {
 			const st = sh('qmd', ['status']);
 			const pending = Number(/Pending:\s*(\d+)/.exec(st)?.[1] ?? 0);
 			const files = Number(/Total:\s*(\d+)/.exec(st)?.[1] ?? 0);
-			if (!files) c.warn('corpora indexed', 'npx dt-extensions wiki index', 'qmd knows about no documents yet — every `wiki ask` would come back empty');
-			else if (pending) c.warn('embeddings', 'npx dt-extensions wiki index --embed · or: qmd embed', `${pending} document(s) indexed but not embedded — those answer lexically only, silently`);
+			if (!files) c.warn('corpora indexed', 'npx dt-wiki index', 'qmd knows about no documents yet — every `wiki ask` would come back empty');
+			else if (pending) c.warn('embeddings', 'npx dt-wiki index --embed · or: qmd embed', `${pending} document(s) indexed but not embedded — those answer lexically only, silently`);
 			else c.ok('corpora indexed', `${files} document(s) indexed and embedded`);
 		}
 		const nb = bin('notebooklm');

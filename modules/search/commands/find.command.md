@@ -12,7 +12,7 @@ scores the same in ~22,900ms. ⚠ reaching for retrieval there is a pure loss, a
 like a mistake — you get a confident ranked answer, slowly, that grep would have given you exactly.
 
 ```bash
-npx dt-extensions find "<question>" --effort 2 -c <collection> \
+npx dt-find "<question>" --effort 2 -c <collection> \
     --lex "the words the RECORDS would use" \
     --vec "the question restated as prose, in their register" \
     --hyde "one or two sentences of the answer, as if it existed"

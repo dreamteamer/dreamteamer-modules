@@ -20,6 +20,7 @@ import path from 'node:path';
 import yaml from 'js-yaml';
 import { VAULT, DATA, dt, slug } from '../lib/vault.mjs';
 import { recordPath, writeRecord, readRecord, listRecords, contributorOf} from '../lib/records.mjs';
+import { numberedListItems } from '../lib/markdown.mjs';
 
 const argv = process.argv.slice(2);
 const flag = (n) => argv.includes(`--${n}`);
@@ -108,21 +109,29 @@ for (const file of listRecords(adlDir)) {
 	});
 }
 
-// One numbered row per line: `<n>. **<date> — <title>** <the rest>`. A row whose bold header carries
-// no date is a pre-dating row from the log's first weeks — skipped, and counted in the receipt.
+// One numbered ROW, `<n>. **<date> — <title>** <the rest>` — and a row is a list ITEM, never a
+// physical line. A heading long enough to wrap puts its closing `**` on the next line, and reading
+// line by line matched nothing there and counted a perfectly dated row as undated (15 rows, 7 of them
+// dated, all 7 skipped — the 2026-09-11 receipt). `numberedListItems` rejoins each item first, so a
+// wrapped heading and a single-line one are the same input to everything below, and the continuation
+// prose travels with the row instead of being dropped at the line break.
+//
+// A row whose bold header carries no date is a pre-dating row from the log's first weeks — skipped,
+// and counted in the receipt. A numbered row with no bold header at all is not a decision row and is
+// not counted: the receipt's `skipped-undated` says a DATE is missing, never that a line was passed.
 let skippedUndated = 0;
 const logFile = path.join(workspaceRoot, 'DECISION-LOG.md');
 if (fs.existsSync(logFile)) {
-	for (const line of fs.readFileSync(logFile, 'utf8').split('\n')) {
-		if (!/^\d+\. \*\*/.test(line)) continue;
-		const m = /^(\d+)\. \*\*(\d{4}-\d{2}-\d{2}) — (.+?)\*\*/.exec(line);
+	for (const item of numberedListItems(fs.readFileSync(logFile, 'utf8'))) {
+		if (!item.content.startsWith('**')) continue;
+		const m = /^\*\*(\d{4}-\d{2}-\d{2})\s+—\s+(.+?)\*\*/.exec(item.content);
 		if (!m) { skippedUndated++; continue; }
-		const [, row, date, rawTitle] = m;
+		const [, date, rawTitle] = m;
 		decisionCandidates.push({
 			name: rawTitle.slice(0, 120), decided_on: date,
-			decision: line.slice(m[0].length).trim().slice(0, 400), rationale: '',
-			source_ref: `DECISION-LOG.md#${row}`,
-			body: line.trim(),
+			decision: item.content.slice(m[0].length).trim().slice(0, 400), rationale: '',
+			source_ref: `DECISION-LOG.md#${item.number}`,
+			body: item.raw.trim(),
 		});
 	}
 }

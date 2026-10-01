@@ -2,7 +2,7 @@
 
 The two parts of stage 4 (**collect**) that are procedure rather than a command line. The readers
 themselves are one line each in `SKILL.md`'s stages table; this file is what happens around them.
-`SK=<extensions>/modules/perspective/skills/running-retrospectives`.
+`SK=<perspective>/skills/running-retrospectives` — `<perspective>` is `node_modules/@dreamteamer/perspective` from npm, `modules/perspective` for a copy.
 
 ## the judging loop
 

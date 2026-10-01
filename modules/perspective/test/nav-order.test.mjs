@@ -1,0 +1,105 @@
+// The left nav, ordered by the pipeline the work actually follows.
+//
+// The studio sorts collections by a numeric `order` on the descriptor (the engine's presentation
+// layer falls back to 999) and puts view entries above them by `nav.order`. Neither was set
+// deliberately here: NO collection carried an `order` at all, so all twenty sorted on the fallback,
+// and among the ten named views `nav.order` 1 was unused while 8 and 9 were each used twice.
+//
+// ⚠ `group:` is deliberately NOT used. The engine is retiring it in favour of module ownership
+// (compile.js: "it exists to REPLACE `group:` as the workspace's partition rather than to sit beside
+// it"), and a descriptor that sets both would partition the nav twice.
+import { test } from 'node:test';
+import assert from 'node:assert';
+import fs from 'node:fs';
+import path from 'node:path';
+import yaml from 'js-yaml';
+
+const MOD = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', '..', '..', 'modules', 'perspective');
+const COLS = path.join(MOD, 'collections', 'perspective');
+const VIEWS = path.join(MOD, 'ui-views');
+
+// The pipeline, ten apart so a collection can be inserted between two without renumbering the rest.
+const ORDER = {
+	'retrospective-sessions': 10,   // the run itself
+	gates: 15,                      // the conditions each stage had to meet
+	sources: 20,                    // what it could see
+	conversations: 30,              // ── the evidence it condensed
+	'activity-weeks': 40,
+	tickets: 50,
+	threads: 60,
+	'world/deliverables': 70,
+	'world/activities': 80,         // ── the observed world it reconstructed, in the real world's nouns
+	'world/tasks': 85,
+	'world/projects': 90,
+	'world/phases': 92,           // the eras each one passed through — same stage, between the effort and its bands
+	'world/activity-lanes': 95,   // the bands within them, written by the same stage
+	topics: 100,
+	'world/users': 110,
+	terms: 115,                     // the vocabulary in two steps — the word, verbatim…
+	concepts: 120,                  // …then the meaning several words share
+	'world/decisions': 130,
+	workflows: 140,
+	'world/goals': 150,
+	findings: 160,                  // ── what it concluded
+	insights: 170,
+	assumptions: 175,               // and what it had to believe in order to conclude it
+	questions: 180,
+	proposals: 190,
+	perspectives: 200,              // the answer
+};
+
+/** Every descriptor under `collections/perspective/`, keyed by its name RELATIVE to that folder —
+ *  so `world/users.collection.yaml` is `world/users`. ⚠ Recursive: `compile` enumerates
+ *  `collections/` recursively so a namespaced descriptor can be authored at `collections/<ns>/<c>`,
+ *  and a flat readdir here would silently stop testing five collections. */
+function descriptorNames(dir, prefix = '') {
+	return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
+		e.isDirectory() ? descriptorNames(path.join(dir, e.name), `${prefix}${e.name}/`)
+			: e.name.endsWith('.collection.yaml') ? [`${prefix}${e.name.replace('.collection.yaml', '')}`] : []);
+}
+
+const descriptors = new Map(
+	descriptorNames(COLS).map((n) => [n, yaml.load(fs.readFileSync(path.join(COLS, `${n}.collection.yaml`), 'utf8'))]),
+);
+const views = fs.readdirSync(VIEWS).filter((f) => f.endsWith('.ui-view.yaml'))
+	.map((f) => ({ file: f, ...yaml.load(fs.readFileSync(path.join(VIEWS, f), 'utf8')) }));
+
+test('the table covers every collection, and nothing else', () => {
+	assert.deepEqual(Object.keys(ORDER).sort(), [...descriptors.keys()].sort());
+});
+
+for (const [name, order] of Object.entries(ORDER)) {
+	test(`${name} sits at ${order} in the nav`, () => {
+		assert.equal(descriptors.get(name).order, order);
+	});
+}
+
+test('no descriptor sets group — module ownership is the partition', () => {
+	for (const [name, d] of descriptors) assert.ok(!('group' in d), `${name} sets group`);
+});
+
+test('the order runs in the pipeline direction, with no duplicate', () => {
+	const values = Object.values(ORDER);
+	assert.equal(new Set(values).size, values.length, 'two collections share a position');
+	assert.deepEqual(values, [...values].sort((a, b) => a - b), 'the table is not in ascending order');
+});
+
+test('every named view has a unique nav.order, contiguous from 1', () => {
+	const orders = views.filter((v) => v.nav).map((v) => v.nav.order).sort((a, b) => a - b);
+	assert.ok(orders.length >= 8, `expected the named views, found ${orders.length}`);
+	assert.deepEqual(orders, orders.map((_, i) => i + 1),
+		`nav orders are ${orders.join(',')} — 1 was unused and 8 and 9 were each used twice before this release`);
+});
+
+test('a view without a nav block is a default list view, and says so', () => {
+	for (const v of views.filter((x) => !x.nav)) {
+		assert.equal(v.default, true, `${v.file} has neither a nav entry nor default: true — it is unreachable`);
+	}
+});
+
+test('every named view carries a label and an icon', () => {
+	for (const v of views.filter((x) => x.nav)) {
+		assert.ok(v.nav.label, `${v.file} has no nav.label`);
+		assert.ok(v.nav.icon, `${v.file} has no nav.icon`);
+	}
+});

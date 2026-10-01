@@ -30,7 +30,7 @@ overwritten and pruned by compile; the venv, models and caches live only here, d
 skips them). every command below assumes:
 
 ```bash
-SK=<extensions>/modules/recordings/skills/transcribing-recordings
+SK=<recordings>/skills/transcribing-recordings   # <recordings>: node_modules/@dreamteamer/recordings from npm, modules/recordings for a copy
 cd "$SK" && uv sync && uv run python transcribe_meeting.py setup   # once, audio route only
 ```
 
@@ -96,11 +96,11 @@ npm run --silent dt -- add meeting-recordings --name "<who and what>" --date YYY
 
 # 2. OPTIONAL, DESKTOP ONLY — keep the bytes. MOVES the original into
 #    ${env:FILES_FOLDER}/meeting-recordings/<year>/<month>/ and prints the recording_file to set on the record.
-node <extensions>/modules/recordings/skills/ingesting-recordings/bin/detect.mjs import <uploaded-file> \
+node .dreamteamer/skills/ingesting-recordings/bin/detect.mjs import <uploaded-file> \
      --id <recording-id>
 
 # 3. transcribe. <audio> is the uploaded path, or the printed recording_file if you ran step 2.
-cd <extensions>/modules/recordings/skills/transcribing-recordings && uv run python transcribe_meeting.py \
+cd <recordings>/skills/transcribing-recordings && uv run python transcribe_meeting.py \
      run "<abs/record.meeting-recording.md>" "<abs/audio>" --speakers N --language he|en
 ```
 

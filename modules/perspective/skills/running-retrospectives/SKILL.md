@@ -100,7 +100,7 @@ name the run's `label`, and it never silently changes a flag.
 
 ## the stages
 
-`SK=<extensions>/modules/perspective/skills/running-retrospectives`. ⚠ **Every script takes
+`SK=<perspective>/skills/running-retrospectives` — `<perspective>` is `node_modules/@dreamteamer/perspective` from npm, `modules/perspective` for a copy. ⚠ **Every script takes
 `--retrospective <ref>`** — there is no `--session` any more. It was a real split until 2026-09-09,
 when v1 and v2 collections carried different link fields; the rename collapsed both into one, and a
 script given the old flag now exits 2 with a usage line. `tests/skill-flags.test.mjs` reads the flags

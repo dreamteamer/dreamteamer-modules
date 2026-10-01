@@ -63,7 +63,7 @@ from the filename plus the meeting is what you normally have; say "at 14:26, dur
 ## paths
 
 ```bash
-DET=<extensions>/modules/recordings/skills/ingesting-meeting-screenshots/bin/detect.mjs
+DET=.dreamteamer/skills/ingesting-meeting-screenshots/bin/detect.mjs
 ```
 
 Zero dependencies. `${env:FILES_FOLDER}` (the destination, `meetings/<basename>/`) and

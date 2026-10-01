@@ -7,7 +7,7 @@
 # written out once, on `world/users.real`. It MOVED here from `perspective/world/decisions` on 2026-09-11,
 # when the world layer grew to cover the whole projects model: a decision is a world object like an
 # activity or a goal, and leaving it outside meant the one namespace that models the observed world
-# was missing the object that explains most of it. `npx dt-extensions migrate-world` moves a consumer's
+# was missing the object that explains most of it. `node node_modules/@dreamteamer/perspective/bin/migrate-world.mjs` moves a consumer's
 # records and re-points every reference.
 #
 # ⚠ TWO SHAPES THE REAL COLLECTION HAS AND THIS ONE CANNOT. `alternatives` and `reversibility` are

@@ -1,18 +1,37 @@
 {
-	"name": "projects",
-	"private": true,
+	"name": "@dreamteamer/projects",
 	"version": "0.1.0",
+	"description": "The plan and everyone in it, for a dreamteamer workspace — projects, phases, lanes, activities and gates, decisions, deliverables, risks and teams.",
+	"license": "Apache-2.0",
+	"type": "module",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/dreamteamer/dreamteamer-modules.git",
+		"directory": "modules/projects"
+	},
+	"keywords": [
+		"dreamteamer",
+		"dreamteamer-module"
+	],
+	"files": [
+		"README.md",
+		"bin",
+		"lib",
+		"collections",
+		"collection-templates",
+		"ui-views"
+	],
 	"dreamteamer": {
 		"title": "Projects",
 		"description": "THE PLAN AND EVERYONE IN IT — one module, because they are one question: what happens, and who does it. Owner, lead, seat and assignee fields all point at the `users` module, which ships that one collection alone so it renders at the ROOT of the nav rather than inside this folder — everything points at it, so it belongs to nobody. `teams` groups them, membership living on the team so somebody joins by editing one record. `projects` is a delivery effort with a start, an end and a lead. `activities` is the ordered plan — and a GATE is an activity with `kind: gate`, carrying `passes_when`, its `evidence`, whether it is `blocking`, and an `external_owner` when the person who holds it is outside this workspace; one collection for both, because a plan reads as one ordered list. `activity-lanes` is the BAND a plan is read in — the swimlane a board draws, a record rather than a second free-text field because a lane carries an ORDER and a string carries only its own spelling; `project` on it is optional, and empty is the workstream that runs across several plans. `activities.lane` points at it and `activities.phase` stays as the other axis, the span of TIME a rung falls in. `phases` is WHEN — the stretch of the plan's own calendar a run of rungs falls in, carrying its own dates so the span is stated once instead of taken as the max of whatever points at it; `activities.phase` is a REFERENCE to it since 2026-09-11 and `bin/migrate-plan.mjs` converts a workspace that used the old free-text form. `lane` is WHICH TRACK and `phase` is WHEN, which is why one requires an `order` and the other requires dates. `tasks` is the small commitment, optionally hanging off a `project` or an `activity`, always assigned to a person. `deliverables` is what the plan OWES somebody — the artefact that changes hands, `accepted` rather than done, with `accepted_by` a CONTACT because acceptance is the receiving side's act. `decisions` is what was decided and why, ONE table for both the forks an agent took unattended and the calls a person made, with a required `decided_by` enum and a guard that refuses either identity half missing — folding them is only safe while every record says plainly which it is, and it carries `alternatives`, `reversibility`, `wrong_if` and `outcome` so 'was that a good call' can be checked rather than re-argued. `bin/check-records.mjs` is the guard the gate fold requires. The views are the point: `/plan/by-lane` bands the plan by `lane`, `/plan/by-person` by `seats` and `/tasks/by-assignee` the board by `assignee`, both resolving to the same `users` record, so a person's own page answers \"what is mine\".",
-		"engine": ">=0.25.1",
+		"engine": ">=0.30.0",
 		"peerDependencies": [
 			"companies",
 			"contacts",
 			"assets"
 		],
 		"dependencies": [
-			"users"
+			"@dreamteamer/users"
 		]
 	}
 }

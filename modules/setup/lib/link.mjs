@@ -1,9 +1,9 @@
 // PREVIEW MODE — run a consumer workspace against a LOCAL CLONE of this package instead of the
 // published one, so a schema change can be reviewed in a real workspace before it is a release.
 //
-//   npx dt-extensions link <path-to-clone>   symlink git_modules/extensions → the clone, recompile
-//   npx dt-extensions unlink                 remove it, recompile
-//   npx dt-extensions link                   say which is live
+//   npx dt-setup link <path-to-clone>   symlink git_modules/dreamteamer-modules → the clone, recompile
+//   npx dt-setup unlink                 remove it, recompile
+//   npx dt-setup link                   say which is live
 //
 // ── the mechanism is the engine's, not ours ──────────────────────────────────────────────────────
 // `discoverModules` scans three channels in precedence order — inline `modules/*`, then
@@ -30,10 +30,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 export const LINK_DIR = 'git_modules';
-export const LINK_NAME = 'extensions';
+export const LINK_NAME = 'dreamteamer-modules';
 export const linkPath = (root) => path.join(root, LINK_DIR, LINK_NAME);
 
-/** What is at git_modules/extensions: 'off' | 'link' (ours, safe to remove) | 'real' (a genuine
+/** What is at git_modules/dreamteamer-modules: 'off' | 'link' (ours, safe to remove) | 'real' (a genuine
  *  clone or checkout someone put there — reported, never touched). */
 export function linkState(root) {
 	const p = linkPath(root);
@@ -85,20 +85,20 @@ export function guardVerdict({ state, staged, dataPath = 'data' }) {
 		'  The package ships first, then the records that need it. These were written or regenerated',
 		'  against an UNRELEASED schema, so any other clone of this workspace would fail to compile them.',
 		'',
-		`  fix: npx dt-extensions unlink   (then recompile, re-check, and commit)`,
+		`  fix: npx dt-setup unlink   (then recompile, re-check, and commit)`,
 	].filter((l) => l !== '').join('\n');
 }
 
 // ⚠ THE HOOK RUNS THE LINKED CLONE'S GUARD, NOT THE INSTALLED PACKAGE'S. Measured the hard way: a
-// hook spelled `npx --no-install dt-extensions guard` resolves node_modules, i.e. the PUBLISHED
+// hook spelled `npx --no-install npx dt-setup guard` resolves node_modules, i.e. the PUBLISHED
 // copy — so during preview the rule enforced was the released one, and on a workspace whose
 // installed version predates this verb the hook died `unknown command "guard"` and blocked every
 // commit with a message about the wrong thing. Fails closed, but for a reason nobody could read.
 // So: nothing linked ⇒ exit 0 and be a true no-op; linked ⇒ run the clone's own bin.
 export const HOOK = `#!/bin/sh
-# installed by \`dt-extensions link\` — see lib/link.mjs. A true no-op once unlinked.
+# installed by \`npx dt-setup link\` — see lib/link.mjs. A true no-op once unlinked.
 L="${LINK_DIR}/${LINK_NAME}"
 [ -L "$L" ] || [ -d "$L" ] || exit 0
-[ -f "$L/bin/extensions.mjs" ] && exec node "$L/bin/extensions.mjs" guard
-exec npx --no-install dt-extensions guard
+[ -f "$L/modules/setup/bin/setup.mjs" ] && exec node "$L/modules/setup/bin/setup.mjs" guard
+exec npx --no-install npx dt-setup guard
 `;

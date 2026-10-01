@@ -21,7 +21,7 @@ and the verb renders it where it runs and refuses when the var is unset.
 `dt notebooklm` (rendering the workspace into a notebook) and the `notebooklm` harness (the
 `NOTEBOOKLM.md` persona file compile writes). Neither is in core: install it in the workspace with
 `npm i -D @dreamteamer/notebooklm` (it needs dreamteamer 0.31.0 or later). The module sits on top of
-both: the record, the rules, and the three `npx dt-extensions notebook` verbs — `persona`, `restore`,
+both: the record, the rules, and the three `npx dt-notebook` verbs — `persona`, `restore`,
 `capture`. An `export` source in a record is `dt notebooklm` re-run against the new notebook, never a
 re-implementation, so restoring one needs the package installed.
 
@@ -84,7 +84,7 @@ reader cannot see, so the inventory is laid out complete-and-empty first and fil
 states, each separated from its neighbour by an observation rather than a shade of meaning —
 `pending` (nothing attempted) · `failed` (non-zero exit; retry) · `empty` (exit 0, under 256 bytes;
 the route is wrong, not the attempt) · `partial` (exit 0, something declared it truncated; resume) ·
-`complete`. `npx dt-extensions wiki incomplete` reads them off disk and exits 1 when anything is
+`complete`. `npx dt-wiki incomplete` reads them off disk and exits 1 when anything is
 short, so it gates a pipeline.
 
 **What the local adapter CANNOT do, stated as a cost rather than faked:**
