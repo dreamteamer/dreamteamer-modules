@@ -1,0 +1,34 @@
+{
+	"name": "@dreamteamer/workflows",
+	"version": "0.1.0",
+	"description": "dt prove, dt land and dt worktree — behaviour proofs for a dreamteamer workspace's artifacts, and the worktree lifecycle that brings a second checkout's records home",
+	"license": "Apache-2.0",
+	"type": "module",
+	"engines": {
+		"node": ">=20"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/dreamteamer/dreamteamer-tools.git",
+		"directory": "packages/workflows"
+	},
+	"keywords": [
+		"dreamteamer",
+		"proofs",
+		"worktree",
+		"git"
+	],
+	"files": [
+		"src",
+		"collections",
+		"skills"
+	],
+	"peerDependencies": {
+		"dreamteamer": "^0.31.0"
+	},
+	"dreamteamer": {
+		"extension": "./src/extension.js",
+		"title": "Workflows",
+		"description": "Behaviour proofs and the worktree lifecycle: `dt prove` runs a `proofs/` source against a skill, command, binding or module script and answers with an exit code, `dt worktree` cuts, lists and removes linked checkouts, and `dt land` rebases a worktree's commits onto the primary branch and retires it."
+	}
+}

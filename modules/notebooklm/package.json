@@ -1,0 +1,15 @@
+{
+	"name": "notebooklm",
+	"private": true,
+	"version": "0.1.0",
+	"type": "module",
+	"scripts": {
+		"test": "node --test \"tests/*.test.mjs\""
+	},
+	"dreamteamer": {
+		"extension": "./src/extension.js",
+		"title": "NotebookLM",
+		"engine": ">=0.31.0",
+		"description": "Renders the workspace for NotebookLM: `dt notebooklm` writes the schema, the records and a persona as a bounded set of sources (and, given a notebook, syncs them), and the `notebooklm` harness keeps NOTEBOOKLM.md's configuration block current. Collections marked `sensitive: true` and fields marked `x-sensitive: true` never travel. Inlined here as a workspace module with an extension entry: the package it was extracted as is not published."
+	}
+}
