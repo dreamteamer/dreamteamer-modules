@@ -1,7 +1,6 @@
 # A meeting-recording is a CAPTURE of a meeting — audio, or pasted text. It owns the transcript,
-# because the transcript belongs next to the artifact that produced it: N captures for one meeting
-# is N records with N transcripts, which retires the hand-merge procedure the transcribe skill used
-# to document. design: data/rnd/draft-docs/2026-07-28--meetings-v2.draft.md §3.3
+# because the transcript belongs next to the artifact that produced it: N captures of one meeting
+# are N records with N transcripts.
 name: meeting-recordings
 description: >-
   One captured audio file and its transcript — the evidence a meeting record hangs off.
@@ -9,120 +8,76 @@ use_when: >-
   an audio file or a pasted transcript arrives — it becomes a record here first
   (/fetch-new-recordings), is matched to its meeting, then transcribed; a meeting with no transcribed
   recording cannot be summarised or analysed
-# codec md, not yaml: the record needs a body to hold the transcript (migration M2, 2026-07-28).
+# codec md, not yaml: the record needs a body to hold the transcript.
 storage: { path: data/meeting-recordings, codec: md, shape: file, suffix: meeting-recording }
 id:
-  # Derived from `date`, not `created` — same latent bug decision 69 fixed on meetings: `created` is
-  # the moment the record is WRITTEN, so importing a June recording in July filed it under 2026/07.
-  # In practice a matched capture's id MIRRORS its meeting's basename (so the pair reads together);
-  # this template is what /fetch-new-recordings produces before a meeting is known.
+  # Derived from `date`, not `created`: `created` is the moment the record is WRITTEN, so a June
+  # recording imported in July would otherwise be filed under July.
   generate: "{{ date | date:YYYY/MM }}/{{ date | date }}--{{ name | slug }}"
   pattern: "^\\d{4}/\\d{2}/\\d{4}-\\d{2}-\\d{2}--[a-z0-9-]+$"
 schema:
   type: object
-  # `file` is NOT required: most transcripts arrive as pasted Gemini/Meet text, and an audio capture
-  # can lose its file at a migration. `name` + `date` are what
-  # id.generate derives from, so they are — an id built from optional fields is decision 69's bug.
+  # `recording_file` is NOT required: a pasted transcript has no file, and an audio capture can lose
+  # its file. `name` + `date` are required because the id is derived from them.
   required: [name, date]
   properties:
     name:
       type: string
-      description: What this capture is called — usually "[date] [who]" as the operator named the file.
+      description: What this capture is called — usually "[date] [who]", as the file was named.
     description:
       type: string
       description: One line on what was captured, when the name is not enough.
-    # The ORDERING key, and half of what the id derives from. A date-time since 23/08/2026: as a bare
-    # day it could not order the 2-6 captures that share one date, so the list only ever sorted to
-    # day precision — the operator's complaint, and the reason `meetings.starts` was a date-time from
-    # the start ("everything sorts and range-filters on this").
-    #
-    # ⚠ THIS IS THE MEETING'S INSTANT, DENORMALIZED — NOT the moment recording began. That
-    # distinction is why `recorded_at` still exists below and is NOT redundant with this: `starts`
-    # comes from Google Calendar and is exact, so copying it here is a denormalization of
-    # authoritative data (exactly what `meeting-preps.date` already does, and for the same reason —
-    # "so the id generates and the list sorts without a join"). Deriving a CAPTURE instant, by
-    # contrast, is impossible from the file and forbidden below in the strongest terms the comment
-    # block could manage. Keep the two apart: this answers "which slot does this capture belong to",
-    # `recorded_at` answers "when did the microphone actually start".
-    #
-    # Where no meeting is linked, fall back in this order and say which in creation_context: a time
-    # the operator put in the FILENAME (detect.mjs already parses it and reports it as `time_hint`),
-    # then the day at 00:00 local. Midnight is the honest encoding of "the time is unknown" — it
-    # sorts the record to the head of its day rather than inventing a plausible hour.
+    # The ORDERING key, and half of what the id derives from. A date-time, so the several captures
+    # that share one day still sort. It is the SLOT this capture belongs to, not the moment the
+    # microphone started — that is `recorded_at`, which is why the two fields are not redundant.
+    # With no meeting linked, fall back to a time in the filename (detect.mjs reports it as
+    # `time_hint`), then to the day at 00:00 local, and say which in creation_context. Midnight is
+    # the honest encoding of "the time is unknown".
     date:
       type: string
       format: date-time
       description: >-
-        The meeting instant this capture belongs to, denormalized from `meeting.starts` so the list sorts and the id
+        The meeting instant this capture belongs to — the linked meeting's `starts`, so the list sorts and the id
         generates without a join. Everything sorts on this. NOT when recording began — that is `recorded_at`, which is
         usually empty and never inferred. With no meeting linked, use the filename's time, else the day at 00:00.
-    # ONE pointer to the bytes, and it is THIS one. A second field named `file` lived here until
-    # 23/08/2026 pointing at a repo-local copy under a gitignored `media/` folder — two copies of
-    # every recording on one disk, 1.1 GB, and nothing read either (dedupe works off the STORED
-    # `fingerprint` below, and 53 of 53 records had one). Both the field and `media/` are gone. The
-    # name `file` is not available: a `source:` value uses a `file:` prefix and `codec: file` is a
-    # storage codec, so the field that points at a recording's bytes is `recording_file` — one word
-    # per layer, the record being the "recording" and the bytes being the "recording file".
-    #
-    # ⚠ THE PATH BELOW THE FOLDER IS THE RECORD ID (changed 31/08/2026, with the folder rename from
-    # `recordings/<year>/<month>/<whatever the phone called it>`). That is what makes the archive
-    # self-indexing: `${env:FILES_FOLDER}/meeting-recordings/<this record's id>.m4a` and nothing to
-    # look up. The old layout kept the recorder's own filenames ("2026 08 05 1500 tal chaiun.m4a"),
-    # so 33 of 66 files could not be matched back to their record without reading every record.
+    # The one pointer to the bytes. Named `recording_file` because `file:` is already a `source:`
+    # prefix and `codec: file` a storage codec. The path below the folder is the record id, so the
+    # archive is self-indexing: `${env:FILES_FOLDER}/meeting-recordings/<this record's id>.m4a`.
     recording_file:
       examples: ['${env:FILES_FOLDER}/meeting-recordings/2026/08/2026-08-30--acme-weekly.m4a']
       type: string
       description: >-
-        The durable Drive copy of the recording's bytes: ${env:FILES_FOLDER}/meeting-recordings/<this record's id>
-        plus the original extension. Set by the importer when it files the original out of the inbox. It is what keeps
-        the recordings archive inside the everything-under-files/-is-indexed invariant; without it the whole tree reads
-        as orphans to the verification gate. Empty is legitimate — a pasted transcript (`origin: pasted`) is a recording
-        with no file. Never an inbox path: an inbox item has no record yet, which is what makes it an inbox item, so
+        The archived copy of the recording's bytes: ${env:FILES_FOLDER}/meeting-recordings/<this record's id>
+        plus the original extension. Set by the importer when it files the original out of the inbox, and what keeps
+        every file under FILES_FOLDER pointed at by a record. Empty is legitimate — a pasted transcript
+        (`origin: pasted`) is a recording with no file. Never an inbox path: an inbox item has no record yet, so
         ${env:INBOX_FOLDERS} never appears in a record template, only in the scripts and skills that scan it.
     duration:
       type: string
       description: How long the capture runs, as h:mm:ss.
-    # ABSOLUTE wall-clock instant the recording STARTED — t=0 for every timestamp in the transcript,
-    # and the only thing that turns a `[16:22]` turn into a real time. `date` is a day; this is the
-    # instant. OPTIONAL, and usually EMPTY.
-    #
-    # ⚠ THERE IS NO AUTOMATIC SOURCE FOR THIS — do not infer it from the file. An m4a here carries
-    # only `creation_time`, which is identical to the filesystem birth time: when that COPY was
-    # written, not when recording began. The operator uploads to iCloud well after the call, often
-    # batching the next morning. Measured 2026-07-31: no `com.apple.quicktime.creationdate` or any
-    # other true-capture atom exists on these files; all seven 2026-07-29 captures read 09:57-09:59
-    # on 07-30, and even a same-day file can be hours out (2026-07-02--11-30--acme-weekly writes 17:16
-    # for an 11:30 meeting). Nothing in the file distinguishes an original from a later copy, so any
-    # derivation is a guess wearing the costume of data.
-    #
-    # Fill it only from something trustworthy: a time the operator puts in the FILENAME (they already
-    # put the date there, so this is a one-token workflow change that would make it exact), or a
-    # value they state. Otherwise LEAVE IT EMPTY and use the meeting's `starts` as a coarse
-    # reference, labelled approximate — meetings start late (9m40s on one measured call) and
-    # overrun (87 minutes in a 30-minute slot on 07-29).
-    #
-    # Since 23/08/2026 that coarse reference is already sitting in `date` above, denormalized from
-    # the same `meeting.starts`. So the useful question about a capture is no longer "what time was
-    # it" — `date` answers that well enough to sort by — but "is `recorded_at` set, and may I
-    # therefore anchor a transcript timestamp to a real wall clock". Only a set `recorded_at` licenses
-    # that arithmetic; `date` never does, however precise it looks.
+    # The absolute wall-clock instant the recording STARTED — t=0 for every timestamp in the
+    # transcript, and the only thing that turns a `[16:22]` turn into a real time. Optional, and
+    # usually empty. There is no automatic source for it: an m4a's `creation_time` is when that COPY
+    # was written, and nothing in the file tells an original from a later copy. Fill it only from a
+    # time in the filename or one a person states. Only a set `recorded_at` licenses anchoring a
+    # transcript timestamp to a wall clock; `date` never does, however precise it looks.
     recorded_at:
       type: string
       format: date-time
-      description: "The absolute instant recording STARTED — t=0 for every transcript timestamp. Usually EMPTY, and never inferred from the file: nothing in an m4a distinguishes an original from a later copy. Fill it only from the filename or something the operator states."
+      description: "The absolute instant recording STARTED — t=0 for every transcript timestamp. Usually EMPTY, and never inferred from the file: nothing in an m4a distinguishes an original from a later copy. Fill it only from the filename or something a person states."
     notes:
       type: string
       description: Anything worth knowing about the capture itself — bad audio, a missing first minute, who was off-mic.
     origin:
       type: string
       enum: [audio, pasted]
-      description: How this capture was made. A lost-file capture stays `audio` with no `file`, confidence low and the reason in creation_context.
+      description: How this capture was made. A lost-file capture stays `audio` with no `recording_file`, confidence low and the reason in creation_context.
     fingerprint:
       type: string
-      description: sha256 of the binary — the idempotency key for /fetch-new-recordings. Survives the operator renaming a file, which a filename does not.
-    # the other half of the two-way link (meetings.recordings ⟷ here). redundant on purpose:
-    # filters resolve OUTBOUND refs only (decision 60), so each direction buys a predicate the
-    # other cannot express. `check`'s symmetric-ref rule (E3) is what keeps them honest.
+      description: sha256 of the binary — the idempotency key for /fetch-new-recordings. Survives a file being renamed, which a filename does not.
+    # The other half of the two-way link (meetings.recordings ⟷ here). Redundant on purpose:
+    # filters resolve OUTBOUND refs only, so each direction buys a predicate the other cannot
+    # express. `check`'s symmetric-ref rule keeps them honest.
     meeting:
       type: string
       x-reference: meetings

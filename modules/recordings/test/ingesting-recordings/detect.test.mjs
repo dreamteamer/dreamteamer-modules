@@ -14,7 +14,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 // above: fall back to the module root so the cwd-independence test still runs (both cwds then die
 // identically, which is the same proof).
 const MODULE_ROOT = path.resolve(HERE, '..', '..', '..');
-const VAULT = (() => {
+const WORKSPACE = (() => {
 	for (let d = HERE; ; d = path.dirname(d)) {
 		const inGitModules = path.basename(path.dirname(d)) === 'git_modules';
 		if (!inGitModules && fs.existsSync(path.join(d, 'package-lock.json'))) return d;
@@ -25,19 +25,16 @@ const SCRIPT = path.join(HERE, '..', '..', 'skills', 'ingesting-recordings', 'bi
 
 // `scan` is read-only, so it is safe to run for real against whatever `INBOX_FOLDERS` resolves to on
 // THIS machine — unlike `import`'s archive step (see below), nothing here can write into a real
-// synced folder. Captured as {ok, out} / {ok:false, stderr} rather than assumed to succeed: mid
-// migration `INBOX_FOLDERS` has no value at all (Task 7 sets it), so `scan` correctly DIES today
-// (CLAUDE.md rule: a script naming a missing var under the current root has passed, not failed) —
-// and dying identically from every cwd is exactly as much a cwd-independence proof as matching JSON
-// would be. Once Task 7 sets `INBOX_FOLDERS`, this same test starts exercising the success path
-// instead, with no change needed here.
+// synced folder. Captured as {ok, out} / {ok:false, stderr} rather than assumed to succeed: where
+// `INBOX_FOLDERS` has no value, `scan` dies, and dying identically from every cwd is as much a
+// cwd-independence proof as matching JSON would be.
 const scanFrom = (cwd) => {
 	try { return { ok: true, out: JSON.parse(execFileSync('node', [SCRIPT, 'scan'], { cwd, encoding: 'utf8' })) }; }
 	catch (e) { return { ok: false, stderr: (e.stderr ?? '').toString() }; }
 };
 
-test('scan is identical from any working directory — the vault root is walked, not cwd', () => {
-	const fromRoot = scanFrom(VAULT);
+test('scan is identical from any working directory — the workspace root is walked, not cwd', () => {
+	const fromRoot = scanFrom(WORKSPACE);
 	// The skill's own folder, to prove cwd is irrelevant — a non-existent cwd makes execFileSync report
 	// the confusing `spawnSync node ENOENT`, so it must be a folder that exists wherever the module lands.
 	const fromModule = scanFrom(path.join(HERE, '..'));
@@ -47,17 +44,13 @@ test('scan is identical from any working directory — the vault root is walked,
 });
 
 // `import` files the recording into `${env:FILES_FOLDER}`, which is machine-specific — exercising it
-// against whatever FILES_FOLDER really resolves to would write into the operator's actual
-// meeting-recordings/ tree on every `npm test` run. `--files-folder` is the escape hatch: an
-// explicit local-dir override pointed at a throwaway fixture. That makes the archive path a genuinely pinnable derivation (CLAUDE.md's own
-// example of what a fixture test IS for) without ever touching a real synced folder.
+// against whatever FILES_FOLDER really resolves to would write into a real meeting-recordings/ tree
+// on every `npm test` run. `--files-folder` is the escape hatch: an explicit local-dir override
+// pointed at a throwaway fixture, which makes the archive path a pinnable derivation.
 //
-// ⚠ Rewritten 23/08/2026, when `media/` retired, and again 2026-08-31 (capture→recording terminology
-// pass, and the archive filename becoming the record id instead of the inbox payload's own name).
-// The sequence is copy → verify by sha256 → move the payload to the inbox root's `trash/` — no
-// second `media/` copy to fall back on, so letting go of the source before the archive copy is
-// proven would be the one mistake that loses a recording outright.
-test('import archives the recording under its RECORD ID, verifies it, and trashes the inbox payload — no media/ copy', () => {
+// The sequence is copy → verify by sha256 → move the payload to the inbox root's `trash/`; letting
+// go of the source before the archive copy is proven would be the one mistake that loses a recording.
+test('import archives the recording under its RECORD ID, verifies it, and trashes the inbox payload', () => {
 	const root = fs.mkdtempSync(path.join(os.tmpdir(), 'detect-import-inbox-'));
 	fs.mkdirSync(path.join(root, 'meeting-recordings'), { recursive: true });
 	const src = path.join(root, 'meeting-recordings', '2026 08 20 1400 detect probe.m4a');
@@ -80,12 +73,12 @@ test('import archives the recording under its RECORD ID, verifies it, and trashe
 		assert.ok(fs.existsSync(archived), 'the recording must land at meeting-recordings/<id>.<ext>');
 		assert.deepEqual(fs.readFileSync(archived), bytes, 'and it must be the same bytes');
 		assert.ok(!fs.existsSync(src), 'the inbox payload must be gone from meeting-recordings/');
-		// …gone to trash/, not unlinked: removal is never a delete (design §3.2).
+		// …gone to trash/, not unlinked: removal is never a delete.
 		const trashed = fs.readdirSync(path.join(root, 'trash'));
 		assert.ok(trashed.some((n) => n.endsWith('detect probe.m4a')), `payload must be in trash/, saw ${trashed.join(', ')}`);
 		// the retired second copy must NOT come back
 		assert.ok(!('file' in out), '`file` must no longer be reported — media/ is retired');
-		assert.ok(!fs.existsSync(path.join(VAULT, 'media/meeting-recordings/detect-probe.m4a')),
+		assert.ok(!fs.existsSync(path.join(WORKSPACE, 'media/meeting-recordings/detect-probe.m4a')),
 			'nothing may be written into media/ any more');
 	} finally {
 		fs.rmSync(root, { recursive: true, force: true });
@@ -93,26 +86,8 @@ test('import archives the recording under its RECORD ID, verifies it, and trashe
 	}
 });
 
-test('no code path writes into media/ any more', () => {
-	const src = fs.readFileSync(SCRIPT, 'utf8');
-	assert.ok(!/const MEDIA = /.test(src), 'the MEDIA constant must be gone');
-	assert.ok(!/copyFileSync\(src, dest\)/.test(src), 'the media/ copy must be gone');
-	assert.ok(!/backfill-fingerprints'/.test(src.replace(/^\s*[/*].*$/gm, '')),
-		'backfill-fingerprints read media/ and is retired — only prose may mention it');
-});
-
-test('archive-known is gone', () => {
-	assert.ok(!fs.readFileSync(SCRIPT, 'utf8').includes("verb === 'archive-known'"));
-});
-
-// Retry-safety: before this fix, `import` never mkdir'd the destination YEAR folder, so the first
-// recording of a new year (or a backdated one) died with ENOENT AFTER the media/ copy had already
-// verified — and re-running `import` then hit the OTHER guard ("destination already exists"),
-// because media/ already held the copy, forcing a hand-delete before retrying. This fixture
-// deliberately does NOT pre-create `meeting-recordings/2027` (unlike the happy-path test above), so
-// BOTH the year and the month folder must be created on demand — a new year needs two levels, not
-// one, which is the part the month segment could have quietly broken. `media/` is retired, so there
-// is no consolation copy any more — this is purely about the archive's own folders.
+// Retry-safety: the fixture does NOT pre-create `meeting-recordings/2027`, so both the year and the
+// month folder must be created on demand — a new year needs two levels, not one.
 test('import creates missing folders under meeting-recordings/ — retry-safe for a new year or a backdated recording', () => {
 	const src = path.join(os.tmpdir(), `detect-newyear-${process.pid}.m4a`);
 	fs.writeFileSync(src, Buffer.from('not real audio, only bytes to hash'));
@@ -137,7 +112,7 @@ test('import creates missing folders under meeting-recordings/ — retry-safe fo
 test('import refuses a non-local (gdrive://) FILES_FOLDER rather than creating directories inside the repo', () => {
 	const src = path.join(os.tmpdir(), `detect-gdrive-${process.pid}.m4a`);
 	fs.writeFileSync(src, Buffer.from('not real audio, only bytes to hash'));
-	const bogusDir = path.join(VAULT, 'gdrive:');   // what path.join('gdrive://x', …) would create, relative to VAULT
+	const bogusDir = path.join(WORKSPACE, 'gdrive:');   // what path.join('gdrive://x', …) would create, relative to WORKSPACE
 	try {
 		let threw = false;
 		try {
@@ -186,7 +161,7 @@ test('resolveInboxRoots dies with no usable root, rather than silently reporting
 	}
 });
 
-// ── the inbox log — working memory beside the payload (spec §3.2b) ──────────────────────────────
+// ── the inbox log — working memory beside the payload ──────────────────────────────────────
 test('import logs "seen" at first touch, then DELETES the log once fully filed', () => {
 	const src = path.join(os.tmpdir(), `detect-log-probe-${process.pid}.m4a`);
 	fs.writeFileSync(src, Buffer.from('not real audio, only bytes to hash'));

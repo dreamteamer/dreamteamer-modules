@@ -43,8 +43,8 @@ def _speaker_label(speaker_id):
 def render_transcript_body(turns, timestamps=True):
     """Render turns into a '## Transcript' markdown section (no frontmatter).
 
-    This is embedded directly into a .meeting.md file's body — transcripts are
-    no longer written to a separate sibling file. `timestamps=True` (audio
+    This is embedded directly into the recording record's body; there is no
+    separate transcript file. `timestamps=True` (audio
     sources) prefixes each turn with `[mm:ss]`; text sources (pasted/labeled)
     pass `timestamps=False` since turns have no wall-clock offsets.
     """
