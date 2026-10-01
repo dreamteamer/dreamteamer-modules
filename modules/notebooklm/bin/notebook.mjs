@@ -12,15 +12,13 @@
 // mirror, for a notebook that existed before its record did. Both print their plan with `--dry-run`
 // and touch no network until then.
 //
-// ⚠ THESE ARE THE CLI'S ONLY VERBS THAT WRITE OVER THE NETWORK. `doctor` is read-only by construction
-// and `setup` edits only the workspace; this verb writes ONE setting to ONE notebook the operator
-// named on the command line. It still never installs anything and never logs in — an expired
-// session is `notebooklm login`, which opens a browser, and that is a person's to run.
+// These verbs write over the network, only to the notebook named on the command line. They never
+// install anything and never log in — an expired session is `notebooklm login`, which opens a
+// browser, and that is a person's to run.
 //
-// ⚠ `notebooklm configure` IS DESTRUCTIVE BY DEFAULT: it replaces the whole configuration with
-// whatever the call passes. `configure --response-length longer` alone wiped a 3,039-character
-// persona to zero, and a bare `configure` — the obvious way to READ the current settings — cleared
-// `response_length` as well. Measured 2026-09-08, twice, the second time while checking the first.
+// `notebooklm configure` IS DESTRUCTIVE BY DEFAULT: it replaces the whole configuration with
+// whatever the call passes. `configure --response-length longer` alone wipes the persona, and a bare
+// `configure` — the obvious way to READ the current settings — clears `response_length` as well.
 // So there is no read-only inspection: every call sends the FULL configuration, which is why the
 // persona has to live in a file under git (NOTEBOOKLM.md, written by compile when the workspace
 // declares the `notebooklm` harness) rather than only in the notebook.
@@ -37,10 +35,9 @@ export const PERSONA_MAX = 10000;
 /** The text between a `## <heading>` and whichever comes first: the next `## `, EITHER managed-block
  *  marker, or the end of the file.
  *
- *  ⚠ Both markers, not just `end`. The hand-written additions sit ABOVE the block, so a capture that
- *  stopped only at `## ` ran straight through `<!-- dreamteamer:begin -->` and swallowed the block's
- *  own preamble into the persona — 1,000 characters of "NotebookLM reads no context file", applied to
- *  a notebook as instructions. It was visible only by printing the tail. */
+ *  Both markers, not just `end`. The hand-written additions sit ABOVE the block, so a capture that
+ *  stopped only at `## ` would run straight through `<!-- dreamteamer:begin -->` and swallow the
+ *  block's own preamble into the persona. */
 export function section(md, heading) {
 	const esc = heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 	const re = new RegExp(`^## ${esc}\\s*$([\\s\\S]*?)(?=^## |<!-- dreamteamer:(?:begin|end)|$(?![\\s\\S]))`, 'm');
@@ -48,7 +45,7 @@ export function section(md, heading) {
 }
 
 /** The first `## custom instructions — … additions` heading, whatever the possessive: "this
- *  workspace's", "this team's", "this vault's". The generated block owns the bare heading; anything
+ *  workspace's", "this team's". The generated block owns the bare heading; anything
  *  hand-written hangs off a dash. */
 function additionsHeading(md) {
 	return /^## (custom instructions — .*additions)\s*$/m.exec(md)?.[1] ?? null;
@@ -56,7 +53,8 @@ function additionsHeading(md) {
 
 /** The applied persona: the GENERATED custom instructions first, the workspace's hand-written
  *  additions after. The generated half cannot go stale; the hand-written half knows things a
- *  descriptor cannot. `⚠` lines and the old script pointer are prose about the section, not persona. */
+ *  descriptor cannot. Warning-glyph lines and a pointer to a persona script are prose about the
+ *  section, not persona. */
 export function personaFrom(md) {
 	const generated = section(md, 'custom instructions');
 	if (!generated) throw new Error('NOTEBOOKLM.md has no "## custom instructions" section — has `npx dreamteamer compile` run with the notebooklm harness declared?');
@@ -97,11 +95,10 @@ export function main(argv, root) {
 	if (print) { console.log(persona); return 0; }
 	if (!id) { console.error(USAGE.split('\n')[0]); return 2; }
 
-	// ⚠ ONE call, carrying EVERY setting — see the note at the top of this file.
-	// ⚠ NO `--mode`. It is mutually exclusive with `--persona` and the CLI does not say so: passing
+	// ONE call, carrying EVERY setting — see the note at the top of this file.
+	// NO `--mode`. It is mutually exclusive with `--persona` and the CLI does not say so: passing
 	// both returns `{mode: "default", configured: true}` at exit 0 and SILENTLY DISCARDS the persona
-	// and the response length. Measured 2026-09-08 — it reported a 0-character persona three times
-	// while the identical string sent without `--mode` landed in full.
+	// and the response length.
 	let res;
 	try {
 		res = execFileSync('notebooklm', ['--quiet', 'configure', '-n', id, '--persona', persona, '--response-length', 'longer', '--json'], { encoding: 'utf8', maxBuffer: 1 << 24 });
@@ -130,7 +127,7 @@ export const NOTEBOOK = '<NOTEBOOK>';
 export const SOURCE = '<SOURCE>';
 
 /** `${env:NAME}` → the value from `env`, or a refusal naming the var. A record never carries a
- *  machine path (module rule 9); the plan renders the template where it runs. */
+ *  machine path; the plan renders the template where it runs. */
 function renderEnv(template, env, where) {
 	let missing = null;
 	const out = String(template).replace(/\$\{env:([A-Z0-9_]+)\}/g, (_, name) => {
@@ -194,15 +191,15 @@ export function restorePlan(record, opts = {}) {
 			if (!src.ref) { refusals.push(`${at}: a drive source needs the document id in \`ref\``); return; }
 			steps.push({ purpose: 'add', at: i, argv: ['source', 'add-drive', '-n', NOTEBOOK, String(src.ref), ...(src.mime ? ['--mime-type', String(src.mime)] : []), '--json'] });
 		} else if (kind === 'export') {
-			// `dt notebooklm` (the @dreamteamer/notebooklm extension, installed in the workspace), pointed at
-			// the new notebook. It adds, waits for and titles its own sources, so no wait or rename follows.
+			// `dt notebooklm` (this module's export verb), pointed at the new notebook. It adds, waits for
+			// and titles its own sources, so no wait or rename follows.
 			const extra = String(src.ref ?? '').trim().split(/\s+/).filter(Boolean);
 			steps.push({ purpose: 'export', at: i, argv: ['npx', 'dreamteamer', 'notebooklm', '--notebook', NOTEBOOK, ...extra] });
 			return;
 		}
 		steps.push({ purpose: 'wait', at: i, argv: ['source', 'wait', '-n', NOTEBOOK, SOURCE, '--json'] });
-		// ⚠ `--title` is kept on text and file uploads only, and even there the vendor keeps the file
-		// NAME on most uploads (0.7.3, measured) — so every titled source is renamed by id afterwards.
+		// `--title` is kept on text and file uploads only, and even there the vendor keeps the file
+		// NAME on most uploads — so every titled source is renamed by id afterwards.
 		if (src.title) steps.push({ purpose: 'rename', at: i, argv: ['source', 'rename', '-n', NOTEBOOK, SOURCE, String(src.title), '--json'] });
 	});
 
@@ -213,8 +210,8 @@ export function restorePlan(record, opts = {}) {
 	const persona = resolvePersona(chat, root, exists, read);
 	if (persona.refusal) refusals.push(persona.refusal);
 	const text = persona.value ?? '';
-	// ⚠ `--mode` and `--persona` are mutually exclusive and the CLI does not say so: sent together, the
-	// persona and the response length are DISCARDED at exit 0 (measured 2026-09-08). Refuse, never guess.
+	// `--mode` and `--persona` are mutually exclusive and the CLI does not say so: sent together, the
+	// persona and the response length are DISCARDED at exit 0. Refuse, never guess.
 	if (text && chat.mode) refusals.push('chat: `mode` and `persona` cannot both be set — NotebookLM keeps one and silently drops the other; a persona IS the custom mode');
 	if (text.length > PERSONA_MAX) refusals.push(`chat.persona is ${text.length} characters and NotebookLM takes at most ${PERSONA_MAX}`);
 	if (text || chat.mode || rl !== 'default') {
@@ -236,8 +233,7 @@ export function sourceFromLive(live) {
 		const mime = type === 'google_docs' ? 'google-doc' : type === 'google_slides' ? 'google-slides' : type === 'google_spreadsheet' ? 'google-sheets' : undefined;
 		return { source: { ...base, kind: 'drive', ...(mime ? { mime } : {}) }, needs: 'ref: the Drive document id' };
 	}
-	// A PDF the web UI fetched from a URL keeps that URL as its TITLE (measured 2026-09-10 across nine
-	// live notebooks: 21 of them). The URL is the restore key — add it as a url and let it title itself.
+	// A PDF the web UI fetched from a URL keeps that URL as its TITLE. The URL is the restore key — add it as a url and let it title itself.
 	if (/^https?:\/\/\S+$/i.test(String(live.title ?? ''))) return { source: { ...base, kind: 'url', ref: String(live.title), title: '' }, needs: null };
 	// `dt · <collection>` is what `dt notebooklm` titles its sources — one record
 	// entry of kind `export` restores the whole run; per-file refs would be the wrong shape.

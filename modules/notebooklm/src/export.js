@@ -24,8 +24,8 @@ import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { dt } from './engine.js';
 
-/** Sources per notebook, per plan — Google's published table (support.google.com/notebooklm/answer/16213268,
- *  read 2026-09). A bare number is accepted too, for a Workspace or Enterprise tier the table does not name. */
+/** Sources per notebook, per plan — Google's published table (support.google.com/notebooklm/answer/16213268).
+ *  A bare number is accepted too, for a Workspace or Enterprise tier the table does not name. */
 export const PLANS = { standard: 50, plus: 100, pro: 300, ultra: 600 };
 /** The persona cap `notebooklm configure --persona` states. */
 export const PERSONA_MAX = 10000;
@@ -33,7 +33,7 @@ export const PERSONA_MAX = 10000;
  *  citations to land on a record rather than on a wall of them. */
 export const DEFAULT_MAX_WORDS = 200000;
 /** Every source this adapter owns carries this prefix — it is how a sync tells its own stale sources
- *  from a paper the operator added by hand, which it never touches. */
+ *  from one a person added by hand, which it never touches. */
 export const OWNED_PREFIX = 'dt · ';
 export const SCHEMA_TITLE = `${OWNED_PREFIX}schema`;
 export const DEFAULT_OUT = path.join('.cache', 'dreamteamer', 'notebooklm');
@@ -116,11 +116,10 @@ export function renderSchema({ workspace, version, exportedAt, modules, descript
 		const why = exportability(d);
 		lines.push('', `### collection: ${d.name}`);
 		if (d.description) lines.push(flat(d.description));
-		// ⚠ A WITHHELD COLLECTION IS NAMED AND THEN THE ENTRY STOPS. Naming it is deliberate — the reader
+		// A WITHHELD COLLECTION IS NAMED AND THEN THE ENTRY STOPS. Naming it is deliberate — the reader
 		// has to know the gap exists — but its SCHEMA is not neutral: a field description carries authored
-		// examples (a real vat-period id, a real trip name) and an enum publishes the value set itself
-		// (`relation: parent-partner …` describes a household). Measured on a real vault: 5 of 23 canary
-		// hits came from this block alone, from collections whose records were correctly withheld.
+		// examples and an enum publishes the value set itself (`relation: parent-partner …` describes a
+		// household), so nothing past the name travels.
 		if (why === 'sensitive') {
 			lines.push('⚠ sensitive — not exported: no record, field or value of this collection is in this notebook.');
 			return;
@@ -164,11 +163,11 @@ export function schemaBrief(modules, descriptors, omitted) {
 
 const demote = (md) => String(md).replace(/^(#{1,4})(\s)/gm, (_, h, s) => `${h}##${s}`);
 
-/** ⚠ A REFERENCE INTO A WITHHELD COLLECTION IS ITSELF A DISCLOSURE, and the sharper half is that an
+/** A REFERENCE INTO A WITHHELD COLLECTION IS ITSELF A DISCLOSURE, and the sharper half is that an
  *  id is not an opaque handle here — ids are authored, so they carry account numbers, people's names
  *  and trip destinations. Withholding `finance/accounts` while an exported task still reads
- *  `finance/accounts/<bank>-<account number>` withholds nothing. Measured on a real vault: 11 of 23
- *  canary hits were exactly this, in field values AND in body prose (`[[…]]` links and bare refs).
+ *  `finance/accounts/<bank>-<account number>` withholds nothing, and the reference turns up in field
+ *  values AND in body prose (`[[…]]` links and bare refs).
  *
  *  So every rendered text — record sections, the schema source, the persona — goes through this. The
  *  collection NAME survives, because "there is a finance account behind this and you were not given
@@ -203,10 +202,9 @@ export function renderRecord(d, id, fields, labels) {
 	return lines.join('\n') + '\n';
 }
 
-/** ⚠ NO TIMESTAMP AND NO ENGINE VERSION IN A SHARD. The sync decides "unchanged" by hashing the
- *  bytes, so anything volatile here re-uploads every source on every run — the first live sync
- *  replaced four untouched collections because this line carried the export minute. Dates live in
- *  the manifest and the persona, which are rewritten anyway. */
+/** NO TIMESTAMP AND NO ENGINE VERSION IN A SHARD. The sync decides "unchanged" by hashing the
+ *  bytes, so anything volatile here would re-upload every source on every run. Dates live in the
+ *  manifest and the persona, which are rewritten anyway. */
 function shardHeader(d, exported, n, m, count, meta) {
 	const lines = [`# ${d.name}${d.description ? ` — ${flat(d.description)}` : ''}`];
 	if (d.use_when) lines.push(`use when: ${flat(d.use_when)}`);
@@ -366,13 +364,13 @@ export function writeBundle(outDir, bundle) {
  *  the sources the notebook has (id + title), the last sync's state (title → source_id + sha), and
  *  the bundle's file names.
  *
- *  ⚠ KEYED ON SOURCE IDS, NOT TITLES. `notebooklm source add --title` on a file upload keeps the
- *  title on some uploads and the FILE NAME on others (measured 2 of 5, then 0 of 4, on 0.7.3), so a
- *  title-keyed plan re-added every source it could not find and left the previous copy behind. The
- *  state file remembers which id each title landed on; a title is only what the reader sees, and the
- *  sync renames a source whose title came back wrong. Ownership — what may be REMOVED — is: an id the
- *  state tracks, a title carrying OWNED_PREFIX, or a title equal to one of the bundle's file names
- *  (the exact shape the dropped-title bug leaves behind). Anything else is the operator's. */
+ *  KEYED ON SOURCE IDS, NOT TITLES. `notebooklm source add --title` on a file upload keeps the
+ *  title on some uploads and the FILE NAME on others, so a title-keyed plan would re-add every source
+ *  it could not find and leave the previous copy behind. The state file remembers which id each title
+ *  landed on; a title is only what the reader sees, and the sync renames a source whose title came
+ *  back wrong. Ownership — what may be REMOVED — is: an id the state tracks, a title carrying
+ *  OWNED_PREFIX, or a title equal to one of the bundle's file names (the shape the dropped title
+ *  leaves behind). Anything else was added by a person and is never removed. */
 export function planSync(wanted, existing, state = {}, ownedFiles = new Set()) {
 	const plan = { add: [], replace: [], skip: [], remove: [] };
 	const byId = new Map(existing.map((e) => [e.id, e]));
@@ -456,7 +454,7 @@ export function syncNotebook(outDir, manifest, flags, log = (line) => dt.emit(li
 		const res = nlm(['source', 'add', path.join(outDir, s.file), '--type', 'file', '--title', s.title, '-n', notebookId, '--request-timeout', '180']);
 		const id = res?.source?.id ?? res?.id;
 		if (!id) throw new Error(`notebooklm source add returned no id for ${s.title}: ${JSON.stringify(res).slice(0, 200)}`);
-		// ⚠ ALWAYS, not "when the title came back wrong": the title `add` reports is not the one the
+		// ALWAYS, not "when the title came back wrong": the title `add` reports is not the one the
 		// notebook keeps (see planSync). One extra call per new source buys a readable source list.
 		nlm(['source', 'rename', id, s.title, '-n', notebookId]);
 		next.sources[s.title] = { source_id: id, sha256: s.sha256 };
