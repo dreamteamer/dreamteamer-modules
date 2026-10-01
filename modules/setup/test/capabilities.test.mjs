@@ -196,36 +196,40 @@ describe('the CLI', () => {
 	});
 });
 
-describe('the notebooks capability', () => {
+describe('the wikis and notebooklm capabilities', () => {
 	test('OURS names every module this repo ships except setup itself — a module added without a row is a module the board cannot see', () => {
 		const shipped = fs.readdirSync(path.join(ROOT, 'modules')).filter((m) => m !== 'setup' && fs.existsSync(path.join(ROOT, 'modules', m, 'package.json')));
 		assert.deepEqual([...OURS].sort(), shipped.sort());
-		assert.ok(OURS.includes('notebooks'));
+		assert.ok(OURS.includes('wikis'));
+		assert.ok(OURS.includes('notebooklm'));
+		assert.ok(OURS.includes('companies') && OURS.includes('tags') && OURS.includes('meeting-docs'), 'the 2026-10-01 splits each have a row');
 		assert.ok(OURS.includes('users'), 'users is its own module so it renders at the nav root');
 		assert.ok(OURS.includes('rnd'));
-		assert.equal(installedModules(consumer()).get('notebooks')?.channel, 'node_modules');
+		assert.equal(installedModules(consumer()).get('wikis')?.channel, 'node_modules');
 		assert.equal(installedModules(consumer()).get('rnd')?.channel, 'node_modules');
 	});
 	test('rnd alone wants FILES_FOLDER (references and media_folder point into it), the way meetings and recordings do', () => {
-		const caps = capabilities(consumer({ disable: ['recordings', 'meetings', 'perspective', 'notebooks', 'contacts', 'assets', 'projects'] }));
+		const caps = capabilities(consumer({ disable: ['recordings', 'meetings', 'perspective', 'wikis', 'contacts', 'assets', 'projects'] }));
 		assert.equal(check(caps, 'variables', 'FILES_FOLDER declared')?.state, 'bad');
 	});
 	// ⚠ WARN, NOT BAD, AND THAT IS THE TWO-ADAPTER RELEASE. Nothing under `notebooks` is `bad` any
 	// more: the LOCAL adapter is a folder of markdown and needs no binary, no login and no harness, so
 	// a machine with none of them still has a working notebook capability. Reporting UNAVAILABLE for
 	// the absence of the EXTRA adapter would say the opposite on the very machine the claim is about.
-	test('an undeclared notebooklm harness is a WARN — the local adapter never reads NOTEBOOKLM.md', () => {
-		const c = check(capabilities(consumer()), 'notebooks', 'harness declared');
+	test('an undeclared notebooklm harness is a WARN — a local wiki never reads NOTEBOOKLM.md', () => {
+		const c = check(capabilities(consumer()), 'notebooklm', 'harness declared');
 		assert.equal(c?.state, 'warn');
 		assert.match(c.fix, /dreamteamer\.harnesses/);
-		assert.match(c.detail, /local adapter never reads it/);
+		assert.match(c.detail, /local wiki never reads it/);
 	});
-	test('no notebooks check is `bad`, so a machine with no vendor CLI is DEGRADED and not UNAVAILABLE', () => {
+	test('no wikis or notebooklm check is `bad`, so a machine with no vendor CLI is DEGRADED and not UNAVAILABLE', () => {
 		const caps = capabilities(consumer());
-		assert.deepEqual(cap(caps, 'notebooks').checks.filter((c) => c.state === 'bad'), []);
-		assert.notEqual(capState(cap(caps, 'notebooks')), 'UNAVAILABLE');
+		for (const id of ['wikis', 'notebooklm']) {
+			assert.deepEqual(cap(caps, id).checks.filter((c) => c.state === 'bad'), [], id);
+			assert.notEqual(capState(cap(caps, id)), 'UNAVAILABLE', id);
+		}
 	});
-	test('notebooks alone wants FILES_FOLDER — a wiki folder is a ${env:FILES_FOLDER}/… template', () => {
+	test('wikis alone wants FILES_FOLDER — a legacy wiki folder is a ${env:FILES_FOLDER}/… template', () => {
 		const caps = capabilities(consumer({ disable: ['recordings', 'meetings', 'rnd', 'perspective', 'contacts', 'assets', 'projects'] }));
 		assert.equal(check(caps, 'variables', 'FILES_FOLDER declared')?.state, 'bad');
 	});
@@ -235,15 +239,15 @@ describe('the notebooks capability', () => {
 	// claim is that it has none. Corpora live in the repo now, so the capability is READY on a bare
 	// clone with no `.env`, no declared var, and no mount.
 	test('the wikis folder check is ok with NO .env at all — the local adapter has no prerequisite', () => {
-		assert.equal(check(capabilities(consumer()), 'notebooks', 'wikis folder')?.state, 'ok');
-		assert.equal(check(capabilities(consumer({ vars: ['FILES_FOLDER'], env: 'FILES_FOLDER=/tmp/files\n' })), 'notebooks', 'wikis folder')?.state, 'ok');
+		assert.equal(check(capabilities(consumer()), 'wikis', 'wikis folder')?.state, 'ok');
+		assert.equal(check(capabilities(consumer({ vars: ['FILES_FOLDER'], env: 'FILES_FOLDER=/tmp/files\n' })), 'wikis', 'wikis folder')?.state, 'ok');
 	});
 
 	// And the doctor still SAYS something about the legacy case rather than going silent on it: a
 	// workspace whose records carry the old template does still need the variable, and a check that
 	// stopped mentioning it would hide the one situation that can still refuse.
 	test('with FILES_FOLDER unset the doctor still names the legacy corpora case', () => {
-		const line = check(capabilities(consumer()), 'notebooks', 'legacy corpora');
+		const line = check(capabilities(consumer()), 'wikis', 'legacy corpora');
 		assert.ok(line, 'the legacy case must still be reported, not silently dropped');
 		assert.match(line.detail ?? line.hint ?? '', /\$\{env:FILES_FOLDER\}/);
 	});
@@ -269,7 +273,7 @@ describe('the notebooks capability', () => {
 
 	test('qmd absent is a WARNING, never bad — grep is the floor and the module still works', () => {
 		withoutQmd(() => {
-			const c = check(capabilities(consumer()), 'notebooks', 'qmd');
+			const c = check(capabilities(consumer()), 'wikis', 'qmd');
 			assert.ok(c, 'the qmd check must exist');
 			assert.equal(c.state, 'warn', 'retrieval is optional: a bare clone greps, and every other verb is unaffected');
 			assert.match(c.fix, /npm install -g @tobilu\/qmd/);
@@ -280,27 +284,27 @@ describe('the notebooks capability', () => {
 	test('and with qmd absent the whole capability is still not UNAVAILABLE', () => {
 		withoutQmd(() => {
 			const caps = capabilities(consumer());
-			assert.deepEqual(cap(caps, 'notebooks').checks.filter((c) => c.state === 'bad'), []);
-			assert.notEqual(capState(cap(caps, 'notebooks')), 'UNAVAILABLE');
+			assert.deepEqual(cap(caps, 'wikis').checks.filter((c) => c.state === 'bad'), []);
+			assert.notEqual(capState(cap(caps, 'wikis')), 'UNAVAILABLE');
 		});
 	});
 
 	test('the notebooklm checks stay warnings — the extra adapter never blocks', () => {
 		for (const label of ['notebooklm', 'harness declared']) {
-			const c = check(capabilities(consumer()), 'notebooks', label);
+			const c = check(capabilities(consumer()), 'notebooklm', label);
 			if (c && c.state !== 'ok') assert.notEqual(c.state, 'bad', `${label} must never be UNAVAILABLE — it is the optional adapter`);
 		}
 	});
 
 	test('a declared notebooklm harness is ok', () => {
-		assert.equal(check(capabilities(consumer({ harnesses: ['claude-code', 'notebooklm'] })), 'notebooks', 'harness declared')?.state, 'ok');
+		assert.equal(check(capabilities(consumer({ harnesses: ['claude-code', 'notebooklm'] })), 'notebooklm', 'harness declared')?.state, 'ok');
 	});
 	test('.cache/ missing from .gitignore is a warn; present is ok', () => {
-		assert.equal(check(capabilities(consumer({ gitignore: 'node_modules/\n' })), 'notebooks', '.cache/ ignored')?.state, 'warn');
-		assert.equal(check(capabilities(consumer({ gitignore: 'node_modules/\n.cache/\n' })), 'notebooks', '.cache/ ignored')?.state, 'ok');
+		assert.equal(check(capabilities(consumer({ gitignore: 'node_modules/\n' })), 'notebooklm', '.cache/ ignored')?.state, 'warn');
+		assert.equal(check(capabilities(consumer({ gitignore: 'node_modules/\n.cache/\n' })), 'notebooklm', '.cache/ ignored')?.state, 'ok');
 	});
 	test('the module switched off shows no notebooks capability', () => {
-		assert.equal(cap(capabilities(consumer({ disable: ['notebooks'] })), 'notebooks'), undefined);
+		assert.equal(cap(capabilities(consumer({ disable: ['wikis'] })), 'wikis'), undefined);
 	});
 	test('setup --yes declares the harness WITHOUT dropping the engine default, and appends .cache/', () => {
 		const ws = consumer({ gitignore: 'node_modules/\n' });

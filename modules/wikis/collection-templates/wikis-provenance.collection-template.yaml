@@ -1,7 +1,7 @@
-# notebooks-provenance: the four fields every `notebooks` record carries, so any record can say who
+# wikis-provenance: the four fields every `wikis` record carries, so any record can say who
 # made it, from what, and how much to trust it.
 #
-# ⚠ NAMED `notebooks-provenance`, not `provenance`, ON PURPOSE. Compile treats a collection-template
+# ⚠ NAMED `wikis-provenance`, not `provenance`, ON PURPOSE. Compile treats a collection-template
 # id as an IDENTITY entity: two modules shipping `collection-templates/provenance` is a hard name
 # collision, not a merge. A module that wants a shared field set owns it under a module-scoped id, or
 # it can only ever be installed beside whichever module ships the unscoped one. That is the trap the
@@ -10,8 +10,8 @@
 #
 # NOT for system records (collections, commands, skills, agents, ui-views) — they comply with a
 # standardized schema, and their provenance is the module that shipped them.
-name: notebooks-provenance
-description: author / creation_context / source / confidence — the traceability quad on every `notebooks` record
+name: wikis-provenance
+description: author / creation_context / source / confidence — the traceability quad on every `wikis` record
 template:
   schema:
     type: object

@@ -21,10 +21,11 @@
 	],
 	"dreamteamer": {
 		"title": "Tasks",
-		"description": "A concrete commitment, starting with a verb — `tasks`, each optionally owed by one `users` record (`assignee`; empty means the workspace's own person), with an absolute `due`, a free `lane` for the board, and an `item` backlink to the record it came out of. Ships the inbox (`/inbox`), the board (`/tasks/board`) and the by-person view (`/tasks/by-assignee`), and `working-with-tasks`, the procedure an agent follows to create, assign, triage and close one. Peers `projects` and `activities`: install the projects module and a task can hang off a plan rung, with the mirror stamped onto the plan; without it a write that sets either is refused, naming the missing collection.",
+		"description": "A concrete commitment, starting with a verb — `tasks`, each optionally owed by one `users` record (`assignee`; empty means the workspace's own person), with an absolute `due`, a free `lane` for the board, and an `item` backlink to the record it came out of. Ships the inbox (`/inbox`), the board (`/tasks/board`) and the by-person view (`/tasks/by-assignee`), and `working-with-tasks`, the procedure an agent follows to create, assign, triage and close one. Depends on the tags module, because `tasks.tags` points a writer at its script. Peers `projects` and `activities`: install the projects module and a task can hang off a plan rung, with the mirror stamped onto the plan; without it a write that sets either is refused, naming the missing collection.",
 		"engine": ">=0.30.0",
 		"dependencies": [
-			"@dreamteamer/users"
+			"@dreamteamer/users",
+			"@dreamteamer/tags"
 		],
 		"peerDependencies": [
 			"projects",

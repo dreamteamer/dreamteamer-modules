@@ -9,10 +9,9 @@ options:
     - last-modified
     - company
     - attendees
-    # the generated mirror: present means this call has been summarised, empty means it has not.
-    # 68 of 157 were empty when the relation was declared, and this column is how that stops being
-    # a shell pipeline.
-    - summary
+    # `summary` is NOT a column here: it is a mirror the meeting-docs module stamps on, and a column
+    # for a field this workspace may not have renders as an empty cell that reads as data. The view
+    # with the pipeline columns ships with meeting-docs (`/meetings/pipeline`).
   sort: '-starts'
 nav:
   label: recent meetings

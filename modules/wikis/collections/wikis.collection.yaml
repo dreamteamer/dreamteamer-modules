@@ -1,5 +1,5 @@
 name: wikis
-templates: [collection-templates/notebooks-provenance]
+templates: [collection-templates/wikis-provenance]
 id:
   generate: '{{ name | slug }}'
   # an entity, not a dated document — a corpus is a thing that IS, and it is looked up by the

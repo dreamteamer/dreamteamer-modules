@@ -4,7 +4,7 @@ description: >-
 use_when: >-
   an organisation is named — in a meeting, a lead, a contact's employer, an invoice — find or create
   it here BEFORE the record that points at it; every funnel record joins through this one
-templates: [collection-templates/contacts-provenance]
+templates: [collection-templates/companies-provenance]
 storage: { path: data/companies, codec: md, shape: file, suffix: company }
 id: { generate: "{{ name | slug }}" }
 schema:
@@ -45,25 +45,22 @@ schema:
       type: string
       x-reference: companies
       description: The parent org, when this one is a subsidiary, brand or business unit.
-    # Everything below is GENERATED — the far side of a foreign key that lives on another record
-    # (spelling B: `x-inverse-of` names the field that owns it). They are declared here so that
-    # "what does a company have?" is answerable by reading this file, and they are READ-ONLY: set
-    # `parent` on the subsidiary, or `company` on the contact, and the engine
-    # maintains these in the same write. `logo` above stays one-way on purpose — `assets` is a
-    # `codec: file` collection and cannot hold a mirror.
+    # `subsidiaries` is GENERATED — the far side of `parent`, which lives on the subsidiary
+    # (spelling B: `x-inverse-of` names the field that owns it). Declared here so that "what does a
+    # company have?" is answerable by reading this file, and READ-ONLY: set `parent` on the
+    # subsidiary and the engine maintains this in the same write. SELF-REFERENTIAL: a company's
+    # parent is a company, so both ends of the relation are this collection. `logo` above stays
+    # one-way on purpose — `assets` is a `codec: file` collection and cannot hold a mirror.
     #
-    # `subsidiaries` is SELF-REFERENTIAL: a company's parent is a company, so both ends of this
-    # relation are this collection.
+    # `contacts` is NOT declared here. The contacts module owns that relation — `contacts.company`
+    # carries `x-inverse: contacts` — and the engine stamps the mirror onto this collection only when
+    # that module is installed. A workspace with companies and no contacts has companies with no
+    # people field, which is the truth of that workspace rather than a dangling reference.
     subsidiaries:
       type: array
       items: { type: string, x-reference: companies }
       x-inverse-of: companies.parent
       description: The orgs that name this one as their parent — brands, business units, companies acquired.
-    contacts:
-      type: array
-      items: { type: string, x-reference: contacts }
-      x-inverse-of: contacts.company
-      description: Everyone on record as working here right now — the people side of this org.
     notes:
       type: string
       format: markdown

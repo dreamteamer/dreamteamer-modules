@@ -1,21 +1,23 @@
 # @dreamteamer/meetings
 
-Your calendar meetings, synced from Google Calendar, and the three things a call produces: a short
-prep to read before it, a neutral summary after it, and an honest critique when you want one.
+Your calendar meetings, synced from Google Calendar, with the attendees as contacts and the
+screenshots taken during a call filed beside it. The anchor the other meeting modules hang off.
 
 ```bash
-npm install @dreamteamer/meetings @dreamteamer/contacts @dreamteamer/tasks @dreamteamer/users @dreamteamer/assets
+npm install @dreamteamer/meetings @dreamteamer/contacts @dreamteamer/companies @dreamteamer/users @dreamteamer/tags @dreamteamer/assets
 npx dreamteamer compile
 ```
 
 | alone | with others |
 |---|---|
-| meetings, preps, summaries and critiques, written from notes | **recordings** (not yet in this repo) adds the audio and transcript, and the transcript-gated steps: summarise, extract tasks, critique |
+| meetings synced or written by hand, each attendee's latest meeting stamped on their contact, screenshots filed per meeting | **recordings** adds the audio and transcript (`meetings.recordings`) · **meeting-docs** adds the prep, the summary and the critique (`meetings.prep`, `.summary`, `.analyses`) and the pipeline that writes them |
 
 | needs | for |
 |---|---|
 | `@dreamteamer/contacts` | attendees |
-| `@dreamteamer/tasks` | the follow-ups a call produces |
+| `@dreamteamer/companies` | the company a call is with |
 | `@dreamteamer/users` | the people of yours in the room |
-| `@dreamteamer/assets` | contacts needs it for avatars and logos |
+| `@dreamteamer/tags` | the `tags` field points at its script |
+| `@dreamteamer/assets` | contacts and companies need it for avatars and logos |
 | a Google account and `WORK_CALENDARS` in `.env` | calendar sync only; writing meetings by hand works without them |
+| `INBOX_FOLDERS` and `FILES_FOLDER` declared | filing screenshots only |

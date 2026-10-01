@@ -1,5 +1,5 @@
 name: notebooks
-templates: [collection-templates/notebooks-provenance]
+templates: [collection-templates/notebooklm-provenance]
 id:
   generate: '{{ name | slug }}'
   # an entity, not a dated document — no date prefix, and the slug of the NotebookLM

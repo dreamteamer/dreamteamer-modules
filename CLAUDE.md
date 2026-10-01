@@ -42,4 +42,9 @@ Carried in on 2026-10-01, each verbatim first so every later change is a reviewa
 (`8e4202d`), `dreamteamer-tools@3df18b4` (workflows, http, host), and the operator's vault at
 `2b29374b8` (notebooklm). `workflows` was split into `proofs` and `worktrees`; `host` became
 `docker-workspaces` with the command `dt-docker`; the pack's root CLI became `setup`; `tasks` left
-`projects`. Neither source repo is consumed from here, and nothing syncs back.
+`projects`. Later the same day, by the test "does some module need part of this one without the
+rest": `companies` and `tags` left `contacts`, `notebooks` became `wikis` plus the notebook spec
+folded into `notebooklm`, the screenshots ingest moved from `recordings` to `meetings`, and the
+prep/summary/critique pipeline left `meetings` as `meeting-docs`. A mirror across modules is declared
+ON THE OWNER (`x-inverse`), never as `x-inverse-of` on the target, so it exists only when the owner
+is installed. Neither source repo is consumed from here, and nothing syncs back.

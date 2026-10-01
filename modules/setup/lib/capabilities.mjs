@@ -121,7 +121,7 @@ export function installedModules(root) {
 	return found;
 }
 
-export const OURS = ['assets', 'users', 'contacts', 'tasks', 'meetings', 'recordings', 'projects', 'perspective', 'notebooks', 'search', 'rnd', 'notebooklm', 'proofs', 'worktrees', 'http', 'docker-workspaces'];
+export const OURS = ['assets', 'users', 'companies', 'contacts', 'tags', 'tasks', 'meetings', 'recordings', 'meeting-docs', 'projects', 'perspective', 'wikis', 'notebooklm', 'search', 'rnd', 'proofs', 'worktrees', 'http', 'docker-workspaces'];
 const cmp = (a, b) => { // returns -1/0/1 comparing dotted versions
 	const pa = String(a).split('.').map(Number), pb = String(b).split('.').map(Number);
 	for (let i = 0; i < 3; i++) { if ((pa[i] || 0) !== (pb[i] || 0)) return (pa[i] || 0) < (pb[i] || 0) ? -1 : 1; }
@@ -164,10 +164,10 @@ export function capabilities(root) {
 	{
 		const c = cap('variables', 'records store `${env:NAME}` templates as inert text; only the workspace can declare which names render');
 		const wanted = [
-			// notebooks joined this row when `wikis` landed: a wiki's `folder` is a `${env:FILES_FOLDER}/…`
-			// template and every `wiki` verb refuses rather than guessing when it cannot render.
-			['FILES_FOLDER', has('recordings') || has('meetings') || has('rnd') || has('notebooks'), 'where recordings, meeting files, generated media packs and wiki corpora are kept'],
-			['INBOX_FOLDERS', has('recordings'), 'the folders new recordings and screenshots arrive in'],
+			// wikis is on this row for the legacy case only: a corpus lives in the repo since 2026-09-11, but
+			// a `wikis` record written before that still carries a `${env:FILES_FOLDER}/…` folder.
+			['FILES_FOLDER', has('recordings') || has('meetings') || has('rnd') || has('wikis'), 'where recordings, meeting files, generated media packs and legacy wiki corpora are kept'],
+			['INBOX_FOLDERS', has('recordings') || has('meetings'), 'the folders new recordings and meeting screenshots arrive in'],
 			['REPOS_FOLDER', has('perspective'), 'where the git checkouts a retrospective reads live'],
 		].filter(([, needed]) => needed);
 		const declared = new Set(dt.vars ?? []);
@@ -301,8 +301,8 @@ export function capabilities(root) {
 	// That is the line to hold when the next retrieval tool is proposed: an embedding API would be
 	// smaller, faster to set up and better — and would put the one capability this module exists to
 	// keep local behind somebody else's account. The 2.1 GB is what independence costs.
-	if (has('notebooks')) {
-		const c = cap('notebooks', 'a corpus you can grep with nothing installed, and ASK once `qmd` is — both local; `notebooklm` is the optional extra adapter.');
+	if (has('wikis')) {
+		const c = cap('wikis', 'a corpus you can grep with nothing installed, and ASK once `qmd` is — both local. Nothing here is `bad`: grep is the floor.');
 		// ── the retrieval engine: OPTIONAL, and the capability degrades to grep without it ──────
 		const q = bin('qmd');
 		if (!q) {
@@ -321,8 +321,27 @@ export function capabilities(root) {
 			else if (pending) c.warn('embeddings', 'npx dt-wiki index --embed · or: qmd embed', `${pending} document(s) indexed but not embedded — those answer lexically only, silently`);
 			else c.ok('corpora indexed', `${files} document(s) indexed and embedded`);
 		}
+		// ⚠ THIS USED TO BE A PREREQUISITE AND IS NO LONGER ONE. Until 2026-09-11 a wiki's folder was an
+		// `${env:FILES_FOLDER}/…` template, so every `wiki` verb refused until that variable was set —
+		// which is exactly the prerequisite the local adapter is supposed not to have. Corpora live in
+		// the repo now (`wikis/<id>`), so there is nothing to render and nothing to check: the
+		// capability is READY on a bare clone. It stays listed rather than deleted because a workspace
+		// whose records still carry the old template still needs the variable, and silence about that
+		// would be worse than a line saying which case it is in.
+		c.ok('wikis folder', 'corpora live in the repo under wikis/ — no variable and no mount; the qmd index lives in ~/.cache and is never committed');
+		if (!((dt.vars ?? []).includes('FILES_FOLDER') && env.has('FILES_FOLDER'))) {
+			c.ok('legacy corpora', 'FILES_FOLDER is unset — fine unless a `wikis` record still carries a ${env:FILES_FOLDER}/… folder, which would refuse by name');
+		}
+		out.push(c.cap);
+	}
+
+	// ── notebooklm ──────────────────────────────────────────────────────────────────────────
+	// The EXTRA adapter: a login, a vendor CLI and a harness. Nothing here is `bad` either — a machine
+	// with none of it still has every local wiki, and reporting UNAVAILABLE would say the opposite.
+	if (has('notebooklm')) {
+		const c = cap('notebooklm', 'the NotebookLM export, the harness and the notebook records. Optional: a login and a vendor CLI, and nothing a local wiki needs.');
 		const nb = bin('notebooklm');
-		if (!nb) c.warn('notebooklm', 'uv tool install notebooklm-py · or: pip install "notebooklm-py[browser]"; then notebooklm skill install', 'the EXTRA adapter only — `wiki` verbs and local corpora work without it');
+		if (!nb) c.warn('notebooklm', 'uv tool install notebooklm-py · or: pip install "notebooklm-py[browser]"; then notebooklm skill install', 'the vendor CLI — `dt notebooklm` renders sources without it; syncing and the dt-notebook verbs need it');
 		else {
 			c.ok('notebooklm', nb);
 			const v = /version (\d+\.\d+\.\d+)/.exec(sh('notebooklm', ['--version']))?.[1];
@@ -338,18 +357,7 @@ export function capabilities(root) {
 		}
 		(dt.harnesses ?? []).includes('notebooklm')
 			? c.ok('harness declared', 'compile writes NOTEBOOKLM.md')
-			: c.warn('harness declared', 'add "notebooklm" to dreamteamer.harnesses in package.json, then npx dreamteamer compile', 'this is what makes NOTEBOOKLM.md — and the `notebook persona` verb — exist; the local adapter never reads it');
-		// ⚠ THIS USED TO BE A PREREQUISITE AND IS NO LONGER ONE. Until 2026-09-11 a wiki's folder was an
-		// `${env:FILES_FOLDER}/…` template, so every `wiki` verb refused until that variable was set —
-		// which is exactly the prerequisite the local adapter is supposed not to have. Corpora live in
-		// the repo now (`wikis/<id>`), so there is nothing to render and nothing to check: the
-		// capability is READY on a bare clone. It stays listed rather than deleted because a workspace
-		// whose records still carry the old template still needs the variable, and silence about that
-		// would be worse than a line saying which case it is in.
-		c.ok('wikis folder', 'corpora live in the repo under wikis/ — no variable and no mount; the qmd index lives in ~/.cache and is never committed');
-		if (!((dt.vars ?? []).includes('FILES_FOLDER') && env.has('FILES_FOLDER'))) {
-			c.ok('legacy corpora', 'FILES_FOLDER is unset — fine unless a `wikis` record still carries a ${env:FILES_FOLDER}/… folder, which would refuse by name');
-		}
+			: c.warn('harness declared', 'add "notebooklm" to dreamteamer.harnesses in package.json, then npx dreamteamer compile', 'this is what makes NOTEBOOKLM.md — and the `dt-notebook persona` verb — exist; a local wiki never reads it');
 		gitignores(root, '.cache/')
 			? c.ok('.cache/ ignored', 'downloads and the export bundle land there')
 			: c.warn('.cache/ ignored', 'add .cache/ to .gitignore', 'notebook downloads and the export bundle land there; a 40 MB podcast must never be staged');

@@ -1,0 +1,44 @@
+{
+	"name": "@dreamteamer/wikis",
+	"version": "0.1.0",
+	"description": "Local wikis for a dreamteamer workspace — a corpus of markdown you can grep with nothing installed, and ask by meaning once qmd is.",
+	"license": "Apache-2.0",
+	"type": "module",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/dreamteamer/dreamteamer-modules.git",
+		"directory": "modules/wikis"
+	},
+	"keywords": [
+		"dreamteamer",
+		"dreamteamer-module",
+		"wiki",
+		"corpus",
+		"knowledge-base",
+		"search",
+		"qmd"
+	],
+	"bin": {
+		"dt-wiki": "bin/wiki.mjs"
+	},
+	"files": [
+		"README.md",
+		"bin",
+		"lib",
+		"collections",
+		"collection-templates",
+		"skills",
+		"ui-views"
+	],
+	"dependencies": {
+		"js-yaml": "^4.1.0"
+	},
+	"dreamteamer": {
+		"title": "Wikis",
+		"description": "A corpus of markdown IN THE REPO, and the verbs over it. Its promise is ZERO GOOGLE PREREQUISITES — no account, no login, no network, ever. It has never meant no software, and it has no hard software requirement either: `wiki search` is grep and needs nothing at all. `qmd` (`npm install -g @tobilu/qmd`) is OPTIONAL and on-device, and it is what makes a corpus answerable rather than merely greppable — measured over 300 records, lexical recall 0.22 against vector's 0.80, so the gap is real and it is still not a prerequisite. `wiki ask` runs BM25 + vector search + an optional LLM re-rank locally through node-llama-cpp, because grep has no synonyms and a corpus whose own vocabulary differs from the reader's returns nothing, silently — measured on a real corpus, a practitioner's term for a statutory rule gave nine grep hits and not the rule itself. The answering procedure is FOUR passes (locate semantically, read the lines, confirm lexically, widen across corpora) and `wiki ask` prints LOCATIONS, never an answer — nothing here synthesises, because a paraphrase is what made the answer uncheckable in the first place. A `wikis` record is a folder of markdown sources (`index.md`, then `sources/<nn>--<slug>.md` nested into sections), every source is a file, and a source nothing has downloaded yet is a STUB carrying `completeness: pending` — so a half-fetched corpus cannot be mistaken for a finished one, and `npx dt-wiki incomplete` names every one that still needs scraping and exits 1. What a folder cannot do — ask a question over the corpus, generate audio or slides, research the web — is listed with its cost in README.md rather than faked; `wiki search` and `wiki outline` are the mechanical substitutes, and the agent reading the folder is the model. The notebooklm module is the extra adapter above this one: its `notebooks` record points at wikis, and `wiki pull <notebook-record>` mirrors a live notebook's sources into a folder here — the one verb that reaches the network, and the only bridge between the two.",
+		"engine": ">=0.30.0",
+		"peerDependencies": [
+			"notebooks"
+		]
+	}
+}

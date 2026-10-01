@@ -1,7 +1,7 @@
 {
 	"name": "@dreamteamer/contacts",
 	"version": "0.1.0",
-	"description": "People you deal with and the companies they belong to, for a dreamteamer workspace — with LinkedIn enrichment.",
+	"description": "People you deal with, for a dreamteamer workspace — each pointing at their company, enriched from LinkedIn.",
 	"license": "Apache-2.0",
 	"repository": {
 		"type": "git",
@@ -10,7 +10,11 @@
 	},
 	"keywords": [
 		"dreamteamer",
-		"dreamteamer-module"
+		"dreamteamer-module",
+		"contacts",
+		"people",
+		"linkedin",
+		"crm"
 	],
 	"files": [
 		"README.md",
@@ -23,10 +27,12 @@
 	],
 	"dreamteamer": {
 		"title": "Contacts",
-		"description": "The people the operator deals with (`contacts`) and the organisations they belong to (`companies`) — enriched from LinkedIn through a batched, containerised MCP session (`scraping-contacts`, `/scrape-contact`), tagged by the workspace's own vocabulary (`working-with-tags`). Avatars and logos are `assets`; a contact's latest meeting is a peer reference into `meetings`, so this module works without the meeting chain and joins it when present.",
+		"description": "The people the operator deals with — `contacts`, each pointing at the `companies` record they work for (the companies module, which this one stamps `companies.contacts` onto) — enriched from LinkedIn through a batched, containerised MCP session (`scraping-contacts`, `/scrape-contact`), tagged by the workspace's own vocabulary (the tags module). Avatars are `assets`; a contact's latest meeting is a peer reference into `meetings`, so this module works without the meeting chain and joins it when present.",
 		"engine": ">=0.30.0",
 		"dependencies": [
-			"@dreamteamer/assets"
+			"@dreamteamer/assets",
+			"@dreamteamer/companies",
+			"@dreamteamer/tags"
 		],
 		"peerDependencies": [
 			"meetings"

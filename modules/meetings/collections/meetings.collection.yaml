@@ -68,33 +68,14 @@ schema:
     # carries `x-inverse: recordings`, and the engine stamps the mirror onto this collection only when
     # that module is installed. A workspace without it has meetings with no `recordings` field, which is
     # the truth of that workspace rather than a dangling reference.
-    # The other two artifacts a call produces, and the layer above them. All THREE fields on this
-    # collection (`recordings` above, plus these) are GENERATED: the foreign key lives on the other
-    # side, and `x-inverse-of` names it. They are declared HERE anyway — spelling B — because a
-    # reader asking "what does a meeting have?" opens this file, and a mirror with no line in it is
-    # a field they will not find. Read-only: set the owner's `meeting` field and the engine
-    # maintains these in the same write.
-    #
-    # `summary` and `prep` are SINGULAR, by `x-unique: true` on the owning field. One summary is
-    # THE neutral record of a call — a re-summary REPLACES it and git holds the old one, exactly as
-    # `family/health/dossiers` already works — and a prep is the one thing read before walking in.
-    summary:
-      type: string
-      x-reference: meeting-summaries
-      x-inverse-of: meeting-summaries.meeting
-      description: The neutral written record of what this call actually held — one per meeting. Empty means nobody wrote one.
-    prep:
-      type: string
-      x-reference: meeting-preps
-      x-inverse-of: meeting-preps.meeting
-      description: What was read in the ten minutes before walking in. Empty means this meeting was walked into cold.
-    # PLURAL at BOTH ends (many-to-many): one analysis usually covers an arc of several calls, and
-    # one call can be re-examined by a later review.
-    analyses:
-      type: array
-      items: { type: string, x-reference: meeting-analyses }
-      x-inverse-of: meeting-analyses.meetings
-      description: The critical judgements written over this call — many-to-many, because a review usually spans several meetings.
+    # `prep`, `summary` and `analyses` are NOT declared here either, for the same reason. The
+    # `meeting-docs` module owns those relations — `meeting-preps.meeting`, `meeting-summaries.meeting`
+    # and `meeting-analyses.meetings` each carry an `x-inverse` — and the engine stamps the three
+    # mirrors onto this collection only when that module is installed. A workspace that syncs its
+    # calendar and records its calls, and never writes a prep or a critique, has meetings with none
+    # of those fields, which is the truth of that workspace. (Until 2026-10-01 all three were declared
+    # here as `x-inverse-of`, spelling B, so that a reader opening this file would find them; the
+    # split moved the declaration to the owner, where a mirror across modules has to live.)
     # WHERE the visuals for this meeting live, as a FULL
     # `${env:FILES_FOLDER}/meetings/<this record's id>/screenshots` template.
     #
@@ -216,6 +197,6 @@ schema:
         Reuse one already in use before inventing one:
         `python3 .dreamteamer/skills/working-with-tags/bin/tags.py`.
 order: 12
-list_fields: [name, last-modified, starts, company, attendees, summary]
+list_fields: [name, last-modified, starts, company, attendees]
 icon: calendar   # not `organization` — a meeting is a date before it is a room full of people
 group: crm

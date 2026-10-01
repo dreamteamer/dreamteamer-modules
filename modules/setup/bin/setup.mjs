@@ -106,17 +106,17 @@ console.log(bold('\nWhat setup will do, in this workspace only:'));
 console.log('  · declare the template variables your installed modules need');
 console.log('  · add to .env.example the keys it lacks, and create .env with every value BLANK if there is none yet — never touching a value');
 console.log('  · chain the perspective record guard into `npm run check`');
-console.log('  · declare the notebooklm harness, so compile writes NOTEBOOKLM.md — when the notebooks module is installed');
-console.log('  · add .cache/ to .gitignore, where notebook downloads land — when the notebooks module is installed');
-console.log('  · declare FILES_FOLDER, where wiki corpora live — when the notebooks module is installed');
+console.log('  · declare the notebooklm harness, so compile writes NOTEBOOKLM.md — when the notebooklm module is installed');
+console.log('  · add .cache/ to .gitignore, where notebook downloads land — when the notebooklm module is installed');
+console.log('  · declare FILES_FOLDER, where legacy wiki corpora live — when the wikis module is installed');
 console.log('  · register every wiki corpus with qmd, so a corpus can be ASKED and not only grepped — when qmd is installed');
 console.log('  · recompile\n');
 console.log(dim('  Anything needing a download, a login or a package manager is printed as a fix, never run for you.\n'));
 
 // 1. the template variables
 const wanted = [
-	['FILES_FOLDER', has('recordings') || has('meetings') || has('rnd') || has('notebooks'), 'where recordings, meeting files, generated media packs and wiki corpora are kept', '~/Documents/vault-files'],
-	['INBOX_FOLDERS', has('recordings'), 'the folders new recordings and screenshots arrive in, one per line', '~/Documents/vault-inbox'],
+	['FILES_FOLDER', has('recordings') || has('meetings') || has('rnd') || has('wikis'), 'where recordings, meeting files, generated media packs and legacy wiki corpora are kept', '~/Documents/vault-files'],
+	['INBOX_FOLDERS', has('recordings') || has('meetings'), 'the folders new recordings and meeting screenshots arrive in, one per line', '~/Documents/vault-inbox'],
 	['REPOS_FOLDER', has('perspective'), 'where the git checkouts a retrospective reads live', '~/Documents/projects'],
 ].filter(([, needed]) => needed);
 const missing = wanted.filter(([n]) => !(pkg.dreamteamer.vars ?? []).includes(n));
@@ -181,19 +181,19 @@ for (const id of ['perspective', 'projects', 'users']) {
 	} else skipped.push(`the ${id} record guard — its records will be written but never validated`);
 }
 
-// 3a. qmd — the retrieval engine, and the one hard requirement the notebooks module has.
+// 3a. qmd — the retrieval engine the wikis module can use, and the one thing worth registering corpora with.
 //
 // ⚠ THE INSTALL IS PRINTED, NEVER RUN. It is a global package-manager write and a ~2.1 GB model
 // download, and this script's stated contract three screens up is that nothing of that shape happens
 // for you. What setup CAN do is the part that is purely local and instant: telling qmd which folders
 // are corpora, and handing each one its description as re-rank CONTEXT.
-if (has('notebooks')) {
+if (has('wikis')) {
 	const qmdHere = spawnSync('qmd', ['--version'], { encoding: 'utf8' }).status === 0;
 	if (!qmdHere) {
 		skipped.push('qmd is not installed — `wiki ask` cannot run and search stays exact-match only:\n      npm install -g @tobilu/qmd\n      npx dt-wiki index --embed');
 	} else if (await yes('Register this workspace\'s wiki corpora with qmd?')) {
 		const { pathToFileURL } = await import('node:url');
-		const { main: wikiMain } = await import(pathToFileURL(path.join(mods.get('notebooks').root, 'bin', 'wiki.mjs')).href);
+		const { main: wikiMain } = await import(pathToFileURL(path.join(mods.get('wikis').root, 'bin', 'wiki.mjs')).href);
 		wikiMain(['index'], root);
 		done.push('registered the wiki corpora with qmd');
 		// The embed is minutes of local compute and, on a fresh machine, gigabytes of model download.
@@ -202,8 +202,8 @@ if (has('notebooks')) {
 	} else skipped.push('registering the corpora with qmd — until then `wiki ask` returns nothing');
 }
 
-// 3b. the notebooklm harness and the download folder — only when the notebooks module is here
-if (has('notebooks')) {
+// 3b. the notebooklm harness and the download folder — only when the notebooklm module is here
+if (has('notebooklm')) {
 	// ⚠ The engine's default when `harnesses` is UNSET is ['claude-code'] (compile.js). Writing
 	// ['notebooklm'] alone would silently switch the operator's coding-agent harness OFF, so an unset
 	// list is materialised as the default plus the new one, and a set list is appended to.

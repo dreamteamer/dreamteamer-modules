@@ -16,7 +16,7 @@ import { restorePlan, captureSources, sourceFromLive, readRecord, writeRecord, P
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', '..', '..');
 // `dt-notebook` — the module's own command since the pack's dispatcher was split by owner; the
 // wrapper below takes the old leading `notebook` word so every call site reads as it did
-const CLI = path.join(ROOT, 'modules', 'notebooks', 'bin', 'notebook.mjs');
+const CLI = path.join(ROOT, 'modules', 'notebooklm', 'bin', 'notebook.mjs');
 const SETUP = path.join(ROOT, 'modules', 'setup', 'bin', 'setup.mjs');
 const made = [];
 after(() => { for (const d of made) fs.rmSync(d, { recursive: true, force: true }); });

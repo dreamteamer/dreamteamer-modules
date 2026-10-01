@@ -9,19 +9,22 @@ npm package, versioned and released on its own, and they all live in this one re
 |---|---|---|
 | [`@dreamteamer/users`](modules/users) | the people work is assigned to | — |
 | [`@dreamteamer/assets`](modules/assets) | icons, logos and avatars as file records | — |
-| [`@dreamteamer/contacts`](modules/contacts) | people you deal with, and their companies | assets |
-| [`@dreamteamer/tasks`](modules/tasks) | who owes what by when: inbox, board, by person | users |
-| [`@dreamteamer/meetings`](modules/meetings) | calendar meetings, with a prep, a summary and a critique | contacts · tasks · users |
+| [`@dreamteamer/companies`](modules/companies) | organisations: the record every other module points at | assets |
+| [`@dreamteamer/contacts`](modules/contacts) | people you deal with, each at a company, enriched from LinkedIn | companies · tags · assets |
+| [`@dreamteamer/tags`](modules/tags) | the tags convention, and the script that lists the tags in use | — |
+| [`@dreamteamer/tasks`](modules/tasks) | who owes what by when: inbox, board, by person | users · tags |
+| [`@dreamteamer/meetings`](modules/meetings) | calendar meetings, with attendees and screenshots: the anchor | contacts · companies · users · tags |
 | [`@dreamteamer/recordings`](modules/recordings) | recordings matched to their meeting, transcribed offline | meetings |
+| [`@dreamteamer/meeting-docs`](modules/meeting-docs) | a prep, a summary and a critique per meeting, and the pipeline that writes them | meetings · recordings · tasks · contacts · companies |
 | [`@dreamteamer/projects`](modules/projects) | the plan: phases, lanes, activities, gates, decisions, risks | users |
 
 **Knowledge and review**
 
 | module | what it gives a workspace | needs |
 |---|---|---|
-| [`@dreamteamer/notebooks`](modules/notebooks) | local wikis you can grep, and NotebookLM notebooks as specs | — |
+| [`@dreamteamer/wikis`](modules/wikis) | local corpora of markdown you can grep, and ask once `qmd` is installed | — |
 | [`@dreamteamer/search`](modules/search) | `dt-find`, an effort ladder over the workspace's records | — |
-| [`@dreamteamer/notebooklm`](modules/notebooklm) | `dt notebooklm`, the workspace exported for NotebookLM | — |
+| [`@dreamteamer/notebooklm`](modules/notebooklm) | `dt notebooklm`, NotebookLM notebooks as rebuildable specs, and the harness | — |
 | [`@dreamteamer/perspective`](modules/perspective) | a person's operating model, read off their own past work | — |
 | [`@dreamteamer/rnd`](modules/rnd) | products, design docs, issues, features, research, personas | — |
 

@@ -56,7 +56,10 @@ function fieldIndex() {
 	// The mirrors: a field carrying x-inverse creates that named field ON its target collection.
 	for (const d of docs) {
 		for (const spec of Object.values(d.schema?.properties ?? {})) {
-			const mirror = spec?.['x-inverse'] ?? spec?.['x-inverse-of'];
+			const raw = spec?.['x-inverse'] ?? spec?.items?.['x-inverse'] ?? spec?.['x-inverse-of'];
+			if (!raw) continue;
+			// `x-inverse` is a bare field name or `{ field, description }`; either way the field is the mirror
+			const mirror = typeof raw === 'object' ? raw.field : raw;
 			if (!mirror) continue;
 			const ref = spec['x-reference'] ?? spec.items?.['x-reference'];
 			for (const target of typeof ref === 'string' ? [ref] : Array.isArray(ref) ? ref : []) {

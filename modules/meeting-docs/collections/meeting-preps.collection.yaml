@@ -16,7 +16,7 @@ description: >-
 use_when: >-
   a meeting is coming up — the ten-minute read is written here (/prepare-for-meeting); read the
   previous prep for the same account before writing the next
-templates: [collection-templates/meetings-provenance]
+templates: [collection-templates/meeting-docs-provenance]
 storage: { path: data/meeting-preps, codec: md, shape: file, suffix: meeting-prep }
 id:
   # Derived from `date` — the MEETING's date, not `created`. A prep is written days before the
@@ -38,8 +38,13 @@ schema:
     meeting:
       type: string
       x-reference: meetings
-      # ONE prep per meeting (`meetings.prep` is the generated far side) — max one has ever existed.
+      # ONE prep per meeting — max one has ever existed. `meetings.prep` is the generated far side,
+      # stamped onto the meetings module's collection by this declaration, only when this module is
+      # installed.
       x-unique: true
+      x-inverse:
+        field: prep
+        description: What was read in the ten minutes before walking in — generated from `meeting-preps.meeting`. Empty means this meeting was walked into cold.
       description: The meeting this prepares FOR — never the meeting it draws its context from.
     # A date-time since 23/08/2026, for the reason this description already gave: it exists so the
     # list sorts without a join, and as a bare day it could not order two preps for the same day —

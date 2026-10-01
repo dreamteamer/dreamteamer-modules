@@ -11,5 +11,5 @@ npx dt-find "<question>"
 ```
 
 `qmd` (`npm install -g @tobilu/qmd`) is optional and on-device: without it the exact-words rung works
-and the others say they are unavailable. With **notebooks** installed, it can search an assembled
+and the others say they are unavailable. With **wikis** installed, it can search an assembled
 corpus too.

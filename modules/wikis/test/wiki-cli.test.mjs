@@ -22,7 +22,7 @@ import { virginWorkspace, installCopied as installModules, closure, run as engin
 // this repo keeps, so every `ROOT/modules/<m>/…` path still names the same file
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', '..', '..');
 // `dt-wiki` — the module's own command since the pack's dispatcher was split by owner
-const CLI = path.join(ROOT, 'modules', 'notebooks', 'bin', 'wiki.mjs');
+const CLI = path.join(ROOT, 'modules', 'wikis', 'bin', 'wiki.mjs');
 const SETUP = path.join(ROOT, 'modules', 'setup', 'bin', 'setup.mjs');
 const made = [];
 after(() => { for (const d of made) fs.rmSync(d, { recursive: true, force: true }); });
@@ -374,7 +374,7 @@ describe('the record the CLI writes survives the real engine', () => {
 	test('a wiki initialised by the CLI compiles and checks clean in a virgin workspace', () => {
 		const root = virginWorkspace();
 		made.push(root);
-		installModules(root, closure('notebooks'));
+		installModules(root, closure('wikis'));
 		// findWorkspace needs the lockfile too, and `dreamteamer init` writes no such thing.
 		fs.writeFileSync(path.join(root, 'package-lock.json'), '{}');
 		assert.equal(engine(root, ['compile']).status, 0);

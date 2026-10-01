@@ -5,7 +5,7 @@ use_when: >-
   asked what was said or agreed on a call — read here, not the transcript; written by
   /summarize-meeting once a recording is transcribed, and it is what tasks and engagement updates are
   extracted from
-templates: [collection-templates/meetings-provenance]
+templates: [collection-templates/meeting-docs-provenance]
 storage: { path: data/meeting-summaries, codec: md, shape: file, suffix: summary }
 id:
   # ⚠ The generator is a FALLBACK, not the convention. A summary's id MIRRORS its meeting's
@@ -45,9 +45,14 @@ schema:
     meeting:
       type: string
       x-reference: meetings
-      # ONE summary per meeting (`meetings.summary` is the generated far side). A second record for
-      # the same call is a `check` violation naming both — fold it into this one and let git hold it.
+      # ONE summary per meeting. A second record for the same call is a `check` violation naming
+      # both — fold it into this one and let git hold it. `meetings.summary` is the generated far
+      # side, stamped onto the meetings module's collection by this declaration, only when this
+      # module is installed; a re-summary REPLACES it and git holds the old one.
       x-unique: true
+      x-inverse:
+        field: summary
+        description: The neutral written record of what this call actually held — one per meeting, generated from `meeting-summaries.meeting`. Empty means nobody wrote one.
       description: The meeting this summarizes.
     method:
       type: string

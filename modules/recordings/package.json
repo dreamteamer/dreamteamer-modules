@@ -11,7 +11,11 @@
 	},
 	"keywords": [
 		"dreamteamer",
-		"dreamteamer-module"
+		"dreamteamer-module",
+		"recordings",
+		"transcription",
+		"whisper",
+		"diarisation"
 	],
 	"files": [
 		"README.md",
@@ -23,7 +27,7 @@
 	],
 	"dreamteamer": {
 		"title": "Recordings",
-		"description": "One captured audio file and its transcript per `meeting-recordings` record — pulled out of `${env:INBOX_FOLDERS}` by content hash, filed under `${env:FILES_FOLDER}`, matched to its meeting, transcribed offline (faster-whisper + diarisation, Hebrew and English), with the screenshots taken during the call filed beside it. Carries the transcript-gated bindings of the meeting pipeline (summarise · extract tasks · analyse), because those are only possible once a transcript exists. Depends on `meetings`.",
+		"description": "One captured audio file and its transcript per `meeting-recordings` record — pulled out of `${env:INBOX_FOLDERS}` by content hash, filed under `${env:FILES_FOLDER}`, matched to its meeting, transcribed offline (faster-whisper + diarisation, Hebrew and English). Stamps `meetings.recordings` onto the meetings module's collection when installed. Depends on `meetings` and on nothing else: the transcript-gated steps that READ a transcript (summarise · extract tasks · analyse) are the `meeting-docs` module, which depends on this one.",
 		"engine": ">=0.30.0",
 		"dependencies": [
 			"@dreamteamer/meetings"

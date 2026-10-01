@@ -1,0 +1,41 @@
+{
+	"name": "@dreamteamer/meeting-docs",
+	"version": "0.1.0",
+	"description": "The documents around a meeting, for a dreamteamer workspace — a prep before, a summary after, a critique on the transcript, and the tasks it produces.",
+	"license": "Apache-2.0",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/dreamteamer/dreamteamer-modules.git",
+		"directory": "modules/meeting-docs"
+	},
+	"keywords": [
+		"dreamteamer",
+		"dreamteamer-module",
+		"meetings",
+		"meeting-prep",
+		"meeting-summary",
+		"meeting-analysis",
+		"action-items"
+	],
+	"files": [
+		"README.md",
+		"collections",
+		"collection-templates",
+		"skills",
+		"commands",
+		"command-bindings",
+		"ui-views"
+	],
+	"dreamteamer": {
+		"title": "Meeting docs",
+		"description": "The three documents a call produces and the pipeline that writes them: the ten-minute `meeting-preps` read before walking in (`preparing-for-meetings`, `/prepare-for-meeting`, `/create-meeting`), the neutral `meeting-summaries` record of what was said (`/summarize-meeting`), and the `meeting-analyses` critique built on the raw transcript and never on the summary (`analyzing-meetings`, `/analyze-meetings`) — plus `/extract-tasks-from-meetings`, which turns a summary into `tasks`, and `/process-new-meetings`, which sequences the whole chain from sync to critique. Each record points at its `meetings` record and stamps `prep`, `summary` and `analyses` onto it; summarise, extract and analyse are gated on a transcribed recording, which is why this module depends on `recordings`. Depends on `meetings`, `recordings`, `tasks`, `contacts` and `companies`.",
+		"engine": ">=0.30.0",
+		"dependencies": [
+			"@dreamteamer/meetings",
+			"@dreamteamer/recordings",
+			"@dreamteamer/tasks",
+			"@dreamteamer/contacts",
+			"@dreamteamer/companies"
+		]
+	}
+}

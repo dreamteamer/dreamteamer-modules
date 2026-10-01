@@ -114,7 +114,7 @@ schema:
         `insurance` · `pension` · `property` · `banking` · `credit-card` · `accountant` · `docs-missing` · `decision`. A
         task with no tag reads as dev/ops work, which is the useful default. Free strings, lowercase and hyphenated;
         `key:value` with NO space around the colon — a space makes YAML parse the entry as a map. Nothing validates a
-        tag: `python3 .dreamteamer/skills/working-with-tags/bin/tags.py` (the contacts module's
+        tag: `python3 .dreamteamer/skills/working-with-tags/bin/tags.py` (the tags module's
         `working-with-tags` skill) lists the tags in use.
     assistant_recommended_next_step:
       type: string

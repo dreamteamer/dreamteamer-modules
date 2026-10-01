@@ -40,6 +40,12 @@ schema:
     company:
       type: string
       x-reference: companies
+      # The far side is GENERATED onto `companies` (the companies module) by this declaration, and
+      # only when this module is installed — a workspace with companies alone has no `contacts` field
+      # on them, which is the truth of that workspace.
+      x-inverse:
+        field: contacts
+        description: Everyone on record as working here right now — generated from `contacts.company`.
       description: Where they currently work.
     relation:
       type: string
@@ -101,7 +107,7 @@ schema:
       description: >-
         The workspace's own enrichment tags — the vocabulary encodes how this workspace segments people.
         Free strings, lowercase and hyphenated; `key:value` with NO space around the colon — a space makes YAML parse
-        the entry as a map. Nothing validates a tag: `python3 .dreamteamer/skills/working-with-tags/bin/tags.py`.
+        the entry as a map. Nothing validates a tag: `python3 .dreamteamer/skills/working-with-tags/bin/tags.py` (the tags module) lists the tags in use.
     recent_meeting:
       type: string
       x-reference: meetings

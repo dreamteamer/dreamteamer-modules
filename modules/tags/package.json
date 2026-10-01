@@ -1,0 +1,27 @@
+{
+	"name": "@dreamteamer/tags",
+	"version": "0.1.0",
+	"description": "The tags convention for a dreamteamer workspace — key:value strings on any record, and the one script that lists the tags already in use.",
+	"license": "Apache-2.0",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/dreamteamer/dreamteamer-modules.git",
+		"directory": "modules/tags"
+	},
+	"keywords": [
+		"dreamteamer",
+		"dreamteamer-module",
+		"tags",
+		"tagging",
+		"vocabulary"
+	],
+	"files": [
+		"README.md",
+		"skills"
+	],
+	"dreamteamer": {
+		"title": "Tags",
+		"description": "How a `tags` field is written on ANY record, and how to find the tags already in use before inventing one. One skill, `working-with-tags`, and no collection: a tag is a free string, lowercase and hyphenated, optionally `key:value` with no space around the colon, and nothing validates it — the collection that used to was deleted after 25 of its 68 values turned out never to have been applied to anything. `python3 .dreamteamer/skills/working-with-tags/bin/tags.py` lists what is in use across every collection. Every module whose descriptors carry a `tags` field depends on this one, so the script the field description points at is always there.",
+		"engine": ">=0.30.0"
+	}
+}

@@ -17,7 +17,7 @@ use_when: >-
   the operator asks how a call went, whether a claim held, why a deal was lost, or what the client
   actually asked for — the critique is here, built on the transcript. Also the first read before
   designing anything for that client
-templates: [collection-templates/meetings-provenance]
+templates: [collection-templates/meeting-docs-provenance]
 storage: { path: data/meeting-analyses, codec: md, shape: file, suffix: analysis }
 id:
   generate: "{{ created | date:YYYY/MM }}/{{ created | date }}--{{ name | slug }}"
@@ -39,6 +39,12 @@ schema:
     meetings:
       type: array
       items: { type: string, x-reference: meetings }
+      # PLURAL at BOTH ends (many-to-many): one analysis usually covers an arc of several calls, and
+      # one call can be re-examined by a later review. `meetings.analyses` is the generated far side,
+      # stamped onto the meetings module's collection only when this module is installed.
+      x-inverse:
+        field: analyses
+        description: The critical judgements written over this call — generated from `meeting-analyses.meetings`; many-to-many, because a review usually spans several meetings.
       description: The calls under review. Plural by design — a review usually covers an arc, not one slot.
     summaries:
       type: array

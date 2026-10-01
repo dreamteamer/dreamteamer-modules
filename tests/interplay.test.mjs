@@ -16,11 +16,11 @@ const dt = (root, ...args) => {
 	return r.stdout;
 };
 
-describe('assets · users · contacts · tasks · meetings, together', () => {
+describe('assets · users · companies · contacts · tags · tasks · meetings, together', () => {
 	let root;
 	before(() => {
 		root = virginWorkspace();
-		installPacked(root, ['assets', 'users', 'contacts', 'tasks', 'meetings']);
+		installPacked(root, ['assets', 'users', 'companies', 'contacts', 'tags', 'tasks', 'meetings']);
 		compileAndCheck(root);
 		dt(root, 'add', 'users', '--name', 'Sam Diaz');
 		dt(root, 'add', 'companies', '--name', 'Harbor Mutual');
@@ -44,13 +44,33 @@ describe('assets · users · contacts · tasks · meetings, together', () => {
 	test('meetings without the recordings module carries no recordings field', () => {
 		assert.doesNotMatch(compiledDescriptor(root, 'meetings'), /\brecordings:/);
 	});
+	test('meetings without the meeting-docs module carries no prep, summary or analyses field', () => {
+		const d = compiledDescriptor(root, 'meetings');
+		for (const f of ['prep', 'summary', 'analyses']) assert.doesNotMatch(d, new RegExp(`^\\s+${f}:`, 'm'), f);
+	});
+});
+
+describe('companies alone, then with contacts', () => {
+	test('companies without contacts carries no contacts field', () => {
+		const root = virginWorkspace();
+		installPacked(root, ['assets', 'companies']);
+		compileAndCheck(root);
+		assert.doesNotMatch(compiledDescriptor(root, 'companies'), /^\s+contacts:/m);
+	});
+	test('meetings with meeting-docs and recordings carries all four mirrors', () => {
+		const root = virginWorkspace();
+		installPacked(root, ['assets', 'users', 'companies', 'contacts', 'tags', 'tasks', 'meetings', 'recordings', 'meeting-docs']);
+		compileAndCheck(root);
+		const d = compiledDescriptor(root, 'meetings');
+		for (const f of ['recordings', 'prep', 'summary', 'analyses']) assert.match(d, new RegExp(`^\\s+${f}:`, 'm'), f);
+	});
 });
 
 describe('tasks with users, and without projects', () => {
 	let root;
 	before(() => {
 		root = virginWorkspace();
-		installPacked(root, ['users', 'tasks']);
+		installPacked(root, ['users', 'tags', 'tasks']);
 		compileAndCheck(root);
 	});
 	test('assignee works: the mirror is stamped onto users', () => {
