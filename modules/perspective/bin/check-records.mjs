@@ -50,7 +50,7 @@ import path from 'node:path';
 import yaml from 'js-yaml';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { listRecords, readRecord } from '../skills/running-retrospectives/lib/records.mjs';
+import { listRecords, readRecord, compiledStorage, recordFileFor } from '../skills/running-retrospectives/lib/records.mjs';
 // ⚠ `lib/vault.mjs`'s DATA is deliberately NOT imported — see `workspaceRootFromCwd` below. It
 // resolves from the SCRIPT, which is the wrong question the moment the module is linked for
 // preview, and importing it here is how it got reached for by accident the first time.
@@ -255,14 +255,10 @@ const PEER = (() => {
 		['tasks', 'data/tasks', 'task'],
 		['goals', 'data/goals', 'goal'],
 	]) {
-		const compiled = path.join(workspaceRoot, '.dreamteamer', 'collections', `${collection}.collection.yaml`);
-		let storage;
-		if (fs.existsSync(compiled)) {
-			try { storage = (yaml.load(fs.readFileSync(compiled, 'utf8')) ?? {}).storage; } catch { /* unreadable → the fallback below */ }
-		}
-		const dir = path.join(workspaceRoot, String(storage?.path || fallbackPath));
-		const suffix = String(storage?.suffix || fallbackSuffix);
-		out[collection] = { dir, suffix, installed: Boolean(storage?.path) || fs.existsSync(dir) };
+		// the compiled storage block, parent folder included when the collection is stored under
+		// another (`storage.under`) — `lib/records.mjs` owns the rule, and `refTarget` probes through it
+		const storage = compiledStorage(workspaceRoot, collection, fallbackPath, fallbackSuffix);
+		out[collection] = { ...storage, installed: storage.compiled || fs.existsSync(storage.dir) };
 	}
 	return out;
 })();
@@ -276,7 +272,7 @@ function refTarget(ref) {
 		const peer = PEER[parts[0]];
 		if (!peer || parts.length < 2) return null;
 		const id = parts.slice(1).join('/');
-		return { collection: parts[0], id, peer, file: path.join(peer.dir, `${id}.${peer.suffix}.md`) };
+		return { collection: parts[0], id, peer, file: recordFileFor(peer, id) ?? path.join(peer.dir, `${id}.${peer.suffix}.md`) };
 	}
 	if (parts.length < 3) return null;
 	// ⚠ LONGEST PREFIX, not `parts[1]`. `perspective/world/users/dana/sam` is the collection

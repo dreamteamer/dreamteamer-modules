@@ -66,7 +66,11 @@ export function createApp(ws) {
 		const d = store.descriptor(req.params.name);
 		const bf = dt.bodyField(d);
 		const { limit = 200, offset = 0, sort, q, filter, ...rest } = req.query;
-		const modified = gitModifiedMap(ws.root, store.dir(d));
+		// EVERY folder the collection's records can sit in — a collection stored under another
+		// (`storage.under`, engine 0.32+) keeps most of its files inside the parent's folders, which
+		// `store.dir(d)` (its own root) never reaches. Older engines have no `recordDirs`; the fallback
+		// is the one root they have.
+		const modified = gitModifiedMap(ws.root, store.recordDirs?.(d) ?? [store.dir(d)]);
 		let rows = [];
 		for (const { id, file, fields } of store.readAll(req.params.name)) {
 			// the record id WINS over any schema field named "id"
@@ -361,13 +365,15 @@ function idParam(req) {
 // List-level "last modified": ONE `git log` per listing, newest first, so the first sighting of a
 // path is its latest commit. A dir outside the repo, or with no history (untracked, or the gitignored
 // runtime), degrades to an empty map — every row gets `null`.
-function gitModifiedMap(root, dir) {
+/** Workspace-relative path → the instant of its last commit, for every file under `dirs` (one or
+ *  several folders — one git call either way). Exported for its test; the app is its consumer. */
+export function gitModifiedMap(root, dirs) {
 	const map = new Map();
-	const rel = path.relative(root, dir);
-	if (rel.startsWith('..')) return map;
+	const rels = [].concat(dirs).map((dir) => path.relative(root, dir)).filter((rel) => rel && !rel.startsWith('..'));
+	if (!rels.length) return map;
 	let out;
 	try {
-		out = execFileSync('git', ['log', '--format=%x01%aI', '--name-only', '--', rel], { cwd: root, timeout: GIT_TIMEOUT_MS, stdio: ['ignore', 'pipe', 'ignore'] }).toString();
+		out = execFileSync('git', ['log', '--format=%x01%aI', '--name-only', '--', ...rels], { cwd: root, timeout: GIT_TIMEOUT_MS, stdio: ['ignore', 'pipe', 'ignore'] }).toString();
 	} catch { return map; }
 	let date = null;
 	for (const line of out.split('\n')) {

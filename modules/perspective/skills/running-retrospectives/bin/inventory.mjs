@@ -7,7 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import yaml from 'js-yaml';
 import { VAULT, DATA, dt, readEnv, templatize, slug } from '../lib/vault.mjs';
-import { recordPath, writeRecord, listRecords, contributorOf, readRecord, nowIso, rebuildRelations, writeSource } from '../lib/records.mjs';
+import { recordPath, writeRecord, listRecords, contributorOf, readRecord, nowIso, rebuildRelations, writeSource, compiledStorage, recordFilesOf } from '../lib/records.mjs';
 import { claudeHomes, walkJsonl } from '../lib/claude-trees.mjs';
 
 const argv = process.argv.slice(2);
@@ -84,8 +84,8 @@ add('workspace-records', 'this-workspace', nRecords ? 'available' : 'unavailable
 			content: 'No compiled `meetings` descriptor in this workspace. The meetings module is a declared PEER of this one: without it there is no calendar evidence at all, which is a fact about the workspace rather than about the contributor.\n',
 		});
 	} else {
-		const dir = path.join(workspaceRoot, String(storage.path));
-		const records = fs.existsSync(dir) ? listRecords(dir).length : 0;
+		// every root the collection's records sit in — a meeting may live inside its company's folder
+		const records = recordFilesOf(compiledStorage(workspaceRoot, 'meetings', String(storage.path), String(storage.suffix || 'meeting'))).length;
 		add('meetings', 'this-workspace', records ? 'available' : 'unavailable', {
 			location: `\${workspaceFolder}/${String(storage.path)}`,
 			counts: { records },

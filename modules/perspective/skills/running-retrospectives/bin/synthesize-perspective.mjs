@@ -41,7 +41,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import yaml from 'js-yaml';
 import { VAULT, DATA, SCRATCH, dt, slug } from '../lib/vault.mjs';
-import { recordPath, writeRecord, readRecord, listRecords, contributorOf} from '../lib/records.mjs';
+import { recordPath, writeRecord, readRecord, listRecords, contributorOf, compiledStorage, recordFilesOf } from '../lib/records.mjs';
 import { contributorHandles as handlesOf } from '../lib/identity.mjs';
 
 const argv = process.argv.slice(2);
@@ -236,7 +236,9 @@ const collections = walk(path.join(workspaceRoot, '.dreamteamer', 'collections')
 	.map(({ name, doc }) => ({
 		name,
 		description: String(doc.description ?? '').replace(/\s+/g, ' ').trim().slice(0, 200),
-		records: doc.storage?.path ? countRecords(path.join(workspaceRoot, String(doc.storage.path)), doc.storage.suffix) : 0,
+		// a collection stored under another keeps most of its records inside the parent's folders
+		records: doc.storage?.under ? recordFilesOf(compiledStorage(workspaceRoot, name, String(doc.storage.path), String(doc.storage.suffix))).length
+			: doc.storage?.path ? countRecords(path.join(workspaceRoot, String(doc.storage.path)), doc.storage.suffix) : 0,
 	}))
 	.sort((a, b) => a.name.localeCompare(b.name));
 if (collections.length) fields.collections = collections; else delete fields.collections;

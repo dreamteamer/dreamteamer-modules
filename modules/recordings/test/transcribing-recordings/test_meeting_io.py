@@ -54,6 +54,14 @@ def test_summary_path_for():
     )
 
 
+def test_summary_path_for_a_meeting_inside_its_company_folder():
+    # engine 0.32 `storage.under`: the meeting sits in the company's folder, the summary does not
+    md = "data/companies/acme/meetings/2026/06/2026-06-10--10-00--acme--design-review.meeting.md"
+    assert summary_path_for(md) == (
+        "data/meeting-summaries/2026/06/2026-06-10--10-00--acme--design-review.summary.md"
+    )
+
+
 def test_summary_path_for_rejects_non_meeting():
     with pytest.raises(ValueError):
         summary_path_for("foo/bar.transcript.md")

@@ -297,8 +297,8 @@ function recordingsWithoutFile() {
 		// where an earlier migration left "recording file unreachable, original path: …"
 		let haystack = text;
 		if (meetingRef) {
-			const mf = path.join(ROOT, 'data/meetings', `${meetingRef.replace(/^meetings\//, '')}.meeting.md`);
-			if (fs.existsSync(mf)) haystack += '\n' + fs.readFileSync(mf, 'utf8');
+			const mf = meetingFile(meetingRef.replace(/^meetings\//, ''));
+			if (mf) haystack += '\n' + fs.readFileSync(mf, 'utf8');
 		}
 		out.push({
 			id, meeting: meetingRef,
@@ -310,6 +310,55 @@ function recordingsWithoutFile() {
 		});
 	}
 	return out;
+}
+
+/**
+ * The `storage` block of a compiled descriptor — `path`, `suffix` and the `under` placement — read with
+ * the same frontmatter-grade line parsing this script uses everywhere, because this module declares no
+ * YAML dependency (house rule 8) and these four keys are the only ones it needs.
+ */
+function compiledStorage(name) {
+	let text;
+	try { text = fs.readFileSync(path.join(ROOT, '.dreamteamer', 'collections', `${name}.collection.yaml`), 'utf8'); } catch { return null; }
+	const block = /^storage:\n((?:[ \t]+.*\n?)+)/m.exec(text)?.[1];
+	if (!block) return null;
+	const out = {};
+	let under = null;
+	for (const line of block.split('\n')) {
+		const m = /^(\s+)([a-z_]+):\s*(.*)$/.exec(line);
+		if (!m) continue;
+		const [, indent, key, raw] = m;
+		const value = raw.replace(/^['"]|['"]$/g, '');
+		if (key === 'under' && raw === '') { under = {}; out.under = under; continue; }
+		if (under && indent.length > 2) under[key] = value;
+		else if (indent.length === 2) out[key] = value;
+	}
+	return out;
+}
+
+/**
+ * The file a meeting id names, or null. The COMPILED descriptor says where meetings live — and since
+ * engine 0.32 a meeting with a `company` may live INSIDE that company's folder (`storage.under`), so
+ * after the collection's own root every parent record's child folder is probed too. A probe, not a
+ * walk: this runs once per recording that lacks its binary.
+ */
+function meetingFile(id) {
+	let parent = null;
+	const storage = compiledStorage('meetings');
+	const dir = path.join(ROOT, String(storage?.path || 'data/meetings'));
+	const name = `${id}.${storage?.suffix || 'meeting'}.md`;
+	const own = path.join(dir, name);
+	if (fs.existsSync(own)) return own;
+	const under = storage?.under;
+	if (!under?.collection || !under.path || !(parent = read(under.collection))?.path) return null;
+	const parentDir = path.join(ROOT, String(parent.path));
+	if (!fs.existsSync(parentDir)) return null;
+	for (const e of fs.readdirSync(parentDir, { withFileTypes: true })) {
+		if (!e.isDirectory() || e.name.startsWith('.')) continue;
+		const f = path.join(parentDir, e.name, under.path, name);
+		if (fs.existsSync(f)) return f;
+	}
+	return null;
 }
 
 /** minutes:seconds → seconds, for a tolerant duration comparison */

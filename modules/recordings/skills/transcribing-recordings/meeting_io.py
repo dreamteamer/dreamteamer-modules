@@ -57,7 +57,14 @@ def count_attendees(frontmatter):
 
 
 def summary_path_for(meeting_md):
-    """Mirror a .meeting.md path into data/meeting-summaries/, same YYYY/MM shard."""
+    """Mirror a .meeting.md path into data/meeting-summaries/, same YYYY/MM shard.
+
+    A meeting may live INSIDE its company's folder (engine 0.32, `storage.under`:
+    `data/companies/<id>/meetings/2026/06/x.meeting.md`), so the summaries root is
+    the DATA root plus `meeting-summaries`, not the `meetings` component swapped in
+    place — that would have put the summary inside the company folder too, where no
+    collection reads it. The shard is whatever sits between `meetings/` and the file.
+    """
     if not meeting_md.endswith(".meeting.md"):
         raise ValueError(f"not a .meeting.md path: {meeting_md}")
     parts = meeting_md.split(os.sep)
@@ -65,10 +72,11 @@ def summary_path_for(meeting_md):
         idx = len(parts) - 1 - parts[::-1].index("meetings")
     except ValueError:
         raise ValueError(f"no 'meetings' directory component in path: {meeting_md}")
-    parts[idx] = "meeting-summaries"
+    # the data root: the nearest `data` component above `meetings`, else the folder holding it
+    data_idx = next((i for i in range(idx - 1, -1, -1) if parts[i] == "data"), idx - 1)
     base = os.path.basename(meeting_md)[: -len(".meeting.md")]
-    parts[-1] = f"{base}.summary.md"
-    return os.sep.join(parts)
+    shard = parts[idx + 1 : -1]
+    return os.sep.join(parts[: data_idx + 1] + ["meeting-summaries"] + shard + [f"{base}.summary.md"])
 
 
 def asr_cache_path_for(record_md):

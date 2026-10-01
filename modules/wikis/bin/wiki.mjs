@@ -69,12 +69,27 @@ const VALUE_FLAGS = new Set(['--title', '--description', '--kind', '--section', 
 function recordPath(root, collection, id) {
 	let dir = `data/${collection}`;
 	let suffix = collection.replace(/s$/, '');
-	try {
-		const d = yaml.load(fs.readFileSync(path.join(root, '.dreamteamer', 'collections', `${collection}.collection.yaml`), 'utf8'));
-		if (d?.storage?.path) dir = d.storage.path;
-		if (d?.storage?.suffix) suffix = d.storage.suffix;
-	} catch { /* an uncompiled workspace still has the module default */ }
-	return path.join(root, dir, `${id}.${suffix}.md`);
+	let under = null;
+	const descriptor = (name) => {
+		try { return yaml.load(fs.readFileSync(path.join(root, '.dreamteamer', 'collections', `${name}.collection.yaml`), 'utf8')); } catch { return null; }
+	};
+	const d = descriptor(collection); // an uncompiled workspace still has the module default
+	if (d?.storage?.path) dir = d.storage.path;
+	if (d?.storage?.suffix) suffix = d.storage.suffix;
+	if (d?.storage?.under?.collection) under = d.storage.under;
+	const own = path.join(root, dir, `${id}.${suffix}.md`);
+	// A collection stored UNDER another (`storage.under`, engine 0.32+) keeps a record with an owner
+	// inside that owner's folder; the own root is where a record WITHOUT one lives, and where a new
+	// one is written. An existing record is looked for there first, then in every parent's folder.
+	if (!under || fs.existsSync(own)) return own;
+	const parentDir = descriptor(under.collection)?.storage?.path;
+	if (!parentDir || !fs.existsSync(path.join(root, parentDir))) return own;
+	for (const e of fs.readdirSync(path.join(root, parentDir), { withFileTypes: true })) {
+		if (!e.isDirectory() || e.name.startsWith('.')) continue;
+		const f = path.join(root, parentDir, e.name, under.path, `${id}.${suffix}.md`);
+		if (fs.existsSync(f)) return f;
+	}
+	return own;
 }
 
 function readRecord(file) {

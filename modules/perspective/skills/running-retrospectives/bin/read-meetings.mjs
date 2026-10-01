@@ -65,7 +65,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import yaml from 'js-yaml';
 import { DATA, SCRATCH, isoWeek, isoWeekRange, slug } from '../lib/vault.mjs';
-import { recordPath, writeRecord, readRecord, listRecords, contributorOf, writeSource } from '../lib/records.mjs';
+import { recordPath, writeRecord, readRecord, listRecords, contributorOf, writeSource, compiledStorage, recordFilesOf } from '../lib/records.mjs';
 import { upsertCollaborators } from '../lib/collaborators.mjs';
 import { contributorHandles as handlesOf } from '../lib/identity.mjs';
 
@@ -114,29 +114,18 @@ function unavailable(why) {
 
 // ── where the peer collection keeps its records ──────────────────────────────────────────────────
 // The COMPILED descriptor is the authority on `storage.path` and `storage.suffix` — never a guess,
-// because a consuming workspace may file them anywhere. The fallback is the shipped descriptor's own
-// values, for a fixture with no compiled runtime beside it.
-function peerStorage(name, fallbackPath, fallbackSuffix) {
-	const compiled = path.join(workspaceRoot, '.dreamteamer', 'collections', `${name}.collection.yaml`);
-	if (fs.existsSync(compiled)) {
-		try {
-			const doc = yaml.load(fs.readFileSync(compiled, 'utf8')) ?? {};
-			const p = doc.storage?.path, s = doc.storage?.suffix;
-			if (p) return { dir: path.join(workspaceRoot, String(p)), suffix: String(s || fallbackSuffix), compiled: true };
-		} catch { /* an unreadable descriptor falls through to the default, and the body says so */ }
-	}
-	return { dir: path.join(workspaceRoot, fallbackPath), suffix: fallbackSuffix, compiled: false };
-}
-const MEETINGS = peerStorage('meetings', 'data/meetings', 'meeting');
-const CONTACTS = peerStorage('contacts', 'data/contacts', 'contact');
+// because a consuming workspace may file them anywhere, and a meeting with a `company` may live
+// INSIDE that company's folder (`storage.under`, engine 0.32). The fallback is the shipped
+// descriptor's own values, for a fixture with no compiled runtime beside it. `lib/records.mjs` owns
+// the rule; every record file is read through `recordFilesOf`, never by walking one folder.
+const MEETINGS = compiledStorage(workspaceRoot, 'meetings', 'data/meetings', 'meeting');
+const CONTACTS = compiledStorage(workspaceRoot, 'contacts', 'data/contacts', 'contact');
 
 if (!MEETINGS.compiled && !fs.existsSync(MEETINGS.dir)) {
 	unavailable(`No \`meetings\` collection in this workspace — neither a compiled descriptor nor ${path.relative(workspaceRoot, MEETINGS.dir)}. The meetings module is a declared PEER of this one: a workspace without it simply has no calendar evidence, which is a stated gap rather than a failure.`);
 	process.exit(0);
 }
 
-/** `<dir>/a/b/c.<suffix>.md` → `a/b/c`, the record id a ref is built from. */
-const idOf = (file, dir, suffix) => path.relative(dir, file).replace(new RegExp(`\\.${suffix}\\.md$`), '');
 const lower = (s) => String(s ?? '').trim().toLowerCase();
 const list = (v) => (Array.isArray(v) ? v : v === undefined || v === null || v === '' ? [] : [v]);
 
@@ -144,10 +133,10 @@ const list = (v) => (Array.isArray(v) ? v : v === undefined || v === null || v =
 // Every contact by ref, with the EMAILS the record carries. `email` is the shipped field; `emails`
 // is read too so a workspace that added a second address is not silently halved.
 const contacts = new Map();   // `contacts/<id>` → { ref, name, emails: [lowercased] }
-for (const f of listRecords(CONTACTS.dir)) {
+for (const { file: f, id: contactId } of recordFilesOf(CONTACTS)) {
 	let fields;
 	try { ({ fields } = readRecord(f)); } catch { continue; }
-	const ref = `contacts/${idOf(f, CONTACTS.dir, CONTACTS.suffix)}`;
+	const ref = `contacts/${contactId}`;
 	const emails = [...new Set([...list(fields.email), ...list(fields.emails)].map(lower).filter((e) => e.includes('@')))];
 	contacts.set(ref, { ref, name: String(fields.name ?? ref.split('/').pop()), emails });
 }
@@ -203,11 +192,10 @@ function instantOf(fields, id) {
 
 const kept = [];
 let scanned = 0, undated = 0, older = 0, byRef = 0, byRaw = 0;
-for (const file of listRecords(MEETINGS.dir)) {
+for (const { file, id } of recordFilesOf(MEETINGS)) {
 	let fields;
 	try { ({ fields } = readRecord(file)); } catch { continue; }
 	scanned++;
-	const id = idOf(file, MEETINGS.dir, MEETINGS.suffix);
 	const attendees = list(fields.attendees).map(String);
 	const raw = list(fields.attendees_raw).map((r) => lower(r));
 	const hitRef = contactRef && attendees.includes(contactRef);

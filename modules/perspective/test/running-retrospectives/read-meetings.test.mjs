@@ -374,3 +374,28 @@ test('the reader’s own contract names the collection it writes — the drift t
 	assert.ok(!/perspective\/collaborators/.test(src), 'the retired collection is named in the source');
 	assert.ok(!/`collaborators` record/.test(src), 'the source still claims it writes `collaborators` records');
 });
+
+// ── A MEETING STORED INSIDE ITS COMPANY'S FOLDER ─────────────────────────────────────────────────
+// Engine 0.32 lets a collection declare `storage.under`: a meeting with a `company` lives at
+// `data/companies/<id>/meetings/<meeting id>.meeting.md`, one without stays in `data/meetings/`.
+// Same collection, same id, same reference — so a reader that walked `storage.path` alone would
+// silently count only the fallback root and report a contributor who attended fewer meetings.
+test('a meeting placed under its company folder is read like any other, with the same id', () => {
+	const f = fixture();
+	const compiled = path.join(f.ws, '.dreamteamer', 'collections');
+	fs.mkdirSync(compiled, { recursive: true });
+	fs.writeFileSync(path.join(compiled, 'companies.collection.yaml'),
+		'name: companies\nstorage:\n  path: data/companies\n  shape: folder\n  entry: company.md\n  suffix: company\n  codec: md\n  base: workspace\nschema: { type: object }\n');
+	fs.writeFileSync(path.join(compiled, 'meetings.collection.yaml'),
+		'name: meetings\nstorage:\n  path: data/meetings\n  suffix: meeting\n  codec: md\n  base: workspace\n  under:\n    field: company\n    path: meetings\n    collection: companies\nschema: { type: object }\n');
+	const id = '2026/08/2026-08-03--10-00--northwind--weekly-sync';
+	const from = path.join(f.data, 'meetings', `${id}.meeting.md`);
+	const to = path.join(f.data, 'companies', 'northwind', 'meetings', `${id}.meeting.md`);
+	fs.mkdirSync(path.dirname(to), { recursive: true });
+	fs.writeFileSync(path.join(f.data, 'companies', 'northwind', 'company.md'), '---\nname: Northwind\n---\n');
+	fs.renameSync(from, to);
+	const r = run(f);
+	assert.equal(r.status, 0, r.stderr);
+	assert.match(r.stdout, /scanned 6 · attended 5 \(4 by attendee ref, 1 by attendees_raw\)/, 'the placed meeting is still scanned and still theirs');
+	assert.ok(scratchLines(f).map((m) => m.ref).includes(`meetings/${id}`), 'and its reference is the plain collection reference, with no folder in it');
+});

@@ -195,3 +195,36 @@ test('scan skips `*.log` sidecars as payloads, and heals a moot one (payload gon
 		fs.rmSync(filesFolder, { recursive: true, force: true });
 	}
 });
+
+// ── a meeting stored INSIDE its company's folder (engine 0.32, `storage.under`) ──────────────────
+// `data/companies/<id>/meetings/<meeting id>.meeting.md` is the same meeting, with the same id, as it
+// would be under `data/meetings/`. A scan that read only the collection's own root would call a shot
+// taken during that call "out of scope", silently. `--workspace-root` is the fixture's way in, the
+// same override shape as `--files-folder`.
+test('scan matches a screenshot to a meeting that lives inside its company folder, by the meeting\'s own id', () => {
+	const ws = fs.mkdtempSync(path.join(os.tmpdir(), 'detect-placed-ws-'));
+	const inbox = fs.mkdtempSync(path.join(os.tmpdir(), 'detect-placed-inbox-'));
+	const filesFolder = fs.mkdtempSync(path.join(os.tmpdir(), 'detect-placed-ff-'));
+	try {
+		const compiled = path.join(ws, '.dreamteamer', 'collections');
+		fs.mkdirSync(compiled, { recursive: true });
+		fs.writeFileSync(path.join(compiled, 'companies.collection.yaml'),
+			'name: companies\nstorage:\n  path: data/companies\n  shape: folder\n  entry: company.md\n  suffix: company\n  codec: md\n  base: workspace\nschema: { type: object }\n');
+		fs.writeFileSync(path.join(compiled, 'meetings.collection.yaml'),
+			'name: meetings\nstorage:\n  path: data/meetings\n  suffix: meeting\n  codec: md\n  base: workspace\n  under:\n    field: company\n    path: meetings\n    collection: companies\nschema: { type: object }\n');
+		const id = '2026/07/2026-07-08--16-45--northwind--sam-dana';
+		const meeting = path.join(ws, 'data/companies/northwind/meetings', `${id}.meeting.md`);
+		fs.mkdirSync(path.dirname(meeting), { recursive: true });
+		fs.writeFileSync(path.join(ws, 'data/companies/northwind/company.md'), '---\nname: Northwind\n---\n');
+		fs.writeFileSync(meeting, '---\nname: Sam and Dana\nstarts: 2026-07-08T16:45:00+03:00\nends: 2026-07-08T17:30:00+03:00\ncompany: companies/northwind\n---\n');
+		fs.mkdirSync(path.join(inbox, 'meeting-screenshots'), { recursive: true });
+		fs.writeFileSync(path.join(inbox, 'meeting-screenshots', 'Screenshot 2026-07-08 at 16.50.00.png'), Buffer.from('bytes'));
+		const out = JSON.parse(execFileSync('node',
+			[SCRIPT, 'scan', '--files-folder', filesFolder, '--inbox-folders', inbox, '--workspace-root', ws],
+			{ encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }));
+		assert.equal(out.new_matched, 1, JSON.stringify(out.screenshots));
+		assert.equal(out.screenshots[0].matches[0].meeting, id, 'the id carries no company folder');
+	} finally {
+		for (const d of [ws, inbox, filesFolder]) fs.rmSync(d, { recursive: true, force: true });
+	}
+});

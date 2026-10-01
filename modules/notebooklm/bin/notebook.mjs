@@ -287,11 +287,25 @@ export function writeRecord(file, { fields, body }) {
  *  module default. */
 function recordFile(root, id) {
 	let dir = 'data/notebooks';
-	try {
-		const d = yaml.load(fs.readFileSync(path.join(root, '.dreamteamer', 'collections', 'notebooks.collection.yaml'), 'utf8'));
-		if (d?.storage?.path) dir = d.storage.path;
-	} catch {}
-	return path.join(root, dir, `${id}.notebook.md`);
+	let under = null;
+	const descriptor = (name) => {
+		try { return yaml.load(fs.readFileSync(path.join(root, '.dreamteamer', 'collections', `${name}.collection.yaml`), 'utf8')); } catch { return null; }
+	};
+	const d = descriptor('notebooks');
+	if (d?.storage?.path) dir = d.storage.path;
+	if (d?.storage?.under?.collection) under = d.storage.under;
+	const own = path.join(root, dir, `${id}.notebook.md`);
+	// stored UNDER another collection (`storage.under`, engine 0.32+): an existing record may sit in
+	// its owner's folder; the own root is the fallback and where a new record lands
+	if (!under || fs.existsSync(own)) return own;
+	const parentDir = descriptor(under.collection)?.storage?.path;
+	if (!parentDir || !fs.existsSync(path.join(root, parentDir))) return own;
+	for (const e of fs.readdirSync(path.join(root, parentDir), { withFileTypes: true })) {
+		if (!e.isDirectory() || e.name.startsWith('.')) continue;
+		const f = path.join(root, parentDir, e.name, under.path, `${id}.notebook.md`);
+		if (fs.existsSync(f)) return f;
+	}
+	return own;
 }
 
 function flag(argv, name) { const i = argv.indexOf(name); return i >= 0 ? argv[i + 1] : undefined; }

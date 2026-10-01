@@ -140,3 +140,65 @@ export function rebuildRelations(collections, dataRoot = DATA) {
 	}
 	return { skipped: false, collections: done };
 }
+
+// ── a PEER collection's records, wherever its descriptor puts them ────────────────────────────────
+// The COMPILED descriptor is the authority on where a collection keeps its files — a consumer may
+// re-home a collection in an overlay, and since engine 0.32 a collection may be stored UNDER another
+// (`storage.under`): a meeting with a `company` lives in that company's folder, one without stays in
+// the collection's own root. These three read that block and answer "which files", "which file" and
+// nothing else; a reader that walks `storage.path` alone sees only the fallback root.
+
+/** The compiled storage block of a collection, with the parent's folder resolved when it is stored
+ *  under one — or the shipped defaults for a fixture with no compiled runtime beside it. */
+export function compiledStorage(workspaceRoot, collection, fallbackPath, fallbackSuffix) {
+	const read = (name) => {
+		const file = path.join(workspaceRoot, '.dreamteamer', 'collections', `${name}.collection.yaml`);
+		if (!fs.existsSync(file)) return null;
+		try { return yaml.load(fs.readFileSync(file, 'utf8'))?.storage ?? null; } catch { return null; }
+	};
+	const own = read(collection);
+	const dir = path.join(workspaceRoot, String(own?.path || fallbackPath));
+	const suffix = String(own?.suffix || fallbackSuffix);
+	const under = own?.under && own.under.field && own.under.path && own.under.collection ? own.under : null;
+	const parent = under ? read(under.collection) : null;
+	return {
+		dir, suffix, compiled: Boolean(own?.path),
+		under: under && parent?.path ? { ...under, parentDir: path.join(workspaceRoot, String(parent.path)) } : null,
+	};
+}
+
+/** Every record file of a collection as `{ file, root, id }` — its own root, then each parent record's
+ *  child folder. The id is the path inside WHICHEVER root the file sits in, which is what makes it
+ *  independent of placement. */
+export function recordFilesOf(storage) {
+	const tail = `.${storage.suffix}.md`;
+	const roots = [storage.dir];
+	if (storage.under && fs.existsSync(storage.under.parentDir)) {
+		for (const e of fs.readdirSync(storage.under.parentDir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+			if (e.isDirectory() && !e.name.startsWith('.')) roots.push(path.join(storage.under.parentDir, e.name, storage.under.path));
+		}
+	}
+	const out = [];
+	for (const root of roots) {
+		for (const file of listRecords(root)) {
+			if (!file.endsWith(tail)) continue;
+			out.push({ file, root, id: path.relative(root, file).slice(0, -tail.length) });
+		}
+	}
+	return out;
+}
+
+/** The file one record id names, or null — a direct probe of the own root and of every parent's child
+ *  folder, never a walk. */
+export function recordFileFor(storage, id) {
+	const name = `${id}.${storage.suffix}.md`;
+	const own = path.join(storage.dir, name);
+	if (fs.existsSync(own)) return own;
+	if (!storage.under || !fs.existsSync(storage.under.parentDir)) return null;
+	for (const e of fs.readdirSync(storage.under.parentDir, { withFileTypes: true })) {
+		if (!e.isDirectory() || e.name.startsWith('.')) continue;
+		const f = path.join(storage.under.parentDir, e.name, storage.under.path, name);
+		if (fs.existsSync(f)) return f;
+	}
+	return null;
+}

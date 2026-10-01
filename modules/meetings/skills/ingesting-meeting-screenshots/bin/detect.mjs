@@ -59,9 +59,57 @@ const vaultRoot = () => {
     if (path.dirname(d) === d) throw new Error(`vault root (package-lock.json) not found above ${import.meta.url}`);
   }
 };
-const ROOT = vaultRoot();
+// `--workspace-root` is the same explicit-override shape as `--files-folder` below: a test fixture
+// (or a caller operating another checkout) points the record reads at a throwaway workspace.
+const rootOverride = (() => { const i = process.argv.indexOf('--workspace-root'); return i > 0 ? path.resolve(process.argv[i + 1]) : undefined; })();
+const ROOT = rootOverride ?? vaultRoot();
 const MEETINGS = path.join(ROOT, 'data/meetings');
 const RECORDINGS_DIR = path.join(ROOT, 'data/meeting-recordings');
+
+/**
+ * The `storage` block of a compiled descriptor — `path`, `suffix` and the `under` placement — read
+ * with the same frontmatter-grade line parsing this script uses everywhere (no yaml dependency).
+ * Null when the workspace has no compiled runtime, which leaves the module defaults above in force.
+ */
+function compiledStorage(name) {
+  let text;
+  try { text = readFileSync(path.join(ROOT, '.dreamteamer', 'collections', `${name}.collection.yaml`), 'utf8'); } catch { return null; }
+  const block = /^storage:\n((?:[ \t]+.*\n?)+)/m.exec(text)?.[1];
+  if (!block) return null;
+  const out = {};
+  let under = null;
+  for (const line of block.split('\n')) {
+    const m = /^(\s+)([a-z_]+):\s*(.*)$/.exec(line);
+    if (!m) continue;
+    const [, indent, key, raw] = m;
+    const value = raw.replace(/^['"]|['"]$/g, '');
+    if (key === 'under' && raw === '') { under = {}; out.under = under; continue; }
+    if (under && indent.length > 2) under[key] = value;
+    else if (indent.length === 2) out[key] = value;
+  }
+  return out;
+}
+
+/**
+ * Every folder a meeting record can sit in, as `[root, suffixTail]`: the collection's own root, and —
+ * since engine 0.32 a meeting with a `company` may live INSIDE that company's folder
+ * (`storage.under`) — each parent record's child folder. A meeting's id is its path inside WHICHEVER
+ * root holds it, so filing under `meetings/<id>/screenshots/` is unchanged by where the record is.
+ */
+function meetingRoots() {
+  const storage = compiledStorage('meetings');
+  const own = storage?.path ? path.join(ROOT, storage.path) : MEETINGS;
+  const tail = `.${storage?.suffix || 'meeting'}.md`;
+  const roots = [[own, tail]];
+  const under = storage?.under;
+  const parent = under?.collection ? compiledStorage(under.collection) : null;
+  if (under?.path && parent?.path && existsSync(path.join(ROOT, parent.path))) {
+    for (const e of readdirSync(path.join(ROOT, parent.path), { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+      if (e.isDirectory() && !e.name.startsWith('.')) roots.push([path.join(ROOT, parent.path, e.name, under.path), tail]);
+    }
+  }
+  return roots;
+}
 const IMAGE = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.heic']);
 
 // The scope boundary: a screenshot is only ever considered for a meeting whose slot it falls
@@ -212,9 +260,9 @@ function meetings() {
       recorded_at: field(fm, 'recorded_at'), duration: field(fm, 'duration') });
   }
   const out = [];
-  for (const f of walkRecords(MEETINGS, '.meeting.md')) {
+  for (const [root, tail] of meetingRoots()) for (const f of walkRecords(root, tail)) {
     const fm = fmOf(readFileSync(f, 'utf8'));
-    const id = idOf(f, MEETINGS, '.meeting.md');
+    const id = idOf(f, root, tail);
     const mine = recs.filter((c) => c.meeting === `meetings/${id}`);
     // Real span from any recording that has an anchor; widest window across parts.
     let from = null, to = null, basis = null;
