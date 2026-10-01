@@ -1,0 +1,28 @@
+# The DEFAULT contacts view — what a bare /content/contacts renders (`default: true`; Directus-parity,
+# see the ui-views descriptor). Until 2026-08-30 contacts had no default view, so the collection page
+# fell back to the descriptor's list_fields in file order.
+#
+# Sorted by recent_meeting_date DESCENDING: the person spoken to most recently sits at the top, and
+# contacts with no past meeting sink to the bottom together — which is the "who have I not met"
+# pile, readable without a filter. `-field` is the descending spelling in both the engine
+# (src/temporal.js) and the studio (engine.ts). The field is maintained by
+# /update-contacts-from-meetings, so this order is only as fresh as the last pipeline run.
+path: /contacts
+target: list
+collection: collections/contacts
+layout: table
+default: true
+options:
+  columns:
+    - avatar
+    - name
+    - role
+    - company
+    - recent_meeting_date
+    - recent_meeting
+    - linkedin_degree
+    - status
+  sort: -recent_meeting_date
+nav:
+  label: contacts
+  icon: person

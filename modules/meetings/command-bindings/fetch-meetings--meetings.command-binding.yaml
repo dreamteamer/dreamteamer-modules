@@ -1,0 +1,5 @@
+command: commands/fetch-meetings
+collection: collections/meetings
+# collection-target: needs no record — creates/updates meeting records; always runnable
+target: collection
+description: pull calendar meetings into this collection

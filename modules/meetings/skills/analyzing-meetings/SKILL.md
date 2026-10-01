@@ -1,0 +1,88 @@
+---
+name: analyzing-meetings
+description: Use when a call needs to be judged rather than recorded — "review my call with X", "was that pitch any good", "scrutinise what I said", "validate my claims on that call", a post-mortem on a lost deal, or a critique of the operator's own performance across an arc of meetings. Produces a meeting-analyses record. The mechanics behind /analyze-meetings. Not for writing a neutral record of what happened (summarize-meeting) or pulling tasks out of a call (extract-tasks-from-meetings).
+---
+
+# analyzing meetings
+
+**core principle: a summary is neutral, a review is not.** Its whole job is to say what was wrong
+and what it cost. Write `meeting-analyses` records — see the collection descriptor for
+the fields, `using-dreamteamer` → `references/records.md` for the CRUD.
+
+Reviews **the operator by default** (`reviewed: users/<operator-id>`) — that is the point of the exercise.
+
+## the one rule that decides whether this is worth anything
+
+**Read the RAW transcripts. Never review from the summaries.** A summary has already smoothed the call
+into a neutral record; the exact wording a critique lives on is gone. Every finding worth having comes
+out of the transcript — a claim contradicted 90 seconds later, an objection that got a non-answer, a
+credential stated loosely. None of that survives summarisation.
+
+Read in this order:
+
+1. **`transcription.notes` on every recording, FIRST.** It says what is untrustworthy. In a recording whose
+   labels are conflated or unmapped, **do not attribute a line to a person** — read it as "X advising"
+   and say so once, at the top of the body. Set `evidence_quality` from these notes (`weak` when
+   findings rest on inference, `strong` when attribution and audio are clean), independently of
+   `confidence`, which is about the record.
+2. **The transcript bodies** — the meeting's `recordings` → each recording, in date order.
+3. **The summaries** last, and only to check you have not just rewritten them.
+4. **The visuals**, if the meeting has `screenshots_folder` — mechanics in `summarize-meeting`.
+
+**Hebrew ASR in this vault is badly garbled and English is clean.** Never rest a finding on a Hebrew
+segment, and never critique a garbled passage as if the operator said nonsense — that is the ASR
+talking, not them. State this caveat once in the body and move on.
+
+## what makes a finding, ranked
+
+1. **Self-contradiction across the call.** Two statements minutes apart that cannot both be true. The
+   strongest findings available, and invisible to a summary. *Real example: "cost is not a great
+   concern, small local models suffice" followed ~90 seconds later by a definition of frontier-model
+   work that exactly described the client's own workload.*
+2. **Checkable claims, actually checked.** Credentials, standards, market facts, legal regimes, "there
+   is no standard for X", "Fortune 10". **Verify them** — WebSearch when your knowledge may be stale or
+   the claim's truth changes the advice. A loose claim in front of a counterparty whose job is
+   verifying claims is a real cost, and this is the part a neutral summary structurally cannot do.
+3. **An objection that got a non-answer.** Find the client's hardest question and check what came back
+   actually addressed it.
+4. **A proposal made before the facts were in** — especially one corrected in the room.
+5. **Process and commercial failures**, which usually cost more than any wrong statement: no priced
+   next step, ratios with no denominator, pitching past the buyer, unbounded warranty language.
+
+**Anchor every finding to a `[MM:SS]` timestamp and quote the words.** That is what makes the report
+falsifiable rather than opinion, and it lets the operator re-listen and disagree.
+
+## the shape of the body
+
+1. **Evidence caveat**, once, in a blockquote: what is attributable, what is not, and why.
+2. **What held up** — first, specific, quoted. Not balance for its own sake: the critique below
+   misrepresents the call without it.
+3. **Wrong or overreached** — numbered. Each: the quote, why it is wrong, and **the cheap fix**. A
+   finding without a fix is a complaint.
+4. **Process failures** — the ones that cost more than any single statement.
+5. **Suggestions, split two ways** — *the engagement* (what to do about this client) and *the
+   operator* (patterns to change). Mark the single highest-leverage item.
+
+Then `--id` explicitly (names are long): `<YYYY>/<MM>/<YYYY-MM-DD>--<short-slug>`, dated the **review**,
+not the meeting — unlike summaries, whose path mirrors the meeting's.
+
+## discipline
+
+| rationalization | reality |
+|---|---|
+| "the call went well, I'll find something anyway" | An invented finding poisons the real ones. Short report, say it was good. |
+| "this phrasing is a bit harsh" | The brief is objective scrutiny. Softening it is the failure mode, not politeness. |
+| "I'd have architected it differently" | That is taste. Label it as taste or drop it — only claims that are *wrong* go in the findings. |
+| "the summary already covers this" | Then delete the paragraph. If it could appear in the summary, it does not belong here. |
+| "the transcript is garbled, close enough" | Garbled Hebrew is not a quote. Build on clean passages only, or set `evidence_quality: weak` and say which findings are inference. |
+| "I'll just fix the lead's next_steps too" | Out of scope. **Flag the conflict** in the report and let the operator decide. |
+
+**Red flags in your own draft:** no timestamps; praise with no quote behind it; a finding with no fix;
+"could have been clearer" (say what was unclear and what it cost); attributing a line in a recording whose
+notes say attribution is unusable.
+
+⚠ **Never transcribe third-party personal data into the report** — same rule as `summarize-meeting`.
+Name what a document *is* ("a signed LP page, investor PII, not transcribed") and move on.
+
+Leave `follow_up` empty. Carving the suggestions into tasks is a separate, deliberate step — a review
+nobody actioned is what `status` exists to expose.

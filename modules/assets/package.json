@@ -1,0 +1,10 @@
+{
+	"name": "assets",
+	"private": true,
+	"version": "0.1.0",
+	"dreamteamer": {
+		"title": "Assets",
+		"description": "A file the UI shows — an icon, a logo, an avatar, an illustration — as a `codec: file` record whose id IS its provenance (`icons/<set>/<name>`, `logos/<slug>`, `avatars/<contact-id>`), 200 KB each, licences listed once in this module's README. The commons every other module's pictures point at; ships no records.",
+		"engine": ">=0.23.0"
+	}
+}

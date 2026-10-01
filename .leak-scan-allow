@@ -1,0 +1,22 @@
+# leak-scan exemptions — <path>	<rule>	<why>       (TAB separated)
+#
+# Same shape and same rules as the engine's copy. Per FILE and per RULE, never a glob over a
+# directory: real vault content pasted into a neighbouring test still trips the scan. Safe to keep
+# in the tree — it names paths and rule ids, never the patterns being matched.
+#
+# The Hebrew rule is a proxy for "vault content escaped into the code repo", and it is a good one.
+# The four files below are its only legitimate exceptions here, and in each one Hebrew is the
+# SUBJECT of the code rather than content that leaked into it: a filename parser that must read
+# month names, a mail reply-prefix regex, one worked title example, and the fixture proving a
+# non-latin line survives a paste-back. Deleting the literals deletes the capability, not just a
+# fixture.
+#
+# ⚠ Do NOT quote the exempted literals here. This file is scanned like any other, and reproducing
+# them makes it fail its own rule.
+#
+# ⚠ `tests/leak-gate.test.mjs` is deliberately NOT exempt: it expresses the same range as an escape
+# sequence, so it can enforce the rule without tripping it. Keep it that way.
+modules/recordings/skills/ingesting-recordings/bin/detect.mjs	hebrew	the month-name and transliteration maps a non-latin recording filename is parsed with
+modules/meetings/skills/fetching-meetings/SKILL.md	hebrew	one worked example of a non-latin calendar title and the conferencing placeholder it must strip
+modules/perspective/skills/running-retrospectives/lib/gmail.mjs	hebrew	the reply/forward subject-prefix regex, which must match the localised prefixes too
+modules/perspective/skills/running-retrospectives/tests/import-paste-back.test.mjs	hebrew	pins that a non-latin line survives import unmangled — the assertion IS the literal

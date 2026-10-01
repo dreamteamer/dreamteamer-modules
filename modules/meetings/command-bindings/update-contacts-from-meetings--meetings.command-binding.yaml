@@ -1,0 +1,13 @@
+command: commands/update-contacts-from-meetings
+collection: collections/meetings
+target: record
+# a meeting can stamp its attendees once it HAS attendees — an empty invite stamps nobody, and the
+# fix for that is fetching-meetings correcting the record, not this command.
+can-enter:
+  attendees:
+    _nempty: true
+# can-exit omitted on purpose: "every attendee's recent_meeting_date >= this meeting's starts" is a
+# condition on OTHER records — tier 2, not supported (see DECISION-LOG). The script is idempotent
+# and forward-only, so re-running on a meeting that already stamped everyone is a no-op, and the
+# command never needs to show "done".
+description: stamp each attendee's contact with this meeting as their latest, if it is

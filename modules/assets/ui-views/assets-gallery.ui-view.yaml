@@ -1,0 +1,16 @@
+# THE ASSETS, AS PICTURES. `assets` is `codec: file` — every record's bytes ARE the image — so the
+# only sensible default list for it is a gallery. Nothing needs configuring: a card in a file-codec
+# collection draws the record itself (extension 0.14.4), because the picture is not in a field for
+# `image_field` to name.
+options:
+  image_fit: contain
+  template: '{{ id }}'
+  page_size: 200
+nav:
+  label: Assets
+  icon: file-media
+  order: 90
+path: /assets/gallery
+target: list
+collection: collections/assets
+layout: cards

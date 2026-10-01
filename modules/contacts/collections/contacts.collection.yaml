@@ -1,0 +1,129 @@
+name: contacts
+description: A person the operator deals with, enriched from LinkedIn and the web. The person, never the org — that is `companies`.
+use_when: >-
+  a person is named — an attendee, a sender, a LinkedIn profile — find or create them here before
+  writing the record that mentions them; a `draft` here is the queue /scrape-contact enriches
+templates:
+  - collection-templates/contacts-provenance
+storage:
+  path: data/contacts
+  codec: md
+  shape: file
+  suffix: contact
+id:
+  generate: '{{ name | slug }}'
+schema:
+  type: object
+  required:
+    - name
+  properties:
+    name:
+      type: string
+      description: The person's full name as they write it — the record's id is its slug.
+    description:
+      type: string
+      description: One line on who this person is and why they are in the vault.
+    nickname:
+      type: string
+      description: What they are actually called, when that differs from their name.
+    email:
+      type: string
+      x-sensitive: true
+      description: Primary email — what calendar attendees are matched on.
+      format: email
+    role:
+      type: string
+      description: Their job title at the company, as written on LinkedIn or in their signature.
+    team:
+      type: string
+      description: The team or unit within the company they sit in.
+    company:
+      type: string
+      x-reference: companies
+      description: Where they currently work.
+    relation:
+      type: string
+      description: 'How they relate to the operator personally: friend, network, colleague, client-side…'
+    location:
+      type: string
+      description: Where they are based — city or country, whatever is known.
+    avatar:
+      type: string
+      x-reference: assets
+      description: >-
+        This person's photo, as an asset record — usually `assets/avatars/<contact-id>`. Drawn wherever this contact is
+        shown.
+    linkedin:
+      type: string
+      format: uri
+      description: >-
+        Their LinkedIn profile URL. A URN form (/in/ACoAA…) is fine when the public slug is unknown — prefer the slug
+        once resolved.
+    status:
+      type: string
+      enum:
+        - draft
+        - enriched
+        - verified
+      default: draft
+      description: >-
+        How complete this record is — `draft` means discovered as an attendee, email only. This is what makes the
+        enrichment queue derivable, since /scrape-contact enters on draft and exits on enriched/verified.
+    notes:
+      type: string
+      format: markdown
+      x-body: true
+      description: The person's page — history, context, anything worth remembering before talking to them.
+    linkedin_degree:
+      type: string
+      enum:
+        - 1st
+        - 2nd
+        - 3rd
+        - none
+      description: >-
+        How far this person is from the operator on LinkedIn, as seen from the operator's own account.
+    linkedin_mutuals:
+      type: integer
+      description: How many connections the operator shares with them — a rough proxy for how warm an intro would be.
+    review_note:
+      type: string
+      format: markdown
+      title: Needs review
+      description: >-
+        What is blocking this record and what the operator has to decide — written for them to read and answer, then
+        cleared.
+    tags:
+      examples: ['enriched:web-search', 'enriched:linkedin', 'linkedin:unsure']
+      type: array
+      items:
+        type: string
+      description: >-
+        The workspace's own enrichment tags — the vocabulary encodes how this workspace segments people.
+        Free strings, lowercase and hyphenated; `key:value` with NO space around the colon — a space makes YAML parse
+        the entry as a map. Nothing validates a tag: `python3 <extensions>/modules/contacts/skills/working-with-tags/bin/tags.py`.
+    recent_meeting:
+      type: string
+      x-reference: meetings
+      description: >-
+        The LATEST meeting this contact attended that has already happened — a ref into meetings. Maintained by
+        /update-contacts-from-meetings after every processed meeting (and by its --all backfill); never hand-set. Latest
+        by the meeting's starts, not by when the record was written.
+    recent_meeting_date:
+      type: string
+      format: date-time
+      description: >-
+        The starts of recent_meeting, denormalized so a list can sort and filter by it without a join — 'who have I not
+        spoken to since June'. Always written together with recent_meeting; empty means no past meeting is known.
+order: 10
+list_fields:
+  - avatar
+  - name
+  - role
+  - company
+  - recent_meeting_date
+  - linkedin_degree
+  - linkedin
+  - last-modified
+icon: account   # not `smiley` — the outside party you deal with — `users` wears `person` for the people who do the work, and `smiley` was an automatic pick, not a decision
+group: crm

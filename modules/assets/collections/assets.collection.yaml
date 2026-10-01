@@ -1,0 +1,35 @@
+# A file the UI shows. `codec: file` (engine 0.14.0) — the FILE is the record: no frontmatter, no
+# sidecar, fields derived (`ext`, `bytes`), written with `dt add assets <id> --from <path>`.
+#
+# ⚠ THE ID IS THE PROVENANCE, and that is the whole reason there is no metadata here.
+# `icons/lucide/hotel` reconstructs https://api.iconify.design/lucide:hotel.svg and `logos/monday`
+# reconstructs https://cdn.simpleicons.org/monday — so the one thing a per-file field would have
+# carried is already in the filename. A LICENCE belongs to a set rather than to a file, so it lives
+# once in the module's README.md; 300 copies of "ISC" is 300 chances to be wrong.
+#
+# In this module because every collection here may point at it — the commons rule. Prefer SVG for anything
+# drawn: it is text, so it diffs, greps and takes the reader's theme through `currentColor`.
+#
+# The 200 KB guard is what keeps rule 5 ("never commit media") honest while letting this exist: an
+# icon is 1-3 KB, a logo under 10, a compressed illustration under 50. A photo that does not fit is
+# not an asset — it belongs under ${env:FILES_FOLDER} with a record pointing at it, like every
+# recording and health document already does.
+name: assets
+description: >-
+  A file the UI shows — an icon, a logo, an illustration, a small image. Opaque: the id IS the
+  provenance (`icons/<iconify-set>/<name>` · `logos/<company-slug>` · `avatars/<contact-id>` ·
+  `illustrations/<set>/<name>` · `images/<path>`), and every set's licence is listed once in the module's README.md.
+use_when: >-
+  a record, a collection or a view needs a picture — a company's mark, a state glyph, a diagram in a
+  document. Search here first (`dt list assets`), because the icon you want is often already in.
+storage:
+  path: data/assets
+  codec: file
+  shape: file
+  suffix: asset
+  max_bytes: 204800
+  extensions: [svg, png, jpg, jpeg, webp, gif]
+id:
+  pattern: '^(icons|logos|avatars|illustrations|images)/[a-z0-9][a-z0-9/._-]*$'
+group: system
+icon: file-media

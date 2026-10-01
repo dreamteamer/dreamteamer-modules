@@ -1,0 +1,20 @@
+{
+	"name": "dreamteamer-modules",
+	"private": true,
+	"description": "The official dreamteamer modules — one npm package per module, released independently from this one repo",
+	"license": "Apache-2.0",
+	"type": "module",
+	"workspaces": [
+		"modules/*"
+	],
+	"scripts": {
+		"test": "node scripts/test.mjs"
+	},
+	"devDependencies": {
+		"dreamteamer": "^0.30.0",
+		"js-yaml": "^4.1.0"
+	},
+	"engines": {
+		"node": ">=20"
+	}
+}

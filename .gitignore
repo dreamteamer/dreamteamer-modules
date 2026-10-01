@@ -1,0 +1,11 @@
+node_modules/
+.DS_Store
+# a packed tarball is a test artefact, never a source
+*.tgz
+# python, from skills that ship a script
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+# agent worktrees — a second checkout of this repo, one blanket add away from being committed
+.claude/

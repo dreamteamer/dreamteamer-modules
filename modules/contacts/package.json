@@ -1,0 +1,19 @@
+{
+	"name": "contacts",
+	"private": true,
+	"version": "0.1.0",
+	"dreamteamer": {
+		"title": "Contacts",
+		"description": "The people the operator deals with (`contacts`) and the organisations they belong to (`companies`) — enriched from LinkedIn through a batched, containerised MCP session (`scraping-contacts`, `/scrape-contact`), tagged by the workspace's own vocabulary (`working-with-tags`). Avatars and logos are `assets`; a contact's latest meeting is a peer reference into `meetings`, so this module works without the meeting chain and joins it when present.",
+		"engine": ">=0.23.0",
+		"dependencies": [
+			"assets"
+		],
+		"peerDependencies": [
+			"meetings"
+		],
+		"env": [
+			"LINKEDIN_USER_AGENT"
+		]
+	}
+}

@@ -1,0 +1,75 @@
+name: meeting-summaries
+description: >-
+  A neutral written record of what a call actually held. Not a judgement of it — that is `meeting-analyses`.
+use_when: >-
+  asked what was said or agreed on a call — read here, not the transcript; written by
+  /summarize-meeting once a recording is transcribed, and it is what tasks and engagement updates are
+  extracted from
+templates: [collection-templates/meetings-provenance]
+storage: { path: data/meeting-summaries, codec: md, shape: file, suffix: summary }
+id:
+  # ⚠ The generator is a FALLBACK, not the convention. A summary's id MIRRORS its meeting's
+  # basename — including the HH-MM segment the generator cannot produce (it only sees `created`,
+  # not the meeting's start). Always pass --id <meeting's YYYY/MM path and basename> on add, as
+  # /summarize-meeting instructs; a generated id sorts wrong beside its siblings and breaks the
+  # "rename the mirroring summary too" step in fetching-meetings. (One id was minted generator-
+  # shaped on 2026-08-30 and had to be renamed — the pattern accepts both shapes, so nothing
+  # catches it.)
+  generate: "{{ created | date:YYYY/MM }}/{{ created | date }}--{{ name | slug }}"
+  pattern: "^\\d{4}/\\d{2}/\\d{4}-\\d{2}-\\d{2}--[a-z0-9-]+$"
+schema:
+  type: object
+  required: [name]
+  properties:
+    name:                                # was `subject` — normalized 2026-07-27
+      type: string
+      description: What this summary is of — normally the meeting's own title.
+    description:
+      type: string
+      description: One line on what the call was about, for a list view.
+    # A date-time since 23/08/2026 — same reason as `meeting-recordings.date` and
+    # `meeting-preps.date`: as a bare day it could not order the several summaries that share one
+    # date, so the list sorted to day precision only. Denormalized from `meeting.starts`, which is
+    # exact (Google Calendar). ⚠ This is the CALL's instant, never when the summary was written —
+    # that is what the id's `created` already carries, and conflating the two is what decision 69
+    # fixed on meetings.
+    date:
+      type: string
+      format: date-time
+      description: >-
+        The instant of the call being summarized, denormalized from meeting.starts so the list sorts without a join.
+        Never when the summary was written — the id's `created` carries that.
+    who:
+      type: string
+      description: Free-text participant list, as spoken or written — the unresolved twin of the meeting's attendees.
+    meeting:
+      type: string
+      x-reference: meetings
+      # ONE summary per meeting (`meetings.summary` is the generated far side). A second record for
+      # the same call is a `check` violation naming both — fold it into this one and let git hold it.
+      x-unique: true
+      description: The meeting this summarizes.
+    method:
+      type: string
+      description: How the summary was produced — which model, which skill, or by hand.
+    generated:
+      type: string
+      description: When the summary was generated, for judging whether it predates a later transcript.
+    duration:
+      type: string
+      description: Duration of the source recording (transcript-pipeline provenance).
+    participants:
+      type: array
+      description: Speaker-labelled participant list from the transcript pipeline.
+    scope_note:
+      type: string
+      description: What this summary DELIBERATELY leaves out, so a reader knows the gap is a choice rather than an oversight.
+    content:
+      type: string
+      format: markdown
+      x-body: true
+      description: The summary itself — what was said, decided and left open.
+order: 14
+list_fields: [name, last-modified, date, meeting]
+icon: note
+group: crm

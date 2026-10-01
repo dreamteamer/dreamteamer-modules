@@ -1,0 +1,13 @@
+# "What is mine", the task half. Banded by `assignee`, with the unassigned pile shown because on a
+# personal list an empty assignee MEANS the operator — hiding it would hide most of the board. The plan
+# half is the projects module's /plan/by-person; both resolve to the same `users` record.
+path: /tasks/by-assignee
+target: list
+collection: collections/tasks
+layout: table
+nav: { label: Tasks by person, icon: person, order: 3 }
+options:
+  group_rows_by_field: assignee
+  show_ungrouped_rows: true
+  columns: [name, lane, status, urgent, due]
+  sort: due

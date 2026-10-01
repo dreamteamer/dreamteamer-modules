@@ -1,0 +1,86 @@
+# meeting-preps: what you read in the ten minutes before walking into a room.
+#
+# Split out of `briefs` on 2026-08-02. `briefs` remains the general document collection — decks,
+# essay discussions, engagement progress reports, post-meeting recaps — and kept a `meeting` ref
+# that a prep, a recap and a report all used identically, so "what am I preparing for" was not a
+# query anyone could write. A prep is a distinct artifact: it points at ONE upcoming meeting, it is
+# read once at a known moment, and it goes stale the instant that meeting happens.
+#
+# It also reclaims a concept that had no working home. `meetings.prep` (x-body) was designed
+# 2026-07-28 to hold exactly this and was never once written to — 0 of 126 meeting records carried a
+# prep. That field is now `meetings.notes`; the prep lives here.
+name: meeting-preps
+description: >-
+  What the operator reads in the ten minutes BEFORE walking in — status, recap, goals, suggestions. Written
+  for one meeting; a general document is a `brief`.
+use_when: >-
+  a meeting is coming up — the ten-minute read is written here (/prepare-for-meeting); read the
+  previous prep for the same account before writing the next
+templates: [collection-templates/meetings-provenance]
+storage: { path: data/meeting-preps, codec: md, shape: file, suffix: meeting-prep }
+id:
+  # Derived from `date` — the MEETING's date, not `created`. A prep is written days before the
+  # meeting (and sometimes minutes before), so filing by authoring date scatters preps for the same
+  # week across the list. Sorting by id must equal sorting by "when do I need this".
+  generate: "{{ date | date }}--{{ name | slug }}"
+  pattern: "^\\d{4}-\\d{2}-\\d{2}--[a-z0-9-]+$"
+schema:
+  type: object
+  # `meeting` is required, and that is the whole point of the split: a record here with no meeting
+  # is a brief, and belongs in `briefs`.
+  required: [name, meeting]
+  properties:
+    name:
+      type: string
+      description: What this prep is for, in a phrase — normally the meeting's own title.
+    # The distinction cost a record at migration: a weekly's prep pointed at the previous
+    # week's call, which is where its material came from, so "the prep for Tuesday" found nothing.
+    meeting:
+      type: string
+      x-reference: meetings
+      # ONE prep per meeting (`meetings.prep` is the generated far side) — max one has ever existed.
+      x-unique: true
+      description: The meeting this prepares FOR — never the meeting it draws its context from.
+    # A date-time since 23/08/2026, for the reason this description already gave: it exists so the
+    # list sorts without a join, and as a bare day it could not order two preps for the same day —
+    # which is the normal case, since a busy day is exactly when a prep is worth writing. `meeting`
+    # is REQUIRED here, so the value is always an exact denormalization of `meeting.starts`; there is
+    # no fallback to reason about and no case where the time has to be guessed.
+    date:
+      type: string
+      format: date-time
+      description: >-
+        The MEETING's instant, denormalized from meeting.starts so the id generates and the list sorts without a join.
+        Set it from the meeting, never from today.
+    company:
+      type: string
+      x-reference: companies
+      description: Which company the meeting is with.
+    attendees:
+      type: array
+      items: { type: string, x-reference: contacts }
+      description: Who is in the room, denormalized from the meeting — "who am I about to talk to" should not need a second file open.
+    goal:
+      type: string
+      description: The ONE outcome that makes this meeting worth having, in a line. If it cannot be written, that is information about the meeting, not about the prep.
+    status:
+      type: string
+      enum: [draft, ready]
+      default: draft
+      description: draft = still being written · ready = good to walk in with. Two values on purpose — the meeting's date passing already says "used".
+    language:
+      type: string
+      description: What language the prep is written in, when it is not English.
+    sources:
+      type: array
+      items: { type: string, x-reference: "*" }
+      description: The records this prep was written from — summaries, briefs, contacts, tasks. Refs, so the claims in the body stay traceable and `check` can follow them.
+    content:
+      type: string
+      format: markdown
+      x-body: true
+      description: The prep itself — context · open threads · suggested agenda, the shape /create-meeting writes.
+order: 13
+list_fields: [name, date, meeting, company, status]
+icon: verified
+group: crm

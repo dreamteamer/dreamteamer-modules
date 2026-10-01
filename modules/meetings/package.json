@@ -1,0 +1,18 @@
+{
+	"name": "meetings",
+	"private": true,
+	"version": "0.1.0",
+	"dreamteamer": {
+		"title": "Meetings",
+		"description": "Every calendar `meeting` (synced from Google Calendar, direct to the API) and the three artifacts a call produces: the ten-minute `meeting-preps` read before it, the neutral `meeting-summaries` record of it, and the `meeting-analyses` critique built on the transcript. Attendees are `contacts`, follow-ups are `tasks` and the people of ours in the room are `users` (`ours`), both from the `projects` module; the audio and transcript live in the `recordings` module, which depends on this one and stamps `meetings.recordings` onto it when installed — so a workspace that never records still syncs, preps and summarises from notes.",
+		"engine": ">=0.23.0",
+		"dependencies": [
+			"contacts",
+			"projects",
+			"users"
+		],
+		"env": [
+			"WORK_CALENDARS"
+		]
+	}
+}

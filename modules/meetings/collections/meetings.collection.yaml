@@ -1,0 +1,221 @@
+name: meetings
+description: >-
+  One calendar meeting, synced from Google Calendar — the anchor every prep, recording, summary and analysis
+  hangs off.
+use_when: >-
+  anything with a date and attendees. Before planning work that spans more than one sitting, read the
+  next seven days here; before writing a prep, summary or analysis, find the meeting it hangs off — or
+  /fetch-meetings if it is not synced yet
+templates: [collection-templates/meetings-provenance]
+storage: { path: data/meetings, codec: md, shape: file, suffix: meeting }
+id:
+  # Derived from `starts`, not `created`: `created` is the moment the record is WRITTEN, so a
+  # backfilled or back-dated sync filed the meeting under the month it was imported. Every id on
+  # disk already encodes the meeting's own date — the template was the thing that disagreed.
+  generate: "{{ starts | date:YYYY/MM }}/{{ starts | date }}--{{ starts | date:HH-mm }}--{{ company | basename }}--{{ name | slug }}"
+  pattern: "^\\d{4}/\\d{2}/\\d{4}-\\d{2}-\\d{2}--[a-z0-9-]+$"
+schema:
+  type: object
+  required: [name]
+  properties:
+    name:
+      type: string
+      description: The meeting's title, as it reads on the calendar.
+    # ONE instant per endpoint, offset included — was `date` + `start`/`end` as loose strings,
+    # which could not be sorted, range-filtered or compared without reassembling them by hand.
+    # `timezone` stays: the offset says +03:00, only the zone name says WHY (and survives DST).
+    starts:
+      type: string
+      format: date-time
+      description: When the meeting begins, as one instant with its local offset. Everything sorts and range-filters on this.
+    ends:
+      type: string
+      format: date-time
+      description: When the meeting ends, as one instant with its local offset.
+    timezone:
+      type: string
+      description: The IANA zone name (Asia/Jerusalem). The offset on `starts` says +03:00; only this says why, and it survives DST.
+    company:
+      type: string
+      x-reference: companies
+      description: Which company this call was with — what files it under a client and into the id.
+    # ⚠ TWO PEOPLE-FIELDS, AND THE SPLIT IS THE POINT. `attendees` is everyone in the room as CONTACTS —
+    # the outside world, which is what a calendar invite actually carries. `ours` is the subset who are
+    # `users`: the people whose work this meeting IS. That is what lets a person's own record answer
+    # "what am I in this week" without pretending every client is a user of this workspace.
+    ours:
+      type: array
+      items: { type: string, x-reference: users }
+      x-inverse:
+        field: meetings
+        description: The meetings this person was in — generated from `meetings.ours`.
+      description: >-
+        Which of our own people were in the room, as `users`. Empty is normal for a call nobody here
+        attended but somebody recorded; `attendees` still carries everyone.
+    attendees:
+      type: array
+      items: { type: string, x-reference: contacts }
+      description: Everyone in the room, as contact records. An attendee with no record gets one created as a draft.
+    attendees_raw:
+      type: array
+      x-sensitive: true
+      description: The original free-text attendee strings, preserved verbatim.
+      items: { type: string }
+    # PLURAL, and the other half of the two-way link (⟷ meeting-recordings.meeting): a meeting
+    # genuinely has several captures, and array-ref one-hop uses _some semantics, so a binding can
+    # ask "does this meeting have a transcribed capture?" — which the singular ref could not.
+    # `recordings` is NOT declared here. The `recordings` module owns that relation — `meeting-recordings.meeting`
+    # carries `x-inverse: recordings`, and the engine stamps the mirror onto this collection only when
+    # that module is installed. A workspace without it has meetings with no `recordings` field, which is
+    # the truth of that workspace rather than a dangling reference.
+    # The other two artifacts a call produces, and the layer above them. All THREE fields on this
+    # collection (`recordings` above, plus these) are GENERATED: the foreign key lives on the other
+    # side, and `x-inverse-of` names it. They are declared HERE anyway — spelling B — because a
+    # reader asking "what does a meeting have?" opens this file, and a mirror with no line in it is
+    # a field they will not find. Read-only: set the owner's `meeting` field and the engine
+    # maintains these in the same write.
+    #
+    # `summary` and `prep` are SINGULAR, by `x-unique: true` on the owning field. One summary is
+    # THE neutral record of a call — a re-summary REPLACES it and git holds the old one, exactly as
+    # `family/health/dossiers` already works — and a prep is the one thing read before walking in.
+    summary:
+      type: string
+      x-reference: meeting-summaries
+      x-inverse-of: meeting-summaries.meeting
+      description: The neutral written record of what this call actually held — one per meeting. Empty means nobody wrote one.
+    prep:
+      type: string
+      x-reference: meeting-preps
+      x-inverse-of: meeting-preps.meeting
+      description: What was read in the ten minutes before walking in. Empty means this meeting was walked into cold.
+    # PLURAL at BOTH ends (many-to-many): one analysis usually covers an arc of several calls, and
+    # one call can be re-examined by a later review.
+    analyses:
+      type: array
+      items: { type: string, x-reference: meeting-analyses }
+      x-inverse-of: meeting-analyses.meetings
+      description: The critical judgements written over this call — many-to-many, because a review usually spans several meetings.
+    # WHERE the visuals for this meeting live, as a FULL
+    # `${env:FILES_FOLDER}/meetings/<this record's id>/screenshots` template.
+    #
+    # ⚠ THE PATH IS THE RECORD ID (changed 2026-08-31), not the bare basename it was before, and the
+    # shots sit in a `screenshots/` leaf rather than directly in the meeting's folder. Two reasons:
+    # the id carries the year and month, so the folder tree sorts the way the records do instead of
+    # piling every meeting ever held into one flat list; and the leaf leaves room for whatever else
+    # a meeting accumulates a folder of, without the meeting's folder itself meaning "screenshots".
+    # The rule it follows is the vault's: a files folder is named after the collection or field that
+    # indexes it — hence `meeting-recordings/` for `meeting-recordings.recording_file`, and this.
+    #
+    # A TEMPLATE, not a bare folder name and not an absolute path (changed 2026-08-22, decision 241).
+    # It held only the basename while the root lived in prose — "relative to $HQ_DRIVE_FOLDER/meeting-files" —
+    # which meant every consumer re-derived the root by hand-grepping `.env`, and the one fact that
+    # differs per machine was the one fact no reader could resolve. `${env:FILES_FOLDER}` moves it
+    # into a declared var the engine renders: `dt resolve meetings/<id> screenshots_folder` gives a
+    # real local path under Drive-for-Desktop here, and a `gdrive://…` address on a cloud session.
+    # Still no account and no adapter in the value — a `mounts` collection encoded those as a record
+    # until 2026-07-31 and was deleted (one record, an `adapter: gdrive|s3|git` enum with only gdrive
+    # implemented, a single consumer).
+    #
+    # A FOLDER POINTER, not per-file records (reverted 2026-07-31). A meeting-screenshots collection
+    # existed for one day and was excessive: the thing it was built to preserve — WHEN each shot was
+    # taken — is already in the filename macOS writes ("Screenshot 2026-07-30 at 14.46.12.png"), and
+    # the folder keeps those names, so nothing is lost by not restating it in a record. What the
+    # folder cannot do is answer "all screenshots in July" as a dt query, or hold a per-image caption;
+    # both were judged not worth 11 records per call.
+    #
+    # Presence is the signal a command-binding filters on ("does this meeting have visuals?") without
+    # a network call. Listing the contents needs Drive — that is fine, since anything that reads the
+    # images is online anyway.
+    screenshots_folder:
+      examples: ['${env:FILES_FOLDER}/meetings/2026/08/2026-08-30--acme-weekly/screenshots']
+      type: string
+      description: >-
+        Where this meeting's visuals live, as a FULL
+        `${env:FILES_FOLDER}/meetings/<this record's id>/screenshots` template — the path IS the id.
+        Render it with `dt resolve meetings/<id> screenshots_folder`; the value itself is inert data,
+        and the root is in the declared var rather than in prose. Its presence alone answers "does
+        this call have visuals?" without a network call.
+    origin:
+      type: string
+      enum: [calendar, recording, manual, migration]
+      description: How this record came to exist, as a mechanism — a "shim" meeting inferred from a recording with no calendar event behind it is `recording`. The prose goes in creation_context.
+    synced:
+      type: string
+      format: date-time
+      description: When a calendar sync last wrote this record — which makes re-sync staleness a range filter.
+    # calendar-sync provenance (google calendar import)
+    calendar:
+      type: string
+      description: Which Google calendar this event was imported from.
+    organizer:
+      type: string
+      x-sensitive: true
+      description: Who called the meeting, as the calendar reports them.
+    visibility:
+      type: string
+      description: The calendar event's visibility — default, public, private.
+    location:
+      type: string
+      description: Where it happens, as written on the invite.
+    conferenceUrl:
+      type: string
+      x-sensitive: true
+      description: The Meet/Zoom/Teams link to join.
+      format: uri
+    eventId:
+      type: string
+      description: The Google Calendar event id — what a re-sync matches on to update rather than duplicate.
+    htmlLink:
+      type: string
+      x-sensitive: true
+      description: Deep link to the event in Google Calendar.
+      format: uri
+    note:
+      type: string
+      description: A manual-logging provenance note, for meetings entered by hand.
+    description:
+      type: string
+      description: The invite's own description text, as the organizer wrote it.
+    # `transcript` (x-body) and `transcription` (object) MOVED to meeting-recordings in M2
+    # (2026-07-28) — the transcript belongs with the capture that produced it.
+    #
+    # Then the body became `prep`, the meeting's prep brief written by /create-meeting. Renamed to
+    # `notes` on 2026-08-02 and the prep concept moved to its own `meeting-preps` collection: the
+    # field was measured before it was kept, and 0 of 126 meetings had ever carried a prep in four
+    # weeks — 112 held nothing but a `# Title` heading. A prep points at one upcoming meeting, is
+    # read once and goes stale; that is a record with its own lifecycle, not a body on the calendar
+    # entry. The field survives the rename because those 112 headings are real content and every
+    # other md collection here declares an x-body.
+    notes:
+      type: string
+      format: markdown
+      x-body: true
+      description: The meeting's page — whatever was written down about this call by hand.
+    # ---- merged in from the gk overlay, 2026-08-17 ------------------------------------------
+    # These were an `extends:` overlay in the workspace module until `crm` was folded in. The
+    # overlay existed because a MODULE may not carry one workspace's conventions; with one
+    # module there is nothing to overlay onto, so the fields live here directly.
+    status:
+      type: string
+      enum:
+        - confirmed
+        - tentative
+        - cancelled
+        - manual
+      description: >-
+        The calendar event's status. This workspace pins the base's free-text status to Google's four values, plus
+        `manual` for meetings entered by hand.
+    tags:
+      examples: ['analysis:meeting-insights']
+      type: array
+      items: { type: string }
+      description: >-
+        Free strings, lowercase and hyphenated. Optionally `key:value` with NO space around the
+        colon (`analysis:meeting-insights`, `enriched:web-search`) — a space makes YAML parse the
+        entry as a map instead of a string. Nothing validates a tag; there is no `tags` collection.
+        Reuse one already in use before inventing one:
+        `python3 <extensions>/modules/contacts/skills/working-with-tags/bin/tags.py`.
+order: 12
+list_fields: [name, last-modified, starts, company, attendees, summary]
+icon: calendar   # not `organization` — a meeting is a date before it is a room full of people
+group: crm

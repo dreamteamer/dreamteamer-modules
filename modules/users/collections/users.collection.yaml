@@ -1,0 +1,108 @@
+name: users
+description: >-
+  One person who does work this workspace tracks — the object every `owner`, `lead`, `seat` and `assignee` field
+  points at. Distinct from `contacts`, which is the outside world you deal with: a contact is someone you have a
+  relationship WITH, a user is someone work is assigned TO. The two are linked, not merged (`contact`), because a
+  person is routinely both and a workspace with no CRM still needs somewhere to hang an assignment.
+use_when: >-
+  work is being assigned, a plan needs a lead or a seat, or a person asks "what is mine" — every one of those fields
+  resolves here, and the generated mirrors on this record (`activities`, `tasks`, `led_projects`, `led_activities`) ARE that
+  person's page. Create a user for anyone who carries work, including the operator themselves and including someone
+  who has no login; link their `contacts` record where one exists rather than retyping their details
+templates: [collection-templates/users-provenance]
+storage: { path: data/users, codec: md, shape: file, suffix: user }
+# an ENTITY — a person IS; the slug of their name is what a person types looking for them
+# ⚠ A NON-LATIN NAME YIELDS A HASH ID, NOT A REFUSAL, AND NOT AN EMPTY STRING. The engine's `slug`
+# FILTER is `slugOrHash` (src/template.js): a name with no a-z0-9 in it — Hebrew, Arabic, Cyrillic,
+# CJK — slugs to '' and falls back to a deterministic `x1a2b3c4`. So the write succeeds and the id is
+# unreadable, which is worse than a failure because nobody notices. A workspace whose VALUES are not
+# Latin should pass `--id` explicitly (`dt add users --id <a-readable-latin-handle> --name "…"`), which
+# is what the engine's own error text recommends for the neighbouring case. ⚠ And `{{ code | default:
+# name | slug }}` does NOT work — the id generator has exactly five filters (date, datetime, slug,
+# pad, basename) and an unknown one throws, while a missing field throws before any fallback runs.
+id:
+  generate: '{{ name | slug }}'
+  pattern: ^[a-z0-9][a-z0-9-]*$
+schema:
+  type: object
+  required: [name]
+  properties:
+    name:
+      type: string
+      description: The person's name as they are addressed — the id is its slug.
+    email:
+      type: string
+      description: Their working address. Not an account and not a login — the workspace authenticates nobody; this is how a human reaches them.
+    handles:
+      type: array
+      items: { type: string }
+      description: >-
+        Every other string this person appears as — a git author, a chat handle, a ticket assignee. What lets an
+        importer match a row to a person without a second matching table.
+      examples: ['dana.o@northwind.example', 'dana-oren', 'doren']
+    role:
+      type: string
+      description: >-
+        What they do, in this workspace's own words — "implementation lead", "QA", "founder". Free text on purpose: a closed enum here would be wrong for the second workspace that installed it.
+    # ── AGENTS ARE USERS TOO, because the plan does not care what species does the work ────────────
+    # An agent that holds a seat on an activity has to be pointable-at by the same `seats`/`lead`
+    # fields a person is — a parallel collection would fork every assignment field in the module.
+    # What keeps the fold honest is the pair below: `kind` says which you are reading, and an agent
+    # MUST carry `human_owner` — the babysitter, the human accountable for what it does. An agent
+    # with no owner is unsupervised automation, and `bin/check-records.mjs` refuses the record.
+    kind:
+      type: string
+      enum: [human, agent]
+      default: human
+      description: >-
+        Whether this worker is a person or an AGENT. Agents hold seats, lead activities and appear on the gantt
+        exactly like people — the plan tracks the work, not the species — but an `agent` row must name its
+        `human_owner`, and a reader must never have to guess which kind they are looking at.
+    human_owner:
+      type: string
+      x-reference: users
+      x-inverse:
+        field: owned_agents
+        description: The agents this person babysits — generated from `users.human_owner`.
+      description: >-
+        THE BABYSITTER — the human in the loop, accountable for everything this agent does and the one a gate
+        escalates to. REQUIRED when `kind` is `agent` (check-records enforces it, and that the owner is a
+        human); meaningless on a person. Ownership is per-agent and explicit because "the team watches it"
+        means nobody does.
+    agent:
+      type: string
+      description: >-
+        For `kind: agent` — which agent ENTITY this row is, as `agents/<id>`, so the worker on the plan and the
+        dispatchable agent under `modules/*/agents/` are one thing with two addresses. A plain string, not a
+        reference: the agents kind is engine-owned and this module does not point into it.
+    # A PEER reference out to the CRM. A user is not a contact and must not become one: this points at the person's
+    # record in the outside-world collection when the workspace has one, and is simply empty when it does not.
+    contact:
+      type: string
+      x-reference: contacts
+      description: This person's `contacts` record, where the workspace keeps one — so their phone, company and history are not retyped here. Empty is normal for an internal person nobody sells to.
+    company:
+      type: string
+      x-reference: companies
+      description: Which organisation they work for — the vendor, the client, a subcontractor. What makes "who on their side holds this" answerable.
+    avatar:
+      type: string
+      x-reference: assets
+      description: Their picture, as an `assets/avatars/<id>` reference. Optional; a view falls back to initials.
+    status:
+      type: string
+      enum: [active, inactive]
+      default: active
+      description: '`inactive` keeps the person addressable in history without offering them as an assignee — never delete a user who carries past work.'
+    tags:
+      type: array
+      items: { type: string }
+      description: "Free strings, lowercase and hyphenated; `key:value` with no space around the colon. `dt values users tags` lists the ones in use."
+    notes:
+      type: string
+      format: markdown
+      x-body: true
+      description: What this person carries that no field says — how they like to work, what they own, what they are not to be asked.
+order: 6
+list_fields: [name, role, company, status, last-modified]
+icon: person   # not `account` — `perspective/perspectives` wears `account`; a user is a person, and `contacts` moves instead
