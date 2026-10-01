@@ -1,7 +1,7 @@
 {
 	"name": "@dreamteamer/assets",
 	"version": "0.1.0",
-	"description": "Small pictures a dreamteamer workspace draws — icons, logos, avatars — as validated file records.",
+	"description": "Small pictures a workspace draws — icons, logos, avatars, illustrations — each stored as a file record of 200 KB at most.",
 	"license": "Apache-2.0",
 	"repository": {
 		"type": "git",
@@ -19,7 +19,7 @@
 	],
 	"dreamteamer": {
 		"title": "Assets",
-		"description": "A file the UI shows — an icon, a logo, an avatar, an illustration — as a `codec: file` record whose id IS its provenance (`icons/<set>/<name>`, `logos/<slug>`, `avatars/<contact-id>`), 200 KB each, licences listed once in this module's README. The commons every other module's pictures point at; ships no records.",
+		"description": "Small pictures a workspace draws — icons, logos, avatars, illustrations — each stored as a file record of 200 KB at most. Other modules point at them by id: a picture a record draws is keyed by that record (`avatars/<person-id>`, `logos/<company-id>`), one from an icon set by set and name (`icons/<set>/<name>`). Each set's licence is listed once in the README. Ships no records.",
 		"engine": ">=0.30.0"
 	}
 }
