@@ -89,16 +89,18 @@ export function guardVerdict({ state, staged, dataPath = 'data' }) {
 	].filter((l) => l !== '').join('\n');
 }
 
-// ⚠ THE HOOK RUNS THE LINKED CLONE'S GUARD, NOT THE INSTALLED PACKAGE'S. Measured the hard way: a
-// hook spelled `npx --no-install npx dt-setup guard` resolves node_modules, i.e. the PUBLISHED
-// copy — so during preview the rule enforced was the released one, and on a workspace whose
-// installed version predates this verb the hook died `unknown command "guard"` and blocked every
-// commit with a message about the wrong thing. Fails closed, but for a reason nobody could read.
-// So: nothing linked ⇒ exit 0 and be a true no-op; linked ⇒ run the clone's own bin.
+// The line that marks a pre-commit hook as ours, so `link` may rewrite it.
+export const HOOK_MARKER = '# installed by `npx dt-setup link`';
+
+// The hook runs the linked clone's guard, else the installed package's, else refuses the commit.
+// It never calls npx, so a commit can never fetch and run a package from the registry.
 export const HOOK = `#!/bin/sh
-# installed by \`npx dt-setup link\` — see lib/link.mjs. A true no-op once unlinked.
+${HOOK_MARKER} — a no-op once unlinked.
 L="${LINK_DIR}/${LINK_NAME}"
 [ -L "$L" ] || [ -d "$L" ] || exit 0
 [ -f "$L/modules/setup/bin/setup.mjs" ] && exec node "$L/modules/setup/bin/setup.mjs" guard
-exec npx --no-install npx dt-setup guard
+I="node_modules/@dreamteamer/setup/bin/setup.mjs"
+[ -f "$I" ] && exec node "$I" guard
+echo "linked bundle has no guard — unlink or update it" >&2
+exit 1
 `;
