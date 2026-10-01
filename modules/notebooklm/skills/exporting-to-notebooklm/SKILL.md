@@ -40,7 +40,8 @@ prints every field that WAS exported per collection; that list is the review.
 - **the persona** — a Markdown template with `{{workspace}}` `{{schema_brief}}` `{{sources}}`
   `{{omitted}}` `{{exported_at}}` `{{engine_version}}` `{{schema_title}}` `{{collections}}`; the
   module ships a default, `--instructions <file.md>` replaces it, an unknown placeholder is an
-  error. `--response-length` and `--mode` ride along to `notebooklm configure`.
+  error. `--response-length` rides along to `notebooklm configure`; there is no `--mode`, because the
+  vendor discards the persona when `--mode` is sent with it.
 
 **The budget is the plan's source cap** (`--plan standard|plus|pro|ultra|<n>`, default `standard` =
 50). Too many sources is a refusal that names the count and the remedies — nothing is dropped

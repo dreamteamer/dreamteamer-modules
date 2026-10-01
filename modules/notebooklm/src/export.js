@@ -37,7 +37,7 @@ export const DEFAULT_MAX_WORDS = 200000;
 export const OWNED_PREFIX = 'dt · ';
 export const SCHEMA_TITLE = `${OWNED_PREFIX}schema`;
 export const DEFAULT_OUT = path.join('.cache', 'dreamteamer', 'notebooklm');
-export const FLAGS = ['out', 'plan', 'max-words', 'collections', 'instructions', 'notebook', 'create', 'response-length', 'mode', 'wait', 'json'];
+export const FLAGS = ['out', 'plan', 'max-words', 'collections', 'instructions', 'notebook', 'create', 'response-length', 'wait', 'json'];
 
 export const words = (text) => { const t = String(text ?? '').trim(); return t ? t.split(/\s+/).length : 0; };
 const sha256 = (text) => createHash('sha256').update(text).digest('hex');
@@ -467,9 +467,8 @@ export function syncNotebook(outDir, manifest, flags, log = (line) => dt.emit(li
 	const persona = fs.readFileSync(path.join(outDir, 'instructions.md'), 'utf8');
 	const cfg = ['configure', '-n', notebookId, '--persona', persona];
 	if (flags['response-length'] !== undefined) cfg.push('--response-length', String(flags['response-length']));
-	if (flags.mode !== undefined) cfg.push('--mode', String(flags.mode));
 	nlm(cfg);
-	log(`✔ persona set (${persona.length} chars${flags['response-length'] ? `, response length ${flags['response-length']}` : ''}${flags.mode ? `, mode ${flags.mode}` : ''})`);
+	log(`✔ persona set (${persona.length} chars${flags['response-length'] ? `, response length ${flags['response-length']}` : ''})`);
 	const waited = [];
 	if (flags.wait && added.length) {
 		for (const a of added) {
@@ -488,7 +487,7 @@ export const USAGE = `  notebooklm  render the workspace for NotebookLM, and opt
               notebooklm [--out <dir>] [--plan standard|plus|pro|ultra|<n>] [--max-words <n>]
                          [--collections a,b] [--instructions <template.md>]
                          [--notebook <id> | --create "<title>"] [--response-length default|longer|shorter]
-                         [--mode default|learning-guide|concise|detailed] [--wait] [--json]
+                         [--wait] [--json]
               writes one schema source (workspace → module → collection → field), one source per
               collection (sharded by --max-words, titled \`dt · <c> [n/m]\`), and the persona from a
               template, into --out (default ${DEFAULT_OUT}). A collection marked
