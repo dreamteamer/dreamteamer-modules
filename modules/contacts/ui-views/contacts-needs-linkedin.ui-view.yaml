@@ -1,18 +1,7 @@
-# The LinkedIn work queue: every contact who is NOT both on LinkedIn and a 1st-degree connection.
-# The operator reviews this, then hands the rows to a browser session to send invitations.
-#
-# 63 of 96 as of 2026-08-30 — 41 carry no LinkedIn URL at all, 21 have one but were not in the
-# connections list, and 1 is explicitly a non-1st degree. A row leaves this view by acquiring BOTH
-# a `linkedin` URL and `linkedin_degree: 1st`.
-#
-# ⚠ THE FILTER TRAP, measured: `linkedin_degree: {_neq: '1st'}` alone matches exactly ONE record.
-# `_neq` does not match a MISSING field, and 62 of 96 contacts have no degree at all — so the
-# obvious one-clause filter would have drawn 1 row and looked like a working view. The `_null`
-# clauses are what make the other 62 visible. Verified against the engine's own `matchesFilter`:
-# 63 in, 33 out, and every excluded row really does carry both fields.
-#
-# ⚠ TOP-LEVEL `filter`, never `options.filter` — `options` rides through to the layout untouched,
-# so a filter one level down compiles, saves, and is read by nothing (see health-labs-abnormal).
+# Every contact who is not both on LinkedIn and a 1st-degree connection; a row leaves by gaining a
+# `linkedin` URL and `linkedin_degree: 1st`.
+# `_neq` does not match a missing field, so the `_null` clauses are what list contacts with no degree.
+# The filter is top-level: `options` passes to the layout untouched, so a filter there is read by nothing.
 path: /contacts/needs-linkedin
 target: list
 collection: collections/contacts

@@ -1,29 +1,9 @@
-# Contacts whose LinkedIn identity needs a HUMAN look — the review pile, distinct from the work
-# queue next door (`/contacts/needs-linkedin`, which is "not connected yet" and shrinks on its own
-# as invitations are accepted). Nothing here resolves without the operator's eye.
-#
-# Two populations, deliberately in one view because the gesture is the same — open the record,
-# decide, move on:
-#
-#   • no `linkedin` at all (30) — a browser pass searched and found nothing conclusive, or the
-#     person was never searched for.
-#   • tagged `linkedin:unsure` WITH a slug (5) — the harvest could not confirm the profile is the
-#     right person. ⚠ These are the dangerous ones: the record already CARRIES that URL, so it
-#     reads as settled data while being exactly the thing in doubt. A wrong slug is how a wrong
-#     face lands on a contact.
-#
-# `tags` is the marker rather than a field because nothing else needed one: `linkedin:unsure` is a
-# keyed tag (the value means nothing alone — see the working-with-tags skill), and it is removed by
-# hand once the operator has confirmed or corrected the profile.
-# ⚠ CARDS, not a table, and the reason is the `review_note`: the ask is a paragraph, and a
-# paragraph in a table cell is either clipped to uselessness or wrecks every row's height. A card
-# template renders it as the markdown it is — which is also why the ask lives in its own field
-# rather than in `notes`: `notes` is the record BODY, 30 of these carry unrelated prose (one is
-# 5.5 KB), and a template can render a field but cannot slice a body.
-#
-# `columns` still earns its place: `viewToConfig` pulls `columns` and `sort` out and passes
-# everything else through as the layout's own options, so the list stays switchable to a table
-# without losing what to show there.
+# Contacts whose LinkedIn identity needs a person's look: no `linkedin` at all, or a slug tagged
+# `linkedin:unsure` — a URL the record carries but nobody has confirmed. Remove the tag by hand once the
+# profile is confirmed or corrected.
+# Cards rather than a table, because `review_note` is a paragraph a table cell would clip; it is its own
+# field because a template can render a field but cannot slice the record body. `columns` and `sort`
+# still apply when the list is switched to a table.
 path: /contacts/review-linkedin
 target: list
 collection: collections/contacts
@@ -37,15 +17,9 @@ options:
     - linkedin
     - tags
   sort: name
-  # ⚠ NO `image_field`. `avatar` was the obvious pick and it was wrong: this is the pile of people
-  # we could not identify, so 30 of the 35 have no photo — and an unset image field still reserves
-  # a full-width box, which is what the card then mostly consists of.
-  #
-  # ⚠ And `review_note` is PLAIN PROSE, not markdown emphasis. `format: markdown` sets the EDITOR
-  # (`input-rich-text-md`) and not the view, so a non-body markdown field renders through ViewText —
-  # `**like this**` came out as literal asterisks on every card. `role` is out of the template for a
-  # different reason: in this vault a role is often a paragraph, and it pushed the actual question
-  # below the fold.
+  # No `image_field`: most people here have no photo, and an unset image still reserves a full-width box.
+  # `review_note` renders as plain text on the card (`format: markdown` sets the editor, not the view),
+  # so write it without markdown emphasis.
   template: |-
     ### {{ name }}
     {{ company }}
@@ -54,8 +28,7 @@ options:
 nav:
   label: contacts — review LinkedIn
   icon: question
-# ⚠ TOP-LEVEL `filter`, never `options.filter` — `options` rides through to the layout untouched,
-# so a filter one level down compiles, saves, and is read by nothing.
+# The filter is top-level: `options` passes to the layout untouched, so a filter there is read by nothing.
 filter:
   _or:
     - linkedin:
