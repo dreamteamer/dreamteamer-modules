@@ -1,4 +1,4 @@
-// PREVIEW MODE — run a consumer workspace against a LOCAL CLONE of this package instead of the
+// PREVIEW MODE — run a consumer workspace against a LOCAL CLONE of dreamteamer-modules instead of the
 // published one, so a schema change can be reviewed in a real workspace before it is a release.
 //
 //   npx dt-setup link <path-to-clone>   symlink git_modules/dreamteamer-modules → the clone, recompile
@@ -48,7 +48,7 @@ export function linkTarget(root) {
 	try { return fs.readlinkSync(linkPath(root)); } catch { return null; }
 }
 
-/** Is `dir` a clone of this package — a bundle root with a `modules/` folder and our name? */
+/** Is `dir` a clone of dreamteamer-modules — a bundle root with a `modules/` folder and our name? */
 export function looksLikeClone(dir) {
 	try {
 		const pkg = JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8'));

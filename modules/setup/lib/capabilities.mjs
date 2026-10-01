@@ -143,7 +143,7 @@ export function capabilities(root) {
 
 	// ── the workspace itself ─────────────────────────────────────────────────────────────────
 	{
-		const c = cap('workspace', 'the engine, and which of this package\'s modules this workspace actually has');
+		const c = cap('workspace', 'the engine, and which official modules this workspace actually has');
 		const enginePkg = readJson(path.join(root, 'node_modules', 'dreamteamer', 'package.json'));
 		if (!enginePkg) c.bad('engine', 'npm install dreamteamer', 'no engine installed — nothing can compile', 'npm install dreamteamer');
 		else {
