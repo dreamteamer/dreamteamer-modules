@@ -146,7 +146,7 @@ schema:
       description: "JUDGED — layer 2's other half: turns where he CORRECTED the agent or overrode its steering — `not like that, not like that`. The expensive kind, and the signal that a skill is missing, mis-tuned, or that the work arrived broken from an earlier stage. ⚠ Read against `turns_added_information`, never alone: the RATIO is the metric."
     skill_tokens_active:
       type: integer
-      description: "MECHANICAL where the transcript allows, else JUDGED — tokens spent by skills that were ACTIVELY USED, not merely loaded. Named at the 2026-09-06 weekly session with its hypothesis stated: you start with no skills, you write skills, and you repeat yourself less and less as recurring knowledge distils into them, so this should RISE while turns fall. ⚠ The operator said plainly he does not yet know how to measure it well."
+      description: "MECHANICAL where the transcript allows, else JUDGED — tokens spent by skills that were ACTIVELY USED, not merely loaded. The hypothesis: you start with no skills, you write skills, and you repeat yourself less and less as recurring knowledge distils into them, so this should RISE while turns fall."
     input_words:
       type: integer
       description: "MECHANICAL — words the HUMAN had to type: the denominator. From the metrics brainstorm (skill `references/metrics.md`): everything normalises to words — a PRD is words, code is obviously words — so productivity is output words over input words."

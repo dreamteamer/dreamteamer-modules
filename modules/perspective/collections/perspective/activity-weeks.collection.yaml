@@ -40,7 +40,7 @@ schema:
     correction_ratio: { type: number, description: "transcripts — the week's corrected words over its produced words, computed from the weekly SUMS, never averaged across sessions. ⚠ Direction is the metric: falling is improvement, rising means the output got cheaper to produce and worse." }
     lines_new:
       type: integer
-      description: "git — lines added in files that did not exist before this week. CURVE ONE of the pair the operator dictated at the 2026-09-06 weekly session: new code lines over time. ⚠ Distinct from `lines_added`, which counts every insertion including edits to existing files; the two curves only separate if this one does."
+      description: "git — lines added in files that did not exist before this week. The first of a pair of curves: new code lines over time. ⚠ Distinct from `lines_added`, which counts every insertion including edits to existing files; the two curves only separate if this one does."
     lines_modified:
       type: integer
       description: "git — lines changed inside files that already existed. CURVE TWO: existing code lines changed over time. The expected shape, in his words: at the start you produce a lot of code, then you produce little, then you edit a lot, then you edit little, and then you stop producing and stop editing. ⚠ When both curves FLATTEN the project is converging — that is what done looks like."
