@@ -28,6 +28,11 @@ function shipped(m) {
 /** The lines a rule applies to: every line of prose, only the comment lines of code. */
 function lines(file) {
 	const all = fs.readFileSync(file, 'utf8').split('\n');
+	if (/\.md$/.test(file)) {
+		// a fenced code block is a command or an example — its dates and paths are data, not history
+		let fenced = false;
+		return all.map((text, i) => ({ text, n: i + 1, fence: /^\s*```/.test(text) ? (fenced = !fenced, true) : fenced })).filter((l) => !l.fence);
+	}
 	if (PROSE.test(file)) return all.map((text, i) => ({ text, n: i + 1 }));
 	return all.map((text, i) => ({ text, n: i + 1 })).filter(({ text }) => /^\s*(\/\/|\*|\/\*|#)/.test(text) || /\s\/\/\s/.test(text));
 }
