@@ -1,4 +1,4 @@
-// The throwaway checkout a `writes` proof runs in — created, bootstrapped with `dt install`, removed.
+// The throwaway checkout a fixture proof runs in — created, bootstrapped with `dt install`, removed.
 //
 // ⚠ A COPY OF THE WORKTREE LIFECYCLE IN @dreamteamer/worktrees, ON PURPOSE. Proofs and worktrees are
 // separate modules with separate purposes; a proof only needs somewhere to write that is not the
@@ -95,7 +95,7 @@ export function mirrorLinkedDeps(fromRoot, pkg, toRoot) {
 
 /**
  * The worktree, MADE, and its path returned — everything `addWorktree` does except printing it.
- * `dt prove` cuts its `writes` sandbox with it (`temp: true, quiet: true`).
+ * `dt prove` cuts a fixture proof's sandbox with it (`temp: true, quiet: true`).
  *
  * ⚠ `quiet` is not cosmetic: the install inside inherits stdio, and a caller printing one JSON
  * object on stdout would have a compile transcript spliced in ahead of it.

@@ -20,7 +20,7 @@ action to be taken, and be re-run to judge the state that action left behind.
 | the file and its keys | authoring a proof |
 | what `where`, `count` and `{record}` mean | the predicate language |
 | it stopped and printed PERFORM | the protocol |
-| a proof that WRITES records | the sandbox |
+| a proof whose steps WRITE records | the sandbox |
 | where the evidence lives | the ledger |
 | what the number means | exit codes |
 | coverage, and what failed here | reading the surface |
@@ -31,14 +31,16 @@ action to be taken, and be re-run to judge the state that action left behind.
 **A gate** is a static check with no record and no post-state: one or more `run` steps, judged on
 their exit codes alone. `npm test`, a linter, a script's `--dry-run`, `dt check`. It is the cheapest
 proof there is and the only one that needs nothing from the workspace's data. A gate takes no
-`mode`, no `given` and no `expect` — compile refuses all three, because a gate that carried them
-would be a live proof whose author believes something untrue about what runs.
+`given` and no `expect` — compile refuses both, because a gate that carried them would be a live
+proof whose author believes something untrue about what runs.
 
 **A live proof** runs against a real record and is judged by `expect`. It picks ONE record (`given`),
 snapshots what it is about to measure, runs its steps, and then asks the store whether the world
-changed the way the proof says it should. `mode: readonly` reads the workspace; `mode: writes`
-mutates records and therefore runs in a throwaway worktree (see the sandbox). A live proof is where
-a `perform` step belongs: "run `/close-note` on this note" is an instruction to an actor, and the
+changed the way the proof says it should. With `given.fixture: true` it runs in a throwaway
+worktree on its own records (see the sandbox); without one it runs in this workspace, and a `run`
+step that changes `data/` FAILS the run unless `--here` was passed. So a store expectation (the
+`collection` and `record` forms) needs a fixture or a `perform` step — compile refuses it otherwise.
+A live proof is where a `perform` step belongs: "run `/close-note` on this note" is an instruction to an actor, and the
 engine's job is to hold the before-state, hand over the instruction, and judge the after-state.
 
 **An eval** is the third thing, and the engine deliberately does NOT run it. Whether a skill actually
@@ -60,18 +62,18 @@ name: notes-close-cleanly            # required — equals the filename
 about: [commands/close-note]         # required, ≥1 — skills/<id> · commands/<id> ·
                                      #   command-bindings/<id> · <module-id>/bin/<file>
 kind: live                           # required — gate | live
-mode: readonly                       # required on live, forbidden on gate — readonly | writes
 description: closing a note sets its status and leaves the body alone.
 external: false                      # optional — true excludes it from a bare --all
 requires: { env: [HR_EXPORT_DIR], bin: [jq] }   # optional
 given:                               # live only — exactly ONE of `where` or `fixture`
   collection: notes
-  where: { status: { _eq: open } }
-  pick: latest                       # `latest` (the collection's sort_field, DESC) or an explicit id
+  fixture: true                      # run in a sandbox on this proof's own records
+  pick: fx-open                      # an explicit id, or `latest` (the collection's sort_field, DESC)
 steps:                               # required — gate: ≥1 `run`; live: ≥1 of either
   - perform: /close-note {record}
 expect:                              # live only, ≥1
   - { record: '{record}', where: { status: { _eq: done } } }
+  - { collection: notes, where: { status: { _eq: done } }, count: { _delta: 1 } }
 timeout: 120                         # optional — seconds per `run` step (default 120)
 ```
 
@@ -88,32 +90,18 @@ steps:
   - run: node modules/hr/bin/export.mjs --check
 ```
 
-A `writes` proof brings its own records, under `modules/<module>/proofs/fixtures/<proof-id>/`,
+A fixture proof brings its own records, under `modules/<module>/proofs/fixtures/<proof-id>/`,
 mirroring the workspace root — so `data/notes/fx-open.note.md` under that folder becomes
-`notes/fx-open` inside the sandbox:
-
-```yaml
-name: closing-a-note-writes-the-field
-about: [commands/close-note]
-kind: live
-mode: writes
-given: { collection: notes, fixture: true, pick: fx-open }
-steps:
-  - perform: /close-note {record}
-expect:
-  - { record: '{record}', where: { status: { _eq: done } } }
-  - { collection: notes, where: { status: { _eq: done } }, count: { _delta: 1 } }
-```
+`notes/fx-open` inside the sandbox.
 
 | key | notes |
 |---|---|
 | `about` | what this proof is FOR. An unresolvable ref FAILS compile — a proof about nothing reports success forever |
 | `kind` | `gate` (run steps only) or `live` (a record and expectations) |
-| `mode` | live only. `writes` implies a sandbox unless `--here` |
 | `requires` | `env` names must be declared in `dreamteamer.vars` or a module's `dreamteamer.env`; `bin` is looked up on PATH. Unmet ⇒ **UNAVAILABLE**, never FAIL — this machine cannot answer the question, which is not a fact about the artifact. ⚠ **names only** — no `.env` VALUE is ever read, compared or printed |
-| `given` | exactly one of `where` (a live filter) or `fixture: true` (this proof's own records). `pick: latest` needs a `sort_field` on the collection; `pick: <id>` names one; **`pick: any` is refused** — a proof that picks arbitrarily proves something arbitrary. A fixture needs `pick: <id>` |
+| `given` | exactly one of `where` (a live filter) or `fixture: true` (this proof's own records, in a sandbox unless `--here`). `pick: latest` needs a `sort_field` on the collection; `pick: <id>` names one; **`pick: any` is refused** — a proof that picks arbitrarily proves something arbitrary. A fixture needs `pick: <id>` |
 | `steps` | in order, until one fails or one asks for an actor |
-| `expect` | live only. Four forms, below |
+| `expect` | live only. Four forms, below; the two store forms need a fixture or a `perform` step |
 | `external` | for a proof needing the network, a credential or a mount. Invisible to `--all`; `--external` includes it |
 | `timeout` | positive integer seconds, per `run` step |
 
@@ -179,7 +167,7 @@ judged against a different record than the one it names.
 | `{ collection, where, count }` | how many records of `collection` match `where`, collection-scope |
 | `{ record: '{record}', where }` | the picked record's own fields. Needs a `given`; an empty `where` is refused |
 | `{ step: <n>, exit, stdout, stdout_json }` | what one `run` step did. `step` defaults to the LAST run step; an index past the last step is refused |
-| `{ path: '<template>', exists: true\|false }` | whether a path is there, rendered through the ONE resolver, **relative to the workspace root** (the sandbox's root inside a `writes` proof) |
+| `{ path: '<template>', exists: true\|false }` | whether a path is there, rendered through the ONE resolver, **relative to the workspace root** (the sandbox's root inside a fixture proof) |
 
 ⚠ **A row is exactly ONE form, and a row whose keys span two is a compile error** —
 `expect[<i>] mixes two forms — a row is one of collection+where+count · record+where · step ·
@@ -228,9 +216,9 @@ is an actor. So the runner stops there, records a PENDING row, and prints the bl
 
 ```
 in       /repo/.worktrees/.tmp-a1b2c3   (a throwaway worktree — records written here are never landed)
-PERFORM  /close-note notes/b
+PERFORM  /close-note notes/fx-open
 source   modules/default/commands/close-note.command.md
-then     dt prove notes-close-cleanly --record notes/b   (the same verb, again)
+then     dt prove notes-close-cleanly --record notes/fx-open   (the same verb, again)
 ```
 
 - **`in`** appears only when there IS a sandbox, and it comes FIRST — "where am I acting" has to be
@@ -258,9 +246,9 @@ hook.
 A pending run older than the proof's own `timeout` is **stale** — the process it belonged to is gone
 — so it is cleared out loud on the next run.
 
-## the sandbox — where a `writes` proof is allowed to write
+## the sandbox — where a proof's steps are allowed to write
 
-`mode: writes` mutates records, so it never touches the invoking store. The runner cuts a detached
+A proof with `given.fixture: true` never touches the invoking store. The runner cuts a detached
 throwaway worktree (`.worktrees/.tmp-*`), copies the proof's fixture into it, runs there, judges
 there, and removes it.
 
@@ -279,10 +267,11 @@ there, and removes it.
   sandboxed proof, and `dt prove --list` counts what runs left behind — `.worktrees/` is gitignored, so
   the ledger is the only thing that knows the directory exists. A removal that FAILED is recorded as
   `sandbox_removed: false` and counted the same way.
-- **`--here` runs a `writes` proof in THIS checkout**, and says so out loud before anything moves. It
-  is legitimate for exactly one shape: a `given.where` writes proof, against a real record, when the
-  point is to prove the thing on live data. A `writes` proof with no fixture runs ONLY that way —
-  otherwise it is refused at run time, naming both ways forward.
+- **Every other run is in THIS checkout and may not change `data/`.** The runner reads
+  `git status --porcelain data/` before the first step and again after the last, and a run whose
+  steps changed it FAILS, naming both ways forward.
+- **`--here` is the one way to write the live store.** It runs a fixture proof in THIS checkout
+  instead of a sandbox, lifts the `data/` guard, and says so out loud before anything moves.
 
 ## the ledger — per machine, per proof, and disposable
 
@@ -336,8 +325,6 @@ truthfully green at zero; "prove THIS artifact" is not.
 
 **UNAVAILABLE is checked before the fixture**, so a machine that cannot answer never reports
 NO-FIXTURE — which would read as a fact about the workspace's data rather than about this laptop.
-A `writes` proof with no fixture is UNAVAILABLE too: the artifact is fine, and this invocation
-cannot answer for it without `--here`.
 
 ⚠ **`--strict` means two different things, on purpose.** On `dt prove --all` (and the artifact form)
 it makes **UNAVAILABLE fatal** — a board is what a hook runs, and "this machine could not ask" is a
@@ -361,9 +348,7 @@ dt list proofs · dt get proofs/<id>                                          # 
   (`proofs: 3 passed · 1 failed · 0 unavailable · …`). A transcript is what a single-proof run is
   for. A proof with a `perform` step is **listed, never started**, so a board can never exit 5 —
   "one of your forty proofs would like a human" is not an answer a hook can act on. A proof that
-  THROWS is that proof's FAIL, with a ledger row, not a silently green skip. The `writes` proof with
-  no fixture is not an exception to that: it SETTLES `UNAVAILABLE` with a row, in the single-proof
-  form and on the board alike (and `--strict` is what makes it fatal).
+  THROWS is that proof's FAIL, with a ledger row, not a silently green skip.
 - **`--strict`** makes UNAVAILABLE fatal on a board. It is a flag rather than the default because a
   proof needing a credential is ordinarily unavailable on a cloud session.
 - **`dt prove --list` RUNS NOTHING.** One line per proof with two COMPUTED columns no record
@@ -427,7 +412,9 @@ WRITE (a closed enum, a required field) the prose never showed.
 | `record: notes/b`, or any target but `{record}` | the `given` picks the record; compile refuses a second target |
 | expecting a `{record}` in a `run:` step to reach the shell as a reference | it does — that one IS substituted; it is every OTHER brace that passes through untouched |
 | `where:` left bare, or `where: {}` | it asserts nothing and the proof passes having measured nothing — refused at compile |
-| judging a `writes` proof by running it with `--here` on real records | that is what a fixture and a sandbox are for; `--here` is the exception, not the default |
+| a `run` step that writes records, on a proof with no fixture | the run FAILS on the changed `data/`; give it a fixture, or pass `--here` to write this store on purpose |
+| a `collection` or `record` expectation with no fixture and no `perform` | refused at compile — nothing in the run may change the store, so it could only answer VACUOUS or FAIL |
+| `mode: readonly` / `mode: writes` | not a key; compile refuses it — the fixture decides the sandbox |
 | expecting `--all` to run the `perform` proofs | it lists them; a board is for a hook, and a hook cannot perform |
 | reading a step's stdout as a tail | it is captured and judged WHOLE, to 64 KB — over that, write a file and assert `path:` |
 | `stdout: hello` — a scalar where a filter goes | refused at compile; a bare `stdout:`, a number and a list are the same defect — write `{ _contains: 'hello' }` |
@@ -438,6 +425,6 @@ WRITE (a closed enum, a required field) the prose never showed.
 | a `kind: eval` proof | there is no such kind; the eval layer is a procedure, and the engine never runs an agent |
 | one `expect` row carrying two forms' keys | refused at compile — a row judged as the wrong form asserts nothing and passes |
 | `{record}` in `given.where` | nothing substitutes there; the given is what picks the record |
-| a relative `path:` read as "beside where I typed dt" | it is resolved against the WORKSPACE root — the sandbox's, inside a `writes` proof |
+| a relative `path:` read as "beside where I typed dt" | it is resolved against the WORKSPACE root — the sandbox's, inside a fixture proof |
 | `dt prove skills/x` exiting 0 as proof that the skill works | exit 6 when nothing is `about` it; check the code, not the absence of red |
 | `rm -rf node_modules/@dreamteamer/proofs` with proofs in the tree | compile fails on the unknown `proofs/` folder — deliberately: a proof nothing validates is a claim nothing checks |

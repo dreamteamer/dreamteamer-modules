@@ -15,7 +15,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import '../helpers.mjs'; // binds the engine API the fixture loaded — the judge filters through it
-import { validateProofShape, formOf, PROOF_KINDS, PROOF_MODES, substitute, substituteWhere, stepWarnings, applyCap, verdictLine, exitFor, stepOutcome, flagValue, flagEnabled, EXIT, LEDGER_CAP } from '../../src/prove.js';
+import { validateProofShape, formOf, PROOF_KINDS, substitute, substituteWhere, stepWarnings, applyCap, verdictLine, exitFor, stepOutcome, flagValue, flagEnabled, EXIT, LEDGER_CAP } from '../../src/prove.js';
 
 const descriptors = new Map([
 	['notes', {
@@ -55,9 +55,8 @@ const live = (extra = {}) => ({
 	name: 'l',
 	about: ['commands/b'],
 	kind: 'live',
-	mode: 'readonly',
 	given: { collection: 'notes', where: { status: { _eq: 'open' } }, pick: 'a-note' },
-	steps: [{ run: 'echo hi' }],
+	steps: [{ perform: '/b {record}' }],
 	expect: [{ collection: 'notes', where: { status: { _eq: 'done' } }, count: { _gte: 1 } }],
 	...extra,
 });
@@ -68,9 +67,8 @@ const live = (extra = {}) => ({
 const only = (proof, message) => assert.deepEqual(validateProofShape(proof, ctx), [message]);
 
 describe('the vocabulary is closed and named once', () => {
-	test('PROOF_KINDS and PROOF_MODES are the two enums the descriptor declares', () => {
+	test('PROOF_KINDS is the enum the descriptor declares', () => {
 		assert.deepEqual(PROOF_KINDS, ['gate', 'live']);
-		assert.deepEqual(PROOF_MODES, ['readonly', 'writes']);
 	});
 });
 
@@ -161,14 +159,8 @@ describe('validateProofShape — kind, gate and live', () => {
 		only(gate({ steps: [{ perform: 'summarize-meeting' }] }), 'a gate proof has run steps only and no given or expect');
 	});
 
-	test('a live proof with no mode is refused', () => {
-		const proof = live();
-		delete proof.mode;
-		only(proof, 'a live proof declares mode: readonly | writes');
-	});
-
-	test('a live proof with an unknown mode is refused the same way', () => {
-		only(live({ mode: 'read-only' }), 'a live proof declares mode: readonly | writes');
+	test('a live proof carrying mode is refused — the fixture decides the sandbox', () => {
+		only(live({ mode: 'readonly' }), 'mode is not a proof key — a live proof runs in a sandbox exactly when given.fixture: true');
 	});
 
 	test('a live proof with no expectation is refused', () => {
@@ -304,11 +296,8 @@ describe('validateProofShape — requires, expect and timeout', () => {
 });
 
 describe('validateProofShape — the fix-round-1 rulings', () => {
-	// R12 — `mode` is meaningless on a gate (there is no workspace state to read or write), and the
-	// descriptor already says "forbidden on a gate". A key the engine ignores is a key whose author
-	// believes something untrue about what will run.
 	test('a gate carrying mode is refused', () => {
-		only(gate({ mode: 'readonly' }), 'a gate proof takes no mode');
+		only(gate({ mode: 'readonly' }), 'mode is not a proof key — a live proof runs in a sandbox exactly when given.fixture: true');
 	});
 
 	// R11 — `count` has its OWN operator set: the filter operators that order integers, plus
@@ -704,9 +693,9 @@ describe('validateProofShape — a numeric enum is compared the way filter.js co
 	}]]);
 	const nctx = { descriptors: numeric, declaredVars: [], moduleEnv: new Set(), artifacts: new Set(['skills/a']) };
 	const proof = (where) => ({
-		name: 'l', about: ['skills/a'], kind: 'live', mode: 'readonly',
+		name: 'l', about: ['skills/a'], kind: 'live',
 		given: { collection: 'gauges', where, pick: 'a-gauge' },
-		steps: [{ run: 'true' }],
+		steps: [{ perform: '/a {record}' }],
 		expect: [{ collection: 'gauges', where: {}, count: { _gte: 1 } }],
 	});
 
@@ -1167,5 +1156,45 @@ describe('validateProofShape — where a {record} literal may and may not appear
 
 	test('the same literal WITH a given is silent — that is the canonical shape', () => {
 		assert.deepEqual(validateProofShape(live({ expect: [{ collection: 'notes', where: { owner: { _eq: '{record}' } }, count: { _gte: 1 } }] }), ctx), []);
+	});
+});
+
+describe('validateProofShape — a store expectation needs a fixture or a perform step', () => {
+	const STORE = 'judges the store, which a run step outside a sandbox may not write — add given.fixture: true or a perform step';
+	const runOnly = { steps: [{ run: 'echo hi' }] };
+
+	test('a collection row on a run-only proof over a live where is refused', () => {
+		only(live(runOnly), `expect[0] ${STORE}`);
+	});
+
+	test('a record row on a run-only proof over a live where is refused', () => {
+		only(live({ ...runOnly, expect: [{ record: '{record}', where: { status: { _eq: 'done' } } }] }), `expect[0] ${STORE}`);
+	});
+
+	test('a collection row on a run-only proof with no given is refused', () => {
+		const proof = live({ ...runOnly, expect: [{ collection: 'notes', where: {}, count: { _delta: 1 } }] });
+		delete proof.given;
+		only(proof, `expect[0] ${STORE}`);
+	});
+
+	test('each store row is named, and a step row beside them is not', () => {
+		const proof = live({ ...runOnly, expect: [
+			{ step: 1, exit: 0 },
+			{ collection: 'notes', where: {}, count: { _delta: 1 } },
+			{ record: '{record}', where: { status: { _eq: 'done' } } },
+		] });
+		assert.deepEqual(validateProofShape(proof, ctx), [`expect[1] ${STORE}`, `expect[2] ${STORE}`]);
+	});
+
+	test('the same rows on a fixture proof are silent', () => {
+		assert.deepEqual(validateProofShape(live({ ...runOnly, given: { collection: 'notes', fixture: true, pick: 'fx' } }), ctx), []);
+	});
+
+	test('the same rows with a perform step are silent', () => {
+		assert.deepEqual(validateProofShape(live({ steps: [{ run: 'echo hi' }, { perform: '/b {record}' }] }), ctx), []);
+	});
+
+	test('a run-only proof judged on step output and paths is silent', () => {
+		assert.deepEqual(validateProofShape(live({ ...runOnly, expect: [{ step: 1, exit: 0 }, { path: 'out.txt', exists: false }] }), ctx), []);
 	});
 });

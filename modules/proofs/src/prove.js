@@ -14,11 +14,11 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { dt } from './engine.js';
 import { createWorktree, removeWorktree } from './sandbox.js';
 
 export const PROOF_KINDS = ['gate', 'live'];
-export const PROOF_MODES = ['readonly', 'writes'];
 
 /**
  * The verdict of a proof, as a process exit code — a CONTRACT, because the point of `dt prove` is
@@ -186,22 +186,20 @@ export function validateProofShape(proof, ctx) {
 		return errors;
 	}
 	const steps = Array.isArray(p.steps) ? p.steps : [];
+	// Where a proof may write is decided by `given.fixture` and `--here`, never by a declared key.
+	if (p.mode !== undefined) errors.push('mode is not a proof key — a live proof runs in a sandbox exactly when given.fixture: true');
 	if (kind === 'gate') {
 		// A gate is a static check: it RUNS things and reads their exit codes. No record to pick, no
 		// post-state to judge, and no `perform` — a step that asks a human is not a gate.
 		if (p.given !== undefined || p.expect !== undefined || !steps.length || steps.some((s) => !s || s.run === undefined)) {
 			errors.push('a gate proof has run steps only and no given or expect');
 		}
-		// R12 — the descriptor already says `mode` is forbidden on a gate, and nothing enforced it. A
-		// gate reads and writes no workspace state, so `mode` there is a key the engine ignores and
-		// its author believes something untrue about what will run.
-		if (p.mode !== undefined) errors.push('a gate proof takes no mode');
 	} else {
-		if (!PROOF_MODES.includes(p.mode)) errors.push('a live proof declares mode: readonly | writes');
 		const expect = Array.isArray(p.expect) ? p.expect : [];
 		if (!steps.length || !expect.length) errors.push('a live proof needs at least one step and one expectation');
 		errors.push(...givenErrors(p.given, descriptors));
 		errors.push(...expectErrors(expect, p.given, descriptors, steps.length));
+		errors.push(...storeExpectErrors(expect, p.given, steps));
 	}
 
 	// ---- requires.env: a key nothing declares is a proof that reports UNAVAILABLE forever.
@@ -219,6 +217,24 @@ export function validateProofShape(proof, ctx) {
 	if (badOps.size) errors.push(`unknown filter operator(s) ${[...badOps].sort().join(', ')}`);
 
 	pushTimeout(errors, p);
+	return errors;
+}
+
+/**
+ * A store expectation (the collection or record form) judges what the steps wrote. Outside a
+ * sandbox a `run` step may not write `data/`, so such a row needs a `perform` step or a fixture —
+ * otherwise it can only answer VACUOUS or FAIL.
+ */
+function storeExpectErrors(expect, given, steps) {
+	if (!steps.length || given?.fixture === true || steps.some((s) => s?.perform !== undefined)) return [];
+	const errors = [];
+	for (const [i, e] of expect.entries()) {
+		if (formsIn(e).length > 1) continue; // a mixed row is refused on its own
+		const form = formOf(e);
+		if (form === 'collection' || form === 'record') {
+			errors.push(`expect[${i}] judges the store, which a run step outside a sandbox may not write — add given.fixture: true or a perform step`);
+		}
+	}
 	return errors;
 }
 
@@ -980,8 +996,8 @@ export function pendingFor(root, proofId, record) {
 // the run stops there, appends exactly one ledger row, and answers with that state's exit code. So
 // the runner reads top to bottom and each guard is the last thing that can happen —
 //
-//   writes/--keep → resume → pending guard → requires → fixture → snapshot → pre-check
-//     → run steps → the first perform → judge
+//   sandbox?/--keep → resume → pending guard → requires → fixture → snapshot → pre-check
+//     → run steps (guarding data/ outside a sandbox) → the first perform → judge
 //
 // ⚠ AND THE ORDER IS THE CONTRACT, not an implementation detail. Two of these guards exist only
 // because they come BEFORE something: the pre-check must run before any step (a proof whose
@@ -1337,7 +1353,7 @@ function judge(ws, store, proof, id, record, before, stepResults, storeOnly) {
 			// ⚠ C2/R51 — AGAINST THE WORKSPACE, NEVER `process.cwd()`. `existsSync` on a relative path
 			// asks about whatever directory the operator happened to be standing in, so the SAME proof
 			// passed from the root and failed from a subdirectory of it. And `ws` here is `tws` — the
-			// SANDBOX's root for a `writes` proof — so a path a sandboxed step created is asked about
+			// SANDBOX's root for a fixture proof — so a path a sandboxed step created is asked about
 			// where the step actually wrote it, rather than in the primary checkout it never touched.
 			// An absolute rendered path is unaffected: `resolve` keeps it.
 			push({ exists: e.exists }, fs.existsSync(path.resolve(ws.root, rendered)));
@@ -1462,11 +1478,32 @@ function sandboxUnfit(root, collections) {
 }
 
 /**
+ * What `data/` looks like to git right now: `git status --porcelain data/`, one line per file, each
+ * with a hash of its bytes, so a second edit to an already-dirty file is a change too. `null` when
+ * the workspace is not a git checkout.
+ */
+export function dataState(root) {
+	const r = spawnSync('git', ['status', '--porcelain=v1', '-z', '--untracked-files=all', '--', 'data/'], { cwd: root, encoding: 'utf8', timeout: 30_000 });
+	if (r.status !== 0) return null;
+	const out = [];
+	const entries = r.stdout.split('\0').filter(Boolean);
+	for (let i = 0; i < entries.length; i++) {
+		const entry = entries[i];
+		if (entry[0] === 'R' || entry[0] === 'C') i++; // a rename carries its source as the next entry
+		const file = path.join(root, entry.slice(3));
+		let digest = 'absent';
+		try { digest = createHash('sha1').update(fs.readFileSync(file)).digest('hex'); } catch {}
+		out.push(`${entry} ${digest}`);
+	}
+	return out.join('\n');
+}
+
+/**
  * ⚠ `force` IS HONEST HERE, AND NOWHERE ELSE IN THIS ENGINE. `removeWorktree` refuses by default
  * because a worktree holds two things the primary cannot see — records written but not committed,
  * and commits not yet landed. A proof sandbox is DISPOSABLE BY DESIGN: it was cut minutes ago from
  * HEAD, it holds nothing but the fixture and whatever the proof wrote onto it, and LANDING any of
- * that is the one outcome a `writes` proof must never produce. Without `force` the refusal would
+ * that is the one outcome a fixture proof must never produce. Without `force` the refusal would
  * fire on every single run, on exactly the state the sandbox exists to reach.
  */
 function removeSandbox(ws, dir) {
@@ -1490,8 +1527,8 @@ function proveOne(ws, id, proof, flags) {
 	const say = flags.silent || flags.json ? () => {} : (line) => console.log(line);
 	const timeout = Number.isInteger(proof.timeout) ? proof.timeout : DEFAULT_TIMEOUT;
 
-	/** The throwaway worktree this run is happening in, once there is one — `null` for every readonly
-	 *  proof and every `--here` one, which run in the invoking checkout itself. */
+	/** The throwaway worktree this run is happening in, once there is one — `null` for every proof
+	 *  without a fixture and every `--here` run, which run in the invoking checkout itself. */
 	let sandbox = null;
 	/** The workspace everything AFTER `requires` runs against: the sandbox when there is one, the
 	 *  invoking checkout otherwise. The ledger is the deliberate exception (see `settle`). */
@@ -1549,29 +1586,22 @@ function proveOne(ws, id, proof, flags) {
 		}
 	};
 
-	// ---- 0. WHERE THIS PROOF IS ALLOWED TO WRITE. A `writes` proof mutates records, so it runs in a
-	// throwaway detached worktree on its OWN fixtures and the primary store is never touched.
-	// `--here` is the documented opt-out, and it says so out loud before anything moves.
-	const sandboxed = proof.mode === 'writes' && !flags.here;
-	if (proof.mode === 'writes' && flags.here) say(`⚠ --here: writing to THIS checkout's store`);
-	if (sandboxed && proof.given?.fixture !== true) {
-		// ⚠ COMPILE ALLOWS THE SHAPE, because a `given.where` writes proof is legitimate WITH `--here`
-		// — which is exactly why this refusal is at RUN time: it is what protects the real store.
-		//
-		// ⚠ I2/R50 — IT SETTLES, IT DOES NOT THROW. It used to throw with an `unavailable` marker that
-		// only `--all` read, so ONE seam answered two different things: a single run exited 1 (FAIL —
-		// "the artifact is broken") and left NO ledger row, while the board answered UNAVAILABLE with
-		// one. This is exactly what code 3 means — the artifact is fine, this INVOCATION cannot answer
-		// for it — so the state is decided here, once, and every caller reads the same verdict.
-		const at = path.relative(ws.root, fixtureDir(ws.root, proofModuleRoot(ws.root, id) ?? '<m>', id));
-		const reason = `${id} is a writes proof with no fixture — it runs only with --here (against a real record in THIS store), or add ${at}/`;
-		say(`UNAVAILABLE  ${id}`);
-		say(`  ${reason}`);
-		return settle('UNAVAILABLE', { failure_reason: reason });
-	}
+	// ---- 0. WHERE THIS PROOF IS ALLOWED TO WRITE. A fixture proof runs in a throwaway detached
+	// worktree on its own records. Every other run is in this checkout and may not change `data/`,
+	// unless `--here` says so out loud.
+	const sandboxed = proof.given?.fixture === true && !flags.here;
+	const guarded = !sandboxed && !flags.here;
+	if (flags.here) say(`⚠ --here: writing to THIS checkout's store`);
 	if (flags.keep && !sandboxed) {
-		throw new Error(`--keep keeps a writes proof's sandbox — ${id} runs in the workspace, so there is nothing to keep`);
+		throw new Error(`--keep keeps a fixture proof's sandbox — ${id} runs in the workspace, so there is nothing to keep`);
 	}
+	/** `data/` as it stood before the first step, when this run may not write it. */
+	let dataBefore = null;
+	/** Why this run FAILS for writing `data/`, or null when it wrote nothing it was not allowed to. */
+	const wroteLive = () => {
+		if (!guarded || dataBefore === null || dataState(ws.root) === dataBefore) return null;
+		return 'a step changed data/ outside a sandbox — use given.fixture: true, or --here to write this store';
+	};
 
 	// ---- 1. RESUME — `--record` names the pending run this invocation is FINISHING, and nothing
 	// else. Starting a fresh run instead would discard a pending row the operator is halfway through
@@ -1737,6 +1767,7 @@ function proveOne(ws, id, proof, flags) {
 		}
 
 		// ---- 7. THE STEPS, in order, until one fails or one asks for an actor.
+		if (guarded) dataBefore = dataState(ws.root);
 		return runSteps();
 	}
 
@@ -1771,6 +1802,11 @@ function proveOne(ws, id, proof, flags) {
 				// ⚠ THE PENDING ROW IS WRITTEN BEFORE THE BLOCK IS PRINTED, so a run killed between the
 				// two still leaves a resumable ledger — the operator may already have taken the action.
 				const text = substitute(String(step.perform), ctx);
+				const wrote = wroteLive();
+				if (wrote) {
+					say(`FAIL  ${id} — ${wrote}`);
+					return settle('FAIL', { record: ref, steps, before, failure_reason: wrote });
+				}
 				const out = settle('PENDING', { record: ref, steps, before });
 				// ⚠ ABOVE the PERFORM, because "where am I acting" is read BEFORE "what do I do" — and a
 				// human who acts in the wrong checkout has written real records this proof will not judge.
@@ -1803,8 +1839,15 @@ function proveOne(ws, id, proof, flags) {
 				const plain = failure_reason === `step ${n} exited ${exit}`;
 				say(`FAIL at step ${n}  ${id} — ${plain ? `exit ${exit} (want ${want})` : failure_reason.slice(`step ${n} `.length)}`);
 				for (const line of lastLines(res.stderr).split('\n')) if (line) say(`  ${line}`);
-				return settle('FAIL', { record: ref, steps, before, failure_reason });
+				const wrote = wroteLive();
+				if (wrote) say(`  ${wrote}`);
+				return settle('FAIL', { record: ref, steps, before, failure_reason: wrote ? `${failure_reason}; ${wrote}` : failure_reason });
 			}
+		}
+		const wrote = wroteLive();
+		if (wrote) {
+			say(`FAIL  ${id} — ${wrote}`);
+			return settle('FAIL', { record: ref, steps, before, failure_reason: wrote });
 		}
 		return decide(record, before, steps);
 	}
@@ -2051,7 +2094,7 @@ export const PROVE_USAGE = `  prove <proof> [--record <c>/<id>] [--restart] [--h
               record) · 5 a \`perform\` step is owed a human/agent · 6 vacuous (every expectation
               already held, so the proof cannot fail). Evidence: .dreamteamer/.proofs/<id>.jsonl
               --record finish the pending run for that record · --restart discard pending runs ·
-              --here run a \`writes\` proof in THIS checkout, not a sandbox · --keep keep the sandbox
+              --here run in THIS checkout and let the steps write its data/ · --keep keep the sandbox
   prove <artifact> [--kind gate|live] [--external] [--strict] [--json]
               every proof whose \`about\` names skills/<id>, commands/<id>, command-bindings/<id> or
               <module>/bin/<file> — a board; exit 6 when NOTHING is about it
