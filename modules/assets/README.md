@@ -1,4 +1,14 @@
-# assets — where each one came from, and under what licence
+# @dreamteamer/assets
+
+Small pictures a workspace draws: icons, logos, avatars, illustrations. Each one is a file record,
+200 KB at most, whose id says where it came from. Contacts uses it for avatars and company logos.
+
+```bash
+npm install @dreamteamer/assets
+npx dreamteamer compile
+```
+
+## where each one came from, and under what licence
 
 The `assets` collection holds opaque files (`codec: file`, engine 0.14.0): **the file IS the record**
 and carries no frontmatter, so this file is the only place provenance is written. That is deliberate

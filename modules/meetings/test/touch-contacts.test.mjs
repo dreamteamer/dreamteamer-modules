@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { computeRecent } from '../bin/touch-contacts.mjs';
+import { computeRecent } from '../skills/fetching-meetings/bin/touch-contacts.mjs';
 
 const NOW = new Date('2026-08-30T20:00:00+03:00');
 const m = (id, starts, attendees, extra = {}) => ({ id, starts, attendees, ...extra });

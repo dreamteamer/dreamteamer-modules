@@ -8,6 +8,8 @@
 # Spans MULTIPLE meetings on purpose (`meetings` is an array): a review usually covers an arc — two
 # calls in a day, or a whole engagement to date — not one slot.
 name: meeting-analyses
+# inflection strips an s; the word people actually say is authored here (engine 0.28.0 `singular`)
+singular: meeting-analysis
 description: >-
   A critical judgement of a call — claims validated, performance scrutinised. Built on the raw transcript,
   never on the summary.

@@ -101,7 +101,7 @@ schema:
       description: >-
         The workspace's own enrichment tags — the vocabulary encodes how this workspace segments people.
         Free strings, lowercase and hyphenated; `key:value` with NO space around the colon — a space makes YAML parse
-        the entry as a map. Nothing validates a tag: `python3 <extensions>/modules/contacts/skills/working-with-tags/bin/tags.py`.
+        the entry as a map. Nothing validates a tag: `python3 .dreamteamer/skills/working-with-tags/bin/tags.py`.
     recent_meeting:
       type: string
       x-reference: meetings

@@ -1,13 +1,32 @@
 {
-	"name": "contacts",
-	"private": true,
+	"name": "@dreamteamer/contacts",
 	"version": "0.1.0",
+	"description": "People you deal with and the companies they belong to, for a dreamteamer workspace — with LinkedIn enrichment.",
+	"license": "Apache-2.0",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/dreamteamer/dreamteamer-modules.git",
+		"directory": "modules/contacts"
+	},
+	"keywords": [
+		"dreamteamer",
+		"dreamteamer-module"
+	],
+	"files": [
+		"README.md",
+		"collections",
+		"collection-templates",
+		"skills",
+		"commands",
+		"command-bindings",
+		"ui-views"
+	],
 	"dreamteamer": {
 		"title": "Contacts",
 		"description": "The people the operator deals with (`contacts`) and the organisations they belong to (`companies`) — enriched from LinkedIn through a batched, containerised MCP session (`scraping-contacts`, `/scrape-contact`), tagged by the workspace's own vocabulary (`working-with-tags`). Avatars and logos are `assets`; a contact's latest meeting is a peer reference into `meetings`, so this module works without the meeting chain and joins it when present.",
-		"engine": ">=0.23.0",
+		"engine": ">=0.30.0",
 		"dependencies": [
-			"assets"
+			"@dreamteamer/assets"
 		],
 		"peerDependencies": [
 			"meetings"

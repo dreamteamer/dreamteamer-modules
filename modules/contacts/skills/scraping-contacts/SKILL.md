@@ -104,7 +104,7 @@ python3 -c "import json,os;print(json.load(open(os.path.expanduser('~/.linkedin-
 **4. Confirm it worked**, spending no LinkedIn request:
 
 ```sh
-node <extensions>/modules/contacts/skills/scraping-contacts/bin/li.mjs --doctor
+node .dreamteamer/skills/scraping-contacts/bin/li.mjs --doctor
 ```
 
 Want `cookies: true`, a recent `login_at`, `batch_lock: free`, `containers_running: 0`. Right after a
@@ -117,11 +117,11 @@ Concurrent *batches* are safe by construction: `li.mjs` takes a lock and the sec
 
 ## Running it — `bin/li.mjs`
 
-Both paths work from the repo root — the source and the compiled mirror are the same file:
-`<extensions>/modules/contacts/skills/scraping-contacts/bin/li.mjs` · `.claude/skills/scraping-contacts/bin/li.mjs`
+From the workspace root, after a compile — the same path whether the module came from npm, a copy
+under `modules/`, or a clone: `.dreamteamer/skills/scraping-contacts/bin/li.mjs`
 
 ```sh
-D=<extensions>/modules/contacts/skills/scraping-contacts/bin
+D=.dreamteamer/skills/scraping-contacts/bin
 
 # is the session alive? costs NO LinkedIn request — always start here
 node $D/li.mjs --doctor

@@ -37,7 +37,7 @@ tags:
 ## before you invent a tag
 
 ```bash
-python3 <extensions>/modules/contacts/skills/working-with-tags/bin/tags.py
+python3 .dreamteamer/skills/working-with-tags/bin/tags.py
 ```
 
 Every tag in use with its count, most-used first. **Reuse before you coin.** Nothing stops you minting

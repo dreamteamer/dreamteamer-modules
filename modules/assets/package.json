@@ -1,10 +1,25 @@
 {
-	"name": "assets",
-	"private": true,
+	"name": "@dreamteamer/assets",
 	"version": "0.1.0",
+	"description": "Small pictures a dreamteamer workspace draws — icons, logos, avatars — as validated file records.",
+	"license": "Apache-2.0",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/dreamteamer/dreamteamer-modules.git",
+		"directory": "modules/assets"
+	},
+	"keywords": [
+		"dreamteamer",
+		"dreamteamer-module"
+	],
+	"files": [
+		"README.md",
+		"collections",
+		"ui-views"
+	],
 	"dreamteamer": {
 		"title": "Assets",
 		"description": "A file the UI shows — an icon, a logo, an avatar, an illustration — as a `codec: file` record whose id IS its provenance (`icons/<set>/<name>`, `logos/<slug>`, `avatars/<contact-id>`), 200 KB each, licences listed once in this module's README. The commons every other module's pictures point at; ships no records.",
-		"engine": ">=0.23.0"
+		"engine": ">=0.30.0"
 	}
 }

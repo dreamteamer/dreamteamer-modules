@@ -214,7 +214,7 @@ schema:
         colon (`analysis:meeting-insights`, `enriched:web-search`) — a space makes YAML parse the
         entry as a map instead of a string. Nothing validates a tag; there is no `tags` collection.
         Reuse one already in use before inventing one:
-        `python3 <extensions>/modules/contacts/skills/working-with-tags/bin/tags.py`.
+        `python3 .dreamteamer/skills/working-with-tags/bin/tags.py`.
 order: 12
 list_fields: [name, last-modified, starts, company, attendees, summary]
 icon: calendar   # not `organization` — a meeting is a date before it is a room full of people

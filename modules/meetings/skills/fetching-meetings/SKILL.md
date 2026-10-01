@@ -9,13 +9,13 @@ Snapshot **work** meetings from Google Calendar into one markdown file per meeti
 
 ## reading the calendar — `bin/gcal.mjs`, direct to the Google API
 
-Calendar reads go through **`<extensions>/modules/meetings/skills/fetching-meetings/bin/gcal.mjs`**, which
+Calendar reads go through **`.dreamteamer/skills/fetching-meetings/bin/gcal.mjs`**, which
 calls the Google Calendar API directly using the credentials `workspace-mcp` stores per account. It
 prints **raw JSON**. There is no calendar MCP server any more — `@cocal/google-calendar-mcp` was
 removed on 2026-07-30 (decision 104) once one Google server covered everything else.
 
 ```
-node <extensions>/modules/meetings/skills/fetching-meetings/bin/gcal.mjs calendars <account>
+node .dreamteamer/skills/fetching-meetings/bin/gcal.mjs calendars <account>
 node .../gcal.mjs events <account> <calendarId> <timeMin> <timeMax> [--show-deleted]
 node .../gcal.mjs event  <account> <calendarId> <eventId>       # 404 = never existed
 ```
