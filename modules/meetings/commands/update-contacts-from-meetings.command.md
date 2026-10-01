@@ -5,7 +5,7 @@ argument-hint: "<meetings/id> [more meeting refs…] | --all (backfill from ever
 ---
 Bring `contacts.recent_meeting` and `contacts.recent_meeting_date` level with the meetings that have
 actually happened. Scope: $ARGUMENTS — one or more `meetings/<id>` refs (the normal case, right after a
-meeting is processed) or `--all` to backfill every contact from every meeting in the vault.
+meeting is processed) or `--all` to backfill every contact from every meeting in the workspace.
 
 **This step is pure mechanics — run the script, do not do it by hand.** The rule is small and tested:
 a contact's recent meeting is the latest by `starts` that lists them in `attendees`, has already
@@ -34,6 +34,6 @@ replaced. Nothing is committed — publish with `dt commit contacts/<id> …` na
 
 ## in the pipeline
 
-`/process-new-meetings` runs this as its last step over every meeting in the batch. It is also
-the right thing to run after `/fetch-meetings` corrects a past meeting's attendees, and after any
-hand-logged meeting is added.
+Run this after `/fetch-meetings` corrects a past meeting's attendees, and after any meeting is
+entered by hand. When meeting-docs is installed, `/process-new-meetings` runs it as its last step
+over every meeting in the batch.
