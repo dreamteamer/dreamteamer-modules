@@ -209,7 +209,7 @@ test('v2 writes one collaborator per distinct git identity, and a second run add
 
 	const load = () =>
 		Object.fromEntries(
-			listRecords(path.join(data, 'perspective', 'world', 'users')).map((f) => {
+			listRecords(path.join(data, 'perspective', 'users')).map((f) => {
 				const { fields } = readRecord(f);
 				return [path.basename(f), fields];
 			}),
@@ -265,9 +265,9 @@ test('identities that meet only through a third one still become ONE collaborato
 	const data = seedSession(path.join(tmp, 'data'));
 	const r = spawnSync('node', [BIN, '--retrospective', 'perspective/retrospective-sessions/2026-09-07--fx', '--repo-path', repo, '--data-root', data, '--scratch-root', path.join(tmp, 'scratch'), ...SINCE], { encoding: 'utf8' });
 	assert.equal(r.status, 0, r.stderr);
-	const files = fs.readdirSync(path.join(data, 'perspective', 'world', 'users', 'fx'));
+	const files = fs.readdirSync(path.join(data, 'perspective', 'users', 'fx'));
 	assert.equal(files.length, 1, `one person, one record — got ${files.join(', ')}`);
-	const { fields } = readRecord(path.join(data, 'perspective', 'world', 'users', 'fx', files[0]));
+	const { fields } = readRecord(path.join(data, 'perspective', 'users', 'fx', files[0]));
 	assert.deepEqual(fields.handles, ['Ada Lovelace', 'Ada Work', 'ada@home.test', 'ada@work.test']);
 	assert.equal(fields.evidence_count, 4);
 });
@@ -307,9 +307,9 @@ test('emails differing only in case are one handle and one collaborator', () => 
 	const data = seedSession(path.join(tmp, 'data'));
 	const r = spawnSync('node', [BIN, '--retrospective', 'perspective/retrospective-sessions/2026-09-07--fx', '--repo-path', repo, '--data-root', data, '--scratch-root', path.join(tmp, 's')], { encoding: 'utf8' });
 	assert.equal(r.status, 0, r.stderr);
-	const files = fs.readdirSync(path.join(data, 'perspective', 'world', 'users', 'fx'));
+	const files = fs.readdirSync(path.join(data, 'perspective', 'users', 'fx'));
 	assert.equal(files.length, 1, files.join(', '));
-	const { fields } = readRecord(path.join(data, 'perspective', 'world', 'users', 'fx', files[0]));
+	const { fields } = readRecord(path.join(data, 'perspective', 'users', 'fx', files[0]));
 	assert.ok(fields.handles.includes('sam.d@example.com') && !fields.handles.some((h) => h === 'Sam.D@Example.com'), fields.handles.join(','));
 });
 
@@ -358,11 +358,11 @@ test('a collaborator is only kept when they share a repo with the contributor', 
 	const run = (extra = []) => execFileSync('node', [BIN, '--retrospective', SESSION, '--data-root', data, '--since', '2026-01-01', ...extra], { encoding: 'utf8' });
 	const ungated = run();
 	assert.match(ungated, /authors 4/);
-	assert.equal(listRecords(path.join(data, 'perspective', 'world', 'users')).length, 4, 'without a contributor, every author is recorded');
+	assert.equal(listRecords(path.join(data, 'perspective', 'users')).length, 4, 'without a contributor, every author is recorded');
 
 	const gated = run(['--contributor', 'me@work.test']);
 	assert.match(gated, /gated out 2 \(deleted 2\)/, 'the strangers are dropped AND their stale records removed');
-	const kept = listRecords(path.join(data, 'perspective', 'world', 'users')).map((f) => readRecord(f).fields.name).sort();
+	const kept = listRecords(path.join(data, 'perspective', 'users')).map((f) => readRecord(f).fields.name).sort();
 	assert.deepEqual(kept, ['Me', 'Team Mate']);
 });
 
@@ -380,7 +380,7 @@ test('the gate refuses to fire when the contributor is not in the window, rather
 
 	const out = execFileSync('node', [BIN, '--retrospective', SESSION, '--data-root', data, '--since', '2026-01-01', '--contributor', 'typo@work.test'], { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] });
 	assert.match(out, /gated out 0/);
-	assert.equal(listRecords(path.join(data, 'perspective', 'world', 'users')).length, 1, 'a mistyped contributor must not empty the collection');
+	assert.equal(listRecords(path.join(data, 'perspective', 'users')).length, 1, 'a mistyped contributor must not empty the collection');
 });
 
 // The other half of staleness, and the one that survived the gate: a record written by an earlier,
@@ -399,12 +399,12 @@ test('a collaborator absent from the whole window is pruned, but only when the s
 	writeRecord(recordPath('sources', 'fx/git-repo--our-api', 'source', data), { retrospective: SESSION, kind: 'git-repo', label: 'our-api', reach: 'available', location: repo });
 
 	const stale = { retrospective: SESSION, name: 'Long Gone', handles: ['gone@old.test'], first_seen: '2019-01-01', last_seen: '2019-06-01', author: 'scripts/read-git@2' };
-	writeRecord(recordPath('world/users', 'fx/long-gone', 'user', data), stale);
-	writeRecord(recordPath('world/users', 'fx/hand-written', 'user', data), { ...stale, name: 'Hand Written', handles: ['hand@old.test'], author: 'the operator' });
+	writeRecord(recordPath('users', 'fx/long-gone', 'user', data), stale);
+	writeRecord(recordPath('users', 'fx/hand-written', 'user', data), { ...stale, name: 'Hand Written', handles: ['hand@old.test'], author: 'the operator' });
 
 	const out = execFileSync('node', [BIN, '--retrospective', SESSION, '--data-root', data, '--since', '2026-01-01', '--contributor', 'me@work.test'], { encoding: 'utf8' });
 	assert.match(out, /gated out 1 \(deleted 1\)/);
-	const kept = listRecords(path.join(data, 'perspective', 'world', 'users')).map((f) => readRecord(f).fields.name).sort();
+	const kept = listRecords(path.join(data, 'perspective', 'users')).map((f) => readRecord(f).fields.name).sort();
 	assert.deepEqual(kept, ['Hand Written', 'Me'], 'a hand-written record is never deleted by a script');
 });
 
@@ -438,7 +438,7 @@ test('the contributor\'s other declared git identities are adopted, not counted 
 	const out = execFileSync('node', [BIN, '--retrospective', SESSION, '--data-root', data, '--since', '2026-01-01', '--contributor', 'me@work.test', '--home', fakeHome], { encoding: 'utf8' });
 	assert.match(out, /own identities adopted 1/);
 	assert.match(out, /contributor commits 3/, 'his own three commits, across both addresses');
-	const kept = listRecords(path.join(data, 'perspective', 'world', 'users')).map((f) => readRecord(f).fields);
+	const kept = listRecords(path.join(data, 'perspective', 'users')).map((f) => readRecord(f).fields);
 	assert.deepEqual(kept.map((f) => f.name).sort(), ['Me', 'Real Teammate']);
 	const me = kept.find((f) => f.name === 'Me');
 	assert.ok(me.handles.includes('me@side.test'), 'the second address is now one of his handles');
@@ -463,7 +463,7 @@ test('a declared-identity set that does not contain the contributor is adopted b
 	writeRecord(recordPath('sources', 'fx/git-repo--shared', 'source', data), { retrospective: SESSION, kind: 'git-repo', label: 'shared', reach: 'available', location: repo });
 	const out = execFileSync('node', [BIN, '--retrospective', SESSION, '--data-root', data, '--since', '2026-01-01', '--contributor', 'subject@work.test', '--home', fakeHome], { encoding: 'utf8' });
 	assert.match(out, /own identities adopted 0/);
-	assert.equal(listRecords(path.join(data, 'perspective', 'world', 'users')).length, 2, 'the machine owner stays a separate person');
+	assert.equal(listRecords(path.join(data, 'perspective', 'users')).length, 2, 'the machine owner stays a separate person');
 });
 
 // The third dimension the convergence curves are sliced by. A rising bug SHARE late in a project is

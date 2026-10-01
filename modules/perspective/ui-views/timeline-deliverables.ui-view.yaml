@@ -15,5 +15,5 @@ nav:
   order: 8
 path: /timeline/deliverables
 target: list
-collection: collections/perspective/world/deliverables
+collection: collections/perspective/deliverables
 layout: gantt

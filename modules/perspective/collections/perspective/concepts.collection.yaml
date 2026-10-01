@@ -32,7 +32,7 @@ schema:
   properties:
     retrospective: { type: string, x-reference: perspective/retrospective-sessions, description: The retrospective session that FIRST wrote this record. }
     last_seen_in: { type: string, x-reference: perspective/retrospective-sessions, description: 'The most recent session that confirmed or updated it. Absent means exactly one session has ever touched it, which is how "new since last time" is answered without a diff.' }
-    contributor: { type: string, pattern: '^[a-z0-9-]+$', description: 'WHOSE this is, as a slug — and the FIRST SEGMENT OF THE ID. That is what makes a second retrospective UPDATE this record instead of writing one beside it. A plain slug rather than a reference, because an id segment cannot be one; the person''s own observed-world record is perspective/world/users/<contributor>/<their-name-slug>.' }
+    contributor: { type: string, pattern: '^[a-z0-9-]+$', description: 'WHOSE this is, as a slug — and the FIRST SEGMENT OF THE ID. That is what makes a second retrospective UPDATE this record instead of writing one beside it. A plain slug rather than a reference, because an id segment cannot be one; the person''s own observed-world record is perspective/users/<contributor>/<their-name-slug>.' }
     name: { type: string }
     definition:
       type: string
@@ -47,8 +47,8 @@ schema:
     # asked. Added 2026-09-09 on the operator's reading of the schema.
     #
     # ⚠ Some kinds overlap a collection, DELIBERATELY, and the rule is which one the person NAMED.
-    # `world/users` holds people the evidence identified; `person` here is a handle or nickname the
-    # contributor uses that no `world/users` record resolves ("the platform guy"). `workflows` holds a
+    # `perspective/users` holds people the evidence identified; `person` here is a handle or nickname the
+    # contributor uses that no `perspective/users` record resolves ("the platform guy"). `workflows` holds a
     # step order observed across three or more activities; `process` here is a name they use for a way
     # of working, whether or not anyone has watched them do it.
     kind:
@@ -59,7 +59,7 @@ schema:
         - process       # a named way of working; a WATCHED one is a `workflows` record
         - artefact      # a kind of thing they produce — a spec, a deck, a runbook
         - role          # a role, team or function they name
-        - person        # a handle or nickname no `world/users` record resolves
+        - person        # a handle or nickname no `perspective/users` record resolves
         - place         # an office, a region, a physical or logical location
         - metric        # a number they steer by
         - event         # a recurring ceremony, review or ritual
@@ -80,7 +80,7 @@ schema:
     # and NOT `companies`, which the same module owns). So every member is named in
     # `dreamteamer.peerDependencies`, and the module still compiles alone with none of them installed.
     # ⚠ AND SOFT — `x-reference-soft: true`, the same keyword and the same reason as
-    # `world/users.real`: peering covers a collection nobody installed, softness covers a record
+    # `perspective/users.real`: peering covers a collection nobody installed, softness covers a record
     # somebody deleted. A term is a word for a thing that existed when the run heard it; the word does
     # not stop having been used because the thing was later removed.
     # ⚠ NO `x-inverse`. A peer excuses a REFERENCE, never a MIRROR — stamping `concepts[]` onto a
@@ -102,7 +102,7 @@ schema:
     # a schema. `kind` above says what SORT of thing the term names (a system, a role, a process);
     # this says WHICH ones. Two fields rather than one union, because the two halves differ in exactly
     # the way that matters: `related_to`'s targets belong to other modules and must be soft, while
-    # these five are OURS and a dangling ref in them is a real defect this module wrote. Folding them
+    # these six are OURS and a dangling ref in them is a real defect this module wrote. Folding them
     # into one soft union would silently give up that check on our own records.
     #
     # Mirrored, unlike `related_to`, and legitimately so: every target is a collection this module
@@ -113,13 +113,11 @@ schema:
       type: array
       items:
         type: string
-        x-reference: [perspective/world/users, perspective/world/projects, perspective/world/phases, perspective/world/activity-lanes, perspective/world/activities, perspective/world/tasks, perspective/world/goals, perspective/world/decisions, perspective/world/deliverables]
+        x-reference: [perspective/users, perspective/projects, perspective/activities, perspective/goals, perspective/decisions, perspective/deliverables]
         x-inverse: concepts
       description: >-
-        The OBSERVED-world objects this MEANING is about — the people, efforts, eras, bands, work, commitments,
-        outcomes, decisions and artefacts the run reconstructed. Every collection in the world namespace, so a
-        vocabulary can classify the whole reconstructed world rather than the half of it that existed when the
-        field was written. One-way from the concept's side in the sense that matters: a world object never
+        The OBSERVED-world objects this MEANING is about — the people, efforts, work, outcomes, decisions and
+        artefacts the run reconstructed. One-way from the concept's side in the sense that matters: a world object never
         points back by hand, the engine generates its `concepts` mirror. Empty is normal for a meaning that
         names nothing the run rebuilt.
         ⚠ NOT THE SAME EDGE AS `terms.mentions`, and the difference is worth holding: `classifies` is what a

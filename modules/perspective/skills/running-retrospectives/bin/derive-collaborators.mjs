@@ -39,7 +39,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { DATA, SCRATCH } from '../lib/vault.mjs';
-import { listRecords, readRecord, writeRecord, contributorOf} from '../lib/records.mjs';
+import { listRecords, readRecord, writeRecord, contributorOf, collectionDir, recordId } from '../lib/records.mjs';
 import { upsertCollaborators } from '../lib/collaborators.mjs';
 import { contributorHandles } from '../lib/identity.mjs';
 
@@ -65,9 +65,8 @@ const dryRun = flag('dry-run');
 const lower = (s) => String(s ?? '').toLowerCase();
 const list = (v) => (Array.isArray(v) ? v : v === undefined || v === null || v === '' ? [] : [v]);
 const day = (v) => (typeof v === 'string' && v.length >= 10 ? v.slice(0, 10) : undefined);
-const dir = (c) => path.join(dataRoot, 'perspective', c);
-const idOf = (file, collection, suffix) =>
-	`perspective/${collection}/${path.relative(dir(collection), file).replace(new RegExp(`\\.${suffix}\\.md$`), '')}`;
+/** A record file → its qualified ref, `perspective/<collection>/<id>`. */
+const refOf = (file, collection) => `perspective/${collection}/${recordId(collection, file, dataRoot)}`;
 
 // The contributor's OWN handles, seeded on the run record. This pass is the one that CREATES the
 // collaborator records, so it cannot read them: whatever the person declared at `installed` is all
@@ -110,27 +109,27 @@ const belongs = (fields) =>
 		? !fields.source || String(fields.source).includes(`/${who()}/`)
 		: false;
 
-for (const f of listRecords(dir('tickets'))) {
+for (const f of listRecords(collectionDir('tickets', dataRoot))) {
 	const { fields } = readRecord(f);
 	if (!belongs(fields)) continue;
-	const ref = idOf(f, 'tickets', 'ticket');
+	const ref = refOf(f, 'tickets');
 	const on = day(fields.created_on ?? fields.completed_on);
 	met('assignee', fields.source, fields.assignee_handle, { on });
 	for (const follower of list(fields.followers)) met('follower', fields.source, follower, { on });
 	note(ref, fields.assignee_handle, list(fields.followers));
 }
-for (const f of listRecords(dir('threads'))) {
+for (const f of listRecords(collectionDir('threads', dataRoot))) {
 	const { fields } = readRecord(f);
 	if (!belongs(fields)) continue;
-	const ref = idOf(f, 'threads', 'thread');
+	const ref = refOf(f, 'threads');
 	const on = day(fields.first_on);
 	for (const p of list(fields.participants)) met('correspondent', fields.source, p, { on });
 	note(ref, list(fields.participants));
 }
-for (const f of listRecords(dir('deliverables'))) {
+for (const f of listRecords(collectionDir('deliverables', dataRoot))) {
 	const { fields } = readRecord(f);
 	if (!belongs(fields)) continue;
-	const ref = idOf(f, 'deliverables', 'deliverable');
+	const ref = refOf(f, 'deliverables');
 	met('editor', fields.source, fields.last_touched_by, { on: day(fields.last_touched_on ?? fields.created_on) });
 	note(ref, fields.last_touched_by);
 }
@@ -168,8 +167,8 @@ for (const [group, bucket] of people) {
 // ── 2. handle → collaborator ref, and the contributor's own record, which is excluded ────────────
 const refByHandle = new Map();
 let selfRef = null;
-for (const f of listRecords(path.join(dir('world/users'), who()))) {
-	const ref = idOf(f, 'world/users', 'user');
+for (const f of listRecords(path.join(collectionDir('users', dataRoot), who()))) {
+	const ref = refOf(f, 'users');
 	const handles = list(readRecord(f).fields.handles).map(lower);
 	for (const h of handles) if (!refByHandle.has(h)) refByHandle.set(h, ref);
 	if (handles.some((h) => myHandles.has(h))) selfRef = ref;
@@ -177,7 +176,7 @@ for (const f of listRecords(path.join(dir('world/users'), who()))) {
 
 // ── 3. attach to every activity, from the evidence it already cites ──────────────────────────────
 let touched = 0, unchanged = 0, noEvidence = 0, unmapped = 0;
-for (const file of listRecords(path.join(dir('world/activities'), who()))) {
+for (const file of listRecords(path.join(collectionDir('activities', dataRoot), who()))) {
 	const { fields, body } = readRecord(file);
 	const keys = new Set();
 	for (const ref of [...list(fields.tickets), ...list(fields.threads), ...list(fields.deliverables)]) {
@@ -221,7 +220,7 @@ for (const file of listRecords(path.join(dir('world/activities'), who()))) {
 // ⚠ Unresolvable stays EMPTY. A handle nobody is known by gets no reference — a pointer at a record
 // that does not exist is worse than a blank field, and `dt check` refuses it either way.
 let stamped = 0, alreadyStamped = 0, noRef = 0;
-for (const file of listRecords(dir('tickets'))) {
+for (const file of listRecords(collectionDir('tickets', dataRoot))) {
 	const { fields, body } = readRecord(file);
 	const handle = lower(fields.assignee_handle);
 	if (!handle) continue;

@@ -27,5 +27,5 @@ nav:
   order: 9
 path: /timeline/decisions
 target: list
-collection: collections/perspective/world/decisions
+collection: collections/perspective/decisions
 layout: gantt

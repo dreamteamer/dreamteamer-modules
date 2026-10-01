@@ -18,7 +18,7 @@
 // no new grant, no browser, no broad permission. A missing credential is a `sources` record with
 // `reach: unavailable`, not an error.
 import { DATA, isoWeek, isoWeekRange, slug } from '../lib/vault.mjs';
-import { recordPath, writeRecord, readRecord, listRecords, contributorOf, writeSource } from '../lib/records.mjs';
+import { recordPath, writeRecord, readRecord, listRecords, contributorOf, writeSource, collectionDir } from '../lib/records.mjs';
 import { accessTokenFor, googleAccounts, gmail } from '../lib/google-auth.mjs';
 import { summarizeThread } from '../lib/gmail.mjs';
 import { upsertCollaborators } from '../lib/collaborators.mjs';
@@ -60,7 +60,7 @@ if (!token) { unavailable(`No stored Google credential for ${as}. Accounts that 
 
 // Every handle the contributor is known by, so a message from a second address of theirs counts as theirs.
 const contributorHandles = new Set([contributor, as]);
-for (const f of listRecords(path.join(dataRoot, 'perspective', 'world', 'users', who()))) {
+for (const f of listRecords(path.join(collectionDir('users', dataRoot), who()))) {
 	const h = (readRecord(f).fields.handles ?? []).map((x) => String(x).toLowerCase());
 	if (h.includes(contributor)) for (const x of h) if (x.includes('@')) contributorHandles.add(x);
 }

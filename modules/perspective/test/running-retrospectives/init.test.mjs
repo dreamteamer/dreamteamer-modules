@@ -11,6 +11,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import yaml from 'js-yaml';
 import { readRecord, listRecords } from '../../skills/running-retrospectives/lib/records.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -68,7 +69,12 @@ function fixture() {
 const run = (ws, extra = []) =>
 	execFileSync('node', [BIN, '--retrospective', RETROSPECTIVE, '--workspace-root', ws, '--data-root', path.join(ws, 'data'), '--no-link', ...extra], { encoding: 'utf8' });
 
-const recordsIn = (ws, collection) => listRecords(path.join(ws, 'data', 'perspective', collection)).map((f) => readRecord(f));
+/** The folder a collection this module SHIPS keeps its records in, read off the shipped descriptor —
+ *  independently of the scripts' own helper, so the two cannot agree on a wrong path together. */
+const SHIPPED = path.join(HERE, '..', '..', 'collections', 'perspective');
+const shippedDir = (ws, collection) =>
+	path.join(ws, yaml.load(fs.readFileSync(path.join(SHIPPED, `${collection}.collection.yaml`), 'utf8')).storage.path);
+const recordsIn = (ws, collection) => listRecords(shippedDir(ws, collection)).map((f) => readRecord(f));
 
 test('seeds concepts, decisions and the perspective skeleton from what the workspace already knows', () => {
 	const ws = fixture();
@@ -129,11 +135,24 @@ test('seeds concepts, decisions and the perspective skeleton from what the works
 	fs.rmSync(ws, { recursive: true, force: true });
 });
 
+test('every record init writes sits in the folder of a collection this module ships', () => {
+	const ws = fixture();
+	run(ws);
+	const owned = fs.readdirSync(SHIPPED).filter((f) => f.endsWith('.collection.yaml'))
+		.map((f) => shippedDir(ws, f.replace('.collection.yaml', '')));
+	const written = listRecords(path.join(ws, 'data', 'perspective'));
+	assert.ok(written.length >= 7, `init wrote only ${written.length} records`);
+	const orphans = written.filter((f) => !owned.some((d) => f.startsWith(d + path.sep)));
+	assert.deepEqual(orphans.map((f) => path.relative(ws, f)), [], 'a record outside every collection folder is invisible to `dt check`');
+	assert.equal(recordsIn(ws, 'decisions').length, 5, 'the decisions land where perspective/decisions keeps them');
+	fs.rmSync(ws, { recursive: true, force: true });
+});
+
 test('a second run writes nothing and reports what is already there', () => {
 	const ws = fixture();
 	run(ws);
 	// a later stage edits one seeded record; the re-run must not undo it
-	const edited = path.join(ws, 'data', 'perspective', 'concepts', SLUG, 'x.concept.md');
+	const edited = path.join(shippedDir(ws, 'concepts'), SLUG, 'x.concept.md');
 	const before = fs.readFileSync(edited, 'utf8').replace('evidence_count: 0', 'evidence_count: 7');
 	fs.writeFileSync(edited, before);
 
@@ -148,7 +167,7 @@ test('a second run writes nothing and reports what is already there', () => {
 test('a merge replaces the three inline arrays and keeps everything else', () => {
 	const ws = fixture();
 	run(ws);
-	const file = path.join(ws, 'data', 'perspective', 'perspectives', `${SLUG}.perspective.md`);
+	const file = path.join(shippedDir(ws, 'perspectives'), `${SLUG}.perspective.md`);
 	const text = fs.readFileSync(file, 'utf8');
 	fs.writeFileSync(file, text.replace('---\n', '---\nrole: the one who ships\n') + '\nthe written perspective\n');
 	// a new command appears in the workspace between runs
@@ -167,6 +186,6 @@ test('--dry-run writes nothing', () => {
 	const ws = fixture();
 	const out = run(ws, ['--dry-run']);
 	assert.match(out, /concepts \+3 .* · DRY RUN$/m, `receipt was: ${out}`);
-	assert.equal(fs.existsSync(path.join(ws, 'data', 'perspective', 'concepts')), false);
+	assert.equal(fs.existsSync(shippedDir(ws, 'concepts')), false);
 	fs.rmSync(ws, { recursive: true, force: true });
 });

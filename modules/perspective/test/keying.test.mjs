@@ -19,7 +19,7 @@ const DIR = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', 
 const load = (n) => yaml.load(fs.readFileSync(path.join(DIR, `${n}.collection.yaml`), 'utf8'));
 
 /** Every descriptor under `collections/perspective/`, keyed by its name RELATIVE to that folder —
- *  so `world/users.collection.yaml` is `world/users`. ⚠ Recursive: `compile` enumerates
+ *  so `users.collection.yaml` is `users`. ⚠ Recursive: `compile` enumerates
  *  `collections/` recursively so a namespaced descriptor can be authored at `collections/<ns>/<c>`,
  *  and a flat readdir here would silently stop testing five collections. */
 function descriptorNames(dir, prefix = '') {
@@ -43,28 +43,20 @@ const EXPECTED = {
 	'activity-weeks': ["{{ contributor }}/{{ source | basename }}/{{ period }}", `^${C}/[a-z-]+--[a-z0-9-]+/\\\\d{4}-W\\\\d{2}$`],
 	tickets: ["{{ contributor }}/{{ source | basename }}/{{ external_id }}", `^${C}/[a-z-]+--[a-z0-9-]+/[A-Za-z0-9_-]+$`],
 	threads: ["{{ contributor }}/{{ source | basename }}/{{ external_id }}", `^${C}/[a-z-]+--[a-z0-9-]+/[A-Za-z0-9_-]+$`],
-	'world/deliverables': ["{{ contributor }}/{{ last_touched_on | date }}--{{ name | slug }}", `^${C}/${D}--[a-z0-9-]+$`],
-	'world/activities': ["{{ contributor }}/{{ started | date }}--{{ name | slug }}", `^${C}/${D}--[a-z0-9-]+$`],
-	// The observed commitment is keyed by the TICKET it was read from, not by a date and a slug: two
-	// tickets can be created the same day with the same title, and the external id is the one thing
-	// guaranteed unique per source. That also makes `derive-tasks` idempotent for free.
-	'world/tasks': ["{{ contributor }}/{{ ticket | basename }}", `^${C}/[A-Za-z0-9_-]+$`],
-	'world/decisions': ["{{ contributor }}/{{ decided_on | date }}--{{ name | slug }}", `^${C}/${D}--[a-z0-9-]+$`],
-	// An observed ERA is keyed by the date it started, like the activity — a project passes through
-	// "the rewrite" once, and a second run that re-reads the same turn lands on the same id.
-	'world/phases': ["{{ contributor }}/{{ started | date }}--{{ name | slug }}", `^${C}/${D}--[a-z0-9-]+$`],
+	deliverables: ["{{ contributor }}/{{ last_touched_on | date }}--{{ name | slug }}", `^${C}/${D}--[a-z0-9-]+$`],
+	activities: ["{{ contributor }}/{{ started | date }}--{{ name | slug }}", `^${C}/${D}--[a-z0-9-]+$`],
+	decisions: ["{{ contributor }}/{{ decided_on | date }}--{{ name | slug }}", `^${C}/${D}--[a-z0-9-]+$`],
 	findings: ["{{ contributor }}/{{ kind }}--{{ name | slug }}", `^${C}/[a-z-]+--[a-z0-9-]+$`],
 	assumptions: ["{{ contributor }}/{{ kind }}--{{ name | slug }}", `^${C}/[a-z-]+--[a-z0-9-]+$`],
-	'world/projects': ["{{ contributor }}/{{ name | slug }}", `^${C}/[a-z0-9-]+$`],
-	'world/activity-lanes': ["{{ contributor }}/{{ name | slug }}", `^${C}/[a-z0-9-]+$`],
+	projects: ["{{ contributor }}/{{ name | slug }}", `^${C}/[a-z0-9-]+$`],
 	topics: ["{{ contributor }}/{{ name | slug }}", `^${C}/[a-z0-9-]+$`],
 	concepts: ["{{ contributor }}/{{ name | slug }}", `^${C}/[a-z0-9-]+$`],
 	// `key`, not `name | slug`: a term's name is VERBATIM and may be in any script, and the engine's
 	// slug filter is slugOrHash — a non-Latin name slugs to a hash, not a refusal. Measured in a
 	// consuming workspace 2026-09-12: 22 of 35 terms hashed on the first write.
 	terms: ["{{ contributor }}/{{ key }}", `^${C}/[a-z0-9-]+$`],
-	'world/users': ["{{ contributor }}/{{ name | slug }}", `^${C}/[a-z0-9-]+$`],
-	'world/goals': ["{{ contributor }}/{{ name | slug }}", `^${C}/[a-z0-9-]+$`],
+	users: ["{{ contributor }}/{{ name | slug }}", `^${C}/[a-z0-9-]+$`],
+	goals: ["{{ contributor }}/{{ name | slug }}", `^${C}/[a-z0-9-]+$`],
 	insights: ["{{ contributor }}/{{ name | slug }}", `^${C}/[a-z0-9-]+$`],
 	workflows: ["{{ contributor }}/{{ name | slug }}", `^${C}/[a-z0-9-]+$`],
 	gates: ["{{ retrospective | basename }}/{{ gate }}", `^${D}--${C}/[a-z-]+$`],

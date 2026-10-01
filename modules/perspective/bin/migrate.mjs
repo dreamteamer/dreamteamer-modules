@@ -48,17 +48,17 @@ const COLLECTIONS = path.join(PKG, 'collections', 'perspective');
  */
 const RENAMED = {
 	introspectives: 'retrospective-sessions',
-	activities: 'world/activities',
-	projects: 'world/projects',
-	collaborators: 'world/users',
-	goals: 'world/goals',
+	activities: 'activities',
+	projects: 'projects',
+	collaborators: 'users',
+	goals: 'goals',
 	// ⚠ 0.9.0. These two were top-level `perspective/*` collections through 0.8.0 and are world
 	// objects like any other — leaving them outside meant the one namespace that models the observed
 	// world was missing the object that explains most of it. A workspace migrating straight from
 	// `introspection` lands on the CURRENT name, which is why the map is keyed by the oldest spelling
 	// and valued by the newest rather than chained.
-	decisions: 'world/decisions',
-	deliverables: 'world/deliverables',
+	decisions: 'decisions',
+	deliverables: 'deliverables',
 };
 
 /**
@@ -67,8 +67,8 @@ const RENAMED = {
  * own words. The value is untouched — only the key moves.
  */
 const FIELD_RENAMES = {
-	'world/goals.statement': 'done_when',
-	'world/goals.horizon': 'status',
+	'goals.statement': 'done_when',
+	'goals.horizon': 'status',
 };
 
 // ── the old id shapes ────────────────────────────────────────────────────────────────────────────
@@ -88,8 +88,8 @@ const DROP = {
 	'retrospective-sessions.perspective': 'a generated mirror of perspectives.retrospective',
 	'retrospective-sessions.sources': 'a generated mirror of sources.retrospective',
 	'retrospective-sessions.proposals': 'a generated mirror of proposals.retrospective',
-	'world/projects.activities_count': 'a real count off the generated activities mirror, not a hand-kept integer',
-	'deliverables.activities': 'a generated mirror of world/activities.deliverables',
+	'projects.activities_count': 'a real count off the generated activities mirror, not a hand-kept integer',
+	'deliverables.activities': 'a generated mirror of activities.deliverables',
 	// `sources` is MANY-TO-MANY with the run since 0.7.0 — `retrospectives` is the list, and a run id
 	// begins with its own start date, so first-seen and last-seen are a sort rather than two fields.
 	'sources.last_seen_in': 'sources.retrospectives is the list now; a sorted list gives first, last and everything between',

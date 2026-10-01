@@ -12,7 +12,7 @@
 // already did, and they are unioned in. `references/identity.md` is the method; this is the code.
 import path from 'node:path';
 import { DATA } from './vault.mjs';
-import { recordPath, readRecord, listRecords, contributorOf } from './records.mjs';
+import { recordPath, readRecord, listRecords, contributorOf, collectionDir } from './records.mjs';
 
 const lower = (s) => String(s ?? '').trim().toLowerCase();
 const list = (v) => (Array.isArray(v) ? v : v === undefined || v === null || v === '' ? [] : [v]);
@@ -37,7 +37,7 @@ export function contributorHandles(retrospectiveRef, dataRoot = DATA) {
 	const all = new Set(seeds);
 	let slug;
 	try { slug = contributorOf(retrospectiveRef, dataRoot); } catch { return all; }
-	for (const f of listRecords(path.join(dataRoot, 'perspective', 'world', 'users', slug))) {
+	for (const f of listRecords(path.join(collectionDir('users', dataRoot), slug))) {
 		const handles = list(readRecord(f).fields.handles).map(lower).filter(Boolean);
 		if (handles.some((h) => all.has(h))) for (const h of handles) all.add(h);
 	}

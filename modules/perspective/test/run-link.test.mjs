@@ -17,8 +17,7 @@ const RUN = 'retrospective-sessions';
 const RUN_LAYER = new Set([RUN, 'questions', 'proposals', 'gates']);
 
 /** Every descriptor under `collections/perspective/`, by its name RELATIVE to that folder — so
- *  `world/users.collection.yaml` is `world/users`. ⚠ Recursive, because `compile` enumerates
- *  `collections/` recursively and a flat readdir here would stop testing five collections. */
+ *  `users.collection.yaml` is `users`. Recursive, because `compile` enumerates `collections/` recursively. */
 function descriptorNames(dir, prefix = '') {
 	return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
 		e.isDirectory() ? descriptorNames(path.join(dir, e.name), `${prefix}${e.name}/`)
@@ -29,11 +28,8 @@ const descriptors = new Map(
 	descriptorNames(DIR).map((n) => [n, yaml.load(fs.readFileSync(path.join(DIR, `${n}.collection.yaml`), 'utf8'))]),
 );
 
-test('twenty-six collections, and the run is one of them', () => {
-	// 24 through 0.8.0. 0.9.0 adds `terms` (the concrete half of the vocabulary) and `world/phases`
-	// (the eras an effort passed through); `decisions` and `deliverables` MOVED into the namespace
-	// rather than being added, so they do not change the count.
-	assert.equal(descriptors.size, 26);
+test('twenty-three collections, and the run is one of them', () => {
+	assert.equal(descriptors.size, 23);
 	assert.ok(descriptors.has(RUN));
 });
 

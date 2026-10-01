@@ -23,7 +23,7 @@
 //     of the conversations' started_at; absent when there is neither
 //   · `dsl` — every `perspective/concepts/<base>/*` whose `evidence_count` > 0, i.e. the terms
 //     actually SEEN used. A concept seeded from workspace vocabulary but never observed is not DSL.
-//   · inline `projects` — one per `perspective/world/projects/<base>/*`, with the activities pointing at
+//   · inline `projects` — one per `perspective/projects/<base>/*`, with the activities pointing at
 //     it counted here and the commit/ticket totals copied from the record the projects pass wrote
 //   · inline `repos` — one per `git-repo` source of this run, counted from the COMMITS SCRATCH FILE
 //     read-git leaves at `<scratch-root>/commits/<base>/<slug>.jsonl` (commits are deliberately not
@@ -41,7 +41,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import yaml from 'js-yaml';
 import { VAULT, DATA, SCRATCH, dt, slug } from '../lib/vault.mjs';
-import { recordPath, writeRecord, readRecord, listRecords, contributorOf, compiledStorage, recordFilesOf } from '../lib/records.mjs';
+import { recordPath, writeRecord, readRecord, listRecords, contributorOf, compiledStorage, recordFilesOf, collectionDir, recordId } from '../lib/records.mjs';
 import { contributorHandles as handlesOf } from '../lib/identity.mjs';
 
 const argv = process.argv.slice(2);
@@ -66,20 +66,16 @@ const who = () => (_who ??= contributorOf(retrospective, dataRoot));
 // the same spelling read-git.mjs uses). Both default to this vault.
 const workspaceRoot = path.resolve(opt('workspace-root', VAULT));
 const scratchRoot = path.resolve(opt('scratch-root', SCRATCH));
-const root = path.join(dataRoot, 'perspective');
 
 const belongs = (fields) => !fields.source || String(fields.source).startsWith(`perspective/sources/${who()}/`);
-const idFromPath = (file, coll, suffix) =>
-	path.relative(path.join(root, coll), file).replace(new RegExp(`\\.${suffix}\\.md$`), '');
-
-/** Every record of a collection filed under this run's own directory — the ids all begin with <base>/. */
-function underRun(coll, suffix) {
-	return listRecords(path.join(root, coll, who())).map((f) => ({ file: f, id: idFromPath(f, coll, suffix), ...readRecord(f) }));
+/** Every record of a collection filed under this contributor — the ids all begin with <contributor>/. */
+function underRun(coll) {
+	return listRecords(path.join(collectionDir(coll, dataRoot), who())).map((f) => ({ file: f, id: recordId(coll, f, dataRoot), ...readRecord(f) }));
 }
-const refsUnderRun = (coll, suffix) => underRun(coll, suffix).map((r) => `perspective/${coll}/${r.id}`).sort();
+const refsUnderRun = (coll) => underRun(coll).map((r) => `perspective/${coll}/${r.id}`).sort();
 
 // ── the run's conversations, read once ────────────────────────────────────────────────────────
-const conversations = listRecords(path.join(root, 'conversations'))
+const conversations = listRecords(collectionDir('conversations', dataRoot))
 	.map((f) => readRecord(f).fields)
 	.filter(belongs);
 
@@ -87,7 +83,7 @@ const countIn = (field, name) => conversations.filter((c) => Array.isArray(c[fie
 
 // ── the record: read what is there, or make the minimum ───────────────────────────────────────
 const file = recordPath('perspectives', who(), 'perspective', dataRoot);
-const introFile = path.join(root, 'retrospective-sessions', `${base}.retrospective-session.md`);
+const introFile = recordPath('retrospective-sessions', base, 'retrospective-session', dataRoot);
 let fields = {};
 let body = '';
 let created = false;
@@ -119,9 +115,9 @@ if (skills.length) fields.skills = skills;
 if (routines.length) fields.routines = routines;
 
 // ── counts and refs ───────────────────────────────────────────────────────────────────────────
-const activities = underRun('world/activities', 'activity');
+const activities = underRun('activities');
 fields.activities_count = activities.length;
-fields.decisions_count = underRun('decisions', 'decision').length;
+fields.decisions_count = underRun('decisions').length;
 // ⚠ DISTINCT MEETINGS THE MODEL RESTS ON, not what the reader scanned. A meeting attended and never
 // clustered into an activity is on the `meetings` source's own counts and deliberately not here:
 // this number is the calendar's contribution to the PERSPECTIVE, and the two would silently disagree
@@ -129,10 +125,10 @@ fields.decisions_count = underRun('decisions', 'decision').length;
 // meetings module has no calendar evidence and 0 would read as an empty diary.
 const meetingRefs = new Set(activities.flatMap((a) => (Array.isArray(a.fields.meetings) ? a.fields.meetings : []).map(String)));
 if (meetingRefs.size) fields.meetings_count = meetingRefs.size; else delete fields.meetings_count;
-fields.topics = refsUnderRun('topics', 'topic');
-fields.collaborators = refsUnderRun('world/users', 'user');
-fields.workflows = refsUnderRun('workflows', 'workflow');
-fields.dsl = underRun('concepts', 'concept')
+fields.topics = refsUnderRun('topics');
+fields.collaborators = refsUnderRun('users');
+fields.workflows = refsUnderRun('workflows');
+fields.dsl = underRun('concepts')
 	.filter((r) => Number(r.fields.evidence_count) > 0)
 	.map((r) => `perspective/concepts/${r.id}`)
 	.sort();
@@ -151,9 +147,9 @@ for (const a of activities) {
 	const p = a.fields.project ? String(a.fields.project) : '';
 	if (p) activitiesPerProject.set(p, (activitiesPerProject.get(p) ?? 0) + 1);
 }
-const projects = underRun('world/projects', 'project')
+const projects = underRun('projects')
 	.map((r) => {
-		const ref = `perspective/world/projects/${r.id}`;
+		const ref = `perspective/projects/${r.id}`;
 		return {
 			name: String(r.fields.name ?? r.id.split('/').pop()),
 			kind: String(r.fields.kind ?? 'unknown'),
@@ -188,7 +184,7 @@ function commitsFile(rec) {
 	return '';
 }
 
-const repos = underRun('sources', 'source')
+const repos = underRun('sources')
 	.filter((r) => r.fields.kind === 'git-repo')
 	.map((r) => {
 		const entry = { name: String(r.fields.label ?? r.id.split('/').pop().replace(/^git-repo--/, '')) };

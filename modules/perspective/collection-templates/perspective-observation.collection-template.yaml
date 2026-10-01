@@ -14,9 +14,9 @@
 # modules shipping the same unscoped id is a hard collision rather than a merge. Module-scoped ids
 # are the price of a module that can be installed beside any other.
 #
-# ⚠ IT GOES ON THE MODEL TIER ONLY — the `perspective/world` namespace plus `concepts`, `terms`,
-# `topics`, `findings`, `insights` and `workflows`. NOT on the EVIDENCE tier (`conversations`,
-# `activity-weeks`, `tickets`, `threads`, `deliverables` as read, `sources`): those are counted and
+# ⚠ IT GOES ON THE MODEL TIER ONLY — `users`, `projects`, `activities`, `goals`, `decisions`,
+# `deliverables`, `concepts`, `terms`, `topics`, `findings`, `insights` and `workflows`. NOT on the
+# EVIDENCE tier (`conversations`, `activity-weeks`, `tickets`, `threads`, `sources`): those are counted and
 # never judged, they carry the source's own dates already, and a `wrong_if` on a row somebody else's
 # system emitted would be this module inventing a claim to falsify. NOT on `assumptions` either —
 # that collection IS this idea made first-class, with its own REQUIRED `wrong_if` and its own
@@ -78,15 +78,12 @@ template:
         items:
           type: string
           x-reference:
-            - perspective/world/users
-            - perspective/world/projects
-            - perspective/world/phases
-            - perspective/world/activity-lanes
-            - perspective/world/activities
-            - perspective/world/tasks
-            - perspective/world/goals
-            - perspective/world/decisions
-            - perspective/world/deliverables
+            - perspective/users
+            - perspective/projects
+            - perspective/activities
+            - perspective/goals
+            - perspective/decisions
+            - perspective/deliverables
             - perspective/concepts
             - perspective/terms
             - perspective/topics

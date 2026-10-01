@@ -27,5 +27,5 @@ nav:
   order: 1
 path: /timeline
 target: list
-collection: collections/perspective/world/activities
+collection: collections/perspective/activities
 layout: gantt

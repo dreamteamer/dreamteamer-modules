@@ -34,6 +34,6 @@ test('threads bucket by counterpart domain, deliverables by container, and the c
 	assert.deepEqual(byRepo['mail:acme.example'].threads, [`perspective/threads/${SLUG}/gmail--me-work-example/T1`, `perspective/threads/${SLUG}/gmail--me-work-example/T2`]);
 	assert.ok(byRepo['mail:acme.example'].handles.includes('bob@acme.example'));
 	assert.deepEqual(byRepo['mail:(personal)'].threads, [`perspective/threads/${SLUG}/gmail--me-work-example/T3`]);
-	assert.deepEqual(byRepo['drive:Product'].deliverables, [`perspective/world/deliverables/${SLUG}/2026-08-04--spec-v2`]);  // the other run's artefact is not here
+	assert.deepEqual(byRepo['drive:Product'].deliverables, [`perspective/deliverables/${SLUG}/2026-08-04--spec-v2`]);  // the other run's artefact is not here
 	assert.equal(byRepo['mail:acme.example'].started, '2026-08-03');
 });

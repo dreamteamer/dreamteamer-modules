@@ -1,21 +1,21 @@
-# world/projects — A LOGICAL PROJECT, OBSERVED. Not `projects` (a delivery effort a person authored,
+# perspective/projects — A LOGICAL PROJECT, OBSERVED. Not `projects` (a delivery effort a person authored,
 # with a plan under it) and not an Asana
 # project (a board someone made): this is the bounded effort the EVIDENCE shows a contributor working
 # on, inferred from the repos they commit to, the ticket boards their tickets sit in, and the topics
 # their activities share. Activities point at it; the perspective lists them inline.
 #
 # ⚠ THE OBSERVED HALF OF `projects`, IN THE SAME SHAPE AND IN A SEPARATE STORE — see
-# `world/users.real` for the whole argument, which holds identically here. `real` is the one-way,
+# `perspective/users.real` for the whole argument, which holds identically here. `real` is the one-way,
 # soft join to the authored record; everything from `session_count` down is what OBSERVING is and has
 # no counterpart in the real collection, because nobody measures a plan they are still writing.
-name: perspective/world/projects
+name: perspective/projects
 templates: [collection-templates/perspective-observation]
 description: A logical project a contributor's work clusters into — inferred from repos, ticket boards and topics, never declared. The observed half of `projects`.
 use_when: >-
   the projects pass groups activities into the efforts they belong to; an activity needs its `project`;
   asked what a contributor's work IS, at the level above tasks — list here by how many activities point at them. Search
   before creating: an Asana board and a repo for the same effort are one project with two `sources`
-storage: { path: data/perspective/world/projects, codec: md, shape: file, suffix: project }
+storage: { path: data/perspective/projects, codec: md, shape: file, suffix: project }
 id:
   generate: "{{ contributor }}/{{ name | slug }}"
   pattern: "^[a-z0-9-]+/[a-z0-9-]+$"
@@ -25,7 +25,7 @@ schema:
   properties:
     retrospective: { type: string, x-reference: perspective/retrospective-sessions, description: The retrospective session that FIRST wrote this record. }
     last_seen_in: { type: string, x-reference: perspective/retrospective-sessions, description: 'The most recent session that confirmed or updated it. Absent means exactly one session has ever touched it, which is how "new since last time" is answered without a diff.' }
-    contributor: { type: string, pattern: '^[a-z0-9-]+$', description: 'WHOSE this is, as a slug — and the FIRST SEGMENT OF THE ID. That is what makes a second retrospective UPDATE this record instead of writing one beside it. A plain slug rather than a reference, because an id segment cannot be one; the person''s own observed-world record is perspective/world/users/<contributor>/<their-name-slug>.' }
+    contributor: { type: string, pattern: '^[a-z0-9-]+$', description: 'WHOSE this is, as a slug — and the FIRST SEGMENT OF THE ID. That is what makes a second retrospective UPDATE this record instead of writing one beside it. A plain slug rather than a reference, because an id segment cannot be one; the person''s own observed-world record is perspective/users/<contributor>/<their-name-slug>.' }
     name: { type: string, description: What the person would call the project. }
     # ── THE SHAPE `projects` HAS ───────────────────────────────────────────────────────────────────
     # `code`, `company`, `lead` and `real` are the real collection's own words, so the two read as one
@@ -48,7 +48,7 @@ schema:
         workspace with no CRM leaves it empty and nothing dangles.
     lead:
       type: string
-      x-reference: perspective/world/users
+      x-reference: perspective/users
       x-inverse: led_projects
       description: >-
         Who the evidence shows accountable — the person with most of the commits, the ticket owner,
@@ -61,7 +61,7 @@ schema:
       description: >-
         The `projects` record this observed effort appears to BE — the one-way, soft join to the world
         a person authored. A PROPOSAL, set only on a confirmed match. The argument for one-way and for
-        soft is written out once, on `perspective/world/users.real`.
+        soft is written out once, on `perspective/users.real`.
     kind:
       type: string
       enum: [product, client, internal, venture, platform, unknown]
@@ -76,7 +76,7 @@ schema:
       x-inverse: projects
     collaborators:
       type: array
-      items: { type: string, x-reference: perspective/world/users }
+      items: { type: string, x-reference: perspective/users }
       x-inverse: projects
     # ⚠ `started`/`ended`, NOT `starts`/`ends`, and the tense is the whole distinction. The real
     # collection's `starts` is a PLAN — a date somebody chose, in the future when they wrote it. These

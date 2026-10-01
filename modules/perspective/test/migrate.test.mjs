@@ -99,7 +99,7 @@ test('planning writes nothing at all', () => {
 test('model records re-key to the contributor; run-layer records keep the id they have', () => {
 	const ws = oldWorkspace();
 	apply(ws, plan(ws));
-	assert.ok(exists(ws, `data/perspective/world/activities/${SLUG}/2026-03-04--rewrote-auth.activity.md`));
+	assert.ok(exists(ws, `data/perspective/activities/${SLUG}/2026-03-04--rewrote-auth.activity.md`));
 	assert.ok(exists(ws, `data/perspective/questions/${RUN}/001.question.md`));
 	assert.ok(exists(ws, `data/perspective/proposals/${RUN}/collection--deploy-log.proposal.md`));
 	assert.ok(!exists(ws, 'data/introspection'), 'the old tree is gone, not copied');
@@ -120,7 +120,7 @@ test('the perspective, whose whole id was the run, becomes the contributor', () 
 test('both old link fields become retrospective, and contributor is inserted beside it', () => {
 	const ws = oldWorkspace();
 	apply(ws, plan(ws));
-	const a = read(ws, `data/perspective/world/activities/${SLUG}/2026-03-04--rewrote-auth.activity.md`);
+	const a = read(ws, `data/perspective/activities/${SLUG}/2026-03-04--rewrote-auth.activity.md`);
 	assert.match(a, new RegExp(`^retrospective: perspective/retrospective-sessions/${RUN}$`, 'm'));
 	assert.match(a, new RegExp(`^contributor: ${SLUG}$`, 'm'));
 	assert.doesNotMatch(a, /^introspective:/m);
@@ -163,18 +163,18 @@ test('a field the descriptors no longer declare is dropped, and the drop is repo
 	const ws = oldWorkspace();
 	const p = plan(ws);
 	apply(ws, p);
-	assert.doesNotMatch(read(ws, `data/perspective/world/projects/${SLUG}/northwind-api.project.md`), /^activities_count:/m);
-	assert.ok(p.drops['world/projects.activities_count'] >= 1, `expected the drop to be counted: ${JSON.stringify(p.drops)}`);
+	assert.doesNotMatch(read(ws, `data/perspective/projects/${SLUG}/northwind-api.project.md`), /^activities_count:/m);
+	assert.ok(p.drops['projects.activities_count'] >= 1, `expected the drop to be counted: ${JSON.stringify(p.drops)}`);
 });
 
 test('a reference to a re-keyed record follows it, in the body as well as the frontmatter', () => {
 	const ws = oldWorkspace();
 	apply(ws, plan(ws));
-	const a = read(ws, `data/perspective/world/activities/${SLUG}/2026-03-04--rewrote-auth.activity.md`);
-	assert.match(a, new RegExp(`perspective/world/activities/${SLUG}/2026-02-01--spiked-auth`), 'the body reference followed');
-	assert.match(a, new RegExp(`^project: perspective/world/projects/${SLUG}/northwind-api$`, 'm'));
+	const a = read(ws, `data/perspective/activities/${SLUG}/2026-03-04--rewrote-auth.activity.md`);
+	assert.match(a, new RegExp(`perspective/activities/${SLUG}/2026-02-01--spiked-auth`), 'the body reference followed');
+	assert.match(a, new RegExp(`^project: perspective/projects/${SLUG}/northwind-api$`, 'm'));
 	const f = read(ws, `data/perspective/findings/${SLUG}/workflow--ships-on-fridays.finding.md`);
-	assert.match(f, new RegExp(`- perspective/world/activities/${SLUG}/2026-03-04--rewrote-auth`));
+	assert.match(f, new RegExp(`- perspective/activities/${SLUG}/2026-03-04--rewrote-auth`));
 });
 
 test('evidence keyed by its source gains the contributor segment, derived through that source', () => {
@@ -194,8 +194,8 @@ test('a collection named in prose follows the rename; the WORD in prose does not
 	const f = path.join(ws, `data/introspection/activities/${RUN}/2026-02-01--spiked-auth.activity.md`);
 	fs.appendFileSync(f, `See introspection/deliverables and introspection/questions/${RUN}/* — filed under the introspection module work.\n`);
 	apply(ws, plan(ws));
-	const out = read(ws, `data/perspective/world/activities/${SLUG}/2026-02-01--spiked-auth.activity.md`);
-	assert.match(out, /perspective\/world\/deliverables/,
+	const out = read(ws, `data/perspective/activities/${SLUG}/2026-02-01--spiked-auth.activity.md`);
+	assert.match(out, /perspective\/deliverables/,
 		'a collection cited in prose follows the rename all the way to its CURRENT name — `deliverables` moved into the world namespace in 0.9.0, and a migration that lands a workspace on an intermediate spelling has not migrated it');
 	assert.match(out, new RegExp(`perspective/questions/${RUN}/\\*`), 'a run-layer glob keeps the run id it is keyed by');
 	assert.match(out, /the introspection module work/, 'the WORD in prose is the subject of the work, not a reference');
@@ -249,7 +249,7 @@ test('a workspace that does not compile stops the migration instead of reporting
 	fs.writeFileSync(path.join(ws, 'modules', 'probe', 'package.json'),
 		JSON.stringify({ name: 'probe', dreamteamer: { description: 'a colliding module' } }, null, '\t'));
 	fs.writeFileSync(path.join(ws, 'modules', 'probe', 'ui-views', 'projects.ui-view.yaml'),
-		'path: /projects\ntarget: list\ncollection: collections/perspective/world/projects\nlayout: table\nnav: { label: Projects, order: 99 }\n');
+		'path: /projects\ntarget: list\ncollection: collections/perspective/projects\nlayout: table\nnav: { label: Projects, order: 99 }\n');
 
 	// ⚠ The exit code alone does not discriminate: a broken workspace can fail `check` too, and then
 	// a migration with no compile guard at all still returns 1 — for the wrong reason, having already
@@ -269,7 +269,7 @@ test('a workspace that does not compile stops the migration instead of reporting
 
 	// And the records ARE moved — the migration is idempotent, so the fix is to repair the collision
 	// and run it again, not to unpick anything.
-	assert.ok(fs.existsSync(path.join(ws, 'data', 'perspective', 'world', 'activities')));
+	assert.ok(fs.existsSync(path.join(ws, 'data', 'perspective', 'activities')));
 	fs.rmSync(ws, { recursive: true, force: true });
 });
 

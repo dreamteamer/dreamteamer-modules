@@ -26,8 +26,7 @@ import yaml from 'js-yaml';
 const COLS = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', '..', '..', 'modules', 'perspective', 'collections', 'perspective');
 const load = (n) => yaml.load(fs.readFileSync(path.join(COLS, `${n}.collection.yaml`), 'utf8'));
 /** Every descriptor under `collections/perspective/`, by its name RELATIVE to that folder — so
- *  `world/users.collection.yaml` is `world/users`. ⚠ Recursive, because `compile` enumerates
- *  `collections/` recursively and a flat readdir here would stop testing five collections. */
+ *  `users.collection.yaml` is `users`. Recursive, because `compile` enumerates `collections/` recursively. */
 function descriptorNames(dir, prefix = '') {
 	return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
 		e.isDirectory() ? descriptorNames(path.join(dir, e.name), `${prefix}${e.name}/`)
@@ -46,57 +45,49 @@ const invOf = (spec) => spec?.['x-inverse'] ?? spec?.items?.['x-inverse'];
 
 /** owner field → the mirror it must stamp on its target. */
 const MIRRORS = {
-	'world/activities.project': 'activities',
-	'world/activities.lane': 'activities',
-	'world/activities.phase': 'activities',
-	'world/activity-lanes.project': 'lanes',
-	'world/activities.lead': 'led_activities',
-	'world/activities.topics': 'activities',
-	'world/activities.collaborators': 'activities',
-	'world/activities.sessions': 'activities',
-	'world/activities.tickets': 'activities',
-	'world/activities.threads': 'activities',
-	'world/activities.deliverables': 'activities',
-	'world/tasks.ticket': 'task',
-	'world/tasks.activity': 'tasks',
-	'world/tasks.project': 'tasks',
-	'world/tasks.assignee': 'tasks',
-	'world/projects.lead': 'led_projects',
+	'activities.project': 'activities',
+	'activities.lead': 'led_activities',
+	'activities.topics': 'activities',
+	'activities.collaborators': 'activities',
+	'activities.sessions': 'activities',
+	'activities.tickets': 'activities',
+	'activities.threads': 'activities',
+	'activities.deliverables': 'activities',
+	'projects.lead': 'led_projects',
 	// The vocabulary pointed at the OBSERVED world. A union, and mirrored — every target is a
 	// collection this module owns, so the mirror is not a write into somebody else's schema.
 	'concepts.classifies': 'concepts',
-	'world/decisions.project': 'decisions',
-	'world/decisions.topics': 'decisions',
-	'world/decisions.collaborators': 'decisions',
-	'world/decisions.conversations': 'decisions',
+	'decisions.project': 'decisions',
+	'decisions.topics': 'decisions',
+	'decisions.collaborators': 'decisions',
+	'decisions.conversations': 'decisions',
 	// ⚠ `decided`, not `decisions` — `collaborators` already stamps `decisions` on the same target, and
 	// one field cannot hold two relations. The names also carry the distinction: what a person DECIDED
 	// against what they were merely IN.
-	'world/decisions.decider': 'decided',
-	'world/decisions.activity': 'decisions',
-	'world/deliverables.project': 'deliverables',
-	'world/phases.project': 'phases',
+	'decisions.decider': 'decided',
+	'decisions.activity': 'decisions',
+	'deliverables.project': 'deliverables',
 	// the vocabulary pair — a term points at the meaning it expresses, and at the records it is
 	// load-bearing in. Both mirrors land on collections this module owns.
 	'terms.concept': 'terms',
 	'terms.mentions': 'terms',
-	'world/projects.collaborators': 'projects',
-	'world/projects.topics': 'projects',
+	'projects.collaborators': 'projects',
+	'projects.topics': 'projects',
 	'workflows.activities': 'workflows',
 	'workflows.collaborators': 'workflows',
 	'workflows.proposed_as': 'workflow',
-	'world/goals.projects': 'goals',
-	'world/goals.activities': 'goals',
-	'world/goals.decisions': 'goals',
-	'world/goals.findings': 'goals',
-	'world/goals.topics': 'goals',
+	'goals.projects': 'goals',
+	'goals.activities': 'goals',
+	'goals.decisions': 'goals',
+	'goals.findings': 'goals',
+	'goals.topics': 'goals',
 	'insights.findings': 'insights',
 	'proposals.justified_by': 'proposals',
 	'questions.from_finding': 'questions',
 	'topics.concepts': 'topics',
 	'assumptions.tested_by': 'tests_assumption',
-	'world/deliverables.topics': 'deliverables',
-	'world/users.sources': 'collaborators',
+	'deliverables.topics': 'deliverables',
+	'users.sources': 'collaborators',
 	'tickets.assignee': 'tickets',
 	'gates.retrospective': 'gates',
 	'proposals.retrospective': 'proposals',
@@ -123,9 +114,9 @@ const ONE_WAY = {
 	'activity-weeks.source': '449 weeks on the same few sources',
 	'tickets.source': '933 tickets on one asana source',
 	'threads.source': 'a mailbox source would list every thread',
-	'world/deliverables.source': 'a drive source would list every file',
-	'world/activities.repos': 'repos is a core collection this module does not own',
-	'world/projects.repos': 'same — core owns repos',
+	'deliverables.source': 'a drive source would list every file',
+	'activities.repos': 'repos is a core collection this module does not own',
+	'projects.repos': 'same — core owns repos',
 	'conversations.repo': 'same',
 	'sources.repo': 'same',
 	'perspectives.dsl': 'the perspective is one per contributor; a concept already carries `contributor`',
@@ -140,20 +131,17 @@ const ONE_WAY = {
 	// be a finding writing into somebody else's schema. Soft as well (`x-reference-soft`), so an
 	// absent collection and an absent record are both tolerated; `bin/check-records.mjs` warns rather
 	// than the engine failing.
-	'world/users.real': 'the real world never points back at a finding',
-	'world/users.company': 'a peer — companies belongs to another module',
-	'world/projects.real': 'same',
-	'world/projects.company': 'same — companies is a peer',
-	'world/activities.real': 'same',
-	'world/activity-lanes.real': 'same',
-	'world/tasks.real': 'same',
-	'world/goals.real': 'same',
-	'world/decisions.real': 'same',
-	'world/deliverables.real': 'same',
-	'world/phases.real': 'same',
-	'world/users.contact': 'same — contacts is a peer, not ours to mirror onto',
+	'users.real': 'the real world never points back at a finding',
+	'users.company': 'a peer — companies belongs to another module',
+	'projects.real': 'same',
+	'projects.company': 'same — companies is a peer',
+	'activities.real': 'same',
+	'goals.real': 'same',
+	'decisions.real': 'same',
+	'deliverables.real': 'same',
+	'users.contact': 'same — contacts is a peer, not ours to mirror onto',
 	'retrospective-sessions.contact': 'same field, same target, same reason — the run record points at the same CRM collection the collaborator does',
-	'world/activities.meetings': 'same — `meetings` is a PEER the consumer owns; the meetings source reads it as evidence and may not stamp a field onto somebody else\'s collection',
+	'activities.meetings': 'same — `meetings` is a PEER the consumer owns; the meetings source reads it as evidence and may not stamp a field onto somebody else\'s collection',
 };
 
 test('every reference is either mirrored or listed as deliberately one-way', () => {
@@ -213,8 +201,8 @@ for (const [key, [target, mirror]] of Object.entries(MIRROR_ON_TARGET)) {
 test('no count duplicates the length of a mirror', () => {
 	// A stored count beside a relation the engine maintains is a second copy of one fact. Counts
 	// that SUM across records (a project's commits, a collaborator's evidence) are real work and stay.
-	assert.ok(!('activities_count' in propsOf('world/projects')),
-		'world/projects.activities_count is the length of its activities mirror — the mirror is the count');
+	assert.ok(!('activities_count' in propsOf('projects')),
+		'projects.activities_count is the length of its activities mirror — the mirror is the count');
 });
 
 test('every list_fields entry names a field that exists', () => {

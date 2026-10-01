@@ -27,7 +27,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { DATA } from '../lib/vault.mjs';
-import { listRecords, readRecord, writeRecord, contributorOf} from '../lib/records.mjs';
+import { listRecords, readRecord, writeRecord, contributorOf, collectionDir } from '../lib/records.mjs';
 
 const argv = process.argv.slice(2);
 const flag = (n) => argv.includes(`--${n}`);
@@ -55,7 +55,7 @@ const ms = (v) => {
 
 // ── the conversation index ─────────────────────────────────────────────────────────────────────
 // Only sessions with BOTH ends parse into the index: a window needs two ends to contain anything.
-const convRoot = path.join(dataRoot, 'perspective', 'conversations');
+const convRoot = collectionDir('conversations', dataRoot);
 const windows = [];
 for (const file of listRecords(convRoot)) {
 	const { fields } = readRecord(file);
@@ -91,7 +91,7 @@ function logRow(sourceRef) {
 const tally = { direct: 0, contained: 0, disambiguated: 0, ambiguous: 0, 'no-window': 0, 'not-a-session': 0, 'already-set': 0 };
 const notes = [];
 
-for (const file of listRecords(path.join(dataRoot, 'perspective', 'decisions', who()))) {
+for (const file of listRecords(path.join(collectionDir('decisions', dataRoot), who()))) {
 	const rec = readRecord(file);
 	const { fields } = rec;
 	const id = path.basename(file).replace(/\.decision\.md$/, '');

@@ -8,8 +8,7 @@
 # profiled her as nearly idle and been confidently wrong, which is worse than having no profile.
 #
 # ⚠ THE OBSERVED HALF OF `deliverables`, IN THE SAME SHAPE AND IN A SEPARATE STORE — the argument is
-# written out once, on `world/users.real`. It MOVED here from `perspective/world/deliverables` on
-# 2026-09-11, when the world layer grew to cover the whole projects model.
+# written out once, on `perspective/users.real`.
 #
 # ⚠ THE TWO `kind` ENUMS DIFFER ON PURPOSE, and the difference IS the authority. This one is MIME —
 # `doc`, `sheet`, `slides` — because a store read knows a file's type and cannot know its purpose.
@@ -17,7 +16,7 @@
 # somebody an artefact knows exactly what it is promising and not what file it will arrive as.
 # Spelling them alike would assert the two mean the same thing in the one place the difference is
 # visible for free. Same for `last_touched_by` against `owner`: touched, not authored, not accountable.
-name: perspective/world/deliverables
+name: perspective/deliverables
 templates: [collection-templates/perspective-observation]
 description: An artefact a contributor produced — a document, deck, sheet or video — as the evidence store found it.
 use_when: >-
@@ -25,7 +24,7 @@ use_when: >-
   of it; asked what someone actually produced rather than what they were assigned — list here by
   last_touched_on. ⚠ For a contributor whose work is documents rather than tickets this is the primary
   evidence, and its absence is a fact about the SOURCE, never about the person
-storage: { path: data/perspective/world/deliverables, codec: md, shape: file, suffix: deliverable }
+storage: { path: data/perspective/deliverables, codec: md, shape: file, suffix: deliverable }
 id:
   generate: "{{ contributor }}/{{ last_touched_on | date }}--{{ name | slug }}"
   pattern: "^[a-z0-9-]+/\\d{4}-\\d{2}-\\d{2}--[a-z0-9-]+$"
@@ -35,7 +34,7 @@ schema:
   properties:
     retrospective: { type: string, x-reference: perspective/retrospective-sessions, description: The retrospective session that FIRST wrote this record. }
     last_seen_in: { type: string, x-reference: perspective/retrospective-sessions, description: 'The most recent session that confirmed or updated it. Absent means exactly one session has ever touched it, which is how "new since last time" is answered without a diff.' }
-    contributor: { type: string, pattern: '^[a-z0-9-]+$', description: 'WHOSE this is, as a slug — and the FIRST SEGMENT OF THE ID. That is what makes a second retrospective UPDATE this record instead of writing one beside it. A plain slug rather than a reference, because an id segment cannot be one; the person''s own observed-world record is perspective/world/users/<contributor>/<their-name-slug>.' }
+    contributor: { type: string, pattern: '^[a-z0-9-]+$', description: 'WHOSE this is, as a slug — and the FIRST SEGMENT OF THE ID. That is what makes a second retrospective UPDATE this record instead of writing one beside it. A plain slug rather than a reference, because an id segment cannot be one; the person''s own observed-world record is perspective/users/<contributor>/<their-name-slug>.' }
     name: { type: string, description: The artefact's own title, as the store holds it — never retitled. }
     kind:
       type: string
@@ -74,7 +73,7 @@ schema:
     # ── THE SPINE, joined in after the projects pass ───────────────────────────────────────────────
     project:
       type: string
-      x-reference: perspective/world/projects
+      x-reference: perspective/projects
       x-inverse: deliverables
       description: >-
         The observed effort this artefact came out of, carried from whichever activity cites it. RE-POINTED
@@ -89,7 +88,7 @@ schema:
         said it owed. A PROPOSAL, set only on a confirmed match, and one of the most useful in the module:
         an artefact with no authored counterpart is work nobody was promised, and a planned deliverable with
         no observed one is a promise with nothing behind it. The argument for one-way and for soft is written
-        out once, on `perspective/world/users.real`.
+        out once, on `perspective/users.real`.
     content:
       type: string
       format: markdown

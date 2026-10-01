@@ -27,7 +27,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { DATA } from '../lib/vault.mjs';
-import { listRecords, readRecord, writeRecord, recordPath, contributorOf } from '../lib/records.mjs';
+import { listRecords, readRecord, writeRecord, recordPath, contributorOf, collectionDir, recordId } from '../lib/records.mjs';
 
 const argv = process.argv.slice(2);
 const flag = (n) => argv.includes(`--${n}`);
@@ -48,10 +48,8 @@ const dryRun = flag('dry-run');
 const force = flag('force');
 const AUTHOR = 'scripts/infer-goals@1';
 
-const dir = (c) => path.join(dataRoot, 'perspective', c, who());
-const idOf = (file, coll, suffix) =>
-	path.relative(path.join(dataRoot, 'perspective', coll), file).replace(new RegExp(`\\.${suffix}\\.md$`), '');
-const load = (coll, suffix) => listRecords(dir(coll)).map((f) => ({ id: idOf(f, coll, suffix), file: f, ...readRecord(f) }));
+/** This contributor's records in `perspective/<coll>`, each with its id. */
+const load = (coll) => listRecords(path.join(collectionDir(coll, dataRoot), who())).map((f) => ({ id: recordId(coll, f, dataRoot), file: f, ...readRecord(f) }));
 const day = (v) => (v ? String(v).slice(0, 10) : '');
 const uniq = (a) => [...new Set(a.filter(Boolean))].sort();
 /** Dates and strings compare equal when they mean the same day; everything else structurally. */
@@ -70,9 +68,9 @@ const norm = (v) => {
 };
 const same = (a, b) => JSON.stringify(norm(a)) === JSON.stringify(norm(b));
 
-const activities = load('world/activities', 'activity');
-const decisions = load('decisions', 'decision');
-const projects = load('world/projects', 'project');
+const activities = load('activities');
+const decisions = load('decisions');
+const projects = load('projects');
 
 // ── candidates ────────────────────────────────────────────────────────────────────────────────
 // The arc is the unit: a project's activities and the decisions those activities' evidence carries.
@@ -96,10 +94,10 @@ function candidates() {
 		const dates = [...g.activities.map((a) => day(a.fields.started)), ...g.decisions.map((d) => day(d.fields.decided_on))].filter(Boolean).sort();
 		const row = {
 			key,
-			project: key === '(unassigned)' ? '' : `perspective/world/projects/${who()}/${key}`,
+			project: key === '(unassigned)' ? '' : `perspective/projects/${who()}/${key}`,
 			project_name: projects.find((p) => p.id.endsWith(`/${key}`))?.fields.name ?? key,
-			activities: g.activities.map((a) => `perspective/world/activities/${a.id}`),
-			decisions: g.decisions.map((d) => `perspective/world/decisions/${d.id}`),
+			activities: g.activities.map((a) => `perspective/activities/${a.id}`),
+			decisions: g.decisions.map((d) => `perspective/decisions/${d.id}`),
 			topics: uniq(g.topics),
 			activity_names: g.activities.map((a) => String(a.fields.name ?? '')),
 			decision_names: g.decisions.map((d) => String(d.fields.name ?? '')),
@@ -116,7 +114,7 @@ function candidates() {
 function attach(rows) {
 	const byKey = new Map(rows.map((r) => [r.key, r]));
 	let filled = 0, unchanged = 0, unmatched = 0;
-	for (const g of load('world/goals', 'goal')) {
+	for (const g of load('goals')) {
 		const key = g.fields.from_candidate ? String(g.fields.from_candidate) : '';
 		const row = byKey.get(key);
 		if (!row) { unmatched++; continue; }
@@ -136,7 +134,7 @@ function attach(rows) {
 		// which `tests/idempotency.test.mjs` would then fail, correctly.
 		if (same(next, g.fields)) { unchanged++; continue; }
 		filled++;
-		if (!dryRun) writeRecord(recordPath('world/goals', g.id, 'goal', dataRoot), next, g.body);
+		if (!dryRun) writeRecord(recordPath('goals', g.id, 'goal', dataRoot), next, g.body);
 	}
 	return { filled, unchanged, unmatched };
 }

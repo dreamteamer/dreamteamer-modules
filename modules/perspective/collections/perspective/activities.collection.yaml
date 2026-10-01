@@ -1,20 +1,20 @@
-# world/activities — A BOUNDED PIECE OF WORK, RECONSTRUCTED. Sessions, commits and tickets clustered
+# perspective/activities — A BOUNDED PIECE OF WORK, RECONSTRUCTED. Sessions, commits and tickets clustered
 # around topics into the thing a person would call 'that task'. Rendered as a gantt (x started, y
 # group-by). Commits are SHAs as text — git holds the record, this holds the pointer.
 #
 # ⚠ THE OBSERVED HALF OF `activities`, IN THE SAME SHAPE AND IN A SEPARATE STORE — the argument is
-# written out once, on `world/users.real`. Two shapes are deliberately NOT copied from the real
+# written out once, on `perspective/users.real`. Two shapes are deliberately NOT copied from the real
 # collection and both are the same distinction: `kind: work|gate` (a gate is something a person
 # DECIDES to judge — evidence never contains one) and `starts`/`ends` (a plan is written ahead; these
 # are past tense). What IS copied is the relation spine — `project`, `lead` — and `real`.
-name: perspective/world/activities
+name: perspective/activities
 templates: [collection-templates/perspective-observation]
 description: A bounded piece of a contributor's work reconstructed from sessions, commits and tickets around one or more topics.
 use_when: >-
   the cluster stage writes them; a workflow cites them as its evidence; asked what a contributor was
   doing in a period and with whom — list here by started, group by topic or collaborator. A record
   with collaborators is collaborative work; a run of them is a collaborative workflow
-storage: { path: data/perspective/world/activities, codec: md, shape: file, suffix: activity }
+storage: { path: data/perspective/activities, codec: md, shape: file, suffix: activity }
 id:
   generate: "{{ contributor }}/{{ started | date }}--{{ name | slug }}"
   pattern: "^[a-z0-9-]+/\\d{4}-\\d{2}-\\d{2}--[a-z0-9-]+$"
@@ -24,7 +24,7 @@ schema:
   properties:
     retrospective: { type: string, x-reference: perspective/retrospective-sessions, description: The retrospective session that FIRST wrote this record. }
     last_seen_in: { type: string, x-reference: perspective/retrospective-sessions, description: 'The most recent session that confirmed or updated it. Absent means exactly one session has ever touched it, which is how "new since last time" is answered without a diff.' }
-    contributor: { type: string, pattern: '^[a-z0-9-]+$', description: 'WHOSE this is, as a slug — and the FIRST SEGMENT OF THE ID. That is what makes a second retrospective UPDATE this record instead of writing one beside it. A plain slug rather than a reference, because an id segment cannot be one; the person''s own observed-world record is perspective/world/users/<contributor>/<their-name-slug>.' }
+    contributor: { type: string, pattern: '^[a-z0-9-]+$', description: 'WHOSE this is, as a slug — and the FIRST SEGMENT OF THE ID. That is what makes a second retrospective UPDATE this record instead of writing one beside it. A plain slug rather than a reference, because an id segment cannot be one; the person''s own observed-world record is perspective/users/<contributor>/<their-name-slug>.' }
     name: { type: string, description: What the work was, as a person would name the task. }
     # ── WHOSE ────────────────────────────────────────────────────────────────────────────────────
     # ⚠ THE ORG AXIS, AND IT IS ONE ID SEGMENT RATHER THAN A SECOND COPY OF THE MODEL. A run used to BE a
@@ -34,52 +34,27 @@ schema:
     # data structure, don't multiply".
     #
     # So the person is the FIRST SEGMENT OF THE ID, and `contributor` above carries it as a bare slug.
-    # It WAS a `perspective/world/users` reference, for one day: an id segment cannot be one, and the
+    # It WAS a `perspective/users` reference, for one day: an id segment cannot be one, and the
     # slug pattern on the field is what refuses it now rather than a comment. The person's own record
-    # is `perspective/world/users/<contributor>/<their-name-slug>` — one hop, derived, never stored
+    # is `perspective/users/<contributor>/<their-name-slug>` — one hop, derived, never stored
     # twice. `retrospective` still says which RUN produced this, a different question that stays.
     #
     # Empty means the run never said, not "everyone" — and a record whose contributor cannot be
     # determined is not written, because there would be no id to write it under.
-    # ⚠ `started`/`ended`, NOT `starts`/`ends` — see the same note on `world/projects`. A plan rung is
+    # ⚠ `started`/`ended`, NOT `starts`/`ends` — see the same note on `perspective/projects`. A plan rung is
     # scheduled; this is the window evidence exists in.
     started: { type: string, format: date, description: 'The gantt''s x. First evidence date — past tense on purpose; `activities.starts` is a plan.' }
     ended: { type: string, format: date, description: Last evidence date. Absent while ongoing. }
     status: { type: string, enum: [done, ongoing, abandoned, unknown], default: unknown, description: OBSERVED from the evidence, never declared. }
     project:
       type: string
-      x-reference: perspective/world/projects
+      x-reference: perspective/projects
       x-inverse: activities
       description: The logical project this work belongs to, assigned by the projects pass.
-    # ⚠ RE-POINTED, like `project` above and for the same reason: the real collection's `lane` names
-    # `activity-lanes`, and an observed activity's must name `perspective/world/activity-lanes`. A
-    # record a run FOUND wired into a band a person WROTE would make the two layers inseparable —
-    # `real` is the only crossing there is, and `tests/world-model.test.mjs` holds that over the whole
-    # namespace rather than per field.
-    lane:
-      type: string
-      x-reference: perspective/world/activity-lanes
-      x-inverse: activities
-      description: >-
-        The observed band this work ran in, assigned by the projects pass after `project`. OBSERVED, never
-        appointed; the real collection's `lane` is where a planner put the rung. Empty is normal — plenty of
-        reconstructed work belongs to no visible track.
-    # ⚠ THE OTHER AXIS, AND IT IS THE SAME PAIR THE REAL COLLECTION HAS: `lane` is WHICH TRACK, `phase`
-    # is WHEN. Re-pointed into this layer for the reason written on `lane` above — a record a run FOUND
-    # may not be wired into a stretch a person SCHEDULED, and `real` is the only crossing there is.
-    phase:
-      type: string
-      x-reference: perspective/world/phases
-      x-inverse: activities
-      description: >-
-        The observed era of its project this work falls in, assigned by the projects pass after `project`.
-        OBSERVED, never scheduled; the real collection's `phase` is where a planner put the rung. Empty is
-        normal — a project whose character never visibly changed has one phase or none, and forcing every
-        activity into an era nobody could see is the failure this field invites.
     # ── THE SHAPE `activities` HAS ─────────────────────────────────────────────────────────────────
     lead:
       type: string
-      x-reference: perspective/world/users
+      x-reference: perspective/users
       x-inverse: led_activities
       description: >-
         Who the evidence shows drove this — most of the commits, the ticket's assignee, the person in
@@ -92,7 +67,7 @@ schema:
       description: >-
         The `activities` record this observed work appears to BE — the one-way, soft join to the plan
         rung a person authored. A PROPOSAL, set only on a confirmed match. The argument for one-way and
-        for soft is written out once, on `perspective/world/users.real`.
+        for soft is written out once, on `perspective/users.real`.
     topics:
       type: array
       items: { type: string, x-reference: perspective/topics }
@@ -102,7 +77,7 @@ schema:
     # target, same cardinality, different verb, and the verb is the fact.
     collaborators:
       type: array
-      items: { type: string, x-reference: perspective/world/users }
+      items: { type: string, x-reference: perspective/users }
       x-inverse: activities
     collaborative: { type: boolean, default: false, description: 'DERIVED: true iff collaborators is non-empty. check-records enforces the agreement.' }
     from_candidate:
@@ -132,7 +107,7 @@ schema:
     # reconstructed from 53 specs could cite nothing at all and read as an unevidenced assertion.
     deliverables:
       type: array
-      items: { type: string, x-reference: perspective/world/deliverables }
+      items: { type: string, x-reference: perspective/deliverables }
       x-inverse: activities
       description: The artefacts this work produced, where a pass could tell.
     threads:
@@ -189,6 +164,6 @@ schema:
       enum: [low, normal, high]
       default: normal
       description: How much to trust this record. When low, the reason goes in creation_context.
-list_fields: [name, started, ended, status, phase, lane, lead, collaborative, real]
+list_fields: [name, started, ended, status, lead, collaborative, real]
 icon: pulse   # not `milestone` — an observed activity is a TRACE of work; `plan/activities` owns the plan rung
 order: 80   # nav position — the model it reconstructed; the pipeline order, ten apart so one can be inserted without renumbering

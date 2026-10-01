@@ -48,23 +48,23 @@ export function fixtureWorkspace() {
 	}
 
 	// a project with three activities and one decision — enough for an arc infer-goals can read
-	writeRecord(recordPath('world/projects', `${SLUG}/northwind-api`, 'project', data),
+	writeRecord(recordPath('projects', `${SLUG}/northwind-api`, 'project', data),
 		{ retrospective: REF, contributor: SLUG, name: 'northwind api', kind: 'product' });
 	// ⚠ Each activity carries the COMMIT it was reconstructed from. That is the join
 	// `derive-decision-projects` uses — a decision belongs to the project of the activity citing the
 	// same artefact, never to "the project active that week". Its repo, and so its week, comes from
 	// `from_candidate`, which the clustering pass sets; the idempotency gate sets it there.
 	for (const [i, name] of ['rewrote the auth flow', 'split the token store', 'cut the retry loop'].entries()) {
-		writeRecord(recordPath('world/activities', `${SLUG}/2026-03-0${i + 1}--${name.replace(/ /g, '-')}`, 'activity', data),
+		writeRecord(recordPath('activities', `${SLUG}/2026-03-0${i + 1}--${name.replace(/ /g, '-')}`, 'activity', data),
 			{ retrospective: REF, contributor: SLUG, name, started: '2026-03-04', ended: '2026-03-04',
-			  project: `perspective/world/projects/${SLUG}/northwind-api`,
+			  project: `perspective/projects/${SLUG}/northwind-api`,
 			  tickets: i === 0 ? [`perspective/tickets/${SLUG}/asana--northwind/1`] : undefined,
 			  commits: [shas['northwind-api']] });
 	}
 	writeRecord(recordPath('decisions', `${SLUG}/2026-03-11--stop-issuing-long-lived-tokens`, 'decision', data),
 		{ retrospective: REF, contributor: SLUG, name: 'stop issuing long-lived tokens',
 		  source_kind: 'git-commit', source_ref: shas['northwind-api'], decided_on: '2026-03-11',
-		  project: `perspective/world/projects/${SLUG}/northwind-api` });
+		  project: `perspective/projects/${SLUG}/northwind-api` });
 
 	// one ticket an activity cites, so `derive-tasks` has a commitment to model. The asana source is a
 	// record too — a reader refuses to run against a source that is not there, and so does this pass's
@@ -74,10 +74,10 @@ export function fixtureWorkspace() {
 	writeRecord(recordPath('tickets', `${SLUG}/asana--northwind/1`, 'ticket', data),
 		{ retrospective: REF, contributor: SLUG, source: `perspective/sources/${SLUG}/asana--northwind`,
 		  external_id: '1', title: 'Rotate the signing key', status: 'open', created_on: '2026-03-02',
-		  assignee: `perspective/world/users/${SLUG}/dana-oren`, assignee_handle: HANDLE });
+		  assignee: `perspective/users/${SLUG}/dana-oren`, assignee_handle: HANDLE });
 
 	// one collaborator, so derive passes have somebody to resolve against
-	writeRecord(recordPath('world/users', `${SLUG}/dana-oren`, 'user', data),
+	writeRecord(recordPath('users', `${SLUG}/dana-oren`, 'user', data),
 		{ retrospective: REF, contributor: SLUG, name: 'Dana Oren', handles: [HANDLE] });
 
 	return { ws, data, home, repos, scratch };

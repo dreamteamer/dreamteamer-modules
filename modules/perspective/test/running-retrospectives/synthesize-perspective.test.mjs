@@ -18,7 +18,7 @@ const RUN = 'perspective/retrospective-sessions/2026-09-07--fx';
 const BASE = '2026-09-07--fx';
 const SLUG = 'fx';   // the contributor — evidence and model ids are keyed by it, not by the run
 const SOURCE = `perspective/sources/${SLUG}/claude-transcripts--default`;
-const PROJECT = `perspective/world/projects/${SLUG}/invoice-parser`;
+const PROJECT = `perspective/projects/${SLUG}/invoice-parser`;
 const BODY = '# the perspective\n\nWritten by the model. This paragraph must survive the script.';
 
 // A description longer than the 200 chars the inline `collections` entry keeps — the cut is asserted.
@@ -54,14 +54,14 @@ function fixture() {
 	conversation('three', { skills_loaded: ['bar'] });
 
 	// Two activities belong to the project, one does not — that is what `projects[].activities` counts.
-	writeRecord(recordPath('world/activities', `${SLUG}/2026-08-01--invoice-parser`, 'activity', data), { retrospective: RUN, name: 'invoice parser', started: '2026-08-01', ended: '2026-08-04', project: PROJECT });
-	writeRecord(recordPath('world/activities', `${SLUG}/2026-08-03--parser-tests`, 'activity', data), { retrospective: RUN, name: 'parser tests', started: '2026-08-03', ended: '2026-08-04', project: PROJECT });
-	writeRecord(recordPath('world/activities', `${SLUG}/2026-08-10--dashboard`, 'activity', data), { retrospective: RUN, name: 'dashboard', started: '2026-08-10', ended: '2026-08-12' });
-	writeRecord(recordPath('world/projects', `${SLUG}/invoice-parser`, 'project', data), { retrospective: RUN, name: 'invoice parser', kind: 'product', commit_count: 12, ticket_count: 3 },
+	writeRecord(recordPath('activities', `${SLUG}/2026-08-01--invoice-parser`, 'activity', data), { retrospective: RUN, name: 'invoice parser', started: '2026-08-01', ended: '2026-08-04', project: PROJECT });
+	writeRecord(recordPath('activities', `${SLUG}/2026-08-03--parser-tests`, 'activity', data), { retrospective: RUN, name: 'parser tests', started: '2026-08-03', ended: '2026-08-04', project: PROJECT });
+	writeRecord(recordPath('activities', `${SLUG}/2026-08-10--dashboard`, 'activity', data), { retrospective: RUN, name: 'dashboard', started: '2026-08-10', ended: '2026-08-12' });
+	writeRecord(recordPath('projects', `${SLUG}/invoice-parser`, 'project', data), { retrospective: RUN, name: 'invoice parser', kind: 'product', commit_count: 12, ticket_count: 3 },
 		'# invoice parser\n\nThe parser that eats supplier PDFs. A second sentence that must not travel.');
 
 	// The contributor's git identities, as read-git's collaborator merge left them.
-	writeRecord(recordPath('world/users', `${SLUG}/fx`, 'user', data), { retrospective: RUN, name: 'FX', handles: ['FX', 'fx@x.test'] });
+	writeRecord(recordPath('users', `${SLUG}/fx`, 'user', data), { retrospective: RUN, name: 'FX', handles: ['FX', 'fx@x.test'] });
 
 	// Two git-repo sources; only one of them has a commits scratch file, and only one carries a remote.
 	writeRecord(recordPath('sources', `${SLUG}/git-repo--parser`, 'source', data),
@@ -180,7 +180,7 @@ test('running twice is stable — the record is byte-identical', () => {
 test('with no activities the period falls back to the conversations, and a missing record is created', () => {
 	const fx = fixture();
 	const { tmp, data } = fx;
-	fs.rmSync(path.join(data, 'perspective', 'world', 'activities'), { recursive: true, force: true });
+	fs.rmSync(path.join(data, 'perspective', 'activities'), { recursive: true, force: true });
 	fs.rmSync(recordPath('perspectives', SLUG, 'perspective', data));
 
 	const r = run(fx);

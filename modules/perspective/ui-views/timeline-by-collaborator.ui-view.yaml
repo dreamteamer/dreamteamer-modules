@@ -23,5 +23,5 @@ nav:
   order: 3
 path: /timeline/by-collaborator
 target: list
-collection: collections/perspective/world/activities
+collection: collections/perspective/activities
 layout: gantt

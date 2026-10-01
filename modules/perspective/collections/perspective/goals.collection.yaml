@@ -1,16 +1,16 @@
-# world/goals — WHAT THE CONTRIBUTOR WAS TRYING TO MAKE TRUE, INFERRED. Not `goals`, which a person
+# perspective/goals — WHAT THE CONTRIBUTOR WAS TRYING TO MAKE TRUE, INFERRED. Not `goals`, which a person
 # DECLARES about their own future and whose `done_when` they wrote. This one is read backwards out of
 # what they actually did: a goal here is the outcome that explains a run of decisions, a project's arc
 # and a cluster of activities, and it is only ever as good as the evidence under it.
 #
 # ⚠ THE OBSERVED HALF OF `goals`, IN THE SAME SHAPE AND IN A SEPARATE STORE — the argument is written
-# out once, on `world/users.real`. It is the world object where the argument bites hardest: every
+# out once, on `perspective/users.real`. It is the world object where the argument bites hardest: every
 # other one is reconstructed from evidence that NAMES its constituents (a commit exists, a ticket
 # exists, a handle exists), while a goal is read out of the SHAPE of what was done and nothing in the
 # evidence ever says "the goal was X". That is why `standing`, `evidence_count` and
-# `needs_confirmation` live here and on `findings` and NOWHERE ELSE in the world namespace — they are
+# `needs_confirmation` live here and on `findings` and NOWHERE ELSE among the observed-world collections — they are
 # not "the finding apparatus every world object needs", they are the apparatus the one BACKWARD
-# inference needs. ⚠ That reading is the fork in this design most open to argument: `world/projects`
+# inference needs. ⚠ That reading is the fork in this design most open to argument: `perspective/projects`
 # is also called inferred, and the line between "inferred from records that name it" and "inferred
 # from the shape of the work" is a judgement, not a measurement.
 #
@@ -19,7 +19,7 @@
 # EXCLUDES something — when knowing it would have let you predict which of two forks the person took.
 # `evidence` is the forcing field, exactly as it is on `findings`, and `standing` may not reach
 # `confirmed` until a person answers a question about it.
-name: perspective/world/goals
+name: perspective/goals
 templates: [collection-templates/perspective-observation]
 description: An outcome a contributor was working toward, inferred from what they actually pursued — never declared by them. The observed half of `goals`.
 use_when: >-
@@ -28,7 +28,7 @@ use_when: >-
   activities and project arcs; search here before re-deriving a purpose from the same records. ⚠ Never
   write one from what the person SAID about themselves — that is an answered question, and it belongs
   on the question
-storage: { path: data/perspective/world/goals, codec: md, shape: file, suffix: goal }
+storage: { path: data/perspective/goals, codec: md, shape: file, suffix: goal }
 id:
   generate: "{{ contributor }}/{{ name | slug }}"
   pattern: "^[a-z0-9-]+/[a-z0-9-]+$"
@@ -38,7 +38,7 @@ schema:
   properties:
     retrospective: { type: string, x-reference: perspective/retrospective-sessions, description: The retrospective session that FIRST wrote this record. }
     last_seen_in: { type: string, x-reference: perspective/retrospective-sessions, description: 'The most recent session that confirmed or updated it. Absent means exactly one session has ever touched it, which is how "new since last time" is answered without a diff.' }
-    contributor: { type: string, pattern: '^[a-z0-9-]+$', description: 'WHOSE this is, as a slug — and the FIRST SEGMENT OF THE ID. That is what makes a second retrospective UPDATE this record instead of writing one beside it. A plain slug rather than a reference, because an id segment cannot be one; the person''s own observed-world record is perspective/world/users/<contributor>/<their-name-slug>.' }
+    contributor: { type: string, pattern: '^[a-z0-9-]+$', description: 'WHOSE this is, as a slug — and the FIRST SEGMENT OF THE ID. That is what makes a second retrospective UPDATE this record instead of writing one beside it. A plain slug rather than a reference, because an id segment cannot be one; the person''s own observed-world record is perspective/users/<contributor>/<their-name-slug>.' }
     name: { type: string, description: 'The outcome in one line, as an OUTCOME and not a task — "the vault runs on any machine", never "port the scripts".' }
     # ── WHOSE ────────────────────────────────────────────────────────────────────────────────────
     # ⚠ THE ORG AXIS, AND IT IS ONE ID SEGMENT RATHER THAN A SECOND COPY OF THE MODEL. A run used to BE a
@@ -48,16 +48,14 @@ schema:
     # data structure, don't multiply".
     #
     # So the person is the FIRST SEGMENT OF THE ID, and `contributor` above carries it as a bare slug.
-    # It WAS a `perspective/world/users` reference, for one day: an id segment cannot be one, and the
+    # It WAS a `perspective/users` reference, for one day: an id segment cannot be one, and the
     # slug pattern on the field is what refuses it now rather than a comment. The person's own record
-    # is `perspective/world/users/<contributor>/<their-name-slug>` — one hop, derived, never stored
+    # is `perspective/users/<contributor>/<their-name-slug>` — one hop, derived, never stored
     # twice. `retrospective` still says which RUN produced this, a different question that stays.
     #
     # Empty means the run never said, not "everyone" — and a record whose contributor cannot be
     # determined is not written, because there would be no id to write it under.
-    # ⚠ `done_when`, NOT `statement` — the real collection's own word for the same slot, and this is
-    # the clearest case in the whole world namespace of the two vocabularies being one. It was
-    # `statement` until 2026-09-11; `bin/migrate-world.mjs` renames the key on every existing record.
+    # `done_when` — the real collection's own word for the same slot.
     done_when:
       type: string
       description: >-
@@ -74,7 +72,7 @@ schema:
         person declared. A PROPOSAL, set only on a confirmed match, and the most valuable one in the
         module: an inferred goal that lines up with a declared one is corroboration, and one that does
         NOT is the most interesting thing a retrospective can find. The argument for one-way and for
-        soft is written out once, on `perspective/world/users.real`.
+        soft is written out once, on `perspective/users.real`.
     # ── how it was arrived at ────────────────────────────────────────────────────────────────────
     from_candidate:
       type: string
@@ -91,10 +89,8 @@ schema:
         type: string
         enum: [decisions, activities, project-arc, commit-messages, tickets, findings, paste-back, threads]
       description: WHICH EVIDENCE SHAPED IT. Several is normal; a goal read out of one kind of record is usually a restatement of that record.
-    # ⚠ `status`, NOT `horizon` — the real collection's word for the same slot (it was `horizon` until
-    # 2026-09-11, and `bin/migrate-world.mjs` renames the key). The VALUES stay different, for the same
-    # reason `world/tasks.status` has three where `tasks` has five: `met` is a person's verdict against
-    # a test they wrote, `reached` is what the evidence shows. Same field, same question, different
+    # `status` — the real collection's word for the same slot. The VALUES differ: `met` is a person's
+    # verdict against a test they wrote, `reached` is what the evidence shows. Same field, same question, different
     # authority — and spelling the field alike is what makes the difference in the values visible.
     status:
       type: string
@@ -110,15 +106,15 @@ schema:
     # every run, so a back-ref would be the field that silently goes stale.
     projects:
       type: array
-      items: { type: string, x-reference: perspective/world/projects }
+      items: { type: string, x-reference: perspective/projects }
       x-inverse: goals
     activities:
       type: array
-      items: { type: string, x-reference: perspective/world/activities }
+      items: { type: string, x-reference: perspective/activities }
       x-inverse: goals
     decisions:
       type: array
-      items: { type: string, x-reference: perspective/world/decisions }
+      items: { type: string, x-reference: perspective/decisions }
       description: The decisions this goal explains. THE STRONGEST EVIDENCE THERE IS — a goal that predicts which fork was taken is a real one.
       x-inverse: goals
     findings:

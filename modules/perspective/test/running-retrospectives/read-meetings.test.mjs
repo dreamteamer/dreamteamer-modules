@@ -178,7 +178,7 @@ test('⚠ NOT ONE WORD of a summary, prep or analysis reaches a record — the r
 test('every counterpart with an email becomes a collaborator, joined to the CRM record the meeting already pointed at', () => {
 	const f = fixture();
 	const r = run(f);
-	const rows = listRecords(path.join(f.data, 'perspective', 'world', 'users', SLUG)).map((p) => readRecord(p).fields);
+	const rows = listRecords(path.join(f.data, 'perspective', 'users', SLUG)).map((p) => readRecord(p).fields);
 	const sam = rows.find((x) => x.name === 'Sam Diaz');
 	// The email is the KEY; the display name rides along only because it collides with nobody —
 	// `lib/collaborators.mjs` owns that rule and drops the name the moment it would be ambiguous.
@@ -286,7 +286,7 @@ test('an address the workspace does not know falls back to the run record’s ha
 
 // ── THE OBSERVED WORLD IS WHERE THE PEOPLE GO ────────────────────────────────────────────────────
 // `perspective/collaborators` was retired in 0.9.0, when the observed world became a namespace
-// spelled in the real world's own nouns; the people a reader meets are `perspective/world/users`.
+// spelled in the real world's own nouns; the people a reader meets are `perspective/users`.
 // The reader's CODE moved with `lib/collaborators.mjs` and its CONTRACT did not, and a static
 // acceptance pass over a live workspace read the contract, concluded the reader still targeted a
 // collection the compiled model does not declare, and REFUSED TO RUN IT (rnd/issues,
@@ -294,10 +294,10 @@ test('an address the workspace does not know falls back to the run record’s ha
 // three things that refusal was actually about: where the records land, whose they are, and what
 // they may not reach.
 
-test('the people land in `perspective/world/users`, at the path the DESCRIPTOR declares — never a retired collection', () => {
-	const doc = yaml.load(fs.readFileSync(path.join(COLLECTIONS, 'world', 'users.collection.yaml'), 'utf8'));
-	assert.equal(doc.name, 'perspective/world/users');
-	assert.equal(doc.storage.path, 'data/perspective/world/users');
+test('the people land in `perspective/users`, at the path the DESCRIPTOR declares — never a retired collection', () => {
+	const doc = yaml.load(fs.readFileSync(path.join(COLLECTIONS, 'users.collection.yaml'), 'utf8'));
+	assert.equal(doc.name, 'perspective/users');
+	assert.equal(doc.storage.path, 'data/perspective/users');
 	assert.equal(doc.storage.suffix, 'user');
 	assert.equal(doc.id.generate, '{{ contributor }}/{{ name | slug }}');
 
@@ -324,7 +324,7 @@ test('the people land in `perspective/world/users`, at the path the DESCRIPTOR d
 test('every observed person is keyed by the RUN’s contributor, so a second retrospective updates the model instead of copying it', () => {
 	const f = fixture();
 	run(f);
-	const store = path.join(f.data, 'perspective', 'world', 'users');
+	const store = path.join(f.data, 'perspective', 'users');
 	const rows = listRecords(store).map((p) => ({ id: path.relative(store, p).replace(/\.user\.md$/, ''), ...readRecord(p) }));
 
 	const sam = rows.find((r) => r.fields.name === 'Sam Diaz');
@@ -345,7 +345,7 @@ test('evidence provenance survives the move — every observed person cites the 
 	const f = fixture();
 	run(f);
 	const sourceRef = `perspective/sources/${SLUG}/meetings--this-workspace`;
-	const rows = listRecords(path.join(f.data, 'perspective', 'world', 'users', SLUG)).map((p) => readRecord(p).fields);
+	const rows = listRecords(path.join(f.data, 'perspective', 'users', SLUG)).map((p) => readRecord(p).fields);
 	assert.ok(rows.length);
 	for (const r of rows) {
 		assert.deepEqual(r.sources, [sourceRef], `${r.name} does not point back at the source that found them`);
@@ -365,7 +365,7 @@ test('evidence provenance survives the move — every observed person cites the 
 test('the reader’s own contract names the collection it writes — the drift that got it refused', () => {
 	const src = fs.readFileSync(BIN, 'utf8');
 	const header = src.slice(0, src.indexOf('\nimport '));
-	assert.match(header, /perspective\/world\/users/,
+	assert.match(header, /perspective\/users/,
 		'the header must name the collection the reader actually writes');
 	// ⚠ Not a style rule. `collaborator` stays as this module's ROLE word (`world/users.sources`
 	// carries `x-inverse: collaborators`), but a SENTENCE that says the reader writes `collaborators`

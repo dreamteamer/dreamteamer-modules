@@ -31,11 +31,11 @@
 //                  violation (two perspectives for one run).
 //   9. workflows — `steps` non-empty (the steps ARE the workflow), at least one resolving activity
 //                  as evidence, and the same `collaborative` agreement as an activity.
-//  10. world/users — `handles` non-empty (it is the merge key), and no two observed people under one
+//  10. users   — `handles` non-empty (it is the merge key), and no two observed people under one
 //                  retrospective share a handle. The readers are supposed to upsert into the
 //                  existing record, so a shared handle is an unmerged duplicate — and a wrong merge
 //                  attributes one person's work to another, which a person must resolve by hand.
-//  11. world/*   — `real` points at its OWN real collection (a violation when it does not: an
+//  11. observed  — `real` points at its OWN real collection (a violation when it does not: an
 //                  observed project claiming to be a task is corrupt, not stale), and resolves to a
 //                  record (a WARNING when it does not). The field is `x-reference-soft`, so the
 //                  engine ignores both absences by design — this is what stops "soft" meaning
@@ -50,77 +50,22 @@ import path from 'node:path';
 import yaml from 'js-yaml';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { listRecords, readRecord, compiledStorage, recordFileFor } from '../skills/running-retrospectives/lib/records.mjs';
+import { listRecords, readRecord, compiledStorage, recordFileFor, shippedCollections, collectionStorage, recordPath, recordId } from '../skills/running-retrospectives/lib/records.mjs';
 // ⚠ `lib/vault.mjs`'s DATA is deliberately NOT imported — see `workspaceRootFromCwd` below. It
 // resolves from the SCRIPT, which is the wrong question the moment the module is linked for
 // preview, and importing it here is how it got reached for by accident the first time.
 
-/** Bare collection name → the storage suffix its files carry. Mirrors the descriptors one for one.
- *  ⚠ A COLLECTION MISSING HERE IS SILENTLY UNCHECKED, and one was: `projects` never appeared in this
- *  map, so from the v2 perspective model until 2026-09-08 every project record skipped this guard
- *  entirely while the comment above claimed seventeen entries over sixteen. Nothing failed — that is
- *  the whole problem with a hand-kept mirror, and `mirrors-every-descriptor` in the tests now walks
- *  the descriptor directory and fails when the two disagree. */
-const SUFFIX = {
-	'retrospective-sessions': 'retrospective-session',
-	assumptions: 'assumption',
-	gates: 'gate',
-	sources: 'source',
-	'conversations': 'conversation',
-	'activity-weeks': 'activity-week',
-	questions: 'question',
-	threads: 'thread',
-	findings: 'finding',
-	proposals: 'proposal',
-	// v2 — the perspective model.
-	tickets: 'ticket',
-	topics: 'topic',
-	concepts: 'concept',
-	terms: 'term',
-	workflows: 'workflow',
-	insights: 'insight',
-	perspectives: 'perspective',
-	// ⚠ THE OBSERVED WORLD — two-segment names, and that is why `collectionOf` below is a
-	// longest-prefix match rather than `split('/')[0]`. The old one-segment reading returned `world`
-	// for every one of these, so every guard below silently stopped firing on them.
-	'world/users': 'user',
-	'world/goals': 'goal',
-	'world/projects': 'project',
-	'world/activity-lanes': 'activity-lane',
-	'world/activities': 'activity',
-	'world/tasks': 'task',
-	// ⚠ MOVED INTO THE NAMESPACE 2026-09-11 — `decisions` and `deliverables` were one-segment names
-	// here until the world layer grew to cover the whole projects model. A stale one-segment entry
-	// does not fail: `collectionOf` falls through to the first path segment, every record resolves to
-	// `world`, and every rule below goes silently inert over them. That is the failure this map's own
-	// comment above describes, and it is why the mirror test exists.
-	'world/decisions': 'decision',
-	'world/deliverables': 'deliverable',
-	'world/phases': 'phase',
-};
 /** Each observed-world collection and the REAL collection its `real` field must point at. One-way,
  *  many-to-one: several contributors' observed copies of one thing point at the same real record,
  *  and no real record ever points back. */
 const REAL_TARGET = {
-	'world/users': 'users',
-	'world/projects': 'projects',
-	'world/activity-lanes': 'activity-lanes',
-	'world/activities': 'activities',
-	'world/tasks': 'tasks',
-	'world/goals': 'goals',
-	'world/decisions': 'decisions',
-	'world/deliverables': 'deliverables',
-	'world/phases': 'phases',
+	users: 'users',
+	projects: 'projects',
+	activities: 'activities',
+	goals: 'goals',
+	decisions: 'decisions',
+	deliverables: 'deliverables',
 };
-/** Collection names longest first, so `world/users` is tested before `world`. */
-const COLLECTIONS_BY_LENGTH = Object.keys(SUFFIX).sort((a, b) => b.length - a.length);
-
-/** Which collection a record file under `data/perspective/` belongs to — the longest declared name
- *  that prefixes its path at a segment boundary. */
-function collectionOf(relPath) {
-	for (const name of COLLECTIONS_BY_LENGTH) if (relPath === name || relPath.startsWith(name + '/')) return name;
-	return relPath.split('/')[0];
-}
 /** A commit SHA as it may be cited: git's own abbreviation floor to a full hash. */
 const SHA = /^[0-9a-f]{7,40}$/;
 /** What a decision's `source_ref` must look like, per `source_kind`. A shape, not a lookup — the
@@ -148,12 +93,7 @@ const SOURCE_REF_SHAPE = {
 //   somebody's week is spent rests on the calendar directly; copying a meeting into this module's
 //   data to make the ref local would put a domain object here, which is the one thing the module
 //   never holds. It resolves against the workspace's own meetings collection — see PEER below.
-// ⚠ AND SWEPT AGAIN 2026-09-11, when `decisions` and `deliverables` moved into `perspective/world`.
-//   A stale entry here is not a loud failure: the ref resolves, the collection is real, and the guard
-//   simply refuses every finding that cites one — measured on the first consumer, 12 correct findings
-//   failed in one run. The rule this keeps re-teaching is that a COLLECTION rename and a VOCABULARY
-//   rename are the same change, and only a red run connects them.
-const EVIDENCE_COLLECTIONS = ['conversations', 'activity-weeks', 'questions', 'world/activities', 'world/tasks', 'tickets', 'world/decisions', 'world/deliverables', 'threads', 'meetings'];
+const EVIDENCE_COLLECTIONS = ['conversations', 'activity-weeks', 'questions', 'activities', 'tickets', 'decisions', 'deliverables', 'threads', 'meetings'];
 /** The count a finding's body must close with — sessions, weeks or answers, whichever it counted.
  *  ⚠ `weeks` was missing here for one run: the collection was renamed activity-windows →
  *  activity-weeks and this regex was not swept with it, so three correct findings ending `(22 weeks)`
@@ -222,7 +162,15 @@ function dataRootFromArgv(argv) {
 }
 
 const dataRoot = dataRootFromArgv(process.argv.slice(2));
-const root = path.join(dataRoot, 'perspective');
+
+// ── this module's collections, read off the shipped descriptors — never a hand-kept list ──────────
+const COLLECTIONS = shippedCollections();
+/** Record file → the collection whose storage folder holds it. */
+const collectionOfFile = new Map();
+for (const collection of COLLECTIONS) {
+	const { dir, suffix } = collectionStorage(collection, dataRoot);
+	for (const file of listRecords(dir)) if (file.endsWith(`.${suffix}.md`)) collectionOfFile.set(file, collection);
+}
 const rel = (file) => path.relative(path.dirname(dataRoot), file);
 
 // ── the PEER collections a ref may legally point OUT of this module at ──────────────────────────
@@ -241,7 +189,7 @@ const rel = (file) => path.relative(path.dirname(dataRoot), file);
 const workspaceRoot = path.dirname(dataRoot);
 const PEER = (() => {
 	const out = {};
-	// ⚠ THE REAL WORLD. Every `perspective/world/*` collection carries `real`, a one-way SOFT
+	// ⚠ THE REAL WORLD. Every `perspective/*` collection carries `real`, a one-way SOFT
 	// reference to the record it appears to be — `x-reference-soft`, so the engine's own `check`
 	// ignores it whether the collection is absent or the record is. That is deliberate (a
 	// correspondence is a judgement a run made on a date, and a deleted project must not turn a whole
@@ -275,16 +223,10 @@ function refTarget(ref) {
 		return { collection: parts[0], id, peer, file: recordFileFor(peer, id) ?? path.join(peer.dir, `${id}.${peer.suffix}.md`) };
 	}
 	if (parts.length < 3) return null;
-	// ⚠ LONGEST PREFIX, not `parts[1]`. `perspective/world/users/dana/sam` is the collection
-	// `world/users` and the id `dana/sam`; splitting at the first segment made it the collection
-	// `world`, which is in no SUFFIX map, so every ref into the observed world returned null and
-	// every guard that resolves one silently stopped resolving.
-	const rest = parts.slice(1).join('/');
-	const collection = COLLECTIONS_BY_LENGTH.find((n) => rest.startsWith(n + '/'));
-	if (!collection) return null;
-	const id = rest.slice(collection.length + 1);
-	if (!id) return null;
-	return { collection, id, file: path.join(root, collection, `${id}.${SUFFIX[collection]}.md`) };
+	const collection = parts[1];
+	if (!COLLECTIONS.includes(collection)) return null;
+	const id = parts.slice(2).join('/');
+	return { collection, id, file: recordPath(collection, id, undefined, dataRoot) };
 }
 
 /** Does the record a ref names exist? `null` = unanswerable, because the peer collection is absent. */
@@ -304,7 +246,7 @@ const warn = (file, note) => warnings.push(`⚠ ${rel(file)}: ${note}`);
 /** A field the schema types as an array, read defensively — a hand-edit may leave a bare string. */
 const list = (value) => (Array.isArray(value) ? value : value === undefined || value === null || value === '' ? [] : [value]);
 
-const files = listRecords(root);
+const files = [...collectionOfFile.keys()];
 const records = new Map();
 for (const file of files) {
 	try {
@@ -329,7 +271,7 @@ function citesAnsweredQuestion(evidence) {
 }
 
 for (const [file, { fields, body }] of records) {
-	const collection = collectionOf(path.relative(root, file));
+	const collection = collectionOfFile.get(file);
 
 	/* ⚠ A GOAL'S COUNT IS ITS REFS, and the descriptor says which: decisions, activities and
 	 *  projects, once each. Measured 2026-09-08 on the first run that wrote goals: three of three
@@ -338,7 +280,7 @@ for (const [file, { fields, body }] of records) {
 	 *  something slightly different. So the count is DERIVED here and a mismatch is a violation, and
 	 *  `corroborated` needs three, and `confirmed`/`refuted` need a person — a goal is never asked
 	 *  directly, so the only route is a cited finding that an answered question already confirmed. */
-	if (collection === 'world/goals') {
+	if (collection === 'goals') {
 		const refs = new Set([...list(fields.decisions), ...list(fields.activities), ...list(fields.projects)]);
 		const count = Number(fields.evidence_count ?? 0);
 		if (count !== refs.size) {
@@ -450,7 +392,7 @@ for (const [file, { fields, body }] of records) {
 		}
 	}
 
-	if (collection === 'world/activities' || collection === 'workflows') {
+	if (collection === 'activities' || collection === 'workflows') {
 		const collaborators = list(fields.collaborators);
 		const collaborative = fields.collaborative === true;
 		if (collaborators.length && !collaborative) {
@@ -461,7 +403,7 @@ for (const [file, { fields, body }] of records) {
 		}
 	}
 
-	if (collection === 'world/activities') {
+	if (collection === 'activities') {
 		for (const sha of list(fields.commits)) {
 			if (!SHA.test(String(sha))) fail(file, `commits ${sha} is not a 7–40 hex commit SHA`);
 		}
@@ -504,7 +446,7 @@ for (const [file, { fields, body }] of records) {
 	}
 
 	if (collection === 'perspectives') {
-		const self = `perspective/perspectives/${path.relative(path.join(root, 'perspectives'), file).replace(/\.perspective\.md$/, '')}`;
+		const self = `perspective/perspectives/${recordId('perspectives', file, dataRoot)}`;
 		const target = refTarget(fields.retrospective);
 		if (!target || target.collection !== 'retrospective-sessions') {
 			fail(file, `retrospective ${fields.retrospective} is not perspective/retrospective-sessions/<id>`);
@@ -538,15 +480,15 @@ for (const [file, { fields, body }] of records) {
 		if (!activities.length) fail(file, 'activities is empty — a workflow is observed across activities, never asserted');
 		for (const ref of activities) {
 			const target = refTarget(ref);
-			if (!target || target.collection !== 'world/activities') {
-				fail(file, `activities ${ref} is not perspective/world/activities/<id>`);
+			if (!target || target.collection !== 'activities') {
+				fail(file, `activities ${ref} is not perspective/activities/<id>`);
 				continue;
 			}
 			if (!records.has(target.file)) fail(file, `activities ${ref} does not resolve to an activity`);
 		}
 	}
 
-	if (collection === 'world/users' && !list(fields.handles).length) {
+	if (collection === 'users' && !list(fields.handles).length) {
 		fail(file, 'handles is empty — it is the merge key, and an observed person without one can never be matched');
 	}
 
@@ -572,7 +514,7 @@ for (const [file, { fields, body }] of records) {
 // record survives — and this is a violation, not a warning, because the readers should never make one.
 const handleOwners = new Map(); // `${retrospective}\0${handle}` → first file that claimed it
 for (const [file, { fields }] of records) {
-	if (collectionOf(path.relative(root, file)) !== 'world/users') continue;
+	if (collectionOfFile.get(file) !== 'users') continue;
 	const run = fields.retrospective ?? '';
 	for (const handle of list(fields.handles)) {
 		const key = `${run}\0${String(handle).trim().toLowerCase()}`;

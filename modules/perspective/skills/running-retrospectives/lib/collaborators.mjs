@@ -8,7 +8,7 @@
 // to the record that already carries one of this person's keys. A person decides a merge.
 import fs from 'node:fs';
 import path from 'node:path';
-import { listRecords, readRecord, writeRecord, recordPath } from './records.mjs';
+import { listRecords, readRecord, writeRecord, recordPath, collectionDir } from './records.mjs';
 import { slug } from './vault.mjs';
 
 const lower = (s) => String(s ?? '').toLowerCase();
@@ -26,7 +26,7 @@ const latest = (...ds) => ds.filter(Boolean).sort().at(-1);
  * ADDS what the evidence proves rather than replacing what it merely failed to re-derive.
  */
 export function upsertCollaborators({ dataRoot, contributorSlug, retrospective, sourceRef, people, role, author, context, dryRun = false }) {
-	const existing = listRecords(path.join(dataRoot, 'perspective', 'world', 'users', contributorSlug))
+	const existing = listRecords(path.join(collectionDir('users', dataRoot), contributorSlug))
 		.map((file) => ({ file, ...readRecord(file) }));
 	let added = 0, matched = 0;
 	for (const p of people) {
@@ -75,8 +75,8 @@ export function upsertCollaborators({ dataRoot, contributorSlug, retrospective, 
 			// name, or one person under a second key, would otherwise land on the same file — and the
 			// second write would silently replace a record carrying nine hundred commits with one
 			// carrying three mails. Found by the test below before it found a workspace.
-			let file = recordPath('world/users', `${contributorSlug}/${slug(name)}`, 'user', dataRoot);
-			if (nameTaken || fs.existsSync(file)) file = recordPath('world/users', `${contributorSlug}/${slug(p.email || p.id)}`, 'user', dataRoot);
+			let file = recordPath('users', `${contributorSlug}/${slug(name)}`, 'user', dataRoot);
+			if (nameTaken || fs.existsSync(file)) file = recordPath('users', `${contributorSlug}/${slug(p.email || p.id)}`, 'user', dataRoot);
 			const fields = {
 				retrospective, name, handles,
 				contact: p.contact,

@@ -19,7 +19,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import yaml from 'js-yaml';
 import { VAULT, DATA, dt, slug } from '../lib/vault.mjs';
-import { recordPath, writeRecord, readRecord, listRecords, contributorOf} from '../lib/records.mjs';
+import { recordPath, writeRecord, readRecord, listRecords, contributorOf, collectionDir } from '../lib/records.mjs';
 import { numberedListItems } from '../lib/markdown.mjs';
 
 const argv = process.argv.slice(2);
@@ -53,7 +53,7 @@ function walk(dir, test) {
 /** The source_refs already on disk under this run's id prefix — the idempotency key, read once. */
 function existingRefs(collection) {
 	const seen = new Set();
-	for (const file of listRecords(path.join(dataRoot, 'perspective', collection, who()))) {
+	for (const file of listRecords(path.join(collectionDir(collection, dataRoot), who()))) {
 		const ref = readRecord(file).fields?.source_ref;
 		if (ref) seen.add(String(ref));
 	}
@@ -172,7 +172,7 @@ const routines = listRecords(path.join(workspaceRoot, 'data', 'routines')).map((
 const perspectiveFile = recordPath('perspectives', who(), 'perspective', dataRoot);
 const merged = fs.existsSync(perspectiveFile);
 const prior = merged ? readRecord(perspectiveFile) : { fields: {}, body: '' };
-const retrospectiveFile = path.join(dataRoot, 'perspective', 'retrospective-sessions', `${base}.retrospective-session.md`);
+const retrospectiveFile = recordPath('retrospective-sessions', base, 'retrospective-session', dataRoot);
 const contributor = prior.fields.contributor
 	?? (fs.existsSync(retrospectiveFile) ? readRecord(retrospectiveFile).fields.contributor : undefined)
 	?? 'unknown';

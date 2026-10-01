@@ -458,7 +458,7 @@ describe('deliverables — the thing that changes hands', () => {
 	});
 
 	test('its `kind` is commercial, and deliberately NOT the observed half\'s MIME enum', () => {
-		const observed = load('perspective/collections/perspective/world/deliverables.collection.yaml');
+		const observed = load('perspective/collections/perspective/deliverables.collection.yaml');
 		assert.ok(p.kind.enum.includes('training'), 'what somebody is buying');
 		assert.ok(observed.schema.properties.kind.enum.includes('sheet'), 'what a store read found');
 		assert.notDeepEqual(p.kind.enum, observed.schema.properties.kind.enum,
@@ -479,7 +479,7 @@ describe('decisions — the fold, and what keeps it honest', () => {
 	});
 
 	test('the observed half DOES carry `unknown` — same question, different authority', () => {
-		const observed = load('perspective/collections/perspective/world/decisions.collection.yaml');
+		const observed = load('perspective/collections/perspective/decisions.collection.yaml');
 		assert.ok(observed.schema.properties.decided_by.enum.includes('unknown'),
 			'evidence states a choice and names nobody; a run that guessed would attribute it to the wrong person');
 	});
