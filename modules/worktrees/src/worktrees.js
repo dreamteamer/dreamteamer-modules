@@ -221,6 +221,30 @@ export function removeWorktree(ws, ref, { force = false } = {}, git = defaultGit
 	return 0;
 }
 
+/** `dt worktree rm --hook` — the WorktreeRemove handler. A harness whose WorktreeCreate hook cut the
+ *  tree leaves deleting it to this hook, so it removes the tree `worktree_path` names under the same
+ *  guard as `rm`; a refusal exits 1 and leaves the directory, which the harness reads as kept. */
+export function removeWorktreeHook(ws, argv, git = defaultGit) {
+	const { pos } = parseFlags(argv, { bool: ['hook'] }, 'dt worktree rm --hook');
+	// refused before the read, so a mistake is not answered by a blocking wait on a pipe
+	if (pos.length) throw new Error(`--hook reads the worktree from stdin — drop "${pos[0]}"`);
+	const input = dt.readHookInput(dt.readStdin());
+	// `worktree_path` only, never `cwd`: every hook payload carries `cwd`, and it names the primary
+	const ref = input.raw.worktree_path;
+	if (!ref) throw new Error(`hook input carries no worktree_path — nothing removed (keys received: ${Object.keys(input.raw).join(', ') || 'none'})`);
+	const w = findWorktree(ws, ref, git);
+	if (!w) {
+		if (resolves(path.resolve(ws.root, ref))) throw new Error(`${ref} is not a registered worktree — a hook removes only a tree git lists`);
+		console.log(`${ref} is already gone`);
+		return 0;
+	}
+	if (!w.primary && !resolves(w.path)) {
+		console.log(`${w.path} is already gone; git prunes its registration`);
+		return 0;
+	}
+	return removeWorktree(ws, w.path, {}, git);
+}
+
 export const WORKTREE_USAGE = `  worktree add --name <n> [--path <dir>] [--base <ref>] [--temp] [--json]
               cut a linked git worktree on branch worktree-<n> and \`dt install\` it; its absolute
               path is the LAST line printed (what a creation hook echoes). --temp: detached, no
@@ -232,7 +256,9 @@ export const WORKTREE_USAGE = `  worktree add --name <n> [--path <dir>] [--base 
               observed from \`git worktree list\`, never stored: branch, head, commits ahead of the
               primary branch, dirty records, installed or not
   worktree rm <name|path> [--force]
-              refuses a worktree holding dirty records or commits nothing else holds`;
+              refuses a worktree holding dirty records or commits nothing else holds
+  worktree rm --hook
+              remove the worktree a WorktreeRemove payload on stdin names, under the same guard`;
 
 /** `dt worktree <sub> …` — the surface. Returns the exit code; a refusal throws. */
 export function worktreeCommand(ws, argv) {
@@ -273,6 +299,7 @@ export function worktreeCommand(ws, argv) {
 			return addWorktree(ws, { name: flags.name, dir: flags.path, base: flags.base, temp: !!flags.temp, json: !!flags.json });
 		}
 		case 'rm': {
+			if (rest.includes('--hook')) return removeWorktreeHook(ws, rest);
 			const { flags, pos } = parseFlags(rest, { bool: ['force'] }, 'dt worktree rm');
 			if (pos.length !== 1) throw new Error('dt worktree rm <name|path> [--force]');
 			return removeWorktree(ws, pos[0], { force: !!flags.force });

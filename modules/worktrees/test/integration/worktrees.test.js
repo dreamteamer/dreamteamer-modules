@@ -12,7 +12,8 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { workspace, git, dt, dtStdin, api } from '../helpers.mjs';
+import { spawnSync } from 'node:child_process';
+import { workspace, git, dt, dtStdin, api, GIT_ENV } from '../helpers.mjs';
 import { removeWorktree } from '../../src/worktrees.js';
 import { defaultGit } from '../../src/git.js';
 
@@ -483,5 +484,110 @@ describe('dt worktree add --hook takes its name from STDIN', () => {
 		assert.equal(r.code, 1, r.stdout);
 		assert.match(r.stderr, /worktree_name/);
 		assert.equal(JSON.parse(dt(ws.root, 'worktree', 'list', '--json').stdout).length, 1, 'a worktree was cut anyway');
+	});
+});
+
+// ---- the WorktreeRemove hook form ------------------------------------------------------------
+//
+// When a WorktreeCreate hook cuts the tree, Claude Code leaves deleting it to the WorktreeRemove hook,
+// and reads a non-zero exit with the directory still there as "not removed".
+describe('dt worktree rm --hook removes the worktree a WorktreeRemove payload names', () => {
+	const payload = (ws, dir) => JSON.stringify({ cwd: ws.root, hook_event_name: 'WorktreeRemove', worktree_path: dir });
+
+	/** The WorktreeRemove command `dt install --print-adapters` registers, run the way the harness runs
+	 *  it: through `sh -c` from the project directory, the payload on stdin. */
+	function runRegisteredHook(ws, input) {
+		const snippet = JSON.parse(dt(ws.root, 'install', '--print-adapters').stdout);
+		const command = snippet.hooks.WorktreeRemove[0].hooks[0].command;
+		const r = spawnSync('sh', ['-c', command], { cwd: ws.root, env: { ...GIT_ENV, CLAUDE_PROJECT_DIR: ws.root }, input, encoding: 'utf8', timeout: 120_000, killSignal: 'SIGKILL' });
+		return { code: r.status, stdout: r.stdout ?? '', stderr: r.stderr ?? '' };
+	}
+
+	test('the registered hook removes a clean worktree, its directory and its branch, at exit 0', () => {
+		const ws = workspace();
+		commitHarness(ws.root);
+		const dir = dtStdin(ws.root, JSON.stringify({ worktree_name: 'h' }), 'worktree', 'add', '--hook').stdout.trim().split('\n').at(-1);
+		assert.ok(fs.existsSync(dir), 'fixture: the creation hook should have cut it');
+
+		const r = runRegisteredHook(ws, payload(ws, dir));
+		assert.equal(r.code, 0, `stdout: ${r.stdout}\nstderr: ${r.stderr}`);
+		assert.ok(!fs.existsSync(dir), 'the hook left the directory behind');
+		assert.equal(git(ws.root, ['branch', '--list', 'worktree-h']), '', 'the branch outlived the worktree');
+		assert.equal(JSON.parse(dt(ws.root, 'worktree', 'list', '--json').stdout).length, 1);
+	});
+
+	test('the registered hook refuses a worktree holding a dirty record, and leaves it in place', () => {
+		const ws = workspace();
+		commitHarness(ws.root);
+		assert.equal(dt(ws.root, 'worktree', 'add', '--name', 'd').code, 0);
+		const dir = path.join(ws.root, '.worktrees', 'd');
+		fs.mkdirSync(path.join(dir, 'data'), { recursive: true });
+		fs.writeFileSync(path.join(dir, 'data', 'stray.md'), 'x');
+
+		const r = runRegisteredHook(ws, payload(ws, dir));
+		assert.notEqual(r.code, 0, 'a tree holding work was reported as removed');
+		assert.match(r.stdout + r.stderr, /1 dirty record/);
+		assert.ok(fs.existsSync(path.join(dir, 'data', 'stray.md')), 'the record went with the refusal');
+		assert.equal(git(dir, ['rev-parse', '--abbrev-ref', 'HEAD']), 'worktree-d');
+	});
+
+	test('a worktree with unlanded commits is refused and kept', () => {
+		const ws = workspace();
+		commitHarness(ws.root);
+		assert.equal(dt(ws.root, 'worktree', 'add', '--name', 'u').code, 0);
+		const dir = path.join(ws.root, '.worktrees', 'u');
+		fs.writeFileSync(path.join(dir, 'note.txt'), 'x');
+		git(dir, ['add', 'note.txt']);
+		git(dir, ['commit', '-qm', 'note']);
+
+		const r = dtStdin(ws.root, payload(ws, dir), 'worktree', 'rm', '--hook');
+		assert.equal(r.code, 1, r.stdout);
+		assert.match(r.stderr, /1 commit\(s\) not on/);
+		assert.ok(fs.existsSync(path.join(dir, 'note.txt')));
+	});
+
+	test('a path that is already gone exits 0 and says so', () => {
+		const ws = workspace();
+		const gone = path.join(ws.root, '.worktrees', 'already-removed');
+		const r = dtStdin(ws.root, payload(ws, gone), 'worktree', 'rm', '--hook');
+		assert.equal(r.code, 0, r.stderr);
+		assert.match(r.stdout, /already gone/);
+	});
+
+	test('a directory git does not list as a worktree is refused and kept', () => {
+		const ws = workspace();
+		const plain = path.join(ws.root, '.worktrees', 'plain');
+		fs.mkdirSync(plain, { recursive: true });
+		fs.writeFileSync(path.join(plain, 'keep.txt'), 'x');
+		const r = dtStdin(ws.root, payload(ws, plain), 'worktree', 'rm', '--hook');
+		assert.equal(r.code, 1, r.stdout);
+		assert.match(r.stderr, /is not a registered worktree/);
+		assert.ok(fs.existsSync(path.join(plain, 'keep.txt')));
+	});
+
+	// `cwd` rides on every hook payload and names the primary, so it is never read as the target
+	test('a payload carrying only cwd removes nothing and names the missing key', () => {
+		const ws = workspace();
+		commitHarness(ws.root);
+		assert.equal(dt(ws.root, 'worktree', 'add', '--name', 'c').code, 0);
+		const r = dtStdin(ws.root, JSON.stringify({ cwd: ws.root }), 'worktree', 'rm', '--hook');
+		assert.equal(r.code, 1, r.stdout);
+		assert.match(r.stderr, /carries no worktree_path/);
+		assert.doesNotMatch(r.stdout + r.stderr, /primary checkout/);
+		assert.ok(fs.existsSync(path.join(ws.root, '.worktrees', 'c')));
+	});
+
+	test('a positional beside --hook is refused before stdin is read', () => {
+		const ws = workspace();
+		const r = dtStdin(ws.root, payload(ws, ws.root), 'worktree', 'rm', 'c', '--hook');
+		assert.equal(r.code, 1, r.stdout);
+		assert.match(r.stderr, /--hook reads the worktree from stdin — drop "c"/);
+	});
+
+	test('--force is not a flag of the hook form', () => {
+		const ws = workspace();
+		const r = dtStdin(ws.root, payload(ws, ws.root), 'worktree', 'rm', '--hook', '--force');
+		assert.equal(r.code, 1, r.stdout);
+		assert.match(r.stderr, /--force is not a flag of `dt worktree rm --hook`/);
 	});
 });

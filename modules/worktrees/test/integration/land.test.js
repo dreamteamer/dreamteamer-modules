@@ -602,70 +602,13 @@ describe('dt land — the invocation itself', () => {
 		assert.match(r.stderr, /--bogus is not a flag of `dt land <name>`/);
 	});
 
-	test('a positional beside --hook is refused before stdin is even read', () => {
+	test('--hook is not a flag of land — the WorktreeRemove hook is `worktree rm --hook`', () => {
 		const ws = landable();
-		const r = dtStdin(ws.root, JSON.stringify({ worktree_path: ws.wt }), 'land', 'a', '--hook', '--dry-run');
+		addAndCommit(ws.wt, 'first note');
+		const before = snapshot(ws);
+		const r = dtStdin(ws.root, JSON.stringify({ worktree_path: ws.wt }), 'land', '--hook');
 		assert.equal(r.code, 1, r.stdout);
-		assert.match(r.stderr, /--hook reads the worktree from stdin — drop the positional \("a"\)/);
-	});
-
-	// WorktreeRemove fires around a removal the harness is performing, so the tree may already be
-	// gone by the time this runs. That is the event having nothing to report, not a failure — and a
-	// non-zero exit would surface as a broken hook on every ordinary worktree deletion.
-	test('--hook on a path git no longer lists says so and exits 0', () => {
-		const ws = landable();
-		const gone = path.join(ws.root, '.worktrees', 'already-removed');
-		const r = dtStdin(ws.root, JSON.stringify({ cwd: ws.root, worktree_path: gone }), 'land', '--hook', '--dry-run');
-		assert.equal(r.code, 0, r.stderr);
-		assert.match(r.stdout, /is not a registered worktree \(already removed\?\)/);
-	});
-
-	// ⚠ `cwd` IS NOT A FALLBACK FOR `worktree_path`. `cwd` rides on every Claude Code hook event and
-	// in a hook it is $CLAUDE_PROJECT_DIR — the PRIMARY. So a payload missing the key (a renamed
-	// field, a hook wired to another event, a harness version bump) used to resolve to the primary,
-	// which IS a registered worktree, and exit 1 with "it is the primary checkout" — the exact
-	// outcome this form promises never to produce, on every ordinary worktree deletion.
-	test('--hook with a payload carrying only cwd exits 0 and says nothing alarming', () => {
-		const ws = landable();
-		addAndCommit(ws.wt, 'first note');
-		const before = snapshot(ws);
-		const r = dtStdin(ws.root, JSON.stringify({ cwd: ws.root }), 'land', '--hook', '--dry-run');
-		assert.equal(r.code, 0, `stdout: ${r.stdout}\nstderr: ${r.stderr}`);
-		assert.doesNotMatch(r.stdout + r.stderr, /primary checkout/, 'the cwd fallback resolved to the primary and refused');
-		assert.match(r.stdout, /carries no worktree_path/);
-		assert.deepEqual(snapshot(ws), before);
-	});
-
-	// ⚠ A HOOK'S STDERR IS NOBODY'S PROBLEM. `bin/dt-hook.sh` fails onto STDOUT for that reason —
-	// stdout is added to the session's context — and every failure past the shim went to stderr
-	// alone, invisible to the one reader the hook forms exist to talk to.
-	test('a hook refusal reaches STDOUT, not stderr alone', () => {
-		const ws = landable();
-		const r = dtStdin(ws.root, JSON.stringify({ worktree_path: ws.root }), 'land', '--hook', '--dry-run');
-		assert.notEqual(r.code, 0);
-		assert.match(r.stdout, /cannot land/, 'the refusal never reached the stream a hook is read from');
-	});
-
-	test('--hook with no JSON on stdin says so instead of landing something', () => {
-		const ws = landable();
-		addAndCommit(ws.wt, 'first note');
-		const before = snapshot(ws);
-		const r = dtStdin(ws.root, '', 'land', '--hook', '--dry-run');
-		assert.equal(r.code, 1, r.stdout);
-		assert.match(r.stderr, /hook input is not JSON/);
-		assert.deepEqual(snapshot(ws), before);
-	});
-
-	// ⚠ THE HOOK FORM NEVER REMOVES ANYTHING. WorktreeRemove fires as the harness is deleting the
-	// worktree; the engine's job there is to SAY what is about to be lost, in a payload the session
-	// reads, and a `land` that actually landed at that moment would race the harness's own removal.
-	test('--hook --dry-run reports the pending landing for the worktree named on stdin and mutates nothing', () => {
-		const ws = landable();
-		addAndCommit(ws.wt, 'first note');
-		const before = snapshot(ws);
-		const r = dtStdin(ws.root, JSON.stringify({ cwd: ws.root, worktree_path: ws.wt, worktree_name: 'a' }), 'land', '--hook', '--dry-run');
-		assert.equal(r.code, 0, r.stderr);
-		assert.match(r.stdout, /1 commit · 1 record file in 1 collection/);
+		assert.match(r.stderr, /--hook is not a flag of `dt land <name>`/);
 		assert.deepEqual(snapshot(ws), before);
 	});
 

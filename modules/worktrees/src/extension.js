@@ -19,6 +19,6 @@ export default function activate(api) {
 			land: { usage: LAND_USAGE, run: (ws, argv) => landCommand(ws, argv) },
 			worktree: { usage: WORKTREE_USAGE, run: (ws, argv) => worktreeCommand(ws, argv) },
 		},
-		hooks: { WorktreeCreate: 'worktree add --hook', WorktreeRemove: 'land --hook --dry-run' },
+		hooks: { WorktreeCreate: 'worktree add --hook', WorktreeRemove: 'worktree rm --hook' },
 	};
 }

@@ -299,12 +299,10 @@ const recordsIn = (range, descriptors, dataPath) => {
 const summarize = (range, records, managedFiles) =>
 	`${plural(range.commits, 'commit')} · ${plural([...records.values()].reduce((a, b) => a + b, 0), 'record file')} in ${plural(records.size, 'collection')} · managed files: ${range.files.filter((f) => managedFiles.includes(f)).join(', ') || 'none'}`;
 
-/** Print a refusal. ⚠ ON STDOUT TOO UNDER `--hook`: a hook's stdout reaches the session's context and
- *  its stderr does not. */
-function printRefusal(name, reasons, hook) {
+/** Print a refusal on stderr. */
+function printRefusal(name, reasons) {
 	const block = `✖ cannot land ${name}:\n${reasons.map((r) => `  ${r}`).join('\n')}`;
 	console.error(block);
-	if (hook) console.log(block);
 }
 
 /**
@@ -313,7 +311,7 @@ function printRefusal(name, reasons, hook) {
  * every refusal and conflict, after `--keep`, and when the tree changed during the landing; false
  * only when the landing retired it.
  */
-export async function landWorktree(ws, ref, { keep = false, dryRun = false, branch = null, hook = false, npmRun } = {}, git = defaultGit) {
+export async function landWorktree(ws, ref, { keep = false, dryRun = false, branch = null, npmRun } = {}, git = defaultGit) {
 	const c = dt.describeCheckout(ws.root, git);
 	// ⚠ `--branch` NAMES THE WORKTREE, it does not choose a branch: `worktree-<name>` is the one
 	// spelling every reader keys on, so any other value is refused. And it is a MUTATION, so
@@ -334,7 +332,7 @@ export async function landWorktree(ws, ref, { keep = false, dryRun = false, bran
 	const refusals = state.worktree.kind === 'primary' ? ['it is the primary checkout'] : plan.refusals;
 	const kept = () => fs.existsSync(state.worktree.root);
 	if (refusals.length) {
-		printRefusal(state.name, refusals, hook);
+		printRefusal(state.name, refusals);
 		return { code: 1, landed: null, refused: refusals, kept: kept() };
 	}
 	if (dryRun) {
@@ -346,11 +344,11 @@ export async function landWorktree(ws, ref, { keep = false, dryRun = false, bran
 	}
 	const taken = takeLock(state.lock);
 	if (taken.refused) {
-		printRefusal(state.name, [taken.refused], hook);
+		printRefusal(state.name, [taken.refused]);
 		return { code: 1, landed: null, refused: [taken.refused], kept: kept() };
 	}
 	try {
-		return { ...(await runLanding(ws, c, state, { descriptors, dataPath, npmRun, hook }, git)), kept: kept() };
+		return { ...(await runLanding(ws, c, state, { descriptors, dataPath, npmRun }, git)), kept: kept() };
 	} finally {
 		fs.rmSync(state.lock.path, { recursive: true, force: true });
 	}
@@ -364,14 +362,14 @@ async function compileAt(root) {
 }
 
 /** The mutating half, under the lock. */
-async function runLanding(ws, c, state, { descriptors, dataPath, npmRun, hook }, git) {
+async function runLanding(ws, c, state, { descriptors, dataPath, npmRun }, git) {
 	const { name, worktree, branch, primaryBranch, range, keep, managedFiles } = state;
 	const copy = `land/${name}`;
 	// ⚠ A LEFTOVER COPY IS EVIDENCE, not scratch — it survives exactly one failure (a `check` that
 	// refused the rebased tree), and the message that left it there says to inspect it
 	if (git(['branch', '--list', copy], c.primary)) {
 		const why = `${copy} exists from an earlier landing — inspect or delete it first`;
-		printRefusal(name, [why], hook);
+		printRefusal(name, [why]);
 		return { code: 1, landed: null, refused: [why] };
 	}
 	const holder = path.join(c.primary, '.worktrees');
@@ -415,7 +413,7 @@ async function runLanding(ws, c, state, { descriptors, dataPath, npmRun, hook },
 			if (ancestor !== 1) throw new Error(String(ff.stderr).trim().split('\n')[0] || `git merge --ff-only ${copy} exited ${ff.status}`);
 			if (attempt === FF_ATTEMPTS) {
 				const why = `the primary moved ${FF_ATTEMPTS} times during the landing — try again`;
-				printRefusal(name, [why], hook);
+				printRefusal(name, [why]);
 				return { code: 1, landed: null, refused: [why] };
 			}
 		}
@@ -492,7 +490,7 @@ export function mirrorModules(primary, temp) {
 /** Rebase the copy onto the primary branch, resolving generated blocks and nothing else. Returns null
  *  when it lands, or `{ at, subject, paths, mixed }` after ABORTING a conflict it will not resolve. */
 function rebaseCopy(temp, onto, resolved, ctx, git) {
-	// GIT_EDITOR=true: a rebase that stops to open an editor in a hook is a hang
+	// GIT_EDITOR=true: a rebase that stops to open an editor would hang
 	const step = (...args) => spawnGit(['-C', temp, ...args], { ...process.env, GIT_EDITOR: 'true' });
 	let r = step('rebase', onto);
 	let skipped = false;
@@ -566,43 +564,18 @@ export const LAND_USAGE = `  land <name|path> [--keep] [--dry-run] [--branch <na
               the rebased tree, fast-forwards, recompiles the primary, then removes the worktree and
               its branch. A conflict anywhere else aborts and leaves every tree exactly as it was.
               --keep keep the worktree, reset onto what landed · --branch <name> give a DETACHED
-              worktree its branch worktree-<name> first · --dry-run print the plan, change nothing
-  land --hook [--dry-run] [--json]
-              read a WorktreeRemove payload on stdin and report what that worktree still holds —
-              ALWAYS a dry run: nothing lands while a harness is deleting the tree`;
+              worktree its branch worktree-<name> first · --dry-run print the plan, change nothing`;
 
-/** `dt land …` — the surface. `--hook` is always a dry run: WorktreeRemove fires while the harness
- *  deletes the tree, and a real landing would race it for the same directory. */
+/** `dt land …` — the surface. */
 export async function landCommand(ws, argv, { npmRun } = {}) {
-	const hook = argv.includes('--hook');
-	const { flags, pos } = hook
-		? parseFlags(argv, { bool: ['hook', 'dry-run', 'json'] }, 'dt land --hook')
-		: parseFlags(argv, { bool: ['keep', 'dry-run', 'json'], value: ['branch'] }, 'dt land <name>');
-	let ref = pos[0];
+	const { flags, pos } = parseFlags(argv, { bool: ['keep', 'dry-run', 'json'], value: ['branch'] }, 'dt land <name>');
+	const ref = pos[0];
 	if (pos.length > 1) throw new Error(`dt land takes ONE worktree — got ${pos.join(', ')}`);
-	if (hook) {
-		// refused BEFORE the read, so a mistake is not answered by a blocking wait on a pipe
-		if (ref) throw new Error(`--hook reads the worktree from stdin — drop the positional ("${ref}")`);
-		const input = dt.readHookInput(dt.readStdin());
-		// ⚠ `worktree_path` ONLY, never a `cwd` fallback: in a hook `cwd` is the PRIMARY, which is a
-		// registered worktree, and the hook would then "fail" every ordinary removal
-		ref = input.raw.worktree_path;
-		if (!ref) {
-			console.log(`hook input carries no worktree_path — nothing to report on (keys received: ${Object.keys(input.raw).join(', ') || 'none'})`);
-			return 0;
-		}
-		// the tree may already be gone — that is the event having nothing left to report on
-		if (!findWorktree(ws, ref)) {
-			console.log(`${ref} is not a registered worktree (already removed?)`);
-			return 0;
-		}
-	} else if (!ref) {
-		throw new Error('dt land needs a worktree: dt land <name|path> — dt worktree list');
-	}
+	if (!ref) throw new Error('dt land needs a worktree: dt land <name|path> — dt worktree list');
 	dt.warnIfStale(ws.root);
 	// under --json stdout carries the payload and NOTHING else — compile, check and the retire step
 	// all report through console.log
-	const out = await logToStderr(!!flags.json, () => landWorktree(ws, ref, { keep: !!flags.keep, dryRun: hook || !!flags['dry-run'], branch: flags.branch ?? null, hook, npmRun }));
+	const out = await logToStderr(!!flags.json, () => landWorktree(ws, ref, { keep: !!flags.keep, dryRun: !!flags['dry-run'], branch: flags.branch ?? null, npmRun }));
 	if (flags.json) dt.emit(JSON.stringify({ ...out, landed: out.landed && { ...out.landed, records: Object.fromEntries(out.landed.records) } }, null, 2));
 	return out.code;
 }

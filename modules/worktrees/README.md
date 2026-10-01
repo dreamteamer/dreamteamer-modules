@@ -14,7 +14,7 @@ dt install --print-adapters      # includes the WorktreeCreate / WorktreeRemove 
 | `dt worktree add --name <n> [--path <dir>] [--base <ref>] [--temp]` | cut a linked worktree on `worktree-<n>` and install it; its path is the last line printed |
 | `dt worktree list` · `get <name\|path>` · `rm <name\|path> [--force]` | observed from `git worktree list`; `rm` refuses a tree holding dirty records or commits nothing else holds |
 | `dt land <name\|path> [--keep] [--dry-run] [--branch <name>]` | rebase a copy of the worktree's branch onto the primary, resolve only conflicts inside a generated block, check, fast-forward, recompile, retire |
-| `dt worktree add --hook` · `dt land --hook --dry-run` | the hook forms, reading the harness's JSON on stdin |
+| `dt worktree add --hook` · `dt worktree rm --hook` | the WorktreeCreate and WorktreeRemove hook forms, reading the harness's JSON on stdin; `rm --hook` removes the tree under `rm`'s guard |
 
 Every verb refuses a flag it does not know. `--json` gives one object on stdout. A new worktree loads
 the same engine and modules: every symlinked direct dependency is mirrored into it.
