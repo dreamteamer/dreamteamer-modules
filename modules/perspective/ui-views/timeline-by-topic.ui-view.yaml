@@ -11,7 +11,8 @@ options:
   template: '{{ name }}'
   color_by_field: status
   page_size: 100000
-  # Carried by hand from an edit made in a CONSUMING workspace on 2026-09-08 — see the ⚠ below.
+  # No date floor: a shared view with a hard `filter` hides older work from every timeline that
+  # uses it. A personal narrowing belongs in your own workspace's view.
   columns:
     - name
     - started
@@ -27,15 +28,3 @@ path: /timeline/by-topic
 target: list
 collection: collections/perspective/activities
 layout: gantt
-
-# ⚠ A `dt ui-views` WRITE FROM A CONSUMING WORKSPACE LANDS IN THE GITIGNORED MODULE CLONE, where the
-# next `git pull` erases it. Found 2026-09-08: an edit to this view — adding the columns and sort
-# above — was committed inside `git_modules/perspective` in a colleague's workspace, invisible to
-# this repo and to every other workspace, and the clone had diverged so the next pull refused
-# outright. The edit was carried here by hand; the clone was reset.
-#
-# ⚠ ONE PART WAS DELIBERATELY NOT CARRIED: that edit also set `filter: started >= 2026-01-01`. This
-# view ships to three workspaces, and a hard date floor in a SHARED view silently hides two
-# colleagues' 2025 work from their own timelines. A personal narrowing belongs in the workspace, not
-# in the module — restore it locally if you want it, and it will be lost on the next pull for
-# exactly the reason above.

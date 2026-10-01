@@ -1,7 +1,6 @@
-<!-- Ported from an earlier conversation analyzer (decision 310). The layout note below was updated for this module; everything else is as established there by reading files on disk. -->
 # the JSONL format, and the traps in it
 
-Everything here was established by reading the files on this machine, not from documentation. It is
+Everything here was established by reading transcript files, not from documentation. It is
 undocumented and versioned only by the `version` field, so **re-check before trusting any of it** if
 a scan starts returning nonsense.
 
@@ -19,18 +18,18 @@ a scan starts returning nonsense.
 ```
 
 **Only `<session-uuid>.jsonl` is a conversation.** Everything named `agent-*` is subagent traffic:
-no operator turns, no independent existence. Folding those into the parent is what makes the count
+no user turns, no independent existence. Folding those into the parent is what makes the count
 876 rather than 5,155.
 
 **The account is knowable only from the tree.** Nothing inside a record says which account was
-active. The operator switches accounts mid-conversation, so the *same project folder* appears under
+active. The person switches accounts mid-conversation, so the *same project folder* appears under
 several account dirs with different sessions in each.
 
 ## line types
 
 | `type` | what it is |
 |---|---|
-| `user` | the operator **or** a tool result **or** harness noise — see below |
+| `user` | the person **or** a tool result **or** harness noise — see below |
 | `assistant` | one API message, possibly one of several lines sharing a `message.id` |
 | `summary` | a `/compact` checkpoint, carrying `summary` + `leafUuid` |
 | `queue-operation`, `last-prompt`, `attachment` | harness bookkeeping, skip |
@@ -47,7 +46,7 @@ Thinking, text and each `tool_use` block can arrive as **separate JSONL records 
 
 ## trap 2 — most `user` lines are not the user
 
-A line with `type: "user"` is the operator only if none of these apply:
+A line with `type: "user"` is the person only if none of these apply:
 
 - `message.content` contains a `tool_result` block → it is a tool result
 - the text is entirely `<system-reminder>` / `<local-command-stdout>` / `<command-message>` /
@@ -57,7 +56,7 @@ A line with `type: "user"` is the operator only if none of these apply:
 `classifyUserLine()` is the only correct way to make this call. Getting it wrong makes every ratio
 in the module lie, and it lies *plausibly*, which is worse.
 
-A `<command-name>` envelope IS a real turn — the operator typed `/something`.
+A `<command-name>` envelope IS a real turn — the person typed `/something`.
 
 ## trap 3 — thinking text is not on disk
 
@@ -75,7 +74,7 @@ The block is there; the reasoning is not. So:
 
 ## trap 4 — `cwd` is where it ran, not what it was about
 
-An operator regularly opens a session in a parent vault folder and works on a child or sibling repo, with
+A person regularly opens a session in a parent workspace folder and works on a child or sibling repo, with
 or without `cd`. A session can also change `cwd` mid-flight (hence `cwds`). `repo` records where it
 ran; `subject_repos` infers what it touched. Expect them to differ.
 
@@ -95,6 +94,6 @@ They arrive as `user` lines whose content holds `tool_result` blocks:
 
 `is_error` is the error signal. A **permission denial** is a specific error body — "the user doesn't
 want to proceed with this tool use" — matched by `DENIAL_RE` and counted separately, because a
-refusal is an operator act and an error is not.
+refusal is a person act and an error is not.
 
 An interrupt appears as literal text: `[Request interrupted by user…`.

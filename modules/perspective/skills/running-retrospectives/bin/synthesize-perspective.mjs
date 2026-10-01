@@ -5,7 +5,7 @@
 //   node synthesize-perspective.mjs --retrospective perspective/retrospective-sessions/<id>
 //        [--data-root d] [--workspace-root d] [--scratch-root d] [--dry-run]
 //
-// ⚠ WHAT IS THE MODEL'S, AND IS NEVER TOUCHED: `role`, `summary` and the BODY. Those are the
+// WHAT IS THE MODEL'S, AND IS NEVER TOUCHED: `role`, `summary` and the BODY. Those are the
 // perspective — an observed role and a paragraph a person would recognise. This script only counts
 // and joins. It rewrites the record in place, preserving existing key order, so a model can write
 // `role` before or after this runs and either order survives.
@@ -27,7 +27,7 @@
 //     it counted here and the commit/ticket totals copied from the record the projects pass wrote
 //   · inline `repos` — one per `git-repo` source of this run, counted from the COMMITS SCRATCH FILE
 //     read-git leaves at `<scratch-root>/commits/<base>/<slug>.jsonl` (commits are deliberately not
-//     records — design §8). An absent scratch file is 0 commits, never an error.
+//     records). An absent scratch file is 0 commits, never an error.
 //   · inline `collections` — every compiled descriptor under `<workspace-root>/.dreamteamer/
 //     collections`, minus this module's own and minus the runtime-base system collections, with the
 //     record files under each one's `storage.path` counted. What the contributor has to keep things in.
@@ -40,7 +40,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import yaml from 'js-yaml';
-import { VAULT, DATA, SCRATCH, dt, slug } from '../lib/vault.mjs';
+import { WORKSPACE_ROOT, DATA, SCRATCH, dt, slug } from '../lib/workspace.mjs';
 import { recordPath, writeRecord, readRecord, listRecords, contributorOf, compiledStorage, recordFilesOf, collectionDir, recordId } from '../lib/records.mjs';
 import { contributorHandles as handlesOf } from '../lib/identity.mjs';
 
@@ -57,14 +57,13 @@ const base = retrospective.split('/').pop();
 const dataRoot = opt('data-root', DATA);
 // Every evidence and model id is keyed by the CONTRIBUTOR, not by the run — a re-run must update
 // this person's records rather than write a parallel set beside them. Resolved LAZILY, on first
-// use: reading it eagerly made a script that should exit 2 on a bad argument crash on a missing
-// session instead, and write nothing was the contract it broke (read-asana, 2026-09-09).
+// use, so a bad argument exits 2 with a usage line before any session is read.
 let _who = null;
 const who = () => (_who ??= contributorOf(retrospective, dataRoot));
 // Where the INPUTS that are not records live: the compiled descriptors and the data they count
 // (--workspace-root, the same spelling init.mjs uses), and read-git's commits JSONL (--scratch-root,
-// the same spelling read-git.mjs uses). Both default to this vault.
-const workspaceRoot = path.resolve(opt('workspace-root', VAULT));
+// the same spelling read-git.mjs uses). Both default to this workspace.
+const workspaceRoot = path.resolve(opt('workspace-root', WORKSPACE_ROOT));
 const scratchRoot = path.resolve(opt('scratch-root', SCRATCH));
 
 const belongs = (fields) => !fields.source || String(fields.source).startsWith(`perspective/sources/${who()}/`);
@@ -94,9 +93,8 @@ if (fs.existsSync(file)) {
 	const intro = fs.existsSync(introFile) ? readRecord(introFile).fields : {};
 	fields = {
 		retrospective,
-		// `contributor` is required by the descriptor, and it is the perspective's own id. There is no
-		// fallback rung any more: `label` was removed on 2026-09-09 and `who()` already refuses a session
-		// that carries no contributor, so a value here can only come from the session.
+		// `contributor` is required by the descriptor, and it is the perspective's own id. `who()`
+		// refuses a session that carries no contributor, so a value here can only come from the session.
 		contributor: who(),
 		author: 'scripts/synthesize-perspective@1',
 		creation_context: `mechanical half of stage 6 for ${retrospective}; role, summary and body are the model's`,
@@ -118,7 +116,7 @@ if (routines.length) fields.routines = routines;
 const activities = underRun('activities');
 fields.activities_count = activities.length;
 fields.decisions_count = underRun('decisions').length;
-// ⚠ DISTINCT MEETINGS THE MODEL RESTS ON, not what the reader scanned. A meeting attended and never
+// DISTINCT MEETINGS THE MODEL RESTS ON, not what the reader scanned. A meeting attended and never
 // clustered into an activity is on the `meetings` source's own counts and deliberately not here:
 // this number is the calendar's contribution to the PERSPECTIVE, and the two would silently disagree
 // if one field tried to be both. Absent when no activity cites one, because a workspace without the
@@ -165,10 +163,8 @@ const projects = underRun('projects')
 if (projects.length) fields.projects = projects; else delete fields.projects;
 
 // ── inline repos ──────────────────────────────────────────────────────────────────────────────
-// The contributor's OWN commits need their git identities. ⚠ This matched the collaborator handles
-// against `fields.contributor` until 2026-09-09 — that is the SLUG, and a slug is never an author
-// email, so the set came back empty and contributor_commits was 0 on every run after the re-keying.
-// The handles are on the run record; `lib/identity.mjs` unions in the merge read-git already did.
+// The contributor's OWN commits need their git identities, never the `contributor` SLUG — a slug is
+// never an author email. The handles are on the run record; `lib/identity.mjs` unions in the merge read-git already did.
 const contributorHandles = handlesOf(retrospective, dataRoot) ?? new Set();
 
 const urlish = (v) => typeof v === 'string' && /^(?:https?:\/\/|ssh:\/\/|git@)\S+$/.test(v.trim());
@@ -248,17 +244,13 @@ if (days.length) { fields.period_start = days[0]; fields.period_end = days[days.
 const ref = `perspective/perspectives/${who()}`;
 if (!flag('dry-run')) {
 	writeRecord(file, fields, body);
-	// ⚠ THERE IS NO BACK-LINK TO WRITE ANY MORE, and writing one is now an ERROR.
-	// `retrospective-sessions.perspective` was a hand-kept pointer until 2026-09-09; it is a GENERATED
-	// MIRROR of `perspectives.retrospective` now, and the engine refuses a direct write to it:
+	// THERE IS NO BACK-LINK TO WRITE, and writing one is an ERROR.
+	// `retrospective-sessions.perspective` is a GENERATED MIRROR of `perspectives.retrospective`,
+	// and the engine refuses a direct write to it:
 	//   ✖ perspective is generated from perspective/perspectives.retrospective — set that instead
 	// The owning side is `fields.retrospective` on the record this function just wrote, so the mirror
 	// is already correct the moment the engine next rebuilds relations. This script's only job here is
 	// to write the perspective; the edge belongs to the schema.
-	//
-	// It shipped broken through 0.2.1 because the fixture has no compiled runtime, so the old guard
-	// (`does .dreamteamer exist beside dataRoot`) skipped the write in every test and the failure could
-	// only appear on a real workspace — which is exactly where it appeared (a client workspace, 2026-09-10).
 }
 
 const used = (list) => list.filter((e) => Number(e.uses) > 0).length;

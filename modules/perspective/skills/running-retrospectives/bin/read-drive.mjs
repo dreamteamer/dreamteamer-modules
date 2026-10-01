@@ -7,12 +7,12 @@
 //        [--as <google-account-email>] [--since YYYY-MM-DD] [--drive <id>] [--limit N]
 //        [--data-root d] [--dry-run]
 //
-// ⚠ WHY THIS EXISTS. Measured 2026-09-08: one contributor had 933 Asana tickets over a year and
-// another had 23. The second is not doing a twentieth of the work — her trail is in documents, and a
-// module that can only read boards would have profiled her as nearly idle and been confidently wrong.
+// WHY THIS EXISTS. Two people on one board can differ forty times over in tickets while doing
+// comparable work, because one person's trail is in documents — and a module that can only read
+// boards would profile that person as nearly idle and be confidently wrong.
 // An evidence source that is absent for a person is a fact about the SOURCE, not about the person.
 //
-// ⚠ WHAT IT CANNOT SEE, and says so rather than guessing:
+// WHAT IT CANNOT SEE, and says so rather than guessing:
 //   · Drive records ONE `lastModifyingUser` per file. A document five people wrote shows the last of
 //     them, so a file is evidence that the contributor touched it LAST, never that they authored it.
 //     `revisions` would say more, but it is a request per file and most of this corpus is Docs whose
@@ -20,7 +20,7 @@
 //   · An `owners` query does not work on a shared drive at all — files are owned by the drive. This
 //     is why the pass enumerates and filters client-side instead of asking Drive to filter.
 //   · A file the contributor read and never edited leaves no trace here. Reading is invisible.
-import { DATA, isoWeek, isoWeekRange } from '../lib/vault.mjs';
+import { DATA, isoWeek, isoWeekRange } from '../lib/workspace.mjs';
 import { recordPath, writeRecord, readRecord, contributorOf, writeSource } from '../lib/records.mjs';
 import { accessTokenFor, googleAccounts, drive } from '../lib/google-auth.mjs';
 
@@ -38,8 +38,7 @@ const base = retrospective.split('/').pop();
 const dataRoot = opt('data-root', DATA);
 // Every evidence and model id is keyed by the CONTRIBUTOR, not by the run — a re-run must update
 // this person's records rather than write a parallel set beside them. Resolved LAZILY, on first
-// use: reading it eagerly made a script that should exit 2 on a bad argument crash on a missing
-// session instead, and "writes nothing" was the contract it broke (read-asana, 2026-09-09).
+// use, so a bad argument exits 2 with a usage line before any session is read.
 let _who = null;
 const who = () => (_who ??= contributorOf(retrospective, dataRoot));
 const contributor = opt('contributor').toLowerCase();
@@ -48,9 +47,9 @@ const as = opt('as') || contributor;               // whose Drive session reads;
 const since = opt('since');
 const limit = Number(opt('limit', '0')) || 0;
 const onlyDrive = opt('drive');
-// `--kinds doc,sheet,slides` keeps only those artefact kinds. Measured on an operator's own account
-// 2026-09-08: 1,615 files touched in a year, most of them a synced folder's recordings, statements
-// and screenshots — real files, not deliverables. Default is everything; the receipt prints the
+// `--kinds doc,sheet,slides` keeps only those artefact kinds. A personal account can touch
+// thousands of files a year, most of them a synced folder's recordings, statements and screenshots —
+// real files, not deliverables. Default is everything; the receipt prints the
 // histogram so the next run can decide what to keep.
 const onlyKinds = opt('kinds') ? new Set(opt('kinds').split(',').map((k) => k.trim()).filter(Boolean)) : null;
 
@@ -77,14 +76,13 @@ if (!token) {
 }
 
 // ── which corpus ─────────────────────────────────────────────────────────────────────────────────
-// ⚠ `allDrives` BY DEFAULT, and this was measured the hard way on 2026-09-08. The first version
-// enumerated the shared drives one at a time and found 9 files for a contributor; widening to
-// `allDrives` — which also reaches My Drive and everything shared with the reading account — found
-// 53, and the extra 44 were her entire body of product specs. A reader that silently sees a sixth of
-// someone's work does not report a small number, it reports a WRONG PERSON.
+// `allDrives` BY DEFAULT. Enumerating the shared drives one at a time misses My Drive and everything
+// shared with the reading account directly — which can be most of a contributor's specs. A reader
+// that silently sees a sixth of someone's work does not report a small number, it reports a WRONG
+// PERSON.
 //
-// `--drive <id>` still scopes to one shared drive when that is what you want; it is the narrow case
-// now, not the default.
+// `--drive <id>` scopes to one shared drive when that is what you want; it is the narrow case, not
+// the default.
 const drives = [];
 if (onlyDrive) drives.push({ id: onlyDrive, name: onlyDrive });
 else {
@@ -122,12 +120,11 @@ do {
 		seen++;
 		if ((f.lastModifyingUser?.emailAddress ?? '').toLowerCase() === contributor) {
 			// A file with no driveId is in My Drive or was shared directly — both are real places a
-			// contributor's work lives, and both were invisible to the per-shared-drive version.
-			// ⚠ An UNRESOLVABLE driveId is not a bug and not a name to print raw. It means the file sits
+			// contributor's work lives, and a per-shared-drive read cannot see either.
+			// An UNRESOLVABLE driveId is not a bug and not a name to print raw. It means the file sits
 			// in a shared drive the reading account is NOT a member of, and is visible only because it
-			// was shared individually — measured 2026-09-08, where 43 of one contributor's 53 files were
-			// in exactly that position. The label says so, because "0AJZlfITl1PY6Uk9PVA" tells a reader
-			// nothing and quietly implies the drive was scanned when it was not.
+			// was shared individually — often most of a contributor's files. The label says so, because a
+			// raw drive id tells a reader nothing and quietly implies the drive was scanned when it was not.
 			const container = !f.driveId
 				? 'My Drive / shared directly'
 				: (driveName.get(f.driveId) ?? `a shared drive ${as} is not a member of (files seen only because they were shared)`);
@@ -174,7 +171,7 @@ for (const f of rows) {
 			name: f.name,
 			kind: KIND(f.mimeType),
 			source_kind: 'drive',
-			// The read that found it. ⚠ NOT the person: on a proxy run this is the colleague's login,
+			// The read that found it. NOT the person: on a proxy run this is the colleague's login,
 			// and `last_touched_by` below is the one who actually edited the file.
 			source: sourceRef,
 			external_id: f.id,
@@ -182,7 +179,7 @@ for (const f of rows) {
 			container: f.driveName,
 			created_on: (f.createdTime ?? '').slice(0, 10) || undefined,
 			last_touched_on: day || undefined,
-			// ⚠ TOUCHED, not authored. Drive keeps one lastModifyingUser; a document five people wrote
+			// TOUCHED, not authored. Drive keeps one lastModifyingUser; a document five people wrote
 			// shows the last of them. The field name is the honest one.
 			last_touched_by: f.lastModifyingUser?.emailAddress,
 			bytes: f.size ? Number(f.size) : undefined,
@@ -236,8 +233,8 @@ if (!flag('dry-run')) {
 		let summary;
 		try { summary = readRecord(recordPath('activity-weeks', wid, 'activity-week', dataRoot)).fields.summary || undefined; } catch { /* first write */ }
 		writeRecord(recordPath('activity-weeks', wid, 'activity-week', dataRoot), {
-			// `retrospective` is REQUIRED on all nineteen collections since 0.2.0; a week written
-			// without it fails `check` the moment it lands.
+			// `retrospective` is REQUIRED on every collection; a week written without it
+			// fails `check` the moment it lands.
 			retrospective,
 		contributor: who(),
 			source: sourceRef,

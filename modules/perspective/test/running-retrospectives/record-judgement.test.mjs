@@ -8,13 +8,13 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { writeRecord, readRecord, recordPath } from '../../skills/running-retrospectives/lib/records.mjs';
-import { VAULT } from '../../skills/running-retrospectives/lib/vault.mjs';
+import { WORKSPACE_ROOT } from '../../skills/running-retrospectives/lib/workspace.mjs';
 
 // Three assertions below read the COMPILED descriptor (the script validates judged values against
 // `.dreamteamer/collections/perspective/conversations.collection.yaml`). Standalone — this module
 // checked out on its own, no workspace above it — there is nothing compiled to read, so those three
 // are skipped by name rather than failing on an environment fact. From a consuming workspace they run.
-const NO_DESCRIPTOR = fs.existsSync(path.join(VAULT, '.dreamteamer', 'collections', 'perspective', 'conversations.collection.yaml')) ? false : 'needs a compiled workspace above the module';
+const NO_DESCRIPTOR = fs.existsSync(path.join(WORKSPACE_ROOT, '.dreamteamer', 'collections', 'perspective', 'conversations.collection.yaml')) ? false : 'needs a compiled workspace above the module';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const BIN = path.join(HERE, '..', '..', 'skills', 'running-retrospectives', 'bin', 'record-judgement.mjs');

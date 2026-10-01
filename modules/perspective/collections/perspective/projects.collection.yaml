@@ -4,7 +4,7 @@
 # on, inferred from the repos they commit to, the ticket boards their tickets sit in, and the topics
 # their activities share. Activities point at it; the perspective lists them inline.
 #
-# ⚠ THE OBSERVED HALF OF `projects`, IN THE SAME SHAPE AND IN A SEPARATE STORE — see
+# THE OBSERVED HALF OF `projects`, IN THE SAME SHAPE AND IN A SEPARATE STORE — see
 # `perspective/users.real` for the whole argument, which holds identically here. `real` is the one-way,
 # soft join to the authored record; everything from `session_count` down is what OBSERVING is and has
 # no counterpart in the real collection, because nobody measures a plan they are still writing.
@@ -78,7 +78,7 @@ schema:
       type: array
       items: { type: string, x-reference: perspective/users }
       x-inverse: projects
-    # ⚠ `started`/`ended`, NOT `starts`/`ends`, and the tense is the whole distinction. The real
+    # `started`/`ended`, NOT `starts`/`ends`, and the tense is the whole distinction. The real
     # collection's `starts` is a PLAN — a date somebody chose, in the future when they wrote it. These
     # are the first and last dates evidence EXISTS for. Spelling them the same would assert the two
     # mean the same thing, in the one place the difference is visible for free.
@@ -91,15 +91,15 @@ schema:
     # Rolled up from this project's activities by bin/rollup-metrics.mjs, never typed by a model.
     # They exist so the body above them can NARRATE the project's production lifecycle — what it
     # cost, how it moved, and whether it converged — instead of asserting a shape nobody measured.
-    # ⚠ Absent, not zero, where the evidence does not exist: a project reconstructed from commits
+    # Absent, not zero, where the evidence does not exist: a project reconstructed from commits
     # alone has no session numbers at all, and a 0 there would read as "this was free".
     session_count: { type: integer, description: ROLLED UP — conversations across every activity in this project. }
     active_minutes: { type: number, description: "ROLLED UP — EFFORT, and the honest version of it: engaged minutes, not wall-clock between first and last commit." }
-    turns_user: { type: integer, description: "ROLLED UP — operator turns. The north-star cost: it is fine to burn a billion tokens once, expensive to have to talk to it a thousand times." }
+    turns_user: { type: integer, description: "ROLLED UP — user turns. The north-star cost: it is fine to burn a billion tokens once, expensive to have to talk to it a thousand times." }
     corrections: { type: integer, description: ROLLED UP — correction turns. Against `turns_user` this is the curve that is supposed to fall as a project matures. }
-    interruptions: { type: integer, description: ROLLED UP — times the operator stopped the agent mid-flight on this project. }
+    interruptions: { type: integer, description: ROLLED UP — times the person stopped the agent mid-flight on this project. }
     tokens_total: { type: integer, description: ROLLED UP — input + output + cache read + cache write across every session. The number to quote when someone asks what this project burned. }
-    input_words: { type: integer, description: ROLLED UP — words the operator had to type. The denominator. }
+    input_words: { type: integer, description: ROLLED UP — words the person had to type. The denominator. }
     output_words: { type: integer, description: ROLLED UP — words of assistant output. The numerator, worthless without `correction_ratio`. }
     correction_ratio: { type: number, description: "ROLLED UP from the SUMS, never averaged across activities. PERFORMANCE, in the one direction that means anything: it should FALL." }
     lines_new: { type: integer, description: "ROLLED UP from the weeks this project's repos were active — CURVE ONE, code that did not exist before." }
@@ -108,11 +108,11 @@ schema:
     commits_change_request: { type: integer, description: "ROLLED UP — commits whose subject says requirement shift. Read as a SHARE against `commits_bug`: a converging project's remaining changes should be requirement-driven, and a rising bug share late is the alarm." }
     converging:
       type: boolean
-      description: "JUDGED, over the whole project rather than week to week — did both code curves flatten? That is what done looks like, in the operator's words: you produce a lot, then little, then you edit a lot, then little, and then you stop. ⚠ Never judged from two adjacent weeks; a spike is an event, not a trend."
+      description: "JUDGED, over the whole project rather than week to week — did both code curves flatten? That is what done looks like, in the person's words: you produce a lot, then little, then you edit a lot, then little, and then you stop. Never judged from two adjacent weeks; a spike is an event, not a trend."
     lifecycle_stage:
       type: string
       enum: [exploring, building, hardening, maintaining, converged, abandoned]
-      description: "JUDGED from the curves and the evidence, not declared. `exploring` — high sessions, few commits, no shape yet. `building` — lines_new dominates. `hardening` — lines_modified dominates and the bug share is rising. `maintaining` — both curves low and flat but evidence continues. `converged` — both flat and the work stopped because it was DONE. `abandoned` — both flat and it stopped because it was dropped. ⚠ The last two look identical in the numbers and are told apart only by what the evidence SAYS; if you cannot tell, the honest answer is `maintaining`."
+      description: "JUDGED from the curves and the evidence, not declared. `exploring` — high sessions, few commits, no shape yet. `building` — lines_new dominates. `hardening` — lines_modified dominates and the bug share is rising. `maintaining` — both curves low and flat but evidence continues. `converged` — both flat and the work stopped because it was DONE. `abandoned` — both flat and it stopped because it was dropped. The last two look identical in the numbers and are told apart only by what the evidence SAYS; if you cannot tell, the honest answer is `maintaining`."
     content:
       type: string
       format: markdown
@@ -125,7 +125,7 @@ schema:
         lines so the reader can see where the time actually went; and what the numbers SAY about where
         it stands now — converging, hardening, or stalled — stated as a judgement with its evidence,
         never as a summary of the fields.
-        ⚠ Every figure quoted here must be one of the fields above, unrounded and unembellished. A
+        Every figure quoted here must be one of the fields above, unrounded and unembellished. A
         number in this body that is not in the frontmatter is a number nobody measured.
     author:
       type: string

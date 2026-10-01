@@ -4,10 +4,7 @@
 //   node infer-goals.mjs --retrospective perspective/retrospective-sessions/<id>
 //        [--data-root d] [--scratch-root s] [--attach] [--force] [--dry-run]
 //
-// ⚠ THIS COLLECTION HAD NO WRITER. `goals` has existed since the v2 model, is advertised in the
-// module's own description, and `references/inference-model.md` gives its rung — and no stage of the
-// skill wrote one. Nothing failed, because nothing checked: `tests/stage-model.test.mjs` is what
-// makes an orphaned collection an error now.
+// This is the one writer of `perspective/goals`; `references/inference-model.md` gives its rung.
 //
 // TWO HALVES, the same split `cluster-activities` + `attach-evidence` uses, and for the same reason.
 // Naming a goal is a JUDGEMENT the inference model is explicit about: *"'ship the product' — a goal
@@ -20,13 +17,13 @@
 //   --attach  fills the machine half onto every goal carrying `from_candidate`: the refs it was
 //             inferred from, the counts, the dates, and `standing`.
 //
-// ⚠ NEVER FROM WHAT THE PERSON SAID. A goal read out of an answer is an answered question and belongs
+// NEVER FROM WHAT THE PERSON SAID. A goal read out of an answer is an answered question and belongs
 // on the question record. This script reads only decisions, activities and projects.
-// ⚠ ADDITIVE. `--attach` never lowers a `standing` the interview raised, and never overwrites a
+// ADDITIVE. `--attach` never lowers a `standing` the interview raised, and never overwrites a
 // hand-set field without `--force` — the rule `derive-collaborators` learned by deleting 108 refs.
 import fs from 'node:fs';
 import path from 'node:path';
-import { DATA } from '../lib/vault.mjs';
+import { DATA } from '../lib/workspace.mjs';
 import { listRecords, readRecord, writeRecord, recordPath, contributorOf, collectionDir, recordId } from '../lib/records.mjs';
 
 const argv = process.argv.slice(2);
@@ -57,7 +54,7 @@ const norm = (v) => {
 	if (v instanceof Date) return day(v.toISOString());
 	if (Array.isArray(v)) return v.map(norm);
 	if (v && typeof v === 'object') {
-		// ⚠ DROP THE EMPTIES, because `writeRecord` drops them: a key set to undefined and a key that
+		// DROP THE EMPTIES, because `writeRecord` drops them: a key set to undefined and a key that
 		// was never there produce the same file, so treating them as different made the receipt claim
 		// a write on every re-run while the bytes on disk never moved. A receipt that overstates its
 		// own work is the same class of defect as a green test that proves nothing.
@@ -126,12 +123,12 @@ function attach(rows) {
 		next.evidence_count = row.evidence_count;
 		next.first_seen = g.fields.first_seen && !force ? g.fields.first_seen : row.first_seen;
 		next.last_seen = row.last_seen;
-		// ⚠ never lower what the interview raised: corroborated and confirmed outrank inferred.
+		// never lower what the interview raised: corroborated and confirmed outrank inferred.
 		if (!['corroborated', 'confirmed', 'refuted'].includes(String(g.fields.standing ?? ''))) next.standing = 'inferred';
 		next.author = g.fields.author ?? AUTHOR;
-		// ⚠ COMPARE NORMALISED. YAML parses an unquoted `2026-03-04` into a Date, so a raw
+		// COMPARE NORMALISED. YAML parses an unquoted `2026-03-04` into a Date, so a raw
 		// JSON.stringify diff calls every re-run a change and the stage stops being idempotent —
-		// which `tests/idempotency.test.mjs` would then fail, correctly.
+		// which the idempotency test would then fail, correctly.
 		if (same(next, g.fields)) { unchanged++; continue; }
 		filled++;
 		if (!dryRun) writeRecord(recordPath('goals', g.id, 'goal', dataRoot), next, g.body);

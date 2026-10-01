@@ -38,7 +38,7 @@ schema:
       description: >-
         How many DISTINCT meetings this contributor's activities rest on — not how many the reader
         scanned, which is on the `meetings` source's own `counts`. Absent when no activity cites one.
-        ⚠ Attendance, not participation, and worth saying so in the body wherever this number carries
+        Attendance, not participation, and worth saying so in the body wherever this number carries
         an argument.
     commands:
       type: array

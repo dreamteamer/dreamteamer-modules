@@ -13,7 +13,7 @@
 // of the same `{data:[…]}` shape, which is how the test runs offline and with no token at all.
 import fs from 'node:fs';
 import path from 'node:path';
-import { DATA, readEnv, slug } from '../lib/vault.mjs';
+import { DATA, readEnv, slug } from '../lib/workspace.mjs';
 import { recordPath, writeRecord, contributorOf, writeSource } from '../lib/records.mjs';
 import { upsertCollaborators } from '../lib/collaborators.mjs';
 
@@ -29,8 +29,7 @@ if (!contributor) { console.error('usage: --contributor <email-or-gid> is requir
 const dataRoot = opt('data-root', DATA);
 // Every evidence and model id is keyed by the CONTRIBUTOR, not by the run — a re-run must update
 // this person's records rather than write a parallel set beside them. Resolved LAZILY, on first
-// use: reading it eagerly made a script that should exit 2 on a bad argument crash on a missing
-// session instead, and write nothing was the contract it broke (read-asana, 2026-09-09).
+// use, so a bad argument exits 2 with a usage line before any session is read.
 let _who = null;
 const who = () => (_who ??= contributorOf(retrospective, dataRoot));
 const since = opt('since');
@@ -46,8 +45,7 @@ const READ_WITH = 'read-asana@2';
 const TASK_FIELDS = ['name', 'gid', 'created_at', 'completed', 'completed_at', 'due_on', 'notes',
 	'memberships.project.name', 'memberships.section.name', 'tags.name', 'permalink_url',
 	'parent.gid', 'assignee.gid', 'assignee.email', 'assignee.name',
-	// @2 — the rest of what a task holds. ⚠ Measured on a real board: 344 of 933 descriptions are
-	// EMPTY, so a ticket whose body is only `notes` says nothing about how the work went. Followers
+	// @2 — the rest of what a task holds. Many descriptions are EMPTY, so a ticket whose body is only `notes` says nothing about how the work went. Followers
 	// are often the only record of who else was involved; `modified_at` is the field that tells a
 	// two-year-old open ticket from live work; custom fields are whatever the board keeps.
 	'modified_at', 'num_subtasks', 'followers.name', 'followers.email',
@@ -64,7 +62,7 @@ if (!fixture && !token) {
 	process.exit(2);
 }
 
-/** One GET. ⚠ The response body is truncated into the error on purpose and the request headers are
+/** One GET. The response body is truncated into the error on purpose and the request headers are
  *  never echoed: an Asana 401 body says "Not Authorized", never the token, and this keeps it that way. */
 async function get(pathname, params = {}) {
 	const url = new URL(API + pathname);
@@ -105,7 +103,7 @@ if (!me) {
 }
 
 // ── the tasks ────────────────────────────────────────────────────────────────────────────────────
-// ⚠ `completed_since` is the completed-task trap: GET /tasks returns "tasks that are either
+// `completed_since` is the completed-task trap: GET /tasks returns "tasks that are either
 // incomplete OR that have been completed since this time", so a query that omits it is fine but one
 // that passes a recent timestamp silently drops the closed work — which is most of the evidence a
 // perspective is built from. The epoch value asks for all of it, explicitly.
@@ -113,8 +111,8 @@ const fetched = fixture
 	? fixtureData('tasks.json')
 	: await getAll('/tasks', { assignee: me.gid, workspace: ws.gid, completed_since: '1970-01-01T00:00:00Z', opt_fields: TASK_FIELDS, limit: 100 });
 /** Filtered HERE as well as server-side: the fixture path has no server, and a widened query must
- *  never attribute somebody else's task to this contributor (§4 — a wrong merge is the worst error
- *  this module can make). */
+ *  never attribute somebody else's task to this contributor (a wrong merge is the worst error this
+ *  module can make). */
 const isMe = (a) => !!a && (a.gid === me.gid || (a.email && me.email && lower(a.email) === lower(me.email)));
 const mine = fetched
 	.filter((t) => isMe(t.assignee))
@@ -130,7 +128,7 @@ if (wantStories) {
 	const workers = Array.from({ length: Math.min(STORY_CONCURRENCY, queue.length) }, async () => {
 		for (let t = queue.shift(); t; t = queue.shift()) {
 			let rows = [];
-			// ⚠ One task's stories failing must not cost the other 932. A task whose trail cannot be
+			// One task's stories failing must not cost the other 932. A task whose trail cannot be
 			// read is a thinner ticket, never a dead run.
 			try { rows = await getAll(`/tasks/${t.gid}/stories`, { opt_fields: STORY_FIELDS, limit: 100 }); }
 			catch { storyErrors++; continue; }
@@ -212,16 +210,14 @@ for (const t of mine) {
 // EVERY person the kept tasks show, not only the assignee — enriched from the workspace user list,
 // which is what turns a bare gid on a task into a name and an email.
 //
-// ⚠ THE ASSIGNEE ALONE WAS A BUG, measured 2026-09-08: a contributor whose 23 tickets are all
-// SELF-ASSIGNED came out of a full run with exactly one collaborator — herself — while those same
-// tasks carried eight distinct counterparts in `followers` and more in their comment trails. A
-// collaborator model that says a product owner works alone is a fact about the reader, not about
-// the person. Three roles now, each keyed on an email or a gid and never on a display name:
+// THE ASSIGNEE ALONE IS NOT ENOUGH: a contributor whose tickets are all SELF-ASSIGNED would come out
+// with one collaborator — themselves — while those same tasks carry their counterparts in
+// `followers` and in their comment trails. A collaborator model that says a product owner works
+// alone is a fact about the reader, not about the person. Three roles, each keyed on an email or a gid and never on a display name:
 //   · assignee   — the task is theirs
 //   · follower   — they are on it (Asana's own notion of who is involved)
 //   · commenter  — they wrote in the trail; `created_by.email` is already requested for this
-// The merge itself is `lib/collaborators.mjs`, the one place that knows the rule. This block used to
-// carry its own copy, which predated (and therefore lacked) that file's merge-by-name refusal.
+// The merge itself is `lib/collaborators.mjs`, the one place that knows the rule.
 const roles = new Map([['assignee', new Map()], ['follower', new Map()], ['commenter', new Map()]]);
 function met(role, who, on) {
 	if (!who) return;

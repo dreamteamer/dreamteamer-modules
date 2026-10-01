@@ -1,7 +1,7 @@
-# gates — THE CONDITION A RETROSPECTIVE STAGE MUST MEET BEFORE THE RUN MOVES ON, and what was
+# perspective/gates — THE CONDITION A RETROSPECTIVE STAGE MUST MEET BEFORE THE RUN MOVES ON, and what was
 # measured to say so.
 #
-# ⚠ NOT A PLAN GATE, AND THE TWO MUST NEVER BE CONFLATED. `activities` in the `projects` module folds
+# NOT A PLAN GATE, AND THE TWO MUST NEVER BE CONFLATED. `activities` in the `projects` module folds
 # a delivery gate in as `kind: gate` — a condition in somebody's PLAN, on a date, with a lead, drawn
 # as a point on the same gantt as the work; that fold was right because a plan reads as one ordered
 # list. This collection is about the RETROSPECTIVE ITSELF: whether the method held at a stage
@@ -10,19 +10,15 @@
 # procedure, not on anybody's delivery. And it has no position in any ordered list — it is judged at
 # a stage BOUNDARY, which is not a rung. Nothing here folds into `activities`, in either direction.
 #
-# ⚠ WHY THESE ARE RECORDS. The module already had gates: SKILL.md said "advance `stage` only after the
-# stage's records are on disk and `npm run check` is clean", the guard refused nine classes of broken
-# record, and the interview had a minimum. All of it was prose or an exit code — nothing on disk said
-# WHICH condition was checked, WHEN, or WHAT NUMBER decided it. So "is this perspective sound" could
-# only be re-argued, and a stage advanced on a command nobody could later inspect. One record per gate
-# per run turns that into a query.
+# WHY THESE ARE RECORDS. Prose rules and exit codes leave nothing on disk that says WHICH condition was
+# checked, WHEN, or WHAT NUMBER decided it, so "is this perspective sound" can only be re-argued. One
+# record per gate per run turns it into a query.
 #
-# ⚠ `measured` IS THE FORCING FIELD, and it is required on every verdict but `not-run`. A gate that
-# says `pass` with nothing measured is an opinion wearing a verdict's clothes — the same failure the
-# operator's rule 7 names, where an agent reports success instead of quoting a result. Quote the
-# count, the command's line, or the person's words.
+# `measured` IS THE FORCING FIELD, and it is required on every verdict but `not-run`. A gate that
+# says `pass` with nothing measured is an opinion wearing a verdict's clothes: an agent reporting
+# success instead of quoting a result. Quote the count, the command's line, or the person's words.
 #
-# ⚠ A GATE IS NOT THE GUARD. `bin/check-records.mjs` REFUSES a broken record and says nothing when
+# A GATE IS NOT THE GUARD. `bin/check-records.mjs` REFUSES a broken record and says nothing when
 # everything is fine; a gate RECORDS that the condition was evaluated and what it came to, including
 # the passes. The two overlap on purpose: the guard is the enforcement, the gate is the audit trail,
 # and a gate whose check the guard already performs cites the guard's own output as its `measured`.
@@ -91,9 +87,9 @@ schema:
       type: string
       description: >-
         WHAT WAS OBSERVED, quoted — a count, a command's own line, or the person's words. Required for
-        every verdict but `not-run`, and `bin/check-records.mjs` refuses a verdict without it. ⚠ A
-        `pass` with no measurement is exactly the pattern the operator's rule 7 exists to catch: an
-        agent reporting success rather than quoting a result from the running system.
+        every verdict but `not-run`, and `bin/check-records.mjs` refuses a verdict without it. A
+        `pass` with no measurement is an agent reporting success rather than quoting a result from the
+        running system.
     waived_because:
       type: string
       description: Why a person chose to proceed past an unmet gate. Required when `verdict` is `waived`; a waiver without a reason is an undocumented shortcut.

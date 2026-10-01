@@ -13,8 +13,6 @@
 //                  redaction pass. The heading is checked; the absence of PII is a judgement the
 //                  judging pass owns and no regex can settle.
 //
-// The v2 perspective model adds five more (design doc 2026-09-08, §7):
-//
 //   5. insights  — at least TWO `findings`, each resolving. An insight on one finding IS that
 //                  finding; the grain distinction is the reason the collection exists.
 //   6. activities — `collaborative` agrees with `collaborators` in BOTH directions (it is a derived
@@ -23,10 +21,9 @@
 //                  the only pointers into it; `ended` is not before `started`.
 //   7. decisions — `source_ref` is non-empty and SHAPED for its `source_kind`, AND the record it
 //                  names exists — including a `meetings/<id>` one, resolved against the workspace's
-//                  own meetings collection (0.4.0; before that the shape was checked and the
-//                  existence never was, which is a claim wearing a provenance).
+//                  own meetings collection.
 //   8. perspectives — one per retrospective, and the retrospective points BACK. Init writes the
-//                  perspective before it sets the back-pointer, so a missing back-pointer is a `⚠`
+//                  perspective before it sets the back-pointer, so a missing back-pointer is a ``
 //                  warning on stdout (a run in flight), while a back-pointer aimed elsewhere is a
 //                  violation (two perspectives for one run).
 //   9. workflows — `steps` non-empty (the steps ARE the workflow), at least one resolving activity
@@ -40,20 +37,23 @@
 //                  record (a WARNING when it does not). The field is `x-reference-soft`, so the
 //                  engine ignores both absences by design — this is what stops "soft" meaning
 //                  "silent".
+//  12. gates     — every verdict but `not-run` carries `measured`, and a `waived` one carries
+//                  `waived_because`.
+//  13. questions — a `suggested_answer` cites its `suggestion_evidence`, and an `answer` is never
+//                  byte-identical to the suggestion.
 //
 // `--data-root <dir>` points the whole check at a fixture tree; the default is `data/` under the
-// workspace the CURRENT DIRECTORY sits in. ⚠ It REFUSES (exit 2) when there is no workspace there,
-// rather than reporting a clean zero — see `workspaceRootFromCwd`, which exists because this guard
-// once printed `0 checked, 0 violations` over a workspace holding 173 records.
+// workspace the CURRENT DIRECTORY sits in. It REFUSES (exit 2) when there is no workspace there,
+// rather than reporting a clean zero — see `workspaceRootFromCwd`.
 import fs from 'node:fs';
 import path from 'node:path';
 import yaml from 'js-yaml';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { listRecords, readRecord, compiledStorage, recordFileFor, shippedCollections, collectionStorage, recordPath, recordId } from '../skills/running-retrospectives/lib/records.mjs';
-// ⚠ `lib/vault.mjs`'s DATA is deliberately NOT imported — see `workspaceRootFromCwd` below. It
+// `lib/workspace.mjs`'s DATA is deliberately NOT imported — see `workspaceRootFromCwd` below. It
 // resolves from the SCRIPT, which is the wrong question the moment the module is linked for
-// preview, and importing it here is how it got reached for by accident the first time.
+// preview.
 
 /** Each observed-world collection and the REAL collection its `real` field must point at. One-way,
  *  many-to-one: several contributors' observed copies of one thing point at the same real record,
@@ -83,54 +83,36 @@ const SOURCE_REF_SHAPE = {
 	email: { test: (ref) => ref.startsWith('perspective/threads/'), want: 'perspective/threads/<id> — the thread record, never a mail URL' },
 };
 /** What a finding's polymorphic `evidence` may point at. */
-// v2 (decision 314): activities, tickets and decisions are legal evidence too — a finding about a
-// contributor with no transcripts on this machine rests on tickets and commits, not sessions.
-// 2026-09-08: `answers` is gone — an answer is now a field on the question that asked it, so a
-// finding confirmed by the person cites the QUESTION. The record it points at is the same fact; it
-// just stopped needing a second id scheme and a join to be read.
-// ⚠ `meetings` is the one legal evidence collection that is NOT this module's, and it is spelled
+// Activities, tickets and decisions are legal evidence — a finding about a contributor with no
+// transcripts rests on tickets and commits, not sessions. An answer is a field on the question that
+// asked it, so a finding confirmed by the person cites the QUESTION.
+// `meetings` is the one legal evidence collection that is NOT this module's, and it is spelled
 //   without the `perspective/` prefix because it belongs to a PEER module. A finding about how
 //   somebody's week is spent rests on the calendar directly; copying a meeting into this module's
 //   data to make the ref local would put a domain object here, which is the one thing the module
 //   never holds. It resolves against the workspace's own meetings collection — see PEER below.
 const EVIDENCE_COLLECTIONS = ['conversations', 'activity-weeks', 'questions', 'activities', 'tickets', 'decisions', 'deliverables', 'threads', 'meetings'];
 /** The count a finding's body must close with — sessions, weeks or answers, whichever it counted.
- *  ⚠ `weeks` was missing here for one run: the collection was renamed activity-windows →
- *  activity-weeks and this regex was not swept with it, so three correct findings ending `(22 weeks)`
- *  were failed by the guard. A rename that leaves a VOCABULARY behind is the kind the compiler
- *  cannot catch. `windows` stays accepted so records written before the rename still pass. */
-// ⚠ SWEEP THIS WITH `EVIDENCE_COLLECTIONS`. `decisions` was added to that list and NOT to this one,
-//   so three correct findings closing `(3 decisions)` were failed by the guard on 2026-09-08 — the
-//   identical failure the paragraph above records, one collection later. The two lists are one
-//   vocabulary and they drift apart silently, because nothing but a red run connects them.
-// ⚠ A trailing full stop is allowed. `(4 activities).` is ordinary English and refusing it made the
+ *  `windows` is accepted as a synonym of `weeks`. */
+// SWEEP THIS WITH `EVIDENCE_COLLECTIONS`: the two lists are one vocabulary, and they drift apart
+//   silently because the compiler cannot connect them.
+// A trailing full stop is allowed. `(4 activities).` is ordinary English and refusing it made the
 //   guard a punctuation checker; the thing being enforced is that the COUNT IS THERE.
 const COUNT_TAIL = /\(\s*\d+\s+(?:sessions?|weeks?|windows?|answers?|tickets?|activities|activity|commits?|decisions?|threads?|meetings?)\s*\)\s*\.?\s*$/;
 
 /**
- * WHERE THE RECORDS ARE — and this function is a bug fix with a body count of one silent pass.
+ * WHERE THE RECORDS ARE. Walk up from the CURRENT DIRECTORY, the way the engine resolves a workspace,
+ * and REFUSE when no root is found rather than reporting a clean zero. A walk from the SCRIPT finds
+ * the package's own root whenever the module is linked for preview (a `git_modules/` symlink into a
+ * clone elsewhere) and looks for records in a tree that has none — and a guard that reports success
+ * while checking nothing is byte-identical to a pass. There is deliberately NO script-relative
+ * fallback: a fallback that can silently answer the wrong question is worse than an error.
  *
- * ⚠ MEASURED IN A REAL CONSUMER, 2026-09-11. Run from the workspace root with the module linked for
- * preview, this guard printed `✔ perspective records: 0 checked, 0 violations` and EXITED 0 over a
- * workspace holding 173 of them. The cause: the default came from `lib/vault.mjs`'s `VAULT`, which
- * walks up from the SCRIPT — and under preview the module lives outside the workspace (a
- * `git_modules/` symlink into a clone elsewhere), so the walk found the PACKAGE's own root and
- * looked for records in a tree that has none by design.
+ * The `git_modules/` skip is the same rule `lib/workspace.mjs` carries: `npm install` inside a
+ * module clone leaves a lockfile there, so a walk that stops at the first `package-lock.json` would
+ * resolve the CLONE as the workspace.
  *
- * A guard that reports success while doing nothing is the worst failure this repo can ship: it is
- * byte-identical to a pass. It is also exactly what this module's own `gates` descriptor refuses —
- * "a verdict without a measurement is success being reported instead of a result being quoted".
- *
- * So: walk up from the CURRENT DIRECTORY, the way the engine resolves a workspace, and REFUSE when
- * no root is found rather than reporting a clean zero. There is deliberately NO script-relative
- * fallback — that fallback WAS the defect, and a fallback that can silently answer the wrong
- * question is worse than an error.
- *
- * ⚠ The `git_modules/` skip is the same rule `lib/vault.mjs` carries and for the same measured
- * reason: `npm install` inside a module clone leaves a lockfile there, so a walk that stops at the
- * first `package-lock.json` resolves the CLONE as the workspace.
- *
- * ⚠ ZERO RECORDS IS STILL LEGAL. A workspace that has the module installed and has never run a
+ * ZERO RECORDS IS STILL LEGAL. A workspace that has the module installed and has never run a
  * retrospective has no `data/perspective` at all, and `0 checked` is the honest answer for it. The
  * refusal keys on "no workspace root", never on "no records".
  */
@@ -174,11 +156,8 @@ for (const collection of COLLECTIONS) {
 const rel = (file) => path.relative(path.dirname(dataRoot), file);
 
 // ── the PEER collections a ref may legally point OUT of this module at ──────────────────────────
-// ⚠ `meetings/<id>` was accepted UNRESOLVED until 0.4.0. `SOURCE_REF_SHAPE.meeting` has demanded the
-// prefix since v2, and `refTarget` returned null for anything not under `perspective/`, so the shape
-// was checked and the existence never was: a decision could cite a meeting that had been renamed,
-// deleted or never existed and `check` said nothing. The shape guard alone is exactly the "provenance
-// that cannot be followed back" this file's rule 7 exists to refuse.
+// A ref into a peer is RESOLVED, not only shape-checked: a decision citing a meeting that was
+// renamed, deleted or never existed is a provenance that cannot be followed back.
 //
 // The workspace root is the parent of the data root — that is what a `data/…` storage path is
 // relative to. The COMPILED descriptor is the authority on where the records are; the shipped
@@ -189,7 +168,7 @@ const rel = (file) => path.relative(path.dirname(dataRoot), file);
 const workspaceRoot = path.dirname(dataRoot);
 const PEER = (() => {
 	const out = {};
-	// ⚠ THE REAL WORLD. Every `perspective/*` collection carries `real`, a one-way SOFT
+	// THE REAL WORLD. Every `perspective/*` collection carries `real`, a one-way SOFT
 	// reference to the record it appears to be — `x-reference-soft`, so the engine's own `check`
 	// ignores it whether the collection is absent or the record is. That is deliberate (a
 	// correspondence is a judgement a run made on a date, and a deleted project must not turn a whole
@@ -257,7 +236,7 @@ for (const file of files) {
 }
 
 /** A finding is confirmed or refuted only by the person, and the only place the person speaks in this
- *  module is the `answer` on a question they were asked. ⚠ Citing the QUESTION is not enough — an
+ *  module is the `answer` on a question they were asked. Citing the QUESTION is not enough — an
  *  unanswered question is a question, and a finding may not be promoted to `confirmed` by the fact
  *  that somebody once thought of asking. The answer must actually be there. */
 function citesAnsweredQuestion(evidence) {
@@ -273,11 +252,9 @@ function citesAnsweredQuestion(evidence) {
 for (const [file, { fields, body }] of records) {
 	const collection = collectionOfFile.get(file);
 
-	/* ⚠ A GOAL'S COUNT IS ITS REFS, and the descriptor says which: decisions, activities and
-	 *  projects, once each. Measured 2026-09-08 on the first run that wrote goals: three of three
-	 *  under-counted their own attachments by one or two, and on the next run seven of seven counted
-	 *  a different subset (topics in, projects out). Nobody was lying — everyone was counting
-	 *  something slightly different. So the count is DERIVED here and a mismatch is a violation, and
+	/* A GOAL'S COUNT IS ITS REFS, and the descriptor says which: decisions, activities and
+	 *  projects, once each. Hand counts drift — each pass counts a slightly different subset — so the
+	 *  count is DERIVED here and a mismatch is a violation, and
 	 *  `corroborated` needs three, and `confirmed`/`refuted` need a person — a goal is never asked
 	 *  directly, so the only route is a cited finding that an answered question already confirmed. */
 	if (collection === 'goals') {
@@ -300,7 +277,7 @@ for (const [file, { fields, body }] of records) {
 		}
 	}
 
-	/* ⚠ A SUGGESTION IS NOT AN ANSWER, and the two fields exist so nobody has to pretend otherwise.
+	/* A SUGGESTION IS NOT AN ANSWER, and the two fields exist so nobody has to pretend otherwise.
 	 *  Two ways the separation breaks, both refused: a suggestion with no `suggestion_evidence` is a
 	 *  guess wearing a record, and an `answer` that is byte-for-byte the suggestion is the machine
 	 *  quoting itself in the one field where only the person speaks. The interviewer who copies a
@@ -453,17 +430,14 @@ for (const [file, { fields, body }] of records) {
 		} else if (!records.has(target.file)) {
 			fail(file, `retrospective ${fields.retrospective} does not resolve to a retrospective`);
 		}
-		// ⚠ THE BACK-POINTER CHECK IS GONE, and its absence is the point. It existed to catch
-		// `retrospective-sessions.perspective` disagreeing with `perspectives.retrospective` — two
-		// hand-maintained halves of one relation. Since 2026-09-09 the session's field is a GENERATED
-		// mirror (`x-inverse: perspective`, `x-unique: true`), so the two cannot disagree: the engine
-		// maintains it on every `dt` write and reports it stale after a raw one. A guard whose job the
-		// schema can do is a guard that will one day disagree with the schema.
+		// NO BACK-POINTER CHECK: `retrospective-sessions.perspective` is a GENERATED mirror
+		// (`x-inverse: perspective`, `x-unique: true`), so it cannot disagree with
+		// `perspectives.retrospective` — the engine maintains it on every `dt` write and reports it
+		// stale after a raw one. A guard whose job the schema can do will one day disagree with it.
 		void self;
 	}
 
-	// 10. A GATE'S VERDICT WITHOUT ITS MEASUREMENT is the pattern rule 7 exists to catch: success
-	//     reported rather than a result quoted. And a waiver with no reason is an undocumented
+	// 12. A GATE'S VERDICT WITHOUT ITS MEASUREMENT is success reported rather than a result quoted. And a waiver with no reason is an undocumented
 	//     shortcut that reads, later, exactly like a pass.
 	if (collection === 'gates') {
 		if (fields.verdict && fields.verdict !== 'not-run' && !String(fields.measured ?? '').trim()) {
@@ -497,10 +471,9 @@ for (const [file, { fields, body }] of records) {
 		if (typeof value !== 'string' || value === '') continue;
 		// A `url:` location is machine-independent by nature — the Asana source carries one — so it is
 		// as legal as a template. The rule exists to stop a resolved filesystem path travelling, nothing else.
-		// ⚠ A BARE http(s) URL is machine-independent by the SAME argument, and the rule was narrower
-		// than its own stated intent until 2026-09-08: read-drive writes a Drive web link, which is the
-		// only sane `location` for an artefact that does not live in the vault, and all 53 of the first
-		// contributor's deliverables were refused for it. A link is not a path.
+		// A BARE http(s) URL is machine-independent by the SAME argument: read-drive writes a Drive web
+		// link, the only sane `location` for an artefact that does not live in the workspace. A link is
+		// not a path.
 		if (/^(url:|https?:\/\/)/.test(value)) continue;
 		if (!value.startsWith('${') || value.startsWith('/')) {
 			fail(file, `${field} must be a \${…} template or a url:, never a machine path`);
@@ -508,7 +481,7 @@ for (const [file, { fields, body }] of records) {
 	}
 }
 
-// Two collaborators under one retrospective sharing a handle is the unmerged duplicate: the readers
+// Two observed people under one retrospective sharing a handle is the unmerged duplicate: the readers
 // upsert into the record whose `handles` already carry the identity, so a second record means one
 // person's work is being split in two. BOTH files are named, because only a person can say which
 // record survives — and this is a violation, not a warning, because the readers should never make one.
@@ -529,15 +502,12 @@ for (const [file, { fields }] of records) {
 }
 
 // ── the module clone's own unpushed work ────────────────────────────────────────────────────────
-// ⚠ AN EDIT MADE IN THE STUDIO, IN A CONSUMING WORKSPACE, LANDS HERE — inside `git_modules/<name>`,
+// AN EDIT MADE IN THE STUDIO, IN A CONSUMING WORKSPACE, LANDS HERE — inside `git_modules/<name>`,
 // which is gitignored THERE and is a clone of the module repo. So the change is invisible to the
 // module, invisible to every other workspace consuming it, and erased by the next pull. Worse, the
 // clone diverges, so `git pull --ff-only` refuses outright and the module silently stops updating
-// in that workspace until somebody looks.
-//
-// Twice in one day, both found by accident while carrying something else. A note in a file did not
-// stop the second one, so this is the guard: `check` runs on every workspace, every time, and it is
-// the only thing that reliably looks at this directory.
+// in that workspace until somebody looks. `check` runs on every workspace, every time, so it is the
+// one thing that reliably looks at this directory.
 //
 // A WARNING, not a violation: the work is not wrong, it is merely stranded, and refusing `check`
 // would block a workspace over a state its own records are innocent of.
@@ -571,8 +541,7 @@ const stranded = strandedCloneWarning();
 if (stranded) warnings.push(stranded);
 
 // A ref into a peer collection this workspace does not have is UNCHECKED, and saying so is the
-// whole point: silence here would read exactly like a pass, which is what the `meetings` shape guard
-// did for two releases while resolving nothing.
+// whole point: silence here would read exactly like a pass.
 for (const [collection, n] of peerGaps) {
 	warnings.push(
 		`⚠ ${n} ref(s) point at \`${collection}/…\`, which this workspace does not have — they were NOT resolved.`

@@ -383,7 +383,7 @@ function seedV2(root) {
 	writeRecord(recordPath('workflows', `${SLUG}/shipping-a-guard`, 'workflow', root), {
 		retrospective: RUN,
 		name: 'Shipping a guard',
-		steps: ['read the descriptors', 'extend the guard', 'run the suite', 'run it against the real vault'],
+		steps: ['read the descriptors', 'extend the guard', 'run the suite', 'run it against the real workspace'],
 		trigger: 'a design doc lands',
 		activities: [ACTIVITY],
 		frequency: 'per slice',
@@ -693,10 +693,10 @@ test('a goal under three pieces of evidence may not claim to be corroborated, an
 	// Borrowed wholesale from findings, and for the same reason: `confirmed` means a PERSON answered,
 	// and an unattended run writing it is claiming someone spoke who did not.
 	const root = seedClean(tmpDataRoot());
-	writeRecord(recordPath('goals', `${SLUG}/portable-vault`, 'goal', root), {
+	writeRecord(recordPath('goals', `${SLUG}/portable-workspace`, 'goal', root), {
 		retrospective: `perspective/retrospective-sessions/${SESSION}`,
-		name: 'the vault runs on any machine from a bare clone',
-		statement: 'A clone plus a .env is a working vault, with no second checkout and no host alias.',
+		name: 'the workspace runs on any machine from a bare clone',
+		statement: 'A clone plus a .env is a working workspace, with no second checkout and no host alias.',
 		// ⚠ The refs ARE the count. This fixture used to carry `evidence_count: 4` with nothing attached
 		// and passed — exactly the defect the goals guard now refuses.
 		decisions: ['a', 'b', 'c', 'd'].map((x) => `perspective/decisions/${SLUG}/${x}`),
@@ -786,7 +786,7 @@ describe('the data root', () => {
 
 	// ⚠ THE SHAPE THE CLONE-AS-WORKSPACE RULE PROTECTS. `npm install` inside a module clone leaves a
 	// lockfile there, so a walk that stops at the first one resolves the CLONE as the workspace and
-	// checks a tree that is not the operator's. Measured on 2026-09-08 at a cost of 53 records.
+	// checks a tree that is not the person's.
 	test('a lockfile directly inside git_modules/ is skipped, not taken for the workspace', () => {
 		const ws = tmpdir('cr-gm-');
 		fs.writeFileSync(path.join(ws, 'package-lock.json'), '{}');

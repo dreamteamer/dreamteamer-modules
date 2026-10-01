@@ -1,16 +1,16 @@
-# deliverables — A THING THE CONTRIBUTOR MADE, as the evidence store found it. Not an activity (a
+# perspective/deliverables — A THING THE CONTRIBUTOR MADE, as the evidence store found it. Not an activity (a
 # bounded piece of WORK, reconstructed) and not a project (the effort it belonged to): a deliverable
 # is the artefact itself — a document, a deck, a sheet, a recorded video.
 #
-# ⚠ IT EXISTS BECAUSE A TICKET BOARD IS NOT EVERYONE'S TRAIL. Measured 2026-09-08 across two
-# contributors in one company: 933 Asana tickets for one, 23 for the other. The second is not doing a
-# twentieth of the work — her output is documents. A module that could only read boards would have
-# profiled her as nearly idle and been confidently wrong, which is worse than having no profile.
+# IT EXISTS BECAUSE A TICKET BOARD IS NOT EVERYONE'S TRAIL. Two people in one company can differ forty
+# times over in tickets while doing comparable work, because one person's output is documents. A
+# module that could only read boards would profile that person as nearly idle and be confidently
+# wrong, which is worse than having no profile.
 #
-# ⚠ THE OBSERVED HALF OF `deliverables`, IN THE SAME SHAPE AND IN A SEPARATE STORE — the argument is
+# THE OBSERVED HALF OF `deliverables`, IN THE SAME SHAPE AND IN A SEPARATE STORE — the argument is
 # written out once, on `perspective/users.real`.
 #
-# ⚠ THE TWO `kind` ENUMS DIFFER ON PURPOSE, and the difference IS the authority. This one is MIME —
+# THE TWO `kind` ENUMS DIFFER ON PURPOSE, and the difference IS the authority. This one is MIME —
 # `doc`, `sheet`, `slides` — because a store read knows a file's type and cannot know its purpose.
 # The real collection's is commercial — `report`, `software`, `training` — because a plan promising
 # somebody an artefact knows exactly what it is promising and not what file it will arrive as.
@@ -22,7 +22,7 @@ description: An artefact a contributor produced — a document, deck, sheet or v
 use_when: >-
   the drive (or another artefact store) reader runs; an activity or goal needs the THING that came out
   of it; asked what someone actually produced rather than what they were assigned — list here by
-  last_touched_on. ⚠ For a contributor whose work is documents rather than tickets this is the primary
+  last_touched_on. For a contributor whose work is documents rather than tickets this is the primary
   evidence, and its absence is a fact about the SOURCE, never about the person
 storage: { path: data/perspective/deliverables, codec: md, shape: file, suffix: deliverable }
 id:
@@ -41,26 +41,24 @@ schema:
       enum: [doc, sheet, slides, form, pdf, video, image, folder, note, other]
       description: >-
         What sort of artefact, from its MIME type. Mechanical. `note` is the Obsidian shape — a
-        markdown file in a personal vault, which is a document but not a Drive one: it has no owner,
+        markdown file in a personal notes folder, which is a document but not a Drive one: it has no owner,
         no sharing and no MIME, and calling it `doc` would put it in the same bucket as a shared
         specification when the two mean very different things about how the work was done.
     source_kind:
       type: string
       enum: [drive, repo, notebook, obsidian, other]
       description: Which evidence store it was found in.
-    # ⚠ WHICH READ FOUND IT — the reading ACCOUNT, which on a proxy run is not the person. Added
-    # 2026-09-08: every other evidence collection (conversations, threads, tickets, activity-weeks)
-    # carried its source and this one did not, so a pass joining deliverables to a week had to guess
-    # from `last_touched_by`. That guess is right only when the contributor read their own Drive; on
-    # a run where one person's store is read through a colleague's login it is wrong for every file,
-    # and 28 weeks composed nothing at all before the field existed.
+    # WHICH READ FOUND IT — the reading ACCOUNT, which on a proxy run is not the person. A pass joining
+    # deliverables to a week reads this rather than guessing from `last_touched_by`: that guess is
+    # right only when the contributor read their own Drive, and wrong for every file when one person's
+    # store is read through a colleague's login.
     source: { type: string, x-reference: perspective/sources, description: 'The source record of the read that found this artefact — the READING account, never the person who touched it (that is `last_touched_by`).' }
     external_id: { type: string, description: The store's own id — a Drive file id. The handle every later call is addressed to. }
-    location: { type: string, description: A link a human can open. Not a path — this artefact does not live in the vault. }
+    location: { type: string, description: A link a human can open. Not a path — this artefact does not live in the workspace. }
     container: { type: string, description: The shared drive, repo or folder it sits in. }
     created_on: { type: string, format: date }
     last_touched_on: { type: string, format: date }
-    # ⚠ TOUCHED, NOT AUTHORED, and the field is named for what the evidence supports. Drive keeps ONE
+    # TOUCHED, NOT AUTHORED, and the field is named for what the evidence supports. Drive keeps ONE
     # lastModifyingUser: a document five people wrote reports the last of them. Calling this `author`
     # would turn a weak fact into a strong-sounding claim on every record in the collection.
     last_touched_by: { type: string, description: The account that modified it LAST — never proof of authorship. }

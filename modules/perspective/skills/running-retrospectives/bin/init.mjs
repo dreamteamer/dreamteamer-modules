@@ -12,13 +12,13 @@
 //
 //   node init.mjs --retrospective perspective/retrospective-sessions/<id> [--workspace-root d] [--data-root d] [--no-link] [--dry-run]
 //
-// --workspace-root is where the INPUTS are read (default the vault); --data-root where the records
+// --workspace-root is where the INPUTS are read (default this workspace); --data-root where the records
 // are written. --no-link skips the `dt set … --perspective` back-reference (a fixture run has no
 // retrospective to point at).
 import fs from 'node:fs';
 import path from 'node:path';
 import yaml from 'js-yaml';
-import { VAULT, DATA, dt, slug } from '../lib/vault.mjs';
+import { WORKSPACE_ROOT, DATA, dt, slug } from '../lib/workspace.mjs';
 import { recordPath, writeRecord, readRecord, listRecords, contributorOf, collectionDir } from '../lib/records.mjs';
 import { numberedListItems } from '../lib/markdown.mjs';
 
@@ -29,12 +29,11 @@ const opt = (n, d = '') => { const i = argv.indexOf(`--${n}`); return i >= 0 && 
 const retrospective = opt('retrospective');
 if (!retrospective.startsWith('perspective/retrospective-sessions/')) { console.error('usage: --retrospective perspective/retrospective-sessions/<id> is required'); process.exit(2); }
 const base = retrospective.split('/').pop();
-const workspaceRoot = path.resolve(opt('workspace-root', VAULT));
+const workspaceRoot = path.resolve(opt('workspace-root', WORKSPACE_ROOT));
 const dataRoot = path.resolve(opt('data-root', DATA));
 // Every evidence and model id is keyed by the CONTRIBUTOR, not by the run — a re-run must update
 // this person's records rather than write a parallel set beside them. Resolved LAZILY, on first
-// use: reading it eagerly made a script that should exit 2 on a bad argument crash on a missing
-// session instead, and write nothing was the contract it broke (read-asana, 2026-09-09).
+// use, so a bad argument exits 2 with a usage line before any session is read.
 let _who = null;
 const who = () => (_who ??= contributorOf(retrospective, dataRoot));
 const dryRun = flag('dry-run');
@@ -111,8 +110,7 @@ for (const file of listRecords(adlDir)) {
 
 // One numbered ROW, `<n>. **<date> — <title>** <the rest>` — and a row is a list ITEM, never a
 // physical line. A heading long enough to wrap puts its closing `**` on the next line, and reading
-// line by line matched nothing there and counted a perfectly dated row as undated (15 rows, 7 of them
-// dated, all 7 skipped — the 2026-09-11 receipt). `numberedListItems` rejoins each item first, so a
+// line by line would count a perfectly dated row as undated. `numberedListItems` rejoins each item first, so a
 // wrapped heading and a single-line one are the same input to everything below, and the continuation
 // prose travels with the row instead of being dropped at the line break.
 //
@@ -182,13 +180,11 @@ if (!dryRun) {
 		{ ...prior.fields, retrospective, contributor, commands, skills, routines, author: prior.fields.author ?? AUTHOR },
 		prior.body,
 	);
-	// ⚠ NO BACK-LINK WRITE HERE, and `--no-link` is accepted only so old invocations keep
-	// working. `retrospective-sessions.perspective` is GENERATED from
+	// NO BACK-LINK WRITE HERE; `--no-link` is accepted and changes nothing.
+	// `retrospective-sessions.perspective` is GENERATED from
 	// `perspective/perspectives.retrospective`, which the writeRecord above has just set —
-	// so the link already exists the moment compile runs. Setting it directly is refused by
-	// the store ("perspective is generated from … — set that instead"), and that refusal
-	// crashed this script AFTER it had written its concepts and decisions, leaving the run
-	// half-done with a stack trace and a zero exit nowhere in sight (2026-09-12).
+	// so the link already exists the moment compile runs, and the store refuses a direct write
+	// ("perspective is generated from … — set that instead").
 }
 
 process.stdout.write(

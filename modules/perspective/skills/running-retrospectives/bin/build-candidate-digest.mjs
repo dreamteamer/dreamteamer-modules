@@ -3,14 +3,14 @@
 // full of record refs and SHAs; this turns them into something a model can read in one pass, so the
 // clustering agent never opens a transcript, a commit or a record.
 //
-//   node build-candidate-digest.mjs <vault> <retrospective-base> <out.md>
+//   node build-candidate-digest.mjs <workspace> <retrospective-base> <out.md>
 //
-// ⚠ THIS IS WHERE NAMING QUALITY IS DECIDED. A candidate rendered as "repo=poly, 18 commits" gets
-// named "worked on poly"; the same candidate rendered with its commit subjects and its session
-// titles gets named "ship the property-layer-post schema slice". Everything here is a judgement
+// THIS IS WHERE NAMING QUALITY IS DECIDED. A candidate rendered as "repo=northwind-api, 18 commits"
+// gets named "worked on northwind-api"; the same candidate rendered with its commit subjects and its
+// session titles gets named "ship the claims-intake schema slice". Everything here is a judgement
 // about which 200 characters of a candidate carry its identity.
-// Ticket bodies are included since read-asana@2: a board's own comments are routinely the only place
-// the reasoning survives ("Added a Draft PR, still testing… based on the feature/white-labeling
+// Ticket bodies are included: a board's own comments are routinely the only place
+// the reasoning survives ("Added a Draft PR, still testing… based on the feature/claims-intake
 // branch"), and a naming pass reading titles alone names activities after the TICKET, not the work.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -32,10 +32,9 @@ const walk = (d) => { for (const e of fs.readdirSync(d, { withFileTypes: true })
 } } };
 if (fs.existsSync(convDir)) walk(convDir);
 
-// A ticket is no longer just a title. Since read-asana@2 it carries a description, the human comments
-// and the whole story trail — 933 of them here, median 1,032 characters. The naming pass was reading
-// titles alone and producing activities named after the ticket rather than after the WORK, so the
-// digest now carries the first stretch of the body too. Trimmed hard: the trail is repetitive by
+// A ticket is more than a title: it carries a description, the human comments and the whole story
+// trail. A naming pass reading titles alone names activities after the ticket rather than after the
+// WORK, so the digest carries the first stretch of the body too. Trimmed hard: the trail is repetitive by
 // nature and the first lines of it are the ones that say what the task actually was.
 const ticketTitle = new Map();
 if (fs.existsSync(ticketDir)) {

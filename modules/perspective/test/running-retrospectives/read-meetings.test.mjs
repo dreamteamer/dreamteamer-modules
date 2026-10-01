@@ -285,14 +285,8 @@ test('an address the workspace does not know falls back to the run record’s ha
 });
 
 // ── THE OBSERVED WORLD IS WHERE THE PEOPLE GO ────────────────────────────────────────────────────
-// `perspective/collaborators` was retired in 0.9.0, when the observed world became a namespace
-// spelled in the real world's own nouns; the people a reader meets are `perspective/users`.
-// The reader's CODE moved with `lib/collaborators.mjs` and its CONTRACT did not, and a static
-// acceptance pass over a live workspace read the contract, concluded the reader still targeted a
-// collection the compiled model does not declare, and REFUSED TO RUN IT (rnd/issues,
-// 2026-09-11--perspective-meetings-reader-writes-retired-collaborators-records). These four pin the
-// three things that refusal was actually about: where the records land, whose they are, and what
-// they may not reach.
+// The people a reader meets are `perspective/users`; there is no `perspective/collaborators`
+// collection. These four pin where the records land, whose they are, and what they may not reach.
 
 test('the people land in `perspective/users`, at the path the DESCRIPTOR declares — never a retired collection', () => {
 	const doc = yaml.load(fs.readFileSync(path.join(COLLECTIONS, 'users.collection.yaml'), 'utf8'));

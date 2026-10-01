@@ -1,7 +1,7 @@
 // google-auth — mint an access token from the credentials the google-workspace MCP server already
 // holds, so a reader can reach Drive or Gmail with NO new grant, NO browser and NO broad system permission.
 //
-// ⚠ WHY IT REUSES RATHER THAN ASKS. The operator's standing rule is that a capability never buys
+// WHY IT REUSES RATHER THAN ASKS. The person's standing rule is that a capability never buys
 // itself a wider permission than the job needs, and Full Disk Access is never the answer. These
 // files are a per-account OAuth refresh token the user has ALREADY granted to a tool they run — the
 // narrow path, and the only one this module takes. It never writes them, never widens their scopes,
@@ -31,7 +31,7 @@ export function googleAccounts(dir = CRED_DIR) {
 /**
  * An access token for `email`, refreshed if the stored one has expired.
  * Returns null when there is no credential for that account — the caller decides what that means.
- * ⚠ Never logs, returns or embeds `client_secret` or `refresh_token`.
+ * Never logs, returns or embeds `client_secret` or `refresh_token`.
  */
 export async function accessTokenFor(email, dir = CRED_DIR) {
 	const file = path.join(dir, `${email}.json`);

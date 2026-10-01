@@ -1,20 +1,19 @@
 # assumptions — WHAT THE RUN HAD TO BELIEVE TO REACH ITS CONCLUSIONS, and what would prove it wrong.
 #
-# ⚠ WHY THIS COLLECTION EXISTS. Every retrospective runs on beliefs it never states: that two handles
+# WHY THIS COLLECTION EXISTS. Every retrospective runs on beliefs it never states: that two handles
 # are one person, that the repos it could reach are the work that mattered, that a commit with no
 # session means git-only work rather than an unread transcript tree. Those beliefs shape every
-# finding downstream, and until 2026-09-09 they lived nowhere — so a reader could weigh a finding's
-# evidence but never the assumption underneath it, and a run whose premise was wrong produced a
-# confident perspective with no way to notice.
+# finding downstream. Written here, a reader can weigh the assumption under a finding as well as its
+# evidence; left unstated, a run whose premise is wrong produces a confident perspective with no way
+# to notice.
 #
-# THE PAIR IS THE POINT: `wrong_if` is the prediction, `status` is the result. The pattern and its
-# discipline are lifted from the operator's own `agent-decision-log.wrong_if`, including the rule that
-# earns it: ⚠ **NOT a counterfactual.** "what if the other repo had been readable" is a story about a
+# THE PAIR IS THE POINT: `wrong_if` is the prediction, `status` is the result, and the rule that
+# earns it is **NOT a counterfactual.** "what if the other repo had been readable" is a story about a
 # world that left no trace, and the run that made the assumption is the worst available narrator of
 # life without it. A prediction about THIS world is checkable by someone else; a story about the other
 # one is not.
 #
-# ⚠ AN ASSUMPTION IS NOT A FINDING. A finding is what the evidence SHOWS; an assumption is what the
+# AN ASSUMPTION IS NOT A FINDING. A finding is what the evidence SHOWS; an assumption is what the
 # run had to supply where the evidence stopped. Writing a shaky finding as an assumption to dodge the
 # `standing` rules is the failure mode to watch for — `affects` is what keeps them honest, because an
 # assumption with nothing resting on it did not need writing.
@@ -28,7 +27,7 @@ use_when: >-
   here WITH its `wrong_if` and the records it `affects`, rather than letting it ride unstated inside a
   finding. Read here before trusting a perspective: an `unsettled` assumption with several `affects`
   is the cheapest question to ask a person, and a `refuted` one names exactly what to re-derive
-icon: warning   # WAS `alert`, which is NOT a codicon — the vocabulary is `warning`
+icon: warning   # `alert` is not a codicon
 order: 175
 storage: { path: data/perspective/assumptions, codec: md, shape: file, suffix: assumption }
 id:
@@ -66,7 +65,7 @@ schema:
         `agent-decision-log`: an assumption with no observable tell is indistinguishable from a guess,
         and this collection exists to make the guesses checkable. Same discipline as `goals.done_when` —
         checkable by someone other than the writer, and dry.
-        ⚠ NOT a counterfactual. See the header.
+        NOT a counterfactual. See the header.
     status:
       type: string
       enum: [held, unsettled, confirmed, refuted, moot]

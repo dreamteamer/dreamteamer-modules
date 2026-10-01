@@ -4,18 +4,16 @@
 //   node derive-collaborators.mjs --retrospective perspective/retrospective-sessions/<id>
 //        [--data-root d] [--scratch-root d] [--dry-run]
 //
-// ⚠ WHY THIS EXISTS, measured 2026-09-08 on three finished runs. Two separate holes, both silent:
+// WHY THIS EXISTS. Two separate holes, both silent without it:
 //
-//   1. EVERY READER WROTE ONLY THE ONE PERSON IT WAS LOOKING AT. `read-asana` upserts the ticket's
-//      ASSIGNEE and nobody else, so a contributor whose tickets are all self-assigned came out of a
-//      full run with exactly ONE collaborator — themselves. Their tickets already carried eight
-//      distinct counterparts in `followers`, stored on the records, unread. A collaborator model
-//      that says a product owner works alone is a fact about the reader, not about the person.
-//   2. NOTHING EVER ATTACHED A COLLABORATOR TO AN ACTIVITY. `attach-evidence` assigns sessions,
-//      commits, branches and tickets; `collaborators` was left to the naming pass to TYPE BY HAND,
-//      which is the transcription failure that script exists to prevent. One workspace had 25
-//      collaborator records and 0 of 261 activities citing any of them, so "who was this work with"
-//      had no answer and the by-collaborator timeline drew nothing at all.
+//   1. A READER WRITES ONLY THE PERSON IT IS LOOKING AT. A ticket reader that upserts the ASSIGNEE
+//      alone leaves a contributor whose tickets are all self-assigned with ONE collaborator —
+//      themselves — while those tickets carry their counterparts in `followers`. A collaborator
+//      model that says a product owner works alone is a fact about the reader, not the person.
+//   2. NOTHING ELSE ATTACHES A COLLABORATOR TO AN ACTIVITY. `attach-evidence` assigns sessions,
+//      commits, branches and tickets; typing `collaborators` by hand in the naming pass is the
+//      transcription failure that script exists to prevent, and leaves "who was this work with"
+//      with no answer.
 //
 // So this reads the evidence records as they already sit on disk — no network, no credential, no
 // re-read — and does the two mechanical halves:
@@ -27,18 +25,18 @@
 //   · ATTACH `collaborators` (and the `collaborative` flag `check-records` pins to it) onto every
 //     activity, from the evidence THAT ACTIVITY ALREADY CITES.
 //
-// ⚠ THE CONTRIBUTOR IS NEVER THEIR OWN COLLABORATOR. They are on every piece of their own evidence;
+// THE CONTRIBUTOR IS NEVER THEIR OWN COLLABORATOR. They are on every piece of their own evidence;
 // attaching them would make `collaborative` true everywhere and the flag would mean nothing.
 //
-// ⚠ A DISPLAY NAME IS NOT A PERSON KEY. Ticket comment authors appear in the trail as names only
-// (`**Some Name · 2026-08-03**`) and are deliberately NOT read here — `lib/collaborators.mjs`
+// A DISPLAY NAME IS NOT A PERSON KEY. Ticket comment authors appear in the trail as names only
+// (`**Some Name · <date>**`) and are deliberately NOT read here — `lib/collaborators.mjs`
 // refuses a bare name for the reason that file carries, and parsing one out of a rendered body to
 // get round it would be that same merge-by-name wearing a regex.
 //
 // Idempotent: re-running attaches the same set and reports `unchanged`.
 import fs from 'node:fs';
 import path from 'node:path';
-import { DATA, SCRATCH } from '../lib/vault.mjs';
+import { DATA, SCRATCH } from '../lib/workspace.mjs';
 import { listRecords, readRecord, writeRecord, contributorOf, collectionDir, recordId } from '../lib/records.mjs';
 import { upsertCollaborators } from '../lib/collaborators.mjs';
 import { contributorHandles } from '../lib/identity.mjs';
@@ -55,8 +53,7 @@ const base = retrospective.split('/').pop();
 const dataRoot = opt('data-root', DATA);
 // Every evidence and model id is keyed by the CONTRIBUTOR, not by the run — a re-run must update
 // this person's records rather than write a parallel set beside them. Resolved LAZILY, on first
-// use: reading it eagerly made a script that should exit 2 on a bad argument crash on a missing
-// session instead, and write nothing was the contract it broke (read-asana, 2026-09-09).
+// use, so a bad argument exits 2 with a usage line before any session is read.
 let _who = null;
 const who = () => (_who ??= contributorOf(retrospective, dataRoot));
 const scratch = opt('scratch-root', SCRATCH);
@@ -79,9 +76,9 @@ if (!myHandles.size) { console.error(`retrospective ${base} declares no handles 
 // `people` is keyed by role, because `upsertCollaborators` stamps one role per batch — the same
 // person seen as an assignee here and a correspondent there accumulates both, which is the point of
 // `roles_observed`.
-// ⚠ And by SOURCE, because `collaborators.sources` references source records: a person met on a
+// And by SOURCE, because `collaborators.sources` references source records: a person met on a
 // ticket is evidenced by that ticket's source, and stamping the retrospective there instead is a
-// reference at the wrong collection, which `dt check` refuses — measured on the first real run.
+// reference at the wrong collection, which `dt check` refuses.
 const people = new Map();   // `${role}\u0000${sourceRef}` → Map(key → { email, name, days:Set, count })
 function met(role, sourceRef, key, { name, on } = {}) {
 	if (!key || !String(key).includes('@')) return;   // an email or a system id; a bare name is not a key
@@ -194,9 +191,9 @@ for (const file of listRecords(path.join(collectionDir('activities', dataRoot), 
 	}
 	if (!keys.size) noEvidence++;
 
-	// ⚠ ADDITIVE, never a replacement. A dogfood workspace already had 108 activities whose
-	// collaborators a naming pass had typed by hand, and a REPLACING run would have deleted every one
-	// this pass cannot re-derive — a person's knowledge silently overwritten by a script's. What a
+	// ADDITIVE, never a replacement. A mature workspace holds activities whose collaborators a naming
+	// pass typed by hand, and a REPLACING run would delete every one this pass cannot re-derive — a
+	// person's knowledge silently overwritten by a script's. What a
 	// derivation may do is add what the evidence proves and correct the flag; what it may not do is
 	// delete what it merely failed to find. A wrong ref is caught by `dt check`, not by this.
 	const collaborators = [...new Set([...list(fields.collaborators), ...refs])].sort();
@@ -209,15 +206,14 @@ for (const file of listRecords(path.join(collectionDir('activities', dataRoot), 
 }
 
 // ── 4. the ticket's assignee, as a REFERENCE rather than an address ──────────────────────────────
-// ⚠ `tickets.assignee` carries `x-inverse: tickets`, so `collaborators.tickets` is a generated mirror
+// `tickets.assignee` carries `x-inverse: tickets`, so `collaborators.tickets` is a generated mirror
 // of it — and nothing ever wrote it. `read-asana` stores `assignee_handle`, the raw email, because at
 // the moment it writes a ticket the collaborator records do not exist yet: it creates them in a later
-// pass over the same tasks. So on a real workspace 935 tickets carried an assignee's ADDRESS, no
-// ticket carried an assignee, and every collaborator board showed zero tickets (a client workspace,
-// 2026-09-10). The handle→ref map above is the same map that resolves it, and by the time this runs
-// the records it needs are on disk.
+// pass over the same tasks. Without this step every ticket carries an address and no assignee, and
+// every collaborator board shows zero tickets. The handle→ref map above is the same map that
+// resolves it, and by the time this runs the records it needs are on disk.
 //
-// ⚠ Unresolvable stays EMPTY. A handle nobody is known by gets no reference — a pointer at a record
+// Unresolvable stays EMPTY. A handle nobody is known by gets no reference — a pointer at a record
 // that does not exist is worse than a blank field, and `dt check` refuses it either way.
 let stamped = 0, alreadyStamped = 0, noRef = 0;
 for (const file of listRecords(collectionDir('tickets', dataRoot))) {
@@ -239,7 +235,7 @@ process.stdout.write(
 	(unmapped ? ` · ⚠ ${unmapped} handle sighting(s) matched no collaborator record` : '') +
 	`${dryRun ? ' · DRY RUN, nothing written' : ''}\n`,
 );
-// ⚠ A DRY RUN UNDERCOUNTS THE SECOND HALF, by construction: pass 2 maps handles through the
+// A DRY RUN UNDERCOUNTS THE SECOND HALF, by construction: pass 2 maps handles through the
 // collaborator records ON DISK, and the ones pass 1 would have added are not there. So `added` is
 // exact and the attachment figures are a floor — a run that previews "0 activities touched" on a
 // contributor with no collaborators yet has not found nothing, it has found them all at once.

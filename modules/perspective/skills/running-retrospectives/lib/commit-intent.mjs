@@ -1,10 +1,10 @@
 // BUG vs CHANGE REQUEST — the third dimension the two convergence curves are sliced by, and the one
-// the operator named the method for: lay the ticket system's tickets on the same timeline so a change
+// the person named the method for: lay the ticket system's tickets on the same timeline so a change
 // can be attributed to a defect or to a requirement shift. Until a ticket join exists, the commit
 // SUBJECT is the evidence actually on disk, and conventional-commit prefixes carry the intent
 // explicitly.
 //
-// ⚠ Deliberately THREE-VALUED. A subject that says neither is counted as NEITHER. Sweeping every
+// Deliberately THREE-VALUED. A subject that says neither is counted as NEITHER. Sweeping every
 // unlabelled commit into `change-request` would destroy the only reading that matters here, which is
 // the bug SHARE rising late in a project.
 //

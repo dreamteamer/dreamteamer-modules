@@ -157,9 +157,7 @@ test('stamping the assignee twice changes nothing', () => {
 // ── an upsert that cannot heal its own record ────────────────────────────────────────────────────
 // ⚠ `upsertCollaborators`' update path spreads `...hit.fields` and adds only what it derived. A
 // record written before `contributor` and `retrospective` were REQUIRED therefore stays invalid for
-// ever: every re-read matches it, merges handles into it, and leaves it failing `check`. Twelve
-// collaborators on one real workspace were in exactly that state, and no amount of re-running could
-// fix them (a client workspace, 2026-09-10).
+// ever: every re-read matches it, merges handles into it, and leaves it failing `check`.
 //
 // This is the same shape as the reader bug it sits beside — a field the pipeline requires and no
 // code path writes — except here the code path exists and declines to run on the records that need

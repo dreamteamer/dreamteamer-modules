@@ -15,10 +15,10 @@ Every act is a flat integer field on `agent-session-summaries` (`user_directive`
    the correction is the expensive half.
 2. A model reading the digest may **revise** the counts. When it does, it is overwriting a prior,
    not adding to it — the revised numbers replace the heuristic ones wholesale.
-3. Unmatched operator turns default to `directive`. That is the honest default: the operator is
+3. Unmatched user turns default to `directive`. That is the honest default: the person is
    usually telling the agent to do something.
 
-## operator acts
+## user acts
 
 | act | the turn is | signal |
 |---|---|---|
@@ -31,12 +31,12 @@ Every act is a flat integer field on `agent-session-summaries` (`user_directive`
 | `answer` | responds to a question the agent asked | short, and the previous agent turn was a `question` |
 | `context` | hands over material, asks nothing | a long paste with no imperative and no `?` |
 | `meta` | about the agent or the process, not the work | "use opus", "be less verbose", "from now on…" |
-| `interruption` | the operator killed a turn mid-flight | the harness's `[Request interrupted by user` marker |
+| `interruption` | the person killed a turn mid-flight | the harness's `[Request interrupted by user` marker |
 | `slash_command` | invoked a command | a `<command-name>` envelope |
 
 `correction` + `rejection` + `interruption` is the **friction triple**. A session where they sum
-high is where the knowledge is: the operator's corrections are the clearest statement of what they
-actually believe, and nowhere else in the vault is that written down.
+high is where the knowledge is: the person's corrections are the clearest statement of what they
+actually believe, and nowhere else in the workspace is that written down.
 
 ## agent acts
 
@@ -45,7 +45,7 @@ actually believe, and nowhere else in the vault is that written down.
 | `plan` | proposes an approach before acting | "here's the plan", `ExitPlanMode` |
 | `execution` | substantively a tool call | has tools, little prose |
 | `report` | states what was done | prose after tool work |
-| `question` | asks the operator | `AskUserQuestion`, or ends on a `?` |
+| `question` | asks the person | `AskUserQuestion`, or ends on a `?` |
 | `assertion` | answers from knowledge, no tools | neither tools nor a question |
 | `refusal` | declines | "I can't help with that" |
 | `handoff` | delegates to subagents | a `Task` / `Agent` call |
@@ -58,7 +58,7 @@ an apology and a pivot at once.
 | field | tier | how |
 |---|---|---|
 | `apologies` | heuristic | `APOLOGY_RE` over assistant text. Deliberately broad: it counts "you're right" and "good catch", not just literal apologies, because the climb-down is the event worth counting, not the politeness formula. |
-| `permission_denials` | mechanical | tool results the operator refused. Exact. |
+| `permission_denials` | mechanical | tool results the person refused. Exact. |
 | `divergences` | **judged** | the agent did something materially other than what was asked. Not detectable by regex, and not the same as being wrong — an agent can be correct and still have diverged. |
 | `plan_changes` | **judged** | a stated approach was abandoned or replaced mid-session. Only counts approaches that were *stated*; silent drift is a `divergence`. |
 
@@ -66,7 +66,7 @@ an apology and a pivot at once.
 
 Both start at the heuristic prior of **0** and are counted from the digest, conservatively:
 
-- Count a `divergence` only where the operator's instruction is quoted in the digest and the agent's
+- Count a `divergence` only where the person's instruction is quoted in the digest and the agent's
   action visibly differs. A suspicion is not a divergence.
 - Count a `plan_change` only where a plan was stated in one turn and contradicted in a later one.
 - When the digest was sampled (it says so at the bottom), these are **lower bounds** — say that in

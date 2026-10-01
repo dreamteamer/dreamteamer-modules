@@ -5,8 +5,7 @@ exists to make that error require a human decision rather than a heuristic.
 
 ## the case this is built on
 
-In one repository alone, one contributor — call him Sam Diaz, the worked example from the v2 design
-§4 — commits under **four** identities:
+In one repository alone, one contributor — call him Sam Diaz — commits under **four** identities:
 
 | handle | where it comes from |
 |---|---|
@@ -15,19 +14,17 @@ In one repository alone, one contributor — call him Sam Diaz, the worked examp
 | `Sam Diaz` (machine B) | a second checkout with a different `user.email` |
 | `SamDiaz <sam.d@…>` | the work address — the one Asana also knows |
 
-Four handles, one person, 1,277 commits across two repos. Two other contributors in the same repos
-each appear under two spellings. (The names and the work domain are synthetic on purpose: a real person may not travel with a
-shared module.) **A name is not an identity, and an email is not a person** — the
+Four handles, one person. Other contributors in the same repos routinely appear under two spellings.
+**A name is not an identity, and an email is not a person** — the
 handle set is.
 
-## the upsert rule — how a reader writes a collaborator
+## the upsert rule — how a reader writes a person
 
 `read-git` and `read-asana` both upsert into the same records. Given a handle:
 
-1. **Match on the handle set, exactly** — any handle on any `collaborators` record of this run,
+1. **Match on the handle set, exactly** — any handle on any `perspective/users` record of this contributor,
    emails compared case-insensitively. Never match on the display name alone.
-2. **Hit** → add the handles not already present (one comma-separated `--handles` flag carrying the
-   full set — repeating the flag overwrites), widen `first_seen`/`last_seen`, recompute
+2. **Hit** → add the handles not already present (one `--handles` flag per handle), widen `first_seen`/`last_seen`, recompute
    `evidence_count` as distinct commits + tickets + sessions, add the `sources` ref, and add any
    newly observed role to `roles_observed`.
 3. **Miss** → create the record with the handle(s) actually seen and the best display name the
@@ -57,8 +54,8 @@ An automatic merge on name similarity is forbidden. When the evidence suggests t
 person, put it to them with the counts: *"`<handle A>` has 412 commits and `<handle B>` has 865, and
 both appear on the same branches in the same weeks — same person?"* On a yes:
 
-1. move every handle onto the surviving record — one `--handles` flag with the full comma-separated
-   set, then `cat` the record;
+1. move every handle onto the surviving record — one `--handles` flag per handle, then `cat` the
+   record;
 2. re-point every `activities.collaborators`, `decisions.collaborators`, `workflows.collaborators`
    and `tickets.assignee` ref that named the absorbed record;
 3. `dt rm` the absorbed record, recompute `evidence_count`, and `npm run check`.
@@ -69,18 +66,15 @@ honest state, and it is cheap to fix later. A merge is not.
 
 ## `handles`, `contact` and `contributor` — three fields, three jobs
 
-- **`handles`** is the merge key, and it is spelled the same on `collaborators` and on
+- **`handles`** is the merge key, and it is spelled the same on `perspective/users` and on
   `retrospective-sessions`. The run record's copy is the SEED: the first reader runs before any
-  collaborator record exists, so whatever the person declared at `installed` is the only identity
+  users record exists, so whatever the person declared at `installed` is the only identity
   there is, and an address missing from it becomes a second person. `lib/identity.mjs` computes the
-  union of the seed and the collaborator record that already carries one of them — one function,
-  because it was four near-copies until 2026-09-09 and three of them had rotted.
+  union of the seed and the users record that already carries one of them, in one function.
 - **`contact`** is a real `x-reference: contacts` on both collections, set ONLY once a person
-  confirmed the match. It was a plain ref string until 2026-09-09, so a recipe would compile in a
-  workspace with no `contacts` collection — which declaring `contacts` a PEER solves without giving
-  up the type. A peer excuses a reference, never a mirror, so there is no `x-inverse`.
+  confirmed the match. `contacts` is a declared PEER, so the module compiles in a workspace without
+  it. A peer excuses a reference, never a mirror, so there is no `x-inverse`.
 - **`retrospective-sessions.contributor`** is a SLUG (`dana-o`), never an address. It is the first
   segment of every evidence and model id the run writes, which is what makes a second retrospective
   update the model instead of writing a parallel copy of it; the field's `pattern` refuses anything
-  else. ⚠ It held the address until 2026-09-09, and `--contributor <email>` on the readers still
-  takes one — that flag names the MAILBOX or the git author to read, not the id key.
+  else. `--contributor <email>` on the readers takes an address — that flag names the MAILBOX or the git author to read, not the id key.

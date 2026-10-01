@@ -1,12 +1,7 @@
-// The stage model, asserted across the three places that describe it.
+// The stage model, asserted across the three places that describe it: the `stage` enum, the skill's
+// stage table, and the skill's trigger description. Every collection is written by some stage.
 //
-// Until this release they disagreed three ways: the `stage` enum carried 16 values, the SKILL table
-// had 13 numbered rows plus one unnumbered `—`, and the module description named 12. One row set TWO
-// values (`condensed`, then `pasted-back`). And `goals` — a collection that exists, is advertised in
-// the module blurb and has an inference rule in references/inference-model.md — was written by NO
-// stage at all, which no test could see because nothing checked.
-//
-// ⚠ This does NOT assert one writing stage per collection. `concepts` and `decisions` are genuinely
+// This does NOT assert one writing stage per collection. `concepts` and `decisions` are genuinely
 // created twice: once from the workspace's own vocabulary and once from the evidence. Demanding a
 // single writer would be a false invariant that damaged a working design. What it asserts is that
 // no collection is orphaned — which is the defect that actually shipped.
@@ -29,7 +24,6 @@ const STAGES = [...WORKING, ...TERMINAL];
 
 const run = yaml.load(fs.readFileSync(path.join(COLS, 'retrospective-sessions.collection.yaml'), 'utf8'));
 const skill = fs.readFileSync(path.join(MOD, 'skills', 'running-retrospectives', 'SKILL.md'), 'utf8');
-const pkg = JSON.parse(fs.readFileSync(path.join(MOD, 'package.json'), 'utf8'));
 
 /** the stage table's rows: `| 3 | **read** → `read` | … | writes |` */
 // ⚠ Cells carry ESCAPED pipes (`anecdote\|pattern`), so a naive split on | shreds three rows and the
@@ -65,9 +59,10 @@ test('one row sets exactly one stage', () => {
 	}
 });
 
-test('the module description names every working stage', () => {
+test('the skill description names every working stage, so a resume at any stage triggers it', () => {
+	const description = (/^description: (.*)$/m.exec(skill) ?? [])[1] ?? '';
 	for (const s of WORKING) {
-		assert.match(pkg.dreamteamer.description, new RegExp(`\`${s}\``), `the description never names \`${s}\``);
+		assert.match(description, new RegExp(`\\b${s}\\b`), `the skill description never names ${s}`);
 	}
 });
 

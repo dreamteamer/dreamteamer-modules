@@ -1,4 +1,4 @@
-# ONE RETROSPECTIVE SESSION — one run of the workflow. The state machine of the whole module: `stage` is the gate every
+# perspective/retrospective-sessions — ONE RETROSPECTIVE SESSION, one run of the workflow. The state machine of the whole module: `stage` is the gate every
 # stage checks, so a run interrupted anywhere resumes from its record rather than from memory.
 # A session on a fresh workspace bootstraps it; a session on an existing one proposes changes.
 name: perspective/retrospective-sessions
@@ -18,26 +18,21 @@ schema:
   type: object
   required: [contributor, started, stage]
   properties:
-    contributor: { type: string, pattern: '^[a-z0-9-]+$', description: 'WHO this retrospective is about, as a slug (`dana-o`). It is the FIRST SEGMENT of every evidence and model id this session writes, and the second half of this record''s own id. The addresses they appear under go in `handles`; until 2026-09-09 this field held one address and `label` held the slug.' }
-    # ── IDENTITY, SPELLED THE WAY `collaborators` SPELLS IT ──────────────────────────────────────
+    contributor: { type: string, pattern: '^[a-z0-9-]+$', description: 'WHO this retrospective is about, as a slug (`dana-o`). It is the FIRST SEGMENT of every evidence and model id this session writes, and the second half of this record''s own id. The addresses they appear under go in `handles`.' }
+    # ── IDENTITY, SPELLED THE WAY `perspective/users` SPELLS IT ──────────────────────────────────
     # A slug is what the ids are keyed by; it is not what the evidence carries. Git has an author
-    # email, Asana a gid, mail an address — and the readers have to decide, per commit and per
-    # ticket, whether this row is the contributor's. That decision is a HANDLE MATCH, and the module
-    # already has one field for it: `collaborators.handles`. This is the same field, seeded before
-    # any collaborator record exists, because `derive-collaborators` needs it on its FIRST pass.
-    #
-    # ⚠ Until 2026-09-09 the address lived in `contact`, whose own description said it was a
-    # `contacts/<id>` CRM reference. One field, two meanings, in the module whose sibling collection
-    # spells both correctly — and once `collaborators.contact` became a real x-reference the two
-    # readings could not both survive. Split, rather than picked between.
+    # email, Asana a gid, mail an address — and the readers decide, per commit and per ticket, whether
+    # a row is the contributor's. That decision is a HANDLE MATCH on the same field as
+    # `perspective/users.handles`, seeded here before any users record exists, because
+    # `derive-collaborators` needs it on its FIRST pass. The CRM record is a separate field, `contact`.
     handles:
       type: array
       items: { type: string }
       description: >-
         THE MERGE KEY, exactly as on `perspective/users`. Every identity the contributor
         appears under: git author emails, Asana gids, mail addresses, display-name variants. Seeded
-        by the person at `installed` and matched by every reader. ⚠ Give it ALL of them up front:
-        the first reader runs before any collaborator record exists, so a commit authored under an
+        by the person at `installed` and matched by every reader. Give it ALL of them up front:
+        the first reader runs before any users record exists, so a commit authored under an
         address missing here is attributed to somebody else and never reaches this contributor.
     started:
       type: string
@@ -68,10 +63,8 @@ schema:
       default: installed
       description: >-
         THE GATE. The last stage completed. /run-retrospective reads it and runs the NEXT stage; on `done` it
-        offers a new session. `abandoned` carries `stopped_because`. ⚠ Each value is set by exactly ONE
-        row of the skill's stage table, and `tests/stage-model.test.mjs` asserts that this list, that
-        table and the module description are one list. Until 2026-09-09 they were three (16 values, 13
-        rows, 12 names), one row set two values, and `goals` was written by no stage at all.
+        offers a new session. `abandoned` carries `stopped_because`. Each value is set by exactly ONE
+        row of the skill's stage table, and this list and that table are one list.
     on_workspace:
       type: string
       enum: [fresh, existing]
@@ -82,10 +75,9 @@ schema:
       x-reference: contacts
       description: >-
         The contributor's record in the workspace's own CRM, where one exists and a person confirmed
-        the match. The same field, the same target and the same reasoning as `collaborators.contact`:
-        a plain string until 2026-09-09 so a recipe would compile without a `contacts` collection,
-        which `contacts` as a declared PEER solves without giving up the type. No `x-inverse` — a
-        peer excuses a reference, never a mirror.
+        the match. The same field and target as `perspective/users.contact`; `contacts` is a declared
+        PEER, so the module compiles without it. No `x-inverse` — a peer excuses a reference, never a
+        mirror.
     period_start:
       type: string
       format: date
@@ -97,14 +89,12 @@ schema:
       type: string
       description: >-
         The free-text hint /run-retrospective was given — `period:2026-08 sources:git,asana`, or prose —
-        kept verbatim. ⚠ It is provenance of the REQUEST and never the source list: until 2026-09-09 it
-        was the only record of what a run had looked at, because `sources` below was never written.
+        kept verbatim. It is provenance of the REQUEST and never the source list — what a run looked at
+        is `sources` below.
     # ── THE ONE M2M IN THE MODULE, spelled on both sides so a reader of THIS descriptor can see it.
     # `sources.retrospectives` owns the relation; this is its mirror, declared here with
-    # `x-inverse-of` (compile deletes the authored field and regenerates it under the same key — the
-    # `rnd/product-design-docs.prototypes` spelling). It was a generated mirror of a SCALAR
-    # `sources.retrospective` until 2026-09-11: a source is durable and every run re-reads it, so the
-    # relation was many-to-many all along and the scalar pair lost every run but the first and last.
+    # `x-inverse-of` (compile deletes the authored field and regenerates it under the same key). A
+    # source is durable and every run re-reads it, so the relation is many-to-many.
     sources:
       type: array
       items: { type: string, x-reference: perspective/sources }
@@ -131,7 +121,7 @@ schema:
     activity_weeks_back:
       type: integer
       default: 4
-      description: "How many ISO weeks back the readers write activity-weeks for — the default window when a run is given no since: or period:. Four, because a perspective is about the recent shape of the work and 1,019 weekly records across 51 repos was the wrong first artefact (operator, 2026-09-08). Conversations and tickets are NOT bounded by this; only the weekly windows and the commits scratch are."
+      description: "How many ISO weeks back the readers write activity-weeks for — the default window when a run is given no since: or period:. Four, because a perspective is about the recent shape of the work and all-of-history weekly records are the wrong first artefact. Conversations and tickets are NOT bounded by this; only the weekly windows and the commits scratch are."
     content:
       type: string
       format: markdown

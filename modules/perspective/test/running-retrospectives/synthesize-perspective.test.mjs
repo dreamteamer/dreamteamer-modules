@@ -212,9 +212,8 @@ test('--dry-run writes nothing', () => {
 // `retrospective-sessions.perspective` became a GENERATED MIRROR of `perspectives.retrospective` in
 // 0.2.0, and the engine refuses a direct write to a generated field. This script kept writing one,
 // guarded by "does a compiled runtime exist beside dataRoot" — which is false in every fixture, so
-// the guard skipped the broken line in every test and it shipped through 0.2.1. It failed on the
-// first real workspace it met, with the whole synthesise stage dying at the last line after doing
-// all its work (a client workspace, 2026-09-10).
+// the guard skipped the broken line in every test, while a real workspace would see the whole
+// synthesise stage die at the last line after doing all its work.
 //
 // A source-level assertion, deliberately: the failure is a call that a fixture cannot reach, so the
 // only place a test can stand is on the code that would make it.

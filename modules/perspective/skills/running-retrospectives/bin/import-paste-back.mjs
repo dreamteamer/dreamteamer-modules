@@ -3,16 +3,14 @@
 // BODY of that tool's `sources` record. Verbatim is the whole point: only trailing whitespace is
 // trimmed, so a Hebrew line, a `---` line and every blank line inside the reply survive.
 //
-// ⚠ It used to write an `perspective/answers` record. That collection was deleted on 2026-09-08
-// when answers were folded into the question that asked them — and a paste-back has no question, so
-// it had nowhere left to go. The right home was already declared: `sources.kind` has carried
-// `paste-back` since v1, and a paste-back IS a source of evidence rather than an answer to anything.
+// A paste-back answers no question the run asked, so it is not a `questions` record: it IS a source
+// of evidence, and `sources.kind` carries `paste-back` for it.
 // The text lands in the source's markdown BODY, where a long reply belongs, and the frontmatter keeps
 // the perimeter facts (where it came from, how much of it there is).
 //   node import-paste-back.mjs <file> --retrospective perspective/retrospective-sessions/<id> --origin paste-back-chatgpt [--data-root d]
 import fs from 'node:fs';
 import path from 'node:path';
-import { DATA, templatize } from '../lib/vault.mjs';
+import { DATA, templatize } from '../lib/workspace.mjs';
 import { recordPath, writeRecord, readRecord, contributorOf, writeSource } from '../lib/records.mjs';
 
 const ORIGINS = ['paste-back-chatgpt', 'paste-back-gemini', 'paste-back-other'];

@@ -1,7 +1,7 @@
 # threads — ONE MAIL THREAD THE CONTRIBUTOR WROTE IN, mechanical. Counted, never judged, and
 # deliberately thin: who wrote to whom, how often, when, under what subject. Nothing that was SAID.
 #
-# ⚠ WHY SO LITTLE. A mailbox is the most personal evidence store this module reads, and a workspace
+# WHY SO LITTLE. A mailbox is the most personal evidence store this module reads, and a workspace
 # is cloned onto other machines. So the record carries exactly what the clustering and collaborator
 # passes need — a subject to seed a label, handles to merge people on, dates and counts to place and
 # weigh it — and refuses bodies, snippets, attachments and labels. A thread that a pass needs to
@@ -11,7 +11,7 @@ description: One mail thread the contributor wrote in — subject, participants 
 use_when: >-
   the gmail reader runs (it writes here); an activity, decision or finding needs a thread as evidence —
   cite the record, never the URL; asked who a contributor corresponds with or what they were writing
-  about in a period, filter here by first_on and read `participants` and `subject`. ⚠ The body of the
+  about in a period, filter here by first_on and read `participants` and `subject`. The body of the
   mail is NOT here by design — open `url` in the mail client when a pass has to read one
 storage: { path: data/perspective/threads, codec: md, shape: file, suffix: thread }
 id:
@@ -27,7 +27,7 @@ schema:
     source: { type: string, x-reference: perspective/sources, description: The gmail source this was read from. }
     external_id: { type: string, description: 'Gmail''s thread id. THE FORCING FIELD; the id is built from it.' }
     subject: { type: string, description: 'The first message''s subject with Re:/Fwd: prefixes stripped — what the thread is ABOUT. The one text field, kept for the label seed.' }
-    participants: { type: array, items: { type: string }, description: 'Every address on the thread, lowercased, sorted — the contributor included. Joined to collaborators.handles, never to a name.' }
+    participants: { type: array, items: { type: string }, description: 'Every address on the thread, lowercased, sorted — the contributor included. Joined to perspective/users.handles, never to a name.' }
     message_count: { type: integer, description: Messages in the thread. }
     contributor_messages: { type: integer, description: 'Of those, how many the contributor sent. A thread with 0 is never written — it is not their work.' }
     first_on: { type: string, format: date, description: The first message's date. What the cluster pass places the thread on. }

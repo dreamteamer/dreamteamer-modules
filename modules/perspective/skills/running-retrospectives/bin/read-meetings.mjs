@@ -6,41 +6,38 @@
 //        --contributor <contacts/<id> or an email> [--label <name>] [--since YYYY-MM-DD]
 //        [--data-root d] [--workspace-root d] [--scratch-root d] [--dry-run]
 //
-// ⚠ WHY A SOURCE AT ALL, when the meetings are already records in the same workspace. Because the
+// WHY A SOURCE AT ALL, when the meetings are already records in the same workspace. Because the
 // question this module asks is not "what meetings are there" — it is "what did this person's week
 // consist of", and for a contributor whose work is conversations rather than commits, a calendar is
 // the only store that can answer it. The same argument `read-drive` makes for the document-shaped
 // contributor: an evidence source that is absent for a person is a fact about the SOURCE, never
 // about the person. A perspective built from commits alone reads a consultant as idle.
 //
-// ⚠ WHAT IT REFUSES TO COPY, and this is the whole discipline of the source: NOT ONE WORD of a
+// WHAT IT REFUSES TO COPY, and this is the whole discipline of the source: NOT ONE WORD of a
 // summary, a prep or an analysis. Those records are another module's JUDGEMENT of the call — already
 // written, already attributed — and copying them here would put a judged sentence on the evidence
 // rung, where every record is supposed to be counted rather than concluded. The meeting REF is the
 // pointer; anyone who needs to know what was said follows it. What lands here is: how many meetings,
 // how many minutes, and with whom.
 //
-// ⚠ ATTENDANCE IS NOT PARTICIPATION. Being on an invite says the person was in the room, not that
+// ATTENDANCE IS NOT PARTICIPATION. Being on an invite says the person was in the room, not that
 // they spoke, prepared, or wanted to be there. Nothing this reader writes may be read as engagement,
 // and the perspective that cites it should say so.
 //
-// ⚠ WHICH COLLECTION THE PEOPLE LAND IN: `perspective/users`, the OBSERVED half of `users`.
-// In 0.9.0 the observed world became a namespace spelled in the real world's own nouns, and the
-// `collaborators` collection was retired into it — a workspace compiled since then declares no such
-// collection at all, so a sentence naming one describes nothing. `collaborator` survives here as a
-// ROLE WORD — `perspective/users.sources` carries `x-inverse: collaborators`, and
-// `perspective/activities.collaborators` is the slot a person fills — so a receipt that counts
-// "collaborators" is counting `perspective/users` records, and `lib/collaborators.mjs` is the upsert that
-// writes them. Nothing this reader does may write into the REAL `users` collection: that is what a
+// WHICH COLLECTION THE PEOPLE LAND IN: `perspective/users`, the OBSERVED half of `users`. There is
+// no `collaborators` collection; `collaborator` is a ROLE WORD — `perspective/users.sources` carries
+// `x-inverse: collaborators`, and `perspective/activities.collaborators` is the slot a person fills —
+// so a receipt that counts "collaborators" is counting `perspective/users` records, and
+// `lib/collaborators.mjs` is the upsert that writes them. Nothing this reader does may write into the REAL `users` collection: that is what a
 // person authored, and the one-way `real` join is a proposal a person confirms, never a reader's.
 //
-// ⚠ WHERE THE ID COMES FROM, and it is the whole reason the observed world is a separate store:
+// WHERE THE ID COMES FROM, and it is the whole reason the observed world is a separate store:
 // `<contributor>/<name-slug>`, where the FIRST segment is the run's contributor — `who()`, resolved
 // from the retrospective record — and never the person being written. That is what makes a SECOND
 // retrospective UPDATE this contributor's model instead of writing a parallel copy beside it, and it
-// is why `--contributor` chooses an IDENTITY to look the operator up by rather than a subject.
+// is why `--contributor` chooses an IDENTITY to look the person up by rather than a subject.
 //
-// ⚠ WHY `perspective/users.contact` IS SET HERE, when `references/identity.md` says that field is set
+// WHY `perspective/users.contact` IS SET HERE, when `references/identity.md` says that field is set
 // only on confirmation and never inferred from a matching name. Both are true, because this is not a
 // name match. `meetings.attendees` is an `x-reference: contacts` — a STRUCTURAL edge somebody
 // already committed to in the workspace's own CRM. Following a reference the workspace asserts is
@@ -60,11 +57,11 @@
 //     `real`, and never a row in the real `users` collection.
 //   · `<scratch>/meetings/<base>.jsonl`, the parking lot the cluster stage reads. Meetings are
 //     deliberately NOT copied into this module's data — they are a peer collection's records, and
-//     this module never holds a domain object (design §8, the same reason commits live in a JSONL).
+//     this module never holds a domain object (the same reason commits live in a JSONL).
 import fs from 'node:fs';
 import path from 'node:path';
 import yaml from 'js-yaml';
-import { DATA, SCRATCH, isoWeek, isoWeekRange, slug } from '../lib/vault.mjs';
+import { DATA, SCRATCH, isoWeek, isoWeekRange, slug } from '../lib/workspace.mjs';
 import { recordPath, writeRecord, readRecord, listRecords, contributorOf, writeSource, compiledStorage, recordFilesOf } from '../lib/records.mjs';
 import { upsertCollaborators } from '../lib/collaborators.mjs';
 import { contributorHandles as handlesOf } from '../lib/identity.mjs';
@@ -84,8 +81,7 @@ const base = retrospective.split('/').pop();
 const dataRoot = opt('data-root', DATA);
 // Every evidence and model id is keyed by the CONTRIBUTOR, not by the run — a re-run must update
 // this person's records rather than write a parallel set beside them. Resolved LAZILY, on first
-// use: reading it eagerly made a script that should exit 2 on a bad argument crash on a missing
-// session instead, and write nothing was the contract it broke (read-asana, 2026-09-09).
+// use, so a bad argument exits 2 with a usage line before any session is read.
 let _who = null;
 const who = () => (_who ??= contributorOf(retrospective, dataRoot));
 // The workspace root is the parent of the data root — that is what `data/…` storage paths are
@@ -153,7 +149,7 @@ for (const c of contacts.values()) for (const e of c.emails) if (!byEmail.has(e)
 // that matched on one would attribute a stranger's whole week to the contributor).
 let contactRef = '';
 const handles = new Set();
-// ⚠ WHOSE MEETINGS THESE ARE IS THE RUN RECORD'S ANSWER, not this flag's. Every id written here is
+// WHOSE MEETINGS THESE ARE IS THE RUN RECORD'S ANSWER, not this flag's. Every id written here is
 // keyed by `who()`, the run's contributor slug, so `--contributor` chooses which IDENTITY of that
 // person to look them up by — never a different person. That is why the run's own `handles` are
 // unioned in below, exactly as read-gmail does, and why an argument this workspace has never seen is
@@ -214,13 +210,10 @@ for (const { file, id } of recordFilesOf(MEETINGS)) {
 	// this reader speaks — and BOTH of them are structural.
 	//   · an `attendees` REF other than the contributor's: an edge somebody already committed to;
 	//   · an EMAIL inside an `attendees_raw` line that resolves to a contact record's own address.
-	// ⚠ The second used to be refused here, on the grounds that a raw line is "not good enough to
-	// name anybody else". That was inconsistent with this reader's own contributor test three lines
-	// up, which matches the contributor by exactly such an address: the rule the module actually
-	// holds is that a DISPLAY NAME is not a person key and an EMAIL is. A calendar sync that never
-	// resolved its attendees to contacts is the normal state of a fresh workspace, so refusing raw
-	// emails dropped every counterpart of every unresolved meeting — measured on a fixture where one
-	// person's two meetings counted as one.
+	// The second is accepted for the same reason the contributor test above matches by such an
+	// address: a DISPLAY NAME is not a person key and an EMAIL is. A calendar sync that never resolved
+	// its attendees to contacts is the normal state of a fresh workspace, and refusing raw emails
+	// would drop every counterpart of every unresolved meeting.
 	// A raw line with no address still yields nobody, and a NAME in one is never mined.
 	const seen = new Set();
 	const counterparts = [];
@@ -250,7 +243,7 @@ for (const m of kept) {
 	for (const c of m.counterparts) if (c.emails.length) acc.counterparts.add(c.emails[0]);
 	weeks.set(period, acc);
 	for (const c of m.counterparts) {
-		// ⚠ NO EMAIL, NO `perspective/users` RECORD. The merge key is an email or a system id, and a bare
+		// NO EMAIL, NO `perspective/users` RECORD. The merge key is an email or a system id, and a bare
 		// display name is neither — two people share a name, nobody shares an address. Writing a record keyed
 		// on the name is how one person's work gets attributed to another, and the receipt says how
 		// many attendees were dropped for exactly this reason rather than swallowing the gap.
@@ -314,8 +307,8 @@ if (!dry) {
 		try { summary = readRecord(recordPath('activity-weeks', wid, 'activity-week', dataRoot)).fields.summary || undefined; } catch { /* first write */ }
 		const { start, end } = isoWeekRange(period);
 		writeRecord(recordPath('activity-weeks', wid, 'activity-week', dataRoot), {
-			// `retrospective` is REQUIRED on all nineteen collections since 0.2.0; a week written
-			// without it fails `check` the moment it lands.
+			// `retrospective` is REQUIRED on every collection; a week written without it
+			// fails `check` the moment it lands.
 			retrospective,
 			contributor: who(),
 			source: sourceRef, period, start_date: start, end_date: end,

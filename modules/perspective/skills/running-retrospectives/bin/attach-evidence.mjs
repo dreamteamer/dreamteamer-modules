@@ -5,11 +5,10 @@
 //   node attach-evidence.mjs --retrospective perspective/retrospective-sessions/<id>
 //        [--data-root d] [--scratch-root d] [--dry-run]
 //
-// ⚠ WHY THIS EXISTS, measured 2026-09-08 on a real run: the naming pass was asked to copy session
-// refs onto its `dt add` command line, and 615 of 1,068 conversations never arrived. One candidate
-// held 257 sessions. No model copies 257 refs, and nothing in the pipeline noticed — every activity
-// looked complete, every rolled-up number was under half, and the only symptom was a total that
-// felt low. Asking a model to transcribe a long list is a silent-data-loss machine.
+// WHY THIS EXISTS: a candidate can hold hundreds of sessions, and no model reliably copies that many
+// refs onto a `dt add` command line. When it drops some, nothing notices — every activity looks
+// complete and every rolled-up number is quietly low. Asking a model to transcribe a long list is a
+// silent-data-loss machine.
 //
 // So an activity carries ONE short string, `from_candidate`, and this script does the rest:
 //   · every session, commit, branch, ticket and meeting of that candidate is attached
@@ -21,7 +20,7 @@
 //   · an activity with no `from_candidate` is left exactly as it is (a person wrote it)
 import fs from 'node:fs';
 import path from 'node:path';
-import { DATA, SCRATCH } from '../lib/vault.mjs';
+import { DATA, SCRATCH } from '../lib/workspace.mjs';
 import { listRecords, readRecord, writeRecord, contributorOf, collectionDir, recordId } from '../lib/records.mjs';
 
 const argv = process.argv.slice(2);
@@ -33,8 +32,7 @@ const base = retrospective.split('/').pop();
 const dataRoot = opt('data-root', DATA);
 // Every evidence and model id is keyed by the CONTRIBUTOR, not by the run — a re-run must update
 // this person's records rather than write a parallel set beside them. Resolved LAZILY, on first
-// use: reading it eagerly made a script that should exit 2 on a bad argument crash on a missing
-// session instead, and write nothing was the contract it broke (read-asana, 2026-09-09).
+// use, so a bad argument exits 2 with a usage line before any session is read.
 let _who = null;
 const who = () => (_who ??= contributorOf(retrospective, dataRoot));
 const scratch = opt('scratch-root', SCRATCH);

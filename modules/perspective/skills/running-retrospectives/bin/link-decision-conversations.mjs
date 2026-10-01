@@ -5,7 +5,7 @@
 //   node link-decision-conversations.mjs --retrospective perspective/retrospective-sessions/<id>
 //        [--data-root d] [--dry-run] [--verbose]
 //
-// ⚠ WHY IT IS A SCRIPT AND NOT A MODEL PASS. The join is a timestamp lookup with an exact answer,
+// WHY IT IS A SCRIPT AND NOT A MODEL PASS. The join is a timestamp lookup with an exact answer,
 // and a model asked to do 144 of those will guess on the hard ones and never say which. Here the
 // hard ones come out as `ambiguous` and stay EMPTY.
 //
@@ -18,15 +18,15 @@
 //      answer. Several means sessions were running concurrently — then, and only then, the row's
 //      free-text `session` description is scored against each candidate's title and summary, and the
 //      winner must beat the runner-up OUTRIGHT. A tie stays empty.
-//   3. everything else — a curated `DECISION-LOG.md#<row>` the operator wrote by hand, a commit, a
+//   3. everything else — a curated `DECISION-LOG.md#<row>` the person wrote by hand, a commit, a
 //      ticket — is NOT TOUCHED. There is no session behind a hand-written log row, and the nearest
 //      one in time is a guess wearing a reference's clothes.
 //
-// ⚠ It never clears a link a person or an earlier run set. `--force` is deliberately absent: this
+// It never clears a link a person or an earlier run set. `--force` is deliberately absent: this
 // script only ever fills an empty field.
 import fs from 'node:fs';
 import path from 'node:path';
-import { DATA } from '../lib/vault.mjs';
+import { DATA } from '../lib/workspace.mjs';
 import { listRecords, readRecord, writeRecord, contributorOf, collectionDir } from '../lib/records.mjs';
 
 const argv = process.argv.slice(2);
@@ -41,8 +41,7 @@ const base = retrospective.split('/').pop();
 const dataRoot = opt('data-root', DATA);
 // Every evidence and model id is keyed by the CONTRIBUTOR, not by the run — a re-run must update
 // this person's records rather than write a parallel set beside them. Resolved LAZILY, on first
-// use: reading it eagerly made a script that should exit 2 on a bad argument crash on a missing
-// session instead, and write nothing was the contract it broke (read-asana, 2026-09-09).
+// use, so a bad argument exits 2 with a usage line before any session is read.
 let _who = null;
 const who = () => (_who ??= contributorOf(retrospective, dataRoot));
 

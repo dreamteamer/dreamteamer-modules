@@ -7,28 +7,26 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 /** The workspace root: the nearest ancestor carrying package-lock.json (NOT package.json — a module folder carries one too). */
-// ⚠ A GIT MODULE IS NOT A VAULT, and the lockfile heuristic cannot tell on its own. The rule is
+// A GIT MODULE IS NOT A WORKSPACE, and the lockfile heuristic cannot tell on its own. The rule is
 // "walk up to the directory carrying package-lock.json, not package.json, because a module folder
-// carries one of those too" — and the moment this module declared a dependency so it could test
-// itself, `npm install` in the clone gave it a LOCKFILE as well. A reader running from
-// `git_modules/perspective/skills/…` then resolved the CLONE as the workspace and wrote 53 records
-// into it, where `check` could not see them and the next `git pull` would have destroyed them.
-// Measured 2026-09-08, ten minutes after the lockfile appeared.
+// carries one of those too" — but `npm install` in a module clone gives it a LOCKFILE as well, and a
+// reader running from `git_modules/perspective/skills/…` would resolve the CLONE as the workspace
+// and write records where `check` cannot see them and the next `git pull` destroys them.
 //
 // So the walk skips any candidate that sits directly inside a `git_modules/` folder: that is what a
-// clone IS, structurally, and no vault is ever placed there.
-export const VAULT = (() => {
+// clone IS, structurally, and no workspace is ever placed there.
+export const WORKSPACE_ROOT = (() => {
 	for (let d = HERE; ; d = path.dirname(d)) {
 		const inGitModules = path.basename(path.dirname(d)) === 'git_modules';
 		if (!inGitModules && fs.existsSync(path.join(d, 'package-lock.json'))) return d;
 		if (path.dirname(d) === d) throw new Error('workspace root not found (no package-lock.json above ' + HERE + ')');
 	}
 })();
-export const DATA = path.join(VAULT, 'data');
-export const SCRATCH = path.join(VAULT, '.perspective');
+export const DATA = path.join(WORKSPACE_ROOT, 'data');
+export const SCRATCH = path.join(WORKSPACE_ROOT, '.perspective');
 
 /** Parse .env for NAME=value lines. Values stay in-process; nothing here prints them. */
-export function readEnv(file = path.join(VAULT, '.env')) {
+export function readEnv(file = path.join(WORKSPACE_ROOT, '.env')) {
 	const out = {};
 	if (!fs.existsSync(file)) return out;
 	for (const line of fs.readFileSync(file, 'utf8').split('\n')) {
@@ -41,19 +39,19 @@ export function readEnv(file = path.join(VAULT, '.env')) {
 	return out;
 }
 
-/** Run the dreamteamer CLI in the vault; returns stdout. Throws with stderr on failure. */
+/** Run the dreamteamer CLI in the workspace; returns stdout. Throws with stderr on failure. */
 export function dt(args, { input } = {}) {
-	const bin = path.join(VAULT, 'node_modules', '.bin', 'dreamteamer');
-	return execFileSync(bin, args, { cwd: VAULT, encoding: 'utf8', input, stdio: ['pipe', 'pipe', 'pipe'] });
+	const bin = path.join(WORKSPACE_ROOT, 'node_modules', '.bin', 'dreamteamer');
+	return execFileSync(bin, args, { cwd: WORKSPACE_ROOT, encoding: 'utf8', input, stdio: ['pipe', 'pipe', 'pipe'] });
 }
 
 /** The three engine template variables → a real path on THIS machine. An unset var throws, never guesses.
- *  (No sample variable name appears here on purpose: bin/tests/env-contract.test.mjs reads an env
- *  template written in a comment as a real undeclared key — the trap KEY and EMPTYVAR are allowlisted for.) */
+ *  (No sample variable name appears here on purpose: an env template written in a comment reads as
+ *  a real undeclared key to a workspace's env checks.) */
 export function render(template, env = readEnv()) {
 	return template
 		.replace(/\$\{userHome\}/g, os.homedir())
-		.replace(/\$\{workspaceFolder\}/g, VAULT)
+		.replace(/\$\{workspaceFolder\}/g, WORKSPACE_ROOT)
 		.replace(/\$\{env:([A-Z0-9_]+)\}/g, (_, k) => {
 			const v = process.env[k] ?? env[k];
 			if (v === undefined || v === '') throw new Error(`\${env:${k}} is not set — records never travel resolved`);
@@ -66,7 +64,7 @@ export function templatize(abs, env = readEnv()) {
 	const cands = [];
 	const repos = (process.env.REPOS_FOLDER ?? env.REPOS_FOLDER ?? '').replace(/^~(?=\/|$)/, os.homedir());
 	if (repos) cands.push([repos, '${env:REPOS_FOLDER}']);
-	cands.push([VAULT, '${workspaceFolder}'], [os.homedir(), '${userHome}']);
+	cands.push([WORKSPACE_ROOT, '${workspaceFolder}'], [os.homedir(), '${userHome}']);
 	cands.sort((a, b) => b[0].length - a[0].length);
 	for (const [pre, tpl] of cands) if (abs === pre || abs.startsWith(pre + '/')) return tpl + abs.slice(pre.length);
 	return abs;
