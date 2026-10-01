@@ -1,7 +1,7 @@
 name: tasks
 description: A concrete commitment, starting with a verb — what would be done, not the topic it is about.
 use_when: a concrete commitment surfaces — in a meeting, a chat, a plan — capture it here with a verb and, whenever a date was actually said, the absolute `due`; pass `--lane` when the domain is clear (the workspace's own lane vocabulary) and leave it empty when it is not — the field is optional and the board has an "unassigned" pile for the residue; asked "what do I owe", list here by due date
-templates: [collection-templates/projects-provenance]
+templates: [collection-templates/tasks-provenance]
 storage:
   path: data/tasks
   codec: md
@@ -114,7 +114,8 @@ schema:
         `insurance` · `pension` · `property` · `banking` · `credit-card` · `accountant` · `docs-missing` · `decision`. A
         task with no tag reads as dev/ops work, which is the useful default. Free strings, lowercase and hyphenated;
         `key:value` with NO space around the colon — a space makes YAML parse the entry as a map. Nothing validates a
-        tag: `python3 <extensions>/modules/contacts/skills/working-with-tags/bin/tags.py`.
+        tag: `python3 .dreamteamer/skills/working-with-tags/bin/tags.py` (the contacts module's
+        `working-with-tags` skill) lists the tags in use.
     assistant_recommended_next_step:
       type: string
       format: markdown

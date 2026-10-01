@@ -1,0 +1,34 @@
+{
+	"name": "@dreamteamer/tasks",
+	"version": "0.1.0",
+	"description": "Concrete commitments for a dreamteamer workspace — who owes what by when, an inbox, a board and a by-person view.",
+	"license": "Apache-2.0",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/dreamteamer/dreamteamer-modules.git",
+		"directory": "modules/tasks"
+	},
+	"keywords": [
+		"dreamteamer",
+		"dreamteamer-module"
+	],
+	"files": [
+		"README.md",
+		"collections",
+		"collection-templates",
+		"skills",
+		"ui-views"
+	],
+	"dreamteamer": {
+		"title": "Tasks",
+		"description": "A concrete commitment, starting with a verb — `tasks`, each optionally owed by one `users` record (`assignee`; empty means the workspace's own person), with an absolute `due`, a free `lane` for the board, and an `item` backlink to the record it came out of. Ships the inbox (`/inbox`), the board (`/tasks/board`) and the by-person view (`/tasks/by-assignee`), and `working-with-tasks`, the procedure an agent follows to create, assign, triage and close one. Peers `projects` and `activities`: install the projects module and a task can hang off a plan rung, with the mirror stamped onto the plan; without it a write that sets either is refused, naming the missing collection.",
+		"engine": ">=0.30.0",
+		"dependencies": [
+			"@dreamteamer/users"
+		],
+		"peerDependencies": [
+			"projects",
+			"activities"
+		]
+	}
+}
