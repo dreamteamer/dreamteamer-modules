@@ -1,13 +1,8 @@
-# The inbox — the default morning read: every open task, soonest due first, with who owes it.
-#
-# ⚠ `columns` REPLACES the descriptor's `list_fields`, and a column the schema LACKS is dropped
-# silently rather than fallen back from — which is how this view once rendered every row nameless by
-# asking for `title` on a collection whose field is `name`. Check every column against the
-# descriptor when editing this.
-#
-# ⚠ It filters on `status` only, never on `assignee`. An empty assignee MEANS the workspace's own
-# person, so an assignee filter would hide most of a personal list; one person's inbox is the
-# by-assignee view, or `dt list tasks --filter assignee=users/<id> --filter status=todo`.
+# The inbox: every `todo` task, soonest due first, with who owes it.
+# `columns` replaces the descriptor's `list_fields`, and a column the schema lacks is dropped silently,
+# so check every column against the descriptor when editing this.
+# It filters on `status` only, never on `assignee`: an empty assignee means the workspace's own person.
+# One person's inbox is the by-assignee view, or `npx dt list tasks --filter assignee=users/<id> --filter status=todo`.
 path: /inbox
 target: list
 collection: collections/tasks

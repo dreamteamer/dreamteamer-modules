@@ -11,6 +11,6 @@ npx dreamteamer compile
 
 | alone | with others |
 |---|---|
-| tasks, the inbox (`/inbox`), the board (`/tasks/board`), tasks by person (`/tasks/by-assignee`) | **meetings** links a call's critique to the tasks it produced · **projects** (not yet in this repo) lets a task hang off a project or a plan rung |
+| tasks, the inbox (`/inbox`), the board (`/tasks/board`), tasks by person (`/tasks/by-assignee`) | **projects** lets a task name the project or activity it serves · **meeting-docs** extracts tasks from a call and lists them on its critique |
 
-Without the projects module, a task that names a project is refused by name rather than written.
+Without the projects module, a task that names a project or an activity is refused by name rather than written.

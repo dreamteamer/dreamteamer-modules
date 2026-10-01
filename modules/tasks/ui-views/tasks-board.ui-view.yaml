@@ -3,12 +3,10 @@ target: list
 collection: collections/tasks
 layout: kanban
 options:
-  # Named for the AXIS since extension 0.12.0 — `group_by`/`lane_by` were one name per layout for one
-  # idea. The enum ORDER on each field is the order its columns and bands appear in (decision 306).
+  # The enum order on each field is the order its columns and bands appear in.
   group_columns_by_field: status
   group_rows_by_field: lane
-  # Unset would default to All anyway while rows are grouped; stated so the board's behaviour does
-  # not change if that default ever does.
+  # Every task on one page, so no lane is cut off.
   page_size: 100000
   template: |-
     **{{ name }}**

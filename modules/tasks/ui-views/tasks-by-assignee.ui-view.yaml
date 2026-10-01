@@ -1,5 +1,5 @@
-# "What is mine", the task half. Banded by `assignee`, with the unassigned pile shown because on a
-# personal list an empty assignee MEANS the workspace's own person — hiding it would hide most of the board.
+# "What is mine", the task half. Banded by `assignee`, with the unassigned pile shown because an empty
+# assignee means the workspace's own person.
 # With the projects module installed, its /plan/by-person is the plan half; both resolve to one `users` record.
 path: /tasks/by-assignee
 target: list
