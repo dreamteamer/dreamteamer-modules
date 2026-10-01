@@ -92,9 +92,9 @@ for (const d of SYSTEM_DIRS) {
 
 /**
  * A fake `notebooklm` on a private PATH. It keeps the notebook in `state.json` (sources with ids and
- * titles, the last persona), logs every argv to `calls.jsonl`, and imitates the vendor's two measured
- * traps: `source add --title` keeps the FILE NAME rather than the title, and `create` answers with
- * `{ notebook: { id } }`. Knobs are files: `version` (the version it reports), `auth-fail`.
+ * titles, the last persona), logs every argv to `calls.jsonl`, and imitates the vendor's three measured
+ * traps: `source add --title` keeps the FILE NAME rather than the title, `create` answers with
+ * `{ notebook: { id } }`, and `configure --mode` drops the persona and response length sent with it. Knobs are files: `version` (the version it reports), `auth-fail`.
  */
 export function fakeVendor(root) {
 	const dir = fs.mkdtempSync(path.join(root, '.fake-nlm-'));
@@ -117,7 +117,7 @@ if (args[0] === 'auth') { if (fs.existsSync(path.join(DIR, 'auth-fail'))) { proc
 if (args[0] === 'create') { const id = 'nb-' + state.next++; state.notebooks[id] = { title: args[1], sources: [], config: null }; save(); out({ notebook: { id, title: args[1] } }); process.exit(0); }
 const nb = state.notebooks[opt('-n')];
 if (!nb) { process.stderr.write('Error: no notebook ' + opt('-n') + '\\n'); process.exit(2); }
-if (args[0] === 'configure') { nb.config = { persona: opt('--persona') ?? null, responseLength: opt('--response-length') ?? null, mode: opt('--mode') ?? null }; save(); out({ configured: true }); process.exit(0); }
+if (args[0] === 'configure') { const mode = opt('--mode') ?? null; nb.config = mode ? { persona: null, responseLength: null, mode } : { persona: opt('--persona') ?? null, responseLength: opt('--response-length') ?? null, mode: null }; save(); out({ configured: true }); process.exit(0); }
 if (args[0] === 'source') {
 	const sub = args[1];
 	if (sub === 'list') { out({ sources: nb.sources.map((s) => ({ id: s.id, title: s.title, type: 'markdown' })) }); process.exit(0); }

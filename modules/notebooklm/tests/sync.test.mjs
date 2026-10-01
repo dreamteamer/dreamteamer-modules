@@ -33,7 +33,7 @@ describe('the first sync — --create', () => {
 		assert.deepEqual(titles(nb), EXPECTED, 'every source is renamed to its title, whatever the vendor kept');
 		assert.equal(nb.sources.find((s) => s.title === 'dt · people').text, readFile(ws.root, 'bundle/people.md'), 'the uploaded bytes are the bundle file');
 		assert.equal(nb.config.persona, readFile(ws.root, 'bundle/instructions.md'));
-		assert.equal(nb.config.mode, null, '--mode is never sent unless asked for — it discards the persona');
+		assert.equal(nb.config.mode, null, '--mode is never sent — it discards the persona');
 	});
 
 	test('notebook.json keeps the notebook id and each title\'s source id and hash', () => {
@@ -99,12 +99,24 @@ describe('the next sync — incremental, by source id', () => {
 		assert.deepEqual(titles(nb), ['a paper I added by hand', 'dt · companies', 'dt · schema']);
 	});
 
-	test('--response-length and --mode ride along to configure in ONE call', () => {
+	test('--response-length rides along to configure in the same call as the persona', () => {
 		const { ws, nlm } = created();
-		assert.equal(again(ws, nlm, '--response-length', 'longer', '--mode', 'concise').code, 0);
+		assert.equal(again(ws, nlm, '--response-length', 'longer').code, 0);
 		const nb = Object.values(nlm.state().notebooks)[0];
-		assert.deepEqual({ responseLength: nb.config.responseLength, mode: nb.config.mode }, { responseLength: 'longer', mode: 'concise' });
+		assert.deepEqual({ responseLength: nb.config.responseLength, mode: nb.config.mode }, { responseLength: 'longer', mode: null });
 		assert.equal(nb.config.persona, readFile(ws.root, 'bundle/instructions.md'));
+	});
+
+	test('--mode is refused before the vendor is reached, and the persona stays applied', () => {
+		const { ws, nlm } = created();
+		const before = nlm.calls().length;
+		const res = again(ws, nlm, '--mode', 'concise');
+		assert.notEqual(res.code, 0, '--mode was accepted');
+		assert.match(res.stderr, /unknown flag "--mode"/);
+		assert.equal(nlm.calls().length, before, 'a refused run still called the vendor');
+		const nb = Object.values(nlm.state().notebooks)[0];
+		assert.equal(nb.config.persona, readFile(ws.root, 'bundle/instructions.md'));
+		assert.equal(nb.config.mode, null);
 	});
 
 	test('--wait waits on each new source and reports it ready', () => {
