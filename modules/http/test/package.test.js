@@ -34,7 +34,7 @@ describe('activate(dt)', () => {
 		assert.deepEqual(Object.keys(c), ['commands']);
 		assert.deepEqual(Object.keys(c.commands), ['serve']);
 		assert.equal(typeof c.commands.serve.run, 'function');
-		assert.match(c.commands.serve.usage, /serve \[--port <n>\] \[--host <addr>\]/);
+		assert.match(c.commands.serve.usage, /serve \[--port <n>\] \[--host <addr>\] \[--token <secret>\]/);
 	});
 });
 
@@ -42,12 +42,12 @@ describe('dt serve flags', () => {
 	test('defaults to loopback on 8080', () => {
 		assert.deepEqual(parseServeArgs([]), { port: 8080, host: '127.0.0.1' });
 	});
-	test('--port and --host, spaced or with =', () => {
+	test('--port, --host and --token, spaced or with =', () => {
 		assert.deepEqual(parseServeArgs(['--port', '0', '--host', '::1']), { port: 0, host: '::1' });
-		assert.deepEqual(parseServeArgs(['--port=3000', '--host=0.0.0.0']), { port: 3000, host: '0.0.0.0' });
+		assert.deepEqual(parseServeArgs(['--port=3000', '--host=0.0.0.0', '--token=s']), { port: 3000, host: '0.0.0.0', token: 's' });
 	});
 	test('an unknown flag or a positional is refused, naming the usage', () => {
-		assert.throws(() => parseServeArgs(['--admin']), /does not take "--admin".*dt serve \[--port <n>\] \[--host <addr>\]/);
+		assert.throws(() => parseServeArgs(['--admin']), /does not take "--admin".*dt serve \[--port <n>\] \[--host <addr>\] \[--token <secret>\]/);
 		assert.throws(() => parseServeArgs(['3000']), /does not take "3000"/);
 	});
 	test('a missing or malformed value is refused', () => {

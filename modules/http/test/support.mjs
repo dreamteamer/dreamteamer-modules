@@ -35,24 +35,30 @@ export async function httpWorkspace({ collections = {}, records = {}, namespaces
 	return { ...h, ws, ids };
 }
 
-/** The app on 127.0.0.1:<ephemeral>. Returns the api base url and a close(). */
-export async function mount(ws) {
+/** The app on 127.0.0.1:<ephemeral>, built with `opts` (`{host, token}`). Returns the api base url
+ *  and a close(). */
+export async function mount(ws, opts) {
 	bind(api);
-	const server = createApp(ws).listen(0, '127.0.0.1');
+	const server = createApp(ws, opts).listen(0, '127.0.0.1');
 	await once(server, 'listening');
-	return { base: `http://127.0.0.1:${server.address().port}/api`, close: () => new Promise((r) => server.close(r)) };
+	return { base: `http://127.0.0.1:${server.address().port}/api`, port: server.address().port, close: () => new Promise((r) => server.close(r)) };
 }
 
-/** One request with a hard timeout; the body parsed as JSON when it is JSON. */
-export async function call(method, url, body) {
+/**
+ * One request with a hard timeout; the body parsed as JSON when it is JSON. A POST or PATCH, and any
+ * request with a body, says `content-type: application/json` unless `headers` overrides it; a string
+ * body is sent as-is.
+ */
+export async function call(method, url, body, headers = {}) {
+	const json = body !== undefined || method === 'POST' || method === 'PATCH';
 	const res = await fetch(url, {
 		method,
-		headers: body === undefined ? undefined : { 'content-type': 'application/json' },
-		body: body === undefined ? undefined : JSON.stringify(body),
+		headers: { ...(json ? { 'content-type': 'application/json' } : {}), ...headers },
+		body: body === undefined ? undefined : typeof body === 'string' ? body : JSON.stringify(body),
 		signal: AbortSignal.timeout(20_000),
 	});
 	const text = await res.text();
-	let json = null;
-	try { json = text ? JSON.parse(text) : null; } catch { json = text; }
-	return { status: res.status, json };
+	let parsed = null;
+	try { parsed = text ? JSON.parse(text) : null; } catch { parsed = text; }
+	return { status: res.status, json: parsed };
 }

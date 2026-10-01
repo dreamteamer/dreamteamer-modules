@@ -1,114 +1,149 @@
-// `?dry-run=true` over HTTP, against the app on a real workspace.
-//
-// ⚠ THIS FILE EXISTS BECAUSE ASKING WHAT A VERB WOULD DO ONCE PERFORMED IT: the system-write route
-// read `force` from the query string and nothing else, so a client asking for a plan of a
-// destructive schema verb got the write. Every assertion checks the response AND that the disk did
-// not move — the second is the one that matters.
+// `?dry-run` over HTTP, against the app on a real workspace. A plan never becomes a write: every
+// assertion checks the response AND that the workspace on disk, HEAD and the pending set did not move.
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import { api as engine } from '../../../tests/helpers/fixture.mjs';
 import { httpWorkspace, simpleCollection, mount, call } from './support.mjs';
 
 const MOD = 'default';
-let h, srv, api;
+let h, srv, api, hash, pendingId;
 
-/** Every source file under modules/, with its bytes — the disk, as a comparable value. */
-const snapshot = (root) => {
+const ORDERED = {
+	sort_field: 'position',
+	id: { generate: '{{ name | slug }}' },
+	storage: { suffix: 'task' },
+	schema: { type: 'object', required: ['name'], properties: { name: { type: 'string' }, position: { type: 'string', pattern: '^[a-z]+$' } } },
+};
+
+/** Every file in the workspace outside node_modules and .git, with its bytes, plus HEAD and the
+ *  porcelain status — the disk and the repo, as one comparable value. */
+const snapshot = () => {
 	const out = new Map();
 	const walk = (d) => {
-		if (!fs.existsSync(d)) return;
 		for (const e of fs.readdirSync(d, { withFileTypes: true })) {
-			if (e.name === 'node_modules' || e.name.startsWith('.')) continue;
+			if (e.name === 'node_modules' || e.name === '.git') continue;
 			const p = path.join(d, e.name);
 			if (e.isDirectory()) walk(p);
-			else out.set(path.relative(root, p), fs.readFileSync(p, 'utf8'));
+			else out.set(path.relative(h.root, p), fs.readFileSync(p, 'utf8'));
 		}
 	};
-	walk(path.join(root, 'modules'));
+	walk(h.root);
+	out.set('<HEAD>', h.git(['rev-parse', 'HEAD']));
+	out.set('<status>', h.git(['status', '--porcelain', '--untracked-files=all']));
 	return out;
 };
-const assertUntouched = (before, root, what) => {
-	const after = snapshot(root);
-	assert.deepEqual([...after.keys()].sort(), [...before.keys()].sort(), `${what}: the set of source files moved`);
-	for (const [f, bytes] of before) assert.equal(after.get(f), bytes, `${what}: ${f} was rewritten`);
+const assertUntouched = (before, what) => {
+	const after = snapshot();
+	assert.deepEqual([...after.keys()].sort(), [...before.keys()].sort(), `${what}: the set of files moved`);
+	for (const [f, bytes] of before) assert.equal(after.get(f), bytes, `${what}: ${f} changed`);
 };
 const descriptorFile = (name) => path.join(h.root, 'modules', MOD, 'collections', `${name}.collection.yaml`);
+
+/** Every write route in the README table that has no planner: [method, path, body]. */
+const unplannable = () => [
+	['POST', '/collections/gadgets/records', { name: 'Ghost' }],
+	['PATCH', '/collections/gadgets/records/one', { notes: 'Rewritten.' }],
+	['DELETE', '/collections/gadgets/records/one', undefined],
+	['PATCH', '/collections/ordered/position/alpha', { bottom: true }],
+	['POST', '/collections/gadgets/rename', { old: 'one', new: 'two' }],
+	['POST', '/collections/gadgets/records-revert/one', { hash }],
+	['POST', '/collections/gadgets/fields', { name: 'weight', type: 'number' }],
+	['PATCH', '/collections/gadgets/fields/name', { description: 'Renamed in place.' }],
+	['DELETE', '/collections/gadgets/fields/notes', undefined],
+	['POST', '/reload', undefined],
+	['POST', '/collections/collections/records', { name: 'sprockets', description: 'Never exists.' }],
+	['PATCH', '/collections/collections/records/widgets', { description: 'Edited.' }],
+	['DELETE', '/collections/collections/records/gadgets?force=true', undefined],
+	['POST', '/collections/modules/records', { name: 'extra', description: 'Never exists.' }],
+	['PATCH', '/collections/modules/records/spare', { description: 'Edited.' }],
+	['POST', '/collections/skills/records', { name: 'nope', description: 'Never exists.' }],
+];
+/** The write routes that return a plan: [method, path, body]. */
+const plannable = () => [
+	['DELETE', '/collections/modules/records/spare?force=true', undefined],
+	['PATCH', '/collections/collections/records/widgets', { module: 'spare' }],
+	['PATCH', '/collections/gadgets/fields/name/name', { to: 'title' }],
+	['POST', '/commit', { only: [`gadgets/${pendingId}`] }],
+];
+const withFlag = (p, flag) => `${api}${p}${p.includes('?') ? '&' : '?'}${flag}`;
 
 before(async () => {
 	h = await httpWorkspace({
 		collections: {
 			widgets: simpleCollection({ storage: { suffix: 'widget' } }),
 			gadgets: simpleCollection({ storage: { suffix: 'gadget' } }),
+			ordered: ORDERED,
 		},
+		records: { gadgets: [{ name: 'One' }], ordered: [{ name: 'Alpha' }, { name: 'Bravo' }] },
 	});
-	const r = h.dt('add', 'modules', '--name', 'spare', '--description', 'A second module, so a move has somewhere to go.');
-	assert.equal(r.code, 0, r.stderr);
+	for (const args of [['move', 'ordered', '--init'], ['add', 'modules', '--name', 'spare', '--description', 'A second module, so a move has somewhere to go.'], ['commit']]) {
+		const r = h.dt(...args);
+		assert.equal(r.code, 0, `${args.join(' ')}: ${r.stderr}`);
+	}
+	hash = h.git(['rev-parse', 'HEAD']);
+	pendingId = new engine.Store(h.ws).add('gadgets', { name: 'Pending' }).id;
 	srv = await mount(h.ws);
 	api = srv.base;
 });
 after(() => srv?.close());
 
 describe('dry-run over HTTP', () => {
-	test('removing a module returns a PLAN and removes nothing', async () => {
-		const before = snapshot(h.root);
-		const { status, json } = await call('DELETE', `${api}/collections/modules/records/spare?force=true&dry-run=true`);
-		assert.equal(status, 200, JSON.stringify(json));
-		assert.equal(json.dryRun, true, 'the response says it was a plan');
+	test('every write route that has no planner refuses ?dry-run=true with 400 and writes nothing', async () => {
+		for (const [method, p, body] of unplannable()) {
+			const before = snapshot();
+			const { status, json } = await call(method, withFlag(p, 'dry-run=true'), body);
+			assert.equal(status, 400, `${method} ${p}: ${JSON.stringify(json)}`);
+			assert.equal(json['dry-run'], 'unsupported', `${method} ${p}`);
+			assert.match(json.error, /dry-run is not supported/);
+			assert.match(json.error, /Nothing was written/);
+			assertUntouched(before, `${method} ${p}`);
+		}
+	});
+
+	test('every planner returns a plan and writes nothing', async () => {
+		for (const [method, p, body] of plannable()) {
+			const before = snapshot();
+			const { status, json } = await call(method, withFlag(p, 'dry-run=true'), body);
+			assert.equal(status, 200, `${method} ${p}: ${JSON.stringify(json)}`);
+			if (p === '/commit') assert.ok(json.every((r) => (r.sha ?? null) === null), 'a commit plan has no sha');
+			else assert.equal(json.dryRun, true, `${method} ${p}: the response says it was a plan`);
+			assertUntouched(before, `${method} ${p}`);
+		}
 		assert.ok(fs.existsSync(path.join(h.root, 'modules', 'spare')), 'the module is still on disk');
-		assertUntouched(before, h.root, 'modules:rm');
-	});
-
-	test('moving a collection between modules returns a PLAN and moves nothing', async () => {
-		const before = snapshot(h.root);
-		const { status, json } = await call('PATCH', `${api}/collections/collections/records/widgets?dry-run=true`, { module: 'spare' });
-		assert.equal(status, 200, JSON.stringify(json));
-		assert.equal(json.dryRun, true);
 		assert.ok(fs.existsSync(descriptorFile('widgets')), 'the descriptor is still in the module it started in');
-		assertUntouched(before, h.root, 'collections:move');
 	});
 
-	test('renaming a field returns a PLAN and renames nothing', async () => {
-		const before = snapshot(h.root);
-		const { status, json } = await call('PATCH', `${api}/collections/widgets/fields/name/name?dry-run=true`, { to: 'title' });
-		assert.equal(status, 200, JSON.stringify(json));
-		assert.equal(json.dryRun, true);
-		assertUntouched(before, h.root, 'fields:rename');
-	});
-
-	test('an op with no plan is REFUSED with 400, and still writes nothing', async () => {
-		const before = snapshot(h.root);
-		const { status, json } = await call('POST', `${api}/collections/collections/records?dry-run=true`, { name: 'sprockets', description: 'Should never exist.' });
-		assert.equal(status, 400, 'refused, not performed');
-		assert.equal(json['dry-run'], 'unsupported');
-		assert.match(json.error, /dry-run is not supported/);
-		assert.match(json.error, /Nothing was written/);
-		assert.ok(!fs.existsSync(descriptorFile('sprockets')), 'asking what it would do did not do it');
-		assertUntouched(before, h.root, 'collections:add');
-	});
-
-	test('removing a field is refused under dry-run rather than clearing every record', async () => {
-		const before = snapshot(h.root);
-		const { status, json } = await call('DELETE', `${api}/collections/gadgets/fields/name?dry-run=true`);
-		assert.equal(status, 400);
-		assert.equal(json['dry-run'], 'unsupported');
-		assertUntouched(before, h.root, 'fields:rm');
+	test('a dry-run value other than true or false is a 400 on every write route, and writes nothing', async () => {
+		for (const [method, p, body] of [...unplannable(), ...plannable()]) {
+			for (const flag of ['dry-run', 'dry-run=', 'dry-run=yes', 'dry-run=1', 'dry-run=0', 'dry-run=TRUE', 'dry-run=true&dry-run=true']) {
+				const before = snapshot();
+				const { status, json } = await call(method, withFlag(p, flag), body);
+				assert.equal(status, 400, `${method} ${p}?${flag}: ${JSON.stringify(json)}`);
+				assert.match(json.error, /does not understand \?dry-run=/, `${method} ${p}?${flag}`);
+				assertUntouched(before, `${method} ${p}?${flag}`);
+			}
+		}
 	});
 
 	test('the refusal names what IS supported, so a client can act on it', async () => {
 		const { json } = await call('POST', `${api}/collections/skills/records?dry-run=true`, { name: 'nope', description: 'x' });
-		for (const verb of ['modules:rm', 'collections:move', 'fields:rename']) assert.ok(json.error.includes(verb), `the refusal names ${verb}`);
+		for (const verb of ['modules:rm', 'collections:move', 'fields:rename', 'commit']) assert.ok(json.error.includes(verb), `the refusal names ${verb}`);
 	});
 
-	test('without the flag the write still happens — the guard did not break the verb', async () => {
-		const { status, json } = await call('POST', `${api}/collections/collections/records`, { name: 'sprockets', description: 'Created for real.' });
-		assert.equal(status, 200, JSON.stringify(json));
+	test('?dry-run=false performs the write', async () => {
+		const add = await call('POST', `${api}/collections/collections/records?dry-run=false`, { name: 'sprockets', description: 'Created for real.' });
+		assert.equal(add.status, 200, JSON.stringify(add.json));
 		assert.ok(fs.existsSync(descriptorFile('sprockets')));
+		const rm = await call('DELETE', `${api}/collections/collections/records/sprockets?force=true&dry-run=false`);
+		assert.equal(rm.status, 200, JSON.stringify(rm.json));
+		assert.ok(!fs.existsSync(descriptorFile('sprockets')));
 	});
 
-	test('a falsy dry-run value is not a dry run', async () => {
-		const { status, json } = await call('DELETE', `${api}/collections/collections/records/sprockets?force=true&dry-run=false`);
-		assert.equal(status, 200, JSON.stringify(json));
-		assert.ok(!fs.existsSync(descriptorFile('sprockets')), 'dry-run=false performed the removal');
+	test('without the flag a record write still happens', async () => {
+		const { status, json } = await call('POST', `${api}/collections/gadgets/records`, { name: 'Real' });
+		assert.equal(status, 201, JSON.stringify(json));
+		assert.ok(fs.existsSync(path.join(h.root, json.path)));
 	});
 });
