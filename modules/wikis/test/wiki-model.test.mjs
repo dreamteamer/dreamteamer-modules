@@ -103,12 +103,7 @@ describe('which adapter answers', () => {
 });
 
 describe('the folder', () => {
-	test('a new wiki\'s folder is a ${env:…} TEMPLATE — a record never carries a machine path', () => {
-		// ⚠ IN THE REPO, and RELATIVE. It was `${env:FILES_FOLDER}/wikis/<id>` until 2026-09-11, on the
-		// general rule that bytes are not committed — a rule about MEDIA (a recording, a scan, a PDF).
-		// A wiki is none of those: it is markdown meant to be grepped and cited by `file:line`, and
-		// keeping it outside the clone made "zero prerequisite" false, put it out of a cloud session's
-		// reach entirely, and left every citation unreviewable in a diff.
+	test('a new wiki\'s folder is workspace-relative and in the repo — no variable, no machine path', () => {
 		assert.equal(defaultFolder('share-based-payments'), 'wikis/share-based-payments');
 		assert.ok(!defaultFolder('x').includes('${env:'), 'the default needs no variable on any machine');
 		assert.ok(!path.isAbsolute(defaultFolder('x')), 'relative — it resolves against the workspace, never the cwd');

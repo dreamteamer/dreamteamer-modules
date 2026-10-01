@@ -276,7 +276,7 @@ describe('refusals', () => {
 	// included. With no record
 	// there is no `folder` field, so the DEFAULT applies — and the default is now in the repo, where
 	// that corpus is not. The wiki listed with 0 sources: discovered, and unreadable.
-	test('a legacy out-of-tree folder with NO record still resolves and reads its sources', () => {
+	test('an out-of-tree folder under FILES_FOLDER with no record resolves and reads its sources', () => {
 		const { ws, files } = workspace();
 		const legacy = path.join(files, 'wikis', 'orphan');
 		fs.mkdirSync(path.join(legacy, 'sources'), { recursive: true });
