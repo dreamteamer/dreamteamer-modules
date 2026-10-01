@@ -1,18 +1,13 @@
 #!/usr/bin/env node
-// THE USERS GUARD — the two rules `dreamteamer check` structurally cannot express, because they are
-// CONDITIONAL on a field's value (`kind`) or read a DIFFERENT record (the owner's own `kind`).
+// The users guard: the agent rules the `users` schema does not state. An agent row names a
+// `human_owner`, that owner is itself a human, and a human row carries no agent-only field.
 //
 //   node node_modules/@dreamteamer/users/bin/check-records.mjs   (installed from npm)
 //   node modules/users/bin/check-records.mjs                      (a copy under modules/)
 //   … [--data-root <dir>] [--json]
 //
 // Chain it after `dreamteamer check` in the workspace's `check` script. Exit 0 clean, 1 with
-// violations. Carried out of the projects module's plan guard when users became a module of its own:
-// a module that promises a rule ships the script that enforces it.
-//
-// ⚠ AN AGENT WITH NO OWNER IS UNSUPERVISED AUTOMATION. Agents are users so they can hold the same
-// seats and assignments a person does; that fold is only safe while every agent row names its
-// babysitter — a HUMAN one, because an agent owning an agent is a loop with nobody at the end.
+// violations. An agent owned by nobody, or by another agent, has no human accountable for it.
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -26,13 +21,13 @@ export function userViolationsOf(id, record, usersById = new Map()) {
 	const has = (f) => record[f] !== undefined && record[f] !== null && record[f] !== '' && !(Array.isArray(record[f]) && !record[f].length);
 	const kind = record.kind ?? 'human';
 	if (kind === 'agent') {
-		if (!has('human_owner')) out.push(`${id}: \`kind: agent\` needs \`human_owner\` — the babysitter, the human accountable for what it does`);
+		if (!has('human_owner')) out.push(`${id}: \`kind: agent\` needs \`human_owner\` — the human accountable for what it does`);
 		else {
 			const owner = usersById.get(idOf(record.human_owner));
-			if (owner && (owner.kind ?? 'human') === 'agent') out.push(`${id}: \`human_owner\` points at \`${idOf(record.human_owner)}\`, which is itself an agent — the babysitter must be a human`);
+			if (owner && (owner.kind ?? 'human') === 'agent') out.push(`${id}: \`human_owner\` points at \`${idOf(record.human_owner)}\`, which is itself an agent — the owner must be a human`);
 		}
 	} else {
-		if (has('human_owner')) out.push(`${id}: \`human_owner\` on a \`kind: ${kind}\` row — only an agent has a babysitter; drop the field or set \`kind: agent\``);
+		if (has('human_owner')) out.push(`${id}: \`human_owner\` on a \`kind: ${kind}\` row — only an agent has an owner; drop the field or set \`kind: agent\``);
 		if (has('agent')) out.push(`${id}: \`agent\` on a \`kind: ${kind}\` row — only an agent row names its entity; drop the field or set \`kind: agent\``);
 	}
 	return out;
