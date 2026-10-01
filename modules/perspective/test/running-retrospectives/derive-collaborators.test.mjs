@@ -25,11 +25,11 @@ function fixture() {
 		source: `perspective/sources/${SLUG}/asana--acme`, external_id: '1', title: 'Spec the thing',
 		created_on: '2026-03-02', assignee_handle: ME, followers: [ME, 'ann@acme.example', 'bo@acme.example'],
 	});
-	writeRecord(recordPath('world/activities', `${SLUG}/2026-03-02--spec-the-thing`, 'activity', data), {
+	writeRecord(recordPath('activities', `${SLUG}/2026-03-02--spec-the-thing`, 'activity', data), {
 		retrospective: REF, name: 'Spec the thing', started: '2026-03-02',
 		tickets: [`perspective/tickets/${SLUG}/asana--1`],
 	});
-	writeRecord(recordPath('world/activities', `${SLUG}/2026-04-01--alone`, 'activity', data), {
+	writeRecord(recordPath('activities', `${SLUG}/2026-04-01--alone`, 'activity', data), {
 		retrospective: REF, name: 'Alone', started: '2026-04-01', collaborative: true,
 	});
 	// A second ticket, assigned to somebody else — so the assignee stamp has to resolve two different
@@ -47,18 +47,18 @@ function fixture() {
 	return { root, data };
 }
 const run = (data, root) => execFileSync('node', [BIN, '--retrospective', REF, '--data-root', data, '--scratch-root', path.join(root, 'scratch')], { encoding: 'utf8' });
-const activity = (data, id) => readRecord(recordPath('world/activities', `${SLUG}/${id}`, 'activity', data)).fields;
+const activity = (data, id) => readRecord(recordPath('activities', `${SLUG}/${id}`, 'activity', data)).fields;
 
 test('a ticket FOLLOWER becomes a collaborator and lands on the activity that cites the ticket', () => {
 	const { root, data } = fixture();
 	run(data, root);
 	const a = activity(data, '2026-03-02--spec-the-thing');
 	assert.deepEqual(a.collaborators, [
-		`perspective/world/users/${SLUG}/ann-acme-example`,
-		`perspective/world/users/${SLUG}/bo-acme-example`,
+		`perspective/users/${SLUG}/ann-acme-example`,
+		`perspective/users/${SLUG}/bo-acme-example`,
 	]);
 	assert.equal(a.collaborative, true);
-	assert.equal(readRecord(recordPath('world/users', `${SLUG}/ann-acme-example`, 'user', data)).fields.roles_observed[0], 'follower');
+	assert.equal(readRecord(recordPath('users', `${SLUG}/ann-acme-example`, 'user', data)).fields.roles_observed[0], 'follower');
 });
 
 test('the contributor is never their own collaborator, and an activity with no counterpart is not collaborative', () => {
@@ -85,7 +85,7 @@ test('a bare display name is not a person key', () => {
 		created_on: '2026-03-03', assignee_handle: ME, followers: ['Some Person'],
 	});
 	run(data, root);
-	assert.ok(!fs.existsSync(recordPath('world/users', `${SLUG}/some-person`, 'user', data)));
+	assert.ok(!fs.existsSync(recordPath('users', `${SLUG}/some-person`, 'user', data)));
 });
 
 test('a collaborator a person typed by hand survives a run that cannot re-derive it', () => {
@@ -93,13 +93,13 @@ test('a collaborator a person typed by hand survives a run that cannot re-derive
 	// flag — it may never delete what it merely failed to find. A dogfood workspace had 108
 	// hand-attached activities when this was written; a replacing run would have emptied most of them.
 	const { root, data } = fixture();
-	const file = recordPath('world/activities', `${SLUG}/2026-03-02--spec-the-thing`, 'activity', data);
+	const file = recordPath('activities', `${SLUG}/2026-03-02--spec-the-thing`, 'activity', data);
 	const held = readRecord(file);
-	writeRecord(file, { ...held.fields, collaborators: [`perspective/world/users/${SLUG}/typed-by-hand`], collaborative: true }, held.body);
+	writeRecord(file, { ...held.fields, collaborators: [`perspective/users/${SLUG}/typed-by-hand`], collaborative: true }, held.body);
 	run(data, root);
 	const after = activity(data, '2026-03-02--spec-the-thing');
-	assert.ok(after.collaborators.includes(`perspective/world/users/${SLUG}/typed-by-hand`), 'the hand-written ref is kept');
-	assert.ok(after.collaborators.includes(`perspective/world/users/${SLUG}/ann-acme-example`), 'and the derived one is added beside it');
+	assert.ok(after.collaborators.includes(`perspective/users/${SLUG}/typed-by-hand`), 'the hand-written ref is kept');
+	assert.ok(after.collaborators.includes(`perspective/users/${SLUG}/ann-acme-example`), 'and the derived one is added beside it');
 	assert.equal(after.collaborators.length, 3);
 });
 
@@ -115,7 +115,7 @@ test('a ticket gets its assignee reference resolved from the handle the reader s
 	const { root, data } = fixture();
 	run(data, root);
 	const mine = ticket(data, 'asana--1');
-	assert.match(String(mine.assignee), /^perspective\/world\/users\/fx\//, `assignee not set: ${JSON.stringify(mine.assignee)}`);
+	assert.match(String(mine.assignee), /^perspective\/users\/fx\//, `assignee not set: ${JSON.stringify(mine.assignee)}`);
 	assert.equal(mine.assignee_handle, ME, 'the handle stays — it is what the source said');
 });
 
@@ -167,7 +167,7 @@ test('stamping the assignee twice changes nothing', () => {
 test('an upsert heals a record that predates the required fields', () => {
 	const { root, data } = fixture();
 	// A collaborator as an older release would have left it: no contributor, no retrospective.
-	const stale = recordPath('world/users', `${SLUG}/ann`, 'user', data);
+	const stale = recordPath('users', `${SLUG}/ann`, 'user', data);
 	fs.mkdirSync(path.dirname(stale), { recursive: true });
 	fs.writeFileSync(stale, '---\nname: ann\nhandles:\n  - ann@acme.example\nevidence_count: 1\n---\n');
 

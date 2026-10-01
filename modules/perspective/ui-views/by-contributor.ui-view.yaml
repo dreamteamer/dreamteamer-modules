@@ -28,5 +28,5 @@ nav:
   order: 4
 path: /timeline/by-contributor
 target: list
-collection: collections/perspective/world/activities
+collection: collections/perspective/activities
 layout: gantt

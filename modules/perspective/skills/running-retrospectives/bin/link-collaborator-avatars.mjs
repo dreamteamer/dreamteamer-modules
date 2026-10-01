@@ -21,7 +21,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { DATA, slug } from '../lib/vault.mjs';
-import { listRecords, readRecord, writeRecord, contributorOf} from '../lib/records.mjs';
+import { listRecords, readRecord, writeRecord, contributorOf, collectionDir } from '../lib/records.mjs';
 
 const argv = process.argv.slice(2);
 const flag = (n) => argv.includes(`--${n}`);
@@ -78,7 +78,7 @@ function keysOf(fields) {
 
 const toCopy = new Map();
 let matched = 0, already = 0, unmatched = 0, cleared = 0;
-for (const file of listRecords(path.join(dataRoot, 'perspective', 'world', 'users', who()))) {
+for (const file of listRecords(path.join(collectionDir('users', dataRoot), who()))) {
 	const { fields, body } = readRecord(file);
 	const hit = [...keysOf(fields)].find((k) => available.has(k));
 	if (!hit) {

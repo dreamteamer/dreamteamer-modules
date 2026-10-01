@@ -10,7 +10,7 @@
 import path from 'node:path';
 import fs from 'node:fs';
 import { DATA, SCRATCH } from '../lib/vault.mjs';
-import { recordPath, readRecord, writeRecord, listRecords, contributorOf} from '../lib/records.mjs';
+import { recordPath, readRecord, writeRecord, listRecords, contributorOf, collectionDir, recordId } from '../lib/records.mjs';
 import { commitIntent } from '../lib/commit-intent.mjs';
 
 const argv = process.argv.slice(2);
@@ -38,9 +38,9 @@ const SUM = {
 };
 
 const conv = new Map(); // 'perspective/conversations/<id>' → fields
-for (const f of listRecords(path.join(dataRoot, 'perspective', 'conversations'))) {
+for (const f of listRecords(collectionDir('conversations', dataRoot))) {
 	const { fields } = readRecord(f);
-	const rel = path.relative(path.join(dataRoot, 'perspective', 'conversations'), f).replace(/\.conversation\.md$/, '');
+	const rel = recordId('conversations', f, dataRoot);
 	conv.set(`perspective/conversations/${rel}`, fields);
 }
 
@@ -68,7 +68,7 @@ const minutesOf = (refs) => {
 };
 
 let rolled = 0, missing = 0, unchanged = 0;
-const activityDir = path.join(dataRoot, 'perspective', 'world', 'activities', who());
+const activityDir = path.join(collectionDir('activities', dataRoot), who());
 for (const file of listRecords(activityDir)) {
 	const { fields, body } = readRecord(file);
 	const acc = Object.fromEntries(Object.keys(SUM).map((k) => [k, 0]));
@@ -122,7 +122,7 @@ for (const file of listRecords(activityDir)) {
 // the activity-weeks of the repos it lives in — which is the only place lines are counted at all.
 // This is what makes a lifecycle NARRATABLE: without it a project has a name and a date range, and
 // nothing that says what it cost or whether it converged.
-const projDir = path.join(dataRoot, 'perspective', 'world', 'projects', who());
+const projDir = path.join(collectionDir('projects', dataRoot), who());
 const PROJ_SUM = ['active_minutes', 'turns_user', 'tokens_total', 'input_words', 'output_words', 'corrections', 'interruptions', 'session_count'];
 
 // ── which repo a commit lives in ─────────────────────────────────────────────────────────────────
@@ -186,8 +186,8 @@ for (const file of listRecords(activityDir)) {
 let projRolled = 0, projUnchanged = 0, orphanProjects = 0;
 for (const file of listRecords(projDir)) {
 	const { fields, body } = readRecord(file);
-	const rel = path.relative(path.join(dataRoot, 'perspective', 'world', 'projects'), file).replace(/\.project\.md$/, '');
-	const acc = byProject.get(`perspective/world/projects/${rel}`);
+	const rel = recordId('projects', file, dataRoot);
+	const acc = byProject.get(`perspective/projects/${rel}`);
 	if (!acc) { orphanProjects++; continue; }   // a project no activity points at: left alone, and counted
 	// Code curves come from the repos the project's activities actually touched, plus any the
 	// project declares itself. ⚠ A repo shared by two projects contributes its lines to BOTH — the

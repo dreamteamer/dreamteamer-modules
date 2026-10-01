@@ -50,7 +50,7 @@ schema:
   properties:
     retrospective: { type: string, x-reference: perspective/retrospective-sessions, description: The retrospective session that FIRST wrote this record. }
     last_seen_in: { type: string, x-reference: perspective/retrospective-sessions, description: 'The most recent session that confirmed or updated it. Absent means exactly one session has ever touched it, which is how "new since last time" is answered without a diff.' }
-    contributor: { type: string, pattern: '^[a-z0-9-]+$', description: 'WHOSE this is, as a slug — and the FIRST SEGMENT OF THE ID. That is what makes a second retrospective UPDATE this record instead of writing one beside it. A plain slug rather than a reference, because an id segment cannot be one; the person''s own observed-world record is perspective/world/users/<contributor>/<their-name-slug>.' }
+    contributor: { type: string, pattern: '^[a-z0-9-]+$', description: 'WHOSE this is, as a slug — and the FIRST SEGMENT OF THE ID. That is what makes a second retrospective UPDATE this record instead of writing one beside it. A plain slug rather than a reference, because an id segment cannot be one; the person''s own observed-world record is perspective/users/<contributor>/<their-name-slug>.' }
     key: { type: string, pattern: '^[a-z0-9][a-z0-9-]*$', title: Key, description: 'The latin handle that becomes the id — a transliteration (`faza`) or a gloss (`vesting`). It exists ONLY because `name` is verbatim and may be in any script; it is never shown to a reader and never replaces the term.' }
     # ── THE SURFACE FORM, VERBATIM ────────────────────────────────────────────────────────────────
     name:
@@ -104,15 +104,12 @@ schema:
       items:
         type: string
         x-reference:
-          - perspective/world/users
-          - perspective/world/projects
-          - perspective/world/phases
-          - perspective/world/activity-lanes
-          - perspective/world/activities
-          - perspective/world/tasks
-          - perspective/world/goals
-          - perspective/world/decisions
-          - perspective/world/deliverables
+          - perspective/users
+          - perspective/projects
+          - perspective/activities
+          - perspective/goals
+          - perspective/decisions
+          - perspective/deliverables
         x-inverse:
           field: terms
           description: The words this record cannot be read without — generated from `terms.mentions`.

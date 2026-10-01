@@ -18,7 +18,7 @@
 //        · threads       — records under <data-root>/perspective/threads (read-gmail), placed on
 //                          first_on, bucketed by the DOMAIN most of the counterparts share — mail has
 //                          no repo, and "who it was with" is the nearest thing to one
-//        · deliverables  — records under <data-root>/perspective/world/deliverables (read-drive), placed on
+//        · deliverables  — records under <data-root>/perspective/deliverables (read-drive), placed on
 //                          last_touched_on, bucketed by their `container`; they belong to the run by
 //                          `retrospective`, not `source`
 //
@@ -54,7 +54,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { DATA, SCRATCH, slug } from '../lib/vault.mjs';
-import { listRecords, readRecord, recordPath, contributorOf} from '../lib/records.mjs';
+import { listRecords, readRecord, recordPath, contributorOf, collectionDir, recordId } from '../lib/records.mjs';
 import { contributorHandles as handlesOf, isContributor as isThem } from '../lib/identity.mjs';
 
 const argv = process.argv.slice(2);
@@ -93,10 +93,6 @@ const GAP_MS = gapDays * 86400000;
 /** A record belongs to this run when its source is one of the run's sources — or when it has none. */
 const belongs = (fields) => !fields.source || String(fields.source).startsWith(`perspective/sources/${who()}/`);
 
-/** `<dataRoot>/perspective/<coll>/a/b/c.<suffix>.md` → `a/b/c` — the record id a ref is built from. */
-const idFromPath = (file, coll, suffix) =>
-	path.relative(path.join(dataRoot, 'perspective', coll), file).replace(new RegExp(`\\.${suffix}\\.md$`), '');
-
 const ts = (v) => { const t = Date.parse(v); return Number.isFinite(t) ? t : NaN; };
 const day = (ms) => new Date(ms).toISOString().slice(0, 10);
 
@@ -114,7 +110,7 @@ const inWindow = (at, endsAt) => {
 	return keep;
 };
 
-for (const f of listRecords(path.join(dataRoot, 'perspective', 'conversations'))) {
+for (const f of listRecords(collectionDir('conversations', dataRoot))) {
 	const { fields } = readRecord(f);
 	if (!belongs(fields)) continue;
 	const at = ts(fields.started_at);
@@ -122,7 +118,7 @@ for (const f of listRecords(path.join(dataRoot, 'perspective', 'conversations'))
 	if (!inWindow(at, ts(fields.ended_at))) continue;
 	items.push({
 		kind: 'session',
-		id: idFromPath(f, 'conversations', 'conversation'),
+		id: recordId('conversations', f, dataRoot),
 		at,
 		endsAt: ts(fields.ended_at),
 		repo: fields.repo_name || (Array.isArray(fields.subject_repos) ? fields.subject_repos[0] : '') || '',
@@ -132,7 +128,7 @@ for (const f of listRecords(path.join(dataRoot, 'perspective', 'conversations'))
 	});
 }
 
-for (const f of listRecords(path.join(dataRoot, 'perspective', 'tickets'))) {
+for (const f of listRecords(collectionDir('tickets', dataRoot))) {
 	const { fields } = readRecord(f);
 	if (!belongs(fields)) continue;
 	const at = ts(fields.created_on ?? fields.completed_on);
@@ -140,7 +136,7 @@ for (const f of listRecords(path.join(dataRoot, 'perspective', 'tickets'))) {
 	if (!inWindow(at, ts(fields.completed_on))) continue;
 	items.push({
 		kind: 'ticket',
-		id: idFromPath(f, 'tickets', 'ticket'),
+		id: recordId('tickets', f, dataRoot),
 		at,
 		endsAt: ts(fields.completed_on),
 		repo: fields.project || '',
@@ -160,7 +156,7 @@ const contributorHandles = handlesOf(retrospective, dataRoot);
 const isContributor = (email, name) => isThem(contributorHandles, email, name);
 let foreignCommits = 0;
 
-for (const f of listRecords(path.join(dataRoot, 'perspective', 'threads'))) {
+for (const f of listRecords(collectionDir('threads', dataRoot))) {
 	const { fields } = readRecord(f);
 	if (!belongs(fields)) continue;
 	const at = ts(fields.first_on);
@@ -181,7 +177,7 @@ for (const f of listRecords(path.join(dataRoot, 'perspective', 'threads'))) {
 	const top = [...domains.entries()].filter(([d]) => !PUBLIC.has(d)).sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1))[0]?.[0];
 	items.push({
 		kind: 'thread',
-		id: idFromPath(f, 'threads', 'thread'),
+		id: recordId('threads', f, dataRoot),
 		at,
 		endsAt: ts(fields.last_on),
 		repo: top ? `mail:${top}` : 'mail:(personal)',
@@ -190,7 +186,7 @@ for (const f of listRecords(path.join(dataRoot, 'perspective', 'threads'))) {
 	});
 }
 
-for (const f of listRecords(path.join(dataRoot, 'perspective', 'deliverables'))) {
+for (const f of listRecords(collectionDir('deliverables', dataRoot))) {
 	const { fields } = readRecord(f);
 	if (fields.retrospective && fields.retrospective !== retrospective) continue;   // another run's artefacts
 	const at = ts(fields.last_touched_on ?? fields.created_on);
@@ -198,7 +194,7 @@ for (const f of listRecords(path.join(dataRoot, 'perspective', 'deliverables')))
 	if (!inWindow(at, at)) continue;
 	items.push({
 		kind: 'deliverable',
-		id: idFromPath(f, 'deliverables', 'deliverable'),
+		id: recordId('deliverables', f, dataRoot),
 		at,
 		endsAt: at,
 		repo: fields.container ? `drive:${fields.container}` : 'drive:(unknown)',
@@ -359,7 +355,7 @@ const lines = candidates.map((c) => {
 		branches: [...new Set(commits.flatMap((i) => i.branches ?? []))].sort(),
 		tickets: tickets.map((i) => `perspective/tickets/${i.id}`).sort(),
 		threads: threads.map((i) => `perspective/threads/${i.id}`).sort(),
-		deliverables: deliverables.map((i) => `perspective/world/deliverables/${i.id}`).sort(),
+		deliverables: deliverables.map((i) => `perspective/deliverables/${i.id}`).sort(),
 		// ⚠ ALREADY A QUALIFIED REF, unlike every other kind here: a meeting lives in a PEER
 		// collection, so the reader parks `meetings/<id>` and nothing prefixes it with `perspective/`.
 		meetings: meetings.map((i) => i.id).sort(),

@@ -21,16 +21,16 @@ function fixture() {
 	const root = fs.mkdtempSync(path.join(os.tmpdir(), 'weeks-'));
 	const data = path.join(root, 'data');
 	writeRecord(recordPath('retrospective-sessions', BASE, 'retrospective-session', data), { contributor: SLUG, handles: [ME], started: '2026-09-08', period_start: new Date('2026-01-01T00:00:00Z'), period_end: '2026-12-31' });
-	writeRecord(recordPath('world/users', `${SLUG}/me`, 'user', data), { retrospective: REF, name: 'Me', handles: [ME, 'Me Myself'] });
+	writeRecord(recordPath('users', `${SLUG}/me`, 'user', data), { retrospective: REF, name: 'Me', handles: [ME, 'Me Myself'] });
 	// Two mail threads in the same week, on two DIFFERENT mailboxes — the case a date-only match gets
 	// wrong, because each week record is one source.
 	writeRecord(recordPath('threads', 'gmail--work/t1', 'thread', data), { source: SRC('gmail--work'), external_id: 't1', subject: 'a', first_on: '2026-03-03' });
 	writeRecord(recordPath('threads', 'gmail--home/t2', 'thread', data), { source: SRC('gmail--home'), external_id: 't2', subject: 'b', first_on: '2026-03-04' });
-	writeRecord(recordPath('world/activities', `${SLUG}/2026-03-02--argued-the-contract`, 'activity', data), {
+	writeRecord(recordPath('activities', `${SLUG}/2026-03-02--argued-the-contract`, 'activity', data), {
 		retrospective: REF, name: 'Argued the contract', started: '2026-03-02', ended: '2026-03-05',
 		threads: ['perspective/threads/gmail--work/t1'],
 	});
-	writeRecord(recordPath('world/activities', `${SLUG}/2026-03-03--booked-the-holiday`, 'activity', data), {
+	writeRecord(recordPath('activities', `${SLUG}/2026-03-03--booked-the-holiday`, 'activity', data), {
 		retrospective: REF, name: 'Booked the holiday', started: '2026-03-03', ended: '2026-03-03',
 		threads: ['perspective/threads/gmail--home/t2'],
 	});
@@ -77,7 +77,7 @@ test('a written summary outranks a composed one, and --force is how you say othe
 test('several activities are joined in date order and capped, saying how many it left out', () => {
 	const { root, data } = fixture();
 	for (const [n, day] of [['One', '2026-03-06'], ['Two', '2026-03-07'], ['Three', '2026-03-08']]) {
-		writeRecord(recordPath('world/activities', `${SLUG}/${day}--${n.toLowerCase()}`, 'activity', data), {
+		writeRecord(recordPath('activities', `${SLUG}/${day}--${n.toLowerCase()}`, 'activity', data), {
 			retrospective: REF, name: n, started: day, ended: day, threads: ['perspective/threads/gmail--work/t1'],
 		});
 	}
@@ -101,9 +101,9 @@ test('a PROXY drive read still places its deliverables — the source is the log
 		retrospective: REF, name: 'The spec', kind: 'doc', source_kind: 'drive',
 		last_touched_on: '2026-03-04', last_touched_by: 'someone.else@acme.example',
 	});
-	writeRecord(recordPath('world/activities', `${SLUG}/2026-03-04--wrote-the-spec`, 'activity', data), {
+	writeRecord(recordPath('activities', `${SLUG}/2026-03-04--wrote-the-spec`, 'activity', data), {
 		retrospective: REF, name: 'Wrote the spec', started: '2026-03-04', ended: '2026-03-04',
-		deliverables: [`perspective/world/deliverables/${SLUG}/2026-03-04--the-spec`],
+		deliverables: [`perspective/deliverables/${SLUG}/2026-03-04--the-spec`],
 	});
 	writeRecord(recordPath('activity-weeks', 'drive--reader-acme-example/2026-W10', 'activity-week', data),
 		{ source: SRC('drive--reader-acme-example'), period: '2026-W10', start_date: '2026-03-02', end_date: '2026-03-08' });

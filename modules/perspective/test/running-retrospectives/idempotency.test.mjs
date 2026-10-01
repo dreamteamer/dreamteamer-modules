@@ -34,7 +34,6 @@ const STAGES = [
 	['inventoried', 'inventory.mjs', (f) => ['--home', f.home, '--repos-root', f.repos, '--no-register']],
 	['read (git)', 'read-git.mjs', () => ['--since', '2026-01-01']],
 	['clustered', 'attach-evidence.mjs', () => [], ['read-git.mjs --since 2026-01-01', 'cluster-activities.mjs'], nameEveryCandidate],
-	['clustered (tasks)', 'derive-tasks.mjs', () => []],
 	['projected', 'derive-decision-projects.mjs', () => [], [], unassignTheDecision],
 	['inferred', 'infer-goals.mjs', () => ['--attach'], ['infer-goals.mjs'], addAnUnattachedGoal],
 	['found (collaborators)', 'derive-collaborators.mjs', () => [], ['read-git.mjs --since 2026-01-01']],
@@ -58,7 +57,7 @@ function nameEveryCandidate(f) {
 	assert.ok(keys.length, 'the clustering pass produced no candidates — the fixture has no evidence to cluster');
 	const names = ['rewrote-the-auth-flow', 'split-the-token-store', 'cut-the-retry-loop'];
 	names.forEach((n, i) => {
-		const file = recordPath('world/activities', `${SLUG}/2026-03-0${i + 1}--${n}`, 'activity', f.data);
+		const file = recordPath('activities', `${SLUG}/2026-03-0${i + 1}--${n}`, 'activity', f.data);
 		const { fields, body } = readRecord(file);
 		writeRecord(file, { ...fields, from_candidate: keys[i % keys.length] }, body);
 	});
@@ -74,7 +73,7 @@ function unassignTheDecision(f) {
 
 /** `--attach` fills a goal the model has named; without one there is nothing to fill. */
 function addAnUnattachedGoal(f) {
-	writeRecord(recordPath('world/goals', `${SLUG}/sessions-expire-without-a-support-ticket`, 'goal', f.data), {
+	writeRecord(recordPath('goals', `${SLUG}/sessions-expire-without-a-support-ticket`, 'goal', f.data), {
 		retrospective: REF, contributor: SLUG,
 		name: 'sessions expire without a support ticket',
 		done_when: 'a token cannot outlive the session that issued it',

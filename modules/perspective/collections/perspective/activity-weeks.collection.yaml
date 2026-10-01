@@ -15,7 +15,7 @@ schema:
   properties:
     retrospective: { type: string, x-reference: perspective/retrospective-sessions, description: The retrospective session that FIRST wrote this record. }
     last_seen_in: { type: string, x-reference: perspective/retrospective-sessions, description: 'The most recent session that confirmed or updated it. Absent means exactly one session has ever touched it, which is how "new since last time" is answered without a diff.' }
-    contributor: { type: string, pattern: '^[a-z0-9-]+$', description: 'WHOSE this is, as a slug — and the FIRST SEGMENT OF THE ID. That is what makes a second retrospective UPDATE this record instead of writing one beside it. A plain slug rather than a reference, because an id segment cannot be one; the person''s own observed-world record is perspective/world/users/<contributor>/<their-name-slug>.' }
+    contributor: { type: string, pattern: '^[a-z0-9-]+$', description: 'WHOSE this is, as a slug — and the FIRST SEGMENT OF THE ID. That is what makes a second retrospective UPDATE this record instead of writing one beside it. A plain slug rather than a reference, because an id segment cannot be one; the person''s own observed-world record is perspective/users/<contributor>/<their-name-slug>.' }
     source: { type: string, x-reference: perspective/sources, description: The source this window counts. }
     period: { type: string, description: 'ISO week, `2026-W36`. THE FORCING FIELD.' }
     # ── the week as two dates, so a gantt can draw it ────────────────────────────────────────────

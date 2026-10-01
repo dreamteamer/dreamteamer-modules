@@ -34,7 +34,7 @@ schema:
       type: array
       items: { type: string }
       description: >-
-        THE MERGE KEY, exactly as on `perspective/world/users`. Every identity the contributor
+        THE MERGE KEY, exactly as on `perspective/users`. Every identity the contributor
         appears under: git author emails, Asana gids, mail addresses, display-name variants. Seeded
         by the person at `installed` and matched by every reader. ⚠ Give it ALL of them up front:
         the first reader runs before any collaborator record exists, so a commit authored under an

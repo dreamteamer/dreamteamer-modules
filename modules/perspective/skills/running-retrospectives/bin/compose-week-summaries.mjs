@@ -32,7 +32,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { DATA, SCRATCH, slug } from '../lib/vault.mjs';
-import { listRecords, readRecord, writeRecord, contributorOf} from '../lib/records.mjs';
+import { listRecords, readRecord, writeRecord, contributorOf, collectionDir, recordId, recordPath } from '../lib/records.mjs';
 import { contributorHandles } from '../lib/identity.mjs';
 
 const argv = process.argv.slice(2);
@@ -56,7 +56,6 @@ const maxNames = Math.max(1, Number(opt('max-names', '3')) || 3);
 const dryRun = flag('dry-run');
 const force = flag('force');
 
-const dir = (c) => path.join(dataRoot, 'perspective', c);
 const list = (v) => (Array.isArray(v) ? v : v === undefined || v === null || v === '' ? [] : [v]);
 // ⚠ An unquoted YAML date parses to a Date, not a string. `period_start: 2025-09-08` in an
 // retrospective is written unquoted, so a string-only guard read it as absent and silently disabled
@@ -68,11 +67,11 @@ const suffixOf = (ref) => String(ref ?? '').split('/').pop() ?? '';
 
 // ── evidence ref → the source it came from ───────────────────────────────────────────────────────
 const sourceOfRef = new Map();
-for (const [collection, suffix] of [['conversations', 'conversation'], ['threads', 'thread'], ['tickets', 'ticket']]) {
-	for (const f of listRecords(dir(collection))) {
+for (const collection of ['conversations', 'threads', 'tickets']) {
+	for (const f of listRecords(collectionDir(collection, dataRoot))) {
 		const { fields } = readRecord(f);
 		if (!fields.source) continue;
-		const id = path.relative(dir(collection), f).replace(new RegExp(`\\.${suffix}\\.md$`), '');
+		const id = recordId(collection, f, dataRoot);
 		sourceOfRef.set(`perspective/${collection}/${id}`, suffixOf(fields.source));
 	}
 }
@@ -87,20 +86,20 @@ for (const [collection, suffix] of [['conversations', 'conversation'], ['threads
 //      all 28 of that contributor's weeks composed silence.
 // With two or more drive sources and no match, the deliverable is left unplaced and counted.
 const driveSources = new Set();
-for (const f of listRecords(path.join(dir('sources'), who()))) {
+for (const f of listRecords(path.join(collectionDir('sources', dataRoot), who()))) {
 	const id = path.basename(f).replace(/\.source\.md$/, '');
 	if (id.startsWith('drive--')) driveSources.add(id);
 }
 const soleDrive = driveSources.size === 1 ? [...driveSources][0] : null;
 const sourceOfDeliverable = new Map();
 let unplacedDeliverables = 0;
-for (const f of listRecords(dir('deliverables'))) {
+for (const f of listRecords(collectionDir('deliverables', dataRoot))) {
 	const { fields } = readRecord(f);
-	const id = path.relative(dir('deliverables'), f).replace(/\.deliverable\.md$/, '');
+	const id = recordId('deliverables', f, dataRoot);
 	const byOwn = fields.source ? suffixOf(fields.source) : '';
 	const byAccount = fields.last_touched_by ? `drive--${slug(fields.last_touched_by)}` : '';
 	const hit = byOwn || (driveSources.has(byAccount) ? byAccount : '') || soleDrive;
-	if (hit) sourceOfDeliverable.set(`perspective/world/deliverables/${id}`, hit);
+	if (hit) sourceOfDeliverable.set(`perspective/deliverables/${id}`, hit);
 	else unplacedDeliverables++;
 }
 
@@ -118,7 +117,7 @@ if (fs.existsSync(candFile)) {
 // ── every activity, with the source suffixes it can be placed under ──────────────────────────────
 const activities = [];
 let unplaceable = 0;
-for (const f of listRecords(path.join(dir('world/activities'), who()))) {
+for (const f of listRecords(path.join(collectionDir('activities', dataRoot), who()))) {
 	const { fields } = readRecord(f);
 	const started = day(fields.started);
 	if (!started || !fields.name) continue;
@@ -159,12 +158,12 @@ const myHandles = contributorHandles(retrospective, dataRoot);
 // colleague's workspace. Lumping those in with "quiet week" makes a legitimate boundary look like a
 // hole in the model, which is the reading that sends someone hunting for a bug.
 const period = (() => {
-	try { const f = readRecord(path.join(dir('retrospective-sessions'), `${base}.retrospective-session.md`)).fields; return { from: day(f.period_start), to: day(f.period_end) }; }
+	try { const f = readRecord(recordPath('retrospective-sessions', base, 'retrospective-session', dataRoot)).fields; return { from: day(f.period_start), to: day(f.period_end) }; }
 	catch { return { from: '', to: '' }; }
 })();
 
 let written = 0, kept = 0, empty = 0, noDates = 0, notMine = 0, outside = 0;
-for (const f of listRecords(dir('activity-weeks'))) {
+for (const f of listRecords(collectionDir('activity-weeks', dataRoot))) {
 	const { fields, body } = readRecord(f);
 	if (suffixOf(fields.source) && !String(fields.source).includes(`/${who()}/`)) continue;   // another run's weeks
 	const from = day(fields.start_date), to = day(fields.end_date);

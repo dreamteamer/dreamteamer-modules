@@ -33,7 +33,7 @@ const BINS = path.join(ROOT, 'modules', 'perspective', 'skills', 'running-retros
 const SLUG = '^[a-z0-9-]+$';
 
 /** Every descriptor under `collections/perspective/`, keyed by its name RELATIVE to that folder —
- *  so `world/users.collection.yaml` is `world/users`. ⚠ Recursive: `compile` enumerates
+ *  so `users.collection.yaml` is `users`. ⚠ Recursive: `compile` enumerates
  *  `collections/` recursively so a namespaced descriptor can be authored at `collections/<ns>/<c>`,
  *  and a flat readdir here would silently stop testing five collections. */
 function descriptorNames(dir, prefix = '') {
@@ -85,16 +85,16 @@ test('no script writes a collaborator reference into the contributor field', () 
 	assert.deepEqual(offenders, [], `the contributor is an id segment now, so a reference in it is a corrupt record:\n  ${offenders.join('\n  ')}`);
 });
 
-test('the run record carries handles, spelled and shaped exactly as world/users spells them', () => {
+test('the run record carries handles, spelled and shaped exactly as perspective/users spells them', () => {
 	const run = descriptors.get('retrospective-sessions').schema.properties;
-	const collab = descriptors.get('world/users').schema.properties;
+	const collab = descriptors.get('users').schema.properties;
 	assert.deepEqual(run.handles?.type, 'array', 'retrospective-sessions.handles must exist and be an array');
 	assert.deepEqual(run.handles?.items, collab.handles.items, 'the merge key must be the same shape on both collections');
 });
 
-test('the run record contact is the same typed reference world/users uses', () => {
+test('the run record contact is the same typed reference perspective/users uses', () => {
 	const run = descriptors.get('retrospective-sessions').schema.properties;
-	const collab = descriptors.get('world/users').schema.properties;
+	const collab = descriptors.get('users').schema.properties;
 	assert.equal(run.contact?.['x-reference'], 'contacts');
 	assert.equal(run.contact?.['x-reference'], collab.contact['x-reference'], 'one field name, one meaning, across the module');
 });

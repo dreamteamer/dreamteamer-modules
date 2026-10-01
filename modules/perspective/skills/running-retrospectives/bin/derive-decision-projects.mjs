@@ -22,7 +22,7 @@
 // 108 hand-attached refs.
 import path from 'node:path';
 import { DATA } from '../lib/vault.mjs';
-import { listRecords, readRecord, writeRecord, contributorOf} from '../lib/records.mjs';
+import { listRecords, readRecord, writeRecord, contributorOf, collectionDir } from '../lib/records.mjs';
 
 const argv = process.argv.slice(2);
 const flag = (n) => argv.includes(`--${n}`);
@@ -43,7 +43,6 @@ const who = () => (_who ??= contributorOf(retrospective, dataRoot));
 const dryRun = flag('dry-run');
 const force = flag('force');
 
-const dir = (c) => path.join(dataRoot, 'perspective', c);
 const list = (v) => (Array.isArray(v) ? v : v === undefined || v === null || v === '' ? [] : [v]);
 
 // ── every artefact an activity cites → that activity's project ───────────────────────────────────
@@ -54,7 +53,7 @@ const byTicket = new Map();
  *  one, or the other way round, and neither is wrong. 7 is git's own abbreviation floor. */
 const byCommit = new Map();
 let activitiesWithProject = 0;
-for (const file of listRecords(path.join(dir('world/activities'), who()))) {
+for (const file of listRecords(path.join(collectionDir('activities', dataRoot), who()))) {
 	const { fields } = readRecord(file);
 	const project = fields.project;
 	if (!project) continue;
@@ -89,7 +88,7 @@ function projectOf(fields) {
 
 let set = 0, kept = 0, unchanged = 0, unplaced = 0;
 const unplacedByKind = new Map();
-for (const file of listRecords(path.join(dir('decisions'), who()))) {
+for (const file of listRecords(path.join(collectionDir('decisions', dataRoot), who()))) {
 	const { fields, body } = readRecord(file);
 	const project = projectOf(fields);
 	if (!project) {

@@ -27,19 +27,16 @@ const ORDER = {
 	'activity-weeks': 40,
 	tickets: 50,
 	threads: 60,
-	'world/deliverables': 70,
-	'world/activities': 80,         // ── the observed world it reconstructed, in the real world's nouns
-	'world/tasks': 85,
-	'world/projects': 90,
-	'world/phases': 92,           // the eras each one passed through — same stage, between the effort and its bands
-	'world/activity-lanes': 95,   // the bands within them, written by the same stage
+	deliverables: 70,
+	activities: 80,         // ── the observed world it reconstructed, in the real world's nouns
+	projects: 90,
 	topics: 100,
-	'world/users': 110,
+	users: 110,
 	terms: 115,                     // the vocabulary in two steps — the word, verbatim…
 	concepts: 120,                  // …then the meaning several words share
-	'world/decisions': 130,
+	decisions: 130,
 	workflows: 140,
-	'world/goals': 150,
+	goals: 150,
 	findings: 160,                  // ── what it concluded
 	insights: 170,
 	assumptions: 175,               // and what it had to believe in order to conclude it
@@ -49,7 +46,7 @@ const ORDER = {
 };
 
 /** Every descriptor under `collections/perspective/`, keyed by its name RELATIVE to that folder —
- *  so `world/users.collection.yaml` is `world/users`. ⚠ Recursive: `compile` enumerates
+ *  so `users.collection.yaml` is `users`. ⚠ Recursive: `compile` enumerates
  *  `collections/` recursively so a namespaced descriptor can be authored at `collections/<ns>/<c>`,
  *  and a flat readdir here would silently stop testing five collections. */
 function descriptorNames(dir, prefix = '') {

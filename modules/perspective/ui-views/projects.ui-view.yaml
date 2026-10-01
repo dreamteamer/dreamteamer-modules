@@ -26,5 +26,5 @@ nav:
   order: 10
 path: /projects
 target: list
-collection: collections/perspective/world/projects
+collection: collections/perspective/projects
 layout: table

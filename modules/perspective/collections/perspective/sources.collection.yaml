@@ -51,7 +51,7 @@ schema:
         the first is when the source entered the perimeter, the last is when it was most recently read,
         and the middle is the answer the retired `retrospective`/`last_seen_in` pair could never give.
         REQUIRED and never empty: a source nothing has ever looked at is not a source, it is a guess.
-    contributor: { type: string, pattern: '^[a-z0-9-]+$', description: 'WHOSE this is, as a slug — and the FIRST SEGMENT OF THE ID. That is what makes a second retrospective UPDATE this record instead of writing one beside it. A plain slug rather than a reference, because an id segment cannot be one; the person''s own observed-world record is perspective/world/users/<contributor>/<their-name-slug>.' }
+    contributor: { type: string, pattern: '^[a-z0-9-]+$', description: 'WHOSE this is, as a slug — and the FIRST SEGMENT OF THE ID. That is what makes a second retrospective UPDATE this record instead of writing one beside it. A plain slug rather than a reference, because an id segment cannot be one; the person''s own observed-world record is perspective/users/<contributor>/<their-name-slug>.' }
     kind:
       type: string
       enum: [git-repo, claude-transcripts, codex-transcripts, cursor-transcripts, gemini-cli-transcripts, workspace-records, paste-back, asana, jira, gmail, drive, obsidian, meetings]

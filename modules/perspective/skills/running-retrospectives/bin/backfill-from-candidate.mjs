@@ -22,7 +22,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { DATA, SCRATCH } from '../lib/vault.mjs';
-import { listRecords, readRecord, writeRecord, contributorOf} from '../lib/records.mjs';
+import { listRecords, readRecord, writeRecord, contributorOf, collectionDir } from '../lib/records.mjs';
 
 const argv = process.argv.slice(2);
 const flag = (n) => argv.includes(`--${n}`);
@@ -54,7 +54,7 @@ const day = (v) => String(v ?? '').slice(0, 10);
 const seg = (r) => String(r).split('/').pop().toLowerCase();
 
 let set = 0, already = 0, weak = 0, tied = 0, unmatched = 0;
-for (const file of listRecords(path.join(dataRoot, 'perspective', 'world', 'activities', who()))) {
+for (const file of listRecords(path.join(collectionDir('activities', dataRoot), who()))) {
 	const { fields, body } = readRecord(file);
 	if (fields.from_candidate) { already++; continue; }
 	const st = day(fields.started), en = day(fields.ended) || st;

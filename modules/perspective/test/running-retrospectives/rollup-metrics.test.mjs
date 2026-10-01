@@ -41,7 +41,7 @@ function workspace({ activitySessions }) {
 		tool_calls: 3, files_edited: 1, user_correction: 1, interruptions: 0,
 		input_words: 50, output_words: 100, correction_ratio: 0.9,
 	}));
-	const actDir = path.join(data, 'perspective', 'world', 'activities', SLUG);
+	const actDir = path.join(data, 'perspective', 'activities', SLUG);
 	fs.mkdirSync(actDir, { recursive: true });
 	fs.writeFileSync(path.join(actDir, 'a.activity.md'), fm({
 		retrospective: SESSION, name: 'ship the parser', started: '2026-09-01',
@@ -112,20 +112,20 @@ test('a project sums its activities, takes its code curves from its repos\' week
 	}));
 
 	// two activities in one project, one of them with no sessions at all
-	put(`world/activities/${SLUG}/2026-08-01--with-sessions.activity.md`, {
+	put(`activities/${SLUG}/2026-08-01--with-sessions.activity.md`, {
 		retrospective: `perspective/retrospective-sessions/${B}`, name: 'with sessions', started: '2026-08-01', ended: '2026-08-04',
-		project: `perspective/world/projects/${SLUG}/the-engine`, repos: ['repos/engine'],
+		project: `perspective/projects/${SLUG}/the-engine`, repos: ['repos/engine'],
 		sessions: [`perspective/conversations/${SLUG}/claude-code/2026/09/aaa`], commits: ['abc1234'],
 		topics: [`perspective/topics/${SLUG}/parsing`],
 	});
-	put(`world/activities/${SLUG}/2026-08-20--commits-only.activity.md`, {
+	put(`activities/${SLUG}/2026-08-20--commits-only.activity.md`, {
 		retrospective: `perspective/retrospective-sessions/${B}`, name: 'commits only', started: '2026-08-20', ended: '2026-08-21',
-		project: `perspective/world/projects/${SLUG}/the-engine`, repos: ['repos/engine'],
+		project: `perspective/projects/${SLUG}/the-engine`, repos: ['repos/engine'],
 		commits: ['def5678', 'aaa9999'], topics: [`perspective/topics/${SLUG}/release`],
 	});
 	// a project nothing points at — left alone, and counted in the receipt
-	put(`world/projects/${SLUG}/the-engine.project.md`, { retrospective: `perspective/retrospective-sessions/${B}`, name: 'the engine', kind: 'product', repo_names: ['engine'] });
-	put(`world/projects/${SLUG}/abandoned-idea.project.md`, { retrospective: `perspective/retrospective-sessions/${B}`, name: 'abandoned idea', kind: 'internal', activities_count: 4 });
+	put(`projects/${SLUG}/the-engine.project.md`, { retrospective: `perspective/retrospective-sessions/${B}`, name: 'the engine', kind: 'product', repo_names: ['engine'] });
+	put(`projects/${SLUG}/abandoned-idea.project.md`, { retrospective: `perspective/retrospective-sessions/${B}`, name: 'abandoned idea', kind: 'internal', activities_count: 4 });
 
 	// the repo's weekly code numbers — the only place lines are counted
 	put(`activity-weeks/${SLUG}/git-repo--engine/2026-W31.activity-week.md`, { source: 'x', period: '2026-W31', lines_new: 800, lines_modified: 100, commits_bug: 1, commits_change_request: 4 });
@@ -134,7 +134,7 @@ test('a project sums its activities, takes its code curves from its repos\' week
 	const out = execFileSync('node', [BIN, '--retrospective', `perspective/retrospective-sessions/${B}`, '--data-root', data], { encoding: 'utf8' });
 	assert.match(out, /projects rolled 1 · unchanged 0 · with no activities 1/);
 
-	const p = readRecord(path.join(data, 'perspective', 'world', 'projects', SLUG, 'the-engine.project.md')).fields;
+	const p = readRecord(path.join(data, 'perspective', 'projects', SLUG, 'the-engine.project.md')).fields;
 	// ⚠ NOT activities_count. 0.2.0 deleted it from `projects` — the count comes off the generated
 	// `activities` mirror now — and this script kept writing it, so every rollup put a field back that
 	// the schema had removed. `dt set` on such a record then refuses the WHOLE write ("unknown
@@ -159,7 +159,7 @@ test('a project sums its activities, takes its code curves from its repos\' week
 	assert.equal(p.ended, '2026-08-21', 'the latest');
 	assert.deepEqual(p.topics.sort(), [`perspective/topics/${SLUG}/parsing`, `perspective/topics/${SLUG}/release`]);
 
-	const orphan = readRecord(path.join(data, 'perspective', 'world', 'projects', SLUG, 'abandoned-idea.project.md')).fields;
+	const orphan = readRecord(path.join(data, 'perspective', 'projects', SLUG, 'abandoned-idea.project.md')).fields;
 	assert.equal(orphan.activities_count, 4, 'a project no activity points at is left exactly as it was');
 });
 
@@ -181,11 +181,11 @@ test('a project takes its repos from the commits its activities cite, not only f
     const put = (rel, o) => { const p = path.join(data, 'perspective', rel); fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, fm(o)); };
 
 	// An activity with commits and NO `repos` — the shape every real activity has.
-	put(`world/activities/${SLUG}/2026-08-01--ship-it.activity.md`, {
+	put(`activities/${SLUG}/2026-08-01--ship-it.activity.md`, {
 		retrospective: `perspective/retrospective-sessions/${B}`, name: 'ship it', started: '2026-08-01',
-		project: `perspective/world/projects/${SLUG}/delivery`, commits: ['abc1234', 'def5678'],
+		project: `perspective/projects/${SLUG}/delivery`, commits: ['abc1234', 'def5678'],
 	});
-	put(`world/projects/${SLUG}/delivery.project.md`, { retrospective: `perspective/retrospective-sessions/${B}`, name: 'delivery', kind: 'product' });
+	put(`projects/${SLUG}/delivery.project.md`, { retrospective: `perspective/retrospective-sessions/${B}`, name: 'delivery', kind: 'product' });
 	put(`activity-weeks/${SLUG}/git-repo--api/2026-W31.activity-week.md`, { source: 'x', period: '2026-W31', lines_new: 500, lines_modified: 60, commits_bug: 2, commits_change_request: 3 });
 
 	// read-git's parking lot: the SHA→repo map, one file per repo.
@@ -202,7 +202,7 @@ test('a project takes its repos from the commits its activities cite, not only f
 
 	execFileSync('node', [BIN, '--retrospective', `perspective/retrospective-sessions/${B}`, '--data-root', data, '--scratch-root', scratch], { encoding: 'utf8' });
 
-	const p = readRecord(path.join(data, 'perspective', 'world', 'projects', SLUG, 'delivery.project.md')).fields;
+	const p = readRecord(path.join(data, 'perspective', 'projects', SLUG, 'delivery.project.md')).fields;
 	assert.deepEqual(p.repo_names, ['api'], 'the repo its commits actually live in');
 	// ⚠ EXACT, from this project's own commits — not the repo's weekly totals. Attributing a whole
 	// repo-week to every project that touches the repo gave one 6-commit project 1,775,984 lines_new
@@ -219,16 +219,16 @@ test('a repo no commit of this project touches contributes nothing', () => {
 	const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'perspective-repo2-s-'));
 	const B = '2026-09-08--fx';
 	const put = (rel, o) => { const p = path.join(data, 'perspective', rel); fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, fm(o)); };
-	put(`world/activities/${SLUG}/2026-08-01--ship-it.activity.md`, {
+	put(`activities/${SLUG}/2026-08-01--ship-it.activity.md`, {
 		retrospective: `perspective/retrospective-sessions/${B}`, name: 'ship it', started: '2026-08-01',
-		project: `perspective/world/projects/${SLUG}/delivery`, commits: ['abc1234'],
+		project: `perspective/projects/${SLUG}/delivery`, commits: ['abc1234'],
 	});
-	put(`world/projects/${SLUG}/delivery.project.md`, { retrospective: `perspective/retrospective-sessions/${B}`, name: 'delivery', kind: 'product' });
+	put(`projects/${SLUG}/delivery.project.md`, { retrospective: `perspective/retrospective-sessions/${B}`, name: 'delivery', kind: 'product' });
 	put(`activity-weeks/${SLUG}/git-repo--other/2026-W31.activity-week.md`, { source: 'x', period: '2026-W31', lines_new: 999 });
 	const cdir = path.join(scratch, 'commits', B);
 	fs.mkdirSync(cdir, { recursive: true });
 	fs.writeFileSync(path.join(cdir, 'api.jsonl'), JSON.stringify({ sha: 'abc1234', repo: 'api', subject: 'chore: tidy', files: [] }) + '\n');
 	execFileSync('node', [BIN, '--retrospective', `perspective/retrospective-sessions/${B}`, '--data-root', data, '--scratch-root', scratch], { encoding: 'utf8' });
-	const p = readRecord(path.join(data, 'perspective', 'world', 'projects', SLUG, 'delivery.project.md')).fields;
+	const p = readRecord(path.join(data, 'perspective', 'projects', SLUG, 'delivery.project.md')).fields;
 	assert.equal(p.lines_new, undefined, 'a repo-week this project has no commit in contributes nothing');
 });

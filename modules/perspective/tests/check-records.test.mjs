@@ -113,13 +113,7 @@ test('a clean fixture passes and reports what it checked', () => {
 	assert.match(r.stdout, /✔ perspective records: 6 checked, 0 violations/);
 });
 
-// ⚠ AND THE THIRD TIME, 2026-09-11: `decisions` and `deliverables` moved into `perspective/world`
-// and `EVIDENCE_COLLECTIONS` still named the old spellings. The failure is quiet in the worst way —
-// the reference resolves, the collection is real, and the guard simply refuses every finding that
-// cites one. Twelve correct findings failed in one consumer run. Nothing but a red run connected the
-// two lists, which is exactly what this test replaces: every name the guard calls evidence must be a
-// collection this package actually ships, so a move fails HERE, in a second, instead of in a
-// workspace an hour later.
+// Every name the guard calls evidence must be a collection this package ships (or the `meetings` peer).
 test('every collection the guard calls evidence is one this package actually ships', () => {
 	const src = fs.readFileSync(path.join(MODULE, 'bin', 'check-records.mjs'), 'utf8');
 	const m = /const EVIDENCE_COLLECTIONS = \[([^\]]*)\]/.exec(src);
@@ -317,7 +311,7 @@ test('a finding body may close with weeks, sessions or answers', () => {
 // share a handle. Each broken record below is one of those, and only one.
 
 const RUN = `perspective/retrospective-sessions/${SESSION}`;
-const ACTIVITY = `perspective/world/activities/${SLUG}/2026-09-02--the-guard-slice`;
+const ACTIVITY = `perspective/activities/${SLUG}/2026-09-02--the-guard-slice`;
 
 /** The clean v2 layer, written ON TOP of seedClean — it cites that fixture's two findings and its conversation. */
 function seedV2(root) {
@@ -334,13 +328,13 @@ function seedV2(root) {
 		role: 'keeps a guard honest',
 		summary: 'The fixture contributor.',
 	});
-	writeRecord(recordPath('world/users', `${SLUG}/dana-fixture`, 'user', root), {
+	writeRecord(recordPath('users', `${SLUG}/dana-fixture`, 'user', root), {
 		retrospective: RUN,
 		name: 'Dana Fixture',
 		handles: ['dana@example.com', 'DanaFx'],
 		evidence_count: 9,
 	});
-	writeRecord(recordPath('world/users', `${SLUG}/ravi-fixture`, 'user', root), {
+	writeRecord(recordPath('users', `${SLUG}/ravi-fixture`, 'user', root), {
 		retrospective: RUN,
 		name: 'Ravi Fixture',
 		handles: ['ravi@example.com'],
@@ -352,15 +346,15 @@ function seedV2(root) {
 		title: 'A fixture ticket',
 		status: 'completed',
 	});
-	writeRecord(recordPath('world/activities', `${SLUG}/2026-09-02--the-guard-slice`, 'activity', root), {
+	writeRecord(recordPath('activities', `${SLUG}/2026-09-02--the-guard-slice`, 'activity', root), {
 		retrospective: RUN,
 		name: 'The guard slice',
 		started: '2026-09-02',
 		ended: '2026-09-05',
 		status: 'done',
 		collaborators: [
-			`perspective/world/users/${SLUG}/dana-fixture`,
-			`perspective/world/users/${SLUG}/ravi-fixture`,
+			`perspective/users/${SLUG}/dana-fixture`,
+			`perspective/users/${SLUG}/ravi-fixture`,
 		],
 		collaborative: true,
 		sessions: ['perspective/conversations/claude-code/2026/09/fixture-a'],
@@ -434,22 +428,22 @@ test('every broken v2 record is named, one violation per rule, and no clean one 
 		findings: [`perspective/findings/${SLUG}/workflow--weekly-sweep`],
 	});
 	// 6a. A collaborator named, but the derived flag says solo.
-	writeRecord(recordPath('world/activities', `${SLUG}/2026-09-03--unmarked-collaboration`, 'activity', root), {
+	writeRecord(recordPath('activities', `${SLUG}/2026-09-03--unmarked-collaboration`, 'activity', root), {
 		retrospective: RUN,
 		name: 'Unmarked collaboration',
 		started: '2026-09-03',
-		collaborators: [`perspective/world/users/${SLUG}/dana-fixture`],
+		collaborators: [`perspective/users/${SLUG}/dana-fixture`],
 		collaborative: false,
 	});
 	// 6b. A commit pointer git could never resolve.
-	writeRecord(recordPath('world/activities', `${SLUG}/2026-09-03--bad-sha`, 'activity', root), {
+	writeRecord(recordPath('activities', `${SLUG}/2026-09-03--bad-sha`, 'activity', root), {
 		retrospective: RUN,
 		name: 'Bad sha',
 		started: '2026-09-03',
 		commits: ['nothexatall'],
 	});
 	// 6c. A gantt bar that runs backwards.
-	writeRecord(recordPath('world/activities', `${SLUG}/2026-09-05--time-travel`, 'activity', root), {
+	writeRecord(recordPath('activities', `${SLUG}/2026-09-05--time-travel`, 'activity', root), {
 		retrospective: RUN,
 		name: 'Time travel',
 		started: '2026-09-05',
@@ -479,12 +473,12 @@ test('every broken v2 record is named, one violation per rule, and no clean one 
 		activities: [ACTIVITY],
 	});
 	// 10. The unmerged duplicate: one handle, two records, one person's work split in two.
-	writeRecord(recordPath('world/users', `${SLUG}/sam-one`, 'user', root), {
+	writeRecord(recordPath('users', `${SLUG}/sam-one`, 'user', root), {
 		retrospective: RUN,
 		name: 'Sam One',
 		handles: ['sam@example.com', 'SamOne'],
 	});
-	writeRecord(recordPath('world/users', `${SLUG}/sam-two`, 'user', root), {
+	writeRecord(recordPath('users', `${SLUG}/sam-two`, 'user', root), {
 		retrospective: RUN,
 		name: 'Sam Two',
 		handles: ['sam@example.com'],
@@ -494,15 +488,15 @@ test('every broken v2 record is named, one violation per rule, and no clean one 
 	assert.equal(r.status, 1, `expected exit 1, got ${r.status}\n${r.stdout}${r.stderr}`);
 	for (const named of [
 		'insights/fx/one-finding-only.insight.md',
-		'world/activities/fx/2026-09-03--unmarked-collaboration.activity.md',
-		'world/activities/fx/2026-09-03--bad-sha.activity.md',
-		'world/activities/fx/2026-09-05--time-travel.activity.md',
+		'activities/fx/2026-09-03--unmarked-collaboration.activity.md',
+		'activities/fx/2026-09-03--bad-sha.activity.md',
+		'activities/fx/2026-09-05--time-travel.activity.md',
 		'decisions/fx/2026-09-04--not-a-sha.decision.md',
 		'decisions/fx/2026-09-04--missing-session.decision.md',
 		'workflows/fx/no-steps.workflow.md',
 		// BOTH duplicates, because only a person can say which record survives.
-		'world/users/fx/sam-one.user.md',
-		'world/users/fx/sam-two.user.md',
+		'users/fx/sam-one.user.md',
+		'users/fx/sam-two.user.md',
 	]) {
 		assert.ok(r.stderr.includes(named), `stderr does not name ${named}:\n${r.stderr}`);
 	}
@@ -619,28 +613,28 @@ test('a suggested answer needs its evidence, and may never be passed off as the 
 
 test('a goal counts its decisions, activities and projects — nothing else, and never a different number', () => {
 	const root = seedClean(tmpDataRoot());
-	const goal = (id, extra) => writeRecord(recordPath('world/goals', `${SLUG}/${id}`, 'goal', root), {
+	const goal = (id, extra) => writeRecord(recordPath('goals', `${SLUG}/${id}`, 'goal', root), {
 		retrospective: `perspective/retrospective-sessions/${SESSION}`,
 		name: id, done_when: 'Something that would be true.', ...extra,
 	}, 'Read backwards out of the work. (3 decisions)');
 	// count higher than the refs — the measured defect
 	goal('over', { evidence_count: 5, standing: 'corroborated',
-		decisions: [`perspective/world/decisions/${SLUG}/a`, `perspective/world/decisions/${SLUG}/b`],
-		activities: [`perspective/world/activities/${SLUG}/x`] });
+		decisions: [`perspective/decisions/${SLUG}/a`, `perspective/decisions/${SLUG}/b`],
+		activities: [`perspective/activities/${SLUG}/x`] });
 	// topics counted as evidence — the descriptor says they are not
 	goal('topics-in', { evidence_count: 3, standing: 'corroborated',
-		decisions: [`perspective/world/decisions/${SLUG}/a`],
+		decisions: [`perspective/decisions/${SLUG}/a`],
 		topics: [`perspective/topics/${SLUG}/t1`, `perspective/topics/${SLUG}/t2`] });
 	// corroborated on two
 	goal('thin', { evidence_count: 2, standing: 'corroborated',
-		decisions: [`perspective/world/decisions/${SLUG}/a`, `perspective/world/decisions/${SLUG}/b`] });
+		decisions: [`perspective/decisions/${SLUG}/a`, `perspective/decisions/${SLUG}/b`] });
 	// confirmed with nobody having spoken
 	goal('spoke', { evidence_count: 3, standing: 'confirmed',
-		decisions: [`perspective/world/decisions/${SLUG}/a`, `perspective/world/decisions/${SLUG}/b`, `perspective/world/decisions/${SLUG}/c`] });
+		decisions: [`perspective/decisions/${SLUG}/a`, `perspective/decisions/${SLUG}/b`, `perspective/decisions/${SLUG}/c`] });
 	// and the clean one
 	goal('clean', { evidence_count: 3, standing: 'corroborated',
-		decisions: [`perspective/world/decisions/${SLUG}/a`, `perspective/world/decisions/${SLUG}/b`],
-		projects: [`perspective/world/projects/${SLUG}/p`],
+		decisions: [`perspective/decisions/${SLUG}/a`, `perspective/decisions/${SLUG}/b`],
+		projects: [`perspective/projects/${SLUG}/p`],
 		topics: [`perspective/topics/${SLUG}/t1`] });
 	const r = run(root);
 	assert.equal(r.status, 1);
@@ -674,48 +668,38 @@ test('a thread is legal evidence and a legal unit; a decision read out of mail c
 	assert.match(r.stderr, /by-url\.decision\.md: .*perspective\/threads/);
 });
 
-// ── the mirror ───────────────────────────────────────────────────────────────────────────────────
-// `SUFFIX` in check-records.mjs is a hand-kept mirror of the descriptor directory, and a collection
-// missing from it is not an error — it is SILENTLY UNCHECKED. `projects` was missing from the v2
-// perspective model until 2026-09-08: every project record skipped the guard, nothing failed, and the
-// comment above the map claimed seventeen entries while listing sixteen. This walks the descriptors
-// and fails when the two disagree, in either direction.
-test('SUFFIX mirrors every perspective descriptor — a collection missing here is unchecked, not rejected', () => {
-	// ⚠ RECURSIVE, and the flat readdir it replaces is the SAME defect this test exists for. The
-	// `world/*` descriptors moved into a subdirectory and this walk stopped seeing all five of them —
-	// so the gate that was written to catch an unchecked collection went quiet about exactly the five
-	// collections that release added. The name regex below needs the slash for the same reason:
-	// `^\s*'?([a-z-]+)'?\s*:` never matched `'world/users':`, so those entries were invisible on both
-	// sides at once, which is how a broken gate passes.
-	const dir = path.join(HERE, '..', 'collections', 'perspective');
-	const descriptorNames = (d, prefix = '') => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) =>
-		e.isDirectory() ? descriptorNames(path.join(d, e.name), `${prefix}${e.name}/`)
-			: e.name.endsWith('.collection.yaml') ? [`${prefix}${e.name.replace(/\.collection\.yaml$/, '')}`] : []);
-	const declared = descriptorNames(dir);
-
+// ── the collections the guard knows ──────────────────────────────────────────────────────────────
+// The guard reads its collection list and every storage folder off the shipped descriptors, so a
+// collection added, moved or deleted is checked the moment its descriptor changes.
+test('the guard resolves refs through the shipped descriptors, and a path no collection owns resolves to nothing', () => {
 	const source = fs.readFileSync(SCRIPT, 'utf8');
-	const block = /const SUFFIX = \{([\s\S]*?)\n\};/.exec(source);
-	assert.ok(block, 'the SUFFIX map is still recognisable — update this test if it was restructured');
-	const mapped = [...block[1].matchAll(/^\s*'?([a-z/-]+)'?\s*:/gm)].map((m) => m[1]);
-	assert.ok(mapped.some((c) => c.startsWith('world/')), 'the name regex stopped matching the namespaced entries again');
-
-	const missing = declared.filter((c) => !mapped.includes(c));
-	const stale = mapped.filter((c) => !declared.includes(c));
-	assert.deepEqual(missing, [], `descriptors with no SUFFIX entry are silently unchecked: ${missing.join(', ')}`);
-	assert.deepEqual(stale, [], `SUFFIX names a collection that no longer exists: ${stale.join(', ')}`);
+	assert.doesNotMatch(source, /const SUFFIX = \{/, 'a hand-kept collection map is back');
+	const root = seedClean(tmpDataRoot());
+	writeRecord(recordPath('activities', `${SLUG}/2026-09-02--flat`, 'activity', root), {
+		retrospective: `perspective/retrospective-sessions/${SESSION}`, contributor: SLUG, name: 'flat', started: '2026-09-02', collaborative: false,
+	});
+	const workflow = (id, ref) => writeRecord(recordPath('workflows', `${SLUG}/${id}`, 'workflow', root), {
+		retrospective: `perspective/retrospective-sessions/${SESSION}`, contributor: SLUG, name: id, steps: ['one'], activities: [ref], collaborative: false,
+	});
+	workflow('cites-the-shipped-path', `perspective/activities/${SLUG}/2026-09-02--flat`);
+	workflow('cites-the-old-path', `perspective/world/activities/${SLUG}/2026-09-02--flat`);
+	const r = run(root);
+	assert.equal(r.status, 1, r.stdout);
+	assert.doesNotMatch(r.stderr, /cites-the-shipped-path/);
+	assert.match(r.stderr, /cites-the-old-path\.workflow\.md: activities perspective\/world\/activities\/fx\/2026-09-02--flat is not perspective\/activities\/<id>/);
 });
 
 test('a goal under three pieces of evidence may not claim to be corroborated, and none may claim confirmed', () => {
 	// Borrowed wholesale from findings, and for the same reason: `confirmed` means a PERSON answered,
 	// and an unattended run writing it is claiming someone spoke who did not.
 	const root = seedClean(tmpDataRoot());
-	writeRecord(recordPath('world/goals', `${SLUG}/portable-vault`, 'goal', root), {
+	writeRecord(recordPath('goals', `${SLUG}/portable-vault`, 'goal', root), {
 		retrospective: `perspective/retrospective-sessions/${SESSION}`,
 		name: 'the vault runs on any machine from a bare clone',
 		statement: 'A clone plus a .env is a working vault, with no second checkout and no host alias.',
 		// ⚠ The refs ARE the count. This fixture used to carry `evidence_count: 4` with nothing attached
 		// and passed — exactly the defect the goals guard now refuses.
-		decisions: ['a', 'b', 'c', 'd'].map((x) => `perspective/world/decisions/${SLUG}/${x}`),
+		decisions: ['a', 'b', 'c', 'd'].map((x) => `perspective/decisions/${SLUG}/${x}`),
 		evidence_count: 4,
 		standing: 'corroborated',
 	}, 'Four decisions turn on it, and each rejected the option that needed a second checkout. (4 decisions)');

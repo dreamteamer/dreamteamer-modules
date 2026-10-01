@@ -6,8 +6,7 @@
 # as a point on the same gantt as the work; that fold was right because a plan reads as one ordered
 # list. This collection is about the RETROSPECTIVE ITSELF: whether the method held at a stage
 # boundary. Three differences settle it. It is RUN-LAYER — keyed by the run
-# (`<run>/<gate>`), never by a contributor, so it is not a world object and never enters
-# `perspective/world`. Its `gate` enum is a closed list of twelve conditions on this module's own
+# (`<run>/<gate>`), never by a contributor, so it is not an observed-world object. Its `gate` enum is a closed list of twelve conditions on this module's own
 # procedure, not on anybody's delivery. And it has no position in any ordered list — it is judged at
 # a stage BOUNDARY, which is not a rung. Nothing here folds into `activities`, in either direction.
 #

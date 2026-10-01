@@ -4,12 +4,67 @@ import fs from 'node:fs';
 import path from 'node:path';
 import yaml from 'js-yaml';
 import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { DATA } from './vault.mjs';
 
 export const nowIso = () => new Date().toISOString();
 
-export function recordPath(collectionBare, id, suffix, dataRoot = DATA) {
-	return path.join(dataRoot, 'perspective', collectionBare, `${id}.${suffix}.md`);
+// ── where this module's collections keep their records ──────────────────────────────────────────
+// Every script reaches a `perspective/*` folder through these helpers and never joins a path by hand.
+// The descriptor is the authority: the workspace's compiled copy first (an overlay may re-home a
+// collection), then the one this package ships. `collections/` sits three levels above this file both
+// in the package and in `.dreamteamer/`, where compile copies the skill.
+const SHIPPED_COLLECTIONS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'collections');
+const NAMESPACE = 'perspective';
+const storageCache = new Map();
+
+/** The bare names of the collections this module ships, e.g. `decisions`, `activity-weeks`. */
+export function shippedCollections() {
+	const dir = path.join(SHIPPED_COLLECTIONS, NAMESPACE);
+	if (!fs.existsSync(dir)) return [];
+	return fs.readdirSync(dir).filter((f) => f.endsWith('.collection.yaml')).map((f) => f.slice(0, -'.collection.yaml'.length)).sort();
+}
+
+/** The `storage` block of a descriptor file, or null when the file is absent or carries none. */
+function readStorage(file) {
+	if (!fs.existsSync(file)) return null;
+	try { return yaml.load(fs.readFileSync(file, 'utf8'))?.storage ?? null; } catch { return null; }
+}
+
+/** `{ dir, suffix }` for `perspective/<bare>` under `dataRoot`. Throws for a name no descriptor carries. */
+export function collectionStorage(bare, dataRoot = DATA) {
+	const key = `${dataRoot}\0${bare}`;
+	if (storageCache.has(key)) return storageCache.get(key);
+	const workspaceRoot = path.dirname(dataRoot);
+	const candidates = [
+		path.join(workspaceRoot, '.dreamteamer', 'collections', NAMESPACE, `${bare}.collection.yaml`),
+		path.join(SHIPPED_COLLECTIONS, NAMESPACE, `${bare}.collection.yaml`),
+	];
+	const storage = candidates.map(readStorage).find((s) => s?.path && s?.suffix);
+	if (!storage) throw new Error(`${NAMESPACE}/${bare} is not a collection this module ships`);
+	const rel = String(storage.path);
+	const dir = rel.startsWith('data/') ? path.join(dataRoot, rel.slice('data/'.length)) : path.join(workspaceRoot, rel);
+	const out = { dir, suffix: String(storage.suffix) };
+	storageCache.set(key, out);
+	return out;
+}
+
+/** The folder `perspective/<bare>` keeps its records in. */
+export function collectionDir(bare, dataRoot = DATA) {
+	return collectionStorage(bare, dataRoot).dir;
+}
+
+/** The file of record `<id>` in `perspective/<bare>`. `suffix` must match the descriptor's. */
+export function recordPath(bare, id, suffix, dataRoot = DATA) {
+	const storage = collectionStorage(bare, dataRoot);
+	if (suffix !== undefined && suffix !== storage.suffix) throw new Error(`${NAMESPACE}/${bare} records carry .${storage.suffix}.md, not .${suffix}.md`);
+	return path.join(storage.dir, `${id}.${storage.suffix}.md`);
+}
+
+/** The id of a record file in `perspective/<bare>` — its path inside the collection folder, suffix dropped. */
+export function recordId(bare, file, dataRoot = DATA) {
+	const storage = collectionStorage(bare, dataRoot);
+	return path.relative(storage.dir, file).slice(0, -`.${storage.suffix}.md`.length);
 }
 
 /** Frontmatter keys are written in the order given; undefined/null/'' values are dropped. */
@@ -121,7 +176,7 @@ export function contributorOf(retrospectiveRef, dataRoot = DATA) {
  * ⚠ Why this exists. `x-inverse` mirrors are maintained by the engine on every `dt` write, and these
  * scripts write files directly — so a pass that sets `activities.project` leaves
  * `projects.activities` stale. The engine DETECTS that (`check` says
- * `activities: stale — run: dreamteamer relations rebuild perspective/world/projects`), which is already
+ * `activities: stale — run: dreamteamer relations rebuild perspective/projects`), which is already
  * better than the hand-maintained pairs this replaced, where nothing noticed. This closes it in the
  * same pass instead of leaving a chore.
  *

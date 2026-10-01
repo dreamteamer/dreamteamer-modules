@@ -175,11 +175,11 @@ test('only the contributor’s commits reach a candidate, matched on any of thei
 	writeRecord(recordPath('retrospective-sessions', BASE, 'retrospective-session', data), {
 		contributor: SLUG, handles: ['me@work.test'], started: '2026-09-07', stage: 'condensed',
 	});
-	writeRecord(recordPath('world/users', `${SLUG}/me`, 'user', data), {
+	writeRecord(recordPath('users', `${SLUG}/me`, 'user', data), {
 		retrospective: `perspective/retrospective-sessions/${BASE}`, name: 'Me',
 		handles: ['me@work.test', 'me@home.test', 'My Name'],
 	});
-	writeRecord(recordPath('world/users', `${SLUG}/them`, 'user', data), {
+	writeRecord(recordPath('users', `${SLUG}/them`, 'user', data), {
 		retrospective: `perspective/retrospective-sessions/${BASE}`, name: 'Them',
 		handles: ['them@work.test'],
 	});

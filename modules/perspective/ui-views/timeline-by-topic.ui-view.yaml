@@ -25,7 +25,7 @@ nav:
   order: 2
 path: /timeline/by-topic
 target: list
-collection: collections/perspective/world/activities
+collection: collections/perspective/activities
 layout: gantt
 
 # ⚠ A `dt ui-views` WRITE FROM A CONSUMING WORKSPACE LANDS IN THE GITIGNORED MODULE CLONE, where the

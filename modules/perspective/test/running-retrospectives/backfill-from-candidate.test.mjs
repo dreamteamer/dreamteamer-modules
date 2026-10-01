@@ -26,7 +26,7 @@ function workspace(activities, candidates) {
 	  fs.mkdirSync(path.dirname(sp), { recursive: true });
 	  fs.writeFileSync(sp, fm({ contributor: SLUG, handles: ['dana.o@northwind.example'], started: BASE.slice(0, 10), stage: 'installed' })); }
 	for (const a of activities) {
-		const p = path.join(vault, 'data', 'perspective', 'world', 'activities', SLUG, `${a.id}.activity.md`);
+		const p = path.join(vault, 'data', 'perspective', 'activities', SLUG, `${a.id}.activity.md`);
 		fs.mkdirSync(path.dirname(p), { recursive: true });
 		const { id, ...rest } = a;
 		fs.writeFileSync(p, fm({ retrospective: REF, ...rest }));
@@ -38,7 +38,7 @@ function workspace(activities, candidates) {
 }
 const run = (v, extra = []) => execFileSync('node', [BIN, '--retrospective', REF,
 	'--data-root', path.join(v, 'data'), '--scratch-root', path.join(v, '.perspective'), ...extra], { encoding: 'utf8' });
-const read = (v, id) => readRecord(path.join(v, 'data', 'perspective', 'world', 'activities', SLUG, `${id}.activity.md`)).fields;
+const read = (v, id) => readRecord(path.join(v, 'data', 'perspective', 'activities', SLUG, `${id}.activity.md`)).fields;
 
 test('shared evidence plus a date overlap identifies the candidate', () => {
 	const v = workspace(

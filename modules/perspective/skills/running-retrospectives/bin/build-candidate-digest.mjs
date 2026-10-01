@@ -14,20 +14,23 @@
 // branch"), and a naming pass reading titles alone names activities after the TICKET, not the work.
 import fs from 'node:fs';
 import path from 'node:path';
+import { collectionDir, recordId } from '../lib/records.mjs';
 
 const [vault, base, out] = process.argv.slice(2);
-const D = path.join(vault, 'data', 'perspective');
+const dataRoot = path.join(vault, 'data');
+const convDir = collectionDir('conversations', dataRoot);
+const ticketDir = collectionDir('tickets', dataRoot);
 const read = (f) => fs.readFileSync(f, 'utf8');
 const fm = (f) => { const t = read(f); const m = /^---\n([\s\S]*?)\n---/.exec(t); return m ? m[1] : ''; };
 const field = (t, k) => (new RegExp(`^${k}: (.*)$`, 'm').exec(t)?.[1] ?? '').replace(/^["']|["']$/g, '');
 
 const convTitle = new Map();
 const walk = (d) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const p = path.join(d, e.name); if (e.isDirectory()) walk(p); else if (e.name.endsWith('.conversation.md')) {
-  const id = path.relative(path.join(D, 'conversations'), p).replace(/\.conversation\.md$/, '');
+  const id = recordId('conversations', p, dataRoot);
   const t = fm(p);
   convTitle.set(`perspective/conversations/${id}`, { title: field(t, 'title'), turns: +field(t, 'turns_user') || 0, min: +field(t, 'active_minutes') || 0, repo: field(t, 'repo_name') });
 } } };
-if (fs.existsSync(path.join(D, 'conversations'))) walk(path.join(D, 'conversations'));
+if (fs.existsSync(convDir)) walk(convDir);
 
 // A ticket is no longer just a title. Since read-asana@2 it carries a description, the human comments
 // and the whole story trail — 933 of them here, median 1,032 characters. The naming pass was reading
@@ -35,9 +38,9 @@ if (fs.existsSync(path.join(D, 'conversations'))) walk(path.join(D, 'conversatio
 // digest now carries the first stretch of the body too. Trimmed hard: the trail is repetitive by
 // nature and the first lines of it are the ones that say what the task actually was.
 const ticketTitle = new Map();
-if (fs.existsSync(path.join(D, 'tickets'))) {
+if (fs.existsSync(ticketDir)) {
   const tw = (d) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const p = path.join(d, e.name); if (e.isDirectory()) tw(p); else if (e.name.endsWith('.ticket.md')) {
-    const id = path.relative(path.join(D, 'tickets'), p).replace(/\.ticket\.md$/, '');
+    const id = recordId('tickets', p, dataRoot);
     const raw = read(p);
     const t = fm(p);
     const body = (/^---\n[\s\S]*?\n---\n?([\s\S]*)$/.exec(raw)?.[1] ?? '');
@@ -48,7 +51,7 @@ if (fs.existsSync(path.join(D, 'tickets'))) {
     if (comments) line.push(`      said: ${comments}`);
     ticketTitle.set(`perspective/tickets/${id}`, line.join('\n'));
   } } };
-  tw(path.join(D, 'tickets'));
+  tw(ticketDir);
 }
 
 const subj = new Map();

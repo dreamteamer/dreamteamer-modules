@@ -24,13 +24,13 @@
 // they spoke, prepared, or wanted to be there. Nothing this reader writes may be read as engagement,
 // and the perspective that cites it should say so.
 //
-// ⚠ WHICH COLLECTION THE PEOPLE LAND IN: `perspective/world/users`, the OBSERVED half of `users`.
+// ⚠ WHICH COLLECTION THE PEOPLE LAND IN: `perspective/users`, the OBSERVED half of `users`.
 // In 0.9.0 the observed world became a namespace spelled in the real world's own nouns, and the
 // `collaborators` collection was retired into it — a workspace compiled since then declares no such
 // collection at all, so a sentence naming one describes nothing. `collaborator` survives here as a
-// ROLE WORD — `world/users.sources` carries `x-inverse: collaborators`, and
-// `world/activities.collaborators` is the slot a person fills — so a receipt that counts
-// "collaborators" is counting `world/users` records, and `lib/collaborators.mjs` is the upsert that
+// ROLE WORD — `perspective/users.sources` carries `x-inverse: collaborators`, and
+// `perspective/activities.collaborators` is the slot a person fills — so a receipt that counts
+// "collaborators" is counting `perspective/users` records, and `lib/collaborators.mjs` is the upsert that
 // writes them. Nothing this reader does may write into the REAL `users` collection: that is what a
 // person authored, and the one-way `real` join is a proposal a person confirms, never a reader's.
 //
@@ -40,21 +40,21 @@
 // retrospective UPDATE this contributor's model instead of writing a parallel copy beside it, and it
 // is why `--contributor` chooses an IDENTITY to look the operator up by rather than a subject.
 //
-// ⚠ WHY `world/users.contact` IS SET HERE, when `references/identity.md` says that field is set
+// ⚠ WHY `perspective/users.contact` IS SET HERE, when `references/identity.md` says that field is set
 // only on confirmation and never inferred from a matching name. Both are true, because this is not a
 // name match. `meetings.attendees` is an `x-reference: contacts` — a STRUCTURAL edge somebody
 // already committed to in the workspace's own CRM. Following a reference the workspace asserts is
 // the opposite of guessing from a string, and it is the one route by which an observed person may
 // arrive already joined to their CRM record. `contacts` is a PEER of this module, so the edge points
 // sideways at the real world rather than out of the observed layer's own structure. The merge KEY is
-// still the email (below): a contact with no email gets NO `world/users` record, because a display
+// still the email (below): a contact with no email gets NO `perspective/users` record, because a display
 // name is never a person key and this reader will not invent one to fill a row.
 //
 // What it writes:
 //   · one `sources` record, `<contributor>/meetings--<label>`, with `reach` and the counts
 //   · one `activity-weeks` record per ISO week — `meetings_attended`, `meeting_minutes`,
 //     `meeting_counterparts`. Mechanical tier, like every other counted field on that record.
-//   · one `perspective/world/users` record per other ATTENDEE, id `<contributor>/<name-slug>`,
+//   · one `perspective/users` record per other ATTENDEE, id `<contributor>/<name-slug>`,
 //     through `lib/collaborators.mjs` — keyed on the contact's email, with `contact` set to the
 //     attendee's own ref and `sources`/`source` pointing back at the `sources` record above. Never
 //     `real`, and never a row in the real `users` collection.
@@ -250,7 +250,7 @@ for (const m of kept) {
 	for (const c of m.counterparts) if (c.emails.length) acc.counterparts.add(c.emails[0]);
 	weeks.set(period, acc);
 	for (const c of m.counterparts) {
-		// ⚠ NO EMAIL, NO `world/users` RECORD. The merge key is an email or a system id, and a bare
+		// ⚠ NO EMAIL, NO `perspective/users` RECORD. The merge key is an email or a system id, and a bare
 		// display name is neither — two people share a name, nobody shares an address. Writing a record keyed
 		// on the name is how one person's work gets attributed to another, and the receipt says how
 		// many attendees were dropped for exactly this reason rather than swallowing the gap.
@@ -277,7 +277,7 @@ if (!dry) {
 	fs.writeFileSync(jsonl, kept.map((m) => JSON.stringify({
 		ref: m.ref, id: m.id, name: m.name, starts: m.starts, ends: m.ends, day: m.day,
 		minutes: m.minutes, company: m.company || undefined, matched: m.matched,
-		// The counterpart EMAILS, which is what `world/users` is merged on. The contributor's own
+		// The counterpart EMAILS, which is what `perspective/users` is merged on. The contributor's own
 		// address is deliberately absent: they are on every meeting, so including it would put them
 		// into the handles of every candidate the clusterer builds.
 		handles: m.counterparts.flatMap((c) => c.emails.slice(0, 1)),

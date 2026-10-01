@@ -32,7 +32,7 @@ function workspace({ activities, candidate, sessions }) {
 		fs.writeFileSync(p, fm({ session_id: name, started_at: `${day}T09:00:00.000Z`, turns_user: 1 }));
 	}
 	for (const a of activities) {
-		const p = path.join(D, 'world', 'activities', SLUG, `${a.id}.activity.md`);
+		const p = path.join(D, 'activities', SLUG, `${a.id}.activity.md`);
 		fs.mkdirSync(path.dirname(p), { recursive: true });
 		fs.writeFileSync(p, fm({ retrospective: REF, name: a.name, started: a.started, ended: a.ended, ...(a.from_candidate ? { from_candidate: a.from_candidate } : {}), ...(a.sessions ? { sessions: a.sessions } : {}) }));
 	}
@@ -54,7 +54,7 @@ test('a candidate that produced ONE activity hands it everything — no transcri
 		candidate: [{ key: 'api--2026-08-01', repo: 'api', started: '2026-08-01', ended: '2026-08-03', sessions: [S('a'), S('b'), S('c')], commits: ['abc1234', 'def5678'], branches: ['main'], tickets: [] }],
 	});
 	assert.match(run(vault), /attached 3 sessions, 2 commits, 0 tickets/);
-	const f = readRecord(path.join(vault, 'data', 'perspective', 'world', 'activities', SLUG, '2026-08-01--ship-it.activity.md')).fields;
+	const f = readRecord(path.join(vault, 'data', 'perspective', 'activities', SLUG, '2026-08-01--ship-it.activity.md')).fields;
 	assert.deepEqual(f.sessions, [S('a'), S('b'), S('c')]);
 	assert.deepEqual(f.commits, ['abc1234', 'def5678']);
 	assert.deepEqual(f.branches, ['main']);
@@ -73,8 +73,8 @@ test('when one candidate produced several activities, each session goes to the w
 		candidate: [{ key: 'api--2026-08-01', repo: 'api', started: '2026-08-01', ended: '2026-08-22', sessions: [S('early'), S('mid'), S('late')], commits: [], branches: [], tickets: [] }],
 	});
 	run(vault);
-	const spike = readRecord(path.join(vault, 'data', 'perspective', 'world', 'activities', SLUG, '2026-08-01--the-spike.activity.md')).fields;
-	const build = readRecord(path.join(vault, 'data', 'perspective', 'world', 'activities', SLUG, '2026-08-08--the-build.activity.md')).fields;
+	const spike = readRecord(path.join(vault, 'data', 'perspective', 'activities', SLUG, '2026-08-01--the-spike.activity.md')).fields;
+	const build = readRecord(path.join(vault, 'data', 'perspective', 'activities', SLUG, '2026-08-08--the-build.activity.md')).fields;
 	assert.deepEqual(spike.sessions, [S('early')]);
 	assert.deepEqual(build.sessions, [S('late'), S('mid')], 'sorted, so a re-run is byte-identical');
 });
@@ -89,8 +89,8 @@ test('the NARROWEST containing window wins, so a specific activity beats a catch
 		candidate: [{ key: 'api--2026-08-01', repo: 'api', started: '2026-08-01', ended: '2026-08-31', sessions: [S('x')], commits: [], branches: [], tickets: [] }],
 	});
 	run(vault);
-	const narrow = readRecord(path.join(vault, 'data', 'perspective', 'world', 'activities', SLUG, '2026-08-09--the-migration.activity.md')).fields;
-	const wide = readRecord(path.join(vault, 'data', 'perspective', 'world', 'activities', SLUG, '2026-08-01--everything-else.activity.md')).fields;
+	const narrow = readRecord(path.join(vault, 'data', 'perspective', 'activities', SLUG, '2026-08-09--the-migration.activity.md')).fields;
+	const wide = readRecord(path.join(vault, 'data', 'perspective', 'activities', SLUG, '2026-08-01--everything-else.activity.md')).fields;
 	assert.deepEqual(narrow.sessions, [S('x')]);
 	assert.equal(wide.sessions, undefined);
 });
@@ -106,7 +106,7 @@ test('a session inside NO window is placed at the nearest activity, never droppe
 		candidate: [{ key: 'api--2026-08-01', repo: 'api', started: '2026-08-01', ended: '2026-08-25', sessions: [S('orphan')], commits: [], branches: [], tickets: [] }],
 	});
 	run(vault);
-	const later = readRecord(path.join(vault, 'data', 'perspective', 'world', 'activities', SLUG, '2026-08-20--later-work.activity.md')).fields;
+	const later = readRecord(path.join(vault, 'data', 'perspective', 'activities', SLUG, '2026-08-20--later-work.activity.md')).fields;
 	assert.deepEqual(later.sessions, [S('orphan')], 'it belongs to that candidate by construction — dropping it is the failure this script exists to prevent');
 });
 
@@ -118,7 +118,7 @@ test('a hand-written activity with no from_candidate is left exactly as it is', 
 	});
 	const out = run(vault);
 	assert.match(out, /without from_candidate 1/);
-	const f = readRecord(path.join(vault, 'data', 'perspective', 'world', 'activities', SLUG, '2026-08-01--by-hand.activity.md')).fields;
+	const f = readRecord(path.join(vault, 'data', 'perspective', 'activities', SLUG, '2026-08-01--by-hand.activity.md')).fields;
 	assert.equal(f.commits, undefined, 'nothing was attached to it');
 });
 

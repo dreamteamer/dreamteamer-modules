@@ -1,4 +1,4 @@
-# world/users — A PERSON WHO APPEARS IN THE EVIDENCE. Not contacts (whom the operator deals with)
+# perspective/users — A PERSON WHO APPEARS IN THE EVIDENCE. Not contacts (whom the operator deals with)
 # and not `users` (whom work is assigned to): this is who shows up in THIS contributor's commits,
 # tickets and sessions. Identity is the hard part and the data proves it: one person commits under
 # four handles across two machines and a GitHub noreply address. `handles` is the merge key; both
@@ -10,7 +10,7 @@
 # cannot even share an id shape — the real world keys on the name slug, the observed world on
 # `<contributor>/<name-slug>`, because that first segment is what makes a second retrospective UPDATE
 # a person's model instead of copying it. `real` is the one-way, soft join between them.
-name: perspective/world/users
+name: perspective/users
 templates: [collection-templates/perspective-observation]
 description: A person observed in a contributor's evidence — commits, tickets, sessions — with every handle they appear under. The observed half of `users`, keyed by the contributor whose evidence found them.
 use_when: >-
@@ -18,7 +18,7 @@ use_when: >-
   activity, decision or workflow names who was involved; asked who a contributor works with — list here
   by evidence_count. Never merge two records without a person confirming the match, and never write one
   into `users` — set `real` instead and let a person promote it
-storage: { path: data/perspective/world/users, codec: md, shape: file, suffix: user }
+storage: { path: data/perspective/users, codec: md, shape: file, suffix: user }
 id:
   generate: "{{ contributor }}/{{ name | slug }}"
   pattern: "^[a-z0-9-]+/[a-z0-9-]+$"
@@ -28,7 +28,7 @@ schema:
   properties:
     retrospective: { type: string, x-reference: perspective/retrospective-sessions, description: The retrospective session that FIRST wrote this record. }
     last_seen_in: { type: string, x-reference: perspective/retrospective-sessions, description: 'The most recent session that confirmed or updated it. Absent means exactly one session has ever touched it, which is how "new since last time" is answered without a diff.' }
-    contributor: { type: string, pattern: '^[a-z0-9-]+$', description: 'WHOSE this is, as a slug — and the FIRST SEGMENT OF THE ID. That is what makes a second retrospective UPDATE this record instead of writing one beside it. A plain slug rather than a reference, because an id segment cannot be one; the person''s own observed-world record is perspective/world/users/<contributor>/<their-name-slug>.' }
+    contributor: { type: string, pattern: '^[a-z0-9-]+$', description: 'WHOSE this is, as a slug — and the FIRST SEGMENT OF THE ID. That is what makes a second retrospective UPDATE this record instead of writing one beside it. A plain slug rather than a reference, because an id segment cannot be one; the person''s own observed-world record is perspective/users/<contributor>/<their-name-slug>.' }
     name: { type: string, description: The display name, as best the evidence gives it. }
     handles: { type: array, items: { type: string }, description: 'THE MERGE KEY. Every identity this person appears under: git author emails, Asana gids, display-name variants. A reader adds to it; a person may merge two records by moving handles.' }
     # ── THE SHAPE `users` HAS ──────────────────────────────────────────────────────────────────────
@@ -102,7 +102,7 @@ schema:
     sources:
       type: array
       items: { type: string, x-reference: perspective/sources }
-      # The mirror keeps the word `collaborators` on purpose: the collection is `world/users` because
+      # The mirror keeps the word `collaborators` on purpose: the collection is `perspective/users` because
       # that is the noun the real world uses, but what a SOURCE holds is the people observed in it,
       # and `sources.users` would read as the source's own accounts.
       x-inverse: collaborators

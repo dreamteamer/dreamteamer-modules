@@ -23,7 +23,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { DATA, SCRATCH, render, templatize, isoWeek, isoWeekRange, slug } from '../lib/vault.mjs';
-import { recordPath, writeRecord, listRecords, readRecord, contributorOf, writeSource } from '../lib/records.mjs';
+import { recordPath, writeRecord, listRecords, readRecord, contributorOf, writeSource, collectionDir } from '../lib/records.mjs';
 import { commitIntent } from '../lib/commit-intent.mjs';
 
 const argv = process.argv.slice(2);
@@ -77,7 +77,7 @@ const FMT_V2 = '%x01%H%x09%aI%x09%aN%x09%aE%x09%D%x09%s';
 
 let targets = [];
 if (opt('repo-path')) targets = [{ dir: path.resolve(opt('repo-path')), sourceId: `${who()}/git-repo--${slug(path.basename(opt('repo-path')))}`, repo: '' }];
-else for (const f of listRecords(path.join(dataRoot, 'perspective', 'sources', who()))) {
+else for (const f of listRecords(path.join(collectionDir('sources', dataRoot), who()))) {
 	const { fields } = readRecord(f);
 	if (fields.kind === 'git-repo' && fields.reach === 'available' && fields.location) targets.push({ dir: render(fields.location), sourceId: `${who()}/${path.basename(f).replace(/\.source\.md$/, '')}`, repo: fields.repo ?? '' });
 }
@@ -297,7 +297,7 @@ function ownGitIdentities(homeDir) {
 const groups = [];
 let newCollaborators = 0, gatedOut = 0, gatedDeleted = 0, adopted = 0;
 if (v2) {
-	const prior = listRecords(path.join(dataRoot, 'perspective', 'world', 'users', who()))
+	const prior = listRecords(path.join(collectionDir('users', dataRoot), who()))
 		.map((file) => { const { fields, body } = readRecord(file); return { file, fields, body }; });
 	const bound = new Set();
 	for (const a of [...authors.values()].sort((x, y) => y.count - x.count || x.name.localeCompare(y.name))) {
@@ -305,7 +305,7 @@ if (v2) {
 		if (!g) {
 			const hit = prior.find((e) => !bound.has(e.file) && a.email && (e.fields.handles ?? []).includes(a.email))
 				?? prior.find((e) => !bound.has(e.file) && (e.fields.handles ?? []).includes(a.name));
-			const file = hit ? hit.file : recordPath('world/users', `${who()}/${slug(a.name)}`, 'user', dataRoot);
+			const file = hit ? hit.file : recordPath('users', `${who()}/${slug(a.name)}`, 'user', dataRoot);
 			g = groups.find((h) => h.file === file);
 			if (!g) {
 				if (hit) bound.add(hit.file);

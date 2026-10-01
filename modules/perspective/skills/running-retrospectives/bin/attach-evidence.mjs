@@ -22,7 +22,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { DATA, SCRATCH } from '../lib/vault.mjs';
-import { listRecords, readRecord, writeRecord, contributorOf} from '../lib/records.mjs';
+import { listRecords, readRecord, writeRecord, contributorOf, collectionDir, recordId } from '../lib/records.mjs';
 
 const argv = process.argv.slice(2);
 const flag = (n) => argv.includes(`--${n}`);
@@ -53,7 +53,7 @@ const dayOf = (v) => (typeof v === 'string' ? v.slice(0, 10) : '');
 
 const byCandidate = new Map();
 const activities = [];
-for (const file of listRecords(path.join(dataRoot, 'perspective', 'world', 'activities', who()))) {
+for (const file of listRecords(path.join(collectionDir('activities', dataRoot), who()))) {
 	const rec = readRecord(file);
 	activities.push({ file, ...rec });
 	const key = rec.fields.from_candidate;
@@ -64,8 +64,8 @@ for (const file of listRecords(path.join(dataRoot, 'perspective', 'world', 'acti
 
 /** Session ref → its start day, so an item can be placed in a window. */
 const sessionDay = new Map();
-for (const f of listRecords(path.join(dataRoot, 'perspective', 'conversations'))) {
-	const rel = path.relative(path.join(dataRoot, 'perspective', 'conversations'), f).replace(/\.conversation\.md$/, '');
+for (const f of listRecords(collectionDir('conversations', dataRoot))) {
+	const rel = recordId('conversations', f, dataRoot);
 	sessionDay.set(`perspective/conversations/${rel}`, dayOf(readRecord(f).fields.started_at));
 }
 

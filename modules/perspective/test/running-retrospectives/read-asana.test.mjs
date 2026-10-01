@@ -110,7 +110,7 @@ test('writes only the contributor’s tasks as tickets, one source, and every pe
 	assert.equal(sources[0].read_with, 'read-asana@2');
 	assert.deepEqual(sources[0].counts, { users: 2, tasks: 3, with_description: 2, with_comments: 0 });
 
-	const collabs = listRecords(path.join(data, 'perspective', 'world', 'users')).map((f) => readRecord(f).fields);
+	const collabs = listRecords(path.join(data, 'perspective', 'users')).map((f) => readRecord(f).fields);
 	assert.equal(collabs.length, 2, 'every person on the kept evidence — the assignee and the follower');
 	const dev = collabs.find((c) => c.handles.includes('dev@example.test'));
 	assert.equal(dev.retrospective, RETROSPECTIVE);
@@ -132,10 +132,10 @@ test('a second run adds no collaborator and no duplicate handle', () => {
 	const data = path.join(tmp, 'data');
 	writeRecord(recordPath('retrospective-sessions', BASE, 'retrospective-session', data), { contributor: SLUG, handles: ['dana.o@northwind.example'], started: BASE.slice(0, 10), stage: 'installed' });
 	run(fx, data);
-	const first = listRecords(path.join(data, 'perspective', 'world', 'users')).map((f) => readRecord(f).fields);
+	const first = listRecords(path.join(data, 'perspective', 'users')).map((f) => readRecord(f).fields);
 	const out = run(fx, data);
 	assert.match(out, /collaborators \+0 \(=[23] existing\)/);   // matched once per role it is seen in
-	const second = listRecords(path.join(data, 'perspective', 'world', 'users')).map((f) => readRecord(f).fields);
+	const second = listRecords(path.join(data, 'perspective', 'users')).map((f) => readRecord(f).fields);
 	assert.equal(second.length, first.length, 'no second record for the same person');
 	const me = (rows) => rows.find((r) => (r.handles ?? []).some((h) => String(h).toLowerCase() === 'dev@example.test'));
 	assert.deepEqual(me(second).handles, me(first).handles, 'handles are a set, not a log');
@@ -218,7 +218,7 @@ test('a FOLLOWER who is never an assignee still becomes a collaborator', () => {
 	const data = path.join(tmp, 'data');
 	writeRecord(recordPath('retrospective-sessions', BASE, 'retrospective-session', data), { contributor: SLUG, handles: ['dana.o@northwind.example'], started: BASE.slice(0, 10), stage: 'installed' });
 	run(fx, data);
-	const people = listRecords(path.join(data, 'perspective', 'world', 'users')).map((f) => readRecord(f).fields);
+	const people = listRecords(path.join(data, 'perspective', 'users')).map((f) => readRecord(f).fields);
 	const them = people.find((p) => (p.handles ?? []).some((h) => String(h).toLowerCase() === 'other@example.test'));
 	assert.ok(them, 'a follower who assigned nothing is still someone this contributor worked with');
 	assert.deepEqual(them.roles_observed, ['follower']);

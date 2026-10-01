@@ -10,13 +10,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { DATA, isoWeekRange } from '../lib/vault.mjs';
-import { readRecord, writeRecord } from '../lib/records.mjs';
+import { readRecord, writeRecord, collectionDir } from '../lib/records.mjs';
 
 const argv = process.argv.slice(2);
 const flag = (n) => argv.includes(`--${n}`);
 const opt = (n, d = '') => { const i = argv.indexOf(`--${n}`); return i >= 0 && argv[i + 1] ? argv[i + 1] : d; };
 const dataRoot = opt('data-root', DATA);
-const root = path.join(dataRoot, 'perspective', 'activity-weeks');
+const root = collectionDir('activity-weeks', dataRoot);
 
 function* walk(dir) {
 	if (!fs.existsSync(dir)) return;

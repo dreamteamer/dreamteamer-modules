@@ -83,9 +83,7 @@ test('a collection written at every boundary is stated as such in the skill', ()
 });
 
 /** Every descriptor under `collections/perspective/`, by its name RELATIVE to that folder — so
- *  `world/users.collection.yaml` is `world/users`. ⚠ RECURSIVE: a flat readdir stopped seeing the
- *  five `world/*` collections the moment they moved into the namespace, and the orphan gate below
- *  went quiet about exactly the collections this release added. */
+ *  `users.collection.yaml` is `users`. Recursive, so a descriptor in a subfolder is never skipped. */
 function descriptorNames(dir, prefix = '') {
 	return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
 		e.isDirectory() ? descriptorNames(path.join(dir, e.name), `${prefix}${e.name}/`)
@@ -100,11 +98,11 @@ test('no collection is orphaned — every one is written by some stage', () => {
 	assert.deepEqual(orphans, [], `written by no stage: ${orphans.join(', ')}`);
 });
 
-test('world/goals is written by the inferred stage, and by that stage alone', () => {
+test('goals is written by the inferred stage, and by that stage alone', () => {
 	const inferred = rows.find((r) => r.stage === 'inferred');
 	assert.ok(inferred, 'no `inferred` row');
-	assert.match(inferred.writes, /`world\/goals`/);
-	const others = rows.filter((r) => r.stage !== 'inferred' && /`world\/goals`/.test(r.writes));
+	assert.match(inferred.writes, /`goals`/);
+	const others = rows.filter((r) => r.stage !== 'inferred' && /`goals`/.test(r.writes));
 	assert.deepEqual(others.map((r) => r.stage), [], 'goals is inferred from evidence, nowhere else');
 });
 
