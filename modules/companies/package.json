@@ -1,7 +1,7 @@
 {
 	"name": "@dreamteamer/companies",
 	"version": "0.1.0",
-	"description": "Organisations for a dreamteamer workspace — the one record a contact, a meeting, a project, a user or a notebook points at when it names a company.",
+	"description": "Organisations for a dreamteamer workspace — the one record a contact, a meeting, a project or a product points at when it names a company.",
 	"license": "Apache-2.0",
 	"repository": {
 		"type": "git",
@@ -21,7 +21,7 @@
 	],
 	"dreamteamer": {
 		"title": "Companies",
-		"description": "An organisation — `companies`, the thing every other module points at when it names one: a contact works there, a meeting is with it, a project is for it, a user belongs to it, a notebook is about it. A leaf on purpose: six modules reference it and three of them never need a person, so it carries no people, no funnel and no skill. Parent/subsidiary links are its own; `contacts` stamps `companies.contacts` onto it when installed. Logos are `assets`.",
+		"description": "An organisation — `companies`, the one record every module points at when it names one: a contact's employer, a meeting's counterpart, a project's client, a product's customer. Holds the name, what the company does, its website, domain, LinkedIn page and logo, and parent/subsidiary links. With `contacts` installed, each company also lists its people. Logos are `assets` records.",
 		"engine": ">=0.30.0",
 		"dependencies": [
 			"@dreamteamer/assets"
