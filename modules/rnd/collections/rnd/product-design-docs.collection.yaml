@@ -1,0 +1,74 @@
+name: rnd/product-design-docs
+description: >-
+  How a thing should work, decided — the design that implementation follows.
+use_when: >-
+  how something should work is being decided — write the decision here before implementing, and read
+  the existing doc before proposing a change to a product; the workspace's decision log wins when they
+  disagree. A brainstormed spec is a record here, not a file beside the code
+templates: [collection-templates/rnd-provenance]
+storage: { path: data/rnd/product-design-docs, codec: md, shape: file, suffix: product-design-doc}
+id:
+  generate: "{{ created | date }}--{{ name | slug }}"
+  pattern: "^\\d{4}-\\d{2}-\\d{2}--[a-z0-9-]+$"
+schema:
+  type: object
+  required: [name]
+  properties:
+    name:
+      type: string
+      description: What this design is called.
+    description:
+      type: string
+      description: One line on what is being designed.
+    product:
+      type: string
+      x-reference: rnd/products
+      description: The product this design is of. Empty for a design of the workspace itself or of a process.
+    # THE FACTORY CHAIN starts here: references → this doc's design → a prototype → a plan. Each hop is a field,
+    # so `dt next rnd/product-design-docs/<id>` can say which hop is missing (the bindings on this collection).
+    references:
+      type: array
+      items: { type: string, x-reference: rnd/references }
+      description: The references this design was modelled on — what was studied before deciding. `/draft-prd` reads their `prd` fields and this doc's `branding`, and writes the body.
+    branding:
+      type: string
+      format: markdown
+      description: "The brand this design ships under — tokens (palette, type, radius), tone of voice, language and script direction, the logo as an `assets/…` reference. Short; what a prototype needs to look like ours rather than like the reference."
+    plan:
+      type: string
+      description: "The project plan this design was materialised into, as a `<collection>/<id>` string — where the plan module is installed, `projects/<id>`. A plain string because the plan may live in another workspace; `/plan-project` sets it."
+    prototypes:
+      type: array
+      items: { type: string, x-reference: rnd/prototypes }
+      x-inverse-of: rnd/prototypes.design_doc
+      description: GENERATED — the prototypes built from this design. Set `design_doc` on the prototype. A binding reads "non-empty" as "a prototype exists".
+    media_folder:
+      examples: ['${env:FILES_FOLDER}/rnd/product-design-docs/2026-09-10-grantee-portal/media']
+      type: string
+      description: >-
+        Where this record's media lives — explainer videos, audio overviews, decks, infographics, screen
+        recordings — as a FULL `${env:FILES_FOLDER}/rnd/product-design-docs/<this record's id>/media` template, never a machine
+        path; `dt resolve` renders it. The bytes stay OUTSIDE the repo: an `assets` record is a small file the
+        UI draws, this is megabytes for people to watch. What generated each piece, and against which corpus,
+        goes in this record's body — a folder cannot say whether its media is still current.
+    content:
+      type: string
+      format: markdown
+      x-body: true
+      description: The design itself — the intended shape of the thing, and why it is shaped that way. When written from references, the PRD.
+    tags:
+      examples: ['dreamteamer', 'capacity', 'crm']
+      type: array
+      items: { type: string }
+      description: >-
+        Free strings, lowercase and hyphenated. Optionally `key:value` with NO space around the
+        colon (`analysis:meeting-insights`, `enriched:web-search`) — a space makes YAML parse the
+        entry as a map instead of a string. Nothing validates a tag; there is no `tags` collection.
+        Reuse one already in use before inventing one: `dt values <collection> tags` lists them.
+    status:
+      type: string
+      enum: [draft, active, superseded]
+      description: '`active` is the design currently being built to. `superseded` means a later doc won — and the decision log wins over both.'
+order: 30
+list_fields: [name, product, status, last-modified, tags]
+icon: symbol-structure

@@ -1,0 +1,46 @@
+# workflows — A RECURRING ORDERED SEQUENCE, OBSERVED. This is deliberately an entity here and NOT in
+# the engine: the engine has no executable workflow kind (a process is a chain of commands gated on
+# record fields), and perspective records the workflows it OBSERVES precisely so they can become
+# proposed command chains. Steps are the point; a workflow without steps is a finding.
+name: perspective/workflows
+templates: [collection-templates/perspective-provenance, collection-templates/perspective-observation]
+description: A recurring, ordered sequence of steps a contributor was observed performing across several activities.
+use_when: >-
+  the extract stage finds the same step order in three or more activities; a proposal turns one into a
+  skill or a command chain; asked how a contributor actually does a recurring job — the steps are here,
+  the activities that prove them are cited. One with collaborators is a collaborative workflow
+storage: { path: data/perspective/workflows, codec: md, shape: file, suffix: workflow }
+id:
+  generate: "{{ contributor }}/{{ name | slug }}"
+  pattern: "^[a-z0-9-]+/[a-z0-9-]+$"
+schema:
+  type: object
+  required: [retrospective, contributor, name, steps, activities]
+  properties:
+    retrospective: { type: string, x-reference: perspective/retrospective-sessions, description: The retrospective session that FIRST wrote this record. }
+    last_seen_in: { type: string, x-reference: perspective/retrospective-sessions, description: 'The most recent session that confirmed or updated it. Absent means exactly one session has ever touched it, which is how "new since last time" is answered without a diff.' }
+    contributor: { type: string, pattern: '^[a-z0-9-]+$', description: 'WHOSE this is, as a slug — and the FIRST SEGMENT OF THE ID. That is what makes a second retrospective UPDATE this record instead of writing one beside it. A plain slug rather than a reference, because an id segment cannot be one; the person''s own observed-world record is perspective/world/users/<contributor>/<their-name-slug>.' }
+    name: { type: string }
+    steps: { type: array, items: { type: string }, description: 'THE POINT. Ordered, one line each, in the contributor''s vocabulary.' }
+    trigger: { type: string, description: What starts it — a date, an arrival, a request. }
+    activities:
+      type: array
+      items: { type: string, x-reference: perspective/world/activities }
+      x-inverse: workflows
+      description: The activities in which the sequence was observed. Three or more for a pattern.
+    collaborators:
+      type: array
+      items: { type: string, x-reference: perspective/world/users }
+      x-inverse: workflows
+    collaborative: { type: boolean, default: false }
+    frequency: { type: string, description: 'As observed: weekly · per release · per period · ad hoc.' }
+    proposed_as:
+      type: string
+      x-reference: perspective/proposals
+      x-inverse: workflow
+      x-unique: true
+      description: The skill or command proposal this became, if any.
+    content: { type: string, format: markdown, x-body: true }
+list_fields: [name, frequency, collaborative]
+icon: list-ordered
+order: 140   # nav position — the model it reconstructed; the pipeline order, ten apart so one can be inserted without renumbering

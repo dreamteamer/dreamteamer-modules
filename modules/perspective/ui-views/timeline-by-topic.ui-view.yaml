@@ -1,0 +1,41 @@
+# The same activities, banded by SUBJECT rather than by effort. `topics` is a list, so an activity
+# about two things is drawn in both bands — the multi mode, which is what a tags-shaped axis means.
+options:
+  start_field: started
+  end_field: ended
+  group_rows_by_field: topics
+  group_template: '{{ name }}'
+  # A topic has no status and no rollups — what it has is how much evidence carries it and how long
+  # it ran, which is exactly what a collapsed lane needs to be worth opening.
+  group_summary_template: '{{ evidence_count }} pieces of evidence · {{ first_seen }} → {{ last_seen }}'
+  template: '{{ name }}'
+  color_by_field: status
+  page_size: 100000
+  # Carried by hand from an edit made in a CONSUMING workspace on 2026-09-08 — see the ⚠ below.
+  columns:
+    - name
+    - started
+    - ended
+    - status
+    - collaborative
+  sort: -started
+nav:
+  label: Timeline by topic
+  icon: tag
+  order: 2
+path: /timeline/by-topic
+target: list
+collection: collections/perspective/world/activities
+layout: gantt
+
+# ⚠ A `dt ui-views` WRITE FROM A CONSUMING WORKSPACE LANDS IN THE GITIGNORED MODULE CLONE, where the
+# next `git pull` erases it. Found 2026-09-08: an edit to this view — adding the columns and sort
+# above — was committed inside `git_modules/perspective` in a colleague's workspace, invisible to
+# this repo and to every other workspace, and the clone had diverged so the next pull refused
+# outright. The edit was carried here by hand; the clone was reset.
+#
+# ⚠ ONE PART WAS DELIBERATELY NOT CARRIED: that edit also set `filter: started >= 2026-01-01`. This
+# view ships to three workspaces, and a hard date floor in a SHARED view silently hides two
+# colleagues' 2025 work from their own timelines. A personal narrowing belongs in the workspace, not
+# in the module — restore it locally if you want it, and it will be lost on the next pull for
+# exactly the reason above.

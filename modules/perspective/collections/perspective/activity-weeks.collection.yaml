@@ -1,0 +1,138 @@
+# activity-windows — ONE PERIOD × ONE SOURCE, mechanical counts only. The timeline every later
+# report is drawn on. No judged field lives here, ever.
+name: perspective/activity-weeks
+templates: [collection-templates/perspective-provenance]
+description: One ISO week of one source — commits and lines for a repo, sessions and turns for a transcripts tree. Counted, never judged.
+use_when: >-
+  asked what a person's hands have been on and when — filter by source and period; written by
+  read-git and read-claude-transcripts, one record per source per ISO week
+storage: {path: data/perspective/activity-weeks, codec: md, shape: file, suffix: activity-week}
+id:
+  generate: "{{ contributor }}/{{ source | basename }}/{{ period }}"
+  pattern: "^[a-z0-9-]+/[a-z-]+--[a-z0-9-]+/\\d{4}-W\\d{2}$"
+schema:
+  type: object
+  required: [retrospective, contributor, source, period]
+  properties:
+    retrospective: { type: string, x-reference: perspective/retrospective-sessions, description: The retrospective session that FIRST wrote this record. }
+    last_seen_in: { type: string, x-reference: perspective/retrospective-sessions, description: 'The most recent session that confirmed or updated it. Absent means exactly one session has ever touched it, which is how "new since last time" is answered without a diff.' }
+    contributor: { type: string, pattern: '^[a-z0-9-]+$', description: 'WHOSE this is, as a slug — and the FIRST SEGMENT OF THE ID. That is what makes a second retrospective UPDATE this record instead of writing one beside it. A plain slug rather than a reference, because an id segment cannot be one; the person''s own observed-world record is perspective/world/users/<contributor>/<their-name-slug>.' }
+    source: { type: string, x-reference: perspective/sources, description: The source this window counts. }
+    period: { type: string, description: 'ISO week, `2026-W36`. THE FORCING FIELD.' }
+    # ── the week as two dates, so a gantt can draw it ────────────────────────────────────────────
+    # DERIVED from `period`, once, by the reader (`isoWeekRange`) — never typed, never disagreeing with
+    # it. A timeline view needs a start and an end field; `2026-W36` is neither. Monday to Sunday, ISO.
+    start_date: { type: string, format: date, description: 'The Monday of `period`, derived — `2026-08-31` for `2026-W36`. What a gantt starts the bar on.' }
+    end_date: { type: string, format: date, description: 'The Sunday of `period`, derived. What a gantt ends the bar on.' }
+    commits: { type: integer, description: git — commits in the week. }
+    files_changed: { type: integer, description: git — distinct files touched. }
+    lines_added: { type: integer, description: git — from --numstat. }
+    lines_deleted: { type: integer, description: git — from --numstat. }
+    authors: { type: array, items: { type: string }, description: git — distinct author names in the week. }
+    sessions: { type: integer, description: transcripts — conversations that started in the week. }
+    turns_user: { type: integer, description: transcripts — real operator turns, summed from conversation-summaries. }
+    active_minutes: { type: number, description: transcripts — engaged minutes in the week, summed from the conversations that started in it. The honest time number; wall-clock between first and last message is not. }
+    tool_calls: { type: integer, description: transcripts — tool calls in the week. }
+    files_edited: { type: integer, description: transcripts — file-edit calls in the week, summed across sessions rather than deduplicated. }
+    corrections: { type: integer, description: "transcripts — `user_correction` turns in the week. Plotted against `turns_user` this is the curve that is supposed to fall: the same work costing fewer corrections is the whole claim." }
+    interruptions: { type: integer, description: transcripts — times the operator stopped the agent mid-flight this week. }
+    input_words: { type: integer, description: transcripts — words the operator typed this week. The denominator. }
+    output_words: { type: integer, description: transcripts — words of assistant output this week. The numerator, and worthless without `corrections` beside it. }
+    correction_ratio: { type: number, description: "transcripts — the week's corrected words over its produced words, computed from the weekly SUMS, never averaged across sessions. ⚠ Direction is the metric: falling is improvement, rising means the output got cheaper to produce and worse." }
+    lines_new:
+      type: integer
+      description: "git — lines added in files that did not exist before this week. CURVE ONE of the pair the operator dictated at the 2026-09-06 weekly session: new code lines over time. ⚠ Distinct from `lines_added`, which counts every insertion including edits to existing files; the two curves only separate if this one does."
+    lines_modified:
+      type: integer
+      description: "git — lines changed inside files that already existed. CURVE TWO: existing code lines changed over time. The expected shape, in his words: at the start you produce a lot of code, then you produce little, then you edit a lot, then you edit little, and then you stop producing and stop editing. ⚠ When both curves FLATTEN the project is converging — that is what done looks like."
+    modules_touched:
+      type: array
+      items:
+        type: string
+      description: git — which modules the week's commits landed in. The first of the three dimensions the two curves are sliced by (module · author · bug vs change-request).
+    commits_bug:
+      type: integer
+      description: "git — commits attributable to a DEFECT. The expensive dimension, and the operator said how to get it: dump the ticketing system's tickets to a folder and lay them on the same timeline, so a change can be attributed to a bug or to a requirement shift."
+    commits_change_request:
+      type: integer
+      description: "git — commits attributable to a REQUIREMENT SHIFT rather than a defect. Read beside `commits_bug`: a converging project's remaining changes should be requirement-driven, and a rising bug share late is the alarm."
+    tokens_input:
+      type: integer
+      description: transcripts — input tokens spent in the week, summed from the conversations that started in it. Tokens over time, daily or weekly buckets, from the 2026-09-06 session.
+    tokens_output:
+      type: integer
+      description: "transcripts — output tokens spent in the week. ⚠ The operator's own argument for why this matters LESS than turns: it is fine if it burns a billion tokens once — out comes the code, thank you. But if you had to talk to it a thousand times."
+    tokens_cache_read:
+      type: integer
+      description: "transcripts — cached input tokens re-read this week. ⚠ Nearly the whole input bill: `tokens_input` alone is the uncached remainder and reads two orders of magnitude too low."
+    tokens_cache_write:
+      type: integer
+      description: transcripts — tokens spent writing context into the cache this week.
+    tokens_total:
+      type: integer
+      description: "transcripts — what the week burned, all four components summed. The tokens-over-time curve is drawn on THIS, not on `tokens_input`."
+    # ── the artefact axis (read-drive@1) ─────────────────────────────────────────────────────────
+    # A week of a document-shaped contributor has no commits and no sessions in it. ABSENT here means
+    # the reader did not run, never that the week was idle — the same rule every other counted field
+    # on this record obeys, and the one that matters most for a person whose trail is not a repo.
+    files_touched:
+      type: integer
+      description: >-
+        drive · obsidian — files in an artefact store this contributor modified during the week. ⚠ The
+        ceiling differs by store and the source says which: on Drive it means modified LAST and is never
+        proof of authorship (one last-modifier per file); in a personal notes vault there is only one
+        author, so it is authorship — but the clock is the filesystem's mtime and nothing finer exists.
+    words_written:
+      type: integer
+      description: >-
+        obsidian — words in the notes touched this week. ⚠ Deliberately NOT `input_words` or
+        `output_words`: those are one side of a conversation with an agent, and a note is neither. The
+        question this answers is the one a notes vault exists to answer — how much of the thinking
+        happened somewhere no commit and no transcript can see.
+    bytes_touched:
+      type: integer
+      description: drive — their total size. A blunt proxy for weight, kept because a 40 MB deck and a 2 KB note are plainly not the same week's work, and nothing finer is available without a request per file.
+    # ── the correspondence axis (read-gmail@1) ───────────────────────────────────────────────────
+    threads_touched:
+      type: integer
+      description: gmail — distinct mail threads the contributor SENT a message in during the week. Correspondence load, not output.
+    messages_sent:
+      type: integer
+      description: gmail — messages the contributor sent in the week. Read beside `threads_touched` — many messages on few threads is one argument, few on many is a broadcast.
+    # ── the calendar axis (read-meetings@1) ──────────────────────────────────────────────────────
+    # A week of a meeting-shaped contributor has no commits, no sessions and no documents in it, and
+    # was until now indistinguishable from a week they did not work. ABSENT still means the reader
+    # did not run — never that the week was idle.
+    meetings_attended:
+      type: integer
+      description: >-
+        meetings — meetings in the week the contributor is on. ⚠ ATTENDED, not participated: the
+        evidence is an invite, so this counts rooms they were in and says nothing about whether they
+        spoke, prepared or wanted to be there. Read beside `meeting_minutes`, which is the load.
+    meeting_minutes:
+      type: integer
+      description: >-
+        meetings — scheduled minutes those meetings took, summed from each meeting's `starts` and
+        `ends`. ⚠ SCHEDULED, not spent: a call that ran over or ended early leaves no trace in the
+        calendar. Absent (never 0) when the meetings carry no end time — that is the calendar being
+        unable to say, not a week of zero-length meetings.
+    meeting_counterparts:
+      type: integer
+      description: >-
+        meetings — distinct other attendees across the week's meetings, counted through their
+        `contacts` records. An attendee with no email is not counted, because it is not a person this
+        module can key; the source's `counts.attendees_without_an_email` says how many were dropped.
+    converging:
+      type: boolean
+      description: "JUDGED — whether both code curves flattened this week. The finish line, in his words: when they flatten, you know you have finished. ⚠ Judged over TIME, never day to day — if you changed a thousand lines today and a hundred yesterday, something happened, and you are not converging."
+    summary:
+      type: string
+      description: "JUDGED — what happened in this source's week, in a few sentences, generated from the SUMMARIES of the activities overlapping it (never from the raw evidence). The one field on this collection that is not counted: everything else here is mechanical, and this exists so a timeline can be read rather than decoded. Absent when the week has no activities — an empty week is silence, not a sentence about silence."
+    content:
+      type: string
+      format: markdown
+      x-body: true
+      description: Rarely used — a note on an anomalous week.
+list_fields: [source, period, start_date, commits, sessions, turns_user, files_touched]
+icon: graph-line
+order: 40   # nav position — the evidence it condensed; the pipeline order, ten apart so one can be inserted without renumbering

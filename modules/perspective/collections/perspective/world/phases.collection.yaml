@@ -1,0 +1,106 @@
+# world/phases — A STRETCH OF AN EFFORT'S HISTORY, OBSERVED. The era the evidence shows a project
+# passing through: the months it was being explored, the months it was being built, the months it was
+# being hardened. Read out of the activity curve and the commit shape, never declared.
+#
+# ⚠ THE OBSERVED HALF OF `phases`, IN THE SAME SHAPE AND IN A SEPARATE STORE — the argument is
+# written out once, on `world/users.real`.
+#
+# ⚠ WHY IT IS NOT ALREADY `world/projects.lifecycle_stage`, which is the fair question. That field
+# says which stage the project is in NOW — one value, the current one. It cannot say that the project
+# explored from January to March, built from March to August and has been hardening since, because a
+# scalar holds one answer and the interesting thing about a lifecycle is its SHAPE. Before this
+# collection existed, that shape could only live as prose in the project body, where nothing could
+# sort it, nothing could put it on a timeline, and no second run could tell that a stage boundary had
+# MOVED. Each phase here is one segment of that curve with its own dates.
+#
+# ⚠ AND THE DIFFERENCE FROM THE REAL COLLECTION IS `starts` VERSUS `started`, as it is everywhere in
+# this namespace: a planner DECIDES that Discovery runs to March, and a run READS that the exploring
+# stopped in March. Same shape, opposite tense, and `real` is where the two meet — a planned phase
+# and an observed one that disagree by six weeks is one of the most useful findings a retrospective
+# produces, and it exists only because the two are separate records.
+name: perspective/world/phases
+templates: [collection-templates/perspective-provenance, collection-templates/perspective-observation]
+description: >-
+  A stretch of one observed effort's history — the era the evidence shows it passing through, with its own
+  dates. The observed half of `phases`, and the shape `world/projects.lifecycle_stage` can only hold one
+  value of.
+use_when: >-
+  the projects pass has written `world/projects` and its curves show the effort changing character — a stretch
+  of exploring, then of building, then of hardening. Write one record per segment, with the dates the curve
+  actually turns; asked "how did this project move" or "when did it stop being exploratory", read here in
+  date order. ⚠ Never a phase per month and never a phase per activity: a segment earns a record when the
+  CHARACTER of the work changed, and a run that cannot see a turn writes one phase for the whole span, which
+  is honest. ⚠ Never write `real` — the join to a planned phase is a proposal a person confirms
+storage: { path: data/perspective/world/phases, codec: md, shape: file, suffix: phase }
+id:
+  generate: "{{ contributor }}/{{ started | date }}--{{ name | slug }}"
+  pattern: "^[a-z0-9-]+/\\d{4}-\\d{2}-\\d{2}--[a-z0-9-]+$"
+schema:
+  type: object
+  required: [retrospective, contributor, name, project, started]
+  properties:
+    retrospective: { type: string, x-reference: perspective/retrospective-sessions, description: The retrospective session that FIRST wrote this record. }
+    last_seen_in: { type: string, x-reference: perspective/retrospective-sessions, description: 'The most recent session that confirmed or updated it. Absent means exactly one session has ever touched it, which is how "new since last time" is answered without a diff.' }
+    contributor: { type: string, pattern: '^[a-z0-9-]+$', description: 'WHOSE this is, as a slug — and the FIRST SEGMENT OF THE ID. That is what makes a second retrospective UPDATE this record instead of writing one beside it. A plain slug rather than a reference, because an id segment cannot be one; the person''s own observed-world record is perspective/world/users/<contributor>/<their-name-slug>.' }
+    name:
+      type: string
+      description: >-
+        What the person would call this stretch, in their own vocabulary — "the rewrite", "the pilot",
+        "after the audit". Not the lifecycle value: `stage` below carries that, and a phase named "building"
+        is a label where a name was wanted.
+    project:
+      type: string
+      x-reference: perspective/world/projects
+      x-inverse:
+        field: phases
+        description: The eras this effort passed through, earliest first — generated from `world/phases.project`.
+      description: >-
+        The observed effort this stretch belongs to. REQUIRED, exactly as it is on the real collection — an era
+        is one effort's own history, and a stretch spanning two efforts is two records. RE-POINTED into this
+        layer, like every structural reference here.
+    started:
+      type: string
+      format: date
+      description: >-
+        REQUIRED. The first evidence date of the stretch — past tense, and the ORDER, which is why this
+        collection ships no `order` field any more than the real one does.
+    ended:
+      type: string
+      format: date
+      description: Last evidence date of the stretch. ABSENT means it is the era still running, which is the normal state of exactly one phase per project.
+    stage:
+      type: string
+      enum: [exploring, building, hardening, maintaining, converged, abandoned]
+      description: >-
+        WHAT KIND OF ERA, from the curves — the same vocabulary as `world/projects.lifecycle_stage`, which is
+        this project's CURRENT one and is therefore the `stage` of its latest phase. Deliberately identical
+        values so the two can be checked against each other. ⚠ `converged` and `abandoned` look identical in
+        the numbers (both curves flat, the work stopped) and are told apart only by what the evidence SAYS;
+        where you cannot tell, `maintaining` is the honest answer.
+    turn:
+      type: string
+      description: >-
+        WHAT CHANGED AT THE START OF THIS STRETCH, in one line — the event or the shift in the curves that
+        made it a new era. THE FORCING FIELD: a phase whose turn cannot be named is not a phase, it is a
+        slice of the calendar, and writing it costs the reader a boundary they then trust.
+    real:
+      type: string
+      x-reference: phases
+      x-reference-soft: true
+      description: >-
+        The `phases` record this observed era appears to BE — the one-way, soft join to the stretch a planner
+        wrote. A PROPOSAL, set only on a confirmed match, and the most valuable disagreement in the module:
+        a planned Discovery ending in March beside an observed exploring that ran to May is the schedule
+        slipping, visible as data. The argument for one-way and for soft is written out once, on
+        `perspective/world/users.real`.
+    content:
+      type: string
+      format: markdown
+      x-body: true
+      description: >-
+        What this era was like and HOW the boundary was decided — which numbers turned, by how much, and what
+        the evidence says happened. Every figure quoted here must be one the rollup measured; a number in this
+        body that is in no record is a number nobody measured.
+list_fields: [name, project, stage, started, ended, turn, real]
+icon: history   # the era as it actually ran; `calendar` is the stretch a planner scheduled
+order: 92   # nav position — between `world/projects` at 90 and `world/activity-lanes` at 95

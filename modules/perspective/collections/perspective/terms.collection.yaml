@@ -1,0 +1,151 @@
+# terms — A WORD THE EVIDENCE ACTUALLY USES. The concrete half of the vocabulary: one surface form, as
+# it is literally written, with every spelling it appears under and a count of how often.
+#
+# ⚠ WHY THIS IS NOT `concepts`, and the split is the whole point of the pair. Before 2026-09-11 there
+# was one collection doing both jobs, and it could not do either well:
+#
+#   A TERM IS OBSERVED. It is a token somebody typed — `RBAC`, `the RBAC thing`, `role gate`.
+#   Identifying it is nearly mechanical: it recurs, here is where, here is how often. Three spellings
+#   of one idea are THREE terms, because that is what the evidence contains.
+#   A CONCEPT IS ABSTRACTED. It is the meaning those terms share, written once, with a definition and
+#   links out to the concrete things it names. Three terms, ONE concept.
+#
+# Collapsing them forced a choice nobody should have to make: either write one `concepts` record per
+# spelling (and get a glossary with three near-duplicate entries, which the descriptor's own
+# `use_when` then had to warn against) or write one and silently drop the two spellings the person
+# also uses — losing the ability to find the other two in the evidence at all.
+#
+# ⚠ SO THE PIPELINE IS TWO STEPS AND THE ORDER IS FIXED: the run IDENTIFIES terms (mechanically, from
+# frequency and recurrence, at the read and extract stages), then CLASSIFIES them — pointing each at
+# the concept it expresses, minting the concept where none fits. A term with no `concept` is not a
+# defect; it is a term that has been SEEN and not yet UNDERSTOOD, and how many of those are left is
+# the honest measure of how far the vocabulary pass actually got. That is what `classification`
+# below reports, and a run that hides them by inventing a concept per term is the failure this
+# collection exists to make visible.
+name: perspective/terms
+templates: [collection-templates/perspective-provenance, collection-templates/perspective-observation]
+description: >-
+  A word or phrase a contributor's evidence actually uses, with every spelling it appears under and where.
+  The CONCRETE half of the vocabulary — `concepts` is the abstract meaning several terms share.
+use_when: >-
+  a word recurs in sessions, tickets, commits or documents and is worth keeping as vocabulary — write it here
+  FIRST, verbatim, with its spellings and counts, before deciding what it means. Then classify it: point
+  `concept` at the meaning it expresses, minting a `concepts` record only when none of the existing ones fits.
+  Asked "what does this person call things" or "where is this word used", list here. ⚠ Three spellings of one
+  idea are THREE terms and ONE concept — never one term per meaning, and never a concept per spelling. A term
+  left `identified` is honest: it says the vocabulary pass saw the word and has not yet settled what it means
+storage: { path: data/perspective/terms, codec: md, shape: file, suffix: term }
+# ⚠ THE SLUG COMES FROM `key`, NOT FROM `name`, AND HERE IT MATTERS MOST. `name` is the term
+# EXACTLY as the evidence writes it — which in a Hebrew-speaking contributor's corpus is Hebrew,
+# and the engine's `slug` filter is `slugOrHash`: it does not fail, it returns `x000w6xq`. That
+# destroys the one property this collection exists for — that a term can be grepped for in the
+# corpus it came from. Measured 2026-09-12: 22 of 35 terms hashed on the first write. `key` is a
+# latin handle (a transliteration or a gloss); `name` stays verbatim.
+id:
+  generate: "{{ contributor }}/{{ key }}"
+  pattern: "^[a-z0-9-]+/[a-z0-9-]+$"
+schema:
+  type: object
+  required: [retrospective, contributor, key, name, classification]
+  properties:
+    retrospective: { type: string, x-reference: perspective/retrospective-sessions, description: The retrospective session that FIRST wrote this record. }
+    last_seen_in: { type: string, x-reference: perspective/retrospective-sessions, description: 'The most recent session that confirmed or updated it. Absent means exactly one session has ever touched it, which is how "new since last time" is answered without a diff.' }
+    contributor: { type: string, pattern: '^[a-z0-9-]+$', description: 'WHOSE this is, as a slug — and the FIRST SEGMENT OF THE ID. That is what makes a second retrospective UPDATE this record instead of writing one beside it. A plain slug rather than a reference, because an id segment cannot be one; the person''s own observed-world record is perspective/world/users/<contributor>/<their-name-slug>.' }
+    key: { type: string, pattern: '^[a-z0-9][a-z0-9-]*$', title: Key, description: 'The latin handle that becomes the id — a transliteration (`faza`) or a gloss (`vesting`). It exists ONLY because `name` is verbatim and may be in any script; it is never shown to a reader and never replaces the term.' }
+    # ── THE SURFACE FORM, VERBATIM ────────────────────────────────────────────────────────────────
+    name:
+      type: string
+      description: >-
+        The term EXACTLY as the evidence writes it, including case and punctuation — `RBAC`, `mono-repo`,
+        `the role gate`. ⚠ Never normalised, never translated, never expanded: the whole value of this
+        collection is that it can be grepped for in the corpus it came from. A tidied-up spelling is a
+        different term the person never used.
+    spellings:
+      type: array
+      items: { type: string }
+      description: >-
+        OTHER surface forms of THIS same term that a reader should also match on — a plural, a casing, an
+        abbreviation, the same word in another script. ⚠ Not other terms for the same idea: those are their
+        own records, joined through the shared `concept`. The test is whether a person would call it the
+        same word or a different word for the same thing.
+    # ── THE CLASSIFICATION STEP, AND WHAT IT REPORTS HONESTLY ─────────────────────────────────────
+    concept:
+      type: string
+      x-reference: perspective/concepts
+      x-inverse:
+        field: terms
+        description: The words the evidence actually uses for this meaning — generated from `terms.concept`.
+      description: >-
+        The meaning this word expresses. MANY TERMS TO ONE CONCEPT, always — that cardinality is the reason
+        the two collections exist. EMPTY IS A MEANING and it is the honest state of a term the run has seen
+        and not yet understood; read `classification` beside it. ⚠ Mint a new concept only when no existing
+        one fits: a concept per term is the glossary this split was made to stop.
+    classification:
+      type: string
+      enum: [identified, classified, ambiguous, discarded]
+      default: identified
+      description: >-
+        HOW FAR THE VOCABULARY PASS GOT WITH THIS WORD. `identified` — seen and counted, meaning not settled
+        (and `concept` is therefore empty). `classified` — pointed at the concept it expresses; requires
+        `concept`, and `bin/check-records.mjs` refuses the pair without it. `ambiguous` — the same word is
+        used for two different things and a person has to say which, so it generates a gap question rather
+        than a guess. `discarded` — looked like vocabulary and is not: a project name, a person's initials,
+        a library the person never talks about. ⚠ The count of `identified` terms left at the end of a run is
+        the measure of how complete the vocabulary is; a run that drives it to zero by minting a concept per
+        term has not understood more, it has only hidden the residue.
+    # ── WHERE IT IS USED ──────────────────────────────────────────────────────────────────────────
+    # ⚠ THE LOAD-BEARING EDGE, AND IT IS SELECTIVE. `concepts.classifies` says which observed objects a
+    # MEANING is about; this says which ones a WORD is actually load-bearing in. Not every incidental
+    # mention — a term that appears in ninety activities is a stopword in this person's world and
+    # linking all ninety makes the mirror useless on every one of them. Link it where the record
+    # cannot be understood without the word.
+    mentions:
+      type: array
+      items:
+        type: string
+        x-reference:
+          - perspective/world/users
+          - perspective/world/projects
+          - perspective/world/phases
+          - perspective/world/activity-lanes
+          - perspective/world/activities
+          - perspective/world/tasks
+          - perspective/world/goals
+          - perspective/world/decisions
+          - perspective/world/deliverables
+        x-inverse:
+          field: terms
+          description: The words this record cannot be read without — generated from `terms.mentions`.
+      description: >-
+        The observed-world records this word is LOAD-BEARING in — where a reader who does not know the word
+        cannot understand the record. ⚠ Selective on purpose: a term used everywhere is this person's
+        vocabulary rather than this record's, and linking every incidental use makes the generated `terms`
+        mirror worthless on every record that has one. All targets are collections THIS module owns, so the
+        mirror is never a write into somebody else's schema.
+    # ── HOW OFTEN, AND WHEN ───────────────────────────────────────────────────────────────────────
+    occurrences:
+      type: integer
+      description: >-
+        How many times the term (including its `spellings`) appears across the evidence. MECHANICAL — counted,
+        never estimated. THE FORCING FIELD of this collection, exactly as `evidence_count` is on `findings`:
+        a word used twice is a coincidence, and the threshold for keeping one at all is three.
+    first_used: { type: string, format: date, description: Earliest evidence the term appears in. }
+    last_used: { type: string, format: date, description: 'Latest evidence it appears in. Read beside `first_used`: a term with a recent `first_used` is new vocabulary, and one whose `last_used` is months old has fallen out of use — both are findings.' }
+    origin:
+      type: string
+      enum: [workspace, conversation, ticket, commit, interview, email, meeting, document]
+      description: Where the term was FIRST found. `workspace` = a collection, skill or command this workspace already defines, which is how `init` seeds the vocabulary a person inherited rather than coined.
+    source_ref: { type: string, description: 'For origin `workspace`: the entity that defines it, e.g. collections/finance/vat-periods. Otherwise the first artefact it was seen in.' }
+    evidence: { type: array, items: { type: string }, description: Qualified refs to the conversations, tickets, commits or answered questions the term was used in. A sample is fine where `occurrences` is large; say so in the body. }
+    content:
+      type: string
+      format: markdown
+      x-body: true
+      description: >-
+        HOW THE WORD IS ACTUALLY USED — quoted uses, in the person's own sentences, and what the surrounding
+        text shows it to mean. This is the raw material the `concepts` definition is written FROM, which is
+        why the quotes live here and the definition lives there. A body that only restates the name is a term
+        nobody can classify later.
+list_fields: [name, classification, concept, occurrences, first_used, last_used]
+icon: quote   # the word as somebody said it; `symbol-keyword` is the meaning behind it
+order: 115   # nav position — just before `concepts` at 120, because a term is identified before it is classified

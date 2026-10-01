@@ -1,0 +1,64 @@
+name: rnd/research-docs
+description: >-
+  A finding gathered from OUTSIDE sources — what was read, and what it settles.
+use_when: >-
+  before researching anything — search here first, it may be settled; after reading OUTSIDE sources,
+  write what was read and what it settles here, and hand what it could not settle to
+  `rnd/open-questions`
+templates:
+  - collection-templates/rnd-provenance
+storage:
+  path: data/rnd/research-docs
+  codec: md
+  shape: file
+  suffix: research-doc
+id:
+  generate: '{{ created | date }}--{{ name | slug }}'
+  pattern: ^\d{4}-\d{2}-\d{2}--[a-z0-9-]+$
+schema:
+  type: object
+  required:
+    - name
+  properties:
+    name:
+      type: string
+      description: What was researched.
+    description:
+      type: string
+      description: One line on the question this went after.
+    project:
+      # Same repoint as `rnd/products.project`, and the `x-inverse` goes with it: a mirror would
+      # generate a `research` field onto the plan module's `projects`, which this module does not
+      # own. A peer excuses a reference, never a mirror.
+      type: string
+      x-reference: projects
+      description: The delivery plan this finding was gathered for — empty for research that answers no particular plan.
+    media_folder:
+      examples: ['${env:FILES_FOLDER}/rnd/research-docs/2026-09-10-grantee-portals/media']
+      type: string
+      description: >-
+        Where this record's media lives — explainer videos, audio overviews, decks, infographics, screen
+        recordings — as a FULL `${env:FILES_FOLDER}/rnd/research-docs/<this record's id>/media` template, never a machine
+        path; `dt resolve` renders it. The bytes stay OUTSIDE the repo: an `assets` record is a small file the
+        UI draws, this is megabytes for people to watch. What generated each piece, and against which corpus,
+        goes in this record's body — a folder cannot say whether its media is still current.
+    content:
+      type: string
+      format: markdown
+      x-body: true
+      description: The findings, with the sources they rest on.
+    tags:
+      examples: ['dreamteamer', 'harbor-mutual', 'karpathy-gist-2026']
+      type: array
+      items:
+        type: string
+      description: >-
+        Free strings, lowercase and hyphenated. Optionally `key:value` with NO space around the colon
+        (`analysis:meeting-insights`, `enriched:web-search`) — a space makes YAML parse the entry as a map instead of a
+        string. Nothing validates a tag; there is no `tags` collection. Reuse one already in use before inventing one: `dt values <collection> tags` lists them.
+list_fields:
+  - name
+  - last-modified
+  - tags
+icon: references   # frees `beaker` for the experiment that earns it; a research doc is what it cites
+order: 50

@@ -1,0 +1,34 @@
+# topics — WHAT THE WORK IS ABOUT. A recurring subject, found by clustering sessions, commits and
+# tickets. Distinct from concepts: a topic is a thing you work ON, a concept is a word you use.
+name: perspective/topics
+templates: [collection-templates/perspective-provenance, collection-templates/perspective-observation]
+description: A recurring subject a contributor's work is about — the axis activities cluster on.
+use_when: >-
+  the cluster stage names what a group of sessions and commits share; an activity, decision or finding
+  needs its subject; a gantt or a report groups by topic. Search here before creating one — aliases
+  exist so 'vat close' and 'the VAT return' are one topic
+storage: { path: data/perspective/topics, codec: md, shape: file, suffix: topic }
+id:
+  generate: "{{ contributor }}/{{ name | slug }}"
+  pattern: "^[a-z0-9-]+/[a-z0-9-]+$"
+schema:
+  type: object
+  required: [retrospective, contributor, name]
+  properties:
+    retrospective: { type: string, x-reference: perspective/retrospective-sessions, description: The retrospective session that FIRST wrote this record. }
+    last_seen_in: { type: string, x-reference: perspective/retrospective-sessions, description: 'The most recent session that confirmed or updated it. Absent means exactly one session has ever touched it, which is how "new since last time" is answered without a diff.' }
+    contributor: { type: string, pattern: '^[a-z0-9-]+$', description: 'WHOSE this is, as a slug — and the FIRST SEGMENT OF THE ID. That is what makes a second retrospective UPDATE this record instead of writing one beside it. A plain slug rather than a reference, because an id segment cannot be one; the person''s own observed-world record is perspective/world/users/<contributor>/<their-name-slug>.' }
+    name: { type: string }
+    aliases: { type: array, items: { type: string }, description: Other spellings the evidence uses for the same subject. }
+    evidence_count: { type: integer, description: Distinct sessions, commits and tickets about it. }
+    first_seen: { type: string, format: date }
+    last_seen: { type: string, format: date }
+    concepts:
+      type: array
+      items: { type: string, x-reference: perspective/concepts }
+      x-inverse: topics
+      description: Terms of the DSL that belong to this subject.
+    content: { type: string, format: markdown, x-body: true }
+list_fields: [name, evidence_count, first_seen, last_seen]
+icon: tag
+order: 100   # nav position — the model it reconstructed; the pipeline order, ten apart so one can be inserted without renumbering

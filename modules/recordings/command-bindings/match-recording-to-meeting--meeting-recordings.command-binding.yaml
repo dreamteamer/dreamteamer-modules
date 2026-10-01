@@ -1,0 +1,13 @@
+command: commands/match-recording-to-meeting
+collection: collections/meeting-recordings
+target: record
+# unmatched recordings only — the absence of the ref IS the queue
+can-enter:
+  meeting:
+    _empty: true
+# and the ref's presence is the post-condition. `check`'s x-inverse rule guarantees the other
+# direction was written too, so this single-sided predicate is sound.
+can-exit:
+  meeting:
+    _nempty: true
+description: link this recording to the meeting it records

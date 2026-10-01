@@ -1,0 +1,261 @@
+# A persona here is NOT a merged character. It is a NAMED PANEL of real people, each grounded in
+# their own verbatim quotes. When consulted, every member answers from THEIR OWN quotes separately
+# and the persona's answer is the spread across members — computed outside the model.
+#
+# Why: agents grounded in a person's own words score ~0.83 against that person's own test-retest
+# consistency; agents built from segment attributes score worse than a lookup table and inflate
+# demographic->attitude coupling ~40x. Averaging people into one voice moves from the regime that
+# works into the regime that fails, and makes the artifact unfalsifiable — a merged voice has no
+# held-out answers to test against. (Park et al. 2411.10109; benchmark 2607.26348.)
+#
+# Two hard rules the schema exists to enforce:
+#   1. NO CLAIM WITHOUT A QUOTE. Every substantive field cites `quotes`.
+#   2. NO ANSWER OUTSIDE `coverage`. Asked something the evidence does not cover, a persona must
+#      refuse. Personas fabricate plausible-but-wrong answers ~52% of the time on out-of-coverage
+#      questions, and "react to this product idea" is precisely the shape that triggers it.
+name: rnd/personas
+description: >-
+  A named PANEL of real people, each grounded in their own verbatim quotes — never a merged character. Its
+  answer is the spread across members.
+use_when: >-
+  asked how a market, a role or a client type would react — read the panel here and answer as the
+  SPREAD of its members; build or extend a panel only from verbatim quotes of real people
+templates: [collection-templates/rnd-provenance]
+storage: { path: data/rnd/personas, codec: md, shape: file, suffix: persona}
+id:
+  generate: "{{ name | slug }}"
+  pattern: "^[a-z0-9-]+$"
+schema:
+  type: object
+  required: [name, segment_rule, members]
+  properties:
+    name:
+      type: string
+      description: A role-and-situation label, never a fake human name. A fake name invites the model to invent a biography.
+    description:
+      type: string
+      description: One line — who they are and what they are trying to get done.
+
+    # ---- SCOPE ----
+    segment_rule:
+      type: string
+      description: The explicit inclusion/exclusion predicate. Without it you cannot say who this persona is NOT, and cannot hold anyone out to test it.
+
+    members:
+      type: array
+      description: The real people this panel is made of. Consulting the persona means querying each of these separately from their own quotes — never as a blend.
+      items:
+        type: object
+        properties:
+          person: { type: string, description: 'The real person, as `<collection>/<id>` — `contacts/<id>` where the contacts module is installed. ⚠ A PLAIN string, not a reference: a panel member may live in another workspace, so the value keeps its ref shape without being validated.' }
+          role: { type: string, description: Their job at the time of the evidence. }
+          weight: { type: string, description: How much this member carries the panel — thick, moderate or thin evidence. }
+
+    n_meetings:
+      type: number
+      description: How many distinct recorded conversations back this persona. Provenance minimum.
+    evidence_range:
+      type: string
+      description: The date span the evidence was collected over. This is also the staleness signal.
+
+    # ---- EVIDENCE ----
+    quotes:
+      type: array
+      description: The verbatim quote bank. Everything else in this record is derived from it, and nothing may exist without it.
+      items:
+        type: object
+        properties:
+          text: { type: string, description: Word-for-word. Never paraphrased, never tidied. }
+          speaker: { type: string, description: 'Which real person said it, as `<collection>/<id>`. Plain string for the same reason as `members[].person`.' }
+          source: { type: string, description: 'The record it came from, as `<collection>/<id>`. Plain string — the evidence may live in another workspace.' }
+          topic: { type: string, description: What it is about — the retrieval key for coverage checks. }
+          reveals: { type: string, description: What it shows about how they think. }
+          tier:
+            type: string
+            enum: [verbatim, translated, rendered]
+            description: 'verbatim = the speaker''s own words with reliable attribution. translated = accurate content, our translation. rendered = a summarizer''s English of degraded ASR — evidence of position, NEVER of phrasing.'
+
+    coverage:
+      type: object
+      description: What the evidence actually covers. The substrate for abstention — a persona asked outside this must refuse rather than answer.
+      properties:
+        covered: { type: array, items: { type: string }, description: Topics with real, repeated evidence. }
+        thin: { type: array, items: { type: string }, description: Topics with one weak signal. Answer with a stated caveat. }
+        absent: { type: array, items: { type: string }, description: Topics with nothing. Refuse — do not infer. }
+
+    claim_support:
+      type: array
+      description: Frequency, not vibes. "3 of 7 said this" is usable; "users say" is not.
+      items:
+        type: object
+        properties:
+          claim: { type: string }
+          said_by: { type: number, description: How many members said it. }
+          asked: { type: number, description: How many members were actually in a position to say it. }
+
+    # ---- SUBSTANCE (each item should trace to a quote) ----
+    jobs: { type: array, items: { type: string }, description: Jobs to be done, in their terms. }
+    pains: { type: array, items: { type: string }, description: Specific real problems they described. Not "needs organization". }
+    objections: { type: array, items: { type: string }, description: What they push back with. The persona MUST raise these — the anti-sycophancy field. }
+    decision_criteria: { type: array, items: { type: string }, description: What they actually judge a tool on, in priority order. }
+    triggers: { type: array, items: { type: string }, description: The events that send them looking. These predict more than attitudes do. }
+    tools: { type: array, items: { type: string }, description: What they use today, including the workarounds. The real competitor is usually a folder. }
+    constraints: { type: array, items: { type: string }, description: Compliance, security review, procurement, time, buy-in, budget. Constraints are checkable against reality; opinions are not. }
+
+    vocabulary:
+      type: object
+      description: Cheap and high-signal. The negative list is what stops generic-LLM register bleeding in.
+      properties:
+        their_words: { type: array, items: { type: string } }
+        never_says: { type: array, items: { type: string } }
+
+    dissent:
+      type: array
+      description: Minority and contradicting positions, with the person attached. Preserves the outlier that averaging would destroy — and the outlier is usually the interesting one.
+      items:
+        type: object
+        properties:
+          position: { type: string }
+          person: { type: string, description: 'Who holds it, as `<collection>/<id>`. Plain string — see `members[].person`.' }
+          quote: { type: string }
+
+    # ---- THEORY OF MIND: reproduce the reasoning, not just the opinions ----
+    reasoning_style:
+      type: string
+      description: HOW they think. Do they argue from risk, cost, their team, hands-on experience, or status? Fast or slow to commit? Concrete or abstract?
+    beliefs:
+      type: array
+      items: { type: string }
+      description: What they hold true about AI, agents and tools — INCLUDING where they are demonstrably wrong. A persona that only holds correct beliefs is not the person.
+    over_weights:
+      type: array
+      items: { type: string }
+      description: What they consistently give too much weight when judging a tool.
+    under_weights:
+      type: array
+      items: { type: string }
+      description: What they consistently miss or dismiss.
+    unstated_assumptions:
+      type: array
+      items: { type: string }
+      description: What they take for granted without ever saying it.
+    would_never:
+      type: array
+      items: { type: string }
+      description: Things this persona would never say, want or do. The behavioural anchor against a persona that agrees with everything.
+
+    adopt_signals: { type: array, items: { type: string }, description: What would actually make them adopt. }
+    refuse_signals: { type: array, items: { type: string }, description: What would make them walk away. }
+
+    technical_level:
+      type: string
+      description: How much they can be asked to do themselves. Left free-text until the real vocabulary is derived from the data (`dt values rnd/personas technical_level`).
+    ai_practice:
+      type: string
+      description: 'Evidence-based: what they have actually done, not what their title suggests. The corpus''s central finding is that everyone has licences and almost nobody has practice — this field is where that distinction lives.'
+
+    # ---- EDUCATIONAL DIMENSION: what they understand, and what teaching actually works on them ----
+    learning:
+      type: object
+      description: >-
+        What this panel UNDERSTANDS and how it is taught — the substrate for asking a persona an
+        EDUCATIONAL question rather than a product one. ⚠ Ground every field below in OBSERVED
+        BEHAVIOUR, never in self-report. When the corpus is vendor conversations, asking
+        someone what they understand returns PERFORMED competence, and that error runs the same
+        direction as model sycophancy (see `known_biases`). "Has nine recorded agent conversations
+        where colleagues have two hundred" is evidence; "says they are comfortable with agents" is
+        not.
+      properties:
+        understands:
+          type: array
+          items: { type: string }
+          description: >-
+            DEMONSTRATED, not claimed — something they did, asked about correctly, corrected someone
+            else on, or taught back in their own words. Teaching it back is the strongest evidence
+            there is.
+        misunderstands:
+          type: array
+          items: { type: string }
+          description: >-
+            The wrong MECHANISM, stated as the model itself rather than as a topic ("Claude's memory
+            is organisational memory", not "memory"). This is the teachable object, and a curriculum
+            is built from these rather than from a table of contents. Distinct from `beliefs`, which
+            holds their worldview about AI and where it is wrong; this holds how they think the
+            machinery works.
+        lacks_words_for:
+          type: array
+          items: { type: string }
+          description: >-
+            Concepts they reached for and had no term for. The highest-signal gap available, because
+            it is plainly visible in a transcript and completely invisible to a survey — someone who
+            describes "an agreement about what things are called" has just derived `schema` at their
+            own expense.
+        explanations:
+          type: array
+          description: >-
+            What teaching has ACTUALLY been tried on this panel, and whether it worked. The single
+            most useful field here for designing a lesson, and the one that cannot be inferred — it
+            is only ever observed.
+          items:
+            type: object
+            properties:
+              concept: { type: string }
+              framing: { type: string, description: The analogy or formulation used, verbatim where possible. }
+              landed:
+                type: string
+                enum: [yes, partial, no]
+                description: >-
+                  Judged on EVIDENCE of landing — they taught it back, applied it, or acted on it.
+                  Agreement in the room is not landing, and nodding is not landing.
+              evidence: { type: string, description: What proves the verdict — the taught-back sentence, the action taken, or the later question that showed it had not landed. }
+        next_unlock:
+          type: string
+          description: >-
+            The ONE thing that would most change what this panel can do, derived from where they are
+            observably blocked rather than from what comes next in a curriculum.
+        learns_by:
+          type: string
+          description: >-
+            How they demonstrably take something new in — hands-on at the moment of need, video, a
+            peer, documentation, or being shown once and left alone.
+        blocked_by:
+          type: array
+          items: { type: string }
+          description: >-
+            What stops them that is NOT knowledge — permissions, licences, an unsigned document,
+            time, a laptop, an IT queue. Teaching cannot fix any of these, and mistaking one for a
+            knowledge gap is the most common way a curriculum fails the person it was written for.
+
+    # ---- GOVERNANCE ----
+    attribution_policy:
+      type: string
+      description: >-
+        NAMES ON FACTS, INFERENCE ON THE ARCHETYPE. Quotes, dissent positions and recorded behaviour keep
+        the real person attached; every judgment — beliefs, over_weights, under_weights,
+        unstated_assumptions, reasoning_style — belongs to the PANEL and must never be restated as a
+        diagnosis of a named individual. With a handful of people evidenced from a handful of meetings,
+        the archetype is the strongest claim the evidence supports; a named psychological profile is both
+        overclaiming and the thing you would least want quoted out of this workspace. Personas take they/them.
+    known_biases:
+      type: string
+      description: 'How this persona is systematically wrong. State one for every panel. Where the evidence comes from sales and discovery calls with the operator in the room, it models how people talk to a vendor, not how they decide — and that courtesy bias runs the SAME direction as model sycophancy, so the two errors add.'
+    expert_reflections:
+      type: string
+      description: Short syntheses written from named analyst viewpoints (buyer psychologist, budget owner, ops realist) inferring what the person did not say. This module is what lifted grounded agents above persona agents in the literature.
+    fidelity:
+      type: string
+      description: How this persona scored on its held-out probes, and when. EMPTY until evaluated — an unevaluated persona must say so rather than imply it was validated.
+    last_validated:
+      type: string
+      format: date
+      description: When the held-out evaluation last ran.
+
+    content:
+      type: string
+      format: markdown
+      x-body: true
+      description: The narrative for human readers, plus what this persona is a GOOD and a BAD proxy for. Non-authoritative — this is where invented detail accumulates, so the quote bank wins over anything written here.
+
+order: 45
+list_fields: [name, last-modified, n_meetings, fidelity]
+icon: feedback   # not `organization` — `meetings` and `perspective/world/users` wear `organization`; a persona is a PANEL that answers

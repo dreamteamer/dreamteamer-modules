@@ -1,0 +1,18 @@
+[project]
+name = "transcribing-recordings"
+version = "0.1.0"
+description = "Local offline meeting transcription (ivrit-ai whisper + sherpa-onnx diarization)"
+requires-python = "==3.12.*"
+dependencies = [
+    "faster-whisper==1.2.1",
+    "sherpa-onnx==1.10.46",
+    "soundfile==0.12.1",
+    "numpy==2.1.3",
+    "pyyaml>=6.0",
+]
+
+[tool.uv]
+package = false
+
+[dependency-groups]
+dev = ["pytest>=8"]

@@ -1,0 +1,21 @@
+# CORRESPONDENCE OVER TIME — one bar per mail thread the contributor wrote in, banded by mailbox.
+# The bar says the subject and how much of the thread was theirs, which is the whole of what a
+# thread record holds: no body ever enters one, so this view is an INDEX to open, not the account.
+options:
+  start_field: first_on
+  end_field: last_on
+  group_rows_by_field: source
+  group_template: '{{ label }}'
+  # A source's `counts` is a nested object and a template resolves a dotted path as TEXT, so the
+  # numbers cannot be reached from here — kind and label are what a source can honestly say.
+  group_summary_template: '{{ kind }} · {{ label }}'
+  template: '{{ subject }} · {{ contributor_messages }}/{{ message_count }}'
+  page_size: 100000
+nav:
+  label: Correspondence
+  icon: mail
+  order: 7
+path: /timeline/correspondence
+target: list
+collection: collections/perspective/threads
+layout: gantt

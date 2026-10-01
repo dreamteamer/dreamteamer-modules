@@ -1,0 +1,87 @@
+# questions — ONE INTERVIEW QUESTION AND WHAT IT GOT BACK. Three banks: the engine's modelling
+# questions rephrased for a person, a gap a finding left open, and a role bank.
+#
+# ⚠ THE ANSWER LIVES HERE, not in a collection of its own. `perspective/answers` existed until
+# 2026-09-08 and was deleted (operator: "delete answers, embed in question"): a question and its
+# answer are one fact, always read together and never separately, and splitting them bought a join
+# and a second id scheme in exchange for nothing. What an answers collection WOULD have earned —
+# several answers to one question over time — never happened once.
+name: perspective/questions
+templates: [collection-templates/perspective-provenance]
+description: One interview question and the verbatim answer it got — its bank, and the finding that generated it.
+use_when: >-
+  the interview stage runs — every question asked is a record here BEFORE it is asked and its verbatim
+  answer is written back onto the SAME record after; asked "what did we ask", "what did he say" or
+  "what was skipped", list here by session. The findings pass reads `answer` to confirm or refute
+storage: { path: data/perspective/questions, codec: md, shape: file, suffix: question }
+id:
+  generate: "{{ retrospective | basename }}/{{ n | pad:3 }}"
+  pattern: "^\\d{4}-\\d{2}-\\d{2}--[a-z0-9-]+/\\d{3}$"
+schema:
+  type: object
+  required: [retrospective, n, text, bank]
+  properties:
+    retrospective: { type: string, x-reference: perspective/retrospective-sessions, description: The retrospective session that FIRST wrote this record. }
+    last_seen_in: { type: string, x-reference: perspective/retrospective-sessions, description: 'The most recent session that confirmed or updated it. Absent means exactly one session has ever touched it, which is how "new since last time" is answered without a diff.' }
+    n: { type: integer, description: The question's ordinal within the session. }
+    text: { type: string, description: 'The question as asked. THE FORCING FIELD.' }
+    bank:
+      type: string
+      enum: [modelling, gap, role]
+      description: '`modelling` — one of the six engine questions asked of a person; `gap` — generated from a finding; `role` — asked only when the evidence could not tell the role.'
+    from_finding:
+      type: string
+      x-reference: perspective/findings
+      x-inverse: questions
+      description: For `gap` — the finding that needed confirming.
+    status:
+      type: string
+      enum: [pending, asked, answered, skipped]
+      default: pending
+    answer:
+      type: string
+      description: >-
+        THE ANSWER, verbatim and never paraphrased — a paraphrase is how a claim loses its
+        provenance, and this is the only place in the module where the person speaks in their own
+        words. Absent while `status` is pending or asked; required in practice once it is answered.
+    answered_on: { type: string, format: date, description: When they answered. }
+    # ── the SUGGESTION, structurally separated from the answer ───────────────────────────────────
+    # ⚠ THIS FIELD EXISTS SO `answer` NEVER HAS TO LIE. A run can very often infer what a person is
+    # likely to say — that inference is useful, it makes the interview shorter, and it gives the
+    # person something to correct rather than a blank page. What it is NOT is their words. `answer`
+    # is the only place in this module where the person speaks, and `answer_origin` has no value
+    # meaning "nobody said this", by design. So a machine-authored reply gets its own field and its
+    # own evidence, and the two can sit on one record without either one contaminating the other.
+    # A filled `suggested_answer` with an empty `answer` reads correctly at a glance: still unasked.
+    suggested_answer:
+      type: string
+      description: >-
+        What the run INFERS the person would answer, read out of their evidence — never their words
+        and never a substitute for them. Written before the interview so the person has something to
+        correct; it stays on the record after they answer, because the gap between what was inferred
+        and what they actually said is itself a measurement of how good the inference was.
+    suggestion_evidence:
+      type: array
+      items: { type: string }
+      description: >-
+        The records the suggestion is read out of — `<collection>/<id>` refs, deliberately untyped
+        because a suggestion may lean on any of them. A suggestion with none is a guess wearing a
+        record; write the refs or do not write the suggestion.
+
+    answer_origin:
+      type: string
+      enum: [spoken, typed, relayed]
+      description: >-
+        How the words arrived. `relayed` matters and is the reason this is not a boolean — an
+        retrospective run BY PROXY (someone reading a teammate's work and asking them second-hand)
+        produces answers that passed through another person, and a finding built on one is weaker
+        than a finding built on a `spoken` answer. Say which it was.
+    content:
+      type: string
+      format: markdown
+      x-body: true
+      description: Why this question, when the bank alone does not say.
+list_fields: [n, bank, status, answer, suggested_answer, retrospective]
+icon: question
+order: 180   # nav position — what it concluded; the pipeline order, ten apart so one can be inserted without renumbering
+sensitive: true

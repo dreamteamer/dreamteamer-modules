@@ -1,0 +1,77 @@
+name: rnd/products
+description: >-
+  A product this workspace builds — the root every feature, issue, design doc and prototype hangs off.
+use_when: >-
+  a feature, issue, design doc or prototype needs its `product` — resolve it here first (`dt list
+  rnd/products`), because the product is the root they all hang off; create one only when something
+  this workspace BUILDS is named for the first time — an engine, an extension, a recipe, a client
+  deliverable with a repo — and a version or a rewrite is the same product, never a new one
+templates:
+  - collection-templates/rnd-provenance
+storage:
+  path: data/rnd/products
+  codec: md
+  shape: file
+  suffix: product
+id:
+  generate: '{{ name | slug }}'
+  pattern: ^[a-z0-9-]+$
+schema:
+  type: object
+  required: [name]
+  properties:
+    name:
+      type: string
+      description: What the product is called.
+    description:
+      type: string
+      description: One line on what it is and who it is for.
+    status:
+      type: string
+      enum:
+        - idea
+        - building
+        - live
+        - retired
+      description: Where the product stands in its own life — not where any one piece of work on it stands.
+    project:
+      # ⚠ POINTS AT THE PLAN MODULE, and does so as a PEER — no `x-inverse`. `rnd/projects` was
+      # deleted because this pack shipped TWO collections that both meant "a project", and a name
+      # collision across two modules of one pack is the shape that leaves a workspace permanently
+      # stale. A PRODUCT is the effort; the plan that delivers it is `projects`, with its phases,
+      # gates, seats and risks. A mirror here would write a field into a module this one does not
+      # own, so `rnd` peers `projects` instead and stays installable without it.
+      type: string
+      x-reference: projects
+      description: The delivery plan this product is built under — empty for a product that is its own effort.
+    company:
+      # Folded in from `rnd/projects` (deleted): with a product carrying the EFFORT, it has to be
+      # able to say whose effort it is. A plain reference and no mirror — `companies` is a peer.
+      type: string
+      x-reference: companies
+      description: The client organisation this product is built for — empty for an internal one.
+    media_folder:
+      examples: ['${env:FILES_FOLDER}/rnd/products/northwind-portal/media']
+      type: string
+      description: >-
+        Where this record's media lives — explainer videos, audio overviews, decks, infographics, screen
+        recordings — as a FULL `${env:FILES_FOLDER}/rnd/products/<this record's id>/media` template, never a machine
+        path; `dt resolve` renders it. The bytes stay OUTSIDE the repo: an `assets` record is a small file the
+        UI draws, this is megabytes for people to watch. What generated each piece, and against which corpus,
+        goes in this record's body — a folder cannot say whether its media is still current.
+    design_docs:
+      type: array
+      items: { type: string, x-reference: rnd/product-design-docs }
+      x-inverse-of: rnd/product-design-docs.product
+      description: GENERATED — the design docs of this product. Set `product` on the design doc.
+    content:
+      type: string
+      format: markdown
+      x-body: true
+      description: The product's page — what it does, why it exists, where it is going.
+order: 20
+list_fields:
+  - name
+  - last-modified
+  - status
+icon: package

@@ -1,0 +1,74 @@
+name: rnd/prototypes
+description: >-
+  A thin UI mockup that is the LIVING reference for intended design — maintained alongside the product, never
+  graduating into it.
+use_when: >-
+  a UI or an interaction is being designed — the living mockup lives here beside the product and is
+  what to update when the design changes; it never graduates into the product
+# A thin UI mockup that serves as the LIVING reference
+# for intended design. A prototype never graduates: it is maintained and evolved alongside the
+# product, and the actual app built from it lands in its own dedicated repo. When an `apps`
+# collection exists it will carry `prototype: prototypes/<id>` — the later thing points at the
+# earlier one, so no `implemented_by` field is invented here for a collection that does not exist.
+templates: [collection-templates/rnd-provenance]
+storage: { path: data/rnd/prototypes, codec: md, shape: file, suffix: prototype}
+id:
+  generate: "{{ created | date }}--{{ name | slug }}"
+  pattern: "^\\d{4}-\\d{2}-\\d{2}--[a-z0-9-]+$"
+schema:
+  type: object
+  required: [name]
+  properties:
+    name:
+      type: string
+      description: What this prototype is called.
+    description:
+      type: string
+      description: One line on what it shows.
+    repo:
+      type: string
+      x-reference: repos
+      description: The repo holding the prototype's files.
+    status:
+      type: string
+      enum: [sketch, living, superseded, parked]
+      default: sketch
+      description: '`living` is the maintained reference for intended design — a prototype never graduates, it evolves alongside the product.'
+    entry:
+      type: string
+      description: The repo-relative thing to open, e.g. "index.html".
+    explores:
+      type: array
+      items: { type: string, x-reference: "*" }
+      description: The records this prototype is exploring — a design doc, a story, a feature. Polymorphic, hence "*".
+    product:
+      type: string
+      x-reference: rnd/products
+      description: Which product this is a prototype of.
+    design_doc:
+      type: string
+      x-reference: rnd/product-design-docs
+      # ⚠ NO `x-inverse` HERE. This side OWNS the relation, but the mirror is DECLARED on the design
+      # doc as `prototypes` with `x-inverse-of` (spelling B), which compile rewrites onto this field.
+      # Declaring both compiled fine and warned on every run in every consumer ("declared on both
+      # sides") — and two permanent warnings in everybody's output is how people learn to skim
+      # warnings. `rnd/products.design_docs` and `rnd/references.design_docs` were already this shape;
+      # this one now matches them.
+      description: The design doc this prototype realises — the hop from PRD to something clickable. `explores` stays for the looser "what is this poking at".
+    live_url:
+      type: string
+      description: Where the current iteration is deployed and clickable — the URL a reviewer opens. Rapid prototyping means this exists from iteration 1; a prototype nobody can open is a sketch.
+    iteration:
+      type: number
+      description: Which build this is. Bumped by `/iterate-prototype` on every deployed change; the feedback that drove each is a dated section in the body.
+    deploy:
+      type: string
+      description: "How `live_url` is refreshed, as the one command to run from `repo`/`entry`'s folder — e.g. `npx wrangler deploy`. The CI/CD of a prototype is one line, or it is not rapid."
+    content:
+      type: string
+      format: markdown
+      x-body: true
+      description: THE DESIGN BRIEF — what the prototype is trying to establish, and what it deliberately fakes.
+order: 12
+list_fields: [name, status, iteration, live_url, product, last-modified]
+icon: preview   # not `edit` — `rnd/draft-docs` already wears `edit`; a prototype is a thing you LOOK at

@@ -1,0 +1,12 @@
+command: commands/draft-prd
+collection: collections/rnd/product-design-docs
+target: record
+can-enter:
+  references:
+    _nempty: true
+  content:
+    _empty: true
+can-exit:
+  content:
+    _nempty: true
+description: write the PRD from the cited references and the branding

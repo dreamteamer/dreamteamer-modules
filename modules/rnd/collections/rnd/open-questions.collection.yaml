@@ -1,0 +1,123 @@
+# open-questions — the residue of research: what reading MORE cannot settle.
+#
+# Every one of these is closed by a CHOICE or by PRIMARY contact with a real person — never by
+# another crawl. That is the whole distinction from a research QUESTION, which exists to be answered
+# from evidence: this collection is the synthesis layer — what the evidence could not settle.
+#
+# Four things belong here and nothing else does:
+#
+#   - a **decision** only the operator can make (what to call it, what to charge, what to cut)
+#   - an **assumption** that needs a real user to test, not a repo to read
+#   - a **tension** between two findings that both look true
+#   - a **risk** that is real, not yet realised, and worth naming before it is
+#
+# The failure mode this collection is guarding against is an agent answering an unanswerable
+# question plausibly. A confident paragraph about what users will pay, produced from GitHub stars,
+# is worse than an empty record — it launders a guess into the workspace where the next session reads it
+# as a finding. When the evidence runs out, the correct move is a record HERE.
+name: rnd/open-questions
+use_when: >-
+  you are about to research something, or about to answer a hard question by guessing — search here first
+description: >-
+  The residue of research — what reading MORE cannot settle. Closed by a CHOICE or by primary contact with a
+  real person, never by another crawl.
+templates: [collection-templates/rnd-provenance]
+storage:
+  path: data/rnd/open-questions
+  codec: md
+  shape: file
+  suffix: open-question
+id:
+  generate: '{{ name | slug }}'
+  pattern: ^[a-z0-9][a-z0-9-]*$
+schema:
+  type: object
+  required: [name, question, kind]
+  properties:
+    name:
+      type: string
+      description: A short handle — the thing you would say out loud. Drives the id.
+    question:
+      type: string
+      description: The full question or the decision to be made, phrased so a person could answer it in one sitting.
+    description:
+      type: string
+      description: One line on what is blocked while this stays open.
+    kind:
+      type: string
+      enum: [needs-decision, needs-primary-research, needs-data, unresolved-tension, assumption-to-test, risk]
+      description: >-
+        `needs-decision` = only the operator can settle it. `needs-primary-research` = requires
+        talking to a human. `needs-data` = requires instrumenting something we do not yet run.
+        `unresolved-tension` = two findings that both look true. `assumption-to-test` = something we
+        are currently building on without evidence. `risk` = a named way this could go wrong.
+    severity:
+      type: string
+      enum: [blocking, high, medium, low]
+      default: medium
+      description: '`blocking` = work is stopped until it is settled. Reserve it; most of these are not blocking.'
+    status:
+      type: string
+      enum: [open, in-progress, resolved, parked, obsolete]
+      default: open
+      description: '`obsolete` = the question stopped mattering. Say why in `resolution` rather than deleting the record.'
+    # ⚠ NO `owner`. All 13 values were the operator — "usually the operator" was in fact always, so the
+    # field recorded nothing. Removed with the `users` collection in engine 0.8.0. An open question is
+    # the operator's to move unless a record says otherwise, and none did.
+    blocks:
+      type: array
+      items:
+        type: string
+      description: >-
+        Records that cannot be honestly answered while this stays open, as `<collection>/<id>`
+        strings. ⚠ A PLAIN string, not a reference: the targets may live in another workspace or in a
+        collection this module does not ship, so the value keeps its ref shape — greppable and
+        re-linkable — without being validated. Anything else this blocks (a feature, a decision) goes
+        in `description` and `content`.
+    from_question:
+      type: string
+      description: >-
+        What produced this, when it came out of a research question, as `<collection>/<id>`. A
+        plain string for the same reason as `blocks`.
+    options:
+      type: array
+      items: { type: string }
+      description: >-
+        The live options, one per item, each stated as a choice someone could take. A `needs-decision`
+        with no options listed is not ready to be decided.
+    lean:
+      type: string
+      description: Our current lean and the reason for it, clearly marked as a lean rather than a finding.
+    how_to_settle:
+      type: string
+      description: >-
+        The concrete cheapest next action that would close this — "ask three of the built-own-tool
+        cohort what made them stop", "ship it and count". Vague answers here are how these rot.
+    resolution:
+      type: string
+      description: What was decided or found, once it closes. The record stays; it does not get deleted.
+    resolved_on:
+      type: string
+      format: date
+      description: When it closed.
+    product:
+      type: string
+      x-reference: rnd/products
+      description: The product this concerns.
+    tags:
+      examples: ['developer-audience', 'second-brain', 'cautionary']
+      type: array
+      items: { type: string }
+      description: >-
+        Free strings, lowercase and hyphenated. Optionally `key:value` with NO space around the
+        colon (`analysis:meeting-insights`, `enriched:web-search`) — a space makes YAML parse the
+        entry as a map instead of a string. Nothing validates a tag; there is no `tags` collection.
+        Reuse one already in use before inventing one: `dt values <collection> tags` lists them.
+    content:
+      type: string
+      format: markdown
+      x-body: true
+      description: The full context — what we know, what we do not, and what each option would cost.
+list_fields: [name, kind, severity, status, resolved_on]
+icon: watch
+order: 54

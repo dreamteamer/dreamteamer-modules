@@ -1,0 +1,109 @@
+# world/tasks — A COMMITMENT, OBSERVED. The smallest unit of the reconstructed world: one thing a
+# person was on the hook for, read out of a ticket a reader already collected.
+#
+# ⚠ WHY THIS IS NOT `perspective/tickets`, and the distinction is the whole reason it exists. A
+# ticket is EVIDENCE — a row a reader found, counted and never judged, the same tier as
+# `activity-weeks`. A task is the MODEL — what the run concluded was a commitment, sitting on the
+# same tier as `world/activities` and joined into the same spine. That split already runs between
+# `activity-weeks` and `world/activities`; before this collection existed the ticket half of the
+# evidence simply dead-ended: a measured consumer workspace held 933 ticket records that nothing in
+# the module ever turned into anything.
+#
+# ⚠ WRITTEN MECHANICALLY, by `bin/derive-tasks.mjs`, never by a model pass. Everything here is on the
+# ticket already — title, status, assignee, dates — and the two joins (`activity`, `project`) come
+# from whichever clustered activity cites that ticket. Nothing is judged, so nothing can be invented,
+# which is the skill's rule 5 applied to the one collection most tempting to write by hand.
+#
+# ⚠ THE OBSERVED HALF OF `tasks`, IN THE SAME SHAPE AND IN A SEPARATE STORE — the argument is written
+# out once, on `world/users.real`. What is NOT copied from the real collection: `urgent` (a priority
+# somebody sets, never an observation), `lane` (a board's own vocabulary), `item` (a polymorphic
+# backlink into a workspace this module does not model) and `assistant_recommended_next_step` (an
+# analysis of a live commitment — a retrospective reads what already happened).
+name: perspective/world/tasks
+templates: [collection-templates/perspective-provenance, collection-templates/perspective-observation]
+description: A commitment observed in a contributor's evidence — one ticket, read as the thing somebody owed. The observed half of `tasks`.
+use_when: >-
+  the cluster stage derives them from the tickets a reader collected (`bin/derive-tasks.mjs`); asked
+  what a contributor actually OWED in a period, or what a piece of reconstructed work broke down into,
+  list here by `due` or by `activity`. Never write one by hand from a conversation — a task with no
+  `ticket` behind it is a judgement, and this collection is the mechanical tier
+storage: { path: data/perspective/world/tasks, codec: md, shape: file, suffix: task }
+# Keyed by the contributor and then by the TICKET the task was read from, not by a date and a slug:
+# two tickets can be created the same day with the same title, and the external id is the one thing
+# guaranteed unique per source. That also makes the derivation idempotent for free — a second run
+# lands on the same id and updates rather than adding.
+id:
+  generate: "{{ contributor }}/{{ ticket | basename }}"
+  pattern: "^[a-z0-9-]+/[A-Za-z0-9_-]+$"
+schema:
+  type: object
+  required: [retrospective, contributor, name, ticket]
+  properties:
+    retrospective: { type: string, x-reference: perspective/retrospective-sessions, description: The retrospective session that FIRST wrote this record. }
+    last_seen_in: { type: string, x-reference: perspective/retrospective-sessions, description: 'The most recent session that confirmed or updated it. Absent means exactly one session has ever touched it, which is how "new since last time" is answered without a diff.' }
+    contributor: { type: string, pattern: '^[a-z0-9-]+$', description: 'WHOSE this is, as a slug — and the FIRST SEGMENT OF THE ID. That is what makes a second retrospective UPDATE this record instead of writing one beside it. A plain slug rather than a reference, because an id segment cannot be one; the person''s own observed-world record is perspective/world/users/<contributor>/<their-name-slug>.' }
+    name: { type: string, description: 'The commitment in one line, as the ticket titled it. Copied, never rewritten: a paraphrase here would be the run putting words in somebody''s ticket.' }
+    # ── THE EVIDENCE, AND IT IS REQUIRED ───────────────────────────────────────────────────────────
+    # Unique, because one ticket yields exactly one task — that is what makes the derivation
+    # idempotent, and the id is built from this field's own basename.
+    ticket:
+      type: string
+      x-reference: perspective/tickets
+      x-unique: true
+      x-inverse: task
+      description: >-
+        The ticket this was read from. REQUIRED and unique — a task with no ticket behind it is a
+        judgement, and this collection is the mechanical tier. The id's second segment is this ref's
+        basename, so the two can never disagree.
+    # ── THE SPINE, in the real collection's own words ──────────────────────────────────────────────
+    activity:
+      type: string
+      x-reference: perspective/world/activities
+      x-inverse: tasks
+      description: >-
+        The reconstructed piece of work this commitment served — joined from whichever activity's
+        `tickets` cites the same ticket. Empty when the ticket reached no clustered activity, which is
+        a fact about the clustering window rather than about the task.
+    project:
+      type: string
+      x-reference: perspective/world/projects
+      x-inverse: tasks
+      description: The effort it belongs to, carried from the activity's own `project`. Empty when the activity is.
+    assignee:
+      type: string
+      x-reference: perspective/world/users
+      x-inverse: tasks
+      description: >-
+        Who owed it, carried from the ticket's already-matched `assignee`. Never re-derived here — the
+        handle match happens once, in the reader, so one person cannot be two people between tiers.
+    status:
+      type: string
+      enum: [open, done, unknown]
+      default: unknown
+      description: >-
+        OBSERVED, and deliberately three values against the real collection's five. A ticketing system
+        says open or completed and nothing else; `blocked`, `doing` and `closed` are distinctions a
+        person makes about their own work and evidence does not carry. `unknown` is what a source with
+        no status field reads as, and it is honest.
+    created_on: { type: string, format: date, description: When the commitment was made, per the source. }
+    due_on: { type: string, format: date, description: 'When it was owed, per the source. `due` in the real collection; `_on` here to match its siblings `created_on` and `completed_on`, which the ticket already spells that way.' }
+    completed_on: { type: string, format: date, description: When it was closed, per the source. Absent while open. }
+    tags: { type: array, items: { type: string }, description: The source system's own tags, lowercased, carried across unchanged. }
+    real:
+      type: string
+      x-reference: tasks
+      x-reference-soft: true
+      description: >-
+        The `tasks` record this observed commitment appears to BE — the one-way, soft join to the world
+        a person authored. A PROPOSAL, set only on a confirmed match. The argument for one-way and for
+        soft is written out once, on `perspective/world/users.real`.
+    content:
+      type: string
+      format: markdown
+      x-body: true
+      description: >-
+        What the task actually held, where the ticket carried more than a title — the description, and
+        a line on what its trail says happened to it. Never a summary of the fields above.
+list_fields: [name, assignee, status, due_on, completed_on, activity, real]
+icon: tasklist   # not `checklist` — `tasks` (the real one) wears that; an observed commitment is the list somebody else kept
+order: 85   # nav position — between the activity it served and the project it rolls into

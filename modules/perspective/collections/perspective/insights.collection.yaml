@@ -1,0 +1,32 @@
+# insights — A CONCLUSION DRAWN ACROSS FINDINGS. A finding is one observation with a count; an insight
+# cites at least two and states a consequence. The same grain distinction as meta-analyses over
+# meeting-analyses. check-records refuses one with fewer than two findings.
+name: perspective/insights
+templates: [collection-templates/perspective-provenance, collection-templates/perspective-observation]
+description: A conclusion a retrospective draws across two or more findings, with the consequence it implies.
+use_when: >-
+  several findings point the same way and the 'so what' is worth stating once; a perspective's summary
+  leans on these; never write one on a single finding — that is the finding
+storage: { path: data/perspective/insights, codec: md, shape: file, suffix: insight }
+id:
+  generate: "{{ contributor }}/{{ name | slug }}"
+  pattern: "^[a-z0-9-]+/[a-z0-9-]+$"
+schema:
+  type: object
+  required: [retrospective, contributor, name, statement, findings]
+  properties:
+    retrospective: { type: string, x-reference: perspective/retrospective-sessions, description: The retrospective session that FIRST wrote this record. }
+    last_seen_in: { type: string, x-reference: perspective/retrospective-sessions, description: 'The most recent session that confirmed or updated it. Absent means exactly one session has ever touched it, which is how "new since last time" is answered without a diff.' }
+    contributor: { type: string, pattern: '^[a-z0-9-]+$', description: 'WHOSE this is, as a slug — and the FIRST SEGMENT OF THE ID. That is what makes a second retrospective UPDATE this record instead of writing one beside it. A plain slug rather than a reference, because an id segment cannot be one; the person''s own observed-world record is perspective/world/users/<contributor>/<their-name-slug>.' }
+    name: { type: string }
+    statement: { type: string, description: The conclusion in one or two sentences. }
+    findings:
+      type: array
+      items: { type: string, x-reference: perspective/findings }
+      x-inverse: insights
+      description: AT LEAST TWO.
+    consequence: { type: string, description: What follows for the person or the workspace. }
+    content: { type: string, format: markdown, x-body: true }
+list_fields: [name, confidence]
+icon: sparkle   # not `light-bulb` — not a codicon — the vocabulary is `lightbulb`, which `blurbs` already wears; an insight is the drawn-together conclusion
+order: 170   # nav position — what it concluded; the pipeline order, ten apart so one can be inserted without renumbering

@@ -1,0 +1,92 @@
+name: goals
+description: >-
+  An outcome somebody is trying to make true, with the observable test that says it happened. Not a piece of work
+  (`activities` is the plan, `tasks` the small commitment) and not a project: a goal is WHY the work is being done,
+  it outlives any one project, and it is met or missed rather than done.
+use_when: >-
+  choosing between two pieces of work, or asked "why are we doing this" — the goal and the test that says it happened
+  are here. Write one when an OUTCOME is stated that somebody could later be wrong about; never for a task, and never
+  for a goal whose `done_when` cannot be written as one checkable sentence — that is a slogan, not a goal
+templates: [collection-templates/projects-provenance]
+storage: { path: data/goals, codec: md, shape: file, suffix: goal }
+# ⚠ A NON-LATIN NAME YIELDS A HASH ID, NOT A REFUSAL, AND NOT AN EMPTY STRING — see the same warning
+# on `projects` and `users`. A workspace whose values are not Latin passes `--id` explicitly.
+id:
+  # ⚠ AN ORDERED LIST (engine >=0.25.0): the first template whose fields are all
+  # present wins. `slug` when the record carries one, the name otherwise — which is
+  # what lets `slug` be OPTIONAL instead of forcing a handle onto every record.
+  # `{{ slug }}` is the FIELD; `{{ name | slug }}` is the name through the slug FILTER.
+  # Same word, two things, and the pipe is what tells them apart.
+  generate:
+    - '{{ slug }}'
+    - '{{ name | slug }}'
+  pattern: ^[a-z0-9][a-z0-9-]*$
+schema:
+  type: object
+  required: [name, done_when]
+  properties:
+    slug: { type: string, pattern: '^[a-z0-9][a-z0-9-]*$', title: Slug, description: 'The latin handle that becomes the id. ⚠ A SLUG, NOT A CODE, and the pack keeps the two apart deliberately: `activities.code` (`a-01`) and `risks.code` (`rk-01`) are identifiers a room says out loud and reads in order, so they stay required and stay called codes. This one exists ONLY so a value in any script can have a readable, typeable id — it is never shown to a reader and never replaces the name. OPTIONAL since engine 0.25.0: `id.generate` takes an ordered list, so the id falls back to the name when this is empty, and a name with no latin characters still produces a hash id but now says so on the write.' }
+    name:
+      type: string
+      description: The outcome in one line, stated as an OUTCOME and not a task — "the vault runs on any machine", never "port the scripts".
+    # ── THE FORCING FIELD, AND THE REASON THIS IS A COLLECTION RATHER THAN A KIND ─────────────────
+    # A gate folded into `activities` because a gate sits IN the plan: it has a date, a lead, a
+    # position in code order, and it is drawn on the same gantt. A goal has NONE of those — no
+    # position in the ordered list, no date it is judged on, and a many-to-many with projects where
+    # an activity's `project` is a required scalar. And `done_when` has no counterpart on an activity:
+    # `passes_when` is gate-only and is judged ONCE, on a day, by a named person; a goal's test is
+    # judged whenever anybody asks. One question activities cannot answer: "why is this work being
+    # done, and how will we know it worked" — across several projects, with no date.
+    done_when:
+      type: string
+      description: >-
+        REQUIRED. The observable test that says this happened, as ONE checkable sentence — something a
+        person could later be shown to be wrong about. A goal whose test cannot be written down is a
+        slogan; refusing to write it here is cheaper than discovering it two quarters later.
+    description:
+      type: string
+      description: One line on what this goal is for — the context a reader needs before the test makes sense.
+    # OWNER FIELDS ARE TYPED, and they point at `users`, exactly as they do on `projects` and
+    # `activities`. That is what makes a person's own record answer "what am I accountable for".
+    owner:
+      type: string
+      x-reference: users
+      x-inverse:
+        field: goals
+        description: The goals this person is accountable for — generated from `goals.owner`.
+      description: Who is accountable for the outcome. One person, and not necessarily anybody who does the work.
+    projects:
+      type: array
+      items: { type: string, x-reference: projects }
+      x-inverse:
+        field: goals
+        description: The goals this project serves — generated from `goals.projects`.
+      description: >-
+        The delivery efforts serving this goal. MANY-TO-MANY on purpose, and it is the second reason this is not a
+        kind on `activities`: one goal is served by several projects and one project serves several goals, where an
+        activity belongs to exactly one project and is required to.
+    by:
+      type: string
+      format: date
+      description: The date the outcome is wanted by — a target, not a promise, and absent is normal. A goal with no date is still a goal; an activity without dates is not a plan rung.
+    status:
+      type: string
+      enum: [proposed, active, met, missed, dropped]
+      default: proposed
+      description: >-
+        `proposed` (stated, not yet being worked toward) · `active` (work is happening) · `met` (the `done_when` test
+        holds) · `missed` (the date passed and it does not) · `dropped` (deliberately abandoned). ⚠ `met` and `missed`
+        are both TERMINAL and both honest — a goal quietly moved to `dropped` because it was not reached is the one
+        use of this field that destroys its value.
+    tags:
+      type: array
+      items: { type: string }
+      description: Free strings, lowercase and hyphenated; the colon convention with no space.
+    content:
+      type: string
+      format: markdown
+      x-body: true
+      description: The argument — why this outcome and not the adjacent one, what it EXCLUDES, and what would make it the wrong goal.
+order: 11
+list_fields: [name, owner, status, by, done_when]
+icon: target

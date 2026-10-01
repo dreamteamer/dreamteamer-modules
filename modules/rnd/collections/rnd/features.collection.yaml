@@ -1,0 +1,106 @@
+# Feature ideas and requests — the wanted-but-not-built, for the repos this workspace runs on.
+#
+# Sibling to `issues`: same repo routing, same evidence posture, opposite direction. An issue says
+# something is broken; a feature says something is missing. They are separate collections because
+# they are triaged on different questions — "is it real?" versus "is it worth it?" — and mixing them
+# makes both queues useless.
+#
+# ⚠ THE BAR IS A PROBLEM, NOT AN IDEA. `problem` is required for exactly the reason `evidence` is
+# required on an issue: without it this becomes a wishlist, and a wishlist is never read twice. A
+# feature that cannot name who was blocked and by what is a `status: idea` at best.
+#
+# This collection is also the honest home for things REMOVED from core that someone still wants —
+# see the engine's standing rule that correctness is not usage. A record here is cheaper than an
+# abstraction kept alive on the argument that it might be needed.
+name: rnd/features
+templates: [collection-templates/rnd-provenance]
+description: A wanted capability for one of this workspace's repos — the problem it solves, and who asked.
+use_when: >-
+  a capability is wanted in one of this workspace's repos — before proposing or building it, search here
+  (it may be filed, with who asked); file it here rather than building straight from a conversation
+storage: { path: data/rnd/features, codec: md, shape: file, suffix: feature}
+id:
+  generate: "{{ created | date }}--{{ name | slug }}"
+  pattern: "^\\d{4}-\\d{2}-\\d{2}--[a-z0-9-]+$"
+schema:
+  type: object
+  required: [name, repo, problem]
+  properties:
+    name:
+      type: string
+      description: The capability in one line — what would exist that does not today.
+    description:
+      type: string
+      description: One line for a list view, when the name alone is not enough.
+
+    repo:
+      type: string
+      x-reference: repos
+      description: Which repo would grow this. Required — an unrouted request cannot be picked up.
+    component:
+      type: string
+      description: The file, subsystem or CLI verb it would land in, when that is known.
+
+    requested_by:
+      type: string
+      description: >-
+        Who WANTS it, when that is not the operator — a `contacts/<id>` for a client ask, or
+        `agents/dreamteamer (claude-opus-5)`. ABSENT means the operator wanted it, which is the common
+        case and no longer worth writing down.
+    for_client:
+      type: string
+      x-reference: companies
+      description: The customer organisation this came out of, when it came from outside. A feature with a real customer behind it is a different object from one someone thought of.
+
+    status:
+      type: string
+      enum: [idea, requested, accepted, building, shipped, declined]
+      default: idea
+      description: '`idea` is unowned and unpromised — the default on purpose. `accepted` means someone intends to build it, and nothing should reach it without a `problem` that survived reading twice.'
+    priority:
+      type: string
+      enum: [low, medium, high]
+      default: medium
+      description: How much it matters relative to the rest of this repo's queue.
+    size:
+      type: string
+      enum: [xs, s, m, l, xl]
+      description: Rough build cost — enough to sort by, not an estimate.
+
+    problem:
+      type: string
+      format: markdown
+      description: ⚠ THE FIELD THAT EARNS THE RECORD. What was blocked, for whom, when — the concrete occasion, not the abstract benefit. "No way to see which step a record is on" is a problem; "better observability" is a wish.
+    today:
+      type: string
+      description: What is done INSTEAD right now. If the workaround is fine, that is the most useful thing this record can say — and a reason to decline rather than a gap.
+
+    acceptance:
+      type: string
+      format: markdown
+      description: What would have to be true to call it shipped. Vague here means unbuildable later.
+
+    issue:
+      type: string
+      x-reference: rnd/issues
+      description: The defect that motivated this request, when one did.
+    supersedes:
+      type: string
+      x-reference: rnd/features
+      description: The earlier request this replaces.
+    resolution:
+      type: string
+      description: Why it was declined, or what it shipped as. A declined feature with no reason gets re-proposed.
+    shipped_in:
+      type: string
+      description: Commit sha, tag or version, once it lands.
+
+    body:
+      type: string
+      format: markdown
+      x-body: true
+      description: The full write-up — design sketches, alternatives considered, discussion.
+order: 46
+list_fields: [name, status, priority, repo, requested_by]
+icon: star-full   # WAS `star`, which is NOT a codicon — the vocabulary is `star-full`
+                      # in one nav is the same failure as no icon at all

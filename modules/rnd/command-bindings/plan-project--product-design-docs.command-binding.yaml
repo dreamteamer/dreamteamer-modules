@@ -1,0 +1,12 @@
+command: commands/plan-project
+collection: collections/rnd/product-design-docs
+target: record
+can-enter:
+  prototypes:
+    _nempty: true
+  plan:
+    _empty: true
+can-exit:
+  plan:
+    _nempty: true
+description: materialise the agreed design into a project plan

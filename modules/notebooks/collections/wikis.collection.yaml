@@ -1,0 +1,98 @@
+name: wikis
+templates: [collection-templates/notebooks-provenance]
+id:
+  generate: '{{ name | slug }}'
+  # an entity, not a dated document — a corpus is a thing that IS, and it is looked up by the
+  # name a person would type
+  pattern: ^[a-z0-9][a-z0-9-]*$
+schema:
+  type: object
+  # `folder` is required and `name` is required, and nothing else is: a wiki can exist as an empty
+  # folder waiting to be filled, which is exactly what `wiki init` writes.
+  required:
+    - name
+    - folder
+  properties:
+    name:
+      type: string
+      description: What this corpus is called — the record's id is its slug.
+    # ⚠ WORKSPACE-RELATIVE, and IN THE REPO since 2026-09-11. Never a machine path — that has not
+    # changed — but no longer an `${env:…}` template either: `wikis/<id>` needs no variable
+    # to be set and nothing to be rendered, so a corpus works on a bare clone, in a cloud session, and
+    # on a machine that has never had a `.env`. That is a stronger portability claim than the template
+    # it replaced, not a weaker one. A relative value resolves against the WORKSPACE ROOT, never the
+    # current directory. An ABSOLUTE value, including anything an old `${env:…}` template renders to,
+    # is still honoured exactly as before and nothing rewrites those records.
+    folder:
+      type: string
+      description: "Where the markdown lives, relative to the workspace — `wikis/<id>`. Inside it: `index.md`, then `sources/<nn>--<slug>.md` nested into section subfolders. ⚠ THE SOURCES ARE COMMITTED, and that is the point: a wiki is markdown a coding agent GREPS and cites by `file:line`, so outside the clone the corpus was unreachable from a bare checkout and from any cloud session, and no citation could be reviewed in a diff or pinned to a commit. This is the ONE exception to keeping bytes out of the repo, and it is narrow — it covers text meant to be READ. A scraped PDF, a recording or a scan still lives under `${env:FILES_FOLDER}` with a record pointing at it. The cost is stated rather than discovered: a corpus is megabytes of text in every clone, forever, so split a large one into several wikis by subject rather than growing one."
+      examples:
+        - 'wikis/share-based-payments'
+        - '${env:FILES_FOLDER}/wikis/legacy-corpus'
+    description:
+      type: string
+      description: One line on what this corpus covers, for a list view.
+    adapter:
+      type: string
+      enum:
+        - local
+        - notebooklm
+      default: local
+      description: "Where the sources came from. `local` is a folder somebody filled — no login, no network, no prerequisite. `notebooklm` means `wiki pull` mirrored a live notebook into it, and `upstream` says which."
+    upstream:
+      type: string
+      description: The uuid of the notebook this corpus was pulled from, when `adapter` is `notebooklm`. Empty on a corpus that was only ever local.
+    # A STRING, not a reference — the same trade `notebooks.account` makes, and for the same reason:
+    # this package ships no accounts collection to point at, and the fact is not derivable.
+    account:
+      type: string
+      description: Which login the upstream notebook opens under, when there is one — an address or a label, `dana.o@northwind.example`.
+    status:
+      type: string
+      enum:
+        - active
+        - archived
+        - throwaway
+      default: active
+      description: "`throwaway` is a real state: a smoke pull and a spike corpus both live here, and neither should be read as something anyone maintains."
+    # ─── THE ROLLUP ─────────────────────────────────────────────────────────────────────────────
+    # ⚠ These four are a CACHE, and the folder is the authority. They exist so a machine with no
+    # FILES_FOLDER mounted can still answer "which corpus is unfinished"; `npx dt-extensions wiki
+    # verify` re-derives them from the files and NAMES the drift rather than hiding it. Never reason
+    # about a specific source from these — `wiki incomplete` is the query that reads the truth.
+    sources_total:
+      type: integer
+      description: How many sources the folder held at `synced_at`. A cache — `wiki verify` re-derives it.
+    sources_complete:
+      type: integer
+      description: How many of them were fully fetched at `synced_at`. A cache.
+    sources_incomplete:
+      type: integer
+      description: "How many were NOT — pending, failed, empty or partial. Non-zero means a scraping pass is owed: `npx dt-extensions wiki incomplete <id>` names each one and why."
+    synced_at:
+      type: string
+      description: When the counts above were last derived from the folder, ISO-8601. Stale counts with a date beat fresh-looking counts with none.
+    tags:
+      type: array
+      items:
+        type: string
+      description: "Free-form grouping — subject, engagement, or the flow that built it. Colon convention, no space: `purpose:topical-authority`."
+    notes:
+      type: string
+      format: markdown
+      description: What this corpus is for, what it covers well, where it is thin. The source LIST is the folder, not prose here — prose goes stale, `wiki status` does not.
+      x-body: true
+storage:
+  path: data/wikis
+  codec: md
+  shape: file
+  suffix: wiki
+description: "A collection of markdown sources serialised as a FOLDER — `index.md`, then `sources/<nn>--<slug>.md` nested into sections. Every source is a file, including one nothing has downloaded yet, which is a stub carrying `completeness: pending`; that is what makes a half-fetched corpus impossible to mistake for a finished one. A notebook points at many wikis, and a wiki serves many notebooks."
+use_when: a body of reference material has to be READ rather than asked — a corpus a coding agent greps, cites and follows links inside. Create one with `npx dt-extensions wiki init`, or mirror a live NotebookLM notebook into one with `wiki pull <notebook-record>`; then `wiki incomplete` is the one command that says what still needs scraping. Read the folder, never this record, for what a source SAYS — the record holds where the corpus lives and how finished it is, and its counts are a cache the folder overrules
+icon: library
+list_fields:
+  - name
+  - adapter
+  - sources_total
+  - sources_incomplete
+  - status

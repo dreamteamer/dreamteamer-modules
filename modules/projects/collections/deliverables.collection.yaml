@@ -1,0 +1,144 @@
+# deliverables — WHAT THE PROJECT OWES SOMEBODY. The artefact a plan produces and hands over: a
+# document, a build, a dataset, a trained team.
+#
+# ⚠ WHY THIS IS NOT AN ACTIVITY, which is the only question worth asking about it. An activity is
+# WORK — it has a span, a lead and seats, and it is done when the doing stops. A deliverable is a
+# THING — it has no span, it is accepted or it is not, and the person who accepts it is usually
+# outside this workspace. Three questions a plan gets asked that `activities` cannot answer:
+#
+#   · "what do we actually owe them, and by when" — a list of artefacts with dates, not a list of work
+#   · "what has been handed over and signed off" — `status: accepted` and `accepted_by`, which is a
+#     CONTACT, because acceptance is somebody else's act
+#   · "which rung produces this" — many rungs produce one artefact, and one rung produces several;
+#     folding them would force that many-to-many onto a required scalar
+#
+# ⚠ AND IT IS THE AUTHORED HALF OF `perspective/world/deliverables`. Same noun, different authority:
+# this is what a plan SAYS it owes; that is what a run FOUND in an evidence store. The two `kind`
+# enums differ on purpose and the difference is the fact — this one is what the artefact IS
+# commercially (a report, a build, a training), that one is its MIME type, because a Drive read knows
+# a file's type and not its purpose.
+name: deliverables
+description: >-
+  An artefact a project owes somebody — a document, a build, a dataset, a trained team. Not the work that
+  produces it (`activities`) and not the outcome it serves (`goals`): a deliverable is the THING that changes
+  hands, and it is accepted rather than done.
+use_when: >-
+  a plan promises somebody an artefact — a deck, a spec, a release, a migrated dataset, a trained team — record it
+  here with `due` and who accepts it; asked "what do we owe and by when", or "what has actually been handed over",
+  list here by `due` and by `status`. Link the `activity` that produces it where one does, and leave it empty when
+  several do. ⚠ `accepted_by` is a CONTACT and not a user: acceptance is somebody else's act, and a deliverable
+  this workspace signs off for itself is an `activities` gate, not an acceptance
+templates: [collection-templates/projects-provenance]
+storage: { path: data/deliverables, codec: md, shape: file, suffix: deliverable }
+# ⚠ A NON-LATIN NAME YIELDS A HASH ID, NOT A REFUSAL — see the same warning on `projects` and `phases`.
+# Project-scoped for the same reason `phases` is: `project` is REQUIRED, so it can be an id segment,
+# and two plans may each owe a "final report".
+id:
+  # ⚠ AN ORDERED LIST (engine >=0.25.0): the first template whose fields are all
+  # present wins. `slug` when the record carries one, the name otherwise — which is
+  # what lets `slug` be OPTIONAL instead of forcing a handle onto every record.
+  # `{{ slug }}` is the FIELD; `{{ name | slug }}` is the name through the slug FILTER.
+  # Same word, two things, and the pipe is what tells them apart.
+  generate:
+    - '{{ project | basename }}/{{ slug }}'
+    - '{{ project | basename }}/{{ name | slug }}'
+  pattern: ^[a-z0-9][a-z0-9-]*/[a-z0-9][a-z0-9-]*$
+schema:
+  type: object
+  required: [name, project, kind]
+  properties:
+    slug: { type: string, pattern: '^[a-z0-9][a-z0-9-]*$', title: Slug, description: 'The latin handle that becomes the id. ⚠ A SLUG, NOT A CODE, and the pack keeps the two apart deliberately: `activities.code` (`a-01`) and `risks.code` (`rk-01`) are identifiers a room says out loud and reads in order, so they stay required and stay called codes. This one exists ONLY so a value in any script can have a readable, typeable id — it is never shown to a reader and never replaces the name. OPTIONAL since engine 0.25.0: `id.generate` takes an ordered list, so the id falls back to the name when this is empty, and a name with no latin characters still produces a hash id but now says so on the write.' }
+    name:
+      type: string
+      description: What the artefact is, as it would be written on an invoice line or a handover note.
+    project:
+      type: string
+      x-reference: projects
+      x-inverse:
+        field: deliverables
+        description: What this plan owes, by due date — generated from `deliverables.project`.
+      description: The plan that owes it. REQUIRED, and the FIRST SEGMENT OF THE ID — an artefact nobody's plan owes is not a deliverable.
+    kind:
+      type: string
+      enum: [document, deck, report, software, design, prototype, dataset, training, process, service, other]
+      description: >-
+        What the artefact IS, commercially — what somebody is buying. ⚠ DELIBERATELY NOT the MIME-shaped enum
+        on `perspective/world/deliverables`: a Drive read knows a file is a `sheet` and cannot know it is the
+        migration plan. A kind the list lacks is a hand-edit of this descriptor, not a coined value.
+    # ── WHAT PRODUCES IT, and both are OPTIONAL because the cardinality cuts both ways ─────────────
+    activity:
+      type: string
+      x-reference: activities
+      x-inverse:
+        field: deliverables
+        description: What this rung hands over — generated from `deliverables.activity`.
+      description: >-
+        The plan rung that produces it, where ONE does. EMPTY IS A MEANING: an artefact several rungs build
+        together belongs to the project and to no single rung, and naming the nearest one would be a guess
+        the board then reads as a fact.
+    phase:
+      type: string
+      x-reference: phases
+      x-inverse:
+        field: deliverables
+        description: What is handed over during this stretch — generated from `deliverables.phase`.
+      description: >-
+        The stretch of the plan it is handed over in. Usually derivable from `due` and the phase dates — carried
+        explicitly because a deliverable slips without its phase moving, and the disagreement is worth seeing.
+        ⚠ It must be a phase of THIS deliverable's project; `bin/check-records.mjs` refuses the mismatch.
+    owner:
+      type: string
+      x-reference: users
+      x-inverse:
+        field: deliverables
+        description: The artefacts this person is accountable for handing over — generated from `deliverables.owner`.
+      description: Who on our side is accountable for it existing and being handed over. One person; not necessarily anyone who makes it.
+    # ── WHEN, AND WHETHER IT LANDED ────────────────────────────────────────────────────────────────
+    due:
+      type: string
+      format: date
+      description: When it is owed by, as an absolute date. Absent means nobody has committed to one, which on a client deliverable is itself the finding.
+    delivered_on:
+      type: string
+      format: date
+      description: When it actually changed hands. ⚠ NOT when it was finished — a thing sitting in a folder nobody was told about has not been delivered.
+    accepted_on:
+      type: string
+      format: date
+      description: When the receiving side said yes. Absent with `delivered_on` set is the normal, and often uncomfortable, in-between state.
+    status:
+      type: string
+      enum: [planned, in-progress, delivered, accepted, rejected, dropped]
+      default: planned
+      description: >-
+        `planned` (owed, not started) · `in-progress` · `delivered` (handed over, nobody has said yes) ·
+        `accepted` (they said yes — requires `accepted_by`, and `bin/check-records.mjs` refuses the pair without it) ·
+        `rejected` (they said no; the reason goes in the body) · `dropped` (descoped by agreement).
+        ⚠ `delivered` and `accepted` are two states on purpose: the gap between them is where client projects
+        actually get stuck, and collapsing them hides exactly that.
+    accepted_by:
+      type: string
+      x-reference: contacts
+      description: >-
+        Who on the RECEIVING side accepted it. A `contacts` reference and not a user, precisely because they are
+        not ours — this field is the answer to "who actually signed this off", and a deliverable this workspace
+        accepts for itself has not been accepted.
+    location:
+      type: string
+      description: >-
+        Where the artefact is — a link, or a `${env:FILES_FOLDER}/…` template for something on disk. Never a raw
+        machine path: a record travels between machines and a resolved path does not. The BYTES are never committed.
+    tags:
+      type: array
+      items: { type: string }
+      description: Free strings, lowercase and hyphenated; the colon convention with no space.
+    content:
+      type: string
+      format: markdown
+      x-body: true
+      description: >-
+        What the artefact contains, what "good" looks like for it, and what it deliberately excludes — the
+        acceptance criteria, written before it is built rather than argued after it is delivered.
+order: 13
+list_fields: [name, project, kind, owner, due, status, accepted_by]
+icon: export   # the thing that leaves for the client; `package` is the product itself

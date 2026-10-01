@@ -1,0 +1,27 @@
+# Who the work was WITH, over time. A band per collaborator, an activity in every band it names.
+# ⚠ Solo work has no collaborator and is hidden here by default — that is the question this view
+# asks, and `show_ungrouped_rows` turns the rest back on when you want the whole year instead.
+options:
+  start_field: started
+  end_field: ended
+  group_rows_by_field: collaborators
+  group_template: '{{ name }}'
+  # ⚠ NOT `roles_observed`: it is a list and renders as a join, and 'author, follower, commenter'
+  # says less about a person than the span and weight of what they actually appear in.
+  group_summary_template: '{{ evidence_count }} pieces of evidence · {{ first_seen }} → {{ last_seen }}'
+  # No `group_icon_field`: blank PROBES the referenced record for `avatar`, then `icon`, then
+  # `image`, and a collaborator carries `avatar` when `link-collaborator-avatars` found an exact
+  # match. So the band wears the person's face where there is one and their name where there is not,
+  # with nothing to configure per workspace — which matters, because this view ships to three.
+
+  template: '{{ name }}'
+  color_by_field: collaborative
+  page_size: 100000
+nav:
+  label: Timeline by collaborator
+  icon: organization
+  order: 3
+path: /timeline/by-collaborator
+target: list
+collection: collections/perspective/world/activities
+layout: gantt

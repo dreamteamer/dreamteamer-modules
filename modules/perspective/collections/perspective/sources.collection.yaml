@@ -1,0 +1,95 @@
+# sources — ONE INVENTORIED EVIDENCE SOURCE. The perimeter is not fixed in the design; it is
+# measured per person and per machine, and `reach: declined` is a choice that is recorded and
+# never re-asked in the same session. A source that came back empty is a record, not a failure.
+#
+# ⚠ THE ONE COLLECTION IN THIS MODULE THAT IS MANY-TO-MANY WITH THE RUN, and the reason is what a
+# source IS. Every other contributor-keyed record is PRODUCED by a run — a conversation is condensed
+# once, an activity is reconstructed, a finding is concluded — so "which run wrote it" and "which run
+# last confirmed it" are the two questions anybody asks, and the runs in between did not see the
+# record, they re-derived it. A source is DURABLE: the repo, the transcripts tree, the mailbox exist
+# independently of any run, and EVERY run re-reads them. "Which runs saw this source" is a real,
+# recurring question that a first/last pair cannot answer from the third run onward: first and last
+# are kept and everything between is lost.
+#
+# So `retrospective` and `last_seen_in` are GONE here, both of them, and nothing is lost by it — the
+# run id begins with its own start date (`YYYY-MM-DD--<contributor>`), so `retrospectives` SORTED
+# gives first-seen, last-seen and every run between, from one field. That is the module's own rule
+# applied to itself: a fact stored in two places is the next thing to delete.
+name: perspective/sources
+templates: [collection-templates/perspective-provenance]
+description: One inventoried evidence source — its kind, whether it could be read, and what it held.
+use_when: >-
+  the inventory stage runs, or a reader is about to run — a reader refuses to run unless its source
+  here says `available`; asked "what could this session see" or "what was left out", list here
+storage: { path: data/perspective/sources, codec: md, shape: file, suffix: source }
+id:
+  generate: "{{ contributor }}/{{ kind }}--{{ label | slug }}"
+  pattern: "^[a-z0-9-]+/[a-z-]+--[a-z0-9-]+$"
+schema:
+  type: object
+  required: [retrospectives, contributor, kind, label, reach]
+  properties:
+    # THE M2M. This side OWNS the relation and stamps `sources` onto the run — the same spelling
+    # `rnd/prototypes.design_doc` uses, and the mirror is declared explicitly on
+    # `retrospective-sessions` with `x-inverse-of` so a reader of that descriptor can see it.
+    # ⚠ APPEND, NEVER OVERWRITE. A reader adds this run's ref if it is not already there and touches
+    # nothing else; the readers do exactly that (`lib/records.mjs` `withRun`). A writer that replaced
+    # the list would silently make every earlier run invisible, which is the failure the pair of
+    # scalars had by construction.
+    retrospectives:
+      type: array
+      items: { type: string, x-reference: perspective/retrospective-sessions }
+      # ⚠ NO `x-inverse` HERE, and that is not an omission. The mirror is declared on the OTHER side,
+      # as `retrospective-sessions.sources` with `x-inverse-of` — spelling B, which compile rewrites
+      # onto this field in pass 1 and stamps in pass 2. Declaring BOTH is legal and compiles to the
+      # same thing, but it makes compile WARN on every run in every consumer ("declared on both sides
+      # — keep one"), and two permanent warnings in everybody's output is how people learn to skim
+      # warnings. Spelling B is chosen over A so the generated field is VISIBLE in the descriptor a
+      # reader actually opens; `rnd/products.design_docs` and `rnd/references.design_docs` are the
+      # same shape, silently.
+      description: >-
+        EVERY run that has inventoried or read this source, in the order they touched it. Sort them and
+        the first is when the source entered the perimeter, the last is when it was most recently read,
+        and the middle is the answer the retired `retrospective`/`last_seen_in` pair could never give.
+        REQUIRED and never empty: a source nothing has ever looked at is not a source, it is a guess.
+    contributor: { type: string, pattern: '^[a-z0-9-]+$', description: 'WHOSE this is, as a slug — and the FIRST SEGMENT OF THE ID. That is what makes a second retrospective UPDATE this record instead of writing one beside it. A plain slug rather than a reference, because an id segment cannot be one; the person''s own observed-world record is perspective/world/users/<contributor>/<their-name-slug>.' }
+    kind:
+      type: string
+      enum: [git-repo, claude-transcripts, codex-transcripts, cursor-transcripts, gemini-cli-transcripts, workspace-records, paste-back, asana, jira, gmail, drive, obsidian, meetings]
+      description: >-
+        What kind of evidence this is. Slice one reads git-repo, claude-transcripts and paste-back;
+        the other kinds are declared so a later reader adds no schema. ⚠ `meetings` is the
+        consuming workspace's own `meetings` collection — a PEER of this module, read by
+        `read-meetings`, and the only source that is already records in the same tree. It is a source
+        anyway because "what did this person's week consist of" is a question no repo can answer for
+        a contributor whose work is conversations; `workspace-records` is a different thing (the
+        workspace's VOCABULARY, read by `init`).
+    label:
+      type: string
+      description: The human name — the repo folder, the account tree (`default`, `work`), the paste-back tool.
+    reach:
+      type: string
+      enum: [available, unavailable, declined]
+      description: '`available` was read; `unavailable` was not there or not readable; `declined` the person said no — never re-asked in this session.'
+    location:
+      type: string
+      description: 'WHERE, as a template: `${userHome}/.claude/projects`, `${env:REPOS_FOLDER}/acme/portal`, `${workspaceFolder}`. Never a machine path.'
+      examples: ['${userHome}/.claude/projects', '${env:REPOS_FOLDER}/acme/portal']
+    repo:
+      type: string
+      x-reference: repos
+      description: For `git-repo` — the system record the inventory registered for this checkout.
+    counts:
+      type: object
+      description: 'Reader-specific totals, e.g. {files, conversations, sidecars, first, last} or {commits, first, last}.'
+    read_with:
+      type: string
+      description: The reader script and its inspector version, e.g. `read-claude-transcripts@metrics/1`.
+    content:
+      type: string
+      format: markdown
+      x-body: true
+      description: Anything the counts cannot say — why it was declined, what was odd about the tree.
+list_fields: [label, kind, reach, retrospectives]
+icon: database
+order: 20   # nav position — what it could see; the pipeline order, ten apart so one can be inserted without renumbering

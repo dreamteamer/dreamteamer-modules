@@ -1,0 +1,90 @@
+# Defects found while dogfooding — the bugs this workspace discovers in the tools it runs on.
+#
+# Why a collection rather than GitHub issues: the bugs worth keeping are the ones found by USING the
+# thing, and they are found mid-task, by an agent, with the evidence already on screen. A record
+# written here costs one command and keeps the proof attached; a GitHub issue costs a context switch
+# and usually gets a remembered paraphrase instead. What graduates to the tracker can be exported.
+#
+# `repo` is the point of the collection: an issue that does not name the repo it belongs to cannot be
+# routed, and this workspace runs four of them at once (engine, extension, recipes, this workspace).
+name: rnd/issues
+templates: [collection-templates/rnd-provenance]
+description: A defect found while using one of this workspace's own repos — with the evidence that proves it.
+use_when: >-
+  you are about to diagnose a defect in one of this workspace's repos — search here first, filtered by
+  repo. And the moment a defect is confirmed, file it here with the evidence: a fix without a record
+  is a defect that will be re-derived
+storage: { path: data/rnd/issues, codec: md, shape: file, suffix: issue}
+id:
+  generate: "{{ created | date }}--{{ name | slug }}"
+  pattern: "^\\d{4}-\\d{2}-\\d{2}--[a-z0-9-]+$"
+schema:
+  type: object
+  required: [name, repo]
+  properties:
+    name:
+      type: string
+      description: The defect in one line — what goes wrong, not what should happen.
+    description:
+      type: string
+      description: One line for a list view, when the name alone is not enough.
+
+    repo:
+      type: string
+      x-reference: repos
+      description: WHICH REPO. Required — an unrouted defect is a note, not an issue.
+    component:
+      type: string
+      description: The file or subsystem, when it is known. Free text — a path, a module, a CLI verb.
+
+    reported_by:
+      type: string
+      description: >-
+        Who FOUND it — distinct from `author`, who wrote the record. An operator hits a bug and an agent
+        writes it up, so these genuinely differ. Name the agent when an agent found it
+        (`agents/dreamteamer (claude-opus-5)`); leave it absent when the operator did.
+
+    status:
+      type: string
+      enum: [open, confirmed, fixed, wont-fix, duplicate]
+      default: open
+      description: '`confirmed` means reproduced deliberately, with the repro recorded in `evidence`. `open` is still a claim.'
+    severity:
+      type: string
+      enum: [low, medium, high]
+      default: medium
+      description: How much damage it does when it hits.
+    kind:
+      type: string
+      enum: [bug, silent-failure, papercut, docs-gap, design-flaw]
+      default: bug
+      description: What sort of wrong this is — which decides who should fix it and how urgently.
+
+    evidence:
+      type: string
+      format: markdown
+      description: ⚠ THE FIELD THAT EARNS THE RECORD. The command run and the output it produced — not a description of the bug, the proof of it. An empty `evidence` makes this a hypothesis the next person has to rediscover.
+    workaround:
+      type: string
+      description: What to do until it is fixed. Often the most valuable field in the record.
+
+    found_while:
+      type: string
+      description: What was being done when it surfaced — which says which real workflow the defect actually blocks.
+
+    duplicate_of:
+      type: string
+      x-reference: rnd/issues
+      description: The issue this repeats, when status is `duplicate`.
+    fixed_in:
+      type: string
+      description: Commit sha, tag or version, once the fix lands.
+
+    body:
+      type: string
+      format: markdown
+      x-body: true
+      description: The full write-up — investigation, root cause, anything the fields cannot hold.
+order: 45
+list_fields: [name, status, severity, repo, kind]
+icon: bug

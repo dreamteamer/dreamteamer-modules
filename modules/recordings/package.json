@@ -1,0 +1,16 @@
+{
+	"name": "recordings",
+	"private": true,
+	"version": "0.1.0",
+	"dreamteamer": {
+		"title": "Recordings",
+		"description": "One captured audio file and its transcript per `meeting-recordings` record — pulled out of `${env:INBOX_FOLDERS}` by content hash, filed under `${env:FILES_FOLDER}`, matched to its meeting, transcribed offline (faster-whisper + diarisation, Hebrew and English), with the screenshots taken during the call filed beside it. Carries the transcript-gated bindings of the meeting pipeline (summarise · extract tasks · analyse), because those are only possible once a transcript exists. Depends on `meetings`.",
+		"engine": ">=0.23.0",
+		"dependencies": [
+			"meetings"
+		],
+		"env": [
+			"TRANSCRIBING_MODELS_DIR"
+		]
+	}
+}

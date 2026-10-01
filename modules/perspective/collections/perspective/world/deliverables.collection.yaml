@@ -1,0 +1,100 @@
+# deliverables — A THING THE CONTRIBUTOR MADE, as the evidence store found it. Not an activity (a
+# bounded piece of WORK, reconstructed) and not a project (the effort it belonged to): a deliverable
+# is the artefact itself — a document, a deck, a sheet, a recorded video.
+#
+# ⚠ IT EXISTS BECAUSE A TICKET BOARD IS NOT EVERYONE'S TRAIL. Measured 2026-09-08 across two
+# contributors in one company: 933 Asana tickets for one, 23 for the other. The second is not doing a
+# twentieth of the work — her output is documents. A module that could only read boards would have
+# profiled her as nearly idle and been confidently wrong, which is worse than having no profile.
+#
+# ⚠ THE OBSERVED HALF OF `deliverables`, IN THE SAME SHAPE AND IN A SEPARATE STORE — the argument is
+# written out once, on `world/users.real`. It MOVED here from `perspective/world/deliverables` on
+# 2026-09-11, when the world layer grew to cover the whole projects model.
+#
+# ⚠ THE TWO `kind` ENUMS DIFFER ON PURPOSE, and the difference IS the authority. This one is MIME —
+# `doc`, `sheet`, `slides` — because a store read knows a file's type and cannot know its purpose.
+# The real collection's is commercial — `report`, `software`, `training` — because a plan promising
+# somebody an artefact knows exactly what it is promising and not what file it will arrive as.
+# Spelling them alike would assert the two mean the same thing in the one place the difference is
+# visible for free. Same for `last_touched_by` against `owner`: touched, not authored, not accountable.
+name: perspective/world/deliverables
+templates: [collection-templates/perspective-provenance, collection-templates/perspective-observation]
+description: An artefact a contributor produced — a document, deck, sheet or video — as the evidence store found it.
+use_when: >-
+  the drive (or another artefact store) reader runs; an activity or goal needs the THING that came out
+  of it; asked what someone actually produced rather than what they were assigned — list here by
+  last_touched_on. ⚠ For a contributor whose work is documents rather than tickets this is the primary
+  evidence, and its absence is a fact about the SOURCE, never about the person
+storage: { path: data/perspective/world/deliverables, codec: md, shape: file, suffix: deliverable }
+id:
+  generate: "{{ contributor }}/{{ last_touched_on | date }}--{{ name | slug }}"
+  pattern: "^[a-z0-9-]+/\\d{4}-\\d{2}-\\d{2}--[a-z0-9-]+$"
+schema:
+  type: object
+  required: [retrospective, contributor, name, kind, source_kind]
+  properties:
+    retrospective: { type: string, x-reference: perspective/retrospective-sessions, description: The retrospective session that FIRST wrote this record. }
+    last_seen_in: { type: string, x-reference: perspective/retrospective-sessions, description: 'The most recent session that confirmed or updated it. Absent means exactly one session has ever touched it, which is how "new since last time" is answered without a diff.' }
+    contributor: { type: string, pattern: '^[a-z0-9-]+$', description: 'WHOSE this is, as a slug — and the FIRST SEGMENT OF THE ID. That is what makes a second retrospective UPDATE this record instead of writing one beside it. A plain slug rather than a reference, because an id segment cannot be one; the person''s own observed-world record is perspective/world/users/<contributor>/<their-name-slug>.' }
+    name: { type: string, description: The artefact's own title, as the store holds it — never retitled. }
+    kind:
+      type: string
+      enum: [doc, sheet, slides, form, pdf, video, image, folder, note, other]
+      description: >-
+        What sort of artefact, from its MIME type. Mechanical. `note` is the Obsidian shape — a
+        markdown file in a personal vault, which is a document but not a Drive one: it has no owner,
+        no sharing and no MIME, and calling it `doc` would put it in the same bucket as a shared
+        specification when the two mean very different things about how the work was done.
+    source_kind:
+      type: string
+      enum: [drive, repo, notebook, obsidian, other]
+      description: Which evidence store it was found in.
+    # ⚠ WHICH READ FOUND IT — the reading ACCOUNT, which on a proxy run is not the person. Added
+    # 2026-09-08: every other evidence collection (conversations, threads, tickets, activity-weeks)
+    # carried its source and this one did not, so a pass joining deliverables to a week had to guess
+    # from `last_touched_by`. That guess is right only when the contributor read their own Drive; on
+    # a run where one person's store is read through a colleague's login it is wrong for every file,
+    # and 28 weeks composed nothing at all before the field existed.
+    source: { type: string, x-reference: perspective/sources, description: 'The source record of the read that found this artefact — the READING account, never the person who touched it (that is `last_touched_by`).' }
+    external_id: { type: string, description: The store's own id — a Drive file id. The handle every later call is addressed to. }
+    location: { type: string, description: A link a human can open. Not a path — this artefact does not live in the vault. }
+    container: { type: string, description: The shared drive, repo or folder it sits in. }
+    created_on: { type: string, format: date }
+    last_touched_on: { type: string, format: date }
+    # ⚠ TOUCHED, NOT AUTHORED, and the field is named for what the evidence supports. Drive keeps ONE
+    # lastModifyingUser: a document five people wrote reports the last of them. Calling this `author`
+    # would turn a weak fact into a strong-sounding claim on every record in the collection.
+    last_touched_by: { type: string, description: The account that modified it LAST — never proof of authorship. }
+    bytes: { type: integer }
+    read_with: { type: string, description: 'The reader and its version, e.g. `read-drive@1` — so a corpus re-read at a later version can be told from one that was not.' }
+    topics:
+      type: array
+      items: { type: string, x-reference: perspective/topics }
+      x-inverse: deliverables
+    # ── THE SPINE, joined in after the projects pass ───────────────────────────────────────────────
+    project:
+      type: string
+      x-reference: perspective/world/projects
+      x-inverse: deliverables
+      description: >-
+        The observed effort this artefact came out of, carried from whichever activity cites it. RE-POINTED
+        into this layer, like every structural reference here. Empty when no clustered activity does, which
+        is a fact about the clustering window rather than about the artefact.
+    real:
+      type: string
+      x-reference: deliverables
+      x-reference-soft: true
+      description: >-
+        The `deliverables` record this artefact appears to BE — the one-way, soft join to the thing a plan
+        said it owed. A PROPOSAL, set only on a confirmed match, and one of the most useful in the module:
+        an artefact with no authored counterpart is work nobody was promised, and a planned deliverable with
+        no observed one is a promise with nothing behind it. The argument for one-way and for soft is written
+        out once, on `perspective/world/users.real`.
+    content:
+      type: string
+      format: markdown
+      x-body: true
+      description: What the artefact IS and what it is for, once something has actually read it. Empty until then — a guess from the filename is worse than a blank.
+list_fields: [name, kind, project, container, last_touched_on, last_touched_by, real]
+icon: file   # the artefact a reader found; `package` is the thing a plan owes
+order: 70   # nav position — the evidence it condensed; the pipeline order, ten apart so one can be inserted without renumbering

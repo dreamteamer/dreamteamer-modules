@@ -1,0 +1,19 @@
+# WHAT WAS PRODUCED, over time — one bar per artefact from the day it was created to the day the
+# contributor last touched it, banded by kind. A long bar is a document revised across months, which
+# for a document-shaped contributor is the shape of the work itself.
+# ⚠ `last_touched_on` is the LAST modifier's day, never proof of authorship — the collection says so.
+options:
+  start_field: created_on
+  end_field: last_touched_on
+  group_rows_by_field: kind
+  template: '{{ name }}'
+  color_by_field: kind
+  page_size: 100000
+nav:
+  label: Deliverables
+  icon: file
+  order: 8
+path: /timeline/deliverables
+target: list
+collection: collections/perspective/world/deliverables
+layout: gantt

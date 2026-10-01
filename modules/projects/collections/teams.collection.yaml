@@ -1,0 +1,67 @@
+name: teams
+description: >-
+  A named group of `users` — a delivery team, a squad, a function. One user belongs to as many teams as the work
+  needs, so membership is a LIST here rather than a field on the person; the `teams` mirror on each user is generated
+  from it, which means somebody joins or leaves by editing ONE record.
+use_when: >-
+  work is owned or staffed by a group rather than a person — name the team here and list its `members`; asked what
+  somebody is part of, read the generated `teams` on their user record. A team is not an owner of last resort: a
+  task and an activity are still assigned to a PERSON, and the team says who is available to be that person
+templates: [collection-templates/projects-provenance]
+storage: { path: data/teams, codec: md, shape: file, suffix: team }
+# ⚠ A NON-LATIN NAME YIELDS A HASH ID, NOT A REFUSAL, AND NOT AN EMPTY STRING. The engine's `slug`
+# FILTER is `slugOrHash` (src/template.js): a name with no a-z0-9 in it — Hebrew, Arabic, Cyrillic,
+# CJK — slugs to '' and falls back to a deterministic `x1a2b3c4`. So the write succeeds and the id is
+# unreadable, which is worse than a failure because nobody notices. A workspace whose VALUES are not
+# Latin should pass `--id` explicitly (`dt add teams --id <a-readable-latin-handle> --name "…"`), which
+# is what the engine's own error text recommends for the neighbouring case. ⚠ And `{{ code | default:
+# name | slug }}` does NOT work — the id generator has exactly five filters (date, datetime, slug,
+# pad, basename) and an unknown one throws, while a missing field throws before any fallback runs.
+id:
+  generate: '{{ name | slug }}'
+  pattern: ^[a-z0-9][a-z0-9-]*$
+schema:
+  type: object
+  required: [name]
+  properties:
+    name:
+      type: string
+      description: What the team is called.
+    description:
+      type: string
+      description: One line on what this team is for.
+    members:
+      type: array
+      items: { type: string, x-reference: users }
+      x-inverse:
+        field: teams
+        description: The teams this person belongs to — generated from `teams.members`, so somebody joins a team by editing the TEAM.
+      description: Everyone on the team, including the lead. Editing this list is how membership changes.
+    lead:
+      type: string
+      x-reference: users
+      x-inverse:
+        field: led_teams
+        description: The teams this person runs — generated from `teams.lead`.
+      description: Who runs the team. Name them in `members` as well — the lead is on the team.
+    company:
+      type: string
+      x-reference: companies
+      description: Whose team it is — the vendor, the client, a partner. What makes a mixed-org plan readable.
+    status:
+      type: string
+      enum: [active, disbanded]
+      default: active
+      description: '`disbanded` keeps the team in history without offering it as a staffing option.'
+    tags:
+      type: array
+      items: { type: string }
+      description: Free strings, lowercase and hyphenated; the colon convention with no space.
+    notes:
+      type: string
+      format: markdown
+      x-body: true
+      description: How this team works — cadence, standing commitments, what it does not take on.
+order: 7
+list_fields: [name, lead, company, status, last-modified]
+icon: organization   # WAS `organization-filled`, which is NOT a codicon and drew a blank

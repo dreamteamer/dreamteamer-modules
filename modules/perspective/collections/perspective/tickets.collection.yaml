@@ -1,0 +1,62 @@
+# tickets — ONE EXTERNAL TASK, mechanical. Asana today, Jira when a Jira user walks. Tickets become
+# records because they live outside git; commits do not, because git already holds them.
+name: perspective/tickets
+templates: [collection-templates/perspective-provenance]
+description: One task from a ticketing system — Asana or Jira — as the reader found it. Counted, never judged.
+use_when: >-
+  the asana or jira reader runs (it writes here), or an activity or finding needs a ticket as evidence
+  — cite the record, never the URL; asked what a contributor was assigned in a period, filter here by
+  assignee_handle and created_on
+storage: { path: data/perspective/tickets, codec: md, shape: file, suffix: ticket }
+id:
+  generate: "{{ contributor }}/{{ source | basename }}/{{ external_id }}"
+  pattern: "^[a-z0-9-]+/[a-z-]+--[a-z0-9-]+/[A-Za-z0-9_-]+$"
+schema:
+  type: object
+  required: [retrospective, contributor, source, external_id, title]
+  properties:
+    retrospective: { type: string, x-reference: perspective/retrospective-sessions, description: The retrospective session that FIRST wrote this record. }
+    last_seen_in: { type: string, x-reference: perspective/retrospective-sessions, description: 'The most recent session that confirmed or updated it. Absent means exactly one session has ever touched it, which is how "new since last time" is answered without a diff.' }
+    contributor: { type: string, pattern: '^[a-z0-9-]+$', description: 'WHOSE this is, as a slug — and the FIRST SEGMENT OF THE ID. That is what makes a second retrospective UPDATE this record instead of writing one beside it. A plain slug rather than a reference, because an id segment cannot be one; the person''s own observed-world record is perspective/world/users/<contributor>/<their-name-slug>.' }
+    source: { type: string, x-reference: perspective/sources, description: The asana/jira source this was read from. }
+    external_id: { type: string, description: 'The system''s own id — an Asana gid, a Jira key. THE FORCING FIELD; the id is built from it.' }
+    title: { type: string }
+    project: { type: string, description: The project or board name, as text. }
+    section: { type: string, description: The column or section it sat in when read. }
+    assignee_handle: { type: string, description: 'The assignee''s handle as the system reports it — an Asana gid or email. Joined to collaborators.handles, never to a name.' }
+    assignee:
+      type: string
+      x-reference: perspective/world/users
+      x-inverse: tickets
+      description: The collaborator record, once the handle is matched.
+    created_on: { type: string, format: date }
+    completed_on: { type: string, format: date }
+    due_on: { type: string, format: date }
+    status: { type: string, enum: [open, completed], default: open }
+    tags: { type: array, items: { type: string }, description: The system's own tags, lowercased. }
+    url: { type: string }
+    parent_external_id: { type: string, description: For a subtask — its parent's external id. }
+    # ── WHAT THE TASK ACTUALLY HOLDS ───────────────────────────────────────────────────────────
+    # ⚠ Measured on a real board 2026-09-08: 344 of 933 tasks have an EMPTY description. The reader
+    # was right and the field was simply not there — people do not write descriptions. What those
+    # same tasks DO carry is a story trail (3–7 events each: assigned, moved between sections,
+    # completed) and sometimes a comment, and that is where the reasoning actually lives. A ticket
+    # whose body is only its description is a ticket that says nothing about how the work went.
+    last_activity_on: { type: string, format: date, description: "Asana `modified_at`. ⚠ Read this, not `created_on`, when asking whether a ticket is live: a two-year-old open ticket nobody has touched is not current work." }
+    comment_count: { type: integer, description: Human comments on the task. The count is here so a ticket with discussion can be found without reading every body. }
+    story_count: { type: integer, description: "Every event on the task, comments included — assignments, section moves, completions. A high count on a short task is churn." }
+    subtask_count: { type: integer }
+    followers: { type: array, items: { type: string }, description: Everyone watching the task, as handles. Often the only record of who else was involved when the assignee did all the commits. }
+    custom_fields: { type: object, additionalProperties: true, description: "The board's own fields by display value — story points, priority, sprint, whatever this team keeps. Free-shaped on purpose: every board has different ones, and closing the vocabulary here would mean re-editing the descriptor per client." }
+    content:
+      type: string
+      format: markdown
+      x-body: true
+      description: >-
+        The ticket as a person would read it: the description first (or a line saying there is none —
+        never a blank), then `## comments` with each comment attributed and dated, then `## trail`,
+        the system events in order. The trail is what makes a ticket useful to a workflow pass: it is
+        the only place that says the task went to Failed QA twice before it closed.
+list_fields: [title, project, assignee_handle, status, created_on, last_activity_on, comment_count]
+icon: issues
+order: 50   # nav position — the evidence it condensed; the pipeline order, ten apart so one can be inserted without renumbering

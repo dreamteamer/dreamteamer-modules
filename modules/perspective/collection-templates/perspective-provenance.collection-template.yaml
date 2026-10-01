@@ -1,0 +1,26 @@
+# perspective-provenance: the four traceability fields on every perspective data entity.
+# Module-scoped name on purpose — a collection-template id is an IDENTITY entity, and two modules
+# shipping `provenance` is a compile-time collision (see collection-templates/crm-provenance for the
+# full reasoning). A module that wants to be copied alone owns its own.
+name: perspective-provenance
+description: author / creation_context / source / confidence — the traceability quad on every perspective record
+template:
+  schema:
+    type: object
+    properties:
+      author:
+        type: string
+        description: >-
+          Which AGENT or SCRIPT made this record — `agents/dreamteamer (claude-fable-5)` or
+          `scripts/read-claude-transcripts@metrics/1`. Absent when the person wrote it themselves.
+      creation_context:
+        type: string
+        description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+      source:
+        type: string
+        description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…>.'
+      confidence:
+        type: string
+        enum: [low, normal, high]
+        default: normal
+        description: How much to trust this record. When low, the reason goes in creation_context.

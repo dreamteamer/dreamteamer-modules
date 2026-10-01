@@ -1,0 +1,147 @@
+# world/decisions — A DECISION EXTRACTED FROM A SOURCE. What a retrospective FOUND was decided, in
+# sessions, in commit messages, in tickets — and `init` copies the workspace's own curated decision
+# sources in so the extracted ones can be read beside them. `source_kind` + `source_ref` is the
+# identifier.
+#
+# ⚠ THE OBSERVED HALF OF `decisions`, IN THE SAME SHAPE AND IN A SEPARATE STORE — the argument is
+# written out once, on `world/users.real`. It MOVED here from `perspective/world/decisions` on 2026-09-11,
+# when the world layer grew to cover the whole projects model: a decision is a world object like an
+# activity or a goal, and leaving it outside meant the one namespace that models the observed world
+# was missing the object that explains most of it. `npx dt-extensions migrate-world` moves a consumer's
+# records and re-points every reference.
+#
+# ⚠ TWO SHAPES THE REAL COLLECTION HAS AND THIS ONE CANNOT. `alternatives` and `reversibility` are
+# REQUIRED on `decisions` because a person writing down their own fork can be asked for them;
+# evidence does not contain them. A run that filled them would be inventing the part of a decision
+# that is hardest to reconstruct and most confidently wrong. They are absent, not optional: the
+# honest way to get them is to ask, and that is a `questions` record.
+#
+# ⚠ AND ONE NAME THAT MEANS TWO DIFFERENT THINGS — read this before writing `wrong_if` here. The
+# observation template stamps a `wrong_if` on every model record, and on THIS collection it is NOT
+# the same field as `decisions.wrong_if`:
+#   · `decisions.wrong_if` (real) — what would show THE DECISION was the wrong call. The decider's
+#     own prediction about their choice. Not reconstructable from evidence; ask for it.
+#   · `wrong_if` here (observed) — what would show THE RUN MISREAD THIS. "the thread shows this was
+#     floated and dropped", "the commit is a revert of the choice it states". A claim about the
+#     reading, not about the choice.
+# Writing the first kind here is the failure to avoid: it puts words in the decider's mouth and it
+# reads, on the page, exactly like a field somebody filled in correctly.
+name: perspective/world/decisions
+templates: [collection-templates/perspective-provenance, collection-templates/perspective-observation]
+description: A decision a retrospective extracted from any source, with the identifier of where it was found.
+use_when: >-
+  init copies agent-decision-log and the decision log's rows in (source_kind decision-log); the extract
+  stage writes one when a session or commit message states a choice with a reason; asked what was
+  decided about a topic and where — filter by topics, read source_ref
+storage: { path: data/perspective/world/decisions, codec: md, shape: file, suffix: decision }
+id:
+  generate: "{{ contributor }}/{{ decided_on | date }}--{{ name | slug }}"
+  pattern: "^[a-z0-9-]+/\\d{4}-\\d{2}-\\d{2}--[a-z0-9-]+$"
+schema:
+  type: object
+  required: [retrospective, contributor, name, source_kind, source_ref, decided_on]
+  properties:
+    retrospective: { type: string, x-reference: perspective/retrospective-sessions, description: The retrospective session that FIRST wrote this record. }
+    last_seen_in: { type: string, x-reference: perspective/retrospective-sessions, description: 'The most recent session that confirmed or updated it. Absent means exactly one session has ever touched it, which is how "new since last time" is answered without a diff.' }
+    contributor: { type: string, pattern: '^[a-z0-9-]+$', description: 'WHOSE this is, as a slug — and the FIRST SEGMENT OF THE ID. That is what makes a second retrospective UPDATE this record instead of writing one beside it. A plain slug rather than a reference, because an id segment cannot be one; the person''s own observed-world record is perspective/world/users/<contributor>/<their-name-slug>.' }
+    name: { type: string, description: The decision in one line. }
+    source_kind:
+      type: string
+      enum: [agent-session, git-commit, decision-log, ticket, meeting, interview, email]
+      description: What kind of source it was extracted from.
+    source_ref: { type: string, description: 'THE IDENTIFIER, shaped by source_kind: a conversation ref for agent-session; a commit SHA for git-commit; agent-decision-log/<id> or DECISION-LOG.md#<row> for decision-log; a tickets ref; a meetings ref; an answers ref. check-records validates the shape.' }
+    decided_on:
+      type: string
+      format: date
+      description: >-
+        The day the source says it was decided. ⚠ A DATE and not a date-time, where the real collection's is
+        a date-time — because evidence carries a day and almost never an instant, and a fabricated clock time
+        would sort a timeline with precision nobody measured. The instant this was OBSERVED is `observed`,
+        from the observation template, and that is the axis the model tier sorts on.
+    # ── WHO DECIDED, OBSERVED ──────────────────────────────────────────────────────────────────────
+    # ⚠ THE SAME FIELD AS THE REAL COLLECTION'S, WITH ONE MORE VALUE, and the extra value is the whole
+    # difference in authority. `decisions.decided_by` is a CLOSED PAIR — person or agent, no third —
+    # because a person writing down their own fork always knows which they were. Evidence does not:
+    # a commit message states a choice and names nobody, and a run that guessed would be attributing a
+    # decision to somebody who may not have made it. `unknown` is the honest default here and is
+    # REFUSED there, which is exactly what "same question, different authority" looks like in a schema.
+    decided_by:
+      type: string
+      enum: [person, agent, unknown]
+      default: unknown
+      description: >-
+        WHO THE EVIDENCE SHOWS MADE THE CALL. `person` needs `decider`; `agent` needs `agent`;
+        `bin/check-records.mjs` refuses either half missing. `unknown` is the default and the honest answer
+        whenever the source states a choice and names nobody — never guess from who happened to commit it.
+    decider:
+      type: string
+      x-reference: perspective/world/users
+      # ⚠ `decided`, NOT `decisions` — `collaborators` below already stamps `decisions` onto the same
+      # target, and one field cannot hold two relations (compile refuses it by name). The two are worth
+      # keeping apart anyway, and the naming makes the difference legible on the person's own page:
+      # `decided` is what the evidence shows them DECIDING, `decisions` is what they were merely IN.
+      x-inverse:
+        field: decided
+        description: The calls the evidence shows this person making — generated from `world/decisions.decider`.
+      description: Which PERSON the evidence shows decided. Set only where the source actually says so; `collaborators` is who was merely present.
+    agent:
+      type: string
+      description: >-
+        Which AGENT decided, as the source names it. Free text and not a reference, for the reason it is on the
+        real collection: the model matters as much as the agent and only one of the two is ever a record.
+    activity:
+      type: string
+      x-reference: perspective/world/activities
+      x-inverse: decisions
+      description: >-
+        The reconstructed piece of work this decision was taken inside, joined from whichever activity already
+        cites the same evidence. ⚠ This is the join `project` is DERIVED THROUGH — `bin/derive-decision-projects.mjs`
+        finds the activity first and takes its project — so it was a hop nobody could see until it was a field.
+        Empty when no clustered activity cites the evidence, which is a fact about the clustering window.
+    real:
+      type: string
+      x-reference: decisions
+      x-reference-soft: true
+      description: >-
+        The `decisions` record this observed choice appears to BE — the one-way, soft join to the decision a
+        person wrote down. A PROPOSAL, set only on a confirmed match, and a valuable one: an extracted decision
+        with no authored counterpart is a call nobody logged. The argument for one-way and for soft is written
+        out once, on `perspective/world/users.real`.
+    # ⚠ NOT a duplicate of source_ref. `source_ref` is the ARTEFACT the decision was READ OUT OF — a
+    # log row, a commit, a ticket. This is the SESSION IT WAS FORMED IN, which is a different thing
+    # and usually a different record: a row in agent-decision-log was written BY an agent DURING a
+    # coding session, and that session holds the argument, the rejected branch and the correction
+    # that the one-line row does not. Several, because a decision reached over two sittings was
+    # formed in both. Empty where nothing was formed in a session — a curated DECISION-LOG.md row
+    # the operator wrote by hand, a commit on a machine with no transcripts — and empty is the
+    # honest answer there, never a nearest-in-time guess.
+    conversations:
+      type: array
+      items: { type: string, x-reference: perspective/conversations }
+      description: The coding-agent sessions the decision was FORMED in — where the argument is. Distinct from source_ref, which is only where it was found written down.
+      x-inverse: decisions
+    decision: { type: string, description: What was decided, in the words of the source. }
+    rationale: { type: string, description: Why, in the words of the source. Absent when the source gave none — never invented. }
+    # WHICH EFFORT IT BELONGS TO — the axis a reader actually wants, and the one a decision could not
+    # be sorted on until now. ⚠ DERIVED, not judged: `bin/derive-decision-projects.mjs` joins the
+    # decision to the ACTIVITY that already cites its evidence (its `conversations`, its commit SHA,
+    # its thread or its ticket) and takes that activity's project. A decision whose evidence no
+    # activity cites is left EMPTY and counted, never placed by nearest date — several projects run in
+    # the same week, so a date is not a join.
+    project:
+      type: string
+      x-reference: perspective/world/projects
+      x-inverse: decisions
+      description: The effort this decision belongs to, derived from the activity that cites the same evidence.
+    topics:
+      type: array
+      items: { type: string, x-reference: perspective/topics }
+      x-inverse: decisions
+    collaborators:
+      type: array
+      items: { type: string, x-reference: perspective/world/users }
+      x-inverse: decisions
+    content: { type: string, format: markdown, x-body: true }
+list_fields: [name, decided_on, decided_by, project, source_kind, real]
+icon: law   # the observed decision a run extracted; `git-branch` is the fork a person logged
+order: 130   # nav position — the model it reconstructed; the pipeline order, ten apart so one can be inserted without renumbering

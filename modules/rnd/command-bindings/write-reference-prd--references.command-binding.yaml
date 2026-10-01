@@ -1,0 +1,10 @@
+command: commands/write-reference-prd
+collection: collections/rnd/references
+target: record
+can-enter:
+  prd:
+    _empty: true
+can-exit:
+  prd:
+    _nempty: true
+description: write the spec-as-prompt this reference still lacks

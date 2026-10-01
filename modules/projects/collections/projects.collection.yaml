@@ -1,0 +1,96 @@
+name: projects
+description: >-
+  One delivery effort with a start, an end and someone accountable — the record every activity hangs off. Not the
+  thing being BUILT (a workspace with an R&D module keeps that as a product) and not the commercial funnel record: a
+  project is the WORK, and `company` is enough to say whose it is.
+use_when: >-
+  a bounded piece of delivery is agreed and needs a plan — create it here first, then its `activities`; asked "where
+  does this effort stand", "when does it start" or "who is on it", read here. The generated `activities` mirror is the
+  plan itself, `lead` says who is accountable and `teams` who is staffed
+templates: [collection-templates/projects-provenance]
+storage: { path: data/projects, codec: md, shape: file, suffix: project }
+# ⚠ A NON-LATIN NAME YIELDS A HASH ID, NOT A REFUSAL, AND NOT AN EMPTY STRING. The engine's `slug`
+# FILTER is `slugOrHash` (src/template.js): a name with no a-z0-9 in it — Hebrew, Arabic, Cyrillic,
+# CJK — slugs to '' and falls back to a deterministic `x1a2b3c4`. So the write succeeds and the id is
+# unreadable, which is worse than a failure because nobody notices. A workspace whose VALUES are not
+# Latin should pass `--id` explicitly (`dt add projects --id <a-readable-latin-handle> --name "…"`), which
+# is what the engine's own error text recommends for the neighbouring case. ⚠ And `{{ code | default:
+# name | slug }}` does NOT work — the id generator has exactly five filters (date, datetime, slug,
+# pad, basename) and an unknown one throws, while a missing field throws before any fallback runs.
+id:
+  generate: '{{ name | slug }}'
+  pattern: ^[a-z0-9][a-z0-9-]*$
+schema:
+  type: object
+  required: [name]
+  properties:
+    name:
+      type: string
+      description: What the project is called.
+    code:
+      type: string
+      description: A short handle used in conversation and in activity codes — optional, and free-form because every shop numbers differently.
+    description:
+      type: string
+      description: One line on what this project delivers.
+    company:
+      type: string
+      x-reference: companies
+      description: Who it is for. A peer reference — a workspace with no CRM leaves it empty.
+    # OWNER FIELDS ARE TYPED, and they point at `users`, never at free text or at contacts. That is what makes
+    # "what is mine" answerable from the person's own record rather than from a search.
+    lead:
+      type: string
+      x-reference: users
+      x-inverse:
+        field: led_projects
+        description: The projects this person leads — generated from `projects.lead`.
+      description: Who is accountable for the project as a whole. One person.
+    teams:
+      type: array
+      items: { type: string, x-reference: teams }
+      x-inverse:
+        field: projects
+        description: The projects this team is staffed to — generated from `projects.teams`.
+      description: The teams staffed to this project. Membership comes from the team, so staffing is not restated per activity.
+    # WHERE THE CODE LIVES. `repos` is a CORE collection — the engine ships it and binds two verbs to
+    # it (`dt install repos/<id>` materializes a working clone from the record, `dt status` reports
+    # each one present or absent) — so a project points AT it rather than the other way round: the
+    # engine cannot reference a collection a module ships. Singular and plural both earn their place:
+    # `repo` is the one a reader opens when they ask "where is this project's code", and every real
+    # engagement eventually grows a second (an infra repo, a client fork, the workspace itself).
+    repo:
+      type: string
+      x-reference: repos
+      description: The project's PRIMARY repo — the one to open first. Also list it in `repos`.
+    repos:
+      type: array
+      items: { type: string, x-reference: repos }
+      description: >-
+        Every repo this project touches, `repo` included — infra, forks, the delivery workspace itself.
+        Free of order; `repo` is what says which one is the front door.
+    starts:
+      type: string
+      format: date
+      description: The planned first day.
+    ends:
+      type: string
+      format: date
+      description: The planned last day — the target, not a promise. What the gantt draws to.
+    status:
+      type: string
+      enum: [proposed, active, paused, done, dropped]
+      default: proposed
+      description: Observable states only — `proposed` (agreed, not started), `active` (work is happening), `paused` (deliberately shelved), `done`, `dropped`.
+    tags:
+      type: array
+      items: { type: string }
+      description: Free strings, lowercase and hyphenated; the colon convention with no space.
+    content:
+      type: string
+      format: markdown
+      x-body: true
+      description: The project's page — what it delivers, the commercial shape, what is deliberately out of scope.
+order: 8
+list_fields: [name, company, lead, status, starts, ends]
+icon: rocket   # not `project` — perspective/world/projects already wears `project`; a delivery effort is the one that ships

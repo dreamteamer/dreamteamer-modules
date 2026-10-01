@@ -1,0 +1,37 @@
+# rnd-provenance: the four fields every R&D data entity carries, so any record can say who made it,
+# from what, and how much to trust it.
+#
+# ⚠ NAMED `rnd-provenance`, not `provenance`, ON PURPOSE. Compile treats a collection-template id as
+# an IDENTITY entity: two modules shipping `collection-templates/provenance` is a hard name collision,
+# not a merge. A module that wants a shared field set owns it under a module-scoped id, or it can only
+# ever be installed beside whichever module ships the unscoped one. Every module in this package
+# carries its own copy of this ~20-line quad for that reason. Duplication you can cherry-pick beats a
+# dependency you must import.
+#
+# NOT for system records (collections, commands, skills, agents, ui-views) — they comply with a
+# standardized schema, and their provenance is the module that shipped them.
+name: rnd-provenance
+description: author / creation_context / source / confidence — the traceability quad on every R&D data entity
+template:
+  schema:
+    type: object
+    properties:
+      # free-text string, not x-reference: the target is polymorphic (users | agents) and
+      # x-reference cannot express that.
+      author:
+        type: string
+        description: >-
+          Which AGENT made this record — `agents/dreamteamer (claude-opus-5)`. Leave it ABSENT when the
+          operator wrote it themselves: there is no `users` collection to point at since engine 0.8.0, and
+          absent is the honest encoding of the default rather than a constant repeated on every record.
+      creation_context:
+        type: string
+        description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+      source:
+        type: string
+        description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…> · migration:<id>.'
+      confidence:
+        type: string
+        enum: [low, normal, high]
+        default: normal
+        description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.

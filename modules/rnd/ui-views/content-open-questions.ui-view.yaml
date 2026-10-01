@@ -1,0 +1,10 @@
+# What reading more cannot settle — the residue that closes only by a choice or by contact with a
+# real person. Sorted by severity, because that is the order to work them in.
+path: /content/open-questions
+target: list
+collection: collections/rnd/open-questions
+layout: table
+default: true
+options:
+  columns: [name, kind, severity, status, from_question, resolved_on]
+  sort: 'severity'

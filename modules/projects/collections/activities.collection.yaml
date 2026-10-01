@@ -1,0 +1,145 @@
+name: activities
+description: >-
+  One rung of a plan. `kind: work` is a bounded piece of work with a start, an end, a lead and the seats doing it;
+  `kind: gate` is a condition that must hold before the plan advances — the same object, because a plan reads as ONE
+  ordered list and splitting it made every question ask twice.
+use_when: >-
+  building or re-cutting a plan, or asking "what happens in February", "who is loaded", "what blocks us", "what must
+  the client supply and when" — all here, filtered by `kind`. A gate carries `passes_when` (the test), `evidence`
+  (what proved it), `blocking` and `external_owner` (the person OUTSIDE this workspace who actually holds it — the
+  schedule risk you do not control). ⚠ A gate needs no activity feeding it: some gates exist precisely because nobody
+  here does work toward them, and that is a fact about the plan rather than a gap in it
+templates: [collection-templates/projects-provenance]
+storage: { path: data/activities, codec: md, shape: file, suffix: activity }
+id:
+  generate: '{{ code }}'
+  pattern: ^[a-z0-9][a-z0-9-]*$
+schema:
+  type: object
+  required: [code, name, project, kind]
+  properties:
+    code:
+      type: string
+      description: 'A short ASCII code in plan order — `a-01`, `g-03`. It IS the id, because a name in any script has to slug and a plan is read in order.'
+    name:
+      type: string
+      description: What happens (work) or what passes (gate). Any script — the code carries the id.
+    project:
+      type: string
+      x-reference: projects
+      x-inverse:
+        field: activities
+        description: The plan — every activity and gate of this project, in code order.
+      description: The project this rung belongs to.
+    # THE FOLD, and the whole reason this collection is one and not two. Everything below `kind` that is
+    # gate-only says so in its own description; `bin/check-records.mjs` refuses the combinations that would be a lie.
+    kind:
+      type: string
+      enum: [work, gate]
+      default: work
+      description: '`work` is something someone DOES over a span; `gate` is something someone JUDGES on a date. A gate is drawn as a point — set `starts` and `ends` to the same day.'
+    gate_kind:
+      type: string
+      enum: [commercial, regulatory, technical, quality, client-signoff, external-dependency]
+      description: 'GATES ONLY — what sort of condition: an approval or a contract · a legal duty with a clock · proof that something works · a test or a sign-off on quality · the client saying yes · someone else supplying something.'
+    # ── THE TWO AXES A PLAN IS READ ON, and they are different questions. `lane` is WHICH TRACK (the
+    # swimlane, a typed record with an order of its own); `phase` is WHEN (the span of the plan this
+    # sits in). Using both as the grouping axis is what gives a board two disagreeing ways to band —
+    # so if you have been using `phase` as a swimlane, those values belong in `activity-lanes` now.
+    lane:
+      type: string
+      x-reference: activity-lanes
+      x-inverse:
+        field: activities
+        description: The rungs in this band, in code order — generated from `activities.lane`.
+      description: >-
+        The band this rung is drawn in. A typed reference rather than a second free-text field, because a
+        lane carries an ORDER and a string carries only its own spelling — the whole argument is on the
+        `activity-lanes` descriptor. ⚠ If the lane names a `project`, it must be THIS rung's project;
+        `bin/check-records.mjs` refuses the mismatch, which is the one lane rule a schema cannot express.
+    phase:
+      type: string
+      x-reference: phases
+      x-inverse:
+        field: activities
+        description: The rungs falling in this stretch, in code order — generated from `activities.phase`.
+      description: >-
+        WHEN in the plan this sits — the stretch it falls in, not the track it runs on: `lane` is the track.
+        ⚠ A REFERENCE since 2026-09-11, where it was free text before, and the reason is the one thing a
+        string could not do: carry the stretch's OWN dates. A free-text phase repeated on forty rungs means
+        "when does Build end" can only be answered by taking the max of whatever points at it, which silently
+        changes the moment one rung is re-scoped. A `phases` record states the span once. ⚠ The phase must
+        belong to THIS rung's project; `bin/check-records.mjs` refuses the mismatch, exactly as it does for
+        `lane`. Migrating a workspace that used the free-text form: `node bin/migrate-plan.mjs <workspace>`
+        mints one `phases` record per distinct value and re-points every activity.
+    starts:
+      type: string
+      format: date
+      description: The planned first day. For a gate, the date it is judged — the same value as `ends`.
+    ends:
+      type: string
+      format: date
+      description: The planned last day. For a gate, equal to `starts`, which is what draws it as a point rather than a bar.
+    lead:
+      type: string
+      x-reference: users
+      x-inverse:
+        field: led_activities
+        description: The activities and gates this person is accountable for — generated from `activities.lead`.
+      description: Who is accountable for this happening or being checked. One person, always one of ours — a gate held by someone else uses `external_owner` as WELL.
+    seats:
+      type: array
+      items: { type: string, x-reference: users }
+      x-inverse:
+        field: activities
+        description: The plan rungs this person is on — generated from `activities.seats`. THIS is what makes a person's own record answer "what is mine".
+      description: Who does the work, including the lead. Empty on a gate nobody works toward, which is legitimate.
+    team:
+      type: string
+      x-reference: teams
+      description: The team carrying this rung, where a plan is staffed by team rather than by person. `seats` still names the individuals — a team does not do the work, its members do.
+    status:
+      type: string
+      enum: [planned, in-progress, done, blocked, abandoned]
+      default: planned
+      description: >-
+        Where this rung stands. `planned` is the default because a plan is written AHEAD — an activity is authored
+        before anything is observed about it. For a gate, `done` means it PASSED, and passing requires `evidence`.
+    passes_when:
+      type: string
+      description: GATES ONLY — the test that says this gate passed, as one checkable sentence. A gate whose test cannot be written down is not a gate.
+    evidence:
+      type: string
+      description: GATES ONLY — what actually proved it, and where to look. Required before a gate may be `done`; `bin/check-records.mjs` refuses the pair without it.
+    blocking:
+      type: boolean
+      description: GATES ONLY — whether the plan genuinely stops here. A gate that does not block is a milestone, and saying so is more honest than pretending everything blocks.
+    external_owner:
+      type: string
+      x-reference: contacts
+      description: >-
+        GATES ONLY — who OUTSIDE this workspace actually holds the gate: the client approving, the partner supplying
+        an environment, the regulator. A `contacts` reference, not a user, precisely because they are not ours; this
+        field is the answer to "what schedule risk do we not control".
+    depends_on:
+      type: array
+      items: { type: string, x-reference: activities }
+      description: The rungs that must complete first. Ordering the plan, not scheduling it — nothing here computes a critical path.
+    estimate:
+      type: string
+      description: The effort this was priced at, in this plan's own unit (person-days, person-months). Free text so the unit travels with the number.
+    estimate_basis:
+      type: string
+      description: How the estimate was arrived at. An estimate without a basis is a hand-wave — say so here or leave both empty.
+    tags:
+      type: array
+      items: { type: string }
+      description: Free strings, lowercase and hyphenated; the colon convention with no space.
+    content:
+      type: string
+      format: markdown
+      x-body: true
+      description: What this rung actually involves, what it assumes, and what it produces.
+order: 10
+list_fields: [code, name, kind, lane, phase, starts, ends, lead, status]
+icon: milestone   # not `list-ordered` — `perspective/workflows` wears `list-ordered`; a plan rung is a milestone on the way

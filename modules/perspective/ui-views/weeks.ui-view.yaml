@@ -1,0 +1,54 @@
+# THE WEEKS as a gantt — one bar per source per ISO week, the mechanical timeline every report is
+# drawn on. `start_date`/`end_date` are derived from `period` by the readers; `timeline-weeks`
+# (a TABLE, "Weekly log") lists the same records, so the two sit beside each other.
+options:
+  start_field: start_date
+  end_field: end_date
+  group_rows_by_field: source
+  group_template: '{{ label }}'
+  # Same source record as the correspondence timeline, same reason, same two fields.
+  group_summary_template: '{{ kind }} · {{ label }}'
+  # The judged one-sentence summary where a week has one — and the WEEK ITSELF where it does not.
+  # ⚠ Only 33 of 446 weeks on the dogfood run carried a summary, so a template alone drew a wall of
+  # nameless bars until `barLabel` learned that an empty render is a MISS and falls through to the
+  # tier below. That tier is `period`: `2026-W36` is short, always present, and is the thing the bar
+  # actually is. An empty week is silence, not a sentence about silence.
+  template: '{{ summary }}'
+  bar_label_field: period
+  # A colour per source, from the palette. The band is the source too, so every lane comes out one
+  # consistent colour — which is what makes a 446-bar chart readable rather than 446 grey ticks.
+  color_by_field: source
+  # Carried by hand out of a consuming workspace's module clone, where the studio had committed them
+  # into a gitignored throwaway (see the ⚠ at the foot of this file).
+  columns:
+    - source
+    - period
+    - start_date
+    - commits
+    - sessions
+    - turns_user
+    - files_touched
+  sort: -last-modified
+  page_size: 100000
+nav:
+  label: Weeks (gantt)
+  icon: graph-line
+  order: 6
+path: /timeline/weeks-gantt
+target: list
+collection: collections/perspective/activity-weeks
+layout: gantt
+
+# ⚠ THIS FILE WAS EDITED IN THE STUDIO, IN A CONSUMING WORKSPACE, AND THE EDIT LANDED IN THE
+# GITIGNORED MODULE CLONE — four commits deep, invisible here, and the next `git pull` refused
+# outright because the clone had diverged. Second occurrence in one day; `check-records` now warns.
+#
+# ⚠ ONE PART WAS DELIBERATELY NOT CARRIED: that edit also set `bar_label_field: summary`. The bar
+# already renders `{{ summary }}` as its template, so making the SECOND tier the same field removes
+# the fall-through entirely — a week without a summary went from showing `2026-W36` to showing the
+# record's title, which is the one thing a reader can already see in the gutter. 413 of 446 weeks
+# have no summary, so that is the normal case, not the edge. `period` stays.
+#
+# `start_collapsed: true` from the same edit is not carried either, for the opposite reason: it is
+# the DEFAULT now (extension 0.15.0), and an option repeating the default is a line that will one
+# day disagree with it.

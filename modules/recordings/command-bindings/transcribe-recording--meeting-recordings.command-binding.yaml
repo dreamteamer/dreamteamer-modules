@@ -1,0 +1,21 @@
+command: commands/transcribe-recording
+# RE-POINTED from meetings to meeting-recordings (meetings-v2, 2026-07-28): the transcript lives on
+# the recording now, so the recording is what the command acts on.
+collection: collections/meeting-recordings
+target: record
+# load-bearing: without a gate every origin: pasted recording would advertise "transcribe me" forever.
+# Gates on `recording_file` — the `file` field it used to read was DELETED from the schema when
+# media/ retired (2026-08-23), and an absent field is empty, so the gate could never open for ANY
+# recording (rnd/issues/2026-08-30--the-transcribe-recording-gate-is-dead-…). `archive_file` fixed
+# that gap on 2026-08-30 and was itself renamed to `recording_file` in the capture→recording
+# terminology pass (2026-08-31) — same field, same intent: a pasted recording has no binary and
+# therefore no recording_file either.
+can-enter:
+  recording_file:
+    _nempty: true
+# the transcription provenance object is the honest post-condition, NOT the body: the body can be
+# pasted in by hand with no provenance, and that is exactly the case worth still flagging.
+can-exit:
+  transcription:
+    _nempty: true
+description: transcribe this recording's audio into its transcript

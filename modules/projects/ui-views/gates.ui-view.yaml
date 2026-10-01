@@ -1,0 +1,13 @@
+# The gates alone — what blocks, who holds it, and whether it passed. A saved FILTER over the one
+# collection, which is the fold's whole promise: gates did not stop being addressable, they stopped
+# being a second object.
+path: /plan/gates
+target: list
+collection: collections/activities
+layout: table
+nav: { label: Gates, icon: law, order: 5 }
+filter:
+  kind: { _eq: gate }
+options:
+  columns: [code, name, gate_kind, starts, lead, external_owner, blocking, status]
+  sort: starts

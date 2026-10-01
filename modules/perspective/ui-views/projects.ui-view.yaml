@@ -1,0 +1,30 @@
+# The project lifecycle board. The columns are deliberately the COST ones rather than the tidy ones:
+# a project row that shows only a name and a date range cannot be read, and reading it is the point.
+# `correction_ratio` is here because its DIRECTION is the metric — it should fall as work matures.
+options:
+  columns:
+    - name
+    - kind
+    - lifecycle_stage
+    - status
+    - activities
+    - active_minutes
+    - turns_user
+    - corrections
+    - correction_ratio
+    - tokens_total
+    - lines_new
+    - lines_modified
+    - commits_bug
+    - commits_change_request
+    - started
+    - ended
+  sort: '-active_minutes'
+nav:
+  label: Projects
+  icon: project
+  order: 10
+path: /projects
+target: list
+collection: collections/perspective/world/projects
+layout: table

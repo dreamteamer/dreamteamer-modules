@@ -1,0 +1,21 @@
+# THE SWIMLANE BOARD — the view `activity-lanes` exists for, and the reason the collection earns its
+# place rather than being a second free-text field.
+#
+# ⚠ Banded by `lane`, NOT by `phase`, and that difference is the whole argument: `phase` is a string,
+# so the bands come out in whatever order their spelling gives (`Build · Discovery · Hardening ·
+# Launch` for a plan that runs Discovery → Build → Hardening → Launch). A lane is a record with an
+# `order`, so the bands stack the way somebody decided they should.
+#
+# `show_ungrouped_rows` is on deliberately: a rung with no lane is the residue, and hiding it would
+# make an unbanded plan look finished. `/plan/gantt` still bands by `phase` — a plan that never grew
+# lanes keeps the view it had.
+path: /plan/by-lane
+target: list
+collection: collections/activities
+layout: table
+nav: { label: Plan by lane, icon: three-bars, order: 7 }
+options:
+  group_rows_by_field: lane
+  show_ungrouped_rows: true
+  columns: [code, name, kind, phase, starts, ends, lead, status]
+  sort: code

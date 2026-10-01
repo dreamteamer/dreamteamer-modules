@@ -1,0 +1,59 @@
+# findings — ONE OBSERVATION WITH ITS EVIDENCE. Roles, responsibilities, workflows, metrics and
+# insights are KINDS here, not collections: one grain, one evidence discipline. The guard from the earlier conversation analyzer
+# lives in the schema, not in advice: `evidence_count` is required, `standing` follows it, and the
+# body ends with `(n sessions)` — bin/check-records.mjs fails a body that does not.
+name: perspective/findings
+templates: [collection-templates/perspective-provenance, collection-templates/perspective-observation]
+description: One observation about a person's work, with the evidence behind it and how many distinct sessions or windows support it.
+use_when: >-
+  the findings pass runs over digests, windows and answers — write each observation here with its refs
+  and count; the interview confirms or refutes them; proposals cite only confirmed ones. Search here
+  before re-deriving a pattern from the same evidence
+storage: { path: data/perspective/findings, codec: md, shape: file, suffix: finding }
+id:
+  generate: "{{ contributor }}/{{ kind }}--{{ name | slug }}"
+  pattern: "^[a-z0-9-]+/[a-z-]+--[a-z0-9-]+$"
+schema:
+  type: object
+  required: [retrospective, contributor, name, kind, evidence, evidence_count, standing]
+  properties:
+    retrospective: { type: string, x-reference: perspective/retrospective-sessions, description: The retrospective session that FIRST wrote this record. }
+    last_seen_in: { type: string, x-reference: perspective/retrospective-sessions, description: 'The most recent session that confirmed or updated it. Absent means exactly one session has ever touched it, which is how "new since last time" is answered without a diff.' }
+    contributor: { type: string, pattern: '^[a-z0-9-]+$', description: 'WHOSE this is, as a slug — and the FIRST SEGMENT OF THE ID. That is what makes a second retrospective UPDATE this record instead of writing one beside it. A plain slug rather than a reference, because an id segment cannot be one; the person''s own observed-world record is perspective/world/users/<contributor>/<their-name-slug>.' }
+    name: { type: string, description: The observation in one line. }
+    kind:
+      type: string
+      enum: [role, responsibility, workflow, recurring-question, friction, knowledge-gap, metric, insight, workstream]
+      description: What sort of observation. Decides what it can become — see the skill's references/findings-to-proposals.md.
+    evidence:
+      type: array
+      items: { type: string }
+      description: >-
+        Qualified refs — `perspective/conversation-summaries/…`, `perspective/activity-windows/…`,
+        `perspective/questions/…` (an ANSWERED one — that is where the person speaks), and
+        `meetings/…`, the one legal ref OUTSIDE this module: a meeting is a peer collection's record
+        and a finding about how someone's week is spent rests on it directly. Polymorphic, so not an
+        x-reference; bin/check-records.mjs resolves each — including a `meetings/…` one, against the
+        workspace's own meetings collection wherever that module is installed.
+    evidence_count:
+      type: integer
+      description: 'The number of DISTINCT sessions or windows behind it. THE FORCING FIELD.'
+    standing:
+      type: string
+      enum: [anecdote, pattern, confirmed, refuted]
+      description: >-
+        `anecdote` under 3, `pattern` at 3 or more — for unconfirmed findings; `confirmed` when an
+        interview answer agrees (overrides the count); `refuted` when the person contradicted it — a
+        proposal may not cite one.
+    needs_confirmation:
+      type: boolean
+      default: false
+      description: Generates a `gap` question. Set it on anything the evidence suggests but cannot settle.
+    content:
+      type: string
+      format: markdown
+      x-body: true
+      description: 'The observation, ending with `(n sessions)`.'
+list_fields: [name, kind, standing, evidence_count, retrospective]
+icon: search
+order: 160   # nav position — what it concluded; the pipeline order, ten apart so one can be inserted without renumbering

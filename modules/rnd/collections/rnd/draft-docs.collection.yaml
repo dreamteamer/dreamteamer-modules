@@ -1,0 +1,72 @@
+name: rnd/draft-docs
+description: >-
+  A working document still being written — the scratch space anything longer than a record starts in, and
+  stays in until it becomes something else.
+use_when: >-
+  anything longer than a record is being written and is not yet a design doc, a research doc or a
+  brief — start it here, and move it out when it becomes one of those; "where is the draft of X" is a
+  list here. An implementation plan is a draft here until what it plans has shipped
+templates: [collection-templates/rnd-provenance]
+storage: { path: data/rnd/draft-docs, codec: md, shape: file, suffix: draft}
+id:
+  generate: "{{ created | date }}--{{ name | slug }}"
+  pattern: "^\\d{4}-\\d{2}-\\d{2}--[a-z0-9-]+$"
+schema:
+  type: object
+  required: [name]
+  properties:
+    name:
+      type: string
+      description: What this draft is called.
+    description:
+      type: string
+      description: One line on what is being worked out here.
+    media_folder:
+      examples: ['${env:FILES_FOLDER}/rnd/draft-docs/2026-09-10-portal-rollout/media']
+      type: string
+      description: >-
+        Where this record's media lives — explainer videos, audio overviews, decks, infographics, screen
+        recordings — as a FULL `${env:FILES_FOLDER}/rnd/draft-docs/<this record's id>/media` template, never a machine
+        path; `dt resolve` renders it. The bytes stay OUTSIDE the repo: an `assets` record is a small file the
+        UI draws, this is megabytes for people to watch. What generated each piece, and against which corpus,
+        goes in this record's body — a folder cannot say whether its media is still current.
+    content:
+      type: string
+      format: markdown
+      x-body: true
+      description: The draft itself — thinking in progress, or a finished deliverable once `status` says so.
+    tags:
+      examples: ['dreamteamer', 'design', 'files']
+      type: array
+      items: { type: string }
+      description: >-
+        Free strings, lowercase and hyphenated. Optionally `key:value` with NO space around the
+        colon (`analysis:meeting-insights`, `enriched:web-search`) — a space makes YAML parse the
+        entry as a map instead of a string. Nothing validates a tag; there is no `tags` collection.
+        Reuse one already in use before inventing one: `dt values <collection> tags` lists them.
+    # A finished deliverable and a working draft are one collection with an enum, not two collections:
+    # the only thing that ever separated them was a lifecycle. ⚠ `status: complete` is what "safe to
+    # quote from" means; a draft carrying no status reads as a draft, which is correct.
+    date:
+      type: string
+      format: date
+      description: The date the document covers or was written for. Absent on a working draft.
+    status:
+      type: string
+      enum: [draft, review, complete]
+      description: Where this stands. A `complete` document is safe to quote from; absent means draft.
+    purpose:
+      type: string
+      description: What this is FOR and how it is meant to be used. Earns its place on a deliverable, not on a sketch.
+    requested_by:
+      type: string
+      description: >-
+        Who asked for it, when someone other than the operator did — a `contacts/<id>`, or an agent.
+        ABSENT means the operator, the same convention every other who-field here uses.
+    sources:
+      type: array
+      items: { type: string }
+      description: What this was written from, so its claims stay traceable.
+order: 70
+list_fields: [name, status, date, last-modified, tags]
+icon: edit

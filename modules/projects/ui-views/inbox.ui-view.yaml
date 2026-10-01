@@ -1,0 +1,35 @@
+# the operator's inbox — the default morning read. Came from the engine core on 2026-07-31 when
+# `tasks` was ejected there; a view over a workspace collection belongs to the workspace.
+path: /inbox
+target: list
+collection: collections/tasks
+layout: table
+# ⚠ `columns` REPLACES the descriptor's `list_fields` and a column the schema LACKS is dropped
+# silently, not fallen back from — which is how this view once rendered every row nameless by asking
+# for `title` on a collection whose field is `name`. It asked for `run` until the workflow-run
+# subsystem was deleted, and for `assignee` until that field was. Check every column against the
+# descriptor when editing this.
+options:
+  columns:
+    - name
+    - lane
+    - status
+    - urgent
+    - due
+    - assistant_recommended_next_step
+  sort: due
+nav:
+  label: Inbox
+  icon: inbox
+  order: 1
+# ⚠ `assignee: { _eq: "@me" }` until 2026-08-17. BOTH halves of that are gone in engine 0.8.0: `@me`
+# expanded to `users/<slug of git user.name>`, and there is no `users` collection for it to land in.
+# Compile now refuses a filter using it, by name — which is the point, because the old arrangement
+# failed SILENTLY: an assignee that disagreed with `git config user.name` returned an empty inbox and
+# no error, and that is the one view where empty is indistinguishable from "nothing to do".
+#
+# `status` is the honest filter on a one-operator vault: every task was assigned to the same person,
+# so the assignee narrowed nothing and only ever had the power to hide things.
+filter:
+  status:
+    _eq: todo

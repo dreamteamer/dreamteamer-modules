@@ -1,0 +1,108 @@
+# assumptions — WHAT THE RUN HAD TO BELIEVE TO REACH ITS CONCLUSIONS, and what would prove it wrong.
+#
+# ⚠ WHY THIS COLLECTION EXISTS. Every retrospective runs on beliefs it never states: that two handles
+# are one person, that the repos it could reach are the work that mattered, that a commit with no
+# session means git-only work rather than an unread transcript tree. Those beliefs shape every
+# finding downstream, and until 2026-09-09 they lived nowhere — so a reader could weigh a finding's
+# evidence but never the assumption underneath it, and a run whose premise was wrong produced a
+# confident perspective with no way to notice.
+#
+# THE PAIR IS THE POINT: `wrong_if` is the prediction, `status` is the result. The pattern and its
+# discipline are lifted from the operator's own `agent-decision-log.wrong_if`, including the rule that
+# earns it: ⚠ **NOT a counterfactual.** "what if the other repo had been readable" is a story about a
+# world that left no trace, and the run that made the assumption is the worst available narrator of
+# life without it. A prediction about THIS world is checkable by someone else; a story about the other
+# one is not.
+#
+# ⚠ AN ASSUMPTION IS NOT A FINDING. A finding is what the evidence SHOWS; an assumption is what the
+# run had to supply where the evidence stopped. Writing a shaky finding as an assumption to dodge the
+# `standing` rules is the failure mode to watch for — `affects` is what keeps them honest, because an
+# assumption with nothing resting on it did not need writing.
+name: perspective/assumptions
+templates: [collection-templates/perspective-provenance]
+description: >-
+  A belief this retrospective ran on where the evidence stopped — with the observation that would
+  prove it wrong, and what falls if it does.
+use_when: >-
+  a pass has to supply something the evidence does not settle — that two handles are one person, that
+  the reachable repos are the work that mattered, that a period covers the interesting arc — write it
+  here WITH its `wrong_if` and the records it `affects`, rather than letting it ride unstated inside a
+  finding. Read here before trusting a perspective: an `unsettled` assumption with several `affects`
+  is the cheapest question to ask a person, and a `refuted` one names exactly what to re-derive
+icon: warning   # WAS `alert`, which is NOT a codicon — the vocabulary is `warning`
+order: 175
+storage: { path: data/perspective/assumptions, codec: md, shape: file, suffix: assumption }
+id:
+  generate: "{{ contributor }}/{{ kind }}--{{ name | slug }}"
+  pattern: "^[a-z0-9-]+/[a-z-]+--[a-z0-9-]+$"
+schema:
+  type: object
+  required: [retrospective, contributor, name, kind, wrong_if]
+  properties:
+    retrospective: { type: string, x-reference: perspective/retrospective-sessions, description: The retrospective session that FIRST wrote this record. }
+    last_seen_in: { type: string, x-reference: perspective/retrospective-sessions, description: 'The most recent session that confirmed or updated it. Absent means exactly one session has ever touched it, which is how "new since last time" is answered without a diff.' }
+    contributor: { type: string, pattern: '^[a-z0-9-]+$', description: 'WHOSE this is, as a slug — and the FIRST SEGMENT OF THE ID, which is what makes a second retrospective revisit this assumption rather than write one beside it.' }
+    name: { type: string, description: 'The belief in ONE LINE, stated as a claim: "the two git identities are one person", "the unreadable codex tree held no work".' }
+    kind:
+      type: string
+      enum:
+        - identity        # two handles, one person — or one handle, two people
+        - coverage        # what the run could not see, treated as absent rather than unread
+        - attribution     # whose work this is, where the evidence names someone else or nobody
+        - scope           # that the period or the source set covers the arc that mattered
+        - interpretation  # what a signal MEANS — a quiet week as rest, a revert as a mistake
+        - data-quality    # that a count, a date or a timestamp can be trusted
+      description: >-
+        Which kind of gap the run filled. Not a severity: a `coverage` assumption can be harmless and
+        an `interpretation` one can invalidate a whole perspective.
+    statement:
+      type: string
+      description: The belief in full, where one line will not carry it — what was assumed, and at which step.
+    wrong_if:
+      type: string
+      description: >-
+        ONE LINE: the observation, IN THIS WORLD, that would prove this assumption wrong — something a
+        person could actually notice. "the contributor says the second address was never theirs", "a
+        transcript turns up dated inside the quiet fortnight". REQUIRED, unlike its ancestor in
+        `agent-decision-log`: an assumption with no observable tell is indistinguishable from a guess,
+        and this collection exists to make the guesses checkable. Same discipline as `goals.done_when` —
+        checkable by someone other than the writer, and dry.
+        ⚠ NOT a counterfactual. See the header.
+    status:
+      type: string
+      enum: [held, unsettled, confirmed, refuted, moot]
+      default: held
+      description: >-
+        `held` — the run is operating on it and nothing has tested it. `unsettled` — a question was
+        generated and has not been answered. `confirmed` / `refuted` — a person ANSWERED, or an
+        observation matched `wrong_if`; never set either from more evidence of the same kind that
+        produced the assumption. `moot` — what rested on it is gone.
+    affects:
+      type: array
+      items: { type: string }
+      description: >-
+        The records that rest on this belief — findings, insights, goals, activities, by ref. THE
+        FORCING FIELD: an assumption with nothing under it did not need writing, and when one is
+        refuted this list IS the re-derivation queue. Plain strings rather than references, because it
+        spans collections and a typed union would refuse the mixture.
+    tested_by:
+      type: string
+      x-reference: perspective/questions
+      x-inverse: tests_assumption
+      x-unique: true
+      description: The interview question generated to settle it. The interview stage writes this; `status` moves when the answer lands.
+    impact:
+      type: string
+      enum: [cosmetic, narrows, invalidates]
+      default: narrows
+      description: >-
+        What happens to `affects` if this turns out wrong. `cosmetic` — the conclusions stand, the
+        wording changes. `narrows` — they hold for less than claimed. `invalidates` — they have to be
+        re-derived. This is what ranks the interview: an `invalidates` assumption with three `affects`
+        is the first question to ask, ahead of any gap question.
+    first_seen: { type: string, format: date, description: When the run first had to assume it. }
+    content:
+      type: string
+      x-body: true
+      description: Where the belief came from, what was tried before assuming it, and what a reader should watch for.
+list_fields: [name, kind, status, impact, wrong_if, confidence]

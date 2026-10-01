@@ -1,0 +1,68 @@
+# world/activity-lanes — A BAND OF WORK, OBSERVED. The track a run found a contributor's activities
+# running in: a workstream, a surface, a repeating kind of job. Not a phase of anybody's plan — the
+# evidence contains no plan — and not a topic: a topic is what the work was ABOUT, a lane is the
+# track it ran on, and several topics routinely share one lane.
+#
+# ⚠ THE OBSERVED HALF OF `activity-lanes`, IN THE SAME SHAPE AND IN A SEPARATE STORE — the argument
+# is written out once, on `world/users.real`. Every structural reference RE-POINTS into this layer:
+# `project` is `perspective/world/projects`, never `projects`, and `world/activities.lane` is
+# `perspective/world/activity-lanes`, never `activity-lanes`. `real` is the ONLY field that crosses,
+# and it is one-way and soft. `tests/world-model.test.mjs` pins that as a rule over the whole
+# namespace, so the next collection added here cannot get it wrong quietly.
+#
+# ⚠ ONE SHAPE IS DELIBERATELY NOT COPIED: `order` is REQUIRED on the real collection and OPTIONAL
+# here, and the difference is the module's loudest rule. A planner's lane order is a DECISION —
+# deciding it is the whole reason that collection exists, so the schema demands it. An observed
+# lane's order is a READING of the evidence (earliest first activity first), and a run that cannot
+# tell leaves it empty, exactly as it leaves `lead` and `ended` empty rather than inventing them.
+name: perspective/world/activity-lanes
+templates: [collection-templates/perspective-provenance, collection-templates/perspective-observation]
+description: A band a contributor's work was observed running in — a workstream or track that several activities share. The observed half of `activity-lanes`.
+use_when: >-
+  the projects pass groups activities into the efforts they belong to and then into the tracks WITHIN an
+  effort; an activity needs its `lane`; asked "what strands does this person's work actually run in" — list
+  here by `order`. Search before creating: a lane found twice under two spellings is one lane, and a band
+  that is really what the work was ABOUT is a `topics` record, not a lane
+storage: { path: data/perspective/world/activity-lanes, codec: md, shape: file, suffix: activity-lane }
+id:
+  generate: "{{ contributor }}/{{ name | slug }}"
+  pattern: "^[a-z0-9-]+/[a-z0-9-]+$"
+schema:
+  type: object
+  required: [retrospective, contributor, name]
+  properties:
+    retrospective: { type: string, x-reference: perspective/retrospective-sessions, description: The retrospective session that FIRST wrote this record. }
+    last_seen_in: { type: string, x-reference: perspective/retrospective-sessions, description: 'The most recent session that confirmed or updated it. Absent means exactly one session has ever touched it, which is how "new since last time" is answered without a diff.' }
+    contributor: { type: string, pattern: '^[a-z0-9-]+$', description: 'WHOSE this is, as a slug — and the FIRST SEGMENT OF THE ID. That is what makes a second retrospective UPDATE this record instead of writing one beside it. A plain slug rather than a reference, because an id segment cannot be one; the person''s own observed-world record is perspective/world/users/<contributor>/<their-name-slug>.' }
+    name: { type: string, description: What the person would call this band of work, in their own vocabulary — never "repo X work". }
+    # ── THE SHAPE `activity-lanes` HAS ─────────────────────────────────────────────────────────────
+    order:
+      type: integer
+      description: >-
+        The sequence the bands run in, as the evidence shows it — earliest first activity first. OPTIONAL
+        here and required on the real collection: a planner DECIDES an order, a run READS one, and a run
+        that cannot tell leaves it empty rather than manufacturing a number nobody measured.
+    project:
+      type: string
+      x-reference: perspective/world/projects
+      x-inverse: lanes
+      description: >-
+        The observed effort this band sits inside. RE-POINTED into this layer — `perspective/world/projects`,
+        never `projects` — because a record a run FOUND may not be wired into records a person WROTE. Empty
+        is honest and common: a band that runs across several efforts belongs to none of them.
+    real:
+      type: string
+      x-reference: activity-lanes
+      x-reference-soft: true
+      description: >-
+        The `activity-lanes` record this observed band appears to BE — the one-way, soft join to the lane a
+        person authored. A PROPOSAL, set only on a confirmed match. The argument for one-way and for soft is
+        written out once, on `perspective/world/users.real`.
+    content:
+      type: string
+      format: markdown
+      x-body: true
+      description: What this band covers, how the pass decided its bounds, and which activities made it visible.
+list_fields: [name, order, project, real]
+icon: split-horizontal   # the same bands, drawn from evidence; `three-bars` is the board a person authored
+order: 95   # nav position — written by the `projected` stage, right after `world/projects` at 90

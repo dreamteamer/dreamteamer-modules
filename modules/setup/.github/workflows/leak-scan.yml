@@ -1,0 +1,127 @@
+name: leak-scan
+
+# THE GATE THAT ACTUALLY COVERS EVERY COMMIT. Same shape as the engine's and the extension's copies.
+#
+# There is also a local pre-commit hook, but `.git/hooks/` is untracked and per-clone, so it only
+# runs where it was installed. A web session, a fresh clone, or another machine bypasses it
+# entirely — which is exactly how content this scan is meant to stop reached main and shipped to
+# npm once already. A gate that is not in CI is not a gate.
+#
+# ⚠ WHY THE PATTERNS ARE SPLIT. The private-names list is itself sensitive — it is the client and
+# employer names being grepped for, so hard-coding it here would carry the very strings it exists to
+# catch. It comes from a secret. The other rules are NOT sensitive (a unicode range, and public
+# credential prefixes) and live here in the open where they can be reviewed.
+#
+# ⚠ AND WHY HITS ARE COUNTED, NOT PRINTED. Echoing a matched line would leak the thing that was
+# caught. The job prints the FILE and a count; read the content locally.
+#
+# ⚠ THE HEBREW RULE HONOURS `.leak-scan-allow` HERE, per file and per rule, because this package
+# legitimately contains Hebrew in four places where it is the SUBJECT — a filename parser, a mail
+# prefix regex, a title example, a paste-back fixture. The engine's copy names that file in its
+# error message without reading it, which it can afford because it has no such files. `npm test`
+# runs `tests/leak-gate.test.mjs`, which enforces the same allow-list over the WHOLE tree rather
+# than only the added lines; this step is the per-commit half.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # a PR needs the merge base to diff against
+
+      # Added lines only, and only the ones this change introduces. A commit that DELETES a leak
+      # must not be blocked by the leak it is removing.
+      - name: collect added lines
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+          else
+            BASE="${{ github.event.before }}"
+          fi
+          # a first push to a new branch has no usable `before`; fall back to the empty tree
+          git cat-file -e "$BASE" 2>/dev/null || BASE=$(git hash-object -t tree /dev/null)
+          git diff "$BASE" HEAD -U0 | grep '^+' > /tmp/added.txt || true
+          wc -l < /tmp/added.txt | sed 's/^/added lines to scan: /'
+
+      - name: Hebrew codepoints
+        run: |
+          # perl, not `grep -P`: -CSD makes perl match CODEPOINTS. Without it the pattern silently
+          # never fires, which is the worst possible failure for a leak gate.
+          # `+++ b/<path>` lines in the diff carry the file each hunk belongs to, which is what makes
+          # a per-file exemption possible at all.
+          perl -CSD -e '
+            my %allow;
+            if (open my $a, "<", ".leak-scan-allow") {
+              while (<$a>) {
+                next if /^\s*#/ || /^\s*$/;
+                my ($p, $r) = split /\t/;
+                $allow{"$p\t$r"} = 1 if defined $r;
+              }
+            }
+            my ($file, $n, %hit) = ("", 0);
+            open my $d, "<", "/tmp/added.txt" or die "no diff to scan\n";
+            while (<$d>) {
+              if (m{^\+\+\+ b/(.+)$}) { $file = $1; next; }
+              next unless /^\+/;
+              next if $allow{"$file\thebrew"};
+              if (/[\x{0590}-\x{05FF}]/) { $hit{$file}++; $n++; }
+            }
+            if ($n) {
+              print "::error::$n added line(s) contain Hebrew codepoints outside .leak-scan-allow — vault content may be escaping into this repo.\n";
+              print "Files touched (content deliberately NOT printed — this log is readable by anyone with repo access):\n";
+              print "  $_ ($hit{$_} line(s))\n" for sort keys %hit;
+              print "Exempt a REVIEWED file in .leak-scan-allow: <path>\thebrew\t<why>\n";
+              exit 1;
+            }
+            print "✔ no Hebrew codepoints added outside the allow-list\n";
+          '
+
+      - name: credential shapes
+        run: |
+          PAT='sk-ant-[A-Za-z0-9_-]{20}|sk-[A-Za-z0-9]{32}|ghp_[A-Za-z0-9]{36}|gho_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{50}|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{35}|xox[baprs]-[0-9A-Za-z-]{10,}|glpat-[0-9A-Za-z_-]{20}|npm_[A-Za-z0-9]{36}|-----BEGIN [A-Z ]*PRIVATE KEY-----'
+          n=$(grep -cEo "$PAT" /tmp/added.txt || true)
+          if [ "${n:-0}" -gt 0 ]; then
+            echo "::error::$n added line(s) match a credential shape. Rotate the credential FIRST, then rewrite history."
+            exit 1
+          fi
+          echo "✔ no credential shapes added"
+
+      - name: private names
+        env:
+          LEAK_NAMES: ${{ secrets.LEAK_NAMES }}
+        run: |
+          # Absent secret is a SKIP, loudly — the same choice the engine's copy makes, so all three
+          # repos behave identically. ⚠ A skip is NOT a pass: this package was cut out of a private
+          # vault, and the 2026-08 incident was both layers off with CI reporting clean. Set the
+          # secret: gh secret set LEAK_NAMES --repo $GITHUB_REPOSITORY
+          if [ -z "${LEAK_NAMES:-}" ]; then
+            echo "::warning::secrets.LEAK_NAMES is not set — private-name check SKIPPED, not passed."
+            exit 0
+          fi
+          n=$(grep -icE "$LEAK_NAMES" /tmp/added.txt || true)
+          if [ "${n:-0}" -gt 0 ]; then
+            echo "::error::$n added line(s) match a private name. Not printing them — this log is readable by anyone with repo access."
+            exit 1
+          fi
+          echo "✔ no private names added"
+
+      - name: oversized files
+        run: |
+          # 210 KB — the same ceiling as the engine's and the extension's copies and the vault's
+          # modules/default/bin/leak-scan.sh, which is what the local pre-commit hook execs. Change
+          # one, change all four, or the hook and CI disagree about what passes. This repo's own
+          # largest tracked file is well under it.
+          big=$(git ls-files -z | xargs -0 -I{} sh -c 'test -f "{}" && s=$(wc -c <"{}") && [ "$s" -gt 215040 ] && echo "$s {}"' || true)
+          if [ -n "$big" ]; then
+            echo "::error::tracked files over 210 KB:"; echo "$big"; exit 1
+          fi
+          echo "✔ no tracked file over 210 KB"

@@ -1,0 +1,18 @@
+command: commands/analyze-meetings
+collection: collections/meetings
+target: record
+# same one-hop-through-the-recordings-array gate as summarize-meeting and extract-tasks-from-meetings:
+# the review is built on the RAW transcript, so a meeting with no transcribed recording cannot be
+# reviewed at all — reviewing from the summary is the one thing `analyzing-meetings` forbids outright.
+can-enter:
+  recordings:
+    transcription:
+      _nempty: true
+# can-exit omitted for the same reason as its siblings: "a meeting-analyses record referencing this
+# meeting exists" is an INBOUND-ref condition — tier 2, unsupported (decision 60). Never shows "done".
+#
+# NOT gated on the meeting having a lead/client: the binding can't express it (no path from a meeting to
+# an inbound engagement ref), and this surface is the operator choosing deliberately. The gate that
+# matters — don't review internal calls — lives in /process-new-meetings step 8, where the pipeline
+# picks targets on its own.
+description: review this meeting critically — validate what was said, into a `meeting-analyses` record

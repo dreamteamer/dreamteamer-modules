@@ -1,0 +1,23 @@
+# The weekly log as a TABLE — the counted timeline, read as numbers rather than as a picture.
+# Its gantt twin is `weeks` ("Weeks (gantt)"), which draws the same records on the date axis.
+options:
+  columns:
+    - period
+    - summary
+    - commits
+    - lines_new
+    - lines_modified
+    - sessions
+    - turns_user
+    - threads_touched
+    - files_touched
+  sort: '-period'
+  page_size: 200
+nav:
+  label: Weekly log
+  icon: calendar
+  order: 5
+path: /timeline/weeks
+target: list
+collection: collections/perspective/activity-weeks
+layout: table

@@ -1,0 +1,371 @@
+// Every check this package makes, defined once. Both surfaces read this same array: `doctor`
+// reports it read-only, `setup` walks it and fixes what it safely can.
+//
+// Two rules, both learned in the workspace this package was cut from:
+//
+//   · A check is defined HERE or nowhere. Two copies drift, and the day they disagree is the day
+//     one of them is quietly wrong.
+//   · `fix` is prose shown to a person and NEVER executed. A check opts into being run by also
+//     passing `run`, an identical or narrower command. Default-deny: advice cannot become a
+//     subprocess by accident, which is what happens when a "fix" like "macOS: brew install x ·
+//     Linux: apt-get install x" is handed to a shell.
+//
+// Nothing here knows anything about any particular person, machine or account. Every path comes
+// from the workspace being checked or from the environment it is running in.
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { execFileSync } from 'node:child_process';
+
+export const cap = (name, note) => {
+	const c = { name, note, checks: [] };
+	return {
+		cap: c,
+		ok: (label, detail = '') => c.checks.push({ label, state: 'ok', detail }),
+		warn: (label, fix, detail = '', run) => c.checks.push({ label, state: 'warn', fix, detail, run: run || null }),
+		bad: (label, fix, detail = '', run) => c.checks.push({ label, state: 'bad', fix, detail, run: run || null }),
+	};
+};
+
+/** Is `name` on PATH? Returns the resolved path, or null. */
+export function bin(name) {
+	try { return execFileSync('command', ['-v', name], { shell: true, encoding: 'utf8' }).trim() || null; }
+	catch { return null; }
+}
+
+/** The workspace root: the nearest ancestor with package.json AND package-lock.json, skipping any
+ *  candidate sitting directly inside `git_modules/` — a module clone is never a workspace. */
+export function findWorkspace(from = process.cwd()) {
+	for (let d = path.resolve(from); ; d = path.dirname(d)) {
+		const inGitModules = path.basename(path.dirname(d)) === 'git_modules';
+		if (!inGitModules && fs.existsSync(path.join(d, 'package.json')) && fs.existsSync(path.join(d, 'package-lock.json'))) return d;
+		if (path.dirname(d) === d) return null;
+	}
+}
+
+export const readJson = (f) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return null; } };
+
+/** JSON out of a command's stdout, skipping any banner before the first `{`. */
+export const readJsonText = (s) => { try { return JSON.parse(s.slice(s.indexOf('{'))); } catch { return null; } };
+
+/** Run a local command and return its stdout, or '' when it is missing or fails. Memoised per
+ *  process: the doctor is drawn twice by `setup` and many times by the tests, and each vendor call
+ *  is a Python interpreter start. */
+const shMemo = new Map();
+export function sh(cmd, args) {
+	const key = `${cmd} ${args.join(' ')}`;
+	if (!shMemo.has(key)) {
+		try { shMemo.set(key, execFileSync(cmd, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })); }
+		catch { shMemo.set(key, ''); }
+	}
+	return shMemo.get(key);
+}
+
+/** Does `.gitignore` carry `pattern` as a line of its own (trailing slash optional)? */
+export function gitignores(root, pattern) {
+	try {
+		const want = pattern.replace(/\/$/, '');
+		return fs.readFileSync(path.join(root, '.gitignore'), 'utf8').split('\n').some((l) => l.trim().replace(/\/$/, '') === want);
+	} catch { return false; }
+}
+
+/** The vendor CLI release the using-notebooklm skill was measured on. Older ones lack `skill status`
+ *  and keep auth at a path the skill no longer names. */
+export const NOTEBOOKLM_FLOOR = '0.7.3';
+/** The `qmd` the answering flow was measured on. Below it the CLI's flags and output shape drift. */
+export const QMD_FLOOR = '2.8.3';
+
+/** `.env` keys that have a non-empty value. Names only — a value is never read out of here. */
+export function envKeys(root) {
+	const set = new Set();
+	try {
+		for (const line of fs.readFileSync(path.join(root, '.env'), 'utf8').split('\n')) {
+			const m = /^\s*([A-Z_][A-Z0-9_]*)\s*=\s*(.*)$/.exec(line);
+			if (m && m[2].trim() !== '') set.add(m[1]);
+		}
+	} catch { /* no .env is a normal, working state */ }
+	return set;
+}
+
+/** Which modules the workspace actually has, by channel — the same walk the engine's discovery does,
+ *  including dropping a module named bare in `dreamteamer.disable`. A switched-off module must not be
+ *  asked for its variables or shown a capability, and the engine never compiles it, so it is not
+ *  "installed" in any sense a person means. A test pinned this after the first draft got it wrong. */
+export function installedModules(root) {
+	const wsPkg = readJson(path.join(root, 'package.json')) ?? {};
+	const disabled = new Set((wsPkg.dreamteamer?.disable ?? []).filter((d) => typeof d === 'string' && !d.includes('/')));
+	const found = new Map();
+	const add = (name, channel, at) => { if (!disabled.has(name) && !found.has(name)) found.set(name, { channel, root: at }); };
+	const scan = (dir, channel, unpack) => {
+		if (!fs.existsSync(dir)) return;
+		for (const name of fs.readdirSync(dir)) {
+			const at = path.join(dir, name);
+			const pkg = readJson(path.join(at, 'package.json'));
+			if (!pkg || !('dreamteamer' in pkg)) continue;
+			if (unpack && fs.existsSync(path.join(at, 'modules'))) { scan(path.join(at, 'modules'), channel, false); continue; }
+			add(pkg.name ?? name, channel, at);
+		}
+	};
+	scan(path.join(root, 'modules'), 'modules', false);
+	scan(path.join(root, 'git_modules'), 'git_modules', true);
+	for (const d of Object.keys({ ...wsPkg.dependencies })) {
+		const at = path.join(root, 'node_modules', d);
+		const pkg = readJson(path.join(at, 'package.json'));
+		if (!pkg || !('dreamteamer' in pkg)) continue;
+		if (fs.existsSync(path.join(at, 'modules'))) scan(path.join(at, 'modules'), 'node_modules', false);
+		else add(pkg.name ?? d, 'node_modules', at);
+	}
+	return found;
+}
+
+export const OURS = ['assets', 'contacts', 'users', 'projects', 'meetings', 'recordings', 'perspective', 'notebooks', 'rnd'];
+const cmp = (a, b) => { // returns -1/0/1 comparing dotted versions
+	const pa = String(a).split('.').map(Number), pb = String(b).split('.').map(Number);
+	for (let i = 0; i < 3; i++) { if ((pa[i] || 0) !== (pb[i] || 0)) return (pa[i] || 0) < (pb[i] || 0) ? -1 : 1; }
+	return 0;
+};
+
+/** THE BUNDLE FLOOR. Delivery as one package — npm or a git_modules clone — needs the engine
+ *  release that taught discovery to unpack a `modules/` folder. Copying a module folder into
+ *  `modules/` works on anything older, which is why this is checked per CHANNEL, not globally. */
+export const BUNDLE_FLOOR = '0.24.0';
+
+export function capabilities(root) {
+	const pkg = readJson(path.join(root, 'package.json')) ?? {};
+	const dt = pkg.dreamteamer ?? {};
+	const env = envKeys(root);
+	const mods = installedModules(root);
+	const mine = OURS.filter((m) => mods.has(m));
+	const has = (m) => mods.has(m);
+	const out = [];
+
+	// ── the workspace itself ─────────────────────────────────────────────────────────────────
+	{
+		const c = cap('workspace', 'the engine, and which of this package\'s modules this workspace actually has');
+		const enginePkg = readJson(path.join(root, 'node_modules', 'dreamteamer', 'package.json'));
+		if (!enginePkg) c.bad('engine', 'npm install dreamteamer', 'no engine installed — nothing can compile', 'npm install dreamteamer');
+		else {
+			// ⚠ OURS only. The engine is itself a module and always sits on node_modules, so asking "is
+			// anything on node_modules" is always yes — the floor would fire for a workspace that copied
+			// a module folder into modules/ and needs no bundle discovery at all. A test caught this.
+			const bundled = mine.some((m) => ['node_modules', 'git_modules'].includes(mods.get(m).channel));
+			if (bundled && cmp(enginePkg.version, BUNDLE_FLOOR) < 0) {
+				c.bad('engine', `npm install dreamteamer@^${BUNDLE_FLOOR}`,
+					`${enginePkg.version} installed — a package of modules needs ${BUNDLE_FLOOR}+ to be unpacked at all`,
+					`npm install dreamteamer@^${BUNDLE_FLOOR}`);
+			} else c.ok('engine', `dreamteamer ${enginePkg.version}`);
+		}
+		if (!mine.length) c.bad('modules', 'npm install @dreamteamer/extensions', 'none of this package\'s modules are installed here');
+		else c.ok('modules', `${mine.length} of ${OURS.length}: ${mine.join(' · ')}`);
+		const off = (dt.disable ?? []).filter((d) => !d.includes('/') && OURS.includes(d));
+		if (off.length) c.ok('disabled on purpose', off.join(' · '));
+		out.push(c.cap);
+	}
+
+	// ── the template variables, which only the WORKSPACE can declare ─────────────────────────
+	{
+		const c = cap('variables', 'records store `${env:NAME}` templates as inert text; only the workspace can declare which names render');
+		const wanted = [
+			// notebooks joined this row when `wikis` landed: a wiki's `folder` is a `${env:FILES_FOLDER}/…`
+			// template and every `wiki` verb refuses rather than guessing when it cannot render.
+			['FILES_FOLDER', has('recordings') || has('meetings') || has('rnd') || has('notebooks'), 'where recordings, meeting files, generated media packs and wiki corpora are kept'],
+			['INBOX_FOLDERS', has('recordings'), 'the folders new recordings and screenshots arrive in'],
+			['REPOS_FOLDER', has('perspective'), 'where the git checkouts a retrospective reads live'],
+		].filter(([, needed]) => needed);
+		const declared = new Set(dt.vars ?? []);
+		for (const [name, , why] of wanted) {
+			if (!declared.has(name)) c.bad(`${name} declared`, `add "${name}" to dreamteamer.vars in package.json, then dreamteamer compile`, why);
+			else if (!env.has(name)) c.warn(`${name} set`, `add ${name}=… to .env`, `${why} — declared, but unset here, so templates using it cannot render on this machine`);
+			else c.ok(name, why);
+		}
+		if (!wanted.length) c.ok('none needed', 'no installed module uses a template variable');
+		out.push(c.cap);
+	}
+
+	// ── the guard that check must chain ──────────────────────────────────────────────────────
+	if (has('perspective')) {
+		const c = cap('record guard', 'the perspective module ships a guard that `dreamteamer check` does not know about');
+		const script = pkg.scripts?.check ?? '';
+		const rel = path.relative(root, path.join(mods.get('perspective').root, 'bin', 'check-records.mjs'));
+		if (script.includes('check-records.mjs')) c.ok('chained', 'npm run check runs it');
+		else c.bad('chained', `set scripts.check to: dreamteamer check && node ${rel}`,
+			'without it, perspective records are written but never validated');
+		out.push(c.cap);
+	}
+
+	// ── meetings ─────────────────────────────────────────────────────────────────────────────
+	if (has('meetings')) {
+		const c = cap('meetings', 'reading your calendar. Optional: everything else in the module works without it.');
+		env.has('WORK_CALENDARS')
+			? c.ok('WORK_CALENDARS', 'the calendars that count as work')
+			: c.warn('WORK_CALENDARS', 'add WORK_CALENDARS to .env — one row per calendar: calendar-id | default-company | account-email',
+				'without it there is nothing to sync from');
+		const credDir = path.join(os.homedir(), '.config', 'google-workspace-mcp', 'credentials');
+		let accounts = [];
+		try { accounts = fs.readdirSync(credDir).filter((f) => f.endsWith('.json') && f !== 'oauth_states.json'); } catch { /* none */ }
+		accounts.length
+			? c.ok('google account', `${accounts.length} authenticated`)
+			: c.warn('google account', 'authenticate an account through the google-workspace MCP server (its start_google_auth tool)',
+				'the calendar reader reuses that credential — it never asks for a new grant');
+		out.push(c.cap);
+	}
+
+	// ── recordings ───────────────────────────────────────────────────────────────────────────
+	if (has('recordings')) {
+		const c = cap('recordings', 'ingesting audio and transcribing it offline. Optional, and heavy: ~1.6 GB of model weights.');
+		const skill = path.join(mods.get('recordings').root, 'skills', 'transcribing-recordings');
+		const ff = bin('ffmpeg');
+		ff ? c.ok('ffmpeg', ff) : c.bad('ffmpeg', 'macOS: brew install ffmpeg · Debian/Ubuntu: apt-get install -y ffmpeg', 'the only external binary transcription needs');
+		const uv = bin('uv');
+		const uvInstall = 'curl -LsSf https://astral.sh/uv/install.sh | sh';
+		uv ? c.ok('uv', uv) : c.bad('uv', uvInstall, 'provisions the pinned Python and its venv', uvInstall);
+		const modelsDir = process.env.TRANSCRIBING_MODELS_DIR || path.join(skill, '.models');
+		const onNpm = mods.get('recordings').channel === 'node_modules';
+		if (onNpm && !process.env.TRANSCRIBING_MODELS_DIR) {
+			c.warn('TRANSCRIBING_MODELS_DIR', 'add TRANSCRIBING_MODELS_DIR=~/.cache/dreamteamer/transcribing-models to .env',
+				'installed from npm, so weights kept inside the package are deleted by the next npm ci');
+		} else if (fs.existsSync(path.join(modelsDir, 'segmentation.onnx'))) {
+			c.ok('model weights', modelsDir);
+		} else {
+			c.warn('model weights', `cd ${path.relative(root, skill)} && uv sync && uv run python transcribe_meeting.py setup`,
+				`~1.6 GB, downloaded once into ${modelsDir}`);
+		}
+		out.push(c.cap);
+	}
+
+	// ── contacts ─────────────────────────────────────────────────────────────────────────────
+	if (has('contacts')) {
+		const c = cap('contacts', 'enriching people from LinkedIn. Optional: contacts and companies work fully by hand without it.');
+		const docker = bin('docker');
+		docker ? c.ok('docker', docker) : c.warn('docker', 'install Docker Desktop, or skip LinkedIn enrichment', 'the scraper runs in a throwaway container');
+		fs.existsSync(path.join(os.homedir(), '.linkedin-mcp', 'cookies.json'))
+			? c.ok('linkedin session', 'a session exists')
+			: c.warn('linkedin session', 'uvx mcp-server-linkedin@latest --import-from-browser', 'one interactive login, reused headlessly after that');
+		out.push(c.cap);
+	}
+
+	// ── rnd ─────────────────────────────────────────────────────────────────────────────────
+	if (has('rnd')) {
+		const c = cap('rnd', 'turning a screen recording into frames a reference record can point at. Optional: every rnd record works by hand without it.');
+		const ff = bin('ffmpeg');
+		ff ? c.ok('ffmpeg', ff) : c.warn('ffmpeg', 'macOS: brew install ffmpeg · Debian/Ubuntu: apt-get install -y ffmpeg', 'the one binary extract-frames.mjs shells out to; a reference without a recording needs nothing');
+		out.push(c.cap);
+	}
+
+	// ── perspective ────────────────────────────────────────────────────────────────────────
+	if (has('perspective')) {
+		const c = cap('perspective', 'reading your own past work. Every source is optional and a run says which it could not reach.');
+		fs.existsSync(path.join(os.homedir(), '.claude', 'projects'))
+			? c.ok('coding-agent transcripts', 'a Claude Code tree is present')
+			: c.warn('coding-agent transcripts', 'nothing to do — this source is simply absent on this machine', 'a run proceeds on the other sources');
+		env.has('ASANA_PAT')
+			? c.ok('ASANA_PAT', 'the ticket reader can run')
+			: c.warn('ASANA_PAT', 'add ASANA_PAT to .env, or leave it unset', 'without it the asana source reports unavailable, which is a stated gap rather than a silent one');
+		out.push(c.cap);
+	}
+
+	// ── notebooks ────────────────────────────────────────────────────────────────────────────
+	// Every check here is LOCAL. `notebooklm auth check` without --test inspects the cookie file only
+	// (its own --help says so); `skill status` and `--version` read disk. Timed at ~0.15 s each.
+	//
+	// ⚠ NOTHING IN HERE IS `bad`, INCLUDING `qmd` — AND THAT IS A REVERSAL OF A CLAIM THIS FILE MADE.
+	// Between 2026-09-11 and the commit that replaced this comment, `qmd` was a hard prerequisite here.
+	// It should not have been, and the evidence it shipped on was bad: one single-shot lexical query
+	// compared against a full hybrid pipeline, written up as "grep cannot find it". Run fairly — the
+	// way an agent actually greps — the same passage is found in three informed passes. The honest
+	// claim is far weaker than the one that was published: qmd does in ONE query what grep does in
+	// three informed passes, and those passes need vocabulary the asker may not have.
+	//
+	// ⚠ THE SUITE SAID SO AND THE MACHINE HID IT. `tests/capabilities.test.mjs` has asserted "no
+	// notebooks check is `bad`" since long before that change. It passed locally the whole time
+	// because the developer's machine HAD qmd installed, so the check returned `ok` and the branch
+	// that returns `bad` was never taken. CI, which has no qmd, went red on the first push. A local
+	// green is a statement about the local machine; this is the shape of that lesson with a name on it.
+	//
+	// What the fair measurement actually says, over 300 markdown records with 15 questions worded the
+	// way an asker phrases them BEFORE knowing the corpus's vocabulary (`qmd bench`, four backends):
+	// lexical recall 0.22 · vector 0.80 · hybrid 0.72 · full re-rank 0.85. So retrieval genuinely wins
+	// per query — and it is still not a prerequisite, because grep is the floor that always answers and
+	// every other verb in this module works with none of it installed. A warning states the gap; a
+	// failure would make a bare clone report a capability it actually has.
+	//
+	// ⚠ THE COST, STATED PLAINLY, because it is the reason this stays opt-in: ~2.1 GB of local GGUF
+	// models, one `npm install -g`, and a one-off embed. Latency is dominated by per-invocation model
+	// load, not by search — a novel re-ranked query costs 24-25s against lexical's 0.12s.
+	//
+	// ⚠ AND THE MODULE'S CLAIM IS INTACT, WHICH IS THE WHOLE REASON THIS TOOL AND NOT ANOTHER. The
+	// local adapter's promise was never "no software" — it was ZERO GOOGLE PREREQUISITES: no account,
+	// no login, no vendor, no network, nothing that can be rate-limited, deprecated or signed out. `qmd`
+	// honours every word of that. It runs on-device via node-llama-cpp with GGUF weights on local disk;
+	// it makes no API call, needs no key, and works with the wifi off. A corpus indexed by it is still
+	// answerable on a plane, in a cloud session, and in ten years when the vendor is gone.
+	//
+	// That is the line to hold when the next retrieval tool is proposed: an embedding API would be
+	// smaller, faster to set up and better — and would put the one capability this module exists to
+	// keep local behind somebody else's account. The 2.1 GB is what independence costs.
+	if (has('notebooks')) {
+		const c = cap('notebooks', 'a corpus you can grep with nothing installed, and ASK once `qmd` is — both local; `notebooklm` is the optional extra adapter.');
+		// ── the retrieval engine: OPTIONAL, and the capability degrades to grep without it ──────
+		const q = bin('qmd');
+		if (!q) {
+			c.warn('qmd', 'npm install -g @tobilu/qmd', 'OPTIONAL — the local adapter\'s retrieval engine, all on-device. Without it `wiki ask` is unavailable and `wiki search` (grep) still works, finding only the words you literally typed. Measured over 300 records: lexical recall 0.22, vector 0.80 — so this is a real gap, and still not a prerequisite');
+		} else {
+			c.ok('qmd', q);
+			const qv = /qmd (\d+\.\d+\.\d+)/.exec(sh('qmd', ['--version']))?.[1];
+			if (!qv || cmp(qv, QMD_FLOOR) < 0) c.warn('qmd version', 'npm install -g @tobilu/qmd@latest', `${qv ?? 'unknown'} installed — the flow was measured on ${QMD_FLOOR}`);
+			else c.ok('qmd version', qv);
+			// A corpus that is registered but never embedded answers lexically and says nothing about it,
+			// which is the same silent half-failure grep had. `wiki index` is the one command that fixes both.
+			const st = sh('qmd', ['status']);
+			const pending = Number(/Pending:\s*(\d+)/.exec(st)?.[1] ?? 0);
+			const files = Number(/Total:\s*(\d+)/.exec(st)?.[1] ?? 0);
+			if (!files) c.warn('corpora indexed', 'npx dt-extensions wiki index', 'qmd knows about no documents yet — every `wiki ask` would come back empty');
+			else if (pending) c.warn('embeddings', 'npx dt-extensions wiki index --embed · or: qmd embed', `${pending} document(s) indexed but not embedded — those answer lexically only, silently`);
+			else c.ok('corpora indexed', `${files} document(s) indexed and embedded`);
+		}
+		const nb = bin('notebooklm');
+		if (!nb) c.warn('notebooklm', 'uv tool install notebooklm-py · or: pip install "notebooklm-py[browser]"; then notebooklm skill install', 'the EXTRA adapter only — `wiki` verbs and local corpora work without it');
+		else {
+			c.ok('notebooklm', nb);
+			const v = /version (\d+\.\d+\.\d+)/.exec(sh('notebooklm', ['--version']))?.[1];
+			if (!v || cmp(v, NOTEBOOKLM_FLOOR) < 0) c.warn('version', 'uv tool upgrade notebooklm-py · or: pip install -U notebooklm-py; then notebooklm skill install', `${v ?? 'unknown'} installed — the skill was measured on ${NOTEBOOKLM_FLOOR}`);
+			else c.ok('version', v);
+			const auth = readJsonText(sh('notebooklm', ['auth', 'check', '--json']));
+			auth?.status === 'ok'
+				? c.ok('signed in', 'a session file exists — expiry shows only on a real call (notebooklm auth check --test)')
+				: c.warn('signed in', 'notebooklm login — opens a browser, so a person runs it', 'no usable session under ~/.notebooklm (or $NOTEBOOKLM_HOME)');
+			/Claude Code:\s+Installed/.test(sh('notebooklm', ['skill', 'status']))
+				? c.ok('vendor skill', 'installed for Claude Code')
+				: c.warn('vendor skill', 'notebooklm skill install', 'the command reference using-notebooklm defers to for every flag');
+		}
+		(dt.harnesses ?? []).includes('notebooklm')
+			? c.ok('harness declared', 'compile writes NOTEBOOKLM.md')
+			: c.warn('harness declared', 'add "notebooklm" to dreamteamer.harnesses in package.json, then npx dreamteamer compile', 'this is what makes NOTEBOOKLM.md — and the `notebook persona` verb — exist; the local adapter never reads it');
+		// ⚠ THIS USED TO BE A PREREQUISITE AND IS NO LONGER ONE. Until 2026-09-11 a wiki's folder was an
+		// `${env:FILES_FOLDER}/…` template, so every `wiki` verb refused until that variable was set —
+		// which is exactly the prerequisite the local adapter is supposed not to have. Corpora live in
+		// the repo now (`wikis/<id>`), so there is nothing to render and nothing to check: the
+		// capability is READY on a bare clone. It stays listed rather than deleted because a workspace
+		// whose records still carry the old template still needs the variable, and silence about that
+		// would be worse than a line saying which case it is in.
+		c.ok('wikis folder', 'corpora live in the repo under wikis/ — no variable and no mount; the qmd index lives in ~/.cache and is never committed');
+		if (!((dt.vars ?? []).includes('FILES_FOLDER') && env.has('FILES_FOLDER'))) {
+			c.ok('legacy corpora', 'FILES_FOLDER is unset — fine unless a `wikis` record still carries a ${env:FILES_FOLDER}/… folder, which would refuse by name');
+		}
+		gitignores(root, '.cache/')
+			? c.ok('.cache/ ignored', 'downloads and the export bundle land there')
+			: c.warn('.cache/ ignored', 'add .cache/ to .gitignore', 'notebook downloads and the export bundle land there; a 40 MB podcast must never be staged');
+		out.push(c.cap);
+	}
+
+	return out;
+}
+
+export const worst = (caps) => {
+	const states = caps.flatMap((c) => c.checks.map((x) => x.state));
+	return states.includes('bad') ? 'UNAVAILABLE' : states.includes('warn') ? 'DEGRADED' : 'READY';
+};
+export const capState = (c) => {
+	const s = c.checks.map((x) => x.state);
+	return s.includes('bad') ? 'UNAVAILABLE' : s.includes('warn') ? 'DEGRADED' : 'READY';
+};
