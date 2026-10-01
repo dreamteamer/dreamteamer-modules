@@ -51,8 +51,11 @@ schema:
       description: The summaries the review was written FROM, as opposed to the raw transcripts.
     about:
       type: string
-      x-reference: "*"
-      description: What the calls are ABOUT — a lead, client, company or product. Polymorphic, hence "*".
+      x-reference: engagements
+      x-inverse:
+        field: analyses
+        description: The critiques written about this engagement — generated from `meeting-analyses.about`.
+      description: The engagement the calls belong to — read it before writing, so the critique can name what it contradicts in the engagement's own record.
     reviewed:
       type: string
       x-reference: "*"

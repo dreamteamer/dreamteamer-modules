@@ -59,7 +59,7 @@ describe('companies alone, then with contacts', () => {
 	});
 	test('meetings with meeting-docs and recordings carries all four mirrors', () => {
 		const root = virginWorkspace();
-		installPacked(root, ['assets', 'users', 'companies', 'contacts', 'tags', 'tasks', 'meetings', 'recordings', 'meeting-docs']);
+		installPacked(root, ['assets', 'users', 'companies', 'contacts', 'tags', 'tasks', 'meetings', 'recordings', 'engagements', 'meeting-docs']);
 		compileAndCheck(root);
 		const d = compiledDescriptor(root, 'meetings');
 		for (const f of ['recordings', 'prep', 'summary', 'analyses']) assert.match(d, new RegExp(`^\\s+${f}:`, 'm'), f);
@@ -83,5 +83,30 @@ describe('tasks with users, and without projects', () => {
 	});
 	test('no meetings field appears on users when meetings is not installed', () => {
 		assert.doesNotMatch(compiledDescriptor(root, 'users'), /\bmeetings:/);
+	});
+});
+
+describe('engagements with companies', () => {
+	let root;
+	before(() => {
+		root = virginWorkspace();
+		installPacked(root, ['assets', 'companies', 'engagements']);
+		compileAndCheck(root);
+		dt(root, 'add', 'companies', '--name', 'Northwind');
+		dt(root, 'add', 'engagements', '--name', 'Northwind rollout', '--company', 'companies/northwind');
+	});
+	test('a company lists its engagements — engagements stamps `engagements` onto companies', () => {
+		assert.match(dt(root, 'get', 'companies/northwind'), /engagements:\n\s+- engagements\/northwind-rollout/);
+	});
+	test('a new engagement starts as a lead', () => {
+		assert.match(dt(root, 'get', 'engagements/northwind-rollout'), /stage: lead/);
+	});
+	test('a closed engagement must say how it ended, and only a closed one may', () => {
+		const closedBare = run(root, ['set', 'engagements/northwind-rollout', 'stage=closed']);
+		assert.notEqual(closedBare.status, 0, 'closed with no outcome was accepted');
+		const openWithOutcome = run(root, ['set', 'engagements/northwind-rollout', 'outcome=lost']);
+		assert.notEqual(openWithOutcome.status, 0, 'an outcome on an open engagement was accepted');
+		dt(root, 'set', 'engagements/northwind-rollout', 'stage=closed', 'outcome=delivered');
+		assert.match(dt(root, 'check'), /0 violations/);
 	});
 });

@@ -43,6 +43,13 @@ schema:
       description: >-
         The MEETING's instant, denormalized from meeting.starts so the id generates and the list sorts without a join.
         Set it from the meeting, never from today.
+    engagement:
+      type: string
+      x-reference: engagements
+      x-inverse:
+        field: preps
+        description: The preps written for this engagement's meetings — generated from `meeting-preps.engagement`.
+      description: The engagement this meeting belongs to — where the prep's status section reads its stage, phase and open next steps.
     company:
       type: string
       x-reference: companies

@@ -1,0 +1,16 @@
+# The default engagements view: everything, most recently updated first.
+path: /engagements
+target: list
+collection: collections/engagements
+layout: table
+options:
+  columns:
+    - name
+    - company
+    - stage
+    - temperature
+    - phase
+    - champion
+    - updated
+  sort: '-updated'
+default: true

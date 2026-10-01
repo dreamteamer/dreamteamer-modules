@@ -11,11 +11,13 @@ npm package, versioned and released on its own, and they all live in this one re
 | [`@dreamteamer/assets`](modules/assets) | icons, logos and avatars as file records | — |
 | [`@dreamteamer/companies`](modules/companies) | organisations: the record every other module points at | assets |
 | [`@dreamteamer/contacts`](modules/contacts) | people you deal with, each at a company, enriched from LinkedIn | companies · tags · assets |
+| [`@dreamteamer/engagements`](modules/engagements) | one record per relationship with a company: lead, client, closed | companies |
 | [`@dreamteamer/tags`](modules/tags) | the tags convention, and the script that lists the tags in use | — |
 | [`@dreamteamer/tasks`](modules/tasks) | who owes what by when: inbox, board, by person | users · tags |
+| [`@dreamteamer/routines`](modules/routines) | recurring commitments: a calendar rule and the next date owed | — |
 | [`@dreamteamer/meetings`](modules/meetings) | calendar meetings, with attendees and screenshots: the anchor | contacts · companies · users · tags |
 | [`@dreamteamer/recordings`](modules/recordings) | recordings matched to their meeting, transcribed offline | meetings |
-| [`@dreamteamer/meeting-docs`](modules/meeting-docs) | a prep, a summary and a critique per meeting, and the pipeline that writes them | meetings · recordings · tasks · contacts · companies |
+| [`@dreamteamer/meeting-docs`](modules/meeting-docs) | a prep, a summary and a critique per meeting, and the pipeline that writes them | engagements · meetings · recordings · tasks · contacts · companies |
 | [`@dreamteamer/projects`](modules/projects) | the plan: phases, lanes, activities, gates, decisions, risks | users |
 
 **Knowledge and review**
