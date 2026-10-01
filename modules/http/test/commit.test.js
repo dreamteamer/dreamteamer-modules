@@ -42,11 +42,11 @@ describe('POST /api/commit', () => {
 		assert.deepEqual(json, JSON.parse(cli.stdout));
 	});
 
-	// review F2 — `?dry-run=true` is this API's dry-run convention, and this route ignored it and wrote.
-	test('every dry-run spelling — query, body, both, with or without a scope — commits nothing', async () => {
+	test('every dry-run spelling — the query, the body, or both — commits nothing', async () => {
 		const head = h.git(['rev-parse', 'HEAD']);
 		const status0 = pending();
-		for (const [qs, body] of [['?dry-run=true', { only: [`notes/${mine.id}`] }], ['?dry-run=1', {}], ['?dry-run', {}], ['', { dryRun: true }], ['?dry-run=true', { dryRun: true }], ['?dry-run=true', { dryRun: false, only: [`notes/${mine.id}`] }], ['?dry-run=true', undefined]]) {
+		const only = [`notes/${mine.id}`];
+		for (const [qs, body] of [['?dry-run=true', { only }], ['', { only, dryRun: true }], ['?dry-run=true', { only, dryRun: true }], ['?dry-run=true', { only, dryRun: false }]]) {
 			const { status, json } = await call('POST', `${api}/commit${qs}`, body);
 			assert.equal(status, 200, `${qs} ${JSON.stringify(body)} → ${JSON.stringify(json)}`);
 			assert.ok(json.every((r) => (r.sha ?? null) === null), `${qs} ${JSON.stringify(body)} answered with a sha — it committed`);
@@ -54,7 +54,7 @@ describe('POST /api/commit', () => {
 			assert.equal(pending(), status0, `${qs} ${JSON.stringify(body)} changed what is pending`);
 		}
 		// an unreadable value is refused, not guessed at
-		const odd = await call('POST', `${api}/commit?dry-run=yes`, {});
+		const odd = await call('POST', `${api}/commit?dry-run=yes`, { only });
 		assert.equal(odd.status, 400);
 		assert.match(odd.json.error, /does not understand \?dry-run=yes/);
 		assert.equal(h.git(['rev-parse', 'HEAD']), head);
@@ -83,12 +83,13 @@ describe('POST /api/commit', () => {
 
 	test('unknown body keys and wrongly typed values are refused with 400, committing nothing', async () => {
 		const before = commits();
-		for (const body of [{ only: [`notes/${theirs.id}`], dry_run: true }, { only: `notes/${theirs.id}` }, { dryRun: 'yes' }, { message: 7 }]) {
+		const only = [`notes/${theirs.id}`];
+		for (const body of [{ only, dry_run: true }, { only: `notes/${theirs.id}` }, { only, dryRun: 'yes' }, { only, message: 7 }]) {
 			const { status, json } = await call('POST', `${api}/commit`, body);
 			assert.equal(status, 400, JSON.stringify(body));
-			assert.match(json.error, /POST \/commit .*body: \{ only\?: string\[\], message\?: string, dryRun\?: boolean \}/);
+			assert.match(json.error, /POST \/commit .*body: \{ only: string\[\], message\?: string, dryRun\?: boolean \}/);
 		}
-		const unknown = await call('POST', `${api}/commit`, { dry_run: true });
+		const unknown = await call('POST', `${api}/commit`, { only, dry_run: true });
 		assert.match(unknown.json.error, /does not take "dry_run"/);
 		assert.equal(commits(), before);
 		assert.ok(!tracked(theirs.path));

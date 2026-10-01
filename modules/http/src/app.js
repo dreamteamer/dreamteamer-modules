@@ -1,8 +1,10 @@
 // The REST api over the same validating store the CLI uses. `createApp` builds it without listening,
 // so a host tool or a test can mount it; `serve` listens. Every engine call goes through `dt`, the
 // running engine's public API that `activate(dt)` bound.
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import http from 'node:http';
+import net from 'node:net';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import express from 'express';
@@ -17,10 +19,14 @@ const COMMIT_KEYS = ['only', 'message', 'dryRun'];
  * The express app for one workspace. `ws` is the handle from `dt.openWorkspace` — it carries the
  * loaded extensions, and every schema write compiles through it, so an extension's `analyze` judges
  * a write made over HTTP exactly as it judges one made from the CLI.
+ *
+ * `host` is the name the server was bound to; `token`, when set, is required on every request as
+ * `Authorization: Bearer <token>`.
  */
-export function createApp(ws) {
+export function createApp(ws, { host, token } = {}) {
 	if (!dt) throw new Error('@dreamteamer/http: no engine bound — activate(dt) binds it; a tool mounting createApp calls bind(api) first');
 	const app = express();
+	app.use(requestGuard({ host, token }));
 	app.use(express.json({ limit: '10mb' }));
 
 	// One Store per process, rebuilt when the compiled manifest moves: a `dt compile` elsewhere is
@@ -37,6 +43,8 @@ export function createApp(ws) {
 		if (m !== manifestMtime) { manifestMtime = m; reload(); }
 		next();
 	});
+
+	api.use(writeGuard);
 
 	api.get('/info', (req, res) => {
 		const manifest = dt.readManifest(ws.root);
@@ -121,7 +129,7 @@ export function createApp(ws) {
 	const isSystem = (name) => store.descriptors.get(name)?.storage?.base === 'runtime';
 	const system = (req, res) => {
 		const out = systemWrite(ws, store, req);
-		if (!out?.dryRun) reload();
+		if (!req.dryRun) reload();
 		res.json(out);
 	};
 
@@ -203,7 +211,7 @@ export function createApp(ws) {
 	// commits, and the Store reloads.
 	const schemaOp = (fn) => (req, res) => {
 		const out = fn(req);
-		if (!out?.dryRun) reload(); // a dry run wrote nothing; a reload would imply it had
+		if (!req.dryRun) reload();
 		res.json(out);
 	};
 	api.post('/collections/:name/fields', schemaOp((req) => {
@@ -223,32 +231,24 @@ export function createApp(ws) {
 	// binding that names it — a different act from editing the field.
 	api.patch('/collections/:name/fields/:field/name', schemaOp((req) =>
 		dt.renameField(ws, store, req.params.name, req.params.field, String(req.body?.to ?? ''),
-			{ moduleId: moduleParam(req), dryRun: wantsDryRun(req) })));
-	api.delete('/collections/:name/fields/:field', schemaOp((req) => {
-		if (wantsDryRun(req)) throw new DryRunUnsupported('fields:rm');
-		return dt.removeField(ws, store, req.params.name, req.params.field, { moduleId: moduleParam(req) });
-	}));
+			{ moduleId: moduleParam(req), dryRun: req.dryRun })));
+	api.delete('/collections/:name/fields/:field', schemaOp((req) =>
+		dt.removeField(ws, store, req.params.name, req.params.field, { moduleId: moduleParam(req) })));
 
-	// `dt commit` over HTTP: publish pending record writes. `only` takes the CLI's targets — a
-	// `<collection>/<id>` reference or a whole collection; empty publishes everything pending. The
-	// answer is the results array exactly as `dt commit --json` prints it; a repo `blocked` by an
-	// in-progress merge or rebase makes it a 409.
+	// `dt commit` over HTTP: publish the pending record writes `only` names — `<collection>/<id>`
+	// references or whole collections, never an implicit everything. The answer is the results array
+	// exactly as `dt commit --json` prints it; a repo `blocked` by an in-progress merge or rebase makes
+	// it a 409. `?dry-run=true` or `"dryRun": true` asks for the plan.
 	api.post('/commit', (req, res) => {
 		const b = req.body ?? {};
-		const bad = (msg) => res.status(400).json({ error: `POST /commit ${msg} — body: { only?: string[], message?: string, dryRun?: boolean }` });
+		const bad = (msg) => res.status(400).json({ error: `POST /commit ${msg} — body: { only: string[], message?: string, dryRun?: boolean }` });
 		if (typeof b !== 'object' || Array.isArray(b)) return bad('takes a JSON object');
 		const unknown = Object.keys(b).filter((k) => !COMMIT_KEYS.includes(k));
 		if (unknown.length) return bad(`does not take ${unknown.map((k) => `"${k}"`).join(', ')}`);
-		if (b.only !== undefined && !(Array.isArray(b.only) && b.only.every((t) => typeof t === 'string'))) return bad('needs "only" to be an array of strings');
+		if (!(Array.isArray(b.only) && b.only.length && b.only.every((t) => typeof t === 'string' && t))) return bad('needs "only": a non-empty array of targets');
 		if (b.message !== undefined && typeof b.message !== 'string') return bad('needs "message" to be a string');
 		if (b.dryRun !== undefined && typeof b.dryRun !== 'boolean') return bad('needs "dryRun" to be a boolean');
-		// ⚠ THE API's OWN DRY-RUN CONVENTION IS THE QUERY, and this route used to read only the body — so
-		// `POST /commit?dry-run=true` COMMITTED (review F2). Either spelling asks for a plan, and a query
-		// value that is not a yes or a no is refused before anything runs: a plan must never become a write.
-		const q = req.query?.['dry-run'];
-		if (q !== undefined && !['true', '1', 'false', '0', ''].includes(String(q))) return bad(`does not understand ?dry-run=${q} — use ?dry-run=true or "dryRun": true`);
-		const dryRun = b.dryRun === true || wantsDryRun(req) || q === '';
-		const results = dt.commitPending(new dt.Store(ws), { only: b.only ?? [], message: b.message, dryRun });
+		const results = dt.commitPending(new dt.Store(ws), { only: b.only, message: b.message, dryRun: b.dryRun === true || req.dryRun });
 		res.status(results.some((r) => r.blocked) ? 409 : 200).json(results);
 	});
 
@@ -260,6 +260,7 @@ export function createApp(ws) {
 	app.get('/', (req, res) => res.redirect('/api/info'));
 
 	// error contract: 400 validation and refusals · 404 missing record · 409 referenced or exists
+	// (401, 403 and 415 are answered by the guards before any route)
 	app.use((err, req, res, next) => { // eslint-disable-line no-unused-vars
 		const msg = err.message ?? String(err);
 		if (err instanceof DryRunUnsupported) return res.status(400).json({ error: msg, 'dry-run': 'unsupported' });
@@ -272,9 +273,11 @@ export function createApp(ws) {
 	return app;
 }
 
-/** Listen on `host:port` (loopback by default). Resolves with the http.Server once it is listening. */
-export function serve(ws, { port = 8080, host = '127.0.0.1' } = {}) {
-	const server = http.createServer(createApp(ws));
+/** Listen on `host:port` (loopback by default). Resolves with the http.Server once it is listening.
+ *  A host beyond loopback is refused unless `token` is set. */
+export async function serve(ws, { port = 8080, host = '127.0.0.1', token } = {}) {
+	assertExposure(host, token);
+	const server = http.createServer(createApp(ws, { host, token }));
 	return new Promise((resolve, reject) => {
 		server.once('error', reject);
 		server.listen(port, host, () => {
@@ -286,25 +289,109 @@ export function serve(ws, { port = 8080, host = '127.0.0.1' } = {}) {
 	});
 }
 
-// ---- dry runs ---------------------------------------------------------------------------------
-// ⚠ A CLIENT ASKING FOR A PLAN MUST NEVER GET A WRITE. Three ops can produce a plan (`removeModule`,
-// `moveCollection`, `renameField` — each returns `{…plan, dryRun: true}` and touches nothing). Any
-// other op under `?dry-run=true` is REFUSED: a 200 with an empty plan would read as "this would
-// change nothing", which is the opposite of the truth.
-export function wantsDryRun(req) {
-	const v = req?.query?.['dry-run'];
-	return v === true || v === 'true' || v === '1';
+// ---- request guards ---------------------------------------------------------------------------
+
+/** True when `host` names this machine's loopback interface. */
+function isLoopbackHost(host) {
+	const h = String(host).toLowerCase().replace(/^\[|\]$/g, '').replace(/^::ffff:/, '');
+	return h === 'localhost' || h === '::1' || (net.isIPv4(h) && h.startsWith('127.'));
 }
 
-/** The `<kind>:<verb>` pairs whose op accepts `dryRun` and returns a plan instead of writing. */
-export const DRY_RUNNABLE = new Set(['modules:rm', 'collections:move', 'fields:rename', 'commit']);
-
-export class DryRunUnsupported extends Error {
-	constructor(what) {
-		super(`dry-run is not supported for ${what} — supported: ${[...DRY_RUNNABLE].join(', ')}. `
-			+ 'Nothing was written; re-send without dry-run to perform it.');
-		this.dryRunUnsupported = what;
+/** A host beyond loopback needs a token; refused before anything listens. */
+export function assertExposure(host, token) {
+	if (!isLoopbackHost(host) && !token) {
+		throw new Error(`--host ${host} is beyond loopback and needs --token <secret>; every request then sends "Authorization: Bearer <secret>"`);
 	}
+}
+
+/** An address as it appears in a Host header: lower-case, IPv6 bracketed, IPv4-mapped unwrapped. */
+const hostLiteral = (h) => {
+	const bare = String(h).toLowerCase().replace(/^\[|\]$/g, '').replace(/^::ffff:(?=\d+\.)/, '');
+	return net.isIPv6(bare) ? `[${bare}]` : bare;
+};
+const WILDCARD = new Set(['0.0.0.0', '[::]']);
+const sha = (s) => crypto.createHash('sha256').update(String(s)).digest();
+
+/**
+ * Every request: `Host` is the address the connection arrived on, the bound `--host` name, or (on a
+ * loopback address) `localhost`, `127.0.0.1` or `[::1]` — each with the bound port. An `Origin`, when
+ * sent, is `http://` plus one of those. With a token, `Authorization: Bearer <token>`. A page on
+ * another origin, or a DNS name rebound to this address, is answered 403 before any route runs.
+ */
+function requestGuard({ host, token }) {
+	const tokenHash = token ? sha(token) : null;
+	return (req, res, next) => {
+		const port = req.socket.localPort;
+		const local = hostLiteral(req.socket.localAddress ?? '');
+		const names = new Set([local]);
+		if (host && !WILDCARD.has(hostLiteral(host))) names.add(hostLiteral(host));
+		if (isLoopbackHost(local)) for (const n of ['localhost', '127.0.0.1', '[::1]']) names.add(n);
+		const allowed = new Set([...names].map((n) => `${n}:${port}`));
+		if (port === 80) for (const n of names) allowed.add(n);
+		if (!allowed.has(String(req.headers.host ?? '').toLowerCase())) {
+			return res.status(403).json({ error: `Host "${req.headers.host ?? ''}" is not this server — use ${local}:${port}` });
+		}
+		const origin = req.headers.origin;
+		if (origin !== undefined && !(/^http:\/\//i.test(origin) && allowed.has(origin.slice(7).toLowerCase()))) {
+			return res.status(403).json({ error: `Origin "${origin}" may not call this api — only http://${local}:${port}` });
+		}
+		if (tokenHash) {
+			const m = /^Bearer (.+)$/.exec(req.headers.authorization ?? '');
+			if (!m || !crypto.timingSafeEqual(sha(m[1]), tokenHash)) {
+				return res.status(401).set('WWW-Authenticate', 'Bearer').json({ error: 'this api needs "Authorization: Bearer <token>" with the --token it was started with' });
+			}
+		}
+		next();
+	};
+}
+
+const READS = new Set(['GET', 'HEAD', 'OPTIONS']);
+
+/** The writes that return a plan under dry-run, as `[verb, method, path, body condition]`. Matched
+ *  on the still-encoded path, so a route spelled any other way is refused, never performed. */
+const PLANNERS = [
+	['modules:rm', 'DELETE', /^\/collections\/modules\/records\/[^/].*$/],
+	['collections:move', 'PATCH', /^\/collections\/collections\/records\/[^/].*$/, (req) => typeof req.body?.module === 'string'],
+	['fields:rename', 'PATCH', /^\/collections\/[^/]+\/fields\/[^/]+\/name\/?$/],
+	['commit', 'POST', /^\/commit\/?$/],
+];
+const planner = (req) => PLANNERS.find(([, method, re, when]) => req.method === method && re.test(req.path) && (!when || when(req)));
+
+class DryRunUnsupported extends Error {
+	constructor(what) {
+		super(`dry-run is not supported for ${what} — supported: ${PLANNERS.map(([verb]) => verb).join(', ')}. `
+			+ 'Nothing was written; re-send without dry-run to perform it.');
+	}
+}
+
+/** `?dry-run` is absent, `true` or `false`; any other value, or a repeat, throws. */
+function parseDryRun(value) {
+	if (value === undefined || value === 'false') return false;
+	if (value === 'true') return true;
+	const shown = Array.isArray(value) ? value.join('&dry-run=') : value;
+	throw new Error(`does not understand ?dry-run=${shown} — use ?dry-run=true or ?dry-run=false`);
+}
+
+/**
+ * Every write, before its route: the body is `application/json` (a DELETE with no body may omit the
+ * header), `?dry-run` parses strictly, and a dry run of a write that has no planner is answered 400
+ * without the op being called. Routes read the parsed flag as `req.dryRun`.
+ */
+function writeGuard(req, res, next) {
+	if (READS.has(req.method)) return next();
+	const type = String(req.headers['content-type'] ?? '').split(';')[0].trim().toLowerCase();
+	const bodiless = req.headers['transfer-encoding'] === undefined && !(Number(req.headers['content-length']) > 0);
+	if (type !== 'application/json' && !(req.method === 'DELETE' && !type && bodiless)) {
+		return res.status(415).json({ error: `${req.method} /api${req.path} takes Content-Type: application/json (got ${type || 'none'})` });
+	}
+	try { req.dryRun = parseDryRun(req.query['dry-run']); } catch (e) {
+		return res.status(400).json({ error: `${req.method} /api${req.path} ${e.message}` });
+	}
+	if (req.dryRun && !planner(req)) {
+		const err = new DryRunUnsupported(`${req.method} /api${req.path}`);
+		return res.status(400).json({ error: err.message, 'dry-run': 'unsupported' });
+	}
+	next();
 }
 
 /**
@@ -320,9 +407,8 @@ function systemWrite(ws, store, req) {
 	const moduleId = moduleParam(req);
 	const b = req.body ?? {};
 	const force = req.query.force === 'true';
-	if (wantsDryRun(req)) {
-		// decided from the SAME shape the dispatch below uses, so a refusal never names a different
-		// verb than the one that would have run
+	if (req.dryRun) {
+		// the write guard admits only the planner shapes; any other shape is refused here as well
 		if (req.method === 'DELETE' && kind === 'modules') return dt.removeModule(ws, store, id, { force, dryRun: true });
 		if (req.method === 'PATCH' && kind === 'collections' && typeof b.module === 'string') return dt.moveCollection(ws, store, id, b.module, { dryRun: true });
 		throw new DryRunUnsupported(`${kind}:${req.method.toLowerCase()}`);

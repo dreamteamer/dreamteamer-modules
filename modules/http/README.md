@@ -12,12 +12,13 @@ In a dreamteamer workspace (engine `^0.31.0`):
 npm install --save-dev @dreamteamer/http
 dt serve                       # http://127.0.0.1:8080/api
 dt serve --port 3000           # --port 0 picks a free port
-dt serve --host 0.0.0.0        # beyond loopback; the api has no authentication
+dt serve --host 0.0.0.0 --token <secret>   # beyond loopback needs a token
 ```
 
 The engine loads the package because it is a direct dependency that declares
 `"dreamteamer": { "extension": … }`; `dt status` lists it and `dt help` shows its usage. The verb
-runs until the process is stopped. Unknown flags are refused.
+runs until the process is stopped. Unknown flags are refused, and so is a `--host` beyond loopback
+without `--token`.
 
 Mounting it in your own server instead:
 
@@ -26,7 +27,7 @@ import * as dt from 'dreamteamer';
 import { bind, createApp } from '@dreamteamer/http';
 bind(dt);
 const ws = await dt.openWorkspace(root);   // the handle carries the loaded extensions
-myServer.use(createApp(ws));               // createApp never listens; serve(ws, { port, host }) does
+myServer.use(createApp(ws));               // createApp never listens; serve(ws, { port, host, token }) does
 ```
 
 ## routes
@@ -56,7 +57,7 @@ not encoded** (`/records/2026-09-01/alpha`), which is why every `*id` is the las
 | PATCH | `/collections/:name/fields/:field` | edit a field |
 | PATCH | `/collections/:name/fields/:field/name` | rename a field everywhere · `{to}` |
 | DELETE | `/collections/:name/fields/:field` | remove a field |
-| POST | `/commit` | publish pending writes (`dt commit`) · `{only?: ["<c>/<id>" or "<c>"], message?, dryRun?}` → the `dt commit --json` results; `409` when a repo is blocked |
+| POST | `/commit` | publish pending writes (`dt commit`) · `{only: ["<c>/<id>" or "<c>", …], message?, dryRun?}`, `only` required and non-empty → the `dt commit --json` results; `409` when a repo is blocked |
 | POST | `/reload` | rebuild the store now |
 
 The **system collections** (`collections`, `modules`, `skills`, `ui-views`, …) are written through the
@@ -64,12 +65,20 @@ same record routes and dispatched to their schema operation — `POST /collectio
 creates a collection, `PATCH /collections/collections/records/<name>` with `{module}` moves one,
 `?module=<id>` selects which module's source an edit lands in.
 
-**Dry runs.** `?dry-run=true` on `DELETE modules/…`, a `PATCH collections/…` move and a field rename
-returns the plan (`{…, dryRun: true}`) and writes nothing. On any other write it is refused —
-`400 {error, "dry-run": "unsupported"}` — never performed.
+**Requests.** The `Host` header names the server's own address and port (`localhost` and `127.0.0.1`
+too, on loopback); an `Origin`, when sent, is `http://` plus that same host and port. Anything else
+is `403`. A server started with a token answers `401` to a request without
+`Authorization: Bearer <token>`. Every `POST` and `PATCH`, and any `DELETE` with a body, is
+`Content-Type: application/json`, or `415`.
 
-**Errors** are `{error}`: `400` validation, a compile refusal or a bad request · `404` no such record
-or no such route · `409` referenced by another record, or already exists.
+**Dry runs.** `?dry-run` is `true` or `false`; any other value, a bare `?dry-run`, or a repeat is `400`
+on every write. `?dry-run=true` on `DELETE modules/…`, a `PATCH collections/…` move, a field rename
+and `POST /commit` returns the plan and writes nothing. On every other write it is
+`400 {error, "dry-run": "unsupported"}` and the operation is not called.
+
+**Errors** are `{error}`: `400` validation, a compile refusal or a bad request · `401` no token ·
+`403` a foreign `Host` or `Origin` · `404` no such record or no such route · `409` referenced by
+another record, or already exists · `415` a write that is not JSON.
 
 The store is rebuilt whenever the compiled manifest changes, so a `dt compile` elsewhere is visible
 to the next request.

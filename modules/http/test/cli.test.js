@@ -60,7 +60,7 @@ describe('dt serve', () => {
 		const status = h.dt('status');
 		assert.match(status.stdout, /extensions: .*@dreamteamer\/http@0\.1\.0/);
 		const help = h.dt('help');
-		assert.match(help.stdout, /@dreamteamer\/http@0\.1\.0:\n\s+serve \[--port <n>\] \[--host <addr>\]/);
+		assert.match(help.stdout, /@dreamteamer\/http@0\.1\.0:\n\s+serve \[--port <n>\] \[--host <addr>\] \[--token <secret>\]/);
 	});
 
 	test('without the package the engine does not serve — it says the verb left core, exit 2', () => {
