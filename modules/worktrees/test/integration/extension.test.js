@@ -25,7 +25,7 @@ describe('the contribution, as the engine sees it', () => {
 		const snippet = JSON.parse(r.stdout);
 		assert.deepEqual(Object.keys(snippet.hooks).sort(), ['SessionStart', 'WorktreeCreate', 'WorktreeRemove']);
 		assert.match(snippet.hooks.WorktreeCreate[0].hooks[0].command, / worktree add --hook$/);
-		assert.match(snippet.hooks.WorktreeRemove[0].hooks[0].command, / land --hook --dry-run$/);
+		assert.match(snippet.hooks.WorktreeRemove[0].hooks[0].command, / worktree rm --hook$/);
 	});
 
 	test('it adds no source kind and no collection', () => {

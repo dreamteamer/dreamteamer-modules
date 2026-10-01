@@ -184,9 +184,10 @@ Three entry points, each reading the harness's JSON payload from **stdin**:
 - `dt worktree add --hook` (WorktreeCreate) — a worktree is being created. Takes the name from the payload, places
   the tree under `.worktrees/<name>`, and prints the path last. It is a FORM: `--path`, `--base` and
   `--temp` are refused with it, rather than accepted and ignored.
-- `dt land --hook --dry-run` (WorktreeRemove) — a worktree is being removed. Reports whether it would land, and never
-  removes anything. `worktree_path` is required in the payload; a path that is not a registered
-  worktree is a quiet exit 0, since the harness may have unregistered it already.
+- `dt worktree rm --hook` (WorktreeRemove) — a worktree is being removed, and the harness leaves deleting
+  it to this hook. Removes the tree `worktree_path` names under the same guard as `dt worktree rm`, and
+  exits 1 with the tree in place when it holds dirty records or commits nothing else holds — land
+  them, or `dt worktree rm <name> --force`. A path that is already gone exits 0.
 
 ⚠ **`--hook` refuses a terminal.** Reading stdin from a TTY blocks forever with no output, which in
 a hook is indistinguishable from a hang; so it says `--hook reads the harness's JSON on stdin —
@@ -220,7 +221,7 @@ at all.
 
 | harness | creation | session start | removal |
 |---|---|---|---|
-| Claude Code | `WorktreeCreate` — replaces git's own logic; your hook cuts the tree and prints its path | `SessionStart`, no matcher, `cwd` in the payload | `WorktreeRemove` — dry-run only; never delete a dirty worktree from a hook |
+| Claude Code | `WorktreeCreate` — replaces git's own logic; your hook cuts the tree and prints its path | `SessionStart`, no matcher, `cwd` in the payload | `WorktreeRemove` — the hook deletes the tree; `rm --hook` refuses one holding work |
 | Codex · Gemini CLI · Cursor · pi | not yet shipped | not yet shipped | not hooked, or not documented |
 
 ## common mistakes
