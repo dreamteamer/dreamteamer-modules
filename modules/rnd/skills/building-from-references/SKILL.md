@@ -39,14 +39,17 @@ never a machine path — then `dt add rnd/references` with `name`, `type`, `comp
 **Frames.** A recording is unreadable to an agent until it is frames:
 
 ```bash
-node <rnd>/skills/building-from-references/bin/extract-frames.mjs \
+node .dreamteamer/skills/building-from-references/bin/extract-frames.mjs \
   --in "$(npx dreamteamer resolve rnd/references/<id> reference_file)" \
   --out "$(npx dreamteamer resolve rnd/references/<id> screenshots_folder)" \
   --every 4 --width 1280 --sheet          # one frame per 4 s, plus a contact sheet
 ```
 
+Run it from the workspace root. It needs `ffmpeg` on PATH, and `dt resolve` needs `FILES_FOLDER`
+declared in `dreamteamer.vars` and set in `.env`.
+
 Then set `screenshots_folder`. Read the contact sheet FIRST (one image, the whole recording), then the
-frames a claim depends on. ⚠ Silence is information: check the audio (`ffmpeg -af volumedetect`) before
+frames a claim depends on. Silence is information: check the audio (`ffmpeg -af volumedetect`) before
 paying for a transcription — a screen recording is usually mute.
 
 ## 2. write-reference-prd — the spec as the prompt that would regenerate it
@@ -67,14 +70,22 @@ behaviours we adopt, which we reject and why, what we add that no reference has.
 and concrete — tokens, tone, language, script direction, the logo as an `assets/…` ref — because it is
 what makes a prototype look like ours rather than like the reference.
 
+## screens and stories — the build list, before the build
+
+When a product is specified screen by screen, enumerate it in `rnd/screens` before building: one
+record per screen with its `route`, the `reference` and `reference_route` it mirrors, the `states` it
+must render, and `source` saying why it exists. A `scope-required` screen is the one a build from
+screenshots misses. Each `rnd/user-stories` record names the `screen` it runs through, and `journey`
+plus `step` order the stories into flows. "What is left to build" is then a filter on `build_status`.
+
 ## 4. build-prototype — clickable from iteration 1, deployed from iteration 1
 
 Create the `rnd/prototypes` record with `design_doc`, `product`, `iteration: 1`, `entry`, and
 `deploy` — the ONE command that refreshes `live_url`. Build the thinnest thing a reviewer can click
 through; fake everything behind the screen and say so in the body ("what it deliberately fakes").
-Deploy it, set `live_url`, and hand the reviewer the URL, not a screenshot. ⚠ A prototype without a
-`live_url` is a sketch — the binding's exit condition is the generated `prototypes` mirror on the
-design doc, and a sketch nobody can open should not satisfy it; set `status: sketch` until it deploys.
+Deploy it, set `live_url`, and hand the reviewer the URL, not a screenshot. A prototype without a
+`live_url` is a sketch: set `status: sketch` until it deploys. The binding's exit reads only that a
+prototype record exists, so check `live_url` yourself before you call this hop done.
 
 **Benchmark before iterating.** Against every cited reference: a table of screens × capabilities,
 theirs · ours, with the frame or URL behind each cell. It goes in the prototype's body under a dated
@@ -90,9 +101,8 @@ Every reviewer round: a dated `## iteration N — <date> — <who>` section in t
 
 When the prototype is agreed, the design is planned in whatever this workspace plans with — a
 `projects` record with its activities and gates, where the plan module is installed — and `plan` on
-the design doc names it as `<collection>/<id>`. ⚠ A workspace WITHOUT the plan module has nowhere to
-put the plan: `rnd/projects` was deleted (this pack shipped two collections that both meant "a
-project"), so `plan` stays empty there and the design doc is done at the prototype. Materialising is the
+the design doc names it as `<collection>/<id>`. A workspace without the plan module has no plan
+collection, so `plan` stays empty there and the design doc is done at the prototype. Materialising is the
 plan's business (a repo, a `repos` record, the first commit); this doc is done when `plan` is set.
 
 ## common mistakes

@@ -1,9 +1,9 @@
 # the references list — the default a bare /content/rnd/references renders.
 #
-# ⚠ `carousel`, not `table`: a reference IS its screenshots. The layout draws one card per record —
+# `carousel`, not `table`: a reference IS its screenshots. The layout draws one card per record —
 # title, description, and a carousel over the images in `screenshots_folder`, which the host renders
-# from the `${env:…}` template and lists (extension 0.17.0). On an older extension an unregistered
-# layout degrades visibly rather than erroring, and the columns below still name real fields.
+# from the `${env:…}` template. A host without the layout degrades visibly rather than erroring, and
+# the columns below still name real fields.
 path: /content/rnd/references
 target: list
 collection: collections/rnd/references
