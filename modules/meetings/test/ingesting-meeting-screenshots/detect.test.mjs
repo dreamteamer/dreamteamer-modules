@@ -42,12 +42,6 @@ test('scan is identical from any working directory — the vault root is walked,
 	assert.deepEqual(fromSlash, fromRoot);
 });
 
-test('the `ingested/` two-step is gone', () => {
-	const src = fs.readFileSync(SCRIPT, 'utf8');
-	assert.ok(!src.includes("'ingested'"), 'no more archiving into an inbox-local ingested/ folder');
-	assert.ok(!/HQ_DRIVE_FOLDER|SCREENSHOTS_LOCAL_DIR/.test(src), 'the two retired env vars are gone');
-});
-
 // The `gdrive://` guard: a cloud session's `.env.web` FILES_FOLDER is a remote address, not a local
 // path. Without this guard, `archive`'s `mkdirSync(dest, { recursive: true })` would treat it as
 // RELATIVE and silently create real directories inside the repo rather than failing loudly.
@@ -226,5 +220,96 @@ test('scan matches a screenshot to a meeting that lives inside its company folde
 		assert.equal(out.screenshots[0].matches[0].meeting, id, 'the id carries no company folder');
 	} finally {
 		for (const d of [ws, inbox, filesFolder]) fs.rmSync(d, { recursive: true, force: true });
+	}
+});
+
+// ── matching tiers, read in the meeting's own zone ──────────────────────────────────────────────
+// The filename carries a wall-clock time with no zone. Each case runs the scan under two machine
+// zones fourteen hours apart and asserts the same answer, so the result cannot depend on the runner.
+const MACHINE_ZONES = ['UTC', 'Pacific/Kiritimati'];
+
+/** A throwaway workspace holding `meetings` (id → frontmatter lines) and one inbox shot. */
+function scanFixture(meetings, shot, machineZone) {
+	const ws = fs.mkdtempSync(path.join(os.tmpdir(), 'detect-tier-ws-'));
+	const inbox = fs.mkdtempSync(path.join(os.tmpdir(), 'detect-tier-inbox-'));
+	const filesFolder = fs.mkdtempSync(path.join(os.tmpdir(), 'detect-tier-ff-'));
+	try {
+		for (const [id, lines] of Object.entries(meetings)) {
+			const file = path.join(ws, 'data/meetings', `${id}.meeting.md`);
+			fs.mkdirSync(path.dirname(file), { recursive: true });
+			fs.writeFileSync(file, `---\n${lines.join('\n')}\n---\n`);
+		}
+		fs.mkdirSync(path.join(inbox, 'meeting-screenshots'), { recursive: true });
+		fs.writeFileSync(path.join(inbox, 'meeting-screenshots', shot), Buffer.from('bytes'));
+		return JSON.parse(execFileSync('node',
+			[SCRIPT, 'scan', '--files-folder', filesFolder, '--inbox-folders', inbox, '--workspace-root', ws],
+			{ encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, TZ: machineZone } }));
+	} finally {
+		for (const d of [ws, inbox, filesFolder]) fs.rmSync(d, { recursive: true, force: true });
+	}
+}
+
+// 09:00–09:45 UTC is 10:00–10:45 in London (BST). `starts` is written in UTC on purpose: only the
+// `timezone` field says the filename's wall clock is London time.
+const LONDON = {
+	'2026/07/2026-07-08--10-00--northwind--weekly': [
+		'name: Northwind weekly', 'starts: 2026-07-08T09:00:00Z', 'ends: 2026-07-08T09:45:00Z', 'timezone: Europe/London',
+	],
+};
+
+for (const tz of MACHINE_ZONES) {
+	test(`exact hit: a shot inside the slot, read in the meeting's timezone (machine TZ=${tz})`, () => {
+		const out = scanFixture(LONDON, 'Screenshot 2026-07-08 at 10.20.00.png', tz);
+		assert.equal(out.new_matched, 1, JSON.stringify(out.screenshots));
+		const [hit] = out.screenshots[0].matches;
+		assert.equal(out.screenshots[0].match_tier, 'exact');
+		assert.equal(hit.meeting, '2026/07/2026-07-08--10-00--northwind--weekly');
+		assert.equal(hit.captured_instant, '2026-07-08T09:20:00.000Z');
+		assert.equal(hit.zone, 'Europe/London');
+	});
+
+	test(`slack hit: a shot 30 minutes after the slot ends (machine TZ=${tz})`, () => {
+		const out = scanFixture(LONDON, 'Screenshot 2026-07-08 at 11.15.00.png', tz);
+		assert.equal(out.screenshots[0].match_tier, 'slack', JSON.stringify(out.screenshots));
+		assert.equal(out.screenshots[0].matches.length, 1);
+		assert.equal(out.new_matched, 1);
+	});
+
+	test(`out of scope: a shot more than an hour after the slot is reported and matched to nothing (machine TZ=${tz})`, () => {
+		const out = scanFixture(LONDON, 'Screenshot 2026-07-08 at 12.00.00.png', tz);
+		const [row] = out.screenshots;
+		assert.equal(row.out_of_scope, true, JSON.stringify(row));
+		assert.deepEqual(row.matches, []);
+		assert.equal(row.match_tier, null);
+		assert.equal(out.new_out_of_scope, 1);
+	});
+
+	test(`ambiguous: a shot inside two overlapping slots returns both and picks neither (machine TZ=${tz})`, () => {
+		const out = scanFixture({
+			'2026/07/2026-07-08--14-00--northwind--review': [
+				'name: Northwind review', 'starts: 2026-07-08T14:00:00-04:00', 'ends: 2026-07-08T15:00:00-04:00', 'timezone: America/New_York',
+			],
+			'2026/07/2026-07-08--14-15--harbor-mutual--sync': [
+				'name: Harbor Mutual sync', 'starts: 2026-07-08T14:15:00-04:00', 'ends: 2026-07-08T14:45:00-04:00', 'timezone: America/New_York',
+			],
+		}, 'Screenshot 2026-07-08 at 14.30.00.png', tz);
+		assert.equal(out.new_ambiguous, 1, JSON.stringify(out.screenshots));
+		assert.equal(out.new_matched, 0);
+		assert.equal(out.screenshots[0].match_tier, 'exact');
+		assert.deepEqual(out.screenshots[0].matches.map((m) => m.meeting).sort(), [
+			'2026/07/2026-07-08--14-00--northwind--review', '2026/07/2026-07-08--14-15--harbor-mutual--sync',
+		]);
+	});
+}
+
+test('a meeting with no timezone field reads the shot in the offset written on its starts', () => {
+	for (const tz of MACHINE_ZONES) {
+		const out = scanFixture({
+			'2026/07/2026-07-08--16-45--northwind--sam-dana': [
+				'name: Sam and Dana', 'starts: 2026-07-08T16:45:00+03:00', 'ends: 2026-07-08T17:30:00+03:00',
+			],
+		}, 'Screenshot 2026-07-08 at 16.50.00.png', tz);
+		assert.equal(out.screenshots[0].match_tier, 'exact', `TZ=${tz}: ${JSON.stringify(out.screenshots)}`);
+		assert.equal(out.screenshots[0].matches[0].zone, '+03:00');
 	}
 });
