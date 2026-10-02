@@ -169,16 +169,13 @@ export function writeCollection(root, name, descriptor) {
 	return file;
 }
 
-/** A minimal valid descriptor, so a test states only the part it is about. `notes` is an `x-body`
- *  field because compile refuses to stamp a relation mirror onto a body-less `codec: md` collection. */
+/** A minimal valid v2 descriptor, so a test states only the part it is about. `notes` is a `body`
+ *  field because compile refuses to stamp a relation mirror onto a body-less `md` collection. */
 export function simpleCollection(extra = {}) {
 	return {
-		id: { generate: '{{ name | slug }}' },
-		schema: {
-			type: 'object',
-			required: ['name'],
-			properties: { name: { type: 'string' }, notes: { type: 'string', format: 'markdown', 'x-body': true } },
-		},
+		description: 'A test collection.',
+		ids: { from: '{{ name | slug }}' },
+		fields: { name: { type: 'string', required: true }, notes: { type: 'markdown', body: true } },
 		...extra,
 	};
 }

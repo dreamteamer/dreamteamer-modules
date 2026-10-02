@@ -1,6 +1,6 @@
 ---
 name: exporting-to-notebooklm
-description: "Use when the workspace should be read by NotebookLM rather than a coding agent — `dt notebooklm`, exporting or syncing the workspace into a notebook, choosing a plan or shard size, keeping a collection or a field out of the export (`sensitive: true`, `x-sensitive: true`), writing or pasting the notebook persona, reading or maintaining NOTEBOOKLM.md, or a sync that added, replaced or removed the wrong sources."
+description: "Use when the workspace should be read by NotebookLM rather than a coding agent — `dt notebooklm`, exporting or syncing the workspace into a notebook, choosing a plan or shard size, keeping a collection or a field out of the export (`sensitive: true` on the collection or on the field), writing or pasting the notebook persona, reading or maintaining NOTEBOOKLM.md, or a sync that added, replaced or removed the wrong sources."
 ---
 
 # exporting to NotebookLM — the workspace for a reader that is not a coding agent
@@ -26,7 +26,7 @@ never inferred from a field's name (`email` travels unless somebody marked it):
   a `[[…]]` link: `ledger/rent` becomes `ledger/… (withheld)`. Ids are authored, so an id is itself
   a disclosure.
 
-Also never exported as records: the system collections (they ARE the schema source) and `codec: file`
+Also never exported as records: the system collections (they ARE the schema source) and `format: binary`
 collections (bytes a view draws). **Before the first export of a workspace, read the report** — it
 prints every field that WAS exported per collection; that list is the review.
 

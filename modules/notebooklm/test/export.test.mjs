@@ -23,13 +23,13 @@ describe('dt notebooklm — the privacy line (canaries)', () => {
 	test('a sensitive collection, a sensitive field and a withheld reference reach no output file', () => {
 		const SECRET = {
 			...LEDGER,
-			schema: { ...LEDGER.schema, properties: { ...LEDGER.schema.properties,
+			fields: { ...LEDGER.fields,
 				account: { type: 'string', description: 'e.g. zq7-canary-example.', examples: ['zq7-canary-example'] },
 				kind: { type: 'string', enum: ['zq7-canary-enum', 'other'] },
-			} },
+			},
 		};
 		const ws = fixture({
-			collections: { companies: COMPANIES, people: { ...PEOPLE, schema: { ...PEOPLE.schema, properties: { ...PEOPLE.schema.properties, paid_from: { type: 'string', 'x-reference': 'ledger' } } } }, ledger: SECRET },
+			collections: { companies: COMPANIES, people: { ...PEOPLE, fields: { ...PEOPLE.fields, paid_from: { type: 'ledger' } } }, ledger: SECRET },
 			records: {
 				companies: [{ name: 'Analytical Engines' }],
 				ledger: [{ name: 'zq7-canary-ledger', amount: 98765.4321, account: 'zq7-canary-account', kind: 'zq7-canary-enum' }],
@@ -99,8 +99,8 @@ describe('dt notebooklm — the privacy line (canaries)', () => {
 		for (const sys of ['collections', 'skills', 'modules', 'ui-views']) assert.ok(!files.includes(`${sys}.md`), `${sys} was exported as records`);
 	});
 
-	test('a codec:file collection is described in the schema and never shipped as records', () => {
-		const ws = fixture({ collections: { companies: COMPANIES, blobs: { description: 'Pictures a view draws.', storage: { path: 'data/blobs', codec: 'file' }, schema: { type: 'object', properties: {} } } }, records: { companies: [{ name: 'Acme' }] } });
+	test('a binary collection is described in the schema and never shipped as records', () => {
+		const ws = fixture({ collections: { companies: COMPANIES, blobs: { description: 'Pictures a view draws.', storage: { path: 'data/blobs', format: 'binary' }, fields: {} } }, records: { companies: [{ name: 'Acme' }] } });
 		fs.mkdirSync(path.join(ws.root, 'data', 'blobs'), { recursive: true });
 		fs.writeFileSync(path.join(ws.root, 'data', 'blobs', 'logo.png'), Buffer.from([0x89, 0x50, 0x4e, 0x47]));
 		const res = ws.dt('notebooklm', '--out', 'bundle');
@@ -137,7 +137,7 @@ describe('dt notebooklm — the render', () => {
 		assert.ok(iModule > -1 && iPeople > iModule && iField > iPeople, `order was module@${iModule} people@${iPeople} field@${iField}`);
 		assert.match(schema, /- email \(string\) — sensitive, not exported/);
 		assert.match(schema, /- company \(reference → companies\)/);
-		assert.match(schema, /- peers \(reference → people, many\)/, 'a many-reference names its target from items');
+		assert.match(schema, /- peers \(reference → people, many\)/, 'a many-reference names its target');
 		assert.match(schema, /- status \(enum: draft \| verified, default draft\)/);
 		assert.match(schema, /system collections \(not exported as records\): .*collections.*skills/);
 	});
@@ -286,11 +286,11 @@ describe('dt notebooklm — the verb', () => {
 });
 
 describe('the marks are written by the schema verbs, and the export follows them', () => {
-	test('add-field --sensitive writes x-sensitive, set-field --sensitive false clears it, and the export follows', () => {
+	test('add-field --sensitive marks the field sensitive, set-field --sensitive false clears it, and the export follows', () => {
 		const ws = fixture();
 		let res = ws.dt('add-field', 'people', '--name', 'phone', '--type', 'string', '--sensitive');
 		assert.equal(res.code, 0, res.stderr);
-		assert.match(readFile(ws.root, '.dreamteamer/collections/people.collection.yaml'), /phone:[\s\S]*?x-sensitive: true/);
+		assert.match(readFile(ws.root, '.dreamteamer/collections/people.collection.yaml'), /phone:[\s\S]*?sensitive: true/);
 		assert.equal(ws.dt('set', 'people/ada', 'phone=+000-0000').code, 0);
 		assert.equal(ws.dt('notebooklm', '--out', 'bundle').code, 0);
 		assert.ok(!readFile(ws.root, 'bundle/people.md').includes('+000-0000'));

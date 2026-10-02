@@ -9,7 +9,7 @@
 //
 // Two rules hold the privacy line, and both are SCHEMA rather than flags or a side file:
 //   `sensitive: true` on a descriptor  → the whole collection is omitted and NAMED as omitted
-//   `x-sensitive: true` on a field     → the field is projected out of every record
+//   `sensitive: true` on a field       → the field is projected out of every record
 // Nothing is inferred from a field's name. `email` is exported unless somebody marked it, and the
 // report prints every field that WAS exported per collection, so the review is one read.
 //
@@ -46,14 +46,20 @@ const flat = (s) => String(s ?? '').replace(/\s+/g, ' ').trim();
 // ---- projection -----------------------------------------------------------------------------------
 
 export function omittedFields(d) {
-	return Object.entries(d.schema?.properties ?? {}).filter(([, p]) => p?.['x-sensitive'] === true).map(([k]) => k).sort();
+	return Object.entries(dt.fieldsOf(d)).filter(([, f]) => f?.sensitive === true).map(([k]) => k).sort();
+}
+
+/** The fields a record of `d` carries into the export: what it stores, less the sensitive ones. */
+export function exportedFieldsOf(d) {
+	const drop = new Set(omittedFields(d));
+	return Object.keys(dt.storedFieldsOf(d)).filter((k) => !drop.has(k));
 }
 
 /** Why a collection is not exported as records, or null when it is. */
 export function exportability(d) {
-	if (d.storage?.base === 'runtime') return 'system';
-	if (d.storage?.codec === 'file') return 'file';
-	if (d.sensitive === true) return 'sensitive';
+	if (dt.isRuntime(d)) return 'system';
+	if (dt.isBinary(d)) return 'file';
+	if (dt.isSensitive(d)) return 'sensitive';
 	return null;
 }
 
@@ -67,19 +73,21 @@ export function projectRecord(d, fields) {
 
 // ---- rendering ------------------------------------------------------------------------------------
 
-function fieldLine(name, p, required) {
+/** One field of the schema source, from its v2 definition. */
+function fieldLine(name, f) {
 	const bits = [];
-	const ref = p['x-reference'] ?? p.items?.['x-reference']; // a many-reference carries the target on `items`
-	if (ref) bits.push(`reference → ${ref}${p.type === 'array' ? ', many' : ''}`);
-	else if (p.enum) bits.push(`enum: ${p.enum.join(' | ')}`);
-	else if (p.type === 'array') bits.push(`list of ${p.items?.type ?? 'string'}`);
-	else bits.push(p.format && p.format !== 'markdown' ? `${p.type}, ${p.format}` : p.type ?? 'string');
-	if (required) bits.push('required');
-	if (p.default !== undefined) bits.push(`default ${JSON.stringify(p.default).replace(/^"|"$/g, '')}`);
-	if (p['x-body']) bits.push('body');
+	const targets = dt.targetsOf(f);
+	const values = Array.isArray(f.enum) ? f.enum : f.enum && typeof f.enum === 'object' ? Object.keys(f.enum) : null;
+	if (targets) bits.push(`reference → ${targets === '*' ? 'any collection' : targets.join(' | ')}${f.many ? ', many' : ''}`);
+	else if (values) bits.push(`enum: ${values.join(' | ')}${f.many ? ', many' : ''}`);
+	else if (f.many) bits.push(`list of ${f.type ?? 'string'}`);
+	else bits.push(f.type ?? 'string');
+	if (f.required) bits.push('required');
+	if (f.default !== undefined) bits.push(`default ${JSON.stringify(f.default).replace(/^"|"$/g, '')}`);
+	if (f.body) bits.push('body');
 	let line = `- ${name} (${bits.join(', ')})`;
-	if (p['x-sensitive'] === true) return `${line} — sensitive, not exported`;
-	if (p.description) line += `: ${flat(p.description)}`;
+	if (f.sensitive === true) return `${line} — sensitive, not exported`;
+	if (f.description) line += `: ${flat(f.description)}`;
 	return line;
 }
 
@@ -100,8 +108,8 @@ const safeList = (dir, keep) => { try { return fs.readdirSync(dir, { withFileTyp
 
 /** The schema source: workspace → module → collection → field, one heading level per step. */
 export function renderSchema({ workspace, version, exportedAt, modules, descriptors, omitted, selected }) {
-	const data = [...descriptors.values()].filter((d) => d.storage?.base !== 'runtime').sort((a, b) => a.name.localeCompare(b.name));
-	const system = [...descriptors.values()].filter((d) => d.storage?.base === 'runtime').map((d) => d.name).sort();
+	const data = [...descriptors.values()].filter((d) => !dt.isRuntime(d)).sort((a, b) => a.name.localeCompare(b.name));
+	const system = [...descriptors.values()].filter((d) => dt.isRuntime(d)).map((d) => d.name).sort();
 	const lines = [
 		`# ${workspace} — schema`,
 		'',
@@ -110,7 +118,7 @@ export function renderSchema({ workspace, version, exportedAt, modules, descript
 		`engine dreamteamer ${version} · ${modules.length} modules · ${data.length} collections (${data.length - omitted.collections.length} exported, ${omitted.collections.length} omitted as sensitive)`,
 	];
 	const placed = new Set();
-	const groups = modules.filter((m) => m.collections.some((c) => descriptors.get(c) && descriptors.get(c).storage?.base !== 'runtime'));
+	const groups = modules.filter((m) => m.collections.some((c) => descriptors.get(c) && !dt.isRuntime(descriptors.get(c))));
 	const renderCollection = (d) => {
 		placed.add(d.name);
 		const why = exportability(d);
@@ -125,12 +133,14 @@ export function renderSchema({ workspace, version, exportedAt, modules, descript
 			return;
 		}
 		if (d.use_when) lines.push(`use when: ${flat(d.use_when)}`);
-		const idShape = [d.id?.generate ? `generated as ${d.id.generate}` : null, d.id?.pattern ? `pattern ${d.id.pattern}` : null].filter(Boolean).join(', ');
-		lines.push(`id: ${idShape || 'free'} · storage: ${d.storage?.path ?? '?'} (${d.storage?.codec ?? 'md'})`);
+		const ids = dt.idsOf(d);
+		const from = [].concat(ids.from ?? []);
+		const idShape = [from.length ? `generated as ${from.join(' or ')}` : null, ids.pattern ? `pattern ${ids.pattern}` : null].filter(Boolean).join(', ');
+		const storage = dt.storageOf(d);
+		lines.push(`id: ${idShape || 'free'} · storage: ${storage.path ?? '?'} (${storage.format})`);
 		if (why === 'file') lines.push('binary records — not exported.');
 		else if (selected && !selected.has(d.name)) lines.push('not included in this export (--collections).');
-		const required = new Set(d.schema?.required ?? []);
-		for (const [name, p] of Object.entries(d.schema?.properties ?? {})) lines.push(fieldLine(name, p ?? {}, required.has(name)));
+		for (const [name, f] of Object.entries(dt.storedFieldsOf(d))) lines.push(fieldLine(name, f ?? {}));
 	};
 	for (const m of groups) {
 		lines.push('', `## module: ${m.title} (\`${m.id}\`)`);
@@ -141,7 +151,7 @@ export function renderSchema({ workspace, version, exportedAt, modules, descript
 			...(m.commands.length ? [`commands: ${m.commands.map((c) => `/${c}`).join(', ')}`] : []),
 		];
 		if (ships.length) lines.push(ships.join(' · '));
-		for (const name of m.collections.sort()) { const d = descriptors.get(name); if (d && d.storage?.base !== 'runtime') renderCollection(d); }
+		for (const name of m.collections.sort()) { const d = descriptors.get(name); if (d && !dt.isRuntime(d)) renderCollection(d); }
 	}
 	const orphans = data.filter((d) => !placed.has(d.name));
 	if (orphans.length) { lines.push('', '## module: (workspace root)'); for (const d of orphans) renderCollection(d); }
@@ -154,7 +164,7 @@ export function schemaBrief(modules, descriptors, omitted) {
 	const skip = new Set(omitted.collections);
 	const lines = [];
 	for (const m of modules) {
-		const own = m.collections.filter((c) => descriptors.get(c) && descriptors.get(c).storage?.base !== 'runtime');
+		const own = m.collections.filter((c) => descriptors.get(c) && !dt.isRuntime(descriptors.get(c)));
 		if (!own.length) continue;
 		lines.push(`- ${m.title}: ${own.map((c) => skip.has(c) ? `${c} (sensitive, absent)` : c).join(', ')}`);
 	}
@@ -306,7 +316,7 @@ export function buildBundle(ws, flags = {}) {
 	for (const d of exportable) {
 		const list = rows.get(d.name);
 		if (!list.length) continue;
-		const exportedFields = Object.keys(d.schema?.properties ?? {}).filter((k) => !omittedFields(d).includes(k));
+		const exportedFields = exportedFieldsOf(d);
 		const header = shardHeader(d, exportedFields, 1, 1, list.length, meta);
 		const budget = maxWords - words(header) - 4; // the header's own words come off the cap
 		if (budget < 1) throw new Error(`--max-words ${maxWords} is smaller than the shard header of ${d.name} (${words(header)} words)`);
@@ -337,7 +347,7 @@ export function buildBundle(ws, flags = {}) {
 		collections: exportable.length,
 	}), withheld);
 
-	return { workspace, version, exportedAt, plan, limit, sources, omitted, instructions, exportedFields: Object.fromEntries(exportable.map((d) => [d.name, Object.keys(d.schema?.properties ?? {}).filter((k) => !omittedFields(d).includes(k))])) };
+	return { workspace, version, exportedAt, plan, limit, sources, omitted, instructions, exportedFields: Object.fromEntries(exportable.map((d) => [d.name, exportedFieldsOf(d)])) };
 }
 
 /** Write the bundle, pruning shards a previous export left. `notebook.json` (sync state) is kept. */
@@ -489,7 +499,7 @@ export const USAGE = `  notebooklm  render the workspace for NotebookLM, and opt
               writes one schema source (workspace → module → collection → field), one source per
               collection (sharded by --max-words, titled \`dt · <c> [n/m]\`), and the persona from a
               template, into --out (default ${DEFAULT_OUT}). A collection marked
-              \`sensitive: true\` and a field marked \`x-sensitive: true\` never travel. Refuses when
+              \`sensitive: true\` and a field marked \`sensitive: true\` never travel. Refuses when
               the sources exceed the plan. With --notebook/--create it adds, replaces and removes its
               own sources to match and applies the persona (needs the \`notebooklm\` CLI, notebooklm-py >= 0.7.3).`;
 

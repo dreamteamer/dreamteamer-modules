@@ -9,7 +9,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { restorePlan, captureSources, sourceFromLive, readRecord, writeRecord, PERSONA_MAX } from '../bin/notebook.mjs';
+import { restorePlan, captureSources, sourceFromLive, readRecord, writeRecord, recordFile, PERSONA_MAX } from '../bin/notebook.mjs';
 
 // the repo root — these tests were written at the root of dreamteamer/extensions, whose modules/ layout
 // this repo keeps, so every `ROOT/modules/<m>/…` path still names the same file
@@ -220,5 +220,32 @@ describe('npx dt-notebook restore / capture', () => {
 		const r = cli(consumer(), 'notebook', 'bogus');
 		assert.equal(r.status, 2);
 		for (const v of ['persona', 'restore', 'capture']) assert.match(r.stderr, new RegExp(v));
+	});
+});
+
+// ── WHERE A RECORD LIVES, read from the v2 COMPILED descriptor ───────────────────────────────────
+// compile records the resolved storage path under `compiled.defaults` and the parent of a
+// `storage.under` as `compiled.under_collection`; the authored block carries only what the author
+// wrote. A reader that looked for `storage.path` alone would miss a re-homed collection and every
+// record placed in its owner's folder.
+describe('recordFile — the compiled storage decides the file', () => {
+	const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'nb-placement-'));
+	after(() => fs.rmSync(tmp, { recursive: true, force: true }));
+	const compiled = (name, text) => {
+		const f = path.join(tmp, '.dreamteamer', 'collections', `${name}.collection.yaml`);
+		fs.mkdirSync(path.dirname(f), { recursive: true });
+		fs.writeFileSync(f, text);
+	};
+	compiled('notebooks', 'name: notebooks\nstorage:\n  under:\n    parent: project\n    subfolder: notebooks\ncompiled:\n  defaults:\n    storage: { path: data/elsewhere/notebooks, format: md, shape: file, suffix: notebook }\n  runtime: false\n  under_collection: projects\n  fields: {}\n');
+	compiled('projects', 'name: projects\nstorage: { shape: folder, entry: project.md }\ncompiled:\n  defaults:\n    storage: { path: data/projects, format: md, suffix: project }\n  runtime: false\n  fields: {}\n');
+
+	test('a record nobody placed is in the re-homed own root', () => {
+		assert.equal(recordFile(tmp, 'loose'), path.join(tmp, 'data', 'elsewhere', 'notebooks', 'loose.notebook.md'));
+	});
+	test('a record placed under its owner is found in the owner folder', () => {
+		const placed = path.join(tmp, 'data', 'projects', 'northwind', 'notebooks', 'kickoff.notebook.md');
+		fs.mkdirSync(path.dirname(placed), { recursive: true });
+		fs.writeFileSync(placed, '---\nname: Kickoff\n---\n');
+		assert.equal(recordFile(tmp, 'kickoff'), placed);
 	});
 });

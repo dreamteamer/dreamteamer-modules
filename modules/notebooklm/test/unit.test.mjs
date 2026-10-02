@@ -9,20 +9,26 @@ import {
 	sourceTitle, sourceFile, OWNED_PREFIX, PERSONA_MAX, PLANS, sourceLimit,
 } from '../src/export.js';
 import { notebooklmBlock, render } from '../src/harness.js';
+import { bind } from '../src/engine.js';
+import { api } from './fixture.mjs';
 
-const PEOPLE = {
-	name: 'people',
-	storage: { path: 'data/people', codec: 'md', base: 'workspace' },
-	schema: { type: 'object', properties: {
-		name: { type: 'string' },
-		email: { type: 'string', 'x-sensitive': true },
-		phone: { type: 'string', 'x-sensitive': true },
-		notes: { type: 'string', 'x-body': true },
-	} },
-};
+// the engine's descriptor accessors, which the export reads every compiled descriptor through
+bind(api);
+
+/** A compiled v2 descriptor: the authored keys, and what compile resolved under `compiled`. */
+const compiled = (name, { fields = {}, runtime = false, storage = {}, ...authored } = {}) => ({
+	name, ...authored, storage,
+	compiled: { defaults: { storage: { path: `data/${name}`, format: 'md', shape: 'file', suffix: name.replace(/s$/, '') } }, runtime, fields },
+});
+const PEOPLE = compiled('people', { fields: {
+	name: { type: 'string' },
+	email: { type: 'email', sensitive: true },
+	phone: { type: 'string', sensitive: true },
+	notes: { type: 'markdown', body: true },
+} });
 
 describe('projection — the mark is the decision', () => {
-	test('x-sensitive fields are dropped, everything else kept, and the dropped set is named', () => {
+	test('sensitive fields are dropped, everything else kept, and the dropped set is named', () => {
 		const { kept, dropped } = projectRecord(PEOPLE, { name: 'Ada', email: 'ada@example.invalid', phone: '000', notes: 'hi' });
 		assert.deepEqual(kept, { name: 'Ada', notes: 'hi' });
 		assert.deepEqual(dropped, ['email', 'phone']);
@@ -30,9 +36,9 @@ describe('projection — the mark is the decision', () => {
 	test('omittedFields reads the descriptor, not a record', () => {
 		assert.deepEqual(omittedFields(PEOPLE), ['email', 'phone']);
 	});
-	test('a system collection, a codec:file collection and a sensitive collection are each refused with their reason', () => {
-		assert.equal(exportability({ ...PEOPLE, storage: { ...PEOPLE.storage, base: 'runtime' } }), 'system');
-		assert.equal(exportability({ ...PEOPLE, storage: { ...PEOPLE.storage, codec: 'file' } }), 'file');
+	test('a system collection, a binary collection and a sensitive collection are each refused with their reason', () => {
+		assert.equal(exportability({ ...PEOPLE, compiled: { ...PEOPLE.compiled, runtime: true } }), 'system');
+		assert.equal(exportability({ ...PEOPLE, storage: { format: 'binary' } }), 'file');
 		assert.equal(exportability({ ...PEOPLE, sensitive: true }), 'sensitive');
 		assert.equal(exportability(PEOPLE), null);
 	});

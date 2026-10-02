@@ -279,26 +279,38 @@ export function writeRecord(file, { fields, body }) {
 	fs.writeFileSync(file, `---\n${fm}---\n${body}`);
 }
 
-/** Where a consumer keeps its notebooks records: the compiled descriptor's storage path, else the
- *  module default. */
-function recordFile(root, id) {
-	let dir = 'data/notebooks';
-	let under = null;
-	const descriptor = (name) => {
-		try { return yaml.load(fs.readFileSync(path.join(root, '.dreamteamer', 'collections', `${name}.collection.yaml`), 'utf8')); } catch { return null; }
+/** A collection's storage as the COMPILED descriptor resolves it, or null when it is not compiled:
+ *  the path compile decided (`compiled.defaults`, over the authored one), the suffix, and the parent
+ *  collection a `storage.under` names (`compiled.under_collection`). */
+function compiledStorage(root, name) {
+	let d;
+	try { d = yaml.load(fs.readFileSync(path.join(root, '.dreamteamer', 'collections', `${name}.collection.yaml`), 'utf8')); } catch { return null; }
+	if (!d?.compiled) return null;
+	const authored = d.storage ?? {};
+	const supplied = d.compiled.defaults?.storage ?? {};
+	const u = authored.under;
+	return {
+		path: supplied.path ?? authored.path,
+		suffix: authored.suffix ?? supplied.suffix,
+		under: u?.parent && u?.subfolder && d.compiled.under_collection ? { collection: d.compiled.under_collection, subfolder: u.subfolder } : null,
 	};
-	const d = descriptor('notebooks');
-	if (d?.storage?.path) dir = d.storage.path;
-	if (d?.storage?.under?.collection) under = d.storage.under;
-	const own = path.join(root, dir, `${id}.notebook.md`);
-	// stored UNDER another collection (`storage.under`, engine 0.32+): an existing record may sit in
-	// its owner's folder; the own root is the fallback and where a new record lands
-	if (!under || fs.existsSync(own)) return own;
-	const parentDir = descriptor(under.collection)?.storage?.path;
+}
+
+/** Where a consumer keeps its notebooks records: the compiled descriptor's storage, else the module
+ *  default. */
+export function recordFile(root, id) {
+	const s = compiledStorage(root, 'notebooks');
+	const dir = s?.path ?? 'data/notebooks';
+	const suffix = s?.suffix ?? 'notebook';
+	const own = path.join(root, dir, `${id}.${suffix}.md`);
+	// stored UNDER another collection (`storage.under`): an existing record may sit in its owner's
+	// folder; the own root is the fallback and where a new record lands
+	if (!s?.under || fs.existsSync(own)) return own;
+	const parentDir = compiledStorage(root, s.under.collection)?.path;
 	if (!parentDir || !fs.existsSync(path.join(root, parentDir))) return own;
 	for (const e of fs.readdirSync(path.join(root, parentDir), { withFileTypes: true })) {
 		if (!e.isDirectory() || e.name.startsWith('.')) continue;
-		const f = path.join(root, parentDir, e.name, under.path, `${id}.notebook.md`);
+		const f = path.join(root, parentDir, e.name, s.under.subfolder, `${id}.${suffix}.md`);
 		if (fs.existsSync(f)) return f;
 	}
 	return own;

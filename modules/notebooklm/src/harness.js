@@ -22,7 +22,7 @@ const CHATS_PER_DAY = { standard: 50, plus: 200, pro: 500, ultra: 2500 };
 export function notebooklmBlock({ collections, modules, version }) {
 	// `generated`, NOT `systemGroup`. The question here is a STORAGE question, because every number
 	// and name below has to describe what `dt notebooklm` will actually ship, and the export ships by
-	// storage (`storage.base !== 'runtime'` — export.js). The presentational partition would leave a
+	// storage (`dt.isRuntime` — export.js). The presentational partition would leave a
 	// shipped source out of the count, and the persona would not know about a source it was given.
 	// The count and the export are pinned to each other by a test (test/harness.test.mjs).
 	const data = collections.filter((c) => !c.generated);

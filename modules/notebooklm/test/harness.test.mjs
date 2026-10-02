@@ -9,7 +9,7 @@ import path from 'node:path';
 import { readFile } from './fixture.mjs';
 import { fixture, PEOPLE, LEDGER } from './helpers.mjs';
 
-const PEOPLE_MARKED = { ...PEOPLE, schema: { type: 'object', required: ['name'], properties: { name: { type: 'string' }, email: { type: 'string', 'x-sensitive': true } } } };
+const PEOPLE_MARKED = { ...PEOPLE, fields: { name: { type: 'string', required: true }, email: { type: 'string', sensitive: true } } };
 const harness = (harnesses = ['claude-code', 'notebooklm'], extra = {}) =>
 	fixture({ harnesses, collections: { people: PEOPLE_MARKED, ledger: LEDGER }, records: {}, ...extra });
 
@@ -50,7 +50,7 @@ describe('NOTEBOOKLM.md is written when the harness is on', () => {
 	});
 
 	test('a workspace with no marks says so rather than printing an empty list', () => {
-		const ws = fixture({ collections: { people: { ...PEOPLE, schema: { type: 'object', properties: { name: { type: 'string' } } } } }, records: {} });
+		const ws = fixture({ collections: { people: { ...PEOPLE, fields: { name: { type: 'string' } } } }, records: {} });
 		assert.match(readFile(ws.root, 'NOTEBOOKLM.md'), /Nothing has been withheld from this export\./);
 	});
 

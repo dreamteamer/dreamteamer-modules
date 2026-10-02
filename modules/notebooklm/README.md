@@ -23,7 +23,7 @@ writing the record need neither. Engine `>=0.31.0`.
 |---|---|
 | the export, the harness, `notebooks` records and the three verbs | **wikis** is the local corpus a notebook points at (`notebooks.wikis`), and `wiki pull` mirrors a live notebook's sources into one · **companies** lets a client corpus say whose it is |
 
-**What never travels:** collections marked `sensitive: true`, fields marked `x-sensitive: true`, and
+**What never travels:** collections marked `sensitive: true`, fields marked `sensitive: true`, and
 references to records that were withheld. Prose inside a record is not scanned; keep secrets out of it.
 
 ## what a descriptor cannot say

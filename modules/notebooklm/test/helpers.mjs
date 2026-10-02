@@ -9,36 +9,36 @@ import { workspace, writeCollection, dtEnv, api } from './fixture.mjs';
 export const COMPANIES = {
 	description: 'An organisation.',
 	storage: { suffix: 'company' },
-	id: { generate: '{{ name | slug }}' },
-	schema: { type: 'object', required: ['name'], properties: { name: { type: 'string' } } },
+	ids: { from: '{{ name | slug }}' },
+	fields: { name: { type: 'string', required: true } },
 };
 export const PEOPLE = {
 	description: 'A person we deal with.',
 	use_when: 'someone is named',
 	storage: { suffix: 'person' },
-	id: { generate: '{{ name | slug }}' },
-	schema: { type: 'object', required: ['name'], properties: {
-		name: { type: 'string', description: 'Full name.' },
-		email: { type: 'string', 'x-sensitive': true, description: 'Where to write.' },
-		company: { type: 'string', 'x-reference': 'companies' },
-		peers: { type: 'array', items: { type: 'string', 'x-reference': 'people' } },
+	ids: { from: '{{ name | slug }}' },
+	fields: {
+		name: { type: 'string', required: true, description: 'Full name.' },
+		email: { type: 'string', sensitive: true, description: 'Where to write.' },
+		company: { type: 'companies' },
+		peers: { type: 'people', many: true },
 		status: { type: 'string', enum: ['draft', 'verified'], default: 'draft' },
-		notes: { type: 'string', format: 'markdown', 'x-body': true },
-	} },
+		notes: { type: 'markdown', body: true },
+	},
 };
 export const LEDGER = {
 	description: 'Money that moved.',
 	sensitive: true,
 	storage: { suffix: 'entry' },
-	id: { generate: '{{ name | slug }}' },
-	schema: { type: 'object', required: ['name'], properties: {
-		name: { type: 'string' },
+	ids: { from: '{{ name | slug }}' },
+	fields: {
+		name: { type: 'string', required: true },
 		amount: { type: 'number' },
 		// an authored example and an enum, both of which the schema source used to publish for a
 		// collection whose records it correctly withheld
 		account: { type: 'string', description: 'Which account, e.g. bank-main-0001.', examples: ['bank-main-0001'] },
 		kind: { type: 'string', enum: ['salary', 'stipend', 'medical'] },
-	} },
+	},
 };
 
 export const EMAILS = ['ada@example.invalid', 'grace@example.invalid', 'linus@example.invalid'];
