@@ -10,6 +10,7 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 import yaml from 'js-yaml';
+import { enumValues } from '../skills/running-retrospectives/lib/descriptors.mjs';
 
 // the repo root — these tests were written at the root of dreamteamer/extensions, whose modules/ layout
 // this repo keeps, so every `ROOT/modules/<m>/…` path still names the same file
@@ -37,12 +38,12 @@ const rows = skill.split('\n')
 	});
 
 test('the enum is the list, in order, with the terminal values last', () => {
-	assert.deepEqual(run.schema.properties.stage.enum, STAGES);
+	assert.deepEqual(enumValues(run.fields.stage.enum), STAGES);
 });
 
 test('no retired value survives anywhere', () => {
 	for (const dead of ['initialised', 'condensed', 'pasted-back']) {
-		assert.ok(!run.schema.properties.stage.enum.includes(dead), `enum still carries ${dead}`);
+		assert.ok(!enumValues(run.fields.stage.enum).includes(dead), `enum still carries ${dead}`);
 		assert.ok(!new RegExp(`\`${dead}\``).test(skill), `SKILL.md still names \`${dead}\``);
 	}
 });

@@ -71,9 +71,9 @@ honest state, and it is cheap to fix later. A merge is not.
   users record exists, so whatever the person declared at `installed` is the only identity
   there is, and an address missing from it becomes a second person. `lib/identity.mjs` computes the
   union of the seed and the users record that already carries one of them, in one function.
-- **`contact`** is a real `x-reference: contacts` on both collections, set ONLY once a person
+- **`contact`** is a field of `type: contacts` on both collections, set ONLY once a person
   confirmed the match. `contacts` is a declared PEER, so the module compiles in a workspace without
-  it. A peer excuses a reference, never a mirror, so there is no `x-inverse`.
+  it. A peer excuses a reference, never a mirror, so `contacts` carries no `mirror_of` for it.
 - **`retrospective-sessions.contributor`** is a SLUG (`dana-o`), never an address. It is the first
   segment of every evidence and model id the run writes, which is what makes a second retrospective
   update the model instead of writing a parallel copy of it; the field's `pattern` refuses anything

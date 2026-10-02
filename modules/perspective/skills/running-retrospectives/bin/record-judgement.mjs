@@ -4,36 +4,38 @@
 // therefore cannot be corrupted by a model that misread the digest.
 //   node record-judgement.mjs <summary-id> --json '{…}' [--body-file <md>] [--data-root <dir>]
 import fs from 'node:fs';
-import path from 'node:path';
-import yaml from 'js-yaml';
 import { DATA, WORKSPACE_ROOT } from '../lib/workspace.mjs';
 import { recordPath, readRecord, writeRecord } from '../lib/records.mjs';
+import { readDescriptor, enumValues } from '../lib/descriptors.mjs';
 
 // THE NAME WHITELIST IS HALF A GUARD. Asking only "is this key judged?" lets a judging worker write a
 // PROSE SENTENCE into `outcome`, a closed enum, and a gate that lets the bad write land and relies
-// on a later pass to notice is not a gate. So values are validated against the COMPILED descriptor
-// too, which keeps the schema the single source of truth.
-const DESCRIPTOR = path.join(WORKSPACE_ROOT, '.dreamteamer', 'collections', 'perspective', 'conversations.collection.yaml');
-const PROPS = (() => {
-	try { return yaml.load(fs.readFileSync(DESCRIPTOR, 'utf8'))?.schema?.properties ?? {}; }
-	catch { return {}; }   // an uncompiled runtime disables value checking rather than blocking a write
-})();
+// on a later pass to notice is not a gate. So values are validated against the descriptor too — the
+// workspace's compiled one, else the one this module ships — which keeps the schema the single
+// source of truth.
+const FIELDS = readDescriptor(WORKSPACE_ROOT, 'perspective/conversations')?.fields ?? {};
+/** The field types whose values are not strings. Every other one — text, a date, a link, a reference's id — is. */
+const NUMERIC = new Set(['integer', 'number', 'boolean', 'object', 'map']);
 
 /** Every way a judged value can be illegal, named precisely enough to fix without guessing. */
 function valueProblems(payload) {
 	const bad = [];
 	for (const [key, value] of Object.entries(payload)) {
-		const spec = PROPS[key];
+		const spec = FIELDS[key];
 		if (!spec) continue;
 		const clip = (v) => { const s = typeof v === 'string' ? v : JSON.stringify(v); return s.length > 70 ? s.slice(0, 70) + '…' : s; };
-		if (spec.enum && !spec.enum.includes(value)) {
-			bad.push(`${key}: ${clip(value)} — must be exactly one of [${spec.enum.join(', ')}]${typeof value === 'string' && value.length > 30 ? '. That looks like prose; prose belongs in `summary` or the body.' : ''}`);
+		if (spec.many) {
+			if (!Array.isArray(value)) bad.push(`${key}: ${clip(value)} — must be an array`);
+			continue;
+		}
+		const values = enumValues(spec.enum);
+		if (values && !values.includes(value)) {
+			bad.push(`${key}: ${clip(value)} — must be exactly one of [${values.join(', ')}]${typeof value === 'string' && value.length > 30 ? '. That looks like prose; prose belongs in `summary` or the body.' : ''}`);
 			continue;
 		}
 		if (spec.type === 'integer' && !Number.isInteger(value)) bad.push(`${key}: ${clip(value)} — must be a whole number`);
 		if (spec.type === 'number' && typeof value !== 'number') bad.push(`${key}: ${clip(value)} — must be a number`);
-		if (spec.type === 'array' && !Array.isArray(value)) bad.push(`${key}: ${clip(value)} — must be an array`);
-		if (spec.type === 'string' && typeof value !== 'string') bad.push(`${key}: ${clip(value)} — must be a string`);
+		if (typeof spec.type === 'string' && !NUMERIC.has(spec.type) && typeof value !== 'string') bad.push(`${key}: ${clip(value)} — must be a string`);
 		if (typeof spec.minimum === 'number' && typeof value === 'number' && value < spec.minimum) bad.push(`${key}: ${value} — below the minimum ${spec.minimum}`);
 		if (typeof spec.maximum === 'number' && typeof value === 'number' && value > spec.maximum) bad.push(`${key}: ${value} — above the maximum ${spec.maximum}`);
 	}

@@ -7,16 +7,21 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import yaml from 'js-yaml';
 import { collectionDir, collectionStorage, recordPath, recordId, shippedCollections } from '../skills/running-retrospectives/lib/records.mjs';
+import { readDescriptor } from '../skills/running-retrospectives/lib/descriptors.mjs';
+import { virginWorkspace, installCopied, run, cleanup } from '../../../tests/helpers/workspace.mjs';
 
 const MODULE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const COLS = path.join(MODULE, 'collections', 'perspective');
 const SKILL = path.join(MODULE, 'skills', 'running-retrospectives');
 
+// The storage each shipped descriptor resolves to with no compiled runtime beside it: the authored
+// path, and the suffix compile derives from the collection's name. The last test below holds that
+// derivation to what the engine actually compiles.
+const NOWHERE = path.join(os.tmpdir(), 'perspective-no-workspace');
 const shipped = new Map(fs.readdirSync(COLS).filter((f) => f.endsWith('.collection.yaml')).map((f) => {
-	const d = yaml.load(fs.readFileSync(path.join(COLS, f), 'utf8'));
-	return [f.replace('.collection.yaml', ''), d.storage];
+	const name = f.replace('.collection.yaml', '');
+	return [name, readDescriptor(NOWHERE, `perspective/${name}`).storage];
 }));
 
 /** Every script that reads or writes perspective records. The migrate scripts are excluded: they
@@ -102,4 +107,21 @@ test('a workspace overlay that re-homes a collection is honoured over the shippe
 	fs.writeFileSync(compiled, 'name: perspective/decisions\nstorage: { path: data/elsewhere/decisions, codec: md, shape: file, suffix: decision }\n');
 	assert.equal(collectionDir('decisions', path.join(ws, 'data')), path.join(ws, 'data', 'elsewhere', 'decisions'));
 	fs.rmSync(ws, { recursive: true, force: true });
+});
+
+test('the shipped descriptors resolve to the storage the engine compiles them to', { timeout: 120_000 }, (t) => {
+	t.after(cleanup);
+	const ws = virginWorkspace();
+	installCopied(ws, ['perspective']);
+	const compiled = run(ws, ['compile']);
+	assert.equal(compiled.status, 0, compiled.stderr + compiled.stdout);
+	for (const [c, storage] of shipped) {
+		const theirs = readDescriptor(ws, `perspective/${c}`);
+		assert.ok(theirs?.compiled, `perspective/${c} was not compiled`);
+		assert.equal(theirs.storage.path, storage.path, c);
+		assert.equal(theirs.storage.suffix, storage.suffix, c);
+		// and the fields read off the compiled copy are the shipped ones, mixins included
+		const own = Object.keys(readDescriptor(NOWHERE, `perspective/${c}`).fields);
+		assert.deepEqual(own.filter((f) => !(f in theirs.fields)), [], `${c}: fields missing from the compiled descriptor`);
+	}
 });

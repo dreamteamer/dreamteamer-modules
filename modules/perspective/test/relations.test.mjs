@@ -6,8 +6,8 @@
 // nothing would notice. One guard in check-records.mjs existed for no other purpose than to police
 // the last of those pairs, which is a guard whose job the schema should make impossible.
 //
-// The engine already does this: `x-inverse` on the OWNING field stamps a read-only mirror onto the
-// target at compile, maintains it on every `dt` write, and — measured 2026-09-09 — reports
+// The engine already does this: a field declared with `mirror_of: <owning field>` on the TARGET is a
+// read-only mirror the engine maintains on every `dt` write, and — measured 2026-09-09 — reports
 // `activities: stale — run: dreamteamer relations rebuild perspective/projects` when a script writes
 // the owner as a raw file. Detected drift with a named repair beats undetected drift.
 //
@@ -21,10 +21,12 @@ import { test } from 'node:test';
 import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
-import yaml from 'js-yaml';
+import { shippedDescriptor } from '../skills/running-retrospectives/lib/descriptors.mjs';
+import { targetsOf } from '../../../tests/helpers/descriptors.mjs';
 
 const COLS = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', '..', '..', 'modules', 'perspective', 'collections', 'perspective');
-const load = (n) => yaml.load(fs.readFileSync(path.join(COLS, `${n}.collection.yaml`), 'utf8'));
+// read with their mixins merged in, so a field a mixin supplies counts as the collection's own
+const load = (n) => shippedDescriptor(`perspective/${n}`);
 /** Every descriptor under `collections/perspective/`, by its name RELATIVE to that folder — so
  *  `users.collection.yaml` is `users`. Recursive, because `compile` enumerates `collections/` recursively. */
 function descriptorNames(dir, prefix = '') {
@@ -35,15 +37,11 @@ function descriptorNames(dir, prefix = '') {
 
 const names = descriptorNames(COLS);
 const D = new Map(names.map((n) => [n, load(n)]));
-const propsOf = (n) => (D.get(n).schema?.properties) ?? {};
-const refOf = (spec) => spec?.['x-reference'] ?? (spec?.type === 'array' ? spec?.items?.['x-reference'] : undefined);
-/** A reference target may be a scalar OR a union (a list) — `refTargets` normalises both, the way
- *  the engine's own `refTargetsOf` does. `concepts.classifies` is a union that IS mirrored, so a
- *  reader that assumed a scalar here threw rather than failing. */
-const targetsOf = (spec) => { const r = refOf(spec); return r == null ? [] : Array.isArray(r) ? r : [r]; };
-const invOf = (spec) => spec?.['x-inverse'] ?? spec?.items?.['x-inverse'];
+const propsOf = (n) => D.get(n).fields ?? {};
+// A reference target may be one collection OR a union (a list) — `targetsOf` normalises both.
+// `concepts.classifies` is a union that IS mirrored, on every collection it names.
 
-/** owner field → the mirror it must stamp on its target. */
+/** owner field → the mirror its target declares with `mirror_of`. */
 const MIRRORS = {
 	'activities.project': 'activities',
 	'activities.lead': 'led_activities',
@@ -92,20 +90,7 @@ const MIRRORS = {
 	'gates.retrospective': 'gates',
 	'proposals.retrospective': 'proposals',
 	'perspectives.retrospective': 'perspective',
-};
-
-/**
- * Relations whose mirror is declared on the TARGET (`x-inverse-of`, "spelling B") rather than on the
- * owner. Compile rewrites them onto the owner and stamps the same generated field, so they are the
- * same relation — the difference is only which descriptor a reader sees it in.
- *
- * ⚠ DECLARING BOTH SIDES IS THE THING TO AVOID. It compiles to exactly this, and warns on every run
- * in every consumer ("declared on both sides — keep one"). Two permanent warnings in everybody's
- * compile output is how people learn to skim warnings, which is how the next real one is missed.
- * `no relation is declared on BOTH sides` below is the gate.
- */
-const MIRROR_ON_TARGET = {
-	'sources.retrospectives': ['retrospective-sessions', 'sources'],
+	'sources.retrospectives': 'sources',
 };
 
 /** Deliberately one-way, each for a stated reason. */
@@ -128,9 +113,9 @@ const ONE_WAY = {
 	'concepts.related_to': 'a peer union — the target collections belong to other modules',
 	// ── THE OBSERVED WORLD'S JOIN OUT TO THE REAL ONE. One-way BY DESIGN, and it is the whole point:
 	// the real world is what a person authored, and stamping `observed_as[]` onto their record would
-	// be a finding writing into somebody else's schema. Soft as well (`x-reference-soft`), so an
-	// absent collection and an absent record are both tolerated; `bin/check-records.mjs` warns rather
-	// than the engine failing.
+	// be a finding writing into somebody else's schema. Soft as well (a plain string, not a reference
+	// type), so an absent collection and an absent record are both tolerated; `bin/check-records.mjs`
+	// warns rather than the engine failing.
 	'users.real': 'the real world never points back at a finding',
 	'users.company': 'a peer — companies belongs to another module',
 	'projects.real': 'same',
@@ -147,13 +132,11 @@ const ONE_WAY = {
 test('every reference is either mirrored or listed as deliberately one-way', () => {
 	const unclassified = [];
 	for (const n of names) for (const [f, spec] of Object.entries(propsOf(n))) {
-		if (!refOf(spec)) continue;
+		if (!targetsOf(spec).length) continue;
 		const key = `${n}.${f}`;
-		// A field carrying `x-inverse-of` IS a mirror, spelled out where a reader looks — compile
-		// deletes it in pass 1 and regenerates it. It is the far half of a relation already classified
-		// from its owning side, never a relation of its own.
-		if (spec['x-inverse-of'] || spec.items?.['x-inverse-of']) continue;
-		if (key in MIRROR_ON_TARGET) continue;                        // mirrored, from the other side
+		// A field carrying `mirror_of` IS a mirror: the far half of a relation already classified from
+		// its owning side, never a relation of its own.
+		if (spec.mirror_of !== undefined) continue;
 		if ((f === 'retrospective' || f === 'retrospectives') && !(key in MIRRORS)) continue;   // the run link
 		if (f === 'last_seen_in') continue;                          // ditto
 		if (!(key in MIRRORS) && !(key in ONE_WAY)) unclassified.push(key);
@@ -163,38 +146,28 @@ test('every reference is either mirrored or listed as deliberately one-way', () 
 
 for (const [key, mirror] of Object.entries(MIRRORS)) {
 	const [owner, field] = key.split('.');
-	test(`${key} owns the relation and stamps ${mirror} on its target`, () => {
+	test(`${key} owns the relation and every target mirrors it as ${mirror}`, () => {
 		const spec = propsOf(owner)[field];
 		assert.ok(spec, `${owner} has no field ${field}`);
-		// `x-inverse` has two spellings: a bare mirror name, and an object carrying `field` and a
-		// description for the generated side. Both are legal and both mean the same relation.
-		const inv = invOf(spec);
-		assert.equal(typeof inv === 'string' ? inv : inv?.field, mirror);
+		const targets = targetsOf(spec).filter((t) => D.has(t.replace(/^perspective\//, '')));
+		assert.ok(targets.length, `${key} points at no collection this module owns`);
+		for (const raw of targets) {
+			const theirs = propsOf(raw.replace(/^perspective\//, ''))[mirror];
+			assert.ok(theirs, `${raw} has no ${mirror}`);
+			assert.equal(theirs.type, `perspective/${owner}`);
+			assert.equal(theirs.mirror_of, field);
+		}
 	});
-	test(`${key}'s target does not ALSO declare the mirror by hand`, () => {
+	test(`${key}'s target does not ALSO declare the mirror as a relation of its own`, () => {
+		// A mirror declared as a SECOND reference — no `mirror_of` — is two halves that can disagree,
+		// which is the defect this release removes.
 		for (const raw of targetsOf(propsOf(owner)[field])) {
 			const target = raw.replace(/^perspective\//, '');
 			if (!D.has(target)) continue;                              // a core or peer collection
 			const theirs = propsOf(target)[mirror];
-			// ⚠ `x-inverse-of` is spelling B, and it is legal: the authored field is DELETED in
-			// compile's pass 1 and regenerated under the same key, which is how a mirror can be
-			// visible in the descriptor a reader actually opens (`rnd/product-design-docs.prototypes`).
-			// What is refused is a mirror declared as a SECOND relation — a reference with no
-			// `x-inverse-of` — because then the two halves can disagree.
-			if (theirs?.['x-inverse-of'] || theirs?.items?.['x-inverse-of']) continue;
-			assert.ok(!theirs || !refOf(theirs),
-				`${target}.${mirror} is declared by hand AND generated — two halves that can disagree, which is the defect this release removes`);
+			assert.ok(!theirs || theirs.mirror_of !== undefined,
+				`${target}.${mirror} is a reference of its own, not a mirror of ${key}`);
 		}
-	});
-}
-
-for (const [key, [target, mirror]] of Object.entries(MIRROR_ON_TARGET)) {
-	const [owner, field] = key.split('.');
-	test(`${key}'s mirror is declared on ${target}.${mirror}, and NOT also on the owner`, () => {
-		const spec = propsOf(owner)[field];
-		assert.ok(spec, `${owner} has no field ${field}`);
-		assert.ok(!invOf(spec), `${key} declares x-inverse AND ${target}.${mirror} declares x-inverse-of — compile warns on every run in every consumer`);
-		assert.equal(propsOf(target)[mirror]?.['x-inverse-of'], `perspective/${key}`);
 	});
 }
 
@@ -205,26 +178,18 @@ test('no count duplicates the length of a mirror', () => {
 		'projects.activities_count is the length of its activities mirror — the mirror is the count');
 });
 
-test('every list_fields entry names a field that exists', () => {
-	// A dangling entry compiles CLEAN and puts a dead column in every default listing — the engine
-	// warns about a dangling `sort_field` and not about this one. Two sources of real fields beyond
-	// the collection's own properties: the provenance TEMPLATE every collection stamps, and the
-	// mirrors `x-inverse` generates at compile.
-	const fromTemplate = ['author', 'creation_context', 'source', 'confidence'];
-	const generated = new Set();
-	for (const n of names) for (const spec of Object.values(propsOf(n))) {
-		const inv = invOf(spec);
-		if (!inv) continue;
-		const mirror = typeof inv === 'string' ? inv : inv.field;
-		for (const ref of targetsOf(spec)) generated.add(`${ref.replace(/^perspective\//, '')}.${mirror}`);
-	}
+test('every list column names a field that exists', () => {
+	// A dangling column puts a dead column in every default listing. The fields are the collection's
+	// own, its mixins' and its mirrors, all declared in the descriptor; the engine adds `id`,
+	// `created` and `last_modified` to every collection.
+	const injected = ['id', 'created', 'last_modified'];
 	const dead = [];
 	for (const n of names) {
 		const p = propsOf(n);
-		for (const f of D.get(n).list_fields ?? []) {
-			if (f in p || f === 'id' || fromTemplate.includes(f) || generated.has(`${n}.${f}`)) continue;
-			dead.push(`${n}.list_fields: ${f}`);
+		for (const f of D.get(n).display?.list?.columns ?? []) {
+			if (f in p || injected.includes(f)) continue;
+			dead.push(`${n}.display.list.columns: ${f}`);
 		}
 	}
-	assert.deepEqual(dead, [], `a dangling list_fields entry compiles clean and puts a dead column in every listing:\n  ${dead.join('\n  ')}`);
+	assert.deepEqual(dead, [], `a dangling list column puts a dead column in every listing:\n  ${dead.join('\n  ')}`);
 });

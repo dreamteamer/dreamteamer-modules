@@ -4,18 +4,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 import yaml from 'js-yaml';
 import { spawnSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
 import { DATA } from './workspace.mjs';
+import { readDescriptor, SHIPPED_COLLECTIONS, NAMESPACE } from './descriptors.mjs';
 
 export const nowIso = () => new Date().toISOString();
 
 // ── where this module's collections keep their records ──────────────────────────────────────────
 // Every script reaches a `perspective/*` folder through these helpers and never joins a path by hand.
-// The descriptor is the authority: the workspace's compiled copy first (an overlay may re-home a
-// collection), then the one this package ships. `collections/` sits three levels above this file both
-// in the package and in `.dreamteamer/`, where compile copies the skill.
-const SHIPPED_COLLECTIONS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'collections');
-const NAMESPACE = 'perspective';
+// The descriptor is the authority, read through `lib/descriptors.mjs`: the workspace's compiled copy
+// first (an overlay may re-home a collection), then the one this package ships.
 const storageCache = new Map();
 
 /** The bare names of the collections this module ships, e.g. `decisions`, `activity-weeks`. */
@@ -25,26 +22,16 @@ export function shippedCollections() {
 	return fs.readdirSync(dir).filter((f) => f.endsWith('.collection.yaml')).map((f) => f.slice(0, -'.collection.yaml'.length)).sort();
 }
 
-/** The `storage` block of a descriptor file, or null when the file is absent or carries none. */
-function readStorage(file) {
-	if (!fs.existsSync(file)) return null;
-	try { return yaml.load(fs.readFileSync(file, 'utf8'))?.storage ?? null; } catch { return null; }
-}
-
 /** `{ dir, suffix }` for `perspective/<bare>` under `dataRoot`. Throws for a name no descriptor carries. */
 export function collectionStorage(bare, dataRoot = DATA) {
 	const key = `${dataRoot}\0${bare}`;
 	if (storageCache.has(key)) return storageCache.get(key);
 	const workspaceRoot = path.dirname(dataRoot);
-	const candidates = [
-		path.join(workspaceRoot, '.dreamteamer', 'collections', NAMESPACE, `${bare}.collection.yaml`),
-		path.join(SHIPPED_COLLECTIONS, NAMESPACE, `${bare}.collection.yaml`),
-	];
-	const storage = candidates.map(readStorage).find((s) => s?.path && s?.suffix);
+	const storage = readDescriptor(workspaceRoot, `${NAMESPACE}/${bare}`)?.storage;
 	if (!storage) throw new Error(`${NAMESPACE}/${bare} is not a collection this module ships`);
-	const rel = String(storage.path);
+	const rel = storage.path;
 	const dir = rel.startsWith('data/') ? path.join(dataRoot, rel.slice('data/'.length)) : path.join(workspaceRoot, rel);
-	const out = { dir, suffix: String(storage.suffix) };
+	const out = { dir, suffix: storage.suffix };
 	storageCache.set(key, out);
 	return out;
 }
@@ -170,7 +157,7 @@ export function contributorOf(retrospectiveRef, dataRoot = DATA) {
 /**
  * Refresh the generated mirrors on a collection after a pass wrote their OWNER as a raw file.
  *
- * Why this exists. `x-inverse` mirrors are maintained by the engine on every `dt` write, and these
+ * Why this exists. `mirror_of` fields are maintained by the engine on every `dt` write, and these
  * scripts write files directly — so a pass that sets `activities.project` leaves
  * `projects.activities` stale. The engine DETECTS that (`check` says
  * `activities: stale — run: dreamteamer relations rebuild perspective/projects`); this closes it in
@@ -201,14 +188,13 @@ export function rebuildRelations(collections, dataRoot = DATA) {
  *  under one — or the shipped defaults for a fixture with no compiled runtime beside it. */
 export function compiledStorage(workspaceRoot, collection, fallbackPath, fallbackSuffix) {
 	const read = (name) => {
-		const file = path.join(workspaceRoot, '.dreamteamer', 'collections', `${name}.collection.yaml`);
-		if (!fs.existsSync(file)) return null;
-		try { return yaml.load(fs.readFileSync(file, 'utf8'))?.storage ?? null; } catch { return null; }
+		const d = readDescriptor(workspaceRoot, name);
+		return d?.compiled ? d.storage : null;
 	};
 	const own = read(collection);
 	const dir = path.join(workspaceRoot, String(own?.path || fallbackPath));
 	const suffix = String(own?.suffix || fallbackSuffix);
-	const under = own?.under && own.under.field && own.under.path && own.under.collection ? own.under : null;
+	const under = own?.under ?? null;
 	const parent = under ? read(under.collection) : null;
 	return {
 		dir, suffix, compiled: Boolean(own?.path),

@@ -49,7 +49,7 @@ const raw = new Map(NAMES.map((n) => [n, fs.readFileSync(path.join(DIR, `${n}.co
 test('every contributor field is a slug the schema can refuse a reference for', () => {
 	const bad = [];
 	for (const [name, d] of descriptors) {
-		const p = d.schema?.properties?.contributor;
+		const p = d.fields?.contributor;
 		if (!p) continue;
 		if (p.pattern !== SLUG) bad.push(`${name}: pattern is ${JSON.stringify(p.pattern)}, want ${JSON.stringify(SLUG)}`);
 	}
@@ -86,17 +86,19 @@ test('no script writes a collaborator reference into the contributor field', () 
 });
 
 test('the run record carries handles, spelled and shaped exactly as perspective/users spells them', () => {
-	const run = descriptors.get('retrospective-sessions').schema.properties;
-	const collab = descriptors.get('users').schema.properties;
-	assert.deepEqual(run.handles?.type, 'array', 'retrospective-sessions.handles must exist and be an array');
-	assert.deepEqual(run.handles?.items, collab.handles.items, 'the merge key must be the same shape on both collections');
+	const run = descriptors.get('retrospective-sessions').fields;
+	const collab = descriptors.get('users').fields;
+	assert.equal(run.handles?.many, true, 'retrospective-sessions.handles must exist and be a list');
+	assert.equal(run.handles?.type, collab.handles.type, 'the merge key must be the same shape on both collections');
+	assert.equal(collab.handles.many, true);
 });
 
 test('the run record contact is the same typed reference perspective/users uses', () => {
-	const run = descriptors.get('retrospective-sessions').schema.properties;
-	const collab = descriptors.get('users').schema.properties;
-	assert.equal(run.contact?.['x-reference'], 'contacts');
-	assert.equal(run.contact?.['x-reference'], collab.contact['x-reference'], 'one field name, one meaning, across the module');
+	const run = descriptors.get('retrospective-sessions').fields;
+	const collab = descriptors.get('users').fields;
+	assert.equal(run.contact?.type, 'contacts');
+	assert.equal(run.contact?.type, collab.contact.type, 'one field name, one meaning, across the module');
+	assert.ok(!run.contact.many && !collab.contact.many);
 });
 
 test('no script reads the run record contact as if it were a handle', () => {

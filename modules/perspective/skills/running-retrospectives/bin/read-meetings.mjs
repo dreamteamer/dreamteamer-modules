@@ -25,8 +25,8 @@
 // and the perspective that cites it should say so.
 //
 // WHICH COLLECTION THE PEOPLE LAND IN: `perspective/users`, the OBSERVED half of `users`. There is
-// no `collaborators` collection; `collaborator` is a ROLE WORD — `perspective/users.sources` carries
-// `x-inverse: collaborators`, and `perspective/activities.collaborators` is the slot a person fills —
+// no `collaborators` collection; `collaborator` is a ROLE WORD — `perspective/sources.collaborators`
+// mirrors `perspective/users.sources`, and `perspective/activities.collaborators` is the slot a person fills —
 // so a receipt that counts "collaborators" is counting `perspective/users` records, and
 // `lib/collaborators.mjs` is the upsert that writes them. Nothing this reader does may write into the REAL `users` collection: that is what a
 // person authored, and the one-way `real` join is a proposal a person confirms, never a reader's.
@@ -39,7 +39,7 @@
 //
 // WHY `perspective/users.contact` IS SET HERE, when `references/identity.md` says that field is set
 // only on confirmation and never inferred from a matching name. Both are true, because this is not a
-// name match. `meetings.attendees` is an `x-reference: contacts` — a STRUCTURAL edge somebody
+// name match. `meetings.attendees` is a field of `type: contacts` — a STRUCTURAL edge somebody
 // already committed to in the workspace's own CRM. Following a reference the workspace asserts is
 // the opposite of guessing from a string, and it is the one route by which an observed person may
 // arrive already joined to their CRM record. `contacts` is a PEER of this module, so the edge points

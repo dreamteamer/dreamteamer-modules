@@ -13,7 +13,8 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import yaml from 'js-yaml';
-import { readRecord, writeRecord, recordPath, listRecords } from '../../skills/running-retrospectives/lib/records.mjs';
+import { readRecord, writeRecord, recordPath, listRecords, collectionStorage } from '../../skills/running-retrospectives/lib/records.mjs';
+import { enumValues } from '../../skills/running-retrospectives/lib/descriptors.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const BIN = path.join(HERE, '..', '..', 'skills', 'running-retrospectives', 'bin', 'read-meetings.mjs');
@@ -114,8 +115,8 @@ const scratchLines = (f) => fs.readFileSync(path.join(f.scratch, 'meetings', `${
 
 test('the sources enum carries `meetings` — a reader writing a kind the descriptor refuses fails `check`, not a unit test', () => {
 	const doc = yaml.load(fs.readFileSync(path.join(COLLECTIONS, 'sources.collection.yaml'), 'utf8'));
-	assert.ok(doc.schema.properties.kind.enum.includes('meetings'),
-		`sources.kind is ${JSON.stringify(doc.schema.properties.kind.enum)} — the reader would write a record the engine rejects`);
+	assert.ok(enumValues(doc.fields.kind.enum).includes('meetings'),
+		`sources.kind is ${JSON.stringify(enumValues(doc.fields.kind.enum))} — the reader would write a record the engine rejects`);
 });
 
 test('a meeting is kept when the contributor is an attendee REF or carries a handle in attendees_raw, and never otherwise', () => {
@@ -292,10 +293,12 @@ test('the people land in `perspective/users`, at the path the DESCRIPTOR declare
 	const doc = yaml.load(fs.readFileSync(path.join(COLLECTIONS, 'users.collection.yaml'), 'utf8'));
 	assert.equal(doc.name, 'perspective/users');
 	assert.equal(doc.storage.path, 'data/perspective/users');
-	assert.equal(doc.storage.suffix, 'user');
-	assert.equal(doc.id.generate, '{{ contributor }}/{{ name | slug }}');
+	assert.equal(doc.ids.from, '{{ contributor }}/{{ name | slug }}');
 
 	const f = fixture();
+	// the suffix compile derives from the collection's name, read through the module's own helper
+	const { suffix } = collectionStorage('users', f.data);
+	assert.equal(suffix, 'user');
 	run(f);
 	// The descriptor's own storage path, resolved against this fixture's data root — not a string this
 	// test and the reader both happen to spell the same way.
@@ -304,7 +307,7 @@ test('the people land in `perspective/users`, at the path the DESCRIPTOR declare
 	// Sam and Priya — the two counterparts the cast gives an address. Nick has none and is therefore
 	// not a person this module can key, which the `no email, no record` rule above already pins.
 	assert.equal(written.length, 2, `${written.length} observed people under ${doc.storage.path}`);
-	for (const p of written) assert.ok(p.endsWith(`.${doc.storage.suffix}.md`), `${p} is not a \`${doc.storage.suffix}\` record`);
+	for (const p of written) assert.ok(p.endsWith(`.${suffix}.md`), `${p} is not a \`${suffix}\` record`);
 
 	// ⚠ And nowhere else. The retired collection's folder is the one a re-run must never create, and
 	// the real `users` collection is what a PERSON authored — a finding may point at it (`real`) but

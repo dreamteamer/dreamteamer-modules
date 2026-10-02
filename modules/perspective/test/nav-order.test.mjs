@@ -1,11 +1,11 @@
 // The left nav, ordered by the pipeline the work actually follows.
 //
-// The studio sorts collections by a numeric `order` on the descriptor (the engine's presentation
+// The studio sorts collections by a numeric `display.nav.order` on the descriptor (the engine's presentation
 // layer falls back to 999) and puts view entries above them by `nav.order`. Neither was set
 // deliberately here: NO collection carried an `order` at all, so all twenty sorted on the fallback,
 // and among the ten named views `nav.order` 1 was unused while 8 and 9 were each used twice.
 //
-// ⚠ `group:` is deliberately NOT used. The engine is retiring it in favour of module ownership
+// ⚠ `display.nav.section` (the old `group:`) is deliberately NOT used. The engine is retiring it in favour of module ownership
 // (compile.js: "it exists to REPLACE `group:` as the workspace's partition rather than to sit beside
 // it"), and a descriptor that sets both would partition the nav twice.
 import { test } from 'node:test';
@@ -67,12 +67,15 @@ test('the table covers every collection, and nothing else', () => {
 
 for (const [name, order] of Object.entries(ORDER)) {
 	test(`${name} sits at ${order} in the nav`, () => {
-		assert.equal(descriptors.get(name).order, order);
+		assert.equal(descriptors.get(name).display?.nav?.order, order);
 	});
 }
 
-test('no descriptor sets group — module ownership is the partition', () => {
-	for (const [name, d] of descriptors) assert.ok(!('group' in d), `${name} sets group`);
+test('no descriptor sets a nav section — module ownership is the partition', () => {
+	for (const [name, d] of descriptors) {
+		assert.ok(d.display?.nav?.section === undefined, `${name} sets display.nav.section`);
+		assert.ok(!d.internal, `${name} is marked internal`);
+	}
 });
 
 test('the order runs in the pipeline direction, with no duplicate', () => {

@@ -43,6 +43,7 @@ import yaml from 'js-yaml';
 import { WORKSPACE_ROOT, DATA, SCRATCH, dt, slug } from '../lib/workspace.mjs';
 import { recordPath, writeRecord, readRecord, listRecords, contributorOf, compiledStorage, recordFilesOf, collectionDir, recordId } from '../lib/records.mjs';
 import { contributorHandles as handlesOf } from '../lib/identity.mjs';
+import { readDescriptor } from '../lib/descriptors.mjs';
 
 const argv = process.argv.slice(2);
 const flag = (n) => argv.includes(`--${n}`);
@@ -222,15 +223,18 @@ const countRecords = (dir, suffix) => walk(dir, (n) => !n.startsWith('.') && (!s
 
 const collections = walk(path.join(workspaceRoot, '.dreamteamer', 'collections'), (n) => n.endsWith('.collection.yaml'))
 	.map((file) => ({ file, doc: yaml.load(fs.readFileSync(file, 'utf8')) ?? {} }))
-	.map(({ file, doc }) => ({ name: String(doc.name || path.basename(file, '.collection.yaml')), doc }))
+	.map(({ file, doc }) => {
+		const name = String(doc.name || path.basename(file, '.collection.yaml'));
+		return { name, doc, d: readDescriptor(workspaceRoot, name) };
+	})
 	// the module does not list ITSELF, and the runtime-base system collections are the engine's, not the person's
-	.filter(({ name, doc }) => name !== 'perspective' && !name.startsWith('perspective/') && doc.storage?.base !== 'runtime')
-	.map(({ name, doc }) => ({
+	.filter(({ name, d }) => name !== 'perspective' && !name.startsWith('perspective/') && !d?.runtime)
+	.map(({ name, doc, d }) => ({
 		name,
 		description: String(doc.description ?? '').replace(/\s+/g, ' ').trim().slice(0, 200),
 		// a collection stored under another keeps most of its records inside the parent's folders
-		records: doc.storage?.under ? recordFilesOf(compiledStorage(workspaceRoot, name, String(doc.storage.path), String(doc.storage.suffix))).length
-			: doc.storage?.path ? countRecords(path.join(workspaceRoot, String(doc.storage.path)), doc.storage.suffix) : 0,
+		records: !d ? 0 : d.storage.under ? recordFilesOf(compiledStorage(workspaceRoot, name, d.storage.path, d.storage.suffix)).length
+			: countRecords(path.join(workspaceRoot, d.storage.path), d.storage.suffix),
 	}))
 	.sort((a, b) => a.name.localeCompare(b.name));
 if (collections.length) fields.collections = collections; else delete fields.collections;

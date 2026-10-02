@@ -34,8 +34,8 @@
 //                  attributes one person's work to another, which a person must resolve by hand.
 //  11. observed  — `real` points at its OWN real collection (a violation when it does not: an
 //                  observed project claiming to be a task is corrupt, not stale), and resolves to a
-//                  record (a WARNING when it does not). The field is `x-reference-soft`, so the
-//                  engine ignores both absences by design — this is what stops "soft" meaning
+//                  record (a WARNING when it does not). The field is a plain string, not a
+//                  reference type, so the engine ignores both absences by design — this is what stops "soft" meaning
 //                  "silent".
 //  12. gates     — every verdict but `not-run` carries `measured`, and a `waived` one carries
 //                  `waived_because`.
@@ -169,8 +169,8 @@ const workspaceRoot = path.dirname(dataRoot);
 const PEER = (() => {
 	const out = {};
 	// THE REAL WORLD. Every `perspective/*` collection carries `real`, a one-way SOFT
-	// reference to the record it appears to be — `x-reference-soft`, so the engine's own `check`
-	// ignores it whether the collection is absent or the record is. That is deliberate (a
+	// reference to the record it appears to be — a plain string rather than a reference type, so the
+	// engine's own `check` ignores it whether the collection is absent or the record is. That is deliberate (a
 	// correspondence is a judgement a run made on a date, and a deleted project must not turn a whole
 	// workspace red), but "ignored" must not mean "unsaid": a `real` that points at nothing is
 	// reported HERE, as a warning, which is what makes the softness honest rather than silent.
@@ -389,7 +389,7 @@ for (const [file, { fields, body }] of records) {
 		}
 	}
 
-	// 11. A `real` THAT POINTS AT NOTHING. The field is `x-reference-soft`, so the engine's own
+	// 11. A `real` THAT POINTS AT NOTHING. The field is a plain string, so the engine's own
 	//     `check` ignores it whether the collection is absent or the record is — deliberately, because
 	//     a correspondence is a judgement a run made on a date and a deleted project must not turn a
 	//     whole workspace red. But soft must not mean silent: a wrong TARGET is a violation (an
@@ -431,7 +431,7 @@ for (const [file, { fields, body }] of records) {
 			fail(file, `retrospective ${fields.retrospective} does not resolve to a retrospective`);
 		}
 		// NO BACK-POINTER CHECK: `retrospective-sessions.perspective` is a GENERATED mirror
-		// (`x-inverse: perspective`, `x-unique: true`), so it cannot disagree with
+		// (`mirror_of: retrospective`), so it cannot disagree with
 		// `perspectives.retrospective` — the engine maintains it on every `dt` write and reports it
 		// stale after a raw one. A guard whose job the schema can do will one day disagree with it.
 		void self;

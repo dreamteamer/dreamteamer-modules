@@ -8,13 +8,9 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { writeRecord, readRecord, recordPath } from '../../skills/running-retrospectives/lib/records.mjs';
-import { WORKSPACE_ROOT } from '../../skills/running-retrospectives/lib/workspace.mjs';
 
-// Three assertions below read the COMPILED descriptor (the script validates judged values against
-// `.dreamteamer/collections/perspective/conversations.collection.yaml`). Standalone — this module
-// checked out on its own, no workspace above it — there is nothing compiled to read, so those three
-// are skipped by name rather than failing on an environment fact. From a consuming workspace they run.
-const NO_DESCRIPTOR = fs.existsSync(path.join(WORKSPACE_ROOT, '.dreamteamer', 'collections', 'perspective', 'conversations.collection.yaml')) ? false : 'needs a compiled workspace above the module';
+// The script validates judged values against the conversations descriptor: the workspace's compiled
+// one when there is one, else the one this module ships — so these run standalone too.
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const BIN = path.join(HERE, '..', '..', 'skills', 'running-retrospectives', 'bin', 'record-judgement.mjs');
@@ -56,7 +52,7 @@ test('a payload carrying a mechanical field is rejected whole', () => {
 // eight workers wrote a PROSE SENTENCE into `outcome` — a closed six-value enum — across 57 records
 // and every write was accepted. A gate that lets the bad write land and leaves a later pass to
 // notice is not a gate. Values are validated against the compiled descriptor now.
-test('a prose sentence in a closed enum is rejected whole, and names the legal values', { skip: NO_DESCRIPTOR }, () => {
+test('a prose sentence in a closed enum is rejected whole, and names the legal values', () => {
 	const data = seed();
 	const before = readRecord(recordPath('conversations', ID, 'conversation', data)).fields;
 	const r = spawnSync('node', [BIN, ID, '--data-root', data, '--json', JSON.stringify({
@@ -72,7 +68,7 @@ test('a prose sentence in a closed enum is rejected whole, and names the legal v
 	assert.equal(after.outcome, undefined);
 });
 
-test('an out-of-range score and a wrong-typed field are both caught', { skip: NO_DESCRIPTOR }, () => {
+test('an out-of-range score and a wrong-typed field are both caught', () => {
 	const data = seed();
 	const r = spawnSync('node', [BIN, ID, '--data-root', data, '--json', JSON.stringify({ interest_score: 250, goals: 'should be an array' })], { encoding: 'utf8' });
 	assert.equal(r.status, 2);
@@ -90,7 +86,7 @@ test('a legal enum value still lands', () => {
 
 // The four-layer metrics fields the descriptor declares JUDGED. Each sat unwritable — the whitelist
 // omitted them — so every judging pass silently dropped them and the columns stayed empty.
-test('the four-layer judged fields are writable, and their values are still checked', { skip: NO_DESCRIPTOR }, () => {
+test('the four-layer judged fields are writable, and their values are still checked', () => {
 	const data = seed(), id = ID;
 	const ok = run(id, { turns_added_information: 6, turns_corrected: 2, deliverable_kind: 'design-doc', quality_score: 78 }, data);
 	assert.equal(ok.status, 0, ok.stderr);
