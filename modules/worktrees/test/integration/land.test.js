@@ -625,7 +625,7 @@ describe('dt land — the invocation itself', () => {
 	});
 
 	// ⚠ EXIT 0 IS TWO DIFFERENT OUTCOMES, and a script cannot tell them apart from the code alone:
-	// the worktree is gone, or it is still there holding work (`--keep`, or the R53 rescue). `kept`
+	// the worktree is gone, or it is still there holding work (`--keep`, or a worktree that changed during the landing). `kept`
 	// is that one bit, and it is read off the DISK rather than inferred from the flags.
 	test('--json says whether the worktree survived', () => {
 		const ws = landable();
