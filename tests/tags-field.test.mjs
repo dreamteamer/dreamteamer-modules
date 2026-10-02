@@ -70,7 +70,7 @@ test('the pattern accepts the convention and refuses what breaks it', () => {
 });
 
 test('no shipped file points at a tags script or skill', () => {
-	const shipped = fs.readdirSync(MODULES).flatMap((m) => walk(path.join(MODULES, m))
+	const shipped = fs.readdirSync(MODULES, { withFileTypes: true }).filter((e) => e.isDirectory()).flatMap((e) => walk(path.join(MODULES, e.name))
 		.filter((f) => !/\/(docs|test|tests)\//.test(path.relative(MODULES, f))));
 	const hits = shipped.filter((f) => /working-with-tags|tags\.py|@dreamteamer\/tags\b/.test(fs.readFileSync(f, 'utf8')));
 	assert.deepEqual(hits.map((f) => path.relative(MODULES, f)), []);

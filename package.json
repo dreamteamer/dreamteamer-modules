@@ -11,7 +11,7 @@
 		"test": "node scripts/test.mjs"
 	},
 	"devDependencies": {
-		"dreamteamer": "^0.31.0",
+		"dreamteamer": "^0.33.0",
 		"js-yaml": "^4.1.0"
 	},
 	"engines": {
