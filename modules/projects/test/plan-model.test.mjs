@@ -272,15 +272,15 @@ describe('the views a person actually opens', () => {
 	// ⚠ SEATS, not lead. Measured on a real 31-row plan: one member LED 3 rows and sat on 16, so banding
 	// by lead hid three quarters of their work. `lead` stays a column.
 	test('the plan bands by SEATS — the array of who is on a rung — with lead kept as a column', () => {
-		const v = view('projects', 'plan-by-person.ui-view.yaml');
-		assert.equal(v.options.group_rows_by_field, 'seats');
-		assert.equal(v.options.show_ungrouped_rows, true);
-		assert.ok(v.options.columns.includes('lead'), 'who is accountable is still worth seeing');
+		const { list } = view('projects', 'plan-by-person.ui-view.yaml').display;
+		assert.equal(list.options.group_by, 'seats');
+		assert.equal(list.options.show_ungrouped_rows, true);
+		assert.ok(list.columns.includes('lead'), 'who is accountable is still worth seeing');
 	});
 	test('the task board bands by assignee, for the same reason', () => {
-		const v = view('tasks', 'tasks-by-assignee.ui-view.yaml');
-		assert.equal(v.options.group_rows_by_field, 'assignee');
-		assert.equal(v.options.show_ungrouped_rows, true);
+		const { list } = view('tasks', 'tasks-by-assignee.ui-view.yaml').display;
+		assert.equal(list.options.group_by, 'assignee');
+		assert.equal(list.options.show_ungrouped_rows, true);
 	});
 	test('gates are a saved FILTER over the one collection, not a second collection', () => {
 		const v = view('projects', 'gates.ui-view.yaml');
@@ -288,9 +288,10 @@ describe('the views a person actually opens', () => {
 		assert.deepEqual(v.filter, { kind: { _eq: 'gate' } });
 	});
 	test('the gantt draws a gate as a point by taking starts and ends from the row', () => {
-		const v = view('projects', 'plan-gantt.ui-view.yaml');
-		assert.equal(v.options.start_field, 'starts');
-		assert.equal(v.options.end_field, 'ends');
+		const { list } = view('projects', 'plan-gantt.ui-view.yaml').display;
+		assert.equal(list.layout, 'gantt');
+		assert.equal(list.options.start, 'starts');
+		assert.equal(list.options.end, 'ends');
 	});
 });
 
@@ -366,11 +367,11 @@ describe('lanes — the grouping axis, as a record rather than a string', () => 
 	test('the swimlane board bands by lane, and shows the residue', () => {
 		const v = yaml.load(fs.readFileSync(path.join(ROOT, 'modules/projects/ui-views/plan-by-lane.ui-view.yaml'), 'utf8'));
 		assert.equal(v.collection, 'collections/activities');
-		assert.equal(v.options.group_rows_by_field, 'lane');
-		assert.equal(v.options.show_ungrouped_rows, true, 'a rung with no lane is the residue; hiding it makes an unbanded plan look finished');
+		assert.equal(v.display.list.options.group_by, 'lane');
+		assert.equal(v.display.list.options.show_ungrouped_rows, true, 'a rung with no lane is the residue; hiding it makes an unbanded plan look finished');
 		// The gantt keeps banding by phase — a plan that never grew lanes keeps the view it had.
 		const g = yaml.load(fs.readFileSync(path.join(ROOT, 'modules/projects/ui-views/plan-gantt.ui-view.yaml'), 'utf8'));
-		assert.equal(g.options.group_rows_by_field, 'phase');
+		assert.equal(g.display.list.options.group_by, 'phase');
 	});
 });
 
