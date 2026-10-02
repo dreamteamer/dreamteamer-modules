@@ -1252,6 +1252,44 @@ describe('dt prove — a run outside a sandbox may not change data/', () => {
 		assert.equal(tail(ws.root, 'edits-dirty').failure_reason, GUARD);
 	});
 
+	// A step that writes AND commits leaves `git status` clean before and after — only the committed
+	// tree of data/ moves. Each of these reported PASS before the guard compared that tree.
+	const commit = "git add -A data && git -c user.name=t -c user.email=t@example.com commit -qm step";
+	test('a step that writes a record and commits it FAILS', () => {
+		const ws = proveWorkspace({ proofs: { 'writes-commits': { kind: 'gate', steps: [{ run: `${writeNote} && ${commit}` }] } } });
+		ws.git(['add', '-A', 'data']);
+		ws.git(['-c', 'user.name=t', '-c', 'user.email=t@example.com', 'commit', '-qm', 'fixture records']);
+		assert.equal(ws.git(['status', '--porcelain', '--untracked-files=all', '--', 'data/']).trim(), '', 'data/ starts clean, so status alone sees nothing');
+		const res = ws.dt('prove', 'writes-commits');
+		assert.equal(res.code, 1, res.stdout + res.stderr);
+		assert.equal(tail(ws.root, 'writes-commits').failure_reason, GUARD);
+	});
+	test('a step that deletes a committed record and commits FAILS', () => {
+		const ws = proveWorkspace({ proofs: { 'deletes-commits': { kind: 'gate', steps: [{ run: `git rm -q data/notes/b.note.md && git -c user.name=t -c user.email=t@example.com commit -qm step` }] } } });
+		ws.git(['add', '-A', 'data']);
+		ws.git(['-c', 'user.name=t', '-c', 'user.email=t@example.com', 'commit', '-qm', 'fixture records']);
+		const res = ws.dt('prove', 'deletes-commits');
+		assert.equal(res.code, 1, res.stdout + res.stderr);
+		assert.equal(tail(ws.root, 'deletes-commits').failure_reason, GUARD);
+	});
+	test('a step that deletes a record without committing FAILS', () => {
+		const ws = proveWorkspace({ proofs: { 'deletes': { kind: 'gate', steps: [{ run: 'rm data/notes/b.note.md' }] } } });
+		const res = ws.dt('prove', 'deletes');
+		assert.equal(res.code, 1, res.stdout + res.stderr);
+		assert.equal(tail(ws.root, 'deletes').failure_reason, GUARD);
+	});
+	test('a read-only step PASSES, and a dirty starting state it leaves alone is not a change', () => {
+		const ws = proveWorkspace({ proofs: { 'reads': { kind: 'gate', steps: [{ run: 'ls data/notes >/dev/null' }] } } });
+		assert.match(ws.git(['status', '--porcelain', '--untracked-files=all', '--', 'data/']), /data\/notes\/a\.note\.md/, 'the fixture record starts dirty');
+		const res = ws.dt('prove', 'reads');
+		assert.equal(res.code, 0, res.stdout + res.stderr);
+	});
+	test('a step that commits outside data/ only is not a change to data/', () => {
+		const ws = proveWorkspace({ proofs: { 'commits-elsewhere': { kind: 'gate', steps: [{ run: "printf 'x\\n' > NOTES.txt && git add NOTES.txt && git -c user.name=t -c user.email=t@example.com commit -qm step" }] } } });
+		const res = ws.dt('prove', 'commits-elsewhere');
+		assert.equal(res.code, 0, res.stdout + res.stderr);
+	});
+
 	test('a failing step that also wrote data/ names both causes', () => {
 		const ws = proveWorkspace({ proofs: { 'writes-then-fails': { kind: 'gate', steps: [{ run: `${writeNote} && exit 2` }] } } });
 		const res = ws.dt('prove', 'writes-then-fails');

@@ -1295,14 +1295,17 @@ function sandboxUnfit(root, collections) {
 }
 
 /**
- * What `data/` looks like to git right now: `git status --porcelain data/`, one line per file, each
- * with a hash of its bytes, so a second edit to an already-dirty file is a change too. `null` when
- * the workspace is not a git checkout.
+ * What `data/` looks like to git right now: the committed tree of `data/` at HEAD, then
+ * `git status --porcelain data/`, one line per file, each with a hash of its bytes. The committed
+ * tree is what catches a step that writes AND commits — both statuses are clean, the tree is not —
+ * and the per-file hash is what catches a second edit to an already-dirty file. `null` when the
+ * workspace is not a git checkout.
  */
 export function dataState(root) {
 	const r = spawnSync('git', ['status', '--porcelain=v1', '-z', '--untracked-files=all', '--', 'data/'], { cwd: root, encoding: 'utf8', timeout: 30_000 });
 	if (r.status !== 0) return null;
-	const out = [];
+	const tree = spawnSync('git', ['rev-parse', '--verify', '--quiet', 'HEAD:data'], { cwd: root, encoding: 'utf8', timeout: 30_000 });
+	const out = [`committed ${tree.status === 0 ? tree.stdout.trim() : 'none'}`];
 	const entries = r.stdout.split('\0').filter(Boolean);
 	for (let i = 0; i < entries.length; i++) {
 		const entry = entries[i];
