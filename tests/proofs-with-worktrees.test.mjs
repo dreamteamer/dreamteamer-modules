@@ -100,7 +100,8 @@ describe('ORDINARY: both modules installed by npm from their tarballs, beside a 
 		const child = JSON.parse(add.stdout).path;
 		for (const m of ['proofs', 'worktrees']) assert.ok(fs.existsSync(path.join(child, 'node_modules', '@dreamteamer', m, 'package.json')), `${m} never reached the worktree`);
 		assert.equal(fs.realpathSync(path.join(child, 'node_modules', 'dreamteamer')), fs.realpathSync(fixture.ENGINE_DIR));
-		assert.match(fixture.readFile(child, '.dreamteamer/collections/proofs.collection.yaml'), /base: runtime/);
+		const proofs = fixture.api.loadYaml(fixture.readFile(child, '.dreamteamer/collections/proofs.collection.yaml'));
+		assert.equal(fixture.api.isRuntime(proofs), true, 'proofs compiled as a runtime collection in the child');
 		const list = fixture.dt(child, 'prove', '--list', '--json');
 		assert.equal(list.code, 0, list.stderr);
 		assert.deepEqual(JSON.parse(list.stdout).proofs.map((p) => p.id ?? p.name), ['check-clean']);
