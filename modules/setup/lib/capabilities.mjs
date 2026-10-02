@@ -1,7 +1,7 @@
 // Every check this package makes, defined once. Both surfaces read this same array: `doctor`
 // reports it read-only, `setup` walks it and fixes what it safely can.
 //
-// Two rules, both learned in the workspace this package was cut from:
+// Two rules:
 //
 //   · A check is defined HERE or nowhere. Two copies drift, and the day they disagree is the day
 //     one of them is quietly wrong.
@@ -90,7 +90,7 @@ export function envKeys(root) {
 /** Which modules the workspace actually has, by channel — the same walk the engine's discovery does,
  *  including dropping a module named bare in `dreamteamer.disable`. A switched-off module must not be
  *  asked for its variables or shown a capability, and the engine never compiles it, so it is not
- *  "installed" in any sense a person means. A test pinned this after the first draft got it wrong. */
+ *  "installed" in any sense a person means. */
 export function installedModules(root) {
 	const wsPkg = readJson(path.join(root, 'package.json')) ?? {};
 	// keyed by MODULE ID: an official package `@dreamteamer/contacts` is `contacts` here, the id every
@@ -164,8 +164,8 @@ export function capabilities(root) {
 	{
 		const c = cap('variables', 'records store `${env:NAME}` templates as inert text; only the workspace can declare which names render');
 		const wanted = [
-			// wikis is on this row for the legacy case only: a corpus lives in the repo since 2026-09-11, but
-			// a `wikis` record written before that still carries a `${env:FILES_FOLDER}/…` folder.
+			// wikis is on this row for legacy records only: a corpus lives in the repo, but an older `wikis`
+			// record may still carry a `${env:FILES_FOLDER}/…` folder.
 			['FILES_FOLDER', has('recordings') || has('meetings') || has('rnd') || has('wikis'), 'where recordings, meeting files, generated media packs and legacy wiki corpora are kept'],
 			['INBOX_FOLDERS', has('recordings') || has('meetings'), 'the folders new recordings and meeting screenshots arrive in'],
 			['REPOS_FOLDER', has('perspective'), 'where the git checkouts a retrospective reads live'],
@@ -262,51 +262,16 @@ export function capabilities(root) {
 		out.push(c.cap);
 	}
 
-	// ── notebooks ────────────────────────────────────────────────────────────────────────────
-	// Every check here is LOCAL. `notebooklm auth check` without --test inspects the cookie file only
-	// (its own --help says so); `skill status` and `--version` read disk. Timed at ~0.15 s each.
-	//
-	// ⚠ NOTHING IN HERE IS `bad`, INCLUDING `qmd` — AND THAT IS A REVERSAL OF A CLAIM THIS FILE MADE.
-	// Between 2026-09-11 and the commit that replaced this comment, `qmd` was a hard prerequisite here.
-	// It should not have been, and the evidence it shipped on was bad: one single-shot lexical query
-	// compared against a full hybrid pipeline, written up as "grep cannot find it". Run fairly — the
-	// way an agent actually greps — the same passage is found in three informed passes. The honest
-	// claim is far weaker than the one that was published: qmd does in ONE query what grep does in
-	// three informed passes, and those passes need vocabulary the asker may not have.
-	//
-	// ⚠ THE SUITE SAID SO AND THE MACHINE HID IT. `tests/capabilities.test.mjs` has asserted "no
-	// notebooks check is `bad`" since long before that change. It passed locally the whole time
-	// because the developer's machine HAD qmd installed, so the check returned `ok` and the branch
-	// that returns `bad` was never taken. CI, which has no qmd, went red on the first push. A local
-	// green is a statement about the local machine; this is the shape of that lesson with a name on it.
-	//
-	// What the fair measurement actually says, over 300 markdown records with 15 questions worded the
-	// way an asker phrases them BEFORE knowing the corpus's vocabulary (`qmd bench`, four backends):
-	// lexical recall 0.22 · vector 0.80 · hybrid 0.72 · full re-rank 0.85. So retrieval genuinely wins
-	// per query — and it is still not a prerequisite, because grep is the floor that always answers and
-	// every other verb in this module works with none of it installed. A warning states the gap; a
-	// failure would make a bare clone report a capability it actually has.
-	//
-	// ⚠ THE COST, STATED PLAINLY, because it is the reason this stays opt-in: ~2.1 GB of local GGUF
-	// models, one `npm install -g`, and a one-off embed. Latency is dominated by per-invocation model
-	// load, not by search — a novel re-ranked query costs 24-25s against lexical's 0.12s.
-	//
-	// ⚠ AND THE MODULE'S CLAIM IS INTACT, WHICH IS THE WHOLE REASON THIS TOOL AND NOT ANOTHER. The
-	// local adapter's promise was never "no software" — it was ZERO GOOGLE PREREQUISITES: no account,
-	// no login, no vendor, no network, nothing that can be rate-limited, deprecated or signed out. `qmd`
-	// honours every word of that. It runs on-device via node-llama-cpp with GGUF weights on local disk;
-	// it makes no API call, needs no key, and works with the wifi off. A corpus indexed by it is still
-	// answerable on a plane, in a cloud session, and in ten years when the vendor is gone.
-	//
-	// That is the line to hold when the next retrieval tool is proposed: an embedding API would be
-	// smaller, faster to set up and better — and would put the one capability this module exists to
-	// keep local behind somebody else's account. The 2.1 GB is what independence costs.
+	// ── wikis ────────────────────────────────────────────────────────────────────────────────
+	// Every check here is local: `--version`, `status` and `auth check` without --test read disk only.
+	// Nothing here is `bad`: grep is the floor that always answers, and qmd (local, on-device, no
+	// account) only adds asking. A warning states the gap; a failure would deny a working capability.
 	if (has('wikis')) {
 		const c = cap('wikis', 'a corpus you can grep with nothing installed, and ASK once `qmd` is — both local. Nothing here is `bad`: grep is the floor.');
 		// ── the retrieval engine: OPTIONAL, and the capability degrades to grep without it ──────
 		const q = bin('qmd');
 		if (!q) {
-			c.warn('qmd', 'npm install -g @tobilu/qmd', 'OPTIONAL — the local adapter\'s retrieval engine, all on-device. Without it `wiki ask` is unavailable and `wiki search` (grep) still works, finding only the words you literally typed. Measured over 300 records: lexical recall 0.22, vector 0.80 — so this is a real gap, and still not a prerequisite');
+			c.warn('qmd', 'npm install -g @tobilu/qmd', 'OPTIONAL — the local adapter\'s retrieval engine, all on-device. Without it `wiki ask` is unavailable and `wiki search` (grep) still works, finding only the words you literally typed');
 		} else {
 			c.ok('qmd', q);
 			const qv = /qmd (\d+\.\d+\.\d+)/.exec(sh('qmd', ['--version']))?.[1];
@@ -321,13 +286,8 @@ export function capabilities(root) {
 			else if (pending) c.warn('embeddings', 'npx dt-wiki index --embed · or: qmd embed', `${pending} document(s) indexed but not embedded — those answer lexically only, silently`);
 			else c.ok('corpora indexed', `${files} document(s) indexed and embedded`);
 		}
-		// ⚠ THIS USED TO BE A PREREQUISITE AND IS NO LONGER ONE. Until 2026-09-11 a wiki's folder was an
-		// `${env:FILES_FOLDER}/…` template, so every `wiki` verb refused until that variable was set —
-		// which is exactly the prerequisite the local adapter is supposed not to have. Corpora live in
-		// the repo now (`wikis/<id>`), so there is nothing to render and nothing to check: the
-		// capability is READY on a bare clone. It stays listed rather than deleted because a workspace
-		// whose records still carry the old template still needs the variable, and silence about that
-		// would be worse than a line saying which case it is in.
+		// Corpora live in the repo (`wikis/<id>`), so the capability needs no variable; the legacy row
+		// names the one case that still does — a record carrying an `${env:FILES_FOLDER}/…` folder.
 		c.ok('wikis folder', 'corpora live in the repo under wikis/ — no variable and no mount; the qmd index lives in ~/.cache and is never committed');
 		if (!((dt.vars ?? []).includes('FILES_FOLDER') && env.has('FILES_FOLDER'))) {
 			c.ok('legacy corpora', 'FILES_FOLDER is unset — fine unless a `wikis` record still carries a ${env:FILES_FOLDER}/… folder, which would refuse by name');

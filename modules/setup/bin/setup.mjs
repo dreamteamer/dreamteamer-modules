@@ -5,25 +5,11 @@
 //   npx dt-setup doctor                      show the board and change nothing
 //   npx dt-setup link <clone>                preview a LOCAL clone of dreamteamer-modules instead of the published modules
 //   npx dt-setup unlink                      go back to the published one
-//   node node_modules/@dreamteamer/projects/bin/migrate-plan.mjs                convert free-text activities.phase into `phases` records
-//   node node_modules/@dreamteamer/projects/bin/migrate-code-to-slug.mjs        rename `code` to `slug` where it was never a code
-//   npx dt-notebook persona <id>       apply NOTEBOOKLM.md's persona to one notebook, in one call
-//   npx dt-notebook restore <id>       rebuild the notebook a record describes, on any account
-//   npx dt-notebook capture <id>       write a live notebook's sources onto its record
-//   npx dt-find <question>             the effort ladder over the workspace's own records
-//   npx dt-wiki init <id>              a notebook on a folder — no account, no network
-//   npx dt-wiki incomplete             every source that still needs scraping; exit 1 if any
-//   npx dt-wiki pull <record>          mirror a live notebook's sources into a folder
 //
-// `doctor` is read-only by construction: it spends no network request, touches no file, and exits 0
-// unless you pass --strict. `setup` does only the in-workspace edits listed under "what setup will
-// do" and prints everything else as a fix for a person to run. ⚠ the `notebook` verbs and `wiki pull`
-// are the ONLY ones that reach the network — always to one notebook the operator named — and they
-// still never install anything and never log in (bin/notebook.mjs and bin/wiki.mjs say why each
-// exists). every OTHER `wiki` verb is a folder read or a folder write, which is the whole claim: the
-// notebook capability has no prerequisite.
-//
-// Nothing here knows a thing about any particular person, machine or account.
+// `doctor` is read-only: it spends no network request, touches no file, and exits 0 unless you pass
+// --strict. `setup` does only the in-workspace edits listed under "what setup will do" and prints
+// everything else as a fix for a person to run. `guard` is the pre-commit hook's entry, not a verb
+// to type.
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -113,8 +99,8 @@ console.log(dim('  Anything needing a download, a login or a package manager is 
 
 // 1. the template variables
 const wanted = [
-	['FILES_FOLDER', has('recordings') || has('meetings') || has('rnd') || has('wikis'), 'where recordings, meeting files, generated media packs and legacy wiki corpora are kept', '~/Documents/vault-files'],
-	['INBOX_FOLDERS', has('recordings') || has('meetings'), 'the folders new recordings and meeting screenshots arrive in, one per line', '~/Documents/vault-inbox'],
+	['FILES_FOLDER', has('recordings') || has('meetings') || has('rnd') || has('wikis'), 'where recordings, meeting files, generated media packs and legacy wiki corpora are kept', '~/Documents/workspace-files'],
+	['INBOX_FOLDERS', has('recordings') || has('meetings'), 'the folders new recordings and meeting screenshots arrive in, one per line', '~/Documents/workspace-inbox'],
 	['REPOS_FOLDER', has('perspective'), 'where the git checkouts a retrospective reads live', '~/Documents/projects'],
 ].filter(([, needed]) => needed);
 const missing = wanted.filter(([n]) => !(pkg.dreamteamer.vars ?? []).includes(n));
@@ -126,10 +112,9 @@ if (missing.length) {
 	} else skipped.push('the template variables — templates using them cannot render until they are declared');
 }
 
-// 2. .env.example, and .env only when absent. Two rules, both learned in a real consumer on 2026-09-09:
+// 2. .env.example, and .env only when absent:
 //   · .env.example gets only the keys it does not already declare — a hand-written file is not re-declared;
-//   · .env is written with EVERY value BLANK. The example values belong to the example file; written into
-//     .env they read as set, and the doctor reported READY on a workspace pointed at ~/Documents/vault-files.
+//   · .env is written with EVERY value BLANK, so the doctor keeps reporting a key unset until you fill it.
 {
 	const entries = [];
 	for (const [name, , why, example] of wanted) entries.push({ key: name, lines: [`# ${why}`, `${name}=${example}`] });
@@ -180,11 +165,8 @@ for (const id of ['perspective', 'projects', 'users']) {
 }
 
 // 3a. qmd — the retrieval engine the wikis module can use, and the one thing worth registering corpora with.
-//
-// ⚠ THE INSTALL IS PRINTED, NEVER RUN. It is a global package-manager write and a ~2.1 GB model
-// download, and this script's stated contract three screens up is that nothing of that shape happens
-// for you. What setup CAN do is the part that is purely local and instant: telling qmd which folders
-// are corpora, and handing each one its description as re-rank CONTEXT.
+// The install is printed, never run: it is a global package-manager write and a large model download.
+// What setup does is the local, instant part — telling qmd which folders are corpora.
 if (has('wikis')) {
 	const qmdHere = spawnSync('qmd', ['--version'], { encoding: 'utf8' }).status === 0;
 	if (!qmdHere) {
@@ -194,17 +176,16 @@ if (has('wikis')) {
 		const { main: wikiMain } = await import(pathToFileURL(path.join(mods.get('wikis').root, 'bin', 'wiki.mjs')).href);
 		wikiMain(['index'], root);
 		done.push('registered the wiki corpora with qmd');
-		// The embed is minutes of local compute and, on a fresh machine, gigabytes of model download.
-		// Naming it as the next step is honest; running it inside a setup prompt is not.
+		// The embed is minutes of local compute and a model download, so it is named, not run.
 		console.log(dim('    then, once, when you have the time:  npx dt-wiki index --embed'));
 	} else skipped.push('registering the corpora with qmd — until then `wiki ask` returns nothing');
 }
 
 // 3b. the notebooklm harness and the download folder — only when the notebooklm module is here
 if (has('notebooklm')) {
-	// ⚠ The engine's default when `harnesses` is UNSET is ['claude-code'] (compile.js). Writing
-	// ['notebooklm'] alone would silently switch the operator's coding-agent harness OFF, so an unset
-	// list is materialised as the default plus the new one, and a set list is appended to.
+	// The engine's default when `harnesses` is unset is ['claude-code']. Writing ['notebooklm'] alone
+	// would switch your coding-agent harness off, so an unset list becomes the default plus the new
+	// one, and a set list is appended to.
 	const current = pkg.dreamteamer.harnesses ?? ['claude-code'];
 	if (!current.includes('notebooklm')) {
 		if (await yes('Declare the notebooklm harness in dreamteamer.harnesses, so compile writes NOTEBOOKLM.md?')) {

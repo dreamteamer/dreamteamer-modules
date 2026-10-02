@@ -16,11 +16,11 @@
 //      module's scripts load deps from the clone's tree, never from the consumer's node_modules.
 //   2. `.dreamteamer/` OUTLIVES THE FLIP. Compiled descriptors from one channel plus a CLI reading
 //      the other is a workspace that lies about its own schema, with no error anywhere.
-//   3. ⚠ IT IS WORKSPACE-GLOBAL, NOT PROCESS-SCOPED. There is no env override — the engine only
+//   3. IT IS WORKSPACE-GLOBAL, NOT PROCESS-SCOPED. There is no env override — the engine only
 //      does a filesystem walk — so linking for one terminal links it for every session and editor
 //      window on that workspace.
 //
-// ⚠ AND THE ORDERING RULE THE GUARD PROTECTS: the package ships FIRST, then the records that need
+// The ordering rule the guard protects: the package ships FIRST, then the records that need
 // it. A record written against an unreleased collection, or a harness block regenerated from one,
 // is committed against a schema no other clone can compile — identical to the right answer right up
 // until someone else pulls. So `link` installs a pre-commit hook that REFUSES a commit touching the
