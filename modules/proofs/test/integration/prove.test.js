@@ -149,17 +149,17 @@ describe('the proofs kind', () => {
 		assert.match(sourcesBlock, /`proofs\/`/);
 	});
 
-	// ⚠ R8: `given.collection` is a PLAIN collection NAME, never an `x-reference`. `notes` (not
-	// `collections/notes`) is the documented form — with an x-reference the ajv schema would want a
-	// `<collection>/<id>` shape and `dt check`'s x-reference resolution (parseRef, which returns null
+	// ⚠ R8: `given.collection` is a PLAIN collection NAME, never a reference. `notes` (not
+	// `collections/notes`) is the documented form — as a reference the schema would want a
+	// `<collection>/<id>` shape and `dt check`'s reference resolution (parseRef, which returns null
 	// for a slashless value) would flag the documented spelling as unresolvable. This is a `live`
 	// proof rather than a `gate` one purely to exercise `given` at all; Task 1 does not validate its
-	// cross-field rules (exactly one of where/fixture, pick: latest needing a sort_field, …).
+	// cross-field rules (exactly one of where/fixture, pick: latest needing an ordering, …).
 	test('given.collection is a bare collection name, not a reference — compiles and check is silent about it', () => {
 		const ws = workspace();
 		writeProof(ws.root, 'live-proof', {
 			kind: 'live',
-			// a NAMED record, not `pick: latest` — `notes` declares no `sort_field`, and from Task 2
+			// a NAMED record, not `pick: latest` — `notes` declares no ordering, and from Task 2
 			// on compile refuses `latest` on a collection that cannot be ordered.
 			given: { collection: 'notes', where: {}, pick: 'a-note' },
 			steps: [{ perform: 'do a thing' }],
@@ -201,9 +201,9 @@ describe('the proofs kind', () => {
 	// name the same vocabulary. Widen one without the other and this fails.
 	test('the descriptor\'s kind enum IS the code constant, and it declares no mode', () => {
 		const ws = workspace();
-		const d = new Store(ws.ws).descriptors.get('proofs');
-		assert.deepEqual(d.schema.properties.kind.enum, PROOF_KINDS);
-		assert.equal(d.schema.properties.mode, undefined);
+		const fields = api.fieldsOf(new Store(ws.ws).descriptors.get('proofs'));
+		assert.deepEqual(fields.kind.enum, PROOF_KINDS);
+		assert.equal(fields.mode, undefined);
 	});
 });
 
@@ -429,27 +429,23 @@ describe('compile validates proofs', () => {
 
 // ────────────────────────────────────────────────────────────────────────────────────────────────
 // Task 3 — the store-bound helpers and the ledger. Tier 2 because every one of them needs either a
-// compiled runtime (a descriptor, a `sort_field`, records on disk) or the filesystem itself; the
+// compiled runtime (a descriptor, an ordering, records on disk) or the filesystem itself; the
 // four PURE functions the runner is built out of are pinned in test/unit/prove.test.js.
 //
-// ONE fixture shape for the whole block: `notes` with a `sort_field` (so `pick: latest` has an
-// ordering to take the head of) and two records, `a` and `b`. `people` is here empty, because
+// ONE fixture shape for the whole block: `notes` with its list sorted on `name` (so `pick: latest`
+// has an ordering to take the head of) and two records, `a` and `b`. `people` is here empty, because
 // "zero" is the count a filter machinery gets wrong in the interesting way — an empty walk must
 // answer 0, not throw and not read as unfiltered.
 // ────────────────────────────────────────────────────────────────────────────────────────────────
 const NOTES = simpleCollection({
-	sort_field: 'name',
-	schema: {
-		type: 'object',
-		required: ['name'],
-		properties: {
-			name: { type: 'string' },
-			status: { type: 'string', enum: ['open', 'done'] },
-			// the hop target, so a `where` that RESOLVES a reference is expressible against this
-			// fixture — the resolver path is the one countMatching argument nothing else exercises
-			owner: { type: 'string', 'x-reference': 'people' },
-			notes: { type: 'string', format: 'markdown', 'x-body': true },
-		},
+	display: { list: { sort: 'name' } },
+	fields: {
+		name: { type: 'string', required: true },
+		status: { type: 'string', enum: ['open', 'done'] },
+		// the hop target, so a `where` that RESOLVES a reference is expressible against this
+		// fixture — the resolver path is the one countMatching argument nothing else exercises
+		owner: { type: 'people' },
+		notes: { type: 'markdown', body: true },
 	},
 });
 
@@ -504,7 +500,7 @@ describe('prove helpers against a store', () => {
 		assert.equal(countMatching(store, 'notes', where, null), 0, 'a hop with no resolver NARROWS');
 	});
 
-	test('pickFixture with pick: latest takes the head of the sort_field, DESCENDING', () => {
+	test('pickFixture with pick: latest takes the head of the ordering field, DESCENDING', () => {
 		const { store } = notesWorkspace();
 		const picked = pickFixture(store, { collection: 'notes', where: {}, pick: 'latest' });
 		assert.equal(picked.ref, 'notes/b');
@@ -764,24 +760,20 @@ describe('prove helpers against a store', () => {
 // unexercised.
 //
 // The fixture is deliberately ONE shape for the whole block: a `notes` collection with a closed
-// `status` enum and a `sort_field`, a real `close-note` command source (so the PERFORM block has a
+// `status` enum and a list sorted on `name`, a real `close-note` command source (so the PERFORM block has a
 // source path to name), a decoy `.env` value (so "no output prints a credential" is assertable),
 // and six proofs covering the six states.
 // ────────────────────────────────────────────────────────────────────────────────────────────────
 
 const PROVE_NOTES = simpleCollection({
-	sort_field: 'name',
-	schema: {
-		type: 'object',
-		required: ['name'],
-		properties: {
-			name: { type: 'string' },
-			status: { type: 'string', enum: ['open', 'done'], default: 'open' },
-			// the hop target: a `record:` expectation over a REFERENCE is the one shape that needs a
-			// resolver, and `verdictLine` used to judge with none — so it narrowed to ✖ forever
-			owner: { type: 'string', 'x-reference': 'people' },
-			notes: { type: 'string', format: 'markdown', 'x-body': true },
-		},
+	display: { list: { sort: 'name' } },
+	fields: {
+		name: { type: 'string', required: true },
+		status: { type: 'string', enum: ['open', 'done'], default: 'open' },
+		// the hop target: a `record:` expectation over a REFERENCE is the one shape that needs a
+		// resolver, and `verdictLine` used to judge with none — so it narrowed to ✖ forever
+		owner: { type: 'people' },
+		notes: { type: 'markdown', body: true },
 	},
 });
 
@@ -1753,8 +1745,8 @@ describe('fixture proofs are sandboxed', () => {
 	test('a fixture proof pends inside a throwaway worktree, and the primary store never sees the fixture', () => {
 		const ws = sandboxWorkspace();
 		// the pinned path is the COMPILED path — assert it rather than trusting the default
-		const d = load(readFile(ws.root, '.dreamteamer/collections/notes.collection.yaml'));
-		assert.equal(path.join(d.storage.path, `fx-open.${d.storage.suffix}.md`), FX_PATH);
+		const storage = api.storageOf(load(readFile(ws.root, '.dreamteamer/collections/notes.collection.yaml')));
+		assert.equal(path.join(storage.path, `fx-open.${storage.suffix}.md`), FX_PATH);
 
 		const res = ws.dt('prove', SANDBOX_PROOF);
 		assert.equal(res.code, 5, res.stdout + res.stderr);

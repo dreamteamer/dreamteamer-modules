@@ -60,7 +60,7 @@ requires: { env: [HR_EXPORT_DIR], bin: [jq] }   # optional
 given:                               # live only — exactly ONE of `where` or `fixture`
   collection: notes
   fixture: true                      # run in a sandbox on this proof's own records
-  pick: fx-open                      # an explicit id, or `latest` (the collection's sort_field, DESC)
+  pick: fx-open                      # an explicit id, or `latest` (the collection's ordering field, DESC)
 steps:                               # required — gate: ≥1 `run`; live: ≥1 of either
   - perform: /close-note {record}
 expect:                              # live only, ≥1
@@ -91,7 +91,7 @@ mirroring the workspace root — so `data/notes/fx-open.note.md` under that fold
 | `about` | what this proof is FOR. An unresolvable ref FAILS compile — a proof about nothing reports success forever |
 | `kind` | `gate` (run steps only) or `live` (a record and expectations) |
 | `requires` | `env` names must be declared in `dreamteamer.vars` or a module's `dreamteamer.env`; `bin` is looked up on PATH. Unmet ⇒ **UNAVAILABLE**, never FAIL — this machine cannot answer the question, which is not a fact about the artifact. **Names only** — no `.env` value is ever read, compared or printed |
-| `given` | exactly one of `where` (a live filter) or `fixture: true` (this proof's own records, in a sandbox unless `--here`). `pick: latest` needs a `sort_field` on the collection; `pick: <id>` names one; **`pick: any` is refused** — a proof that picks arbitrarily proves something arbitrary. A fixture needs `pick: <id>` |
+| `given` | exactly one of `where` (a live filter) or `fixture: true` (this proof's own records, in a sandbox unless `--here`). `pick: latest` needs an ordering on the collection — a `type: position` field, or `display.list.sort` — and takes its highest value; `pick: <id>` names one; **`pick: any` is refused** — a proof that picks arbitrarily proves something arbitrary. A fixture needs `pick: <id>` |
 | `steps` | in order, until one fails or one asks for an actor |
 | `expect` | live only. Four forms, below; the two store forms need a fixture or a `perform` step |
 | `external` | for a proof needing the network, a credential or a mount. Invisible to `--all`; `--external` includes it |

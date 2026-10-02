@@ -43,7 +43,7 @@ before(() => {
 	assert.ok(!isLink(path.join(ws.root, 'node_modules', '@dreamteamer', 'proofs')), 'proofs must be an ORDINARY install for this test to mean anything');
 	assert.ok(isLink(path.join(ws.root, 'node_modules', 'dreamteamer')), 'and the engine a link');
 	// a collection, a command, a gate proof and a writes proof with its fixture — all committed
-	fixture.writeCollection(ws.root, 'notes', { ...fixture.simpleCollection(), schema: { type: 'object', required: ['name'], properties: { name: { type: 'string' }, status: { type: 'string' }, notes: { type: 'string', format: 'markdown', 'x-body': true } } } });
+	fixture.writeCollection(ws.root, 'notes', fixture.simpleCollection({ fields: { name: { type: 'string', required: true }, status: { type: 'string' }, notes: { type: 'markdown', body: true } } }));
 	fixture.writeSource(ws.root, 'commands/close-note.command.md', '---\nname: close-note\ndescription: close a note\n---\n\nSet its status to done.\n');
 	fixture.writeSource(ws.root, 'proofs/check-clean.proof.yaml', fixture.api.dumpYaml({ name: 'check-clean', about: ['commands/close-note'], kind: 'gate', steps: [{ run: 'node node_modules/dreamteamer/bin/dreamteamer.js check' }] }));
 	fixture.writeSource(ws.root, 'proofs/closes-a-note.proof.yaml', fixture.api.dumpYaml({

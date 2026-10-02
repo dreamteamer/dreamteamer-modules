@@ -6,7 +6,7 @@ import { api } from '../helpers.mjs';
 import { analyze } from '../../src/analyze.js';
 
 const entry = (text, source) => ({ sources: [{ path: source, hash: 'sha256:x' }], bytes: Buffer.from(text) });
-const NOTES = { name: 'notes', storage: { path: 'data/notes', base: 'workspace' }, schema: { properties: { title: { type: 'string' } } } };
+const NOTES = { name: 'notes', compiled: { defaults: { storage: { path: 'data/notes' } }, runtime: false, fields: { title: { type: 'string' } } } };
 
 function draft({ proofs = {}, extra = {}, previousManifest = null, declaredVars = [] } = {}) {
 	const entries = new Map([

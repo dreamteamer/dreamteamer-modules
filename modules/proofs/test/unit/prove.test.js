@@ -8,35 +8,29 @@
 // every one of these strings is a contract: compile prints it verbatim, prefixed with the proof's
 // runtime path, and the wording has to be enough to fix the file without reading the engine.
 //
-// Pure by construction: a hand-built `descriptors` Map, a hand-built artifact Set, no fs, no git,
-// no compile. `notes` carries the interesting shapes (a closed enum, an outbound reference, a
-// `sort_field`); `people` is the hop target and deliberately has NO `sort_field`, which is what
-// makes `pick: latest` invalid there.
+// Pure by construction: a hand-built `descriptors` Map of COMPILED v2 descriptors, a hand-built
+// artifact Set, no fs, no git, no compile. `notes` carries the interesting shapes (a closed enum, an
+// outbound reference, a list sorted on `name`); `people` is the hop target and deliberately has NO
+// ordering, which is what makes `pick: latest` invalid there; `tasks` is ordered by hand, through a
+// `type: position` field.
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import '../helpers.mjs'; // binds the engine API the fixture loaded — the judge filters through it
-import { validateProofShape, formOf, PROOF_KINDS, substitute, substituteWhere, stepWarnings, applyCap, verdictLine, exitFor, stepOutcome, flagValue, flagEnabled, EXIT, LEDGER_CAP } from '../../src/prove.js';
+import { validateProofShape, orderingFieldOf, formOf, PROOF_KINDS, substitute, substituteWhere, stepWarnings, applyCap, verdictLine, exitFor, stepOutcome, flagValue, flagEnabled, EXIT, LEDGER_CAP } from '../../src/prove.js';
+
+/** A compiled v2 descriptor: the authored keys, and the resolved fields under `compiled`. */
+const compiled = (name, fields, authored = {}) => ({ name, ...authored, compiled: { defaults: {}, runtime: false, fields } });
 
 const descriptors = new Map([
-	['notes', {
-		name: 'notes',
-		sort_field: 'name',
-		schema: {
-			type: 'object',
-			required: ['name'],
-			properties: {
-				name: { type: 'string' },
-				status: { type: 'string', enum: ['open', 'done'] },
-				owner: { type: 'string', 'x-reference': 'people' },
-			},
-		},
-	}],
-	['people', {
-		name: 'people',
-		// `manager` exists so a TWO-hop filter is expressible: `owner.manager.name` is one hop past
-		// what the evaluator resolves, and has to be refused rather than left to narrow to false.
-		schema: { type: 'object', required: ['name'], properties: { name: { type: 'string' }, manager: { type: 'string', 'x-reference': 'people' } } },
-	}],
+	['notes', compiled('notes', {
+		name: { type: 'string', required: true },
+		status: { type: 'string', enum: ['open', 'done'] },
+		owner: { type: 'people' },
+	}, { display: { list: { sort: 'name' } } })],
+	// `manager` exists so a TWO-hop filter is expressible: `owner.manager.name` is one hop past
+	// what the evaluator resolves, and has to be refused rather than left to narrow to false.
+	['people', compiled('people', { name: { type: 'string', required: true }, manager: { type: 'people' } })],
+	['tasks', compiled('tasks', { name: { type: 'string', required: true }, rank: { type: 'position' }, stage: { type: 'string', enum: { todo: { label: 'To do' }, doing: {} } } })],
 ]);
 
 const ctx = {
@@ -50,7 +44,7 @@ const ctx = {
 const gate = (extra = {}) => ({ name: 'g', about: ['skills/a'], kind: 'gate', steps: [{ run: 'true' }], ...extra });
 
 /** A valid live proof, plus whatever the test is about. Named record (not `pick: latest`) so a
- *  test about something else never trips the sort_field rule. */
+ *  test about something else never trips the ordering rule. */
 const live = (extra = {}) => ({
 	name: 'l',
 	about: ['commands/b'],
@@ -89,12 +83,24 @@ describe('validateProofShape — a valid proof is silent', () => {
 		assert.deepEqual(validateProofShape(gate({ requires: { env: ['FILES_FOLDER', 'API_KEY'], bin: ['git'] } }), ctx), []);
 	});
 
-	test('a one-hop reference condition is accepted — owner is an x-reference, name is a field of people', () => {
+	test('a one-hop reference condition is accepted — owner is a reference, name is a field of people', () => {
 		assert.deepEqual(validateProofShape(live({ given: { collection: 'notes', where: { owner: { name: { _eq: 'Dana' } } }, pick: 'a-note' } }), ctx), []);
 	});
 
-	test('pick: latest is accepted when the collection declares a sort_field', () => {
+	test('pick: latest is accepted when the collection sorts its list on a field', () => {
 		assert.deepEqual(validateProofShape(live({ given: { collection: 'notes', where: {}, pick: 'latest' } }), ctx), []);
+	});
+
+	test('pick: latest is accepted when the collection keeps a manual order (a type: position field)', () => {
+		assert.deepEqual(validateProofShape(live({ given: { collection: 'tasks', where: {}, pick: 'latest' } }), ctx), []);
+		assert.equal(orderingFieldOf(descriptors.get('tasks')), 'rank');
+		assert.equal(orderingFieldOf(descriptors.get('notes')), 'name');
+		assert.equal(orderingFieldOf(descriptors.get('people')), undefined);
+	});
+
+	test('a decorated enum (a map of value → decoration) checks its values like a list', () => {
+		assert.deepEqual(validateProofShape(live({ given: { collection: 'tasks', where: { stage: { _eq: 'doing' } }, pick: 'a' } }), ctx), []);
+		only(live({ given: { collection: 'tasks', where: { stage: { _eq: 'done' } }, pick: 'a' } }), 'where "stage" compares "done", which is not one of stage\'s options [todo, doing]');
 	});
 
 	test('every count operator in the closed set is accepted, _delta included', () => {
@@ -189,8 +195,8 @@ describe('validateProofShape — given', () => {
 		only(live({ given: { collection: 'notes', pick: 'a-note' } }), 'given needs exactly one of where or fixture');
 	});
 
-	test('pick: latest needs a sort_field on the collection it picks from', () => {
-		only(live({ given: { collection: 'people', where: { name: { _eq: 'Dana' } }, pick: 'latest' } }), 'pick: latest needs a sort_field on people — name the record (pick: <id>) or use a fixture');
+	test('pick: latest needs an ordering on the collection it picks from', () => {
+		only(live({ given: { collection: 'people', where: { name: { _eq: 'Dana' } }, pick: 'latest' } }), 'pick: latest needs an ordering on people — a type: position field, or display.list.sort — or name the record (pick: <id>), or use a fixture');
 	});
 
 	test('pick: any is refused outright — a proof names its record', () => {
@@ -686,11 +692,10 @@ describe('exitFor — the six states and their codes are a contract', () => {
 // String(o)`). So on a NUMERIC enum the YAML scalar `5` and the string `'5'` are the same filter at
 // run time and were two different things to the validator — a false refusal of a proof that works,
 // which is worse than the silent pass it was written to prevent: the author deletes a correct line.
-describe('validateProofShape — a numeric enum is compared the way filter.js compares it', () => {
-	const numeric = new Map([['gauges', {
-		name: 'gauges',
-		schema: { type: 'object', required: ['name'], properties: { name: { type: 'string' }, level: { type: 'number', enum: [5, 10] } } },
-	}]]);
+// An enum is a string field's, so its values are strings — and a proof's YAML literal `5` arrives as
+// a number. The filter compares as strings, so the check does too: `5` and `'5'` are one filter.
+describe('validateProofShape — an enum is compared the way filter.js compares it', () => {
+	const numeric = new Map([['gauges', compiled('gauges', { name: { type: 'string', required: true }, level: { type: 'string', enum: ['5', '10'] } })]]);
 	const nctx = { descriptors: numeric, declaredVars: [], moduleEnv: new Set(), artifacts: new Set(['skills/a']) };
 	const proof = (where) => ({
 		name: 'l', about: ['skills/a'], kind: 'live',
@@ -699,15 +704,15 @@ describe('validateProofShape — a numeric enum is compared the way filter.js co
 		expect: [{ collection: 'gauges', where: {}, count: { _gte: 1 } }],
 	});
 
-	test('a string literal against a numeric enum member is accepted', () => {
+	test('a string literal against a digit enum member is accepted', () => {
 		assert.deepEqual(validateProofShape(proof({ level: { _eq: '5' } }), nctx), []);
 	});
 
-	test('the number itself is accepted', () => {
+	test('the number a YAML literal parses to is accepted', () => {
 		assert.deepEqual(validateProofShape(proof({ level: { _eq: 5 } }), nctx), []);
 	});
 
-	test('_in over a comma string of numeric members is accepted', () => {
+	test('_in over a comma string of digit members is accepted', () => {
 		assert.deepEqual(validateProofShape(proof({ level: { _in: '5,10' } }), nctx), []);
 	});
 

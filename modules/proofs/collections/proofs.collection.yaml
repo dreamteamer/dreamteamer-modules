@@ -50,7 +50,7 @@ fields:
         description: 'A filter narrowing which record is picked — the ordinary filter grammar, one reference hop deep. It may not use `{record}`: the given is what picks the record, so nothing substitutes here and compile refuses the literal.'
       pick:
         type: string
-        description: '`latest` (the collection''s own `sort_field`, descending — refused when the collection declares none) or an explicit record id. `any` is refused. A `fixture` given REQUIRES a `pick: <id>` naming one of its records.'
+        description: '`latest` (the highest value of the collection''s own ordering — its `type: position` field, else the field `display.list.sort` names — refused when the collection declares neither) or an explicit record id. `any` is refused. A `fixture` given REQUIRES a `pick: <id>` naming one of its records.'
       fixture:
         type: boolean
         description: Run in a throwaway sandbox on this proof's own fixtures folder instead of the live workspace. Without it the steps may not change `data/`, unless `dt prove --here`.

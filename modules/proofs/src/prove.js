@@ -262,10 +262,10 @@ function givenErrors(given, descriptors) {
 
 	if (given?.pick === 'any') {
 		errors.push('pick: any is not accepted — a proof names its record or uses a fixture');
-	} else if (given?.pick === 'latest' && !d.sort_field) {
-		// `latest` means "the collection's own `sort_field`, descending" — with no sort_field there is
-		// no ordering to take the head of, and the proof would run against an arbitrary record.
-		errors.push(`pick: latest needs a sort_field on ${collection} — name the record (pick: <id>) or use a fixture`);
+	} else if (given?.pick === 'latest' && !orderingFieldOf(d)) {
+		// `latest` means "the collection's own ordering field, descending" — with none there is no
+		// ordering to take the head of, and the proof would run against an arbitrary record.
+		errors.push(LATEST_NEEDS(collection));
 	}
 
 	if (hasWhere && given.where && typeof given.where === 'object') {
@@ -400,6 +400,20 @@ function countErrors(count, index) {
 }
 
 /**
+ * The field `pick: latest` orders by: the collection's manual order (its `type: position` field),
+ * else the field its own list is sorted on (`display.list.sort`, the direction dropped — `latest` is
+ * always the HIGHEST value). Undefined when the collection declares neither.
+ */
+export function orderingFieldOf(d) {
+	if (!d) return undefined;
+	const position = dt.positionFieldOf(d);
+	if (position) return position;
+	const sort = dt.displayOf(d).list?.sort;
+	return typeof sort === 'string' && sort ? sort.split(',')[0].trim().replace(/^-/, '') : undefined;
+}
+const LATEST_NEEDS = (collection) => `pick: latest needs an ordering on ${collection} — a type: position field, or display.list.sort — or name the record (pick: <id>), or use a fixture`;
+
+/**
  * A `where` checked against the descriptor of the collection it filters — ONE hop deep.
  *
  * A key that does not start with `_` is a one-hop reference traversal, not a field-vs-field
@@ -409,7 +423,8 @@ function countErrors(count, index) {
  * a nested key actually means, rather than left to fail closed at run time.
  */
 function whereErrors(where, collection, descriptors, errors = []) {
-	const props = descriptors.get(collection)?.schema?.properties ?? {};
+	const d = descriptors.get(collection);
+	const props = d ? dt.fieldsOf(d) : {};
 	for (const [key, cond] of Object.entries(where)) {
 		if (key === '_and' || key === '_or') {
 			for (const c of Array.isArray(cond) ? cond : []) {
@@ -432,7 +447,7 @@ function whereErrors(where, collection, descriptors, errors = []) {
 			if (ENUM_CHECKED.has(op)) enumErrors(errors, key, prop, literalsFor(op, operand));
 		}
 		if (!nested.length) continue;
-		const targets = dt.refTargetsOf(prop);
+		const targets = dt.targetsOf(prop);
 		if (!targets) {
 			errors.push(`where "${key}" is not a reference field — a nested key hops a reference, it does not compare two fields`);
 			continue;
@@ -451,8 +466,9 @@ function whereErrors(where, collection, descriptors, errors = []) {
 		// value decides which target it resolves to, and that is a run-time fact.
 		if (targets === '*' || targets.length !== 1) continue;
 		const [target] = targets;
-		const targetProps = descriptors.get(target)?.schema?.properties;
-		if (!targetProps) continue; // an uninstalled peer target — `check` owns that, not this
+		const targetDescriptor = descriptors.get(target);
+		if (!targetDescriptor) continue; // an uninstalled peer target — `check` owns that, not this
+		const targetProps = dt.fieldsOf(targetDescriptor);
 		for (const hop of nested) {
 			const hopProp = targetProps[hop];
 			if (!hopProp) { errors.push(`where names "${hop}", which ${target} has no field for`); continue; }
@@ -469,8 +485,9 @@ function whereErrors(where, collection, descriptors, errors = []) {
 /** A literal compared against a closed enum must be one of its values — otherwise the filter is
  *  well-formed and returns zero rows forever. */
 function enumErrors(errors, field, prop, values) {
-	const options = prop?.enum ?? prop?.items?.enum;
-	if (!Array.isArray(options) || !options.length) return;
+	// a v2 enum is a list of values, or a map of value → its decoration
+	const options = Array.isArray(prop?.enum) ? prop.enum : prop?.enum && typeof prop.enum === 'object' ? Object.keys(prop.enum) : null;
+	if (!options?.length) return;
 	// `looseEq`, not `includes`: the filter compares as strings, so on a numeric enum `5` and `'5'`
 	// are one filter at run time. The option plays the record-value role, as at run time.
 	for (const v of values) {
@@ -706,8 +723,8 @@ export function countMatching(store, collection, where, resolve) {
  * `null` is a first-class answer, not an error: a `given` that matches nothing is NO-FIXTURE
  * (exit 4), which says the proof did not run rather than that the artifact is broken.
  *
- * `pick: latest` is the head of the matching rows ordered by the collection's own `sort_field`,
- * descending, through the same `sortRows` every `?sort=` and `--sort` goes through — so a date-time
+ * `pick: latest` is the head of the matching rows ordered by the collection's own ordering field
+ * (`orderingFieldOf`), descending, through the same `sortRows` every `?sort=` and `--sort` goes through — so a date-time
  * orders by instant across mixed offsets rather than by string. `pick: <id>` reads that id and
  * returns null when it is absent or does not match the `where`.
  *
@@ -732,9 +749,9 @@ export function pickFixture(store, given, override) {
 		if (!picked || !where) return picked;
 		return dt.matchesFilter(picked.fields, where, resolve) ? picked : null;
 	}
-	const field = store.descriptor(collection).sort_field;
-	// compile refuses `pick: latest` on a collection with no sort_field; this guards a stale runtime
-	if (!field) throw new Error(`pick: latest needs a sort_field on ${collection} — name the record (pick: <id>) or use a fixture`);
+	const field = orderingFieldOf(store.descriptor(collection));
+	// compile refuses `pick: latest` on a collection with no ordering field; this guards a stale runtime
+	if (!field) throw new Error(LATEST_NEEDS(collection));
 	const rows = [];
 	for (const { id, fields } of store.readAll(collection)) {
 		const row = { ...fields, id };
