@@ -96,10 +96,18 @@ fields:
 display:
   nav:
     icon: library
+  # the wikis list — the default a bare /content/wikis renders. No nav entry: the collection row IS the
+  # view.
+  #
+  # `sources_incomplete` is the column this view exists for, sorted first: it is a cache that
+  # `npx dt-wiki verify` re-derives from the folder, and the one number that says a corpus is not
+  # finished.
   list:
     columns:
       - name
       - adapter
       - sources_total
       - sources_incomplete
+      - synced_at
       - status
+    sort: '-sources_incomplete'

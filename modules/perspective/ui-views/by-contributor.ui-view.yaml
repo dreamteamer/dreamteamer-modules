@@ -1,25 +1,27 @@
-# THE ORG PICTURE: every contributor's work on one axis, banded by the PERSON rather than the run.
-#
-# This is the view the `contributor` field exists for: one workspace holds every contributor's
-# model, and this bands by the person, so "who else worked on this" is a glance.
-#
-# `show_ungrouped_rows` is ON: a record with no contributor belongs to nobody, and saying so is the
-# honest picture.
-options:
-  start_field: started
-  end_field: ended
-  group_rows_by_field: contributor
-  group_template: '{{ name }}'
-  group_summary_template: '{{ evidence_count }} pieces of evidence · {{ first_seen }} → {{ last_seen }}'
-  template: '{{ name }}'
-  color_by_field: status
-  show_ungrouped_rows: true
-  page_size: 100000
-nav:
-  label: By contributor
-  icon: organization
-  order: 4
-path: /timeline/by-contributor
-target: list
+route: /timeline/by-contributor
+scope: collection
 collection: collections/perspective/activities
-layout: gantt
+display:
+  nav:
+    title: By contributor
+    icon: organization
+    order: 4
+  list:
+    layout: gantt
+    # THE ORG PICTURE: every contributor's work on one axis, banded by the PERSON rather than the run.
+    #
+    # This is the view the `contributor` field exists for: one workspace holds every contributor's
+    # model, and this bands by the person, so "who else worked on this" is a glance.
+    #
+    # `show_ungrouped_rows` is ON: a record with no contributor belongs to nobody, and saying so is the
+    # honest picture.
+    options:
+      start: started
+      end: ended
+      group_by: contributor
+      group_title: '{{ name }}'
+      group_summary: '{{ evidence_count }} pieces of evidence · {{ first_seen }} → {{ last_seen }}'
+      bar_title: '{{ name }}'
+      color_by: status
+      show_ungrouped_rows: true
+      page_size: 100000

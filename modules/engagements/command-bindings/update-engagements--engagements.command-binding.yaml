@@ -1,5 +1,5 @@
 command: commands/update-engagements
 collection: collections/engagements
 # collection-target: folds every new summary into whichever engagement it belongs to
-target: collection
+scope: collection
 description: bring every engagement level with the meeting summaries written since it was last updated

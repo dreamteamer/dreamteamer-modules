@@ -111,6 +111,8 @@ display:
     icon: account
     order: 10
     section: crm
+  # The default contacts view: the person met most recently on top, contacts with no past meeting at
+  # the bottom. `recent_meeting_date` is kept by /update-contacts-from-meetings (the meetings module).
   list:
     columns:
       - avatar
@@ -118,6 +120,7 @@ display:
       - role
       - company
       - recent_meeting_date
+      - recent_meeting
       - linkedin_degree
-      - linkedin
-      - last_modified
+      - status
+    sort: -recent_meeting_date

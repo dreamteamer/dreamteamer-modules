@@ -18,8 +18,7 @@
 		"collections",
 		"skills",
 		"commands",
-		"command-bindings",
-		"ui-views"
+		"command-bindings"
 	],
 	"dreamteamer": {
 		"title": "R&D",

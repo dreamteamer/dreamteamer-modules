@@ -3,7 +3,9 @@ description: >-
   One rung of a plan. `kind: work` is a bounded piece of work with a start, an end, a lead and the seats doing it; `kind: gate` is a condition that must hold before the plan advances — the same object, because a plan reads as ONE ordered list and splitting it made every question ask twice.
 use_when: >-
   building or re-cutting a plan, or asking "what happens in February", "who is loaded", "what blocks us", "what must the client supply and when" — all here, filtered by `kind`. A gate carries `passes_when` (the test), `evidence` (what proved it), `blocking` and `external_owner` (the person OUTSIDE this workspace who actually holds it — the schedule risk you do not control). A gate needs no activity feeding it: some gates exist precisely because nobody here does work toward them
-storage: {path: data/activities, format: md}
+storage:
+  path: data/activities
+  format: md
 ids:
   from: "{{ code }}"
   pattern: ^[a-z0-9][a-z0-9-]*$
@@ -131,14 +133,7 @@ display:
   nav:
     icon: milestone
     order: 10
+  # The plan — every rung of every project in code order, work and gates in one list.
   list:
-    columns:
-      - code
-      - name
-      - kind
-      - lane
-      - phase
-      - starts
-      - ends
-      - lead
-      - status
+    columns: [code, name, kind, lane, phase, starts, ends, lead, status]
+    sort: code

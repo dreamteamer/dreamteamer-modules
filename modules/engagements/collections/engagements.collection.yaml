@@ -3,7 +3,9 @@ description: >-
   One working relationship with a company, from the first conversation to the end of the work: a lead while it is being sold, a client while it is being delivered, closed when it is over. One record for the whole arc, so its history never splits across two collections.
 use_when: >-
   a company is being sold to or worked for — read its engagement before a call, a prep or a critique, and update it after one; asked "where does X stand", "who is our champion there" or "what do we owe them", the answer is here
-storage: {path: data/engagements, format: md}
+storage:
+  path: data/engagements
+  format: md
 ids:
   from: "{{ name | slug }}"
   pattern: ^[a-z0-9][a-z0-9-]*$
@@ -117,6 +119,7 @@ display:
     icon: filter
     order: 9
     section: crm
+  # The default engagements view: everything, most recently updated first.
   list:
     columns:
       - name
@@ -126,3 +129,4 @@ display:
       - phase
       - champion
       - updated
+    sort: '-updated'

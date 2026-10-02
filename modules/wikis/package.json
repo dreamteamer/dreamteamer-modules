@@ -26,8 +26,7 @@
 		"bin",
 		"lib",
 		"collections",
-		"skills",
-		"ui-views"
+		"skills"
 	],
 	"dependencies": {
 		"js-yaml": "^4.1.0"

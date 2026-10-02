@@ -28,8 +28,7 @@
 		"collections",
 		"skills",
 		"commands",
-		"command-bindings",
-		"ui-views"
+		"command-bindings"
 	],
 	"dependencies": {
 		"js-yaml": "^4.1.0"

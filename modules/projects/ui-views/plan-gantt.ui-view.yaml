@@ -1,12 +1,17 @@
 # The plan as a gantt, banded by phase. A gate has starts == ends, so it draws as a point among the bars.
-path: /plan/gantt
-target: list
+route: /plan/gantt
+scope: collection
 collection: collections/activities
-layout: gantt
-nav: { label: Plan (gantt), icon: graph-line, order: 3 }
-options:
-  start_field: starts
-  end_field: ends
-  group_rows_by_field: phase
-  color_by_field: status
-  sort: starts
+display:
+  nav:
+    title: Plan (gantt)
+    icon: graph-line
+    order: 3
+  list:
+    layout: gantt
+    sort: starts
+    options:
+      start: starts
+      end: ends
+      group_by: phase
+      color_by: status

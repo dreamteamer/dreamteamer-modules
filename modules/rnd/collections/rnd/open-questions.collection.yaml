@@ -116,10 +116,8 @@ display:
   nav:
     icon: watch
     order: 54
+  # What reading more cannot settle — the residue that closes only by a choice or by contact with a
+  # real person. Sorted on `severity`, which groups the questions by it.
   list:
-    columns:
-      - name
-      - kind
-      - severity
-      - status
-      - resolved_on
+    columns: [name, kind, severity, status, from_question, resolved_on]
+    sort: 'severity'

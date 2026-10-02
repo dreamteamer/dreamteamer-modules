@@ -3,7 +3,9 @@ description: >-
   One calendar meeting, synced from Google Calendar — the anchor every prep, recording, summary and analysis hangs off.
 use_when: >-
   anything with a date and attendees. Before planning work that spans more than one sitting, read the next seven days here; before writing a prep, summary or analysis, find the meeting it hangs off — or /fetch-meetings if it is not synced yet
-storage: {path: data/meetings, format: md}
+storage:
+  path: data/meetings
+  format: md
 ids:
   # Derived from `starts`, so a back-dated sync files a meeting under the month it was held.
   from: "{{ starts | date:YYYY/MM }}/{{ starts | date }}--{{ starts | date:HH-mm }}--{{ company | basename }}--{{ name | slug }}"
@@ -141,8 +143,9 @@ display:
     section: crm
   list:
     columns:
+      - starts
       - name
       - last_modified
-      - starts
       - company
       - attendees
+    sort: '-last_modified'

@@ -1,15 +1,15 @@
 command: commands/transcribe-recording
 # The transcript lives on the recording, so the recording is what the command acts on.
 collection: collections/meeting-recordings
-target: record
+scope: record
 # Load-bearing: without a gate every `origin: pasted` recording would advertise "transcribe me"
 # forever. A pasted recording has no binary, and therefore no `recording_file`.
-can-enter:
+available_when:
   recording_file:
     _nempty: true
 # the transcription provenance object is the honest post-condition, NOT the body: the body can be
 # pasted in by hand with no provenance, and that is exactly the case worth still flagging.
-can-exit:
+done_when:
   transcription:
     _nempty: true
 description: transcribe this recording's audio into its transcript

@@ -3,7 +3,9 @@ description: >-
   A product, feature, flow or document worth modelling on — the thing a PRD is written AGAINST. The record holds what was observed (a recording, a screenshots folder, a URL), and `prd`: the reverse-engineered spec written as the PROMPT that would regenerate the reference. A reference is evidence for a design, never a design of ours — `product-design-docs.references` says which of ours it informed.
 use_when: >-
   a competitor's product, a screen recording, a design pattern or a document lands as "build something like THIS" — record it here FIRST (`/ingest-reference`), extract its screens, write its `prd`, and only then open the `product-design-docs` record that cites it; asked "what did we model X on", read here. Search before adding: one reference is cited by many design docs
-storage: {path: data/rnd/references, format: md}
+storage:
+  path: data/rnd/references
+  format: md
 # an ENTITY — the reference IS; the capture inside it is dated by `observed_on`
 ids:
   from: "{{ name | slug }}"
@@ -82,6 +84,12 @@ display:
   nav:
     icon: eye
     order: 22
+  # the references list — the default a bare /content/rnd/references renders.
+  #
+  # `carousel`, not `table`: a reference IS its screenshots. The layout draws one card per record —
+  # title, description, and a carousel over the images in `screenshots_folder`, which the host renders
+  # from the `${env:…}` template. A host without the layout degrades visibly rather than erroring, and
+  # the columns below still name real fields.
   list:
     columns:
       - name
@@ -89,3 +97,8 @@ display:
       - company
       - observed_on
       - last_modified
+    layout: carousel
+    sort: '-observed_on'
+    options:
+      folder: screenshots_folder
+      text: description

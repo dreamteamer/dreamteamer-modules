@@ -1,8 +1,8 @@
 command: commands/summarize-meeting
 collection: collections/meetings
-target: record
+scope: record
 # one-hop through the recordings ARRAY (_some semantics): at least one recording must be transcribed.
-can-enter:
+available_when:
   recordings:
     transcription:
       _nempty: true

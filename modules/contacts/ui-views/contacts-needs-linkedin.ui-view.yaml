@@ -2,22 +2,9 @@
 # `linkedin` URL and `linkedin_degree: 1st`.
 # `_neq` does not match a missing field, so the `_null` clauses are what list contacts with no degree.
 # The filter is top-level: `options` passes to the layout untouched, so a filter there is read by nothing.
-path: /contacts/needs-linkedin
-target: list
+route: /contacts/needs-linkedin
+scope: collection
 collection: collections/contacts
-layout: table
-options:
-  columns:
-    - avatar
-    - name
-    - role
-    - company
-    - linkedin_degree
-    - linkedin
-  sort: name
-nav:
-  label: contacts — needs LinkedIn
-  icon: person-add
 filter:
   _or:
     - linkedin:
@@ -26,3 +13,17 @@ filter:
         _null: true
     - linkedin_degree:
         _neq: '1st'
+display:
+  nav:
+    title: contacts — needs LinkedIn
+    icon: person-add
+  list:
+    layout: table
+    columns:
+      - avatar
+      - name
+      - role
+      - company
+      - linkedin_degree
+      - linkedin
+    sort: name

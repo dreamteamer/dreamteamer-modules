@@ -4,36 +4,88 @@ name: perspective/activity-weeks
 description: One ISO week of one source — commits and lines for a repo, sessions and turns for a transcripts tree. Counted, never judged.
 use_when: >-
   asked what a person's hands have been on and when — filter by source and period; written by read-git and read-claude-transcripts, one record per source per ISO week
-storage: {path: data/perspective/activity-weeks, format: md}
+storage:
+  path: data/perspective/activity-weeks
+  format: md
 ids:
   from: "{{ contributor }}/{{ source | basename }}/{{ period }}"
   pattern: "^[a-z0-9-]+/[a-z-]+--[a-z0-9-]+/\\d{4}-W\\d{2}$"
 fields:
-  retrospective: {type: perspective/retrospective-sessions, required: true, description: The retrospective session that FIRST wrote this record.}
-  last_seen_in: {type: perspective/retrospective-sessions, description: 'The most recent session that confirmed or updated it. Absent means exactly one session has ever touched it, which is how "new since last time" is answered without a diff.'}
-  contributor: {type: string, required: true, pattern: '^[a-z0-9-]+$', description: 'WHOSE this is, as a slug — and the FIRST SEGMENT OF THE ID. That is what makes a second retrospective UPDATE this record instead of writing one beside it. A plain slug rather than a reference, because an id segment cannot be one; the person''s own observed-world record is perspective/users/<contributor>/<their-name-slug>.'}
-  source: {type: perspective/sources, required: true, description: The source this window counts.}
-  period: {type: string, required: true, description: 'ISO week, `2026-W36`. THE FORCING FIELD.'}
+  retrospective:
+    type: perspective/retrospective-sessions
+    required: true
+    description: The retrospective session that FIRST wrote this record.
+  last_seen_in:
+    type: perspective/retrospective-sessions
+    description: 'The most recent session that confirmed or updated it. Absent means exactly one session has ever touched it, which is how "new since last time" is answered without a diff.'
+  contributor:
+    type: string
+    required: true
+    pattern: '^[a-z0-9-]+$'
+    description: 'WHOSE this is, as a slug — and the FIRST SEGMENT OF THE ID. That is what makes a second retrospective UPDATE this record instead of writing one beside it. A plain slug rather than a reference, because an id segment cannot be one; the person''s own observed-world record is perspective/users/<contributor>/<their-name-slug>.'
+  source:
+    type: perspective/sources
+    required: true
+    description: The source this window counts.
+  period:
+    type: string
+    required: true
+    description: 'ISO week, `2026-W36`. THE FORCING FIELD.'
   # ── the week as two dates, so a gantt can draw it ────────────────────────────────────────────
   # DERIVED from `period`, once, by the reader (`isoWeekRange`) — never typed, never disagreeing with
   # it. A timeline view needs a start and an end field; `2026-W36` is neither. Monday to Sunday, ISO.
-  start_date: {type: date, description: 'The Monday of `period`, derived — `2026-08-31` for `2026-W36`. What a gantt starts the bar on.'}
-  end_date: {type: date, description: 'The Sunday of `period`, derived. What a gantt ends the bar on.'}
-  commits: {type: integer, description: git — commits in the week.}
-  files_changed: {type: integer, description: git — distinct files touched.}
-  lines_added: {type: integer, description: git — from --numstat.}
-  lines_deleted: {type: integer, description: git — from --numstat.}
-  authors: {type: string, many: true, description: git — distinct author names in the week.}
-  sessions: {type: integer, description: transcripts — conversations that started in the week.}
-  turns_user: {type: integer, description: transcripts — real user turns}
-  active_minutes: {type: number, description: transcripts — engaged minutes in the week}
-  tool_calls: {type: integer, description: transcripts — tool calls in the week.}
-  files_edited: {type: integer, description: transcripts — file-edit calls in the week}
-  corrections: {type: integer, description: "transcripts — `user_correction` turns in the week. Plotted against `turns_user` this is the curve that is supposed to fall: the same work costing fewer corrections is the whole claim."}
-  interruptions: {type: integer, description: transcripts — times the person stopped the agent mid-flight this week.}
-  input_words: {type: integer, description: transcripts — words the person typed this week. The denominator.}
-  output_words: {type: integer, description: transcripts — words of assistant output this week. The numerator}
-  correction_ratio: {type: number, description: "transcripts — the week's corrected words over its produced words, computed from the weekly SUMS, never averaged across sessions. Direction is the metric: falling is improvement, rising means the output got cheaper to produce and worse."}
+  start_date:
+    type: date
+    description: 'The Monday of `period`, derived — `2026-08-31` for `2026-W36`. What a gantt starts the bar on.'
+  end_date:
+    type: date
+    description: 'The Sunday of `period`, derived. What a gantt ends the bar on.'
+  commits:
+    type: integer
+    description: git — commits in the week.
+  files_changed:
+    type: integer
+    description: git — distinct files touched.
+  lines_added:
+    type: integer
+    description: git — from --numstat.
+  lines_deleted:
+    type: integer
+    description: git — from --numstat.
+  authors:
+    type: string
+    many: true
+    description: git — distinct author names in the week.
+  sessions:
+    type: integer
+    description: transcripts — conversations that started in the week.
+  turns_user:
+    type: integer
+    description: transcripts — real user turns
+  active_minutes:
+    type: number
+    description: transcripts — engaged minutes in the week
+  tool_calls:
+    type: integer
+    description: transcripts — tool calls in the week.
+  files_edited:
+    type: integer
+    description: transcripts — file-edit calls in the week
+  corrections:
+    type: integer
+    description: "transcripts — `user_correction` turns in the week. Plotted against `turns_user` this is the curve that is supposed to fall: the same work costing fewer corrections is the whole claim."
+  interruptions:
+    type: integer
+    description: transcripts — times the person stopped the agent mid-flight this week.
+  input_words:
+    type: integer
+    description: transcripts — words the person typed this week. The denominator.
+  output_words:
+    type: integer
+    description: transcripts — words of assistant output this week. The numerator
+  correction_ratio:
+    type: number
+    description: "transcripts — the week's corrected words over its produced words, computed from the weekly SUMS, never averaged across sessions. Direction is the metric: falling is improvement, rising means the output got cheaper to produce and worse."
   lines_new:
     type: integer
     description: "git — lines added in files that did not exist before this week. The first of a pair of curves: new code lines over time. Distinct from `lines_added`, which counts every insertion including edits to existing files; the two curves only separate if this one does."
@@ -133,10 +185,12 @@ display:
     order: 40
   list:
     columns:
-      - source
       - period
-      - start_date
-      - commits
       - sessions
+      - source
+      - tokens_input
+      - commits
       - turns_user
-      - files_touched
+      - files_changed
+      - lines_new
+    sort: '-period'

@@ -1,10 +1,12 @@
-path: /graph
-target: list
+route: /graph
+scope: collection
 collection: collections/meetings
-layout: diagram
-nav:
-  label: Graph
-  icon: type-hierarchy
-options:
-  link_by: references
-  node: dot
+display:
+  nav:
+    title: Graph
+    icon: type-hierarchy
+  list:
+    layout: diagram
+    options:
+      link_by: references
+      node: dot

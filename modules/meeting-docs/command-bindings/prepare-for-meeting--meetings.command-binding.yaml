@@ -1,6 +1,6 @@
 command: commands/prepare-for-meeting
 collection: collections/meetings
-target: record
+scope: record
 # can-enter omitted deliberately: any meeting can be prepped, including one already held whose
 # follow-up is being planned. no relative-to-now comparison exists anyway.
 # can-exit is omitted, so the command never shows "done"; re-running updates the existing prep rather

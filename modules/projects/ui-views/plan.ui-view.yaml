@@ -1,9 +1,0 @@
-# The plan — every rung of every project in code order, work and gates in one list.
-path: /content/activities
-target: list
-collection: collections/activities
-layout: table
-options:
-  columns: [code, name, kind, lane, phase, starts, ends, lead, status]
-  sort: code
-default: true

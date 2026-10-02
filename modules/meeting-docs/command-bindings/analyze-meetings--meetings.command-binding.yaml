@@ -1,10 +1,10 @@
 command: commands/analyze-meetings
 collection: collections/meetings
-target: record
+scope: record
 # same one-hop-through-the-recordings-array gate as summarize-meeting and extract-tasks-from-meetings:
 # the review is built on the RAW transcript, so a meeting with no transcribed recording cannot be
 # reviewed at all — reviewing from the summary is the one thing `analyzing-meetings` forbids outright.
-can-enter:
+available_when:
   recordings:
     transcription:
       _nempty: true

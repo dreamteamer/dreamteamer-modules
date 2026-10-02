@@ -1,29 +1,31 @@
-# THE TIMELINE — every reconstructed activity on one axis, banded by the project it belongs to.
-# The default answer to "what was this person doing, and when".
-#
-# These views live in the MODULE, not in a workspace, because they draw the module's own
-# collections — every workspace that installs it gets the picture.
-options:
-  start_field: started
-  end_field: ended
-  group_rows_by_field: project
-  # The band is named by the PROJECT RECORD, not by the last segment of its path.
-  group_template: '{{ name }}'
-  # A project's own rolled-up numbers. `lifecycle_stage` first because a shut lane's most useful
-  # fact is whether the effort is still moving; the two counts say how much is behind it.
-  # `lead` and `commit_count` are fields on the project record; the generated `activities` mirror
-  # is the count, so no count field is named here.
-  group_summary_template: '{{ lifecycle_stage }} · {{ lead }} · {{ commit_count }} commits'
-  # And the bar says what the work was. `{{ name }}` alone, because an activity's name is already a
-  # sentence — anything appended to it is pushed off the end of the track on a short bar.
-  template: '{{ name }}'
-  color_by_field: status
-  page_size: 100000
-nav:
-  label: Timeline
-  icon: graph-line
-  order: 1
-path: /timeline
-target: list
+route: /timeline
+scope: collection
 collection: collections/perspective/activities
-layout: gantt
+display:
+  nav:
+    title: Timeline
+    icon: graph-line
+    order: 1
+  list:
+    layout: gantt
+    # THE TIMELINE — every reconstructed activity on one axis, banded by the project it belongs to.
+    # The default answer to "what was this person doing, and when".
+    #
+    # These views live in the MODULE, not in a workspace, because they draw the module's own
+    # collections — every workspace that installs it gets the picture.
+    options:
+      start: started
+      end: ended
+      group_by: project
+      # The band is named by the PROJECT RECORD, not by the last segment of its path.
+      group_title: '{{ name }}'
+      # A project's own rolled-up numbers. `lifecycle_stage` first because a shut lane's most useful
+      # fact is whether the effort is still moving; the two counts say how much is behind it.
+      # `lead` and `commit_count` are fields on the project record; the generated `activities` mirror
+      # is the count, so no count field is named here.
+      group_summary: '{{ lifecycle_stage }} · {{ lead }} · {{ commit_count }} commits'
+      # And the bar says what the work was. `{{ name }}` alone, because an activity's name is already a
+      # sentence — anything appended to it is pushed off the end of the track on a short bar.
+      bar_title: '{{ name }}'
+      color_by: status
+      page_size: 100000

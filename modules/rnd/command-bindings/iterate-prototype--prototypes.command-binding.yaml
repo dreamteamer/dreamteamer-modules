@@ -1,7 +1,7 @@
 command: commands/iterate-prototype
 collection: collections/rnd/prototypes
-target: record
-can-enter:
+scope: record
+available_when:
   live_url:
     _nempty: true
 description: 'land a reviewer round: dated feedback, a redeploy, iteration +1'

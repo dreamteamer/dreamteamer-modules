@@ -1,37 +1,39 @@
-# THE WEEKS as a gantt — one bar per source per ISO week, the mechanical timeline every report is
-# drawn on. `start_date`/`end_date` are derived from `period` by the readers; `timeline-weeks`
-# (a TABLE, "Weekly log") lists the same records, so the two sit beside each other.
-options:
-  start_field: start_date
-  end_field: end_date
-  group_rows_by_field: source
-  group_template: '{{ label }}'
-  # Same source record as the correspondence timeline, same reason, same two fields.
-  group_summary_template: '{{ kind }} · {{ label }}'
-  # The judged one-sentence summary where a week has one — and the WEEK ITSELF where it does not.
-  # Most weeks carry no summary, and an empty render falls through to `bar_label_field`. That tier is
-  # `period`, not `summary` again: `2026-W36` is short, always present, and is the thing the bar
-  # actually is. An empty week is silence, not a sentence about silence.
-  template: '{{ summary }}'
-  bar_label_field: period
-  # A colour per source, from the palette. The band is the source too, so every lane comes out one
-  # consistent colour — which is what makes a chart of hundreds of bars readable.
-  color_by_field: source
-  columns:
-    - source
-    - period
-    - start_date
-    - commits
-    - sessions
-    - turns_user
-    - files_touched
-  sort: -last-modified
-  page_size: 100000
-nav:
-  label: Weeks (gantt)
-  icon: graph-line
-  order: 6
-path: /timeline/weeks-gantt
-target: list
+route: /timeline/weeks-gantt
+scope: collection
 collection: collections/perspective/activity-weeks
-layout: gantt
+display:
+  nav:
+    title: Weeks (gantt)
+    icon: graph-line
+    order: 6
+  list:
+    layout: gantt
+    columns:
+      - source
+      - period
+      - start_date
+      - commits
+      - sessions
+      - turns_user
+      - files_touched
+    sort: -last_modified
+    # THE WEEKS as a gantt — one bar per source per ISO week, the mechanical timeline every report is
+    # drawn on. `start_date`/`end_date` are derived from `period` by the readers; `timeline-weeks`
+    # (a TABLE, "Weekly log") lists the same records, so the two sit beside each other.
+    options:
+      start: start_date
+      end: end_date
+      group_by: source
+      group_title: '{{ label }}'
+      # Same source record as the correspondence timeline, same reason, same two fields.
+      group_summary: '{{ kind }} · {{ label }}'
+      # The judged one-sentence summary where a week has one — and the WEEK ITSELF where it does not.
+      # Most weeks carry no summary, and an empty render falls through to `bar_label_field`. That tier is
+      # `period`, not `summary` again: `2026-W36` is short, always present, and is the thing the bar
+      # actually is. An empty week is silence, not a sentence about silence.
+      bar_title: '{{ summary }}'
+      bar_label: period
+      # A colour per source, from the palette. The band is the source too, so every lane comes out one
+      # consistent colour — which is what makes a chart of hundreds of bars readable.
+      color_by: source
+      page_size: 100000

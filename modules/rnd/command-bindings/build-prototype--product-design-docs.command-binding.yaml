@@ -1,12 +1,12 @@
 command: commands/build-prototype
 collection: collections/rnd/product-design-docs
-target: record
-can-enter:
+scope: record
+available_when:
   content:
     _nempty: true
   prototypes:
     _empty: true
-can-exit:
+done_when:
   prototypes:
     _nempty: true
 description: build and deploy the first clickable prototype of this design

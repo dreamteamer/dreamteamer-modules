@@ -3,24 +3,25 @@
 # so check every column against the descriptor when editing this.
 # It filters on `status` only, never on `assignee`: an empty assignee means the workspace's own person.
 # One person's inbox is the by-assignee view, or `npx dt list tasks --filter assignee=users/<id> --filter status=todo`.
-path: /inbox
-target: list
+route: /inbox
+scope: collection
 collection: collections/tasks
-layout: table
-options:
-  columns:
-    - name
-    - assignee
-    - lane
-    - status
-    - urgent
-    - due
-    - assistant_recommended_next_step
-  sort: due
-nav:
-  label: Inbox
-  icon: inbox
-  order: 1
 filter:
   status:
     _eq: todo
+display:
+  nav:
+    title: Inbox
+    icon: inbox
+    order: 1
+  list:
+    layout: table
+    columns:
+      - name
+      - assignee
+      - lane
+      - status
+      - urgent
+      - due
+      - assistant_recommended_next_step
+    sort: due

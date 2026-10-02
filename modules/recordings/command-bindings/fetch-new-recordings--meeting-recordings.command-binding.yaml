@@ -1,5 +1,5 @@
 command: commands/fetch-new-recordings
 collection: collections/meeting-recordings
 # collection-target: needs no record — it CREATES them. always runnable.
-target: collection
+scope: collection
 description: pull new recordings out of the INBOX_FOLDERS inbox into this collection

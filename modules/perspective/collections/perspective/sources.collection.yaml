@@ -19,7 +19,9 @@ name: perspective/sources
 description: One inventoried evidence source — its kind, whether it could be read, and what it held.
 use_when: >-
   the inventory stage runs, or a reader is about to run — a reader refuses to run unless its source here says `available`; asked "what could this session see" or "what was left out", list here
-storage: {path: data/perspective/sources, format: md}
+storage:
+  path: data/perspective/sources
+  format: md
 ids:
   from: "{{ contributor }}/{{ kind }}--{{ label | slug }}"
   pattern: "^[a-z0-9-]+/[a-z-]+--[a-z0-9-]+$"
@@ -45,7 +47,11 @@ fields:
     # same shape, silently.
     description: >-
       EVERY run that has inventoried or read this source, in the order they touched it. Sort them and the first is when the source entered the perimeter, the last is when it was most recently read, and the middle is every run in between. REQUIRED and never empty: a source nothing has ever looked at is not a source, it is a guess.
-  contributor: {type: string, required: true, pattern: '^[a-z0-9-]+$', description: 'WHOSE this is, as a slug — and the FIRST SEGMENT OF THE ID. That is what makes a second retrospective UPDATE this record instead of writing one beside it. A plain slug rather than a reference, because an id segment cannot be one; the person''s own observed-world record is perspective/users/<contributor>/<their-name-slug>.'}
+  contributor:
+    type: string
+    required: true
+    pattern: '^[a-z0-9-]+$'
+    description: 'WHOSE this is, as a slug — and the FIRST SEGMENT OF THE ID. That is what makes a second retrospective UPDATE this record instead of writing one beside it. A plain slug rather than a reference, because an id segment cannot be one; the person''s own observed-world record is perspective/users/<contributor>/<their-name-slug>.'
   kind:
     type: string
     required: true
@@ -106,6 +112,10 @@ display:
   list:
     columns:
       - label
+      - location
       - kind
       - reach
       - retrospectives
+    sort: '-last_modified'
+    options:
+      group_by: kind

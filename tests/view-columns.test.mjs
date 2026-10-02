@@ -21,7 +21,7 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 import yaml from 'js-yaml';
-import { OWNER, fieldsOf } from './helpers/descriptors.mjs';
+import { ALL, OWNER, fieldsOf } from './helpers/descriptors.mjs';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const MODULES = path.join(ROOT, 'modules');
@@ -33,32 +33,49 @@ function fieldIndex() {
 }
 
 const props = fieldIndex();
-// The engine synthesises these onto every row in `src/server.js` — they are not schema fields and
-// never appear in a descriptor, but a view may legitimately ask for them.
-const ALWAYS = new Set(['id', 'path', 'last-modified', '$last-modified-by', '$last-commit-message']);
+// The three injected fields every record carries; a view may list them like any declared field.
+const ALWAYS = new Set(['id', 'created', 'last_modified']);
 
-const views = [];
-for (const m of fs.readdirSync(MODULES)) {
-	const dir = path.join(MODULES, m, 'ui-views');
-	if (!fs.existsSync(dir)) continue;
-	for (const f of fs.readdirSync(dir).filter((x) => x.endsWith('.ui-view.yaml'))) {
-		views.push([`${m}/${f}`, yaml.load(fs.readFileSync(path.join(dir, f), 'utf8'))]);
-	}
+/** Every field a list names: its columns, the field a layout option takes (group_by, lanes_by,
+ *  color_by, start/end, lat/lng), and its sort key. */
+const OPTION_FIELDS = ['group_by', 'lanes_by', 'color_by', 'start', 'end', 'lat', 'lng'];
+function named(display) {
+	const list = display?.list ?? {};
+	const out = [...(list.columns ?? [])];
+	for (const k of OPTION_FIELDS) if (typeof list.options?.[k] === 'string') out.push(list.options[k]);
+	if (typeof list.sort === 'string') out.push(list.sort.replace(/^-/, ''));
+	if (typeof display?.record?.badge === 'string') out.push(display.record.badge);
+	if (typeof display?.record?.color_by === 'string') out.push(display.record.color_by);
+	return out;
 }
 
-test('the package ships views to check', () => {
-	assert.ok(views.length >= 9, `only ${views.length} views found — this gate is not looking where it thinks it is`);
+// The lists to check: every view, and every collection's own display (its default view).
+const lists = [];
+for (const m of fs.readdirSync(MODULES)) {
+	const dir = path.join(MODULES, m, 'ui-views');
+	if (fs.existsSync(dir)) {
+		for (const f of fs.readdirSync(dir).filter((x) => x.endsWith('.ui-view.yaml'))) {
+			const v = yaml.load(fs.readFileSync(path.join(dir, f), 'utf8'));
+			lists.push([`${m}/ui-views/${f}`, String(v.collection ?? '').replace(/^collections\//, ''), v.display]);
+		}
+	}
+}
+for (const [name] of props) {
+	const own = ALL.find((d) => d.doc.name === name && !d.doc.overlay);
+	if (own?.doc.display) lists.push([own.file, name, own.doc.display]);
+}
+
+test('the repo has lists to check', () => {
+	assert.ok(lists.length >= 20, `only ${lists.length} lists found — this gate is not looking where it thinks it is`);
 });
 
-for (const [rel, v] of views) {
-	const target = String(v.collection ?? '').replace(/^collections\//, '');
-	const named = [...(v.options?.columns ?? []), ...(v.options?.fields ?? []), ...(v.options?.group_by ? [v.options.group_by] : [])];
-	if (!target || !named.length) continue;
-
+for (const [rel, target, display] of lists) {
+	const fields = named(display);
+	if (!target || !fields.length) continue;
 	test(`${rel} names only fields ${target} has`, () => {
 		const known = props.get(target);
-		assert.ok(known, `${rel} points at "${target}", which is not a collection this package defines`);
-		const missing = named.filter((c) => !known.has(c) && !ALWAYS.has(c));
+		assert.ok(known, `${rel} points at "${target}", which is not a collection this repo defines`);
+		const missing = fields.filter((c) => !known.has(c) && !ALWAYS.has(c));
 		assert.deepEqual(missing, [], `a column for a field that does not exist renders as an empty cell, which reads as data:\n  ${missing.join(', ')}`);
 	});
 }

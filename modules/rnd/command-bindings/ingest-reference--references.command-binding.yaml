@@ -1,4 +1,4 @@
 command: commands/ingest-reference
 collection: collections/rnd/references
-target: collection
+scope: collection
 description: record a capture as a reference, bytes into FILES_FOLDER, frames extracted

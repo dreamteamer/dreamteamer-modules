@@ -1,17 +1,19 @@
-path: /tasks/board
-target: list
+route: /tasks/board
+scope: collection
 collection: collections/tasks
-layout: kanban
-options:
-  # The enum order on each field is the order its columns and bands appear in.
-  group_columns_by_field: status
-  group_rows_by_field: lane
-  # Every task on one page, so no lane is cut off.
-  page_size: 100000
-  template: |-
-    **{{ name }}**
-    {{ status }} · {{ due }}
-nav:
-  label: Board
-  icon: project
-  order: 2
+display:
+  nav:
+    title: Board
+    icon: project
+    order: 2
+  list:
+    layout: kanban
+    options:
+      # The enum order on each field is the order its columns and bands appear in.
+      lanes_by: status
+      group_by: lane
+      # Every task on one page, so no lane is cut off.
+      page_size: 100000
+      card_title: |-
+        **{{ name }}**
+        {{ status }} · {{ due }}

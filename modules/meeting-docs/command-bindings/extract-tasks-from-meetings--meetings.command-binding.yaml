@@ -1,10 +1,10 @@
 command: commands/extract-tasks-from-meetings
 collection: collections/meetings
-target: record
+scope: record
 # one-hop through the recordings array (_some semantics): at least one recording must be transcribed.
 # `transcription` (the provenance object), never `transcript` (the body) — a body pasted by hand
 # with no provenance block is exactly the case worth flagging as not yet transcribed.
-can-enter:
+available_when:
   recordings:
     transcription:
       _nempty: true

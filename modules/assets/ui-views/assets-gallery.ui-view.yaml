@@ -1,13 +1,15 @@
-# Every asset as a card. A file-codec card draws the record itself, so no `image_field` is needed.
-options:
-  image_fit: contain
-  template: '{{ id }}'
-  page_size: 200
-nav:
-  label: Assets
-  icon: file-media
-  order: 90
-path: /assets/gallery
-target: list
+route: /assets/gallery
+scope: collection
 collection: collections/assets
-layout: cards
+display:
+  nav:
+    title: Assets
+    icon: file-media
+    order: 90
+  list:
+    layout: cards
+    # Every asset as a card. A file-codec card draws the record itself, so no `image_field` is needed.
+    options:
+      image_fit: contain
+      card_title: '{{ id }}'
+      page_size: 200
