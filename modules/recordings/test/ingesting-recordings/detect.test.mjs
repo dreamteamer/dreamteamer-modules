@@ -254,12 +254,15 @@ test('scan finds a payload nested in a SUBFOLDER — a stray folder must never s
 // ── orphan candidates — a file-less `origin: audio` recording matched against a new inbox file ───
 // The script walks up to `package-lock.json` for its workspace, so each fixture is a throwaway
 // workspace holding a copy of the script, a compiled meetings descriptor and the records.
+// the v2 compiled shape, as the engine dumps it: the authored storage, then what compile resolved
 const MEETINGS_STORAGE = [
-	'name: meetings', 'storage:', '  path: data/meetings', '  codec: md', '  shape: file', '  suffix: meeting',
-	'  under:', '    field: company', '    path: meetings', '    collection: companies', '',
+	'name: meetings', 'description: >-', '  One meeting. path: not-a-key', 'storage:', '  under:', '    parent: company', '    subfolder: meetings',
+	'compiled:', '  defaults:', '    storage:', '      path: data/meetings', '      format: md', '      shape: file', '      suffix: meeting',
+	'  runtime: false', '  under_collection: companies', '  json_schema:', '    required:', '      - name', '',
 ].join('\n');
 const COMPANIES_STORAGE = [
-	'name: companies', 'storage:', '  path: data/companies', '  codec: md', '  shape: folder', '  suffix: company', '',
+	'name: companies', 'storage:', '  shape: folder',
+	'compiled:', '  defaults:', '    storage:', '      path: data/companies', '      format: md', '      suffix: company', '  runtime: false', '',
 ].join('\n');
 
 function orphanWorkspace({ recording, meeting }) {

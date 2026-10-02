@@ -251,27 +251,53 @@ function recordingsWithoutFile() {
 }
 
 /**
- * The `storage` block of a compiled descriptor — `path`, `suffix` and the `under` placement — read with
- * the same line parsing this script uses everywhere, because this module declares no YAML dependency
- * and these four keys are the only ones it needs.
+ * The block maps of a compiled descriptor as nested objects, scalars as strings — enough YAML for the
+ * engine's own dump, read with no YAML dependency. A list item, and a block scalar (`>-`, `|`), is
+ * skipped along with everything nested in it: the keys read here are maps of scalars.
+ */
+function yamlMaps(text) {
+	const root = {};
+	const stack = [{ indent: -1, node: root }];
+	let skipDeeperThan = null;
+	for (const raw of text.split('\n')) {
+		if (!raw.trim() || /^\s*#/.test(raw)) continue;
+		const indent = raw.length - raw.trimStart().length;
+		if (skipDeeperThan !== null) { if (indent > skipDeeperThan) continue; skipDeeperThan = null; }
+		const line = raw.trim();
+		if (line === '-' || line.startsWith('- ')) { skipDeeperThan = indent; continue; }
+		const m = /^([^:#]+?):(?:\s+(.*))?$/.exec(line);
+		if (!m) continue;
+		while (stack.at(-1).indent >= indent) stack.pop();
+		const parent = stack.at(-1).node;
+		const key = m[1].replace(/^['"]|['"]$/g, '');
+		const value = m[2];
+		if (value === undefined || value === '') { parent[key] = {}; stack.push({ indent, node: parent[key] }); }
+		else if (/^[>|][+-]?$/.test(value)) skipDeeperThan = indent;
+		else parent[key] = value.replace(/^['"]|['"]$/g, '');
+	}
+	return root;
+}
+
+/**
+ * Where a collection's records live, from its COMPILED descriptor: the path compile resolved
+ * (`compiled.defaults.storage`, over the authored one), the suffix, and — when it is stored under a
+ * parent (`storage.under`) — the parent collection compile resolved (`compiled.under_collection`) and
+ * the subfolder. Null when the workspace has no compiled runtime, which leaves the module defaults in
+ * force.
  */
 function compiledStorage(name) {
 	let text;
 	try { text = fs.readFileSync(path.join(ROOT, '.dreamteamer', 'collections', `${name}.collection.yaml`), 'utf8'); } catch { return null; }
-	const block = /^storage:\n((?:[ \t]+.*\n?)+)/m.exec(text)?.[1];
-	if (!block) return null;
-	const out = {};
-	let under = null;
-	for (const line of block.split('\n')) {
-		const m = /^(\s+)([a-z_]+):\s*(.*)$/.exec(line);
-		if (!m) continue;
-		const [, indent, key, raw] = m;
-		const value = raw.replace(/^['"]|['"]$/g, '');
-		if (key === 'under' && raw === '') { under = {}; out.under = under; continue; }
-		if (under && indent.length > 2) under[key] = value;
-		else if (indent.length === 2) out[key] = value;
-	}
-	return out;
+	const d = yamlMaps(text);
+	if (!d.compiled) return null;
+	const authored = d.storage ?? {};
+	const supplied = d.compiled.defaults?.storage ?? {};
+	const u = authored.under;
+	return {
+		path: supplied.path ?? authored.path,
+		suffix: authored.suffix ?? supplied.suffix,
+		under: u?.parent && u?.subfolder && d.compiled.under_collection ? { collection: d.compiled.under_collection, subfolder: u.subfolder } : null,
+	};
 }
 
 /**
@@ -288,12 +314,12 @@ function meetingFile(id) {
 	const own = path.join(dir, name);
 	if (fs.existsSync(own)) return own;
 	const under = storage?.under;
-	if (!under?.collection || !under.path || !(parent = compiledStorage(under.collection))?.path) return null;
+	if (!under || !(parent = compiledStorage(under.collection))?.path) return null;
 	const parentDir = path.join(ROOT, String(parent.path));
 	if (!fs.existsSync(parentDir)) return null;
 	for (const e of fs.readdirSync(parentDir, { withFileTypes: true })) {
 		if (!e.isDirectory() || e.name.startsWith('.')) continue;
-		const f = path.join(parentDir, e.name, under.path, name);
+		const f = path.join(parentDir, e.name, under.subfolder, name);
 		if (fs.existsSync(f)) return f;
 	}
 	return null;
