@@ -12,15 +12,33 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import yaml from 'js-yaml';
 import { violationsOf, GATE_ONLY } from '../../../modules/projects/bin/check-records.mjs';
+import { ALL, OWNER, targetsOf } from '../../../tests/helpers/descriptors.mjs';
 
 // the repo root — these tests were written at the root of dreamteamer/extensions, whose modules/ layout
 // this repo keeps, so every `ROOT/modules/<m>/…` path still names the same file
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', '..', '..');
 const load = (rel) => yaml.load(fs.readFileSync(path.join(ROOT, 'modules', rel), 'utf8'));
+/** The fields a person must set: the ones marked `required: true`, in descriptor order. */
+const requiredOf = (d) => Object.entries(d.fields).filter(([, s]) => s.required).map(([k]) => k);
+/** The fields a person writes — everything but the generated far sides of other collections' references. */
+const authored = (d) => Object.keys(d.fields).filter((k) => !d.fields[k].mirror_of);
+/**
+ * The generated far side of `<coll>.<field>` on `target`: the field there whose `mirror_of` is `field`
+ * and whose type is `coll`, with the module that declares it — the target's own descriptor or an
+ * overlay. Undefined when nothing mirrors it.
+ */
+function mirrorOf(coll, field, target) {
+	for (const d of ALL.filter((x) => x.doc.name === target)) {
+		for (const [name, spec] of Object.entries(d.doc.fields ?? {})) {
+			if (spec.mirror_of === field && targetsOf(spec).includes(coll)) return { module: d.module, name, spec };
+		}
+	}
+	return undefined;
+}
 
 describe('the fold — one collection, two kinds', () => {
 	const act = load('projects/collections/activities.collection.yaml');
-	const p = act.schema.properties;
+	const p = act.fields;
 	test('kind is work|gate and defaults to work, so an ordinary plan row needs no ceremony', () => {
 		assert.deepEqual(p.kind.enum, ['work', 'gate']);
 		assert.equal(p.kind.default, 'work');
@@ -32,13 +50,13 @@ describe('the fold — one collection, two kinds', () => {
 	// The peer who owns 21 real gates measured that 12 of them are held by someone OUTSIDE the vendor,
 	// and that this is the field with no activity equivalent. It must NOT be a user.
 	test('external_owner points at contacts, not users — a gate we do not control is not ours to assign', () => {
-		assert.equal(p.external_owner['x-reference'], 'contacts');
-		assert.equal(p.lead['x-reference'], 'users');
+		assert.equal(p.external_owner.type, 'contacts');
+		assert.equal(p.lead.type, 'users');
 	});
 	test('a gate needs no seats and no feeding activity — the schema requires neither', () => {
-		assert.deepEqual(act.schema.required, ['code', 'name', 'project', 'kind']);
-		assert.ok(!act.schema.required.includes('seats'));
-		assert.ok(!act.schema.required.includes('starts'), 'a gate with no date yet is still a gate');
+		assert.deepEqual(requiredOf(act), ['code', 'name', 'project', 'kind']);
+		assert.ok(!requiredOf(act).includes('seats'));
+		assert.ok(!requiredOf(act).includes('starts'), 'a gate with no date yet is still a gate');
 	});
 	test('status carries planned, because a plan is authored ahead of anything observed', () => {
 		assert.ok(p.status.enum.includes('planned'));
@@ -108,7 +126,9 @@ describe('the addressbook — every owner field resolves to one users record', (
 	const act = load('projects/collections/activities.collection.yaml');
 	const tasks = load('tasks/collections/tasks.collection.yaml');
 	// THE POINT OF THE WHOLE MODEL: a person's own record is the join, so "what is mine" is a record
-	// to open rather than four saved searches. Each mirror is owned on the far side.
+	// to open rather than four saved searches. Each mirror is a field on `users` with `mirror_of`,
+	// declared by the module that owns the pointing collection — an overlay when that is not `users`,
+	// so the mirror exists only when its owner is installed.
 	const MIRRORS = {
 		'projects.lead': 'led_projects',
 		'activities.lead': 'led_activities',
@@ -122,20 +142,22 @@ describe('the addressbook — every owner field resolves to one users record', (
 		const [coll, field] = key.split('.');
 		const d = { projects: proj, activities: act, tasks }[coll];
 		test(`${key} points at users and stamps users.${mirror}`, () => {
-			const spec = d.schema.properties[field];
+			const spec = d.fields[field];
 			assert.ok(spec, `${coll} has no ${field}`);
-			const ref = spec['x-reference'] ?? spec.items?.['x-reference'];
-			assert.equal(ref, 'users', `${key} must point at users, not ${ref}`);
-			assert.equal(spec['x-inverse'].field, mirror);
+			assert.equal(spec.type, 'users', `${key} must point at users, not ${spec.type}`);
+			const far = mirrorOf(coll, field, 'users');
+			assert.equal(far?.name, mirror);
+			assert.equal(far.spec.many, true);
+			assert.equal(far.module, OWNER.get(coll), `users.${mirror} must be declared by ${coll}'s own module`);
 		});
 	}
 	test('a user links to a contact rather than being one — the two are joined, never merged', () => {
-		assert.equal(users.schema.properties.contact['x-reference'], 'contacts');
-		assert.equal(users.schema.required.length, 1);
-		assert.deepEqual(users.schema.required, ['name']);
+		assert.equal(users.fields.contact.type, 'contacts');
+		assert.equal(requiredOf(users).length, 1);
+		assert.deepEqual(requiredOf(users), ['name']);
 	});
 	test('handles exist, so an importer can match a row to a person without a second table', () => {
-		assert.equal(users.schema.properties.handles.type, 'array');
+		assert.equal(users.fields.handles.many, true);
 	});
 	// The operator dropped teams on 2026-09-10: a person is the unit work is assigned to.
 	// Teams came back on 2026-09-10 after the operator's second look: membership lives on the TEAM, so
@@ -143,29 +165,31 @@ describe('the addressbook — every owner field resolves to one users record', (
 	// never the assignee — a task and an activity go to a PERSON.
 	test('a team holds its members, and the mirror lands on the person', () => {
 		const teams = load('projects/collections/teams.collection.yaml');
-		assert.equal(teams.schema.properties.members.items['x-reference'], 'users');
-		assert.equal(teams.schema.properties.members['x-inverse'].field, 'teams');
-		assert.equal(teams.schema.properties.lead['x-inverse'].field, 'led_teams');
+		assert.equal(teams.fields.members.type, 'users');
+		assert.equal(teams.fields.members.many, true);
+		assert.equal(mirrorOf('teams', 'members', 'users')?.name, 'teams');
+		assert.equal(mirrorOf('teams', 'lead', 'users')?.name, 'led_teams');
 	});
 	// WHERE THE CODE LIVES. `repos` is a CORE collection with two engine verbs bound to it
 	// (`dt install repos/<id>`, `dt status`), so the reference goes project → repo and never back:
 	// the engine cannot name a collection a module ships. Singular AND plural because they answer
 	// different questions — "open the code" vs "what does this project touch".
 	test('a project points at repos, singular for the front door and plural for the rest', () => {
-		assert.equal(proj.schema.properties.repo['x-reference'], 'repos');
-		assert.equal(proj.schema.properties.repos.type, 'array');
-		assert.equal(proj.schema.properties.repos.items['x-reference'], 'repos');
+		assert.equal(proj.fields.repo.type, 'repos');
+		assert.equal(proj.fields.repos.type, 'repos');
+		assert.equal(proj.fields.repos.many, true);
 		// No mirror: `repos` is the engine's, and a module may not stamp a field onto a collection it
-		// does not own — the same rule that stripped every x-inverse off the perspective overlays.
-		assert.ok(!('x-inverse' in proj.schema.properties.repo), 'a module must not stamp a mirror onto a core collection');
-		assert.ok(!('x-inverse' in proj.schema.properties.repos));
+		// does not own — the same rule that stripped every mirror off the perspective overlays.
+		assert.equal(mirrorOf('projects', 'repo', 'repos'), undefined, 'a module must not stamp a mirror onto a core collection');
+		assert.equal(mirrorOf('projects', 'repos', 'repos'), undefined);
+		assert.ok(!ALL.some((d) => d.doc.name === 'repos'), 'no module ships a descriptor for the engine\'s repos');
 	});
 		test('assignment is still to a person — no owner field takes a team', () => {
 		for (const [d, f] of [[tasks, 'assignee'], [act, 'lead'], [proj, 'lead']]) {
-			assert.equal(d.schema.properties[f]['x-reference'], 'users');
+			assert.equal(d.fields[f].type, 'users');
 		}
-		assert.equal(act.schema.properties.team['x-reference'], 'teams', 'a rung may be CARRIED by a team');
-		assert.ok(!act.schema.properties.seats.items['x-reference'].includes('teams'));
+		assert.equal(act.fields.team.type, 'teams', 'a rung may be CARRIED by a team');
+		assert.ok(!targetsOf(act.fields.seats).includes('teams'));
 	});
 });
 
@@ -195,10 +219,12 @@ describe('one module, bare names — the fold the operator asked for', () => {
 		assert.equal(load('users/collections/users.collection.yaml').storage.path, 'data/users');
 	});
 	test('every internal reference is bare too', () => {
-		const act = load('projects/collections/activities.collection.yaml').schema.properties;
-		assert.equal(act.project['x-reference'], 'projects');
-		assert.equal(act.depends_on.items['x-reference'], 'activities');
-		assert.equal(act.seats.items['x-reference'], 'users');
+		const act = load('projects/collections/activities.collection.yaml').fields;
+		assert.equal(act.project.type, 'projects');
+		assert.equal(act.depends_on.type, 'activities');
+		assert.equal(act.depends_on.many, true);
+		assert.equal(act.seats.type, 'users');
+		assert.equal(act.seats.many, true);
 	});
 	// ⚠ THE NAV LAYOUT IS A MODULE DECISION, not a namespace one. The extension folds a default-namespace
 	// collection under its owning module only when that module owns TWO OR MORE of them — so `projects`
@@ -210,23 +236,34 @@ describe('one module, bare names — the fold the operator asked for', () => {
 			assert.ok(fs.existsSync(path.join(ROOT, `modules/projects/collections/${c}.collection.yaml`)), `missing ${c}`);
 		}
 		assert.ok(fs.existsSync(path.join(ROOT, 'modules/users/collections/users.collection.yaml')), 'users must be its own module');
-		assert.ok(!fs.existsSync(path.join(ROOT, 'modules/projects/collections/users.collection.yaml')), 'and must not also live in projects');
+		// projects carries a users OVERLAY — the mirrors of its own owner fields — and never the collection
+		const overlay = path.join(ROOT, 'modules/projects/collections/users.collection.yaml');
+		assert.ok(!fs.existsSync(overlay) || yaml.load(fs.readFileSync(overlay, 'utf8')).overlay === true, 'and must not also live in projects');
+		assert.equal(OWNER.get('users'), 'users');
 		for (const dead of ['modules/org', 'modules/plan']) assert.ok(!fs.existsSync(path.join(ROOT, dead)), `${dead} still exists`);
 		// tasks LEFT projects on 2026-10-01 for a module of its own, needing only users
 		assert.ok(fs.existsSync(path.join(ROOT, 'modules/tasks/collections/tasks.collection.yaml')), 'tasks must be its own module');
 		assert.ok(!fs.existsSync(path.join(ROOT, 'modules/projects/collections/tasks.collection.yaml')), 'and must not also live in projects');
 	});
 	test('a task can hang off a project or a plan rung, and both mirror back', () => {
-		assert.equal(tasks.schema.properties.project['x-inverse'].field, 'tasks');
-		assert.equal(tasks.schema.properties.activity['x-inverse'].field, 'tasks');
+		assert.equal(tasks.fields.project.type, 'projects');
+		assert.equal(tasks.fields.activity.type, 'activities');
+		// both mirrors are overlays in the tasks module, so a plan without tasks carries neither
+		for (const [field, target] of [['project', 'projects'], ['activity', 'activities']]) {
+			const far = mirrorOf('tasks', field, target);
+			assert.equal(far?.name, 'tasks');
+			assert.equal(far.module, 'tasks');
+		}
 	});
 	// ⚠ meetings uses users too, and the SPLIT is the point: `attendees` is everyone as contacts (what a
 	// calendar invite carries), `ours` is the subset who are users — whose work the meeting IS.
 	test('a meeting names our own people as users, alongside attendees as contacts', () => {
-		const m = load('meetings/collections/meetings.collection.yaml').schema.properties;
-		assert.equal(m.attendees.items['x-reference'], 'contacts');
-		assert.equal(m.ours.items['x-reference'], 'users');
-		assert.equal(m.ours['x-inverse'].field, 'meetings');
+		const m = load('meetings/collections/meetings.collection.yaml').fields;
+		assert.equal(m.attendees.type, 'contacts');
+		assert.equal(m.attendees.many, true);
+		assert.equal(m.ours.type, 'users');
+		assert.equal(m.ours.many, true);
+		assert.equal(mirrorOf('meetings', 'ours', 'users')?.name, 'meetings');
 	});
 });
 
@@ -273,27 +310,27 @@ describe('the views a person actually opens', () => {
 describe('lanes — the grouping axis, as a record rather than a string', () => {
 	const lanes = load('projects/collections/activity-lanes.collection.yaml');
 	const act = load('projects/collections/activities.collection.yaml');
-	const p = lanes.schema.properties;
+	const p = lanes.fields;
 
 	test('`order` is REQUIRED — it is the whole reason this is not a second free-text field', () => {
-		assert.ok(lanes.schema.required.includes('order'),
+		assert.ok(requiredOf(lanes).includes('order'),
 			'an unordered lane is `phase` with extra ceremony; ordering is the property that earns the collection');
 		assert.equal(p.order.type, 'integer', 'a board sorts on a number, not on a spelling');
 	});
 
 	test('`project` is OPTIONAL, because a lane may span plans — and it mirrors back', () => {
-		assert.ok(!lanes.schema.required.includes('project'),
+		assert.ok(!requiredOf(lanes).includes('project'),
 			'empty project IS the cross-project workstream — the other thing a field on the activity cannot express');
-		assert.equal(p.project['x-reference'], 'projects');
-		assert.equal(p.project['x-inverse'].field, 'lanes');
+		assert.equal(p.project.type, 'projects');
+		assert.equal(mirrorOf('activity-lanes', 'project', 'projects')?.name, 'lanes');
 	});
 
 	test('the id is flat, which is the price of an optional project', () => {
 		// An id generator throws on a missing field, so an OPTIONAL field cannot be an id segment —
 		// `{{ project }}/{{ name | slug }}` would refuse every cross-project lane. Flat it is, and lane
 		// names are therefore unique across the workspace.
-		assert.equal(lanes.id.generate, '{{ name | slug }}');
-		assert.ok(!lanes.id.generate.includes('project'));
+		assert.equal(lanes.ids.from, '{{ name | slug }}');
+		assert.ok(!lanes.ids.from.includes('project'));
 	});
 
 	test('nothing was invented beyond the argument — no colour, no lead, no status, no code', () => {
@@ -305,14 +342,14 @@ describe('lanes — the grouping axis, as a record rather than a string', () => 
 			assert.ok(!(dead in p), `activity-lanes.${dead} was invented — the argument for this collection is ORDER, nothing else`);
 		}
 		// What it DOES carry, and all of it: the entity shape plus the provenance quad, which is written
-		// inline since 2026-10-01 (there is no template any more).
-		assert.deepEqual(Object.keys(p), ['name', 'order', 'project', 'tags', 'content', 'author', 'creation_context', 'source', 'confidence']);
-		assert.equal(lanes.templates, undefined);
+		// inline since 2026-10-01 (there is no mixin). The generated far sides are not authored fields.
+		assert.deepEqual(authored(lanes), ['name', 'order', 'project', 'tags', 'content', 'author', 'creation_context', 'source', 'confidence']);
+		assert.equal(lanes.mixins, undefined);
 	});
 
 	test('a rung points at a lane, and the lane gains the rungs in it', () => {
-		assert.equal(act.schema.properties.lane['x-reference'], 'activity-lanes');
-		assert.equal(act.schema.properties.lane['x-inverse'].field, 'activities');
+		assert.equal(act.fields.lane.type, 'activity-lanes');
+		assert.equal(mirrorOf('activities', 'lane', 'activity-lanes')?.name, 'activities');
 	});
 
 	test('`phase` is the OTHER axis and is now a REFERENCE, not free text', () => {
@@ -320,10 +357,10 @@ describe('lanes — the grouping axis, as a record rather than a string', () => 
 		// 2026-09-11 on the grounds that "every shop names its phases differently" — which is true and
 		// is an argument for not shipping an ENUM, not for shipping a string. The thing a string could
 		// not do is carry the stretch's own DATES, so "when does Build end" could only be answered by
-		// taking the max of whatever pointed at it. `bin/migrate-plan.mjs` converts the old form.
-		assert.ok('phase' in act.schema.properties, 'phase is the time band and stays');
-		assert.equal(act.schema.properties.phase['x-reference'], 'phases');
-		assert.equal(act.schema.properties.phase['x-inverse'].field, 'activities');
+		// taking the max of whatever pointed at it.
+		assert.ok('phase' in act.fields, 'phase is the time band and stays');
+		assert.equal(act.fields.phase.type, 'phases');
+		assert.equal(mirrorOf('activities', 'phase', 'phases')?.name, 'activities');
 	});
 
 	test('the swimlane board bands by lane, and shows the residue', () => {
@@ -399,50 +436,50 @@ describe('the guard — a rung may not sit in another plan\'s band', () => {
 describe('phases — WHEN, as a record with its own dates', () => {
 	const ph = load('projects/collections/phases.collection.yaml');
 	const act = load('projects/collections/activities.collection.yaml');
-	const p = ph.schema.properties;
+	const p = ph.fields;
 
 	test('`starts` is REQUIRED and `order` does not exist — the start IS the order', () => {
-		assert.ok(ph.schema.required.includes('starts'),
+		assert.ok(requiredOf(ph).includes('starts'),
 			'a phase without a start is a lane wearing the wrong name');
 		assert.ok(!('order' in p),
 			'an `order` beside dates lets a plan say Build runs before Discovery while the dates say otherwise, and nothing could adjudicate');
 	});
 
 	test('`project` is REQUIRED — unlike a lane, a stretch of calendar belongs to one plan', () => {
-		assert.ok(ph.schema.required.includes('project'),
+		assert.ok(requiredOf(ph).includes('project'),
 			'a lane may span plans; one plan\'s own calendar may not');
-		assert.equal(p.project['x-reference'], 'projects');
-		assert.equal(p.project['x-inverse'].field, 'phases');
+		assert.equal(p.project.type, 'projects');
+		assert.equal(mirrorOf('phases', 'project', 'projects')?.name, 'phases');
 	});
 
 	test('the id is project-scoped, which a required project is what permits', () => {
 		// An id generator throws on a missing field, so only a REQUIRED field can be a segment. That is
 		// exactly why `activity-lanes` is flat and this is not — and it lets two plans each have a
 		// "Discovery" without a collision.
-		assert.equal(ph.id.generate, '{{ project | basename }}/{{ name | slug }}');
+		assert.equal(ph.ids.from, '{{ project | basename }}/{{ name | slug }}');
 	});
 
 	test('`ends` is optional, because the era now running has no decided end', () => {
-		assert.ok(!ph.schema.required.includes('ends'));
+		assert.ok(!requiredOf(ph).includes('ends'));
 	});
 
 	test('nothing was invented beyond the argument', () => {
-		assert.deepEqual(Object.keys(p), ['name', 'project', 'description', 'starts', 'ends', 'status', 'tags', 'content', 'author', 'creation_context', 'source', 'confidence']);
-		assert.equal(ph.templates, undefined);
+		assert.deepEqual(authored(ph), ['name', 'project', 'description', 'starts', 'ends', 'status', 'tags', 'content', 'author', 'creation_context', 'source', 'confidence']);
+		assert.equal(ph.mixins, undefined);
 	});
 
 	test('a rung points at a phase, and the phase gains the rungs in it', () => {
-		assert.equal(act.schema.properties.phase['x-reference'], 'phases');
+		assert.equal(act.fields.phase.type, 'phases');
 	});
 });
 
 // ── DELIVERABLES: what the plan OWES, and the state that is somebody else's to set ───────────────
 describe('deliverables — the thing that changes hands', () => {
 	const d = load('projects/collections/deliverables.collection.yaml');
-	const p = d.schema.properties;
+	const p = d.fields;
 
 	test('`accepted_by` is a CONTACT, never a user — acceptance is the receiving side\'s act', () => {
-		assert.equal(p.accepted_by['x-reference'], 'contacts',
+		assert.equal(p.accepted_by.type, 'contacts',
 			'a deliverable this workspace accepts for itself has not been accepted');
 	});
 
@@ -452,16 +489,16 @@ describe('deliverables — the thing that changes hands', () => {
 	});
 
 	test('`activity` is OPTIONAL — several rungs routinely build one artefact', () => {
-		assert.ok(!d.schema.required.includes('activity'),
+		assert.ok(!requiredOf(d).includes('activity'),
 			'naming the nearest rung would be a guess the board then reads as a fact');
-		assert.equal(p.activity['x-inverse'].field, 'deliverables');
+		assert.equal(mirrorOf('deliverables', 'activity', 'activities')?.name, 'deliverables');
 	});
 
 	test('its `kind` is commercial, and deliberately NOT the observed half\'s MIME enum', () => {
 		const observed = load('perspective/collections/perspective/deliverables.collection.yaml');
 		assert.ok(p.kind.enum.includes('training'), 'what somebody is buying');
-		assert.ok(observed.schema.properties.kind.enum.includes('sheet'), 'what a store read found');
-		assert.notDeepEqual(p.kind.enum, observed.schema.properties.kind.enum,
+		assert.ok(observed.fields.kind.enum.includes('sheet'), 'what a store read found');
+		assert.notDeepEqual(p.kind.enum, observed.fields.kind.enum,
 			'spelling them alike would assert a Drive read knows an artefact\'s purpose');
 	});
 });
@@ -469,10 +506,10 @@ describe('deliverables — the thing that changes hands', () => {
 // ── DECISIONS: one table for two authorities, and the field that makes that safe ──────────────────
 describe('decisions — the fold, and what keeps it honest', () => {
 	const d = load('projects/collections/decisions.collection.yaml');
-	const p = d.schema.properties;
+	const p = d.fields;
 
 	test('`decided_by` is REQUIRED and closed to person|agent — no "unknown"', () => {
-		assert.ok(d.schema.required.includes('decided_by'),
+		assert.ok(requiredOf(d).includes('decided_by'),
 			'folding an agent\'s fork in with a person\'s call is only safe while every record says which');
 		assert.deepEqual(p.decided_by.enum, ['person', 'agent'],
 			'a decision nobody can attribute is a rumour; the OBSERVED half is where `unknown` is honest');
@@ -480,35 +517,36 @@ describe('decisions — the fold, and what keeps it honest', () => {
 
 	test('the observed half DOES carry `unknown` — same question, different authority', () => {
 		const observed = load('perspective/collections/perspective/decisions.collection.yaml');
-		assert.ok(observed.schema.properties.decided_by.enum.includes('unknown'),
+		assert.ok(observed.fields.decided_by.enum.includes('unknown'),
 			'evidence states a choice and names nobody; a run that guessed would attribute it to the wrong person');
 	});
 
 	test('the four fields that make a fork reviewable are REQUIRED, not optional', () => {
 		for (const f of ['alternatives', 'rationale', 'reversibility', 'decision']) {
-			assert.ok(d.schema.required.includes(f), `${f} is what turns a description of what happened into a decision`);
+			assert.ok(requiredOf(d).includes(f), `${f} is what turns a description of what happened into a decision`);
 		}
 	});
 
 	test('`wrong_if` is a prediction about THIS world, and `outcome` is its result', () => {
 		assert.ok('wrong_if' in p);
-		assert.ok(!d.schema.required.includes('wrong_if'), 'a fork with no observable tell is a real category; inventing one is worse');
+		assert.ok(!requiredOf(d).includes('wrong_if'), 'a fork with no observable tell is a real category; inventing one is worse');
 		assert.deepEqual(p.outcome.enum, ['ratified', 'overturned', 'superseded', 'moot']);
 	});
 
 	test('`affects` is a PLAIN string, so a decision outlives what it landed on', () => {
-		assert.equal(p.affects.items.type, 'string');
-		assert.ok(!p.affects.items['x-reference'],
+		assert.equal(p.affects.type, 'string');
+		assert.equal(p.affects.many, true);
+		assert.deepEqual(targetsOf(p.affects), [],
 			'a record that dangles when its subject is deleted is a record that gets deleted with it');
 	});
 
 	test('`decided_on` is a date-time — several calls land in a day and the order is the argument', () => {
-		assert.equal(p.decided_on.format, 'date-time');
+		assert.equal(p.decided_on.type, 'datetime');
 		// ⚠ AN ORDERED LIST since the `code` → `slug` rename. Only the date part reaches the id, and
 		// the handle half prefers the record's `slug` but falls back to the name — which is what
 		// lets `slug` be optional. A non-latin name still slugOrHashes to `x000w6xq`, but the engine
 		// says so on the write now instead of landing it silently.
-		assert.deepEqual(d.id.generate, [
+		assert.deepEqual(d.ids.from, [
 			'{{ decided_on | date }}--{{ slug }}',
 			'{{ decided_on | date }}--{{ name | slug }}',
 		], 'the decision id must prefer the slug and fall back to the name');
@@ -524,9 +562,9 @@ import { userViolationsOf } from '../../../modules/users/bin/check-records.mjs';
 
 describe('risks — what could go wrong, carried with an owner', () => {
 	const r = load('projects/collections/risks.collection.yaml');
-	const p = r.schema.properties;
+	const p = r.fields;
 	test('the honesty floor is required: code, project, category, likelihood, impact, owner, evidence, status', () => {
-		assert.deepEqual([...r.schema.required].sort(),
+		assert.deepEqual([...requiredOf(r)].sort(),
 			['category', 'code', 'evidence', 'impact', 'likelihood', 'name', 'owner', 'project', 'status']);
 	});
 	test('`unassessed` is a VALUE on both scales — "we looked and the sources do not support a number" is a finding, not a blank', () => {
@@ -534,12 +572,12 @@ describe('risks — what could go wrong, carried with an owner', () => {
 		assert.ok(p.impact.enum.includes('unassessed'));
 	});
 	test('a risk is retired by a gate — `gate` points at activities and mirrors back as retires_risks', () => {
-		assert.equal(p.gate['x-reference'], 'activities');
-		assert.equal(p.gate['x-inverse'].field, 'retires_risks');
+		assert.equal(p.gate.type, 'activities');
+		assert.equal(mirrorOf('risks', 'gate', 'activities')?.name, 'retires_risks');
 	});
 	test('the owner mirror is what makes "what does this person carry" one filter', () => {
-		assert.equal(p.owner['x-reference'], 'users');
-		assert.equal(p.owner['x-inverse'].field, 'risks');
+		assert.equal(p.owner.type, 'users');
+		assert.equal(mirrorOf('risks', 'owner', 'users')?.name, 'risks');
 	});
 	test('the guard refuses `closed` with nothing quotable behind it', () => {
 		const base = { code: 'rk-01', name: 'x', project: 'projects/p', category: 'commercial', likelihood: 'high', impact: 'high', owner: 'users/dana-oren', evidence: 'a review', status: 'closed' };
@@ -557,14 +595,14 @@ describe('risks — what could go wrong, carried with an owner', () => {
 // ── agents are users too, and every agent has a babysitter ─────────────────────────────────────
 describe('users — the agent fold', () => {
 	const u = load('users/collections/users.collection.yaml');
-	const p = u.schema.properties;
+	const p = u.fields;
 	test('kind is human|agent and defaults to human, so a plain person record needs no ceremony', () => {
 		assert.deepEqual(p.kind.enum, ['human', 'agent']);
 		assert.equal(p.kind.default, 'human');
 	});
 	test('human_owner points back at users and mirrors as owned_agents', () => {
-		assert.equal(p.human_owner['x-reference'], 'users');
-		assert.equal(p.human_owner['x-inverse'].field, 'owned_agents');
+		assert.equal(p.human_owner.type, 'users');
+		assert.equal(mirrorOf('users', 'human_owner', 'users')?.name, 'owned_agents');
 	});
 	test('an agent with no owner is unsupervised automation — refused', () => {
 		assert.equal(userViolationsOf('helper', { name: 'helper', kind: 'agent' }).length, 1);
@@ -579,5 +617,52 @@ describe('users — the agent fold', () => {
 	test('a human carrying agent-only fields is a modelling mistake, not a superpower', () => {
 		assert.equal(userViolationsOf('dana-oren', { name: 'Dana', human_owner: 'users/x' }).length, 1);
 		assert.equal(userViolationsOf('dana-oren', { name: 'Dana', agent: 'agents/helper' }).length, 1);
+	});
+});
+
+// ── `slug` and `code` — one field name used to mean two things ───────────────────────────────────
+// `activities.code` (`a-01`) and `risks.code` (`rk-01`) are identifiers a room says out loud and reads
+// in ORDER — codes, required. On `tasks`, `decisions`, `goals` and `deliverables` the field existed
+// for one reason: a name in any script has to produce a typeable id, because the engine's `slug`
+// filter returns a hash when a value has no latin characters. That is a slug, optional, and the id
+// prefers it and falls back to the name.
+describe('slug and code — a latin handle is not a plan code', () => {
+	const SLUGGED = ['tasks', 'decisions', 'goals', 'deliverables'];
+	const CODED = ['activities', 'risks'];
+	const desc = (c) => load(`${OWNER.get(c)}/collections/${c}.collection.yaml`);
+
+	test('the four latin-handle collections carry an OPTIONAL `slug` and no `code`', () => {
+		for (const c of SLUGGED) {
+			const d = desc(c);
+			assert.ok(d.fields.slug, `${c} has no slug`);
+			assert.equal(d.fields.code, undefined, `${c} still has a code`);
+			assert.ok(!requiredOf(d).includes('slug'), `${c}.slug must be OPTIONAL — the whole point of the ordered id template`);
+			assert.equal(d.fields.slug.pattern, '^[a-z0-9][a-z0-9-]*$');
+		}
+	});
+
+	test('`activities` and `risks` KEEP their codes, required', () => {
+		// ⚠ The distinction is the point, so it is asserted rather than assumed. A later sweep that
+		// "tidies" these into slugs would be undoing a deliberate decision.
+		for (const c of CODED) {
+			const d = desc(c);
+			assert.ok(d.fields.code, `${c} lost its code`);
+			assert.equal(d.fields.slug, undefined, `${c} must not have a slug`);
+			assert.ok(requiredOf(d).includes('code'), `${c}.code must stay required`);
+		}
+	});
+
+	test('every ids.from is an ORDERED LIST whose second arm is the name', () => {
+		for (const c of SLUGGED) {
+			const from = desc(c).ids.from;
+			assert.ok(Array.isArray(from), `${c}.ids.from must be a list`);
+			assert.equal(from.length, 2, `${c} needs exactly the slug arm and the name arm`);
+			assert.match(from[0], /\{\{\s*slug\s*\}\}/, `${c}: the first arm must use the slug FIELD`);
+			assert.match(from[1], /\{\{\s*name\s*\|\s*slug\s*\}\}/, `${c}: the second arm must be the name through the slug FILTER`);
+			// The two arms must agree on everything except the final segment, or an id would move
+			// depending on whether a record happened to carry a slug.
+			const shape = (t) => t.replace(/\{\{\s*slug\s*\}\}/, 'X').replace(/\{\{\s*name\s*\|\s*slug\s*\}\}/, 'X');
+			assert.equal(shape(from[0]), shape(from[1]), `${c}: the two arms produce differently shaped ids`);
+		}
 	});
 });

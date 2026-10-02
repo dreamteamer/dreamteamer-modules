@@ -13,10 +13,7 @@ npx dreamteamer compile
 | the plan, its views (`/plan/by-lane`, `/plan/by-person`, `/plan/gates`, the gantt) and the plan guard | **tasks** hangs small commitments off a project or an activity · **contacts** names who accepts a deliverable, owns an outside gate or made an outside decision · **companies** says whose project or team it is |
 
 Chain the plan guard into your workspace's `check` script (`npx dt-setup setup` offers to):
-`node node_modules/@dreamteamer/projects/bin/check-records.mjs`. Two one-off migrations ship for
-workspaces holding records in an earlier shape: `bin/migrate-plan.mjs` turns a free-text
-`activities.phase` into `phases` records, and `bin/migrate-code-to-slug.mjs` renames `code` to `slug`
-on decisions, goals, deliverables and tasks.
+`node node_modules/@dreamteamer/projects/bin/check-records.mjs`.
 
 ## what a descriptor cannot say
 
