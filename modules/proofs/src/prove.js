@@ -1,15 +1,14 @@
 // `dt prove` — a proof declares behaviour this package judges, the way a command-binding declares
-// gates the engine evaluates. This module owns the closed vocabulary of a proof source, the ONE
+// gates the engine evaluates. This module owns the closed vocabulary of a proof source, the one
 // enumeration of the artifacts a proof may be about, the runner, the ledger and the read surfaces.
 //
-// WHY VALIDATION LIVES HERE AND IS CALLED BY COMPILE (through this extension's `analyze`). A proof is uniquely expensive to get wrong,
-// because both directions of the mistake are silent. `about: skills/greter` names nothing, so the
-// proof proves nothing and reports success. `where: { statuz: { _eq: open } }` narrows to zero rows
-// (a non-operator/unknown key fails CLOSED in `filter.js`, by design), so a `count: { _eq: 0 }`
-// expectation passes forever and a `_gte: 1` one fails forever — in both cases for a reason no
-// output names. So compile refuses a proof it cannot interpret, on exactly the rule the ui-view and
-// command-binding filter blocks already follow: the engine validates a value iff the engine
-// INTERPRETS it.
+// Validation lives here and compile calls it (through this extension's `analyze`), because both
+// directions of a mistake in a proof are silent. `about: skills/greter` names nothing, so the proof
+// proves nothing and reports success. `where: { statuz: { _eq: open } }` narrows to zero rows (an
+// unknown key fails closed in the engine's filter), so a `count: { _eq: 0 }` expectation passes
+// forever and a `_gte: 1` one fails forever, for a reason no output names. So compile refuses a proof
+// it cannot interpret, on the rule ui-view and command-binding filters follow: a value is validated
+// iff it is interpreted.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -21,12 +20,8 @@ import { createWorktree, removeWorktree } from './sandbox.js';
 export const PROOF_KINDS = ['gate', 'live'];
 
 /**
- * The verdict of a proof, as a process exit code — a CONTRACT, because the point of `dt prove` is
- * that a script can branch on it without parsing prose.
- *
- * `USAGE` is here for completeness and is deliberately NOT reachable from any proof STATE: "you
- * typed something that is gone" is decided before a proof is selected, and every retired verb
- * already answers 2. `exitFor` is the state → code map.
+ * The verdict of a proof, as a process exit code — a contract, so a script can branch on it without
+ * parsing prose. `USAGE` is not reachable from any proof state; `exitFor` is the state → code map.
  */
 export const EXIT = { PASS: 0, FAIL: 1, USAGE: 2, UNAVAILABLE: 3, NO_FIXTURE: 4, PENDING: 5, VACUOUS: 6 };
 
@@ -35,16 +30,13 @@ export const EXIT = { PASS: 0, FAIL: 1, USAGE: 2, UNAVAILABLE: 3, NO_FIXTURE: 4,
 export const LEDGER_CAP = 50;
 
 /**
- * ⚠ THE DOT IS LOAD-BEARING, and it is the design bug the spike found. `.dreamteamer/proofs/` is a
- * KIND folder (this package contributes it), and compile wipes every kind folder on every run — so a ledger written there is destroyed by the next compile,
- * silently, with no error. A dot-prefixed sibling is UNNAMEABLE by that loop (it matches bare KINDS
- * entries) and invisible to every source enumeration (they all skip dotfiles), and it is already
- * gitignored, because `.dreamteamer/` is the first block of the ignore file `init` writes.
+ * The dot matters. `.dreamteamer/proofs/` is a kind folder (this package contributes it), and compile
+ * wipes every kind folder on every run, so a ledger there would be destroyed by the next compile. A
+ * dot-prefixed sibling is never named by that loop, is skipped by every source enumeration, and is
+ * gitignored with the rest of `.dreamteamer/`.
  *
- * The accepted cost, stated rather than discovered: `rm -rf .dreamteamer && dt compile` — the folk
- * recovery for a stale runtime — takes the ledger with it. No engine code does that, and the
- * consequence is RE-PROVING, not data loss: the ledger is per-machine evidence, and what a proof
- * asserts lives in the committed source.
+ * `rm -rf .dreamteamer` takes the ledger with it. The consequence is re-proving, not data loss: the
+ * ledger is per-machine evidence, and what a proof asserts lives in the committed source.
  */
 export const LEDGER_DIR = '.proofs';
 
@@ -52,16 +44,15 @@ export const LEDGER_DIR = '.proofs';
  * EVERY artifact reference this workspace compiles, per kind — `skills/<id>`, `commands/<id>`,
  * `command-bindings/<id>` and `<module-id>/bin/<file>`.
  *
- * ⚠ ONE function, three callers, on purpose: compile resolves `about` against it, the coverage line
- * takes its denominators from it, and `prove --missing` lists what it holds that no proof names.
- * Three copies of "what counts as an artifact" is three answers to "is this covered".
+ * One function, three callers: compile resolves `about` against it, the coverage line takes its
+ * denominators from it, and `prove --missing` lists what it holds that no proof names.
  *
  * `source` is either what compile has at hand mid-run — the `entries` Map (or an object carrying
  * one) — or a Store, which is what a CLI-time caller has. The two agree by construction: a Store
  * reads the same staged bytes compile wrote, and a module record carries the same `bin` list
  * compile projected onto it.
  *
- * @param {Map|{entries: Map}|import('./store.js').Store} source
+ * @param {Map|{entries: Map}|object} source   compile entries, or the engine's Store
  * @returns {{skills: string[], commands: string[], bindings: string[], scripts: string[], all: Set<string>}}
  */
 export function artifactRefs(source) {
@@ -84,8 +75,7 @@ function fromEntries(entries) {
 	const out = blank();
 	for (const [rt, e] of entries) {
 		let m;
-		// ⚠ `skills/<id>/SKILL.md` ONLY. A skill is a FOLDER and its `references/*.md` are entries
-		// too, so a naive `skills/` prefix count reported twelve skills for the one the engine ships.
+		// `skills/<id>/SKILL.md` only: a skill is a folder, and its `references/*.md` are entries too
 		if ((m = /^skills\/([^/]+)\/SKILL\.md$/.exec(rt))) out.skills.push(`skills/${m[1]}`);
 		else if ((m = /^commands\/(.+)\.command\.md$/.exec(rt))) out.commands.push(`commands/${m[1]}`);
 		else if ((m = /^command-bindings\/(.+)\.command-binding\.yaml$/.exec(rt))) out.bindings.push(`command-bindings/${m[1]}`);
@@ -118,30 +108,27 @@ function fromStore(store) {
  *  what the nudge names, so the reader never has to derive a path from a rule. */
 export function proofPathFor(artifactRef, moduleRoot) {
 	const id = path.basename(artifactRef).replace(/\.[^.]+$/, '');
-	// `.` is the ROOT layout's module root (a workspace with no `workspace-module`): its sources sit
-	// at the workspace root, so the path a reader types has no prefix at all — `./proofs/x` would be
-	// a path they have to mentally normalize before using it.
+	// `.` is the root layout's module root (a workspace with no `workspace-module`): its sources sit
+	// at the workspace root, so the path has no prefix at all
 	return moduleRoot && moduleRoot !== '.' ? `${moduleRoot}/proofs/${id}.proof.yaml` : `proofs/${id}.proof.yaml`;
 }
 
 // ── validation ──────────────────────────────────────────────────────────────────────────────────
 
-/** Filter operators whose OPERAND is a literal value of the field, and so can be checked against a
+/** Filter operators whose operand is a literal value of the field, and so can be checked against a
  *  closed enum. `_contains`/`_starts_with` take a fragment, not a value; `_null`/`_empty` take a
- *  boolean; a range operator on an enum field is meaningless but not a typo. */
+ *  boolean; range operators on an enum field are meaningless but not a typo. */
 const ENUM_CHECKED = new Set(['_eq', '_neq', '_in', '_nin']);
 
-/** `count`'s OWN operator set, and the reason it needs one: `_delta` exists on no filter (it is
- *  after-minus-before, which only a proof has two sides of), and the ordering operators that DO
- *  overlap are a strict subset of the filter set — `_contains` on a record count is nonsense. So
- *  neither `KNOWN_OPERATORS` nor `unknownOperators` can judge a count map: run through the filter
- *  walker, `_delta` reads as a typo and `_gtee` reads as fine, which is exactly backwards. */
+/** The operators `count` accepts. `_delta` exists on no filter (it is after-minus-before, which only
+ *  a proof has two sides of), and the ordering operators that overlap are a strict subset of the
+ *  filter set — `_contains` on a record count is nonsense. So the engine's filter walker cannot judge
+ *  a count map: it would read `_delta` as a typo and `_gtee` as fine. */
 const COUNT_OPERATORS = ['_eq', '_neq', '_gt', '_gte', '_lt', '_lte', '_delta'];
 
-/** The literal values an operator's operand stands for. ⚠ `_in`/`_nin` accept a COMMA STRING —
- *  `filter.js`'s `toArray` (:100) splits a non-array operand — so `_in: 'open,done'` is a legal
- *  two-value filter, and reading it as one literal reported a false enum violation. Every other
- *  operator takes its operand whole: a comma in an `_eq` is part of the value. */
+/** The literal values an operand stands for. `_in`/`_nin` accept a comma string — the engine's
+ *  filter splits a non-array operand — so `_in: 'open,done'` is a two-value filter. Every other
+ *  op takes its operand whole: a comma in an `_eq` is part of the value. */
 function literalsFor(op, operand) {
 	if (op !== '_in' && op !== '_nin') return [operand];
 	return Array.isArray(operand) ? operand : String(operand).split(',').map((x) => x.trim());
@@ -151,8 +138,8 @@ function literalsFor(op, operand) {
  * Every way a proof can be wrong, as printable lines — empty means valid.
  *
  * Called by compile (which prefixes each line with the proof's runtime path and fails) and unit-
- * tested in isolation. Deliberately ORDERED and short-circuiting: one mistake produces ONE error,
- * because six errors for one typo sends the reader to the wrong line.
+ * tested in isolation. Ordered and short-circuiting: one mistake produces one error, so the reader
+ * is sent to the right line.
  *
  * @param {object} proof                     the parsed proof source
  * @param {object} ctx
@@ -208,10 +195,9 @@ export function validateProofShape(proof, ctx) {
 		errors.push(`requires.env "${name}" is not declared — add it to dreamteamer.vars or a module's dreamteamer.env`);
 	}
 
-	// ---- unknown filter operators, from every `where` in the proof at once. ONE line, sorted,
-	// reusing `filter.js`'s own walker so the engine can never disagree with itself about which
-	// operators exist. `count:` is deliberately NOT walked — `_delta` is a proof operator, not a
-	// filter one, and this walker would report it as a typo.
+	// ---- unknown filter operators, from every `where` in the proof at once: one sorted line, from
+	// the engine's own walker, so validator and filter agree on which operators exist. `count:` is
+	// not walked — `_delta` belongs to proofs, not to filters, and the walker would call it a typo.
 	const badOps = new Set();
 	for (const where of everyWhere(p)) for (const op of dt.unknownOperators(where)) badOps.add(op);
 	if (badOps.size) errors.push(`unknown filter operator(s) ${[...badOps].sort().join(', ')}`);
@@ -264,14 +250,14 @@ function givenErrors(given, descriptors) {
 	const d = descriptors.get(collection);
 	if (!d) return [`given.collection "${collection}" is not a collection`];
 
-	// R8/§13.1: exactly ONE source for the record — a live filter over the workspace, or a checked-in
-	// fixture. Both is ambiguous; neither leaves `{record}` unbound.
+	// exactly one source for the record — a live filter over the workspace, or a checked-in fixture.
+	// Both is ambiguous; neither leaves `{record}` unbound.
 	const hasWhere = given?.where !== undefined;
 	const hasFixture = given?.fixture !== undefined && given.fixture !== false;
 	if (hasWhere === hasFixture) errors.push('given needs exactly one of where or fixture');
 
-	// R14 — a fixture folder holds RECORDS; `pick` is what names the one this proof runs against.
-	// Without it there is nothing to bind, and the proof would pick arbitrarily.
+	// a fixture folder holds records; `pick` names the one this proof runs against. Without it there
+	// is nothing to bind, and the proof would pick arbitrarily.
 	if (hasFixture && given?.pick === undefined) errors.push('a fixture needs pick: <id> naming one of its records');
 
 	if (given?.pick === 'any') {
@@ -283,15 +269,9 @@ function givenErrors(given, descriptors) {
 	}
 
 	if (hasWhere && given.where && typeof given.where === 'object') {
-		// ⚠ I1 — THE R45 EXEMPTION IS FOR EXPECTATIONS, AND NOTHING SUBSTITUTES HERE. `pickFixture`
-		// hands `given.where` to `matchesFilter` RAW, and nothing ever could render it: the given is
-		// what PICKS the record, so at the moment this filter runs there is no record to bind to. The
-		// exemption (which exists so a judge-rendered literal is not compared to a closed enum) let
-		// the literal through compile, and the proof then answered NO-FIXTURE forever — which reads as
-		// a fact about the workspace's data rather than about the proof.
-		//
-		// The refusal REPLACES the ordinary checks rather than joining them: one mistake, one error,
-		// and a `{record}` compared to an enum would otherwise produce a second line about the brace.
+		// nothing substitutes in `given.where`: the given is what picks the record, so when this filter
+		// runs there is no record to bind to, and a `{record}` here would answer NO-FIXTURE forever.
+		// The refusal replaces the ordinary checks rather than joining them: one mistake, one error.
 		if (hasSubstitutable(given.where)) errors.push('given.where cannot use {record} — the given is what PICKS the record');
 		else errors.push(...whereErrors(given.where, collection, descriptors));
 	}
@@ -299,22 +279,12 @@ function givenErrors(given, descriptors) {
 }
 
 /**
- * ⚠ R48 — THE ONE ANSWER TO "WHAT SHAPE IS THIS ROW", and the whole reason it is exported.
+ * The one answer to "what shape is this row", exported so compile and the judge both call it. A row
+ * judged as the wrong form produces zero verdict lines, and `every(ok)` over an empty list is true —
+ * so the two sides must agree, and a row whose keys span two forms is refused by compile.
  *
- * Until this existed, compile recognised a form by ONE key-subset (`'record' in row && 'where' in
- * row`) and the judge dispatched on ANOTHER (`'record' in e`) — and every gap between the two was a
- * SILENT GREEN, because a row judged as the wrong form produces zero verdict lines and
- * `verdicts.every(ok)` is vacuously true over an empty list. Measured: `{record: '{record}', path:
- * 'nope.txt', exists: true}` compiled as a path row, was judged as a record row, and answered exit 0
- * `PASS` on a file that never existed. `{record, where, count}` was the same seam upside down: the
- * count's operators and integers were validated line by line and then never read.
- *
- * So there is one function, both sides call it, and a row whose keys span two forms is refused by
- * compile rather than resolved in favour of whichever reader asked first.
- *
- * ⚠ `where` IS NOT A DISCRIMINATOR. It belongs to two forms, so it can never say which one a row is;
- * `step` is optional on the output form (it defaults to the last run step), so THAT form is
- * recognised by what it ASSERTS.
+ * `where` is not a discriminator: it belongs to two forms. `step` is optional on the output form (it
+ * defaults to the last run step), so that form is recognised by what it asserts.
  *
  * @param {object} row  one entry of `expect[]`
  * @returns {'collection'|'record'|'step'|'path'|null}
@@ -337,8 +307,8 @@ const FORM_OF_KEY = {
 	path: 'path', exists: 'path',
 };
 
-/** Every form this row's keys reach into — one entry for a well-formed row, two or more for the
- *  mixture R48 refuses. */
+/** Every form this row's keys reach into — one entry for a well-formed row, two or more for a
+ *  mixture compile refuses. */
 function formsIn(row) {
 	const out = new Set();
 	for (const k of Object.keys(row ?? {})) if (FORM_OF_KEY[k]) out.add(FORM_OF_KEY[k]);
@@ -349,9 +319,8 @@ function expectErrors(expect, given, descriptors, stepCount = 0) {
 	const errors = [];
 	for (const [i, e] of expect.entries()) {
 		const row = e ?? {};
-		// ⚠ R48 — THE MIXTURE IS REFUSED BEFORE ANYTHING ELSE IS SAID ABOUT THE ROW. A row spanning
-		// two forms has no single meaning to validate against, and the errors the per-form checks
-		// would then produce are about a shape the author never meant to write.
+		// a mixture is refused before anything else is said about the row: it has no single meaning
+		// to validate against
 		const forms = formsIn(row);
 		if (forms.length > 1) {
 			errors.push(`expect[${i}] mixes two forms — a row is one of collection+where+count · record+where · step · path+exists`);
@@ -368,68 +337,38 @@ function expectErrors(expect, given, descriptors, stepCount = 0) {
 			const scope = form === 'collection' ? String(row.collection) : String(given?.collection ?? '');
 			if (descriptors.has(scope)) errors.push(...whereErrors(row.where, scope, descriptors));
 		}
-		// ⚠ I4 — R14, WIDENED TO EVERY `where`. The guard fired only for a `record:` row, so a
-		// COLLECTION row whose filter carries `{record}` on a proof with no `given` compiled clean —
-		// and `substituteWhere` throws at run time, which is a FAIL row and a red `dt prove --list --strict`
-		// for a proof that could never have run at all.
+		// any `where` carrying `{record}` needs a `given` to bind it; without one `substituteWhere`
+		// would throw at run time
 		if (given === undefined && hasSubstitutable(row.where)) {
 			errors.push('an expectation uses {record} but this proof declares no given');
 		}
-		// M7 — a `step:` past the end resolved to `undefined` and was judged: the line read
-		// `exit undefined = 0 ✖`, a FAIL naming an exit code no step ever produced.
+		// a `step:` past the end would be judged against an exit code no step produced
 		if (form === 'step' && Number.isInteger(row.step) && row.step > stepCount) {
 			errors.push(`expect[${i}] step ${row.step} is past the last step (${stepCount})`);
 		}
 		const hasRecord = form === 'record';
-		// R14 — `{record}` is bound by `given`. Without one, the substitution has nothing to render
-		// and the proof cannot run; refusing at compile beats an unresolved brace at run time.
+		// `{record}` is bound by `given`; without one the proof cannot run, so compile refuses it
 		if (hasRecord && given === undefined) errors.push('a record expectation needs a given — nothing binds {record}');
-		// ⚠ R44 — `record:` IS A SELECTOR WITH EXACTLY ONE LEGAL VALUE, and nothing read it. The judge
-		// takes the picked record straight off `given` and never looks at `e.record` at all, so
-		// `record: '{record.owner}'` or `record: 'notes/b'` compiled clean and was then judged against
-		// a DIFFERENT record than the one it names — a confident verdict about the wrong thing. There
-		// is no second record to target (the `given` picks one), so the value is a constant, and a
-		// constant that is written wrong must be refused rather than ignored.
+		// `record:` has exactly one legal value: the judge takes the picked record off `given` and
+		// never reads `e.record`, so any other value would be judged against a record it does not name
 		if (hasRecord && String(row.record) !== '{record}') {
 			errors.push('a record expectation targets {record} — the picked record is its only target');
 		}
-		// MINOR 9 — AN EXPECTATION THAT ASSERTS NOTHING IS THE SILENT GREEN, one layer below the
-		// vacuous proof. A `record:` entry with an empty `where` produces ZERO verdict lines, so
-		// `verdicts.every(ok)` is vacuously true and the proof PASSES having measured nothing at all.
-		// ⚠ Scoped to the forms where the `where` IS the assertion: on a collection entry `count:`
-		// carries it, and `{collection, where: {}, count: {_delta: 1}}` — "one more record anywhere in
-		// this collection" — is a correct and common proof, so refusing it would be a false refusal.
-		// ⚠ R26 — A BARE `where:` IN YAML PARSES TO **null**, NOT TO `{}`. The first version of this
-		// guard tested `row.where !== null` to keep `Object.keys(null)` from throwing, which let
-		// through the one spelling an author is most likely to type. Measured: the proof compiled
-		// clean, judged ZERO conditions, and answered `PASS` — the exact silent green this rule exists
-		// to close, reached by the shortest possible route.
-		// ⚠ THE GUARD TURNS ON THE SHAPE, not on two enumerated wrong values. `where: done` produces
-		// zero verdict lines exactly like `where:` and `where: {}` do — `Object.entries('done')` in
-		// the judge yields nothing — so it passed having measured nothing, by the third spelling.
+		// a `record:` entry must assert something: an empty `where` produces zero verdict lines, and
+		// the proof would pass having measured nothing. A bare `where:` parses to null and `where: done`
+		// to a string, so the guard turns on the shape. On a collection entry `count:` carries the
+		// assertion, so `{collection, where: {}, count: {_delta: 1}}` stays legal.
 		if (hasRecord && (row.where === null || typeof row.where !== 'object' || !Object.keys(row.where).length)) {
 			errors.push(`expect[${i}] where must name at least one condition`);
 		}
-		// ⚠ ONLY THE COLLECTION FORM HAS A COUNT. It used to be checked wherever it appeared, which is
-		// how `{record, where, count}` got a fully validated count that the judge never read (I3) —
-		// the count is now either this row's own assertion or part of a refused mixture.
+		// only the collection form has a count; anywhere else it is part of a refused mixture
 		if (form === 'collection') errors.push(...countErrors(row.count, i));
-		// ⚠ R57 — THE LAST SILENT GREEN OF THE CLASS, and it is the spelling every author reaches for
-		// first. `stdout` and `stdout_json` are FILTER MAPS, and the judge gates on
-		// `typeof e.stdout === 'object'` — so `{step: 1, stdout: 'hello'}` against
-		// `steps: [{run: 'echo goodbye'}]` compiled clean, produced ZERO verdict lines, and answered
-		// exit 0 PASS having measured nothing. Compile had no shape check here at all: the two keys
-		// were read only as DISCRIMINATORS (is this a step row?) and never as values. A scalar, a
-		// number, an array and a bare `stdout:` (which YAML parses to null) are all the same defect,
-		// so the guard turns on the SHAPE rather than on enumerated wrong values — the R26 lesson.
+		// `stdout` and `stdout_json` are filter maps, and the judge reads only an object — a scalar,
+		// an array or a bare `stdout:` (null) would produce zero verdict lines and pass
 		if (form === 'step') {
 			if ('stdout' in row && !isPlainMap(row.stdout)) errors.push(`expect[${i}] stdout must be a filter object, e.g. { _contains: "…" }`);
 			if ('stdout_json' in row && !isPlainMap(row.stdout_json)) errors.push(`expect[${i}] stdout_json must be a map of dotted paths to filter objects`);
-			// ⚠ AND AN EMPTY MAP IS THE SAME DEFECT WEARING THE RIGHT SHAPE. `stdout: {}` passes every
-			// check above, reaches the judge, and `matchesFilter` answers TRUE for a filter with no
-			// conditions — a verdict line that always ✔. The shape guard catches the author who typed
-			// the wrong KIND of thing; this catches the one who typed the right kind and forgot to
-			// say anything in it. Same rule `count: {}` already gets, one form over.
+			// an empty map matches everything, so it asserts nothing — the same rule `count: {}` gets
 			if (isPlainMap(row.stdout) && !Object.keys(row.stdout).length) errors.push(`expect[${i}] stdout must name at least one condition`);
 			if (isPlainMap(row.stdout_json) && !Object.keys(row.stdout_json).length) errors.push(`expect[${i}] stdout_json must name at least one path`);
 		}
@@ -441,9 +380,9 @@ function expectErrors(expect, given, descriptors, stepCount = 0) {
  *  test three separate guards need, because every one of them is a key whose VALUE is a filter. */
 function isPlainMap(v) { return v !== null && typeof v === 'object' && !Array.isArray(v); }
 
-/** R11 — a count map's operators and operands. Its own closed set (see COUNT_OPERATORS), and every
- *  operand an INTEGER: a count is a number of records, so `_gte: 'one'` and `_eq: 1.5` are both
- *  filters that can never be satisfied, silently. A bare scalar is the `_eq` it stands for. */
+/** A count map's operators and operands. Its own closed set (see COUNT_OPERATORS), and every
+ *  operand an integer: a count is a number of records, so `_gte: 'one'` and `_eq: 1.5` could never
+ *  be satisfied. A bare scalar is the `_eq` it stands for. */
 function countErrors(count, index) {
 	const errors = [];
 	const isMap = isPlainMap(count);
@@ -463,8 +402,8 @@ function countErrors(count, index) {
 /**
  * A `where` checked against the descriptor of the collection it filters — ONE hop deep.
  *
- * ⚠ The trap this exists for (spike §3c): a non-operator key is a one-hop REFERENCE traversal, not
- * a field-vs-field comparison. `{a: {b: …}}` means "resolve `a` as a `<collection>/<id>` ref and
+ * A key that does not start with `_` is a one-hop reference traversal, not a field-vs-field
+ * comparison. `{a: {b: …}}` means "resolve `a` as a `<collection>/<id>` ref and
  * test the target's `b`" — and when `a` is not a reference field, `matchesFilter` narrows to false
  * with no warning at all. So a nested key under a non-reference field is refused BY NAME, with what
  * a nested key actually means, rather than left to fail closed at run time.
@@ -478,7 +417,7 @@ function whereErrors(where, collection, descriptors, errors = []) {
 			}
 			continue;
 		}
-		if (key.startsWith('_')) continue; // an operator at filter level — `unknownOperators` owns it
+		if (key.startsWith('_')) continue; // a filter-level `_` key — `unknownOperators` owns it
 		const prop = props[key];
 		if (!prop) {
 			errors.push(`where names "${key}", which ${collection} has no field for`);
@@ -498,12 +437,9 @@ function whereErrors(where, collection, descriptors, errors = []) {
 			errors.push(`where "${key}" is not a reference field — a nested key hops a reference, it does not compare two fields`);
 			continue;
 		}
-		// ⚠ ONE HOP, AND A SECOND IS REFUSED. `matchesFilter` resolves ONE reference and evaluates the
-		// sub-condition against the target record; a THIRD level is treated as another ref traversal,
-		// on a value that is by then an ordinary field — so it narrows to false with no warning at
-		// all. That is the silent-zero-rows failure this whole validator exists to close, so the
-		// refusal is by name and cites the dotted path. (A proof that genuinely needs two hops writes
-		// its `expect` against the far collection instead.)
+		// one hop, and a second is refused by name: `matchesFilter` resolves one reference, and a
+		// third level would narrow to false with no warning. A proof that needs two hops writes its
+		// `expect` against the far collection instead.
 		for (const hop of nested) {
 			const sub = cond[hop];
 			if (sub === null || typeof sub !== 'object' || Array.isArray(sub)) continue;
@@ -530,23 +466,16 @@ function whereErrors(where, collection, descriptors, errors = []) {
 	return errors;
 }
 
-/** §13.2 — a literal compared against a CLOSED enum must be one of its values. A typo here is the
- *  purest form of the silent failure: the filter is well-formed, the operator is known, and the
- *  result is zero rows forever. */
+/** A literal compared against a closed enum must be one of its values — otherwise the filter is
+ *  well-formed and returns zero rows forever. */
 function enumErrors(errors, field, prop, values) {
 	const options = prop?.enum ?? prop?.items?.enum;
 	if (!Array.isArray(options) || !options.length) return;
-	// ⚠ `looseEq`, NOT `includes`. filter.js compares an operand to a field value with
-	// `String(v) === String(o)`, so on a numeric enum the YAML scalar `5` and the string `'5'` are
-	// ONE filter at run time — and a strict `includes` here refused a proof that works. A false
-	// refusal is worse than the silent pass this check exists to prevent: the author deletes a
-	// correct line to make compile go green. The option plays the record-value role, as at run time.
+	// `looseEq`, not `includes`: the filter compares as strings, so on a numeric enum `5` and `'5'`
+	// are one filter at run time. The option plays the record-value role, as at run time.
 	for (const v of values) {
 		if (v == null || options.some((o) => dt.looseEq(o, v))) continue;
-		// ⚠ R45 — A `{record…}` LITERAL IS A RUNTIME VALUE, and compile cannot know what it will be.
-		// `where: { status: { _eq: '{record.status}' } }` is a legitimate filter — the judge
-		// substitutes it against the picked record before evaluating — and comparing the BRACE to the
-		// enum's options refused a correct proof for a value that never reaches the filter.
+		// a `{record…}` literal is a runtime value: the judge substitutes it before evaluating
 		if (isSubstitutable(v)) continue;
 		errors.push(`where "${field}" compares "${v}", which is not one of ${field}'s options [${options.join(', ')}]`);
 	}
@@ -555,41 +484,28 @@ function enumErrors(errors, field, prop, values) {
 // ── the pure core ───────────────────────────────────────────────────────────────────────────────
 //
 // Four functions with no fs, no store and no subprocess between them: substitution, the ledger's
-// cap, the printable verdict, and the state → exit-code map. They are separable from the runner
-// because each one is a place a proof can be MISREAD, and a misread proof reports a verdict about
-// something other than what its author wrote.
+// cap, the printable verdict, and the state → exit-code map.
 
 /**
  * Render a proof's `{record}` and `{record.<field>}` braces against the picked record.
  *
- * ⚠ IT RENDERS ONLY WHAT IT OWNS, AND PASSES EVERYTHING ELSE THROUGH (R17). A step is a SHELL
- * STRING, and the shell owns braces too: refusing every unrecognised `{…}` was measured to kill
- * `awk '{print $1}'`, `sed -n '1,3{p}'`, `jq '{a: .b}'` and `mkdir -p x/{a,b}` — four correct steps,
- * for a check whose whole purpose was to catch a typo. A net that refuses correct proofs teaches the
- * author to delete correct lines, which is strictly worse than the typo. So the net moved to compile
- * time and became advisory: `stepWarnings` names an identifier-shaped brace nobody substitutes, and
- * compile prints it as a warning.
+ * It renders only what it owns and passes everything else through. A step is a shell string, and the
+ * shell owns braces too (`awk '{print $1}'`, `sed -n '1,3{p}'`, `jq '{a: .b}'`, `mkdir -p x/{a,b}`),
+ * so an unrecognised `{…}` is left alone; `stepWarnings` names an identifier-shaped one at compile.
  *
- * `${…}` is untouched for the same reason it always was — that bracket belongs to the resolver
- * (`${env:FILES_FOLDER}` in a `path:` expectation) and to the shell (`${HOME}` in a `run:` step).
+ * `${…}` is untouched — it belongs to the resolver (`${env:FILES_FOLDER}` in a `path:` expectation)
+ * and to the shell (`${HOME}` in a `run:` step).
  *
  * What still THROWS is the one case where passing through would be silently wrong: `{record.<f>}`
  * naming a field the picked record does not carry would otherwise reach the shell as the string
  * "undefined", and `{record}` with no record bound has nothing to be.
  *
- * ⚠ STRICT MODE IS FOR THE VALUES THE ENGINE CONSUMES, NOT THE SHELL — a `path:` expectation and
- * every string literal inside an expectation's `where` (R45, `substituteWhere`). The pass-through
- * above is right for a `run:` string precisely because the shell owns braces too; it is exactly
- * wrong for a path, where nothing downstream would ever notice the typo: `path: "{recrod}/out.txt"`
- * becomes a literal directory that does not exist, and the expectation answers `exists false` — a
- * FAIL naming the wrong cause. A filter literal fails the same way, one layer quieter: it becomes a
- * value the field never equals. So those call sites pass `{ strict: true }` and an identifier-shaped
- * brace nobody substitutes THROWS. The token test is the same `BRACE_TOKEN` the warning net uses,
- * `$`-exemption included: `${env:FILES_FOLDER}` is the resolver's, and a `path:` expectation naming
- * a machine-dependent folder is the form's whole point.
+ * Strict mode is for the values the engine consumes rather than the shell — a `path:` expectation and
+ * every string literal inside an expectation's `where` (`substituteWhere`). There a typo like
+ * `{recrod}` would become a literal nobody notices, so an identifier-shaped brace nobody substitutes
+ * throws. The token test is the same `BRACE_TOKEN` the warning uses, `$`-exemption included.
  *
- * ⚠ `record:` IS NOT SUBSTITUTED, because it is not a template — compile refuses any value but the
- * literal `{record}` (R44), so there is nothing to render and nothing to get wrong.
+ * `record:` is not substituted: compile accepts only the literal `{record}` there.
  *
  * @param {string} text
  * @param {{record?: {ref: string, fields: object}}} ctx
@@ -618,15 +534,13 @@ export function substitute(text, ctx, options) {
  *  matches and `{print $1}` does not, which is the asymmetry that makes the net affordable. */
 const BRACE_TOKEN = /(\$?)\{([A-Za-z_][A-Za-z0-9_.-]*)\}/g;
 
-/** Does this value carry a brace `substitute` will render? Used by the VALIDATOR to leave a runtime
- *  value alone (R45), and it deliberately asks about `{record…}` only — every other brace is either
- *  the resolver's (`${…}`) or the shell's, and neither reaches a filter. */
+/** Does this value carry a brace `substitute` will render? The validator uses it to leave a runtime
+ *  value alone. It asks about `{record…}` only — every other brace is the resolver's or the shell's. */
 const isSubstitutable = (v) => typeof v === 'string' && /\{record(\.[^{}]*)?\}/.test(v);
 
-/** Does any string ANYWHERE in this filter node carry a `{record…}` brace? The same question
- *  `isSubstitutable` asks of one value, asked of a whole `where` — which is the grain both callers
- *  need: `given.where` may not carry one at all (I1), and an expectation's may only when a `given`
- *  exists to bind it (I4). Keys are never examined: a filter's keys are field names and operators. */
+/** Does any string anywhere in this filter node carry a `{record…}` brace? `given.where` may not
+ *  carry one at all, and an expectation's may only when a `given` exists to bind it. Keys are never
+ *  examined: a filter's keys are field names and operators. */
 function hasSubstitutable(node) {
 	if (typeof node === 'string') return isSubstitutable(node);
 	if (Array.isArray(node)) return node.some(hasSubstitutable);
@@ -635,23 +549,16 @@ function hasSubstitutable(node) {
 }
 
 /**
- * ⚠ R45 — A FILTER'S STRING LITERALS ARE SUBSTITUTED BEFORE THE FILTER IS EVALUATED, and until this
- * existed the canonical live proof could not work at all. `expect: [{ collection: notes, where: {
- * owner: { _eq: '{record}' } }, count: { _gte: 1 } }]` — "running this left a note owned by the
- * person I picked" — reached `matchesFilter` with the LITERAL eight characters `{record}`, matched
- * nothing, and reported a confident FAIL naming a count that was never the question. The shape is
- * the one the spec's own worked example uses, so the defect was in every proof written to the
- * documented form.
+ * A filter's string literals, substituted before the filter is evaluated — so `where: { owner: { _eq:
+ * '{record}' } }` ("a note owned by the person I picked") compares against the picked ref.
  *
  * A deep copy, never a mutation: the proof source is read once and judged twice (the pre-check and
  * the after-pass), and a `where` rewritten in place would carry the FIRST record's ref into the
  * second judgement.
  *
- * STRICT, for the same reason a `path:` is (see `substitute`): nothing downstream of a filter would
- * ever notice `{recrod}` — it becomes a literal the field never equals, and the expectation answers
- * ✖ with the wrong cause printed beside it.
+ * Strict, for the same reason a `path:` is (see `substitute`).
  *
- * ⚠ `{record}` (the REF) is stable across a run; `{record.<field>}` is not. A `_delta` snapshot is
+ * `{record}` (the ref) is stable across a run; `{record.<field>}` is not. A `_delta` snapshot is
  * taken before the steps and its after-count after them, so a `{record.<field>}` inside a `_delta`
  * where is rendered from two different values of that field and the difference means nothing. Write
  * `{record}` there, or assert the field with a `record:` expectation instead.
@@ -664,8 +571,7 @@ export function substituteWhere(where, ctx) {
 	if (Array.isArray(where)) return where.map((v) => substituteWhere(v, ctx));
 	if (where === null || typeof where !== 'object') return where;
 	const out = {};
-	// KEYS ARE FIELD NAMES AND OPERATORS — never substituted. A `{record}` on the left of a filter
-	// entry would be asking to look up a field whose name is a record reference, which is not a thing.
+	// keys are field names and operators — never substituted
 	for (const [k, v] of Object.entries(where)) out[k] = substituteWhere(v, ctx);
 	return out;
 }
@@ -674,11 +580,9 @@ export function substituteWhere(where, ctx) {
  * Every brace in this proof's steps that NOTHING substitutes — one advisory string per token, for
  * compile to print. Empty means nothing suspicious.
  *
- * ⚠ A WARNING, NEVER AN ERROR, and that is the whole design (R17). The token it flags may be
- * perfectly intentional shell — `awk '{print}'` is the worked example — so the cost of a false
- * positive has to be one line of output rather than a refused proof. And the net can only judge
- * SHAPE: a `$`-prefixed brace is exempt (the resolver's and the shell's), and a token with a space
- * in it is invisible here, which is why the commonest awk one-liner is never flagged.
+ * A warning, never an error: the token may be intentional shell (`awk '{print}'`), so a false
+ * positive costs one line of output rather than a refused proof. It judges shape only: a
+ * `$`-prefixed brace is exempt, and a token with a space in it is not flagged.
  */
 export function stepWarnings(proof) {
 	const out = [];
@@ -697,19 +601,17 @@ export function stepWarnings(proof) {
 /**
  * `rows` plus `row`, trimmed to the LAST `cap` entries — a new array, never a mutation.
  *
- * The oldest row is the one that leaves. A ledger is read for what happened recently, so trimming
- * from the other end would make the cap delete exactly the rows anyone wants.
+ * The oldest row is the one that leaves: a ledger is read for what happened recently.
  *
- * ⚠ THE `cap <= 0` GUARD IS NOT DEFENSIVE, IT IS ARITHMETIC. `slice(-0)` is `slice(0)` — the whole
- * array — so a cap of zero silently kept EVERYTHING, which is the opposite of what the number says.
+ * The `cap <= 0` guard is arithmetic: `slice(-0)` is `slice(0)`, the whole array.
  */
 export function applyCap(rows, row, cap = LEDGER_CAP) {
 	return cap <= 0 ? [] : [...rows, row].slice(-cap);
 }
 
-/** The closed glyph set (R6). An operator with no glyph prints its own NAME: the filter operator set
- *  is open enough (`_regex`, `_starts_with`, `_between`) that a glyph per member would be a second
- *  vocabulary to keep in sync with filter.js, and a symbol nobody can look up is worse than a name. */
+/** The closed glyph set. Operators with no glyph print their own name: the filter set is open
+ *  enough (`_regex`, `_starts_with`, `_between`) that a glyph per member would be a second
+ *  vocabulary to keep in sync with the engine's filter. */
 const GLYPH = {
 	_eq: '=', _neq: '≠', _gte: '≥', _gt: '>', _lte: '≤', _lt: '<',
 	_in: '∈', _nin: '∉', _nempty: 'nonempty', _empty: 'empty', _contains: 'contains',
@@ -727,10 +629,8 @@ function shown(v) {
 	return json === undefined ? String(v) : json; // `undefined` has no JSON form
 }
 
-/** The WANTED value, bare: an array renders as the list a reader would type back, and a nested
- *  CONDITION as its JSON. A one-hop reference expectation (`owner: { name: { _eq: Ada } }`) has an
- *  object where every other operator has a scalar, and `String({})` printed `[object Object]` —
- *  a verdict line naming nothing at all. */
+/** The wanted value, bare: an array renders as the list a reader would type back, and a nested
+ *  condition (a one-hop reference expectation, `owner: { name: { _eq: Ada } }`) as its JSON. */
 const wanted = (v) => {
 	if (Array.isArray(v)) return `[${v.join(', ')}]`;
 	return v !== null && typeof v === 'object' ? JSON.stringify(v) : String(v);
@@ -739,27 +639,21 @@ const wanted = (v) => {
 /**
  * One printable line for one expectation — `count 1 ≥ 1 ✔` · `status "open" ∈ [done] ✖`.
  *
- * ⚠ THE ACTUAL VALUE SITS BESIDE THE WANTED ONE, ALWAYS. A line that printed only what was wanted
- * ("expected status done ✖") sends the reader to re-run the proof by hand to learn what it actually
- * was — which is the whole cost `prove` exists to remove.
+ * The actual value always sits beside the wanted one, so nobody re-runs a proof by hand to learn
+ * what it actually was.
  *
  * `expectation` is a ONE-ENTRY `{ <field>: <condition> }` map: for a collection count that field is
- * literally `count`, and for a `record:` expectation it is the field the `where` names. A bare
- * operator map (`{ _delta: 1 }`) is a count condition, because that is the only place one appears.
+ * literally `count`, and for a `record:` expectation it is the field the `where` names. A map of
+ * `_` keys only (`{ _delta: 1 }`) is a count condition, because that is the only place one appears.
  *
- * ⚠ MORE THAN ONE ENTRY THROWS (R18). A raw `expect` entry carries `collection`, `where` and `count`
- * together, and handed here whole it rendered the FIRST key — `collection 1 = notes ✖`, a verdict
- * line about the wrong thing, marked failed, for a proof that passed. The caller narrows the entry
- * to the one condition being judged; a throw is what makes forgetting visible.
+ * More than one entry throws: a raw `expect` entry carries `collection`, `where` and `count`
+ * together, and the caller narrows it to the one condition being judged.
  *
  * The mark comes from `matchesFilter` itself, so the judgement and the rendering can never disagree
  * about whether the line passed. `_delta` is the exception: no filter has it, so it is compared here.
  *
- * ⚠ `resolve` IS NOT OPTIONAL IN PRACTICE, and leaving it out was a wrong verdict rather than a
- * missing feature. A non-operator key under a field is a ONE-HOP REFERENCE traversal, and
- * `matchesFilter` NARROWS with no resolver wired — so `record: '{record}', where: { owner: { name:
- * { _eq: Ada } } }` read ✖ forever, for a proof that held. The collection form always passed
- * `recordResolver(store)`; the record form now does too.
+ * Pass `resolve` whenever the condition may hop a reference: a non-`_` key under a field is a
+ * one-hop reference traversal, and `matchesFilter` narrows to false with no resolver wired.
  */
 export function verdictLine(expectation, actual, resolve) {
 	const entries = Object.entries(expectation ?? {});
@@ -774,8 +668,8 @@ export function verdictLine(expectation, actual, resolve) {
 	return `${field} ${shown(actual)} ${want} ${mark}`;
 }
 
-/** State → exit code. Six states, six codes, and an unknown one THROWS rather than defaulting to a
- *  plausible number — a wrong exit code is a lie a script cannot see through. */
+/** State → exit code. Six states, six codes, and an unknown one throws rather than defaulting to a
+ *  plausible number. */
 export function exitFor(state) {
 	const code = { PASS: EXIT.PASS, FAIL: EXIT.FAIL, UNAVAILABLE: EXIT.UNAVAILABLE, 'NO-FIXTURE': EXIT.NO_FIXTURE, PENDING: EXIT.PENDING, VACUOUS: EXIT.VACUOUS }[state];
 	if (code === undefined) throw new Error(`unknown proof state "${state}" — one of PASS, FAIL, UNAVAILABLE, NO-FIXTURE, PENDING, VACUOUS`);
@@ -790,16 +684,12 @@ export function exitFor(state) {
  * `list` does). The row handed to the filter is `{ ...fields, id }`, exactly as `list` builds it, so
  * `{ id: { _eq: 'a' } }` is a filter a proof may write.
  *
- * ⚠ A `_delta` AFTER-COUNT NEEDS A FRESH `Store`. `readAll` walks `ids()`, which is memoized on
- * (git HEAD, collection dir mtime) with a documented gap — a deep direct edit that adds a record
- * without moving either can serve one stale read. A proof's steps run shell commands that write
- * records and do NOT commit (`auto-commit` is off), so the same Store instance can answer the
- * after-count off the index it built before the steps ran, and the delta reads as 0 with nothing
- * wrong anywhere. The RUNNER constructs a new Store for the after-pass; this function cannot know
- * which side of the steps it is on.
+ * A `_delta` after-count needs a fresh `Store`: `readAll` walks `ids()`, memoized on (git HEAD,
+ * collection dir mtime), and a step that writes without committing can leave that index stale. The
+ * runner constructs a new Store for the after-pass; this function cannot know which side it is on.
  *
  * `resolve` is the caller's — `recordResolver(store)` when the filter hops a reference, `null` when
- * it does not. A hop with no resolver NARROWS, which is filter.js's documented fail-closed posture.
+ * it does not. A hop with no resolver narrows, which is the engine filter's fail-closed posture.
  */
 export function countMatching(store, collection, where, resolve) {
 	let n = 0;
@@ -817,16 +707,15 @@ export function countMatching(store, collection, where, resolve) {
  * (exit 4), which says the proof did not run rather than that the artifact is broken.
  *
  * `pick: latest` is the head of the matching rows ordered by the collection's own `sort_field`,
- * DESCENDING, through the same `sortRows` every `?sort=` and `--sort` goes through — so a date-time
- * orders by INSTANT across mixed offsets rather than by string. `pick: <id>` reads that id and
+ * descending, through the same `sortRows` every `?sort=` and `--sort` goes through — so a date-time
+ * orders by instant across mixed offsets rather than by string. `pick: <id>` reads that id and
  * returns null when it is absent or does not match the `where`.
  *
  * A fixture-backed `given` needs nothing special here: the runner hands this function the SANDBOX's
  * store, where the fixture's records are the collection, and `pick: <id>` names one of them.
  *
- * `override` is `--record <collection>/<id>`, and it REPLACES the selection rather than filtering
- * through it: an operator naming a record is saying which one to use, and re-testing it against the
- * `where` would answer NO-FIXTURE for the record they just typed.
+ * `override` is `--record <collection>/<id>`, and it replaces the selection rather than filtering
+ * through it: a person naming a record is saying which one to use.
  */
 export function pickFixture(store, given, override) {
 	const collection = String(given?.collection ?? '');
@@ -844,8 +733,7 @@ export function pickFixture(store, given, override) {
 		return dt.matchesFilter(picked.fields, where, resolve) ? picked : null;
 	}
 	const field = store.descriptor(collection).sort_field;
-	// compile refuses `pick: latest` on a collection with no sort_field; a runtime compiled by an
-	// older engine could still carry one, and picking an arbitrary record is the failure to avoid.
+	// compile refuses `pick: latest` on a collection with no sort_field; this guards a stale runtime
 	if (!field) throw new Error(`pick: latest needs a sort_field on ${collection} — name the record (pick: <id>) or use a fixture`);
 	const rows = [];
 	for (const { id, fields } of store.readAll(collection)) {
@@ -863,10 +751,8 @@ function readOne(store, collection, id) {
 		const { fields } = store.read(collection, id);
 		return { ref: `${collection}/${id}`, fields: { ...fields, id } };
 	} catch (e) {
-		// ⚠ ONLY "no such record" IS NO-FIXTURE. A bare catch here swallowed `unknown collection`
-		// too, so a proof whose `given` names a collection this workspace does not have reported
-		// exit 4 — "the proof did not run" — instead of the error naming the typo. A parse failure
-		// on the record's own file is the same class: a real error, and it must reach the operator.
+		// only "no such record" is NO-FIXTURE; an unknown collection or a parse failure is a real
+		// error and must reach the person running the proof
 		if (!String(e?.message ?? '').endsWith(': no such record')) throw e;
 		return null;
 	}
@@ -875,19 +761,15 @@ function readOne(store, collection, id) {
 /**
  * What this proof needs from THIS machine — `{ ok, missing: [{ kind, name, fix }] }`.
  *
- * ⚠ NO ENV VALUE IS EVER READ, COMPARED OR PRINTED. `.env` is desktop-only and its values are
- * credentials; the question is whether the machine has the key CONFIGURED, which the key name
- * answers. `parseEnvValues` is used for its names only, and an empty value counts as declared —
+ * No env value is ever read, compared or printed. `.env` values are credentials; the question is
+ * whether the machine has the key configured, which the key name answers. `parseEnvValues` is used for its names only, and an empty value counts as declared —
  * judging a value would mean holding one.
  *
  * `bin` walks `PATH` with `accessSync(X_OK)` rather than shelling out to `command -v`: a proof's
  * requirement check must not itself run a shell.
  *
- * ⚠ `names` IS HOISTED OUT ON PURPOSE (R38). `dt prove --list` asks this question once per row, and
- * the key set is a property of the MACHINE, not of the proof — so parsing `.env` inside meant
- * reading and parsing the same file once per proof for a listing whose whole job is to be cheap.
- * The caller that loops passes it in; every other caller gets the default and never learns the seam
- * exists.
+ * `names` is a parameter because the key set belongs to the machine, not the proof: `dt prove --list`
+ * reads `.env` once and passes it to every row.
  */
 export function resolveRequires(ws, requires, names = envKeys(ws.root)) {
 	const missing = [];
@@ -902,7 +784,7 @@ export function resolveRequires(ws, requires, names = envKeys(ws.root)) {
 	return { ok: !missing.length, missing };
 }
 
-/** The KEY NAMES this machine's `.env` declares. Absent file → no names, which is the ordinary state
+/** The key names this machine's `.env` declares. Absent file → no names, which is the ordinary state
  *  in a cloud session and not an error. Exported so a caller that asks `resolveRequires` many times
  *  in a row (`dt prove --list`) can read the file ONCE and hand the set down. */
 export function envKeys(root) {
@@ -910,10 +792,9 @@ export function envKeys(root) {
 	catch { return new Set(); }
 }
 
-/** ⚠ `accessSync(X_OK)` ALONE IS NOT ENOUGH: on a DIRECTORY the execute bit means "searchable", so a
- *  folder named `ffmpeg` anywhere on PATH satisfied `requires: { bin: [ffmpeg] }` and the proof then
- *  died at the step with a shell error instead of reporting UNAVAILABLE with a fix. `statSync`
- *  follows symlinks, which is what most real binaries on PATH are. */
+/** `accessSync(X_OK)` alone is not enough: on a directory the execute bit means "searchable", so a
+ *  folder named `ffmpeg` on PATH must not satisfy `requires: { bin: [ffmpeg] }`. `statSync` follows
+ *  symlinks, which is what most binaries on PATH are. */
 function onPath(name) {
 	for (const dir of (process.env.PATH ?? '').split(path.delimiter)) {
 		if (!dir) continue;
@@ -932,7 +813,7 @@ function onPath(name) {
 // last pass, on this machine, and against which record" — and it is what makes a `perform` step
 // resumable: the PENDING row is where the run stopped.
 
-/** `<root>/.dreamteamer/.proofs/<proof-id>.jsonl` — see LEDGER_DIR for why the dot is load-bearing. */
+/** `<root>/.dreamteamer/.proofs/<proof-id>.jsonl` — see LEDGER_DIR for why the dot matters. */
 export function ledgerPath(root, proofId) {
 	return path.join(dt.runtimeDir(root), LEDGER_DIR, `${proofId}.jsonl`);
 }
@@ -941,9 +822,8 @@ export function ledgerPath(root, proofId) {
  * Every row of one proof's ledger, oldest first. A missing file is `[]`, not an error — a proof that
  * has never run has no history, which is a fact and not a failure.
  *
- * ⚠ A MALFORMED LINE IS SKIPPED WITH A WARNING, never thrown on. This file is per-machine state
- * under a build directory: a killed run or a hand edit can leave a partial line, and refusing to
- * read the ledger would make `prove` unrunnable until someone deleted evidence to get it working.
+ * A malformed line is skipped with a warning, never thrown on: a killed run or a hand edit can leave
+ * a partial line, and refusing to read the ledger would make `prove` unrunnable.
  * The next `appendLedger` rewrites the file, so the bad line is repaired rather than accumulating.
  */
 export function readLedger(root, proofId) {
@@ -977,9 +857,8 @@ export function appendLedger(root, proofId, row) {
  * The PENDING row this proof stopped on for `record` (null for a gate, which pends against no
  * record), or null.
  *
- * ⚠ SUPERSEDING IS WHAT MAKES A RESUME SAFE: only the LAST row for that record counts. Once the
- * same record has a later verdict the earlier PENDING is history, and re-offering it would ask the
- * operator to perform a step they already performed.
+ * Only the last row for that record counts: once the record has a later verdict, the earlier PENDING
+ * is superseded, so a resume never asks you to perform a step you already performed.
  */
 export function pendingFor(root, proofId, record) {
 	const want = record ?? null;
@@ -990,30 +869,26 @@ export function pendingFor(root, proofId, record) {
 
 // ── the runner ──────────────────────────────────────────────────────────────────────────────────
 //
-// ONE verb, six terminal states, and a resume protocol for the one step a machine cannot take.
+// One verb, six terminal states, and a resume protocol for the one step a machine cannot take.
 //
-// THE SHAPE, and why it is a straight line rather than a pipeline. Every state below is TERMINAL:
-// the run stops there, appends exactly one ledger row, and answers with that state's exit code. So
-// the runner reads top to bottom and each guard is the last thing that can happen —
+// Every state below is terminal: the run stops there, appends exactly one ledger row, and answers
+// with that state's exit code. So the runner reads top to bottom —
 //
 //   sandbox?/--keep → resume → pending guard → requires → fixture → snapshot → pre-check
 //     → run steps (guarding data/ outside a sandbox) → the first perform → judge
 //
-// ⚠ AND THE ORDER IS THE CONTRACT, not an implementation detail. Two of these guards exist only
-// because they come BEFORE something: the pre-check must run before any step (a proof whose
-// expectations already hold reports PASS forever, and the whole point is to catch that before it
-// takes an action), and `requires` must run before the fixture (a machine that cannot answer the
-// question must never report NO-FIXTURE, which reads as a fact about the workspace's data).
+// The order is the contract. The pre-check runs before any step (a proof whose expectations already
+// hold would report PASS forever), and `requires` runs before the fixture (a machine that cannot
+// answer reports UNAVAILABLE, never NO-FIXTURE, which reads as a fact about the workspace's data).
 //
-// NOTHING HERE CALLS `process.exit`. `proveCommand` returns `{ code }` and the engine exits from it,
+// Nothing here calls `process.exit`. `proveCommand` returns `{ code }` and the engine exits from it,
 // so a proof can be run in-process by a test — which is what makes the exit code assertable at all.
 
 /** Seconds a `run` step may take before it is killed. A number rather than none: a proof's step is
  *  an arbitrary shell command, and an unbounded one hangs a pre-commit hook forever. */
 const DEFAULT_TIMEOUT = 120;
 
-/** Flags of `dt prove` that take a VALUE, so the positional scan cannot mistake one for a target —
- *  without this, `dt prove --record notes/b` read `notes/b` as the proof id. */
+/** Flags of `dt prove` that take a value, so the positional scan never reads one as a target. */
 const VALUE_FLAGS = new Set(['kind', 'record']);
 
 /** The spellings of "off" a person actually types. Anything else after the `=` is on, including an
@@ -1021,21 +896,13 @@ const VALUE_FLAGS = new Set(['kind', 'record']);
  *  the gate it names. */
 const FALSEY = new Set(['false', '0', 'no', 'off']);
 
-/**
- * ⚠ R46 — `--flag=false` MEANS FALSE, and until this existed it meant TRUE. Every boolean flag was
- * stored as the raw string after the `=`, and `'false'` is a truthy string — so `dt prove --all
- * --strict=false` made an unavailable proof fatal, and `dt prove --list --strict=false` failed the run,
- * both doing the exact opposite of what was typed with nothing printed either way. A bare `--flag`
- * is still `true`.
- */
+/** `--flag=false` means false (see FALSEY); a bare `--flag` is true. */
 export const flagValue = (v) => (typeof v === 'string' ? !FALSEY.has(v.trim().toLowerCase()) : v !== undefined && v !== false);
 
 /**
- * Is `--<name>` on, reading the `=` form's VALUE — the one place the answer is decided, so the
- * verbs that parse their own arguments (`prove`) and the ones that scan `rest` (`status`) can never
- * disagree about what `--strict=false` meant.
+ * Is `--<name>` on, reading the `=` form's value through `flagValue`.
  *
- * The LAST occurrence wins: `--strict=false --strict` is a person changing their mind at the end of
+ * The last occurrence wins: `--strict=false --strict` is a person changing their mind at the end of
  * a line, and reading the first would answer the version they edited away.
  */
 export function flagEnabled(args, name) {
@@ -1058,7 +925,7 @@ function parseProveArgs(rest) {
 		const eq = a.indexOf('=');
 		if (eq > -1) {
 			const name = a.slice(2, eq);
-			// a VALUE flag keeps its string (`--kind=gate`); a boolean one is READ (R46)
+			// a value flag keeps its string (`--kind=gate`); a boolean one is read through flagValue
 			flags[name] = VALUE_FLAGS.has(name) ? a.slice(eq + 1) : flagValue(a.slice(eq + 1));
 			continue;
 		}
@@ -1069,10 +936,9 @@ function parseProveArgs(rest) {
 }
 
 /**
- * PER-FORM flag refusal. A verb-level allowlist could only say which flags `prove` HAS; it cannot
- * know that `--all` is meaningless once a proof is named, and forwarding it silently would run one
- * proof and print a board. Deciding WHICH form was typed means resolving the target against the
- * compiled proofs and artifacts, so the refusal lives beside that resolution, not in a flag table.
+ * Per-form flag refusal. A verb-level allowlist could only say which flags `prove` has; it cannot
+ * know that `--all` is meaningless once a proof is named. Deciding which form was typed means
+ * resolving the target, so the refusal lives beside that resolution.
  */
 function refuseStray(rest, form, allowed) {
 	const given = [...new Set(rest.filter((a) => a.startsWith('--')).map((a) => a.split('=')[0]))];
@@ -1093,17 +959,17 @@ export const PROVE_FLAGS = [...new Set([...ONE_FORM, ...MANY_FORM, ...LIST_FORM]
  *   `dt prove <proof>`      one proof, the resume protocol, one of six codes
  *   `dt prove <artifact>`   every proof whose `about` names it, board semantics
  *   `dt prove --all`        every proof, board semantics
- *   `dt prove --list`       RUNS NOTHING — availability and the ledger tail per proof, or the
+ *   `dt prove --list`       runs nothing — availability and the ledger tail per proof, or the
  *                           artifacts nothing proves (`--missing`); `--strict` gates on a FAIL tail
  *
- * @returns {{code: number}} — NEVER `process.exit`; the extension's command returns the code.
+ * @returns {{code: number}} — never `process.exit`; the extension's command returns the code.
  */
 export function proveCommand(ws, rest) {
 	const { flags, targets } = parseProveArgs(rest);
 	const store = new dt.Store(ws);
 	if (!store.descriptors.has('proofs')) throw new Error('the proofs collection is not compiled in this workspace — dt compile');
-	// ⚠ ONE RECORD AT A TIME, so a proof that will not parse is NAMED — and the whole verb fails closed on
-	// it: a gate that skipped an unreadable proof would read its FAIL as green
+	// one record at a time, so a proof that will not parse is named — and the whole verb fails closed
+	// on it: a gate that skipped an unreadable proof would read its FAIL as green
 	const proofs = new Map();
 	// (`ids()` answers a Map of id → file at runtime; api.d.ts declares a Set — both are read by key)
 	const known = store.ids('proofs');
@@ -1112,10 +978,7 @@ export function proveCommand(ws, rest) {
 		catch (e) { throw new Error(`proofs/${id} cannot be read — ${firstLine(e.message)}`); }
 	}
 	const target = targets[0];
-	// ⚠ MINOR 6 — AN UNVALIDATED `--kind` IS A SILENT EMPTY BOARD. `--kind gates` (or a bare `--kind`
-	// with its value eaten by the next flag) matched no proof, so `--all` answered
-	// `proofs: 0 passed · 0 failed · …` at exit 0 — a green run that ran nothing, which is the exact
-	// shape of the `--fliter` escape `flags-honoured.test.js` exists for.
+	// an unknown `--kind` would match no proof and answer a green board that ran nothing
 	if ('kind' in flags && !PROOF_KINDS.includes(flags.kind)) {
 		throw new Error(`--kind takes ${PROOF_KINDS.join(' or ')} — got "${flags.kind}"`);
 	}
@@ -1135,20 +998,13 @@ export function proveCommand(ws, rest) {
 		return proveOne(ws, target, proofs.get(target), flags);
 	}
 	// the artifact form answers the question a reader of a skill or a command actually has — "what
-	// does anybody CLAIM about this thing, and does it hold" — which is what `about` exists for.
+	// does anybody claim about this thing, and does it hold" — which is what `about` exists for.
 	if (artifactRefs(store).all.has(target)) {
 		refuseStray(rest, `dt prove ${target}`, ['--kind', '--json', '--external', '--strict']);
 		const about = (p) => (p.about ?? []).map(String).includes(target);
-		// ⚠ C3/R49 — AN ARTIFACT NOTHING PROVES IS VACUOUS, NOT PROVED. This form answered
-		// `proofs: 0 passed · 0 failed · …` at exit 0 — and the orientation block every compile writes
-		// tells a session to quote exactly this command before saying an artifact works, so a green
-		// result from a question nobody had asked shipped rule 7's own failure mode as a feature. It
-		// is the same judgement `VACUOUS` already makes one level down: a check that cannot fail is
-		// not a check.
-		//
-		// ⚠ `--all` KEEPS ITS ZERO, deliberately. "this workspace declares no proofs" is a true and
-		// green answer to "run everything"; "this artifact has no proof" is not a green answer to
-		// "prove this artifact".
+		// an artifact nothing proves is VACUOUS, not proved: a check that cannot fail is not a check.
+		// `--all` keeps its zero — "this workspace declares no proofs" is a true, green answer to "run
+		// everything"; "this artifact has no proof" is not a green answer to "prove this artifact".
 		if (![...proofs.values()].some(about)) {
 			const summary = `no proof is about ${target} — dt prove --list --missing`;
 			console.log(flags.json ? JSON.stringify({ summary, proofs: [], code: EXIT.VACUOUS }, null, 2) : summary);
@@ -1159,20 +1015,17 @@ export function proveCommand(ws, rest) {
 	throw new Error(`dt prove takes a proof id or an artifact (skills/<id>, commands/<id>, …) — got "${target}"; dt prove --list`);
 }
 
-/** The last `n` lines of a captured stream — what a step failure PRINTS. Display only: judging on a
- *  tail is R23's defect, not its remedy. */
+/** The last `n` lines of a captured stream — what a step failure prints. Display only: expectations
+ *  judge the whole capture. */
 function lastLines(text, n = 10) {
 	return String(text ?? '').replace(/\n+$/, '').split('\n').slice(-n).join('\n');
 }
 
 /**
- * ⚠ R23 — A STEP'S STDOUT IS CAPTURED WHOLE, AND JUDGED WHOLE. It used to be kept as a 10-line
- * TAIL, which made every `dt … --json` payload — pretty-printed, and more than ten lines the moment
- * it carries a `steps` array — unparseable, so a `stdout_json` expectation read `undefined` and
- * failed for a reason nothing named. A `stdout: { _contains: … }` over a marker on line 1 of 20 was
- * the same bug the other way up: silently false.
+ * A step's stdout is captured whole and judged whole, so a pretty-printed `--json` payload parses and
+ * a marker on line 1 of 20 is found.
  *
- * 64 KB, and the FIRST 64 KB rather than the last: a JSON payload starts at the beginning, and a
+ * 64 KB, and the first 64 KB rather than the last: a JSON payload starts at the beginning, and a
  * truncated one must fail loudly (`stdout is not JSON`) rather than parse to something smaller than
  * what the step actually printed. `stdout_truncated` is always present, because a key that appears
  * only sometimes is worse to read than a `false`.
@@ -1191,9 +1044,8 @@ function captured(text) {
 const firstLine = (message) => String(message ?? '').split('\n')[0];
 
 /**
- * ONE builder for every ledger row, used by `proveOne`'s `settle` AND by `--all`'s catch — because
- * R24's whole point is that a proof which THREW still gets a row. Two writers of this shape is how
- * one of them ends up missing `machine` or `before`.
+ * One builder for every ledger row, used by `proveOne`'s `settle` and by `--all`'s catch, so a proof
+ * that threw still gets a row of the same shape.
  */
 function ledgerRow(state, started, over = {}) {
 	return {
@@ -1205,8 +1057,8 @@ function ledgerRow(state, started, over = {}) {
 		failure_reason: null,
 		steps: [],
 		sandbox: null,
-		// `null` = no removal was ATTEMPTED (no sandbox, still PENDING, or kept by `--keep`);
-		// `true` = the sandbox is gone; `false` = the removal FAILED and the directory is still
+		// `null` = no removal was attempted (no sandbox, still PENDING, or kept by `--keep`);
+		// `true` = the sandbox is gone; `false` = the removal failed and the directory is still
 		// there. Always present, because a key that appears only sometimes is worse to read.
 		sandbox_removed: null,
 		before: {},
@@ -1216,27 +1068,20 @@ function ledgerRow(state, started, over = {}) {
 }
 
 /**
- * How much output one `run` step may produce. `spawnSync`'s default `maxBuffer` is 1 MB and it KILLS
- * the child on overflow — which used to arrive as a bare signal and get reported as a timeout. 16 MB
- * because a proof step's stdout is judged whole (R23) and a ledger row keeps 64 KB of it; anything
- * larger belongs in a file the proof asserts with `path:`, which the message says.
+ * How much output one `run` step may produce. `spawnSync`'s default `maxBuffer` is 1 MB and it kills
+ * the child on overflow. 16 MB because a step's stdout is judged whole and a ledger row keeps 64 KB
+ * of it; anything larger belongs in a file the proof asserts with `path:`, which the message says.
  */
 const MAX_OUTPUT_MB = 16;
 
 /**
- * What a finished `run` step actually DID — `{ exit, failure_reason }`, with `failure_reason: null`
- * when nothing is wrong. PURE, and lifted out of the loop precisely because the loop cannot be
- * unit-tested and this is where several different events were being reported as one.
+ * What a finished `run` step actually did — `{ exit, failure_reason }`, with `failure_reason: null`
+ * when nothing is wrong. Pure, so each outcome is unit-tested apart from the loop.
  *
- * ⚠ ORDER MATTERS, AND ONLY `error.code` MAY DECIDE A TIMEOUT (R26). The first version read
- * `res.error?.code === 'ETIMEDOUT' || (res.status === null && !!res.signal)` — and that second
- * clause is ALSO true for an ENOBUFS kill (spawnSync kills the child when `maxBuffer` overflows),
- * for the OOM killer, and for any external `kill`. So a step killed by its own output volume
- * reported "timed out after 120s": a cause and a number the operator would go and act on, both
- * invented. A bare signal now says only what is known — WHICH signal — and nothing about why.
+ * Order matters, and only `error.code` decides a timeout: a bare signal is also what an ENOBUFS
+ * kill, the OOM killer or an external `kill` leaves, so it reports only which signal, not why.
  *
- * `index` and `want` extend the ruled `(res, timeoutSeconds)` signature so the whole message is
- * assembled HERE: a reason half-built at the call site is a reason no test can pin.
+ * `index` and `want` let the whole message be assembled here, where a test can pin it.
  */
 export function stepOutcome(res, timeoutSeconds, index = 1, want = 0) {
 	// a killed step has a null status and a signal — reporting `exit null` would read as success
@@ -1252,7 +1097,7 @@ export function stepOutcome(res, timeoutSeconds, index = 1, want = 0) {
 
 const isDelta = (count) => count !== null && typeof count === 'object' && !Array.isArray(count) && '_delta' in count;
 
-/** An expectation that can be judged against the STORE, and so can be pre-checked before any step
+/** An expectation that can be judged against the store, and so can be pre-checked before any step
  *  runs. A `step`/`path` one cannot: there is no step result yet, and a path a step will create is
  *  supposed to be absent. */
 const isStoreBased = (e) => ['collection', 'record'].includes(formOf(e));
@@ -1269,7 +1114,7 @@ function lastRunIndex(proof) {
  *  failure or the thing being asserted. */
 function stepExpect(proof, n) {
 	for (const e of Array.isArray(proof.expect) ? proof.expect : []) {
-		// the SAME form test the judge dispatches on (R48) — a third subset here is a third answer
+		// the same form test the judge dispatches on
 		if (formOf(e) !== 'step') continue;
 		if ((Number.isInteger(e.step) ? e.step : lastRunIndex(proof)) === n) return e;
 	}
@@ -1284,19 +1129,16 @@ function valueAt(json, dotted) {
 }
 
 /**
- * Every expectation, as one machine-readable verdict per CONDITION.
+ * Every expectation, as one machine-readable verdict per condition.
  *
- * ⚠ ONE ENTRY PER LINE, NEVER THE RAW `expect` ROW (R18). A collection form carries `collection`,
- * `where` and `count` together, and `verdictLine` handed it whole rendered the first key —
- * `collection 1 = notes ✖`, a verdict about the wrong thing, marked failed, for a proof that
- * passed. So the row is narrowed here: `{ count: … }` for a collection form, and one line per FIELD
- * for a record form, which is also what makes a two-field expectation legible.
+ * One entry per line, never the raw `expect` row: the row is narrowed here to `{ count: … }` for a
+ * collection form, and to one line per field for a record form.
  *
  * `ok` is read back off the rendered line's mark rather than computed a second time — `verdictLine`
  * takes its ✔/✖ from `matchesFilter` itself, and deriving `ok` from anything else would let the
  * printed line and the exit code disagree about the same condition.
  *
- * `storeOnly` is the PRE-CHECK pass: the store-based forms only, judged before any step has run.
+ * `storeOnly` is the pre-check pass: the store-based forms only, judged before any step has run.
  */
 function judge(ws, store, proof, id, record, before, stepResults, storeOnly) {
 	const verdicts = [];
@@ -1306,7 +1148,7 @@ function judge(ws, store, proof, id, record, before, stepResults, storeOnly) {
 		const line = verdictLine(expectation, actual, resolve);
 		verdicts.push({ expect: expectation, actual, ok: line.endsWith('✔'), line });
 	};
-	/** A ✖ that no filter produced — the two states where the QUESTION could not be asked. It carries
+	/** A ✖ that no filter produced — the two states where the question could not be asked. It carries
 	 *  its own `reason`, because a `failure_reason` must not end in a glyph. */
 	const fail = (expectation, actual, reason) => {
 		verdicts.push({ expect: expectation, actual, ok: false, line: `${reason} ✖`, reason });
@@ -1314,22 +1156,15 @@ function judge(ws, store, proof, id, record, before, stepResults, storeOnly) {
 	for (const [i, raw] of (Array.isArray(proof.expect) ? proof.expect : []).entries()) {
 		const e = raw ?? {};
 		if (storeOnly && !isStoreBased(e)) continue;
-		// ⚠ R48 — THE SAME `formOf` COMPILE READ. The dispatch used to be its own chain of `in` tests,
-		// and every disagreement between the two subsets was a row compiled as one form and judged as
-		// another — which produces zero verdict lines and passes vacuously. A row with NO form cannot
-		// reach here (compile refuses it), and if an older runtime carries one it is skipped rather
-		// than judged against a shape it does not have.
+		// the same `formOf` compile reads. A row with no form cannot reach here (compile refuses it);
+		// a stale runtime's one is skipped rather than judged against a shape it does not have.
 		const form = formOf(e);
 		if (form === 'collection') {
-			// R45 — the LITERALS first: `{record}` in a filter is the picked record's reference, and
-			// handing the brace to `matchesFilter` matched nothing and blamed the count.
+			// literals first: `{record}` in a filter is the picked record's reference
 			const total = countMatching(store, String(e.collection), substituteWhere(e.where, ctx), resolve);
 			if (!isDelta(e.count)) { push({ count: e.count }, total); continue; }
-			// ⚠ R24 — A MISSING BEFORE-COUNT FAILS CLOSED. `before[i] || 0` treated an absent snapshot
-			// as zero, so the delta became the ABSOLUTE count and a `_delta: 1` expectation PASSED on
-			// a collection that already had records and had had nothing performed against it. That is
-			// the silent green this whole verb exists to remove, reachable from a hand-edited or
-			// half-written PENDING row, or from a row an older engine wrote.
+			// a missing before-count fails closed: read as zero, the delta would become the absolute
+			// count, and `_delta: 1` would pass on any non-empty collection
 			if (before === null || typeof before !== 'object' || !(i in before)) {
 				fail({ count: e.count }, null, `no before-count in the pending row — re-run dt prove ${id} --restart`);
 				continue;
@@ -1339,43 +1174,34 @@ function judge(ws, store, proof, id, record, before, stepResults, storeOnly) {
 		}
 		if (form === 'record') {
 			const row = record ? record.fields : {};
-			// R45 again, and it matters here too: `where: { owner: { _eq: '{record.owner}' } }` and any
-			// cross-field literal are rendered before the condition is judged.
+			// `where: { owner: { _eq: '{record.owner}' } }` and any cross-field literal are rendered
+			// before the condition is judged
 			for (const [field, cond] of Object.entries(substituteWhere(e.where ?? {}, ctx))) push({ [field]: cond }, row[field]);
 			continue;
 		}
 		if (form === 'path') {
-			// THE ONE RESOLVER (decision 240) — a `path:` expectation renders through the same
-			// `${env:…}` renderer `dt resolve` uses, so a proof and the record it is about can never
-			// disagree about where a machine's folder is. An undeclared `${env:…}` THROWS out of here,
-			// loudly, which is that resolver's contract and not something to soften.
+			// a `path:` expectation renders through the same `${env:…}` renderer `dt resolve` uses, so a
+			// proof and the record it is about agree on where a machine's folder is. An undeclared
+			// `${env:…}` throws, which is that resolver's contract.
 			const rendered = dt.renderTemplate(substitute(String(e.path), ctx, { strict: true }), dt.envContext(ws));
-			// ⚠ C2/R51 — AGAINST THE WORKSPACE, NEVER `process.cwd()`. `existsSync` on a relative path
-			// asks about whatever directory the operator happened to be standing in, so the SAME proof
-			// passed from the root and failed from a subdirectory of it. And `ws` here is `tws` — the
-			// SANDBOX's root for a fixture proof — so a path a sandboxed step created is asked about
-			// where the step actually wrote it, rather than in the primary checkout it never touched.
-			// An absolute rendered path is unaffected: `resolve` keeps it.
+			// resolved against the workspace, never `process.cwd()`, so the answer does not depend on
+			// where the command was typed. `ws` here is the sandbox's root for a fixture proof, so a path
+			// a sandboxed step created is asked about where the step wrote it. An absolute path is kept.
 			push({ exists: e.exists }, fs.existsSync(path.resolve(ws.root, rendered)));
 			continue;
 		}
 		if (form !== 'step') continue;
 		const step = stepResults[(Number.isInteger(e.step) ? e.step : lastRunIndex(proof)) - 1];
 		if ('exit' in e) push({ exit: e.exit }, step?.exit);
-		// R23 — the FULL capture, not the display tail
+		// the full capture, not the display tail
 		if (e.stdout && typeof e.stdout === 'object') push({ stdout: e.stdout }, step?.stdout ?? '');
 		if (e.stdout_json && typeof e.stdout_json === 'object') {
 			const text = step?.stdout ?? '';
 			let parsed;
 			try { parsed = JSON.parse(text); }
 			catch {
-				// ⚠ NEVER A SILENT `undefined`. An unparseable payload used to make every dotted path
-				// read undefined, so the line said `a.b undefined = 1 ✖` and sent the reader to look
-				// for a missing key in output that was never JSON at all.
-				//
-				// The head is FLATTENED before it is quoted: this is one verdict line, and 60 raw
-				// characters of a multi-line stream puts newlines inside it — a "line" that is four
-				// lines long, which is unreadable exactly where the reader is already confused.
+				// unparseable output says so, rather than reading every dotted path as undefined. The
+				// head is flattened before it is quoted, so the verdict stays one line.
 				const head = text.trim().replace(/\s+/g, ' ').slice(0, 60);
 				fail({ stdout_json: e.stdout_json }, head, `stdout is not JSON (${head})`);
 				continue;
@@ -1386,10 +1212,9 @@ function judge(ws, store, proof, id, record, before, stepResults, storeOnly) {
 	return verdicts;
 }
 
-/** `commands/<id>`'s SOURCE file, when a `perform` text opens with `/<command-id>` and that command
- *  is compiled. The reader of a PERFORM block has to open the command to act on it, and deriving the
- *  path from a rule is exactly what the nudge's root-layout bug was — so it comes off the manifest,
- *  which records what was actually compiled. */
+/** `commands/<id>`'s source file, when a `perform` text opens with `/<command-id>` and that command
+ *  is compiled. The reader of a PERFORM block opens the command to act on it, so the path comes off
+ *  the manifest, which records what was actually compiled, rather than from a rule. */
 function commandSource(root, performText) {
 	const m = /^\/(\S+)/.exec(String(performText ?? ''));
 	if (!m) return null;
@@ -1398,12 +1223,9 @@ function commandSource(root, performText) {
 }
 
 /**
- * EVERY non-superseded PENDING row of this proof, one per record — what makes a second run refuse.
- * `pendingFor` answers for one named record; a fresh run does not know the record yet.
- *
- * ⚠ ALL OF THEM, not the last one (MINOR 10). A proof can be pending for several records at once —
- * `--record a`, then a fresh run picking `b` — and a refusal naming only the newest sends the
- * operator round the loop once per pending row, learning about the next one each time.
+ * Every non-superseded PENDING row of this proof, one per record — what makes a second run refuse.
+ * `pendingFor` answers for one named record; a fresh run does not know the record yet. All of them,
+ * not the last one: a proof can be pending for several records at once, and the refusal names each.
  */
 function allPending(root, proofId) {
 	const last = new Map();
@@ -1414,7 +1236,7 @@ function allPending(root, proofId) {
 // ── the sandbox ─────────────────────────────────────────────────────────────────────────────────
 
 /**
- * Run `fn` with everything it PRINTS captured and handed back, and everything it throws handed back
+ * Run `fn` with everything it prints captured and handed back, and everything it throws handed back
  * as a value. Two callees need it: `check` reports its findings by printing them rather than
  * returning them, and `removeWorktree` announces itself — and neither is part of a proof's report,
  * while under `--json` a single stray line makes the one object on stdout unparseable.
@@ -1432,8 +1254,8 @@ function captureLog(fn) {
 	finally { console.log = log; console.error = err; }
 }
 
-/** The module root that SHIPS this proof, off the MANIFEST — the same read `commandSource` makes,
- *  and for the same reason: deriving a module root from a file path is the bug the nudge had. */
+/** The module root that ships this proof, off the manifest — the same read `commandSource` makes,
+ *  and for the same reason. */
 function proofModuleRoot(root, id) {
 	const src = dt.readManifest(root)?.entries?.[`proofs/${id}.proof.yaml`]?.sources?.[0];
 	const p = src ? (typeof src === 'string' ? src : src.path) : null;
@@ -1448,19 +1270,14 @@ function fixtureDir(root, moduleRoot, id) {
 /**
  * Why this sandbox cannot be judged against — one line — or null.
  *
- * ⚠ A FIXTURE IS RECORDS NOBODY VALIDATED. Everything else a proof reads went through the store's
- * validator on its way in; `modules/<m>/proofs/fixtures/` is hand-authored bytes, so it is the ONE
- * input that can be schema-invalid — and a verdict judged against an invalid record measures the
- * wrong thing while reporting it confidently. So the engine's own `check` runs against the sandbox
- * before any step does, and the FIRST violation is what the failure names.
+ * A fixture is records nobody validated: everything else a proof reads went through the store's
+ * validator, but `modules/<m>/proofs/fixtures/` is hand-authored bytes. So the engine's own `check`
+ * runs against the sandbox before any step does, and the first violation is what the failure names.
  */
 function sandboxUnfit(root, collections) {
-	// ⚠ A SANDBOX IS CUT FROM **HEAD**, so a descriptor that is not COMMITTED is not compiled inside
-	// it — and `check` cannot see that: an unknown collection has no directory to walk, so the
-	// fixture's records are INVISIBLE rather than invalid, and every count below would read zero.
-	//
-	// ⚠ EVERY collection the proof READS, not only `given`'s (R31). An expect-side one reached
-	// `countMatching` as a raw `unknown collection "x"`, which reads as a typo in the proof.
+	// a sandbox is cut from HEAD, so a descriptor that is not committed is not compiled inside it —
+	// and `check` cannot see that: the fixture's records would be invisible rather than invalid. This
+	// covers every collection the proof reads, not only `given`'s.
 	const known = dt.loadDescriptors(root);
 	const absent = [...new Set(collections.filter(Boolean))].find((c) => !known?.has(c));
 	if (absent) {
@@ -1499,28 +1316,24 @@ export function dataState(root) {
 }
 
 /**
- * ⚠ `force` IS HONEST HERE, AND NOWHERE ELSE IN THIS ENGINE. `removeWorktree` refuses by default
- * because a worktree holds two things the primary cannot see — records written but not committed,
- * and commits not yet landed. A proof sandbox is DISPOSABLE BY DESIGN: it was cut minutes ago from
- * HEAD, it holds nothing but the fixture and whatever the proof wrote onto it, and LANDING any of
- * that is the one outcome a fixture proof must never produce. Without `force` the refusal would
- * fire on every single run, on exactly the state the sandbox exists to reach.
+ * `force` is correct here: `removeWorktree` refuses by default because a worktree may hold
+ * uncommitted records and unlanded commits, but a proof sandbox is disposable by design — cut from
+ * HEAD, holding only the fixture and what the proof wrote, none of which may ever land.
  */
 function removeSandbox(ws, dir) {
 	const { error } = captureLog(() => removeWorktree(ws, dir, { force: true }));
 	if (!error) return true;
-	// ⚠ AND THE FAILURE IS RECORDED, NOT JUST WARNED (R28). A warning on stderr is gone the moment
-	// the terminal scrolls, and the row it belongs to is non-PENDING with a `sandbox` set — so
-	// nothing would ever revisit the directory. `sandbox_removed: false` is what `dt prove --list` counts.
+	// the failure is recorded on the row, not only warned: `sandbox_removed: false` is what
+	// `dt prove --list` counts
 	console.warn(`⚠ sandbox ${dir} could not be removed: ${firstLine(error.message)} — remove it by hand`);
 	return false;
 }
 
 /**
- * ONE proof, start to finish. Returns `{ code, state, row, verdicts }`.
+ * One proof, start to finish. Returns `{ code, state, row, verdicts }`.
  *
  * `flags.silent` suppresses the human output without emitting JSON — what `--all` runs each proof
- * with, so a board is a board rather than forty step transcripts.
+ * with, so a board is a board rather than a step transcript per proof.
  */
 function proveOne(ws, id, proof, flags) {
 	const started = Date.now();
@@ -1530,7 +1343,7 @@ function proveOne(ws, id, proof, flags) {
 	/** The throwaway worktree this run is happening in, once there is one — `null` for every proof
 	 *  without a fixture and every `--here` run, which run in the invoking checkout itself. */
 	let sandbox = null;
-	/** The workspace everything AFTER `requires` runs against: the sandbox when there is one, the
+	/** The workspace everything after `requires` runs against: the sandbox when there is one, the
 	 *  invoking checkout otherwise. The ledger is the deliberate exception (see `settle`). */
 	let tws = ws;
 	const enter = (dir) => { sandbox = dir; tws = dir ? { ...ws, root: dir } : ws; };
@@ -1538,19 +1351,13 @@ function proveOne(ws, id, proof, flags) {
 	/** Append the row this state produces and answer with its code. Every terminal state goes
 	 *  through here, so "exactly one row per run" is structural rather than remembered.
 	 *
-	 *  ⚠ THE LEDGER IS THE INVOKING CHECKOUT'S, ALWAYS — `ws.root`, never `tws.root`. A sandbox is
+	 *  The ledger is always the invoking checkout's — `ws.root`, never `tws.root`. A sandbox is
 	 *  deleted the moment the verdict is in, so evidence written inside one would go with it. */
 	const settle = (state, over = {}, verdicts = []) => {
-		// ⚠ A SANDBOX IS NEVER LEFT BEHIND, except while PENDING (the operator is about to act inside
-		// it) or under `--keep` (they asked to look). Every terminal state funnels through here, which
-		// is what makes that structural rather than a line remembered at each of the nine exits.
-		//
-		// ⚠ AND IT HAPPENS BEFORE THE ROW IS BUILT, so the row can say what actually became of the
-		// directory (R28) — a removal that failed is a fact about this machine that outlives the run.
-		// ⚠ M11 — `kept` IS `null` WHILE PENDING, NOT `false`. A PENDING run's sandbox is still there
-		// on purpose (the operator is about to act inside it), so `false` — which reads as "the
-		// directory is gone" — was the one answer that is certainly wrong. `null` is the same
-		// three-valued shape `sandbox_removed` already uses: nothing has been DECIDED yet.
+		// a sandbox is never left behind, except while PENDING (you are about to act inside it) or
+		// under `--keep`. Removal happens before the row is built, so the row says what became of the
+		// directory. `kept` is `null` while PENDING — nothing has been decided yet — the same
+		// three-valued shape `sandbox_removed` uses.
 		const kept = state === 'PENDING' ? (sandbox ? null : false) : !!(sandbox && flags.keep);
 		let removed = null;
 		if (kept) say(`kept     ${sandbox}`);
@@ -1558,23 +1365,17 @@ function proveOne(ws, id, proof, flags) {
 
 		const row = ledgerRow(state, started, { sandbox, sandbox_removed: removed, ...over });
 		appendLedger(ws.root, id, row);
-		// ⚠ ONE OBJECT ON STDOUT AND NOTHING ELSE. A script parses stdout WHOLE, so a single human
-		// line ahead of the object makes `JSON.parse` throw — indistinguishable from a failed run.
-		// `kept` rides along rather than living on the row: under `--keep --json` the human `kept`
-		// line is suppressed, and "the sandbox is still there ON PURPOSE" would otherwise have to be
-		// derived from three fields at once.
+		// one object on stdout and nothing else, so a script can parse it whole. `kept` rides along
+		// rather than living on the row, because under `--json` the human `kept` line is suppressed.
 		if (flags.json) dt.emit(JSON.stringify({ ...row, verdicts, kept }, null, 2));
 		return { code: exitFor(state), state, row, verdicts };
 	};
 
 	/**
-	 * ⚠ EVERY PATH THAT JUDGES LEAVES A ROW, EVEN WHEN IT THROWS (MINOR 8, widened by R26). The first
-	 * version wrapped only the fresh step-and-judge run — which sits BELOW the resume early-return,
-	 * so a throw while judging a `--record` resume (an undeclared `${env:…}` in a `path:`, a typo'd
-	 * brace) left the ledger sitting at PENDING with the failed run unrecorded. The operator is then
-	 * told to finish a run they have already finished, and the ledger denies it ever happened.
+	 * Every path that judges leaves a row, even when it throws — including a `--record` resume, so
+	 * the ledger never sits at PENDING for a run that has already finished.
 	 *
-	 * `over` is built BEFORE the run, and its `steps` is the live array — so a throw halfway through
+	 * `over` is built before the run, and its `steps` is the live array — so a throw halfway through
 	 * the loop still records the steps that did complete.
 	 */
 	const ledgering = (over, run) => {
@@ -1586,9 +1387,9 @@ function proveOne(ws, id, proof, flags) {
 		}
 	};
 
-	// ---- 0. WHERE THIS PROOF IS ALLOWED TO WRITE. A fixture proof runs in a throwaway detached
+	// ---- 0. where this proof is allowed to write. A fixture proof runs in a throwaway detached
 	// worktree on its own records. Every other run is in this checkout and may not change `data/`,
-	// unless `--here` says so out loud.
+	// unless `--here` says so.
 	const sandboxed = proof.given?.fixture === true && !flags.here;
 	const guarded = !sandboxed && !flags.here;
 	if (flags.here) say(`⚠ --here: writing to THIS checkout's store`);
@@ -1597,15 +1398,14 @@ function proveOne(ws, id, proof, flags) {
 	}
 	/** `data/` as it stood before the first step, when this run may not write it. */
 	let dataBefore = null;
-	/** Why this run FAILS for writing `data/`, or null when it wrote nothing it was not allowed to. */
+	/** Why this run fails for writing `data/`, or null when it wrote nothing it was not allowed to. */
 	const wroteLive = () => {
 		if (!guarded || dataBefore === null || dataState(ws.root) === dataBefore) return null;
 		return 'a step changed data/ outside a sandbox — use given.fixture: true, or --here to write this store';
 	};
 
-	// ---- 1. RESUME — `--record` names the pending run this invocation is FINISHING, and nothing
-	// else. Starting a fresh run instead would discard a pending row the operator is halfway through
-	// and re-ask for an action they have already taken.
+	// ---- 1. resume — `--record` names the pending run this invocation is finishing, and nothing
+	// else, so a run you are halfway through is never discarded.
 	const override = typeof flags.record === 'string' ? flags.record : null;
 	if (override) {
 		const pend = pendingFor(ws.root, id, override);
@@ -1613,15 +1413,12 @@ function proveOne(ws, id, proof, flags) {
 		return resume(pend);
 	}
 
-	// ---- 2. THE PENDING GUARD. A second fresh run while one is outstanding would re-ask for the
-	// same action, and the operator would have no way to tell which pending row their eventual
-	// verify is judged against. A pending older than the proof's own timeout is STALE — the run it
-	// belongs to is gone — so it is cleared, out loud, and recorded as cleared.
+	// ---- 2. the pending guard. A second fresh run while one is outstanding would re-ask for the
+	// same action, with no way to tell which pending row a later verify is judged against. A pending
+	// older than the proof's own timeout is stale, so it is cleared, out loud, and recorded.
 	//
-	// ⚠ THE REMOVAL IS ATTEMPTED FIRST, AND THE ROW SAYS WHAT HAPPENED TO THE DIRECTORY (R28). Both
-	// discards used to append the PENDING row's `sandbox_removed: null` — "no removal was attempted"
-	// — about the one row where one certainly was, so `dt prove --list` counted a leaked sandbox as fine
-	// and nothing would ever come back for it. `.worktrees/` is gitignored: this is the only record.
+	// A discard attempts the removal first and the row says what happened to the directory:
+	// `.worktrees/` is gitignored, so the ledger is the only record of a leaked sandbox.
 	const discard = (row, reason) => {
 		const removed = !row.sandbox ? null : fs.existsSync(row.sandbox) ? removeSandbox(ws, row.sandbox) : true;
 		appendLedger(ws.root, id, { ...row, when: new Date().toISOString(), verdict: 'FAIL', failure_reason: reason, sandbox_removed: removed });
@@ -1634,7 +1431,7 @@ function proveOne(ws, id, proof, flags) {
 		discard(row, 'stale');
 	}
 	if (live.length && flags.restart) {
-		// EVERY live pending is discarded, not just the newest — otherwise `--restart` refuses again
+		// every live pending is discarded, not just the newest — otherwise `--restart` refuses again
 		// on the next one and the flag reads as broken.
 		for (const row of live) discard(row, 'restarted');
 	} else if (live.length === 1 && live[0].record === null) {
@@ -1647,7 +1444,7 @@ function proveOne(ws, id, proof, flags) {
 		throw new Error(`${id} is pending for ${live.length} records — finish each with:\n${live.map((row) => `  dt prove ${id} --record ${row.record}`).join('\n')}\nor --restart to discard them`);
 	}
 
-	// ---- 3. REQUIRES, before the fixture: a machine that cannot answer the question must not report
+	// ---- 3. requires, before the fixture: a machine that cannot answer the question must not report
 	// NO-FIXTURE, which reads as a fact about the workspace's data rather than about this machine.
 	const need = resolveRequires(ws, proof.requires);
 	if (!need.ok) {
@@ -1656,17 +1453,13 @@ function proveOne(ws, id, proof, flags) {
 		return settle('UNAVAILABLE', { failure_reason: need.missing.map((m) => m.fix).join('; ') });
 	}
 
-	// ---- 3b THROUGH 7 ARE ALL WRAPPED, and the wrap starts ABOVE the sandbox (R27), not below the
-	// pre-check where it used to. Everything from the fixture copy down can throw: `cpSync` on an
-	// unreadable fixture, `pickFixture` on a collection the SANDBOX has no descriptor for, the
-	// `_delta` snapshot and the pre-check on an expect-side collection that is compiled in the
-	// working tree but not COMMITTED — a sandbox is cut from HEAD, so `countMatching` answers
-	// `unknown collection`. Every one of those used to exit 1 with a raw error, NO ledger row, and a
-	// leaked `.worktrees/.tmp-*` that nothing would ever come back for.
+	// ---- 3b through 7 are all wrapped, starting above the sandbox: everything from the fixture copy
+	// down can throw (an unreadable fixture, a collection the sandbox has no descriptor for), and each
+	// throw still gets a ledger row and a removed sandbox.
 	//
-	// `over` is MUTATED as each phase learns its part and READ at the moment of the throw, so a
-	// failure halfway through records what was known by then rather than nothing. Teardown comes free:
-	// `ledgering`'s catch goes through `settle`, and `settle` is what removes the sandbox.
+	// `over` is mutated as each phase learns its part and read at the moment of the throw, so a
+	// failure halfway through records what was known by then. Teardown comes free: `ledgering`'s
+	// catch goes through `settle`, and `settle` is what removes the sandbox.
 	let record = null;
 	let ref = null;
 	let ctx = {};
@@ -1676,14 +1469,13 @@ function proveOne(ws, id, proof, flags) {
 	return ledgering(over, phases);
 
 	function phases() {
-		// ---- 3b. THE SANDBOX, cut AFTER `requires` (a machine that cannot answer must not pay for a
-		// worktree) and BEFORE the fixture, which is picked from INSIDE it. `--temp` means detached and
-		// under `.worktrees/.tmp-<rand>/` in the primary root — see `addWorktree` for why not tmpdir.
+		// ---- 3b. the sandbox, cut after `requires` (a machine that cannot answer must not pay for a
+		// worktree) and before the fixture, which is picked from inside it. `temp` means detached and
+		// under `.worktrees/.tmp-<rand>/` in the primary root — see `createWorktree` for why not tmpdir.
 		if (sandboxed) {
 			const src = fixtureDir(ws.root, proofModuleRoot(ws.root, id), id);
-			// ⚠ DOT-ENTRIES ARE NOT STRAY FILES. The operator's file manager writes `.DS_Store` into
-			// this directory the first time anyone opens it, and refusing the whole proof for it
-			// would be a failure nobody can act on — the file comes back.
+			// dot-entries are not stray files: a file manager writes `.DS_Store` into any directory it
+			// opens, and it comes back
 			const entries = fs.existsSync(src) ? fs.readdirSync(src).filter((e) => !e.startsWith('.')) : [];
 			if (!entries.includes('data')) {
 				// `given.fixture: true` with no records behind it: the same fact as "matched 0 records",
@@ -1693,31 +1485,28 @@ function proveOne(ws, id, proof, flags) {
 				return settle('NO-FIXTURE', { failure_reason: `no fixture records at ${at}` });
 			}
 			try { enter(createWorktree(ws, { name: id, temp: true, quiet: true })); } catch (e) {
-				// a sandbox that cannot be made ready is this MACHINE failing to answer, not the artifact
+				// a sandbox that cannot be made ready is this machine failing to answer, not the artifact
 				// failing: UNAVAILABLE, and the half-made sandbox goes with the verdict
 				if (!e.worktree) throw e;
 				enter(e.worktree);
-				// ⚠ THE INSTALLER'S OWN WORDS, and a recovery that matches what `settle` does next: without
-				// --keep the sandbox is removed, so "run dt install there" named a directory already gone.
+				// the installer's own words, and a recovery that matches what `settle` does next: without
+				// --keep the sandbox is removed
 				const why = (e.diagnosis ?? []).join('; ') || 'the install printed nothing';
 				const next = flags.keep ? `the sandbox is kept at ${e.worktree} — run \`dt install\` there` : 'the sandbox was removed — rerun with --keep to install it by hand';
 				const reason = `sandbox install exited ${e.installExit}: ${why} — ${next}`;
 				say(`UNAVAILABLE  ${id} — ${reason}`);
 				return settle('UNAVAILABLE', { failure_reason: reason });
 			}
-			// ⚠ ONLY `data/` IS ADMITTED (R28). The fixture mirrors the workspace ROOT, so copying the
-			// directory whole would let it overwrite anything the checkout carries — `package.json`, a
-			// descriptor, `.dreamteamer/` itself. And `sandboxUnfit` runs AFTER the copy, so a fixture
-			// could ship the very schema its records are then validated against: a proof that passes
-			// because it brought its own rules.
+			// only `data/` is admitted. The fixture mirrors the workspace root, so copying it whole could
+			// overwrite `package.json`, a descriptor or `.dreamteamer/` — and since `sandboxUnfit` runs
+			// after the copy, a fixture could bring the very schema its records are validated against.
 			const stray = entries.find((e) => e !== 'data');
 			if (stray) {
 				say(`FAIL  ${id} — fixture may contain only data/ — found ${stray}`);
 				return settle('FAIL', { failure_reason: `fixture may contain only data/ — found ${stray}` });
 			}
-			// ⚠ AND `data` HAS TO BE A DIRECTORY. `cpSync(file, dir)` does not refuse — it writes the
-			// file OVER the sandbox's `data/`, and the records the proof then reads are whatever
-			// survived. A named refusal is the difference between a fix and a mystery verdict.
+			// and `data` has to be a directory: `cpSync(file, dir)` would write the file over the
+			// sandbox's `data/`
 			if (!fs.statSync(path.join(src, 'data')).isDirectory()) {
 				say(`FAIL  ${id} — fixture data/ must be a directory`);
 				return settle('FAIL', { failure_reason: 'fixture data/ must be a directory' });
@@ -1731,34 +1520,29 @@ function proveOne(ws, id, proof, flags) {
 			}
 		}
 
-		// ---- 4. THE FIXTURE — the ONE record this proof runs against, or none.
+		// ---- 4. the fixture — the one record this proof runs against, or none.
 		const store = new dt.Store(tws);
 		record = proof.given ? pickFixture(store, proof.given, null) : null;
 		ref = record ? record.ref : null;
 		over.record = ref;
-		// ⚠ BOUND HERE, not below the pre-check where it used to be: the `_delta` snapshot and the
-		// pre-check both render `{record}` now (R45), and both run before the steps do.
+		// bound here: the `_delta` snapshot and the pre-check both render `{record}`, and both run
+		// before the steps do
 		ctx = record ? { record } : {};
 		if (proof.given && !record) {
 			say(`NO-FIXTURE  ${id} — given matched 0 records in ${proof.given.collection}`);
 			return settle('NO-FIXTURE', { failure_reason: `given matched 0 records in ${proof.given.collection}` });
 		}
 
-		// ---- 5. THE `_delta` SNAPSHOT, taken before anything runs. It is also what makes the pre-check
-		// below read a delta of 0 rather than the whole collection's size.
-		//
-		// ⚠ THROUGH THE SAME `substituteWhere` THE JUDGE USES (R45). A before-count taken on the raw
-		// filter and an after-count taken on the rendered one are counts of two DIFFERENT questions,
-		// and their difference is a number with no meaning at all — which is worse than either being
-		// wrong, because the delta looks like a measurement.
+		// ---- 5. the `_delta` snapshot, taken before anything runs. It is also what makes the pre-check
+		// below read a delta of 0 rather than the whole collection's size. It goes through the same
+		// `substituteWhere` the judge uses, so before and after count the same question.
 		const resolve = dt.recordResolver(store);
 		for (const [i, e] of (Array.isArray(proof.expect) ? proof.expect : []).entries()) {
 			if (e && 'collection' in e && isDelta(e.count)) before[i] = countMatching(store, String(e.collection), substituteWhere(e.where, ctx), resolve);
 		}
 
-		// ---- 6. THE PRE-CHECK, and it is the most valuable state in the set. A proof whose expectations
-		// ALREADY hold reports PASS forever and measures nothing — the silent-green failure `prove` exists
-		// to remove. `step`/`path` expectations are not pre-checkable and do not count toward "all", so a
+		// ---- 6. the pre-check. A proof whose expectations already hold would report PASS forever and
+		// measure nothing, so it answers VACUOUS. `step`/`path` expectations are not pre-checkable and do not count toward "all", so a
 		// proof judged only on those is never vacuous.
 		const pre = judge(tws, store, proof, id, record, before, [], true);
 		if (pre.length && pre.every((v) => v.ok)) {
@@ -1766,7 +1550,7 @@ function proveOne(ws, id, proof, flags) {
 			return settle('VACUOUS', { record: ref, before, failure_reason: 'every expectation already holds' });
 		}
 
-		// ---- 7. THE STEPS, in order, until one fails or one asks for an actor.
+		// ---- 7. the steps, in order, until one fails or one asks for an actor.
 		if (guarded) dataBefore = dataState(ws.root);
 		return runSteps();
 	}
@@ -1778,10 +1562,8 @@ function proveOne(ws, id, proof, flags) {
 	}
 
 	/**
-	 * Finish a PENDING run — in the place that run actually happened.
-	 *
-	 * ⚠ A SANDBOX THAT IS GONE CANNOT BE JUDGED, and falling back to the primary would answer about
-	 * records this proof never touched — a confident verdict about the wrong store.
+	 * Finish a PENDING run — in the place that run actually happened. A sandbox that is gone cannot
+	 * be judged: falling back to the primary would answer about records this proof never touched.
 	 */
 	function resume(pend) {
 		enter(pend.sandbox ?? null);
@@ -1799,8 +1581,8 @@ function proveOne(ws, id, proof, flags) {
 			const step = raw ?? {};
 			const n = i + 1;
 			if (step.perform !== undefined) {
-				// ⚠ THE PENDING ROW IS WRITTEN BEFORE THE BLOCK IS PRINTED, so a run killed between the
-				// two still leaves a resumable ledger — the operator may already have taken the action.
+				// the pending row is written before the block is printed, so a run killed between the two
+				// still leaves a resumable ledger — you may already have taken the action
 				const text = substitute(String(step.perform), ctx);
 				const wrote = wroteLive();
 				if (wrote) {
@@ -1808,8 +1590,8 @@ function proveOne(ws, id, proof, flags) {
 					return settle('FAIL', { record: ref, steps, before, failure_reason: wrote });
 				}
 				const out = settle('PENDING', { record: ref, steps, before });
-				// ⚠ ABOVE the PERFORM, because "where am I acting" is read BEFORE "what do I do" — and a
-				// human who acts in the wrong checkout has written real records this proof will not judge.
+				// above the PERFORM, because "where am I acting" is read before "what do I do" — acting in
+				// the wrong checkout writes real records this proof will not judge
 				if (sandbox) say(`in       ${sandbox}   (a throwaway worktree — records written here are never landed)`);
 				say(`PERFORM  ${text}`);
 				const src = commandSource(ws.root, text);
@@ -1822,20 +1604,17 @@ function proveOne(ws, id, proof, flags) {
 			const t0 = Date.now();
 			const res = spawnSync(cmd, { shell: true, cwd: tws.root, timeout: timeout * 1000, encoding: 'utf8', maxBuffer: MAX_OUTPUT_MB * 1024 * 1024 });
 			const ms = Date.now() - t0;
-			// MINOR 7 / R26 — the classification is `stepOutcome`, pure and unit-tested: a step killed
-			// at the timeout, one killed by its own output volume, one killed from outside, one the
-			// shell could not start and one that simply returned non-zero are five different things to
-			// go and fix, and every one of them is invisible in an exit code.
+			// `stepOutcome` tells apart a timeout, an output overflow, an outside kill, a step the shell
+			// could not start and a plain non-zero exit — five different things to go and fix
 			const want = stepExpect(proof, n)?.exit ?? 0;
 			const { exit, failure_reason } = stepOutcome(res, timeout, n, want);
 			const out = captured(res.stdout);
 			say(`  exit ${exit} (${ms} ms)`);
 			steps.push({ index: n, kind: 'run', exit, stdout: out.text, stdout_truncated: out.truncated, stdout_tail: lastLines(out.text), stderr_tail: lastLines(res.stderr) });
 			if (failure_reason) {
-				// ⚠ NOT "the expectations failed": nothing was judged. A verdict line here would be a
-				// claim about something no step ever measured, so the failure names the STEP and shows
-				// its stderr. An ordinary non-zero exit keeps its `(want N)` form, because there the
-				// wanted value is the whole point; every other cause prints its own sentence.
+				// nothing was judged, so the failure names the step and shows its stderr rather than a
+				// verdict line. A plain non-zero exit keeps its `(want N)` form; every other cause prints
+				// its own sentence.
 				const plain = failure_reason === `step ${n} exited ${exit}`;
 				say(`FAIL at step ${n}  ${id} — ${plain ? `exit ${exit} (want ${want})` : failure_reason.slice(`step ${n} `.length)}`);
 				for (const line of lastLines(res.stderr).split('\n')) if (line) say(`  ${line}`);
@@ -1853,35 +1632,21 @@ function proveOne(ws, id, proof, flags) {
 	}
 
 	/**
-	 * ⚠ A FRESH `Store`, ALWAYS. `readAll` walks `ids()`, memoized on (git HEAD, collection dir
-	 * mtime) with a documented gap — a DEEP write that adds a record without moving the top
-	 * directory's mtime serves one stale read. A proof's steps write records and do NOT commit
-	 * (`auto-commit` is off), so judging on the instance that took the before-count reads a `_delta`
-	 * of 0 with nothing wrong anywhere. This is the ONE place that gap would be a wrong verdict.
+	 * A fresh `Store`, always: the instance that took the before-count may serve a stale index after
+	 * steps that wrote without committing (see `countMatching`).
 	 */
 	function decide(rec, snapshot, stepResults) {
 		const fresh = new dt.Store(tws);
-		// ⚠ M10 — THE FALLBACK IS FOR A RECORD THE STEPS DELETED OR RENAMED, and it is deliberate.
-		// `pickFixture(…, rec.ref)` re-reads the picked record so the verdict is judged on its state
-		// AFTER the steps ran; when it comes back null the record is gone, and the pre-step snapshot
-		// (`rec`) is what the expectations are then judged against. That is honest — every `where`
-		// over a field the record no longer has answers ✖, which is what "the step deleted it" should
-		// look like — where re-reporting NO-FIXTURE here would say "the proof did not run" about a
-		// run that ran all the way to the end.
+		// the picked record is re-read so the verdict is judged on its state after the steps ran. When
+		// the steps deleted or renamed it, the pre-step snapshot (`rec`) is judged instead: the run did
+		// happen, so it answers with verdicts rather than NO-FIXTURE.
 		const current = rec ? pickFixture(fresh, proof.given, rec.ref) ?? rec : null;
 		const currentRef = current ? current.ref : null;
 		const verdicts = judge(tws, fresh, proof, id, current, snapshot, stepResults, false);
 		for (const v of verdicts) say(`  ${v.line}`);
-		// ⚠ R57 — THE FLOOR UNDER THE WHOLE CLASS. `verdicts.every(ok)` is VACUOUSLY TRUE over an
-		// empty list, so every seam that made a declared expectation produce no verdict line came out
-		// of here as `PASS` at exit 0 — the mixed row (R48), the scalar `stdout` above, a row an older
-		// runtime carries that `formOf` cannot name. Each of those is now refused at compile, and this
-		// is what makes the whole class UNREACHABLE rather than closed one shape at a time: a run that
-		// declared expectations and produced no verdict measured nothing, whatever the reason.
-		//
-		// ⚠ SCOPED TO PROOFS THAT DECLARE EXPECTATIONS. A `gate` proof has none by construction — its
-		// assertion IS the step's exit code, judged in `runSteps` — so an unscoped floor would turn
-		// every passing gate in the workspace vacuous.
+		// a run that declared expectations and produced no verdict measured nothing, whatever the
+		// reason, so it is VACUOUS — `every(ok)` over an empty list would otherwise be a PASS. Scoped to
+		// proofs that declare expectations: a gate's assertion is its steps' exit codes.
 		if (Array.isArray(proof.expect) && proof.expect.length && !verdicts.length) {
 			const reason = 'no expectation produced a verdict — a proof that asserts nothing is not a proof';
 			say(`VACUOUS  ${id} — ${reason}`);
@@ -1894,7 +1659,7 @@ function proveOne(ws, id, proof, flags) {
 		}
 		say(`FAIL  ${id}`);
 		// `reason` is set only by the two ✖s no filter produced (a missing before-count, an
-		// unparseable stdout), whose LINE ends in a glyph a `failure_reason` must not carry.
+		// unparseable stdout), whose line ends in a glyph a `failure_reason` must not carry.
 		return settle('FAIL', { record: currentRef, steps: stepResults, before: snapshot, failure_reason: failed.reason ?? failed.line }, verdicts);
 	}
 
@@ -1912,11 +1677,11 @@ function proveOne(ws, id, proof, flags) {
 }
 
 /**
- * `--all` and the artifact form — a BOARD, and never a request for an actor (spec §13.3).
+ * `--all` and the artifact form — a board, and never a request for an actor.
  *
- * ⚠ EXIT 5 CAN NEVER COME OUT OF HERE. This is what a pre-commit hook and a CI step run, and "one
- * of your forty proofs would like a human" is not an answer either can act on. So a proof with a
- * `perform` step is LISTED rather than started, and the code reflects only what actually ran.
+ * Exit 5 never comes out of here: this is what a pre-commit hook and a CI step run, and neither can
+ * act on a request for a human. A proof with a `perform` step is listed rather than started, and
+ * the code reflects only what actually ran.
  *
  * `external: true` is opt-in for the same reason from the other side: a proof needing the network
  * should be invisible to the default run, not red on it.
@@ -1935,30 +1700,19 @@ function proveMany(ws, proofs, flags, select) {
 		let state;
 		let reason;
 		try {
-			// ⚠ R22 — EVERY PROOF RUNS SILENT HERE, ALWAYS. It used to be `silent: !!flags.json`, so a
-			// human `--all` printed a full step transcript per proof and the board it exists to be was
-			// forty screens down. A transcript is what a SINGLE-proof run is for.
+			// every proof runs silent here: a transcript is what a single-proof run is for
 			const out = proveOne(ws, id, proof, { silent: true });
 			state = out.state;
 			reason = out.row.failure_reason;
 		} catch (e) {
-			// ⚠ R24 — A THROW IS THAT PROOF'S FAILURE, WITH A ROW. This used to tally any throw as
-			// UNAVAILABLE and write nothing: a proof BROKEN in a way that throws (an undeclared
-			// `${env:…}` in a `path:`, a typo'd brace) left `--all` GREEN without `--strict` and left
-			// no evidence that it had ever been attempted.
-			//
-			// ⚠ AND THERE IS NO LONGER AN EXCEPTION (I2/R50). The one seam that used to mark its throw
-			// `unavailable` now SETTLES that state inside `proveOne`, so it arrives here as an ordinary
-			// returned verdict. Reading a state off a thrown error is how the board and the single run
-			// came to disagree about the same seam; a throw means one thing again.
+			// a throw is that proof's failure, with a row. UNAVAILABLE is settled inside `proveOne` and
+			// arrives as a returned verdict, so a throw always means FAIL.
 			state = 'FAIL';
 			reason = firstLine(e.message);
-			// `ledgered` means `proveOne` already wrote the row for this throw (MINOR 8) — writing a
-			// second one would make the ledger claim the proof ran twice.
+			// `ledgered` means `proveOne` already wrote the row for this throw
 			if (!e.ledgered) appendLedger(ws.root, id, ledgerRow(state, t0, { failure_reason: reason }));
 		}
-		// ONE LINE PER PROOF, and the reason on it: a board whose rows say only PASS/FAIL sends the
-		// reader to re-run each red one just to learn what it was.
+		// one line per proof, with the reason on it
 		say(`${state}  ${id}${reason ? ` — ${reason}` : ''}`);
 		rows.push({ proof: id, verdict: state, failure_reason: reason ?? null });
 		tally[state] = (tally[state] ?? 0) + 1;
@@ -1969,9 +1723,8 @@ function proveMany(ws, proofs, flags, select) {
 	}
 	const summary = `proofs: ${tally.PASS} passed · ${tally.FAIL} failed · ${tally.UNAVAILABLE} unavailable · ${tally['NO-FIXTURE']} no-fixture · ${tally.VACUOUS} vacuous · ${actors.length} need an actor`;
 	say(summary);
-	// ⚠ `--strict` IS WHAT MAKES UNAVAILABLE FATAL, and it has to be a flag rather than the default:
-	// a proof needing a credential is ordinarily unavailable on a cloud session, so failing on it by
-	// default would make `--all` red everywhere it matters least.
+	// `--strict` makes UNAVAILABLE fatal. It is a flag rather than the default because a proof needing
+	// a credential is ordinarily unavailable on a cloud session.
 	const code = tally.FAIL > 0 || (flags.strict && tally.UNAVAILABLE > 0) ? EXIT.FAIL : EXIT.PASS;
 	if (flags.json) dt.emit(JSON.stringify({ summary, ...tally, 'need-an-actor': actors, proofs: rows, code }, null, 2));
 	return { code };
@@ -1979,19 +1732,17 @@ function proveMany(ws, proofs, flags, select) {
 
 // ── the read surface: `dt prove --list` ─────────────────────────────────────────────────────────
 //
-// ⚠ NOTHING BELOW RUNS A STEP OR WRITES A BYTE. A proof's SOURCE says what it asserts; everything
-// an operator asks about one — can it run HERE, what did it last answer, what has no proof at all,
-// did anything FAIL on this machine — is a fact about this machine and this store, computed at read
-// time. A ledger is per-machine and gitignored, so the tally cannot be derived from the repo, and it
-// is the only place a FAIL from last week surfaces without being asked for.
+// Nothing below runs a step or writes a byte. A proof's source says what it asserts; everything else
+// you ask about one — can it run here, what did it last answer, what has no proof at all, did anything
+// fail on this machine — is a fact about this machine and this store, computed at read time.
 
 /**
- * `{ availability, last }` for ONE proof — the two columns no record carries.
+ * `{ availability, last }` for one proof — the two columns no record carries.
  *
- * `availability` asks `requires` of this machine first (its FIX is what the column names, never an
+ * `availability` asks `requires` of this machine first (its fix is what the column names, never an
  * env value), then, for a live proof picking from the live store, whether `given` matches anything.
- * A `fixture` proof brings its own record and a gate needs none. `last` is the TAIL of this machine's
- * ledger — a proof that failed on Monday and passed on Tuesday is passing — or null (`never`).
+ * A `fixture` proof brings its own record and a gate needs none. `last` is the tail of this machine's
+ * ledger — a proof that failed and then passed is passing — or null (`never`).
  */
 export function proofFacts(ws, store, id, proof, names) {
 	const need = resolveRequires(ws, proof.requires, names ?? envKeys(ws.root));
@@ -2011,9 +1762,8 @@ export function proofFacts(ws, store, id, proof, names) {
 const lastCell = (last) => (last ? `${last.verdict} ${last.when}${last.record ? ` [${last.record}]` : ''}` : 'never');
 
 /** A kept or un-removable sandbox nothing will come back for: a terminal row with a sandbox whose
- *  removal FAILED, or was never attempted (what `--keep` leaves). `.worktrees/` is gitignored, so the
- *  ledger is the only thing that knows the directory exists — and `existsSync`, because a count
- *  nothing can clear is a lie. */
+ *  removal failed, or was never attempted (what `--keep` leaves). `.worktrees/` is gitignored, so the
+ *  ledger is the only thing that knows the directory exists; `existsSync` drops one already gone. */
 function leftBehind(rows) {
 	const left = new Set();
 	for (const r of rows) {
@@ -2026,12 +1776,10 @@ function leftBehind(rows) {
 /**
  * `dt prove --list [<proof|artifact>] [--missing] [--kind gate|live] [--strict] [--json]`.
  *
- * ⚠ `--missing` LISTS ARTIFACTS, NOT PROOFS, so it takes no target and no narrowing: accepting one
- * and ignoring it would answer a question nobody asked, at exit 0.
+ * `--missing` lists artifacts, not proofs, so it takes no target and no narrowing.
  *
- * ⚠ THE TALLY IS COUNTED AS THE WALK GOES, NEVER ASSIGNED AT THE END. A throw partway through (an
- * unreadable ledger, a record that will not parse) must not leave the gate reading ZERO failures —
- * so the walk is not wrapped at all: a surface that cannot read its own evidence fails loudly.
+ * The tally is counted as the walk goes, and the walk is not wrapped: a throw partway through (an
+ * unreadable ledger, a record that will not parse) fails loudly rather than reading zero failures.
  */
 function listProofs(ws, store, proofs, target, flags) {
 	if (flags.missing) {
@@ -2040,7 +1788,7 @@ function listProofs(ws, store, proofs, target, flags) {
 		const named = new Set();
 		for (const p of proofs.values()) for (const a of p.about ?? []) named.add(String(a));
 		// the same enumeration compile's coverage line counts, in its order — that line says
-		// `commands 1/2`, this says WHICH one
+		// `commands 1/2`, this says which one
 		const refs = artifactRefs(store);
 		const missing = [...refs.commands, ...refs.skills, ...refs.scripts, ...refs.bindings].filter((r) => !named.has(r));
 		if (flags.json) { dt.emit(JSON.stringify(missing, null, 2)); return { code: EXIT.PASS }; }
@@ -2054,7 +1802,7 @@ function listProofs(ws, store, proofs, target, flags) {
 		else if (artifactRefs(store).all.has(target)) select = (id, p) => (p.about ?? []).map(String).includes(target);
 		else throw new Error(`dt prove --list takes a proof id or an artifact (skills/<id>, commands/<id>, …) — got "${target}"`);
 	}
-	const names = envKeys(ws.root); // ONE .env parse for the whole listing
+	const names = envKeys(ws.root); // one .env parse for the whole listing
 	const tally = { PASS: 0, FAIL: 0, UNAVAILABLE: 0 };
 	let declared = 0; let never = 0; let other = 0;
 	const left = new Set();
@@ -2072,9 +1820,9 @@ function listProofs(ws, store, proofs, target, flags) {
 		rows.push({ id, ...proof, ...facts });
 	}
 	const summary = `proofs: ${declared} declared · ${tally.PASS} passed · ${tally.FAIL} failed · ${tally.UNAVAILABLE} unavailable · ${never} never${other ? ` · ${other} other` : ''}`;
-	// ⚠ `--strict` FAILS ON A FAIL TAIL, and says nothing about UNAVAILABLE: this reports what this
-	// machine has ALREADY proved rather than running anything (on a board, `--strict` means the other
-	// thing — see proveMany).
+	// here `--strict` fails on a FAIL tail and says nothing about UNAVAILABLE: this reports what this
+	// machine has already proved rather than running anything (on a board it means the other thing —
+	// see proveMany).
 	const code = flagValue(flags.strict) && tally.FAIL ? EXIT.FAIL : EXIT.PASS;
 	if (flags.json) {
 		dt.emit(JSON.stringify({ summary, declared, ...tally, never, other, sandboxes_left: [...left], proofs: rows, code }, null, 2));

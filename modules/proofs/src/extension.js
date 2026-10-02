@@ -14,8 +14,7 @@ export default function activate(api) {
 	bind(api);
 	return {
 		commands: {
-			// ⚠ THE EXIT CODE IS THE WHOLE POINT OF `prove`: 0 pass · 1 fail · 3 unavailable · 4 no-fixture ·
-			// 5 pending · 6 vacuous (2 stays reserved for a retired verb spelling, which the engine answers)
+			// the exit code is the answer: 0 pass · 1 fail · 3 unavailable · 4 no-fixture · 5 pending · 6 vacuous
 			prove: { usage: PROVE_USAGE, run: (ws, argv) => { dt.warnIfStale(ws.root); return proveCommand(ws, argv).code; } },
 		},
 		// `proofs/fixtures/` holds RECORDS a fixture proof runs against, not proofs

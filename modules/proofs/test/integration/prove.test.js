@@ -1459,7 +1459,7 @@ describe('dt prove — a step that never ran is not a step that returned non-zer
 	});
 });
 
-describe('dt prove --all — a broken proof is FAILED, with a row (R24)', () => {
+describe('dt prove --all — a broken proof is FAILED, with a row', () => {
 	// ⚠ IT USED TO BE COUNTED UNAVAILABLE AND LEFT NO ROW: a proof broken in a way that THROWS left
 	// `--all` green without `--strict`, and left no evidence it had ever been attempted.
 	test('a proof whose path names an undeclared var is counted failed and exits 1', () => {
@@ -1525,7 +1525,7 @@ describe('dt prove — --kind is validated, and every pending record is named', 
 // Fix round 2 — the two routes a verdict could still vanish down: a `where:` typed the shortest way,
 // and a throw on the RESUME half of the protocol.
 // ────────────────────────────────────────────────────────────────────────────────────────────────
-describe('dt prove — a bare `where:` is caught at compile (R26)', () => {
+describe('dt prove — a bare `where:` is caught at compile', () => {
 	// ⚠ THE SPELLING AN AUTHOR IS MOST LIKELY TO TYPE. `where:` with nothing after it parses to
 	// **null**, not to `{}`, and the first version of the MINOR-9 guard skipped null to keep
 	// `Object.keys` from throwing — so the shortest route to a proof that measures nothing was the one
@@ -1556,7 +1556,7 @@ describe('dt prove — a bare `where:` is caught at compile (R26)', () => {
 	});
 });
 
-describe('dt prove — a throw while judging a RESUME still leaves a row (MINOR B)', () => {
+describe('dt prove — a throw while judging a RESUME still leaves a row', () => {
 	// ⚠ THE FIRST WRAP SAT BELOW THE RESUME EARLY-RETURN. A throw while judging a `--record` resume
 	// left the ledger at PENDING with the failed run unrecorded — so the operator is told to finish a
 	// run they have already finished, and the ledger denies it ever happened. Both halves of the
@@ -2308,7 +2308,7 @@ const ownerProof = (pick, count) => ({
 	expect: [{ collection: 'notes', where: { owner: { _eq: '{record}' } }, count }],
 });
 
-describe('dt prove — a {record} literal inside a where is the picked record (R45)', () => {
+describe('dt prove — a {record} literal inside a where is the picked record', () => {
 	// ⚠ THE SNAPSHOT AND THE AFTER-COUNT MUST RENDER THE SAME FILTER. A before-count taken on the raw
 	// filter and an after-count on the rendered one are counts of two DIFFERENT questions, and their
 	// difference is a number with no meaning — worse than either being wrong, because it looks like a
@@ -2415,7 +2415,7 @@ describe('discarding, enumerating and diagnosing a sandbox', () => {
 // threw where it should have settled.
 // ────────────────────────────────────────────────────────────────────────────────────────────────
 
-describe('dt prove — a row mixing two forms is refused at COMPILE (C1/I3/R48)', () => {
+describe('dt prove — a row mixing two forms is refused at COMPILE', () => {
 	const mixed = (expect) => {
 		const ws = workspace({ collections: { notes: PROVE_NOTES, people: simpleCollection() }, compile: false });
 		writeProof(ws.root, 'mixed', {
@@ -2461,7 +2461,7 @@ describe('dt prove — a row mixing two forms is refused at COMPILE (C1/I3/R48)'
 	});
 });
 
-describe('dt prove — a path: is resolved against the WORKSPACE, not the process cwd (C2/R51)', () => {
+describe('dt prove — a path: is resolved against the WORKSPACE, not the process cwd', () => {
 	// ⚠ MEASURED: `existsSync(rendered)` on a relative path answered against whatever directory the
 	// operator happened to be standing in. The same proof PASSED from the workspace root and FAILED
 	// from a subdirectory of it — and in a sandboxed `writes` proof it would have asked about the
@@ -2497,7 +2497,7 @@ describe('dt prove — a path: is resolved against the WORKSPACE, not the proces
 	});
 });
 
-describe('dt prove <artifact> — an artifact nothing proves is VACUOUS, not proved (C3/R49)', () => {
+describe('dt prove <artifact> — an artifact nothing proves is VACUOUS, not proved', () => {
 	// ⚠ THE ORIENTATION BLOCK TELLS EVERY SESSION TO QUOTE THIS COMMAND before saying an artifact
 	// works — so `proofs: 0 passed · 0 failed · …` at exit 0 shipped rule 7's own failure mode as a
 	// feature: a green result from a question nobody had asked.
@@ -2539,7 +2539,7 @@ describe('dt prove <artifact> — an artifact nothing proves is VACUOUS, not pro
 	});
 });
 
-describe('the proof read surfaces — the two asymmetries (M2/M3)', () => {
+describe('the proof read surfaces — the two asymmetries', () => {
 	// ⚠ `--missing=false` TURNED THE FLAG ON. The listing tested `!== undefined`, so the one spelling
 	// a person uses to say "no" selected the inverted listing — the same class as `--strict=false`
 	// arming a gate (R46), and the fix is the same shared reader.
@@ -2576,7 +2576,7 @@ describe('the proof read surfaces — the two asymmetries (M2/M3)', () => {
 	});
 });
 
-describe('dt prove — a scalar `stdout:` is refused at COMPILE, and a run that asserts nothing is VACUOUS (R57)', () => {
+describe('dt prove — a scalar `stdout:` is refused at COMPILE, and a run that asserts nothing is VACUOUS', () => {
 	// ⚠ THE MEASURED RESIDUAL OF THE SILENT-GREEN CLASS, at both ends. `{step: 1, stdout: 'hello'}`
 	// against `steps: [{run: 'echo goodbye'}]` compiled clean and answered exit 0 PASS with ZERO
 	// verdict lines: the judge gates on `typeof e.stdout === 'object'` and compile had no shape check
@@ -2639,7 +2639,7 @@ describe('dt prove — a scalar `stdout:` is refused at COMPILE, and a run that 
 	});
 });
 
-describe('dt prove --list --strict — evidence that cannot be read fails CLOSED (M5)', () => {
+describe('dt prove --list --strict — evidence that cannot be read fails CLOSED', () => {
 	// ⚠ THE ONE DIRECTION A GATE MUST NEVER FAIL: a silent green bought with a swallowed exception.
 	// A walk that threw partway through once left the gate reading ZERO failures and `--strict`
 	// exiting 0 BECAUSE the count broke. The walk is not wrapped at all now: a read surface that

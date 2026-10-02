@@ -550,7 +550,7 @@ describe('verdictLine — the actual value beside the wanted one, always', () =>
 		assert.equal(verdictLine({ status: { _in: ['done'] } }, 'open'), 'status "open" ∈ [done] ✖');
 	});
 
-	test('the _eq line is the one R6 names', () => {
+	test('the _eq line renders as =', () => {
 		assert.equal(verdictLine({ status: { _eq: 'done' } }, 'open'), 'status "open" = done ✖');
 	});
 
@@ -720,7 +720,7 @@ describe('validateProofShape — a numeric enum is compared the way filter.js co
 // Fix round 1 — an expectation that asserts NOTHING, and a verdict line that can resolve a hop.
 // ────────────────────────────────────────────────────────────────────────────────────────────────
 
-describe('validateProofShape — an expectation that asserts nothing (MINOR 9)', () => {
+describe('validateProofShape — an expectation that asserts nothing', () => {
 	// ⚠ THE SILENT GREEN, ONE LAYER BELOW THE VACUOUS PROOF. A `record:` entry with an empty `where`
 	// produces ZERO verdict lines, so `verdicts.every(ok)` is vacuously true and the proof PASSES
 	// having measured nothing at all — and unlike a vacuous proof, nothing at RUN time can see it.
@@ -778,7 +778,7 @@ describe('validateProofShape — an expectation that asserts nothing (MINOR 9)',
 // nothing parsed. Each one was a confident answer about the wrong thing.
 // ────────────────────────────────────────────────────────────────────────────────────────────────
 
-describe('validateProofShape — R44: a record expectation has exactly one legal target', () => {
+describe('validateProofShape — a record expectation has exactly one legal target', () => {
 	// ⚠ NOTHING READ `e.record`. The judge takes the picked record straight off `given`, so a proof
 	// naming any other target compiled clean and was then judged against a DIFFERENT record than the
 	// one it names — a confident verdict about the wrong thing, with no way to see it from the output.
@@ -795,7 +795,7 @@ describe('validateProofShape — R44: a record expectation has exactly one legal
 	});
 });
 
-describe('substituteWhere — R45: a filter\'s literals are rendered before the filter runs', () => {
+describe('substituteWhere — a filter\'s literals are rendered before the filter runs', () => {
 	const ctxA = { record: { ref: 'people/ada', fields: { id: 'ada', name: 'Ada', status: 'open' } } };
 
 	// ⚠ THE CANONICAL SHAPE, AND IT COULD NOT WORK. `{ owner: { _eq: '{record}' } }` reached
@@ -854,7 +854,7 @@ describe('substituteWhere — R45: a filter\'s literals are rendered before the 
 	});
 });
 
-describe('flagValue / flagEnabled — R46: --flag=false is OFF', () => {
+describe('flagValue / flagEnabled — --flag=false is OFF', () => {
 	// ⚠ `'false'` IS A TRUTHY STRING. Every boolean flag was stored as the raw text after the `=`, so
 	// `--strict=false` armed the gate it names — the exact opposite of what was typed, silently.
 	test('the four spellings of off are off', () => {
@@ -994,7 +994,7 @@ describe('stepOutcome — a kill is not an exit code, and a signal is not a caus
 // asked first.
 // ────────────────────────────────────────────────────────────────────────────────────────────────
 
-describe('formOf — ONE answer to "what shape is this row", read by compile AND the judge (R48)', () => {
+describe('formOf — ONE answer to "what shape is this row", read by compile AND the judge', () => {
 	test('each of the four forms is named', () => {
 		assert.equal(formOf({ collection: 'notes', where: {}, count: 1 }), 'collection');
 		assert.equal(formOf({ record: '{record}', where: { status: { _eq: 'done' } } }), 'record');
@@ -1015,7 +1015,7 @@ describe('formOf — ONE answer to "what shape is this row", read by compile AND
 	});
 });
 
-describe('validateProofShape — a row that MIXES two forms is refused (C1/I3/R48)', () => {
+describe('validateProofShape — a row that MIXES two forms is refused', () => {
 	const mixes = 'expect[0] mixes two forms — a row is one of collection+where+count · record+where · step · path+exists';
 
 	// ⚠ THE MEASURED CRITICAL. `{record: '{record}', path: …, exists: true}` compiled as a PATH row
@@ -1053,7 +1053,7 @@ describe('validateProofShape — a row that MIXES two forms is refused (C1/I3/R4
 	});
 });
 
-describe('validateProofShape — a step row\'s stdout is a FILTER, never a scalar (R57)', () => {
+describe('validateProofShape — a step row\'s stdout is a FILTER, never a scalar', () => {
 	// ⚠ THE MEASURED RESIDUAL, and the spelling an author reaches for first. `stdout: hello` reads
 	// like "the step printed hello" and compiled clean — the judge gates on
 	// `typeof e.stdout === 'object'`, so the row produced ZERO verdict lines and the proof answered
@@ -1110,7 +1110,7 @@ describe('validateProofShape — a step row\'s stdout is a FILTER, never a scala
 	});
 });
 
-describe('validateProofShape — a step index past the last step (M7)', () => {
+describe('validateProofShape — a step index past the last step', () => {
 	// ⚠ IT RESOLVED TO `undefined` AND JUDGED THAT. `stepResults[6]` on a one-step proof is
 	// undefined, so the line read `exit undefined = 0 ✖` — a FAIL naming an exit code no step ever
 	// produced, for a proof whose only defect is an index nobody can satisfy.
@@ -1124,7 +1124,7 @@ describe('validateProofShape — a step index past the last step (M7)', () => {
 	});
 });
 
-describe('validateProofShape — where a {record} literal may and may not appear (I1/I4)', () => {
+describe('validateProofShape — where a {record} literal may and may not appear', () => {
 	// ⚠ THE R45 EXEMPTION IS FOR EXPECTATIONS ONLY. `pickFixture` hands `given.where` to
 	// `matchesFilter` RAW — nothing substitutes it, and nothing ever could: the given is what PICKS
 	// the record, so there is no record yet to render. The exemption let the literal through compile

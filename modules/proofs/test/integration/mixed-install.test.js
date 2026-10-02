@@ -66,7 +66,7 @@ describe('a writes proof in a workspace with a linked engine and an ORDINARY pro
 		assert.equal(JSON.parse(r.stdout).verdict, 'PASS');
 	});
 
-	test('a writes proof whose sandbox cannot be installed is UNAVAILABLE and NAMES what failed — kept or not (review R6)', (t) => {
+	test('a writes proof whose sandbox cannot be installed is UNAVAILABLE and NAMES what failed — kept or not', (t) => {
 		// a declared dependency npm cannot satisfy offline — the sandbox's install must fail, loudly
 		const pkgFile = path.join(ws.root, 'package.json');
 		const pkg = JSON.parse(fs.readFileSync(pkgFile, 'utf8'));
