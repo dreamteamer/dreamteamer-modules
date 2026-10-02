@@ -4,24 +4,20 @@
 // the same way. Containers are not records: nothing here writes a workspace file, Docker keeps the
 // history, and this runs BEFORE any workspace exists — on a machine with nothing but Node and Docker.
 //
-// WHY THERE IS NO DEPENDENCY. The Engine API is HTTP over a Unix socket (a named pipe on Windows),
-// and `node:http` takes `socketPath`. Measured 2026-09-24 against Docker Desktop 29.3.1 / API 1.54:
-// /version, /containers/json and /images/json all answered from a bare `node -e`. The ONE call the
-// API makes awkward is `POST /build`, which wants a tar stream built from a context — so templates
-// ship PREBUILT (a registry pull is `POST /images/create`, streamed JSON lines) and a local build is
-// the `docker` CLI Docker Desktop installs anyway, never this file.
+// NO DEPENDENCY. The Engine API is HTTP over a Unix socket (a named pipe on Windows), and
+// `node:http` takes `socketPath`. The one call the API makes awkward is `POST /build`, which wants a
+// tar stream built from a context — so templates ship PREBUILT (a registry pull is
+// `POST /images/create`, streamed JSON lines) and a local build is the `docker` CLI, never this file.
 //
-// EVERY REQUEST CARRIES A TIMER. Docker Desktop paused, or still starting, ACCEPTS the socket and
-// says nothing — and a client with no timer then hangs every verb, and everything waiting on it,
-// forever (measured 2026-09-24: a fake that accepts and never answers held a list until the harness
-// killed it at 20 s). So `api()` sets an IDLE timer of `DT_DOCKER_TIMEOUT` seconds (default 30, host
-// `.env` or env) on the socket: idle, not total, so a pull that keeps streaming progress lines is
-// never cut off, while a silent daemon fails the verb with the knob named. `DT_HEALTH_TIMEOUT`
-// (default 90) bounds the other wait, code-server's /healthz.
+// EVERY REQUEST CARRIES A TIMER. A paused or still-starting Docker Desktop accepts the socket and
+// says nothing, and a client with no timer then hangs every verb. `api()` sets an IDLE timer of
+// `DT_DOCKER_TIMEOUT` seconds (default 30, host `.env` or env) on the socket: idle, not total, so a
+// pull that keeps streaming progress lines is never cut off, while a silent daemon fails the verb with
+// the setting named. `DT_HEALTH_TIMEOUT` (env, default 90, 0 skips it) bounds the other wait,
+// code-server's /healthz.
 //
-// TEST KNOBS, stated once: `DT_DOCKER_SOCKET` points the client at any socket (a fake in tests);
-// `DT_HOME` relocates `~/.dreamteamer`; `DT_HEALTH_TIMEOUT=0` skips the wait for code-server's
-// /healthz. None is documented in help — they are how the suite drives this file without Docker.
+// `DT_DOCKER_SOCKET` points the client at any socket (the suite's fake Engine API); `DT_HOME`
+// relocates `~/.dreamteamer`.
 import http from 'node:http';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -37,10 +33,10 @@ export const NOUNS = { containers: 'containers', container: 'containers', images
 
 // ---- host configuration: ~/.dreamteamer/.env ---------------------------------------------------
 export const HOST_DEFAULTS = {
-	DT_PORT_BASE: '8100',       // NOT 8080: that is code-server's in-container port, the engine's REST default, and the old dev image's exposed port — three things on one number
+	DT_PORT_BASE: '8100',       // NOT 8080: that is code-server's in-container port and the engine's REST default
 	DT_BIND: '127.0.0.1',       // loopback only; a remote tier puts auth in front before this changes
 	DT_REGISTRY: 'ghcr.io/dreamteamer', // `<registry>/<template>:<tag>` is the image a template name resolves to — the public images repo publishes here
-	DT_TEMPLATE_TAG: '0.6.0',   // the image release this package is tested against, bumped with it; `setup` never writes it, so an upgrade moves it
+	DT_TEMPLATE_TAG: '0.6.0',   // the image release this package pins; `setup` never writes it, so upgrading the package moves it
 	DT_DOCKER_TIMEOUT: '30',    // seconds a request to Docker may sit IDLE before the verb fails — see the header
 };
 
@@ -71,15 +67,15 @@ function unreachable(sock) {
 	return new Error(`Docker is not reachable at ${sock}${hint}. \`dt-docker setup\` checks this and says what is missing.`);
 }
 
-/** One request. Resolves { status, body } where body is parsed JSON when the response is JSON,
- *  else the raw text. `onLine` receives each JSON line of a streaming response (a pull). */
 /** Seconds a request may sit idle before it fails; 0 disables — `DT_DOCKER_TIMEOUT`, env over file over default. */
 export function dockerTimeoutSeconds() {
 	const n = Number(hostEnv().DT_DOCKER_TIMEOUT);
 	return Number.isFinite(n) && n >= 0 ? n : Number(HOST_DEFAULTS.DT_DOCKER_TIMEOUT);
 }
 
-/** `send` streams a body (a tar upload) instead of JSON; `stream` resolves a 2xx with the response
+/** One request. Resolves { status, body } where body is parsed JSON when the response is JSON,
+ *  else the raw text. `onLine` receives each JSON line of a streaming response (a pull).
+ *  `send` streams a body (a tar upload) instead of JSON; `stream` resolves a 2xx with the response
  *  itself, unread (a tar download) — both under the same idle timer, which keeps running while the
  *  bytes move. */
 export function api(method, urlPath, body, { onLine, raw, send, stream } = {}) {
@@ -88,9 +84,9 @@ export function api(method, urlPath, body, { onLine, raw, send, stream } = {}) {
 	return new Promise((resolve, reject) => {
 		const payload = body === undefined ? undefined : JSON.stringify(body);
 		const req = http.request({
-			// ⚠ ONE CONNECTION PER REQUEST. Node's global agent keeps sockets alive (the default since
-			// Node 19), and a socket the daemon closed while idle is then REUSED — the write fails EPIPE /
-			// ECONNRESET, intermittently and by timing alone. A Unix-socket connect costs nothing.
+			// One connection per request. Node's global agent keeps sockets alive, and a socket the
+			// daemon closed while idle is then reused — the write fails EPIPE / ECONNRESET,
+			// intermittently and by timing alone. A Unix-socket connect costs nothing.
 			agent: false,
 			socketPath: sock, method, path: urlPath,
 			headers: payload ? { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) } : send ? { 'Content-Type': 'application/x-tar' } : {},
@@ -216,8 +212,8 @@ export function parseMount(spec) {
  *  container name is hex-encoded, as the extension spells it. */
 export const attachUri = (name) => `vscode-remote://attached-container+${Buffer.from(name, 'utf8').toString('hex')}${workspaceDir(name)}`;
 /** Each container gets its OWN user-defined bridge, so it shares no network with another
- *  workspace and its network carries its name. That is NOT isolation on its own: measured 2026-09-28
- *  on Docker Desktop 29.3.1, a container on one user-defined bridge reaches another's by IP and via
+ *  workspace and its network carries its name. That is naming, not isolation: on Docker Desktop a
+ *  container on one user-defined bridge reaches another's by IP and via
  *  host.docker.internal:<its published port>. What isolates is the image's egress firewall (see
  *  CapAdd below); the bridge still helps where the platform does separate bridges. */
 export const networkName = (name) => `dreamteamer-${name}`;

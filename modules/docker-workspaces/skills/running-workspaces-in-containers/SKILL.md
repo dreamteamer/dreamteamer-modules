@@ -16,7 +16,7 @@ name reattaches them.
 someone asks to run, open or stop a workspace in Docker; to try a template; to move workspaces
 between containers; or a `dt start` / `dt export` typed in a workspace failed saying it left core.
 
-**not for:** the records inside the workspace (`using-dreamteamer`), or the hosted service.
+**not for:** the records inside the workspace (`using-dreamteamer`).
 
 ## the verbs
 
@@ -31,8 +31,8 @@ dt-docker export container <name> --out <file>    # every workspace as one encry
 dt-docker import container <name> <file>          # into a running container · --replace · --as <w>
 ```
 
-Every verb takes `--json` (one document on stdout, human lines on stderr) and refuses a flag it does
-not know. `dt-docker help` has every form.
+Every verb refuses a flag it does not know. Every verb but `rm` and `add image` takes `--json` (one
+document on stdout, human lines on stderr). `dt-docker help` has every form.
 
 ## rules that matter
 
@@ -44,6 +44,10 @@ not know. `dt-docker help` has every form.
 - **`--force` on `rm container` deletes the volumes**, and with them every workspace and login in that
   container. Confirm with the person first.
 - **`import` runs no install.** It prints the `npm ci` to run inside the container next.
+- **Export carries `/workspaces` only.** The home volume (logins) and the files volume (`/files`)
+  stay behind; say so before a move that depends on them.
+- **`start` on an existing container ignores `--template`, `--mount`, `--repo`, `--name` and
+  `--email`.** To change any of them, `rm` the container (volumes kept) and start it again.
 - **A per-container bridge is not isolation.** What keeps containers apart is the image's egress
   policy. Do not describe a container as sandboxed beyond that.
 
@@ -51,4 +55,4 @@ not know. `dt-docker help` has every form.
 
 Defaults, then `~/.dreamteamer/.env`, then `DT_*` in the environment: `DT_PORT_BASE` (8100),
 `DT_BIND` (127.0.0.1), `DT_REGISTRY` (`ghcr.io/dreamteamer`), `DT_TEMPLATE_TAG`, `DT_IMAGE_<template>`,
-`DT_DOCKER_TIMEOUT`, `DT_PERSON_NAME` / `DT_PERSON_EMAIL`, `DT_HOME`, `DT_DOCKER_SOCKET`.
+`DT_DOCKER_TIMEOUT`, `DT_HEALTH_TIMEOUT` (environment only), `DT_PERSON_NAME` / `DT_PERSON_EMAIL`, `DT_HOME`, `DT_DOCKER_SOCKET`.

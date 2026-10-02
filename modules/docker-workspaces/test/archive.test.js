@@ -513,7 +513,7 @@ describe('the v1 format is preserved byte for byte', () => {
 		assert.ok((await collect(seal([tgz], { keys: key.keys, head: dtx.subarray(0, 72) }))).equals(dtx), 'this writer no longer produces the v1 bytes');
 	});
 
-	test('a multi-chunk seal follows docs/container-export-format.md, checked by an independent reading of the spec', async () => {
+	test('a multi-chunk seal follows FORMAT.md, checked by an independent reading of the spec', async () => {
 		const { seal } = await import('../src/archive.js');
 		const head = Buffer.alloc(40); Buffer.from('DTEXPORT').copy(head); head[8] = 1; head[9] = 17; head[10] = 8; head[11] = 1; head.writeUInt32BE(65536, 12);
 		crypto.randomFillSync(head, 16, 23);
