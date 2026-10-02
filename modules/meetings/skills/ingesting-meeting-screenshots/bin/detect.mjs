@@ -48,27 +48,53 @@ const MEETINGS = path.join(ROOT, 'data/meetings');
 const RECORDINGS_DIR = path.join(ROOT, 'data/meeting-recordings');
 
 /**
- * The `storage` block of a compiled descriptor — `path`, `suffix` and the `under` placement — read
- * with the same frontmatter-grade line parsing this script uses everywhere (no yaml dependency).
- * Null when the workspace has no compiled runtime, which leaves the module defaults above in force.
+ * The block maps of a compiled descriptor as nested objects, scalars as strings — enough YAML for the
+ * engine's own dump, read with no YAML dependency. A list item, and a block scalar (`>-`, `|`), is
+ * skipped along with everything nested in it: the keys read here are maps of scalars.
+ */
+function yamlMaps(text) {
+  const root = {};
+  const stack = [{ indent: -1, node: root }];
+  let skipDeeperThan = null;
+  for (const raw of text.split('\n')) {
+    if (!raw.trim() || /^\s*#/.test(raw)) continue;
+    const indent = raw.length - raw.trimStart().length;
+    if (skipDeeperThan !== null) { if (indent > skipDeeperThan) continue; skipDeeperThan = null; }
+    const line = raw.trim();
+    if (line === '-' || line.startsWith('- ')) { skipDeeperThan = indent; continue; }
+    const m = /^([^:#]+?):(?:\s+(.*))?$/.exec(line);
+    if (!m) continue;
+    while (stack.at(-1).indent >= indent) stack.pop();
+    const parent = stack.at(-1).node;
+    const key = m[1].replace(/^['"]|['"]$/g, '');
+    const value = m[2];
+    if (value === undefined || value === '') { parent[key] = {}; stack.push({ indent, node: parent[key] }); }
+    else if (/^[>|][+-]?$/.test(value)) skipDeeperThan = indent;
+    else parent[key] = value.replace(/^['"]|['"]$/g, '');
+  }
+  return root;
+}
+
+/**
+ * Where a collection's records live, from its COMPILED descriptor: the path compile resolved
+ * (`compiled.defaults.storage`, over the authored one), the suffix, and — when it is stored under a
+ * parent (`storage.under`) — the parent collection compile resolved (`compiled.under_collection`) and
+ * the subfolder. Null when the workspace has no compiled runtime, which leaves the module defaults in
+ * force.
  */
 function compiledStorage(name) {
   let text;
   try { text = readFileSync(path.join(ROOT, '.dreamteamer', 'collections', `${name}.collection.yaml`), 'utf8'); } catch { return null; }
-  const block = /^storage:\n((?:[ \t]+.*\n?)+)/m.exec(text)?.[1];
-  if (!block) return null;
-  const out = {};
-  let under = null;
-  for (const line of block.split('\n')) {
-    const m = /^(\s+)([a-z_]+):\s*(.*)$/.exec(line);
-    if (!m) continue;
-    const [, indent, key, raw] = m;
-    const value = raw.replace(/^['"]|['"]$/g, '');
-    if (key === 'under' && raw === '') { under = {}; out.under = under; continue; }
-    if (under && indent.length > 2) under[key] = value;
-    else if (indent.length === 2) out[key] = value;
-  }
-  return out;
+  const d = yamlMaps(text);
+  if (!d.compiled) return null;
+  const authored = d.storage ?? {};
+  const supplied = d.compiled.defaults?.storage ?? {};
+  const u = authored.under;
+  return {
+    path: supplied.path ?? authored.path,
+    suffix: authored.suffix ?? supplied.suffix,
+    under: u?.parent && u?.subfolder && d.compiled.under_collection ? { collection: d.compiled.under_collection, subfolder: u.subfolder } : null,
+  };
 }
 
 /**
@@ -83,10 +109,10 @@ function meetingRoots() {
   const tail = `.${storage?.suffix || 'meeting'}.md`;
   const roots = [[own, tail]];
   const under = storage?.under;
-  const parent = under?.collection ? compiledStorage(under.collection) : null;
-  if (under?.path && parent?.path && existsSync(path.join(ROOT, parent.path))) {
+  const parent = under ? compiledStorage(under.collection) : null;
+  if (under && parent?.path && existsSync(path.join(ROOT, parent.path))) {
     for (const e of readdirSync(path.join(ROOT, parent.path), { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
-      if (e.isDirectory() && !e.name.startsWith('.')) roots.push([path.join(ROOT, parent.path, e.name, under.path), tail]);
+      if (e.isDirectory() && !e.name.startsWith('.')) roots.push([path.join(ROOT, parent.path, e.name, under.subfolder), tail]);
     }
   }
   return roots;

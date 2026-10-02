@@ -202,10 +202,11 @@ test('scan matches a screenshot to a meeting that lives inside its company folde
 	try {
 		const compiled = path.join(ws, '.dreamteamer', 'collections');
 		fs.mkdirSync(compiled, { recursive: true });
+		// the v2 compiled shape, as the engine dumps it: the authored storage, then what compile resolved
 		fs.writeFileSync(path.join(compiled, 'companies.collection.yaml'),
-			'name: companies\nstorage:\n  path: data/companies\n  shape: folder\n  entry: company.md\n  suffix: company\n  codec: md\n  base: workspace\nschema: { type: object }\n');
+			'name: companies\nstorage:\n  shape: folder\n  entry: company.md\ncompiled:\n  defaults:\n    storage:\n      path: data/companies\n      format: md\n      suffix: company\n  runtime: false\n  fields: {}\n');
 		fs.writeFileSync(path.join(compiled, 'meetings.collection.yaml'),
-			'name: meetings\nstorage:\n  path: data/meetings\n  suffix: meeting\n  codec: md\n  base: workspace\n  under:\n    field: company\n    path: meetings\n    collection: companies\nschema: { type: object }\n');
+			'name: meetings\ndescription: >-\n  One meeting. path: not-a-key\nstorage:\n  under:\n    parent: company\n    subfolder: meetings\ncompiled:\n  defaults:\n    storage:\n      path: data/meetings\n      format: md\n      shape: file\n      suffix: meeting\n  runtime: false\n  under_collection: companies\n  json_schema:\n    required:\n      - name\n');
 		const id = '2026/07/2026-07-08--16-45--northwind--sam-dana';
 		const meeting = path.join(ws, 'data/companies/northwind/meetings', `${id}.meeting.md`);
 		fs.mkdirSync(path.dirname(meeting), { recursive: true });
