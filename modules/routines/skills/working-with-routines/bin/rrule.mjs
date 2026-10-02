@@ -177,11 +177,28 @@ function workspaceRoot(from) {
 	}
 }
 
-/** Where this workspace keeps routines: the compiled descriptor's storage path. */
+/** Where this workspace keeps routines: the storage path compile resolved, which the compiled
+ *  descriptor carries at `compiled.defaults.storage.path` (the authored `storage.path` when the
+ *  author wrote one), else the module default. Read by indentation, since this module declares no
+ *  YAML dependency and the engine dumps block maps. */
 function routinesDir(root) {
 	const compiled = path.join(root, '.dreamteamer', 'collections', 'routines.collection.yaml');
-	const m = fs.existsSync(compiled) && /\bpath:\s*([^,}\s]+)/.exec(fs.readFileSync(compiled, 'utf8'));
-	return path.join(root, m ? m[1] : 'data/routines');
+	const at = { resolved: null, authored: null };
+	if (fs.existsSync(compiled)) {
+		const trail = [];
+		for (const raw of fs.readFileSync(compiled, 'utf8').split('\n')) {
+			const m = /^( *)([a-z_]+):\s*(.*)$/.exec(raw);
+			if (!m) continue;
+			const depth = m[1].length / 2;
+			trail.length = depth;
+			trail[depth] = m[2];
+			const key = trail.join('.');
+			const value = m[3].replace(/^['"]|['"]$/g, '');
+			if (key === 'compiled.defaults.storage.path') at.resolved = value;
+			if (key === 'storage.path') at.authored = value;
+		}
+	}
+	return path.join(root, at.resolved || at.authored || 'data/routines');
 }
 
 // Minimal frontmatter read — enough for the four scalar fields `roll` inspects. Writes go through dt.

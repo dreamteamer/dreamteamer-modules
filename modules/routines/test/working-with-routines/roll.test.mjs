@@ -68,3 +68,28 @@ test('a rule roll cannot parse is reported as an error row, not skipped silently
 	assert.match(row.error, /unsupported FREQ/);
 	assert.ok(!row.changes, 'an unparseable rule proposes no write');
 });
+
+// Without --dir, roll reads the workspace's COMPILED routines descriptor for where records live: the
+// v2 compiled shape keeps the resolved path under `compiled.defaults.storage`, and a description that
+// happens to contain "path:" must not be read as one.
+test('without --dir, the records are found where the compiled descriptor puts them', () => {
+	const ws = fs.mkdtempSync(path.join(os.tmpdir(), 'routines-ws-'));
+	try {
+		fs.writeFileSync(path.join(ws, 'package-lock.json'), '{}');
+		const compiled = path.join(ws, '.dreamteamer', 'collections', 'routines.collection.yaml');
+		fs.mkdirSync(path.dirname(compiled), { recursive: true });
+		fs.writeFileSync(compiled, [
+			'name: routines', 'description: >-', '  A chore. path: data/wrong',
+			'compiled:', '  defaults:', '    storage:', '      path: data/elsewhere/routines', '      format: md', '      suffix: routine',
+			'  runtime: false', '',
+		].join('\n'));
+		const dir = path.join(ws, 'data', 'elsewhere', 'routines');
+		fs.mkdirSync(dir, { recursive: true });
+		fs.writeFileSync(path.join(dir, 'filing.routine.md'), "---\nname: x\nrecurrence: RRULE:FREQ=YEARLY\nanchor: '2027-01-31'\nstatus: active\n---\n");
+		const rows = JSON.parse(execFileSync('node', [SCRIPT, 'roll', '--today', '2026-09-01'], { cwd: ws, encoding: 'utf8' }));
+		assert.deepEqual(rows.map((r) => r.id), ['filing']);
+		assert.deepEqual(rows[0].changes, { next_due: '2027-01-31' });
+	} finally {
+		fs.rmSync(ws, { recursive: true, force: true });
+	}
+});
