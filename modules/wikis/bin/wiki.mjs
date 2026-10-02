@@ -47,30 +47,41 @@ const VALUE_FLAGS = new Set(['--title', '--description', '--kind', '--section', 
 
 // ─── records ────────────────────────────────────────────────────────────────────────────────────────
 
-/** Where a consumer keeps a collection's records: the COMPILED descriptor's storage block, else the
- *  module default. Reading the compiled copy is what makes this work in a workspace that re-typed or
- *  re-homed the collection in an overlay. */
-function recordPath(root, collection, id) {
-	let dir = `data/${collection}`;
-	let suffix = collection.replace(/s$/, '');
-	let under = null;
-	const descriptor = (name) => {
-		try { return yaml.load(fs.readFileSync(path.join(root, '.dreamteamer', 'collections', `${name}.collection.yaml`), 'utf8')); } catch { return null; }
+/** A collection's storage as the COMPILED descriptor resolves it, or null when it is not compiled:
+ *  the path compile decided (`compiled.defaults`, over the authored one), the suffix, and the parent
+ *  collection a `storage.under` names (`compiled.under_collection`). */
+function compiledStorage(root, name) {
+	let d;
+	try { d = yaml.load(fs.readFileSync(path.join(root, '.dreamteamer', 'collections', `${name}.collection.yaml`), 'utf8')); } catch { return null; }
+	if (!d?.compiled) return null;
+	const authored = d.storage ?? {};
+	const supplied = d.compiled.defaults?.storage ?? {};
+	const u = authored.under;
+	return {
+		path: supplied.path ?? authored.path,
+		suffix: authored.suffix ?? supplied.suffix,
+		under: u?.parent && u?.subfolder && d.compiled.under_collection ? { collection: d.compiled.under_collection, subfolder: u.subfolder } : null,
 	};
-	const d = descriptor(collection); // an uncompiled workspace still has the module default
-	if (d?.storage?.path) dir = d.storage.path;
-	if (d?.storage?.suffix) suffix = d.storage.suffix;
-	if (d?.storage?.under?.collection) under = d.storage.under;
+}
+
+/** Where a consumer keeps a collection's records: the COMPILED descriptor's storage, else the module
+ *  default. Reading the compiled copy is what makes this work in a workspace that re-typed or
+ *  re-homed the collection in an overlay. */
+export function recordPath(root, collection, id) {
+	const s = compiledStorage(root, collection); // an uncompiled workspace still has the module default
+	const dir = s?.path ?? `data/${collection}`;
+	const suffix = s?.suffix ?? collection.replace(/s$/, '');
+	const under = s?.under ?? null;
 	const own = path.join(root, dir, `${id}.${suffix}.md`);
-	// A collection stored UNDER another (`storage.under`, engine 0.32+) keeps a record with an owner
-	// inside that owner's folder; the own root is where a record WITHOUT one lives, and where a new
-	// one is written. An existing record is looked for there first, then in every parent's folder.
+	// A collection stored UNDER another (`storage.under`) keeps a record with an owner inside that
+	// owner's folder; the own root is where a record WITHOUT one lives, and where a new one is written.
+	// An existing record is looked for there first, then in every parent's folder.
 	if (!under || fs.existsSync(own)) return own;
-	const parentDir = descriptor(under.collection)?.storage?.path;
+	const parentDir = compiledStorage(root, under.collection)?.path;
 	if (!parentDir || !fs.existsSync(path.join(root, parentDir))) return own;
 	for (const e of fs.readdirSync(path.join(root, parentDir), { withFileTypes: true })) {
 		if (!e.isDirectory() || e.name.startsWith('.')) continue;
-		const f = path.join(root, parentDir, e.name, under.path, `${id}.${suffix}.md`);
+		const f = path.join(root, parentDir, e.name, under.subfolder, `${id}.${suffix}.md`);
 		if (fs.existsSync(f)) return f;
 	}
 	return own;
