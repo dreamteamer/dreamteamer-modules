@@ -4,7 +4,7 @@ The people you deal with, each pointing at the company they work for. A command 
 from their LinkedIn profile. Views list everyone, and who still needs a LinkedIn link.
 
 ```bash
-npm install @dreamteamer/contacts @dreamteamer/companies @dreamteamer/tags @dreamteamer/assets
+npm install @dreamteamer/contacts @dreamteamer/companies @dreamteamer/assets
 npx dreamteamer compile
 ```
 
@@ -15,6 +15,5 @@ npx dreamteamer compile
 | needs | for |
 |---|---|
 | `@dreamteamer/companies` | where a contact works |
-| `@dreamteamer/tags` | the `tags` field points at its script |
 | `@dreamteamer/assets` | avatars |
 | Docker and one LinkedIn sign-in | `/scrape-contact` only; everything else works without them |

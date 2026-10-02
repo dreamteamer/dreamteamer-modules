@@ -55,7 +55,8 @@ schema:
       type: array
       items:
         type: string
-      description: "Free-form grouping — subject, engagement, or the flow that built it. Colon convention, no space: `purpose:topical-authority`."
+        pattern: '^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$'
+      description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
     # A STRING, not a reference. The fact it holds — a notebook is invisible from the wrong Google
     # login, and nothing can derive which one — is not derivable and not guessable, so it has to be
     # written down; but this package ships no accounts collection to point at. A workspace that has

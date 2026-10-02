@@ -26,12 +26,11 @@
 	],
 	"dreamteamer": {
 		"title": "Contacts",
-		"description": "People you deal with — `contacts`, each pointing at the `companies` record they work for, with an avatar from `assets` and tags from the tags module. The `scraping-contacts` skill and `/scrape-contact` fill a person in from LinkedIn, one batched container per run, and from web search. With `meetings` installed, each contact also carries the latest meeting they attended.",
+		"description": "People you deal with — `contacts`, each pointing at the `companies` record they work for, with an avatar from `assets`. The `scraping-contacts` skill and `/scrape-contact` fill a person in from LinkedIn, one batched container per run, and from web search. With `meetings` installed, each contact also carries the latest meeting they attended.",
 		"engine": ">=0.30.0",
 		"dependencies": [
 			"@dreamteamer/assets",
-			"@dreamteamer/companies",
-			"@dreamteamer/tags"
+			"@dreamteamer/companies"
 		],
 		"peerDependencies": [
 			"meetings"

@@ -4,7 +4,7 @@ Your calendar meetings, synced from Google Calendar, with the attendees as conta
 screenshots taken during a call filed beside it. The anchor the other meeting modules hang off.
 
 ```bash
-npm install @dreamteamer/meetings @dreamteamer/contacts @dreamteamer/companies @dreamteamer/users @dreamteamer/tags @dreamteamer/assets
+npm install @dreamteamer/meetings @dreamteamer/contacts @dreamteamer/companies @dreamteamer/users @dreamteamer/assets
 npx dreamteamer compile
 ```
 
@@ -17,7 +17,6 @@ npx dreamteamer compile
 | `@dreamteamer/contacts` | attendees |
 | `@dreamteamer/companies` | the company a call is with |
 | `@dreamteamer/users` | the people of yours in the room |
-| `@dreamteamer/tags` | the `tags` field points at its script |
 | `@dreamteamer/assets` | contacts and companies need it for avatars and logos |
 | a Google OAuth desktop client, each account authenticated through `workspace-mcp`, and `WORK_CALENDARS` in `.env` | calendar sync only (`fetching-meetings` has the setup); writing meetings by hand works without them |
 | `INBOX_FOLDERS` and `FILES_FOLDER` declared | filing screenshots only |

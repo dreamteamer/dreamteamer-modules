@@ -133,15 +133,12 @@ schema:
         The calendar event's status — Google's three values, plus `manual` for a meeting entered by
         hand.
     tags:
-      examples: ['analysis:meeting-insights']
       type: array
-      items: { type: string }
-      description: >-
-        Free strings, lowercase and hyphenated. Optionally `key:value` with NO space around the
-        colon (`analysis:meeting-insights`, `enriched:web-search`) — a space makes YAML parse the
-        entry as a map instead of a string. Nothing validates a tag; there is no `tags` collection.
-        Reuse one already in use before inventing one:
-        `python3 .dreamteamer/skills/working-with-tags/bin/tags.py`.
+      items:
+        type: string
+        pattern: '^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$'
+      examples: ['analysis:meeting-insights']
+      description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
     author:
       type: string
       pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'

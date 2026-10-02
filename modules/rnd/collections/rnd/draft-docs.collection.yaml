@@ -35,14 +35,12 @@ schema:
       x-body: true
       description: The draft itself — thinking in progress, or a finished deliverable once `status` says so.
     tags:
-      examples: ['portal', 'design', 'files']
       type: array
-      items: { type: string }
-      description: >-
-        Free strings, lowercase and hyphenated. Optionally `key:value` with NO space around the
-        colon (`area:onboarding`, `source:interview`) — a space makes YAML parse the
-        entry as a map instead of a string. Nothing validates a tag; there is no `tags` collection.
-        Reuse one already in use before inventing one: `dt values <collection> tags` lists them.
+      items:
+        type: string
+        pattern: '^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$'
+      examples: ['portal', 'design', 'files']
+      description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
     # A finished deliverable and a working draft are one collection with a `status` enum, because a
     # lifecycle is all that separates them. `status: complete` means "safe to quote from".
     date:

@@ -31,8 +31,7 @@
 		"dependencies": [
 			"@dreamteamer/contacts",
 			"@dreamteamer/companies",
-			"@dreamteamer/users",
-			"@dreamteamer/tags"
+			"@dreamteamer/users"
 		],
 		"env": [
 			"WORK_CALENDARS"
