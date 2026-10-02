@@ -23,8 +23,7 @@ export function analyze(draft) {
 	const warnings = [];
 	const notes = [];
 	const { entries } = draft;
-	// ⚠ computed unconditionally: the coverage line prints its denominators on EVERY compile, so a
-	// workspace with no proofs still gets told what it has
+	// computed unconditionally: the coverage line prints its denominators on every compile
 	const artifacts = artifactRefs(entries);
 	const proofEntries = [...entries].filter(([rt]) => rt.startsWith('proofs/'));
 	/** every artifact ref named by at least one proof — the coverage numerators, and the nudge's silencer */
@@ -34,28 +33,26 @@ export function analyze(draft) {
 		let proof;
 		try { proof = draft.parse(rt); } catch (e) { errors.push(`${rt}: ${String(e.message).split('\n')[0]}`); continue; }
 		for (const m of validateProofShape(proof, ctx)) errors.push(`${rt}: ${m}`);
-		// ⚠ WARNINGS, not errors: a step is a shell string, and a brace nobody substitutes is as likely
+		// warnings, not errors: a step is a shell string, and a brace nobody substitutes is as likely
 		// to be `awk '{print}'` as a typo'd `{recrod}` — naming it costs a line and refuses nothing
 		for (const w of stepWarnings(proof)) warnings.push(`${rt}: ${w}`);
 		for (const ref of proof?.about ?? []) proven.add(String(ref));
 	}
 
-	// ---- coverage, on EVERY compile — one line, unconditional, even at zero: coverage that is only
-	// reported when someone asks is coverage nobody knows the number of
+	// ---- coverage: one line on every compile, even at zero
 	const covered = (list) => `${list.filter((a) => proven.has(a)).length}/${list.length}`;
 	notes.push(`proofs: ${proofEntries.length} declared · commands ${covered(artifacts.commands)} · skills ${covered(artifacts.skills)} · scripts ${covered(artifacts.scripts)} · bindings ${covered(artifacts.bindings)}`);
 
 	// ---- the nudge: ONCE, per NEW artifact with no proof ------------------------------------------
-	// ⚠ NEW, not merely uncovered: a workspace adopting proofs has forty-odd unproven artifacts, and
-	// forty warnings on day one teach an operator to skip every line compile prints. So it fires only
-	// for an artifact absent from the PREVIOUS manifest, and a first-ever compile nudges nothing. An
-	// artifact shipped from node_modules is skipped — a proof written there is erased by npm install.
-	// ⚠ A KNOWN GAP: a script added to an EXISTING module does not nudge — the manifest keys a module by
-	// its package.json, whose entry and hash a new `bin/` file changes neither of. Coverage counts it.
+	// New, not merely uncovered: it fires only for an artifact absent from the previous manifest, so
+	// adopting proofs in a workspace full of unproven artifacts prints nothing, and neither does a
+	// first-ever compile. An artifact shipped from node_modules is skipped — a proof written there is
+	// erased by npm install. A script added to an existing module does not nudge: the manifest keys a
+	// module by its package.json, which a new `bin/` file does not change. Coverage still counts it.
 	const prev = draft.previousManifest?.entries;
 	if (prev) {
 		// module id → workspace-relative ROOT, longest first so a nested module wins over its parent
-		// and the root layout's `.` matches last. ⚠ The root comes off the MODULE, never off the file
+		// and the root layout's `.` matches last. The root comes off the module, never off the file
 		// path — in the root layout a command's source has no module segment at all.
 		const roots = draft.modules.map((m) => ({ id: m.id, root: m.root || '.' })).sort((a, b) => b.root.length - a.root.length);
 		const ownerRoot = (src) => roots.find(({ root: r }) => r === '.' || src === r || src.startsWith(`${r}/`))?.root ?? '.';

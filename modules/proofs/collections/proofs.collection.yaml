@@ -56,7 +56,7 @@ schema:
           description: A collection NAME (not a reference) the record is picked from — e.g. `notes`, never `collections/notes`.
         where:
           type: object
-          description: 'A filter narrowing which record is picked — the ordinary filter grammar, one reference hop deep. ⚠ It may NOT use `{record}`: the given is what PICKS the record, so nothing substitutes here and compile refuses the literal.'
+          description: 'A filter narrowing which record is picked — the ordinary filter grammar, one reference hop deep. It may not use `{record}`: the given is what picks the record, so nothing substitutes here and compile refuses the literal.'
         pick:
           type: string
           description: '`latest` (the collection''s own `sort_field`, descending — refused when the collection declares none) or an explicit record id. `any` is refused. A `fixture` given REQUIRES a `pick: <id>` naming one of its records.'
@@ -72,19 +72,14 @@ schema:
       type: array
       items:
         type: object
-      description: 'What must hold for a `live` proof to PASS. Live only, and every row is exactly ONE of four forms — `collection`+`where`+`count` · `record`+`where` · `step` (`exit`/`stdout`/`stdout_json`) · `path`+`exists`. The two store forms (`collection`, `record`) need `given.fixture: true` or a `perform` step. A row whose keys span two forms is a compile error, because compile and the judge would otherwise read it as different shapes. `count` takes its own closed operator set (`_eq _neq _gt _gte _lt _lte _delta`) and every operand must be an INTEGER; a `record:` row REQUIRES a non-empty `where` and takes only the literal `{record}` as its target; a `step:` index past the last step is refused; `stdout` and `stdout_json` are FILTER MAPS (`{ _contains: ''…'' }` · `{ ''a.b'': { _gte: 1 } }`) and a scalar, a list or a bare key is refused, because the judge reads only a map and a row it skips asserts nothing. A `where`''s string literals substitute `{record}` and `{record.<field>}` against the picked record before the filter runs — in an expectation only, never in `given.where`.'
+      description: 'What must hold for a `live` proof to PASS. Live only, and every row is exactly ONE of four forms — `collection`+`where`+`count` · `record`+`where` · `step` (`exit`/`stdout`/`stdout_json`) · `path`+`exists`. The two store forms (`collection`, `record`) need `given.fixture: true` or a `perform` step. A row whose keys span two forms is a compile error, because compile and the judge would otherwise read it as different shapes. `count` takes its own closed set of operators (`_eq _neq _gt _gte _lt _lte _delta`) and every operand must be an INTEGER; a `record:` row REQUIRES a non-empty `where` and takes only the literal `{record}` as its target; a `step:` index past the last step is refused; `stdout` and `stdout_json` are FILTER MAPS (`{ _contains: ''…'' }` · `{ ''a.b'': { _gte: 1 } }`) and a scalar, a list or a bare key is refused, because the judge reads only a map and a row it skips asserts nothing. A `where`''s string literals substitute `{record}` and `{record.<field>}` against the picked record before the filter runs — in an expectation only, never in `given.where`.'
     timeout:
       type: integer
       description: Seconds allowed per `run` step before it is killed.
 order: 46
-# ⚠ NO `last-modified` HERE (M12). Every other list_fields carries it, and on a proof it renders as
-# a bare `-` in the MIDDLE of the row: `dt list proofs` appends two computed columns (availability
-# and the ledger tail) after the declared ones, so the empty cell sits between the about list and
-# the answer the reader came for. A proof's meaningful date is its LAST RUN, which is the `last`
-# column, not the mtime of a file git already tracks.
 list_fields:
   - name
   - kind
   - about
-icon: workspace-trusted   # not `verified` — meeting-preps wears it; a proof is what makes an artifact trusted
+icon: workspace-trusted   # a proof is what makes an artifact trusted
 group: system
