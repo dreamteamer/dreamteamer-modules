@@ -16,7 +16,8 @@ dt install --print-adapters      # includes the WorktreeCreate / WorktreeRemove 
 | `dt land <name\|path> [--keep] [--dry-run] [--branch <name>]` | rebase a copy of the worktree's branch onto the primary, resolve only conflicts inside a generated block, check, fast-forward, recompile, retire |
 | `dt worktree add --hook` · `dt worktree rm --hook` | the WorktreeCreate and WorktreeRemove hook forms, reading the harness's JSON on stdin; `rm --hook` removes the tree under `rm`'s guard |
 
-Every verb refuses a flag it does not know. `--json` gives one object on stdout. A new worktree loads
+Every verb refuses a flag it does not know. `--json` (on `add`, `list`, `get` and `land`) gives one JSON
+value on stdout. A new worktree loads
 the same engine and modules: every symlinked direct dependency is mirrored into it.
 
 The `working-in-worktrees` skill carries the method: the lifecycle, the landing and the merge policy.

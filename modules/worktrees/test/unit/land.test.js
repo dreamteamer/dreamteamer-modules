@@ -56,7 +56,7 @@ describe('classifyConflict — a generated block is not the operator\'s prose', 
 		assert.equal(classifyConflict('AGENTS.md', `# rules\n\n${hunk('x', 'y')}`, markers), 'managed-outside-block');
 	});
 
-	// R33: cursor's output is a WHOLE generated file — frontmatter, body and STAMP, no BEGIN/END
+	// Cursor's output is a WHOLE generated file — frontmatter, body and STAMP, no BEGIN/END
 	// (harnesses.js:97) — so there is nothing to take `--ours` on. A conflict there aborts.
 	test('.cursor/rules/ is NOT managed — a whole-file generated output has no block', () => {
 		const text = managed('be brief.', hunk('- a', '- b'));
@@ -64,7 +64,7 @@ describe('classifyConflict — a generated block is not the operator\'s prose', 
 		assert.equal(isManaged('.cursor/rules/dreamteamer.mdc'), false);
 	});
 
-	// R32: Claude Code reads hand-written nested instruction files, and compile never regenerates
+	// Claude Code reads hand-written nested instruction files, and compile never regenerates
 	// one. A basename match would resolve somebody's own prose with `--ours` and say nothing.
 	test('a NESTED file with a managed basename is not managed — the match is the exact root-relative path', () => {
 		const text = managed('be brief.', hunk('- a', '- b'));
@@ -229,7 +229,7 @@ describe('planLand — the refusals, each for exactly its state', () => {
 			['branch worktree-w has an upstream (origin/worktree-w) — a pushed branch is not rebased; land it by hand']);
 	});
 
-	test('the primary has pending store writes — decision 308, and rule 6\'s reason is in the text', () => {
+	test('the primary has pending store writes — the reason is in the text', () => {
 		assert.deepEqual(refusalsFor({ pendingPrimary: 4 }),
 			['the primary has 4 pending record write(s) — dt commit them first (a landing would sweep them into someone else\'s subject)']);
 	});
@@ -322,7 +322,7 @@ describe('planLand — the steps, in the order they run', () => {
 			['lock', 'copy', 'rebase', 'recompile-copy', 'check', 'ff', 'npm-ci', 'recompile-primary']);
 	});
 
-	test('the lock step names the file land takes, and it is the engine\'s own', () => {
+	test('the lock step names the file land takes', () => {
 		const [lock] = planLand(clean()).steps;
 		assert.equal(lock.id, 'lock');
 		assert.ok(lock.why.includes(LAND_LOCK), `the lock step names ${LAND_LOCK}: ${lock.why}`);

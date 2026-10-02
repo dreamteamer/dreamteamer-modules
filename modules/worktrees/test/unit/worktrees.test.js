@@ -1,4 +1,4 @@
-// Tier 1 — what a failed sandbox install is reported as (review R6). The reason string is the only
+// Tier 1 — what a failed sandbox install is reported as. The reason string is the only
 // thing a `--json` caller reads, so it must carry the lines that NAME the failure and nothing else.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

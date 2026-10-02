@@ -15,7 +15,7 @@ const INSTALL_TIMEOUT_MS = 10 * 60_000;
 
 /** Every checkout of this repo, primary first, as git reports it.
  *
- *  ⚠ `ahead` IS NULL FOR A DETACHED WORKTREE, not 0 — there is no branch to count against, and
+ *  `ahead` is null for a detached worktree, not 0 — there is no branch to count against, and
  *  `--detach` is ordinary (every --temp sandbox is detached). `dirtyRecords` is scoped to the DATA
  *  path: uncommitted records are the thing the primary cannot see and cannot recover. */
 export function listWorktrees(ws, git = defaultGit) {
@@ -31,7 +31,7 @@ export function listWorktrees(ws, git = defaultGit) {
 	}
 	return rows.map((w) => {
 		const primary = real(w.path) === real(c.primary);
-		// ⚠ THE NAME IS WHAT WAS TYPED, not the directory it landed in — `--path` lets the two differ,
+		// The name is what was typed, not the directory it landed in — `--path` lets the two differ,
 		// so it is recovered from the `worktree-<name>` branch this verb creates. A worktree on someone
 		// else's branch, or a detached one, has nothing but its basename.
 		const name = !primary && w.branch?.startsWith('worktree-') ? w.branch.slice('worktree-'.length) : path.basename(w.path);
@@ -48,10 +48,10 @@ export function listWorktrees(ws, git = defaultGit) {
 	});
 }
 
-/** A worktree by name or by path — the name is what an operator types, the path is what a creation
- *  hook echoes. The PATH is tried first, since it is unique by construction and a name is not.
+/** A worktree by name or by path — the name is what you type, the path is what a creation hook
+ *  echoes. The path is tried first, since it is unique by construction and a name is not.
  *
- *  ⚠ AN AMBIGUOUS NAME IS REFUSED, never resolved to whichever row git listed first: two --temp
+ *  An ambiguous name is refused, never resolved to whichever row git listed first: two --temp
  *  sandboxes may share a name, and a removal landing on the wrong one takes work with it. */
 export function findWorktree(ws, ref, git = defaultGit) {
 	if (!ref) return null;
@@ -92,11 +92,9 @@ export function mirrorLinkedDeps(fromRoot, pkg, toRoot) {
 }
 
 /**
- * The worktree, MADE, and its path returned — everything `addWorktree` does except printing it.
- * `dt prove` cuts its `writes` sandbox with it (`temp: true, quiet: true`).
- *
- * ⚠ `quiet` is not cosmetic: the install inside inherits stdio, and a caller printing one JSON
- * object on stdout would have a compile transcript spliced in ahead of it.
+ * The worktree, made, and its path returned — everything `addWorktree` does except printing it.
+ * `quiet` pipes the install's output instead of inheriting stdio, so a caller printing one JSON
+ * object on stdout does not get a compile transcript spliced in ahead of it.
  */
 export function createWorktree(ws, { name, dir, base = 'HEAD', temp = false, quiet = false }, git = defaultGit) {
 	if (!name) throw new Error('dt worktree add needs --name <name>');
@@ -107,14 +105,14 @@ export function createWorktree(ws, { name, dir, base = 'HEAD', temp = false, qui
 	if (!temp && git(['branch', '--list', `worktree-${name}`], c.primary)) {
 		throw new Error(`branch worktree-${name} already exists — pick another name or delete the branch`);
 	}
-	// ⚠ --temp LIVES INSIDE THE PRIMARY ROOT: `.worktrees/.tmp-<rand>/<name>`. `.env` is linked only
+	// --temp lives inside the primary root: `.worktrees/.tmp-<rand>/<name>`. `.env` is linked only
 	// under the primary root, and an os.tmpdir() sandbox compares unequal to its own `git worktree
 	// list` row on macOS (/var vs /private/var). And --path beside --temp names a directory that
 	// would silently not be the one made, so the pair is refused.
 	if (temp && dir) throw new Error('--temp places the sandbox itself (.worktrees/.tmp-<rand>/<name>) — pass either --temp or --path <dir>, not both');
 	const holder = path.join(c.primary, '.worktrees');
 	if (temp) fs.mkdirSync(holder, { recursive: true });
-	// ⚠ NEVER pre-create `target` — `git worktree add` creates it, and an empty pre-created folder is
+	// Never pre-create `target` — `git worktree add` creates it, and an empty pre-created folder is
 	// swept by compile's empty-directory pass.
 	const sandbox = temp ? fs.mkdtempSync(path.join(holder, '.tmp-')) : null;
 	const target = sandbox ? path.join(sandbox, name) : path.resolve(ws.root, dir ?? path.join(holder, name));
@@ -130,9 +128,8 @@ export function createWorktree(ws, { name, dir, base = 'HEAD', temp = false, qui
 	// restores with npm, keeping the mirrored development links)
 	const r = spawnSync(process.execPath, [dt.engineBin, 'install'], { cwd: target, stdio: quiet ? 'pipe' : 'inherit', encoding: 'utf8', timeout: INSTALL_TIMEOUT_MS, killSignal: 'SIGKILL' });
 	if (r.status !== 0) {
-		// ⚠ A FAILURE, NOT A WARNING. The tree exists but cannot run what the primary runs — an
-		// extension missing there makes its compile refuse the extension's own folders — and a green
-		// exit sent the caller into it anyway (review F3).
+		// A failure, not a warning: the tree exists but cannot run what the primary runs — an extension
+		// missing there makes its compile refuse the extension's own folders.
 		const diagnosis = quiet ? installDiagnosis(`${r.stdout ?? ''}\n${r.stderr ?? ''}`) : [];
 		const e = new Error([`the worktree was cut at ${target}, but its install exited ${r.status ?? r.signal} — fix what it names, then run \`dt install\` there`, ...diagnosis].join('\n  '));
 		Object.assign(e, { worktree: target, installExit: r.status ?? r.signal, diagnosis });
@@ -165,7 +162,7 @@ export function addWorktree(ws, opts, git = defaultGit) {
 	return 0;
 }
 
-/** ⚠ IT REFUSES BY DEFAULT, AND NAMES WHY. A worktree holds two things the primary cannot see:
+/** Refuses by default, and names why. A worktree holds two things the primary cannot see:
  *  records written but not committed, and commits not yet landed. `git worktree remove` checks a
  *  dirty tree and stops there — the records are exactly what a bare remove would take with it. */
 export function removeWorktree(ws, ref, { force = false } = {}, git = defaultGit) {
@@ -174,10 +171,10 @@ export function removeWorktree(ws, ref, { force = false } = {}, git = defaultGit
 	if (w.primary) throw new Error('refusing to remove the primary checkout');
 	const c = dt.describeCheckout(ws.root, git);
 	const primaryBranch = git(['rev-parse', '--abbrev-ref', 'HEAD'], c.primary);
-	// ⚠ A DETACHED HEAD'S WORK IS HELD BY NOTHING BUT THE HEAD ABOUT TO BE DELETED — so the measure
-	// is "reachable from no ref at all" (`--branches --tags --remotes`; `--all` would count this very
-	// worktree's HEAD and answer 0). And it FAILS CLOSED: an empty or non-numeric answer is a
-	// refusal, never "nothing ahead" (`Number('')` is 0).
+	// A detached HEAD's work is held by nothing but the HEAD about to be deleted, so the measure is
+	// "reachable from no ref at all" (`--branches --tags --remotes`; `--all` would count this very
+	// worktree's HEAD and answer 0). It fails closed: an empty or non-numeric answer is a refusal,
+	// never "nothing ahead" (`Number('')` is 0).
 	let ahead = w.ahead;
 	let unmeasured = null;
 	const orphaned = w.ahead === null && !w.primary && w.head;
@@ -283,14 +280,14 @@ export function worktreeCommand(ws, argv) {
 			return 0;
 		}
 		case 'add': {
-			// ⚠ `--hook` IS A FORM, so it refuses the other form's vocabulary: `--hook --temp` would cut
+			// `--hook` is a form, so it refuses the other form's vocabulary: `--hook --temp` would cut
 			// a PERMANENT branch worktree and `--hook --base x` would cut from HEAD, both at exit 0.
 			if (rest.includes('--hook')) {
 				const { pos } = parseFlags(rest, { bool: ['hook', 'json'] }, 'dt worktree add --hook');
 				if (pos.length) throw new Error(`--hook reads the worktree name from stdin — drop "${pos[0]}"`);
 				const input = dt.readHookInput(dt.readStdin());
 				if (!input.name) throw new Error(`hook input carries no worktree_name — keys received: ${Object.keys(input.raw).join(', ')}`);
-				// ⚠ `.worktrees/`, never `.claude/worktrees/`: every workspace `init` writes ignores it,
+				// `.worktrees/`, never `.claude/worktrees/`: every workspace `init` writes ignores it,
 				// while anything under `.claude` sits inside compile's empty-directory sweep
 				return addWorktree(ws, { name: input.name, dir: path.join('.worktrees', input.name), json: rest.includes('--json') });
 			}
