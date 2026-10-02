@@ -2,7 +2,7 @@
 
 What `dt-docker export container <name> --out <file>` writes and `dt-docker import container <name> <file>`
 reads. Any other implementation that writes or reads a machine's workspaces (a hosted service, a
-backup store) implements exactly this. The code is `src/archive.js`; `test/fixtures/golden-v1.dtx`
+backup store) implements exactly this. The code is `src/archive.js`; in the source repository, `test/fixtures/golden-v1.dtx`
 (passphrase `golden fixture passphrase`) and its plain twin `golden-v1.tar.gz` are a reference pair.
 
 ## Layers
@@ -28,8 +28,8 @@ file      = gzip(tar)                  --no-encrypt: a plain .tar.gz, told apart
   (`path`, `linkpath`) before its header. Readers also accept GNU `L`/`K` long names.
 - Owner and group are 0, mode is the permission bits only (no setuid, setgid or sticky). The importer
   sets the owner itself (`chown -R node:node` on each imported workspace).
-- Never included: the home (`/home/node`, where logins live), any folder named `node_modules` or
-  `.files`, at any depth.
+- Never included: the home (`/home/node`, where logins live), the files volume (`/files`), and any
+  folder named `node_modules` or `.files`, at any depth.
 - Secrets, unless the owner exports with `--with-secrets`: at any depth, no file named `.env`, no
   `.env.<anything>` except `.env.example`, `.env.sample` and `.env.template`, no `.envrc`, `.npmrc`,
   `.netrc`, `.git-credentials` or `.pypirc`, and no `config.json` inside a `.docker` folder. Every

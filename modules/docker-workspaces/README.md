@@ -24,7 +24,7 @@ npm install --save-dev @dreamteamer/docker-workspaces
 | verb | what it does |
 |---|---|
 | `dt-docker setup [--template <t>] [--json]` | check Docker, write the host defaults the `.env` lacks, list the templates present, pull one on request |
-| `dt-docker start container <name> --template <t>` | create if absent, start, wait for the editor, print its URL. Idempotent. `--workspace [<w>]` · `--repo <git url>` · `--mount <src>:<target>[:ro]` (repeatable) · `--rotate-token` · `--name` · `--email` · `--no-open` · `--json` |
+| `dt-docker start container <name> --template <t>` | create if absent, start, wait for the editor, print its URL. Idempotent; on an existing container the create-only flags (`--template`, `--mount`, `--repo`, `--name`, `--email`) are ignored — `rm` it (volumes kept) and start again to change them. `--workspace [<w>]` · `--repo <git url>` · `--mount <src>:<target>[:ro]` (repeatable) · `--rotate-token` · `--name` · `--email` · `--no-open` · `--json` |
 | `dt-docker stop container <name>` | stop it; the volumes stay |
 | `dt-docker open container <name>` | print (and open) its URL, token included · `--workspace [<w>]` · `--vscode` (Dev Containers attach URI) · `--no-open` · `--json` |
 | `dt-docker list containers` · `list images` | the containers and templates dreamteamer made, as a table or `--json` |
@@ -35,15 +35,16 @@ npm install --save-dev @dreamteamer/docker-workspaces
 | `dt-docker import container <name> <file>` | unpack an export into a running container · `--workspace <w>`… · `--replace` · `--as <name>` · `--json` |
 | `dt-docker help` · `dt-docker --version` | |
 
-Every form refuses a flag it does not take. Under `--json`, stdout is exactly one JSON document and
-every human line goes to stderr.
+Every form refuses a flag it does not take. `rm` and `add image` take no `--json`; under `--json`
+on every other form, stdout is exactly one JSON document and every human line goes to stderr.
 
 **Configuration** — defaults, then `~/.dreamteamer/.env`, then any `DT_*` in the environment:
 `DT_PORT_BASE` (8100; each container takes the lowest free port from here), `DT_BIND` (127.0.0.1),
-`DT_REGISTRY` (`ghcr.io/dreamteamer`), `DT_TEMPLATE_TAG` (the image release this package is tested
-against — `setup` never writes it, so an upgrade moves it), `DT_IMAGE_<template>=<ref>` (pin one
+`DT_REGISTRY` (`ghcr.io/dreamteamer`), `DT_TEMPLATE_TAG` (the image release this package pins —
+`setup` never writes it, so upgrading the package moves it), `DT_IMAGE_<template>=<ref>` (pin one
 template to any image), `DT_DOCKER_TIMEOUT` (30 s a request may sit idle before the verb fails; 0
-disables), `DT_PERSON_NAME` / `DT_PERSON_EMAIL` (the git identity a container gets; default: your
+disables), `DT_HEALTH_TIMEOUT` (environment only: 90 s `start` waits for the editor to answer; 0
+skips the wait), `DT_PERSON_NAME` / `DT_PERSON_EMAIL` (the git identity a container gets; default: your
 global git config). `DT_HOME` moves `~/.dreamteamer`; `DT_DOCKER_SOCKET` names the socket.
 
 ## what a container is
@@ -82,7 +83,7 @@ What `dt-docker` does:
 
 What it does not do:
 
-- **The per-container bridge is naming, not isolation.** Measured on Docker Desktop: a container on
+- **The per-container bridge is naming, not isolation.** On Docker Desktop, a container on
   one user-defined bridge reaches another by IP, and reaches another's published port through
   `host.docker.internal`. What keeps workspaces apart is the image's egress policy. An image that
   applies none is isolated by nothing here.
@@ -98,7 +99,9 @@ What it does not do:
 
 `export` writes every folder under `/workspaces` (or the ones `--workspace` names) as one file,
 **encrypted by default** under a passphrase from `DT_EXPORT_PASSPHRASE` or a no-echo prompt — never a
-flag. The home volume never travels, so no login does. `node_modules` and `.files` stay behind.
+flag. The home volume never travels, so no login does. The files volume (`/files`, where
+`FILES_FOLDER` points) does not travel either: a record that points into it arrives with a dangling
+path. `node_modules` and `.files` stay behind.
 
 **Secrets stay behind by default, by name:** `.env` and `.env.*` (not `.example`, `.sample`,
 `.template`), `.envrc`, `.npmrc`, `.netrc`, `.git-credentials`, `.pypirc`, `.docker/config.json`, at
@@ -117,8 +120,7 @@ once the whole upload has landed; a failure before the switch leaves the target 
 failure during the switch (renames, not atomic) is reported with what the target holds and where the
 complete import is — never as success. It runs no install: it prints the `npm ci` to run next.
 
-The file format is a protocol any other implementation can read and write:
-[docs/container-export-format.md](docs/container-export-format.md).
+The file format is a protocol any other implementation can read and write: [FORMAT.md](FORMAT.md).
 
 ## develop
 

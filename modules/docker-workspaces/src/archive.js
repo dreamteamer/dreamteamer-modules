@@ -1,6 +1,6 @@
 // archive.js — `dt-docker export container` and `dt-docker import container`: a machine's WORKSPACES out
 // of one container and into another, as one file. The move primitive between two laptops (and, when
-// the other side implements docs/container-export-format.md, between a laptop and a hosted machine).
+// the other side implements FORMAT.md, between a laptop and a hosted machine).
 //
 // WHAT TRAVELS. The trees under /workspaces, one folder per workspace — never the home, so never a
 // login: there is no flag that adds it. `node_modules` and `.files` folders stay behind at any depth
@@ -28,7 +28,7 @@
 // checks every entry (no absolute path, no `..`, no symlink leaving its workspace, no link or device).
 // Pass 2 checks again and uploads into a staging folder inside each target, so a file that changed
 // between the passes leaves every target as it was; only a complete upload is switched in (renames
-// within the volume, then `chown -R node:node`, as root, by exec) — docs/container-export-format.md.
+// within the volume, then `chown -R node:node`, as root, by exec) — FORMAT.md.
 import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
@@ -44,7 +44,7 @@ const NEW_NAME = /^[a-z0-9][a-z0-9-]{0,39}$/;
 const RESERVED = new Set(['files', 'lost-found', 'trash']);
 const LEFT_BEHIND = new Set(['node_modules', '.files']);
 // credential files by NAME, at any depth: `.env` and every `.env.*` but the three template spellings,
-// and the dotfiles package managers and git keep tokens in — docs/container-export-format.md
+// and the dotfiles package managers and git keep tokens in — FORMAT.md
 const SECRET_FILES = new Set(['.env', '.envrc', '.npmrc', '.netrc', '.git-credentials', '.pypirc']);
 const ENV_TEMPLATES = new Set(['.env.example', '.env.sample', '.env.template']);
 export const isSecretFile = (segs) => { const b = segs[segs.length - 1]; return SECRET_FILES.has(b) || (b.startsWith('.env.') && !ENV_TEMPLATES.has(b)) || (b === 'config.json' && segs[segs.length - 2] === '.docker'); };
@@ -133,7 +133,7 @@ export async function* retar(source, decide) {
 	}
 }
 
-// ---- the sealed format (docs/container-export-format.md) ---------------------------------------
+// ---- the sealed format (FORMAT.md) -------------------------------------------------------------
 const MAGIC = Buffer.from('DTEXPORT');
 const HEAD = 40, MAC = 32, CHUNK = 64 * 1024;
 const KDF = { log2N: 17, r: 8, p: 1 }; // the ONLY parameters v1 writes or reads — see openSeal

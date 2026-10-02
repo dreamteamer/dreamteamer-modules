@@ -1,5 +1,5 @@
 // dt-docker's container and image verbs, driven through the real binary against a fake Engine API on a
-// Unix socket. Every assertion is about BEHAVIOUR the operator depends on — what the create body
+// Unix socket. Every assertion is about BEHAVIOUR a person depends on — what the create body
 // carries, which port the second workspace gets, that a token never travels — not about a code path
 // being reached. No Docker is needed to run this file.
 import { test, describe, before, after } from 'node:test';
@@ -186,7 +186,7 @@ describe('host mode — the verbs answer with NO workspace', () => {
 		const second = h.dt('setup');
 		assert.equal(second.code, 0, second.out);
 		assert.match(second.stdout, /host env .* present/);
-		assert.ok(fs.readFileSync(envFile, 'utf8').includes('DT_PORT_BASE=9000'), 'setup rewrote a value the operator had set');
+		assert.ok(fs.readFileSync(envFile, 'utf8').includes('DT_PORT_BASE=9000'), 'setup rewrote a value already set');
 		const j = h.dt('setup', '--json');
 		assert.equal(j.code, 0, j.out);
 		const report = JSON.parse(j.stdout);

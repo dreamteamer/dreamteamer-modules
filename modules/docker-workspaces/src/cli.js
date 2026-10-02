@@ -1,6 +1,7 @@
 // cli.js — the `dt-docker` verb surface: `dt-docker <verb> <container|image>[/<id>] [<id>] [flags]`.
-// Every flag is checked against the table below BEFORE Docker is asked anything, so a typo is a
-// refusal naming the flags that verb takes, never a flag silently ignored.
+// Every flag is checked against the table below BEFORE Docker is asked anything, so an unknown flag
+// is a refusal naming the flags that verb takes. `start` on a container that already exists ignores
+// the create-only flags (--template, --mount, --repo, --name, --email).
 import fs from 'node:fs';
 import { spawn } from 'node:child_process';
 import { emit } from './util.js';
@@ -60,7 +61,7 @@ no workspace and no engine needed — Node and Docker are enough)
                             own volume folder (never the container's own layer)
   help        this text          --version   the package version
 
-The export format: docs/container-export-format.md in this package.`;
+The export format: FORMAT.md in this package.`;
 
 // ---- flags -------------------------------------------------------------------------------------
 /** The flags each form takes. A form absent here is not a verb on that noun. */
