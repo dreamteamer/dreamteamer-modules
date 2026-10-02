@@ -16,7 +16,6 @@
 	"files": [
 		"README.md",
 		"bin",
-		"lib",
 		"collections",
 		"ui-views"
 	],

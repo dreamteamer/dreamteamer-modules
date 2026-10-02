@@ -62,7 +62,7 @@ if (verb === 'link' || verb === 'unlink' || verb === 'guard') {
 
 
 if (verb !== 'setup') {
-	console.error(`unknown command "${verb}" — expected setup, doctor, link, unlink or guard. The other verbs moved to their modules: npx dt-wiki · npx dt-notebook · npx dt-find, and each module's bin/ for its migrations`);
+	console.error(`unknown command "${verb}" — expected setup, doctor, link, unlink or guard. The other verbs moved to their modules: npx dt-wiki · npx dt-notebook · npx dt-find`);
 	process.exit(2);
 }
 
