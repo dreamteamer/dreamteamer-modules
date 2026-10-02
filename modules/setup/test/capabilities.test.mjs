@@ -10,8 +10,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { findWorkspace, installedModules, capabilities, worst, capState, envKeys, BUNDLE_FLOOR, OURS } from '../lib/capabilities.mjs';
 
-// the repo root — these tests were written at the root of dreamteamer/extensions, whose modules/ layout
-// this repo keeps, so every `ROOT/modules/<m>/…` path still names the same file
+// the repo root
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', '..', '..');
 const CLI = path.join(ROOT, 'modules', 'setup', 'bin', 'setup.mjs');
 const made = [];
@@ -170,8 +169,7 @@ describe('the CLI', () => {
 		assert.equal(run(consumer(), 'frobnicate').status, 2);
 	});
 	test('setup creates .env with every value BLANK, so the doctor keeps saying unset', () => {
-		// measured 2026-09-09 in a real consumer: setup wrote the EXAMPLE values into .env and the doctor
-		// reported READY on placeholders like ~/Documents/vault-files — a green built from its own template
+		// example values written into .env would read as set, and the doctor would report READY on placeholders
 		const ws = consumer();
 		const r = run(ws, 'setup', '--yes');
 		assert.ok(fs.existsSync(path.join(ws, '.env')), r.stderr);
@@ -212,10 +210,7 @@ describe('the wikis and notebooklm capabilities', () => {
 		const caps = capabilities(consumer({ disable: ['recordings', 'meetings', 'perspective', 'wikis', 'contacts', 'assets', 'projects'] }));
 		assert.equal(check(caps, 'variables', 'FILES_FOLDER declared')?.state, 'bad');
 	});
-	// ⚠ WARN, NOT BAD, AND THAT IS THE TWO-ADAPTER RELEASE. Nothing under `notebooks` is `bad` any
-	// more: the LOCAL adapter is a folder of markdown and needs no binary, no login and no harness, so
-	// a machine with none of them still has a working notebook capability. Reporting UNAVAILABLE for
-	// the absence of the EXTRA adapter would say the opposite on the very machine the claim is about.
+	// The local adapter needs no binary, login or harness, so the extra adapter's absence is a warning.
 	test('an undeclared notebooklm harness is a WARN — a local wiki never reads NOTEBOOKLM.md', () => {
 		const c = check(capabilities(consumer()), 'notebooklm', 'harness declared');
 		assert.equal(c?.state, 'warn');
@@ -233,36 +228,20 @@ describe('the wikis and notebooklm capabilities', () => {
 		const caps = capabilities(consumer({ disable: ['recordings', 'meetings', 'rnd', 'perspective', 'contacts', 'assets', 'projects'] }));
 		assert.equal(check(caps, 'variables', 'FILES_FOLDER declared')?.state, 'bad');
 	});
-	// ⚠ THE ASSERTION REVERSED ON 2026-09-11, and the reversal is the feature. This used to warn until
-	// FILES_FOLDER was both declared and set, because a wiki's folder was an `${env:…}` template and
-	// every verb refused until it rendered. That IS a prerequisite, on the one adapter whose whole
-	// claim is that it has none. Corpora live in the repo now, so the capability is READY on a bare
-	// clone with no `.env`, no declared var, and no mount.
+	// Corpora live in the repo, so the wikis capability is READY on a bare clone with no .env.
 	test('the wikis folder check is ok with NO .env at all — the local adapter has no prerequisite', () => {
 		assert.equal(check(capabilities(consumer()), 'wikis', 'wikis folder')?.state, 'ok');
 		assert.equal(check(capabilities(consumer({ vars: ['FILES_FOLDER'], env: 'FILES_FOLDER=/tmp/files\n' })), 'wikis', 'wikis folder')?.state, 'ok');
 	});
 
-	// And the doctor still SAYS something about the legacy case rather than going silent on it: a
-	// workspace whose records carry the old template does still need the variable, and a check that
-	// stopped mentioning it would hide the one situation that can still refuse.
+	// A record still carrying the old template needs the variable, so the doctor names that case.
 	test('with FILES_FOLDER unset the doctor still names the legacy corpora case', () => {
 		const line = check(capabilities(consumer()), 'wikis', 'legacy corpora');
 		assert.ok(line, 'the legacy case must still be reported, not silently dropped');
 		assert.match(line.detail ?? line.hint ?? '', /\$\{env:FILES_FOLDER\}/);
 	});
-	// ⚠ THIS TEST WAS THE BUG, TWICE OVER, AND BOTH SHAPES ARE WORTH KEEPING IN MIND.
-	//
-	// It used to assert that a missing `qmd` is `bad` — the opposite of the assertion thirty lines
-	// above it, which has always said no notebooks check may be `bad`. Two tests, contradicting each
-	// other, both green. They could both be green because the assertion sat behind `if (c.state !==
-	// 'ok')`, and on the developer's machine qmd IS installed, so the state was `ok` and the body
-	// never ran. CI has no qmd, took the other branch, and went red on the first push.
-	//
-	// So: a conditional around an assertion is a test that reports on the MACHINE, not on the code.
-	// The fix is not to pick a branch — it is to remove the machine from the question. `bin()` resolves
-	// through `command -v`, which reads process.env.PATH, so the absent case can be forced HERE and
-	// asserted unconditionally on every machine, CI and laptop alike.
+	// `bin()` resolves through `command -v`, which reads PATH, so stripping qmd's directory from PATH
+	// forces the absent case on every machine and the assertion runs unconditionally.
 	const withoutQmd = (fn) => {
 		const real = process.env.PATH ?? '';
 		const r = spawnSync('command', ['-v', 'qmd'], { shell: true, encoding: 'utf8' });
@@ -303,7 +282,7 @@ describe('the wikis and notebooklm capabilities', () => {
 		assert.equal(check(capabilities(consumer({ gitignore: 'node_modules/\n' })), 'notebooklm', '.cache/ ignored')?.state, 'warn');
 		assert.equal(check(capabilities(consumer({ gitignore: 'node_modules/\n.cache/\n' })), 'notebooklm', '.cache/ ignored')?.state, 'ok');
 	});
-	test('the module switched off shows no notebooks capability', () => {
+	test('the module switched off shows no wikis capability', () => {
 		assert.equal(cap(capabilities(consumer({ disable: ['wikis'] })), 'wikis'), undefined);
 	});
 	test('setup --yes declares the harness WITHOUT dropping the engine default, and appends .cache/', () => {

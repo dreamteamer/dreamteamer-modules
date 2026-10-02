@@ -1,7 +1,7 @@
 {
 	"name": "@dreamteamer/setup",
 	"version": "0.1.0",
-	"description": "dt-setup — one board for every official dreamteamer module a workspace has: what is ready, what is degraded, and the fix for each.",
+	"description": "One board for every official dreamteamer module a workspace has: which optional capabilities are ready, which are degraded, and the fix for each.",
 	"license": "Apache-2.0",
 	"type": "module",
 	"repository": {
@@ -23,7 +23,7 @@
 	],
 	"dreamteamer": {
 		"title": "Setup",
-		"description": "The board across modules. `dt-setup doctor` reads which official modules the workspace has, on every channel, and reports each one's optional capabilities as READY, DEGRADED or UNAVAILABLE with the fix inline: calendar access for meetings, ffmpeg and model weights for recordings, Docker for contact enrichment, qmd and notebooklm-py for notebooks, an Asana token for perspective. `dt-setup setup` does only the in-workspace edits that board asks for — the template variables, `.env.example`, the record guards chained into `npm run check` — and prints everything else for a person to run. `dt-setup link <clone>` previews a local clone of these modules in place of the published ones, with a pre-commit guard while it is on. Ships no content.",
+		"description": "One board for every official dreamteamer module a workspace has: which optional capabilities are ready, which are degraded, and the fix for each. `dt-setup doctor` shows it and changes nothing. `dt-setup setup` makes only the in-workspace edits it asks for and prints the rest. `dt-setup link <clone>` previews a local clone of these modules. Ships no content.",
 		"engine": ">=0.30.0"
 	}
 }

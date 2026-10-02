@@ -13,8 +13,7 @@ import {
 	guardVerdict, linkPath, linkState, linkTarget, looksLikeClone, refusedPaths,
 } from '../lib/link.mjs';
 
-// the repo root — these tests were written at the root of dreamteamer/extensions, whose modules/ layout
-// this repo keeps, so every `ROOT/modules/<m>/…` path still names the same file
+// the repo root
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', '..', '..');
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'ext-link-'));
 

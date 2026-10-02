@@ -2,7 +2,7 @@
 // lib/link.mjs, which is pure and tested; this file is the part that touches disk, and it is
 // deliberately the only place that does.
 //
-// ⚠ EVERYTHING HERE RUNS ONLY THROUGH bin/setup.mjs. There is no main guard because there is
+// Everything here runs only through bin/setup.mjs. There is no main guard because there is
 // no script path — importing this file defines functions and runs nothing.
 import fs from 'node:fs';
 import path from 'node:path';
