@@ -13,4 +13,4 @@ npx dreamteamer compile
 |---|---|
 | tasks, the inbox (`/inbox`), the board (`/tasks/board`), tasks by person (`/tasks/by-assignee`) | **projects** lets a task name the project or activity it serves · **meeting-docs** extracts tasks from a call and lists them on its critique |
 
-Without the projects module, a task that names a project or an activity is refused by name rather than written.
+Without the projects module, a task that names a project or an activity keeps the reference as written; it resolves once projects is installed.

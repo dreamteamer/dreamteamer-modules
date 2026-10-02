@@ -76,10 +76,13 @@ describe('tasks with users, and without projects', () => {
 	test('assignee works: the mirror is stamped onto users', () => {
 		assert.match(compiledDescriptor(root, 'users'), /\btasks:/);
 	});
-	test('a task naming a project is refused by name, not written into nowhere', () => {
-		const r = run(root, ['add', 'tasks', '--name', 'Plan rung work', '--project', 'projects/atlas']);
-		assert.notEqual(r.status, 0, 'the write was accepted with no projects collection installed');
-		assert.match(r.stderr + r.stdout, /unknown collection "projects"/);
+	// A reference into a declared peer that is not installed is kept as written and resolved once the
+	// peer arrives; check excuses it until then. The store and check agree, so a module opened alone
+	// can write every record it can validate.
+	test('a task naming a project is kept unresolved while projects is absent, and check excuses it', () => {
+		const r = run(root, ['add', 'tasks', '--name', 'Plan rung work', '--slug', 'plan-rung-work', '--project', 'projects/atlas']);
+		assert.equal(r.status, 0, r.stderr + r.stdout);
+		assert.match(dt(root, 'check'), /0 violations/);
 	});
 	test('no meetings field appears on users when meetings is not installed', () => {
 		assert.doesNotMatch(compiledDescriptor(root, 'users'), /\bmeetings:/);
