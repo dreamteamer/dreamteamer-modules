@@ -82,4 +82,3 @@ list_fields:
   - kind
   - about
 icon: workspace-trusted   # a proof is what makes an artifact trusted
-group: system

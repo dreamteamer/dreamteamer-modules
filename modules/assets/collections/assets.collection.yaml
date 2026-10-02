@@ -19,5 +19,4 @@ storage:
   extensions: [svg, png, jpg, jpeg, webp, gif]
 id:
   pattern: '^(icons|logos|avatars|illustrations|images)/[a-z0-9][a-z0-9/._-]*$'
-group: system
 icon: file-media
