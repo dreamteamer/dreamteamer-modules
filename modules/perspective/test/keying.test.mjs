@@ -70,10 +70,10 @@ test('the table covers every collection, and nothing else', () => {
 
 for (const [name, [generate, pattern]] of Object.entries(EXPECTED)) {
 	test(`${name} generates its id as the design says`, () => {
-		assert.equal(load(name).id.generate.replace(/\s+/g, ' ').trim(), generate);
+		assert.equal(load(name).ids.from.replace(/\s+/g, ' ').trim(), generate);
 	});
 	test(`${name} accepts exactly that shape`, () => {
-		assert.equal(load(name).id.pattern, pattern.replace(/\\\\/g, '\\'));
+		assert.equal(load(name).ids.pattern, pattern.replace(/\\\\/g, '\\'));
 	});
 }
 

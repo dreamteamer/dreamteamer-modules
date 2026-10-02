@@ -37,7 +37,7 @@ Seven rules hold at every stage:
    fixture, would otherwise pass by doing nothing at all.
 3. **The observed world uses the real world's own nouns, in this namespace.**
    `perspective/users` · `perspective/projects` · `perspective/activities` · `perspective/goals` ·
-   `perspective/decisions` · `perspective/deliverables` share the shapes `users` and `projects` ship, in a SEPARATE store — never an `extends:` overlay, because a
+   `perspective/decisions` · `perspective/deliverables` share the shapes `users` and `projects` ship, in a SEPARATE store — never an `overlay: true` descriptor, because a
    merged collection could not tell a record a run FOUND from one a person WROTE. Each carries
    **`real`**, a one-way SOFT reference to the authored record it appears to be. `real` is a
    PROPOSAL a person confirms, exactly like `contact`: no script and no pass ever sets it, and the
@@ -220,7 +220,7 @@ what it might write.
 - **Never merge two collaborator records without a person deciding it.** A wrong merge attributes
   one person's work to another, which is the worst error this module can make.
 - **`contact` points at the workspace's own CRM record, set only on confirmation** — never inferred
-  from a matching name. It is a real `x-reference: contacts` on both `perspective/users` and
+  from a matching name. It is a field of `type: contacts` on both `perspective/users` and
   `retrospective-sessions`, which a recipe compiles without because `contacts` is a declared PEER.
 - **`retrospective-sessions.handles` is the seed of the merge**, and the only identity a reader has
   on its FIRST pass, before any `perspective/users` record exists. `lib/identity.mjs` is the one place

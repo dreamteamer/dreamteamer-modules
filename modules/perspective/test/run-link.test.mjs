@@ -10,7 +10,7 @@ import { test } from 'node:test';
 import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
-import yaml from 'js-yaml';
+import { shippedDescriptor } from '../skills/running-retrospectives/lib/descriptors.mjs';
 
 const DIR = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', '..', '..', 'modules', 'perspective', 'collections', 'perspective');
 const RUN = 'retrospective-sessions';
@@ -24,9 +24,8 @@ function descriptorNames(dir, prefix = '') {
 			: e.name.endsWith('.collection.yaml') ? [`${prefix}${e.name.replace('.collection.yaml', '')}`] : []);
 }
 
-const descriptors = new Map(
-	descriptorNames(DIR).map((n) => [n, yaml.load(fs.readFileSync(path.join(DIR, `${n}.collection.yaml`), 'utf8'))]),
-);
+// read with their mixins merged in, so a field a mixin supplies counts as the collection's own
+const descriptors = new Map(descriptorNames(DIR).map((n) => [n, shippedDescriptor(`perspective/${n}`)]));
 
 test('twenty-three collections, and the run is one of them', () => {
 	assert.equal(descriptors.size, 23);
@@ -43,23 +42,23 @@ test('twenty-three collections, and the run is one of them', () => {
 const M2M = 'sources';
 
 test('sources is many-to-many with the run, and keeps neither retired scalar', () => {
-	const props = descriptors.get(M2M).schema.properties;
-	const required = new Set(descriptors.get(M2M).schema.required ?? []);
-	assert.equal(props.retrospectives?.type, 'array');
-	assert.equal(props.retrospectives?.items?.['x-reference'], `perspective/${RUN}`);
-	assert.ok(required.has('retrospectives'), 'a source nothing has ever looked at is not a source');
+	const props = descriptors.get(M2M).fields;
+	assert.equal(props.retrospectives?.many, true);
+	assert.equal(props.retrospectives?.type, `perspective/${RUN}`);
+	assert.equal(props.retrospectives?.required, true, 'a source nothing has ever looked at is not a source');
 	assert.ok(!('retrospective' in props), 'the scalar is gone, not kept beside the list');
 	assert.ok(!('last_seen_in' in props), 'a sorted list gives last-seen; two places for one fact is the next thing to delete');
 });
 
 test('the run record declares the mirror, so it is visible where a reader looks', () => {
-	const props = descriptors.get(RUN).schema.properties;
-	assert.equal(props.sources?.['x-inverse-of'], 'perspective/sources.retrospectives');
+	const props = descriptors.get(RUN).fields;
+	assert.equal(props.sources?.type, 'perspective/sources');
+	assert.equal(props.sources?.mirror_of, 'retrospectives');
 });
 
 for (const [name, d] of descriptors) {
-	const props = d.schema?.properties ?? {};
-	const required = new Set(d.schema?.required ?? []);
+	const props = d.fields ?? {};
+	const required = new Set(Object.entries(props).filter(([, f]) => f?.required).map(([k]) => k));
 
 	test(`${name} declares no "session" field`, () => {
 		assert.ok(!('session' in props), 'a session here means an agent session, which is a conversation');
@@ -78,12 +77,13 @@ for (const [name, d] of descriptors) {
 	if (name === M2M) continue;   // asserted above, with its own cardinality
 
 	test(`${name} points at the run through "retrospective", and requires it`, () => {
-		assert.equal(props.retrospective?.['x-reference'], `perspective/${RUN}`);
+		assert.equal(props.retrospective?.type, `perspective/${RUN}`);
+		assert.ok(!props.retrospective?.many);
 		assert.ok(required.has('retrospective'));
 	});
 
 	test(`${name} can record the session that last confirmed it`, () => {
-		assert.equal(props.last_seen_in?.['x-reference'], `perspective/${RUN}`);
+		assert.equal(props.last_seen_in?.type, `perspective/${RUN}`);
 		assert.ok(!required.has('last_seen_in'), 'absent means exactly one session has ever touched it');
 	});
 

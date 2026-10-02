@@ -5,9 +5,11 @@
 //   1. THE OBSERVED SET. `users`, `projects`, `activities`, `goals`, `decisions` and `deliverables`
 //      each have an authored counterpart of the same name in `users` or `projects`, and live in the
 //      `perspective` namespace beside the rest of the module.
-//   2. THEY ARE PARALLEL, NOT OVERLAYS. None declares `extends:`, because a merged collection could
+//   2. THEY ARE PARALLEL, NOT OVERLAYS. None declares `overlay: true`, because a merged collection could
 //      not tell a record a run FOUND from one a person WROTE.
-//   3. THE JOIN IS `real`: ONE-WAY, SOFT, AND POINTED AT ITS OWN COLLECTION.
+//   3. THE JOIN IS `real`: ONE-WAY, SOFT, AND POINTED AT ITS OWN COLLECTION. Soft means a plain
+//      string rather than a reference type, so the engine's `check` never resolves it; the module's
+//      own guard (`bin/check-records.mjs`) holds the target and reports one that resolves to nothing.
 //   4. AND `real` IS THE ONLY CROSSING. Every other reference resolves inside `perspective/`, or names
 //      a peer with no observed half (`companies`, `contacts`, `meetings`, `repos`).
 import { test, describe } from 'node:test';
@@ -15,6 +17,8 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 import yaml from 'js-yaml';
+import { shippedDescriptor } from '../skills/running-retrospectives/lib/descriptors.mjs';
+import { fieldsOf, targetsOf } from '../../../tests/helpers/descriptors.mjs';
 
 // the repo root — these tests were written at the root of dreamteamer/extensions, whose modules/ layout
 // this repo keeps, so every `ROOT/modules/<m>/…` path still names the same file
@@ -34,17 +38,18 @@ const PAIRS = {
 };
 
 const load = (p) => yaml.load(fs.readFileSync(p, 'utf8'));
-const observed = Object.fromEntries(Object.keys(PAIRS)
-	.map((n) => [n, load(path.join(COLS, `${n}.collection.yaml`))]));
+// each observed descriptor with its mixins merged in, so a mixin's field counts as its own
+const observed = Object.fromEntries(Object.keys(PAIRS).map((n) => [n, shippedDescriptor(`perspective/${n}`)]));
 const realOf = (n) => load(path.join(MODULES, PAIRS[n].module, 'collections', `${PAIRS[n].real}.collection.yaml`));
-const propsOf = (d) => d.schema?.properties ?? {};
-const holder = (spec) => (spec?.items && typeof spec.items === 'object' ? spec.items : spec);
+const propsOf = (d) => d.fields ?? {};
+/** The real collection's fields once installed: its own, its mixins' and every overlay's. */
+const realFieldsOf = (n) => Object.fromEntries(fieldsOf(PAIRS[n].real));
 
 describe('the observed world', () => {
 	test('is exactly the descriptors that carry `real`', () => {
 		const withReal = fs.readdirSync(COLS).filter((f) => f.endsWith('.collection.yaml'))
 			.map((f) => f.replace('.collection.yaml', ''))
-			.filter((n) => 'real' in propsOf(load(path.join(COLS, `${n}.collection.yaml`))))
+			.filter((n) => 'real' in propsOf(shippedDescriptor(`perspective/${n}`)))
 			.sort();
 		assert.deepEqual(withReal, Object.keys(PAIRS).sort());
 	});
@@ -68,9 +73,9 @@ describe('the observed world', () => {
 });
 
 describe('parallel objects, never overlays', () => {
-	test('no observed collection declares extends:', () => {
+	test('no observed collection is an overlay', () => {
 		for (const [n, d] of Object.entries(observed)) {
-			assert.ok(!('extends' in d),
+			assert.ok(!d.overlay,
 				`${n} extends its base — an overlay merges by NAME, so a record a run FOUND becomes indistinguishable from one a person WROTE`);
 		}
 	});
@@ -86,8 +91,8 @@ describe('parallel objects, never overlays', () => {
 		// shape, and these two disagree by design. The contributor segment is what makes a SECOND
 		// retrospective update a person's model instead of writing a copy beside it.
 		for (const [n, d] of Object.entries(observed)) {
-			assert.ok(d.id.generate.startsWith('{{ contributor }}'), `${n}: ${d.id.generate}`);
-			assert.ok(!realOf(n).id.generate.includes('contributor'), `${PAIRS[n].real} must NOT be contributor-keyed`);
+			assert.ok(d.ids.from.startsWith('{{ contributor }}'), `${n}: ${d.ids.from}`);
+			assert.ok(![realOf(n).ids.from].flat().some((t) => t.includes('contributor')), `${PAIRS[n].real} must NOT be contributor-keyed`);
 		}
 	});
 });
@@ -97,12 +102,12 @@ describe('the `real` join', () => {
 		test(`${n}.real points at ${real}, one-way and soft`, () => {
 			const spec = propsOf(observed[n]).real;
 			assert.ok(spec, `${n} has no \`real\` — the observed world with no join to the real one is a second vocabulary again`);
-			const h = holder(spec);
-			assert.equal(h['x-reference'], real);
-			assert.equal(h['x-reference-soft'], true,
+			assert.equal(spec.type, 'string',
 				'soft is what lets the target RECORD be gone: a correspondence is a judgement a run made on a date');
-			assert.ok(!h['x-inverse'] && !spec['x-inverse'],
-				'ONE-WAY: the real world must never gain a field pointing at a finding');
+			assert.ok(!spec.many, `${n}.real is one record`);
+			assert.ok(spec.description.startsWith(`The \`${real}\` record`), `${n}.real must name the collection it points at`);
+			const realMirrors = Object.entries(realFieldsOf(n)).filter(([, f]) => targetsOf(f).includes(`perspective/${n}`));
+			assert.deepEqual(realMirrors, [], 'ONE-WAY: the real world must never gain a field pointing at a finding');
 			assert.ok(PERSPECTIVE_PKG.dreamteamer.peerDependencies.includes(real),
 				`${real} must be a declared peer — that is what lets the target COLLECTION be absent (module ${module} need not be installed)`);
 		});
@@ -114,14 +119,19 @@ describe('the `real` join', () => {
 	});
 
 	test('no observed collection writes a mirror onto a collection this module does not own', () => {
+		// A mirror is a `mirror_of` field on the collection that holds it, so a mirror on somebody
+		// else's collection would have to arrive as an overlay this module ships.
+		const all = fs.readdirSync(COLS).filter((f) => f.endsWith('.collection.yaml')).map((f) => load(path.join(COLS, f)));
+		for (const d of all) {
+			assert.ok(!d.overlay, `${d.name} is an overlay — a peer excuses a REFERENCE, never a MIRROR`);
+			assert.ok(d.name.startsWith('perspective/'), `${d.name} is not a perspective collection`);
+		}
 		for (const [n, d] of Object.entries(observed)) {
 			for (const [field, spec] of Object.entries(propsOf(d))) {
-				const h = holder(spec);
-				if (!h?.['x-inverse']) continue;
-				const targets = Array.isArray(h['x-reference']) ? h['x-reference'] : [h['x-reference']];
-				for (const t of targets) {
+				if (spec?.mirror_of === undefined) continue;
+				for (const t of targetsOf(spec)) {
 					assert.ok(String(t).startsWith('perspective/'),
-						`${n}.${field} stamps a mirror onto "${t}" — a peer excuses a REFERENCE, never a MIRROR`);
+						`${n}.${field} mirrors "${t}" — a peer excuses a REFERENCE, never a MIRROR`);
 				}
 			}
 		}
@@ -139,10 +149,6 @@ describe('the layer resolves within itself — `real` is the only crossing', () 
 	// Asserted over every observed collection rather than field by field, so the next field added
 	// here cannot weld the two worlds together quietly.
 	const REAL_NOUNS = new Set(Object.values(PAIRS).map((p) => p.real));
-	const targetsOf = (spec) => {
-		const r = holder(spec)?.['x-reference'];
-		return r == null ? [] : Array.isArray(r) ? r : [r];
-	};
 
 	test('no field but `real` points at a noun the observed world has its own half of', () => {
 		const crossings = [];
@@ -163,36 +169,34 @@ describe('the layer resolves within itself — `real` is the only crossing', () 
 			'a reference out of the observed layer into the real one welds a finding to somebody\'s authored records:\n  ' + crossings.join('\n  '));
 	});
 
-	test('`real` is the only soft crossing, and every observed collection has exactly one', () => {
+	test('`real` is the only crossing, it is soft, and every observed collection has exactly one', () => {
 		for (const [n, d] of Object.entries(observed)) {
 			const crossing = Object.entries(propsOf(d))
 				.filter(([, spec]) => targetsOf(spec).some((t) => REAL_NOUNS.has(String(t))))
 				.map(([field]) => field);
-			assert.deepEqual(crossing, ['real'], `${n} crosses into the real world through ${crossing.join(', ') || 'nothing'}`);
+			assert.deepEqual(crossing, [], `${n} crosses into the real world through a hard reference: ${crossing.join(', ')}`);
+			assert.equal(propsOf(d).real?.type, 'string', `${n} has no soft \`real\``);
 		}
 	});
 });
 
 describe('concepts classify both worlds, and the two halves stay apart', () => {
-	const concepts = propsOf(load(path.join(MODULES, 'perspective', 'collections', 'perspective', 'concepts.collection.yaml')));
+	const concepts = propsOf(shippedDescriptor('perspective/concepts'));
 
 	test('`classifies` names every observed-world collection, and only those', () => {
-		const targets = holder(concepts.classifies)['x-reference'];
-		assert.deepEqual([...targets].sort(), Object.keys(PAIRS).map((n) => `perspective/${n}`).sort());
+		assert.ok(concepts.classifies.many);
+		assert.deepEqual([...targetsOf(concepts.classifies)].sort(), Object.keys(PAIRS).map((n) => `perspective/${n}`).sort());
 	});
 
 	test('`classifies` is HARD, because those collections are ours', () => {
-		assert.ok(!holder(concepts.classifies)['x-reference-soft'],
+		assert.ok(Array.isArray(concepts.classifies.type) && concepts.classifies.type.every((t) => t.startsWith('perspective/')),
 			'a dangling ref into a collection this module writes itself is a real defect, not a stale judgement');
 	});
 
-	test('`related_to` names the real world, and is soft', () => {
-		const targets = holder(concepts.related_to)['x-reference'];
-		for (const real of Object.values(PAIRS).map((p) => p.real)) {
-			assert.ok(targets.includes(real), `related_to should reach the real \`${real}\``);
-		}
-		assert.equal(holder(concepts.related_to)['x-reference-soft'], true);
-		assert.ok(!targets.some((t) => String(t).startsWith('perspective/')),
+	test('`related_to` is a soft list into the real world', () => {
+		assert.equal(concepts.related_to.type, 'string', 'soft: a deleted real record must not turn a concept red');
+		assert.ok(concepts.related_to.many);
+		assert.deepEqual(targetsOf(concepts.related_to), [],
 			'the observed world belongs to `classifies`; two fields, because one is ours and one is not');
 	});
 });
@@ -205,21 +209,21 @@ describe('same structure, and the places it deliberately differs', () => {
 			const p = propsOf(observed[n]);
 			assert.ok('started' in p && 'ended' in p, `${n} must spell its dates in the past tense`);
 			assert.ok(!('starts' in p) && !('ends' in p), `${n} must not carry the PLAN's spelling`);
-			assert.ok('starts' in propsOf(realOf(n)), `${PAIRS[n].real} is the plan and keeps \`starts\``);
+			assert.ok('starts' in realFieldsOf(n), `${PAIRS[n].real} is the plan and keeps \`starts\``);
 		}
 	});
 
 	test('the relation spine is the real world\'s, in the real world\'s words', () => {
-		assert.equal(holder(propsOf(observed.activities).project)['x-reference'], 'perspective/projects');
-		assert.equal(holder(propsOf(observed.activities).lead)['x-reference'], 'perspective/users');
-		assert.equal(holder(propsOf(observed.projects).lead)['x-reference'], 'perspective/users');
+		assert.equal(propsOf(observed.activities).project.type, 'perspective/projects');
+		assert.equal(propsOf(observed.activities).lead.type, 'perspective/users');
+		assert.equal(propsOf(observed.projects).lead.type, 'perspective/users');
 		assert.ok(!('lane' in propsOf(observed.activities)) && !('phase' in propsOf(observed.activities)),
 			'lanes and phases are not observed — those collections are gone');
 	});
 
 	test('an observed goal spells its test the way a declared one does', () => {
 		assert.ok('done_when' in propsOf(observed.goals));
-		assert.ok('done_when' in propsOf(realOf('goals')));
+		assert.ok('done_when' in realFieldsOf('goals'));
 		assert.ok(!('statement' in propsOf(observed.goals)) && !('horizon' in propsOf(observed.goals)));
 	});
 });

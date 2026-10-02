@@ -5,10 +5,10 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import yaml from 'js-yaml';
 import { WORKSPACE_ROOT, DATA, dt, readEnv, templatize, slug } from '../lib/workspace.mjs';
 import { recordPath, writeRecord, listRecords, contributorOf, readRecord, nowIso, rebuildRelations, writeSource, compiledStorage, recordFilesOf } from '../lib/records.mjs';
 import { claudeHomes, walkJsonl } from '../lib/claude-trees.mjs';
+import { readDescriptor } from '../lib/descriptors.mjs';
 
 const argv = process.argv.slice(2);
 const flag = (n) => argv.includes(`--${n}`);
@@ -73,19 +73,17 @@ add('workspace-records', 'this-workspace', nRecords ? 'available' : 'unavailable
 // say which, because "the module is not installed" and "installed but nothing synced" are different
 // problems with different fixes. A `sources` record either way; absent is a record, not an error.
 {
-	const descriptor = path.join(workspaceRoot, '.dreamteamer', 'collections', 'meetings.collection.yaml');
-	let storage;
-	if (fs.existsSync(descriptor)) {
-		try { storage = (yaml.load(fs.readFileSync(descriptor, 'utf8')) ?? {}).storage; } catch { /* unreadable — treated as absent below */ }
-	}
-	if (!storage?.path) {
+	// an unreadable descriptor reads as absent
+	const meetings = readDescriptor(workspaceRoot, 'meetings');
+	const storage = meetings?.compiled ? meetings.storage : null;
+	if (!storage) {
 		add('meetings', 'this-workspace', 'unavailable', {
 			location: '${workspaceFolder}',
 			content: 'No compiled `meetings` descriptor in this workspace. The meetings module is a declared PEER of this one: without it there is no calendar evidence at all, which is a fact about the workspace rather than about the contributor.\n',
 		});
 	} else {
 		// every root the collection's records sit in — a meeting may live inside its company's folder
-		const records = recordFilesOf(compiledStorage(workspaceRoot, 'meetings', String(storage.path), String(storage.suffix || 'meeting'))).length;
+		const records = recordFilesOf(compiledStorage(workspaceRoot, 'meetings', storage.path, storage.suffix)).length;
 		add('meetings', 'this-workspace', records ? 'available' : 'unavailable', {
 			location: `\${workspaceFolder}/${String(storage.path)}`,
 			counts: { records },

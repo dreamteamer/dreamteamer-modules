@@ -206,8 +206,8 @@ for (const file of listRecords(path.join(collectionDir('activities', dataRoot), 
 }
 
 // ── 4. the ticket's assignee, as a REFERENCE rather than an address ──────────────────────────────
-// `tickets.assignee` carries `x-inverse: tickets`, so `collaborators.tickets` is a generated mirror
-// of it — and nothing ever wrote it. `read-asana` stores `assignee_handle`, the raw email, because at
+// `perspective/users.tickets` is a generated mirror of `tickets.assignee` (`mirror_of: assignee`)
+// — and nothing ever wrote the assignee. `read-asana` stores `assignee_handle`, the raw email, because at
 // the moment it writes a ticket the collaborator records do not exist yet: it creates them in a later
 // pass over the same tasks. Without this step every ticket carries an address and no assignee, and
 // every collaborator board shows zero tickets. The handle→ref map above is the same map that
