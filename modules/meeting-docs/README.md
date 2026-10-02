@@ -27,3 +27,10 @@ a critique.
 A prep can be written for any meeting, with no recording. A summary, its tasks and a critique need a
 transcribed recording; their commands are offered on a meeting only once one of its recordings has
 been transcribed.
+
+## upgrading existing summaries
+
+`meeting-summaries` has no `participants` field. Who was on a call is the meeting's `attendees`, and
+who said what is the recording's transcript. A summary that still carries `participants` fails
+`dt check` with `unknown field "participants"`: move any `contacts/<id>` it lists into the meeting's
+`attendees` if it is not there already, then delete the key.

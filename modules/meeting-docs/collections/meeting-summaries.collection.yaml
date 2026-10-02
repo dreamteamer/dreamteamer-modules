@@ -45,10 +45,6 @@ fields:
   duration:
     type: string
     description: Duration of the source recording (transcript-pipeline provenance).
-  participants:
-    type: string
-    many: true
-    description: Speaker-labelled participant list from the transcript pipeline.
   scope_note:
     type: string
     description: What this summary DELIBERATELY leaves out, so a reader knows the gap is a choice rather than an oversight.
