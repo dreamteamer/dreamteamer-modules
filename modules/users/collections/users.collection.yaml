@@ -79,8 +79,10 @@ schema:
       description: '`inactive` keeps the person addressable in history without offering them as an assignee — never delete a user who carries past work.'
     tags:
       type: array
-      items: { type: string }
-      description: "Free strings, lowercase and hyphenated; `key:value` with no space around the colon. `dt values users tags` lists the ones in use."
+      items:
+        type: string
+        pattern: '^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$'
+      description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
     notes:
       type: string
       format: markdown

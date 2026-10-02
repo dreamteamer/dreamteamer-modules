@@ -4,7 +4,7 @@ Audio recordings of your meetings, each matched to its meeting and transcribed o
 Hebrew and English, speakers told apart.
 
 ```bash
-npm install @dreamteamer/recordings @dreamteamer/meetings @dreamteamer/contacts @dreamteamer/companies @dreamteamer/users @dreamteamer/tags @dreamteamer/assets
+npm install @dreamteamer/recordings @dreamteamer/meetings @dreamteamer/contacts @dreamteamer/companies @dreamteamer/users @dreamteamer/assets
 npx dreamteamer compile
 ```
 

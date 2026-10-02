@@ -5,7 +5,7 @@ Concrete commitments: what has to be done, by whom, and by when. Each task names
 by-person view, and the skill an agent follows to create, assign and close tasks.
 
 ```bash
-npm install @dreamteamer/tasks @dreamteamer/users @dreamteamer/tags
+npm install @dreamteamer/tasks @dreamteamer/users
 npx dreamteamer compile
 ```
 

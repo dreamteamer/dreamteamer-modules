@@ -202,7 +202,7 @@ describe('the wikis and notebooklm capabilities', () => {
 		assert.deepEqual([...OURS].sort(), shipped.sort());
 		assert.ok(OURS.includes('wikis'));
 		assert.ok(OURS.includes('notebooklm'));
-		assert.ok(OURS.includes('companies') && OURS.includes('tags') && OURS.includes('meeting-docs'), 'the 2026-10-01 splits each have a row');
+		assert.ok(OURS.includes('companies') && OURS.includes('meeting-docs'), 'the 2026-10-01 splits each have a row');
 		assert.ok(OURS.includes('users'), 'users is its own module so it renders at the nav root');
 		assert.ok(OURS.includes('rnd'));
 		assert.equal(installedModules(consumer()).get('wikis')?.channel, 'node_modules');

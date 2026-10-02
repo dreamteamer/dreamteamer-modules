@@ -98,14 +98,12 @@ schema:
         What is blocking this record and what you have to decide — written for a person to read and answer,
         then cleared.
     tags:
-      examples: ['enriched:web-search', 'enriched:linkedin', 'linkedin:unsure']
       type: array
       items:
         type: string
-      description: >-
-        The workspace's own enrichment tags — the vocabulary encodes how this workspace segments people.
-        Free strings, lowercase and hyphenated; `key:value` with NO space around the colon — a space makes YAML parse
-        the entry as a map. Nothing validates a tag: `python3 .dreamteamer/skills/working-with-tags/bin/tags.py` (the tags module) lists the tags in use.
+        pattern: '^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$'
+      examples: ['investor', 'linkedin:unsure']
+      description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
     recent_meeting:
       type: string
       x-reference: meetings

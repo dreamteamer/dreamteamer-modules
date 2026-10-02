@@ -5,7 +5,7 @@ and an honest critique built on the transcript. Plus the tasks a call produces, 
 runs the whole pipeline from calendar sync to critique.
 
 ```bash
-npm install @dreamteamer/meeting-docs @dreamteamer/engagements @dreamteamer/meetings @dreamteamer/recordings @dreamteamer/tasks @dreamteamer/contacts @dreamteamer/companies @dreamteamer/users @dreamteamer/tags @dreamteamer/assets
+npm install @dreamteamer/meeting-docs @dreamteamer/engagements @dreamteamer/meetings @dreamteamer/recordings @dreamteamer/tasks @dreamteamer/contacts @dreamteamer/companies @dreamteamer/users @dreamteamer/assets
 npx dreamteamer compile
 ```
 

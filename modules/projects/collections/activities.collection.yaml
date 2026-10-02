@@ -121,8 +121,10 @@ schema:
       description: How the estimate was arrived at. An estimate without a basis is a hand-wave — say so here or leave both empty.
     tags:
       type: array
-      items: { type: string }
-      description: Free strings, lowercase and hyphenated; the colon convention with no space.
+      items:
+        type: string
+        pattern: '^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$'
+      description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
     content:
       type: string
       format: markdown

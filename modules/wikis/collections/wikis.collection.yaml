@@ -71,7 +71,8 @@ schema:
       type: array
       items:
         type: string
-      description: "Free-form grouping — subject, engagement, or the flow that built it. Colon convention, no space: `purpose:topical-authority`."
+        pattern: '^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$'
+      description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
     notes:
       type: string
       format: markdown

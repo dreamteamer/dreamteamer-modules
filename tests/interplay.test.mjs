@@ -16,11 +16,11 @@ const dt = (root, ...args) => {
 	return r.stdout;
 };
 
-describe('assets · users · companies · contacts · tags · tasks · meetings, together', () => {
+describe('assets · users · companies · contacts · tasks · meetings, together', () => {
 	let root;
 	before(() => {
 		root = virginWorkspace();
-		installPacked(root, ['assets', 'users', 'companies', 'contacts', 'tags', 'tasks', 'meetings']);
+		installPacked(root, ['assets', 'users', 'companies', 'contacts', 'tasks', 'meetings']);
 		compileAndCheck(root);
 		dt(root, 'add', 'users', '--name', 'Sam Diaz');
 		dt(root, 'add', 'companies', '--name', 'Harbor Mutual');
@@ -59,7 +59,7 @@ describe('companies alone, then with contacts', () => {
 	});
 	test('meetings with meeting-docs and recordings carries all four mirrors', () => {
 		const root = virginWorkspace();
-		installPacked(root, ['assets', 'users', 'companies', 'contacts', 'tags', 'tasks', 'meetings', 'recordings', 'engagements', 'meeting-docs']);
+		installPacked(root, ['assets', 'users', 'companies', 'contacts', 'tasks', 'meetings', 'recordings', 'engagements', 'meeting-docs']);
 		compileAndCheck(root);
 		const d = compiledDescriptor(root, 'meetings');
 		for (const f of ['recordings', 'prep', 'summary', 'analyses']) assert.match(d, new RegExp(`^\\s+${f}:`, 'm'), f);
@@ -70,7 +70,7 @@ describe('tasks with users, and without projects', () => {
 	let root;
 	before(() => {
 		root = virginWorkspace();
-		installPacked(root, ['users', 'tags', 'tasks']);
+		installPacked(root, ['users', 'tasks']);
 		compileAndCheck(root);
 	});
 	test('assignee works: the mirror is stamped onto users', () => {

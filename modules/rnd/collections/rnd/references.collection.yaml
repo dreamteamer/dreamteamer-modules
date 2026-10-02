@@ -70,8 +70,10 @@ schema:
       description: GENERATED — the design docs of ours that cite this reference. Set `references` on the design doc.
     tags:
       type: array
-      items: { type: string }
-      description: "Free strings, lowercase and hyphenated; `key:value` with no space around the colon. `dt values rnd/references tags` lists the ones in use."
+      items:
+        type: string
+        pattern: '^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$'
+      description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
     content:
       type: string
       format: markdown

@@ -98,15 +98,12 @@ schema:
       default: normal
       description: How sure the writer was that this really is a task someone in the workspace owns.
     tags:
-      examples: ['client:northwind', 'finance', 'decision']
       type: array
       items:
         type: string
-      description: >-
-        What this task is about, so the board can be split by kind rather than read end to end. Free strings,
-        lowercase and hyphenated; `key:value` with no space around the colon, since a space makes YAML parse the
-        entry as a map. Nothing validates a tag: `python3 .dreamteamer/skills/working-with-tags/bin/tags.py` (the
-        tags module's `working-with-tags` skill) lists the tags in use.
+        pattern: '^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$'
+      examples: ['client:northwind', 'finance', 'decision']
+      description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
     assistant_recommended_next_step:
       type: string
       format: markdown

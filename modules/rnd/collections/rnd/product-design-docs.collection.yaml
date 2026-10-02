@@ -56,14 +56,12 @@ schema:
       x-body: true
       description: The design itself — the intended shape of the thing, and why it is shaped that way. When written from references, the PRD.
     tags:
-      examples: ['onboarding', 'pricing', 'portal']
       type: array
-      items: { type: string }
-      description: >-
-        Free strings, lowercase and hyphenated. Optionally `key:value` with NO space around the
-        colon (`area:onboarding`, `source:interview`) — a space makes YAML parse the
-        entry as a map instead of a string. Nothing validates a tag; there is no `tags` collection.
-        Reuse one already in use before inventing one: `dt values <collection> tags` lists them.
+      items:
+        type: string
+        pattern: '^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$'
+      examples: ['onboarding', 'pricing', 'portal']
+      description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
     status:
       type: string
       enum: [draft, active, superseded]
