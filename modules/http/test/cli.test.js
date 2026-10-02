@@ -63,10 +63,12 @@ describe('dt serve', () => {
 		assert.match(help.stdout, /@dreamteamer\/http@0\.1\.0:\n\s+serve \[--port <n>\] \[--host <addr>\] \[--token <secret>\]/);
 	});
 
-	test('without the package the engine does not serve — it says the verb left core, exit 2', () => {
+	// engine 0.33: a verb an extension answers, typed without its package, prints the install line
+	test('without the package the engine does not serve — it prints the install line, exit 2', () => {
 		const bare = workspace();
 		const r = bare.dt('serve', '--port', '0');
 		assert.equal(r.code, 2);
-		assert.match(r.stderr, /`dt serve` left core in 0\.31\.0/);
+		assert.match(r.stderr, /`dt serve` comes from an extension this workspace does not have/);
+		assert.match(r.stderr, /npm i @dreamteamer\/http\n/);
 	});
 });

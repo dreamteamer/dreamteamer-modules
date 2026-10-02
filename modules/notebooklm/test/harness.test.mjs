@@ -145,7 +145,9 @@ describe('it is the user\'s file, with a managed block inside', () => {
 		assert.equal(readFile(ws.root, '.claude/skills/exporting-to-notebooklm/SKILL.md'), null, 'the package skill outlived the package');
 		const verb = ws.dt('notebooklm');
 		assert.notEqual(verb.code, 0);
-		assert.match(verb.stderr, /`dt notebooklm` left core/, 'the verb without its module fails as a moved verb');
+		// engine 0.33: a verb an extension answers, typed without its package, prints the install line
+		assert.match(verb.stderr, /`dt notebooklm` comes from an extension this workspace does not have/, 'the verb without its module names the package that answers it');
+		assert.match(verb.stderr, /npm i @dreamteamer\/notebooklm\n/);
 	});
 
 	test('removing the module whose block was the whole file deletes the file it created', () => {
