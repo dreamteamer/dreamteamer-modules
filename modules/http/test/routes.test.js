@@ -4,21 +4,19 @@ import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import { api as engine } from '../../../tests/helpers/fixture.mjs';
 import { httpWorkspace, simpleCollection, mount, call } from './support.mjs';
 
 // a namespaced collection (its name carries a slash) whose ids are paths (they carry one too)
 const SAMPLES = {
+	description: 'Lab samples.',
 	storage: { suffix: 'sample' },
-	id: { generate: '{{ date }}/{{ name | slug }}' },
-	schema: {
-		type: 'object',
-		required: ['name', 'date'],
-		properties: {
-			name: { type: 'string' },
-			date: { type: 'string', format: 'date' },
-			status: { type: 'string', enum: ['open', 'done'] },
-			notes: { type: 'string', format: 'markdown', 'x-body': true },
-		},
+	ids: { from: '{{ date }}/{{ name | slug }}' },
+	fields: {
+		name: { type: 'string', required: true },
+		date: { type: 'date', required: true },
+		status: { type: 'string', enum: ['open', 'done'] },
+		notes: { type: 'markdown', body: true },
 	},
 };
 const C = encodeURIComponent('lab/samples');
@@ -46,11 +44,11 @@ describe('reads', () => {
 		assert.ok(Array.isArray(json.ui));
 	});
 
-	test('GET /schema is every descriptor', async () => {
+	test('GET /schema is every compiled descriptor', async () => {
 		const { status, json } = await call('GET', `${api}/schema`);
 		assert.equal(status, 200);
 		assert.ok(Array.isArray(json));
-		assert.ok(json.find((d) => d.name === 'lab/samples')?.schema?.properties?.date);
+		assert.equal(json.find((d) => d.name === 'lab/samples')?.compiled?.fields?.date?.type, 'date');
 	});
 
 	test('GET /presentation and GET /commands/:name answer with their read models', async () => {
@@ -155,26 +153,51 @@ describe('a record in a namespaced collection, with a slashed id', () => {
 });
 
 describe('schema routes', () => {
-	test('POST /collections/:name/fields adds a field through the compile gate, and the store reloads', async () => {
+	const fieldsOf = async (name) => (await call('GET', `${api}/schema`)).json.find((d) => d.name === name).compiled.fields;
+
+	test('POST /collections/:name/fields adds a field in the flag vocabulary, through the compile gate, and the store reloads', async () => {
 		const { status, json } = await call('POST', `${api}/collections/${C}/fields`, { name: 'weight', type: 'number' });
 		assert.equal(status, 200, JSON.stringify(json));
-		const schema = (await call('GET', `${api}/schema`)).json.find((d) => d.name === 'lab/samples');
-		assert.equal(schema.schema.properties.weight?.type, 'number');
+		assert.deepEqual(json.value, { type: 'number' }, 'the answer carries the v2 field as written');
+		assert.equal((await fieldsOf('lab/samples')).weight?.type, 'number');
 		const add = await call('POST', `${api}/collections/${C}/records`, { name: 'Beta', date: '2026-09-02', weight: 1.5 });
 		assert.equal(add.status, 201, 'the reloaded store accepts the new field');
+	});
+
+	test('POST /collections/:name/fields takes a whole v2 field object, and writes it verbatim', async () => {
+		const field = { type: 'string', many: true, enum: ['red', 'green'], description: 'What the sample was tagged.' };
+		const { status, json } = await call('POST', `${api}/collections/${C}/fields`, { name: 'tags', field });
+		assert.equal(status, 200, JSON.stringify(json));
+		assert.deepEqual(json.value, field);
+		const source = fs.readFileSync(path.join(h.root, 'modules/default/collections/lab/samples.collection.yaml'), 'utf8');
+		assert.deepEqual(engine.loadYaml(source).fields.tags, field, 'the source declares exactly the field sent');
+		const compiled = (await fieldsOf('lab/samples')).tags;
+		assert.equal(compiled.many, true);
+		assert.deepEqual(compiled.enum, ['red', 'green']);
+	});
+
+	test('PATCH /collections/:name/fields/:field changes only the flags it names, or replaces the field with `field`', async () => {
+		const flags = await call('PATCH', `${api}/collections/${C}/fields/tags`, { required: true });
+		assert.equal(flags.status, 200, JSON.stringify(flags.json));
+		assert.deepEqual(flags.json.value, { type: 'string', required: true, many: true, enum: ['red', 'green'], description: 'What the sample was tagged.' }, 'a flag changes what it names and keeps the rest');
+		const whole = await call('PATCH', `${api}/collections/${C}/fields/tags`, { field: { type: 'string', many: true } });
+		assert.equal(whole.status, 200, JSON.stringify(whole.json));
+		assert.deepEqual(whole.json.value, { type: 'string', many: true });
+		const compiled = (await fieldsOf('lab/samples')).tags;
+		assert.equal(compiled.required, undefined, 'a whole field replaces the old one');
+		assert.equal(compiled.enum, undefined);
 	});
 
 	test('a schema write the compiler refuses is a 400', async () => {
 		const { status, json } = await call('POST', `${api}/collections/${C}/fields`, { name: 'bad', type: 'no-such-type' });
 		assert.equal(status, 400);
-		assert.match(json.error, /unknown field type/);
+		assert.match(json.error, /no-such-type/);
 	});
 
 	test('a compile made outside the server is visible to the next request, with no /reload', async () => {
 		const r = h.dt('add-field', 'notes', '--name', 'rating', '--type', 'integer');
 		assert.equal(r.code, 0, r.stderr + r.stdout);
-		const schema = (await call('GET', `${api}/schema`)).json.find((d) => d.name === 'notes');
-		assert.equal(schema.schema.properties.rating?.type, 'integer');
+		assert.equal((await fieldsOf('notes')).rating?.type, 'integer');
 	});
 
 	test('an unsupported dry-run answers exactly {error, "dry-run": "unsupported"} with 400', async () => {

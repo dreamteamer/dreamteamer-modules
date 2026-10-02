@@ -4,15 +4,12 @@ import { once } from 'node:events';
 import { api, workspace, writeSource } from '../../../tests/helpers/fixture.mjs';
 import { bind, createApp } from '../src/app.js';
 
-/** A minimal valid descriptor, so a test states only the part it is about. */
+/** A minimal valid v2 descriptor, so a test states only the part it is about. */
 export function simpleCollection(extra = {}) {
 	return {
-		id: { generate: '{{ name | slug }}' },
-		schema: {
-			type: 'object',
-			required: ['name'],
-			properties: { name: { type: 'string' }, notes: { type: 'string', format: 'markdown', 'x-body': true } },
-		},
+		description: 'A test collection.',
+		ids: { from: '{{ name | slug }}' },
+		fields: { name: { type: 'string', required: true }, notes: { type: 'markdown', body: true } },
 		...extra,
 	};
 }

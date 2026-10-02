@@ -5,14 +5,10 @@ import assert from 'node:assert/strict';
 import { httpWorkspace, mount, call } from './support.mjs';
 
 const ORDERED = {
-	sort_field: 'position',
-	id: { generate: '{{ name | slug }}' },
+	description: 'Tasks in a manual order.',
+	ids: { from: '{{ name | slug }}' },
 	storage: { suffix: 'task' },
-	schema: {
-		type: 'object',
-		required: ['name'],
-		properties: { name: { type: 'string' }, position: { type: 'string', pattern: '^[a-z]+$' } },
-	},
+	fields: { name: { type: 'string', required: true }, position: { type: 'position' } },
 };
 
 let srv, base;
@@ -22,7 +18,7 @@ before(async () => {
 		collections: { ordered: ORDERED },
 		records: { ordered: [{ name: 'Alpha' }, { name: 'Bravo' }, { name: 'Charlie' }] },
 	});
-	const r = h.dt('move', 'ordered', '--init');
+	const r = h.dt('reorder', 'ordered', '--init');
 	assert.equal(r.code, 0, r.stderr);
 	srv = await mount(h.ws);
 	base = `${srv.base}/collections/ordered`;
@@ -60,13 +56,13 @@ describe('PATCH /collections/:name/position/*id', () => {
 		const was = await ids();
 		const r = await move('charlie', { after: 'nosuch' });
 		assert.equal(r.status, 400);
-		assert.match(r.json.error, /dreamteamer move ordered --init|dt move ordered --init/);
+		assert.match(r.json.error, /dreamteamer reorder ordered --init/);
 		assert.deepEqual(await ids(), was);
 	});
 
-	test('a collection with no sort_field is a 400 naming it', async () => {
+	test('a collection with no position field is a 400 naming it', async () => {
 		const r = await call('PATCH', `${srv.base}/collections/modules/position/default`, { top: true });
 		assert.equal(r.status, 400);
-		assert.match(r.json.error, /declares no sort_field/);
+		assert.match(r.json.error, /declares no field of type position/);
 	});
 });

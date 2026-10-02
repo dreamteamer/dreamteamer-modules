@@ -11,10 +11,10 @@ const MOD = 'default';
 let h, srv, api, hash, pendingId;
 
 const ORDERED = {
-	sort_field: 'position',
-	id: { generate: '{{ name | slug }}' },
+	description: 'Tasks in a manual order.',
+	ids: { from: '{{ name | slug }}' },
 	storage: { suffix: 'task' },
-	schema: { type: 'object', required: ['name'], properties: { name: { type: 'string' }, position: { type: 'string', pattern: '^[a-z]+$' } } },
+	fields: { name: { type: 'string', required: true }, position: { type: 'position' } },
 };
 
 /** Every file in the workspace outside node_modules and .git, with its bytes, plus HEAD and the
@@ -78,7 +78,7 @@ before(async () => {
 		},
 		records: { gadgets: [{ name: 'One' }], ordered: [{ name: 'Alpha' }, { name: 'Bravo' }] },
 	});
-	for (const args of [['move', 'ordered', '--init'], ['add', 'modules', '--name', 'spare', '--description', 'A second module, so a move has somewhere to go.'], ['commit']]) {
+	for (const args of [['reorder', 'ordered', '--init'], ['add', 'modules', '--name', 'spare', '--description', 'A second module, so a move has somewhere to go.'], ['commit']]) {
 		const r = h.dt(...args);
 		assert.equal(r.code, 0, `${args.join(' ')}: ${r.stderr}`);
 	}

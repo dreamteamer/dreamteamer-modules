@@ -11,14 +11,16 @@ import { httpWorkspace, mount, call, simpleCollection } from './support.mjs';
 import { api } from '../../../tests/helpers/fixture.mjs';
 
 const COMPANIES = {
-	id: { generate: '{{ name | slug }}' },
-	storage: { shape: 'folder', entry: 'company.md', suffix: 'company', codec: 'md' },
-	schema: { type: 'object', required: ['name'], properties: { name: { type: 'string' }, notes: { type: 'string', format: 'markdown', 'x-body': true } } },
+	description: 'Organisations.',
+	ids: { from: '{{ name | slug }}' },
+	storage: { shape: 'folder', entry: 'company.md', suffix: 'company' },
+	fields: { name: { type: 'string', required: true }, notes: { type: 'markdown', body: true } },
 };
 const MEETINGS = {
-	id: { generate: '{{ name | slug }}' },
-	storage: { suffix: 'meeting', under: { field: 'company', path: 'meetings' } },
-	schema: { type: 'object', required: ['name'], properties: { name: { type: 'string' }, company: { type: 'string', 'x-reference': 'companies' }, notes: { type: 'string', format: 'markdown', 'x-body': true } } },
+	description: 'Meetings, each stored in its company\'s folder when it has one.',
+	ids: { from: '{{ name | slug }}' },
+	storage: { suffix: 'meeting', under: { parent: 'company', subfolder: 'meetings' } },
+	fields: { name: { type: 'string', required: true }, company: { type: 'companies' }, notes: { type: 'markdown', body: true } },
 };
 
 test('gitModifiedMap covers several folders in one call', async () => {

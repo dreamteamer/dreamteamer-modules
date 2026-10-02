@@ -60,7 +60,8 @@ export function createApp(ws, { host, token } = {}) {
 	});
 
 	api.get('/schema', (req, res) => {
-		res.json([...store.descriptors.values()].sort((a, b) => (a.order ?? 999) - (b.order ?? 999)));
+		const order = (d) => dt.displayOf(d).nav?.order ?? 999;
+		res.json([...store.descriptors.values()].sort((a, b) => order(a) - order(b)));
 	});
 
 	// A namespaced collection name contains a slash (`lab/samples`), and `:name` is one path
@@ -125,7 +126,7 @@ export function createApp(ws, { host, token } = {}) {
 
 	// A SYSTEM collection (compiled into the runtime: collections, modules, skills, ui-views, …) is
 	// written through its schema op, not the record store — the same interception the CLI performs.
-	const isSystem = (name) => store.descriptors.get(name)?.storage?.base === 'runtime';
+	const isSystem = (name) => { const d = store.descriptors.get(name); return d ? dt.isRuntime(d) : false; };
 	const system = (req, res) => {
 		const out = systemWrite(ws, store, req);
 		if (!req.dryRun) reload();
@@ -158,8 +159,8 @@ export function createApp(ws, { host, token } = {}) {
 	// the engine, next to the comparator they must agree with.
 	api.patch('/collections/:name/position/*id', (req, res) => {
 		const d = store.descriptor(req.params.name);
-		const field = d.sort_field;
-		if (!field) return res.status(400).json({ error: `collection "${d.name}" declares no sort_field` });
+		const field = dt.positionFieldOf(d);
+		if (!field) return res.status(400).json({ error: `collection "${d.name}" declares no field of type position` });
 		const rows = [];
 		for (const { id, fields } of store.readAll(d.name)) rows.push({ id, key: fields[field] ?? '' });
 		dt.sortRows(rows, 'key');
@@ -207,30 +208,28 @@ export function createApp(ws, { host, token } = {}) {
 
 	// ---- fields: the one sub-entity, so they keep dedicated routes. Every op writes the descriptor
 	// source, proves it with a real compile (a CompileError is a 400 and the source is restored),
-	// commits, and the Store reloads.
+	// commits, and the Store reloads. A body states the field one of two ways: `field`, a whole v2
+	// field object (`{ type, required, many, enum, … }`), or the CLI's flag vocabulary as keys
+	// (`type`, `required`, `enum`, `mirror-of`, …). The answer carries the field as written, `value`.
 	const schemaOp = (fn) => (req, res) => {
 		const out = fn(req);
 		if (!req.dryRun) reload();
 		res.json(out);
 	};
 	api.post('/collections/:name/fields', schemaOp((req) => {
-		const b = req.body ?? {};
-		const prop = b.prop ?? dt.fieldDef(store, b, req.params.name);
-		return dt.addField(ws, store, req.params.name, { name: b.name, prop, required: b.required === true, moduleId: moduleParam(req) });
+		const { field, ...flags } = req.body ?? {};
+		return dt.addField(ws, store, req.params.name, { name: flags.name, field: field ?? dt.fieldFromFlags(store, flags), moduleId: moduleParam(req) });
 	}));
 	api.patch('/collections/:name/fields/:field', schemaOp((req) => {
-		const b = req.body ?? {};
-		const prop = b.prop ?? dt.fieldDef(store, b, req.params.name);
-		// A whole `prop` states the entire field; a body in the flag vocabulary states only the flags
-		// it names, and updateField carries every relation keyword it did not restate.
-		const stated = b.prop ? undefined : dt.statedKeywords(b);
-		return dt.updateField(ws, store, req.params.name, req.params.field, { prop, required: b.required, flags: b.prop ? {} : b, stated, moduleId: moduleParam(req) });
+		// A whole `field` replaces the field; a body in the flag vocabulary changes only the flags it
+		// names, over the field as its source declares it.
+		const { field, ...flags } = req.body ?? {};
+		return dt.updateField(ws, store, req.params.name, req.params.field, field ? { field, moduleId: moduleParam(req) } : { flags, moduleId: moduleParam(req) });
 	}));
 	// `…/name` rather than a body key: a rename rewrites the key in every record, descriptor, view and
 	// binding that names it — a different act from editing the field.
 	api.patch('/collections/:name/fields/:field/name', schemaOp((req) =>
-		dt.renameField(ws, store, req.params.name, req.params.field, String(req.body?.to ?? ''),
-			{ moduleId: moduleParam(req), dryRun: req.dryRun })));
+		dt.renameField(ws, store, req.params.name, req.params.field, String(req.body?.to ?? ''), { dryRun: req.dryRun })));
 	api.delete('/collections/:name/fields/:field', schemaOp((req) =>
 		dt.removeField(ws, store, req.params.name, req.params.field, { moduleId: moduleParam(req) })));
 

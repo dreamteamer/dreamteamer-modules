@@ -40,7 +40,7 @@ not encoded** (`/records/2026-09-01/alpha`), which is why every `*id` is the las
 | method | path | does |
 |---|---|---|
 | GET | `/info` | `{name, host, compiled, modules, ui, stale, collections}` |
-| GET | `/schema` | every descriptor, by `order` |
+| GET | `/schema` | every compiled descriptor, by `display.nav.order` |
 | GET | `/presentation` | how to render each collection and field |
 | GET | `/commands/:name?ids=a,b` | bound commands and per-record state (`dt next`) |
 | GET | `/collections/:name/records` | `{records, total}` · `?limit` (200) `?offset` `?sort` `?q` `?filter=<json>` `?field=value` `?filter[field]=value` `?with-body=true` |
@@ -48,14 +48,14 @@ not encoded** (`/records/2026-09-01/alpha`), which is why every `*id` is the las
 | POST | `/collections/:name/records` | create → `201 {id, path}`; an `id` in the body is the explicit id |
 | PATCH | `/collections/:name/records/*id` | set fields → `{id}`; echoed synthetic keys are ignored |
 | DELETE | `/collections/:name/records/*id` | remove → `{id}` · `?force=true` |
-| PATCH | `/collections/:name/position/*id` | manual order: `{top}` `{bottom}` `{before: id}` `{after: id}` |
+| PATCH | `/collections/:name/position/*id` | manual order, on the collection's `position` field: `{top}` `{bottom}` `{before: id}` `{after: id}` |
 | POST | `/collections/:name/rename` | `{old, new}` |
 | POST | `/collections/:name/records-revert/*id` | `{hash}` |
 | GET | `/collections/:name/values/:field` | the values a field uses · `?limit` |
 | GET | `/history/:name/*id` | the record's commits |
 | GET | `/history-diff/:name/*id` | one commit's diff · `?hash` (HEAD) |
-| POST | `/collections/:name/fields` | add a field (`{name, type, …}` flags, or `{name, prop}`) |
-| PATCH | `/collections/:name/fields/:field` | edit a field |
+| POST | `/collections/:name/fields` | add a field: `{name, field}` with a v2 field object, or `{name, type, …}` in the flag vocabulary → `{collection, field, value, …}`, `value` the field as written |
+| PATCH | `/collections/:name/fields/:field` | edit a field: `{field}` replaces it, flags change only what they name → `{…, value}` |
 | PATCH | `/collections/:name/fields/:field/name` | rename a field everywhere · `{to}` |
 | DELETE | `/collections/:name/fields/:field` | remove a field |
 | POST | `/commit` | publish pending writes (`dt commit`) · `{only: ["<c>/<id>" or "<c>", …], message?, dryRun?}`, `only` required and non-empty → the `dt commit --json` results; `409` when a repo is blocked |
