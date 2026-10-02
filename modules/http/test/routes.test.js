@@ -192,7 +192,7 @@ describe('what is not served', () => {
 		assert.match(json.error, /no route GET \/api\/nope/);
 	});
 
-	test('the studio /admin and the /ui bundle folder are gone', async () => {
+	test('/admin and /ui/… are not served', async () => {
 		const root = api.replace(/\/api$/, '');
 		assert.equal((await fetch(`${root}/admin`, { signal: AbortSignal.timeout(20_000) })).status, 404);
 		assert.equal((await fetch(`${root}/ui/x/app.js`, { signal: AbortSignal.timeout(20_000) })).status, 404);

@@ -1,5 +1,5 @@
 // `last-modified` on a listing comes from ONE `git log` over the folders a collection's records can sit
-// in. A collection stored under another (`storage.under`, engine 0.32+) keeps most of its files inside
+// in. A collection stored under another (`storage.under`) keeps most of its files inside
 // the parent collection's folders, so a map built over its own root alone answers `null` for every
 // placed record — silently, since null is also what an uncommitted record reads as.
 import { test } from 'node:test';
@@ -49,10 +49,10 @@ test('a record stored inside its parent folder still gets its last-modified', as
 	} finally { await srv.close(); }
 });
 
-// R4 of the relationship-storage review: the app keeps ONE Store until the manifest changes, so a
-// record another writer drops into an EXISTING company folder between two requests must still be
-// in the next listing. Engine 0.32 keys a placed collection's index on every directory's mtime;
-// the published 0.31 has no `recordDirs` and no placement, so there is nothing to assert there.
+// The app keeps one Store until the manifest changes, so a record another writer drops into an
+// existing company folder between two requests must still be in the next listing. An engine with
+// placement keys a placed collection's index on every directory's mtime; one without `recordDirs`
+// has no placement, so there is nothing to assert there.
 test('an external add inside an existing company folder shows up on the next request', { skip: !api.Store.prototype.recordDirs && 'engine without recordDirs — placement not available' }, async () => {
 	const h = await httpWorkspace({ collections: { companies: COMPANIES, meetings: MEETINGS } });
 	const store = new api.Store(h.ws);

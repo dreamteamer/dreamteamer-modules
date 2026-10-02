@@ -1,9 +1,5 @@
-// The manual-ordering route, against the app on a real workspace.
-//
-// ⚠ THIS FILE EXISTS BECAUSE OF A ROUTING COLLISION THAT PASSED EVERY OTHER GATE. The route was once
-// `PATCH /collections/:name/records/:id/position`; `…/records/*id` is greedy (ids are PATHS), so the
-// record PATCH matched first and answered `404 …charlie/position: no such record`. The verb now comes
-// BEFORE the wildcard, and this locks that in.
+// The manual-ordering route, against the app on a real workspace. `…/records/*id` is greedy (ids are
+// paths), so the verb segment precedes the wildcard: `PATCH /collections/:name/position/*id`.
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { httpWorkspace, mount, call } from './support.mjs';
@@ -37,7 +33,7 @@ const ids = async () => (await call('GET', `${base}/records?sort=position`)).jso
 const move = (id, dest) => call('PATCH', `${base}/position/${id}`, dest);
 
 describe('PATCH /collections/:name/position/*id', () => {
-	test('the route is reachable at all — the greedy-wildcard regression', async () => {
+	test('the route is reachable past the greedy *id', async () => {
 		const r = await move('charlie', { top: true });
 		assert.equal(r.status, 200, `expected 200, got ${r.status} ${JSON.stringify(r.json)}`);
 		assert.deepEqual(r.json, { id: 'charlie' });

@@ -1,12 +1,13 @@
 # @dreamteamer/http
 
-`dt serve` — the dreamteamer REST api at `/api`, over the same validating store the CLI uses. A
-record written over HTTP is validated, serialized and refused exactly as `dt add` / `dt set` would;
-a schema write compiles through the same workspace handle, so every installed extension judges it.
+`dt serve` — a JSON REST api at `/api` over a dreamteamer workspace, through the same validating
+store the CLI uses. A record written over HTTP is validated, serialized and refused exactly as
+`dt add` / `dt set` would; a schema write compiles through the same workspace handle, so every
+installed extension judges it.
 
 ## install
 
-In a dreamteamer workspace (engine `^0.31.0`):
+In a dreamteamer workspace (engine `>=0.31.0`):
 
 ```bash
 npm install --save-dev @dreamteamer/http
@@ -81,18 +82,6 @@ and `POST /commit` returns the plan and writes nothing. On every other write it 
 another record, or already exists · `415` a write that is not JSON.
 
 The store is rebuilt whenever the compiled manifest changes, so a `dt compile` elsewhere is visible
-to the next request.
-
-## not carried from the in-core server (0.30 and earlier)
-
-No compatibility is kept for the pre-0.31 spellings.
-
-- **`dt start`** is now `dt serve`.
-- **Docker-driver collections** (`containers`, `images`) are not answered here: they moved to
-  `@dreamteamer/host`, which has no HTTP surface.
-- **`/admin`** (the studio) is gone — the studio is archived and nothing serves it.
-- **`/ui/<module>/app.js`** is gone. No current client loads module bundles over HTTP; the mobile app
-  reads the `ui` list from `/info` and nothing else. `/info` still carries that list.
-- `GET /` redirects to `/api/info` rather than to the studio.
+to the next request. `GET /` redirects to `/api/info`.
 
 Apache-2.0.
