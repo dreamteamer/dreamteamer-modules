@@ -16,18 +16,10 @@ import path from 'node:path';
 import { workspace, git, dt, dtStdin, api, quietly, writeCollection, simpleCollection } from '../helpers.mjs';
 import { landWorktree } from '../../src/land.js';
 
-/** The fixture commits BEFORE it compiles (`buildBase`), so CLAUDE.md/AGENTS.md/GEMINI.md are
- *  UNTRACKED in a fresh workspace — and a worktree's own install compiles them there too, leaving a
- *  tree that `land` must refuse. Committing them is what makes "a clean worktree" reachable. */
-function commitHarness(root) {
-	git(root, ['add', '-A']);
-	git(root, ['commit', '-qm', 'fixture: compiled harness files', '--allow-empty']);
-}
-
-/** A primary with its harness committed and one linked worktree `a`, ready to be landed. */
+/** A primary and one linked worktree `a`, ready to be landed. The harness files compile writes are
+ *  gitignored, so a freshly compiled fixture is already a clean tree. */
 function landable(opts = {}) {
 	const ws = workspace(opts);
-	commitHarness(ws.root);
 	const r = dt(ws.root, 'worktree', 'add', '--name', 'a');
 	assert.equal(r.code, 0, r.stderr);
 	const wt = path.join(ws.root, '.worktrees', 'a');
@@ -219,12 +211,11 @@ describe('dt land — the preconditions, each refused by name and each changing 
 	});
 });
 
-describe('dt land — the conflict classes', () => {
+describe('dt land — every conflict stops it', () => {
 	test('a RECORDS conflict aborts, names the paths by collection, and leaves every tree byte-identical', () => {
 		// The record has to exist on BOTH sides, so it is committed BEFORE the worktree is cut.
 		const ws = workspace();
 		const rel = addAndCommit(ws.root, 'shared note');
-		commitHarness(ws.root);
 		assert.equal(dt(ws.root, 'worktree', 'add', '--name', 'a').code, 0);
 		const wt = path.join(ws.root, '.worktrees', 'a');
 		const id = path.basename(rel).replace('.note.md', '');
@@ -258,7 +249,6 @@ describe('dt land — the conflict classes', () => {
 
 		const r = ws.land('a');
 		assert.equal(r.code, 0, `${r.stdout}\n${r.stderr}`);
-		assert.doesNotMatch(r.stdout, /managed block regenerated/);
 		assert.match(r.stdout, /primary recompiled/);
 		const claude = fs.readFileSync(path.join(ws.root, 'CLAUDE.md'), 'utf8');
 		assert.match(claude, /- alpha\b/);
@@ -289,12 +279,15 @@ describe('dt land — the conflict classes', () => {
 		assert.equal(git(ws.root, ['status', '--porcelain']), '', 'the landing left the primary dirty');
 	});
 
-	test('a conflict in the operator prose is an other-files conflict — the prose is never discarded', () => {
+	// A hand-written root file two sessions both edited is a disagreement only a person can settle:
+	// the landing stops, names the file, and the primary keeps its own line.
+	test('a conflict in a hand-written root file stops the landing, names the file, and leaves the primary untouched', () => {
 		const ws = workspace();
 		const rules = path.join(ws.root, 'DREAMTEAMER.md');
 		fs.writeFileSync(rules, '# house rules\nthe original line\n');
 		assert.equal(dt(ws.root, 'compile').code, 0);
-		commitHarness(ws.root);
+		git(ws.root, ['add', '--', 'DREAMTEAMER.md']);
+		git(ws.root, ['commit', '-qm', 'house rules']);
 		assert.equal(dt(ws.root, 'worktree', 'add', '--name', 'a').code, 0);
 		const wt = path.join(ws.root, '.worktrees', 'a');
 		const edit = (root, line) => {
@@ -310,8 +303,41 @@ describe('dt land — the conflict classes', () => {
 		const r = dt(ws.root, 'land', 'a');
 		assert.equal(r.code, 1, r.stdout);
 		assert.match(r.stderr, /other files: DREAMTEAMER\.md/);
+		assert.match(r.stderr, /both trees are exactly as before/);
 		assert.deepEqual(snapshot(fixture), before);
 		assert.match(fs.readFileSync(rules, 'utf8'), /the primary line/, 'the hand-written prose was discarded');
+	});
+
+	// ⚠ NOTHING IS RESOLVED FOR YOU, not even text compile generated. A workspace that force-tracks a
+	// harness file has opted out of it being build output, so a conflict inside its generated block
+	// is an ordinary conflict: the landing stops and the primary's file is the one it had.
+	test('a force-tracked harness file conflicting INSIDE its generated block stops the landing too', () => {
+		const ws = workspace();
+		git(ws.root, ['add', '-f', '--', 'CLAUDE.md']);
+		git(ws.root, ['commit', '-qm', 'track the harness file']);
+		assert.equal(dt(ws.root, 'worktree', 'add', '--name', 'a').code, 0);
+		const wt = path.join(ws.root, '.worktrees', 'a');
+		const { begin } = api.MANAGED_BLOCKS.find((b) => b.id === 'orientation');
+		const edit = (root, line) => {
+			const f = path.join(root, 'CLAUDE.md');
+			const text = fs.readFileSync(f, 'utf8');
+			assert.ok(text.includes(begin), `no generated block in ${f}`);
+			fs.writeFileSync(f, text.replace(begin, `${begin}\n${line}`));
+			git(root, ['commit', '-qm', 'block edit', '--', 'CLAUDE.md']);
+		};
+		edit(wt, 'written in the worktree');
+		edit(ws.root, 'written in the primary');
+		const fixture = { root: ws.root, wt };
+		const before = snapshot(fixture);
+		const primaryFile = fs.readFileSync(path.join(ws.root, 'CLAUDE.md'), 'utf8');
+
+		const r = dt(ws.root, 'land', 'a');
+		assert.equal(r.code, 1, r.stdout);
+		assert.match(r.stderr, /other files: CLAUDE\.md/);
+		assert.deepEqual(snapshot(fixture), before, 'the abort moved something');
+		assert.equal(fs.readFileSync(path.join(ws.root, 'CLAUDE.md'), 'utf8'), primaryFile);
+		assert.equal(git(ws.root, ['branch', '--list', 'land/a']), '', 'the copy branch survived the abort');
+		assert.deepEqual(landHolders(ws.root), [], 'a .land-* holder was left behind');
 	});
 });
 

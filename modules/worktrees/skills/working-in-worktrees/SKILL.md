@@ -76,7 +76,6 @@ What it prints when it works:
 ```
 ✔ landed w onto main: 1 commit
   notes: 1 record
-  managed block regenerated: CLAUDE.md
   primary recompiled
   worktree and branch removed
 ```
@@ -89,9 +88,9 @@ The order matters, and each step has a reason:
    detached worktree. The branch you are standing on is never touched until the fast-forward
    succeeds — which is what makes a failed landing leave every tree byte-identical.
 3. **Recompile on the copy's tip — with this workspace's extensions** (the copy's `node_modules` is
-   the primary's), then commit the regenerated harness blocks pathspec-scoped.
-   `.dreamteamer/` is gitignored, so a fresh checkout has no runtime and `check` would otherwise
-   answer "no compiled runtime" for every landing.
+   the primary's). `.dreamteamer/` is gitignored, so a fresh checkout has no runtime and `check`
+   would otherwise answer "no compiled runtime" for every landing. The harness files the compile
+   regenerates are gitignored too, so it adds nothing to what lands.
 4. **`dt check` on the rebased tree.** A failure stops here: `land/<name>` is KEPT for inspection
    and the message says the branch is rebased and NOT landed. (A compile *error* deletes the copy;
    a check *failure* keeps it. Both are safe — the difference is whether there is anything to look
@@ -111,11 +110,8 @@ again to pick them up`. Exit 0 — the landing itself succeeded. The window is m
 `--json` carries `kept`, read from the disk after the work rather than inferred from the flags that
 went in, so a script can tell a retired worktree from one that survived.
 
-**`--keep` recompiles the kept worktree, and a compile is a write.** The tree is reset to what
-landed and then compiled, so if that compile produces a block even one byte different from the one
-just committed, the worktree is left with a modified tracked `CLAUDE.md` — and the NEXT `dt land` of
-it refuses with `1 uncommitted change(s)`. That is an ordinary system write, not a fault: commit it
-in the worktree, or land without `--keep`.
+**`--keep` recompiles the kept worktree.** The tree is reset to what landed and then compiled, so
+its runtime and its harness files match the landed tree.
 
 ## the refusals
 
@@ -138,28 +134,18 @@ Each is printed under `✖ cannot land <name>:` and each names its own fix:
 
 ## the merge policy
 
-On a conflict, every conflicted path is classified and the classes are treated differently:
+**Any conflict stops the landing.** The rebase is aborted, the conflicted paths are listed grouped
+by collection (a path no collection claims is listed under `other files`), the exit is 1, and
+**both trees are exactly as they were**. Nothing is resolved for you: resolve it in the worktree
+(rebase it onto the primary branch by hand, or edit and commit), then land again.
 
-| class | how it is known | what happens |
-|---|---|---|
-| **a generated block** | the path is one the last compile wrote a managed block into (the manifest's `adapter-blocks` — `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, and any block file an extension's harness writes), AND every conflict hunk lies entirely inside one managed block — the orientation block or the instructions block | ONLY the hunks take the primary's side; every other byte of the file is kept exactly as git merged it, the rebase continues, and the blocks are regenerated once at the tip |
-| **anything else** | — | `rebase --abort`; the paths are listed grouped by collection; exit 1; **both trees exactly as they were** |
-
-**A managed file is not a managed block.** Everything outside the markers is your own prose. Taking
-the primary's whole file would discard a handwritten change the replayed commit made elsewhere in it
-— a change that did not even conflict — so the resolution is per hunk, never per file. A hunk that
-touches the prose, or lies between the two blocks, is an ordinary conflict: the landing aborts and
-says the text is yours to resolve.
-
-**Matched by exact root path, never by basename.** A nested `docs/CLAUDE.md` is a hand-written
-file the compiler never regenerates.
+The harness files compile writes at the root (`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`) are gitignored
+build output, so a rebase never meets them. A workspace that force-tracks one has made it a
+hand-written file, and a conflict in it stops the landing like any other.
 
 There is no union merge. An append-only file is not append-only in practice: rows get corrected in
 place, and two branches each appending would keep both. A log conflict is an ordinary conflict,
 resolved by hand.
-
-The Cursor rules file is a **whole-file generated output** with no block in it, so there is nothing
-to take a side of; `init` gitignores `.cursor/` anyway.
 
 ## hooks
 

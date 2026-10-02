@@ -1,19 +1,14 @@
 // `dt land` — landing a linked worktree's commits onto the primary branch.
 //
-// The PURE half first — what a conflicted file IS, which collection a conflicted path belongs to,
-// what the landing would do, and how a generated conflict is resolved — each a function over data
-// so it can be asserted without a disk. The git work, the lock and the printing live below.
+// The PURE half first — which collection a conflicted path belongs to, and what the landing would
+// do — each a function over data so it can be asserted without a disk. The git work, the lock and
+// the printing live below.
 //
-// WHY THE CLASSIFICATION IS THE WHOLE DESIGN. A rebase of a worktree branch onto the primary
-// conflicts in two interesting places. One is a managed block `compile` regenerates into a root
-// file (CLAUDE.md, AGENTS.md, …) — text BOTH sides legitimately rewrote, derived and therefore with
-// no merge to do. The other is a record two sessions edited: a real disagreement no policy can
-// settle — abort, name the paths by collection, leave both trees byte-identical.
-//
-// A managed file is not a managed block. Everything outside the markers is hand-written prose, so the
-// resolution replaces only the conflict hunks (each inside a block) with the primary's side and keeps
-// every other byte exactly as git merged it; taking the primary's whole file would discard a
-// non-conflicting change the branch made elsewhere in it. A single hunk outside the markers aborts.
+// EVERY CONFLICT STOPS THE LANDING. The harness files compile writes at the root (CLAUDE.md,
+// AGENTS.md, …) are gitignored build output, so a rebase never meets one; what it does meet is a
+// record, a source or a hand-written file two sessions both changed — a disagreement no policy can
+// settle. So the rebase aborts, the paths are named by collection, and both trees stay
+// byte-identical.
 //
 // Union merge is deliberately ABSENT: an "append-only" log is corrected in place in practice, and a
 // union driver runs once per replayed commit, so two branches each appending keep both copies.
@@ -28,88 +23,6 @@ import { findWorktree, removeWorktree } from './worktrees.js';
 /** The advisory mutex, a directory under the repo's common dir — every worktree of a repo contends
  *  for one lock, whichever of them `dt land` was run from. */
 export const LAND_LOCK = 'dreamteamer-land.lock';
-
-/**
- * The root files the last compile wrote a managed block into — the manifest's `adapter-blocks`,
- * matched by EXACT root-relative path, never by basename: a hand-written `docs/CLAUDE.md` that
- * happens to carry a copied block must never be resolved automatically. Derived from the manifest,
- * because a hard-coded list drifts the moment a harness (or an extension's harness) is added.
- */
-export function managedFilesOf(root) {
-	return (dt.readManifest(root)?.['adapter-blocks'] ?? []).filter((p) => typeof p === 'string');
-}
-
-/**
- * What a conflicted file is, from its path and its conflicted bytes alone.
- *
- *   'managed-block'         a managed file, and EVERY hunk lies inside one managed block
- *   'managed-outside-block' a managed file, but a hunk touches the hand-written prose
- *   'records'               a path under the data path → the row that aborts the landing
- *   'other'                 source, config, anything else → also aborts, reported separately
- *
- * `ctx` is `{ managedFiles, blocks, dataPath }` — `blocks` is the engine's `MANAGED_BLOCKS`
- * (`[{ id, begin, end }]`), so both the orientation and the instructions block count.
- */
-export function classifyConflict(filePath, conflictedText, { managedFiles = [], blocks = [], dataPath = 'data' } = {}) {
-	if (managedFiles.includes(filePath)) {
-		const spans = blocks.flatMap((b) => blockSpans(conflictedText, b.begin, b.end));
-		const hunks = hunkSpans(conflictedText);
-		const inside = (h) => spans.some((s) => h.start >= s.start && h.end <= s.end);
-		return hunks.length > 0 && hunks.every(inside) ? 'managed-block' : 'managed-outside-block';
-	}
-	return filePath.startsWith(dataPath + '/') ? 'records' : 'other';
-}
-
-/** `[{start, end}]` for every begin…end pair — the marker LINES included, since git leaves them as
- *  context and a hunk can abut them. An unterminated block claims nothing. */
-function blockSpans(text, begin, end) {
-	const spans = [];
-	let from = 0;
-	for (;;) {
-		const b = text.indexOf(begin, from);
-		if (b < 0) return spans;
-		const e = text.indexOf(end, b + begin.length);
-		if (e < 0) return spans;
-		spans.push({ start: b, end: e + end.length });
-		from = e + end.length;
-	}
-}
-
-/** `[{start, end}]` for every `<<<<<<<` … `>>>>>>>` hunk git left in the file. */
-function hunkSpans(text) {
-	const spans = [];
-	for (const m of text.matchAll(/^<<<<<<< [\s\S]*?^>>>>>>> .*$/gm)) spans.push({ start: m.index, end: m.index + m[0].length });
-	return spans;
-}
-
-/**
- * The conflicted text with every hunk replaced by its OURS side (during a rebase, the side being
- * replayed onto — the primary's), and every byte outside the hunks untouched. Understands the
- * `diff3`/`zdiff3` styles too (a `|||||||` base section is dropped with the theirs side).
- * Throws on a hunk it cannot parse — a half-resolved file must never be committed.
- */
-export function resolveOurs(text) {
-	const lines = text.split(/(?<=\n)/);
-	const out = [];
-	let state = 'outside';
-	for (const line of lines) {
-		const bare = line.replace(/\r?\n$/, '');
-		if (state === 'outside') {
-			if (bare.startsWith('<<<<<<< ') || bare === '<<<<<<<') { state = 'ours'; continue; }
-			out.push(line);
-		} else if (state === 'ours') {
-			if (bare.startsWith('||||||| ') || bare === '|||||||') { state = 'base'; continue; }
-			if (bare === '=======') { state = 'theirs'; continue; }
-			out.push(line);
-		} else if (state === 'base') {
-			if (bare === '=======') state = 'theirs';
-		} else if (bare.startsWith('>>>>>>> ') || bare === '>>>>>>>') {
-			state = 'outside';
-		}
-	}
-	if (state !== 'outside') throw new Error('an unterminated conflict hunk — refusing to resolve it');
-	return out.join('');
-}
 
 /**
  * Conflicted paths grouped by the collection you know them as. A path under the data path
@@ -144,7 +57,6 @@ const age = (s) => (s < 90 ? `${s}s` : `${Math.round(s / 60)}m`);
  */
 export function planLand(state) {
 	const { name, worktree, branch, primaryBranch, upstream, dirtyPrimaryTouched: touched, range, lock } = state;
-	const managedFiles = state.managedFiles ?? [];
 	const refusals = [];
 	if (worktree.kind === 'primary') refusals.push('it is the primary checkout');
 	if (state.detached) refusals.push(`it is DETACHED (no branch) — inside it: git switch -c worktree-${name}, or dt land ${name} --branch ${name} to do that first`);
@@ -160,7 +72,6 @@ export function planLand(state) {
 	if (!range.commits) refusals.push(`nothing to land — ${branch ?? '(detached)'} is already on ${primaryBranch}`);
 	if (refusals.length) return { refusals, steps: [] };
 
-	const managed = range.files.filter((f) => managedFiles.includes(f));
 	const steps = [
 		{ id: 'lock', why: `take ${lock.path} — ${LAND_LOCK} serialises every land in this repo, whichever worktree it was run from` },
 		{ id: 'copy', why: `create land/${name} from ${branch} — the original branch keeps its hashes until the fast-forward succeeds` },
@@ -168,9 +79,7 @@ export function planLand(state) {
 	];
 	// Unconditional: `.dreamteamer/` is gitignored, so the copy has no runtime and `check` would
 	// answer "no compiled runtime" for every landing.
-	steps.push({ id: 'recompile-copy', why: managed.length
-		? `recompile on the copy's tip, with this workspace's extensions; ${managed.length} managed file(s) in the range (${managed.join(', ')}) — the regenerated blocks are committed, pathspec-scoped`
-		: `recompile on the copy's tip, with this workspace's extensions — .dreamteamer/ is gitignored, so the copy has no runtime for check to read` });
+	steps.push({ id: 'recompile-copy', why: `recompile on the copy's tip, with this workspace's extensions — .dreamteamer/ is gitignored, so the copy has no runtime for check to read` });
 	steps.push({ id: 'check', why: 'dt check on the copy — a failure stops here, and says the branch is rebased but NOT landed' });
 	steps.push({ id: 'ff', why: `git merge --ff-only land/${name} in the primary — ${primaryBranch} moves` });
 	if (range.files.includes('package-lock.json')) steps.push({ id: 'npm-ci', why: 'package-lock.json is in the range — npm ci in the primary before it compiles against the new engine' });
@@ -188,8 +97,6 @@ export function planLand(state) {
 
 /** How many times the primary may move under us before we stop trying. */
 const FF_ATTEMPTS = 3;
-/** Rebase steps driven before concluding the loop is not converging — a HANG guard, not a policy. */
-const REBASE_STEPS = 200;
 /** Every raw git spawn in the runner is bounded. */
 const GIT_TIMEOUT_MS = 5 * 60_000;
 const NPM_TIMEOUT_MS = 10 * 60_000;
@@ -281,7 +188,6 @@ export function observeLand(ws, ref, { keep = false, assumeBranch = null } = {},
 		pendingPrimary: pending.reduce((n, r) => n + r.rows.length, 0),
 		dirtyPrimaryTouched: range.files.filter((f) => primaryDirty.includes(f)),
 		range,
-		managedFiles: managedFilesOf(c.primary),
 		lock: readLock(path.join(c.commonDir, LAND_LOCK)),
 		keep,
 	};
@@ -295,8 +201,8 @@ const recordsIn = (range, descriptors, dataPath) => {
 	return new Map([...groups].map(([k, v]) => [k, v.length]));
 };
 
-const summarize = (range, records, managedFiles) =>
-	`${plural(range.commits, 'commit')} · ${plural([...records.values()].reduce((a, b) => a + b, 0), 'record file')} in ${plural(records.size, 'collection')} · managed files: ${range.files.filter((f) => managedFiles.includes(f)).join(', ') || 'none'}`;
+const summarize = (range, records) =>
+	`${plural(range.commits, 'commit')} · ${plural([...records.values()].reduce((a, b) => a + b, 0), 'record file')} in ${plural(records.size, 'collection')}`;
 
 /** Print a refusal on stderr. */
 function printRefusal(name, reasons) {
@@ -336,7 +242,7 @@ export async function landWorktree(ws, ref, { keep = false, dryRun = false, bran
 	}
 	if (dryRun) {
 		console.log(`dt land ${state.name} → ${state.primaryBranch} (dry run)`);
-		console.log(`  ${summarize(state.range, recordsIn(state.range, descriptors, dataPath), state.managedFiles)}`);
+		console.log(`  ${summarize(state.range, recordsIn(state.range, descriptors, dataPath))}`);
 		if (switchTo) console.log(`  ▶ branch: ${switchTo}`);
 		for (const s of plan.steps) console.log(`  ▶ ${s.id}: ${s.why}`);
 		return { code: 0, landed: null, refused: null, kept: kept() };
@@ -362,7 +268,7 @@ async function compileAt(root) {
 
 /** The mutating half, under the lock. */
 async function runLanding(ws, c, state, { descriptors, dataPath, npmRun }, git) {
-	const { name, worktree, branch, primaryBranch, range, keep, managedFiles } = state;
+	const { name, worktree, branch, primaryBranch, range, keep } = state;
 	const copy = `land/${name}`;
 	// A leftover copy is evidence, not scratch — it survives exactly one failure (a `check` that
 	// refused the rebased tree), and the message that left it there says to inspect it
@@ -373,7 +279,6 @@ async function runLanding(ws, c, state, { descriptors, dataPath, npmRun }, git) 
 	}
 	const holder = path.join(c.primary, '.worktrees');
 	const temp = path.join(holder, `.land-${randomBytes(4).toString('hex')}`);
-	const resolved = [];
 	let keptCopy = false;
 	let ffDone = false; // past the fast-forward, a throw is not "nothing happened"
 	try {
@@ -384,20 +289,19 @@ async function runLanding(ws, c, state, { descriptors, dataPath, npmRun }, git) 
 		git(['worktree', 'add', '--detach', temp, copy], c.primary);
 		mirrorModules(c.primary, temp);
 		for (let attempt = 1; attempt <= FF_ATTEMPTS; attempt++) {
-			const conflict = rebaseCopy(temp, primaryBranch, resolved, { managedFiles, blocks: dt.MANAGED_BLOCKS, dataPath }, git);
+			const conflict = rebaseCopy(temp, primaryBranch, git);
 			if (conflict) {
 				const groups = groupByCollection(conflict.paths, descriptors, dataPath);
 				console.error(`✖ landing ${name} conflicts with ${primaryBranch} at commit ${conflict.at} "${conflict.subject}":`);
 				for (const [key, paths] of groups) console.error(`  ${key}: ${paths.join(' · ')}`);
-				if (conflict.mixed.length) console.error(`  ${conflict.mixed.join(' · ')}: a conflict OUTSIDE the generated block — that text is yours, resolve it by hand`);
 				console.error(`  both trees are exactly as before. Resolve in the worktree (rebase it onto ${primaryBranch} by hand, or edit and commit), then land again.`);
 				return { code: 1, landed: null, refused: null };
 			}
-			// always compiled: a fresh checkout of the copy has no runtime (`.dreamteamer/` is ignored)
+			// always compiled: a fresh checkout of the copy has no runtime (`.dreamteamer/` is ignored).
+			// The harness files it regenerates are gitignored, so nothing it writes reaches the landing.
 			await compileAt(temp);
-			commitBlocks(temp, git);
-			// after the block commit: the copy is what the fast-forward moves the primary to, and a ref
-			// taken before that commit would land the rebase without the regenerated block
+			// the rebase moved the throwaway's detached HEAD, not the branch: the copy is what the
+			// fast-forward moves the primary to, so it is pointed at the rebased tip
 			git(['-C', temp, 'branch', '-f', copy, 'HEAD'], temp);
 			if (dt.check({ root: temp })) {
 				keptCopy = true;
@@ -442,7 +346,6 @@ async function runLanding(ws, c, state, { descriptors, dataPath, npmRun }, git) 
 		const records = recordsIn(range, descriptors, dataPath);
 		console.log(`✔ landed ${name} onto ${primaryBranch}: ${plural(range.commits, 'commit')}`);
 		for (const [collection, n] of records) console.log(`  ${collection}: ${plural(n, 'record')}`);
-		if (resolved.length) console.log(`  managed block regenerated: ${resolved.join(', ')}`);
 		console.log('  primary recompiled');
 		console.log(retired);
 		return { code: 0, landed: { records, commits: range.commits }, refused: null };
@@ -486,65 +389,23 @@ export function mirrorModules(primary, temp) {
 	}
 }
 
-/** Rebase the copy onto the primary branch, resolving generated blocks and nothing else. Returns null
- *  when it lands, or `{ at, subject, paths, mixed }` after ABORTING a conflict it will not resolve. */
-function rebaseCopy(temp, onto, resolved, ctx, git) {
+/** Rebase the copy onto the primary branch. Returns null when it lands, or `{ at, subject, paths }`
+ *  after ABORTING on the first conflict — nothing is resolved for you. */
+function rebaseCopy(temp, onto, git) {
 	// GIT_EDITOR=true: a rebase that stops to open an editor would hang
 	const step = (...args) => spawnGit(['-C', temp, ...args], { ...process.env, GIT_EDITOR: 'true' });
-	let r = step('rebase', onto);
-	let skipped = false;
-	for (let guard = REBASE_STEPS; r.status !== 0; guard--) {
-		if (!guard) throw new Error(`the rebase of ${onto} did not converge after ${REBASE_STEPS} steps — nothing was landed and every tree is unchanged`);
-		const unmerged = gitZ(git, temp, ['diff', '--name-only', '-z', '--diff-filter=U', '--no-relative']);
-		if (!unmerged.length) {
-			// a stop with nothing to resolve is REPORTED, not driven — except ONE skip of a replayed
-			// commit that resolved to nothing (both sides ran the same system write)
-			const empty = spawnGit(['-C', temp, 'diff', '--cached', '--quiet', 'HEAD']).status === 0;
-			if (empty && !skipped && rebaseInProgress(temp)) { skipped = true; r = step('rebase', '--skip'); continue; }
-			throw new Error(`rebase stopped without a conflict: ${String(r.stderr || r.stdout).trim().split('\n')[0]}`);
-		}
-		skipped = false;
-		const texts = new Map(unmerged.map((p) => [p, readOrEmpty(path.join(temp, p))]));
-		const classes = unmerged.map((p) => classifyConflict(p, texts.get(p), ctx));
-		if (!classes.every((k) => k === 'managed-block')) {
-			const at = git(['-C', temp, 'rev-parse', '--short=7', 'REBASE_HEAD'], temp); // read BEFORE the abort
-			const subject = git(['-C', temp, 'log', '-1', '--format=%s', 'REBASE_HEAD'], temp);
-			step('rebase', '--abort');
-			return { at, subject, paths: unmerged, mixed: unmerged.filter((p, i) => classes[i] === 'managed-outside-block') };
-		}
-		// Only the hunks. Each lies inside a generated block, so the primary's side is taken there (and
-		// regenerated at the tip); every byte outside them — hand-written prose, including a
-		// non-conflicting edit this commit made elsewhere in the file — is kept exactly as merged.
-		for (const p of unmerged) {
-			fs.writeFileSync(path.join(temp, p), resolveOurs(texts.get(p)));
-			if (!resolved.includes(p)) resolved.push(p);
-		}
-		git(['-C', temp, 'add', '--', ...unmerged], temp);
-		r = step('rebase', '--continue');
+	const r = step('rebase', onto);
+	if (r.status === 0) return null;
+	const unmerged = gitZ(git, temp, ['diff', '--name-only', '-z', '--diff-filter=U', '--no-relative']);
+	if (!unmerged.length) {
+		// a stop with nothing conflicted is reported, never driven
+		step('rebase', '--abort');
+		throw new Error(`rebase stopped without a conflict: ${String(r.stderr || r.stdout).trim().split('\n')[0]}`);
 	}
-	return null;
-}
-
-const readOrEmpty = (p) => { try { return fs.readFileSync(p, 'utf8'); } catch { return ''; } };
-
-/** Is a rebase actually running in this checkout? Git's own test: either backend's state dir. */
-const rebaseInProgress = (root) => ['rebase-merge', 'rebase-apply'].some((d) => fs.existsSync(path.join(gitDirOf(root), d)));
-
-/** A linked worktree's own git dir (`.git` is a FILE there, pointing at it). */
-function gitDirOf(root) {
-	try { return path.resolve(root, /^gitdir: (.+)$/m.exec(fs.readFileSync(path.join(root, '.git'), 'utf8'))?.[1] ?? '.git'); } catch { return path.join(root, '.git'); }
-}
-
-/** Commit the blocks the copy's compile rewrote, pathspec-scoped — the system-write contract applied
- *  to a landing. Tracked files only: an untracked CLAUDE.md is yours to add. */
-function commitBlocks(temp, git) {
-	const blocks = managedFilesOf(temp).filter((p) => fs.existsSync(path.join(temp, p)));
-	if (!blocks.length) return;
-	const tracked = gitZ(git, temp, ['ls-files', '-z', '--', ...blocks]);
-	if (!tracked.length) return;
-	git(['-C', temp, 'add', '--', ...tracked], temp);
-	if (spawnGit(['-C', temp, 'diff', '--cached', '--quiet']).status === 0) return; // nothing changed
-	git(['-C', temp, 'commit', '--quiet', '-m', 'dreamteamer: land regenerated harness blocks', '--', ...tracked], temp);
+	const at = git(['-C', temp, 'rev-parse', '--short=7', 'REBASE_HEAD'], temp); // read BEFORE the abort
+	const subject = git(['-C', temp, 'log', '-1', '--format=%s', 'REBASE_HEAD'], temp);
+	step('rebase', '--abort');
+	return { at, subject, paths: unmerged };
 }
 
 /** `npm ci` in the primary when the landing moved the lockfile. `!== 0`, not truthiness: a spawn
@@ -558,10 +419,9 @@ function installDeps(primaryWs, run = (npm, args, opts) => spawnSync(npm, args, 
 
 export const LAND_USAGE = `  land <name|path> [--keep] [--dry-run] [--branch <name>] [--json]
               land a worktree's commits onto the primary branch. Refuses while the primary holds
-              pending record writes; rebases a COPY of the branch under one lock, resolves ONLY the
-              conflict hunks inside a generated block (the prose around it is kept), checks
-              the rebased tree, fast-forwards, recompiles the primary, then removes the worktree and
-              its branch. A conflict anywhere else aborts and leaves every tree exactly as it was.
+              pending record writes; rebases a COPY of the branch under one lock, checks the rebased
+              tree, fast-forwards, recompiles the primary, then removes the worktree and its branch.
+              Any conflict aborts and leaves every tree exactly as it was.
               --keep keep the worktree, reset onto what landed · --branch <name> give a DETACHED
               worktree its branch worktree-<name> first · --dry-run print the plan, change nothing`;
 
