@@ -120,8 +120,8 @@ export function resolveOurs(text) {
 export function groupByCollection(paths, descriptors, dataPath = 'data') {
 	const bases = [];
 	for (const d of descriptors.values()) {
-		const p = d.storage?.path;
-		if (!p || d.storage.base === 'runtime' || !(p + '/').startsWith(dataPath + '/')) continue;
+		const { path: p, runtime } = dt.storageOf(d);
+		if (!p || runtime || !(p + '/').startsWith(dataPath + '/')) continue;
 		bases.push({ name: d.name, prefix: p + '/' });
 	}
 	bases.sort((a, b) => b.prefix.length - a.prefix.length);

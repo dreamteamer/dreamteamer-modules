@@ -246,66 +246,61 @@ describe('dt land — the conflict classes', () => {
 		assert.deepEqual(landHolders(ws.root), [], 'a .land-* holder was left behind');
 	});
 
-	test('a MANAGED-BLOCK conflict is resolved by regenerating the block, and the landing continues', () => {
-		// ⚠ TWO REAL SYSTEM WRITES, and their names are adjacent ON PURPOSE. Measured: two
-		// `add collections` on distant names merge cleanly (the block's lines are far apart), and two
-		// `add-field` calls on the SAME collection conflict in the DESCRIPTOR as well, which is a
-		// records-row conflict. Adjacent new collections are the shape that conflicts in the
-		// orientation block and NOWHERE else — the case this whole resolution exists for.
+	// The root harness files are build output: compile gitignores them and a system write commits
+	// only its source, so the generated block can never conflict in a rebase. Two system writes on
+	// ADJACENT names — the shape that once conflicted inside the block — now land cleanly, and the
+	// primary's recompile is what lists both.
+	test('a system write on each side lands with no harness conflict, and the recompile lists both', () => {
 		const ws = landable();
 		assert.equal(dt(ws.wt, 'add', 'collections', '--name', 'alpha').code, 0);
 		assert.equal(dt(ws.root, 'add', 'collections', '--name', 'alphb').code, 0);
+		assert.equal(git(ws.root, ['ls-files', '--', 'CLAUDE.md', 'AGENTS.md', 'GEMINI.md']), '', 'a harness file is tracked');
 
 		const r = ws.land('a');
 		assert.equal(r.code, 0, `${r.stdout}\n${r.stderr}`);
-		assert.match(r.stdout, /managed block regenerated: .*CLAUDE\.md/);
-		// The landed block is the one a compile at this tip produces — not either side's copy.
-		assert.equal(dt(ws.root, 'compile').code, 0);
-		assert.equal(git(ws.root, ['status', '--porcelain', '--', 'CLAUDE.md']), '', 'the landed CLAUDE.md is not what compile produces');
-		assert.match(fs.readFileSync(path.join(ws.root, 'CLAUDE.md'), 'utf8'), /- alpha\b/);
-		assert.match(fs.readFileSync(path.join(ws.root, 'CLAUDE.md'), 'utf8'), /- alphb\b/);
+		assert.doesNotMatch(r.stdout, /managed block regenerated/);
+		assert.match(r.stdout, /primary recompiled/);
+		const claude = fs.readFileSync(path.join(ws.root, 'CLAUDE.md'), 'utf8');
+		assert.match(claude, /- alpha\b/);
+		assert.match(claude, /- alphb\b/);
+		assert.equal(git(ws.root, ['status', '--porcelain']), '', 'the landing left the primary dirty');
 	});
 
-	// ⚠ THE DATA-LOSS REGRESSION. A managed file is NOT a managed block: resolving the block's
-	// conflict by taking the primary's WHOLE file (`checkout --ours`) discarded every other change the
-	// replayed commit made to that file — here the operator's own line above the block, which did not
-	// conflict at all and was dropped at exit 0 with nothing printed. The one-commit shape is the
-	// ordinary one: a system write self-commits CLAUDE.md, sweeping an uncommitted prose edit with it.
-	test('a MANAGED-BLOCK conflict keeps a handwritten change the same commit made elsewhere in the file', () => {
+	// ⚠ THE DATA-LOSS REGRESSION, where the prose lives now. The operator's own rules are
+	// DREAMTEAMER.md, a SOURCE compile renders after the generated block; a landing carries an edit to
+	// it like any other file, and the primary's harness files show it beside both sides' collections.
+	test('the operator prose in DREAMTEAMER.md lands with the commit that wrote it', () => {
 		const ws = landable();
 		writeCollection(ws.wt, 'alpha', simpleCollection());
+		fs.writeFileSync(path.join(ws.wt, 'DREAMTEAMER.md'), 'keep the ledger tidy\n');
 		assert.equal(dt(ws.wt, 'compile').code, 0);
-		const claude = path.join(ws.wt, 'CLAUDE.md');
-		fs.writeFileSync(claude, `# house rules\nkeep the ledger tidy\n\n${fs.readFileSync(claude, 'utf8')}`);
-		git(ws.wt, ['add', '--', 'modules', 'CLAUDE.md', 'AGENTS.md', 'GEMINI.md']);
+		git(ws.wt, ['add', '--', 'modules', 'DREAMTEAMER.md']);
 		git(ws.wt, ['commit', '-qm', 'alpha, and a house rule']);
 		assert.equal(dt(ws.root, 'add', 'collections', '--name', 'alphb').code, 0);
 
 		const r = ws.land('a');
 		assert.equal(r.code, 0, `${r.stdout}\n${r.stderr}`);
-		assert.match(r.stdout, /managed block regenerated: .*CLAUDE\.md/, 'the block never conflicted — this test proves nothing');
+		assert.equal(fs.readFileSync(path.join(ws.root, 'DREAMTEAMER.md'), 'utf8'), 'keep the ledger tidy\n');
 		const landed = fs.readFileSync(path.join(ws.root, 'CLAUDE.md'), 'utf8');
-		assert.match(landed, /^# house rules\nkeep the ledger tidy\n/, 'the handwritten line was discarded with the rest of the file');
+		const end = landed.indexOf(api.MANAGED_BLOCKS.find((b) => b.id === 'orientation').end);
+		assert.ok(landed.indexOf('keep the ledger tidy') > end, 'the rule is rendered after the generated block');
 		assert.match(landed, /- alpha\b/);
 		assert.match(landed, /- alphb\b/);
-		// and what landed is exactly what a compile at the tip produces — nothing left dirty
-		assert.equal(dt(ws.root, 'compile').code, 0);
-		assert.equal(git(ws.root, ['status', '--porcelain', '--', 'CLAUDE.md']), '');
+		assert.equal(git(ws.root, ['status', '--porcelain']), '', 'the landing left the primary dirty');
 	});
 
-	test('a conflict OUTSIDE the block in a managed file is a records-row conflict — the prose is never discarded', () => {
+	test('a conflict in the operator prose is an other-files conflict — the prose is never discarded', () => {
 		const ws = workspace();
-		// The fixture's CLAUDE.md is block-and-nothing-else, so the operator's own prose is added
-		// above it first — that is what makes an outside-the-block hunk possible at all.
-		const claude = path.join(ws.root, 'CLAUDE.md');
-		fs.writeFileSync(claude, `# house rules\nthe original line\n\n${fs.readFileSync(claude, 'utf8')}`);
+		const rules = path.join(ws.root, 'DREAMTEAMER.md');
+		fs.writeFileSync(rules, '# house rules\nthe original line\n');
+		assert.equal(dt(ws.root, 'compile').code, 0);
 		commitHarness(ws.root);
 		assert.equal(dt(ws.root, 'worktree', 'add', '--name', 'a').code, 0);
 		const wt = path.join(ws.root, '.worktrees', 'a');
 		const edit = (root, line) => {
-			const f = path.join(root, 'CLAUDE.md');
+			const f = path.join(root, 'DREAMTEAMER.md');
 			fs.writeFileSync(f, fs.readFileSync(f, 'utf8').replace('the original line', line));
-			git(root, ['commit', '-qm', 'rules', '--', 'CLAUDE.md']);
+			git(root, ['commit', '-qm', 'rules', '--', 'DREAMTEAMER.md']);
 		};
 		edit(wt, 'the worktree line');
 		edit(ws.root, 'the primary line');
@@ -314,9 +309,9 @@ describe('dt land — the conflict classes', () => {
 
 		const r = dt(ws.root, 'land', 'a');
 		assert.equal(r.code, 1, r.stdout);
-		assert.match(r.stderr, /other files: CLAUDE\.md/);
+		assert.match(r.stderr, /other files: DREAMTEAMER\.md/);
 		assert.deepEqual(snapshot(fixture), before);
-		assert.match(fs.readFileSync(claude, 'utf8'), /the primary line/, 'the hand-written prose was discarded');
+		assert.match(fs.readFileSync(rules, 'utf8'), /the primary line/, 'the hand-written prose was discarded');
 	});
 });
 

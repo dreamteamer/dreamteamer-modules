@@ -122,11 +122,15 @@ describe('classifyConflict — a generated block is not the operator\'s prose', 
 	});
 });
 
+/** A compiled v2 descriptor reduced to what grouping reads: the storage path compile resolved, and
+ *  whether the collection is runtime build output. */
+const compiled = (name, p, { runtime = false } = {}) => ({ name, compiled: { defaults: { storage: { path: p } }, runtime } });
+
 const descriptors = new Map([
-	['notes', { name: 'notes', storage: { path: 'data/notes', base: 'workspace' } }],
-	['hr/people', { name: 'hr/people', storage: { path: 'data/hr/people', base: 'workspace' } }],
+	['notes', compiled('notes', 'data/notes')],
+	['hr/people', compiled('hr/people', 'data/hr/people')],
 	// a compiled source: its records live in the gitignored runtime, and a conflict can never be one
-	['collections', { name: 'collections', storage: { path: 'collections', base: 'runtime' } }],
+	['collections', compiled('collections', 'collections', { runtime: true })],
 ]);
 
 describe('groupByCollection — conflicted paths, named by the collection the operator knows', () => {
@@ -142,8 +146,8 @@ describe('groupByCollection — conflicted paths, named by the collection the op
 		// The exact shape `storageOverlaps` exists to refuse at compile time; grouping a conflict is
 		// the wrong place to discover it, so the resolution is longest-prefix regardless.
 		const overlapping = new Map([
-			['hr', { name: 'hr', storage: { path: 'data/hr', base: 'workspace' } }],
-			['hr/people', { name: 'hr/people', storage: { path: 'data/hr/people', base: 'workspace' } }],
+			['hr', compiled('hr', 'data/hr')],
+			['hr/people', compiled('hr/people', 'data/hr/people')],
 		]);
 		const g = groupByCollection(['data/hr/people/b.person.md', 'data/hr/c.hr.md'], overlapping);
 		assert.deepEqual(g.get('hr/people'), ['data/hr/people/b.person.md']);
