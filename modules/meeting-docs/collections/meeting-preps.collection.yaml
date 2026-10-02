@@ -2,101 +2,92 @@
 # upcoming meeting, is read once at a known moment, and goes stale the instant that meeting happens.
 name: meeting-preps
 description: >-
-  What you read in the ten minutes BEFORE walking in — status, recap, goals, suggestions. Written
-  for one meeting; a document with no meeting is not a prep.
+  What you read in the ten minutes BEFORE walking in — status, recap, goals, suggestions. Written for one meeting; a document with no meeting is not a prep.
 use_when: >-
-  a meeting is coming up — the ten-minute read is written here (/prepare-for-meeting); read the
-  previous prep for the same account before writing the next
-storage: { path: data/meeting-preps, codec: md, shape: file, suffix: meeting-prep }
-id:
+  a meeting is coming up — the ten-minute read is written here (/prepare-for-meeting); read the previous prep for the same account before writing the next
+storage: {path: data/meeting-preps, format: md}
+ids:
   # Derived from `date` — the MEETING's date, not `created`. A prep is written days before the
   # meeting (and sometimes minutes before), so filing by authoring date scatters preps for the same
   # week across the list. Sorting by id must equal sorting by "when do I need this".
-  generate: "{{ date | date }}--{{ name | slug }}"
+  from: "{{ date | date }}--{{ name | slug }}"
   pattern: "^\\d{4}-\\d{2}-\\d{2}--[a-z0-9-]+$"
-schema:
-  type: object
-  # `meeting` is required: a document with no meeting is not a prep.
-  required: [name, meeting]
-  properties:
-    name:
-      type: string
-      description: What this prep is for, in a phrase — normally the meeting's own title.
-    # The meeting prepared FOR, never the earlier call the material came from — otherwise "the prep
-    # for Tuesday" finds nothing.
-    meeting:
-      type: string
-      x-reference: meetings
-      # ONE prep per meeting. `meetings.prep` is the generated far side,
-      # stamped onto the meetings module's collection by this declaration, only when this module is
-      # installed.
-      x-unique: true
-      x-inverse:
-        field: prep
-        description: What was read in the ten minutes before walking in — generated from `meeting-preps.meeting`. Empty means this meeting was walked into cold.
-      description: The meeting this prepares FOR — never the meeting it draws its context from.
-    # A date-time, not a day, so two preps on the same day sort in order. `meeting` is required, so
-    # the value is always an exact copy of `meeting.starts`.
-    date:
-      type: string
-      format: date-time
-      description: >-
-        The MEETING's instant, denormalized from meeting.starts so the id generates and the list sorts without a join.
-        Set it from the meeting, never from today.
-    engagement:
-      type: string
-      x-reference: engagements
-      x-inverse:
-        field: preps
-        description: The preps written for this engagement's meetings — generated from `meeting-preps.engagement`.
-      description: The engagement this meeting belongs to — where the prep's status section reads its stage, phase and open next steps.
-    company:
-      type: string
-      x-reference: companies
-      description: Which company the meeting is with.
-    attendees:
-      type: array
-      items: { type: string, x-reference: contacts }
-      description: Who is in the room, denormalized from the meeting — "who am I about to talk to" should not need a second file open.
-    goal:
-      type: string
-      description: The ONE outcome that makes this meeting worth having, in a line. If it cannot be written, that is information about the meeting, not about the prep.
-    status:
-      type: string
-      enum: [draft, ready]
-      default: draft
-      description: draft = still being written · ready = good to walk in with. Two values on purpose — the meeting's date passing already says "used".
-    language:
-      type: string
-      description: What language the prep is written in, when it is not English.
-    sources:
-      type: array
-      items: { type: string, x-reference: "*" }
-      description: The records this prep was written from — summaries, briefs, contacts, tasks. Refs, so the claims in the body stay traceable and `check` can follow them.
-    content:
-      type: string
-      format: markdown
-      x-body: true
-      description: The prep itself — context · open threads · suggested agenda, the shape /prepare-for-meeting writes.
-    author:
-      type: string
-      pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
-      examples: ['agents/claude-code', 'scripts/read-git@2']
-      description: >-
-        Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a
-        reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
-    creation_context:
-      type: string
-      description: How and why this record came to be, in one line — and the reason whenever confidence is low.
-    source:
-      type: string
-      description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: calendar:<id> · <collection>/<id> · file:<path> · url:<…> · linkedin:<slug> · migration:<id>.'
-    confidence:
-      type: string
-      enum: [low, normal, high]
-      default: normal
-      description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
-order: 13
-list_fields: [name, date, meeting, company, status]
-icon: verified
-group: crm
+fields:
+  name:
+    type: string
+    required: true
+    description: What this prep is for, in a phrase — normally the meeting's own title.
+  # The meeting prepared FOR, never the earlier call the material came from — otherwise "the prep
+  # for Tuesday" finds nothing.
+  meeting:
+    type: meetings
+    required: true
+    # ONE prep per meeting. `meetings.prep` is the generated far side,
+    # stamped onto the meetings module's collection by this declaration, only when this module is
+    # installed.
+    unique: true
+    description: The meeting this prepares FOR — never the meeting it draws its context from.
+  # A date-time, not a day, so two preps on the same day sort in order. `meeting` is required, so
+  # the value is always an exact copy of `meeting.starts`.
+  date:
+    type: datetime
+    description: >-
+      The MEETING's instant, denormalized from meeting.starts so the id generates and the list sorts without a join. Set it from the meeting, never from today.
+  engagement:
+    type: engagements
+    description: The engagement this meeting belongs to — where the prep's status section reads its stage, phase and open next steps.
+  company:
+    type: companies
+    description: Which company the meeting is with.
+  attendees:
+    type: contacts
+    many: true
+    description: Who is in the room, denormalized from the meeting — "who am I about to talk to" should not need a second file open.
+  goal:
+    type: string
+    description: The ONE outcome that makes this meeting worth having, in a line. If it cannot be written, that is information about the meeting, not about the prep.
+  status:
+    type: string
+    default: draft
+    enum: [draft, ready]
+    description: draft = still being written · ready = good to walk in with. Two values on purpose — the meeting's date passing already says "used".
+  language:
+    type: string
+    description: What language the prep is written in, when it is not English.
+  sources:
+    type: reference
+    many: true
+    description: The records this prep was written from — summaries, briefs, contacts, tasks. Refs, so the claims in the body stay traceable and `check` can follow them.
+  content:
+    type: markdown
+    body: true
+    description: The prep itself — context · open threads · suggested agenda, the shape /prepare-for-meeting writes.
+  author:
+    type: string
+    examples: ['agents/claude-code', 'scripts/read-git@2']
+    pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
+    description: >-
+      Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
+  creation_context:
+    type: string
+    description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+  source:
+    type: string
+    description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: calendar:<id> · <collection>/<id> · file:<path> · url:<…> · linkedin:<slug> · migration:<id>.'
+  confidence:
+    type: string
+    default: normal
+    enum: [low, normal, high]
+    description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
+display:
+  nav:
+    icon: verified
+    order: 13
+    section: crm
+  list:
+    columns:
+      - name
+      - date
+      - meeting
+      - company
+      - status

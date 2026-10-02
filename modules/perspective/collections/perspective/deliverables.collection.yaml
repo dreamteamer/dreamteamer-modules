@@ -17,96 +17,100 @@
 # Spelling them alike would assert the two mean the same thing in the one place the difference is
 # visible for free. Same for `last_touched_by` against `owner`: touched, not authored, not accountable.
 name: perspective/deliverables
-templates: [collection-templates/perspective-observation]
 description: An artefact a contributor produced — a document, deck, sheet or video — as the evidence store found it.
 use_when: >-
-  the drive (or another artefact store) reader runs; an activity or goal needs the THING that came out
-  of it; asked what someone actually produced rather than what they were assigned — list here by
-  last_touched_on. For a contributor whose work is documents rather than tickets this is the primary
-  evidence, and its absence is a fact about the SOURCE, never about the person
-storage: { path: data/perspective/deliverables, codec: md, shape: file, suffix: deliverable }
-id:
-  generate: "{{ contributor }}/{{ last_touched_on | date }}--{{ name | slug }}"
+  the drive (or another artefact store) reader runs; an activity or goal needs the THING that came out of it; asked what someone actually produced rather than what they were assigned — list here by last_touched_on. For a contributor whose work is documents rather than tickets this is the primary evidence, and its absence is a fact about the SOURCE, never about the person
+storage: {path: data/perspective/deliverables, format: md}
+ids:
+  from: "{{ contributor }}/{{ last_touched_on | date }}--{{ name | slug }}"
   pattern: "^[a-z0-9-]+/\\d{4}-\\d{2}-\\d{2}--[a-z0-9-]+$"
-schema:
-  type: object
-  required: [retrospective, contributor, name, kind, source_kind]
-  properties:
-    retrospective: { type: string, x-reference: perspective/retrospective-sessions, description: The retrospective session that FIRST wrote this record. }
-    last_seen_in: { type: string, x-reference: perspective/retrospective-sessions, description: 'The most recent session that confirmed or updated it. Absent means exactly one session has ever touched it, which is how "new since last time" is answered without a diff.' }
-    contributor: { type: string, pattern: '^[a-z0-9-]+$', description: 'WHOSE this is, as a slug — and the FIRST SEGMENT OF THE ID. That is what makes a second retrospective UPDATE this record instead of writing one beside it. A plain slug rather than a reference, because an id segment cannot be one; the person''s own observed-world record is perspective/users/<contributor>/<their-name-slug>.' }
-    name: { type: string, description: The artefact's own title, as the store holds it — never retitled. }
-    kind:
-      type: string
-      enum: [doc, sheet, slides, form, pdf, video, image, folder, note, other]
-      description: >-
-        What sort of artefact, from its MIME type. Mechanical. `note` is the Obsidian shape — a
-        markdown file in a personal notes folder, which is a document but not a Drive one: it has no owner,
-        no sharing and no MIME, and calling it `doc` would put it in the same bucket as a shared
-        specification when the two mean very different things about how the work was done.
-    source_kind:
-      type: string
-      enum: [drive, repo, notebook, obsidian, other]
-      description: Which evidence store it was found in.
-    # WHICH READ FOUND IT — the reading ACCOUNT, which on a proxy run is not the person. A pass joining
-    # deliverables to a week reads this rather than guessing from `last_touched_by`: that guess is
-    # right only when the contributor read their own Drive, and wrong for every file when one person's
-    # store is read through a colleague's login.
-    source: { type: string, x-reference: perspective/sources, description: 'The source record of the read that found this artefact — the READING account, never the person who touched it (that is `last_touched_by`).' }
-    external_id: { type: string, description: The store's own id — a Drive file id. The handle every later call is addressed to. }
-    location: { type: string, description: A link a human can open. Not a path — this artefact does not live in the workspace. }
-    container: { type: string, description: The shared drive, repo or folder it sits in. }
-    created_on: { type: string, format: date }
-    last_touched_on: { type: string, format: date }
-    # TOUCHED, NOT AUTHORED, and the field is named for what the evidence supports. Drive keeps ONE
-    # lastModifyingUser: a document five people wrote reports the last of them. Calling this `author`
-    # would turn a weak fact into a strong-sounding claim on every record in the collection.
-    last_touched_by: { type: string, description: The account that modified it LAST — never proof of authorship. }
-    bytes: { type: integer }
-    read_with: { type: string, description: 'The reader and its version, e.g. `read-drive@1` — so a corpus re-read at a later version can be told from one that was not.' }
-    topics:
-      type: array
-      items: { type: string, x-reference: perspective/topics }
-      x-inverse: deliverables
-    # ── THE SPINE, joined in after the projects pass ───────────────────────────────────────────────
-    project:
-      type: string
-      x-reference: perspective/projects
-      x-inverse: deliverables
-      description: >-
-        The observed effort this artefact came out of, carried from whichever activity cites it. RE-POINTED
-        into this layer, like every structural reference here. Empty when no clustered activity does, which
-        is a fact about the clustering window rather than about the artefact.
-    real:
-      type: string
-      x-reference: deliverables
-      x-reference-soft: true
-      description: >-
-        The `deliverables` record this artefact appears to BE — the one-way, soft join to the thing a plan
-        said it owed. A PROPOSAL, set only on a confirmed match, and one of the most useful in the module:
-        an artefact with no authored counterpart is work nobody was promised, and a planned deliverable with
-        no observed one is a promise with nothing behind it. The argument for one-way and for soft is written
-        out once, on `perspective/users.real`.
-    content:
-      type: string
-      format: markdown
-      x-body: true
-      description: What the artefact IS and what it is for, once something has actually read it. Empty until then — a guess from the filename is worse than a blank.
-    author:
-      type: string
-      pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
-      examples: ['agents/claude-code', 'scripts/read-git@2']
-      description: >-
-        Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a
-        reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
-    creation_context:
-      type: string
-      description: How and why this record came to be, in one line — and the reason whenever confidence is low.
-    confidence:
-      type: string
-      enum: [low, normal, high]
-      default: normal
-      description: How much to trust this record. When low, the reason goes in creation_context.
-list_fields: [name, kind, project, container, last_touched_on, last_touched_by, real]
-icon: file   # the artefact a reader found; `package` is the thing a plan owes
-order: 70   # nav position — the evidence it condensed; the pipeline order, ten apart so one can be inserted without renumbering
+mixins:
+  - perspective-observation
+fields:
+  retrospective: {type: perspective/retrospective-sessions, required: true, description: The retrospective session that FIRST wrote this record.}
+  last_seen_in: {type: perspective/retrospective-sessions, description: 'The most recent session that confirmed or updated it. Absent means exactly one session has ever touched it, which is how "new since last time" is answered without a diff.'}
+  contributor: {type: string, required: true, pattern: '^[a-z0-9-]+$', description: 'WHOSE this is, as a slug — and the FIRST SEGMENT OF THE ID. That is what makes a second retrospective UPDATE this record instead of writing one beside it. A plain slug rather than a reference, because an id segment cannot be one; the person''s own observed-world record is perspective/users/<contributor>/<their-name-slug>.'}
+  name: {type: string, required: true, description: The artefact's own title}
+  kind:
+    type: string
+    required: true
+    enum: [doc, sheet, slides, form, pdf, video, image, folder, note, other]
+    description: >-
+      What sort of artefact, from its MIME type. Mechanical. `note` is the Obsidian shape — a markdown file in a personal notes folder, which is a document but not a Drive one: it has no owner, no sharing and no MIME, and calling it `doc` would put it in the same bucket as a shared specification when the two mean very different things about how the work was done.
+  source_kind:
+    type: string
+    required: true
+    enum: [drive, repo, notebook, obsidian, other]
+    description: Which evidence store it was found in.
+  # WHICH READ FOUND IT — the reading ACCOUNT, which on a proxy run is not the person. A pass joining
+  # deliverables to a week reads this rather than guessing from `last_touched_by`: that guess is
+  # right only when the contributor read their own Drive, and wrong for every file when one person's
+  # store is read through a colleague's login.
+  source: {type: perspective/sources, description: 'The source record of the read that found this artefact — the READING account, never the person who touched it (that is `last_touched_by`).'}
+  external_id: {type: string, description: The store's own id — a Drive file id. The handle every later call is addressed to.}
+  location: {type: string, description: A link a human can open. Not a path — this artefact does not live in the workspace.}
+  container: {type: string, description: The shared drive}
+  created_on: {type: date}
+  last_touched_on: {type: date}
+  # TOUCHED, NOT AUTHORED, and the field is named for what the evidence supports. Drive keeps ONE
+  # lastModifyingUser: a document five people wrote reports the last of them. Calling this `author`
+  # would turn a weak fact into a strong-sounding claim on every record in the collection.
+  last_touched_by: {type: string, description: The account that modified it LAST — never proof of authorship.}
+  bytes: {type: integer}
+  read_with: {type: string, description: 'The reader and its version, e.g. `read-drive@1` — so a corpus re-read at a later version can be told from one that was not.'}
+  topics:
+    type: perspective/topics
+    many: true
+  # ── THE SPINE, joined in after the projects pass ───────────────────────────────────────────────
+  project:
+    type: perspective/projects
+    description: >-
+      The observed effort this artefact came out of, carried from whichever activity cites it. RE-POINTED into this layer, like every structural reference here. Empty when no clustered activity does, which is a fact about the clustering window rather than about the artefact.
+  real:
+    type: string
+    description: >-
+      The `deliverables` record this artefact appears to BE — the one-way, soft join to the thing a plan said it owed. A PROPOSAL, set only on a confirmed match, and one of the most useful in the module: an artefact with no authored counterpart is work nobody was promised, and a planned deliverable with no observed one is a promise with nothing behind it. The argument for one-way and for soft is written out once, on `perspective/users.real`.
+  activities:
+    type: perspective/activities
+    many: true
+    mirror_of: deliverables
+  concepts:
+    type: perspective/concepts
+    many: true
+    mirror_of: classifies
+  terms:
+    type: perspective/terms
+    many: true
+    mirror_of: mentions
+    description: The words this record cannot be read without — generated from `terms.mentions`.
+  content:
+    type: markdown
+    body: true
+    description: What the artefact IS and what it is for, once something has actually read it. Empty until then — a guess from the filename is worse than a blank.
+  author:
+    type: string
+    examples: ['agents/claude-code', 'scripts/read-git@2']
+    pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
+    description: >-
+      Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
+  creation_context:
+    type: string
+    description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+  confidence:
+    type: string
+    default: normal
+    enum: [low, normal, high]
+    description: How much to trust this record. When low, the reason goes in creation_context.
+display:
+  nav:
+    icon: file
+    order: 70
+  list:
+    columns:
+      - name
+      - kind
+      - project
+      - container
+      - last_touched_on
+      - last_touched_by
+      - real

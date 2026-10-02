@@ -1,143 +1,122 @@
 name: rnd/screens
 description: >-
-  ONE SCREEN of a product we are building — the unit a replica is BUILT in and REGRESSED against.
-  A screen carries its own route, the reference route it mirrors, the states it must render, and
-  where its build stands; `source` says whether it exists because a reference HAS it, because the
-  scope REQUIRES it, or both. The inventory is therefore the build list and the regression list at
-  once: "which screens are unbuilt" and "which required screens no reference taught us" are both
-  filters here rather than prose somebody has to re-read a PRD to answer.
+  ONE SCREEN of a product we are building — the unit a replica is BUILT in and REGRESSED against. A screen carries its own route, the reference route it mirrors, the states it must render, and where its build stands; `source` says whether it exists because a reference HAS it, because the scope REQUIRES it, or both. The inventory is therefore the build list and the regression list at once: "which screens are unbuilt" and "which required screens no reference taught us" are both filters here rather than prose somebody has to re-read a PRD to answer.
 use_when: >-
-  a product is being replicated or specified screen by screen — enumerate the screens here BEFORE
-  building, one record each, so the set is countable and a missing screen is a query rather than a
-  discovery. Read here before asking "what is left to build" or "does our version cover theirs";
-  every `rnd/user-stories` record points at the screen it runs through, so a screen with no stories
-  is a screen nobody has said what it is FOR. A screen whose `source` is `scope-required` is the
-  dangerous kind — no reference demonstrates it, so it will be missed by anyone building from
-  screenshots alone
-storage: { path: data/rnd/screens, codec: md, shape: file, suffix: screen }
+  a product is being replicated or specified screen by screen — enumerate the screens here BEFORE building, one record each, so the set is countable and a missing screen is a query rather than a discovery. Read here before asking "what is left to build" or "does our version cover theirs"; every `rnd/user-stories` record points at the screen it runs through, so a screen with no stories is a screen nobody has said what it is FOR. A screen whose `source` is `scope-required` is the dangerous kind — no reference demonstrates it, so it will be missed by anyone building from screenshots alone
+storage: {path: data/rnd/screens, format: md}
 # The id comes from `key`, not from `name`. A name in a non-Latin script does not fail the engine's
 # `slug` filter (`slugOrHash`): it becomes an `x1a2b3c4` hash. `key` is the Latin handle; `name` is
 # what a reader sees.
-id:
-  generate: '{{ key }}'
+ids:
+  from: "{{ key }}"
   pattern: ^[a-z0-9][a-z0-9-]*$
-schema:
-  type: object
-  required: [key, name, route, source]
-  properties:
-    key:
-      type: string
-      description: The latin handle that becomes the id — `dashboard`, `grant`, `personal-data`. Lowercase, hyphenated. It exists because a name in a non-Latin script would hash.
-    name:
-      type: string
-      description: What the screen is called to a user, in the product's own language — verbatim, whatever the script.
-    description:
-      type: string
-      description: One line on what the screen is for, for a list view.
-    route:
-      type: string
-      description: OUR route for this screen, e.g. `/dashboard`. The prototype and the regression harness both key off this.
-    nav_label:
-      type: string
-      description: The label in the navigation drawer, when it differs from `name`.
-    nav_order:
-      type: integer
-      description: Position in the navigation drawer. Absent for screens that are not in the drawer (auth, static, chrome).
-    kind:
-      type: string
-      enum: [auth, app, static, chrome]
-      default: app
-      description: "`auth` is sign-in and OTP; `app` is a signed-in screen in the drawer; `static` is a legal or marketing page; `chrome` is a persistent region (header, drawer, footer) specified once rather than repeated on every screen."
-    source:
-      type: string
-      enum: [reference-observed, scope-required, both, our-addition]
-      description: >-
-        WHY THIS SCREEN EXISTS. `reference-observed` — a reference has it and the scope does not name it.
-        `scope-required` — the scope document demands it and NO reference demonstrates it, which makes
-        it the one a screenshot-driven build silently omits. `both` — observed and required, the safe case.
-        `our-addition` — neither: a screen we chose to add because the reference's audience is served badly
-        without it.
-    reference:
-      type: string
-      x-reference: rnd/references
-      description: The reference this screen was observed in. Absent when `source` is `scope-required` — nothing was observed.
-    reference_route:
-      type: string
-      description: The route this screen has IN THE REFERENCE, when it has one — e.g. `/Dashboard`. What the regression harness navigates to on their side.
-    reference_screenshot:
-      type: string
-      examples: ['${env:FILES_FOLDER}/rnd/references/northwind-portal/live-2026-09-12/screens/01-dashboard.png']
-      description: The captured screenshot of the reference screen, as a `${env:FILES_FOLDER}` template. Bytes never live in the repo.
-    scope_rows:
-      type: array
-      items: { type: string }
-      description: The requirement rows this screen satisfies, cited so a claim is checkable — e.g. `matrix:13`, `matrix:19` — against whatever scope document the engagement treats as authority.
-    deep_linkable:
-      type: boolean
-      description: >-
-        Whether the screen survives a COLD LOAD of its own URL. Measured, not assumed — a reference screen
-        that renders blank on a direct hit and works only via in-app navigation has a defect our version
-        must not inherit. Absent means not yet measured.
-    states:
-      type: array
-      items: { type: string }
-      description: Every state the screen must render — `populated`, `empty`, `loading`, `error`, `forbidden`. One per state the build owes, because an empty state nobody listed is an empty state nobody built.
-    build_status:
-      type: string
-      enum: [not-started, in-progress, built, verified]
-      default: not-started
-      description: "`built` means it renders in the prototype; `verified` means a regression check compared it against the reference and passed; set it from that check's result, never by reading the screen."
-    product_design_doc:
-      type: string
-      x-reference: rnd/product-design-docs
-      description: The design doc this screen is specified in.
-    product:
-      type: string
-      x-reference: rnd/products
-      x-inverse:
-        field: screens
-        description: The screens this product is made of — generated from `rnd/screens.product`.
-      description: >-
-        The PRODUCT this screen is a page of, directly, so a product page lists its own screens without a
-        join through the design doc.
-    prototype:
-      type: string
-      x-reference: rnd/prototypes
-      description: The prototype that implements it.
-    user_stories:
-      type: array
-      items: { type: string, x-reference: rnd/user-stories }
-      x-inverse-of: rnd/user-stories.screen
-      description: GENERATED — the stories that run through this screen. Set `screen` on the story.
-    tags:
-      type: array
-      items:
-        type: string
-        pattern: '^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$'
-      description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
-    content:
-      type: string
-      format: markdown
-      x-body: true
-      description: >-
-        The screen's spec — every region, every label in the product's own words, every control and
-        what disables it, the copy of each state, and the defects observed in the reference that we
-        deliberately do not reproduce. Cite the screenshot or the route behind each claim.
-    author:
-      type: string
-      pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
-      examples: ['agents/claude-code', 'scripts/read-git@2']
-      description: >-
-        Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a
-        reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
-    creation_context:
-      type: string
-      description: How and why this record came to be, in one line — and the reason whenever confidence is low.
-    confidence:
-      type: string
-      enum: [low, normal, high]
-      default: normal
-      description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
-order: 23
-list_fields: [name, route, source, build_status, last-modified]
-icon: window
+fields:
+  key:
+    type: string
+    required: true
+    description: The latin handle that becomes the id — `dashboard`, `grant`, `personal-data`. Lowercase, hyphenated. It exists because a name in a non-Latin script would hash.
+  name:
+    type: string
+    required: true
+    description: What the screen is called to a user, in the product's own language — verbatim, whatever the script.
+  description:
+    type: string
+    description: One line on what the screen is for, for a list view.
+  route:
+    type: string
+    required: true
+    description: OUR route for this screen, e.g. `/dashboard`. The prototype and the regression harness both key off this.
+  nav_label:
+    type: string
+    description: The label in the navigation drawer, when it differs from `name`.
+  nav_order:
+    type: integer
+    description: Position in the navigation drawer. Absent for screens that are not in the drawer (auth, static, chrome).
+  kind:
+    type: string
+    default: app
+    enum: [auth, app, static, chrome]
+    description: "`auth` is sign-in and OTP; `app` is a signed-in screen in the drawer; `static` is a legal or marketing page; `chrome` is a persistent region (header, drawer, footer) specified once rather than repeated on every screen."
+  source:
+    type: string
+    required: true
+    enum: [reference-observed, scope-required, both, our-addition]
+    description: >-
+      WHY THIS SCREEN EXISTS. `reference-observed` — a reference has it and the scope does not name it. `scope-required` — the scope document demands it and NO reference demonstrates it, which makes it the one a screenshot-driven build silently omits. `both` — observed and required, the safe case. `our-addition` — neither: a screen we chose to add because the reference's audience is served badly without it.
+  reference:
+    type: rnd/references
+    description: The reference this screen was observed in. Absent when `source` is `scope-required` — nothing was observed.
+  reference_route:
+    type: string
+    description: The route this screen has IN THE REFERENCE, when it has one — e.g. `/Dashboard`. What the regression harness navigates to on their side.
+  reference_screenshot:
+    type: string
+    examples: ['${env:FILES_FOLDER}/rnd/references/northwind-portal/live-2026-09-12/screens/01-dashboard.png']
+    description: The captured screenshot of the reference screen, as a `${env:FILES_FOLDER}` template. Bytes never live in the repo.
+  scope_rows:
+    type: string
+    many: true
+    description: The requirement rows this screen satisfies, cited so a claim is checkable — e.g. `matrix:13`, `matrix:19` — against whatever scope document the engagement treats as authority.
+  deep_linkable:
+    type: boolean
+    description: >-
+      Whether the screen survives a COLD LOAD of its own URL. Measured, not assumed — a reference screen that renders blank on a direct hit and works only via in-app navigation has a defect our version must not inherit. Absent means not yet measured.
+  states:
+    type: string
+    many: true
+    description: Every state the screen must render — `populated`, `empty`, `loading`, `error`, `forbidden`. One per state the build owes, because an empty state nobody listed is an empty state nobody built.
+  build_status:
+    type: string
+    default: not-started
+    enum: [not-started, in-progress, built, verified]
+    description: "`built` means it renders in the prototype; `verified` means a regression check compared it against the reference and passed; set it from that check's result, never by reading the screen."
+  product_design_doc:
+    type: rnd/product-design-docs
+    description: The design doc this screen is specified in.
+  product:
+    type: rnd/products
+    description: >-
+      The PRODUCT this screen is a page of, directly, so a product page lists its own screens without a join through the design doc.
+  prototype:
+    type: rnd/prototypes
+    description: The prototype that implements it.
+  user_stories:
+    type: rnd/user-stories
+    many: true
+    mirror_of: screen
+    description: GENERATED — the stories that run through this screen. Set `screen` on the story.
+  tags:
+    type: string
+    many: true
+    pattern: ^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$
+    description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
+  content:
+    type: markdown
+    body: true
+    description: >-
+      The screen's spec — every region, every label in the product's own words, every control and what disables it, the copy of each state, and the defects observed in the reference that we deliberately do not reproduce. Cite the screenshot or the route behind each claim.
+  author:
+    type: string
+    examples: ['agents/claude-code', 'scripts/read-git@2']
+    pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
+    description: >-
+      Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
+  creation_context:
+    type: string
+    description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+  confidence:
+    type: string
+    default: normal
+    enum: [low, normal, high]
+    description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
+display:
+  nav:
+    icon: window
+    order: 23
+  list:
+    columns:
+      - name
+      - route
+      - source
+      - build_status
+      - last_modified

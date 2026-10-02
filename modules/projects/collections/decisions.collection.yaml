@@ -9,184 +9,157 @@
 # record naming it in `supersedes`; the earlier one stays.
 name: decisions
 description: >-
-  A decision made on a project, by a person or by an agent — what was chosen, what else was on the table, why,
-  and how expensive it would be to undo. One table for both, with `decided_by` saying which.
+  A decision made on a project, by a person or by an agent — what was chosen, what else was on the table, why, and how expensive it would be to undo. One table for both, with `decided_by` saying which.
 use_when: >-
-  a choice is made that somebody could later ask "why did you do it THAT way?" about — in a meeting, in a
-  commit message, or by an agent working unattended on somebody's behalf. Write it here, with `alternatives`
-  and `reversibility`, BEFORE moving on; asked what has been decided about an effort, list here by `project`
-  and read `decided_on`. Search here before deciding the same thing twice, and before reversing one: the
-  earlier record stays and the new one names it in `supersedes`
-storage: { path: data/decisions, codec: md, shape: file, suffix: decision }
+  a choice is made that somebody could later ask "why did you do it THAT way?" about — in a meeting, in a commit message, or by an agent working unattended on somebody's behalf. Write it here, with `alternatives` and `reversibility`, BEFORE moving on; asked what has been decided about an effort, list here by `project` and read `decided_on`. Search here before deciding the same thing twice, and before reversing one: the earlier record stays and the new one names it in `supersedes`
+storage: {path: data/decisions, format: md}
 # `decided_on` is set by whoever records the decision, never taken from `created`, so a decision
 # written up a week later still files under the day it was made. Only its date part reaches the id.
-id:
+ids:
   # The first template whose fields are all present wins: the `slug` field when set, else the name
   # through the slug filter.
-  generate:
-    - '{{ decided_on | date }}--{{ slug }}'
-    - '{{ decided_on | date }}--{{ name | slug }}'
+  from:
+    - "{{ decided_on | date }}--{{ slug }}"
+    - "{{ decided_on | date }}--{{ name | slug }}"
   pattern: ^\d{4}-\d{2}-\d{2}--[a-z0-9-]+$
-schema:
-  type: object
-  required: [name, decided_on, decided_by, decision, alternatives, rationale, reversibility]
-  properties:
-    slug: { type: string, pattern: '^[a-z0-9][a-z0-9-]*$', title: Slug, description: 'An optional Latin handle that becomes the id; when empty, the id comes from the name. Set it when the name has no Latin characters, which would otherwise slug to a hash. Unlike `activities.code`, it is never shown to a reader.' }
-    name:
-      type: string
-      description: A short handle for the fork — what was being decided, not what was chosen. Drives the id.
-    decided_on:
-      type: string
-      format: date-time
-      description: >-
-        The moment the call was made, with its local offset. A date-time so several decisions on one day keep
-        their order. Drives the id, date part only.
-    # ── WHO DECIDED ───────────────────────────────────────────────────────────────────────────────
-    decided_by:
-      type: string
-      enum: [person, agent]
-      description: >-
-        Who made the call. `person` requires `decider` or `external_decider`; `agent` requires `agent`.
-        `bin/check-records.mjs` refuses either half missing, so a reader never has to guess which kind of
-        decision they are looking at.
-    decider:
-      type: string
-      x-reference: users
-      x-inverse:
-        field: decisions
-        description: The calls this person made — generated from `decisions.decider`.
-      description: >-
-        Which person on your side decided. When the call was made outside, fill `external_decider` instead
-        and leave this empty.
-    external_decider:
-      type: string
-      x-reference: contacts
-      description: >-
-        Who outside this workspace decided: the client approving a price or a scope, a partner choosing an
-        environment. A `contacts` reference, as `activities.external_owner` is. No `x-inverse`, because a
-        mirror would write a field into the contacts module, which this module does not own.
-    agent:
-      type: string
-      description: >-
-        Which agent decided, with its model: `agents/claude-code (claude-opus-5)`. Required when `decided_by`
-        is `agent`; empty otherwise. Free text, because the model matters as much as the agent. Distinct from
-        `author`, which says who wrote the record: an agent often writes up a decision a person made.
-    session:
-      type: string
-      description: >-
-        Which run or conversation this came out of, by name or by a one-line description of the prompt. Lets a
-        whole unattended session's judgement be read in order. On a human decision, the meeting or the thread.
-    # ── WHERE IT BELONGS ───────────────────────────────────────────────────────────────────────────
-    project:
-      type: string
-      x-reference: projects
-      x-inverse:
-        field: decisions
-        description: What has been decided on this effort, most recent first — generated from `decisions.project`.
-      description: >-
-        The effort this decision belongs to. Empty for a decision that belongs to no project, such as how the
-        workspace itself is run.
-    activity:
-      type: string
-      x-reference: activities
-      x-inverse:
-        field: decisions
-        description: What was decided on this rung — generated from `decisions.activity`.
-      description: The plan rung it was decided on or about, where it was one. Finer grain than `project`, and usually empty.
-    kind:
-      type: string
-      enum: [data-model, scope, method, tooling, prioritization, fork-in-the-road, abandonment, cost, interpretation, commercial]
-      description: >-
-        What sort of call. `interpretation` means an instruction was ambiguous and the agent picked a
-        reading; `instruction_quoted` makes it reviewable. `commercial` is a price, a term or a concession.
-    # ── THE SUBSTANCE ──────────────────────────────────────────────────────────────────────────────
-    context:
-      type: string
-      description: What the situation actually was — the constraint, the ambiguity, or the thing that had just gone wrong.
-    decision:
-      type: string
-      description: What was chosen, stated plainly and in the active voice.
-    alternatives:
-      type: array
-      items: { type: string }
-      description: >-
-        What else was on the table and why each lost. If nothing else was considered, write that as the
-        single item.
-    rationale:
-      type: string
-      description: Why this one.
-    reversibility:
-      type: string
-      enum: [trivial, easy, moderate, expensive, one-way-door]
-      description: >-
-        Cost of undoing it later. `one-way-door` for anything that writes many records, names a public
-        identifier, or is said out loud to a client.
-    instruction_quoted:
-      type: string
-      description: >-
-        When the decision was an interpretation, the words being interpreted, verbatim, so a reader can see
-        exactly what was taken to be meant.
-    cost_note:
-      type: string
-      description: What it cost or saved — agents spawned, records written, tokens, wall time, money. An order of magnitude is the useful resolution.
-    # ── A PREDICTION, AND LATER A RESULT ───────────────────────────────────────────────────────────
-    wrong_if:
-      type: string
-      description: >-
-        One line: an observable event that would show this was the wrong call. Not a counterfactual about the
-        branch not taken, which nothing can check. Leave it empty rather than invent one. This is the
-        prediction; `outcome` is the result.
-    outcome:
-      type: string
-      enum: [ratified, overturned, superseded, moot]
-      description: >-
-        Set after the fact, when the call has been judged; absent means it stands unreviewed. `ratified` — somebody with the authority adopted it. `overturned` — reversed with no
-        replacement. `superseded` — replaced by a later record naming this one in its `supersedes`. `moot` — the
-        subject moved on before the call ever mattered.
-    supersedes:
-      type: string
-      x-reference: decisions
-      x-inverse:
-        field: superseded_by
-        description: The later decision that replaced this one — generated from `decisions.supersedes`.
-      description: An earlier decision this one reverses or replaces. The earlier record stays.
-    affects:
-      type: array
-      items: { type: string }
-      description: >-
-        What the decision landed on, written as `<collection>/<id>` (`collections/<name>` for a collection
-        itself). Plain strings rather than references, because a decision outlives what it landed on.
-    tags:
-      type: array
-      items:
-        type: string
-        pattern: '^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$'
-      description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
-    content:
-      type: string
-      format: markdown
-      x-body: true
-      description: >-
-        Anything the fields cannot hold: the fuller reasoning, the numbers, smaller forks taken in the same
-        run, and later what happened once `outcome` is known.
-    author:
-      type: string
-      pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
-      examples: ['agents/claude-code', 'scripts/read-git@2']
-      description: >-
-        Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a
-        reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
-    creation_context:
-      type: string
-      description: How and why this record came to be, in one line — and the reason whenever confidence is low.
-    source:
-      type: string
-      description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…> · migration:<id>.'
-    confidence:
-      type: string
-      enum: [low, normal, high]
-      default: normal
-      description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
-order: 14
-list_fields: [name, decided_on, decided_by, project, kind, reversibility, outcome]
-icon: git-branch   # the fork itself; `law` is the observed decision a run extracted from evidence
+fields:
+  slug: {type: string, title: Slug, pattern: '^[a-z0-9][a-z0-9-]*$', description: 'An optional Latin handle that becomes the id; when empty, the id comes from the name. Set it when the name has no Latin characters, which would otherwise slug to a hash. Unlike `activities.code`, it is never shown to a reader.'}
+  name:
+    type: string
+    required: true
+    description: A short handle for the fork — what was being decided, not what was chosen. Drives the id.
+  decided_on:
+    type: datetime
+    required: true
+    description: >-
+      The moment the call was made, with its local offset. A date-time so several decisions on one day keep their order. Drives the id, date part only.
+  # ── WHO DECIDED ───────────────────────────────────────────────────────────────────────────────
+  decided_by:
+    type: string
+    required: true
+    enum: [person, agent]
+    description: >-
+      Who made the call. `person` requires `decider` or `external_decider`; `agent` requires `agent`. `bin/check-records.mjs` refuses either half missing, so a reader never has to guess which kind of decision they are looking at.
+  decider:
+    type: users
+    description: >-
+      Which person on your side decided. When the call was made outside, fill `external_decider` instead and leave this empty.
+  external_decider:
+    type: contacts
+    description: >-
+      Who outside this workspace decided: the client approving a price or a scope, a partner choosing an environment. A `contacts` reference, as `activities.external_owner` is. No `x-inverse`, because a mirror would write a field into the contacts module, which this module does not own.
+  agent:
+    type: string
+    description: >-
+      Which agent decided, with its model: `agents/claude-code (claude-opus-5)`. Required when `decided_by` is `agent`; empty otherwise. Free text, because the model matters as much as the agent. Distinct from `author`, which says who wrote the record: an agent often writes up a decision a person made.
+  session:
+    type: string
+    description: >-
+      Which run or conversation this came out of, by name or by a one-line description of the prompt. Lets a whole unattended session's judgement be read in order. On a human decision, the meeting or the thread.
+  # ── WHERE IT BELONGS ───────────────────────────────────────────────────────────────────────────
+  project:
+    type: projects
+    description: >-
+      The effort this decision belongs to. Empty for a decision that belongs to no project, such as how the workspace itself is run.
+  activity:
+    type: activities
+    description: The plan rung it was decided on or about, where it was one. Finer grain than `project`, and usually empty.
+  kind:
+    type: string
+    enum: [data-model, scope, method, tooling, prioritization, fork-in-the-road, abandonment, cost, interpretation, commercial]
+    description: >-
+      What sort of call. `interpretation` means an instruction was ambiguous and the agent picked a reading; `instruction_quoted` makes it reviewable. `commercial` is a price, a term or a concession.
+  # ── THE SUBSTANCE ──────────────────────────────────────────────────────────────────────────────
+  context:
+    type: string
+    description: What the situation actually was — the constraint, the ambiguity, or the thing that had just gone wrong.
+  decision:
+    type: string
+    required: true
+    description: What was chosen, stated plainly and in the active voice.
+  alternatives:
+    type: string
+    required: true
+    many: true
+    description: >-
+      What else was on the table and why each lost. If nothing else was considered, write that as the single item.
+  rationale:
+    type: string
+    required: true
+    description: Why this one.
+  reversibility:
+    type: string
+    required: true
+    enum: [trivial, easy, moderate, expensive, one-way-door]
+    description: >-
+      Cost of undoing it later. `one-way-door` for anything that writes many records, names a public identifier, or is said out loud to a client.
+  instruction_quoted:
+    type: string
+    description: >-
+      When the decision was an interpretation, the words being interpreted, verbatim, so a reader can see exactly what was taken to be meant.
+  cost_note:
+    type: string
+    description: What it cost or saved — agents spawned, records written, tokens, wall time, money. An order of magnitude is the useful resolution.
+  # ── A PREDICTION, AND LATER A RESULT ───────────────────────────────────────────────────────────
+  wrong_if:
+    type: string
+    description: >-
+      One line: an observable event that would show this was the wrong call. Not a counterfactual about the branch not taken, which nothing can check. Leave it empty rather than invent one. This is the prediction; `outcome` is the result.
+  outcome:
+    type: string
+    enum: [ratified, overturned, superseded, moot]
+    description: >-
+      Set after the fact, when the call has been judged; absent means it stands unreviewed. `ratified` — somebody with the authority adopted it. `overturned` — reversed with no replacement. `superseded` — replaced by a later record naming this one in its `supersedes`. `moot` — the subject moved on before the call ever mattered.
+  supersedes:
+    type: decisions
+    description: An earlier decision this one reverses or replaces. The earlier record stays.
+  affects:
+    type: string
+    many: true
+    description: >-
+      What the decision landed on, written as `<collection>/<id>` (`collections/<name>` for a collection itself). Plain strings rather than references, because a decision outlives what it landed on.
+  tags:
+    type: string
+    many: true
+    pattern: ^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$
+    description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
+  superseded_by:
+    type: decisions
+    many: true
+    mirror_of: supersedes
+    description: The later decision that replaced this one — generated from `decisions.supersedes`.
+  content:
+    type: markdown
+    body: true
+    description: >-
+      Anything the fields cannot hold: the fuller reasoning, the numbers, smaller forks taken in the same run, and later what happened once `outcome` is known.
+  author:
+    type: string
+    examples: ['agents/claude-code', 'scripts/read-git@2']
+    pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
+    description: >-
+      Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
+  creation_context:
+    type: string
+    description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+  source:
+    type: string
+    description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…> · migration:<id>.'
+  confidence:
+    type: string
+    default: normal
+    enum: [low, normal, high]
+    description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
+display:
+  nav:
+    icon: git-branch
+    order: 14
+  list:
+    columns:
+      - name
+      - decided_on
+      - decided_by
+      - project
+      - kind
+      - reversibility
+      - outcome

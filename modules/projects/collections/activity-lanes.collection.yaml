@@ -10,73 +10,67 @@
 # refuses the collision.
 name: activity-lanes
 description: >-
-  One band of a plan — the swimlane a board draws activities in, and the row-group a gantt stacks them by.
-  A lane is the GROUPING, with an order of its own; an activity is what sits in it.
+  One band of a plan — the swimlane a board draws activities in, and the row-group a gantt stacks them by. A lane is the GROUPING, with an order of its own; an activity is what sits in it.
 use_when: >-
-  a plan needs bands a reader can see — workstreams, tracks, teams-of-work, the rows of a swimlane board — and
-  the bands have an order somebody decided. Create the lanes BEFORE setting `activities.lane`, and read here
-  before inventing a new band: a lane that already exists under another spelling is the drift this collection
-  removes. Leave `project` empty for a workstream that runs across more than one plan; a span of TIME rather
-  than a track of work is a `phases` record, not a lane
-storage: { path: data/activity-lanes, codec: md, shape: file, suffix: activity-lane }
+  a plan needs bands a reader can see — workstreams, tracks, teams-of-work, the rows of a swimlane board — and the bands have an order somebody decided. Create the lanes BEFORE setting `activities.lane`, and read here before inventing a new band: a lane that already exists under another spelling is the drift this collection removes. Leave `project` empty for a workstream that runs across more than one plan; a span of TIME rather than a track of work is a `phases` record, not a lane
+storage: {path: data/activity-lanes, format: md}
 # A name with no Latin characters slugs to a hash id; pass `--id` for a readable one.
-id:
-  generate: '{{ name | slug }}'
+ids:
+  from: "{{ name | slug }}"
   pattern: ^[a-z0-9][a-z0-9-]*$
-schema:
-  type: object
-  required: [name, order]
-  properties:
-    name:
-      type: string
-      description: What the band is called, as it should read in the lane header — "Discovery", "Platform", "Client onboarding".
-    # Required: the order is what a lane exists to carry.
-    order:
-      type: integer
-      description: >-
-        Where this band sits, top to bottom. Leave gaps (10, 20, 30) so a lane can be inserted later
-        without renumbering the rest. Two lanes on one number are not refused, and the board then orders
-        them arbitrarily.
-    project:
-      type: string
-      x-reference: projects
-      x-inverse:
-        field: lanes
-        description: The bands this project's plan is read in — generated from `activity-lanes.project`.
-      description: >-
-        The plan this band belongs to. Empty means a workstream running across several plans. A lane with
-        a project may only hold that project's activities; `bin/check-records.mjs` refuses the mismatch.
-    tags:
-      type: array
-      items:
-        type: string
-        pattern: '^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$'
-      description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
-    content:
-      type: string
-      format: markdown
-      x-body: true
-      description: >-
-        What this lane covers and what it deliberately does not, so the band does not become the row
-        everything unfiled lands in.
-    author:
-      type: string
-      pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
-      examples: ['agents/claude-code', 'scripts/read-git@2']
-      description: >-
-        Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a
-        reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
-    creation_context:
-      type: string
-      description: How and why this record came to be, in one line — and the reason whenever confidence is low.
-    source:
-      type: string
-      description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…> · migration:<id>.'
-    confidence:
-      type: string
-      enum: [low, normal, high]
-      default: normal
-      description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
-order: 9
-list_fields: [name, order, project]
-icon: three-bars   # three horizontal bands IS a swimlane board; `milestone` is the rung that sits in one
+fields:
+  name:
+    type: string
+    required: true
+    description: What the band is called, as it should read in the lane header — "Discovery", "Platform", "Client onboarding".
+  # Required: the order is what a lane exists to carry.
+  order:
+    type: integer
+    required: true
+    description: >-
+      Where this band sits, top to bottom. Leave gaps (10, 20, 30) so a lane can be inserted later without renumbering the rest. Two lanes on one number are not refused, and the board then orders them arbitrarily.
+  project:
+    type: projects
+    description: >-
+      The plan this band belongs to. Empty means a workstream running across several plans. A lane with a project may only hold that project's activities; `bin/check-records.mjs` refuses the mismatch.
+  tags:
+    type: string
+    many: true
+    pattern: ^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$
+    description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
+  activities:
+    type: activities
+    many: true
+    mirror_of: lane
+    description: The rungs in this band, in code order — generated from `activities.lane`.
+  content:
+    type: markdown
+    body: true
+    description: >-
+      What this lane covers and what it deliberately does not, so the band does not become the row everything unfiled lands in.
+  author:
+    type: string
+    examples: ['agents/claude-code', 'scripts/read-git@2']
+    pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
+    description: >-
+      Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
+  creation_context:
+    type: string
+    description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+  source:
+    type: string
+    description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…> · migration:<id>.'
+  confidence:
+    type: string
+    default: normal
+    enum: [low, normal, high]
+    description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
+display:
+  nav:
+    icon: three-bars
+    order: 9
+  list:
+    columns:
+      - name
+      - order
+      - project

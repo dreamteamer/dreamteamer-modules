@@ -16,140 +16,138 @@
 # an `origin: workspace` concept is normal (the workspace defined it and the person may never say it)
 # and on any other is the concept to delete.
 name: perspective/concepts
-templates: [collection-templates/perspective-observation]
 description: A term a contributor uses with a stable meaning — the vocabulary their work runs on, in their own words.
 use_when: >-
-  init seeds one per collection and skill the workspace defines (origin workspace); the extract stage
-  writes one when a term recurs with one meaning across sessions or tickets; a perspective's dsl points
-  here. Search before creating — a concept found twice is the next thing to delete
-storage: { path: data/perspective/concepts, codec: md, shape: file, suffix: concept }
-id:
-  generate: "{{ contributor }}/{{ name | slug }}"
+  init seeds one per collection and skill the workspace defines (origin workspace); the extract stage writes one when a term recurs with one meaning across sessions or tickets; a perspective's dsl points here. Search before creating — a concept found twice is the next thing to delete
+storage: {path: data/perspective/concepts, format: md}
+ids:
+  from: "{{ contributor }}/{{ name | slug }}"
   pattern: "^[a-z0-9-]+/[a-z0-9-]+$"
-schema:
-  type: object
-  required: [retrospective, contributor, name, origin]
-  properties:
-    retrospective: { type: string, x-reference: perspective/retrospective-sessions, description: The retrospective session that FIRST wrote this record. }
-    last_seen_in: { type: string, x-reference: perspective/retrospective-sessions, description: 'The most recent session that confirmed or updated it. Absent means exactly one session has ever touched it, which is how "new since last time" is answered without a diff.' }
-    contributor: { type: string, pattern: '^[a-z0-9-]+$', description: 'WHOSE this is, as a slug — and the FIRST SEGMENT OF THE ID. That is what makes a second retrospective UPDATE this record instead of writing one beside it. A plain slug rather than a reference, because an id segment cannot be one; the person''s own observed-world record is perspective/users/<contributor>/<their-name-slug>.' }
-    name: { type: string }
-    definition:
-      type: string
-      description: >-
-        What it means TO THIS PERSON, in their words where the evidence has them. Written FROM the quoted
-        uses in this concept's `terms` bodies, never ahead of them: a definition with no term under it is a
-        word the run supplied, and it will read on the page exactly like one the person uses.
-    # ── WHAT KIND OF THING THE TERM NAMES ─────────────────────────────────────────────────────────
-    # `origin` below says where the term was FOUND; this says what it IS. Without it every concept
-    # reads as an undifferentiated glossary, and the two questions a reader actually has — "what
-    # systems does this person work on" and "what do they call their way of working" — cannot be
-    # asked.
-    #
-    # Some kinds overlap a collection, DELIBERATELY, and the rule is which one the person NAMED.
-    # `perspective/users` holds people the evidence identified; `person` here is a handle or nickname the
-    # contributor uses that no `perspective/users` record resolves ("the platform guy"). `workflows` holds a
-    # step order observed across three or more activities; `process` here is a name they use for a way
-    # of working, whether or not anyone has watched them do it.
-    kind:
-      type: string
-      enum:
-        - term          # a word used with a stable meaning — the default, and most of them
-        - system        # a named system, service, codebase or environment
-        - process       # a named way of working; a WATCHED one is a `workflows` record
-        - artefact      # a kind of thing they produce — a spec, a deck, a runbook
-        - role          # a role, team or function they name
-        - person        # a handle or nickname no `perspective/users` record resolves
-        - place         # an office, a region, a physical or logical location
-        - metric        # a number they steer by
-        - event         # a recurring ceremony, review or ritual
-        - tool          # a product or vendor they name
-      default: term
-      description: >-
-        What the term names. `term` is the default and the honest answer for most vocabulary; reach
-        for a narrower kind only when the evidence supports it. A kind the list lacks is a hand-edit
-        of this descriptor, not a coined value.
-    # ── OUT INTO THE REAL WORLD ───────────────────────────────────────────────────────────────────
-    # A concept is a word this person uses; `related_to` says what it is a word FOR — the company, the
-    # person, the meeting series, the repo it names. Without it the vocabulary is a closed glossary
-    # that never touches anything the workspace already knows, and "who is 'the platform guy'" has no
-    # answer even when a contacts record for them is sitting there.
-    #
-    # A UNION, and a PEER one. The engine takes a list of targets, and it resolves a peer per
-    # COLLECTION rather than per module — peering `contacts` does not excuse `companies`, even where
-    # one module owns both. So every member is named in
-    # `dreamteamer.peerDependencies`, and the module still compiles alone with none of them installed.
-    # AND SOFT — `x-reference-soft: true`, the same keyword and the same reason as
-    # `perspective/users.real`: peering covers a collection nobody installed, softness covers a record
-    # somebody deleted. A term is a word for a thing that existed when the run heard it; the word does
-    # not stop having been used because the thing was later removed.
-    # NO `x-inverse`. A peer excuses a REFERENCE, never a MIRROR — stamping `concepts[]` onto a
-    # consumer's `contacts` would be this module writing into somebody else's schema.
-    related_to:
-      type: array
-      items:
-        type: string
-        x-reference: [contacts, companies, meetings, tasks, repos, users, teams, projects, phases, activities, activity-lanes, goals, deliverables, decisions]
-        x-reference-soft: true
-      description: >-
-        The REAL-WORLD records this term is a word for — a person, an organisation, a meeting series,
-        a team, a project, a stretch of its plan, a plan rung, a band of the plan, an outcome, an artefact owed,
-        a decision logged, a repo. Empty is the normal state for an abstract term; reach for it
-        when the concept NAMES something the workspace already holds. For something the RUN
-        reconstructed rather than something a person authored, use `classifies`.
-    # ── AND INTO THE OBSERVED WORLD ───────────────────────────────────────────────────────────────
-    # THIS is what "the retrospective models the world conceptually into classified concepts" means as
-    # a schema. `kind` above says what SORT of thing the term names (a system, a role, a process);
-    # this says WHICH ones. Two fields rather than one union, because the two halves differ in exactly
-    # the way that matters: `related_to`'s targets belong to other modules and must be soft, while
-    # these six are OURS and a dangling ref in them is a real defect this module wrote. Folding them
-    # into one soft union would silently give up that check on our own records.
-    #
-    # Mirrored, unlike `related_to`, and legitimately so: every target is a collection this module
-    # owns, so the mirror is not a write into somebody else's schema. The fan-in is small — a project
-    # is discussed in a handful of terms, not a thousand — and the read is the point: a world
-    # project's own page answers "what vocabulary is this effort discussed in".
-    classifies:
-      type: array
-      items:
-        type: string
-        x-reference: [perspective/users, perspective/projects, perspective/activities, perspective/goals, perspective/decisions, perspective/deliverables]
-        x-inverse: concepts
-      description: >-
-        The OBSERVED-world objects this MEANING is about — the people, efforts, work, outcomes, decisions and
-        artefacts the run reconstructed. One-way from the concept's side in the sense that matters: a world object never
-        points back by hand, the engine generates its `concepts` mirror. Empty is normal for a meaning that
-        names nothing the run rebuilt.
-        NOT THE SAME EDGE AS `terms.mentions`, and the difference is worth holding: `classifies` is what a
-        MEANING is ABOUT — broad, and the answer to "what vocabulary is this effort discussed in".
-        `terms.mentions` is where a WORD is LOAD-BEARING — narrow, and the answer to "what would a reader have
-        to know to understand this record". A world object routinely has many concepts and few terms.
-    origin:
-      type: string
-      enum: [workspace, conversation, ticket, commit, interview, email]
-      description: 'Where the term was found. workspace = a collection, skill or command that already defines it.'
-    source_ref: { type: string, description: 'For origin workspace: the entity that defines it, e.g. collections/projects or skills/running-retrospectives.' }
-    evidence: { type: array, items: { type: string }, description: Qualified refs to conversations, tickets or answered questions where it was used. }
-    evidence_count: { type: integer }
-    content: { type: string, format: markdown, x-body: true }
-    author:
-      type: string
-      pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
-      examples: ['agents/claude-code', 'scripts/read-git@2']
-      description: >-
-        Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a
-        reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
-    creation_context:
-      type: string
-      description: How and why this record came to be, in one line — and the reason whenever confidence is low.
-    source:
-      type: string
-      description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…>.'
-    confidence:
-      type: string
-      enum: [low, normal, high]
-      default: normal
-      description: How much to trust this record. When low, the reason goes in creation_context.
-list_fields: [name, kind, origin, evidence_count, terms]
-icon: symbol-keyword
-order: 120   # nav position — the model it reconstructed; the pipeline order, ten apart so one can be inserted without renumbering
+mixins:
+  - perspective-observation
+fields:
+  retrospective: {type: perspective/retrospective-sessions, required: true, description: The retrospective session that FIRST wrote this record.}
+  last_seen_in: {type: perspective/retrospective-sessions, description: 'The most recent session that confirmed or updated it. Absent means exactly one session has ever touched it, which is how "new since last time" is answered without a diff.'}
+  contributor: {type: string, required: true, pattern: '^[a-z0-9-]+$', description: 'WHOSE this is, as a slug — and the FIRST SEGMENT OF THE ID. That is what makes a second retrospective UPDATE this record instead of writing one beside it. A plain slug rather than a reference, because an id segment cannot be one; the person''s own observed-world record is perspective/users/<contributor>/<their-name-slug>.'}
+  name: {type: string, required: true}
+  definition:
+    type: string
+    description: >-
+      What it means TO THIS PERSON, in their words where the evidence has them. Written FROM the quoted uses in this concept's `terms` bodies, never ahead of them: a definition with no term under it is a word the run supplied, and it will read on the page exactly like one the person uses.
+  # ── WHAT KIND OF THING THE TERM NAMES ─────────────────────────────────────────────────────────
+  # `origin` below says where the term was FOUND; this says what it IS. Without it every concept
+  # reads as an undifferentiated glossary, and the two questions a reader actually has — "what
+  # systems does this person work on" and "what do they call their way of working" — cannot be
+  # asked.
+  #
+  # Some kinds overlap a collection, DELIBERATELY, and the rule is which one the person NAMED.
+  # `perspective/users` holds people the evidence identified; `person` here is a handle or nickname the
+  # contributor uses that no `perspective/users` record resolves ("the platform guy"). `workflows` holds a
+  # step order observed across three or more activities; `process` here is a name they use for a way
+  # of working, whether or not anyone has watched them do it.
+  kind:
+    type: string
+    default: term
+    enum:
+      - term # a word used with a stable meaning — the default, and most of them
+      - system # a named system, service, codebase or environment
+      - process # a named way of working; a WATCHED one is a `workflows` record
+      - artefact # a kind of thing they produce — a spec, a deck, a runbook
+      - role # a role, team or function they name
+      - person # a handle or nickname no `perspective/users` record resolves
+      - place # an office, a region, a physical or logical location
+      - metric # a number they steer by
+      - event # a recurring ceremony, review or ritual
+      - tool # a product or vendor they name
+    description: >-
+      What the term names. `term` is the default and the honest answer for most vocabulary; reach for a narrower kind only when the evidence supports it. A kind the list lacks is a hand-edit of this descriptor, not a coined value.
+  # ── OUT INTO THE REAL WORLD ───────────────────────────────────────────────────────────────────
+  # A concept is a word this person uses; `related_to` says what it is a word FOR — the company, the
+  # person, the meeting series, the repo it names. Without it the vocabulary is a closed glossary
+  # that never touches anything the workspace already knows, and "who is 'the platform guy'" has no
+  # answer even when a contacts record for them is sitting there.
+  #
+  # A UNION, and a PEER one. The engine takes a list of targets, and it resolves a peer per
+  # COLLECTION rather than per module — peering `contacts` does not excuse `companies`, even where
+  # one module owns both. So every member is named in
+  # `dreamteamer.peerDependencies`, and the module still compiles alone with none of them installed.
+  # AND SOFT — `x-reference-soft: true`, the same keyword and the same reason as
+  # `perspective/users.real`: peering covers a collection nobody installed, softness covers a record
+  # somebody deleted. A term is a word for a thing that existed when the run heard it; the word does
+  # not stop having been used because the thing was later removed.
+  # NO `x-inverse`. A peer excuses a REFERENCE, never a MIRROR — stamping `concepts[]` onto a
+  # consumer's `contacts` would be this module writing into somebody else's schema.
+  related_to:
+    type: string
+    many: true
+    description: >-
+      The REAL-WORLD records this term is a word for — a person, an organisation, a meeting series, a team, a project, a stretch of its plan, a plan rung, a band of the plan, an outcome, an artefact owed, a decision logged, a repo. Empty is the normal state for an abstract term; reach for it when the concept NAMES something the workspace already holds. For something the RUN reconstructed rather than something a person authored, use `classifies`.
+  # ── AND INTO THE OBSERVED WORLD ───────────────────────────────────────────────────────────────
+  # THIS is what "the retrospective models the world conceptually into classified concepts" means as
+  # a schema. `kind` above says what SORT of thing the term names (a system, a role, a process);
+  # this says WHICH ones. Two fields rather than one union, because the two halves differ in exactly
+  # the way that matters: `related_to`'s targets belong to other modules and must be soft, while
+  # these six are OURS and a dangling ref in them is a real defect this module wrote. Folding them
+  # into one soft union would silently give up that check on our own records.
+  #
+  # Mirrored, unlike `related_to`, and legitimately so: every target is a collection this module
+  # owns, so the mirror is not a write into somebody else's schema. The fan-in is small — a project
+  # is discussed in a handful of terms, not a thousand — and the read is the point: a world
+  # project's own page answers "what vocabulary is this effort discussed in".
+  classifies:
+    type:
+      - perspective/users
+      - perspective/projects
+      - perspective/activities
+      - perspective/goals
+      - perspective/decisions
+      - perspective/deliverables
+    many: true
+    description: >-
+      The OBSERVED-world objects this MEANING is about — the people, efforts, work, outcomes, decisions and artefacts the run reconstructed. One-way from the concept's side in the sense that matters: a world object never points back by hand, the engine generates its `concepts` mirror. Empty is normal for a meaning that names nothing the run rebuilt. NOT THE SAME EDGE AS `terms.mentions`, and the difference is worth holding: `classifies` is what a MEANING is ABOUT — broad, and the answer to "what vocabulary is this effort discussed in". `terms.mentions` is where a WORD is LOAD-BEARING — narrow, and the answer to "what would a reader have to know to understand this record". A world object routinely has many concepts and few terms.
+  origin:
+    type: string
+    required: true
+    enum: [workspace, conversation, ticket, commit, interview, email]
+    description: 'Where the term was found. workspace = a collection, skill or command that already defines it.'
+  source_ref: {type: string, description: 'For origin workspace: the entity that defines it, e.g. collections/projects or skills/running-retrospectives.'}
+  evidence: {type: string, many: true, description: Qualified refs to conversations}
+  evidence_count: {type: integer}
+  terms:
+    type: perspective/terms
+    many: true
+    mirror_of: concept
+    description: The words the evidence actually uses for this meaning — generated from `terms.concept`.
+  topics:
+    type: perspective/topics
+    many: true
+    mirror_of: concepts
+  content: {type: markdown, body: true}
+  author:
+    type: string
+    examples: ['agents/claude-code', 'scripts/read-git@2']
+    pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
+    description: >-
+      Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
+  creation_context:
+    type: string
+    description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+  source:
+    type: string
+    description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…>.'
+  confidence:
+    type: string
+    default: normal
+    enum: [low, normal, high]
+    description: How much to trust this record. When low, the reason goes in creation_context.
+display:
+  nav:
+    icon: symbol-keyword
+    order: 120
+  list:
+    columns:
+      - name
+      - kind
+      - origin
+      - evidence_count
+      - terms

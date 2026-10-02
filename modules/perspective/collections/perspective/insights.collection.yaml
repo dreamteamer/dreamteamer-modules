@@ -2,49 +2,50 @@
 # cites at least two and states a consequence. The same grain distinction as meta-analyses over
 # meeting-analyses. check-records refuses one with fewer than two findings.
 name: perspective/insights
-templates: [collection-templates/perspective-observation]
 description: A conclusion a retrospective draws across two or more findings, with the consequence it implies.
 use_when: >-
-  several findings point the same way and the 'so what' is worth stating once; a perspective's summary
-  leans on these; never write one on a single finding — that is the finding
-storage: { path: data/perspective/insights, codec: md, shape: file, suffix: insight }
-id:
-  generate: "{{ contributor }}/{{ name | slug }}"
+  several findings point the same way and the 'so what' is worth stating once; a perspective's summary leans on these; never write one on a single finding — that is the finding
+storage: {path: data/perspective/insights, format: md}
+ids:
+  from: "{{ contributor }}/{{ name | slug }}"
   pattern: "^[a-z0-9-]+/[a-z0-9-]+$"
-schema:
-  type: object
-  required: [retrospective, contributor, name, statement, findings]
-  properties:
-    retrospective: { type: string, x-reference: perspective/retrospective-sessions, description: The retrospective session that FIRST wrote this record. }
-    last_seen_in: { type: string, x-reference: perspective/retrospective-sessions, description: 'The most recent session that confirmed or updated it. Absent means exactly one session has ever touched it, which is how "new since last time" is answered without a diff.' }
-    contributor: { type: string, pattern: '^[a-z0-9-]+$', description: 'WHOSE this is, as a slug — and the FIRST SEGMENT OF THE ID. That is what makes a second retrospective UPDATE this record instead of writing one beside it. A plain slug rather than a reference, because an id segment cannot be one; the person''s own observed-world record is perspective/users/<contributor>/<their-name-slug>.' }
-    name: { type: string }
-    statement: { type: string, description: The conclusion in one or two sentences. }
-    findings:
-      type: array
-      items: { type: string, x-reference: perspective/findings }
-      x-inverse: insights
-      description: AT LEAST TWO.
-    consequence: { type: string, description: What follows for the person or the workspace. }
-    content: { type: string, format: markdown, x-body: true }
-    author:
-      type: string
-      pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
-      examples: ['agents/claude-code', 'scripts/read-git@2']
-      description: >-
-        Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a
-        reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
-    creation_context:
-      type: string
-      description: How and why this record came to be, in one line — and the reason whenever confidence is low.
-    source:
-      type: string
-      description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…>.'
-    confidence:
-      type: string
-      enum: [low, normal, high]
-      default: normal
-      description: How much to trust this record. When low, the reason goes in creation_context.
-list_fields: [name, confidence]
-icon: sparkle   # not `light-bulb` — not a codicon — the vocabulary is `lightbulb`, which `blurbs` already wears; an insight is the drawn-together conclusion
-order: 170   # nav position — what it concluded; the pipeline order, ten apart so one can be inserted without renumbering
+mixins:
+  - perspective-observation
+fields:
+  retrospective: {type: perspective/retrospective-sessions, required: true, description: The retrospective session that FIRST wrote this record.}
+  last_seen_in: {type: perspective/retrospective-sessions, description: 'The most recent session that confirmed or updated it. Absent means exactly one session has ever touched it, which is how "new since last time" is answered without a diff.'}
+  contributor: {type: string, required: true, pattern: '^[a-z0-9-]+$', description: 'WHOSE this is, as a slug — and the FIRST SEGMENT OF THE ID. That is what makes a second retrospective UPDATE this record instead of writing one beside it. A plain slug rather than a reference, because an id segment cannot be one; the person''s own observed-world record is perspective/users/<contributor>/<their-name-slug>.'}
+  name: {type: string, required: true}
+  statement: {type: string, required: true, description: The conclusion in one or two sentences.}
+  findings:
+    type: perspective/findings
+    required: true
+    many: true
+    description: AT LEAST TWO.
+  consequence: {type: string, description: What follows for the person or the workspace.}
+  content: {type: markdown, body: true}
+  author:
+    type: string
+    examples: ['agents/claude-code', 'scripts/read-git@2']
+    pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
+    description: >-
+      Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
+  creation_context:
+    type: string
+    description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+  source:
+    type: string
+    description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…>.'
+  confidence:
+    type: string
+    default: normal
+    enum: [low, normal, high]
+    description: How much to trust this record. When low, the reason goes in creation_context.
+display:
+  nav:
+    icon: sparkle
+    order: 170
+  list:
+    columns:
+      - name
+      - confidence

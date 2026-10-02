@@ -22,7 +22,7 @@
 	"dreamteamer": {
 		"title": "Companies",
 		"description": "An organisation — `companies`, the one record every module points at when it names one: a contact's employer, a meeting's counterpart, a project's client, a product's customer. Holds the name, what the company does, its website, domain, LinkedIn page and logo, and parent/subsidiary links. With `contacts` installed, each company also lists its people. Logos are `assets` records.",
-		"engine": ">=0.30.0",
+		"engine": ">=0.33.0",
 		"dependencies": [
 			"@dreamteamer/assets"
 		]

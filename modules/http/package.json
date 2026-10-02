@@ -29,6 +29,6 @@
 		"extension": "./src/extension.js",
 		"title": "HTTP",
 		"description": "dt serve: a JSON REST api at /api over a dreamteamer workspace, through the same validating store the CLI uses. Read, create, edit, reorder, revert and remove records; create and move collections and add, edit and rename fields, each behind a real compile; read history, presentation and bound commands; publish named pending writes. Loopback by default; a wider host needs a bearer token.",
-		"engine": ">=0.31.0"
+		"engine": ">=0.33.0"
 	}
 }

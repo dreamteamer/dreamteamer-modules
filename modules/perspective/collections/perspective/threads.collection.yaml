@@ -9,51 +9,55 @@
 name: perspective/threads
 description: One mail thread the contributor wrote in — subject, participants as handles, counts and dates. Counted, never judged; no bodies.
 use_when: >-
-  the gmail reader runs (it writes here); an activity, decision or finding needs a thread as evidence —
-  cite the record, never the URL; asked who a contributor corresponds with or what they were writing
-  about in a period, filter here by first_on and read `participants` and `subject`. The body of the
-  mail is NOT here by design — open `url` in the mail client when a pass has to read one
-storage: { path: data/perspective/threads, codec: md, shape: file, suffix: thread }
-id:
-  generate: "{{ contributor }}/{{ source | basename }}/{{ external_id }}"
+  the gmail reader runs (it writes here); an activity, decision or finding needs a thread as evidence — cite the record, never the URL; asked who a contributor corresponds with or what they were writing about in a period, filter here by first_on and read `participants` and `subject`. The body of the mail is NOT here by design — open `url` in the mail client when a pass has to read one
+storage: {path: data/perspective/threads, format: md}
+ids:
+  from: "{{ contributor }}/{{ source | basename }}/{{ external_id }}"
   pattern: "^[a-z0-9-]+/[a-z-]+--[a-z0-9-]+/[A-Za-z0-9_-]+$"
-schema:
-  type: object
-  required: [retrospective, contributor, source, external_id, subject]
-  properties:
-    retrospective: { type: string, x-reference: perspective/retrospective-sessions, description: The retrospective session that FIRST wrote this record. }
-    last_seen_in: { type: string, x-reference: perspective/retrospective-sessions, description: 'The most recent session that confirmed or updated it. Absent means exactly one session has ever touched it, which is how "new since last time" is answered without a diff.' }
-    contributor: { type: string, pattern: '^[a-z0-9-]+$', description: 'WHOSE this is, as a slug — and the FIRST SEGMENT OF THE ID. That is what makes a second retrospective UPDATE this record instead of writing one beside it. A plain slug rather than a reference, because an id segment cannot be one; the person''s own observed-world record is perspective/users/<contributor>/<their-name-slug>.' }
-    source: { type: string, x-reference: perspective/sources, description: The gmail source this was read from. }
-    external_id: { type: string, description: 'Gmail''s thread id. THE FORCING FIELD; the id is built from it.' }
-    subject: { type: string, description: 'The first message''s subject with Re:/Fwd: prefixes stripped — what the thread is ABOUT. The one text field, kept for the label seed.' }
-    participants: { type: array, items: { type: string }, description: 'Every address on the thread, lowercased, sorted — the contributor included. Joined to perspective/users.handles, never to a name.' }
-    message_count: { type: integer, description: Messages in the thread. }
-    contributor_messages: { type: integer, description: 'Of those, how many the contributor sent. A thread with 0 is never written — it is not their work.' }
-    first_on: { type: string, format: date, description: The first message's date. What the cluster pass places the thread on. }
-    last_on: { type: string, format: date }
-    url: { type: string, description: The thread in the mail client. Where a pass goes when it must read one. }
-    read_with: { type: string, description: 'Which reader version wrote this — `read-gmail@1`.' }
-    content:
-      type: string
-      format: markdown
-      x-body: true
-      description: One line of counts and dates, then the participants as handles. Never the mail.
-    author:
-      type: string
-      pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
-      examples: ['agents/claude-code', 'scripts/read-git@2']
-      description: >-
-        Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a
-        reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
-    creation_context:
-      type: string
-      description: How and why this record came to be, in one line — and the reason whenever confidence is low.
-    confidence:
-      type: string
-      enum: [low, normal, high]
-      default: normal
-      description: How much to trust this record. When low, the reason goes in creation_context.
-list_fields: [subject, first_on, message_count, contributor_messages, participants]
-icon: mail
-order: 60   # nav position — the evidence it condensed; the pipeline order, ten apart so one can be inserted without renumbering
+fields:
+  retrospective: {type: perspective/retrospective-sessions, required: true, description: The retrospective session that FIRST wrote this record.}
+  last_seen_in: {type: perspective/retrospective-sessions, description: 'The most recent session that confirmed or updated it. Absent means exactly one session has ever touched it, which is how "new since last time" is answered without a diff.'}
+  contributor: {type: string, required: true, pattern: '^[a-z0-9-]+$', description: 'WHOSE this is, as a slug — and the FIRST SEGMENT OF THE ID. That is what makes a second retrospective UPDATE this record instead of writing one beside it. A plain slug rather than a reference, because an id segment cannot be one; the person''s own observed-world record is perspective/users/<contributor>/<their-name-slug>.'}
+  source: {type: perspective/sources, required: true, description: The gmail source this was read from.}
+  external_id: {type: string, required: true, description: 'Gmail''s thread id. THE FORCING FIELD; the id is built from it.'}
+  subject: {type: string, required: true, description: 'The first message''s subject with Re:/Fwd: prefixes stripped — what the thread is ABOUT. The one text field, kept for the label seed.'}
+  participants: {type: string, many: true, description: 'Every address on the thread, lowercased, sorted — the contributor included. Joined to perspective/users.handles, never to a name.'}
+  message_count: {type: integer, description: Messages in the thread.}
+  contributor_messages: {type: integer, description: 'Of those, how many the contributor sent. A thread with 0 is never written — it is not their work.'}
+  first_on: {type: date, description: The first message's date. What the cluster pass places the thread on.}
+  last_on: {type: date}
+  url: {type: string, description: The thread in the mail client. Where a pass goes when it must read one.}
+  read_with: {type: string, description: 'Which reader version wrote this — `read-gmail@1`.'}
+  activities:
+    type: perspective/activities
+    many: true
+    mirror_of: threads
+  content:
+    type: markdown
+    body: true
+    description: One line of counts and dates, then the participants as handles. Never the mail.
+  author:
+    type: string
+    examples: ['agents/claude-code', 'scripts/read-git@2']
+    pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
+    description: >-
+      Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
+  creation_context:
+    type: string
+    description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+  confidence:
+    type: string
+    default: normal
+    enum: [low, normal, high]
+    description: How much to trust this record. When low, the reason goes in creation_context.
+display:
+  nav:
+    icon: mail
+    order: 60
+  list:
+    columns:
+      - subject
+      - first_on
+      - message_count
+      - contributor_messages
+      - participants

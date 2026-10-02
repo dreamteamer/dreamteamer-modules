@@ -23,6 +23,6 @@
 		"extension": "./src/extension.js",
 		"title": "Proofs",
 		"description": "Behaviour proofs for a dreamteamer workspace's skills, commands, command-bindings and module scripts. `dt prove` runs a proof and answers with an exit code — 0 pass · 1 fail · 3 unavailable · 4 no-fixture · 5 pending · 6 vacuous — and keeps the evidence per machine. Adds the `proofs` source kind and collection, validation of every proof at compile, and the `proving-artifacts` skill.",
-		"engine": ">=0.31.0"
+		"engine": ">=0.33.0"
 	}
 }

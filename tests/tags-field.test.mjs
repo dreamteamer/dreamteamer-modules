@@ -1,5 +1,5 @@
 // EVERY `tags` FIELD IS THE SAME FIELD. A tag is a free label, lowercase and hyphenated, optionally
-// `key:value` with no space around the colon. The pattern on `items` is what enforces it: `dt add`
+// `key:value` with no space around the colon. The field's pattern is what enforces it: `dt add`
 // and `dt check` refuse a value that breaks it, so no descriptor restates the rule in prose and no
 // module ships a script to police it. Each descriptor may add one `examples:` line of its own.
 //
@@ -16,8 +16,9 @@ const MODULES = path.join(ROOT, 'modules');
 
 const PATTERN = '^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$';
 const DEFINITION = {
-	type: 'array',
-	items: { type: 'string', pattern: PATTERN },
+	type: 'string',
+	many: true,
+	pattern: PATTERN,
 	description: 'Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.',
 };
 const EXTERNAL = {
@@ -36,12 +37,12 @@ function walk(dir, out = []) {
 }
 
 const descriptors = fs.readdirSync(MODULES).flatMap((m) =>
-	['collections', 'collection-templates'].flatMap((k) => walk(path.join(MODULES, m, k))))
+	['collections', 'mixins'].flatMap((k) => walk(path.join(MODULES, m, k))))
 	.filter((f) => f.endsWith('.yaml'));
 
 const withTags = descriptors
 	.map((f) => ({ rel: path.relative(MODULES, f), doc: yaml.load(fs.readFileSync(f, 'utf8')) }))
-	.filter(({ doc }) => doc?.schema?.properties?.tags);
+	.filter(({ doc }) => doc?.fields?.tags);
 
 test('the scan finds the tags fields it is meant to check', () => {
 	assert.ok(withTags.length >= 20, `only ${withTags.length} descriptors declare tags; the walk is broken`);
@@ -50,7 +51,7 @@ test('the scan finds the tags fields it is meant to check', () => {
 for (const { rel, doc } of withTags) {
 	if (EXTERNAL[rel]) continue;
 	test(`${rel}: tags is the shared definition`, () => {
-		const { examples, ...field } = doc.schema.properties.tags;
+		const { examples, ...field } = doc.fields.tags;
 		assert.deepEqual(field, DEFINITION);
 		if (examples === undefined) return;
 		assert.ok(Array.isArray(examples) && examples.length, 'examples is one non-empty list');

@@ -1,111 +1,100 @@
 name: users
 description: >-
-  One person or agent who does work this workspace tracks — what the `owner`, `lead`, `seat` and `assignee` fields
-  of other modules point at. Distinct from `contacts`, which is the outside world you deal with: a contact is someone you have a
-  relationship WITH, a user is someone work is assigned TO. The two are linked, not merged (`contact`), because a
-  person is routinely both and a workspace with no CRM still needs somewhere to hang an assignment.
+  One person or agent who does work this workspace tracks — what the `owner`, `lead`, `seat` and `assignee` fields of other modules point at. Distinct from `contacts`, which is the outside world you deal with: a contact is someone you have a relationship WITH, a user is someone work is assigned TO. The two are linked, not merged (`contact`), because a person is routinely both and a workspace with no CRM still needs somewhere to hang an assignment.
 use_when: >-
-  work is being assigned, a plan needs a lead or a seat, or a person asks "what is mine" — every one of those fields
-  resolves here, and the mirrors the installed modules stamp onto this record (their tasks, meetings, activities, led
-  projects and the like) are that person's page. Create a user for anyone who carries work, including yourself and
-  someone who has no login; link their `contacts` record where one exists rather than retyping their details
-storage: { path: data/users, codec: md, shape: file, suffix: user }
+  work is being assigned, a plan needs a lead or a seat, or a person asks "what is mine" — every one of those fields resolves here, and the mirrors the installed modules stamp onto this record (their tasks, meetings, activities, led projects and the like) are that person's page. Create a user for anyone who carries work, including yourself and someone who has no login; link their `contacts` record where one exists rather than retyping their details
+storage: {path: data/users, format: md}
 # an entity: the slug of a person's name is what someone types looking for them. A name with no
 # Latin letters slugs to a hash, so pass `--id` with a readable handle for one.
-id:
-  generate: '{{ name | slug }}'
+ids:
+  from: "{{ name | slug }}"
   pattern: ^[a-z0-9][a-z0-9-]*$
-schema:
-  type: object
-  required: [name]
-  properties:
-    name:
-      type: string
-      description: The person's name as they are addressed — the id is its slug.
-    email:
-      type: string
-      description: Their working address. Not an account and not a login — the workspace authenticates nobody; this is how a human reaches them.
-    handles:
-      type: array
-      items: { type: string }
-      description: >-
-        Every other string this person appears as — a git author, a chat handle, a ticket assignee — for matching
-        a name found elsewhere to this record.
-      examples: ['dana.o@northwind.example', 'dana-oren', 'doren']
-    role:
-      type: string
-      description: >-
-        What they do, in this workspace's own words — "implementation lead", "QA", "founder". Free text on purpose: a closed enum here would be wrong for the second workspace that installed it.
-    # Agents are users so the same `seats`, `lead` and `owner` fields can point at either kind of worker.
-    kind:
-      type: string
-      enum: [human, agent]
-      default: human
-      description: >-
-        Whether this worker is a person or an agent. An agent can hold the same seats, leads and ownerships a
-        person does, and an `agent` row must name its `human_owner`.
-    human_owner:
-      type: string
-      x-reference: users
-      x-inverse:
-        field: owned_agents
-        description: The agents this person owns — generated from `users.human_owner`.
-      description: >-
-        The human accountable for everything this agent does, and the one a gate escalates to. Required when
-        `kind` is `agent`, and the owner must be a human (`bin/check-records.mjs` enforces both); empty on a
-        person. Name one person per agent, not a team.
-    agent:
-      type: string
-      description: >-
-        For `kind: agent` — which agent entity this row is, as `agents/<id>`, so the worker on the plan and the
-        dispatchable agent under `modules/*/agents/` are one thing with two addresses. A plain string, not a
-        reference: the agents kind is engine-owned and this module does not point into it.
-    contact:
-      type: string
-      x-reference: contacts
-      description: This person's `contacts` record, where the workspace keeps one — so their phone, company and history are not retyped here. Empty is normal for an internal person nobody sells to.
-    company:
-      type: string
-      x-reference: companies
-      description: Which organisation they work for — the vendor, the client, a subcontractor. What makes "who on their side holds this" answerable.
-    avatar:
-      type: string
-      x-reference: assets
-      description: Their picture, as an `assets/avatars/<id>` reference. Optional; a view falls back to initials.
-    status:
-      type: string
-      enum: [active, inactive]
-      default: active
-      description: '`inactive` keeps the person addressable in history without offering them as an assignee — never delete a user who carries past work.'
-    tags:
-      type: array
-      items:
-        type: string
-        pattern: '^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$'
-      description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
-    notes:
-      type: string
-      format: markdown
-      x-body: true
-      description: What this person carries that no field says — how they like to work, what they own, what they are not to be asked.
-    author:
-      type: string
-      pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
-      examples: ['agents/claude-code', 'scripts/read-git@2']
-      description: >-
-        Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a
-        reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
-    creation_context:
-      type: string
-      description: How and why this record came to be, in one line — and the reason whenever confidence is low.
-    source:
-      type: string
-      description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…> · migration:<id>.'
-    confidence:
-      type: string
-      enum: [low, normal, high]
-      default: normal
-      description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
-order: 6
-list_fields: [name, role, company, status, last-modified]
-icon: person
+fields:
+  name:
+    type: string
+    required: true
+    description: The person's name as they are addressed — the id is its slug.
+  email:
+    type: string
+    description: Their working address. Not an account and not a login — the workspace authenticates nobody; this is how a human reaches them.
+  handles:
+    type: string
+    many: true
+    examples: ['dana.o@northwind.example', 'dana-oren', 'doren']
+    description: >-
+      Every other string this person appears as — a git author, a chat handle, a ticket assignee — for matching a name found elsewhere to this record.
+  role:
+    type: string
+    description: >-
+      What they do, in this workspace's own words — "implementation lead", "QA", "founder". Free text on purpose: a closed enum here would be wrong for the second workspace that installed it.
+  # Agents are users so the same `seats`, `lead` and `owner` fields can point at either kind of worker.
+  kind:
+    type: string
+    default: human
+    enum: [human, agent]
+    description: >-
+      Whether this worker is a person or an agent. An agent can hold the same seats, leads and ownerships a person does, and an `agent` row must name its `human_owner`.
+  human_owner:
+    type: users
+    description: >-
+      The human accountable for everything this agent does, and the one a gate escalates to. Required when `kind` is `agent`, and the owner must be a human (`bin/check-records.mjs` enforces both); empty on a person. Name one person per agent, not a team.
+  agent:
+    type: string
+    description: >-
+      For `kind: agent` — which agent entity this row is, as `agents/<id>`, so the worker on the plan and the dispatchable agent under `modules/*/agents/` are one thing with two addresses. A plain string, not a reference: the agents kind is engine-owned and this module does not point into it.
+  contact:
+    type: contacts
+    description: This person's `contacts` record, where the workspace keeps one — so their phone, company and history are not retyped here. Empty is normal for an internal person nobody sells to.
+  company:
+    type: companies
+    description: Which organisation they work for — the vendor, the client, a subcontractor. What makes "who on their side holds this" answerable.
+  avatar:
+    type: assets
+    description: Their picture, as an `assets/avatars/<id>` reference. Optional; a view falls back to initials.
+  status:
+    type: string
+    default: active
+    enum: [active, inactive]
+    description: '`inactive` keeps the person addressable in history without offering them as an assignee — never delete a user who carries past work.'
+  tags:
+    type: string
+    many: true
+    pattern: ^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$
+    description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
+  owned_agents:
+    type: users
+    many: true
+    mirror_of: human_owner
+    description: The agents this person owns — generated from `users.human_owner`.
+  notes:
+    type: markdown
+    body: true
+    description: What this person carries that no field says — how they like to work, what they own, what they are not to be asked.
+  author:
+    type: string
+    examples: ['agents/claude-code', 'scripts/read-git@2']
+    pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
+    description: >-
+      Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
+  creation_context:
+    type: string
+    description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+  source:
+    type: string
+    description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…> · migration:<id>.'
+  confidence:
+    type: string
+    default: normal
+    enum: [low, normal, high]
+    description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
+display:
+  nav:
+    icon: person
+    order: 6
+  list:
+    columns:
+      - name
+      - role
+      - company
+      - status
+      - last_modified

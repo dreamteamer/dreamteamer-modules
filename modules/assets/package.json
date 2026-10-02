@@ -20,6 +20,6 @@
 	"dreamteamer": {
 		"title": "Assets",
 		"description": "Small pictures a workspace draws — icons, logos, avatars, illustrations — each stored as a file record of 200 KB at most. Other modules point at them by id: a picture a record draws is keyed by that record (`avatars/<person-id>`, `logos/<company-id>`), one from an icon set by set and name (`icons/<set>/<name>`). Each set's licence is listed once in the README. Ships no records.",
-		"engine": ">=0.30.0"
+		"engine": ">=0.33.0"
 	}
 }

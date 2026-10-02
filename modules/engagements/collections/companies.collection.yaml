@@ -1,0 +1,8 @@
+name: companies
+overlay: true
+fields:
+  engagements:
+    type: engagements
+    many: true
+    mirror_of: company
+    description: The engagements with this company, sold or delivered — generated from `engagements.company`.

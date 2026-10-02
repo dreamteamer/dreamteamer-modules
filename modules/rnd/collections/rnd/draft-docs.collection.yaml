@@ -1,86 +1,80 @@
 name: rnd/draft-docs
 description: >-
-  A working document still being written — the scratch space anything longer than a record starts in, and
-  stays in until it becomes something else.
+  A working document still being written — the scratch space anything longer than a record starts in, and stays in until it becomes something else.
 use_when: >-
-  anything longer than a record is being written and is not yet a design doc or a research doc —
-  start it here, and move it out when it becomes one of those; "where is the draft of X" is a
-  list here. An implementation plan is a draft here until what it plans has shipped
-storage: { path: data/rnd/draft-docs, codec: md, shape: file, suffix: draft}
-id:
-  generate: "{{ created | date }}--{{ name | slug }}"
+  anything longer than a record is being written and is not yet a design doc or a research doc — start it here, and move it out when it becomes one of those; "where is the draft of X" is a list here. An implementation plan is a draft here until what it plans has shipped
+storage: {path: data/rnd/draft-docs, format: md, suffix: draft}
+ids:
+  from: "{{ created | date }}--{{ name | slug }}"
   pattern: "^\\d{4}-\\d{2}-\\d{2}--[a-z0-9-]+$"
-schema:
-  type: object
-  required: [name]
-  properties:
-    name:
-      type: string
-      description: What this draft is called.
-    description:
-      type: string
-      description: One line on what is being worked out here.
-    media_folder:
-      examples: ['${env:FILES_FOLDER}/rnd/draft-docs/2026-09-10-portal-rollout/media']
-      type: string
-      description: >-
-        Where this record's media lives — explainer videos, audio overviews, decks, infographics, screen
-        recordings — as a FULL `${env:FILES_FOLDER}/rnd/draft-docs/<this record's id>/media` template, never a machine
-        path; `dt resolve` renders it. The bytes stay OUTSIDE the repo: an `assets` record is a small file the
-        UI draws, this is megabytes for people to watch. What generated each piece, and against which corpus,
-        goes in this record's body — a folder cannot say whether its media is still current.
-    content:
-      type: string
-      format: markdown
-      x-body: true
-      description: The draft itself — thinking in progress, or a finished deliverable once `status` says so.
-    tags:
-      type: array
-      items:
-        type: string
-        pattern: '^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$'
-      examples: ['portal', 'design', 'files']
-      description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
-    # A finished deliverable and a working draft are one collection with a `status` enum, because a
-    # lifecycle is all that separates them. `status: complete` means "safe to quote from".
-    date:
-      type: string
-      format: date
-      description: The date the document covers or was written for. Absent on a working draft.
-    status:
-      type: string
-      enum: [draft, review, complete]
-      description: Where this stands. A `complete` document is safe to quote from; absent means draft.
-    purpose:
-      type: string
-      description: What this is FOR and how it is meant to be used. Earns its place on a deliverable, not on a sketch.
-    requested_by:
-      type: string
-      description: >-
-        Who asked for it, when someone other than you did — a `contacts/<id>`, or `agents/<harness>`.
-        Absent means you, the same convention every other who-field here uses.
-    sources:
-      type: array
-      items: { type: string }
-      description: What this was written from, so its claims stay traceable.
-    author:
-      type: string
-      pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
-      examples: ['agents/claude-code', 'scripts/read-git@2']
-      description: >-
-        Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a
-        reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
-    creation_context:
-      type: string
-      description: How and why this record came to be, in one line — and the reason whenever confidence is low.
-    source:
-      type: string
-      description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…> · migration:<id>.'
-    confidence:
-      type: string
-      enum: [low, normal, high]
-      default: normal
-      description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
-order: 70
-list_fields: [name, status, date, last-modified, tags]
-icon: edit
+fields:
+  name:
+    type: string
+    required: true
+    description: What this draft is called.
+  description:
+    type: string
+    description: One line on what is being worked out here.
+  media_folder:
+    type: string
+    examples: ['${env:FILES_FOLDER}/rnd/draft-docs/2026-09-10-portal-rollout/media']
+    description: >-
+      Where this record's media lives — explainer videos, audio overviews, decks, infographics, screen recordings — as a FULL `${env:FILES_FOLDER}/rnd/draft-docs/<this record's id>/media` template, never a machine path; `dt resolve` renders it. The bytes stay OUTSIDE the repo: an `assets` record is a small file the UI draws, this is megabytes for people to watch. What generated each piece, and against which corpus, goes in this record's body — a folder cannot say whether its media is still current.
+  content:
+    type: markdown
+    body: true
+    description: The draft itself — thinking in progress, or a finished deliverable once `status` says so.
+  tags:
+    type: string
+    many: true
+    examples: ['portal', 'design', 'files']
+    pattern: ^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$
+    description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
+  # A finished deliverable and a working draft are one collection with a `status` enum, because a
+  # lifecycle is all that separates them. `status: complete` means "safe to quote from".
+  date:
+    type: date
+    description: The date the document covers or was written for. Absent on a working draft.
+  status:
+    type: string
+    enum: [draft, review, complete]
+    description: Where this stands. A `complete` document is safe to quote from; absent means draft.
+  purpose:
+    type: string
+    description: What this is FOR and how it is meant to be used. Earns its place on a deliverable, not on a sketch.
+  requested_by:
+    type: string
+    description: >-
+      Who asked for it, when someone other than you did — a `contacts/<id>`, or `agents/<harness>`. Absent means you, the same convention every other who-field here uses.
+  sources:
+    type: string
+    many: true
+    description: What this was written from, so its claims stay traceable.
+  author:
+    type: string
+    examples: ['agents/claude-code', 'scripts/read-git@2']
+    pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
+    description: >-
+      Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
+  creation_context:
+    type: string
+    description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+  source:
+    type: string
+    description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…> · migration:<id>.'
+  confidence:
+    type: string
+    default: normal
+    enum: [low, normal, high]
+    description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
+display:
+  nav:
+    icon: edit
+    order: 70
+  list:
+    columns:
+      - name
+      - status
+      - date
+      - last_modified
+      - tags

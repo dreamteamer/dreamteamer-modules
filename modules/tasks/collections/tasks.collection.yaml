@@ -3,137 +3,101 @@ description: A concrete commitment, starting with a verb — what would be done,
 use_when: a concrete commitment surfaces — in a meeting, a chat, a plan — capture it here with a verb and, whenever a date was actually said, the absolute `due`; pass `--lane` when the domain is clear (the workspace's own lane vocabulary) and leave it empty when it is not — the field is optional and the board has an "unassigned" pile for the residue; asked "what do I owe", list here by due date
 storage:
   path: data/tasks
-  codec: md
-  shape: file
-  suffix: task
-id:
+  format: md
+ids:
   # The first template whose fields are all present wins: `slug` when set, the name otherwise.
   # `{{ slug }}` is the field; `{{ name | slug }}` is the name through the slug filter.
-  generate:
-    - '{{ created | date }}--{{ slug }}'
-    - '{{ created | date }}--{{ name | slug }}'
+  from:
+    - "{{ created | date }}--{{ slug }}"
+    - "{{ created | date }}--{{ name | slug }}"
   pattern: ^\d{4}-\d{2}-\d{2}--[a-z0-9-]+$
-schema:
-  type: object
-  required:
-    - name
-  properties:
-    slug: { type: string, pattern: '^[a-z0-9][a-z0-9-]*$', title: Slug, description: 'Optional latin handle that becomes the id. Set it when the name is not in latin script — otherwise the id is a hash nobody can read or type. Never shown in place of the name.' }
-    name:
-      type: string
-      description: The commitment in one line, starting with a verb — what would be done, not the topic.
-    lane:
-      type: string
-      description: >-
-        Which lane this task sits in on the board — the DOMAIN it is about, not who surfaced it. OPTIONAL: a task with
-        no lane still lands on the board, under an "unassigned" pile. The VOCABULARY is the workspace's own — this
-        module ships no enum, because every workspace splits its work differently (one by client, one by department,
-        one by area of life). Pick a short set of display-ready values (`CRM`, `Finance`, `R&D`) and use them
-        consistently: the board groups its rows by the raw value, so `finance` and `Finance` are two lanes. Infer from
-        the task's ACTUAL WORK, not where it was surfaced. To close the set, give the field an `enum` in a workspace
-        overlay of this collection.
-    description:
-      type: string
-      format: markdown
-      x-body: true
-      description: The detail — what was actually said, what "done" looks like, and a backlink to the record this came out of.
-    status:
-      type: string
-      enum:
-        - todo
-        - doing
-        - blocked
-        - done
-        - closed
-      default: todo
-      description: >-
-        Where this stands. `todo` is not started. `doing` is in flight. `blocked` means the next move belongs to a named
-        party you are waiting on — it stays on the board because it needs chasing, but it is not work you can pick up.
-        `done` means the commitment was met; `closed` means it left
-        the board WITHOUT being met — superseded, split into others, overtaken by events, or decided against. `done` and
-        `closed` are terminal; the distinction is what makes "what did I actually deliver" answerable later.
-    project:
-      type: string
-      x-reference: projects
-      x-inverse:
-        field: tasks
-        description: The tasks raised under this project — generated from `tasks.project`.
-      description: The project this task belongs to, when it came out of one. Empty is normal — most tasks are not plan rungs.
-    activity:
-      type: string
-      x-reference: activities
-      x-inverse:
-        field: tasks
-        description: The tasks raised under this plan rung — generated from `tasks.activity`.
-      description: The plan rung this task came out of, when it did. A task is the small thing you do; an activity is the bounded piece of work it serves.
-    # `assignee` points at `users`, never `contacts`: a task is owed by someone who does work here, and
-    # the generated mirror lets that person's own record list what they owe.
-    assignee:
-      type: string
-      x-reference: users
-      x-inverse:
-        field: tasks
-        description: The tasks assigned to this person — generated from `tasks.assignee`.
-      description: >-
-        Who owes this. Empty means the workspace's own person, so a workspace with one person never has to
-        fill it in.
-    due:
-      type: string
-      format: date
-      description: The date this is owed by, resolved to an absolute date — never "next week".
-    urgent:
-      type: boolean
-      default: false
-      description: Whether this jumps the queue regardless of its due date.
-    item:
-      type: string
-      x-reference: '*'
-      description: The record this task came out of — a meeting, a summary, a client. Polymorphic, hence "*".
-    confidence:
-      type: string
-      enum:
-        - low
-        - normal
-        - high
-      default: normal
-      description: How sure the writer was that this really is a task someone in the workspace owns.
-    tags:
-      type: array
-      items:
-        type: string
-        pattern: '^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$'
-      examples: ['client:northwind', 'finance', 'decision']
-      description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
-    assistant_recommended_next_step:
-      type: string
-      format: markdown
-      description: >-
-        The single next move the assistant recommends, written in the reader's language and refreshed whenever the record is
-        analysed. Opens with the CURRENT STATE in one line — what is true now, who holds the ball, how long it has sat —
-        because a recommendation without its context reads as an order. Then the move itself, and why that one rather
-        than the obvious alternative. This field is ANALYSIS, not a UI hint: it is written when the record is examined,
-        so the board can be read rather than re-derived. Absent means nobody has analysed this record yet, which is
-        itself worth seeing.
-    author:
-      type: string
-      pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
-      examples: ['agents/claude-code', 'scripts/read-git@2']
-      description: >-
-        Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a
-        reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
-    creation_context:
-      type: string
-      description: How and why this record came to be, in one line — and the reason whenever confidence is low.
-    source:
-      type: string
-      description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…> · migration:<id>.'
-order: 3
-list_fields:
-  - name
-  - assignee
-  - lane
-  - last-modified
-  - status
-  - due
-  - tags
-icon: checklist
+fields:
+  slug: {type: string, title: Slug, pattern: '^[a-z0-9][a-z0-9-]*$', description: 'Optional latin handle that becomes the id. Set it when the name is not in latin script — otherwise the id is a hash nobody can read or type. Never shown in place of the name.'}
+  name:
+    type: string
+    required: true
+    description: The commitment in one line, starting with a verb — what would be done, not the topic.
+  lane:
+    type: string
+    description: >-
+      Which lane this task sits in on the board — the DOMAIN it is about, not who surfaced it. OPTIONAL: a task with no lane still lands on the board, under an "unassigned" pile. The VOCABULARY is the workspace's own — this module ships no enum, because every workspace splits its work differently (one by client, one by department, one by area of life). Pick a short set of display-ready values (`CRM`, `Finance`, `R&D`) and use them consistently: the board groups its rows by the raw value, so `finance` and `Finance` are two lanes. Infer from the task's ACTUAL WORK, not where it was surfaced. To close the set, give the field an `enum` in a workspace overlay of this collection.
+  description:
+    type: markdown
+    body: true
+    description: The detail — what was actually said, what "done" looks like, and a backlink to the record this came out of.
+  status:
+    type: string
+    default: todo
+    enum:
+      - todo
+      - doing
+      - blocked
+      - done
+      - closed
+    description: >-
+      Where this stands. `todo` is not started. `doing` is in flight. `blocked` means the next move belongs to a named party you are waiting on — it stays on the board because it needs chasing, but it is not work you can pick up. `done` means the commitment was met; `closed` means it left the board WITHOUT being met — superseded, split into others, overtaken by events, or decided against. `done` and `closed` are terminal; the distinction is what makes "what did I actually deliver" answerable later.
+  project:
+    type: projects
+    description: The project this task belongs to, when it came out of one. Empty is normal — most tasks are not plan rungs.
+  activity:
+    type: activities
+    description: The plan rung this task came out of, when it did. A task is the small thing you do; an activity is the bounded piece of work it serves.
+  # `assignee` points at `users`, never `contacts`: a task is owed by someone who does work here, and
+  # the generated mirror lets that person's own record list what they owe.
+  assignee:
+    type: users
+    description: >-
+      Who owes this. Empty means the workspace's own person, so a workspace with one person never has to fill it in.
+  due:
+    type: date
+    description: The date this is owed by, resolved to an absolute date — never "next week".
+  urgent:
+    type: boolean
+    default: false
+    description: Whether this jumps the queue regardless of its due date.
+  item:
+    type: reference
+    description: The record this task came out of — a meeting, a summary, a client. Polymorphic, hence "*".
+  confidence:
+    type: string
+    default: normal
+    enum:
+      - low
+      - normal
+      - high
+    description: How sure the writer was that this really is a task someone in the workspace owns.
+  tags:
+    type: string
+    many: true
+    examples: ['client:northwind', 'finance', 'decision']
+    pattern: ^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$
+    description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
+  assistant_recommended_next_step:
+    type: markdown
+    description: >-
+      The single next move the assistant recommends, written in the reader's language and refreshed whenever the record is analysed. Opens with the CURRENT STATE in one line — what is true now, who holds the ball, how long it has sat — because a recommendation without its context reads as an order. Then the move itself, and why that one rather than the obvious alternative. This field is ANALYSIS, not a UI hint: it is written when the record is examined, so the board can be read rather than re-derived. Absent means nobody has analysed this record yet, which is itself worth seeing.
+  author:
+    type: string
+    examples: ['agents/claude-code', 'scripts/read-git@2']
+    pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
+    description: >-
+      Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
+  creation_context:
+    type: string
+    description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+  source:
+    type: string
+    description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…> · migration:<id>.'
+display:
+  nav:
+    icon: checklist
+    order: 3
+  list:
+    columns:
+      - name
+      - assignee
+      - lane
+      - last_modified
+      - status
+      - due
+      - tags

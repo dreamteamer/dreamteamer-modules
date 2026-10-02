@@ -1,75 +1,73 @@
 name: companies
 description: >-
-  An organisation — the record a contact, meeting, project, user, product or notebook names when it
-  names a company.
+  An organisation — the record a contact, meeting, project, user, product or notebook names when it names a company.
 use_when: >-
-  an organisation is named — a contact's employer, a meeting's counterpart, a product's customer —
-  find or create it here before the record that points at it
-storage: { path: data/companies, codec: md, shape: file, suffix: company }
-id: { generate: "{{ name | slug }}" }
-schema:
-  type: object
-  required: [name]
-  properties:
-    name:
-      type: string
-      description: The company's name as it is actually written — the record's id is its slug.
-    description:
-      type: string
-      description: One line on what this company does, for someone who has never heard of it.
-    relation:
-      type: string
-      description: 'How this company relates to you: client, network, employer, vendor, prospect…'
-    website:
-      type: string
-      format: uri
-      description: Their marketing site, with the scheme.
-    domain:
-      type: string
-      description: Primary email/web domain, bare — no scheme, no www. The part of an email address that identifies this company.
-    linkedin:
-      type: string
-      format: uri
-      description: The company's LinkedIn PAGE (linkedin.com/company/<slug>) — the org-level twin of contacts.linkedin.
-    logo:
-      type: string
-      x-reference: assets
-      description: The company's mark, as an asset record — `assets/logos/<this company's id>` for an icon fetched from its site, or a Simple Icons slug when the brand is in that set. Drawn wherever this company is shown.
-    parent:
-      type: string
-      x-reference: companies
-      description: The parent org, when this one is a subsidiary, brand or business unit.
-    # Read-only: the engine maintains it from `parent` on each subsidiary, in the same write.
-    # `contacts` is not declared here — the contacts module adds `companies.contacts` when installed.
-    subsidiaries:
-      type: array
-      items: { type: string, x-reference: companies }
-      x-inverse-of: companies.parent
-      description: The orgs that name this one as their parent — brands, business units, companies acquired.
-    notes:
-      type: string
-      format: markdown
-      x-body: true
-      description: The company's page — your history with it, org shape, anything worth knowing before a call.
-    author:
-      type: string
-      pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
-      examples: ['agents/claude-code', 'scripts/read-git@2']
-      description: >-
-        Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a
-        reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
-    creation_context:
-      type: string
-      description: How and why this record came to be, in one line — and the reason whenever confidence is low.
-    source:
-      type: string
-      description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: calendar:<id> · <collection>/<id> · file:<path> · url:<…> · linkedin:<slug> · migration:<id>.'
-    confidence:
-      type: string
-      enum: [low, normal, high]
-      default: normal
-      description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
-order: 11
-list_fields: [logo, name, last-modified, relation, website]
-icon: briefcase
-group: crm
+  an organisation is named — a contact's employer, a meeting's counterpart, a product's customer — find or create it here before the record that points at it
+storage: {path: data/companies, format: md}
+ids: {from: "{{ name | slug }}"}
+fields:
+  name:
+    type: string
+    required: true
+    description: The company's name as it is actually written — the record's id is its slug.
+  description:
+    type: string
+    description: One line on what this company does, for someone who has never heard of it.
+  relation:
+    type: string
+    description: 'How this company relates to you: client, network, employer, vendor, prospect…'
+  website:
+    type: url
+    description: Their marketing site, with the scheme.
+  domain:
+    type: string
+    description: Primary email/web domain, bare — no scheme, no www. The part of an email address that identifies this company.
+  linkedin:
+    type: url
+    description: The company's LinkedIn PAGE (linkedin.com/company/<slug>) — the org-level twin of contacts.linkedin.
+  logo:
+    type: assets
+    description: The company's mark, as an asset record — `assets/logos/<this company's id>` for an icon fetched from its site, or a Simple Icons slug when the brand is in that set. Drawn wherever this company is shown.
+  parent:
+    type: companies
+    description: The parent org, when this one is a subsidiary, brand or business unit.
+  # Read-only: the engine maintains it from `parent` on each subsidiary, in the same write.
+  # `contacts` is not declared here — the contacts module adds `companies.contacts` when installed.
+  subsidiaries:
+    type: companies
+    many: true
+    mirror_of: parent
+    description: The orgs that name this one as their parent — brands, business units, companies acquired.
+  notes:
+    type: markdown
+    body: true
+    description: The company's page — your history with it, org shape, anything worth knowing before a call.
+  author:
+    type: string
+    examples: ['agents/claude-code', 'scripts/read-git@2']
+    pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
+    description: >-
+      Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
+  creation_context:
+    type: string
+    description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+  source:
+    type: string
+    description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: calendar:<id> · <collection>/<id> · file:<path> · url:<…> · linkedin:<slug> · migration:<id>.'
+  confidence:
+    type: string
+    default: normal
+    enum: [low, normal, high]
+    description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
+display:
+  nav:
+    icon: briefcase
+    order: 11
+    section: crm
+  list:
+    columns:
+      - logo
+      - name
+      - last_modified
+      - relation
+      - website

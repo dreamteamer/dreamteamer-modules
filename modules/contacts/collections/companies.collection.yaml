@@ -1,0 +1,8 @@
+name: companies
+overlay: true
+fields:
+  contacts:
+    type: contacts
+    many: true
+    mirror_of: company
+    description: Everyone on record as working here right now — generated from `contacts.company`.

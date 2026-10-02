@@ -1,102 +1,91 @@
 name: rnd/references
 description: >-
-  A product, feature, flow or document worth modelling on — the thing a PRD is written AGAINST. The
-  record holds what was observed (a recording, a screenshots folder, a URL), and `prd`: the reverse-engineered
-  spec written as the PROMPT that would regenerate the reference. A reference is evidence for a design, never
-  a design of ours — `product-design-docs.references` says which of ours it informed.
+  A product, feature, flow or document worth modelling on — the thing a PRD is written AGAINST. The record holds what was observed (a recording, a screenshots folder, a URL), and `prd`: the reverse-engineered spec written as the PROMPT that would regenerate the reference. A reference is evidence for a design, never a design of ours — `product-design-docs.references` says which of ours it informed.
 use_when: >-
-  a competitor's product, a screen recording, a design pattern or a document lands as "build something like
-  THIS" — record it here FIRST (`/ingest-reference`), extract its screens, write its `prd`, and only then open
-  the `product-design-docs` record that cites it; asked "what did we model X on", read here. Search before
-  adding: one reference is cited by many design docs
-storage: { path: data/rnd/references, codec: md, shape: file, suffix: reference }
+  a competitor's product, a screen recording, a design pattern or a document lands as "build something like THIS" — record it here FIRST (`/ingest-reference`), extract its screens, write its `prd`, and only then open the `product-design-docs` record that cites it; asked "what did we model X on", read here. Search before adding: one reference is cited by many design docs
+storage: {path: data/rnd/references, format: md}
 # an ENTITY — the reference IS; the capture inside it is dated by `observed_on`
-id:
-  generate: '{{ name | slug }}'
+ids:
+  from: "{{ name | slug }}"
   pattern: ^[a-z0-9][a-z0-9-]*$
-schema:
-  type: object
-  required: [name, type]
-  properties:
-    name:
-      type: string
-      description: What the reference is called — usually `<maker> <surface>`, e.g. "Northwind grantee portal".
-    description:
-      type: string
-      description: One line on what it is and why it is worth modelling on.
-    type:
-      type: string
-      enum: [product, feature, flow, design, document]
-      description: "`product` is a whole surface someone ships; `feature` one capability inside it; `flow` one journey (onboarding, checkout); `design` a visual system or pattern; `document` a spec, standard or filing a product must satisfy."
-    company:
-      type: string
-      x-reference: companies
-      description: Who makes it — the competitor, the vendor, the standards body. A peer reference; the companies module is where the organisation lives.
-    url:
-      type: string
-      description: Where it lives publicly, when it does.
-    audience:
-      type: string
-      description: Who the reference serves — "employees holding options", "a trustee's back office" — so a design doc can match it to one of OUR audiences.
-    observed_on:
-      type: string
-      format: date
-      description: When the recording, screenshots or read were taken. A product changes; the capture does not.
-    reference_file:
-      examples: ['${env:FILES_FOLDER}/rnd/references/northwind-grantee-portal/recording.mp4']
-      type: string
-      description: >-
-        The captured artifact — a screen recording, a PDF, an export — as a FULL `${env:FILES_FOLDER}/rnd/references/<this
-        record's id>/<file>` template. The path carries the id, never a machine path; `dt resolve` renders it.
-    screenshots_folder:
-      examples: ['${env:FILES_FOLDER}/rnd/references/northwind-grantee-portal/screenshots']
-      type: string
-      description: >-
-        Where the frames or screenshots live, as a FULL `${env:FILES_FOLDER}/rnd/references/<id>/screenshots` template —
-        the same shape `meetings` uses. `.dreamteamer/skills/building-from-references/bin/extract-frames.mjs`
-        fills it from `reference_file`.
-    prd:
-      type: string
-      format: markdown
-      description: >-
-        THE REVERSE-ENGINEERED SPEC, WRITTEN AS A PROMPT: the instructions that would make a builder regenerate this
-        reference — audiences, screens, objects, flows, rules, states, copy conventions, what it deliberately lacks.
-        Not a critique (that is the body) and not our design (that is a `product-design-docs` record citing this).
-        Empty until `/write-reference-prd`.
-    design_docs:
-      type: array
-      items: { type: string, x-reference: rnd/product-design-docs }
-      x-inverse-of: rnd/product-design-docs.references
-      description: GENERATED — the design docs of ours that cite this reference. Set `references` on the design doc.
-    tags:
-      type: array
-      items:
-        type: string
-        pattern: '^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$'
-      description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
-    content:
-      type: string
-      format: markdown
-      x-body: true
-      description: The feature inventory and the observations — screen by screen what it does, what it does well, what it gets wrong, with frame numbers or timestamps so a claim can be checked against the capture.
-    author:
-      type: string
-      pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
-      examples: ['agents/claude-code', 'scripts/read-git@2']
-      description: >-
-        Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a
-        reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
-    creation_context:
-      type: string
-      description: How and why this record came to be, in one line — and the reason whenever confidence is low.
-    source:
-      type: string
-      description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…> · migration:<id>.'
-    confidence:
-      type: string
-      enum: [low, normal, high]
-      default: normal
-      description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
-order: 22
-list_fields: [name, type, company, observed_on, last-modified]
-icon: eye
+fields:
+  name:
+    type: string
+    required: true
+    description: What the reference is called — usually `<maker> <surface>`, e.g. "Northwind grantee portal".
+  description:
+    type: string
+    description: One line on what it is and why it is worth modelling on.
+  type:
+    type: string
+    required: true
+    enum: [product, feature, flow, design, document]
+    description: "`product` is a whole surface someone ships; `feature` one capability inside it; `flow` one journey (onboarding, checkout); `design` a visual system or pattern; `document` a spec, standard or filing a product must satisfy."
+  company:
+    type: companies
+    description: Who makes it — the competitor, the vendor, the standards body. A peer reference; the companies module is where the organisation lives.
+  url:
+    type: string
+    description: Where it lives publicly, when it does.
+  audience:
+    type: string
+    description: Who the reference serves — "employees holding options", "a trustee's back office" — so a design doc can match it to one of OUR audiences.
+  observed_on:
+    type: date
+    description: When the recording, screenshots or read were taken. A product changes; the capture does not.
+  reference_file:
+    type: string
+    examples: ['${env:FILES_FOLDER}/rnd/references/northwind-grantee-portal/recording.mp4']
+    description: >-
+      The captured artifact — a screen recording, a PDF, an export — as a FULL `${env:FILES_FOLDER}/rnd/references/<this record's id>/<file>` template. The path carries the id, never a machine path; `dt resolve` renders it.
+  screenshots_folder:
+    type: string
+    examples: ['${env:FILES_FOLDER}/rnd/references/northwind-grantee-portal/screenshots']
+    description: >-
+      Where the frames or screenshots live, as a FULL `${env:FILES_FOLDER}/rnd/references/<id>/screenshots` template — the same shape `meetings` uses. `.dreamteamer/skills/building-from-references/bin/extract-frames.mjs` fills it from `reference_file`.
+  prd:
+    type: markdown
+    description: >-
+      THE REVERSE-ENGINEERED SPEC, WRITTEN AS A PROMPT: the instructions that would make a builder regenerate this reference — audiences, screens, objects, flows, rules, states, copy conventions, what it deliberately lacks. Not a critique (that is the body) and not our design (that is a `product-design-docs` record citing this). Empty until `/write-reference-prd`.
+  design_docs:
+    type: rnd/product-design-docs
+    many: true
+    mirror_of: references
+    description: GENERATED — the design docs of ours that cite this reference. Set `references` on the design doc.
+  tags:
+    type: string
+    many: true
+    pattern: ^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$
+    description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
+  content:
+    type: markdown
+    body: true
+    description: The feature inventory and the observations — screen by screen what it does, what it does well, what it gets wrong, with frame numbers or timestamps so a claim can be checked against the capture.
+  author:
+    type: string
+    examples: ['agents/claude-code', 'scripts/read-git@2']
+    pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
+    description: >-
+      Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
+  creation_context:
+    type: string
+    description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+  source:
+    type: string
+    description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…> · migration:<id>.'
+  confidence:
+    type: string
+    default: normal
+    enum: [low, normal, high]
+    description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
+display:
+  nav:
+    icon: eye
+    order: 22
+  list:
+    columns:
+      - name
+      - type
+      - company
+      - observed_on
+      - last_modified

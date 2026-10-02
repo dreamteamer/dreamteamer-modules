@@ -11,97 +11,97 @@
 # extraction.
 name: rnd/persona-probes
 description: >-
-  The held-out evaluation set — a real question you asked, and what the real person actually
-  answered. A persona is scored against it cold.
+  The held-out evaluation set — a real question you asked, and what the real person actually answered. A persona is scored against it cold.
 use_when: >-
-  you relay what a real person said in reply to something you asked — a client on a call, a
-  peer over coffee, a candidate in an interview — capture the pair here before it is paraphrased away,
-  and BEFORE scoring or extending any persona: a panel's answer is judged against these, so a probe
-  written from memory or invented is worse than none
-storage: { path: data/rnd/persona-probes, codec: md, shape: file, suffix: persona-probe}
-id:
-  generate: "{{ asked | date }}--{{ name | slug }}"
+  you relay what a real person said in reply to something you asked — a client on a call, a peer over coffee, a candidate in an interview — capture the pair here before it is paraphrased away, and BEFORE scoring or extending any persona: a panel's answer is judged against these, so a probe written from memory or invented is worse than none
+storage: {path: data/rnd/persona-probes, format: md}
+ids:
+  from: "{{ asked | date }}--{{ name | slug }}"
   pattern: "^\\d{4}-\\d{2}-\\d{2}--[a-z0-9-]+$"
-schema:
-  type: object
-  required: [name, question, real_answer]
-  properties:
-    name:
-      type: string
-      description: Short handle for the probe — what it is testing.
-    description:
-      type: string
-      description: One line — the question, and what makes the real answer worth testing against.
-    asked:
-      type: string
-      format: date
-      description: When it was asked. Drives the id, and the temporal split.
+fields:
+  name:
+    type: string
+    required: true
+    description: Short handle for the probe — what it is testing.
+  description:
+    type: string
+    description: One line — the question, and what makes the real answer worth testing against.
+  asked:
+    type: date
+    description: When it was asked. Drives the id, and the temporal split.
 
-    question:
-      type: string
-      description: The question VERBATIM, as you actually phrased it. The phrasing shapes the answer, so a cleaned-up version tests something that never happened.
-    real_answer:
-      type: string
-      description: The human's answer, VERBATIM and in full. Never compressed. A non-English answer keeps the original with a gloss beside it.
-    tier:
-      type: string
-      enum: [verbatim, translated, rendered]
-      description: How reliable the wording is. A `rendered` probe can be scored on stance but never on phrasing.
+  question:
+    type: string
+    required: true
+    description: The question VERBATIM, as you actually phrased it. The phrasing shapes the answer, so a cleaned-up version tests something that never happened.
+  real_answer:
+    type: string
+    required: true
+    description: The human's answer, VERBATIM and in full. Never compressed. A non-English answer keeps the original with a gloss beside it.
+  tier:
+    type: string
+    enum: [verbatim, translated, rendered]
+    description: How reliable the wording is. A `rendered` probe can be scored on stance but never on phrasing.
 
-    speaker: { type: string, x-reference: "*", description: The real person who answered. }
-    source: { type: string, x-reference: "*", description: The meeting or recording it came from. }
-    persona: { type: string, x-reference: "*", description: The persona this probe tests. }
+  speaker: {type: reference, description: The real person who answered.}
+  source: {type: reference, description: The meeting or recording it came from.}
+  persona: {type: reference, description: The persona this probe tests.}
 
-    surprising:
-      type: boolean
-      default: false
-      description: The answer was contrarian, or contradicted what their role would predict. These are the probes that matter — any persona can predict the obvious answer; only a good one predicts this.
-    out_of_coverage:
-      type: boolean
-      default: false
-      description: A deliberately planted question the evidence does NOT cover. A correct refusal scores as a win. Personas tend to fabricate an answer here, so this is the most important thing measured.
-    reveals:
-      type: string
-      description: One line on what the answer exposes about how they think.
+  surprising:
+    type: boolean
+    default: false
+    description: The answer was contrarian, or contradicted what their role would predict. These are the probes that matter — any persona can predict the obvious answer; only a good one predicts this.
+  out_of_coverage:
+    type: boolean
+    default: false
+    description: A deliberately planted question the evidence does NOT cover. A correct refusal scores as a win. Personas tend to fabricate an answer here, so this is the most important thing measured.
+  reveals:
+    type: string
+    description: One line on what the answer exposes about how they think.
 
-    split:
-      type: string
-      enum: [temporal, leave-one-out, identity-shuffle, live]
-      description: 'Which test this probe serves. identity-shuffle asks one persona another persona''s questions — if the score does not drop, the persona is decoration and the model is answering from generic priors. It is the cheapest control that proves the persona does any work.'
+  split:
+    type: string
+    enum: [temporal, leave-one-out, identity-shuffle, live]
+    description: 'Which test this probe serves. identity-shuffle asks one persona another persona''s questions — if the score does not drop, the persona is decoration and the model is answering from generic priors. It is the cheapest control that proves the persona does any work.'
 
-    # ---- written by the evaluation run ----
-    persona_answer:
-      type: string
-      description: What the persona said when asked cold, with its citations.
-    verdict:
-      type: string
-      enum: [match, partial, miss, correct-refusal, fabricated]
-      description: 'Stance and named-concern match only. NEVER score magnitude — simulated effect sizes are systematically inflated, so "how strongly" and "how much would they pay" are unanswerable by construction.'
-    verdict_notes:
-      type: string
-      description: Where it diverged and why. This is where the persona actually gets improved.
+  # ---- written by the evaluation run ----
+  persona_answer:
+    type: string
+    description: What the persona said when asked cold, with its citations.
+  verdict:
+    type: string
+    enum: [match, partial, miss, correct-refusal, fabricated]
+    description: 'Stance and named-concern match only. NEVER score magnitude — simulated effect sizes are systematically inflated, so "how strongly" and "how much would they pay" are unanswerable by construction.'
+  verdict_notes:
+    type: string
+    description: Where it diverged and why. This is where the persona actually gets improved.
 
-    content:
-      type: string
-      format: markdown
-      x-body: true
-      description: The fuller exchange and any surrounding context needed to judge the answer fairly.
-    author:
-      type: string
-      pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
-      examples: ['agents/claude-code', 'scripts/read-git@2']
-      description: >-
-        Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a
-        reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
-    creation_context:
-      type: string
-      description: How and why this record came to be, in one line — and the reason whenever confidence is low.
-    confidence:
-      type: string
-      enum: [low, normal, high]
-      default: normal
-      description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
-
-order: 46
-list_fields: [name, asked, speaker, persona, verdict]
-icon: inspect
+  content:
+    type: markdown
+    body: true
+    description: The fuller exchange and any surrounding context needed to judge the answer fairly.
+  author:
+    type: string
+    examples: ['agents/claude-code', 'scripts/read-git@2']
+    pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
+    description: >-
+      Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
+  creation_context:
+    type: string
+    description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+  confidence:
+    type: string
+    default: normal
+    enum: [low, normal, high]
+    description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
+display:
+  nav:
+    icon: inspect
+    order: 46
+  list:
+    columns:
+      - name
+      - asked
+      - speaker
+      - persona
+      - verdict

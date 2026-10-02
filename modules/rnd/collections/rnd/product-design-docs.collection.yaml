@@ -2,88 +2,83 @@ name: rnd/product-design-docs
 description: >-
   How a thing should work, decided — the design that implementation follows.
 use_when: >-
-  how something should work is being decided — write the decision here before implementing, and read
-  the existing doc before proposing a change to a product; a later recorded decision wins when they
-  disagree. A brainstormed spec is a record here, not a file beside the code
-storage: { path: data/rnd/product-design-docs, codec: md, shape: file, suffix: product-design-doc}
-id:
-  generate: "{{ created | date }}--{{ name | slug }}"
+  how something should work is being decided — write the decision here before implementing, and read the existing doc before proposing a change to a product; a later recorded decision wins when they disagree. A brainstormed spec is a record here, not a file beside the code
+storage: {path: data/rnd/product-design-docs, format: md}
+ids:
+  from: "{{ created | date }}--{{ name | slug }}"
   pattern: "^\\d{4}-\\d{2}-\\d{2}--[a-z0-9-]+$"
-schema:
-  type: object
-  required: [name]
-  properties:
-    name:
-      type: string
-      description: What this design is called.
-    description:
-      type: string
-      description: One line on what is being designed.
-    product:
-      type: string
-      x-reference: rnd/products
-      description: The product this design is of. Empty for a design of the workspace itself or of a process.
-    # THE FACTORY CHAIN starts here: references → this doc's design → a prototype → a plan. Each hop is a field,
-    # so `dt next rnd/product-design-docs/<id>` can say which hop is missing (the bindings on this collection).
-    references:
-      type: array
-      items: { type: string, x-reference: rnd/references }
-      description: The references this design was modelled on — what was studied before deciding. `/draft-prd` reads their `prd` fields and this doc's `branding`, and writes the body.
-    branding:
-      type: string
-      format: markdown
-      description: "The brand this design ships under — tokens (palette, type, radius), tone of voice, language and script direction, the logo as an `assets/…` reference. Short; what a prototype needs to look like ours rather than like the reference."
-    plan:
-      type: string
-      description: "The project plan this design was materialised into, as a `<collection>/<id>` string — where the plan module is installed, `projects/<id>`. A plain string because the plan may live in another workspace; `/plan-project` sets it."
-    prototypes:
-      type: array
-      items: { type: string, x-reference: rnd/prototypes }
-      x-inverse-of: rnd/prototypes.design_doc
-      description: GENERATED — the prototypes built from this design. Set `design_doc` on the prototype. A binding reads "non-empty" as "a prototype exists".
-    media_folder:
-      examples: ['${env:FILES_FOLDER}/rnd/product-design-docs/2026-09-10-grantee-portal/media']
-      type: string
-      description: >-
-        Where this record's media lives — explainer videos, audio overviews, decks, infographics, screen
-        recordings — as a FULL `${env:FILES_FOLDER}/rnd/product-design-docs/<this record's id>/media` template, never a machine
-        path; `dt resolve` renders it. The bytes stay OUTSIDE the repo: an `assets` record is a small file the
-        UI draws, this is megabytes for people to watch. What generated each piece, and against which corpus,
-        goes in this record's body — a folder cannot say whether its media is still current.
-    content:
-      type: string
-      format: markdown
-      x-body: true
-      description: The design itself — the intended shape of the thing, and why it is shaped that way. When written from references, the PRD.
-    tags:
-      type: array
-      items:
-        type: string
-        pattern: '^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$'
-      examples: ['onboarding', 'pricing', 'portal']
-      description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
-    status:
-      type: string
-      enum: [draft, active, superseded]
-      description: '`active` is the design currently being built to. `superseded` means a later doc won.'
-    author:
-      type: string
-      pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
-      examples: ['agents/claude-code', 'scripts/read-git@2']
-      description: >-
-        Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a
-        reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
-    creation_context:
-      type: string
-      description: How and why this record came to be, in one line — and the reason whenever confidence is low.
-    source:
-      type: string
-      description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…> · migration:<id>.'
-    confidence:
-      type: string
-      enum: [low, normal, high]
-      default: normal
-      description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
-order: 30
-list_fields: [name, product, status, last-modified, tags]
-icon: symbol-structure
+fields:
+  name:
+    type: string
+    required: true
+    description: What this design is called.
+  description:
+    type: string
+    description: One line on what is being designed.
+  product:
+    type: rnd/products
+    description: The product this design is of. Empty for a design of the workspace itself or of a process.
+  # THE FACTORY CHAIN starts here: references → this doc's design → a prototype → a plan. Each hop is a field,
+  # so `dt next rnd/product-design-docs/<id>` can say which hop is missing (the bindings on this collection).
+  references:
+    type: rnd/references
+    many: true
+    description: The references this design was modelled on — what was studied before deciding. `/draft-prd` reads their `prd` fields and this doc's `branding`, and writes the body.
+  branding:
+    type: markdown
+    description: "The brand this design ships under — tokens (palette, type, radius), tone of voice, language and script direction, the logo as an `assets/…` reference. Short; what a prototype needs to look like ours rather than like the reference."
+  plan:
+    type: string
+    description: "The project plan this design was materialised into, as a `<collection>/<id>` string — where the plan module is installed, `projects/<id>`. A plain string because the plan may live in another workspace; `/plan-project` sets it."
+  prototypes:
+    type: rnd/prototypes
+    many: true
+    mirror_of: design_doc
+    description: GENERATED — the prototypes built from this design. Set `design_doc` on the prototype. A binding reads "non-empty" as "a prototype exists".
+  media_folder:
+    type: string
+    examples: ['${env:FILES_FOLDER}/rnd/product-design-docs/2026-09-10-grantee-portal/media']
+    description: >-
+      Where this record's media lives — explainer videos, audio overviews, decks, infographics, screen recordings — as a FULL `${env:FILES_FOLDER}/rnd/product-design-docs/<this record's id>/media` template, never a machine path; `dt resolve` renders it. The bytes stay OUTSIDE the repo: an `assets` record is a small file the UI draws, this is megabytes for people to watch. What generated each piece, and against which corpus, goes in this record's body — a folder cannot say whether its media is still current.
+  content:
+    type: markdown
+    body: true
+    description: The design itself — the intended shape of the thing, and why it is shaped that way. When written from references, the PRD.
+  tags:
+    type: string
+    many: true
+    examples: ['onboarding', 'pricing', 'portal']
+    pattern: ^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$
+    description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
+  status:
+    type: string
+    enum: [draft, active, superseded]
+    description: '`active` is the design currently being built to. `superseded` means a later doc won.'
+  author:
+    type: string
+    examples: ['agents/claude-code', 'scripts/read-git@2']
+    pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
+    description: >-
+      Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
+  creation_context:
+    type: string
+    description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+  source:
+    type: string
+    description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…> · migration:<id>.'
+  confidence:
+    type: string
+    default: normal
+    enum: [low, normal, high]
+    description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
+display:
+  nav:
+    icon: symbol-structure
+    order: 30
+  list:
+    columns:
+      - name
+      - product
+      - status
+      - last_modified
+      - tags

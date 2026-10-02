@@ -1,163 +1,148 @@
 name: meetings
 description: >-
-  One calendar meeting, synced from Google Calendar — the anchor every prep, recording, summary and analysis
-  hangs off.
+  One calendar meeting, synced from Google Calendar — the anchor every prep, recording, summary and analysis hangs off.
 use_when: >-
-  anything with a date and attendees. Before planning work that spans more than one sitting, read the
-  next seven days here; before writing a prep, summary or analysis, find the meeting it hangs off — or
-  /fetch-meetings if it is not synced yet
-storage: { path: data/meetings, codec: md, shape: file, suffix: meeting }
-id:
+  anything with a date and attendees. Before planning work that spans more than one sitting, read the next seven days here; before writing a prep, summary or analysis, find the meeting it hangs off — or /fetch-meetings if it is not synced yet
+storage: {path: data/meetings, format: md}
+ids:
   # Derived from `starts`, so a back-dated sync files a meeting under the month it was held.
-  generate: "{{ starts | date:YYYY/MM }}/{{ starts | date }}--{{ starts | date:HH-mm }}--{{ company | basename }}--{{ name | slug }}"
+  from: "{{ starts | date:YYYY/MM }}/{{ starts | date }}--{{ starts | date:HH-mm }}--{{ company | basename }}--{{ name | slug }}"
   pattern: "^\\d{4}/\\d{2}/\\d{4}-\\d{2}-\\d{2}--[a-z0-9-]+$"
-schema:
-  type: object
-  required: [name]
-  properties:
-    name:
-      type: string
-      description: The meeting's title, as it reads on the calendar.
-    # One instant per endpoint, offset included, so meetings sort and range-filter directly.
-    # `timezone` names the zone the offset came from, which survives DST.
-    starts:
-      type: string
-      format: date-time
-      description: When the meeting begins, as one instant with its local offset. Everything sorts and range-filters on this.
-    ends:
-      type: string
-      format: date-time
-      description: When the meeting ends, as one instant with its local offset.
-    timezone:
-      type: string
-      description: The IANA zone name (Europe/London). The offset on `starts` says +01:00; only this says why, and it survives DST.
-    company:
-      type: string
-      x-reference: companies
-      description: Which company this call was with — what files it under a client and into the id.
-    # Two people-fields. `attendees` is everyone in the room as contacts — the outside world, which
-    # is what a calendar invite carries. `ours` is the subset who are `users`: the people whose work
-    # this meeting is, so a person's own record answers "what am I in this week" without making
-    # every client a user of the workspace.
-    ours:
-      type: array
-      items: { type: string, x-reference: users }
-      x-inverse:
-        field: meetings
-        description: The meetings this person was in — generated from `meetings.ours`.
-      description: >-
-        Which of our own people were in the room, as `users`. Empty is normal for a call nobody here
-        attended but somebody recorded; `attendees` still carries everyone.
-    attendees:
-      type: array
-      items: { type: string, x-reference: contacts }
-      description: Everyone in the room, as contact records. An attendee with no record gets one created as a draft.
-    attendees_raw:
-      type: array
-      x-sensitive: true
-      description: The original free-text attendee strings, preserved verbatim.
-      items: { type: string }
-    # `recordings`, `prep`, `summary` and `analyses` are not declared here. The `recordings` and
-    # `meeting-docs` modules declare them as `x-inverse` on their own collections, and the engine
-    # adds each mirror to meetings only when its owner is installed.
-    #
-    # `screenshots_folder` is one folder pointer, not a record per shot: the capture time is already
-    # in each filename. The folder is named after the record id, so the file tree sorts by year and
-    # month like the records, and its presence answers "does this call have visuals?" without a
-    # network call.
-    screenshots_folder:
-      examples: ['${env:FILES_FOLDER}/meetings/2026/08/2026-08-30--northwind-weekly/screenshots']
-      type: string
-      description: >-
-        Where this meeting's visuals live, as a FULL
-        `${env:FILES_FOLDER}/meetings/<this record's id>/screenshots` template — the path IS the id.
-        Render it with `dt resolve meetings/<id> screenshots_folder`; the value itself is inert data,
-        and the root is in the declared var rather than in prose. Its presence alone answers "does
-        this call have visuals?" without a network call.
-    origin:
-      type: string
-      enum: [calendar, recording, manual, migration]
-      description: How this record came to exist, as a mechanism — a "shim" meeting inferred from a recording with no calendar event behind it is `recording`. The prose goes in creation_context.
-    synced:
-      type: string
-      format: date-time
-      description: When a calendar sync last wrote this record — which makes re-sync staleness a range filter.
-    # calendar-sync provenance (google calendar import)
-    calendar:
-      type: string
-      description: Which Google calendar this event was imported from.
-    organizer:
-      type: string
-      x-sensitive: true
-      description: Who called the meeting, as the calendar reports them.
-    visibility:
-      type: string
-      description: The calendar event's visibility — default, public, private.
-    location:
-      type: string
-      description: Where it happens, as written on the invite.
-    conferenceUrl:
-      type: string
-      x-sensitive: true
-      description: The Meet/Zoom/Teams link to join.
-      format: uri
-    eventId:
-      type: string
-      description: The Google Calendar event id — what a re-sync matches on to update rather than duplicate.
-    htmlLink:
-      type: string
-      x-sensitive: true
-      description: Deep link to the event in Google Calendar.
-      format: uri
-    note:
-      type: string
-      description: A manual-logging provenance note, for meetings entered by hand.
-    description:
-      type: string
-      description: The invite's own description text, as the organizer wrote it.
-    # The body is the meeting's own page. A transcript lives on `meeting-recordings` and a prep on
-    # `meeting-preps`, when those modules are installed.
-    notes:
-      type: string
-      format: markdown
-      x-body: true
-      description: The meeting's page — whatever was written down about this call by hand.
-    status:
-      type: string
-      enum:
-        - confirmed
-        - tentative
-        - cancelled
-        - manual
-      description: >-
-        The calendar event's status — Google's three values, plus `manual` for a meeting entered by
-        hand.
-    tags:
-      type: array
-      items:
-        type: string
-        pattern: '^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$'
-      examples: ['analysis:meeting-insights']
-      description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
-    author:
-      type: string
-      pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
-      examples: ['agents/claude-code', 'scripts/read-git@2']
-      description: >-
-        Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a
-        reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
-    creation_context:
-      type: string
-      description: How and why this record came to be, in one line — and the reason whenever confidence is low.
-    source:
-      type: string
-      description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: calendar:<id> · <collection>/<id> · file:<path> · url:<…> · linkedin:<slug> · migration:<id>.'
-    confidence:
-      type: string
-      enum: [low, normal, high]
-      default: normal
-      description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
-order: 12
-list_fields: [name, last-modified, starts, company, attendees]
-icon: calendar   # not `organization` — a meeting is a date before it is a room full of people
-group: crm
+fields:
+  name:
+    type: string
+    required: true
+    description: The meeting's title, as it reads on the calendar.
+  # One instant per endpoint, offset included, so meetings sort and range-filter directly.
+  # `timezone` names the zone the offset came from, which survives DST.
+  starts:
+    type: datetime
+    description: When the meeting begins, as one instant with its local offset. Everything sorts and range-filters on this.
+  ends:
+    type: datetime
+    description: When the meeting ends, as one instant with its local offset.
+  timezone:
+    type: string
+    description: The IANA zone name (Europe/London). The offset on `starts` says +01:00; only this says why, and it survives DST.
+  company:
+    type: companies
+    description: Which company this call was with — what files it under a client and into the id.
+  # Two people-fields. `attendees` is everyone in the room as contacts — the outside world, which
+  # is what a calendar invite carries. `ours` is the subset who are `users`: the people whose work
+  # this meeting is, so a person's own record answers "what am I in this week" without making
+  # every client a user of the workspace.
+  ours:
+    type: users
+    many: true
+    description: >-
+      Which of our own people were in the room, as `users`. Empty is normal for a call nobody here attended but somebody recorded; `attendees` still carries everyone.
+  attendees:
+    type: contacts
+    many: true
+    description: Everyone in the room, as contact records. An attendee with no record gets one created as a draft.
+  attendees_raw:
+    type: string
+    many: true
+    sensitive: true
+    description: The original free-text attendee strings, preserved verbatim.
+  # `recordings`, `prep`, `summary` and `analyses` are not declared here. The `recordings` and
+  # `meeting-docs` modules declare them as `x-inverse` on their own collections, and the engine
+  # adds each mirror to meetings only when its owner is installed.
+  #
+  # `screenshots_folder` is one folder pointer, not a record per shot: the capture time is already
+  # in each filename. The folder is named after the record id, so the file tree sorts by year and
+  # month like the records, and its presence answers "does this call have visuals?" without a
+  # network call.
+  screenshots_folder:
+    type: string
+    examples: ['${env:FILES_FOLDER}/meetings/2026/08/2026-08-30--northwind-weekly/screenshots']
+    description: >-
+      Where this meeting's visuals live, as a FULL `${env:FILES_FOLDER}/meetings/<this record's id>/screenshots` template — the path IS the id. Render it with `dt resolve meetings/<id> screenshots_folder`; the value itself is inert data, and the root is in the declared var rather than in prose. Its presence alone answers "does this call have visuals?" without a network call.
+  origin:
+    type: string
+    enum: [calendar, recording, manual, migration]
+    description: How this record came to exist, as a mechanism — a "shim" meeting inferred from a recording with no calendar event behind it is `recording`. The prose goes in creation_context.
+  synced:
+    type: datetime
+    description: When a calendar sync last wrote this record — which makes re-sync staleness a range filter.
+  # calendar-sync provenance (google calendar import)
+  calendar:
+    type: string
+    description: Which Google calendar this event was imported from.
+  organizer:
+    type: string
+    sensitive: true
+    description: Who called the meeting, as the calendar reports them.
+  visibility:
+    type: string
+    description: The calendar event's visibility — default, public, private.
+  location:
+    type: string
+    description: Where it happens, as written on the invite.
+  conferenceUrl:
+    type: url
+    sensitive: true
+    description: The Meet/Zoom/Teams link to join.
+  eventId:
+    type: string
+    description: The Google Calendar event id — what a re-sync matches on to update rather than duplicate.
+  htmlLink:
+    type: url
+    sensitive: true
+    description: Deep link to the event in Google Calendar.
+  note:
+    type: string
+    description: A manual-logging provenance note, for meetings entered by hand.
+  description:
+    type: string
+    description: The invite's own description text, as the organizer wrote it.
+  # The body is the meeting's own page. A transcript lives on `meeting-recordings` and a prep on
+  # `meeting-preps`, when those modules are installed.
+  notes:
+    type: markdown
+    body: true
+    description: The meeting's page — whatever was written down about this call by hand.
+  status:
+    type: string
+    enum:
+      - confirmed
+      - tentative
+      - cancelled
+      - manual
+    description: >-
+      The calendar event's status — Google's three values, plus `manual` for a meeting entered by hand.
+  tags:
+    type: string
+    many: true
+    examples: ['analysis:meeting-insights']
+    pattern: ^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$
+    description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
+  author:
+    type: string
+    examples: ['agents/claude-code', 'scripts/read-git@2']
+    pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
+    description: >-
+      Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
+  creation_context:
+    type: string
+    description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+  source:
+    type: string
+    description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: calendar:<id> · <collection>/<id> · file:<path> · url:<…> · linkedin:<slug> · migration:<id>.'
+  confidence:
+    type: string
+    default: normal
+    enum: [low, normal, high]
+    description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
+display:
+  nav:
+    icon: calendar
+    order: 12
+    section: crm
+  list:
+    columns:
+      - name
+      - last_modified
+      - starts
+      - company
+      - attendees

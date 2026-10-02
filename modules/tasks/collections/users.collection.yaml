@@ -1,0 +1,8 @@
+name: users
+overlay: true
+fields:
+  tasks:
+    type: tasks
+    many: true
+    mirror_of: assignee
+    description: The tasks assigned to this person — generated from `tasks.assignee`.

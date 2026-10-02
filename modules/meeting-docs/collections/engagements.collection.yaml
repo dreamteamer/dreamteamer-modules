@@ -1,0 +1,13 @@
+name: engagements
+overlay: true
+fields:
+  analyses:
+    type: meeting-analyses
+    many: true
+    mirror_of: about
+    description: The critiques written about this engagement — generated from `meeting-analyses.about`.
+  preps:
+    type: meeting-preps
+    many: true
+    mirror_of: engagement
+    description: The preps written for this engagement's meetings — generated from `meeting-preps.engagement`.

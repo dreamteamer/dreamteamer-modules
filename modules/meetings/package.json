@@ -27,7 +27,7 @@
 	"dreamteamer": {
 		"title": "Meetings",
 		"description": "Your calendar meetings as records: synced from Google Calendar (`/fetch-meetings`), with attendees as `contacts`, the company as `companies` and your own people in the room as `users` (`ours`). Files screenshots taken during a call beside its meeting (`/fetch-meeting-screenshots`) and stamps each attendee's contact with their latest meeting (`/update-contacts-from-meetings`).",
-		"engine": ">=0.30.0",
+		"engine": ">=0.33.0",
 		"dependencies": [
 			"@dreamteamer/contacts",
 			"@dreamteamer/companies",

@@ -28,7 +28,7 @@
 	"dreamteamer": {
 		"title": "Meeting docs",
 		"description": "The documents a call produces: a `meeting-preps` read before it, a neutral `meeting-summaries` record of what was said, a `meeting-analyses` critique built on the raw transcript, and the `tasks` it leaves. Each points at its `meetings` record, and a prep or critique at its `engagements` record. `/process-new-meetings` runs the chain from calendar sync to critique.",
-		"engine": ">=0.30.0",
+		"engine": ">=0.33.0",
 		"dependencies": [
 			"@dreamteamer/meetings",
 			"@dreamteamer/recordings",

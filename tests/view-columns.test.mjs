@@ -21,53 +21,15 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 import yaml from 'js-yaml';
+import { OWNER, fieldsOf } from './helpers/descriptors.mjs';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const MODULES = path.join(ROOT, 'modules');
 
-/** Every collection in the package, with the fields it declares and the mirrors pointed at it. */
+/** Every collection, with every field it has once everything is installed — its own, its mixins',
+ *  and the mirror fields other modules' overlays add to it. */
 function fieldIndex() {
-	const props = new Map();      // "ns/name" → Set(field)
-	const templates = new Map();  // template name → [field]
-	const pending = [];           // [collection, [template names]]
-
-	for (const m of fs.readdirSync(MODULES)) {
-		const tdir = path.join(MODULES, m, 'collection-templates');
-		if (fs.existsSync(tdir)) for (const f of fs.readdirSync(tdir)) {
-			const d = yaml.load(fs.readFileSync(path.join(tdir, f), 'utf8'));
-			templates.set(`collection-templates/${d.name}`, Object.keys(d.template?.schema?.properties ?? {}));
-		}
-	}
-	const walk = (d) => (fs.existsSync(d) ? fs.readdirSync(d, { withFileTypes: true }).flatMap((e) =>
-		e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)]) : []);
-
-	const docs = [];
-	for (const m of fs.readdirSync(MODULES)) {
-		for (const f of walk(path.join(MODULES, m, 'collections')).filter((x) => x.endsWith('.collection.yaml'))) {
-			docs.push(yaml.load(fs.readFileSync(f, 'utf8')));
-		}
-	}
-	for (const d of docs) {
-		props.set(d.name, new Set(Object.keys(d.schema?.properties ?? {})));
-		pending.push([d.name, d.templates ?? []]);
-	}
-	for (const [name, tpls] of pending) for (const t of tpls) for (const f of templates.get(t) ?? []) props.get(name).add(f);
-
-	// The mirrors: a field carrying x-inverse creates that named field ON its target collection.
-	for (const d of docs) {
-		for (const spec of Object.values(d.schema?.properties ?? {})) {
-			const raw = spec?.['x-inverse'] ?? spec?.items?.['x-inverse'] ?? spec?.['x-inverse-of'];
-			if (!raw) continue;
-			// `x-inverse` is a bare field name or `{ field, description }`; either way the field is the mirror
-			const mirror = typeof raw === 'object' ? raw.field : raw;
-			if (!mirror) continue;
-			const ref = spec['x-reference'] ?? spec.items?.['x-reference'];
-			for (const target of typeof ref === 'string' ? [ref] : Array.isArray(ref) ? ref : []) {
-				if (props.has(target)) props.get(target).add(mirror);
-			}
-		}
-	}
-	return props;
+	return new Map([...OWNER.keys()].map((name) => [name, new Set(fieldsOf(name).keys())]));
 }
 
 const props = fieldIndex();

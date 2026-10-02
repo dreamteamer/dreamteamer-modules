@@ -3,148 +3,143 @@
 # A session on a fresh workspace bootstraps it; a session on an existing one proposes changes.
 name: perspective/retrospective-sessions
 description: >-
-  One retrospective session — one run of the workflow over a contributor's evidence: who it was about,
-  when it ran, which stage it reached, and what it produced. The evidence and the model it writes are
-  keyed by the CONTRIBUTOR and outlive it; this record is the run log.
+  One retrospective session — one run of the workflow over a contributor's evidence: who it was about, when it ran, which stage it reached, and what it produced. The evidence and the model it writes are keyed by the CONTRIBUTOR and outlive it; this record is the run log.
 use_when: >-
-  starting or resuming a retrospective (/run-retrospective) — read the latest record here for the
-  stage to continue from; asked "where did I get to" or "what did the last run conclude" — the answer is
-  here, never re-derived from the evidence
-storage: {path: data/perspective/retrospective-sessions, codec: md, shape: file, suffix: retrospective-session}
-id:
-  generate: "{{ started | date }}--{{ contributor }}"
+  starting or resuming a retrospective (/run-retrospective) — read the latest record here for the stage to continue from; asked "where did I get to" or "what did the last run conclude" — the answer is here, never re-derived from the evidence
+storage: {path: data/perspective/retrospective-sessions, format: md}
+ids:
+  from: "{{ started | date }}--{{ contributor }}"
   pattern: "^\\d{4}-\\d{2}-\\d{2}--[a-z0-9-]+$"
-schema:
-  type: object
-  required: [contributor, started, stage]
-  properties:
-    contributor: { type: string, pattern: '^[a-z0-9-]+$', description: 'WHO this retrospective is about, as a slug (`dana-o`). It is the FIRST SEGMENT of every evidence and model id this session writes, and the second half of this record''s own id. The addresses they appear under go in `handles`.' }
-    # ── IDENTITY, SPELLED THE WAY `perspective/users` SPELLS IT ──────────────────────────────────
-    # A slug is what the ids are keyed by; it is not what the evidence carries. Git has an author
-    # email, Asana a gid, mail an address — and the readers decide, per commit and per ticket, whether
-    # a row is the contributor's. That decision is a HANDLE MATCH on the same field as
-    # `perspective/users.handles`, seeded here before any users record exists, because
-    # `derive-collaborators` needs it on its FIRST pass. The CRM record is a separate field, `contact`.
-    handles:
-      type: array
-      items: { type: string }
-      description: >-
-        THE MERGE KEY, exactly as on `perspective/users`. Every identity the contributor
-        appears under: git author emails, Asana gids, mail addresses, display-name variants. Seeded
-        by the person at `installed` and matched by every reader. Give it ALL of them up front:
-        the first reader runs before any users record exists, so a commit authored under an
-        address missing here is attributed to somebody else and never reaches this contributor.
-    started:
-      type: string
-      format: date
-      description: The day the run started.
-    finished:
-      type: string
-      format: date
-      description: The day it reached `done` or `abandoned`.
-    stage:
-      type: string
-      enum:
-        - installed        # the run record exists
-        - inventoried      # what evidence is reachable — and the session says so
-        - read             # every available source condensed into evidence
-        - clustered        # what was done — activities and topics
-        - projected        # the projects those activities belong to
-        - extracted        # what was decided and said
-        - inferred         # what the work was FOR — goals
-        - found            # what recurs — findings and insights
-        - interviewed      # what the evidence could not settle
-        - proposed         # what the brain should keep
-        - synthesised      # the perspective
-        - materialised     # descriptors and skills written
-        - seeded           # the person's own records in the new collections
-        - done
-        - abandoned
-      default: installed
-      description: >-
-        THE GATE. The last stage completed. /run-retrospective reads it and runs the NEXT stage; on `done` it
-        offers a new session. `abandoned` carries `stopped_because`. Each value is set by exactly ONE
-        row of the skill's stage table, and this list and that table are one list.
-    on_workspace:
-      type: string
-      enum: [fresh, existing]
-      default: fresh
-      description: '`fresh` bootstraps a workspace with no collections but this module; `existing` proposes changes to one that has records already.'
-    contact:
-      type: string
-      x-reference: contacts
-      description: >-
-        The contributor's record in the workspace's own CRM, where one exists and a person confirmed
-        the match. The same field and target as `perspective/users.contact`; `contacts` is a declared
-        PEER, so the module compiles without it. No `x-inverse` — a peer excuses a reference, never a
-        mirror.
-    period_start:
-      type: string
-      format: date
-      description: The period this run covers, from the hint or the earliest evidence.
-    period_end:
-      type: string
-      format: date
-    hint:
-      type: string
-      description: >-
-        The free-text hint /run-retrospective was given — `period:2026-08 sources:git,asana`, or prose —
-        kept verbatim. It is provenance of the REQUEST and never the source list — what a run looked at
-        is `sources` below.
-    # ── THE ONE M2M IN THE MODULE, spelled on both sides so a reader of THIS descriptor can see it.
-    # `sources.retrospectives` owns the relation; this is its mirror, declared here with
-    # `x-inverse-of` (compile deletes the authored field and regenerates it under the same key). A
-    # source is durable and every run re-reads it, so the relation is many-to-many.
-    sources:
-      type: array
-      items: { type: string, x-reference: perspective/sources }
-      x-inverse-of: perspective/sources.retrospectives
-      description: GENERATED — the evidence sources this run inventoried or read. Set `retrospectives` on the source.
-    produced:
-      type: array
-      items: { type: string }
-      description: 'Filled at `done`: the collection names and `skills/<id>` paths that now exist because of this run.'
-    stopped_because:
-      type: string
-      description: Filled at `abandoned`, in the person's own words. The most honest field in the module.
-    min_interview_questions:
-      type: integer
-      default: 0
-      description: "How many of the generated questions to actually ASK. The generator always writes max_interview_questions of them as records; this says how many reach the person. 0 means a fully unattended run: every question is generated and left `pending`, and the analysis continues by taking each proposal's recommended option rather than blocking. Raise it for a supervised run."
-    max_interview_questions:
-      type: integer
-      default: 10
-      description: How many questions the interview stage GENERATES, always, whatever min_interview_questions says. A generated-but-unasked question is a real record with status `pending` — it is the queue a later supervised run picks up, and the honest record of what the evidence could not settle on its own.
-    branch:
-      type: string
-      description: The git branch this run's work lands on. In the private-brain model a person's workspace is a branch of the shared repo seen from the parent and a repo of its own seen from the child, so the branch names the run's lane. Absent means the checkout's current branch.
-    activity_weeks_back:
-      type: integer
-      default: 4
-      description: "How many ISO weeks back the readers write activity-weeks for — the default window when a run is given no since: or period:. Four, because a perspective is about the recent shape of the work and all-of-history weekly records are the wrong first artefact. Conversations and tickets are NOT bounded by this; only the weekly windows and the commits scratch are."
-    content:
-      type: string
-      format: markdown
-      x-body: true
-      description: The running narrative — what each stage saw and decided, appended as the run goes.
-    author:
-      type: string
-      pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
-      examples: ['agents/claude-code', 'scripts/read-git@2']
-      description: >-
-        Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a
-        reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
-    creation_context:
-      type: string
-      description: How and why this record came to be, in one line — and the reason whenever confidence is low.
-    source:
-      type: string
-      description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…>.'
-    confidence:
-      type: string
-      enum: [low, normal, high]
-      default: normal
-      description: How much to trust this record. When low, the reason goes in creation_context.
-list_fields: [contributor, started, stage, on_workspace]
-icon: telescope
-order: 10   # nav position — the run itself; the pipeline order, ten apart so one can be inserted without renumbering
+fields:
+  contributor: {type: string, required: true, pattern: '^[a-z0-9-]+$', description: 'WHO this retrospective is about, as a slug (`dana-o`). It is the FIRST SEGMENT of every evidence and model id this session writes, and the second half of this record''s own id. The addresses they appear under go in `handles`.'}
+  # ── IDENTITY, SPELLED THE WAY `perspective/users` SPELLS IT ──────────────────────────────────
+  # A slug is what the ids are keyed by; it is not what the evidence carries. Git has an author
+  # email, Asana a gid, mail an address — and the readers decide, per commit and per ticket, whether
+  # a row is the contributor's. That decision is a HANDLE MATCH on the same field as
+  # `perspective/users.handles`, seeded here before any users record exists, because
+  # `derive-collaborators` needs it on its FIRST pass. The CRM record is a separate field, `contact`.
+  handles:
+    type: string
+    many: true
+    description: >-
+      THE MERGE KEY, exactly as on `perspective/users`. Every identity the contributor appears under: git author emails, Asana gids, mail addresses, display-name variants. Seeded by the person at `installed` and matched by every reader. Give it ALL of them up front: the first reader runs before any users record exists, so a commit authored under an address missing here is attributed to somebody else and never reaches this contributor.
+  started:
+    type: date
+    required: true
+    description: The day the run started.
+  finished:
+    type: date
+    description: The day it reached `done` or `abandoned`.
+  stage:
+    type: string
+    required: true
+    default: installed
+    enum:
+      - installed # the run record exists
+      - inventoried # what evidence is reachable — and the session says so
+      - read # every available source condensed into evidence
+      - clustered # what was done — activities and topics
+      - projected # the projects those activities belong to
+      - extracted # what was decided and said
+      - inferred # what the work was FOR — goals
+      - found # what recurs — findings and insights
+      - interviewed # what the evidence could not settle
+      - proposed # what the brain should keep
+      - synthesised # the perspective
+      - materialised # descriptors and skills written
+      - seeded # the person's own records in the new collections
+      - done
+      - abandoned
+    description: >-
+      THE GATE. The last stage completed. /run-retrospective reads it and runs the NEXT stage; on `done` it offers a new session. `abandoned` carries `stopped_because`. Each value is set by exactly ONE row of the skill's stage table, and this list and that table are one list.
+  on_workspace:
+    type: string
+    default: fresh
+    enum: [fresh, existing]
+    description: '`fresh` bootstraps a workspace with no collections but this module; `existing` proposes changes to one that has records already.'
+  contact:
+    type: contacts
+    description: >-
+      The contributor's record in the workspace's own CRM, where one exists and a person confirmed the match. The same field and target as `perspective/users.contact`; `contacts` is a declared PEER, so the module compiles without it. No `x-inverse` — a peer excuses a reference, never a mirror.
+  period_start:
+    type: date
+    description: The period this run covers, from the hint or the earliest evidence.
+  period_end:
+    type: date
+  hint:
+    type: string
+    description: >-
+      The free-text hint /run-retrospective was given — `period:2026-08 sources:git,asana`, or prose — kept verbatim. It is provenance of the REQUEST and never the source list — what a run looked at is `sources` below.
+  # ── THE ONE M2M IN THE MODULE, spelled on both sides so a reader of THIS descriptor can see it.
+  # `sources.retrospectives` owns the relation; this is its mirror, declared here with
+  # `x-inverse-of` (compile deletes the authored field and regenerates it under the same key). A
+  # source is durable and every run re-reads it, so the relation is many-to-many.
+  sources:
+    type: perspective/sources
+    many: true
+    mirror_of: retrospectives
+    description: GENERATED — the evidence sources this run inventoried or read. Set `retrospectives` on the source.
+  produced:
+    type: string
+    many: true
+    description: 'Filled at `done`: the collection names and `skills/<id>` paths that now exist because of this run.'
+  stopped_because:
+    type: string
+    description: Filled at `abandoned`, in the person's own words. The most honest field in the module.
+  min_interview_questions:
+    type: integer
+    default: 0
+    description: "How many of the generated questions to actually ASK. The generator always writes max_interview_questions of them as records; this says how many reach the person. 0 means a fully unattended run: every question is generated and left `pending`, and the analysis continues by taking each proposal's recommended option rather than blocking. Raise it for a supervised run."
+  max_interview_questions:
+    type: integer
+    default: 10
+    description: How many questions the interview stage GENERATES, always, whatever min_interview_questions says. A generated-but-unasked question is a real record with status `pending` — it is the queue a later supervised run picks up, and the honest record of what the evidence could not settle on its own.
+  branch:
+    type: string
+    description: The git branch this run's work lands on. In the private-brain model a person's workspace is a branch of the shared repo seen from the parent and a repo of its own seen from the child, so the branch names the run's lane. Absent means the checkout's current branch.
+  activity_weeks_back:
+    type: integer
+    default: 4
+    description: "How many ISO weeks back the readers write activity-weeks for — the default window when a run is given no since: or period:. Four, because a perspective is about the recent shape of the work and all-of-history weekly records are the wrong first artefact. Conversations and tickets are NOT bounded by this; only the weekly windows and the commits scratch are."
+  gates:
+    type: perspective/gates
+    many: true
+    mirror_of: retrospective
+  perspective:
+    type: perspective/perspectives
+    mirror_of: retrospective
+  proposals:
+    type: perspective/proposals
+    many: true
+    mirror_of: retrospective
+  content:
+    type: markdown
+    body: true
+    description: The running narrative — what each stage saw and decided, appended as the run goes.
+  author:
+    type: string
+    examples: ['agents/claude-code', 'scripts/read-git@2']
+    pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
+    description: >-
+      Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
+  creation_context:
+    type: string
+    description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+  source:
+    type: string
+    description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…>.'
+  confidence:
+    type: string
+    default: normal
+    enum: [low, normal, high]
+    description: How much to trust this record. When low, the reason goes in creation_context.
+display:
+  nav:
+    icon: telescope
+    order: 10
+  list:
+    columns:
+      - contributor
+      - started
+      - stage
+      - on_workspace

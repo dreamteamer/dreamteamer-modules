@@ -27,7 +27,7 @@
 	"dreamteamer": {
 		"title": "Engagements",
 		"description": "`engagements`: one record per working relationship with a company — `stage` lead, client or closed, with its champion and key contacts, where it stands, what is owed, and the arc so far. `/update-engagements` folds new meeting summaries into it. The pipeline board groups by stage; each company lists its engagements.",
-		"engine": ">=0.30.0",
+		"engine": ">=0.33.0",
 		"dependencies": [
 			"@dreamteamer/companies"
 		],

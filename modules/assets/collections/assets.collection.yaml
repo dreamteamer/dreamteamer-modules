@@ -2,22 +2,23 @@
 # (`ext`, `bytes`), written with `dt add assets <id> --from <path>`; `max_bytes` keeps media out.
 name: assets
 description: >-
-  A picture a view draws — an icon, a logo, an avatar, an illustration — stored as the file itself,
-  200 KB at most. A picture a record draws is keyed by that record (`avatars/<person-id>` ·
-  `logos/<company-id>`); one from a third-party set by set and name (`icons/<set>/<name>` ·
-  `illustrations/<set>/<name>`, a Simple Icons mark as `logos/<slug>`); your own pictures under
-  `images/<path>`. Each set's licence is listed once in the module's README.md.
+  A picture a view draws — an icon, a logo, an avatar, an illustration — stored as the file itself, 200 KB at most. A picture a record draws is keyed by that record (`avatars/<person-id>` · `logos/<company-id>`); one from a third-party set by set and name (`icons/<set>/<name>` · `illustrations/<set>/<name>`, a Simple Icons mark as `logos/<slug>`); your own pictures under `images/<path>`. Each set's licence is listed once in the module's README.md.
 use_when: >-
-  a record, a collection or a view needs a picture — a company's mark, a state glyph, a diagram in a
-  document. Search here first (`dt list assets`), because the icon you want is often already in.
+  a record, a collection or a view needs a picture — a company's mark, a state glyph, a diagram in a document. Search here first (`dt list assets`), because the icon you want is often already in.
 storage:
   path: data/assets
-  codec: file
-  shape: file
-  suffix: asset
+  format: binary
   max_bytes: 204800
-  extensions: [svg, png, jpg, jpeg, webp, gif]
-id:
+  accept:
+    - svg
+    - png
+    - jpg
+    - jpeg
+    - webp
+    - gif
+ids:
   pattern: '^(icons|logos|avatars|illustrations|images)/[a-z0-9][a-z0-9/._-]*$'
-group: system
-icon: file-media
+fields: {}
+display:
+  nav:
+    icon: file-media

@@ -26,7 +26,7 @@
 	"dreamteamer": {
 		"title": "Search",
 		"description": "Search over a workspace's own records. `npx dt-find <question>` climbs an effort ladder on a local qmd index: exact words, embeddings, a hedged three-lane query, then the reference graph to close a set such as \"everything that points at X\". It prints file:line locations, never an answer. Use grep when you can quote the phrase; use this when you have the idea but not the words.",
-		"engine": ">=0.30.0",
+		"engine": ">=0.33.0",
 		"peerDependencies": [
 			"wikis"
 		]

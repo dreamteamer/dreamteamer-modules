@@ -24,100 +24,95 @@
 # and a gate whose check the guard already performs cites the guard's own output as its `measured`.
 name: perspective/gates
 description: >-
-  One condition this retrospective had to meet at a stage boundary, with the verdict and the
-  measurement behind it.
+  One condition this retrospective had to meet at a stage boundary, with the verdict and the measurement behind it.
 use_when: >-
-  a stage is about to advance — evaluate its gates and write one record each, quoting what was
-  measured; and before trusting a perspective, read here rather than the prose: an `unmet` blocking
-  gate, or a `waived` one, is the honest limit of what the run can claim. A gate with a `pass` and no
-  `measured` is the thing to distrust most
-icon: shield
-order: 15
-storage: { path: data/perspective/gates, codec: md, shape: file, suffix: gate }
-id:
-  generate: "{{ retrospective | basename }}/{{ gate }}"
+  a stage is about to advance — evaluate its gates and write one record each, quoting what was measured; and before trusting a perspective, read here rather than the prose: an `unmet` blocking gate, or a `waived` one, is the honest limit of what the run can claim. A gate with a `pass` and no `measured` is the thing to distrust most
+storage: {path: data/perspective/gates, format: md}
+ids:
+  from: "{{ retrospective | basename }}/{{ gate }}"
   pattern: "^\\d{4}-\\d{2}-\\d{2}--[a-z0-9-]+/[a-z-]+$"
-schema:
-  type: object
-  required: [retrospective, gate, stage, verdict]
-  properties:
-    retrospective: { type: string, x-reference: perspective/retrospective-sessions, x-inverse: gates, description: The run this gate was evaluated for. Run-layer, like questions and proposals — a gate is about ONE sitting. }
-    last_seen_in: { type: string, x-reference: perspective/retrospective-sessions, description: A later session that re-evaluated the same gate on the same run. Rare; absent is normal. }
-    gate:
-      type: string
-      enum:
-        # ── evidence ────────────────────────────────────────────────────────────────────────────
-        - sources-declared     # every source found carries a `reach`; nothing was silently skipped
-        - evidence-read        # every `available` source has records citing it, or a stated reason it has none
-        # ── the model ───────────────────────────────────────────────────────────────────────────
-        - activities-named     # no activity is named after its repo; each was named from its digest
-        - activities-projected # every activity carries a project, or the project pass said why not
-        - decisions-sourced    # every decision's `source_ref` resolves and matches its `source_kind`
-        - goals-predict        # every goal excludes something — a goal that predicts nothing is a wish
-        # ── the conclusions ─────────────────────────────────────────────────────────────────────
-        - findings-counted     # every finding's body ends with its count, and `standing` matches it
-        - assumptions-stated   # every `invalidates` assumption names what it `affects`
-        - assumptions-tested   # no `invalidates` assumption is still `held` when the interview closes
-        - interview-minimum    # the run asked at least `min_interview_questions`
-        - proposals-justified  # every proposal cites a finding, and none of them is `refuted`
-        - perspective-sourced  # every claim in the perspective body carries a ref
-      description: >-
-        WHICH condition. The list is closed and each entry names one checkable thing; a gate the list
-        lacks is a hand-edit of this descriptor, not a coined value. Adding one is cheap and is how
-        this collection is meant to grow — a rule that lives only in prose is a rule that drifts.
-    stage:
-      type: string
-      description: The stage this gate guards, as a value of `retrospective-sessions.stage`. The run evaluates a stage's gates before advancing past it.
-    verdict:
-      type: string
-      enum: [pass, unmet, waived, not-run]
-      default: not-run
-      description: >-
-        `pass` — the condition holds, and `measured` says how it was established. `unmet` — it does
-        not, and the run either stops or carries the limit forward. `waived` — a person decided to
-        proceed anyway; `waived_because` is required and is the most valuable text in the record.
-        `not-run` — the gate was never evaluated, which is honest and is NOT the same as passing.
-    blocking:
-      type: boolean
-      default: true
-      description: >-
-        Whether `unmet` stops the run. Most are blocking. A non-blocking gate is one whose failure
-        NARROWS what the perspective may claim rather than invalidating it — say so in the body.
-    measured:
-      type: string
-      description: >-
-        WHAT WAS OBSERVED, quoted — a count, a command's own line, or the person's words. Required for
-        every verdict but `not-run`, and `bin/check-records.mjs` refuses a verdict without it. A
-        `pass` with no measurement is an agent reporting success rather than quoting a result from the
-        running system.
-    waived_because:
-      type: string
-      description: Why a person chose to proceed past an unmet gate. Required when `verdict` is `waived`; a waiver without a reason is an undocumented shortcut.
-    affects:
-      type: array
-      items: { type: string }
-      description: What an `unmet` or `waived` verdict limits — the findings, goals or the perspective itself, by ref. Empty on a `pass`.
-    checked_at: { type: string, format: date-time, description: When it was evaluated. A gate re-evaluated later overwrites this; git holds the previous verdict. }
-    content:
-      type: string
-      x-body: true
-      description: How it was checked, what the edge cases were, and for a waiver what the run is claiming despite it.
-    author:
-      type: string
-      pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
-      examples: ['agents/claude-code', 'scripts/read-git@2']
-      description: >-
-        Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a
-        reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
-    creation_context:
-      type: string
-      description: How and why this record came to be, in one line — and the reason whenever confidence is low.
-    source:
-      type: string
-      description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…>.'
-    confidence:
-      type: string
-      enum: [low, normal, high]
-      default: normal
-      description: How much to trust this record. When low, the reason goes in creation_context.
-list_fields: [gate, stage, verdict, blocking, measured, checked_at]
+fields:
+  retrospective: {type: perspective/retrospective-sessions, required: true, description: The run this gate was evaluated for. Run-layer}
+  last_seen_in: {type: perspective/retrospective-sessions, description: A later session that re-evaluated the same gate on the same run. Rare; absent is normal.}
+  gate:
+    type: string
+    required: true
+    enum:
+      # ── evidence ────────────────────────────────────────────────────────────────────────────
+      - sources-declared # every source found carries a `reach`; nothing was silently skipped
+      - evidence-read # every `available` source has records citing it, or a stated reason it has none
+      # ── the model ───────────────────────────────────────────────────────────────────────────
+      - activities-named # no activity is named after its repo; each was named from its digest
+      - activities-projected # every activity carries a project, or the project pass said why not
+      - decisions-sourced # every decision's `source_ref` resolves and matches its `source_kind`
+      - goals-predict # every goal excludes something — a goal that predicts nothing is a wish
+      # ── the conclusions ─────────────────────────────────────────────────────────────────────
+      - findings-counted # every finding's body ends with its count, and `standing` matches it
+      - assumptions-stated # every `invalidates` assumption names what it `affects`
+      - assumptions-tested # no `invalidates` assumption is still `held` when the interview closes
+      - interview-minimum # the run asked at least `min_interview_questions`
+      - proposals-justified # every proposal cites a finding, and none of them is `refuted`
+      - perspective-sourced # every claim in the perspective body carries a ref
+    description: >-
+      WHICH condition. The list is closed and each entry names one checkable thing; a gate the list lacks is a hand-edit of this descriptor, not a coined value. Adding one is cheap and is how this collection is meant to grow — a rule that lives only in prose is a rule that drifts.
+  stage:
+    type: string
+    required: true
+    description: The stage this gate guards, as a value of `retrospective-sessions.stage`. The run evaluates a stage's gates before advancing past it.
+  verdict:
+    type: string
+    required: true
+    default: not-run
+    enum: [pass, unmet, waived, not-run]
+    description: >-
+      `pass` — the condition holds, and `measured` says how it was established. `unmet` — it does not, and the run either stops or carries the limit forward. `waived` — a person decided to proceed anyway; `waived_because` is required and is the most valuable text in the record. `not-run` — the gate was never evaluated, which is honest and is NOT the same as passing.
+  blocking:
+    type: boolean
+    default: true
+    description: >-
+      Whether `unmet` stops the run. Most are blocking. A non-blocking gate is one whose failure NARROWS what the perspective may claim rather than invalidating it — say so in the body.
+  measured:
+    type: string
+    description: >-
+      WHAT WAS OBSERVED, quoted — a count, a command's own line, or the person's words. Required for every verdict but `not-run`, and `bin/check-records.mjs` refuses a verdict without it. A `pass` with no measurement is an agent reporting success rather than quoting a result from the running system.
+  waived_because:
+    type: string
+    description: Why a person chose to proceed past an unmet gate. Required when `verdict` is `waived`; a waiver without a reason is an undocumented shortcut.
+  affects:
+    type: string
+    many: true
+    description: What an `unmet` or `waived` verdict limits — the findings, goals or the perspective itself, by ref. Empty on a `pass`.
+  checked_at: {type: datetime, description: When it was evaluated. A gate re-evaluated later overwrites this; git holds the previous verdict.}
+  content:
+    type: markdown
+    body: true
+    description: How it was checked, what the edge cases were, and for a waiver what the run is claiming despite it.
+  author:
+    type: string
+    examples: ['agents/claude-code', 'scripts/read-git@2']
+    pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
+    description: >-
+      Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
+  creation_context:
+    type: string
+    description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+  source:
+    type: string
+    description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…>.'
+  confidence:
+    type: string
+    default: normal
+    enum: [low, normal, high]
+    description: How much to trust this record. When low, the reason goes in creation_context.
+display:
+  nav:
+    icon: shield
+    order: 15
+  list:
+    columns:
+      - gate
+      - stage
+      - verdict
+      - blocking
+      - measured
+      - checked_at

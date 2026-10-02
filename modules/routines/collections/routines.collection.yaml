@@ -1,85 +1,75 @@
 name: routines
 title: Routines
 description: >-
-  A recurring commitment — a chore that comes round on a rule and is never done, only done this
-  time. A one-off commitment is a task.
+  A recurring commitment — a chore that comes round on a rule and is never done, only done this time. A one-off commitment is a task.
 use_when: >-
-  something has to happen again and again on a schedule — a renewal, a filing, a weekly sweep — and
-  a task would have to be re-created each time; asked "what recurs" or "what is due this month",
-  list here by `next_due`
-storage: { path: data/routines, codec: md, shape: file, suffix: routine }
-id:
-  generate: '{{ name | slug }}'
+  something has to happen again and again on a schedule — a renewal, a filing, a weekly sweep — and a task would have to be re-created each time; asked "what recurs" or "what is due this month", list here by `next_due`
+storage: {path: data/routines, format: md}
+ids:
+  from: "{{ name | slug }}"
   pattern: ^[a-z0-9][a-z0-9-]*$
-schema:
-  type: object
-  required: [name, recurrence]
-  properties:
-    name:
-      type: string
-      description: The chore in one line, starting with a verb — "renew the car insurance", not "car insurance".
-    recurrence:
-      type: string
-      pattern: ^RRULE:FREQ=(DAILY|WEEKLY|MONTHLY|YEARLY)(;[A-Z]+=[A-Za-z0-9,+-]+)*$
-      examples: ['RRULE:FREQ=MONTHLY;BYMONTHDAY=15', 'RRULE:FREQ=WEEKLY;BYDAY=SU']
-      description: >-
-        The rule, as an RFC 5545 RRULE with its `RRULE:` prefix — exactly what a calendar's custom
-        recurrence produces. `RRULE:FREQ=YEARLY` · `RRULE:FREQ=MONTHLY;INTERVAL=2;BYMONTHDAY=1` ·
-        `RRULE:FREQ=WEEKLY;BYDAY=MO,WE` · `RRULE:FREQ=MONTHLY;BYDAY=-1FR` · `…;UNTIL=20271130` ·
-        `…;COUNT=13`. A day or month the rule leaves out is taken from `anchor`, as in a calendar.
-    anchor:
-      type: string
-      format: date
-      description: >-
-        The first occurrence — the date the rule counts from. It decides which months "every 2
-        months" lands on, and supplies the day an annual rule leaves out. Empty means the date is not
-        known yet, and then `next_due` cannot be derived.
-    next_due:
-      type: string
-      format: date
-      description: >-
-        The next date this is owed — the first occurrence on or after today, written by
-        `rrule.mjs roll`; set `recurrence` and `anchor`, never this. Empty on a daily routine by
-        design, and empty on any other when `anchor` is missing.
-    status:
-      type: string
-      enum: [active, paused, retired]
-      default: active
-      description: >-
-        `active` is on the board. `paused` is suspended with the intent to resume. `retired` is over
-        for good — the record stays as the history of what used to recur.
-    tags:
-      type: array
-      items:
-        type: string
-        pattern: '^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$'
-      examples: ['insurance', 'area:home']
-      description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
-    notes:
-      type: string
-      format: markdown
-      x-body: true
-      description: >-
-        How this is actually done — where the notice arrives, which portal, who to email, what the
-        last occurrence taught. The checklist the next occurrence runs on.
-    author:
-      type: string
-      pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
-      examples: ['agents/claude-code', 'scripts/read-git@2']
-      description: >-
-        Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a
-        reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
-    creation_context:
-      type: string
-      description: How and why this record came to be, in one line — and the reason whenever confidence is low.
-    source:
-      type: string
-      description: 'Where the information came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…>.'
-    confidence:
-      type: string
-      enum: [low, normal, high]
-      default: normal
-      description: How much to trust this record. When low, the reason goes in creation_context.
-order: 4
-list_fields: [name, recurrence, next_due, status, tags]
-icon: sync
+fields:
+  name:
+    type: string
+    required: true
+    description: The chore in one line, starting with a verb — "renew the car insurance", not "car insurance".
+  recurrence:
+    type: string
+    required: true
+    examples: ['RRULE:FREQ=MONTHLY;BYMONTHDAY=15', 'RRULE:FREQ=WEEKLY;BYDAY=SU']
+    pattern: ^RRULE:FREQ=(DAILY|WEEKLY|MONTHLY|YEARLY)(;[A-Z]+=[A-Za-z0-9,+-]+)*$
+    description: >-
+      The rule, as an RFC 5545 RRULE with its `RRULE:` prefix — exactly what a calendar's custom recurrence produces. `RRULE:FREQ=YEARLY` · `RRULE:FREQ=MONTHLY;INTERVAL=2;BYMONTHDAY=1` · `RRULE:FREQ=WEEKLY;BYDAY=MO,WE` · `RRULE:FREQ=MONTHLY;BYDAY=-1FR` · `…;UNTIL=20271130` · `…;COUNT=13`. A day or month the rule leaves out is taken from `anchor`, as in a calendar.
+  anchor:
+    type: date
+    description: >-
+      The first occurrence — the date the rule counts from. It decides which months "every 2 months" lands on, and supplies the day an annual rule leaves out. Empty means the date is not known yet, and then `next_due` cannot be derived.
+  next_due:
+    type: date
+    description: >-
+      The next date this is owed — the first occurrence on or after today, written by `rrule.mjs roll`; set `recurrence` and `anchor`, never this. Empty on a daily routine by design, and empty on any other when `anchor` is missing.
+  status:
+    type: string
+    default: active
+    enum: [active, paused, retired]
+    description: >-
+      `active` is on the board. `paused` is suspended with the intent to resume. `retired` is over for good — the record stays as the history of what used to recur.
+  tags:
+    type: string
+    many: true
+    examples: ['insurance', 'area:home']
+    pattern: ^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$
+    description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
+  notes:
+    type: markdown
+    body: true
+    description: >-
+      How this is actually done — where the notice arrives, which portal, who to email, what the last occurrence taught. The checklist the next occurrence runs on.
+  author:
+    type: string
+    examples: ['agents/claude-code', 'scripts/read-git@2']
+    pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
+    description: >-
+      Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
+  creation_context:
+    type: string
+    description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+  source:
+    type: string
+    description: 'Where the information came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…>.'
+  confidence:
+    type: string
+    default: normal
+    enum: [low, normal, high]
+    description: How much to trust this record. When low, the reason goes in creation_context.
+display:
+  nav:
+    icon: sync
+    order: 4
+  list:
+    columns:
+      - name
+      - recurrence
+      - next_due
+      - status
+      - tags

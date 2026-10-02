@@ -1,149 +1,123 @@
 name: contacts
 description: A person you deal with, enriched from LinkedIn and the web. The person, never the org — that is `companies`.
 use_when: >-
-  a person is named — an attendee, a sender, a LinkedIn profile — find or create them here before
-  writing the record that mentions them; a `draft` here is the queue /scrape-contact enriches
+  a person is named — an attendee, a sender, a LinkedIn profile — find or create them here before writing the record that mentions them; a `draft` here is the queue /scrape-contact enriches
 storage:
   path: data/contacts
-  codec: md
-  shape: file
-  suffix: contact
-id:
-  generate: '{{ name | slug }}'
-schema:
-  type: object
-  required:
-    - name
-  properties:
-    name:
-      type: string
-      description: The person's full name as they write it — the record's id is its slug.
-    description:
-      type: string
-      description: One line on who this person is and why they are in the workspace.
-    nickname:
-      type: string
-      description: What they are actually called, when that differs from their name.
-    email:
-      type: string
-      x-sensitive: true
-      description: Primary email — what calendar attendees are matched on.
-      format: email
-    role:
-      type: string
-      description: Their job title at the company, as written on LinkedIn or in their signature.
-    team:
-      type: string
-      description: The team or unit within the company they sit in.
-    company:
-      type: string
-      x-reference: companies
-      # The far side is GENERATED onto `companies` (the companies module) by this declaration, and
-      # only when this module is installed — a workspace with companies alone has no `contacts` field
-      # on them, which is the truth of that workspace.
-      x-inverse:
-        field: contacts
-        description: Everyone on record as working here right now — generated from `contacts.company`.
-      description: Where they currently work.
-    relation:
-      type: string
-      description: 'How they relate to you personally: friend, network, colleague, client-side…'
-    location:
-      type: string
-      description: Where they are based — city or country, whatever is known.
-    avatar:
-      type: string
-      x-reference: assets
-      description: >-
-        This person's photo, as an asset record — usually `assets/avatars/<contact-id>`. Drawn wherever this contact is
-        shown.
-    linkedin:
-      type: string
-      format: uri
-      description: >-
-        Their LinkedIn profile URL. A URN form (/in/ACoAA…) is fine when the public slug is unknown — prefer the slug
-        once resolved.
-    status:
-      type: string
-      enum:
-        - draft
-        - enriched
-        - verified
-      default: draft
-      description: >-
-        How complete this record is — `draft` means discovered as an attendee, email only. This is what makes the
-        enrichment queue derivable, since /scrape-contact enters on draft and exits on enriched/verified.
-    notes:
-      type: string
-      format: markdown
-      x-body: true
-      description: The person's page — history, context, anything worth remembering before talking to them.
-    linkedin_degree:
-      type: string
-      enum:
-        - 1st
-        - 2nd
-        - 3rd
-        - none
-      description: >-
-        How far this person is from you on LinkedIn, as seen from your own account.
-    linkedin_mutuals:
-      type: integer
-      description: How many connections you share with them — a rough proxy for how warm an intro would be.
-    review_note:
-      type: string
-      format: markdown
-      title: Needs review
-      description: >-
-        What is blocking this record and what you have to decide — written for a person to read and answer,
-        then cleared.
-    tags:
-      type: array
-      items:
-        type: string
-        pattern: '^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$'
-      examples: ['investor', 'linkedin:unsure']
-      description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
-    recent_meeting:
-      type: string
-      x-reference: meetings
-      description: >-
-        The LATEST meeting this contact attended that has already happened — a ref into meetings. Maintained by
-        /update-contacts-from-meetings after every processed meeting (and by its --all backfill); never hand-set. Latest
-        by the meeting's starts, not by when the record was written.
-    recent_meeting_date:
-      type: string
-      format: date-time
-      description: >-
-        The starts of recent_meeting, denormalized so a list can sort and filter by it without a join — 'who have I not
-        spoken to since June'. Always written together with recent_meeting; empty means no past meeting is known.
-    author:
-      type: string
-      pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
-      examples: ['agents/claude-code', 'scripts/read-git@2']
-      description: >-
-        Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a
-        reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
-    creation_context:
-      type: string
-      description: How and why this record came to be, in one line — and the reason whenever confidence is low.
-    source:
-      type: string
-      description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: calendar:<id> · <collection>/<id> · file:<path> · url:<…> · linkedin:<slug> · migration:<id>.'
-    confidence:
-      type: string
-      enum: [low, normal, high]
-      default: normal
-      description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
-order: 10
-list_fields:
-  - avatar
-  - name
-  - role
-  - company
-  - recent_meeting_date
-  - linkedin_degree
-  - linkedin
-  - last-modified
-icon: account   # the outside party you deal with; `users` wears `person` for the people who do the work
-group: crm
+  format: md
+ids:
+  from: "{{ name | slug }}"
+fields:
+  name:
+    type: string
+    required: true
+    description: The person's full name as they write it — the record's id is its slug.
+  description:
+    type: string
+    description: One line on who this person is and why they are in the workspace.
+  nickname:
+    type: string
+    description: What they are actually called, when that differs from their name.
+  email:
+    type: email
+    sensitive: true
+    description: Primary email — what calendar attendees are matched on.
+  role:
+    type: string
+    description: Their job title at the company, as written on LinkedIn or in their signature.
+  team:
+    type: string
+    description: The team or unit within the company they sit in.
+  company:
+    type: companies
+    description: Where they currently work.
+  relation:
+    type: string
+    description: 'How they relate to you personally: friend, network, colleague, client-side…'
+  location:
+    type: string
+    description: Where they are based — city or country, whatever is known.
+  avatar:
+    type: assets
+    description: >-
+      This person's photo, as an asset record — usually `assets/avatars/<contact-id>`. Drawn wherever this contact is shown.
+  linkedin:
+    type: url
+    description: >-
+      Their LinkedIn profile URL. A URN form (/in/ACoAA…) is fine when the public slug is unknown — prefer the slug once resolved.
+  status:
+    type: string
+    default: draft
+    enum:
+      - draft
+      - enriched
+      - verified
+    description: >-
+      How complete this record is — `draft` means discovered as an attendee, email only. This is what makes the enrichment queue derivable, since /scrape-contact enters on draft and exits on enriched/verified.
+  notes:
+    type: markdown
+    body: true
+    description: The person's page — history, context, anything worth remembering before talking to them.
+  linkedin_degree:
+    type: string
+    enum:
+      - 1st
+      - 2nd
+      - 3rd
+      - none
+    description: >-
+      How far this person is from you on LinkedIn, as seen from your own account.
+  linkedin_mutuals:
+    type: integer
+    description: How many connections you share with them — a rough proxy for how warm an intro would be.
+  review_note:
+    type: markdown
+    title: Needs review
+    description: >-
+      What is blocking this record and what you have to decide — written for a person to read and answer, then cleared.
+  tags:
+    type: string
+    many: true
+    examples: ['investor', 'linkedin:unsure']
+    pattern: ^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$
+    description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
+  recent_meeting:
+    type: meetings
+    description: >-
+      The LATEST meeting this contact attended that has already happened — a ref into meetings. Maintained by /update-contacts-from-meetings after every processed meeting (and by its --all backfill); never hand-set. Latest by the meeting's starts, not by when the record was written.
+  recent_meeting_date:
+    type: datetime
+    description: >-
+      The starts of recent_meeting, denormalized so a list can sort and filter by it without a join — 'who have I not spoken to since June'. Always written together with recent_meeting; empty means no past meeting is known.
+  author:
+    type: string
+    examples: ['agents/claude-code', 'scripts/read-git@2']
+    pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
+    description: >-
+      Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
+  creation_context:
+    type: string
+    description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+  source:
+    type: string
+    description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: calendar:<id> · <collection>/<id> · file:<path> · url:<…> · linkedin:<slug> · migration:<id>.'
+  confidence:
+    type: string
+    default: normal
+    enum: [low, normal, high]
+    description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
+display:
+  nav:
+    icon: account
+    order: 10
+    section: crm
+  list:
+    columns:
+      - avatar
+      - name
+      - role
+      - company
+      - recent_meeting_date
+      - linkedin_degree
+      - linkedin
+      - last_modified

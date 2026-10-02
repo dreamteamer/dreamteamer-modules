@@ -27,7 +27,7 @@
 	"dreamteamer": {
 		"title": "Recordings",
 		"description": "One audio file and its transcript per `meeting-recordings` record. Audio dropped into an `${env:INBOX_FOLDERS}` root is deduped by content hash, archived under `${env:FILES_FOLDER}`, matched to its meeting (stamping `meetings.recordings`) and transcribed offline with speaker diarisation, in Hebrew and English. Summaries, tasks and critiques built on a transcript are the `meeting-docs` module.",
-		"engine": ">=0.30.0",
+		"engine": ">=0.33.0",
 		"dependencies": [
 			"@dreamteamer/meetings"
 		],

@@ -1,112 +1,105 @@
 name: wikis
-id:
-  generate: '{{ name | slug }}'
+description: "A collection of markdown sources serialised as a FOLDER — `index.md`, then `sources/<nn>--<slug>.md` nested into sections. Every source is a file, including one nothing has downloaded yet, which is a stub carrying `completeness: pending`; that is what makes a half-fetched corpus impossible to mistake for a finished one. A notebook points at many wikis, and a wiki serves many notebooks."
+use_when: a body of reference material has to be READ rather than asked — a corpus a coding agent greps, cites and follows links inside. Create one with `npx dt-wiki init`, or mirror a live NotebookLM notebook into one with `npx dt-wiki pull <notebook-record>`; then `npx dt-wiki incomplete` is the one command that says what still needs scraping. Read the folder, never this record, for what a source SAYS — the record holds where the corpus lives and how finished it is, and its counts are a cache the folder overrules
+storage:
+  path: data/wikis
+  format: md
+ids:
+  from: "{{ name | slug }}"
   # an entity, not a dated document — a corpus is a thing that IS, and it is looked up by the
   # name a person would type
   pattern: ^[a-z0-9][a-z0-9-]*$
-schema:
-  type: object
-  # only `name` and `folder` are required: a wiki can exist as an empty folder waiting to be filled,
-  # which is what `dt-wiki init` writes.
-  required:
-    - name
-    - folder
-  properties:
-    name:
-      type: string
-      description: What this corpus is called — the record's id is its slug.
-    # workspace-relative and in the repo, never a machine path: `wikis/<id>` needs no variable set, so
-    # a corpus works on a bare clone and in a cloud session. A relative value resolves against the
-    # workspace root, never the current directory; an `${env:…}` template or an absolute value is
-    # still honoured.
-    folder:
-      type: string
-      description: "Where the markdown lives, relative to the workspace — `wikis/<id>`. Inside it: `index.md`, then `sources/<nn>--<slug>.md` nested into section subfolders. The sources are committed, so a `file:line` citation opens from a bare clone and reviews in a diff. Only text meant to be read lives here; a scraped PDF, a recording or a scan stays under `${env:FILES_FOLDER}` with a record pointing at it. A corpus is megabytes in every clone, so split a large one into several wikis by subject."
-      examples:
-        - 'wikis/share-based-payments'
-        - '${env:FILES_FOLDER}/wikis/legacy-corpus'
-    description:
-      type: string
-      description: One line on what this corpus covers, for a list view.
-    adapter:
-      type: string
-      enum:
-        - local
-        - notebooklm
-      default: local
-      description: "Where the sources came from. `local` is a folder somebody filled — no login, no network, no prerequisite. `notebooklm` means `dt-wiki pull` mirrored a live notebook into it, and `upstream` says which."
-    upstream:
-      type: string
-      description: The uuid of the notebook this corpus was pulled from, when `adapter` is `notebooklm`. Empty on a corpus that was only ever local.
-    # A STRING, not a reference — the same trade `notebooks.account` makes, and for the same reason:
-    # this package ships no accounts collection to point at, and the fact is not derivable.
-    account:
-      type: string
-      description: Which login the upstream notebook opens under, when there is one — an address or a label, `dana.o@northwind.example`.
-    status:
-      type: string
-      enum:
-        - active
-        - archived
-        - throwaway
-      default: active
-      description: "`throwaway` is a real state: a smoke pull and a spike corpus both live here, and neither should be read as something anyone maintains."
-    # ─── THE ROLLUP ─────────────────────────────────────────────────────────────────────────────
-    # These four are a cache, and the folder is the authority. They let a list view show which corpus
-    # is unfinished; `npx dt-wiki verify` re-derives them from the files and names the drift. Never
-    # reason about a specific source from these — `dt-wiki incomplete` reads the files.
-    sources_total:
-      type: integer
-      description: How many sources the folder held at `synced_at`. A cache — `dt-wiki verify` re-derives it.
-    sources_complete:
-      type: integer
-      description: How many of them were fully fetched at `synced_at`. A cache.
-    sources_incomplete:
-      type: integer
-      description: "How many were NOT — pending, failed, empty or partial. Non-zero means a scraping pass is owed: `npx dt-wiki incomplete <id>` names each one and why."
-    synced_at:
-      type: string
-      description: When the counts above were last derived from the folder, ISO-8601. Stale counts with a date beat fresh-looking counts with none.
-    tags:
-      type: array
-      items:
-        type: string
-        pattern: '^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$'
-      description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
-    notes:
-      type: string
-      format: markdown
-      description: What this corpus is for, what it covers well, where it is thin. The source list is the folder, not prose here — prose goes stale, `dt-wiki status` does not.
-      x-body: true
-    author:
-      type: string
-      pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
-      examples: ['agents/claude-code', 'scripts/read-git@2']
-      description: >-
-        Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a
-        reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
-    creation_context:
-      type: string
-      description: How and why this record came to be, in one line — and the reason whenever confidence is low.
-    source:
-      type: string
-      description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…> · notebooklm:<notebook-id> · migration:<id>.'
-    confidence:
-      type: string
-      enum: [low, normal, high]
-      default: normal
-      description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
-storage:
-  path: data/wikis
-  codec: md
-  shape: file
-  suffix: wiki
-description: "A collection of markdown sources serialised as a FOLDER — `index.md`, then `sources/<nn>--<slug>.md` nested into sections. Every source is a file, including one nothing has downloaded yet, which is a stub carrying `completeness: pending`; that is what makes a half-fetched corpus impossible to mistake for a finished one. A notebook points at many wikis, and a wiki serves many notebooks."
-use_when: a body of reference material has to be READ rather than asked — a corpus a coding agent greps, cites and follows links inside. Create one with `npx dt-wiki init`, or mirror a live NotebookLM notebook into one with `npx dt-wiki pull <notebook-record>`; then `npx dt-wiki incomplete` is the one command that says what still needs scraping. Read the folder, never this record, for what a source SAYS — the record holds where the corpus lives and how finished it is, and its counts are a cache the folder overrules
-icon: library
-list_fields:
-  - name
-  - adapter
-  - sources_total
-  - sources_incomplete
-  - status
+fields:
+  name:
+    type: string
+    required: true
+    description: What this corpus is called — the record's id is its slug.
+  # workspace-relative and in the repo, never a machine path: `wikis/<id>` needs no variable set, so
+  # a corpus works on a bare clone and in a cloud session. A relative value resolves against the
+  # workspace root, never the current directory; an `${env:…}` template or an absolute value is
+  # still honoured.
+  folder:
+    type: string
+    required: true
+    examples:
+      - 'wikis/share-based-payments'
+      - '${env:FILES_FOLDER}/wikis/legacy-corpus'
+    description: "Where the markdown lives, relative to the workspace — `wikis/<id>`. Inside it: `index.md`, then `sources/<nn>--<slug>.md` nested into section subfolders. The sources are committed, so a `file:line` citation opens from a bare clone and reviews in a diff. Only text meant to be read lives here; a scraped PDF, a recording or a scan stays under `${env:FILES_FOLDER}` with a record pointing at it. A corpus is megabytes in every clone, so split a large one into several wikis by subject."
+  description:
+    type: string
+    description: One line on what this corpus covers, for a list view.
+  adapter:
+    type: string
+    default: local
+    enum:
+      - local
+      - notebooklm
+    description: "Where the sources came from. `local` is a folder somebody filled — no login, no network, no prerequisite. `notebooklm` means `dt-wiki pull` mirrored a live notebook into it, and `upstream` says which."
+  upstream:
+    type: string
+    description: The uuid of the notebook this corpus was pulled from, when `adapter` is `notebooklm`. Empty on a corpus that was only ever local.
+  # A STRING, not a reference — the same trade `notebooks.account` makes, and for the same reason:
+  # this package ships no accounts collection to point at, and the fact is not derivable.
+  account:
+    type: string
+    description: Which login the upstream notebook opens under, when there is one — an address or a label, `dana.o@northwind.example`.
+  status:
+    type: string
+    default: active
+    enum:
+      - active
+      - archived
+      - throwaway
+    description: "`throwaway` is a real state: a smoke pull and a spike corpus both live here, and neither should be read as something anyone maintains."
+  # ─── THE ROLLUP ─────────────────────────────────────────────────────────────────────────────
+  # These four are a cache, and the folder is the authority. They let a list view show which corpus
+  # is unfinished; `npx dt-wiki verify` re-derives them from the files and names the drift. Never
+  # reason about a specific source from these — `dt-wiki incomplete` reads the files.
+  sources_total:
+    type: integer
+    description: How many sources the folder held at `synced_at`. A cache — `dt-wiki verify` re-derives it.
+  sources_complete:
+    type: integer
+    description: How many of them were fully fetched at `synced_at`. A cache.
+  sources_incomplete:
+    type: integer
+    description: "How many were NOT — pending, failed, empty or partial. Non-zero means a scraping pass is owed: `npx dt-wiki incomplete <id>` names each one and why."
+  synced_at:
+    type: string
+    description: When the counts above were last derived from the folder, ISO-8601. Stale counts with a date beat fresh-looking counts with none.
+  tags:
+    type: string
+    many: true
+    pattern: ^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$
+    description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
+  notes:
+    type: markdown
+    body: true
+    description: What this corpus is for, what it covers well, where it is thin. The source list is the folder, not prose here — prose goes stale, `dt-wiki status` does not.
+  author:
+    type: string
+    examples: ['agents/claude-code', 'scripts/read-git@2']
+    pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
+    description: >-
+      Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
+  creation_context:
+    type: string
+    description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+  source:
+    type: string
+    description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…> · notebooklm:<notebook-id> · migration:<id>.'
+  confidence:
+    type: string
+    default: normal
+    enum: [low, normal, high]
+    description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
+display:
+  nav:
+    icon: library
+  list:
+    columns:
+      - name
+      - adapter
+      - sources_total
+      - sources_incomplete
+      - status

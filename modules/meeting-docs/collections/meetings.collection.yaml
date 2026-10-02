@@ -1,0 +1,16 @@
+name: meetings
+overlay: true
+fields:
+  analyses:
+    type: meeting-analyses
+    many: true
+    mirror_of: meetings
+    description: The critical judgements written over this call — generated from `meeting-analyses.meetings`; many-to-many, because a review usually spans several meetings.
+  prep:
+    type: meeting-preps
+    mirror_of: meeting
+    description: What was read in the ten minutes before walking in — generated from `meeting-preps.meeting`. Empty means this meeting was walked into cold.
+  summary:
+    type: meeting-summaries
+    mirror_of: meeting
+    description: The neutral written record of what this call actually held — one per meeting, generated from `meeting-summaries.meeting`. Empty means nobody wrote one.

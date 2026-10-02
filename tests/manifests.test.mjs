@@ -10,7 +10,7 @@ import path from 'node:path';
 import { MODULES, moduleIds, pkgOf, packedFiles, folderOf, cleanup } from './helpers/workspace.mjs';
 
 after(cleanup);
-const KINDS = ['collections', 'collection-templates', 'skills', 'commands', 'command-bindings', 'ui-views', 'agents'];
+const KINDS = ['collections', 'mixins', 'skills', 'commands', 'command-bindings', 'ui-views', 'agents'];
 const SEMVER = /^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/;
 
 test('the repo carries every module it is meant to', () => {

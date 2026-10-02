@@ -4,71 +4,78 @@
 name: perspective/proposals
 description: One proposed collection, field, skill, command, routine or view — the findings that justify it, the person's decision, and where it landed.
 use_when: >-
-  the propose stage writes what the brain should keep and do; the person accepts, edits or rejects each
-  in chat; materialise reads the accepted ones. Asked "why does this collection exist", the answer is here
-storage: { path: data/perspective/proposals, codec: md, shape: file, suffix: proposal }
-id:
-  generate: "{{ retrospective | basename }}/{{ kind }}--{{ name | slug }}"
+  the propose stage writes what the brain should keep and do; the person accepts, edits or rejects each in chat; materialise reads the accepted ones. Asked "why does this collection exist", the answer is here
+storage: {path: data/perspective/proposals, format: md}
+ids:
+  from: "{{ retrospective | basename }}/{{ kind }}--{{ name | slug }}"
   pattern: "^\\d{4}-\\d{2}-\\d{2}--[a-z0-9-]+/[a-z-]+--[a-z0-9-]+$"
-schema:
-  type: object
-  required: [retrospective, name, kind, justified_by, basis, status]
-  properties:
-    retrospective:
-      type: string
-      x-reference: perspective/retrospective-sessions
-      x-inverse: proposals
-      description: The retrospective session that FIRST wrote this record.
-    last_seen_in: { type: string, x-reference: perspective/retrospective-sessions, description: 'The most recent session that confirmed or updated it. Absent means exactly one session has ever touched it, which is how "new since last time" is answered without a diff.' }
-    name: { type: string, description: The proposed thing's name — the collection or skill id it would get. }
-    kind:
-      type: string
-      enum: [collection, field, skill, command, routine, view]
-    justified_by:
-      type: array
-      items: { type: string, x-reference: perspective/findings }
-      description: 'THE FORCING FIELD. None may be `refuted`; check-records enforces it.'
-      x-inverse: proposals
-    basis:
-      type: string
-      enum: [evidence-and-interview, evidence-only, interview-only]
-      description: Computed from the findings' standing. An evidence-only proposal is visibly one.
-    status:
-      type: string
-      enum: [proposed, accepted, edited, rejected, materialised]
-      default: proposed
-    target_module:
-      type: string
-      description: The workspace module it lands in — `default` for a one-person brain.
-    materialized_as:
-      type: string
-      description: '`collections/<name>`, `skills/<id>`, … once it exists.'
-    rejected_because:
-      type: string
-      description: In the person's words.
-    content:
-      type: string
-      format: markdown
-      x-body: true
-      description: 'For a collection: the complete draft descriptor YAML, one sample `dt add` line, and the "deliberately not modelled" list. For a skill: the draft SKILL.md. An edit replaces this body.'
-    author:
-      type: string
-      pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
-      examples: ['agents/claude-code', 'scripts/read-git@2']
-      description: >-
-        Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a
-        reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
-    creation_context:
-      type: string
-      description: How and why this record came to be, in one line — and the reason whenever confidence is low.
-    source:
-      type: string
-      description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…>.'
-    confidence:
-      type: string
-      enum: [low, normal, high]
-      default: normal
-      description: How much to trust this record. When low, the reason goes in creation_context.
-list_fields: [name, kind, status, basis, retrospective]
-icon: lightbulb
-order: 190   # nav position — what it concluded; the pipeline order, ten apart so one can be inserted without renumbering
+fields:
+  retrospective:
+    type: perspective/retrospective-sessions
+    required: true
+    description: The retrospective session that FIRST wrote this record.
+  last_seen_in: {type: perspective/retrospective-sessions, description: 'The most recent session that confirmed or updated it. Absent means exactly one session has ever touched it, which is how "new since last time" is answered without a diff.'}
+  name: {type: string, required: true, description: The proposed thing's name — the collection or skill id it would get.}
+  kind:
+    type: string
+    required: true
+    enum: [collection, field, skill, command, routine, view]
+  justified_by:
+    type: perspective/findings
+    required: true
+    many: true
+    description: 'THE FORCING FIELD. None may be `refuted`; check-records enforces it.'
+  basis:
+    type: string
+    required: true
+    enum: [evidence-and-interview, evidence-only, interview-only]
+    description: Computed from the findings' standing. An evidence-only proposal is visibly one.
+  status:
+    type: string
+    required: true
+    default: proposed
+    enum: [proposed, accepted, edited, rejected, materialised]
+  target_module:
+    type: string
+    description: The workspace module it lands in — `default` for a one-person brain.
+  materialized_as:
+    type: string
+    description: '`collections/<name>`, `skills/<id>`, … once it exists.'
+  rejected_because:
+    type: string
+    description: In the person's words.
+  workflow:
+    type: perspective/workflows
+    mirror_of: proposed_as
+  content:
+    type: markdown
+    body: true
+    description: 'For a collection: the complete draft descriptor YAML, one sample `dt add` line, and the "deliberately not modelled" list. For a skill: the draft SKILL.md. An edit replaces this body.'
+  author:
+    type: string
+    examples: ['agents/claude-code', 'scripts/read-git@2']
+    pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
+    description: >-
+      Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
+  creation_context:
+    type: string
+    description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+  source:
+    type: string
+    description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…>.'
+  confidence:
+    type: string
+    default: normal
+    enum: [low, normal, high]
+    description: How much to trust this record. When low, the reason goes in creation_context.
+display:
+  nav:
+    icon: lightbulb
+    order: 190
+  list:
+    columns:
+      - name
+      - kind
+      - status
+      - basis
+      - retrospective

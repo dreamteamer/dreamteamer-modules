@@ -12,26 +12,14 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
-import yaml from 'js-yaml';
+import { ALL as DESCRIPTORS } from './helpers/descriptors.mjs';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const MODULES = path.join(ROOT, 'modules');
 
-/** Every collection descriptor in the package, as { name, icon, file }. */
+/** Every collection the repo owns (never an overlay), as { name, icon, file }. */
 function collections() {
-	const out = [];
-	const walk = (dir) => {
-		for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
-			const p = path.join(dir, e.name);
-			if (e.isDirectory()) walk(p);
-			else if (e.name.endsWith('.collection.yaml')) {
-				const d = yaml.load(fs.readFileSync(p, 'utf8'));
-				out.push({ name: d.name, icon: d.icon, file: path.relative(ROOT, p) });
-			}
-		}
-	};
-	walk(MODULES);
-	return out;
+	return DESCRIPTORS.filter((d) => !d.doc.overlay).map((d) => ({ name: d.doc.name, icon: d.doc.display?.nav?.icon, file: d.file }));
 }
 
 const ALL = collections();

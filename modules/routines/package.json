@@ -26,6 +26,6 @@
 	"dreamteamer": {
 		"title": "Routines",
 		"description": "`routines`: commitments that recur — a renewal, a filing, a weekly sweep — each an RFC 5545 RRULE, the anchor it counts from, and the next date it is owed. The `working-with-routines` skill writes and reads the rule; its script renders it in English and rolls `next_due` forward when a date has passed.",
-		"engine": ">=0.30.0"
+		"engine": ">=0.33.0"
 	}
 }

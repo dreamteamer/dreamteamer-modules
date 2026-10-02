@@ -1,156 +1,152 @@
 name: notebooks
-id:
-  generate: '{{ name | slug }}'
+description: One NotebookLM notebook as the SPEC it is restored from — its ordered `sources`, the one `configure` call in `chat`, and the uuid and login of its current live copy. `npx dt-notebook restore <id>` plays the spec; `npx dt-notebook capture <id>` writes it from a notebook that already exists.
+use_when: a notebook is created, restored, or reached — every notebooklm call takes -n <id>, and `notebooklm list | grep` is a network call that breaks on duplicate titles, so find the id here first. Write the record the moment the notebook exists — including one made by `dt notebooklm --create`, which writes no record — then `npx dt-notebook capture` its sources so it can be restored. A notebook that must exist on another account, or was lost with a login, is `npx dt-notebook restore <id> --account <label>`; a record with no `notebook_id` is a spec waiting for that. The corpus PLAN and what it argues is a document record elsewhere
+storage:
+  path: data/notebooks
+  format: md
+ids:
+  from: "{{ name | slug }}"
   # an entity, not a dated document — no date prefix, and the slug of the NotebookLM
   # title is what a person types when looking for it
   pattern: ^[a-z0-9][a-z0-9-]*$
-schema:
-  type: object
-  # `notebook_id` is not required: a record can be the SPEC of a notebook before any
-  # live copy exists — `npx dt-notebook restore <id>` creates one from `sources` + `chat`
-  # and writes the uuid back. The binding on this collection reads an empty id as the queue.
-  required:
-    - name
-  properties:
-    name:
-      type: string
-      description: The notebook's title as NotebookLM shows it — the record's id is its slug.
-    notebook_id:
-      type: string
-      description: The NotebookLM notebook uuid of the CURRENT live copy — what every `notebooklm -n <id>` call is addressed to. Empty means the record is a spec nobody has restored yet (`dt next notebooks/<id>` says so); a previous copy's uuid is git history, never a second record.
-    description:
-      type: string
-      description: One line on what the notebook is for, for a list view.
-    # ─── THE TWO ADAPTERS ───────────────────────────────────────────────────────────────────────
-    # `adapter` has no default, on purpose: a `notebooklm` default would contradict the point of the
-    # local implementation, that a notebook needs no login. Absent means DERIVED — a record with a
-    # `notebook_id` is served by NotebookLM, one without is served by its wikis. The field only
-    # overrides that, for a notebook restored upstream that should stop being answered from there.
-    adapter:
-      type: string
-      enum:
-        - local
-        - notebooklm
-      description: "Which implementation answers for this notebook. LEAVE IT EMPTY unless you are overriding: empty derives `notebooklm` when `notebook_id` is set and `local` otherwise. `local` reads the `wikis` below off disk and needs no account, no network and no login; `notebooklm` is the extra, and everything it can do that a folder cannot is listed in the module README."
-    wikis:
-      type: array
-      items:
+fields:
+  name:
+    type: string
+    required: true
+    description: The notebook's title as NotebookLM shows it — the record's id is its slug.
+  notebook_id:
+    type: string
+    description: The NotebookLM notebook uuid of the CURRENT live copy — what every `notebooklm -n <id>` call is addressed to. Empty means the record is a spec nobody has restored yet (`dt next notebooks/<id>` says so); a previous copy's uuid is git history, never a second record.
+  description:
+    type: string
+    description: One line on what the notebook is for, for a list view.
+  # ─── THE TWO ADAPTERS ───────────────────────────────────────────────────────────────────────
+  # `adapter` has no default, on purpose: a `notebooklm` default would contradict the point of the
+  # local implementation, that a notebook needs no login. Absent means DERIVED — a record with a
+  # `notebook_id` is served by NotebookLM, one without is served by its wikis. The field only
+  # overrides that, for a notebook restored upstream that should stop being answered from there.
+  adapter:
+    type: string
+    enum:
+      - local
+      - notebooklm
+    description: "Which implementation answers for this notebook. LEAVE IT EMPTY unless you are overriding: empty derives `notebooklm` when `notebook_id` is set and `local` otherwise. `local` reads the `wikis` below off disk and needs no account, no network and no login; `notebooklm` is the extra, and everything it can do that a folder cannot is listed in the module README."
+  wikis:
+    type: wikis
+    many: true
+    description: "The corpora this notebook is built on, in reading order — `wikis/share-based-payments`. A notebook points at MANY wikis and a wiki serves many notebooks, which is why a wiki is a record with its own folder rather than an array entry here. Fill it with `npx dt-wiki pull <this-record>`, which mirrors the live notebook's sources into a folder and links the two."
+  company:
+    type: companies
+    description: The account this notebook is about, when it is a client corpus rather than a general one — `companies/harbor-mutual`.
+  status:
+    type: string
+    default: active
+    enum:
+      - active
+      - archived
+      - throwaway
+    description: "`throwaway` is a real state and earns its place: a smoke test and a spike notebook both live here, and neither should be read as a corpus anyone maintains."
+  tags:
+    type: string
+    many: true
+    pattern: ^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$
+    description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
+  # A STRING, not a reference. The fact it holds — a notebook is invisible from the wrong Google
+  # login, and nothing can derive which one — is not derivable and not guessable, so it has to be
+  # written down; but this package ships no accounts collection to point at. A workspace that has
+  # one re-types this field in an overlay.
+  account:
+    type: string
+    description: Which Google login opens it — an address or a label, `dana.o@northwind.example`. Not derivable and not guessable; there are usually several, and a notebook is invisible from the wrong one.
+  # THE RESTORE SPEC — ordered, because NotebookLM numbers sources in the order they were added.
+  # A record carrying this can be restored with one command; one without it is only a handle.
+  # `npx dt-notebook capture <id>` fills it from the live list; `npx dt-notebook restore <id>` plays
+  # it. `source_id` is per-copy and rewritten on every restore.
+  sources:
+    type: object
+    many: true
+    fields:
+      kind:
         type: string
-        x-reference: wikis
-        x-inverse: notebooks
-      description: "The corpora this notebook is built on, in reading order — `wikis/share-based-payments`. A notebook points at MANY wikis and a wiki serves many notebooks, which is why a wiki is a record with its own folder rather than an array entry here. Fill it with `npx dt-wiki pull <this-record>`, which mirrors the live notebook's sources into a folder and links the two."
-    company:
-      type: string
-      x-reference: companies
-      description: The account this notebook is about, when it is a client corpus rather than a general one — `companies/harbor-mutual`.
-    status:
-      type: string
-      enum:
-        - active
-        - archived
-        - throwaway
-      default: active
-      description: "`throwaway` is a real state and earns its place: a smoke test and a spike notebook both live here, and neither should be read as a corpus anyone maintains."
-    tags:
-      type: array
-      items:
+        required: true
+        enum:
+          - url
+          - youtube
+          - file
+          - text
+          - drive
+          - export
+        description: "`url` and `youtube` need `ref` (the URL); `file` needs `ref` (a `${env:…}/…` path); `text` needs `text` (inline — the live list cannot recover it); `drive` needs `ref` (the Drive document id) and optionally `mime`; `export` is `dt notebooklm` re-run against the new notebook, with `ref` holding its extra arguments."
+      ref:
         type: string
-        pattern: '^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$'
-      description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
-    # A STRING, not a reference. The fact it holds — a notebook is invisible from the wrong Google
-    # login, and nothing can derive which one — is not derivable and not guessable, so it has to be
-    # written down; but this package ships no accounts collection to point at. A workspace that has
-    # one re-types this field in an overlay.
-    account:
-      type: string
-      description: Which Google login opens it — an address or a label, `dana.o@northwind.example`. Not derivable and not guessable; there are usually several, and a notebook is invisible from the wrong one.
-    # THE RESTORE SPEC — ordered, because NotebookLM numbers sources in the order they were added.
-    # A record carrying this can be restored with one command; one without it is only a handle.
-    # `npx dt-notebook capture <id>` fills it from the live list; `npx dt-notebook restore <id>` plays
-    # it. `source_id` is per-copy and rewritten on every restore.
-    sources:
-      type: array
-      description: "The sources, in order — what `npx dt-notebook restore` adds, one `source add` each. Fill it with `npx dt-notebook capture <id>` for a notebook that already exists; a `file` source's `ref` is a `${env:FILES_FOLDER}/…` template, never a machine path."
-      items:
-        type: object
-        required: [kind]
-        properties:
-          kind:
-            type: string
-            enum: [url, youtube, file, text, drive, export]
-            description: "`url` and `youtube` need `ref` (the URL); `file` needs `ref` (a `${env:…}/…` path); `text` needs `text` (inline — the live list cannot recover it); `drive` needs `ref` (the Drive document id) and optionally `mime`; `export` is `dt notebooklm` re-run against the new notebook, with `ref` holding its extra arguments."
-          ref:
-            type: string
-            description: "What to add — a URL, a `${env:FILES_FOLDER}/…` path, a Drive id, or the `dt notebooklm` arguments (`--collections tasks,meetings`)."
-          title:
-            type: string
-            description: The title the source carries in the notebook — applied by `source rename` after the add, because `--title` keeps the file name on most uploads.
-          text:
-            type: string
-            description: A `text` source's content, verbatim. The only kind whose bytes live on the record.
-          mime:
-            type: string
-            enum: [google-doc, google-slides, google-sheets, pdf]
-            description: A `drive` source's document type, when it is not a Google Doc.
-          source_id:
-            type: string
-            description: The live source uuid in the CURRENT copy — what `source rename`, `delete` and `fulltext` are addressed to. Rewritten by every restore; blank on a spec.
-    # THE ONE `configure` CALL. Everything here travels in a single call because `configure` replaces
-    # the whole configuration each time, and `--mode` beside `--persona` silently drops the persona.
-    chat:
-      type: object
-      description: "How the notebook answers — sent as ONE `configure` call by `npx dt-notebook restore`. Set `persona` OR `mode`, never both: NotebookLM keeps one and drops the other at exit 0."
-      properties:
-        persona:
-          type: string
-          format: markdown
-          description: The system prompt — up to 10,000 characters of custom instructions. When set, `mode` must be empty (a persona IS the custom mode).
-        persona_file:
-          type: string
-          description: "A repo-relative file the persona is read from when `persona` is empty — `NOTEBOOKLM.md` for the workspace persona compile writes (cut to its custom-instructions section, exactly as `npx dt-notebook persona` does), or any other markdown file taken whole."
-        mode:
-          type: string
-          enum: [default, learning-guide, concise, detailed]
-          description: A predefined chat mode, for a notebook with NO persona. Mutually exclusive with `persona` — `restore` refuses both.
-        response_length:
-          type: string
-          enum: [default, longer, shorter]
-          default: default
-          description: Response verbosity — travels in the same call as the persona, or it is wiped.
-    notes:
-      type: string
-      format: markdown
-      description: What it is for, what has been asked of it, what it answers badly. The source LIST is `sources`, not prose here — prose goes stale, the field is what `restore` reads.
-      x-body: true
-    author:
-      type: string
-      pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
-      examples: ['agents/claude-code', 'scripts/read-git@2']
-      description: >-
-        Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a
-        reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
-    creation_context:
-      type: string
-      description: How and why this record came to be, in one line — and the reason whenever confidence is low.
-    source:
-      type: string
-      description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…> · notebooklm:<notebook-id> · migration:<id>.'
-    confidence:
-      type: string
-      enum: [low, normal, high]
-      default: normal
-      description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
-storage:
-  path: data/notebooks
-  codec: md
-  shape: file
-  suffix: notebook
-description: One NotebookLM notebook as the SPEC it is restored from — its ordered `sources`, the one `configure` call in `chat`, and the uuid and login of its current live copy. `npx dt-notebook restore <id>` plays the spec; `npx dt-notebook capture <id>` writes it from a notebook that already exists.
-use_when: a notebook is created, restored, or reached — every notebooklm call takes -n <id>, and `notebooklm list | grep` is a network call that breaks on duplicate titles, so find the id here first. Write the record the moment the notebook exists — including one made by `dt notebooklm --create`, which writes no record — then `npx dt-notebook capture` its sources so it can be restored. A notebook that must exist on another account, or was lost with a login, is `npx dt-notebook restore <id> --account <label>`; a record with no `notebook_id` is a spec waiting for that. The corpus PLAN and what it argues is a document record elsewhere
-icon: book
-list_fields:
-  - name
-  - account
-  - status
-  - notebook_id
-  - tags
+        description: What to add — a URL, a `${env:FILES_FOLDER}/…` path, a Drive id, or the `dt notebooklm` arguments (`--collections tasks,meetings`).
+      title:
+        type: string
+        description: The title the source carries in the notebook — applied by `source rename` after the add, because `--title` keeps the file name on most uploads.
+      text:
+        type: string
+        description: A `text` source's content, verbatim. The only kind whose bytes live on the record.
+      mime:
+        type: string
+        enum:
+          - google-doc
+          - google-slides
+          - google-sheets
+          - pdf
+        description: A `drive` source's document type, when it is not a Google Doc.
+      source_id:
+        type: string
+        description: The live source uuid in the CURRENT copy — what `source rename`, `delete` and `fulltext` are addressed to. Rewritten by every restore; blank on a spec.
+    description: "The sources, in order — what `npx dt-notebook restore` adds, one `source add` each. Fill it with `npx dt-notebook capture <id>` for a notebook that already exists; a `file` source's `ref` is a `${env:FILES_FOLDER}/…` template, never a machine path."
+  # THE ONE `configure` CALL. Everything here travels in a single call because `configure` replaces
+  # the whole configuration each time, and `--mode` beside `--persona` silently drops the persona.
+  chat:
+    type: object
+    fields:
+      persona:
+        type: markdown
+        description: The system prompt — up to 10,000 characters of custom instructions. When set, `mode` must be empty (a persona IS the custom mode).
+      persona_file:
+        type: string
+        description: "A repo-relative file the persona is read from when `persona` is empty — `NOTEBOOKLM.md` for the workspace persona compile writes (cut to its custom-instructions section, exactly as `npx dt-notebook persona` does), or any other markdown file taken whole."
+      mode:
+        type: string
+        enum: [default, learning-guide, concise, detailed]
+        description: A predefined chat mode, for a notebook with NO persona. Mutually exclusive with `persona` — `restore` refuses both.
+      response_length:
+        type: string
+        default: default
+        enum: [default, longer, shorter]
+        description: Response verbosity — travels in the same call as the persona, or it is wiped.
+    description: "How the notebook answers — sent as ONE `configure` call by `npx dt-notebook restore`. Set `persona` OR `mode`, never both: NotebookLM keeps one and drops the other at exit 0."
+  notes:
+    type: markdown
+    body: true
+    description: What it is for, what has been asked of it, what it answers badly. The source LIST is `sources`, not prose here — prose goes stale, the field is what `restore` reads.
+  author:
+    type: string
+    examples: ['agents/claude-code', 'scripts/read-git@2']
+    pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
+    description: >-
+      Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
+  creation_context:
+    type: string
+    description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+  source:
+    type: string
+    description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…> · notebooklm:<notebook-id> · migration:<id>.'
+  confidence:
+    type: string
+    default: normal
+    enum: [low, normal, high]
+    description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
+display:
+  nav:
+    icon: book
+  list:
+    columns:
+      - name
+      - account
+      - status
+      - notebook_id
+      - tags

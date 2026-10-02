@@ -1,64 +1,68 @@
 name: rnd/experiments
 description: >-
-  One controlled experiment this workspace runs on its own tooling or data — the falsifiable question,
-  the design, the runs, and what was actually learned. The record IS the lab notebook; a superseded
-  design is git history, never a second record.
+  One controlled experiment this workspace runs on its own tooling or data — the falsifiable question, the design, the runs, and what was actually learned. The record IS the lab notebook; a superseded design is git history, never a second record.
 use_when: >-
-  you are about to test a hypothesis with runs and measurements rather than by reading — search
-  here first (a prior experiment may already answer it), and log yours before running it
-storage: { path: data/rnd/experiments, codec: md, shape: file, suffix: experiment }
-id:
-  generate: "{{ started | date }}--{{ name | slug }}"
+  you are about to test a hypothesis with runs and measurements rather than by reading — search here first (a prior experiment may already answer it), and log yours before running it
+storage: {path: data/rnd/experiments, format: md}
+ids:
+  from: "{{ started | date }}--{{ name | slug }}"
   pattern: "^\\d{4}-\\d{2}-\\d{2}--[a-z0-9-]+$"
-schema:
-  type: object
-  required: [name, question, started]
-  properties:
-    name:
-      type: string
-      description: The experiment in one line — what is being tested, not the method.
-    question:
-      type: string
-      description: >-
-        The forcing field: the falsifiable question this experiment answers. Without one it is
-        tinkering, not an experiment — and the verdict below must answer exactly this.
-    hypothesis:
-      type: string
-      description: What you expect to be true, stated BEFORE the runs — so the result can surprise.
-    status:
-      type: string
-      enum: [designed, running, analyzed, concluded, abandoned]
-      default: designed
-      description: 'Observable states: designed = protocol written; running = runs in flight; analyzed = numbers in; concluded = verdict written; abandoned = stopped, with the reason in the body.'
-    started:
-      type: string
-      format: date
-      description: When the design was fixed — also the id's filing date.
-    concluded:
-      type: string
-      format: date
-      description: When the verdict landed. Empty while running.
-    verdict:
-      type: string
-      description: One line, once concluded — the ANSWER to the question, not a summary of activity.
-    repo:
-      type: string
-      x-reference: repos
-      description: The repo under test, when the experiment targets one of this workspace's own tools.
-    artifacts:
-      type: string
-      description: >-
-        Where the raw run outputs live — a ${env:VAR} template or workspace-relative path.
-        Artifacts are evidence, not records: they stay outside data/.
-    related:
-      type: array
-      items: { type: string, x-reference: [rnd/issues, rnd/open-questions, rnd/features, rnd/draft-docs, rnd/research-docs, rnd/products] }
-      description: R&D records this experiment feeds or draws from — the issue it may close, the open question it answers, the writeup it produces.
-    body:
-      type: string
-      format: markdown
-      x-body: true
-      description: 'The lab notebook: protocol, the run matrix, the numbers, the analysis — everything a re-run needs.'
-order: 58
-list_fields: [name, status, started, concluded]
-icon: beaker
+fields:
+  name:
+    type: string
+    required: true
+    description: The experiment in one line — what is being tested, not the method.
+  question:
+    type: string
+    required: true
+    description: >-
+      The forcing field: the falsifiable question this experiment answers. Without one it is tinkering, not an experiment — and the verdict below must answer exactly this.
+  hypothesis:
+    type: string
+    description: What you expect to be true, stated BEFORE the runs — so the result can surprise.
+  status:
+    type: string
+    default: designed
+    enum: [designed, running, analyzed, concluded, abandoned]
+    description: 'Observable states: designed = protocol written; running = runs in flight; analyzed = numbers in; concluded = verdict written; abandoned = stopped, with the reason in the body.'
+  started:
+    type: date
+    required: true
+    description: When the design was fixed — also the id's filing date.
+  concluded:
+    type: date
+    description: When the verdict landed. Empty while running.
+  verdict:
+    type: string
+    description: One line, once concluded — the ANSWER to the question, not a summary of activity.
+  repo:
+    type: repos
+    description: The repo under test, when the experiment targets one of this workspace's own tools.
+  artifacts:
+    type: string
+    description: >-
+      Where the raw run outputs live — a ${env:VAR} template or workspace-relative path. Artifacts are evidence, not records: they stay outside data/.
+  related:
+    type:
+      - rnd/issues
+      - rnd/open-questions
+      - rnd/features
+      - rnd/draft-docs
+      - rnd/research-docs
+      - rnd/products
+    many: true
+    description: R&D records this experiment feeds or draws from — the issue it may close, the open question it answers, the writeup it produces.
+  body:
+    type: markdown
+    body: true
+    description: 'The lab notebook: protocol, the run matrix, the numbers, the analysis — everything a re-run needs.'
+display:
+  nav:
+    icon: beaker
+    order: 58
+  list:
+    columns:
+      - name
+      - status
+      - started
+      - concluded

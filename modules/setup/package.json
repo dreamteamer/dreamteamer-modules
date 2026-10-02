@@ -24,6 +24,6 @@
 	"dreamteamer": {
 		"title": "Setup",
 		"description": "One board for every official dreamteamer module a workspace has: which optional capabilities are ready, which are degraded, and the fix for each. `dt-setup doctor` shows it and changes nothing. `dt-setup setup` makes only the in-workspace edits it asks for and prints the rest. `dt-setup link <clone>` previews a local clone of these modules. Ships no content.",
-		"engine": ">=0.30.0"
+		"engine": ">=0.33.0"
 	}
 }

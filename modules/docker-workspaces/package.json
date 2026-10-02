@@ -26,6 +26,6 @@
 	"dreamteamer": {
 		"title": "Docker workspaces",
 		"description": "Runs a dreamteamer workspace as a local Docker container, and moves its workspaces between containers as one encrypted file. `dt-docker` is a global command needing only Node and Docker: it starts, stops, opens, lists and removes containers, each a code-server editor at a loopback URL over three named volumes. Installed in a workspace, it adds the `running-workspaces-in-containers` skill.",
-		"engine": ">=0.30.0"
+		"engine": ">=0.33.0"
 	}
 }

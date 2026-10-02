@@ -2,108 +2,89 @@ name: rnd/user-stories
 description: >-
   One capability from the user's side, written as the sentence they would say.
 use_when: >-
-  a capability is discussed from the USER's side — write the sentence they would say here; a design
-  doc cites these, and a feature without one is a guess about who wants it
+  a capability is discussed from the USER's side — write the sentence they would say here; a design doc cites these, and a feature without one is a guess about who wants it
 storage:
   path: data/rnd/user-stories
-  codec: md
-  shape: file
-  suffix: user-story
+  format: md
 # The slug comes from `key`, not from `name`. A story's `name` is the sentence the user would SAY, and
 # in a non-Latin script the engine's `slug` filter (`slugOrHash`) turns it into an `x1a2b3c4` hash, so
 # `key` is required to keep ids readable and greppable.
-id:
-  generate: '{{ created | date }}--{{ key }}'
+ids:
+  from: "{{ created | date }}--{{ key }}"
   pattern: ^\d{4}-\d{2}-\d{2}--[a-z0-9-]+$
-schema:
-  type: object
-  required:
-    - name
-    - key
-  properties:
-    key:
-      type: string
-      description: The latin handle that becomes the id — `first-sign-in-otp`, `see-vesting-schedule`. Lowercase, hyphenated. It exists because a `name` in a non-Latin script would hash.
-    name:
-      type: string
-      description: The story in one line — what someone can do that they could not before.
-    description:
-      type: string
-      description: One line of context for a list view.
-    content:
-      type: string
-      format: markdown
-      x-body: true
-      description: The story itself, with whatever acceptance detail makes "done" unambiguous.
-    tags:
-      type: array
-      items:
-        type: string
-        pattern: '^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$'
-      examples: ['onboarding', 'v2']
-      description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
-    status:
-      type: string
-      enum:
-        - pending
-        - in-progress
-        - done
-      default: pending
-      description: Where the story stands. This is the progress marker for the slice — there is no separate run record.
-    product-design-doc:
-      type: string
-      x-reference: rnd/product-design-docs
-      description: The design this story implements a piece of.
-    product:
-      type: string
-      x-reference: rnd/products
-      x-inverse:
-        field: user_stories
-        description: What users can do with this product — generated from `rnd/user-stories.product`.
-      description: >-
-        The PRODUCT this story belongs to, directly. The chain story → design doc → product exists, but a
-        product page lists its own stories without a two-hop join, and "which product is this story for" is
-        the first question a reviewer asks.
-    source:
-      type: string
-      x-reference: rnd/draft-docs
-      description: The spec draft this story was carved out of.
-    screen:
-      type: string
-      x-reference: rnd/screens
-      # No `x-inverse` here: `rnd/screens.user_stories` carries `x-inverse-of`, and declaring both makes
-      # compile warn on every run.
-      description: The screen this story runs through. A story with no screen is a capability nobody has decided where to put.
-    journey:
-      type: string
-      description: >-
-        The FLOW this story is one step of — a lowercase-hyphenated handle like `first-sign-in`,
-        `exercise-and-sell`, `update-bank-details`. A journey is not its own collection on purpose:
-        it is the stories, in `step` order, and `dt values rnd/user-stories journey` enumerates every
-        one. When a scope document names the journey set as a deliverable, the set has
-        to be countable rather than described.
-    step:
-      type: integer
-      description: Position of this story within its `journey`, from 1. Absent for a story that stands alone.
-    author:
-      type: string
-      pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
-      examples: ['agents/claude-code', 'scripts/read-git@2']
-      description: >-
-        Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a
-        reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
-    creation_context:
-      type: string
-      description: How and why this record came to be, in one line — and the reason whenever confidence is low.
-    confidence:
-      type: string
-      enum: [low, normal, high]
-      default: normal
-      description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
-order: 40
-list_fields:
-  - name
-  - last-modified
-  - status
-  - tags
-icon: comment
+fields:
+  key:
+    type: string
+    required: true
+    description: The latin handle that becomes the id — `first-sign-in-otp`, `see-vesting-schedule`. Lowercase, hyphenated. It exists because a `name` in a non-Latin script would hash.
+  name:
+    type: string
+    required: true
+    description: The story in one line — what someone can do that they could not before.
+  description:
+    type: string
+    description: One line of context for a list view.
+  content:
+    type: markdown
+    body: true
+    description: The story itself, with whatever acceptance detail makes "done" unambiguous.
+  tags:
+    type: string
+    many: true
+    examples: ['onboarding', 'v2']
+    pattern: ^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$
+    description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
+  status:
+    type: string
+    default: pending
+    enum:
+      - pending
+      - in-progress
+      - done
+    description: Where the story stands. This is the progress marker for the slice — there is no separate run record.
+  product-design-doc:
+    type: rnd/product-design-docs
+    description: The design this story implements a piece of.
+  product:
+    type: rnd/products
+    description: >-
+      The PRODUCT this story belongs to, directly. The chain story → design doc → product exists, but a product page lists its own stories without a two-hop join, and "which product is this story for" is the first question a reviewer asks.
+  source:
+    type: rnd/draft-docs
+    description: The spec draft this story was carved out of.
+  screen:
+    type: rnd/screens
+    # No `x-inverse` here: `rnd/screens.user_stories` carries `x-inverse-of`, and declaring both makes
+    # compile warn on every run.
+    description: The screen this story runs through. A story with no screen is a capability nobody has decided where to put.
+  journey:
+    type: string
+    description: >-
+      The FLOW this story is one step of — a lowercase-hyphenated handle like `first-sign-in`, `exercise-and-sell`, `update-bank-details`. A journey is not its own collection on purpose: it is the stories, in `step` order, and `dt values rnd/user-stories journey` enumerates every one. When a scope document names the journey set as a deliverable, the set has to be countable rather than described.
+  step:
+    type: integer
+    description: Position of this story within its `journey`, from 1. Absent for a story that stands alone.
+  author:
+    type: string
+    examples: ['agents/claude-code', 'scripts/read-git@2']
+    pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
+    description: >-
+      Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
+  creation_context:
+    type: string
+    description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+  confidence:
+    type: string
+    default: normal
+    enum: [low, normal, high]
+    description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
+display:
+  nav:
+    icon: comment
+    order: 40
+  list:
+    columns:
+      - name
+      - last_modified
+      - status
+      - tags

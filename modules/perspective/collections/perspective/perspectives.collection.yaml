@@ -5,84 +5,144 @@
 name: perspective/perspectives
 description: One contributor's perspective — the synthesised output of one retrospective run.
 use_when: >-
-  the synthesise stage writes it, once per run; asked who this contributor is as a worker, what
-  vocabulary they use, and what they actually run — read here first, then follow the refs
-storage: { path: data/perspective/perspectives, codec: md, shape: file, suffix: perspective }
-id:
-  generate: "{{ contributor }}"
+  the synthesise stage writes it, once per run; asked who this contributor is as a worker, what vocabulary they use, and what they actually run — read here first, then follow the refs
+storage: {path: data/perspective/perspectives, format: md}
+ids:
+  from: "{{ contributor }}"
   pattern: "^[a-z0-9-]+$"
-schema:
-  type: object
-  required: [retrospective, contributor]
-  properties:
-    retrospective:
-      type: string
-      x-reference: perspective/retrospective-sessions
-      x-inverse: perspective
-      x-unique: true
-      description: The retrospective session that FIRST wrote this record.
-    last_seen_in: { type: string, x-reference: perspective/retrospective-sessions, description: 'The most recent session that confirmed or updated it. Absent means exactly one session has ever touched it, which is how "new since last time" is answered without a diff.' }
-    contributor: { type: string, pattern: '^[a-z0-9-]+$', description: 'WHOSE this is, as a slug — and the FIRST SEGMENT OF THE ID. That is what makes a second retrospective UPDATE this record instead of writing one beside it. A plain slug rather than a reference, because an id segment cannot be one; the person''s own observed-world record is perspective/users/<contributor>/<their-name-slug>.' }
-    role: { type: string, description: 'OBSERVED from behaviour — what this person does all day, never their title.' }
-    summary: { type: string, description: The perspective in a paragraph. }
-    period_start: { type: string, format: date }
-    period_end: { type: string, format: date }
-    dsl: { type: array, items: { type: string, x-reference: perspective/concepts } }
-    topics: { type: array, items: { type: string, x-reference: perspective/topics } }
-    collaborators: { type: array, items: { type: string, x-reference: perspective/users } }
-    workflows: { type: array, items: { type: string, x-reference: perspective/workflows } }
-    activities_count: { type: integer }
-    decisions_count: { type: integer }
-    meetings_count:
-      type: integer
-      description: >-
-        How many DISTINCT meetings this contributor's activities rest on — not how many the reader
-        scanned, which is on the `meetings` source's own `counts`. Absent when no activity cites one.
-        Attendance, not participation, and worth saying so in the body wherever this number carries
-        an argument.
-    commands:
-      type: array
-      items: { type: object, properties: { name: { type: string }, description: { type: string }, uses: { type: integer } }, required: [name] }
-      description: 'INLINE, description level: every command the workspace offers this contributor, and how many sessions invoked it.'
-    skills:
-      type: array
-      items: { type: object, properties: { name: { type: string }, description: { type: string }, uses: { type: integer } }, required: [name] }
-      description: 'INLINE: every skill available, and how many sessions loaded it.'
-    routines:
-      type: array
-      items: { type: object, properties: { name: { type: string }, description: { type: string }, recurrence: { type: string } }, required: [name] }
-      description: 'INLINE: the routines collection, description level.'
-    projects:
-      type: array
-      items: { type: object, properties: { name: { type: string }, kind: { type: string }, description: { type: string }, activities: { type: integer }, commits: { type: integer }, tickets: { type: integer }, ref: { type: string } }, required: [name] }
-      description: 'INLINE, description level: every logical project the run found, with its counts and a ref to the record.'
-    repos:
-      type: array
-      items: { type: object, properties: { name: { type: string }, url: { type: string }, commits: { type: integer }, contributor_commits: { type: integer }, first: { type: string }, last: { type: string } }, required: [name] }
-      description: 'INLINE: every repo the run read, with the commit counts — all authors and the contributor alone.'
-    collections:
-      type: array
-      items: { type: object, properties: { name: { type: string }, description: { type: string }, records: { type: integer } }, required: [name] }
-      description: 'INLINE: every collection this workspace has, description level, with its record count — what the contributor has to keep things in.'
-    content: { type: string, format: markdown, x-body: true, description: 'The perspective written out: role, DSL, topics, collaborators, operational model, what is proposed.' }
-    author:
-      type: string
-      pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
-      examples: ['agents/claude-code', 'scripts/read-git@2']
-      description: >-
-        Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a
-        reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
-    creation_context:
-      type: string
-      description: How and why this record came to be, in one line — and the reason whenever confidence is low.
-    source:
-      type: string
-      description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…>.'
-    confidence:
-      type: string
-      enum: [low, normal, high]
-      default: normal
-      description: How much to trust this record. When low, the reason goes in creation_context.
-list_fields: [contributor, role, period_start, period_end]
-icon: compass   # not `account` — a perspective is an ORIENTATION on someone's work; `account` goes to `contacts`, which every workspace opens far more often
-order: 200   # nav position — the answer; the pipeline order, ten apart so one can be inserted without renumbering
+fields:
+  retrospective:
+    type: perspective/retrospective-sessions
+    required: true
+    unique: true
+    description: The retrospective session that FIRST wrote this record.
+  last_seen_in: {type: perspective/retrospective-sessions, description: 'The most recent session that confirmed or updated it. Absent means exactly one session has ever touched it, which is how "new since last time" is answered without a diff.'}
+  contributor: {type: string, required: true, pattern: '^[a-z0-9-]+$', description: 'WHOSE this is, as a slug — and the FIRST SEGMENT OF THE ID. That is what makes a second retrospective UPDATE this record instead of writing one beside it. A plain slug rather than a reference, because an id segment cannot be one; the person''s own observed-world record is perspective/users/<contributor>/<their-name-slug>.'}
+  role: {type: string, description: 'OBSERVED from behaviour — what this person does all day, never their title.'}
+  summary: {type: string, description: The perspective in a paragraph.}
+  period_start: {type: date}
+  period_end: {type: date}
+  dsl: {type: perspective/concepts, many: true}
+  topics: {type: perspective/topics, many: true}
+  collaborators: {type: perspective/users, many: true}
+  workflows: {type: perspective/workflows, many: true}
+  activities_count: {type: integer}
+  decisions_count: {type: integer}
+  meetings_count:
+    type: integer
+    description: >-
+      How many DISTINCT meetings this contributor's activities rest on — not how many the reader scanned, which is on the `meetings` source's own `counts`. Absent when no activity cites one. Attendance, not participation, and worth saying so in the body wherever this number carries an argument.
+  commands:
+    type: object
+    many: true
+    fields:
+      name:
+        type: string
+        required: true
+      description:
+        type: string
+      uses:
+        type: integer
+    description: 'INLINE, description level: every command the workspace offers this contributor, and how many sessions invoked it.'
+  skills:
+    type: object
+    many: true
+    fields:
+      name:
+        type: string
+        required: true
+      description:
+        type: string
+      uses:
+        type: integer
+    description: 'INLINE: every skill available, and how many sessions loaded it.'
+  routines:
+    type: object
+    many: true
+    fields:
+      name:
+        type: string
+        required: true
+      description:
+        type: string
+      recurrence:
+        type: string
+    description: 'INLINE: the routines collection, description level.'
+  projects:
+    type: object
+    many: true
+    fields:
+      name:
+        type: string
+        required: true
+      kind:
+        type: string
+      description:
+        type: string
+      activities:
+        type: integer
+      commits:
+        type: integer
+      tickets:
+        type: integer
+      ref:
+        type: string
+    description: 'INLINE, description level: every logical project the run found, with its counts and a ref to the record.'
+  repos:
+    type: object
+    many: true
+    fields:
+      name:
+        type: string
+        required: true
+      url:
+        type: string
+      commits:
+        type: integer
+      contributor_commits:
+        type: integer
+      first:
+        type: string
+      last:
+        type: string
+    description: 'INLINE: every repo the run read, with the commit counts — all authors and the contributor alone.'
+  collections:
+    type: object
+    many: true
+    fields:
+      name:
+        type: string
+        required: true
+      description:
+        type: string
+      records:
+        type: integer
+    description: 'INLINE: every collection this workspace has, description level, with its record count — what the contributor has to keep things in.'
+  content: {type: markdown, body: true, description: 'The perspective written out: role, DSL, topics, collaborators, operational model, what is proposed.'}
+  author:
+    type: string
+    examples: ['agents/claude-code', 'scripts/read-git@2']
+    pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
+    description: >-
+      Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
+  creation_context:
+    type: string
+    description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+  source:
+    type: string
+    description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…>.'
+  confidence:
+    type: string
+    default: normal
+    enum: [low, normal, high]
+    description: How much to trust this record. When low, the reason goes in creation_context.
+display:
+  nav:
+    icon: compass
+    order: 200
+  list:
+    columns:
+      - contributor
+      - role
+      - period_start
+      - period_end
