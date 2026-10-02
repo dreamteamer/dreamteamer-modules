@@ -210,4 +210,4 @@ it is pushed by a person after CI is green on the commit that shipped the module
   skill's stale auth path is a carry-back for a later hunk, not this one.
 - **The other three sub-projects** the same conversation raised — the `rnd` module (which will drop
   `designing-stuff` now that `/design` exists), the meetings nav fold (which reopens the nav-axis
-  decision in the extension), and `a client workspace`'s visibility — each gets its own document.
+  decision in the extension), and one client workspace's visibility — each gets its own document.
