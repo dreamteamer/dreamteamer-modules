@@ -45,7 +45,7 @@ for (const m of modules) {
 		const pkg = pkgOf(m);
 		const mroot = path.join(MODULES, m);
 		const deps = new Set((pkg.dreamteamer?.dependencies ?? []).map(folderOf));
-		const peers = new Set(pkg.dreamteamer?.peerDependencies ?? []);
+		const peers = new Set(pkg.dreamteamer?.peer_collections ?? []);
 		/** May module m point at (or overlay) collection t? */
 		const reaches = (t) => CORE.has(t) || OWNER.get(t) === m || deps.has(OWNER.get(t)) || peers.has(t);
 
@@ -93,7 +93,7 @@ for (const m of modules) {
 			for (const d of pkg.dreamteamer.dependencies ?? []) visit(folderOf(d));
 		});
 		test('a declared peer is a collection some OTHER module provides (a peer nothing provides is a typo)', () => {
-			for (const p of pkg.dreamteamer.peerDependencies ?? []) {
+			for (const p of pkg.dreamteamer.peer_collections ?? []) {
 				const owner = OWNER.get(p);
 				assert.ok(owner && owner !== m, `${m} peers "${p}" — ${owner === m ? 'it owns that collection itself' : 'nothing in this repo provides it'}`);
 			}

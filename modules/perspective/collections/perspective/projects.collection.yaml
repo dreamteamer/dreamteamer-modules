@@ -34,7 +34,8 @@ fields:
     description: >-
       The short handle the evidence shows the effort being called — a ticket prefix, a repo name used as shorthand, a branch namespace. Free-form exactly as the real collection's is. Absent when the evidence only ever spells the project out.
   company:
-    type: string
+    type: companies
+    soft: true
     description: >-
       Who the evidence shows the work is FOR. A PEER reference and SOFT — see `real` below; a workspace with no CRM leaves it empty and nothing dangles.
   lead:
@@ -42,7 +43,8 @@ fields:
     description: >-
       Who the evidence shows accountable — the person with most of the commits, the ticket owner, the one who answers. OBSERVED, exactly as `status` is; the real collection's `lead` is appointed. Empty is honest and common: plenty of efforts have no visible lead.
   real:
-    type: string
+    type: projects
+    soft: true
     description: >-
       The `projects` record this observed effort appears to BE — the one-way, soft join to the world a person authored. A PROPOSAL, set only on a confirmed match. The argument for one-way and for soft is written out once, on `perspective/users.real`.
   kind:

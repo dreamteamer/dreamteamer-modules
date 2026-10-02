@@ -73,7 +73,8 @@ fields:
     description: >-
       The reconstructed piece of work this decision was taken inside, joined from whichever activity already cites the same evidence. This is the join `project` is DERIVED THROUGH — `bin/derive-decision-projects.mjs` finds the activity first and takes its project — so it was a hop nobody could see until it was a field. Empty when no clustered activity cites the evidence, which is a fact about the clustering window.
   real:
-    type: string
+    type: decisions
+    soft: true
     description: >-
       The `decisions` record this observed choice appears to BE — the one-way, soft join to the decision a person wrote down. A PROPOSAL, set only on a confirmed match, and a valuable one: an extracted decision with no authored counterpart is a call nobody logged. The argument for one-way and for soft is written out once, on `perspective/users.real`.
   # NOT a duplicate of source_ref. `source_ref` is the ARTEFACT the decision was READ OUT OF — a

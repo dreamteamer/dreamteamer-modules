@@ -108,7 +108,7 @@ function fromStore(store) {
  *  what the nudge names, so the reader never has to derive a path from a rule. */
 export function proofPathFor(artifactRef, moduleRoot) {
 	const id = path.basename(artifactRef).replace(/\.[^.]+$/, '');
-	// `.` is the root layout's module root (a workspace with no `workspace-module`): its sources sit
+	// `.` is the root layout's module root (a workspace with no `workspace_module`): its sources sit
 	// at the workspace root, so the path has no prefix at all
 	return moduleRoot && moduleRoot !== '.' ? `${moduleRoot}/proofs/${id}.proof.yaml` : `proofs/${id}.proof.yaml`;
 }

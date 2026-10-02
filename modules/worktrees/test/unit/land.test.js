@@ -115,7 +115,7 @@ describe('classifyConflict — a generated block is not the operator\'s prose', 
 		assert.equal(classifyConflict('src/x.js', hunk('one', 'two'), markers), 'other');
 	});
 
-	test('the data path is configurable — a workspace with data-path "records" classifies there', () => {
+	test('the data path is configurable — a workspace with data_path "records" classifies there', () => {
 		const m = { ...markers, dataPath: 'records' };
 		assert.equal(classifyConflict('records/notes/a.note.md', hunk('one', 'two'), m), 'records');
 		assert.equal(classifyConflict('data/notes/a.note.md', hunk('one', 'two'), m), 'other');

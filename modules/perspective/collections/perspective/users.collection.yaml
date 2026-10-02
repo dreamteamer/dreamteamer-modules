@@ -42,7 +42,8 @@ fields:
     description: >-
       Their working address — the one handle that is an address, promoted so it can be read without scanning `handles`. Never invented: absent when the evidence carries only a gid or a display name.
   company:
-    type: string
+    type: companies
+    soft: true
     description: >-
       Which organisation the evidence shows them at — a commit domain, a ticket workspace. A PEER reference and SOFT (see `real`): a workspace with no CRM leaves it empty and nothing dangles.
   contact:
@@ -73,7 +74,8 @@ fields:
   #      world. `bin/check-records.mjs` reports the dangle as a WARNING instead — visible, never
   #      blocking.
   real:
-    type: string
+    type: users
+    soft: true
     description: >-
       The `users` record this observed person appears to BE — the one-way, soft join between the world a run reconstructed and the world a person authored. A PROPOSAL, set only where a person confirmed the match, exactly as `contact` is, and never off a name that merely agrees. Empty is the normal state, and it is what a workspace with no `users` collection always reads.
   # A FACE, so a board of thirty collaborators is scannable. Same plain-string reasoning as

@@ -102,13 +102,14 @@ describe('the `real` join', () => {
 		test(`${n}.real points at ${real}, one-way and soft`, () => {
 			const spec = propsOf(observed[n]).real;
 			assert.ok(spec, `${n} has no \`real\` — the observed world with no join to the real one is a second vocabulary again`);
-			assert.equal(spec.type, 'string',
+			assert.deepEqual(targetsOf(spec), [real], `${n}.real must point at ${real}`);
+			assert.equal(spec.soft, true,
 				'soft is what lets the target RECORD be gone: a correspondence is a judgement a run made on a date');
 			assert.ok(!spec.many, `${n}.real is one record`);
 			assert.ok(spec.description.startsWith(`The \`${real}\` record`), `${n}.real must name the collection it points at`);
 			const realMirrors = Object.entries(realFieldsOf(n)).filter(([, f]) => targetsOf(f).includes(`perspective/${n}`));
 			assert.deepEqual(realMirrors, [], 'ONE-WAY: the real world must never gain a field pointing at a finding');
-			assert.ok(PERSPECTIVE_PKG.dreamteamer.peerDependencies.includes(real),
+			assert.ok(PERSPECTIVE_PKG.dreamteamer.peer_collections.includes(real),
 				`${real} must be a declared peer — that is what lets the target COLLECTION be absent (module ${module} need not be installed)`);
 		});
 	}
@@ -157,7 +158,7 @@ describe('the layer resolves within itself — `real` is the only crossing', () 
 			for (const [field, spec] of Object.entries(propsOf(d))) {
 				for (const t of targetsOf(spec)) {
 					checked += 1;
-					if (field === 'real') continue;
+					if (spec.soft) continue;                         // `real` and the soft unions cross by design
 					if (String(t).startsWith('perspective/')) continue;
 					if (!REAL_NOUNS.has(String(t))) continue;     // a peer with no observed half — legal
 					crossings.push(`${n}.${field} → ${t}  (want perspective/${t})`);
@@ -172,10 +173,10 @@ describe('the layer resolves within itself — `real` is the only crossing', () 
 	test('`real` is the only crossing, it is soft, and every observed collection has exactly one', () => {
 		for (const [n, d] of Object.entries(observed)) {
 			const crossing = Object.entries(propsOf(d))
-				.filter(([, spec]) => targetsOf(spec).some((t) => REAL_NOUNS.has(String(t))))
+				.filter(([, spec]) => !spec.soft && targetsOf(spec).some((t) => REAL_NOUNS.has(String(t))))
 				.map(([field]) => field);
 			assert.deepEqual(crossing, [], `${n} crosses into the real world through a hard reference: ${crossing.join(', ')}`);
-			assert.equal(propsOf(d).real?.type, 'string', `${n} has no soft \`real\``);
+			assert.equal(propsOf(d).real?.soft, true, `${n} has no soft \`real\``);
 		}
 	});
 });
@@ -194,9 +195,10 @@ describe('concepts classify both worlds, and the two halves stay apart', () => {
 	});
 
 	test('`related_to` is a soft list into the real world', () => {
-		assert.equal(concepts.related_to.type, 'string', 'soft: a deleted real record must not turn a concept red');
+		assert.equal(concepts.related_to.soft, true, 'soft: a deleted real record must not turn a concept red');
 		assert.ok(concepts.related_to.many);
-		assert.deepEqual(targetsOf(concepts.related_to), [],
+		assert.ok(targetsOf(concepts.related_to).length > 0, 'related_to names the real collections it may point at');
+		assert.deepEqual(targetsOf(concepts.related_to).filter((t) => String(t).startsWith('perspective/')), [],
 			'the observed world belongs to `classifies`; two fields, because one is ours and one is not');
 	});
 });

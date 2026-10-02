@@ -21,7 +21,7 @@ const INSTALL_TIMEOUT_MS = 10 * 60_000;
 export function listWorktrees(ws, git = defaultGit) {
 	const c = dt.describeCheckout(ws.root, git);
 	const primaryBranch = git(['rev-parse', '--abbrev-ref', 'HEAD'], c.primary);
-	const dataPath = ws.pkg.dreamteamer?.['data-path'] ?? 'data';
+	const dataPath = ws.pkg.dreamteamer?.data_path ?? 'data';
 	const rows = [];
 	let cur = null;
 	for (const line of git(['worktree', 'list', '--porcelain'], c.primary).split('\n')) {

@@ -32,7 +32,7 @@
 			"@dreamteamer/assets",
 			"@dreamteamer/companies"
 		],
-		"peerDependencies": [
+		"peer_collections": [
 			"meetings"
 		],
 		"env": [

@@ -19,7 +19,7 @@ const say = (...a) => console.log(...a);
 const die = (m) => { console.error(paint('✖', '31'), m); return 1; };
 
 const readPkg = (root) => { try { return JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')); } catch { return {}; } };
-const dataPathOf = (root) => readPkg(root)?.dreamteamer?.['data-path'] ?? 'data';
+const dataPathOf = (root) => readPkg(root)?.dreamteamer?.data_path ?? 'data';
 
 /** The engine as this workspace has it — never a global `dreamteamer`, which may be a different
  *  version than the one the workspace pinned. Absent is a real answer, not a crash. */

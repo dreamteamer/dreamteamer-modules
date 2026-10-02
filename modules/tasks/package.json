@@ -25,7 +25,7 @@
 		"dependencies": [
 			"@dreamteamer/users"
 		],
-		"peerDependencies": [
+		"peer_collections": [
 			"projects",
 			"activities"
 		]

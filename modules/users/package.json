@@ -21,7 +21,7 @@
 		"title": "Users",
 		"description": "The people and agents work is assigned to: one `users` collection that the owner, lead, seat and assignee fields of tasks, meetings and projects point at. A user links to their `contacts` record rather than merging with it, nothing here authenticates anyone, and every agent row names the human who owns it. Peers `contacts`, `companies` and `assets`.",
 		"engine": ">=0.33.0",
-		"peerDependencies": [
+		"peer_collections": [
 			"contacts",
 			"companies",
 			"assets"

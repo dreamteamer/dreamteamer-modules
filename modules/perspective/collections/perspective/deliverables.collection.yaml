@@ -67,7 +67,8 @@ fields:
     description: >-
       The observed effort this artefact came out of, carried from whichever activity cites it. RE-POINTED into this layer, like every structural reference here. Empty when no clustered activity does, which is a fact about the clustering window rather than about the artefact.
   real:
-    type: string
+    type: deliverables
+    soft: true
     description: >-
       The `deliverables` record this artefact appears to BE — the one-way, soft join to the thing a plan said it owed. A PROPOSAL, set only on a confirmed match, and one of the most useful in the module: an artefact with no authored counterpart is work nobody was promised, and a planned deliverable with no observed one is a promise with nothing behind it. The argument for one-way and for soft is written out once, on `perspective/users.real`.
   activities:

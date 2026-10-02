@@ -28,7 +28,7 @@
 		],
 		"description": "What a workspace builds and investigates: `products` and their `product-design-docs`, `user-stories`, `screens` and `prototypes`; `features` and `issues` per repo; `research-docs`, `open-questions` and `experiments`; `draft-docs`; `personas` scored against `persona-probes`; `references` to model on. `building-from-references` runs reference → PRD → prototype → plan, a field per hop for `dt next`.",
 		"engine": ">=0.33.0",
-		"peerDependencies": [
+		"peer_collections": [
 			"companies",
 			"projects"
 		]

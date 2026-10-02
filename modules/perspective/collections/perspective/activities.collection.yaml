@@ -44,7 +44,8 @@ fields:
     description: >-
       Who the evidence shows drove this — most of the commits, the ticket's assignee, the person in the session. OBSERVED, never appointed; the real collection's `lead` is who was made accountable. Empty is common and honest: most reconstructed work has no visible lead.
   real:
-    type: string
+    type: activities
+    soft: true
     description: >-
       The `activities` record this observed work appears to BE — the one-way, soft join to the plan rung a person authored. A PROPOSAL, set only on a confirmed match. The argument for one-way and for soft is written out once, on `perspective/users.real`.
   topics:

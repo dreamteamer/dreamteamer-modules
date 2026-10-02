@@ -371,7 +371,7 @@ describe('compile validates proofs', () => {
 		assert.equal(fromEntries.all.size, 5);   // 2 skills · 1 command · 2 scripts
 	});
 
-	// ⚠ THE ROOT LAYOUT, which every path-slicing derivation gets wrong. With no `workspace-module`
+	// ⚠ THE ROOT LAYOUT, which every path-slicing derivation gets wrong. With no `workspace_module`
 	// the workspace's own sources sit at the ROOT (compile.js:619), so a command's source path is
 	// `commands/hello.command.md` — no module segment to cut at. Slicing produced
 	// `commands/hello.command.m/proofs/hello.proof.yaml`, a path that exists nowhere, in the one
@@ -380,7 +380,7 @@ describe('compile validates proofs', () => {
 		const ws = workspace();
 		const pkgPath = path.join(ws.root, 'package.json');
 		const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
-		delete pkg.dreamteamer['workspace-module'];
+		delete pkg.dreamteamer.workspace_module;
 		fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, '\t') + '\n');
 		fs.mkdirSync(path.join(ws.root, 'commands'), { recursive: true });
 		fs.writeFileSync(path.join(ws.root, 'commands', 'hello.command.md'), '---\nname: hello\ndescription: Say hello.\n---\n\nSay hello.\n');
@@ -395,7 +395,7 @@ describe('compile validates proofs', () => {
 		const ws = workspace();
 		const pkgPath = path.join(ws.root, 'package.json');
 		const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
-		delete pkg.dreamteamer['workspace-module'];
+		delete pkg.dreamteamer.workspace_module;
 		fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, '\t') + '\n');
 		assert.equal(ws.dt('compile').code, 0);
 

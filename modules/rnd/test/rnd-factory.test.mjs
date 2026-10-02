@@ -126,7 +126,7 @@ describe('the descriptors', () => {
 		assert.deepEqual(overlays, [], 'a peer excuses a reference, never a mirror');
 		// and the module declares the peer it now leans on
 		const pkg = JSON.parse(fs.readFileSync(path.join(RND, 'package.json'), 'utf8'));
-		assert.ok(pkg.dreamteamer.peerDependencies.includes('projects'),
+		assert.ok(pkg.dreamteamer.peer_collections.includes('projects'),
 			'rnd references projects and must peer it');
 	});
 

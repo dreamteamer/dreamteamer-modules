@@ -325,7 +325,7 @@ export async function landWorktree(ws, ref, { keep = false, dryRun = false, bran
 	}
 	const state = observeLand(ws, ref, { keep, assumeBranch: dryRun && switchTo ? branch : null }, git);
 	const plan = planLand(state);
-	const dataPath = ws.pkg.dreamteamer?.['data-path'] ?? 'data';
+	const dataPath = ws.pkg.dreamteamer?.data_path ?? 'data';
 	const descriptors = dt.loadDescriptors(c.primary) ?? new Map();
 	// the primary is ONE fact — every other refusal it collects is a consequence of that one
 	const refusals = state.worktree.kind === 'primary' ? ['it is the primary checkout'] : plan.refusals;

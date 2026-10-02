@@ -36,7 +36,7 @@
 		"title": "Wikis",
 		"description": "Local wikis: corpora of markdown committed in the repo, grepped with nothing installed and asked by meaning once qmd is. A `wikis` record points at a folder of sources; a source nothing has fetched yet is a stub marked `completeness: pending`, and `dt-wiki incomplete` exits 1 while any remain. `dt-wiki pull` mirrors a NotebookLM notebook into a folder; `ask` prints file:line, never an answer.",
 		"engine": ">=0.33.0",
-		"peerDependencies": [
+		"peer_collections": [
 			"notebooks"
 		]
 	}

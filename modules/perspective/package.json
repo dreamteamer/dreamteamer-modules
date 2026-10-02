@@ -36,7 +36,7 @@
 		],
 		"engine": ">=0.33.0",
 		"description": "Reads a person's past work — git history, coding-agent sessions, tickets, mail, Drive files and notes — and builds the operating model it runs on: activities, projects, decisions, workflows, vocabulary, goals, findings and the assumptions under them, ending in proposals for what your workspace should track. Every record is found, never authored. Start with /run-retrospective.",
-		"peerDependencies": [
+		"peer_collections": [
 			"contacts",
 			"companies",
 			"meetings",

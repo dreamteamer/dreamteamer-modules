@@ -91,12 +91,15 @@ export function envKeys(root) {
  *  including dropping a module named bare in `dreamteamer.disable`. A switched-off module must not be
  *  asked for its variables or shown a capability, and the engine never compiles it, so it is not
  *  "installed" in any sense a person means. */
+/** The module ids a manifest's `disable` switches off whole: its `modules/<id>` entries. */
+const disabledModules = (dt) => (dt?.disable ?? []).filter((d) => typeof d === 'string' && d.startsWith('modules/')).map((d) => d.slice('modules/'.length));
+
 export function installedModules(root) {
 	const wsPkg = readJson(path.join(root, 'package.json')) ?? {};
 	// keyed by MODULE ID: an official package `@dreamteamer/contacts` is `contacts` here, the id every
-	// capability below asks about. A disable entry may name either spelling.
+	// capability below asks about. A whole module is disabled as `modules/<id>`.
 	const idOf = (n) => String(n).replace(/^@dreamteamer\//, '');
-	const disabled = new Set((wsPkg.dreamteamer?.disable ?? []).filter((d) => typeof d === 'string' && (!d.includes('/') || d.startsWith('@dreamteamer/'))).map(idOf));
+	const disabled = new Set(disabledModules(wsPkg.dreamteamer));
 	const found = new Map();
 	const add = (name, channel, at) => { const id = idOf(name); if (!disabled.has(id) && !found.has(id)) found.set(id, { channel, root: at }); };
 	const scan = (dir, channel, unpack) => {
@@ -155,7 +158,7 @@ export function capabilities(root) {
 		}
 		if (!mine.length) c.bad('modules', 'npm install @dreamteamer/<module> and what it needs — each module\'s README has the line', 'no official module is installed here');
 		else c.ok('modules', `${mine.length} of ${OURS.length}: ${mine.join(' · ')}`);
-		const off = (dt.disable ?? []).filter((d) => !d.includes('/') && OURS.includes(d));
+		const off = disabledModules(dt).filter((d) => OURS.includes(d));
 		if (off.length) c.ok('disabled on purpose', off.join(' · '));
 		out.push(c.cap);
 	}

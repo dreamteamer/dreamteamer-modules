@@ -74,7 +74,7 @@ describe('the pre-commit guard', () => {
 	test('linked with nothing schema-shaped staged, the commit proceeds', () => {
 		assert.equal(guardVerdict({ state: 'link', staged: ['README.md', 'package.json'] }), null);
 	});
-	// `dreamteamer.data-path` is a workspace's own choice; a guard hard-coding `data/` would wave
+	// `dreamteamer.data_path` is a workspace's own choice; a guard hard-coding `data/` would wave
 	// through every record in a workspace that moved it.
 	test('a workspace that renamed its data path is still guarded', () => {
 		const msg = guardVerdict({ state: 'link', staged: ['records/notes/a.note.md'], dataPath: 'records' });

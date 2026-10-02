@@ -39,7 +39,7 @@
 		"title": "NotebookLM",
 		"engine": ">=0.33.0",
 		"description": "NotebookLM for a dreamteamer workspace. `dt notebooklm` exports the schema and records as sources and syncs them into a notebook; the `notebooklm` harness keeps NOTEBOOKLM.md's persona and settings current. A `notebooks` record holds a notebook's ordered sources, chat settings, id and login, which `npx dt-notebook` restores and captures. Sensitive collections and fields never travel.",
-		"peerDependencies": [
+		"peer_collections": [
 			"wikis",
 			"companies"
 		]
