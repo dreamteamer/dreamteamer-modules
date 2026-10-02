@@ -139,6 +139,9 @@ test('every reference is either mirrored or listed as deliberately one-way', () 
 		if (spec.mirror_of !== undefined) continue;
 		if ((f === 'retrospective' || f === 'retrospectives') && !(key in MIRRORS)) continue;   // the run link
 		if (f === 'last_seen_in') continue;                          // ditto
+		// perspective-observation's `related`: a soft union every model record carries, one-way by the
+		// mixin's own rule — nothing gains a field pointing back at an observation.
+		if (f === 'related' && spec.soft === true) continue;
 		if (!(key in MIRRORS) && !(key in ONE_WAY)) unclassified.push(key);
 	}
 	assert.deepEqual(unclassified, [], `neither mirrored nor justified as one-way:\n  ${unclassified.join('\n  ')}`);

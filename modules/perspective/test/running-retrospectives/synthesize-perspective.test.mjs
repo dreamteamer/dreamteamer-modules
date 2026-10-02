@@ -79,9 +79,9 @@ function fixture() {
 	// system collection, and this module's own — the last two must not appear.
 	const descriptor = (file, doc) => { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, doc); };
 	const colls = path.join(ws, '.dreamteamer', 'collections');
-	descriptor(path.join(colls, 'alpha.collection.yaml'), `name: alpha\ndescription: "${LONG.trim()}"\nstorage:\n  path: data/alpha\n  suffix: alpha\n  base: workspace\n`);
-	descriptor(path.join(colls, 'skills.collection.yaml'), 'name: skills\ndescription: the engine\'s own\nstorage:\n  path: .dreamteamer/skills\n  suffix: skill\n  base: runtime\n');
-	descriptor(path.join(colls, 'perspective', 'topics.collection.yaml'), 'name: perspective/topics\ndescription: this module does not list itself\nstorage:\n  path: data/perspective/topics\n  suffix: topic\n  base: workspace\n');
+	descriptor(path.join(colls, 'alpha.collection.yaml'), `name: alpha\ndescription: "${LONG.trim()}"\ncompiled:\n  defaults:\n    storage: { path: data/alpha, suffix: alpha }\n  runtime: false\n`);
+	descriptor(path.join(colls, 'skills.collection.yaml'), 'name: skills\ndescription: the engine\'s own\ncompiled:\n  defaults:\n    storage: { path: .dreamteamer/skills, suffix: skill }\n  runtime: true\n');
+	descriptor(path.join(colls, 'perspective', 'topics.collection.yaml'), 'name: perspective/topics\ndescription: this module does not list itself\ncompiled:\n  defaults:\n    storage: { path: data/perspective/topics, suffix: topic }\n  runtime: false\n');
 	fs.mkdirSync(path.join(ws, 'data', 'alpha', 'nested'), { recursive: true });
 	fs.writeFileSync(path.join(ws, 'data', 'alpha', 'one.alpha.md'), 'x');
 	fs.writeFileSync(path.join(ws, 'data', 'alpha', 'nested', 'two.alpha.md'), 'x');

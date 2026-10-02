@@ -85,21 +85,21 @@ test('the order runs in the pipeline direction, with no duplicate', () => {
 });
 
 test('every named view has a unique nav.order, contiguous from 1', () => {
-	const orders = views.filter((v) => v.nav).map((v) => v.nav.order).sort((a, b) => a - b);
+	const orders = views.filter((v) => v.display?.nav).map((v) => v.display.nav.order).sort((a, b) => a - b);
 	assert.ok(orders.length >= 8, `expected the named views, found ${orders.length}`);
 	assert.deepEqual(orders, orders.map((_, i) => i + 1),
 		`nav orders are ${orders.join(',')} — 1 was unused and 8 and 9 were each used twice before this release`);
 });
 
-test('a view without a nav block is a default list view, and says so', () => {
-	for (const v of views.filter((x) => !x.nav)) {
-		assert.equal(v.default, true, `${v.file} has neither a nav entry nor default: true — it is unreachable`);
-	}
+// A view is a named variant of its collection's default view, which the collection draws itself —
+// so a view the nav does not list is reachable by nothing.
+test('every view has a nav entry', () => {
+	for (const v of views) assert.ok(v.display?.nav, `${v.file} has no display.nav — it is unreachable`);
 });
 
-test('every named view carries a label and an icon', () => {
-	for (const v of views.filter((x) => x.nav)) {
-		assert.ok(v.nav.label, `${v.file} has no nav.label`);
-		assert.ok(v.nav.icon, `${v.file} has no nav.icon`);
+test('every named view carries a title and an icon', () => {
+	for (const v of views.filter((x) => x.display?.nav)) {
+		assert.ok(v.display.nav.title, `${v.file} has no display.nav.title`);
+		assert.ok(v.display.nav.icon, `${v.file} has no display.nav.icon`);
 	}
 });

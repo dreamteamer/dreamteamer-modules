@@ -104,7 +104,8 @@ test('a workspace overlay that re-homes a collection is honoured over the shippe
 	const ws = fs.mkdtempSync(path.join(os.tmpdir(), 'perspective-overlay-'));
 	const compiled = path.join(ws, '.dreamteamer', 'collections', 'perspective', 'decisions.collection.yaml');
 	fs.mkdirSync(path.dirname(compiled), { recursive: true });
-	fs.writeFileSync(compiled, 'name: perspective/decisions\nstorage: { path: data/elsewhere/decisions, codec: md, shape: file, suffix: decision }\n');
+	// the v2 compiled shape: the authored keys, and what compile resolved under `compiled`
+	fs.writeFileSync(compiled, 'name: perspective/decisions\nstorage: { path: data/elsewhere/decisions }\ncompiled:\n  defaults: { storage: { path: data/elsewhere/decisions, format: md, shape: file, suffix: decision } }\n  runtime: false\n  fields: {}\n');
 	assert.equal(collectionDir('decisions', path.join(ws, 'data')), path.join(ws, 'data', 'elsewhere', 'decisions'));
 	fs.rmSync(ws, { recursive: true, force: true });
 });

@@ -382,9 +382,9 @@ test('a meeting placed under its company folder is read like any other, with the
 	const compiled = path.join(f.ws, '.dreamteamer', 'collections');
 	fs.mkdirSync(compiled, { recursive: true });
 	fs.writeFileSync(path.join(compiled, 'companies.collection.yaml'),
-		'name: companies\nstorage:\n  path: data/companies\n  shape: folder\n  entry: company.md\n  suffix: company\n  codec: md\n  base: workspace\nschema: { type: object }\n');
+		'name: companies\nstorage:\n  shape: folder\n  entry: company.md\ncompiled:\n  defaults:\n    storage: { path: data/companies, format: md, suffix: company }\n  runtime: false\n  fields: {}\n');
 	fs.writeFileSync(path.join(compiled, 'meetings.collection.yaml'),
-		'name: meetings\nstorage:\n  path: data/meetings\n  suffix: meeting\n  codec: md\n  base: workspace\n  under:\n    field: company\n    path: meetings\n    collection: companies\nschema: { type: object }\n');
+		'name: meetings\nstorage:\n  under:\n    parent: company\n    subfolder: meetings\ncompiled:\n  defaults:\n    storage: { path: data/meetings, format: md, shape: file, suffix: meeting }\n  runtime: false\n  under_collection: companies\n  fields: {}\n');
 	const id = '2026/08/2026-08-03--10-00--northwind--weekly-sync';
 	const from = path.join(f.data, 'meetings', `${id}.meeting.md`);
 	const to = path.join(f.data, 'companies', 'northwind', 'meetings', `${id}.meeting.md`);

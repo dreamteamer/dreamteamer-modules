@@ -77,15 +77,25 @@ export function shippedDescriptor(name) {
  *  one, else null. */
 export function readDescriptor(workspaceRoot, name) {
 	const compiled = load(path.join(workspaceRoot, '.dreamteamer', 'collections', `${name}.collection.yaml`));
-	if (compiled?.storage?.path) {
-		const s = compiled.storage;
-		const under = s.under?.field && s.under?.path && s.under?.collection ? { field: s.under.field, path: s.under.path, collection: s.under.collection } : null;
+	if (compiled?.compiled) {
+		// compile records what it decided under `compiled`: the RESOLVED storage path in
+		// `compiled.defaults.storage` (it differs from the authored one under an owns-data module), the
+		// suffix there when the descriptor left it out, and the parent collection of `storage.under`.
+		const c = compiled.compiled;
+		const authored = compiled.storage ?? {};
+		const supplied = c.defaults?.storage ?? {};
+		const p = supplied.path ?? authored.path;
+		const u = authored.under;
 		return {
 			name,
-			compiled: true,
-			runtime: s.base === 'runtime' || compiled.compiled?.runtime === true,
-			storage: { path: String(s.path), suffix: String(s.suffix ?? singular(bareName(name))), under },
-			fields: compiled.compiled?.fields ?? {},
+			compiled: Boolean(p),
+			runtime: c.runtime === true,
+			storage: {
+				path: String(p ?? `data/${name}`),
+				suffix: String(authored.suffix ?? supplied.suffix ?? singular(bareName(name))),
+				under: u?.parent && u?.subfolder && c.under_collection ? { field: u.parent, path: u.subfolder, collection: c.under_collection } : null,
+			},
+			fields: c.fields ?? {},
 		};
 	}
 	const doc = shippedDescriptor(name);
