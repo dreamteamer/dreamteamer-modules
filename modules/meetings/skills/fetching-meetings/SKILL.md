@@ -1,9 +1,9 @@
 ---
 name: fetching-meetings
-description: Use when the user wants to fetch, sync, snapshot, or back up their calendar meetings into data/meetings/ for a week or a date range — e.g. "sync my work meetings this week", "fetch next week's meetings to files", "update data/meetings". Covers which Google Calendars count as work, deduping across calendars, company classification, non-English titles, and the data/meetings file convention.
+description: Use when the user wants to fetch, sync, snapshot, or back up their calendar meetings into `meetings` records for a week or a date range — e.g. "sync my work meetings this week", "fetch next week's meetings to files", "update my meetings". Covers which Google Calendars count as work (`WORK_CALENDARS`, read by `gcal.mjs rows`), deduping across calendars, company classification, non-English titles, and the meeting record convention.
 ---
 
-# Fetching calendar meetings to data/meetings
+# Fetching calendar meetings into `meetings` records
 
 Snapshot **work** meetings from Google Calendar into one `meetings` record per meeting. The records
 are the source of truth; this is a manual, on-demand snapshot, not a live sync. Events may carry
@@ -16,12 +16,16 @@ Google Calendar v3 API directly with the credentials `workspace-mcp` stores per 
 **raw JSON**.
 
 ```
+node .dreamteamer/skills/fetching-meetings/bin/gcal.mjs rows                  # WORK_CALENDARS as JSON rows, no network
+node .dreamteamer/skills/fetching-meetings/bin/gcal.mjs access                # each row's accessRole + writable calendars no row names
 node .dreamteamer/skills/fetching-meetings/bin/gcal.mjs calendars <account>
 node .dreamteamer/skills/fetching-meetings/bin/gcal.mjs events <account> <calendarId> <timeMin> <timeMax> [--show-deleted]
 node .dreamteamer/skills/fetching-meetings/bin/gcal.mjs event  <account> <calendarId> <eventId>   # 404 = never existed
 ```
 
-`<account>` is an **email** — the 3rd column of the `WORK_CALENDARS` row — and it is **required**.
+`<account>` is an **email** — the `account` of the `WORK_CALENDARS` row that `rows` prints — and it is
+**required**. `events` prints the event items only; the calendar's `accessRole` comes from `access`
+(or `calendars`), which is why the degraded-read check runs before the fetch (step 2), not on it.
 
 **Why a script and not a calendar tool that returns formatted text:** the sync is built on three
 fields a formatted reply drops.
@@ -29,7 +33,7 @@ fields a formatted reply drops.
 | field | what depends on it |
 |---|---|
 | **`status`** (confirmed/**cancelled**/tentative) | telling a cancelled instance from one that never existed (step 7) |
-| **`accessRole`** | the degraded-read guard (step 3) |
+| **`accessRole`** | the degraded-read guard (step 2), read by `access` |
 | attendee **`resource: true`** | excluding room bookings instead of minting contacts for them |
 
 The script also passes `showDeleted` and `timeZone`. It is the same account, the same data and the
@@ -60,7 +64,7 @@ can fix that, by allowlisting the OAuth client id.
 |---|---|---|
 | `Error 403: access_denied` — "*has not completed the Google verification process … currently being tested*" | the OAuth app's publishing status is **Testing** | Google Auth Platform → Audience → **PUBLISH APP**. Consent then shows an "unverified app" warning (expected — it is your own app). Adding yourself as a Test user also works, but refresh tokens then expire every 7 days and the sync fails weekly |
 | `OAuth credentials not found` / `ENOENT … gcp-oauth.keys.json` | the path variable is not in the **process** environment — the workspace `.env` does not reach a shell | `export` the variable first, and never use `~` in its value — it is passed through verbatim and fails to open |
-| auth succeeds but every calendar call returns empty | the wrong account consented, or that account sees the calendar at too low an `accessRole`. An empty Data Access list on the consent screen is normal — the scope is requested at runtime | re-auth the account that owns the calendar; check `accessRole` per calendar with `gcal.mjs calendars` |
+| auth succeeds but every calendar call returns empty | the wrong account consented, or that account sees the calendar at too low an `accessRole`. An empty Data Access list on the consent screen is normal — the scope is requested at runtime | re-auth the account that owns the calendar; check `accessRole` per calendar with `gcal.mjs access` |
 | a `web` top-level key in `gcp-oauth.keys.json` | the client was created as **Web application** | recreate it as **Desktop app** — the flow needs a localhost redirect. A correct file has `installed` and `redirect_uris: ["http://localhost"]` |
 
 **If the calendar cannot be read, work out which of two cases it is** — they need opposite responses:
@@ -92,28 +96,38 @@ credentials is not that.
    ticked at consent or `gcal.mjs` refuses up front.
 5. **`WORK_CALENDARS` in the workspace `.env`** — one row per calendar, 3rd column = the account
    **email** that reads it. See "Which calendars count as work".
-6. **Verify per calendar, not per account:** run `gcal.mjs calendars <email>` for each account and
-   check every `WORK_CALENDARS` id appears at `reader` or better under the account its row names.
-   A row whose account sees the calendar only as `freeBusyReader` is misconfigured.
+6. **Verify per calendar, not per account:** run `gcal.mjs access`. Every row must come back
+   `verdict: full` (`owner`, `writer` or `reader` under the account its row names). A `free-busy` row
+   is misconfigured, and an `absent` row names an account that does not list the calendar at all.
 
-> The `meetings` collection descriptor is the authority on record shape and ids — read it before
-> writing (`using-dreamteamer` → `references/records.md`). Prefer `npx dt add meetings` and
-> `npx dt set` over hand-writing files: both validate before anything reaches disk.
+> The `meetings` collection descriptor is the authority on record shape, ids and where a record is
+> stored — read it before writing (`using-dreamteamer` → `references/records.md`). Write with
+> `npx dt add meetings` and `npx dt set`: both validate before anything reaches disk, and `dt add`
+> places the file where the descriptor says. Never compute the path by hand.
 
 ## Record convention
 
+The id is
+
 ```
-data/meetings/<YYYY>/<MM>/<YYYY-MM-DD>--<HH-MM>--<company>--<slug>.meeting.md
+<YYYY>/<MM>/<YYYY-MM-DD>--<HH-MM>--<company>--<slug>        # with a company
+<YYYY>/<MM>/<YYYY-MM-DD>--<HH-MM>--<slug>                   # with none yet
 ```
 
-`HH-MM` is the start time, so records sort by start within a day. It is the id the descriptor's
-`id.generate` derives from `starts`, so `npx dt add meetings` and a hand-written file land on the
-same path. If date+time+company+slug would collide with an existing *different* event, append `-2`,
-`-3`. A meeting record holds only the meeting: a transcript belongs to a `meeting-recordings` record
-and a summary to a `meeting-summaries` record, when those modules are installed.
+derived by the descriptor's `ids.from` from `starts`, `company` and `name`. `HH-MM` is the start
+time, so records sort by start within a day. The file lands where the descriptor places it: the
+base module stores meetings under the meetings collection's storage path, and a workspace overlay
+may store them elsewhere, under their company for example. Run `npx dt add meetings` and read the
+path it prints. `starts` and `name` are required; a meeting with no company yet takes the shorter
+id. If date+time+company+slug would collide with an existing *different* event, pass `--id` with
+`-2`, `-3` appended. A meeting record holds only the meeting: a transcript belongs to a
+`meeting-recordings` record and a summary to a `meeting-summaries` record, when those modules are
+installed.
 
 Frontmatter carries the metadata. `description` holds the invite's own description text, exactly as
-the organizer wrote it. Any caveat about the sync goes in `creation_context`:
+the organizer wrote it. It is `sensitive`, like `attendees_raw`: a Teams invite carries its join link
+and `?p=` passcode there, so an export leaves it out. Any caveat about the sync goes in
+`creation_context`:
 
 ```yaml
 ---
@@ -132,23 +146,27 @@ conferenceUrl: https://meet.google.example/abc-defg-hij
 attendees:                           # `contacts/` REFS ONLY — never raw emails here
   - contacts/sam-diaz
   - contacts/dana-oren
+ours:                                # the attendees who are your own people, as `users/` refs
+  - users/dana-oren
 attendees_raw:                       # the verbatim strings, quoted
   - "sam.d@northwind.example (organizer)"
   - "dana.o@northwind.example (self)"
 eventId: 0rrs5m6fep45o9hv1vubjb9aob
 htmlLink: https://calendar.google.example/event?eid=0rrs5m6fep45o9hv1vubjb9aob
 description: the organizer's invite text, when there is any
-author: agents/claude-code           # agents/<harness>; the model goes in creation_context
+author: agents/claude-code           # the harness that ran the sync; the model goes in creation_context
 source: calendar:dana.o@northwind.example
 creation_context: synced from dana.o@northwind.example by gcal.mjs (model claude-opus)
 confidence: normal                   # `low` + the reason in creation_context for a free/busy stub
 ---
-
-# Workshop prep (Préparation de l'atelier)
 ```
 
-The body is the meeting's own page: the `# title`, plus whatever is later written about the call
-by hand. A transcript never goes here.
+The record is written with no body. The title is `name`, so the body carries no `# title` heading:
+it is the `notes` field, the meeting's own page, empty until someone writes about the call. Write it
+with `--notes "…"` on `dt add` or `npx dt set meetings/<id> notes="…"`. A transcript never goes here.
+
+`privacy` is `open` unless a person set it to `restricted`. The sync never sets or changes it, and an
+update leaves it as it is.
 
 ### The provenance block — every synced meeting carries it
 
@@ -160,8 +178,10 @@ by hand. A transcript never goes here.
 - **`origin: calendar`** — always, for anything this skill writes. `recording` is for a shim meeting
   inferred from a recording, `manual` for one entered by hand, `migration` for one carried over from
   another system.
-- **`author` / `creation_context` / `confidence`** — `author` is `agents/<harness>` (for example
-  `agents/claude-code`), with the model in `creation_context`. A free/busy stub is
+- **`author` / `creation_context` / `confidence`** — `author` is `agents/claude-code`: the harness
+  that ran the sync, in the `agents/<harness>` form every module's `author` field takes, never the
+  name of the agent or the model (`agents/dreamteamer` names the routing agent, not the harness).
+  The model goes in `creation_context`. A free/busy stub is
   `confidence: low` with the reason in `creation_context` ("free/busy access only; title and
   attendees unavailable").
 
@@ -174,6 +194,12 @@ fields with `source: calendar:<id>`, `confidence: low`, and the raw attendee str
 `creation_context`.
 
 `attendees` holds the `contacts/` refs; `attendees_raw` keeps the verbatim strings.
+
+**`ours` is the subset of attendees who are your own people**, as `users/` refs. Resolve each
+attendee against `users` by `email`, then by `handles`; an attendee who matches a user goes in `ours`
+as well as in `attendees`. Never create a user here: a person with no `users` record is in
+`attendees` only. `ours` is what a user's own record lists as their meetings (`users.meetings`).
+Empty is normal for a call none of your people attended.
 
 **Three resolution rules that are not "email → contact":**
 
@@ -232,14 +258,24 @@ One date-time sorts and range-filters directly: `npx dt list meetings --sort -st
 
 ## Which calendars count as "work"
 
-The work calendars, their default company and the account that reads each one live in the
-`WORK_CALENDARS` block of the workspace `.env` (columns: `calendar-id | default-company |
-account-email`). Each row is one calendar to snapshot; the third column is the account **email** to
-pass as `<account>`. Add or remove calendars by editing `.env`, never this file. Run
-`gcal.mjs calendars <account>` to verify access and surface any work-looking calendar that is not yet
-in `WORK_CALENDARS` (tell the user to add it rather than syncing it silently).
+The work calendars, their default company and the account that reads each one live in
+`WORK_CALENDARS` in the workspace `.env`, one row per line: `calendar-id | default-company |
+account-email`, as a quoted value when it spans lines. **`gcal.mjs rows` is the reader**: it takes the
+value from the process environment when one is set, otherwise from `.env` through the engine's own
+parser, and prints one JSON object per row (`calendar`, `company`, `mixed`, `account`), or exits 1
+naming the line of a malformed row. Add or remove calendars by editing `.env`, never this file.
 
-**Access is per calendar, per account, and it decides detail** — check each response's `accessRole`:
+- **`default-company`** is the `companies` record a row's events default to, before the
+  classification rules below override it.
+- **`mixed`** in that column means the calendar holds several companies' meetings and has no
+  default: `rows` prints `company: null, mixed: true`, and every event on it is classified on its own
+  by the rules below. An event a mixed row cannot classify goes to step 6's confirmation.
+- **A calendar no row names** that the account can write is listed by `gcal.mjs access` under
+  `unlisted`: report each one that looks like work (by its summary or domain) by id, and ask whether
+  to add a row, without syncing it.
+
+**Access is per calendar, per account, and it decides detail** — read each row's `accessRole` from
+`gcal.mjs access`:
 a `freeBusyReader` calendar returns events with **no `summary`/`attendees`** → write a free/busy
 **stub**. `owner`/`writer`/`reader` give full detail. A `visibility: private` event on a full-access
 calendar still returns full detail — write it in full; **only `freeBusyReader` access forces a stub**.
@@ -253,8 +289,9 @@ authenticated.
 
 A **stub** keeps only the fields that exist: `name: Busy (private)` (slug `busy-block`), plus
 `starts`, `ends`, `timezone`, `company`, `calendar`, `origin: calendar`, `synced`, `status`,
-`visibility: private`, `eventId`, `htmlLink`, and the provenance fields with `confidence: low` — no
-`organizer`/`attendees`/`conferenceUrl`/`location`. Body: one line noting free/busy access only.
+`visibility: private`, `eventId`, `htmlLink`, and the provenance fields with `confidence: low` and
+"free/busy access only" in `creation_context` — no `organizer`/`attendees`/`conferenceUrl`/`location`,
+and no body.
 The start time in the id disambiguates several stubs on one day. Stubs are **included by default**,
 but when a range yields many, confirm with the user before writing.
 
@@ -290,13 +327,14 @@ Match these keywords against the **translated meaning** of a non-English title.
 1. **Resolve the date range.** For "this/next week", query the whole week (Monday or Sunday 00:00
    to the next one, exclusive) and keep the days you work; ask when that is unclear. Confirm today's
    weekday with `date "+%Y-%m-%d %A"`.
-2. **Fetch** each work calendar with `gcal.mjs events` — the row's account email, the calendar id and
+2. **Read the rows and check access** with `gcal.mjs access` — one call for every row. A `free-busy`
+   row means the row's account does not hold that calendar, and an `absent` row means the account
+   does not list it → **report it as a configuration bug and name the fix** (re-authenticate the
+   owning account, then correct the row). Report the `unlisted` calendars as above.
+3. **Fetch** each work calendar with `gcal.mjs events` — the row's `account`, its `calendar` and
    the range. One call per row, never one merged call: `source:` and `calendar:` depend on which
-   calendar an event came from.
-3. **Guard against a degraded read — never write over good data with worse data.** Check each
-   response's `accessRole`. A `freeBusyReader` result means the row's account does not hold that
-   calendar → **report it as a configuration bug and name the fix** (re-authenticate the owning
-   account, then correct the row). Then, whatever the reason a fetch came back thin:
+   calendar an event came from. **Guard against a degraded read — never write over good data with
+   worse data.** Whatever the reason a fetch came back thin:
 
    **Never downgrade an existing record.** If a meeting already exists with a real `name` (not
    `name: Busy (private)`) and this run would write a `busy-block` stub over it, **leave it
@@ -309,7 +347,8 @@ Match these keywords against the **translated meaning** of a non-English title.
    calendar. Keep one copy; prefer the company calendar as the `calendar:` source. For a work event
    that is only on the personal calendar, `calendar:` is that calendar's id. Never dedup by time —
    distinct events can share a start.
-5. **Classify & filter** — company per the rules above; drop everything in Exclusions.
+5. **Classify & filter** — company per the rules above (per event on a `mixed` row); drop everything
+   in Exclusions.
 6. **Confirm scope BEFORE writing** when anything is ambiguous — a side-project placeholder, an event
    with no company signal, or a large batch of free/busy stubs. Do not write, then ask.
 7. **Write idempotently — and ADOPT shims.** Match an existing record in this order:
@@ -336,10 +375,16 @@ Match these keywords against the **translated meaning** of a non-English title.
 
    Update a matched record with `npx dt set`; when nothing changed, leave it. Otherwise create it
    with `npx dt add meetings`. **Never downgrade a non-stub record to a `busy-block` stub** (step 3).
-   **Updating a record preserves fields other modules own**, such as `recordings` — never drop them.
-8. **When a correction moves the time, RENAME as well as set** — `HH-MM` is in the id, so a corrected
-   time means a new path. `npx dt rename meetings/<old-id> <new-id>` moves the file and rewrites every
-   inbound ref. Four things it does not do for you:
+   **Updating a record preserves fields other modules own**, such as `recordings` — never drop them —
+   and `privacy`, which only a person sets.
+
+   **The invite is the authority on the time, unless the record says otherwise.** A record whose
+   `note` says its time was corrected by hand (`time corrected by hand: <why>`) keeps its `starts`,
+   `ends` and id: report the invite's time beside it and leave both unchanged. Write that note
+   whenever a time is corrected by hand, or the next sync moves it back.
+8. **When the invite moves the time, RENAME as well as set** — `HH-MM` is in the id, so a new time
+   means a new path. `npx dt rename meetings/<old-id> <new-id>` moves the file and rewrites every
+   inbound ref. Skip a record step 7 protects by its `note`. Four things `rename` does not do for you:
 
    - **It does not update `starts`/`ends`.** `rename` moves the path and the refs and touches no
      fields, so a time correction is always two operations: `rename`, then
@@ -350,9 +395,22 @@ Match these keywords against the **translated meaning** of a non-English title.
    - **A `description` can now be wrong.** One that asserts the old time ("weekly, 11:00") is false
      after the correction. Re-read and replace any text that names what changed.
 
-9. **Report** the breakdown by company and list everything excluded or pending confirmation. Name the
-   counts: updated / **adopted** / created / excluded, and any record left alone by the no-downgrade
-   guard.
+9. **Stamp the attendees' contacts** with `bin/touch-contacts.mjs`, which ships in this skill and is
+   what `/update-contacts-from-meetings` runs. Run it over every meeting this sync created, adopted or
+   changed the attendees of:
+
+   ```bash
+   node .dreamteamer/skills/fetching-meetings/bin/touch-contacts.mjs meetings/<id> [meetings/<id> …]
+   ```
+
+   It sets each attendee's `recent_meeting` and `recent_meeting_date` to their latest meeting that
+   has already started and is not cancelled, only ever moving forward, so a future meeting stamps
+   nobody and a re-run changes nothing. `--all` backfills from every meeting; `--dry-run` prints the
+   changes without writing.
+10. **Report** the breakdown by company and list everything excluded or pending confirmation. Name the
+   counts: updated / **adopted** / created / excluded, any record left alone by the no-downgrade
+   guard or by a hand-corrected time, the configuration bugs from step 2, the `unlisted` calendars,
+   and the contacts step 9 moved.
 
 **A sync is a snapshot of one moment, and the calendar keeps moving.** A meeting can be added to the
 calendar after the range fetch that should have seen it, including one back-dated to yesterday. So:
@@ -372,9 +430,9 @@ calendar after the range fetch that should have seen it, including one back-date
 
 - Assuming a work week — ask which days count, and set `TZ_OVERRIDE` to your zone.
 - Kebab-casing a non-English title — slugs are **English**; translate the topic.
-- Trusting a calendar's access without checking — check `accessRole` at runtime with
-  `gcal.mjs calendars`, per account. A `freeBusyReader` result is a wrong `WORK_CALENDARS` row; fix
-  the auth rather than accepting the stubs quietly.
+- Trusting a calendar's access without checking — run `gcal.mjs access` before fetching. A
+  `free-busy` or `absent` row is a wrong `WORK_CALENDARS` row; fix the auth rather than accepting the
+  stubs quietly.
 - **Passing the wrong `<account>`** — a calendar read by an account that sees it only as
   `freeBusyReader` degrades silently.
 - **Scraping the calendar in a browser** for a thin calendar — it produces wrong *times*. Fix the
@@ -390,3 +448,6 @@ calendar after the range fetch that should have seen it, including one back-date
 - **Passing a comma inside an array value on the CLI** — `--attendees_raw "a@b (self, organizer)"`
   splits into two entries. Use `(self + organizer)`.
 - **Renaming a meeting and leaving its summary or its description behind** — both go stale silently.
+- **Moving a hand-corrected time back to the invite's** — a record whose `note` says its time was
+  corrected by hand keeps it (step 7).
+- **Writing a `# title` body** — the title is `name`; the body is `notes` and starts empty.

@@ -7,8 +7,13 @@ storage:
   path: data/meetings
   format: md
 ids:
-  # Derived from `starts`, so a back-dated sync files a meeting under the month it was held.
-  from: "{{ starts | date:YYYY/MM }}/{{ starts | date }}--{{ starts | date:HH-mm }}--{{ company | basename }}--{{ name | slug }}"
+  # Derived from `starts`, so a back-dated sync files a meeting under the month it was held. The
+  # second template is the fallback for a meeting with no company yet (a self-only event, a recording
+  # shim nobody has classified): the first template whose fields are all present wins, so `company`
+  # stays optional and only `starts` and `name` are needed to place a record.
+  from:
+    - "{{ starts | date:YYYY/MM }}/{{ starts | date }}--{{ starts | date:HH-mm }}--{{ company | basename }}--{{ name | slug }}"
+    - "{{ starts | date:YYYY/MM }}/{{ starts | date }}--{{ starts | date:HH-mm }}--{{ name | slug }}"
   pattern: "^\\d{4}/\\d{2}/\\d{4}-\\d{2}-\\d{2}--[a-z0-9-]+$"
 fields:
   name:
@@ -19,6 +24,7 @@ fields:
   # `timezone` names the zone the offset came from, which survives DST.
   starts:
     type: datetime
+    required: true
     description: When the meeting begins, as one instant with its local offset. Everything sorts and range-filters on this.
   ends:
     type: datetime
@@ -28,7 +34,7 @@ fields:
     description: The IANA zone name (Europe/London). The offset on `starts` says +01:00; only this says why, and it survives DST.
   company:
     type: companies
-    description: Which company this call was with — what files it under a client and into the id.
+    description: Which company this call was with — what files it under a client and into the id. Optional; a meeting with no company takes the id without that segment.
   # Two people-fields. `attendees` is everyone in the room as contacts — the outside world, which
   # is what a calendar invite carries. `ours` is the subset who are `users`: the people whose work
   # this meeting is, so a person's own record answers "what am I in this week" without making
@@ -94,10 +100,15 @@ fields:
     description: Deep link to the event in Google Calendar.
   note:
     type: string
-    description: A manual-logging provenance note, for meetings entered by hand.
+    description: >-
+      A provenance note for a meeting entered or corrected by hand. `time corrected by hand: <why>` keeps a hand-corrected `starts` and `ends` through a calendar re-sync.
+  # Sensitive because a Teams invite carries its join link, passcode included, in this text, and
+  # `conferenceUrl` is not where Teams puts it.
   description:
     type: string
-    description: The invite's own description text, as the organizer wrote it.
+    sensitive: true
+    description: >-
+      The invite's own description text, as the organizer wrote it. Marked sensitive because a Teams invite carries its join link and `?p=` passcode here rather than in `conferenceUrl`.
   # The body is the meeting's own page. A transcript lives on `meeting-recordings` and a prep on
   # `meeting-preps`, when those modules are installed.
   notes:
@@ -113,6 +124,14 @@ fields:
       - manual
     description: >-
       The calendar event's status — Google's three values, plus `manual` for a meeting entered by hand.
+  # Read by the meeting-docs pipeline, which stops at a `restricted` meeting. Not sensitive itself:
+  # the value is what an export needs in order to know the record is restricted.
+  privacy:
+    type: string
+    enum: [open, restricted]
+    default: open
+    description: >-
+      Whether the pipeline may work on this meeting's content. `open` is the normal case. A `restricted` meeting holds a third party's private material, so the pipeline stops after transcription — no summary, no analysis, no task extraction, no export. A calendar sync never sets or changes it; a person does.
   tags:
     type: string
     many: true
@@ -137,6 +156,10 @@ fields:
     enum: [low, normal, high]
     description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
 display:
+  form:
+    sections:
+      - title: Status
+        fields: [status, privacy]
   nav:
     icon: calendar
     order: 12

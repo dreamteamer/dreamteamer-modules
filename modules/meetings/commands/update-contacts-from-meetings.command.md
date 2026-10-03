@@ -34,6 +34,7 @@ replaced. Nothing is committed — publish with `dt commit contacts/<id> …` na
 
 ## in the pipeline
 
-Run this after `/fetch-meetings` corrects a past meeting's attendees, and after any meeting is
-entered by hand. When meeting-docs is installed, `/process-new-meetings` runs it as its last step
+`/fetch-meetings` runs this script as its step 9, over every meeting the sync created, adopted or
+changed the attendees of. Run it by hand after a meeting is entered or its attendees are corrected by
+hand. When meeting-docs is installed, `/process-new-meetings` runs it as its last step
 over every meeting in the batch.
