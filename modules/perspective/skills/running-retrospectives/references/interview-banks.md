@@ -48,8 +48,8 @@ The engine's twelve modelling questions (`node_modules/dreamteamer/skills/using-
 | Q1 nouns | **What do you find yourself looking for again and again — a file, a number, a thread, a decision — that you never quite know where you put?** | collection candidates; `recurring-question` findings |
 | Q2 the question | **When you go looking for that, what is the actual question you are trying to answer?** (ask only if Q1 did not say) | each proposal's `description` and `use_when` |
 | Q4 lifecycle | **Take one of those. When is it *done* — when it is agreed, when someone confirms in writing, when it ships?** | `status` enum of the proposed collection |
-| Q5 stable vs volatile | **Is that a thing that exists and changes slowly, or something that happens on a day?** (often derivable — ask only if unclear) | `entity` vs `docs` template, id shape |
-| Q10 the list | **If you opened a page of these on Monday morning, which four things would you want to see per row?** | `list_fields`, the fields that exist at all |
+| Q5 stable vs volatile | **Is that a thing that exists and changes slowly, or something that happens on a day?** (often derivable — ask only if unclear) | `entity` vs `docs` mixin, id shape |
+| Q10 the list | **If you opened a page of these on Monday morning, which four things would you want to see per row?** | `display.list.columns`, the fields that exist at all |
 | Q12 not modelled | **What do you *not* want this workspace to track, even if I could?** | the "deliberately not modelled" list; excluded proposals |
 
 Derived, never asked: **Q3 identity** (from Q4/Q5 — dated slug for a thing that happens, bare slug for

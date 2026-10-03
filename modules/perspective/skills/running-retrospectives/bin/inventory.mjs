@@ -95,7 +95,7 @@ add('workspace-records', 'this-workspace', nRecords ? 'available' : 'unavailable
 let available = 0, unavailable = 0;
 for (const s of sources) {
 	s.reach === 'available' ? available++ : unavailable++;
-	// `content` is the collection's x-body field — it is the record BODY, never a frontmatter key.
+	// `content` is the collection's `body: true` field — it is the record BODY, never a frontmatter key.
 	const { content = '', ...fields } = s;
 	if (!flag('dry-run')) writeSource(recordPath('sources', `${who()}/${s.kind}--${slug(s.label)}`, 'source', dataRoot), fields, content);
 }

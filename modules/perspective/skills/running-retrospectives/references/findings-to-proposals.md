@@ -74,8 +74,48 @@ be said aloud — it means nobody confirmed it, and it is what every unattended 
 
 **The body of a `collection` proposal — the engine's proposal contract:**
 
-1. the complete draft descriptor YAML (name, description, use_when, storage, id, schema with
-   `required`, every field with a description, `list_fields` from the Q10 answer);
+1. the complete draft descriptor YAML, in descriptor format v2: `name`, `description`, `use_when`;
+   `storage` (`path`, `format`); `ids` (`from`, plus `pattern` when the shape is fixed); `fields`,
+   keyed by field name, each with its `type` (a scalar such as `string`, `date`, `number`, `url`, or a
+   collection name for a reference), `many: true` for a list, `required: true` where a record is
+   refused without it, `enum` for a closed set, and a `description`; `record_title` when the label is
+   not the `name` or `title`; `mixins` (`entity` for a thing that is, `docs` for a thing that happened
+   on a day — the Q5 answer); and `display.list.columns` from the Q10 answer. For example:
+
+   ```yaml
+   name: vendor-quotes
+   description: A price a supplier quoted for a piece of work, and whether it was taken.
+   use_when: a supplier sends a price — record it here before comparing it with the others
+   mixins: [docs]
+   storage: {path: data/vendor-quotes, format: md}
+   ids:
+     from: '{{ received | date }}--{{ title | slug }}'
+   record_title: '{{ title }} · {{ amount }}'
+   fields:
+     received:
+       type: date
+       required: true
+       description: The day the quote arrived.
+     vendor:
+       type: companies
+       required: true
+       description: Who quoted.
+     amount:
+       type: number
+       description: The quoted total, in the quote's currency.
+     status:
+       type: string
+       enum: [open, accepted, declined]
+       default: open
+       description: Where the quote stands.
+     contacts:
+       type: contacts
+       many: true
+       description: The people at the vendor who sent it.
+   display:
+     list:
+       columns: [title, vendor, amount, status, received]
+   ```
 2. ONE sample record as the `dt add <name> --field value …` line that would create it, from real
    evidence;
 3. the "deliberately not modelled" list, each with its one-line reason (the Q12 answer goes here).

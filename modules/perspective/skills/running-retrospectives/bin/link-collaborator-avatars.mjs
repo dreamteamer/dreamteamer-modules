@@ -5,7 +5,7 @@
 //        [--from <a workspace root that HAS avatars>] [--data-root d] [--copy] [--dry-run]
 //
 // A board of thirty collaborators is a wall of slugs. The pictures already exist in the origin
-// workspace's `assets` collection (`avatars/<slug>`, `codec: file`), so this matches them to the
+// workspace's `assets` collection (`avatars/<slug>`, `storage.format: binary`), so this matches them to the
 // people this run found and, with `--copy`, brings the matched files across.
 //
 // THE MATCH IS EXACT, ON A SLUG, AND NEVER FUZZY. A collaborator matches an avatar when the slug
@@ -50,7 +50,7 @@ if (!fs.existsSync(fromAvatars)) {
 	process.exit(2);
 }
 
-/** `avatars/<id>` → the file on disk. A record of a `codec: file` collection is `<id>.<suffix>.<ext>`,
+/** `avatars/<id>` → the file on disk. A record of a `format: binary` collection is `<id>.<suffix>.<ext>`,
  *  so the id is everything before `.asset.`. */
 const available = new Map();
 for (const name of fs.readdirSync(fromAvatars)) {
