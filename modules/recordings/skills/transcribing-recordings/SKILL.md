@@ -208,8 +208,8 @@ Hebrew ASR that came out rough is `confidence: low` with the reason in `creation
 transcript and its own speaker map, and the meeting's `recordings:` array lists them all in date order.
 If you find yourself merging transcripts, stop.
 
-after transcribing, run `npx dt check` — the recording must validate, and the symmetric-ref
-rule fails a recording whose `meeting:` is not mirrored by that meeting's `recordings:`.
+after transcribing, run `npx dt check` — the recording must validate. The meeting's `recordings:`
+is generated from each recording's `meeting:`, so the link is written once, on the recording.
 
 ## common mistakes
 

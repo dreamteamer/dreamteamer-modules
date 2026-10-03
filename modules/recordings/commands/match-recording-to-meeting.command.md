@@ -19,8 +19,9 @@ it records, walking this ladder and **stopping at the first hit**:
    unambiguous. attendees resolve against `contacts` — create missing people as `status: draft`
    placeholders with the quad filled, and never scrape here.
 
-then set **both** ref directions in one commit — `meeting.recordings` gains the recording,
-`recording.meeting` gains the meeting. `check`'s `x-inverse` rule fails a one-sided link, so a
-half-written match will not pass.
+then write ONE field, on the recording: `dt set meeting-recordings/<id> meeting=meetings/<meeting id>`.
+the meeting's `recordings` list is generated from that field (`mirror_of: meeting`): the same write
+adds the recording to it, and a direct write to the meeting's `recordings` is refused with a
+message naming the recording's `meeting` field instead. never write the meeting side.
 
 report, per recording: which rung of the ladder resolved it, the meeting id, and the evidence you used.

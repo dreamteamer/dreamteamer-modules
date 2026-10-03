@@ -5,8 +5,8 @@ scope: record
 available_when:
   meeting:
     _empty: true
-# and the ref's presence is the post-condition. `check`'s x-inverse rule guarantees the other
-# direction was written too, so this single-sided predicate is sound.
+# and the ref's presence is the post-condition. The meeting's `recordings` list is generated from
+# this field (`mirror_of: meeting`), so the one field carries the whole link.
 done_when:
   meeting:
     _nempty: true

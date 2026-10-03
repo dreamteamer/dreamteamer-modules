@@ -23,7 +23,7 @@ A file handed straight to a session, or a pasted transcript, skips the inbox: th
 
 | alone | with others |
 |---|---|
-| recordings pulled from an inbox by content hash, matched to their meeting, transcribed; `meetings.recordings` stamped on | **meeting-docs** reads the transcript: summarise, extract tasks, critique |
+| recordings pulled from an inbox by content hash, matched to their meeting, transcribed; each meeting's `recordings` list generated from the recordings that point at it | **meeting-docs** reads the transcript: summarise, extract tasks, critique |
 
 | needs | for |
 |---|---|

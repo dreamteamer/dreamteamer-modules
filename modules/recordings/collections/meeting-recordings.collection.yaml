@@ -63,9 +63,10 @@ fields:
   fingerprint:
     type: string
     description: sha256 of the binary — the idempotency key for /fetch-new-recordings. Survives a file being renamed, which a filename does not.
-  # The other half of the two-way link (meetings.recordings ⟷ here). Redundant on purpose:
-  # filters resolve OUTBOUND refs only, so each direction buys a predicate the other cannot
-  # express. `check`'s symmetric-ref rule keeps them honest.
+  # The OWNING side of the link. `meetings.recordings` is generated from this field
+  # (`mirror_of: meeting`, declared in this module's meetings overlay): a write here updates it,
+  # and a direct write there is refused. Filters resolve OUTBOUND refs only, so each side still
+  # buys a predicate the other cannot express.
   meeting:
     type: meetings
     on_delete: restrict

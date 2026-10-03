@@ -156,7 +156,7 @@ cross-root duplicate fingerprint), `proposed_id`, `name`, `name_is_transliterate
 | deduping on filename | files get renamed; hash on content, which is what `scan` does |
 | `import` before deciding the id | the archive file is named after the id — importing twice under two ids leaves two copies |
 | removing the original before verifying the copy | `import` is copy → sha256-verify → move to `trash/`, in that order, on purpose |
-| setting `meeting:` here | breaks the two-way invariant (`check`'s `x-inverse` rule) and hides the match step |
+| setting `meeting:` here | skips the match step, where the meeting is chosen on evidence (`/match-recording-to-meeting`) |
 | creating a record when `orphan_candidates` has a strong hit | that's a second recording of one meeting. attach the binary to the recording that has been waiting for it. |
 | running from a harness skill folder (`.claude/skills/…`) | compile regenerates those copies; run `.dreamteamer/skills/ingesting-recordings/bin/detect.mjs` from the workspace root |
 | **reading an empty inbox as "nothing is pending"** | it can equally mean **nothing can arrive** — a phone whose cloud storage is full holds recordings back while every scan reports a clean inbox. When an inbox root is cloud-synced, check the quota too |
