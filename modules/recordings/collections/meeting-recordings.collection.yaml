@@ -71,9 +71,13 @@ fields:
     type: meetings
     on_delete: restrict
     description: The meeting this capture records. Empty means unmatched — /match-recording-to-meeting's queue.
+  # The block is the transcriber's OUTPUT, so its caveats live inside it: `notes` here is what the
+  # transcriber could not settle (a corrected speaker count, an unmapped label), and the record's
+  # top-level `notes` stays a person's note about the capture. Two hands, two fields.
   transcription:
     type: map
-    description: The provenance block the transcribe skill writes. THIS is the "is it transcribed?" signal, never the body — a body pasted by hand with no block is exactly the case worth flagging.
+    description: >-
+      The provenance block the transcribe skill writes — `engine`/`diarization`/`duration` or `source`/`method`, `language`, `speaker_count`, `speakers` (label → person), `generated`, and `notes`: the transcriber's own caveats. THIS is the "is it transcribed?" signal, never the body — a body pasted by hand with no block is exactly the case worth flagging.
   transcript:
     type: markdown
     body: true

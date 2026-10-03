@@ -16,7 +16,7 @@ it records, walking this ladder and **stopping at the first hit**:
    `source: meeting-recordings/<id>`, `creation_context` saying no calendar event was found and that
    date/participants are estimated from the recording filename, `starts` from the recording's `date`
    (with the filename's time when it has one, else 00:00), `company` from the hint when it is
-   unambiguous. attendees resolve against `contacts` — create missing people as `status: draft`
+   unambiguous. the people go in `attendees_contacts` as `contacts/` refs — create missing people as `status: draft`
    placeholders with the quad filled, and never scrape here.
 
 then write ONE field, on the recording: `dt set meeting-recordings/<id> meeting=meetings/<meeting id>`.

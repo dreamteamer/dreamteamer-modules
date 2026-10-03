@@ -51,7 +51,7 @@ def count_attendees(frontmatter):
     Used as the expected speaker count for diarization (best for 1:1s and
     small meetings).
     """
-    attendees = frontmatter.get("attendees")
+    attendees = frontmatter.get("attendees_contacts")
     return len(attendees) if attendees else None
 
 

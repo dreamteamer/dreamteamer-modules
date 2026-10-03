@@ -39,12 +39,14 @@ def test_write_meeting_indents_sequences_under_key(tmp_path):
 
 
 def test_count_attendees_present():
-    assert count_attendees({"attendees": ["a", "b", "c"]}) == 3
+    assert count_attendees({"attendees_contacts": ["contacts/a", "contacts/b", "contacts/c"]}) == 3
 
 
 def test_count_attendees_none_when_absent_or_empty():
     assert count_attendees({"title": "X"}) is None
-    assert count_attendees({"attendees": []}) is None
+    assert count_attendees({"attendees_contacts": []}) is None
+    # the raw API list is not the count: it includes people who declined
+    assert count_attendees({"attendees": [{"email": "a@example.invalid"}]}) is None
 
 
 def test_summary_path_for():

@@ -67,7 +67,7 @@ case you are in rather than implying the audio was kept when it was not.
    `${env:FILES_FOLDER}/meeting-recordings/<recording-id>.<ext>`, verifies it, moves the original into
    `trash/`, and prints `recording_file`. Then `npx dt add meeting-recordings` for the record.
 5. **Then match, then transcribe**: `/match-recording-to-meeting` first, because the linked meeting's
-   attendees give the transcriber its speaker count; then `/transcribe-recording`.
+   `attendees_contacts` give the transcriber its speaker count; then `/transcribe-recording`.
 
 ## the inbox log — working memory beside the payload
 

@@ -137,14 +137,16 @@ full script usage: `setup | run <record.md> <audio> [--date YYYY-MM-DD] [--speak
    window's decoded text as the next window's prompt, which keeps dragging the decoder back to the
    opening language. Leave `--language` off for the ordinary Hebrew call; pass it whenever the meeting
    is predominantly one language and that language is **not** Hebrew. **Check the attendees before
-   choosing:** a non-Israeli domain on the invite (`@harbor-mutual.example`, a UK/US counterparty) means English.
+   choosing:** a non-Israeli domain among the meeting's `attendees` (`@harbor-mutual.example`, a UK/US
+   counterparty) means English.
    The frontmatter records which it was as `transcription.language_source: forced | detected`.
 
    **A code-switched call still degrades**, just far less — 0.131 is not 0. Where a call genuinely
    mixes both, expect Hebrew-script renderings of English terms and set `confidence: low`.
 
 3. **decide the speaker count**, in this order:
-   - the linked meeting's `attendees | length` — `npx dt get meetings/<id>`, the ideal path
+   - the linked meeting's `attendees_contacts | length` — `npx dt get meetings/<id>`, the ideal path
+     (the people resolved to contacts; the raw `attendees` list also counts people who declined)
    - no meeting, a free/busy stub, or fewer than 2 attendees → **pass `--speakers 2`**; a 1:1 is the
      commonest call
    - a genuinely solo recording (a voice memo, a dictated note) → **pass `--speakers 1`**, which skips
