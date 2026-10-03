@@ -255,12 +255,12 @@ describe('one module, bare names — the fold the operator asked for', () => {
 			assert.equal(far.module, 'tasks');
 		}
 	});
-	// ⚠ meetings uses users too, and the SPLIT is the point: `attendees` is everyone as contacts (what a
-	// calendar invite carries), `ours` is the subset who are users — whose work the meeting IS.
+	// ⚠ meetings uses users too, and the SPLIT is the point: `attendees_contacts` is everyone as contacts
+	// (the invite's list, resolved), `ours` is the subset who are users — whose work the meeting IS.
 	test('a meeting names our own people as users, alongside attendees as contacts', () => {
 		const m = load('meetings/collections/meetings.collection.yaml').fields;
-		assert.equal(m.attendees.type, 'contacts');
-		assert.equal(m.attendees.many, true);
+		assert.equal(m.attendees_contacts.type, 'contacts');
+		assert.equal(m.attendees_contacts.many, true);
 		assert.equal(m.ours.type, 'users');
 		assert.equal(m.ours.many, true);
 		assert.equal(mirrorOf('meetings', 'ours', 'users')?.name, 'meetings');

@@ -61,9 +61,10 @@ test('an add without privacy is stamped open; restricted is accepted', () => {
 	assert.equal(record('2026/08/2026-08-30--11-00--northwind--legal-review.meeting.md').privacy, 'restricted');
 });
 
-test('description is sensitive, like attendees_raw: a Teams invite carries its passcode there', () => {
+test('description is sensitive, like attendees and organizer: a Teams invite carries its passcode there', () => {
 	assert.equal(d.fields.description.sensitive, true);
-	assert.equal(d.fields.attendees_raw.sensitive, true);
+	assert.equal(d.fields.attendees.sensitive, true);
+	assert.equal(d.fields.organizer.sensitive, true);
 	assert.match(d.fields.description.description, /passcode/);
 });
 

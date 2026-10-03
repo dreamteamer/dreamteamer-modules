@@ -11,7 +11,7 @@ display:
       - name
       - last_modified
       - company
-      - attendees
+      - attendees_contacts
       # `summary` is NOT a column here: it is a mirror the meeting-docs module stamps on, and a column
       # for a field this workspace may not have renders as an empty cell that reads as data. The view
       # with the pipeline columns ships with meeting-docs (`/meetings/pipeline`).

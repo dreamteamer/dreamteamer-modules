@@ -6,7 +6,7 @@
 //
 // The rule (pure, exported as `computeRecent`):
 //   a contact's recent meeting is the LATEST meeting by `starts` that (a) lists the contact in
-//   `attendees`, (b) has already started (`starts` <= now), and (c) is not `status: cancelled`.
+//   `attendees_contacts`, (b) has already started (`starts` <= now), and (c) is not `status: cancelled`.
 //   A contact is only ever moved FORWARD — a meeting older than what the record already holds is
 //   ignored — so re-running over any subset of meetings is idempotent and can never regress a
 //   record. Both fields are written together, always.
@@ -24,7 +24,7 @@ import { fileURLToPath } from 'node:url';
 
 // ── the rule ─────────────────────────────────────────────────────────────────────────────────
 /**
- * @param {Array<{id:string, starts?:string, status?:string, attendees?:string[]}>} meetings
+ * @param {Array<{id:string, starts?:string, status?:string, attendees_contacts?:string[]}>} meetings
  * @param {Array<{id:string, recent_meeting?:string, recent_meeting_date?:string}>} contacts
  * @param {Date} now
  * @returns {Array<{contact:string, recent_meeting:string, recent_meeting_date:string, previous?:string}>}
@@ -35,7 +35,7 @@ export function computeRecent(meetings, contacts, now = new Date()) {
 		if (!m.starts || m.status === 'cancelled') continue;
 		const t = Date.parse(m.starts);
 		if (Number.isNaN(t) || t > now.getTime()) continue;
-		for (const a of m.attendees ?? []) {
+		for (const a of m.attendees_contacts ?? []) {
 			if (typeof a !== 'string' || !a.startsWith('contacts/')) continue;
 			const cur = latest.get(a);
 			if (!cur || t > cur.t) latest.set(a, { ref: `meetings/${m.id}`, starts: m.starts, t });

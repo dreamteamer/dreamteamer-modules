@@ -35,24 +35,52 @@ fields:
   company:
     type: companies
     description: Which company this call was with — what files it under a client and into the id. Optional; a meeting with no company takes the id without that segment.
-  # Two people-fields. `attendees` is everyone in the room as contacts — the outside world, which
-  # is what a calendar invite carries. `ours` is the subset who are `users`: the people whose work
-  # this meeting is, so a person's own record answers "what am I in this week" without making
-  # every client a user of the workspace.
+  # Three people-fields, modelled after the source. `attendees` is the Calendar API's own attendee
+  # list — one object per person, with the API's keys and spellings, because the sync has that
+  # structure in hand and flattening it to strings lost the response status, the organizer flag and
+  # the display name as data. `attendees_contacts` is this workspace's projection of that list: who
+  # those people are to us, as `contacts`. `ours` is the subset who are `users`: the people whose work
+  # this meeting is, so a person's own record answers "what am I in this week" without making every
+  # client a user of the workspace. The one rule: the source's shape goes on the plain field, and a
+  # derived projection carries a suffix naming what it is.
+  attendees:
+    type: object
+    many: true
+    sensitive: true
+    item_title: '{{ email }}'
+    fields:
+      email:
+        type: email
+        required: true
+        description: The attendee's address, as the API reports it — the person key.
+      displayName:
+        type: string
+        description: The name the API carries for them, when it carries one.
+      responseStatus:
+        type: string
+        enum: [needs-action, declined, tentative, accepted]
+        description: Their answer to the invite. The API spells the first one `needsAction`; the ingest maps it to kebab-case once, at the boundary.
+      organizer:
+        type: boolean
+        description: True on the one attendee who called the meeting.
+      self:
+        type: boolean
+        description: True on the attendee who is the calendar's own account.
+      optional:
+        type: boolean
+        description: True when the invite marked them optional.
+    description: >-
+      The invite's attendee list as the Calendar API returns it, one object per person, rooms (`resource: true`) dropped at ingest. Sensitive because it carries addresses. Written by the sync (`event-people.mjs`), never typed by hand; who these people are to us is `attendees_contacts`.
+  attendees_contacts:
+    type: contacts
+    many: true
+    description: >-
+      The attendees as this workspace knows them — one `contacts` ref per person on the invite, resolved by email then by name; an attendee with no record gets one created as a draft. This is the list every reader uses (preps, summaries, the contacts stamp); `attendees` is the raw list it was resolved from.
   ours:
     type: users
     many: true
     description: >-
-      Which of our own people were in the room, as `users`. Empty is normal for a call nobody here attended but somebody recorded; `attendees` still carries everyone.
-  attendees:
-    type: contacts
-    many: true
-    description: Everyone in the room, as contact records. An attendee with no record gets one created as a draft.
-  attendees_raw:
-    type: string
-    many: true
-    sensitive: true
-    description: The original free-text attendee strings, preserved verbatim.
+      Which of our own people were in the room, as `users`. Empty is normal for a call nobody here attended but somebody recorded; `attendees_contacts` still carries everyone.
   # `recordings`, `prep`, `summary` and `analyses` are not declared here. The `recordings` and
   # `meeting-docs` modules declare them as `x-inverse` on their own collections, and the engine
   # adds each mirror to meetings only when its owner is installed.
@@ -77,10 +105,21 @@ fields:
   calendar:
     type: string
     description: Which Google calendar this event was imported from.
+  # The API's organizer object, not a free string — the same raw-model rule as `attendees`.
   organizer:
-    type: string
+    type: object
     sensitive: true
-    description: Who called the meeting, as the calendar reports them.
+    fields:
+      email:
+        type: email
+        description: The organizer's address, as the API reports it.
+      displayName:
+        type: string
+        description: The organizer's name, when the API carries one.
+      self:
+        type: boolean
+        description: True when the organizer is the calendar's own account.
+    description: Who called the meeting, as the Calendar API reports them. Sensitive because it carries an address.
   visibility:
     type: string
     description: The calendar event's visibility — default, public, private.
@@ -170,5 +209,5 @@ display:
       - name
       - last_modified
       - company
-      - attendees
+      - attendees_contacts
     sort: '-last_modified'

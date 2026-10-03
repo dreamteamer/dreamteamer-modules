@@ -8,7 +8,7 @@ actually happened. Scope: $ARGUMENTS — one or more `meetings/<id>` refs (the n
 meeting is processed) or `--all` to backfill every contact from every meeting in the workspace.
 
 **This step is pure mechanics — run the script, do not do it by hand.** The rule is small and tested:
-a contact's recent meeting is the latest by `starts` that lists them in `attendees`, has already
+a contact's recent meeting is the latest by `starts` that lists them in `attendees_contacts`, has already
 started, and is not cancelled; a record only ever moves forward, so re-running over any subset is safe.
 
 ```bash
@@ -23,8 +23,8 @@ replaced. Nothing is committed — publish with `dt commit contacts/<id> …` na
 
 ## what it deliberately does not do
 
-- **Fix the attendee list.** A meeting whose `attendees` is wrong (an invite with none, a self-logged
-  call) stamps nobody or the wrong people. Correct the meeting first — `fetching-meetings` owns that —
+- **Fix the attendee list.** A meeting whose `attendees_contacts` is wrong (an invite with none, a
+  self-logged call, a sync that never resolved its people) stamps nobody or the wrong people. Correct the meeting first — `fetching-meetings` owns that —
   and re-run; the forward-only rule makes the re-run free.
 - **Count a future meeting.** The calendar sync writes next week's meetings too; "recent" means
   "has happened".
@@ -35,6 +35,6 @@ replaced. Nothing is committed — publish with `dt commit contacts/<id> …` na
 ## in the pipeline
 
 `/fetch-meetings` runs this script as its step 9, over every meeting the sync created, adopted or
-changed the attendees of. Run it by hand after a meeting is entered or its attendees are corrected by
+changed the `attendees_contacts` of. Run it by hand after a meeting is entered or its attendees are corrected by
 hand. When meeting-docs is installed, `/process-new-meetings` runs it as its last step
 over every meeting in the batch.

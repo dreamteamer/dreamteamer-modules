@@ -125,9 +125,9 @@ id. If date+time+company+slug would collide with an existing *different* event, 
 installed.
 
 Frontmatter carries the metadata. `description` holds the invite's own description text, exactly as
-the organizer wrote it. It is `sensitive`, like `attendees_raw`: a Teams invite carries its join link
-and `?p=` passcode there, so an export leaves it out. Any caveat about the sync goes in
-`creation_context`:
+the organizer wrote it. It is `sensitive`, like `attendees` and `organizer`: a Teams invite carries its
+join link and `?p=` passcode there, and the other two carry addresses, so an export leaves all three
+out. Any caveat about the sync goes in `creation_context`:
 
 ```yaml
 ---
@@ -140,17 +140,25 @@ calendar: dana.o@northwind.example   # the calendar the event was actually read 
 origin: calendar                     # provenance MECHANISM — see the provenance block below
 synced: "2026-06-28T19:40:00+02:00"  # when this sync wrote the record
 status: confirmed
-organizer: sam.d@northwind.example
+organizer:                           # the API's organizer object — written by event-people.mjs, never by hand
+  email: sam.d@northwind.example
+  displayName: Sam Diaz
 location: Floor 8 meeting room       # a real room only; omit a generic "Microsoft Teams meeting"
 conferenceUrl: https://meet.google.example/abc-defg-hij
-attendees:                           # `contacts/` REFS ONLY — never raw emails here
+attendees:                           # the API's attendee list, one object per person — written by event-people.mjs
+  - email: sam.d@northwind.example
+    displayName: Sam Diaz
+    responseStatus: accepted
+    organizer: true
+  - email: dana.o@northwind.example
+    displayName: Dana Oren
+    responseStatus: needs-action
+    self: true
+attendees_contacts:                  # who those people are to us — `contacts/` REFS ONLY, resolved by you
   - contacts/sam-diaz
   - contacts/dana-oren
 ours:                                # the attendees who are your own people, as `users/` refs
   - users/dana-oren
-attendees_raw:                       # the verbatim strings, quoted
-  - "sam.d@northwind.example (organizer)"
-  - "dana.o@northwind.example (self)"
 eventId: 0rrs5m6fep45o9hv1vubjb9aob
 htmlLink: https://calendar.google.example/event?eid=0rrs5m6fep45o9hv1vubjb9aob
 description: the organizer's invite text, when there is any
@@ -185,21 +193,40 @@ update leaves it as it is.
   `confidence: low` with the reason in `creation_context` ("free/busy access only; title and
   attendees unavailable").
 
-### Attendees become contacts — every one of them, every sync
+### The people fields — the API's list, then its two projections
 
-For each attendee: resolve against `contacts` **by email first, then by name**. When there is no
+Three fields, modelled after the source. **`attendees` is the Calendar API's own attendee list**, one
+object per person with the API's keys (`email`, `displayName`, `responseStatus`, `organizer`, `self`,
+`optional`); rooms (`resource: true`) are dropped. **`organizer` is the API's organizer object.** Both
+are written by the script that ships here, straight from the event JSON `gcal.mjs` printed — a list
+of objects cannot be spelled on the `dt` command line, and retyping it would lose the structure:
+
+```bash
+node .dreamteamer/skills/fetching-meetings/bin/event-people.mjs meetings/<id> --event <event.json>
+node .dreamteamer/skills/fetching-meetings/bin/event-people.mjs meetings/<id> --event <events.json> --event-id <eventId>
+```
+
+It validates through the engine's store exactly as `dt set` does, maps the API's `needsAction` to the
+descriptor's `needs-action` once, and prints what it wrote (`--dry-run` to see it first). Run it on
+every meeting the sync creates, adopts or updates: the invite's responses change between syncs.
+
+**`attendees_contacts` is who those people are to us** — `contacts/` refs, one per person on the
+invite, and the list every reader uses (preps, summaries, the contacts stamp). Resolving it is your
+job, with `dt set`, and it is the step that creates people:
+
+For each attendee in `attendees`: resolve against `contacts` **by email first, then by name**. When there is no
 match, **create a placeholder** — `status: draft`, `name` from the Google `displayName` when present
 else the email local-part title-cased, `email`, `company` when the domain maps, and the provenance
 fields with `source: calendar:<id>`, `confidence: low`, and the raw attendee string in
 `creation_context`.
 
-`attendees` holds the `contacts/` refs; `attendees_raw` keeps the verbatim strings.
+`attendees_contacts` holds the `contacts/` refs; `attendees` keeps the API's objects.
 
 **`ours` is the subset of attendees who are your own people**, as `users/` refs. Resolve each
 attendee against `users` by `email`, then by `handles`; an attendee who matches a user goes in `ours`
-as well as in `attendees`. Never create a user here: a person with no `users` record is in
-`attendees` only. `ours` is what a user's own record lists as their meetings (`users.meetings`).
-Empty is normal for a call none of your people attended.
+as well as in `attendees_contacts`. Never create a user here: a person with no `users` record is in
+`attendees_contacts` only. `ours` is what a user's own record lists as their meetings
+(`users.meetings`). Empty is normal for a call none of your people attended.
 
 **Three resolution rules that are not "email → contact":**
 
@@ -211,9 +238,6 @@ Empty is normal for a call none of your people attended.
 - **Not every address is a person.** `all@northwind.example` is a distribution list — exclude it
   rather than minting a contact called "All". Same for `no-reply@`, `noreply@`, room and resource
   addresses (the API flags those with `resource: true`) and anything that reads like a group alias.
-
-**Array values on the CLI are comma-split**, so `--attendees_raw "dana.o@northwind.example (self, organizer)"`
-becomes **two** entries. Use a separator that is not a comma — `(self + organizer)`.
 
 **Do not enrich here.** Enrichment is `/scrape-contact`'s job when the contacts module ships it — a
 `draft` contact is the queue. Creating placeholders is the whole contribution of this step.
@@ -290,8 +314,8 @@ authenticated.
 A **stub** keeps only the fields that exist: `name: Busy (private)` (slug `busy-block`), plus
 `starts`, `ends`, `timezone`, `company`, `calendar`, `origin: calendar`, `synced`, `status`,
 `visibility: private`, `eventId`, `htmlLink`, and the provenance fields with `confidence: low` and
-"free/busy access only" in `creation_context` — no `organizer`/`attendees`/`conferenceUrl`/`location`,
-and no body.
+"free/busy access only" in `creation_context` — no `organizer`, no people fields, no
+`conferenceUrl`/`location`, and no body.
 The start time in the id disambiguates several stubs on one day. Stubs are **included by default**,
 but when a range yields many, confirm with the user before writing.
 
@@ -357,8 +381,9 @@ Match these keywords against the **translated meaning** of a non-English title.
       update.
    2. **by same date + start within ±15 MINUTES, when the existing record has NO `eventId`** and its
       `origin` is `recording`, `manual` or `migration`. That is a shim the calendar can now identify:
-      give it the real `eventId`, `organizer`, `attendees`, `conferenceUrl`, `htmlLink`, and set
-      `origin` to `calendar`. This is **adoption, not creation** — a new record beside a shim
+      give it the real `eventId`, `conferenceUrl`, `htmlLink`, the people fields (`event-people.mjs`
+      for `organizer` and `attendees`, then `attendees_contacts` and `ours`), and set `origin` to
+      `calendar`. This is **adoption, not creation** — a new record beside a shim
       duplicates a real meeting whose recording and summary already point at it. The window is
       minutes, not exact, because a recording shim's `starts` is when the *recording* began, a few
       minutes after the meeting did.
@@ -396,8 +421,8 @@ Match these keywords against the **translated meaning** of a non-English title.
      after the correction. Re-read and replace any text that names what changed.
 
 9. **Stamp the attendees' contacts** with `bin/touch-contacts.mjs`, which ships in this skill and is
-   what `/update-contacts-from-meetings` runs. Run it over every meeting this sync created, adopted or
-   changed the attendees of:
+   what `/update-contacts-from-meetings` runs. It reads `attendees_contacts`. Run it over every meeting
+   this sync created, adopted or changed the `attendees_contacts` of:
 
    ```bash
    node .dreamteamer/skills/fetching-meetings/bin/touch-contacts.mjs meetings/<id> [meetings/<id> …]
@@ -445,8 +470,10 @@ calendar after the range fetch that should have seen it, including one back-date
   existing record has no `eventId` and *adopt* it (step 7).
 - **Minting a contact for a distribution list or a room** — `all@…`, `no-reply@`, resources.
 - **Creating a second self-contact** from one of your other work addresses.
-- **Passing a comma inside an array value on the CLI** — `--attendees_raw "a@b (self, organizer)"`
-  splits into two entries. Use `(self + organizer)`.
+- **Typing `attendees` or `organizer` by hand** — they are the API's objects; `event-people.mjs`
+  writes them from the event JSON, and a hand-typed list loses the response status and the flags.
+- **Putting `contacts/` refs in `attendees`** — the refs go in `attendees_contacts`; `attendees` is
+  the raw list they were resolved from.
 - **Renaming a meeting and leaving its summary or its description behind** — both go stale silently.
 - **Moving a hand-corrected time back to the invite's** — a record whose `note` says its time was
   corrected by hand keeps it (step 7).

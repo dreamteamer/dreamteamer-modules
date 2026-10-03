@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { computeRecent } from '../skills/fetching-meetings/bin/touch-contacts.mjs';
 
 const NOW = new Date('2026-08-30T20:00:00+03:00');
-const m = (id, starts, attendees, extra = {}) => ({ id, starts, attendees, ...extra });
+const m = (id, starts, attendees_contacts, extra = {}) => ({ id, starts, attendees_contacts, ...extra });
 const c = (id, extra = {}) => ({ id, ...extra });
 
 test('picks the latest PAST meeting per attendee and writes both fields together', () => {
@@ -48,9 +48,14 @@ test('a newer meeting replaces an older recent_meeting and reports what it repla
 	}]);
 });
 
-test('ignores attendees that are not contact refs, and refs with no record', () => {
+test('ignores entries that are not contact refs, and refs with no record', () => {
 	const out = computeRecent([m('2026/08/a', '2026-08-01T10:00:00+03:00', ['contacts/ghost', 'all@example.com', 'contacts/x'])], [c('x')], NOW);
 	assert.deepEqual(out.map((o) => o.contact), ['contacts/x']);
+});
+
+test('the raw `attendees` objects are not what stamps a contact — only `attendees_contacts` refs do', () => {
+	const meeting = { id: '2026/08/r', starts: '2026-08-01T10:00:00+03:00', attendees: [{ email: 'x@example.invalid' }] };
+	assert.deepEqual(computeRecent([meeting], [c('x', { email: 'x@example.invalid' })], NOW), []);
 });
 
 test('a meeting with no starts, or an unparseable one, is skipped rather than crashing', () => {

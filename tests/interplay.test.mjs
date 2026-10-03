@@ -27,7 +27,7 @@ describe('assets · users · companies · contacts · tasks · meetings, togethe
 		dt(root, 'add', 'contacts', '--name', 'Priya Raman', '--company', 'companies/harbor-mutual');
 		dt(root, 'add', 'tasks', '--name', 'Send the benchmark', '--slug', 'send-the-benchmark', '--assignee', 'users/sam-diaz');
 		dt(root, 'add', 'meetings', '--name', 'Harbor weekly', '--starts', '2026-10-05T10:00:00+03:00',
-			'--attendees', 'contacts/priya-raman', '--ours', 'users/sam-diaz', '--company', 'companies/harbor-mutual');
+			'--attendees_contacts', 'contacts/priya-raman', '--ours', 'users/sam-diaz', '--company', 'companies/harbor-mutual');
 	});
 
 	test('every write lands and check is clean', () => {
