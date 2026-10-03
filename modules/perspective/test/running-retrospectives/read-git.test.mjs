@@ -305,7 +305,7 @@ test('emails differing only in case are one handle and one collaborator', () => 
 	commit('Sam D', 'Sam.D@Example.com', 'a.txt');
 	commit('Sam Diaz', 'sam.d@example.com', 'b.txt');
 	const data = seedSession(path.join(tmp, 'data'));
-	const r = spawnSync('node', [BIN, '--retrospective', 'perspective/retrospective-sessions/2026-09-07--fx', '--repo-path', repo, '--data-root', data, '--scratch-root', path.join(tmp, 's')], { encoding: 'utf8' });
+	const r = spawnSync('node', [BIN, '--retrospective', 'perspective/retrospective-sessions/2026-09-07--fx', '--repo-path', repo, '--data-root', data, '--scratch-root', path.join(tmp, 's'), ...SINCE], { encoding: 'utf8' });
 	assert.equal(r.status, 0, r.stderr);
 	const files = fs.readdirSync(path.join(data, 'perspective', 'users', 'fx'));
 	assert.equal(files.length, 1, files.join(', '));
@@ -323,7 +323,7 @@ test('--repo-path writes the sources record its weeks and collaborators point at
 	fs.writeFileSync(path.join(repo, 'a.txt'), 'a\n'); execFileSync('git', ['-C', repo, 'add', 'a.txt'], { env });
 	execFileSync('git', ['-C', repo, '-c', 'user.name=Ada', '-c', 'user.email=ada@x.test', 'commit', '-q', '-m', 'a'], { env: { ...env, GIT_AUTHOR_DATE: '2026-09-05T10:00:00Z', GIT_COMMITTER_DATE: '2026-09-05T10:00:00Z' } });
 	const data = seedSession(path.join(tmp, 'data'));
-	const r = spawnSync('node', [BIN, '--retrospective', 'perspective/retrospective-sessions/2026-09-07--fx', '--repo-path', repo, '--data-root', data, '--scratch-root', path.join(tmp, 's')], { encoding: 'utf8' });
+	const r = spawnSync('node', [BIN, '--retrospective', 'perspective/retrospective-sessions/2026-09-07--fx', '--repo-path', repo, '--data-root', data, '--scratch-root', path.join(tmp, 's'), ...SINCE], { encoding: 'utf8' });
 	assert.equal(r.status, 0, r.stderr);
 	const src = recordPath('sources', 'fx/git-repo--acme-portal', 'source', data);
 	assert.ok(fs.existsSync(src), 'the sources record exists');
