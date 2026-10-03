@@ -19,7 +19,7 @@ const latest = (...ds) => ds.filter(Boolean).sort().at(-1);
  * Returns { added, matched }. Never overwrites a body, never lowers an evidence_count.
  *
  * `contact` — a `contacts` ref — is accepted but never DERIVED here. A reader may only supply one
- * when the evidence itself carries a structural edge to the CRM record (`meetings.attendees` is a field
+ * when the evidence itself carries a structural edge to the CRM record (`meetings.attendees_contacts` is a field
  * of `type: contacts`, so following it is not a guess about a string). It is written only where
  * the record has none: a value a person confirmed outranks anything a reader found, and this upsert
  * ADDS what the evidence proves rather than replacing what it merely failed to re-derive.

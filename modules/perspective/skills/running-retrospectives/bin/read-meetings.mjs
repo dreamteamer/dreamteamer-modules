@@ -39,7 +39,7 @@
 //
 // WHY `perspective/users.contact` IS SET HERE, when `references/identity.md` says that field is set
 // only on confirmation and never inferred from a matching name. Both are true, because this is not a
-// name match. `meetings.attendees` is a field of `type: contacts` — a STRUCTURAL edge somebody
+// name match. `meetings.attendees_contacts` is a field of `type: contacts` — a STRUCTURAL edge somebody
 // already committed to in the workspace's own CRM. Following a reference the workspace asserts is
 // the opposite of guessing from a string, and it is the one route by which an observed person may
 // arrive already joined to their CRM record. `contacts` is a PEER of this module, so the edge points
@@ -136,17 +136,18 @@ for (const { file: f, id: contactId } of recordFilesOf(CONTACTS)) {
 	const emails = [...new Set([...list(fields.email), ...list(fields.emails)].map(lower).filter((e) => e.includes('@')))];
 	contacts.set(ref, { ref, name: String(fields.name ?? ref.split('/').pop()), emails });
 }
-// The same index keyed by EMAIL. An `attendees_raw` line is free text, but the address inside it is
-// a person KEY — the very thing `lib/collaborators.mjs` merges on — so matching one against a
-// contact's own `email` field is the identical structural join a ref match is, not a name match.
+// The same index keyed by EMAIL. A `meetings.attendees` row is the Calendar API's attendee object,
+// and its `email` is a person KEY — the very thing `lib/collaborators.mjs` merges on — so matching one
+// against a contact's own `email` field is the identical structural join a ref match is, not a name match.
 const byEmail = new Map();   // lowercased address → the contact
 for (const c of contacts.values()) for (const e of c.emails) if (!byEmail.has(e)) byEmail.set(e, c);
 
 // ── who the contributor is, in the two vocabularies this reader has to speak ─────────────────────
-// `attendees` is a list of contact REFS, so the structural test is a ref match. `attendees_raw` is
-// free text the calendar wrote, so the test there is an EMAIL match — never a display name, which
-// two people share (`lib/collaborators.mjs` and references/identity.md both refuse it, and a reader
-// that matched on one would attribute a stranger's whole week to the contributor).
+// `attendees_contacts` is a list of contact REFS, so the structural test is a ref match. `attendees`
+// is the calendar's own attendee list, one object per person, so the test there is an EMAIL match —
+// never a display name, which two people share (`lib/collaborators.mjs` and references/identity.md
+// both refuse it, and a reader that matched on one would attribute a stranger's whole week to the
+// contributor).
 let contactRef = '';
 const handles = new Set();
 // WHOSE MEETINGS THESE ARE IS THE RUN RECORD'S ANSWER, not this flag's. Every id written here is
@@ -187,45 +188,45 @@ function instantOf(fields, id) {
 }
 
 const kept = [];
-let scanned = 0, undated = 0, older = 0, byRef = 0, byRaw = 0;
+let scanned = 0, undated = 0, older = 0, byRef = 0, byEmailHit = 0;
 for (const { file, id } of recordFilesOf(MEETINGS)) {
 	let fields;
 	try { ({ fields } = readRecord(file)); } catch { continue; }
 	scanned++;
-	const attendees = list(fields.attendees).map(String);
-	const raw = list(fields.attendees_raw).map((r) => lower(r));
-	const hitRef = contactRef && attendees.includes(contactRef);
-	const hitRaw = !hitRef && raw.some((line) => [...handles].some((h) => line.includes(h)));
-	if (!hitRef && !hitRaw) continue;
+	const refs = list(fields.attendees_contacts).map(String);
+	// the API's attendee objects, by address; a row that is not an object (an older record) has no key
+	const emails = list(fields.attendees).map((a) => (a && typeof a === 'object' ? lower(a.email) : '')).filter((e) => e.includes('@'));
+	const hitRef = contactRef && refs.includes(contactRef);
+	const hitEmail = !hitRef && emails.some((e) => handles.has(e));
+	if (!hitRef && !hitEmail) continue;
 	const starts = instantOf(fields, id);
 	if (!starts) { undated++; continue; }          // undated evidence cannot be placed on a timeline
 	const day = starts.slice(0, 10);
 	if (since && day < since) { older++; continue; }
-	hitRef ? byRef++ : byRaw++;
+	hitRef ? byRef++ : byEmailHit++;
 	const ends = String(fields.ends ?? '').trim();
 	const minutes = Number.isFinite(Date.parse(starts)) && Number.isFinite(Date.parse(ends))
 		? Math.max(0, Math.round((Date.parse(ends) - Date.parse(starts)) / 60000))
 		: undefined;
 	// The counterparts are the other people the meeting places in the room, by the two vocabularies
 	// this reader speaks — and BOTH of them are structural.
-	//   · an `attendees` REF other than the contributor's: an edge somebody already committed to;
-	//   · an EMAIL inside an `attendees_raw` line that resolves to a contact record's own address.
+	//   · an `attendees_contacts` REF other than the contributor's: an edge somebody already committed to;
+	//   · an `attendees` row whose `email` resolves to a contact record's own address.
 	// The second is accepted for the same reason the contributor test above matches by such an
 	// address: a DISPLAY NAME is not a person key and an EMAIL is. A calendar sync that never resolved
-	// its attendees to contacts is the normal state of a fresh workspace, and refusing raw emails
-	// would drop every counterpart of every unresolved meeting.
-	// A raw line with no address still yields nobody, and a NAME in one is never mined.
+	// its attendees to contacts is the normal state of a fresh workspace, and refusing the API's
+	// addresses would drop every counterpart of every unresolved meeting. A row's `displayName` is never mined.
 	const seen = new Set();
 	const counterparts = [];
 	const take = (c) => { if (c && c.ref !== contactRef && !seen.has(c.ref)) { seen.add(c.ref); counterparts.push(c); } };
-	for (const a of attendees) if (contacts.has(a)) take(contacts.get(a));
-	for (const line of raw) for (const [email, c] of byEmail) if (line.includes(email) && !handles.has(email)) take(c);
+	for (const a of refs) if (contacts.has(a)) take(contacts.get(a));
+	for (const e of emails) if (byEmail.has(e) && !handles.has(e)) take(byEmail.get(e));
 	kept.push({
 		id, ref: `meetings/${id}`, name: String(fields.name ?? id.split('/').pop()),
 		starts, ends: ends || undefined, day, minutes,
 		company: fields.company ? String(fields.company) : '',
 		counterparts,
-		matched: hitRef ? 'attendee-ref' : 'attendees-raw',
+		matched: hitRef ? 'attendee-ref' : 'attendee-email',
 	});
 }
 kept.sort((a, b) => (a.starts < b.starts ? -1 : a.starts > b.starts ? 1 : a.id < b.id ? -1 : 1));
@@ -281,7 +282,7 @@ if (!dry) {
 		reach: kept.length ? 'available' : 'unavailable',
 		location: '${workspaceFolder}',
 		counts: {
-			scanned, attended: kept.length, by_attendee_ref: byRef, by_attendees_raw: byRaw,
+			scanned, attended: kept.length, by_attendee_ref: byRef, by_attendee_email: byEmailHit,
 			counterparts: people.size, attendees_without_an_email: nameless,
 			undated, older_than_since: since ? older : undefined,
 			minutes: kept.reduce((n, m) => n + (m.minutes ?? 0), 0),
@@ -324,7 +325,7 @@ if (!dry) {
 }
 
 process.stdout.write(
-	`✔ meetings ${label} · scanned ${scanned} · attended ${kept.length} (${byRef} by attendee ref, ${byRaw} by attendees_raw)`
+	`✔ meetings ${label} · scanned ${scanned} · attended ${kept.length} (${byRef} by attendee ref, ${byEmailHit} by attendee email)`
 	+ ` · minutes ${kept.reduce((n, m) => n + (m.minutes ?? 0), 0)} · weeks ${weeks.size}`
 	+ ` · counterparts ${people.size} · collaborators +${collab.added} (=${collab.matched} existing)`
 	+ (unknownArg ? ` · ⚠ ${unknownArg} matches no contacts record here — matched on the run record's own handles instead` : '')

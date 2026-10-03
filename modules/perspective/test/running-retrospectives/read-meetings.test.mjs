@@ -56,8 +56,8 @@ function fixture({ withMeetings = true } = {}) {
 	// 1. The contributor is an ATTENDEE REF. One hour, one counterpart.
 	meeting('2026/08/2026-08-03--10-00--northwind--weekly-sync', {
 		name: 'Weekly sync', starts: '2026-08-03T10:00:00+03:00', ends: '2026-08-03T11:00:00+03:00',
-		company: 'companies/northwind', attendees: ['contacts/dana-oren', 'contacts/sam-diaz'],
-		attendees_raw: ['Dana Oren <dana.o@northwind.example>', 'Sam Diaz <sam.d@bright.example>'],
+		company: 'companies/northwind', attendees_contacts: ['contacts/dana-oren', 'contacts/sam-diaz'],
+		attendees: [{ email: DANA, displayName: 'Dana Oren', self: true }, { email: SAM, displayName: 'Sam Diaz', responseStatus: 'accepted' }],
 		// The judged artefacts another module owns. Their REFS are fine; their content is not this
 		// reader's to touch, and neither is this body.
 		summary: 'meeting-summaries/2026-08-03--northwind-weekly-sync',
@@ -68,35 +68,35 @@ function fixture({ withMeetings = true } = {}) {
 	meeting('2026/08/2026-08-04--09-30--harbor-mutual--discovery-call', {
 		name: 'Discovery call', starts: '2026-08-04T09:30:00+03:00', ends: '2026-08-04T10:00:00+03:00',
 		company: 'companies/harbor-mutual',
-		attendees: ['contacts/dana-oren', 'contacts/priya-raman', 'contacts/nick-no-email'],
+		attendees_contacts: ['contacts/dana-oren', 'contacts/priya-raman', 'contacts/nick-no-email'],
 		origin: 'calendar',
 	}, `A discovery call. ${JUDGED}\n`);
 
-	// 3. NO `attendees` at all — the contributor is only in the free-text list. A calendar sync that
-	//    never resolved its attendees to contacts is the normal state of a fresh workspace.
+	// 3. NO `attendees_contacts` at all — the contributor is only in the calendar's own attendee list. A
+	//    sync that never resolved its attendees to contacts is the normal state of a fresh workspace.
 	meeting('2026/08/2026-08-20--14-00--harbor-mutual--review', {
 		name: 'Quarterly review', starts: '2026-08-20T14:00:00+03:00', ends: '2026-08-20T14:45:00+03:00',
 		company: 'companies/harbor-mutual',
-		attendees_raw: ['Dana Oren <dana.o@northwind.example>', 'Priya Raman <priya.r@harbormutual.example>'],
+		attendees: [{ email: DANA, displayName: 'Dana Oren' }, { email: PRIYA, displayName: 'Priya Raman' }],
 		origin: 'calendar',
 	}, '');
 
 	// 4. NOT the contributor's. Same week as #1, and it must not appear anywhere.
 	meeting('2026/08/2026-08-05--16-00--finpath--pitch', {
 		name: 'Finpath pitch', starts: '2026-08-05T16:00:00+03:00', ends: '2026-08-05T17:00:00+03:00',
-		company: 'companies/finpath', attendees: ['contacts/sam-diaz'], origin: 'calendar',
+		company: 'companies/finpath', attendees_contacts: ['contacts/sam-diaz'], origin: 'calendar',
 	}, '');
 
 	// 5. No `ends`. The minutes are UNKNOWABLE, which is absent and not zero.
 	meeting('2026/08/2026-08-24--11-00--northwind--open-ended', {
 		name: 'Open ended', starts: '2026-08-24T11:00:00+03:00',
-		company: 'companies/northwind', attendees: ['contacts/dana-oren'], origin: 'manual',
+		company: 'companies/northwind', attendees_contacts: ['contacts/dana-oren'], origin: 'manual',
 	}, '');
 
 	// 6. Older than the window a `--since` run will ask for.
 	meeting('2026/05/2026-05-06--10-00--northwind--old-standup', {
 		name: 'Old standup', starts: '2026-05-06T10:00:00+03:00', ends: '2026-05-06T10:15:00+03:00',
-		company: 'companies/northwind', attendees: ['contacts/dana-oren'], origin: 'calendar',
+		company: 'companies/northwind', attendees_contacts: ['contacts/dana-oren'], origin: 'calendar',
 	}, '');
 
 	return { ws, data, scratch };
@@ -119,13 +119,13 @@ test('the sources enum carries `meetings` — a reader writing a kind the descri
 		`sources.kind is ${JSON.stringify(enumValues(doc.fields.kind.enum))} — the reader would write a record the engine rejects`);
 });
 
-test('a meeting is kept when the contributor is an attendee REF or carries a handle in attendees_raw, and never otherwise', () => {
+test('a meeting is kept when the contributor is an attendee REF or an address in the calendar\'s attendee list, and never otherwise', () => {
 	const f = fixture();
 	const r = run(f);
 	assert.equal(r.status, 0, r.stderr);
-	assert.match(r.stdout, /scanned 6 · attended 5 \(4 by attendee ref, 1 by attendees_raw\)/);
+	assert.match(r.stdout, /scanned 6 · attended 5 \(4 by attendee ref, 1 by attendee email\)/);
 	const refs = scratchLines(f).map((m) => m.ref);
-	assert.ok(refs.includes('meetings/2026/08/2026-08-20--14-00--harbor-mutual--review'), 'the raw-only meeting is theirs');
+	assert.ok(refs.includes('meetings/2026/08/2026-08-20--14-00--harbor-mutual--review'), 'the email-only meeting is theirs');
 	assert.ok(!refs.some((x) => x.includes('finpath')), 'a meeting the contributor is not on is not theirs, however near it sits');
 });
 
@@ -133,7 +133,7 @@ test('an email works as well as a contacts ref, because the run record carries t
 	const f = fixture();
 	const r = run(f, ['--contributor', DANA]);
 	assert.equal(r.status, 0, r.stderr);
-	assert.match(r.stdout, /attended 5 \(4 by attendee ref, 1 by attendees_raw\)/,
+	assert.match(r.stdout, /attended 5 \(4 by attendee ref, 1 by attendee email\)/,
 		'the email resolves to the contact, so the structural matches still fire');
 });
 
@@ -185,7 +185,7 @@ test('every counterpart with an email becomes a collaborator, joined to the CRM 
 	// `lib/collaborators.mjs` owns that rule and drops the name the moment it would be ambiguous.
 	assert.deepEqual(sam.handles, [SAM, 'Sam Diaz']);
 	assert.ok(sam.handles.includes(SAM), 'the merge key is the email');
-	// ⚠ NOT a name match: `meetings.attendees` is an x-reference somebody already committed to, so
+	// ⚠ NOT a name match: `meetings.attendees_contacts` is a reference somebody already committed to, so
 	// following it is the opposite of guessing from a string.
 	assert.equal(sam.contact, 'contacts/sam-diaz');
 	assert.deepEqual(sam.roles_observed, ['attendee']);
@@ -210,7 +210,7 @@ test('the source record says what was reachable and what it may not claim', () =
 	assert.equal(src.fields.location, '${workspaceFolder}');
 	assert.equal(src.fields.counts.scanned, 6);
 	assert.equal(src.fields.counts.attended, 5);
-	assert.equal(src.fields.counts.by_attendees_raw, 1);
+	assert.equal(src.fields.counts.by_attendee_email, 1);
 	assert.equal(src.fields.counts.attendees_without_an_email, 1);
 	assert.equal(src.fields.counts.first, '2026-05-06');
 	assert.equal(src.fields.read_with, 'read-meetings@1');
@@ -281,8 +281,8 @@ test('an address the workspace does not know falls back to the run record’s ha
 	const r = run(f, ['--contributor', 'stranger@elsewhere.example']);
 	assert.equal(r.status, 0, r.stderr);
 	assert.match(r.stdout, /stranger@elsewhere\.example matches no contacts record here — matched on the run record's own handles instead/);
-	// Two, not five: with no contact ref there is no structural match, only the raw attendee lines.
-	assert.match(r.stdout, /attended 2 \(0 by attendee ref, 2 by attendees_raw\)/);
+	// Two, not five: with no contact ref there is no structural match, only the calendar's attendee rows.
+	assert.match(r.stdout, /attended 2 \(0 by attendee ref, 2 by attendee email\)/);
 });
 
 // ── THE OBSERVED WORLD IS WHERE THE PEOPLE GO ────────────────────────────────────────────────────
@@ -355,7 +355,7 @@ test('evidence provenance survives the move — every observed person cites the 
 		// is the one exception and it is not a name match — see the reader's header.
 		assert.equal(r.real, undefined, `${r.name} carries \`real\`, which only a person may set`);
 	}
-	// The `contact` edge points sideways at the CRM record `meetings.attendees` already committed to.
+	// The `contact` edge points sideways at the CRM record `meetings.attendees_contacts` already committed to.
 	assert.equal(rows.find((r) => r.name === 'Priya Raman').contact, 'contacts/priya-raman');
 });
 
@@ -393,6 +393,6 @@ test('a meeting placed under its company folder is read like any other, with the
 	fs.renameSync(from, to);
 	const r = run(f);
 	assert.equal(r.status, 0, r.stderr);
-	assert.match(r.stdout, /scanned 6 · attended 5 \(4 by attendee ref, 1 by attendees_raw\)/, 'the placed meeting is still scanned and still theirs');
+	assert.match(r.stdout, /scanned 6 · attended 5 \(4 by attendee ref, 1 by attendee email\)/, 'the placed meeting is still scanned and still theirs');
 	assert.ok(scratchLines(f).map((m) => m.ref).includes(`meetings/${id}`), 'and its reference is the plain collection reference, with no folder in it');
 });
