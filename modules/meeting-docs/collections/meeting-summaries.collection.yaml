@@ -29,7 +29,7 @@ fields:
       The instant of the call being summarized, denormalized from meeting.starts so the list sorts without a join. Never when the summary was written — the id's `created` carries that.
   who:
     type: string
-    description: Free-text participant list, as spoken or written — the unresolved twin of the meeting's attendees.
+    description: Free-text participant list, as spoken or written — the unresolved twin of the meeting's `attendees_contacts`.
   meeting:
     type: meetings
     # ONE summary per meeting. A second record for the same call is a `check` violation naming

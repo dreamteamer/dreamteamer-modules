@@ -28,16 +28,28 @@ test('the first step of summarize-meeting stops on a restricted meeting, naming 
 	assert.match(SUMMARIZE, /`privacy: restricted`: no summary is written/);
 });
 
-test('the speaker map is `transcription.speakers`, and `notes` is a top-level recording field', () => {
+test('the speaker map is `transcription.speakers`; the two caveat fields are both read, and told apart', () => {
 	assert.equal(RECORDINGS.notes?.type, 'string', 'meeting-recordings declares no top-level `notes`');
 	assert.equal(RECORDINGS.transcription?.type, 'map');
-	assert.match(SUMMARIZE, /`transcription\.speakers`/);
-	assert.match(SUMMARIZE, /`notes` — a top-level field of the recording, not a key inside\s+`transcription`/);
+	assert.match(RECORDINGS.transcription.description, /`notes`/, 'the recordings descriptor says the block carries the transcriber\'s notes');
+	for (const f of [SUMMARIZE, read('meeting-docs/commands/analyze-meetings.command.md'), read('meeting-docs/skills/analyzing-meetings/SKILL.md')]) {
+		assert.match(f, /`transcription\.speakers`/);
+		assert.match(f, /`transcription\.notes`/, 'the transcriber\'s own caveats are read');
+		assert.match(f, /top-level/, 'and the recording\'s own `notes` beside them');
+	}
 });
 
-test('no shipped command or skill tells an agent to read `transcription.notes`', () => {
-	const hits = shipped.filter((f) => fs.readFileSync(f, 'utf8').includes('transcription.notes')).map((f) => path.relative(MODULES, f));
-	assert.deepEqual(hits, []);
+test('who was in the room is the meeting\'s `attendees_contacts`; no shipped text puts contact refs in `attendees`', () => {
+	const meetings = fields('meetings/collections/meetings.collection.yaml');
+	assert.equal(meetings.attendees_contacts?.type, 'contacts', 'the meetings module this one depends on declares attendees_contacts');
+	assert.equal(meetings.attendees?.type, 'object');
+	const PREPS = fields('meeting-docs/collections/meeting-preps.collection.yaml');
+	assert.match(PREPS.attendees.description, /attendees_contacts/);
+	assert.match(read('meeting-docs/commands/create-meeting.command.md'), /`attendees_contacts`/);
+	assert.match(read('meeting-docs/commands/process-new-meetings.command.md'), /`attendees_contacts`/);
+	assert.match(read('meeting-docs/skills/preparing-for-meetings/SKILL.md'), /`attendees_contacts`/);
+	const stale = shipped.filter((f) => /attendees as `contacts\/` refs|meeting's `attendees`[^_]/.test(fs.readFileSync(f, 'utf8'))).map((f) => path.relative(MODULES, f));
+	assert.deepEqual(stale, []);
 });
 
 test('the id rule: pass --id with the meeting\'s id, and say why', () => {

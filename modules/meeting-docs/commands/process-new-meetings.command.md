@@ -21,8 +21,8 @@ just running this again.
 4. **`/transcribe-recording <recording refs>`** — for every recording with a `recording_file` and no
    `transcription`. The audio lives at the record's `recording_file`, rendered per machine by
    `dt resolve`.
-   The speaker count comes from the meeting's attendees, so **check that list is real first**: an
-   invite with no attendees produces a fabricated count, and a Zoom-grid screenshot (step 5) is better
+   The speaker count comes from the meeting's `attendees_contacts`, so **check that list is real
+   first**: an invite with no attendees produces a fabricated count, and a Zoom-grid screenshot (step 5) is better
    evidence. If screenshots for this meeting are already in hand, read one before choosing the count.
 5. **`/fetch-meeting-screenshots <range>`** — visuals inbox → the meeting's `screenshots_folder`.
    **Look at each shot before uploading**: these are a client's screen and routinely carry third

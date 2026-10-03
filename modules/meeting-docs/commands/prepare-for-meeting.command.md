@@ -26,7 +26,8 @@ history rather than padding.
 If a goal was passed after the meeting ref, it is goal #1, unedited.
 
 Frontmatter as `preparing-for-meetings` §4 lists it: `meeting`, `date` copied from the meeting's
-`starts`, `engagement`, `company`, `attendees`, `goal`, `sources`, `status: draft`, and the quad
+`starts`, `engagement`, `company`, `attendees` (the meeting's `attendees_contacts`), `goal`, `sources`,
+`status: draft`, and the quad
 (`author: agents/<harness>` — `agents/claude-code` under Claude Code — with the model in
 `creation_context`).
 

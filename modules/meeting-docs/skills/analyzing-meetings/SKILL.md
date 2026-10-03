@@ -26,10 +26,10 @@ credential stated loosely. None of that survives summarisation.
 
 Read in this order:
 
-1. **`transcription.speakers` and the top-level `notes` on every recording, FIRST.** The speaker map
-   says which transcript label is which person; `notes` (a field of the recording, not a key inside
-   `transcription`) says what is untrustworthy — bad audio, a missing stretch, who was off-mic. Read any
-   caveat the transcriber wrote into the `transcription` block the same way. In a recording whose
+1. **`transcription.speakers`, `transcription.notes` and the top-level `notes` on every recording,
+   FIRST.** The speaker map says which transcript label is which person; `transcription.notes` is the
+   transcriber's own caveat — a corrected count, an unmapped label; the recording's top-level `notes`
+   is a person's note about the capture — bad audio, a missing stretch, who was off-mic. In a recording whose
    labels are conflated or unmapped, **do not attribute a line to a person** — read it as "X advising"
    and say so once, at the top of the body. Set `evidence_quality` from these (`weak` when findings
    rest on inference, `strong` when attribution and audio are clean), independently of `confidence`,

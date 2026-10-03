@@ -42,7 +42,7 @@ fields:
   attendees:
     type: contacts
     many: true
-    description: Who is in the room, denormalized from the meeting — "who am I about to talk to" should not need a second file open.
+    description: Who is in the room, denormalized from the meeting's `attendees_contacts` — "who am I about to talk to" should not need a second file open.
   goal:
     type: string
     description: The ONE outcome that makes this meeting worth having, in a line. If it cannot be written, that is information about the meeting, not about the prep.

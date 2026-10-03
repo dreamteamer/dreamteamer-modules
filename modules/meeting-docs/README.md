@@ -36,7 +36,16 @@ holds a single recording as a plain string still validates.
 
 ## upgrading existing summaries
 
-`meeting-summaries` has no `participants` field. Who was on a call is the meeting's `attendees`, and
-who said what is the recording's transcript. A summary that still carries `participants` fails
-`dt check` with `unknown field "participants"`: move any `contacts/<id>` it lists into the meeting's
-`attendees` if it is not there already, then delete the key.
+`meeting-summaries` has no `participants` field. Who was on a call is the meeting's
+`attendees_contacts`, and who said what is the recording's transcript. A summary that still carries
+`participants` fails `dt check` with `unknown field "participants"`: move any `contacts/<id>` it lists
+into the meeting's `attendees_contacts` if it is not there already, then delete the key.
+
+## upgrading to 0.1.2
+
+The meetings module's 0.1.2 remodelled its people fields: the contact refs moved from `attendees` to
+`attendees_contacts`, and `attendees` is now the Calendar API's own attendee list as objects. Every
+procedure here that read `attendees` reads `attendees_contacts`; a prep's own `attendees` field is
+unchanged and is copied from there. The summarize and analyze procedures also read a recording's
+`transcription.notes` — the transcriber's own caveats, written inside the block it produces — beside
+the recording's top-level `notes`, which is a person's note about the capture.

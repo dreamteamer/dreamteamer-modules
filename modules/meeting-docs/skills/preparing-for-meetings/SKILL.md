@@ -34,11 +34,11 @@ call produces a prep that is wrong in every section, and nothing downstream catc
 
 | # | source | what it gives |
 |---|---|---|
-| 1 | the **meeting record** — `note`, `description`, attendees, the invite's own wording | often the only statement of why this meeting exists at all |
+| 1 | the **meeting record** — `note`, `description`, `attendees_contacts`, the invite's own wording | often the only statement of why this meeting exists at all |
 | 2 | the account's **`engagements` record** — the one whose `company` is the meeting's company; set it as the prep's `engagement` | the standing picture: `stage`, `phase`, `next_steps`, `recent_activity`. **This is the status section, already written** — your job is to check it is current, not to re-derive it. No engagement for the company: say so in the report |
-| 3 | the last 2–4 **`meeting-summaries`** for the company or the attendees, newest first | the recap. Where a meeting has no summary, read the meeting record |
+| 3 | the last 2–4 **`meeting-summaries`** for the company or the `attendees_contacts`, newest first | the recap. Where a meeting has no summary, read the meeting record |
 | 4 | the **previous `meeting-preps`** for the same thread | what was planned last time, and whether it happened — see §5 |
-| 5 | each **`contacts`** record for the attendees — role, relation, notes | a person you have not met is worth a line; one you speak to weekly is not |
+| 5 | each **`contacts`** record in `attendees_contacts` — role, relation, notes | a person you have not met is worth a line; one you speak to weekly is not |
 | 6 | open **`tasks`** whose `item` points at any of those meetings | what you owe, and what you are owed |
 | 7 | any document record the summaries reference | only when a summary points at one |
 
@@ -85,7 +85,7 @@ Mark the single highest-leverage item.
 |---|---|
 | `meeting` | the meeting **being prepared for**. The earlier calls the material came from go in `sources`; pointing at them instead means the prep is never found for the meeting it serves |
 | `date` | copied from the meeting's `starts` — not today |
-| `company`, `attendees` | denormalized off the meeting, so the prep stands alone in a list |
+| `company`, `attendees` | denormalized off the meeting — `attendees` copies the meeting's `attendees_contacts` — so the prep stands alone in a list |
 | `goal` | one line, the top goal from §3. It is what the list view shows |
 | `engagement` | the `engagements/<id>` read in §2 row 2, when there is one |
 | `sources` | record refs (`meeting-summaries/…`, `engagements/…`) for everything actually read — never file paths, never "the summaries" |

@@ -31,9 +31,10 @@ npx dt add meeting-summaries --id <meeting id> --name "<the meeting's name>" \
    - `transcription.speakers` — the map from transcript labels (`speaker_0`) to people. A label the
      map does not name has no person behind it: never attribute a quote through an unmapped label,
      or through labels the map or the notes say are conflated.
-   - `notes` — a top-level field of the recording, not a key inside `transcription`: bad audio, a
-     missing first minute, who was off-mic. Read any caveat the transcriber wrote into the
-     `transcription` block the same way.
+   - `transcription.notes` — the transcriber's own caveats, written inside the block it produces:
+     a speaker count it corrected, labels it could not map, attribution it does not trust.
+   - `notes` — the recording's top-level field, a person's note about the capture itself: bad
+     audio, a missing first minute, who was off-mic. Both are caveats; they come from different hands.
 2. **the visuals**, when the meeting has `screenshots_folder` — a
    `${env:FILES_FOLDER}/meetings/<the meeting's id>/screenshots` template. Let the engine render it,
    then LOOK at each image:

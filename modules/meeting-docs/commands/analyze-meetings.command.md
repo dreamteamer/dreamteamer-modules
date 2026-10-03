@@ -12,8 +12,9 @@ it out of the record and say so in one line — *"`meetings/<id>` has `privacy: 
 reviewed"*. When every ref is restricted, write nothing. A meeting with no `privacy` value is `open`.
 
 **Read the raw transcripts off the recordings, not the summaries.** On each recording, read
-`transcription.speakers` (the map from transcript labels to people) and the recording's top-level
-`notes` before anything else, and set `evidence_quality` from them; never attribute a line through a
+`transcription.speakers` (the map from transcript labels to people), `transcription.notes` (the
+transcriber's own caveats) and the recording's top-level `notes` (a person's note about the capture)
+before anything else, and set `evidence_quality` from them; never attribute a line through a
 label the map does not name, or in a recording whose notes say attribution is unusable. The summaries
 come last, and only to make sure you have not rewritten them.
 
