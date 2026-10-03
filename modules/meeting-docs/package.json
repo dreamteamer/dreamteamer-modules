@@ -1,6 +1,6 @@
 {
 	"name": "@dreamteamer/meeting-docs",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "The documents a call produces: a prep to read before it, a neutral summary after it, a critique built on the transcript, and its tasks.",
 	"license": "Apache-2.0",
 	"repository": {

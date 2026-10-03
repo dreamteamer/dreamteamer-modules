@@ -7,10 +7,18 @@ load `analyzing-meetings`. write ONE `meeting-analyses` record covering every me
 $ARGUMENTS — one report per arc, not per call, so two calls with the same client on the same day are a
 single record with both refs in `meetings`.
 
-**Read the raw transcripts off the recordings, not the summaries.** Read each recording's
-`transcription.notes` before anything else and set `evidence_quality` from it; never attribute a line in
-a recording whose notes say attribution is unusable. The summaries come last, and only to make sure you
-have not rewritten them.
+**First, read each meeting's `privacy`.** A meeting with `privacy: restricted` is not reviewed: leave
+it out of the record and say so in one line — *"`meetings/<id>` has `privacy: restricted`: not
+reviewed"*. When every ref is restricted, write nothing. A meeting with no `privacy` value is `open`.
+
+**Read the raw transcripts off the recordings, not the summaries.** On each recording, read
+`transcription.speakers` (the map from transcript labels to people) and the recording's top-level
+`notes` before anything else, and set `evidence_quality` from them; never attribute a line through a
+label the map does not name, or in a recording whose notes say attribution is unusable. The summaries
+come last, and only to make sure you have not rewritten them.
+
+Write the review in the language the meetings were held in — the transcript's
+`transcription.language`.
 
 **Verify the checkable claims** — credentials, standards, market and legal facts. WebSearch when your
 knowledge may be stale or the claim's truth changes the advice. Unverified assertions dressed as
@@ -23,9 +31,11 @@ If a lens was passed after the refs, weight the review toward it. Default lens: 
 scrutiny of everything you said — technical accuracy, compliance and factual framing, and
 commercial posture.
 
-Set `about` to the company or engagement the meetings belong to, `reviewed` to whose conduct was
-scrutinised (your own `users/<id>` record unless told otherwise), the quad (`author: agents/<harness>`,
-the model in `creation_context`), and leave `follow_up` empty.
+Set `about` to the `engagements/<id>` the meetings belong to (it takes an engagement, never a
+company), `meetings` to every ref reviewed, `summaries` to the summaries you checked against,
+`reviewed` to whose conduct was scrutinised (your own `users/<id>` record unless told otherwise), the
+quad (`author: agents/<harness>` — `agents/claude-code` under Claude Code — with the model in
+`creation_context`), and leave `follow_up` empty.
 
 Then report: the verdict in one line, the findings by severity, and — explicitly — **anything in the
 engagement's own records the review now contradicts** (a `next_steps` item the review says is the wrong

@@ -35,7 +35,7 @@ call produces a prep that is wrong in every section, and nothing downstream catc
 | # | source | what it gives |
 |---|---|---|
 | 1 | the **meeting record** — `note`, `description`, attendees, the invite's own wording | often the only statement of why this meeting exists at all |
-| 2 | the account's **standing record**, if your workspace keeps one (this module does not ship one — skip the row when there is none) | the standing picture. **This is the status section, already written** — your job is to check it is current, not to re-derive it |
+| 2 | the account's **`engagements` record** — the one whose `company` is the meeting's company; set it as the prep's `engagement` | the standing picture: `stage`, `phase`, `next_steps`, `recent_activity`. **This is the status section, already written** — your job is to check it is current, not to re-derive it. No engagement for the company: say so in the report |
 | 3 | the last 2–4 **`meeting-summaries`** for the company or the attendees, newest first | the recap. Where a meeting has no summary, read the meeting record |
 | 4 | the **previous `meeting-preps`** for the same thread | what was planned last time, and whether it happened — see §5 |
 | 5 | each **`contacts`** record for the attendees — role, relation, notes | a person you have not met is worth a line; one you speak to weekly is not |
@@ -87,9 +87,11 @@ Mark the single highest-leverage item.
 | `date` | copied from the meeting's `starts` — not today |
 | `company`, `attendees` | denormalized off the meeting, so the prep stands alone in a list |
 | `goal` | one line, the top goal from §3. It is what the list view shows |
-| `sources` | record refs (`meeting-summaries/…`, the standing record) for everything actually read — never file paths, never "the summaries" |
+| `engagement` | the `engagements/<id>` read in §2 row 2, when there is one |
+| `sources` | record refs (`meeting-summaries/…`, `engagements/…`) for everything actually read — never file paths, never "the summaries" |
 | `status` | `draft`. `ready` is the reader's word once they have read it, not the agent's |
-| the quad | `author: agents/<harness>` (e.g. `agents/claude-code`), `source`, `creation_context` naming the model, `confidence` |
+| `language` | the language the prep is written in, when it is not English |
+| the quad | `author: agents/<harness>` (`agents/claude-code` under Claude Code), `source`, `creation_context` naming the model, `confidence` |
 
 Pass `--id` explicitly — generated ids from long names are unusable:
 `<meeting's YYYY-MM-DD>--<company>-<short-slug>`.
@@ -111,7 +113,7 @@ Where it is not visible, say *that* — do not guess a motive.
 | "no history, but I'll fill it out anyway" | Write "first contact, nothing prior" and go straight to goals. Padding buries the two lines that matter |
 | "align / sync / touch base" as a goal | Not falsifiable, so not a goal. Name the decision or the answer you must leave with |
 | "the summary says it, so it's true" | Where a summary flags low confidence or garbled ASR, carry the caveat forward. Do not launder it into a fact |
-| "the client record is stale, I'll fix it" | Out of scope — whatever maintains the standing record owns it. **Flag** the drift in the report |
+| "the engagement record is stale, I'll fix it" | Out of scope — `/update-engagements` owns it. **Flag** the drift in the report |
 | "I'll list the tasks you should do" | A prep is not a task list. Work that comes out of the call is `/extract-tasks-from-meetings`, after it |
 | "I read the transcripts to be thorough" | An hour spent to tell you what you already know from having been there. Summaries |
 
@@ -122,7 +124,7 @@ you could not act on before the call starts.
 ## 7. report
 
 The meeting you resolved, the prep's id, the top goal, and the highest-leverage suggestion — then,
-explicitly, **what you could not find**: a company with no standing record, a recording with
+explicitly, **what you could not find**: a company with no engagement, a recording with
 no summary, an attendee with no contact record, a blocker whose owner is unknown. Those gaps are the
-part you act on. Flag anything the new reading **contradicts** in the standing record; do not fix it
+part you act on. Flag anything the new reading **contradicts** in the engagement; do not fix it
 here.

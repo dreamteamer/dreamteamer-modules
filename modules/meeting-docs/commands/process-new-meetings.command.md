@@ -24,9 +24,13 @@ just running this again.
    The speaker count comes from the meeting's attendees, so **check that list is real first**: an
    invite with no attendees produces a fabricated count, and a Zoom-grid screenshot (step 5) is better
    evidence. If screenshots for this meeting are already in hand, read one before choosing the count.
-5. **`/fetch-meeting-screenshots <range>`** — visuals inbox → the meeting's Drive folder.
+5. **`/fetch-meeting-screenshots <range>`** — visuals inbox → the meeting's `screenshots_folder`.
    **Look at each shot before uploading**: these are a client's screen and routinely carry third
    parties' personal data. Ask before uploading identity documents, signatures, account numbers.
+**A meeting with `privacy: restricted` stops here.** It holds a third party's private material, so
+steps 6-9 skip it: no summary, no tasks, no review, no engagement update. Name each one skipped in the
+report. A meeting with no `privacy` value is `open`.
+
 6. **`/summarize-meeting <meeting refs>`** — transcript + visuals → a `meeting-summary`.
 7. **`/extract-tasks-from-meetings <meeting refs>`** — only if the summary produced action items worth tracking.
 8. **`/analyze-meetings <meeting refs>`** — the critique pass: validate and scrutinise what was said,
@@ -36,10 +40,9 @@ just running this again.
    noise, and this step reads raw transcripts, so it is the expensive one. One report per **arc**
    (both of a day's calls with the same client → one record), and it needs the transcript, so it
    cannot run where step 4 was skipped. `--no-analyze` skips it outright.
-9. **Fold the new summaries into the account's standing record** — ONLY where your workspace keeps
-   one. This module does not ship one; a workspace that has one runs its own update command here,
-   **once at the end over every meeting processed**, not per meeting — an account should take one coherent update from the whole
-   batch rather than a commit per call. Skip when there is no such record.
+9. **`/update-engagements`** — fold the new summaries into each account's `engagements` record,
+   **once at the end over every meeting processed**, not per meeting — an account should take one
+   coherent update from the whole batch rather than a commit per call.
 10. **`/update-contacts-from-meetings <meeting refs>`** — stamp every attendee's contact record with
     `recent_meeting` + `recent_meeting_date`. Pure mechanics (one script, forward-only, idempotent), run
     **once over the whole batch** after the attendee lists are final — a corrected attendee list from
@@ -67,15 +70,18 @@ Transcription is the long pole. Start it in the background and do steps 5-6's re
 
 **Let the visuals correct the record.** A Zoom grid names participants an empty invite cannot, and its
 window title is often a better meeting name than the calendar's. When a screenshot contradicts a record,
-the screenshot is usually right — fix the record (`rename` moves the id, so the Drive folder and the
-`ingested/` archive follow) and say so in the report.
+the screenshot is usually right — fix the record and say so in the report. A corrected name or time
+is a new id: `dt rename` moves the meeting and every reference to it, but not the files under
+`screenshots_folder` or a summary whose id is the old meeting id — move the folder, set
+`screenshots_folder` to the new path, and rename the summary to the new meeting id.
 
 ## report
 
 Per meeting: what was synced/created, the recording and whether it transcribed, how many visuals landed,
 whether a summary was written, and **every correction the visuals forced**. Then, for each meeting step 8
 reviewed, its one-line verdict and any conflict it flagged with the engagement's existing records — and
-which meetings were deliberately not reviewed, so the gate is visible rather than silent. Then which
-standing records step 9 moved, and what it could not place. Then the leftovers — unmatched screenshots, recordings with
+which meetings were deliberately not reviewed, and which were skipped as `privacy: restricted`, so
+each gate is visible rather than silent. Then which engagements step 9 moved, and what it could not
+place. Then the leftovers — unmatched screenshots, recordings with
 no meeting, meetings with no recording. End with the two inboxes' state, because an empty inbox is the
 signal that nothing is pending.

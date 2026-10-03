@@ -4,18 +4,39 @@ description: write a meeting-summary record from the transcript and any visuals 
 argument-hint: <meetings/id> [more meeting refs…] [focus]
 ---
 load `using-dreamteamer` (record rules: `references/records.md`). for each meeting ref in:
-$ARGUMENTS — write a `meeting-summary` record mirroring the meeting's `YYYY/MM` path and
-basename.
+$ARGUMENTS — write one `meeting-summaries` record.
+
+**first, read the meeting's `privacy`.** When it is `restricted`, write nothing for that meeting and
+answer in one line — *"`meetings/<id>` has `privacy: restricted`: no summary is written"* — then go
+on to the next ref. A restricted meeting holds a third party's private material, so its pipeline
+ends at the transcript. A meeting with no `privacy` value is `open`.
+
+**the summary's id is the meeting's id.** Pass `--id <the meeting's id>` — the part after
+`meetings/` — so the summary is filed beside the meeting it summarises, under the month the call was
+held, not on the day it was written. The id the descriptor generates comes from `created`, which is
+the writing date, so it is only a fallback. One summary per meeting (`meeting` is unique): a
+re-summary updates the existing record with `dt set`, never adds a second.
+
+```bash
+npx dt add meeting-summaries --id <meeting id> --name "<the meeting's name>" \
+  --meeting meetings/<meeting id> --date <the meeting's starts> \
+  --author agents/<harness> --source meeting-recordings/<id> [--source meeting-recordings/<id> …]
+```
 
 **read two sources, in this order:**
 
 1. **the transcript**, from the meeting's **recordings** (`recordings` → each recording's body; several
-   recordings means several parts of one call, in date order). Read each recording's
-   `transcription.notes` FIRST — it says what is and is not trustworthy, and a recording whose speakers
-   are unmapped or whose labels are conflated must not have quotes attributed to a person.
+   recordings are several parts of one call, read in `date` order). On each recording, read these
+   two fields before the body:
+   - `transcription.speakers` — the map from transcript labels (`speaker_0`) to people. A label the
+     map does not name has no person behind it: never attribute a quote through an unmapped label,
+     or through labels the map or the notes say are conflated.
+   - `notes` — a top-level field of the recording, not a key inside `transcription`: bad audio, a
+     missing first minute, who was off-mic. Read any caveat the transcriber wrote into the
+     `transcription` block the same way.
 2. **the visuals**, when the meeting has `screenshots_folder` — a
-   `${env:FILES_FOLDER}/meetings/<basename>` template. Let the engine render it, then LOOK at
-   each image:
+   `${env:FILES_FOLDER}/meetings/<the meeting's id>/screenshots` template. Let the engine render it,
+   then LOOK at each image:
    ```bash
    DIR=$(npx dt resolve meetings/<id> screenshots_folder)
    ls "$DIR"
@@ -30,10 +51,21 @@ basename.
    trustworthy `recorded_at` — it usually does not, because a recording file's timestamp is when the
    copy was written. Absolute clock time is what you have; quote it as such.
 
-frontmatter: name, date, who, the meeting ref, and the quad — `author: agents/<harness>` (e.g.
-`agents/claude-code`, your model in `creation_context`), `source: meeting-recordings/<id>` (the recording you actually read, not the meeting; add
-`+ <n> screenshots` when visuals informed it), `confidence` reflecting how legible the sources were,
-with the reason in `creation_context` when it is `low`. rough ASR is the usual reason.
+**write the summary in the language the meeting was held in** — the transcript's
+`transcription.language` — so a quote reads as it was said.
+
+frontmatter:
+
+| field | value |
+|---|---|
+| `name` | the meeting's own title |
+| `date` | the meeting's `starts` — the call's instant, never today |
+| `who` | the participants as spoken or written, free text |
+| `meeting` | `meetings/<id>` |
+| `author` | `agents/<harness>`, the name of the harness running this command: `agents/claude-code` under Claude Code, `agents/codex` under Codex. Not `agents/dreamteamer`, which names the engine's routing agent rather than the harness that wrote the record. Your model goes in `creation_context` |
+| `source` | every recording whose transcript you read, one `meeting-recordings/<id>` element each (`--source` repeated), never the meeting. A recording you could not read is not a source |
+| `creation_context` | the model, how many screenshots informed the summary, and the reason whenever `confidence` is `low` |
+| `confidence` | how legible the sources were — rough ASR is the usual reason for `low` |
 
 body: context, key points, decisions — ending with an **Action items** section. weave the visuals in
 where they carry the content (a diagram, a screen, a document on display) rather than listing them at

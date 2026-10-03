@@ -26,7 +26,13 @@ a critique.
 
 A prep can be written for any meeting, with no recording. A summary, its tasks and a critique need a
 transcribed recording; their commands are offered on a meeting only once one of its recordings has
-been transcribed.
+been transcribed, and never on a meeting whose `privacy` is `restricted` — one that holds a third
+party's private material, whose pipeline ends at the transcript. The three bindings name the
+`privacy` field, so this module needs a `@dreamteamer/meetings` that declares it.
+
+A summary's id is its meeting's id, passed as `--id`, so it is filed under the month the call was
+held. Its `source` lists every recording whose transcript was read, one element each; a summary that
+holds a single recording as a plain string still validates.
 
 ## upgrading existing summaries
 

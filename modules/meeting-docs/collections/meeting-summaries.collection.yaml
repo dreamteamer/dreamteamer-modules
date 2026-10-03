@@ -5,10 +5,12 @@ use_when: >-
   asked what was said or agreed on a call — read here, not the transcript; written by /summarize-meeting once a recording is transcribed, and it is what tasks and engagement updates are extracted from
 storage: {path: data/meeting-summaries, format: md, suffix: summary}
 ids:
-  # The generator is a FALLBACK, not the convention. A summary's id MIRRORS its meeting's path and
-  # basename, which the generator cannot produce (it only sees `created`, not the meeting's start),
-  # so /summarize-meeting passes --id. The pattern accepts both shapes, so nothing else catches a
-  # generated one.
+  # The generator is a FALLBACK, not the convention. A summary's id IS its meeting's id, so the
+  # summary is filed beside the call it summarises, under the month the call was held. The template
+  # grammar cannot produce that: `{{ meeting }}` renders in id position as `meetings/<id>`, which the
+  # pattern refuses, and no filter drops the collection segment while keeping the path (`basename`
+  # drops the year and month too). So /summarize-meeting passes `--id <the meeting's id>`. The
+  # pattern accepts both shapes, so nothing else catches a generated one.
   from: "{{ created | date:YYYY/MM }}/{{ created | date }}--{{ name | slug }}"
   pattern: "^\\d{4}/\\d{2}/\\d{4}-\\d{2}-\\d{2}--[a-z0-9-]+$"
 fields:
@@ -61,9 +63,13 @@ fields:
   creation_context:
     type: string
     description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+  # Many, because a call recorded in two parts is two recordings, and the summary is read from both.
+  # A record holding one value as a plain string still validates.
   source:
     type: string
-    description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: calendar:<id> · <collection>/<id> · file:<path> · url:<…> · linkedin:<slug> · migration:<id>.'
+    many: true
+    examples: ['meeting-recordings/2026/08/2026-08-30--northwind-weekly-part-1']
+    description: 'Where the INFORMATION came from, one element per source, prefixed so it stays machine-readable: <collection>/<id> · calendar:<id> · file:<path> · url:<…>. For a summary, every `meeting-recordings/<id>` whose transcript was read.'
   confidence:
     type: string
     default: normal

@@ -10,7 +10,12 @@ and what it cost. Write `meeting-analyses` records — see the collection descri
 the fields, `using-dreamteamer` → `references/records.md` for the CRUD.
 
 Reviews **you by default** (`reviewed: users/<your-id>`) — that is the point of the exercise. Write the
-quad as `author: agents/<harness>` (e.g. `agents/claude-code`) with your model in `creation_context`.
+quad as `author: agents/<harness>` (`agents/claude-code` under Claude Code) with your model in
+`creation_context`. `about` is the `engagements/<id>` the calls belong to, never a company.
+
+**A meeting with `privacy: restricted` is never reviewed.** It holds a third party's private material,
+and its pipeline ends at the transcript: leave it out of the record and say so in one line. A meeting
+with no `privacy` value is `open`.
 
 ## the one rule that decides whether this is worth anything
 
@@ -21,16 +26,19 @@ credential stated loosely. None of that survives summarisation.
 
 Read in this order:
 
-1. **`transcription.notes` on every recording, FIRST.** It says what is untrustworthy. In a recording whose
+1. **`transcription.speakers` and the top-level `notes` on every recording, FIRST.** The speaker map
+   says which transcript label is which person; `notes` (a field of the recording, not a key inside
+   `transcription`) says what is untrustworthy — bad audio, a missing stretch, who was off-mic. Read any
+   caveat the transcriber wrote into the `transcription` block the same way. In a recording whose
    labels are conflated or unmapped, **do not attribute a line to a person** — read it as "X advising"
-   and say so once, at the top of the body. Set `evidence_quality` from these notes (`weak` when
-   findings rest on inference, `strong` when attribution and audio are clean), independently of
-   `confidence`, which is about the record.
+   and say so once, at the top of the body. Set `evidence_quality` from these (`weak` when findings
+   rest on inference, `strong` when attribution and audio are clean), independently of `confidence`,
+   which is about the record.
 2. **The transcript bodies** — the meeting's `recordings` → each recording, in date order.
 3. **The summaries** last, and only to check you have not just rewritten them.
 4. **The visuals**, if the meeting has `screenshots_folder` — mechanics in `summarize-meeting`.
 
-**Low-confidence ASR is not evidence.** Where `transcription.notes` or the text itself shows a garbled
+**Low-confidence ASR is not evidence.** Where the recording's `notes` or the text itself shows a garbled
 passage — commonly a language the speech model handles poorly — never rest a finding on it, and never
 critique it as if the speaker said nonsense: that is the ASR talking, not them. State this caveat once
 in the body and move on.
@@ -65,8 +73,11 @@ falsifiable rather than opinion, and it lets you re-listen and disagree.
 5. **Suggestions, split two ways** — *the engagement* (what to do about this client) and *you*
    (patterns to change). Mark the single highest-leverage item.
 
+Write the review in the language the meetings were held in — the transcript's
+`transcription.language` — with every quote as it was spoken.
+
 Then `--id` explicitly (names are long): `<YYYY>/<MM>/<YYYY-MM-DD>--<short-slug>`, dated the **review**,
-not the meeting — unlike summaries, whose path mirrors the meeting's.
+not the meeting — unlike a summary, whose id is its meeting's id.
 
 ## discipline
 

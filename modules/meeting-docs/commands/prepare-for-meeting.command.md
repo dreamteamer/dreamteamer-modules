@@ -12,10 +12,9 @@ downstream catches it. Two plausible candidates: ask. None: say so — `/create-
 meeting and its prep together, this one prepares for a meeting that already exists. Already prepped:
 update that record, do not add a second.
 
-Read the standing picture first — the account's standing record, if your workspace keeps one (this
-module does not ship one; skip the step when there is none) — then the last few
-`meeting-summaries` and the previous prep for the same thread, then the attendees' `contacts` and the
-open `tasks`. Summaries, not transcripts; the exception is a meeting whose recording never got
+Read the standing picture first — the `engagements` record for the meeting's company, which the prep
+points at as its `engagement` — then the last few `meeting-summaries` and the previous prep for the
+same thread, then the attendees' `contacts` and the open `tasks`. Summaries, not transcripts; the exception is a meeting whose recording never got
 summarized, which is a gap to read *and* to report.
 
 Body, in this order: **status** (where it stands today, every blocker aged), **recap** (a short table
@@ -26,6 +25,11 @@ history rather than padding.
 
 If a goal was passed after the meeting ref, it is goal #1, unedited.
 
+Frontmatter as `preparing-for-meetings` §4 lists it: `meeting`, `date` copied from the meeting's
+`starts`, `engagement`, `company`, `attendees`, `goal`, `sources`, `status: draft`, and the quad
+(`author: agents/<harness>` — `agents/claude-code` under Claude Code — with the model in
+`creation_context`).
+
 Then report: the top goal, the highest-leverage suggestion, and **what you could not find** — a
-company with no standing record, a recording with no summary, an attendee with no contact.
-Flag anything the new reading **contradicts** in the standing record; do not fix it here.
+company with no engagement, a recording with no summary, an attendee with no contact.
+Flag anything the new reading **contradicts** in the engagement; do not fix it here.

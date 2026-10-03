@@ -1,14 +1,22 @@
 command: commands/analyze-meetings
 collection: collections/meetings
 scope: record
-# same one-hop-through-the-recordings-array gate as summarize-meeting and extract-tasks-from-meetings:
-# the review is built on the RAW transcript, so a meeting with no transcribed recording cannot be
-# reviewed at all — reviewing from the summary is the one thing `analyzing-meetings` forbids outright.
+# privacy: a `restricted` meeting's pipeline ends at the transcript, so it is never reviewed. An empty
+# `privacy` is `open`, matched explicitly because `_neq` rejects an empty value.
+# recordings: the same one-hop-through-the-recordings-array gate as summarize-meeting and
+# extract-tasks-from-meetings. The review is built on the RAW transcript, so a meeting with no
+# transcribed recording cannot be reviewed at all — reviewing from the summary is the one thing
+# `analyzing-meetings` forbids outright.
 available_when:
+  _or:
+    - privacy:
+        _null: true
+    - privacy:
+        _neq: restricted
   recordings:
     transcription:
       _nempty: true
-# can-exit is omitted, so the command never shows "done"; a later review of the same meeting is normal.
+# done_when is omitted, so the command never shows "done"; a later review of the same meeting is normal.
 #
 # Not gated on the call having anything at stake: running it on one meeting is a deliberate choice. The
 # gate that skips internal calls lives in /process-new-meetings step 8, where the pipeline picks targets.
