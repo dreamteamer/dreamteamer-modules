@@ -28,7 +28,7 @@ ids:
 fields:
   # THE M2M. This side OWNS the relation and stamps `sources` onto the run — the same spelling
   # `rnd/prototypes.design_doc` uses, and the mirror is declared explicitly on
-  # `retrospective-sessions` with `x-inverse-of` so a reader of that descriptor can see it.
+  # `retrospective-sessions` with `mirror_of` so a reader of that descriptor can see it.
   # APPEND, NEVER OVERWRITE. A reader adds this run's ref if it is not already there and touches
   # nothing else; the readers do exactly that (`lib/records.mjs` `withRun`). A writer that replaced
   # the list would silently make every earlier run invisible, which is the failure the pair of
@@ -37,8 +37,8 @@ fields:
     type: perspective/retrospective-sessions
     required: true
     many: true
-    # NO `x-inverse` HERE, and that is not an omission. The mirror is declared on the OTHER side,
-    # as `retrospective-sessions.sources` with `x-inverse-of` — spelling B, which compile rewrites
+    # NO `mirror_of` HERE, and that is not an omission. The mirror is declared on the OTHER side,
+    # as `retrospective-sessions.sources` with `mirror_of` — spelling B, which compile rewrites
     # onto this field in pass 1 and stamps in pass 2. Declaring BOTH is legal and compiles to the
     # same thing, but it makes compile WARN on every run in every consumer ("declared on both sides
     # — keep one"), and two permanent warnings in everybody's output is how people learn to skim

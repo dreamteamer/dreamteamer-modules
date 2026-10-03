@@ -11,7 +11,7 @@
 # `<contributor>/<name-slug>`, because that first segment is what makes a second retrospective UPDATE
 # a person's model instead of copying it. `real` is the one-way, soft join between them.
 name: perspective/users
-# The face, then the name — everywhere. A `title_template` is what a relation CELL, a group header,
+# The face, then the name — everywhere. A `record_title` is what a relation CELL, a group header,
 # a tooltip and a card all render for this record, so one line here puts a person's picture on every
 # surface that mentions them. `{{ avatar }}` holds `assets/avatars/<slug>`, which `DisplayTemplate`
 # draws as a thumbnail rather than spelling out; a collaborator with no matched
@@ -49,12 +49,12 @@ fields:
   contact:
     type: contacts
     description: >-
-      This person's record in the workspace's own CRM, where one exists and a person confirmed the match. `contacts` is a declared PEER, so the module compiles where no contacts collection exists without giving up the type. No `x-inverse`: a peer excuses a reference, not a mirror.
+      This person's record in the workspace's own CRM, where one exists and a person confirmed the match. `contacts` is a declared PEER, so the module compiles where no contacts collection exists without giving up the type. No `mirror_of`: a peer excuses a reference, not a mirror.
   # ── OUT INTO THE REAL WORLD ────────────────────────────────────────────────────────────────────
   # THE CANONICAL `real`, spelled identically on all four world collections so a guard, a view and a
   # reader have ONE field name to find. The other three point back here for the argument.
   #
-  # ONE-WAY. There is no `x-inverse` and there must never be one: the real world is what a person
+  # ONE-WAY. There is no `mirror_of` and there must never be one: the real world is what a person
   # AUTHORED, and stamping `observed_as[]` onto their `users` record would be a finding writing into
   # somebody else's schema — the same rule that keeps `contact` above one-way.
   #
@@ -65,7 +65,7 @@ fields:
   #      `dreamteamer.peerDependencies`; compile stamps `unresolved_peers` onto this descriptor and
   #      `check` reports `peer collection "users" is declared but not installed — N references
   #      unresolvable` rather than failing.
-  #   2. THE RECORD IS GONE — `x-reference-soft: true` (src/ref.js: "resolve it if the target is
+  #   2. THE RECORD IS GONE — `soft: true` (src/ref.js: "resolve it if the target is
   #      present, ignore it if it is absent"), the same keyword the engine's own
   #      `modules.peer_dependencies` carries, for the same reason: the value is a DECLARATION rather
   #      than a link this module maintains. A correspondence is a judgement a run made on a date; if
@@ -80,11 +80,11 @@ fields:
       The `users` record this observed person appears to BE — the one-way, soft join between the world a run reconstructed and the world a person authored. A PROPOSAL, set only where a person confirmed the match, exactly as `contact` is, and never off a name that merely agrees. Empty is the normal state, and it is what a workspace with no `users` collection always reads.
   # A FACE, so a board of thirty collaborators is scannable. Same plain-string reasoning as
   # `contact` above and for the same reason: a recipe must compile in a workspace with no `assets`
-  # collection at all, and an x-reference at one that may not exist is a compile failure rather
+  # collection at all, and a typed reference at one that may not exist is a compile failure rather
   # than a missing picture. `bin/link-collaborator-avatars.mjs` sets it, matching on an EXACT slug
   # of the name or of any handle — never a fuzzy match, because a wrong face on a real person is
   # the most visible error this module can make.
-  avatar: {type: string, description: 'An asset reference — `assets/avatars/<slug>` — for the person''s picture. A plain string, not an x-reference: this module must compile where no `assets` collection exists.'}
+  avatar: {type: string, description: 'An asset reference — `assets/avatars/<slug>` — for the person''s picture. A plain string, not a typed reference: this module must compile where no `assets` collection exists.'}
   first_seen: {type: date}
   last_seen: {type: date}
   evidence_count: {type: integer, description: Distinct commits}

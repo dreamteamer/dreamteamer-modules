@@ -71,11 +71,11 @@ fields:
   # COLLECTION rather than per module — peering `contacts` does not excuse `companies`, even where
   # one module owns both. So every member is named in
   # `dreamteamer.peerDependencies`, and the module still compiles alone with none of them installed.
-  # AND SOFT — `x-reference-soft: true`, the same keyword and the same reason as
+  # AND SOFT — `soft: true`, the same keyword and the same reason as
   # `perspective/users.real`: peering covers a collection nobody installed, softness covers a record
   # somebody deleted. A term is a word for a thing that existed when the run heard it; the word does
   # not stop having been used because the thing was later removed.
-  # NO `x-inverse`. A peer excuses a REFERENCE, never a MIRROR — stamping `concepts[]` onto a
+  # NO `mirror_of`. A peer excuses a REFERENCE, never a MIRROR — stamping `concepts[]` onto a
   # consumer's `contacts` would be this module writing into somebody else's schema.
   related_to:
     type: [contacts, companies, meetings, tasks, repos, users, teams, projects, phases, activities, activity-lanes, goals, deliverables, decisions]

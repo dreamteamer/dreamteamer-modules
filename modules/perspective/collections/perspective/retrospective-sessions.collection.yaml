@@ -60,7 +60,7 @@ fields:
   contact:
     type: contacts
     description: >-
-      The contributor's record in the workspace's own CRM, where one exists and a person confirmed the match. The same field and target as `perspective/users.contact`; `contacts` is a declared PEER, so the module compiles without it. No `x-inverse` — a peer excuses a reference, never a mirror.
+      The contributor's record in the workspace's own CRM, where one exists and a person confirmed the match. The same field and target as `perspective/users.contact`; `contacts` is a declared PEER, so the module compiles without it. No `mirror_of` — a peer excuses a reference, never a mirror.
   period_start:
     type: date
     description: The period this run covers, from the hint or the earliest evidence.
@@ -72,7 +72,7 @@ fields:
       The free-text hint /run-retrospective was given — `period:2026-08 sources:git,asana`, or prose — kept verbatim. It is provenance of the REQUEST and never the source list — what a run looked at is `sources` below.
   # ── THE ONE M2M IN THE MODULE, spelled on both sides so a reader of THIS descriptor can see it.
   # `sources.retrospectives` owns the relation; this is its mirror, declared here with
-  # `x-inverse-of` (compile deletes the authored field and regenerates it under the same key). A
+  # `mirror_of` (compile deletes the authored field and regenerates it under the same key). A
   # source is durable and every run re-reads it, so the relation is many-to-many.
   sources:
     type: perspective/sources

@@ -27,7 +27,7 @@ fields:
     required: true
     many: true
     description: >-
-      Qualified refs — `perspective/conversation-summaries/…`, `perspective/activity-windows/…`, `perspective/questions/…` (an ANSWERED one — that is where the person speaks), and `meetings/…`, the one legal ref OUTSIDE this module: a meeting is a peer collection's record and a finding about how someone's week is spent rests on it directly. Polymorphic, so not an x-reference; bin/check-records.mjs resolves each — including a `meetings/…` one, against the workspace's own meetings collection wherever that module is installed.
+      Qualified refs — `perspective/conversation-summaries/…`, `perspective/activity-windows/…`, `perspective/questions/…` (an ANSWERED one — that is where the person speaks), and `meetings/…`, the one legal ref OUTSIDE this module: a meeting is a peer collection's record and a finding about how someone's week is spent rests on it directly. Polymorphic, so not an typed reference; bin/check-records.mjs resolves each — including a `meetings/…` one, against the workspace's own meetings collection wherever that module is installed.
   evidence_count:
     type: integer
     required: true

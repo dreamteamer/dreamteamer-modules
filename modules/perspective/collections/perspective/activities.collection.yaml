@@ -82,7 +82,7 @@ fields:
     type: perspective/threads
     many: true
     description: The mail threads this work ran through — the correspondence around it, cited as handles-and-counts records, never as mail.
-  # The calendar half of a piece of work. A REFERENCE INTO A PEER COLLECTION, and no `x-inverse`:
+  # The calendar half of a piece of work. A REFERENCE INTO A PEER COLLECTION, and no `mirror_of`:
   # a peer excuses a reference, never a mirror — stamping `meetings.activities` onto another
   # module's collection is what makes an extraction uncompilable alone. So the edge is one-way and
   # the meeting record never learns about the activity, which is the correct trade: a workspace
