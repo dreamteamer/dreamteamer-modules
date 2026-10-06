@@ -4,8 +4,7 @@
 import { bind } from './engine.js';
 import { filesCommand, USAGE } from './cli.js';
 import './sync.js';    // registers filesCommand.handlers.sync
-import './status.js';  // registers filesCommand.handlers.status
-import { doctorFiles } from './status.js';
+import { doctorFiles } from './status.js';  // also registers filesCommand.handlers.status
 import { checkFiles } from './check.js';
 
 export const apiVersion = 1;

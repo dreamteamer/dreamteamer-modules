@@ -12,7 +12,8 @@ export function pointersOf(drive, driveId, relpath) {
 	return out;
 }
 
-/** Map<entryId, sorted refs> over `records` ({ collection, id, fields }) for `entries` (Map<id, { pointers }>). */
+/** Map<entryId, sorted refs> over `records` ({ collection, id, fields }) for `entries` (Map<id, { pointers }>).
+ *  `entries` must come from ONE drive: the `${env:…}` pointers of two drives can be the same string. */
 export function referencedBy(records, entries) {
 	const byPointer = new Map();
 	for (const [id, { pointers }] of entries) for (const p of pointers) byPointer.set(p, id);

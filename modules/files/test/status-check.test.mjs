@@ -25,6 +25,19 @@ test('dt files status: one row per drive, mounted or not, with the counts', () =
 	assert.match(text.stdout, /drive .*10 entries/); assert.match(text.stdout, /nowhere .*not declared/);
 });
 
+test('dt files status: a missing entry that was evicted when last seen is not counted cloud-only', () => {
+	const { ws } = driveWorkspace();
+	assert.equal(ws.dt('files', 'sync').code, 0);
+	const file = path.join(ws.root, 'data/files/drive/docs/readme.md.file.md');
+	const text = fs.readFileSync(file, 'utf8');
+	assert.match(text, /status: present/); assert.match(text, /local: true/);
+	fs.writeFileSync(file, text.replace('status: present', 'status: missing').replace('local: true', 'local: false'));
+	const r = ws.dt('files', 'status', '--json');
+	assert.equal(r.code, 0, r.stderr);
+	const d = JSON.parse(r.stdout).drives.find((x) => x.id === 'drive');
+	assert.deepEqual([d.entries, d.missing, d.cloudOnly], [9, 1, 0]);
+});
+
 test('doctor: an unresolved drive is bad with a fix, a never-synced one warns, a synced one is ok', async () => {
 	const { ws } = driveWorkspace();
 	assert.equal(ws.dt('add', 'file-drives', 'Nowhere', '--path', '${env:NOWHERE}').code, 0);

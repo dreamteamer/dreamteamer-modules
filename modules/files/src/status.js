@@ -11,7 +11,8 @@ export function driveRows(ws, store) {
 		const id = String(fields.drive ?? '').split('/').pop();
 		const c = counts.get(id) ?? { entries: 0, missing: 0, cloudOnly: 0 };
 		if (fields.status === 'missing') c.missing++; else c.entries++;
-		if (fields.local === false) c.cloudOnly++;
+		// a missing entry keeps the last `local` it had, which says nothing about this machine now
+		if (fields.local === false && fields.status !== 'missing') c.cloudOnly++;
 		counts.set(id, c);
 	}
 	const ctx = dt.envContext(ws);
