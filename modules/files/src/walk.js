@@ -82,10 +82,17 @@ export function walkDrive(root, { include = [], exclude = [], subfolder = null }
 	if (rel) {
 		if (!included(include, rel) || excluded(exclude, rel)) return out;
 		// Every segment must be a real folder, not a link, for the same reason the walk skips links.
+		// A segment that is not there means the scope is gone, and what was under it is missing. Any
+		// other failure (no permission, an I/O error, a timeout on a cloud mount) means it cannot be
+		// reached: the folder above the segment is reported unreadable — the one whose search failed,
+		// as a full walk would report it — so the scope and everything in it are left as they were.
 		let st;
 		const segments = rel.split('/');
 		for (let i = 1; i <= segments.length; i++) {
-			try { st = fs.lstatSync(path.join(root, ...segments.slice(0, i))); } catch { return out; }
+			try { st = fs.lstatSync(path.join(root, ...segments.slice(0, i))); } catch (e) {
+				if (e.code !== 'ENOENT' && e.code !== 'ENOTDIR') unreadable.push(segments.slice(0, i - 1).join('/'));
+				return out;
+			}
 			if (!st.isDirectory()) return out;
 		}
 		out.push(entryOf(rel, segments.at(-1), st, path.join(root, rel)));

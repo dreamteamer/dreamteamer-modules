@@ -73,6 +73,28 @@ test('a folder that cannot be listed is reported unreadable, and the folder itse
 	} finally { fs.chmodSync(locked, 0o755); }
 });
 
+test('a subfolder scope behind a folder that cannot be searched reports that folder unreadable, not an empty subtree', { skip: process.getuid?.() === 0 && 'root reads every folder' }, () => {
+	const root = makeTree(tmpDir(), TREE);
+	const locked = path.join(root, 'docs');
+	fs.chmodSync(locked, 0o000);
+	try {
+		const got = walkDrive(root, { include: ['docs'], subfolder: 'docs/a' });
+		assert.deepEqual([...got], []);
+		// lstat of docs/a fails with EACCES because docs cannot be searched, so the folder reported is
+		// docs: the scope and everything in it are strictly under it, the same as a full walk reports.
+		assert.deepEqual(got.unreadable, ['docs']);
+		assert.deepEqual(walkDrive(root, { include: ['docs'] }).unreadable, ['docs'], 'the full walk names the same folder');
+	} finally { fs.chmodSync(locked, 0o755); }
+});
+
+test('a subfolder scope that does not exist yields nothing and nothing unreadable: what was under it is gone', () => {
+	const root = makeTree(tmpDir(), TREE);
+	const got = walkDrive(root, { subfolder: 'nope/x' });
+	assert.deepEqual([...got], []);
+	assert.deepEqual(got.unreadable, []);
+	assert.deepEqual(walkDrive(root, { subfolder: 'docs/nope' }).unreadable, []);
+});
+
 test('a name the disk spells decomposed (NFD) walks as NFC; abs keeps the spelling on disk', () => {
 	const nfd = 'cafe\u0301.txt';
 	const nfc = 'caf\u00e9.txt';

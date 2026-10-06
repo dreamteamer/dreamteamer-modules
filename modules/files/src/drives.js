@@ -38,7 +38,8 @@ export function resolveDrivePath(drive, ctx, render) {
 	return { path };
 }
 
-const trimSlashes = (s) => String(s).replace(/^\/+|\/+$/g, '');
+// NFC, so a rule typed decomposed matches the NFC paths the walk produces.
+const trimSlashes = (s) => String(s).normalize('NFC').replace(/^\/+|\/+$/g, '');
 
 /** Is `relpath` under one of the included top-level folders? An empty list includes everything.
  *  An entry is a top-level NAME: a nested `rnd/sub` names no top-level folder, so it matches nothing. */

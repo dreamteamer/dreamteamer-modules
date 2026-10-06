@@ -239,6 +239,22 @@ test('an unreadable folder keeps its entries: not missing, not pruned', { skip: 
 	assert.equal(get(ws, 'files/drive/docs/a/x.txt').status, 'present');
 });
 
+test('a scoped sync behind a folder that cannot be searched keeps the scope\'s entries: not missing, not pruned', { skip: process.getuid?.() === 0 && 'root reads every folder' }, () => {
+	const { ws, drive } = driveWorkspace();
+	sync(ws);
+	const locked = path.join(drive, 'docs');
+	fs.chmodSync(locked, 0o000);
+	try {
+		const r = ws.dt('files', 'sync', 'drive/docs/a', '--prune');
+		assert.equal(r.code, 0, r.stderr + r.stdout);
+		assert.match(r.stdout, /missing 0 · .* · unreadable 1/);
+		assert.doesNotMatch(r.stdout, /pruned [1-9]/);
+		assert.match(r.stderr, /unreadable folder, its entries left as they were: drive drive "docs"/);
+	} finally { fs.chmodSync(locked, 0o755); }
+	assert.equal(get(ws, 'files/drive/docs/a/x.txt').status, 'present');
+	assert.equal(get(ws, 'files/drive/docs/a').status, 'present');
+});
+
 test('referenced_by is soft: removing the pointing record leaves dt check green and the files record writable', () => {
 	const { ws } = driveWorkspace();
 	writeCollection(ws.root, 'notes', { description: 'A note.', ids: { from: '{{ name | slug }}' }, fields: { name: { type: 'string', required: true }, file: { type: 'files' }, body: { type: 'markdown', body: true } } });
@@ -265,6 +281,21 @@ test('a non-Latin name with spaces syncs, reads back by its id, and passes dt ch
 	const got = get(ws, `files/drive/${name}`);
 	assert.ok(got, 'dt get finds it');
 	assert.equal(got.path, name);
+	const check = ws.dt('check');
+	assert.equal(check.code, 0, check.stdout + check.stderr);
+});
+
+test('a name the disk spells decomposed (NFD) syncs to an NFC id and path, and passes dt check', () => {
+	// On APFS a lookup by either form finds the file, so what this pins is the record: its id and path are NFC.
+	const nfd = 'docs/cafe\u0301.txt', nfc = 'docs/caf\u00e9.txt';
+	assert.notEqual(nfd, nfc);
+	const { ws } = driveWorkspace({ tree: { ...TREE, [nfd]: 'bonjour\n' } });
+	assert.equal(sync(ws).drives[0].added, 11);
+	assert.ok(ids(ws).includes(`drive/${nfc}`), 'the id is NFC');
+	assert.ok(!ids(ws).includes(`drive/${nfd}`));
+	const got = get(ws, `files/drive/${nfc}`);
+	assert.ok(got, 'dt get by the NFC id finds it');
+	assert.equal(got.path, nfc);
 	const check = ws.dt('check');
 	assert.equal(check.code, 0, check.stdout + check.stderr);
 });

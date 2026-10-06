@@ -80,6 +80,12 @@ test('included: a nested entry names no top-level folder and matches nothing', (
 	assert.equal(included(['rnd/sub'], 'rnd'), false);
 });
 
+test('include and exclude rules typed decomposed (NFD) match the NFC paths the walk produces', () => {
+	const nfd = 'cafe\u0301', nfc = 'caf\u00e9';
+	assert.equal(included([nfd], `${nfc}/menu.txt`), true);
+	assert.equal(excluded([nfd], `docs/${nfc}/menu.txt`), true);
+});
+
 test('parseScope splits at the first slash', () => {
 	assert.deepEqual(parseScope('drive'), { drive: 'drive', subfolder: null });
 	assert.deepEqual(parseScope('drive/rnd/projects/'), { drive: 'drive', subfolder: 'rnd/projects' });
