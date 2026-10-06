@@ -1,0 +1,12 @@
+route: /tasks/mine
+scope: collection
+collection: collections/tasks
+filter:
+  assignee:
+    _eq: '@me'
+display:
+  nav: {title: Assigned to me, icon: account, order: 1}
+  list:
+    layout: table
+    columns: [name, status, start, due, depends_on, product, change_requests]
+    sort: start

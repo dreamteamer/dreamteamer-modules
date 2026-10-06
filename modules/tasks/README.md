@@ -32,3 +32,10 @@ windows, including for historical tasks; they do not claim actual time worked or
 completion times. Populate both endpoints for meaningful bars.
 
 New tasks default to `suggested`; scheduling explicitly sets `todo`. Existing-task retriage may preserve `previous_status`. Optional R&D links connect tasks to products, stories, journeys and change requests. `depends_on` and `estimate_days` describe a plan; dates are not a commitment unless its schedule basis says so.
+
+
+### Current-user task view
+
+The bundled `/tasks/mine` view contains the experimental `@me` assignee placeholder. It requires an editor that explicitly resolves it; marketplace extension 0.23.3 does not. A workspace using the marketplace should disable this bundled view and generate a private ordinary UI view with a concrete user reference from its local environment. Missing or invalid identity should match no tasks. Identity selection is a presentation preference, not authentication.
+
+The `depends_on` task references expose a reverse `dependents` relation.

@@ -150,6 +150,11 @@ fields:
     type: tasks
     description: Finish-to-start prerequisites.
     many: true
+  dependents:
+    type: tasks
+    many: true
+    mirror_of: depends_on
+    description: Tasks waiting for this task to finish.
   estimate_days:
     type: number
     description: Proposed focused workdays; not an observed duration.
