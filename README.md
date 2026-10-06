@@ -36,6 +36,7 @@ npm package, versioned and released on its own, and they all live in this one re
 | [`@dreamteamer/proofs`](modules/proofs) | `dt prove`: behaviour proofs answered by exit code | — |
 | [`@dreamteamer/worktrees`](modules/worktrees) | `dt worktree` and `dt land`: a second checkout, and bringing it home | — |
 | [`@dreamteamer/http`](modules/http) | `dt serve`: the REST api over the same validating store | — |
+| [`@dreamteamer/code`](modules/code) | `dt-editor`: local browser editor and Claude coordinator, without Docker | — |
 | [`@dreamteamer/docker-workspaces`](modules/docker-workspaces) | `dt-docker`: a workspace as a local Docker container | — |
 | [`@dreamteamer/setup`](modules/setup) | `dt-setup`: one board for every module above, with the fixes | — |
 

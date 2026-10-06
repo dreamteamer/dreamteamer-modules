@@ -40,3 +40,5 @@ points back. `plan` on the design doc is a `<collection>/<id>` string — `proje
 module is installed. The chain is bound, so `dt next` on a design doc names the missing hop, and
 `building-from-references` is the procedure. ffmpeg is the one binary this module shells out to
 (`extract-frames.mjs`), and `npx dt-setup doctor` says whether it is there.
+
+Product planning includes `rnd/product-user-personas` (user roles, separate from research panels), `rnd/user-journeys` (typed cross-product journeys) and `rnd/change-requests` (explicit source-grounded change decisions). User stories retain their legacy journey handle and add typed journeys, personas, change requests and acceptance evidence.

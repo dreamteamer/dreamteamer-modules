@@ -27,7 +27,11 @@
 		],
 		"peer_collections": [
 			"projects",
-			"activities"
+			"activities",
+			"rnd/products",
+			"rnd/user-stories",
+			"rnd/user-journeys",
+			"rnd/change-requests"
 		]
 	}
 }

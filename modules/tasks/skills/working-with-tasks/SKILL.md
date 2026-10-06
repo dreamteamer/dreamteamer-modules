@@ -25,7 +25,7 @@ npx dt commit tasks/2026-07-25--review-the-q3-roadmap
 ```
 
 - `add` generates the id from the creation date and `--slug`, or the name when no slug is given, and
-  fills `status: todo`. Pass `--slug` whenever the name is not in latin script, or the id is a hash
+  fills `status: suggested`; explicitly set `--status todo` for scheduled work. Pass `--slug` whenever the name is not in latin script, or the id is a hash
   nobody can read or type.
 - `add` writes but does not commit. Publish with a scoped `npx dt commit tasks/<id>` once the change
   is complete, never a bare `npx dt commit`.
@@ -49,9 +49,12 @@ npx dt commit tasks/2026-07-25--review-the-q3-roadmap
   the residue. Quote `'R&D'` on the command line.
 - **tags** — the sub-domain inside a lane (`client:northwind`, `decision`). A lane is the axis above
   tags, not a replacement for them.
+- **start** — optional scheduled start as an ISO 8601 datetime with timezone, for example
+  `--start '2026-07-30T09:00:00+03:00'`. Capture an agreed start, never invent it from
+  creation time or status. Together with `due`, this supplies the Gantt schedule.
 - **due** — a `YYYY-MM-DD` date. Resolve relative phrases ("next friday", "eow") against today's
   date before writing.
-- **status** — `todo` · `doing` · `blocked` · `done` · `closed`. `blocked` means the next move is
+- **status** — `suggested` (unaccepted candidate) · `todo` · `doing` · `blocked` · `done` · `closed`. `blocked` means the next move is
   someone else's; `closed` means it left the board without being met.
 - **urgent** — separate from `due`. A thing can be urgent with no date and dated with no urgency.
 - **item** — the record the task came out of: `--item meetings/<id>`, a contact, a lead.

@@ -1,0 +1,76 @@
+name: rnd/change-requests
+description: A proposed product change with source gaps, acceptance and linked stories; approval is explicit.
+use_when: when a source gap or requested behavior changes the product contract, record the proposed change and acceptance before scheduling implementation
+storage:
+  path: data/rnd/change-requests
+  format: md
+ids:
+  from: '{{ key }}'
+  pattern: ^[a-z0-9][a-z0-9-]*$
+fields:
+  key:
+    type: string
+    description: Stable lowercase hyphenated handle.
+    required: true
+    pattern: ^[a-z0-9][a-z0-9-]*$
+  name:
+    type: string
+    description: Human-readable name.
+    required: true
+  description:
+    type: string
+    description: One-line summary.
+  source:
+    type: string
+    description: Source records and section locators; distinguish evidence from design.
+  content:
+    type: markdown
+    description: Detailed contract, evidence, exceptions and acceptance.
+    body: true
+  products:
+    type: rnd/products
+    description: Affected products.
+    many: true
+    required: true
+  journeys:
+    type: rnd/user-journeys
+    description: Affected end-to-end journeys.
+    many: true
+  status:
+    type: string
+    description: Decision on the change, not implementation progress.
+    enum:
+      - suggested
+      - accepted
+      - rejected
+      - implemented
+    default: suggested
+  priority:
+    type: string
+    description: Delivery priority.
+    enum:
+      - critical
+      - high
+      - medium
+      - low
+  acceptance:
+    type: string
+    description: Evidence required to accept the change.
+    many: true
+  source_gaps:
+    type: string
+    description: Stable source requirement or gap locators.
+    many: true
+  stories:
+    type: rnd/user-stories
+    description: Stories implementing the change.
+    many: true
+    mirror_of: change_requests
+display:
+  nav:
+    icon: git-pull-request
+    order: 28
+  list:
+    columns:
+      - name
+      - description

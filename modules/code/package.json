@@ -1,0 +1,18 @@
+{
+  "name": "@dreamteamer/code",
+  "version": "0.1.0",
+  "description": "Run the Dreamteamer browser editor over local files, with a Claude coordinator and authenticated loopback access.",
+  "type": "module",
+  "license": "Apache-2.0",
+  "repository": { "type": "git", "url": "git+https://github.com/dreamteamer/dreamteamer-modules.git", "directory": "modules/code" },
+  "keywords": ["dreamteamer", "dreamteamer-module"],
+  "bin": { "dt-editor": "bin/dt-editor.mjs" },
+  "files": ["README.md", "bin", "src"],
+  "engines": { "node": ">=20" },
+  "dreamteamer": {
+    "extension": "./src/extension.mjs",
+    "title": "Code",
+    "description": "dt editor starts code-server over the existing workspace without Docker. The authenticated URL listens only on IPv4 loopback. A Claude coordinator receives cross-session messages and uses scoped MCP tools to navigate the data app; files stay on the host and processes run as the current user.",
+    "engine": ">=0.33.0"
+  }
+}
