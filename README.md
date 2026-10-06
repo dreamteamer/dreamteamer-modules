@@ -24,6 +24,7 @@ npm package, versioned and released on its own, and they all live in this one re
 | module | what it gives a workspace | needs |
 |---|---|---|
 | [`@dreamteamer/wikis`](modules/wikis) | local corpora of markdown you can grep, and ask once `qmd` is installed | — |
+| [`@dreamteamer/files`](modules/files) | the files under your mounted folders as records, kept level by `dt files sync` | — |
 | [`@dreamteamer/search`](modules/search) | `dt-find`, an effort ladder over the workspace's records | — |
 | [`@dreamteamer/notebooklm`](modules/notebooklm) | `dt notebooklm`, NotebookLM notebooks as rebuildable specs, and the harness | — |
 | [`@dreamteamer/perspective`](modules/perspective) | a person's operating model, read off their own past work | — |
