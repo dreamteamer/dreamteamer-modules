@@ -14,9 +14,10 @@ relative path under `data/files/`. Sync owns the derived fields; `description`, 
 
 - **`file-drives`** — one per mounted folder. `path` is a `${env:NAME}` template (declare `NAME` in
   the workspace's `dreamteamer.vars`, set it in `.env`); `include` names the top-level subfolders to
-  index — EMPTY MEANS EVERYTHING, so a folder that also holds material this workspace must not see
-  lists only what it may see; `exclude` prunes a prefix (`trash`) or an extension (`*.log`), and a
-  name starting with a dot is always skipped; `index` picks one line of a newline-separated
+  index, by name only — a nested `rnd/sub` matches nothing — and EMPTY MEANS EVERYTHING, so a folder
+  that also holds material this workspace must not see lists only what it may see; `exclude` skips
+  a name at any depth (`trash`), a path from the drive's folder (`rnd/old`), or an extension
+  (`*.log`), and a name starting with a dot is always skipped; `index` picks one line of a newline-separated
   variable; `preview` and `hash_max_bytes` tune what sync reads. Sync stamps `last_synced` and
   `entries` on the drive on its first sync and on any sync that changed the drive's records or its
   entry count — a run that changes nothing leaves the drive record as it was, so `git status` stays
@@ -39,18 +40,24 @@ npx dt files status               # per drive: mounted here, entries, missing, c
 ```
 
 Read the summary line per drive: `walked · added · updated · moved · missing · unchanged`, followed
-by `pruned N` and `unhashed N` when either is non-zero. A second run over an unchanged tree reports
+by `pruned N`, `unhashed N`, `failed N`, `unsafe N` and `unreadable N` when non-zero. Each failed
+write, unsafe name and unreadable folder is also named on stderr. A write the store refused is
+`failed` — the run goes on and exits 1. A name holding a control character or a backslash (macOS
+writes `Icon\r` into a folder with a custom icon) cannot be an id, so it is `unsafe` and not
+indexed. A folder whose listing failed is `unreadable`: what is under it keeps its records as they
+were — not marked missing, never pruned. Neither of the last two fails the run. A second run over an unchanged tree reports
 `added 0 · updated 0` and writes nothing. A sync writes records but does not commit them; when it
 wrote any, it prints the pending line `dreamteamer commit file-drives/<drive> files/<drive>/…`. The
 `…` is not a target: `dt commit` takes a whole collection or one `<collection>/<id>`, matched
 exactly, never a prefix. `git status --short --untracked-files=all data/files data/file-drives` lists
-the records this run wrote; name each of them in the commit, never an unscoped commit.
+every uncommitted record under those folders — this run's and any earlier session's; name the ones
+this run wrote.
 
 ## what sync does, and does not
 
 - **Changed** means `bytes` or `modified` differ, or a file first seen evicted (`local: false`) now
-  has its bytes on disk. Only then is it re-hashed and re-previewed — unless you pass `--hash`
-  (fills hashes still missing) or `--rehash` (recomputes all).
+  has its bytes on disk. Only then is it re-hashed and re-previewed. `--hash` fills hashes still
+  missing and `--rehash` recomputes every hash; neither touches a preview.
 - **Hashing** reads a file only when its bytes are on disk (`local: true`) and it is at most the
   drive's `hash_max_bytes`. A cloud client that evicted a file leaves a size and no blocks; reading
   it would download it, so sync does not. A file that could not be read is counted `unhashed` and
@@ -70,6 +77,11 @@ the records this run wrote; name each of them in the commit, never an unscoped c
   `files/<drive>/<relative path>`, or the string `${env:NAME}/<relative path>` as modules already
   write it. Prose mentioning a path does not count. For a drive with `index` set only the typed form
   counts, because the string form cannot say which line it means.
+- **`local`** is what THIS machine sees. Two machines that keep different files offline flip it on
+  each other's syncs, and every flip is a write.
+- **Narrowing `include`** marks the entries under a dropped subfolder `missing`, although the files
+  are still on disk: `--prune` removes the bare ones, and an annotated or referenced one stays until
+  you `dt rm` it.
 - **A skipped drive** — its variable undeclared or unset on this machine, an `index` that does not
   pick a line, or the folder absent — is reported and left alone; the run still exits 0, so a clone
   without the mount syncs nothing cleanly.
@@ -80,6 +92,9 @@ Either form resolves to the same `files` record and both count in its `reference
 
 - a string field: `${env:NAME}/<relative path>` — what a module that knows nothing about this module writes;
 - a reference field of type `files`: `files/<drive>/<relative path>` — rename-safe, link-rendered.
+
+A record that points at a file is listed in that file's `referenced_by`, so `dt rm` of the pointing
+record names the files record — pass `--force`, and the next sync drops the stale entry.
 
 ## adding a drive
 
@@ -100,7 +115,7 @@ count is the number of records about to be written.
   resolve marks the capability UNAVAILABLE.
 - Every file reports as updated on a run where you changed nothing: the sync client rewrote the
   dates. Sync re-reads those files and writes the new `modified`; a local file under `hash_max_bytes`
-  keeps its `hash` where the bytes did not change; an evicted one has its hash cleared until it lands
-  and is re-read. The next run is quiet again.
+  keeps its `hash` where the bytes did not change; an evicted one has its hash and preview cleared
+  until it lands and is re-read. The next run is quiet again.
 - `dt check` reports an id that disagrees with drive and path: the record was hand-edited; fix the
   field or `dt rename` the record.

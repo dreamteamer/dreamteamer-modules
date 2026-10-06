@@ -80,7 +80,7 @@ fields:
     type: markdown
     display:
       editable: false
-    description: 'For a text-like file (markdown, text, csv, tsv, json, yaml, html, eml, log): the content, fenced by language, cut at 32 KB; a text file over 8 MB is not read at all. Written by sync; read-only.'
+    description: 'For a text-like file (markdown, text, csv, tsv, json, yaml, html, eml, log): the content, markdown as it is, other text fenced by language, cut at 32 KB; a text file over 8 MB is not read at all. Written by sync; read-only.'
   referenced_by:
     type: reference
     many: true

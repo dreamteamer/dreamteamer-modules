@@ -14,7 +14,8 @@ npx dreamteamer compile
 
 - **`file-drives`** — one record per mounted folder. `path` is a `${env:NAME}` template (declare
   `NAME` in your workspace's `dreamteamer.vars`, set it in `.env`); `include` lists the top-level
-  subfolders to index (empty = everything), `exclude` prunes prefixes (`trash`) and extensions
+  subfolders to index by name (empty = everything; a nested `rnd/sub` matches nothing), `exclude`
+  skips a name at any depth (`trash`), a path from the drive's folder (`rnd/old`), or an extension
   (`*.log`). `index` picks one line of a newline-separated variable.
 - **`files`** — one record per file or folder, id `<drive>/<relative path>`, stored at
   `data/files/<drive>/<relative path>.file.md`, so the index mirrors the folder tree. Sync owns the
@@ -31,13 +32,16 @@ npx dreamteamer files status                  # per drive: mounted, entries, mis
 ```
 
 A second sync over an unchanged tree writes nothing. A file that vanished is marked `missing`, never
-deleted; a file whose hash reappears under a new name is a rename, so references follow. Hashing
+deleted; a file whose hash reappears under a new name is a rename, so typed references follow; a
+`${env:…}` string pointer does not. Hashing
 reads only files whose bytes are on disk and at most `hash_max_bytes` (64 MB by default) — a file a
 sync client evicted to the cloud is marked `local: false` and left alone.
 
 Other modules point at a file either as a string `${env:NAME}/<relative path>` or as a typed
 reference `files/<drive>/<relative path>`; both resolve to the same record and both count in
-`referenced_by`.
+`referenced_by`. A record that points at a file is listed in that file's `referenced_by`, so `dt rm`
+of the pointing record names the files record — pass `--force`, and the next sync drops the stale
+entry.
 
 `dt doctor` shows each drive's state on this machine; `dt check` reports an entry whose id disagrees
 with its drive and path.
