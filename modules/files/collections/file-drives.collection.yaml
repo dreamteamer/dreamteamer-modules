@@ -51,7 +51,7 @@ fields:
   preview:
     type: boolean
     default: true
-    description: Whether sync extracts a text preview for text-like files (markdown, text, csv, json, yaml, html, eml, log). Off for a drive whose contents should stay out of the repo.
+    description: Whether sync extracts a text preview for text-like files (markdown, text, csv, tsv, json, yaml, html, eml, log). Off for a drive whose contents should stay out of the repo.
   hash_max_bytes:
     type: integer
     default: 67108864
