@@ -10,7 +10,7 @@ import { walkDrive, isoLocal } from './walk.js';
 import { previewOf, previewable } from './preview.js';
 import { referencedBy, pointersOf } from './references.js';
 
-/** The fields sync owns. Everything else on a record is authored and never read or written here. */
+/** The fields sync owns. Everything else on a record is authored and never written here; `--prune` reads them to tell an annotated entry from a bare one. */
 export const DERIVED = ['drive', 'path', 'name', 'kind', 'ext', 'mime', 'bytes', 'modified', 'local', 'status', 'hash', 'preview', 'referenced_by'];
 export const DEFAULT_HASH_MAX = 64 * 1024 * 1024;
 

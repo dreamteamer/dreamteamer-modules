@@ -1,5 +1,5 @@
 name: files
-description: One file or folder under a `file-drives` folder — its path, size, date, hash, whether its bytes are on disk, a text preview when it is text, and the records that point at it. The id is `<drive>/<relative path>` and the record sits at the same relative path under `data/files/`, so the index mirrors the tree. Sync writes the derived fields; `description`, `tags` and the notes body are yours and are never touched.
+description: One file or folder under a `file-drives` folder — its path, size, date, hash, whether its bytes are on disk, a text preview when it is text, and the records that point at it. The id is `<drive>/<relative path>` and the record sits at the same relative path under `data/files/`, so the index mirrors the tree. Sync writes the derived fields; `description`, `tags` and the notes body are yours and sync never writes them.
 use_when: asked what is in a folder, which files nothing references, what landed in an inbox, or what you noted about a document — list here; to point at a file from another record use either the string `${env:NAME}/<relative path>` or the reference `files/<drive>/<relative path>`, both of which this record's `referenced_by` counts. After files change on disk, `dt files sync`.
 storage:
   path: data/files
@@ -98,7 +98,7 @@ fields:
   notes:
     type: markdown
     body: true
-    description: Your notes on the file. Sync never reads or writes this.
+    description: Your notes on the file. Sync never writes this.
 display:
   nav:
     icon: files

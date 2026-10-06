@@ -8,7 +8,7 @@ description: use when files on a mounted folder — a synced drive, a cloud fold
 **core principle:** the index mirrors the disk, and you annotate the index. A `file-drives` record
 names a folder; `dt files sync` keeps one `files` record per file or folder under it, at the same
 relative path under `data/files/`. Sync owns the derived fields; `description`, `tags` and the
-`notes` body are yours, and sync never reads or writes them.
+`notes` body are yours, and sync never writes them.
 
 ## the two collections
 
@@ -41,13 +41,16 @@ npx dt files status               # per drive: mounted here, entries, missing, c
 Read the summary line per drive: `walked · added · updated · moved · missing · unchanged`, followed
 by `pruned N` and `unhashed N` when either is non-zero. A second run over an unchanged tree reports
 `added 0 · updated 0` and writes nothing. A sync writes records but does not commit them; when it
-wrote any, it prints the pending line `dreamteamer commit file-drives/<drive> files/<drive>/…` —
-name the drive and each entry this run wrote, never an unscoped commit.
+wrote any, it prints the pending line `dreamteamer commit file-drives/<drive> files/<drive>/…`. The
+`…` is not a target: `dt commit` takes a whole collection or one `<collection>/<id>`, matched
+exactly, never a prefix. `git status --short --untracked-files=all data/files data/file-drives` lists
+the records this run wrote; name each of them in the commit, never an unscoped commit.
 
 ## what sync does, and does not
 
 - **Changed** means `bytes` or `modified` differ, or a file first seen evicted (`local: false`) now
-  has its bytes on disk. Only then is the file re-hashed and re-previewed.
+  has its bytes on disk. Only then is it re-hashed and re-previewed — unless you pass `--hash`
+  (fills hashes still missing) or `--rehash` (recomputes all).
 - **Hashing** reads a file only when its bytes are on disk (`local: true`) and it is at most the
   drive's `hash_max_bytes`. A cloud client that evicted a file leaves a size and no blocks; reading
   it would download it, so sync does not. A file that could not be read is counted `unhashed` and
@@ -96,7 +99,8 @@ count is the number of records about to be written.
   every drive under one `files` capability, each failing row with its fix; one drive that does not
   resolve marks the capability UNAVAILABLE.
 - Every file reports as updated on a run where you changed nothing: the sync client rewrote the
-  dates. Sync re-reads those files and writes the new `modified`; the `hash` stays the same where the
-  bytes did not change, and the next run is quiet again.
+  dates. Sync re-reads those files and writes the new `modified`; a local file under `hash_max_bytes`
+  keeps its `hash` where the bytes did not change; an evicted one has its hash cleared until it lands
+  and is re-read. The next run is quiet again.
 - `dt check` reports an id that disagrees with drive and path: the record was hand-edited; fix the
   field or `dt rename` the record.

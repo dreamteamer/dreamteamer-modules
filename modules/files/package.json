@@ -29,6 +29,6 @@
 		"extension": "./src/extension.js",
 		"title": "Files",
 		"engine": ">=0.33.0",
-		"description": "The files under mounted folders as records. A `file-drives` record names one folder as a `${env:…}` template and the subfolders it indexes; `dt files sync` walks it and keeps one `files` record per file or folder — path, size, modified, hash, a text preview, and which records point at it — adding, updating, marking missing and renaming on a move, never touching your description, tags and notes."
+		"description": "The files under mounted folders as records. A `file-drives` record names one folder as a `${env:…}` template and the subfolders it indexes; `dt files sync` walks it and keeps one `files` record per file or folder — path, size, modified, hash, a text preview, and which records point at it — adding, updating, marking missing and renaming on a move, never writing your description, tags and notes."
 	}
 }

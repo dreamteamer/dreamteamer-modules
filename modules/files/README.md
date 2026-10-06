@@ -19,7 +19,7 @@ npx dreamteamer compile
 - **`files`** — one record per file or folder, id `<drive>/<relative path>`, stored at
   `data/files/<drive>/<relative path>.file.md`, so the index mirrors the folder tree. Sync owns the
   derived fields (path, kind, size, modified, hash, local, status, preview, referenced_by) and never
-  touches `description`, `tags` or the notes body — those are yours.
+  writes `description`, `tags` or the notes body — those are yours.
 
 ## the verbs
 
