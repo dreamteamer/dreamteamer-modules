@@ -40,6 +40,8 @@ export function doctorFiles({ root, ws, dt: api }) {
 	if (!store.descriptors.has('file-drives')) return [];
 	const { declared } = api.envContext(ws);
 	const fixFor = (r) => {
+		// every reason resolveDrivePath gives about `index` names it: out of range, several lines, no variable, not a whole number
+		if (r.skipped && /\bindex\b/.test(r.skipped)) return `set or correct index on file-drives/${r.id}`;
 		if (!r.vars.length) return 'give the drive a ${env:NAME} path';
 		const undeclared = r.vars.filter((k) => !declared.includes(k));
 		if (undeclared.length) return `declare ${undeclared.join(', ')} in dreamteamer.vars (package.json), then set it in .env`;

@@ -32,6 +32,10 @@ test('doctor: an unresolved drive is bad with a fix, a never-synced one warns, a
 	let rows = await doctorFiles({ root: ws.root, ws: wsHandle, dt: api });
 	assert.equal(rows.find((r) => r.label.includes('nowhere')).state, 'bad');
 	assert.match(rows.find((r) => r.label.includes('nowhere')).fix, /declare NOWHERE in dreamteamer\.vars/, 'an undeclared variable is declared before it is set');
+	assert.equal(ws.dt('add', 'file-drives', 'Far Inbox', '--path', '${env:INBOXES}', '--index', '5').code, 0);
+	rows = await doctorFiles({ root: ws.root, ws: wsHandle, dt: api });
+	const far = rows.find((r) => r.label.includes('far-inbox'));
+	assert.equal(far.state, 'bad'); assert.match(far.fix, /index/, 'an index past the last line is fixed on the drive, not in .env');
 	assert.equal(rows.find((r) => r.label.includes('drive')).state, 'warn', 'never synced');
 	assert.equal(ws.dt('files', 'sync', 'drive').code, 0);
 	rows = await doctorFiles({ root: ws.root, ws: wsHandle, dt: api });

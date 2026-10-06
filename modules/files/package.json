@@ -20,7 +20,10 @@
 		"README.md",
 		"src",
 		"collections",
-		"ui-views"
+		"ui-views",
+		"skills",
+		"commands",
+		"command-bindings"
 	],
 	"dreamteamer": {
 		"extension": "./src/extension.js",
