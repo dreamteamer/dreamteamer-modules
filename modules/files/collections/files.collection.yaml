@@ -1,0 +1,115 @@
+name: files
+description: One file or folder under a `file-drives` folder — its path, size, date, hash, whether its bytes are on disk, a text preview when it is text, and the records that point at it. The id is `<drive>/<relative path>` and the record sits at the same relative path under `data/files/`, so the index mirrors the tree. Sync writes the derived fields; `description`, `tags` and the notes body are yours and are never touched.
+use_when: asked what is in a folder, which files nothing references, what landed in an inbox, or what you noted about a document — list here; to point at a file from another record use either the string `${env:NAME}/<relative path>` or the reference `files/<drive>/<relative path>`, both of which this record's `referenced_by` counts. After files change on disk, `dt files sync`.
+storage:
+  path: data/files
+  format: md
+ids:
+  from: '{{ drive | basename }}/{{ path }}'
+  pattern: ^[a-z0-9][a-z0-9-]*/.+$
+record_title: '{{ name }}'
+fields:
+  drive:
+    type: file-drives
+    required: true
+    display:
+      editable: create
+    description: The drive this entry is under. The id begins with the drive's id.
+  path:
+    type: string
+    required: true
+    display:
+      editable: create
+    description: The path relative to the drive's folder, verbatim — `rnd/projects/plan.pdf`.
+  name:
+    type: string
+    required: true
+    display:
+      editable: create
+    description: The file or folder name, the last segment of `path`.
+  kind:
+    type: string
+    default: file
+    enum:
+      - file
+      - folder
+    display:
+      editable: false
+    description: A file or a folder. A folder has no size, date or hash.
+  ext:
+    type: string
+    display:
+      editable: false
+    description: The extension, lowercase, without the dot. Empty for a folder or a file with none.
+  mime:
+    type: string
+    display:
+      editable: false
+    description: The media type read off the extension. Empty when unknown.
+  bytes:
+    type: integer
+    display:
+      editable: false
+      unit: bytes
+    description: The file's size.
+  modified:
+    type: datetime
+    display:
+      editable: false
+    description: The file's modification time, with the local offset. With `bytes`, what tells sync the file changed.
+  local:
+    type: boolean
+    display:
+      editable: false
+    description: Whether the bytes are on disk. False for a file a sync client evicted to the cloud — such a file is never read, so it has no hash and no preview.
+  status:
+    type: string
+    default: present
+    enum:
+      - present
+      - missing
+    display:
+      editable: false
+    description: '`missing` means the last sync of this entry''s scope did not find the path. The record stays — it may carry your notes and inbound references; `dt files sync --prune` removes a missing entry nobody annotated or references.'
+  hash:
+    type: string
+    display:
+      editable: false
+    description: sha256 of the bytes, when the file is local and at most the drive's `hash_max_bytes`. A file that reappears under another path with the same hash is a rename, and keeps this record.
+  preview:
+    type: markdown
+    display:
+      editable: false
+    description: 'For a text-like file (markdown, text, csv, tsv, json, yaml, html, eml, log): the content, fenced by language, cut at 32 KB. Written by sync; read-only.'
+  referenced_by:
+    type: reference
+    many: true
+    display:
+      editable: false
+    description: Every record that points at this entry — as a `files/<id>` reference or as the string `${env:NAME}/<relative path>`. Rebuilt by sync. Empty is the answer to "which files does nothing reference".
+  description:
+    type: string
+    description: One line, yours — what this file is, why it is kept.
+  tags:
+    type: string
+    many: true
+    pattern: ^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$
+    description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
+  notes:
+    type: markdown
+    body: true
+    description: Your notes on the file. Sync never reads or writes this.
+display:
+  nav:
+    icon: files
+    order: 85
+  list:
+    columns:
+      - name
+      - drive
+      - kind
+      - bytes
+      - modified
+      - status
+      - referenced_by
+    sort: '-modified'
