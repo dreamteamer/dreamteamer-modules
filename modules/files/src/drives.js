@@ -40,14 +40,19 @@ export function resolveDrivePath(drive, ctx, render) {
 
 const trimSlashes = (s) => String(s).replace(/^\/+|\/+$/g, '');
 
-/** Is `relpath` under one of the included top-level folders? An empty list includes everything. */
+/** Is `relpath` under one of the included top-level folders? An empty list includes everything.
+ *  An entry is a top-level NAME: a nested `rnd/sub` names no top-level folder, so it matches nothing. */
 export function included(include, relpath) {
 	const list = (include ?? []).map(trimSlashes).filter(Boolean);
 	if (!list.length) return true;
 	return list.some((top) => relpath === top || relpath.startsWith(`${top}/`));
 }
 
-/** Is `relpath` skipped — a dotfile or inside a dot-folder, under an excluded prefix, or carrying an excluded extension? */
+/**
+ * Is `relpath` skipped? A dotfile or anything inside a dot-folder always is. A rule is matched the way
+ * a gitignore line is: `*.ext` by extension, a rule with no `/` as a name at any depth (`trash`), a
+ * rule with a `/` as a path from the drive's folder (`rnd/old`).
+ */
 export function excluded(exclude, relpath) {
 	const segments = relpath.split('/');
 	if (segments.some((s) => s.startsWith('.'))) return true;
@@ -59,15 +64,25 @@ export function excluded(exclude, relpath) {
 			if (name.toLowerCase().endsWith(rule.slice(1).toLowerCase())) return true;
 			continue;
 		}
+		if (!rule.includes('/')) {
+			if (segments.includes(rule)) return true;
+			continue;
+		}
 		if (relpath === rule || relpath.startsWith(`${rule}/`)) return true;
 	}
 	return false;
 }
 
-/** `<drive>` or `<drive>/<subfolder>` → `{ drive, subfolder }`, null for nothing. */
+/**
+ * `<drive>` or `<drive>/<subfolder>` → `{ drive, subfolder }`, null for nothing, `{ error }` for a
+ * scope that names no folder. Repeated slashes collapse and the text is NFC, so the subfolder is
+ * the path the records use.
+ */
 export function parseScope(arg) {
-	const s = trimSlashes(arg ?? '');
+	const s = String(arg ?? '').normalize('NFC').replace(/\/+/g, '/').replace(/^\/|\/$/g, '');
 	if (!s) return null;
-	const i = s.indexOf('/');
-	return i < 0 ? { drive: s, subfolder: null } : { drive: s.slice(0, i), subfolder: s.slice(i + 1) };
+	const [drive, ...rest] = s.split('/');
+	if (drive.includes('.')) return { error: `"${arg}": a drive id has no dot — dt list file-drives` };
+	if (rest.some((seg) => seg === '' || seg === '.' || seg === '..')) return { error: `"${arg}": a subfolder is a path under the drive, with no "." or ".." segment` };
+	return { drive, subfolder: rest.length ? rest.join('/') : null };
 }

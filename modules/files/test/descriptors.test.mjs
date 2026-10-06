@@ -16,7 +16,8 @@ test('the module compiles and both collections exist with the agreed fields', ()
 		['drive', 'path', 'name', 'kind', 'ext', 'mime', 'bytes', 'modified', 'local', 'status', 'hash', 'preview', 'referenced_by', 'description', 'tags', 'notes']);
 });
 
-test('a files id is <drive>/<relative path>, verbatim — dots, spaces and non-Latin letters kept', () => {
+// Non-Latin letters: sync.test.mjs, "a non-Latin name with spaces syncs, reads back by its id, and passes dt check".
+test('a files id is <drive>/<relative path>, verbatim — dots and spaces kept', () => {
 	const ws = workspace();
 	assert.equal(ws.dt('add', 'file-drives', 'Drive', '--path', '${env:DRIVE}').code, 0);
 	const r = ws.dt('add', 'files', '--drive', 'file-drives/drive', '--path', 'docs/Quarter Plan v2.pdf', '--name', 'Quarter Plan v2.pdf', '--kind', 'file');

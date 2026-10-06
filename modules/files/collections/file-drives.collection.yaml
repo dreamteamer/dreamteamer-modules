@@ -40,14 +40,14 @@ fields:
     examples:
       - meeting-recordings
       - rnd
-    description: The top-level subfolders to index, relative to `path`. EMPTY MEANS EVERYTHING — so a folder that also holds material this workspace must not see lists the subfolders it may see.
+    description: The top-level subfolders to index, by name — a nested `rnd/sub` names no top-level folder and matches nothing. EMPTY MEANS EVERYTHING — so a folder that also holds material this workspace must not see lists the subfolders it may see.
   exclude:
     type: string
     many: true
     examples:
       - trash
       - '*.log'
-    description: What to skip under the included subfolders — a path prefix (`trash`) or an extension (`*.log`). Files and folders whose name starts with a dot are always skipped.
+    description: What to skip under the included subfolders — a name at any depth (`trash`), a path from the drive's folder (`rnd/old`), or an extension (`*.log`). Files and folders whose name starts with a dot are always skipped.
   preview:
     type: boolean
     default: true

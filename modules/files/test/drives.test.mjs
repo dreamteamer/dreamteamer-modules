@@ -67,8 +67,31 @@ test('excluded: dotfiles always, a prefix, an extension', () => {
 	assert.equal(excluded(['*.log'], 'inbox/a.m4a'), false);
 });
 
+test('excluded: a rule with no slash is a name at any depth, a rule with a slash is a path from the drive folder', () => {
+	assert.equal(excluded(['trash'], 'docs/trash/x.pdf'), true);
+	assert.equal(excluded(['trash'], 'docs/trash'), true);
+	assert.equal(excluded(['trash'], 'docs/trashy/x.pdf'), false);
+	assert.equal(excluded(['docs/trash'], 'media/trash/x'), false);
+	assert.equal(excluded(['docs/trash'], 'docs/trash/x'), true);
+	assert.equal(excluded(['docs/trash/'], 'docs/trash'), true);
+});
+
+test('included: a nested entry names no top-level folder and matches nothing', () => {
+	assert.equal(included(['rnd/sub'], 'rnd'), false);
+});
+
 test('parseScope splits at the first slash', () => {
 	assert.deepEqual(parseScope('drive'), { drive: 'drive', subfolder: null });
 	assert.deepEqual(parseScope('drive/rnd/projects/'), { drive: 'drive', subfolder: 'rnd/projects' });
 	assert.equal(parseScope(''), null);
+});
+
+test('parseScope collapses repeated slashes and refuses a "." or ".." segment', () => {
+	assert.deepEqual(parseScope('drive/docs//a'), { drive: 'drive', subfolder: 'docs/a' });
+	assert.deepEqual(parseScope('//drive//docs///a//'), { drive: 'drive', subfolder: 'docs/a' });
+	assert.match(parseScope('drive/../x').error, /"\.\."/);
+	assert.match(parseScope('drive/docs/./a').error, /"\."/);
+	assert.match(parseScope('../drive').error, /drive id/);
+	assert.match(parseScope('dri.ve/docs').error, /drive id/);
+	assert.deepEqual(parseScope('drive/cafe\u0301'), { drive: 'drive', subfolder: 'caf\u00e9' }, 'NFC, as the records are');
 });

@@ -90,7 +90,7 @@ test('--prune removes a missing entry only when nobody annotated or references i
 test('include limits the walk; exclude skips trash and *.log; a subfolder scope leaves the rest untouched', () => {
 	const { ws, drive } = driveWorkspace();
 	sync(ws);
-	assert.ok(!ids(ws).some((id) => id.startsWith('drive/private') || id.startsWith('drive/trash') || id.endsWith('.log')));
+	assert.ok(!ids(ws).some((id) => id.startsWith('drive/private') || id.split('/').includes('trash') || id.endsWith('.log')), 'docs/trash is under an included folder; the rule "trash" skips it');
 	fs.unlinkSync(path.join(drive, 'media/clip.m4a'));
 	const out = sync(ws, 'drive/docs');
 	assert.equal(out.drives[0].walked, 7);
@@ -191,4 +191,71 @@ test('--hash fills the hashes a lower cap left out', () => {
 	const out = sync(ws, '--hash');
 	assert.equal(out.drives[0].updated, 4, 'readme, notes, big and clip');
 	assert.match(get(ws, 'files/drive/docs/readme.md').hash, /^[0-9a-f]{64}$/);
+});
+
+test('a name no id can carry is skipped as unsafe; the rest is indexed and the run exits 0', () => {
+	const { ws } = driveWorkspace({ tree: { ...TREE, 'docs/Icon\r': '' } });
+	const r = ws.dt('files', 'sync');
+	assert.equal(r.code, 0, r.stderr + r.stdout);
+	assert.match(r.stdout, /walked 10 · added 10 · .* · unsafe 1/);
+	assert.match(r.stderr, /unsafe name, not indexed: drive drive "docs\/Icon\\r"/);
+	assert.equal(ids(ws).length, 10);
+});
+
+test('a write the store refuses is counted failed, named on stderr, the rest is written, and the run exits 1', () => {
+	const long = `docs/${'x'.repeat(246)}.txt`;
+	const { ws } = driveWorkspace({ tree: { ...TREE, [long]: 'a name the record file cannot carry\n' } });
+	const r = ws.dt('files', 'sync');
+	assert.equal(r.code, 1, r.stderr + r.stdout);
+	assert.match(r.stdout, /walked 11 · added 10 · .* · failed 1/);
+	assert.match(r.stderr, new RegExp(`failed files/drive/${long}: `));
+	assert.equal(ids(ws).length, 10);
+	assert.equal(get(ws, 'file-drives/drive').entries, 10, 'the drive is still stamped');
+});
+
+test('a scope with repeated slashes is the same subfolder; a ".." segment is refused with exit 2', () => {
+	const { ws } = driveWorkspace();
+	sync(ws);
+	const out = sync(ws, 'drive/docs//a');
+	assert.equal(out.drives[0].walked, 2);
+	assert.deepEqual([out.drives[0].added, out.drives[0].unchanged, out.drives[0].failed.length], [0, 2, 0]);
+	const bad = ws.dt('files', 'sync', 'drive/../x');
+	assert.equal(bad.code, 2, bad.stderr + bad.stdout);
+	assert.match(bad.stderr, /no "\." or "\.\." segment/);
+});
+
+test('an unreadable folder keeps its entries: not missing, not pruned', { skip: process.getuid?.() === 0 && 'root reads every folder' }, () => {
+	const { ws, drive } = driveWorkspace();
+	sync(ws);
+	const locked = path.join(drive, 'docs/a');
+	fs.chmodSync(locked, 0o000);
+	try {
+		const r = ws.dt('files', 'sync', '--prune');
+		assert.equal(r.code, 0, r.stderr + r.stdout);
+		assert.match(r.stdout, /missing 0 · .* · unreadable 1/);
+		assert.doesNotMatch(r.stdout, /pruned/);
+		assert.match(r.stderr, /unreadable folder, its entries left as they were: drive drive "docs\/a"/);
+	} finally { fs.chmodSync(locked, 0o755); }
+	assert.equal(get(ws, 'files/drive/docs/a/x.txt').status, 'present');
+});
+
+test('a non-Latin name with spaces syncs, reads back by its id, and passes dt check', () => {
+	const name = 'docs/\u05ea\u05d5\u05db\u05e0\u05d9\u05ea \u05e2\u05d1\u05d5\u05d3\u05d4 v2.md';
+	const { ws } = driveWorkspace({ tree: { ...TREE, [name]: '# plan\n' } });
+	const out = sync(ws);
+	assert.equal(out.drives[0].added, 11);
+	const got = get(ws, `files/drive/${name}`);
+	assert.ok(got, 'dt get finds it');
+	assert.equal(got.path, name);
+	const check = ws.dt('check');
+	assert.equal(check.code, 0, check.stdout + check.stderr);
+});
+
+test('the first sync of an empty drive stamps the drive, and the pending hint names it', () => {
+	const { ws } = driveWorkspace({ tree: {} });
+	const r = ws.dt('files', 'sync');
+	assert.equal(r.code, 0, r.stderr + r.stdout);
+	assert.match(r.stdout, /walked 0 · added 0/);
+	assert.match(r.stdout, /pending — dreamteamer commit file-drives\/drive /);
+	assert.equal(get(ws, 'file-drives/drive').entries, 0);
 });

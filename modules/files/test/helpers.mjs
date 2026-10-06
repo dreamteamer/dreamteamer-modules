@@ -38,7 +38,7 @@ export const TREE = {
 	'docs/a/x.txt': 'inner\n',
 	'docs/a-b.txt': 'sibling\n',
 	'media/clip.m4a': Buffer.from([0, 0, 0, 24, 0x66, 0x74, 0x79, 0x70, 0x4d, 0x34, 0x41, 0x20, 1, 2, 3]),
-	'trash/old.pdf': '%PDF-1.4 gone',
+	'docs/trash/old.pdf': '%PDF-1.4 gone',
 	'private/secret.txt': 'must not be indexed when include lists docs and media\n',
 	'empty/': null,
 };

@@ -30,21 +30,58 @@ test('an empty include walks everything but the excludes', () => {
 	const paths = walkDrive(root, { exclude: ['trash'] }).map((e) => e.path);
 	assert.ok(paths.includes('private/secret.txt'));
 	assert.ok(paths.includes('docs/scan.log'), 'only *.log in exclude removes it');
-	assert.ok(!paths.some((p) => p.startsWith('trash')));
+	assert.ok(!paths.some((p) => p.split('/').includes('trash')), 'a rule with no slash is a name at any depth');
+	assert.ok(walkDrive(root).some((e) => e.path === 'docs/trash/old.pdf'), 'without the rule it is walked');
 });
 
 test('a subfolder scope walks that subtree only, with the folder itself first', () => {
 	const root = makeTree(tmpDir(), TREE);
-	const paths = walkDrive(root, { include: ['docs', 'media'], exclude: ['*.log'], subfolder: 'docs' }).map((e) => e.path);
+	const paths = walkDrive(root, { include: ['docs', 'media'], exclude: ['trash', '*.log'], subfolder: 'docs' }).map((e) => e.path);
 	assert.deepEqual(paths, ['docs', 'docs/a', 'docs/a-b.txt', 'docs/a/x.txt', 'docs/big.txt', 'docs/notes.txt', 'docs/readme.md']);
 	assert.deepEqual(walkDrive(root, { include: ['docs'], subfolder: 'media' }), [], 'a subfolder outside include yields nothing');
 });
 
-test('a subfolder of "/" walks the whole drive, and repeated slashes collapse', () => {
+test('a subfolder of "/" walks the whole drive', () => {
 	const root = makeTree(tmpDir(), TREE);
 	const opts = { include: ['docs', 'media', 'empty'], exclude: ['trash', '*.log'] };
-	assert.deepEqual(walkDrive(root, { ...opts, subfolder: '/' }), walkDrive(root, opts));
-	assert.deepEqual(walkDrive(root, { ...opts, subfolder: '//docs//a/' }), walkDrive(root, { ...opts, subfolder: 'docs/a' }));
+	const all = walkDrive(root, opts);
+	assert.equal(all.length, 10);
+	assert.deepEqual(walkDrive(root, { ...opts, subfolder: '/' }), all);
+});
+
+test('a name holding a control character or a backslash is skipped and listed as unsafe', () => {
+	const root = makeTree(tmpDir(), { ...TREE, 'docs/Icon\r': '', 'docs/back\\slash.txt': 'x', 'docs/ok.txt': 'fine' });
+	const got = walkDrive(root, { include: ['docs', 'media', 'empty'], exclude: ['trash', '*.log'] });
+	assert.ok(Array.isArray(got));
+	const paths = got.map((e) => e.path);
+	assert.ok(paths.includes('docs/ok.txt'));
+	assert.ok(!paths.some((p) => /[\r\\]/.test(p)), `no unsafe name in ${JSON.stringify(paths)}`);
+	assert.deepEqual([...got.unsafe].sort(), ['docs/Icon\r', 'docs/back\\slash.txt']);
+	assert.deepEqual(got.unreadable, []);
+	assert.equal(Object.keys(got).length, got.length, 'the two lists are not enumerable, so the entries compare as a plain array');
+});
+
+test('a folder that cannot be listed is reported unreadable, and the folder itself is still an entry', { skip: process.getuid?.() === 0 && 'root reads every folder' }, () => {
+	const root = makeTree(tmpDir(), TREE);
+	const locked = path.join(root, 'docs', 'a');
+	fs.chmodSync(locked, 0o000);
+	try {
+		const got = walkDrive(root, { include: ['docs'], exclude: ['trash', '*.log'] });
+		assert.deepEqual(got.unreadable, ['docs/a']);
+		assert.ok(got.some((e) => e.path === 'docs/a' && e.kind === 'folder'));
+		assert.ok(!got.some((e) => e.path === 'docs/a/x.txt'));
+	} finally { fs.chmodSync(locked, 0o755); }
+});
+
+test('a name the disk spells decomposed (NFD) walks as NFC; abs keeps the spelling on disk', () => {
+	const nfd = 'cafe\u0301.txt';
+	const nfc = 'caf\u00e9.txt';
+	assert.notEqual(nfd, nfc);
+	const root = makeTree(tmpDir(), { [`docs/${nfd}`]: 'bonjour\n' });
+	const got = walkDrive(root).find((e) => e.kind === 'file');
+	assert.equal(got.path, `docs/${nfc}`);
+	assert.equal(got.name, nfc);
+	assert.ok(fs.existsSync(got.abs), got.abs);
 });
 
 test('a symlink is skipped, so a walk never leaves the drive through one', () => {

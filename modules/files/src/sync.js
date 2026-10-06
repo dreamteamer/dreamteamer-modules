@@ -89,6 +89,8 @@ export function planDrive({ driveId, existing, walked, hashes = new Map() }) {
 }
 
 const inScope = (relpath, subfolder) => !subfolder || relpath === subfolder || relpath.startsWith(`${subfolder}/`);
+/** Strictly under `folder` ('' is the drive's own folder). */
+const under = (relpath, folder) => !folder || relpath.startsWith(`${folder}/`);
 const hasAuthored = (f) => Boolean((f.description && String(f.description).trim()) || (Array.isArray(f.tags) && f.tags.length) || (f.notes && String(f.notes).trim()));
 
 /** Every record of every stored, non-runtime collection except `files`, for the pointer scan. */
@@ -103,16 +105,22 @@ function* otherRecords(store) {
 
 /** One drive. Returns the summary row; writes unless `dryRun`. */
 export async function syncDrive(store, ws, driveId, drive, { subfolder = null, hash = false, rehash = false, prune = false, dryRun = false, log = console.error } = {}) {
-	const row = { id: driveId, walked: 0, added: 0, updated: 0, moved: 0, missing: 0, pruned: 0, unchanged: 0, unhashed: 0 };
+	const row = { id: driveId, walked: 0, added: 0, updated: 0, moved: 0, missing: 0, pruned: 0, unchanged: 0, unhashed: 0, failed: [], unsafe: [], unreadable: [] };
 	const where = resolveDrivePath(drive, dt.envContext(ws), dt.renderTemplate);
 	if (where.skipped) { row.skipped = where.skipped; log(`  (skipping drive ${driveId} — ${where.skipped})`); return row; }
 	if (!fs.existsSync(where.path)) { row.skipped = `${where.path} does not exist on this machine`; log(`  (skipping drive ${driveId} — ${row.skipped})`); return row; }
 
 	const walked = walkDrive(where.path, { include: drive.include ?? [], exclude: drive.exclude ?? [], subfolder });
 	row.walked = walked.length;
+	row.unsafe = [...walked.unsafe];
+	row.unreadable = [...walked.unreadable];
 	const existing = new Map();
 	for (const { id, fields } of store.readAll('files')) {
-		if (fields.drive === `file-drives/${driveId}` && inScope(fields.path, subfolder)) existing.set(id, fields);
+		if (fields.drive !== `file-drives/${driveId}` || !inScope(fields.path, subfolder)) continue;
+		// Under a folder that could not be listed nothing is known: not missing, not pruned, not counted.
+		// The folder itself was walked, so its own record is planned as usual.
+		if (row.unreadable.some((u) => under(String(fields.path), u))) continue;
+		existing.set(id, fields);
 	}
 
 	// hashes: new, changed or newly local files under the cap; --hash adds the unhashed; --rehash takes all.
@@ -143,39 +151,40 @@ export async function syncDrive(store, ws, driveId, drive, { subfolder = null, h
 	// rewritten, so it does not count.
 	for (const m of plan.moves) entries.set(m.to, { pointers: [...pointersOf(drive, driveId, m.e.path), `files/${m.from}`] });
 	const refs = referencedBy(otherRecords(store), entries);
+	// One write that throws — a name the store refuses, a path too long for the disk, an id another
+	// sync wrote first — is recorded on the row and the run goes on. True when it was written.
+	const write = (id, fn) => {
+		if (dryRun) return true;
+		try { fn(); return true; } catch (e) { row.failed.push({ id, message: e.message }); return false; }
+	};
 	const previewFor = (e) => (drive.preview !== false && e.kind === 'file' && e.local && previewable(e.ext) ? previewOf(e.abs, e.ext) ?? undefined : undefined);
 
 	for (const a of plan.adds) {
 		const fields = { ...a.next, referenced_by: refs.get(a.id) };
 		const p = previewFor(a.e); if (p) fields.preview = p;
 		for (const k of Object.keys(fields)) if (norm(fields[k]) === null) delete fields[k];
-		if (!dryRun) store.add('files', fields, { id: a.id });
-		row.added++;
+		if (write(`files/${a.id}`, () => store.add('files', fields, { id: a.id }))) row.added++;
 	}
 	for (const m of plan.moves) {
 		const next = { ...m.next, referenced_by: refs.get(m.to) };
 		const p = previewFor(m.e); next.preview = p ?? m.prev.preview;
-		if (!dryRun) { store.rename('files', m.from, m.to); const ch = diffDerived(m.prev, next); if (ch) store.set('files', m.to, ch); }
-		row.moved++;
+		if (write(`files/${m.to}`, () => { store.rename('files', m.from, m.to); const ch = diffDerived(m.prev, next); if (ch) store.set('files', m.to, ch); })) row.moved++;
 	}
 	for (const u of plan.updates) {
 		const next = { ...u.next, referenced_by: refs.get(u.id) };
 		if (u.changed) next.preview = previewFor(u.e);
 		const ch = diffDerived(u.prev, next);
 		if (!ch) { row.unchanged++; continue; }
-		if (!dryRun) store.set('files', u.id, ch);
-		row.updated++;
+		if (write(`files/${u.id}`, () => store.set('files', u.id, ch))) row.updated++;
 	}
 	for (const g of plan.missing) {
 		const ch = { status: 'missing' };
 		if (!same(g.prev.referenced_by, refs.get(g.id))) ch.referenced_by = norm(refs.get(g.id)) === null ? '' : refs.get(g.id);
-		if (!dryRun) store.set('files', g.id, ch);
-		row.missing++;
+		if (write(`files/${g.id}`, () => store.set('files', g.id, ch))) row.missing++;
 	}
 	for (const [id, f] of stillMissing) {
 		if (same(f.referenced_by, refs.get(id))) continue;
-		if (!dryRun) store.set('files', id, { referenced_by: norm(refs.get(id)) === null ? '' : refs.get(id) });
-		row.updated++;
+		if (write(`files/${id}`, () => store.set('files', id, { referenced_by: norm(refs.get(id)) === null ? '' : refs.get(id) }))) row.updated++;
 	}
 	if (prune) {
 		// A moved id is gone already: the rename took it. An entry stays while any record points at it,
@@ -185,8 +194,7 @@ export async function syncDrive(store, ws, driveId, drive, { subfolder = null, h
 			const nowMissing = (f.status === 'missing' && !seen.has(id)) || missingNow.has(id);
 			if (!nowMissing || hasAuthored(f)) continue;
 			if ((refs.get(id) ?? []).length || store.findInboundRefs(`files/${id}`).length) continue;
-			if (!dryRun) store.rm('files', id, { force: true });
-			row.pruned++;
+			if (write(`files/${id}`, () => store.rm('files', id, { force: true }))) row.pruned++;
 		}
 	}
 	// The drive is stamped only when this run wrote an entry, or on its first sync: a run that changed
@@ -196,15 +204,29 @@ export async function syncDrive(store, ws, driveId, drive, { subfolder = null, h
 		let present = 0;
 		for (const { fields } of store.readAll('files')) if (fields.drive === `file-drives/${driveId}` && fields.status !== 'missing') present++;
 		if (wrote || !drive.last_synced || Number(drive.entries) !== present) {
-			store.set('file-drives', driveId, { last_synced: isoLocal(new Date()), entries: present });
+			if (write(`file-drives/${driveId}`, () => store.set('file-drives', driveId, { last_synced: isoLocal(new Date()), entries: present }))) row.stamped = true;
 		}
 	}
 	return row;
 }
 
+const tail = (label, n) => (n ? ` · ${label} ${n}` : '');
+
 export const summaryLine = (r) => r.skipped
 	? `drive ${r.id} — skipped: ${r.skipped}`
-	: `drive ${r.id} — walked ${r.walked} · added ${r.added} · updated ${r.updated} · moved ${r.moved} · missing ${r.missing} · unchanged ${r.unchanged}${r.pruned ? ` · pruned ${r.pruned}` : ''}${r.unhashed ? ` · unhashed ${r.unhashed}` : ''}`;
+	: `drive ${r.id} — walked ${r.walked} · added ${r.added} · updated ${r.updated} · moved ${r.moved} · missing ${r.missing} · unchanged ${r.unchanged}`
+		+ tail('pruned', r.pruned) + tail('unhashed', r.unhashed) + tail('failed', r.failed?.length)
+		+ tail('unsafe', r.unsafe?.length) + tail('unreadable', r.unreadable?.length);
+
+/** The per-entry lines behind the summary's failed · unsafe · unreadable counts, for stderr. A path is
+ *  quoted as JSON, so a control character in it shows as an escape. */
+export function detailLines(r) {
+	const lines = [];
+	for (const f of r.failed ?? []) lines.push(`  failed ${f.id}: ${f.message}`);
+	for (const p of r.unsafe ?? []) lines.push(`  unsafe name, not indexed: drive ${r.id} ${JSON.stringify(p)}`);
+	for (const p of r.unreadable ?? []) lines.push(`  unreadable folder, its entries left as they were: drive ${r.id} ${JSON.stringify(p || '.')}`);
+	return lines;
+}
 
 /** `dt files sync [<drive>[/<subfolder>]] [--hash] [--rehash] [--prune] [--dry-run] [--json]` */
 export async function syncCommand(ws, pos, flags) {
@@ -212,6 +234,7 @@ export async function syncCommand(ws, pos, flags) {
 	const store = new dt.Store({ root: ws.root, pkg: ws.pkg });
 	if (!store.descriptors.has('file-drives') || !store.descriptors.has('files')) { console.error('dt files: the file-drives and files collections are not compiled — run `dreamteamer compile`'); return 2; }
 	const scope = parseScope(pos[0]);
+	if (scope?.error) { console.error(`dt files: ${scope.error}`); return 2; }
 	const drives = [...store.readAll('file-drives')];
 	const chosen = scope ? drives.filter((d) => d.id === scope.drive) : drives;
 	if (scope && !chosen.length) { console.error(`dt files: no drive "${scope.drive}" — dt list file-drives`); return 2; }
@@ -219,13 +242,15 @@ export async function syncCommand(ws, pos, flags) {
 	const opts = { subfolder: scope?.subfolder ?? null, hash: !!flags.hash, rehash: !!flags.rehash, prune: !!flags.prune, dryRun: !!flags['dry-run'] };
 	const rows = [];
 	for (const d of chosen) rows.push(await syncDrive(store, ws, d.id, d.fields, opts));
+	for (const r of rows) for (const line of detailLines(r)) console.error(line);
 	if (flags.json) console.log(JSON.stringify({ dryRun: opts.dryRun, drives: rows }, null, 2));
 	else {
 		for (const r of rows) console.log((opts.dryRun ? '(dry run) ' : '') + summaryLine(r));
-		const wrote = opts.dryRun ? [] : rows.filter((r) => !r.skipped && (r.added || r.updated || r.moved || r.missing || r.pruned));
+		const wrote = opts.dryRun ? [] : rows.filter((r) => !r.skipped && (r.added || r.updated || r.moved || r.missing || r.pruned || r.stamped));
 		if (wrote.length) console.log(`pending — dreamteamer commit ${wrote.map((r) => `file-drives/${r.id} files/${r.id}/…`).join(' ')} — scope it to the records this run wrote`);
 	}
-	return 0;
+	// A write that failed is a failed run; a name skipped as unsafe or a folder that could not be listed is reported, not failed.
+	return rows.some((r) => r.failed?.length) ? 1 : 0;
 }
 
 filesCommand.handlers.sync = syncCommand;
