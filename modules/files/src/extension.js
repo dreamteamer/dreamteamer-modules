@@ -3,6 +3,7 @@
 // discovers its collections, views, skill, command and binding.
 import { bind } from './engine.js';
 import { filesCommand, USAGE } from './cli.js';
+import './sync.js'; // registers filesCommand.handlers.sync
 
 export const apiVersion = 1;
 
