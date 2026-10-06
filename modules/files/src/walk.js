@@ -55,23 +55,29 @@ export function walkDrive(root, { include = [], exclude = [], subfolder = null }
 			const relpath = rel ? `${rel}/${name}` : name;
 			if (excluded(exclude, relpath)) continue;
 			if (!rel && !included(include, relpath)) continue;
+			// lstat, so a link is neither a file nor a folder and is skipped: a sync client does not sync
+			// links, and a link can point anywhere, past the include list.
 			let st;
-			try { st = fs.statSync(path.join(root, relpath)); } catch { continue; }
+			try { st = fs.lstatSync(path.join(root, relpath)); } catch { continue; }
 			if (!st.isDirectory() && !st.isFile()) continue;
 			out.push(entryOf(relpath, name, st));
 			if (st.isDirectory()) visit(relpath);
 		}
 	};
-	if (subfolder) {
-		const rel = String(subfolder).replace(/^\/+|\/+$/g, '');
+	const rel = subfolder ? String(subfolder).replace(/\/+/g, '/').replace(/^\/|\/$/g, '') : '';
+	if (rel) {
 		if (!included(include, rel) || excluded(exclude, rel)) return out;
+		// Every segment must be a real folder, not a link, for the same reason the walk skips links.
 		let st;
-		try { st = fs.statSync(path.join(root, rel)); } catch { return out; }
-		if (!st.isDirectory()) return out;
-		out.push(entryOf(rel, rel.split('/').pop(), st));
+		const segments = rel.split('/');
+		for (let i = 1; i <= segments.length; i++) {
+			try { st = fs.lstatSync(path.join(root, ...segments.slice(0, i))); } catch { return out; }
+			if (!st.isDirectory()) return out;
+		}
+		out.push(entryOf(rel, segments.at(-1), st));
 		visit(rel);
 	} else {
 		visit('');
 	}
-	return out;
+	return out.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
 }

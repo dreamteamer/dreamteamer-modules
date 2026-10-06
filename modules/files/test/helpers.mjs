@@ -15,10 +15,17 @@ export function makeTree(dir, spec) {
 	return dir;
 }
 
+// Every temp folder this process made, removed by one exit listener.
+const tmpDirs = new Set();
+process.on('exit', () => {
+	if (process.env.DT_KEEP_FIXTURES) return;
+	for (const d of tmpDirs) fs.rmSync(d, { recursive: true, force: true });
+});
+
 /** A temp folder outside any repo, removed at exit. */
 export function tmpDir(prefix = 'dt-files-') {
 	const d = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), prefix));
-	process.on('exit', () => { if (!process.env.DT_KEEP_FIXTURES) fs.rmSync(d, { recursive: true, force: true }); });
+	tmpDirs.add(d);
 	return d;
 }
 
@@ -28,6 +35,8 @@ export const TREE = {
 	'docs/big.txt': 'x'.repeat(40 * 1024),
 	'docs/scan.log': 'a sidecar nobody indexes\n',
 	'docs/.DS_Store': 'junk',
+	'docs/a/x.txt': 'inner\n',
+	'docs/a-b.txt': 'sibling\n',
 	'media/clip.m4a': Buffer.from([0, 0, 0, 24, 0x66, 0x74, 0x79, 0x70, 0x4d, 0x34, 0x41, 0x20, 1, 2, 3]),
 	'trash/old.pdf': '%PDF-1.4 gone',
 	'private/secret.txt': 'must not be indexed when include lists docs and media\n',
