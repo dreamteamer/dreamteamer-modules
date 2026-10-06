@@ -32,6 +32,21 @@ test('index picks one line of a newline-separated variable', () => {
 	assert.match(resolveDrivePath({ path: '${env:INBOXES}', index: 2 }, c, render).skipped, /2 line\(s\); index 2/);
 });
 
+test('index: the renderer\'s own error for an undeclared or empty variable, and a whole number from 0', () => {
+	assert.match(resolveDrivePath({ path: '${env:INBOXES}', index: 0 }, ctx({}, []), render).skipped, /not declared/);
+	assert.match(resolveDrivePath({ path: '${env:INBOXES}', index: 0 }, ctx({ INBOXES: '\n  \n' }), render).skipped, /no value/);
+	const c = ctx({ INBOXES: '/Users/someone/a\n/Users/someone/b' });
+	assert.match(resolveDrivePath({ path: '${env:INBOXES}', index: -1 }, c, render).skipped, /whole number from 0 \(got "-1"\)/);
+	assert.match(resolveDrivePath({ path: '${env:INBOXES}', index: 1.5 }, c, render).skipped, /whole number from 0/);
+	assert.match(resolveDrivePath({ path: '${env:INBOXES}', index: 'one' }, c, render).skipped, /whole number from 0 \(got "one"\)/);
+	assert.deepEqual(resolveDrivePath({ path: '${env:INBOXES}', index: '1' }, c, render), { path: '/Users/someone/b' });
+});
+
+test('a variable of several lines with no index asks for index', () => {
+	const c = ctx({ INBOXES: '/Users/someone/a\n/Users/someone/b' });
+	assert.deepEqual(resolveDrivePath({ path: '${env:INBOXES}/sub' }, c, render), { skipped: '${env:INBOXES} has several lines — set index on this drive to pick one' });
+});
+
 test('included: empty means everything; otherwise the top-level folder must be listed', () => {
 	assert.equal(included([], 'anything/at/all'), true);
 	assert.equal(included(['rnd', 'meetings'], 'rnd'), true);
@@ -42,6 +57,9 @@ test('included: empty means everything; otherwise the top-level folder must be l
 
 test('excluded: dotfiles always, a prefix, an extension', () => {
 	assert.equal(excluded([], 'a/.DS_Store'), true);
+	assert.equal(excluded([], '.git/config'), true, 'inside a dot-folder');
+	assert.equal(excluded([], 'a/.hidden/x.pdf'), true, 'inside a nested dot-folder');
+	assert.equal(excluded([], 'a.b/c.pdf'), false, 'a dot inside a name is not a leading dot');
 	assert.equal(excluded(['trash'], 'trash/old.pdf'), true);
 	assert.equal(excluded(['trash'], 'trash'), true);
 	assert.equal(excluded(['trash'], 'trashy/x.pdf'), false);

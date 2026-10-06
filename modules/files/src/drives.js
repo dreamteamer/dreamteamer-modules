@@ -10,26 +10,32 @@ export function envKeysOf(template) {
 
 /**
  * The drive's folder on this machine — `{ path }` — or `{ skipped: why }`. `ctx` is the engine's
- * `envContext(ws)`, `render` its `renderTemplate`. With `index`, the variable is a newline-separated
- * list and line `index` of it renders; the rest of the template is untouched.
+ * `envContext(ws)`, `render` its `renderTemplate`. With `index`, the FIRST `${env:…}` variable the
+ * template names is a newline-separated list and line `index` of it renders; the rest of the
+ * template is untouched. Without `index`, a variable of several lines skips the drive.
  */
 export function resolveDrivePath(drive, ctx, render) {
 	const template = String(drive.path ?? '').trim();
 	if (!template) return { skipped: 'no path' };
+	const [key] = envKeysOf(template);
 	let context = ctx;
 	if (drive.index !== undefined && drive.index !== null && drive.index !== '') {
-		const [key] = envKeysOf(template);
 		if (!key) return { skipped: 'index is set but the path names no ${env:…} variable' };
-		if (!ctx.declared.includes(key)) return { skipped: `\${env:${key}}: "${key}" is not declared in dreamteamer.vars` };
+		const index = Number(drive.index);
+		if (!Number.isInteger(index) || index < 0) return { skipped: `index must be a whole number from 0 (got "${drive.index}")` };
 		const lines = String(ctx.env.get(key) ?? '').split('\n').map((s) => s.trim()).filter(Boolean);
-		if (!lines.length) return { skipped: `\${env:${key}} is declared but has no value in .env on this machine` };
-		const line = lines[Number(drive.index)];
-		if (line === undefined) return { skipped: `\${env:${key}} has ${lines.length} line(s); index ${drive.index} is out of range` };
-		const env = new Map(ctx.env);
-		env.set(key, line);
-		context = { ...ctx, env };
+		// Undeclared or empty: the context stays as it is, and the renderer's own error is the reason.
+		if (ctx.declared.includes(key) && lines.length) {
+			if (index >= lines.length) return { skipped: `\${env:${key}} has ${lines.length} line(s); index ${index} is out of range` };
+			const env = new Map(ctx.env);
+			env.set(key, lines[index]);
+			context = { ...ctx, env };
+		}
 	}
-	try { return { path: render(template, context) }; } catch (e) { return { skipped: e.message }; }
+	let path;
+	try { path = render(template, context); } catch (e) { return { skipped: e.message }; }
+	if (path.includes('\n')) return { skipped: `\${env:${key}} has several lines — set index on this drive to pick one` };
+	return { path };
 }
 
 const trimSlashes = (s) => String(s).replace(/^\/+|\/+$/g, '');
@@ -41,10 +47,11 @@ export function included(include, relpath) {
 	return list.some((top) => relpath === top || relpath.startsWith(`${top}/`));
 }
 
-/** Is `relpath` skipped — a dotfile, under an excluded prefix, or carrying an excluded extension? */
+/** Is `relpath` skipped — a dotfile or inside a dot-folder, under an excluded prefix, or carrying an excluded extension? */
 export function excluded(exclude, relpath) {
-	const name = relpath.split('/').pop();
-	if (name.startsWith('.')) return true;
+	const segments = relpath.split('/');
+	if (segments.some((s) => s.startsWith('.'))) return true;
+	const name = segments.at(-1);
 	for (const raw of exclude ?? []) {
 		const rule = trimSlashes(raw);
 		if (!rule) continue;
