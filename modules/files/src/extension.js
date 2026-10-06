@@ -3,7 +3,10 @@
 // discovers its collections, views, skill, command and binding.
 import { bind } from './engine.js';
 import { filesCommand, USAGE } from './cli.js';
-import './sync.js'; // registers filesCommand.handlers.sync
+import './sync.js';    // registers filesCommand.handlers.sync
+import './status.js';  // registers filesCommand.handlers.status
+import { doctorFiles } from './status.js';
+import { checkFiles } from './check.js';
 
 export const apiVersion = 1;
 
@@ -11,5 +14,7 @@ export default function activate(api) {
 	bind(api);
 	return {
 		commands: { files: { usage: USAGE, run: (ws, argv) => filesCommand(ws, argv) } },
+		check: (ctx) => checkFiles(ctx),
+		doctor: (ctx) => doctorFiles(ctx),
 	};
 }
