@@ -124,7 +124,9 @@ export function installedModules(root) {
 	return found;
 }
 
-export const OURS = ['assets', 'users', 'companies', 'contacts', 'engagements', 'tasks', 'routines', 'meetings', 'recordings', 'meeting-docs', 'projects', 'perspective', 'wikis', 'notebooklm', 'search', 'rnd', 'proofs', 'worktrees', 'http', 'docker-workspaces', 'code'];
+// `files` has no capability block here: its machine checks (is each drive mounted, cloud-only entries)
+// are its own extension's `dt doctor` rows.
+export const OURS = ['assets', 'users', 'companies', 'contacts', 'engagements', 'tasks', 'routines', 'meetings', 'recordings', 'meeting-docs', 'projects', 'perspective', 'wikis', 'notebooklm', 'search', 'rnd', 'proofs', 'worktrees', 'http', 'docker-workspaces', 'code', 'files'];
 const cmp = (a, b) => { // returns -1/0/1 comparing dotted versions
 	const pa = String(a).split('.').map(Number), pb = String(b).split('.').map(Number);
 	for (let i = 0; i < 3; i++) { if ((pa[i] || 0) !== (pb[i] || 0)) return (pa[i] || 0) < (pb[i] || 0) ? -1 : 1; }
