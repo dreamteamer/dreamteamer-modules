@@ -8,15 +8,23 @@ npm install @dreamteamer/code
 ```
 
 This module is an unpublished development build. Install its local packed tarball until released.
-The first run needs a Dreamteamer VSIX built with `src/local-control.ts`; the currently published
-extension does not have these tools. Build/package that extension from the accompanying change.
+The default installs Dreamteamer 0.23.3 from code-server's configured marketplace (Open VSX by default).
+An exact release is pinned; identical verified installations are reused. A prior local VSIX is replaced
+on the first marketplace start, even if it reports the same version.
 
 ```sh
-npx dt-editor start . --vsix /path/to/dreamteamer-local.vsix
-# Or an npm script: "editor": "dt-editor start ."
-# Once installed, subsequent starts need no VSIX:
-npm run editor
+npx dt-editor start .
+# Optional exact published version:
+npx dt-editor start . --extension-version 0.23.3
+# Explicit development override only:
+npx dt-editor start . --vsix /path/to/development.vsix
 ```
+
+The published 0.23.3 extension supports collection navigation through `display.nav.section`.
+It does not include the development local control socket or the custom current-user picker. The coordinator tools below require a supporting extension
+release or the explicit development override. Engine modules can contribute schemas, views and CLI
+commands, but cannot replace missing editor APIs. Keep private workspace records and preferences in
+the workspace repository, and credentials in ignored local environment files or the credential store.
 
 The launcher downloads pinned code-server 4.138.0 for macOS/Linux (arm64/x64), verifies the archive
 against the official release's SHA-256 asset digest, installs Dreamteamer and the Claude Code

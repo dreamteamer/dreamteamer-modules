@@ -9,11 +9,12 @@ import { fileURLToPath } from 'node:url';
 import { callUi } from './control.mjs';
 import { messageCoordinator } from './message.mjs';
 import { ensureRuntime, run } from './install.mjs';
+import { installVsix, installMarketplace } from './extension-cache.mjs';
 
 const usage = `dt-editor [start|url|message|state|claude] [workspace] [--port 0] [--vsix file] [--code-server executable]
   [--claude-vsix file] [--text 'Show the tasks board']
 start runs in the foreground. Ctrl-C stops the editor. url prints a URL; message asks the coordinator; state inspects UI tools.
-First start requires --vsix with a Dreamteamer extension built with local-editor support.`;
+Defaults to Dreamteamer 0.23.3 from the code-server marketplace. --extension-version pins another release; --vsix is a development override.`;
 
 export function parseArgs(argv) {
   const opts = { verb: 'start', workspace: '.' };
@@ -23,7 +24,7 @@ export function parseArgs(argv) {
     const arg = argv[i];
     if (arg === '--help' || arg === '-h') return { help: true };
     if (!arg.startsWith('-')) { if (positional) throw new Error('Only one workspace is accepted'); opts.workspace = arg; positional = true; continue; }
-    const m = /^--(port|vsix|code-server|claude-vsix|text)(?:=(.*))?$/.exec(arg);
+    const m = /^--(port|vsix|extension-version|code-server|claude-vsix|text)(?:=(.*))?$/.exec(arg);
     if (!m) throw new Error(`Unknown option: ${arg}`);
     const value = m[2] ?? argv[++i];
     if (!value || value.startsWith('--')) throw new Error(`${arg} needs a value`);
@@ -42,6 +43,8 @@ async function healthy(socketPath) {
 }
 export async function main(argv = process.argv.slice(2)) {
   const opts = parseArgs([...argv]);
+  const started = Date.now();
+  const phase = label => {if(opts.verb==='start') console.error(`[dt-editor] ${label}: ${Date.now()-started}ms`);};
   if (opts.help) { console.log(usage); return; }
   const workspace = await fs.realpath(path.resolve(opts.workspace));
   const home = path.resolve(process.env.DT_EDITOR_HOME ?? path.join(os.homedir(), '.cache/dreamteamer/editor'));
@@ -68,23 +71,27 @@ export async function main(argv = process.argv.slice(2)) {
   const stop = () => { child?.kill('SIGTERM'); };
   try {
     const runtime = await ensureRuntime(home, opts['code-server']);
+    phase('runtime ready');
     const extensions = path.join(profile, 'extensions');
     const data = path.join(profile, 'data');
     const config = path.join(profile, 'config.yaml');
     await fs.writeFile(config, '{}\n', { mode: 0o600 });
     const common = ['--config', config, '--extensions-dir', extensions, '--user-data-dir', data];
     if (opts.vsix) {
-      await run(runtime, [...common, '--install-extension', path.resolve(opts.vsix), '--force']);
-      await fs.writeFile(path.join(profile, 'extension-installed'), 'local-editor\n');
+      const installed = await installVsix({runtime, common, extensions, profile, vsix:opts.vsix, id:'dreamteamer.dreamteamer-vscode', run});
+      console.error(installed.installed ? 'Dreamteamer extension installed.' : 'Dreamteamer extension unchanged; using installed copy.');
+      await fs.rm(path.join(profile, 'marketplace-dreamteamer.dreamteamer-vscode.json'), {force:true});
     } else {
-      try { await fs.access(path.join(profile, 'extension-installed')); }
-      catch { throw new Error('First start needs --vsix pointing to the Dreamteamer VSIX with local-editor support.'); }
+      const result = await installMarketplace({runtime, common, extensions, profile, id:'dreamteamer.dreamteamer-vscode', version:opts['extension-version'] ?? '0.23.3', run});
+      console.error(result.installed ? 'Dreamteamer marketplace extension installed.' : 'Using cached marketplace extension.');
+      console.error('Editor UI tools and user-specific views require supporting extension releases; marketplace 0.23.3 does not include them.');
     }
-    if (opts['claude-vsix']) await run(runtime, [...common, '--install-extension', path.resolve(opts['claude-vsix']), '--force']);
+    if (opts['claude-vsix']) await installVsix({runtime, common, extensions, profile, vsix:opts['claude-vsix'], id:'anthropic.claude-code', run});
     else {
       const installed = await fs.readdir(extensions);
       if (!installed.some(name => name.toLowerCase().startsWith('anthropic.claude-code-'))) await run(runtime, [...common, '--install-extension', 'Anthropic.claude-code@2.1.291']);
     }
+    phase('extensions ready');
     // Short path for Unix sockets (macOS limits their path length).
     session = await fs.mkdtemp('/tmp/dt-editor-'); await fs.chmod(session, 0o700);
     const socketPath = path.join(session, 'editor.sock');
@@ -115,6 +122,7 @@ export async function main(argv = process.argv.slice(2)) {
     child = spawn(runtime, [...common, '--socket', socketPath, '--session-socket', path.join(session, 'session.sock'), '--socket-mode', '0600', '--auth', 'none', '--disable-telemetry', '--disable-update-check', '--disable-proxy', workspace], {
       cwd: workspace, stdio: ['ignore', 'ignore', 'inherit'], env: { ...process.env, VSCODE_CLI: "1", DT_EDITOR_CONTROL_SOCKET: controlSocket, DT_EDITOR_WORKSPACE: workspace },
     });
+    phase('code-server spawned');
     let failure;
     child.once('error', e => { failure = e; exited = true; });
     child.once('exit', () => { exited = true; });
@@ -125,8 +133,10 @@ export async function main(argv = process.argv.slice(2)) {
       if (Date.now() > deadline) throw new Error('code-server did not become ready within 60 seconds');
       await new Promise(resolve => setTimeout(resolve, 200));
     }
+    phase('code-server healthy');
     proxy = await gateway({ socketPath, workspace, port: Number(opts.port ?? 0) });
     await fs.writeFile(statePath, JSON.stringify({ workspace, origin: proxy.origin, token: proxy.token, controlSocket, coordinator }), { mode: 0o600 });
+    phase('authenticated gateway ready');
     console.log(proxy.link());
     console.error('Local editor ready. Ctrl-C stops it. URLs contain a session credential.');
     if (!exited) await new Promise(resolve => child.once('exit', resolve));
