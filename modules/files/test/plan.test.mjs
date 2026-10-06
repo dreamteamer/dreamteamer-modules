@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { planDrive, derivedOf, diffDerived } from '../src/sync.js';
+import { planDrive, derivedOf, diffDerived, bytesChanged } from '../src/sync.js';
 
 const file = (p, over = {}) => ({ path: p, name: p.split('/').pop(), kind: 'file', ext: 'txt', mime: 'text/plain', bytes: 10, modified: '2026-01-01T10:00:00+00:00', local: true, abs: `/Users/someone/d/${p}`, ...over });
 const folder = (p) => ({ path: p, name: p.split('/').pop(), kind: 'folder', abs: `/Users/someone/d/${p}` });
@@ -55,4 +55,34 @@ test('diffDerived treats empty, null and absent as the same value', () => {
 
 test('derivedOf a file carries exactly the file fields', () => {
 	assert.deepEqual(derivedOf('drive', file('docs/a.txt')), rec('docs/a.txt'));
+});
+
+test('modified compares as an instant: the same moment in another offset is not a change', () => {
+	const prev = rec('docs/a.txt', { modified: '2026-01-01T10:00:00+00:00', hash: 'h1' });
+	const e = file('docs/a.txt', { modified: '2026-01-01T12:00:00+02:00' });
+	assert.equal(bytesChanged(prev, e), false);
+	const plan = planDrive({ driveId: 'drive', existing: new Map([['drive/docs/a.txt', prev]]), walked: [e] });
+	assert.equal(plan.updates[0].changed, false);
+	assert.equal(diffDerived(prev, plan.updates[0].next), null, 'the stored string stays as it is');
+	assert.equal(bytesChanged(prev, file('docs/a.txt', { modified: '2026-01-01T10:00:01+00:00' })), true);
+	assert.equal(bytesChanged(rec('docs/a.txt', { modified: 'not a date' }), file('docs/a.txt', { modified: 'not a date' })), false);
+});
+
+test('a file first seen evicted is re-read when it lands, though its bytes and date are the same', () => {
+	const existing = new Map([['drive/docs/a.txt', rec('docs/a.txt', { local: false })]]);
+	const plan = planDrive({ driveId: 'drive', existing, walked: [file('docs/a.txt')], hashes: new Map([['docs/a.txt', 'h1']]) });
+	assert.equal(plan.updates[0].changed, true);
+	assert.equal(plan.updates[0].next.hash, 'h1');
+	assert.equal(plan.updates[0].next.local, true);
+	const back = planDrive({ driveId: 'drive', existing: new Map([['drive/docs/a.txt', rec('docs/a.txt', { hash: 'h1' })]]), walked: [file('docs/a.txt', { local: false })] });
+	assert.equal(back.updates[0].changed, false, 'evicted again: nothing to re-read');
+});
+
+test('empty files never match a move: every empty file has the same hash', () => {
+	const EMPTY = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
+	const existing = new Map([['drive/docs/old.txt', rec('docs/old.txt', { bytes: 0, hash: EMPTY })]]);
+	const plan = planDrive({ driveId: 'drive', existing, walked: [file('docs/new.txt', { bytes: 0 })], hashes: new Map([['docs/new.txt', EMPTY]]) });
+	assert.deepEqual(plan.moves, []);
+	assert.deepEqual(plan.adds.map((a) => a.id), ['drive/docs/new.txt']);
+	assert.deepEqual(plan.missing.map((m) => m.id), ['drive/docs/old.txt']);
 });

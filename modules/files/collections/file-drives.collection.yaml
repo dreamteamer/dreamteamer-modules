@@ -68,7 +68,7 @@ fields:
     type: datetime
     display:
       editable: false
-    description: When `dt files sync` last changed this drive's entries — a run that finds nothing new leaves it as it was. Empty means never.
+    description: When `dt files sync` last stamped this drive — on its first sync, and on any sync that changed this drive's records or its entry count. A run that changes nothing leaves it as it was. Empty means never.
   entries:
     type: integer
     display:

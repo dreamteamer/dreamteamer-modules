@@ -128,3 +128,67 @@ test('the records pass dt check, and preview: false on the drive writes no previ
 	const r = ws.dt('check');
 	assert.equal(r.code, 0, r.stdout + r.stderr);
 });
+
+test('--prune after a move from an entry that was already missing: the moved id is not pruned', () => {
+	const { ws, drive } = driveWorkspace();
+	sync(ws);
+	const bytes = fs.readFileSync(path.join(drive, 'docs/notes.txt'));
+	fs.unlinkSync(path.join(drive, 'docs/notes.txt'));
+	assert.equal(sync(ws).drives[0].missing, 1);
+	fs.writeFileSync(path.join(drive, 'docs/renamed.txt'), bytes);
+	const dry = sync(ws, '--prune', '--dry-run');
+	assert.deepEqual([dry.drives[0].moved, dry.drives[0].pruned], [1, 0]);
+	const out = sync(ws, '--prune');
+	assert.deepEqual([out.drives[0].moved, out.drives[0].pruned], [1, 0]);
+	assert.equal(get(ws, 'files/drive/docs/renamed.txt').status, 'present');
+	assert.equal(get(ws, 'files/drive/docs/notes.txt'), null);
+});
+
+test('--prune keeps a missing entry that only a ${env} string points at, and refreshes its referenced_by', () => {
+	const { ws, drive } = driveWorkspace();
+	writeCollection(ws.root, 'notes', { description: 'A note.', ids: { from: '{{ name | slug }}' }, fields: { name: { type: 'string', required: true }, attachment: { type: 'string' }, body: { type: 'markdown', body: true } } });
+	assert.equal(ws.dt('compile').code, 0);
+	sync(ws);
+	assert.equal(ws.dt('add', 'notes', 'Plan', '--attachment', '${env:DRIVE}/docs/readme.md').code, 0);
+	fs.unlinkSync(path.join(drive, 'docs/readme.md'));
+	const out = sync(ws, '--prune');
+	assert.equal(out.drives[0].pruned, 0);
+	const readme = get(ws, 'files/drive/docs/readme.md');
+	assert.equal(readme.status, 'missing');
+	assert.deepEqual(readme.referenced_by, ['notes/plan']);
+});
+
+test('a file that cannot be hashed is counted unhashed and the run goes on', () => {
+	const { ws, drive } = driveWorkspace();
+	const locked = path.join(drive, 'docs/notes.txt');
+	fs.chmodSync(locked, 0o000);
+	try {
+		const r = ws.dt('files', 'sync');
+		assert.equal(r.code, 0, r.stderr + r.stdout);
+		assert.match(r.stdout, /unhashed 1/);
+		assert.equal(get(ws, 'files/drive/docs/notes.txt').hash, undefined);
+		assert.match(get(ws, 'files/drive/docs/readme.md').hash, /^[0-9a-f]{64}$/);
+	} finally { fs.chmodSync(locked, 0o644); }
+});
+
+test('the pending hint names the records, never the bare collection', () => {
+	const { ws } = driveWorkspace();
+	const r = ws.dt('files', 'sync');
+	assert.equal(r.code, 0, r.stderr + r.stdout);
+	assert.match(r.stdout, /dreamteamer commit file-drives\/drive files\/drive\/… — scope it to the records this run wrote/);
+	assert.doesNotMatch(r.stdout, /commit files file-drives/);
+	assert.doesNotMatch(ws.dt('files', 'sync').stdout, /pending/, 'nothing written, no hint');
+});
+
+test('--hash fills the hashes a lower cap left out', () => {
+	const { ws } = driveWorkspace();
+	assert.equal(ws.dt('set', 'file-drives/drive', 'hash_max_bytes=10').code, 0);
+	sync(ws);
+	assert.equal(get(ws, 'files/drive/docs/readme.md').hash, undefined, 'over the cap');
+	assert.match(get(ws, 'files/drive/docs/a/x.txt').hash, /^[0-9a-f]{64}$/, 'under the cap');
+	assert.equal(ws.dt('set', 'file-drives/drive', 'hash_max_bytes=67108864').code, 0);
+	assert.equal(sync(ws).drives[0].updated, 0, 'without --hash an unchanged file is not hashed');
+	const out = sync(ws, '--hash');
+	assert.equal(out.drives[0].updated, 4, 'readme, notes, big and clip');
+	assert.match(get(ws, 'files/drive/docs/readme.md').hash, /^[0-9a-f]{64}$/);
+});
