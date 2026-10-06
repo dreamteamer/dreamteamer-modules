@@ -239,6 +239,24 @@ test('an unreadable folder keeps its entries: not missing, not pruned', { skip: 
 	assert.equal(get(ws, 'files/drive/docs/a/x.txt').status, 'present');
 });
 
+test('referenced_by is soft: removing the pointing record leaves dt check green and the files record writable', () => {
+	const { ws } = driveWorkspace();
+	writeCollection(ws.root, 'notes', { description: 'A note.', ids: { from: '{{ name | slug }}' }, fields: { name: { type: 'string', required: true }, file: { type: 'files' }, body: { type: 'markdown', body: true } } });
+	assert.equal(ws.dt('compile').code, 0);
+	sync(ws);
+	assert.equal(ws.dt('add', 'notes', 'Plan', '--file', 'files/drive/docs/readme.md').code, 0);
+	sync(ws);
+	assert.deepEqual(get(ws, 'files/drive/docs/readme.md').referenced_by, ['notes/plan']);
+	const rm = ws.dt('rm', 'notes/plan', '--force');
+	assert.equal(rm.code, 0, rm.stderr + rm.stdout);
+	const check = ws.dt('check');
+	assert.equal(check.code, 0, check.stdout + check.stderr);
+	const set = ws.dt('set', 'files/drive/docs/readme.md', 'description=x');
+	assert.equal(set.code, 0, set.stderr + set.stdout);
+	assert.deepEqual(sync(ws).drives[0].updated, 1, 'the next sync drops the stale entry');
+	assert.equal(get(ws, 'files/drive/docs/readme.md').referenced_by, undefined);
+});
+
 test('a non-Latin name with spaces syncs, reads back by its id, and passes dt check', () => {
 	const name = 'docs/\u05ea\u05d5\u05db\u05e0\u05d9\u05ea \u05e2\u05d1\u05d5\u05d3\u05d4 v2.md';
 	const { ws } = driveWorkspace({ tree: { ...TREE, [name]: '# plan\n' } });

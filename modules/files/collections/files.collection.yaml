@@ -84,6 +84,7 @@ fields:
   referenced_by:
     type: reference
     many: true
+    soft: true
     display:
       editable: false
     description: Every record that points at this entry — as a `files/<id>` reference or as the string `${env:NAME}/<relative path>`. Rebuilt by sync. Empty is the answer to "which files does nothing reference".
