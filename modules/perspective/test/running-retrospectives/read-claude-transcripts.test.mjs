@@ -14,6 +14,9 @@ const SESSION = 'perspective/retrospective-sessions/2026-09-07--fx';
 const SLUG = 'fx';   // the contributor — every source and conversation id is keyed by it, not by the run
 const line = (o) => JSON.stringify(o) + '\n';
 const ts = (i) => new Date(Date.UTC(2026, 8, 2, 9, i)).toISOString();
+// The reader writes weekly windows only for the last N weeks from today, so a fixed fixture date ages
+// out of the default four. Reaching back to the fixture's week from whatever today is pins the window.
+const WEEKS = ['--weeks', String(Math.ceil((Date.now() - Date.UTC(2026, 8, 2)) / (7 * 864e5)) + 1)];
 
 /** Every reader resolves its key off the run record, so a data root without one cannot be read. */
 function seedSession(data) {
@@ -40,7 +43,7 @@ function home() {
 test('writes one summary per conversation, one source per tree, one window per week; receipt reconciles files', () => {
 	const h = home();
 	const data = seedSession(fs.mkdtempSync(path.join(os.tmpdir(), 'perspective-data-')));
-	const out = execFileSync('node', [BIN, '--retrospective', SESSION, '--home', h, '--data-root', data], { encoding: 'utf8' });
+	const out = execFileSync('node', [BIN, '--retrospective', SESSION, '--home', h, '--data-root', data, ...WEEKS], { encoding: 'utf8' });
 	assert.match(out, /files 3 · conversations 1 · sidecars 2 · written 1/);
 	const summaries = listRecords(path.join(data, 'perspective', 'conversations'));
 	assert.equal(summaries.length, 1);
@@ -59,7 +62,7 @@ test('writes one summary per conversation, one source per tree, one window per w
 	assert.equal(readRecord(windows[0]).fields.period, '2026-W36');
 	assert.equal(readRecord(windows[0]).fields.turns_user, 2);
 	// second run: nothing rewritten at the same inspector version
-	const again = execFileSync('node', [BIN, '--retrospective', SESSION, '--home', h, '--data-root', data], { encoding: 'utf8' });
+	const again = execFileSync('node', [BIN, '--retrospective', SESSION, '--home', h, '--data-root', data, ...WEEKS], { encoding: 'utf8' });
 	assert.match(again, /written 0 · skipped 1/);
 });
 
@@ -68,7 +71,7 @@ test('writes one summary per conversation, one source per tree, one window per w
 test('the weekly window carries the session-cost metrics, not just sessions and turns', () => {
 	const h = home();
 	const data = seedSession(fs.mkdtempSync(path.join(os.tmpdir(), 'perspective-data-')));
-	execFileSync('node', [BIN, '--retrospective', SESSION, '--home', h, '--data-root', data], { encoding: 'utf8' });
+	execFileSync('node', [BIN, '--retrospective', SESSION, '--home', h, '--data-root', data, ...WEEKS], { encoding: 'utf8' });
 	const { fields } = readRecord(listRecords(path.join(data, 'perspective', 'activity-weeks'))[0]);
 	assert.equal(fields.sessions, 1);
 	assert.equal(fields.tokens_input, 10, 'summed from the conversations that STARTED in the week');
@@ -84,7 +87,7 @@ test('the weekly window carries the session-cost metrics, not just sessions and 
 test('a re-read at a new version keeps the week\'s judged summary', () => {
 	const h = home();
 	const data = seedSession(fs.mkdtempSync(path.join(os.tmpdir(), 'perspective-data-')));
-	const run = () => execFileSync('node', [BIN, '--retrospective', SESSION, '--home', h, '--data-root', data, '--force'], { encoding: 'utf8' });
+	const run = () => execFileSync('node', [BIN, '--retrospective', SESSION, '--home', h, '--data-root', data, '--force', ...WEEKS], { encoding: 'utf8' });
 	run();
 	const file = listRecords(path.join(data, 'perspective', 'activity-weeks'))[0];
 	const before = readRecord(file);
