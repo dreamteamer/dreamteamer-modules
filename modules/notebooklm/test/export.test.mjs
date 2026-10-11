@@ -13,7 +13,8 @@ import path from 'node:path';
 import { readFile } from './fixture.mjs';
 import { fixture, filesUnder, tripwire, EMAILS, PEOPLE, LEDGER, COMPANIES } from './helpers.mjs';
 
-const bundleFiles = (root, out = 'bundle') => fs.readdirSync(path.join(root, out)).filter((f) => f.endsWith('.md')).sort();
+const VERSION = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
+const bundleFiles =(root, out = 'bundle') => fs.readdirSync(path.join(root, out)).filter((f) => f.endsWith('.md')).sort();
 const manifest = (root, out = 'bundle') => JSON.parse(readFile(root, `${out}/manifest.json`));
 
 describe('dt notebooklm — the privacy line (canaries)', () => {
@@ -272,7 +273,7 @@ describe('dt notebooklm — the verb', () => {
 		const res = ws.dt('help');
 		assert.equal(res.code, 0);
 		const ext = res.stdout.split('installed extensions:')[1] ?? '';
-		assert.match(ext, /^@dreamteamer\/notebooklm@0\.1\.0:/m);
+		assert.match(ext, new RegExp(`^@dreamteamer/notebooklm@${VERSION.replaceAll('.', '\\.')}:`, 'm'));
 		assert.match(ext, /notebooklm \[--out <dir>\] \[--plan standard\|plus\|pro\|ultra\|<n>\]/);
 	});
 

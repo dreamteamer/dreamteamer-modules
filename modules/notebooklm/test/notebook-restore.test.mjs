@@ -145,6 +145,19 @@ describe('captureSources — a live source list becomes record sources', () => {
 		assert.deepEqual(one.source, { kind: 'url', ref: 'https://example.org/paper.pdf', title: '', source_id: 'p1' });
 		assert.equal(one.needs, null);
 	});
+	// notebooklm-py 0.8 titles a URL-fetched PDF by its file stem and returns the URL in `url`, typed
+	// `pdf` — the title fallback above never fires, and the restore key was dropped for `file` + no ref.
+	test('a pdf whose live entry carries a url becomes a url source, keeping its title', () => {
+		const one = sourceFromLive({ id: 'p2', title: 'harbor-mutual-policy-2026', type: 'pdf', url: 'https://northwind.example/media/harbor-mutual-policy-2026.pdf' });
+		assert.deepEqual(one.source, { kind: 'url', ref: 'https://northwind.example/media/harbor-mutual-policy-2026.pdf', title: 'harbor-mutual-policy-2026', source_id: 'p2' });
+		assert.equal(one.needs, null);
+	});
+	test('an existing url source stays a url source when the live list no longer carries its url', () => {
+		const { sources, unresolved } = captureSources({ sources: [{ id: 'p3', title: 'paper', type: 'pdf' }] },
+			[{ kind: 'url', ref: 'https://example.org/paper.pdf', source_id: 'p3', title: 'https://example.org/paper.pdf' }]);
+		assert.deepEqual(sources[0], { kind: 'url', ref: 'https://example.org/paper.pdf', title: 'paper', source_id: 'p3' });
+		assert.deepEqual(unresolved, []);
+	});
 	test('a `dt · <collection>` source is named as the export verb\'s, not as a file to find', () => {
 		const one = sourceFromLive({ id: 'x1', title: 'dt · meetings', type: 'markdown' });
 		assert.match(one.needs, /kind: export/);

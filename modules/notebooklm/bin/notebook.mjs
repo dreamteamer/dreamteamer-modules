@@ -233,8 +233,11 @@ export function sourceFromLive(live) {
 		const mime = type === 'google_docs' ? 'google-doc' : type === 'google_slides' ? 'google-slides' : type === 'google_spreadsheet' ? 'google-sheets' : undefined;
 		return { source: { ...base, kind: 'drive', ...(mime ? { mime } : {}) }, needs: 'ref: the Drive document id' };
 	}
-	// A PDF the web UI fetched from a URL keeps that URL as its TITLE. The URL is the restore key — add it as a url and let it title itself.
-	if (/^https?:\/\/\S+$/i.test(String(live.title ?? ''))) return { source: { ...base, kind: 'url', ref: String(live.title), title: '' }, needs: null };
+	// A PDF fetched from a URL is typed `pdf`, but notebooklm-py 0.8 returns that URL in `url` and titles
+	// it by its file stem. Whatever the type, a live url is the restore key.
+	if (/^https?:\/\/\S+$/i.test(String(live.url ?? ''))) return { source: { ...base, kind: 'url', ref: String(live.url) }, needs: null };
+	// Older lists carried no url — the web UI kept the URL as the TITLE. Add it as a url and let it title itself.
+	if (/^https?:\/\/\S+$/i.test(String(live.title ?? '')))return { source: { ...base, kind: 'url', ref: String(live.title), title: '' }, needs: null };
 	// `dt · <collection>` is what `dt notebooklm` titles its sources — one record
 	// entry of kind `export` restores the whole run; per-file refs would be the wrong shape.
 	if (/^dt · /.test(String(live.title ?? ''))) return { source: base, needs: 'nothing per file — this is a `dt notebooklm` source; replace the run with ONE `kind: export` entry' };
@@ -251,7 +254,10 @@ export function captureSources(listJson, existing = []) {
 	for (const live of listJson.sources ?? []) {
 		const { source, needs } = sourceFromLive(live);
 		const prior = byId.get(live.id);
-		const merged = prior ? { ...source, ref: prior.ref || source.ref, ...(prior.text ? { text: prior.text } : {}), ...(prior.mime ? { mime: prior.mime } : {}) } : source;
+		// A url the record already knows stays a url: the same live id is the same source, and a list
+		// that stopped carrying its url has not turned it into a file nobody holds.
+		const keepsUrl = prior?.ref && (prior.kind === 'url' || prior.kind === 'youtube') && source.kind === 'file';
+		const merged = prior ? { ...source, ...(keepsUrl ? { kind: prior.kind } : {}), ref: prior.ref || source.ref,...(prior.text ? { text: prior.text } : {}), ...(prior.mime ? { mime: prior.mime } : {}) } : source;
 		const filled = merged.kind === 'text' ? Boolean(merged.text) : Boolean(merged.ref);
 		if (needs && !filled) unresolved.push({ title: merged.title, kind: merged.kind, source_id: live.id, needs });
 		sources.push(merged);

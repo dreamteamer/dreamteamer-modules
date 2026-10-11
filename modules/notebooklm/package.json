@@ -1,6 +1,6 @@
 {
 	"name": "@dreamteamer/notebooklm",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "NotebookLM for a dreamteamer workspace: export and sync the workspace as notebook sources, and keep each notebook as a record it is restored from.",
 	"license": "Apache-2.0",
 	"type": "module",
