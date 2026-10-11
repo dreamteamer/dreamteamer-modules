@@ -529,7 +529,7 @@ test('a re-read that comes out SMALLER is counted, and its usual cause named', (
 	gitAs(repo, BO, ['commit', '-q', '-m', 'work nobody on the checked-out branch can see'], '2026-09-09T11:00:00Z');
 	gitAs(repo, BO, ['checkout', '-q', '-'], '2026-09-09T11:00:00Z');
 
-	const args = (extra) => ['node', [BIN, '--retrospective', V2, '--repo-path', repo, '--data-root', data, '--scratch-root', scratch, '--contributor', ADA.email, ...extra]];
+	const args = (extra) => ['node', [BIN, '--retrospective', V2, '--repo-path', repo, '--data-root', data, '--scratch-root', scratch, '--contributor', ADA.email, ...SINCE, ...extra]];
 	const wide = execFileSync(...args(['--all-refs']), { encoding: 'utf8' });
 	assert.doesNotMatch(wide, /came out SMALLER/, 'a first read cannot shrink anything');
 	const before = Object.values(weeksIn(data)).reduce((a, w) => a + (w.commits ?? 0), 0);
