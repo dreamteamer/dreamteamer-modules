@@ -212,6 +212,38 @@ describe('0.2.0 — design docs, plans, reviews, tests and design systems', () =
 	});
 });
 
+describe('the superpowers bridge — one skill per hand-off, each naming the records it writes', () => {
+	const skill = (id) => fs.readFileSync(path.join(RND, 'skills', id, 'SKILL.md'), 'utf8');
+	const bridges = {
+		'writing-design-docs': { pairs: ['superpowers:brainstorming'], writes: ['rnd/design-docs', 'rnd/user-stories', 'rnd/open-questions'] },
+		'writing-implementation-plans': { pairs: ['superpowers:writing-plans'], writes: ['rnd/implementation-plans', 'rnd/tests'] },
+		'executing-implementation-plans': { pairs: ['superpowers:executing-plans', 'superpowers:subagent-driven-development'], writes: ['rnd/implementation-plans', 'rnd/tests', 'rnd/issues'] },
+		'recording-reviews': { pairs: ['superpowers:requesting-code-review', 'superpowers:receiving-code-review'], writes: ['rnd/reviews', 'rnd/review-findings'] },
+	};
+	for (const [id, { pairs, writes }] of Object.entries(bridges)) {
+		test(`${id}: its name is its folder, and its description names the superpowers skill it pairs with`, () => {
+			const text = skill(id);
+			const fm = yaml.load(text.match(/^---\n([\s\S]*?)\n---/)[1]);
+			assert.equal(fm.name, id);
+			for (const p of pairs) assert.ok(fm.description.includes(p), `${id} description does not name ${p}`);
+		});
+		test(`${id}: every collection it says it writes is a collection here`, () => {
+			const text = skill(id);
+			for (const c of writes) {
+				assert.ok(text.includes(c), `${id} does not mention ${c}`);
+				assert.ok(fs.existsSync(path.join(RND, `collections/${c}.collection.yaml`)), `${c} is not shipped`);
+			}
+		});
+	}
+	test('each bridge overrides the file location the superpowers skill would use', () => {
+		for (const id of ['writing-design-docs', 'writing-implementation-plans']) assert.match(skill(id), /never a (markdown )?file under docs\//);
+	});
+	test('the package ships the skills folder', () => {
+		const pkg = JSON.parse(fs.readFileSync(path.join(RND, 'package.json'), 'utf8'));
+		assert.ok(pkg.files.includes('skills'));
+	});
+});
+
 describe('the bindings name real commands and real fields', () => {
 	const dir = path.join(RND, 'command-bindings');
 	const bindings = fs.readdirSync(dir).filter((f) => f.endsWith('.command-binding.yaml')).map((f) => yaml.load(fs.readFileSync(path.join(dir, f), 'utf8')));

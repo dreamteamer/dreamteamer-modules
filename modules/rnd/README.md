@@ -54,6 +54,16 @@ module is installed. The chain is bound, so `dt next` on a design doc names the 
 `building-from-references` is the procedure. ffmpeg is the one binary this module shells out to
 (`extract-frames.mjs`), and `npx dt-setup doctor` says whether it is there.
 
+## working with superpowers
+
+Four skills move the superpowers workflow's output from files into these records, each owning one
+hand-off: `writing-design-docs` (brainstorming → `design-docs`, plus the stories and open questions it
+leaves), `writing-implementation-plans` (writing-plans → `implementation-plans`, and the `tests` the plan
+promises), `executing-implementation-plans` (executing-plans and subagent-driven development read the
+plan record and tick it; test runs update `tests`; defects become `issues`) and `recording-reviews`
+(requesting and receiving code review, per-task gates and design critiques → `reviews` and
+`review-findings`). Research and what it could not settle stay in `research-docs` and `open-questions`.
+
 ## 0.2.0 — migrating from 0.1.0
 
 `rnd/product-design-docs` is renamed `rnd/design-docs` (records under `data/rnd/design-docs/`, suffix
