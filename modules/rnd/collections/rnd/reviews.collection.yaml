@@ -1,0 +1,102 @@
+# A review is the SITTING; each problem it raises is its own `rnd/review-findings` record, so a finding
+# can be tracked to fixed on its own while the review keeps its verdict.
+name: rnd/reviews
+description: >-
+  One review of something being built — a design doc, a prototype, a screen, a product, or a change in a repo — by a person or an agent, with its scope, method and verdict. Each problem it raises is a separate `rnd/review-findings` record.
+use_when: >-
+  something is reviewed — a design, a prototype, a pull request, a release candidate — write the review here and one `rnd/review-findings` record per problem BEFORE fixing anything, so "what did the review find, and what is still open" is a list rather than a chat scroll; asked whether a thing was reviewed, list here by `subject`
+storage:
+  path: data/rnd/reviews
+  format: md
+ids:
+  from: '{{ created | date }}--{{ name | slug }}'
+  pattern: ^\d{4}-\d{2}-\d{2}--[a-z0-9-]+$
+fields:
+  name:
+    type: string
+    required: true
+    description: What was reviewed and for what, in one line — `Grantee portal PRD — compliance pass`.
+  description:
+    type: string
+    description: One line of context for a list view.
+  kind:
+    type: string
+    default: design
+    enum: [design, code, ux, security, compliance, test, other]
+    description: 'The lens. `design` judges a spec for gaps and contradictions; `code` a change in a repo; `ux` a prototype or screen in use; `test` whether the proof is enough.'
+  subject:
+    type: [rnd/design-docs, rnd/prototypes, rnd/screens, rnd/products, rnd/user-stories, rnd/user-journeys, rnd/change-requests, rnd/features, rnd/issues, rnd/research-docs, rnd/design-systems, rnd/tests, rnd/implementation-plans]
+    description: The record that was reviewed. Empty when the subject is only a change in a repo — then `repo` and `change_ref` say what.
+  product:
+    type: rnd/products
+    description: The product the reviewed thing belongs to, so a product lists its reviews without a join.
+  repo:
+    type: repos
+    description: The repository the reviewed change lives in, for a code review.
+  change_ref:
+    type: string
+    examples: ['https://git.example/northwind/portal/pull/42', 'main..feature/otp', '3f2c1a9']
+    description: The change under review — a pull request URL, a branch range or a commit.
+  reviewer:
+    type: string
+    examples: ['users/dana-oren', 'agents/claude-code']
+    description: Who reviewed — `users/<id>` for a person, `agents/<harness>` for an agent. A plain string, because the reviewer may live in another workspace.
+  reviewed_on:
+    type: date
+    description: The day the review was done.
+  status:
+    type: string
+    default: open
+    enum: [open, in-progress, closed]
+    description: '`closed` means every finding has a final status, not that every finding was fixed.'
+  verdict:
+    type: string
+    enum: [approve, changes-requested, reject]
+    description: The review's conclusion. Empty while the review is still running.
+  findings:
+    type: rnd/review-findings
+    many: true
+    mirror_of: review
+    description: GENERATED — the problems this review raised. Set `review` on the finding.
+  content:
+    type: markdown
+    body: true
+    description: The scope (what was and was not looked at), the method, and the summary a reader needs before the findings.
+  tags:
+    type: string
+    many: true
+    examples: ['onboarding', 'release:v2']
+    pattern: ^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$
+    description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
+  author:
+    type: string
+    examples: ['agents/claude-code', 'scripts/read-git@2']
+    pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
+    description: >-
+      Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
+  creation_context:
+    type: string
+    description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+  source:
+    type: string
+    description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…> · migration:<id>.'
+  confidence:
+    type: string
+    default: normal
+    enum: [low, normal, high]
+    description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
+display:
+  nav:
+    icon: code-review
+    order: 48
+  list:
+    columns:
+      - name
+      - kind
+      - subject
+      - status
+      - verdict
+      - reviewed_on
+    sort: -reviewed_on
+  record:
+    badge: verdict

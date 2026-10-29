@@ -66,6 +66,22 @@ fields:
     description: Stories implementing the change.
     many: true
     mirror_of: change_requests
+  issue:
+    type: rnd/issues
+    description: The defect that motivated this change, when one did.
+  supersedes:
+    type: rnd/change-requests
+    description: The earlier request this replaces. The earlier record stays.
+  superseded_by:
+    type: rnd/change-requests
+    many: true
+    mirror_of: supersedes
+    description: GENERATED — the later request that replaced this one. Set `supersedes` on the newer request.
+  tests:
+    type: rnd/tests
+    many: true
+    mirror_of: covers
+    description: GENERATED — the tests that accept this change. Set `covers` on the test.
 display:
   nav:
     icon: git-pull-request

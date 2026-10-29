@@ -43,7 +43,7 @@ fields:
     description: >-
       Where this record's media lives — explainer videos, audio overviews, decks, infographics, screen recordings — as a FULL `${env:FILES_FOLDER}/rnd/products/<this record's id>/media` template, never a machine path; `dt resolve` renders it. The bytes stay OUTSIDE the repo: an `assets` record is a small file the UI draws, this is megabytes for people to watch. What generated each piece, and against which corpus, goes in this record's body — a folder cannot say whether its media is still current.
   design_docs:
-    type: rnd/product-design-docs
+    type: rnd/design-docs
     many: true
     mirror_of: product
     description: GENERATED — the design docs of this product. Set `product` on the design doc.
@@ -57,6 +57,29 @@ fields:
     many: true
     mirror_of: product
     description: What users can do with this product — generated from `rnd/user-stories.product`.
+  design_system:
+    type: rnd/design-systems
+    description: The design system this product ships under. Several products may share one.
+  prototypes:
+    type: rnd/prototypes
+    many: true
+    mirror_of: product
+    description: GENERATED — the living mockups of this product. Set `product` on the prototype.
+  change_requests:
+    type: rnd/change-requests
+    many: true
+    mirror_of: products
+    description: GENERATED — what is wanted of this product. Set `products` on the change request.
+  issues:
+    type: rnd/issues
+    many: true
+    mirror_of: product
+    description: GENERATED — the defects filed against this product. Set `product` on the issue.
+  tests:
+    type: rnd/tests
+    many: true
+    mirror_of: product
+    description: GENERATED — the tests run against this product. Set `product` on the test.
   content:
     type: markdown
     body: true

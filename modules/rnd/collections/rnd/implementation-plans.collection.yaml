@@ -1,0 +1,106 @@
+# The plan is the BODY, in the writing-plans shape: a header (goal, architecture, tech stack, spec, global
+# constraints, review focus), then numbered tasks, each with its files, its interfaces and checkbox steps.
+# The header's one-line answers are also fields, so a list can show them and `spec` can mirror back.
+name: rnd/implementation-plans
+description: >-
+  How an agreed design gets built, task by task — written for an engineer who has not seen the codebase or the spec. The body is the plan: a header (goal, architecture, tech stack, spec, global constraints, review focus) and bite-sized tasks, each naming its files, the interfaces it consumes and produces, and checkbox steps with the exact test and command.
+use_when: >-
+  a design doc is agreed and the work spans more than one sitting — write the plan here before touching code, with `spec` pointing at the design it implements, and tick its steps as they land; asked "what is the plan for X", "which task are we on" or "what did the plan promise to test", read here. A design is `rnd/design-docs`; this is how to build it
+storage:
+  path: data/rnd/implementation-plans
+  format: md
+ids:
+  from: '{{ created | date }}--{{ name | slug }}'
+  pattern: ^\d{4}-\d{2}-\d{2}--[a-z0-9-]+$
+fields:
+  name:
+    type: string
+    required: true
+    description: The feature being built — the plan's title reads `<name> Implementation Plan`.
+  goal:
+    type: string
+    description: One sentence on what this builds.
+  architecture:
+    type: string
+    description: Two or three sentences on the approach.
+  tech_stack:
+    type: string
+    many: true
+    examples: ['node 20', 'node:test', 'js-yaml']
+    description: The key technologies and libraries, one per entry.
+  spec:
+    type: rnd/design-docs
+    description: The design doc this plan implements. The plan argues from the spec, so executors read both.
+  product:
+    type: rnd/products
+    description: The product the plan builds a piece of.
+  repo:
+    type: repos
+    description: The repository the work lands in.
+  branch:
+    type: string
+    description: The branch or worktree the plan is executed on.
+  global_constraints:
+    type: string
+    many: true
+    description: The spec's project-wide requirements — version floors, dependency limits, naming and copy rules, platform requirements — one per entry, values copied verbatim. Every task implicitly includes them.
+  review_focus:
+    type: string
+    many: true
+    description: The input classes or failure modes the spec implies but no task's tests would otherwise exercise, most likely to bite first — each named with the behaviour a reasonable person expects, and each pinned by a test in the task that owns the code.
+  execution:
+    type: string
+    enum: [subagent-driven, native]
+    description: '`subagent-driven` — a fresh agent implements each task and a fresh reviewer gates it; `native` — one session implements every task, then one whole-branch review. Chosen by the person who approves the plan.'
+  status:
+    type: string
+    default: draft
+    enum: [draft, approved, in-progress, done, abandoned]
+    description: '`approved` means the plan was reviewed and an execution was chosen; `done` means every task landed and its tests ran green on the running system.'
+  tasks_total:
+    type: integer
+    description: How many tasks the plan has.
+  tasks_done:
+    type: integer
+    description: How many have landed, tests green and committed — the progress marker; there is no separate run record.
+  content:
+    type: markdown
+    body: true
+    description: The plan itself, in the writing-plans shape — the header sections, then `### Task N` blocks with **Files**, **Interfaces** and `- [ ]` steps, each step one action with a checkable result.
+  tags:
+    type: string
+    many: true
+    examples: ['onboarding', 'release:v2']
+    pattern: ^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$
+    description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
+  author:
+    type: string
+    examples: ['agents/claude-code', 'scripts/read-git@2']
+    pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
+    description: >-
+      Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
+  creation_context:
+    type: string
+    description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+  source:
+    type: string
+    description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…> · migration:<id>.'
+  confidence:
+    type: string
+    default: normal
+    enum: [low, normal, high]
+    description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
+display:
+  nav:
+    icon: tasklist
+    order: 35
+  list:
+    columns:
+      - name
+      - spec
+      - status
+      - tasks_done
+      - tasks_total
+      - last_modified
+  record:
+    badge: status

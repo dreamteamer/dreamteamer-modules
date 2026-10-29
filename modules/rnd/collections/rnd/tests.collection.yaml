@@ -1,0 +1,105 @@
+# An ENTITY keyed by product and key: a test is run again and again, so its id never carries a day.
+# `covers` is what the test PROVES, and the mirror on each covered record answers "is this covered".
+name: rnd/tests
+description: >-
+  A test case or test plan against a product — what it exercises (a screen, a story, a change request, an issue), the steps, what is expected, and the last result. `status` is the last verdict, never a hope.
+use_when: >-
+  a capability has to be PROVED rather than claimed — write the case here before calling a story done or an issue fixed, point `covers` at what it proves, and record each run on `last_run` and `status`; asked "what is failing", "is this story covered" or "what does the acceptance plan hold", list here
+storage:
+  path: data/rnd/tests
+  format: md
+ids:
+  from:
+    - '{{ product | basename }}/{{ key }}'
+    - '{{ key }}'
+  pattern: ^([a-z0-9][a-z0-9-]*/)?[a-z0-9][a-z0-9-]*$
+fields:
+  key:
+    type: string
+    required: true
+    pattern: ^[a-z0-9][a-z0-9-]*$
+    description: The Latin handle that becomes the id's tail — `sign-in-otp-expired`, `acceptance-plan-v1`. Lowercase, hyphenated.
+  name:
+    type: string
+    required: true
+    description: The test in one line — what it proves, not how.
+  description:
+    type: string
+    description: One line of context for a list view.
+  kind:
+    type: string
+    default: manual
+    enum: [unit, integration, e2e, manual, acceptance]
+    description: '`unit`, `integration` and `e2e` run from code (`runner` says how); `manual` is a person following `steps`; `acceptance` is the plan a client signs off against — usually several cases in one record.'
+  product:
+    type: rnd/products
+    description: The product under test — also the id's leading segment.
+  screen:
+    type: rnd/screens
+    description: The screen this test exercises, when it is one screen.
+  covers:
+    type: [rnd/user-stories, rnd/change-requests, rnd/issues]
+    many: true
+    description: What this test PROVES — the stories it demonstrates, the change requests it accepts, the issues it regresses. Each of those lists its tests back.
+  repo:
+    type: repos
+    description: The repo the automated test lives in.
+  runner:
+    type: string
+    examples: ['npm test -- --grep "otp expired"']
+    description: The one command that runs it, for an automated kind. Empty for a manual test.
+  steps:
+    type: markdown
+    description: What to do, numbered, from a stated starting state. For an automated test, where the code is.
+  expected:
+    type: markdown
+    description: What must be observed for the test to pass — specific enough that two people would agree.
+  status:
+    type: string
+    default: planned
+    enum: [planned, passing, failing, flaky, retired]
+    description: 'The LAST verdict. `planned` never ran; `flaky` passed and failed on the same build; `retired` no longer applies and is kept for the record. Set it from a run, never from reading the code.'
+  last_run:
+    type: datetime
+    description: When it last ran — the moment `status` was last true.
+  content:
+    type: markdown
+    body: true
+    description: The notes — environment, fixtures, the runs that changed `status`, and why a failing test is still failing.
+  tags:
+    type: string
+    many: true
+    examples: ['onboarding', 'release:v2']
+    pattern: ^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$
+    description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
+  author:
+    type: string
+    examples: ['agents/claude-code', 'scripts/read-git@2']
+    pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
+    description: >-
+      Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
+  creation_context:
+    type: string
+    description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+  source:
+    type: string
+    description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…> · migration:<id>.'
+  confidence:
+    type: string
+    default: normal
+    enum: [low, normal, high]
+    description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
+display:
+  nav:
+    icon: pass
+    order: 47
+  list:
+    columns:
+      - name
+      - product
+      - kind
+      - status
+      - last_run
+    sort: status
+  record:
+    badge: status

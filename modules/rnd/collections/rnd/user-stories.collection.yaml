@@ -43,8 +43,8 @@ fields:
       - in-progress
       - done
     description: Where the story stands. This is the progress marker for the slice — there is no separate run record.
-  product-design-doc:
-    type: rnd/product-design-docs
+  design_doc:
+    type: rnd/design-docs
     description: The design this story implements a piece of.
   product:
     type: rnd/products
@@ -108,6 +108,11 @@ fields:
     type: string
     description: Source record and section locators.
     many: true
+  tests:
+    type: rnd/tests
+    many: true
+    mirror_of: covers
+    description: GENERATED — the tests that prove this story. Set `covers` on the test.
 display:
   nav:
     icon: comment

@@ -2,7 +2,7 @@ name: rnd/draft-docs
 description: >-
   A working document still being written — the scratch space anything longer than a record starts in, and stays in until it becomes something else.
 use_when: >-
-  anything longer than a record is being written and is not yet a design doc or a research doc — start it here, and move it out when it becomes one of those; "where is the draft of X" is a list here. An implementation plan is a draft here until what it plans has shipped
+  anything longer than a record is being written and is not yet a design doc or a research doc — start it here, and move it out when it becomes one of those; "where is the draft of X" is a list here. An implementation plan is not a draft: it is an `rnd/implementation-plans` record from its first line
 storage: {path: data/rnd/draft-docs, format: md, suffix: draft}
 ids:
   from: "{{ created | date }}--{{ name | slug }}"

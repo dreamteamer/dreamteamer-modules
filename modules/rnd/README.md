@@ -28,17 +28,38 @@ is worse than a string that stays greppable.
 **No design skill ships here.** A prototype record is the brief and the pointer; how the mockup gets
 drawn is the harness's business.
 
-**Specs and plans are records.** A brainstormed design is a `product-design-docs` record; the plan that
-implements it is a `draft-docs` record until it ships, so the R&D paper trail is searchable with the
-same verbs as everything else.
+**Specs and plans are records.** A brainstormed design is a `design-docs` record; the plan that
+implements it is an `implementation-plans` record whose `spec` points at the design, its body in the
+writing-plans shape (a header of goal, architecture, tech stack, global constraints and review focus,
+then tasks with files, interfaces and checkbox steps). The R&D paper trail is searchable with the same
+verbs as everything else.
+
+**A review is a record, and so is each thing it finds.** `rnd/reviews` holds one review of a design, a
+prototype, a screen, a plan or a change in a repo, with its verdict; `rnd/review-findings` holds one
+problem per record, stored in its review's folder, with `severity`, `location`, a `failure_scenario` and
+a `status` tracked to `fixed`, `wontfix` or `duplicate`. A finding that becomes work links the
+`issues` or `change-requests` record that carries it.
+
+**What is built is proved and styled by records too.** `rnd/tests` names what each test `covers` (a
+story, a change request, an issue), and each of those lists its tests back. `rnd/design-systems` is a
+folder per system — `index.md` is the spec, the designer's files sit beside it verbatim — and products
+and design docs name the `design_system` they ship under.
 
 **A reference is evidence, not a design.** `rnd/references` holds what was studied — a competitor's
 surface, a recording, a standard — and its `prd` is written as the PROMPT that would regenerate it, with
-no opinion in it; judgement goes in the body. Our design is the `product-design-docs` record that cites
+no opinion in it; judgement goes in the body. Our design is the `design-docs` record that cites
 it in `references`, in our `branding`; the clickable thing is the `prototypes` record whose `design_doc`
 points back. `plan` on the design doc is a `<collection>/<id>` string — `projects/<id>` where the plan
 module is installed. The chain is bound, so `dt next` on a design doc names the missing hop, and
 `building-from-references` is the procedure. ffmpeg is the one binary this module shells out to
 (`extract-frames.mjs`), and `npx dt-setup doctor` says whether it is there.
+
+## 0.2.0 — migrating from 0.1.0
+
+`rnd/product-design-docs` is renamed `rnd/design-docs` (records under `data/rnd/design-docs/`, suffix
+`.design-doc.md`), and every link to a design doc is spelled `design_doc`: `screens.product_design_doc`
+and `user-stories.product-design-doc` are renamed. Move the files, rename the two keys and rewrite
+`rnd/product-design-docs/<id>` references to `rnd/design-docs/<id>`, then `dt compile` and `dt check`.
+An overlay of the old collection is renamed with it. Everything else in 0.2.0 is additive.
 
 Product planning includes `rnd/product-user-personas` (user roles, separate from research panels), `rnd/user-journeys` (typed cross-product journeys) and `rnd/change-requests` (explicit source-grounded change decisions). User stories retain their legacy journey handle and add typed journeys, personas, change requests and acceptance evidence.

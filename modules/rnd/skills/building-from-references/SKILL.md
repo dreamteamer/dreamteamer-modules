@@ -1,19 +1,19 @@
 ---
 name: building-from-references
-description: use when something should be built "like THAT" — a competitor's product, a screen recording, a design pattern or a spec arrives and a product of ours must be defined against it; when a product-design-doc needs its PRD written from references and branding; when a prototype must exist, be deployed and iterated on feedback; when a design is ready to become a project plan. The mechanics behind /ingest-reference, /write-reference-prd, /draft-prd, /build-prototype, /iterate-prototype and /plan-project — a software factory that runs reference → PRD → prototype → plan → materialised repo, each hop a field `dt next` can read.
+description: use when something should be built "like THAT" — a competitor's product, a screen recording, a design pattern or a spec arrives and a product of ours must be defined against it; when a design doc needs its PRD written from references and branding; when a prototype must exist, be deployed and iterated on feedback; when a design is ready to become a project plan. The mechanics behind /ingest-reference, /write-reference-prd, /draft-prd, /build-prototype, /iterate-prototype and /plan-project — a software factory that runs reference → PRD → prototype → plan → materialised repo, each hop a field `dt next` can read.
 ---
 
 # building from references
 
 **core principle:** a reference is EVIDENCE, a design doc is a DECISION, a prototype is a CLAIM anyone
 can click, a plan is a COMMITMENT. Each is a record, each hop between them is a field, and
-`dt next rnd/product-design-docs/<id>` says which hop is missing. Nothing here is a workflow entity —
+`dt next rnd/design-docs/<id>` says which hop is missing. Nothing here is a workflow entity —
 the record's own state is the progress marker.
 
 ## the chain
 
 ```
-rnd/references ──references[]──▶ rnd/product-design-docs ◀──design_doc── rnd/prototypes
+rnd/references ──references[]──▶ rnd/design-docs ◀──design_doc── rnd/prototypes
      prd (a prompt)                content (the PRD) · branding            live_url · iteration
                                           │ plan
                                           ▼
@@ -63,7 +63,7 @@ needs that it lacks. Keep the two apart: a prompt with opinions in it regenerate
 
 ## 3. draft-prd — our design, against the references, in our brand
 
-A `product-design-docs` record with `product`, `references[]` and `branding` set and an empty body is
+A `design-docs` record with `product`, `references[]` and `branding` set and an empty body is
 a PRD waiting to be written. Read every cited reference's `prd` AND body, the product's page, the
 workspace's own notes on the audience, and write the design: what we build, for whom, which reference
 behaviours we adopt, which we reject and why, what we add that no reference has. `branding` is short
@@ -101,8 +101,10 @@ Every reviewer round: a dated `## iteration N — <date> — <who>` section in t
 
 When the prototype is agreed, the design is planned in whatever this workspace plans with — a
 `projects` record with its activities and gates, where the plan module is installed — and `plan` on
-the design doc names it as `<collection>/<id>`. A workspace without the plan module has no plan
-collection, so `plan` stays empty there and the design doc is done at the prototype. Materialising is the
+the design doc names it as `<collection>/<id>`. The engineering plan — tasks, files, interfaces and
+checkbox steps for whoever builds it — is an `rnd/implementation-plans` record whose `spec` is this
+design doc; where no plan module is installed, `plan` names that record instead. Without either, `plan`
+stays empty and the design doc is done at the prototype. Materialising is the
 plan's business (a repo, a `repos` record, the first commit); this doc is done when `plan` is set.
 
 ## common mistakes

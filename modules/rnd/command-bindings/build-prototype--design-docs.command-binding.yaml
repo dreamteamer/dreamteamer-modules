@@ -1,5 +1,5 @@
 command: commands/build-prototype
-collection: collections/rnd/product-design-docs
+collection: collections/rnd/design-docs
 scope: record
 available_when:
   content:

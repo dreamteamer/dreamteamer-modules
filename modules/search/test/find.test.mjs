@@ -114,7 +114,7 @@ describe('the collection an expansion filters', () => {
 	test('comes from the records that CARRY the agreed reference, not from the first hit', () => {
 		const carried = [
 			{ ref: null, collection: 'rnd/draft-docs' },          // ← the first hit carries no reference
-			{ ref: null, collection: 'rnd/product-design-docs' },
+			{ ref: null, collection: 'rnd/design-docs' },
 			{ ref: 'repos/ext', collection: 'rnd/issues' },
 			{ ref: 'repos/ext', collection: 'rnd/issues' },
 			{ ref: 'repos/eng', collection: 'rnd/issues' },

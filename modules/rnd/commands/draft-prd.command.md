@@ -1,7 +1,7 @@
 ---
 name: draft-prd
-description: write a product-design-doc's PRD from the references it cites and the branding it declares
-argument-hint: <rnd/product-design-docs/id>
+description: write a design doc's PRD from the references it cites and the branding it declares
+argument-hint: <rnd/design-docs/id>
 ---
 load the `building-from-references` skill (section 3). for $ARGUMENTS: read `product`, every record in
 `references` (both `prd` and body), `branding`, and the workspace's own notes on the audience; write the

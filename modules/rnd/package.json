@@ -1,6 +1,6 @@
 {
 	"name": "@dreamteamer/rnd",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"description": "What a workspace builds and investigates — products, design docs, stories, screens, prototypes, issues, features, research and persona panels.",
 	"license": "Apache-2.0",
 	"type": "module",
@@ -25,9 +25,10 @@
 		"namespaces": [
 			"rnd"
 		],
-		"description": "What a workspace builds and investigates: `products` and their `product-design-docs`, `user-stories`, `screens` and `prototypes`; `features` and `issues` per repo; `research-docs`, `open-questions` and `experiments`; `draft-docs`; `personas` scored against `persona-probes`; `references` to model on. `building-from-references` runs reference → PRD → prototype → plan, a field per hop for `dt next`.",
+		"description": "What a workspace builds and investigates: `products`, their `design-docs`, `implementation-plans`, `user-stories`, `screens`, `prototypes`, `design-systems` and `tests`; `reviews` and their `review-findings`; `features` and `issues` per repo; `research-docs`, `open-questions`, `experiments`, `draft-docs`; `personas` scored against `persona-probes`; `references` to model on.",
 		"engine": ">=0.33.0",
 		"peer_collections": [
+			"assets",
 			"companies",
 			"projects"
 		]

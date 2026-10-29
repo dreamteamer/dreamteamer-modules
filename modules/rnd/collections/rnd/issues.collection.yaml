@@ -92,6 +92,19 @@ fields:
     default: normal
     enum: [low, normal, high]
     description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
+  product:
+    type: rnd/products
+    description: The product it is a defect of, when it is known at the product level. `repo` says where in the code; either routes it.
+  change_requests:
+    type: rnd/change-requests
+    many: true
+    mirror_of: issue
+    description: GENERATED — the change requests this defect motivated. Set `issue` on the change request.
+  tests:
+    type: rnd/tests
+    many: true
+    mirror_of: covers
+    description: GENERATED — the tests that regress this defect. Set `covers` on the test.
 display:
   nav:
     icon: bug

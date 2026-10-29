@@ -1,7 +1,7 @@
 ---
 name: build-prototype
 description: build and deploy the first clickable prototype of a design doc — a `rnd/prototypes` record with a live URL
-argument-hint: <rnd/product-design-docs/id>
+argument-hint: <rnd/design-docs/id>
 ---
 load the `building-from-references` skill (section 4). for $ARGUMENTS: create the `rnd/prototypes`
 record (`design_doc`, `product`, `iteration: 1`, `entry`, `deploy` — the ONE command that refreshes the

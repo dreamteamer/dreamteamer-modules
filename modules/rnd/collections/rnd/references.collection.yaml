@@ -1,8 +1,8 @@
 name: rnd/references
 description: >-
-  A product, feature, flow or document worth modelling on — the thing a PRD is written AGAINST. The record holds what was observed (a recording, a screenshots folder, a URL), and `prd`: the reverse-engineered spec written as the PROMPT that would regenerate the reference. A reference is evidence for a design, never a design of ours — `product-design-docs.references` says which of ours it informed.
+  A product, feature, flow or document worth modelling on — the thing a PRD is written AGAINST. The record holds what was observed (a recording, a screenshots folder, a URL), and `prd`: the reverse-engineered spec written as the PROMPT that would regenerate the reference. A reference is evidence for a design, never a design of ours — `design-docs.references` says which of ours it informed.
 use_when: >-
-  a competitor's product, a screen recording, a design pattern or a document lands as "build something like THIS" — record it here FIRST (`/ingest-reference`), extract its screens, write its `prd`, and only then open the `product-design-docs` record that cites it; asked "what did we model X on", read here. Search before adding: one reference is cited by many design docs
+  a competitor's product, a screen recording, a design pattern or a document lands as "build something like THIS" — record it here FIRST (`/ingest-reference`), extract its screens, write its `prd`, and only then open the `design-docs` record that cites it; asked "what did we model X on", read here. Search before adding: one reference is cited by many design docs
 storage:
   path: data/rnd/references
   format: md
@@ -48,9 +48,9 @@ fields:
   prd:
     type: markdown
     description: >-
-      THE REVERSE-ENGINEERED SPEC, WRITTEN AS A PROMPT: the instructions that would make a builder regenerate this reference — audiences, screens, objects, flows, rules, states, copy conventions, what it deliberately lacks. Not a critique (that is the body) and not our design (that is a `product-design-docs` record citing this). Empty until `/write-reference-prd`.
+      THE REVERSE-ENGINEERED SPEC, WRITTEN AS A PROMPT: the instructions that would make a builder regenerate this reference — audiences, screens, objects, flows, rules, states, copy conventions, what it deliberately lacks. Not a critique (that is the body) and not our design (that is a `design-docs` record citing this). Empty until `/write-reference-prd`.
   design_docs:
-    type: rnd/product-design-docs
+    type: rnd/design-docs
     many: true
     mirror_of: references
     description: GENERATED — the design docs of ours that cite this reference. Set `references` on the design doc.

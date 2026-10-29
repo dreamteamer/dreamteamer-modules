@@ -1,0 +1,107 @@
+# One problem a review raised, kept under its review's id so a review's findings sit in one folder.
+# A finding that becomes work points at the `rnd/issues` or `rnd/change-requests` record that carries it.
+name: rnd/review-findings
+description: >-
+  One problem a review raised — the claim, where it is, how bad it is, the concrete scenario that goes wrong, and what became of it. Tracked from `open` to a final status on its own.
+use_when: >-
+  a review raises a problem — write one record per problem under its `review`, with `location` and `failure_scenario`, rather than a bullet in the review's body; asked "what is still open from that review" or "what did we decide about that comment", list here by `review` and `status`. When the fix is real work, file the `rnd/issues` or `rnd/change-requests` record and link it here
+storage:
+  path: data/rnd/review-findings
+  format: md
+ids:
+  from: '{{ review | basename }}/{{ key }}'
+  pattern: ^\d{4}-\d{2}-\d{2}--[a-z0-9-]+/[a-z0-9][a-z0-9-]*$
+fields:
+  key:
+    type: string
+    required: true
+    pattern: ^[a-z0-9][a-z0-9-]*$
+    description: The Latin handle that becomes the id's tail — `otp-expiry-unspecified`. Lowercase, hyphenated, unique within its review.
+  name:
+    type: string
+    required: true
+    description: The claim alone, in one line — what is wrong, not why it matters.
+  review:
+    type: rnd/reviews
+    required: true
+    description: The review that raised it — also the id's folder.
+  subject:
+    type: [rnd/design-docs, rnd/prototypes, rnd/screens, rnd/products, rnd/user-stories, rnd/user-journeys, rnd/change-requests, rnd/features, rnd/issues, rnd/research-docs, rnd/design-systems, rnd/tests, rnd/implementation-plans]
+    description: The record the finding is about, when it is narrower than the review's subject — one screen of a reviewed prototype, one story of a reviewed design.
+  location:
+    type: string
+    examples: ['src/auth/otp.ts:42', 'acceptance', 'empty state']
+    description: Where exactly — `file:line` for code, a field name for a record, a state or region for a screen.
+  severity:
+    type: string
+    default: minor
+    enum: [blocker, major, minor, nit]
+    description: '`blocker` stops the subject shipping; `major` is wrong in a way users meet; `minor` is wrong at the edges; `nit` is taste.'
+  category:
+    type: string
+    examples: ['correctness', 'spec-gap', 'contradiction', 'ux', 'accessibility', 'security', 'performance', 'copy']
+    description: The kind of problem, lowercase and hyphenated. Free, so each workspace keeps its own vocabulary; `dt values` shows it.
+  status:
+    type: string
+    default: open
+    enum: [open, accepted, fixed, wontfix, duplicate]
+    description: '`accepted` means agreed and not yet fixed; `fixed` is set from the change that fixed it, never from intent; `wontfix` keeps the reason in `resolution`.'
+  failure_scenario:
+    type: markdown
+    description: The concrete inputs or state, and the wrong outcome they produce — what makes the claim checkable.
+  evidence:
+    type: markdown
+    description: What shows it — a quoted line, a screenshot path, a test output, a source locator.
+  resolution:
+    type: string
+    description: What was done, or why nothing will be — and the change that did it.
+  issue:
+    type: rnd/issues
+    description: The issue this finding became, when fixing it is tracked as a defect.
+  change_request:
+    type: rnd/change-requests
+    description: The change request this finding became, when fixing it changes what was asked for.
+  duplicate_of:
+    type: rnd/review-findings
+    description: The earlier finding this repeats, when `status` is `duplicate`.
+  content:
+    type: markdown
+    body: true
+    description: Anything longer — the discussion, the alternatives considered, the reviewer's reasoning.
+  tags:
+    type: string
+    many: true
+    examples: ['onboarding', 'release:v2']
+    pattern: ^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$
+    description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
+  author:
+    type: string
+    examples: ['agents/claude-code', 'scripts/read-git@2']
+    pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
+    description: >-
+      Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
+  creation_context:
+    type: string
+    description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+  source:
+    type: string
+    description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…> · migration:<id>.'
+  confidence:
+    type: string
+    default: normal
+    enum: [low, normal, high]
+    description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
+display:
+  nav:
+    icon: comment-unresolved
+    order: 49
+  list:
+    columns:
+      - name
+      - review
+      - severity
+      - status
+      - category
+    sort: severity
+  record:
+    badge: status

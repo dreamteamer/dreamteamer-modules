@@ -1,0 +1,104 @@
+# A FOLDER per system: `index.md` carries these fields and the spec, and the designer's own files (a
+# DESIGN.md, a tokens stylesheet, brand images) sit beside it verbatim, so the delivery is never retyped.
+name: rnd/design-systems
+description: >-
+  A design system products ship under — tokens (palette, type, spacing, radius), the component inventory, the `assets` it draws and the brand voice — kept as a folder whose `index.md` is the spec and whose other files are the designer's delivery, verbatim. One system may serve several products.
+use_when: >-
+  a prototype, a screen or a design doc has to look and sound like one of OURS — read the product's `design_system` here before drawing anything; file a designer's delivery here as a folder before restyling anything, and change the system here rather than in every prototype that applies it
+storage:
+  path: data/rnd/design-systems
+  format: md
+  shape: folder
+  entry: index.md
+ids:
+  from:
+    - '{{ key }}'
+    - '{{ name | slug }}'
+  pattern: ^[a-z0-9][a-z0-9-]*$
+fields:
+  key:
+    type: string
+    pattern: ^[a-z0-9][a-z0-9-]*$
+    description: Optional Latin handle that becomes the id — set it when the name is not in Latin script, or is long.
+  name:
+    type: string
+    required: true
+    description: What the system is called — usually the brand or the product family.
+  description:
+    type: string
+    description: One line on what it is for and who uses it.
+  status:
+    type: string
+    default: draft
+    enum: [draft, active, retired]
+    description: '`active` is the system products are built to; `retired` is kept for the history of what shipped under it.'
+  source_url:
+    type: url
+    description: Where the master lives — a design file, a component catalogue, a tokens repo — when it is not this folder.
+  logo:
+    type: assets
+    description: The mark, as an `assets/logos/<id>` reference.
+  assets:
+    type: assets
+    many: true
+    description: Every other picture the system draws — icons, illustrations, avatars — as `assets` references.
+  fonts:
+    type: string
+    many: true
+    examples: ['Inter', 'Heebo']
+    description: The type families, in order of role — body first, then display, then mono.
+  tokens:
+    type: map
+    description: 'Design tokens as `name: value` — `color.primary: "#0057ff"`, `radius.card: 12px`. Flat and dotted, so a builder can read them straight into CSS variables. A delivered tokens FILE stays in the folder and is named in the body.'
+  brand_voice:
+    type: markdown
+    description: How the product SOUNDS — register, person, language and script direction, the words it uses and never uses. A copywriter's brief.
+  products:
+    type: rnd/products
+    many: true
+    mirror_of: design_system
+    description: GENERATED — the products built under this system. Set `design_system` on the product.
+  design_docs:
+    type: rnd/design-docs
+    many: true
+    mirror_of: design_system
+    description: GENERATED — the designs that ship under this system. Set `design_system` on the design doc.
+  content:
+    type: markdown
+    body: true
+    description: The spec — layout grid, elevation, motion, accessibility rules, components and their states — with the reasoning behind each decision, and which delivered file holds what.
+  tags:
+    type: string
+    many: true
+    examples: ['onboarding', 'release:v2']
+    pattern: ^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$
+    description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
+  author:
+    type: string
+    examples: ['agents/claude-code', 'scripts/read-git@2']
+    pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
+    description: >-
+      Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
+  creation_context:
+    type: string
+    description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+  source:
+    type: string
+    description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…> · migration:<id>.'
+  confidence:
+    type: string
+    default: normal
+    enum: [low, normal, high]
+    description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
+display:
+  nav:
+    icon: symbol-color
+    order: 46
+  list:
+    columns:
+      - name
+      - status
+      - products
+      - last_modified
+  record:
+    badge: status

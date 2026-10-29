@@ -70,8 +70,8 @@ fields:
     default: not-started
     enum: [not-started, in-progress, built, verified]
     description: "`built` means it renders in the prototype; `verified` means a regression check compared it against the reference and passed; set it from that check's result, never by reading the screen."
-  product_design_doc:
-    type: rnd/product-design-docs
+  design_doc:
+    type: rnd/design-docs
     description: The design doc this screen is specified in.
   product:
     type: rnd/products
@@ -109,6 +109,11 @@ fields:
     default: normal
     enum: [low, normal, high]
     description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
+  tests:
+    type: rnd/tests
+    many: true
+    mirror_of: screen
+    description: GENERATED — the tests that exercise this screen. Set `screen` on the test.
 display:
   nav:
     icon: window

@@ -1,9 +1,9 @@
-name: rnd/product-design-docs
+name: rnd/design-docs
 description: >-
   How a thing should work, decided — the design that implementation follows.
 use_when: >-
   how something should work is being decided — write the decision here before implementing, and read the existing doc before proposing a change to a product; a later recorded decision wins when they disagree. A brainstormed spec is a record here, not a file beside the code
-storage: {path: data/rnd/product-design-docs, format: md}
+storage: {path: data/rnd/design-docs, format: md}
 ids:
   from: "{{ created | date }}--{{ name | slug }}"
   pattern: "^\\d{4}-\\d{2}-\\d{2}--[a-z0-9-]+$"
@@ -19,7 +19,7 @@ fields:
     type: rnd/products
     description: The product this design is of. Empty for a design of the workspace itself or of a process.
   # THE FACTORY CHAIN starts here: references → this doc's design → a prototype → a plan. Each hop is a field,
-  # so `dt next rnd/product-design-docs/<id>` can say which hop is missing (the bindings on this collection).
+  # so `dt next rnd/design-docs/<id>` can say which hop is missing (the bindings on this collection).
   references:
     type: rnd/references
     many: true
@@ -35,11 +35,32 @@ fields:
     many: true
     mirror_of: design_doc
     description: GENERATED — the prototypes built from this design. Set `design_doc` on the prototype. A binding reads "non-empty" as "a prototype exists".
+  screens:
+    type: rnd/screens
+    many: true
+    mirror_of: design_doc
+    description: GENERATED — the screens this design specifies. Set `design_doc` on the screen.
+  user_stories:
+    type: rnd/user-stories
+    many: true
+    mirror_of: design_doc
+    description: GENERATED — the stories this design implements. Set `design_doc` on the story.
+  design_system:
+    type: rnd/design-systems
+    description: The design system this design ships under — what makes a prototype look like ours rather than like the reference. By convention the product's.
+  supersedes:
+    type: rnd/design-docs
+    description: 'The earlier design this one replaces. The earlier record stays, with `status: superseded`.'
+  superseded_by:
+    type: rnd/design-docs
+    many: true
+    mirror_of: supersedes
+    description: GENERATED — the later design that replaced this one. Set `supersedes` on the newer doc.
   media_folder:
     type: string
-    examples: ['${env:FILES_FOLDER}/rnd/product-design-docs/2026-09-10-grantee-portal/media']
+    examples: ['${env:FILES_FOLDER}/rnd/design-docs/2026-09-10-grantee-portal/media']
     description: >-
-      Where this record's media lives — explainer videos, audio overviews, decks, infographics, screen recordings — as a FULL `${env:FILES_FOLDER}/rnd/product-design-docs/<this record's id>/media` template, never a machine path; `dt resolve` renders it. The bytes stay OUTSIDE the repo: an `assets` record is a small file the UI draws, this is megabytes for people to watch. What generated each piece, and against which corpus, goes in this record's body — a folder cannot say whether its media is still current.
+      Where this record's media lives — explainer videos, audio overviews, decks, infographics, screen recordings — as a FULL `${env:FILES_FOLDER}/rnd/design-docs/<this record's id>/media` template, never a machine path; `dt resolve` renders it. The bytes stay OUTSIDE the repo: an `assets` record is a small file the UI draws, this is megabytes for people to watch. What generated each piece, and against which corpus, goes in this record's body — a folder cannot say whether its media is still current.
   content:
     type: markdown
     body: true
@@ -71,6 +92,11 @@ fields:
     default: normal
     enum: [low, normal, high]
     description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
+  implementation_plans:
+    type: rnd/implementation-plans
+    many: true
+    mirror_of: spec
+    description: GENERATED — the plans that build this design. Set `spec` on the plan.
 display:
   nav:
     icon: symbol-structure

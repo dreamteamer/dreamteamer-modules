@@ -36,7 +36,7 @@ fields:
     type: rnd/products
     description: Which product this is a prototype of.
   design_doc:
-    type: rnd/product-design-docs
+    type: rnd/design-docs
     # No `x-inverse` here: this side owns the relation, and the mirror is declared on the design doc
     # as `prototypes` with `x-inverse-of`. Declaring both makes compile warn on every run.
     description: The design doc this prototype realises — the hop from PRD to something clickable. `explores` stays for the looser "what is this poking at".
@@ -70,6 +70,11 @@ fields:
     default: normal
     enum: [low, normal, high]
     description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
+  screens:
+    type: rnd/screens
+    many: true
+    mirror_of: prototype
+    description: GENERATED — the screens this prototype implements. Set `prototype` on the screen.
 display:
   nav:
     icon: preview
