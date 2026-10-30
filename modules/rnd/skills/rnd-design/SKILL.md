@@ -1,0 +1,51 @@
+---
+name: rnd-design
+description: >-
+  use when a design is being brainstormed or written and the result has to be kept — "let's design X", a spec for a feature, a product or a process, superpowers:brainstorming, a change request that has no design yet. The design stage of the R&D lifecycle: the spec is an rnd/design-docs record, never a file under docs/.
+---
+
+# rnd-design
+
+## What you are doing
+
+You turn an idea into one `rnd/design-docs` record a builder can plan from without coming back to ask. You start from a product, or from a change request that has no design yet, and you leave a design doc in `draft` with its stories, its open questions and its decisions as records, queued for review.
+
+## Before you start
+
+```bash
+dt get rnd/products/<id>                                         # the product, and every design already decided for it
+dt list rnd/design-docs --filter product=rnd/products/<id>       # an active doc on the same ground is superseded, not ignored
+dt list rnd/open-questions --filter product=rnd/products/<id>    # what earlier work could not settle
+dt list rnd/research-docs                                        # what outside reading already settles
+dt list rnd/references                                           # the products this one is modelled on
+dt list decisions                                                # where the plan module is installed: choices already made
+```
+
+On a change request, `dt get rnd/change-requests/<id>` first. Its `description` is the ask. Its `design_docs` is where your doc goes.
+
+## Do this
+
+1. Ask before you build. One question at a time, the open one first: "walk me through the moment this kicks in." Plain words. Stop when you can describe the thing in two hundred words and the person says nothing is missing. If they say "just do it", say your how-it-gets-made choices in one line and go.
+2. Play it back as you go, two or three hundred words at a time. Mark a guess as a guess.
+3. Size it. A quick task: do it. A small change: describe it in chat and build. A project: this record.
+4. Write the record while the design is agreed, not after the plan:
+   ```bash
+   dt add rnd/design-docs --name "<what it is>" --product rnd/products/<id> --description "<one sentence>" --status draft
+   ```
+   The body is the design: intent and why; goals, non-goals, anti-goals; constraints; the how as the person decided it; what is left to the builder; a `## Decisions` section naming every alternative that lost. Set `references`, `branding` and `design_system` when they apply, and `supersedes` when it replaces an older doc — that one gets `status: superseded` in the same commit.
+5. Each capability seen from the user's side is a `rnd/user-stories` record with `design_doc` and `product`. Each screen the design names is a `rnd/screens` record with `design_doc`. Each question that reading more cannot settle is a `rnd/open-questions` record with `blocks` naming the doc. Never a "TBD" in the body.
+6. On a change request: `dt set rnd/change-requests/<id> design_docs=rnd/design-docs/<id>`.
+7. Read the doc once more as the builder who never saw the conversation. Every question they would ask is answered in the doc or becomes an open question.
+8. Commit by id, then queue the gate: `/rnd-review rnd/design-docs/<id>`.
+
+## Don't
+
+- Don't write the design to a file under docs/. A file is not a record, and the workspace cannot list it.
+- Don't put a choice in the body without the alternative it beat. "We use X" is a decision only when it says what X beat and why.
+- Don't offer a menu before the person has described it in their own words. Options steer.
+- Don't set the doc `active` yourself. The review does that.
+- Don't build. Reading is fine, and so is a spike you called throwaway. Everything else waits for the review.
+
+## Done when
+
+`rnd/design-docs/<id>` exists with `status: draft`, its stories and open questions point at it, the change request (if there was one) names it in `design_docs`, and `dt next rnd/design-docs/<id>` answers `/rnd-review`.

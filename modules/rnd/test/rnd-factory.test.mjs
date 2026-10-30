@@ -212,31 +212,32 @@ describe('0.2.0 — design docs, plans, reviews, tests and design systems', () =
 	});
 });
 
-describe('the superpowers bridge — one skill per hand-off, each naming the records it writes', () => {
+describe('the lifecycle stages — one plainly written skill each, to one contract', () => {
+	const STAGES = ['rnd-design', 'rnd-prototype', 'rnd-change-request', 'rnd-plan', 'rnd-implement', 'rnd-test', 'rnd-deploy'];
+	const HEADINGS = ['## What you are doing', '## Before you start', '## Do this', "## Don't", '## Done when'];
 	const skill = (id) => fs.readFileSync(path.join(RND, 'skills', id, 'SKILL.md'), 'utf8');
-	const bridges = {
-		'writing-design-docs': { pairs: ['superpowers:brainstorming'], writes: ['rnd/design-docs', 'rnd/user-stories', 'rnd/open-questions'] },
-		'writing-implementation-plans': { pairs: ['superpowers:writing-plans'], writes: ['rnd/implementation-plans', 'rnd/tests'] },
-		'executing-implementation-plans': { pairs: ['superpowers:executing-plans', 'superpowers:subagent-driven-development'], writes: ['rnd/implementation-plans', 'rnd/tests', 'rnd/issues'] },
-		'recording-reviews': { pairs: ['superpowers:requesting-code-review', 'superpowers:receiving-code-review'], writes: ['rnd/reviews', 'rnd/review-findings'] },
-	};
-	for (const [id, { pairs, writes }] of Object.entries(bridges)) {
-		test(`${id}: its name is its folder, and its description names the superpowers skill it pairs with`, () => {
+	const shipped = (c) => fs.existsSync(path.join(RND, `collections/${c}.collection.yaml`));
+	for (const id of [...STAGES, 'recording-reviews']) {
+		test(`${id}: its name is its folder, and the five headings come in order`, () => {
 			const text = skill(id);
 			const fm = yaml.load(text.match(/^---\n([\s\S]*?)\n---/)[1]);
 			assert.equal(fm.name, id);
-			for (const p of pairs) assert.ok(fm.description.includes(p), `${id} description does not name ${p}`);
+			const at = HEADINGS.map((h) => text.indexOf(`\n${h}\n`));
+			for (let i = 0; i < at.length; i++) assert.ok(at[i] > 0, `${id} lacks "${HEADINGS[i]}"`);
+			for (let i = 1; i < at.length; i++) assert.ok(at[i] > at[i - 1], `${id}: "${HEADINGS[i]}" comes before "${HEADINGS[i - 1]}"`);
 		});
-		test(`${id}: every collection it says it writes is a collection here`, () => {
+		test(`${id}: under 120 lines, carries its own procedure, and every rnd collection it names is shipped`, () => {
 			const text = skill(id);
-			for (const c of writes) {
-				assert.ok(text.includes(c), `${id} does not mention ${c}`);
-				assert.ok(fs.existsSync(path.join(RND, `collections/${c}.collection.yaml`)), `${c} is not shipped`);
-			}
+			assert.ok(text.split('\n').length <= 120, `${id} is ${text.split('\n').length} lines`);
+			assert.doesNotMatch(text, /load superpowers:\S+ and follow/i, 'the bridge is retired: the skill carries the steps');
+			for (const c of new Set([...text.matchAll(/\brnd\/([a-z-]+)\b/g)].map((m) => `rnd/${m[1]}`))) assert.ok(shipped(c), `${id} names ${c}, which is not shipped`);
 		});
 	}
-	test('each bridge overrides the file location the superpowers skill would use', () => {
-		for (const id of ['writing-design-docs', 'writing-implementation-plans']) assert.match(skill(id), /never a (markdown )?file under docs\//);
+	test('the three bridge skills are gone', () => {
+		for (const id of ['writing-design-docs', 'writing-implementation-plans', 'executing-implementation-plans']) assert.ok(!fs.existsSync(path.join(RND, 'skills', id)), `${id} still ships`);
+	});
+	test('building-from-references hands prototypes to rnd-prototype instead of restating them', () => {
+		assert.match(skill('building-from-references'), /rnd-prototype/);
 	});
 	test('the package ships the skills folder', () => {
 		const pkg = JSON.parse(fs.readFileSync(path.join(RND, 'package.json'), 'utf8'));

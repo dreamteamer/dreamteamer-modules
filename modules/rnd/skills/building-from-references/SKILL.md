@@ -78,24 +78,15 @@ must render, and `source` saying why it exists. A `scope-required` screen is the
 screenshots misses. Each `rnd/user-stories` record names the `screen` it runs through, and `journey`
 plus `step` order the stories into flows. "What is left to build" is then a filter on `build_status`.
 
-## 4. build-prototype — clickable from iteration 1, deployed from iteration 1
+## 4 and 5. build-prototype, iterate-prototype — the rnd-prototype skill
 
-Create the `rnd/prototypes` record with `design_doc`, `product`, `iteration: 1`, `entry`, and
-`deploy` — the ONE command that refreshes `live_url`. Build the thinnest thing a reviewer can click
-through; fake everything behind the screen and say so in the body ("what it deliberately fakes").
-Deploy it, set `live_url`, and hand the reviewer the URL, not a screenshot. A prototype without a
-`live_url` is a sketch: set `status: sketch` until it deploys. The binding's exit reads only that a
-prototype record exists, so check `live_url` yourself before you call this hop done.
-
-**Benchmark before iterating.** Against every cited reference: a table of screens × capabilities,
-theirs · ours, with the frame or URL behind each cell. It goes in the prototype's body under a dated
-heading, and it is what the next iteration is FOR.
-
-## 5. iterate-prototype — feedback is dated, the number goes up
-
-Every reviewer round: a dated `## iteration N — <date> — <who>` section in the body with what was said
-(verbatim where it matters), what changed, what was declined and why; `iteration` bumped; `deploy` run;
-`live_url` unchanged. Rapid means the loop is minutes, not a sprint — which is why `deploy` is one line.
+`/build-prototype` and `/iterate-prototype` are the prototype stage of the lifecycle, and the
+`rnd-prototype` skill owns the procedure: the record with `entry` and `deploy`, the thinnest
+clickable thing in the design's branding, `live_url` from a deploy you watched, and a dated
+`## iteration N` section per round of feedback. Load it; nothing here restates it. One thing this
+chain adds: before the first iteration, benchmark against every cited reference — a table of
+screens and capabilities, theirs and ours, with the frame or URL behind each cell — in the
+prototype's body under a dated heading. That table is what the next iteration is for.
 
 ## 6. plan-project — the design becomes a commitment, elsewhere
 
