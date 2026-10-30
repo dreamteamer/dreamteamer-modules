@@ -42,13 +42,11 @@ npx dt commit tasks/2026-07-25--review-the-q3-roadmap
 - **work owed by someone outside the workspace** (a client, a contact) — name the owner in the body
   ("**Sam →** send the benchmark") and prefer one of your own follow-up tasks ("chase Sam for the
   benchmark"). A task nobody in this workspace can act on is a note, not a task.
-- **lane** — optional, a short display-ready label for the domain of the work (`CRM`, `Finance`,
-  `R&D`). The board bands its rows by the raw value, so reuse the workspace's exact spelling:
-  `finance` and `Finance` are two lanes. Infer it from the task's actual work, not from where it was
-  surfaced, and leave it empty when the domain is unclear — the board's unassigned pile surfaces
-  the residue. Quote `'R&D'` on the command line.
-- **tags** — the sub-domain inside a lane (`client:northwind`, `decision`). A lane is the axis above
-  tags, not a replacement for them.
+- **tags** — free labels, lowercase and hyphenated: the domain the task is about (`crm`, `finance`)
+  and anything narrower (`client:northwind`, `decision`). Infer the domain from the task's actual
+  work, not from where it was surfaced, and reuse the tags the workspace already has —
+  `npx dt list tasks --filter tags=crm` finds one domain's tasks. Leave it out when the domain is
+  unclear rather than inventing a bin.
 - **start** — optional scheduled start as an ISO 8601 datetime with timezone, for example
   `--start '2026-07-30T09:00:00+03:00'`. Capture an agreed start, never invent it from
   creation time or status. Together with `due`, this supplies the Gantt schedule.
@@ -80,5 +78,5 @@ reason in the body. The record of having decided not to is worth more than a cle
 | `due: next friday` or `due: 31/07/2026` | `format: date` means `YYYY-MM-DD`. Compute the real date. |
 | assuming `add` committed | it wrote to disk only. Publish with a scoped `npx dt commit tasks/<id>`. |
 | deleting a task that became moot | set `status=closed` with the reason in the body. |
-| `--lane finance` beside an existing `Finance` | two lanes on the board. Reuse the exact spelling. |
-| reaching for a lane when unsure | a lane names a real domain, not a bin. Leave it empty. |
+| `--tags Finance` or `--tags "client: northwind"` | tags are lowercase and hyphenated, `key:value` with no space. The write is refused. |
+| a new tag for a domain that already has one | `finance` beside `money` splits one domain in two. List the existing tags first. |

@@ -19,7 +19,6 @@ display:
     columns:
       - name
       - assignee
-      - lane
       - status
       - urgent
       - due

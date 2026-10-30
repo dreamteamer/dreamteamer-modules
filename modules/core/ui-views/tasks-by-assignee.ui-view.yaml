@@ -11,7 +11,7 @@ display:
     order: 3
   list:
     layout: table
-    columns: [name, lane, status, urgent, due]
+    columns: [name, status, urgent, due, tags]
     sort: due
     options:
       group_by: assignee

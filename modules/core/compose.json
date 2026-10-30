@@ -29,6 +29,10 @@
 			"from": "projects/bin/check-records.mjs",
 			"hash": "sha256:be5f797d75b305153883f4124c6021ea205727dd0b9e9760797ea2a322b55d4f"
 		},
+		"bin/tasks-migrate-lanes-to-tags.mjs": {
+			"from": "tasks/bin/migrate-lanes-to-tags.mjs",
+			"hash": "sha256:a622ae9247cc727c86dd171fd667e909d1bd916b7a60bc1642888df753e7a891"
+		},
 		"bin/users-check-records.mjs": {
 			"from": "users/bin/check-records.mjs",
 			"hash": "sha256:0f593d633a34c2c85f62f9a1e4062aaad8a4e9b85e0fffb9d2d3fc7e3f39ca2b"
@@ -135,7 +139,7 @@
 		},
 		"collections/tasks/tasks.collection.yaml": {
 			"from": "tasks/collections/tasks.collection.yaml",
-			"hash": "sha256:661406710a97b0a165e3919c957adcaa90b8911bb563e361d0c95693bcf65f8a"
+			"hash": "sha256:8dcf172613db5e3fc62a6c36ba12f08330828795b05e0fdd37d009d465bead00"
 		},
 		"collections/tasks/users.collection.yaml": {
 			"from": "tasks/collections/users.collection.yaml",
@@ -270,7 +274,7 @@
 			"hash": "sha256:99e559688ba917289e6021fac93f1cba9b0b5affa863be2cad0de8ced9d8e712"
 		},
 		"lib/workspace-root.mjs": {
-			"from": "workflows/lib/workspace-root.mjs",
+			"from": "tasks/lib/workspace-root.mjs",
 			"hash": "sha256:4b55f5ee40052d49eb8bb2854dfccba39502d11061f06f8965a4a19aaf503007"
 		},
 		"skills/analyzing-meetings/SKILL.md": {
@@ -367,7 +371,7 @@
 		},
 		"skills/working-with-tasks/SKILL.md": {
 			"from": "tasks/skills/working-with-tasks/SKILL.md",
-			"hash": "sha256:3ae0939868c2e7a0117152cad613977332305e659fb923f222f581cec5053d11"
+			"hash": "sha256:80ed14d17f8abf00d2c8e3aa3e68a76884e4432755b1b52f91b090bc99b511e9"
 		},
 		"src/check.js": {
 			"from": "files/src/check.js",
@@ -439,7 +443,7 @@
 		},
 		"ui-views/inbox.ui-view.yaml": {
 			"from": "tasks/ui-views/inbox.ui-view.yaml",
-			"hash": "sha256:868c5bfc7ee3675c62f736ed74744c62de1ef18b5a863ffb073febc9ffb9560e"
+			"hash": "sha256:076ee13cbbbeb8af03ec43576458404f03afcd9fd2860fcfb96839b564792948"
 		},
 		"ui-views/meetings-pipeline.ui-view.yaml": {
 			"from": "meeting-docs/ui-views/meetings-pipeline.ui-view.yaml",
@@ -455,11 +459,11 @@
 		},
 		"ui-views/tasks-board.ui-view.yaml": {
 			"from": "tasks/ui-views/tasks-board.ui-view.yaml",
-			"hash": "sha256:c57b0b6da69d5d35298f1c783f42cd88e711ce217e396f9539d07c12d9e12f64"
+			"hash": "sha256:c38fc50dfaf40140302f3885730ad90d05488eddfeeae2b063b68081503da988"
 		},
 		"ui-views/tasks-by-assignee.ui-view.yaml": {
 			"from": "tasks/ui-views/tasks-by-assignee.ui-view.yaml",
-			"hash": "sha256:6b0901697897e4aacb097144a37bc6cdbbcc119a43561761f7607c8b15f74d19"
+			"hash": "sha256:4509cad708becd0528256080f5f92067cef95c0a791ba59a95caf3b1f0046600"
 		},
 		"ui-views/tasks-mine.ui-view.yaml": {
 			"from": "tasks/ui-views/tasks-mine.ui-view.yaml",
