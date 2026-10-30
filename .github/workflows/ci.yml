@@ -2,7 +2,7 @@ name: ci
 
 on:
   push:
-    branches: [main, ci-speed]
+    branches: [main]
   pull_request:
 
 permissions:
@@ -51,28 +51,3 @@ jobs:
       # install IS the distribution smoke the old single package needed a separate step for.
       - name: tests
         run: node scripts/test.mjs --shard=${{ matrix.shard }}/4
-
-  # TEMPORARY, ci-speed only: the release.yml test steps, measured without pushing a tag.
-  release-selection:
-    if: github.ref == 'refs/heads/ci-speed'
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        module: [rnd, proofs, users]
-    name: release selection ${{ matrix.module }}
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - name: does this module's suite drive a browser
-        id: browser
-        run: echo "needed=$(node scripts/test.mjs --module=${{ matrix.module }} --needs-browser)" >> "$GITHUB_OUTPUT"
-      - name: chromium for the prototype harness
-        if: steps.browser.outputs.needed == 'true'
-        run: npx -y playwright-core install --with-deps chromium
-      - name: tests
-        run: node scripts/test.mjs --module=${{ matrix.module }}
