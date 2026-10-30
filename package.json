@@ -19,7 +19,8 @@
 	},
 	"dreamteamer": {
 		"disable": [
-			"modules/@dreamteamer/core"
+			"modules/@dreamteamer/core",
+			"modules/@dreamteamer/rnd"
 		],
 		"harnesses": [],
 		"gitignore_runtime_folder": true

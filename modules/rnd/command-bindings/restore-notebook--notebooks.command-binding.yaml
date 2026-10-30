@@ -1,0 +1,11 @@
+command: commands/restore-notebook
+collection: collections/notebooks
+scope: record
+# a record with no live copy is a spec waiting to be restored — the absence of the uuid IS the queue
+available_when:
+  notebook_id:
+    _empty: true
+done_when:
+  notebook_id:
+    _nempty: true
+description: rebuild this notebook on a Google account from its sources and chat configuration

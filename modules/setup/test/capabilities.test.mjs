@@ -8,7 +8,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { findWorkspace, installedModules, capabilities, worst, capState, envKeys, BUNDLE_FLOOR, OURS } from '../lib/capabilities.mjs';
+import { findWorkspace, installedModules, capabilities, worst, capState, envKeys, BUNDLE_FLOOR, OURS, originsOf, rootOf, binOf } from '../lib/capabilities.mjs';
 
 // the repo root
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', '..', '..');
@@ -282,8 +282,24 @@ describe('the wikis and notebooklm capabilities', () => {
 		assert.equal(check(capabilities(consumer({ gitignore: 'node_modules/\n' })), 'notebooklm', '.cache/ ignored')?.state, 'warn');
 		assert.equal(check(capabilities(consumer({ gitignore: 'node_modules/\n.cache/\n' })), 'notebooklm', '.cache/ ignored')?.state, 'ok');
 	});
-	test('the module switched off shows no wikis capability', () => {
-		assert.equal(cap(capabilities(consumer({ disable: ['modules/core', 'modules/wikis'] })), 'wikis'), undefined);
+	test('the module switched off shows no wikis capability — once rnd, which composes it, is off too', () => {
+		assert.equal(cap(capabilities(consumer({ disable: ['modules/core', 'modules/wikis', 'modules/rnd'] })), 'wikis'), undefined);
+	});
+	// rnd composes wikis and notebooklm (modules/rnd/compose.json), so a workspace with rnd alone has
+	// both capabilities, read from rnd's own package — the same stand-in core is for users or meetings.
+	test('rnd stands in for wikis and notebooklm: the capabilities exist, and resolve to rnd\'s root and prefixed bin', () => {
+		const ws = consumer({ disable: ['modules/core', 'modules/wikis', 'modules/notebooklm'] });
+		const mods = installedModules(ws);
+		assert.ok(!mods.has('wikis') && !mods.has('notebooklm') && mods.has('rnd'));
+		assert.deepEqual(originsOf(mods, 'rnd'), ['wikis', 'notebooklm']);
+		assert.equal(fs.realpathSync(rootOf(mods, 'wikis')), fs.realpathSync(path.join(ROOT, 'modules', 'rnd')));
+		assert.equal(path.basename(binOf(mods, 'wikis', 'wiki.mjs')), 'wikis-wiki.mjs');
+		assert.equal(path.basename(binOf(mods, 'notebooklm', 'notebook.mjs')), 'notebooklm-notebook.mjs');
+		assert.ok(fs.existsSync(binOf(mods, 'wikis', 'wiki.mjs')), 'the prefixed copy is shipped');
+		const caps = capabilities(ws);
+		assert.ok(cap(caps, 'wikis'), 'the wikis capability, from rnd');
+		assert.ok(cap(caps, 'notebooklm'), 'the notebooklm capability, from rnd');
+		assert.equal(check(caps, 'wikis', 'wikis folder')?.state, 'ok');
 	});
 	test('setup --yes declares the harness WITHOUT dropping the engine default, and appends .cache/', () => {
 		const ws = consumer({ gitignore: 'node_modules/\n' });

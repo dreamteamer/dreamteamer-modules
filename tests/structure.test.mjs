@@ -6,7 +6,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
-import { MODULES, CORE, ALL, OWNER, moduleIds, descriptorsOf, mixinsOf, targetsOf, fieldsOf, originsOf } from './helpers/descriptors.mjs';
+import { ROOT, MODULES, CORE, ALL, OWNER, moduleIds, descriptorsOf, mixinsOf, targetsOf, fieldsOf, originsOf, composed } from './helpers/descriptors.mjs';
 
 const KINDS = new Set(['collections', 'skills', 'agents', 'commands', 'command-bindings', 'ui-views', 'mixins']);
 const NON_SOURCE = new Set(['bin', 'src', 'lib', 'test', 'docs', 'scripts', 'node_modules']);
@@ -93,6 +93,13 @@ for (const m of modules) {
 				trail.pop();
 			};
 			for (const d of pkg.dreamteamer.dependencies ?? []) visit(folderOf(d));
+		});
+		// core and rnd are compositions: each copy is judged at its origin, and the module owns what its
+		// origins own — so an origin must be a module here, and every listed copy must be on disk.
+		test('a composed module names origins this repo ships, and carries every copy it lists', () => {
+			for (const o of origins) assert.ok(fs.existsSync(path.join(MODULES, o, 'package.json')), `${m} composes ${o}, which this repo does not ship`);
+			for (const f of composed(m)) assert.ok(fs.existsSync(path.join(ROOT, f)), `${f} is listed in ${m}/compose.json but absent — run node scripts/compose-core.mjs ${m}`);
+			for (const o of origins) assert.ok(!(pkg.dreamteamer?.dependencies ?? []).map(folderOf).includes(o), `${m} both composes and depends on ${o}`);
 		});
 		test('a declared peer is a collection some OTHER module provides (a peer nothing provides is a typo)', () => {
 			for (const p of pkg.dreamteamer.peer_collections ?? []) {

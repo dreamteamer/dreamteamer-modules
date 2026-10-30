@@ -1,7 +1,8 @@
 // THE DRIFT GATE — core is a composition, and a composition is only honest while every copy equals
 // its origin under the one declared rewrite. These tests recompute the copies from the origins and
 // compare them to what modules/core holds, so a descriptor edited in its small module and not
-// re-composed, or edited in core by hand, fails here before it ships.
+// re-composed, or edited in core by hand, fails here before it ships. The script is shared with rnd
+// (which composes wikis and notebooklm into an authored module), so every call here names core.
 import { test, describe } from 'node:test';
 import assert from 'node:assert';
 import fs from 'node:fs';
@@ -28,7 +29,7 @@ describe('the rewrite', () => {
 });
 
 describe('the composition', () => {
-	const { copies, manifest, owned } = compose();
+	const { copies, manifest, owned } = compose('core');
 	test('every copy in core equals its origin under the rewrite, and nothing listed is stale', () => {
 		const problems = [];
 		for (const [dest, { from, bytes }] of copies) {
@@ -44,13 +45,13 @@ describe('the composition', () => {
 		assert.deepEqual(JSON.parse(fs.readFileSync(path.join(CORE, 'package.json'), 'utf8')), manifest);
 	});
 	test('every shipped file of every origin is listed — a new file in an origin reaches core', () => {
-		for (const origin of spec.origins) for (const c of copiesOf(origin)) assert.ok(spec.files[c.dest], `${origin}/${c.rel} is not composed`);
+		for (const origin of spec.origins) for (const c of copiesOf(origin, 'core')) assert.ok(spec.files[c.dest], `${origin}/${c.rel} is not composed`);
 	});
-	test('no two origins land on one path', () => {
+	test('no two origins land on one path — unless the bytes are identical, which is the shared workspace-root helper', () => {
 		const seen = new Map();
-		for (const origin of spec.origins) for (const c of copiesOf(origin)) {
-			assert.ok(!seen.has(c.dest), `${c.dest}: ${seen.get(c.dest)} and ${origin}`);
-			seen.set(c.dest, origin);
+		for (const origin of spec.origins) for (const c of copiesOf(origin, 'core')) {
+			assert.ok(!seen.has(c.dest) || seen.get(c.dest).bytes.equals(c.bytes), `${c.dest}: ${seen.get(c.dest)?.origin} and ${origin}`);
+			if (!seen.has(c.dest)) seen.set(c.dest, { origin, bytes: c.bytes });
 		}
 	});
 	test('the manifest is the union of the origins: env, vars, the extension, the highest engine floor; peers minus what core owns', () => {
@@ -68,6 +69,6 @@ describe('the composition', () => {
 	test('--check exits 0 on the committed state', async () => {
 		const { main } = await import('../../../scripts/compose-core.mjs');
 		const log = console.log; console.log = () => {};
-		try { assert.equal(main(['--check']), 0); } finally { console.log = log; }
+		try { assert.equal(main(['core', '--check']), 0); } finally { console.log = log; }
 	});
 });

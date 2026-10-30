@@ -1,0 +1,7 @@
+name: wikis
+overlay: true
+fields:
+  notebooks:
+    type: notebooks
+    many: true
+    mirror_of: wikis

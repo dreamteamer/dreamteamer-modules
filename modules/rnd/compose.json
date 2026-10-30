@@ -1,0 +1,80 @@
+{
+	"origins": [
+		"wikis",
+		"notebooklm"
+	],
+	"files": {
+		"bin/notebooklm-notebook.mjs": {
+			"from": "notebooklm/bin/notebook.mjs",
+			"hash": "sha256:ea7af94fdbfcddc1a29e69b74387c3c50805b5ea3d78be8ad749a1ca1924f02c"
+		},
+		"bin/wikis-wiki.mjs": {
+			"from": "wikis/bin/wiki.mjs",
+			"hash": "sha256:4958d36295ceb516ef03ea75a032580a4b63531f8f781ec42599dcbf2118c9f8"
+		},
+		"collections/notebooklm/notebooks.collection.yaml": {
+			"from": "notebooklm/collections/notebooks.collection.yaml",
+			"hash": "sha256:441e75d3cc36ef13850a03c2004b84cf31556451f5624241bb2c465db7fd904f"
+		},
+		"collections/notebooklm/wikis.collection.yaml": {
+			"from": "notebooklm/collections/wikis.collection.yaml",
+			"hash": "sha256:3ccdc51fa8495242350b368efb0355466e744339f7ac15169ba60c8db9f74daa"
+		},
+		"collections/wikis/wikis.collection.yaml": {
+			"from": "wikis/collections/wikis.collection.yaml",
+			"hash": "sha256:38c13eb5b02f281c74622fd32f906040adb9e6f04c3ba766a521929a0142c885"
+		},
+		"command-bindings/capture-notebook-sources--notebooks.command-binding.yaml": {
+			"from": "notebooklm/command-bindings/capture-notebook-sources--notebooks.command-binding.yaml",
+			"hash": "sha256:514d374d219226a4b1305517565331c2f041fd24b3cace2c5e0a0050249b55c9"
+		},
+		"command-bindings/restore-notebook--notebooks.command-binding.yaml": {
+			"from": "notebooklm/command-bindings/restore-notebook--notebooks.command-binding.yaml",
+			"hash": "sha256:3d1fed1762d1885205116d5fb943120db9e4fcbd25b62115e3bc0c5d12b577f2"
+		},
+		"commands/capture-notebook-sources.command.md": {
+			"from": "notebooklm/commands/capture-notebook-sources.command.md",
+			"hash": "sha256:7c58c0193f8e2e3f1688e12fc11ce1054b6720a7bdb3092322159f8b78329ec1"
+		},
+		"commands/restore-notebook.command.md": {
+			"from": "notebooklm/commands/restore-notebook.command.md",
+			"hash": "sha256:e23536435970696fa55fb457f0a756b8c34217bf1c5806ba91158a6c6cfcebcb"
+		},
+		"lib/wiki.mjs": {
+			"from": "wikis/lib/wiki.mjs",
+			"hash": "sha256:c5e1e4d150e72fb6e66ea8af52657405923d2f4e4396bedc2624b57c96be182c"
+		},
+		"lib/workspace-root.mjs": {
+			"from": "wikis/lib/workspace-root.mjs",
+			"hash": "sha256:4b55f5ee40052d49eb8bb2854dfccba39502d11061f06f8965a4a19aaf503007"
+		},
+		"skills/exporting-to-notebooklm/SKILL.md": {
+			"from": "notebooklm/skills/exporting-to-notebooklm/SKILL.md",
+			"hash": "sha256:5fec70d4cdc9e80fa53edfb37de33defa2aa80698c2b3a058d97feaee6b7a8e9"
+		},
+		"skills/using-notebooklm/SKILL.md": {
+			"from": "notebooklm/skills/using-notebooklm/SKILL.md",
+			"hash": "sha256:16724e70d6f76e1ed00f001c31935d86003dd11c83bcee20bd43341415149756"
+		},
+		"skills/working-with-wikis/SKILL.md": {
+			"from": "wikis/skills/working-with-wikis/SKILL.md",
+			"hash": "sha256:239fdf577364f50ca972e223b76f5c743f0279cd83da35e079588c88418623d8"
+		},
+		"src/engine.js": {
+			"from": "notebooklm/src/engine.js",
+			"hash": "sha256:e02aa36f003e85605de4f5c7ffc4af3d6ab713cf4c01ce837ea4d42d4b40f97e"
+		},
+		"src/export.js": {
+			"from": "notebooklm/src/export.js",
+			"hash": "sha256:c782e4ebd755cd174837ccde5ab335e01084c794160f129263dffa3a8a399589"
+		},
+		"src/extension.js": {
+			"from": "notebooklm/src/extension.js",
+			"hash": "sha256:85da7cbc752a62985d65a428ed5eaf2f25aa81ef632c0d5242dccbd9893fbcf4"
+		},
+		"src/harness.js": {
+			"from": "notebooklm/src/harness.js",
+			"hash": "sha256:274f215729491b036f5d23b3bbe2c7850abb6753c0f3f1bc6d25082f6ac0e598"
+		}
+	}
+}

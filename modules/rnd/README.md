@@ -9,6 +9,19 @@ npm install @dreamteamer/rnd
 npx dreamteamer compile
 ```
 
+## wikis and notebooks ride along
+
+This package also carries `@dreamteamer/wikis` and `@dreamteamer/notebooklm`, composed in the way
+`@dreamteamer/core` is composed from the small modules: `compose.json` names the two origins and
+lists every copy with its hash, `scripts/compose-core.mjs rnd` in the modules repo regenerates them,
+and a test fails when a copy drifts from its origin. So one install brings the `wikis` collection and
+`working-with-wikis`, the `notebooks` collection with `/restore-notebook`, `/capture-notebook-sources`,
+`exporting-to-notebooklm` and `using-notebooklm`, the `dt notebooklm` verb (this package is the
+extension — `src/` is notebooklm's), and the `npx dt-wiki` and `npx dt-notebook` commands
+(`bin/wikis-wiki.mjs`, `bin/notebooklm-notebook.mjs`). A workspace that installs rnd must NOT also
+install `@dreamteamer/wikis` or `@dreamteamer/notebooklm`: two modules shipping `wikis` is a name
+collision, and the engine refuses the same extension verb twice.
+
 Fields that point at captured files (`reference_file`, `screenshots_folder`, `media_folder`) hold
 `${env:FILES_FOLDER}/…` templates. Declare `FILES_FOLDER` in your `package.json` `dreamteamer.vars`
 and set it in `.env` before `dt resolve` can render them.
@@ -77,7 +90,15 @@ them — but nothing here needs them installed.
 
 ## 0.3.0 — from 0.2.0
 
-Additive. `change-requests` gains `design_docs`, an `implementation_plans` mirror, `accepted_by`,
+rnd now composes `wikis` and `notebooklm` (above). A workspace that had `@dreamteamer/wikis` or
+`@dreamteamer/notebooklm` installed beside rnd uninstalls them — `npm uninstall @dreamteamer/wikis
+@dreamteamer/notebooklm`, then `npx dreamteamer compile` — and keeps its records, folders and
+`dreamteamer.harnesses` entry as they are: the collections, the commands and the `dt notebooklm` verb
+are the same, delivered from this package. A workspace that pointed at the origin's script by path
+(`node_modules/@dreamteamer/wikis/bin/wiki.mjs`) now names `node_modules/@dreamteamer/rnd/bin/wikis-wiki.mjs`;
+`npx dt-wiki` and `npx dt-notebook` are unchanged.
+
+Additive otherwise. `change-requests` gains `design_docs`, an `implementation_plans` mirror, `accepted_by`,
 `accepted_on`, `verified_on` and `deployed_on`; `implementation-plans` gains `change_request`, `issue`,
 `verified_on` and a `tests` mirror; `issues` lists its `implementation_plans`; `tests.covers` admits a
 plan and `tests.visibility` marks a held-out acceptance test; `reviews` gains `round` and

@@ -1,0 +1,14 @@
+command: commands/capture-notebook-sources
+collection: collections/notebooks
+scope: record
+# live but not yet restorable: a uuid with no source list. `restore` writes the list too, so a
+# restored record leaves this queue on its own.
+available_when:
+  notebook_id:
+    _nempty: true
+  sources:
+    _empty: true
+done_when:
+  sources:
+    _nempty: true
+description: write the live source list onto this record so it can be restored elsewhere

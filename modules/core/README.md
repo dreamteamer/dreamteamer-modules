@@ -15,7 +15,7 @@ npx dreamteamer compile
 This package is a COMPOSITION of the small official modules — assets, users, companies, contacts,
 engagements, tasks, projects, meetings, recordings, meeting-docs, files — plus what no small module
 has (below). Each descriptor, skill and command is authored in its small module and copied here by
-`scripts/compose-core.mjs` in the modules repo; `compose.json` lists every copy with its origin and
+`scripts/compose-core.mjs` in the modules repo (the same script composes `rnd`); `compose.json` lists every copy with its origin and
 hash, and a test fails when a copy differs. A collection copied from `contacts` sits under
 `collections/contacts/`, a script from `users/bin/` is `bin/users-<script>`; the one rewrite a copy
 undergoes is its package name, so `node node_modules/@dreamteamer/users/bin/check-records.mjs` reads

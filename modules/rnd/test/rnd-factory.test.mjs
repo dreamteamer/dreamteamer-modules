@@ -14,6 +14,10 @@ import { ffmpegArgs, parseArgs, main } from '../../../modules/rnd/skills/buildin
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', '..', '..');
 const RND = path.join(ROOT, 'modules', 'rnd');
 const load = (rel) => yaml.load(fs.readFileSync(path.join(RND, rel), 'utf8'));
+// rnd composes wikis and notebooklm (compose.json): a copy is judged in its origin's own tests, and the
+// gates below see only what rnd authors — the /rnd:… family, its bindings, its skills.
+const COPIES = new Set(Object.keys(JSON.parse(fs.readFileSync(path.join(RND, 'compose.json'), 'utf8')).files));
+const authored = (kind, f) => !COPIES.has(`${kind}/${f}`);
 
 describe('extract-frames — the ffmpeg plan', () => {
 	test('one frame every N seconds at the given width, height following', () => {
@@ -250,7 +254,7 @@ describe('the commands, the bindings and the agent — every entry names a skill
 	const commandsDir = path.join(RND, 'commands');
 	const commands = fs.readdirSync(path.join(commandsDir, 'rnd')).filter((f) => f.endsWith('.command.md')).map((f) => `rnd/${f.replace('.command.md', '')}`);
 	test('every command lives in the rnd folder — the family is one namespace — and the eight stage commands each name a skill folder that exists', () => {
-		assert.deepEqual(fs.readdirSync(commandsDir).filter((f) => f.endsWith('.command.md')), [], 'no command outside commands/rnd/');
+		assert.deepEqual(fs.readdirSync(commandsDir).filter((f) => f.endsWith('.command.md') && authored('commands', f)), [], 'no authored command outside commands/rnd/ — the composed notebooklm commands keep their own ids');
 		assert.equal(commands.length, 11, 'eight stages and the three reference-chain commands');
 		for (const c of STAGES) {
 			assert.ok(commands.includes(c), `${c} has no command file`);
@@ -263,7 +267,7 @@ describe('the commands, the bindings and the agent — every entry names a skill
 		}
 	});
 	const dir = path.join(RND, 'command-bindings');
-	const bindings = fs.readdirSync(dir).filter((f) => f.endsWith('.command-binding.yaml')).map((f) => ({ file: f, ...yaml.load(fs.readFileSync(path.join(dir, f), 'utf8')) }));
+	const bindings = fs.readdirSync(dir).filter((f) => f.endsWith('.command-binding.yaml') && authored('command-bindings', f)).map((f) => ({ file: f, ...yaml.load(fs.readFileSync(path.join(dir, f), 'utf8')) }));
 	test('eighteen bindings: three on the reference chain, fifteen on the lifecycle', () => {
 		assert.equal(bindings.length, 18);
 		assert.equal(bindings.filter((b) => STAGES.includes(b.command.replace(/^commands\//, ''))).length, 15);
@@ -355,7 +359,7 @@ describe('0.3.0 — the lifecycle fields', () => {
 		assert.deepEqual(b('rnd--deploy--change-requests.command-binding.yaml').available_when.verified_on, { _nempty: true });
 		assert.deepEqual(b('rnd--test--change-requests.command-binding.yaml').available_when.implementation_plans, { status: { _eq: 'done' } });
 		assert.ok(b('rnd--plan--change-requests.command-binding.yaml').available_when._or.some((g) => g.design_docs?.status?._eq === 'active'));
-		for (const f of fs.readdirSync(path.join(RND, 'command-bindings'))) if (!/prototype--prototypes|--products|ingest-reference/.test(f)) assert.ok(b(f).done_when, `${f} has no done_when — the agent could loop on it`);
+		for (const f of fs.readdirSync(path.join(RND, 'command-bindings'))) if (authored('command-bindings', f) && !/prototype--prototypes|--products|ingest-reference/.test(f)) assert.ok(b(f).done_when, `${f} has no done_when — the agent could loop on it`);
 	});
 	test('a defect takes the quick path: a plan may fix an issue, which lists its plans back', () => {
 		assert.equal(plan.fields.issue.type, 'rnd/issues');
