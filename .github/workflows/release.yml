@@ -135,9 +135,10 @@ jobs:
           esac
 
       # rnd's prototype harness drives a real browser, and its held-out tests fail honestly rather than
-      # skip when none resolves (play-fails-honestly), so the runner installs the one devdep.mjs names.
+      # skip when none resolves (play-fails-honestly), so the runner installs it — through npx, because
+      # `play` runs in a temp workspace outside this tree and resolves playwright-core from the npx cache.
       - name: chromium for the prototype harness
-        run: npm i --no-save playwright-core && npx playwright-core install --with-deps chromium
+        run: npx -y playwright-core install --with-deps chromium
 
       # The whole repo, not only this module: every module's compiles-alone run installs it from its
       # PACKED tarball, so a folder missing from `files` fails here rather than in a stranger's install.
