@@ -66,6 +66,7 @@ test('the runner CLI agrees with the partition', () => {
 test('every browser file lands in one shard, and only that shard installs Chromium', () => {
 	const browser = all.filter((f) => needsBrowser(f));
 	assert.ok(browser.length > 0, 'no browser files found — the heuristic is broken, and the Chromium step would never run');
+	assert.deepEqual(browser.filter((f) => !f.startsWith('modules/rnd/')), [], 'only rnd drives a browser today — a repo-wide file here would install Chromium in every release job');
 	const n = shards.length;
 	const holding = [];
 	for (let i = 1; i <= n; i++) if (shard(all, i, n).some((f) => browser.includes(f))) holding.push(i);

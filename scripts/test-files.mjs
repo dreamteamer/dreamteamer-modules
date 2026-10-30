@@ -61,12 +61,14 @@ export const WEIGHTS = {
 export const DEFAULT_WEIGHT = 2;
 
 /**
- * A file drives a real browser when its source names one. rnd's prototype harness fails honestly
- * rather than skipping when no Chromium resolves, so a browser file missed here goes RED in CI — the
- * heuristic can cost a rerun, never a silent pass.
+ * A file drives a real browser when it CALLS one — rnd's `chromium()` resolver, or an import of
+ * playwright itself. Code, not prose: a comment or a test name that merely says "Chromium" would put
+ * a browser install in every release job (tests/ is in every one). rnd's held-out browser tests fail
+ * rather than skip when no Chromium resolves, so a file this misses goes red, not quietly green.
  */
+export const BROWSER_USE = /\bchromium\s*\(|\bfrom\s+['"]playwright(?:-core)?['"]/;
 export function needsBrowser(file, root = ROOT) {
-	return /playwright|chromium/i.test(fs.readFileSync(path.join(root, file), 'utf8'));
+	return BROWSER_USE.test(fs.readFileSync(path.join(root, file), 'utf8'));
 }
 
 /**
