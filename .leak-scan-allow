@@ -18,3 +18,4 @@ modules/meetings/skills/fetching-meetings/SKILL.md	hebrew	one worked example of 
 modules/recordings/skills/ingesting-recordings/bin/detect.mjs	hebrew	the month-name and transliteration maps a non-latin recording filename is parsed with
 modules/perspective/skills/running-retrospectives/lib/gmail.mjs	hebrew	the reply/forward subject-prefix regex, which must match the localised prefixes too
 modules/perspective/test/running-retrospectives/import-paste-back.test.mjs	hebrew	pins that a non-latin line survives import unmangled — the assertion IS the literal
+modules/core/skills/ingesting-recordings/bin/detect.mjs	hebrew	the month-name and transliteration maps a non-latin recording filename is parsed with (the composed copy in core; judged at its origin)
