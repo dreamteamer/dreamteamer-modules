@@ -54,9 +54,9 @@ describe('the composition', () => {
 			if (!seen.has(c.dest)) seen.set(c.dest, { origin, bytes: c.bytes });
 		}
 	});
-	test('the manifest is the union of the origins: env, vars, the extension, the highest engine floor; peers minus what core owns', () => {
+	test('the manifest is the union of the origins and compose.json: env, vars, the extension, the highest engine floor; peers minus what core owns', () => {
 		const dts = spec.origins.map((o) => JSON.parse(fs.readFileSync(path.join(ROOT, 'modules', o, 'package.json'), 'utf8')).dreamteamer);
-		const union = (k) => [...new Set(dts.flatMap((d) => d[k] ?? []))].sort();
+		const union = (k) => [...new Set([...(spec[k] ?? []), ...dts.flatMap((d) => d[k] ?? [])])].sort();
 		assert.deepEqual(manifest.dreamteamer.env, union('env'));
 		assert.deepEqual(manifest.dreamteamer.vars ?? [], union('vars'));
 		assert.equal(manifest.dreamteamer.extension, dts.find((d) => d.extension).extension);
@@ -66,7 +66,12 @@ describe('the composition', () => {
 		assert.deepEqual(manifest.dreamteamer.dependencies ?? [], [], 'every origin dependency is internal');
 		for (const t of ['users', 'companies', 'contacts', 'engagements', 'tasks', 'projects', 'decisions', 'meetings', 'meeting-recordings', 'meeting-summaries', 'files', 'file-drives', 'assets']) assert.ok(owned.has(t), `core does not own ${t}`);
 	});
-	test("compose.json's own engine floor raises the manifest's above the origins' — core's namespaced commands need it", () => {
+	test("compose.json's own vars reach the manifest — SESSIONS_FOLDER, which no origin declares", () => {
+		assert.ok(spec.vars.includes('SESSIONS_FOLDER'));
+		assert.ok(manifest.dreamteamer.vars.includes('SESSIONS_FOLDER'));
+		for (const o of spec.origins) assert.ok(!(JSON.parse(fs.readFileSync(path.join(ROOT, 'modules', o, 'package.json'), 'utf8')).dreamteamer.vars ?? []).includes('SESSIONS_FOLDER'), `${o} declares SESSIONS_FOLDER already`);
+	});
+	test("compose.json's own engine floor raises the manifest's above the origins' — core's env-pointed sessions root needs it", () => {
 		assert.ok(spec.engine, 'compose.json declares an engine floor of its own');
 		assert.equal(manifest.dreamteamer.engine, spec.engine);
 		const dts = spec.origins.map((o) => JSON.parse(fs.readFileSync(path.join(ROOT, 'modules', o, 'package.json'), 'utf8')).dreamteamer);

@@ -1,11 +1,16 @@
 # sessions — one sitting of work by a person or an agent. The unit the metrics count.
+#
+# Kept in a per-machine folder, never in the repo: `storage.path` is `${env:SESSIONS_FOLDER}`, rendered at
+# compile against the workspace .env (core declares the var in its `dreamteamer.vars`). A record lands at
+# `<SESSIONS_FOLDER>/<yyyy>/<mm>/<id>.session.md` — the id already shards by month — and `dt commit` reports the
+# folder as outside every git repo here. Unset, compile warns and every record verb refuses, naming both.
 name: sessions
 description: >-
   One sitting of work — a coding-agent session, an agent run, a person's focused block — on a project: who, when, how long, what came out of it. The event, never the plan (`projects`) and never the commitment (`tasks`).
 use_when: >-
   work happened and should be accounted for — an agent session ended, a person logs a block — write it here with `started`, who did it and what it produced; asked "what was done on X this week" or "how much agent time did Y take", list here by project and date
 storage:
-  path: data/sessions
+  path: '${env:SESSIONS_FOLDER}'
   format: md
 ids:
   from: '{{ started | date:YYYY/MM }}/{{ started | date }}--{{ name | slug }}'

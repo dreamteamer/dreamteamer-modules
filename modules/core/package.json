@@ -1,6 +1,6 @@
 {
 	"name": "@dreamteamer/core",
-	"version": "0.2.0",
+	"version": "0.3.0",
 	"description": "Every core noun from one install: users, companies, contacts, engagements, tasks, projects, meetings, files, assets, artifacts, sessions, metrics.",
 	"license": "Apache-2.0",
 	"type": "module",
@@ -40,11 +40,14 @@
 		"extension": "./src/extension.js",
 		"title": "Core",
 		"description": "The nouns every workspace has, composed from the small official modules so one install brings them all: `users` with `roles` and `responsibilities`; `companies`, `contacts`, `engagements`; `tasks`; `projects` with `decisions`, `risks` and `teams`; `meetings` with recordings and docs; `files`; `assets` and `artifacts`; `sessions` and `metrics`. Install core OR the small modules, never both.",
-		"engine": ">=0.38.0",
+		"engine": ">=0.39.0",
 		"env": [
 			"LINKEDIN_USER_AGENT",
 			"TRANSCRIBING_MODELS_DIR",
 			"WORK_CALENDARS"
+		],
+		"vars": [
+			"SESSIONS_FOLDER"
 		],
 		"peer_collections": [
 			"rnd/change-requests",

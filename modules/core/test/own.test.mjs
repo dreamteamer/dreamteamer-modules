@@ -21,6 +21,16 @@ describe('the five collections core adds', () => {
 		assert.equal(d.fields.outcome.body, true);
 		assert.match(d.fields.transcript.examples[0], /^\$\{env:FILES_FOLDER\}/);
 	});
+	test('sessions is kept in a per-machine folder: storage.path is ${env:SESSIONS_FOLDER}, and core declares the var', () => {
+		const d = own('sessions');
+		assert.equal(d.storage.path, '${env:SESSIONS_FOLDER}');
+		assert.equal(d.storage.format, 'md');
+		assert.ok(!d.storage.under && d.storage.owner !== 'module', 'an env-pointed root combines with neither under nor owner: module');
+		assert.match(d.ids.from, /^\{\{ started \| date:YYYY\/MM \}\}\//, 'the id shards by month, so the folder does too');
+		const pkg = JSON.parse(fs.readFileSync(path.join(CORE, 'package.json'), 'utf8'));
+		assert.ok(pkg.dreamteamer.vars.includes('SESSIONS_FOLDER'), 'the composed manifest declares SESSIONS_FOLDER');
+		assert.equal(pkg.dreamteamer.engine, '>=0.39.0', 'an env-pointed storage.path needs engine 0.39');
+	});
 	test('metrics: a measure with unit, scope, target and a series of readings', () => {
 		const d = own('metrics');
 		assert.deepEqual(d.fields.scope.type, ['projects', 'users', 'agents']);
