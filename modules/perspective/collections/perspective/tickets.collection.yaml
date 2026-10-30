@@ -74,3 +74,8 @@ display:
       - created_on
       - last_activity_on
       - comment_count
+  form:
+    sections:
+      - title: Provenance
+        fields: [author, creation_context, confidence]
+        collapsed: true

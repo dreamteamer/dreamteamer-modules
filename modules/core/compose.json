@@ -47,7 +47,7 @@
 		},
 		"collections/companies/companies.collection.yaml": {
 			"from": "companies/collections/companies.collection.yaml",
-			"hash": "sha256:0a4ea5c0ff52a31e430589f2e9a778753ff20f1cfcfc79a802139ccb5f70100e"
+			"hash": "sha256:fc0295c898a3da64ada62d835b4a823bd14d26637623ba075023a189025d671a"
 		},
 		"collections/contacts/companies.collection.yaml": {
 			"from": "contacts/collections/companies.collection.yaml",
@@ -55,7 +55,7 @@
 		},
 		"collections/contacts/contacts.collection.yaml": {
 			"from": "contacts/collections/contacts.collection.yaml",
-			"hash": "sha256:6791dbbbd89cb25089000626e36290dcfb4cd2ef86e88245b32e3ff4568bdb47"
+			"hash": "sha256:146b35ab3b9e1becce57459ddd848b5a1389db86e245cd2109d324841e4ec118"
 		},
 		"collections/engagements/companies.collection.yaml": {
 			"from": "engagements/collections/companies.collection.yaml",
@@ -63,7 +63,7 @@
 		},
 		"collections/engagements/engagements.collection.yaml": {
 			"from": "engagements/collections/engagements.collection.yaml",
-			"hash": "sha256:ffb86262a6769f2cec92106e14bc499cae778ec05eb9da37b527c97c8a329f6f"
+			"hash": "sha256:53ceda09539defa6b199e4b9d11e3578fd28a6f0bac0b9eb772ef92eac01d615"
 		},
 		"collections/files/file-drives.collection.yaml": {
 			"from": "files/collections/file-drives.collection.yaml",
@@ -79,15 +79,15 @@
 		},
 		"collections/meeting-docs/meeting-analyses.collection.yaml": {
 			"from": "meeting-docs/collections/meeting-analyses.collection.yaml",
-			"hash": "sha256:162dc46f5ac322fb53fedab51c5aededdfd93100c59ec12a1a0909b7c0accbe2"
+			"hash": "sha256:42b222650dee3f4ff36a2e1880ed6e6817f1b1ef96d330e1538905ac22e3f6ab"
 		},
 		"collections/meeting-docs/meeting-preps.collection.yaml": {
 			"from": "meeting-docs/collections/meeting-preps.collection.yaml",
-			"hash": "sha256:488c68ac6731a5d98c7af88c02e402c9cb100bd019a88f11d24e3c0232dc8e19"
+			"hash": "sha256:04e7e886b637290ce939d9be0091142381c79a60804d0b64ee628cb9c3120cb0"
 		},
 		"collections/meeting-docs/meeting-summaries.collection.yaml": {
 			"from": "meeting-docs/collections/meeting-summaries.collection.yaml",
-			"hash": "sha256:9f3210210552c12dce1a29aa577df677b91d9cbf1fca9dcaa591ca3d2e9f90fe"
+			"hash": "sha256:a7222d3278ee185414b8dd0a6e869cb1295d40c62b36fac83ba9d3d93b0d921d"
 		},
 		"collections/meeting-docs/meetings.collection.yaml": {
 			"from": "meeting-docs/collections/meetings.collection.yaml",
@@ -95,7 +95,7 @@
 		},
 		"collections/meetings/meetings.collection.yaml": {
 			"from": "meetings/collections/meetings.collection.yaml",
-			"hash": "sha256:30acf0b9eb215d9cb67bbdc5f0e232b197fd1864bab063b9aadb440352ad6ca8"
+			"hash": "sha256:4e557ade88dc29ded5beef54d5836136ac870f36c574e5331aefbe25f3ef9d7f"
 		},
 		"collections/meetings/users.collection.yaml": {
 			"from": "meetings/collections/users.collection.yaml",
@@ -103,23 +103,23 @@
 		},
 		"collections/projects/decisions.collection.yaml": {
 			"from": "projects/collections/decisions.collection.yaml",
-			"hash": "sha256:d15e6251a9950a85aea868aa75c563de68fbbab9c3a94d1cc7a0364b5bf57e6d"
+			"hash": "sha256:82d8496fb1effe4df41fc60fb4fed26ce89b3c8e1e310a4b4e7409ca17b02507"
 		},
 		"collections/projects/deliverables.collection.yaml": {
 			"from": "projects/collections/deliverables.collection.yaml",
-			"hash": "sha256:3575af132f866f7acb4cba5c8992f76f88c6899da30d06ba1f07e81480ddf9c0"
+			"hash": "sha256:729a2349711ad02d2ba51f32e250bbbfbc32ac3a8f643d827b5086cf93a780f4"
 		},
 		"collections/projects/projects.collection.yaml": {
 			"from": "projects/collections/projects.collection.yaml",
-			"hash": "sha256:7c8a503537bdffc97e8e83f929ef11f5492d3d7b69fb71e5b976a2bb2f8db5be"
+			"hash": "sha256:a7befadac55deafacad7aadbf9c0a733576f38c7f617788392af0d17b20e31f1"
 		},
 		"collections/projects/risks.collection.yaml": {
 			"from": "projects/collections/risks.collection.yaml",
-			"hash": "sha256:34ecf7127e2290fe80aca7d3c743e49178d4827edc0c4976e1b2f4f26d90ee53"
+			"hash": "sha256:2698a225a88c422014e8b9a508922b995f7db153ae967fa4528287be033b36fc"
 		},
 		"collections/projects/teams.collection.yaml": {
 			"from": "projects/collections/teams.collection.yaml",
-			"hash": "sha256:098634f88baa882bc210acbcb75b40a5f2e065cdff6fbf2ffd45d49d41b1d05d"
+			"hash": "sha256:fb48900b60d19ea9de692c769c57e557bc241ebc00f89e6427e31fe25575caf9"
 		},
 		"collections/projects/users.collection.yaml": {
 			"from": "projects/collections/users.collection.yaml",
@@ -127,7 +127,7 @@
 		},
 		"collections/recordings/meeting-recordings.collection.yaml": {
 			"from": "recordings/collections/meeting-recordings.collection.yaml",
-			"hash": "sha256:bc099e781db09bd5e2604a6ef69b18a35514a67db41cc40a2b7f530f501c9142"
+			"hash": "sha256:3dc7fcf98d60f215f53534d55360825c283a9fecb0b14454f2f8609cc5d0e711"
 		},
 		"collections/recordings/meetings.collection.yaml": {
 			"from": "recordings/collections/meetings.collection.yaml",
@@ -139,7 +139,7 @@
 		},
 		"collections/tasks/tasks.collection.yaml": {
 			"from": "tasks/collections/tasks.collection.yaml",
-			"hash": "sha256:8dcf172613db5e3fc62a6c36ba12f08330828795b05e0fdd37d009d465bead00"
+			"hash": "sha256:0dc6d93d8a93258495e1dd7f351167e30e8a56bfd63fc29a9200c2881aa5c20f"
 		},
 		"collections/tasks/users.collection.yaml": {
 			"from": "tasks/collections/users.collection.yaml",
@@ -147,11 +147,11 @@
 		},
 		"collections/users/users.collection.yaml": {
 			"from": "users/collections/users.collection.yaml",
-			"hash": "sha256:9567be685d2ad234ca9daf984d350b5dd811e68ee17e72eca26b6bc2731b8e0e"
+			"hash": "sha256:33f855adbcea0de759edd2a414d83b4b506d1e96bfbb6c3604ea57a61c866f82"
 		},
 		"collections/workflows/workflows.collection.yaml": {
 			"from": "workflows/collections/workflows.collection.yaml",
-			"hash": "sha256:7c14402e8069be9a2f42febb3c41cbc20522a2b76c72acf0fd450d7a04403e3a"
+			"hash": "sha256:fe824d048479b363865fece60929144701d531a66f333ba36e47e0f74235301e"
 		},
 		"command-bindings/analyze-meetings--meetings.command-binding.yaml": {
 			"from": "meeting-docs/command-bindings/analyze-meetings--meetings.command-binding.yaml",

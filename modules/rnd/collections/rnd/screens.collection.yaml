@@ -125,3 +125,8 @@ display:
       - source
       - build_status
       - last_modified
+  form:
+    sections:
+      - title: Provenance
+        fields: [author, creation_context, confidence]
+        collapsed: true

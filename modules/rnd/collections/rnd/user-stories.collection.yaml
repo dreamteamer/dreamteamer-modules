@@ -123,3 +123,8 @@ display:
       - last_modified
       - status
       - tags
+  form:
+    sections:
+      - title: Provenance
+        fields: [author, creation_context, confidence]
+        collapsed: true

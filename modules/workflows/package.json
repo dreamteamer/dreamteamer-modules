@@ -29,6 +29,7 @@
 	"dreamteamer": {
 		"title": "Workflows",
 		"description": "`workflows`: a chain of commands written down — each step a command, the records it walks (a `dt list --where` filter) and where a person decides. `/workflow:run <id>` walks one with `dt next` and records nothing about the run: the records the commands touch are the progress. `npx dt-workflows install <id>` copies a shipped workflow in; `customer-factory` ships here.",
-		"engine": ">=0.38.0"
+		"engine": ">=0.38.0",
+		"ignore": ["data"]
 	}
 }

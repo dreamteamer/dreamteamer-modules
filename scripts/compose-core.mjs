@@ -150,7 +150,7 @@ export function compose(target = 'core') {
 	const kindsPresent = (list) => KINDS.filter((k) => list.some((f) => f.startsWith(`${k}/`)));
 	const allDests = [...copies.keys(), ...(fs.existsSync(root) ? walk(root).filter((f) => !f.startsWith('test/')) : [])];
 	const KNOWN = new Set(['name', 'version', 'description', 'license', 'type', 'repository', 'keywords', 'bin', 'files', 'dependencies', 'dreamteamer']);
-	const KNOWN_DT = new Set(['extension', 'title', 'namespaces', 'description', 'engine', 'env', 'vars', 'peer_collections', 'dependencies']);
+	const KNOWN_DT = new Set(['extension', 'title', 'namespaces', 'description', 'engine', 'env', 'vars', 'peer_collections', 'dependencies', 'ignore']);
 	const rest = (obj, known) => Object.fromEntries(Object.entries(obj).filter(([k]) => !known.has(k)));
 	const manifest = {
 		name: `@dreamteamer/${target}`,
@@ -172,6 +172,8 @@ export function compose(target = 'core') {
 			engine: `>=${[...dts.map((d) => floorOf(d.engine)), floorOf(spec.engine)].reduce(newer)}`,
 			...(union('env').length ? { env: union('env') } : {}),
 			...(union('vars').length ? { vars: union('vars') } : {}),
+			// a folder an origin tells the engine it does not read (`data`: workflow templates its own script copies)
+			...(union('ignore').length ? { ignore: union('ignore') } : {}),
 			...(peers.length ? { peer_collections: peers } : {}),
 			...(hardDeps.length ? { dependencies: hardDeps } : {}),
 			...rest(authored, KNOWN_DT),

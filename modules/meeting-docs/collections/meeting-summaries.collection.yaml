@@ -66,6 +66,7 @@ fields:
   # Many, because a call recorded in two parts is two recordings, and the summary is read from both.
   # A record holding one value as a plain string still validates.
   source:
+    title: Information source
     type: string
     many: true
     examples: ['meeting-recordings/2026/08/2026-08-30--northwind-weekly-part-1']
@@ -86,3 +87,8 @@ display:
       - last_modified
       - date
       - meeting
+  form:
+    sections:
+      - title: Provenance
+        fields: [author, creation_context, source, confidence]
+        collapsed: true

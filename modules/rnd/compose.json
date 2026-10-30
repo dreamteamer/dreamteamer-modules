@@ -14,7 +14,7 @@
 		},
 		"collections/notebooklm/notebooks.collection.yaml": {
 			"from": "notebooklm/collections/notebooks.collection.yaml",
-			"hash": "sha256:441e75d3cc36ef13850a03c2004b84cf31556451f5624241bb2c465db7fd904f"
+			"hash": "sha256:9b9e107689cf3d3908e87ac7f28d6f2e6b1ea716edaac606d57b88f71ea898f4"
 		},
 		"collections/notebooklm/wikis.collection.yaml": {
 			"from": "notebooklm/collections/wikis.collection.yaml",
@@ -22,7 +22,7 @@
 		},
 		"collections/wikis/wikis.collection.yaml": {
 			"from": "wikis/collections/wikis.collection.yaml",
-			"hash": "sha256:38c13eb5b02f281c74622fd32f906040adb9e6f04c3ba766a521929a0142c885"
+			"hash": "sha256:c2cb366ad8a8362b040914b3739ffd9f0749cd7b7d3f641c8f38e52c6101a9d3"
 		},
 		"command-bindings/capture-notebook-sources--notebooks.command-binding.yaml": {
 			"from": "notebooklm/command-bindings/capture-notebook-sources--notebooks.command-binding.yaml",

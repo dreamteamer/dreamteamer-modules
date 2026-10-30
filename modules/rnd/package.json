@@ -43,6 +43,9 @@
 		],
 		"description": "What a workspace builds and investigates: `products`, `design-docs`, `implementation-plans`, `user-stories`, `screens`, `prototypes`, `tests`, `reviews`, `change-requests`, `features`, `issues`, `research-docs`, `open-questions`, `personas` — the lifecycle on them, /rnd:design to /rnd:deploy, gated per record (`dt next`) — plus the `wikis` it reads and the `notebooks` it exports to NotebookLM.",
 		"engine": ">=0.38.0",
+		"ignore": [
+			"data"
+		],
 		"peer_collections": [
 			"assets",
 			"companies",
