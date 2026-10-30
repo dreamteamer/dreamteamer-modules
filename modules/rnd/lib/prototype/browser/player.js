@@ -176,7 +176,7 @@ function go(i, { rebuild = true } = {}) {
   const step = P.steps[i];
   P.i = i; A.quiet = true;
   let results;
-  const opts = { session: A.session, actArgs: O.actArgs };
+  const opts = { session: A.session, actArgs: O.actArgs, resolveArg: O.resolveArg };
   try { results = rebuild ? stateAt(A.store, { ...P.mod, steps: P.steps }, i, opts).results.filter((r) => r.step === i + 1 || !r.ok) : applyStep(A.store, step, opts); } finally { A.quiet = false; }
   for (const f of results.filter((r) => !r.ok)) { console.warn('[demo] step action refused', P.j.key, i + 1, f.name, f.rule ?? '', tx(f.reason) ?? ''); toast(`${L('refused')}${f.name}${f.reason ? ` — ${tx(f.reason)}` : ''}${f.rule ? ` · ${f.rule}` : ''}`, 'warn'); }
   for (const r of results.filter((x) => x.ok && x.expected)) toast(`${L('expected')}${tx(r.reason) ?? ''}${r.rule ? ` · ${r.rule}` : ''}`, 'info');
@@ -322,7 +322,7 @@ function onKey(e) {
 }
 
 /** init(app, { data, storageKey, playbackBase | playback(key), users, defaultUser, tx, strings, autoMs, beforeStep,
-    actArgs, journeyBadges, sortJourneys, layer, launcher }) */
+    actArgs, resolveArg, journeyBadges, sortJourneys, layer, launcher }) */
 export function init(app, options = {}) {
   A = app;
   O = { storageKey: 'prototype', playbackBase: '../app/demo/journeys/', autoMs: 3000, defaultUser: {}, launcher: true, ...options };

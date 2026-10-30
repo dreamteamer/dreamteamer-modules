@@ -15,15 +15,22 @@ export function forbiddenOf(text) {
 }
 
 /** the prototype's portal keys */
-export const portalsOf = (c) => new Set(c.portal.from === 'product' ? Object.values(c.products).map((p) => p.key) : Object.values(c.portal.map ?? {}));
+/** the prototype's portal keys, or null (every screen that has a portal) when a field or tag source has no map */
+export const portalsOf = (c) => (c.portal.from === 'product' ? new Set(Object.values(c.products).map((p) => p.key)) : c.portal.map ? new Set(Object.values(c.portal.map)) : null);
+
+/** the registered screens to visit: in the prototype's portals (any portal when a field or tag source has no
+    map), with a route that takes no parameter, and in --only when it is given */
+export function visitable(all, c, only = null) {
+	const portals = portalsOf(c);
+	return all.filter((s) => s.route && (portals ? portals.has(s.portal) : s.portal != null) && !s.route.includes(':') && (!only || only.includes(s.key)));
+}
 
 /** open the app, list the screens to visit (registered in a portal, routes without parameters) */
 export async function screensToVisit(page, base, c, only = null) {
 	await page.goto(`${base}#/`);
 	await page.waitForFunction((app) => !!window[app]?.screens, c.app, { timeout: 15000 });
 	const all = await page.evaluate((app) => window[app].screens.map((s) => ({ key: s.key, portal: s.portal ?? null, route: s.route ?? null, stub: !!s.stub, sample: s.sample?.id ?? null })), c.app);
-	const portals = portalsOf(c);
-	return all.filter((s) => s.route && portals.has(s.portal) && !s.route.includes(':') && (!only || only.includes(s.key)));
+	return visitable(all, c, only);
 }
 
 /** go to one screen as the portal's default user, layer off; resolves when it has rendered */
@@ -67,6 +74,7 @@ export async function run(dir, { only = null, port = null, log = console.log, er
 			for (const e of errs) failures.push({ screen: s.key, kind: 'JS error', detail: e });
 		}
 	} finally { await browser.close(); srv.stop(); }
+	if (!n) failures.push({ screen: '—', kind: 'nothing walked', detail: 'no registered screen of the prototype\'s portals — check products, portal and --only' });
 	for (const f of failures) error(`FAIL ${f.screen} [${f.kind}] ${f.detail}`);
 	log(`${n} screens walked with the layer off · ${rules.length} forbidden pattern(s) · ${failures.length} failure(s)`);
 	return failures.length ? 1 : 0;

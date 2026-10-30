@@ -46,6 +46,20 @@ describe('vendor', () => {
 		assert.deepEqual(vendorInto(dir, { force: true }).written, ['player.js']);
 		assert.equal(fs.readFileSync(f, 'utf8'), orig);
 	});
+	test('this version\'s number on bytes the package does not ship is stale, not current', () => {
+		const dir = tmp(); vendorInto(dir);
+		const f = path.join(dir, 'dom.js');
+		const body = 'export const older = 1;\n';
+		fs.writeFileSync(f, `// @dreamteamer/rnd ${VERSION} prototype-harness — vendored, do not edit — sha256:${hashBody(body)}\n${body}`);
+		assert.deepEqual(vendorStatus(dir).find((v) => v.file === 'dom.js'), { file: 'dom.js', state: 'stale', version: VERSION });
+	});
+	test('a css stamp missing its closing */ is not a stamp', () => {
+		const dir = tmp(); vendorInto(dir);
+		const f = path.join(dir, 'harness.css'); const text = fs.readFileSync(f, 'utf8');
+		fs.writeFileSync(f, text.replace(/ \*\/\n/, '\n'));
+		assert.equal(parseStamp(fs.readFileSync(f, 'utf8')), null);
+		assert.equal(vendorStatus(dir).find((v) => v.file === 'harness.css').state, 'unstamped');
+	});
 	test('a stamp of another version is stale; a file with no stamp is refused', () => {
 		const dir = tmp(); vendorInto(dir, { version: '0.0.1' });
 		assert.ok(vendorStatus(dir).every((v) => v.state === 'stale' && v.version === '0.0.1'));
@@ -96,6 +110,10 @@ describe('check', () => {
 		const r = compare(c(), ROWS, GOOD);
 		assert.deepEqual(r.mismatches, []);
 		assert.deepEqual(r.matched.map((m) => [m.id, m.key, m.stub]), [['un-gp-home', 'gp-home', false], ['un-gp-apply', 'gp-apply', true]]);
+	});
+	test('two records that screenKey maps to one key are a mismatch, and --apply writes nothing', () => {
+		const rows = structuredClone(ROWS); rows.screens.push({ id: 'gp-home', key: 'gp-home', product: 'rnd/products/grantee-portal', route: '/gp/home' });
+		assert.deepEqual(compare(c(), rows, GOOD).mismatches.map((m) => `${m.kind}:${m.key}`), ['duplicate record:gp-home']);
 	});
 	test('a route written with or without its leading # is the same route', () => {
 		const rows = structuredClone(ROWS); rows.screens[0].route = '#/gp/home'; rows.screens[1].route = '#/gp/apply';

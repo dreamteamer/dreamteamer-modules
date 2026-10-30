@@ -107,6 +107,26 @@ describe('what journeys.js exports', () => {
 	});
 });
 
+describe('identifiers and the scrubber', () => {
+	test('an identifier the scrub would change fails the export by name; prose is scrubbed, keys and joins are left whole', () => {
+		const data = rows();
+		data.stories[0].key = 'pay-contoso'; data.questions[0].id = 'does-contoso-allow-refunds';
+		data.journeys[0].steps[1].open = ['rnd/open-questions/does-contoso-allow-refunds'];
+		const scrub = (s) => s.replace(/contoso/gi, 'a partner');
+		const r = build(config(), data, { playback: { ...PB, 'apply-for-a-grant': { key: 'apply-for-a-grant', steps: [{}, {}, {}] }, 'see-the-home': { key: 'see-the-home', steps: [{}] } }, scrub });
+		assert.ok(r.errors.includes('story "pay-contoso" contains a scrubbed term — rename the record (identifiers are never rewritten)'), r.errors.join('\n'));
+		assert.ok(r.errors.includes('open question "does-contoso-allow-refunds" contains a scrubbed term — rename the record (identifiers are never rewritten)'));
+		assert.equal(r.errors.filter((e) => e.startsWith('story "pay-contoso"')).length, 1, 'named once, not once per use');
+		assert.equal(r.journeys.stories['pay-contoso'].name.includes('Contoso'), false, 'the name is prose: scrubbed');
+	});
+	test('a persona that is a research panel is never exported by name, and says so', () => {
+		const data = rows(); data.personas[0].kind = 'panel';
+		const r = build(config(), data, { playback: PB });
+		assert.deepEqual(r.journeys.personas, {});
+		assert.ok(r.warnings.includes('rnd/personas/applicant: named by a journey but kind panel, not product-role — its name is not exported'));
+	});
+});
+
 describe('the portal read from a tag', () => {
 	test('portal: { from: \'tag\', prefix } reads `portal:<value>` from tags through the map; no such tag warns', () => {
 		const data = rows();

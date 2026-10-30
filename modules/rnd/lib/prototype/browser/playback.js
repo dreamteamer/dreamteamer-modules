@@ -11,11 +11,11 @@ export const setupOf = (step) => (typeof step?.setup === 'string' ? step.setup :
 
 /** run one step as its user → [{ name, ok, refused, rule, reason, expected }]. A step with a `setup` loads that
     fixture first (clearing the session's view state), so one step forward lands where a rebuild does. Each
-    action calls store.act(name, { actor, ...args }); `args` may be a function of the store, and the
-    prototype's `actArgs(step, action, args, store)` hook, when given, returns the args actually used (an
-    organisation per step, a placeholder resolved against the world). A throwing `args` or hook is a refused
-    result, never an exception. */
-export function applyStep(store, step, { session = null, actArgs = null } = {}) {
+    action calls store.act(name, { actor, ...actArgs(step, action, store), ...args }): the step's own args win
+    over the prototype's hook (an organisation per step), and `resolveArg(value, key, step, store, args)`, when
+    given, rewrites each of the step's own values first (a placeholder resolved against the world). `args` may
+    be a function of the store. A throwing `args` or hook is a refused result, never an exception. */
+export function applyStep(store, step, { session = null, actArgs = null, resolveArg = null } = {}) {
   const out = [];
   const fx = setupOf(step);
   if (fx) {
@@ -24,11 +24,13 @@ export function applyStep(store, step, { session = null, actArgs = null } = {}) 
   }
   for (const a of actionsOf(step)) {
     let args;
+    let extra;
     try {
       args = typeof a.args === 'function' ? a.args(store) : (a.args || {});
-      if (actArgs) args = actArgs(step, a, args, store) || args;
+      if (resolveArg) { const own = args; args = Object.fromEntries(Object.entries(own).map(([k, v]) => [k, resolveArg(v, k, step, store, own)])); }
+      extra = actArgs ? actArgs(step, a, store) || {} : {};
     } catch (e) { out.push({ name: a.name, ok: false, refused: true, rule: null, reason: `the step found no record to act on (${e.message})`, expected: !!step.expectRefusal }); continue; }
-    const r = store.act(a.name, { actor: step.user, ...args }) || {};
+    const r = store.act(a.name, { actor: step.user, ...extra, ...args }) || {};
     const refused = r.ok === false;
     out.push({ name: a.name, ok: step.expectRefusal ? refused : !refused, refused, rule: r.rule || null, reason: r.reason || null, expected: !!step.expectRefusal });
   }
@@ -45,14 +47,14 @@ export function baseOf(mod, i) {
 }
 
 /** rebuild the world for step `i` (0-based): load the base fixture, replay every step from there through i */
-export function stateAt(store, mod, i, { session = null, actArgs = null } = {}) {
+export function stateAt(store, mod, i, { session = null, actArgs = null, resolveArg = null } = {}) {
   const { from, fixture } = baseOf(mod, i);
   session?.clearView?.();
   store.loadFixture(fixture);
   const results = [];
   for (let k = from; k <= i; k++) {
     const step = k === from ? { ...mod.steps[k], setup: null } : mod.steps[k];
-    results.push(...applyStep(store, step, { session, actArgs }).map((r) => ({ ...r, step: k + 1 })));
+    results.push(...applyStep(store, step, { session, actArgs, resolveArg }).map((r) => ({ ...r, step: k + 1 })));
   }
   return { fixture, results, failures: results.filter((r) => !r.ok) };
 }

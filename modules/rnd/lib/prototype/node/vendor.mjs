@@ -11,7 +11,7 @@ import { loadConfig, CONFIG_FILE } from './config.mjs';
 import { VERSION } from './export.mjs';
 
 export const SOURCE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'browser');
-const STAMP = /^(?:\/\/|\/\*) @dreamteamer\/rnd (\S+) prototype-harness — vendored, do not edit — sha256:([0-9a-f]{64})(?: \*\/)?\r?$/;
+const STAMP = /^(?:\/\/ @dreamteamer\/rnd (\S+) prototype-harness — vendored, do not edit — sha256:([0-9a-f]{64})|\/\* @dreamteamer\/rnd (\S+) prototype-harness — vendored, do not edit — sha256:([0-9a-f]{64}) \*\/)\r?$/;
 
 export const hashBody = (body) => createHash('sha256').update(body.replace(/\r\n/g, '\n')).digest('hex');
 export function stampLine(file, version, hash) {
@@ -23,7 +23,7 @@ export function parseStamp(text) {
 	const nl = text.indexOf('\n');
 	const first = nl < 0 ? text : text.slice(0, nl);
 	const m = STAMP.exec(first);
-	return m ? { version: m[1], hash: m[2], body: nl < 0 ? '' : text.slice(nl + 1) } : null;
+	return m ? { version: m[1] ?? m[3], hash: m[2] ?? m[4], body: nl < 0 ? '' : text.slice(nl + 1) } : null;
 }
 /** the text `vendor` writes for one package file */
 export function vendored(file, source, version = VERSION) {
@@ -31,7 +31,8 @@ export function vendored(file, source, version = VERSION) {
 }
 export const sourceFiles = () => fs.readdirSync(SOURCE).filter((f) => /\.(js|css)$/.test(f)).sort();
 
-/** the state of every vendored file: ok · stale (another version) · edited (body ≠ hash) · unstamped · missing */
+/** the state of every vendored file: ok · stale (another version, or this version's number on bytes the package
+    does not ship) · edited (body ≠ its own hash) · unstamped · missing */
 export function vendorStatus(harnessDir, version = VERSION) {
 	return sourceFiles().map((file) => {
 		const at = path.join(harnessDir, file);
@@ -39,7 +40,8 @@ export function vendorStatus(harnessDir, version = VERSION) {
 		const s = parseStamp(fs.readFileSync(at, 'utf8'));
 		if (!s) return { file, state: 'unstamped' };
 		if (hashBody(s.body) !== s.hash) return { file, state: 'edited', version: s.version };
-		return { file, state: s.version === version ? 'ok' : 'stale', version: s.version };
+		const current = s.version === version && s.hash === hashBody(fs.readFileSync(path.join(SOURCE, file), 'utf8'));
+		return { file, state: current ? 'ok' : 'stale', version: s.version };
 	});
 }
 

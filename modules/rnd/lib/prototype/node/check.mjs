@@ -34,7 +34,12 @@ export function compare(c, records, registry) {
 	};
 	const portals = new Set(c.portal.from === 'product' ? Object.values(c.products).map((p) => p.key) : c.portal.map ? Object.values(c.portal.map) : records.screens.map(portalOf).filter(Boolean));
 	const recs = new Map();
-	for (const s of records.screens) if (c.products[s.product]) recs.set(c.screenKey(s.key ?? s.id), s);
+	for (const s of records.screens) {
+		if (!c.products[s.product]) continue;
+		const k = c.screenKey(s.key ?? s.id);
+		if (recs.has(k)) add('duplicate record', k, `rnd/screens/${recs.get(k).id} and rnd/screens/${s.id} both map to ${k}`);
+		else recs.set(k, s);
+	}
 	const mods = registry.filter((m) => portals.has(m.portal));
 	const seenKey = new Map(), seenRoute = new Map();
 	for (const m of mods) {
@@ -88,7 +93,7 @@ export async function run(dir, { json = false, apply = false, strict = false, dt
 	else {
 		for (const x of mismatches) error(`fail  ${x.kind.padEnd(15)} ${x.key}  ${x.detail}`);
 		for (const v of edited) error(`fail  vendored        ${v.file}  ${v.state === 'edited' ? 'body no longer matches its stamp — a local edit' : 'not a vendored file'}`);
-		for (const v of stale) error(`warn  vendored        ${v.file}  ${v.state === 'missing' ? 'missing — run dt-prototype vendor' : `stamped ${v.version}, the package is ${VERSION} — run dt-prototype vendor`}`);
+		for (const v of stale) error(`warn  vendored        ${v.file}  ${v.state === 'missing' ? 'missing — run dt-prototype vendor' : `stamped ${v.version}${v.version === VERSION ? ' but not the package\'s bytes' : `, the package is ${VERSION}`} — run dt-prototype vendor`}`);
 		log(`${matched.length} screens matched · ${mismatches.length} mismatch(es) · vendored ${vendored.filter((v) => v.state === 'ok').length}/${vendored.length} current${apply ? ` · ${applied.length} record(s) set, nothing committed` : ''}`);
 	}
 	if (apply && mismatches.length) error('--apply wrote nothing: fix the mismatches first');

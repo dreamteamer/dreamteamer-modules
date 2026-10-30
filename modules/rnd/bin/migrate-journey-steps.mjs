@@ -63,8 +63,9 @@ const eolOf = (text) => (text.includes('\r\n') ? '\r\n' : '\n');
 export function dropKeys(text, keys) {
 	const m = FRONTMATTER.exec(text);
 	if (!m) return text;
-	const eol = eolOf(text);
-	const lines = m[1].split(/\r?\n/);
+	// each line keeps its own terminator, so a file with mixed endings is left mixed outside the moved keys
+	const raw = m[1].split(/(?<=\n)/);
+	const lines = raw.map((l) => l.replace(/\r?\n$/, ''));
 	const out = [];
 	for (let i = 0; i < lines.length; i++) {
 		const key = /^([A-Za-z0-9_-]+):/.exec(lines[i])?.[1];
@@ -76,10 +77,10 @@ export function dropKeys(text, keys) {
 			}
 			continue;
 		}
-		out.push(lines[i]);
+		out.push(raw[i]);
 	}
 	const head = text.slice(0, text.indexOf(m[1]));
-	return head + out.join(eol) + text.slice(text.indexOf(m[1]) + m[1].length);
+	return head + out.join('').replace(/\r?\n$/, '') + text.slice(text.indexOf(m[1]) + m[1].length);
 }
 
 /** Insert a top-level `key:` block (dumped as YAML) at the end of a record's front matter. */

@@ -28,6 +28,7 @@ export async function run(dir, { only = null, portal = null, out = null, port = 
 			for (const e of errs) failures.push(`${s.key}: ${e}`);
 		}
 	} finally { await browser.close(); srv.stop(); }
+	if (!written.length) failures.push('no registered screen of the prototype\'s portals was shot — check products, portal, --portal and --only');
 	for (const f of failures) error(`FAIL ${f}`);
 	log(`${written.length} screenshot(s) in ${path.relative(c.dir, outDir) || '.'}`);
 	return failures.length ? 1 : 0;

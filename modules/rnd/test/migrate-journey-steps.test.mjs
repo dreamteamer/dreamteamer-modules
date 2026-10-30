@@ -40,6 +40,10 @@ describe('the line-level edits', () => {
 		const text = '---\r\nname: x\r\nverified_on: 2026-01-05\r\njourney: >-\r\n  a folded\r\n  value\r\nstep: 2\r\ntags:\r\n  - a\r\n---\r\nbody\r\n';
 		assert.equal(dropKeys(text, ['journey', 'step']), '---\r\nname: x\r\nverified_on: 2026-01-05\r\ntags:\r\n  - a\r\n---\r\nbody\r\n');
 	});
+	test('dropKeys leaves a file with mixed line endings mixed: only the moved keys go', () => {
+		assert.equal(dropKeys('---\nname: x\r\njourney: a\nstep: 2\r\ntags:\n  - a\r\n---\n', ['journey', 'step']), '---\nname: x\r\ntags:\n  - a\r\n---\n');
+		assert.equal(dropKeys('---\nname: x\r\nstep: 2\n---\n', ['step']), '---\nname: x\n---\n');
+	});
 	test('dropKeys removes a list written at column zero under its key', () => {
 		assert.equal(dropKeys('---\nrule:\n- A\n- B\nname: x\n---\n', ['rule']), '---\nname: x\n---\n');
 	});

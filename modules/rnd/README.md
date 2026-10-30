@@ -123,7 +123,10 @@ own store), and the furniture that plays one with the other. rnd ships the furni
   `playwright-core` is resolved at run time, never a dependency.
 
 The prototype keeps its world, its store and fixtures, its playback modules, its chrome and a small
-adapter (the config and the init options). The `rnd-prototype` skill holds the contract.
+adapter (the config and the init options). A screen's portal is its `product`; one product with several
+windows reads it from a field (`portal: { from: 'field' }`) or a tag (`portal: { from: 'tag', prefix }`).
+An identifier — a story key, a question id — is never scrubbed: one the prototype's `scrub` would change
+fails the export, so the record is renamed. The `rnd-prototype` skill holds the contract.
 
 ## 0.5.0 — from 0.4.0
 

@@ -1,6 +1,6 @@
 // playback.js — the store side of the player, with no DOM. What a fixture pins with a fake store: forward
 // application lands where a rebuild does at every index, a mid-journey setup rebases, expectRefusal inverts,
-// actArgs returns the args actually used, function args see the store, a throwing
+// actArgs merges under the step's own args (which win), resolveArg rewrites the step's values, function args see the store, a throwing
 // args is a refused result, and the session's view is cleared before a fixture loads.
 import { test, describe } from 'node:test';
 import assert from 'node:assert';
@@ -51,13 +51,16 @@ describe('the step helpers', () => {
 });
 
 describe('applyStep', () => {
-	test('acts as the step user; actArgs(step, action, args, store) returns the args used; results named', () => {
+	test('acts as the step user; actArgs is merged under the step\'s own args, which win; resolveArg rewrites them first', () => {
 		const st = fakeStore();
 		const seen = [];
-		const actArgs = (step, action, args, store) => { seen.push([step.user, action.name, store === st]); return { org: step.org ?? 'north', ...args, text: args.text === '$last' ? 'resolved' : args.text }; };
-		const r = applyStep(st, { user: 'U-x', action: { name: 'note', args: { text: '$last' } } }, { actArgs });
-		assert.deepEqual(st.calls[0], ['note', { actor: 'U-x', org: 'north', text: 'resolved' }]);
-		assert.deepEqual(seen, [['U-x', 'note', true]]);
+		const actArgs = (step, action, store) => { seen.push([step.user, action.name, store === st]); return { org: step.org ?? 'north', text: 'from the hook' }; };
+		const resolveArg = (v, k, step, store, own) => (v === '$last' ? `resolved for ${own.org ?? 'north'}` : v);
+		const r = applyStep(st, { user: 'U-x', action: { name: 'note', args: { text: '$last' } } }, { actArgs, resolveArg });
+		assert.deepEqual(st.calls[0], ['note', { actor: 'U-x', org: 'north', text: 'resolved for north' }]);
+		applyStep(st, { user: 'U-x', org: 'south', action: { name: 'note', args: { org: 'east', text: 'mine' } } }, { actArgs });
+		assert.deepEqual(st.calls[1], ['note', { actor: 'U-x', org: 'east', text: 'mine' }], 'the step\'s own args win over the hook');
+		assert.deepEqual(seen, [['U-x', 'note', true], ['U-x', 'note', true]]);
 		assert.deepEqual(r, [{ name: 'note', ok: true, refused: false, rule: null, reason: null, expected: false }]);
 	});
 	test('expectRefusal passes when the store refuses, and fails when it accepts', () => {
