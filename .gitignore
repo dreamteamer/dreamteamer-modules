@@ -11,3 +11,7 @@ __pycache__/
 .claude/
 # scratch the perspective readers rebuild while their tests run
 .perspective/
+# the repo root opened as a workspace: runtime, the env list compile derives, the editor settings it writes
+.dreamteamer/
+.env.example
+.vscode/

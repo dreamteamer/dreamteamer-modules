@@ -17,5 +17,11 @@
 	"engines": {
 		"node": ">=20"
 	},
-	"dreamteamer": {}
+	"dreamteamer": {
+		"disable": [
+			"modules/@dreamteamer/core"
+		],
+		"harnesses": [],
+		"gitignore_runtime_folder": true
+	}
 }
