@@ -2,7 +2,8 @@
 
 What a workspace builds and investigates: products, design docs, user stories, screens, prototypes,
 issues and features in its own repos, outside research and the questions it could not settle,
-experiments, and panels of real people scored against what they actually said.
+experiments, and the personas a product is built for — panels of real people grounded in their own
+words, and the roles a product serves.
 
 ```bash
 npm install @dreamteamer/rnd
@@ -97,6 +98,23 @@ rnd now composes `wikis` and `notebooklm` (above). A workspace that had `@dreamt
 are the same, delivered from this package. A workspace that pointed at the origin's script by path
 (`node_modules/@dreamteamer/wikis/bin/wiki.mjs`) now names `node_modules/@dreamteamer/rnd/bin/wikis-wiki.mjs`;
 `npx dt-wiki` and `npx dt-notebook` are unchanged.
+
+**One persona collection.** `rnd/product-user-personas` is folded into `rnd/personas`, which gains a
+required `kind` with no default — `panel` (real people, verbatim quotes; `segment_rule` and `members`
+are required of it) or `product-role` (a product user role: `key`, `products`, `goals`, `permissions`,
+`restrictions`, `evidence_status`; `products` is required of it) — and lists back the `journeys` and
+`user_stories` that name it. `rnd/persona-probes` is dropped: the held-out questions a panel was scored
+against keep no collection; `fidelity` still says how a panel scored, and the questions live in its body
+or beside it. `user-stories.personas` and `user-journeys.personas` now point at `rnd/personas`. Migrate
+with `node node_modules/@dreamteamer/rnd/bin/migrate-personas.mjs --dry-run` (the plan, ending in
+`records N · refs M`) and then `--write`: it moves every role to `data/rnd/personas/<id>.persona.md`
+with `kind: product-role`, stamps `kind: panel` on every persona already there, rewrites
+`rnd/product-user-personas/<id>` to `rnd/personas/<id>` in every text file under `data/`, deletes
+`data/rnd/persona-probes/` — copy out anything you want to keep first — and reports every
+`rnd/persona-probes/…` reference for you to resolve by hand. A role whose id a persona already holds is
+a collision the script names and refuses. Then `dt relations rebuild rnd/personas` (a moved role now owns
+the generated `journeys` and `user_stories` mirrors) and `dt check`. An overlay of either dropped
+collection goes with it.
 
 Additive otherwise. `change-requests` gains `design_docs`, an `implementation_plans` mirror, `accepted_by`,
 `accepted_on`, `verified_on` and `deployed_on`; `implementation-plans` gains `change_request`, `issue`,

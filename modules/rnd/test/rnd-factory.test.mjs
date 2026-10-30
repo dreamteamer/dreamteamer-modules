@@ -375,3 +375,47 @@ describe('0.3.0 — the lifecycle fields', () => {
 		assert.equal(plan.fields.tests.type, 'rnd/tests'); assert.equal(plan.fields.tests.mirror_of, 'covers');
 	});
 });
+
+describe('0.3.0 — one persona collection', () => {
+	const personas = load('collections/rnd/personas.collection.yaml');
+	const f = personas.fields;
+	test('personas carries kind: panel | product-role — required, with no default', () => {
+		assert.equal(f.kind.type, 'string');
+		assert.equal(f.kind.required, true);
+		assert.deepEqual(f.kind.enum, ['panel', 'product-role']);
+		assert.equal(f.kind.default, undefined, 'a record must say which shape it is');
+	});
+	test('the evidence rules bind a panel only, through constraints; a role must name its products', () => {
+		assert.ok(!f.segment_rule.required, 'segment_rule is required of a panel, not of the field');
+		assert.ok(!f.members.required, 'members is required of a panel, not of the field');
+		assert.ok(!f.products.required, 'products is required of a role, not of the field');
+		const byKind = Object.fromEntries(personas.constraints.map((c) => [c.if.properties.kind.const, c.then.required]));
+		assert.deepEqual(byKind.panel, ['segment_rule', 'members']);
+		assert.deepEqual(byKind['product-role'], ['products']);
+		for (const c of personas.constraints) assert.deepEqual(c.if.required, ['kind'], 'a constraint fires only when kind is present');
+	});
+	test('the role fields moved onto personas, and the id comes from key when set', () => {
+		assert.equal(f.key.type, 'string'); assert.match(f.key.pattern, /^\^/);
+		assert.equal(f.products.type, 'rnd/products'); assert.equal(f.products.many, true);
+		for (const k of ['goals', 'permissions', 'restrictions']) { assert.equal(f[k].type, 'string'); assert.equal(f[k].many, true); }
+		assert.deepEqual(f.evidence_status.enum, ['source-backed', 'proposed']); assert.equal(f.evidence_status.default, 'proposed');
+		assert.deepEqual(personas.ids.from, ['{{ key }}', '{{ name | slug }}']);
+	});
+	test('persona-probes and product-user-personas are gone', () => {
+		for (const c of ['persona-probes', 'product-user-personas']) assert.ok(!fs.existsSync(path.join(RND, `collections/rnd/${c}.collection.yaml`)), `${c} came back`);
+		const authoredText = fs.readdirSync(path.join(RND, 'collections', 'rnd')).map((x) => fs.readFileSync(path.join(RND, 'collections', 'rnd', x), 'utf8')).join('\n');
+		assert.ok(!/product-user-personas|persona-probes/.test(authoredText), 'no descriptor still names a dropped collection');
+	});
+	test('user stories and journeys point their personas at rnd/personas, and personas lists them back', () => {
+		const stories = load('collections/rnd/user-stories.collection.yaml').fields;
+		const journeys = load('collections/rnd/user-journeys.collection.yaml').fields;
+		assert.equal(stories.personas.type, 'rnd/personas'); assert.equal(stories.personas.many, true);
+		assert.equal(journeys.personas.type, 'rnd/personas'); assert.equal(journeys.personas.many, true);
+		assert.equal(f.user_stories.type, 'rnd/user-stories'); assert.equal(f.user_stories.mirror_of, 'personas');
+		assert.equal(f.journeys.type, 'rnd/user-journeys'); assert.equal(f.journeys.mirror_of, 'personas');
+	});
+	test('the migration script ships in bin/ and the list view shows the kind', () => {
+		assert.ok(fs.existsSync(path.join(RND, 'bin', 'migrate-personas.mjs')));
+		assert.ok(personas.display.list.columns.includes('kind'));
+	});
+});
