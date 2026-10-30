@@ -56,7 +56,10 @@ fields:
   scope_rows:
     type: string
     many: true
-    description: The requirement rows this screen satisfies, cited so a claim is checkable — e.g. `matrix:13`, `matrix:19` — against whatever scope document the engagement treats as authority.
+    description: The requirement rows this screen satisfies, cited so a claim is checkable — e.g. `matrix:13`, `matrix:19`, or a rule id such as `GRT-R-062` — against whatever scope document the engagement treats as authority. A prototype's metadata layer marks these ids; their position here, not their pattern, is what makes them rule ids.
+    examples:
+      - matrix:13
+      - GRT-R-062
   deep_linkable:
     type: boolean
     description: >-

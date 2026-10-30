@@ -62,10 +62,16 @@ fields:
       put.
   journey:
     type: string
-    description: Legacy flow handle, retained for compatibility. journeys provides typed cross-product links.
+    description: >-
+      Legacy: the key of the one journey this story was ordered in, kept so existing records validate. A journey's
+      order lives in `rnd/user-journeys.steps`, and nothing reads this field; `migrate-journey-steps` moves it there and
+      clears it.
   step:
     type: integer
-    description: Position of this story within its `journey`, from 1. Absent for a story that stands alone.
+    description: >-
+      Legacy: this story's position within its legacy `journey`, from 1, kept so existing records validate. The order a
+      prototype plays lives in `rnd/user-journeys.steps`, where one story can sit in several journeys and a system step
+      needs no story.
   author:
     type: string
     examples:

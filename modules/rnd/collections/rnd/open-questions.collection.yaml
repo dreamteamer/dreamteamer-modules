@@ -59,7 +59,7 @@ fields:
     type: string
     many: true
     description: >-
-      Records that cannot be honestly answered while this stays open, as `<collection>/<id>` strings. A plain string, not a reference: the targets may live in another workspace or in a collection this module does not ship, so the value keeps its ref shape — greppable and re-linkable — without being validated. Anything else this blocks (a feature, a decision) goes in `description` and `content`.
+      Records that cannot be honestly answered while this stays open, as `<collection>/<id>` strings. A plain string, not a reference: the targets may live in another workspace or in a collection this module does not ship, so the value keeps its ref shape — greppable and re-linkable — without being validated. Anything else this blocks (a feature, a decision) goes in `description` and `content`. A screen or a journey whose shown behaviour waits on this question is blocked by it — the prototype's metadata layer marks it.
   from_question:
     type: string
     description: >-

@@ -75,8 +75,8 @@ what makes a prototype look like ours rather than like the reference.
 When a product is specified screen by screen, enumerate it in `rnd/screens` before building: one
 record per screen with its `route`, the `reference` and `reference_route` it mirrors, the `states` it
 must render, and `source` saying why it exists. A `scope-required` screen is the one a build from
-screenshots misses. Each `rnd/user-stories` record names the `screen` it runs through, and `journey`
-plus `step` order the stories into flows. "What is left to build" is then a filter on `build_status`.
+screenshots misses. Each `rnd/user-stories` record names the `screen` it runs through, and each
+`rnd/user-journeys` record orders them into a flow in its `steps`. "What is left to build" is then a filter on `build_status`.
 
 ## 4 and 5. build-prototype, iterate-prototype — the rnd-prototype skill
 
