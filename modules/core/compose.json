@@ -10,11 +10,12 @@
 		"meetings",
 		"recordings",
 		"meeting-docs",
-		"files"
+		"files",
+		"workflows"
 	],
 	"title": "Core",
-	"description": "Every core noun from one install: users, companies, contacts, engagements, tasks, projects, meetings, files, assets, artifacts, sessions, metrics.",
-	"orientation": "The nouns every workspace has, composed from the small official modules so one install brings them all: `users` with `roles` and `responsibilities`; `companies`, `contacts`, `engagements`; `tasks`; `projects` with `decisions`, `risks` and `teams`; `meetings` with recordings and docs; `files`; `assets` and `artifacts`; `sessions` and `metrics`. Install core OR the small modules, never both.",
+	"description": "Every core noun from one install: users, companies, contacts, engagements, tasks, projects, meetings, files, assets, artifacts, sessions, metrics, workflows.",
+	"orientation": "Every workspace's nouns, composed from the small official modules into one install: `users` with `roles` and `responsibilities`; `companies`, `contacts`, `engagements`; `tasks`; `projects` with `decisions`, `risks` and `teams`; `meetings` with recordings and docs; `files`; `assets` and `artifacts`; `sessions` and `metrics`; `workflows`. Install core OR the small modules, never both.",
 	"engine": ">=0.39.0",
 	"vars": [
 		"SESSIONS_FOLDER"
@@ -31,6 +32,10 @@
 		"bin/users-check-records.mjs": {
 			"from": "users/bin/check-records.mjs",
 			"hash": "sha256:0f593d633a34c2c85f62f9a1e4062aaad8a4e9b85e0fffb9d2d3fc7e3f39ca2b"
+		},
+		"bin/workflows-install.mjs": {
+			"from": "workflows/bin/install.mjs",
+			"hash": "sha256:49d1ae286f1377c3e8e9ebc0ab6e5d03ff712efbc3d16ccc9d00ad2ae41b7d2b"
 		},
 		"collections/assets/assets.collection.yaml": {
 			"from": "assets/collections/assets.collection.yaml",
@@ -139,6 +144,10 @@
 		"collections/users/users.collection.yaml": {
 			"from": "users/collections/users.collection.yaml",
 			"hash": "sha256:9567be685d2ad234ca9daf984d350b5dd811e68ee17e72eca26b6bc2731b8e0e"
+		},
+		"collections/workflows/workflows.collection.yaml": {
+			"from": "workflows/collections/workflows.collection.yaml",
+			"hash": "sha256:7c14402e8069be9a2f42febb3c41cbc20522a2b76c72acf0fd450d7a04403e3a"
 		},
 		"command-bindings/analyze-meetings--meetings.command-binding.yaml": {
 			"from": "meeting-docs/command-bindings/analyze-meetings--meetings.command-binding.yaml",
@@ -252,6 +261,18 @@
 			"from": "engagements/commands/update-engagements.command.md",
 			"hash": "sha256:a88783ef379c80115ecc1aea1221100632913e7a830a07955e38462c204e919b"
 		},
+		"commands/workflow/run.command.md": {
+			"from": "workflows/commands/workflow/run.command.md",
+			"hash": "sha256:406cf6053ec3e679820bc00eb51433e3e980a96bd0c3ccac6f81d3a1855b904f"
+		},
+		"data/workflows/customer-factory.workflow.md": {
+			"from": "workflows/data/workflows/customer-factory.workflow.md",
+			"hash": "sha256:99e559688ba917289e6021fac93f1cba9b0b5affa863be2cad0de8ced9d8e712"
+		},
+		"lib/workspace-root.mjs": {
+			"from": "workflows/lib/workspace-root.mjs",
+			"hash": "sha256:4b55f5ee40052d49eb8bb2854dfccba39502d11061f06f8965a4a19aaf503007"
+		},
 		"skills/analyzing-meetings/SKILL.md": {
 			"from": "meeting-docs/skills/analyzing-meetings/SKILL.md",
 			"hash": "sha256:362ae9d1e5c607223351b97ec4f39008f6c07ea015d9087a840d3c6db577a8f2"
@@ -291,6 +312,10 @@
 		"skills/preparing-for-meetings/SKILL.md": {
 			"from": "meeting-docs/skills/preparing-for-meetings/SKILL.md",
 			"hash": "sha256:b057f49f6c5acd4193caeb1cec48d9be63414985e7e1e3215b55ee8978acff88"
+		},
+		"skills/running-workflows/SKILL.md": {
+			"from": "workflows/skills/running-workflows/SKILL.md",
+			"hash": "sha256:6166a816349476e371b88fb0d36194ee4646d25492a4205755fe293e812b2b3a"
 		},
 		"skills/scraping-contacts/bin/import-avatars.mjs": {
 			"from": "contacts/skills/scraping-contacts/bin/import-avatars.mjs",

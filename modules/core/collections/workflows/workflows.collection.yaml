@@ -1,0 +1,101 @@
+name: workflows
+description: >-
+  A chain of commands written down: which command runs over which records, in what order, and where a person decides. A document and nothing more — how far a run got is read off the records the commands touch, never stored here.
+use_when: >-
+  the same chain of commands is run again and again over many records — meetings through to a deployment, a sweep of new leads — and should run the same way each time: read the workflow here and run it with /workflow:run; a shipped one is installed with `npx dt-workflows install <id>`. Never to track a run: no run is recorded, and running again is resuming
+storage:
+  path: data/workflows
+  format: md
+ids:
+  from: "{{ name | slug }}"
+  pattern: ^[a-z0-9][a-z0-9-]*$
+fields:
+  name:
+    type: string
+    required: true
+    description: What the workflow is called. The id is this name, slugged.
+  description:
+    type: string
+    description: One line on what a run produces, for someone choosing which workflow to run.
+  status:
+    type: string
+    default: draft
+    enum: [draft, active, retired]
+    description: >-
+      `draft` while the steps are being written — /workflow:run lists its sets but runs nothing without a go; `active` once it is the way this work is done; `retired` when it is not, kept for its history and refused by the runner.
+  steps:
+    type: object
+    many: true
+    required: true
+    item_title: '{{ name }}'
+    description: >-
+      The steps in run order. Each names the command, the collection it walks and the filter that makes its record set; the command's own binding still decides which of those records it can run on now (`dt next`).
+    fields:
+      name:
+        type: string
+        required: true
+        description: The step in a few words — what the run's report calls it.
+      command:
+        type: commands
+        description: >-
+          The command the step runs, as `commands/<id>` — `commands/rnd/plan` is typed `/rnd:plan`. Empty on a step that only lists its records for a person to act on; such a step needs a `stop`.
+      collection:
+        type: collections
+        required: true
+        description: The collection whose records the step walks. For a command bound to the collection rather than to a record, the collection it is bound to.
+      where:
+        type: string
+        description: >-
+          The step's record set: ONE filter object as JSON, exactly what `dt list <collection> --where` takes, one hop through a reference included. `$today` and `$now` are read by the engine; `$from` and `$to` are replaced by the runner with the run's range before it lists. Empty: every record in the collection.
+      stop:
+        type: string
+        description: >-
+          What a person decides at this step, in one line. The runner shows the step's record set, asks, and waits for the answer before running anything. Empty: the step runs without asking.
+  content:
+    type: markdown
+    body: true
+    description: >-
+      The steps in prose, one `## <n>. <name>` section each — why the step is there, what its set means, what the person decides at its stop. `steps` is what the runner executes; this is what a person reads.
+  tags:
+    type: string
+    many: true
+    examples: ['sales']
+    pattern: ^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$
+    description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
+  author:
+    type: string
+    examples: ['agents/claude-code', 'scripts/read-git@2']
+    pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
+    description: >-
+      Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
+  creation_context:
+    type: string
+    description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+  source:
+    type: string
+    description: 'Where the information came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…>.'
+  confidence:
+    type: string
+    default: normal
+    enum: [low, normal, high]
+    description: How much to trust this record. When low, the reason goes in creation_context.
+constraints:
+  # a step with nothing to run is a step for a person — it must say what they decide
+  - properties:
+      steps:
+        items:
+          if:
+            not:
+              required: [command]
+          then:
+            required: [stop]
+display:
+  nav:
+    icon: run-all
+    order: 30
+  list:
+    columns:
+      - name
+      - status
+      - description
+    sort: name
