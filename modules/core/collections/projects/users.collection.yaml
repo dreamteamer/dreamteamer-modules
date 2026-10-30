@@ -1,16 +1,6 @@
 name: users
 overlay: true
 fields:
-  led_activities:
-    type: activities
-    many: true
-    mirror_of: lead
-    description: The activities and gates this person is accountable for — generated from `activities.lead`.
-  activities:
-    type: activities
-    many: true
-    mirror_of: seats
-    description: The plan rungs this person is on — generated from `activities.seats`. THIS is what makes a person's own record answer "what is mine".
   decisions:
     type: decisions
     many: true

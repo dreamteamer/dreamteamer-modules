@@ -2,10 +2,11 @@
 //
 // The properties this file holds:
 //
-//   1. THE OBSERVED SET. `users`, `projects`, `activities`, `decisions` and `deliverables` each
-//      have an authored counterpart of the same name in `users` or `projects`, and live in the
-//      `perspective` namespace beside the rest of the module. `perspective/goals` has none: the
-//      authored `goals` left the projects module, so an inferred goal is joined to nothing.
+//   1. THE OBSERVED SET. `users`, `projects`, `decisions` and `deliverables` each have an authored
+//      counterpart of the same name in `users` or `projects`, and live in the `perspective`
+//      namespace beside the rest of the module. `perspective/goals` and `perspective/activities`
+//      have none: the authored goals and plan rungs left the projects module (work is planned as
+//      tasks), so an inferred goal or activity is joined to nothing.
 //   2. THEY ARE PARALLEL, NOT OVERLAYS. None declares `overlay: true`, because a merged collection could
 //      not tell a record a run FOUND from one a person WROTE.
 //   3. THE JOIN IS `real`: ONE-WAY, SOFT, AND POINTED AT ITS OWN COLLECTION. Soft means a plain
@@ -32,13 +33,12 @@ const PERSPECTIVE_PKG = JSON.parse(fs.readFileSync(path.join(MODULES, 'perspecti
 const PAIRS = {
 	users: { real: 'users', module: 'users' },
 	projects: { real: 'projects', module: 'projects' },
-	activities: { real: 'activities', module: 'projects' },
 	decisions: { real: 'decisions', module: 'projects' },
 	deliverables: { real: 'deliverables', module: 'projects' },
 };
 
 /** The whole observed world: every PAIRS collection plus `goals`, which is observed and joined to nothing. */
-const WORLD = [...Object.keys(PAIRS), 'goals'];
+const WORLD = [...Object.keys(PAIRS), 'goals', 'activities'];
 const load = (p) => yaml.load(fs.readFileSync(p, 'utf8'));
 // each observed descriptor with its mixins merged in, so a mixin's field counts as its own
 const observed = Object.fromEntries(Object.keys(PAIRS).map((n) => [n, shippedDescriptor(`perspective/${n}`)]));
@@ -210,18 +210,19 @@ describe('same structure, and the places it deliberately differs', () => {
 	// written AHEAD (`starts`) and an observation is read BEHIND (`started`).
 	test('the observed dates are past tense; the real ones are not', () => {
 		for (const n of ['projects', 'activities']) {
-			const p = propsOf(observed[n]);
+			const p = propsOf(shippedDescriptor(`perspective/${n}`));
 			assert.ok('started' in p && 'ended' in p, `${n} must spell its dates in the past tense`);
 			assert.ok(!('starts' in p) && !('ends' in p), `${n} must not carry the PLAN's spelling`);
-			assert.ok('starts' in realFieldsOf(n), `${PAIRS[n].real} is the plan and keeps \`starts\``);
 		}
+		assert.ok('starts' in realFieldsOf('projects'), 'projects is the plan and keeps `starts`');
 	});
 
 	test('the relation spine is the real world\'s, in the real world\'s words', () => {
-		assert.equal(propsOf(observed.activities).project.type, 'perspective/projects');
-		assert.equal(propsOf(observed.activities).lead.type, 'perspective/users');
+		const activities = propsOf(shippedDescriptor('perspective/activities'));
+		assert.equal(activities.project.type, 'perspective/projects');
+		assert.equal(activities.lead.type, 'perspective/users');
 		assert.equal(propsOf(observed.projects).lead.type, 'perspective/users');
-		assert.ok(!('lane' in propsOf(observed.activities)) && !('phase' in propsOf(observed.activities)),
+		assert.ok(!('lane' in propsOf(shippedDescriptor('perspective/activities'))) && !('phase' in propsOf(shippedDescriptor('perspective/activities'))),
 			'lanes and phases are not observed — those collections are gone');
 	});
 

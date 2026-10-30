@@ -67,9 +67,6 @@ fields:
     type: projects
     description: >-
       The effort this decision belongs to. Empty for a decision that belongs to no project, such as how the workspace itself is run.
-  activity:
-    type: activities
-    description: The plan rung it was decided on or about, where it was one. Finer grain than `project`, and usually empty.
   kind:
     type: string
     enum: [data-model, scope, method, tooling, prioritization, fork-in-the-road, abandonment, cost, interpretation, commercial]

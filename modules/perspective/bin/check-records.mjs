@@ -61,7 +61,6 @@ import { listRecords, readRecord, compiledStorage, recordFileFor, shippedCollect
 const REAL_TARGET = {
 	users: 'users',
 	projects: 'projects',
-	activities: 'activities',
 	decisions: 'decisions',
 	deliverables: 'deliverables',
 };
@@ -177,7 +176,6 @@ const PEER = (() => {
 		['meetings', 'data/meetings', 'meeting'],
 		['users', 'data/users', 'user'],
 		['projects', 'data/projects', 'project'],
-		['activities', 'data/activities', 'activity'],
 		['tasks', 'data/tasks', 'task'],
 	]) {
 		// the compiled storage block, parent folder included when the collection is stored under

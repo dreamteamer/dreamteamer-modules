@@ -5,15 +5,14 @@
 # support it, and the value records "we looked and the sources do not support a level", which an
 # absent field cannot.
 #
-# A risk is retired by a gate. Where the plan carries a gate whose `passes_when` tests exactly this
-# exposure, `gate` names it, and `status` reaches `closed` only when that gate passed or the exposure
+# A risk is retired by a documented change in the world. `status` reaches `closed` only when the exposure
 # is gone in the world. `mitigation` records what is documented as the treatment, never what someone
 # hopes.
 name: risks
 description: >-
-  A named thing that could go wrong on a project — with an owner, the evidence it is real, how likely and how bad the sources say it is, what is documented as the treatment, and the gate whose pass retires it.
+  A named thing that could go wrong on a project — with an owner, the evidence it is real, how likely and how bad the sources say it is, and what is documented as the treatment.
 use_when: >-
-  an exposure is named — in a meeting, a review, an estimate that rests on an unverified claim — write it here with `owner` and `evidence`, never as a table row in a note; asked "what threatens this plan" or "what does <person> carry", list here by `project` or `owner`. Search here before re-deriving an exposure a review already named, and before calling anything de-risked: `status` only reaches `closed` through its `gate` or a change in the world, both quotable
+  an exposure is named — in a meeting, a review, an estimate that rests on an unverified claim — write it here with `owner` and `evidence`, never as a table row in a note; asked "what threatens this plan" or "what does <person> carry", list here by `project` or `owner`. Search here before re-deriving an exposure a review already named, and before calling anything de-risked: `status` only reaches `closed` through a change in the world, written in `mitigation` and quotable
 storage: {path: data/risks, format: md}
 # The register code is the id, as `activities.code` is: a register is read and spoken by its codes.
 ids:
@@ -68,10 +67,6 @@ fields:
   mitigation:
     type: string
     description: What is DOCUMENTED as the treatment and where that stands — never what someone hopes. Empty means none is documented, which is itself worth reading.
-  gate:
-    type: activities
-    description: >-
-      The plan gate whose pass retires this risk (an `activities` record with `kind: gate`). Empty for exposures no gate yet tests.
   status:
     type: string
     required: true
@@ -121,4 +116,3 @@ display:
       - impact
       - owner
       - status
-      - gate

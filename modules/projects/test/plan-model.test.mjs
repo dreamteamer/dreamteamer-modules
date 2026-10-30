@@ -11,7 +11,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import yaml from 'js-yaml';
-import { violationsOf, decisionViolationsOf, GATE_ONLY } from '../../../modules/projects/bin/check-records.mjs';
+import { decisionViolationsOf } from '../../../modules/projects/bin/check-records.mjs';
 import { ALL, OWNER, targetsOf } from '../../../tests/helpers/descriptors.mjs';
 
 // the repo root — these tests were written at the root of dreamteamer/extensions, whose modules/ layout
@@ -36,94 +36,9 @@ function mirrorOf(coll, field, target) {
 	return undefined;
 }
 
-describe('the fold — one collection, two kinds', () => {
-	const act = load('projects/collections/activities.collection.yaml');
-	const p = act.fields;
-	test('kind is work|gate and defaults to work, so an ordinary plan row needs no ceremony', () => {
-		assert.deepEqual(p.kind.enum, ['work', 'gate']);
-		assert.equal(p.kind.default, 'work');
-	});
-	test('every gate-only field exists and the guard names the same set', () => {
-		for (const f of GATE_ONLY) assert.ok(p[f], `activities has no ${f}`);
-		assert.deepEqual([...GATE_ONLY].sort(), ['blocking', 'evidence', 'external_owner', 'gate_kind', 'passes_when']);
-	});
-	// The peer who owns 21 real gates measured that 12 of them are held by someone OUTSIDE the vendor,
-	// and that this is the field with no activity equivalent. It must NOT be a user.
-	test('external_owner points at contacts, not users — a gate we do not control is not ours to assign', () => {
-		assert.equal(p.external_owner.type, 'contacts');
-		assert.equal(p.lead.type, 'users');
-	});
-	test('a gate needs no seats and no feeding activity — the schema requires neither', () => {
-		assert.deepEqual(requiredOf(act), ['code', 'name', 'project', 'kind']);
-		assert.ok(!requiredOf(act).includes('seats'));
-		assert.ok(!requiredOf(act).includes('starts'), 'a gate with no date yet is still a gate');
-	});
-	test('status carries planned, because a plan is authored ahead of anything observed', () => {
-		assert.ok(p.status.enum.includes('planned'));
-		assert.equal(p.status.default, 'planned');
-	});
-});
-
-describe('the guard — the rules a schema cannot express', () => {
-	const gate = (extra = {}) => ({ kind: 'gate', passes_when: 'the client signs', ...extra });
-	test('a passed gate with no evidence is REFUSED — the rule the object exists for', () => {
-		const v = violationsOf('g-01', gate({ status: 'done' }));
-		assert.equal(v.length, 1);
-		assert.match(v[0], /evidence/);
-		assert.deepEqual(violationsOf('g-01', gate({ status: 'done', evidence: 'countersigned PDF, 2026-06-01' })), []);
-	});
-	test('a gate with no passes_when is refused — a test nobody wrote is not a gate', () => {
-		assert.match(violationsOf('g-02', { kind: 'gate' })[0], /passes_when/);
-	});
-	test('a gate spanning days is refused — a gate is judged on one', () => {
-		assert.match(violationsOf('g-03', gate({ starts: '2026-01-01', ends: '2026-03-01' }))[0], /same day/);
-		assert.deepEqual(violationsOf('g-03', gate({ starts: '2026-01-01', ends: '2026-01-01' })), []);
-	});
-	// The other half of the fold: a work row wearing gate fields reads as a gate to every view.
-	test('a gate-only field on a work row is refused, naming the field and the fix', () => {
-		for (const f of GATE_ONLY) {
-			const v = violationsOf('a-01', { kind: 'work', [f]: f === 'blocking' ? true : 'x' });
-			assert.equal(v.length, 1, `${f} was not caught`);
-			assert.match(v[0], new RegExp(f));
-			assert.match(v[0], /kind: gate/);
-		}
-	});
-	test('an ordinary work row, and a row with no kind at all, are clean', () => {
-		assert.deepEqual(violationsOf('a-02', { kind: 'work', starts: '2026-01-01', ends: '2026-02-01' }), []);
-		assert.deepEqual(violationsOf('a-03', { name: 'no kind field' }), [], 'kind defaults to work');
-	});
-	test('an empty string counts as absent, not as a value', () => {
-		assert.match(violationsOf('g-04', { kind: 'gate', passes_when: '' })[0], /passes_when/);
-		assert.deepEqual(violationsOf('a-04', { kind: 'work', evidence: '' }), []);
-	});
-
-	test('the script runs over a data root, prints a count, and exits 1 only on a violation', () => {
-		const ws = fs.mkdtempSync(path.join(os.tmpdir(), 'ext-plan-'));
-		const dir = path.join(ws, 'data', 'activities');
-		fs.mkdirSync(dir, { recursive: true });
-		fs.writeFileSync(path.join(dir, 'a-01.activity.md'), '---\ncode: a-01\nkind: work\n---\nbody\n');
-		const bin = path.join(ROOT, 'modules', 'projects', 'bin', 'check-records.mjs');
-		const run = () => spawnSync(process.execPath, [bin, '--data-root', path.join(ws, 'data')], { encoding: 'utf8' });
-		let r = run();
-		assert.equal(r.status, 0, r.stderr);
-		assert.match(r.stdout, /1 checked, 0 violations/);
-		fs.writeFileSync(path.join(dir, 'g-01.activity.md'), "---\ncode: g-01\nkind: gate\npasses_when: the client signs\nstatus: done\n---\nbody\n");
-		r = run();
-		assert.equal(r.status, 1);
-		assert.match(r.stderr, /evidence/);
-		fs.rmSync(ws, { recursive: true, force: true });
-	});
-	test('a workspace with the module and no plan yet is not a failure', () => {
-		const bin = path.join(ROOT, 'modules', 'projects', 'bin', 'check-records.mjs');
-		const r = spawnSync(process.execPath, [bin, '--data-root', '/nonexistent/dt'], { encoding: 'utf8' });
-		assert.equal(r.status, 0);
-	});
-});
-
 describe('the addressbook — every owner field resolves to one users record', () => {
 	const users = load('users/collections/users.collection.yaml');
 	const proj = load('projects/collections/projects.collection.yaml');
-	const act = load('projects/collections/activities.collection.yaml');
 	const tasks = load('tasks/collections/tasks.collection.yaml');
 	// THE POINT OF THE WHOLE MODEL: a person's own record is the join, so "what is mine" is a record
 	// to open rather than four saved searches. Each mirror is a field on `users` with `mirror_of`,
@@ -131,16 +46,14 @@ describe('the addressbook — every owner field resolves to one users record', (
 	// so the mirror exists only when its owner is installed.
 	const MIRRORS = {
 		'projects.lead': 'led_projects',
-		'activities.lead': 'led_activities',
-		'activities.seats': 'activities',
 		'tasks.assignee': 'tasks',
 	};
 	// ⚠ the plan collections are NAMESPACED (`plan/…`) so a consumer keeps its own bare `projects`
 	// and `activities`; a reference to them carries the prefix.
-	const REF_OF = { projects: 'plan/projects', activities: 'plan/activities', tasks: 'users' };
+	const REF_OF = { projects: 'plan/projects', tasks: 'users' };
 	for (const [key, mirror] of Object.entries(MIRRORS)) {
 		const [coll, field] = key.split('.');
-		const d = { projects: proj, activities: act, tasks }[coll];
+		const d = { projects: proj, tasks }[coll];
 		test(`${key} points at users and stamps users.${mirror}`, () => {
 			const spec = d.fields[field];
 			assert.ok(spec, `${coll} has no ${field}`);
@@ -185,11 +98,10 @@ describe('the addressbook — every owner field resolves to one users record', (
 		assert.ok(!ALL.some((d) => d.doc.name === 'repos'), 'no module ships a descriptor for the engine\'s repos');
 	});
 		test('assignment is still to a person — no owner field takes a team', () => {
-		for (const [d, f] of [[tasks, 'assignee'], [act, 'lead'], [proj, 'lead']]) {
+		for (const [d, f] of [[tasks, 'assignee'], [proj, 'lead']]) {
 			assert.equal(d.fields[f].type, 'users');
 		}
-		assert.equal(act.fields.team.type, 'teams', 'a rung may be CARRIED by a team');
-		assert.ok(!targetsOf(act.fields.seats).includes('teams'));
+		assert.ok(!targetsOf(proj.fields.lead).includes('teams'), 'a project is led by a person; a team is staffed, never accountable');
 	});
 });
 
@@ -203,7 +115,7 @@ describe('one module, bare names — the fold the operator asked for', () => {
 	test('the plan module ships four collections bare, and users is its OWN module at the nav root', () => {
 		assert.equal(pkg.name, '@dreamteamer/projects');
 		assert.ok(!pkg.dreamteamer.namespaces, 'bare names, so a consumer overlays rather than being prefixed around');
-		for (const [f, n] of [['projects', 'projects'], ['activities', 'activities'], ['teams', 'teams']]) {
+		for (const [f, n] of [['projects', 'projects'], ['decisions', 'decisions'], ['teams', 'teams']]) {
 			assert.equal(load(`projects/collections/${f}.collection.yaml`).name, n);
 		}
 		// tasks is bare too, in its own module since 2026-10-01
@@ -215,16 +127,16 @@ describe('one module, bare names — the fold the operator asked for', () => {
 	});
 	test('records land where an un-namespaced collection puts them', () => {
 		assert.equal(load('projects/collections/projects.collection.yaml').storage.path, 'data/projects');
-		assert.equal(load('projects/collections/activities.collection.yaml').storage.path, 'data/activities');
+		assert.equal(load('projects/collections/decisions.collection.yaml').storage.path, 'data/decisions');
 		assert.equal(load('users/collections/users.collection.yaml').storage.path, 'data/users');
 	});
 	test('every internal reference is bare too', () => {
-		const act = load('projects/collections/activities.collection.yaml').fields;
-		assert.equal(act.project.type, 'projects');
-		assert.equal(act.depends_on.type, 'activities');
-		assert.equal(act.depends_on.many, true);
-		assert.equal(act.seats.type, 'users');
-		assert.equal(act.seats.many, true);
+		const del = load('projects/collections/deliverables.collection.yaml').fields;
+		assert.equal(del.project.type, 'projects');
+		assert.equal(del.owner.type, 'users');
+		const risk = load('projects/collections/risks.collection.yaml').fields;
+		assert.equal(risk.project.type, 'projects');
+		assert.equal(risk.owner.type, 'users');
 	});
 	// ⚠ THE NAV LAYOUT IS A MODULE DECISION, not a namespace one. The extension folds a default-namespace
 	// collection under its owning module only when that module owns TWO OR MORE of them — so `projects`
@@ -232,7 +144,7 @@ describe('one module, bare names — the fold the operator asked for', () => {
 	// other collection points at belongs. Namespacing the plan instead would have renamed `activities` →
 	// `projects/activities` in every consumer that had just migrated onto it. Same nav, no renames.
 	test('the plan module ships its four collections, and users is its OWN module so it sits at the root', () => {
-		for (const c of ['teams', 'projects', 'activities']) {   // tasks: its own module since 2026-10-01, asserted below
+		for (const c of ['teams', 'projects', 'decisions', 'deliverables', 'risks']) {   // tasks: its own module, asserted below
 			assert.ok(fs.existsSync(path.join(ROOT, `modules/projects/collections/${c}.collection.yaml`)), `missing ${c}`);
 		}
 		assert.ok(fs.existsSync(path.join(ROOT, 'modules/users/collections/users.collection.yaml')), 'users must be its own module');
@@ -245,15 +157,13 @@ describe('one module, bare names — the fold the operator asked for', () => {
 		assert.ok(fs.existsSync(path.join(ROOT, 'modules/tasks/collections/tasks.collection.yaml')), 'tasks must be its own module');
 		assert.ok(!fs.existsSync(path.join(ROOT, 'modules/projects/collections/tasks.collection.yaml')), 'and must not also live in projects');
 	});
-	test('a task can hang off a project or a plan rung, and both mirror back', () => {
+	test('a task hangs off a project and mirrors back; the plan has no rung for it to hang off any more', () => {
 		assert.equal(tasks.fields.project.type, 'projects');
-		assert.equal(tasks.fields.activity.type, 'activities');
-		// both mirrors are overlays in the tasks module, so a plan without tasks carries neither
-		for (const [field, target] of [['project', 'projects'], ['activity', 'activities']]) {
-			const far = mirrorOf('tasks', field, target);
-			assert.equal(far?.name, 'tasks');
-			assert.equal(far.module, 'tasks');
-		}
+		assert.equal(tasks.fields.activity, undefined, 'tasks plan the work; there is no activity to point at');
+		// the mirror is an overlay in the tasks module, so a plan without tasks carries none
+		const far = mirrorOf('tasks', 'project', 'projects');
+		assert.equal(far?.name, 'tasks');
+		assert.equal(far.module, 'tasks');
 	});
 	// ⚠ meetings uses users too, and the SPLIT is the point: `attendees_contacts` is everyone as contacts
 	// (the invite's list, resolved), `ours` is the subset who are users — whose work the meeting IS.
@@ -264,213 +174,6 @@ describe('one module, bare names — the fold the operator asked for', () => {
 		assert.equal(m.ours.type, 'users');
 		assert.equal(m.ours.many, true);
 		assert.equal(mirrorOf('meetings', 'ours', 'users')?.name, 'meetings');
-	});
-});
-
-describe('the views a person actually opens', () => {
-	const view = (m, f) => yaml.load(fs.readFileSync(path.join(ROOT, 'modules', m, 'ui-views', f), 'utf8'));
-	// ⚠ SEATS, not lead. Measured on a real 31-row plan: one member LED 3 rows and sat on 16, so banding
-	// by lead hid three quarters of their work. `lead` stays a column.
-	test('the plan bands by SEATS — the array of who is on a rung — with lead kept as a column', () => {
-		const { list } = view('projects', 'plan-by-person.ui-view.yaml').display;
-		assert.equal(list.options.group_by, 'seats');
-		assert.equal(list.options.show_ungrouped_rows, true);
-		assert.ok(list.columns.includes('lead'), 'who is accountable is still worth seeing');
-	});
-	test('the task board bands by assignee, for the same reason', () => {
-		const { list } = view('tasks', 'tasks-by-assignee.ui-view.yaml').display;
-		assert.equal(list.options.group_by, 'assignee');
-		assert.equal(list.options.show_ungrouped_rows, true);
-	});
-	test('gates are a saved FILTER over the one collection, not a second collection', () => {
-		const v = view('projects', 'gates.ui-view.yaml');
-		assert.equal(v.collection, 'collections/activities');
-		assert.deepEqual(v.filter, { kind: { _eq: 'gate' } });
-	});
-	test('the gantt draws a gate as a point by taking starts and ends from the row', () => {
-		const { list } = view('projects', 'plan-gantt.ui-view.yaml').display;
-		assert.equal(list.layout, 'gantt');
-		assert.equal(list.options.start, 'starts');
-		assert.equal(list.options.end, 'ends');
-	});
-});
-
-// ── LANES: the bands a plan is read in ───────────────────────────────────────────────────────────
-//
-// ⚠ THE QUESTION THIS BLOCK EXISTS TO KEEP ANSWERED: why is a lane a COLLECTION when `phase` is a
-// string that already groups, and when `gates` went the other way on 2026-09-10 (a collection
-// deleted, folded into `kind: gate`, because a plan reads as one ordered list)? Exactly one property
-// survives that test — ORDER. A board draws its bands top to bottom; a free-text value has no order
-// but its own spelling, so a plan running Discovery → Build → Hardening → Launch bands as Build ·
-// Discovery · Hardening · Launch. The number is a property of the BAND and there are many activities
-// per band, so a field on the activity cannot hold it without being restated on every row.
-//
-// Everything below pins that argument as shape: `order` REQUIRED (the forcing field), `project`
-// OPTIONAL (the cross-project workstream, the second thing a string cannot do), and the one rule a
-// schema cannot express — a rung may not sit in a band belonging to another plan.
-describe('lanes — the grouping axis, as a record rather than a string', () => {
-	const lanes = load('projects/collections/activity-lanes.collection.yaml');
-	const act = load('projects/collections/activities.collection.yaml');
-	const p = lanes.fields;
-
-	test('`order` is REQUIRED — it is the whole reason this is not a second free-text field', () => {
-		assert.ok(requiredOf(lanes).includes('order'),
-			'an unordered lane is `phase` with extra ceremony; ordering is the property that earns the collection');
-		assert.equal(p.order.type, 'integer', 'a board sorts on a number, not on a spelling');
-	});
-
-	test('`project` is OPTIONAL, because a lane may span plans — and it mirrors back', () => {
-		assert.ok(!requiredOf(lanes).includes('project'),
-			'empty project IS the cross-project workstream — the other thing a field on the activity cannot express');
-		assert.equal(p.project.type, 'projects');
-		assert.equal(mirrorOf('activity-lanes', 'project', 'projects')?.name, 'lanes');
-	});
-
-	test('the id is flat, which is the price of an optional project', () => {
-		// An id generator throws on a missing field, so an OPTIONAL field cannot be an id segment —
-		// `{{ project }}/{{ name | slug }}` would refuse every cross-project lane. Flat it is, and lane
-		// names are therefore unique across the workspace.
-		assert.equal(lanes.ids.from, '{{ name | slug }}');
-		assert.ok(!lanes.ids.from.includes('project'));
-	});
-
-	test('nothing was invented beyond the argument — no colour, no lead, no status, no code', () => {
-		// Fields that were considered and refused. `color` fights `plan-gantt`'s own
-		// `color_by_field: status`; `lead` would make a band an accountability object beside
-		// `activities.lead`; `status` belongs to the work in the band, not the band; `code` is what the
-		// id already is. A lane carrying five fields nobody sets is worse than one carrying two.
-		for (const dead of ['color', 'colour', 'lead', 'status', 'code', 'starts', 'ends']) {
-			assert.ok(!(dead in p), `activity-lanes.${dead} was invented — the argument for this collection is ORDER, nothing else`);
-		}
-		// What it DOES carry, and all of it: the entity shape plus the provenance quad, which is written
-		// inline since 2026-10-01 (there is no mixin). The generated far sides are not authored fields.
-		assert.deepEqual(authored(lanes), ['name', 'order', 'project', 'tags', 'content', 'author', 'creation_context', 'source', 'confidence']);
-		assert.equal(lanes.mixins, undefined);
-	});
-
-	test('a rung points at a lane, and the lane gains the rungs in it', () => {
-		assert.equal(act.fields.lane.type, 'activity-lanes');
-		assert.equal(mirrorOf('activities', 'lane', 'activity-lanes')?.name, 'activities');
-	});
-
-	test('`phase` is the OTHER axis and is now a REFERENCE, not free text', () => {
-		// Two axes, two questions: `lane` is which TRACK, `phase` is WHEN. It was free text until
-		// 2026-09-11 on the grounds that "every shop names its phases differently" — which is true and
-		// is an argument for not shipping an ENUM, not for shipping a string. The thing a string could
-		// not do is carry the stretch's own DATES, so "when does Build end" could only be answered by
-		// taking the max of whatever pointed at it.
-		assert.ok('phase' in act.fields, 'phase is the time band and stays');
-		assert.equal(act.fields.phase.type, 'phases');
-		assert.equal(mirrorOf('activities', 'phase', 'phases')?.name, 'activities');
-	});
-
-	test('the swimlane board bands by lane, and shows the residue', () => {
-		const v = yaml.load(fs.readFileSync(path.join(ROOT, 'modules/projects/ui-views/plan-by-lane.ui-view.yaml'), 'utf8'));
-		assert.equal(v.collection, 'collections/activities');
-		assert.equal(v.display.list.options.group_by, 'lane');
-		assert.equal(v.display.list.options.show_ungrouped_rows, true, 'a rung with no lane is the residue; hiding it makes an unbanded plan look finished');
-		// The gantt keeps banding by phase — a plan that never grew lanes keeps the view it had.
-		const g = yaml.load(fs.readFileSync(path.join(ROOT, 'modules/projects/ui-views/plan-gantt.ui-view.yaml'), 'utf8'));
-		assert.equal(g.display.list.options.group_by, 'phase');
-	});
-});
-
-describe('the guard — a rung may not sit in another plan\'s band', () => {
-	// The one lane rule JSON Schema cannot reach: both fields are typed and both resolve, so
-	// `dreamteamer check` passes while the board draws this plan's rung inside somebody else's lane.
-	const LANES = new Map([['discovery', 'projects/atlas'], ['security', undefined]]);
-	const rung = (extra) => ({ kind: 'work', project: 'projects/atlas', ...extra });
-
-	test('a lane belonging to another project is REFUSED, naming both plans', () => {
-		const v = violationsOf('a-09', rung({ project: 'projects/beacon', lane: 'activity-lanes/discovery' }), LANES);
-		assert.equal(v.length, 1);
-		assert.match(v[0], /discovery/);
-		assert.match(v[0], /atlas/);
-		assert.match(v[0], /beacon/);
-	});
-
-	test('the matching project is clean, and so is a lane that spans plans', () => {
-		assert.deepEqual(violationsOf('a-10', rung({ lane: 'activity-lanes/discovery' }), LANES), []);
-		assert.deepEqual(violationsOf('a-11', rung({ lane: 'activity-lanes/security' }), LANES), [],
-			'a lane with no project is the cross-project workstream and matches everything, by design');
-	});
-
-	test('an unknown lane is left to the engine, and no lane at all is silent', () => {
-		// A dangling `lane` is a hard reference — `dreamteamer check` refuses it, and a guard that
-		// duplicated the rule would report the same defect twice under two different words.
-		assert.deepEqual(violationsOf('a-12', rung({ lane: 'activity-lanes/nowhere' }), LANES), []);
-		assert.deepEqual(violationsOf('a-13', rung({}), LANES), []);
-		assert.deepEqual(violationsOf('a-14', rung({ lane: 'activity-lanes/discovery' })), [],
-			'with no lanes loaded the rule is inert, so every existing two-argument caller keeps working');
-	});
-
-	test('the script loads the lane records itself and exits 1 on the mismatch', () => {
-		const ws = fs.mkdtempSync(path.join(os.tmpdir(), 'ext-lane-'));
-		const data = path.join(ws, 'data');
-		fs.mkdirSync(path.join(data, 'activities'), { recursive: true });
-		fs.mkdirSync(path.join(data, 'activity-lanes'), { recursive: true });
-		fs.writeFileSync(path.join(data, 'activity-lanes', 'discovery.activity-lane.md'), '---\nname: Discovery\norder: 10\nproject: projects/atlas\n---\nbody\n');
-		fs.writeFileSync(path.join(data, 'activity-lanes', 'security.activity-lane.md'), '---\nname: Security\norder: 20\n---\nbody\n');
-		fs.writeFileSync(path.join(data, 'activities', 'a-01.activity.md'), '---\ncode: a-01\nkind: work\nproject: projects/atlas\nlane: activity-lanes/discovery\n---\nbody\n');
-		fs.writeFileSync(path.join(data, 'activities', 'a-02.activity.md'), '---\ncode: a-02\nkind: work\nproject: projects/beacon\nlane: activity-lanes/security\n---\nbody\n');
-		const bin = path.join(ROOT, 'modules', 'projects', 'bin', 'check-records.mjs');
-		const run = () => spawnSync(process.execPath, [bin, '--data-root', data], { encoding: 'utf8' });
-		let r = run();
-		assert.equal(r.status, 0, r.stderr + r.stdout);
-		assert.match(r.stdout, /2 checked, 0 violations/);
-		// Now put a rung of `beacon` into `atlas`'s band.
-		fs.writeFileSync(path.join(data, 'activities', 'a-03.activity.md'), '---\ncode: a-03\nkind: work\nproject: projects/beacon\nlane: activity-lanes/discovery\n---\nbody\n');
-		r = run();
-		assert.equal(r.status, 1);
-		assert.match(r.stderr, /a-03/);
-		assert.match(r.stderr, /lane/);
-		fs.rmSync(ws, { recursive: true, force: true });
-	});
-});
-
-// ── PHASES: WHEN, as a record — the half of the two-axis argument that was still a string ────────
-//
-// The lane block above pins ORDER as the thing that earns `activity-lanes` a collection. Run the same
-// test on a phase and a DIFFERENT thing comes back, which is why these are two collections: a phase
-// has DATES and needs no order (the start IS the order), a lane has an order and no dates. Everything
-// below pins that as shape, including the field that is deliberately ABSENT.
-describe('phases — WHEN, as a record with its own dates', () => {
-	const ph = load('projects/collections/phases.collection.yaml');
-	const act = load('projects/collections/activities.collection.yaml');
-	const p = ph.fields;
-
-	test('`starts` is REQUIRED and `order` does not exist — the start IS the order', () => {
-		assert.ok(requiredOf(ph).includes('starts'),
-			'a phase without a start is a lane wearing the wrong name');
-		assert.ok(!('order' in p),
-			'an `order` beside dates lets a plan say Build runs before Discovery while the dates say otherwise, and nothing could adjudicate');
-	});
-
-	test('`project` is REQUIRED — unlike a lane, a stretch of calendar belongs to one plan', () => {
-		assert.ok(requiredOf(ph).includes('project'),
-			'a lane may span plans; one plan\'s own calendar may not');
-		assert.equal(p.project.type, 'projects');
-		assert.equal(mirrorOf('phases', 'project', 'projects')?.name, 'phases');
-	});
-
-	test('the id is project-scoped, which a required project is what permits', () => {
-		// An id generator throws on a missing field, so only a REQUIRED field can be a segment. That is
-		// exactly why `activity-lanes` is flat and this is not — and it lets two plans each have a
-		// "Discovery" without a collision.
-		assert.equal(ph.ids.from, '{{ project | basename }}/{{ name | slug }}');
-	});
-
-	test('`ends` is optional, because the era now running has no decided end', () => {
-		assert.ok(!requiredOf(ph).includes('ends'));
-	});
-
-	test('nothing was invented beyond the argument', () => {
-		assert.deepEqual(authored(ph), ['name', 'project', 'description', 'starts', 'ends', 'status', 'tags', 'content', 'author', 'creation_context', 'source', 'confidence']);
-		assert.equal(ph.mixins, undefined);
-	});
-
-	test('a rung points at a phase, and the phase gains the rungs in it', () => {
-		assert.equal(act.fields.phase.type, 'phases');
 	});
 });
 
@@ -487,12 +190,6 @@ describe('deliverables — the thing that changes hands', () => {
 	test('`delivered` and `accepted` are two states, because the gap between them is where projects stick', () => {
 		assert.ok(p.status.enum.includes('delivered'));
 		assert.ok(p.status.enum.includes('accepted'));
-	});
-
-	test('`activity` is OPTIONAL — several rungs routinely build one artefact', () => {
-		assert.ok(!requiredOf(d).includes('activity'),
-			'naming the nearest rung would be a guess the board then reads as a fact');
-		assert.equal(mirrorOf('deliverables', 'activity', 'activities')?.name, 'deliverables');
 	});
 
 	test('its `kind` is commercial, and deliberately NOT the observed half\'s MIME enum', () => {
@@ -586,9 +283,8 @@ describe('risks — what could go wrong, carried with an owner', () => {
 		assert.ok(p.likelihood.enum.includes('unassessed'));
 		assert.ok(p.impact.enum.includes('unassessed'));
 	});
-	test('a risk is retired by a gate — `gate` points at activities and mirrors back as retires_risks', () => {
-		assert.equal(p.gate.type, 'activities');
-		assert.equal(mirrorOf('risks', 'gate', 'activities')?.name, 'retires_risks');
+	test('a risk carries no gate — the plan has no rungs, so what retires it is written in mitigation', () => {
+		assert.equal(p.gate, undefined);
 	});
 	test('the owner mirror is what makes "what does this person carry" one filter', () => {
 		assert.equal(p.owner.type, 'users');
@@ -596,8 +292,7 @@ describe('risks — what could go wrong, carried with an owner', () => {
 	});
 	test('the guard refuses `closed` with nothing quotable behind it', () => {
 		const base = { code: 'rk-01', name: 'x', project: 'projects/p', category: 'commercial', likelihood: 'high', impact: 'high', owner: 'users/dana-oren', evidence: 'a review', status: 'closed' };
-		assert.equal(riskViolationsOf('rk-01', base).length, 1, 'closed with neither gate nor mitigation must be refused');
-		assert.deepEqual(riskViolationsOf('rk-01', { ...base, gate: 'activities/g-01' }), []);
+		assert.equal(riskViolationsOf('rk-01', base).length, 1, 'closed with no mitigation must be refused');
 		assert.deepEqual(riskViolationsOf('rk-01', { ...base, mitigation: 'retired by the 2026-10 replan' }), []);
 	});
 	test('`accepted` is somebody\'s authority — mitigation must say whose', () => {
@@ -643,7 +338,7 @@ describe('users — the agent fold', () => {
 // prefers it and falls back to the name.
 describe('slug and code — a latin handle is not a plan code', () => {
 	const SLUGGED = ['tasks', 'decisions', 'deliverables'];
-	const CODED = ['activities', 'risks'];
+	const CODED = ['risks'];
 	const desc = (c) => load(`${OWNER.get(c)}/collections/${c}.collection.yaml`);
 
 	test('the three latin-handle collections carry an OPTIONAL `slug` and no `code`', () => {
@@ -656,7 +351,7 @@ describe('slug and code — a latin handle is not a plan code', () => {
 		}
 	});
 
-	test('`activities` and `risks` KEEP their codes, required', () => {
+	test('`risks` KEEPS its code, required', () => {
 		// ⚠ The distinction is the point, so it is asserted rather than assumed. A later sweep that
 		// "tidies" these into slugs would be undoing a deliberate decision.
 		for (const c of CODED) {

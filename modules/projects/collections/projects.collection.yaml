@@ -57,16 +57,6 @@ fields:
     many: true
     pattern: ^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$
     description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
-  activities:
-    type: activities
-    many: true
-    mirror_of: project
-    description: The plan — every activity and gate of this project, in code order.
-  lanes:
-    type: activity-lanes
-    many: true
-    mirror_of: project
-    description: The bands this project's plan is read in — generated from `activity-lanes.project`.
   decisions:
     type: decisions
     many: true
@@ -77,11 +67,6 @@ fields:
     many: true
     mirror_of: project
     description: What this plan owes, by due date — generated from `deliverables.project`.
-  phases:
-    type: phases
-    many: true
-    mirror_of: project
-    description: The stretches this plan is read in, earliest first — generated from `phases.project`.
   risks:
     type: risks
     many: true

@@ -58,8 +58,7 @@ npx dt commit tasks/2026-07-25--review-the-q3-roadmap
   someone else's; `closed` means it left the board without being met.
 - **urgent** — separate from `due`. A thing can be urgent with no date and dated with no urgency.
 - **item** — the record the task came out of: `--item meetings/<id>`, a contact, a lead.
-- **project / activity** — with the projects module installed, `--project projects/<id>` or
-  `--activity activities/<id>`. Without it, leave both empty.
+- **project** — with the projects module installed, `--project projects/<id>`. Without it, leave it empty.
 
 ## a task is the record of a decision someone owes
 

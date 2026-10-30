@@ -1,6 +1,6 @@
 {
 	"name": "@dreamteamer/tasks",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"description": "Concrete commitments for a dreamteamer workspace — who owes what by when, with an inbox, a board and a by-person view.",
 	"license": "Apache-2.0",
 	"repository": {
@@ -20,14 +20,13 @@
 	],
 	"dreamteamer": {
 		"title": "Tasks",
-		"description": "`tasks`: concrete commitments, each one verb-first line with an optional `assignee` (a `users` record), a `due` date, an `urgent` flag, a free `lane` and an `item` backlink to its source record. Ships the inbox (`/inbox`), the board (`/tasks/board`), the by-person view (`/tasks/by-assignee`) and the `working-with-tasks` skill. With the projects module, a task can name its project or activity.",
+		"description": "`tasks`: concrete commitments, each one verb-first line with an optional `assignee` (a `users` record), a `due` date, an `urgent` flag, a free `lane` and an `item` backlink to its source record. Ships the inbox (`/inbox`), the board (`/tasks/board`), the by-person view (`/tasks/by-assignee`) and the `working-with-tasks` skill. With the projects module, a task can name its project.",
 		"engine": ">=0.33.0",
 		"dependencies": [
 			"@dreamteamer/users"
 		],
 		"peer_collections": [
 			"projects",
-			"activities",
 			"rnd/products",
 			"rnd/user-stories",
 			"rnd/user-journeys",

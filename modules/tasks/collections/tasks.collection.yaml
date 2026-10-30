@@ -59,11 +59,6 @@ fields:
     description: >-
       The project this task belongs to, when it came out of one. Empty is normal — most tasks are not plan
       rungs.
-  activity:
-    type: activities
-    description: >-
-      The plan rung this task came out of, when it did. A task is the small thing you do; an activity is the
-      bounded piece of work it serves.
   assignee:
     type: users
     description: >-

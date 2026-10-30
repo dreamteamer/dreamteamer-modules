@@ -27,7 +27,7 @@ fields:
     description: Where the product stands in its own life — not where any one piece of work on it stands.
   project:
     # Points at the plan module as a PEER, with no `x-inverse`. A PRODUCT is the effort; the plan
-    # that delivers it is `projects`, with its phases, gates, seats and risks. A mirror here would
+    # that delivers it is `projects`, with its tasks, deliverables and risks. A mirror here would
     # write a field into a module this one does not own, so `rnd` peers `projects` and stays
     # installable without it.
     type: projects

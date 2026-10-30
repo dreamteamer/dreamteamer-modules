@@ -1,8 +1,0 @@
-name: activities
-overlay: true
-fields:
-  tasks:
-    type: tasks
-    many: true
-    mirror_of: activity
-    description: The tasks raised under this plan rung — generated from `tasks.activity`.

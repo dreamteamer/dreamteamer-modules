@@ -33,15 +33,6 @@ fields:
     enum: [document, deck, report, software, design, prototype, dataset, training, process, service, other]
     description: >-
       What the artefact is commercially: what somebody is buying, not its file type. A kind the list lacks is an edit to this descriptor, not a coined value.
-  # ── WHAT PRODUCES IT ───────────────────────────────────────────────────────────────────────────
-  activity:
-    type: activities
-    description: >-
-      The plan rung that produces it, where one does. Empty when several rungs build it together.
-  phase:
-    type: phases
-    description: >-
-      The stretch of the plan it is handed over in, carried explicitly so a slipped `due` shows against its phase. It must be a phase of this deliverable's project; `bin/check-records.mjs` refuses the mismatch.
   owner:
     type: users
     description: Who on your side is accountable for it being handed over. One person, not necessarily anyone who makes it.

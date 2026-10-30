@@ -22,7 +22,7 @@
 		},
 		"bin/projects-check-records.mjs": {
 			"from": "projects/bin/check-records.mjs",
-			"hash": "sha256:2dd4347d7212ba7d87c8cc0cd7b84589d6b3314666bb4244f11ee16e690cd978"
+			"hash": "sha256:be5f797d75b305153883f4124c6021ea205727dd0b9e9760797ea2a322b55d4f"
 		},
 		"bin/users-check-records.mjs": {
 			"from": "users/bin/check-records.mjs",
@@ -88,33 +88,21 @@
 			"from": "meetings/collections/users.collection.yaml",
 			"hash": "sha256:0359c2997c70c24aa684e3266b30120bac413e5c303d0c7e704d8cf5a0cdbdfc"
 		},
-		"collections/projects/activities.collection.yaml": {
-			"from": "projects/collections/activities.collection.yaml",
-			"hash": "sha256:aaaa51b22bb04ada10f9f954c3c1779de74e85976d19c7243c578b187f18cce7"
-		},
-		"collections/projects/activity-lanes.collection.yaml": {
-			"from": "projects/collections/activity-lanes.collection.yaml",
-			"hash": "sha256:9a82412290794430284f612e7d72255db2d4cb6e334ec8225568fb6b40a1ba29"
-		},
 		"collections/projects/decisions.collection.yaml": {
 			"from": "projects/collections/decisions.collection.yaml",
-			"hash": "sha256:0c5bf18d7cdadf26ea51ae470b897a4f92e4b6dd192b6b5517b32b32cf7fb5ce"
+			"hash": "sha256:d15e6251a9950a85aea868aa75c563de68fbbab9c3a94d1cc7a0364b5bf57e6d"
 		},
 		"collections/projects/deliverables.collection.yaml": {
 			"from": "projects/collections/deliverables.collection.yaml",
-			"hash": "sha256:2302c6143f136d653a63cae2d507198dff6d53e9758377304aa6f3a14bc7c8b4"
-		},
-		"collections/projects/phases.collection.yaml": {
-			"from": "projects/collections/phases.collection.yaml",
-			"hash": "sha256:f13b0644da925a4438f57e2af43159b3c5b06f145f94ee6b4a112e068e6592b2"
+			"hash": "sha256:3575af132f866f7acb4cba5c8992f76f88c6899da30d06ba1f07e81480ddf9c0"
 		},
 		"collections/projects/projects.collection.yaml": {
 			"from": "projects/collections/projects.collection.yaml",
-			"hash": "sha256:8d73bd243336efcef0535ab55dcb15fede66906655bef17246ab96f655a076cc"
+			"hash": "sha256:7c8a503537bdffc97e8e83f929ef11f5492d3d7b69fb71e5b976a2bb2f8db5be"
 		},
 		"collections/projects/risks.collection.yaml": {
 			"from": "projects/collections/risks.collection.yaml",
-			"hash": "sha256:e0aaf41eedcf62f4b9cc48f704448c8b0b225a573aff56fa83a8839c617ebfa5"
+			"hash": "sha256:34ecf7127e2290fe80aca7d3c743e49178d4827edc0c4976e1b2f4f26d90ee53"
 		},
 		"collections/projects/teams.collection.yaml": {
 			"from": "projects/collections/teams.collection.yaml",
@@ -122,7 +110,7 @@
 		},
 		"collections/projects/users.collection.yaml": {
 			"from": "projects/collections/users.collection.yaml",
-			"hash": "sha256:367562d29b5a1969df74c523c5a3e4ced854f7d98000451733ec39a6e8d0d98e"
+			"hash": "sha256:423e5694be993ea9fbee26544c95ff25f74d8f9dd45374e2a53b58d0c2a7d8f3"
 		},
 		"collections/recordings/meeting-recordings.collection.yaml": {
 			"from": "recordings/collections/meeting-recordings.collection.yaml",
@@ -132,17 +120,13 @@
 			"from": "recordings/collections/meetings.collection.yaml",
 			"hash": "sha256:535198db9dbd1a04130ce6eb0e0d56465dac3ae6b2b387ad24b3c1dd441554c3"
 		},
-		"collections/tasks/activities.collection.yaml": {
-			"from": "tasks/collections/activities.collection.yaml",
-			"hash": "sha256:c61e9281cd2fb93bd8c7ac24626f04f96e809d1ef660dee8fff034d80f7f465c"
-		},
 		"collections/tasks/projects.collection.yaml": {
 			"from": "tasks/collections/projects.collection.yaml",
 			"hash": "sha256:18df0ec7aff635bf8ba277cadbd6b6b63e30a07334ccdb9e8ce18ed4d30dcfb7"
 		},
 		"collections/tasks/tasks.collection.yaml": {
 			"from": "tasks/collections/tasks.collection.yaml",
-			"hash": "sha256:75341b6b01a3e1b4c1a0aa8541f44d038054bbfcfb0b3c6eb447d6f2931a3ba3"
+			"hash": "sha256:8ab599ca9fa60a8a41b6e39079287a117e3456ef74b7fce5f8c30f4223021e56"
 		},
 		"collections/tasks/users.collection.yaml": {
 			"from": "tasks/collections/users.collection.yaml",
@@ -354,7 +338,7 @@
 		},
 		"skills/working-with-tasks/SKILL.md": {
 			"from": "tasks/skills/working-with-tasks/SKILL.md",
-			"hash": "sha256:191fb2407ce9e65e675280d9f5c38f8e44b746ca158ee8b85ecbaf12c0b1d405"
+			"hash": "sha256:3ae0939868c2e7a0117152cad613977332305e659fb923f222f581cec5053d11"
 		},
 		"src/check.js": {
 			"from": "files/src/check.js",
@@ -420,14 +404,6 @@
 			"from": "files/ui-views/files-unreferenced.ui-view.yaml",
 			"hash": "sha256:9b8c9953e2f523395d8cadb4bafd69ba801006ea992403335bf65e13d9dc5158"
 		},
-		"ui-views/gates-by-owner.ui-view.yaml": {
-			"from": "projects/ui-views/gates-by-owner.ui-view.yaml",
-			"hash": "sha256:0f8c1bdd2174b13ae528c5b6512cd27119de8bac3098d27d85f33baf1ac9e89a"
-		},
-		"ui-views/gates.ui-view.yaml": {
-			"from": "projects/ui-views/gates.ui-view.yaml",
-			"hash": "sha256:ec8c44fe8aa534ef9a1f7fbfc6c896660946455358b9030f222af0de2d50b5b5"
-		},
 		"ui-views/graph.ui-view.yaml": {
 			"from": "meetings/ui-views/graph.ui-view.yaml",
 			"hash": "sha256:035ad6255d44f870b1df858eb44ad06ae1ff54dde74f97d0cb16506ef9df4932"
@@ -443,18 +419,6 @@
 		"ui-views/meetings-recent.ui-view.yaml": {
 			"from": "meetings/ui-views/meetings-recent.ui-view.yaml",
 			"hash": "sha256:d80b600c8dda4be5a3ed0a77d28d1a3f08515d9b580edc85f780f3cf8b6d2f36"
-		},
-		"ui-views/plan-by-lane.ui-view.yaml": {
-			"from": "projects/ui-views/plan-by-lane.ui-view.yaml",
-			"hash": "sha256:4f436989bbf0eae89e2fa576ff97275a05c79045e488ba8245ee29b1be3c4573"
-		},
-		"ui-views/plan-by-person.ui-view.yaml": {
-			"from": "projects/ui-views/plan-by-person.ui-view.yaml",
-			"hash": "sha256:1ac0e1ce249101a9d55cb066c35ce1b546d3d02ff53bb51c7fb3c797b325fb48"
-		},
-		"ui-views/plan-gantt.ui-view.yaml": {
-			"from": "projects/ui-views/plan-gantt.ui-view.yaml",
-			"hash": "sha256:a761e6543b3bf4c3074647bb2dc4fbcf3b04db84f2a43e639a375715c1dbe17a"
 		},
 		"ui-views/tasks-active-gantt.ui-view.yaml": {
 			"from": "tasks/ui-views/tasks-active-gantt.ui-view.yaml",
