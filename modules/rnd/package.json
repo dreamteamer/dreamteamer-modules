@@ -17,7 +17,8 @@
 	],
 	"bin": {
 		"dt-wiki": "bin/wikis-wiki.mjs",
-		"dt-notebook": "bin/notebooklm-notebook.mjs"
+		"dt-notebook": "bin/notebooklm-notebook.mjs",
+		"dt-prototype": "bin/dt-prototype.mjs"
 	},
 	"files": [
 		"README.md",
