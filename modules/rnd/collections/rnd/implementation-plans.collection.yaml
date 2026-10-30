@@ -34,6 +34,9 @@ fields:
   change_request:
     type: rnd/change-requests
     description: The change request this plan builds, when the plan is for a change rather than a whole design. The request lists its plans back.
+  issue:
+    type: rnd/issues
+    description: The defect this plan fixes, on the quick path — an issue goes straight to a one-task plan, skipping design and change request. The issue lists its plans back.
   product:
     type: rnd/products
     description: The product the plan builds a piece of.
@@ -54,7 +57,7 @@ fields:
   execution:
     type: string
     enum: [subagent-driven, native]
-    description: '`subagent-driven` — a fresh agent implements each task and a fresh reviewer gates it; `native` — one session implements every task, then one whole-branch review. Chosen by the person who approves the plan.'
+    description: '`subagent-driven` — a fresh agent implements each task and a fresh reviewer gates it; `native` — one session implements every task, then one whole-branch review. Proposed by the plan with its reason in the body; the person who approves the plan keeps or changes it.'
   status:
     type: string
     default: draft
@@ -71,6 +74,9 @@ fields:
     many: true
     mirror_of: covers
     description: GENERATED — the tests that prove this plan's promises. Set `covers` on the test.
+  verified_on:
+    type: datetime
+    description: When the test stage last found every test the plan promised passing — for a plan with no change request, the gate deploy reads.
   content:
     type: markdown
     body: true

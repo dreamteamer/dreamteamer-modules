@@ -25,18 +25,18 @@ On a change request, `dt get rnd/change-requests/<id>` first. Its `description` 
 
 ## Do this
 
-1. Ask before you build. One question at a time, the open one first: "walk me through the moment this kicks in." Plain words. Stop when you can describe the thing in two hundred words and the person says nothing is missing. If they say "just do it", say your how-it-gets-made choices in one line and go.
+1. Ask before you build. One question at a time, the open one first: "walk me through the moment this kicks in." Plain words. Stop when you can describe the thing in two hundred words and the person says nothing is missing. If they say "just do it", say your how-it-gets-made choices in one line and go. Dispatched unattended, with nobody to ask: design from the record you were given, make every choice yourself, and list each one as yours in the body and in `creation_context`.
 2. Play it back as you go, two or three hundred words at a time. Mark a guess as a guess.
 3. Size it. A quick task: do it. A small change: describe it in chat and build. A project: this record.
 4. Write the record while the design is agreed, not after the plan:
    ```bash
    dt add rnd/design-docs --name "<what it is>" --product rnd/products/<id> --description "<one sentence>" --status draft
    ```
-   The body is the design: intent and why; goals, non-goals, anti-goals; constraints; the how as the person decided it; what is left to the builder; a `## Decisions` section naming every alternative that lost. Set `references`, `branding` and `design_system` when they apply, and `supersedes` when it replaces an older doc — that one gets `status: superseded` in the same commit.
-5. Each capability seen from the user's side is a `rnd/user-stories` record with `design_doc` and `product`. Each screen the design names is a `rnd/screens` record with `design_doc`. Each question that reading more cannot settle is a `rnd/open-questions` record with `blocks` naming the doc. Never a "TBD" in the body.
+   The body is the design: intent and why; goals, non-goals, anti-goals; constraints; the how as the person decided it; what is left to the builder. Each fork taken is a `decisions` record where that collection is installed (`dt add decisions`, with the alternatives and the reversibility); where it is not, a `## Decisions` section naming every alternative that lost. Set `references`, `branding` and `design_system` when they apply, and `supersedes` when it replaces an older doc — that one gets `status: superseded` in the same commit.
+5. Each capability seen from the user's side is a `rnd/user-stories` record (`key`, `name`, `design_doc`, `product`). Each screen the design names is a `rnd/screens` record (`key`, `name`, `route`, `source`, `design_doc`). Each question that reading more cannot settle is a `rnd/open-questions` record (`question`, `kind`, `blocks` naming the doc). `dt get collections/<name>` lists the enum values before you guess one. Never a "TBD" in the body.
 6. On a change request: `dt set rnd/change-requests/<id> design_docs=rnd/design-docs/<id>`.
 7. Read the doc once more as the builder who never saw the conversation. Every question they would ask is answered in the doc or becomes an open question.
-8. Commit by id, then queue the gate: `/rnd-review rnd/design-docs/<id>`.
+8. Commit by id. The next word is `/rnd:review rnd/design-docs/<id>`.
 
 ## Don't
 
@@ -48,4 +48,4 @@ On a change request, `dt get rnd/change-requests/<id>` first. Its `description` 
 
 ## Done when
 
-`rnd/design-docs/<id>` exists with `status: draft`, its stories and open questions point at it, the change request (if there was one) names it in `design_docs`, and `dt next rnd/design-docs/<id>` answers `/rnd-review`.
+`rnd/design-docs/<id>` exists with `status: draft`, its stories and open questions point at it, the change request (if there was one) names it in `design_docs`, and `dt next rnd/design-docs/<id>` answers `/rnd:review`.

@@ -1,7 +1,7 @@
 ---
 name: rnd-prototype
 description: >-
-  use when a design should become something a person can click — the first prototype of an rnd/design-docs record, or a round of feedback on an existing rnd/prototypes record; the mechanics behind /rnd-prototype, /build-prototype and /iterate-prototype. The prototype stage of the R&D lifecycle: the living mockup beside the product, never the product.
+  use when a design should become something a person can click — the first prototype of an rnd/design-docs record, or a round of feedback on an existing rnd/prototypes record; the mechanics behind /rnd:prototype, /rnd:prototype and /rnd:prototype. The prototype stage of the R&D lifecycle: the living mockup beside the product, never the product.
 ---
 
 # rnd-prototype
@@ -32,7 +32,7 @@ A round of feedback:
 
 5. Add `## iteration N — <date> — <who>` to the body: the feedback, verbatim where it matters; what changed; what you declined and why.
 6. Make the change. Run `deploy`. `dt set rnd/prototypes/<id> iteration=<N> status=living`. `live_url` stays unless the deploy says otherwise.
-7. Commit by id. When the person says the prototype is agreed, the design is ready to plan: `/rnd-plan rnd/design-docs/<id>`.
+7. Commit by id. When the person says the prototype is agreed, the design is ready to plan: `/rnd:plan rnd/design-docs/<id>`.
 
 ## Don't
 
@@ -44,4 +44,4 @@ A round of feedback:
 
 ## Done when
 
-`rnd/prototypes/<id>` has `live_url`, `iteration` and `deploy` set, its screens point at it, the design doc lists it, and the URL opens the main path. `dt next rnd/design-docs/<id>` then answers `/rnd-plan`.
+`rnd/prototypes/<id>` has `live_url`, `iteration` and `deploy` set, its screens point at it, the design doc lists it, and the URL opens the main path. `dt next rnd/design-docs/<id>` then answers `/rnd:review` while the doc is a draft and `/rnd:plan` once it is active.

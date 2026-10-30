@@ -1,0 +1,12 @@
+command: commands/rnd/test
+collection: collections/rnd/implementation-plans
+scope: record
+available_when:
+  status:
+    _eq: done
+  verified_on:
+    _empty: true
+done_when:
+  verified_on:
+    _nempty: true
+description: "prove the done plan: every promised test from its run, then the test review"

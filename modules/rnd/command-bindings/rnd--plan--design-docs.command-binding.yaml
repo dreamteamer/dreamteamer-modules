@@ -1,0 +1,12 @@
+command: commands/rnd/plan
+collection: collections/rnd/design-docs
+scope: record
+available_when:
+  status:
+    _eq: active
+  implementation_plans:
+    _empty: true
+done_when:
+  implementation_plans:
+    _nempty: true
+description: "plan the build of this active design"

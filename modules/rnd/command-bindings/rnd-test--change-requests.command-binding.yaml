@@ -1,7 +1,0 @@
-command: commands/rnd-test
-collection: collections/rnd/change-requests
-scope: record
-available_when:
-  tests:
-    _nempty: true
-description: "run every test that accepts this change and review the proof"

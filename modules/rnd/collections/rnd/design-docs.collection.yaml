@@ -23,13 +23,13 @@ fields:
   references:
     type: rnd/references
     many: true
-    description: The references this design was modelled on — what was studied before deciding. `/draft-prd` reads their `prd` fields and this doc's `branding`, and writes the body.
+    description: The references this design was modelled on — what was studied before deciding. `/rnd:draft-prd` reads their `prd` fields and this doc's `branding`, and writes the body.
   branding:
     type: markdown
     description: "The brand this design ships under — tokens (palette, type, radius), tone of voice, language and script direction, the logo as an `assets/…` reference. Short; what a prototype needs to look like ours rather than like the reference."
   plan:
     type: string
-    description: "The project plan this design was materialised into, as a `<collection>/<id>` string — where the plan module is installed, `projects/<id>`. A plain string because the plan may live in another workspace; `/plan-project` sets it."
+    description: "The project plan this design was materialised into, as a `<collection>/<id>` string — where the plan module is installed, `projects/<id>`. A plain string because the plan may live in another workspace; `/rnd:plan` sets it."
   prototypes:
     type: rnd/prototypes
     many: true
@@ -73,6 +73,7 @@ fields:
     description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
   status:
     type: string
+    default: draft
     enum: [draft, active, superseded]
     description: '`active` is the design currently being built to. `superseded` means a later doc won.'
   author:

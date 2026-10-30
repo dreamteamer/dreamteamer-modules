@@ -1,6 +1,6 @@
 ---
 name: building-from-references
-description: use when something should be built "like THAT" — a competitor's product, a screen recording, a design pattern or a spec arrives and a product of ours must be defined against it; when a design doc needs its PRD written from references and branding; when a prototype must exist, be deployed and iterated on feedback; when a design is ready to become a project plan. The mechanics behind /ingest-reference, /write-reference-prd, /draft-prd, /build-prototype, /iterate-prototype and /plan-project — a software factory that runs reference → PRD → prototype → plan → materialised repo, each hop a field `dt next` can read.
+description: use when something should be built "like THAT" — a competitor's product, a screen recording, a design pattern or a spec arrives and a product of ours must be defined against it; when a design doc needs its PRD written from references and branding; when a prototype must exist, be deployed and iterated on feedback; when a design is ready to become a project plan. The mechanics behind /rnd:ingest-reference, /rnd:reference-prd, /rnd:draft-prd, /rnd:prototype, /rnd:prototype and /rnd:plan — a software factory that runs reference → PRD → prototype → plan → materialised repo, each hop a field `dt next` can read.
 ---
 
 # building from references
@@ -22,12 +22,12 @@ rnd/references ──references[]──▶ rnd/design-docs ◀──design_doc�
 
 | hop | command | enter | exit |
 |---|---|---|---|
-| a capture becomes a record | `/ingest-reference <file or url>` | — | a `rnd/references` record with `reference_file` or `url` |
-| the reference gets its spec-as-prompt | `/write-reference-prd` | `prd` empty | `prd` written |
-| a design doc gets its PRD | `/draft-prd` | `references` set, body empty | body written |
-| the PRD becomes clickable | `/build-prototype` | body written | `prototypes` (generated) non-empty |
-| a reviewer's feedback lands | `/iterate-prototype` | `live_url` set | `iteration` bumped, body dated |
-| the design becomes a plan | `/plan-project` | `prototypes` non-empty | `plan` set |
+| a capture becomes a record | `/rnd:ingest-reference <file or url>` | — | a `rnd/references` record with `reference_file` or `url` |
+| the reference gets its spec-as-prompt | `/rnd:reference-prd` | `prd` empty | `prd` written |
+| a design doc gets its PRD | `/rnd:draft-prd` | `references` set, body empty | body written |
+| the PRD becomes clickable | `/rnd:prototype` | body written | `prototypes` (generated) non-empty |
+| a reviewer's feedback lands | `/rnd:prototype` on the prototype | `live_url` set | `iteration` bumped, body dated |
+| the design becomes a plan | `/rnd:plan` | `status: active` | `implementation_plans` non-empty |
 
 ## 1. ingest — the file leaves the inbox, the record is written first
 
@@ -80,7 +80,7 @@ plus `step` order the stories into flows. "What is left to build" is then a filt
 
 ## 4 and 5. build-prototype, iterate-prototype — the rnd-prototype skill
 
-`/build-prototype` and `/iterate-prototype` are the prototype stage of the lifecycle, and the
+`/rnd:prototype` and `/rnd:prototype` are the prototype stage of the lifecycle, and the
 `rnd-prototype` skill owns the procedure: the record with `entry` and `deploy`, the thinnest
 clickable thing in the design's branding, `live_url` from a deploy you watched, and a dated
 `## iteration N` section per round of feedback. Load it; nothing here restates it. One thing this
@@ -88,15 +88,12 @@ chain adds: before the first iteration, benchmark against every cited reference 
 screens and capabilities, theirs and ours, with the frame or URL behind each cell — in the
 prototype's body under a dated heading. That table is what the next iteration is for.
 
-## 6. plan-project — the design becomes a commitment, elsewhere
+## 6. the design becomes a plan — the rnd-plan skill
 
-When the prototype is agreed, the design is planned in whatever this workspace plans with — a
-`projects` record with its activities and gates, where the plan module is installed — and `plan` on
-the design doc names it as `<collection>/<id>`. The engineering plan — tasks, files, interfaces and
-checkbox steps for whoever builds it — is an `rnd/implementation-plans` record whose `spec` is this
-design doc; where no plan module is installed, `plan` names that record instead. Without either, `plan`
-stays empty and the design doc is done at the prototype. Materialising is the
-plan's business (a repo, a `repos` record, the first commit); this doc is done when `plan` is set.
+When the prototype is agreed, `/rnd:plan rnd/design-docs/<id>` writes the implementation plan and the
+tests it promises; the `rnd-plan` skill owns that. Where the plan module is installed and the work is
+tracked as a project, set `plan` on the design doc to the `projects` record as well, so the design
+page reaches the schedule and the schedule reaches the design.
 
 ## common mistakes
 

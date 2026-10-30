@@ -26,8 +26,8 @@
 		"namespaces": [
 			"rnd"
 		],
-		"description": "What a workspace builds and investigates: `products`, `design-docs`, `implementation-plans`, `user-stories`, `screens`, `prototypes`, `design-systems`, `tests`, `reviews`, `change-requests`, `features`, `issues`, `research-docs`, `open-questions`, `personas` — and the lifecycle on them, /rnd-design to /rnd-deploy, gated per record (`dt next`), chained by rnd-agent, reviewed by qa-manager.",
-		"engine": ">=0.33.0",
+		"description": "What a workspace builds and investigates: `products`, `design-docs`, `implementation-plans`, `user-stories`, `screens`, `prototypes`, `design-systems`, `tests`, `reviews`, `change-requests`, `features`, `issues`, `research-docs`, `open-questions`, `personas` — and the lifecycle on them, /rnd:design to /rnd:deploy, gated per record (`dt next`), chained by rnd-agent, reviewed by qa-manager.",
+		"engine": ">=0.38.0",
 		"peer_collections": [
 			"assets",
 			"companies",

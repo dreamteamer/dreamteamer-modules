@@ -73,6 +73,16 @@ fields:
     type: rnd/design-docs
     many: true
     description: The designs this change rests on or amends. Each lists its change requests back.
+  accepted_by:
+    type: string
+    examples: ['users/dana-oren', 'contacts/avi-cohen']
+    description: Who accepted the change — the reviewer whose verdict set `accepted`, or the client who said yes. A plain string, because the person may live in another workspace. Set with `accepted_on`; the review record carries the findings.
+  accepted_on:
+    type: datetime
+    description: When the change was accepted, by the person in `accepted_by`.
+  verified_on:
+    type: datetime
+    description: When the test stage last found every covering test passing and the test review approved — the gate deploy reads. Empty until then; cleared by a change that lands after it.
   deployed_on:
     type: datetime
     description: 'When the change went live, set by the deploy stage after the live check. Empty until then; `status: implemented` goes with it.'

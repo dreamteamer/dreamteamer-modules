@@ -1,0 +1,12 @@
+command: commands/rnd/plan
+collection: collections/rnd/issues
+scope: record
+available_when:
+  status:
+    _eq: confirmed
+  implementation_plans:
+    _empty: true
+done_when:
+  implementation_plans:
+    _nempty: true
+description: "the quick path: a confirmed defect goes straight to a one-task plan"

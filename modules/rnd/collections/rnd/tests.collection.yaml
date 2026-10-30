@@ -54,6 +54,11 @@ fields:
   expected:
     type: markdown
     description: What must be observed for the test to pass — specific enough that two people would agree.
+  visibility:
+    type: string
+    default: visible
+    enum: [visible, held-out]
+    description: '`visible` tests the builder sees and runs; `held-out` acceptance tests written at plan time that the builder never reads — the test stage and the reviewer run them, so a build cannot be shaped to the test.'
   status:
     type: string
     default: planned

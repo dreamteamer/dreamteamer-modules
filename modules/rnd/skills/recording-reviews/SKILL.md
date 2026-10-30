@@ -25,9 +25,9 @@ For code, read the diff from the base commit to the head, the plan's `review_foc
 1. Open the review:
    ```bash
    dt add rnd/reviews --name "<subject> — <lens>" --kind design|code|ux|test|security|compliance|other \
-     --subject <collection>/<id> --product rnd/products/<id> --reviewer agents/<harness> --reviewed_on <date>
+     --subject <collection>/<id> --product rnd/products/<id> --reviewer agents/<harness> --reviewed_on <date> --round 1
    ```
-   A code review sets `repo` and `change_ref` (the pull request, the commit range). A review of one task of a plan: subject the plan, the task number in `name`. The body holds the scope — what you looked at and what you did not — the method, and the summary.
+   A code review sets `repo` and `change_ref` (the pull request, the commit range). A review of one task of a plan: subject the plan, the task number in `name`. `round` is 2 for the review after a fix pass. The body holds the scope — what you looked at and what you did not — the method, and the summary. Re-run what the evidence claims: a test the builder says passed is run again here, never trusted.
 2. Get fresh eyes when you can. Dispatch the `qa-manager` agent with the subject's id, the spec's id and the review focus lines, never your session's history — it reads everything and writes only the review. Without an Agent tool, review as a separate pass and say so in the body.
 3. One problem, one record:
    ```bash
@@ -36,9 +36,9 @@ For code, read the diff from the base commit to the head, the plan's `review_foc
      --failure_scenario "<the inputs or state, and the wrong outcome>" --evidence "<the quoted line, the output, the path>"
    ```
    Grade by what a person gets if it ships, not by whether the spec named the input.
-4. Receive it like an engineer. Read every finding, restate it, check it against the code or the record, then set its `status`: `accepted` (agreed, not yet fixed), `fixed` (only once the fix exists, named in `resolution`), `wontfix` (the technical reason in `resolution`), `duplicate` (`duplicate_of` set). No "great point". Push back with reasons when a finding is wrong.
-5. Close it: every finding has a final status, then `dt set rnd/reviews/<id> status=closed verdict=approve|changes-requested|reject`.
-6. On `approve`, move the gate. A design doc: `status=active`. A change request: `status=accepted`. A plan: `status=approved` and `execution=subagent-driven|native`, which the person chooses. A test review moves nothing: the tests' own `status` is the record.
+4. Receive it like an engineer. Read every finding; one you do not understand stops you until it is clear, because findings are related. Restate it, check it against the code or the record, ask "is this used at all" before building what a reviewer calls proper, then set its `status`: `accepted` (agreed, not yet fixed), `fixed` (only once the fix exists, named in `resolution`), `wontfix` (the technical reason in `resolution`), `duplicate` (`duplicate_of` set). No "great point". Push back with reasons when a finding is wrong.
+5. Close it: every finding has a final status, then `dt set rnd/reviews/<id> status=closed verdict=approve|changes-requested|reject`. When a person must sign off — a client's acceptance, a security review, a release — set `human_reviewer` to them, leave `verdict` empty, and hand them the review's id: their word closes it, never yours.
+6. On `approve`, move the gate. A design doc: `status=active`. A change request: `status=accepted`, `accepted_by` and `accepted_on`. A plan: `status=approved`, keeping the `execution` the plan proposed — the person may change it before the build starts. A test review: `verified_on` on the change request or the plan, set by the test stage from this verdict. On `changes-requested`: the stage that built the subject gets one fix pass on the `accepted` findings, then a `round: 2` review; a second `changes-requested` is a person's decision.
 7. Commit the review, its findings and the subject by id.
 
 ## Don't
@@ -48,6 +48,8 @@ For code, read the diff from the base commit to the head, the plan's `review_foc
 - Don't close a review while a finding is `open`.
 - Don't hide real work in `resolution`. A fix that is work of its own is an `rnd/issues` or `rnd/change-requests` record, linked from the finding.
 - Don't approve a design in the same breath you wrote it. A separate pass with fresh eyes, or an agent, is the floor.
+- Don't set `verdict` on a review that names a `human_reviewer`. The findings are yours; the verdict is theirs.
+- Don't close a review of anything customer-facing, security-relevant or visual without a `human_reviewer`. Those are the verdicts people keep for themselves.
 
 ## Done when
 

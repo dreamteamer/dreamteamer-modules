@@ -1,4 +1,0 @@
-command: commands/rnd-design
-collection: collections/rnd/products
-scope: record
-description: "design something new for this product"

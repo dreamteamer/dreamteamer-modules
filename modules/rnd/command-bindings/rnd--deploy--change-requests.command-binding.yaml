@@ -1,0 +1,14 @@
+command: commands/rnd/deploy
+collection: collections/rnd/change-requests
+scope: record
+available_when:
+  status:
+    _eq: accepted
+  verified_on:
+    _nempty: true
+  deployed_on:
+    _empty: true
+done_when:
+  deployed_on:
+    _nempty: true
+description: "deploy the verified change and stamp deployed_on"

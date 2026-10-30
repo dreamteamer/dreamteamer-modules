@@ -1,0 +1,12 @@
+command: commands/rnd/prototype
+collection: collections/rnd/design-docs
+scope: record
+available_when:
+  content:
+    _nempty: true
+  prototypes:
+    _empty: true
+done_when:
+  prototypes:
+    _nempty: true
+description: "build and deploy the first clickable prototype of this design"

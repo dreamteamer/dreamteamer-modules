@@ -1,7 +1,0 @@
-command: commands/rnd-deploy
-collection: collections/rnd/prototypes
-scope: record
-available_when:
-  live_url:
-    _nempty: true
-description: "refresh the prototype's live URL"

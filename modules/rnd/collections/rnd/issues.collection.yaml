@@ -105,6 +105,11 @@ fields:
     many: true
     mirror_of: covers
     description: GENERATED — the tests that regress this defect. Set `covers` on the test.
+  implementation_plans:
+    type: rnd/implementation-plans
+    many: true
+    mirror_of: issue
+    description: GENERATED — the plans that fix this defect. Set `issue` on the plan.
 display:
   nav:
     icon: bug

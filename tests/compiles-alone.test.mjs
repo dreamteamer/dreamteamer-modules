@@ -6,6 +6,8 @@
 // its packed tarball (what npm delivers) and as a copied folder (what an eject or an inline copy is).
 import { test, describe, after } from 'node:test';
 import assert from 'node:assert';
+import fs from 'node:fs';
+import path from 'node:path';
 import { moduleIds, closure, pkgOf, virginWorkspace, CHANNELS, compileAndCheck, run, installPacked, cleanup, engineMeets, ENGINE_VERSION } from './helpers/workspace.mjs';
 
 after(cleanup);
@@ -42,7 +44,14 @@ test('a module whose engine floor is above the running engine is refused at comp
 	if (!m) return t.skip(`every module accepts engine ${ENGINE_VERSION}`);
 	const root = virginWorkspace();
 	installPacked(root, [...closure(m)]);
+	// the engine refuses the module WHOLE and says so, then compiles the rest: the workspace still
+	// exists, with none of the refused module's content in it
 	const compiled = run(root, ['compile']);
-	assert.notEqual(compiled.status, 0, `${m} compiled on engine ${ENGINE_VERSION} below its floor ${pkgOf(m).dreamteamer.engine}`);
-	assert.match(compiled.stderr + compiled.stdout, new RegExp(pkgOf(m).dreamteamer.engine.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+	const floor = pkgOf(m).dreamteamer.engine;
+	const escaped = floor.replace(/[.*+?^${}()|[\]\\]/g, (c) => '\\' + c);
+	assert.match(compiled.stderr + compiled.stdout, new RegExp(`module \\S+ needs engine "${escaped}"`), `${m} was not refused by its floor on engine ${ENGINE_VERSION}`);
+	const own = pkgOf(m).dreamteamer.namespaces?.[0] ?? null;
+	const dir = path.join(root, '.dreamteamer', 'collections');
+	const compiledCollections = fs.existsSync(dir) ? fs.readdirSync(dir) : [];
+	if (own) assert.ok(!compiledCollections.includes(own), `${m}'s namespace folder compiled despite the refusal`);
 });

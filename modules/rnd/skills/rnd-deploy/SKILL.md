@@ -13,7 +13,7 @@ You put a change — or a prototype — where its people can reach it, confirm i
 ## Before you start
 
 ```bash
-dt get rnd/change-requests/<id>          # accepted, tests passing, deployed_on empty
+dt get rnd/change-requests/<id>          # accepted, verified_on set, deployed_on empty
 dt get rnd/implementation-plans/<id>     # status done; the header names the repo and the deploy recipe
 dt get rnd/prototypes/<id>               # a prototype: deploy is the one command that refreshes live_url
 dt get repos/<id>                        # where the code lives on this machine
@@ -27,10 +27,11 @@ dt get repos/<id>                        # where the code lives on this machine
 4. Check it live: open the URL, run the one path the change is about, quote what you saw. A health endpoint is not the feature.
 5. Record it. A change request: `dt set rnd/change-requests/<id> deployed_on=<now> status=implemented`, and a `## Deployed <date>` section in the body — command, environment, URL, what you checked, who was told. A prototype: run `deploy`, `dt set rnd/prototypes/<id> live_url=<url>` if it moved, a dated line in the body.
 6. Tell the people who asked for it, with the URL. Commit by id.
+7. Write what the deploy taught — a step that surprised you, a check that should have existed — as a `decisions` record where installed, or a dated line on the design doc. The next plan reads it.
 
 ## Don't
 
-- Don't deploy with a `failing` or `planned` test on the change. `/rnd-test` first.
+- Don't deploy with `verified_on` empty. `/rnd:test` first, and it must have run an `e2e` or `acceptance` test, not unit tests alone.
 - Don't call it deployed on the command's exit code. Deployed is what you saw live.
 - Don't deploy from the branch. Merge first, then deploy what was merged.
 - Don't skip the rollback line. If you cannot say how to undo it, you cannot do it unattended.

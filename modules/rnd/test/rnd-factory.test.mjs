@@ -246,10 +246,12 @@ describe('the lifecycle stages — one plainly written skill each, to one contra
 });
 
 describe('the commands, the bindings and the agent — every entry names a skill, every gate a real field', () => {
-	const STAGES = ['rnd-design', 'rnd-review', 'rnd-prototype', 'rnd-change-request', 'rnd-plan', 'rnd-implement', 'rnd-test', 'rnd-deploy'];
+	const STAGES = ['rnd/design', 'rnd/review', 'rnd/prototype', 'rnd/change-request', 'rnd/plan', 'rnd/implement', 'rnd/test', 'rnd/deploy'];
 	const commandsDir = path.join(RND, 'commands');
-	const commands = fs.readdirSync(commandsDir).filter((f) => f.endsWith('.command.md')).map((f) => f.replace('.command.md', ''));
-	test('the eight stage commands exist, and each names a skill folder that exists', () => {
+	const commands = fs.readdirSync(path.join(commandsDir, 'rnd')).filter((f) => f.endsWith('.command.md')).map((f) => `rnd/${f.replace('.command.md', '')}`);
+	test('every command lives in the rnd folder — the family is one namespace — and the eight stage commands each name a skill folder that exists', () => {
+		assert.deepEqual(fs.readdirSync(commandsDir).filter((f) => f.endsWith('.command.md')), [], 'no command outside commands/rnd/');
+		assert.equal(commands.length, 11, 'eight stages and the three reference-chain commands');
 		for (const c of STAGES) {
 			assert.ok(commands.includes(c), `${c} has no command file`);
 			const text = fs.readFileSync(path.join(commandsDir, `${c}.command.md`), 'utf8');
@@ -262,8 +264,8 @@ describe('the commands, the bindings and the agent — every entry names a skill
 	});
 	const dir = path.join(RND, 'command-bindings');
 	const bindings = fs.readdirSync(dir).filter((f) => f.endsWith('.command-binding.yaml')).map((f) => ({ file: f, ...yaml.load(fs.readFileSync(path.join(dir, f), 'utf8')) }));
-	test('twenty-one bindings: six on the reference chain, fifteen on the lifecycle', () => {
-		assert.equal(bindings.length, 21);
+	test('eighteen bindings: three on the reference chain, fifteen on the lifecycle', () => {
+		assert.equal(bindings.length, 18);
 		assert.equal(bindings.filter((b) => STAGES.includes(b.command.replace(/^commands\//, ''))).length, 15);
 	});
 	/** The fields of a collection by its qualified name, or null when it is not an rnd collection. */
@@ -275,7 +277,8 @@ describe('the commands, the bindings and the agent — every entry names a skill
 			const coll = b.collection.replace(/^collections\//, '');
 			const props = fieldsByName(coll);
 			assert.ok(props, `${coll} is not an rnd collection`);
-			for (const gate of [b.available_when, b.done_when]) for (const [f, cond] of Object.entries(gate ?? {})) {
+			const terms = (gate) => Object.entries(gate ?? {}).flatMap(([k, v]) => k === '_or' || k === '_and' ? v.flatMap((g) => terms(g)) : [[k, v]]);
+			for (const gate of [b.available_when, b.done_when]) for (const [f, cond] of terms(gate)) {
 				assert.ok(props[f], `${coll} has no field ${f}`);
 				const hop = Object.keys(cond).find((k) => !k.startsWith('_'));
 				if (hop) {
@@ -288,7 +291,7 @@ describe('the commands, the bindings and the agent — every entry names a skill
 	}
 	test('building-from-references documents every command of the reference chain', () => {
 		const skill = fs.readFileSync(path.join(RND, 'skills', 'building-from-references', 'SKILL.md'), 'utf8');
-		for (const b of bindings) if (!STAGES.includes(b.command.replace(/^commands\//, ''))) assert.match(skill, new RegExp(`/${b.command.replace(/^commands\//, '')}`));
+		for (const b of bindings) if (!STAGES.includes(b.command.replace(/^commands\//, ''))) assert.match(skill, new RegExp(`/${b.command.replace(/^commands\//, '').replace('/', ':')}`));
 	});
 	test('qa-manager is a separate reviewer: it loads recording-reviews, may not write files, and the builder agent dispatches it', () => {
 		const text = fs.readFileSync(path.join(RND, 'agents', 'qa-manager.agent.md'), 'utf8');
@@ -297,7 +300,7 @@ describe('the commands, the bindings and the agent — every entry names a skill
 		assert.deepEqual(fm.skills, ['skills/recording-reviews']);
 		for (const tool of ['Write', 'Edit']) assert.ok(!fm.tools.includes(tool), `qa-manager must not have ${tool}`);
 		assert.match(fs.readFileSync(path.join(RND, 'agents', 'rnd-agent.agent.md'), 'utf8'), /qa-manager/);
-		assert.match(fs.readFileSync(path.join(RND, 'commands', 'rnd-review.command.md'), 'utf8'), /qa-manager/);
+		assert.match(fs.readFileSync(path.join(RND, 'commands', 'rnd', 'review.command.md'), 'utf8'), /qa-manager/);
 	});
 	test('the rnd-agent loads every stage skill, and the package ships agents', () => {
 		const text = fs.readFileSync(path.join(RND, 'agents', 'rnd-agent.agent.md'), 'utf8');
@@ -338,8 +341,30 @@ describe('0.3.0 — the lifecycle fields', () => {
 		assert.equal(plan.fields.change_request.type, 'rnd/change-requests');
 		assert.equal(cr.fields.implementation_plans.type, 'rnd/implementation-plans'); assert.equal(cr.fields.implementation_plans.mirror_of, 'change_request');
 	});
-	test('deploy stamps deployed_on on the change request', () => {
-		assert.equal(cr.fields.deployed_on.type, 'datetime');
+	test('a review may name the person whose verdict closes it', () => {
+		assert.equal(load('collections/rnd/reviews.collection.yaml').fields.human_reviewer.type, 'string');
+		assert.match(fs.readFileSync(path.join(RND, 'agents', 'rnd-agent.agent.md'), 'utf8'), /human_reviewer/);
+	});
+	test('the stages leave their marks as fields: acceptance, verification and deployment on the change request, verification on the plan', () => {
+		for (const f of ['accepted_on', 'verified_on', 'deployed_on']) assert.equal(cr.fields[f].type, 'datetime');
+		assert.equal(cr.fields.accepted_by.type, 'string');
+		assert.equal(plan.fields.verified_on.type, 'datetime');
+	});
+	test('the gates read those marks in order: deploy needs verified_on, test needs a done plan, plan needs an active design or none', () => {
+		const b = (f) => yaml.load(fs.readFileSync(path.join(RND, 'command-bindings', f), 'utf8'));
+		assert.deepEqual(b('rnd--deploy--change-requests.command-binding.yaml').available_when.verified_on, { _nempty: true });
+		assert.deepEqual(b('rnd--test--change-requests.command-binding.yaml').available_when.implementation_plans, { status: { _eq: 'done' } });
+		assert.ok(b('rnd--plan--change-requests.command-binding.yaml').available_when._or.some((g) => g.design_docs?.status?._eq === 'active'));
+		for (const f of fs.readdirSync(path.join(RND, 'command-bindings'))) if (!/prototype--prototypes|--products|ingest-reference/.test(f)) assert.ok(b(f).done_when, `${f} has no done_when — the agent could loop on it`);
+	});
+	test('a defect takes the quick path: a plan may fix an issue, which lists its plans back', () => {
+		assert.equal(plan.fields.issue.type, 'rnd/issues');
+		assert.equal(load('collections/rnd/issues.collection.yaml').fields.implementation_plans.mirror_of, 'issue');
+	});
+	test('a test may be held out from the builder, a review counts its round, a design doc is a draft by default', () => {
+		assert.deepEqual(tests.fields.visibility.enum, ['visible', 'held-out']);
+		assert.equal(load('collections/rnd/reviews.collection.yaml').fields.round.default, 1);
+		assert.equal(dd.fields.status.default, 'draft');
 	});
 	test('a test may cover a plan — a Review Focus line is proof about no one story', () => {
 		assert.ok(tests.fields.covers.type.includes('rnd/implementation-plans'));

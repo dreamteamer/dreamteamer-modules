@@ -45,7 +45,7 @@ fields:
     description: Where the current iteration is deployed and clickable — the URL a reviewer opens. Rapid prototyping means this exists from iteration 1; a prototype nobody can open is a sketch.
   iteration:
     type: number
-    description: Which build this is. Bumped by `/iterate-prototype` on every deployed change; the feedback that drove each is a dated section in the body.
+    description: Which build this is. Bumped by `/rnd:prototype` on every deployed change; the feedback that drove each is a dated section in the body.
   deploy:
     type: string
     description: "How `live_url` is refreshed, as the one command to run from `repo`/`entry`'s folder — e.g. `npx wrangler deploy`. The CI/CD of a prototype is one line, or it is not rapid."

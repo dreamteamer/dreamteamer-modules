@@ -41,6 +41,15 @@ fields:
     type: string
     examples: ['users/dana-oren', 'agents/claude-code']
     description: Who reviewed — `users/<id>` for a person, `agents/<harness>` for an agent. A plain string, because the reviewer may live in another workspace.
+  round:
+    type: integer
+    default: 1
+    minimum: 1
+    description: Which round this is on the same subject — 1 for the first review, 2 for the review after one fix pass. A third round is a person's decision, never an agent's loop.
+  human_reviewer:
+    type: string
+    examples: ['users/dana-oren']
+    description: The person whose verdict closes this review, when one must — a client's acceptance, a security sign-off, a release decision. An agent writes the findings and leaves `verdict` empty; the lifecycle waits here until that person sets it. A plain string, like `reviewer`, because the person may live in another workspace.
   reviewed_on:
     type: date
     description: The day the review was done.
