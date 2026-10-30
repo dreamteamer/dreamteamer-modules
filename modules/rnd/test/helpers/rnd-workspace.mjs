@@ -12,6 +12,7 @@ export function rndWorkspace() {
 	if (!base) {
 		base = virginWorkspace();
 		installCopied(base, ['rnd']);
+		fs.writeFileSync(path.join(base, 'package-lock.json'), '{}\n'); // a real workspace has one; the harness finds the workspace by it
 		const c = run(base, ['compile']);
 		if (c.status !== 0) throw new Error(`compile failed:\n${c.stderr}\n${c.stdout}`);
 	}
