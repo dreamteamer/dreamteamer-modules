@@ -1,0 +1,3 @@
+# words the product copy never shows with the metadata layer off
+\bTODO\b
+lorem ipsum

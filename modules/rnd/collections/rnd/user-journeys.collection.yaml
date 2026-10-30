@@ -46,6 +46,48 @@ fields:
     type: string
     description: Positive and negative acceptance scenarios.
     many: true
+  steps:
+    type: object
+    many: true
+    item_title: '{{ screen }}'
+    description: >-
+      The journey in order — item 1 is step 1. Each step names the screen it happens on and, unless the system acts, the
+      story it demonstrates and the product role acting. The ORDER of a journey lives here and nowhere else: a story can
+      serve several journeys, and a system step has no story at all. What a prototype DOES at a step (the demo user, the
+      anchor, the actions) is the prototype's playback module, never this field.
+    fields:
+      screen:
+        type: rnd/screens
+        required: true
+        description: The screen the step happens on.
+      story:
+        type: rnd/user-stories
+        description: The story the step demonstrates. Empty on a system step.
+      persona:
+        type: rnd/personas
+        description: >-
+          The product role acting (`kind: product-role`). On a system step, the system actor's role when one is
+          modelled.
+      system:
+        type: boolean
+        description: True when the system acts and no person does. Such a step has no story.
+      caption:
+        type: string
+        description: What to look at on this step, in the product's own language — one line.
+      scope_rows:
+        type: string
+        many: true
+        description: The requirement rows or rule ids this step demonstrates, as `rnd/screens.scope_rows` cites them.
+      open:
+        type: rnd/open-questions
+        many: true
+        description: The open questions this step's behaviour waits on.
+  failures:
+    type: string
+    many: true
+    description: >-
+      The failure paths of the journey — one per item, each a short sentence naming what goes wrong and, where one
+      applies, the rule or question that governs it.
   stories:
     type: rnd/user-stories
     description: Generated story membership.

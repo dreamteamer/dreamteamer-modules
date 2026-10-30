@@ -110,7 +110,7 @@ describe('the composition', () => {
 		assert.ok(manifest.dreamteamer.extension.startsWith('./src/'), 'the entry is the composed src/extension.js');
 		assert.ok(!originPkg('wikis').dreamteamer.extension, 'exactly one origin is an extension');
 		for (const k of ['bin', 'src', 'lib', 'collections', 'skills', 'commands', 'command-bindings', 'agents', 'compose.json']) assert.ok(manifest.files.includes(k), `files lacks ${k}`);
-		assert.deepEqual(manifest.bin, { 'dt-wiki': 'bin/wikis-wiki.mjs', 'dt-notebook': 'bin/notebooklm-notebook.mjs' });
+		assert.deepEqual(manifest.bin, { 'dt-wiki': 'bin/wikis-wiki.mjs', 'dt-notebook': 'bin/notebooklm-notebook.mjs', 'dt-prototype': 'bin/dt-prototype.mjs' });
 		for (const target of Object.values(manifest.bin)) assert.ok(fs.existsSync(path.join(RND, target)), `${target} is not shipped`);
 		assert.deepEqual(Object.keys(manifest.dependencies), ['js-yaml'], 'the one npm package both origins import');
 		const dts = spec.origins.map((o) => originPkg(o).dreamteamer);
