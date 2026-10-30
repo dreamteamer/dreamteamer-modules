@@ -46,11 +46,17 @@ sweeps its own after a month. `/session:analyze` reads that transcript as a revi
 `analysis` and a one-line `description` onto the record. Both are the `managing-sessions` skill; the
 reader is `bin/session-save.mjs` (`--json` prints the fields and writes nothing).
 
-A session record is one person's working trace, so a workspace usually keeps them local: a
-`.gitignore` line for `data/sessions/` keeps every record readable by `dt list` and `dt check` and
-out of the shared history. To keep the metrics current without anyone remembering, bind the reader
-to the harness's `Stop` hook in the workspace's `.claude/settings.json` — the module ships the
-reader, not the binding:
+A session record is one person's working trace, so the collection lives OUTSIDE the repo: its
+`storage.path` is `${env:SESSIONS_FOLDER}`, which core requests in its `dreamteamer.vars`, the
+workspace declares in its own `dreamteamer.vars` (compile says so until it does) and `.env` sets per
+machine. A record is `<SESSIONS_FOLDER>/<yyyy>/<mm>/<id>.session.md`; `dt list`, `dt get` and
+`dt check` read the folder, `dt status` names it under `storage:`, and `dt commit` reports it as
+outside every git repo here — session records are never committed, and need no `.gitignore` line.
+With `SESSIONS_FOLDER` unset, compile warns and every record verb on `sessions` refuses, naming the
+var: set it in `.env`, declare it beside `FILES_FOLDER` in the workspace's `dreamteamer.vars`, and
+recompile. The transcript copy is separate, under `${env:FILES_FOLDER}/sessions/`. To keep the
+metrics current without anyone remembering, bind the reader to the harness's `Stop` hook in the
+workspace's `.claude/settings.json` — the module ships the reader, not the binding:
 
 ```json
 {
@@ -72,7 +78,7 @@ reader, not the binding:
 
 The hook writes metrics only; `outcome`, `analysis` and `description` stay the session's and the
 reviewer's words. Namespaced commands (`commands/session/save.command.md` typed as `/session:save`)
-need engine 0.38, which is core's floor.
+need engine 0.38; an env-pointed `storage.path` needs 0.39, which is core's floor.
 
 ## what a descriptor cannot say
 

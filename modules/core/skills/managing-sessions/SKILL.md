@@ -17,7 +17,10 @@ echo $CLAUDE_CODE_SESSION_ID                                  # the session you 
 node node_modules/@dreamteamer/core/bin/session-save.mjs --json   # the fields, read from the transcript, written nowhere
 dt get sessions/$CLAUDE_CODE_SESSION_ID                       # whether a record exists already (a hook may have written it)
 dt resolve '${env:FILES_FOLDER}'                              # where the transcript copy will go; unset, the record points at the harness's own file
+dt status                                                     # the storage: block names the folder sessions records live in (${env:SESSIONS_FOLDER}), or why it cannot render
 ```
+
+Session records live in `${env:SESSIONS_FOLDER}` — a per-machine folder outside the repo, never committed. With the var unset, `dt add sessions` and `dt get sessions/<id>` refuse, naming it: set `SESSIONS_FOLDER` in the workspace's `.env`, declare it in the workspace's `dreamteamer.vars` beside `FILES_FOLDER`, and `dt compile` before saving.
 
 The reader takes `--session <id>` for another session and `--transcript <path>` for a file that is not where the harness keeps it. Nothing here needs the network.
 
@@ -28,7 +31,7 @@ The reader takes `--session <id>` for another session and `--transcript <path>` 
 1. `node node_modules/@dreamteamer/core/bin/session-save.mjs --write` — adds `sessions/<session id>` or updates it, copies the transcript to `${env:FILES_FOLDER}/sessions/<yyyy>/<mm>/<id>.jsonl` when `FILES_FOLDER` resolves, and prints `added|updated sessions/<id>: N turns · M tool calls · $ USD`. Quote that line.
 2. Set what the transcript cannot know, as `--set` pairs on the same call or a `dt set` after it: `worker=users/<me>` (or `agents/<id>` for an unattended run), `project=projects/<id>`, `repo=repos/<id>`, `tasks=tasks/<id>` for each task the session produced or closed.
 3. Write `outcome` — the body — in the session's own words: what was asked, what landed (commits by subject, records by id, decisions by id), what is left. Short, and from what you actually did, not from the plan. `dt set sessions/<id> outcome="…"`.
-4. Say where the record is and whether it is committed. Where `data/sessions/` is gitignored it never will be, and that is the point; where it is not, commit by id: `dt commit sessions/<id>`.
+4. Say where the record is: `<SESSIONS_FOLDER>/<yyyy>/<mm>/<id>.session.md`, on this machine only. It is never committed — `dt commit sessions/<id>` reports the folder as outside every git repo here, and that is the point.
 
 **Analyze** (`/session:analyze`):
 
@@ -43,7 +46,7 @@ The reader takes `--session <id>` for another session and `--transcript <path>` 
 
 - Don't compute the metrics yourself from the transcript — the reader does, and `cost-state` is the harness's own figure. A session with no `cost-state` line gets the usage sum at the list prices the reader carries, and a model it does not price leaves `cost_usd` empty rather than guessed.
 - Don't write `outcome` or `analysis` from memory when the transcript is there. Memory is what the session already believed about itself.
-- Don't commit `data/sessions/` into a shared repo by habit. Decide once per workspace — a `.gitignore` line keeps them local — and say which it is.
+- Don't look for session records under `data/`, and don't try to commit them: they live under `${env:SESSIONS_FOLDER}`, outside every repo, and a refusal naming that var means the folder is not set on this machine.
 - Don't put a machine path in `transcript`. The reader writes a `${env:FILES_FOLDER}` or `${userHome}` template; keep it that way.
 - Don't bind the save to `SessionEnd`: its default budget is 1.5 seconds and a refused write is silent. `Stop` fires every turn and has the time.
 

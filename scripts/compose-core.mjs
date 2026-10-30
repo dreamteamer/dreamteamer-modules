@@ -2,7 +2,8 @@
 // COMPOSE a module from other official modules — copies, never a second authoring place.
 //
 // A module with `compose.json` at its root names its `origins` (and may name `engine`, a floor of the module's own, for what its own
-// commands need of the engine beyond what the origins do); this script copies every shipped
+// commands need of the engine beyond what the origins do, and `env` and `vars`, the keys its OWN collections and scripts read — core's
+// `sessions` keeps its records under `${env:SESSIONS_FOLDER}`); this script copies every shipped
 // source file of each origin into the module under ONE deterministic rewrite, merges the origins'
 // manifests into the module's package.json, and records every copy with its hash in compose.json's
 // `files`. The drift test beside each composed module (`modules/<id>/test/compose.test.mjs`)
@@ -133,7 +134,7 @@ export function compose(target = 'core') {
 			if (isBase(text)) owned.add(yamlName(text));
 		}
 	}
-	const union = (key) => [...new Set(dts.flatMap((d) => d[key] ?? []))].sort();
+	const union = (key) => [...new Set([...(spec[key] ?? []), ...dts.flatMap((d) => d[key] ?? [])])].sort();
 	const peers = union('peer_collections').filter((p) => !owned.has(p));
 	const hardDeps = (authored.dependencies ?? []).filter((d) => !internal.has(d));
 	const npmDeps = Object.assign({}, existing.dependencies ?? {}, ...manifests.map((m) => m.pkg.dependencies ?? {}));
