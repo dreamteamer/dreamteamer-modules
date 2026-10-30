@@ -61,3 +61,8 @@ display:
       - message_count
       - contributor_messages
       - participants
+  form:
+    sections:
+      - title: Provenance
+        fields: [author, creation_context, confidence]
+        collapsed: true

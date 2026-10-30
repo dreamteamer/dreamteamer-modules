@@ -98,6 +98,7 @@ fields:
     type: string
     description: How and why this record came to be, in one line — and the reason whenever confidence is low.
   source:
+    title: Information source
     type: string
     description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…>.'
   confidence:
@@ -119,3 +120,8 @@ display:
     sort: '-last_modified'
     options:
       group_by: kind
+  form:
+    sections:
+      - title: Provenance
+        fields: [author, creation_context, source, confidence]
+        collapsed: true

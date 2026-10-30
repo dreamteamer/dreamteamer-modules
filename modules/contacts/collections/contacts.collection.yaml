@@ -99,6 +99,7 @@ fields:
     type: string
     description: How and why this record came to be, in one line — and the reason whenever confidence is low.
   source:
+    title: Information source
     type: string
     description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: calendar:<id> · <collection>/<id> · file:<path> · url:<…> · linkedin:<slug> · migration:<id>.'
   confidence:
@@ -124,3 +125,8 @@ display:
       - linkedin_degree
       - status
     sort: -recent_meeting_date
+  form:
+    sections:
+      - title: Provenance
+        fields: [author, creation_context, source, confidence]
+        collapsed: true

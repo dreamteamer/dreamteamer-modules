@@ -222,3 +222,8 @@ display:
       - user_correction
       - depth
       - interest_score
+  form:
+    sections:
+      - title: Provenance
+        fields: [author, creation_context, confidence]
+        collapsed: true
