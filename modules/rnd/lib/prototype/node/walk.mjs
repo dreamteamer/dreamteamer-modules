@@ -43,7 +43,8 @@ export async function visit(page, c, s) {
 export async function run(dir, { only = null, port = null, log = console.log, error = console.error } = {}) {
 	const c = await loadConfig(dir);
 	const rules = c.paths.forbidden && fs.existsSync(c.paths.forbidden) ? forbiddenOf(fs.readFileSync(c.paths.forbidden, 'utf8')) : [];
-	const pw = await chromium(c.dir); const srv = await serve(c, port); const browser = await pw.launch();
+	const pw = await chromium(c.dir); const srv = await serve(c, port);
+	let browser; try { browser = await pw.launch(); } catch (e) { srv.stop(); throw e; }
 	const failures = []; let n = 0;
 	try {
 		const page = await browser.newPage({ viewport: c.viewport, ...(c.locale ? { locale: c.locale } : {}) });

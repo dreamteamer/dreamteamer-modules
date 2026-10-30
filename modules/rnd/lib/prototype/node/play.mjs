@@ -114,7 +114,7 @@ export async function run(dir, { only = null, jobs = 4, port = null, log = conso
 	for (const j of todo) { const f = path.join(c.paths.playback, `${j.key}.js`); if (fs.existsSync(f)) mods[j.key] = (await import(`${pathToFileURL(f).href}?t=${fs.statSync(f).mtimeMs}`)).default; }
 	const pw = await chromium(c.dir);
 	const srv = await serve(c, port);
-	const browser = await pw.launch();
+	let browser; try { browser = await pw.launch(); } catch (e) { srv.stop(); throw e; }
 	const t0 = Date.now();
 	const results = new Array(todo.length); let next = 0;
 	try {

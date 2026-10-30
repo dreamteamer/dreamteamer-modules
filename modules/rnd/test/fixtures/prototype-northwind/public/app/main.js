@@ -15,7 +15,7 @@ function renderAll() {
 	const s = route();
 	current = { screen: s, params: {}, query: Object.fromEntries(new URLSearchParams(location.hash.split('?')[1] || '')) };
 	meta.syncPortal(s.portal);
-	main.replaceChildren(s.stub ? stubScreen(s, null, { stories: app.demo?.stepsFor(s.key) ?? [] }) : s.render({ store, session, meta, screen: s }));
+	main.replaceChildren(s.stub ? stubScreen(s, null, { stories: app.demo?.stepsFor(s.key) ?? [] }) : s.render({ store, session, meta, screen: s, query: current.query }));
 	for (const f of listeners) f();
 }
 const app = { store, session, screens, byKey, current: () => current, onRender: (f) => listeners.add(f), renderAll, initialHash, mount: document.getElementById('demo-root') };

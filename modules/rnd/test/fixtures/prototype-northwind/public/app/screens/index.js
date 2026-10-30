@@ -12,7 +12,7 @@ const gpApply = {
 };
 const boReview = {
 	key: 'bo-review', portal: 'bo', route: '/bo/review', kind: 'app', title: 'Review', prd: ['GRT-R-010'], open: [], stories: ['review-the-application'],
-	render: (ctx) => el('section', {}, [el('h1', {}, ['Applications to review']), el('ul', { 'data-demo': 'review-the-application approve-step' }, ctx.store.world.apps.map((a) => el('li', {}, [`${a.id} · ${a.status}`])))]),
+	render: (ctx) => el('section', {}, [el('h1', {}, ['Applications to review']), el('div', { class: 'spacer', style: ctx.query?.id ? 'block-size: 2400px' : null }), el('ul', { 'data-demo': 'review-the-application approve-step' }, ctx.store.world.apps.map((a) => el('li', {}, [`${a.id} · ${a.status}`])))]),
 };
 const boHome = { key: 'bo-home', portal: 'bo', route: '/bo/home', kind: 'app', title: 'Back office', stub: true, prd: [], open: [], stories: [] };
 

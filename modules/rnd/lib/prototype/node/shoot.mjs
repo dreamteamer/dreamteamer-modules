@@ -11,7 +11,8 @@ import { screensToVisit, visit } from './walk.mjs';
 export async function run(dir, { only = null, portal = null, out = null, port = null, log = console.log, error = console.error } = {}) {
 	const c = await loadConfig(dir);
 	const outDir = path.resolve(c.dir, out ?? path.join('tools', 'out', 'shots'));
-	const pw = await chromium(c.dir); const srv = await serve(c, port); const browser = await pw.launch();
+	const pw = await chromium(c.dir); const srv = await serve(c, port);
+	let browser; try { browser = await pw.launch(); } catch (e) { srv.stop(); throw e; }
 	const written = []; const failures = [];
 	try {
 		const page = await browser.newPage({ viewport: c.viewport, ...(c.locale ? { locale: c.locale } : {}) });

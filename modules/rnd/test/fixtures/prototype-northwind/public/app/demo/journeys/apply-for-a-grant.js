@@ -4,6 +4,6 @@ export default {
 		{ story: 'open-the-portal' },
 		{ action: { name: 'submit', args: {} } },
 		{ action: { name: 'approve', args: (s) => ({ id: s.world.apps.at(-1).id }) } },
-		{ action: { name: 'approve', args: { id: 'A-1' } }, expectRefusal: true },
+		{ action: { name: 'approve', args: { id: 'A-1' } }, expectRefusal: true, query: { id: 'A-1' }, anchor: 'approve-step' }, // same screen, a new hash: the render lands after the spotlight
 	],
 };

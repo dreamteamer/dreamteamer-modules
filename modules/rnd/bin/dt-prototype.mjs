@@ -54,4 +54,5 @@ const isMain = () => {
 	const real = (p) => { try { return fs.realpathSync(p); } catch { return path.resolve(p); } };
 	return real(process.argv[1]) === real(fileURLToPath(import.meta.url));
 };
-if (isMain()) process.exitCode = await main(process.argv.slice(2));
+// exit explicitly: a static server or a browser a failed run left behind must not keep the process alive
+if (isMain()) process.exit(await main(process.argv.slice(2)));

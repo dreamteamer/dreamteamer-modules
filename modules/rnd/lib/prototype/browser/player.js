@@ -63,9 +63,10 @@ export function resolveUser(step, { users = null, defaultUser = {} } = {}) {
   return u || defaultUser[step.portal] || null;
 }
 
-/** the record's step and the module's step as one: WHAT from the record, HOW from the module */
+/** the record's step and the module's step as one: WHAT from the record, HOW from the module; a value the
+    record leaves empty does not erase the module's */
 export function mergeStep(rec = {}, mod = {}) {
-  const s = { ...mod, ...rec };
+  const s = { ...mod, ...Object.fromEntries(Object.entries(rec).filter(([, v]) => v != null)) };
   if (s.anchor === undefined) s.anchor = rec.system ? null : rec.story ?? null;
   return s;
 }
@@ -211,10 +212,12 @@ function spotlight() {
   if (A.drawerOpen?.()) A.closeDrawer?.();
   let n = step.anchor ? byAnchor(step.anchor) : null;
   if (!n && isStub(step.screen)) n = byAnchor(`stub-${step.screen}`);
-  if (n && !layer().isOn() && n.closest('.meta-only')) { layer().setOn(true); toast(L('layerOn'), 'info'); A.renderAll(); return; }
+  /* an anchor the metadata layer hides (inside .meta-only, or not visible with the layer off): switch the layer on */
+  if (n && !layer().isOn() && (n.closest('.meta-only') || (n.checkVisibility && !n.checkVisibility()))) { layer().setOn(true); toast(L('layerOn'), 'info'); A.renderAll(); return; }
   highlight(n);
   const miss = bar?.querySelector('.demo-miss'); if (miss) miss.hidden = !!n || !step.anchor;
-  if (n && !P.scrolled) { P.scrolled = true; P.moving = true; requestAnimationFrame(() => reveal(n)); }
+  /* reveal once per step, and again when a later render drew the anchor anew outside the band */
+  if (n && (!P.scrolled || (!P.moving && !inBand(n)))) { P.scrolled = true; P.moving = true; requestAnimationFrame(() => reveal()); }
 }
 /** the band the spotlight must land in: below a sticky top bar, above the caption bar */
 export function visibleBand() {
@@ -223,8 +226,16 @@ export function visibleBand() {
   const bottom = Math.min(window.innerHeight, bar && !bar.hidden ? bar.getBoundingClientRect().top : window.innerHeight);
   return { top, bottom };
 }
-function reveal(n) {
+function inBand(n) {
+  const { top, bottom } = visibleBand(); const r = n.getBoundingClientRect();
+  return r.top >= top - 2 && (r.bottom <= bottom + 2 || r.height > bottom - top);
+}
+/** scroll the spotlit element into the band — the one spotlit NOW, so a render that redrew the screen between
+    the spotlight and this frame (a hash change landing late) is followed, never a detached node */
+function reveal(attempt = 0) {
   if (!P) return;
+  const n = document.querySelector('.demo-highlight');
+  if (!n) { P.moving = false; return; }
   for (let p = n.parentElement; p && p !== document.body && p !== document.documentElement; p = p.parentElement) {
     const cs = getComputedStyle(p);
     if (!/(auto|scroll)/.test(cs.overflowY + cs.overflowX) || (p.scrollHeight <= p.clientHeight && p.scrollWidth <= p.clientWidth)) continue;
@@ -235,8 +246,15 @@ function reveal(n) {
   const r = n.getBoundingClientRect(); const room = bottom - top;
   const want = r.height <= room + 1 ? top + (room - r.height) / 2 : top + 12;
   const dy = r.top - want;
-  if (Math.abs(dy) > 2) window.scrollBy({ top: dy, behavior: 'auto' });
-  requestAnimationFrame(() => { if (P) P.moving = false; });
+  /* 'instant': a prototype's `scroll-behavior: smooth` must not leave the scroll half done when the next render lands */
+  if (Math.abs(dy) > 2) window.scrollBy({ top: dy, behavior: 'instant' });
+  /* the anchor may still grow or move (a late render, a font); look again, a few times, before calling it settled */
+  const me = P;
+  setTimeout(() => requestAnimationFrame(() => {
+    if (P !== me) return;
+    const m = document.querySelector('.demo-highlight');
+    if (m && !inBand(m) && attempt < 3) reveal(attempt + 1); else P.moving = false;
+  }), 120);
 }
 export function next() {
   if (!P) return;

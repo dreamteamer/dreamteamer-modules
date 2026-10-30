@@ -48,7 +48,8 @@ export function installedChromiums(dir = browsersDir()) {
 /** → { chromium, executablePath } — `launch(opts)` is chromium.launch with the executable filled in */
 export async function chromium(from = process.cwd()) {
 	for (const p of candidates(from)) {
-		let c; try { ({ chromium: c } = await import(p)); } catch { continue; }
+		let c; try { const m = await import(p); c = m.chromium ?? m.default?.chromium; } catch { continue; }
+		if (!c) continue;
 		let exe = null;
 		try { if (fs.existsSync(c.executablePath())) exe = c.executablePath(); } catch { /* no build for this copy */ }
 		exe = exe ?? (process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE && fs.existsSync(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE) ? process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE : installedChromiums()[0]);

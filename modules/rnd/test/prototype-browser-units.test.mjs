@@ -46,6 +46,7 @@ describe('player helpers', () => {
 		assert.deepEqual(mergeStep({ screen: 'gp-home', story: 'open', caption: 'record' }, { screen: 'stale', caption: 'module', user: 'U-a', action: { name: 'x' } }),
 			{ screen: 'gp-home', story: 'open', caption: 'record', user: 'U-a', action: { name: 'x' }, anchor: 'open' });
 		assert.equal(mergeStep({ screen: 's', system: true }, {}).anchor, null);
+		assert.equal(mergeStep({ screen: 's', story: 'k', caption: null }, { caption: 'from the module' }).caption, 'from the module', 'an empty record value leaves the module\'s');
 		assert.equal(mergeStep({ screen: 's', story: 'open' }, { anchor: 'other' }).anchor, 'other');
 	});
 	test('nextPlayable skips out-of-scope steps both ways', () => {
