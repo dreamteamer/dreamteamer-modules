@@ -94,6 +94,22 @@ builder never grades its own work. A finding is graded by its effect within the 
 proposed line. The superpowers skills stay useful where they add depth — the stage skills name
 them — but nothing here needs them installed.
 
+## the software factory
+
+rnd ships one workflow, `software-factory`, at `data/workflows/software-factory.workflow.md`: the
+meeting intake (calendar, recordings, transcripts, summaries, commitments, critiques, engagements),
+then references, the change requests the calls asked for, and each change designed, reviewed,
+prototyped where it asks, planned, built, proved and deployed — the lifecycle above, in the
+`rnd-agent`'s order, with its two stops. It runs with `/workflow:run software-factory`, which the
+`workflows` collection brings (`@dreamteamer/core` carries it). Its meeting steps name core's commands,
+so it installs only where both are compiled: `npx dt-workflows install software-factory` refuses
+otherwise, naming each command it lacks.
+
+## 0.4.0 — from 0.3.0
+
+Additive. `software-factory` ships in `data/workflows/` (above) and `workflows` is a declared peer.
+Nothing in a workspace changes until the workflow is installed.
+
 ## 0.3.0 — from 0.2.0
 
 rnd now composes `wikis` and `notebooklm` (above). A workspace that had `@dreamteamer/wikis` or

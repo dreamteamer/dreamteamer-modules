@@ -26,6 +26,8 @@
 //   collections/<path>  → collections/<origin>/<path>   (an origin's overlay of another origin's base keeps its folder)
 //   bin/<script>        → bin/<origin>-<script>          (users and projects both ship check-records.mjs)
 //   src/**              → src/**                         (from the ONE origin that is an extension)
+//   data/**             → data/**                        (records an origin ships for a workspace to install — workflows'
+//                                                         `data/workflows/`; compile reads no module's data/ without owns_data)
 //   everything else     → the same path; a collision across origins fails the run unless the bytes
 //                         are identical (the `lib/workspace-root.mjs` every script-bearing module carries)
 import fs from 'node:fs';
@@ -40,7 +42,7 @@ export const moduleRoot = (id) => path.join(MODULES, id);
 /** Every module with a compose.json at its root. */
 export const composedModules = () => fs.readdirSync(MODULES).filter((m) => fs.existsSync(path.join(MODULES, m, 'compose.json'))).sort();
 
-const KINDS = ['collections', 'mixins', 'skills', 'commands', 'command-bindings', 'ui-views', 'agents', 'bin', 'src', 'lib'];
+const KINDS = ['collections', 'mixins', 'skills', 'commands', 'command-bindings', 'ui-views', 'agents', 'bin', 'src', 'lib', 'data'];
 const TEXT = /\.(md|ya?ml|m?js|cjs|json|txt|py|sh|css|html)$/;
 const REPO_URL = 'git+https://github.com/dreamteamer/dreamteamer-modules.git';
 

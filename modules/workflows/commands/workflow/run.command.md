@@ -1,0 +1,6 @@
+---
+name: workflow/run
+description: run a workflow — list each step's records, run its command on the ones ready for it, and stop wherever a person decides
+argument-hint: <workflows/id> [YYYY-MM-DD..YYYY-MM-DD] [--from-step N] [--dry-run]
+---
+load the `running-workflows` skill. for $ARGUMENTS: read the workflow with `dt get workflows/<id>`, and when the workspace does not have it, install the shipped one with `npx dt-workflows install <id>` and run `dt check` first. refuse a `retired` workflow; run a `draft` one only as `--dry-run` unless I say go. set `$from` and `$to` from the range (default: seven days back to seven days ahead). then walk the steps in order, from `--from-step` when given: list the step's records with its `where`, ask `dt next` which of them its command is available for, show me the set and wait at every `stop`, and run the invocation `dt next` prints. `--dry-run` lists and asks `dt next` for every step and runs nothing. write nothing about the run itself — the records the commands touch are its only trace. done when every step has run on every record it was available for, or I stopped it; end with one line per step: set, eligible, run, skipped, and the stop that held it.

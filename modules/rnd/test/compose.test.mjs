@@ -121,7 +121,7 @@ describe('the composition', () => {
 	});
 	test('rnd now owns wikis and notebooks, so neither is a peer; its own peers stay, minus nothing it owns', () => {
 		for (const t of ['wikis', 'notebooks', 'rnd/products', 'rnd/design-docs', 'rnd/reviews']) assert.ok(owned.has(t), `rnd does not own ${t}`);
-		assert.deepEqual(manifest.dreamteamer.peer_collections, ['assets', 'companies', 'projects']);
+		assert.deepEqual(manifest.dreamteamer.peer_collections, ['assets', 'companies', 'projects', 'workflows']);
 		for (const p of manifest.dreamteamer.peer_collections) assert.ok(!owned.has(p), `rnd peers ${p}, which it owns`);
 		for (const o of spec.origins) for (const p of originPkg(o).dreamteamer.peer_collections ?? []) {
 			assert.ok(owned.has(p) || manifest.dreamteamer.peer_collections.includes(p), `${o} peers ${p}, which rnd neither owns nor peers`);

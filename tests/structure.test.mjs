@@ -9,7 +9,7 @@ import path from 'node:path';
 import { ROOT, MODULES, CORE, ALL, OWNER, moduleIds, descriptorsOf, mixinsOf, targetsOf, fieldsOf, originsOf, composed } from './helpers/descriptors.mjs';
 
 const KINDS = new Set(['collections', 'skills', 'agents', 'commands', 'command-bindings', 'ui-views', 'mixins']);
-const NON_SOURCE = new Set(['bin', 'src', 'lib', 'test', 'docs', 'scripts', 'node_modules']);
+const NON_SOURCE = new Set(['bin', 'src', 'lib', 'data', 'test', 'docs', 'scripts', 'node_modules']);
 
 const modules = moduleIds();
 const pkgOf = (m) => JSON.parse(fs.readFileSync(path.join(MODULES, m, 'package.json'), 'utf8'));

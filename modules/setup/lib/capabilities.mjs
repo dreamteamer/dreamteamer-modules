@@ -126,7 +126,7 @@ export function installedModules(root) {
 
 // `files` has no capability block here: its machine checks (is each drive mounted, cloud-only entries)
 // are its own extension's `dt doctor` rows.
-export const OURS = ['core', 'assets', 'users', 'companies', 'contacts', 'engagements', 'tasks', 'routines', 'meetings', 'recordings', 'meeting-docs', 'projects', 'perspective', 'wikis', 'notebooklm', 'search', 'rnd', 'proofs', 'worktrees', 'http', 'docker-workspaces', 'code', 'files'];
+export const OURS = ['core', 'assets', 'users', 'companies', 'contacts', 'engagements', 'tasks', 'routines', 'meetings', 'recordings', 'meeting-docs', 'projects', 'perspective', 'wikis', 'notebooklm', 'search', 'rnd', 'proofs', 'worktrees', 'http', 'docker-workspaces', 'code', 'files', 'workflows'];
 
 /** The modules a COMPOSED module stands in for — `compose.json` at its root names its origins. `core`
  *  installed means every capability of users, meetings, files… applies, read from the package itself. */

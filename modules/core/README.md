@@ -3,7 +3,8 @@
 Every core noun of a workspace from one install line: people and the roles and responsibilities
 they hold, companies, contacts and engagements, tasks, projects with their decisions, risks and teams,
 meetings with recordings, preps, summaries and analyses, files on mounted drives, the assets a view
-draws, the artifacts a person opens, sessions of work and the metrics that count them.
+draws, the artifacts a person opens, sessions of work and the metrics that count them, and the
+workflows that run chains of those commands over sets of records.
 
 ```bash
 npm install @dreamteamer/core
@@ -13,7 +14,7 @@ npx dreamteamer compile
 ## composed, not written twice
 
 This package is a COMPOSITION of the small official modules — assets, users, companies, contacts,
-engagements, tasks, projects, meetings, recordings, meeting-docs, files — plus what no small module
+engagements, tasks, projects, meetings, recordings, meeting-docs, files, workflows — plus what no small module
 has (below). Each descriptor, skill and command is authored in its small module and copied here by
 `scripts/compose-core.mjs` in the modules repo (the same script composes `rnd`); `compose.json` lists every copy with its origin and
 hash, and a test fails when a copy differs. A collection copied from `contacts` sits under
@@ -79,6 +80,15 @@ workspace's `.claude/settings.json` — the module ships the reader, not the bin
 The hook writes metrics only; `outcome`, `analysis` and `description` stay the session's and the
 reviewer's words. Namespaced commands (`commands/session/save.command.md` typed as `/session:save`)
 need engine 0.38; an env-pointed `storage.path` needs 0.39, which is core's floor.
+
+## workflows
+
+`workflows` comes from `@dreamteamer/workflows`: a record that names a chain of commands, the records
+each one walks and where a person decides, run with `/workflow:run <id>`. Nothing about a run is
+recorded — the records the commands touch are the progress. Core ships `customer-factory` (the week's
+calls to its leads and suggested engagements) in `data/workflows/`, a folder compile does not read;
+`npx dt-workflows install customer-factory` copies it into the workspace, which then owns and commits
+it. The workflows module's README has the record's shape.
 
 ## what a descriptor cannot say
 
