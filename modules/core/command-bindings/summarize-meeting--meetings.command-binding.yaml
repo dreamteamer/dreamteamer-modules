@@ -1,0 +1,20 @@
+command: commands/summarize-meeting
+collection: collections/meetings
+scope: record
+# Two conditions, both required:
+#   privacy — a `restricted` meeting holds a third party's private material, and its pipeline ends at
+#     the transcript. A meeting written before the field existed has no value, and `_neq` rejects
+#     an empty value, so an empty `privacy` is matched explicitly as `open`.
+#   recordings — one hop through the recordings ARRAY (_some semantics): at least one recording must
+#     be transcribed.
+available_when:
+  _or:
+    - privacy:
+        _null: true
+    - privacy:
+        _neq: restricted
+  recordings:
+    transcription:
+      _nempty: true
+# done_when is omitted, so the command never shows "done"; a re-summary replaces the existing one.
+description: summarize this meeting's transcript into a meeting-summary record

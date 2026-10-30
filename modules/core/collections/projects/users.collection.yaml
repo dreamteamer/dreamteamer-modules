@@ -1,0 +1,48 @@
+name: users
+overlay: true
+fields:
+  led_activities:
+    type: activities
+    many: true
+    mirror_of: lead
+    description: The activities and gates this person is accountable for — generated from `activities.lead`.
+  activities:
+    type: activities
+    many: true
+    mirror_of: seats
+    description: The plan rungs this person is on — generated from `activities.seats`. THIS is what makes a person's own record answer "what is mine".
+  decisions:
+    type: decisions
+    many: true
+    mirror_of: decider
+    description: The calls this person made — generated from `decisions.decider`.
+  deliverables:
+    type: deliverables
+    many: true
+    mirror_of: owner
+    description: The artefacts this person is accountable for handing over — generated from `deliverables.owner`.
+  goals:
+    type: goals
+    many: true
+    mirror_of: owner
+    description: The goals this person is accountable for — generated from `goals.owner`.
+  led_projects:
+    type: projects
+    many: true
+    mirror_of: lead
+    description: The projects this person leads — generated from `projects.lead`.
+  risks:
+    type: risks
+    many: true
+    mirror_of: owner
+    description: The exposures this person carries — generated from `risks.owner`.
+  teams:
+    type: teams
+    many: true
+    mirror_of: members
+    description: The teams this person belongs to — generated from `teams.members`, so somebody joins a team by editing the TEAM.
+  led_teams:
+    type: teams
+    many: true
+    mirror_of: lead
+    description: The teams this person runs — generated from `teams.lead`.

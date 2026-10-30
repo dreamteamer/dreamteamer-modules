@@ -1,0 +1,56 @@
+{
+	"name": "@dreamteamer/core",
+	"version": "0.1.0",
+	"description": "Every core noun from one install: users, companies, contacts, engagements, tasks, projects, meetings, files, assets, artifacts, sessions, metrics.",
+	"license": "Apache-2.0",
+	"type": "module",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/dreamteamer/dreamteamer-modules.git",
+		"directory": "modules/core"
+	},
+	"keywords": [
+		"dreamteamer",
+		"dreamteamer-module",
+		"core",
+		"assets",
+		"users",
+		"companies",
+		"contacts",
+		"engagements",
+		"tasks",
+		"projects",
+		"meetings",
+		"recordings",
+		"meeting-docs",
+		"files"
+	],
+	"files": [
+		"README.md",
+		"compose.json",
+		"collections",
+		"skills",
+		"commands",
+		"command-bindings",
+		"ui-views",
+		"bin",
+		"src"
+	],
+	"dreamteamer": {
+		"extension": "./src/extension.js",
+		"title": "Core",
+		"description": "The nouns every workspace has, composed from the small official modules so one install brings them all: `users` with `roles` and `responsibilities`; `companies`, `contacts`, `engagements`; `tasks`; `projects` with `decisions` and `goals`; `meetings` with recordings and docs; `files`; `assets` and `artifacts`; `sessions` and `metrics`. Install core OR the small modules, never both.",
+		"engine": ">=0.33.0",
+		"env": [
+			"LINKEDIN_USER_AGENT",
+			"TRANSCRIBING_MODELS_DIR",
+			"WORK_CALENDARS"
+		],
+		"peer_collections": [
+			"rnd/change-requests",
+			"rnd/products",
+			"rnd/user-journeys",
+			"rnd/user-stories"
+		]
+	}
+}

@@ -1,0 +1,6 @@
+command: commands/sync-files
+# One drive is what you sync; `dt next file-drives/<id>` therefore offers it on the drive record.
+collection: collections/file-drives
+scope: record
+# No gate: a sync is always worth offering, and "done" is not a state a recurring sync reaches.
+description: walk this drive's folder and bring its files records level with the disk

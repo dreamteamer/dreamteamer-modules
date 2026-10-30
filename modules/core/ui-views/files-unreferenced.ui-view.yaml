@@ -1,0 +1,22 @@
+# Files no record points at — the question the index exists to answer.
+route: /files/unreferenced
+scope: collection
+collection: collections/files
+filter:
+  _and:
+    - kind: file
+    - referenced_by:
+        _empty: true
+display:
+  nav:
+    title: files — unreferenced
+    icon: question
+  list:
+    layout: table
+    columns:
+      - name
+      - drive
+      - path
+      - bytes
+      - modified
+    sort: '-modified'

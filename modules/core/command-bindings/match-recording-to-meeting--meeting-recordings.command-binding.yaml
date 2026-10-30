@@ -1,0 +1,13 @@
+command: commands/match-recording-to-meeting
+collection: collections/meeting-recordings
+scope: record
+# unmatched recordings only — the absence of the ref IS the queue
+available_when:
+  meeting:
+    _empty: true
+# and the ref's presence is the post-condition. The meeting's `recordings` list is generated from
+# this field (`mirror_of: meeting`), so the one field carries the whole link.
+done_when:
+  meeting:
+    _nempty: true
+description: link this recording to the meeting it records

@@ -6,7 +6,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
-import { MODULES, CORE, ALL, OWNER, moduleIds, descriptorsOf, mixinsOf, targetsOf, fieldsOf } from './helpers/descriptors.mjs';
+import { MODULES, CORE, ALL, OWNER, moduleIds, descriptorsOf, mixinsOf, targetsOf, fieldsOf, originsOf } from './helpers/descriptors.mjs';
 
 const KINDS = new Set(['collections', 'skills', 'agents', 'commands', 'command-bindings', 'ui-views', 'mixins']);
 const NON_SOURCE = new Set(['bin', 'src', 'lib', 'test', 'docs', 'scripts', 'node_modules']);
@@ -46,8 +46,9 @@ for (const m of modules) {
 		const mroot = path.join(MODULES, m);
 		const deps = new Set((pkg.dreamteamer?.dependencies ?? []).map(folderOf));
 		const peers = new Set(pkg.dreamteamer?.peer_collections ?? []);
+		const origins = new Set(originsOf(m)); // a composed module owns what its origins own
 		/** May module m point at (or overlay) collection t? */
-		const reaches = (t) => CORE.has(t) || OWNER.get(t) === m || deps.has(OWNER.get(t)) || peers.has(t);
+		const reaches = (t) => CORE.has(t) || OWNER.get(t) === m || origins.has(OWNER.get(t)) || deps.has(OWNER.get(t)) || peers.has(t);
 
 		test('has a manifest the engine can read: name = folder, a description, an engine range', () => {
 			assert.equal(pkg.name, `@dreamteamer/${m}`, 'the folder is the name without the scope; a disagreement makes dependencies ambiguous');
@@ -75,6 +76,7 @@ for (const m of modules) {
 		});
 		test('an overlay adds to a collection the module depends on or peers, never to one it cannot see', () => {
 			for (const { file, doc } of descriptorsOf(m).filter((d) => d.doc.overlay)) {
+				if (CORE.has(doc.name)) continue; // an engine kind (agents) may be overlaid for its nav row
 				assert.ok(OWNER.has(doc.name), `${file}: overlays ${doc.name}, which no module here owns`);
 				assert.notEqual(OWNER.get(doc.name), m, `${file}: overlays its own collection — put the field in the descriptor`);
 				assert.ok(reaches(doc.name), `${file}: overlays ${doc.name} (owned by ${OWNER.get(doc.name)}), which ${m} neither depends on nor peers`);
@@ -95,7 +97,7 @@ for (const m of modules) {
 		test('a declared peer is a collection some OTHER module provides (a peer nothing provides is a typo)', () => {
 			for (const p of pkg.dreamteamer.peer_collections ?? []) {
 				const owner = OWNER.get(p);
-				assert.ok(owner && owner !== m, `${m} peers "${p}" — ${owner === m ? 'it owns that collection itself' : 'nothing in this repo provides it'}`);
+				assert.ok(owner && owner !== m && !origins.has(owner), `${m} peers "${p}" — ${owner === m || origins.has(owner) ? 'it owns that collection itself' : 'nothing in this repo provides it'}`);
 			}
 		});
 	});

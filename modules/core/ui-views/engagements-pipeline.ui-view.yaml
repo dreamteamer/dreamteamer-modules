@@ -1,0 +1,21 @@
+# The pipeline: every engagement that is not closed, one column per stage, warmest first.
+route: /engagements/pipeline
+scope: collection
+collection: collections/engagements
+filter:
+  stage:
+    _neq: closed
+display:
+  nav:
+    title: Pipeline
+  list:
+    layout: kanban
+    sort: '-updated'
+    options:
+      group_by: stage
+      fields:
+        - name
+        - company
+        - temperature
+        - phase
+        - champion

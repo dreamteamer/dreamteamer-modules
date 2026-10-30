@@ -1,0 +1,88 @@
+name: meeting-summaries
+description: >-
+  A neutral written record of what a call actually held. Not a judgement of it — that is `meeting-analyses`.
+use_when: >-
+  asked what was said or agreed on a call — read here, not the transcript; written by /summarize-meeting once a recording is transcribed, and it is what tasks and engagement updates are extracted from
+storage: {path: data/meeting-summaries, format: md, suffix: summary}
+ids:
+  # The generator is a FALLBACK, not the convention. A summary's id IS its meeting's id, so the
+  # summary is filed beside the call it summarises, under the month the call was held. The template
+  # grammar cannot produce that: `{{ meeting }}` renders in id position as `meetings/<id>`, which the
+  # pattern refuses, and no filter drops the collection segment while keeping the path (`basename`
+  # drops the year and month too). So /summarize-meeting passes `--id <the meeting's id>`. The
+  # pattern accepts both shapes, so nothing else catches a generated one.
+  from: "{{ created | date:YYYY/MM }}/{{ created | date }}--{{ name | slug }}"
+  pattern: "^\\d{4}/\\d{2}/\\d{4}-\\d{2}-\\d{2}--[a-z0-9-]+$"
+fields:
+  name:
+    type: string
+    required: true
+    description: What this summary is of — normally the meeting's own title.
+  description:
+    type: string
+    description: One line on what the call was about, for a list view.
+  # A date-time, not a day, so several summaries on one date sort in order. It is the CALL's
+  # instant, never when the summary was written.
+  date:
+    type: datetime
+    description: >-
+      The instant of the call being summarized, denormalized from meeting.starts so the list sorts without a join. Never when the summary was written — the id's `created` carries that.
+  who:
+    type: string
+    description: Free-text participant list, as spoken or written — the unresolved twin of the meeting's `attendees_contacts`.
+  meeting:
+    type: meetings
+    # ONE summary per meeting. A second record for the same call is a `check` violation naming
+    # both — fold it into this one and let git hold it. `meetings.summary` is the generated far
+    # side, stamped onto the meetings module's collection by this declaration, only when this
+    # module is installed; a re-summary REPLACES it and git holds the old one.
+    unique: true
+    description: The meeting this summarizes.
+  method:
+    type: string
+    description: How the summary was produced — which model, which skill, or by hand.
+  generated:
+    type: string
+    description: When the summary was generated, for judging whether it predates a later transcript.
+  duration:
+    type: string
+    description: Duration of the source recording (transcript-pipeline provenance).
+  scope_note:
+    type: string
+    description: What this summary DELIBERATELY leaves out, so a reader knows the gap is a choice rather than an oversight.
+  content:
+    type: markdown
+    body: true
+    description: The summary itself — what was said, decided and left open.
+  author:
+    type: string
+    examples: ['agents/claude-code', 'scripts/read-git@2']
+    pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
+    description: >-
+      Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
+  creation_context:
+    type: string
+    description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+  # Many, because a call recorded in two parts is two recordings, and the summary is read from both.
+  # A record holding one value as a plain string still validates.
+  source:
+    type: string
+    many: true
+    examples: ['meeting-recordings/2026/08/2026-08-30--northwind-weekly-part-1']
+    description: 'Where the INFORMATION came from, one element per source, prefixed so it stays machine-readable: <collection>/<id> · calendar:<id> · file:<path> · url:<…>. For a summary, every `meeting-recordings/<id>` whose transcript was read.'
+  confidence:
+    type: string
+    default: normal
+    enum: [low, normal, high]
+    description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
+display:
+  nav:
+    icon: note
+    order: 14
+    section: crm
+  list:
+    columns:
+      - name
+      - last_modified
+      - date
+      - meeting

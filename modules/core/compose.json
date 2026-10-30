@@ -1,0 +1,492 @@
+{
+	"origins": [
+		"assets",
+		"users",
+		"companies",
+		"contacts",
+		"engagements",
+		"tasks",
+		"projects",
+		"meetings",
+		"recordings",
+		"meeting-docs",
+		"files"
+	],
+	"title": "Core",
+	"description": "Every core noun from one install: users, companies, contacts, engagements, tasks, projects, meetings, files, assets, artifacts, sessions, metrics.",
+	"orientation": "The nouns every workspace has, composed from the small official modules so one install brings them all: `users` with `roles` and `responsibilities`; `companies`, `contacts`, `engagements`; `tasks`; `projects` with `decisions` and `goals`; `meetings` with recordings and docs; `files`; `assets` and `artifacts`; `sessions` and `metrics`. Install core OR the small modules, never both.",
+	"files": {
+		"bin/meetings-migrate-attendees.mjs": {
+			"from": "meetings/bin/migrate-attendees.mjs",
+			"hash": "sha256:7ba0aa85605f7ae740874a91172c6075a362c65c22b58dcd2c1226b431919282"
+		},
+		"bin/projects-check-records.mjs": {
+			"from": "projects/bin/check-records.mjs",
+			"hash": "sha256:390eb9e6958fa860d6d23beffc750ce69c45fcfa24343eae24e832666c1733b6"
+		},
+		"bin/users-check-records.mjs": {
+			"from": "users/bin/check-records.mjs",
+			"hash": "sha256:0f593d633a34c2c85f62f9a1e4062aaad8a4e9b85e0fffb9d2d3fc7e3f39ca2b"
+		},
+		"collections/assets/assets.collection.yaml": {
+			"from": "assets/collections/assets.collection.yaml",
+			"hash": "sha256:90ea74c9b1a5889d9825571916f48f8c0556c0a57811be6467075af5483f1a5c"
+		},
+		"collections/companies/companies.collection.yaml": {
+			"from": "companies/collections/companies.collection.yaml",
+			"hash": "sha256:0a4ea5c0ff52a31e430589f2e9a778753ff20f1cfcfc79a802139ccb5f70100e"
+		},
+		"collections/contacts/companies.collection.yaml": {
+			"from": "contacts/collections/companies.collection.yaml",
+			"hash": "sha256:37abe59e1ce91c5a469bace0c6f69c3d94f3bc29798f750139b706d7f4d66627"
+		},
+		"collections/contacts/contacts.collection.yaml": {
+			"from": "contacts/collections/contacts.collection.yaml",
+			"hash": "sha256:6791dbbbd89cb25089000626e36290dcfb4cd2ef86e88245b32e3ff4568bdb47"
+		},
+		"collections/engagements/companies.collection.yaml": {
+			"from": "engagements/collections/companies.collection.yaml",
+			"hash": "sha256:ddf2d07b582f7c9ad4ffc330a085b4e9b2f8475ac30e00bef93ce22bec344c8f"
+		},
+		"collections/engagements/engagements.collection.yaml": {
+			"from": "engagements/collections/engagements.collection.yaml",
+			"hash": "sha256:ffb86262a6769f2cec92106e14bc499cae778ec05eb9da37b527c97c8a329f6f"
+		},
+		"collections/files/file-drives.collection.yaml": {
+			"from": "files/collections/file-drives.collection.yaml",
+			"hash": "sha256:dceb5651813ff5f05bd52c47147d09f7089e6ea96cf58c0e0bec4ed52dbd823b"
+		},
+		"collections/files/files.collection.yaml": {
+			"from": "files/collections/files.collection.yaml",
+			"hash": "sha256:047e8f24cf467ab3778a5c18c50d81df0b85216692a3838786556c5ebf6e933c"
+		},
+		"collections/meeting-docs/engagements.collection.yaml": {
+			"from": "meeting-docs/collections/engagements.collection.yaml",
+			"hash": "sha256:97bc6cd9c140f6c5f1739575989caa87496a414373c7c81b073696a3669739a3"
+		},
+		"collections/meeting-docs/meeting-analyses.collection.yaml": {
+			"from": "meeting-docs/collections/meeting-analyses.collection.yaml",
+			"hash": "sha256:162dc46f5ac322fb53fedab51c5aededdfd93100c59ec12a1a0909b7c0accbe2"
+		},
+		"collections/meeting-docs/meeting-preps.collection.yaml": {
+			"from": "meeting-docs/collections/meeting-preps.collection.yaml",
+			"hash": "sha256:488c68ac6731a5d98c7af88c02e402c9cb100bd019a88f11d24e3c0232dc8e19"
+		},
+		"collections/meeting-docs/meeting-summaries.collection.yaml": {
+			"from": "meeting-docs/collections/meeting-summaries.collection.yaml",
+			"hash": "sha256:9f3210210552c12dce1a29aa577df677b91d9cbf1fca9dcaa591ca3d2e9f90fe"
+		},
+		"collections/meeting-docs/meetings.collection.yaml": {
+			"from": "meeting-docs/collections/meetings.collection.yaml",
+			"hash": "sha256:21a1fc056080e36697ac9e18ec47120b059412f5d623b6f233cbce63822a2e3d"
+		},
+		"collections/meetings/meetings.collection.yaml": {
+			"from": "meetings/collections/meetings.collection.yaml",
+			"hash": "sha256:30acf0b9eb215d9cb67bbdc5f0e232b197fd1864bab063b9aadb440352ad6ca8"
+		},
+		"collections/meetings/users.collection.yaml": {
+			"from": "meetings/collections/users.collection.yaml",
+			"hash": "sha256:0359c2997c70c24aa684e3266b30120bac413e5c303d0c7e704d8cf5a0cdbdfc"
+		},
+		"collections/projects/activities.collection.yaml": {
+			"from": "projects/collections/activities.collection.yaml",
+			"hash": "sha256:aaaa51b22bb04ada10f9f954c3c1779de74e85976d19c7243c578b187f18cce7"
+		},
+		"collections/projects/activity-lanes.collection.yaml": {
+			"from": "projects/collections/activity-lanes.collection.yaml",
+			"hash": "sha256:9a82412290794430284f612e7d72255db2d4cb6e334ec8225568fb6b40a1ba29"
+		},
+		"collections/projects/decisions.collection.yaml": {
+			"from": "projects/collections/decisions.collection.yaml",
+			"hash": "sha256:918c6250a35d668a82ff57eba8151a6ed7f09537802c9584a79d84c323ad8d88"
+		},
+		"collections/projects/deliverables.collection.yaml": {
+			"from": "projects/collections/deliverables.collection.yaml",
+			"hash": "sha256:2302c6143f136d653a63cae2d507198dff6d53e9758377304aa6f3a14bc7c8b4"
+		},
+		"collections/projects/goals.collection.yaml": {
+			"from": "projects/collections/goals.collection.yaml",
+			"hash": "sha256:829ae2598c3af07e000c5e5aa0048bab2c6d2798dc9858411cf21a752ce3bf49"
+		},
+		"collections/projects/phases.collection.yaml": {
+			"from": "projects/collections/phases.collection.yaml",
+			"hash": "sha256:f13b0644da925a4438f57e2af43159b3c5b06f145f94ee6b4a112e068e6592b2"
+		},
+		"collections/projects/projects.collection.yaml": {
+			"from": "projects/collections/projects.collection.yaml",
+			"hash": "sha256:f4fb8ed360c566390a1adb2b346f9c759a4e21832c4f25c53702e81e18ac3b1c"
+		},
+		"collections/projects/risks.collection.yaml": {
+			"from": "projects/collections/risks.collection.yaml",
+			"hash": "sha256:e0aaf41eedcf62f4b9cc48f704448c8b0b225a573aff56fa83a8839c617ebfa5"
+		},
+		"collections/projects/teams.collection.yaml": {
+			"from": "projects/collections/teams.collection.yaml",
+			"hash": "sha256:098634f88baa882bc210acbcb75b40a5f2e065cdff6fbf2ffd45d49d41b1d05d"
+		},
+		"collections/projects/users.collection.yaml": {
+			"from": "projects/collections/users.collection.yaml",
+			"hash": "sha256:0021cc7614c7b553137a3b8bfed85da60f42a04fab37873328e798e4c870b537"
+		},
+		"collections/recordings/meeting-recordings.collection.yaml": {
+			"from": "recordings/collections/meeting-recordings.collection.yaml",
+			"hash": "sha256:bc099e781db09bd5e2604a6ef69b18a35514a67db41cc40a2b7f530f501c9142"
+		},
+		"collections/recordings/meetings.collection.yaml": {
+			"from": "recordings/collections/meetings.collection.yaml",
+			"hash": "sha256:535198db9dbd1a04130ce6eb0e0d56465dac3ae6b2b387ad24b3c1dd441554c3"
+		},
+		"collections/tasks/activities.collection.yaml": {
+			"from": "tasks/collections/activities.collection.yaml",
+			"hash": "sha256:c61e9281cd2fb93bd8c7ac24626f04f96e809d1ef660dee8fff034d80f7f465c"
+		},
+		"collections/tasks/projects.collection.yaml": {
+			"from": "tasks/collections/projects.collection.yaml",
+			"hash": "sha256:18df0ec7aff635bf8ba277cadbd6b6b63e30a07334ccdb9e8ce18ed4d30dcfb7"
+		},
+		"collections/tasks/tasks.collection.yaml": {
+			"from": "tasks/collections/tasks.collection.yaml",
+			"hash": "sha256:75341b6b01a3e1b4c1a0aa8541f44d038054bbfcfb0b3c6eb447d6f2931a3ba3"
+		},
+		"collections/tasks/users.collection.yaml": {
+			"from": "tasks/collections/users.collection.yaml",
+			"hash": "sha256:1d2f4069a0fe698b1f8f82f1d84fdf55d87885bdc73034e92c753b4400bfd627"
+		},
+		"collections/users/users.collection.yaml": {
+			"from": "users/collections/users.collection.yaml",
+			"hash": "sha256:9567be685d2ad234ca9daf984d350b5dd811e68ee17e72eca26b6bc2731b8e0e"
+		},
+		"command-bindings/analyze-meetings--meetings.command-binding.yaml": {
+			"from": "meeting-docs/command-bindings/analyze-meetings--meetings.command-binding.yaml",
+			"hash": "sha256:84b51fe04be940957c39dd27eba1c9253f6a03f0baa4cda665eb96cf09b498b2"
+		},
+		"command-bindings/create-meeting--meetings.command-binding.yaml": {
+			"from": "meeting-docs/command-bindings/create-meeting--meetings.command-binding.yaml",
+			"hash": "sha256:09b0a49caaaef130cd13d832d8ce5103114ef0cfe1679ee435b0bdf2c53a70e1"
+		},
+		"command-bindings/extract-tasks-from-meetings--meetings.command-binding.yaml": {
+			"from": "meeting-docs/command-bindings/extract-tasks-from-meetings--meetings.command-binding.yaml",
+			"hash": "sha256:d7684a38647d9f3001928f00c8989e1a39dc6aaaf54a8b72294cf2c933432d69"
+		},
+		"command-bindings/fetch-meetings--meetings.command-binding.yaml": {
+			"from": "meetings/command-bindings/fetch-meetings--meetings.command-binding.yaml",
+			"hash": "sha256:a9355d7f22faa512b0546d8edcd07ce5d3ae7e927c31f72819ccc9b9c7b3e53e"
+		},
+		"command-bindings/fetch-new-recordings--meeting-recordings.command-binding.yaml": {
+			"from": "recordings/command-bindings/fetch-new-recordings--meeting-recordings.command-binding.yaml",
+			"hash": "sha256:4076aaafa2658b520b673d1fd3a3fcd7a48f2f879ebe3c34620e783fb5eebd7c"
+		},
+		"command-bindings/match-recording-to-meeting--meeting-recordings.command-binding.yaml": {
+			"from": "recordings/command-bindings/match-recording-to-meeting--meeting-recordings.command-binding.yaml",
+			"hash": "sha256:7fad33739bd1d8ece1a1477ddf523ffb0f77aa4d0f234bcef7ce3d44ffcf47fd"
+		},
+		"command-bindings/prepare-for-meeting--meetings.command-binding.yaml": {
+			"from": "meeting-docs/command-bindings/prepare-for-meeting--meetings.command-binding.yaml",
+			"hash": "sha256:392953ab7c9565ef2148b408ed77f0305dba1a13800a759d9b3c817ee1de5c3a"
+		},
+		"command-bindings/scrape-contact--contacts.command-binding.yaml": {
+			"from": "contacts/command-bindings/scrape-contact--contacts.command-binding.yaml",
+			"hash": "sha256:770a42b43ee91bf5f9f6c9d25140cc7709e53c3ece830f5692690f5659b7056c"
+		},
+		"command-bindings/summarize-meeting--meetings.command-binding.yaml": {
+			"from": "meeting-docs/command-bindings/summarize-meeting--meetings.command-binding.yaml",
+			"hash": "sha256:2e8736c2a323d9c21caebd5990d6f62a3244b513955a78ac7048c1ffaf0fa493"
+		},
+		"command-bindings/sync-files--file-drives.command-binding.yaml": {
+			"from": "files/command-bindings/sync-files--file-drives.command-binding.yaml",
+			"hash": "sha256:bf2b9929ef5c7cb0e7c6fe6e627ebe90778f6fa41751f7ce5d9cad45c3299614"
+		},
+		"command-bindings/transcribe-recording--meeting-recordings.command-binding.yaml": {
+			"from": "recordings/command-bindings/transcribe-recording--meeting-recordings.command-binding.yaml",
+			"hash": "sha256:1e4432d239b8163de413354349d7e0615c6ce2ceb1df4e4938141ac3f634e234"
+		},
+		"command-bindings/update-contacts-from-meetings--meetings.command-binding.yaml": {
+			"from": "meetings/command-bindings/update-contacts-from-meetings--meetings.command-binding.yaml",
+			"hash": "sha256:441e8d0c361e979e2e6e89255b7b122263348fc5ac57ebf8ed7a2c12e33ef3d1"
+		},
+		"command-bindings/update-engagements--engagements.command-binding.yaml": {
+			"from": "engagements/command-bindings/update-engagements--engagements.command-binding.yaml",
+			"hash": "sha256:67dd990396e80194293ae264ff651559a19d4c42834684c8028dfb5311bdc914"
+		},
+		"commands/analyze-meetings.command.md": {
+			"from": "meeting-docs/commands/analyze-meetings.command.md",
+			"hash": "sha256:48e8d567da15b137e1fb0305421dd6f1a85a1175bb01c7b8272b5e6cafe24fdb"
+		},
+		"commands/create-meeting.command.md": {
+			"from": "meeting-docs/commands/create-meeting.command.md",
+			"hash": "sha256:76b1dbc218a8517c6abe58d449b0656d52ad3747609d79b517435a2c8c236d16"
+		},
+		"commands/extract-tasks-from-meetings.command.md": {
+			"from": "meeting-docs/commands/extract-tasks-from-meetings.command.md",
+			"hash": "sha256:ae69b9d1e2987cad789aaa8a92a5793a987c94e3ddf2f5a3dcc352ec5d239c88"
+		},
+		"commands/fetch-meeting-screenshots.command.md": {
+			"from": "meetings/commands/fetch-meeting-screenshots.command.md",
+			"hash": "sha256:be0bfb239bf11c3133fb7440198dc96d81e7cc3f9089af50d014b2783d391079"
+		},
+		"commands/fetch-meetings.command.md": {
+			"from": "meetings/commands/fetch-meetings.command.md",
+			"hash": "sha256:6811c4825228d2d46916e398498f93aa7b7c55b12dca9f067d97b01cd35152df"
+		},
+		"commands/fetch-new-recordings.command.md": {
+			"from": "recordings/commands/fetch-new-recordings.command.md",
+			"hash": "sha256:66e05142d98c517ba2335d3c940f030691743c28f79a2bbff0dbb170657e448d"
+		},
+		"commands/match-recording-to-meeting.command.md": {
+			"from": "recordings/commands/match-recording-to-meeting.command.md",
+			"hash": "sha256:df520db0dcbb51f9a4228526c7c00c293f50c70976a8b10950ab942e1b3e9c36"
+		},
+		"commands/prepare-for-meeting.command.md": {
+			"from": "meeting-docs/commands/prepare-for-meeting.command.md",
+			"hash": "sha256:a871be0977ca2de387c4e94661cb88e5ba04bb5c6b9af9890b0c503951b4da14"
+		},
+		"commands/process-new-meetings.command.md": {
+			"from": "meeting-docs/commands/process-new-meetings.command.md",
+			"hash": "sha256:bc7b05f0df826e839f83760bb1f7878f25aceaf1f545afd0e0d381fa427a8087"
+		},
+		"commands/scrape-contact.command.md": {
+			"from": "contacts/commands/scrape-contact.command.md",
+			"hash": "sha256:4fd9bd54e5a830ceb1a2e80b23d484fac4c235cf6bc67eac8d4edc5eb748b0d3"
+		},
+		"commands/summarize-meeting.command.md": {
+			"from": "meeting-docs/commands/summarize-meeting.command.md",
+			"hash": "sha256:8fa81c09d1d01ee28293ebdc8d31d928490b60885aafe709baf1cc97a366d313"
+		},
+		"commands/sync-files.command.md": {
+			"from": "files/commands/sync-files.command.md",
+			"hash": "sha256:c89217cd206afec19b5b382821cf930bfb641bea728d7e876fd08e4207d093a5"
+		},
+		"commands/transcribe-recording.command.md": {
+			"from": "recordings/commands/transcribe-recording.command.md",
+			"hash": "sha256:e173f5b5f4125b69e13eea5018c402fa8ccd773e5f5a580762076148eb0908f6"
+		},
+		"commands/update-contacts-from-meetings.command.md": {
+			"from": "meetings/commands/update-contacts-from-meetings.command.md",
+			"hash": "sha256:478bb58f5db926909180ec49e02cce5c2c2f4b4a123aa594d376043a32409938"
+		},
+		"commands/update-engagements.command.md": {
+			"from": "engagements/commands/update-engagements.command.md",
+			"hash": "sha256:a88783ef379c80115ecc1aea1221100632913e7a830a07955e38462c204e919b"
+		},
+		"skills/analyzing-meetings/SKILL.md": {
+			"from": "meeting-docs/skills/analyzing-meetings/SKILL.md",
+			"hash": "sha256:362ae9d1e5c607223351b97ec4f39008f6c07ea015d9087a840d3c6db577a8f2"
+		},
+		"skills/fetching-meetings/bin/event-people.mjs": {
+			"from": "meetings/skills/fetching-meetings/bin/event-people.mjs",
+			"hash": "sha256:0c9ab5dcf6f360b538b37dcb8df1c43e29419161d01e88ddb8aba2effcd04180"
+		},
+		"skills/fetching-meetings/bin/gcal.mjs": {
+			"from": "meetings/skills/fetching-meetings/bin/gcal.mjs",
+			"hash": "sha256:fe384b339350934d0873eb6ba4a416e51f6f1bede9ac5c5581bfd2f7266e8168"
+		},
+		"skills/fetching-meetings/bin/touch-contacts.mjs": {
+			"from": "meetings/skills/fetching-meetings/bin/touch-contacts.mjs",
+			"hash": "sha256:880e7df58a7d969a96adc7bb4d9da7f162128b08f81c23d27ac4a7c1178ff0c4"
+		},
+		"skills/fetching-meetings/SKILL.md": {
+			"from": "meetings/skills/fetching-meetings/SKILL.md",
+			"hash": "sha256:4b86ebf25a7e01d28c91bcab7009027f128dcb86fc9786626629c18d4224b900"
+		},
+		"skills/ingesting-meeting-screenshots/bin/detect.mjs": {
+			"from": "meetings/skills/ingesting-meeting-screenshots/bin/detect.mjs",
+			"hash": "sha256:2227619b601eeaa23101af454fa08a4aad2f3993b530a3524a09578f0ce6e680"
+		},
+		"skills/ingesting-meeting-screenshots/SKILL.md": {
+			"from": "meetings/skills/ingesting-meeting-screenshots/SKILL.md",
+			"hash": "sha256:7a6fa0837e619668eb84fb91f1edbf0874040799a385104cc034cf5d7d8ffc38"
+		},
+		"skills/ingesting-recordings/bin/detect.mjs": {
+			"from": "recordings/skills/ingesting-recordings/bin/detect.mjs",
+			"hash": "sha256:43bfe1d6e0c90d3268095c42a03cac704e3ac6226abee17fcc99cb60f842bc3d"
+		},
+		"skills/ingesting-recordings/SKILL.md": {
+			"from": "recordings/skills/ingesting-recordings/SKILL.md",
+			"hash": "sha256:c6527e3db15697caec15545227bf90a5fa45f19fae782a5074a7c9b196895e0f"
+		},
+		"skills/preparing-for-meetings/SKILL.md": {
+			"from": "meeting-docs/skills/preparing-for-meetings/SKILL.md",
+			"hash": "sha256:b057f49f6c5acd4193caeb1cec48d9be63414985e7e1e3215b55ee8978acff88"
+		},
+		"skills/scraping-contacts/bin/import-avatars.mjs": {
+			"from": "contacts/skills/scraping-contacts/bin/import-avatars.mjs",
+			"hash": "sha256:b0832cba6465b2bc01618fb4ce2f02d01ae1d75774e1443bffee60f2edc3bc69"
+		},
+		"skills/scraping-contacts/bin/li.mjs": {
+			"from": "contacts/skills/scraping-contacts/bin/li.mjs",
+			"hash": "sha256:0ca356b6bf4120eff58561e247965b15bcd9de82983b83111b8ae5b4554ab750"
+		},
+		"skills/scraping-contacts/SKILL.md": {
+			"from": "contacts/skills/scraping-contacts/SKILL.md",
+			"hash": "sha256:2845dfb884aab0fa0b881635f99269af5d99cb3d750941071237724fc210f7a2"
+		},
+		"skills/transcribing-recordings/.gitignore": {
+			"from": "recordings/skills/transcribing-recordings/.gitignore",
+			"hash": "sha256:1b6f759d3e3ac6103607158930883441373698e5cb952dcb561d409c5b24cd05"
+		},
+		"skills/transcribing-recordings/meeting_io.py": {
+			"from": "recordings/skills/transcribing-recordings/meeting_io.py",
+			"hash": "sha256:12c59b94f2f9f3360b4e1ba3dc5d4c1b54aa1d72601b5d09a049dbfb3639cc83"
+		},
+		"skills/transcribing-recordings/pyproject.toml": {
+			"from": "recordings/skills/transcribing-recordings/pyproject.toml",
+			"hash": "sha256:792f8471d585270df90bb39880bf5952c1b5b078a8cc458d86445414b6048dd5"
+		},
+		"skills/transcribing-recordings/render.py": {
+			"from": "recordings/skills/transcribing-recordings/render.py",
+			"hash": "sha256:7416fd069a8563597f928ab75a176680dbd47487c29d2551cae5049cfdea9087"
+		},
+		"skills/transcribing-recordings/SKILL.md": {
+			"from": "recordings/skills/transcribing-recordings/SKILL.md",
+			"hash": "sha256:72f7384a1b5fef0fa485ddfa431c9c479151cfde13a4d7ebfe5143ef6ffa1bda"
+		},
+		"skills/transcribing-recordings/text_source.py": {
+			"from": "recordings/skills/transcribing-recordings/text_source.py",
+			"hash": "sha256:17680663c219094ff05da5fe029bc45284842491d96f507abe5e2e10004f644e"
+		},
+		"skills/transcribing-recordings/transcribe_meeting.py": {
+			"from": "recordings/skills/transcribing-recordings/transcribe_meeting.py",
+			"hash": "sha256:38ca3173a8feedf79dff297584135d008da23d0aa0ada6890c474d9dafe20911"
+		},
+		"skills/transcribing-recordings/uv.lock": {
+			"from": "recordings/skills/transcribing-recordings/uv.lock",
+			"hash": "sha256:200582d7709eead4d15397e2db591e7e8a3f9431ffbe6bc33cdc8f092d8bc35b"
+		},
+		"skills/working-with-files/SKILL.md": {
+			"from": "files/skills/working-with-files/SKILL.md",
+			"hash": "sha256:02fc36b1bc8d654e81b2031f1cee3b6bd4c392f371c56444a65ff9e685a7c5b0"
+		},
+		"skills/working-with-tasks/SKILL.md": {
+			"from": "tasks/skills/working-with-tasks/SKILL.md",
+			"hash": "sha256:191fb2407ce9e65e675280d9f5c38f8e44b746ca158ee8b85ecbaf12c0b1d405"
+		},
+		"src/check.js": {
+			"from": "files/src/check.js",
+			"hash": "sha256:710af934602c8ea03dd0392b1564a48732dcf750a17b2fa07ddd19545bcb7cde"
+		},
+		"src/cli.js": {
+			"from": "files/src/cli.js",
+			"hash": "sha256:3e3b8f024eae3c40e76a736d734ba55b21e0fcb811cf7c49e363d32e0297827a"
+		},
+		"src/drives.js": {
+			"from": "files/src/drives.js",
+			"hash": "sha256:00df62862a56d1cc2ac79e841d56d7c9262d3dbcb598ff7b606cfc2145b9d4ab"
+		},
+		"src/engine.js": {
+			"from": "files/src/engine.js",
+			"hash": "sha256:e02aa36f003e85605de4f5c7ffc4af3d6ab713cf4c01ce837ea4d42d4b40f97e"
+		},
+		"src/extension.js": {
+			"from": "files/src/extension.js",
+			"hash": "sha256:49f2557e80c0aef25ead7cd7302002eb2aee16a1f40c6abcff9503f94c1f3445"
+		},
+		"src/preview.js": {
+			"from": "files/src/preview.js",
+			"hash": "sha256:89676f31fadb77bda1d77a1db03a7ac79904b6ccc9a3e83b671e8b385777df3c"
+		},
+		"src/references.js": {
+			"from": "files/src/references.js",
+			"hash": "sha256:8d07fa19868df2e78740eb3f26fc3ca273cba4350e9f1aeea414ff6a671083be"
+		},
+		"src/status.js": {
+			"from": "files/src/status.js",
+			"hash": "sha256:750f1afa28d3b307c678e618362cc2f5254feb3f00f846b23d0bd8e2f6ffc9b6"
+		},
+		"src/sync.js": {
+			"from": "files/src/sync.js",
+			"hash": "sha256:c753665294c76fffc09d20e3c65fc392371be33e2b2c5fca0154ee74f852b91e"
+		},
+		"src/walk.js": {
+			"from": "files/src/walk.js",
+			"hash": "sha256:f397db8630c4d930a8f56bc262ce42233e10a544dea8533bef028646c8ca4898"
+		},
+		"ui-views/assets-gallery.ui-view.yaml": {
+			"from": "assets/ui-views/assets-gallery.ui-view.yaml",
+			"hash": "sha256:74b5124978c50430c45b3ae4527bf18bbbf7245d5fcee1530698997e3c5090f1"
+		},
+		"ui-views/contacts-needs-linkedin.ui-view.yaml": {
+			"from": "contacts/ui-views/contacts-needs-linkedin.ui-view.yaml",
+			"hash": "sha256:d75af18bd0a285eb6f59eb40781ef4061610920acfd2329633c7594a611eef89"
+		},
+		"ui-views/contacts-review-linkedin.ui-view.yaml": {
+			"from": "contacts/ui-views/contacts-review-linkedin.ui-view.yaml",
+			"hash": "sha256:2b25584ca5a3ad60e5c52411491bd80109d64851d5607f60b00aca4adeae9f1c"
+		},
+		"ui-views/engagements-pipeline.ui-view.yaml": {
+			"from": "engagements/ui-views/engagements-pipeline.ui-view.yaml",
+			"hash": "sha256:dfbe15cac866f56f6ca30c03a999a1d7a6a6a3eb6d30a209314fe3b062abc06d"
+		},
+		"ui-views/files-missing.ui-view.yaml": {
+			"from": "files/ui-views/files-missing.ui-view.yaml",
+			"hash": "sha256:395c34da189c10d87191c30ca9aa094725039a9945ecba66ed015f9107a79fc4"
+		},
+		"ui-views/files-unreferenced.ui-view.yaml": {
+			"from": "files/ui-views/files-unreferenced.ui-view.yaml",
+			"hash": "sha256:9b8c9953e2f523395d8cadb4bafd69ba801006ea992403335bf65e13d9dc5158"
+		},
+		"ui-views/gates-by-owner.ui-view.yaml": {
+			"from": "projects/ui-views/gates-by-owner.ui-view.yaml",
+			"hash": "sha256:0f8c1bdd2174b13ae528c5b6512cd27119de8bac3098d27d85f33baf1ac9e89a"
+		},
+		"ui-views/gates.ui-view.yaml": {
+			"from": "projects/ui-views/gates.ui-view.yaml",
+			"hash": "sha256:ec8c44fe8aa534ef9a1f7fbfc6c896660946455358b9030f222af0de2d50b5b5"
+		},
+		"ui-views/graph.ui-view.yaml": {
+			"from": "meetings/ui-views/graph.ui-view.yaml",
+			"hash": "sha256:035ad6255d44f870b1df858eb44ad06ae1ff54dde74f97d0cb16506ef9df4932"
+		},
+		"ui-views/inbox.ui-view.yaml": {
+			"from": "tasks/ui-views/inbox.ui-view.yaml",
+			"hash": "sha256:868c5bfc7ee3675c62f736ed74744c62de1ef18b5a863ffb073febc9ffb9560e"
+		},
+		"ui-views/meetings-pipeline.ui-view.yaml": {
+			"from": "meeting-docs/ui-views/meetings-pipeline.ui-view.yaml",
+			"hash": "sha256:89a04a43cc403dca2f8cf87677396ae4f65ea1f92281000248e9ce7011ed1da4"
+		},
+		"ui-views/meetings-recent.ui-view.yaml": {
+			"from": "meetings/ui-views/meetings-recent.ui-view.yaml",
+			"hash": "sha256:d80b600c8dda4be5a3ed0a77d28d1a3f08515d9b580edc85f780f3cf8b6d2f36"
+		},
+		"ui-views/plan-by-lane.ui-view.yaml": {
+			"from": "projects/ui-views/plan-by-lane.ui-view.yaml",
+			"hash": "sha256:4f436989bbf0eae89e2fa576ff97275a05c79045e488ba8245ee29b1be3c4573"
+		},
+		"ui-views/plan-by-person.ui-view.yaml": {
+			"from": "projects/ui-views/plan-by-person.ui-view.yaml",
+			"hash": "sha256:1ac0e1ce249101a9d55cb066c35ce1b546d3d02ff53bb51c7fb3c797b325fb48"
+		},
+		"ui-views/plan-gantt.ui-view.yaml": {
+			"from": "projects/ui-views/plan-gantt.ui-view.yaml",
+			"hash": "sha256:a761e6543b3bf4c3074647bb2dc4fbcf3b04db84f2a43e639a375715c1dbe17a"
+		},
+		"ui-views/tasks-active-gantt.ui-view.yaml": {
+			"from": "tasks/ui-views/tasks-active-gantt.ui-view.yaml",
+			"hash": "sha256:a16087b654900f9af9f09e6ebcd93edaf9ff9b57372c3046e4f0d2991bfe2842"
+		},
+		"ui-views/tasks-board.ui-view.yaml": {
+			"from": "tasks/ui-views/tasks-board.ui-view.yaml",
+			"hash": "sha256:c57b0b6da69d5d35298f1c783f42cd88e711ce217e396f9539d07c12d9e12f64"
+		},
+		"ui-views/tasks-by-assignee.ui-view.yaml": {
+			"from": "tasks/ui-views/tasks-by-assignee.ui-view.yaml",
+			"hash": "sha256:6b0901697897e4aacb097144a37bc6cdbbcc119a43561761f7607c8b15f74d19"
+		},
+		"ui-views/tasks-mine.ui-view.yaml": {
+			"from": "tasks/ui-views/tasks-mine.ui-view.yaml",
+			"hash": "sha256:4dbb74e51f2c85b855cffd6dd9329f9eaed9218e4985285694ae1e36cdc38431"
+		},
+		"ui-views/tasks-planned-gantt.ui-view.yaml": {
+			"from": "tasks/ui-views/tasks-planned-gantt.ui-view.yaml",
+			"hash": "sha256:64a539237c14771477b18314e6945b9335840b6895f7735d55059f6bb0a023d6"
+		},
+		"ui-views/tasks-retro-gantt.ui-view.yaml": {
+			"from": "tasks/ui-views/tasks-retro-gantt.ui-view.yaml",
+			"hash": "sha256:be3e31614b0eb3e1531e5baf21b21136237f2103416df3668bb978343768e165"
+		},
+		"ui-views/tasks-suggested.ui-view.yaml": {
+			"from": "tasks/ui-views/tasks-suggested.ui-view.yaml",
+			"hash": "sha256:79b32e89656449676044123f1712c37d87c0bb716322229e055133fce39684b1"
+		}
+	}
+}

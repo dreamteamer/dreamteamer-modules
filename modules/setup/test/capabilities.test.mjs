@@ -112,7 +112,7 @@ describe('the board', () => {
 		assert.equal(check(ok, 'variables', 'FILES_FOLDER').state, 'ok');
 	});
 	test('only the variables the INSTALLED modules use are asked for', () => {
-		const caps = capabilities(consumer({ disable: ['modules/recordings', 'modules/meetings', 'modules/perspective'] }));
+		const caps = capabilities(consumer({ disable: ['modules/core', 'modules/recordings', 'modules/meetings', 'modules/perspective'] }));
 		// tasks, contacts and assets need no template variable at all
 		const labels = cap(caps, 'variables').checks.map((c) => c.label);
 		assert.ok(!labels.some((l) => l.startsWith('INBOX_FOLDERS')), labels.join(','));
@@ -127,7 +127,7 @@ describe('the board', () => {
 		assert.equal(check(capabilities(ws), 'record guard', 'chained').state, 'ok');
 	});
 	test('a disabled module produces no capability of its own', () => {
-		const caps = capabilities(consumer({ disable: ['modules/recordings'] }));
+		const caps = capabilities(consumer({ disable: ['modules/core', 'modules/recordings'] }));
 		assert.equal(cap(caps, 'recordings'), undefined);
 	});
 	test('no fix is ever marked runnable unless it was given as `run` too', () => {
@@ -207,7 +207,7 @@ describe('the wikis and notebooklm capabilities', () => {
 		assert.equal(installedModules(consumer()).get('rnd')?.channel, 'node_modules');
 	});
 	test('rnd alone wants FILES_FOLDER (references and media_folder point into it), the way meetings and recordings do', () => {
-		const caps = capabilities(consumer({ disable: ['modules/recordings', 'modules/meetings', 'modules/perspective', 'modules/wikis', 'modules/contacts', 'modules/assets', 'modules/projects'] }));
+		const caps = capabilities(consumer({ disable: ['modules/core', 'modules/recordings', 'modules/meetings', 'modules/perspective', 'modules/wikis', 'modules/contacts', 'modules/assets', 'modules/projects'] }));
 		assert.equal(check(caps, 'variables', 'FILES_FOLDER declared')?.state, 'bad');
 	});
 	// The local adapter needs no binary, login or harness, so the extra adapter's absence is a warning.
@@ -225,7 +225,7 @@ describe('the wikis and notebooklm capabilities', () => {
 		}
 	});
 	test('wikis alone wants FILES_FOLDER — a legacy wiki folder is a ${env:FILES_FOLDER}/… template', () => {
-		const caps = capabilities(consumer({ disable: ['modules/recordings', 'modules/meetings', 'modules/rnd', 'modules/perspective', 'modules/contacts', 'modules/assets', 'modules/projects'] }));
+		const caps = capabilities(consumer({ disable: ['modules/core', 'modules/recordings', 'modules/meetings', 'modules/rnd', 'modules/perspective', 'modules/contacts', 'modules/assets', 'modules/projects'] }));
 		assert.equal(check(caps, 'variables', 'FILES_FOLDER declared')?.state, 'bad');
 	});
 	// Corpora live in the repo, so the wikis capability is READY on a bare clone with no .env.
@@ -283,7 +283,7 @@ describe('the wikis and notebooklm capabilities', () => {
 		assert.equal(check(capabilities(consumer({ gitignore: 'node_modules/\n.cache/\n' })), 'notebooklm', '.cache/ ignored')?.state, 'ok');
 	});
 	test('the module switched off shows no wikis capability', () => {
-		assert.equal(cap(capabilities(consumer({ disable: ['modules/wikis'] })), 'wikis'), undefined);
+		assert.equal(cap(capabilities(consumer({ disable: ['modules/core', 'modules/wikis'] })), 'wikis'), undefined);
 	});
 	test('setup --yes declares the harness WITHOUT dropping the engine default, and appends .cache/', () => {
 		const ws = consumer({ gitignore: 'node_modules/\n' });

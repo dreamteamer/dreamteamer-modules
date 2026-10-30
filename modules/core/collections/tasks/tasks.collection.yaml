@@ -1,0 +1,176 @@
+name: tasks
+description: A concrete commitment, starting with a verb — what would be done, not the topic it is about.
+use_when: >-
+  a concrete commitment surfaces — in a meeting, a chat, a plan — capture it here with a verb and, whenever a
+  date was actually said, the absolute `due`; pass `--lane` when the domain is clear (the workspace's own lane
+  vocabulary) and leave it empty when it is not — the field is optional and the board has an "unassigned" pile
+  for the residue; asked "what do I owe", list here by due date
+storage:
+  path: data/tasks
+  format: md
+ids:
+  from:
+    - '{{ created | date }}--{{ slug }}'
+    - '{{ created | date }}--{{ name | slug }}'
+  pattern: ^\d{4}-\d{2}-\d{2}--[a-z0-9-]+$
+fields:
+  slug:
+    type: string
+    title: Slug
+    pattern: ^[a-z0-9][a-z0-9-]*$
+    description: >-
+      Optional latin handle that becomes the id. Set it when the name is not in latin script — otherwise the
+      id is a hash nobody can read or type. Never shown in place of the name.
+  name:
+    type: string
+    required: true
+    description: The commitment in one line, starting with a verb — what would be done, not the topic.
+  lane:
+    type: string
+    description: >-
+      Which lane this task sits in on the board — the DOMAIN it is about, not who surfaced it. OPTIONAL: a
+      task with no lane still lands on the board, under an "unassigned" pile. The VOCABULARY is the
+      workspace's own — this module ships no enum, because every workspace splits its work differently (one by
+      client, one by department, one by area of life). Pick a short set of display-ready values (`CRM`,
+      `Finance`, `R&D`) and use them consistently: the board groups its rows by the raw value, so `finance`
+      and `Finance` are two lanes. Infer from the task's ACTUAL WORK, not where it was surfaced. To close the
+      set, give the field an `enum` in a workspace overlay of this collection.
+  description:
+    type: markdown
+    body: true
+    description: >-
+      The detail — what was actually said, what "done" looks like, and a backlink to the record this came out
+      of.
+  status:
+    type: string
+    default: suggested
+    enum:
+      - suggested
+      - todo
+      - doing
+      - blocked
+      - done
+      - closed
+    description: >-
+      suggested is a candidate awaiting triage; todo is scheduled, doing is in flight, blocked awaits a
+      dependency, done delivered, closed left without delivery.
+  project:
+    type: projects
+    description: >-
+      The project this task belongs to, when it came out of one. Empty is normal — most tasks are not plan
+      rungs.
+  activity:
+    type: activities
+    description: >-
+      The plan rung this task came out of, when it did. A task is the small thing you do; an activity is the
+      bounded piece of work it serves.
+  assignee:
+    type: users
+    description: >-
+      Who owes this. Empty means the workspace's own person, so a workspace with one person never has to fill
+      it in.
+  start:
+    type: datetime
+    description: >-
+      Optional scheduled start, as an absolute ISO 8601 timestamp with a timezone. Paired with due for task
+      Gantt views. Leave empty when no start was agreed; never infer it from creation time or status. This is
+      a schedule, not an actual-work timestamp.
+  due:
+    type: date
+    description: The date this is owed by, resolved to an absolute date — never "next week".
+  urgent:
+    type: boolean
+    default: false
+    description: Whether this jumps the queue regardless of its due date.
+  item:
+    type: reference
+    description: The record this task came out of — a meeting, a summary, a client. Polymorphic, hence "*".
+  confidence:
+    type: string
+    default: normal
+    enum:
+      - low
+      - normal
+      - high
+    description: How sure the writer was that this really is a task someone in the workspace owns.
+  tags:
+    type: string
+    many: true
+    examples:
+      - client:northwind
+      - finance
+      - decision
+    pattern: ^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$
+    description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
+  assistant_recommended_next_step:
+    type: markdown
+    description: >-
+      The single next move the assistant recommends, written in the reader's language and refreshed whenever
+      the record is analysed. Opens with the CURRENT STATE in one line — what is true now, who holds the ball,
+      how long it has sat — because a recommendation without its context reads as an order. Then the move
+      itself, and why that one rather than the obvious alternative. This field is ANALYSIS, not a UI hint: it
+      is written when the record is examined, so the board can be read rather than re-derived. Absent means
+      nobody has analysed this record yet, which is itself worth seeing.
+  author:
+    type: string
+    examples:
+      - agents/claude-code
+      - scripts/read-git@2
+    pattern: ^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$
+    description: >-
+      Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a reader.
+      Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
+  creation_context:
+    type: string
+    description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+  source:
+    type: string
+    description: >-
+      Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path>
+      · url:<…> · migration:<id>.
+  previous_status:
+    type: string
+    description: Status preserved when an existing task is explicitly re-triaged.
+  product:
+    type: rnd/products
+    description: Product delivered by this task.
+  user_stories:
+    type: rnd/user-stories
+    description: Capabilities delivered or validated.
+    many: true
+  journeys:
+    type: rnd/user-journeys
+    description: End-to-end journeys covered.
+    many: true
+  change_requests:
+    type: rnd/change-requests
+    description: Changes this task implements or validates.
+    many: true
+  depends_on:
+    type: tasks
+    description: Finish-to-start prerequisites.
+    many: true
+  dependents:
+    type: tasks
+    many: true
+    mirror_of: depends_on
+    description: Tasks waiting for this task to finish.
+  estimate_days:
+    type: number
+    description: Proposed focused workdays; not an observed duration.
+  schedule_basis:
+    type: string
+    description: Assumptions and approval status of dates.
+display:
+  nav:
+    icon: checklist
+    order: 3
+  list:
+    columns:
+      - name
+      - assignee
+      - lane
+      - last_modified
+      - status
+      - due
+      - tags

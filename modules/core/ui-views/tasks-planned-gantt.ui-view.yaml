@@ -1,0 +1,20 @@
+# Scheduled start to deadline; terminal status does not imply an actual completion date.
+route: /tasks/planned/gantt
+scope: collection
+collection: collections/tasks
+filter:
+  status:
+    _in: [todo]
+display:
+  nav:
+    title: Planned (gantt)
+    icon: graph-line
+    order: 4
+  list:
+    layout: gantt
+    sort: start
+    options:
+      start: start
+      end: due
+      group_by: assignee
+      color_by: status

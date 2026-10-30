@@ -1,0 +1,19 @@
+route: /tasks/suggested
+scope: collection
+collection: collections/tasks
+filter:
+  status:
+    _eq: suggested
+display:
+  nav:
+    title: Suggested
+    icon: lightbulb
+    order: 0
+  list:
+    layout: table
+    columns:
+      - name
+      - assignee
+      - previous_status
+      - product
+    sort: name

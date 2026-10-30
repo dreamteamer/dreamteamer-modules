@@ -1,0 +1,127 @@
+name: projects
+description: >-
+  One delivery effort with a start, an end and someone accountable — the record every activity hangs off. Not the thing being BUILT (a workspace with an R&D module keeps that as a product) and not the commercial funnel record: a project is the WORK, and `company` is enough to say whose it is.
+use_when: >-
+  a bounded piece of delivery is agreed and needs a plan — create it here first, then its `activities`; asked "where does this effort stand", "when does it start" or "who is on it", read here. The generated `activities` mirror is the plan itself, `lead` says who is accountable and `teams` who is staffed
+storage: {path: data/projects, format: md}
+# A name with no Latin characters (Hebrew, Arabic, Cyrillic, CJK) slugs to an unreadable hash id
+# rather than failing. Pass `--id` explicitly for those: `dt add projects --id <latin-handle> --name "…"`.
+ids:
+  from: "{{ name | slug }}"
+  pattern: ^[a-z0-9][a-z0-9-]*$
+fields:
+  name:
+    type: string
+    required: true
+    description: What the project is called.
+  code:
+    type: string
+    description: A short handle used in conversation and in activity codes — optional, and free-form because every shop numbers differently.
+  description:
+    type: string
+    description: One line on what this project delivers.
+  company:
+    type: companies
+    description: Who it is for. A peer reference — a workspace with no CRM leaves it empty.
+  # Owner fields point at `users`, so "what is mine" is answered from the person's own record.
+  lead:
+    type: users
+    description: Who is accountable for the project as a whole. One person.
+  teams:
+    type: teams
+    many: true
+    description: The teams staffed to this project. Membership comes from the team, so staffing is not restated per activity.
+  # Where the code lives. `repos` is an engine collection (`dt install repos/<id>` clones one, `dt status`
+  # reports it), so a project points at it. `repo` is the front door; `repos` lists every one it touches.
+  repo:
+    type: repos
+    description: The project's primary repo, the one to open first. Also list it in `repos`.
+  repos:
+    type: repos
+    many: true
+    description: >-
+      Every repo this project touches, `repo` included — infra, forks, the delivery workspace itself. Free of order; `repo` is what says which one is the front door.
+  starts:
+    type: date
+    description: The planned first day.
+  ends:
+    type: date
+    description: The planned last day — the target, not a promise. What the gantt draws to.
+  status:
+    type: string
+    default: proposed
+    enum: [proposed, active, paused, done, dropped]
+    description: Observable states only — `proposed` (agreed, not started), `active` (work is happening), `paused` (deliberately shelved), `done`, `dropped`.
+  tags:
+    type: string
+    many: true
+    pattern: ^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$
+    description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
+  activities:
+    type: activities
+    many: true
+    mirror_of: project
+    description: The plan — every activity and gate of this project, in code order.
+  lanes:
+    type: activity-lanes
+    many: true
+    mirror_of: project
+    description: The bands this project's plan is read in — generated from `activity-lanes.project`.
+  decisions:
+    type: decisions
+    many: true
+    mirror_of: project
+    description: What has been decided on this effort, most recent first — generated from `decisions.project`.
+  deliverables:
+    type: deliverables
+    many: true
+    mirror_of: project
+    description: What this plan owes, by due date — generated from `deliverables.project`.
+  goals:
+    type: goals
+    many: true
+    mirror_of: projects
+    description: The goals this project serves — generated from `goals.projects`.
+  phases:
+    type: phases
+    many: true
+    mirror_of: project
+    description: The stretches this plan is read in, earliest first — generated from `phases.project`.
+  risks:
+    type: risks
+    many: true
+    mirror_of: project
+    description: What threatens this effort — generated from `risks.project`.
+  content:
+    type: markdown
+    body: true
+    description: The project's page — what it delivers, the commercial shape, what is deliberately out of scope.
+  author:
+    type: string
+    examples: ['agents/claude-code', 'scripts/read-git@2']
+    pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
+    description: >-
+      Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
+  creation_context:
+    type: string
+    description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+  source:
+    type: string
+    description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…> · migration:<id>.'
+  confidence:
+    type: string
+    default: normal
+    enum: [low, normal, high]
+    description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
+display:
+  nav:
+    icon: rocket
+    order: 8
+  list:
+    columns:
+      - name
+      - company
+      - lead
+      - status
+      - starts
+      - ends

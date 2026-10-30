@@ -1,0 +1,20 @@
+# The pipeline at a glance: which recent meetings have a prep, a summary and a critique. The three
+# columns are the mirrors THIS module stamps onto `meetings`, which is why the view ships here and not
+# with the meetings module — there, a column for a field the workspace may not have renders as an
+# empty cell that reads as data.
+route: /meetings/pipeline
+scope: collection
+collection: collections/meetings
+display:
+  nav:
+    title: meeting pipeline
+  list:
+    layout: table
+    columns:
+      - starts
+      - name
+      - company
+      - prep
+      - summary
+      - analyses
+    sort: '-starts'

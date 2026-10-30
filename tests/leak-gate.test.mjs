@@ -82,7 +82,13 @@ describe('the leak gate', () => {
 		assert.deepEqual(hits(/['"`]1[A-Za-z0-9_-]{27,43}['"`]/, (_, line) => !uuid.test(line)), []);
 	});
 	test('Hebrew only where it is the subject', () => {
-		const offenders = hits(/[\u0590-\u05FF]/).filter((h) => !HEBREW_ALLOWED.has(h.split(':')[0]));
+		// a composed copy (modules/core) is judged at the path where it is authored
+		const origins = new Map();
+		for (const m of fs.readdirSync(path.join(ROOT, 'modules'))) {
+			const f = path.join(ROOT, 'modules', m, 'compose.json');
+			if (fs.existsSync(f)) for (const [dest, { from }] of Object.entries(JSON.parse(fs.readFileSync(f, 'utf8')).files ?? {})) origins.set(`modules/${m}/${dest}`, `modules/${from}`);
+		}
+		const offenders = hits(/[\u0590-\u05FF]/).filter((h) => { const f = h.split(':')[0]; return !HEBREW_ALLOWED.has(origins.get(f) ?? f); });
 		assert.deepEqual(offenders, []);
 	});
 	test('the allow-list is not empty, and every site on it still exists (a stale entry hides a future leak)', () => {

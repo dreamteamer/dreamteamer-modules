@@ -1,0 +1,15 @@
+route: /assets/gallery
+scope: collection
+collection: collections/assets
+display:
+  nav:
+    title: Assets
+    icon: file-media
+    order: 90
+  list:
+    layout: cards
+    # Every asset as a card. A file-codec card draws the record itself, so no `image_field` is needed.
+    options:
+      image_fit: contain
+      card_title: '{{ id }}'
+      page_size: 200

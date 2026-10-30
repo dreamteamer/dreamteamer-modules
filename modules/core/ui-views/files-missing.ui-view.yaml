@@ -1,0 +1,19 @@
+# Entries whose path the last sync did not find. The record stays until `dt files sync --prune`.
+route: /files/missing
+scope: collection
+collection: collections/files
+filter:
+  status: missing
+display:
+  nav:
+    title: files — missing
+    icon: warning
+  list:
+    layout: table
+    columns:
+      - name
+      - drive
+      - path
+      - modified
+      - referenced_by
+    sort: path

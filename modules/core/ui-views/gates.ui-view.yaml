@@ -1,0 +1,17 @@
+# The gates alone — what blocks, who holds it, and whether it passed. A saved filter over
+# `activities`, so a gate stays addressable without being a second collection.
+route: /plan/gates
+scope: collection
+collection: collections/activities
+filter:
+  kind:
+    _eq: gate
+display:
+  nav:
+    title: Gates
+    icon: law
+    order: 5
+  list:
+    layout: table
+    columns: [code, name, gate_kind, starts, lead, external_owner, blocking, status]
+    sort: starts

@@ -126,7 +126,27 @@ export function installedModules(root) {
 
 // `files` has no capability block here: its machine checks (is each drive mounted, cloud-only entries)
 // are its own extension's `dt doctor` rows.
-export const OURS = ['assets', 'users', 'companies', 'contacts', 'engagements', 'tasks', 'routines', 'meetings', 'recordings', 'meeting-docs', 'projects', 'perspective', 'wikis', 'notebooklm', 'search', 'rnd', 'proofs', 'worktrees', 'http', 'docker-workspaces', 'code', 'files'];
+export const OURS = ['core', 'assets', 'users', 'companies', 'contacts', 'engagements', 'tasks', 'routines', 'meetings', 'recordings', 'meeting-docs', 'projects', 'perspective', 'wikis', 'notebooklm', 'search', 'rnd', 'proofs', 'worktrees', 'http', 'docker-workspaces', 'code', 'files'];
+
+/** The modules a COMPOSED module stands in for — `compose.json` at its root names its origins. `core`
+ *  installed means every capability of users, meetings, files… applies, read from the package itself. */
+export function originsOf(mods, id) {
+	const root = mods.get(id)?.root;
+	const f = root && path.join(root, 'compose.json');
+	return f && fs.existsSync(f) ? (readJson(f)?.origins ?? []) : [];
+}
+/** The root of module `id` — its own package, or the composed module that stands in for it. */
+export function rootOf(mods, id) {
+	if (mods.has(id)) return mods.get(id).root;
+	for (const [m] of mods) if (originsOf(mods, m).includes(id)) return mods.get(m).root;
+	return undefined;
+}
+/** Where module `id`'s `bin/<script>` is — its own package, or the composed copy (`bin/<id>-<script>`). */
+export function binOf(mods, id, script) {
+	if (mods.has(id)) return path.join(mods.get(id).root, 'bin', script);
+	for (const [m] of mods) if (originsOf(mods, m).includes(id)) return path.join(mods.get(m).root, 'bin', `${id}-${script}`);
+	return undefined;
+}
 const cmp = (a, b) => { // returns -1/0/1 comparing dotted versions
 	const pa = String(a).split('.').map(Number), pb = String(b).split('.').map(Number);
 	for (let i = 0; i < 3; i++) { if ((pa[i] || 0) !== (pb[i] || 0)) return (pa[i] || 0) < (pb[i] || 0) ? -1 : 1; }
@@ -142,8 +162,9 @@ export function capabilities(root) {
 	const dt = pkg.dreamteamer ?? {};
 	const env = envKeys(root);
 	const mods = installedModules(root);
-	const mine = OURS.filter((m) => mods.has(m));
-	const has = (m) => mods.has(m);
+	const composedIn = new Set([...mods.keys()].flatMap((m) => originsOf(mods, m)));
+	const mine = OURS.filter((m) => mods.has(m) || composedIn.has(m));
+	const has = (m) => mods.has(m) || composedIn.has(m);
 	const out = [];
 
 	// ── the workspace itself ─────────────────────────────────────────────────────────────────
@@ -189,7 +210,7 @@ export function capabilities(root) {
 	if (has('perspective')) {
 		const c = cap('record guard', 'the perspective module ships a guard that `dreamteamer check` does not know about');
 		const script = pkg.scripts?.check ?? '';
-		const rel = path.relative(root, path.join(mods.get('perspective').root, 'bin', 'check-records.mjs'));
+		const rel = path.relative(root, path.join(rootOf(mods, 'perspective'), 'bin', 'check-records.mjs'));
 		if (script.includes('check-records.mjs')) c.ok('chained', 'npm run check runs it');
 		else c.bad('chained', `set scripts.check to: dreamteamer check && node ${rel}`,
 			'without it, perspective records are written but never validated');
@@ -216,14 +237,14 @@ export function capabilities(root) {
 	// ── recordings ───────────────────────────────────────────────────────────────────────────
 	if (has('recordings')) {
 		const c = cap('recordings', 'ingesting audio and transcribing it offline. Optional, and heavy: ~1.6 GB of model weights.');
-		const skill = path.join(mods.get('recordings').root, 'skills', 'transcribing-recordings');
+		const skill = path.join(rootOf(mods, 'recordings'), 'skills', 'transcribing-recordings');
 		const ff = bin('ffmpeg');
 		ff ? c.ok('ffmpeg', ff) : c.bad('ffmpeg', 'macOS: brew install ffmpeg · Debian/Ubuntu: apt-get install -y ffmpeg', 'the only external binary transcription needs');
 		const uv = bin('uv');
 		const uvInstall = 'curl -LsSf https://astral.sh/uv/install.sh | sh';
 		uv ? c.ok('uv', uv) : c.bad('uv', uvInstall, 'provisions the pinned Python and its venv', uvInstall);
 		const modelsDir = process.env.TRANSCRIBING_MODELS_DIR || path.join(skill, '.models');
-		const onNpm = mods.get('recordings').channel === 'node_modules';
+		const onNpm = (mods.get('recordings') ?? mods.get([...mods.keys()].find((m) => originsOf(mods, m).includes('recordings')))).channel === 'node_modules';
 		if (onNpm && !process.env.TRANSCRIBING_MODELS_DIR) {
 			c.warn('TRANSCRIBING_MODELS_DIR', 'add TRANSCRIBING_MODELS_DIR=~/.cache/dreamteamer/transcribing-models to .env',
 				'installed from npm, so weights kept inside the package are deleted by the next npm ci');

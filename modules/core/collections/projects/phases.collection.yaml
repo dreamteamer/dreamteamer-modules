@@ -1,0 +1,96 @@
+# phases — when in the plan: the span a run of activities falls in (Discovery, Build, Pilot, Launch).
+# A lane has an order and no dates; a phase has dates and no order, because `starts` IS the order. An
+# `order` field would let a plan say "Build runs before Discovery" while the dates say the opposite.
+# Being a record, a phase states its span once instead of leaving it to the max of its rungs, and a
+# misspelt phase is refused rather than drawn as a new band.
+#
+# A phase belongs to exactly one project: `project` is required, where `activity-lanes.project` is
+# optional. A band of work can run across plans; a span of one plan's calendar cannot.
+name: phases
+description: >-
+  One span of a plan — the stretch of calendar a run of activities falls in. `phases` is WHEN; `activity-lanes` is WHICH TRACK. A phase carries its own dates, so the span is stated once rather than inferred from whatever rungs happen to point at it.
+use_when: >-
+  a plan is long enough to read in stretches — Discovery, Build, Pilot, Launch — and somebody wants to know when a stretch starts and ends without taking the max of its rungs. Create the phases BEFORE setting `activities.phase`, and read here before inventing a new one. A band of WORK that runs across the whole plan (a workstream, a surface, a team's track) is an `activity-lanes` record, not a phase: the test is whether it has dates of its own. A stretch that belongs to two projects is two phases — `project` is required
+storage: {path: data/phases, format: md}
+# Project-scoped, because `project` is required: two plans may each name a phase "Discovery" and
+# they file apart. A name with no Latin characters slugs to a hash; pass `--id` for a readable one.
+ids:
+  from: "{{ project | basename }}/{{ name | slug }}"
+  pattern: ^[a-z0-9][a-z0-9-]*/[a-z0-9][a-z0-9-]*$
+fields:
+  name:
+    type: string
+    required: true
+    description: What the stretch is called, as it should read in a band header — "Discovery", "Pilot", "Hardening".
+  project:
+    type: projects
+    required: true
+    description: >-
+      The plan this span belongs to, and the first segment of the id. A stretch shared between two plans is two records.
+  description:
+    type: string
+    description: One line on what this stretch is for — what the plan is trying to have true by the end of it.
+  # Required: `starts` is what orders the phases.
+  starts:
+    type: date
+    required: true
+    description: >-
+      The first day of the stretch, and its place in the order. Two phases starting the same day are not refused, and are a signal to merge them or move one.
+  ends:
+    type: date
+    description: >-
+      The last day — the target, not a promise. Absent means nobody has decided where it stops. Phases may overlap, so this is never implied by the next phase's start.
+  status:
+    type: string
+    default: planned
+    enum: [planned, active, done, dropped]
+    description: >-
+      Where the stretch stands, as a person says it, not derived from its activities. `planned` is the default because a plan is written ahead. A phase whose `ends` has passed while it is still `active` is left for a person to resolve.
+  tags:
+    type: string
+    many: true
+    pattern: ^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$
+    description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
+  activities:
+    type: activities
+    many: true
+    mirror_of: phase
+    description: The rungs falling in this stretch, in code order — generated from `activities.phase`.
+  deliverables:
+    type: deliverables
+    many: true
+    mirror_of: phase
+    description: What is handed over during this stretch — generated from `deliverables.phase`.
+  content:
+    type: markdown
+    body: true
+    description: >-
+      What this stretch covers, what has to be true to leave it, and what is deliberately not in it.
+  author:
+    type: string
+    examples: ['agents/claude-code', 'scripts/read-git@2']
+    pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
+    description: >-
+      Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
+  creation_context:
+    type: string
+    description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+  source:
+    type: string
+    description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…> · migration:<id>.'
+  confidence:
+    type: string
+    default: normal
+    enum: [low, normal, high]
+    description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
+display:
+  nav:
+    icon: clockface
+    order: 12
+  list:
+    columns:
+      - name
+      - project
+      - starts
+      - ends
+      - status

@@ -1,0 +1,8 @@
+# Heavy assets live with the skill so its ignore rules travel with the folder. .models and .cache carry
+# NO trailing slash on purpose: they may be SYMLINKS to a shared copy, and a dir-only pattern ignores
+# neither a symlink nor a path that does not exist yet.
+.models
+.cache
+.venv/
+__pycache__/
+*.pyc

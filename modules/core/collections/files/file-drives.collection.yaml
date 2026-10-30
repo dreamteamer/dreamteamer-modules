@@ -1,0 +1,92 @@
+name: file-drives
+description: 'One mounted folder whose files are indexed — a synced drive, a cloud folder, a local archive — as a `${env:NAME}` template plus the subfolders to index. The `include` list is the boundary: a workspace indexes the subfolders it names and nothing else.'
+use_when: a folder outside the repo should be indexed, or a `files` record needs its `drive` — add the drive here with its `${env:…}` path and the subfolders to include, then `dt files sync <id>`; read `last_synced` and `entries` to know how fresh the index is, and `dt files status` for whether it is mounted on this machine
+storage:
+  path: data/file-drives
+  format: md
+ids:
+  from: '{{ name | slug }}'
+  pattern: ^[a-z0-9][a-z0-9-]*$
+record_title: '{{ name }}'
+fields:
+  name:
+    type: string
+    required: true
+    description: What you call this folder — "Drive", "Inbox", "Archive". The id is its slug, and every entry's id begins with it.
+  path:
+    type: string
+    required: true
+    examples:
+      - ${env:FILES_FOLDER}
+      - ${env:INBOX_FOLDERS}
+    description: Where the folder is, as a `${env:NAME}` template — never a machine path. Declare `NAME` in the workspace's `dreamteamer.vars` and set it in `.env`; `dt resolve` renders it, sync resolves it the same way.
+  index:
+    type: integer
+    minimum: 0
+    description: For a variable whose value is a newline-separated LIST of folders — which line this drive is, counting from 0. Leave empty when the variable is one path.
+  provider:
+    type: string
+    default: local
+    enum:
+      - google-drive
+      - icloud
+      - onedrive
+      - dropbox
+      - local
+    description: What mounts the folder. A cloud client may evict a file's bytes to the cloud; sync reads such a file's size and date but never its bytes.
+  include:
+    type: string
+    many: true
+    examples:
+      - meeting-recordings
+      - rnd
+    description: The top-level subfolders to index, by name — a nested `rnd/sub` names no top-level folder and matches nothing. EMPTY MEANS EVERYTHING — so a folder that also holds material this workspace must not see lists the subfolders it may see.
+  exclude:
+    type: string
+    many: true
+    examples:
+      - trash
+      - '*.log'
+    description: What to skip under the included subfolders — a name at any depth (`trash`), a path from the drive's folder (`rnd/old`), or an extension (`*.log`). Files and folders whose name starts with a dot are always skipped.
+  preview:
+    type: boolean
+    default: true
+    description: Whether sync extracts a text preview for text-like files (markdown, text, csv, tsv, json, yaml, html, eml, log). Off for a drive whose contents should stay out of the repo.
+  hash_max_bytes:
+    type: integer
+    default: 67108864
+    description: sha256 is computed only for a file whose bytes are on disk and at most this size. The hash is what lets a renamed file keep its record.
+  description:
+    type: string
+    description: One line on what this folder holds.
+  tags:
+    type: string
+    many: true
+    pattern: ^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$
+    description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
+  last_synced:
+    type: datetime
+    display:
+      editable: false
+    description: When `dt files sync` last stamped this drive — on its first sync, and on any sync that changed this drive's records or its entry count. A run that changes nothing leaves it as it was. Empty means never.
+  entries:
+    type: integer
+    display:
+      editable: false
+    description: How many entries were present after the last sync.
+  notes:
+    type: markdown
+    body: true
+    description: Anything worth knowing about this folder — how it is synced, what lives where.
+display:
+  nav:
+    icon: cloud
+    order: 86
+  list:
+    columns:
+      - name
+      - path
+      - provider
+      - include
+      - last_synced
+      - entries

@@ -1,0 +1,124 @@
+# risks — what could go wrong, carried with an owner and an indicator rather than as prose worry. A
+# risk that cannot be listed by owner is a risk nobody is carrying.
+#
+# `unassessed` is a value, not a gap: likelihood and impact are assessed only where the sources
+# support it, and the value records "we looked and the sources do not support a level", which an
+# absent field cannot.
+#
+# A risk is retired by a gate. Where the plan carries a gate whose `passes_when` tests exactly this
+# exposure, `gate` names it, and `status` reaches `closed` only when that gate passed or the exposure
+# is gone in the world. `mitigation` records what is documented as the treatment, never what someone
+# hopes.
+name: risks
+description: >-
+  A named thing that could go wrong on a project — with an owner, the evidence it is real, how likely and how bad the sources say it is, what is documented as the treatment, and the gate whose pass retires it.
+use_when: >-
+  an exposure is named — in a meeting, a review, an estimate that rests on an unverified claim — write it here with `owner` and `evidence`, never as a table row in a note; asked "what threatens this plan" or "what does <person> carry", list here by `project` or `owner`. Search here before re-deriving an exposure a review already named, and before calling anything de-risked: `status` only reaches `closed` through its `gate` or a change in the world, both quotable
+storage: {path: data/risks, format: md}
+# The register code is the id, as `activities.code` is: a register is read and spoken by its codes.
+ids:
+  from: "{{ code }}"
+  pattern: ^[a-z0-9][a-z0-9-]*$
+fields:
+  code:
+    type: string
+    required: true
+    pattern: '^rk-[0-9]{2,3}$'
+    description: 'The register code — `rk-01`. IS the id; the room says "RK-14" out loud, so the code is how a risk is named.'
+  name:
+    type: string
+    required: true
+    description: The risk in one line — what goes wrong, not what should be done about it. Any script is welcome; the code carries the id.
+  project:
+    type: projects
+    required: true
+    description: The effort this exposure threatens. Required — a risk that belongs to nothing threatens nothing.
+  category:
+    type: string
+    required: true
+    enum: [commercial, scope-execution, client-environment, technical, regulatory]
+    description: >-
+      Which register section it files under — the three every delivery register grows (commercial · scope and execution · client and environment), plus `technical` and `regulatory` for exposures that are about the build or the law rather than the deal.
+  likelihood:
+    type: string
+    required: true
+    enum: [certain, high, medium, low, unassessed]
+    description: >-
+      How likely, ONLY where the sources support a level — `certain` is reserved for what has already been observed. `unassessed` means the sources were read and do not support a number; it is a finding, not a blank.
+  impact:
+    type: string
+    required: true
+    enum: [catastrophic, high, medium-high, medium, low, unassessed]
+    description: >-
+      How bad if it lands, on the same honesty rule as `likelihood`. `catastrophic` is reserved for exposures that end a channel or the engagement, not for emphasis.
+  owner:
+    type: users
+    required: true
+    description: >-
+      Who carries it: accountable for the mitigation moving, not necessarily the person who created the exposure. Required, so an ownerless risk cannot be written.
+  evidence:
+    type: string
+    required: true
+    description: >-
+      Where this was seen — the meeting, the quote, the record, dated.
+  indicator:
+    type: string
+    description: >-
+      The observable that says it is materialising — an event somebody could actually notice. Optional, because inventing one is worse than leaving it empty.
+  mitigation:
+    type: string
+    description: What is DOCUMENTED as the treatment and where that stands — never what someone hopes. Empty means none is documented, which is itself worth reading.
+  gate:
+    type: activities
+    description: >-
+      The plan gate whose pass retires this risk (an `activities` record with `kind: gate`). Empty for exposures no gate yet tests.
+  status:
+    type: string
+    required: true
+    enum: [open, mitigating, accepted, materialised, closed]
+    description: >-
+      Where it stands. `open` — named, nothing moving. `mitigating` — the documented treatment is in motion. `accepted` — someone with the authority decided to live with it, and `mitigation` says who. `materialised` — it happened; the record stays as the register's memory. `closed` — retired through `gate` or gone in the world, both quotable.
+  affects:
+    type: string
+    many: true
+    description: >-
+      What it lands on, as `<collection>/<id>` strings. Plain strings rather than references, because the risk outlives what it threatens.
+  tags:
+    type: string
+    many: true
+    pattern: ^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$
+    description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
+  content:
+    type: markdown
+    body: true
+    description: The fuller story where one line cannot hold it — the numbers, the background, and later what actually happened.
+  author:
+    type: string
+    examples: ['agents/claude-code', 'scripts/read-git@2']
+    pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
+    description: >-
+      Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
+  creation_context:
+    type: string
+    description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+  source:
+    type: string
+    description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…> · migration:<id>.'
+  confidence:
+    type: string
+    default: normal
+    enum: [low, normal, high]
+    description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
+display:
+  nav:
+    icon: flame
+    order: 15
+  list:
+    columns:
+      - name
+      - category
+      - likelihood
+      - impact
+      - owner
+      - status
+      - gate

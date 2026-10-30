@@ -1,0 +1,39 @@
+# Contacts whose LinkedIn identity needs a person's look: no `linkedin` at all, or a slug tagged
+# `linkedin:unsure` — a URL the record carries but nobody has confirmed. Remove the tag by hand once the
+# profile is confirmed or corrected.
+# Cards rather than a table, because `review_note` is a paragraph a table cell would clip; it is its own
+# field because a template can render a field but cannot slice the record body. `columns` and `sort`
+# still apply when the list is switched to a table.
+route: /contacts/review-linkedin
+scope: collection
+collection: collections/contacts
+# The filter is top-level: `options` passes to the layout untouched, so a filter there is read by nothing.
+filter:
+  _or:
+    - linkedin:
+        _null: true
+    - tags:
+        _contains: 'linkedin:unsure'
+display:
+  nav:
+    title: contacts — review LinkedIn
+    icon: question
+  list:
+    layout: cards
+    columns:
+      - avatar
+      - name
+      - company
+      - role
+      - linkedin
+      - tags
+    sort: name
+    options:
+      # No `image_field`: most people here have no photo, and an unset image still reserves a full-width box.
+      # `review_note` renders as plain text on the card (`format: markdown` sets the editor, not the view),
+      # so write it without markdown emphasis.
+      card_title: |-
+        ### {{ name }}
+        {{ company }}
+
+        {{ review_note }}

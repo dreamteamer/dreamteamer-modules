@@ -1,0 +1,9 @@
+command: commands/prepare-for-meeting
+collection: collections/meetings
+scope: record
+# available_when omitted deliberately: any meeting can be prepped, including one already held whose
+# follow-up is being planned, and a `restricted` one — a prep is written before the call, from the
+# workspace's own records, and reads none of the meeting's private material.
+# done_when is omitted, so the command never shows "done"; re-running updates the existing prep rather
+# than adding one.
+description: gather the client context and prior calls into this meeting's prep

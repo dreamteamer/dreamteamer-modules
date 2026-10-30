@@ -1,0 +1,87 @@
+# artifacts — a built page, kept where it can actually be opened. The record is a FOLDER: `index.md`
+# carries the fields and the tour, and `index.html` beside it opens straight from disk — no server, no
+# login. Not `assets` (a picture a view draws, opaque, size-guarded): an artifact is a page a person
+# opens, carrying its own CSS and JS. Bytes a page merely references — a recording, a PDF — stay under
+# `${env:FILES_FOLDER}` with a record pointing at them. `dt commit artifacts/<id>` stages `index.md`
+# only; add `index.html` and its siblings by path before the commit lands.
+name: artifacts
+description: >-
+  A built page someone OPENS — a pitch, a prototype, a report, a canvas — kept as a folder whose `index.html` runs straight from disk. Publishing a copy is separate, and recorded on `published_url`.
+use_when: >-
+  a page is produced that a person will open in a browser rather than read as a record — a clickable pitch, a prototype build, a generated report — file it here as a folder with `index.html`, never as a bare URL inside some other record; asked "where do I open X", the answer is `data/artifacts/<id>/index.html`. Not `assets` (a picture a view draws)
+storage:
+  path: data/artifacts
+  format: md
+  shape: folder
+  entry: index.md
+ids:
+  from: '{{ name | slug }}'
+  pattern: ^[a-z0-9][a-z0-9-]*$
+fields:
+  name:
+    type: string
+    required: true
+    description: What the artifact is called when someone asks to see it.
+  kind:
+    type: string
+    required: true
+    enum: [pitch, prototype, report, canvas, page]
+    description: >-
+      What sort of page. `pitch` — built to be shown to someone. `prototype` — a clickable build of a product idea. `report` — a generated read-out. `canvas` — a design-canvas export. `page` — chrome around the others (an index, a landing).
+  local:
+    type: string
+    examples: ['data/artifacts/northwind-ai-lane/index.html']
+    description: >-
+      The page itself, as a REPO-RELATIVE path — `data/artifacts/<id>/index.html`. Derivable from the id, carried explicitly so the record has a clickable way in. Never an absolute machine path.
+  published_url:
+    type: string
+    description: >-
+      Where a COPY of this artifact is live, if anywhere. Empty is the normal state and means local-only, deliberately. Publishing sets it in the same act.
+  built_on:
+    type: date
+    description: When this `index.html` was last produced.
+  built_from:
+    type: string
+    description: >-
+      Where the BYTES come from — a generator script, a build folder, a fetch from a deployment. The field that says whether editing `index.html` by hand is work or vandalism. Not `source`, which says where the INFORMATION came from.
+  company:
+    type: companies
+    description: The organisation this page is about or was built for, when there is one.
+  about:
+    type: string
+    many: true
+    description: >-
+      What it shows, as plain `<collection>/<id>` strings — a brief, a meeting, a lead. Plain rather than references because an artifact outlives what it depicts, and a deleted subject must not take the page with it.
+  content:
+    type: markdown
+    body: true
+    description: What to look at and how — the tour a reader gets before opening `index.html`.
+  tags:
+    type: string
+    many: true
+    examples: ['onboarding', 'client:northwind']
+    pattern: ^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$
+    description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
+  author:
+    type: string
+    examples: ['agents/claude-code', 'scripts/read-git@2']
+    pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
+    description: >-
+      Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
+  creation_context:
+    type: string
+    description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+  source:
+    type: string
+    description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…> · migration:<id>.'
+  confidence:
+    type: string
+    default: normal
+    enum: [low, normal, high]
+    description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
+display:
+  nav:
+    icon: browser
+    order: 16
+  list:
+    columns: [name, kind, company, built_on, published_url]

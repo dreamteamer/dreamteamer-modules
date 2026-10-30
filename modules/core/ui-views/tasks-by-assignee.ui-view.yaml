@@ -1,0 +1,18 @@
+# "What is mine", the task half. Banded by `assignee`, with the unassigned pile shown because an empty
+# assignee means the workspace's own person.
+# With the projects module installed, its /plan/by-person is the plan half; both resolve to one `users` record.
+route: /tasks/by-assignee
+scope: collection
+collection: collections/tasks
+display:
+  nav:
+    title: Tasks by person
+    icon: person
+    order: 3
+  list:
+    layout: table
+    columns: [name, lane, status, urgent, due]
+    sort: due
+    options:
+      group_by: assignee
+      show_ungrouped_rows: true

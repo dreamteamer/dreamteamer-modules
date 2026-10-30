@@ -1,0 +1,9 @@
+# agents — the engine's own kind, overlaid so the workspace's AI workers show in the nav beside users:
+# an agent is a worker tasks and sessions name (`[users, agents]` fields), not plumbing.
+name: agents
+overlay: true
+fields: {}
+display:
+  nav:
+    icon: robot
+    order: 11

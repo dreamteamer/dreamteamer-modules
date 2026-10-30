@@ -1,0 +1,8 @@
+name: meetings
+overlay: true
+fields:
+  recordings:
+    type: meeting-recordings
+    many: true
+    mirror_of: meeting
+    description: The audio captures of this call — plural, because one meeting genuinely produces several.

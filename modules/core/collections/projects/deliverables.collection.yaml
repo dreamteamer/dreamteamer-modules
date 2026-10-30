@@ -1,0 +1,111 @@
+# deliverables — what a project owes somebody: a document, a build, a dataset, a trained team.
+# Not an activity: an activity is work with a span, a lead and seats; a deliverable is a thing that is
+# accepted or not, usually by someone outside. It answers "what do we owe and by when" and "what has
+# been signed off", and many rungs may produce one deliverable or one rung several, so the link to
+# `activities` is optional.
+name: deliverables
+description: >-
+  An artefact a project owes somebody — a document, a build, a dataset, a trained team. Not the work that produces it (`activities`) and not the outcome it serves (`goals`): a deliverable is the THING that changes hands, and it is accepted rather than done.
+use_when: >-
+  a plan promises somebody an artefact — a deck, a spec, a release, a migrated dataset, a trained team — record it here with `due` and who accepts it; asked "what do we owe and by when", or "what has actually been handed over", list here by `due` and by `status`. Link the `activity` that produces it where one does, and leave it empty when several do. `accepted_by` is a contact and not a user: acceptance is somebody else's act, and a deliverable this workspace signs off for itself is an `activities` gate, not an acceptance
+storage: {path: data/deliverables, format: md}
+# Project-scoped, because `project` is required: two plans may each owe a "final report".
+ids:
+  # The first template whose fields are all present wins: the `slug` field when set, else the name
+  # through the slug filter.
+  from:
+    - "{{ project | basename }}/{{ slug }}"
+    - "{{ project | basename }}/{{ name | slug }}"
+  pattern: ^[a-z0-9][a-z0-9-]*/[a-z0-9][a-z0-9-]*$
+fields:
+  slug: {type: string, title: Slug, pattern: '^[a-z0-9][a-z0-9-]*$', description: 'An optional Latin handle that becomes the id; when empty, the id comes from the name. Set it when the name has no Latin characters, which would otherwise slug to a hash. Unlike `activities.code`, it is never shown to a reader.'}
+  name:
+    type: string
+    required: true
+    description: What the artefact is, as it would be written on an invoice line or a handover note.
+  project:
+    type: projects
+    required: true
+    description: The plan that owes it, and the first segment of the id.
+  kind:
+    type: string
+    required: true
+    enum: [document, deck, report, software, design, prototype, dataset, training, process, service, other]
+    description: >-
+      What the artefact is commercially: what somebody is buying, not its file type. A kind the list lacks is an edit to this descriptor, not a coined value.
+  # ── WHAT PRODUCES IT ───────────────────────────────────────────────────────────────────────────
+  activity:
+    type: activities
+    description: >-
+      The plan rung that produces it, where one does. Empty when several rungs build it together.
+  phase:
+    type: phases
+    description: >-
+      The stretch of the plan it is handed over in, carried explicitly so a slipped `due` shows against its phase. It must be a phase of this deliverable's project; `bin/check-records.mjs` refuses the mismatch.
+  owner:
+    type: users
+    description: Who on your side is accountable for it being handed over. One person, not necessarily anyone who makes it.
+  # ── WHEN, AND WHETHER IT LANDED ───────────────────────────────────────────────────────────────
+  due:
+    type: date
+    description: When it is owed by, as an absolute date. Absent means nobody has committed to one.
+  delivered_on:
+    type: date
+    description: When it actually changed hands, not when it was finished.
+  accepted_on:
+    type: date
+    description: When the receiving side said yes. Absent with `delivered_on` set means it is delivered and waiting.
+  status:
+    type: string
+    default: planned
+    enum: [planned, in-progress, delivered, accepted, rejected, dropped]
+    description: >-
+      `planned` (owed, not started) · `in-progress` · `delivered` (handed over, nobody has said yes) · `accepted` (they said yes; requires `accepted_by`, which `bin/check-records.mjs` enforces) · `rejected` (they said no; the reason goes in the body) · `dropped` (descoped by agreement). `delivered` and `accepted` are separate because the gap between them is where projects get stuck.
+  accepted_by:
+    type: contacts
+    description: >-
+      Who on the receiving side accepted it. A `contacts` reference, because acceptance is the other side's act; a deliverable you sign off for yourself is a gate, not an acceptance.
+  location:
+    type: string
+    description: >-
+      Where the artefact is: a link, or a `${env:FILES_FOLDER}/…` template for something on disk. Never a raw machine path, because a record travels between machines. The bytes are never committed.
+  tags:
+    type: string
+    many: true
+    pattern: ^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$
+    description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
+  content:
+    type: markdown
+    body: true
+    description: >-
+      What the artefact contains, what "good" looks like, and what it excludes: the acceptance criteria, written before it is built.
+  author:
+    type: string
+    examples: ['agents/claude-code', 'scripts/read-git@2']
+    pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
+    description: >-
+      Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
+  creation_context:
+    type: string
+    description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+  source:
+    type: string
+    description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…> · migration:<id>.'
+  confidence:
+    type: string
+    default: normal
+    enum: [low, normal, high]
+    description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
+display:
+  nav:
+    icon: export
+    order: 13
+  list:
+    columns:
+      - name
+      - project
+      - kind
+      - owner
+      - due
+      - status
+      - accepted_by

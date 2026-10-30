@@ -25,9 +25,21 @@ function* files(dir, suffix) {
 
 export const moduleIds = () => fs.readdirSync(MODULES).filter((m) => fs.existsSync(path.join(MODULES, m, 'package.json'))).sort();
 
-/** Every descriptor of module `m`: { module, file (repo-relative), doc }. Overlays included. */
-export const descriptorsOf = (m) => [...files(path.join(MODULES, m, 'collections'), '.collection.yaml')]
-	.map((f) => ({ module: m, file: path.relative(ROOT, f), doc: yaml.load(fs.readFileSync(f, 'utf8')) }));
+/** A COMPOSED module (`compose.json` at its root) carries copies of other modules' files. The copies are
+ *  the origins' sources, judged where they are authored; the gates below see only what the module adds.
+ *  `composed(m)` is the set of copied repo-relative paths; `originsOf(m)` the modules it is composed from. */
+const composeOf = (m) => { const f = path.join(MODULES, m, 'compose.json'); return fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, 'utf8')) : null; };
+export const composed = (m) => new Set(Object.keys(composeOf(m)?.files ?? {}).map((d) => path.join('modules', m, d)));
+export const originsOf = (m) => composeOf(m)?.origins ?? [];
+
+/** Every descriptor module `m` AUTHORS: { module, file (repo-relative), doc }. Overlays included; a
+ *  composed copy excluded (it is its origin's). */
+export const descriptorsOf = (m) => {
+	const copies = composed(m);
+	return [...files(path.join(MODULES, m, 'collections'), '.collection.yaml')]
+		.filter((f) => !copies.has(path.relative(ROOT, f)))
+		.map((f) => ({ module: m, file: path.relative(ROOT, f), doc: yaml.load(fs.readFileSync(f, 'utf8')) }));
+};
 
 /** Every mixin of module `m`: name → fields. */
 export const mixinsOf = (m) => new Map([...files(path.join(MODULES, m, 'mixins'), '.mixin.yaml')]

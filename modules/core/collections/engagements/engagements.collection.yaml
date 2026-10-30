@@ -1,0 +1,132 @@
+name: engagements
+description: >-
+  One working relationship with a company, from the first conversation to the end of the work: a lead while it is being sold, a client while it is being delivered, closed when it is over. One record for the whole arc, so its history never splits across two collections.
+use_when: >-
+  a company is being sold to or worked for — read its engagement before a call, a prep or a critique, and update it after one; asked "where does X stand", "who is our champion there" or "what do we owe them", the answer is here
+storage:
+  path: data/engagements
+  format: md
+ids:
+  from: "{{ name | slug }}"
+  pattern: ^[a-z0-9][a-z0-9-]*$
+fields:
+  name:
+    type: string
+    required: true
+    description: What this engagement is called — usually the company, or the programme when one company runs several.
+  description:
+    type: string
+    description: One line on what the engagement is, for someone who has never seen it.
+  company:
+    type: companies
+    required: true
+    description: The company being sold to or worked for.
+  vendor:
+    type: companies
+    description: The company delivering the work when it is not you — a partner or prime contractor you work through.
+  stage:
+    type: string
+    required: true
+    default: lead
+    enum: [lead, client, closed]
+    description: >-
+      Where the relationship is. `lead` while it is being sold, `client` once work is agreed and being delivered, `closed` when it is over — won and finished, lost, or dropped; `outcome` says which.
+  outcome:
+    type: string
+    enum: [delivered, lost, dropped]
+    description: How a closed engagement ended — set it when `stage` becomes closed, and only then.
+  temperature:
+    type: string
+    enum: [cold, normal, hot]
+    description: How warm it feels right now, apart from its stage — whether it is actually moving. Re-read it whenever the record is touched.
+  phase:
+    type: string
+    description: Where it stands today in one line, in free text — the nuance `stage` cannot carry, and the column a person scans.
+  champion:
+    type: contacts
+    description: The one person on the other side who wants this to happen — not the most senior one. Empty when nobody has stepped up, which is itself the finding.
+  key_contacts:
+    type: contacts
+    many: true
+    description: Everyone who matters on the other side — decision-makers, blockers, whoever holds the keys. Includes the champion.
+  introduced_by:
+    type: contacts
+    description: Who made the introduction.
+  first_contact:
+    type: date
+    description: The first recorded contact. Set once; a later meeting never moves it.
+  updated:
+    type: date
+    description: When this record was last brought level with the meeting summaries — the watermark `/update-engagements` reads from.
+  activity_summary:
+    type: markdown
+    description: The whole arc, oldest first, one bullet per event that mattered. Append-only.
+  recent_activity:
+    type: markdown
+    description: The last few weeks in detail, newest first. New sessions go on top; the tail ages out into `activity_summary`.
+  next_steps:
+    type: markdown
+    description: What is owed, by whom, by when, and how long each item has been open.
+  tags:
+    type: string
+    many: true
+    examples: ['referral', 'source:conference']
+    pattern: ^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$
+    description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
+  content:
+    type: markdown
+    body: true
+    description: The engagement's page — scope, what they want, what was decided, whatever a person reads before a call.
+  author:
+    type: string
+    examples: ['agents/claude-code', 'scripts/read-git@2']
+    pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
+    description: >-
+      Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
+  creation_context:
+    type: string
+    description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+  source:
+    type: string
+    description: 'Where the information came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…>.'
+  confidence:
+    type: string
+    default: normal
+    enum: [low, normal, high]
+    description: How much to trust this record. When low, the reason goes in creation_context.
+constraints:
+  - if:
+      properties:
+        outcome:
+          type: string
+      required:
+        - outcome
+    then:
+      properties:
+        stage:
+          const: closed
+  - if:
+      properties:
+        stage:
+          const: closed
+      required:
+        - stage
+    then:
+      required:
+        - outcome
+display:
+  nav:
+    icon: filter
+    order: 9
+    section: crm
+  # The default engagements view: everything, most recently updated first.
+  list:
+    columns:
+      - name
+      - company
+      - stage
+      - temperature
+      - phase
+      - champion
+      - updated
+    sort: '-updated'

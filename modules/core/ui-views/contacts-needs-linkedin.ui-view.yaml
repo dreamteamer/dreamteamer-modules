@@ -1,0 +1,29 @@
+# Every contact who is not both on LinkedIn and a 1st-degree connection; a row leaves by gaining a
+# `linkedin` URL and `linkedin_degree: 1st`.
+# `_neq` does not match a missing field, so the `_null` clauses are what list contacts with no degree.
+# The filter is top-level: `options` passes to the layout untouched, so a filter there is read by nothing.
+route: /contacts/needs-linkedin
+scope: collection
+collection: collections/contacts
+filter:
+  _or:
+    - linkedin:
+        _null: true
+    - linkedin_degree:
+        _null: true
+    - linkedin_degree:
+        _neq: '1st'
+display:
+  nav:
+    title: contacts — needs LinkedIn
+    icon: person-add
+  list:
+    layout: table
+    columns:
+      - avatar
+      - name
+      - role
+      - company
+      - linkedin_degree
+      - linkedin
+    sort: name

@@ -1,0 +1,8 @@
+name: projects
+overlay: true
+fields:
+  tasks:
+    type: tasks
+    many: true
+    mirror_of: project
+    description: The tasks raised under this project — generated from `tasks.project`.

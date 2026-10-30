@@ -1,0 +1,12 @@
+route: /graph
+scope: collection
+collection: collections/meetings
+display:
+  nav:
+    title: Graph
+    icon: type-hierarchy
+  list:
+    layout: diagram
+    options:
+      link_by: references
+      node: dot

@@ -1,0 +1,21 @@
+# OVERLAY of users — the roles and responsibilities a person holds (the shared lists core ships) and
+# who they report to, so "who are the backend developers" and "who owns onboarding" are filters.
+name: users
+overlay: true
+fields:
+  roles:
+    type: roles
+    many: true
+    description: The positions they hold — `roles` records, one list the whole workspace shares.
+  responsibilities:
+    type: responsibilities
+    many: true
+    description: The areas they own — `responsibilities` records, one list the whole workspace shares.
+  manager:
+    type: users
+    description: Who they report to.
+  reports:
+    type: users
+    many: true
+    mirror_of: manager
+    description: GENERATED — who reports to them. Set `manager` on the report.

@@ -1,0 +1,11 @@
+command: commands/scrape-contact
+collection: collections/contacts
+scope: record
+# the enrichment queue, derived rather than stored: placeholders await a scrape
+available_when:
+  status:
+    _eq: draft
+done_when:
+  status:
+    _in: [enriched, verified]
+description: enrich this placeholder contact from LinkedIn + web search

@@ -15,7 +15,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import readline from 'node:readline';
 import { execSync } from 'node:child_process';
-import { capabilities, capState, worst, findWorkspace, readJson, installedModules, gitignores, BUNDLE_FLOOR } from '../lib/capabilities.mjs';
+import { capabilities, capState, worst, findWorkspace, readJson, installedModules, gitignores, BUNDLE_FLOOR, originsOf, binOf } from '../lib/capabilities.mjs';
 
 const args = process.argv.slice(2);
 const verb = args.find((a) => !a.startsWith('-')) ?? 'doctor';
@@ -81,7 +81,7 @@ const pkgPath = path.join(root, 'package.json');
 const pkg = readJson(pkgPath) ?? {};
 pkg.dreamteamer ??= {};
 const mods = installedModules(root);
-const has = (m) => mods.has(m);
+const has = (m) => mods.has(m) || [...mods.keys()].some((c) => originsOf(mods, c).includes(m));
 let changed = false;
 const done = [];
 const skipped = [];
@@ -153,7 +153,7 @@ if (missing.length) {
 // `dreamteamer check` cannot express, and the rule only holds if `npm run check` runs it.
 for (const id of ['perspective', 'projects', 'users']) {
 	if (!has(id)) continue;
-	const rel = path.relative(root, path.join(mods.get(id).root, 'bin', 'check-records.mjs'));
+	const rel = path.relative(root, binOf(mods, id, 'check-records.mjs'));
 	const current = pkg.scripts?.check ?? '';
 	if (current.includes(rel)) continue;
 	if (await yes(`Chain the ${id} record guard into \`npm run check\`?`)) {

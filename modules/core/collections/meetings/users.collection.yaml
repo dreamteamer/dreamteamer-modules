@@ -1,0 +1,8 @@
+name: users
+overlay: true
+fields:
+  meetings:
+    type: meetings
+    many: true
+    mirror_of: ours
+    description: The meetings this person was in — generated from `meetings.ours`.

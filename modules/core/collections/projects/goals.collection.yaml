@@ -1,0 +1,84 @@
+name: goals
+description: >-
+  An outcome somebody is trying to make true, with the observable test that says it happened. Not a piece of work (`activities` is the plan) and not a project: a goal is WHY the work is being done, it outlives any one project, and it is met or missed rather than done.
+use_when: >-
+  choosing between two pieces of work, or asked "why are we doing this" — the goal and the test that says it happened are here. Write one when an OUTCOME is stated that somebody could later be wrong about; never for a task, and never for a goal whose `done_when` cannot be written as one checkable sentence — that is a slogan, not a goal
+storage: {path: data/goals, format: md}
+ids:
+  # The first template whose fields are all present wins: the `slug` field when set, else the name
+  # through the slug filter.
+  from:
+    - "{{ slug }}"
+    - "{{ name | slug }}"
+  pattern: ^[a-z0-9][a-z0-9-]*$
+fields:
+  slug: {type: string, title: Slug, pattern: '^[a-z0-9][a-z0-9-]*$', description: 'An optional Latin handle that becomes the id; when empty, the id comes from the name. Set it when the name has no Latin characters, which would otherwise slug to a hash. Unlike `activities.code`, it is never shown to a reader.'}
+  name:
+    type: string
+    required: true
+    description: The outcome in one line, stated as an outcome and not a task — "the workspace runs on any machine", never "port the scripts".
+  # A goal is not a kind of activity: it has no place in the ordered plan, it may serve several
+  # projects, and its test is judged whenever anybody asks rather than once on a day like a gate's.
+  done_when:
+    type: string
+    required: true
+    description: >-
+      The observable test that says this happened, as one checkable sentence that somebody could later be shown to be wrong about.
+  description:
+    type: string
+    description: One line on what this goal is for — the context a reader needs before the test makes sense.
+  # Owner fields point at `users`, so a person's own record answers "what am I accountable for".
+  owner:
+    type: users
+    description: Who is accountable for the outcome. One person, and not necessarily anybody who does the work.
+  projects:
+    type: projects
+    many: true
+    description: >-
+      The delivery efforts serving this goal. Many-to-many: one goal is served by several projects and one project serves several goals.
+  by:
+    type: date
+    description: The date the outcome is wanted by — a target, not a promise. Often absent.
+  status:
+    type: string
+    default: proposed
+    enum: [proposed, active, met, missed, dropped]
+    description: >-
+      `proposed` (stated, not yet being worked toward) · `active` (work is happening) · `met` (the `done_when` test holds) · `missed` (the date passed and it does not) · `dropped` (deliberately abandoned). A goal that was not reached is `missed`, not `dropped`.
+  tags:
+    type: string
+    many: true
+    pattern: ^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$
+    description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
+  content:
+    type: markdown
+    body: true
+    description: The argument — why this outcome and not the adjacent one, what it EXCLUDES, and what would make it the wrong goal.
+  author:
+    type: string
+    examples: ['agents/claude-code', 'scripts/read-git@2']
+    pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
+    description: >-
+      Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
+  creation_context:
+    type: string
+    description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+  source:
+    type: string
+    description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…> · migration:<id>.'
+  confidence:
+    type: string
+    default: normal
+    enum: [low, normal, high]
+    description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
+display:
+  nav:
+    icon: target
+    order: 11
+  list:
+    columns:
+      - name
+      - owner
+      - status
+      - by
+      - done_when

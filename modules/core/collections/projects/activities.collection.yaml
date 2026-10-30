@@ -1,0 +1,139 @@
+name: activities
+description: >-
+  One rung of a plan. `kind: work` is a bounded piece of work with a start, an end, a lead and the seats doing it; `kind: gate` is a condition that must hold before the plan advances — the same object, because a plan reads as ONE ordered list and splitting it made every question ask twice.
+use_when: >-
+  building or re-cutting a plan, or asking "what happens in February", "who is loaded", "what blocks us", "what must the client supply and when" — all here, filtered by `kind`. A gate carries `passes_when` (the test), `evidence` (what proved it), `blocking` and `external_owner` (the person OUTSIDE this workspace who actually holds it — the schedule risk you do not control). A gate needs no activity feeding it: some gates exist precisely because nobody here does work toward them
+storage:
+  path: data/activities
+  format: md
+ids:
+  from: "{{ code }}"
+  pattern: ^[a-z0-9][a-z0-9-]*$
+fields:
+  code:
+    type: string
+    required: true
+    description: 'A short ASCII code in plan order — `a-01`, `g-03`. It IS the id, because a name in any script has to slug and a plan is read in order.'
+  name:
+    type: string
+    required: true
+    description: What happens (work) or what passes (gate). Any script — the code carries the id.
+  project:
+    type: projects
+    required: true
+    description: The project this rung belongs to.
+  # Work and gates share one collection. Every gate-only field says so in its description, and
+  # `bin/check-records.mjs` refuses a gate-only field on a work row.
+  kind:
+    type: string
+    required: true
+    default: work
+    enum: [work, gate]
+    description: '`work` is something someone DOES over a span; `gate` is something someone JUDGES on a date. A gate is drawn as a point — set `starts` and `ends` to the same day.'
+  gate_kind:
+    type: string
+    enum: [commercial, regulatory, technical, quality, client-signoff, external-dependency]
+    description: 'GATES ONLY — what sort of condition: an approval or a contract · a legal duty with a clock · proof that something works · a test or a sign-off on quality · the client saying yes · someone else supplying something.'
+  # The two axes a plan is read on: `lane` is which track, `phase` is when.
+  lane:
+    type: activity-lanes
+    description: >-
+      The band this rung is drawn in. If the lane names a `project`, it must be this rung's project; `bin/check-records.mjs` refuses the mismatch.
+  phase:
+    type: phases
+    description: >-
+      When in the plan this sits: the stretch it falls in, whose dates live on the `phases` record. The phase must belong to this rung's project; `bin/check-records.mjs` refuses the mismatch.
+  starts:
+    type: date
+    description: The planned first day. For a gate, the date it is judged — the same value as `ends`.
+  ends:
+    type: date
+    description: The planned last day. For a gate, equal to `starts`, which is what draws it as a point rather than a bar.
+  lead:
+    type: users
+    description: Who is accountable for this happening or being checked. One person, always on your side; a gate held by someone outside also sets `external_owner`.
+  seats:
+    type: users
+    many: true
+    description: Who does the work, including the lead. Empty on a gate nobody works toward, which is legitimate.
+  team:
+    type: teams
+    description: The team carrying this rung, where a plan is staffed by team rather than by person. `seats` still names the individuals — a team does not do the work, its members do.
+  status:
+    type: string
+    default: planned
+    enum: [planned, in-progress, done, blocked, abandoned]
+    description: >-
+      Where this rung stands. `planned` is the default because a plan is written AHEAD — an activity is authored before anything is observed about it. For a gate, `done` means it PASSED, and passing requires `evidence`.
+  passes_when:
+    type: string
+    description: GATES ONLY — the test that says this gate passed, as one checkable sentence. A gate whose test cannot be written down is not a gate.
+  evidence:
+    type: string
+    description: GATES ONLY — what actually proved it, and where to look. Required before a gate may be `done`; `bin/check-records.mjs` refuses the pair without it.
+  blocking:
+    type: boolean
+    description: GATES ONLY — whether the plan genuinely stops here. A gate that does not block is a milestone, and saying so is more honest than pretending everything blocks.
+  external_owner:
+    type: contacts
+    description: >-
+      GATES ONLY — who OUTSIDE this workspace actually holds the gate: the client approving, the partner supplying an environment, the regulator. A `contacts` reference, not a user, because they are not yours; this field is the answer to "what schedule risk do we not control".
+  depends_on:
+    type: activities
+    many: true
+    description: The rungs that must complete first. Ordering the plan, not scheduling it — nothing here computes a critical path.
+  estimate:
+    type: string
+    description: The effort this was priced at, in this plan's own unit (person-days, person-months). Free text so the unit travels with the number.
+  estimate_basis:
+    type: string
+    description: How the estimate was arrived at. An estimate without a basis is a hand-wave — say so here or leave both empty.
+  tags:
+    type: string
+    many: true
+    pattern: ^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$
+    description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
+  decisions:
+    type: decisions
+    many: true
+    mirror_of: activity
+    description: What was decided on this rung — generated from `decisions.activity`.
+  deliverables:
+    type: deliverables
+    many: true
+    mirror_of: activity
+    description: What this rung hands over — generated from `deliverables.activity`.
+  retires_risks:
+    type: risks
+    many: true
+    mirror_of: gate
+    description: The exposures this gate's pass retires — generated from `risks.gate`.
+  content:
+    type: markdown
+    body: true
+    description: What this rung actually involves, what it assumes, and what it produces.
+  author:
+    type: string
+    examples: ['agents/claude-code', 'scripts/read-git@2']
+    pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
+    description: >-
+      Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
+  creation_context:
+    type: string
+    description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+  source:
+    type: string
+    description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…> · migration:<id>.'
+  confidence:
+    type: string
+    default: normal
+    enum: [low, normal, high]
+    description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
+display:
+  nav:
+    icon: milestone
+    order: 10
+  # The plan — every rung of every project in code order, work and gates in one list.
+  list:
+    columns: [code, name, kind, lane, phase, starts, ends, lead, status]
+    sort: code

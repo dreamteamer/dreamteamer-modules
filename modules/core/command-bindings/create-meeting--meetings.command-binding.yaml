@@ -1,0 +1,5 @@
+command: commands/create-meeting
+collection: collections/meetings
+# collection-target: creates a record rather than acting on one
+scope: collection
+description: create a meeting and its meeting-prep, built from prior history

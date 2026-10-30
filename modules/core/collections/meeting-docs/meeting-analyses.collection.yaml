@@ -1,0 +1,102 @@
+# meeting-analyses — the CRITIQUE layer over meeting-summaries.
+#
+# A summary answers "what happened". A meeting analysis answers "was it any good, and what should
+# change" — it validates and scrutinises what was SAID (usually by you), separates what
+# held up from what did not, and ends in suggestions. Deliberately opinionated where a summary is
+# deliberately neutral.
+#
+# Spans MULTIPLE meetings on purpose (`meetings` is an array): a review usually covers an arc — two
+# calls in a day, or a whole engagement to date — not one slot.
+name: meeting-analyses
+# inflection strips an s; `singular` names the word people actually say
+singular: meeting-analysis
+description: >-
+  A critical judgement of a call — claims validated, performance scrutinised. Built on the raw transcript, never on the summary.
+use_when: >-
+  you ask how a call went, whether a claim held, why a deal was lost, or what the client actually asked for — the critique is here, built on the transcript. Also the first read before designing anything for that client
+storage: {path: data/meeting-analyses, format: md, suffix: analysis}
+ids:
+  from: "{{ created | date:YYYY/MM }}/{{ created | date }}--{{ name | slug }}"
+  pattern: "^\\d{4}/\\d{2}/\\d{4}-\\d{2}-\\d{2}--[a-z0-9-]+$"
+fields:
+  name:
+    type: string
+    required: true
+    description: What this review is called — usually the arc it covers, not one call.
+  description:
+    type: string
+    description: One line on what was reviewed and why.
+  date:
+    type: date
+    description: When the REVIEW was written — not when the calls happened.
+  meetings:
+    type: meetings
+    many: true
+    description: The calls under review. Plural by design — a review usually covers an arc, not one slot.
+  summaries:
+    type: meeting-summaries
+    many: true
+    description: The summaries the review was written FROM, as opposed to the raw transcripts.
+  about:
+    type: engagements
+    description: The engagement the calls belong to — read it before writing, so the critique can name what it contradicts in the engagement's own record.
+  reviewed:
+    type: reference
+    description: >-
+      WHOSE conduct and statements were scrutinised — normally your own `users/<id>` record, or a `contacts/<id>` when the review weighs someone else's claims.
+  lens:
+    type: string
+    description: The angle the review took ("objective validation of everything you said", "commercial posture"). States up front what was and was not being judged.
+  verdict:
+    type: string
+    description: The bottom line in one line, so the list view is readable without opening anything.
+  evidence_quality:
+    type: string
+    default: mixed
+    enum: [weak, mixed, strong]
+    description: How sound the evidence UNDER the critique is — separate from `confidence`, which is about the record. `weak` when ASR or attribution is bad enough that findings rest on inference.
+  status:
+    type: string
+    default: final
+    enum: [draft, final, actioned, superseded]
+    description: Whether anyone has acted on it. A review nobody actioned is the failure mode this field exposes.
+  follow_up:
+    type: tasks
+    many: true
+    description: Tasks carved out of the suggestions, once they exist.
+  content:
+    type: markdown
+    body: true
+    description: The review itself — what held up, what did not, and what should change.
+  prompt:
+    type: string
+    description: A self-contained prompt that would regenerate this analysis from the same sources.
+  author:
+    type: string
+    examples: ['agents/claude-code', 'scripts/read-git@2']
+    pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
+    description: >-
+      Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
+  creation_context:
+    type: string
+    description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+  source:
+    type: string
+    description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: calendar:<id> · <collection>/<id> · file:<path> · url:<…> · linkedin:<slug> · migration:<id>.'
+  confidence:
+    type: string
+    default: normal
+    enum: [low, normal, high]
+    description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
+display:
+  nav:
+    icon: report
+    order: 15
+    section: crm
+  list:
+    columns:
+      - name
+      - last_modified
+      - date
+      - about
+      - status

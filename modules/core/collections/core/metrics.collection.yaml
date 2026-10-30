@@ -1,0 +1,106 @@
+# metrics — one named measure and its readings over time. The record IS the series: a reading is a
+# dated row, and the latest is copied into `current`/`as_of` so a list sorts without opening the body.
+name: metrics
+singular: metric
+description: >-
+  One named measure a workspace watches — agent hours per project, open tasks per person, sessions per week, a utilisation percentage — with its unit, what it is scoped to, its target, and the dated readings that make its series. The definition and the numbers in one record, so "how is X trending" is one file.
+use_when: >-
+  a number is to be tracked over time rather than stated once — define it here with `unit` and `scope`, append a reading whenever it is measured, and copy the latest into `current` and `as_of`; asked "what are we measuring" or "how is X doing against target", list here
+storage:
+  path: data/metrics
+  format: md
+ids:
+  from: ['{{ scope | basename }}--{{ name | slug }}', '{{ name | slug }}']
+  pattern: ^[a-z0-9][a-z0-9-]*$
+fields:
+  name:
+    type: string
+    required: true
+    description: What is measured, as a noun phrase — "agent hours", "open tasks", "sessions per week".
+  description:
+    type: string
+    description: How it is defined and measured, in one line — the thing two people could disagree about.
+  unit:
+    type: string
+    required: true
+    examples: ['hours', 'count', 'percent', 'score']
+    description: The unit every reading is in.
+  kind:
+    type: string
+    default: gauge
+    enum: [gauge, counter, ratio]
+    description: '`gauge` a level read at a moment · `counter` a total over the period of each reading · `ratio` a percentage or score.'
+  period:
+    type: string
+    default: weekly
+    enum: [daily, weekly, monthly, quarterly, ad-hoc]
+    description: How often a reading is taken.
+  scope:
+    type: [projects, users, agents]
+    description: What the measure is about, when it is about one record — a project, a person, an agent. Empty for a workspace-wide measure. Prefixes the id.
+  target:
+    type: number
+    description: The value aimed for, in `unit`.
+  current:
+    type: number
+    description: The latest reading's value, copied up so the list can show and sort it.
+  as_of:
+    type: date
+    description: The date of the latest reading.
+  readings:
+    type: object
+    many: true
+    item_title: '{{ date }} · {{ value }}'
+    fields:
+      date:
+        type: date
+        required: true
+        description: The day the reading was taken, or the period it closes.
+      value:
+        type: number
+        required: true
+        description: The reading, in `unit`.
+      note:
+        type: string
+        description: Why it moved, when known.
+    description: The series — one row per reading, oldest first.
+  status:
+    type: string
+    default: active
+    enum: [active, retired]
+    description: '`retired` keeps the series readable without asking for new readings.'
+  notes:
+    type: markdown
+    body: true
+    description: What the trend says and what was done about it.
+  tags:
+    type: string
+    many: true
+    examples: ['onboarding', 'client:northwind']
+    pattern: ^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$
+    description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
+  author:
+    type: string
+    examples: ['agents/claude-code', 'scripts/read-git@2']
+    pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
+    description: >-
+      Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
+  creation_context:
+    type: string
+    description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+  source:
+    type: string
+    description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…> · migration:<id>.'
+  confidence:
+    type: string
+    default: normal
+    enum: [low, normal, high]
+    description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
+display:
+  nav:
+    icon: graph
+    order: 50
+  list:
+    columns: [name, scope, unit, current, target, as_of, period, status]
+  record:
+    badge: status
