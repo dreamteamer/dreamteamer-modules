@@ -2,20 +2,27 @@ name: ci
 
 on:
   push:
-    branches: [main]
+    branches: [main, ci-speed]
   pull_request:
 
 permissions:
   contents: read
 
 jobs:
+  # ⚠ WHY SHARDS. A private repo's runner has 2 vCPUs, so `node --test` ran one file at a time and one
+  # job was ~11 minutes, almost all of it inside `npm test` (run 41100010853: 674 s of top-level tests
+  # in a 725 s run). The suite is split into balanced shards (scripts/test-files.mjs) on BOTH Node
+  # versions — every file still runs on 20 and on 22, and tests/test-shards.test.mjs fails if any file
+  # would fall outside every shard. The longest single file (proofs' prove.test.js, ~170 s on a runner)
+  # is the floor; more shards than this cannot go below it.
   verify:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         node: [20, 22]
-    name: node ${{ matrix.node }}
+        shard: [1, 2, 3, 4]
+    name: node ${{ matrix.node }} · shard ${{ matrix.shard }}/4
     steps:
       - uses: actions/checkout@v5
 
@@ -26,15 +33,21 @@ jobs:
 
       - run: npm ci
 
+      - name: does this shard drive a browser
+        id: browser
+        run: echo "needed=$(node scripts/test.mjs --shard=${{ matrix.shard }}/4 --needs-browser)" >> "$GITHUB_OUTPUT"
+
       # rnd's prototype harness drives a real browser, and its held-out tests fail honestly rather than
       # skip when none resolves (play-fails-honestly), so the runner installs it — through npx, because
       # `play` runs in a temp workspace outside this tree and resolves playwright-core from the npx cache.
+      # The browser files are packed into ONE shard, so only that job pays for the install.
       - name: chromium for the prototype harness
+        if: steps.browser.outputs.needed == 'true'
         run: npx -y playwright-core install --with-deps chromium
 
       # Structure, compiles-alone (every module, from its packed tarball and as a copy, in a virgin
       # workspace on the engine in devDependencies), the interplay on real records, the leak gate and
-      # the resolver rule — plus every module's own suite. The packed-tarball install IS the
-      # distribution smoke the old single package needed a separate step for.
+      # the resolver rule — plus every module's own suite, split across the shards. The packed-tarball
+      # install IS the distribution smoke the old single package needed a separate step for.
       - name: tests
-        run: npm test
+        run: node scripts/test.mjs --shard=${{ matrix.shard }}/4

@@ -134,16 +134,24 @@ jobs:
             *) echo "::error::vars.NPM_ACCESS is \"$NPM_ACCESS\" — expected public or restricted"; exit 1 ;;
           esac
 
+      - name: does this module's suite drive a browser
+        id: browser
+        run: echo "needed=$(node scripts/test.mjs --module=${{ steps.mod.outputs.id }} --needs-browser)" >> "$GITHUB_OUTPUT"
+
       # rnd's prototype harness drives a real browser, and its held-out tests fail honestly rather than
       # skip when none resolves (play-fails-honestly), so the runner installs it — through npx, because
       # `play` runs in a temp workspace outside this tree and resolves playwright-core from the npx cache.
       - name: chromium for the prototype harness
+        if: steps.browser.outputs.needed == 'true'
         run: npx -y playwright-core install --with-deps chromium
 
-      # The whole repo, not only this module: every module's compiles-alone run installs it from its
-      # PACKED tarball, so a folder missing from `files` fails here rather than in a stranger's install.
+      # The repo-wide checks under tests/ plus THIS module's own suite — not every other module's.
+      # tests/ still holds compiles-alone, which installs EVERY module from its PACKED tarball, so a
+      # folder missing from `files` fails here rather than in a stranger's install; the other modules'
+      # own suites ran in ci.yml on this commit before it could be tagged, and none of them is what
+      # this tag publishes. A wave of 16 tags used to run the whole ~10-minute suite 16 times.
       - name: tests
-        run: npm test
+        run: node scripts/test.mjs --module=${{ steps.mod.outputs.id }}
 
       - name: publish
         working-directory: modules/${{ steps.mod.outputs.id }}
