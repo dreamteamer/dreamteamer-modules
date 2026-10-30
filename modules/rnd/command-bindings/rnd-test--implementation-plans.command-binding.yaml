@@ -1,0 +1,7 @@
+command: commands/rnd-test
+collection: collections/rnd/implementation-plans
+scope: record
+available_when:
+  status:
+    _eq: done
+description: "run every test the plan promised and review the proof"

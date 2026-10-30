@@ -245,22 +245,58 @@ describe('the lifecycle stages — one plainly written skill each, to one contra
 	});
 });
 
-describe('the bindings name real commands and real fields', () => {
+describe('the commands, the bindings and the agent — every entry names a skill, every gate a real field', () => {
+	const STAGES = ['rnd-design', 'rnd-review', 'rnd-prototype', 'rnd-change-request', 'rnd-plan', 'rnd-implement', 'rnd-test', 'rnd-deploy'];
+	const commandsDir = path.join(RND, 'commands');
+	const commands = fs.readdirSync(commandsDir).filter((f) => f.endsWith('.command.md')).map((f) => f.replace('.command.md', ''));
+	test('the eight stage commands exist, and each names a skill folder that exists', () => {
+		for (const c of STAGES) {
+			assert.ok(commands.includes(c), `${c} has no command file`);
+			const text = fs.readFileSync(path.join(commandsDir, `${c}.command.md`), 'utf8');
+			const fm = yaml.load(text.match(/^---\n([\s\S]*?)\n---/)[1]);
+			assert.equal(fm.name, c);
+			const skill = /load the \`([a-z-]+)\` skill/.exec(text)?.[1];
+			assert.ok(skill, `${c} does not say which skill it loads`);
+			assert.ok(fs.existsSync(path.join(RND, 'skills', skill, 'SKILL.md')), `${c} loads ${skill}, which is not shipped`);
+		}
+	});
 	const dir = path.join(RND, 'command-bindings');
-	const bindings = fs.readdirSync(dir).filter((f) => f.endsWith('.command-binding.yaml')).map((f) => yaml.load(fs.readFileSync(path.join(dir, f), 'utf8')));
-	test('six bindings, one per hop', () => { assert.equal(bindings.length, 6); });
+	const bindings = fs.readdirSync(dir).filter((f) => f.endsWith('.command-binding.yaml')).map((f) => ({ file: f, ...yaml.load(fs.readFileSync(path.join(dir, f), 'utf8')) }));
+	test('twenty-one bindings: six on the reference chain, fifteen on the lifecycle', () => {
+		assert.equal(bindings.length, 21);
+		assert.equal(bindings.filter((b) => STAGES.includes(b.command.replace(/^commands\//, ''))).length, 15);
+	});
+	/** The fields of a collection by its qualified name, or null when it is not an rnd collection. */
+	const fieldsByName = (name) => name.startsWith('rnd/') ? load(`collections/${name}.collection.yaml`).fields : null;
 	for (const b of bindings) {
-		test(`${b.command} → ${b.collection}`, () => {
+		test(`${b.file}: names a real command, and every gate reads a real field — one hop through a reference allowed`, () => {
 			const cmd = b.command.replace(/^commands\//, '');
-			assert.ok(fs.existsSync(path.join(RND, 'commands', `${cmd}.command.md`)), `${cmd} has no command file`);
-			const coll = b.collection.replace(/^collections\/rnd\//, '');
-			const props = load(`collections/rnd/${coll}.collection.yaml`).fields;
-			for (const pred of [b['can-enter'], b['can-exit']]) for (const f of Object.keys(pred ?? {})) assert.ok(props[f], `${coll} has no field ${f} for ${cmd}`);
+			assert.ok(fs.existsSync(path.join(commandsDir, `${cmd}.command.md`)), `${cmd} has no command file`);
+			const coll = b.collection.replace(/^collections\//, '');
+			const props = fieldsByName(coll);
+			assert.ok(props, `${coll} is not an rnd collection`);
+			for (const gate of [b.available_when, b.done_when]) for (const [f, cond] of Object.entries(gate ?? {})) {
+				assert.ok(props[f], `${coll} has no field ${f}`);
+				const hop = Object.keys(cond).find((k) => !k.startsWith('_'));
+				if (hop) {
+					const target = Array.isArray(props[f].type) ? props[f].type[0] : props[f].type;
+					const far = fieldsByName(target);
+					assert.ok(far && far[hop], `${coll}.${f} → ${target} has no field ${hop}`);
+				}
+			}
 		});
 	}
-	test('the skill documents every command it is the mechanics behind', () => {
+	test('building-from-references documents every command of the reference chain', () => {
 		const skill = fs.readFileSync(path.join(RND, 'skills', 'building-from-references', 'SKILL.md'), 'utf8');
-		for (const b of bindings) assert.match(skill, new RegExp(`/${b.command.replace(/^commands\//, '')}`));
+		for (const b of bindings) if (!STAGES.includes(b.command.replace(/^commands\//, ''))) assert.match(skill, new RegExp(`/${b.command.replace(/^commands\//, '')}`));
+	});
+	test('the rnd-agent loads every stage skill, and the package ships agents', () => {
+		const text = fs.readFileSync(path.join(RND, 'agents', 'rnd-agent.agent.md'), 'utf8');
+		const fm = yaml.load(text.match(/^---\n([\s\S]*?)\n---/)[1]);
+		assert.equal(fm.name, 'rnd-agent');
+		for (const s of ['rnd-design', 'rnd-prototype', 'rnd-change-request', 'rnd-plan', 'rnd-implement', 'rnd-test', 'rnd-deploy', 'recording-reviews']) assert.ok(fm.skills.includes(`skills/${s}`), `rnd-agent does not load ${s}`);
+		for (const s of fm.skills) assert.ok(fs.existsSync(path.join(RND, 'skills', s.replace(/^skills\//, ''), 'SKILL.md')), `${s} is not shipped`);
+		assert.ok(JSON.parse(fs.readFileSync(path.join(RND, 'package.json'), 'utf8')).files.includes('agents'));
 	});
 });
 

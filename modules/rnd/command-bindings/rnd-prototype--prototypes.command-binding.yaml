@@ -1,0 +1,7 @@
+command: commands/rnd-prototype
+collection: collections/rnd/prototypes
+scope: record
+available_when:
+  live_url:
+    _nempty: true
+description: "land a round of feedback: dated section, redeploy, iteration +1"

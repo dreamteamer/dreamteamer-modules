@@ -1,0 +1,10 @@
+command: commands/rnd-review
+collection: collections/rnd/implementation-plans
+scope: record
+available_when:
+  status:
+    _eq: draft
+done_when:
+  status:
+    _in: [approved, in-progress, done, abandoned]
+description: "review the draft plan; approve sets approved and the execution"

@@ -1,0 +1,10 @@
+command: commands/rnd-implement
+collection: collections/rnd/implementation-plans
+scope: record
+available_when:
+  status:
+    _in: [approved, in-progress]
+done_when:
+  status:
+    _eq: done
+description: "build the approved plan, task by task"

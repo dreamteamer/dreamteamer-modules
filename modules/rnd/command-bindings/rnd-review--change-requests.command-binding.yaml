@@ -1,0 +1,10 @@
+command: commands/rnd-review
+collection: collections/rnd/change-requests
+scope: record
+available_when:
+  status:
+    _eq: suggested
+done_when:
+  status:
+    _in: [accepted, rejected, implemented]
+description: "review the suggestion; approve makes it accepted"

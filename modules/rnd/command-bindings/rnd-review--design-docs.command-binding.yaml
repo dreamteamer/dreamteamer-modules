@@ -1,0 +1,10 @@
+command: commands/rnd-review
+collection: collections/rnd/design-docs
+scope: record
+available_when:
+  status:
+    _eq: draft
+done_when:
+  status:
+    _in: [active, superseded]
+description: "review the draft; approve makes it active"

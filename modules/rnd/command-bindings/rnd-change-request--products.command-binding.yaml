@@ -1,0 +1,4 @@
+command: commands/rnd-change-request
+collection: collections/rnd/products
+scope: record
+description: "file a change against this product"
