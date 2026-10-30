@@ -69,9 +69,9 @@ def test_summary_path_for_rejects_non_meeting():
         summary_path_for("foo/bar.transcript.md")
 
 
-def test_asr_cache_path_for_is_local_to_skill(tmp_path, monkeypatch):
+def test_asr_cache_path_for_follows_the_cache_dir(tmp_path, monkeypatch):
     import meeting_io
-    monkeypatch.setattr(meeting_io, "ASR_CACHE_DIR", str(tmp_path / "cache" / "asr"))
+    monkeypatch.setenv("TRANSCRIBING_CACHE_DIR", str(tmp_path / "cache"))
     md = "data/meetings/2026/06/2026-06-10--10-00--acme--design-review.meeting.md"
     path = meeting_io.asr_cache_path_for(md)
     assert path == str(tmp_path / "cache" / "asr" / "2026-06-10--10-00--acme--design-review.asr.json")

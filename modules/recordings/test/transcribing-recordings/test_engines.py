@@ -11,6 +11,7 @@ import sys
 import tempfile
 import textwrap
 import unittest
+from unittest import mock
 
 SKILL = pathlib.Path(__file__).resolve().parents[2] / "skills" / "transcribing-recordings"
 sys.path.insert(0, str(SKILL))
@@ -202,6 +203,27 @@ class Ggml(unittest.TestCase):
                 E.download_verified(url, bad, len(payload), "0" * 64)
             self.assertFalse(os.path.exists(bad))
             self.assertFalse(os.path.exists(bad + ".part"))
+
+    def test_a_download_that_dies_mid_stream_leaves_no_part_file(self):
+        class Dropped:
+            def __init__(self):
+                self.calls = 0
+            def __enter__(self):
+                return self
+            def __exit__(self, *exc):
+                return False
+            def read(self, n):
+                self.calls += 1
+                if self.calls > 1:
+                    raise ConnectionResetError("connection dropped")
+                return b"partial"
+        with tempfile.TemporaryDirectory() as d:
+            dst = os.path.join(d, "out", "w.bin")
+            with mock.patch.object(E.urllib.request, "urlopen", lambda url: Dropped()):
+                with self.assertRaises(ConnectionResetError):
+                    E.download_verified("https://models.example/w.bin", dst, 100, "0" * 64)
+            self.assertFalse(os.path.exists(dst))
+            self.assertFalse(os.path.exists(dst + ".part"), "a dropped download left its .part behind")
 
 
 if __name__ == "__main__":

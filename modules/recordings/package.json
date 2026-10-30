@@ -1,6 +1,6 @@
 {
 	"name": "@dreamteamer/recordings",
-	"version": "0.2.0",
+	"version": "0.2.1",
 	"description": "Meeting recordings for a dreamteamer workspace — imported by content hash, matched to their meeting, and transcribed offline in Hebrew and English.",
 	"license": "Apache-2.0",
 	"type": "module",

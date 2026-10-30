@@ -2,25 +2,28 @@
 
 A transcribed recording is one markdown record: YAML frontmatter plus a body
 that carries a `## Transcript` section directly — there is no separate
-transcript file. Raw ASR JSON lives in this skill's local, gitignored cache,
-never under data/.
+transcript file. Raw ASR JSON lives in the per-machine transcription cache
+(`locations.asr_cache_dir`, TRANSCRIBING_CACHE_DIR), never under data/ and never
+beside the skill.
+
+PyYAML is imported where it is used, so the path helpers load under a bare python3.
 """
 import os
 import re
 
-import yaml
+import locations
 
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-ASR_CACHE_DIR = os.path.join(HERE, ".cache", "asr")
+def _indent_dumper():
+    """A SafeDumper that indents block-sequence items under their parent key
+    (readable, matches hand-written frontmatter style)."""
+    import yaml
 
+    class _IndentDumper(yaml.SafeDumper):
+        def increase_indent(self, flow=False, indentless=False):
+            return super().increase_indent(flow, False)
 
-class _IndentDumper(yaml.SafeDumper):
-    """Indent block-sequence items under their parent key (readable, matches
-    hand-written frontmatter style)."""
-
-    def increase_indent(self, flow=False, indentless=False):
-        return super().increase_indent(flow, False)
+    return _IndentDumper
 
 
 def read_meeting(meeting_md):
@@ -30,6 +33,7 @@ def read_meeting(meeting_md):
     if not text.startswith("---\n"):
         raise ValueError(f"meeting file has no YAML frontmatter: {meeting_md}")
     close = text.index("\n---", 4)
+    import yaml
     fm = yaml.safe_load(text[4:close]) or {}
     body = text[close + 4:].lstrip("\n")
     return fm, body
@@ -37,8 +41,9 @@ def read_meeting(meeting_md):
 
 def write_meeting(meeting_md, frontmatter, body):
     """Write (frontmatter, body) back out to a markdown record."""
+    import yaml
     fm_text = yaml.dump(
-        frontmatter, Dumper=_IndentDumper, allow_unicode=True, sort_keys=False, width=100,
+        frontmatter, Dumper=_indent_dumper(), allow_unicode=True, sort_keys=False, width=100,
     )
     text = f"---\n{fm_text}---\n\n{body.strip()}\n"
     with open(meeting_md, "w", encoding="utf-8") as f:
@@ -79,15 +84,17 @@ def summary_path_for(meeting_md):
 
 
 def asr_cache_path_for(record_md):
-    """Local, gitignored cache path for a record's raw ASR JSON (not committed,
-    regenerable — never written under data/).
+    """Where a record's raw ASR JSON is cached: the per-machine transcription cache
+    (TRANSCRIBING_CACHE_DIR, default ~/.cache/dreamteamer/transcription-cache), in
+    `asr/`. Not committed, regenerable, and never under data/ or inside the skill.
 
     Suffix-agnostic: any `.<suffix>.md` record name (`.meeting-recording.md`, say)
     loses just its suffix.
     """
-    os.makedirs(ASR_CACHE_DIR, exist_ok=True)
+    folder = locations.asr_cache_dir()
+    os.makedirs(folder, exist_ok=True)
     base = re.sub(r"\.[a-z-]+\.md$", "", os.path.basename(record_md))
-    return os.path.join(ASR_CACHE_DIR, f"{base}.asr.json")
+    return os.path.join(folder, f"{base}.asr.json")
 
 
 def replace_transcript_section(body, new_section):

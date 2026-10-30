@@ -195,14 +195,20 @@ def download_verified(url, dst, size, sha256):
     print(f"  downloading {url} -> {dst}", file=sys.stderr)
     h = hashlib.sha256()
     got = 0
-    with urllib.request.urlopen(url) as r, open(part, "wb") as f:
-        while True:
-            chunk = r.read(1 << 20)
-            if not chunk:
-                break
-            f.write(chunk)
-            h.update(chunk)
-            got += len(chunk)
+    try:
+        with urllib.request.urlopen(url) as r, open(part, "wb") as f:
+            while True:
+                chunk = r.read(1 << 20)
+                if not chunk:
+                    break
+                f.write(chunk)
+                h.update(chunk)
+                got += len(chunk)
+    except BaseException:
+        # A dropped connection or a ^C mid-download leaves no half file behind either.
+        if os.path.exists(part):
+            os.remove(part)
+        raise
     if got != size or h.hexdigest() != sha256:
         os.remove(part)
         raise SystemExit(

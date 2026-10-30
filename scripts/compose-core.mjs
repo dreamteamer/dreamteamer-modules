@@ -65,8 +65,15 @@ export function destOf(origin, rel) {
 }
 
 const readJson = (f) => JSON.parse(fs.readFileSync(f, 'utf8'));
+// What a developer's tree holds beside a skill's sources and no module ever ships: a uv venv (thousands of
+// files), the transcriber's caches and weights (the raw ASR output of a real call), Python bytecode, an
+// install. Each is gitignored where it sits, so a fresh clone has none of it — composed in, it would land
+// in compose.json and fail the drift test on every clean checkout. Matched by NAME at any depth.
+const LOCAL_ONLY = new Set(['.venv', '.cache', '.models', '__pycache__', 'node_modules', '.DS_Store']);
+export const localOnly = (name) => LOCAL_ONLY.has(name) || name.endsWith('.pyc');
 const walk = (dir, out = [], base = dir) => {
 	for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+		if (localOnly(e.name)) continue;
 		const p = path.join(dir, e.name);
 		if (e.isDirectory()) walk(p, out, base);
 		else out.push(path.relative(base, p).split(path.sep).join('/'));

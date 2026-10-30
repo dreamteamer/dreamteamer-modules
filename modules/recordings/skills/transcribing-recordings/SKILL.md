@@ -29,18 +29,30 @@ run from the workspace root, against the compiled copy of this skill. every comm
 ```bash
 SK=.dreamteamer/skills/transcribing-recordings
 export TRANSCRIBING_MODELS_DIR="$HOME/.cache/dreamteamer/transcribing-models"   # absolute; see below
+export UV_PROJECT_ENVIRONMENT="${TRANSCRIBING_VENV_DIR:-$HOME/.cache/dreamteamer/transcription-venv}"
 cd "$SK" && uv sync && uv run python transcribe_meeting.py setup   # audio route only
 ```
 
 setup provisions a pinned Python 3.12 venv and downloads the models (~1.6 GB, plus 1.6 GB more for the
 GPU pass on a Mac with `whisper-cli`) — only what is missing, so it is safe to re-run; it needs system
-`ffmpeg`. text routes need only `uv sync`.
+`ffmpeg`. text routes need only `uv sync`. Every command below assumes these exports in the SAME
+shell: an agent whose every command starts a fresh shell repeats them.
 
-**keep the models outside the skill folder.** By default they go in `.models/` beside the skill, but
-compile regenerates `.dreamteamer/skills/` and `npm ci` regenerates `node_modules/`, so weights kept in
-either are downloaded again. `TRANSCRIBING_MODELS_DIR` moves them: the script reads it from the process
-environment (not from `.env`), and it must be an absolute path — `~` is not expanded. The venv is cheap
-to lose: `uv sync` rebuilds it from `uv.lock` in about a second off the local cache.
+**nothing heavy lives in the skill folder.** compile regenerates `.dreamteamer/skills/` and
+`npm install` replaces `node_modules/`, so anything kept beside the skill is deleted by the next pin
+bump. Three things belong outside it:
+
+| what | where | moved by |
+|---|---|---|
+| the models (~1.6 GB, 3.2 GB with the GPU pass) | `.models/` beside the skill unless set — **set it** | `TRANSCRIBING_MODELS_DIR`, read by the script from the process environment (not `.env`); an absolute path, `~` is not expanded |
+| the Python venv | `~/.cache/dreamteamer/transcription-venv` | `TRANSCRIBING_VENV_DIR`, through the `UV_PROJECT_ENVIRONMENT` export above |
+| the raw ASR JSON of each run | `~/.cache/dreamteamer/transcription-cache/asr/` | `TRANSCRIBING_CACHE_DIR`, read by the script |
+
+**The venv is set by the export, not by the script:** uv picks the environment before Python starts,
+so `UV_PROJECT_ENVIRONMENT` is the only lever, and the preamble derives it from `TRANSCRIBING_VENV_DIR`.
+Without the export, `uv` falls back to a `.venv` inside the skill folder — the old layout, which still
+runs (an existing one is used as it is), and `setup` and `run` print a one-line note saying so. The raw
+ASR JSON is a real call's words: it never lands inside `node_modules`, a package folder or the repo.
 
 **this works anywhere, including a cloud session** — no credentials, no `.env`, no Drive, no mount.
 Only `ffmpeg` + `uv` + outbound network for the first `setup`.
@@ -63,7 +75,8 @@ Do not "fix" the typo.
 On a machine that already has the weights, **copy the models folder — do not re-download it.** Use
 `rsync -a` (or `cp -a`): the whisper cache is a HuggingFace hub layout whose snapshot files are
 *relative symlinks* into `blobs/`, so a plain `cp` either doubles 1.5 GB or breaks the links. **Never
-copy `.venv`** — it bakes absolute interpreter and project paths and will not run in a new location.
+copy the venv** — it bakes absolute interpreter and project paths and will not run in a new location;
+`uv sync` rebuilds it from `uv.lock` in about a second off the local cache.
 The lock carries manylinux wheels for every native dependency, so Linux resolves without a source build.
 
 Model *resolution* reaches the network on every `run` unless `HF_HUB_OFFLINE=1` is set; only inference
@@ -190,7 +203,8 @@ full script usage: `setup | run <record.md> <audio> [--date YYYY-MM-DD] [--speak
    ```bash
    cd "$SK" && uv run python transcribe_meeting.py run <abs/record.meeting-recording.md> "<abs/audio>" --speakers N
    ```
-   raw ASR JSON goes to the gitignored `.cache/asr/`.
+   raw ASR JSON goes to `${TRANSCRIBING_CACHE_DIR:-~/.cache/dreamteamer/transcription-cache}/asr/`.
+   The decoded WAV the run makes in `$TMPDIR` is removed when it finishes or fails.
 5. **check the count against reality.** If `speaker_count` in the printed summary is materially higher
    than what you passed, the number was wrong, not the audio: re-run with the observed count and note
    the correction in `transcription.notes`. **Never block a transcription on not knowing the number.**
@@ -254,4 +268,5 @@ is generated from each recording's `meeting:`, so the link is written once, on t
 | `recording_file` on the meeting | the meeting has `recordings:` (refs); the recording holds the path template. |
 | re-running `run`/`log` over a hand-filled speaker map | it replaces the block. warn first. |
 | summarizing or extracting tasks here | different commands, different steps. transcription only. |
-| committing the audio, the models or `.cache/` | binaries never get committed. |
+| committing the audio, the models or the ASR cache | binaries never get committed. |
+| running `uv sync` without the `UV_PROJECT_ENVIRONMENT` export | the venv lands inside the skill and the next `npm install` deletes it. |

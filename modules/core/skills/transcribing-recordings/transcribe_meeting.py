@@ -1,21 +1,25 @@
 
-"""Local meeting transcription: ffmpeg → sherpa-onnx diarize → whisper (Metal or CPU) → render."""
+"""Local meeting transcription: ffmpeg → sherpa-onnx diarize → whisper (Metal or CPU) → render.
+
+The heavy stack (soundfile, sherpa-onnx, faster-whisper, PyYAML) is imported where it is used, so the
+module loads under a bare python3 and its plumbing is testable without the venv.
+"""
 import datetime
 import json
 import os
+import shutil
 import sys
 import subprocess
 import tarfile
+import tempfile
 import time
 import urllib.request
-
-import numpy as np
-import soundfile as sf
 
 from render import align_words_to_speakers, render_transcript_body, fmt_ts
 from meeting_io import read_meeting, write_meeting, count_attendees, asr_cache_path_for, replace_transcript_section
 from text_source import parse_labeled, log as log_text_source
 import engines
+import locations
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 # Beside the skill by default. `TRANSCRIBING_MODELS_DIR` (an absolute path, read from the process
@@ -41,16 +45,35 @@ def _download(url, dst):
     urllib.request.urlretrieve(url, dst)
 
 
+def warn_if_venv_in_skill(prefix=None):
+    """The old layout — a `.venv` beside the skill — still runs, but the next `npm install` deletes it.
+    Say so, and say how to move it, rather than fail. Returns whether it warned."""
+    prefix = prefix or sys.prefix
+    if not locations.inside(prefix, HERE):
+        return False
+    print(
+        f"  note: this venv is inside the skill folder ({prefix}), which `npm install` and compile replace.\n"
+        f"    Export UV_PROJECT_ENVIRONMENT=\"${{TRANSCRIBING_VENV_DIR:-$HOME/.cache/dreamteamer/transcription-venv}}\"\n"
+        f"    before `uv sync` / `uv run` (SKILL.md, \"paths\") and the venv lives at {locations.venv_dir()}.",
+        file=sys.stderr,
+    )
+    return True
+
+
 def setup():
+    warn_if_venv_in_skill()
     os.makedirs(MODELS_DIR, exist_ok=True)
     if not os.path.exists(SEG_MODEL):
         tar_path = os.path.join(MODELS_DIR, "seg.tar.bz2")
-        _download(_SEG_TAR_URL, tar_path)
-        with tarfile.open(tar_path, "r:bz2") as tf:
-            member = next(m for m in tf.getmembers() if m.name.endswith("model.onnx"))
-            member.name = os.path.basename(SEG_MODEL)
-            tf.extract(member, MODELS_DIR)
-        os.remove(tar_path)
+        try:
+            _download(_SEG_TAR_URL, tar_path)
+            with tarfile.open(tar_path, "r:bz2") as tf:
+                member = next(m for m in tf.getmembers() if m.name.endswith("model.onnx"))
+                member.name = os.path.basename(SEG_MODEL)
+                tf.extract(member, MODELS_DIR)
+        finally:
+            if os.path.exists(tar_path):
+                os.remove(tar_path)
     if not os.path.exists(EMB_MODEL):
         _download(_EMB_URL, EMB_MODEL)
     # Prefetch the whisper weights into the skill-local cache.
@@ -65,6 +88,7 @@ def setup():
         print("setup: no whisper-cli on Apple Silicon — skipping the ggml weights; the CPU pass runs",
               file=sys.stderr)
     print("setup: models ready in", MODELS_DIR, file=sys.stderr)
+    print("setup: venv", sys.prefix, "· ASR cache", locations.asr_cache_dir(), file=sys.stderr)
 
 
 def choose_engine(requested):
@@ -83,7 +107,6 @@ def decode_audio(src, dst_wav):
     Both guards below print ffmpeg's own reason: `check=True, capture_output=True` alone raises
     CalledProcessError with ffmpeg's stderr captured into the exception and never shown.
     """
-    import shutil
     if shutil.which("ffmpeg") is None:
         raise SystemExit(
             "✖ ffmpeg is not on PATH — it is the only external binary this skill needs.\n"
@@ -141,6 +164,7 @@ def diarize_safe(wav, num_speakers=None):
 
 def diarize(wav, num_speakers=None):
     import sherpa_onnx
+    import soundfile as sf
     if num_speakers and num_speakers >= 1:
         # Known speaker count (from meeting attendees / --speakers): force exactly
         # that many clusters. Robust — avoids the threshold path's over-splitting.
@@ -221,13 +245,19 @@ def run(meeting_md, audio, generated, num_speakers=None, language=None, engine="
     fm, body = read_meeting(meeting_md)
     if num_speakers is None:
         num_speakers = count_attendees(fm)
-    import tempfile
-    wav = os.path.join(tempfile.mkdtemp(), "audio.wav")
-    decode_audio(audio, wav)
-    segments = diarize_safe(wav, num_speakers=num_speakers)
-    t0 = time.monotonic()
-    asr = transcribe(wav, language=language, engine=engine)
-    asr_seconds = round(time.monotonic() - t0, 1)
+    warn_if_venv_in_skill()
+    # The decoded WAV is a full copy of the call. Its folder goes when the decode, diarization and
+    # recognition are done — on success and on any failure alike, ^C included.
+    tmp = tempfile.mkdtemp(prefix="transcribe-")
+    try:
+        wav = os.path.join(tmp, "audio.wav")
+        decode_audio(audio, wav)
+        segments = diarize_safe(wav, num_speakers=num_speakers)
+        t0 = time.monotonic()
+        asr = transcribe(wav, language=language, engine=engine)
+        asr_seconds = round(time.monotonic() - t0, 1)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
     turns = align_words_to_speakers(asr["words"], segments)
 
     asr_json = asr_cache_path_for(meeting_md)
