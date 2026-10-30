@@ -107,6 +107,20 @@ describe('what journeys.js exports', () => {
 	});
 });
 
+describe('the portal read from a tag', () => {
+	test('portal: { from: \'tag\', prefix } reads `portal:<value>` from tags through the map; no such tag warns', () => {
+		const data = rows();
+		for (const s of data.screens) { s.key = `un-${s.key}`; s.product = 'rnd/products/grantee-portal'; s.tags = ['area:grants', `portal:${s.id.startsWith('bo') ? 'office' : 'applicant'}`]; }
+		delete data.screens[3].tags;
+		const c = config({ products: { 'rnd/products/grantee-portal': { key: 'all' } }, screenKey: (k) => k.replace(/^un-/, ''), portal: { from: 'tag', prefix: 'portal:', map: { office: 'bo', applicant: 'gp' } } });
+		const r = build(c, data, { playback: PB });
+		assert.deepEqual(r.errors, []);
+		assert.deepEqual(r.journeys.journeys.find((x) => x.key === 'apply-for-a-grant').steps.map((s) => s.portal), ['gp', 'gp', 'bo']);
+		assert.ok(r.warnings.includes('rnd/screens/fd-pay: no portal:… tag — exported with no portal'));
+		assert.throws(() => config({ portal: { from: 'tag' } }), /needs a prefix/);
+	});
+});
+
 describe('the failures — nothing written', () => {
 	const fails = (mutate, pattern, opts = {}) => {
 		const data = rows(); mutate(data);

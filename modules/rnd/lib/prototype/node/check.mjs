@@ -5,12 +5,14 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { loadConfig, productKey } from './config.mjs';
+import { loadConfig, productKey, portalValue } from './config.mjs';
 import { readRecords, dtRunner } from './records.mjs';
 import { vendorStatus } from './vendor.mjs';
 import { VERSION } from './export.mjs';
 
 const DONE = new Set(['resolved', 'obsolete']);
+/** a route as a hash or a path: `#/a/b` and `/a/b` are the same route */
+const route = (r) => String(r).replace(/^#/, '');
 const same = (a, b) => JSON.stringify([...new Set(a)].sort()) === JSON.stringify([...new Set(b)].sort());
 
 /** the registry's screens: `export const screens`, or a default export that is the list */
@@ -27,8 +29,8 @@ export function compare(c, records, registry) {
 	const add = (kind, key, detail) => mismatches.push({ kind, key, detail });
 	const portalOf = (s) => {
 		if (c.portal.from === 'product') return productKey(c, s.product);
-		const v = s[c.portal.field];
-		return v == null ? null : c.portal.map ? c.portal.map[v] ?? null : String(v);
+		const v = portalValue(c, s);
+		return v == null ? null : c.portal.map ? c.portal.map[v] ?? null : v;
 	};
 	const portals = new Set(c.portal.from === 'product' ? Object.values(c.products).map((p) => p.key) : c.portal.map ? Object.values(c.portal.map) : records.screens.map(portalOf).filter(Boolean));
 	const recs = new Map();
@@ -44,7 +46,7 @@ export function compare(c, records, registry) {
 		const m = seenKey.get(key);
 		if (!m) { add('no module', key, `rnd/screens/${s.id} has no registered screen module`); continue; }
 		matched.push({ id: s.id, key, stub: !!m.stub, build_status: s.build_status ?? null, prototype: s.prototype ?? null });
-		if (s.route && m.route && s.route !== m.route) add('route', key, `record ${s.route} · module ${m.route}`);
+		if (s.route && m.route && route(s.route) !== route(m.route)) add('route', key, `record ${s.route} · module ${m.route}`);
 		if (s.kind && m.kind && s.kind !== m.kind) add('kind', key, `record ${s.kind} · module ${m.kind}`);
 		const p = portalOf(s); if (p && m.portal !== p) add('portal', key, `record ${p} · module ${m.portal}`);
 		const missingRows = (s.scope_rows ?? []).filter((r) => !(m.prd ?? []).includes(r));

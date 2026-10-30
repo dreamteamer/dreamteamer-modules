@@ -97,6 +97,10 @@ describe('check', () => {
 		assert.deepEqual(r.mismatches, []);
 		assert.deepEqual(r.matched.map((m) => [m.id, m.key, m.stub]), [['un-gp-home', 'gp-home', false], ['un-gp-apply', 'gp-apply', true]]);
 	});
+	test('a route written with or without its leading # is the same route', () => {
+		const rows = structuredClone(ROWS); rows.screens[0].route = '#/gp/home'; rows.screens[1].route = '#/gp/apply';
+		assert.deepEqual(compare(c(), rows, GOOD).mismatches, []);
+	});
 	test('each mismatch, by kind', () => {
 		const kinds = (reg) => compare(c(), ROWS, reg).mismatches.map((m) => `${m.kind}:${m.key}`);
 		assert.deepEqual(kinds([GOOD[0]]), ['no module:gp-apply']);

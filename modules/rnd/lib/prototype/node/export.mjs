@@ -5,7 +5,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { loadConfig, productKey } from './config.mjs';
+import { loadConfig, productKey, portalValue, portalSource } from './config.mjs';
 import { readRecords } from './records.mjs';
 
 export const VERSION = JSON.parse(fs.readFileSync(new URL('../../../package.json', import.meta.url), 'utf8')).version;
@@ -49,11 +49,11 @@ export function build(c, records, { playback = {}, rules = null, scrub = (s) => 
 	for (const s of records.screens) {
 		if (!c.products[s.product]) continue;
 		let portal = productKey(c, s.product);
-		if (c.portal.from === 'field') {
-			const v = s[c.portal.field];
-			if (v == null || v === '') { portal = null; warnings.push(`rnd/screens/${s.id}: no ${c.portal.field} — exported with no portal`); }
+		if (c.portal.from !== 'product') {
+			const v = portalValue(c, s);
+			if (v == null) { portal = null; warnings.push(`rnd/screens/${s.id}: no ${portalSource(c)} — exported with no portal`); }
 			else if (c.portal.map) {
-				if (!(v in c.portal.map)) { errors.push(`rnd/screens/${s.id}: ${c.portal.field} "${v}" is not in portal.map`); portal = null; }
+				if (!(v in c.portal.map)) { errors.push(`rnd/screens/${s.id}: ${portalSource(c)} "${v}" is not in portal.map`); portal = null; }
 				else portal = c.portal.map[v];
 			} else portal = String(v);
 		}

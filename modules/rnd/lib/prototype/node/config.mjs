@@ -35,8 +35,9 @@ export function normalize(raw, dir) {
 	for (const k of ['screenKey', 'group']) if (raw[k] != null && typeof raw[k] !== 'function') fail(`"${k}" must be a function`);
 	const c = { ...DEFAULTS, ...raw, dir: path.resolve(dir) };
 	c.screenKey = raw.screenKey ?? ((k) => k);
-	if (!['product', 'field'].includes(c.portal?.from)) fail('portal.from is "product" or "field"');
+	if (!['product', 'field', 'tag'].includes(c.portal?.from)) fail('portal.from is "product", "field" or "tag"');
 	if (c.portal.from === 'field' && typeof c.portal.field !== 'string') fail('portal: { from: "field" } needs a field name');
+	if (c.portal.from === 'tag' && (typeof c.portal.prefix !== 'string' || !c.portal.prefix)) fail('portal: { from: "tag" } needs a prefix (e.g. "portal:")');
 	if (c.portal.map != null && !isObj(c.portal.map)) fail('portal.map maps record values to portal keys');
 	if (!isObj(c.cross) || typeof c.cross.key !== 'string') fail('cross needs a key');
 	if (!Array.isArray(c.journeyFields)) fail('journeyFields is a list of field names');
@@ -55,6 +56,15 @@ export async function loadConfig(dir) {
 	if (!fs.existsSync(file)) throw new Error(`no ${CONFIG_FILE} in ${path.resolve(dir)} — run \`npx dt-prototype init\``);
 	const mod = await import(`${pathToFileURL(file).href}?t=${fs.statSync(file).mtimeMs}`);
 	return normalize(mod.default, dir);
+}
+
+/** Where a screen's portal is read under the escape hatch, for messages: `portal` · `portal:… tag`. */
+export const portalSource = (c) => (c.portal.from === 'tag' ? `${c.portal.prefix}… tag` : c.portal.field);
+/** A screen row's raw portal value under the escape hatch (a field, or the rest of a `<prefix><value>` tag), or null. */
+export function portalValue(c, row) {
+	if (c.portal.from === 'field') { const v = row[c.portal.field]; return v == null || v === '' ? null : String(v); }
+	if (c.portal.from === 'tag') { const t = (row.tags ?? []).find((x) => typeof x === 'string' && x.startsWith(c.portal.prefix)); return t ? t.slice(c.portal.prefix.length) : null; }
+	return null;
 }
 
 /** The portal key of a product reference, or null when the product is outside the prototype. */
