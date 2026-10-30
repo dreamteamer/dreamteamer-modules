@@ -22,8 +22,8 @@ fields:
   kind:
     type: string
     default: design
-    enum: [design, code, ux, security, compliance, test, other]
-    description: 'The lens. `design` judges a spec for gaps and contradictions; `code` a change in a repo; `ux` a prototype or screen in use; `test` whether the proof is enough.'
+    enum: [design, acceptance, code, ux, security, compliance, test, other]
+    description: 'The lens. `design` judges a spec for gaps and contradictions; `acceptance` a change request''s acceptance lines — each failable, each naming what a person sees; `code` a change in a repo; `ux` a prototype or screen in use; `test` whether the proof is enough.'
   subject:
     type: [rnd/design-docs, rnd/prototypes, rnd/screens, rnd/products, rnd/user-stories, rnd/user-journeys, rnd/change-requests, rnd/features, rnd/issues, rnd/research-docs, rnd/design-systems, rnd/tests, rnd/implementation-plans]
     description: The record that was reviewed. Empty when the subject is only a change in a repo — then `repo` and `change_ref` say what.

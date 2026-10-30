@@ -40,7 +40,7 @@ fields:
   covers:
     type: [rnd/user-stories, rnd/change-requests, rnd/issues, rnd/implementation-plans]
     many: true
-    description: What this test PROVES — the stories it demonstrates, the change requests it accepts, the issues it regresses, the plan whose Review Focus line it pins. Each of those lists its tests back.
+    description: What this test PROVES — the stories it demonstrates, the change requests it accepts, the issues it regresses, the plan whose held-out set it belongs to. Each of those lists its tests back. Several values, so list by it with `--where '{"covers":{"_contains":"<ref>"}}'`, never an equality filter.
   repo:
     type: repos
     description: The repo the automated test lives in.
