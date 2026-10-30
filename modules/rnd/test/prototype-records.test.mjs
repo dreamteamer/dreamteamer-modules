@@ -58,11 +58,11 @@ describe('the records read', () => {
 		if (verb === 'get') return JSON.stringify(descriptors[target.replace('collections/', '')] ?? { fields: {} });
 		return JSON.stringify(rows[target] ?? []);
 	};
-	test('five lists and five descriptors; a field marked sensitive never leaves the read', () => {
+	test('one list and one descriptor per collection, products included; a field marked sensitive never leaves the read', () => {
 		const calls = [];
 		const dt = (args) => { calls.push(args.join(' ')); return fake({ 'rnd/user-journeys': { fields: { key: {}, budget_note: { sensitive: true } } } }, { 'rnd/user-journeys': [{ key: 'j', budget_note: 'secret' }] })(args); };
 		const r = readRecords({ workspace: '/nowhere' }, { dt });
-		assert.equal(calls.length, 10);
+		assert.equal(calls.length, 12);
 		assert.deepEqual(r.journeys, [{ key: 'j' }]);
 		assert.deepEqual(r.dropped.journeys, ['budget_note']);
 		for (const c of Object.values(COLLECTIONS)) assert.ok(calls.includes(`list ${c} --json`));

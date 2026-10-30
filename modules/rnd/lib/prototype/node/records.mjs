@@ -1,10 +1,11 @@
-// The records the bridge reads — five `dt list <collection> --json` calls and five
-// `dt get collections/<collection> --json` calls, run in the workspace. Nothing here parses a record file.
+// The records the bridge reads — one `dt list <collection> --json` call and one
+// `dt get collections/<collection> --json` call per collection (the five the design names, plus rnd/products so a
+// config product that is no record is caught), run in the workspace. Nothing here parses a record file.
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 
-export const COLLECTIONS = { screens: 'rnd/screens', journeys: 'rnd/user-journeys', stories: 'rnd/user-stories', personas: 'rnd/personas', questions: 'rnd/open-questions' };
+export const COLLECTIONS = { screens: 'rnd/screens', journeys: 'rnd/user-journeys', stories: 'rnd/user-stories', personas: 'rnd/personas', questions: 'rnd/open-questions', products: 'rnd/products' };
 
 /** The default runner: the workspace's own engine (its installed bin, else `npx --no-install`), never one
  *  fetched from the network. */
