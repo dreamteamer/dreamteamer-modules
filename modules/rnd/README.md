@@ -54,15 +54,33 @@ module is installed. The chain is bound, so `dt next` on a design doc names the 
 `building-from-references` is the procedure. ffmpeg is the one binary this module shells out to
 (`extract-frames.mjs`), and `npx dt-setup doctor` says whether it is there.
 
-## working with superpowers
+## the lifecycle
 
-Four skills move the superpowers workflow's output from files into these records, each owning one
-hand-off: `writing-design-docs` (brainstorming → `design-docs`, plus the stories and open questions it
-leaves), `writing-implementation-plans` (writing-plans → `implementation-plans`, and the `tests` the plan
-promises), `executing-implementation-plans` (executing-plans and subagent-driven development read the
-plan record and tick it; test runs update `tests`; defects become `issues`) and `recording-reviews`
-(requesting and receiving code review, per-task gates and design critiques → `reviews` and
-`review-findings`). Research and what it could not settle stay in `research-docs` and `open-questions`.
+Eight commands move a product's work from an idea to a deployment, each bound to the record it acts
+on so `dt next <record>` says what runs now: `/rnd-design` (brainstorm → `design-docs`, with the
+stories and open questions it leaves), `/rnd-review` (one `reviews` record, one `review-findings`
+record per problem; `approve` moves the subject on), `/rnd-prototype` (the first `prototypes` record
+with a live URL, or a round of feedback on it), `/rnd-change-request` (what changes, against which
+design, with the evidence that would accept it), `/rnd-plan` (an `implementation-plans` record and the
+`tests` it promises), `/rnd-implement` (task by task, the record as the progress marker),
+`/rnd-test` (every covering test run and set from its output) and `/rnd-deploy` (checked live,
+`deployed_on` stamped). Each command loads one plainly written skill of the same name, five headings
+each: what you are doing · before you start · do this · don't · done when.
+
+Two agents ride on them. `rnd-agent` chains the stages for one record and stops where a person must
+act — a blocker finding, a client's acceptance, the way a plan runs, the way a branch finishes.
+`qa-manager` reviews as a service: it reads everything and writes only the review, so the builder never
+grades its own work. The superpowers skills stay useful where they add depth — the stage skills name
+them — but nothing here needs them installed.
+
+## 0.3.0 — from 0.2.0
+
+Additive. `change-requests` gains `design_docs`, an `implementation_plans` mirror and `deployed_on`;
+`implementation-plans` gains `change_request` and a `tests` mirror; `tests.covers` admits a plan;
+`design-docs` lists its `change_requests`. Records compile unchanged. Three skills are replaced by
+stage skills — `writing-design-docs` by `rnd-design`, `writing-implementation-plans` by `rnd-plan`,
+`executing-implementation-plans` by `rnd-implement` — so a workspace that named one of them in its own
+skills or commands updates the name.
 
 ## 0.2.0 — migrating from 0.1.0
 

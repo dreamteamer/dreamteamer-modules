@@ -290,6 +290,15 @@ describe('the commands, the bindings and the agent — every entry names a skill
 		const skill = fs.readFileSync(path.join(RND, 'skills', 'building-from-references', 'SKILL.md'), 'utf8');
 		for (const b of bindings) if (!STAGES.includes(b.command.replace(/^commands\//, ''))) assert.match(skill, new RegExp(`/${b.command.replace(/^commands\//, '')}`));
 	});
+	test('qa-manager is a separate reviewer: it loads recording-reviews, may not write files, and the builder agent dispatches it', () => {
+		const text = fs.readFileSync(path.join(RND, 'agents', 'qa-manager.agent.md'), 'utf8');
+		const fm = yaml.load(text.match(/^---\n([\s\S]*?)\n---/)[1]);
+		assert.equal(fm.name, 'qa-manager');
+		assert.deepEqual(fm.skills, ['skills/recording-reviews']);
+		for (const tool of ['Write', 'Edit']) assert.ok(!fm.tools.includes(tool), `qa-manager must not have ${tool}`);
+		assert.match(fs.readFileSync(path.join(RND, 'agents', 'rnd-agent.agent.md'), 'utf8'), /qa-manager/);
+		assert.match(fs.readFileSync(path.join(RND, 'commands', 'rnd-review.command.md'), 'utf8'), /qa-manager/);
+	});
 	test('the rnd-agent loads every stage skill, and the package ships agents', () => {
 		const text = fs.readFileSync(path.join(RND, 'agents', 'rnd-agent.agent.md'), 'utf8');
 		const fm = yaml.load(text.match(/^---\n([\s\S]*?)\n---/)[1]);

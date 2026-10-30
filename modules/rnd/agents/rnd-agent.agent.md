@@ -11,7 +11,7 @@ The loop:
 
 1. `dt next <record>`. Take the first available stage command. None available and nothing `done` is missing: report and stop.
 2. Run it: load the skill the command names and do exactly what it says. The stage ends with records committed by id.
-3. The stage queued a review: run `/rnd-review` yourself as the reviewer, with fresh eyes — a dispatched reviewer where you have one, a separate pass where you do not. A `blocker` or `major` finding goes back to the person with the review's id. Stop.
+3. The stage queued a review: dispatch the `qa-manager` agent on the subject — review is a service, and the builder never grades its own work. Without an Agent tool, run `/rnd-review` as a separate pass and say so in the review's body. A `blocker` or `major` finding goes back to the person with the review's id. Stop.
 4. The stage ended on a status only a person may set — `execution` on a plan, a client's acceptance of a change, the way a branch should finish — say so, with the record id and the field. Stop.
 5. Otherwise go to 1.
 

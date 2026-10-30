@@ -1,7 +1,7 @@
 {
 	"name": "@dreamteamer/rnd",
-	"version": "0.2.0",
-	"description": "What a workspace builds and investigates — products, design docs, stories, screens, prototypes, issues, features, research and persona panels.",
+	"version": "0.3.0",
+	"description": "What a workspace builds and investigates — products, designs, plans, stories, screens, prototypes, changes, tests, reviews — and the lifecycle that moves them.",
 	"license": "Apache-2.0",
 	"type": "module",
 	"repository": {
@@ -26,7 +26,7 @@
 		"namespaces": [
 			"rnd"
 		],
-		"description": "What a workspace builds and investigates: `products`, their `design-docs`, `implementation-plans`, `user-stories`, `screens`, `prototypes`, `design-systems` and `tests`; `reviews` and their `review-findings`; `features` and `issues` per repo; `research-docs`, `open-questions`, `experiments`, `draft-docs`; `personas` scored against `persona-probes`; `references` to model on.",
+		"description": "What a workspace builds and investigates: `products`, `design-docs`, `implementation-plans`, `user-stories`, `screens`, `prototypes`, `design-systems`, `tests`, `reviews`, `change-requests`, `features`, `issues`, `research-docs`, `open-questions`, `personas` — and the lifecycle on them, /rnd-design to /rnd-deploy, gated per record (`dt next`), chained by rnd-agent, reviewed by qa-manager.",
 		"engine": ">=0.33.0",
 		"peer_collections": [
 			"assets",

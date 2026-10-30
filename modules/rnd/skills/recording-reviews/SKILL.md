@@ -28,7 +28,7 @@ For code, read the diff from the base commit to the head, the plan's `review_foc
      --subject <collection>/<id> --product rnd/products/<id> --reviewer agents/<harness> --reviewed_on <date>
    ```
    A code review sets `repo` and `change_ref` (the pull request, the commit range). A review of one task of a plan: subject the plan, the task number in `name`. The body holds the scope — what you looked at and what you did not — the method, and the summary.
-2. Get fresh eyes when you can. Dispatch a reviewer agent with the subject's id, the spec's id and the review focus lines, never your session's history. Without one, review as a separate pass and say so in the body.
+2. Get fresh eyes when you can. Dispatch the `qa-manager` agent with the subject's id, the spec's id and the review focus lines, never your session's history — it reads everything and writes only the review. Without an Agent tool, review as a separate pass and say so in the body.
 3. One problem, one record:
    ```bash
    dt add rnd/review-findings --key <short> --review rnd/reviews/<id> --name "<the claim, one line>" \
