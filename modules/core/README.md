@@ -36,6 +36,44 @@ compile refuses, and that is the right answer.
 - on `users`: `roles`, `responsibilities`, `manager` and the generated `reports`.
 - the workspace's `agents` drawn in the nav beside users, as the workers tasks and sessions name.
 
+## sessions: save and analyze
+
+`/session:save` reads the transcript the harness keeps for the current session and upserts
+`sessions/<session id>` with what it holds — turns, tool calls, input and output tokens, cache read
+and written, cost at list price, wall and API minutes, the models that answered, lines added and
+removed — and keeps a copy of the transcript under `${env:FILES_FOLDER}/sessions/`, since the harness
+sweeps its own after a month. `/session:analyze` reads that transcript as a reviewer and writes
+`analysis` and a one-line `description` onto the record. Both are the `managing-sessions` skill; the
+reader is `bin/session-save.mjs` (`--json` prints the fields and writes nothing).
+
+A session record is one person's working trace, so a workspace usually keeps them local: a
+`.gitignore` line for `data/sessions/` keeps every record readable by `dt list` and `dt check` and
+out of the shared history. To keep the metrics current without anyone remembering, bind the reader
+to the harness's `Stop` hook in the workspace's `.claude/settings.json` — the module ships the
+reader, not the binding:
+
+```json
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node node_modules/@dreamteamer/core/bin/session-save.mjs --write --hook --quiet",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+The hook writes metrics only; `outcome`, `analysis` and `description` stay the session's and the
+reviewer's words. Namespaced commands (`commands/session/save.command.md` typed as `/session:save`)
+need engine 0.38, which is core's floor.
+
 ## what a descriptor cannot say
 
 The small modules' READMEs hold the reasoning behind each noun and travel with their packages; this

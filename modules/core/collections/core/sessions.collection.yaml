@@ -9,7 +9,7 @@ storage:
   format: md
 ids:
   from: '{{ started | date:YYYY/MM }}/{{ started | date }}--{{ name | slug }}'
-  pattern: ^\d{4}/\d{2}/\d{4}-\d{2}-\d{2}--[a-z0-9-]+$
+  pattern: ^(\d{4}/\d{2}/\d{4}-\d{2}-\d{2}--[a-z0-9-]+|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$
 fields:
   name:
     type: string
@@ -37,15 +37,71 @@ fields:
     description: What hosted the session.
   session_id:
     type: string
-    description: The harness's own id for it, so the transcript can be found.
+    description: The harness's own id for it, so the transcript can be found. A session the harness saved itself (`/session:save`) takes this id as its record id.
+  description:
+    type: string
+    maxLength: 400
+    description: What the session did, in one or two sentences a list can show — written by `/session:analyze`, from the transcript.
   transcript:
     type: string
     examples: ['${env:FILES_FOLDER}/sessions/2026/10/2026-10-28--northwind-calendar.jsonl']
-    description: Where the transcript or log is kept — a `${env:…}` template, never a machine path.
+    description: Where the transcript or log is kept — a `${env:…}` template, never a machine path. The harness sweeps its own copy after a month; `/session:save` keeps one under `FILES_FOLDER` and points here.
+  turns:
+    type: integer
+    minimum: 0
+    description: How many times the person prompted — a tool result, a sidechain or a meta line is not a turn.
+  tool_calls:
+    type: integer
+    minimum: 0
+    description: How many tool calls the agent made.
+  input_tokens:
+    type: integer
+    minimum: 0
+    description: Uncached input tokens, summed over every model.
+  output_tokens:
+    type: integer
+    minimum: 0
+    description: Output tokens, thinking included, summed over every model.
+  cache_read_tokens:
+    type: integer
+    minimum: 0
+    description: Input tokens served from the prompt cache — the bulk of a long session.
+  cache_write_tokens:
+    type: integer
+    minimum: 0
+    description: Input tokens written to the prompt cache.
+  cost_usd:
+    type: number
+    minimum: 0
+    description: The session at list price, as the harness computes it — a shadow figure under a subscription, never a bill. Empty when a model's price is unknown.
+  models:
+    type: string
+    many: true
+    examples: ['claude-fable-5-1', 'claude-sonnet-5-5']
+    description: Every model that answered in the session.
+  wall_minutes:
+    type: number
+    minimum: 0
+    description: Minutes from the first prompt to the last answer.
+  api_minutes:
+    type: number
+    minimum: 0
+    description: Minutes the model was actually working — the part of the wall time spent in API calls.
+  lines_added:
+    type: integer
+    minimum: 0
+    description: Lines the agent's edits added, as the harness counts them.
+  lines_removed:
+    type: integer
+    minimum: 0
+    description: Lines the agent's edits removed, as the harness counts them.
   tasks:
     type: tasks
     many: true
     description: The tasks this session produced or closed.
+  analysis:
+    type: markdown
+    description: What `/session:analyze` found — what the session set out to do, what it did, where it went wrong and what it cost, built on the transcript rather than on memory.
   outcome:
     type: markdown
     body: true
@@ -78,5 +134,5 @@ display:
     icon: history
     order: 22
   list:
-    columns: [name, worker, project, started, ended, harness]
+    columns: [name, worker, project, started, turns, cost_usd, harness]
     sort: -started

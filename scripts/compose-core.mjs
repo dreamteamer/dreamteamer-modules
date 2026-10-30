@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // COMPOSE a module from other official modules — copies, never a second authoring place.
 //
-// A module with `compose.json` at its root names its `origins`; this script copies every shipped
+// A module with `compose.json` at its root names its `origins` (and may name `engine`, a floor of the module's own, for what its own
+// commands need of the engine beyond what the origins do); this script copies every shipped
 // source file of each origin into the module under ONE deterministic rewrite, merges the origins'
 // manifests into the module's package.json, and records every copy with its hash in compose.json's
 // `files`. The drift test beside each composed module (`modules/<id>/test/compose.test.mjs`)
@@ -165,7 +166,7 @@ export function compose(target = 'core') {
 			title: spec.title ?? authored.title,
 			...(authored.namespaces ? { namespaces: authored.namespaces } : {}),
 			description: spec.orientation ?? authored.description,
-			engine: `>=${dts.map((d) => floorOf(d.engine)).reduce(newer)}`,
+			engine: `>=${[...dts.map((d) => floorOf(d.engine)), floorOf(spec.engine)].reduce(newer)}`,
 			...(union('env').length ? { env: union('env') } : {}),
 			...(union('vars').length ? { vars: union('vars') } : {}),
 			...(peers.length ? { peer_collections: peers } : {}),
