@@ -1,6 +1,6 @@
 {
 	"name": "@dreamteamer/users",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "The people and agents work is assigned to in a dreamteamer workspace, which owner, lead and assignee fields point at.",
 	"license": "Apache-2.0",
 	"repository": {

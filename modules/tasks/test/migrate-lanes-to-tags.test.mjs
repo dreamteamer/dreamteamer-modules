@@ -69,9 +69,11 @@ describe('tasks 0.3.0 ships no lane', () => {
 		assert.equal(v.display.list.options.group_by, 'project');
 		assert.equal(v.display.list.options.show_ungrouped_rows, true);
 	});
-	test('the manifest is 0.3.0 and ships the migration as an npm bin', () => {
+	test('the manifest is 0.3.0 or later and ships the migration as an npm bin', () => {
 		const pkg = JSON.parse(fs.readFileSync(path.join(MODULE, 'package.json'), 'utf8'));
-		assert.equal(pkg.version, '0.3.0');
+		// the release that dropped lane is 0.3.0; a later patch still ships the migration
+		const [major, minor] = pkg.version.split('.').map(Number);
+		assert.ok(major > 0 || minor >= 3, `tasks ${pkg.version} predates the migration`);
 		assert.equal(pkg.bin['dt-migrate-lanes-to-tags'], 'bin/migrate-lanes-to-tags.mjs');
 		assert.ok(pkg.files.includes('bin') && pkg.files.includes('lib'));
 		assert.doesNotMatch(pkg.dreamteamer.description, /\blane\b/);

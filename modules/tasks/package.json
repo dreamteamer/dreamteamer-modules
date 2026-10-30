@@ -1,6 +1,6 @@
 {
 	"name": "@dreamteamer/tasks",
-	"version": "0.3.0",
+	"version": "0.3.1",
 	"description": "Concrete commitments for a dreamteamer workspace — who owes what by when, with an inbox, a board and a by-person view.",
 	"license": "Apache-2.0",
 	"repository": {

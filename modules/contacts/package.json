@@ -1,6 +1,6 @@
 {
 	"name": "@dreamteamer/contacts",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "People you deal with, each pointing at the company they work for and filled in from LinkedIn and the web.",
 	"license": "Apache-2.0",
 	"repository": {

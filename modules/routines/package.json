@@ -1,6 +1,6 @@
 {
 	"name": "@dreamteamer/routines",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "Recurring commitments for a dreamteamer workspace — a calendar-style recurrence rule and the next date it is owed.",
 	"license": "Apache-2.0",
 	"type": "module",
