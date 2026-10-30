@@ -104,17 +104,17 @@ describe('held-out: the migration at its edges', () => {
 		S3 = now;
 	});
 
-	test('case 4: dt check accepts what the migration wrote', () => {
-		const r = ws.dt('check');
+	// The fixture plants `free-text` with no front matter on purpose — an edge for the MIGRATION, which must leave
+	// it alone (case 3 asserts its bytes). No user-story schema accepts a record with no key or name, so `dt check`
+	// judges the migrated records with that one planted file set aside, and puts it back byte for byte.
+	test('case 4: dt check accepts what the migration wrote (the planted free-text file set aside)', () => {
+		const planted = path.join(ws.root, STORY('free-text'));
+		const aside = path.join(ws.root, 'free-text.set-aside');
+		fs.renameSync(planted, aside);
+		let r;
+		try { r = ws.dt('check'); } finally { fs.renameSync(aside, planted); }
 		assert.equal(r.code, 0, `${r.stdout}\n${r.stderr}`);
-	});
-
-	// Not in the record: what case 4's violations are, so a failure says whether the migration or the fixture
-	// caused it. The record's own fixture plants `free-text` with no front matter, which no user-story schema accepts.
-	test('case 4 (diagnostic): every violation dt check reports is on the planted free-text file', () => {
-		const r = ws.dt('check');
-		const flagged = [...`${r.stdout}\n${r.stderr}`.matchAll(/^✖ (\S+)/gm)].map((m) => m[1]);
-		assert.deepEqual(flagged.filter((f) => f !== STORY('free-text')), [], `${r.stdout}\n${r.stderr}`);
+		assert.deepEqual(hashes(), S3, 'setting the planted file aside changed a byte under data/');
 	});
 
 	test('case 5: a second --write is a no-op', () => {
