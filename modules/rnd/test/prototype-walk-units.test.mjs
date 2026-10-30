@@ -15,3 +15,12 @@ test('a field or tag source with no map visits every screen that has a portal â€
 	assert.deepEqual(visitable(ALL, c).map((s) => s.key), ['gp-home', 'bo-list']);
 	assert.deepEqual(visitable(ALL, { portal: { from: 'field', field: 'portal', map: { office: 'bo' } } }).map((s) => s.key), ['bo-list']);
 });
+
+test('the favicon a full Chromium requests unasked is browser noise, never a page error â€” any other failed load still is', async () => {
+	const { browserNoise } = await import('../lib/prototype/node/devdep.mjs');
+	const msg = (url) => ({ type: () => 'error', text: () => 'Failed to load resource: the server responded with a status of 404 (File not found)', location: () => ({ url }) });
+	assert.equal(browserNoise(msg('http://127.0.0.1:64480/favicon.ico')), true);
+	assert.equal(browserNoise(msg('http://127.0.0.1:64480/app/favicon.ico?v=2')), true);
+	assert.equal(browserNoise(msg('http://127.0.0.1:64480/app/main.js')), false);
+	assert.equal(browserNoise({ type: () => 'error', text: () => 'boom', location: () => ({}) }), false);
+});

@@ -5,7 +5,7 @@
 import fs from 'node:fs';
 import { loadConfig } from './config.mjs';
 import { serve } from './serve.mjs';
-import { chromium } from './devdep.mjs';
+import { chromium, browserNoise } from './devdep.mjs';
 
 export const SKIP = '.demo-fab, .demo-bar, .demo-guide, #meta-pane, .harness-toasts, .meta-only, [data-meta], code, pre, [data-ident], script, style';
 
@@ -57,7 +57,7 @@ export async function run(dir, { only = null, port = null, log = console.log, er
 		const page = await browser.newPage({ viewport: c.viewport, ...(c.locale ? { locale: c.locale } : {}) });
 		let errs = [];
 		page.on('pageerror', (e) => errs.push(`pageerror: ${(e.message || String(e)).split('\n')[0]}`));
-		page.on('console', (m) => { if (m.type() === 'error') errs.push(`console.error: ${m.text().split('\n')[0]}`); });
+		page.on('console', (m) => { if (m.type() === 'error' && !browserNoise(m)) errs.push(`console.error: ${m.text().split('\n')[0]}`); });
 		const list = await screensToVisit(page, srv.base, c, only);
 		for (const s of list) {
 			errs = []; await visit(page, c, s); n++;

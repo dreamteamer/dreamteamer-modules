@@ -3,7 +3,7 @@
 // this test FAILS rather than skips: a skipped run is not a pass for this record. Written by the test stage.
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert';
-import { chromium } from '../../lib/prototype/node/devdep.mjs';
+import { chromium, browserNoise } from '../../lib/prototype/node/devdep.mjs';
 import { serve } from '../../lib/prototype/node/serve.mjs';
 import { loadConfig } from '../../lib/prototype/node/config.mjs';
 import { buildHP, play } from './lib/hp-fixture.mjs';
@@ -43,7 +43,7 @@ describe('held-out: the minimal app contract', () => {
 			const page = await browser.newPage();
 			const errors = [];
 			page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
-			page.on('console', (m) => { if (m.type() === 'error') errors.push(`console.error: ${m.text()}`); });
+			page.on('console', (m) => { if (m.type() === 'error' && !browserNoise(m)) errors.push(`console.error: ${m.text()}`); });
 			await page.goto(`${srv.base}#/`);
 			await page.waitForFunction(() => !!window.__hp?.demo, null, { timeout: 15000 });
 			const before = await page.evaluate(() => window.__hp.store.snapshot());

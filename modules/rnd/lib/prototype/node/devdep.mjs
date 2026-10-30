@@ -45,6 +45,11 @@ export function installedChromiums(dir = browsersDir()) {
 	return found;
 }
 
+/** a console error the BROWSER raised, not the page: the `/favicon.ico` a full Chromium requests unasked (the
+ *  headless shell does not), which a static server without one answers 404 — on CI, where playwright's own build
+ *  is installed, that failed every play. Any other failed load is still the page's. */
+export const browserNoise = (m) => /\/favicon\.ico(\?|$)/.test(m.location?.()?.url ?? '');
+
 /** → { chromium, executablePath } — `launch(opts)` is chromium.launch with the executable filled in */
 export async function chromium(from = process.cwd()) {
 	for (const p of candidates(from)) {

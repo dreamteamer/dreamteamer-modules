@@ -12,7 +12,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { loadConfig } from './config.mjs';
 import { serve } from './serve.mjs';
-import { chromium } from './devdep.mjs';
+import { chromium, browserNoise } from './devdep.mjs';
 import { vendorStatus } from './vendor.mjs';
 import { VERSION } from './export.mjs';
 
@@ -46,7 +46,7 @@ async function playJourney(browser, base, c, j, mod) {
 	const page = await ctx.newPage();
 	let errs = [];
 	page.on('pageerror', (e) => errs.push(`pageerror: ${(e.message || String(e)).split('\n')[0]}`));
-	page.on('console', (m) => { if (m.type() === 'error') errs.push(`console.error: ${m.text().split('\n')[0]}`); });
+	page.on('console', (m) => { if (m.type() === 'error' && !browserNoise(m)) errs.push(`console.error: ${m.text().split('\n')[0]}`); });
 	const out = { key: j.key, group: j.group, steps: [], restoreOk: null, fatal: null };
 	const app = c.app;
 	try {
