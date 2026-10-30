@@ -53,7 +53,7 @@ fields:
   review_focus:
     type: string
     many: true
-    description: The input classes or failure modes the spec implies but no task's tests would otherwise exercise, most likely to bite first — each named with the behaviour a reasonable person expects, and each pinned by a test in the task that owns the code.
+    description: The input classes the reviewer should probe beyond the plan's own tests — the failure modes the spec implies but no task's tests exercise, most likely to bite first — each named with the behaviour a reasonable person expects. A list for the review, not a promise of tests.
   execution:
     type: string
     enum: [subagent-driven, native]
@@ -76,7 +76,7 @@ fields:
     description: GENERATED — the tests that prove this plan's promises. Set `covers` on the test.
   verified_on:
     type: datetime
-    description: When the test stage last found every test the plan promised passing — for a plan with no change request, the gate deploy reads.
+    description: When the test stage last found every test the plan promised passing — stamped here only for a plan with no change request; a plan with one is verified on the change request, never on both.
   content:
     type: markdown
     body: true

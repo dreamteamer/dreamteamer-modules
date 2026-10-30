@@ -27,15 +27,16 @@ Read the repo the work lands in. Map the files that will be created or changed b
    dt add rnd/implementation-plans --name "<feature>" --spec rnd/design-docs/<id> --change_request rnd/change-requests/<id> \
      --product rnd/products/<id> --repo repos/<id> --goal "<one sentence>" --architecture "<two or three sentences>" \
      --tech_stack "<a>" --tech_stack "<b>" --global_constraints "<one line, values verbatim from the spec>" \
-     --review_focus "<an input class no task's test exercises, and what a person would expect>"
+     --review_focus "<an input class the reviewer should probe beyond the plan's own tests, and what a person would expect>"
    ```
+   `review_focus` is the reviewer's list, not a promise of tests: one line per input class the plan's tests leave to the review.
 2. The body starts at `### Task 1` — the header lives in the fields, once. Then the `### Task N` blocks. Each task has **Files** (exact paths), **Interfaces** (consumes and produces, exact signatures) and `- [ ]` steps. A task is the smallest unit with its own test cycle. A step is one action with a checkable result: write the failing test · run it, expected FAIL · implement the signature · run it, expected PASS · commit these paths.
-3. One `rnd/tests` record per promise someone will ask "is this covered" about — a story, an acceptance line, a review-focus line, a defect:
+3. One `rnd/tests` record per promise someone will ask "is this covered" about — a story, an acceptance line, a defect:
    ```bash
    dt add rnd/tests --key <k> --name "<what it proves>" --product rnd/products/<id> --covers rnd/change-requests/<id> \
      --kind unit|integration|e2e|manual|acceptance --repo repos/<id> --runner "<the exact command>" --expected "<what passing looks like>" --status planned
    ```
-   Name the test's id in the step that writes it, so the implementer can update it. An acceptance test is `--visibility held-out`: the builder never reads it, the test stage runs it, so the build cannot be shaped to the test.
+   Name the test's id in the step that writes it, so the implementer can update it. The held-out tests are not yours to write: a `## Held-out` section in the body names the input classes the held-out set must cover, and the review of the plan writes the `--visibility held-out` records — the builder never reads them, the test stage runs them, so the build cannot be shaped to the test.
 4. `tasks_total` is the number of task blocks; `tasks_done` starts at 0. Propose `execution` (`native` for a few coupled tasks, `subagent-driven` for many independent ones) with the reason in the body; the person who approves keeps or changes it.
 5. Read it as the builder: every spec requirement points at a task; every step lets them write exactly one reasonable thing; a name used in task 7 matches task 3; the plan is shorter than the code it describes. Fix inline.
 6. Commit the plan and its tests by id. The next word is `/rnd:review rnd/implementation-plans/<id>`. The review's `approve` sets `approved`.
@@ -46,8 +47,9 @@ Read the repo the work lands in. Map the files that will be created or changed b
 - Don't paste code the signature and the test already determine. A body appears only for an algorithm they do not pin.
 - Don't write "handle edge cases", "add validation", "write tests for the above". A line that decides nothing is a gap.
 - Don't write a test record for every helper, and don't skip the one a person will ask about. The record is for the question "is this covered".
+- Don't write a `held-out` test. The reviewer writes those from your `## Held-out` section; a builder who wrote the acceptance test has read it.
 - Don't set `status: approved` yourself. The review does; `execution` you propose, the person confirms.
 
 ## Done when
 
-`rnd/implementation-plans/<id>` exists with the header fields, `tasks_total` set and `status: draft`, its tests `planned` and pointing at it, and `dt next rnd/implementation-plans/<id>` answers `/rnd:review`.
+`rnd/implementation-plans/<id>` exists with the header fields, `tasks_total` set and `status: draft`, its visible tests `planned` and pointing at it, a `## Held-out` section naming what the reviewer's tests must cover, and `dt next rnd/implementation-plans/<id>` answers `/rnd:review`.

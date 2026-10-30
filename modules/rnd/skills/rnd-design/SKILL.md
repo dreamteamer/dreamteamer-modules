@@ -44,6 +44,7 @@ On a change request, `dt get rnd/change-requests/<id>` first. Its `description` 
 - Don't put a choice in the body without the alternative it beat. "We use X" is a decision only when it says what X beat and why.
 - Don't offer a menu before the person has described it in their own words. Options steer.
 - Don't set the doc `active` yourself. The review does that.
+- Don't rewrite an `active` doc in place — not by editing the body, not by a regex replacement (one run spliced a second front matter into the doc that way). An active doc changes by appending a dated entry under `## Revisions`, and the next gate's review covers that entry.
 - Don't build. Reading is fine, and so is a spike you called throwaway. Everything else waits for the review.
 
 ## Done when

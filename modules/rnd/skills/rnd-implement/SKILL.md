@@ -15,7 +15,7 @@ You build an approved plan task by task and leave the record as the progress mar
 ```bash
 dt get rnd/implementation-plans/<id>                                   # status approved or in-progress; execution says how
 dt get rnd/design-docs/<spec>                                          # the authority when the plan is wrong
-dt list rnd/tests --filter covers=rnd/implementation-plans/<id>        # and the ones covering its change request
+dt list rnd/tests --where '{"covers":{"_contains":"rnd/implementation-plans/<id>"}}'   # and the change request's; --filter misses a many-valued covers
 ```
 
 Work on a branch or a worktree, never on main. `dt set rnd/implementation-plans/<id> status=in-progress branch=<name>`. Resuming — after a compaction, a crash, a new session — start at the first unticked step; `tasks_done` and `git log` outrank your memory. If the spec's `last_modified` is later than the plan's approval, stop: the plan is stale and goes back to `/rnd:plan`. Before task 1, read every task's Interfaces against what the tasks before it produce and write any mismatch under `## Deviations` as a ruling.

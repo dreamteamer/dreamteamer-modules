@@ -4,9 +4,11 @@ scope: record
 available_when:
   status:
     _eq: done
+  change_request:
+    _empty: true
   verified_on:
     _empty: true
 done_when:
   verified_on:
     _nempty: true
-description: "prove the done plan: every promised test from its run, then the test review"
+description: "prove the done plan that has no change request: every promised test from its run, then the test review; a plan with one is verified on the change request"

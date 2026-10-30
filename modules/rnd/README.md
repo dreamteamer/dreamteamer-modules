@@ -81,12 +81,17 @@ design, with the evidence that would accept it), `/rnd:plan` (an `implementation
 `deployed_on` stamped). Each command loads one plainly written skill of the same name, five headings
 each: what you are doing · before you start · do this · don't · done when.
 
-Two agents ride on them. `rnd-agent` walks the stages for one record and stops twice by design — after
+Two agents ride on them. `rnd-agent` walks the stages for one record in the lifecycle's order (`dt next`
+lists every command a record is eligible for, not the one to run next) and stops twice by design — after
 the plan is approved (the person says go, or changes the execution) and before the deploy (merging is
-theirs) — and sooner on a blocker, a second `changes-requested`, or a review that names a
-`human_reviewer`. `qa-manager` reviews as a service: it reads everything, re-runs the evidence, runs the
-`held-out` tests, and writes only the review, by contract rather than by a tool wall, so the builder
-never grades its own work. The superpowers skills stay useful where they add depth — the stage skills name
+theirs) — and sooner on a blocker, a second `changes-requested` (written first as an `open-questions`
+record of kind `needs-decision` that blocks the subject, so the stop is a record a person finds), or a
+review that names a `human_reviewer`. `qa-manager` reviews as a service: it reads everything, re-runs the
+evidence, writes the `held-out` tests at the plan review and runs them at the test review, owns the review
+record from verdict to close, and writes nothing else, by contract rather than by a tool wall, so the
+builder never grades its own work. A finding is graded by its effect within the ask: a `major` or
+`blocker` names the acceptance line or story it breaks; one outside them is `minor` at most, with a
+proposed line. The superpowers skills stay useful where they add depth — the stage skills name
 them — but nothing here needs them installed.
 
 ## 0.3.0 — from 0.2.0
@@ -119,8 +124,12 @@ collection goes with it.
 Additive otherwise. `change-requests` gains `design_docs`, an `implementation_plans` mirror, `accepted_by`,
 `accepted_on`, `verified_on` and `deployed_on`; `implementation-plans` gains `change_request`, `issue`,
 `verified_on` and a `tests` mirror; `issues` lists its `implementation_plans`; `tests.covers` admits a
-plan and `tests.visibility` marks a held-out acceptance test; `reviews` gains `round` and
-`human_reviewer`; `design-docs` lists its `change_requests` and defaults `status` to `draft`. Records compile unchanged. Three skills are replaced by
+plan and `tests.visibility` marks a held-out acceptance test; `reviews` gains `round`, `human_reviewer`
+and the kind `acceptance`; `design-docs` lists its `change_requests` and defaults `status` to `draft`. Records compile unchanged.
+A paired experiment — one agent walking the lifecycle unattended with `qa-manager` reviews, one without,
+on a five-line change request — found that the gate as first written stopped delivery on a tiny ask in
+one unattended run, so findings are now scoped to the ask and the stop on a second `changes-requested`
+is a record. Three skills are replaced by
 stage skills — `writing-design-docs` by `rnd-design`, `writing-implementation-plans` by `rnd-plan`,
 `executing-implementation-plans` by `rnd-implement` — so a workspace that named one of them in its own
 skills or commands updates the name.

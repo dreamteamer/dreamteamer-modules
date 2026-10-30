@@ -7,4 +7,4 @@ available_when:
 done_when:
   status:
     _in: [accepted, rejected, implemented]
-description: "review the suggestion; approve makes it accepted"
+description: "review the acceptance lines (kind acceptance); approve makes it accepted"

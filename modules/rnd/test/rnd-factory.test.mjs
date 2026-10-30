@@ -370,7 +370,7 @@ describe('0.3.0 — the lifecycle fields', () => {
 		assert.equal(load('collections/rnd/reviews.collection.yaml').fields.round.default, 1);
 		assert.equal(dd.fields.status.default, 'draft');
 	});
-	test('a test may cover a plan — a Review Focus line is proof about no one story', () => {
+	test('a test may cover a plan — a held-out test belongs to the plan it was written against', () => {
 		assert.ok(tests.fields.covers.type.includes('rnd/implementation-plans'));
 		assert.equal(plan.fields.tests.type, 'rnd/tests'); assert.equal(plan.fields.tests.mirror_of, 'covers');
 	});
@@ -417,5 +417,108 @@ describe('0.3.0 — one persona collection', () => {
 	test('the migration script ships in bin/ and the list view shows the kind', () => {
 		assert.ok(fs.existsSync(path.join(RND, 'bin', 'migrate-personas.mjs')));
 		assert.ok(personas.display.list.columns.includes('kind'));
+	});
+});
+
+describe('the review-gate experiment — a paired unattended run on a five-line change request, each ruling pinned', () => {
+	const read = (rel) => fs.readFileSync(path.join(RND, rel), 'utf8');
+	const skill = (id) => read(`skills/${id}/SKILL.md`);
+	const agent = (id) => read(`agents/${id}.agent.md`);
+	const binding = (f) => yaml.load(read(`command-bindings/${f}.command-binding.yaml`));
+	const fieldsOf = (c) => load(`collections/rnd/${c}.collection.yaml`).fields;
+	const RND_SKILLS = fs.readdirSync(path.join(RND, 'skills')).filter((d) => d.startsWith('rnd-') || d === 'recording-reviews');
+	test('1. a many-valued reference is listed with _contains — no rnd skill filters covers by equality', () => {
+		for (const id of RND_SKILLS) assert.doesNotMatch(skill(id), /--filter covers=/, `${id} filters covers by equality, which misses a test with several covers`);
+		for (const id of ['rnd-test', 'rnd-implement']) assert.match(skill(id), /--where '\{"covers":\{"_contains":"rnd\//, `${id} lists tests by covers without _contains`);
+		assert.match(fieldsOf('tests').covers.description, /_contains/);
+	});
+	test('2. held-out tests are the reviewer\'s: the plan names the classes, the plan review writes the records, the builder never reads them', () => {
+		assert.match(skill('rnd-plan'), /## Held-out/);
+		assert.match(skill('rnd-plan'), /review of the plan writes the `--visibility held-out` records/);
+		assert.match(skill('rnd-plan'), /Don't write a `held-out` test/);
+		assert.match(agent('qa-manager'), /`--visibility held-out`/);
+		assert.match(agent('qa-manager'), /## Held-out/);
+		assert.match(agent('rnd-agent'), /that review writes the plan's `held-out` tests/);
+		assert.match(skill('rnd-implement'), /A `held-out` test is not yours to read or run/);
+		assert.match(skill('recording-reviews'), /writes the plan's held-out tests/);
+	});
+	test('3. review_focus is the reviewer\'s probe list, not a promise of one test per line', () => {
+		const rf = fieldsOf('implementation-plans').review_focus.description;
+		assert.match(rf, /reviewer should probe/);
+		assert.doesNotMatch(rf, /pinned by a test/);
+		assert.doesNotMatch(skill('rnd-plan'), /a review-focus line/, 'rnd-plan still asks for a test per review-focus line');
+	});
+	test('4. the reviewer owns the review end to end; the builder answers findings and asks for the next round', () => {
+		const rr = skill('recording-reviews');
+		assert.match(rr, /Close it — the reviewer, never the builder/);
+		assert.match(rr, /you never set `verdict` or `status` on the review/);
+		assert.match(rr, /don't close one as the builder/);
+		assert.doesNotMatch(rr, /Don't close a review while a finding is `open`\.\n/, 'the bare rule left who closes unsaid');
+		assert.match(agent('qa-manager'), /The builder never sets a verdict or closes a review/);
+		assert.match(agent('rnd-agent'), /you never set its `verdict` or close it/);
+		assert.match(agent('rnd-agent'), /`fixed` or `wontfix`, with a `resolution`/);
+	});
+	test('5. a review of a change request\'s acceptance lines has its own kind, named by the skill, the command and the binding', () => {
+		assert.ok(fieldsOf('reviews').kind.enum.includes('acceptance'));
+		assert.match(skill('rnd-change-request'), /kind `acceptance`/);
+		assert.match(skill('recording-reviews'), /kind `acceptance`/);
+		assert.match(binding('rnd--review--change-requests').description, /acceptance/);
+		assert.match(read('commands/rnd/review.command.md'), /--kind design\|acceptance\|/);
+		assert.match(read('commands/rnd/change-request.command.md'), /kind `acceptance`/);
+	});
+	test('6. no asker, no rewrite: the acceptance lines stand, a gap is a question or a proposed line, ambiguity reads narrowest', () => {
+		const dont = skill('rnd-change-request').split("## Don't")[1].split('## Done when')[0];
+		assert.match(dont, /Don't edit the acceptance lines/);
+		assert.match(dont, /PROPOSED line/);
+		assert.match(dont, /narrowest reading/);
+		assert.match(dont, /No asker, no rewrite/);
+	});
+	test('7. an active design doc changes by an appended dated ## Revisions entry, never in place', () => {
+		const d = skill('rnd-design');
+		assert.match(d, /Don't rewrite an `active` doc in place/);
+		assert.match(d, /## Revisions/);
+		assert.match(d, /next gate's review covers that entry/);
+	});
+	test('8. a stop on a second changes-requested is first an open question of kind needs-decision that blocks the subject', () => {
+		for (const text of [agent('rnd-agent'), skill('recording-reviews')]) {
+			assert.match(text, /`rnd\/open-questions` record of kind `needs-decision`/);
+			assert.match(text, /`blocks` names the (reviewed record|subject)/);
+			assert.match(text, /both reviews/);
+		}
+		assert.ok(fieldsOf('open-questions').kind.enum.includes('needs-decision'));
+		assert.ok(fieldsOf('open-questions').blocks, 'open-questions has no blocks field');
+	});
+	test('9. verified_on is stamped on one record — the change request when the plan has one, else the plan — and the gates agree', () => {
+		assert.match(skill('rnd-test'), /stamp ONE record/);
+		assert.match(skill('rnd-test'), /never both/);
+		assert.match(agent('rnd-agent'), /`verified_on` on that one record/);
+		assert.match(agent('qa-manager'), /the change request when the plan has one, else the plan — never by you/);
+		assert.match(skill('recording-reviews'), /`verified_on` on ONE record/);
+		assert.match(fieldsOf('implementation-plans').verified_on.description, /never on both/);
+		const plan = binding('rnd--test--implementation-plans');
+		assert.deepEqual(plan.available_when.change_request, { _empty: true }, 'a plan with a change request must not offer /rnd:test on the plan');
+		assert.deepEqual(plan.done_when, { verified_on: { _nempty: true } });
+		const cr = binding('rnd--test--change-requests');
+		assert.deepEqual(cr.done_when, { verified_on: { _nempty: true } });
+		assert.deepEqual(cr.available_when.implementation_plans, { status: { _eq: 'done' } });
+	});
+	test('10. dt next lists every eligible command; the walk follows the lifecycle order and takes prototype and draft-prd only on request', () => {
+		const a = agent('rnd-agent');
+		assert.match(a, /lists every command the record is eligible for, not the one to run next/);
+		assert.match(a, /`\/rnd:prototype` and `\/rnd:draft-prd` are taken only when the design doc asks for them/);
+	});
+	test('13. a finding is graded within the ask: major or blocker names the line it breaks, outside the ask is minor with a proposed line', () => {
+		for (const text of [agent('qa-manager'), skill('recording-reviews')]) {
+			assert.match(text, /names the acceptance line or story it breaks/);
+			assert.match(text, /`minor` at most and carries a proposed acceptance line/);
+		}
+		assert.match(agent('qa-manager'), /Judge by effect, within the ask/);
+		assert.match(agent('rnd-agent'), /a second `changes-requested`, a `blocker`, or a review that names a `human_reviewer` stops you/, 'the two-changes-requested breaker is unchanged');
+	});
+	test('the README carries the experiment\'s one-line summary in the 0.3.0 note and the scoping in the lifecycle paragraph', () => {
+		const readme = read('README.md');
+		assert.match(readme, /A paired experiment[\s\S]*stopped delivery on a tiny ask in\none unattended run/);
+		assert.match(readme, /needs-decision/);
+		assert.match(readme, /graded by its effect within the ask/);
 	});
 });
