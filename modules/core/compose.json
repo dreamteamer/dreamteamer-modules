@@ -126,7 +126,7 @@
 		},
 		"collections/tasks/tasks.collection.yaml": {
 			"from": "tasks/collections/tasks.collection.yaml",
-			"hash": "sha256:8ab599ca9fa60a8a41b6e39079287a117e3456ef74b7fce5f8c30f4223021e56"
+			"hash": "sha256:661406710a97b0a165e3919c957adcaa90b8911bb563e361d0c95693bcf65f8a"
 		},
 		"collections/tasks/users.collection.yaml": {
 			"from": "tasks/collections/users.collection.yaml",
