@@ -1,11 +1,12 @@
 
-"""Local meeting transcription: ffmpeg → sherpa-onnx diarize → faster-whisper → render."""
+"""Local meeting transcription: ffmpeg → sherpa-onnx diarize → whisper (Metal or CPU) → render."""
 import datetime
 import json
 import os
 import sys
 import subprocess
 import tarfile
+import time
 import urllib.request
 
 import numpy as np
@@ -14,6 +15,7 @@ import soundfile as sf
 from render import align_words_to_speakers, render_transcript_body, fmt_ts
 from meeting_io import read_meeting, write_meeting, count_attendees, asr_cache_path_for, replace_transcript_section
 from text_source import parse_labeled, log as log_text_source
+import engines
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 # Beside the skill by default. `TRANSCRIBING_MODELS_DIR` (an absolute path, read from the process
@@ -24,13 +26,13 @@ SEG_MODEL = os.path.join(MODELS_DIR, "segmentation.onnx")
 EMB_MODEL = os.path.join(MODELS_DIR, "embedding.onnx")
 WHISPER_DIR = os.path.join(MODELS_DIR, "whisper")
 WHISPER_ID = "ivrit-ai/whisper-large-v3-turbo-ct2"
+GGML_MODEL = engines.ggml_path(MODELS_DIR)
 
 _SEG_TAR_URL = ("https://github.com/k2-fsa/sherpa-onnx/releases/download/"
                 "speaker-segmentation-models/sherpa-onnx-pyannote-segmentation-3-0.tar.bz2")
 _EMB_URL = ("https://github.com/k2-fsa/sherpa-onnx/releases/download/"
             "speaker-recongition-models/wespeaker_en_voxceleb_CAM++_LM.onnx")
 
-ENGINE = "faster-whisper · ivrit-ai/whisper-large-v3-turbo-ct2 (int8)"
 DIARIZATION = "sherpa-onnx · pyannote-seg-3.0 + cam++"
 
 
@@ -54,7 +56,25 @@ def setup():
     # Prefetch the whisper weights into the skill-local cache.
     from faster_whisper import WhisperModel
     WhisperModel(WHISPER_ID, device="cpu", compute_type="int8", download_root=WHISPER_DIR)
+    # The GPU pass's weights, only where the GPU pass can run: 1.6 GB is not worth fetching for a
+    # machine whose `auto` would never pick it.
+    if engines.apple_silicon() and engines.find_whisper_cli():
+        if not engines.ggml_ready(MODELS_DIR):
+            engines.download_verified(engines.ggml_url(), GGML_MODEL, engines.GGML_SIZE, engines.GGML_SHA256)
+    else:
+        print("setup: no whisper-cli on Apple Silicon — skipping the ggml weights; the CPU pass runs",
+              file=sys.stderr)
     print("setup: models ready in", MODELS_DIR, file=sys.stderr)
+
+
+def choose_engine(requested):
+    """auto | metal | cpu → the engine this run uses, decided from this machine."""
+    return engines.select_engine(
+        requested,
+        whisper_cli=engines.find_whisper_cli(),
+        ggml_present=engines.ggml_ready(MODELS_DIR),
+        apple_gpu=engines.apple_silicon(),
+    )
 
 
 def decode_audio(src, dst_wav):
@@ -147,7 +167,15 @@ def diarize(wav, num_speakers=None):
     return [{"speaker": f"speaker_{r.speaker}", "start": r.start, "end": r.end} for r in result]
 
 
-def transcribe(wav, language=None):
+def transcribe(wav, language=None, engine="cpu"):
+    if engine == "metal":
+        asr = engines.run_whisper_cli(engines.find_whisper_cli(), GGML_MODEL, wav, language=language)
+        return {
+            "words": asr["words"],
+            "language": [language or asr["language"] or "und"],
+            "duration": asr["duration"],
+            "language_forced": language,
+        }
     from faster_whisper import WhisperModel
     model = WhisperModel(WHISPER_ID, device="cpu", compute_type="int8", download_root=WHISPER_DIR)
     segments, info = model.transcribe(
@@ -185,7 +213,11 @@ def transcribe(wav, language=None):
     }
 
 
-def run(meeting_md, audio, generated, num_speakers=None, language=None):
+def run(meeting_md, audio, generated, num_speakers=None, language=None, engine="auto"):
+    try:
+        engine = choose_engine(engine)
+    except engines.EngineUnavailable as e:
+        raise SystemExit(f"✖ {e}")
     fm, body = read_meeting(meeting_md)
     if num_speakers is None:
         num_speakers = count_attendees(fm)
@@ -193,7 +225,9 @@ def run(meeting_md, audio, generated, num_speakers=None, language=None):
     wav = os.path.join(tempfile.mkdtemp(), "audio.wav")
     decode_audio(audio, wav)
     segments = diarize_safe(wav, num_speakers=num_speakers)
-    asr = transcribe(wav, language=language)
+    t0 = time.monotonic()
+    asr = transcribe(wav, language=language, engine=engine)
+    asr_seconds = round(time.monotonic() - t0, 1)
     turns = align_words_to_speakers(asr["words"], segments)
 
     asr_json = asr_cache_path_for(meeting_md)
@@ -202,7 +236,7 @@ def run(meeting_md, audio, generated, num_speakers=None, language=None):
 
     fm["transcription"] = {
         "generated": generated,
-        "engine": ENGINE,
+        "engine": engines.LABELS[engine],
         "diarization": DIARIZATION,
         "language": asr["language"],
         # Whether the language was forced or detected — a detected one on a code-switched
@@ -220,6 +254,8 @@ def run(meeting_md, audio, generated, num_speakers=None, language=None):
         "duration": fmt_ts(asr["duration"]),
         "speaker_count": fm["transcription"]["speaker_count"],
         "speakers_hint": num_speakers,
+        "engine": engine,
+        "asr_seconds": asr_seconds,
         "meeting": meeting_md,
         "asr_cache": asr_json,
     }
@@ -245,7 +281,11 @@ if __name__ == "__main__":
         lang = None
         if "--language" in args:
             lang = args[args.index("--language") + 1]
-        run(args[1], args[2], date, num_speakers=spk, language=lang)
+        try:
+            eng = engines.parse_engine_arg(args)
+        except ValueError as e:
+            sys.exit(f"✖ {e}")
+        run(args[1], args[2], date, num_speakers=spk, language=lang, engine=eng)
     elif len(args) >= 3 and args[0] == "log":
         date = datetime.date.today().isoformat()
         if "--date" in args:
@@ -260,6 +300,7 @@ if __name__ == "__main__":
         sys.exit(
             "usage: transcribe_meeting.py setup"
             " | run <meeting.md> <audio> [--date YYYY-MM-DD] [--speakers N] [--language en|he]"
+            " [--engine auto|metal|cpu]"
             " | log <meeting.md> <turns.json> [--date YYYY-MM-DD]"
             " | parse-labeled <text-file>"
         )

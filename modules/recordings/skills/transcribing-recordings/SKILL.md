@@ -32,8 +32,9 @@ export TRANSCRIBING_MODELS_DIR="$HOME/.cache/dreamteamer/transcribing-models"   
 cd "$SK" && uv sync && uv run python transcribe_meeting.py setup   # audio route only
 ```
 
-setup provisions a pinned Python 3.12 venv and downloads the models (~1.6 GB) — only what is missing,
-so it is safe to re-run; it needs system `ffmpeg`. text routes need only `uv sync`.
+setup provisions a pinned Python 3.12 venv and downloads the models (~1.6 GB, plus 1.6 GB more for the
+GPU pass on a Mac with `whisper-cli`) — only what is missing, so it is safe to re-run; it needs system
+`ffmpeg`. text routes need only `uv sync`.
 
 **keep the models outside the skill folder.** By default they go in `.models/` beside the skill, but
 compile regenerates `.dreamteamer/skills/` and `npm ci` regenerates `node_modules/`, so weights kept in
@@ -46,7 +47,7 @@ Only `ffmpeg` + `uv` + outbound network for the first `setup`.
 
 ### where the models come from
 
-`setup` fetches all three into the models folder. The sources, so nobody has to read the code to
+`setup` fetches these into the models folder. The sources, so nobody has to read the code to
 find them:
 
 | file | size | source |
@@ -54,6 +55,7 @@ find them:
 | `whisper/` | ~1.5 GB | HuggingFace **`ivrit-ai/whisper-large-v3-turbo-ct2`**, pulled by faster-whisper (CTranslate2, int8) |
 | `segmentation.onnx` | 5.7 MB | sherpa-onnx release `speaker-segmentation-models` → `sherpa-onnx-pyannote-segmentation-3-0.tar.bz2`, the `model.onnx` member |
 | `embedding.onnx` | 28 MB | sherpa-onnx release `speaker-recongition-models` → `wespeaker_en_voxceleb_CAM++_LM.onnx` |
+| `whisper-ggml/ggml-ivrit-large-v3-turbo.bin` | 1.6 GB | HuggingFace **`ivrit-ai/whisper-large-v3-turbo-ggml`** `ggml-model.bin` at commit `2130c78e`, size and sha256 checked — fetched only on Apple Silicon with `whisper-cli` on PATH |
 
 `speaker-recongition-models` is spelled that way **upstream** — it is the real GitHub release tag.
 Do not "fix" the typo.
@@ -65,7 +67,31 @@ copy `.venv`** — it bakes absolute interpreter and project paths and will not 
 The lock carries manylinux wheels for every native dependency, so Linux resolves without a source build.
 
 Model *resolution* reaches the network on every `run` unless `HF_HUB_OFFLINE=1` is set; only inference
-is offline. Set it for a genuinely airgapped run against a warm cache.
+is offline. Set it for a genuinely airgapped run against a warm cache. The GPU pass reads its ggml file
+straight from disk and never reaches the network.
+
+### the engine — `--engine auto | metal | cpu`
+
+| engine | what runs | where |
+|---|---|---|
+| `cpu` | faster-whisper on CTranslate2, int8 | everywhere — the pass this skill always had |
+| `metal` | whisper.cpp (`whisper-cli`) with the **same** ivrit fine-tune in ggml, on the Apple GPU | Apple Silicon with `brew install whisper-cpp` and the ggml file |
+| `auto` (default) | `metal` when all three are there, `cpu` otherwise | — |
+
+Measured on an M4 Pro over a 12:47 Hebrew recording, three speakers: recognition took **40 s on
+`metal`** (RTF 0.05) against **158 s on `cpu`** (RTF 0.21), on the same weights, and the two texts were
+0.87 similar character for character. Diarization is unchanged and runs on the CPU either way (about
+100 s here, identical segments from both runs), so it is most of a `metal` run's wall time: 140 s
+against 255 s end to end. whisper.cpp on a CPU is *slower* than CTranslate2 — more than 580 s for the
+same recording on an M3 — which is why `auto` never picks it off Apple Silicon. `--engine metal` asked for by name
+refuses and names what is missing rather than running the slow path; `--engine cpu` forces the old
+pass. The record's `transcription.engine` says which one ran, and the printed summary carries
+`engine` and `asr_seconds`.
+
+The two engines do not produce identical text: same weights, different decoders. Word timing on
+`metal` comes from one-word segments (`-ml 1 -sow`), and the directional marks whisper.cpp leaves
+around Hebrew punctuation are stripped. The window-to-window text prompt is off on both
+(`-mc 0` / `condition_on_previous_text=False`); voice-activity filtering exists only on `cpu`.
 
 **the recording record is the target.** Its `recording_file` template points at the archived copy of
 the binary — render it with `npx dt resolve meeting-recordings/<id> recording_file`; the record's
@@ -112,8 +138,8 @@ rather than silently creating directories inside the repo. Steps 1 and 3 are the
 route, and skipping step 2 costs little: the **transcript** is what gets committed, and it is the
 durable artifact. Say so rather than implying the audio was kept.
 
-full script usage: `setup | run <record.md> <audio> [--date YYYY-MM-DD] [--speakers N] [--language en|he] | log
-<record.md> <turns.json> [--date YYYY-MM-DD] | parse-labeled <text-file>`.
+full script usage: `setup | run <record.md> <audio> [--date YYYY-MM-DD] [--speakers N] [--language en|he]
+[--engine auto|metal|cpu] | log <record.md> <turns.json> [--date YYYY-MM-DD] | parse-labeled <text-file>`.
 
 ## audio route
 
@@ -198,7 +224,8 @@ file — because the transcript has to hang off *something*, and the recording i
 
 ## provenance + conventions
 
-`transcription:` carries only source-relevant fields: `engine`/`diarization`/`duration` (audio),
+`transcription:` carries only source-relevant fields: `engine` (which recognizer ran — whisper.cpp on
+Metal or faster-whisper on the CPU) /`diarization`/`duration` (audio),
 `source`/`method` (text), plus `language`, `speaker_count`, `speakers` (you fill), `generated`, and
 free-text `notes` (you fill — caveats, confidence, attribution issues). `[mm:ss]` timestamps appear in
 the body for audio only. the body keeps raw `Speaker N` labels; real names live only in
