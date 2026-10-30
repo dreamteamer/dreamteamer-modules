@@ -2,9 +2,8 @@ name: tasks
 description: A concrete commitment, starting with a verb — what would be done, not the topic it is about.
 use_when: >-
   a concrete commitment surfaces — in a meeting, a chat, a plan — capture it here with a verb and, whenever a
-  date was actually said, the absolute `due`; pass `--lane` when the domain is clear (the workspace's own lane
-  vocabulary) and leave it empty when it is not — the field is optional and the board has an "unassigned" pile
-  for the residue; asked "what do I owe", list here by due date
+  date was actually said, the absolute `due`; label the domain with `--tags` when it is clear and leave it out
+  when it is not; asked "what do I owe", list here by due date
 storage:
   path: data/tasks
   format: md
@@ -25,16 +24,6 @@ fields:
     type: string
     required: true
     description: The commitment in one line, starting with a verb — what would be done, not the topic.
-  lane:
-    type: string
-    description: >-
-      Which lane this task sits in on the board — the DOMAIN it is about, not who surfaced it. OPTIONAL: a
-      task with no lane still lands on the board, under an "unassigned" pile. The VOCABULARY is the
-      workspace's own — this module ships no enum, because every workspace splits its work differently (one by
-      client, one by department, one by area of life). Pick a short set of display-ready values (`CRM`,
-      `Finance`, `R&D`) and use them consistently: the board groups its rows by the raw value, so `finance`
-      and `Finance` are two lanes. Infer from the task's ACTUAL WORK, not where it was surfaced. To close the
-      set, give the field an `enum` in a workspace overlay of this collection.
   description:
     type: markdown
     body: true
@@ -164,7 +153,6 @@ display:
     columns:
       - name
       - assignee
-      - lane
       - last_modified
       - status
       - due

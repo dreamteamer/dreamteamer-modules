@@ -11,9 +11,28 @@ npx dreamteamer compile
 
 | alone | with others |
 |---|---|
-| tasks, the inbox (`/inbox`), the board (`/tasks/board`), tasks by person (`/tasks/by-assignee`) | **projects** lets a task name the project or activity it serves · **meeting-docs** extracts tasks from a call and lists them on its critique |
+| tasks, the inbox (`/inbox`), the board (`/tasks/board` — a column per `status`, a band per `project`), tasks by person (`/tasks/by-assignee`) | **projects** lets a task name the project or activity it serves · **meeting-docs** extracts tasks from a call and lists them on its critique |
 
 Without the projects module, a task that names a project keeps the reference as written; it resolves once projects is installed.
+
+## Upgrading to 0.3.0: lanes become tags
+
+0.3.0 drops the `lane` field. A task's domain is a tag like any other (`crm`, `finance`), and the
+board bands by `project` instead. Records written under 0.2.x still carry `lane:`; one script moves
+each value into `tags`:
+
+```bash
+npx dt-migrate-lanes-to-tags              # the plan (--dry-run is the default), nothing written
+npx dt-migrate-lanes-to-tags --write      # apply it
+# … [--root <workspace>] [--json]
+```
+
+Each `lane: X` becomes the tag `x`, kebab-cased (`R&D` → `r-d`) and added only when the task does
+not already carry it; the `lane` key is removed. A task with no lane is untouched, so a second run
+changes nothing (`records 0 · refs 0` — ids never change, so no reference is rewritten). A value
+that kebab-cases to nothing is reported and its task left as it was. The script edits records only:
+an overlay of `tasks` or a view in the workspace's own `modules/` that still names `lane` is listed
+for you to remove, then `dt compile` and `dt check`.
 
 ## Task schedules
 

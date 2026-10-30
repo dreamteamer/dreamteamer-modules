@@ -1,3 +1,5 @@
+# Columns by `status`, bands by `project`: where each piece of work stands, inside the effort it serves.
+# Most tasks name no project, so `show_ungrouped_rows` is on: without it the surface hides them.
 route: /tasks/board
 scope: collection
 collection: collections/tasks
@@ -11,8 +13,9 @@ display:
     options:
       # The enum order on each field is the order its columns and bands appear in.
       lanes_by: status
-      group_by: lane
-      # Every task on one page, so no lane is cut off.
+      group_by: project
+      show_ungrouped_rows: true
+      # Every task on one page, so no band is cut off.
       page_size: 100000
       card_title: |-
         **{{ name }}**
