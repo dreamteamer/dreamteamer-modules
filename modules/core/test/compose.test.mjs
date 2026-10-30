@@ -65,6 +65,12 @@ describe('the composition', () => {
 		assert.deepEqual(manifest.dreamteamer.dependencies ?? [], [], 'every origin dependency is internal');
 		for (const t of ['users', 'companies', 'contacts', 'engagements', 'tasks', 'projects', 'decisions', 'meetings', 'meeting-recordings', 'meeting-summaries', 'files', 'file-drives', 'assets']) assert.ok(owned.has(t), `core does not own ${t}`);
 	});
+	test("compose.json's own engine floor raises the manifest's above the origins' — core's namespaced commands need it", () => {
+		assert.ok(spec.engine, 'compose.json declares an engine floor of its own');
+		assert.equal(manifest.dreamteamer.engine, spec.engine);
+		const dts = spec.origins.map((o) => JSON.parse(fs.readFileSync(path.join(ROOT, 'modules', o, 'package.json'), 'utf8')).dreamteamer);
+		for (const d of dts) assert.notEqual(d.engine, spec.engine, `${spec.engine} is an origin's floor already — core's own would be redundant`);
+	});
 	test('--check exits 0 on the committed state', async () => {
 		const { main } = await import('../../../scripts/compose-core.mjs');
 		const log = console.log; console.log = () => {};

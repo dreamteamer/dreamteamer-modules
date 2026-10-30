@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // COMPOSE @dreamteamer/core from the small official modules — copies, never a second authoring place.
 //
-// `modules/core/compose.json` names the origins; this script copies every shipped source file of each
+// `modules/core/compose.json` names the origins (and `engine`, a floor of core's own, for what core's own
+// commands need of the engine beyond what the origins do); this script copies every shipped source file of each
 // origin into modules/core under ONE deterministic rewrite, merges the eleven manifests into core's
 // package.json, and records every copy with its hash in compose.json's `files`. The drift test
 // (modules/core/test/compose.test.mjs) recomputes the same copies from the origins and fails when a
@@ -120,7 +121,7 @@ export function compose() {
 			...(extensions.length ? { extension: extensions[0].pkg.dreamteamer.extension } : {}),
 			title: spec.title,
 			description: spec.orientation,
-			engine: `>=${dts.map((d) => (d.engine ?? '>=0.0.0').replace(/^>=/, '')).reduce(newer)}`,
+			engine: `>=${[...dts.map((d) => d.engine), spec.engine].map((e) => (e ?? '>=0.0.0').replace(/^>=/, '')).reduce(newer)}`,
 			...(union('env').length ? { env: union('env') } : {}),
 			...(union('vars').length ? { vars: union('vars') } : {}),
 			...(union('peer_collections').filter((p) => !owned.has(p)).length ? { peer_collections: union('peer_collections').filter((p) => !owned.has(p)) } : {}),
