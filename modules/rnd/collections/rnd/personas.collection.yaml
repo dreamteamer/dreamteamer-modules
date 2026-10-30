@@ -1,42 +1,95 @@
-# A persona here is NOT a merged character. It is a NAMED PANEL of real people, each grounded in
-# their own verbatim quotes. When consulted, every member answers from THEIR OWN quotes separately
-# and the persona's answer is the spread across members — computed outside the model.
+# ONE persona collection, two kinds — the answer to "who are we building for" in either of its shapes.
 #
-# Why: an agent grounded in a person's own words tracks that person; an agent built from segment
-# attributes tracks a stereotype. Averaging people into one voice trades the first for the second
-# and makes the artifact unfalsifiable — a merged voice has no held-out answers to test against.
-#
-# Two rules the schema is shaped around:
+# `kind: panel` is a NAMED PANEL of real people, each grounded in their own verbatim quotes — never a
+# merged character. Consulted, every member answers from THEIR OWN quotes separately, and the panel's
+# answer is the spread across members, computed outside the model. An agent grounded in a person's
+# own words tracks that person; an agent built from segment attributes tracks a stereotype. Averaging
+# people into one voice trades the first for the second and makes the artifact unfalsifiable — a
+# merged voice has no held-out answers to test against. Two rules the panel fields are shaped around:
 #   1. No claim without a quote. Every substantive field cites `quotes`.
-#   2. No answer outside `coverage`. Asked something the evidence does not cover, a persona refuses.
+#   2. No answer outside `coverage`. Asked something the evidence does not cover, a panel refuses.
 #      "React to this product idea" is exactly the question that invites a plausible fabrication.
+#
+# `kind: product-role` is a product user role — who uses a product, the jobs they need done, what
+# they may and may not do, the journeys they take. A design object, which may be a hypothesis
+# (`evidence_status: proposed`) rather than evidence about anyone.
+#
+# Why one collection: a story and a journey name the people they serve, and a panel and a role are the
+# same noun to them. Why `kind` with no default: the evidence rules bind a panel only, so `segment_rule`
+# and `members` are required of a panel through the `constraints` block, and `products` of a role; a
+# record that says neither cannot be checked and is refused.
 name: rnd/personas
 description: >-
-  A named PANEL of real people, each grounded in their own verbatim quotes — never a merged character. Its answer is the spread across members.
+  Who a product is built for, in one of two kinds: a `panel` — a named panel of real people, each grounded in their own verbatim quotes, never a merged character, whose answer is the spread across members — or a `product-role`, a product user role with its goals, permissions and journeys.
 use_when: >-
-  asked how a market, a role or a client type would react — read the panel here and answer as the SPREAD of its members; build or extend a panel only from verbatim quotes of real people
+  asked how a market, a role or a client type would react — read the panel here and answer as the SPREAD of its members; build or extend a panel only from verbatim quotes of real people. Defining who uses a product, their jobs and permission boundaries — search the roles here before creating one, and point a story's or a journey's `personas` at it
 storage: {path: data/rnd/personas, format: md}
 ids:
-  from: "{{ name | slug }}"
+  # The first template whose fields are all present wins: a role's `key` when set, else the name
+  # through the slug filter.
+  from:
+    - "{{ key }}"
+    - "{{ name | slug }}"
   pattern: "^[a-z0-9-]+$"
 fields:
   name:
     type: string
     required: true
     description: A role-and-situation label, never a fake human name. A fake name invites the model to invent a biography.
+  kind:
+    type: string
+    required: true
+    enum: [panel, product-role]
+    description: >-
+      Which of the two shapes this record is. `panel` — real people, verbatim quotes, the evidence rules below bind. `product-role` — a product user role with goals, permissions and journeys; may be a design hypothesis. No default, because the two are checked differently and a record must say which it is.
+  key:
+    type: string
+    pattern: '^[a-z0-9][a-z0-9-]*$'
+    description: An optional stable lowercase hyphenated handle that becomes the id; when empty, the id comes from the name. Set it when the name has no Latin characters, which would otherwise slug to a hash.
   description:
     type: string
     description: One line — who they are and what they are trying to get done.
 
-  # ---- SCOPE ----
+  # ---- PRODUCT ROLE ----
+  products:
+    type: rnd/products
+    many: true
+    description: The products this role uses. Required of a `product-role`; a panel may name the products its evidence is about.
+  goals:
+    type: string
+    many: true
+    description: The jobs this role needs to achieve.
+  permissions:
+    type: string
+    many: true
+    description: Proposed allowed operations; application enforcement is separate.
+  restrictions:
+    type: string
+    many: true
+    description: Explicit prohibited operations and boundaries.
+  evidence_status:
+    type: string
+    enum: [source-backed, proposed]
+    default: proposed
+    description: Whether a role is source-backed or a design hypothesis. A panel is source-backed by construction — its `quotes` are the source.
+  journeys:
+    type: rnd/user-journeys
+    many: true
+    mirror_of: personas
+    description: GENERATED — the journeys this persona takes part in. Set `personas` on the journey.
+  user_stories:
+    type: rnd/user-stories
+    many: true
+    mirror_of: personas
+    description: GENERATED — the stories written for this persona. Set `personas` on the story.
+
+  # ---- SCOPE (a panel) ----
   segment_rule:
     type: string
-    required: true
-    description: The explicit inclusion/exclusion predicate. Without it you cannot say who this persona is NOT, and cannot hold anyone out to test it.
+    description: The explicit inclusion/exclusion predicate. Without it you cannot say who this panel is NOT, and cannot hold anyone out to test it. Required of a `panel`.
 
   members:
     type: object
-    required: true
     many: true
     fields:
       person:
@@ -48,7 +101,7 @@ fields:
       weight:
         type: string
         description: How much this member carries the panel — thick
-    description: The real people this panel is made of. Consulting the persona means querying each of these separately from their own quotes — never as a blend.
+    description: The real people this panel is made of. Consulting the persona means querying each of these separately from their own quotes — never as a blend. Required of a `panel`.
 
   n_meetings:
     type: number
@@ -57,7 +110,7 @@ fields:
     type: string
     description: The date span the evidence was collected over. This is also the staleness signal.
 
-  # ---- EVIDENCE ----
+  # ---- EVIDENCE (a panel) ----
   quotes:
     type: object
     many: true
@@ -84,7 +137,7 @@ fields:
           - translated
           - rendered
         description: verbatim = the speaker's own words with reliable attribution. translated = accurate content, our translation. rendered = a summarizer's English of degraded ASR — evidence of position, NEVER of phrasing.
-    description: The verbatim quote bank. Everything else in this record is derived from it, and nothing may exist without it.
+    description: The verbatim quote bank. Everything else in a panel is derived from it, and nothing may exist without it.
 
   coverage:
     type: object
@@ -241,7 +294,7 @@ fields:
     description: Short syntheses written from named analyst viewpoints (buyer psychologist, budget owner, ops realist) inferring what the person did not say.
   fidelity:
     type: string
-    description: How this persona scored on its held-out probes, and when. EMPTY until evaluated — an unevaluated persona must say so rather than imply it was validated.
+    description: How this panel scored when asked cold the questions real people had already answered, and when. EMPTY until evaluated — an unevaluated panel must say so rather than imply it was validated. The held-out questions and the real answers live in the record's body or beside it, never in the quote bank the panel answers from.
   last_validated:
     type: date
     description: When the held-out evaluation last ran.
@@ -249,7 +302,7 @@ fields:
   content:
     type: markdown
     body: true
-    description: The narrative for human readers, plus what this persona is a GOOD and a BAD proxy for. Non-authoritative — this is where invented detail accumulates, so the quote bank wins over anything written here.
+    description: For a panel — the narrative for human readers, plus what it is a GOOD and a BAD proxy for; non-authoritative, this is where invented detail accumulates, so the quote bank wins over anything written here. For a role — the detailed contract, evidence, exceptions and acceptance.
   author:
     type: string
     examples: ['agents/claude-code', 'scripts/read-git@2']
@@ -261,12 +314,19 @@ fields:
     description: How and why this record came to be, in one line — and the reason whenever confidence is low.
   source:
     type: string
-    description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…> · migration:<id>.'
+    description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…> · migration:<id>. For a role, the source records and section locators, distinguishing evidence from design.'
   confidence:
     type: string
     default: normal
     enum: [low, normal, high]
     description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
+# The evidence rules bind a panel only; a role must say which products it uses. `kind` is required
+# above, so a record that names neither is refused before either branch is consulted.
+constraints:
+  - if: {required: [kind], properties: {kind: {const: panel}}}
+    then: {required: [segment_rule, members]}
+  - if: {required: [kind], properties: {kind: {const: product-role}}}
+    then: {required: [products]}
 display:
   nav:
     icon: feedback
@@ -274,6 +334,7 @@ display:
   list:
     columns:
       - name
+      - kind
       - last_modified
       - n_meetings
       - fidelity

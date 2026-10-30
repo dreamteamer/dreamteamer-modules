@@ -93,8 +93,8 @@ fields:
     description: End-to-end journeys served by this story.
     many: true
   personas:
-    type: rnd/product-user-personas
-    description: Product user roles served.
+    type: rnd/personas
+    description: The personas — product roles or panels — this story serves.
     many: true
   change_requests:
     type: rnd/change-requests

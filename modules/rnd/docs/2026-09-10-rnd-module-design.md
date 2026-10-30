@@ -71,3 +71,15 @@ is installed, the same way `meetings` and `recordings` want it — the doctor an
 - **a doctor capability** — nothing in this module shells out, reads a credential or needs a mount.
   The one variable it uses rides on the existing `variables` capability.
 - **views beyond `content-open-questions`** — the vault ships one; the port ships the same one.
+
+## addendum, 0.3.0 — one persona collection
+
+`persona-probes`, and the `product-user-personas` that 0.2.0 added, are gone, folded into `personas`
+under a required `kind: panel | product-role`. The row above that lists `persona-probes` among the
+verbatim carries describes the port as it was made and stays as written. The reasoning: a panel and a
+product role both answer "who are we building for", and a story or a journey names either; the
+evidence rules — `segment_rule`, `members` — bind a panel only, so they left `required` on the field
+for a `constraints` block keyed on `kind`, with `products` required of a role the same way. The
+held-out probes a panel was scored against keep no collection: `fidelity` still records the score,
+and the questions live in the panel's body or beside it. `bin/migrate-personas.mjs` moves a
+workspace's records and rewrites the references.
