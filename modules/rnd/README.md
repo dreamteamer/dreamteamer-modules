@@ -39,8 +39,9 @@ field in an overlay.
 people a panel is built from may live in another workspace, and a reference that `check` would refuse
 is worse than a string that stays greppable.
 
-**No design skill ships here.** A prototype record is the brief and the pointer; how the mockup gets
-drawn is the harness's business.
+**No design skill ships here.** `lib/prototype/` ships demo furniture only (a player, a metadata layer, a
+catalogue, the tools that check them), themed by the prototype; the product's own screens and chrome are
+never rnd's.
 
 **Specs and plans are records.** A brainstormed design is a `design-docs` record; the plan that
 implements it is an `implementation-plans` record whose `spec` points at the design, its body in the
@@ -104,6 +105,34 @@ prototyped where it asks, planned, built, proved and deployed — the lifecycle 
 `workflows` collection brings (`@dreamteamer/core` carries it). Its meeting steps name core's commands,
 so it installs only where both are compiled: `npx dt-workflows install software-factory` refuses
 otherwise, naming each command it lacks.
+
+## the prototype harness
+
+A clickable prototype that plays its journeys keeps three things apart: WHAT happens (the records — a
+journey's `steps`, each on a screen, with its story, role, caption, rule ids and open questions), HOW the
+demo shows it (the prototype's playback module per journey: the demo user, the anchor, the actions on its
+own store), and the furniture that plays one with the other. rnd ships the furniture:
+
+- **The browser half** — `player.js`, `playback.js`, `meta.js`, `catalog.js`, `dom.js`, `harness.css` —
+  is copied into the prototype by `npx dt-prototype vendor` (a static prototype cannot import from
+  `node_modules`), each file stamped with the package version and a hash of its body. A stamped file
+  edited in place is a fork; `vendor` refuses to overwrite it, and `check` and `play` report it.
+- **The Node half** runs from the package: `npx dt-prototype init · vendor · export · check · play · shoot ·
+  walk`, from the prototype's folder, reading its `harness.config.mjs`. `export` writes the prototype's
+  `journeys.js` and `meta.js` from `dt list --json` — it parses no record body and copies no row.
+  `playwright-core` is resolved at run time, never a dependency.
+
+The prototype keeps its world, its store and fixtures, its playback modules, its chrome and a small
+adapter (the config and the init options). The `rnd-prototype` skill holds the contract.
+
+## 0.5.0 — from 0.4.0
+
+Additive. `rnd/user-journeys` gains `steps` (the journey's order, one item per step) and `failures`;
+`rnd/user-stories.journey` and `step` are legacy. A workspace that ordered its stories with them runs
+`node node_modules/@dreamteamer/rnd/bin/migrate-journey-steps.mjs --dry-run`, then `--write` (add
+`--screen-rules <field>` when rule ids sit in a screen field of their own), then
+`npx dreamteamer relations rebuild rnd/user-journeys` and `npx dreamteamer check`. The prototype
+harness (above) is new.
 
 ## 0.4.0 — from 0.3.0
 

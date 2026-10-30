@@ -6,7 +6,7 @@ import { test, describe, after, before } from 'node:test';
 import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
-import { rndWorkspace, seedNorthwind, settle, put, run, cleanupAll } from './helpers/rnd-workspace.mjs';
+import { rndWorkspace, seedNorthwind, seedJourneys, settle, run, cleanupAll } from './helpers/rnd-workspace.mjs';
 import { run as vendor } from '../lib/prototype/node/vendor.mjs';
 import { run as exportRun } from '../lib/prototype/node/export.mjs';
 import { run as check } from '../lib/prototype/node/check.mjs';
@@ -23,55 +23,7 @@ const quiet = () => { const lines = []; return { lines, log: (l) => lines.push(l
 
 /** a workspace with the Northwind records (two journeys) and the prototype under prototypes/northwind */
 function setup() {
-	const ws = rndWorkspace(); seedNorthwind(ws);
-	put(ws, 'data/rnd/user-journeys/apply-for-a-grant.user-journey.md', `---
-key: apply-for-a-grant
-name: Apply for a grant
-products:
-  - rnd/products/grantee-portal
-  - rnd/products/back-office
-personas:
-  - rnd/personas/applicant
-steps:
-  - screen: rnd/screens/gp-home
-    story: rnd/user-stories/2026-01-10--open-the-portal
-    persona: rnd/personas/applicant
-    caption: The applicant sees their grants
-  - screen: rnd/screens/gp-apply
-    story: rnd/user-stories/2026-01-10--submit-an-application
-    persona: rnd/personas/applicant
-    scope_rows:
-      - GRT-R-001
-  - screen: rnd/screens/bo-review
-    story: rnd/user-stories/2026-01-10--review-the-application
-    persona: rnd/personas/grant-officer
-  - screen: rnd/screens/bo-review
-    system: true
-    caption: Approving twice is refused
-failures:
-  - The application is approved twice
----
-`);
-	put(ws, 'data/rnd/user-journeys/see-the-home.user-journey.md', `---
-key: see-the-home
-name: See both homes
-products:
-  - rnd/products/grantee-portal
-  - rnd/products/back-office
-steps:
-  - screen: rnd/screens/gp-home
-    story: rnd/user-stories/2026-01-10--open-the-portal
-    persona: rnd/personas/applicant
-  - screen: rnd/screens/bo-home
-    system: true
-    caption: The back office is not built yet
----
-`);
-	for (const k of ['open-the-portal', 'submit-an-application', 'review-the-application']) {
-		const f = path.join(ws, `data/rnd/user-stories/2026-01-10--${k}.user-story.md`);
-		const extra = k === 'open-the-portal' ? '  - rnd/user-journeys/see-the-home\n' : '';
-		fs.writeFileSync(f, fs.readFileSync(f, 'utf8').replace(/\n---\n$/, `\njourneys:\n  - rnd/user-journeys/apply-for-a-grant\n${extra}---\n`));
-	}
+	const ws = rndWorkspace(); seedNorthwind(ws); seedJourneys(ws);
 	settle(ws);
 	const c = run(ws, ['check']); assert.equal(c.status, 0, c.stdout + c.stderr);
 	const dir = path.join(ws, 'prototypes', 'northwind');
