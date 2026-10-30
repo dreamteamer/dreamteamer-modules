@@ -191,7 +191,7 @@ describe('0.2.0 — design docs, plans, reviews, tests and design systems', () =
 		for (const t of subj) assert.ok(exists(t.replace(/^rnd\//, '')), `subject ${t} is not a collection here`);
 	});
 	test('a test names what it proves, and each covered collection lists its tests back', () => {
-		assert.deepEqual(fieldsOf('tests').covers.type, ['rnd/user-stories', 'rnd/change-requests', 'rnd/issues']);
+		assert.deepEqual(fieldsOf('tests').covers.type, ['rnd/user-stories', 'rnd/change-requests', 'rnd/issues', 'rnd/implementation-plans']);
 		for (const c of ['user-stories', 'change-requests', 'issues']) assertMirror(c, 'tests', 'tests', 'covers');
 		assertMirror('screens', 'tests', 'tests', 'screen');
 		assertMirror('products', 'tests', 'tests', 'product');
@@ -276,5 +276,27 @@ describe('the doctor', () => {
 		assert.ok(rnd, `no rnd capability; saw ${caps.map((c) => c.name).join(', ')}`);
 		assert.ok(rnd.checks.some((k) => k.label === 'ffmpeg'));
 		fs.rmSync(ws, { recursive: true, force: true });
+	});
+});
+
+describe('0.3.0 — the lifecycle fields', () => {
+	const cr = load('collections/rnd/change-requests.collection.yaml');
+	const plan = load('collections/rnd/implementation-plans.collection.yaml');
+	const tests = load('collections/rnd/tests.collection.yaml');
+	const dd = load('collections/rnd/design-docs.collection.yaml');
+	test('a change request names the designs it rests on, and the design doc lists its change requests back', () => {
+		assert.equal(cr.fields.design_docs.type, 'rnd/design-docs'); assert.equal(cr.fields.design_docs.many, true);
+		assert.equal(dd.fields.change_requests.type, 'rnd/change-requests'); assert.equal(dd.fields.change_requests.mirror_of, 'design_docs');
+	});
+	test('a plan may be written for a change request, which lists its plans back', () => {
+		assert.equal(plan.fields.change_request.type, 'rnd/change-requests');
+		assert.equal(cr.fields.implementation_plans.type, 'rnd/implementation-plans'); assert.equal(cr.fields.implementation_plans.mirror_of, 'change_request');
+	});
+	test('deploy stamps deployed_on on the change request', () => {
+		assert.equal(cr.fields.deployed_on.type, 'datetime');
+	});
+	test('a test may cover a plan — a Review Focus line is proof about no one story', () => {
+		assert.ok(tests.fields.covers.type.includes('rnd/implementation-plans'));
+		assert.equal(plan.fields.tests.type, 'rnd/tests'); assert.equal(plan.fields.tests.mirror_of, 'covers');
 	});
 });

@@ -38,9 +38,9 @@ fields:
     type: rnd/screens
     description: The screen this test exercises, when it is one screen.
   covers:
-    type: [rnd/user-stories, rnd/change-requests, rnd/issues]
+    type: [rnd/user-stories, rnd/change-requests, rnd/issues, rnd/implementation-plans]
     many: true
-    description: What this test PROVES — the stories it demonstrates, the change requests it accepts, the issues it regresses. Each of those lists its tests back.
+    description: What this test PROVES — the stories it demonstrates, the change requests it accepts, the issues it regresses, the plan whose Review Focus line it pins. Each of those lists its tests back.
   repo:
     type: repos
     description: The repo the automated test lives in.

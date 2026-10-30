@@ -31,6 +31,9 @@ fields:
   spec:
     type: rnd/design-docs
     description: The design doc this plan implements. The plan argues from the spec, so executors read both.
+  change_request:
+    type: rnd/change-requests
+    description: The change request this plan builds, when the plan is for a change rather than a whole design. The request lists its plans back.
   product:
     type: rnd/products
     description: The product the plan builds a piece of.
@@ -63,6 +66,11 @@ fields:
   tasks_done:
     type: integer
     description: How many have landed, tests green and committed — the progress marker; there is no separate run record.
+  tests:
+    type: rnd/tests
+    many: true
+    mirror_of: covers
+    description: GENERATED — the tests that prove this plan's promises. Set `covers` on the test.
   content:
     type: markdown
     body: true

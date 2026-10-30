@@ -69,6 +69,13 @@ fields:
   issue:
     type: rnd/issues
     description: The defect that motivated this change, when one did.
+  design_docs:
+    type: rnd/design-docs
+    many: true
+    description: The designs this change rests on or amends. Each lists its change requests back.
+  deployed_on:
+    type: datetime
+    description: 'When the change went live, set by the deploy stage after the live check. Empty until then; `status: implemented` goes with it.'
   supersedes:
     type: rnd/change-requests
     description: The earlier request this replaces. The earlier record stays.
@@ -82,6 +89,11 @@ fields:
     many: true
     mirror_of: covers
     description: GENERATED — the tests that accept this change. Set `covers` on the test.
+  implementation_plans:
+    type: rnd/implementation-plans
+    many: true
+    mirror_of: change_request
+    description: GENERATED — the plans that build this change. Set `change_request` on the plan.
 display:
   nav:
     icon: git-pull-request

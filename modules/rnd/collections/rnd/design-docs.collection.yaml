@@ -97,6 +97,11 @@ fields:
     many: true
     mirror_of: spec
     description: GENERATED — the plans that build this design. Set `spec` on the plan.
+  change_requests:
+    type: rnd/change-requests
+    many: true
+    mirror_of: design_docs
+    description: GENERATED — the change requests that rest on or amend this design. Set `design_docs` on the request.
 display:
   nav:
     icon: symbol-structure
