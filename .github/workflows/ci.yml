@@ -26,6 +26,11 @@ jobs:
 
       - run: npm ci
 
+      # rnd's prototype harness drives a real browser, and its held-out tests fail honestly rather than
+      # skip when none resolves (play-fails-honestly), so the runner installs the one devdep.mjs names.
+      - name: chromium for the prototype harness
+        run: npm i --no-save playwright-core && npx playwright-core install --with-deps chromium
+
       # Structure, compiles-alone (every module, from its packed tarball and as a copy, in a virgin
       # workspace on the engine in devDependencies), the interplay on real records, the leak gate and
       # the resolver rule — plus every module's own suite. The packed-tarball install IS the
