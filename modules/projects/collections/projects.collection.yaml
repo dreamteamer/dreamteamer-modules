@@ -77,11 +77,6 @@ fields:
     many: true
     mirror_of: project
     description: What this plan owes, by due date — generated from `deliverables.project`.
-  goals:
-    type: goals
-    many: true
-    mirror_of: projects
-    description: The goals this project serves — generated from `goals.projects`.
   phases:
     type: phases
     many: true

@@ -2,9 +2,10 @@
 //
 // The properties this file holds:
 //
-//   1. THE OBSERVED SET. `users`, `projects`, `activities`, `goals`, `decisions` and `deliverables`
-//      each have an authored counterpart of the same name in `users` or `projects`, and live in the
-//      `perspective` namespace beside the rest of the module.
+//   1. THE OBSERVED SET. `users`, `projects`, `activities`, `decisions` and `deliverables` each
+//      have an authored counterpart of the same name in `users` or `projects`, and live in the
+//      `perspective` namespace beside the rest of the module. `perspective/goals` has none: the
+//      authored `goals` left the projects module, so an inferred goal is joined to nothing.
 //   2. THEY ARE PARALLEL, NOT OVERLAYS. None declares `overlay: true`, because a merged collection could
 //      not tell a record a run FOUND from one a person WROTE.
 //   3. THE JOIN IS `real`: ONE-WAY, SOFT, AND POINTED AT ITS OWN COLLECTION. Soft means a plain
@@ -32,11 +33,12 @@ const PAIRS = {
 	users: { real: 'users', module: 'users' },
 	projects: { real: 'projects', module: 'projects' },
 	activities: { real: 'activities', module: 'projects' },
-	goals: { real: 'goals', module: 'projects' },
 	decisions: { real: 'decisions', module: 'projects' },
 	deliverables: { real: 'deliverables', module: 'projects' },
 };
 
+/** The whole observed world: every PAIRS collection plus `goals`, which is observed and joined to nothing. */
+const WORLD = [...Object.keys(PAIRS), 'goals'];
 const load = (p) => yaml.load(fs.readFileSync(p, 'utf8'));
 // each observed descriptor with its mixins merged in, so a mixin's field counts as its own
 const observed = Object.fromEntries(Object.keys(PAIRS).map((n) => [n, shippedDescriptor(`perspective/${n}`)]));
@@ -186,7 +188,7 @@ describe('concepts classify both worlds, and the two halves stay apart', () => {
 
 	test('`classifies` names every observed-world collection, and only those', () => {
 		assert.ok(concepts.classifies.many);
-		assert.deepEqual([...targetsOf(concepts.classifies)].sort(), Object.keys(PAIRS).map((n) => `perspective/${n}`).sort());
+		assert.deepEqual([...targetsOf(concepts.classifies)].sort(), WORLD.map((n) => `perspective/${n}`).sort());
 	});
 
 	test('`classifies` is HARD, because those collections are ours', () => {
@@ -223,9 +225,10 @@ describe('same structure, and the places it deliberately differs', () => {
 			'lanes and phases are not observed — those collections are gone');
 	});
 
-	test('an observed goal spells its test the way a declared one does', () => {
-		assert.ok('done_when' in propsOf(observed.goals));
-		assert.ok('done_when' in realFieldsOf('goals'));
-		assert.ok(!('statement' in propsOf(observed.goals)) && !('horizon' in propsOf(observed.goals)));
+	test('an observed goal spells its test as `done_when`, and carries no `real` — there is no declared goal to join', () => {
+		const goals = shippedDescriptor('perspective/goals');
+		assert.ok('done_when' in propsOf(goals));
+		assert.ok(!('real' in propsOf(goals)), 'the authored goals collection is gone from projects; a join to it would resolve to nothing');
+		assert.ok(!('statement' in propsOf(goals)) && !('horizon' in propsOf(goals)));
 	});
 });

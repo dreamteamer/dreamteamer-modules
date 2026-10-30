@@ -53,8 +53,8 @@ fields:
   # difference in authority. `decisions.decided_by` is a CLOSED PAIR — person or agent, no third —
   # because a person writing down their own fork always knows which they were. Evidence does not:
   # a commit message states a choice and names nobody, and a run that guessed would be attributing a
-  # decision to somebody who may not have made it. `unknown` is the honest default here and is
-  # REFUSED there, which is exactly what "same question, different authority" looks like in a schema.
+  # decision to somebody who may not have made it. `unknown` is the honest default here; there it
+  # is allowed only for a row read out of a source, which must cite that source and is never defaulted into — the same question, different authority.
   decided_by:
     type: string
     default: unknown

@@ -1,7 +1,7 @@
 {
 	"name": "@dreamteamer/projects",
-	"version": "0.1.0",
-	"description": "The plan and everyone in it: projects, phases, lanes, activities and gates, goals, decisions, deliverables, risks and teams.",
+	"version": "0.2.0",
+	"description": "The plan and everyone in it: projects, phases, lanes, activities and gates, decisions, deliverables, risks and teams.",
 	"license": "Apache-2.0",
 	"type": "module",
 	"repository": {
@@ -21,7 +21,7 @@
 	],
 	"dreamteamer": {
 		"title": "Projects",
-		"description": "The plan and everyone in it: projects, phases, lanes, activities and gates, goals, decisions, deliverables, risks and teams. A gate is an activity with `kind: gate`, so the plan reads as one ordered list. Owners and seats point at `users`, outside parties at `contacts`. Views band the plan by lane, person and phase, and list gates by holder. `bin/check-records.mjs` enforces what a schema cannot.",
+		"description": "The plan and everyone in it: projects, phases, lanes, activities and gates, decisions, deliverables, risks and teams. A gate is an activity with `kind: gate`, so the plan reads as one ordered list. Owners and seats point at `users`, outside parties at `contacts`. Views band the plan by lane, person and phase, and list gates by holder. `bin/check-records.mjs` enforces what a schema cannot.",
 		"engine": ">=0.33.0",
 		"peer_collections": [
 			"companies",

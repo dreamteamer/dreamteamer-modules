@@ -62,7 +62,6 @@ const REAL_TARGET = {
 	users: 'users',
 	projects: 'projects',
 	activities: 'activities',
-	goals: 'goals',
 	decisions: 'decisions',
 	deliverables: 'deliverables',
 };
@@ -180,7 +179,6 @@ const PEER = (() => {
 		['projects', 'data/projects', 'project'],
 		['activities', 'data/activities', 'activity'],
 		['tasks', 'data/tasks', 'task'],
-		['goals', 'data/goals', 'goal'],
 	]) {
 		// the compiled storage block, parent folder included when the collection is stored under
 		// another (`storage.under`) — `lib/records.mjs` owns the rule, and `refTarget` probes through it

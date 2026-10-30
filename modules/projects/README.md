@@ -1,7 +1,7 @@
 # @dreamteamer/projects
 
 The plan and everyone in it: projects, the phases and lanes they are read in, activities and gates,
-goals, decisions, deliverables, risks and teams. Every owner, lead and seat field points at `users`.
+decisions, deliverables, risks and teams. Every owner, lead and seat field points at `users`.
 
 ```bash
 npm install @dreamteamer/projects @dreamteamer/users

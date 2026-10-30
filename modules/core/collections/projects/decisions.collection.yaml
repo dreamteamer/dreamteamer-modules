@@ -7,6 +7,12 @@
 # `alternatives`, `reversibility`, `wrong_if` and `outcome` turn "was that a good call" into a check
 # rather than an argument, on either kind of decision. A decision that turns out badly gets a new
 # record naming it in `supersedes`; the earlier one stays.
+#
+# A THIRD VALUE FOR A DECISION READ OUT OF A SOURCE. A legacy decision log, a meeting's minutes, a
+# client's register: the choice is written down, the decider often is not, and the alternatives and
+# the reversibility were never recorded. `decided_by: unknown` keeps such a row in the one table
+# without inventing the part that is hardest to reconstruct — it must cite its `source`, and the
+# four reviewable fields are required of `person` and `agent` only (the `constraints` block).
 name: decisions
 description: >-
   A decision made on a project, by a person or by an agent — what was chosen, what else was on the table, why, and how expensive it would be to undo. One table for both, with `decided_by` saying which.
@@ -37,9 +43,9 @@ fields:
   decided_by:
     type: string
     required: true
-    enum: [person, agent]
+    enum: [person, agent, unknown]
     description: >-
-      Who made the call. `person` requires `decider` or `external_decider`; `agent` requires `agent`. `bin/check-records.mjs` refuses either half missing, so a reader never has to guess which kind of decision they are looking at.
+      Who made the call. `person` requires `decider` or `external_decider`; `agent` requires `agent`; `unknown` is a decision read out of a source that does not say — it requires `source` and is excused `alternatives`, `rationale` and `reversibility`, never filled in from a guess. `bin/check-records.mjs` refuses the matching half missing, so a reader never has to guess which kind of decision they are looking at.
   decider:
     type: users
     description: >-
@@ -79,20 +85,17 @@ fields:
     description: What was chosen, stated plainly and in the active voice.
   alternatives:
     type: string
-    required: true
     many: true
     description: >-
-      What else was on the table and why each lost. If nothing else was considered, write that as the single item.
+      What else was on the table and why each lost. If nothing else was considered, write that as the single item. Required unless `decided_by` is `unknown`.
   rationale:
     type: string
-    required: true
-    description: Why this one.
+    description: Why this one. Required unless `decided_by` is `unknown`.
   reversibility:
     type: string
-    required: true
     enum: [trivial, easy, moderate, expensive, one-way-door]
     description: >-
-      Cost of undoing it later. `one-way-door` for anything that writes many records, names a public identifier, or is said out loud to a client.
+      Cost of undoing it later. `one-way-door` for anything that writes many records, names a public identifier, or is said out loud to a client. Required unless `decided_by` is `unknown`.
   instruction_quoted:
     type: string
     description: >-
@@ -150,6 +153,14 @@ fields:
     default: normal
     enum: [low, normal, high]
     description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
+# The four reviewable fields are what turn a description of what happened into a decision — required
+# of anyone writing down their own fork, and not demanded of a row read out of a source, which must
+# instead say where it was read.
+constraints:
+  - if: {required: [decided_by], properties: {decided_by: {enum: [person, agent]}}}
+    then: {required: [alternatives, rationale, reversibility]}
+  - if: {required: [decided_by], properties: {decided_by: {const: unknown}}}
+    then: {required: [source]}
 display:
   nav:
     icon: git-branch

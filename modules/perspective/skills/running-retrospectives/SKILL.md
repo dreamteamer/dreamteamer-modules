@@ -268,7 +268,7 @@ record with `reach: unavailable` is the record of that, never a failure.
 | a role taken from a title or a self-description | `role` is observed behaviour, or it is not written |
 | merging two observed people because the names match | a person decides a merge; handles are the key |
 | setting `real` on a world object from a name that matches | `real` is a PROPOSAL a person confirms, exactly like `contact` — a script or a pass that guesses it is authoring truth |
-| writing an observed object into `users`/`projects`/`activities`/`goals`/`decisions`/`deliverables` | those are the person's own records; a run writes `perspective/*` and points `real` at them |
+| writing an observed object into `users`/`projects`/`activities`/`decisions`/`deliverables` | those are the person's own records; a run writes `perspective/*` and points `real` at them |
 | a finding on one session written as `pattern` | `anecdote`; it stays one until the person confirms it |
 | proposing from an anecdote | nothing is proposed from an anecdote alone |
 | writing a seed nobody confirmed | ask first; a wrong seed loses trust faster than anything |

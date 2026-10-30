@@ -11,7 +11,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import yaml from 'js-yaml';
-import { violationsOf, GATE_ONLY } from '../../../modules/projects/bin/check-records.mjs';
+import { violationsOf, decisionViolationsOf, GATE_ONLY } from '../../../modules/projects/bin/check-records.mjs';
 import { ALL, OWNER, targetsOf } from '../../../tests/helpers/descriptors.mjs';
 
 // the repo root — these tests were written at the root of dreamteamer/extensions, whose modules/ layout
@@ -509,11 +509,21 @@ describe('decisions — the fold, and what keeps it honest', () => {
 	const d = load('projects/collections/decisions.collection.yaml');
 	const p = d.fields;
 
-	test('`decided_by` is REQUIRED and closed to person|agent — no "unknown"', () => {
+	test('`decided_by` is REQUIRED and closed to person|agent|unknown', () => {
 		assert.ok(requiredOf(d).includes('decided_by'),
 			'folding an agent\'s fork in with a person\'s call is only safe while every record says which');
-		assert.deepEqual(p.decided_by.enum, ['person', 'agent'],
-			'a decision nobody can attribute is a rumour; the OBSERVED half is where `unknown` is honest');
+		assert.deepEqual(p.decided_by.enum, ['person', 'agent', 'unknown'],
+			'a third value for a row read out of a source that names nobody — gated below, never a default');
+		assert.equal(p.decided_by.default, undefined, '`unknown` is a claim about the source, not a value to fall into');
+	});
+
+	test('an `unknown` decision must cite its source, and the checker refuses one that also names a decider', () => {
+		const sourced = decisionViolationsOf('x', { decided_by: 'unknown', source: 'DECISION-LOG.md, row 4' });
+		assert.deepEqual(sourced, []);
+		assert.match(decisionViolationsOf('x', { decided_by: 'unknown' }).join('\n'), /needs `source`/);
+		assert.match(decisionViolationsOf('x', { decided_by: 'unknown', source: 's', decider: 'users/dana' }).join('\n'), /must not carry/);
+		const rule = d.constraints.find((c) => c.if.properties.decided_by.const === 'unknown');
+		assert.deepEqual(rule.then.required, ['source']);
 	});
 
 	test('the observed half DOES carry `unknown` — same question, different authority', () => {
@@ -522,10 +532,14 @@ describe('decisions — the fold, and what keeps it honest', () => {
 			'evidence states a choice and names nobody; a run that guessed would attribute it to the wrong person');
 	});
 
-	test('the four fields that make a fork reviewable are REQUIRED, not optional', () => {
-		for (const f of ['alternatives', 'rationale', 'reversibility', 'decision']) {
-			assert.ok(requiredOf(d).includes(f), `${f} is what turns a description of what happened into a decision`);
-		}
+	test('the four fields that make a fork reviewable are REQUIRED of a person or an agent, never invented for an unknown', () => {
+		assert.ok(requiredOf(d).includes('decision'), 'what was chosen is required of every row');
+		const rule = d.constraints.find((c) => c.if.properties.decided_by.enum);
+		assert.deepEqual(rule.if.properties.decided_by.enum, ['person', 'agent']);
+		assert.deepEqual(rule.if.required, ['decided_by'], 'an if that names no required passes vacuously on a record lacking the field');
+		assert.deepEqual(rule.then.required, ['alternatives', 'rationale', 'reversibility'],
+			'what turns a description of what happened into a decision — asked of whoever wrote their own fork down');
+		for (const f of ['alternatives', 'rationale', 'reversibility']) assert.ok(!requiredOf(d).includes(f), `${f} is conditional, not field-level required`);
 	});
 
 	test('`wrong_if` is a prediction about THIS world, and `outcome` is its result', () => {
@@ -623,16 +637,16 @@ describe('users — the agent fold', () => {
 
 // ── `slug` and `code` — one field name used to mean two things ───────────────────────────────────
 // `activities.code` (`a-01`) and `risks.code` (`rk-01`) are identifiers a room says out loud and reads
-// in ORDER — codes, required. On `tasks`, `decisions`, `goals` and `deliverables` the field existed
+// in ORDER — codes, required. On `tasks`, `decisions` and `deliverables` the field existed
 // for one reason: a name in any script has to produce a typeable id, because the engine's `slug`
 // filter returns a hash when a value has no latin characters. That is a slug, optional, and the id
 // prefers it and falls back to the name.
 describe('slug and code — a latin handle is not a plan code', () => {
-	const SLUGGED = ['tasks', 'decisions', 'goals', 'deliverables'];
+	const SLUGGED = ['tasks', 'decisions', 'deliverables'];
 	const CODED = ['activities', 'risks'];
 	const desc = (c) => load(`${OWNER.get(c)}/collections/${c}.collection.yaml`);
 
-	test('the four latin-handle collections carry an OPTIONAL `slug` and no `code`', () => {
+	test('the three latin-handle collections carry an OPTIONAL `slug` and no `code`', () => {
 		for (const c of SLUGGED) {
 			const d = desc(c);
 			assert.ok(d.fields.slug, `${c} has no slug`);

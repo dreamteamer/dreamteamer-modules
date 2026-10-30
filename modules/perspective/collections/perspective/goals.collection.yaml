@@ -48,11 +48,6 @@ fields:
     required: true
     description: >-
       What would be TRUE if this were met, in one or two sentences. The test the evidence is read against — and the reason a goal that excludes nothing is visible as such, because its test comes out empty of content. REQUIRED, exactly as it is on `goals`: the difference is only who wrote it, a person there and a run here.
-  real:
-    type: goals
-    soft: true
-    description: >-
-      The `goals` record this observed outcome appears to BE — the one-way, soft join to the goal a person declared. A PROPOSAL, set only on a confirmed match, and the most valuable one in the module: an inferred goal that lines up with a declared one is corroboration, and one that does NOT is the most interesting thing a retrospective can find. The argument for one-way and for soft is written out once, on `perspective/users.real`.
   # ── how it was arrived at ────────────────────────────────────────────────────────────────────
   from_candidate:
     type: string
@@ -155,6 +150,5 @@ display:
       - status
       - standing
       - evidence_count
-      - real
       - first_seen
       - last_seen

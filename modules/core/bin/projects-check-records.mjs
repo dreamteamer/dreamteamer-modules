@@ -85,6 +85,11 @@ export function decisionViolationsOf(id, record) {
 	} else if (by === 'agent') {
 		if (!has('agent')) out.push(`${id}: \`decided_by: agent\` needs \`agent\` — which agent and which model, e.g. \`agents/claude-code (claude-opus-5)\``);
 		if (has('decider') || has('external_decider')) out.push(`${id}: \`decided_by: agent\` must not carry \`decider\` — a person who merely approved it afterwards belongs in the body, not in this field`);
+	} else if (by === 'unknown') {
+		// A row read out of a source: the source is its attribution, and naming a decider beside
+		// `unknown` is the two answers to one question.
+		if (!has('source')) out.push(`${id}: \`decided_by: unknown\` needs \`source\` — where the decision was read from is the only attribution it has`);
+		if (has('decider') || has('external_decider') || has('agent')) out.push(`${id}: \`decided_by: unknown\` must not carry \`decider\`, \`external_decider\` or \`agent\` — if one of them decided, say so in \`decided_by\``);
 	}
 
 	// A `supersedes` that points at itself is a loop no reader can walk.

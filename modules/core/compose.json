@@ -14,7 +14,7 @@
 	],
 	"title": "Core",
 	"description": "Every core noun from one install: users, companies, contacts, engagements, tasks, projects, meetings, files, assets, artifacts, sessions, metrics.",
-	"orientation": "The nouns every workspace has, composed from the small official modules so one install brings them all: `users` with `roles` and `responsibilities`; `companies`, `contacts`, `engagements`; `tasks`; `projects` with `decisions` and `goals`; `meetings` with recordings and docs; `files`; `assets` and `artifacts`; `sessions` and `metrics`. Install core OR the small modules, never both.",
+	"orientation": "The nouns every workspace has, composed from the small official modules so one install brings them all: `users` with `roles` and `responsibilities`; `companies`, `contacts`, `engagements`; `tasks`; `projects` with `decisions`, `risks` and `teams`; `meetings` with recordings and docs; `files`; `assets` and `artifacts`; `sessions` and `metrics`. Install core OR the small modules, never both.",
 	"files": {
 		"bin/meetings-migrate-attendees.mjs": {
 			"from": "meetings/bin/migrate-attendees.mjs",
@@ -22,7 +22,7 @@
 		},
 		"bin/projects-check-records.mjs": {
 			"from": "projects/bin/check-records.mjs",
-			"hash": "sha256:390eb9e6958fa860d6d23beffc750ce69c45fcfa24343eae24e832666c1733b6"
+			"hash": "sha256:2dd4347d7212ba7d87c8cc0cd7b84589d6b3314666bb4244f11ee16e690cd978"
 		},
 		"bin/users-check-records.mjs": {
 			"from": "users/bin/check-records.mjs",
@@ -98,15 +98,11 @@
 		},
 		"collections/projects/decisions.collection.yaml": {
 			"from": "projects/collections/decisions.collection.yaml",
-			"hash": "sha256:918c6250a35d668a82ff57eba8151a6ed7f09537802c9584a79d84c323ad8d88"
+			"hash": "sha256:0c5bf18d7cdadf26ea51ae470b897a4f92e4b6dd192b6b5517b32b32cf7fb5ce"
 		},
 		"collections/projects/deliverables.collection.yaml": {
 			"from": "projects/collections/deliverables.collection.yaml",
 			"hash": "sha256:2302c6143f136d653a63cae2d507198dff6d53e9758377304aa6f3a14bc7c8b4"
-		},
-		"collections/projects/goals.collection.yaml": {
-			"from": "projects/collections/goals.collection.yaml",
-			"hash": "sha256:829ae2598c3af07e000c5e5aa0048bab2c6d2798dc9858411cf21a752ce3bf49"
 		},
 		"collections/projects/phases.collection.yaml": {
 			"from": "projects/collections/phases.collection.yaml",
@@ -114,7 +110,7 @@
 		},
 		"collections/projects/projects.collection.yaml": {
 			"from": "projects/collections/projects.collection.yaml",
-			"hash": "sha256:f4fb8ed360c566390a1adb2b346f9c759a4e21832c4f25c53702e81e18ac3b1c"
+			"hash": "sha256:8d73bd243336efcef0535ab55dcb15fede66906655bef17246ab96f655a076cc"
 		},
 		"collections/projects/risks.collection.yaml": {
 			"from": "projects/collections/risks.collection.yaml",
@@ -126,7 +122,7 @@
 		},
 		"collections/projects/users.collection.yaml": {
 			"from": "projects/collections/users.collection.yaml",
-			"hash": "sha256:0021cc7614c7b553137a3b8bfed85da60f42a04fab37873328e798e4c870b537"
+			"hash": "sha256:367562d29b5a1969df74c523c5a3e4ced854f7d98000451733ec39a6e8d0d98e"
 		},
 		"collections/recordings/meeting-recordings.collection.yaml": {
 			"from": "recordings/collections/meeting-recordings.collection.yaml",

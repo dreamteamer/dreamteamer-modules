@@ -21,11 +21,6 @@ fields:
     many: true
     mirror_of: owner
     description: The artefacts this person is accountable for handing over — generated from `deliverables.owner`.
-  goals:
-    type: goals
-    many: true
-    mirror_of: owner
-    description: The goals this person is accountable for — generated from `goals.owner`.
   led_projects:
     type: projects
     many: true
