@@ -10,5 +10,5 @@ available_when:
 done_when:
   implementation_plans:
     status:
-      _in: [approved, in-progress, done, abandoned]
+      _in: [approved, in-progress, done]
 description: "after PLAN: review the request's draft plan (subject the plan, change_request this request); approve makes it approved"

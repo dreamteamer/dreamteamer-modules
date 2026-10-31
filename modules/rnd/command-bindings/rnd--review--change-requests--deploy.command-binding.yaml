@@ -5,7 +5,7 @@ available_when:
   deployed_on:
     _nempty: true
   status:
-    _neq: implemented
+    _eq: accepted
 done_when:
   status:
     _eq: implemented

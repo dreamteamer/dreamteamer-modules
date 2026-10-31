@@ -605,7 +605,7 @@ describe('0.5.2 — a review after every stage, every review listed on its recor
 		assert.deepEqual(t.available_when.tested_on, { _nempty: true }); assert.deepEqual(t.available_when.verified_on, { _empty: true });
 		assert.match(t.description, /kind test/);
 		const d = binding('rnd--review--change-requests--deploy');
-		assert.deepEqual(d.available_when, { deployed_on: { _nempty: true }, status: { _neq: 'implemented' } });
+		assert.deepEqual(d.available_when, { deployed_on: { _nempty: true }, status: { _eq: 'accepted' } }); // r1-05: a rejected request with deployed_on is offered nothing
 		assert.deepEqual(d.done_when, { status: { _eq: 'implemented' } });
 		assert.match(d.description, /kind acceptance/);
 		assert.doesNotMatch(read('skills/rnd-deploy/SKILL.md'), /deployed_on=<now> status=implemented/, 'the deploy stage no longer sets implemented — the live review does');

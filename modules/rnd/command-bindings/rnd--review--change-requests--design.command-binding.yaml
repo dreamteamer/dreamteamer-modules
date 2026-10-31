@@ -7,8 +7,10 @@ available_when:
   design_docs:
     status:
       _eq: draft
+  implementation_plans:
+    _empty: true
 done_when:
   design_docs:
     status:
-      _in: [active, superseded]
+      _eq: active
 description: "after DESIGN: review the request's draft design doc (subject the doc, change_request this request); approve makes it active"

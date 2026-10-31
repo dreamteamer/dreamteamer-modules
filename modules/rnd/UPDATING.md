@@ -56,17 +56,28 @@ a request's approved plan from the request.
 What that does to a record in flight:
 
 - **A request still `suggested` with no design** answers `/rnd:design`, not `/rnd:review`: the
-  acceptance review waits for an active design. **An accepted request with no design** answers
-  `/rnd:design` too — `/rnd:plan` now needs an active design (a change too small for one is an
-  issue on the quick path).
+  acceptance review waits for an active design. **An accepted request with no design and no plan**
+  answers `/rnd:design` too — `/rnd:plan` now needs an active design (a change too small for one is
+  an issue on the quick path).
+- **An accepted request with no design and a plan already** is not sent back to design: `/rnd:design`
+  is offered only while the request has no plan, so it answers by its plan's state — `/rnd:implement`,
+  the code review, `/rnd:test` — exactly one. Write the design later if you want it on record.
+- **A request with a draft design AND a plan** answers by the plan too; the draft design's review is
+  on the design doc itself (`dt next rnd/design-docs/<id>`), never a second verb on the request.
 - **A plan already `done`** answers `/rnd:review` (the code review) until `code_approved_on` is set.
   If its branch was reviewed before this version, stamp it from that review:
   `dt set rnd/implementation-plans/<id> code_approved_on=<the review's date>` and set the review's
   `change_request`.
-- **A request with `verified_on` set** is unaffected. One verified before this version has no
-  `tested_on`; leave it empty — nothing reads it once `verified_on` is set.
+- **A request with `verified_on` set** answers `/rnd:deploy` until `deployed_on` is set, then the
+  live acceptance review, and nothing once `implemented` — the code review and the test stage are
+  never offered again. One verified before this version has no `tested_on`; leave it empty.
 - **A request deployed before this version** is `implemented` already (the deploy stage set it) and
-  answers nothing. One deployed from now on stays `accepted` until the live acceptance review.
+  answers nothing. One deployed from now on stays `accepted` until the live acceptance review; a
+  `rejected` request with `deployed_on` is offered nothing.
+- **A second plan or design beside a dead one** (a plan `abandoned` next to a new `draft`, a design
+  `superseded` next to a new `draft`) answers the new record's review: a dead record never counts
+  as the stage done. A request whose only plan is `abandoned` answers nothing — give it a new plan
+  by hand (`dt add rnd/implementation-plans … --change_request <it>`), the known limit.
 
 **The stage map.** `rnd/change-requests` declares its lifecycle under
 `display.record.options.stages`: design · plan · implement · test · deploy, each with the fields that

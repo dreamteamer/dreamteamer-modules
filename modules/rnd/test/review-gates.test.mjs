@@ -149,3 +149,54 @@ describe('relations rebuild fills the new mirrors on reviews written before them
 		dt(root, 'check');
 	});
 });
+
+describe('requests in flight before 0.5.2, and a dead second plan or design — still one verb, never none while work is open', () => {
+	const root = rndWorkspace();
+	put(root, 'data/rnd/products/grantee-portal.product.md', '---\nname: Grantee portal\n---\n');
+	const cr = (key, ...flags) => {
+		dt(root, 'add', 'rnd/change-requests', '--key', key, '--name', key, '--products', 'rnd/products/grantee-portal', ...flags);
+		return `rnd/change-requests/${key}`;
+	};
+	const plan = (ref, status, ...flags) => `rnd/implementation-plans/${json(root, 'add', 'rnd/implementation-plans', '--name', `${ref.split('/').pop()} ${status}`, '--change_request', ref, '--status', status, ...flags).id}`;
+	const design = (name, status) => `rnd/design-docs/${json(root, 'add', 'rnd/design-docs', '--name', name, '--product', 'rnd/products/grantee-portal', '--status', status).id}`;
+
+	test('verified before 0.5.2, no design: deploy, and neither the design nor the code review (r1-01)', () => {
+		const ref = cr('roster-export', '--status', 'accepted', '--verified_on', '2026-01-15T11:00:00+02:00');
+		plan(ref, 'done');
+		assert.deepEqual(available(root, ref), ['rnd--deploy--change-requests']);
+	});
+	test('a plan in progress and no design: implement, not design (r1-01)', () => {
+		const ref = cr('csv-import', '--status', 'accepted');
+		plan(ref, 'in-progress');
+		assert.deepEqual(available(root, ref), ['rnd--implement--change-requests']);
+	});
+	test('a draft design beside a plan in progress: implement on the request, the design review on the doc (r1-01)', () => {
+		const ref = cr('audit-log', '--status', 'accepted');
+		const dd = design('Audit log', 'draft');
+		dt(root, 'set', ref, `design_docs=${dd}`);
+		plan(ref, 'in-progress');
+		assert.deepEqual(available(root, ref), ['rnd--implement--change-requests']);
+		assert.deepEqual(available(root, dd), ['rnd--review--design-docs']);
+	});
+	test('an abandoned plan beside a new draft: the draft\'s review, not nothing (r1-02)', () => {
+		const ref = cr('bulk-close', '--status', 'accepted');
+		const dd = design('Bulk close', 'active');
+		dt(root, 'set', ref, `design_docs=${dd}`);
+		plan(ref, 'abandoned');
+		plan(ref, 'draft', '--spec', dd);
+		assert.deepEqual(available(root, ref), ['rnd--review--change-requests--plan']);
+	});
+	test('a superseded design beside a new draft: the draft\'s review, not nothing (r1-02)', () => {
+		const ref = cr('sso-login', '--status', 'suggested');
+		const old = design('SSO login v1', 'superseded');
+		const dd = design('SSO login v2', 'draft');
+		dt(root, 'set', ref, `design_docs=${old}`, `design_docs=${dd}`);
+		assert.deepEqual(available(root, ref), ['rnd--review--change-requests--design']);
+	});
+	test('a rejected request that was deployed is offered nothing (r1-05)', () => {
+		const ref = cr('dark-mode-2', '--status', 'rejected', '--deployed_on', '2026-01-16T10:00:00+02:00');
+		assert.deepEqual(available(root, ref), []);
+	});
+	test('and the clean walk\'s records still check clean', () => { dt(root, 'check'); });
+});
+

@@ -6,6 +6,8 @@ available_when:
     _in: [suggested, accepted]
   design_docs:
     _empty: true
+  implementation_plans:
+    _empty: true
 done_when:
   design_docs:
     _nempty: true
