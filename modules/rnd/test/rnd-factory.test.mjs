@@ -268,9 +268,9 @@ describe('the commands, the bindings and the agent — every entry names a skill
 	});
 	const dir = path.join(RND, 'command-bindings');
 	const bindings = fs.readdirSync(dir).filter((f) => f.endsWith('.command-binding.yaml') && authored('command-bindings', f)).map((f) => ({ file: f, ...yaml.load(fs.readFileSync(path.join(dir, f), 'utf8')) }));
-	test('eighteen bindings: three on the reference chain, fifteen on the lifecycle', () => {
-		assert.equal(bindings.length, 18);
-		assert.equal(bindings.filter((b) => STAGES.includes(b.command.replace(/^commands\//, ''))).length, 15);
+	test('twenty-six bindings: three on the reference chain, twenty-three on the lifecycle', () => {
+		assert.equal(bindings.length, 26);
+		assert.equal(bindings.filter((b) => STAGES.includes(b.command.replace(/^commands\//, ''))).length, 23);
 	});
 	/** The fields of a collection by its qualified name, or null when it is not an rnd collection. */
 	const fieldsByName = (name) => name.startsWith('rnd/') ? load(`collections/${name}.collection.yaml`).fields : null;
@@ -354,11 +354,11 @@ describe('0.3.0 — the lifecycle fields', () => {
 		assert.equal(cr.fields.accepted_by.type, 'string');
 		assert.equal(plan.fields.verified_on.type, 'datetime');
 	});
-	test('the gates read those marks in order: deploy needs verified_on, test needs a done plan, plan needs an active design or none', () => {
+	test('the gates read those marks in order: deploy needs verified_on, test needs an approved code review, plan needs an active design', () => {
 		const b = (f) => yaml.load(fs.readFileSync(path.join(RND, 'command-bindings', f), 'utf8'));
 		assert.deepEqual(b('rnd--deploy--change-requests.command-binding.yaml').available_when.verified_on, { _nempty: true });
-		assert.deepEqual(b('rnd--test--change-requests.command-binding.yaml').available_when.implementation_plans, { status: { _eq: 'done' } });
-		assert.ok(b('rnd--plan--change-requests.command-binding.yaml').available_when._or.some((g) => g.design_docs?.status?._eq === 'active'));
+		assert.deepEqual(b('rnd--test--change-requests.command-binding.yaml').available_when.implementation_plans, { code_approved_on: { _nempty: true } });
+		assert.deepEqual(b('rnd--plan--change-requests.command-binding.yaml').available_when.design_docs, { status: { _eq: 'active' } }, 'a request is planned against its active design — none is no longer enough (0.5.2: one next verb)');
 		for (const f of fs.readdirSync(path.join(RND, 'command-bindings'))) if (authored('command-bindings', f) && !/prototype--prototypes|--products|ingest-reference/.test(f)) assert.ok(b(f).done_when, `${f} has no done_when — the agent could loop on it`);
 	});
 	test('a defect takes the quick path: a plan may fix an issue, which lists its plans back', () => {
@@ -517,15 +517,17 @@ describe('the review-gate experiment — a paired unattended run on a five-line 
 		assert.match(skill('rnd-test'), /stamp ONE record/);
 		assert.match(skill('rnd-test'), /never both/);
 		assert.match(agent('rnd-agent'), /`verified_on` on that one record/);
-		assert.match(agent('qa-manager'), /the change request when the plan has one, else the plan — never by you/);
-		assert.match(skill('recording-reviews'), /`verified_on` on ONE record/);
+		assert.match(agent('qa-manager'), /the change request when the plan has one, else the plan, never both/);
+		assert.match(skill('recording-reviews'), /`verified_on=<now>` on ONE record/);
 		assert.match(fieldsOf('implementation-plans').verified_on.description, /never on both/);
+		// 0.5.2: the stage stamps tested_on on the one record; the test REVIEW's approve stamps verified_on
 		const plan = binding('rnd--test--implementation-plans');
 		assert.deepEqual(plan.available_when.change_request, { _empty: true }, 'a plan with a change request must not offer /rnd:test on the plan');
-		assert.deepEqual(plan.done_when, { verified_on: { _nempty: true } });
+		assert.deepEqual(plan.done_when, { tested_on: { _nempty: true } });
+		assert.deepEqual(binding('rnd--review--implementation-plans--test').done_when, { verified_on: { _nempty: true } });
 		const cr = binding('rnd--test--change-requests');
-		assert.deepEqual(cr.done_when, { verified_on: { _nempty: true } });
-		assert.deepEqual(cr.available_when.implementation_plans, { status: { _eq: 'done' } });
+		assert.deepEqual(cr.done_when, { tested_on: { _nempty: true } });
+		assert.deepEqual(binding('rnd--review--change-requests--test').done_when, { verified_on: { _nempty: true } });
 	});
 	test('10. dt next lists every eligible command; the walk follows the lifecycle order and takes prototype and draft-prd only on request', () => {
 		const a = agent('rnd-agent');
@@ -545,5 +547,105 @@ describe('the review-gate experiment — a paired unattended run on a five-line 
 		assert.match(readme, /A paired experiment[\s\S]*stopped delivery on a tiny ask in\none unattended run/);
 		assert.match(readme, /needs-decision/);
 		assert.match(readme, /graded by its effect within the ask/);
+	});
+});
+
+// 0.5.2 — A REVIEW AFTER EVERY STAGE. The walk itself — `dt next` naming exactly one verb at every stage, on a
+// real engine — is test/review-gates.test.mjs; this pins the shape it rests on, so a descriptor edit that breaks
+// the shape fails here by name.
+describe('0.5.2 — a review after every stage, every review listed on its records', () => {
+	const read = (rel) => fs.readFileSync(path.join(RND, rel), 'utf8');
+	const desc = (c) => load(`collections/rnd/${c}.collection.yaml`);
+	const fieldsOf = (c) => desc(c).fields;
+	const binding = (f) => yaml.load(read(`command-bindings/${f}.command-binding.yaml`));
+	test('a review names the change request it belongs to, and the request lists every one — mirror_of change_request', () => {
+		assert.equal(fieldsOf('reviews').change_request.type, 'rnd/change-requests');
+		const r = fieldsOf('change-requests').reviews;
+		assert.equal(r.type, 'rnd/reviews'); assert.equal(r.many, true); assert.equal(r.mirror_of, 'change_request');
+		assert.match(r.description, /^GENERATED/);
+	});
+	test('design docs, plans, tests, issues and features list theirs by subject', () => {
+		const subj = fieldsOf('reviews').subject.type;
+		for (const c of ['design-docs', 'implementation-plans', 'tests', 'issues', 'features']) {
+			const r = fieldsOf(c).reviews;
+			assert.ok(r, `${c} has no reviews mirror`);
+			assert.equal(r.type, 'rnd/reviews'); assert.equal(r.many, true); assert.equal(r.mirror_of, 'subject', c);
+			assert.ok(subj.includes(`rnd/${c}`), `rnd/reviews.subject cannot name rnd/${c}`);
+		}
+	});
+	test('each mirror sits beside the plans and tests mirrors, where a record page draws them', () => {
+		const at = (c, f) => Object.keys(fieldsOf(c)).indexOf(f);
+		assert.equal(at('change-requests', 'reviews'), at('change-requests', 'implementation_plans') + 1);
+		assert.equal(at('implementation-plans', 'reviews'), at('implementation-plans', 'tests') + 1);
+	});
+	test('the reviewer sets change_request on EVERY review of a lifecycle, the request itself included — skill, agent, command', () => {
+		assert.match(read('skills/recording-reviews/SKILL.md'), /`change_request` goes on EVERY review in a request's lifecycle, whatever the subject — the request itself included/);
+		assert.match(read('skills/recording-reviews/SKILL.md'), /--change_request rnd\/change-requests\/<id>/);
+		assert.match(read('agents/qa-manager.agent.md'), /carries `change_request`, whatever its subject/);
+		assert.match(read('commands/rnd/review.command.md'), /set `change_request` on the review whatever its subject/);
+	});
+	test('the stages stamp their marks as datetimes: tested_on by the test stage; code_approved_on and verified_on by the reviewer', () => {
+		assert.equal(fieldsOf('change-requests').tested_on.type, 'datetime');
+		for (const f of ['code_approved_on', 'tested_on', 'verified_on']) assert.equal(fieldsOf('implementation-plans')[f].type, 'datetime', f);
+		assert.match(fieldsOf('change-requests').verified_on.description, /stamped by that reviewer/);
+		assert.match(read('skills/recording-reviews/SKILL.md'), /A code review: `code_approved_on=<now>` on the plan/);
+		assert.match(read('skills/rnd-test/SKILL.md'), /Don't review your own run, and don't stamp `verified_on`/);
+	});
+	test('after IMPLEMENT: a code review is bound to a done plan, done only by the stamp AND a code review AND an approve on the plan', () => {
+		const b = binding('rnd--review--implementation-plans--code');
+		assert.equal(b.command, 'commands/rnd/review');
+		assert.deepEqual(b.available_when, { status: { _eq: 'done' } });
+		assert.deepEqual(b.done_when.code_approved_on, { _nempty: true }, 'the stamp: a two-key condition on a many-valued reference matches across two reviews');
+		assert.deepEqual(b.done_when.reviews, { kind: { _eq: 'code' } });
+		assert.deepEqual(b.done_when._and, [{ reviews: { verdict: { _eq: 'approve' } } }]);
+		assert.match(b.description, /kind code/); assert.match(b.description, /change_ref/);
+	});
+	test('after TEST and after DEPLOY: the test review needs tested_on and stamps verified_on; the live acceptance review sets implemented', () => {
+		const t = binding('rnd--review--change-requests--test');
+		assert.deepEqual(t.available_when.tested_on, { _nempty: true }); assert.deepEqual(t.available_when.verified_on, { _empty: true });
+		assert.match(t.description, /kind test/);
+		const d = binding('rnd--review--change-requests--deploy');
+		assert.deepEqual(d.available_when, { deployed_on: { _nempty: true }, status: { _neq: 'implemented' } });
+		assert.deepEqual(d.done_when, { status: { _eq: 'implemented' } });
+		assert.match(d.description, /kind acceptance/);
+		assert.doesNotMatch(read('skills/rnd-deploy/SKILL.md'), /deployed_on=<now> status=implemented/, 'the deploy stage no longer sets implemented — the live review does');
+		assert.doesNotMatch(read('commands/rnd/deploy.command.md'), /`status: implemented`/);
+	});
+	test('the rnd-agent never gives a review: it hands each to the qa-manager, and stops at one it cannot hand over', () => {
+		const a = read('agents/rnd-agent.agent.md');
+		assert.match(a, /Reviews are never yours to give/);
+		assert.match(a, /You stop at each review you cannot hand over: without an Agent tool you stop/);
+		assert.match(a, /names exactly one available verb at every stage/);
+		assert.doesNotMatch(a, /load `recording-reviews` and review as a separate pass/, 'the self-review fallback is gone');
+	});
+	test('the stage map is declared on the change request: five stages in order, each gate a real binding, every lifecycle binding drawn once', () => {
+		const cr = desc('change-requests');
+		const stages = cr.display.record.options.stages;
+		assert.equal(cr.fields[cr.display.record.options.stage_reviews]?.mirror_of, 'change_request', 'the stages pick from the request\'s reviews mirror');
+		assert.deepEqual(stages.map((s) => s.title), ['design', 'plan', 'implement', 'test', 'deploy']);
+		const kinds = fieldsOf('reviews').kind.enum;
+		const drawn = [];
+		for (const s of stages) {
+			for (const f of s.fields) assert.ok(cr.fields[f], `stage ${s.title}: no field ${f}`);
+			for (const m of s.reviews) {
+				assert.deepEqual(Object.keys(m).filter((k) => !['kind', 'subject', 'before', 'since'].includes(k)), [], `stage ${s.title}: unknown matcher key`);
+				if (m.subject && m.subject !== 'self') assert.ok(cr.fields[m.subject], `stage ${s.title}: subject ${m.subject}`);
+				for (const k of ['before', 'since']) if (m[k]) assert.equal(cr.fields[m[k]]?.type, 'datetime', `stage ${s.title}: ${k} ${m[k]}`);
+				for (const k of m.kind ?? []) assert.ok(kinds.includes(k), `stage ${s.title}: kind ${k}`);
+			}
+			for (const g of s.gate) {
+				const b = binding(g);
+				assert.equal(b.collection, 'collections/rnd/change-requests', `${g} is not bound to change requests`);
+				drawn.push(g);
+			}
+		}
+		const lifecycle = fs.readdirSync(path.join(RND, 'command-bindings')).filter((f) => f.endsWith('--change-requests.command-binding.yaml') || /--change-requests--[a-z]+\.command-binding\.yaml$/.test(f)).map((f) => f.replace('.command-binding.yaml', ''));
+		assert.deepEqual([...drawn].sort(), [...lifecycle].sort(), 'every binding on a change request is one stage gate, drawn once');
+		assert.equal(new Set(drawn).size, drawn.length);
+	});
+	test('released as 0.5.2, with UPDATING.md and the README release note', () => {
+		assert.equal(JSON.parse(read('package.json')).version, '0.5.2');
+		assert.match(read('UPDATING.md'), /## 0\.5\.2 — /);
+		assert.match(read('README.md'), /## 0\.5\.2 — from 0\.5\.1/);
 	});
 });

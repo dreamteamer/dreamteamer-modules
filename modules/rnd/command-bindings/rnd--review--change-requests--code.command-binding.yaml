@@ -1,0 +1,14 @@
+command: commands/rnd/review
+collection: collections/rnd/change-requests
+scope: record
+available_when:
+  status:
+    _eq: accepted
+  implementation_plans:
+    status:
+      _eq: done
+done_when:
+  implementation_plans:
+    code_approved_on:
+      _nempty: true
+description: "after IMPLEMENT: review the built branch (kind code, subject the plan, change_ref the branch, change_request this request); approve stamps the plan's code_approved_on"

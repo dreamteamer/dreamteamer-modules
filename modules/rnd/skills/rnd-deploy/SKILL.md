@@ -8,7 +8,7 @@ description: >-
 
 ## What you are doing
 
-You put a change — or a prototype — where its people can reach it, confirm it is live with your own eyes, and record it: `deployed_on`, `status: implemented`, a dated section with the command and what you checked.
+You put a change — or a prototype — where its people can reach it, confirm it is live with your own eyes, and record it: `deployed_on` and a dated section with the command and what you checked. The request becomes `implemented` at the next gate, the live acceptance review — not here.
 
 ## Before you start
 
@@ -25,8 +25,8 @@ dt get repos/<id>                        # where the code lives on this machine
 2. The branch is merged or the pull request is in. Check; do not assume. A deploy from an unmerged branch ships code the review never saw.
 3. Run the deploy command. Read its output to the end.
 4. Check it live: open the URL, run the one path the change is about, quote what you saw. A health endpoint is not the feature.
-5. Record it. A change request: `dt set rnd/change-requests/<id> deployed_on=<now> status=implemented`, and a `## Deployed <date>` section in the body — command, environment, URL, what you checked, who was told. A prototype: run `deploy`, `dt set rnd/prototypes/<id> live_url=<url>` if it moved, a dated line in the body.
-6. Tell the people who asked for it, with the URL. Commit by id.
+5. Record it. A change request: `dt set rnd/change-requests/<id> deployed_on=<now>`, and a `## Deployed <date>` section in the body — command, environment, URL, what you checked, who was told. A prototype: run `deploy`, `dt set rnd/prototypes/<id> live_url=<url>` if it moved, a dated line in the body.
+6. Tell the people who asked for it, with the URL. Commit by id. The next word on a change request is `/rnd:review`, kind `acceptance`, subject the request — the live check by someone else: each acceptance line seen on the running thing. Its `approve` sets `status: implemented`.
 7. Write what the deploy taught — a step that surprised you, a check that should have existed — as a `decisions` record where installed, or a dated line on the design doc. The next plan reads it.
 
 ## Don't
@@ -35,8 +35,8 @@ dt get repos/<id>                        # where the code lives on this machine
 - Don't call it deployed on the command's exit code. Deployed is what you saw live.
 - Don't deploy from the branch. Merge first, then deploy what was merged.
 - Don't skip the rollback line. If you cannot say how to undo it, you cannot do it unattended.
-- Don't set `implemented` without `deployed_on`. The two go together.
+- Don't set `implemented` yourself. The live acceptance review does, after `deployed_on`.
 
 ## Done when
 
-`deployed_on` is set, `status: implemented`, the body says what ran and what was checked, and the asker has the URL. `dt next rnd/change-requests/<id>` answers nothing more.
+`deployed_on` is set, the body says what ran and what was checked, and the asker has the URL. `dt next rnd/change-requests/<id>` answers `/rnd:review` — the live check — and after its `approve` (`status: implemented`) nothing more.

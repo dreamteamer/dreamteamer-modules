@@ -6,9 +6,11 @@ available_when:
     _eq: done
   change_request:
     _empty: true
+  code_approved_on:
+    _nempty: true
   verified_on:
     _empty: true
 done_when:
-  verified_on:
+  tested_on:
     _nempty: true
-description: "prove the done plan that has no change request: every promised test from its run, then the test review; a plan with one is verified on the change request"
+description: "prove the reviewed plan that has no change request: every promised test from its run; all passing stamps tested_on. A plan with one is proved on the change request"

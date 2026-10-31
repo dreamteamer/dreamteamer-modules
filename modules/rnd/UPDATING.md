@@ -11,6 +11,69 @@ npx dreamteamer check
 
 ---
 
+## 0.5.2 — a review after every stage, and every record lists its reviews
+
+Nothing is removed or renamed, and every record compiles as it is. Two things to do — rebuild the new
+mirrors, because `dt check` reports a design doc, plan, test, issue or feature whose `reviews` is
+stale until you do (`reviews: stale — run: dreamteamer relations rebuild …`), and read what `dt next`
+answers on records already in flight before you run the lifecycle again.
+
+**Every review names its change request.** `rnd/reviews` has a new `change_request` field: the
+request a review belongs to, whatever it judged — the request itself, its design doc, its plan, its
+code, its tests. The request's new `reviews` field is generated from it, so every review of a
+request's lifecycle is listed on the request. Design docs, plans, tests, issues and features list
+theirs by `subject`, also generated. Fill both on the records you have:
+
+```bash
+# each review in a request's lifecycle — including one whose subject IS the request
+dt set rnd/reviews/<id> change_request=rnd/change-requests/<request>
+# then regenerate the mirrors, once, and check
+dt relations rebuild rnd/change-requests
+for c in rnd/design-docs rnd/implementation-plans rnd/tests rnd/issues rnd/features; do dt relations rebuild $c; done
+dt check
+```
+
+`dt set` moves the request's mirror as it writes, so the rebuild is only for the `subject` mirrors
+on reviews written before this version.
+
+**A review after every stage.** A change request names exactly one next verb at every stage — the
+review when a stage has just ended, the next stage once that review approved:
+
+| stage ends | the review `dt next` names | its `approve` |
+|---|---|---|
+| design (doc `draft`) | the design doc, kind `design` | doc `active` |
+| — (design `active`, request `suggested`) | the request, kind `acceptance` | request `accepted` |
+| plan (plan `draft`) | the plan, kind `design` | plan `approved` |
+| implement (plan `done`) | the plan, kind `code`, `change_ref` the branch | plan `code_approved_on` |
+| test (request `tested_on`) | the request, kind `test` | request `verified_on` |
+| deploy (request `deployed_on`) | the request, kind `acceptance` — the live check | request `implemented` |
+
+Three new datetime marks carry it: `code_approved_on` on a plan and `verified_on` (now the
+reviewer's) are stamped by the reviewer on `approve`; `tested_on` on a request — or on a plan with no
+request — is stamped by the test stage when every covering test passed. `/rnd:implement` now reaches
+a request's approved plan from the request.
+
+What that does to a record in flight:
+
+- **A request still `suggested` with no design** answers `/rnd:design`, not `/rnd:review`: the
+  acceptance review waits for an active design. **An accepted request with no design** answers
+  `/rnd:design` too — `/rnd:plan` now needs an active design (a change too small for one is an
+  issue on the quick path).
+- **A plan already `done`** answers `/rnd:review` (the code review) until `code_approved_on` is set.
+  If its branch was reviewed before this version, stamp it from that review:
+  `dt set rnd/implementation-plans/<id> code_approved_on=<the review's date>` and set the review's
+  `change_request`.
+- **A request with `verified_on` set** is unaffected. One verified before this version has no
+  `tested_on`; leave it empty — nothing reads it once `verified_on` is set.
+- **A request deployed before this version** is `implemented` already (the deploy stage set it) and
+  answers nothing. One deployed from now on stays `accepted` until the live acceptance review.
+
+**The stage map.** `rnd/change-requests` declares its lifecycle under
+`display.record.options.stages`: design · plan · implement · test · deploy, each with the fields that
+hold its records, which of the request's reviews belong to it, and the bindings whose states are its
+gate. A surface that knows the option draws it on the request's page — an empty stage drawn as empty,
+not left out; any other ignores it.
+
 ## 0.5.1 — change requests read as a list: a short descriptive name, a one-line description, the rest in the body
 
 Nothing breaks: no field was added, removed or renamed, and every record compiles as it is. What

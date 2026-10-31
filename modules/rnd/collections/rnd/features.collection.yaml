@@ -105,6 +105,11 @@ fields:
     default: normal
     enum: [low, normal, high]
     description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
+  reviews:
+    type: rnd/reviews
+    many: true
+    mirror_of: subject
+    description: GENERATED — the reviews whose subject is this feature. Set `subject` on the review.
 display:
   nav:
     icon: star-full

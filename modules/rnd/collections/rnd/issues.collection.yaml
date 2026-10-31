@@ -111,6 +111,11 @@ fields:
     many: true
     mirror_of: issue
     description: GENERATED — the plans that fix this defect. Set `issue` on the plan.
+  reviews:
+    type: rnd/reviews
+    many: true
+    mirror_of: subject
+    description: GENERATED — the reviews whose subject is this defect. Set `subject` on the review.
 display:
   nav:
     icon: bug

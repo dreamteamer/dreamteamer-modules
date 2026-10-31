@@ -1,0 +1,14 @@
+command: commands/rnd/review
+collection: collections/rnd/change-requests
+scope: record
+available_when:
+  status:
+    _in: [suggested, accepted]
+  design_docs:
+    status:
+      _eq: draft
+done_when:
+  design_docs:
+    status:
+      _in: [active, superseded]
+description: "after DESIGN: review the request's draft design doc (subject the doc, change_request this request); approve makes it active"

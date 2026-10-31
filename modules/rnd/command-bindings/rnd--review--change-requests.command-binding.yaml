@@ -4,7 +4,10 @@ scope: record
 available_when:
   status:
     _eq: suggested
+  design_docs:
+    status:
+      _eq: active
 done_when:
   status:
     _in: [accepted, rejected, implemented]
-description: "review the acceptance lines (kind acceptance); approve makes it accepted"
+description: "review the acceptance lines (kind acceptance) once the design is active; approve makes it accepted"

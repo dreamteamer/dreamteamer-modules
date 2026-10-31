@@ -82,12 +82,15 @@ fields:
   accepted_on:
     type: datetime
     description: When the change was accepted, by the person in `accepted_by`.
+  tested_on:
+    type: datetime
+    description: When the test stage last ran every covering test and found each one passing — the stage's own mark, which the test review reads. Empty until then; the stage clears it when a run finds a test failing.
   verified_on:
     type: datetime
-    description: When the test stage last found every covering test passing and the test review approved — the gate deploy reads. Empty until then; cleared by a change that lands after it.
+    description: When the test review approved the proof — stamped by that reviewer on `approve`, never by the stage it judged. The gate deploy reads. Empty until then; cleared by a change that lands after it.
   deployed_on:
     type: datetime
-    description: 'When the change went live, set by the deploy stage after the live check. Empty until then; `status: implemented` goes with it.'
+    description: 'When the change went live, set by the deploy stage after its live check. The live acceptance review reads it, and its `approve` sets `status: implemented`.'
   supersedes:
     type: rnd/change-requests
     description: The earlier request this replaces. The earlier record stays.
@@ -106,6 +109,19 @@ fields:
     many: true
     mirror_of: change_request
     description: GENERATED — the plans that build this change. Set `change_request` on the plan.
+  reviews:
+    type: rnd/reviews
+    many: true
+    mirror_of: change_request
+    description: GENERATED — every review in this request's lifecycle — of the request, its design doc, its plan, its code, its tests and the live check. Set `change_request` on the review, whatever its subject.
+# THE STAGE MAP. `display.record.options.stages` declares the lifecycle as it is drawn on a request's page, in
+# order; a surface that knows the option draws it above the properties, and any other ignores it (options are
+# open). `stage_reviews` names the field holding the request's reviews, the set the stages' matchers pick from. Per stage: `fields` — this record's fields that hold the stage's records, drawn EMPTY when they are
+# (no plan yet is the empty stage, not a missing one); `reviews` — which of the request's `reviews` belong to
+# the stage, each matcher an OR of its siblings and an AND of its keys: `kind` (any of), `subject` (a field of
+# this record whose references hold the review's subject, or `self`), `before` / `since` (a datetime field of
+# this record, against the review's `created`); `gate` — the command bindings whose states ARE the stage's gate,
+# in order, the work first and its review after. The stage is passed when every binding is done.
 display:
   nav:
     icon: git-pull-request
@@ -117,3 +133,39 @@ display:
       - name
       - products
     sort: '-created'
+  record:
+    badge: status
+    options:
+      stage_reviews: reviews
+      stages:
+        - title: design
+          fields: [design_docs]
+          reviews:
+            - subject: design_docs
+            - subject: self
+              kind: [acceptance]
+              before: deployed_on
+          gate: [rnd--design--change-requests, rnd--review--change-requests--design, rnd--review--change-requests]
+        - title: plan
+          fields: [implementation_plans]
+          reviews:
+            - subject: implementation_plans
+              kind: [design, ux, security, compliance, other]
+          gate: [rnd--plan--change-requests, rnd--review--change-requests--plan]
+        - title: implement
+          fields: [implementation_plans]
+          reviews:
+            - kind: [code]
+          gate: [rnd--implement--change-requests, rnd--review--change-requests--code]
+        - title: test
+          fields: [tests, tested_on, verified_on]
+          reviews:
+            - kind: [test]
+          gate: [rnd--test--change-requests, rnd--review--change-requests--test]
+        - title: deploy
+          fields: [deployed_on]
+          reviews:
+            - subject: self
+              kind: [acceptance]
+              since: deployed_on
+          gate: [rnd--deploy--change-requests, rnd--review--change-requests--deploy]

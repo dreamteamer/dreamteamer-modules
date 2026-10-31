@@ -1,0 +1,14 @@
+command: commands/rnd/review
+collection: collections/rnd/change-requests
+scope: record
+available_when:
+  status:
+    _eq: accepted
+  implementation_plans:
+    status:
+      _eq: draft
+done_when:
+  implementation_plans:
+    status:
+      _in: [approved, in-progress, done, abandoned]
+description: "after PLAN: review the request's draft plan (subject the plan, change_request this request); approve makes it approved"

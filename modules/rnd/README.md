@@ -79,7 +79,9 @@ with a live URL, or a round of feedback on it), `/rnd:change-request` (what chan
 design, with the evidence that would accept it), `/rnd:plan` (an `implementation-plans` record and the
 `tests` it promises), `/rnd:implement` (task by task, the record as the progress marker),
 `/rnd:test` (every covering test run and set from its output) and `/rnd:deploy` (checked live,
-`deployed_on` stamped). Each command loads one plainly written skill of the same name, five headings
+`deployed_on` stamped). Every stage ends in a review, and on a change request `dt next` names exactly
+one verb at a time — the review when a stage has just ended, the next stage once it approved; each
+review names its request (`change_request`), which lists them all. Each command loads one plainly written skill of the same name, five headings
 each: what you are doing · before you start · do this · don't · done when.
 
 Two agents ride on them. `rnd-agent` walks the stages for one record in the lifecycle's order (`dt next`
@@ -127,6 +129,18 @@ adapter (the config and the init options). A screen's portal is its `product`; o
 windows reads it from a field (`portal: { from: 'field' }`) or a tag (`portal: { from: 'tag', prefix }`).
 An identifier — a story key, a question id — is never scrubbed: one the prototype's `scrub` would change
 fails the export, so the record is renamed. The `rnd-prototype` skill holds the contract.
+
+## 0.5.2 — from 0.5.1
+
+A review after every stage of a change request, and every record lists its reviews. `rnd/reviews`
+names the request it belongs to (`change_request`), and the request's generated `reviews` lists every
+review of its lifecycle; design docs, plans, tests, issues and features list theirs by `subject`. Six
+review gates are bound on the request — the design doc, the acceptance lines, the plan, the code, the
+proof, the live check — so `dt next` names exactly one verb at every stage, and the rnd-agent stops at
+any review it cannot hand to the qa-manager. New marks: `code_approved_on` and `tested_on` on a plan,
+`tested_on` on a request; `verified_on` and `implemented` are now the reviewer's. The request's page
+declares the lifecycle as a stage map (`display.record.options.stages`). `UPDATING.md` has the
+commands for records in flight.
 
 ## 0.5.1 — from 0.5.0
 

@@ -36,7 +36,7 @@ On a change request, `dt get rnd/change-requests/<id>` first. Its `description` 
 5. Each capability seen from the user's side is a `rnd/user-stories` record (`key`, `name`, `design_doc`, `product`). Each screen the design names is a `rnd/screens` record (`key`, `name`, `route`, `source`, `design_doc`). Each question that reading more cannot settle is a `rnd/open-questions` record (`question`, `kind`, `blocks` naming the doc). `dt get collections/<name>` lists the enum values before you guess one. Never a "TBD" in the body.
 6. On a change request: `dt set rnd/change-requests/<id> design_docs=rnd/design-docs/<id>`.
 7. Read the doc once more as the builder who never saw the conversation. Every question they would ask is answered in the doc or becomes an open question.
-8. Commit by id. The next word is `/rnd:review rnd/design-docs/<id>`.
+8. Commit by id. The next word is `/rnd:review rnd/design-docs/<id>` — on a change request, `dt next` on the request names the same review, and the review sets `change_request`.
 
 ## Don't
 

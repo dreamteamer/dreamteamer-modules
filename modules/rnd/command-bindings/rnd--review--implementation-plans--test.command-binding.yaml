@@ -1,0 +1,14 @@
+command: commands/rnd/review
+collection: collections/rnd/implementation-plans
+scope: record
+available_when:
+  change_request:
+    _empty: true
+  tested_on:
+    _nempty: true
+  verified_on:
+    _empty: true
+done_when:
+  verified_on:
+    _nempty: true
+description: "after TEST, for a plan with no change request: review whether the proof is enough (kind test, subject this plan); approve stamps verified_on"

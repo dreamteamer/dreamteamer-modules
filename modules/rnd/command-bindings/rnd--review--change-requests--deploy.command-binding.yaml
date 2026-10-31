@@ -1,0 +1,12 @@
+command: commands/rnd/review
+collection: collections/rnd/change-requests
+scope: record
+available_when:
+  deployed_on:
+    _nempty: true
+  status:
+    _neq: implemented
+done_when:
+  status:
+    _eq: implemented
+description: "after DEPLOY: the live check (kind acceptance, subject this request) — each acceptance line seen on the running thing; approve sets implemented"

@@ -67,6 +67,11 @@ fields:
   last_run:
     type: datetime
     description: When it last ran — the moment `status` was last true.
+  reviews:
+    type: rnd/reviews
+    many: true
+    mirror_of: subject
+    description: GENERATED — the reviews whose subject is this test. Set `subject` on the review.
   content:
     type: markdown
     body: true

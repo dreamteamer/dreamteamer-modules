@@ -1,6 +1,6 @@
 {
 	"name": "@dreamteamer/rnd",
-	"version": "0.5.1",
+	"version": "0.5.2",
 	"description": "What a workspace builds and investigates — products, designs, plans, stories, screens, prototypes, changes, tests, reviews — and the lifecycle that moves them.",
 	"license": "Apache-2.0",
 	"type": "module",
