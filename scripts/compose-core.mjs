@@ -43,7 +43,8 @@ export const moduleRoot = (id) => path.join(MODULES, id);
 /** Every module with a compose.json at its root. */
 export const composedModules = () => fs.readdirSync(MODULES).filter((m) => fs.existsSync(path.join(MODULES, m, 'compose.json'))).sort();
 
-const KINDS = ['collections', 'mixins', 'skills', 'commands', 'command-bindings', 'ui-views', 'agents', 'bin', 'src', 'lib', 'data'];
+// session-bindings: a kind @dreamteamer/core's extension contributes (rnd ships its lifecycle's bindings)
+const KINDS = ['collections', 'mixins', 'skills', 'commands', 'command-bindings', 'session-bindings', 'ui-views', 'agents', 'bin', 'src', 'lib', 'data'];
 const TEXT = /\.(md|ya?ml|m?js|cjs|json|txt|py|sh|css|html)$/;
 const REPO_URL = 'git+https://github.com/dreamteamer/dreamteamer-modules.git';
 
@@ -102,10 +103,23 @@ export function copiesOf(origin, target = 'core') {
 	return out;
 }
 
+/** A module's OWN extension entry (compose.json `extension`) beside an origin that is an extension: it must exist,
+ *  and it must import the origin's entry — the module activates that entry itself, so an entry that does not
+ *  import it ships the composed package with the origin's verbs and harnesses gone, and nothing says so. Throws
+ *  naming the module, the entry and the path it should import; returns the import path when it holds. */
+export function assertOwnEntry(root, target, own, origin, originEntry) {
+	const file = path.join(root, own);
+	if (!fs.existsSync(file)) throw new Error(`${target} names its own extension ${own}, which does not exist`);
+	let wanted = path.relative(path.dirname(file), path.join(root, originEntry)).split(path.sep).join('/');
+	if (!wanted.startsWith('.')) wanted = `./${wanted}`;
+	const text = fs.readFileSync(file, 'utf8');
+	if (![`'${wanted}'`, `"${wanted}"`].some((q) => text.includes(q))) throw new Error(`${target}'s own extension ${own} does not import ${origin}'s entry (${wanted}) — the origin's contributions would vanish from the composed package`);
+	return wanted;
+}
+
 /** The composition as data: the copies and the merged manifest, computed from the origins and the
  *  module's own authored manifest. A composed module's own sources are never touched. */
-export function compose(target = 'core') {
-	const root = moduleRoot(target);
+export function compose(target = 'core', root = moduleRoot(target)) {
 	const spec = readJson(path.join(root, 'compose.json'));
 	const listed = spec.files ?? {};
 	const copies = new Map(); // dest -> { from, bytes }
@@ -137,6 +151,8 @@ export function compose(target = 'core') {
 	for (const { origin, pkg } of manifests) for (const d of pkg.dreamteamer?.dependencies ?? []) {
 		if (!internal.has(d)) throw new Error(`${origin} depends on ${d}, which is not an origin — ${target} would not compile alone`);
 	}
+	// the module's own entry exists and activates the origin's — or the origin's verbs vanish without a word
+	if (own && extensions.length) assertOwnEntry(root, target, own, extensions[0].origin, extensions[0].pkg.dreamteamer.extension);
 	// what the module owns: every base collection among the copies, plus its own authored bases
 	const owned = new Set();
 	const yamlName = (text) => text.match(/^name:\s*(\S+)/m)?.[1];

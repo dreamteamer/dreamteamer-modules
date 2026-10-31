@@ -7,7 +7,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
-import { ROOT, CORE, compose, copiesOf, rewrite, destOf, filesEntry } from '../../../scripts/compose-core.mjs';
+import { ROOT, CORE, compose, copiesOf, rewrite, destOf, filesEntry, assertOwnEntry } from '../../../scripts/compose-core.mjs';
 
 const spec = JSON.parse(fs.readFileSync(path.join(CORE, 'compose.json'), 'utf8'));
 
@@ -85,6 +85,8 @@ describe('the composition', () => {
 		assert.ok(copies.has('src/extension.js'), "files' entry is still composed in, for the own entry to activate");
 		const entry = fs.readFileSync(path.join(CORE, 'src', 'entry.js'), 'utf8');
 		assert.match(entry, /from '\.\/extension\.js'/, "the own entry activates the origin's");
+		// the one rule every composed module's own entry meets (scripts/compose-core.mjs assertOwnEntry)
+		assert.equal(assertOwnEntry(CORE, 'core', spec.extension, 'files', './src/extension.js'), './extension.js');
 	});
 	test('--check exits 0 on the committed state', async () => {
 		const { main } = await import('../../../scripts/compose-core.mjs');
