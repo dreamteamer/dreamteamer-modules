@@ -28,7 +28,13 @@ const sessionOf = (r) => /✔ sessions\/(\S+)/.exec(r.out)?.[1];
 const addedId = (r, collection, suffix) => new RegExp(`data/${collection}/(\\S+)\\.${suffix}\\.md`).exec(r.out)?.[1];
 
 describe('rnd ships its lifecycle as session-bindings', () => {
-	test('rnd alone compiles with its session-bindings/ folder — the kind is core\'s, and rnd ignores it without core', () => {
+	// THE IGNORE ROUTE, both halves pinned. rnd reaches core's kind by listing session-bindings in
+	// dreamteamer.ignore, which leans on two engine behaviours: (1) without the extension that contributes
+	// the kind, an ignored folder is not a stray, so rnd compiles alone; (2) with it, compile stages a KNOWN
+	// kind's folder even though the module ignores it. If an engine changes either, one of these fails.
+	// The proper shape is an engine feature (rnd/features: a module may ship a folder of a kind another
+	// module's extension contributes, declared as such rather than through ignore).
+	test('ignore route, half 1: rnd alone compiles with its session-bindings/ folder — without core it is not a stray', () => {
 		const root = virginWorkspace();
 		installPacked(root, [...closure('rnd')]);
 		const r = dt(root, ['compile']);
@@ -46,10 +52,21 @@ describe('rnd ships its lifecycle as session-bindings', () => {
 		fs.appendFileSync(path.join(root, '.env'), `SESSIONS_FOLDER=${folder}\n`);
 		installPacked(root, [...new Set([...closure('core'), ...closure('rnd')])]);
 		const compiled = ok(dt(root, ['compile']));
+		// ignore route, half 2: with core the kind is known, and rnd's ignored folder is staged anyway
+		assert.ok(pkgOf('rnd').dreamteamer.ignore.includes('session-bindings'), 'rnd still lists the folder in ignore');
 		assert.match(compiled.out, /3 session-bindings/);
+		assert.deepEqual(fs.readdirSync(path.join(root, '.dreamteamer', 'session-bindings')).sort(), ['change-requests--build', 'change-requests--design', 'change-requests--review'].map((b) => `${b}.session-binding.yaml`), 'rnd\'s three are staged despite ignore');
 		assert.match(ok(dt(root, ['check'])).out, /0 violations/);
 		const block = fs.readFileSync(path.join(root, 'CLAUDE.md'), 'utf8');
-		for (const line of ['agents/rnd-agent on claude-code /rnd:design', 'agents/rnd-agent on claude-code /rnd:implement', 'agents/qa-manager on claude-code /rnd:review']) assert.ok(block.includes(line), `orientation lacks ${line}`);
+		// the WHOLE line per binding: a gate that hops a reference (implementation_plans.status) reads as the
+		// engine renders a command-binding's — a check of the line's start let `tatus [object Object]` ship
+		const lines = block.split('\n');
+		for (const line of [
+			'- rnd/change-requests — agents/rnd-agent on claude-code /rnd:design (available when: status in suggested|accepted, design_docs empty, implementation_plans empty · done when: design_docs set) · one at a time',
+			'- rnd/change-requests — agents/rnd-agent on claude-code /rnd:implement (available when: status=accepted, implementation_plans.status in approved|in-progress · done when: implementation_plans.status=done) · one at a time',
+			'- rnd/change-requests — agents/qa-manager on claude-code /rnd:review (available when: status=accepted, verified_on empty, implementation_plans.status=done · done when: verified_on set) · one at a time',
+		]) assert.ok(lines.includes(line), `orientation lacks the line\n  ${line}\nit reads:\n  ${lines.filter((l) => l.startsWith('- rnd/change-requests — ')).join('\n  ')}`);
+		for (const f of ['AGENTS.md', 'GEMINI.md']) if (fs.existsSync(path.join(root, f))) assert.doesNotMatch(fs.readFileSync(path.join(root, f), 'utf8'), /\[object Object\]/, f);
 
 		ok(dt(root, ['add', 'rnd/products', '--name', 'Harbor Mutual portal']));
 		ok(dt(root, ['add', 'rnd/change-requests', '--key', 'cr-hm-1', '--name', 'Harbor Mutual: export claims', '--products', 'rnd/products/harbor-mutual-portal', '--status', 'accepted']));

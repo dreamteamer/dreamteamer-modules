@@ -75,23 +75,39 @@ export function analyzeBindings(draft, dt) {
 	return { errors, notes: n ? [`session-bindings: ${n} compiled`] : [] };
 }
 
-/** One gate as words: `status=accepted · verified_on set`. */
-export function renderGate(label, filter) {
-	if (!isMap(filter)) return null;
+/** Operators as words — the engine's own gate wording (src/harnesses.js GATE_OPS), plus the null pair. */
+const GATE_OPS = {
+	_eq: (p, v) => `${p}=${v}`,
+	_in: (p, v) => `${p} in ${[].concat(v).join('|')}`,
+	_nempty: (p, v) => (v === false ? `${p} empty` : `${p} set`),
+	_empty: (p, v) => (v === false ? `${p} set` : `${p} empty`),
+	_nnull: (p, v) => (v === false ? `${p} empty` : `${p} set`),
+	_null: (p, v) => (v === false ? `${p} set` : `${p} empty`),
+};
+
+/** A filter's conditions as words, walked the way the engine renders a command-binding's gate: a key
+ *  that is not an operator and holds a map is a HOP into the referenced record (`implementation_plans:
+ *  { status: { _eq: done } }` → `implementation_plans.status=done`), `_and` contributes each condition,
+ *  `_or` one `(a or b)` term. */
+export function gateParts(filter) {
 	const parts = [];
-	for (const [k, v] of Object.entries(filter)) {
-		if (k === '_and' || k === '_or') { parts.push((Array.isArray(v) ? v : []).map((c) => renderGate('', c)).join(k === '_or' ? ' or ' : ', ')); continue; }
-		if (!isMap(v)) { parts.push(`${k}=${v}`); continue; }
-		for (const [op, o] of Object.entries(v)) {
-			if (op === '_nnull' || op === '_nempty') parts.push(o ? `${k} set` : `${k} empty`);
-			else if (op === '_null' || op === '_empty') parts.push(o ? `${k} empty` : `${k} set`);
-			else if (op === '_in') parts.push(`${k} in ${[].concat(o).join('|')}`);
-			else if (op === '_eq') parts.push(`${k}=${o}`);
-			else parts.push(`${k} ${op.slice(1)} ${[].concat(o).join('|')}`);
+	const walk = (obj, at) => {
+		for (const [k, v] of Object.entries(obj ?? {})) {
+			if (k === '_and' && Array.isArray(v)) for (const c of v) walk(c, at);
+			else if (k === '_or' && Array.isArray(v)) parts.push(`(${v.map((c) => gateParts(at ? { [at]: c } : c).join(', ')).join(' or ')})`);
+			else if (k.startsWith('_')) parts.push((GATE_OPS[k] ?? ((p, x) => `${p} ${k.slice(1)} ${[].concat(x).join('|')}`))(at, v));
+			else if (isMap(v)) walk(v, at ? `${at}.${k}` : k);
+			else parts.push(`${at ? `${at}.` : ''}${k}=${v}`);
 		}
-	}
-	const text = parts.filter(Boolean).join(', ');
-	return label ? `${label}: ${text}` : text;
+	};
+	if (isMap(filter)) walk(filter, '');
+	return parts;
+}
+
+/** One gate as words: `available when: status=accepted, implementation_plans.status in approved|in-progress`. */
+export function renderGate(label, filter) {
+	const parts = gateParts(filter);
+	return parts.length ? `${label}: ${parts.join(', ')}` : null;
 }
 
 /** The orientation paragraph — the bindings compile staged, with their gates, and the rule. Empty when
