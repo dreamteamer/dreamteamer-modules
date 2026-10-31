@@ -1,0 +1,54 @@
+# session-bindings — a source kind of core's extension (src/sessions/), compiled like command-bindings:
+# a module writes `session-bindings/<id>.session-binding.yaml`, compile validates it (a bad binding is
+# refused by name) and stages it into `.dreamteamer/session-bindings/`, where this collection reads it.
+name: session-bindings
+description: A collection whose records a session works on — the record state that opens one, who works it, how many at once, and the state that ends it.
+use_when: >-
+  agents or people should claim a record before working it — bind its collection here, gated on the record's own fields,
+  so `dt session start <ref>` claims the record, `dt sessions open` lists what is ready and free, and `dt next <ref>`
+  says who holds it
+storage:
+  path: session-bindings
+  format: yaml
+ids:
+  from: '{{ collection | basename }}'
+fields:
+  collection:
+    type: collections
+    required: true
+    description: The collection whose records a session works on.
+  available_when:
+    type: map
+    description: The record state that opens a session on it — a filter over the record's own fields, as command-bindings write one.
+  done_when:
+    type: map
+    description: The record state that means the work is done; no session opens on a record it holds.
+  harness:
+    type: string
+    examples: ['claude-code', 'codex', 'manual']
+    description: The harness the session runs in, written onto the session when `dt session start` names none.
+  agent:
+    type: agents
+    description: The agent to dispatch — the session's worker when `dt session start` names no `--agent`.
+  command:
+    type: commands
+    description: The command the session starts with, which `dt session start` prints.
+  concurrency:
+    type: string
+    default: one
+    enum: [one, many]
+    description: '`one` — a second `dt session start` on a held record is refused unless `--join`; `many` — sessions start beside each other.'
+  stale_after:
+    type: number
+    default: 30
+    minimum: 0
+    description: Minutes without a heartbeat before a running session is abandoned and its claim lapses.
+  description:
+    type: string
+    description: What a session under this binding does, in one line.
+display:
+  nav:
+    icon: broadcast
+    order: 46
+  list:
+    columns: [collection, agent, harness, concurrency, stale_after]

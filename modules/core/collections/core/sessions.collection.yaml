@@ -40,6 +40,27 @@ fields:
     type: string
     examples: ['claude-code', 'codex', 'manual']
     description: What hosted the session.
+  status:
+    type: string
+    enum: [running, ended, abandoned]
+    description: >-
+      A live session's state, written by `dt session`: `running` from `start`, `ended` from `end`, `abandoned` when its
+      heartbeat went quiet for its binding's `stale_after` and its claim lapsed. Empty on a sitting recorded after the fact.
+  records:
+    type: reference
+    many: true
+    description: >-
+      The records this session holds — what `dt session start <ref>` claimed. While the session runs with a fresh
+      heartbeat, `dt next <ref>` says "in session by <worker> since <started>" and a second start is refused.
+  binding:
+    type: session-bindings
+    description: The session-binding it was started under — its gate, its agent, its concurrency and its `stale_after`.
+  host:
+    type: string
+    description: The machine it runs on. Sessions live in a per-machine folder, so a claim is seen on this machine only.
+  heartbeat:
+    type: datetime
+    description: When it last said it was alive — `dt session` verbs and the Stop hook (`dt session heartbeat --hook`) write it.
   session_id:
     type: string
     description: The harness's own id for it, so the transcript can be found. A session the harness saved itself (`/session:save`) takes this id as its record id.
@@ -140,7 +161,7 @@ display:
     icon: history
     order: 22
   list:
-    columns: [name, worker, project, started, turns, cost_usd, harness]
+    columns: [name, status, worker, project, started, turns, cost_usd, harness]
     sort: -started
   form:
     sections:

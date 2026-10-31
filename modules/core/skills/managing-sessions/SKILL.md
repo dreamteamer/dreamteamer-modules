@@ -1,7 +1,7 @@
 ---
 name: managing-sessions
 description: >-
-  use when a coding-agent session should be accounted for — "save this session", "what did that session cost", "write up what we did", a `sessions` record for the sitting that just happened, or a Stop hook that keeps one current. The mechanics behind /session:save and /session:analyze: the metrics come from the transcript, the recap and the analysis from reading it.
+  use when a coding-agent session should be accounted for — "save this session", "what did that session cost", "write up what we did", a `sessions` record for the sitting that just happened, or a Stop hook that keeps one current; and when work STARTS on a record that should be claimed first — `dt session start`, `dt sessions open`, `dt session end`, a `session-bindings` file, "in session by" in `dt next`, two agents on one record. The mechanics behind /session:save and /session:analyze: the metrics come from the transcript, the recap and the analysis from reading it.
 ---
 
 # managing-sessions
@@ -42,14 +42,39 @@ The reader takes `--session <id>` for another session and `--transcript <path>` 
 
 **A hook** keeps the metrics current without anyone remembering: bind `session-save.mjs --write --hook --quiet` to `Stop` in the workspace's harness settings (the README shows the block). The hook upserts metrics only; `outcome`, `analysis` and `description` are the session's and the reviewer's words, and only a person or a command writes them.
 
+**Live** — a session that STARTS on a record and claims it (`dt session`, core's extension):
+
+1. Before working a record a `session-bindings` binds, `dt next <collection>/<id>`. A line "in session by <worker> since <time> (sessions/<id>)" means another session holds it: pick another (`dt sessions open` lists what is ready and free), or work beside it with `--join` when the person or the plan says so.
+2. Claim it: `dt session start <collection>/<id> [--agent <id>]`. It writes a `running` sessions record from the binding — `records`, `binding`, `worker`, `harness`, `host`, `heartbeat`, and `session_id` from `$CLAUDE_CODE_SESSION_ID` — prints its id and the command to start with. Quote the `✔ sessions/<id>` line; keep the id. A refusal names the holder and exits 1: do not work the record.
+3. Stay alive: the `Stop` hook from `dt install --print-adapters` runs `dt session heartbeat --hook` after every turn, keyed by your harness session id. Without it, `dt session heartbeat <id>` at least every `stale_after` minutes (the binding's, 30 by default). A session silent longer is `abandoned` by the next `dt session`/`dt sessions` verb, its claim lapses, and a heartbeat on it refuses — start again.
+4. End it when the work stops, done or not: `dt session end <id> --outcome "<what landed, what is left>"`. A subagent ends its own session before it hands back: its Stop hook is its parent's, so a forgotten session stays fresh until the parent stops.
+5. Who is working on what: `dt list sessions --filter status=running`.
+
+A binding, in a module's `session-bindings/change-requests.session-binding.yaml`:
+
+```yaml
+collection: collections/rnd/change-requests
+available_when: { status: accepted }
+done_when: { verified_on: { _nnull: true } }
+harness: claude-code
+agent: agents/rnd-agent
+command: commands/rnd/design
+concurrency: one        # one: a second start is refused unless --join · many
+stale_after: 30         # minutes without a heartbeat
+```
+
 ## Don't
 
 - Don't compute the metrics yourself from the transcript — the reader does, and `cost-state` is the harness's own figure. A session with no `cost-state` line gets the usage sum at the list prices the reader carries, and a model it does not price leaves `cost_usd` empty rather than guessed.
 - Don't write `outcome` or `analysis` from memory when the transcript is there. Memory is what the session already believed about itself.
 - Don't look for session records under `data/`, and don't try to commit them: they live under `${env:SESSIONS_FOLDER}`, outside every repo, and a refusal naming that var means the folder is not set on this machine.
 - Don't put a machine path in `transcript`. The reader writes a `${env:FILES_FOLDER}` or `${userHome}` template; keep it that way.
+- Don't work a record `dt next` says is in session, and don't `--join` on your own judgment alone — the holder may be mid-write.
+- Don't leave a live session running when you stop: `dt session end`, or it reads as held until it goes stale.
 - Don't bind the save to `SessionEnd`: its default budget is 1.5 seconds and a refused write is silent. `Stop` fires every turn and has the time.
 
 ## Done when
 
-`sessions/<session id>` exists with `turns`, `tool_calls`, `cost_usd`, `models` and `transcript` set by the reader, `worker` and `outcome` set by you — and after an analysis, `analysis` and a `description` under 400 characters — and `dt get sessions/<id>` shows it.
+Live: the record you worked showed your session in `dt next` while you worked, and `dt session end` printed `ended` when you stopped.
+
+Saved: `sessions/<session id>` exists with `turns`, `tool_calls`, `cost_usd`, `models` and `transcript` set by the reader, `worker` and `outcome` set by you — and after an analysis, `analysis` and a `description` under 400 characters — and `dt get sessions/<id>` shows it.
