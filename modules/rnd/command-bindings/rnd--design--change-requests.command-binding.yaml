@@ -8,6 +8,8 @@ available_when:
     _empty: true
   implementation_plans:
     _empty: true
+  verified_on:
+    _empty: true
 done_when:
   design_docs:
     _nempty: true

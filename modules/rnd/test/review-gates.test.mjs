@@ -193,6 +193,10 @@ describe('requests in flight before 0.5.2, and a dead second plan or design — 
 		dt(root, 'set', ref, `design_docs=${old}`, `design_docs=${dd}`);
 		assert.deepEqual(available(root, ref), ['rnd--review--change-requests--design']);
 	});
+	test('verified by hand with neither plan nor design: deploy alone, never design again (r2-01)', () => {
+		const ref = cr('legacy-fix', '--status', 'accepted', '--verified_on', '2026-01-15T11:00:00+02:00');
+		assert.deepEqual(available(root, ref), ['rnd--deploy--change-requests']);
+	});
 	test('a rejected request that was deployed is offered nothing (r1-05)', () => {
 		const ref = cr('dark-mode-2', '--status', 'rejected', '--deployed_on', '2026-01-16T10:00:00+02:00');
 		assert.deepEqual(available(root, ref), []);
