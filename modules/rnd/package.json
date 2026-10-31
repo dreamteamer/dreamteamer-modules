@@ -28,12 +28,12 @@
 		"skills",
 		"commands",
 		"command-bindings",
-		"session-bindings",
 		"agents",
 		"bin",
 		"src",
 		"lib",
-		"data"
+		"data",
+		"session-bindings"
 	],
 	"dependencies": {
 		"js-yaml": "^4.1.0"
