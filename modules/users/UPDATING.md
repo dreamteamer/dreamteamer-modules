@@ -20,7 +20,7 @@ you. The "upgrade both at once" below is no longer only prose:
 - **npm refuses the half-upgrade.** `npm install @dreamteamer/users@^0.2.1` beside projects 0.3.x
   stops with `ERESOLVE` and `peerOptional @dreamteamer/projects@">=0.4.0"`, and nothing in
   `node_modules` changes. Install both at once (below) and it resolves.
-- **`dt compile` refuses it too**, on an engine after 0.41.0, wherever the modules came from — a
+- **`dt compile` refuses it too**, on engine 0.42.0 or later, wherever the modules came from — a
   `dt-setup link` clone, a copy under `modules/`, an install that went around npm's check:
   `module "@dreamteamer/users" 0.2.1 needs "@dreamteamer/projects" >=0.4.0 (its peerDependencies) —
   this workspace has 0.3.1, …` and the fix, instead of the `teams` name collision.

@@ -13,7 +13,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { MODULES, ROOT, BIN, pkgOf, moduleIds, folderOf, packed, virginWorkspace, run, editPkg, cleanup } from './helpers/workspace.mjs';
+import { MODULES, ROOT, BIN, pkgOf, moduleIds, folderOf, packed, virginWorkspace, run, cleanup, engineReadsFloors } from './helpers/workspace.mjs';
 import { serveRegistry, npmInstall, installedVersion } from './helpers/registry.mjs';
 import { compose, composedModules } from '../scripts/compose-core.mjs';
 import { main as linkMain } from '../modules/setup/bin/link.mjs';
@@ -127,17 +127,9 @@ describe('npm refuses a half-upgrade (a registry install, the way a workspace ge
 	});
 });
 
-// The engine half. An engine that does not read floors (0.41.0 and earlier) compiles these pairs, so the
+// The engine half. An engine that does not read floors (before 0.42.0) compiles these pairs, so the
 // tests below probe the engine under test once and skip — saying why — when it does not refuse a floor.
 // `DT_ENGINE_DIR=<an engine checkout> npm test` runs them.
-function engineReadsFloors() {
-	const root = virginWorkspace();
-	for (const [id, version, peers] of [['floor-a', '1.0.0', { 'floor-b': '>=2.0.0' }], ['floor-b', '1.0.0']]) {
-		fs.mkdirSync(path.join(root, 'modules', id), { recursive: true });
-		fs.writeFileSync(path.join(root, 'modules', id, 'package.json'), JSON.stringify({ name: id, version, ...(peers ? { peerDependencies: peers } : {}), dreamteamer: {} }));
-	}
-	return /\(its peerDependencies\)/.test(run(root, ['compile']).stderr);
-}
 const READS = engineReadsFloors();
 const skip = !READS && `the engine under test (${BIN}) does not read peerDependencies floors — run with DT_ENGINE_DIR=<an engine that does>`;
 

@@ -13,7 +13,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import yaml from 'js-yaml';
-import { MODULES, virginWorkspace, run, editPkg, cleanup, compiledDescriptor, packedFiles, pkgOf } from '../../../tests/helpers/workspace.mjs';
+import { MODULES, virginWorkspace, run, editPkg, cleanup, compiledDescriptor, packedFiles, pkgOf, engineReadsFloors } from '../../../tests/helpers/workspace.mjs';
 
 after(cleanup);
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'dtm-users-before-teams-'));
@@ -47,7 +47,7 @@ describe('projects beside a users that ships no teams', () => {
 		put(root, 'users', usersWithoutTeams());
 		put(root, 'projects', path.join(MODULES, 'projects'));
 		const compiled = run(root, ['compile']);
-		if (/\(its peerDependencies\)/.test(compiled.stderr)) {
+		if (engineReadsFloors()) {
 			assert.equal(compiled.status, 1);
 			assert.ok(compiled.stderr.includes(`module "@dreamteamer/projects" ${pkgOf('projects').version} needs "@dreamteamer/users" >=0.2.0 (its peerDependencies) — this workspace has 0.1.1, from node_modules`), compiled.stderr);
 			assert.ok(compiled.stderr.includes('fix: npm install "@dreamteamer/users@>=0.2.0"'), compiled.stderr);
