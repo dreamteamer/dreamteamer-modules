@@ -11,6 +11,26 @@ npx dreamteamer check
 
 ---
 
+## 0.4.1 — it says it needs users 0.2.0
+
+Nothing changes in what projects ships. Its package.json now floors its dependency in npm's own
+`peerDependencies`: `"@dreamteamer/users": ">=0.2.0"`. The half-upgrade 0.4.0 warned about below —
+projects 0.4 beside users 0.1.x, where compile passed and `teams` quietly left the workspace — is
+refused instead:
+
+- **by npm:** `npm install @dreamteamer/projects@^0.4.1` beside users 0.1.x stops with `ERESOLVE`
+  and `peer @dreamteamer/users@">=0.2.0"`, and nothing in `node_modules` changes;
+- **by `dt compile`**, on an engine after 0.41.0, on every channel — a `dt-setup link` clone, a copy
+  under `modules/`, an install that went around npm's check: `module "@dreamteamer/projects" 0.4.1
+  needs "@dreamteamer/users" >=0.2.0 (its peerDependencies) — this workspace has 0.1.1, …` and the
+  fix. Compile fails closed, so the workspace keeps its previous runtime until users is upgraded.
+
+```bash
+npm install @dreamteamer/users@^0.2.1 @dreamteamer/projects@^0.4.1
+npx dreamteamer compile
+npx dreamteamer check
+```
+
 ## 0.4.0 — teams moved to @dreamteamer/users
 
 `teams` is no longer shipped here: the collection, and the `teams` and `led_teams` mirrors on users,

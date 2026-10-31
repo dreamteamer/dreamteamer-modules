@@ -134,5 +134,6 @@ To try an unreleased change in a real workspace, preview this clone there with
 while a preview is on, because a record may not depend on an unpublished schema.
 
 The house rules — no personal data (the synthetic cast is Dana Oren, Sam Diaz, Northwind, Harbor
-Mutual), every module compiles alone, a module ships only what its `files` names — are in
-`CLAUDE.md`. Apache-2.0.
+Mutual), every module compiles alone, a module ships only what its `files` names, and a module that
+needs a sibling at a version says so as an npm `peerDependencies` floor, which npm and `dt compile`
+both refuse below — are in `CLAUDE.md`. Apache-2.0.

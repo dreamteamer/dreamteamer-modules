@@ -57,6 +57,8 @@ record and their own page gains the mirror. Activities and tasks still go to a p
 
 **`teams` is a peer, not a collection of this module.** It ships with users, which projects depends
 on; projects declares only the far side of its own field, `teams.projects`, as an overlay. Naming
-`teams` in `peer_collections` is what lets that overlay wait for the collection rather than fail:
-beside a users older than 0.2.0, which has no teams, projects still compiles and `dreamteamer check`
-names the missing peer.
+`teams` in `peer_collections` is what lets that overlay wait for the collection rather than fail.
+A users older than 0.2.0 has no teams, so projects floors users at `>=0.2.0` in its npm
+`peerDependencies`: npm refuses that install, and `dreamteamer compile` refuses the pair by name on
+every channel. Only an engine that does not read floors, given an install that went around npm,
+still compiles it, and then `dreamteamer check` names the missing peer.

@@ -1,6 +1,6 @@
 {
 	"name": "@dreamteamer/users",
-	"version": "0.2.0",
+	"version": "0.2.1",
 	"description": "The people and agents work is assigned to in a dreamteamer workspace, which owner, lead and assignee fields point at, and the teams they form.",
 	"license": "Apache-2.0",
 	"repository": {
@@ -18,6 +18,14 @@
 		"bin",
 		"collections"
 	],
+	"peerDependencies": {
+		"@dreamteamer/projects": ">=0.4.0"
+	},
+	"peerDependenciesMeta": {
+		"@dreamteamer/projects": {
+			"optional": true
+		}
+	},
 	"dreamteamer": {
 		"title": "Users",
 		"description": "The people and agents work is assigned to: `users`, which the owner, lead, seat and assignee fields of other modules point at, and the `teams` they form (each person reads `teams` and `led_teams`). A user links to their `contacts` record rather than merging with it, nothing here authenticates anyone, and every agent row names its human owner. Peers `contacts`, `companies` and `assets`.",

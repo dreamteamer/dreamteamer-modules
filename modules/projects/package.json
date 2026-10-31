@@ -1,6 +1,6 @@
 {
 	"name": "@dreamteamer/projects",
-	"version": "0.4.0",
+	"version": "0.4.1",
 	"description": "The plan and everyone in it: projects, decisions, deliverables and risks, staffed with the teams users ships.",
 	"license": "Apache-2.0",
 	"type": "module",
@@ -19,6 +19,9 @@
 		"bin",
 		"collections"
 	],
+	"peerDependencies": {
+		"@dreamteamer/users": ">=0.2.0"
+	},
 	"dreamteamer": {
 		"title": "Projects",
 		"description": "The plan and everyone in it: projects, decisions, deliverables and risks, staffed with the `teams` users ships (projects adds `teams.projects`). The work itself is planned as `tasks` (the tasks module); a project is the effort they hang off. Owners and leads point at `users`, outside parties at `contacts`. `bin/check-records.mjs` enforces what a schema cannot.",

@@ -11,6 +11,29 @@ npx dreamteamer check
 
 ---
 
+## 0.2.1 — the pairing with projects is declared
+
+Nothing changes in what users ships. Its package.json now says, in npm's own `peerDependencies`,
+that it breaks `@dreamteamer/projects` below 0.4.0 — optional, so npm never installs projects for
+you. The "upgrade both at once" below is no longer only prose:
+
+- **npm refuses the half-upgrade.** `npm install @dreamteamer/users@^0.2.1` beside projects 0.3.x
+  stops with `ERESOLVE` and `peerOptional @dreamteamer/projects@">=0.4.0"`, and nothing in
+  `node_modules` changes. Install both at once (below) and it resolves.
+- **`dt compile` refuses it too**, on an engine after 0.41.0, wherever the modules came from — a
+  `dt-setup link` clone, a copy under `modules/`, an install that went around npm's check:
+  `module "@dreamteamer/users" 0.2.1 needs "@dreamteamer/projects" >=0.4.0 (its peerDependencies) —
+  this workspace has 0.3.1, …` and the fix, instead of the `teams` name collision.
+
+```bash
+npm install @dreamteamer/users@^0.2.1 @dreamteamer/projects@^0.4.1
+npx dreamteamer compile
+npx dreamteamer check
+```
+
+**One exception: an install from a tarball or folder spec** (`file:…`). there npm 11 overrides an
+optional peer with a warning and removes projects from `node_modules`. Install from the registry.
+
 ## 0.2.0 — teams ships with users
 
 `teams` — a named group of users, with its `members`, its `lead` and the `teams` and `led_teams`

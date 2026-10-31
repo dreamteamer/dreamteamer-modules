@@ -69,13 +69,13 @@ describe('users with projects — the plan adds its one mirror to the team', () 
 });
 
 describe('the move is a release a workspace is told about', () => {
-	test('users 0.2.0 ships an UPDATING.md whose newest section says teams moved here, and to upgrade projects with it', () => {
-		assert.equal(pkgOf('users').version, '0.2.0');
+	test('users 0.2.x ships an UPDATING.md: 0.2.1 says the pairing with projects is declared, 0.2.0 says teams moved here', () => {
+		assert.equal(pkgOf('users').version, '0.2.1');
 		assert.ok(packedFiles('users').includes('UPDATING.md'), 'UPDATING.md is in the tarball');
-		const updating = fs.readFileSync(path.join(MODULES, 'users', 'UPDATING.md'), 'utf8');
-		const newest = updating.split(/^## /m)[1];
-		assert.match(newest, /^0\.2\.0 — teams ships with users/);
-		assert.match(newest, /projects 0\.4\.0/);
-		assert.match(newest, /name collision on collection "teams"/);
+		const [, newest, previous] = fs.readFileSync(path.join(MODULES, 'users', 'UPDATING.md'), 'utf8').split(/^## /m);
+		assert.match(newest, /^0\.2\.1 — the pairing with projects is declared/);
+		assert.match(newest, /peerOptional @dreamteamer\/projects@">=0\.4\.0"/);
+		assert.match(previous, /^0\.2\.0 — teams ships with users/);
+		assert.match(previous, /name collision on collection "teams"/);
 	});
 });
