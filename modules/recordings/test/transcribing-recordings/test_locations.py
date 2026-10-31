@@ -85,6 +85,18 @@ class Inside(unittest.TestCase):
         self.assertFalse(locations.inside("/home/dana/.cache/dreamteamer/transcription-venv", "/w/skill"))
 
 
+class ModelsDir(unittest.TestCase):
+    def test_default_is_the_per_machine_cache(self):
+        self.assertEqual(locations.models_dir(HOME), "/home/dana/.cache/dreamteamer/transcription-models")
+
+    def test_env_var_moves_it(self):
+        self.assertEqual(locations.models_dir({**HOME, "TRANSCRIBING_MODELS_DIR": "/srv/models"}), "/srv/models")
+
+    def test_empty_env_var_falls_back_to_the_default(self):
+        self.assertEqual(locations.models_dir({**HOME, "TRANSCRIBING_MODELS_DIR": ""}),
+                         "/home/dana/.cache/dreamteamer/transcription-models")
+
+
 class SkillDocumentsTheSameDefault(unittest.TestCase):
     """uv picks the environment before Python starts, so the venv location is set by the SKILL.md
     preamble's `export UV_PROJECT_ENVIRONMENT=…` — it must name the same variable and default as here."""
@@ -94,6 +106,12 @@ class SkillDocumentsTheSameDefault(unittest.TestCase):
         m = re.search(r'export UV_PROJECT_ENVIRONMENT="\$\{TRANSCRIBING_VENV_DIR:-\$HOME/([^}"]+)\}"', text)
         self.assertIsNotNone(m, "SKILL.md does not export UV_PROJECT_ENVIRONMENT from TRANSCRIBING_VENV_DIR")
         self.assertEqual("/home/dana/" + m.group(1), locations.venv_dir(HOME))
+
+    def test_the_preamble_keeps_a_set_models_dir_and_names_the_same_default(self):
+        text = (SKILL / "SKILL.md").read_text(encoding="utf-8")
+        m = re.search(r'export TRANSCRIBING_MODELS_DIR="\$\{TRANSCRIBING_MODELS_DIR:-\$HOME/([^}"]+)\}"', text)
+        self.assertIsNotNone(m, "SKILL.md must keep an already-set TRANSCRIBING_MODELS_DIR (\${VAR:-default}), never overwrite it")
+        self.assertEqual("/home/dana/" + m.group(1), locations.models_dir(HOME))
 
     def test_the_preamble_exports_the_cache_dir_default_unchanged(self):
         text = (SKILL / "SKILL.md").read_text(encoding="utf-8")

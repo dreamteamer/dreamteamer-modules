@@ -3,8 +3,9 @@
 The skill is installed into node_modules (and compiled into .dreamteamer/skills/), so a folder kept
 beside it is deleted by the next `npm install` — the venv went with every pin bump and transcription
 was unavailable until someone re-ran `uv sync` — and the raw ASR JSON of a real call sat inside a
-package folder. Both now live in a per-machine cache, mirroring TRANSCRIBING_MODELS_DIR:
+package folder. All three live in a per-machine cache:
 
+  TRANSCRIBING_MODELS_DIR  default ~/.cache/dreamteamer/transcription-models (1.6 GB, 3.2 GB with the GPU pass)
   TRANSCRIBING_VENV_DIR    default ~/.cache/dreamteamer/transcription-venv
   TRANSCRIBING_CACHE_DIR   default ~/.cache/dreamteamer/transcription-cache  (raw ASR JSON in asr/)
 
@@ -18,6 +19,7 @@ Standard library only.
 import os
 
 CACHE_HOME = os.path.join(".cache", "dreamteamer")
+MODELS_NAME = "transcription-models"
 VENV_NAME = "transcription-venv"
 CACHE_NAME = "transcription-cache"
 
@@ -32,6 +34,12 @@ def _resolve(value, env):
     if value == "~" or value.startswith("~/"):
         value = os.path.join(_home(env), value[2:])
     return os.path.abspath(value)
+
+
+def models_dir(env=None):
+    env = os.environ if env is None else env
+    value = env.get("TRANSCRIBING_MODELS_DIR")
+    return _resolve(value, env) if value else os.path.join(_home(env), CACHE_HOME, MODELS_NAME)
 
 
 def venv_dir(env=None):

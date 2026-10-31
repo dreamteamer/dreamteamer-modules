@@ -28,7 +28,7 @@ run from the workspace root, against the compiled copy of this skill. every comm
 
 ```bash
 SK=.dreamteamer/skills/transcribing-recordings
-export TRANSCRIBING_MODELS_DIR="$HOME/.cache/dreamteamer/transcribing-models"   # absolute; see below
+export TRANSCRIBING_MODELS_DIR="${TRANSCRIBING_MODELS_DIR:-$HOME/.cache/dreamteamer/transcription-models}"
 export UV_PROJECT_ENVIRONMENT="${TRANSCRIBING_VENV_DIR:-$HOME/.cache/dreamteamer/transcription-venv}"
 cd "$SK" && uv sync && uv run python transcribe_meeting.py setup   # audio route only
 ```
@@ -44,7 +44,7 @@ bump. Three things belong outside it:
 
 | what | where | moved by |
 |---|---|---|
-| the models (~1.6 GB, 3.2 GB with the GPU pass) | `.models/` beside the skill unless set — **set it** | `TRANSCRIBING_MODELS_DIR`, read by the script from the process environment (not `.env`); an absolute path, `~` is not expanded |
+| the models (~1.6 GB, 3.2 GB with the GPU pass) | `~/.cache/dreamteamer/transcription-models` unless set | `TRANSCRIBING_MODELS_DIR`, read by the script from the process environment (not `.env`); `~` and relative paths are made absolute |
 | the Python venv | `~/.cache/dreamteamer/transcription-venv` | `TRANSCRIBING_VENV_DIR`, through the `UV_PROJECT_ENVIRONMENT` export above |
 | the raw ASR JSON of each run | `~/.cache/dreamteamer/transcription-cache/asr/` | `TRANSCRIBING_CACHE_DIR`, read by the script |
 

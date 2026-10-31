@@ -1,5 +1,6 @@
-"""The model folder is beside the skill by default and moves wherever TRANSCRIBING_MODELS_DIR says —
-the npm channel needs that, because `npm ci` wipes node_modules and would re-download 1.6 GB."""
+"""The model folder is a per-machine cache by default (~/.cache/dreamteamer/transcription-models) and moves
+wherever TRANSCRIBING_MODELS_DIR says. Never beside the skill: `npm ci` wipes node_modules and would
+re-download 1.6 GB (3.2 GB with the GPU pass)."""
 import importlib
 import os
 import sys
@@ -21,9 +22,13 @@ def _load(env_value):
         sys.path.remove(SKILL)
 
 
-def test_default_is_beside_the_skill():
+CACHE_DEFAULT = os.path.join(os.path.expanduser("~"), ".cache", "dreamteamer", "transcription-models")
+
+
+def test_default_is_the_per_machine_cache_never_beside_the_skill():
     mod = _load(None)
-    assert mod.MODELS_DIR == os.path.join(SKILL, ".models")
+    assert mod.MODELS_DIR == CACHE_DEFAULT
+    assert not mod.MODELS_DIR.startswith(SKILL)
     assert mod.WHISPER_DIR.startswith(mod.MODELS_DIR)
 
 
@@ -36,4 +41,4 @@ def test_env_override_moves_every_model_path(tmp_path):
 
 def test_empty_override_falls_back_to_the_default():
     mod = _load("")
-    assert mod.MODELS_DIR == os.path.join(SKILL, ".models")
+    assert mod.MODELS_DIR == CACHE_DEFAULT

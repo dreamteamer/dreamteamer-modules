@@ -25,7 +25,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 # Beside the skill by default. `TRANSCRIBING_MODELS_DIR` (an absolute path, read from the process
 # environment) moves the ~1.6 GB elsewhere — needed when the skill sits in a folder that gets
 # reinstalled, such as node_modules, where the weights would otherwise be re-downloaded every time.
-MODELS_DIR = os.environ.get("TRANSCRIBING_MODELS_DIR") or os.path.join(HERE, ".models")
+MODELS_DIR = locations.models_dir()  # never beside the skill: npm ci would delete 1.6 GB
 SEG_MODEL = os.path.join(MODELS_DIR, "segmentation.onnx")
 EMB_MODEL = os.path.join(MODELS_DIR, "embedding.onnx")
 WHISPER_DIR = os.path.join(MODELS_DIR, "whisper")
