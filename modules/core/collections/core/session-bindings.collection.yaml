@@ -41,8 +41,8 @@ fields:
   stale_after:
     type: number
     default: 30
-    minimum: 0
-    description: Minutes without a heartbeat before a running session is abandoned and its claim lapses.
+    minimum: 0.01
+    description: Minutes without a heartbeat before a running session is abandoned and its claim lapses — at least 0.01 (0.6 s), the bound compile enforces too.
   description:
     type: string
     description: What a session under this binding does, in one line.

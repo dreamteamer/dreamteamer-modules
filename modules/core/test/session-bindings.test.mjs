@@ -90,7 +90,8 @@ describe('session-bindings compile like command-bindings', { skip }, () => {
 			[{ concurrency: 'always' }, /session-bindings\/bad\.session-binding\.yaml: `concurrency` is one · many/],
 			[{ available_when: { statuz: 'accepted' } }, /session-bindings\/bad\.session-binding\.yaml: available_when names "statuz", which is not a field of rnd\/change-requests/],
 			[{ done_when: { verified_on: { _soon: true } } }, /session-bindings\/bad\.session-binding\.yaml: done_when has unknown filter operator\(s\) _soon/],
-			[{ stale_after: 'never' }, /session-bindings\/bad\.session-binding\.yaml: `stale_after` is a positive number/],
+			[{ stale_after: 'never' }, /session-bindings\/bad\.session-binding\.yaml: `stale_after` is a number of minutes, at least 0\.01/],
+			[{ stale_after: 0 }, /session-bindings\/bad\.session-binding\.yaml: `stale_after` is a number of minutes, at least 0\.01 \(got 0\)/],
 			[{ owner: 'users/dana-oren' }, /session-bindings\/bad\.session-binding\.yaml: unknown key `owner`/],
 		];
 		for (const [over, why] of bad) {
@@ -101,6 +102,9 @@ describe('session-bindings compile like command-bindings', { skip }, () => {
 			assert.match(r.err + r.out, why);
 		}
 		ok(dt(root, ['compile']));
+		// the descriptor's own bound is the same one: what compile accepts, check accepts
+		const desc = fs.readFileSync(path.join(root, '.dreamteamer', 'collections', 'session-bindings.collection.yaml'), 'utf8');
+		assert.match(desc, /stale_after:[\s\S]*?minimum: 0\.01/);
 	});
 
 	test('the Stop hook that heartbeats is rendered by dt install --print-adapters', () => {

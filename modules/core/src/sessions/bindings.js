@@ -10,6 +10,8 @@ export const KEYS = ['collection', 'available_when', 'done_when', 'harness', 'ag
 export const CONCURRENCY = ['one', 'many'];
 /** Minutes without a heartbeat before a running session is abandoned, when its binding names none. */
 export const DEFAULT_STALE_AFTER = 30;
+/** The least `stale_after` — the descriptor's `minimum` says the same, so compile and check agree. */
+export const MIN_STALE_AFTER = 0.01;
 const BUILTIN_FIELDS = ['id', 'created', 'last_modified'];
 const PREFIX = 'session-bindings/';
 
@@ -42,7 +44,7 @@ export function bindingProblems(b, ctx) {
 	if (b.agent !== undefined && !ctx.agents.has(strip(b.agent, 'agents'))) errors.push(`references unknown agent "${b.agent}"`);
 	if (b.command !== undefined && !ctx.commands.has(strip(b.command, 'commands'))) errors.push(`references unknown command "${b.command}"`);
 	if (b.concurrency !== undefined && !CONCURRENCY.includes(b.concurrency)) errors.push(`\`concurrency\` is ${CONCURRENCY.join(' · ')} (got ${JSON.stringify(b.concurrency)})`);
-	if (b.stale_after !== undefined && !(typeof b.stale_after === 'number' && b.stale_after > 0)) errors.push(`\`stale_after\` is a positive number of minutes (got ${JSON.stringify(b.stale_after)})`);
+	if (b.stale_after !== undefined && !(typeof b.stale_after === 'number' && b.stale_after >= MIN_STALE_AFTER)) errors.push(`\`stale_after\` is a number of minutes, at least ${MIN_STALE_AFTER} (got ${JSON.stringify(b.stale_after)})`);
 	if (b.harness !== undefined && typeof b.harness !== 'string') errors.push('`harness` is a string — the harness a session runs in, e.g. claude-code');
 	for (const key of ['available_when', 'done_when']) {
 		if (b[key] === undefined) continue;
