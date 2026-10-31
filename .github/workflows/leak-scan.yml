@@ -107,6 +107,13 @@ jobs:
             echo "::warning::secrets.LEAK_NAMES is not set — private-name check SKIPPED, not passed."
             exit 0
           fi
+          # A MALFORMED pattern must fail, not pass (finding r1-09, 2026-10-31): grep exits 2 on an invalid
+          # regex, and the `|| true` below would read that as "no hits" — the gate silently off. Probe once.
+          rc=0; printf 'leak-names-probe\n' | grep -iE "$LEAK_NAMES" >/dev/null 2>&1 || rc=$?
+          if [ "$rc" -gt 1 ]; then
+            echo "::error::secrets.LEAK_NAMES is not a valid extended regex (grep exit $rc), so the private-name check cannot run. Re-set it from the hook's \`names\` mode."
+            exit 1
+          fi
           n=$(grep -icE "$LEAK_NAMES" /tmp/added.txt || true)
           if [ "${n:-0}" -gt 0 ]; then
             echo "::error::$n added line(s) match a private name. Not printing them — this log is readable by anyone with repo access."

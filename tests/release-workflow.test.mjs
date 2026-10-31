@@ -89,3 +89,31 @@ test('publish runs inside the ONE module the tag names, never at the repo root',
 	const mod = steps.find((st) => st.id === 'mod');
 	assert.ok(mod && /modules\/\$ID\/package\.json/.test(mod.run), 'the tag must be resolved to modules/<id> and checked against its version');
 });
+
+// ── a malformed LEAK_NAMES fails, in both workflows (finding r1-09, 2026-10-31) ─────────────────
+// grep exits 2 on an invalid regex; behind `|| true` that read as "no hits", so a bad paste into the
+// secret turned the private-name gate off while both steps reported clean. Each step now probes the
+// pattern first. Run the probe itself, as bash -e runs it on the runner, rather than grep for its text.
+const leakScan = yaml.load(fs.readFileSync(path.join(ROOT, '.github', 'workflows', 'leak-scan.yml'), 'utf8'));
+const namesStep = leakScan.jobs.scan.steps.find((s) => s.name === 'private names');
+const probeOf = (run) => {
+	const lines = run.split('\n');
+	const start = lines.findIndex((l) => /leak-names-probe/.test(l));
+	assert.ok(start >= 0, 'no LEAK_NAMES probe in the step');
+	const end = lines.findIndex((l, i) => i > start && l.trim() === 'fi');
+	return lines.slice(start, end + 1).join('\n');
+};
+for (const [label, run] of [['leak-scan.yml private names', () => namesStep.run], ['release.yml leak gate', () => leakGate.run]]) {
+	test(`${label}: a malformed LEAK_NAMES exits 1; a valid one carries on`, async () => {
+		const { spawnSync } = await import('node:child_process');
+		const probe = probeOf(run());
+		const go = (pattern) => spawnSync('bash', ['-e', '-c', `${probe}\necho REACHED`], { env: { ...process.env, LEAK_NAMES: pattern }, encoding: 'utf8' });
+		const bad = go('\\b(unbalanced');
+		assert.equal(bad.status, 1, `malformed pattern: expected exit 1, got ${bad.status}`);
+		assert.doesNotMatch(bad.stdout, /REACHED/);
+		assert.match(bad.stdout, /::error::/);
+		const good = go('\\b(northwind|harbor)\\b');
+		assert.equal(good.status, 0, good.stderr);
+		assert.match(good.stdout, /REACHED/);
+	});
+}

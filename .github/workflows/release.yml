@@ -65,6 +65,13 @@ jobs:
           TEXT=$(git grep -I -l -e '.' -- . || true)
           [ -n "$TEXT" ] || { echo "::error::no text files found to scan — the gate would pass vacuously"; exit 1; }
 
+          # A MALFORMED pattern must fail, not pass (finding r1-09, 2026-10-31): grep exits 2 on an invalid
+          # regex, and the `|| true` below would read that as "no hits" — the gate silently off. Probe once.
+          rc=0; printf 'leak-names-probe\n' | grep -iE "$LEAK_NAMES" >/dev/null 2>&1 || rc=$?
+          if [ "$rc" -gt 1 ]; then
+            echo "::error::secrets.LEAK_NAMES is not a valid extended regex (grep exit $rc), so the private-name check cannot run. Re-set it from the hook's \`names\` mode."
+            exit 1
+          fi
           hits=$(printf '%s\n' "$TEXT" | xargs -r grep -lIiE "$LEAK_NAMES" 2>/dev/null || true)
           if [ -n "$hits" ]; then
             echo "::error::$(printf '%s\n' "$hits" | wc -l | tr -d ' ') tracked file(s) match a private name"

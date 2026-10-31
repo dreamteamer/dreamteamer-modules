@@ -8,7 +8,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
-import { createHash } from 'node:crypto';
+import { createHmac } from 'node:crypto';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 
@@ -58,22 +58,27 @@ describe('the leak gate', () => {
 		const vaultNames = ['gk-' + 'brain', 'hq[23]', 'dt-' + 'hq'].join('|');
 		assert.deepEqual(hits(new RegExp(`\\b(${vaultNames})\\b`, 'i')), []);
 	});
-	test('no real person\'s name that once leaked into the recordings ingest (pub-01, 2026-10-31)', () => {
-		// A real contact's name sat in a filename example in detect.mjs, in recordings and its composed
-		// copy in core, and shipped in two public tarballs before a review caught it. The deny-list is
-		// kept as SHA-256 of the lower-cased word, never spelled: a spelling here would put the name
-		// back in the tree this test exists to keep it out of. Scoped to the two modules it leaked from.
+	test('no real person\'s name that once leaked into the recordings ingest (pub-01, 2026-10-31), anywhere in the tree', () => {
+		// A real contact's name sat in a filename example in detect.mjs (recordings, and its composed copy
+		// in core) and shipped in public tarballs before a review caught it. The deny-list holds every
+		// token of that contact's id and of the example, as HMAC-SHA-256 under a fixed salt, never
+		// spelled — so the name cannot be grepped out of this file and put back in the tree.
+		// ⚠ The hash hides a name from grep, NOT from a reader: anyone holding a names list and this salt
+		// can test candidates. It is acceptable here only because this name is already public (in npm
+		// tarballs and in history). A name that is NOT yet public belongs in the private hook only.
+		// Scans the whole tree, every module: a leak outside the module it came from is just as public.
+		const SALT = 'dreamteamer-modules leak-gate deny-list v1';
 		const DENY = new Set([
-			'668e2b73ac556a2f051304702da290160b29bad3392ddcc72074fefbee80c55a',
-			'49f13d51c651324e205a60e8bf92347c535a1f100cd30d387461980c50da7f9a',
+			'8476b4b054a7438eff67301c67a7352e95f9aadb4da14c40301c0c7f8db2c740',
+			'5183307fe779336d34251d79016de822d9e588d5f24d2b914169a4cba6f1a173',
+			'4d92dd45229cd43301de0723b4806dfc4547dcabe47fab90db3516d8f9236498',
 		]);
-		const scope = FILES.filter((f) => /^modules\/(recordings|core)\//.test(rel(f)));
-		assert.ok(scope.length > 20, `expected the recordings and core trees, saw ${scope.length} files`);
+		const digest = (w) => createHmac('sha256', SALT).update(w).digest('hex');
 		const out = [];
-		for (const f of scope) {
+		for (const f of FILES) {
 			fs.readFileSync(f, 'utf8').split('\n').forEach((line, i) => {
 				for (const w of line.toLowerCase().match(/[a-z]+/g) ?? []) {
-					if (DENY.has(createHash('sha256').update(w).digest('hex'))) out.push(`${rel(f)}:${i + 1}`);
+					if (DENY.has(digest(w))) out.push(`${rel(f)}:${i + 1}`);
 				}
 			});
 		}
