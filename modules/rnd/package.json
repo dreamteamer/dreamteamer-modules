@@ -28,6 +28,7 @@
 		"skills",
 		"commands",
 		"command-bindings",
+		"ui-views",
 		"agents",
 		"bin",
 		"src",

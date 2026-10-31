@@ -85,6 +85,14 @@ hold its records, which of the request's reviews belong to it, and the bindings 
 gate. A surface that knows the option draws it on the request's page — an empty stage drawn as empty,
 not left out; any other ignores it.
 
+**The R&D module has a page: activity beside counts by status.** rnd now ships ten ui-views — the
+page `modules-rnd` (activity beside the counts of change requests, issues, features, tests, reviews,
+design docs and implementation plans by status) and the views it nests. Nothing to do beyond
+`dt compile`. One collision to look for first: a workspace that authored a view with one of these ids
+(`modules-rnd`, `modules-rnd-activity`, `modules-rnd-counts`, `rnd-<collection>-by-status`) in its own
+module now fails compile on the duplicate id — delete its copy, or keep it and add the shipped one to
+`dreamteamer.disable` (`"ui-views/<id>"`).
+
 ## 0.5.1 — change requests read as a list: a short descriptive name, a one-line description, the rest in the body
 
 Nothing breaks: no field was added, removed or renamed, and every record compiles as it is. What

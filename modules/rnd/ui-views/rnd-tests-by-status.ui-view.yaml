@@ -1,0 +1,10 @@
+# Tests — one number per status, each opening the list filtered to it (the counts layout).
+route: /rnd/tests/by-status
+scope: collection
+collection: collections/rnd/tests
+title: Tests
+display:
+  list:
+    layout: counts
+    options:
+      group_by: status

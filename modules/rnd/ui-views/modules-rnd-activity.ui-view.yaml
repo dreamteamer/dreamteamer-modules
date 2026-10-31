@@ -1,0 +1,10 @@
+# The R&D module's activity feed as a view: the commits touching the records of the collections rnd
+# ships, the same feed the module's own Activity page draws.
+route: /modules/rnd/activity
+scope: page
+title: Activity
+display:
+  list:
+    layout: activity
+    options:
+      module: rnd

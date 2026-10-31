@@ -1,0 +1,12 @@
+# Design docs — one number per status, each opening the list filtered to it (the counts layout).
+route: /rnd/design-docs/by-status
+scope: collection
+collection: collections/rnd/design-docs
+title: Design docs
+display:
+  list:
+    layout: counts
+    options:
+      group_by: status
+      # `status` is optional on a design doc: one without it counts under "none", so the numbers add up to the total
+      show_ungrouped_rows: true

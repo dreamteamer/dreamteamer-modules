@@ -1,0 +1,10 @@
+# Change requests — one number per status, each opening the list filtered to it (the counts layout).
+route: /rnd/change-requests/by-status
+scope: collection
+collection: collections/rnd/change-requests
+title: Change requests
+display:
+  list:
+    layout: counts
+    options:
+      group_by: status

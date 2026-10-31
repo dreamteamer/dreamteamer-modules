@@ -1,0 +1,10 @@
+# Issues — one number per status, each opening the list filtered to it (the counts layout).
+route: /rnd/issues/by-status
+scope: collection
+collection: collections/rnd/issues
+title: Issues
+display:
+  list:
+    layout: counts
+    options:
+      group_by: status

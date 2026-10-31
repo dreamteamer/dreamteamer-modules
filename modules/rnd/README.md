@@ -142,6 +142,15 @@ any review it cannot hand to the qa-manager. New marks: `code_approved_on` and `
 declares the lifecycle as a stage map (`display.record.options.stages`). `UPDATING.md` has the
 commands for records in flight.
 
+**The R&D module has a page: activity beside counts by status.** rnd ships ten ui-views: `modules-rnd`,
+a page view (`display.list.layout: page`) for the module itself (`options.module: rnd`), nesting the
+module's activity feed (`modules-rnd-activity`, layout `activity`) beside a column of counts
+(`modules-rnd-counts`) — change requests, issues, features, tests, reviews, design docs and
+implementation plans, each by status (`rnd-<collection>-by-status`, layout `counts`, `group_by:
+status`). An editor that draws module pages opens it when the R&D folder is clicked, scoped to a record
+layer's records inside that layer; elsewhere they are ordinary views at their routes. Tasks are not
+counted: `tasks` is not rnd's, and the views must check clean where rnd is installed alone.
+
 ## 0.5.1 — from 0.5.0
 
 Nothing to do. `change-requests` reads as a list: the descriptor now says `name` is a handful of

@@ -1,0 +1,22 @@
+# The R&D module's page: a page view that NESTS views — the module's activity beside the counts of its
+# lifecycle collections by status. An editor that draws module pages (the VS Code extension) opens it
+# when the R&D folder is clicked: it looks for the page view whose `options.module` names the module —
+# `rnd`, this module's installed id — and scopes it to a record layer's records when the folder sits
+# inside that layer. Without such an editor these are ordinary ui-views at their routes.
+#
+# Every key under `options` is the surface's vocabulary (a dashboard is nested ui-views, not a panel
+# vocabulary): compile passes it through untouched, and the editor refuses a missing or cyclic child in
+# its own panel, by id. A workspace that wants a different page overlays this view or disables it.
+route: /modules/rnd
+scope: page
+title: R&D
+description: What changed in the R&D records, beside where each lifecycle collection stands.
+display:
+  list:
+    layout: page
+    options:
+      module: rnd
+      grid_columns: 2
+      views:
+        - ui-views/modules-rnd-activity
+        - ui-views/modules-rnd-counts
