@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // COMPOSE a module from other official modules — copies, never a second authoring place.
 //
-// A module with `compose.json` at its root names its `origins` (and may name `engine`, a floor of the module's own, for what its own
+// A module with `compose.json` at its root names its `origins` (and may name `extension`, an entry of the module's own that
+// activates the origin's entry beside its own code, and `engine`, a floor of the module's own, for what its own
 // commands need of the engine beyond what the origins do, and `env` and `vars`, the keys its OWN collections and scripts read — core's
 // `sessions` keeps its records under `${env:SESSIONS_FOLDER}`); this script copies every shipped
 // source file of each origin into the module under ONE deterministic rewrite, merges the origins'
@@ -120,12 +121,17 @@ export function compose(target = 'core') {
 	const existing = fs.existsSync(path.join(root, 'package.json')) ? readJson(path.join(root, 'package.json')) : {};
 	const authored = existing.dreamteamer ?? {};
 	const dts = [authored, ...manifests.map((m) => m.pkg.dreamteamer ?? {})];
-	// the ONE extension: an origin's, or the module's own — never both, since both would ship src/
+	// the ONE extension entry: an origin's, or the module's own. A module whose compose.json names an
+	// `extension` of its own owns the entry — it activates the origin's entry itself and merges the two
+	// contributions (core's `src/entry.js`: files' `dt files` beside its own sessions) — so its own files
+	// may sit in src/ beside the origin's copies; a path both claim still fails, below and in the copy loop.
 	const extensions = manifests.filter((m) => m.pkg.dreamteamer?.extension);
 	if (extensions.length > 1) throw new Error(`two origins are extensions: ${extensions.map((m) => m.origin).join(', ')} — a module can declare one entry`);
-	const extension = extensions[0]?.pkg.dreamteamer.extension ?? authored.extension;
-	if (extensions.length && authored.extension && authored.extension !== extension) throw new Error(`${target} declares its own extension ${authored.extension} and ${extensions[0].origin} brings ${extension} — a module can declare one entry`);
-	if (extensions.length && fs.existsSync(path.join(root, 'src')) && walk(path.join(root, 'src')).some((f) => !isCopy(`src/${f}`))) throw new Error(`${target}/src/ holds files of its own, and ${extensions[0].origin} lands its src/ there`);
+	const own = spec.extension;
+	const extension = own ?? extensions[0]?.pkg.dreamteamer.extension ?? authored.extension;
+	if (own && copies.has(own.replace(/^\.\//, ''))) throw new Error(`${target} names its own extension ${own}, and ${copies.get(own.replace(/^\.\//, '')).from} lands on that path`);
+	if (!own && extensions.length && authored.extension && authored.extension !== extension) throw new Error(`${target} declares its own extension ${authored.extension} and ${extensions[0].origin} brings ${extension} — a module can declare one entry`);
+	if (!own && extensions.length && fs.existsSync(path.join(root, 'src')) && walk(path.join(root, 'src')).some((f) => !isCopy(`src/${f}`))) throw new Error(`${target}/src/ holds files of its own, and ${extensions[0].origin} lands its src/ there — name the module's own entry in compose.json \`extension\``);
 	// an origin may depend only on another origin (or the module itself): the composition compiles alone
 	const internal = new Set([...spec.origins, target].map((o) => `@dreamteamer/${o}`));
 	for (const { origin, pkg } of manifests) for (const d of pkg.dreamteamer?.dependencies ?? []) {
