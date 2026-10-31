@@ -6,7 +6,9 @@
 #
 # Every key under `options` is the surface's vocabulary (a dashboard is nested ui-views, not a panel
 # vocabulary): compile passes it through untouched, and the editor refuses a missing or cyclic child in
-# its own panel, by id. A workspace that wants a different page overlays this view or disables it.
+# its own panel, by id. A workspace that wants a different page authors its own page view with
+# `options.module: rnd` under another id: the editor draws the page nearest the workspace (its own
+# modules, then a layer, then this package) and names the one it drew.
 route: /modules/rnd
 scope: page
 title: R&D
