@@ -268,9 +268,9 @@ describe('the commands, the bindings and the agent — every entry names a skill
 	});
 	const dir = path.join(RND, 'command-bindings');
 	const bindings = fs.readdirSync(dir).filter((f) => f.endsWith('.command-binding.yaml') && authored('command-bindings', f)).map((f) => ({ file: f, ...yaml.load(fs.readFileSync(path.join(dir, f), 'utf8')) }));
-	test('thirty bindings: three on the reference chain, twenty-seven on the lifecycle', () => {
-		assert.equal(bindings.length, 30);
-		assert.equal(bindings.filter((b) => STAGES.includes(b.command.replace(/^commands\//, ''))).length, 27);
+	test('thirty-one bindings: three on the reference chain, twenty-eight on the lifecycle', () => {
+		assert.equal(bindings.length, 31);
+		assert.equal(bindings.filter((b) => STAGES.includes(b.command.replace(/^commands\//, ''))).length, 28);
 	});
 	/** The fields of a collection by its qualified name, or null when it is not an rnd collection. */
 	const fieldsByName = (name) => name.startsWith('rnd/') ? load(`collections/${name}.collection.yaml`).fields : null;
@@ -359,7 +359,7 @@ describe('0.3.0 — the lifecycle fields', () => {
 		assert.deepEqual(b('rnd--deploy--change-requests.command-binding.yaml').available_when.verified_on, { _nempty: true });
 		assert.deepEqual(b('rnd--test--change-requests.command-binding.yaml').available_when.implementation_plans, { code_approved_on: { _nempty: true } });
 		assert.deepEqual(b('rnd--plan--change-requests.command-binding.yaml').available_when.design_docs, { status: { _eq: 'active' } }, 'a request is planned against its active design — none is no longer enough (0.5.2: one next verb)');
-		for (const f of fs.readdirSync(path.join(RND, 'command-bindings'))) if (authored('command-bindings', f) && !/prototype--prototypes|--products|ingest-reference/.test(f)) assert.ok(b(f).done_when, `${f} has no done_when — the agent could loop on it`);
+		for (const f of fs.readdirSync(path.join(RND, 'command-bindings'))) if (authored('command-bindings', f) && !/prototype--prototypes|--products|ingest-reference|releases--stamp/.test(f)) assert.ok(b(f).done_when, `${f} has no done_when — the agent could loop on it`);
 	});
 	test('a defect takes the quick path: a plan may fix an issue, which lists its plans back', () => {
 		assert.equal(plan.fields.issue.type, 'rnd/issues');
@@ -708,6 +708,20 @@ describe('0.6.0 — releases: a product\'s versions, each listing what it ships'
 		assert.deepEqual(pub.available_when, { status: { _eq: 'cut' } }); assert.deepEqual(pub.done_when, { published_on: { _nempty: true } });
 		assert.match(pub.description, /deployed_on/);
 	});
+	test('a published release with a carried request unstamped answers the stamp step — the publication\'s last half, resumable (r1-04)', () => {
+		const st = binding('rnd--release--releases--stamp');
+		assert.equal(st.command, 'commands/rnd/release');
+		assert.deepEqual(st.available_when, { status: { _eq: 'published' }, change_requests: { deployed_on: { _empty: true } } });
+		assert.equal(st.done_when, undefined, 'no done_when: "every carried request stamped" is a negation the grammar cannot say; the binding stops being available');
+		assert.match(read('commands/rnd/release.command.md'), /names the stamp step: only that last half/);
+		assert.match(read('skills/rnd-release/SKILL.md'), /a step of its own when it is resumed/);
+	});
+	test('re-versioning a planned release is two writes in order — set version, then rename — said in the skill, the descriptor and UPDATING (r1-02)', () => {
+		assert.match(read('skills/rnd-release/SKILL.md'), /`dt set rnd\/releases\/<id> version=<new>`, then `dt rename rnd\/releases\/<id> <product>\/<new>`/);
+		assert.match(desc('releases').fields.version.description, /then `dt rename`/);
+		assert.match(read('UPDATING.md'), /`dt set rnd\/releases\/<id> version=<new>`, then `dt rename rnd\/releases\/<id>/);
+		assert.doesNotMatch(read('skills/rnd-release/SKILL.md'), /`dt rename` it\./, 'rename alone leaves version behind');
+	});
 	test('a request\'s deploy stage: /rnd:deploy without a release, /rnd:release with one — never both — and the stage map draws both', () => {
 		const dep = binding('rnd--deploy--change-requests');
 		const rel = binding('rnd--release--change-requests');
@@ -734,6 +748,7 @@ describe('0.6.0 — releases: a product\'s versions, each listing what it ships'
 	test('dt check reads releases through rnd\'s own extension, which wraps the composed notebooklm entry', async () => {
 		const pkg = JSON.parse(read('package.json'));
 		assert.equal(pkg.dreamteamer.extension, './lib/extension.mjs');
+		assert.equal(JSON.parse(read('compose.json')).extension, './lib/extension.mjs', 'named in compose.json, the shape core uses too');
 		assert.match(read('lib/extension.mjs'), /from '\.\.\/src\/extension\.js'/);
 		const { expectedId, releaseViolations } = await import('../lib/releases.mjs');
 		assert.equal(expectedId({ product: 'rnd/products/grantee-portal', version: '1.4.0' }), 'grantee-portal/1.4.0');

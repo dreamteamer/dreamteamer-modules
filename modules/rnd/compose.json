@@ -3,6 +3,7 @@
 		"wikis",
 		"notebooklm"
 	],
+	"extension": "./lib/extension.mjs",
 	"files": {
 		"bin/notebooklm-notebook.mjs": {
 			"from": "notebooklm/bin/notebook.mjs",

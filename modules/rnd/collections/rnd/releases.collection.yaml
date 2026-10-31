@@ -33,7 +33,7 @@ fields:
     required: true
     pattern: ^\d+\.\d+\.\d+(-[0-9a-z.-]+)?$
     examples: ['0.6.0', '1.0.0-beta.1']
-    description: 'The version this release ships, as the registry spells it — semver, no leading `v`. The id''s last segment: never change it with `dt set`, which leaves the id behind (`dt check` says so); `dt rename` the record instead.'
+    description: 'The version this release ships, as the registry spells it — semver, no leading `v`. The id''s last segment: never change it alone: re-versioning a planned release is `dt set … version=<new>` then `dt rename` the record to the new id, and `dt check` flags it between the two.'
   product:
     type: rnd/products
     required: true

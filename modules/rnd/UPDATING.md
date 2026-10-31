@@ -38,9 +38,12 @@ dt set rnd/change-requests/<id> release=rnd/releases/<p>/0.6.0   # schedule a ch
 **One release per product, package and version.** `dt add` refuses the id twice, and `dt check` now
 refuses a release whose id does not name its own product, package and version — a hand-written copy,
 or `dt set … version=` on a record, which leaves the id behind — naming both claimants. The check is
-rnd's own extension: the package's `dreamteamer.extension` is now `./lib/extension.mjs`, which wraps
-the `dt notebooklm` verb and harness unchanged and adds the check. Never `dt set` a release's
-`version`, `package` or `product`; `dt rename` it.
+rnd's own extension: `compose.json` names it (`extension: ./lib/extension.mjs`), so the package's
+`dreamteamer.extension` is that entry, which wraps
+the `dt notebooklm` verb and harness unchanged and adds the check. Re-versioning a planned release is two
+writes, in this order: `dt set rnd/releases/<id> version=<new>`, then `dt rename rnd/releases/<id>
+<product>/<new>` (which moves every `release` pointing at it) — `dt check` flags it between the two.
+A cut or published release is never re-versioned.
 
 **A request in a release is deployed by the release.** With `release` set, `dt next` on a verified
 request names `/rnd:release`, not `/rnd:deploy`; the release's publish step stamps `deployed_on` with
@@ -48,12 +51,14 @@ its `published_on`, and the live acceptance review opens then — never while th
 cut or rolled back, even with `deployed_on` written by hand. A request with no `release` deploys as
 before. The stage map's deploy stage draws `release` beside `deployed_on`.
 
-**`/rnd:release` is three `dt next` answers on a release**: plan (planned, no notes — schedule the
+**`/rnd:release` is a `dt next` answer per step on a release**: plan (planned, no notes — schedule the
 changes, write the notes from their bodies), cut (planned, notes written — the repo's release gates
 with their exit codes, then a PERSON tags: tagging is publishing, and the rnd-agent stops there),
 publish (cut — the registries answer the exact version; `published_on`, `published_to`, and
-`deployed_on` on every request carried). A cut needs `repo`, `tag` and `cut_on`; `published` needs
-`published_on` and `published_to` — a write without them is refused.
+`deployed_on` on every request carried) — and, once published, a fourth answer while any request it
+carries has no `deployed_on`: stamp (the publish step's last half, resumable on its own). A cut needs
+`repo`, `tag` and `cut_on`; `published` needs `published_on` and `published_to` — a write without
+them is refused.
 
 What that does to records you have:
 

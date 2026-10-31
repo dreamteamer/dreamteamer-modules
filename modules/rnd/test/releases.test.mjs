@@ -82,6 +82,15 @@ for (const [how, make] of [['copied', rndWorkspace], ['packed', packedWorkspace]
 			dt(root, 'set', REL, 'version=1.4.0');
 			dt(root, 'check');
 		});
+		test('re-versioning a planned release is two writes — set version, then rename — and checks clean after both (r1-02)', () => {
+			const old = 'rnd/releases/grantee-portal/roster/0.3.0';
+			dt(root, 'add', 'rnd/change-requests', '--key', 'roster-sort', '--name', 'Roster sort', '--products', PRODUCT, '--release', old);
+			dt(root, 'set', old, 'version=0.3.1');
+			assert.notEqual(run(root, ['check']).status, 0, 'between the two writes the id still says 0.3.0');
+			dt(root, 'rename', old, 'grantee-portal/roster/0.3.1');
+			assert.equal(get(root, 'rnd/change-requests/roster-sort').release, 'rnd/releases/grantee-portal/roster/0.3.1', 'the rename moved the request\'s release');
+			dt(root, 'check');
+		});
 		test('the step marks are required by their step: a cut needs repo, tag and cut_on; a publication its instant and URLs', () => {
 			const cut = run(root, ['set', REL, 'status=cut']);
 			assert.notEqual(cut.status, 0, 'a cut with no tag was written');
@@ -154,8 +163,10 @@ for (const [how, make] of [['copied', rndWorkspace], ['packed', packedWorkspace]
 		test('published, the request stamped from it: the live acceptance review is the one verb', () => {
 			dt(root, 'set', REL, 'status=published', 'published_on=2026-01-20T11:00:00+02:00', 'published_to=https://www.npmjs.com/package/grantee-portal/v/1.4.0');
 			assert.deepEqual(available(root, CR), ['rnd--release--change-requests'], 'published, but deployed_on is the publish step\'s stamp');
+			assert.deepEqual(available(root, REL), ['rnd--release--releases--stamp'], 'the release names the stamp while a carried request is unstamped (r1-04)');
 			dt(root, 'set', CR, `deployed_on=${get(root, REL).published_on}`);
 			assert.deepEqual(available(root, CR), ['rnd--review--change-requests--deploy']);
+			assert.deepEqual(available(root, REL), [], 'every carried request stamped: the release answers nothing');
 		});
 		test('the live review approves: implemented, nothing open, and the records check clean', () => {
 			dt(root, 'set', CR, 'status=implemented');
@@ -180,7 +191,8 @@ for (const [how, make] of [['copied', rndWorkspace], ['packed', packedWorkspace]
 
 // Retro-filing: a workspace that has shipped before files its past releases as its first records. The fixture
 // is that shape in the synthetic cast — a product that ships one package, a product that ships several (two
-// versions of one package among them), each published release naming the change requests it carried — checked
+// versions of one package among them), each release at its TRUE status (one only on a branch: planned, no tag)
+// and naming the change requests it carries — checked
 // clean on the real engine, so filing real ones is a copy of a record, not a design.
 describe('the fixture — a product with several packages and one with one, each release naming what it carries', () => {
 	const FIX = path.join(path.dirname(new URL(import.meta.url).pathname), 'fixtures', 'releases-northwind');
@@ -195,6 +207,10 @@ describe('the fixture — a product with several packages and one with one, each
 		const ids = (rows.rows ?? rows).map((r) => r.id).sort();
 		assert.deepEqual(ids, ['northwind-modules/billing/0.2.0', 'northwind-modules/roster/0.5.1', 'northwind-modules/roster/0.5.2', 'northwind-portal/0.41.0']);
 		assert.deepEqual(get(root, 'rnd/releases/northwind-modules/roster/0.5.2').change_requests, ['rnd/change-requests/roster-review-gates']);
-		for (const id of ids) assert.equal(get(root, `rnd/releases/${id}`).status, 'published', id);
+		// what is published says so; a version that only exists on a branch is planned, with no tag (r1-01)
+		const status = Object.fromEntries(ids.map((id) => [id, get(root, `rnd/releases/${id}`).status]));
+		assert.deepEqual(status, { 'northwind-modules/billing/0.2.0': 'planned', 'northwind-modules/roster/0.5.1': 'published', 'northwind-modules/roster/0.5.2': 'published', 'northwind-portal/0.41.0': 'published' });
+		assert.equal(get(root, 'rnd/releases/northwind-modules/billing/0.2.0').tag, undefined);
+		assert.deepEqual(available(root, 'rnd/change-requests/billing-teams'), ['rnd--release--change-requests'], 'a verified request in a planned release waits for it');
 	});
 });
