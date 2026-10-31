@@ -22,10 +22,9 @@ import engines
 import locations
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-# Beside the skill by default. `TRANSCRIBING_MODELS_DIR` (an absolute path, read from the process
-# environment) moves the ~1.6 GB elsewhere — needed when the skill sits in a folder that gets
-# reinstalled, such as node_modules, where the weights would otherwise be re-downloaded every time.
-MODELS_DIR = os.environ.get("TRANSCRIBING_MODELS_DIR") or os.path.join(HERE, ".models")
+# The per-machine cache by default (locations.py); `TRANSCRIBING_MODELS_DIR` moves it.
+MODELS_DIR = locations.models_dir()
+LEGACY_MODELS_DIR = os.path.join(HERE, ".models")
 SEG_MODEL = os.path.join(MODELS_DIR, "segmentation.onnx")
 EMB_MODEL = os.path.join(MODELS_DIR, "embedding.onnx")
 WHISPER_DIR = os.path.join(MODELS_DIR, "whisper")
@@ -60,8 +59,24 @@ def warn_if_venv_in_skill(prefix=None):
     return True
 
 
+def warn_if_models_beside_skill(legacy=None, models=None):
+    """Weights left in the old default — `.models/` beside the skill — are not read any more. Say where
+    they are and how to move them rather than download 1.6 GB again. Returns whether it warned."""
+    legacy, models = legacy or LEGACY_MODELS_DIR, models or MODELS_DIR
+    if not os.path.isdir(legacy) or os.path.realpath(legacy) == os.path.realpath(models):
+        return False
+    print(
+        f"  note: model weights found beside the skill ({legacy}); they are read from {models} now.\n"
+        f"    Move them rather than download again: mkdir -p \"{os.path.dirname(models)}\" && "
+        f"rsync -a \"{legacy}/\" \"{models}/\" && rm -rf \"{legacy}\"",
+        file=sys.stderr,
+    )
+    return True
+
+
 def setup():
     warn_if_venv_in_skill()
+    warn_if_models_beside_skill()
     os.makedirs(MODELS_DIR, exist_ok=True)
     if not os.path.exists(SEG_MODEL):
         tar_path = os.path.join(MODELS_DIR, "seg.tar.bz2")
@@ -92,8 +107,9 @@ def setup():
 
 
 def choose_engine(requested):
-    """auto | metal | cpu → the engine this run uses, decided from this machine."""
-    return engines.select_engine(
+    """auto | metal | cpu → (engine, fallback): the engine this run uses, decided from this machine, and
+    why `auto` ended on the CPU (None when it did not)."""
+    return engines.select_engine_why(
         requested,
         whisper_cli=engines.find_whisper_cli(),
         ggml_present=engines.ggml_ready(MODELS_DIR),
@@ -239,9 +255,12 @@ def transcribe(wav, language=None, engine="cpu"):
 
 def run(meeting_md, audio, generated, num_speakers=None, language=None, engine="auto"):
     try:
-        engine = choose_engine(engine)
+        engine, fallback = choose_engine(engine)
     except engines.EngineUnavailable as e:
         raise SystemExit(f"✖ {e}")
+    if fallback:
+        print(f"  engine: cpu — {fallback}", file=sys.stderr)
+    warn_if_models_beside_skill()
     fm, body = read_meeting(meeting_md)
     if num_speakers is None:
         num_speakers = count_attendees(fm)
@@ -267,6 +286,7 @@ def run(meeting_md, audio, generated, num_speakers=None, language=None, engine="
     fm["transcription"] = {
         "generated": generated,
         "engine": engines.LABELS[engine],
+        **({"engine_fallback": fallback} if fallback else {}),
         "diarization": DIARIZATION,
         "language": asr["language"],
         # Whether the language was forced or detected — a detected one on a code-switched
@@ -285,6 +305,7 @@ def run(meeting_md, audio, generated, num_speakers=None, language=None, engine="
         "speaker_count": fm["transcription"]["speaker_count"],
         "speakers_hint": num_speakers,
         "engine": engine,
+        "engine_fallback": fallback,
         "asr_seconds": asr_seconds,
         "meeting": meeting_md,
         "asr_cache": asr_json,

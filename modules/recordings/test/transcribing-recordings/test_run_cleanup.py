@@ -89,9 +89,9 @@ class RunLeavesNoDecodedAudio(unittest.TestCase):
 
         self.decoded = []  # (path, rate, channels, frames) of the WAV each recognition pass was handed
         for name, value in {
-            "choose_engine": lambda requested: "cpu",
+            "choose_engine": lambda requested: ("cpu", None),
             "read_meeting": lambda p: ({}, ""),
-            "write_meeting": lambda p, fm, body: None,
+            "write_meeting": self.capture_record,
             "diarize_safe": lambda wav, num_speakers=None: [],
             "transcribe": self.fake_transcribe,
             "asr_cache_path_for": lambda p: self.asr_json,
@@ -99,6 +99,9 @@ class RunLeavesNoDecodedAudio(unittest.TestCase):
             p = mock.patch.object(tm, name, value)
             p.start()
             self.addCleanup(p.stop)
+
+    def capture_record(self, path, fm, body):
+        self.written = fm
 
     def fake_transcribe(self, wav, language=None, engine="cpu"):
         with wave.open(wav, "rb") as w:
@@ -124,6 +127,22 @@ class RunLeavesNoDecodedAudio(unittest.TestCase):
         self.assertFalse(os.path.exists(wav), "the decoded WAV survived the run")
         self.assertEqual(self.leftovers(), [], "run() left its temp folder behind")
 
+    def test_a_cpu_run_by_request_records_no_fallback(self):
+        summary = self.run_quietly(self.clip)
+        self.assertIsNone(summary["engine_fallback"])
+        self.assertNotIn("engine_fallback", self.written["transcription"])
+
+    def test_auto_falling_back_to_the_cpu_says_why_on_stderr_in_the_summary_and_on_the_record(self):
+        why = "metal unavailable — needs whisper-cli on PATH (macOS: brew install whisper-cpp)"
+        err = io.StringIO()
+        with mock.patch.object(tm, "choose_engine", lambda requested: ("cpu", why)), \
+                contextlib.redirect_stderr(err):
+            summary = self.run_quietly(self.clip)
+        self.assertIn(f"engine: cpu — {why}", err.getvalue())
+        self.assertEqual(summary["engine_fallback"], why)
+        self.assertEqual(self.written["transcription"]["engine_fallback"], why)
+        self.assertEqual(self.written["transcription"]["engine"], tm.engines.LABELS["cpu"])
+
     def test_a_run_that_raises_in_recognition_leaves_no_temp_folder(self):
         def boom(wav, language=None, engine="cpu"):
             self.fake_transcribe(wav, language, engine)
@@ -148,6 +167,33 @@ class RunLeavesNoDecodedAudio(unittest.TestCase):
         self.assertEqual(self.decoded, [])
         self.assertEqual(self.leftovers(), [], "a failed decode left its temp folder behind")
 
+
+
+class ModelsLeftBesideTheSkill(unittest.TestCase):
+    """Weights in the pre-0.2.2 default (`.models/` beside the skill) are not read any more — a note says
+    how to move them, so a pin bump never costs a silent 1.6 GB download or a silent CPU run."""
+
+    def test_old_weights_beside_the_skill_print_how_to_move_them(self):
+        with tempfile.TemporaryDirectory() as d:
+            legacy = os.path.join(d, ".models"); os.mkdir(legacy)
+            err = io.StringIO()
+            with contextlib.redirect_stderr(err):
+                self.assertTrue(tm.warn_if_models_beside_skill(legacy, os.path.join(d, "cache", "transcription-models")))
+            self.assertIn("rsync -a", err.getvalue())
+            self.assertIn(legacy, err.getvalue())
+
+    def test_no_old_folder_is_silent(self):
+        with tempfile.TemporaryDirectory() as d:
+            err = io.StringIO()
+            with contextlib.redirect_stderr(err):
+                self.assertFalse(tm.warn_if_models_beside_skill(os.path.join(d, ".models"), os.path.join(d, "m")))
+            self.assertEqual(err.getvalue(), "")
+
+    def test_the_old_folder_named_as_the_models_dir_is_silent(self):
+        with tempfile.TemporaryDirectory() as d:
+            err = io.StringIO()
+            with contextlib.redirect_stderr(err):
+                self.assertFalse(tm.warn_if_models_beside_skill(d, d))
 
 
 class OldLayoutStillRunsAndSaysSo(unittest.TestCase):

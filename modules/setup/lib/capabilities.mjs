@@ -126,6 +126,29 @@ export function installedModules(root) {
 
 // `files` has no capability block here: its machine checks (is each drive mounted, cloud-only entries)
 // are its own extension's `dt doctor` rows.
+/** Where the transcriber reads its weights — the same rule as the skill's locations.models_dir():
+ *  TRANSCRIBING_MODELS_DIR, `~` expanded, else the per-machine cache. Never inside the package. */
+export function transcriptionModelsDir(env = process.env, home = os.homedir()) {
+	const v = env.TRANSCRIBING_MODELS_DIR;
+	if (!v) return path.join(home, '.cache', 'dreamteamer', 'transcription-models');
+	return path.resolve(v === '~' || v.startsWith('~/') ? path.join(home, v.slice(2)) : v);
+}
+
+// The GPU pass's weights, as the skill's engines.py pins them: the path under the models folder and
+// the exact size of the pinned upstream object. A file at any other size is half-copied or evicted.
+export const GGML_FILE = path.join('whisper-ggml', 'ggml-ivrit-large-v3-turbo.bin');
+export const GGML_SIZE = 1_624_555_275;
+const fileSize = (p) => { try { return fs.statSync(p).size; } catch { return null; } };
+
+/** Can `auto` transcribe on the GPU here? Optional either way: `warn` names what is missing and the
+ *  CPU pass runs regardless. Off Apple Silicon there is no GPU engine, which is a fact, not a gap. */
+export function gpuCheck({ platform = process.platform, arch = process.arch, whisperCli, ggmlSize }) {
+	if (platform !== 'darwin' || arch !== 'arm64') return { state: 'ok', detail: 'cpu — no GPU engine on this machine (metal needs Apple Silicon)' };
+	if (!whisperCli) return { state: 'warn', fix: 'brew install whisper-cpp, then re-run the transcriber setup for the 1.6 GB of ggml weights', detail: 'optional: recognition on Metal, ~4-5x faster; without it the CPU pass runs' };
+	if (ggmlSize !== GGML_SIZE) return { state: 'warn', fix: 'uv run python transcribe_meeting.py setup (in the transcribing-recordings skill folder)', detail: `optional: whisper-cli is there, the ggml weights are ${ggmlSize == null ? 'missing' : 'incomplete'} — the CPU pass runs until they are` };
+	return { state: 'ok', detail: `metal — whisper-cli ${whisperCli} + ggml weights` };
+}
+
 export const OURS = ['core', 'assets', 'users', 'companies', 'contacts', 'engagements', 'tasks', 'routines', 'meetings', 'recordings', 'meeting-docs', 'projects', 'perspective', 'wikis', 'notebooklm', 'search', 'rnd', 'proofs', 'worktrees', 'http', 'docker-workspaces', 'code', 'files', 'workflows'];
 
 /** The modules a COMPOSED module stands in for — `compose.json` at its root names its origins. `core`
@@ -243,17 +266,15 @@ export function capabilities(root) {
 		const uv = bin('uv');
 		const uvInstall = 'curl -LsSf https://astral.sh/uv/install.sh | sh';
 		uv ? c.ok('uv', uv) : c.bad('uv', uvInstall, 'provisions the pinned Python and its venv', uvInstall);
-		const modelsDir = process.env.TRANSCRIBING_MODELS_DIR || path.join(skill, '.models');
-		const onNpm = (mods.get('recordings') ?? mods.get([...mods.keys()].find((m) => originsOf(mods, m).includes('recordings')))).channel === 'node_modules';
-		if (onNpm && !process.env.TRANSCRIBING_MODELS_DIR) {
-			c.warn('TRANSCRIBING_MODELS_DIR', 'add TRANSCRIBING_MODELS_DIR=~/.cache/dreamteamer/transcribing-models to .env',
-				'installed from npm, so weights kept inside the package are deleted by the next npm ci');
-		} else if (fs.existsSync(path.join(modelsDir, 'segmentation.onnx'))) {
+		const modelsDir = transcriptionModelsDir();
+		if (fs.existsSync(path.join(modelsDir, 'segmentation.onnx'))) {
 			c.ok('model weights', modelsDir);
 		} else {
 			c.warn('model weights', `cd ${path.relative(root, skill)} && uv sync && uv run python transcribe_meeting.py setup`,
 				`~1.6 GB, downloaded once into ${modelsDir}`);
 		}
+		const gpu = gpuCheck({ whisperCli: bin('whisper-cli'), ggmlSize: fileSize(path.join(modelsDir, GGML_FILE)) });
+		gpu.state === 'ok' ? c.ok('gpu', gpu.detail) : c.warn('gpu', gpu.fix, gpu.detail);
 		out.push(c.cap);
 	}
 

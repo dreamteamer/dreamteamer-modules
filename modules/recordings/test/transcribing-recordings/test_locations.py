@@ -41,6 +41,28 @@ class VenvDir(unittest.TestCase):
         self.assertFalse(locations.inside(locations.venv_dir(HOME), str(SKILL)))
 
 
+class ModelsDir(unittest.TestCase):
+    """The weights live in the per-machine cache by default, never beside the skill (before 0.2.2 they
+    did, and every npm install deleted them)."""
+
+    def test_default_is_the_per_machine_cache(self):
+        self.assertEqual(locations.models_dir(HOME), "/home/dana/.cache/dreamteamer/transcription-models")
+
+    def test_env_var_moves_it(self):
+        self.assertEqual(locations.models_dir({**HOME, "TRANSCRIBING_MODELS_DIR": "/srv/transcription/models"}),
+                         "/srv/transcription/models")
+
+    def test_empty_env_var_falls_back_to_the_default(self):
+        self.assertEqual(locations.models_dir({**HOME, "TRANSCRIBING_MODELS_DIR": ""}),
+                         "/home/dana/.cache/dreamteamer/transcription-models")
+
+    def test_a_tilde_value_expands(self):
+        self.assertEqual(locations.models_dir({**HOME, "TRANSCRIBING_MODELS_DIR": "~/models"}), "/home/dana/models")
+
+    def test_never_inside_the_skill_folder_by_default(self):
+        self.assertFalse(locations.inside(locations.models_dir(HOME), str(SKILL)))
+
+
 class CacheDir(unittest.TestCase):
     def test_default_is_the_per_machine_cache(self):
         self.assertEqual(locations.cache_dir(HOME), "/home/dana/.cache/dreamteamer/transcription-cache")
@@ -94,6 +116,12 @@ class SkillDocumentsTheSameDefault(unittest.TestCase):
         m = re.search(r'export UV_PROJECT_ENVIRONMENT="\$\{TRANSCRIBING_VENV_DIR:-\$HOME/([^}"]+)\}"', text)
         self.assertIsNotNone(m, "SKILL.md does not export UV_PROJECT_ENVIRONMENT from TRANSCRIBING_VENV_DIR")
         self.assertEqual("/home/dana/" + m.group(1), locations.venv_dir(HOME))
+
+    def test_the_preamble_names_the_models_default_and_no_other(self):
+        text = (SKILL / "SKILL.md").read_text(encoding="utf-8")
+        self.assertIn("~/.cache/dreamteamer/transcription-models", text)
+        self.assertNotIn("transcribing-models", text, "SKILL.md names the old models folder, which holds no ggml weights")
+        self.assertNotIn("export TRANSCRIBING_MODELS_DIR", text, "the default needs no export")
 
     def test_the_preamble_exports_the_cache_dir_default_unchanged(self):
         text = (SKILL / "SKILL.md").read_text(encoding="utf-8")

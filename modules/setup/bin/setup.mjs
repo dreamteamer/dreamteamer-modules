@@ -120,11 +120,6 @@ if (missing.length) {
 	for (const [name, , why, example] of wanted) entries.push({ key: name, lines: [`# ${why}`, `${name}=${example}`] });
 	if (has("meetings")) entries.push({ key: "WORK_CALENDARS", lines: ["# The calendars that count as work: calendar-id | default-company | account-email, one row each.",
 		"WORK_CALENDARS=\"you@example.com | your-company | you@example.com\""] });
-	if (has("recordings") && mods.get("recordings").channel === "node_modules") {
-		entries.push({ key: "TRANSCRIBING_MODELS_DIR", lines: ["# Where the ~1.6 GB of transcription weights live. Set this when the package comes from npm:",
-			"# npm ci deletes node_modules, and weights kept inside it would download again every time.",
-			"TRANSCRIBING_MODELS_DIR=~/.cache/dreamteamer/transcribing-models"] });
-	}
 	if (has("perspective")) entries.push({ key: "ASANA_PAT", lines: ["# Read by the perspective Asana reader and nothing else. Leave empty to skip that source.", "ASANA_PAT="] });
 	const render = (es) => ["# ── dreamteamer modules ──────────────────────────────────────────────────",
 		"# Every key here is OPTIONAL. Reading, writing, validating and committing records need none of them.",

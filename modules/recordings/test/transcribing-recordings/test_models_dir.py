@@ -1,5 +1,5 @@
-"""The model folder is beside the skill by default and moves wherever TRANSCRIBING_MODELS_DIR says —
-the npm channel needs that, because `npm ci` wipes node_modules and would re-download 1.6 GB."""
+"""The model folder is the per-machine cache by default (never beside the skill, which `npm ci` wipes)
+and moves wherever TRANSCRIBING_MODELS_DIR says."""
 import importlib
 import os
 import sys
@@ -21,9 +21,10 @@ def _load(env_value):
         sys.path.remove(SKILL)
 
 
-def test_default_is_beside_the_skill():
+def test_default_is_the_per_machine_cache():
     mod = _load(None)
-    assert mod.MODELS_DIR == os.path.join(SKILL, ".models")
+    assert mod.MODELS_DIR == os.path.join(os.path.expanduser("~"), ".cache", "dreamteamer", "transcription-models")
+    assert not mod.MODELS_DIR.startswith(SKILL)
     assert mod.WHISPER_DIR.startswith(mod.MODELS_DIR)
 
 
@@ -36,4 +37,4 @@ def test_env_override_moves_every_model_path(tmp_path):
 
 def test_empty_override_falls_back_to_the_default():
     mod = _load("")
-    assert mod.MODELS_DIR == os.path.join(SKILL, ".models")
+    assert mod.MODELS_DIR == os.path.join(os.path.expanduser("~"), ".cache", "dreamteamer", "transcription-models")

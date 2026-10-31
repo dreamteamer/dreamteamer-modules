@@ -28,7 +28,6 @@ run from the workspace root, against the compiled copy of this skill. every comm
 
 ```bash
 SK=.dreamteamer/skills/transcribing-recordings
-export TRANSCRIBING_MODELS_DIR="$HOME/.cache/dreamteamer/transcribing-models"   # absolute; see below
 export UV_PROJECT_ENVIRONMENT="${TRANSCRIBING_VENV_DIR:-$HOME/.cache/dreamteamer/transcription-venv}"
 cd "$SK" && uv sync && uv run python transcribe_meeting.py setup   # audio route only
 ```
@@ -40,11 +39,11 @@ shell: an agent whose every command starts a fresh shell repeats them.
 
 **nothing heavy lives in the skill folder.** compile regenerates `.dreamteamer/skills/` and
 `npm install` replaces `node_modules/`, so anything kept beside the skill is deleted by the next pin
-bump. Three things belong outside it:
+bump. Three things live outside it, each in a per-machine cache by default — no export needed:
 
 | what | where | moved by |
 |---|---|---|
-| the models (~1.6 GB, 3.2 GB with the GPU pass) | `.models/` beside the skill unless set — **set it** | `TRANSCRIBING_MODELS_DIR`, read by the script from the process environment (not `.env`); an absolute path, `~` is not expanded |
+| the models (~1.6 GB, 3.2 GB with the GPU pass) | `~/.cache/dreamteamer/transcription-models` | `TRANSCRIBING_MODELS_DIR`, read by the script from the process environment (not `.env`) |
 | the Python venv | `~/.cache/dreamteamer/transcription-venv` | `TRANSCRIBING_VENV_DIR`, through the `UV_PROJECT_ENVIRONMENT` export above |
 | the raw ASR JSON of each run | `~/.cache/dreamteamer/transcription-cache/asr/` | `TRANSCRIBING_CACHE_DIR`, read by the script |
 
@@ -100,6 +99,12 @@ same recording on an M3 — which is why `auto` never picks it off Apple Silicon
 refuses and names what is missing rather than running the slow path; `--engine cpu` forces the old
 pass. The record's `transcription.engine` says which one ran, and the printed summary carries
 `engine` and `asr_seconds`.
+
+**`auto` never falls back silently.** When it ends on the CPU it prints one line before the run —
+`engine: cpu — metal unavailable — needs whisper-cli on PATH (macOS: brew install whisper-cpp)`, or
+`no GPU engine on this machine` off Apple Silicon — and the same reason is the summary's
+`engine_fallback` and the record's `transcription.engine_fallback`. Report it: a CPU run on a Mac that
+could have used the GPU is a setup gap someone can close in one command, not a fact to pass over.
 
 The two engines do not produce identical text: same weights, different decoders. Word timing on
 `metal` comes from one-word segments (`-ml 1 -sow`), and the directional marks whisper.cpp leaves
@@ -239,7 +244,8 @@ file — because the transcript has to hang off *something*, and the recording i
 ## provenance + conventions
 
 `transcription:` carries only source-relevant fields: `engine` (which recognizer ran — whisper.cpp on
-Metal or faster-whisper on the CPU) /`diarization`/`duration` (audio),
+Metal or faster-whisper on the CPU), `engine_fallback` (why `auto` did not get the GPU, only when it
+did not) /`diarization`/`duration` (audio),
 `source`/`method` (text), plus `language`, `speaker_count`, `speakers` (you fill), `generated`, and
 free-text `notes` (you fill — caveats, confidence, attribution issues). `[mm:ss]` timestamps appear in
 the body for audio only. the body keeps raw `Speaker N` labels; real names live only in

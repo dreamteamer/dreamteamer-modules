@@ -66,17 +66,7 @@ def find_whisper_cli():
     return shutil.which("whisper-cli")
 
 
-def select_engine(requested, *, whisper_cli, ggml_present, apple_gpu):
-    """The engine a run uses. `requested` is auto | metal | cpu.
-
-    `auto` is metal when all three hold and cpu otherwise — never an error, so a machine without the
-    binary transcribes exactly as before. `metal` asked for by name refuses rather than silently
-    running the slow path, naming what is missing.
-    """
-    if requested not in ENGINES:
-        raise ValueError(f"--engine takes {' | '.join(ENGINES)}, got {requested!r}")
-    if requested == "cpu":
-        return "cpu"
+def _metal_missing(whisper_cli, ggml_present, apple_gpu):
     missing = []
     if not apple_gpu:
         missing.append("an Apple Silicon GPU (Metal)")
@@ -84,11 +74,39 @@ def select_engine(requested, *, whisper_cli, ggml_present, apple_gpu):
         missing.append("whisper-cli on PATH (macOS: brew install whisper-cpp)")
     if not ggml_present:
         missing.append(f"the ggml weights ({GGML_SUBDIR}/{GGML_FILE}; `transcribe_meeting.py setup` fetches them)")
+    return missing
+
+
+def select_engine_why(requested, *, whisper_cli, ggml_present, apple_gpu):
+    """(engine, fallback) — the engine a run uses, and why `auto` did not get the GPU.
+
+    `fallback` is None unless `auto` ended on the CPU; then it is the one line a run prints and records,
+    so a slow transcription is never a silent one. Off Apple Silicon it says only that this machine has
+    no GPU engine — whisper-cli or the weights would not change that.
+    """
+    if requested not in ENGINES:
+        raise ValueError(f"--engine takes {' | '.join(ENGINES)}, got {requested!r}")
+    if requested == "cpu":
+        return "cpu", None
+    missing = _metal_missing(whisper_cli, ggml_present, apple_gpu)
     if not missing:
-        return "metal"
+        return "metal", None
     if requested == "metal":
         raise EngineUnavailable("--engine metal needs " + ", ".join(missing))
-    return "cpu"
+    if not apple_gpu:
+        return "cpu", "no GPU engine on this machine (metal needs Apple Silicon)"
+    return "cpu", "metal unavailable — needs " + ", ".join(missing)
+
+
+def select_engine(requested, *, whisper_cli, ggml_present, apple_gpu):
+    """The engine a run uses. `requested` is auto | metal | cpu.
+
+    `auto` is metal when all three hold and cpu otherwise — never an error, so a machine without the
+    binary transcribes exactly as before. `metal` asked for by name refuses rather than silently
+    running the slow path, naming what is missing.
+    """
+    return select_engine_why(requested, whisper_cli=whisper_cli, ggml_present=ggml_present,
+                             apple_gpu=apple_gpu)[0]
 
 
 def parse_engine_arg(args, default="auto"):

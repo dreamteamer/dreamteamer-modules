@@ -8,7 +8,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { findWorkspace, installedModules, capabilities, worst, capState, envKeys, BUNDLE_FLOOR, OURS, originsOf, rootOf, binOf } from '../lib/capabilities.mjs';
+import { findWorkspace, installedModules, capabilities, worst, capState, envKeys, BUNDLE_FLOOR, OURS, originsOf, rootOf, binOf, gpuCheck, transcriptionModelsDir, GGML_SIZE } from '../lib/capabilities.mjs';
 
 // the repo root
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', '..', '..');
@@ -313,5 +313,47 @@ describe('the wikis and notebooklm capabilities', () => {
 		const ws = consumer({ harnesses: ['codex'] });
 		spawnSync(process.execPath, [CLI, 'setup', '--yes'], { cwd: ws, encoding: 'utf8' });
 		assert.deepEqual(JSON.parse(fs.readFileSync(path.join(ws, 'package.json'), 'utf8')).dreamteamer.harnesses, ['codex', 'notebooklm']);
+	});
+});
+
+describe('the transcriber: models where the skill reads them, and whether the GPU pass can run', () => {
+	test('the models folder defaults to the per-machine cache, never the package, and follows the variable', () => {
+		assert.equal(transcriptionModelsDir({}, '/home/dana'), '/home/dana/.cache/dreamteamer/transcription-models');
+		assert.equal(transcriptionModelsDir({ TRANSCRIBING_MODELS_DIR: '' }, '/home/dana'), '/home/dana/.cache/dreamteamer/transcription-models');
+		assert.equal(transcriptionModelsDir({ TRANSCRIBING_MODELS_DIR: '~/models' }, '/home/dana'), '/home/dana/models');
+		assert.equal(transcriptionModelsDir({ TRANSCRIBING_MODELS_DIR: '/srv/models' }, '/home/dana'), '/srv/models');
+	});
+	const mac = { platform: 'darwin', arch: 'arm64' };
+	test('Apple Silicon with whisper-cli and whole weights is metal', () => {
+		const g = gpuCheck({ ...mac, whisperCli: '/opt/homebrew/bin/whisper-cli', ggmlSize: GGML_SIZE });
+		assert.equal(g.state, 'ok');
+		assert.match(g.detail, /^metal/);
+	});
+	test('a missing whisper-cli is an optional warning that names the install', () => {
+		const g = gpuCheck({ ...mac, whisperCli: null, ggmlSize: GGML_SIZE });
+		assert.equal(g.state, 'warn');
+		assert.match(g.fix, /brew install whisper-cpp/);
+		assert.match(g.detail, /optional/);
+	});
+	test('missing or partial weights are a warning, never ok', () => {
+		for (const size of [null, GGML_SIZE - 1]) {
+			const g = gpuCheck({ ...mac, whisperCli: '/opt/homebrew/bin/whisper-cli', ggmlSize: size });
+			assert.equal(g.state, 'warn', String(size));
+			assert.match(g.fix, /transcribe_meeting\.py setup/);
+		}
+	});
+	test('off Apple Silicon there is no GPU engine — ok, and says the CPU pass runs', () => {
+		for (const m of [{ platform: 'linux', arch: 'x64' }, { platform: 'darwin', arch: 'x64' }]) {
+			const g = gpuCheck({ ...m, whisperCli: '/usr/bin/whisper-cli', ggmlSize: GGML_SIZE });
+			assert.equal(g.state, 'ok');
+			assert.match(g.detail, /^cpu/);
+		}
+	});
+	test('the recordings capability carries a gpu line', () => {
+		const ws = consumer({ disable: ['modules/core'] });
+		const c = cap(capabilities(ws), 'recordings');
+		assert.ok(c, 'no recordings capability');
+		assert.ok(c.checks.some((k) => k.label === 'gpu'), c.checks.map((k) => k.label).join(', '));
+		assert.ok(!c.checks.some((k) => k.label === 'TRANSCRIBING_MODELS_DIR'), 'the models folder has a working default — no variable to demand');
 	});
 });

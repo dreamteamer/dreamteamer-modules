@@ -1,6 +1,6 @@
 {
 	"name": "@dreamteamer/recordings",
-	"version": "0.2.1",
+	"version": "0.2.2",
 	"description": "Meeting recordings for a dreamteamer workspace — imported by content hash, matched to their meeting, and transcribed offline in Hebrew and English.",
 	"license": "Apache-2.0",
 	"type": "module",
@@ -30,9 +30,6 @@
 		"engine": ">=0.33.0",
 		"dependencies": [
 			"@dreamteamer/meetings"
-		],
-		"env": [
-			"TRANSCRIBING_MODELS_DIR"
 		]
 	}
 }

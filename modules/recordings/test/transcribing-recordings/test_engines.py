@@ -55,6 +55,30 @@ class SelectEngine(unittest.TestCase):
         with self.assertRaises(ValueError):
             E.select_engine("cuda", **self.ALL)
 
+    def test_why_is_none_whenever_the_engine_is_what_was_asked_for(self):
+        self.assertEqual(E.select_engine_why("auto", **self.ALL), ("metal", None))
+        self.assertEqual(E.select_engine_why("cpu", **self.ALL), ("cpu", None))
+        self.assertEqual(E.select_engine_why("cpu", whisper_cli=None, ggml_present=False, apple_gpu=False),
+                         ("cpu", None))
+
+    def test_auto_on_the_cpu_says_which_piece_is_missing(self):
+        engine, why = E.select_engine_why("auto", **dict(self.ALL, whisper_cli=None))
+        self.assertEqual(engine, "cpu")
+        self.assertIn("whisper-cli", why)
+        self.assertIn("brew install whisper-cpp", why)
+        self.assertNotIn(E.GGML_FILE, why)
+        engine, why = E.select_engine_why("auto", **dict(self.ALL, ggml_present=False))
+        self.assertEqual(engine, "cpu")
+        self.assertIn(E.GGML_FILE, why)
+        self.assertIn("setup", why)
+        self.assertNotIn("whisper-cli", why)
+
+    def test_auto_off_apple_silicon_says_there_is_no_gpu_engine_not_what_to_install(self):
+        engine, why = E.select_engine_why("auto", whisper_cli=None, ggml_present=False, apple_gpu=False)
+        self.assertEqual(engine, "cpu")
+        self.assertIn("no GPU engine", why)
+        self.assertNotIn("whisper-cli", why)
+
     def test_apple_silicon_is_darwin_on_arm64_only(self):
         self.assertTrue(E.apple_silicon("Darwin", "arm64"))
         self.assertFalse(E.apple_silicon("Darwin", "x86_64"))
