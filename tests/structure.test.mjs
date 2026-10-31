@@ -58,7 +58,10 @@ for (const m of modules) {
 		test('carries only source kinds and the folders compile allows at a module root', () => {
 			for (const e of fs.readdirSync(mroot, { withFileTypes: true })) {
 				if (!e.isDirectory() || e.name.startsWith('.')) continue;
-				assert.ok(KINDS.has(e.name) || NON_SOURCE.has(e.name), `${m}/${e.name}/ is neither a source kind nor an allowed folder — compile refuses the module`);
+				// a folder the module lists in dreamteamer.ignore is not a stray to compile — rnd's session-bindings/, a
+				// kind core's extension contributes: ignored without core, staged (a known kind) with it
+				const ignored = (pkg.dreamteamer?.ignore ?? []).includes(e.name);
+				assert.ok(KINDS.has(e.name) || NON_SOURCE.has(e.name) || ignored, `${m}/${e.name}/ is neither a source kind, an allowed folder nor in dreamteamer.ignore — compile refuses the module`);
 			}
 		});
 		test('every mixin a descriptor names is shipped by the same module', () => {
