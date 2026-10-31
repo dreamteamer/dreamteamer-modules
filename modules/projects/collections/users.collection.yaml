@@ -21,13 +21,3 @@ fields:
     many: true
     mirror_of: owner
     description: The exposures this person carries — generated from `risks.owner`.
-  teams:
-    type: teams
-    many: true
-    mirror_of: members
-    description: The teams this person belongs to — generated from `teams.members`, so somebody joins a team by editing the TEAM.
-  led_teams:
-    type: teams
-    many: true
-    mirror_of: lead
-    description: The teams this person runs — generated from `teams.lead`.

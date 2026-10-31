@@ -76,12 +76,30 @@ describe('the addressbook — every owner field resolves to one users record', (
 	// Teams came back on 2026-09-10 after the operator's second look: membership lives on the TEAM, so
 	// somebody joins by editing one record and their own page gains the mirror for free. A team is still
 	// never the assignee — a task and an activity go to a PERSON.
-	test('a team holds its members, and the mirror lands on the person', () => {
-		const teams = load('projects/collections/teams.collection.yaml');
+	// Teams MOVED to users on 2026-10-31 (cr-modules-002): a group of people needs only the people, so a
+	// workspace with users and no plan can still group them. Projects keeps `projects.teams`, peers
+	// `teams`, and declares the one mirror it owns — `teams.projects` — as an overlay of teams.
+	test('a team holds its members, and the mirror lands on the person — both declared by users', () => {
+		const teams = load('users/collections/teams.collection.yaml');
+		assert.equal(OWNER.get('teams'), 'users', 'teams ships with users');
 		assert.equal(teams.fields.members.type, 'users');
 		assert.equal(teams.fields.members.many, true);
 		assert.equal(mirrorOf('teams', 'members', 'users')?.name, 'teams');
+		assert.equal(mirrorOf('teams', 'members', 'users')?.module, 'users', 'users.teams is native to users, not an overlay');
 		assert.equal(mirrorOf('teams', 'lead', 'users')?.name, 'led_teams');
+		assert.equal(mirrorOf('teams', 'lead', 'users')?.module, 'users');
+		assert.ok(!teams.fields.projects, 'users cannot see projects: the far side of projects.teams is projects\' to declare');
+	});
+	test('projects points at teams as a peer, and stamps only its own mirror onto the team', () => {
+		const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'modules/projects/package.json'), 'utf8'));
+		assert.ok(pkg.dreamteamer.peer_collections.includes('teams'), 'projects.teams names a collection projects no longer ships');
+		assert.equal(proj.fields.teams.type, 'teams');
+		const overlay = load('projects/collections/teams.collection.yaml');
+		assert.equal(overlay.overlay, true, 'projects ships no teams descriptor of its own');
+		assert.deepEqual(Object.keys(overlay.fields), ['projects']);
+		assert.equal(mirrorOf('projects', 'teams', 'teams')?.module, 'projects');
+		const usersOverlay = load('projects/collections/users.collection.yaml');
+		for (const f of ['teams', 'led_teams']) assert.ok(!usersOverlay.fields[f], `projects' users overlay still declares ${f}`);
 	});
 	// WHERE THE CODE LIVES. `repos` is a CORE collection with two engine verbs bound to it
 	// (`dt install repos/<id>`, `dt status`), so the reference goes project → repo and never back:
@@ -115,7 +133,7 @@ describe('one module, bare names — the fold the operator asked for', () => {
 	test('the plan module ships four collections bare, and users is its OWN module at the nav root', () => {
 		assert.equal(pkg.name, '@dreamteamer/projects');
 		assert.ok(!pkg.dreamteamer.namespaces, 'bare names, so a consumer overlays rather than being prefixed around');
-		for (const [f, n] of [['projects', 'projects'], ['decisions', 'decisions'], ['teams', 'teams']]) {
+		for (const [f, n] of [['projects', 'projects'], ['decisions', 'decisions']]) {
 			assert.equal(load(`projects/collections/${f}.collection.yaml`).name, n);
 		}
 		// tasks is bare too, in its own module since 2026-10-01
@@ -144,8 +162,9 @@ describe('one module, bare names — the fold the operator asked for', () => {
 	// other collection points at belongs. Namespacing the plan instead would have renamed `activities` →
 	// `projects/activities` in every consumer that had just migrated onto it. Same nav, no renames.
 	test('the plan module ships its four collections, and users is its OWN module so it sits at the root', () => {
-		for (const c of ['teams', 'projects', 'decisions', 'deliverables', 'risks']) {   // tasks: its own module, asserted below
+		for (const c of ['projects', 'decisions', 'deliverables', 'risks']) {   // tasks: its own module, asserted below; teams: users, above
 			assert.ok(fs.existsSync(path.join(ROOT, `modules/projects/collections/${c}.collection.yaml`)), `missing ${c}`);
+			assert.equal(OWNER.get(c), 'projects', c);
 		}
 		assert.ok(fs.existsSync(path.join(ROOT, 'modules/users/collections/users.collection.yaml')), 'users must be its own module');
 		// projects carries a users OVERLAY — the mirrors of its own owner fields — and never the collection

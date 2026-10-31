@@ -25,7 +25,8 @@
 		"peer_collections": [
 			"companies",
 			"contacts",
-			"assets"
+			"assets",
+			"teams"
 		],
 		"dependencies": [
 			"@dreamteamer/users"
