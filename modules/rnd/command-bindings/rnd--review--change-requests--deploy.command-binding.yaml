@@ -6,6 +6,14 @@ available_when:
     _nempty: true
   status:
     _eq: accepted
+  # a change that ships in a release is live when the release is published — never before, even with
+  # deployed_on written by hand on a release still planned or cut, or on one rolled back
+  _or:
+    - release:
+        _empty: true
+    - release:
+        status:
+          _eq: published
 done_when:
   status:
     _eq: implemented

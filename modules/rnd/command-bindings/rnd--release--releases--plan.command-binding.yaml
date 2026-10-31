@@ -1,0 +1,12 @@
+command: commands/rnd/release
+collection: collections/rnd/releases
+scope: record
+available_when:
+  status:
+    _eq: planned
+  notes:
+    _empty: true
+done_when:
+  notes:
+    _nempty: true
+description: "PLAN: set release on the verified change requests and fixed issues it ships, then write the notes from their bodies"

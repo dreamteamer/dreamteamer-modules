@@ -217,7 +217,7 @@ describe('0.2.0 — design docs, plans, reviews, tests and design systems', () =
 });
 
 describe('the lifecycle stages — one plainly written skill each, to one contract', () => {
-	const STAGES = ['rnd-design', 'rnd-prototype', 'rnd-change-request', 'rnd-plan', 'rnd-implement', 'rnd-test', 'rnd-deploy'];
+	const STAGES = ['rnd-design', 'rnd-prototype', 'rnd-change-request', 'rnd-plan', 'rnd-implement', 'rnd-test', 'rnd-deploy', 'rnd-release'];
 	const HEADINGS = ['## What you are doing', '## Before you start', '## Do this', "## Don't", '## Done when'];
 	const skill = (id) => fs.readFileSync(path.join(RND, 'skills', id, 'SKILL.md'), 'utf8');
 	const shipped = (c) => fs.existsSync(path.join(RND, `collections/${c}.collection.yaml`));
@@ -250,12 +250,12 @@ describe('the lifecycle stages — one plainly written skill each, to one contra
 });
 
 describe('the commands, the bindings and the agent — every entry names a skill, every gate a real field', () => {
-	const STAGES = ['rnd/design', 'rnd/review', 'rnd/prototype', 'rnd/change-request', 'rnd/plan', 'rnd/implement', 'rnd/test', 'rnd/deploy'];
+	const STAGES = ['rnd/design', 'rnd/review', 'rnd/prototype', 'rnd/change-request', 'rnd/plan', 'rnd/implement', 'rnd/test', 'rnd/deploy', 'rnd/release'];
 	const commandsDir = path.join(RND, 'commands');
 	const commands = fs.readdirSync(path.join(commandsDir, 'rnd')).filter((f) => f.endsWith('.command.md')).map((f) => `rnd/${f.replace('.command.md', '')}`);
-	test('every command lives in the rnd folder — the family is one namespace — and the eight stage commands each name a skill folder that exists', () => {
+	test('every command lives in the rnd folder — the family is one namespace — and the nine stage commands each name a skill folder that exists', () => {
 		assert.deepEqual(fs.readdirSync(commandsDir).filter((f) => f.endsWith('.command.md') && authored('commands', f)), [], 'no authored command outside commands/rnd/ — the composed notebooklm commands keep their own ids');
-		assert.equal(commands.length, 11, 'eight stages and the three reference-chain commands');
+		assert.equal(commands.length, 12, 'nine stages and the three reference-chain commands');
 		for (const c of STAGES) {
 			assert.ok(commands.includes(c), `${c} has no command file`);
 			const text = fs.readFileSync(path.join(commandsDir, `${c}.command.md`), 'utf8');
@@ -268,9 +268,9 @@ describe('the commands, the bindings and the agent — every entry names a skill
 	});
 	const dir = path.join(RND, 'command-bindings');
 	const bindings = fs.readdirSync(dir).filter((f) => f.endsWith('.command-binding.yaml') && authored('command-bindings', f)).map((f) => ({ file: f, ...yaml.load(fs.readFileSync(path.join(dir, f), 'utf8')) }));
-	test('twenty-six bindings: three on the reference chain, twenty-three on the lifecycle', () => {
-		assert.equal(bindings.length, 26);
-		assert.equal(bindings.filter((b) => STAGES.includes(b.command.replace(/^commands\//, ''))).length, 23);
+	test('thirty bindings: three on the reference chain, twenty-seven on the lifecycle', () => {
+		assert.equal(bindings.length, 30);
+		assert.equal(bindings.filter((b) => STAGES.includes(b.command.replace(/^commands\//, ''))).length, 27);
 	});
 	/** The fields of a collection by its qualified name, or null when it is not an rnd collection. */
 	const fieldsByName = (name) => name.startsWith('rnd/') ? load(`collections/${name}.collection.yaml`).fields : null;
@@ -310,7 +310,7 @@ describe('the commands, the bindings and the agent — every entry names a skill
 		const text = fs.readFileSync(path.join(RND, 'agents', 'rnd-agent.agent.md'), 'utf8');
 		const fm = yaml.load(text.match(/^---\n([\s\S]*?)\n---/)[1]);
 		assert.equal(fm.name, 'rnd-agent');
-		for (const s of ['rnd-design', 'rnd-prototype', 'rnd-change-request', 'rnd-plan', 'rnd-implement', 'rnd-test', 'rnd-deploy', 'recording-reviews']) assert.ok(fm.skills.includes(`skills/${s}`), `rnd-agent does not load ${s}`);
+		for (const s of ['rnd-design', 'rnd-prototype', 'rnd-change-request', 'rnd-plan', 'rnd-implement', 'rnd-test', 'rnd-deploy', 'rnd-release', 'recording-reviews']) assert.ok(fm.skills.includes(`skills/${s}`), `rnd-agent does not load ${s}`);
 		for (const s of fm.skills) assert.ok(fs.existsSync(path.join(RND, 'skills', s.replace(/^skills\//, ''), 'SKILL.md')), `${s} is not shipped`);
 		assert.ok(JSON.parse(fs.readFileSync(path.join(RND, 'package.json'), 'utf8')).files.includes('agents'));
 	});
@@ -430,8 +430,8 @@ describe('change requests (0.5.1) — three sizes the descriptor spells out, and
 		assert.match(cr.fields.content.description, /longer than one line/i);
 		assert.match(cr.fields.acceptance.description, /repeat `--acceptance`/i, 'the comma-split trap is named where the writer reads');
 	});
-	test('the default list shows created, status, name, products — newest first', () => {
-		assert.deepEqual(cr.display.list.columns, ['created', 'status', 'name', 'products']);
+	test('the default list shows created, status, name, products — newest first (and, from 0.6.0, release)', () => {
+		assert.deepEqual(cr.display.list.columns, ['created', 'status', 'name', 'products', 'release']);
 		assert.equal(cr.display.list.sort, '-created');
 	});
 	test('the skill, the README and UPDATING.md carry the same rule', () => {
@@ -605,7 +605,8 @@ describe('0.5.2 — a review after every stage, every review listed on its recor
 		assert.deepEqual(t.available_when.tested_on, { _nempty: true }); assert.deepEqual(t.available_when.verified_on, { _empty: true });
 		assert.match(t.description, /kind test/);
 		const d = binding('rnd--review--change-requests--deploy');
-		assert.deepEqual(d.available_when, { deployed_on: { _nempty: true }, status: { _eq: 'accepted' } }); // r1-05: a rejected request with deployed_on is offered nothing
+		// r1-05: a rejected request with deployed_on is offered nothing; 0.6.0: a request in a release waits for its publication
+		assert.deepEqual(d.available_when, { deployed_on: { _nempty: true }, status: { _eq: 'accepted' }, _or: [{ release: { _empty: true } }, { release: { status: { _eq: 'published' } } }] });
 		assert.deepEqual(d.done_when, { status: { _eq: 'implemented' } });
 		assert.match(d.description, /kind acceptance/);
 		assert.doesNotMatch(read('skills/rnd-deploy/SKILL.md'), /deployed_on=<now> status=implemented/, 'the deploy stage no longer sets implemented — the live review does');
@@ -644,8 +645,108 @@ describe('0.5.2 — a review after every stage, every review listed on its recor
 		assert.equal(new Set(drawn).size, drawn.length);
 	});
 	test('released as 0.5.2, with UPDATING.md and the README release note', () => {
-		assert.equal(JSON.parse(read('package.json')).version, '0.5.2');
 		assert.match(read('UPDATING.md'), /## 0\.5\.2 — /);
 		assert.match(read('README.md'), /## 0\.5\.2 — from 0\.5\.1/);
+	});
+});
+
+// 0.6.0 — RELEASES. The walk — one release per product and version, one `dt next` verb per release state, a
+// request deployed by its release's publication — is test/releases.test.mjs on a real engine; this pins the
+// shape it rests on, so a descriptor, binding or wording edit that breaks it fails here by name.
+describe('0.6.0 — releases: a product\'s versions, each listing what it ships', () => {
+	const read = (rel) => fs.readFileSync(path.join(RND, rel), 'utf8');
+	const desc = (c) => load(`collections/rnd/${c}.collection.yaml`);
+	const binding = (f) => yaml.load(read(`command-bindings/${f}.command-binding.yaml`));
+	test('rnd/releases: product, version, repo, tag, status, cut_on, published_on, published_to, the notes body, and the two mirrors', () => {
+		const r = desc('releases');
+		const f = r.fields;
+		assert.equal(r.name, 'rnd/releases');
+		assert.equal(f.product.type, 'rnd/products'); assert.equal(f.product.required, true);
+		assert.equal(f.version.required, true); assert.ok(new RegExp(f.version.pattern).test('0.6.0') && !new RegExp(f.version.pattern).test('v0.6.0'), 'semver, no leading v');
+		assert.equal(f.repo.type, 'repos');
+		assert.equal(f.tag.type, 'string');
+		assert.deepEqual(f.status.enum, ['planned', 'cut', 'published', 'rolled-back']); assert.equal(f.status.default, 'planned');
+		for (const d of ['cut_on', 'published_on']) assert.equal(f[d].type, 'datetime', d);
+		assert.equal(f.published_to.many, true);
+		assert.equal(f.notes.type, 'markdown'); assert.equal(f.notes.body, true);
+		for (const [m, c] of [['change_requests', 'rnd/change-requests'], ['issues', 'rnd/issues']]) {
+			assert.equal(f[m].type, c); assert.equal(f[m].many, true); assert.equal(f[m].mirror_of, 'release'); assert.match(f[m].description, /^GENERATED/);
+		}
+	});
+	test('the id is <product>/<version>, or <product>/<package>/<version> for a product that ships several packages', () => {
+		const r = desc('releases');
+		assert.deepEqual(r.ids.from, ['{{ product | basename }}/{{ package }}/{{ version }}', '{{ product | basename }}/{{ version }}']);
+		const re = new RegExp(r.ids.pattern);
+		for (const ok of ['grantee-portal/1.4.0', 'northwind-modules/roster/0.5.2', 'grantee-portal/1.0.0-beta.1']) assert.ok(re.test(ok), ok);
+		for (const bad of ['grantee-portal/v1.4.0', '1.4.0', 'a/b/c/1.4.0']) assert.ok(!re.test(bad), bad);
+	});
+	test('a step\'s marks are required by the step: the cut by repo, tag and cut_on; the publication by published_on and published_to', () => {
+		const [cut, pub] = desc('releases').constraints;
+		assert.deepEqual(cut.if.properties.status.enum, ['cut', 'published', 'rolled-back']); assert.deepEqual(cut.then.required, ['repo', 'tag', 'cut_on']);
+		assert.equal(pub.if.properties.status.const, 'published'); assert.deepEqual(pub.then.required, ['published_on', 'published_to']);
+	});
+	test('a change request and an issue name their release; the product lists its releases, newest first by the releases list', () => {
+		assert.equal(desc('change-requests').fields.release.type, 'rnd/releases');
+		assert.equal(desc('issues').fields.release.type, 'rnd/releases');
+		const m = desc('products').fields.releases;
+		assert.equal(m.type, 'rnd/releases'); assert.equal(m.many, true); assert.equal(m.mirror_of, 'product');
+		assert.equal(desc('releases').display.list.sort, '-created', 'a product page embeds the releases list in its own order');
+	});
+	test('the change-request list shows release; a release lists what it ships', () => {
+		assert.ok(desc('change-requests').display.list.columns.includes('release'));
+		const cols = desc('releases').display.list.columns;
+		for (const c of ['version', 'product', 'status']) assert.ok(cols.includes(c), c);
+	});
+	test('/rnd:release: one verb per release state — plan, a person\'s cut, publish — each done by its own mark', () => {
+		const plan = binding('rnd--release--releases--plan');
+		const cut = binding('rnd--release--releases--cut');
+		const pub = binding('rnd--release--releases--publish');
+		for (const b of [plan, cut, pub]) { assert.equal(b.command, 'commands/rnd/release'); assert.equal(b.collection, 'collections/rnd/releases'); }
+		assert.deepEqual(plan.available_when, { status: { _eq: 'planned' }, notes: { _empty: true } }); assert.deepEqual(plan.done_when, { notes: { _nempty: true } });
+		assert.deepEqual(cut.available_when, { status: { _eq: 'planned' }, notes: { _nempty: true } }); assert.deepEqual(cut.done_when, { cut_on: { _nempty: true } });
+		assert.match(cut.description, /a person's/); assert.match(cut.description, /never tags/);
+		assert.deepEqual(pub.available_when, { status: { _eq: 'cut' } }); assert.deepEqual(pub.done_when, { published_on: { _nempty: true } });
+		assert.match(pub.description, /deployed_on/);
+	});
+	test('a request\'s deploy stage: /rnd:deploy without a release, /rnd:release with one — never both — and the stage map draws both', () => {
+		const dep = binding('rnd--deploy--change-requests');
+		const rel = binding('rnd--release--change-requests');
+		assert.deepEqual(dep.available_when.release, { _empty: true });
+		assert.deepEqual(rel.available_when, { status: { _eq: 'accepted' }, verified_on: { _nempty: true }, deployed_on: { _empty: true }, release: { _nempty: true } });
+		assert.deepEqual(rel.done_when, dep.done_when);
+		const deploy = desc('change-requests').display.record.options.stages.find((s) => s.title === 'deploy');
+		assert.deepEqual(deploy.fields, ['release', 'deployed_on']);
+		assert.deepEqual(deploy.gate, ['rnd--deploy--change-requests', 'rnd--release--change-requests', 'rnd--review--change-requests--deploy']);
+	});
+	test('the skill: the cut stops for a person, the publication stamps deployed_on on every request it carries', () => {
+		const s = read('skills/rnd-release/SKILL.md');
+		assert.match(s, /Tagging is publishing/);
+		assert.match(s, /an agent never tags or pushes/);
+		assert.match(s, /dt set rnd\/change-requests\/<cr> deployed_on=<published_on>/);
+		assert.match(s, /npm view <package>@<version> version/);
+		assert.match(read('commands/rnd/release.command.md'), /load the `rnd-release` skill/);
+	});
+	test('the rnd-agent stops at a release\'s cut, and never tags, pushes or publishes', () => {
+		const a = read('agents/rnd-agent.agent.md');
+		assert.match(a, /stop at its cut/);
+		assert.match(a, /never tag, push or publish/);
+	});
+	test('dt check reads releases through rnd\'s own extension, which wraps the composed notebooklm entry', async () => {
+		const pkg = JSON.parse(read('package.json'));
+		assert.equal(pkg.dreamteamer.extension, './lib/extension.mjs');
+		assert.match(read('lib/extension.mjs'), /from '\.\.\/src\/extension\.js'/);
+		const { expectedId, releaseViolations } = await import('../lib/releases.mjs');
+		assert.equal(expectedId({ product: 'rnd/products/grantee-portal', version: '1.4.0' }), 'grantee-portal/1.4.0');
+		assert.equal(expectedId({ product: 'rnd/products/northwind-modules', package: 'roster', version: '0.5.2' }), 'northwind-modules/roster/0.5.2');
+		const row = (id, version) => ({ id, file: `${id}.release.md`, fields: { product: 'rnd/products/grantee-portal', version } });
+		assert.deepEqual(releaseViolations([row('grantee-portal/1.4.0', '1.4.0'), row('grantee-portal/1.5.0', '1.5.0')]), []);
+		const v = releaseViolations([row('grantee-portal/1.4.0', '1.4.0'), row('grantee-portal/1.4.1', '1.4.0')]);
+		assert.equal(v.filter((x) => /a second release of grantee-portal\/1\.4\.0/.test(x.message)).length, 2, 'both claimants are named');
+		assert.equal(v.filter((x) => /names grantee-portal\/1\.4\.0 in its fields/.test(x.message)).length, 1);
+	});
+	test('released as 0.6.0, with UPDATING.md and the README release note', () => {
+		assert.equal(JSON.parse(read('package.json')).version, '0.6.0');
+		assert.match(read('UPDATING.md'), /## 0\.6\.0 — /);
+		assert.match(read('README.md'), /## 0\.6\.0 — from 0\.5\.2/);
 	});
 });

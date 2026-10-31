@@ -80,6 +80,11 @@ fields:
     many: true
     mirror_of: product
     description: GENERATED — the tests run against this product. Set `product` on the test.
+  releases:
+    type: rnd/releases
+    many: true
+    mirror_of: product
+    description: GENERATED — the releases of this product, drawn newest first (the releases list's own order). Set `product` on the release.
   content:
     type: markdown
     body: true

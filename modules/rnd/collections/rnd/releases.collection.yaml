@@ -1,0 +1,133 @@
+# ONE RELEASE OF ONE PRODUCT — a version, the tag that cut it, where it was published, and what it ships.
+#
+# Per PRODUCT, not per repo: a release answers "is this change out in X", and X is a product. The repo is
+# where the tag lives (`repo` + `tag`). A product that ships several packages from one repo releases each
+# package on its own version line, so `package` names it and joins the id — `<product>/<package>/<version>`;
+# a product that ships one is `<product>/<version>`. The id IS the identity: `dt add` refuses a second
+# record of one product, package and version, and `dt check` (this module's extension) refuses a record
+# whose id does not name its own product, package and version — a hand-written copy, or a `dt set` of
+# `version` that left the id behind — and names both claimants of one pair.
+#
+# What it ships is GENERATED: a change request or an issue names its `release`, and the release lists them
+# back. Publishing a release is what deploys the requests it carries: the publish step of `/rnd:release`
+# stamps `deployed_on` on each, and the live acceptance review on a request is bound to its release being
+# `published`.
+name: rnd/releases
+description: >-
+  One release of one product — its version, the tag that cut it, the registries it was published to, its notes, and the change requests and issues it ships.
+use_when: >-
+  a version of something this workspace builds is planned, cut or published — "what shipped in 0.41.0", "is this change out", "what is waiting for the next release" — read here rather than git and the registries; schedule a change request or an issue into a planned release by setting its `release`, and walk the release with /rnd:release
+record_title: '{{ version }} {{ package }}'
+storage:
+  path: data/rnd/releases
+  format: md
+ids:
+  # The first template whose fields are all present wins: a packaged release names its package.
+  from:
+    - '{{ product | basename }}/{{ package }}/{{ version }}'
+    - '{{ product | basename }}/{{ version }}'
+  pattern: ^[a-z0-9][a-z0-9-]*(/[a-z0-9][a-z0-9-]*)?/\d+\.\d+\.\d+(-[0-9a-z.-]+)?$
+fields:
+  version:
+    type: string
+    required: true
+    pattern: ^\d+\.\d+\.\d+(-[0-9a-z.-]+)?$
+    examples: ['0.6.0', '1.0.0-beta.1']
+    description: 'The version this release ships, as the registry spells it — semver, no leading `v`. The id''s last segment: never change it with `dt set`, which leaves the id behind (`dt check` says so); `dt rename` the record instead.'
+  product:
+    type: rnd/products
+    required: true
+    description: The product released — the id's first segment. A version or a rewrite is the same product.
+  package:
+    type: string
+    pattern: ^[a-z0-9][a-z0-9-]*$
+    examples: ['rnd', 'users']
+    description: 'The package within the product, when the product ships several from one repo on separate version lines — its short name as the tag spells it (`rnd` for `rnd-v0.6.0`). Empty for a product that ships one. Joins the id between product and version.'
+  status:
+    type: string
+    enum:
+      - planned
+      - cut
+      - published
+      - rolled-back
+    default: planned
+    description: '`planned` — the changes are being picked and the notes written; `cut` — the tag exists (a person''s act: tagging is publishing); `published` — every registry in `published_to` answers the version; `rolled-back` — withdrawn after the cut, the requests it carried no longer deployed by it.'
+  repo:
+    type: repos
+    description: The repository the tag is cut in. Required from the cut on.
+  tag:
+    type: string
+    examples: ['rnd-v0.6.0', 'v1.4.0']
+    description: The git tag that cut the release, as the repo's convention spells it. Required from the cut on.
+  cut_on:
+    type: datetime
+    description: When the tag was cut. Required from the cut on.
+  published_on:
+    type: datetime
+    description: When the registries were seen answering the version — the instant the publish step stamps on every change request this release carries as its `deployed_on`. Required once `published`.
+  published_to:
+    type: string
+    many: true
+    pattern: ^https?://
+    examples: ['https://www.npmjs.com/package/northwind-portal/v/1.4.0']
+    description: 'Each registry or page the release was published to, as the URL that answers this exact version — one entry per registry; on the CLI, one `published_to=` per entry. Required once `published`.'
+  notes:
+    type: markdown
+    body: true
+    description: 'The release notes, written from the bodies of the change requests and issues it ships — what changed, for whom, and what a consumer has to do — then a dated section per step: the gates run at the cut with their exit codes, the registries checked at publish, and a rollback with its reason.'
+  change_requests:
+    type: rnd/change-requests
+    many: true
+    mirror_of: release
+    description: GENERATED — the change requests this release ships. Set `release` on the change request.
+  issues:
+    type: rnd/issues
+    many: true
+    mirror_of: release
+    description: GENERATED — the defects this release fixes. Set `release` on the issue.
+  author:
+    type: string
+    examples: ['agents/claude-code', 'scripts/read-git@2']
+    pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
+    description: >-
+      Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
+  creation_context:
+    type: string
+    description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+  source:
+    title: Information source
+    type: string
+    description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…> · migration:<id>.'
+  confidence:
+    type: string
+    default: normal
+    enum: [low, normal, high]
+    description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
+# A step's marks are required by the step: the cut by its tag, its repo and its instant; the publication by
+# its instant and the URLs that answered. A record that says `published` without them is refused.
+constraints:
+  - if: {required: [status], properties: {status: {enum: [cut, published, rolled-back]}}}
+    then: {required: [repo, tag, cut_on]}
+  - if: {required: [status], properties: {status: {const: published}}}
+    then: {required: [published_on, published_to]}
+display:
+  nav:
+    icon: versions
+    order: 29
+  list:
+    columns:
+      - version
+      - package
+      - product
+      - status
+      - published_on
+    # newest first: a release is planned before the next one is, so `created` orders versions without
+    # comparing version strings (`0.10.0` sorts before `0.9.0` as text)
+    sort: '-created'
+  record:
+    badge: status
+  form:
+    sections:
+      - title: Provenance
+        fields: [author, creation_context, source, confidence]
+        collapsed: true

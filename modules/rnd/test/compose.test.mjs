@@ -106,8 +106,12 @@ describe('the composition', () => {
 		assert.ok(manifest.description.length <= 160);
 	});
 	test('and adds what the origins bring: the extension and its src/, js-yaml, the two npm bins, env, vars', () => {
-		assert.equal(manifest.dreamteamer.extension, originPkg('notebooklm').dreamteamer.extension);
-		assert.ok(manifest.dreamteamer.extension.startsWith('./src/'), 'the entry is the composed src/extension.js');
+		// 0.6.0: rnd's own entry, outside src/, wraps the composed notebooklm entry and adds the release check
+		assert.equal(manifest.dreamteamer.extension, './lib/extension.mjs');
+		const origin = originPkg('notebooklm').dreamteamer.extension;
+		assert.ok(origin.startsWith('./src/'), 'the origin\'s entry is the composed src/extension.js');
+		assert.ok(fs.existsSync(path.join(RND, origin)), 'the origin\'s entry still lands in src/');
+		assert.match(fs.readFileSync(path.join(RND, 'lib', 'extension.mjs'), 'utf8'), new RegExp(`from '\\.\\.${origin.slice(1).replace(/\./g, '\\.')}'`), 'the wrapper imports the origin\'s entry');
 		assert.ok(!originPkg('wikis').dreamteamer.extension, 'exactly one origin is an extension');
 		for (const k of ['bin', 'src', 'lib', 'collections', 'skills', 'commands', 'command-bindings', 'agents', 'compose.json']) assert.ok(manifest.files.includes(k), `files lacks ${k}`);
 		assert.deepEqual(manifest.bin, { 'dt-wiki': 'bin/wikis-wiki.mjs', 'dt-notebook': 'bin/notebooklm-notebook.mjs', 'dt-prototype': 'bin/dt-prototype.mjs' });

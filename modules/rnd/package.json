@@ -1,6 +1,6 @@
 {
 	"name": "@dreamteamer/rnd",
-	"version": "0.5.2",
+	"version": "0.6.0",
 	"description": "What a workspace builds and investigates — products, designs, plans, stories, screens, prototypes, changes, tests, reviews — and the lifecycle that moves them.",
 	"license": "Apache-2.0",
 	"type": "module",
@@ -39,12 +39,12 @@
 		"js-yaml": "^4.1.0"
 	},
 	"dreamteamer": {
-		"extension": "./src/extension.js",
+		"extension": "./lib/extension.mjs",
 		"title": "R&D",
 		"namespaces": [
 			"rnd"
 		],
-		"description": "What a workspace builds and investigates: `products`, `design-docs`, `implementation-plans`, `user-stories`, `screens`, `prototypes`, `tests`, `reviews`, `change-requests`, `features`, `issues`, `research-docs`, `open-questions`, `personas` — the lifecycle on them, /rnd:design to /rnd:deploy, gated per record (`dt next`) — plus the `wikis` it reads and the `notebooks` it exports to NotebookLM.",
+		"description": "What a workspace builds and investigates: `products`, `design-docs`, `implementation-plans`, `user-stories`, `screens`, `prototypes`, `tests`, `reviews`, `change-requests`, `features`, `issues`, `research-docs`, `open-questions`, `personas`, `releases` — the lifecycle, /rnd:design to /rnd:release, gated per record (dt next) — plus the `wikis` it reads and the `notebooks` it exports to NotebookLM.",
 		"engine": ">=0.38.0",
 		"ignore": [
 			"data"

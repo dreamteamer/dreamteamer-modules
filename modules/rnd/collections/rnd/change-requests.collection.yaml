@@ -90,7 +90,10 @@ fields:
     description: When the test review approved the proof — stamped by that reviewer on `approve`, never by the stage it judged. The gate deploy reads. Empty until then; cleared by a change that lands after it.
   deployed_on:
     type: datetime
-    description: 'When the change went live, set by the deploy stage after its live check. The live acceptance review reads it, and its `approve` sets `status: implemented`.'
+    description: 'When the change went live. A change that ships in a `release` is stamped by that release''s publication, with its `published_on`; one that ships with none, by the deploy stage after its live check. The live acceptance review reads it, and its `approve` sets `status: implemented`.'
+  release:
+    type: rnd/releases
+    description: 'The release this change ships in — set when the change is scheduled into a planned release, and the release lists it back. With a release, the deploy stage IS the release: `/rnd:release` publishes it and stamps `deployed_on` here, and the live acceptance review waits for it to be `published`. Empty for a change deployed on its own (`/rnd:deploy`).'
   supersedes:
     type: rnd/change-requests
     description: The earlier request this replaces. The earlier record stays.
@@ -121,7 +124,9 @@ fields:
 # the stage, each matcher an OR of its siblings and an AND of its keys: `kind` (any of), `subject` (a field of
 # this record whose references hold the review's subject, or `self`), `before` / `since` (a datetime field of
 # this record, against the review's `created`); `gate` — the command bindings whose states ARE the stage's gate,
-# in order, the work first and its review after. The stage is passed when every binding is done.
+# in order, the work first and its review after. The stage is passed when every binding is done. The deploy stage
+# has two ways in, exactly one of them open on a given request: `/rnd:deploy` for a change that ships on its own,
+# `/rnd:release` for one that ships in a `release` — both are done when `deployed_on` is set.
 display:
   nav:
     icon: git-pull-request
@@ -132,6 +137,7 @@ display:
       - status
       - name
       - products
+      - release
     sort: '-created'
   record:
     badge: status
@@ -163,9 +169,9 @@ display:
             - kind: [test]
           gate: [rnd--test--change-requests, rnd--review--change-requests--test]
         - title: deploy
-          fields: [deployed_on]
+          fields: [release, deployed_on]
           reviews:
             - subject: self
               kind: [acceptance]
               since: deployed_on
-          gate: [rnd--deploy--change-requests, rnd--review--change-requests--deploy]
+          gate: [rnd--deploy--change-requests, rnd--release--change-requests, rnd--review--change-requests--deploy]

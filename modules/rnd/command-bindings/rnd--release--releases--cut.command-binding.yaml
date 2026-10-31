@@ -1,0 +1,12 @@
+command: commands/rnd/release
+collection: collections/rnd/releases
+scope: record
+available_when:
+  status:
+    _eq: planned
+  notes:
+    _nempty: true
+done_when:
+  cut_on:
+    _nempty: true
+description: "CUT — a person's: run the gates and quote their exit codes, then stop; a person tags (tagging is publishing), and the cut is recorded as status cut with tag, repo and cut_on. An agent never tags"

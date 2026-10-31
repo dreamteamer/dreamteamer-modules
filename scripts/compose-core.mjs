@@ -120,11 +120,23 @@ export function compose(target = 'core') {
 	const existing = fs.existsSync(path.join(root, 'package.json')) ? readJson(path.join(root, 'package.json')) : {};
 	const authored = existing.dreamteamer ?? {};
 	const dts = [authored, ...manifests.map((m) => m.pkg.dreamteamer ?? {})];
-	// the ONE extension: an origin's, or the module's own — never both, since both would ship src/
+	// the ONE extension: an origin's, or the module's own — never both, since both would ship src/. One
+	// shape of "both" is allowed: the module's own entry OUTSIDE src/ that WRAPS the origin's — the origin's
+	// src/ still lands whole, and the module adds contributions of its own (rnd's lib/extension.mjs adds a
+	// `check` to notebooklm's verb and harness). The wrapper must import the origin's entry, or the origin's
+	// contributions would vanish from the composed package without a word.
 	const extensions = manifests.filter((m) => m.pkg.dreamteamer?.extension);
 	if (extensions.length > 1) throw new Error(`two origins are extensions: ${extensions.map((m) => m.origin).join(', ')} — a module can declare one entry`);
-	const extension = extensions[0]?.pkg.dreamteamer.extension ?? authored.extension;
-	if (extensions.length && authored.extension && authored.extension !== extension) throw new Error(`${target} declares its own extension ${authored.extension} and ${extensions[0].origin} brings ${extension} — a module can declare one entry`);
+	const originEntry = extensions[0]?.pkg.dreamteamer.extension;
+	const wrapper = originEntry && authored.extension && authored.extension !== originEntry && !authored.extension.replace(/^\.\//, '').startsWith('src/') ? authored.extension : null;
+	if (wrapper) {
+		const file = path.join(root, wrapper);
+		const wanted = path.relative(path.dirname(file), path.join(root, originEntry)).split(path.sep).join('/');
+		if (!fs.existsSync(file)) throw new Error(`${target} declares its own extension ${wrapper}, which does not exist`);
+		if (!fs.readFileSync(file, 'utf8').includes(`'${wanted.startsWith('.') ? wanted : `./${wanted}`}'`)) throw new Error(`${target}'s extension ${wrapper} does not import ${extensions[0].origin}'s entry (${wanted}) — the origin's contributions would vanish`);
+	}
+	const extension = wrapper ?? originEntry ?? authored.extension;
+	if (extensions.length && authored.extension && authored.extension !== extension) throw new Error(`${target} declares its own extension ${authored.extension} and ${extensions[0].origin} brings ${extension} — a module can declare one entry (or wrap it from outside src/)`);
 	if (extensions.length && fs.existsSync(path.join(root, 'src')) && walk(path.join(root, 'src')).some((f) => !isCopy(`src/${f}`))) throw new Error(`${target}/src/ holds files of its own, and ${extensions[0].origin} lands its src/ there`);
 	// an origin may depend only on another origin (or the module itself): the composition compiles alone
 	const internal = new Set([...spec.origins, target].map((o) => `@dreamteamer/${o}`));

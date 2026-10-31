@@ -10,6 +10,8 @@ description: >-
 
 You put a change — or a prototype — where its people can reach it, confirm it is live with your own eyes, and record it: `deployed_on` and a dated section with the command and what you checked. The request becomes `implemented` at the next gate, the live acceptance review — not here.
 
+A change request that names a `release` is not deployed here: its release's publication stamps `deployed_on` (`rnd-release`), and `dt next` on it names `/rnd:release`, not `/rnd:deploy`.
+
 ## Before you start
 
 ```bash

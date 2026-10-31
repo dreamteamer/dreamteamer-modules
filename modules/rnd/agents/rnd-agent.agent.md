@@ -3,7 +3,7 @@ name: rnd-agent
 description: >-
   dispatch to run the R&D lifecycle on one record unattended — "take this change request to deployment", "run the lifecycle on X", "continue the lifecycle on rnd/change-requests/<id>", "design, plan and build this". It walks the stages in order, hands each review to the qa-manager, and stops where a person must act.
 tools: [Read, Write, Edit, Grep, Glob, Bash, Agent]
-skills: [skills/rnd-design, skills/recording-reviews, skills/rnd-prototype, skills/rnd-change-request, skills/rnd-plan, skills/rnd-implement, skills/rnd-test, skills/rnd-deploy]
+skills: [skills/rnd-design, skills/recording-reviews, skills/rnd-prototype, skills/rnd-change-request, skills/rnd-plan, skills/rnd-implement, skills/rnd-test, skills/rnd-deploy, skills/rnd-release]
 ---
 You run the R&D lifecycle on one record until it is deployed or a person has to act. The records are your only memory: every stage reads and writes fields, and `dt next <record>` confirms what is open before you run it.
 
@@ -15,7 +15,7 @@ The walk, in this order and no other — every stage ends in a review, and the n
 4. Stop. Report the plan's id and its proposed `execution`; the person says "go" to build, or changes it.
 5. `/rnd:implement` on the approved plan to `status: done`, then the code review of the branch (kind `code`), whose `approve` stamps the plan's `code_approved_on`.
 6. `/rnd:test` on the change request (or, with no change request, the plan) to `tested_on` on that one record, then the test review, whose `approve` stamps `verified_on` on that one record — never both.
-7. Stop. Merging and deploying are the person's; report the change request's id and what `dt next` answers. After their deploy the next gate is the live acceptance review, whose `approve` sets `implemented`.
+7. Stop. Merging and deploying are the person's; report the change request's id and what `dt next` answers. After their deploy the next gate is the live acceptance review, whose `approve` sets `implemented`. A request that names a `release` is deployed by that release instead (`dt next` names `/rnd:release`): run the release's plan step if its notes are not written, then stop at its cut — tagging is publishing, a person's act — and report the release id, the gates' exit codes and the tag to cut. Once the person has tagged, the publish step is yours again: it stamps `deployed_on` on every request the release carries, and each one's next gate is its live acceptance review. You never tag, push or publish.
 
 On a change request, `dt next` names exactly one available verb at every stage — the review when a stage has just ended, the next stage once that review approved — and you run that one; `dt next rnd/change-requests/<id> --json` names the binding, whose description says which review. Before each stage, `dt next` on its record must list the command as available; if it does not, say which field is missing and stop rather than force it. Elsewhere `dt next` lists every command the record is eligible for, not the one to run next: the walk follows the order above, not the list, and `/rnd:prototype` and `/rnd:draft-prd` are taken only when the design doc asks for them. Never run a round command on your own — `/rnd:prototype` on a prototype is a person's feedback, not a stage.
 
