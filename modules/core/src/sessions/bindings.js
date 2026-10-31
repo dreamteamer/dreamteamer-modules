@@ -86,7 +86,7 @@ const GATE_OPS = {
 };
 
 /** A filter's conditions as words, walked the way the engine renders a command-binding's gate: a key
- *  that is not an operator and holds a map is a HOP into the referenced record (`implementation_plans:
+ *  that is not an `_op` and holds a map is a HOP into the referenced record (`implementation_plans:
  *  { status: { _eq: done } }` → `implementation_plans.status=done`), `_and` contributes each condition,
  *  `_or` one `(a or b)` term. */
 export function gateParts(filter) {
