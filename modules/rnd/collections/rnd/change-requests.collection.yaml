@@ -15,17 +15,19 @@ fields:
     pattern: ^[a-z0-9][a-z0-9-]*$
   name:
     type: string
-    description: Human-readable name.
+    description: 'Short and descriptive — a handful of words naming what changes, the way a list row reads it ("Activity page loads instantly"). Never a sentence and never the reasoning: the one-liner is `description`, the detail is the body.'
     required: true
+    examples: ['Activity page loads instantly', 'Deadline on the grantee roster']
   description:
     type: string
-    description: One-line summary.
+    description: 'One line, brief: what changes, for whom. A sentence, not a paragraph — the paragraph, the ask in its own words and the evidence belong in the body.'
+    examples: ['The Activity page shows its first 20 entries as each repo answers instead of waiting for every history.']
   source:
     type: string
     description: Source records and section locators; distinguish evidence from design.
   content:
     type: markdown
-    description: Detailed contract, evidence, exceptions and acceptance.
+    description: 'The details, and everything longer than one line: why, the ask in the source''s own words, what is out of scope, what it touches by id, the phases. The name and the description stay short because this is where the length goes.'
     body: true
   products:
     type: rnd/products
@@ -55,7 +57,7 @@ fields:
       - low
   acceptance:
     type: string
-    description: Evidence required to accept the change.
+    description: 'Evidence required to accept the change — one entry per piece of evidence, each written so it can fail. On the CLI, repeat `--acceptance` once per entry: one flag holding several lines is split on its commas.'
     many: true
   source_gaps:
     type: string
@@ -110,5 +112,8 @@ display:
     order: 28
   list:
     columns:
+      - created
+      - status
       - name
-      - description
+      - products
+    sort: '-created'

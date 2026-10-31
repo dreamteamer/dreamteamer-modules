@@ -21,12 +21,14 @@ dt get rnd/design-docs/<id>                                        # the design 
 
 ## Do this
 
-1. Say the change in one paragraph before you write anything: what changes, for whom, what stays. That paragraph is `description`. The ask usually arrives in the client's own tool — a ticket, a mail, a call; `source` is that ticket's URL or the meeting's id, and the ticket stays the client's view while this record is the contract.
+1. Say the change in one paragraph before you write anything: what changes, for whom, what stays. That paragraph goes in the BODY. Three sizes, never mixed: `name` is a handful of words naming the change the way a list row reads it ("Activity page loads instantly"); `description` is one line — what changes, for whom; everything longer is the body. The ask usually arrives in the client's own tool — a ticket, a mail, a call; `source` is that ticket's URL or the meeting's id, and the ticket stays the client's view while this record is the contract.
 2. ```bash
-   dt add rnd/change-requests --key <handle> --name "<short name>" --products rnd/products/<id> \
-     --description "<the paragraph>" --priority critical|high|medium|low --source "<where the ask came from>"
+   dt add rnd/change-requests --key <handle> --name "<a few words>" --products rnd/products/<id> \
+     --description "<one line>" --priority critical|high|medium|low --source "<where the ask came from>" \
+     --acceptance "<one piece of evidence>" --acceptance "<the next>"
    ```
-3. The body: why, with the ask in the source's own words; what is out of scope; what it touches, by id — screens, journeys, stories.
+   Repeat `--acceptance` per entry — one flag holding several lines is split on its commas.
+3. The body: the paragraph; why, with the ask in the source's own words; what is out of scope; what it touches, by id — screens, journeys, stories; the phases when there are several.
 4. Link it. `design_docs` names the designs it amends; none means `/rnd:design` on this record comes first. `journeys`; `issue` when a defect motivated it; `supersedes` when it replaces an earlier request. A story it delivers is linked from the story's side: `dt set rnd/user-stories/<id> change_requests=…` (`stories` here is generated).
 5. `acceptance` is one line per piece of evidence that would make the person accept it, in the asker's words, written so it can fail: "the grantee sees the deadline on the roster", never "works as expected". Each line becomes a test at plan time. `source_gaps` is what the source does not say and someone will have to decide.
 6. Commit by id. The next word is `/rnd:review rnd/change-requests/<id>`, kind `acceptance` — the review of the acceptance lines. Its `approve` sets `accepted`, `accepted_by` and `accepted_on`. When the acceptance is a client's to give, the review names them in `human_reviewer` and waits; their yes is recorded the same way, with the source.

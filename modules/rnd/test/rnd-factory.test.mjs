@@ -420,6 +420,31 @@ describe('0.3.0 — one persona collection', () => {
 	});
 });
 
+describe('change requests (0.5.1) — three sizes the descriptor spells out, and a list that reads newest first', () => {
+	const cr = load('collections/rnd/change-requests.collection.yaml');
+	test('name is a few words, description one line, the detail the body — each field description says so', () => {
+		assert.match(cr.fields.name.description, /handful of words/i);
+		assert.match(cr.fields.name.description, /never a sentence/i);
+		assert.ok(cr.fields.name.examples?.length, 'name carries an example of the short form');
+		assert.match(cr.fields.description.description, /one line/i);
+		assert.match(cr.fields.content.description, /longer than one line/i);
+		assert.match(cr.fields.acceptance.description, /repeat `--acceptance`/i, 'the comma-split trap is named where the writer reads');
+	});
+	test('the default list shows created, status, name, products — newest first', () => {
+		assert.deepEqual(cr.display.list.columns, ['created', 'status', 'name', 'products']);
+		assert.equal(cr.display.list.sort, '-created');
+	});
+	test('the skill, the README and UPDATING.md carry the same rule', () => {
+		const skill = fs.readFileSync(path.join(RND, 'skills/rnd-change-request/SKILL.md'), 'utf8');
+		assert.match(skill, /`name` is a handful of words/);
+		assert.match(skill, /Repeat `--acceptance` per entry/);
+		const updating = fs.readFileSync(path.join(RND, 'UPDATING.md'), 'utf8');
+		assert.match(updating, /## 0\.5\.1/);
+		assert.match(updating, /short descriptive name/i);
+		assert.ok(JSON.parse(fs.readFileSync(path.join(RND, 'package.json'), 'utf8')).files.includes('UPDATING.md'), 'UPDATING.md ships');
+	});
+});
+
 describe('the review-gate experiment — a paired unattended run on a five-line change request, each ruling pinned', () => {
 	const read = (rel) => fs.readFileSync(path.join(RND, rel), 'utf8');
 	const skill = (id) => read(`skills/${id}/SKILL.md`);

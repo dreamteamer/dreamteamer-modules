@@ -168,7 +168,8 @@ export function compose(target = 'core') {
 		repository: { type: 'git', url: REPO_URL, directory: `modules/${target}` },
 		keywords: [...new Set([...(existing.keywords ?? ['dreamteamer', 'dreamteamer-module', target]), ...spec.origins])],
 		...(Object.keys(bins).length ? { bin: bins } : {}),
-		files: ['README.md', 'compose.json', ...kindsPresent(allDests)],
+		// UPDATING.md is a module root doc like README.md — shipped when the module writes one (rnd 0.5.1 first)
+		files: ['README.md', ...(fs.existsSync(path.join(root, 'UPDATING.md')) ? ['UPDATING.md'] : []), 'compose.json', ...kindsPresent(allDests)],
 		...(Object.keys(npmDeps).length ? { dependencies: npmDeps } : {}),
 		...rest(existing, KNOWN),
 		dreamteamer: {

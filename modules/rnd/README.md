@@ -128,6 +128,14 @@ windows reads it from a field (`portal: { from: 'field' }`) or a tag (`portal: {
 An identifier — a story key, a question id — is never scrubbed: one the prototype's `scrub` would change
 fails the export, so the record is renamed. The `rnd-prototype` skill holds the contract.
 
+## 0.5.1 — from 0.5.0
+
+Nothing to do. `change-requests` reads as a list: the descriptor now says `name` is a handful of
+words, `description` one line and the body the rest, and its default list shows `created` ·
+`status` · `name` · `products`, newest first. `UPDATING.md` (shipped from this version) says how to
+bring an existing record to that shape, and why an `acceptance` list of sentence fragments means one
+`--acceptance` flag was split on its commas — repeat the flag per entry.
+
 ## 0.5.0 — from 0.4.0
 
 Additive. `rnd/user-journeys` gains `steps` (the journey's order, one item per step) and `failures`;
