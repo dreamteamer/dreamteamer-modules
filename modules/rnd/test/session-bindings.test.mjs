@@ -10,9 +10,12 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { virginWorkspace, installPacked, closure, cleanup, engineMeets, pkgOf, editPkg, BIN, ENGINE_VERSION } from '../../../tests/helpers/workspace.mjs';
+import { pathToFileURL } from 'node:url';
+import { virginWorkspace, installPacked, closure, cleanup, engineMeets, pkgOf, editPkg, BIN, ENGINE, ENGINE_VERSION } from '../../../tests/helpers/workspace.mjs';
 
 after(cleanup);
+const api = await import(pathToFileURL(path.join(ENGINE, 'src', 'api.js')).href);
+const hasNext = typeof api.contributedNotes === 'function';
 const skip = !engineMeets('core') && `needs engine ${pkgOf('core').dreamteamer.engine}; testing ${ENGINE_VERSION}`;
 
 /** The CLI with no harness session id leaking in from whatever runs the suite. */
@@ -24,8 +27,20 @@ function dt(root, args) {
 }
 const ok = (r) => { assert.equal(r.code, 0, r.err + r.out); return r; };
 const sessionOf = (r) => /✔ sessions\/(\S+)/.exec(r.out)?.[1];
+const fieldsOf = (root, id) => JSON.parse(ok(dt(root, ['get', `sessions/${id}`, '--json'])).out);
 /** The id `dt add <collection>` wrote, read off the path it prints — ids are the collection's to make. */
 const addedId = (r, collection, suffix) => new RegExp(`data/${collection}/(\\S+)\\.${suffix}\\.md`).exec(r.out)?.[1];
+
+/** A virgin workspace with core and rnd installed the npm way and SESSIONS_FOLDER set — not compiled. */
+function coreAndRnd() {
+	const folder = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'dtm-rnd-sessions-')));
+	after(() => fs.rmSync(folder, { recursive: true, force: true }));
+	const root = virginWorkspace();
+	editPkg(root, (pkg) => { pkg.dreamteamer.vars.push('SESSIONS_FOLDER'); });
+	fs.appendFileSync(path.join(root, '.env'), `SESSIONS_FOLDER=${folder}\n`);
+	installPacked(root, [...new Set([...closure('core'), ...closure('rnd')])]);
+	return root;
+}
 
 describe('rnd ships its lifecycle as session-bindings', () => {
 	// THE IGNORE ROUTE, both halves pinned. rnd reaches core's kind by listing session-bindings in
@@ -45,12 +60,7 @@ describe('rnd ships its lifecycle as session-bindings', () => {
 	});
 
 	test('lifecycle: with core, the three bindings compile; one request walks design, build and review, one session per stage, each refused to a second agent while it runs', { skip }, () => {
-		const folder = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'dtm-rnd-sessions-')));
-		after(() => fs.rmSync(folder, { recursive: true, force: true }));
-		const root = virginWorkspace();
-		editPkg(root, (pkg) => { pkg.dreamteamer.vars.push('SESSIONS_FOLDER'); });
-		fs.appendFileSync(path.join(root, '.env'), `SESSIONS_FOLDER=${folder}\n`);
-		installPacked(root, [...new Set([...closure('core'), ...closure('rnd')])]);
+		const root = coreAndRnd();
 		const compiled = ok(dt(root, ['compile']));
 		// ignore route, half 2: with core the kind is known, and rnd's ignored folder is staged anyway
 		assert.ok(pkgOf('rnd').dreamteamer.ignore.includes('session-bindings'), 'rnd still lists the folder in ignore');
@@ -81,7 +91,7 @@ describe('rnd ships its lifecycle as session-bindings', () => {
 		assert.equal(dt(root, ['session', 'start', CR, '--agent', 'qa-manager']).code, 1);
 		const doc = addedId(ok(dt(root, ['add', 'rnd/design-docs', '--name', 'Claims export', '--status', 'draft'])), 'rnd/design-docs', 'design-doc');
 		ok(dt(root, ['set', CR, `design_docs=rnd/design-docs/${doc}`]));
-		ok(dt(root, ['session', 'end', sessionOf(design), '--outcome', `design: rnd/design-docs/${doc}`]));
+		ok(dt(root, ['session', 'end', sessionOf(design), '--agent', 'rnd-agent', '--outcome', `design: rnd/design-docs/${doc}`]));
 		assert.equal(bindingOn(), null, 'designed, unplanned: no stage opens a session');
 
 		// BUILD — an approved plan opens the rnd-agent's build session
@@ -91,7 +101,7 @@ describe('rnd ships its lifecycle as session-bindings', () => {
 		assert.match(build.out, /in session by agents\/rnd-agent .*\(session-bindings\/change-requests--build\)/);
 		assert.match(build.out, /start with: \/rnd:implement/);
 		ok(dt(root, ['set', `rnd/implementation-plans/${plan}`, 'status=done']));
-		ok(dt(root, ['session', 'end', sessionOf(build), '--outcome', 'build: plan done']));
+		ok(dt(root, ['session', 'end', sessionOf(build), '--agent', 'rnd-agent', '--outcome', 'build: plan done']));
 
 		// REVIEW — a done plan, not yet verified, opens the qa-manager's
 		assert.equal(bindingOn(), 'session-bindings/change-requests--review');
@@ -99,7 +109,7 @@ describe('rnd ships its lifecycle as session-bindings', () => {
 		assert.match(review.out, /in session by agents\/qa-manager .*\(session-bindings\/change-requests--review\)/);
 		assert.equal(dt(root, ['session', 'start', CR, '--agent', 'rnd-agent']).code, 1, 'the builder is refused while the reviewer holds it');
 		ok(dt(root, ['set', CR, `verified_on=${new Date().toISOString()}`]));
-		ok(dt(root, ['session', 'end', sessionOf(review), '--outcome', 'approve']));
+		ok(dt(root, ['session', 'end', sessionOf(review), '--agent', 'qa-manager', '--outcome', 'approve']));
 		assert.equal(bindingOn(), null, 'verified: no stage opens a session');
 
 		// the request's sessions — one per stage, each ended (two may start within one second, so by binding, not by time)
@@ -110,6 +120,34 @@ describe('rnd ships its lifecycle as session-bindings', () => {
 			['session-bindings/change-requests--build', 'agents/rnd-agent', 'ended'],
 			['session-bindings/change-requests--review', 'agents/qa-manager', 'ended'],
 		]);
+	});
+
+	test('a finished stage: dt next says the stage is done and names dt session end; dt sessions open lists the next stage as held by a finished one; the build starts beside it', { skip }, () => {
+		const root = coreAndRnd();
+		ok(dt(root, ['compile']));
+		ok(dt(root, ['add', 'rnd/products', '--name', 'Harbor Mutual portal']));
+		ok(dt(root, ['add', 'rnd/change-requests', '--key', 'cr-hm-2', '--name', 'Harbor Mutual: renewals', '--products', 'rnd/products/harbor-mutual-portal', '--status', 'accepted']));
+		const CR = 'rnd/change-requests/cr-hm-2';
+		const design = sessionOf(ok(dt(root, ['session', 'start', CR])));
+		// the design lands AND an approved plan — the design binding no longer opens the record, the build's does
+		const doc = addedId(ok(dt(root, ['add', 'rnd/design-docs', '--name', 'Renewals', '--status', 'draft'])), 'rnd/design-docs', 'design-doc');
+		ok(dt(root, ['set', CR, `design_docs=rnd/design-docs/${doc}`]));
+		ok(dt(root, ['add', 'rnd/implementation-plans', '--name', 'Renewals build', '--change_request', CR, '--status', 'approved']));
+		if (hasNext) {
+			const next = ok(dt(root, ['next', CR])).out;
+			assert.match(next, new RegExp(`in session by agents/rnd-agent since \\S+ \\(sessions/${design}\\) — stage done: session-bindings/change-requests--design no longer opens the record; end the session: dt session end ${design}`));
+		}
+		const open = JSON.parse(ok(dt(root, ['sessions', 'open', '--json'])).out).find((o) => o.ref === CR);
+		assert.deepEqual(open, { ref: CR, binding: 'session-bindings/change-requests--build', agent: 'agents/rnd-agent', harness: 'claude-code', command: 'commands/rnd/implement', held_by_finished: [`sessions/${design}`] });
+		assert.match(ok(dt(root, ['sessions', 'open'])).out, new RegExp(`${CR}  session-bindings/change-requests--build  agents/rnd-agent  → dt session start ${CR}  \\(held by a finished stage: sessions/${design}\\)`));
+		const build = ok(dt(root, ['session', 'start', CR]));
+		assert.match(build.out, /\(session-bindings\/change-requests--build\)/);
+		assert.match(build.out, new RegExp(`beside sessions/${design}, whose stage is done — its holder should dt session end it`));
+		assert.equal(fieldsOf(root, design).status, 'running', 'never ended for its holder');
+		// a stage still open does block: a second build is refused naming the first
+		assert.equal(dt(root, ['session', 'start', CR, '--agent', 'qa-manager']).code, 1);
+		ok(dt(root, ['session', 'end', design, '--agent', 'rnd-agent']));
+		ok(dt(root, ['session', 'end', sessionOf(build), '--agent', 'rnd-agent']));
 	});
 
 	test('the two agents say how they start and end their sessions', () => {

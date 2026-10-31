@@ -11,13 +11,15 @@ export const SESSION_USAGE = [
 	'                                              (claim a record: writes a running sessions record from the',
 	'                                               session-binding available on it; refused, naming the holder,',
 	'                                               while another session holds it — unless --join)',
-	'  session end <session> [--outcome <text>] [--json]   (close it: status ended, the outcome as its body)',
-	'  session heartbeat [<session>] [--hook]      (say it is alive; --hook reads a Claude Code hook payload',
-	'                                               on stdin and refreshes the sessions of its session_id)',
+	'  session end <session> [--outcome <text>] [--agent <id>] [--session-id <id>] [--force] [--json]',
+	'                                              (close YOUR session: status ended, the outcome as its body;',
+	'                                               another\'s is refused naming its holder — a person ends it with --force)',
+	'  session heartbeat [<session>] [--hook] [--force]   (say it is alive; --hook reads a Claude Code hook',
+	'                                               payload on stdin and refreshes the sessions of its session_id)',
 ].join('\n');
 export const SESSIONS_USAGE = '  sessions open [--collection <c>] [--json]   (the records a session-binding makes available and nobody holds)';
 
-const SWITCHES = new Set(['join', 'json', 'hook']);
+const SWITCHES = new Set(['join', 'json', 'hook', 'force']);
 /** argv → { pos, flags }; a switch never swallows the next word, and a repeated flag is refused. */
 export function parse(argv) {
 	const pos = [];
@@ -43,6 +45,35 @@ function stateOf(dt, b, record, resolve) {
 	if (b.done_when && dt.matchesFilter(record, b.done_when, resolve)) return 'done';
 	return !b.available_when || dt.matchesFilter(record, b.available_when, resolve) ? 'available' : 'not-available';
 }
+
+/** Does the session's own binding still open its record? False once its `done_when` holds or its
+ *  `available_when` stops holding — the stage it was started for is over, though the session runs on. */
+function stageOpen(dt, store, bindings, session, resolve) {
+	const b = bindings.get(strip(session.fields.binding, 'session-bindings'));
+	const ref = [].concat(session.fields.records ?? [])[0];
+	if (!b || !ref) return true;
+	let record;
+	try { const { collection, id } = dt.splitRef(store.descriptors, ref); record = { ...store.read(collection, id).fields, id }; } catch { return true; }
+	return stateOf(dt, b, record, resolve) === 'available';
+}
+
+/** Who is calling: the harness session id (`--session-id`, else $CLAUDE_CODE_SESSION_ID) and the agent (`--agent`). */
+export const callerOf = (flags, env = process.env) => ({ sessionId: flags['session-id'] ?? env.CLAUDE_CODE_SESSION_ID ?? null, agent: flags.agent ? asRef(flags.agent, 'agents') : null });
+
+/** Is this session the caller's? Its harness session id decides when both sides have one; else its
+ *  worker against the caller's --agent. A caller who proves neither is not its holder. */
+export function isMine(fields, caller) {
+	if (caller.sessionId && fields.session_id) return caller.sessionId === fields.session_id;
+	if (caller.agent && fields.worker) return caller.agent === fields.worker;
+	return false;
+}
+
+/** The refusal for acting on another's session — names the holder and the person's way through. */
+const notYours = (sid, fields, verb) => `sessions/${sid} is held by ${whoOf(fields)}${fields.session_id ? ` (harness session ${fields.session_id})` : ''}, not by you — ${verb} it from that session${fields.worker ? ` or with --agent ${strip(fields.worker, 'agents')}` : ''}; a person ${verb}s another's session with --force. nothing was written`;
+
+/** A tag value for who forced an end: the caller's agent, else `person`. */
+const forcedBy = (caller) => `ended-by:${caller.agent ? dt_slug(strip(caller.agent, 'agents')) : 'person'}`;
+const dt_slug = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'person';
 
 /** A fresh id under the descriptor's own shape (`YYYY/MM/YYYY-MM-DD--<slug>`), suffixed when taken. */
 function freshId(dt, store, started, name) {
@@ -85,8 +116,12 @@ export function start(ws, dt, pos, flags, env = process.env) {
 	return withClaimLock(dir, () => {
 		sweep(store, bindings);
 		const holders = (claimsOn(runningSessions(store, bindings).filter((s) => !s.stale), [ref]).get(ref) ?? []);
-		if (holders.length && (b.concurrency ?? 'one') === 'one' && !flags.join) {
-			return { refused: true, ref, holders };
+		// a holder whose own stage is over (its binding no longer opens the record) does not block another
+		// stage — it is named, and its holder ends it; it is never ended for them (it may still be writing)
+		const finished = holders.filter((h) => !stageOpen(dt, store, bindings, h, resolve));
+		const blocking = holders.filter((h) => !finished.includes(h));
+		if (blocking.length && (b.concurrency ?? 'one') === 'one' && !flags.join) {
+			return { refused: true, ref, holders: blocking };
 		}
 		const started = stamp();
 		const worker = flags.agent ? asRef(flags.agent, 'agents') : b.agent;
@@ -99,33 +134,38 @@ export function start(ws, dt, pos, flags, env = process.env) {
 		};
 		const sid = freshId(dt, store, started, name);
 		store.add('sessions', fields, { id: sid });
-		return { refused: false, session: `sessions/${sid}`, ref, binding: `session-bindings/${bid}`, worker: worker ?? null, harness: harness ?? null, started, joined: holders.map((h) => `sessions/${h.id}`), command: b.command ?? null };
+		return { refused: false, session: `sessions/${sid}`, ref, binding: `session-bindings/${bid}`, worker: worker ?? null, harness: harness ?? null, started, joined: blocking.map((h) => `sessions/${h.id}`), beside_finished: finished.map((h) => `sessions/${h.id}`), command: b.command ?? null };
 	});
 }
 
-export function end(ws, dt, pos, flags) {
+export function end(ws, dt, pos, flags, env = process.env) {
 	const sid = strip(pos[0] ?? '', 'sessions');
 	if (!sid) throw new Error('dt session end needs a session: dt session end <session id> [--outcome <text>]');
 	const store = new dt.Store(ws);
 	const { fields } = store.read('sessions', sid);
 	if (fields.status !== 'running') throw new Error(`sessions/${sid} is ${fields.status ?? 'not a live session'}${fields.status === 'abandoned' ? ` — no heartbeat after ${shown(fields.ended ?? fields.heartbeat)}, so its claim lapsed` : ''}; nothing to end`);
+	const caller = callerOf(flags, env);
+	const mine = isMine(fields, caller);
+	if (!mine && !flags.force) throw new Error(notYours(sid, fields, 'end'));
 	const t = stamp();
-	store.set('sessions', sid, { status: 'ended', ended: t, heartbeat: t, ...(flags.outcome && { outcome: flags.outcome }) });
+	const tags = mine ? undefined : [...new Set([...[].concat(fields.tags ?? []), forcedBy(caller)])];
+	store.set('sessions', sid, { status: 'ended', ended: t, heartbeat: t, ...(flags.outcome && { outcome: flags.outcome }), ...(tags && { tags }) });
 	const records = [].concat(fields.records ?? []);
 	// "free" only where no other fresh session still holds it — a joiner keeps the record in session
 	const bindings = readBindings(store);
 	const held = claimsOn(runningSessions(store, bindings).filter((s) => !s.stale), records);
-	return { session: `sessions/${sid}`, status: 'ended', ended: t, records, still_held: Object.fromEntries([...held].map(([r, ss]) => [r, ss.map((x) => `sessions/${x.id}`)])), held };
+	return { session: `sessions/${sid}`, status: 'ended', ended: t, records, forced: mine ? null : { holder: whoOf(fields), session_id: fields.session_id ?? null }, still_held: Object.fromEntries([...held].map(([r, ss]) => [r, ss.map((x) => `sessions/${x.id}`)])), held };
 }
 
 /** Refresh the sessions a heartbeat names: one id, or every running session of a harness session id. */
-export function heartbeat(ws, dt, { id = null, sessionId = null } = {}) {
+export function heartbeat(ws, dt, { id = null, sessionId = null, caller = null, force = false } = {}) {
 	const store = new dt.Store(ws);
 	const t = stamp();
 	if (id) {
 		const sid = strip(id, 'sessions');
 		const { fields } = store.read('sessions', sid);
 		if (fields.status !== 'running') throw new Error(`sessions/${sid} is ${fields.status ?? 'not a live session'} — its claim lapsed and another session may hold the record; start again with dt session start`);
+		if (!force && !isMine(fields, caller ?? { sessionId, agent: null })) throw new Error(notYours(sid, fields, 'heartbeat'));
 		store.set('sessions', sid, { heartbeat: t });
 		return [sid];
 	}
@@ -156,12 +196,31 @@ export function open(ws, dt, flags = {}) {
 		const held = claimsOn(running, recs.map((r) => `${coll}/${r.id}`));
 		for (const r of recs) {
 			const ref = `${coll}/${r.id}`;
-			if (seen.has(ref) || held.has(ref) || stateOf(dt, b, r, resolve) !== 'available') continue;
+			if (seen.has(ref) || stateOf(dt, b, r, resolve) !== 'available') continue;
+			// held only by sessions whose own stage is over: open, and said so — a start proceeds beside them
+			const holders = held.get(ref) ?? [];
+			const finished = holders.filter((h) => !stageOpen(dt, store, bindings, h, resolve));
+			if (finished.length < holders.length) continue;
 			seen.add(ref);
-			rows.push({ ref, binding: `session-bindings/${bid}`, agent: b.agent ?? null, harness: b.harness ?? null, command: b.command ?? null });
+			rows.push({ ref, binding: `session-bindings/${bid}`, agent: b.agent ?? null, harness: b.harness ?? null, command: b.command ?? null, held_by_finished: finished.map((h) => `sessions/${h.id}`) });
 		}
 	}
 	return { open: rows, bindings: bindings.size, running: running.length };
+}
+
+/** Under the Stop hook: a session of this harness session that another caller ended with --force is
+ *  said ONCE on stderr (the `ended-by:` tag marks it; `holder-told` marks it said), so the holder learns
+ *  its claim is gone instead of working on unaware. */
+export function tellForcedOnce(ws, dt, sessionId) {
+	const store = new dt.Store(ws);
+	for (const { id, fields } of store.readAll('sessions')) {
+		if (fields.session_id !== sessionId || fields.status !== 'ended') continue;
+		const tags = [].concat(fields.tags ?? []);
+		const by = tags.find((t) => t.startsWith('ended-by:'));
+		if (!by || tags.includes('holder-told')) continue;
+		console.error(`dt session: sessions/${id} (${[].concat(fields.records ?? []).join(', ')}) was ended by ${by.slice('ended-by:'.length)} with --force at ${shown(fields.ended)} — your claim is gone; dt next <ref> before you write again`);
+		store.set('sessions', id, { tags: [...tags, 'holder-told'] });
+	}
 }
 
 // ---- the two verbs ------------------------------------------------------------------------------
@@ -172,7 +231,10 @@ export function sessionCommand(ws, argv, dt, { stdin = () => dt.readStdin(), env
 	if (sub === 'heartbeat' && rest.includes('--hook')) {
 		try {
 			const payload = JSON.parse(stdin() || '{}');
-			if (payload.session_id) heartbeat(ws, dt, { sessionId: String(payload.session_id) });
+			if (payload.session_id) {
+				heartbeat(ws, dt, { sessionId: String(payload.session_id) });
+				tellForcedOnce(ws, dt, String(payload.session_id));
+			}
 		} catch (e) { console.error(`dt session heartbeat --hook: ${String(e.message).split('\n')[0]} (ignored)`); }
 		return 0;
 	}
@@ -191,16 +253,18 @@ export function sessionCommand(ws, argv, dt, { stdin = () => dt.readStdin(), env
 			out(r, [
 				`✔ ${r.session} — ${r.ref} in session by ${r.worker ?? (r.harness ? `a ${r.harness} session` : 'a session')} since ${r.started} (${r.binding})`,
 				...(r.joined.length ? [`  joined ${r.joined.join(', ')}`] : []),
+				...(r.beside_finished.length ? [`  beside ${r.beside_finished.join(', ')}, whose stage is done — its holder should dt session end it`] : []),
 				...(cmd ? [`  start with: ${cmd}`] : []),
 				`  keep it alive: the Stop hook (dt install --print-adapters) or dt session heartbeat ${r.session.slice('sessions/'.length)}; end it: dt session end ${r.session.slice('sessions/'.length)}`,
 			].join('\n'));
 			return 0;
 		}
 		case 'end': {
-			const { held, ...r } = end(ws, dt, pos, flags);
+			const { held, ...r } = end(ws, dt, pos, flags, env);
 			const free = r.records.filter((ref) => !held.has(ref));
 			out(r, [
 				`✔ ${r.session} ended ${r.ended}${free.length ? ` — ${free.join(', ')} free` : ''}`,
+				...(r.forced ? [`  --force: freed ${r.forced.holder}'s claim on ${r.records.join(', ')}${r.forced.session_id ? ` (harness session ${r.forced.session_id}; its Stop hook will say so once)` : ''}`] : []),
 				...[...held].flatMap(([ref, ss]) => ss.map((x) => `  ${ref} is still ${heldBy(x)}`)),
 			].join('\n'));
 			return 0;
@@ -208,7 +272,7 @@ export function sessionCommand(ws, argv, dt, { stdin = () => dt.readStdin(), env
 		case 'heartbeat': {
 			const sessionId = flags['session-id'] ?? env.CLAUDE_CODE_SESSION_ID;
 			if (!pos[0] && !sessionId) throw new Error('dt session heartbeat needs a session id, or $CLAUDE_CODE_SESSION_ID / --session-id for the harness session');
-			const ids = heartbeat(ws, dt, { id: pos[0] ?? null, sessionId });
+			const ids = heartbeat(ws, dt, { id: pos[0] ?? null, sessionId, caller: callerOf(flags, env), force: !!flags.force });
 			if (!ids.length) { console.error(`no running session for harness session ${sessionId}`); return 1; }
 			out({ refreshed: ids.map((i) => `sessions/${i}`) }, `✔ heartbeat ${ids.map((i) => `sessions/${i}`).join(', ')}`);
 			return 0;
@@ -226,7 +290,7 @@ export function sessionsCommand(ws, argv, dt) {
 	const r = open(ws, dt, flags);
 	if (flags.json) { dt.emit(JSON.stringify(r.open, null, 2)); return 0; }
 	if (!r.open.length) { console.log(`(no record is open for a session — ${r.bindings} session-binding(s), ${r.running} running session(s))`); return 0; }
-	for (const o of r.open) console.log(`${o.ref}  ${o.binding}${o.agent ? `  ${o.agent}` : ''}  → dt session start ${o.ref}`);
+	for (const o of r.open) console.log(`${o.ref}  ${o.binding}${o.agent ? `  ${o.agent}` : ''}  → dt session start ${o.ref}${o.held_by_finished.length ? `  (held by a finished stage: ${o.held_by_finished.join(', ')})` : ''}`);
 	return 0;
 }
 
@@ -239,11 +303,14 @@ export function nextNotes(ws, dt, { collection, ids }) {
 	let running;
 	try { running = runningSessions(store, bindings); } catch { return []; }
 	const held = claimsOn(running, ids.map((id) => `${collection}/${id}`));
+	const resolve = dt.recordResolver(store);
 	const out = [];
 	for (const id of ids) for (const s of held.get(`${collection}/${id}`) ?? []) {
-		out.push({ id, text: s.stale
-			? `was in session by ${whoOf(s.fields)} — no heartbeat since ${shown(s.fields.heartbeat ?? s.fields.started)}, so the claim has lapsed (sessions/${s.id})`
-			: heldBy(s) });
+		let text;
+		if (s.stale) text = `was in session by ${whoOf(s.fields)} — no heartbeat since ${shown(s.fields.heartbeat ?? s.fields.started)}, so the claim has lapsed (sessions/${s.id})`;
+		else if (!stageOpen(dt, store, bindings, s, resolve)) text = `${heldBy(s)} — stage done: ${s.fields.binding} no longer opens the record; end the session: dt session end ${s.id}`;
+		else text = heldBy(s);
+		out.push({ id, text });
 	}
 	return out;
 }

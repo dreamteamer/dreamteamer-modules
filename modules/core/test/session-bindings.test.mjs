@@ -164,7 +164,7 @@ describe('two agents on one change request', { skip }, () => {
 		assert.notEqual(fieldsOf(root, aId).heartbeat, hb, 'the hook refreshed the heartbeat');
 		ok(dt(root, ['session', 'heartbeat', '--hook'], { input: 'not json' }));
 
-		const e = ok(dt(root, ['session', 'end', aId, '--outcome', 'designed and handed to review']));
+		const e = ok(dt(root, ['session', 'end', aId, '--outcome', 'designed and handed to review', '--session-id', 'harness-a']));
 		assert.match(e.out, /ended/);
 		assert.match(e.out, new RegExp(`rnd/change-requests/cr-nw-1 is still in session by agents/qa-manager since \\S+ \\(sessions/${jId}\\)`), 'the joiner still holds it');
 		assert.doesNotMatch(e.out, /cr-nw-1 free/, 'not free while the joiner runs');
@@ -172,8 +172,8 @@ describe('two agents on one change request', { skip }, () => {
 		assert.equal(ended.status, 'ended');
 		assert.ok(ended.ended);
 		assert.match(ended.outcome, /designed and handed to review/);
-		assert.notEqual(dt(root, ['session', 'end', aId]).code, 0, 'an ended session cannot end again');
-		assert.match(ok(dt(root, ['session', 'end', jId])).out, /cr-nw-1 free/);
+		assert.notEqual(dt(root, ['session', 'end', aId, '--session-id', 'harness-a']).code, 0, 'an ended session cannot end again');
+		assert.match(ok(dt(root, ['session', 'end', jId, '--session-id', 'harness-b'])).out, /cr-nw-1 free/);
 		assert.deepEqual(JSON.parse(ok(dt(root, ['sessions', 'open', '--json'])).out).map((o) => o.ref), [CR, 'rnd/change-requests/cr-nw-2'], 'ended, the record is open again');
 		assert.match(ok(dt(root, ['list', 'sessions', '--filter', 'status=ended'])).out, /cr-nw-1/);
 	});
@@ -188,9 +188,41 @@ describe('two agents on one change request', { skip }, () => {
 		const notes = JSON.parse(ok(dt(root, ['next', CR, '--json'])).out).notes;
 		assert.equal(notes.length, 2);
 		assert.doesNotMatch(ok(dt(root, ['next', 'rnd/change-requests/cr-nw-2'])).out, /in session/);
-		ok(dt(root, ['session', 'end', aId]));
-		ok(dt(root, ['session', 'end', jId]));
+		ok(dt(root, ['session', 'end', aId, '--agent', 'rnd-agent']));
+		ok(dt(root, ['session', 'end', jId, '--agent', 'qa-manager']));
 		assert.doesNotMatch(ok(dt(root, ['next', CR])).out, /in session/);
+	});
+
+	test('ownership: agent B ending or heartbeating agent A\'s session is refused naming A; --force ends it, says it freed A\'s claim, and A\'s Stop hook says so once', () => {
+		const { root } = fixture();
+		const aId = sessionOf(ok(dt(root, ['session', 'start', CR, '--session-id', 'harness-a'])));
+		// from B's harness session — by flag, and by the environment a Claude Code session carries
+		const byFlag = dt(root, ['session', 'end', aId, '--session-id', 'harness-b']);
+		assert.equal(byFlag.code, 1, byFlag.out);
+		assert.match(byFlag.err, new RegExp(`sessions/${aId} is held by agents/rnd-agent \\(harness session harness-a\\), not by you`));
+		assert.match(byFlag.err, /a person ends another's session with --force/);
+		assert.equal(dt(root, ['session', 'end', aId], { env: { CLAUDE_CODE_SESSION_ID: 'harness-b' } }).code, 1, 'the env harness id is the caller too');
+		assert.equal(dt(root, ['session', 'end', aId, '--agent', 'qa-manager']).code, 1, 'another agent, no harness id');
+		assert.equal(dt(root, ['session', 'end', aId]).code, 1, 'a caller who proves nothing');
+		const hb = dt(root, ['session', 'heartbeat', aId, '--session-id', 'harness-b']);
+		assert.equal(hb.code, 1);
+		assert.match(hb.err, /not by you — heartbeat it from that session/);
+		assert.equal(fieldsOf(root, aId).status, 'running', 'nothing was written');
+		assert.equal(dt(root, ['session', 'start', CR, '--agent', 'qa-manager', '--session-id', 'harness-b']).code, 1, 'A still holds it');
+
+		const forced = ok(dt(root, ['session', 'end', aId, '--agent', 'qa-manager', '--session-id', 'harness-b', '--force']));
+		assert.match(forced.out, /--force: freed agents\/rnd-agent's claim on rnd\/change-requests\/cr-nw-1 \(harness session harness-a; its Stop hook will say so once\)/);
+		assert.ok(fieldsOf(root, aId).tags.includes('ended-by:qa-manager'));
+		const told = ok(dt(root, ['session', 'heartbeat', '--hook'], { input: JSON.stringify({ session_id: 'harness-a' }) }));
+		assert.match(told.err, new RegExp(`sessions/${aId} \\(rnd/change-requests/cr-nw-1\\) was ended by qa-manager with --force`));
+		assert.doesNotMatch(ok(dt(root, ['session', 'heartbeat', '--hook'], { input: JSON.stringify({ session_id: 'harness-a' }) })).err, /was ended by/, 'said once');
+		ok(dt(root, ['session', 'start', CR, '--agent', 'qa-manager', '--session-id', 'harness-b']));
+		// its own harness session ends its own, and so does its agent where no harness id was stored
+		const own = sessionOf(ok(dt(root, ['session', 'start', 'rnd/change-requests/cr-nw-2', '--session-id', 'harness-c'])));
+		ok(dt(root, ['session', 'end', own], { env: { CLAUDE_CODE_SESSION_ID: 'harness-c' } }));
+		const noHarness = sessionOf(ok(dt(root, ['session', 'start', 'rnd/change-requests/cr-nw-2'])));
+		ok(dt(root, ['session', 'heartbeat', noHarness, '--agent', 'rnd-agent']));
+		ok(dt(root, ['session', 'end', noHarness, '--agent', 'rnd-agent']));
 	});
 
 	test('a start is refused on a record its binding does not make available, and on a collection nothing binds', () => {

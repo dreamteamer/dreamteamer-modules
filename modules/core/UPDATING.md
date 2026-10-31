@@ -24,6 +24,11 @@ Nothing to do but compile. To use it, bind a collection and merge the hook:
 - **New verbs**: `dt session start | end | heartbeat`, `dt sessions open`. A workspace module or an
   extension that already contributes a verb named `session` or `sessions` now collides with core and
   is refused at load, naming both — rename yours or disable one.
+- **A session is ended by its own holder.** `dt session end` and `dt session heartbeat <id>` act only
+  on a session whose harness session id is the caller's (`$CLAUDE_CODE_SESSION_ID` / `--session-id`) or,
+  where none was stored, whose worker is the caller's `--agent`; `--force` is a person's way to free
+  a stuck claim. A finished stage — the session's binding no longer opens its record — is named in
+  `dt next` and does not block the next stage's start.
 - **The Stop hook.** `dt install --print-adapters` now prints `Stop: … session heartbeat --hook`
   beside the engine's `SessionStart`; merge it into `.claude/settings.json` (it sits beside the
   `session-save.mjs` Stop hook if you have one). Another extension hooking `Stop` collides and is

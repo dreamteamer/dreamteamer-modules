@@ -47,8 +47,9 @@ The reader takes `--session <id>` for another session and `--transcript <path>` 
 1. Before working a record a `session-bindings` binds, `dt next <collection>/<id>`. A line "in session by <worker> since <time> (sessions/<id>)" means another session holds it: pick another (`dt sessions open` lists what is ready and free), or work beside it with `--join` when the person or the plan says so.
 2. Claim it: `dt session start <collection>/<id> [--agent <id>]`. It writes a `running` sessions record from the binding — `records`, `binding`, `worker`, `harness`, `host`, `heartbeat`, and `session_id` from `$CLAUDE_CODE_SESSION_ID` — prints its id and the command to start with. Quote the `✔ sessions/<id>` line; keep the id. A refusal names the holder and exits 1: do not work the record.
 3. Stay alive: the `Stop` hook from `dt install --print-adapters` runs `dt session heartbeat --hook` after every turn, keyed by your harness session id. Without it, `dt session heartbeat <id>` at least every `stale_after` minutes (the binding's, 30 by default). A session silent longer is `abandoned` by the next `dt session`/`dt sessions` verb, its claim lapses, and a heartbeat on it refuses — start again.
-4. End it when the work stops, done or not: `dt session end <id> --outcome "<what landed, what is left>"`. A subagent ends its own session before it hands back: its Stop hook is its parent's, so a forgotten session stays fresh until the parent stops.
-5. Who is working on what: `dt list sessions --filter status=running`.
+4. End it when the work stops, done or not: `dt session end <id> --outcome "<what landed, what is left>"`. A subagent ends its own session before it hands back: its Stop hook is its parent's, so a forgotten session stays fresh until the parent stops. When `dt next` says "stage done — … end the session", the record's fields have moved past your binding: end it, and the next stage's agent can start beside it meanwhile (`dt sessions open` lists the record as "held by a finished stage").
+5. Only your own session: `end` and `heartbeat <id>` act on a session whose harness session id is yours (`$CLAUDE_CODE_SESSION_ID`, or `--session-id`), or, where it stored none, whose worker is your `--agent`. Another's is refused, naming its holder. A person who must free a stuck claim runs `dt session end <id> --force`: it prints whose claim it freed, tags the session `ended-by:<who>`, and the holder's Stop hook says so once. Never `--force` as an agent.
+6. Who is working on what: `dt list sessions --filter status=running`.
 
 A binding, in a module's `session-bindings/change-requests.session-binding.yaml`:
 
@@ -71,6 +72,7 @@ stale_after: 30         # minutes without a heartbeat
 - Don't put a machine path in `transcript`. The reader writes a `${env:FILES_FOLDER}` or `${userHome}` template; keep it that way.
 - Don't work a record `dt next` says is in session, and don't `--join` on your own judgment alone — the holder may be mid-write.
 - Don't leave a live session running when you stop: `dt session end`, or it reads as held until it goes stale.
+- Don't end or heartbeat another session's id, and don't reach for `--force` — that is a person's, for a claim whose holder is gone.
 - Don't bind the save to `SessionEnd`: its default budget is 1.5 seconds and a refused write is silent. `Stop` fires every turn and has the time.
 
 ## Done when

@@ -93,7 +93,7 @@ without a heartbeat, default 30). Compile validates every binding and refuses a 
 dt sessions open [--collection <c>] [--json]      # what a binding makes available and nobody holds
 dt session start <collection>/<id> [--agent <id>] [--join]   # claim it: a running sessions record
 dt next <collection>/<id>                         # "in session by agents/<a> since <time>" while it runs
-dt session end <session> [--outcome <text>]       # ended; the record is free again
+dt session end <session> [--outcome <text>]       # yours only; ended, the record is free again (--force: a person's)
 dt list sessions --filter status=running          # who is working on what
 ```
 
@@ -102,7 +102,12 @@ It is advisory — `start` refuses, `dt next` and `dt sessions open` say so, and
 Sessions live in `${env:SESSIONS_FOLDER}`, so a claim is seen at once by every worktree and agent on
 this machine, and by no other machine. A Claude Code session keeps its heartbeat with the `Stop` hook
 `dt install --print-adapters` prints (`dt session heartbeat --hook`, keyed by the harness session id);
-a session silent past its binding's `stale_after` is `abandoned` and its claim lapses. The line in
+a session silent past its binding's `stale_after` is `abandoned` and its claim lapses. A session's
+`end` and `heartbeat <id>` belong to its own harness session (or its worker's `--agent`): another
+caller is refused naming the holder, and a person frees a stuck claim with `--force`, which the
+holder's Stop hook reports once. When a session's own binding no longer opens its record (its
+stage is done), `dt next` says so and names `dt session end`, and the next stage's binding is open
+beside it — listed by `dt sessions open` as held by a finished stage. The line in
 `dt next` needs an engine with the `next` extension contribution; on an older engine every other verb
 works. The `managing-sessions` skill has the procedure and an example binding.
 
