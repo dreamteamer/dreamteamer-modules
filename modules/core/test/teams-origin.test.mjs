@@ -9,7 +9,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import yaml from 'js-yaml';
 import { CORE } from '../../../scripts/compose-core.mjs';
-import { virginWorkspace, installPacked, closure, run, compileAndCheck, compiledDescriptor, cleanup, engineMeets, pkgOf, ENGINE_VERSION } from '../../../tests/helpers/workspace.mjs';
+import { virginWorkspace, installPacked, closure, run, compileAndCheck, compiledDescriptor, cleanup, engineMeets, pkgOf, packedFiles, ENGINE_VERSION } from '../../../tests/helpers/workspace.mjs';
 
 after(cleanup);
 const spec = JSON.parse(fs.readFileSync(path.join(CORE, 'compose.json'), 'utf8'));
@@ -62,5 +62,17 @@ describe('a workspace on core sees no change', { skip }, () => {
 		assert.match(dt(root, 'get', 'users/dana-oren'), /led_teams:\n\s+- teams\/northwind-delivery/);
 		assert.match(dt(root, 'get', 'teams/northwind-delivery'), /projects:\n\s+- projects\/harbor-rollout/);
 		assert.match(dt(root, 'check'), /0 violations/);
+	});
+});
+
+describe('the recomposition is a release a workspace is told about', () => {
+	test('core 0.7.0 ships an UPDATING.md (compose adds it to files) whose newest section says nothing changes but provenance', () => {
+		assert.equal(pkgOf('core').version, '0.7.0');
+		assert.ok(pkgOf('core').files.includes('UPDATING.md'));
+		assert.ok(packedFiles('core').includes('UPDATING.md'), 'UPDATING.md is in the tarball');
+		const newest = fs.readFileSync(path.join(CORE, 'UPDATING.md'), 'utf8').split(/^## /m)[1];
+		assert.match(newest, /^0\.7\.0 — teams comes from users \(users 0\.2\.0, projects 0\.4\.0\)/);
+		assert.match(newest, /Nothing to do but compile/);
+		assert.match(newest, /provenance/);
 	});
 });

@@ -1,6 +1,6 @@
 # The one field a team gains from the plan: the far side of `projects.teams`. Declared HERE, by the
 # module that owns the pointing field, so it exists only when projects is installed — the collection
-# itself ships with users (cr-modules-002, 2026-10-31).
+# itself ships with users.
 name: teams
 overlay: true
 fields:

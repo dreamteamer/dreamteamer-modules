@@ -119,7 +119,7 @@
 		},
 		"collections/projects/teams.collection.yaml": {
 			"from": "projects/collections/teams.collection.yaml",
-			"hash": "sha256:efdbf71628cbea71cb9e7c7085c0df10f798d85c28cb2b51c7ad8aa8f3267268"
+			"hash": "sha256:b6dd4f795e748e5b9e60f0d12c753f2d6af43ae7e9ec081115195a4738aebfa8"
 		},
 		"collections/projects/users.collection.yaml": {
 			"from": "projects/collections/users.collection.yaml",

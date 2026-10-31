@@ -5,7 +5,9 @@
 // (generated from `projects.teams`), is declared by projects and exists only when projects does.
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert';
-import { virginWorkspace, installPacked, closure, run, compileAndCheck, compiledDescriptor, cleanup } from '../../../tests/helpers/workspace.mjs';
+import fs from 'node:fs';
+import path from 'node:path';
+import { MODULES, virginWorkspace, installPacked, closure, run, compileAndCheck, compiledDescriptor, cleanup, packedFiles, pkgOf } from '../../../tests/helpers/workspace.mjs';
 
 after(cleanup);
 
@@ -63,5 +65,17 @@ describe('users with projects — the plan adds its one mirror to the team', () 
 		assert.match(dt(root, 'get', 'teams/northwind-delivery'), /projects:\n\s+- projects\/harbor-rollout/);
 		assert.match(dt(root, 'get', 'users/sam-diaz'), /teams:\n\s+- teams\/northwind-delivery/);
 		assert.match(dt(root, 'check'), /0 violations/);
+	});
+});
+
+describe('the move is a release a workspace is told about', () => {
+	test('users 0.2.0 ships an UPDATING.md whose newest section says teams moved here, and to upgrade projects with it', () => {
+		assert.equal(pkgOf('users').version, '0.2.0');
+		assert.ok(packedFiles('users').includes('UPDATING.md'), 'UPDATING.md is in the tarball');
+		const updating = fs.readFileSync(path.join(MODULES, 'users', 'UPDATING.md'), 'utf8');
+		const newest = updating.split(/^## /m)[1];
+		assert.match(newest, /^0\.2\.0 — teams ships with users/);
+		assert.match(newest, /projects 0\.4\.0/);
+		assert.match(newest, /name collision on collection "teams"/);
 	});
 });

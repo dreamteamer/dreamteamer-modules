@@ -1,7 +1,7 @@
 {
 	"name": "@dreamteamer/projects",
-	"version": "0.3.1",
-	"description": "The plan and everyone in it: projects, decisions, deliverables, risks and teams.",
+	"version": "0.4.0",
+	"description": "The plan and everyone in it: projects, decisions, deliverables and risks, staffed with the teams users ships.",
 	"license": "Apache-2.0",
 	"type": "module",
 	"repository": {
@@ -15,12 +15,13 @@
 	],
 	"files": [
 		"README.md",
+		"UPDATING.md",
 		"bin",
 		"collections"
 	],
 	"dreamteamer": {
 		"title": "Projects",
-		"description": "The plan and everyone in it: projects, decisions, deliverables, risks and teams. The work itself is planned as `tasks` (the tasks module); a project is the effort they hang off. Owners and leads point at `users`, outside parties at `contacts`. `bin/check-records.mjs` enforces what a schema cannot.",
+		"description": "The plan and everyone in it: projects, decisions, deliverables and risks, staffed with the `teams` users ships (projects adds `teams.projects`). The work itself is planned as `tasks` (the tasks module); a project is the effort they hang off. Owners and leads point at `users`, outside parties at `contacts`. `bin/check-records.mjs` enforces what a schema cannot.",
 		"engine": ">=0.33.0",
 		"peer_collections": [
 			"companies",

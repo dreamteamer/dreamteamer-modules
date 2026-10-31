@@ -1,8 +1,8 @@
 # @dreamteamer/core
 
-Every core noun of a workspace from one install line: people and the roles and responsibilities
-they hold, companies, contacts and engagements, tasks, projects with their decisions, risks and teams,
-meetings with recordings, preps, summaries and analyses, files on mounted drives, the assets a view
+Every core noun of a workspace from one install line: people with the teams they form and the
+roles and responsibilities they hold, companies, contacts and engagements, tasks, projects with their
+decisions and risks, meetings with recordings, preps, summaries and analyses, files on mounted drives, the assets a view
 draws, the artifacts a person opens, sessions of work and the metrics that count them, and the
 workflows that run chains of those commands over sets of records.
 
