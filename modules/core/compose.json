@@ -307,7 +307,7 @@
 		},
 		"skills/ingesting-recordings/bin/detect.mjs": {
 			"from": "recordings/skills/ingesting-recordings/bin/detect.mjs",
-			"hash": "sha256:43bfe1d6e0c90d3268095c42a03cac704e3ac6226abee17fcc99cb60f842bc3d"
+			"hash": "sha256:468bfe2bc7ffbeb3ca0df96fe4222cd7525ca5086f52e193a2561d762276a8cb"
 		},
 		"skills/ingesting-recordings/SKILL.md": {
 			"from": "recordings/skills/ingesting-recordings/SKILL.md",

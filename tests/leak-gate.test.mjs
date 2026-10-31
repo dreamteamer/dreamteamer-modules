@@ -8,6 +8,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 
@@ -56,6 +57,27 @@ describe('the leak gate', () => {
 		// scans this repo for the same names (measured 2026-09-10 — the hook refused this file).
 		const vaultNames = ['gk-' + 'brain', 'hq[23]', 'dt-' + 'hq'].join('|');
 		assert.deepEqual(hits(new RegExp(`\\b(${vaultNames})\\b`, 'i')), []);
+	});
+	test('no real person\'s name that once leaked into the recordings ingest (pub-01, 2026-10-31)', () => {
+		// A real contact's name sat in a filename example in detect.mjs, in recordings and its composed
+		// copy in core, and shipped in two public tarballs before a review caught it. The deny-list is
+		// kept as SHA-256 of the lower-cased word, never spelled: a spelling here would put the name
+		// back in the tree this test exists to keep it out of. Scoped to the two modules it leaked from.
+		const DENY = new Set([
+			'668e2b73ac556a2f051304702da290160b29bad3392ddcc72074fefbee80c55a',
+			'49f13d51c651324e205a60e8bf92347c535a1f100cd30d387461980c50da7f9a',
+		]);
+		const scope = FILES.filter((f) => /^modules\/(recordings|core)\//.test(rel(f)));
+		assert.ok(scope.length > 20, `expected the recordings and core trees, saw ${scope.length} files`);
+		const out = [];
+		for (const f of scope) {
+			fs.readFileSync(f, 'utf8').split('\n').forEach((line, i) => {
+				for (const w of line.toLowerCase().match(/[a-z]+/g) ?? []) {
+					if (DENY.has(createHash('sha256').update(w).digest('hex'))) out.push(`${rel(f)}:${i + 1}`);
+				}
+			});
+		}
+		assert.deepEqual(out, []);
 	});
 	test('no machine path', () => {
 		// `/Users/someone` and `/Users/me` are the synthetic fixtures' spelling; anything else is a leak.

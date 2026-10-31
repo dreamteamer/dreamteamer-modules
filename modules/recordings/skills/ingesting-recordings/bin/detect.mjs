@@ -148,7 +148,7 @@ function parseName(stem, mtime) {
 		return { date: iso(+y, +mo, +d), time, hint: rest.trim(), how: 'leading YYYY MM DD', confident: true };
 	}
 
-	// 2. trailing english month+day — `Alex jul22`, `Danny hoz jouyus jul 24`
+	// 2. trailing english month+day — `Dana jul22`, `Sam Diaz jul 24`
 	m = clean.match(/^(.*?)[ \-_]*\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*[ \-_.]?(\d{1,2})\b\s*$/i);
 	if (m) {
 		const [, rest, mon, d] = m;
