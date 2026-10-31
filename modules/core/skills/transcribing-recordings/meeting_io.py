@@ -3,7 +3,7 @@
 A transcribed recording is one markdown record: YAML frontmatter plus a body
 that carries a `## Transcript` section directly — there is no separate
 transcript file. Raw ASR JSON lives in the per-machine transcription cache
-(`locations.asr_cache_dir`, TRANSCRIBING_CACHE_DIR), never under data/ and never
+(`locations.asr_cache_dir`, `$TRANSCRIPTION_HOME/asr`), never under data/ and never
 beside the skill.
 
 PyYAML is imported where it is used, so the path helpers load under a bare python3.
@@ -85,8 +85,8 @@ def summary_path_for(meeting_md):
 
 def asr_cache_path_for(record_md):
     """Where a record's raw ASR JSON is cached: the per-machine transcription cache
-    (TRANSCRIBING_CACHE_DIR, default ~/.cache/dreamteamer/transcription-cache), in
-    `asr/`. Not committed, regenerable, and never under data/ or inside the skill.
+    `$TRANSCRIPTION_HOME/asr/` (default ~/.cache/dreamteamer/transcription/asr). Not committed,
+    regenerable, and never under data/ or inside the skill.
 
     Suffix-agnostic: any `.<suffix>.md` record name (`.meeting-recording.md`, say)
     loses just its suffix.

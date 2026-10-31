@@ -1,6 +1,6 @@
 {
 	"name": "@dreamteamer/core",
-	"version": "0.5.4",
+	"version": "0.6.0",
 	"description": "Every core noun from one install: users, companies, contacts, engagements, tasks, projects, meetings, files, assets, artifacts, sessions, metrics, workflows.",
 	"license": "Apache-2.0",
 	"type": "module",

@@ -28,50 +28,55 @@ run from the workspace root, against the compiled copy of this skill. every comm
 
 ```bash
 SK=.dreamteamer/skills/transcribing-recordings
-export UV_PROJECT_ENVIRONMENT="${TRANSCRIBING_VENV_DIR:-$HOME/.cache/dreamteamer/transcription-venv}"
+export UV_PROJECT_ENVIRONMENT="${TRANSCRIPTION_HOME:-$HOME/.cache/dreamteamer/transcription}/venv"
 cd "$SK" && uv sync && uv run python transcribe_meeting.py setup   # audio route only
 ```
 
 setup provisions a pinned Python 3.12 venv and downloads the models (~1.6 GB, plus 1.6 GB more for the
 GPU pass on a Mac with `whisper-cli`) — only what is missing, so it is safe to re-run; it needs system
-`ffmpeg`. text routes need only `uv sync`. Every command below assumes these exports in the SAME
-shell: an agent whose every command starts a fresh shell repeats them.
+`ffmpeg`. text routes need only `uv sync`. Every command below assumes this export in the SAME
+shell: an agent whose every command starts a fresh shell repeats it.
 
 **nothing heavy lives in the skill folder.** compile regenerates `.dreamteamer/skills/` and
-`npm install` replaces `node_modules/`, so anything kept beside the skill is deleted by the next pin
-bump. Three things live outside it, each in a per-machine cache by default — no export needed:
+`npm install` replaces `node_modules/`, so everything the transcriber keeps lives in ONE folder outside
+it — `$TRANSCRIPTION_HOME`, default `~/.cache/dreamteamer/transcription`, the only setting there is:
 
-| what | where | moved by |
-|---|---|---|
-| the models (~1.6 GB, 3.2 GB with the GPU pass) | `~/.cache/dreamteamer/transcription-models` | `TRANSCRIBING_MODELS_DIR`, read by the script from the process environment (not `.env`) |
-| the Python venv | `~/.cache/dreamteamer/transcription-venv` | `TRANSCRIBING_VENV_DIR`, through the `UV_PROJECT_ENVIRONMENT` export above |
-| the raw ASR JSON of each run | `~/.cache/dreamteamer/transcription-cache/asr/` | `TRANSCRIBING_CACHE_DIR`, read by the script |
+```
+~/.cache/dreamteamer/transcription/
+  models/
+    diarization/     segmentation.onnx, embedding.onnx   every audio run
+    whisper-ct2/     faster-whisper weights              the cpu engine
+    whisper-ggml/    whisper.cpp weights                 the metal engine
+  venv/              the Python environment
+  asr/               the raw recognizer output of each run — a real call's words
+```
 
+The script reads `TRANSCRIPTION_HOME` from the process environment (not `.env`); unset is the default.
 **The venv is set by the export, not by the script:** uv picks the environment before Python starts,
-so `UV_PROJECT_ENVIRONMENT` is the only lever, and the preamble derives it from `TRANSCRIBING_VENV_DIR`.
-Without the export, `uv` falls back to a `.venv` inside the skill folder — the old layout, which still
-runs (an existing one is used as it is), and `setup` and `run` print a one-line note saying so. The raw
-ASR JSON is a real call's words: it never lands inside `node_modules`, a package folder or the repo.
+so `UV_PROJECT_ENVIRONMENT` is the only lever. Without the export, `uv` builds a `.venv` inside the
+skill folder — it runs, the next `npm install` deletes it, and `setup` and `run` print a note saying so.
+A run whose models are missing **stops** and says to run `setup`: it never diarizes into one speaker
+or downloads 1.5 GB mid-run.
 
 **this works anywhere, including a cloud session** — no credentials, no `.env`, no Drive, no mount.
 Only `ffmpeg` + `uv` + outbound network for the first `setup`.
 
 ### where the models come from
 
-`setup` fetches these into the models folder. The sources, so nobody has to read the code to
+`setup` fetches these into `models/`. The sources, so nobody has to read the code to
 find them:
 
 | file | size | source |
 |---|---|---|
-| `whisper/` | ~1.5 GB | HuggingFace **`ivrit-ai/whisper-large-v3-turbo-ct2`**, pulled by faster-whisper (CTranslate2, int8) |
-| `segmentation.onnx` | 5.7 MB | sherpa-onnx release `speaker-segmentation-models` → `sherpa-onnx-pyannote-segmentation-3-0.tar.bz2`, the `model.onnx` member |
-| `embedding.onnx` | 28 MB | sherpa-onnx release `speaker-recongition-models` → `wespeaker_en_voxceleb_CAM++_LM.onnx` |
+| `whisper-ct2/` | ~1.5 GB | HuggingFace **`ivrit-ai/whisper-large-v3-turbo-ct2`**, pulled by faster-whisper (CTranslate2, int8) |
+| `diarization/segmentation.onnx` | 5.7 MB | sherpa-onnx release `speaker-segmentation-models` → `sherpa-onnx-pyannote-segmentation-3-0.tar.bz2`, the `model.onnx` member |
+| `diarization/embedding.onnx` | 28 MB | sherpa-onnx release `speaker-recongition-models` → `wespeaker_en_voxceleb_CAM++_LM.onnx` |
 | `whisper-ggml/ggml-ivrit-large-v3-turbo.bin` | 1.6 GB | HuggingFace **`ivrit-ai/whisper-large-v3-turbo-ggml`** `ggml-model.bin` at commit `2130c78e`, size and sha256 checked — fetched only on Apple Silicon with `whisper-cli` on PATH |
 
 `speaker-recongition-models` is spelled that way **upstream** — it is the real GitHub release tag.
 Do not "fix" the typo.
 
-On a machine that already has the weights, **copy the models folder — do not re-download it.** Use
+On a machine that already has the weights, **copy `models/` — do not re-download it.** Use
 `rsync -a` (or `cp -a`): the whisper cache is a HuggingFace hub layout whose snapshot files are
 *relative symlinks* into `blobs/`, so a plain `cp` either doubles 1.5 GB or breaks the links. **Never
 copy the venv** — it bakes absolute interpreter and project paths and will not run in a new location;
@@ -208,7 +213,7 @@ full script usage: `setup | run <record.md> <audio> [--date YYYY-MM-DD] [--speak
    ```bash
    cd "$SK" && uv run python transcribe_meeting.py run <abs/record.meeting-recording.md> "<abs/audio>" --speakers N
    ```
-   raw ASR JSON goes to `${TRANSCRIBING_CACHE_DIR:-~/.cache/dreamteamer/transcription-cache}/asr/`.
+   raw ASR JSON goes to `$TRANSCRIPTION_HOME/asr/` (default `~/.cache/dreamteamer/transcription/asr/`).
    The decoded WAV the run makes in `$TMPDIR` is removed when it finishes or fails.
 5. **check the count against reality.** If `speaker_count` in the printed summary is materially higher
    than what you passed, the number was wrong, not the audio: re-run with the observed count and note

@@ -126,17 +126,18 @@ export function installedModules(root) {
 
 // `files` has no capability block here: its machine checks (is each drive mounted, cloud-only entries)
 // are its own extension's `dt doctor` rows.
-/** Where the transcriber reads its weights — the same rule as the skill's locations.models_dir():
- *  TRANSCRIBING_MODELS_DIR, `~` expanded, else the per-machine cache. Never inside the package. */
-export function transcriptionModelsDir(env = process.env, home = os.homedir()) {
-	const v = env.TRANSCRIBING_MODELS_DIR;
-	if (!v) return path.join(home, '.cache', 'dreamteamer', 'transcription-models');
+/** The transcriber's one folder — the same rule as the skill's locations.transcription_home():
+ *  TRANSCRIPTION_HOME, `~` expanded, else ~/.cache/dreamteamer/transcription. Never inside the package.
+ *  models/ (diarization/, whisper-ct2/, whisper-ggml/), venv/ and asr/ sit under it. */
+export function transcriptionHome(env = process.env, home = os.homedir()) {
+	const v = env.TRANSCRIPTION_HOME;
+	if (!v) return path.join(home, '.cache', 'dreamteamer', 'transcription');
 	return path.resolve(v === '~' || v.startsWith('~/') ? path.join(home, v.slice(2)) : v);
 }
 
 // The GPU pass's weights, as the skill's engines.py pins them: the path under the models folder and
 // the exact size of the pinned upstream object. A file at any other size is half-copied or evicted.
-export const GGML_FILE = path.join('whisper-ggml', 'ggml-ivrit-large-v3-turbo.bin');
+export const GGML_FILE = path.join('models', 'whisper-ggml', 'ggml-ivrit-large-v3-turbo.bin');
 export const GGML_SIZE = 1_624_555_275;
 const fileSize = (p) => { try { return fs.statSync(p).size; } catch { return null; } };
 
@@ -266,14 +267,14 @@ export function capabilities(root) {
 		const uv = bin('uv');
 		const uvInstall = 'curl -LsSf https://astral.sh/uv/install.sh | sh';
 		uv ? c.ok('uv', uv) : c.bad('uv', uvInstall, 'provisions the pinned Python and its venv', uvInstall);
-		const modelsDir = transcriptionModelsDir();
-		if (fs.existsSync(path.join(modelsDir, 'segmentation.onnx'))) {
-			c.ok('model weights', modelsDir);
+		const home = transcriptionHome();
+		if (fs.existsSync(path.join(home, 'models', 'diarization', 'segmentation.onnx'))) {
+			c.ok('model weights', path.join(home, 'models'));
 		} else {
-			c.warn('model weights', `cd ${path.relative(root, skill)} && uv sync && uv run python transcribe_meeting.py setup`,
-				`~1.6 GB, downloaded once into ${modelsDir}`);
+			c.warn('model weights', `cd ${path.relative(root, skill)} && UV_PROJECT_ENVIRONMENT="${path.join(home, 'venv')}" uv sync && uv run python transcribe_meeting.py setup`,
+				`~1.6 GB, downloaded once into ${path.join(home, 'models')}`);
 		}
-		const gpu = gpuCheck({ whisperCli: bin('whisper-cli'), ggmlSize: fileSize(path.join(modelsDir, GGML_FILE)) });
+		const gpu = gpuCheck({ whisperCli: bin('whisper-cli'), ggmlSize: fileSize(path.join(home, GGML_FILE)) });
 		gpu.state === 'ok' ? c.ok('gpu', gpu.detail) : c.warn('gpu', gpu.fix, gpu.detail);
 		out.push(c.cap);
 	}

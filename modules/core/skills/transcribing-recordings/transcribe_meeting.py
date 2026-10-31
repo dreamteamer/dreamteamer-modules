@@ -22,12 +22,12 @@ import engines
 import locations
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-# The per-machine cache by default (locations.py); `TRANSCRIBING_MODELS_DIR` moves it.
+# Everything under $TRANSCRIPTION_HOME/models (locations.py).
 MODELS_DIR = locations.models_dir()
-LEGACY_MODELS_DIR = os.path.join(HERE, ".models")
-SEG_MODEL = os.path.join(MODELS_DIR, "segmentation.onnx")
-EMB_MODEL = os.path.join(MODELS_DIR, "embedding.onnx")
-WHISPER_DIR = os.path.join(MODELS_DIR, "whisper")
+DIARIZATION_DIR = locations.diarization_dir()
+SEG_MODEL = os.path.join(DIARIZATION_DIR, "segmentation.onnx")
+EMB_MODEL = os.path.join(DIARIZATION_DIR, "embedding.onnx")
+WHISPER_DIR = locations.whisper_ct2_dir()
 WHISPER_ID = "ivrit-ai/whisper-large-v3-turbo-ct2"
 GGML_MODEL = engines.ggml_path(MODELS_DIR)
 
@@ -45,53 +45,58 @@ def _download(url, dst):
 
 
 def warn_if_venv_in_skill(prefix=None):
-    """The old layout — a `.venv` beside the skill — still runs, but the next `npm install` deletes it.
-    Say so, and say how to move it, rather than fail. Returns whether it warned."""
+    """Without the SKILL.md export, uv builds a `.venv` beside the skill, which the next `npm install`
+    deletes. It still runs; say how to put it where it belongs. Returns whether it warned."""
     prefix = prefix or sys.prefix
     if not locations.inside(prefix, HERE):
         return False
     print(
         f"  note: this venv is inside the skill folder ({prefix}), which `npm install` and compile replace.\n"
-        f"    Export UV_PROJECT_ENVIRONMENT=\"${{TRANSCRIBING_VENV_DIR:-$HOME/.cache/dreamteamer/transcription-venv}}\"\n"
+        f"    Export UV_PROJECT_ENVIRONMENT=\"${{TRANSCRIPTION_HOME:-$HOME/.cache/dreamteamer/transcription}}/venv\"\n"
         f"    before `uv sync` / `uv run` (SKILL.md, \"paths\") and the venv lives at {locations.venv_dir()}.",
         file=sys.stderr,
     )
     return True
 
 
-def warn_if_models_beside_skill(legacy=None, models=None):
-    """Weights left in the old default — `.models/` beside the skill — are not read any more. Say where
-    they are and how to move them rather than download 1.6 GB again. Returns whether it warned."""
-    legacy, models = legacy or LEGACY_MODELS_DIR, models or MODELS_DIR
-    if not os.path.isdir(legacy) or os.path.realpath(legacy) == os.path.realpath(models):
-        return False
-    print(
-        f"  note: model weights found beside the skill ({legacy}); they are read from {models} now.\n"
-        f"    Move them rather than download again: mkdir -p \"{os.path.dirname(models)}\" && "
-        f"rsync -a \"{legacy}/\" \"{models}/\" && rm -rf \"{legacy}\"",
-        file=sys.stderr,
-    )
-    return True
+def ct2_ready(whisper_dir=None):
+    """The faster-whisper weights are on disk: a `model.bin` somewhere in the hub cache under the folder."""
+    for _, _, files in os.walk(whisper_dir or WHISPER_DIR):
+        if "model.bin" in files:
+            return True
+    return False
+
+
+def missing_models(engine, num_speakers, seg=None, emb=None, whisper_dir=None):
+    """What a run needs and does not have. Diarization needs both onnx files unless the run is solo; the
+    cpu engine needs the ct2 weights (metal's ggml file is checked by engine selection). A run that went
+    ahead without them would diarize nothing and fall back to one speaker, or pull 1.5 GB mid-run."""
+    seg, emb = seg or SEG_MODEL, emb or EMB_MODEL
+    missing = []
+    if num_speakers != 1:
+        missing += [p for p in (seg, emb) if not (os.path.isfile(p) and os.path.getsize(p) > 0)]
+    if engine == "cpu" and not ct2_ready(whisper_dir):
+        missing.append(whisper_dir or WHISPER_DIR)
+    return missing
 
 
 def setup():
     warn_if_venv_in_skill()
-    warn_if_models_beside_skill()
-    os.makedirs(MODELS_DIR, exist_ok=True)
+    os.makedirs(DIARIZATION_DIR, exist_ok=True)
     if not os.path.exists(SEG_MODEL):
-        tar_path = os.path.join(MODELS_DIR, "seg.tar.bz2")
+        tar_path = os.path.join(DIARIZATION_DIR, "seg.tar.bz2")
         try:
             _download(_SEG_TAR_URL, tar_path)
             with tarfile.open(tar_path, "r:bz2") as tf:
                 member = next(m for m in tf.getmembers() if m.name.endswith("model.onnx"))
                 member.name = os.path.basename(SEG_MODEL)
-                tf.extract(member, MODELS_DIR)
+                tf.extract(member, DIARIZATION_DIR)
         finally:
             if os.path.exists(tar_path):
                 os.remove(tar_path)
     if not os.path.exists(EMB_MODEL):
         _download(_EMB_URL, EMB_MODEL)
-    # Prefetch the whisper weights into the skill-local cache.
+    # Prefetch the whisper weights.
     from faster_whisper import WhisperModel
     WhisperModel(WHISPER_ID, device="cpu", compute_type="int8", download_root=WHISPER_DIR)
     # The GPU pass's weights, only where the GPU pass can run: 1.6 GB is not worth fetching for a
@@ -260,10 +265,13 @@ def run(meeting_md, audio, generated, num_speakers=None, language=None, engine="
         raise SystemExit(f"✖ {e}")
     if fallback:
         print(f"  engine: cpu — {fallback}", file=sys.stderr)
-    warn_if_models_beside_skill()
     fm, body = read_meeting(meeting_md)
     if num_speakers is None:
         num_speakers = count_attendees(fm)
+    missing = missing_models(engine, num_speakers)
+    if missing:
+        raise SystemExit("✖ models missing — run `uv run python transcribe_meeting.py setup` first:\n    "
+                         + "\n    ".join(missing))
     warn_if_venv_in_skill()
     # The decoded WAV is a full copy of the call. Its folder goes when the decode, diarization and
     # recognition are done — on success and on any failure alike, ^C included.

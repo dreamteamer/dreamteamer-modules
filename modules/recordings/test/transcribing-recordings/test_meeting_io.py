@@ -69,13 +69,13 @@ def test_summary_path_for_rejects_non_meeting():
         summary_path_for("foo/bar.transcript.md")
 
 
-def test_asr_cache_path_for_follows_the_cache_dir(tmp_path, monkeypatch):
+def test_asr_cache_path_for_follows_transcription_home(tmp_path, monkeypatch):
     import meeting_io
-    monkeypatch.setenv("TRANSCRIBING_CACHE_DIR", str(tmp_path / "cache"))
+    monkeypatch.setenv("TRANSCRIPTION_HOME", str(tmp_path / "home"))
     md = "data/meetings/2026/06/2026-06-10--10-00--acme--design-review.meeting.md"
     path = meeting_io.asr_cache_path_for(md)
-    assert path == str(tmp_path / "cache" / "asr" / "2026-06-10--10-00--acme--design-review.asr.json")
-    assert (tmp_path / "cache" / "asr").is_dir()
+    assert path == str(tmp_path / "home" / "asr" / "2026-06-10--10-00--acme--design-review.asr.json")
+    assert (tmp_path / "home" / "asr").is_dir()
 
 
 def test_replace_transcript_section_appends_when_absent():

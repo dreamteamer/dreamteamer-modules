@@ -343,11 +343,11 @@
 		},
 		"skills/transcribing-recordings/locations.py": {
 			"from": "recordings/skills/transcribing-recordings/locations.py",
-			"hash": "sha256:bdc4220d4fba061e15117336c1cdc33ca29dd9192adbbe95312ca28d9e82aab6"
+			"hash": "sha256:e22f8c3822385afee2c369782ba70404fea25ed9d46b0795be68fdc0852da73f"
 		},
 		"skills/transcribing-recordings/meeting_io.py": {
 			"from": "recordings/skills/transcribing-recordings/meeting_io.py",
-			"hash": "sha256:d19d4126877dbc269ec5b662fd7d14af1baa8c82451525ce7d8db9d80af2d534"
+			"hash": "sha256:133c99edd00a81426f8e28b91f7a5e7c2df84b0cac064519e2ab520350343279"
 		},
 		"skills/transcribing-recordings/pyproject.toml": {
 			"from": "recordings/skills/transcribing-recordings/pyproject.toml",
@@ -359,7 +359,7 @@
 		},
 		"skills/transcribing-recordings/SKILL.md": {
 			"from": "recordings/skills/transcribing-recordings/SKILL.md",
-			"hash": "sha256:1a6903026eeaccb25ff98fae5018afc3bc309587bd579b347ad94954a020d534"
+			"hash": "sha256:25a5bb18a0c4b5eae78081c6aa33cb6244a5e8ee4a6c62da38958e14728418c1"
 		},
 		"skills/transcribing-recordings/text_source.py": {
 			"from": "recordings/skills/transcribing-recordings/text_source.py",
@@ -367,7 +367,7 @@
 		},
 		"skills/transcribing-recordings/transcribe_meeting.py": {
 			"from": "recordings/skills/transcribing-recordings/transcribe_meeting.py",
-			"hash": "sha256:f1560dda4d2a3df1cf3358551473483ed41a66d02cf76e7c3d31cdaa846dd127"
+			"hash": "sha256:05715f5671cdfe5485f1150fcaaba5a5e9e05cc504d9b2bc62c58b47d93fabf4"
 		},
 		"skills/transcribing-recordings/uv.lock": {
 			"from": "recordings/skills/transcribing-recordings/uv.lock",

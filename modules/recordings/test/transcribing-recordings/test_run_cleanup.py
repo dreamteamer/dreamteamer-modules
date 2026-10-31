@@ -90,6 +90,7 @@ class RunLeavesNoDecodedAudio(unittest.TestCase):
         self.decoded = []  # (path, rate, channels, frames) of the WAV each recognition pass was handed
         for name, value in {
             "choose_engine": lambda requested: ("cpu", None),
+            "missing_models": lambda engine, num_speakers: [],
             "read_meeting": lambda p: ({}, ""),
             "write_meeting": self.capture_record,
             "diarize_safe": lambda wav, num_speakers=None: [],
@@ -169,47 +170,71 @@ class RunLeavesNoDecodedAudio(unittest.TestCase):
 
 
 
-class ModelsLeftBesideTheSkill(unittest.TestCase):
-    """Weights in the pre-0.2.2 default (`.models/` beside the skill) are not read any more — a note says
-    how to move them, so a pin bump never costs a silent 1.6 GB download or a silent CPU run."""
+class MissingModelsStopTheRun(unittest.TestCase):
+    """A run without its models stops before decoding anything, naming what is missing — it never
+    diarizes into one speaker or pulls 1.5 GB from the network mid-run."""
 
-    def test_old_weights_beside_the_skill_print_how_to_move_them(self):
-        with tempfile.TemporaryDirectory() as d:
-            legacy = os.path.join(d, ".models"); os.mkdir(legacy)
-            err = io.StringIO()
-            with contextlib.redirect_stderr(err):
-                self.assertTrue(tm.warn_if_models_beside_skill(legacy, os.path.join(d, "cache", "transcription-models")))
-            self.assertIn("rsync -a", err.getvalue())
-            self.assertIn(legacy, err.getvalue())
+    def setUp(self):
+        self.d = tempfile.mkdtemp(prefix="models-")
+        self.addCleanup(shutil.rmtree, self.d, True)
+        self.seg, self.emb = os.path.join(self.d, "segmentation.onnx"), os.path.join(self.d, "embedding.onnx")
+        self.ct2 = os.path.join(self.d, "whisper-ct2")
 
-    def test_no_old_folder_is_silent(self):
-        with tempfile.TemporaryDirectory() as d:
-            err = io.StringIO()
-            with contextlib.redirect_stderr(err):
-                self.assertFalse(tm.warn_if_models_beside_skill(os.path.join(d, ".models"), os.path.join(d, "m")))
-            self.assertEqual(err.getvalue(), "")
+    def put(self, *paths):
+        for p in paths:
+            os.makedirs(os.path.dirname(p), exist_ok=True)
+            pathlib.Path(p).write_bytes(b"x")
 
-    def test_the_old_folder_named_as_the_models_dir_is_silent(self):
-        with tempfile.TemporaryDirectory() as d:
-            err = io.StringIO()
-            with contextlib.redirect_stderr(err):
-                self.assertFalse(tm.warn_if_models_beside_skill(d, d))
+    def missing(self, engine, speakers):
+        return tm.missing_models(engine, speakers, seg=self.seg, emb=self.emb, whisper_dir=self.ct2)
+
+    def test_everything_present_is_nothing_missing(self):
+        self.put(self.seg, self.emb, os.path.join(self.ct2, "models--x", "snapshots", "r", "model.bin"))
+        self.assertEqual(self.missing("cpu", 2), [])
+
+    def test_diarization_models_are_needed_unless_the_run_is_solo(self):
+        self.put(os.path.join(self.ct2, "model.bin"))
+        self.assertEqual(self.missing("cpu", 2), [self.seg, self.emb])
+        self.assertEqual(self.missing("cpu", None), [self.seg, self.emb])
+        self.assertEqual(self.missing("cpu", 1), [])
+
+    def test_an_empty_onnx_file_counts_as_missing(self):
+        self.put(os.path.join(self.ct2, "model.bin"), self.emb)
+        pathlib.Path(self.seg).write_bytes(b"")
+        self.assertEqual(self.missing("cpu", 2), [self.seg])
+
+    def test_the_ct2_weights_are_needed_by_the_cpu_engine_only(self):
+        self.put(self.seg, self.emb)
+        self.assertEqual(self.missing("cpu", 2), [self.ct2])
+        self.assertEqual(self.missing("metal", 2), [])
+
+    def test_run_stops_before_decoding_and_names_the_files(self):
+        decoded = []
+        with mock.patch.object(tm, "choose_engine", lambda requested: ("cpu", None)), \
+                mock.patch.object(tm, "read_meeting", lambda p: ({}, "")), \
+                mock.patch.object(tm, "missing_models", lambda engine, n: [self.seg]), \
+                mock.patch.object(tm, "decode_audio", lambda src, dst: decoded.append(src)):
+            with self.assertRaises(SystemExit) as cm:
+                tm.run("/w/x.meeting-recording.md", "/w/clip.m4a", "2026-08-30", num_speakers=2)
+        self.assertIn(self.seg, str(cm.exception.code))
+        self.assertIn("setup", str(cm.exception.code))
+        self.assertEqual(decoded, [], "the run decoded audio before finding its models missing")
 
 
-class OldLayoutStillRunsAndSaysSo(unittest.TestCase):
-    """A `.venv` inside the skill folder (the layout before 0.2.1) is used as it is — with a note."""
+class VenvBesideTheSkillSaysSo(unittest.TestCase):
+    """Without the SKILL.md export uv builds a `.venv` beside the skill; it runs, with a note."""
 
     def test_a_venv_inside_the_skill_prints_how_to_move_it(self):
         err = io.StringIO()
         with contextlib.redirect_stderr(err):
             self.assertTrue(tm.warn_if_venv_in_skill(str(SKILL / ".venv")))
         self.assertIn("UV_PROJECT_ENVIRONMENT", err.getvalue())
-        self.assertIn("TRANSCRIBING_VENV_DIR", err.getvalue())
+        self.assertIn("TRANSCRIPTION_HOME", err.getvalue())
 
     def test_a_venv_in_the_cache_is_silent(self):
         err = io.StringIO()
         with contextlib.redirect_stderr(err):
-            self.assertFalse(tm.warn_if_venv_in_skill("/home/dana/.cache/dreamteamer/transcription-venv"))
+            self.assertFalse(tm.warn_if_venv_in_skill("/home/dana/.cache/dreamteamer/transcription/venv"))
         self.assertEqual(err.getvalue(), "")
 
 

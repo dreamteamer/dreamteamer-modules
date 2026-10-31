@@ -8,7 +8,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { findWorkspace, installedModules, capabilities, worst, capState, envKeys, BUNDLE_FLOOR, OURS, originsOf, rootOf, binOf, gpuCheck, transcriptionModelsDir, GGML_SIZE } from '../lib/capabilities.mjs';
+import { findWorkspace, installedModules, capabilities, worst, capState, envKeys, BUNDLE_FLOOR, OURS, originsOf, rootOf, binOf, gpuCheck, transcriptionHome, GGML_SIZE } from '../lib/capabilities.mjs';
 
 // the repo root
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', '..', '..');
@@ -317,11 +317,12 @@ describe('the wikis and notebooklm capabilities', () => {
 });
 
 describe('the transcriber: models where the skill reads them, and whether the GPU pass can run', () => {
-	test('the models folder defaults to the per-machine cache, never the package, and follows the variable', () => {
-		assert.equal(transcriptionModelsDir({}, '/home/dana'), '/home/dana/.cache/dreamteamer/transcription-models');
-		assert.equal(transcriptionModelsDir({ TRANSCRIBING_MODELS_DIR: '' }, '/home/dana'), '/home/dana/.cache/dreamteamer/transcription-models');
-		assert.equal(transcriptionModelsDir({ TRANSCRIBING_MODELS_DIR: '~/models' }, '/home/dana'), '/home/dana/models');
-		assert.equal(transcriptionModelsDir({ TRANSCRIBING_MODELS_DIR: '/srv/models' }, '/home/dana'), '/srv/models');
+	test('the transcriber folder defaults to one folder in the per-machine cache and follows TRANSCRIPTION_HOME', () => {
+		assert.equal(transcriptionHome({}, '/home/dana'), '/home/dana/.cache/dreamteamer/transcription');
+		assert.equal(transcriptionHome({ TRANSCRIPTION_HOME: '' }, '/home/dana'), '/home/dana/.cache/dreamteamer/transcription');
+		assert.equal(transcriptionHome({ TRANSCRIPTION_HOME: '~/t' }, '/home/dana'), '/home/dana/t');
+		assert.equal(transcriptionHome({ TRANSCRIPTION_HOME: '/srv/t' }, '/home/dana'), '/srv/t');
+		assert.equal(transcriptionHome({ TRANSCRIBING_MODELS_DIR: '/srv/m' }, '/home/dana'), '/home/dana/.cache/dreamteamer/transcription', 'the old variable moves nothing');
 	});
 	const mac = { platform: 'darwin', arch: 'arm64' };
 	test('Apple Silicon with whisper-cli and whole weights is metal', () => {
@@ -354,6 +355,6 @@ describe('the transcriber: models where the skill reads them, and whether the GP
 		const c = cap(capabilities(ws), 'recordings');
 		assert.ok(c, 'no recordings capability');
 		assert.ok(c.checks.some((k) => k.label === 'gpu'), c.checks.map((k) => k.label).join(', '));
-		assert.ok(!c.checks.some((k) => k.label === 'TRANSCRIBING_MODELS_DIR'), 'the models folder has a working default — no variable to demand');
+		assert.ok(!c.checks.some((k) => /^TRANSCRIB/.test(k.label)), 'the folder has a working default — no variable to demand');
 	});
 });
