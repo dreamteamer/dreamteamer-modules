@@ -1,0 +1,17 @@
+command: commands/rnd/release
+collection: collections/rnd/releases
+scope: record
+# A rolled-back release carries nothing still in flight: every request still `accepted` and every issue moves off
+# it — to the next planned release, or to none — with deployed_on and fixed_in cleared. Open while one is left;
+# like the stamp step it has no done_when (no negation in the grammar) and stops being available when none is.
+# A request already `implemented` is a person's call and does not hold it open.
+available_when:
+  status:
+    _eq: rolled-back
+  _or:
+    - change_requests:
+        status:
+          _eq: accepted
+    - issues:
+        _nempty: true
+description: "ROLLBACK — rolled back, but it still carries an accepted request or an issue: move each off it (release= the next planned one, or empty), clearing deployed_on and fixed_in, and list them in the release's ## Rolled back section"

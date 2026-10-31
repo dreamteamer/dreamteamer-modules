@@ -56,7 +56,10 @@ changes, write the notes from their bodies), cut (planned, notes written — the
 with their exit codes, then a PERSON tags: tagging is publishing, and the rnd-agent stops there),
 publish (cut — the registries answer the exact version; `published_on`, `published_to`, and
 `deployed_on` on every request carried) — and, once published, a fourth answer while any request it
-carries has no `deployed_on`: stamp (the publish step's last half, resumable on its own). A cut needs
+carries has no `deployed_on` or an issue no `fixed_in`: stamp (the publish step's last half, resumable on its
+own); and once rolled back, while it still carries an accepted request or an issue: rollback (move each off
+it, clearing `deployed_on` and `fixed_in`) — a request on a rolled-back release answers `/rnd:release` until
+it is moved. A cut needs
 `repo`, `tag` and `cut_on`; `published` needs `published_on` and `published_to` — a write without
 them is refused.
 

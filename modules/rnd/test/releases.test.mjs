@@ -144,11 +144,13 @@ for (const [how, make] of [['copied', rndWorkspace], ['packed', packedWorkspace]
 				'--verified_on', '2026-01-15T11:00:00+02:00', '--release', REL);
 			assert.deepEqual(available(root, CR), ['rnd--release--change-requests']);
 		});
+		let ISSUE;
 		test('the release lists what it ships back — the request and an issue — and the product lists the release', () => {
 			const { id } = json(root, 'add', 'rnd/issues', '--name', 'An expired code is accepted', '--repo', 'repos/grantee-portal', '--product', PRODUCT, '--status', 'fixed', '--release', REL);
 			const rel = get(root, REL);
 			assert.deepEqual(rel.change_requests, [CR]);
 			assert.deepEqual(rel.issues, [`rnd/issues/${id}`]);
+			ISSUE = `rnd/issues/${id}`;
 			assert.deepEqual(get(root, PRODUCT).releases, [REL]);
 		});
 		test('deployed_on written by hand while the release is only cut: the live review stays closed', () => {
@@ -166,7 +168,9 @@ for (const [how, make] of [['copied', rndWorkspace], ['packed', packedWorkspace]
 			assert.deepEqual(available(root, REL), ['rnd--release--releases--stamp'], 'the release names the stamp while a carried request is unstamped (r1-04)');
 			dt(root, 'set', CR, `deployed_on=${get(root, REL).published_on}`);
 			assert.deepEqual(available(root, CR), ['rnd--review--change-requests--deploy']);
-			assert.deepEqual(available(root, REL), [], 'every carried request stamped: the release answers nothing');
+			assert.deepEqual(available(root, REL), ['rnd--release--releases--stamp'], 'the issue it carries has no fixed_in yet (the test stage\'s h6)');
+			dt(root, 'set', ISSUE, `fixed_in=${get(root, REL).tag}`);
+			assert.deepEqual(available(root, REL), [], 'every carried request and issue stamped: the release answers nothing');
 		});
 		test('the live review approves: implemented, nothing open, and the records check clean', () => {
 			dt(root, 'set', CR, 'status=implemented');
@@ -178,7 +182,28 @@ for (const [how, make] of [['copied', rndWorkspace], ['packed', packedWorkspace]
 				'--verified_on', '2026-01-15T11:00:00+02:00', '--release', REL, '--deployed_on', '2026-01-20T11:00:00+02:00');
 			assert.deepEqual(available(root, 'rnd/change-requests/roster-csv'), ['rnd--review--change-requests--deploy']);
 			dt(root, 'set', REL, 'status=rolled-back');
-			assert.deepEqual(available(root, 'rnd/change-requests/roster-csv'), []);
+			// h5: the stamped request still reads deployed — the release names its rollback step, the request /rnd:release
+			assert.deepEqual(available(root, 'rnd/change-requests/roster-csv'), ['rnd--release--change-requests']);
+			assert.deepEqual(available(root, REL), ['rnd--release--releases--rollback']);
+		});
+		test('a request scheduled into a rolled-back release answers /rnd:release, and the release its rollback step (h7)', () => {
+			dt(root, 'add', 'rnd/change-requests', '--key', 'roster-sort', '--name', 'Roster sort', '--products', PRODUCT, '--status', 'accepted',
+				'--verified_on', '2026-01-15T11:00:00+02:00', '--release', REL);
+			assert.deepEqual(available(root, 'rnd/change-requests/roster-sort'), ['rnd--release--change-requests']);
+			assert.deepEqual(available(root, REL), ['rnd--release--releases--rollback']);
+		});
+		test('the rollback step moves each one off — to the next planned release, or to none — and then closes', () => {
+			const next = 'rnd/releases/grantee-portal/1.4.1';
+			dt(root, 'add', 'rnd/releases', '1.4.1', '--product', PRODUCT);
+			dt(root, 'set', 'rnd/change-requests/roster-csv', 'deployed_on=', `release=${next}`);
+			assert.deepEqual(available(root, 'rnd/change-requests/roster-csv'), ['rnd--release--change-requests'], 'waits for the next release');
+			assert.deepEqual(available(root, REL), ['rnd--release--releases--rollback'], 'roster-sort and the issue are still on it');
+			dt(root, 'set', 'rnd/change-requests/roster-sort', 'release=');
+			assert.deepEqual(available(root, 'rnd/change-requests/roster-sort'), ['rnd--deploy--change-requests'], 'no release: its own deploy');
+			dt(root, 'set', ISSUE, 'release=', 'fixed_in=');
+			assert.deepEqual(available(root, REL), [], 'only the implemented request is left — a person\'s call, not the step\'s');
+			assert.deepEqual(get(root, REL).change_requests, [CR]);
+			dt(root, 'check');
 		});
 		test('a request with no release keeps its own deploy, then the live review', () => {
 			dt(root, 'add', 'rnd/change-requests', '--key', 'audit-log', '--name', 'Audit log', '--products', PRODUCT, '--status', 'accepted', '--verified_on', '2026-01-15T11:00:00+02:00');

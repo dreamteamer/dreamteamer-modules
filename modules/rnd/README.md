@@ -140,7 +140,8 @@ under the id `<product>/<version>` or `<product>/<package>/<version>`. A change 
 names its `release`, and the release lists them back; a product lists its releases newest first, and
 the change-request list shows `release`. `/rnd:release` is three `dt next` answers on a release —
 plan, cut (a person's: tagging is publishing, and the rnd-agent stops there), publish, and a stamp
-step that resumes the publication's last half while a carried request has no `deployed_on` — and a
+step that resumes the publication's last half while a carried request or issue is unstamped, and a
+rollback step that moves what a rolled-back release still carries off it — and a
 request in a release is deployed by its publication: `deployed_on` is stamped from `published_on`,
 and its live acceptance review never opens before. `dt check` refuses a second release of one product
 and version through rnd's own extension entry (`lib/extension.mjs`, named in `compose.json`), which

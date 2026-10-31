@@ -268,9 +268,9 @@ describe('the commands, the bindings and the agent — every entry names a skill
 	});
 	const dir = path.join(RND, 'command-bindings');
 	const bindings = fs.readdirSync(dir).filter((f) => f.endsWith('.command-binding.yaml') && authored('command-bindings', f)).map((f) => ({ file: f, ...yaml.load(fs.readFileSync(path.join(dir, f), 'utf8')) }));
-	test('thirty-one bindings: three on the reference chain, twenty-eight on the lifecycle', () => {
-		assert.equal(bindings.length, 31);
-		assert.equal(bindings.filter((b) => STAGES.includes(b.command.replace(/^commands\//, ''))).length, 28);
+	test('thirty-two bindings: three on the reference chain, twenty-nine on the lifecycle', () => {
+		assert.equal(bindings.length, 32);
+		assert.equal(bindings.filter((b) => STAGES.includes(b.command.replace(/^commands\//, ''))).length, 29);
 	});
 	/** The fields of a collection by its qualified name, or null when it is not an rnd collection. */
 	const fieldsByName = (name) => name.startsWith('rnd/') ? load(`collections/${name}.collection.yaml`).fields : null;
@@ -359,7 +359,7 @@ describe('0.3.0 — the lifecycle fields', () => {
 		assert.deepEqual(b('rnd--deploy--change-requests.command-binding.yaml').available_when.verified_on, { _nempty: true });
 		assert.deepEqual(b('rnd--test--change-requests.command-binding.yaml').available_when.implementation_plans, { code_approved_on: { _nempty: true } });
 		assert.deepEqual(b('rnd--plan--change-requests.command-binding.yaml').available_when.design_docs, { status: { _eq: 'active' } }, 'a request is planned against its active design — none is no longer enough (0.5.2: one next verb)');
-		for (const f of fs.readdirSync(path.join(RND, 'command-bindings'))) if (authored('command-bindings', f) && !/prototype--prototypes|--products|ingest-reference|releases--stamp/.test(f)) assert.ok(b(f).done_when, `${f} has no done_when — the agent could loop on it`);
+		for (const f of fs.readdirSync(path.join(RND, 'command-bindings'))) if (authored('command-bindings', f) && !/prototype--prototypes|--products|ingest-reference|releases--stamp|releases--rollback/.test(f)) assert.ok(b(f).done_when, `${f} has no done_when — the agent could loop on it`);
 	});
 	test('a defect takes the quick path: a plan may fix an issue, which lists its plans back', () => {
 		assert.equal(plan.fields.issue.type, 'rnd/issues');
@@ -711,10 +711,18 @@ describe('0.6.0 — releases: a product\'s versions, each listing what it ships'
 	test('a published release with a carried request unstamped answers the stamp step — the publication\'s last half, resumable (r1-04)', () => {
 		const st = binding('rnd--release--releases--stamp');
 		assert.equal(st.command, 'commands/rnd/release');
-		assert.deepEqual(st.available_when, { status: { _eq: 'published' }, change_requests: { deployed_on: { _empty: true } } });
+		assert.deepEqual(st.available_when, { status: { _eq: 'published' }, _or: [{ change_requests: { deployed_on: { _empty: true } } }, { issues: { fixed_in: { _empty: true } } }] }, 'a request with no deployed_on, or an issue with no fixed_in');
 		assert.equal(st.done_when, undefined, 'no done_when: "every carried request stamped" is a negation the grammar cannot say; the binding stops being available');
 		assert.match(read('commands/rnd/release.command.md'), /names the stamp step: only that last half/);
 		assert.match(read('skills/rnd-release/SKILL.md'), /a step of its own when it is resumed/);
+	});
+	test('a rolled-back release that still carries an accepted request or an issue answers its rollback step — move each off it', () => {
+		const rb = binding('rnd--release--releases--rollback');
+		assert.equal(rb.command, 'commands/rnd/release');
+		assert.deepEqual(rb.available_when, { status: { _eq: 'rolled-back' }, _or: [{ change_requests: { status: { _eq: 'accepted' } } }, { issues: { _nempty: true } }] });
+		assert.equal(rb.done_when, undefined);
+		assert.match(read('skills/rnd-release/SKILL.md'), /names the rollback step \(`rnd--release--releases--rollback`\)/);
+		assert.match(read('commands/rnd/release.command.md'), /names the rollback step: move each accepted request and each issue off it/);
 	});
 	test('re-versioning a planned release is two writes in order — set version, then rename — said in the skill, the descriptor and UPDATING (r1-02)', () => {
 		assert.match(read('skills/rnd-release/SKILL.md'), /`dt set rnd\/releases\/<id> version=<new>`, then `dt rename rnd\/releases\/<id> <product>\/<new>`/);
@@ -726,8 +734,8 @@ describe('0.6.0 — releases: a product\'s versions, each listing what it ships'
 		const dep = binding('rnd--deploy--change-requests');
 		const rel = binding('rnd--release--change-requests');
 		assert.deepEqual(dep.available_when.release, { _empty: true });
-		assert.deepEqual(rel.available_when, { status: { _eq: 'accepted' }, verified_on: { _nempty: true }, deployed_on: { _empty: true }, release: { _nempty: true } });
-		assert.deepEqual(rel.done_when, dep.done_when);
+		assert.deepEqual(rel.available_when, { status: { _eq: 'accepted' }, verified_on: { _nempty: true }, release: { _nempty: true }, _or: [{ deployed_on: { _empty: true } }, { release: { status: { _eq: 'rolled-back' } } }] });
+		assert.deepEqual(rel.done_when, { deployed_on: { _nempty: true }, _or: [{ release: { _empty: true } }, { release: { status: { _neq: 'rolled-back' } } }] }, 'done once deployed by a release still standing');
 		const deploy = desc('change-requests').display.record.options.stages.find((s) => s.title === 'deploy');
 		assert.deepEqual(deploy.fields, ['release', 'deployed_on']);
 		assert.deepEqual(deploy.gate, ['rnd--deploy--change-requests', 'rnd--release--change-requests', 'rnd--review--change-requests--deploy']);
