@@ -11,6 +11,54 @@ npx dreamteamer check
 
 ---
 
+## 0.8.0 — rnd ships no session bindings
+
+rnd 0.6.0–0.7.0 shipped three session-bindings on change requests — `change-requests--design`,
+`change-requests--build`, `change-requests--review`. They restated three of the command bindings
+`dt next` already lists, in a second vocabulary, and they are gone: no SESSIONS BOUND block for
+`rnd/change-requests` in CLAUDE.md, AGENTS.md or GEMINI.md, no rnd rows in `dt sessions open`, no
+"in session by" from an rnd binding in `dt next`, and the rnd-agent and the qa-manager no longer claim a
+request with `dt session start`. Core's session-bindings kind and its verbs are unchanged.
+
+**Do this, in order.**
+
+```bash
+npm install @dreamteamer/rnd@0.8.0
+npx dreamteamer compile
+node node_modules/@dreamteamer/rnd/bin/migrate-session-bindings.mjs            # the plan, nothing written
+node node_modules/@dreamteamer/rnd/bin/migrate-session-bindings.mjs --write
+npx dreamteamer check
+```
+
+**Why the migration.** Every `sessions` record started under one of the three names it in `binding`, a
+reference to `session-bindings` — ended and abandoned ones included. Once the bindings are gone, skipping
+the migration leaves `dt check` failing once per such record:
+
+```
+✖ <SESSIONS_FOLDER>/2026/01/2026-01-12--a.session.md
+    binding: dangling reference "session-bindings/change-requests--design" — no such record
+```
+
+and `dt session end` refusing a running one with the same `binding: dangling reference …` and `nothing
+was written`. The migration clears `binding` on those records through `dt set` and keeps the old binding
+as the tag `rnd-binding:change-requests-<design|build|review>`; nothing is deleted, and `dt set` fills
+`confidence` on a record that lacks it. For a running session it prints either the command that ends it
+(`dt session end <id>` for its holder, `--force` for a person) or, when its heartbeat is older than 30
+minutes, that the next `dt session` or `dt sessions` verb marks it abandoned and there is nothing to run.
+It refuses before `dt compile` (the old bindings are still compiled then), says so when the workspace has
+no `SESSIONS_FOLDER` or no core, and a second run finds nothing. A workspace that kept its own binding
+under one of the three ids keeps its sessions as they are.
+
+**Two collisions to look for.**
+
+- A workspace that disabled rnd's three by id (`session-bindings/change-requests--design` and so on in
+  `dreamteamer.disable`) removes those entries; otherwise compile warns that each
+  `dreamteamer.disable entry "session-bindings/change-requests--design" matched nothing`.
+- A workspace that wants a claim on change requests writes its own binding under its module's
+  `session-bindings/` — core's `managing-sessions` skill shows the file.
+
+---
+
 ## 0.7.0 — change requests carry stage tags, drawn as checks
 
 Run `dt compile`, then `dt check`. No record has to change to stay valid.

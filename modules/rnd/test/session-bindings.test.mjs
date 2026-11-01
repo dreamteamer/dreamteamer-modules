@@ -220,3 +220,15 @@ description: the workspace's own binding, on products
 		assert.equal(fieldsIn(A).binding, 'session-bindings/change-requests--design', 'nothing was written');
 	});
 });
+
+describe('the 0.8.0 release', () => {
+	const read = (f) => fs.readFileSync(path.join(RND, f), 'utf8');
+	test('released as 0.8.0, with UPDATING.md and the README release note, the engine floor unmoved', () => {
+		const pkg = JSON.parse(read('package.json'));
+		assert.equal(pkg.version, '0.8.0');
+		assert.equal(pkg.dreamteamer.engine, '>=0.38.0');
+		assert.match(read('UPDATING.md'), /## 0\.8\.0 — rnd ships no session bindings/);
+		assert.match(read('UPDATING.md'), /migrate-session-bindings\.mjs --write/);
+		assert.match(read('README.md'), /## 0\.8\.0 — from 0\.7\.0/);
+	});
+});

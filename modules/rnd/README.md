@@ -139,6 +139,14 @@ windows reads it from a field (`portal: { from: 'field' }`) or a tag (`portal: {
 An identifier — a story key, a question id — is never scrubbed: one the prototype's `scrub` would change
 fails the export, so the record is renamed. The `rnd-prototype` skill holds the contract.
 
+## 0.8.0 — from 0.7.0
+
+rnd ships no session bindings. The three on change requests that 0.6.0 added — design, build, review —
+are gone, so a workspace's instructions, `dt sessions open` and `dt next` show the lifecycle once, as
+command bindings; the rnd-agent and the qa-manager no longer claim a request. Core's session-bindings
+kind and verbs stay, for a workspace that declares its own. `bin/migrate-session-bindings.mjs` unbinds the
+session records the old bindings opened, so `dt check` stays green. `UPDATING.md` has the commands.
+
 ## 0.7.0 — from 0.6.0
 
 Change requests carry stage tags. `rnd/change-requests` gains `tags`; four of its values —
