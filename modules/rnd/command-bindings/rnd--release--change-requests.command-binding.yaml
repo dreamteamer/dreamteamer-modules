@@ -1,0 +1,28 @@
+command: commands/rnd/release
+collection: collections/rnd/change-requests
+scope: record
+# Open while the request waits for its release — and again when that release is rolled back under it, deployed
+# or not: the release's rollback step moves it off. Done once deployed by a release still standing.
+available_when:
+  status:
+    _eq: accepted
+  verified_on:
+    _nempty: true
+  release:
+    _nempty: true
+  _or:
+    - deployed_on:
+        _empty: true
+    - release:
+        status:
+          _eq: rolled-back
+done_when:
+  deployed_on:
+    _nempty: true
+  _or:
+    - release:
+        _empty: true
+    - release:
+        status:
+          _neq: rolled-back
+description: "the verified change ships in its release: run /rnd:release on the release this request names — its publication stamps deployed_on here, and its rollback moves the request off it"

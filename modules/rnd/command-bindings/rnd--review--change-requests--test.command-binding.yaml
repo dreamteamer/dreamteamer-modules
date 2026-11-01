@@ -1,0 +1,17 @@
+command: commands/rnd/review
+collection: collections/rnd/change-requests
+scope: record
+available_when:
+  status:
+    _eq: accepted
+  tested_on:
+    _nempty: true
+  verified_on:
+    _empty: true
+  tests:
+    status:
+      _eq: passing
+done_when:
+  verified_on:
+    _nempty: true
+description: "after TEST: review whether the proof is enough (kind test, subject this request); approve stamps verified_on"

@@ -80,15 +80,27 @@ steps:
     collection: collections/rnd/implementation-plans
     where: '{"status":{"_in":["approved","in-progress"]}}'
     stop: go on each approved plan, or a change to its execution
+  - name: review the built branches
+    command: commands/rnd/review
+    collection: collections/rnd/implementation-plans
+    where: '{"status":{"_eq":"done"},"code_approved_on":{"_empty":true}}'
   - name: prove the built changes
     command: commands/rnd/test
     collection: collections/rnd/change-requests
-    where: '{"status":{"_eq":"accepted"},"verified_on":{"_empty":true}}'
+    where: '{"status":{"_eq":"accepted"},"tested_on":{"_empty":true},"verified_on":{"_empty":true}}'
+  - name: review the proofs
+    command: commands/rnd/review
+    collection: collections/rnd/change-requests
+    where: '{"status":{"_eq":"accepted"},"tested_on":{"_nempty":true},"verified_on":{"_empty":true}}'
   - name: deploy the proven changes
     command: commands/rnd/deploy
     collection: collections/rnd/change-requests
     where: '{"status":{"_eq":"accepted"},"deployed_on":{"_empty":true}}'
     stop: merging and deploying are yours — which of these go live now
+  - name: accept the live changes
+    command: commands/rnd/review
+    collection: collections/rnd/change-requests
+    where: '{"status":{"_eq":"accepted"},"deployed_on":{"_nempty":true}}'
 ---
 ## 1. sync the calendar
 
@@ -136,7 +148,7 @@ Products being built or live. The person names, from the summaries and critiques
 
 ## 12. design the changes
 
-Open change requests with no design. The design is brainstormed with the person, so they pick which to design now. Steps 12 to 20 follow the R&D lifecycle's own order: design and its review before the change is accepted, then plan.
+Open change requests with no design. The design is brainstormed with the person, so they pick which to design now. Steps 12 to 23 follow the R&D lifecycle's own order: design and its review before the change is accepted, then plan, and every stage after it ends in a review.
 
 ## 13. review the designs
 
@@ -148,11 +160,11 @@ Active designs with no prototype. Only the designs that ask for a clickable prot
 
 ## 15. review the change requests
 
-Every suggested change: its acceptance lines reviewed; `approve` makes it accepted.
+Every suggested change; the binding adds that its design is active. Its acceptance lines reviewed; `approve` makes it accepted.
 
 ## 16. plan the accepted changes
 
-Accepted changes with no plan. The binding adds that the change's design, when it has one, is active.
+Accepted changes with no plan. The binding adds that the change's design is active.
 
 ## 17. review the plans
 
@@ -162,10 +174,22 @@ Every draft plan; the review writes the held-out tests and its `approve` sets it
 
 Approved or in-progress plans. The person says go on each, or changes its execution, before anything is built.
 
-## 19. prove the built changes
+## 19. review the built branches
 
-Accepted changes not yet verified; the binding adds that the change's plan is done. Every covering test is run and set from its output.
+Done plans whose code is not yet approved: the code review of the whole branch, kind `code`; its `approve` stamps `code_approved_on`.
 
-## 20. deploy the proven changes
+## 20. prove the built changes
+
+Accepted changes not yet tested; the binding adds that the plan's code review approved. Every covering test is run and set from its output; all passing stamps `tested_on`.
+
+## 21. review the proofs
+
+Tested changes not yet verified: the test review, kind `test`; its `approve` stamps `verified_on`.
+
+## 22. deploy the proven changes
 
 Accepted changes not yet deployed; the binding adds that they are verified. Merging and deploying are the person's: nothing goes live without their word.
+
+## 23. accept the live changes
+
+Deployed changes not yet implemented: the live check, kind `acceptance` — each acceptance line seen on the running thing; its `approve` sets `implemented`.

@@ -1,0 +1,22 @@
+# The right-hand column of the R&D page: a page of counts, one panel per lifecycle collection, each
+# grouped by its status. A column is a page nested in a page.
+#
+# Only rnd's own collections: a count of `tasks` would dangle wherever rnd is installed without the
+# tasks module, and rnd compiles and checks clean alone. A workspace with tasks can count them in a
+# page view of its own.
+route: /modules/rnd/counts
+scope: page
+title: R&D by status
+display:
+  list:
+    layout: page
+    options:
+      grid_columns: 1
+      views:
+        - ui-views/rnd-change-requests-by-status
+        - ui-views/rnd-issues-by-status
+        - ui-views/rnd-features-by-status
+        - ui-views/rnd-tests-by-status
+        - ui-views/rnd-reviews-by-status
+        - ui-views/rnd-design-docs-by-status
+        - ui-views/rnd-implementation-plans-by-status

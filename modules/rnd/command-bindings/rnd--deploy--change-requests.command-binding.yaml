@@ -8,7 +8,9 @@ available_when:
     _nempty: true
   deployed_on:
     _empty: true
+  release:
+    _empty: true
 done_when:
   deployed_on:
     _nempty: true
-description: "deploy the verified change and stamp deployed_on"
+description: "deploy the verified change and stamp deployed_on — a change with no release; one that names a release ships when the release is published (/rnd:release)"

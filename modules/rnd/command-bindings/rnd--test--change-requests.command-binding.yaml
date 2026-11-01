@@ -7,9 +7,9 @@ available_when:
   verified_on:
     _empty: true
   implementation_plans:
-    status:
-      _eq: done
+    code_approved_on:
+      _nempty: true
 done_when:
-  verified_on:
+  tested_on:
     _nempty: true
-description: "prove the built change: every covering test from its run, then the test review"
+description: "prove the reviewed build: every covering test from its run; all passing stamps tested_on"

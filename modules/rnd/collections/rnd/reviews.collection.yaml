@@ -26,7 +26,10 @@ fields:
     description: 'The lens. `design` judges a spec for gaps and contradictions; `acceptance` a change request''s acceptance lines — each failable, each naming what a person sees; `code` a change in a repo; `ux` a prototype or screen in use; `test` whether the proof is enough.'
   subject:
     type: [rnd/design-docs, rnd/prototypes, rnd/screens, rnd/products, rnd/user-stories, rnd/user-journeys, rnd/change-requests, rnd/features, rnd/issues, rnd/research-docs, rnd/design-systems, rnd/tests, rnd/implementation-plans]
-    description: The record that was reviewed. Empty when the subject is only a change in a repo — then `repo` and `change_ref` say what.
+    description: The record that was reviewed. Empty when the subject is only a change in a repo — then `repo` and `change_ref` say what. The subject lists its reviews back (`reviews`) on a design doc, a plan, a test, an issue and a feature; a change request lists them through `change_request` instead.
+  change_request:
+    type: rnd/change-requests
+    description: 'The change request this review belongs to, whatever it judged — the request itself, its design doc, its plan, its code, its tests. Set on EVERY review in a request''s lifecycle, including one whose `subject` is the request, so the request''s `reviews` lists them all. Empty for a review outside any request.'
   product:
     type: rnd/products
     description: The product the reviewed thing belongs to, so a product lists its reviews without a join.
@@ -104,6 +107,7 @@ display:
       - name
       - kind
       - subject
+      - change_request
       - status
       - verdict
       - reviewed_on

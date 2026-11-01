@@ -1,0 +1,10 @@
+# Implementation plans — one number per status, each opening the list filtered to it (the counts layout).
+route: /rnd/implementation-plans/by-status
+scope: collection
+collection: collections/rnd/implementation-plans
+title: Implementation plans
+display:
+  list:
+    layout: counts
+    options:
+      group_by: status

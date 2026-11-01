@@ -6,13 +6,10 @@ available_when:
     _eq: accepted
   implementation_plans:
     _empty: true
-  _or:
-    - design_docs:
-        _empty: true
-    - design_docs:
-        status:
-          _eq: active
+  design_docs:
+    status:
+      _eq: active
 done_when:
   implementation_plans:
     _nempty: true
-description: "plan the build of this accepted change against an active design"
+description: "plan the build of this accepted change against its active design"

@@ -14,6 +14,7 @@ You build an approved plan task by task and leave the record as the progress mar
 
 ```bash
 dt get rnd/implementation-plans/<id>                                   # status approved or in-progress; execution says how
+                                                                       # given a change request: its `implementation_plans` names the plan
 dt get rnd/design-docs/<spec>                                          # the authority when the plan is wrong
 dt list rnd/tests --where '{"covers":{"_contains":"rnd/implementation-plans/<id>"}}'   # and the change request's; --filter misses a many-valued covers
 ```
@@ -28,7 +29,7 @@ Work on a branch or a worktree, never on main. `dt set rnd/implementation-plans/
 4. A visible test the plan names ran: `dt set rnd/tests/<id> status=passing|failing|flaky last_run=<now>`, from the output. A `held-out` test is not yours to read or run; the test stage does that. A defect you found and will not fix here: `dt add rnd/issues --name … --repo repos/<id>` with the evidence, then move on.
 5. A task is done when every step is ticked `- [x]` in the body, its tests are green and committed, and the run is a line under `## Runs` in the body: date, command, exit code. `dt set rnd/implementation-plans/<id> tasks_done=<n>`. With `execution: subagent-driven`, a fresh implementer per task and a `qa-manager` review of the task before the next — the implementer never spawns its own reviewer, and its self-check never counts as the review. With `native`, you implement every task and one review of the whole branch comes at the end.
 6. A story the plan delivers works on the running system: `dt set rnd/user-stories/<id> status=done`.
-7. All tasks done: run the full suite, write its exit code under `## Runs`, and walk the flow the change exists for on the running thing — a green suite is not the feature. Then `/rnd:review` the whole branch, kind `code`, `change_ref` the range, the reviewer on the most capable model you have. Fix blockers and majors in one pass, each with a test that failed first; a second round is the person's call. Then `dt set rnd/implementation-plans/<id> status=done`.
+7. All tasks done: run the full suite, write its exit code under `## Runs`, and walk the flow the change exists for on the running thing — a green suite is not the feature. Then `dt set rnd/implementation-plans/<id> status=done`. The next gate is the code review of the whole branch — `/rnd:review`, kind `code`, subject the plan, `change_ref` the range, `change_request` the request — given by someone else on the most capable model you have; its `approve` stamps `code_approved_on`. On `changes-requested`, fix blockers and majors in one pass, each with a test that failed first, answer each finding, and ask for round 2; a second round of changes is the person's call.
 8. Commit the plan and every record you touched with the code, by id. Finish the branch the way the repo does — merge, pull request, keep — and ask: that choice is the person's.
 
 ## Don't
@@ -42,4 +43,4 @@ Work on a branch or a worktree, never on main. `dt set rnd/implementation-plans/
 
 ## Done when
 
-Every task is ticked, `tasks_done` equals `tasks_total`, every named test has a status from a run, the suite's exit code is quoted, the branch review is closed and `status: done`. `dt next rnd/implementation-plans/<id>` then answers `/rnd:test`.
+Every task is ticked, `tasks_done` equals `tasks_total`, every named test has a status from a run, the suite's exit code is quoted and `status: done`. `dt next` on the plan (and on its change request) then answers `/rnd:review` — the code review — and after its `approve`, `/rnd:test`.

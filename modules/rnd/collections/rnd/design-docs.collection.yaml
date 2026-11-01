@@ -104,6 +104,11 @@ fields:
     many: true
     mirror_of: design_docs
     description: GENERATED — the change requests that rest on or amend this design. Set `design_docs` on the request.
+  reviews:
+    type: rnd/reviews
+    many: true
+    mirror_of: subject
+    description: GENERATED — the reviews of this design — the draft review whose `approve` makes it active, and any later one. Set `subject` on the review.
 display:
   nav:
     icon: symbol-structure

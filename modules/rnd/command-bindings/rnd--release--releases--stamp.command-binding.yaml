@@ -1,0 +1,19 @@
+command: commands/rnd/release
+collection: collections/rnd/releases
+scope: record
+# The publish step's resume: a release already published that carries a request with no deployed_on, or an issue
+# with no fixed_in — the step stopped between publishing and stamping, or a record was scheduled into it
+# afterwards. A hop through a many-valued reference matches ANY target, which is exactly "some carried record is
+# unstamped"; there is no done_when because "every carried record is stamped" is the negation the grammar cannot
+# say — the binding simply stops being available once the last one is stamped.
+available_when:
+  status:
+    _eq: published
+  _or:
+    - change_requests:
+        deployed_on:
+          _empty: true
+    - issues:
+        fixed_in:
+          _empty: true
+description: "STAMP — published, but a request it carries has no deployed_on or an issue no fixed_in: stamp each from this release (deployed_on=published_on, fixed_in=tag) — the publish step's last half, resumable on its own"

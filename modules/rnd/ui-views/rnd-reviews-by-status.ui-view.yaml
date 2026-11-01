@@ -1,0 +1,10 @@
+# Reviews — one number per status, each opening the list filtered to it (the counts layout).
+route: /rnd/reviews/by-status
+scope: collection
+collection: collections/rnd/reviews
+title: Reviews
+display:
+  list:
+    layout: counts
+    options:
+      group_by: status

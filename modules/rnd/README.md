@@ -71,21 +71,24 @@ module is installed. The chain is bound, so `dt next` on a design doc names the 
 
 ## the lifecycle
 
-Eight commands move a product's work from an idea to a deployment, each bound to the record it acts
+Nine commands move a product's work from an idea to a release, each bound to the record it acts
 on so `dt next <record>` says what runs now: `/rnd:design` (brainstorm → `design-docs`, with the
 stories and open questions it leaves), `/rnd:review` (one `reviews` record, one `review-findings`
 record per problem; `approve` moves the subject on), `/rnd:prototype` (the first `prototypes` record
 with a live URL, or a round of feedback on it), `/rnd:change-request` (what changes, against which
 design, with the evidence that would accept it), `/rnd:plan` (an `implementation-plans` record and the
 `tests` it promises), `/rnd:implement` (task by task, the record as the progress marker),
-`/rnd:test` (every covering test run and set from its output) and `/rnd:deploy` (checked live,
-`deployed_on` stamped). Each command loads one plainly written skill of the same name, five headings
+`/rnd:test` (every covering test run and set from its output), `/rnd:deploy` (checked live,
+`deployed_on` stamped) and `/rnd:release` (a `releases` record walked plan → cut → published, the cut
+a person's tag, the publication stamping `deployed_on` on every change request it carries). Every stage ends in a review, and on a change request `dt next` names exactly
+one verb at a time — the review when a stage has just ended, the next stage once it approved; each
+review names its request (`change_request`), which lists them all. Each command loads one plainly written skill of the same name, five headings
 each: what you are doing · before you start · do this · don't · done when.
 
 Two agents ride on them. `rnd-agent` walks the stages for one record in the lifecycle's order (`dt next`
 lists every command a record is eligible for, not the one to run next) and stops twice by design — after
 the plan is approved (the person says go, or changes the execution) and before the deploy (merging is
-theirs) — and sooner on a blocker, a second `changes-requested` (written first as an `open-questions`
+theirs; for a request in a release, at the release's cut — the tag is theirs) — and sooner on a blocker, a second `changes-requested` (written first as an `open-questions`
 record of kind `needs-decision` that blocks the subject, so the stop is a record a person finds), or a
 review that names a `human_reviewer`. `qa-manager` reviews as a service: it reads everything, re-runs the
 evidence, writes the `held-out` tests at the plan review and runs them at the test review, owns the review
@@ -127,6 +130,43 @@ adapter (the config and the init options). A screen's portal is its `product`; o
 windows reads it from a field (`portal: { from: 'field' }`) or a tag (`portal: { from: 'tag', prefix }`).
 An identifier — a story key, a question id — is never scrubbed: one the prototype's `scrub` would change
 fails the export, so the record is renamed. The `rnd-prototype` skill holds the contract.
+
+## 0.6.0 — from 0.5.2
+
+Releases: a product's versions, each listing the changes it ships. `rnd/releases` holds one release of
+one product — `version`, `package` (when one repo ships several), `repo`, `tag`, `status` (`planned` ·
+`cut` · `published` · `rolled-back`), `cut_on`, `published_on`, `published_to`, the notes as its body —
+under the id `<product>/<version>` or `<product>/<package>/<version>`. A change request or an issue
+names its `release`, and the release lists them back; a product lists its releases newest first, and
+the change-request list shows `release`. `/rnd:release` is three `dt next` answers on a release —
+plan, cut (a person's: tagging is publishing, and the rnd-agent stops there), publish, and a stamp
+step that resumes the publication's last half while a carried request or issue is unstamped, and a
+rollback step that moves what a rolled-back release still carries off it — and a
+request in a release is deployed by its publication: `deployed_on` is stamped from `published_on`,
+and its live acceptance review never opens before. `dt check` refuses a second release of one product
+and version through rnd's own extension entry (`lib/extension.mjs`, named in `compose.json`), which
+wraps the composed notebooklm one. `UPDATING.md` has the commands.
+
+## 0.5.2 — from 0.5.1
+
+A review after every stage of a change request, and every record lists its reviews. `rnd/reviews`
+names the request it belongs to (`change_request`), and the request's generated `reviews` lists every
+review of its lifecycle; design docs, plans, tests, issues and features list theirs by `subject`. Six
+review gates are bound on the request — the design doc, the acceptance lines, the plan, the code, the
+proof, the live check — so `dt next` names exactly one verb at every stage, and the rnd-agent stops at
+any review it cannot hand to the qa-manager. New marks: `code_approved_on` and `tested_on` on a plan,
+`tested_on` on a request; `verified_on` and `implemented` are now the reviewer's. The request's page
+declares the lifecycle as a stage map (`display.record.options.stages`). `UPDATING.md` has the
+commands for records in flight.
+
+**The R&D module has a page: activity beside counts by status.** rnd ships ten ui-views: `modules-rnd`,
+a page view (`display.list.layout: page`) for the module itself (`options.module: rnd`), nesting the
+module's activity feed (`modules-rnd-activity`, layout `activity`) beside a column of counts
+(`modules-rnd-counts`) — change requests, issues, features, tests, reviews, design docs and
+implementation plans, each by status (`rnd-<collection>-by-status`, layout `counts`, `group_by:
+status`). An editor that draws module pages opens it when the R&D folder is clicked, scoped to a record
+layer's records inside that layer; elsewhere they are ordinary views at their routes. Tasks are not
+counted: `tasks` is not rnd's, and the views must check clean where rnd is installed alone.
 
 ## 0.5.1 — from 0.5.0
 

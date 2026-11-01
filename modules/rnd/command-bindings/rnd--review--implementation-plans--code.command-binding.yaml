@@ -1,0 +1,17 @@
+command: commands/rnd/review
+collection: collections/rnd/implementation-plans
+scope: record
+available_when:
+  status:
+    _eq: done
+done_when:
+  code_approved_on:
+    _nempty: true
+  reviews:
+    kind:
+      _eq: code
+  _and:
+    - reviews:
+        verdict:
+          _eq: approve
+description: "after IMPLEMENT: review the built branch (kind code, subject this plan, change_ref the branch); approve stamps code_approved_on"

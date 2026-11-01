@@ -74,9 +74,20 @@ fields:
     many: true
     mirror_of: covers
     description: GENERATED — the tests that prove this plan's promises. Set `covers` on the test.
+  reviews:
+    type: rnd/reviews
+    many: true
+    mirror_of: subject
+    description: GENERATED — the reviews of this plan — the draft review and the code review. Set `subject` on the review.
+  code_approved_on:
+    type: datetime
+    description: 'When the code review of the built branch approved — stamped by that reviewer on `approve`, beside the `kind: code` review this plan''s `reviews` lists. The gate the test stage reads. Empty until then.'
+  tested_on:
+    type: datetime
+    description: When the test stage last ran every test the plan promised and found each one passing — stamped here only for a plan with no change request, like `verified_on`. The test review reads it.
   verified_on:
     type: datetime
-    description: When the test stage last found every test the plan promised passing — stamped here only for a plan with no change request; a plan with one is verified on the change request, never on both.
+    description: When the test review approved the proof — stamped by that reviewer, here only for a plan with no change request; a plan with one is verified on the change request, never on both.
   content:
     type: markdown
     body: true

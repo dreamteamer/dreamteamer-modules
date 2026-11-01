@@ -29,9 +29,9 @@ dt get rnd/design-docs/<id>                                        # the design 
    ```
    Repeat `--acceptance` per entry — one flag holding several lines is split on its commas.
 3. The body: the paragraph; why, with the ask in the source's own words; what is out of scope; what it touches, by id — screens, journeys, stories; the phases when there are several.
-4. Link it. `design_docs` names the designs it amends; none means `/rnd:design` on this record comes first. `journeys`; `issue` when a defect motivated it; `supersedes` when it replaces an earlier request. A story it delivers is linked from the story's side: `dt set rnd/user-stories/<id> change_requests=…` (`stories` here is generated).
+4. Link it. `design_docs` names the designs it amends; none means `/rnd:design` on this record comes first — every request is designed and its design reviewed before its acceptance lines are, and a change too small for a design doc is an issue on the quick path. `journeys`; `issue` when a defect motivated it; `supersedes` when it replaces an earlier request. A story it delivers is linked from the story's side: `dt set rnd/user-stories/<id> change_requests=…` (`stories` here is generated).
 5. `acceptance` is one line per piece of evidence that would make the person accept it, in the asker's words, written so it can fail: "the grantee sees the deadline on the roster", never "works as expected". Each line becomes a test at plan time. `source_gaps` is what the source does not say and someone will have to decide.
-6. Commit by id. The next word is `/rnd:review rnd/change-requests/<id>`, kind `acceptance` — the review of the acceptance lines. Its `approve` sets `accepted`, `accepted_by` and `accepted_on`. When the acceptance is a client's to give, the review names them in `human_reviewer` and waits; their yes is recorded the same way, with the source.
+6. Commit by id. The next word is the one `dt next rnd/change-requests/<id>` names: `/rnd:design` with no design, the design's review while it is draft, then `/rnd:review` on the request, kind `acceptance` — the review of the acceptance lines. Its `approve` sets `accepted`, `accepted_by` and `accepted_on`. When the acceptance is a client's to give, the review names them in `human_reviewer` and waits; their yes is recorded the same way, with the source.
 
 ## Don't
 
@@ -44,4 +44,4 @@ dt get rnd/design-docs/<id>                                        # the design 
 
 ## Done when
 
-`rnd/change-requests/<id>` exists with `description`, `products`, `acceptance` and `status: suggested`, its designs linked or `/rnd:design` queued, and `dt next rnd/change-requests/<id>` answers `/rnd:review`.
+`rnd/change-requests/<id>` exists with `description`, `products`, `acceptance` and `status: suggested`, its designs linked or `/rnd:design` queued, and `dt next rnd/change-requests/<id>` answers exactly one verb — `/rnd:design`, or `/rnd:review` when an active design is linked.

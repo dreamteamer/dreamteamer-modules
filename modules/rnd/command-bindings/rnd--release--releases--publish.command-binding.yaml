@@ -1,0 +1,10 @@
+command: commands/rnd/release
+collection: collections/rnd/releases
+scope: record
+available_when:
+  status:
+    _eq: cut
+done_when:
+  published_on:
+    _nempty: true
+description: "PUBLISH: confirm each registry answers the version, set published with published_on and published_to, and stamp deployed_on on every change request it carries"

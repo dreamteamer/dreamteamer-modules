@@ -69,7 +69,10 @@ fields:
     description: The issue this repeats, when status is `duplicate`.
   fixed_in:
     type: string
-    description: Commit sha, tag or version, once the fix lands.
+    description: Commit sha, tag or version, once the fix lands. The publish step of the issue's `release` writes the release's tag here when it is empty.
+  release:
+    type: rnd/releases
+    description: The release this fix ships in — set when the fix is scheduled into a planned release, and the release lists it back.
 
   body:
     type: markdown
@@ -111,6 +114,11 @@ fields:
     many: true
     mirror_of: issue
     description: GENERATED — the plans that fix this defect. Set `issue` on the plan.
+  reviews:
+    type: rnd/reviews
+    many: true
+    mirror_of: subject
+    description: GENERATED — the reviews whose subject is this defect. Set `subject` on the review.
 display:
   nav:
     icon: bug

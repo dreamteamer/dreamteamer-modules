@@ -8,7 +8,7 @@ description: >-
 
 ## What you are doing
 
-You prove a change against the records that promised the proof. Every `rnd/tests` record that covers the change request or the plan runs; its status is set from the run; a review of kind `test` says whether the proof is enough. Nothing is marked from reading code.
+You prove a change against the records that promised the proof. Every `rnd/tests` record that covers the change request or the plan runs; its status is set from the run. When every one passed you stamp `tested_on`, and the next gate is a review of kind `test` — someone else's — whose `approve` stamps `verified_on`. Nothing is marked from reading code.
 
 ## Before you start
 
@@ -26,8 +26,8 @@ dt get rnd/tests/<id>                                            # runner, steps
 2. Each `manual` test: a person follows `steps`. Attended, ask them and record the answer. Unattended, leave it `planned`, name it in the review, and do not claim it ran.
 3. Each `acceptance` line on the change request with no test proving it: `dt add rnd/tests` for it, `status: planned`, and say so. A promise with no test is the gap this stage exists to find.
 4. A failing test: `dt add rnd/issues --name … --repo repos/<id>` with the output as evidence, and the test now also `covers` that issue, so the fix is a regression test by construction. The issue takes the quick path: `/rnd:plan rnd/issues/<id>`.
-5. Open the review with `/rnd:review`, kind `test`, subject the change request or the plan. One finding per failing or missing proof. `approve` only when every covered test is `passing`, at least one of them `e2e` or `acceptance`, and every acceptance line has one. On `approve`, stamp ONE record: `dt set rnd/change-requests/<id> verified_on=<now>` when the plan has a change request, else `dt set rnd/implementation-plans/<id> verified_on=<now>` — never both. That one stamp is what `dt next` reads as done here, and the gate deploy reads.
-6. Commit the tests, the issues and the review by id.
+5. Every covered test `passing`: stamp ONE record — `dt set rnd/change-requests/<id> tested_on=<now>` when the plan has a change request, else `dt set rnd/implementation-plans/<id> tested_on=<now>`, never both. That stamp is what `dt next` reads as done here. Any test not passing: no stamp, and clear a stale one (`tested_on=`). A run of the stage after a fix starts here again.
+6. Commit the tests and the issues by id. The next word is `/rnd:review` on the same record, kind `test`, subject the change request (or the plan) — the qa-manager's, never yours: one finding per failing or missing proof, `approve` only when every covered test is `passing`, at least one of them `e2e` or `acceptance`, and every acceptance line has one. Its `approve` stamps `verified_on` on that one record, the gate deploy reads.
 
 ## Don't
 
@@ -35,8 +35,9 @@ dt get rnd/tests/<id>                                            # runner, steps
 - Don't run a subset and call it the suite. The runner is the whole command.
 - Don't let a `manual` test pass because it probably would. Unrun is `planned`.
 - Don't fix code here. A failure is an issue and a trip back to implement; this stage stays the judge.
-- Don't approve with a `flaky` test. Flaky is a finding.
+- Don't stamp `tested_on` with a `flaky` test. Flaky is a failure here and a finding at the review.
+- Don't review your own run, and don't stamp `verified_on`. The test review does both.
 
 ## Done when
 
-Every covered test has a `status` from this session's runs and a `last_run`, every acceptance line has a test, the test review is `closed` with a verdict, and on `approve` `verified_on` is set on the one record — the change request when there is one, else the plan — and `dt next rnd/change-requests/<id>` answers `/rnd:deploy`.
+Every covered test has a `status` from this session's runs and a `last_run`, every acceptance line has a test, `tested_on` is set on the one record — the change request when there is one, else the plan — and `dt next` on it answers `/rnd:review` (kind `test`). After that review's `approve`, `verified_on` is set and it answers `/rnd:deploy`.
