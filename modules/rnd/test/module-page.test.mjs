@@ -33,7 +33,9 @@ function workspace() {
 test('the tarball ships the ten page views', () => {
 	const files = packedFiles('rnd');
 	for (const id of VIEWS) assert.ok(files.includes(`ui-views/${id}.ui-view.yaml`), `ui-views/${id}.ui-view.yaml is not in the tarball`);
-	assert.equal(files.filter((f) => f.startsWith('ui-views/')).length, VIEWS.length, 'and nothing else under ui-views/');
+	// the change-request board (cr-stage-board.test.mjs) is a collection view, not one of the page's
+	const others = ['ui-views/rnd-change-requests-board.ui-view.yaml'];
+	assert.equal(files.filter((f) => f.startsWith('ui-views/') && !others.includes(f)).length, VIEWS.length, 'and nothing else under ui-views/');
 });
 
 test('from the tarball, a fresh workspace compiles all ten, and the page is keyed on the installed module id', () => {
