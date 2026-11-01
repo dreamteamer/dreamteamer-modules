@@ -47,6 +47,47 @@ fields:
       - rejected
       - implemented
     default: suggested
+  tags:
+    type: string
+    many: true
+    examples: ['designed', 'implemented', 'tested', 'deployed', 'client:northwind']
+    pattern: ^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$
+    description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
+    # The four stage tags — `designed` · `implemented` · `tested` · `deployed` — are set by the lifecycle
+    # skills when a stage's WORK is done, beside any free tag a person keeps. A surface with the
+    # `stage-checks` viewer draws each stage as a check: one when tagged, two when a review below also
+    # matches, green when that review approves with no open finding, orange when it left remarks, its
+    # description on hover. A surface without the viewer draws the tags as chips. Matchers (cr-rnd-001's
+    # vocabulary): `kind` any of, `subject` a field of this record holding the review's subject (or
+    # `self`), `since` / `before` a datetime field against the review's `created` — an empty `since`
+    # field matches nothing, an empty `before` field restricts nothing. On rnd 0.5.x nothing in the
+    # lifecycle writes the post-deploy acceptance review, so `deployed` shows two checks only when a
+    # person files one after `deployed_on`.
+    display:
+      viewer: stage-checks
+      options:
+        reviews_from: rnd/reviews
+        findings_from: rnd/review-findings
+        stages:
+          - tag: designed
+            title: Designed
+            reviews:
+              - { kind: [design], subject: design_docs, since: created }
+              - { kind: [acceptance], subject: self, before: deployed_on }
+          - tag: implemented
+            title: Implemented
+            reviews:
+              - { kind: [code, security], subject: implementation_plans }
+              - { kind: [code, security], subject: self }
+          - tag: tested
+            title: Tested
+            reviews:
+              - { kind: [test], subject: self }
+              - { kind: [test], subject: implementation_plans }
+          - tag: deployed
+            title: Deployed
+            reviews:
+              - { kind: [acceptance], subject: self, since: deployed_on }
   priority:
     type: string
     description: Delivery priority.
@@ -136,6 +177,7 @@ display:
       - created
       - status
       - name
+      - tags
       - products
       - release
     sort: '-created'

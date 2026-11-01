@@ -51,8 +51,10 @@ test('the scan finds the tags fields it is meant to check', () => {
 for (const { rel, doc } of withTags) {
 	if (EXTERNAL[rel]) continue;
 	test(`${rel}: tags is the shared definition`, () => {
-		const { examples, ...field } = doc.fields.tags;
+		// the definition is what a tag IS; `display` is how one field is drawn (rnd's stage checks)
+		const { examples, display, ...field } = doc.fields.tags;
 		assert.deepEqual(field, DEFINITION);
+		if (display !== undefined) assert.ok(display && typeof display === 'object' && !Array.isArray(display), 'display is a block');
 		if (examples === undefined) return;
 		assert.ok(Array.isArray(examples) && examples.length, 'examples is one non-empty list');
 		for (const e of examples) assert.match(e, new RegExp(PATTERN), `example ${e} breaks the pattern`);
