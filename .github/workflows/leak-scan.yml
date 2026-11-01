@@ -129,26 +129,52 @@ jobs:
           fi
           echo "✔ no credential shapes added"
 
+      # 🔒 FAILS CLOSED AND PROVES ITSELF ON EVERY RUN (cr-modules-001, design D-c). `main` requires this
+      # job's context, so a skipped names check would be a required gate that silently stopped
+      # checking. The pattern reaches grep only through `-f` on a process substitution — never as an
+      # argument, where `ps` and a crash dump would carry it. The log carries a 12-hex fingerprint and
+      # pass/fail and nothing else derived from the secret: no length, no count, no literal.
+      #
+      #   fingerprint  sha256 over exactly `printf '%s' "$LEAK_NAMES"` (no trailing newline), first 12
+      #                hex — the same bytes and the same line the vault's leak-names-secret.sh prints,
+      #                so "the secret equals the hook" is a comparison of two quoted lines
+      #   canary       the pattern's own plain literals and name pairs, one per line, must ALL match
+      #                through the same names_grep the scan uses, and there must be at least 100
+      #                literals — an organisations-only, truncated or mangled value fails here
       - name: private names
         env:
           LEAK_NAMES: ${{ secrets.LEAK_NAMES }}
         run: |
-          # Absent secret is a SKIP, loudly — the same choice the engine's copy makes, so all three
-          # repos behave identically. ⚠ A skip is NOT a pass: this package was cut out of a private
-          # vault, and the 2026-08 incident was both layers off with CI reporting clean. Set the
-          # secret: gh secret set LEAK_NAMES --repo $GITHUB_REPOSITORY
+          names_grep() { grep -icE -f <(printf '%s' "$LEAK_NAMES") "$@"; }
           if [ -z "${LEAK_NAMES:-}" ]; then
-            echo "::warning::secrets.LEAK_NAMES is not set — private-name check SKIPPED, not passed."
-            exit 0
+            echo "::error::secrets.LEAK_NAMES is not available, so the private-name check cannot run — and a skipped gate is not a passed gate. A pull request from a fork gets no secrets: its change is taken in with scripts/take-in.sh and scanned on that branch's push."
+            exit 1
           fi
           # A MALFORMED pattern must fail, not pass (finding r1-09, 2026-10-31): grep exits 2 on an invalid
           # regex, and the `|| true` below would read that as "no hits" — the gate silently off. Probe once.
-          rc=0; printf 'leak-names-probe\n' | grep -iE "$LEAK_NAMES" >/dev/null 2>&1 || rc=$?
+          rc=0; printf 'leak-names-probe\n' | names_grep >/dev/null 2>&1 || rc=$?
           if [ "$rc" -gt 1 ]; then
             echo "::error::secrets.LEAK_NAMES is not a valid extended regex (grep exit $rc), so the private-name check cannot run. Re-set it from the hook's \`names\` mode."
             exit 1
           fi
-          n=$(grep -icE "$LEAK_NAMES" "$RUNNER_TEMP/added.txt" || true)
+          echo "LEAK_NAMES fingerprint: sha256 $(printf '%s' "$LEAK_NAMES" | sha256sum | cut -c1-12)"
+
+          parts="$RUNNER_TEMP/names-parts.txt"; canary="$RUNNER_TEMP/names-canary.txt"
+          printf '%s\n' "$LEAK_NAMES" | tr '|' '\n' | sed -E 's/^\\b\(//; s/\)\\b$//' > "$parts"
+          { grep -E '^[a-z][a-z0-9-]{2,}$' "$parts" || true
+            sed -nE 's|^([a-z][a-z0-9-]*)\[ \._/-\]\?([a-z][a-z0-9-]*)$|\1 \2|p' "$parts"; } > "$canary"
+          literals=$(grep -cE '^[a-z][a-z0-9-]{2,}$' "$parts" || true)
+          total=$(grep -c '' "$canary" || true)
+          matched=$(names_grep "$canary" || true)
+          rm -f "$parts" "$canary"
+          if [ "${literals:-0}" -lt 100 ] || [ "${matched:-0}" -ne "${total:-0}" ]; then
+            echo "canary: FAIL"
+            echo "::error::secrets.LEAK_NAMES is not the hook's people-carrying pattern, or its own grep does not fire on it. Re-set it from the vault: leak-names-secret.sh."
+            exit 1
+          fi
+          echo "canary: pass (floor 100)"
+
+          n=$(names_grep "$RUNNER_TEMP/added.txt" || true)
           if [ "${n:-0}" -gt 0 ]; then
             echo "::error::$n added line(s) match a private name. Not printing them — this log is readable by anyone with repo access."
             exit 1

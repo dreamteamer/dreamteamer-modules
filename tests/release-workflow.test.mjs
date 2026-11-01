@@ -96,12 +96,15 @@ test('publish runs inside the ONE module the tag names, never at the repo root',
 // pattern first. Run the probe itself, as bash -e runs it on the runner, rather than grep for its text.
 const leakScan = yaml.load(fs.readFileSync(path.join(ROOT, '.github', 'workflows', 'leak-scan.yml'), 'utf8'));
 const namesStep = leakScan.jobs.scan.steps.find((s) => s.name === 'private names');
+// The probe, plus the step's `names_grep` definition when it has one: the probe goes through that
+// function in leak-scan.yml (cr-modules-001, design D-c), so it cannot run without it.
 const probeOf = (run) => {
 	const lines = run.split('\n');
 	const start = lines.findIndex((l) => /leak-names-probe/.test(l));
 	assert.ok(start >= 0, 'no LEAK_NAMES probe in the step');
 	const end = lines.findIndex((l, i) => i > start && l.trim() === 'fi');
-	return lines.slice(start, end + 1).join('\n');
+	const fn = lines.filter((l) => /^\s*names_grep\(\) \{/.test(l));
+	return [...fn, ...lines.slice(start, end + 1)].join('\n');
 };
 for (const [label, run] of [['leak-scan.yml private names', () => namesStep.run], ['release.yml leak gate', () => leakGate.run]]) {
 	test(`${label}: a malformed LEAK_NAMES exits 1; a valid one carries on`, async () => {
