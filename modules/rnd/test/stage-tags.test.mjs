@@ -160,3 +160,16 @@ describe('the lifecycle skills set the stage tags, keeping every other tag', () 
 		assert.match(skill('rnd-test'), /`manual` test[^.]*left `planned`[^.]*does not withhold `tested`/);
 	});
 });
+
+describe('the 0.7.0 release', () => {
+	const read = (f) => fs.readFileSync(path.join(RND, f), 'utf8');
+	test('released as 0.7.0, with UPDATING.md and the README release note, the engine floor unmoved', () => {
+		const pkg = JSON.parse(read('package.json'));
+		assert.equal(pkg.version, '0.7.0');
+		// the warning is silent on an engine without CHECK_WARNINGS, so the floor does not move
+		assert.equal(pkg.dreamteamer.engine, '>=0.38.0');
+		assert.match(read('UPDATING.md'), /## 0\.7\.0 — /);
+		assert.doesNotMatch(read('UPDATING.md'), /## Unreleased/);
+		assert.match(read('README.md'), /## 0\.7\.0 — from 0\.6\.0/);
+	});
+});

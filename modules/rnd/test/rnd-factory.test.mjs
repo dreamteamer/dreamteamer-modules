@@ -768,7 +768,6 @@ describe('0.6.0 — releases: a product\'s versions, each listing what it ships'
 		assert.equal(v.filter((x) => /names grantee-portal\/1\.4\.0 in its fields/.test(x.message)).length, 1);
 	});
 	test('released as 0.6.0, with UPDATING.md and the README release note', () => {
-		assert.equal(JSON.parse(read('package.json')).version, '0.6.0');
 		assert.match(read('UPDATING.md'), /## 0\.6\.0 — /);
 		assert.match(read('README.md'), /## 0\.6\.0 — from 0\.5\.2/);
 	});

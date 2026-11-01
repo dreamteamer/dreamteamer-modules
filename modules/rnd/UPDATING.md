@@ -11,7 +11,7 @@ npx dreamteamer check
 
 ---
 
-## Unreleased — change requests carry stage tags, drawn as checks
+## 0.7.0 — change requests carry stage tags, drawn as checks
 
 Run `dt compile`, then `dt check`. No record has to change to stay valid.
 
@@ -45,7 +45,7 @@ extension draws the tags as chips. Two readings to know:
 
 **`dt check` warns** when a request is tagged `deployed` with no `deployed_on`, or has `deployed_on`
 with no `deployed` tag — one warning line naming the record's file, attributed to `@dreamteamer/rnd`, exit code unchanged. It needs an engine
-with the warning channel (`CHECK_WARNINGS`, the engine release after 0.42.0); on an older engine the
+with the warning channel (`CHECK_WARNINGS`, engine 0.43.0); on an older engine the
 rule says nothing. **Expect the reverse warning on every request you deployed before upgrading**: add
 the tag to each, keeping its other tags —
 

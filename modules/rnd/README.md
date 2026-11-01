@@ -139,6 +139,15 @@ windows reads it from a field (`portal: { from: 'field' }`) or a tag (`portal: {
 An identifier — a story key, a question id — is never scrubbed: one the prototype's `scrub` would change
 fails the export, so the record is renamed. The `rnd-prototype` skill holds the contract.
 
+## 0.7.0 — from 0.6.0
+
+Change requests carry stage tags. `rnd/change-requests` gains `tags`; four of its values —
+`designed`, `implemented`, `tested`, `deployed` — are set by the stage skills when a stage's work is
+done, beside any tag a person keeps, and the field declares `display.viewer: stage-checks` for a
+surface that draws them as checks. `dt check` warns, never fails, when `deployed` and `deployed_on`
+disagree, through rnd's extension entry, on engine 0.43.0 or later (`CHECK_WARNINGS`); on an older
+engine the rule is silent, so the engine floor stays `>=0.38.0`. `UPDATING.md` has the commands.
+
 ## 0.6.0 — from 0.5.2
 
 Releases: a product's versions, each listing the changes it ships. `rnd/releases` holds one release of
