@@ -20,7 +20,7 @@ Nothing to do but compile. To use it, bind a collection and merge the hook:
   (one written by `/session:save` has no `status` and is not live). The list shows `status`.
 - **A new source kind and collection, `session-bindings`.** A module writes
   `session-bindings/<id>.session-binding.yaml`; compile refuses a bad one naming the file. Nothing
-  binds a collection until a module does — the rnd lifecycle's bindings come with a later rnd release.
+  binds a collection until a module does — the rnd lifecycle's bindings come with `@dreamteamer/rnd` 0.6.0.
 - **New verbs**: `dt session start | end | heartbeat`, `dt sessions open`. A workspace module or an
   extension that already contributes a verb named `session` or `sessions` now collides with core and
   is refused at load, naming both — rename yours or disable one.
@@ -36,7 +36,7 @@ Nothing to do but compile. To use it, bind a collection and merge the hook:
 - **The extension entry is `src/entry.js`** (it activates the files entry, `src/extension.js`, beside
   the sessions code). Nothing to do unless you imported core's entry by path.
 - **`dt next <ref>` says "in session by …"** only on an engine with the `next` extension contribution
-  (the release after 0.41.0); on 0.39–0.41 that line is absent and nothing else changes.
+  (engine 0.42.0 or later); on 0.39–0.41 that line is absent and nothing else changes.
 
 ## 0.7.0 — teams comes from users (users 0.2.0, projects 0.4.0)
 

@@ -77,6 +77,14 @@ What that does to records you have:
   dt relations rebuild rnd/releases && dt relations rebuild rnd/products && dt check
   ```
 
+**Sessions on the lifecycle, where `@dreamteamer/core` 0.8.0 or later is installed.** rnd ships three
+session-bindings on change requests — design (no design doc and no plan yet), build (an approved
+plan) and review (built, not yet verified) — each one session at a time, and the rnd-agent and the
+qa-manager claim a request with `dt session start` before a stage and end it after. Nothing to do: a
+workspace with core gets them at compile; without core the `session-bindings/` folder is in rnd's
+`ignore`, so rnd still compiles alone and no binding exists. A workspace that binds change requests
+itself disables rnd's three by id (`session-bindings/change-requests--design` and so on).
+
 **Collisions to look for first.** A workspace with its own `rnd/releases` collection, a `release` field
 on its change requests or issues, a `releases` field on its products, or its own `rnd-release` skill or
 `rnd/release` command now collides with the shipped one — rename or delete its copy before you compile. A workspace that

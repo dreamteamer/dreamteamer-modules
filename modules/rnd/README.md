@@ -145,7 +145,10 @@ rollback step that moves what a rolled-back release still carries off it — and
 request in a release is deployed by its publication: `deployed_on` is stamped from `published_on`,
 and its live acceptance review never opens before. `dt check` refuses a second release of one product
 and version through rnd's own extension entry (`lib/extension.mjs`, named in `compose.json`), which
-wraps the composed notebooklm one. `UPDATING.md` has the commands.
+wraps the composed notebooklm one. Where `@dreamteamer/core` 0.8.0 or later is installed, three
+session-bindings on change requests — design, build, review — let the rnd-agent and the qa-manager
+claim a request for a stage (`dt session start`); without core they are ignored and rnd compiles
+alone. `UPDATING.md` has the commands.
 
 ## 0.5.2 — from 0.5.1
 
