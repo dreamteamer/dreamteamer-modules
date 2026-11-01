@@ -122,7 +122,9 @@ git tag <id>-v<version> && git push origin <id>-v<version>   # the publish
 A pull request from a fork is never merged with the button: its own run can report checks with the
 same names. Fetch it and take it in with `scripts/take-in.sh`, which re-commits it on a branch here
 at new commits and refuses a change to the workflows, the leak allow-list or an npm script; then
-push that branch as above.
+push that branch as above. Those refusals are a floor, not a review: the rest of an outside change —
+a test, a dependency — runs in CI and again in the release job that publishes, so read it whole
+before taking it in.
 
 ## working on this repo
 
