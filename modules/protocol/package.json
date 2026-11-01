@@ -1,0 +1,31 @@
+{
+	"name": "@dreamteamer/protocol",
+	"version": "0.1.0",
+	"description": "The host protocol a dreamteamer UI speaks: the written contract, its route table, and a contract suite any host runs",
+	"license": "Apache-2.0",
+	"type": "module",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/dreamteamer/dreamteamer-modules.git",
+		"directory": "modules/protocol"
+	},
+	"keywords": [
+		"dreamteamer",
+		"dreamteamer-module"
+	],
+	"exports": {
+		".": "./src/routes.js",
+		"./routes": "./src/routes.js",
+		"./package.json": "./package.json"
+	},
+	"files": [
+		"README.md",
+		"PROTOCOL.md",
+		"src"
+	],
+	"dreamteamer": {
+		"title": "Protocol",
+		"description": "The host protocol the dreamteamer UI speaks to whatever hosts it — the VS Code extension in-process, dt serve and dt web over HTTP: every method and path, its request and response shapes, the errors, the host-to-app notifications, the boot globals and the host capabilities, written once in PROTOCOL.md and pinned by a contract suite every host runs. A library module: it contributes no collection and no verb.",
+		"engine": ">=0.43.0"
+	}
+}
