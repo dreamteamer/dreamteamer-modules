@@ -169,7 +169,8 @@ describe('the 0.7.0 release', () => {
 		// the warning is silent on an engine without CHECK_WARNINGS, so the floor does not move
 		assert.equal(pkg.dreamteamer.engine, '>=0.38.0');
 		assert.match(read('UPDATING.md'), /## 0\.7\.0 — /);
-		assert.doesNotMatch(read('UPDATING.md'), /## Unreleased/);
+		// the stage tags' Unreleased section became 0.7.0; a later Unreleased section (the next release's) is not it
+		assert.doesNotMatch(read('UPDATING.md'), /## Unreleased[^\n]*stage tags/);
 		assert.match(read('README.md'), /## 0\.7\.0 — from 0\.6\.0/);
 	});
 });

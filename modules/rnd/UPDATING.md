@@ -11,6 +11,55 @@ npx dreamteamer check
 
 ---
 
+## Unreleased — change requests carry a stage, drawn as a board
+
+`rnd/change-requests` gains `stage`: the gate a request waits on — the verb `dt next` names on it — one of
+`design · design-review · acceptance · plan · plan-review · implement · code-review · test · test-review ·
+deploy · live-check · done · rejected`, in that order. A new view, `ui-views/rnd-change-requests-board`
+(**Board**, under change requests in the nav), draws the requests as kanban columns by `stage`. The
+lifecycle writes it — each stage's skill and the review whose approve moves the request, in the same step —
+and the editor does not offer it (`display.editable: false`). The list shows it after `status`.
+
+**Do this, in order.**
+
+```bash
+npm install @dreamteamer/rnd@latest
+npx dreamteamer compile
+node node_modules/@dreamteamer/rnd/bin/migrate-change-request-stage.mjs            # the plan, nothing written
+node node_modules/@dreamteamer/rnd/bin/migrate-change-request-stage.mjs --write
+npx dreamteamer check
+```
+
+**The migration** sets `stage` on every change request in the workspace's own root from the gate `dt next`
+names on it, through `dt set`. A request with no gate open (an accepted request whose plan was abandoned)
+is reported, never guessed — `cannot tell rnd/change-requests/<id>: no gate open … — the record allows
+<stages>; set stage by hand` — and that request is the one stage warning `dt check` still shows until a
+person sets it. A second run finds nothing. Run before `dt compile`, it refuses: nothing was written.
+
+**`dt check` warns** — never fails — when a request's `stage` is not the gate `dt next` names, or
+contradicts its own status, dates (`accepted_on`, `tested_on`, `verified_on`, `deployed_on`) and linked
+design and plan, or is empty; each line names the stage to set. It needs the engine's warning channel
+(`CHECK_WARNINGS`) and `commandsFor`; on an engine without them the rule is silent.
+
+**Record layers.** A request a layer holds is the layer's own workspace's: the migration counts and names
+each layer and writes nothing there (`--root git_modules/<layer>` migrates it in its own workspace once it
+is on this rnd), and `dt check` judges a layer's request only when it carries a stage. The lifecycle writes
+`stage` only on a request that already carries one or lives in the workspace's own root, and retries a
+write without `stage` when the request's home refuses the field. Two things to know:
+
+- A reader still on an older rnd reports `unknown field "stage"` — an engine violation — on every request
+  of a layer that has migrated. A layer you work day to day: upgrade it with its readers, so the two
+  move together and its requests are on the reader's board.
+- Filing into a layer, `rnd-change-request` passes `--stage` only when that layer's requests already carry
+  one. A layer that compiles `stage` but holds no request carrying a stage yet gets a new request without
+  it; run the migration in that layer and it is filled.
+
+**The list defaults** of `rnd/reviews` (`reviewed_on · name · kind · subject · change_request · status ·
+verdict`, newest first) and `rnd/review-findings` (`created · name · review · severity · status ·
+category`, oldest first) change. A workspace that set its own columns keeps them.
+
+---
+
 ## 0.8.0 — rnd ships no session bindings
 
 rnd 0.6.0–0.7.0 shipped three session-bindings on change requests — `change-requests--design`,

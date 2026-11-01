@@ -74,3 +74,29 @@ describe('the operator\'s list defaults for reviews and findings', () => {
 		assert.equal(d.display.list.sort, 'created');
 	});
 });
+
+describe('what a workspace does on upgrade, and what the README says', () => {
+	const read = (f) => fs.readFileSync(path.join(RND, f), 'utf8');
+	test('UPDATING has an Unreleased section: compile, the migration dry run and --write, check — and the layer order', () => {
+		const u = read('UPDATING.md');
+		const at = u.indexOf('## Unreleased');
+		assert.ok(at >= 0 && at < u.indexOf('## 0.8.0'), 'Unreleased sits above 0.8.0');
+		const sec = u.slice(at, u.indexOf('## 0.8.0'));
+		assert.match(sec, /npx dreamteamer compile/);
+		assert.match(sec, /node node_modules\/@dreamteamer\/rnd\/bin\/migrate-change-request-stage\.mjs\s/);
+		assert.match(sec, /migrate-change-request-stage\.mjs --write/);
+		assert.match(sec, /npx dreamteamer check/);
+		assert.match(sec, /unknown field "stage"/, 'a reader on an older rnd, a layer migrated');
+		assert.match(sec, /upgrade[sd]? (them |it )?with (its|their) readers/i, 'a layer worked day to day upgrades with its readers');
+		assert.match(sec, /no request carrying a stage yet/, 'the layer that compiles stage with no staged request');
+		assert.match(sec, /cannot tell/, 'the one warning the migration leaves');
+		assert.match(sec, /rnd-change-requests-board/);
+		assert.match(sec, /reviewed_on/, 'the reviews list default');
+	});
+	test('the README names the stage, the board and the migration', () => {
+		const r = read('README.md');
+		assert.match(r, /`stage`/);
+		assert.match(r, /Board/);
+		assert.match(r, /migrate-change-request-stage/);
+	});
+});
