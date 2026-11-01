@@ -141,6 +141,21 @@ describe('the lifecycle skills set the stage tags, keeping every other tag', () 
 	test('rnd-test writes tested in the same dt set as tested_on', () => {
 		assert.match(skill('rnd-test'), /dt set rnd\/change-requests\/<id> tested_on=<now> tags=<each existing> tags=tested/);
 	});
+	/* code review finding stage-rerun-duplicates-the-tag: a stage run again (a fix after changes-requested) must not list its
+	   tag twice, so every write says the existing tags are taken WITHOUT the stage's own */
+	for (const [s2, tag] of [['rnd-design', 'designed'], ['rnd-implement', 'implemented'], ['rnd-test', 'tested'], ['rnd-deploy', 'deployed'], ['rnd-release', 'deployed']]) {
+		test(`${s2}: a re-run lists ${tag} once — the existing tags are taken without it`, () => {
+			assert.match(skill(s2), new RegExp(`<each existing>\` is every tag it already has except \`${tag}\``));
+		});
+	}
+	/* code review finding clearing-a-stamp-keeps-the-tag: the inverse steps take the tag off with the stamp */
+	test('rnd-release rollback drops deployed with deployed_on', () => {
+		assert.match(skill('rnd-release'), /deployed_on= tags=<each existing> release=/);
+		assert.match(skill('rnd-release'), /drops `deployed` with `deployed_on`/);
+	});
+	test('rnd-test clearing a stale tested_on drops tested with it', () => {
+		assert.match(skill('rnd-test'), /clear a stale one \(`tested_on= tags=<each existing>`/);
+	});
 	test('rnd-test: a manual test the request names as a person\'s, left planned, does not withhold tested', () => {
 		assert.match(skill('rnd-test'), /`manual` test[^.]*left `planned`[^.]*does not withhold `tested`/);
 	});

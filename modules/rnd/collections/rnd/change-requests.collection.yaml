@@ -57,7 +57,7 @@ fields:
     # skills when a stage's WORK is done, beside any free tag a person keeps. A surface with the
     # `stage-checks` viewer draws each stage as a check: one when tagged, two when a review below also
     # matches, green when that review approves with no open finding, orange when it left remarks, its
-    # description on hover. A surface without the viewer draws the tags as chips. Matchers (cr-rnd-001's
+    # description on hover. A surface without the viewer draws the tags as chips. Matchers (the stage map's
     # vocabulary): `kind` any of, `subject` a field of this record holding the review's subject (or
     # `self`), `since` / `before` a datetime field against the review's `created` — an empty `since`
     # field matches nothing, an empty `before` field restricts nothing. The stages pick the same
