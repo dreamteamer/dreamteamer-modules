@@ -22,9 +22,12 @@ name: leak-scan
 # runs `tests/leak-gate.test.mjs`, which enforces the same allow-list over the WHOLE tree rather
 # than only the added lines; this step is the per-commit half.
 
+# Every pushed branch, not only main (cr-modules-001, design D-a): on a public repo a feature branch is
+# published the moment it is pushed, and branch protection on main requires the `leak-scan` context on
+# a branch's head before main can be fast-forwarded to it. Tags are release.yml's.
 on:
   push:
-    branches: [main]
+    branches: ['**']
   pull_request:
 
 permissions:
@@ -32,6 +35,8 @@ permissions:
 
 jobs:
   scan:
+    # the context branch protection requires by this exact name — tests/workflow-contexts.test.mjs
+    name: leak-scan
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -124,7 +129,7 @@ jobs:
       - name: oversized files
         run: |
           # 210 KB — the same ceiling as the engine's and the extension's copies and the vault's
-          # modules/default/bin/leak-scan.sh, which is what the local pre-commit hook execs. Change
+          # leak-scan.sh, which is what the local pre-commit hook execs. Change
           # one, change all four, or the hook and CI disagree about what passes. This repo's own
           # largest tracked file is well under it.
           big=$(git ls-files -z | xargs -0 -I{} sh -c 'test -f "{}" && s=$(wc -c <"{}") && [ "$s" -gt 215040 ] && echo "$s {}"' || true)
