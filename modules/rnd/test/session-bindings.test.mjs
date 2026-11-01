@@ -1,161 +1,222 @@
-// THE LIFECYCLE IN SESSIONS (cr-core-001 line 4) — rnd ships three session-bindings on a change request
-// (design · build · review), a kind @dreamteamer/core's extension contributes. Without core the folder
-// is in rnd's `ignore`, so rnd still compiles alone; with core all three are staged and validated, and
-// one request walked through the stages carries one session per stage — the rnd-agent's design and
-// build, the qa-manager's review — each refused to a second agent while it runs, each ended with its
-// stage. Core and rnd installed the npm way into a virgin workspace on a real engine.
+// RND SHIPS NO SESSION BINDINGS (0.8.0) — the three bindings rnd 0.6.0–0.7.0 shipped on a change request
+// (design · build · review) are gone, and nothing replaces them: a workspace that wants a claim on a record
+// declares its own binding through core. Each assertion below fails on rnd 0.7.0's tree:
+//   line 1     the folder, the manifest entries and the packed tarball
+//   lines 2-3  core + rnd compiled: no binding staged, no SESSIONS BOUND block in any harness file, and
+//              `dt sessions open` never lists a change request, at any stage of the lifecycle
+//   line 4     `dt next` says nothing about a session holding a request, lists the same command bindings,
+//              and `dt session start` on a request is refused
+//   goal 3     rnd's agents no longer tell a session to claim a request
+//   goal 5     the migration (bin/migrate-session-bindings.mjs) unbinds the session records the removed
+//              bindings opened, keeps every one, and `dt check` is green after it
+// Core and rnd installed the npm way into a virgin workspace on a real engine; the migration is run from
+// the PACKED path, so the tarball's bin is what is tested.
 import { test, describe, after } from 'node:test';
 import assert from 'node:assert';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { pathToFileURL } from 'node:url';
-import { virginWorkspace, installPacked, closure, cleanup, engineMeets, pkgOf, editPkg, BIN, ENGINE, ENGINE_VERSION } from '../../../tests/helpers/workspace.mjs';
+import yaml from 'js-yaml';
+import { virginWorkspace, installPacked, closure, cleanup, engineMeets, pkgOf, packedFiles, editPkg, BIN, MODULES, ENGINE_VERSION } from '../../../tests/helpers/workspace.mjs';
 
 after(cleanup);
-const api = await import(pathToFileURL(path.join(ENGINE, 'src', 'api.js')).href);
-const hasNext = typeof api.contributedNotes === 'function';
 const skip = !engineMeets('core') && `needs engine ${pkgOf('core').dreamteamer.engine}; testing ${ENGINE_VERSION}`;
+const RND = path.join(MODULES, 'rnd');
 
-/** The CLI with no harness session id leaking in from whatever runs the suite. */
-function dt(root, args) {
+/** The environment every child runs in: no harness session id leaking in from whatever runs the suite. */
+const ENV = (() => {
 	const env = { ...process.env, GIT_AUTHOR_NAME: 'probe', GIT_AUTHOR_EMAIL: 'probe@example.invalid', GIT_COMMITTER_NAME: 'probe', GIT_COMMITTER_EMAIL: 'probe@example.invalid' };
 	delete env.CLAUDE_CODE_SESSION_ID;
-	const r = spawnSync(process.execPath, [BIN, ...args], { cwd: root, encoding: 'utf8', env, timeout: 60_000 });
+	return env;
+})();
+function dt(root, args) {
+	const r = spawnSync(process.execPath, [BIN, ...args], { cwd: root, encoding: 'utf8', env: ENV, timeout: 60_000 });
 	return { code: r.status, out: r.stdout ?? '', err: r.stderr ?? '' };
 }
 const ok = (r) => { assert.equal(r.code, 0, r.err + r.out); return r; };
-const sessionOf = (r) => /✔ sessions\/(\S+)/.exec(r.out)?.[1];
-const fieldsOf = (root, id) => JSON.parse(ok(dt(root, ['get', `sessions/${id}`, '--json'])).out);
-/** The id `dt add <collection>` wrote, read off the path it prints — ids are the collection's to make. */
-const addedId = (r, collection, suffix) => new RegExp(`data/${collection}/(\\S+)\\.${suffix}\\.md`).exec(r.out)?.[1];
+const json = (root, args) => JSON.parse(ok(dt(root, [...args, '--json'])).out);
+/** The ref `dt add <collection>` wrote. */
+const added = (root, collection, args) => `${collection}/${json(root, ['add', collection, ...args]).id}`;
 
-/** A virgin workspace with core and rnd installed the npm way and SESSIONS_FOLDER set — not compiled. */
+/** A virgin workspace with core and rnd installed the npm way, SESSIONS_FOLDER set and a lockfile, compiled. */
 function coreAndRnd() {
 	const folder = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'dtm-rnd-sessions-')));
 	after(() => fs.rmSync(folder, { recursive: true, force: true }));
 	const root = virginWorkspace();
 	editPkg(root, (pkg) => { pkg.dreamteamer.vars.push('SESSIONS_FOLDER'); });
 	fs.appendFileSync(path.join(root, '.env'), `SESSIONS_FOLDER=${folder}\n`);
+	fs.writeFileSync(path.join(root, 'package-lock.json'), '{}\n');
 	installPacked(root, [...new Set([...closure('core'), ...closure('rnd')])]);
-	return root;
+	return { root, folder, compiled: ok(dt(root, ['compile'])) };
 }
 
-describe('rnd ships its lifecycle as session-bindings', () => {
-	// THE IGNORE ROUTE, both halves pinned. rnd reaches core's kind by listing session-bindings in
-	// dreamteamer.ignore, which leans on two engine behaviours: (1) without the extension that contributes
-	// the kind, an ignored folder is not a stray, so rnd compiles alone; (2) with it, compile stages a KNOWN
-	// kind's folder even though the module ignores it. If an engine changes either, one of these fails.
-	// The proper shape is an engine feature (rnd/features: a module may ship a folder of a kind another
-	// module's extension contributes, declared as such rather than through ignore).
-	test('ignore route, half 1: rnd alone compiles with its session-bindings/ folder — without core it is not a stray', () => {
-		const root = virginWorkspace();
-		installPacked(root, [...closure('rnd')]);
-		const r = dt(root, ['compile']);
-		assert.equal(r.code, 0, r.err);
-		assert.doesNotMatch(r.err + r.out, /session-bindings/, 'nothing staged, nothing refused');
-		assert.ok(pkgOf('rnd').files.includes('session-bindings'), 'the folder ships in the tarball');
-		assert.ok(pkgOf('rnd').dreamteamer.ignore.includes('session-bindings'));
+/** A session record written as a file, the way an earlier rnd's `dt session start` left it. */
+function sessionFile(folder, id, fields) {
+	const f = path.join(folder, `${id}.session.md`);
+	fs.mkdirSync(path.dirname(f), { recursive: true });
+	const front = { name: id.split('/').pop(), started: '2026-01-12T09:00:00+02:00', records: ['rnd/change-requests/cr-nw-1'], worker: 'agents/rnd-agent', harness: 'claude-code', ...fields };
+	fs.writeFileSync(f, `---\n${yaml.dump(front, { lineWidth: -1 })}---\n`);
+	return f;
+}
+const fieldsIn = (f) => yaml.load(/^---\n([\s\S]*?)\n---/.exec(fs.readFileSync(f, 'utf8'))[1]);
+const minutesAgo = (m) => new Date(Date.now() - m * 60_000).toISOString();
+
+/** The bindings `dt next` lists as AVAILABLE for one record, read as review-gates.test.mjs reads them. */
+function available(root, ref) {
+	const id = ref.split('/').pop();
+	return json(root, ['next', ref]).commands.filter((c) => c.states?.[id] === 'available').map((c) => c.binding.replace(/^command-bindings\//, ''));
+}
+
+/** The migration, from the packed module in the workspace. */
+function migrate(root, ...args) {
+	const script = path.join(root, 'node_modules', '@dreamteamer', 'rnd', 'bin', 'migrate-session-bindings.mjs');
+	const r = spawnSync(process.execPath, [script, ...args], { cwd: root, encoding: 'utf8', env: ENV, timeout: 120_000 });
+	return { code: r.status, out: (r.stdout ?? '') + (r.stderr ?? '') };
+}
+
+describe('rnd ships no session bindings', () => {
+	test('line 1: rnd ships no session-bindings folder, names it in neither files nor ignore, and its tarball has none', () => {
+		assert.equal(fs.existsSync(path.join(RND, 'session-bindings')), false, 'modules/rnd/session-bindings/ is gone');
+		const pkg = pkgOf('rnd');
+		assert.ok(!pkg.files.includes('session-bindings'), 'files does not list session-bindings');
+		assert.ok(!(pkg.dreamteamer.ignore ?? []).includes('session-bindings'), 'dreamteamer.ignore does not list session-bindings');
+		assert.deepEqual(packedFiles('rnd').filter((f) => f.startsWith('session-bindings/') || f.endsWith('.session-binding.yaml')), [], 'the tarball carries no binding');
 	});
 
-	test('lifecycle: with core, the three bindings compile; one request walks design, build and review, one session per stage, each refused to a second agent while it runs', { skip }, () => {
-		const root = coreAndRnd();
-		const compiled = ok(dt(root, ['compile']));
-		// ignore route, half 2: with core the kind is known, and rnd's ignored folder is staged anyway
-		assert.ok(pkgOf('rnd').dreamteamer.ignore.includes('session-bindings'), 'rnd still lists the folder in ignore');
-		assert.match(compiled.out, /3 session-bindings/);
-		assert.deepEqual(fs.readdirSync(path.join(root, '.dreamteamer', 'session-bindings')).sort(), ['change-requests--build', 'change-requests--design', 'change-requests--review'].map((b) => `${b}.session-binding.yaml`), 'rnd\'s three are staged despite ignore');
+	test('lines 2-3: core and rnd compiled — no session binding, no SESSIONS BOUND block in any harness file', { skip }, () => {
+		const { root, compiled } = coreAndRnd();
+		assert.doesNotMatch(compiled.out + compiled.err, /session-binding/, 'compile stages and mentions no binding');
+		assert.deepEqual(json(root, ['list', 'session-bindings']), []);
+		for (const f of ['CLAUDE.md', 'AGENTS.md', 'GEMINI.md']) {
+			const file = path.join(root, f);
+			assert.ok(fs.existsSync(file), `${f} is written — the default harnesses compile it`);
+			assert.doesNotMatch(fs.readFileSync(file, 'utf8'), /SESSIONS BOUND TO COLLECTIONS/, f);
+		}
 		assert.match(ok(dt(root, ['check'])).out, /0 violations/);
-		const block = fs.readFileSync(path.join(root, 'CLAUDE.md'), 'utf8');
-		// the WHOLE line per binding: a gate that hops a reference (implementation_plans.status) reads as the
-		// engine renders a command-binding's — a check of the line's start let `tatus [object Object]` ship
-		const lines = block.split('\n');
-		for (const line of [
-			'- rnd/change-requests — agents/rnd-agent on claude-code /rnd:design (available when: status in suggested|accepted, design_docs empty, implementation_plans empty · done when: design_docs set) · one at a time',
-			'- rnd/change-requests — agents/rnd-agent on claude-code /rnd:implement (available when: status=accepted, implementation_plans.status in approved|in-progress · done when: implementation_plans.status=done) · one at a time',
-			'- rnd/change-requests — agents/qa-manager on claude-code /rnd:review (available when: status=accepted, verified_on empty, implementation_plans.status=done · done when: verified_on set) · one at a time',
-		]) assert.ok(lines.includes(line), `orientation lacks the line\n  ${line}\nit reads:\n  ${lines.filter((l) => l.startsWith('- rnd/change-requests — ')).join('\n  ')}`);
-		for (const f of ['AGENTS.md', 'GEMINI.md']) if (fs.existsSync(path.join(root, f))) assert.doesNotMatch(fs.readFileSync(path.join(root, f), 'utf8'), /\[object Object\]/, f);
-
-		ok(dt(root, ['add', 'rnd/products', '--name', 'Harbor Mutual portal']));
-		ok(dt(root, ['add', 'rnd/change-requests', '--key', 'cr-hm-1', '--name', 'Harbor Mutual: export claims', '--products', 'rnd/products/harbor-mutual-portal', '--status', 'accepted']));
-		const CR = 'rnd/change-requests/cr-hm-1';
-		const bindingOn = () => JSON.parse(ok(dt(root, ['sessions', 'open', '--json'])).out).find((o) => o.ref === CR)?.binding ?? null;
-
-		// DESIGN — the rnd-agent; the qa-manager is refused while it runs
-		assert.equal(bindingOn(), 'session-bindings/change-requests--design');
-		const design = ok(dt(root, ['session', 'start', CR]));
-		assert.match(design.out, /in session by agents\/rnd-agent .*\(session-bindings\/change-requests--design\)/);
-		assert.match(design.out, /start with: \/rnd:design rnd\/change-requests\/cr-hm-1/);
-		assert.equal(dt(root, ['session', 'start', CR, '--agent', 'qa-manager']).code, 1);
-		const doc = addedId(ok(dt(root, ['add', 'rnd/design-docs', '--name', 'Claims export', '--status', 'draft'])), 'rnd/design-docs', 'design-doc');
-		ok(dt(root, ['set', CR, `design_docs=rnd/design-docs/${doc}`]));
-		ok(dt(root, ['session', 'end', sessionOf(design), '--agent', 'rnd-agent', '--outcome', `design: rnd/design-docs/${doc}`]));
-		assert.equal(bindingOn(), null, 'designed, unplanned: no stage opens a session');
-
-		// BUILD — an approved plan opens the rnd-agent's build session
-		const plan = addedId(ok(dt(root, ['add', 'rnd/implementation-plans', '--name', 'Claims export build', '--change_request', CR, '--status', 'approved'])), 'rnd/implementation-plans', 'implementation-plan');
-		assert.equal(bindingOn(), 'session-bindings/change-requests--build');
-		const build = ok(dt(root, ['session', 'start', CR]));
-		assert.match(build.out, /in session by agents\/rnd-agent .*\(session-bindings\/change-requests--build\)/);
-		assert.match(build.out, /start with: \/rnd:implement/);
-		ok(dt(root, ['set', `rnd/implementation-plans/${plan}`, 'status=done']));
-		ok(dt(root, ['session', 'end', sessionOf(build), '--agent', 'rnd-agent', '--outcome', 'build: plan done']));
-
-		// REVIEW — a done plan, not yet verified, opens the qa-manager's
-		assert.equal(bindingOn(), 'session-bindings/change-requests--review');
-		const review = ok(dt(root, ['session', 'start', CR]));
-		assert.match(review.out, /in session by agents\/qa-manager .*\(session-bindings\/change-requests--review\)/);
-		assert.equal(dt(root, ['session', 'start', CR, '--agent', 'rnd-agent']).code, 1, 'the builder is refused while the reviewer holds it');
-		ok(dt(root, ['set', CR, `verified_on=${new Date().toISOString()}`]));
-		ok(dt(root, ['session', 'end', sessionOf(review), '--agent', 'qa-manager', '--outcome', 'approve']));
-		assert.equal(bindingOn(), null, 'verified: no stage opens a session');
-
-		// the request's sessions — one per stage, each ended (two may start within one second, so by binding, not by time)
-		const mine = JSON.parse(ok(dt(root, ['list', 'sessions', '--where', JSON.stringify({ records: { _contains: CR } }), '--json'])).out);
-		const stage = (b) => ['design', 'build', 'review'].indexOf(b.split('--').pop());
-		assert.deepEqual(mine.map((s) => [s.binding, s.worker, s.status]).sort((a, b) => stage(a[0]) - stage(b[0])), [
-			['session-bindings/change-requests--design', 'agents/rnd-agent', 'ended'],
-			['session-bindings/change-requests--build', 'agents/rnd-agent', 'ended'],
-			['session-bindings/change-requests--review', 'agents/qa-manager', 'ended'],
-		]);
 	});
 
-	test('a finished stage: dt next says the stage is done and names dt session end; dt sessions open lists the next stage as held by a finished one; the build starts beside it', { skip }, () => {
-		const root = coreAndRnd();
+	test('line 4: a change request walked through the stages rnd bound — sessions open never lists it, dt next never says in session by, its command bindings are unchanged, session start is refused', { skip }, () => {
+		const { root, folder } = coreAndRnd();
+		ok(dt(root, ['add', 'rnd/products', '--name', 'Northwind portal']));
+		ok(dt(root, ['add', 'rnd/change-requests', '--key', 'cr-nw-1', '--name', 'Northwind: export grants', '--products', 'rnd/products/northwind-portal']));
+		const CR = 'rnd/change-requests/cr-nw-1';
+		const stage = (label, expected) => {
+			// line 3 FIRST, before anything holds the request: on 0.7.0 each of these states lists it
+			const open = json(root, ['sessions', 'open']);
+			assert.deepEqual(open.filter((o) => o.ref === CR), [], `${label}: dt sessions open lists ${CR}`);
+			// then a running session that holds it: on 0.7.0 dt next names its holder, because a binding names the collection
+			const seed = sessionFile(folder, `2026/01/2026-01-12--seed-${label}`, { status: 'running', heartbeat: new Date().toISOString(), session_id: `seed-${label}` });
+			assert.doesNotMatch(ok(dt(root, ['next', CR])).out, /in session by/, `${label}: dt next names a holder`);
+			assert.deepEqual(available(root, CR), expected, `${label}: the command bindings dt next lists`);
+			const start = dt(root, ['session', 'start', CR]);
+			assert.equal(start.code, 1, `${label}: dt session start ${CR} was not refused`);
+			assert.match(start.out + start.err, /no session-binding names rnd\/change-requests/);
+			fs.rmSync(seed);
+		};
+		stage('design', ['rnd--design--change-requests']);
+		const dd = added(root, 'rnd/design-docs', ['--name', 'Grants export', '--product', 'rnd/products/northwind-portal', '--status', 'active']);
+		ok(dt(root, ['set', CR, `design_docs=${dd}`, 'status=accepted', 'accepted_by=users/dana-oren', 'accepted_on=2026-01-12T10:00:00+02:00']));
+		const plan = added(root, 'rnd/implementation-plans', ['--name', 'Grants export', '--spec', dd, '--change_request', CR, '--status', 'approved', '--execution', 'native']);
+		stage('build', ['rnd--implement--change-requests']);
+		ok(dt(root, ['set', plan, 'status=done']));
+		stage('review', ['rnd--review--change-requests--code']);
+	});
+
+	test('goal 3: neither agent tells a session to claim a change request', () => {
+		for (const agent of ['rnd-agent', 'qa-manager']) {
+			const text = fs.readFileSync(path.join(RND, 'agents', `${agent}.agent.md`), 'utf8');
+			assert.ok(!text.includes('dt session start'), `${agent} says dt session start`);
+			assert.ok(!text.includes('session-binding'), `${agent} names a session-binding`);
+		}
+	});
+});
+
+describe('the migration unbinds the sessions rnd 0.7.0\'s bindings opened', { skip }, () => {
+	const OWN = `collection: collections/rnd/products
+available_when:
+  name:
+    _nempty: true
+done_when:
+  description:
+    _nempty: true
+harness: claude-code
+agent: agents/rnd-agent
+command: commands/rnd/design
+concurrency: many
+description: the workspace's own binding, on products
+`;
+
+	test('goal 5: the migration unbinds the sessions rnd\'s removed bindings opened, keeps every record, and dt check goes green', () => {
+		const { root, folder } = coreAndRnd();
+		fs.mkdirSync(path.join(root, 'modules', 'default', 'session-bindings'), { recursive: true });
+		fs.writeFileSync(path.join(root, 'modules', 'default', 'session-bindings', 'northwind-own.session-binding.yaml'), OWN);
 		ok(dt(root, ['compile']));
-		ok(dt(root, ['add', 'rnd/products', '--name', 'Harbor Mutual portal']));
-		ok(dt(root, ['add', 'rnd/change-requests', '--key', 'cr-hm-2', '--name', 'Harbor Mutual: renewals', '--products', 'rnd/products/harbor-mutual-portal', '--status', 'accepted']));
-		const CR = 'rnd/change-requests/cr-hm-2';
-		const design = sessionOf(ok(dt(root, ['session', 'start', CR])));
-		// the design lands AND an approved plan — the design binding no longer opens the record, the build's does
-		const doc = addedId(ok(dt(root, ['add', 'rnd/design-docs', '--name', 'Renewals', '--status', 'draft'])), 'rnd/design-docs', 'design-doc');
-		ok(dt(root, ['set', CR, `design_docs=rnd/design-docs/${doc}`]));
-		ok(dt(root, ['add', 'rnd/implementation-plans', '--name', 'Renewals build', '--change_request', CR, '--status', 'approved']));
-		if (hasNext) {
-			const next = ok(dt(root, ['next', CR])).out;
-			assert.match(next, new RegExp(`in session by agents/rnd-agent since \\S+ \\(sessions/${design}\\) — stage done: session-bindings/change-requests--design no longer opens the record; end the session: dt session end ${design}`));
-		}
-		const open = JSON.parse(ok(dt(root, ['sessions', 'open', '--json'])).out).find((o) => o.ref === CR);
-		assert.deepEqual(open, { ref: CR, binding: 'session-bindings/change-requests--build', agent: 'agents/rnd-agent', harness: 'claude-code', command: 'commands/rnd/implement', held_by_finished: [`sessions/${design}`] });
-		assert.match(ok(dt(root, ['sessions', 'open'])).out, new RegExp(`${CR}  session-bindings/change-requests--build  agents/rnd-agent  → dt session start ${CR}  \\(held by a finished stage: sessions/${design}\\)`));
-		const build = ok(dt(root, ['session', 'start', CR]));
-		assert.match(build.out, /\(session-bindings\/change-requests--build\)/);
-		assert.match(build.out, new RegExp(`beside sessions/${design}, whose stage is done — its holder should dt session end it`));
-		assert.equal(fieldsOf(root, design).status, 'running', 'never ended for its holder');
-		// a stage still open does block: a second build is refused naming the first
-		assert.equal(dt(root, ['session', 'start', CR, '--agent', 'qa-manager']).code, 1);
-		ok(dt(root, ['session', 'end', design, '--agent', 'rnd-agent']));
-		ok(dt(root, ['session', 'end', sessionOf(build), '--agent', 'rnd-agent']));
+		ok(dt(root, ['add', 'rnd/products', '--name', 'Northwind portal']));
+		ok(dt(root, ['add', 'rnd/change-requests', '--key', 'cr-nw-1', '--name', 'Northwind: export grants', '--products', 'rnd/products/northwind-portal']));
+		const A = sessionFile(folder, '2026/01/2026-01-12--a', { status: 'ended', ended: '2026-01-12T10:00:00+02:00', binding: 'session-bindings/change-requests--design', tags: ['northwind'] });
+		const B = sessionFile(folder, '2026/01/2026-01-12--b', { status: 'running', heartbeat: new Date().toISOString(), session_id: 'probe-1', binding: 'session-bindings/change-requests--review' });
+		const D = sessionFile(folder, '2026/01/2026-01-12--d', { status: 'running', heartbeat: minutesAgo(48 * 60), binding: 'session-bindings/change-requests--build' });
+		const C = sessionFile(folder, '2026/01/2026-01-12--c', { status: 'ended', ended: '2026-01-12T10:00:00+02:00', binding: 'session-bindings/northwind-own', records: ['rnd/products/northwind-portal'] });
+		const bytes = () => [A, B, C, D].map((f) => fs.readFileSync(f, 'utf8'));
+
+		// before: one dangling reference per session record the removed bindings opened, none for the workspace's own
+		const red = dt(root, ['check']);
+		assert.equal(red.code, 1, red.out);
+		for (const id of ['a', 'b', 'd']) assert.match(red.out + red.err, new RegExp(`2026-01-12--${id}\\.session\\.md\\s+binding: dangling reference "session-bindings/change-requests--`));
+		assert.doesNotMatch(red.out + red.err, /2026-01-12--c\.session\.md/);
+
+		// the dry run lists the three and writes nothing
+		const before = bytes();
+		const dry = migrate(root);
+		assert.equal(dry.code, 0, dry.out);
+		for (const [id, b] of [['a', 'design'], ['b', 'review'], ['d', 'build']]) assert.match(dry.out, new RegExp(`would unbind sessions/2026/01/2026-01-12--${id}\\b.*change-requests--${b}`));
+		assert.doesNotMatch(dry.out, /2026-01-12--c\b/);
+		assert.match(dry.out, /3 session\(s\) to unbind/);
+		assert.deepEqual(bytes(), before, 'a dry run writes nothing');
+
+		// --write: binding cleared, the old one named in a tag, everything kept
+		const w = migrate(root, '--write');
+		assert.equal(w.code, 0, w.out);
+		assert.match(w.out, /3 session\(s\) unbound/);
+		ok(dt(root, ['check']));
+		const a = fieldsIn(A), b = fieldsIn(B), d = fieldsIn(D);
+		assert.equal(a.binding, undefined); assert.deepEqual(a.tags, ['northwind', 'rnd-binding:change-requests-design']); assert.equal(a.status, 'ended');
+		assert.equal(b.binding, undefined); assert.deepEqual(b.tags, ['rnd-binding:change-requests-review']); assert.equal(b.status, 'running');
+		assert.equal(d.binding, undefined); assert.deepEqual(d.tags, ['rnd-binding:change-requests-build']);
+		assert.equal(fs.readFileSync(C, 'utf8'), before[2], 'the workspace\'s own binding\'s session is untouched');
+
+		// what it told the person works as printed: the fresh running one is ended by its holder; the stale
+		// one is reported as lapsing at the next session verb, with nothing to run
+		const bLine = w.out.split('\n').find((l) => l.includes('sessions/2026/01/2026-01-12--b') && l.includes('still running'));
+		assert.ok(bLine && /dt session end 2026\/01\/2026-01-12--b\b/.test(bLine) && /--force/.test(bLine), `the running line for b:\n${w.out}`);
+		const dLine = w.out.split('\n').find((l) => l.includes('sessions/2026/01/2026-01-12--d') && /stale/.test(l));
+		assert.ok(dLine && !/dt session end/.test(dLine) && /nothing to run/.test(dLine), `the stale line for d:\n${w.out}`);
+		ok(dt(root, ['session', 'end', '2026/01/2026-01-12--b', '--session-id', 'probe-1']));
+		ok(dt(root, ['sessions', 'open']));
+		assert.equal(fieldsIn(D).status, 'abandoned', 'the stale one lapsed at the next session verb, as the migration said');
+
+		// idempotent
+		const again = migrate(root, '--write');
+		assert.equal(again.code, 0, again.out);
+		assert.match(again.out, /0 session\(s\) unbound/);
 	});
 
-	test('the two agents say how they start and end their sessions', () => {
-		for (const [agent, binding] of [['rnd-agent', 'change-requests--design'], ['qa-manager', 'change-requests--review']]) {
-			const text = fs.readFileSync(path.join(path.dirname(new URL(import.meta.url).pathname), '..', 'agents', `${agent}.agent.md`), 'utf8');
-			assert.match(text, new RegExp(`dt session start rnd/change-requests/<id> --agent ${agent}`));
-			assert.match(text, /dt session end <session> --outcome/);
-			assert.ok(text.includes(binding), `${agent} names ${binding}`);
-		}
+	test('goal 5: the migration refuses on a stale compile — installed 0.8.0, not yet compiled', () => {
+		const { root, folder } = coreAndRnd();
+		// the state after `npm install` of 0.8.0 and before `dt compile`: 0.7.0's binding still compiled,
+		// its source no longer on disk
+		const name = 'change-requests--design.session-binding.yaml';
+		fs.mkdirSync(path.join(root, '.dreamteamer', 'session-bindings'), { recursive: true });
+		fs.writeFileSync(path.join(root, '.dreamteamer', 'session-bindings', name), 'collection: collections/rnd/change-requests\navailable_when:\n  design_docs:\n    _empty: true\ndone_when:\n  design_docs:\n    _nempty: true\nharness: claude-code\nagent: agents/rnd-agent\ncommand: commands/rnd/design\nconcurrency: one\nstale_after: 30\ndescription: the rnd-agent designs the request\n');
+		const mf = path.join(root, '.dreamteamer', 'manifest.yaml');
+		const manifest = yaml.load(fs.readFileSync(mf, 'utf8'));
+		manifest.entries[`session-bindings/${name}`] = { sources: [{ path: `node_modules/@dreamteamer/rnd/session-bindings/${name}`, hash: 'sha256:0' }], hash: 'sha256:0' };
+		fs.writeFileSync(mf, yaml.dump(manifest, { lineWidth: -1 }));
+		const A = sessionFile(folder, '2026/01/2026-01-12--a', { status: 'ended', ended: '2026-01-12T10:00:00+02:00', binding: 'session-bindings/change-requests--design' });
+		const r = migrate(root, '--write');
+		assert.equal(r.code, 1, r.out);
+		assert.match(r.out, /dt compile/);
+		assert.equal(fieldsIn(A).binding, 'session-bindings/change-requests--design', 'nothing was written');
 	});
 });
