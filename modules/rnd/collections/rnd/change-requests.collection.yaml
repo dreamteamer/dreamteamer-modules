@@ -60,9 +60,9 @@ fields:
     # description on hover. A surface without the viewer draws the tags as chips. Matchers (cr-rnd-001's
     # vocabulary): `kind` any of, `subject` a field of this record holding the review's subject (or
     # `self`), `since` / `before` a datetime field against the review's `created` — an empty `since`
-    # field matches nothing, an empty `before` field restricts nothing. On rnd 0.5.x nothing in the
-    # lifecycle writes the post-deploy acceptance review, so `deployed` shows two checks only when a
-    # person files one after `deployed_on`.
+    # field matches nothing, an empty `before` field restricts nothing. The stages pick the same
+    # reviews as the record page's stage map below, matched by subject — so a review written before
+    # `change_request` existed counts too.
     display:
       viewer: stage-checks
       options:

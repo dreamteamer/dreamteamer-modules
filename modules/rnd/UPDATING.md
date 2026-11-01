@@ -11,6 +11,55 @@ npx dreamteamer check
 
 ---
 
+## Unreleased — change requests carry stage tags, drawn as checks
+
+Run `dt compile`, then `dt check`. No record has to change to stay valid.
+
+**The field.** `rnd/change-requests` gains `tags` — the same free-labels field every collection has
+(lowercase, hyphenated, optionally `key:value`). Four of its values mean a stage is done: `designed`,
+`implemented`, `tested`, `deployed`. The list now shows `created` · `status` · `name` · `tags` ·
+`products` · `release`.
+
+**Who sets them.** The four lifecycle skills, when a stage's work is done: `rnd-design` (with
+`design_docs`), `rnd-implement` (with the plan `done`), `rnd-test` (in the same `dt set` as
+`tested_on` — a `manual` test the request's body names as a person's does not withhold it) and
+`rnd-deploy` or `rnd-release`'s stamp step (in the same `dt set` as `deployed_on`). A `dt set` of `tags` replaces
+the list, so each skill reads the request's tags first and writes them all back with its own.
+
+**What a surface draws.** The field declares `display.viewer: stage-checks` and, per stage tag, which
+`rnd/reviews` belong to it. The VS Code extension's `stage-checks` view (from the release that ships
+it) draws one check when a stage is tagged, two when a matching review exists — green when the latest
+one approves with no `open` finding, orange when it requested changes, rejected or has an open
+finding, neutral while it has no verdict — and the review's `description` on hover. An older
+extension draws the tags as chips. Two readings to know:
+
+- The reviews are matched by `subject` through the request's own fields (`design_docs`,
+  `implementation_plans`, the request itself), so every review counts, including one written before
+  0.6.0 with no `change_request`. The four stages pick the same reviews as the request page's stage
+  map: `designed` the design doc's review or the request's own acceptance review, `implemented` a
+  `code` or `security` review, `tested` the `test` review, `deployed` the live acceptance review —
+  filed after `deployed_on`, which is why the deploy and release skills tag and date the request
+  before it is written.
+- A request accepted before it was designed (possible before 0.6.0) shows `designed` green on its
+  acceptance review alone.
+
+**`dt check` warns** when a request is tagged `deployed` with no `deployed_on`, or has `deployed_on`
+with no `deployed` tag — one warning line naming the record's file, attributed to `@dreamteamer/rnd`, exit code unchanged. It needs an engine
+with the warning channel (`CHECK_WARNINGS`, the engine release after 0.42.0); on an older engine the
+rule says nothing. **Expect the reverse warning on every request you deployed before upgrading**: add
+the tag to each, keeping its other tags —
+
+```bash
+npx dt get rnd/change-requests/<id>          # read its tags
+npx dt set rnd/change-requests/<id> tags=<each existing> tags=deployed
+```
+
+**The extension entry moved.** rnd's `dreamteamer.extension` is now `./lib/extension.mjs`, which
+activates the composed notebooklm entry (`dt notebooklm`, the NOTEBOOKLM.md harness) and adds the
+check. Nothing to do; a workspace that `disable`s nothing sees the same verbs.
+
+---
+
 ## 0.6.0 — releases: a product's versions, each listing the changes it ships
 
 A new collection, `rnd/releases`, and a new command, `/rnd:release`. Nothing is removed or renamed and

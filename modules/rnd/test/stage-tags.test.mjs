@@ -115,3 +115,33 @@ describe('dt check: deployed and deployed_on agree, as a warning', async () => {
 		assert.match(r.stdout, /✔ 0 violations/);
 	});
 });
+
+describe('the lifecycle skills set the stage tags, keeping every other tag', () => {
+	const skill = (s) => fs.readFileSync(path.join(RND, 'skills', s, 'SKILL.md'), 'utf8');
+	const KEEP = /tags=<each existing>/;
+	const REPLACES = /replaces the list/;
+	for (const [s, tag] of [['rnd-design', 'designed'], ['rnd-implement', 'implemented'], ['rnd-test', 'tested'], ['rnd-deploy', 'deployed']]) {
+		test(`${s} adds ${tag}, read-then-write, never a bare tags=${tag} or a +=`, () => {
+			const text = skill(s);
+			assert.match(text, new RegExp(`tags=<each existing> tags=${tag}\\b`), `${s} spells the write keeping the existing tags`);
+			assert.match(text, KEEP);
+			assert.match(text, REPLACES, `${s} says a dt set of tags replaces the list`);
+			assert.doesNotMatch(text, /tags\+=/);
+			assert.doesNotMatch(text, new RegExp(`\\stags=${tag}\\b(?<!<each existing> tags=${tag})`), 'no write of the stage tag alone');
+		});
+	}
+	test('rnd-deploy writes deployed in the same dt set as deployed_on, before any live review', () => {
+		const text = skill('rnd-deploy');
+		assert.match(text, /dt set rnd\/change-requests\/<id> deployed_on=<now> tags=<each existing> tags=deployed/);
+		assert.match(text, /before (you file |filing )?(a|any) live acceptance review/i);
+	});
+	test('rnd-release stamps deployed with deployed_on on every request a published release carries', () => {
+		assert.match(skill('rnd-release'), /dt set rnd\/change-requests\/<cr> deployed_on=<published_on> tags=<each existing> tags=deployed/);
+	});
+	test('rnd-test writes tested in the same dt set as tested_on', () => {
+		assert.match(skill('rnd-test'), /dt set rnd\/change-requests\/<id> tested_on=<now> tags=<each existing> tags=tested/);
+	});
+	test('rnd-test: a manual test the request names as a person\'s, left planned, does not withhold tested', () => {
+		assert.match(skill('rnd-test'), /`manual` test[^.]*left `planned`[^.]*does not withhold `tested`/);
+	});
+});

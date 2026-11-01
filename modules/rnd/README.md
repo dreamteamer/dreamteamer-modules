@@ -98,6 +98,14 @@ builder never grades its own work. A finding is graded by its effect within the 
 proposed line. The superpowers skills stay useful where they add depth — the stage skills name
 them — but nothing here needs them installed.
 
+**A change request shows how far it got.** Its free `tags` carry four stage tags — `designed`,
+`implemented`, `tested`, `deployed` — each added by its stage's skill when the work is done, beside any
+tag a person keeps. The `tags` field declares how a surface draws them (`display.viewer: stage-checks`):
+per stage one check when tagged, two when a review of the matching kind exists, green when it approved
+with no open finding, orange when it left remarks, its description on hover; a surface without the
+viewer draws chips. `dt check` warns — never fails — when `deployed` and `deployed_on` disagree, on an
+engine that has the warning channel (`CHECK_WARNINGS`); on one without it the rule is silent.
+
 ## the software factory
 
 rnd ships one workflow, `software-factory`, at `data/workflows/software-factory.workflow.md`: the
