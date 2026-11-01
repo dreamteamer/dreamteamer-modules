@@ -106,7 +106,7 @@ describe('the composition', () => {
 		assert.ok(manifest.description.length <= 160);
 	});
 	test('and adds what the origins bring: the extension and its src/, js-yaml, the two npm bins, env, vars', () => {
-		// 0.6.0: rnd's own entry, outside src/, wraps the composed notebooklm entry and adds the release check
+		// 0.6.0: rnd's own entry, outside src/, wraps the composed notebooklm entry and adds its checks (releases, stage tags)
 		assert.equal(manifest.dreamteamer.extension, './lib/extension.mjs');
 		const origin = originPkg('notebooklm').dreamteamer.extension;
 		assert.ok(origin.startsWith('./src/'), 'the origin\'s entry is the composed src/extension.js');
@@ -134,5 +134,19 @@ describe('the composition', () => {
 	test('--check exits 0 on the committed state', () => {
 		const log = console.log; console.log = () => {};
 		try { assert.equal(main(['rnd', '--check']), 0); } finally { console.log = log; }
+	});
+});
+
+describe('rnd\'s own extension entry', () => {
+	test('activating it keeps every contribution of the composed notebooklm entry and adds check', async () => {
+		const own = await import(path.join(RND, 'lib', 'extension.mjs'));
+		const origin = await import(path.join(RND, 'src', 'extension.js'));
+		assert.equal(own.apiVersion, origin.apiVersion);
+		const dt = { Store: class {} };
+		const mine = own.default(dt);
+		const theirs = origin.default(dt);
+		assert.deepEqual(Object.keys(mine.commands), Object.keys(theirs.commands));
+		assert.deepEqual(Object.keys(mine.harnesses), Object.keys(theirs.harnesses));
+		assert.equal(typeof mine.check, 'function');
 	});
 });
