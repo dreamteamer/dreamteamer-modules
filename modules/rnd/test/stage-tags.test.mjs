@@ -68,3 +68,50 @@ describe('rnd/change-requests.tags and its stage declaration', () => {
 		assert.equal(row.viewer_options.reviews_from, 'rnd/reviews');
 	});
 });
+
+describe('dt check: deployed and deployed_on agree, as a warning', async () => {
+	const { stageTagWarnings, checkStageTags } = await import(path.join(RND, 'lib', 'stage-tags.mjs'));
+	const engineApi = await import(path.join(ENGINE, 'src', 'api.js'));
+	const HAS_CHANNEL = engineApi.CHECK_WARNINGS === true;
+
+	test('the rule: both directions warn, a consistent pair and a look-alike tag do not', () => {
+		const w = stageTagWarnings([
+			{ id: 'a', tags: ['designed', 'deployed'], file: 'a.md' },
+			{ id: 'b', tags: ['implemented'], deployed_on: '2026-03-02T10:00:00+02:00', file: 'b.md' },
+			{ id: 'c', tags: ['deployed'], deployed_on: '2026-03-02T10:00:00+02:00', file: 'c.md' },
+			{ id: 'd', tags: ['deployed-staging'], file: 'd.md' },
+			{ id: 'e', file: 'e.md' },
+		]);
+		assert.deepEqual(w.map((x) => [x.file, x.warning]), [['a.md', true], ['b.md', true]]);
+		assert.match(w[0].message, /^tagged deployed but deployed_on is empty/);
+		assert.match(w[1].message, /^deployed_on is set but the record is not tagged deployed/);
+	});
+
+	test('on an engine without the warning channel the check returns nothing — never a violation', () => {
+		let read = false;
+		const dt = { Store: class { constructor() { read = true; } } };
+		assert.deepEqual(checkStageTags({ ws: { root: '/x' }, dt }), []);
+		assert.equal(read, false, 'the store is not even opened');
+	});
+
+	test('dt check end to end, on the engine under test', { skip: false }, () => {
+		const root = rndWorkspace();
+		product(root);
+		request(root, 'cr-tagged', 'tags:\n  - deployed\n');
+		request(root, 'cr-dated', 'deployed_on: \'2026-03-02T10:00:00+02:00\'\nstatus: implemented\n');
+		request(root, 'cr-both', 'tags:\n  - deployed\n  - client:northwind\ndeployed_on: \'2026-03-02T10:00:00+02:00\'\n');
+		settle(root);
+		const r = run(root, ['check']);
+		assert.equal(r.status, 0, r.stdout + r.stderr);
+		if (!HAS_CHANNEL) {
+			// published engines before the channel: the rule is silent rather than red
+			assert.doesNotMatch(r.stdout, /deployed_on/);
+			test.diagnostic?.(`engine ${engineApi.engineVersion?.()} has no CHECK_WARNINGS — the warning half runs with DT_ENGINE_DIR at the check-warnings branch`);
+			return;
+		}
+		assert.match(r.stdout, /⚠ data\/rnd\/change-requests\/cr-tagged\.change-request\.md — tagged deployed but deployed_on is empty — set deployed_on, or remove the tag \(@dreamteamer\/rnd\)/);
+		assert.match(r.stdout, /⚠ data\/rnd\/change-requests\/cr-dated\.change-request\.md — deployed_on is set but the record is not tagged deployed/);
+		assert.doesNotMatch(r.stdout, /cr-both/);
+		assert.match(r.stdout, /✔ 0 violations/);
+	});
+});
