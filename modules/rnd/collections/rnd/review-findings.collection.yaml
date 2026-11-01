@@ -98,12 +98,13 @@ display:
     order: 49
   list:
     columns:
+      - created
       - name
       - review
       - severity
       - status
       - category
-    sort: severity
+    sort: created
   record:
     badge: status
   form:

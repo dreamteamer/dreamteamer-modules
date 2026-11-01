@@ -41,7 +41,7 @@ describe('rnd/change-requests.tags and its stage declaration', () => {
 		for (const s of o.stages) for (const m of s.reviews) for (const k of ['subject', 'since', 'before']) {
 			if (m[k] && m[k] !== 'self' && m[k] !== 'created') assert.ok(crDescriptor.fields[m[k]], `${s.tag}: ${k} names ${m[k]}, not a field`);
 		}
-		assert.deepEqual(crDescriptor.display.list.columns, ['created', 'status', 'name', 'tags', 'products', 'release']);
+		assert.deepEqual(crDescriptor.display.list.columns, ['created', 'status', 'stage', 'name', 'tags', 'products', 'release']);
 	});
 
 	test('a request with stage and free tags checks clean; a tag that breaks the convention is refused', () => {

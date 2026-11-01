@@ -430,8 +430,8 @@ describe('change requests (0.5.1) — three sizes the descriptor spells out, and
 		assert.match(cr.fields.content.description, /longer than one line/i);
 		assert.match(cr.fields.acceptance.description, /repeat `--acceptance`/i, 'the comma-split trap is named where the writer reads');
 	});
-	test('the default list shows created, status, name, tags (the stage checks), products — newest first (and, from 0.6.0, release)', () => {
-		assert.deepEqual(cr.display.list.columns, ['created', 'status', 'name', 'tags', 'products', 'release']);
+	test('the default list shows created, status, stage, name, tags (the stage checks), products — newest first (and, from 0.6.0, release)', () => {
+		assert.deepEqual(cr.display.list.columns, ['created', 'status', 'stage', 'name', 'tags', 'products', 'release']);
 		assert.equal(cr.display.list.sort, '-created');
 	});
 	test('the skill, the README and UPDATING.md carry the same rule', () => {
