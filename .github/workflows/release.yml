@@ -35,16 +35,18 @@ jobs:
 
       # 🔴 THE LEAK GATE, ON THE PUBLISH PATH — added 2026-09-10.
       #
-      # `leak-scan.yml` triggers on `push: branches: [main]` and `pull_request`. A TAG matches
-      # NEITHER, so until today the release path scanned nothing at all — and the scan that did run
-      # on main only ever saw the lines that push ADDED. This is the gate against the incident that
+      # `leak-scan.yml` triggers on a push to any branch and on `pull_request`. A TAG matches
+      # NEITHER, so until 2026-09-10 the release path scanned nothing at all — and the branch scan only
+      # ever sees the lines and messages its commits ADD. This is the gate against the incident that
       # already shipped a private vault name in three npm tarballs (immutable, provenance-attested,
       # fixed only by a git-history rewrite), and the publish skipped it. This one scans the WHOLE
       # TREE about to be published, because that is what a stranger downloads.
       #
-      # ⚠ IT FAILS CLOSED, unlike its main-branch sibling. There, an unset `LEAK_NAMES` is a
-      # `::warning::` and the check is skipped; on a release, silence is indistinguishable from a
-      # pass — and both layers were once off on a second machine during a public-repo push prep.
+      # ⚠ IT FAILS CLOSED, like the branch scan since cr-modules-001: on a release, silence is
+      # indistinguishable from a pass — and both layers were once off on a second machine during a
+      # public-repo push prep. The pattern reaches grep through `-f`, never as an argument, and through
+      # ONE `git grep` — `xargs` would hand the already-drained pattern pipe to every batch after the
+      # first (cr-modules-001 plan review p1-01).
       # Measured 2026-09-10: all three repos DO carry the secret and the check really runs, so this
       # costs nothing today and is the only thing between an unset secret and an immutable publish.
       #
@@ -67,12 +69,12 @@ jobs:
 
           # A MALFORMED pattern must fail, not pass (finding r1-09, 2026-10-31): grep exits 2 on an invalid
           # regex, and the `|| true` below would read that as "no hits" — the gate silently off. Probe once.
-          rc=0; printf 'leak-names-probe\n' | grep -iE "$LEAK_NAMES" >/dev/null 2>&1 || rc=$?
+          rc=0; printf 'leak-names-probe\n' | grep -iE -f <(printf '%s' "$LEAK_NAMES") >/dev/null 2>&1 || rc=$?
           if [ "$rc" -gt 1 ]; then
             echo "::error::secrets.LEAK_NAMES is not a valid extended regex (grep exit $rc), so the private-name check cannot run. Re-set it from the hook's \`names\` mode."
             exit 1
           fi
-          hits=$(printf '%s\n' "$TEXT" | xargs -r grep -lIiE "$LEAK_NAMES" 2>/dev/null || true)
+          hits=$(git grep -I -l -i -E -f <(printf '%s' "$LEAK_NAMES") -- . 2>/dev/null || true)
           if [ -n "$hits" ]; then
             echo "::error::$(printf '%s\n' "$hits" | wc -l | tr -d ' ') tracked file(s) match a private name"
             printf '%s\n' "$hits" | sed 's/^/  /'
@@ -107,9 +109,11 @@ jobs:
           [ "$fail" -eq 0 ] || exit 1
           echo "✔ the published tree is clean — no private name, no credential shape, no Hebrew outside the allow-list"
 
-      # ⚠ A TAG ON AN ARBITRARY COMMIT PUBLISHES A TREE CI HAS NEVER SEEN. Nothing else stops it:
-      # main is unprotected and there is no tag ruleset. The release runbook pushes main, waits for
-      # green, then tags — so this assertion is free on the happy path and refuses the accident.
+      # ⚠ A TAG ON AN ARBITRARY COMMIT PUBLISHES A TREE CI HAS NEVER SEEN. main is protected (`ci` and
+      # `leak-scan` required on its head, admins included), but there is no tag ruleset, so a tag can
+      # still name any commit. The release runbook (README.md) pushes a branch, waits for green,
+      # fast-forwards main, then tags — so this assertion is free on the happy path and refuses the
+      # accident.
       - name: the tag must point at a commit on main
         run: |
           set -euo pipefail
@@ -165,13 +169,21 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_ACCESS: ${{ vars.NPM_ACCESS }}
-          REPO_PRIVATE: ${{ github.event.repository.private }}
+          GH_TOKEN: ${{ github.token }}
+        # The visibility NOW, from the API (cr-modules-001, design D-d) — never the push event's
+        # `repository.private`, which a re-run replays from the time of the tag: rnd-v0.5.1 was re-run
+        # after the repo went public and still published without provenance. npm refuses provenance for
+        # a private repo (E422), so the branch stays; any answer but exactly true or false stops here.
         run: |
           set -euo pipefail
-          if [ "$REPO_PRIVATE" = "false" ]; then
+          private=$(gh api "repos/$GITHUB_REPOSITORY" --jq .private) || { echo "::error::could not read this repo's visibility from the API — not publishing"; exit 1; }
+          if [ "$private" = "false" ]; then
             echo "public source repo — publishing with provenance"
             npm publish --provenance --access "$NPM_ACCESS"
-          else
+          elif [ "$private" = "true" ]; then
             echo "private source repo — npm refuses provenance for private repos (E422); publishing without"
             npm publish --access "$NPM_ACCESS"
+          else
+            echo "::error::the API answered \"$private\" for this repo's visibility — expected true or false; not publishing"
+            exit 1
           fi

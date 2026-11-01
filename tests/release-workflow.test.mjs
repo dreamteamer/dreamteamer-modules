@@ -26,14 +26,52 @@ test('the access level is a repo variable, gated before anything publishes', () 
 	assert.doesNotMatch(publish.run, /--access\s+public\b/, 'the access level is never hardcoded');
 });
 
-test('provenance is conditional on the source repo being public — npm refuses it for a private one (E422)', () => {
-	assert.match(JSON.stringify(publish.env ?? {}), /github\.event\.repository\.private/, 'the step must read the visibility GitHub reports');
-	const lines = publish.run.split('\n');
-	const withProv = lines.filter((l) => /npm publish/.test(l) && /--provenance/.test(l));
-	const without = lines.filter((l) => /npm publish/.test(l) && !/--provenance/.test(l));
-	assert.equal(withProv.length, 1, 'exactly one publish line carries --provenance (the public-repo branch)');
-	assert.equal(without.length, 1, 'exactly one publish line omits it (the private-repo branch)');
-	assert.match(publish.run, /if \[ "\$REPO_PRIVATE" = "false" \]/, 'the branch is on the repo being NOT private');
+// ── provenance from the LIVE visibility (cr-modules-001, design D-d) ─────────────────────────────
+// `github.event.repository.private` is the visibility at the time of the PUSH, and a re-run carries the
+// original event: rnd-v0.5.1 was re-run after the repo went public and still published without
+// provenance. The step asks the API at publish time, and any answer but exactly true or false stops it.
+import { spawnSync } from 'node:child_process';
+import os from 'node:os';
+
+function publishWith({ answer, rc = 0 }) {
+	const bin = fs.mkdtempSync(path.join(os.tmpdir(), 'stub-'));
+	const npmLog = path.join(bin, 'npm.log');
+	fs.writeFileSync(path.join(bin, 'gh'), `#!/bin/sh\nprintf '%s\\n' "$STUB_ANSWER"\nexit $STUB_RC\n`, { mode: 0o755 });
+	fs.writeFileSync(path.join(bin, 'npm'), `#!/bin/sh\necho "$@" >> "${npmLog}"\n`, { mode: 0o755 });
+	const r = spawnSync('bash', ['--noprofile', '--norc', '-eo', 'pipefail', '-c', publish.run], {
+		env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, STUB_ANSWER: answer, STUB_RC: String(rc), NPM_ACCESS: 'public', GITHUB_REPOSITORY: 'northwind/modules', GH_TOKEN: 'synthetic' },
+		encoding: 'utf8',
+	});
+	return { ...r, npm: fs.existsSync(npmLog) ? fs.readFileSync(npmLog, 'utf8') : null };
+}
+
+test('provenance follows the visibility the API reports at publish time, never the push event', () => {
+	assert.doesNotMatch(JSON.stringify(publish.env ?? {}), /github\.event\.repository\.private/, 'the event payload is stale on a re-run');
+	assert.match(JSON.stringify(publish.env ?? {}), /github\.token/, 'gh needs the job token');
+	assert.doesNotMatch(publish.run, /\$\{\{/, 'the run reads env only');
+	const pub = publishWith({ answer: 'false' });
+	assert.equal(pub.status, 0, pub.stderr);
+	assert.match(pub.stdout, /^public source repo — publishing with provenance$/m);
+	assert.match(pub.npm, /^publish --provenance --access public$/m);
+	const priv = publishWith({ answer: 'true' });
+	assert.equal(priv.status, 0, priv.stderr);
+	assert.match(priv.stdout, /^private source repo — npm refuses provenance for private repos \(E422\); publishing without$/m);
+	assert.match(priv.npm, /^publish --access public$/m);
+});
+
+test('an API error or any other answer stops the publish before npm runs', () => {
+	for (const c of [{ answer: '', rc: 1 }, { answer: 'false', rc: 1 }, { answer: 'oops' }, { answer: '' }]) {
+		const r = publishWith(c);
+		assert.notEqual(r.status, 0, `answer ${JSON.stringify(c)} must fail`);
+		assert.equal(r.npm, null, `npm ran on answer ${JSON.stringify(c)}`);
+		assert.match(r.stdout, /::error::/);
+	}
+});
+
+test('the release gate reaches grep through -f, never with the pattern as an argument', () => {
+	const outsideF = leakGateRun().replaceAll(`<(printf '%s' "$LEAK_NAMES")`, '<(…)');
+	assert.doesNotMatch(outsideF, /grep[^\n]*\$\{?LEAK_NAMES/);
+	assert.doesNotMatch(leakGateRun(), /xargs[^\n]*-f <\(/, 'xargs would hand a drained pipe to every batch after the first');
 });
 
 test('the gates run before publish: tag==version, tests', () => {
@@ -43,12 +81,13 @@ test('the gates run before publish: tag==version, tests', () => {
 });
 
 // ── the leak gate on the publish path (added 2026-09-10) ────────────────────────────────────────
-// `leak-scan.yml` triggers on push-to-main and pull_request; a TAG matches neither, so the release
+// `leak-scan.yml` triggers on a push to any branch and on pull_request; a TAG matches neither, so the release
 // path scanned nothing at all, and the scan that did run on main only ever saw ADDED lines. That is
 // the gate against the incident that already shipped a private vault name in three npm tarballs.
 // These pin the gate's three load-bearing properties: it exists, it runs before anything publishes,
 // and it FAILS CLOSED on a missing secret — because on a release a skipped gate looks like a pass.
 const leakGate = steps.find((s) => /leak gate/.test(s.name ?? ''));
+function leakGateRun() { return leakGate.run; }
 const ancestry = steps.find((s) => /point at a commit/.test(s.name ?? ''));
 
 test('a leak gate exists on the release path and precedes every step that publishes', () => {
