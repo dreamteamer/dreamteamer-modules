@@ -1,0 +1,19 @@
+# BUILD — the rnd-agent implements an accepted request whose plan is approved or in progress; done
+# when the plan is done. Disjoint from design (a plan exists) and from review (the plan is not done).
+collection: collections/rnd/change-requests
+available_when:
+  status:
+    _eq: accepted
+  implementation_plans:
+    status:
+      _in: [approved, in-progress]
+done_when:
+  implementation_plans:
+    status:
+      _eq: done
+harness: claude-code
+agent: agents/rnd-agent
+command: commands/rnd/implement
+concurrency: one
+stale_after: 30
+description: the rnd-agent builds the approved plan — one builder at a time

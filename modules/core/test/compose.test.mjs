@@ -7,7 +7,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
-import { ROOT, CORE, compose, copiesOf, rewrite, destOf, filesEntry } from '../../../scripts/compose-core.mjs';
+import { ROOT, CORE, compose, copiesOf, rewrite, destOf, filesEntry, assertOwnEntry } from '../../../scripts/compose-core.mjs';
 
 const spec = JSON.parse(fs.readFileSync(path.join(CORE, 'compose.json'), 'utf8'));
 
@@ -59,7 +59,7 @@ describe('the composition', () => {
 		const union = (k) => [...new Set([...(spec[k] ?? []), ...dts.flatMap((d) => d[k] ?? [])])].sort();
 		assert.deepEqual(manifest.dreamteamer.env, union('env'));
 		assert.deepEqual(manifest.dreamteamer.vars ?? [], union('vars'));
-		assert.equal(manifest.dreamteamer.extension, dts.find((d) => d.extension).extension);
+		assert.equal(manifest.dreamteamer.extension, spec.extension ?? dts.find((d) => d.extension).extension);
 		for (const d of dts) assert.ok(d.engine.replace(/^>=/, '') <= manifest.dreamteamer.engine.replace(/^>=/, ''), `floor ${d.engine} above core's ${manifest.dreamteamer.engine}`);
 		for (const p of manifest.dreamteamer.peer_collections ?? []) assert.ok(!owned.has(p), `core peers ${p}, which it owns`);
 		for (const p of union('peer_collections')) assert.ok(owned.has(p) || manifest.dreamteamer.peer_collections.includes(p), `${p} is neither owned nor peered`);
@@ -76,6 +76,17 @@ describe('the composition', () => {
 		assert.equal(manifest.dreamteamer.engine, spec.engine);
 		const dts = spec.origins.map((o) => JSON.parse(fs.readFileSync(path.join(ROOT, 'modules', o, 'package.json'), 'utf8')).dreamteamer);
 		for (const d of dts) assert.notEqual(d.engine, spec.engine, `${spec.engine} is an origin's floor already — core's own would be redundant`);
+	});
+	test("compose.json's own extension entry is the manifest's, it is no copy, and the origin's entry still ships beside it", () => {
+		assert.equal(spec.extension, './src/entry.js');
+		assert.equal(manifest.dreamteamer.extension, './src/entry.js');
+		assert.ok(!copies.has('src/entry.js'), 'the own entry must not be an origin\'s copy');
+		assert.ok(fs.existsSync(path.join(CORE, 'src', 'entry.js')), 'the own entry is authored in core');
+		assert.ok(copies.has('src/extension.js'), "files' entry is still composed in, for the own entry to activate");
+		const entry = fs.readFileSync(path.join(CORE, 'src', 'entry.js'), 'utf8');
+		assert.match(entry, /from '\.\/extension\.js'/, "the own entry activates the origin's");
+		// the one rule every composed module's own entry meets (scripts/compose-core.mjs assertOwnEntry)
+		assert.equal(assertOwnEntry(CORE, 'core', spec.extension, 'files', './src/extension.js'), './extension.js');
 	});
 	test('--check exits 0 on the committed state', async () => {
 		const { main } = await import('../../../scripts/compose-core.mjs');

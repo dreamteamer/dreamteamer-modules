@@ -1,6 +1,6 @@
 {
 	"name": "@dreamteamer/core",
-	"version": "0.7.0",
+	"version": "0.8.0",
 	"description": "Every core noun from one install: users, companies, contacts, engagements, tasks, projects, meetings, files, assets, artifacts, sessions, metrics, workflows.",
 	"license": "Apache-2.0",
 	"type": "module",
@@ -45,7 +45,7 @@
 		"data"
 	],
 	"dreamteamer": {
-		"extension": "./src/extension.js",
+		"extension": "./src/entry.js",
 		"title": "Core",
 		"description": "Every workspace's nouns, composed from the small official modules into one install: `users` with `teams`, `roles` and `responsibilities`; `companies`, `contacts`, `engagements`; `tasks`; `projects` with `decisions` and `risks`; `meetings` with recordings and docs; `files`; `assets` and `artifacts`; `sessions` and `metrics`; `workflows`. Install core OR the small modules, never both.",
 		"engine": ">=0.39.0",
