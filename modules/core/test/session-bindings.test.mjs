@@ -57,12 +57,8 @@ function fixture(binding = BINDING()) {
 	const folder = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'dtm-live-sessions-')));
 	after(() => fs.rmSync(folder, { recursive: true, force: true }));
 	const root = virginWorkspace();
-	// rnd ships its own lifecycle bindings on change-requests; this file tests core's verbs against ONE
-	// synthetic binding, so rnd's are switched off the way a workspace switches off any entity
-	editPkg(root, (pkg) => {
-		pkg.dreamteamer.vars.push('SESSIONS_FOLDER');
-		pkg.dreamteamer.disable = [...(pkg.dreamteamer.disable ?? []), ...['design', 'build', 'review'].map((s) => `session-bindings/change-requests--${s}`)];
-	});
+	// rnd ships no session binding (0.8.0), so the one this file writes is the only one the workspace has
+	editPkg(root, (pkg) => { pkg.dreamteamer.vars.push('SESSIONS_FOLDER'); });
 	fs.appendFileSync(path.join(root, '.env'), `SESSIONS_FOLDER=${folder}\n`);
 	installPacked(root, [...new Set([...closure('core'), ...closure('rnd')])]);
 	writeBinding(root, binding);

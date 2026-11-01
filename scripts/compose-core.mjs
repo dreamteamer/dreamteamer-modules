@@ -43,7 +43,7 @@ export const moduleRoot = (id) => path.join(MODULES, id);
 /** Every module with a compose.json at its root. */
 export const composedModules = () => fs.readdirSync(MODULES).filter((m) => fs.existsSync(path.join(MODULES, m, 'compose.json'))).sort();
 
-// session-bindings LAST: a kind @dreamteamer/core's extension contributes (rnd ships its lifecycle's bindings)
+// session-bindings LAST: a kind @dreamteamer/core's extension contributes, so a composed module's own bindings ride along
 const KINDS = ['collections', 'mixins', 'skills', 'commands', 'command-bindings', 'ui-views', 'agents', 'bin', 'src', 'lib', 'data', 'session-bindings'];
 const TEXT = /\.(md|ya?ml|m?js|cjs|json|txt|py|sh|css|html)$/;
 const REPO_URL = 'git+https://github.com/dreamteamer/dreamteamer-modules.git';
