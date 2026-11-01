@@ -23,7 +23,7 @@ const GIT_ENV = {
 export const SOURCES = {
 	'collections/projects.collection.yaml': `name: projects
 description: A piece of work for a client.
-use_when: a piece of work for a client is named
+use_when: a client engagement starts and its work needs tracking
 ids:
   from: '{{ name | slug }}'
 fields:
