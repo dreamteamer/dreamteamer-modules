@@ -44,9 +44,10 @@ jobs:
       #
       # ⚠ IT FAILS CLOSED, like the branch scan since cr-modules-001: on a release, silence is
       # indistinguishable from a pass — and both layers were once off on a second machine during a
-      # public-repo push prep. The pattern reaches grep through `-f`, never as an argument, and through
-      # ONE `git grep` — `xargs` would hand the already-drained pattern pipe to every batch after the
-      # first (cr-modules-001 plan review p1-01).
+      # public-repo push prep. The pattern reaches grep through `-f`, never as an argument: written once
+      # to a file in the runner's temp folder (removed on exit) — a `-f <(…)` pipe would be drained by
+      # the first `xargs` batch and every later batch would scan for nothing (cr-modules-001 plan
+      # review p1-01) — and read by grep, not `git grep -E`, whose platform regex may not know `\b`.
       # Measured 2026-09-10: all three repos DO carry the secret and the check really runs, so this
       # costs nothing today and is the only thing between an unset secret and an immutable publish.
       #
@@ -74,7 +75,9 @@ jobs:
             echo "::error::secrets.LEAK_NAMES is not a valid extended regex (grep exit $rc), so the private-name check cannot run. Re-set it from the hook's \`names\` mode."
             exit 1
           fi
-          hits=$(git grep -I -l -i -E -f <(printf '%s' "$LEAK_NAMES") -- . 2>/dev/null || true)
+          pat="$RUNNER_TEMP/leak-names.pat"; trap 'rm -f "$pat"' EXIT
+          printf '%s' "$LEAK_NAMES" > "$pat"
+          hits=$(printf '%s\n' "$TEXT" | xargs -r grep -lIiE -f "$pat" 2>/dev/null || true)
           if [ -n "$hits" ]; then
             echo "::error::$(printf '%s\n' "$hits" | wc -l | tr -d ' ') tracked file(s) match a private name"
             printf '%s\n' "$hits" | sed 's/^/  /'

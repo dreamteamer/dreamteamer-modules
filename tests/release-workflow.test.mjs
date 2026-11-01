@@ -72,6 +72,8 @@ test('the release gate reaches grep through -f, never with the pattern as an arg
 	const outsideF = leakGateRun().replaceAll(`<(printf '%s' "$LEAK_NAMES")`, '<(…)');
 	assert.doesNotMatch(outsideF, /grep[^\n]*\$\{?LEAK_NAMES/);
 	assert.doesNotMatch(leakGateRun(), /xargs[^\n]*-f <\(/, 'xargs would hand a drained pipe to every batch after the first');
+	assert.match(leakGateRun(), /xargs -r grep -lIiE -f "\$pat"/, 'the tree scan reads the pattern from a file every batch can read');
+	assert.match(leakGateRun(), /trap 'rm -f "\$pat"' EXIT/, 'the pattern file is removed on exit');
 });
 
 test('the gates run before publish: tag==version, tests', () => {
