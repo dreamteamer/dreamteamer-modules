@@ -30,7 +30,7 @@ function run(pattern, added = 'a clean line\n') {
 	const env = { ...process.env, RUNNER_TEMP: tmp };
 	if (pattern !== undefined) env.LEAK_NAMES = pattern;
 	else delete env.LEAK_NAMES;
-	const r = spawnSync('bash', ['--noprofile', '--norc', '-eo', 'pipefail', '-c', step.run], { env, encoding: 'utf8' });
+	const r = spawnSync('bash', ['--noprofile', '--norc', '-e', '-c', step.run], { env, encoding: 'utf8' });
 	return { ...r, leftovers: fs.readdirSync(tmp).filter((f) => f !== 'added.txt') };
 }
 const literalsOf = (pattern) => pattern.split('|').map((p) => p.replace(/^\\b\(/, '').replace(/\)\\b$/, '').replace(/\[ \._\/-\]\?/, ' '));

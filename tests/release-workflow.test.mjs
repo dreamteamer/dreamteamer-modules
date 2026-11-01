@@ -38,7 +38,7 @@ function publishWith({ answer, rc = 0 }) {
 	const npmLog = path.join(bin, 'npm.log');
 	fs.writeFileSync(path.join(bin, 'gh'), `#!/bin/sh\nprintf '%s\\n' "$STUB_ANSWER"\nexit $STUB_RC\n`, { mode: 0o755 });
 	fs.writeFileSync(path.join(bin, 'npm'), `#!/bin/sh\necho "$@" >> "${npmLog}"\n`, { mode: 0o755 });
-	const r = spawnSync('bash', ['--noprofile', '--norc', '-eo', 'pipefail', '-c', publish.run], {
+	const r = spawnSync('bash', ['--noprofile', '--norc', '-e', '-c', publish.run], {
 		env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, STUB_ANSWER: answer, STUB_RC: String(rc), NPM_ACCESS: 'public', GITHUB_REPOSITORY: 'northwind/modules', GH_TOKEN: 'synthetic' },
 		encoding: 'utf8',
 	});

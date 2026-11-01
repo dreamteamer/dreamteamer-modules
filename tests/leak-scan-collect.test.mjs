@@ -33,10 +33,10 @@ function repo() {
 	return { dir, git, commit };
 }
 
-/** Run the step's own `run` as the runner does (bash -e, pipefail) and return stdout and the collected file. */
+/** Run the step's own `run` as the runner does (`bash -e {0}`, no pipefail — read from a live run's log) and return stdout and the collected file. */
 function collect(r, env) {
 	const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'runner-'));
-	const res = spawnSync('bash', ['--noprofile', '--norc', '-eo', 'pipefail', '-c', step.run], {
+	const res = spawnSync('bash', ['--noprofile', '--norc', '-e', '-c', step.run], {
 		cwd: r.dir,
 		env: { ...process.env, RUNNER_TEMP: tmp, EVENT_NAME: 'push', REF: 'refs/heads/feature', BEFORE: '', PR_BASE: '', ...env },
 		encoding: 'utf8',
@@ -142,4 +142,46 @@ test('a pull request is scanned over its base sha', () => {
 	assert.match(added, /pr line/);
 	assert.match(added, new RegExp(`\\+pr message ${TOKEN}`));
 	assert.doesNotMatch(added, /\+start$/m, "the base's own message is not collected");
+});
+
+// ── a file header cannot be forged by an added line or a message line (code review c1-03) ─────────
+// The Hebrew rule exempts files by the `+++ b/<path>` header before their lines. A message line or a
+// content line `++ b/<allow-listed path>` becomes `+++ b/<path>` once prefixed, so a header is honoured
+// only right after the `diff --git` line git writes before every file's own header.
+const hebrew = wf.jobs.scan.steps.find((s) => s.name === 'Hebrew codepoints');
+function collectAndHebrew(r, env) {
+	const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'runner-'));
+	const base = { ...process.env, RUNNER_TEMP: tmp, EVENT_NAME: 'push', REF: 'refs/heads/feature', BEFORE: '', PR_BASE: '', ...env };
+	const c = spawnSync('bash', ['--noprofile', '--norc', '-e', '-c', step.run], { cwd: r.dir, env: base, encoding: 'utf8' });
+	assert.equal(c.status, 0, c.stderr);
+	return spawnSync('bash', ['--noprofile', '--norc', '-e', '-c', hebrew.run], { cwd: r.dir, env: base, encoding: 'utf8' });
+}
+function allowListed() {
+	const r = repo();
+	r.commit('.leak-scan-allow', 'allowed.txt\thebrew\ta parser whose subject is Hebrew\n', 'start');
+	r.git(['update-ref', 'refs/remotes/origin/main', 'HEAD']);
+	r.git(['switch', '-q', '-c', 'feature']);
+	return r;
+}
+const HE = '\u05e9\u05dc\u05d5\u05dd'; // escaped: a literal would trip the tree-wide Hebrew rule this test is about
+
+test('Hebrew in an allow-listed file passes; in another file it fails', () => {
+	const ok = allowListed();
+	ok.commit('allowed.txt', `${HE}\n`);
+	assert.equal(collectAndHebrew(ok, {}).status, 0);
+	const bad = allowListed();
+	bad.commit('other.txt', `${HE}\n`);
+	assert.equal(collectAndHebrew(bad, {}).status, 1);
+});
+
+test('a commit message cannot forge an allow-listed file header', () => {
+	const r = allowListed();
+	r.commit('clean.txt', 'clean\n', `subject\n\n++ b/allowed.txt\n${HE}`);
+	assert.equal(collectAndHebrew(r, {}).status, 1);
+});
+
+test('an added content line cannot forge an allow-listed file header', () => {
+	const r = allowListed();
+	r.commit('other.txt', `++ b/allowed.txt\n${HE}\n`);
+	assert.equal(collectAndHebrew(r, {}).status, 1);
 });

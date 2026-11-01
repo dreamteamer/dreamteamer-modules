@@ -75,14 +75,17 @@ jobs:
           else
             BASE=$(git merge-base origin/main HEAD 2>/dev/null || true)
           fi
-          # each commit's message under a header of its own, every line prefixed `+` like an added line
-          messages() { git log --format='+++ b/(commit metadata)%n%B' "$@" | sed '/^+++ b\/(commit metadata)$/!s/^/+/'; }
+          # each commit's message under a header of its own, every line prefixed `+` like an added line.
+          # The `diff --git` lines are kept: the Hebrew rule honours a `+++ b/<path>` header only right
+          # after one, so a content or message line `++ b/<allow-listed path>` cannot forge a header
+          # (code review c1-03).
+          messages() { git log --format='diff --git (commit metadata)%n+++ b/(commit metadata)%n%B' "$@" | sed -E '/^(diff --git|\+\+\+ b\/)\(commit metadata\)$/!s/^/+/'; }
           if [ -n "$BASE" ] && git cat-file -e "$BASE^{commit}" 2>/dev/null; then
-            { git log -p -U0 --format= --diff-merges=first-parent "$BASE"..HEAD | grep '^+' || true; messages "$BASE"..HEAD; } > "$OUT"
+            { git log -p -U0 --format= --diff-merges=first-parent "$BASE"..HEAD | grep -E '^(\+|diff --git )' || true; messages "$BASE"..HEAD; } > "$OUT"
           else
             echo "::warning::base unknown — scanning the tree and HEAD's metadata only"
             EMPTY=$(git hash-object -t tree /dev/null)
-            { git diff "$EMPTY" HEAD -U0 | grep '^+' || true; messages -1 HEAD; } > "$OUT"
+            { git diff "$EMPTY" HEAD -U0 | grep -E '^(\+|diff --git )' || true; messages -1 HEAD; } > "$OUT"
           fi
           wc -l < "$OUT" | sed 's/^ */added lines to scan: /'
 
@@ -91,7 +94,8 @@ jobs:
           # perl, not `grep -P`: -CSD makes perl match CODEPOINTS. Without it the pattern silently
           # never fires, which is the worst possible failure for a leak gate.
           # `+++ b/<path>` lines in the diff carry the file each hunk belongs to, which is what makes
-          # a per-file exemption possible at all.
+          # a per-file exemption possible at all — honoured only right after the `diff --git` line git
+          # writes before every file's header, so no added line can forge one (code review c1-03).
           perl -CSD -e '
             my %allow;
             if (open my $a, "<", ".leak-scan-allow") {
@@ -101,10 +105,12 @@ jobs:
                 $allow{"$p\t$r"} = 1 if defined $r;
               }
             }
-            my ($file, $n, %hit) = ("", 0);
+            my ($file, $n, %hit, $header) = ("", 0);
             open my $d, "<", "$ENV{RUNNER_TEMP}/added.txt" or die "no diff to scan\n";
             while (<$d>) {
-              if (m{^\+\+\+ b/(.+)$}) { $file = $1; next; }
+              if (/^diff --git /) { $header = 1; $file = ""; next; }
+              if ($header && /^\+\+\+ /) { $file = m{^\+\+\+ b/(.+)$} ? $1 : ""; $header = 0; next; }
+              $header = 0;
               next unless /^\+/;
               next if $allow{"$file\thebrew"};
               if (/[\x{0590}-\x{05FF}]/) { $hit{$file}++; $n++; }
