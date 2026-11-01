@@ -1,0 +1,77 @@
+name: teams
+description: >-
+  A named group of `users` — a delivery team, a squad, a function. One user belongs to as many teams as the work needs, so membership is a LIST here rather than a field on the person; the `teams` mirror on each user is generated from it, which means somebody joins or leaves by editing ONE record.
+use_when: >-
+  work is owned or staffed by a group rather than a person — name the team here and list its `members`; asked what somebody is part of, read the generated `teams` on their user record. A team is not an owner of last resort: a task and an activity are still assigned to a PERSON, and the team says who is available to be that person
+storage: {path: data/teams, format: md}
+# A name with no Latin characters (Hebrew, Arabic, Cyrillic, CJK) slugs to an unreadable hash id
+# rather than failing. Pass `--id` explicitly for those: `dt add teams --id <latin-handle> --name "…"`.
+ids:
+  from: "{{ name | slug }}"
+  pattern: ^[a-z0-9][a-z0-9-]*$
+fields:
+  name:
+    type: string
+    required: true
+    description: What the team is called.
+  description:
+    type: string
+    description: One line on what this team is for.
+  members:
+    type: users
+    many: true
+    description: Everyone on the team, including the lead. Editing this list is how membership changes.
+  lead:
+    type: users
+    description: Who runs the team. Name them in `members` as well — the lead is on the team.
+  company:
+    type: companies
+    description: Whose team it is — the vendor, the client, a partner. What makes a mixed-org plan readable.
+  status:
+    type: string
+    default: active
+    enum: [active, disbanded]
+    description: '`disbanded` keeps the team in history without offering it as a staffing option.'
+  tags:
+    type: string
+    many: true
+    pattern: ^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$
+    description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
+  notes:
+    type: markdown
+    body: true
+    description: How this team works — cadence, standing commitments, what it does not take on.
+  author:
+    type: string
+    examples: ['agents/claude-code', 'scripts/read-git@2']
+    pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
+    description: >-
+      Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
+  creation_context:
+    type: string
+    description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+  source:
+    title: Information source
+    type: string
+    description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…> · migration:<id>.'
+  confidence:
+    type: string
+    default: normal
+    enum: [low, normal, high]
+    description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
+display:
+  nav:
+    icon: organization
+    order: 7
+  list:
+    columns:
+      - name
+      - lead
+      - company
+      - status
+      - last_modified
+  form:
+    sections:
+      - title: Provenance
+        fields: [author, creation_context, source, confidence]
+        collapsed: true

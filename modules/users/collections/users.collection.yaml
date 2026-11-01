@@ -66,6 +66,16 @@ fields:
     many: true
     mirror_of: human_owner
     description: The agents this person owns — generated from `users.human_owner`.
+  teams:
+    type: teams
+    many: true
+    mirror_of: members
+    description: The teams this person belongs to — generated from `teams.members`, so somebody joins a team by editing the TEAM.
+  led_teams:
+    type: teams
+    many: true
+    mirror_of: lead
+    description: The teams this person runs — generated from `teams.lead`.
   notes:
     type: markdown
     body: true

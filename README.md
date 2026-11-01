@@ -18,9 +18,9 @@ npx dreamteamer init
 npx dreamteamer compile
 ```
 
-- [`@dreamteamer/core`](modules/core) — every core noun from one install: users with their roles
-  and responsibilities, companies, contacts and engagements, tasks, projects with decisions, risks
-  and teams, meetings with recordings, preps, summaries and critiques, files on mounted drives, the
+- [`@dreamteamer/core`](modules/core) — every core noun from one install: users with their teams,
+  roles and responsibilities, companies, contacts and engagements, tasks, projects with decisions and
+  risks, meetings with recordings, preps, summaries and critiques, files on mounted drives, the
   assets a view draws, artifacts, sessions and metrics, and workflows. It is a *composition* of the
   small modules below, so you install **core or the small modules, never both**.
 - [`@dreamteamer/rnd`](modules/rnd) — what a workspace builds: products, design docs, change
@@ -43,13 +43,13 @@ only the modules your `package.json` names. Each module's README has its exact i
 
 | module | what it gives a workspace | needs |
 |---|---|---|
-| [`@dreamteamer/users`](modules/users) | the people and agents work is assigned to | — |
+| [`@dreamteamer/users`](modules/users) | the people and agents work is assigned to, and the teams they form | — |
 | [`@dreamteamer/assets`](modules/assets) | icons, logos and avatars as file records, 200 KB each at most | — |
 | [`@dreamteamer/companies`](modules/companies) | organisations: the record every other module points at | assets |
 | [`@dreamteamer/contacts`](modules/contacts) | people you deal with, each at a company, enriched from LinkedIn | companies · assets |
 | [`@dreamteamer/engagements`](modules/engagements) | one record per relationship with a company: lead, client, closed | companies |
 | [`@dreamteamer/tasks`](modules/tasks) | who owes what by when: inbox, board, by person | users |
-| [`@dreamteamer/projects`](modules/projects) | the plan and everyone in it: projects, decisions, deliverables, risks, teams | users |
+| [`@dreamteamer/projects`](modules/projects) | the plan and everyone in it: projects, decisions, deliverables, risks — staffed with users' teams | users |
 | [`@dreamteamer/meetings`](modules/meetings) | calendar meetings synced from Google Calendar, attendees as contacts, screenshots filed beside each call | contacts · companies · users |
 | [`@dreamteamer/recordings`](modules/recordings) | recordings imported by content hash, matched to their meeting, transcribed offline (Hebrew and English, on the GPU where there is one) | meetings |
 | [`@dreamteamer/meeting-docs`](modules/meeting-docs) | a prep before the call, a summary after it, a critique on the transcript, and the tasks it produced | engagements · meetings · recordings · tasks · contacts · companies |
@@ -134,5 +134,6 @@ To try an unreleased change in a real workspace, preview this clone there with
 while a preview is on, because a record may not depend on an unpublished schema.
 
 The house rules — no personal data (the synthetic cast is Dana Oren, Sam Diaz, Northwind, Harbor
-Mutual), every module compiles alone, a module ships only what its `files` names — are in
-`CLAUDE.md`. Apache-2.0.
+Mutual), every module compiles alone, a module ships only what its `files` names, and a module that
+needs a sibling at a version says so as an npm `peerDependencies` floor, which npm and `dt compile`
+both refuse below — are in `CLAUDE.md`. Apache-2.0.

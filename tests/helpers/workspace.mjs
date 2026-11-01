@@ -140,6 +140,22 @@ export function engineMeets(m) {
 	return true;
 }
 
+/** Does the engine under test refuse a module whose npm `peerDependencies` floor a present sibling
+ *  misses (engine 0.42.0 or later)? Probed once per process on two synthetic modules, never read off the
+ *  output of the test that depends on it — a test that picks its assertion from the stderr it is
+ *  judging passes whatever the module under test declares. */
+let readsFloors;
+export function engineReadsFloors() {
+	if (readsFloors !== undefined) return readsFloors;
+	const root = virginWorkspace();
+	for (const [id, peers] of [['floor-a', { 'floor-b': '>=2.0.0' }], ['floor-b']]) {
+		fs.mkdirSync(path.join(root, 'modules', id), { recursive: true });
+		fs.writeFileSync(path.join(root, 'modules', id, 'package.json'), JSON.stringify({ name: id, version: '1.0.0', ...(peers ? { peerDependencies: peers } : {}), dreamteamer: {} }));
+	}
+	readsFloors = /\(its peerDependencies\)/.test(run(root, ['compile']).stderr);
+	return readsFloors;
+}
+
 /** compile, then check — asserting both exit 0 and that nothing printed is an error. */
 export function compileAndCheck(root) {
 	const compiled = run(root, ['compile']);

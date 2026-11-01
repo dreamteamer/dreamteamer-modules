@@ -1,7 +1,8 @@
 # @dreamteamer/projects
 
-The plan and everyone in it: projects, decisions, deliverables, risks and teams. The work itself is
-planned as `tasks`; a project is the effort they hang off. Every owner and lead field points at `users`.
+The plan and everyone in it: projects, decisions, deliverables and risks. The work itself is
+planned as `tasks`; a project is the effort they hang off. Every owner and lead field points at `users`,
+and a project is staffed with `teams`, which ship with users (since projects 0.4.0 — see `UPDATING.md`).
 
 ```bash
 npm install @dreamteamer/projects @dreamteamer/users
@@ -10,7 +11,7 @@ npx dreamteamer compile
 
 | alone | with others |
 |---|---|
-| the plan, its views (`/plan/by-lane`, `/plan/by-person`, `/plan/gates`, the gantt) and the plan guard | **tasks** hangs small commitments off a project or an activity · **contacts** names who accepts a deliverable, owns an outside gate or made an outside decision · **companies** says whose project or team it is |
+| the plan, its views (`/plan/by-lane`, `/plan/by-person`, `/plan/gates`, the gantt) and the plan guard; `projects.teams` staffs a project with users' teams, and each team lists back the projects it is staffed to | **tasks** hangs small commitments off a project or an activity · **contacts** names who accepts a deliverable, owns an outside gate or made an outside decision · **companies** says whose project it is |
 
 Chain the plan guard into your workspace's `check` script (`npx dt-setup setup` offers to):
 `node node_modules/@dreamteamer/projects/bin/check-records.mjs`.
@@ -53,3 +54,11 @@ projects.
 **A team is never the assignee.** Membership lives on the team, so somebody joins by editing one
 record and their own page gains the mirror. Activities and tasks still go to a person;
 `activities.team` says which team carries a rung, and `seats` names the individuals.
+
+**`teams` is a peer, not a collection of this module.** It ships with users, which projects depends
+on; projects declares only the far side of its own field, `teams.projects`, as an overlay. Naming
+`teams` in `peer_collections` is what lets that overlay wait for the collection rather than fail. A
+users older than 0.2.0 has no teams, so projects floors users at `>=0.2.0` in its npm
+`peerDependencies`: npm refuses that install, and `dreamteamer compile` (engine 0.42.0 or later)
+refuses the pair by name on every channel. Only an older engine, given an install that went around
+npm, still compiles it, and then `dreamteamer check` names the missing peer.

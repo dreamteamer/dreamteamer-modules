@@ -15,7 +15,7 @@
 	],
 	"title": "Core",
 	"description": "Every core noun from one install: users, companies, contacts, engagements, tasks, projects, meetings, files, assets, artifacts, sessions, metrics, workflows.",
-	"orientation": "Every workspace's nouns, composed from the small official modules into one install: `users` with `roles` and `responsibilities`; `companies`, `contacts`, `engagements`; `tasks`; `projects` with `decisions`, `risks` and `teams`; `meetings` with recordings and docs; `files`; `assets` and `artifacts`; `sessions` and `metrics`; `workflows`. Install core OR the small modules, never both.",
+	"orientation": "Every workspace's nouns, composed from the small official modules into one install: `users` with `teams`, `roles` and `responsibilities`; `companies`, `contacts`, `engagements`; `tasks`; `projects` with `decisions` and `risks`; `meetings` with recordings and docs; `files`; `assets` and `artifacts`; `sessions` and `metrics`; `workflows`. Install core OR the small modules, never both.",
 	"engine": ">=0.39.0",
 	"vars": [
 		"SESSIONS_FOLDER"
@@ -119,11 +119,11 @@
 		},
 		"collections/projects/teams.collection.yaml": {
 			"from": "projects/collections/teams.collection.yaml",
-			"hash": "sha256:fb48900b60d19ea9de692c769c57e557bc241ebc00f89e6427e31fe25575caf9"
+			"hash": "sha256:b6dd4f795e748e5b9e60f0d12c753f2d6af43ae7e9ec081115195a4738aebfa8"
 		},
 		"collections/projects/users.collection.yaml": {
 			"from": "projects/collections/users.collection.yaml",
-			"hash": "sha256:423e5694be993ea9fbee26544c95ff25f74d8f9dd45374e2a53b58d0c2a7d8f3"
+			"hash": "sha256:ce4271afb400212dbee45686f9a2af2e9293e038305b10068f3e7cca8dd49fc8"
 		},
 		"collections/recordings/meeting-recordings.collection.yaml": {
 			"from": "recordings/collections/meeting-recordings.collection.yaml",
@@ -145,9 +145,13 @@
 			"from": "tasks/collections/users.collection.yaml",
 			"hash": "sha256:1d2f4069a0fe698b1f8f82f1d84fdf55d87885bdc73034e92c753b4400bfd627"
 		},
+		"collections/users/teams.collection.yaml": {
+			"from": "users/collections/teams.collection.yaml",
+			"hash": "sha256:2b5837880cbaee8784544dee879fdfa8149a41c39b7b5dda6e2b0df08276eb4e"
+		},
 		"collections/users/users.collection.yaml": {
 			"from": "users/collections/users.collection.yaml",
-			"hash": "sha256:33f855adbcea0de759edd2a414d83b4b506d1e96bfbb6c3604ea57a61c866f82"
+			"hash": "sha256:6704d9247aff95b79e67bdf6278380bd70a2f2c70638d128492826522f6b48bb"
 		},
 		"collections/workflows/workflows.collection.yaml": {
 			"from": "workflows/collections/workflows.collection.yaml",

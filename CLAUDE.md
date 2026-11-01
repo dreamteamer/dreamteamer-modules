@@ -14,6 +14,12 @@ its `"dreamteamer": {}` key exists only so a clone can be previewed as a bundle 
 3. **A dependency is spelled as the full package name**, `"@dreamteamer/users"`. The engine keys a
    module by its package name for `dependencies` and `extends`, and strips the scope only for display
    and `disable`.
+   **A floor on a sibling is an npm `peerDependencies` range**, top level, `>=x.y.z` — never inside
+   `dreamteamer`: strict on a module the declarer lists in `dreamteamer.dependencies`, optional
+   (`peerDependenciesMeta`) on any other, so npm never installs a module nobody asked for. npm refuses
+   the install below it and `dt compile` (engine 0.42.0 or later) refuses it on every channel; a floor
+   the sibling in this repo does not meet, or one on a module a composition leaves out, fails
+   `tests/dependency-floors.test.mjs`.
 4. **A peer is a collection name.** Every official module lives here, so the structure test's
    `PROVIDED_ELSEWHERE` is empty and a peer nothing here provides is a typo.
 5. **A module ships only what its `files` list names.** Tests live in `modules/<id>/test/` — a skill's
