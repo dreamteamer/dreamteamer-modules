@@ -111,7 +111,8 @@ describe('dt check: deployed and deployed_on agree, as a warning', async () => {
 		}
 		assert.match(r.stdout, /⚠ data\/rnd\/change-requests\/cr-tagged\.change-request\.md — tagged deployed but deployed_on is empty — set deployed_on, or remove the tag \(@dreamteamer\/rnd\)/);
 		assert.match(r.stdout, /⚠ data\/rnd\/change-requests\/cr-dated\.change-request\.md — deployed_on is set but the record is not tagged deployed/);
-		assert.doesNotMatch(r.stdout, /cr-both/);
+		// cr-both is consistent on the tag rule; rnd's stage rule (lib/cr-stage.mjs) may still name it, for its empty stage
+		assert.doesNotMatch(r.stdout, /cr-both\.change-request\.md — (tagged deployed|deployed_on is set)/);
 		assert.match(r.stdout, /✔ 0 violations/);
 	});
 });

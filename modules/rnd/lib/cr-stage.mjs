@@ -119,3 +119,37 @@ export function stageWarnings(rows) {
 	}
 	return out;
 }
+
+/** Does this workspace compile `rnd/change-requests` with a `stage` field? */
+export function compilesStage(store) {
+	try { return Boolean(store.descriptor(COLLECTION)?.fields?.stage); } catch { return false; }
+}
+
+/** Every change request the store reads, with its expected stage and open gate — one `commandsFor` call.
+ *  `inLayer` names the record layer that holds it (null for the workspace's own root). */
+export function readRequests(store, dt) {
+	const d = store.descriptor(COLLECTION);
+	const rows = [...store.readAll(COLLECTION)];
+	const ids = rows.map((r) => r.id);
+	const res = dt.commandsFor(store, COLLECTION, ids);
+	const out = [];
+	for (const { id, file, fields } of rows) {
+		const available = [];
+		for (const c of res.commands ?? []) if (c.states?.[id] === 'available') available.push(String(c.binding).replace(/^command-bindings\//, ''));
+		const gate = expectedGate({ status: fields.status, available });
+		const layer = typeof store.layerOfFile === 'function' ? store.layerOfFile(d, file)?.layer ?? null : null;
+		out.push({ id, file, fields, stage: fields.stage, available, gate, expected: expectedStage({ status: fields.status, available }), inLayer: layer });
+	}
+	return out;
+}
+
+/** The extension's `check`: the warnings for every change request this workspace reads, files named
+ *  relative to the root. Nothing on an engine without the warning channel or `commandsFor`, or on a
+ *  workspace whose compiled descriptor has no `stage`. */
+export function checkChangeRequestStage({ ws, dt }) {
+	if (dt?.CHECK_WARNINGS !== true || typeof dt?.commandsFor !== 'function') return [];
+	const store = new dt.Store(ws);
+	if (!store.descriptors?.has?.(COLLECTION) || !compilesStage(store)) return [];
+	const rows = readRequests(store, dt).map((r) => ({ ...r, file: path.relative(ws.root, r.file).split(path.sep).join('/') }));
+	return stageWarnings(rows);
+}
