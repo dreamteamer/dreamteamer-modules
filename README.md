@@ -108,6 +108,22 @@ one, says what a workspace has to do after upgrading. `core` and `rnd` are re-co
 re-released when a module they compose changes (`scripts/compose-core.mjs`; `compose.json` in each
 lists every copy with its origin and hash).
 
+`main` is protected: a commit reaches it only when the `ci` and `leak-scan` checks passed on it, for
+administrators too, and it is never force-pushed. So a change — the version bump included — goes in
+through a branch:
+
+```bash
+git push origin <branch>                   # ci and leak-scan run on every pushed branch
+# wait for ci and leak-scan to be green on the branch's head
+git push origin <branch>:main              # a fast-forward; refused unless both passed on that commit
+git tag <id>-v<version> && git push origin <id>-v<version>   # the publish
+```
+
+A pull request from a fork is never merged with the button: its own run can report checks with the
+same names. Fetch it and take it in with `scripts/take-in.sh`, which re-commits it on a branch here
+at new commits and refuses a change to the workflows, the leak allow-list or an npm script; then
+push that branch as above.
+
 ## working on this repo
 
 ```bash

@@ -41,3 +41,16 @@ test("ci.yml has a job 'ci' that needs verify, always runs, and passes only when
 		assert.match(r.stdout, /::error::/);
 	}
 });
+
+// ── the runbook a person follows works once main is protected (design D-h) ────────────────────────
+// docs/extensions-* are historical (CLAUDE.md rule 11) and keep their old runbook; README.md is the
+// current one.
+test('README releases through a pushed branch fast-forwarded to main, and no current doc pushes main', () => {
+	const readme = fs.readFileSync(path.join(ROOT, 'README.md'), 'utf8');
+	assert.match(readme, /git push origin <branch>:main/);
+	assert.match(readme, /scripts\/take-in\.sh/);
+	assert.match(readme, /`ci` and `leak-scan`/);
+	for (const doc of ['README.md', 'CLAUDE.md']) {
+		assert.doesNotMatch(fs.readFileSync(path.join(ROOT, doc), 'utf8'), /git push origin main\b/, `${doc} still pushes main directly`);
+	}
+});
