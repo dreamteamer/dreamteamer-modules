@@ -13,7 +13,9 @@ npx dreamteamer check
 
 ## 0.8.0 — live sessions: a session starts on a record, claims it, and other agents see it
 
-Nothing to do but compile. To use it, bind a collection and merge the hook:
+**From 0.5.4, the last published core, read 0.6.0 below first**: it renames the transcriber's
+variables, and a workspace that set them has to change its `.env`. For 0.8.0 itself there is nothing to
+do but compile. To use it, bind a collection and merge the hook:
 
 - **`sessions` gains five fields** — `status` (`running` · `ended` · `abandoned`), `records`,
   `binding`, `host`, `heartbeat` — all optional, so every existing session record checks as before
@@ -54,6 +56,24 @@ your compile writes from it (the orientation block in `CLAUDE.md`, `AGENTS.md`) 
 **An overlay of yours.** If your own module overlays `teams` with `extends: "@dreamteamer/core/teams"`,
 it keeps working — core still owns teams.
 
-## 0.6.0 and earlier
+## 0.6.0 — the transcriber keeps everything in one folder, `$TRANSCRIPTION_HOME` (recordings 0.3.0) — breaking
 
-See the small modules' READMEs; core carried no upgrade notes before 0.7.0.
+0.6.0 was never published on its own: a workspace upgrading from 0.5.4 gets it with 0.8.0. **Change
+your `.env` if it sets any transcriber variable.** The three variables and three sibling folders
+become one optional variable and one folder, with no migration path:
+
+| was (0.5.4) | is (0.6.0 and later) |
+|---|---|
+| `TRANSCRIBING_MODELS_DIR` → `~/.cache/dreamteamer/transcription-models` | `$TRANSCRIPTION_HOME/models/` (`diarization/`, `whisper-ct2/`, `whisper-ggml/`) |
+| `TRANSCRIBING_VENV_DIR` → `~/.cache/dreamteamer/transcription-venv` | `$TRANSCRIPTION_HOME/venv/` |
+| `TRANSCRIBING_CACHE_DIR` → `~/.cache/dreamteamer/transcription-cache` | `$TRANSCRIPTION_HOME/asr/` |
+
+`TRANSCRIPTION_HOME` defaults to `~/.cache/dreamteamer/transcription`. The old variables move
+nothing: delete them, set `TRANSCRIPTION_HOME` only if you want another folder, and move (or let
+`dt-setup` fetch again) the model weights into `models/`. A run whose models are missing now stops
+before decoding, naming each missing path, instead of falling back to one speaker or downloading
+mid-run. `@dreamteamer/recordings` 0.3.0 carries the same change for a workspace on the small modules.
+
+## 0.5.4 and earlier
+
+See the small modules' READMEs; core carried no upgrade notes before 0.6.0.

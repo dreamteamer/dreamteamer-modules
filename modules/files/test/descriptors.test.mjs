@@ -5,14 +5,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { workspace, api } from './fixture.mjs';
 
+// `stub` is engine-owned since 0.41.0 (injected where a record can yield), like id and the two dates.
 test('the module compiles and both collections exist with the agreed fields', () => {
 	const ws = workspace();
 	const store = new api.Store({ root: ws.root, pkg: ws.pkg });
 	const drives = store.descriptor('file-drives');
 	const files = store.descriptor('files');
-	assert.deepEqual(Object.keys(api.fieldsOf(drives)).filter((k) => !['id', 'created', 'last_modified'].includes(k)),
+	assert.deepEqual(Object.keys(api.fieldsOf(drives)).filter((k) => !['id', 'created', 'last_modified', 'stub'].includes(k)),
 		['name', 'path', 'index', 'provider', 'include', 'exclude', 'preview', 'hash_max_bytes', 'description', 'tags', 'last_synced', 'entries', 'notes']);
-	assert.deepEqual(Object.keys(api.fieldsOf(files)).filter((k) => !['id', 'created', 'last_modified'].includes(k)),
+	assert.deepEqual(Object.keys(api.fieldsOf(files)).filter((k) => !['id', 'created', 'last_modified', 'stub'].includes(k)),
 		['drive', 'path', 'name', 'kind', 'ext', 'mime', 'bytes', 'modified', 'local', 'status', 'hash', 'preview', 'referenced_by', 'description', 'tags', 'notes']);
 });
 
