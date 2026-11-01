@@ -37,8 +37,9 @@ Every error body is `{ "error": "<the engine's own sentence>" }`.
 
 A write sent with `?dry-run=true` changes no file and makes no commit on any host. Where the handler has a
 PLANNER it answers the engine's plan: the module remove, the collection move (`PATCH
-/collections/collections/records/<name>` with `{module}`), the field rename, the enum-value rename, the
-field remove, and the commit (`{"dryRun": true}` in the body). Every other write answers
+/collections/collections/records/<name>` with `{module}`), the ui-view move (`PATCH
+/collections/ui-views/records/<id>` with `{module}`), the field rename, the enum-value rename, the field
+remove, and the commit (`{"dryRun": true}` in the body). Every other write answers
 `200 { "plan": null, "dry-run": "unsupported" }` and is not performed. A caller plans destructive gestures
 this way, then asks, then sends the write without `dry-run`.
 
@@ -198,8 +199,9 @@ Restore a record to a commit. Body `{ hash }`. `200` the engine's revert result.
 ### GET /commands/:collection
 
 The commands bound to a collection and each record's state against them — what `dt next` answers. Query
-`ids=<id>,<id>`. `200 [{ binding, command, name, description, argument-hint, scope, invocation, states?,
-eligible?, done? }, ...]`.
+`ids=<id>,<id>`. `200 { collection, ids, commands: [{ binding, command, name, description, argument-hint,
+scope, invocation, states?, eligible?, done? }, ...] }` — `states` maps each id to `available`, `done` or not
+eligible.
 
 ### POST /commit
 

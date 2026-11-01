@@ -16,12 +16,15 @@
 	"exports": {
 		".": "./src/routes.js",
 		"./routes": "./src/routes.js",
+		"./contract": "./lib/contract/run.js",
+		"./contract/fixture": "./lib/contract/fixture.js",
 		"./package.json": "./package.json"
 	},
 	"files": [
 		"README.md",
 		"PROTOCOL.md",
-		"src"
+		"src",
+		"lib"
 	],
 	"dreamteamer": {
 		"title": "Protocol",
