@@ -99,4 +99,7 @@ test('a name in the added lines fails the scan, without printing it', () => {
 	assert.equal(r.status, 1);
 	assert.match(r.stdout, /::error::/);
 	assert.ok(!r.stdout.includes(word('synth', 7)));
+	// t11: nothing on the hit path is a number derived from the secret (issue: the count of matching lines)
+	const rest = r.stdout.split('\n').filter((l) => !/^LEAK_NAMES fingerprint: /.test(l) && l !== 'canary: pass (floor 100)');
+	assert.doesNotMatch(rest.join('\n'), /[0-9]/, 'a number derived from the secret reached the log');
 });

@@ -188,7 +188,8 @@ jobs:
 
           n=$(names_grep "$RUNNER_TEMP/added.txt" || true)
           if [ "${n:-0}" -gt 0 ]; then
-            echo "::error::$n added line(s) match a private name. Not printing them — this log is readable by anyone with repo access."
+            # no count: how many lines matched is derived from the secret (held-out h3)
+            echo "::error::added lines match a private name. Not printing them — this log is readable by anyone with repo access."
             exit 1
           fi
           echo "✔ no private names added"
