@@ -144,6 +144,8 @@ fields:
 display:
   nav:
     icon: book
+    order: 45
+    section: knowledge
   # the notebooks list — the default a bare /content/notebooks renders. No nav entry: the collection
   # row IS the view, and there is nothing to arrange differently yet.
   list:
