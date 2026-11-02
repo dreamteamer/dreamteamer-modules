@@ -65,7 +65,7 @@ async function makeFrame(module: string, kind: string, hidden = false): Promise<
 
 // ---- requests: the gate, then the transport, then reshape
 async function answer(scope: AnyScope, bounds: ReturnType<typeof createBounds>, msg: any): Promise<{ status: number; body: unknown }> {
-	if (!bounds.start()) return { status: 429, body: { error: `module app ${scope.module} has too many requests in flight` } };
+	if (!(await bounds.acquire())) return { status: 429, body: { error: `module app ${scope.module} has too many requests waiting (4 in flight, 64 queued)` } };
 	try {
 		const [path, qs] = String(msg.path ?? '/').split('?');
 		const decision: any = gate(scope as any, descriptors, msg.method, path, new URLSearchParams(qs ?? ''), msg.body);

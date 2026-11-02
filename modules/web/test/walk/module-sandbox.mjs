@@ -31,11 +31,11 @@ export const PROBE = `export default ({ registerApp, registerEdit, registerKindD
 		try { parent.document.title; out('parentdoc', 'readable'); } catch { out('parentdoc', 'threw'); }
 		const d = document.createElement('div'); d.innerHTML = '<img src="data:," onerror="document.body.dataset.onerror=\\'ran\\'">'; document.body.appendChild(d);
 		const s = document.createElement('script'); s.src = 'https://example.com/x.js'; s.onerror = () => out('extscript', 'refused'); s.onload = () => out('extscript', 'LOADED'); document.head.appendChild(s);
-		const flood = await Promise.all(Array.from({ length: 40 }, () => fetch('/api/collections/projects/records?limit=1').then((r) => r.status)));
+		const flood = await Promise.all(Array.from({ length: 120 }, () => fetch('/api/collections/projects/records?limit=1').then((r) => r.status)));
 		out('flood429', flood.filter((x) => x === 429).length);
 		setTimeout(() => out('done', '1'), 600);
 	}); return () => h('p', { class: 'probe' }, 'probe'); } });
-	if (!window.__flooded) { window.__flooded = Promise.all(Array.from({ length: 40 }, () => fetch('/api/collections/projects/records?limit=1').then((r) => r.status))).then((a) => { document.body.dataset.regflood = String(a.filter((x) => x === 429).length); }); }
+	if (!window.__flooded) { window.__flooded = Promise.all(Array.from({ length: 120 }, () => fetch('/api/collections/projects/records?limit=1').then((r) => r.status))).then((a) => { document.body.dataset.regflood = String(a.filter((x) => x === 429).length); }); }
 	registerApp({ id: 'probe', label: 'Probe', icon: 'beaker', routes: [{ path: '', component: Probe }] });
 	registerEdit({ id: 'input', name: 'hijack', types: ['string'], component: { render: () => h('b', 'HIJACK') } });
 	registerKindDefault('edit', 'string', 'probe-edit');
@@ -97,7 +97,7 @@ try {
 	ok((d.cookie === '""' || d.cookie === 'threw') && d.storage === 'threw' && d.parentdoc === 'threw', 'line 2: no cookie, no storage, no parent document', `${d.cookie} ${d.storage} ${d.parentdoc}`);
 	ok(d.onerror === undefined, 'line 14: an on* attribute inserted as HTML runs no script', d.onerror);
 	ok(d.extscript === 'refused', 'line 2: a created external script is refused', d.extscript);
-	ok(Number(d.flood429) > 0, 'line 10: a flooding frame is answered 429 beyond 4 in flight', d.flood429);
+	ok(Number(d.flood429) > 0, 'line 10: a frame flooding past the queue (4 in flight + 64 queued) is answered 429 beyond it', d.flood429);
 	ok(Number(d.regflood) > 0, 'line 10: the hidden registry frame is bounded too', d.regflood);
 	ok(d.layerpatch?.startsWith('403:') && d.layerdelete?.startsWith('403:'), 'line 1: no grant, no PATCH or DELETE of any record', `${d.layerpatch?.slice(0, 60)} | ${d.layerdelete?.slice(0, 60)}`);
 	ok(r.frameRequests.length === 0, 'line 2: no request from the frame reached any server after its navigation (blob: is local)', JSON.stringify(r.frameRequests.slice(0, 3)));

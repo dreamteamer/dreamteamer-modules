@@ -97,13 +97,20 @@ export function forwardKey(e: { key: string; metaKey?: boolean; ctrlKey?: boolea
 	return ['p', 'b', 'j'].includes(e.key.toLowerCase());
 }
 
-/** D17: 4 requests in flight, 20 intents a second, 60 writes a minute. */
-export function createBounds(now: () => number = Date.now) {
-	let inFlight = 0; const intents: number[] = []; const writes: number[] = [];
+/** D17 as the operator revised it: 4 requests in flight, up to 64 more queued in order, refused only beyond the
+ *  queue; 20 intents a second, 60 writes a minute. */
+export function createBounds(now: () => number = Date.now, { inFlight: maxInFlight = 4, queue: maxQueue = 64 } = {}) {
+	let inFlight = 0; const waiting: Array<() => void> = []; const intents: number[] = []; const writes: number[] = [];
 	const window = (list: number[], ms: number, max: number) => { const t = now(); while (list.length && t - list[0] > ms) list.shift(); if (list.length >= max) return false; list.push(t); return true; };
 	return {
-		start: () => (inFlight >= 4 ? false : (inFlight++, true)),
-		end: () => { inFlight = Math.max(0, inFlight - 1); },
+		/** Resolves true when the request may go (now, or when a slot frees); false when the queue is full. */
+		acquire: (): Promise<boolean> => {
+			if (inFlight < maxInFlight) { inFlight++; return Promise.resolve(true); }
+			if (waiting.length >= maxQueue) return Promise.resolve(false);
+			return new Promise((resolve) => waiting.push(() => { inFlight++; resolve(true); }));
+		},
+		end: () => { inFlight = Math.max(0, inFlight - 1); waiting.shift()?.(); },
+		pending: () => ({ inFlight, queued: waiting.length }),
 		intent: () => window(intents, 1000, 20),
 		write: () => window(writes, 60_000, 60),
 	};

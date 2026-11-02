@@ -56,7 +56,7 @@ const PROBE2 = `export default ({ registerApp, registerEdit, registerView, regis
 	}); return () => h('p', 'probe2'); } });
 	registerApp({ id: 'probe2', label: 'Probe 2', icon: 'beaker', routes: [{ path: '', component: App }] });
 	const Edit = defineComponent({ props: ['value', 'field', 'record'], setup() { onMounted(async () => {
-		const flood = await Promise.all(Array.from({ length: 30 }, () => fetch('/api/collections/probe-items/records?limit=1').then((r) => r.status)));
+		const flood = await Promise.all(Array.from({ length: 120 }, () => fetch('/api/collections/probe-items/records?limit=1').then((r) => r.status)));
 		out('h3flood429', flood.filter((x) => x === 429).length);
 		parent.postMessage({ dt: 1, id: 1, op: 'request', module: 'pattern', method: 'PATCH', path: '/collections/pattern-items/records/pattern-one', body: { name: 'spoofed' } }, '*');
 		out('h3write', await st('/api/collections/pattern-items/records/pattern-one', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'probe wrote' }) }));

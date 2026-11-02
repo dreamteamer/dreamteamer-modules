@@ -44,10 +44,14 @@ test('keys: only the chrome shortcuts are forwarded', () => {
 	assert.equal(forwardKey({ key: 'Escape' }), true);
 	for (const k of [{ key: 's', metaKey: true }, { key: 'w', metaKey: true }, { key: 'a' }, { key: 'v', metaKey: true }]) assert.equal(forwardKey(k), false, k.key);
 });
-test('bounds: 4 in flight, 20 intents a second, 60 writes a minute', () => {
+test('bounds: 4 in flight, 64 queued in order, refused only beyond the queue; 20 intents a second, 60 writes a minute', async () => {
 	let now = 0; const b = createBounds(() => now);
-	for (let i = 0; i < 4; i++) assert.equal(b.start(), true);
-	assert.equal(b.start(), false); b.end(); assert.equal(b.start(), true);
+	for (let i = 0; i < 4; i++) assert.equal(await b.acquire(), true);
+	const queued = Array.from({ length: 64 }, () => b.acquire());
+	assert.deepEqual(b.pending(), { inFlight: 4, queued: 64 });
+	assert.equal(await b.acquire(), false, 'the 69th is refused');
+	b.end(); assert.equal(await queued[0], true, 'a freed slot goes to the first queued');
+	assert.deepEqual(b.pending(), { inFlight: 4, queued: 63 });
 	for (let i = 0; i < 20; i++) assert.equal(b.intent(), true);
 	assert.equal(b.intent(), false); now += 1001; assert.equal(b.intent(), true);
 	for (let i = 0; i < 60; i++) assert.equal(b.write(), true);
