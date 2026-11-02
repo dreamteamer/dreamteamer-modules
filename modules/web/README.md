@@ -87,8 +87,8 @@ running an editor command.
 
 | | |
 |---|---|
-| **protects against** | web pages on other origins, including DNS names rebound to `127.0.0.1` (Host and Origin checks); a page on another site making your browser read or write here (`Sec-Fetch-Site: cross-site` is refused, and a write needs an `Origin` naming this server or a token); a hostile image, SVG or `.html` file a record points at running script as you (record files come from a second, sandboxed origin); other users on the machine reading your token (it is in your per-user runtime directory, mode `0600`) |
-| **does not protect against** | **Another loopback server your browser visits.** Cookies are not port-scoped, so your browser sends this session to any server on `127.0.0.1`, whatever its port; a program serving one of those ports receives it and, not being a browser, can send any `Origin` it likes. **Another process running as you**: it can read your runtime directory, as it can read your files. **A browser extension** with access to `127.0.0.1`: the cookies API reads `HttpOnly` cookies. **Where the sign-in URL is written down** before it is used or expires: a session transcript, a desktop pane's logs, your shell history. **A module's app**, including one from a workspace under `git_modules/`: it runs in the page with your session, exactly as it does inside VS Code — install and read modules you trust (a sandboxed bridge for module apps is a separate change) |
+| **protects against** | web pages on other origins, including DNS names rebound to `127.0.0.1` (Host and Origin checks); a page on another site making your browser read or write here (`Sec-Fetch-Site: cross-site` is refused, and a write needs an `Origin` naming this server or a token); a hostile image, SVG or `.html` file a record points at running script as you (record files come from a second, sandboxed origin); other users on the machine reading your token (it is in your per-user runtime directory, mode `0600`); a module's app — from an npm package or a workspace under `git_modules/` — using your session: it runs in a sandboxed frame on the second origin with no cookie and no network API (`connect-src 'none'`); every record it asks for, every value it is shown and every change it sends back goes through a bridge that allows only its own collections, plus the collections and the writes YOU grant it in this workspace's own `.vscode/settings.json` (`dreamteamer.moduleApps` — the same entry in your user settings or in a `.code-workspace` file grants nothing), never anything a layer's own files declare; without a grant it is read-only; it writes only in its own repository, and it cannot commit, change the schema or replace another module's or the editor's own controls |
+| **does not protect against** | **Another loopback server your browser visits.** Cookies are not port-scoped, so your browser sends this session to any server on `127.0.0.1`, whatever its port; a program serving one of those ports receives it and, not being a browser, can send any `Origin` it likes. **Another process running as you**: it can read your runtime directory, as it can read your files. **A browser extension** with access to `127.0.0.1`: the cookies API reads `HttpOnly` cookies. **Where the sign-in URL is written down** before it is used or expires: a session transcript, a desktop pane's logs, your shell history. **What a module's app does inside its reach**: it can copy what it may read into the collections you let it write, and a layer's records leave the machine when you push the layer; and, as for any web page, a peer connection (WebRTC) to a server it names and your browser's DNS prefetch of a link's host, which no page policy governs. **Your grant is the workspace's**: `.vscode/settings.json` is a file git tracks, so a grant is shared with everyone who clones the workspace and can be changed by anyone who can push to it |
 
 Found a hole? See [SECURITY.md](../../SECURITY.md). Do not open a public issue.
 
@@ -115,9 +115,19 @@ Found a hole? See [SECURITY.md](../../SECURITY.md). Do not open a public issue.
   `Sec-Fetch-Site: cross-site` is refused.
 - **Headers.** Every response carries `Referrer-Policy: no-referrer` and `X-Content-Type-Options: nosniff`,
   and no `X-Powered-By`. The app page carries exactly
-  `Content-Security-Policy: default-src 'self'; script-src 'self' 'nonce-<new per response>'; style-src 'self' 'unsafe-inline'; img-src 'self' <files origin>; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'`.
+  `Content-Security-Policy: default-src 'self'; script-src 'self' 'nonce-<new per response>'; style-src 'self' 'unsafe-inline'; img-src 'self' <files origin> data: blob:; font-src 'self' data:; connect-src 'self'; frame-src <files origin>/<key>/_dt/frame/ <files origin>/<key>/w/; frame-ancestors 'none'; base-uri 'none'; form-action 'none'`.
   The only inline script is the boot script, which carries that nonce. Scripts otherwise load only from
-  the app's origin, which includes the workspace's module apps under `/ui-modules/`.
+  the app's own built files; no module's code is ever served by the app origin.
+- **Module apps.** A module's `ui/app.js` runs in a frame (`sandbox="allow-scripts"`, never
+  `allow-same-origin`) whose one document the second origin serves at `/<key>/_dt/frame/<module>/<kind>.html`:
+  the module's code embedded as data, a guest that loads it, and the policy `default-src 'none'; script-src
+  'unsafe-inline' blob:; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; connect-src 'none';
+  frame-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'; worker-src 'none'` — no host, no
+  hash, no nonce, so no script can load from anywhere. The frame asks the page for records by message; the
+  page answers through the bridge under the module's scope, which a grant in this workspace's own
+  `.vscode/settings.json` widens:
+  `"dreamteamer.moduleApps": { "<module>": { "reads": ["users"], "writes": ["<one of its own collections>"] } }`.
+  A refusal names the collection or route, the module or root that owns it, and what the app may reach.
 - **Links in record text.** A link in a markdown field is drawn as a link only for `http:`, `https:` and
   `mailto:` addresses and the app's own routes; anything else, such as `javascript:`, is drawn as text.
 - **Revisions are checked.** A commit named in a request (`?hash=` on a record's history, `hash` on a
@@ -132,8 +142,9 @@ Found a hole? See [SECURITY.md](../../SECURITY.md). Do not open a public issue.
 
 ### served
 
-- **The app origin** serves the UI's built files, the workspace's module apps (`.dreamteamer/ui/`), and the
-  protocol at `/api/` over the workspace's records.
+- **The app origin** serves the UI's built files and the protocol at `/api/` over the workspace's records.
+- **The files origin** also serves each module app's frame document (from `.dreamteamer/ui/`), and nothing
+  of a module's code by any other path.
 - **The files origin** serves files inside the folders that declared variables render to (for example
   `${env:FILES_FOLDER}/…` on a record), and `.html` pages inside the workspace that a record names. A path
   with `..`, an absolute path, or a link pointing out of its root is refused.
@@ -181,6 +192,8 @@ are listed in `SECURITY.md`.
 
 - **"Sign in with the URL `dt web` printed"**: you opened the bare address, or reused a sign-in URL. Run
   `npx dt web url` and open the new one.
+- **A page at `[::1]`**: `[::1]` is redirected to `127.0.0.1`, because module frames cannot name an IPv6
+  address as their ancestor.
 - **`403`**: the address is not one this server answers. Use `127.0.0.1`, `localhost` or `[::1]` with the
   printed port.
 - **"port 4870 is in use"**: drop `--port` (or `DT_WEB_PORT`) to take a free port.
