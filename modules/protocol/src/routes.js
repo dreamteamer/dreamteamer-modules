@@ -30,6 +30,8 @@ export const ROUTES = [
 	{ id: 'rename', method: 'POST', pattern: '/collections/:collection/rename', doc: 'post-collections-collection-rename' },
 	{ id: 'revert', method: 'POST', pattern: '/collections/:collection/records-revert/*id', doc: 'post-collections-collection-records-revert-id' },
 	{ id: 'commands', method: 'GET', pattern: '/commands/:collection', doc: 'get-commands-collection' },
+	{ id: 'notes', method: 'GET', pattern: '/notes/:collection', doc: 'get-notes-collection' },
+	{ id: 'sessions-running', method: 'GET', pattern: '/sessions/running', doc: 'get-sessions-running' },
 	{ id: 'commit', method: 'POST', pattern: '/commit', doc: 'post-commit' },
 	{ id: 'history', method: 'GET', pattern: '/history/:collection/*id', doc: 'get-history-collection-id' },
 	{ id: 'history-diff', method: 'GET', pattern: '/history-diff/:collection/*id', doc: 'get-history-diff-collection-id' },

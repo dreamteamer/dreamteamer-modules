@@ -5,6 +5,12 @@ export interface EngineWorkspace {
     pkg: any;
     extensions: unknown[];
 }
+export interface EngineNote {
+    id: string | null;
+    text: string;
+    by: string;
+    error?: true;
+}
 export interface DescriptorStorage {
     path: string;
     format: "md" | "yaml" | "json" | "binary";
@@ -66,6 +72,7 @@ export interface EngineModules {
         msg: string;
     }[]>;
     commandsFor: (store: any, collection: string, ids: string[]) => any;
+    contributedNotes?: (ws: EngineWorkspace, collection: string, ids: string[]) => EngineNote[];
     recordResolver: (store: any) => (ref: string) => any;
     distinctValues: (store: any, collection: string, field: string, opts?: {
         limit?: number;

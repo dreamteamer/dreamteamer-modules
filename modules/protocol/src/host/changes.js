@@ -34,3 +34,6 @@ function relativeSegments(root, file) {
 function normalize(p) {
     return p.replace(/\\/g, "/").replace(/\/+$/, "");
 }
+export function invalidateMessage(scope, opts = {}) {
+    return opts.pages ? { type: "dt:invalidate", scope, pages: true } : { type: "dt:invalidate", scope };
+}

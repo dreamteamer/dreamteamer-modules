@@ -34,6 +34,8 @@ export declare class WorkspaceApi {
     private route;
     private currentHandle;
     private hintUnencoded;
+    private runningSessions;
+    private holds;
     private listRecords;
     private readRecord;
     private createRecord;
@@ -58,3 +60,4 @@ export declare const MODIFIED_BY_KEY = "$last-modified-by";
 export declare const CREATED_BY_KEY = "$created-by";
 export declare const MODULE_KEY = "$module";
 export declare const DUPLICATES_KEY = "$duplicates";
+export declare function revisionParam(value: unknown): string;

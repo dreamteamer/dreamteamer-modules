@@ -91,6 +91,15 @@ export const cases = [
 		check(row, 'review-project is not bound');
 		check(row.states?.['northwind-launch'] === 'available', `northwind-launch is ${row.states?.['northwind-launch']}, expected available`);
 	} },
+	{ id: 'notes', route: 'notes', method: 'GET', path: '/notes/projects?ids=northwind-launch', expect: (res) => {
+		ok(res); shape(res.body, { notes: 'array' });
+	} },
+	{ id: 'sessions-running', route: 'sessions-running', method: 'GET', path: '/sessions/running', expect: (res) => {
+		ok(res); shape(res.body, { state: 'string', sessions: 'array' });
+	} },
+	{ id: 'records-list-notes', route: 'records-list', method: 'GET', path: '/collections/projects/records?notes=1', expect: (res) => {
+		ok(res); shape(res.body, { records: 'array', total: 'number' }); check(res.body.total >= 3, `total ${res.body.total}`);
+	} },
 	{ id: 'history', route: 'history', method: 'GET', path: '/history/projects/northwind-launch', expect: (res, ctx) => {
 		ok(res); check(Array.isArray(res.body) && res.body.length >= 1, 'no commits');
 		ctx.state.fixtureHash = res.body[0].hash ?? res.body[0].sha;

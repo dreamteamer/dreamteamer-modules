@@ -145,7 +145,8 @@ field, values: [{ value, count }], total, truncated }`. The computed keys (`$sou
 
 A page of rows. Query: `limit` (default 200), `offset`, `sort` (`field` or `-field`), `q` (substring over the
 row), `filter` (JSON, the engine's operators `_eq` `_contains` `_in` `_and` … and one-hop relational
-conditions), `field=value` or `filter[field]=value` (equality), `with-body=true` (include the body field).
+conditions), `field=value` or `filter[field]=value` (equality), `with-body=true` (include the body field), `notes=1` (each row also carries `$notes`, the lines
+`GET /notes/:collection` answers for it).
 `200 { records: [row, ...], total, sources: [{ name, kind, …, count }] }` — `count` per source counts the
 rows the filter leaves before paging. Rows carry the computed keys above.
 
@@ -198,6 +199,19 @@ The commands bound to a collection and each record's state against them — what
 `ids=<id>,<id>`. `200 { collection, ids, commands: [{ binding, command, name, description, argument-hint,
 scope, invocation, states?, eligible?, done? }, ...] }` — `states` maps each id to `available`, `done` or not
 eligible.
+
+### GET /notes/:collection
+
+What the workspace's installed extensions say about records — the lines `dt next` prints under its
+commands (a session holding a record, say). Query `ids=<id>,<id>`. `200 { notes: [{ id, text, refs, … }] }`,
+each reference in a line marked by whether this workspace holds it. `200 { notes: [] }` on an engine that
+predates contributed notes.
+
+### GET /sessions/running
+
+The sessions now running in this workspace, newest heartbeat first, with the notes on the records each
+holds — what an Activity page shows. `200 { state, sessions: [...] }`; `state` is `absent` when the workspace
+has no `sessions` collection, `unreadable` (with a `reason`) when its records cannot be read.
 
 ### POST /commit
 
