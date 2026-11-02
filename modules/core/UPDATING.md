@@ -11,6 +11,45 @@ npx dreamteamer check
 
 ---
 
+## 0.9.0 — sessions are plain records; session-bindings is gone (breaking)
+
+**Engine floor 0.42.0** — a record's sessions are said by `dt next` through the `next` contribution.
+
+- **`sessions` records live in `data/sessions/`**, committed like any other record. `SESSIONS_FOLDER`
+  names only where transcript copies go (`transcript: ${env:SESSIONS_FOLDER}/<yyyy>/<mm>/<id>.jsonl`);
+  unset, every record verb works. The fields `status`, `binding` and `heartbeat` are gone; the list
+  shows `records`.
+- **`dt session bind <ref>…`** (and `/session:bind`) adds records of any collection to the current
+  session, writing it when absent, in the workspace the session runs in (never a `git_modules/` layer).
+  Again changes nothing; another session on the same record is named in one line, never refused.
+- **`dt next <ref>`** lists the sessions that bound the record, read when asked.
+- **`dt session end`** stamps `ended` once; **`dt session send <session> <text>`** asks a past session
+  through a fork with no tools, no MCP servers and no hooks.
+- **Removed:** the `session-bindings` collection and its validation, `dt session start`, `dt sessions`,
+  the claim, the stale sweep, the orientation paragraph and the contributed `Stop` hook. A
+  `session-bindings/` folder still shipped by a layer or a package compiles with one
+  `session-bindings/<file>: retired in core 0.9.0, ignored` line, exit 0. `dt session heartbeat [--hook]`
+  stays through 0.9.x as a silent exit-0 no-op, so 0.8.0's Stop entry never blocks a stop.
+
+What to do:
+
+```bash
+npm install @dreamteamer/core@0.9.0 dreamteamer@'>=0.42.0'
+node node_modules/@dreamteamer/core/bin/sessions-migrate.mjs           # the plan, nothing written
+node node_modules/@dreamteamer/core/bin/sessions-migrate.mjs --write   # apply it
+npx dreamteamer compile && npx dreamteamer check
+npx dreamteamer commit sessions/<id> …                                # the moved records, by id
+```
+
+The migration moves each session under `SESSIONS_FOLDER` whose transcript was recorded in this
+workspace (or whose `repo` path is inside it) to `data/sessions/`, keeping its id, and lists the rest as
+`left` — a machine folder may be shared by two workspaces; `--take <id>` moves one explicitly. It moves
+`${env:FILES_FOLDER}/sessions/` transcripts under `SESSIONS_FOLDER` and rewrites the field, drops the
+three removed fields, deletes the workspace's own `session-bindings/` sources, and removes 0.8.0's
+`session heartbeat --hook` Stop entry from `.claude/settings.json`. It stages nothing: the moved
+records become visible to everyone who reads the workspace, so commit them yourself. A second run
+prints zeros.
+
 ## 0.8.0 — live sessions: a session starts on a record, claims it, and other agents see it
 
 **From 0.5.4, the last published core, read 0.6.0 below first**: it renames the transcriber's

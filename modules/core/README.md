@@ -42,20 +42,16 @@ compile refuses, and that is the right answer.
 `/session:save` reads the transcript the harness keeps for the current session and upserts
 `sessions/<session id>` with what it holds — turns, tool calls, input and output tokens, cache read
 and written, cost at list price, wall and API minutes, the models that answered, lines added and
-removed — and keeps a copy of the transcript under `${env:FILES_FOLDER}/sessions/`, since the harness
+removed — and keeps a copy of the transcript under `${env:SESSIONS_FOLDER}/`, since the harness
 sweeps its own after a month. `/session:analyze` reads that transcript as a reviewer and writes
 `analysis` and a one-line `description` onto the record. Both are the `managing-sessions` skill; the
 reader is `bin/session-save.mjs` (`--json` prints the fields and writes nothing).
 
-A session record is one person's working trace, so the collection lives OUTSIDE the repo: its
-`storage.path` is `${env:SESSIONS_FOLDER}`, which core requests in its `dreamteamer.vars`, the
-workspace declares in its own `dreamteamer.vars` (compile says so until it does) and `.env` sets per
-machine. A record is `<SESSIONS_FOLDER>/<yyyy>/<mm>/<id>.session.md`; `dt list`, `dt get` and
-`dt check` read the folder, `dt status` names it under `storage:`, and `dt commit` reports it as
-outside every git repo here — session records are never committed, and need no `.gitignore` line.
-With `SESSIONS_FOLDER` unset, compile warns and every record verb on `sessions` refuses, naming the
-var: set it in `.env`, declare it beside `FILES_FOLDER` in the workspace's `dreamteamer.vars`, and
-recompile. The transcript copy is separate, under `${env:FILES_FOLDER}/sessions/`. To keep the
+A session record is an ordinary record under `data/sessions/`, committed like any other — a
+colleague who pulls the workspace lists it. `SESSIONS_FOLDER` (core requests it in `dreamteamer.vars`;
+the workspace declares it and `.env` sets it per machine) names only where transcript copies go:
+`transcript` reads `${env:SESSIONS_FOLDER}/<yyyy>/<mm>/<session id>.jsonl`. Unset, every record verb
+still works and the record points at the harness's own copy. To keep the
 metrics current without anyone remembering, bind the reader to the harness's `Stop` hook in the
 workspace's `.claude/settings.json` — the module ships the reader, not the binding:
 
@@ -81,35 +77,31 @@ The hook writes metrics only; `outcome`, `analysis` and `description` stay the s
 reviewer's words. Namespaced commands (`commands/session/save.command.md` typed as `/session:save`)
 need engine 0.38; an env-pointed `storage.path` needs 0.39, which is core's floor.
 
-## live sessions: a session starts on a record and claims it
-
-A `sessions` record can also be written when work STARTS. A module binds a collection in
-`session-bindings/<id>.session-binding.yaml` — the record state that opens a session (`available_when`),
-the state that ends the work (`done_when`), the `agent` and `harness`, the `command` it starts with,
-`concurrency` (`one`: a second start is refused unless `--join`; `many`) and `stale_after` (minutes
-without a heartbeat, default 30). Compile validates every binding and refuses a bad one by name.
+## binding records to a session, and asking one
 
 ```bash
-dt sessions open [--collection <c>] [--json]      # what a binding makes available and nobody holds
-dt session start <collection>/<id> [--agent <id>] [--join]   # claim it: a running sessions record
-dt next <collection>/<id>                         # "in session by agents/<a> since <time>" while it runs
-dt session end <session> [--outcome <text>]       # yours only; ended, the record is free again (--force: a person's)
-dt list sessions --filter status=running          # who is working on what
+dt session bind <collection>/<id>… [--session <id>]   # add records to the current session's `records` (/session:bind)
+dt next <collection>/<id>                             # "worked on in sessions/<id> — …", one line per session
+dt session end [<session>] [--outcome <text>]         # stamp `ended` once; the outcome is the body
+dt session send <session> "<question>"                # ask a past session, through a fork with no tools
 ```
 
-The claim is the session: a `running` record listing the ref in `records`, with a fresh `heartbeat`.
-It is advisory — `start` refuses, `dt next` and `dt sessions open` say so, and no write is blocked.
-Sessions live in `${env:SESSIONS_FOLDER}`, so a claim is seen at once by every worktree and agent on
-this machine, and by no other machine. A Claude Code session keeps its heartbeat with the `Stop` hook
-`dt install --print-adapters` prints (`dt session heartbeat --hook`, keyed by the harness session id);
-a session silent past its binding's `stale_after` is `abandoned` and its claim lapses. A session's
-`end` and `heartbeat <id>` belong to its own harness session (or its worker's `--agent`): another
-caller is refused naming the holder, and a person frees a stuck claim with `--force`, which the
-holder's Stop hook reports once. When a session's own binding no longer opens its record (its
-stage is done), `dt next` says so and names `dt session end`, and the next stage's binding is open
-beside it — listed by `dt sessions open` as held by a finished stage. The line in
-`dt next` needs an engine with the `next` extension contribution; on an older engine every other verb
-works. The `managing-sessions` skill has the procedure and an example binding.
+`records` takes any number of references to records of any collection. A session record is written to
+the workspace the session runs in — never inside a `git_modules/` layer — so one harness session is
+one record, and a layer's record is bound from the workspace that reads the layer. Binding again changes
+nothing. There is no claim and no lock: when another session already lists a record, `bind` names it
+in one line and binds anyway. A record's sessions are read when `dt next` asks, from every root the
+open workspace reads; nothing is written to the bound record, so a layer opened on its own sees only
+its own sessions.
+
+`dt session send` resumes the session's transcript by its stored `session_id` with
+`claude -p --resume <id> --fork-session`, with no tools, no MCP servers and no hooks, from a temporary
+folder, the question on stdin: the session's own history is untouched and the fork can only answer. It
+needs the transcript on this machine and a claude-code session, and refuses naming which otherwise.
+
+Core 0.8.0's live sessions (session-bindings, `dt session start`, `dt sessions open`, the heartbeat
+and the claim) are gone; a `session-bindings/` folder a layer or an older package still ships compiles
+with one `retired … ignored` line. `bin/sessions-migrate.mjs` moves a 0.8.0 workspace (UPDATING 0.9.0).
 
 ## workflows
 
