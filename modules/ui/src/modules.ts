@@ -5,7 +5,7 @@
  * intent, navigation and value a frame sends is checked here — requests by @dreamteamer/protocol's gate under
  * the module's scope, built from the compiled runtime and the person's grant (__DT_MODULE_GRANTS__).
  */
-import { defineComponent, h, onBeforeUnmount, onMounted, ref, shallowRef, watch, type Component, type PropType } from 'vue';
+import { defineComponent, h, onBeforeUnmount, onMounted, reactive, ref, shallowRef, watch, type Component, type PropType } from 'vue';
 import type { Router } from 'vue-router';
 import { gate } from '@dreamteamer/protocol/gate';
 import { matchRoute } from '@dreamteamer/protocol/routes';
@@ -36,11 +36,14 @@ if (typeof window !== 'undefined') {
 	window.addEventListener('message', (ev) => { const a = bridge.accept(ev); if (a) a.meta.handle(a.msg); });
 	window.addEventListener('message', (ev) => {
 		const d = ev.data;
-		if (d?.type !== 'dt:invalidate' || ev.source !== window && ev.source !== null && ev.source !== window.parent) return;
-		for (const [, frame] of liveFrames) { const out = invalidationFor(frame.scope, d); if (out) frame.post({ op: 'invalidate', detail: out }); if (d.scope === 'schema') frame.stale(); }
+		// the host's invalidation arrives from the page itself (dt web) or VS Code's webview channel; never trust a module frame's
+		if (d?.type !== 'dt:invalidate' || liveFrames.has(ev.source as Window) || [...registries.values()].includes(ev.source as Window)) return;
+		for (const [, frame] of liveFrames) { const out = invalidationFor(frame.scope, d); if (out) frame.post({ op: 'invalidate', detail: out }); if (d.scope === 'schema') { frame.stale(); staleModules.add(frame.scope.module); } }
 	});
 }
 const liveFrames = new Map<Window, { scope: AnyScope; post: (m: any) => void; stale: () => void }>();
+/** Modules whose code may have changed since the page loaded — kept per module, so a remounted frame still says so (h8). */
+const staleModules = reactive(new Set<string>());
 
 // ---- the frame document: by URL from the files origin (dt web) or as srcdoc (VS Code)
 const texts = new Map<string, Promise<string>>();
@@ -176,7 +179,7 @@ const ModuleFrame = defineComponent({
 		if (props.kind === 'app') watch(() => routerRef?.currentRoute.value.fullPath, () => post({ op: 'route', route: route() }));
 		onBeforeUnmount(() => { if (win) { bridge.remove(win); liveFrames.delete(win); } document.removeEventListener('paste', onPaste, true); });
 		return () => h('div', { class: 'dt-module-frame-wrap', style: props.kind === 'list' || props.kind === 'app' ? 'height:100%' : '' }, [
-			stale.value ? h('div', { class: 'dt-module-notice', role: 'status' }, `module app updated — reload to use its new code (${props.module})`) : null,
+			stale.value || staleModules.has(props.module) ? h('div', { class: 'dt-module-notice', role: 'status' }, `module app updated — reload to use its new code (${props.module})`) : null,
 			stopped.value ? h('div', { class: 'dt-module-notice', role: 'alert' }, stopped.value) : null,
 			h('div', { ref: host, class: 'dt-module-frame', style: props.kind === 'list' || props.kind === 'app' ? 'height:100%' : '' }),
 		]);
