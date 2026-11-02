@@ -19,7 +19,14 @@
 		"./contract": "./lib/contract/run.js",
 		"./contract/fixture": "./lib/contract/fixture.js",
 		"./package.json": "./package.json",
-		"./handler": "./src/handler.js"
+		"./handler": "./src/handler.js",
+		"./gate": "./src/gate.js",
+		"./reshape": "./src/reshape.js",
+		"./apply-write": "./src/apply-write.js",
+		"./frame-bridge": "./src/frame-bridge.js",
+		"./module-scope": "./src/module-scope.js",
+		"./module-grant": "./src/module-grant.js",
+		"./frame-document": "./src/frame-document.js"
 	},
 	"files": [
 		"README.md",
