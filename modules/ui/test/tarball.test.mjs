@@ -20,6 +20,9 @@ test('the build, packed: dist/lib/index.js with its types and style.css, and dis
 	const page = fs.readFileSync(path.join(UI, 'dist', 'app', 'index.html'), 'utf8');
 	const script = /<script type="module"[^>]*src="\.\/assets\/([^"]+\.js)"/.exec(page)?.[1];
 	assert.ok(script && files.includes(`dist/app/assets/${script}`), 'the page loads its entry from ./assets/, and the entry ships');
+	const appCss = [...page.matchAll(/href="\.\/(assets\/[^"]+\.css)"/g)].map((m) => fs.readFileSync(path.join(UI, 'dist', 'app', m[1]), 'utf8')).join('\n');
+	assert.match(appCss, /--dt-unknown-color\s*:/, 'the browser page does not carry browser.css');
+	assert.match(appCss, /prefers-color-scheme:\s*dark/, 'the browser page has no dark set');
 	const lib = fs.readFileSync(path.join(UI, 'dist', 'lib', 'index.js'), 'utf8');
 	assert.match(lib, /export\s*\{[^}]*\bmount\b/, 'the library exports mount');
 	assert.match(fs.readFileSync(path.join(UI, 'dist', 'lib', 'style.css'), 'utf8'), /--dt-/, 'the stylesheet carries the tokens');
