@@ -36,6 +36,14 @@ describe('dt session send', () => {
 		assert.ok(calls[0].opts.cwd.startsWith(fs.realpathSync(os.tmpdir())) || calls[0].opts.cwd.startsWith(os.tmpdir()), calls[0].opts.cwd);
 	});
 
+	test('the message is everything after the session id — a leading -- ends the options, and an unknown --word is text', async () => {
+		const { messageOf } = await import('../src/sessions/cli.js');
+		assert.deepEqual(messageOf([SID, '--', '--help me']), { sid: SID, text: '--help me', json: false });
+		assert.deepEqual(messageOf([SID, '--verbose', 'please']), { sid: SID, text: '--verbose please', json: false });
+		assert.deepEqual(messageOf(['--json', SID, 'what', 'next?']), { sid: SID, text: 'what next?', json: true });
+		assert.deepEqual(messageOf([SID, '--', '--json']), { sid: SID, text: '--json', json: false });
+	});
+
 	test('refusals name the reason: no transcript here, another harness, claude missing', () => {
 		const spawn = () => { throw new Error('must not run'); };
 		const empty = { CLAUDE_CONFIG_DIR: configWith(null) };

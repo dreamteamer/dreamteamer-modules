@@ -13,7 +13,7 @@ export const SESSION_USAGE = [
 	'                                              (add records to the current session — $CLAUDE_CODE_SESSION_ID —',
 	'                                               or the one --session names; writes the session record when absent)',
 	'  session end [<session>] [--outcome <text>] [--json]   (stamp ended; --outcome writes the body)',
-	'  session send <session> <text>… [--json]     (ask the session a question through a fork with no tools;',
+	'  session send [--json] <session> [--] <text>…  (ask the session a question through a fork with no tools;',
 	'                                               its own history is untouched)',
 ].join('\n');
 
@@ -119,10 +119,22 @@ export async function end(ws, dt, pos, flags = {}, env = process.env) {
 	return { session: `sessions/${sid}`, ended, already: false };
 }
 
-export async function send(ws, dt, pos, flags = {}, { env = process.env, spawn } = {}) {
-	const sid = strip(pos[0] ?? '', 'sessions');
-	const text = pos.slice(1).join(' ');
-	if (!sid || !text) throw new Error('dt session send needs a session and a message: dt session send <session> <text>');
+/** send's argv → { sid, text, json }: `--json` is its one option, read only before `--`; the first other
+ *  word is the session and EVERYTHING after it is the message, an unknown `--word` included. */
+export function messageOf(args) {
+	const cut = args.indexOf('--');
+	const head = cut === -1 ? args : args.slice(0, cut);
+	const tail = cut === -1 ? [] : args.slice(cut + 1);
+	const json = head.includes('--json');
+	const words = head.filter((a) => a !== '--json');
+	const sid = strip(words[0] ?? tail[0] ?? '', 'sessions');
+	const text = [...words.slice(1), ...(words.length ? tail : tail.slice(1))].join(' ');
+	return { sid, text, json };
+}
+
+export async function send(ws, dt, args, { env = process.env, spawn } = {}) {
+	const { sid, text } = messageOf(args);
+	if (!sid || !text) throw new Error('dt session send needs a session and a message: dt session send <session> <text> (-- before a message that starts with --)');
 	const store = new dt.Store(await writeWorkspace(ws, dt));
 	return sendTo(readSession(store, sid), text, { env, ...(spawn && { spawn }) });
 }
@@ -134,6 +146,12 @@ export async function sessionCommand(ws, argv, dt, { env = process.env } = {}) {
 	// retired in 0.9.0: a heartbeat — hook or not — is a no-op at exit 0 through 0.9.x, so the 0.8.0 Stop
 	// hook a workspace merged never blocks its harness's stop; bin/sessions-migrate.mjs removes the entry
 	if (sub === 'heartbeat') return 0;
+	if (sub === 'send') {
+		const r = await send(ws, dt, rest, { env });
+		if (messageOf(rest).json) dt.emit(r.raw.trim());
+		else console.log(r.reply.result ?? r.raw);
+		return 0;
+	}
 	const { pos, flags } = parse(rest);
 	const out = (o, text) => { if (flags.json) dt.emit(JSON.stringify(o, null, 2)); else console.log(text); };
 	switch (sub) {
@@ -146,12 +164,6 @@ export async function sessionCommand(ws, argv, dt, { env = process.env } = {}) {
 		case 'end': {
 			const r = await end(ws, dt, pos, flags, env);
 			out(r, r.already ? `· ${r.session} already ended ${r.ended} — nothing changed` : `✔ ${r.session} ended ${r.ended}`);
-			return 0;
-		}
-		case 'send': {
-			const r = await send(ws, dt, pos, flags, { env });
-			if (flags.json) dt.emit(r.raw.trim());
-			else console.log(r.reply.result ?? r.raw);
 			return 0;
 		}
 		default:
