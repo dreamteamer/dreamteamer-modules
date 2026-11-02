@@ -34,6 +34,13 @@ const GIT_TIMEOUT_MS = 30_000;
 export function createApp(ws, { host, token } = {}) {
 	if (!dt) throw new Error('@dreamteamer/http: no engine bound — activate(dt) binds it; a tool mounting createApp calls bind(api) first');
 	const app = express();
+	app.disable('x-powered-by');
+	// on every answer, the guards' refusals included: never sniff a body as another type, never send
+	// this server's URL (record ids, paths) on to a page a response links to
+	app.use((req, res, next) => {
+		res.set({ 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer' });
+		next();
+	});
 	app.use(requestGuard({ host, token }));
 	let handler = null;
 	const ready = () => (handler ??= createHandler({ root: ws.root }));
@@ -110,7 +117,8 @@ const sha = (s) => crypto.createHash('sha256').update(String(s)).digest();
  * Every request: `Host` is the address the connection arrived on, the bound `--host` name, or (on a
  * loopback address) `localhost`, `127.0.0.1` or `[::1]` — each with the bound port. An `Origin`, when
  * sent, is `http://` plus one of those. With a token, `Authorization: Bearer <token>`. A page on
- * another origin, or a DNS name rebound to this address, is answered 403 before any route runs.
+ * another origin — by its `Origin`, or by the `Sec-Fetch-Site: cross-site` a browser sends even on an
+ * image or a navigation — or a DNS name rebound to this address, is answered 403 before any route runs.
  */
 function requestGuard({ host, token }) {
 	const tokenHash = token ? sha(token) : null;
@@ -124,6 +132,10 @@ function requestGuard({ host, token }) {
 		if (port === 80) for (const n of names) allowed.add(n);
 		if (!allowed.has(String(req.headers.host ?? '').toLowerCase())) {
 			return res.status(403).json({ error: `Host "${req.headers.host ?? ''}" is not this server — use ${local}:${port}` });
+		}
+		// every current browser marks a request another site's page started; curl and the editor never do
+		if (String(req.headers['sec-fetch-site'] ?? '').toLowerCase() === 'cross-site') {
+			return res.status(403).json({ error: 'a cross-site request may not call this api' });
 		}
 		const origin = req.headers.origin;
 		if (origin !== undefined && !(/^http:\/\//i.test(origin) && allowed.has(origin.slice(7).toLowerCase()))) {

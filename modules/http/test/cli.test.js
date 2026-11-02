@@ -3,10 +3,13 @@
 import { test, describe, before } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { BIN, GIT_ENV, workspace } from '../../../tests/helpers/fixture.mjs';
+import fs from 'node:fs';
+import { BIN, GIT_ENV, packageDir, workspace } from '../../../tests/helpers/fixture.mjs';
 
 const START_TIMEOUT_MS = 30_000;
 let h;
+// the version the package says it is, so a release bump does not have to edit this test
+const VERSION = JSON.parse(fs.readFileSync(`${packageDir('http')}/package.json`, 'utf8')).version.replaceAll('.', '\\.');
 
 before(() => { h = workspace({ packages: ['http'] }); });
 
@@ -58,9 +61,9 @@ describe('dt serve', () => {
 
 	test('dt status lists the extension and dt help appends its usage', () => {
 		const status = h.dt('status');
-		assert.match(status.stdout, /extensions: .*@dreamteamer\/http@0\.2\.0/);
+		assert.match(status.stdout, new RegExp(`extensions: .*@dreamteamer/http@${VERSION}`));
 		const help = h.dt('help');
-		assert.match(help.stdout, /@dreamteamer\/http@0\.2\.0:\n\s+serve \[--port <n>\] \[--host <addr>\] \[--token <secret>\]/);
+		assert.match(help.stdout, new RegExp(`@dreamteamer/http@${VERSION}:\\n\\s+serve \\[--port <n>\\] \\[--host <addr>\\] \\[--token <secret>\\]`));
 	});
 
 	// engine 0.33: a verb an extension answers, typed without its package, prints the install line

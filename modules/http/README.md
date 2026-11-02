@@ -43,6 +43,14 @@ What `dt serve` adds is the TRANSPORT, which an in-process host has none of:
 - **`Host` and `Origin`.** The `Host` header names the server's own address and port (`localhost` and
   `127.0.0.1` too, on loopback); an `Origin`, when sent, is `http://` plus that host and port. Anything
   else is `403` — a page on another origin, or a DNS name rebound to this address.
+- **A cross-site request.** Any request a browser marks `Sec-Fetch-Site: cross-site` is `403`, whatever its
+  method or path — a page on another site cannot reach the api even through an image or a link, which
+  send no `Origin`.
+- **Revisions.** A commit a request names (`?hash` on `/history-diff`, `{hash}` on `records-revert`) is
+  `HEAD` or 4 to 40 hex digits; anything else — an option-shaped value, a branch name, a repeat — is `400`
+  and nothing runs.
+- **Headers.** Every answer carries `X-Content-Type-Options: nosniff` and `Referrer-Policy: no-referrer`,
+  and no `X-Powered-By`.
 - **A token.** A server started with `--token` answers `401` to a request without
   `Authorization: Bearer <token>`. A `--host` beyond loopback needs one.
 - **Bodies.** A write's body is JSON. One that does not parse is `415`. A same-origin or Origin-less body
