@@ -4,7 +4,7 @@ import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { buildModuleScope, MODULE_ROUTES } from '../src/module-scope.js';
-import { readModuleGrant } from '../src/module-grant.js';
+import { readModuleGrant, readModuleGrantResult } from '../src/module-grant.js';
 import { gate } from '../src/gate.js';
 
 const descriptors = [
@@ -67,4 +67,15 @@ test('readModuleGrant reads only <root>/.vscode/settings.json, with comments and
 	assert.deepEqual(readModuleGrant(root), {});
 	writeFileSync(join(root, '.vscode', 'settings.json'), '{"dreamteamer.moduleApps": {"lab": {"reads": "users", "writes": [3]}}}');
 	assert.deepEqual(readModuleGrant(root), { lab: { reads: [], writes: [] } });
+});
+
+test('readModuleGrantResult says why a grant could not be read; an absent file or key is no problem', () => {
+	const root = mkdtempSync(join(tmpdir(), 'grant-'));
+	assert.deepEqual(readModuleGrantResult(root), { grant: {}, problem: null });
+	mkdirSync(join(root, '.vscode'));
+	writeFileSync(join(root, '.vscode', 'settings.json'), '{ not json');
+	assert.match(readModuleGrantResult(root).problem, /not valid JSON/);
+	for (const v of ['"all"', '["lab"]']) { writeFileSync(join(root, '.vscode', 'settings.json'), `{"dreamteamer.moduleApps": ${v}}`); assert.match(readModuleGrantResult(root).problem, /not an object/); }
+	writeFileSync(join(root, '.vscode', 'settings.json'), '{"editor.tabSize": 2}');
+	assert.deepEqual(readModuleGrantResult(root), { grant: {}, problem: null });
 });

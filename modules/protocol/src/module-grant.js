@@ -20,11 +20,17 @@ export function stripJsonc(text) {
 
 const strings = (v) => (Array.isArray(v) ? v.filter((x) => typeof x === 'string') : []);
 
-/** @returns {Record<string, {reads: string[], writes: string[]}>} */
-export function readModuleGrant(root) {
+/** The grant and, when it could not be read, why — an absent file or key is no problem, just no grant. */
+export function readModuleGrantResult(root) {
+	let text;
+	try { text = readFileSync(join(root, '.vscode', 'settings.json'), 'utf8'); } catch { return { grant: {}, problem: null }; }
 	let parsed;
-	try { parsed = JSON.parse(stripJsonc(readFileSync(join(root, '.vscode', 'settings.json'), 'utf8'))); } catch { return {}; }
-	const block = parsed?.['dreamteamer.moduleApps'];
-	if (!block || typeof block !== 'object' || Array.isArray(block)) return {};
-	return Object.fromEntries(Object.entries(block).map(([m, g]) => [m, { reads: strings(g?.reads), writes: strings(g?.writes) }]));
+	try { parsed = JSON.parse(stripJsonc(text)); } catch { return { grant: {}, problem: '.vscode/settings.json is not valid JSON' }; }
+	if (!parsed || !('dreamteamer.moduleApps' in parsed)) return { grant: {}, problem: null };
+	const block = parsed['dreamteamer.moduleApps'];
+	if (!block || typeof block !== 'object' || Array.isArray(block)) return { grant: {}, problem: '"dreamteamer.moduleApps" in .vscode/settings.json is not an object of modules' };
+	return { grant: Object.fromEntries(Object.entries(block).map(([m, g]) => [m, { reads: strings(g?.reads), writes: strings(g?.writes) }])), problem: null };
 }
+
+/** @returns {Record<string, {reads: string[], writes: string[]}>} */
+export function readModuleGrant(root) { return readModuleGrantResult(root).grant; }

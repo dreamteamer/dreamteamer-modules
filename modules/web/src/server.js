@@ -10,7 +10,7 @@ import { engine } from '@dreamteamer/protocol/host/engine';
 import { envRoots } from '@dreamteamer/protocol/host/folder-images';
 import { changeScope, invalidateMessage } from '@dreamteamer/protocol/host/changes';
 import { appCsp, baseHeaders, FILE_CSP } from './headers.js';
-import { readModuleGrant } from '@dreamteamer/protocol/module-grant';
+import { readModuleGrantResult } from '@dreamteamer/protocol/module-grant';
 import { moduleFrameRoute, resolveGuest } from './module-frames.js';
 
 const SIGN_IN_TTL_MS = 10 * 60_000;
@@ -99,7 +99,7 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 30, owner
 		const base = `${filesOrigin(pageHost)}/${filesKey}`;
 		const globals = {
 			__DT_HOST__: { nav: 'app', commands: false, openFile: 'tab', tabs: false, history: 'hash', moduleFrames: 'url' },
-			__DT_MODULE_GRANTS__: readModuleGrant(root),
+			...((g) => ({ __DT_MODULE_GRANTS__: g.grant, __DT_MODULE_GRANT_PROBLEM__: g.problem }))(readModuleGrantResult(root)),
 			__DT_FILE_BASES__: fileBases().map((b) => ({ ...b, uri: `${base}/w/${b.path}` })),
 			__DT_VAR_ROOTS__: varRoots().map((r) => ({ ...r, uri: `${base}/v/${encodeURIComponent(r.name)}` })),
 			__DT_FILES__: base,
@@ -217,7 +217,9 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 30, owner
 	let stopped = false;
 	let resolveClosed;
 	const closed = new Promise((r) => { resolveClosed = r; });
+	let v6 = null;
 	const close = async (why = 'stopped') => {
+		try { v6?.close(); } catch { /* not listening */ }
 		if (stopped) return closed;
 		stopped = true;
 		clearTimeout(timer); idle.clear(); clearInterval(ownerTimer);
@@ -243,6 +245,10 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 30, owner
 
 	const listen = (srv, p) => new Promise((resolve, reject) => { srv.once('error', reject); srv.listen(p, '127.0.0.1', () => { srv.off('error', reject); resolve(srv.address().port); }); });
 	appPort = await listen(app, port);
+	// [::1] answers only to send the page to 127.0.0.1: CSP cannot name an IPv6 ancestor for module frames (cr-modules-008 t13)
+	v6 = http.createServer((req, res) => { baseHeaders(res); res.writeHead(302, { Location: `http://127.0.0.1:${appPort}${req.url ?? '/'}` }); res.end(); });
+	v6.on('error', () => { /* no IPv6 loopback here: nothing to redirect */ });
+	v6.listen(appPort, '::1');
 	filesPort = await listen(files, 0);
 	idle.reset();
 	const signInUrl = () => {

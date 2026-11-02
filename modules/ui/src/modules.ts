@@ -37,10 +37,10 @@ if (typeof window !== 'undefined') {
 	window.addEventListener('message', (ev) => {
 		const d = ev.data;
 		if (d?.type !== 'dt:invalidate' || ev.source !== window && ev.source !== null && ev.source !== window.parent) return;
-		for (const [, frame] of liveFrames) { const out = invalidationFor(frame.scope, d); if (out) frame.post({ op: 'invalidate', detail: out }); }
+		for (const [, frame] of liveFrames) { const out = invalidationFor(frame.scope, d); if (out) frame.post({ op: 'invalidate', detail: out }); if (d.scope === 'schema') frame.stale(); }
 	});
 }
-const liveFrames = new Map<Window, { scope: AnyScope; post: (m: any) => void }>();
+const liveFrames = new Map<Window, { scope: AnyScope; post: (m: any) => void; stale: () => void }>();
 
 // ---- the frame document: by URL from the files origin (dt web) or as srcdoc (VS Code)
 const texts = new Map<string, Promise<string>>();
@@ -94,6 +94,8 @@ const ModuleFrame = defineComponent({
 	emits: ['update:value'],
 	setup(props, { emit }) {
 		const host = ref<HTMLElement | null>(null);
+		// a recompile may have changed the module's code: say so, never swap code under an open form (h8)
+		const stale = ref(false);
 		const scope = scopes.get(props.module)!;
 		const bounds = createBounds();
 		let win: Window | null = null;
@@ -151,7 +153,7 @@ const ModuleFrame = defineComponent({
 			let loads = 0;
 			f.addEventListener('load', () => {
 				if (!f.contentWindow) return;
-				if (++loads === 1) { win = f.contentWindow; bridge.add(win, { handle }); liveFrames.set(win, { scope, post }); }
+				if (++loads === 1) { win = f.contentWindow; bridge.add(win, { handle }); liveFrames.set(win, { scope, post, stale: () => { stale.value = true; } }); }
 				bridge.loaded(f.contentWindow);
 				if (loads === 1) post({ op: 'init', surface: 'surface', kind: props.kind, defId: props.defId, props: props.frameProps, state: snapshot(), route: route(), routes: [], theme: themeNow() });
 				else if (win) liveFrames.delete(win);
@@ -163,7 +165,10 @@ const ModuleFrame = defineComponent({
 		if (props.listState) watch(() => [props.listState.items.items.value, props.listState.selectedIds?.value, props.listState.sortField?.value, props.listState.sortDesc?.value, props.listState.items.loading?.value], () => post({ op: 'state', state: snapshot() }));
 		if (props.kind === 'app') watch(() => routerRef?.currentRoute.value.fullPath, () => post({ op: 'route', route: route() }));
 		onBeforeUnmount(() => { if (win) { bridge.remove(win); liveFrames.delete(win); } document.removeEventListener('paste', onPaste, true); });
-		return () => h('div', { ref: host, class: 'dt-module-frame', style: props.kind === 'list' || props.kind === 'app' ? 'height:100%' : '' });
+		return () => h('div', { class: 'dt-module-frame-wrap', style: props.kind === 'list' || props.kind === 'app' ? 'height:100%' : '' }, [
+			stale.value ? h('div', { class: 'dt-module-notice', role: 'status' }, `module app updated — reload to use its new code (${props.module})`) : null,
+			h('div', { ref: host, class: 'dt-module-frame', style: props.kind === 'list' || props.kind === 'app' ? 'height:100%' : '' }),
+		]);
 	},
 });
 
@@ -313,6 +318,8 @@ export async function loadModules(router: Router): Promise<void> {
 		descriptors = schema;
 		const views = ((await hostRequest('GET', '/collections/ui-views/records?limit=2000').catch(() => ({ records: [] }))) as any).records ?? [];
 		const grants = window.__DT_MODULE_GRANTS__ ?? {};
+		const problem = (window as any).__DT_MODULE_GRANT_PROBLEM__;
+		if (problem) warn(`the module-app grant could not be read (${problem}) — no grant applies`);
 		for (const name of names) {
 			const home = (sources.layers ?? []).find((l: any) => l.name === name || (l.modules ?? []).includes?.(name))?.name ?? sources.workspace?.name ?? sources.workspace ?? '.';
 			const scope = buildModuleScope({ module: name, home, collectionsRows: (rows.records ?? []).map((r: any) => ({ id: r.id, $module: r.$module })), descriptors: schema, grant: grants }) as AnyScope;

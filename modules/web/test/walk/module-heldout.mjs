@@ -130,7 +130,7 @@ try {
 	await lp.reload(); await lp.waitForSelector('.dt-nav-row', { timeout: 30_000 }).catch(() => {}); await lp.waitForTimeout(12_000); await lp.evaluate(() => { location.hash = '/a/pattern'; }); await lp.waitForTimeout(3000);
 	const lpd = await frameData(lp, 'module app pattern', 'done', 20_000);
 	if (lpd.done !== '1') console.log('LOCALHOST CONSOLE\n  ' + globalThis.__lpLines.slice(-12).join('\n  '));
-	ok(lp.url().startsWith(`http://localhost:${port}`) && lpd.done === '1', 't13: a module app renders when dt web is opened at localhost', lp.url());
+	ok(lpd.done === '1', 't13: a module app renders when dt web is opened at localhost (Chrome may resolve it to ::1, which redirects to 127.0.0.1)', lp.url());
 	const v6 = await context.newPage(); await v6.goto(`http://[::1]:${port}/`).catch(() => {});
 	ok(v6.url().startsWith(`http://127.0.0.1:${port}/`), 't13: a page at [::1] is redirected to 127.0.0.1', v6.url());
 } finally {
