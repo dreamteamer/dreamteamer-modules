@@ -18,7 +18,8 @@
 		"./routes": "./src/routes.js",
 		"./contract": "./lib/contract/run.js",
 		"./contract/fixture": "./lib/contract/fixture.js",
-		"./package.json": "./package.json"
+		"./package.json": "./package.json",
+		"./handler": "./src/handler.js"
 	},
 	"files": [
 		"README.md",
@@ -30,5 +31,8 @@
 		"title": "Protocol",
 		"description": "The host protocol the dreamteamer UI speaks to whatever hosts it — the VS Code extension in-process, dt serve and dt web over HTTP: every method and path, its request and response shapes, the errors, the host-to-app notifications, the boot globals and the host capabilities, written once in PROTOCOL.md and pinned by a contract suite every host runs. A library module: it contributes no collection and no verb.",
 		"engine": ">=0.43.0"
+	},
+	"dependencies": {
+		"js-yaml": "^4.1.0"
 	}
 }
