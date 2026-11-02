@@ -71,7 +71,7 @@ describe('the composition', () => {
 		assert.ok(manifest.dreamteamer.vars.includes('SESSIONS_FOLDER'));
 		for (const o of spec.origins) assert.ok(!(JSON.parse(fs.readFileSync(path.join(ROOT, 'modules', o, 'package.json'), 'utf8')).dreamteamer.vars ?? []).includes('SESSIONS_FOLDER'), `${o} declares SESSIONS_FOLDER already`);
 	});
-	test("compose.json's own engine floor raises the manifest's above the origins' — core's env-pointed sessions root needs it", () => {
+	test("compose.json's own engine floor raises the manifest's above the origins' — core's `next` contribution (a record's sessions in dt next) needs it", () => {
 		assert.ok(spec.engine, 'compose.json declares an engine floor of its own');
 		assert.equal(manifest.dreamteamer.engine, spec.engine);
 		const dts = spec.origins.map((o) => JSON.parse(fs.readFileSync(path.join(ROOT, 'modules', o, 'package.json'), 'utf8')).dreamteamer);

@@ -4,7 +4,7 @@
 // A module with `compose.json` at its root names its `origins` (and may name `extension`, an entry of the module's own that
 // activates the origin's entry beside its own code, and `engine`, a floor of the module's own, for what its own
 // commands need of the engine beyond what the origins do, and `env` and `vars`, the keys its OWN collections and scripts read — core's
-// `sessions` keeps its records under `${env:SESSIONS_FOLDER}`); this script copies every shipped
+// `sessions` keeps its records under data/sessions/); this script copies every shipped
 // source file of each origin into the module under ONE deterministic rewrite, merges the origins'
 // manifests into the module's package.json, and records every copy with its hash in compose.json's
 // `files`. The drift test beside each composed module (`modules/<id>/test/compose.test.mjs`)
