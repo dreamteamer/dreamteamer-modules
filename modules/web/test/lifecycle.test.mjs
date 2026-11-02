@@ -73,3 +73,18 @@ test('flags are exact: an unknown flag or a bad number is refused before anythin
 		assert.equal(r.status, 2, bad.join(' '));
 	}
 });
+
+test('two starts at the same moment: one serves, the other refuses naming it — never two servers', { timeout: 120_000 }, async () => {
+	const a = spawn(process.execPath, [BIN, f.root, '--no-open', '--idle', '0'], { env, stdio: ['ignore', 'pipe', 'pipe'] });
+	const b = spawn(process.execPath, [BIN, f.root, '--no-open', '--idle', '0'], { env, stdio: ['ignore', 'pipe', 'pipe'] });
+	children.push(a, b);
+	const firstLine = (c) => new Promise((resolve) => { let out = ''; c.stdout.on('data', (x) => { out += x; if (out.includes('\n')) resolve(out.split('\n')[0]); }); c.on('exit', () => resolve(out.split('\n')[0])); });
+	const [la, lb] = await Promise.all([firstLine(a), firstLine(b)]);
+	const serving = [la, lb].filter((l) => /^✔ dreamteamer web at/.test(l));
+	assert.equal(serving.length, 1, `both or neither served: ${JSON.stringify([la, lb])}`);
+	const refused = la === serving[0] ? b : a;
+	assert.ok(await exited(refused, 15_000), 'the second start kept running');
+	assert.equal(refused.exitCode, 1);
+	assert.equal(run('status').status, 0, 'dt web status does not name the one serving');
+	assert.equal(run('stop').status, 0);
+});

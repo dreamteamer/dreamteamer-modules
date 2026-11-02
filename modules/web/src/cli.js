@@ -3,7 +3,7 @@
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import path from 'node:path';
-import { readState, removeState, running, stateFile, writeState, alive } from './runtime.js';
+import { claimStart, readState, removeState, running, stateFile, writeState, alive } from './runtime.js';
 
 // the browser page @dreamteamer/ui builds, served as it is
 const appDirOf = () => path.join(path.dirname(createRequire(import.meta.url).resolve('@dreamteamer/ui/package.json')), 'dist', 'app');
@@ -55,7 +55,15 @@ export async function main(root, argv, { log = console.log, env = process.env, a
 	const { startWeb } = await import('./server.js');
 	const ownerPid = o.ownerPid ?? (env.CLAUDE_PID ? Number(env.CLAUDE_PID) : undefined);
 	const file = stateFile(root);
-	const web = await startWeb({ root, appDir, port: o.port, idleMinutes: o.idle, ownerPid, onStop: () => removeState(file) });
+	const lock = claimStart(file);
+	if (!lock.ok) { log(`already running or starting${lock.pid ? ` (pid ${lock.pid})` : ''} — npx dt web status`); return 1; }
+	let web;
+	try {
+		web = await startWeb({ root, appDir, port: o.port, idleMinutes: o.idle, ownerPid, onStop: () => { removeState(file); lock.release(); } });
+	} catch (e) {
+		lock.release();
+		throw e;
+	}
 	writeState(file, { pid: process.pid, port: web.appPort, filesPort: web.filesPort, started: new Date().toISOString(), owner: ownerPid ?? null, token: web.token });
 	const url = web.signInUrl();
 	log(`✔ dreamteamer web at ${url}`);
@@ -65,6 +73,7 @@ export async function main(root, argv, { log = console.log, env = process.env, a
 	process.once('SIGTERM', stop);
 	await web.closed;
 	removeState(file);
+	lock.release();
 	return 0;
 }
 
