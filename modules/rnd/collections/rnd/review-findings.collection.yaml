@@ -95,7 +95,7 @@ fields:
 display:
   nav:
     icon: comment-unresolved
-    order: 49
+    order: 23
   list:
     columns:
       - name

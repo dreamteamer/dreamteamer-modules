@@ -101,7 +101,7 @@ fields:
 display:
   nav:
     icon: code-review
-    order: 48
+    order: 22
   list:
     columns:
       - name

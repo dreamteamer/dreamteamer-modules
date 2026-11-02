@@ -110,7 +110,7 @@ fields:
 display:
   nav:
     icon: package
-    order: 20
+    order: 24
   list:
     columns:
       - name

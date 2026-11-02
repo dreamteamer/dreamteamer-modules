@@ -122,7 +122,7 @@ fields:
 display:
   nav:
     icon: bug
-    order: 45
+    order: 21
   list:
     columns:
       - name

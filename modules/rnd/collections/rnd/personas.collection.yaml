@@ -331,7 +331,8 @@ constraints:
 display:
   nav:
     icon: feedback
-    order: 45
+    order: 35
+    section: product
   list:
     columns:
       - name
