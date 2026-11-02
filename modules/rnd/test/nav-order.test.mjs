@@ -64,3 +64,13 @@ test('the compiled resolution: core and rnd packed into a fresh workspace resolv
 		assert.equal(nav.section, section, `${name}: compiled display.nav.section`);
 	}
 });
+
+test('released as 0.8.1: the version, UPDATING.md and the README release note', () => {
+	const read = (f) => fs.readFileSync(path.join(MODULES, 'rnd', f), 'utf8');
+	assert.equal(JSON.parse(read('package.json')).version, '0.8.1');
+	assert.match(read('UPDATING.md'), /## 0\.8\.1 — the R&D nav/);
+	assert.match(read('README.md'), /## 0\.8\.1 — from 0\.8\.0/);
+	for (const [m, v] of [['notebooklm', '0.1.3'], ['wikis', '0.1.2']]) {
+		assert.equal(JSON.parse(fs.readFileSync(path.join(MODULES, m, 'package.json'), 'utf8')).version, v, m);
+	}
+});

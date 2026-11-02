@@ -11,6 +11,31 @@ npx dreamteamer check
 
 ---
 
+## 0.8.1 — the R&D nav: the lifecycle first, then Product and Knowledge
+
+Presentation only: no field, collection, id or record changes. rnd's descriptors now order the R&D
+folder by the lifecycle — change requests, issues, reviews, review findings, products, design docs,
+implementation plans, tests, releases — and section the rest: `product` (user journeys, user stories,
+screens, prototypes, features, personas, design systems) and `knowledge` (experiments, references,
+research docs, draft docs, open questions, notebooks, wikis).
+
+**Do this.**
+
+```bash
+npm install @dreamteamer/rnd@0.8.1
+npx dreamteamer compile
+npx dreamteamer check
+```
+
+Nothing to migrate. The Product and Knowledge folders draw INSIDE R&D on the dreamteamer VS Code
+extension release that nests a section of namespaced collections under its namespace; an older
+extension draws them as two top-level folders beside R&D, with the same rows. `dt web` lists the same
+collections in the new order, without folders. A workspace's own `dreamteamer.navOrder` and
+`dreamteamer.navHidden` still apply at the top level, and an overlay of a collection's `display.nav`
+still wins over rnd's.
+
+---
+
 ## 0.8.0 — rnd ships no session bindings
 
 rnd 0.6.0–0.7.0 shipped three session-bindings on change requests — `change-requests--design`,
