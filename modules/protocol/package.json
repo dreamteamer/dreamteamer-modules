@@ -19,7 +19,8 @@
 		"./contract": "./lib/contract/run.js",
 		"./contract/fixture": "./lib/contract/fixture.js",
 		"./package.json": "./package.json",
-		"./handler": "./src/handler.js"
+		"./handler": "./src/handler.js",
+		"./host/*": "./src/host/*.js"
 	},
 	"files": [
 		"README.md",

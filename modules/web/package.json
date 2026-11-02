@@ -1,0 +1,43 @@
+{
+	"name": "@dreamteamer/web",
+	"version": "0.1.0",
+	"description": "dt web: the dreamteamer UI in your browser over a workspace on your machine — loopback, a sign-in URL, live updates",
+	"license": "Apache-2.0",
+	"type": "module",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/dreamteamer/dreamteamer-modules.git",
+		"directory": "modules/web"
+	},
+	"keywords": [
+		"dreamteamer",
+		"dreamteamer-module"
+	],
+	"bin": {
+		"dt-web": "bin/dt-web.mjs"
+	},
+	"exports": {
+		".": "./src/server.js",
+		"./extension": "./src/extension.js",
+		"./package.json": "./package.json"
+	},
+	"files": [
+		"README.md",
+		"bin",
+		"src",
+		"scripts",
+		"dist"
+	],
+	"scripts": {
+		"prepublishOnly": "node scripts/vendor-app.mjs --version 0.24.27"
+	},
+	"dependencies": {
+		"@dreamteamer/protocol": "^0.1.0"
+	},
+	"dreamteamer": {
+		"extension": "./src/extension.js",
+		"title": "Web",
+		"description": "dt web: the dreamteamer UI in a browser over a workspace on your own machine — the extension's nav, lists, boards and record pages, served on loopback behind a single-use sign-in, with record files on a second sandboxed origin and live updates as records change on disk. Adds the dt web verb and a web row in dt doctor.",
+		"engine": ">=0.43.0"
+	}
+}

@@ -153,9 +153,9 @@ way to ask whether a server is running.
 
 ## versions
 
-| @dreamteamer/web | @dreamteamer/protocol | @dreamteamer/http | engine (`dreamteamer`) | app built from the extension |
-|---|---|---|---|---|
-| 0.1.x | ^0.1.0 | ^0.2.0 | `>=0.43.0`, tested on 0.43 and 0.44 | 0.24.27 |
+| @dreamteamer/web | @dreamteamer/protocol | engine (`dreamteamer`) | app built from the extension |
+|---|---|---|---|
+| 0.1.x | ^0.1.0 | `>=0.43.0`, tested on 0.43 and 0.44 | 0.24.27 |
 
 The app in the tarball is the webview of one published release of the VS Code extension, which is
 Apache-2.0 (its licence travels with it). `dist/app/SOURCE.json` records that release's version, its
