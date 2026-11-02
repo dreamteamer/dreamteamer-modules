@@ -13,6 +13,7 @@ export const PROBE = `export default ({ registerApp, registerEdit, registerKindD
 	const out = (k, v) => { document.body.dataset[k] = String(v); };
 	const st = async (p, init) => { try { const r = await fetch(p, init); return r.status + ':' + JSON.stringify(await r.json()).slice(0, 300); } catch (e) { return 'threw'; } };
 	const Probe = defineComponent({ setup() { onMounted(async () => {
+		await window.__flooded;
 		const post = (b) => ({ method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(b) });
 		out('commit', await st('/api/commit', post({})));
 		out('ownwrite', await st('/api/collections/projects/records', post({ name: 'Probe write' })));
@@ -22,6 +23,8 @@ export const PROBE = `export default ({ registerApp, registerEdit, registerKindD
 		out('info', await st('/api/info'));
 		out('ownread', await st('/api/collections/projects/records?limit=100'));
 		out('nonroute', await st('/api/records-batch'));
+		out('layerpatch', await st('/api/collections/projects/records/harbor-mutual-archive', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ status: 'active' }) }));
+		out('layerdelete', await st('/api/collections/projects/records/harbor-mutual-archive', { method: 'DELETE' }));
 		try { await fetch(location.protocol + '//127.0.0.1:9/api/info'); out('absolute', 'reached'); } catch { out('absolute', 'failed'); }
 		try { out('cookie', JSON.stringify(document.cookie)); } catch { out('cookie', 'threw'); }
 		try { localStorage.length; out('storage', 'readable'); } catch { out('storage', 'threw'); }
@@ -32,6 +35,7 @@ export const PROBE = `export default ({ registerApp, registerEdit, registerKindD
 		out('flood429', flood.filter((x) => x === 429).length);
 		setTimeout(() => out('done', '1'), 600);
 	}); return () => h('p', { class: 'probe' }, 'probe'); } });
+	if (!window.__flooded) { window.__flooded = Promise.all(Array.from({ length: 40 }, () => fetch('/api/collections/projects/records?limit=1').then((r) => r.status))).then((a) => { document.body.dataset.regflood = String(a.filter((x) => x === 429).length); }); }
 	registerApp({ id: 'probe', label: 'Probe', icon: 'beaker', routes: [{ path: '', component: Probe }] });
 	registerEdit({ id: 'input', name: 'hijack', types: ['string'], component: { render: () => h('b', 'HIJACK') } });
 	registerKindDefault('edit', 'string', 'probe-edit');
@@ -69,6 +73,8 @@ async function probeRun(label) {
 		});
 		const data = await fr.evaluate(() => ({ ...document.body.dataset }));
 		await page.screenshot({ path: shot(`module-sandbox-${label}`) });
+		const reg = page.frames().find((x) => x.url().includes('/_dt/frame/default/registry.html'));
+		data.regflood = reg ? await reg.evaluate(() => document.body.dataset.regflood ?? 'none') : 'no registry frame';
 		return { page, s, data, sandbox, frameUrl: fr.url(), frameRequests };
 	} catch (e) { await s.stop(); throw e; }
 }
@@ -92,6 +98,8 @@ try {
 	ok(d.onerror === undefined, 'line 14: an on* attribute inserted as HTML runs no script', d.onerror);
 	ok(d.extscript === 'refused', 'line 2: a created external script is refused', d.extscript);
 	ok(Number(d.flood429) > 0, 'line 10: a flooding frame is answered 429 beyond 4 in flight', d.flood429);
+	ok(Number(d.regflood) > 0, 'line 10: the hidden registry frame is bounded too', d.regflood);
+	ok(d.layerpatch?.startsWith('403:') && d.layerdelete?.startsWith('403:'), 'line 1: no grant, no PATCH or DELETE of any record', `${d.layerpatch?.slice(0, 60)} | ${d.layerdelete?.slice(0, 60)}`);
 	ok(r.frameRequests.length === 0, 'line 2: no request from the frame reached any server after its navigation (blob: is local)', JSON.stringify(r.frameRequests.slice(0, 3)));
 	const t0 = Date.now(); await go(r.page, '/content/projects'); await r.page.waitForSelector('.dt-table, table', { timeout: 5000 }).catch(() => {});
 	ok(Date.now() - t0 < 2000 + 800, 'line 10: the editor still answers within 2 s', `${Date.now() - t0} ms`);
@@ -105,6 +113,8 @@ try {
 	const g = await probeRun('grant');
 	ok(g.data.ownwrite?.startsWith('200:'), 'line 4: with a grant its own-collection write lands', g.data.ownwrite);
 	ok(g.data.commit?.startsWith('403:'), 'line 1: still no commit with a grant', g.data.commit);
+	ok(g.data.layerpatch?.startsWith('403:') && /held by northwind-archive/.test(g.data.layerpatch), 'line 8: with a grant, a PATCH of a record the layer holds is refused', g.data.layerpatch);
+	ok(g.data.layerdelete?.startsWith('403:') && /held by northwind-archive/.test(g.data.layerdelete), 'line 8: with a grant, a DELETE of a record the layer holds is refused', g.data.layerdelete);
 	await g.s.stop();
 	const changed = execFileSync('git', ['status', '--porcelain', '--', 'data'], { cwd: f.root, encoding: 'utf8' }).trim().split('\n').filter(Boolean);
 	ok(changed.length === 1 && /data\/projects\//.test(changed[0]), 'line 4: git shows one new projects record in the workspace (the module home)', JSON.stringify(changed));

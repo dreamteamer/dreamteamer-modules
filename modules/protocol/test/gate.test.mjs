@@ -145,3 +145,12 @@ test('frame-bridge: accepts only registered sources, drops a frame on its second
 	const sent = []; const w = { postMessage: (m, t) => sent.push([m, t]) };
 	bridge.add(w, {}); bridge.reply(w, 7, { ok: true }); assert.deepEqual(sent, [[{ dt: 1, id: 7, reply: { ok: true } }, '*']]);
 });
+
+test('module: no commit-derived key in a filter or sort, and no q, on a collection that is not its own', () => {
+	const g = (c, o) => gate(moduleScope, descriptors, 'GET', `/collections/${c}/records`, q(o));
+	assert.equal(g('users', { filter: JSON.stringify({ '$created-by': { _eq: 'x' } }) }).status, 400);
+	assert.equal(g('users', { sort: '-$last-commit-message' }).status, 400);
+	assert.equal(g('users', { q: 'dana' }).status, 400);
+	assert.equal(g('notes', { filter: JSON.stringify({ '$created-by': { _eq: 'x' } }), q: 'a', sort: '$created-by' }).ok, true);
+	assert.equal(g('users', { filter: JSON.stringify({ $source: { _eq: 'hq' } }) }).ok, true);
+});

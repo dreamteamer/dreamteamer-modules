@@ -8,6 +8,7 @@
 import { defineComponent, h, onBeforeUnmount, onMounted, ref, shallowRef, watch, type Component, type PropType } from 'vue';
 import type { Router } from 'vue-router';
 import { gate } from '@dreamteamer/protocol/gate';
+import { matchRoute } from '@dreamteamer/protocol/routes';
 import { reshape } from '@dreamteamer/protocol/reshape';
 import { applyWrite } from '@dreamteamer/protocol/apply-write';
 import { createFrameBridge } from '@dreamteamer/protocol/frame-bridge';
@@ -74,7 +75,7 @@ async function answer(scope: AnyScope, bounds: ReturnType<typeof createBounds>, 
 		}
 		if (!bounds.write()) return { status: 429, body: { error: `module app ${scope.module} writes too fast (60 a minute)` } };
 		if (decision.needsSource === 'home') {
-			const id = decodeURIComponent(path.split('/records/')[1] ?? path.split('/position/')[1] ?? '');
+			const id = String(matchRoute(decision.call.method, decision.call.path)?.params?.id ?? '');
 			const rec = await handle('GET', `/collections/${encodeURIComponent(decision.call.collection)}/records/${id.split('/').map(encodeURIComponent).join('/')}`);
 			const src = (rec.body as any)?.fields?.$source ?? (rec.body as any)?.$source;
 			if (rec.status !== 200 || src !== scope.home) {
@@ -261,6 +262,7 @@ moduleKindDefault.find = (kind, field) => kindDefaults.find((k) => k.kind === ki
 
 async function openRegistry(module: string, router: Router): Promise<void> {
 	const f = await makeFrame(module, 'registry', true);
+	const bounds = createBounds(); // one per registry frame, like a surface frame's (D17)
 	await new Promise<void>((resolve) => {
 		const done = setTimeout(() => { warn(`module app ${module} did not register within 10 s — skipped`); resolve(); }, 10_000);
 		const handle = (msg: any) => {
@@ -270,7 +272,7 @@ async function openRegistry(module: string, router: Router): Promise<void> {
 				for (const k of msg.kindDefaults ?? []) if (k.kind === 'edit' || k.kind === 'view') kindDefaults.push({ module, ...k });
 				resolve();
 			} else if (msg.op === 'cells') { cellReplies.get(msg.replyTo)?.(msg.cells ?? []); cellReplies.delete(msg.replyTo); }
-			else if (msg.op === 'request') { /* the registry frame reads too: same gate */ void answer(scopes.get(module)!, createBounds(), msg).then((r) => bridge.reply(f.contentWindow!, msg.id, r)); }
+			else if (msg.op === 'request') { /* the registry frame reads too: same gate */ void answer(scopes.get(module)!, bounds, msg).then((r) => bridge.reply(f.contentWindow!, msg.id, r)); }
 			else if (msg.op === 'error') { warn(`module app ${module}: ${msg.message}`); }
 		};
 		let loads = 0;

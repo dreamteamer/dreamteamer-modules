@@ -25,7 +25,7 @@ before(async () => {
 	page = await call(`${web.appUrl}/`, { headers: { cookie } });
 });
 after(async () => { await web?.close(); await bare?.close(); f?.cleanupAll(); });
-const globals = () => JSON.parse(/Object\.assign\(window, (\{.*?\})\);\n/s.exec(page.text)[1].replace(/\\u003c/g, '<'));
+const globals = () => JSON.parse(/Object\.assign\(window, (\{.*?\})\);/s.exec(page.text)[1].replace(/\\u003c/g, '<'));
 const frameBase = () => `${globals().__DT_FILES__}/_dt/frame`;
 
 test('the page carries the grant from the root .vscode/settings.json only, and frames by URL', () => {
@@ -56,7 +56,7 @@ test('unknown modules, unknown kinds and path tricks are 404', async () => {
 test('without the guest from @dreamteamer/ui the frame says so, 503', async () => {
 	const c = await sign(bare);
 	const p = await call(`${bare.appUrl}/`, { headers: { cookie: c } });
-	const files = JSON.parse(/Object\.assign\(window, (\{.*?\})\);\n/s.exec(p.text)[1]).__DT_FILES__;
+	const files = JSON.parse(/Object\.assign\(window, (\{.*?\})\);/s.exec(p.text)[1]).__DT_FILES__;
 	const r = await call(`${files}/_dt/frame/northwind/list.html`);
 	assert.equal(r.status, 503);
 	assert.match(r.text, /@dreamteamer\/ui/);

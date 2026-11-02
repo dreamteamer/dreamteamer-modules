@@ -11,21 +11,23 @@ export const BOUNDS = { operand: 200, list: 200, conditions: 50, q: 200, limit: 
 export const SYSTEM_COLLECTIONS = new Set(['collections', 'modules', 'skills', 'agents', 'commands', 'command-bindings', 'ui-views', 'mixins']);
 const WRITE_OPS = { 'records-create': 'create', 'record-update': 'update', 'record-remove': 'delete', position: 'position' };
 const NEVER_WRITTEN = new Set(['id', 'created', 'stub']);
+/** Keys a module scope may not filter, sort or search by on a collection that is not its own (008 D14). */
+export const COMMIT_KEYS = new Set(['$last-commit-message', '$created-by', '$last-modified-by', '$repo', '$dirty', '$ahead']);
 
 const refuse = (status, error) => ({ ok: false, status, error });
 const entries = (q) => (q instanceof URLSearchParams ? [...q.entries()] : Object.entries(q ?? {}));
 const descriptorOf = (descriptors, name) => (descriptors instanceof Map ? descriptors.get(name) : (descriptors ?? []).find((d) => d.name === name));
 
 /** Walks a filter; returns a reason string, or null when it is inside the grammar. */
-function filterProblem(node, fields, budget) {
+function filterProblem(node, fields, budget, hidden = new Set()) {
 	if (node === null || typeof node !== 'object' || Array.isArray(node)) return 'a filter is an object';
 	for (const [key, value] of Object.entries(node)) {
 		if (key === '_and' || key === '_or') {
 			if (!Array.isArray(value)) return `${key} takes a list`;
-			for (const child of value) { const p = filterProblem(child, fields, budget); if (p) return p; }
+			for (const child of value) { const p = filterProblem(child, fields, budget, hidden); if (p) return p; }
 			continue;
 		}
-		if (key.includes('.') || (!key.startsWith('$') && !fields.has(key))) return `no field ${key}`;
+		if (key.includes('.') || (!key.startsWith('$') && !fields.has(key)) || hidden.has(key)) return `no field ${key}`;
 		if (++budget.n > BOUNDS.conditions) return `more than ${BOUNDS.conditions} conditions`;
 		if (value === null || typeof value !== 'object') { const p = operandProblem(value); if (p) return p; continue; }
 		if (Array.isArray(value)) return `${key} takes a value or operators`;
@@ -64,15 +66,18 @@ export function gate(scope, descriptors, method, path, query, body) {
 		if (collection !== undefined && !scope.reads.has(collection)) return refuse(403, s.collectionRead(scope, { collection }));
 		const d = collection !== undefined ? descriptorOf(descriptors, collection) : undefined;
 		const fields = new Set(Object.keys(d?.fields ?? {}));
+		const foreign = scope.kind === 'module' && collection !== undefined && !scope.own?.has(collection);
+		const hidden = foreign ? COMMIT_KEYS : new Set();
 		for (const [key, value] of pairs) {
 			if (READ_QUERY_KEYS.has(key)) {
+				if (key === 'q' && foreign) return refuse(400, s.filter(scope, { reason: 'a module app searches only its own collections' }));
 				if (key === 'q' && value.length > BOUNDS.q) return refuse(400, s.filter(scope, { reason: `q longer than ${BOUNDS.q}` }));
 				if ((key === 'limit' || key === 'offset') && !/^\d+$/.test(value)) return refuse(400, s.filter(scope, { reason: `${key} is a number` }));
 				if (key === 'limit' && Number(value) > BOUNDS.limit) return refuse(400, s.filter(scope, { reason: `limit above ${BOUNDS.limit}` }));
-				if (key === 'sort') { const f = value.replace(/^-/, ''); if (!f.startsWith('$') && !fields.has(f)) return refuse(400, s.filter(scope, { reason: `no field ${f} to sort by` })); }
+				if (key === 'sort') { const f = value.replace(/^-/, ''); if ((!f.startsWith('$') && !fields.has(f)) || hidden.has(f)) return refuse(400, s.filter(scope, { reason: `no field ${f} to sort by` })); }
 				if (key === 'filter') {
 					let parsed; try { parsed = JSON.parse(value); } catch { return refuse(400, s.filter(scope, { reason: 'the filter is not JSON' })); }
-					const p = filterProblem(parsed, fields, { n: 0 }); if (p) return refuse(400, s.filter(scope, { reason: p }));
+					const p = filterProblem(parsed, fields, { n: 0 }, hidden); if (p) return refuse(400, s.filter(scope, { reason: p }));
 				}
 				continue;
 			}
