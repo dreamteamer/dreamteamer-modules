@@ -65,7 +65,7 @@ keys the host computes, each prefixed `$` (or named as below) so a write never p
 ### GET /info
 
 The workspace, as the host loaded it. `200 { name, host, compiled, modules: [...], ui: [...], user, stale,
-collections: [name, ...] }` — `user` is the operator's id slug from `git config user.name`, or `null`;
+collections: [name, ...] }` — `user` is the person's id slug from `git config user.name`, or `null`;
 `stale` counts sources changed since the last compile.
 
 ### GET /schema

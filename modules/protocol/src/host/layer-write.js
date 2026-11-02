@@ -1,17 +1,4 @@
-// A NEW RECORD ADDED INTO A RECORD LAYER (cr-vscode-004) — the create form's chosen target, when it is
-// a layer rather than the workspace's write root.
-//
-// The engine's `add` writes the WRITE root; a layer is another workspace, cloned under `git_modules/`,
-// and the CLI adds into it with `dt add <collection> -w <layer>` (0.41.0): the verb runs IN the layer's
-// own workspace, against the layer's own compiled schema, and the file lands in the layer's clone,
-// where its commit belongs. This is the same act through the public API — the layer opened as itself
-// (`openWorkspaceAt`, with the engine's pin), a Store on it, `add`. Nothing here decides anything the
-// engine does not: validation, ids, defaults and refusals are the layer's Store's.
-//
-// Refused before anything is opened when the layer is absent or has not compiled the collection — the
-// host's `layerAccess` calls such a layer `read` / `edit` and the target choice does not offer it; this
-// is the belt for a URL typed by hand. And refused AFTER opening when the engine handed back any root
-// but the clone: an engine older than the pin climbs out of the clone, and would write into the reader.
+// Ported from the dreamteamer VS Code extension's host side (src/layer-write.ts); PROTOCOL.md is the contract it answers.
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { engine, openWorkspaceAt } from "./engine.js";

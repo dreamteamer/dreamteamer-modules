@@ -167,6 +167,17 @@ export const cases = [
 		ok(res); check(Array.isArray(res.body), 'commit answers no results array'); unchanged(ctx, snap);
 	} },
 
+	{ id: 'dry-run-commit-query', route: 'commit', method: 'POST', path: '/commit?dry-run=true', body: { only: ['tasks/brief-dana'] },
+		// something IS pending under the target, so a commit that ignored the query would move HEAD
+		before: async (ctx) => { await ctx.request('PATCH', '/collections/tasks/records/brief-dana', { done: true }); return snapshot(ctx); },
+		expect: (res, ctx, snap) => {
+		ok(res); check(Array.isArray(res.body), 'commit answers no results array'); unchanged(ctx, snap);
+	} },
+
+	{ id: 'dry-run-unreadable', route: 'commit', method: 'POST', path: '/commit?dry-run=yes', body: { only: ['tasks/brief-dana'] }, before: snapshot, expect: (res, ctx, snap) => {
+		status(res, 400); check(/dry-run/.test(String(res.body?.error)), `the refusal does not name dry-run: ${res.body?.error}`); unchanged(ctx, snap);
+	} },
+
 	// ---- field writes ------------------------------------------------------------------------
 	{ id: 'field-add', route: 'field-add', method: 'POST', path: '/fields/tasks', body: { name: 'priority', type: 'string', enum: 'low,high' }, expect: async (res, ctx) => {
 		ok(res); const d = await schemaOf(ctx, 'tasks');

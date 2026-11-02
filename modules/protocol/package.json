@@ -29,7 +29,7 @@
 	],
 	"dreamteamer": {
 		"title": "Protocol",
-		"description": "The host protocol the dreamteamer UI speaks to whatever hosts it — the VS Code extension in-process, dt serve and dt web over HTTP: every method and path, its request and response shapes, the errors, the host-to-app notifications, the boot globals and the host capabilities, written once in PROTOCOL.md and pinned by a contract suite every host runs. A library module: it contributes no collection and no verb.",
+		"description": "The host protocol the dreamteamer UI speaks to whatever hosts it — the VS Code extension in-process, dt serve and dt web over HTTP: every route with its shapes and errors, the notifications, boot globals and host capabilities in PROTOCOL.md, a contract suite every host runs, and the shared handler that answers it. A library: no collection, no verb.",
 		"engine": ">=0.43.0"
 	},
 	"dependencies": {

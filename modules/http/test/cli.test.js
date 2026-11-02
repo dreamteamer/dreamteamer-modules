@@ -58,9 +58,9 @@ describe('dt serve', () => {
 
 	test('dt status lists the extension and dt help appends its usage', () => {
 		const status = h.dt('status');
-		assert.match(status.stdout, /extensions: .*@dreamteamer\/http@0\.1\.0/);
+		assert.match(status.stdout, /extensions: .*@dreamteamer\/http@0\.2\.0/);
 		const help = h.dt('help');
-		assert.match(help.stdout, /@dreamteamer\/http@0\.1\.0:\n\s+serve \[--port <n>\] \[--host <addr>\] \[--token <secret>\]/);
+		assert.match(help.stdout, /@dreamteamer\/http@0\.2\.0:\n\s+serve \[--port <n>\] \[--host <addr>\] \[--token <secret>\]/);
 	});
 
 	// engine 0.33: a verb an extension answers, typed without its package, prints the install line

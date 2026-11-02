@@ -63,6 +63,6 @@ describe('PATCH /collections/:name/position/*id', () => {
 	test('a collection with no position field is a 400 naming it', async () => {
 		const r = await call('PATCH', `${srv.base}/collections/modules/position/default`, { top: true });
 		assert.equal(r.status, 400);
-		assert.match(r.json.error, /declares no field of type position/);
+		assert.match(r.json.error, /has no `type: position` field/);
 	});
 });

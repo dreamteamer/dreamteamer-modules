@@ -33,55 +33,22 @@ myServer.use(createApp(ws));               // createApp never listens; serve(ws,
 
 ## routes
 
-All under `/api`. Bodies and responses are JSON. **A namespaced collection name carries a slash and
-must be percent-encoded** (`/collections/lab%2Fsamples/records`); **record ids are paths and are
-not encoded** (`/records/2026-09-01/alpha`), which is why every `*id` is the last segment.
+`dt serve` answers the dreamteamer host protocol — every route, shape and error the VS Code extension's
+in-process host answers — through the shared handler in `@dreamteamer/protocol`. The routes are written
+once, in that package's `PROTOCOL.md`; its contract suite runs against `dt serve` in this repository's
+tests (`modules/protocol/test/contract-http.test.mjs`) and passes every case.
 
-| method | path | does |
-|---|---|---|
-| GET | `/info` | `{name, host, compiled, modules, ui, stale, collections}` |
-| GET | `/schema` | every compiled descriptor, by `display.nav.order` |
-| GET | `/presentation` | how to render each collection and field |
-| GET | `/commands/:name?ids=a,b` | bound commands and per-record state (`dt next`) |
-| GET | `/collections/:name/records` | `{records, total}` · `?limit` (200) `?offset` `?sort` `?q` `?filter=<json>` `?field=value` `?filter[field]=value` `?with-body=true` |
-| GET | `/collections/:name/records/*id` | `{id, fields, path}`; `fields` adds `last-modified`, `$last-modified-by`, `$last-commit-message` |
-| POST | `/collections/:name/records` | create → `201 {id, path}`; an `id` in the body is the explicit id |
-| PATCH | `/collections/:name/records/*id` | set fields → `{id}`; echoed synthetic keys are ignored |
-| DELETE | `/collections/:name/records/*id` | remove → `{id}` · `?force=true` |
-| PATCH | `/collections/:name/position/*id` | manual order, on the collection's `position` field: `{top}` `{bottom}` `{before: id}` `{after: id}` |
-| POST | `/collections/:name/rename` | `{old, new}` |
-| POST | `/collections/:name/records-revert/*id` | `{hash}` |
-| GET | `/collections/:name/values/:field` | the values a field uses · `?limit` |
-| GET | `/history/:name/*id` | the record's commits |
-| GET | `/history-diff/:name/*id` | one commit's diff · `?hash` (HEAD) |
-| POST | `/collections/:name/fields` | add a field: `{name, field}` with a v2 field object, or `{name, type, …}` in the flag vocabulary → `{collection, field, value, …}`, `value` the field as written |
-| PATCH | `/collections/:name/fields/:field` | edit a field: `{field}` replaces it, flags change only what they name → `{…, value}` |
-| PATCH | `/collections/:name/fields/:field/name` | rename a field everywhere · `{to}` |
-| DELETE | `/collections/:name/fields/:field` | remove a field |
-| POST | `/commit` | publish pending writes (`dt commit`) · `{only: ["<c>/<id>" or "<c>", …], message?, dryRun?}`, `only` required and non-empty → the `dt commit --json` results; `409` when a repo is blocked |
-| POST | `/reload` | rebuild the store now |
+What `dt serve` adds is the TRANSPORT, which an in-process host has none of:
 
-The **system collections** (`collections`, `modules`, `skills`, `ui-views`, …) are written through the
-same record routes and dispatched to their schema operation — `POST /collections/collections/records`
-creates a collection, `PATCH /collections/collections/records/<name>` with `{module}` moves one,
-`?module=<id>` selects which module's source an edit lands in.
+- **`Host` and `Origin`.** The `Host` header names the server's own address and port (`localhost` and
+  `127.0.0.1` too, on loopback); an `Origin`, when sent, is `http://` plus that host and port. Anything
+  else is `403` — a page on another origin, or a DNS name rebound to this address.
+- **A token.** A server started with `--token` answers `401` to a request without
+  `Authorization: Bearer <token>`. A `--host` beyond loopback needs one.
+- **Bodies.** A write's body is JSON. One that does not parse is `415`. A same-origin or Origin-less body
+  is parsed whatever its `Content-Type` — a workspace module's bare `fetch('/api/…', { method, body })`
+  sends `text/plain` — while a cross-site one is already `403`.
+- **A blocked commit.** `POST /commit` answers `409` when a repository is blocked by an in-progress merge
+  or rebase, with the same results array.
 
-**Requests.** The `Host` header names the server's own address and port (`localhost` and `127.0.0.1`
-too, on loopback); an `Origin`, when sent, is `http://` plus that same host and port. Anything else
-is `403`. A server started with a token answers `401` to a request without
-`Authorization: Bearer <token>`. Every `POST` and `PATCH`, and any `DELETE` with a body, is
-`Content-Type: application/json`, or `415`.
-
-**Dry runs.** `?dry-run` is `true` or `false`; any other value, a bare `?dry-run`, or a repeat is `400`
-on every write. `?dry-run=true` on `DELETE modules/…`, a `PATCH collections/…` move, a field rename
-and `POST /commit` returns the plan and writes nothing. On every other write it is
-`400 {error, "dry-run": "unsupported"}` and the operation is not called.
-
-**Errors** are `{error}`: `400` validation, a compile refusal or a bad request · `401` no token ·
-`403` a foreign `Host` or `Origin` · `404` no such record or no such route · `409` referenced by
-another record, or already exists · `415` a write that is not JSON.
-
-The store is rebuilt whenever the compiled manifest changes, so a `dt compile` elsewhere is visible
-to the next request. `GET /` redirects to `/api/info`.
-
-Apache-2.0.
+See `UPDATING.md` for what changed from 0.1.0.

@@ -19,7 +19,7 @@ before(async () => {
 	api = srv.base;
 	// written through the api — the record this client means to publish
 	const r = await call('POST', `${api}/collections/notes/records`, { name: 'Mine' });
-	assert.equal(r.status, 201);
+	assert.equal(r.status, 200);
 	mine = r.json;
 	// written by someone else and left pending — must never ride along
 	const other = new engine.Store(h.ws).add('notes', { name: 'Theirs' });
@@ -79,20 +79,6 @@ describe('POST /api/commit', () => {
 		const { status, json } = await call('POST', `${api}/commit`, { only: [`notes/${mine.id}`] });
 		assert.equal(status, 200);
 		assert.deepEqual(json, []);
-	});
-
-	test('unknown body keys and wrongly typed values are refused with 400, committing nothing', async () => {
-		const before = commits();
-		const only = [`notes/${theirs.id}`];
-		for (const body of [{ only, dry_run: true }, { only: `notes/${theirs.id}` }, { only, dryRun: 'yes' }, { only, message: 7 }]) {
-			const { status, json } = await call('POST', `${api}/commit`, body);
-			assert.equal(status, 400, JSON.stringify(body));
-			assert.match(json.error, /POST \/commit .*body: \{ only: string\[\], message\?: string, dryRun\?: boolean \}/);
-		}
-		const unknown = await call('POST', `${api}/commit`, { only, dry_run: true });
-		assert.match(unknown.json.error, /does not take "dry_run"/);
-		assert.equal(commits(), before);
-		assert.ok(!tracked(theirs.path));
 	});
 
 	test('a repo blocked by an in-progress merge is a 409 carrying the results', async () => {
