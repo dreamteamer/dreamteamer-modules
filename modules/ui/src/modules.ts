@@ -147,7 +147,11 @@ const ModuleFrame = defineComponent({
 			}
 		};
 		const onPaste = (e: ClipboardEvent) => { const f = host.value?.querySelector('iframe'); if (f && document.activeElement === f) post({ op: 'paste', text: e.clipboardData?.getData('text/plain') ?? '' }); };
-		onMounted(async () => {
+		// a frame whose document is replaced (a module navigating itself, e.g. by a meta refresh) is dropped and
+		// rebuilt on its own document — at most twice; then the module is stopped with a notice (h4)
+		const stopped = ref('');
+		let rebuilds = 0;
+		const build = async () => {
 			const f = await makeFrame(props.module, props.kind);
 			if (props.kind === 'list' || props.kind === 'app') f.style.height = '100%';
 			let loads = 0;
@@ -155,10 +159,16 @@ const ModuleFrame = defineComponent({
 				if (!f.contentWindow) return;
 				if (++loads === 1) { win = f.contentWindow; bridge.add(win, { handle }); liveFrames.set(win, { scope, post, stale: () => { stale.value = true; } }); }
 				bridge.loaded(f.contentWindow);
-				if (loads === 1) post({ op: 'init', surface: 'surface', kind: props.kind, defId: props.defId, props: props.frameProps, state: snapshot(), route: route(), routes: [], theme: themeNow() });
-				else if (win) liveFrames.delete(win);
+				if (loads === 1) { post({ op: 'init', surface: 'surface', kind: props.kind, defId: props.defId, props: props.frameProps, state: snapshot(), route: route(), routes: [], theme: themeNow() }); return; }
+				if (win) { bridge.remove(win); liveFrames.delete(win); win = null; }
+				f.remove();
+				warn(`module app ${props.module} navigated its own frame — ${rebuilds < 2 ? 'rebuilt on its own document' : 'stopped'}`);
+				if (rebuilds++ < 2) void build(); else stopped.value = `module app ${props.module} stopped: it navigated its own frame`;
 			});
 			host.value?.appendChild(f);
+		};
+		onMounted(async () => {
+			await build();
 			document.addEventListener('paste', onPaste, true);
 		});
 		watch(() => props.frameProps, (p) => post({ op: 'props', props: p }), { deep: true });
@@ -167,6 +177,7 @@ const ModuleFrame = defineComponent({
 		onBeforeUnmount(() => { if (win) { bridge.remove(win); liveFrames.delete(win); } document.removeEventListener('paste', onPaste, true); });
 		return () => h('div', { class: 'dt-module-frame-wrap', style: props.kind === 'list' || props.kind === 'app' ? 'height:100%' : '' }, [
 			stale.value ? h('div', { class: 'dt-module-notice', role: 'status' }, `module app updated — reload to use its new code (${props.module})`) : null,
+			stopped.value ? h('div', { class: 'dt-module-notice', role: 'alert' }, stopped.value) : null,
 			h('div', { ref: host, class: 'dt-module-frame', style: props.kind === 'list' || props.kind === 'app' ? 'height:100%' : '' }),
 		]);
 	},

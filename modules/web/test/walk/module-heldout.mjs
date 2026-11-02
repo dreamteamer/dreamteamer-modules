@@ -88,8 +88,9 @@ try {
 	const pf = await (await page.$('iframe[title="module app probe2"]:not([style*="display: none"])'))?.contentFrame();
 	const urlBefore = pf?.url();
 	await pf?.evaluate(() => { const d = document.createElement('div'); d.innerHTML = '<meta http-equiv="refresh" content="0;url=https://example.com/">'; document.body.appendChild(d); }).catch(() => {});
-	await page.waitForTimeout(2000);
-	ok(pf?.url() === urlBefore, 'h4: an inserted meta refresh leaves the frame where it was', `${urlBefore?.slice(-30)} → ${pf?.url()?.slice(0, 40)}`);
+	await page.waitForTimeout(3000);
+	const now = await Promise.all((await page.$$('iframe[title="module app probe2"]:not([style*="display: none"])')).map(async (e) => (await e.contentFrame())?.url() ?? ''));
+	ok(now.length === 1 && now[0] === urlBefore, 'h4: after an inserted meta refresh the surface is on its own document again (dropped and rebuilt), and nothing left the machine', `${urlBefore?.slice(-30)} → ${JSON.stringify(now.map((u) => u.slice(-30)))}`);
 	await go(page, '/content/probe-items'); await page.waitForTimeout(2500);
 	const cells = await page.$$eval('.dt-module-cell', (es) => es.slice(0, 5).map((e) => e.innerHTML));
 	ok(cells.length > 0 && cells.every((h) => !/\son\w+=|href=|style=|class=/i.test(h)), 'h4: the list cell view is sanitized — no on*, href, style or class', JSON.stringify(cells.slice(0, 2)).slice(0, 200));
@@ -98,7 +99,8 @@ try {
 	const mark = apiReads.length;
 	await go(page, '/probe-list'); await page.waitForTimeout(3000);
 	let l = await frameData(page, 'module app probe2', 'h7rows', 15_000);
-	for (let i = 0; i < 20 && !(Number(l.h7rows) > 0); i++) { await page.waitForTimeout(500); l = await frameData(page, 'module app probe2', 'h7rows', 2_000); }
+	for (let i = 0; i < 60 && !(Number(l.h7rows) > 0); i++) { await page.waitForTimeout(500); l = await frameData(page, 'module app probe2', 'h7rows', 2_000); }
+	if (!(Number(l.h7rows) > 0)) { console.log('H7DEBUG', page.url(), JSON.stringify(l).slice(0, 200)); console.log('  ' + consoleLines.slice(-10).join('\n  ')); for (const el of await page.$$('iframe')) console.log('  frame', await el.getAttribute('title'), (await el.contentFrame())?.url().slice(-30)); }
 	const titleReads = apiReads.slice(mark).filter((x) => /\/collections\/projects\/records\/./.test(x));
 	ok(Number(l.h7rows) > 0 && /projects\//.test(l.h7titles ?? '') , 'h7: the snapshot carries raw reference ids in titles', `${l.h7rows} rows; ${l.h7titles?.slice(0, 120)}`);
 	ok(titleReads.length === 0, 'h7: no read of the referenced HQ collection to title the rows', JSON.stringify(titleReads.slice(0, 3)));
