@@ -11,6 +11,7 @@ import { cases } from './cases.js';
 export async function runContract({ request, fixture, only }) {
 	const passed = [];
 	const failed = [];
+	const skipped = [];
 	const ctx = { fixture, request, state: {} };
 	for (const c of cases) {
 		if (only && !only.includes(c.id)) continue;
@@ -19,13 +20,15 @@ export async function runContract({ request, fixture, only }) {
 			const path = typeof c.path === 'function' ? c.path(ctx) : c.path;
 			const body = typeof c.body === 'function' ? c.body(ctx) : c.body;
 			const res = await request(c.method, path, body);
+			// an optional route a host does not serve is skipped; one it serves must answer to its shape
+			if (c.optional && res?.status === 404) { skipped.push(c.id); continue; }
 			await c.expect(res, ctx, snap);
 			passed.push(c.id);
 		} catch (e) {
 			failed.push({ id: c.id, why: String(e?.message ?? e).split('\n')[0] });
 		}
 	}
-	return { passed, failed };
+	return { passed, failed, skipped };
 }
 
 export { cases };

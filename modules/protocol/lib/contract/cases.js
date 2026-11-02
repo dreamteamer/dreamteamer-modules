@@ -98,7 +98,7 @@ export const cases = [
 	{ id: 'notes', route: 'notes', method: 'GET', path: '/notes/projects?ids=northwind-launch', expect: (res) => {
 		ok(res); shape(res.body, { notes: 'array' });
 	} },
-	{ id: 'sessions-running', route: 'sessions-running', method: 'GET', path: '/sessions/running', expect: (res) => {
+	{ id: 'sessions-running', route: 'sessions-running', optional: true, method: 'GET', path: '/sessions/running', expect: (res) => {
 		ok(res); shape(res.body, { state: 'string', sessions: 'array' });
 	} },
 	{ id: 'records-list-notes', route: 'records-list', method: 'GET', path: '/collections/projects/records?notes=1', expect: (res) => {

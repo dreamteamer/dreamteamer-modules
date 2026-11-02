@@ -58,3 +58,14 @@ describe('the route table', () => {
 		assert.deepEqual(missing, [], `routes with no contract case:\n${missing.join('\n')}`);
 	});
 });
+
+test('GET /sessions/running is optional: flagged in ROUTES and in its case, said in PROTOCOL.md; a host that answers it 404 is skipped, not failed', async () => {
+	assert.deepEqual(ROUTES.filter((r) => r.optional).map((r) => r.id), ['sessions-running']);
+	const doc = fs.readFileSync(path.join(PKG, 'PROTOCOL.md'), 'utf8');
+	assert.match(doc.split('### GET /sessions/running')[1].split('###')[0], /\*\*Optional\.\*\*/);
+	const { runContract } = await import(pathToFileURL(path.join(PKG, 'lib', 'contract', 'run.js')).href);
+	const r = await runContract({ request: async () => ({ status: 404, body: { error: 'no route' } }), fixture: {}, only: ['sessions-running'] });
+	assert.deepEqual([r.failed, r.skipped], [[], ['sessions-running']]);
+	const answered = await runContract({ request: async () => ({ status: 500, body: {} }), fixture: {}, only: ['sessions-running'] });
+	assert.equal(answered.failed.length, 1, 'an optional route that IS answered must answer to its shape');
+});

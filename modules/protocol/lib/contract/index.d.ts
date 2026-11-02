@@ -10,5 +10,5 @@ export interface Fixture {
 }
 export interface Case { id: string; route: string; method: string; path: string | ((ctx: any) => string); body?: unknown; before?: (ctx: any) => unknown; expect: (res: HostResponse, ctx: any, snap?: any) => unknown }
 export declare const cases: Case[];
-export declare function runContract(opts: { request: HostRequest; fixture: Fixture; only?: string[] }): Promise<{ passed: string[]; failed: Array<{ id: string; why: string }> }>;
+export declare function runContract(opts: { request: HostRequest; fixture: Fixture; only?: string[] }): Promise<{ passed: string[]; failed: Array<{ id: string; why: string }>; skipped: string[] }>;
 export declare function makeFixture(opts: { engineDir: string; tmp?: string }): Fixture;
