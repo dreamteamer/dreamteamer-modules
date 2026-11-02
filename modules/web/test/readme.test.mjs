@@ -11,8 +11,8 @@ const README = fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.
 
 test('the README names every part of the contract, in order', () => {
 	const headings = [...README.matchAll(/^## (.+)$/gm)].map((m) => m[1]);
-	assert.deepEqual(headings, ['install', 'run it', 'what you see', 'security', 'the editor marker', 'how it fits', 'requirements', 'limits and known gaps', 'troubleshooting', 'not yet']);
-	for (const must of ['dt web status', 'dt web stop', 'dt web url', 'preview_start', 'HttpOnly; SameSite=Strict', 'Replace, then restore', 'dist/app/SOURCE.json', 'sha256', '@dreamteamer/protocol', '@dreamteamer/http', '>=0.43.0']) {
+	assert.deepEqual(headings, ['quick start', 'commands', 'what you see', 'security', 'the editor marker', 'versions', 'limits', 'troubleshooting']);
+	for (const must of ['dt web status', 'dt web stop', 'dt web url', 'npx dreamteamer init', 'HttpOnly; SameSite=Strict', 'Sec-Fetch-Site', 'Content-Security-Policy: sandbox', 'Referrer-Policy: no-referrer', 'single-use sign-in', 'does not protect against', '### served', 'SECURITY.md', 'an open question', 'dist/app/SOURCE.json', 'sha256', '@dreamteamer/protocol', '@dreamteamer/http', '>=0.43.0']) {
 		assert.ok(README.includes(must), `the README does not say ${must}`);
 	}
 });
