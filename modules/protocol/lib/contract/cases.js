@@ -100,6 +100,12 @@ export const cases = [
 		ok(res); check(res.body && typeof res.body === 'object', 'no diff object');
 	} },
 
+	// a revision named in a request is HEAD or a hex commit id, never an argument git could read as an option
+	{ id: 'history-diff-bad-hash', route: 'history-diff', method: 'GET', path: ({ fixture }) => `/history-diff/projects/northwind-launch?hash=${encodeURIComponent(`--output=${path.join(fixture.root, 'overwritten.txt')}`)}`, expect: (res, { fixture }) => {
+		status(res, 400); check(!fs.existsSync(path.join(fixture.root, 'overwritten.txt')), 'git wrote a file named by ?hash=');
+	} },
+	{ id: 'history-diff-short-hash', route: 'history-diff', method: 'GET', path: (ctx) => `/history-diff/projects/northwind-launch?hash=${ctx.state.fixtureHash.slice(0, 7)}`, expect: (res) => ok(res) },
+
 	// ---- record writes -------------------------------------------------------------------------
 	{ id: 'records-create', route: 'records-create', method: 'POST', path: '/collections/tasks/records', body: { name: 'Call Sam', project: 'projects/northwind-launch' }, expect: (res, { fixture }) => {
 		ok(res); shape(res.body, { id: 'string', path: 'string' });
@@ -144,6 +150,7 @@ export const cases = [
 			ok(res); const read = await request('GET', '/collections/projects/records/northwind-launch');
 			check(read.body.fields.status === 'active', `status ${read.body.fields.status} after the revert`);
 		} },
+	{ id: 'revert-bad-hash', route: 'revert', method: 'POST', path: '/collections/projects/records-revert/northwind-launch', body: { hash: '--orphan' }, before: snapshot, expect: (res, ctx, snap) => { status(res, 400); unchanged(ctx, snap); } },
 	{ id: 'file-import-refused', route: 'file-import', method: 'POST', path: '/collections/tasks/files', body: {}, expect: (res) => status(res, 400) },
 	{ id: 'record-remove-referenced', route: 'record-remove', method: 'DELETE', path: '/collections/projects/records/northwind-launch', expect: (res) => status(res, 409) },
 	{ id: 'record-remove', route: 'record-remove', method: 'DELETE', path: '/collections/tasks/records/call-sam-diaz', expect: async (res, { request }) => {

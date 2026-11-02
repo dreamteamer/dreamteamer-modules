@@ -324,7 +324,7 @@ export class WorkspaceApi {
                 return store.rename(name, body?.old, body?.new);
             }
             if (tail === "records-revert" && method === "POST")
-                return store.revert(name, id, String(body?.hash ?? ""));
+                return store.revert(name, id, revisionParam(body?.hash));
         }
         if (seg[0] === "commands" && seg.length === 2 && method === "GET") {
             const ids = (query.get("ids") ?? "").split(",").map((s) => s.trim()).filter(Boolean);
@@ -342,7 +342,7 @@ export class WorkspaceApi {
         if (seg[0] === "history" && method === "GET")
             return this.history(seg[1] ?? "", seg.slice(2).join("/"));
         if (seg[0] === "history-diff" && method === "GET")
-            return this.historyDiff(seg[1] ?? "", seg.slice(2).join("/"), query.get("hash") ?? "HEAD");
+            return this.historyDiff(seg[1] ?? "", seg.slice(2).join("/"), revisionParam(query.get("hash") ?? "HEAD"));
         if (seg[0] === "reload" && method === "POST") {
             this.reload();
             return { ok: true };
@@ -731,4 +731,12 @@ function opOf(schema, kind, verb) {
         }
         return fn;
     };
+}
+
+/** A commit a request names — `HEAD` or a hexadecimal commit id of 4 to 40 characters, nothing else, so a value
+ *  git would read as an option (`--output=…`) never reaches it: 400 before the engine is asked. */
+export function revisionParam(value) {
+	const v = typeof value === "string" ? value : "";
+	if (v === "HEAD" || /^[0-9a-f]{4,40}$/.test(v)) return v;
+	throw new ApiFailure(`a revision is HEAD or a commit id of 4 to 40 hex characters (got ${JSON.stringify(String(value ?? "")).slice(0, 60)}) — nothing was run`, 400);
 }
