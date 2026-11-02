@@ -1,0 +1,60 @@
+{
+	"name": "@dreamteamer/ui",
+	"version": "0.1.0",
+	"description": "The dreamteamer UI: lists, boards, record pages and the schema editor as one Vue app, mounted by any host over a transport",
+	"license": "Apache-2.0",
+	"type": "module",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/dreamteamer/dreamteamer-modules.git",
+		"directory": "modules/ui"
+	},
+	"keywords": [
+		"dreamteamer",
+		"dreamteamer-module"
+	],
+	"main": "./dist/lib/index.js",
+	"types": "./dist/lib/index.d.ts",
+	"files": [
+		"README.md",
+		"src",
+		"dist"
+	],
+	"scripts": {
+		"build": "node scripts/build.mjs",
+		"test": "node scripts/test.mjs",
+		"typecheck": "vue-tsc --noEmit -p src/tsconfig.json",
+		"prepublishOnly": "node scripts/build.mjs"
+	},
+	"dreamteamer": {
+		"title": "UI",
+		"description": "The dreamteamer UI as a package: the nav, lists, boards, calendars, maps, record pages and the schema editor — one Vue app that a host mounts over a transport (postMessage in the VS Code extension, HTTP under dt web). Ships a library build, a browser page build and its source. A library: no collection, no verb.",
+		"engine": ">=0.43.0"
+	},
+	"devDependencies": {
+		"@codemirror/commands": "^6.10.4",
+		"@codemirror/lang-markdown": "^6.5.1",
+		"@codemirror/language": "^6.12.4",
+		"@codemirror/state": "^6.7.1",
+		"@codemirror/view": "^6.43.6",
+		"@dagrejs/dagre": "^3.1.1",
+		"@types/d3-force": "^3.0.10",
+		"@types/leaflet": "^1.9.21",
+		"@types/node": "^22.10.0",
+		"@vitejs/plugin-vue": "6.0.1",
+		"@vscode/codicons": "^0.0.46-24",
+		"@vue-flow/background": "^1.3.2",
+		"@vue-flow/controls": "^1.1.3",
+		"@vue-flow/core": "^1.48.2",
+		"@vue-flow/minimap": "^1.5.4",
+		"d3-force": "^3.0.0",
+		"esbuild": "^0.28.2",
+		"leaflet": "^1.9.4",
+		"reka-ui": "2.8.2",
+		"typescript": "^5.7.0",
+		"vite": "^7.3.0",
+		"vue": "3.5.24",
+		"vue-router": "4.6.3",
+		"vue-tsc": "3.1.8"
+	}
+}

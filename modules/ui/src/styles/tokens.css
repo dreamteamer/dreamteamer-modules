@@ -1,0 +1,76 @@
+/**
+ * Design tokens for the studio visual system. Clean-room: values and names are
+ * our own, chosen to match the *product design* (layout/proportions/visual language) described
+ * in docs/superpowers/specs/2026-07-20-studio-directus-look.md — never copied from
+ * .ref-code/ (restrictively-licensed reference source, never opened for this work).
+ */
+:root {
+	--dt-accent: #6644ff;
+	--dt-accent-hover: #5535e0;
+	--dt-accent-subtle: #efeaff;
+
+	/* Link text. Standalone default only — inside VS Code, vscode.css overrides both with the
+	   theme's own `textLink.*`, which is what keeps contrast right on dark themes. */
+	--dt-link: #2f6feb;
+	--dt-link-hover: #1a4fc4;
+
+	--dt-module-bg: #18222f;
+	--dt-module-fg: #8b9cb3;
+	--dt-module-fg-active: #ffffff;
+	--dt-module-bg-active: #223042;
+
+	--dt-fg: #172940;
+	--dt-fg-subtle: #67788f;
+	--dt-fg-muted: #a2b5cd;
+
+	--dt-bg: #ffffff;
+	--dt-bg-subtle: #f0f4f9;
+	--dt-bg-hover: #e8eef5;
+	--dt-bg-active: #e2e9f1;
+
+	--dt-border: #e4eaf1;
+	--dt-border-strong: #d3dae4;
+	/* The accent, reserved for focus rings only — see vscode.css for why nothing else may borrow it. */
+	--dt-focus-ring: #6644ff;
+
+	--dt-danger: #e35169;
+	--dt-success: #2ecda7;
+	--dt-warning: #ffa439;
+
+	--dt-radius: 6px;
+	--dt-radius-lg: 8px;
+
+	--dt-shadow: 0 1px 4px rgba(23, 41, 64, 0.08);
+	--dt-shadow-lg: 0 4px 24px rgba(23, 41, 64, 0.16);
+
+	--dt-font: 'Inter Variable', Inter, system-ui, sans-serif;
+	--dt-font-mono: ui-monospace, 'SF Mono', Menlo, monospace;
+
+	--dt-input-height: 48px;
+
+	/* ---- SCALE TOKENS (the single source for size/space) --------------------------------------
+	   Added 2026-07-27 after "too many font sizes" / "a zoo in many places": components had been
+	   hardcoding px, so every fix was a whack-a-mole and the scale drifted apart again. Anything
+	   sizing text or space consumes these. vscode.css overrides the values for the editor. */
+	--dt-text: 13px; /* every piece of UI text */
+	/* Monospace needs its OWN step: at an identical px, Menlo/SF Mono render optically larger than
+	   the UI sans (measured 2026-07-27 — cap-ascent 9.48 vs 9.16 at 13px) and each glyph advances
+	   0.6em, so mono text both looked bigger AND truncated sooner in a 320px panel. */
+	--dt-text-mono: 12px;
+	--dt-label: 11px; /* uppercase headers, badges, hints — the ONLY other size */
+	--dt-text-title: 13px; /* page title */
+
+	--dt-space-1: 4px;
+	--dt-space-2: 8px;
+	--dt-space-3: 12px;
+	--dt-space-4: 16px;
+	--dt-space-5: 24px;
+
+	--dt-row-height: 30px; /* data-table row: denser than a web app, roomier than a file tree */
+	--dt-header-height: 35px; /* matches the workbench's own pane/section header */
+	--dt-control-height: 26px; /* buttons/inputs — VS Code's own control height */
+	--dt-cell-pad: 12px; /* table cell horizontal padding */
+	--dt-page-pad: 16px 20px;
+	--dt-page-pad-form: 20px 24px;
+	--dt-icon: 16px; /* every material-symbol glyph — icons were their own 16/17/18/20px zoo */
+}
