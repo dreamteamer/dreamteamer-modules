@@ -84,3 +84,13 @@ test('the README says what the bridge enforces and what a module app can still d
 	assert.doesNotMatch(readme, /\/ui-modules\//);
 	assert.match(readme, /`\[::1\]` is redirected to `127\.0\.0\.1`/);
 });
+
+test('a page opened at localhost gets its files origin (and frame-src) on localhost too, so its frames are same-site', async () => {
+	const r = await new Promise((resolve, reject) => {
+		const q = http.request({ host: '127.0.0.1', port: web.appPort, path: '/', headers: { host: `localhost:${web.appPort}`, cookie } }, (res) => { let b = ''; res.on('data', (c) => { b += c; }); res.on('end', () => resolve({ csp: res.headers['content-security-policy'], body: b })); });
+		q.on('error', reject); q.setTimeout(10_000, () => q.destroy(new Error('timeout'))); q.end();
+	});
+	const files = JSON.parse(/Object\.assign\(window, (\{.*?\})\);/s.exec(r.body)[1]).__DT_FILES__;
+	assert.match(files, new RegExp(`^http://localhost:${web.filesPort}/`));
+	assert.match(r.csp, new RegExp(`frame-src http://localhost:${web.filesPort}/`));
+});

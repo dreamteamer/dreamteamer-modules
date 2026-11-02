@@ -98,7 +98,8 @@ const ModuleFrame = defineComponent({
 		const bounds = createBounds();
 		let win: Window | null = null;
 		let posted = new Set<string>();
-		const post = (m: any) => win && bridge.post(win, m);
+		// props and rows are Vue reactive proxies, which postMessage cannot clone — a frame gets plain data only
+		const post = (m: any) => { if (!win) return; try { bridge.post(win, plainData(m)); } catch (e) { warn(`module app ${props.module}: could not send ${m?.op}: ${String(e)}`); } };
 		const snapshot = () => {
 			const s = props.listState; if (!s) return null;
 			const rows = s.items.items.value as Record<string, unknown>[];
@@ -107,7 +108,7 @@ const ModuleFrame = defineComponent({
 				scope, collection: props.collection, rows, total: s.items.total?.value ?? rows.length, pk: 'id',
 				columns: (s.columns?.value ?? []).map((c: any) => ({ field: c.field, title: c.title, type: c.type, editable: c.editable })),
 				selected: s.selectedIds?.value ?? new Set(), sort: { field: s.sortField?.value ?? null, desc: !!s.sortDesc?.value },
-				titleOf: (r) => recordTitle(row ? { collection: row.name, record_title: row.display?.record_title ?? row.compiled?.defaults?.record_title } as any : null, r, String(r.id ?? '')), titleRefs: {},
+				titleOf: (r) => recordTitle(row ? { collection: row.name, record_title: row.record_title ?? row.compiled?.defaults?.record_title } as any : null, r, String(r.id ?? '')), titleRefs: {}, // no resolve: a reference renders as its raw id (D16)
 				loading: s.items.loading?.value, error: s.items.error?.value ?? null,
 			});
 			posted = new Set(snap.ids);
@@ -173,6 +174,9 @@ function themeNow() {
 	return { vars, scheme: document.body.className };
 }
 
+/** Plain, structured-clonable data: no proxies, no functions (a JSON round trip; undefined stays undefined). */
+function plainData<T>(x: T): T { return x === undefined ? x : JSON.parse(JSON.stringify(x)); }
+
 const stripCommit = (scope: AnyScope, collection: string, rec: unknown) => (rec && typeof rec === 'object' && !scope.own.has(collection) ? reshape('record-read', { id: (rec as any).id, fields: rec }, scope as any, collection) : rec);
 
 // ---- cells (D5): markup from the registry frame, sanitized here
@@ -188,6 +192,14 @@ function cellMarkup(module: string, viewId: string, cellProps: Record<string, un
 	});
 }
 
+/** The collection a `/content/<collection>/<id>` route names — the longest compiled collection name that prefixes it. */
+function collectionOfRoute(): string | null {
+	const m = /^\/content\/(.+)$/.exec(routerRef?.currentRoute.value.path ?? '');
+	if (!m) return null;
+	const rest = decodeURIComponent(m[1]);
+	return (descriptors as any[]).map((d) => String(d.name)).filter((n) => rest === n || rest.startsWith(`${n}/`)).sort((a, b) => b.length - a.length)[0] ?? null;
+}
+
 function fieldProxy(module: string, kind: 'edit' | 'view', defId: string): Component {
 	return defineComponent({
 		name: `Module${kind}Proxy`,
@@ -195,7 +207,8 @@ function fieldProxy(module: string, kind: 'edit' | 'view', defId: string): Compo
 		emits: ['update:value'],
 		setup(p: any, { emit }) {
 			const scope = scopes.get(module)!;
-			const collection = () => String(p.field?.collection ?? '');
+			// a field row does not name its collection: take it from the field, else from the record route the page is on
+			const collection = () => String(p.field?.collection ?? collectionOfRoute() ?? '');
 			const html = ref('');
 			return () => {
 				const c = collection();

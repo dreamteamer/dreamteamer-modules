@@ -92,9 +92,11 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 30, owner
 
 	// ---- the app origin ----------------------------------------------------------------------
 	const appHtml = fs.readFileSync(path.join(appDir, 'index.html'), 'utf8');
-	const filesOrigin = () => `http://127.0.0.1:${filesPort}`;
-	const boot = (nonce) => {
-		const base = `${filesOrigin()}/${filesKey}`;
+	// the files origin on the host the page was opened at: a page at localhost framing 127.0.0.1 would be cross-site,
+	// which the files origin refuses (cr-modules-008 t13)
+	const filesOrigin = (pageHost = '') => `http://${/^localhost(:|$)/i.test(pageHost) ? 'localhost' : '127.0.0.1'}:${filesPort}`;
+	const boot = (nonce, pageHost) => {
+		const base = `${filesOrigin(pageHost)}/${filesKey}`;
 		const globals = {
 			__DT_HOST__: { nav: 'app', commands: false, openFile: 'tab', tabs: false, history: 'hash', moduleFrames: 'url' },
 			__DT_MODULE_GRANTS__: readModuleGrant(root),
@@ -154,9 +156,9 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 30, owner
 
 		if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/index.html')) {
 			const nonce = random(16);
-			res.setHeader('Content-Security-Policy', appCsp(nonce, filesOrigin(), filesKey));
+			res.setHeader('Content-Security-Policy', appCsp(nonce, filesOrigin(host), filesKey));
 			res.setHeader('Cache-Control', 'no-store');
-			return sendFile(res, appHtml.replace(/<head>/i, `<head>${boot(nonce)}`), 'text/html; charset=utf-8');
+			return sendFile(res, appHtml.replace(/<head>/i, `<head>${boot(nonce, host)}`), 'text/html; charset=utf-8');
 		}
 		if (req.method === 'GET' && url.pathname.startsWith('/assets/')) {
 			const f = contained(path.join(appDir, 'assets'), decodeURIComponent(url.pathname.slice(8)));

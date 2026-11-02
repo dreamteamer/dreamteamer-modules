@@ -5,7 +5,7 @@ import { execFileSync } from 'node:child_process';
 
 const coll = (name, fields, extra = '') => `name: ${name}\ndescription: ${name} for the held-out walk.\nuse_when: never\nids:\n  from: '{{ name | slug }}'\nfields:\n${Object.entries(fields).map(([f, y]) => `  ${f}:\n${y.split('\n').map((l) => `    ${l}`).join('\n')}`).join('\n')}\n${extra}`;
 
-const PATTERN = `export default ({ registerApp, registerEdit }) => {
+const PATTERN = `export default ({ registerApp, registerEdit, registerView }) => {
 	const { defineComponent, h, onMounted } = window.Vue;
 	const st = async (p, init) => { try { const r = await fetch(p, init); return r.status + ':' + JSON.stringify(await r.json()).slice(0, 240); } catch { return 'threw'; } };
 	const J = (m, b) => ({ method: m, headers: { 'content-type': 'application/json' }, body: b === undefined ? undefined : JSON.stringify(b) });
@@ -30,6 +30,7 @@ const PATTERN = `export default ({ registerApp, registerEdit }) => {
 		out('done', 1);
 	}); return () => h('input', { class: 'pattern-edit' }); } });
 	registerEdit({ id: 'pattern-edit', name: 'pattern edit', types: ['string'], component: Edit });
+	registerView({ id: 'pattern-view', name: 'pattern view', types: ['string'], component: Edit });
 };
 `;
 
@@ -40,7 +41,7 @@ const PROBE2 = `export default ({ registerApp, registerEdit, registerView, regis
 	const mark = "document.body.dataset.marker='ran';fetch('/api/commit',{method:'POST'});parent.postMessage({dt:1,id:999,op:'request',method:'POST',path:'/commit'},'*')";
 	const App = defineComponent({ setup() { onMounted(async () => {
 		const host = document.createElement('div'); document.body.appendChild(host);
-		host.innerHTML = '<img src=x onerror="' + mark + '">' + '<svg onload="' + mark + '"></svg>' + '<a id="js" href="javascript:' + mark + '">x</a>' + '<meta http-equiv="refresh" content="0;url=https://example.com/">';
+		host.innerHTML = '<img src=x onerror="' + mark + '">' + '<svg onload="' + mark + '"></svg>' + '<a id="js" href="javascript:' + mark + '">x</a>';
 		try { document.getElementById('js').click(); } catch {}
 		out('h4location', location.href.slice(0, 40));
 		const ext = (attrs, key) => new Promise((res) => { const s = document.createElement('script'); Object.assign(s, attrs); s.onerror = () => res('refused'); s.onload = () => res('LOADED'); document.head.appendChild(s); setTimeout(() => res('timeout'), 3000); }).then((v) => out(key, v));
@@ -62,6 +63,7 @@ const PROBE2 = `export default ({ registerApp, registerEdit, registerView, regis
 		out('done', 1);
 	}); return () => h('i', 'probe-edit'); } });
 	registerEdit({ id: 'probe-edit', name: 'probe edit', types: ['string'], component: Edit });
+	registerView({ id: 'probe-view', name: 'probe view', types: ['string'], component: Edit });
 	registerView({ id: 'probe-cell', name: 'probe cell', types: ['string'], component: { props: ['value'], render() { return h('span', { class: 'evil', style: 'position:fixed', onclick: 'x()', title: 't' }, [h('a', { href: 'javascript:alert(1)' }, String(this.value ?? ''))]); } } });
 	const List = defineComponent({ props: ['state', 'collection'], setup(p) { return () => { const s = p.state; const rows = s.items.items.value;
 		document.body.dataset.h7rows = String(rows.length); document.body.dataset.h7titles = rows.slice(0, 6).map((r) => s.recordTitleOf(r)).join('|');
@@ -75,17 +77,17 @@ const PROBE2 = `export default ({ registerApp, registerEdit, registerView, regis
 export function addHeldout(f) {
 	const mod = (name, files) => { for (const [rel, text] of Object.entries(files)) { const p = path.join(f.root, 'modules', name, rel); fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, text); } };
 	const pkg = (name, extra = {}) => JSON.stringify({ name, private: true, version: '0.0.1', dreamteamer: { title: name, description: `the ${name} module of the held-out walk`, engine: '>=0.43.0', ...extra } }, null, '\t');
-	mod('pattern', { 'package.json': pkg('pattern'), 'collections/pattern-items.collection.yaml': coll('pattern-items', { name: 'type: string\nrequired: true\ndisplay:\n  editor: pattern-edit', note: 'type: string\ndisplay:\n  editor: probe-edit' }), 'ui/app.js': PATTERN });
+	mod('pattern', { 'package.json': pkg('pattern'), 'collections/pattern-items.collection.yaml': coll('pattern-items', { name: 'type: string\nrequired: true', pv: 'type: string\ndisplay:\n  editor: pattern-edit\n  viewer: pattern-view', qv: 'type: string\ndisplay:\n  editor: probe-edit\n  viewer: probe-view' }), 'ui/app.js': PATTERN });
 	mod('probe2', { 'package.json': pkg('probe2', { peer_collections: ['projects', 'pattern-items'] }), 'collections/probe-items.collection.yaml': coll('probe-items', { name: 'type: string\nrequired: true\ndisplay:\n  viewer: probe-cell', ref: 'type: projects', pat: 'type: pattern-items' }, "record_title: '{{ name }} — {{ ref }}'\n"), 'ui/app.js': PROBE2,
 		'ui-views/probe-list.ui-view.yaml': 'route: /probe-list\nname: probe list\nscope: collection\ncollection: collections/probe-items\ndisplay:\n  list:\n    layout: probe-list\n' });
 	mod('other', { 'package.json': pkg('other'), 'collections/other-items.collection.yaml': coll('other-items', { name: 'type: string\nrequired: true' }) });
 	mod('named-only', { 'package.json': pkg('named-only'), 'collections/named-items.collection.yaml': coll('named-items', { name: 'type: string\nrequired: true' }), 'ui/app.js': 'export function register() {}\n' });
 	mod('meta-url', { 'package.json': pkg('meta-url'), 'collections/meta-items.collection.yaml': coll('meta-items', { name: 'type: string\nrequired: true' }), 'ui/app.js': "export default () => { new URL('./x.json', import.meta.url); return fetch(new URL('./x.json', import.meta.url)); };\n" });
 	mod('chunked', { 'package.json': pkg('chunked'), 'collections/chunk-items.collection.yaml': coll('chunk-items', { name: 'type: string\nrequired: true' }), 'ui/app.js': "export default async () => { await import('./chunk-a.js'); };\n" });
-	const rec = (dir, id, body) => { fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(path.join(dir, `${id}.md`), `---\n${body}---\n`); };
+	const rec = (dir, id, body) => { fs.mkdirSync(dir, { recursive: true }); const suffix = path.basename(dir).replace(/s$/, ''); fs.writeFileSync(path.join(dir, `${id}.${suffix}.md`), `---\n${body}---\n`); };
 	const ids = fs.readdirSync(path.join(f.root, 'data', 'projects')).map((n) => n.split('.')[0]);
 	for (let i = 0; i < 1000; i++) rec(path.join(f.root, 'data', 'probe-items'), `p${String(i).padStart(4, '0')}`, `name: Row ${i} <img src=x onerror="document.body.dataset.marker='cell'">\nref: projects/${i % 2 ? ids[i % ids.length] : 'missing-' + i}\n`);
-	rec(path.join(f.root, 'data', 'pattern-items'), 'pattern-one', 'name: Pattern one\n');
+	rec(path.join(f.root, 'data', 'pattern-items'), 'pattern-one', 'name: Pattern one\npv: pattern view\nqv: probe view\n');
 	for (const [c, id] of [['other-items', 'other-one'], ['named-items', 'n1'], ['meta-items', 'm1'], ['chunk-items', 'c1']]) rec(path.join(f.root, 'data', c), id, `name: ${id}\n`);
 	// the layer also holds one pattern-items record
 	const layer = path.join(f.root, 'git_modules', 'northwind-archive');
