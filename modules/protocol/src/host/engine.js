@@ -3,7 +3,8 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { pathToFileURL } from "node:url";
 import { EngineTooOldError, meetsFloor } from "./floor.js";
-const esmImport = (specifier) => import(specifier);
+// through new Function, so a bundler building CommonJS (the VS Code extension) keeps a real dynamic import
+const esmImport = new Function("specifier", "return import(specifier)");
 export const ENGINE_API_VERSION = 1;
 let loaded;
 let loadedApi;

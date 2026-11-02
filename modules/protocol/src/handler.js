@@ -27,20 +27,51 @@ export async function createHandler({ root, onSystemWrite, settings = () => work
 	return {
 		api,
 		reopen: () => refreshWorkspace(),
-		async handle(method, path, body) {
-			const m = String(method).toUpperCase();
-			const hit = matchRoute(m, path);
-			if (!hit) return { status: 404, body: { error: `unhandled request ${m} ${path}` } };
-			const refused = unreadableDryRun(m, path);
-			if (refused) return { status: 400, body: { error: refused } };
-			// the one route the editor's host never needed: its tree IS the nav
-			if (hit.route.id === 'nav') {
-				try { api.descriptors(); return { status: 200, body: navModel({ root, settings: settings() ?? {} }) }; }
-				catch (e) { return { status: 400, body: { error: String(e?.message ?? e) } }; }
-			}
-			return api.handle(m, path, body);
-		},
+		handle: (method, path, body) => route(api, method, path, body, { root, settings, host: (m, p, b) => api.handle(m, p, b) }),
 	};
+}
+
+/**
+ * One request through the protocol's router in front of a host that is already open — what createHandler
+ * answers with, and what a host that opened the workspace itself (the VS Code extension) calls directly: an
+ * unnamed method and path is 404 `unhandled request`, an unreadable `?dry-run` is 400, `GET /nav` is the nav
+ * model, and everything else is the host's.
+ * @param {{ descriptors(): unknown }} api
+ * @param {{ root: string, settings: () => object, host: (method: string, path: string, body?: unknown) => Promise<{ status: number, body: unknown }> }} opts
+ */
+export async function route(api, method, path, body, { root, settings, host }) {
+	const m = String(method).toUpperCase();
+	const hit = matchRoute(m, path);
+	if (!hit) {
+		const hint = unencodedHint(api, path);
+		return { status: 404, body: { error: `unhandled request ${m} ${path}${hint ? ` — ${hint}` : ''}` } };
+	}
+	const refused = unreadableDryRun(m, path);
+	if (refused) return { status: 400, body: { error: refused } };
+	// the one route the editor's host never needed: its tree IS the nav
+	if (hit.route.id === 'nav') {
+		try { api.descriptors(); return { status: 200, body: navModel({ root, settings: settings() ?? {} }) }; }
+		catch (e) { return { status: 400, body: { error: String(e?.message ?? e) } }; }
+	}
+	return host(m, path, body);
+}
+
+/** A collection name with a slash sent unencoded splits into extra segments and matches no route: say which
+ *  collection the caller meant, and why, rather than only "unhandled". */
+function unencodedHint(api, path) {
+	const seg = String(path).split('?')[0].replace(/^\/+/, '').split('/').map((s) => { try { return decodeURIComponent(s); } catch { return s; } });
+	if (seg[0] !== 'collections' || seg.length < 3) return null;
+	let names;
+	try { names = api.descriptors(); } catch { return null; }
+	if (names.has(seg[1])) return null;
+	for (let take = seg.length; take > 2; take--) {
+		const candidate = seg.slice(1, take).join('/');
+		if (names.has(candidate)) {
+			return `unknown collection "${seg[1]}" — did you mean "${candidate}"? a collection name containing "/" must be percent-encoded `
+				+ `in the URL (encodeURIComponent("${candidate}")), or it splits into extra path segments.`;
+		}
+	}
+	return null;
 }
 
 /** A write's `?dry-run` is absent, `true` or `false`; anything else — `yes`, a bare `?dry-run`, a repeat —

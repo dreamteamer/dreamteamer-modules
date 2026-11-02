@@ -20,7 +20,8 @@
 		"./contract/fixture": "./lib/contract/fixture.js",
 		"./package.json": "./package.json",
 		"./handler": "./src/handler.js",
-		"./host/*": "./src/host/*.js"
+		"./host/*": "./src/host/*.js",
+		"./nav-model": "./src/nav-model.js"
 	},
 	"files": [
 		"README.md",

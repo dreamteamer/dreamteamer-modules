@@ -25,7 +25,7 @@ record ids are paths (`2026/11/northwind-kickoff`) and are sent unencoded. The q
 | status | when |
 |---|---|
 | `400` | validation refused the write; a compile refused a schema write (the source is restored); a malformed request |
-| `404` | no such record; no such route (`unhandled request <METHOD> <path>`, or `unhandled field op …` under `/fields`) |
+| `404` | no such record; no such route (`unhandled request <METHOD> <path>`, or `unhandled field op …` under `/fields`). A collection name with a `/` sent unencoded matches no route, and the message goes on to name the collection meant: `… — unknown collection "lab" — did you mean "lab/samples"? a collection name containing "/" must be percent-encoded …` |
 | `409` | the record is referenced by another, or already exists; a repository is blocked (an in-progress merge or rebase); the workspace would not re-open before a compile-gated write (`… did not load, so nothing was written`) |
 
 Every error body is `{ "error": "<the engine's own sentence>" }`.

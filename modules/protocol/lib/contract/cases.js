@@ -75,6 +75,10 @@ export const cases = [
 	{ id: 'records-list-namespaced', route: 'records-list', method: 'GET', path: '/collections/lab%2Fsamples/records', expect: (res) => {
 		ok(res); check(res.body.total === 1, `lab/samples total ${res.body.total}`);
 	} },
+	{ id: 'records-list-namespaced-unencoded', route: 'records-list', method: 'GET', path: '/collections/lab/samples/records', expect: (res) => {
+		status(res, 404);
+		check(/did you mean "lab\/samples"/.test(res.body.error) && /percent-encoded/.test(res.body.error), `the refusal does not name the collection meant: ${res.body.error}`);
+	} },
 	{ id: 'records-list-filter', route: 'records-list', method: 'GET', path: `/collections/projects/records?filter=${encodeURIComponent(JSON.stringify({ status: { _eq: 'active' } }))}`, expect: (res) => {
 		ok(res); check(res.body.records.every((r) => r.status === 'active') && res.body.records.length >= 1, 'the filter did not narrow to active');
 	} },
