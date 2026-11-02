@@ -25,10 +25,9 @@ test('the handler passes the contract except the ledger, refuses undocumented ro
 	const request = (m, p, b) => quietly(() => handler.handle(m, p, b));
 
 	const { failed } = await runContract({ request, fixture });
-	const ledger = JSON.parse(fs.readFileSync(path.join(PKG, 'lib', 'contract', 'gaps', 'extension.json'), 'utf8'));
-	console.log(`handler: ${failed.length} of ${cases.length} cases fail (ledger ${ledger.length})`);
+	console.log(`handler: ${failed.length} of ${cases.length} cases fail`);
 	for (const f of failed) console.log(`  ✖ ${f.id}: ${f.why}`);
-	assert.deepEqual(failed.map((f) => f.id).sort(), [...ledger].sort());
+	assert.deepEqual(failed.map((f) => f.id), [], 'the shared handler answers every case');
 
 	// the router: a route ROUTES does not name never reaches the host
 	for (const [m, p] of [['GET', '/graph'], ['DELETE', '/info'], ['PATCH', '/fields/tasks/done/rename'], ['PUT', '/collections/tasks/records']]) {

@@ -11,13 +11,15 @@
 import { matchRoute } from './routes.js';
 import { initEngine, refreshWorkspace } from './host/engine.js';
 import { WorkspaceApi } from './host/api.js';
+import { navModel, workspaceNavSettings } from './nav-model.js';
 
 /**
- * @param {{ root: string, scope?: 'all' | 'private' | 'shared', onSystemWrite?: (result: unknown) => void }} opts
+ * @param {{ root: string, scope?: 'all' | 'private' | 'shared', onSystemWrite?: (result: unknown) => void,
+ *           settings?: () => object }} opts — `settings` answers the four nav settings (default: the workspace's .vscode/settings.json)
  * @returns {Promise<{ handle: (method: string, path: string, body?: unknown) => Promise<{ status: number, body: unknown }>,
  *                    readonly api: WorkspaceApi, scope: string, reopen: () => Promise<void> }>}
  */
-export async function createHandler({ root, scope, onSystemWrite } = {}) {
+export async function createHandler({ root, scope, onSystemWrite, settings = () => workspaceNavSettings(root) } = {}) {
 	if (!root) throw new Error('createHandler: no workspace root');
 	await initEngine(root);
 	const api = new WorkspaceApi(root);
@@ -30,7 +32,19 @@ export async function createHandler({ root, scope, onSystemWrite } = {}) {
 		reopen: () => refreshWorkspace(),
 		async handle(method, path, body) {
 			const m = String(method).toUpperCase();
-			if (!matchRoute(m, path)) return { status: 404, body: { error: `unhandled request ${m} ${path}` } };
+			const hit = matchRoute(m, path);
+			if (!hit) return { status: 404, body: { error: `unhandled request ${m} ${path}` } };
+			// the two routes the editor's host never needed: its tree IS the nav, its toggle sets the scope
+			if (hit.route.id === 'nav') {
+				try { api.descriptors(); return { status: 200, body: navModel({ root, settings: settings() ?? {} }) }; }
+				catch (e) { return { status: 400, body: { error: String(e?.message ?? e) } }; }
+			}
+			if (hit.route.id === 'scope') {
+				const s = body?.scope;
+				if (!['all', 'private', 'shared'].includes(s)) return { status: 400, body: { error: `PUT /scope takes { "scope": "all" | "private" | "shared" } (got ${JSON.stringify(s)})` } };
+				api.scope = s;
+				return { status: 200, body: { scope: s } };
+			}
 			return api.handle(m, path, body);
 		},
 	};
