@@ -21,7 +21,7 @@ import { moduleKindDefault, resolveEdit, resolveView } from './registry/resolve'
 import { recordTitle } from './lib/record-titles';
 import { buildSnapshot, checkIntent, checkNavigate, createBounds, forwardKey, invalidationFor, sanitizeCellHtml } from './modules/policy';
 
-type AnyScope = ReturnType<typeof buildModuleScope> & { ownViews?: string[] };
+type AnyScope = ReturnType<typeof buildModuleScope> & { ownViews?: string[]; ownApps?: string[] };
 declare global { interface Window { __DT_MODULE_GRANTS__?: Record<string, { reads: string[]; writes: string[] }>; __DT_FILES__?: string; __DT_UI_BASE__?: string; __DT_GUEST_URL__?: string; __DT_HOST__?: { moduleFrames?: 'url' | 'srcdoc' } } }
 
 const bridge = createFrameBridge<{ handle: (msg: any) => void }>();
@@ -283,6 +283,7 @@ function register(module: string, d: any, router: Router) {
 	else if (d.kind === 'list') lists.register({ ...base, fillsHeight: d.fillsHeight, summarizes: d.summarizes, component: listProxy(module, d.id) } as any);
 	else if (d.kind === 'panel') panels.register({ ...base, types: d.types ?? [], component: { render: () => null } } as any); // held; no panel surface yet
 	else if (d.kind === 'app') {
+		const sc = scopes.get(module); if (sc) sc.ownApps = [...(sc.ownApps ?? []), d.id];
 		const component = appProxy(module, d.id);
 		apps.register({ id: d.id, icon: d.icon ?? 'extension', label: d.label ?? d.id, routes: [{ path: '', component }, { path: ':rest(.*)*', component }], __module: module } as any);
 		router.addRoute({ path: `/a/${d.id}`, children: [{ path: '', component }, { path: ':rest(.*)*', component }] });

@@ -3,7 +3,7 @@
  * (requests go through @dreamteamer/protocol's gate): the cell sanitizer (D5), the list snapshot (D16), intents
  * (D13), navigation and keys (§2), the bridge bounds (D17), invalidation (D7) and the Delete dialog's titles.
  */
-export interface FrameScope { module: string; own: Set<string>; reads: Set<string>; writes: Map<string, unknown>; ownViews?: string[] }
+export interface FrameScope { module: string; own: Set<string>; reads: Set<string>; writes: Map<string, unknown>; ownViews?: string[]; ownApps?: string[] }
 
 const CELL_TAGS = new Set(['span', 'div', 'time', 'strong', 'em', 'b', 'i', 'code', 'br', 'small', 'abbr']);
 const CELL_ATTRS = /^(role|title|datetime|aria-[a-z-]+)$/;
@@ -79,7 +79,7 @@ export function checkNavigate(scope: FrameScope, to: string): { ok: boolean; to?
 	const no = { ok: false, error: `module app ${scope.module} cannot navigate to ${to}` };
 	if (typeof to !== 'string' || !to.startsWith('/') || to.startsWith('//')) return no;
 	const [pathPart] = to.split('?');
-	if (pathPart === `/a/${scope.module}` || pathPart.startsWith(`/a/${scope.module}/`)) return { ok: true, to };
+	for (const app of [scope.module, ...(scope.ownApps ?? [])]) if (pathPart === `/a/${app}` || pathPart.startsWith(`/a/${app}/`)) return { ok: true, to };
 	if ((scope.ownViews ?? []).includes(pathPart)) return { ok: true, to };
 	const m = /^\/content\/(.+)$/.exec(pathPart);
 	if (m) {

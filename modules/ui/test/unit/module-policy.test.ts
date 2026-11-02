@@ -32,6 +32,8 @@ test('intents carry ids the host posted; selection only where writes are granted
 });
 test('navigate: own app and own views with query; read collections without query; nothing else', () => {
 	assert.deepEqual(checkNavigate(scope, '/a/lab/board?x=1'), { ok: true, to: '/a/lab/board?x=1' });
+	assert.deepEqual(checkNavigate({ ...scope, ownApps: ['lab-board'] }, '/a/lab-board?g=1'), { ok: true, to: '/a/lab-board?g=1' }, 'an app the module registered under its own id');
+	assert.equal(checkNavigate({ ...scope, ownApps: ['lab-board'] }, '/a/other-board').ok, false);
 	assert.deepEqual(checkNavigate(scope, '/lab/board?grantee=g1'), { ok: true, to: '/lab/board?grantee=g1' });
 	assert.deepEqual(checkNavigate(scope, '/content/users/u1?prefill=x'), { ok: true, to: '/content/users/u1' });
 	for (const bad of ['/content/tasks/t1', '/content/lab%2Fsamples/+', '/content/lab/samples/+?prefill=1', '/settings/data-model', 'javascript:alert(1)', 'https://x.example/', '/a/other/x']) assert.equal(checkNavigate(scope, bad).ok, false, bad);
