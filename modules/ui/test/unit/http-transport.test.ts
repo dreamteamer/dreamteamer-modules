@@ -11,7 +11,7 @@ import { HostError } from '../../src/transport/types';
 const calls: Array<{ url: string; init: RequestInit }> = [];
 const replaced: string[] = [];
 const opened: string[] = [];
-let source: { onmessage?: (e: { data: string }) => void } = {};
+let source: { onmessage?: (e: { data: string }) => void; onopen?: () => void } = {};
 
 const win = new EventTarget() as EventTarget & Record<string, unknown>;
 win.fetch = async (url: string, init: RequestInit) => {
@@ -73,4 +73,12 @@ test('a server-sent event arrives as a window message', () => {
 	source.onmessage?.({ data: '{"type":"dt:invalidate","scope":"data"}' });
 	source.onmessage?.({ data: 'not json' });
 	assert.deepEqual(messages, [{ type: 'dt:invalidate', scope: 'data' }]);
+});
+
+test('a reconnected event stream refetches: what changed while it was down is never missed', () => {
+	messages.length = 0;
+	source.onopen?.();
+	assert.deepEqual(messages, [], 'the first open is not a change');
+	source.onopen?.();
+	assert.deepEqual(messages, [{ type: 'dt:invalidate', scope: 'schema' }]);
 });

@@ -26,6 +26,13 @@ export function httpTransport(): Transport {
 	window.addEventListener('hashchange', () => post({ type: 'dt:navigate', route: route() }));
 	if (typeof EventSource !== 'undefined') {
 		const events = new EventSource('/api/events');
+		// EventSource reconnects by itself, but a change made while it was down is never sent again: on every
+		// open after the first, refetch everything (schema and records) as an invalidation would
+		let opened = false;
+		events.onopen = () => {
+			if (opened) post({ type: 'dt:invalidate', scope: 'schema' });
+			opened = true;
+		};
 		events.onmessage = (e) => {
 			try {
 				post(JSON.parse(e.data));
