@@ -55,6 +55,14 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 30, owner
 	};
 	const frameRoutes = [];
 	const files = http.createServer((req, res) => {
+		try {
+			serveFile(req, res);
+		} catch {
+			if (res.headersSent) return void res.destroy();
+			send(res, 400, 'bad request');
+		}
+	});
+	const serveFile = (req, res) => {
 		baseHeaders(res);
 		res.setHeader('Content-Security-Policy', FILE_CSP);
 		if (!hostNames(filesPort).has(String(req.headers.host ?? '').toLowerCase())) return send(res, 403, 'not this server');
@@ -84,7 +92,8 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 30, owner
 		const headers = {};
 		if ((ext === '.svg' || ext === '.html') && url.searchParams.get('frame') !== '1') headers['Content-Disposition'] = 'attachment';
 		return sendFile(res, fs.readFileSync(file), MIME[ext] ?? 'application/octet-stream', headers);
-	});
+	};
+
 
 	// ---- the app origin ----------------------------------------------------------------------
 	const appHtml = fs.readFileSync(path.join(appDir, 'index.html'), 'utf8');

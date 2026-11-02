@@ -3,6 +3,9 @@
 // live updates over server-sent events. One fixture, one server, closed in after().
 import { test, before, after, describe } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import net from 'node:net';
+import path from 'node:path';
 import { startWeb } from '../src/server.js';
 import { fixture, call, rawGet } from './support.mjs';
 
@@ -144,5 +147,29 @@ describe('a bad request never stops the server', () => {
 		await new Promise((r) => setTimeout(r, 200));
 		const after = await call(`${web.appUrl}/api/info`, { headers: auth });
 		assert.equal(after.status, 200, 'the server died');
+	});
+});
+
+describe('a bad request never stops the files origin', () => {
+	test('an unreadable file answers and a raw unparsable URL answers; the files origin still serves after both', { timeout: 30_000 }, async () => {
+		const page = await call(`${web.appUrl}/`, { headers: { authorization: `Bearer ${web.token}` } });
+		const filesBase = JSON.parse(/__DT_FILES__":("[^"]+")/.exec(page.text)[1]);
+		const locked = path.join(f.media, 'locked.png');
+		fs.writeFileSync(locked, 'x');
+		fs.chmodSync(locked, 0o000);
+		const r = await call(`${filesBase}/v/DT_WEB_TEST_MEDIA/locked.png`);
+		assert.ok(r.status >= 400, `an unreadable file answered ${r.status}`);
+		fs.chmodSync(locked, 0o600);
+		const port = new URL(web.filesOrigin).port;
+		const raw = await new Promise((resolve) => {
+			const s = net.connect(Number(port), '127.0.0.1', () => s.write(`GET http://[ HTTP/1.1\r\nHost: 127.0.0.1:${port}\r\nConnection: close\r\n\r\n`));
+			let out = '';
+			s.on('data', (b) => { out += b; });
+			s.on('close', () => resolve(out));
+			s.on('error', () => resolve(out));
+		});
+		assert.match(raw, /^HTTP\/1\.1 [45]\d\d/, `the raw request got ${JSON.stringify(raw.slice(0, 40))}`);
+		await new Promise((res) => setTimeout(res, 200));
+		assert.equal((await call(`${filesBase}/v/DT_WEB_TEST_MEDIA/locked.png`)).status, 200, 'the files origin died');
 	});
 });
