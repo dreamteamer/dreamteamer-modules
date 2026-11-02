@@ -50,10 +50,10 @@ not encoded** (`/records/2026-09-01/alpha`), which is why every `*id` is the las
 | DELETE | `/collections/:name/records/*id` | remove → `{id}` · `?force=true` |
 | PATCH | `/collections/:name/position/*id` | manual order, on the collection's `position` field: `{top}` `{bottom}` `{before: id}` `{after: id}` |
 | POST | `/collections/:name/rename` | `{old, new}` |
-| POST | `/collections/:name/records-revert/*id` | `{hash}` |
+| POST | `/collections/:name/records-revert/*id` | `{hash}` — a commit hash (4 to 40 hex digits) or `HEAD`, else `400` |
 | GET | `/collections/:name/values/:field` | the values a field uses · `?limit` |
 | GET | `/history/:name/*id` | the record's commits |
-| GET | `/history-diff/:name/*id` | one commit's diff · `?hash` (HEAD) |
+| GET | `/history-diff/:name/*id` | one commit's diff · `?hash` (HEAD) — a commit hash (4 to 40 hex digits) or `HEAD`, else `400` |
 | POST | `/collections/:name/fields` | add a field: `{name, field}` with a v2 field object, or `{name, type, …}` in the flag vocabulary → `{collection, field, value, …}`, `value` the field as written |
 | PATCH | `/collections/:name/fields/:field` | edit a field: `{field}` replaces it, flags change only what they name → `{…, value}` |
 | PATCH | `/collections/:name/fields/:field/name` | rename a field everywhere · `{to}` |
@@ -68,9 +68,11 @@ creates a collection, `PATCH /collections/collections/records/<name>` with `{mod
 
 **Requests.** The `Host` header names the server's own address and port (`localhost` and `127.0.0.1`
 too, on loopback); an `Origin`, when sent, is `http://` plus that same host and port. Anything else
-is `403`. A server started with a token answers `401` to a request without
+is `403`, and so is any request a browser marks `Sec-Fetch-Site: cross-site` — a page on another site
+cannot reach the api even through an image or a link, which send no `Origin`. A server started with a token answers `401` to a request without
 `Authorization: Bearer <token>`. Every `POST` and `PATCH`, and any `DELETE` with a body, is
-`Content-Type: application/json`, or `415`.
+`Content-Type: application/json`, or `415`. Every answer carries `X-Content-Type-Options: nosniff` and
+`Referrer-Policy: no-referrer`, and no `X-Powered-By`.
 
 **Dry runs.** `?dry-run` is `true` or `false`; any other value, a bare `?dry-run`, or a repeat is `400`
 on every write. `?dry-run=true` on `DELETE modules/…`, a `PATCH collections/…` move, a field rename
@@ -78,7 +80,7 @@ and `POST /commit` returns the plan and writes nothing. On every other write it 
 `400 {error, "dry-run": "unsupported"}` and the operation is not called.
 
 **Errors** are `{error}`: `400` validation, a compile refusal or a bad request · `401` no token ·
-`403` a foreign `Host` or `Origin` · `404` no such record or no such route · `409` referenced by
+`403` a foreign `Host` or `Origin`, or a cross-site request · `404` no such record or no such route · `409` referenced by
 another record, or already exists · `415` a write that is not JSON.
 
 The store is rebuilt whenever the compiled manifest changes, so a `dt compile` elsewhere is visible

@@ -1,6 +1,6 @@
 {
 	"name": "@dreamteamer/http",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "dt serve: a JSON REST api at /api over a dreamteamer workspace, through the same validating store the CLI uses",
 	"license": "Apache-2.0",
 	"type": "module",
@@ -20,6 +20,7 @@
 	},
 	"files": [
 		"README.md",
+		"UPDATING.md",
 		"src"
 	],
 	"dependencies": {
