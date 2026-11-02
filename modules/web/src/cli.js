@@ -65,12 +65,13 @@ export async function main(root, argv, { log = console.log, env = process.env, a
 		throw e;
 	}
 	writeState(file, { pid: process.pid, port: web.appPort, filesPort: web.filesPort, started: new Date().toISOString(), owner: ownerPid ?? null, token: web.token });
-	const url = web.signInUrl();
-	log(`✔ dreamteamer web at ${url}`);
-	if (o.open) openBrowser(url);
+	// the handlers before the first line: a caller may signal the moment it reads the URL
 	const stop = () => web.close('signal');
 	process.once('SIGINT', stop);
 	process.once('SIGTERM', stop);
+	const url = web.signInUrl();
+	log(`✔ dreamteamer web at ${url}`);
+	if (o.open) openBrowser(url);
 	await web.closed;
 	removeState(file);
 	lock.release();
