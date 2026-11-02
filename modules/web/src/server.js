@@ -114,7 +114,7 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 30, owner
 	const authed = (req) => {
 		const m = /^Bearer (.+)$/.exec(req.headers.authorization ?? '');
 		if (m && same(m[1], token)) return 'bearer';
-		const sid = /(?:^|;\s*)dt_session=([^;]+)/.exec(req.headers.cookie ?? '')?.[1];
+		const sid = new RegExp(`(?:^|;\\s*)dt_session_${appPort}=([^;]+)`).exec(req.headers.cookie ?? '')?.[1];
 		return sid && sessions.has(sid) ? 'cookie' : null;
 	};
 	// a request that throws — a malformed percent-escape, a client gone mid-body — answers or is dropped, never
@@ -141,7 +141,7 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 30, owner
 			if (!exp || exp < Date.now()) return page(res, 401, 'Sign in with the URL <code>dt web</code> printed — run <code>npx dt web url</code> for a new one.');
 			const sid = random(32);
 			sessions.add(sid);
-			res.setHeader('Set-Cookie', `dt_session=${sid}; HttpOnly; SameSite=Strict; Path=/`);
+			res.setHeader('Set-Cookie', `dt_session_${appPort}=${sid}; HttpOnly; SameSite=Strict; Path=/`);
 			res.writeHead(302, { Location: '/' });
 			return res.end();
 		}

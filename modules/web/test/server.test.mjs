@@ -27,7 +27,8 @@ describe('sign-in', () => {
 		assert.equal(first.status, 302);
 		assert.equal(first.headers.get('location'), '/');
 		const set = first.headers.get('set-cookie');
-		assert.match(set, /^dt_session=[^;]+; HttpOnly; SameSite=Strict; Path=\/$/);
+		// the name carries the port: two dt web on one host never share or overwrite a session (sec-02)
+		assert.match(set, new RegExp(`^dt_session_${new URL(web.appUrl).port}=[^;]+; HttpOnly; SameSite=Strict; Path=/$`));
 		cookie = set.split(';')[0];
 		assert.equal((await call(url)).status, 401, 'a used code signs in again');
 	});
