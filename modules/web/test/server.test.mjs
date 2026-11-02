@@ -50,6 +50,11 @@ describe('the app origin', () => {
 		assert.equal(r.headers.get('referrer-policy'), 'no-referrer');
 		assert.equal(r.headers.get('x-powered-by'), null);
 		assert.match(r.text, /"nav":"app"/);
+		// the host shim must use the browser's own fetch: the app patches fetch('/api/…') to go through the
+		// host, so a shim calling the patched fetch loops until the stack overflows (found walking a real HQ)
+		assert.match(r.text, /var nativeFetch = window\.fetch\.bind\(window\);/);
+		assert.doesNotMatch(r.text, /[^e]fetch\('\/api'/, 'the shim calls the patched fetch');
+		assert.ok(r.text.indexOf('<script nonce') < r.text.indexOf('type="module"'), 'the shim runs after the app');
 		assert.doesNotMatch(r.text, new RegExp(web.token), 'the token is in the page');
 	});
 

@@ -280,10 +280,13 @@ const SHIM = `(function () {
 	var state = null;
 	var post = function (m) { window.dispatchEvent(new MessageEvent('message', { data: m })); };
 	var files = window.__DT_FILES__;
+	// the app teaches fetch('/api/…') to go through the host (for module bundles); the host itself must use
+	// the browser's own fetch, taken before the app loads, or a request would loop back into itself
+	var nativeFetch = window.fetch.bind(window);
 	function rpc(m) {
 		var init = { method: m.method, credentials: 'same-origin', headers: {} };
 		if (m.body !== undefined) { init.body = JSON.stringify(m.body); init.headers['content-type'] = 'application/json'; }
-		fetch('/api' + m.path, init).then(function (r) {
+		nativeFetch('/api' + m.path, init).then(function (r) {
 			return r.text().then(function (t) {
 				var data = null; try { data = t ? JSON.parse(t) : null; } catch (e) { data = t; }
 				if (r.ok) post({ type: 'dt:rpc-reply', id: m.id, ok: true, data: data });
