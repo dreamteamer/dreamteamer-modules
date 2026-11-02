@@ -50,7 +50,7 @@ function deslug(segment: string): string {
  * kanban column heading in the product to fix a problem that only references have.
  *
  * A reference prints its LAST segment, de-slugged: the lane in
- * `introspection/topics/2026-09-08--dana-o/asset-management` is "Asset management", not the
+ * `perspective/topics/2026-09-08--dana-o/asset-management` is "Asset management", not the
  * 58 characters of provenance in front of it. The `value` keeps its full shape, so equality tests,
  * drops and round-trips are unaffected — this is a display name and nothing else reads it.
  *

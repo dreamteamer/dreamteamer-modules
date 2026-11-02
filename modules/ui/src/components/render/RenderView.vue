@@ -17,7 +17,7 @@ const fallbackText = computed(() => (props.value == null ? '—' : String(props.
 /**
  * `context` is bound only when the resolved View declares it (batched-review smell: unconditional
  * binding fell through onto non-consuming Views' root elements as literal DOM attributes).
- * `<script setup>` type-only defineProps compiles to a runtime `props` option, so introspection is
+ * `<script setup>` type-only defineProps compiles to a runtime `props` option, so inspection is
  * reliable.
  */
 const editContext = computed<Record<string, unknown>>(() => {

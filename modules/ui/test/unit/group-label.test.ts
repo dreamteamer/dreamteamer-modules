@@ -18,7 +18,7 @@ test('idFor strips the target prefix, leading slash or not, and never guesses', 
 	assert.equal(idFor('companies/acme', 'companies'), 'acme');
 	// A NAMESPACED collection and a PATH id — the case a string split cannot do
 	assert.equal(
-		idFor('introspection/topics/2026-09-07--acme/agent-decision-log', 'introspection/topics'),
+		idFor('perspective/topics/2026-09-07--acme/agent-decision-log', 'perspective/topics'),
 		'2026-09-07--acme/agent-decision-log',
 	);
 	// A value that does not carry its target is passed through: it is already an id
@@ -36,7 +36,7 @@ test('a band is named by the view’s group_title, else the TARGET collection’
 });
 
 test('labelFor prefers a resolved name, then what bucketize computed, then the de-slugged path', () => {
-	const value = 'introspection/topics/2026-09-07--acme/agent-decision-log';
+	const value = 'perspective/topics/2026-09-07--acme/agent-decision-log';
 	assert.equal(labelFor(value, 'Agent decision log', { [value]: 'Agent decision log — 12 activities' }), 'Agent decision log — 12 activities');
 	assert.equal(labelFor(value, 'Agent decision log', {}), 'Agent decision log');
 	// No fallback at all (a caller with no bucket label) still never prints the raw path

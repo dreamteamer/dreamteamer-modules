@@ -12,8 +12,8 @@
  * ⚠ BOTH HALVES ARE ENCODED, and the collection is the half that was missed. The adapter splits that
  * path on `/` and takes ONE segment as the collection (`api/adapter.ts`, the `items` branch), which
  * is why every other caller passes `encodeURIComponent(collection)`. This one did not — so a
- * NAMESPACED target (`introspection/collaborators`) was cut at its first slash, the request went to
- * a collection called `introspection` with a nonsense id, and the fetch resolved to null. Silently:
+ * NAMESPACED target (`perspective/collaborators`) was cut at its first slash, the request went to
+ * a collection called `perspective` with a nonsense id, and the fetch resolved to null. Silently:
  * a null here is indistinguishable from a dangling reference, so every relation cell and every band
  * header pointing at a namespaced collection just kept showing the de-slugged path and looked like
  * a display choice. Found 2026-09-08 by a gantt banded on `collaborators`.

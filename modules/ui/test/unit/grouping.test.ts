@@ -152,11 +152,11 @@ test('referenceLabel leaves a NON-reference value byte for byte — kanban headi
 
 test('referenceLabel keeps a dated slug\'s date intact and de-slugs only the name after it', () => {
 	assert.equal(
-		referenceLabel('introspection/topics/2026-09-08--dana-o/asset-management'),
+		referenceLabel('perspective/topics/2026-09-08--dana-o/asset-management'),
 		'Asset management',
 	);
 	assert.equal(
-		referenceLabel('introspection/introspectives/2026-09-08--dana-o'),
+		referenceLabel('perspective/retrospectives/2026-09-08--dana-o'),
 		'2026-09-08 Dana o',
 		'a date prefix survives de-slugging — 2026 09 08 would be unreadable',
 	);
@@ -172,9 +172,9 @@ test('two references sharing a last segment are DISAMBIGUATED, never both shorte
 	// the clashing labels — and only those — grow back toward the full reference.
 	const topic = field({ field: 'topic' });
 	const records: ItemRecord[] = [
-		{ id: 'a', topic: 'introspection/topics/run-1/api' },
-		{ id: 'b', topic: 'introspection/concepts/run-1/api' },
-		{ id: 'c', topic: 'introspection/topics/run-1/billing' },
+		{ id: 'a', topic: 'perspective/topics/run-1/api' },
+		{ id: 'b', topic: 'perspective/concepts/run-1/api' },
+		{ id: 'c', topic: 'perspective/topics/run-1/billing' },
 	];
 	const labels = bucketize(topic, records, { showUngrouped: false }).map((c) => c.label);
 	assert.equal(new Set(labels).size, labels.length, 'every lane label is unique');

@@ -3,7 +3,7 @@
  *
  * A grouped layout's band value is whatever the field holds. For an enum that is a declared choice
  * with an authored label, and `bucketize` uses it. For a REFERENCE it is a workspace path —
- * `introspection/topics/2026-09-07--acme/agent-decision-log` — and until now the band printed
+ * `perspective/topics/2026-09-07--acme/agent-decision-log` — and until now the band printed
  * either the whole 58 characters or `referenceLabel`'s de-slugged last segment. Both are guesses at
  * a name the referenced record already carries.
  *
@@ -29,11 +29,11 @@ import { referenceLabel, UNGROUPED } from './grouping';
 import { tryRenderDisplay } from './template';
 
 /**
- * `/introspection/topics/2026-09-07--acme/agent-decision-log` + target `introspection/topics`
+ * `/perspective/topics/2026-09-07--acme/agent-decision-log` + target `perspective/topics`
  * → `2026-09-07--acme/agent-decision-log`.
  *
  * ⚠ THE TARGET IS REQUIRED, and cannot be inferred from the string. A collection name may contain
- * slashes (a namespace: `introspection/topics`) and so may an id (`2026-09-07--acme/x`), so
+ * slashes (a namespace: `perspective/topics`) and so may an id (`2026-09-07--acme/x`), so
  * there is no position in that path where "collection ends, id begins" can be read off. Every
  * caller resolves the target from the relations list first — the same way `ViewRelation` does, for
  * the same reason.
