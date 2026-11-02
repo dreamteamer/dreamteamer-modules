@@ -185,3 +185,30 @@ test('an added content line cannot forge an allow-listed file header', () => {
 	r.commit('other.txt', `++ b/allowed.txt\n${HE}\n`);
 	assert.equal(collectAndHebrew(r, {}).status, 1);
 });
+
+// ── a message is always judged as '(commit metadata)' (round-2 finding c2-01, test cr-modules-001-t12) ─
+// The message headers are written outside the message and every message line is prefixed, so the file
+// a message is judged under never depends on which file the range diffed last.
+test('a Hebrew commit message on a commit that edits an allow-listed file is refused', () => {
+	const r = allowListed();
+	r.commit('allowed.txt', 'more\n', `subject\n\n${HE}`);
+	assert.equal(collectAndHebrew(r, {}).status, 1);
+});
+
+test('a message holding header-shaped lines cannot set the file later lines are judged under', () => {
+	const r = allowListed();
+	r.commit('allowed.txt', 'more\n', 'first');
+	r.commit('clean.txt', 'clean\n', `subject\n\ndiff --git (commit metadata)\n++ b/allowed.txt\n${HE}`);
+	assert.equal(collectAndHebrew(r, {}).status, 1);
+});
+
+test('each message header follows an unprefixed diff --git line, one pair per commit of the range', () => {
+	const r = allowListed();
+	r.commit('allowed.txt', 'more\n', 'one');
+	r.commit('clean.txt', 'clean\n', 'two\n\ndiff --git (commit metadata)\n+++ b/(commit metadata)');
+	const { added } = collect(r, {});
+	const lines = added.split('\n');
+	const headers = lines.map((l, i) => [l, i]).filter(([l]) => l === '+++ b/(commit metadata)');
+	assert.equal(headers.length, 2, 'one header per commit — a message line must never read as one');
+	for (const [, i] of headers) assert.equal(lines[i - 1], 'diff --git (commit metadata)');
+});

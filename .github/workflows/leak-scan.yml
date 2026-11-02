@@ -75,11 +75,17 @@ jobs:
           else
             BASE=$(git merge-base origin/main HEAD 2>/dev/null || true)
           fi
-          # each commit's message under a header of its own, every line prefixed `+` like an added line.
-          # The `diff --git` lines are kept: the Hebrew rule honours a `+++ b/<path>` header only right
-          # after one, so a content or message line `++ b/<allow-listed path>` cannot forge a header
-          # (code review c1-03).
-          messages() { git log --format='diff --git (commit metadata)%n+++ b/(commit metadata)%n%B' "$@" | sed -E '/^(diff --git|\+\+\+ b\/)\(commit metadata\)$/!s/^/+/'; }
+          # each commit's message under a header of its own. The two header lines are written here, never
+          # taken from the message, and EVERY message line is prefixed `+`: no message line can read as a
+          # header, so a message is always judged as '(commit metadata)', whatever file the range diffed
+          # last (code review c1-03, c2-01). The Hebrew rule honours a `+++ ` header only right after an
+          # unprefixed `diff --git` line, which only git's own diff headers and these lines carry.
+          messages() {
+            for sha in $(git rev-list "$@"); do
+              printf 'diff --git (commit metadata)\n+++ b/(commit metadata)\n'
+              git log -1 --format=%B "$sha" | sed 's/^/+/'
+            done
+          }
           if [ -n "$BASE" ] && git cat-file -e "$BASE^{commit}" 2>/dev/null; then
             { git log -p -U0 --format= --diff-merges=first-parent "$BASE"..HEAD | grep -E '^(\+|diff --git )' || true; messages "$BASE"..HEAD; } > "$OUT"
           else
