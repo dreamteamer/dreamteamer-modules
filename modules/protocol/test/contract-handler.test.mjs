@@ -24,7 +24,9 @@ test('the handler passes the contract except the ledger, refuses undocumented ro
 	const handler = await createHandler({ root: fixture.root });
 	const request = (m, p, b) => quietly(() => handler.handle(m, p, b));
 
-	const { failed } = await runContract({ request, fixture });
+	const { failed, skipped } = await runContract({ request, fixture });
+	// this host serves every optional route (its core keeps running sessions): a skip here is a route it dropped
+	assert.deepEqual(skipped, [], 'handler skipped an optional route it serves');
 	console.log(`handler: ${failed.length} of ${cases.length} cases fail`);
 	for (const f of failed) console.log(`  ✖ ${f.id}: ${f.why}`);
 	assert.deepEqual(failed.map((f) => f.id), [], 'the shared handler answers every case');

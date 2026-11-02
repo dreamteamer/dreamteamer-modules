@@ -40,6 +40,7 @@ import { relativeTime } from '../lib/relative-time';
 import { originClassWord, type RecordOrigin } from '../lib/record-origin';
 import type { SourceEntry } from '../api/types';
 import DtIcon from './DtIcon.vue';
+import { hostNotify } from '../api/transport';
 import SourceMark from './SourceMark.vue';
 import StubNote from './StubNote.vue';
 
@@ -71,6 +72,11 @@ const commitRelativeTime = computed(() => {
 	const date = new Date(props.commit.date);
 	return Number.isNaN(date.getTime()) ? props.commit.date : relativeTime(date);
 });
+
+/** The title bar's refresh, from inside the tab: the host runs it (prefix-gated `dt:command`). */
+function refresh(): void {
+	hostNotify('dt:command', { command: 'dreamteamer.refresh' });
+}
 </script>
 
 <template>
@@ -111,8 +117,22 @@ const commitRelativeTime = computed(() => {
 				     on the whole collection, not on the record row 2 identifies, and centring it on
 				     row 2 put it between the title and the actions where it read as a third
 				     competing element. -->
-				<div v-if="$slots.search" class="dt-page-nav__search">
-					<slot name="search" />
+				<!-- The end group carries the right alignment, so refresh sits immediately right of search
+				     on a list page and at the bar's right end on a record page, which has no search. -->
+				<div class="dt-page-nav__end">
+					<div v-if="$slots.search" class="dt-page-nav__search">
+						<slot name="search" />
+					</div>
+					<!-- The ONE refresh command (the view's title bar has the same button): the host
+					     re-reads the workspace and tells this tab to re-fetch its page. -->
+					<button
+						type="button"
+						class="dt-btn dt-btn--ghost dt-btn--icon dt-btn--sm dt-page-nav__refresh"
+						title="Refresh"
+						@click="refresh"
+					>
+						<DtIcon name="refresh" />
+					</button>
 				</div>
 			</div>
 
@@ -236,9 +256,16 @@ a.dt-page-nav__crumb:hover {
 }
 
 /* `auto` margin rather than a spacer, so row 1 needs no filler element when there is no path. */
-.dt-page-nav__search {
+.dt-page-nav__end {
 	flex-shrink: 0;
 	margin-left: auto;
+	display: flex;
+	align-items: center;
+	gap: 2px;
+}
+
+.dt-page-nav__search {
+	flex-shrink: 0;
 	display: flex;
 	align-items: center;
 }

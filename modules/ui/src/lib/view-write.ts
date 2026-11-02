@@ -16,6 +16,7 @@
  *    back as unsaved rather than dropped silently — the remedy is a named view.
  */
 import type { UiViewRecord, ViewDisplay } from '../ui-views';
+import { engineFieldName, engineSort } from './builtin-fields';
 
 /** What the screen shows, as a view's list block holds it. */
 export interface ListPresentation {
@@ -39,8 +40,12 @@ export interface ViewWrite {
 	display: ViewDisplay;
 }
 
+/** The columns and the sort under the engine's names — a built-in is `last_modified` in every write,
+ *  whatever the screen's state still spells it (`lib/builtin-fields.ts`, cr-vscode-011). */
+const engineColumns = (p: ListPresentation) => p.columns.map(engineFieldName);
+
 function listBlock(p: ListPresentation): NonNullable<ViewDisplay['list']> {
-	return { layout: p.layout, columns: [...p.columns], sort: p.sort, ...(Object.keys(p.options).length ? { options: { ...p.options } } : {}) };
+	return { layout: p.layout, columns: engineColumns(p), sort: engineSort(p.sort), ...(Object.keys(p.options).length ? { options: { ...p.options } } : {}) };
 }
 
 /** The whole source of an EXISTING named view, with the screen's list and filter. */
@@ -90,7 +95,7 @@ export function collectionListWrite(
 	p: ListPresentation,
 	filter: Record<string, unknown> | undefined,
 ): { changes: Record<string, unknown>; unsaved: string[] } {
-	const changes: Record<string, unknown> = { 'display.list.columns': [...p.columns], 'display.list.sort': p.sort };
+	const changes: Record<string, unknown> = { 'display.list.columns': engineColumns(p), 'display.list.sort': engineSort(p.sort) };
 	if (p.layout !== (own?.layout ?? DEFAULT_LIST_LAYOUT)) changes['display.list.layout'] = p.layout;
 	const was = own?.options ?? {};
 	for (const [key, value] of Object.entries(p.options)) {

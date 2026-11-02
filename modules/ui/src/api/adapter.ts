@@ -218,11 +218,13 @@ interface ParsedQuery {
 	sort: string | null;
 	search: string | null;
 	filter: Record<string, unknown> | null;
+	/** `notes=1`: the browse list asks the host for each row's `$notes` (cr-vscode-005). */
+	notes: boolean;
 }
 
 function parseQueryString(search: string): ParsedQuery {
 	const params = new URLSearchParams(search);
-	const out: ParsedQuery = { limit: 25, page: 1, sort: null, search: null, filter: null };
+	const out: ParsedQuery = { limit: 25, page: 1, sort: null, search: null, filter: null, notes: false };
 	const filterTree: Record<string, unknown> = {};
 	let hasFilter = false;
 
@@ -231,6 +233,7 @@ function parseQueryString(search: string): ParsedQuery {
 		else if (rawKey === 'page') out.page = Number(value) || 1;
 		else if (rawKey === 'sort') out.sort = value;
 		else if (rawKey === 'search') out.search = value;
+		else if (rawKey === 'notes') out.notes = value === '1';
 		else if (rawKey.startsWith('filter[') || rawKey === 'filter') {
 			hasFilter = true;
 			setBracketPath(filterTree, rawKey.replace(/^filter/, ''), value);
@@ -310,6 +313,7 @@ async function listItems(collection: string, queryString: string): Promise<Adapt
 	const params: string[] = [`limit=${query.limit}`, `offset=${offset}`];
 	if (query.sort) params.push(`sort=${encodeURIComponent(query.sort.split(',')[0] ?? '')}`);
 	if (query.search) params.push(`q=${encodeURIComponent(query.search)}`);
+	if (query.notes) params.push('notes=1');
 	// ⚠ Relation values cross the boundary in the components' `/collection/id` form and must land as
 	// the engine's `collection/id`. `itemToRecord` does this for record BODIES; a filter is not a
 	// body, so a relation condition used to arrive slashed and match NOTHING — 17 rows became 0, and
@@ -441,6 +445,13 @@ export async function adapterRequest(method: string, path: string, body?: unknow
 
 	// /activity — the Schema tab's Activity page (host `src/activity.ts`). A READ, passed straight through.
 	if (head === 'activity' && method === 'GET') {
+		const result = await cleanFetch('GET', pathname + (queryString ? `?${queryString}` : ''));
+		return { data: result, raw: {} };
+	}
+
+	// /notes/:collection?ids=… and /sessions/running — what extensions say about records, and the
+	// running sessions the Activity page lists (cr-vscode-005; clean passthroughs, like /commands)
+	if ((head === 'notes' || (head === 'sessions' && rest[0] === 'running')) && method === 'GET') {
 		const result = await cleanFetch('GET', pathname + (queryString ? `?${queryString}` : ''));
 		return { data: result, raw: {} };
 	}

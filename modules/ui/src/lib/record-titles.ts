@@ -42,14 +42,41 @@ export function recordTitle(row: CollectionRow | null | undefined, record: Recor
 
 /** reference → the target's rendered title, once fetched. Module-level: one answer per webview. */
 const titles = ref<Record<string, string>>({});
-const asked = new Set<string>();
+/** reference → the generation it was last asked in. */
+const asked = new Map<string, number>();
+/**
+ * Bumped by the refresh button (`resetReferenceTitles`). REACTIVE, and read by every
+ * `knownReferenceTitle` call, so every computed and render that resolved a title through it depends
+ * on it and runs again — that re-run is what asks again. A plain counter would answer correctly when
+ * asked while telling no relation cell to ask, and the cell would keep the old name.
+ */
+const generation = ref(0);
 
 async function load(reference: string, parts: { collection: string; id: string }, row: CollectionRow | undefined): Promise<void> {
+	const asOf = generation.value;
 	// lazily: record-cache reaches api/client, which registers a window listener at module scope
 	const { fetchRecord } = await import('./record-cache');
 	const record = await fetchRecord(parts.collection, parts.id);
-	if (!record) return; // a dangling reference keeps the value it holds
+	// a load started before a refresh answers what the disk said THEN — never write it over the new one
+	if (asOf !== generation.value) return;
+	if (!record) {
+		// a dangling reference keeps the value it holds — and one whose target was REMOVED since its title
+		// was drawn loses that title, so a refresh agrees with the disk as a fresh window would
+		if (reference in titles.value) {
+			const { [reference]: _gone, ...rest } = titles.value;
+			titles.value = rest;
+		}
+		return;
+	}
 	titles.value = { ...titles.value, [reference]: recordTitle(row, { ...record, id: parts.id }, parts.id) };
+}
+
+/**
+ * The refresh button: every reference is asked again on its next render. STALE-WHILE-REVALIDATE —
+ * the known titles stay drawn until the new ones land, so no cell flashes to its bare reference.
+ */
+export function resetReferenceTitles(): void {
+	generation.value++;
 }
 
 /**
@@ -60,14 +87,16 @@ async function load(reference: string, parts: { collection: string; id: string }
  */
 export function knownReferenceTitle(raw: string, rows: readonly CollectionRow[]): string | null {
 	const reference = raw.startsWith('/') ? raw.slice(1) : raw;
+	const current = generation.value; // read on EVERY call: this is the dependency a refresh re-runs
 	const known = titles.value[reference];
-	if (known !== undefined) return known;
-	const parts = splitReference(reference, rows.map((r) => r.collection));
-	if (parts && !asked.has(reference)) {
-		asked.add(reference);
-		void load(reference, parts, rows.find((r) => r.collection === parts.collection));
+	if (asked.get(reference) !== current) {
+		const parts = splitReference(reference, rows.map((r) => r.collection));
+		if (parts) {
+			asked.set(reference, current);
+			void load(reference, parts, rows.find((r) => r.collection === parts.collection));
+		}
 	}
-	return null;
+	return known ?? null;
 }
 
 /**

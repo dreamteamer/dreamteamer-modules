@@ -31,6 +31,7 @@ import { hostNotify } from '../api/transport';
 import DtIcon from '../components/DtIcon.vue';
 import DtLink from '../components/DtLink.vue';
 import SourceMark from '../components/SourceMark.vue';
+import RunningSessions from '../components/RunningSessions.vue';
 
 interface ActivityRecord {
 	collection: string;
@@ -152,6 +153,9 @@ const failed = computed(() => activity.value?.failed ?? []);
 				{{ module ? `Commits to ${moduleTitle ?? module}, newest first.` : 'Commits across every module, newest first.' }}
 			</p>
 		</header>
+		<!-- this machine's running sessions — on the unscoped page only: a session belongs to the machine,
+		     not to a module or a layer (cr-vscode-005, design D6). Its own read; the feed never waits on it. -->
+		<RunningSessions v-if="!module && !source && !embedded" />
 		<p v-if="pending.length" class="dt-activity__empty dt-activity__reading">Still reading {{ pending.join(', ') }}…</p>
 		<p v-if="failed.length" class="dt-activity__error">Could not read {{ failed.join(', ') }} — git took too long.</p>
 		<p v-if="error" class="dt-activity__error">{{ error }}</p>

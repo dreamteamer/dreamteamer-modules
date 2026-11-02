@@ -17,6 +17,7 @@
 import { computed, nextTick, ref, watch } from 'vue';
 import DtIcon from '../DtIcon.vue';
 import IconPicker from '../IconPicker.vue';
+import ViewModuleSelect from '../ViewModuleSelect.vue';
 import { slugify } from '../../lib/slugify';
 import type { NextAction, SaveAnswer } from '../../lib/save-answer';
 import type { ViewModuleTarget } from '../../lib/view-module-targets';
@@ -50,7 +51,6 @@ const icon = ref('');
 /** The picked module's `?module=` value; `null` is the workspace module, the default. */
 const module = ref<string | null>(null);
 const slug = computed(() => slugify(name.value));
-const pickedLocked = computed(() => props.targets.find((t) => t.id === module.value)?.locked ?? false);
 
 watch(() => props.formOpen, (open) => {
 	if (!open) return;
@@ -60,7 +60,7 @@ watch(() => props.formOpen, (open) => {
 });
 
 function confirm(): void {
-	if (!slug.value || props.busy || pickedLocked.value) return;
+	if (!slug.value || props.busy) return;
 	emit('confirm', { name: name.value.trim(), icon: icon.value.trim(), module: module.value });
 }
 
@@ -103,27 +103,12 @@ watch(() => props.answer, async (a) => {
 				<p class="dt-vsa__title">Save as a new view</p>
 				<input :value="name" class="dt-input" type="text" placeholder="View name…" aria-label="View name" autofocus @input="name = ($event.target as HTMLInputElement).value" />
 				<IconPicker v-model="icon" placeholder="Icon (optional)" />
-				<fieldset class="dt-vsa__modules" role="radiogroup" aria-label="Module">
-					<legend class="dt-vsa__legend">Module</legend>
-					<label
-						v-for="t in targets"
-						:key="t.id ?? ''"
-						class="dt-vsa__module"
-						:class="{ locked: t.locked, on: module === t.id }"
-						:data-module="t.id ?? ''"
-						:title="t.reason"
-					>
-						<input type="radio" name="dt-vsa-module" :checked="module === t.id" :disabled="t.locked" @change="module = t.id" />
-						<DtIcon v-if="t.locked" name="lock" />
-						<span class="dt-vsa__module-label">{{ t.label }}</span>
-						<span class="dt-vsa__module-hint">{{ t.locked ? t.reason : t.hint }}</span>
-					</label>
-				</fieldset>
+				<ViewModuleSelect v-model="module" :targets="targets" />
 				<p class="dt-vsa__hint">
 					Appears under <strong>{{ collection }}</strong> in the sidebar<span v-if="slug">, id <code>{{ slug }}</code></span>
 				</p>
 				<div class="dt-vsa__row">
-					<button type="submit" class="dt-btn dt-btn--sm" data-action="confirm" :disabled="!slug || busy || pickedLocked">{{ busy ? 'Saving…' : 'Save' }}</button>
+					<button type="submit" class="dt-btn dt-btn--sm" data-action="confirm" :disabled="!slug || busy">{{ busy ? 'Saving…' : 'Save' }}</button>
 					<button type="button" class="dt-btn dt-btn--secondary dt-btn--sm" @click="emit('cancel-form')">Cancel</button>
 				</div>
 			</form>
@@ -217,44 +202,13 @@ watch(() => props.answer, async (a) => {
 	flex-direction: column;
 	gap: var(--dt-space-2);
 }
-.dt-vsa__title,
-.dt-vsa__legend {
+.dt-vsa__title {
 	margin: 0;
 	padding: 0;
 	font-size: var(--dt-label);
 	font-weight: 600;
 	letter-spacing: 0.04em;
 	text-transform: uppercase;
-	color: var(--dt-fg-subtle);
-}
-.dt-vsa__modules {
-	display: flex;
-	flex-direction: column;
-	gap: 2px;
-	margin: 0;
-	padding: 0;
-	border: none;
-}
-.dt-vsa__module {
-	display: grid;
-	grid-template-columns: auto auto 1fr;
-	align-items: center;
-	gap: 6px;
-	padding: 2px 4px;
-	border-radius: 3px;
-	font-size: var(--dt-text);
-	cursor: pointer;
-}
-.dt-vsa__module.on {
-	background: var(--dt-bg-active);
-}
-.dt-vsa__module.locked {
-	opacity: 0.6;
-	cursor: default;
-}
-.dt-vsa__module-hint {
-	grid-column: 2 / -1;
-	font-size: var(--dt-label);
 	color: var(--dt-fg-subtle);
 }
 .dt-vsa__hint {

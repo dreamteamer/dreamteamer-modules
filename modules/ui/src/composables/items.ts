@@ -12,12 +12,16 @@
  * view is responsible for navigating to the new record's id afterward (this composable
  * instance stays bound to `id === null` for its lifetime — mirrors T2's stateless design).
  */
-import { computed, ref, watch } from 'vue';
+import { computed, getCurrentScope, onScopeDispose, ref, watch } from 'vue';
+import { onPageRefresh } from '../lib/page-refresh';
 import { api, buildQuery, type QueryParams } from '../api/client';
 import type { ItemRecord, SourceEntry } from '../api/types';
 import { onDataChanged } from '../lib/live-data';
+import { DEFAULT_SORT } from '../lib/builtin-fields';
 
-export function useItems(collection: string) {
+/** `notes`: ask the host for each row's `$notes` — what an extension says about it (a session holding
+ *  it). Only the browse list asks; every note read costs one engine call (cr-vscode-005). */
+export function useItems(collection: string, opts: { notes?: boolean } = {}) {
 	const items = ref<ItemRecord[]>([]);
 	const loading = ref(false);
 	const error = ref<string | null>(null);
@@ -25,10 +29,12 @@ export function useItems(collection: string) {
 	const limit = ref(25);
 	// Default sort (operator ask 2026-07-27): most-recently-touched-in-git first, on every
 	// collection, until a saved view or a column click overrides it. Universal, not per-collection
-	// config — `last-modified` is synthesized for every collection (presentation.js), null for the
-	// handful (skills/agents/commands/…) whose compiled records have no git history, which sorts
-	// them after everything with a real date (see server.js's string sort).
-	const sort = ref('-last-modified');
+	// config — every collection has the engine's `last_modified` (the host stamps the date on each row
+	// under that name and the v1 `last-modified`), null for the handful (skills/agents/commands/…)
+	// whose compiled records have no git history, which sorts them after everything with a real date.
+	// ⚠ The ENGINE's name, never the wire key: a Save writes this sort, and compile knows only
+	// `last_modified` (cr-vscode-011, `lib/builtin-fields.ts`).
+	const sort = ref(DEFAULT_SORT);
 	const search = ref('');
 	// Server `filter` param (C2 spec item 1) — the filter-builder compiles its rule tree down to
 	// this shape (`lib/filter-query.ts#compileFilter`) and the caller assigns it here; `undefined`
@@ -66,6 +72,7 @@ export function useItems(collection: string) {
 			if (search.value) query.search = search.value;
 			if (fields.value) query.fields = fields.value;
 			if (filter.value) query.filter = filter.value;
+			if (opts.notes) query.notes = 1;
 
 			const res = await api.get<ItemRecord[]>(`/items/${encodeURIComponent(collection)}${buildQuery(query)}`);
 			if (seq !== requestSeq) return; // superseded by a newer reload — never apply a stale response
@@ -89,6 +96,8 @@ export function useItems(collection: string) {
 	watch([page, limit, sort, search, fields, filter], () => void reload());
 	void reload();
 	onDataChanged(() => void reload());
+	// The refresh button: the same question again — page, sort, search and filter are kept.
+	listenForPageRefresh(() => void reload());
 
 	return { items, loading, error, page, limit, sort, search, fields, filter, total, sources, setSort, reload };
 }
@@ -112,6 +121,20 @@ export function useItem(collection: string, id: string | null) {
 	const error = ref<string | null>(null);
 
 	const dirty = computed(() => Object.keys(edits.value).length > 0);
+	/** The refresh button skipped this record because it holds unsaved edits — ContentDetail says so. */
+	const refreshSkipped = ref(false);
+	watch(dirty, (now) => {
+		if (!now) refreshSkipped.value = false;
+	});
+	// The refresh button: re-read the record — unless that would throw the operator's typing away.
+	listenForPageRefresh(() => {
+		if (id === null) return;
+		if (dirty.value) {
+			refreshSkipped.value = true;
+			return;
+		}
+		void load();
+	});
 
 	async function load(): Promise<void> {
 		if (id === null) return;
@@ -125,6 +148,7 @@ export function useItem(collection: string, id: string | null) {
 			record.value = res.data;
 			loaded.value = { ...res.data };
 			edits.value = {};
+			refreshSkipped.value = false;
 		} catch (err) {
 			error.value = err instanceof Error ? err.message : String(err);
 		} finally {
@@ -176,5 +200,12 @@ export function useItem(collection: string, id: string | null) {
 		await api.delete(`/items/${encodeURIComponent(collection)}/${encodeURIComponent(id)}`);
 	}
 
-	return { record, edits, dirty, loading, error, setField, load, save, remove, discard };
+	return { record, edits, dirty, loading, error, refreshSkipped, setField, load, save, remove, discard };
+}
+
+/** Subscribe to the page-refresh signal for the lifetime of the calling effect scope (a component's
+ *  setup), or for good when there is none. */
+function listenForPageRefresh(fn: () => void): void {
+	const off = onPageRefresh(fn);
+	if (getCurrentScope()) onScopeDispose(off);
 }

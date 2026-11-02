@@ -26,8 +26,28 @@ export interface TestNode {
 	parent: TestNode | null;
 }
 
+/**
+ * The DOM methods a component reaches for on its OWN elements — a `v-model` input's listeners, a
+ * control's `focus` after a pick, a panel's `querySelector`/`scrollIntoView`, a rect to place a panel
+ * against. No-ops here, and NON-ENUMERABLE, so they never show up in `props` or in a structural
+ * comparison. Without them a `DtSelect` could not be opened in this tier (cr-vscode-010): above its
+ * search threshold the search input's `v-model` threw `el.addEventListener is not a function`.
+ */
+const NOOP = (): void => {};
+const ELEMENT_METHODS: Record<string, unknown> = {
+	addEventListener: NOOP,
+	removeEventListener: NOOP,
+	focus: NOOP,
+	blur: NOOP,
+	scrollIntoView: NOOP,
+	querySelector: () => null,
+	getBoundingClientRect: () => ({ top: 0, bottom: 0, left: 0, right: 0, width: 0, height: 0, x: 0, y: 0 }),
+};
+
 function node(tag: string): TestNode {
-	return { tag, props: {}, children: [], parent: null };
+	const n: TestNode = { tag, props: {}, children: [], parent: null };
+	for (const [key, value] of Object.entries(ELEMENT_METHODS)) Object.defineProperty(n, key, { value, enumerable: false });
+	return n;
 }
 
 /**
@@ -161,4 +181,50 @@ export function text(n: TestNode): string {
 	};
 	walk(n);
 	return out;
+}
+
+/**
+ * `document` and `window`, for a component that listens on them — `DtSelect` adds its outside-click
+ * and scroll/resize listeners while open and removes them on unmount, so a file that mounts one calls
+ * this once at the top. Only where absent: a file that installed its own keeps it. The window is
+ * 1200×1000, the size a panel is placed against.
+ */
+export function installDomShims(): void {
+	const g = globalThis as { document?: unknown; window?: unknown };
+	g.document ??= { addEventListener: NOOP, removeEventListener: NOOP };
+	g.window ??= { addEventListener: NOOP, removeEventListener: NOOP, innerWidth: 1200, innerHeight: 1000 };
+}
+
+function combobox(root: TestNode, ariaLabel: string): TestNode {
+	const control = find(root, (n) => n.props['role'] === 'combobox' && n.props['aria-label'] === ariaLabel);
+	if (!control) throw new Error(`no combobox labelled "${ariaLabel}"`);
+	return control;
+}
+
+/**
+ * Open the dropdown labelled `ariaLabel` the way a person does — a click on its control — and return
+ * its option buttons in order. A control already open is left open: its `aria-expanded` is `true`
+ * only while open (a `false` prop is deleted here, so a closed control carries none), and a click
+ * would toggle it shut.
+ */
+export async function openSelect(root: TestNode, ariaLabel: string): Promise<TestNode[]> {
+	const control = combobox(root, ariaLabel);
+	if (control.props['aria-expanded'] !== true) {
+		(control.props['onClick'] as () => void)();
+		await flush();
+	}
+	return all(root, (n) => n.props['role'] === 'option');
+}
+
+/** Open the dropdown and click the option whose LABEL (not its trailing hint) is exactly `label`. */
+export async function pickOption(root: TestNode, ariaLabel: string, label: string): Promise<void> {
+	const options = await openSelect(root, ariaLabel);
+	const isLabel = (n: TestNode): boolean => hasClass(n, 'dt-dd__option-label');
+	const match = options.find((o) => {
+		const span = find(o, isLabel);
+		return span !== null && text(span) === label;
+	});
+	if (!match) throw new Error(`no option labelled "${label}" in "${ariaLabel}" (have: ${options.map((o) => text(find(o, isLabel) ?? o)).join(', ')})`);
+	(match.props['onClick'] as () => void)();
+	await flush();
 }

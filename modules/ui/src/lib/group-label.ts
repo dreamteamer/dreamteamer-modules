@@ -23,7 +23,8 @@
  * fetches land. That ordering matters — a band that renders empty until its name arrives reads as a
  * loading bug, and the de-slugged name is a perfectly good thing to look at in the meantime.
  */
-import { ref, type Ref } from 'vue';
+import { getCurrentScope, onScopeDispose, ref, type Ref } from 'vue';
+import { onPageRefresh } from './page-refresh';
 import type { CollectionRow, FieldRow } from '../api/types';
 import { referenceLabel, UNGROUPED } from './grouping';
 import { tryRenderDisplay } from './template';
@@ -125,6 +126,9 @@ export function useGroupLabels(source: GroupLabelSource): {
 	// Values already asked for, so a re-render (or a sibling band gaining a record) does not re-issue
 	// a fetch that `record-cache` would dedupe anyway but whose `.then` would still churn the map.
 	const asked = new Set<string>();
+	// Bumped by the refresh button: a band read issued before it answers what the disk said THEN, and
+	// must not land over the one issued after (the same guard `record-titles.ts` keeps).
+	let generation = 0;
 
 	function resolve(): void {
 		const field = source.field();
@@ -142,6 +146,7 @@ export function useGroupLabels(source: GroupLabelSource): {
 		const values = source.values().filter((v) => v && v !== UNGROUPED && !asked.has(v));
 		if (!values.length) return;
 		for (const v of values) asked.add(v);
+		const asOf = generation;
 		void targetOf(field, source.collection()).then(async (target) => {
 			if (!target) return; // not a reference after all — fallback stands
 			const { fetchRecord } = await import('./record-cache');
@@ -150,7 +155,13 @@ export function useGroupLabels(source: GroupLabelSource): {
 			const { tree } = useCollections();
 			for (const value of values) {
 				void fetchRecord(target, idFor(value, target)).then((record) => {
-					if (!record) return; // a dangling or unreadable reference keeps its de-slugged name
+					if (asOf !== generation) return; // superseded by a refresh
+					if (!record) {
+						// a dangling or unreadable reference keeps its de-slugged name — and a band whose record
+						// was removed since it was named drops that name
+						drop(value);
+						return;
+					}
 					const template = bandTitleTemplate(viewTemplate, tree.value.find((r) => r.collection === target));
 					if (template) {
 						const rendered = (tryRenderDisplay(template, record) ?? '').trim();
@@ -169,6 +180,22 @@ export function useGroupLabels(source: GroupLabelSource): {
 			}
 		});
 	}
+
+	function drop(value: string): void {
+		for (const map of [labels, icons, summaries]) {
+			if (!(value in map.value)) continue;
+			const { [value]: _gone, ...rest } = map.value;
+			map.value = rest;
+		}
+	}
+
+	// The refresh button: ask every band's record again. The labels stay drawn until replaced.
+	const off = onPageRefresh(() => {
+		generation++;
+		asked.clear();
+		resolve();
+	});
+	if (getCurrentScope()) onScopeDispose(off);
 
 	return { labels, icons, summaries, resolve };
 }

@@ -9,14 +9,15 @@
  */
 import assert from 'node:assert/strict';
 import test, { afterEach } from 'node:test';
-import { all, find, flush, hasClass, render, text, unmountAll, type TestNode } from './render';
+import { all, find, flush, hasClass, installDomShims, openSelect, pickOption, render, text, unmountAll, type TestNode } from './render';
 import { onHostRequest, requests, resetHost } from './host-stub';
 import ViewSaveActions from '../../src/components/browse/ViewSaveActions.vue';
 import ViewModuleField from '../../src/components/ViewModuleField.vue';
 import { refusalAnswer, savedAnswer } from '../../src/lib/save-answer';
-import { LOCKED_REASON, viewModuleTargets } from '../../src/lib/view-module-targets';
+import { recordPageTargets, viewModuleTargets } from '../../src/lib/view-module-targets';
 import { saveUiView } from '../../src/composables/schema';
 
+installDomShims();
 afterEach(() => unmountAll());
 
 const MODULES = [
@@ -61,32 +62,74 @@ test('a refusal with no action the drawer can take still names what to do', asyn
 	assert.match(text(byAttr(root, 'data-next')!), /Fix what the compiler names/);
 });
 
-test('Save as… asks for the module: the workspace module first and picked, writable modules by name, an installed one locked WITH the reason', async () => {
-	const root = await render(ViewSaveActions, base({ formOpen: true }));
-	const pop = byAttr(root, 'data-anchor')!;
-	assert.equal(pop.props['data-anchor'], 'save-as');
-	const rows = all(root, (n) => 'data-module' in n.props);
-	assert.deepEqual(rows.map((r) => r.props['data-module']), ['', 'reports', 'claims', 'carriers'], 'workspace, writable, then the locked one last');
-	assert.match(squash(text(rows[0]!)), /^Workspacemoduledefault·thedefault/);
-	const radio = (r: TestNode) => find(r, (n) => n.tag === 'input')!;
-	assert.equal(radio(rows[0]!).props['checked'], true, 'the default is the workspace module');
-	assert.match(text(rows[2]!), /linked · git_modules\/northwind-modules\/modules\/claims/, 'a linked clone\'s module is offered, and says where it lives');
-	const locked = rows[3]!;
-	assert.ok(hasClass(locked, 'locked'));
-	assert.equal(radio(locked).props['disabled'], true, 'it cannot be picked');
-	assert.match(text(locked), new RegExp(LOCKED_REASON), 'and the reason is ON the row, before anybody picks it');
+// ---- cr-vscode-010: Save as… picks the module in ONE dropdown, so the form fits the window ------------
+// The radio list these replace (cr-vscode-002's "an installed one locked WITH the reason" and "confirming
+// sends the picked module") drew a row per module with its path under it; with ~19 modules the popover
+// ran ~1800px and Save sat below the window. A 19-module synthetic manifest: the workspace module, 2
+// more inline, 11 linked under one clone, 5 installed by npm.
+const inl = (id: string) => ({ id, title: id, location: 'modules', path: `modules/${id}` });
+const lnk = (id: string) => ({ id, title: id, location: 'git_modules', path: `git_modules/northwind-modules/modules/${id}` });
+const pkg = (id: string) => ({ id, title: id, location: 'node_modules', path: `node_modules/@harbor/${id}` });
+const LINKED = ['claims', 'claims-archive', 'billing', 'fleet', 'ports', 'routes', 'tariffs', 'crews', 'cargo', 'docks', 'audits'];
+const NPM = ['core', 'harbor-rnd', 'routines', 'search', 'carriers'];
+const MANIFEST19 = [inl('default'), inl('reports'), ...LINKED.map(lnk), inl('ledger'), ...NPM.map(pkg)];
+const TARGETS19 = viewModuleTargets(MANIFEST19, 'default');
+const optionLabel = (o: TestNode) => text(find(o, (n) => hasClass(n, 'dt-dd__option-label'))!);
+const occurrences = (hay: string, needle: string) => hay.split(needle).length - 1;
+
+test('Save as… draws ONE module control and no radio rows', async () => {
+	const root = await render(ViewSaveActions, base({ formOpen: true, targets: TARGETS19 }));
+	assert.equal(all(root, (n) => n.props['role'] === 'combobox' && n.props['aria-label'] === 'Module').length, 1);
+	assert.equal(all(root, (n) => n.tag === 'input' && n.props['type'] === 'radio').length, 0);
 });
 
-test('confirming sends the picked module with the name', async () => {
+test('Save as… defaults to the workspace module and offers every inline and linked module, no npm one', async () => {
+	const root = await render(ViewSaveActions, base({ formOpen: true, targets: TARGETS19 }));
+	const control = find(root, (n) => n.props['role'] === 'combobox' && n.props['aria-label'] === 'Module')!;
+	assert.match(text(control), /^Workspace module/, 'the closed control reads the default');
+	const options = await openSelect(root, 'Module');
+	assert.deepEqual(options.map(optionLabel), ['Workspace module', 'reports', ...LINKED, 'ledger']);
+	assert.equal(options.length, 14);
+	for (const o of options) if (LINKED.includes(optionLabel(o))) assert.match(text(o), /linked$/, `${optionLabel(o)} is hinted linked`);
+	for (const id of NPM) assert.ok(!options.some((o) => optionLabel(o) === id), `${id} is never offered`);
+});
+
+test('Save as… says ONCE that the npm-installed modules are not offered, and names them on hover', async () => {
+	const root = await render(ViewSaveActions, base({ formOpen: true, targets: TARGETS19 }));
+	await openSelect(root, 'Module');
+	const note = all(root, (n) => 'data-modules-locked' in n.props);
+	assert.equal(note.length, 1);
+	assert.equal(text(note[0]!), '5 modules installed by npm are not offered — a write there is erased by the next npm install.');
+	assert.equal(note[0]!.props['title'], NPM.join(', '));
+	const form = byAttr(root, 'data-save-as-form')!;
+	assert.equal(occurrences(text(form), 'installed by npm'), 1, 'once in the whole form, the open options included');
+
+	const none = await render(ViewSaveActions, base({ formOpen: true, targets: viewModuleTargets([inl('default'), inl('reports')], 'default') }));
+	assert.equal(find(none, (n) => 'data-modules-locked' in n.props), null, 'no npm module, no sentence');
+});
+
+test('a module\'s path is its option\'s hover and the line under the control — never drawn on every option', async () => {
+	const root = await render(ViewSaveActions, base({ formOpen: true, targets: TARGETS19 }));
+	const where = () => text(byAttr(root, 'data-module-where')!);
+	assert.equal(where(), 'default · modules/default');
+	const options = await openSelect(root, 'Module');
+	for (const o of options) {
+		assert.doesNotMatch(text(o), /\//, `no path drawn on ${optionLabel(o)}`);
+		assert.match(String(o.props['title']), /·/, `${optionLabel(o)} carries its path as its hover`);
+	}
+	assert.equal(options.find((o) => optionLabel(o) === 'claims')!.props['title'], 'claims · linked · git_modules/northwind-modules/modules/claims');
+	await pickOption(root, 'Module', 'claims');
+	assert.equal(where(), 'claims · linked · git_modules/northwind-modules/modules/claims');
+});
+
+test('saving into a picked linked module carries that module to the save', async () => {
 	const seen: Array<Record<string, unknown>> = [];
-	const root = await render(ViewSaveActions, base({ formOpen: true, onConfirm: (v: Record<string, unknown>) => seen.push(v) }));
+	const root = await render(ViewSaveActions, base({ formOpen: true, targets: TARGETS19, onConfirm: (v: Record<string, unknown>) => seen.push(v) }));
 	const input = find(root, (n) => n.tag === 'input' && n.props['aria-label'] === 'View name')!;
 	(input.props['onInput'] as (e: unknown) => void)({ target: { value: 'By status' } });
-	const reports = find(root, (n) => n.props['data-module'] === 'reports')!;
-	(find(reports, (n) => n.tag === 'input')!.props['onChange'] as () => void)();
-	await flush();
+	await pickOption(root, 'Module', 'claims');
 	(find(root, (n) => n.tag === 'form')!.props['onSubmit'] as (e: { preventDefault(): void }) => void)({ preventDefault() {} });
-	assert.deepEqual(seen, [{ name: 'By status', icon: '', module: 'reports' }]);
+	assert.deepEqual(seen, [{ name: 'By status', icon: '', module: 'claims' }]);
 });
 
 test('a refused Save as… keeps the form open and answers under it', async () => {
@@ -119,17 +162,26 @@ test('the success sentence says when a save became an overlay over a shipped vie
 	assert.match(String(savedAnswer('collection', {}, { unsaved: ['filter'] }).detail), /does not hold a filter/);
 });
 
-test('the record page\'s module field: every module in view, an installed one locked, and a pick asks to move it', async () => {
+test('the record page\'s Module field is the same one dropdown, and a pick asks to move the view (cr-vscode-010)', async () => {
 	const moved: string[] = [];
-	const targets = TARGETS.map((t) => (t.id === null ? { ...t, id: 'default' } : t));
-	const root = await render(ViewModuleField, { module: 'default', targets, readOnlyReason: null, busy: false, answer: null, onMove: (m: string) => moved.push(m) });
-	const rows = all(root, (n) => 'data-module' in n.props);
-	const radio = (id: string) => find(rows.find((r) => r.props['data-module'] === id)!, (n) => n.tag === 'input')!;
-	assert.equal(radio('default').props['checked'], true, 'the module it is in now is the checked one');
-	assert.equal(radio('carriers').props['disabled'], true, 'an installed package is not a destination');
-	(radio('claims').props['onChange'] as () => void)();
-	(radio('default').props['onChange'] as () => void)();
-	assert.deepEqual(moved, ['claims'], 'picking the module it is already in is not a move');
+	const targets = recordPageTargets(viewModuleTargets(MANIFEST19, 'default'), 'default');
+	const props = { module: 'default', targets, readOnlyReason: null, busy: false, answer: null, onMove: (m: string) => moved.push(m) };
+	const root = await render(ViewModuleField, props);
+	const control = find(root, (n) => n.props['role'] === 'combobox' && n.props['aria-label'] === 'Module')!;
+	assert.equal(all(root, (n) => n.tag === 'input' && n.props['type'] === 'radio').length, 0, 'no radio rows');
+	assert.match(text(control), /^default \(workspace module\)/, 'the module it is in now');
+	assert.equal(all(root, (n) => 'data-modules-locked' in n.props).length, 1, 'the npm modules said once');
+	assert.equal(text(byAttr(root, 'data-module-where')!), 'default · modules/default');
+	await pickOption(root, 'Module', 'reports');
+	await pickOption(root, 'Module', 'default (workspace module)');
+	assert.deepEqual(moved, ['reports'], 'picking the module it is already in is not a move');
+
+	const busy = await render(ViewModuleField, { ...props, busy: true });
+	assert.equal(find(busy, (n) => n.props['role'] === 'combobox')!.props['disabled'], true, 'no pick while a move runs');
+
+	const unread = await render(ViewModuleField, { ...props, module: undefined });
+	assert.match(text(find(unread, (n) => n.props['role'] === 'combobox')!), /^—/, 'a module not read yet shows no module');
+	assert.equal(byAttr(unread, 'data-module-where'), null, 'and no path');
 });
 
 test('a view a package ships says why it does not move, instead of offering a choice', async () => {

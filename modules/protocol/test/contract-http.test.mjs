@@ -44,7 +44,9 @@ test('the contract on dt serve: the failures are exactly gaps/http.json', { time
 			return { status: res.status, body: parsed };
 		} finally { console.log = log; }
 	};
-	const { failed } = await runContract({ request, fixture });
+	const { failed, skipped } = await runContract({ request, fixture });
+	// this host serves every optional route (its core keeps running sessions): a skip here is a route it dropped
+	assert.deepEqual(skipped, [], 'dt serve skipped an optional route it serves');
 	const ledger = JSON.parse(fs.readFileSync(path.join(PKG, 'lib', 'contract', 'gaps', 'http.json'), 'utf8'));
 	console.log(`dt serve: ${failed.length} of ${cases.length} cases fail (ledger ${ledger.length})`);
 	for (const f of failed) console.log(`  ✖ ${f.id}: ${f.why}`);

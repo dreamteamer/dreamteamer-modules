@@ -15,6 +15,8 @@ import { loadUiViews } from './ui-views';
 import { refreshSchema } from './lib/schema-refresh';
 import { liveSchemaCaches } from './composables/schema-caches';
 import { invalidateStageReviews } from './lib/stage-reviews';
+import { handleInvalidate } from './lib/host-invalidate';
+import { refreshPages } from './composables/page-caches';
 
 // Host → app navigation: the extension posts `dt:navigate` when the operator clicks a collection
 // or record in the native tree. App → host: every route change is reported back so the TAB can
@@ -45,11 +47,17 @@ window.addEventListener('message', (e: MessageEvent) => {
 	// itself changed, and only then is the full refetch worth paying for. An older host sends no scope
 	// at all — treat that as `schema`, because a host that cannot classify has told us nothing that
 	// rules the expensive case out.
+	//
+	// `pages` comes only from the refresh button: after those settle, the open page re-fetches its
+	// own records too (lib/host-invalidate.ts holds the order and why it is settle-not-succeed).
 	if (m?.type === 'dt:invalidate') {
-		void loadUiViews(router);
 		// any change may be a review written or closed: the stage checks read their reviews again
 		invalidateStageReviews();
-		if (m.scope !== 'data') void refreshSchema(liveSchemaCaches);
+		void handleInvalidate(m, {
+			loadUiViews: () => loadUiViews(router),
+			refreshSchema: () => refreshSchema(liveSchemaCaches),
+			refreshPages,
+		});
 	}
 	if (m?.type === 'dt:tab') {
 		pinned = !!m.pinned;

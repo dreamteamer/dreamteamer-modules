@@ -8,6 +8,7 @@
  * that drags a router can only be tested by mounting one.
  */
 import type { CollectionRow } from '../api/types';
+import { engineFieldName, engineSort } from './builtin-fields';
 
 /** What a governing view record contributes (`collection-views.ts#viewToConfig`, or a page's props). */
 export interface ViewSeed {
@@ -43,8 +44,12 @@ export function scratchKey(collection: string, viewId?: string, scope?: string):
 
 export function listSeed(view: ViewSeed | undefined, list: CollectionRow['list'] | undefined): ListSeed {
 	const layout = view?.layout ?? list?.layout ?? 'table';
-	const columns = view?.columns?.length ? [...view.columns] : list?.columns?.length ? [...list.columns] : null;
-	const sort = view?.sort ?? list?.sort;
+	// a built-in under the engine's name, whatever the seed spells it (`lib/builtin-fields.ts`), so the
+	// column, its sort indicator and the Sort control all recognise it (cr-vscode-011)
+	const named = view?.columns?.length ? view.columns : list?.columns?.length ? list.columns : null;
+	const columns = named ? named.map(engineFieldName) : null;
+	const given = view?.sort ?? list?.sort;
+	const sort = typeof given === 'string' ? engineSort(given) : given;
 	// the collection's options belong to the collection's layout; the view's sit on top of them
 	const listOptions: Record<string, Record<string, unknown>> = {};
 	if (list?.options && Object.keys(list.options).length) listOptions[list.layout] = { ...list.options };

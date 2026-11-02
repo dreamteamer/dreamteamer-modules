@@ -21,6 +21,9 @@ export interface Choice {
 	/** Theme colour id, tinting the glyph only. The label stays the foreground colour: a coloured
 	 *  option label is unreadable against half the themes and reads as "disabled" in the other half. */
 	color?: string;
+	/** Optional hover text — the option's `title`, and the control's while it is the selected one. Where
+	 *  a choice keeps a detail too long to draw on every option (a module's source path, cr-vscode-010). */
+	title?: string;
 }
 
 /**

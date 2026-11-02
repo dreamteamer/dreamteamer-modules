@@ -27,6 +27,8 @@ import {
 import ItemHistory from '../components/ItemHistory.vue';
 import RecordHeaderDisplay from '../components/RecordHeaderDisplay.vue';
 import PageHeader from '../components/PageHeader.vue';
+import RefreshSkippedNotice from '../components/RefreshSkippedNotice.vue';
+import NextNotes from '../components/NextNotes.vue';
 import CommandsSection from '../components/sidebar/CommandsSection.vue';
 import InfoSection from '../components/sidebar/InfoSection.vue';
 import TemplatePicker from '../components/TemplatePicker.vue';
@@ -374,10 +376,14 @@ async function onConfirmDelete(): Promise<void> {
 				</button>
 			</template>
 		</PageHeader>
+		<RefreshSkippedNotice :show="item.refreshSkipped.value" />
 
 		<!-- The collection's `display.record` line — subtitle, badge, color_by tint — for both record
 		     layouts at once. Static with the header: it says what this record IS, like the title. -->
 		<RecordHeaderDisplay v-if="!create" :row="collectionRow" :fields="fieldRows" :record="item.record.value" />
+		<!-- What extensions say about this record — a session holding it, in core's words (cr-vscode-005).
+		     Static with the header: it is about the record, like its title. Nothing when there is no note. -->
+		<NextNotes v-if="!create && id" :collection="collection" :id="id" />
 <p v-if="!create && formFields.length && !editsFields" class="dt-record-source">Nothing here is edited by hand — every field is read from the record's file or computed.</p>
 
 		<!-- Scroll box, so the PageHeader above it is genuinely static rather than sticky (operator

@@ -44,6 +44,8 @@ import { resolveRowSize, tableDensityClass } from '../lib/row-size';
 import RenderView from './render/RenderView.vue';
 import GroupHeader from './browse/GroupHeader.vue';
 import DtIcon from './DtIcon.vue';
+import NoteMark from './NoteMark.vue';
+import { notesOfRow } from '../lib/next-notes';
 
 const props = defineProps<{ state: BrowseState }>();
 
@@ -276,6 +278,7 @@ function toggleBand(value: string): void {
 							<span v-if="index === 0 && duplicateNote(record)" class="dt-dup-badge" :title="duplicateNote(record)" role="img" aria-label="duplicate id">
 								<DtIcon name="warning" />
 							</span>
+							<NoteMark v-if="index === 0 && notesOfRow(record).length" :notes="notesOfRow(record)" />
 							<span v-if="index === 0 && bundleOf(record)" class="dt-bundle-chip" :title="`Supplied by the '${bundleOf(record)}' bundle`">
 								{{ bundleOf(record) }}
 							</span>
