@@ -5,7 +5,7 @@ export function baseHeaders(res) {
 	res.removeHeader('X-Powered-By');
 }
 
-export function appCsp(nonce, filesOrigin) {
+export function appCsp(nonce, filesOrigin, filesKey) {
 	return [
 		"default-src 'self'",
 		`script-src 'self' 'nonce-${nonce}'`,
@@ -13,7 +13,7 @@ export function appCsp(nonce, filesOrigin) {
 		`img-src 'self' ${filesOrigin} data: blob:`,
 		"font-src 'self' data:",
 		"connect-src 'self'",
-		`frame-src ${filesOrigin}`,
+		filesKey ? `frame-src ${filesOrigin}/${filesKey}/_dt/frame/ ${filesOrigin}/${filesKey}/w/` : `frame-src ${filesOrigin}`,
 		"frame-ancestors 'none'",
 		"base-uri 'none'",
 		"form-action 'none'",
