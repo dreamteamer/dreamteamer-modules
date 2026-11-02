@@ -153,18 +153,14 @@ way to ask whether a server is running.
 
 ## versions
 
-| @dreamteamer/web | @dreamteamer/protocol | engine (`dreamteamer`) | app built from the extension |
+| @dreamteamer/web | @dreamteamer/protocol | @dreamteamer/ui | engine (`dreamteamer`) |
 |---|---|---|---|
-| 0.1.x | ^0.1.0 | `>=0.43.0`, tested on 0.43 and 0.44 | 0.24.27 |
+| 0.1.x | ^0.1.0 | ^0.1.0 | `>=0.43.0`, tested on 0.43 and 0.44 |
 
-The app in the tarball is the webview of one published release of the VS Code extension, which is
-Apache-2.0 (its licence travels with it). `dist/app/SOURCE.json` records that release's version, its
-download URL and its sha256. The app is fetched and checked when the package is built for publishing,
-never on your machine. The sha256 in `SOURCE.json` is copied from the extension's own release, where it was
-computed when that release was built; the fetch only checks against it and never writes it. A new
-extension release reaches `dt web` only through a new minor version of this package, after the protocol's
-contract suite has passed against it. Known advisories in dependencies, and whether they reach a request,
-are listed in `SECURITY.md`.
+The app is `@dreamteamer/ui`'s browser page (`dist/app/` in that package), the same UI the VS Code
+extension mounts, built when `@dreamteamer/ui` is published and served as it is. It reaches the server
+through the UI's HTTP transport, so this package carries no app and no host emulation of its own. Known
+advisories in dependencies, and whether they reach a request, are listed in `SECURITY.md`.
 
 ## limits
 

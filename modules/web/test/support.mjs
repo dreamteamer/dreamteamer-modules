@@ -25,7 +25,7 @@ export function fixture() {
 	fs.writeFileSync(path.join(f.root, 'report.html'), '<!doctype html><p>Northwind report</p><script>alert(1)</script>');
 	const app = fs.mkdtempSync(path.join(os.tmpdir(), 'dt-web-app-'));
 	fs.mkdirSync(path.join(app, 'assets'));
-	fs.writeFileSync(path.join(app, 'browser.html'), '<!doctype html><html><head><title>dreamteamer</title><script type="module" src="./assets/app.js"></script></head><body><div id="app"></div></body></html>');
+	fs.writeFileSync(path.join(app, 'index.html'), '<!doctype html><html><head><title>dreamteamer</title><script type="module" src="./assets/app.js"></script></head><body><div id="app"></div></body></html>');
 	fs.writeFileSync(path.join(app, 'assets', 'app.js'), 'export {};\n');
 	return { ...f, media, app, cleanupAll: () => { f.cleanup(); fs.rmSync(media, { recursive: true, force: true }); fs.rmSync(app, { recursive: true, force: true }); } };
 }

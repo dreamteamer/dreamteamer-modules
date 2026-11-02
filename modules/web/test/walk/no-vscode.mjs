@@ -1,21 +1,21 @@
 #!/usr/bin/env node
 // The machine-with-no-editor walk (cr-modules-005 line 7), run by .github/workflows/web-walk.yml on a fresh
-// ubuntu runner: the synthetic Northwind hq with one git_modules layer, `npm install` of the packed protocol and
-// web tarballs (the app vendored from the published extension inside the web tarball), `dt compile`, then the
+// ubuntu runner: the synthetic Northwind hq with one git_modules layer, `npm install` of the packed protocol, ui
+// and web tarballs (the app is @dreamteamer/ui's built page, inside the ui tarball), `dt compile`, then the
 // one command — `dt web --no-open` through the workspace's own engine CLI — and headless Chromium:
 //   - no `code` on PATH, and no .dreamteamer/editor.json before the start (no editor ever opened it)
 //   - the page draws the nav (with its Layers folder) and the layer's record in the projects list
 //   - the layer's record, edited in the browser, lands in the layer's clone
 //   - renaming it is refused by the engine, naming the layer (the record page has no rename gesture: the
 //     refusal is the API's answer to the signed-in page)
-// usage: node modules/web/test/walk/no-vscode.mjs <protocol.tgz> <web.tgz>   (DT_ENGINE_DIR: the fixture's engine)
+// usage: node modules/web/test/walk/no-vscode.mjs <protocol.tgz> <ui.tgz> <web.tgz>   (DT_ENGINE_DIR: the fixture's engine)
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { browser, checks, go, northwind, shot } from './support.mjs';
 
-const [protocolTgz, webTgz] = process.argv.slice(2).map((p) => path.resolve(p));
-if (!protocolTgz || !webTgz) { console.error('usage: no-vscode.mjs <protocol.tgz> <web.tgz>'); process.exit(2); }
+const [protocolTgz, uiTgz, webTgz] = process.argv.slice(2).map((p) => path.resolve(p));
+if (!protocolTgz || !uiTgz || !webTgz) { console.error('usage: no-vscode.mjs <protocol.tgz> <ui.tgz> <web.tgz>'); process.exit(2); }
 const { ok, done } = checks();
 
 const which = spawnSync('sh', ['-c', 'command -v code || true'], { encoding: 'utf8' }).stdout.trim();
@@ -23,11 +23,11 @@ ok(which === '', 'no `code` on this machine', `command -v code → ${JSON.string
 
 const f = await northwind();
 const sh = (cmd, args) => execFileSync(cmd, args, { cwd: f.root, encoding: 'utf8', timeout: 300_000, stdio: ['ignore', 'pipe', 'pipe'] });
-// a fresh install: the engine from the registry (replacing the fixture's link), the two packages from their tarballs
+// a fresh install: the engine from the registry (replacing the fixture's link), the three packages from their tarballs
 fs.rmSync(path.join(f.root, 'node_modules'), { recursive: true, force: true });
-sh('npm', ['install', '--no-audit', '--no-fund', protocolTgz, webTgz]);
+sh('npm', ['install', '--no-audit', '--no-fund', protocolTgz, uiTgz, webTgz]);
 const DT = path.join(f.root, 'node_modules', '.bin', 'dt');
-ok(fs.existsSync(path.join(f.root, 'node_modules', '@dreamteamer', 'web', 'dist', 'app', 'browser.html')), 'the installed package carries the app');
+ok(fs.existsSync(path.join(f.root, 'node_modules', '@dreamteamer', 'ui', 'dist', 'app', 'index.html')), 'the installed ui package carries the app');
 const compile = spawnSync(DT, ['compile'], { cwd: f.root, encoding: 'utf8', timeout: 120_000 });
 ok(compile.status === 0, 'dt compile', `exit ${compile.status} ${compile.stderr.slice(0, 200)}`);
 ok(!fs.existsSync(path.join(f.root, '.dreamteamer', 'editor.json')), 'no editor marker before the start');

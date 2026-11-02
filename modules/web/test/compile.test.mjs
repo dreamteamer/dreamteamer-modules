@@ -1,4 +1,4 @@
-// The packed install: what a stranger's workspace gets from npm. protocol and web are packed, unpacked into a
+// The packed install: what a stranger's workspace gets from npm. protocol, ui and web are packed, unpacked into a
 // fresh workspace's node_modules and compiled (the session skill with it); then `dt web` runs through the ENGINE'S OWN CLI — help lists it,
 // status answers "not running" (exit 1), and the `web` row of `dt doctor` says "not running" and then, while a
 // server started by `dt web --no-open` is up, "running at" its address. Every child is bounded and killed.
@@ -14,24 +14,25 @@ const children = [];
 const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'dt-web-packed-'));
 after(() => { for (const c of children) try { c.kill('SIGKILL'); } catch { /* gone */ } cleanup(); fs.rmSync(scratch, { recursive: true, force: true }); });
 
-// a minimal app, so the test needs no vendored build (CI has none)
+// a minimal app, so the test needs no ui build
 const app = path.join(scratch, 'app');
 fs.mkdirSync(path.join(app, 'assets'), { recursive: true });
-fs.writeFileSync(path.join(app, 'browser.html'), '<!doctype html><html><head><title>dreamteamer</title></head><body></body></html>');
+fs.writeFileSync(path.join(app, 'index.html'), '<!doctype html><html><head><title>dreamteamer</title></head><body></body></html>');
 const env = { ...process.env, DT_WEB_RUNTIME_DIR: path.join(scratch, 'rt'), DT_WEB_APP_DIR: app, CLAUDE_PID: '', GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@example.invalid', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@example.invalid' };
 const dt = (cwd, ...args) => spawnSync(process.execPath, [BIN, ...args], { cwd, env, encoding: 'utf8', timeout: 60_000, killSignal: 'SIGKILL' });
 const webRow = (out) => out.split('\n').find((l) => /\bweb\b/.test(l) && /running/.test(l)) ?? '';
 
-test('the tarball ships the bin, the source, the vendor script and the pin — never the tests', () => {
+test('the tarball ships the bin, the source, the skill and the README — never the tests or an app of its own', () => {
 	const files = packedFiles('web');
-	for (const f of ['bin/dt-web.mjs', 'src/cli.js', 'src/server.js', 'src/extension.js', 'src/runtime.js', 'src/headers.js', 'scripts/vendor-app.mjs', 'dist/app/SOURCE.json', 'README.md', 'skills/serving-the-web-ui/SKILL.md']) assert.ok(files.includes(f), `${f} is not in the tarball`);
+	for (const f of ['bin/dt-web.mjs', 'src/cli.js', 'src/server.js', 'src/extension.js', 'src/runtime.js', 'src/headers.js', 'README.md', 'skills/serving-the-web-ui/SKILL.md']) assert.ok(files.includes(f), `${f} is not in the tarball`);
 	assert.ok(!files.some((f) => f.startsWith('test/')), 'tests do not ship');
+	assert.ok(!files.some((f) => f.startsWith('dist/') || f.startsWith('scripts/')), 'the app comes from @dreamteamer/ui, not a copy in this package');
 });
 
 test('a workspace that installs the packed protocol and web compiles; dt web answers through the engine CLI; the doctor row follows a running server', { timeout: 180_000 }, async () => {
 	assert.ok(fs.existsSync(BIN), `no engine at ${ENGINE}`);
 	const ws = virginWorkspace();
-	installPacked(ws, ['protocol', 'web']);
+	installPacked(ws, ['protocol', 'ui', 'web']);
 	const c = dt(ws, 'compile');
 	assert.equal(c.status, 0, c.stderr + c.stdout);
 

@@ -1,7 +1,7 @@
 // What every walk shares: the built app, the synthetic Northwind workspace, dt-web started the way a person
 // starts it (the bin, --no-open, the first stdout line) and bounded by a hard timer, headless Chromium, and
 // screenshots named YYYY-MM-DD--HHMM--<name>.png. A walk is a script, not a suite test: it needs the BUILT app
-// (dist/app, vendored and gitignored) and a browser, so it runs by hand or in .github/workflows/web-walk.yml.
+// (@dreamteamer/ui's dist/app, built and gitignored) and a browser, so it runs by hand or in .github/workflows/web-walk.yml.
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -14,10 +14,10 @@ export const MODULES = path.resolve(WEB, '..');
 export const REPO = path.resolve(MODULES, '..');
 export const BIN = path.join(WEB, 'bin', 'dt-web.mjs');
 
-/** The built app the walk serves: DT_WEB_APP_DIR, else dist/app. A walk without one stops here, by name. */
+/** The built app the walk serves: DT_WEB_APP_DIR, else @dreamteamer/ui's dist/app. A walk without one stops here, by name. */
 export function appDir() {
-	const dir = path.resolve(process.env.DT_WEB_APP_DIR ?? path.join(WEB, 'dist', 'app'));
-	if (!fs.existsSync(path.join(dir, 'browser.html'))) throw new Error(`no built app at ${dir} — node modules/web/scripts/vendor-app.mjs --from <webview build> (or --version <v>)`);
+	const dir = path.resolve(process.env.DT_WEB_APP_DIR ?? path.join(MODULES, 'ui', 'dist', 'app'));
+	if (!fs.existsSync(path.join(dir, 'index.html'))) throw new Error(`no built app at ${dir} — npm run build -w modules/ui`);
 	return dir;
 }
 

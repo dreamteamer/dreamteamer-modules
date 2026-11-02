@@ -14,7 +14,7 @@ import { useModules } from '../composables/modules';
 import { moveUiView } from '../composables/schema';
 import { refusalAnswer, type SaveAnswer } from '../lib/save-answer';
 import { viewModuleTargets } from '../lib/view-module-targets';
-import { isUnwritableModule } from '../../../src/module-targets';
+import { isUnwritableModule } from '../lib/module-writable';
 import { loadUiViews } from '../ui-views';
 import ViewModuleField from './ViewModuleField.vue';
 

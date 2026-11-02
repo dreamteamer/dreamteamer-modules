@@ -5,10 +5,10 @@
  * Every module whose sources are in this workspace is offered by name: an inline `modules/*` module,
  * and a linked clone's (`git_modules/<clone>/modules/*`), which is how a view authored here reaches a
  * module's own repo. A module `npm install` put in `node_modules/` is DRAWN, locked, with the reason
- * on its row — the same judgement as the native picker (`src/module-targets.ts`): a picker that hides
+ * on its row — the same judgement as the native picker (`lib/module-writable.ts`): a picker that hides
  * it answers "there is no such module", which is worse than one that says why it is not a target.
  */
-import { isUnwritableModule } from '../../../src/module-targets';
+import { isUnwritableModule } from './module-writable';
 import type { ModuleEntry } from '../composables/modules';
 
 export interface ViewModuleTarget {

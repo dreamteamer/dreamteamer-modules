@@ -1,89 +1,37 @@
 /**
- * THE PRIZE (decision 48): there is no web server.
- *
- * Everything the app used to `fetch('/api/…')` now rides one `postMessage` channel to the VS Code
- * extension host, which answers it in-process against the engine's own `Store` / `presentation` /
- * `schema-ops` modules (extension `src/api.ts`). Same clean REST contract, same shapes, same
- * error semantics — just a function call across the webview boundary instead of a socket.
- *
- * What that buys: no spawned `dreamteamer start` child, no port allocation, no cold-boot wait, no
- * cross-origin iframe (so VS Code's own `--vscode-*` theme vars reach the app directly), and no
- * "blank tab pointing at a dead port" after a window reload.
+ * The app's one door to its host. Everything the app used to `fetch('/api/…')` goes through the
+ * transport the host handed `mount` (transport/types.ts): a `postMessage` channel to the VS Code
+ * extension, which answers in-process, or HTTP to dt web. Same clean REST contract, same shapes, same
+ * error semantics on every host.
  */
+import { HostError, type Transport } from '../transport/types';
 
-export interface HostVsCodeApi {
-	postMessage(message: unknown): void;
-	getState(): unknown;
-	setState(state: unknown): void;
-}
+export { HostError };
 
 declare global {
 	interface Window {
-		acquireVsCodeApi?: () => HostVsCodeApi;
-		/** Webview URI of `.dreamteamer/ui/` — module app bundles are imported from here. */
+		/** URI of `.dreamteamer/ui/` — module app bundles are imported from here. */
 		__DT_UI_BASE__?: string;
 	}
 }
 
-// `acquireVsCodeApi` may only be called ONCE per webview document.
-let vscodeApi: HostVsCodeApi | null = null;
-function host(): HostVsCodeApi {
-	if (!vscodeApi) {
-		if (!window.acquireVsCodeApi) throw new Error('not running inside a VS Code webview');
-		vscodeApi = window.acquireVsCodeApi();
-	}
-	return vscodeApi;
+let transport: Transport | null = null;
+
+/** Set once, by `mount`, before anything asks the host. */
+export function setTransport(t: Transport): void {
+	transport = t;
 }
 
-export class HostError extends Error {
-	status: number;
-	constructor(message: string, status: number) {
-		super(message);
-		this.name = 'HostError';
-		this.status = status;
-	}
-}
-
-interface Pending {
-	resolve: (value: unknown) => void;
-	reject: (reason: unknown) => void;
-}
-
-const pending = new Map<number, Pending>();
-let nextId = 1;
-
-window.addEventListener('message', (event: MessageEvent) => {
-	const msg = event.data as { type?: string; id?: number; ok?: boolean; data?: unknown; error?: string; status?: number };
-	if (msg?.type !== 'dt:rpc-reply' || typeof msg.id !== 'number') return;
-	const entry = pending.get(msg.id);
-	if (!entry) return;
-	pending.delete(msg.id);
-	if (msg.ok) entry.resolve(msg.data);
-	else entry.reject(new HostError(msg.error ?? 'host request failed', msg.status ?? 400));
-});
-
-/**
- * Everything crossing `postMessage` is STRUCTURED-CLONED, and structured clone throws
- * `DataCloneError` on a Proxy. Vue's reactivity is deep, so anything read out of a ref is one:
- * `uiViews.value.find(…)` hands back a reactive record, and reusing its `filter`/`nav` in a write
- * body killed every "Save" onto an existing view. A JSON round-trip unwraps the proxies and is
- * lossless for what actually travels here — the host answers the same JSON REST contract a socket
- * would, so this is precisely what the wire used to carry.
- */
-function cloneable(body: unknown): unknown {
-	return body === undefined ? undefined : (JSON.parse(JSON.stringify(body)) as unknown);
+function current(): Transport {
+	if (!transport) throw new Error('no transport — the app was not mounted by a host');
+	return transport;
 }
 
 /**
- * One clean-contract request. `path` is everything after `/api` (e.g. `/collections/tasks/records?limit=25`)
- * exactly as the old `cleanFetch` sent it, so the adapter above this layer is untouched.
+ * One clean-contract request. `path` is everything after `/api` (e.g. `/collections/tasks/records?limit=25`).
  */
 export function hostRequest(method: string, path: string, body?: unknown): Promise<unknown> {
-	const id = nextId++;
-	return new Promise((resolve, reject) => {
-		pending.set(id, { resolve, reject });
-		host().postMessage({ type: 'dt:rpc', id, method, path, body: cloneable(body) });
-	});
+	return current().request(method, path, body);
 }
 
 /**
@@ -136,8 +84,7 @@ function jsonResponse(status: number, data: unknown): Response {
 /** Fire-and-forget notifications to the host (open a file in an editor, reveal a tree node, …). */
 export function hostNotify(type: string, payload?: unknown): void {
 	try {
-		// same clone constraint as hostRequest — a reactive payload would throw DataCloneError
-		host().postMessage({ type, ...((cloneable(payload) ?? {}) as object) });
+		current().notify(type, payload);
 	} catch {
 		/* outside a webview (unit/dev) — notifications are best-effort */
 	}
@@ -151,7 +98,7 @@ export function hostNotify(type: string, payload?: unknown): void {
  */
 export function hostSetState(state: unknown): void {
 	try {
-		host().setState(state);
+		current().setState?.(state);
 	} catch {
 		/* outside a webview (unit/dev) — nothing to persist */
 	}

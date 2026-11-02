@@ -157,6 +157,12 @@ jobs:
       # folder missing from `files` fails here rather than in a stranger's install; the other modules'
       # own suites ran in ci.yml on this commit before it could be tagged, and none of them is what
       # this tag publishes. A wave of 16 tags used to run the whole ~10-minute suite 16 times.
+      # @dreamteamer/ui ships its build (dist/lib, dist/app), never committed: built here so its suite tests the
+      # tree that publishes, and again by its prepublishOnly inside npm publish.
+      - name: build the ui
+        if: steps.mod.outputs.id == 'ui'
+        run: npm run build -w modules/ui
+
       - name: tests
         run: node scripts/test.mjs --module=${{ steps.mod.outputs.id }}
 

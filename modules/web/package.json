@@ -25,15 +25,11 @@
 		"README.md",
 		"bin",
 		"src",
-		"scripts",
-		"skills",
-		"dist"
+		"skills"
 	],
-	"scripts": {
-		"prepublishOnly": "node scripts/vendor-app.mjs --version 0.24.27"
-	},
 	"dependencies": {
-		"@dreamteamer/protocol": "^0.1.0"
+		"@dreamteamer/protocol": "^0.1.0",
+		"@dreamteamer/ui": "^0.1.0"
 	},
 	"dreamteamer": {
 		"extension": "./src/extension.js",

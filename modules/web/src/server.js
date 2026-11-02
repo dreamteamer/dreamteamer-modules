@@ -28,12 +28,12 @@ export function contained(root, rel) {
 const hostNames = (port) => new Set([`127.0.0.1:${port}`, `localhost:${port}`, `[::1]:${port}`]);
 
 /**
- * Start dt web for the workspace at `root`. `appDir` holds the built app (browser.html + assets/).
+ * Start dt web for the workspace at `root`. `appDir` holds the built app (index.html + assets/) — @dreamteamer/ui's dist/app.
  * Resolves `{ appUrl, filesOrigin, token, signInUrl(), close(), closed }`.
  */
 export async function startWeb({ root, appDir, port = 0, idleMinutes = 30, ownerPid, onStop, signInTtlMs = SIGN_IN_TTL_MS } = {}) {
-	if (!fs.existsSync(path.join(appDir, 'browser.html'))) {
-		throw new Error(`the app is missing: ${path.join(appDir, 'browser.html')} — run node scripts/vendor-app.mjs (see the README)`);
+	if (!fs.existsSync(path.join(appDir, 'index.html'))) {
+		throw new Error(`the app is missing: ${path.join(appDir, 'index.html')} — @dreamteamer/ui is installed without its build (see the README)`);
 	}
 	const handler = await createHandler({ root });
 	const token = random(32);
@@ -87,7 +87,7 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 30, owner
 	});
 
 	// ---- the app origin ----------------------------------------------------------------------
-	const appHtml = fs.readFileSync(path.join(appDir, 'browser.html'), 'utf8');
+	const appHtml = fs.readFileSync(path.join(appDir, 'index.html'), 'utf8');
 	const filesOrigin = () => `http://127.0.0.1:${filesPort}`;
 	const boot = (nonce) => {
 		const base = `${filesOrigin()}/${filesKey}`;
@@ -99,7 +99,7 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 30, owner
 			__DT_FILES__: base,
 		};
 		const json = JSON.stringify(globals).replace(/</g, '\\u003c');
-		return `<script nonce="${nonce}">Object.assign(window, ${json});\n${SHIM}</script>`;
+		return `<script nonce="${nonce}">Object.assign(window, ${json});</script>`;
 	};
 
 	const authed = (req) => {
@@ -274,41 +274,3 @@ function sendFile(res, body, type, headers = {}) {
 	res.writeHead(200, { 'Content-Type': type, ...headers });
 	res.end(body);
 }
-
-// The browser host shim (D20): the app speaks the VS Code webview protocol; this answers it over HTTP.
-const SHIM = `(function () {
-	var state = null;
-	var post = function (m) { window.dispatchEvent(new MessageEvent('message', { data: m })); };
-	var files = window.__DT_FILES__;
-	// the app teaches fetch('/api/…') to go through the host (for module bundles); the host itself must use
-	// the browser's own fetch, taken before the app loads, or a request would loop back into itself
-	var nativeFetch = window.fetch.bind(window);
-	function rpc(m) {
-		var init = { method: m.method, credentials: 'same-origin', headers: {} };
-		if (m.body !== undefined) { init.body = JSON.stringify(m.body); init.headers['content-type'] = 'application/json'; }
-		nativeFetch('/api' + m.path, init).then(function (r) {
-			return r.text().then(function (t) {
-				var data = null; try { data = t ? JSON.parse(t) : null; } catch (e) { data = t; }
-				if (r.ok) post({ type: 'dt:rpc-reply', id: m.id, ok: true, data: data });
-				else post({ type: 'dt:rpc-reply', id: m.id, ok: false, status: r.status, error: (data && data.error) || String(r.status) });
-			});
-		}, function (e) { post({ type: 'dt:rpc-reply', id: m.id, ok: false, status: 0, error: String(e) }); });
-	}
-	window.acquireVsCodeApi = function () {
-		return {
-			getState: function () { return state; },
-			setState: function (s) { state = s; },
-			postMessage: function (m) {
-				if (!m || typeof m.type !== 'string') return;
-				if (m.type === 'dt:rpc') return rpc(m);
-				if (m.type === 'dt:mounted') return post({ type: 'dt:navigate', route: location.hash.slice(1) || '/' });
-				if (m.type === 'dt:route') return history.replaceState(null, '', '#' + m.route);
-				if (m.type === 'dt:open') return void window.open('#' + m.route, '_blank', 'noopener');
-				if (m.type === 'dt:open-file' && typeof m.path === 'string') return void window.open(files + '/w/' + m.path.split('/').map(encodeURIComponent).join('/') + '?frame=1', '_blank', 'noopener');
-			},
-		};
-	};
-	window.addEventListener('hashchange', function () { post({ type: 'dt:navigate', route: location.hash.slice(1) || '/' }); });
-	var es = new EventSource('/api/events');
-	es.onmessage = function (e) { try { post(JSON.parse(e.data)); } catch (x) {} };
-})();`;

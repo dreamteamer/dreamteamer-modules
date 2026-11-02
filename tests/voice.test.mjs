@@ -1,7 +1,7 @@
 // ONE VOICE: what ships reads as a product a stranger installs, not as the notebook of the workspace
 // it came from. Every file npm would put in a tarball is scanned — descriptors, skills, commands,
 // views, bindings, READMEs, manifests, and the comments in shipped code. Tests and docs/ do not ship
-// and are not scanned.
+// and are not scanned; a build (dist/, generated from scanned source and never committed) is not written.
 import { test, describe } from 'node:test';
 import assert from 'node:assert';
 import fs from 'node:fs';
@@ -10,7 +10,7 @@ import { moduleIds, pkgOf, MODULES } from './helpers/workspace.mjs';
 
 const PROSE = /\.(md|ya?ml|json)$/;
 const CODE = /\.(m?js|py|sh)$/;
-const SKIP_DIRS = new Set(['node_modules', 'test', 'tests', 'docs', '__pycache__', '.venv']);
+const SKIP_DIRS = new Set(['node_modules', 'test', 'tests', 'docs', 'dist', '__pycache__', '.venv']);
 
 /** Every file the module's `files` list ships, plus package.json. */
 function shipped(m) {

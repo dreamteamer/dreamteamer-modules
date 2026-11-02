@@ -1,11 +1,12 @@
 // `dt web` and `dt-web <root>`: start · url · status · stop (README § commands). One argv grammar for both
 // entries; `main` resolves to the process exit code.
 import { spawn } from 'node:child_process';
+import { createRequire } from 'node:module';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { readState, removeState, running, stateFile, writeState, alive } from './runtime.js';
 
-const APP_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'dist', 'app');
+// the browser page @dreamteamer/ui builds, served as it is
+const appDirOf = () => path.join(path.dirname(createRequire(import.meta.url).resolve('@dreamteamer/ui/package.json')), 'dist', 'app');
 
 export function parseArgs(argv, env = process.env) {
 	const out = { cmd: 'start', port: env.DT_WEB_PORT !== undefined ? Number(env.DT_WEB_PORT) : 0, open: true, idle: 30, ownerPid: undefined };
@@ -26,7 +27,7 @@ export function parseArgs(argv, env = process.env) {
 	return out;
 }
 
-export async function main(root, argv, { log = console.log, env = process.env, appDir = env.DT_WEB_APP_DIR ?? APP_DIR } = {}) {
+export async function main(root, argv, { log = console.log, env = process.env, appDir = env.DT_WEB_APP_DIR ?? appDirOf() } = {}) {
 	const o = parseArgs(argv, env);
 	const now = running(root);
 	if (o.cmd === 'status') {

@@ -16,9 +16,9 @@ function* walk(dir) {
 	for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
 		if (e.name === 'node_modules' || e.name === '.git' || e.name.startsWith('.')) continue;
 		const p = path.join(dir, e.name);
-		// a vendored build (gitignored, checked by its sha256 against a published release) is not source:
-		// its minified tables are not reviewable text, and @dreamteamer/web never commits it
-		if (path.relative(ROOT, p) === path.join('modules', 'web', 'dist', 'app') && e.isDirectory()) continue;
+		// @dreamteamer/ui's build (gitignored, rebuilt from the src/ this gate scans) is not source: its
+		// minified tables (an editor grammar's parse states) are not reviewable text, and it is never committed
+		if (path.relative(ROOT, p) === path.join('modules', 'ui', 'dist') && e.isDirectory()) continue;
 		if (e.isDirectory()) yield* walk(p);
 		else if (/\.(md|yaml|yml|json|mjs|js|py|toml|sh|txt)$/.test(e.name)) yield p;
 	}
