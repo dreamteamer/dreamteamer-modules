@@ -19,6 +19,14 @@ const dir = path.join(ROOT, 'dist', 'guest');
 fs.mkdirSync(dir, { recursive: true });
 fs.writeFileSync(path.join(dir, 'guest.js'), guest);
 const css = path.join(ROOT, 'dist', 'lib', 'style.css');
-fs.writeFileSync(path.join(dir, 'guest.css'), fs.existsSync(css) ? fs.readFileSync(css, 'utf8') : '');
+// fonts and images the stylesheet names are inlined as data: — the frame policy loads nothing by URL
+const MIME = { '.ttf': 'font/ttf', '.woff': 'font/woff', '.woff2': 'font/woff2', '.svg': 'image/svg+xml', '.png': 'image/png' };
+const inlined = fs.existsSync(css) ? fs.readFileSync(css, 'utf8').replace(/url\((['"]?)([^'")]+)\1\)/g, (all, q, ref) => {
+	if (/^(data:|#)/.test(ref)) return all;
+	const file = path.resolve(path.dirname(css), ref.split(/[?#]/)[0]);
+	const type = MIME[path.extname(file).toLowerCase()];
+	return type && fs.existsSync(file) ? `url(data:${type};base64,${fs.readFileSync(file).toString('base64')})` : 'none';
+}) : '';
+fs.writeFileSync(path.join(dir, 'guest.css'), inlined);
 fs.writeFileSync(path.join(dir, 'SOURCE.json'), JSON.stringify({ vue: version }, null, '\t') + '\n');
 console.log(`built dist/guest/ (vue ${version}, ${guest.length} chars)`);
