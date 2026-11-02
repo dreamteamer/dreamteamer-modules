@@ -108,7 +108,15 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 30, owner
 		const sid = /(?:^|;\s*)dt_session=([^;]+)/.exec(req.headers.cookie ?? '')?.[1];
 		return sid && sessions.has(sid) ? 'cookie' : null;
 	};
-	const app = http.createServer(async (req, res) => {
+	// a request that throws — a malformed percent-escape, a client gone mid-body — answers or is dropped, never
+	// takes the server down with it
+	const app = http.createServer((req, res) => {
+		handle(req, res).catch((err) => {
+			if (res.headersSent || req.destroyed) return void res.destroy();
+			json(res, err instanceof URIError ? 400 : 500, { error: err instanceof URIError ? 'a malformed percent-escape in the path' : 'the request failed' });
+		});
+	});
+	const handle = async (req, res) => {
 		baseHeaders(res);
 		const host = String(req.headers.host ?? '').toLowerCase();
 		if (!hostNames(appPort).has(host)) return send(res, 403, `Host "${req.headers.host ?? ''}" is not this server — use 127.0.0.1:${appPort}`);
@@ -184,7 +192,8 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 30, owner
 			} finally { console.log = log; }
 		}
 		return send(res, 404, 'not found');
-	});
+	};
+
 
 	// ---- live updates ------------------------------------------------------------------------
 	let pending = null;

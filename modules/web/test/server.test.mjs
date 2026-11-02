@@ -128,3 +128,21 @@ describe('the files origin', () => {
 		assert.equal(page.headers.get('content-security-policy'), 'sandbox');
 	});
 });
+
+describe('a bad request never stops the server', () => {
+	test('a malformed percent-escape answers 400; a POST the client abandons mid-body is dropped; the server still answers', { timeout: 30_000 }, async () => {
+		const auth = { authorization: `Bearer ${web.token}` };
+		const bad = await call(`${web.appUrl}/assets/%E0%A4%A`, { headers: auth });
+		assert.equal(bad.status, 400);
+		const { request } = await import('node:http');
+		await new Promise((resolve) => {
+			const req = request(`${web.appUrl}/api/collections/tasks/records`, { method: 'POST', headers: { ...auth, 'content-type': 'application/json', 'content-length': '1000' } });
+			req.on('error', () => resolve());
+			req.write('{"name":');
+			setTimeout(() => { req.destroy(); resolve(); }, 200);
+		});
+		await new Promise((r) => setTimeout(r, 200));
+		const after = await call(`${web.appUrl}/api/info`, { headers: auth });
+		assert.equal(after.status, 200, 'the server died');
+	});
+});
