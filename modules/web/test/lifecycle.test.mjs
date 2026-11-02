@@ -88,3 +88,33 @@ test('two starts at the same moment: one serves, the other refuses naming it —
 	assert.equal(run('status').status, 0, 'dt web status does not name the one serving');
 	assert.equal(run('stop').status, 0);
 });
+
+test('a stop is clean: dt web stop and SIGTERM each end the server with exit 0 and leave no lock', { timeout: 120_000 }, async () => {
+	for (const how of ['stop', 'SIGTERM']) {
+		const { child, first } = start();
+		await first;
+		if (how === 'stop') assert.equal(run('stop').status, 0);
+		else child.kill('SIGTERM');
+		assert.ok(await exited(child, 15_000), `${how}: the server did not exit`);
+		assert.equal(child.exitCode, 0, `${how}: exit ${child.exitCode}`);
+		assert.deepEqual(fs.readdirSync(path.join(runtime, 'rt')).filter((n) => n.endsWith('.lock')), [], `${how}: a lock is left`);
+	}
+});
+
+test('a stale lock is taken over by one claimant only; a takeover in progress refuses the next', async () => {
+	const { claimStart } = await import('../src/runtime.js');
+	const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dt-web-lock-'));
+	const file = path.join(dir, 'ws.json');
+	fs.writeFileSync(`${file}.lock`, '999999');
+	fs.writeFileSync(`${file}.lock.takeover`, String(process.ppid));
+	assert.equal(claimStart(file, process.pid).ok, false, 'a live takeover is in progress — the claim must wait its turn');
+	fs.rmSync(`${file}.lock.takeover`);
+	const first = claimStart(file, process.pid);
+	assert.equal(first.ok, true);
+	const second = claimStart(file, process.pid + 1);
+	assert.deepEqual([second.ok, second.pid], [false, process.pid]);
+	first.release();
+	first.release();
+	assert.ok(!fs.existsSync(`${file}.lock`));
+	fs.rmSync(dir, { recursive: true, force: true });
+});

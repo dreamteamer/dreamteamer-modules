@@ -55,20 +55,27 @@ export function running(root) {
 /**
  * Claim the right to serve this workspace: a lock file created exclusively beside the state file, holding
  * this pid for the server's whole life. Two starts at the same moment cannot both pass the "already
- * running" check — only one creates the lock. A lock whose process is gone is taken over once.
+ * running" check — only one creates the lock. A lock whose process is gone is taken over by one starter
+ * only: the takeover itself is an exclusive file, so two starters after a crash cannot both clear it.
  */
 export function claimStart(file, pid = process.pid) {
 	const lock = `${file}.lock`;
+	const take = `${lock}.takeover`;
+	const holder = (f) => { try { return Number(fs.readFileSync(f, 'utf8')); } catch { return null; } };
 	fs.mkdirSync(path.dirname(lock), { recursive: true, mode: 0o700 });
 	for (let attempt = 0; attempt < 2; attempt++) {
 		try {
 			fs.writeFileSync(lock, String(pid), { flag: 'wx', mode: 0o600 });
-			return { ok: true, release: () => { if (Number(fs.readFileSync(lock, 'utf8')) === pid) fs.rmSync(lock, { force: true }); } };
+			let released = false;
+			return { ok: true, release: () => { if (released) return; released = true; if (holder(lock) === pid) fs.rmSync(lock, { force: true }); } };
 		} catch (e) {
 			if (e.code !== 'EEXIST') throw e;
-			const held = Number(fs.readFileSync(lock, 'utf8'));
-			if (alive(held)) return { ok: false, pid: held };
-			fs.rmSync(lock, { force: true });
+			const held = holder(lock);
+			if (held !== null && alive(held)) return { ok: false, pid: held };
+			const taker = holder(take);
+			if (taker !== null && !alive(taker)) fs.rmSync(take, { force: true });
+			try { fs.writeFileSync(take, String(pid), { flag: 'wx', mode: 0o600 }); } catch { return { ok: false, pid: held }; }
+			try { if (holder(lock) === held) fs.rmSync(lock, { force: true }); } finally { fs.rmSync(take, { force: true }); }
 		}
 	}
 	return { ok: false, pid: null };
