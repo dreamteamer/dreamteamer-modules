@@ -69,3 +69,4 @@ await build({
 });
 
 console.log('built dist/lib/ and dist/app/');
+await import('./build-guest.mjs');
