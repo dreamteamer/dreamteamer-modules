@@ -14,9 +14,9 @@ const pair = (r) => `${r.method} ${r.pattern}`;
 const documented = () => [...fs.readFileSync(path.join(PKG, 'PROTOCOL.md'), 'utf8').matchAll(/^### (GET|POST|PATCH|PUT|DELETE) (\/\S*)\s*$/gm)].map((m) => `${m[1]} ${m[2]}`);
 
 describe('the route table', () => {
-	test('names 28 method-and-pattern pairs, each once, each with an id and a doc anchor', () => {
+	test('names 27 method-and-pattern pairs, each once, each with an id and a doc anchor', () => {
 		const pairs = ROUTES.map(pair);
-		assert.equal(pairs.length, 28, pairs.join('\n'));
+		assert.equal(pairs.length, 27, pairs.join('\n'));
 		assert.equal(new Set(pairs).size, pairs.length, 'a pair is listed twice');
 		assert.equal(new Set(ROUTES.map((r) => r.id)).size, ROUTES.length, 'an id is listed twice');
 		for (const r of ROUTES) assert.ok(r.id && r.doc, `${pair(r)} has no id or doc`);

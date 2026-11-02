@@ -13,7 +13,6 @@ export const ROUTES = [
 	{ id: 'sources', method: 'GET', pattern: '/sources', doc: 'get-sources' },
 	{ id: 'activity', method: 'GET', pattern: '/activity', doc: 'get-activity' },
 	{ id: 'nav', method: 'GET', pattern: '/nav', doc: 'get-nav' },
-	{ id: 'scope', method: 'PUT', pattern: '/scope', doc: 'put-scope' },
 	{ id: 'field-add', method: 'POST', pattern: '/fields/:collection', doc: 'post-fields-collection' },
 	{ id: 'field-edit', method: 'PATCH', pattern: '/fields/:collection/:field', doc: 'patch-fields-collection-field' },
 	{ id: 'field-remove', method: 'DELETE', pattern: '/fields/:collection/:field', doc: 'delete-fields-collection-field' },

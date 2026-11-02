@@ -76,7 +76,7 @@ Every compiled descriptor, ordered by `display.nav.order`. `200 [descriptor, ...
 
 How to render each collection and field — the engine's `presentation()` — with one key the host adds to
 each collection row: `sources`, every root the collection's records are read from (name, kind, repo, path,
-installed, count, access), narrowed by the host's scope (`PUT /scope`). `200 { collections: [row, ...], … }`.
+installed, count, access). `200 { collections: [row, ...], … }`.
 
 ### GET /sources
 
@@ -99,12 +99,8 @@ The navigation the editor draws as its tree, as data, so a host without a native
 folders. `200 [NavNode, ...]`, `NavNode = { kind, key, label, icon?, route?, marks?, count?, tooltip?,
 children? }`, `kind` one of `workspace`, `page`, `folder`, `collection`, `view`, `layers`, `layer`,
 `layer-group`, `layer-collection`, `note`. It honours the workspace's `dreamteamer.navGroups`,
-`dreamteamer.navOrder`, `dreamteamer.navHidden` and `dreamteamer.layersFolder` settings and the host's scope.
-
-### PUT /scope
-
-Sets the host's source scope. Body `{ "scope": "all" | "private" | "shared" }`. `200 { scope }`. Every list
-and every collection row's `sources` is narrowed by it until it is set again.
+`dreamteamer.navOrder`, `dreamteamer.navHidden` and `dreamteamer.layersFolder` settings. A list is narrowed
+to some sources by an ordinary filter chip (`$source`), never by a host-wide scope.
 
 ### POST /fields/:collection
 

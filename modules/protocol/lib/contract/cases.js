@@ -56,9 +56,6 @@ export const cases = [
 		ok(res); check(Array.isArray(res.body) && res.body.length > 0, 'no nav nodes');
 		shape(res.body[0], { kind: 'string', key: 'string', label: 'string' }, 'nav[0]');
 	} },
-	{ id: 'scope', route: 'scope', method: 'PUT', path: '/scope', body: { scope: 'all' }, expect: (res) => {
-		ok(res); shape(res.body, { scope: 'string' });
-	} },
 	{ id: 'folder', route: 'folder', method: 'GET', path: '/folder/projects/northwind-launch?field=media', expect: (res) => {
 		ok(res); shape(res.body, { path: 'string|null', files: 'array', reason: 'string|null' });
 		check(res.body.files.length > 0 || typeof res.body.reason === 'string', 'no files and no reason');

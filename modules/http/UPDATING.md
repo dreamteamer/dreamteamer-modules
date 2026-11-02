@@ -22,7 +22,7 @@ that used 0.1.0's shapes changes these:
 - **`POST /commit`** takes `{ only?, message?, dryRun? }`; an absent or empty `only` publishes every
   pending record write, as the editor's Commit button does. Unknown keys are ignored. `?dry-run=true` and
   `{ "dryRun": true }` both plan.
-- **New routes**: `GET /sources`, `GET /activity`, `GET /nav`, `PUT /scope`, `GET /folder/:collection/*id`,
+- **New routes**: `GET /sources`, `GET /activity`, `GET /nav`, `GET /folder/:collection/*id`,
   `POST /collections/:collection/files`; rows carry `$source`, `$module`, `$repo`, `$dirty`, `$ahead` and the
   rest of the computed keys `PROTOCOL.md` lists.
 - **Bodies** — see the README: a same-origin or Origin-less write body is JSON whatever its

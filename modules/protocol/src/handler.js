@@ -14,21 +14,18 @@ import { WorkspaceApi } from './host/api.js';
 import { navModel, workspaceNavSettings } from './nav-model.js';
 
 /**
- * @param {{ root: string, scope?: 'all' | 'private' | 'shared', onSystemWrite?: (result: unknown) => void,
+ * @param {{ root: string, onSystemWrite?: (result: unknown) => void,
  *           settings?: () => object }} opts — `settings` answers the four nav settings (default: the workspace's .vscode/settings.json)
  * @returns {Promise<{ handle: (method: string, path: string, body?: unknown) => Promise<{ status: number, body: unknown }>,
- *                    readonly api: WorkspaceApi, scope: string, reopen: () => Promise<void> }>}
+ *                    readonly api: WorkspaceApi, reopen: () => Promise<void> }>}
  */
-export async function createHandler({ root, scope, onSystemWrite, settings = () => workspaceNavSettings(root) } = {}) {
+export async function createHandler({ root, onSystemWrite, settings = () => workspaceNavSettings(root) } = {}) {
 	if (!root) throw new Error('createHandler: no workspace root');
 	await initEngine(root);
 	const api = new WorkspaceApi(root);
-	if (scope) api.scope = scope;
 	if (onSystemWrite) api.onSystemWrite = onSystemWrite;
 	return {
 		api,
-		get scope() { return api.scope; },
-		set scope(s) { api.scope = s; },
 		reopen: () => refreshWorkspace(),
 		async handle(method, path, body) {
 			const m = String(method).toUpperCase();
@@ -36,16 +33,10 @@ export async function createHandler({ root, scope, onSystemWrite, settings = () 
 			if (!hit) return { status: 404, body: { error: `unhandled request ${m} ${path}` } };
 			const refused = unreadableDryRun(m, path);
 			if (refused) return { status: 400, body: { error: refused } };
-			// the two routes the editor's host never needed: its tree IS the nav, its toggle sets the scope
+			// the one route the editor's host never needed: its tree IS the nav
 			if (hit.route.id === 'nav') {
 				try { api.descriptors(); return { status: 200, body: navModel({ root, settings: settings() ?? {} }) }; }
 				catch (e) { return { status: 400, body: { error: String(e?.message ?? e) } }; }
-			}
-			if (hit.route.id === 'scope') {
-				const s = body?.scope;
-				if (!['all', 'private', 'shared'].includes(s)) return { status: 400, body: { error: `PUT /scope takes { "scope": "all" | "private" | "shared" } (got ${JSON.stringify(s)})` } };
-				api.scope = s;
-				return { status: 200, body: { scope: s } };
 			}
 			return api.handle(m, path, body);
 		},
