@@ -22,6 +22,12 @@ import { virginWorkspace, installPacked, closure, cleanup, engineMeets, pkgOf, p
 
 after(cleanup);
 const skip = !engineMeets('core') && `needs engine ${pkgOf('core').dreamteamer.engine}; testing ${ENGINE_VERSION}`;
+// core 0.9.0 (cr-modules-010) removed live sessions — the session-bindings collection, `dt session start`,
+// `dt sessions open`, status and heartbeat — so the claims below, written against core 0.8.0, have no
+// subject on this repo's core: they are skipped, saying so. What replaces them (no binding, no claim;
+// a stray session-bindings source compiles as retired) is pinned in core's own sessions tests.
+const coreLive = Number(pkgOf('core').version.split('.')[1]) < 9 || pkgOf('core').version.startsWith('1');
+const live = skip || (!coreLive && `core ${pkgOf('core').version} has no live sessions (cr-modules-010); core's test/session*.test.mjs pin what replaced them`);
 const RND = path.join(MODULES, 'rnd');
 
 /** The environment every child runs in: no harness session id leaking in from whatever runs the suite. */
@@ -84,7 +90,7 @@ describe('rnd ships no session bindings', () => {
 		assert.deepEqual(packedFiles('rnd').filter((f) => f.startsWith('session-bindings/') || f.endsWith('.session-binding.yaml')), [], 'the tarball carries no binding');
 	});
 
-	test('lines 2-3: core and rnd compiled — no session binding, no SESSIONS BOUND block in any harness file', { skip }, () => {
+	test('lines 2-3: core and rnd compiled — no session binding, no SESSIONS BOUND block in any harness file', { skip: live }, () => {
 		const { root, compiled } = coreAndRnd();
 		assert.doesNotMatch(compiled.out + compiled.err, /session-binding/, 'compile stages and mentions no binding');
 		assert.deepEqual(json(root, ['list', 'session-bindings']), []);
@@ -96,7 +102,7 @@ describe('rnd ships no session bindings', () => {
 		assert.match(ok(dt(root, ['check'])).out, /0 violations/);
 	});
 
-	test('line 4: a change request walked through the stages rnd bound — sessions open never lists it, dt next never says in session by, its command bindings are unchanged, session start is refused', { skip }, () => {
+	test('line 4: a change request walked through the stages rnd bound — sessions open never lists it, dt next never says in session by, its command bindings are unchanged, session start is refused', { skip: live }, () => {
 		const { root, folder } = coreAndRnd();
 		ok(dt(root, ['add', 'rnd/products', '--name', 'Northwind portal']));
 		ok(dt(root, ['add', 'rnd/change-requests', '--key', 'cr-nw-1', '--name', 'Northwind: export grants', '--products', 'rnd/products/northwind-portal']));
@@ -132,7 +138,7 @@ describe('rnd ships no session bindings', () => {
 	});
 });
 
-describe('the migration unbinds the sessions rnd 0.7.0\'s bindings opened', { skip }, () => {
+describe('the migration unbinds the sessions rnd 0.7.0\'s bindings opened', { skip: live }, () => {
 	const OWN = `collection: collections/rnd/products
 available_when:
   name:
