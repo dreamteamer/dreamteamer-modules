@@ -1,0 +1,63 @@
+name: web-walk
+
+# cr-modules-005 line 7: dt web on a machine with no editor. A push of the branch below runs the walk on a
+# fresh GitHub-hosted runner — node and git only, no VS Code — and keeps its screenshots as an artifact. It
+# needs the published extension release that dist/app/SOURCE.json pins (the app is vendored from it), so the
+# branch is pushed only after that release is out.
+on:
+  push:
+    branches: [cr-modules-005-web-walk]
+
+permissions:
+  contents: read
+
+jobs:
+  walk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: install
+        run: npm ci --no-audit --no-fund
+
+      - name: the engine the fixture is built with (published)
+        run: |
+          mkdir -p "$RUNNER_TEMP/engine"
+          npm install --prefix "$RUNNER_TEMP/engine" --no-audit --no-fund dreamteamer@0.44.0
+          echo "DT_ENGINE_DIR=$RUNNER_TEMP/engine/node_modules/dreamteamer" >> "$GITHUB_ENV"
+
+      - name: no editor on this machine
+        run: |
+          command -v code || echo "no code on PATH"
+          ls ~/.vscode 2>/dev/null || echo "no ~/.vscode"
+
+      - name: the app, from the published extension release SOURCE.json pins
+        run: node modules/web/scripts/vendor-app.mjs --version "$(node -p "require('./modules/web/dist/app/SOURCE.json').version")"
+
+      - name: pack protocol and web
+        run: |
+          mkdir -p "$RUNNER_TEMP/packs"
+          (cd modules/protocol && npm pack --pack-destination "$RUNNER_TEMP/packs")
+          (cd modules/web && npm pack --pack-destination "$RUNNER_TEMP/packs")
+          ls -l "$RUNNER_TEMP/packs"
+
+      - name: Chromium
+        run: npx -y playwright-core install --with-deps chromium
+
+      - name: the walk
+        env:
+          DT_WALK_SHOTS: ${{ runner.temp }}/shots
+        run: timeout 900 node modules/web/test/walk/no-vscode.mjs "$RUNNER_TEMP"/packs/dreamteamer-protocol-*.tgz "$RUNNER_TEMP"/packs/dreamteamer-web-*.tgz
+
+      - name: screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-walk-shots
+          path: ${{ runner.temp }}/shots
+          if-no-files-found: ignore

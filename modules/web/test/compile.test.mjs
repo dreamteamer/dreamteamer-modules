@@ -1,5 +1,5 @@
 // The packed install: what a stranger's workspace gets from npm. protocol and web are packed, unpacked into a
-// fresh workspace's node_modules and compiled; then `dt web` runs through the ENGINE'S OWN CLI — help lists it,
+// fresh workspace's node_modules and compiled (the session skill with it); then `dt web` runs through the ENGINE'S OWN CLI — help lists it,
 // status answers "not running" (exit 1), and the `web` row of `dt doctor` says "not running" and then, while a
 // server started by `dt web --no-open` is up, "running at" its address. Every child is bounded and killed.
 import { test, after } from 'node:test';
@@ -24,7 +24,7 @@ const webRow = (out) => out.split('\n').find((l) => /\bweb\b/.test(l) && /runnin
 
 test('the tarball ships the bin, the source, the vendor script and the pin — never the tests', () => {
 	const files = packedFiles('web');
-	for (const f of ['bin/dt-web.mjs', 'src/cli.js', 'src/server.js', 'src/extension.js', 'src/runtime.js', 'src/headers.js', 'scripts/vendor-app.mjs', 'dist/app/SOURCE.json', 'README.md']) assert.ok(files.includes(f), `${f} is not in the tarball`);
+	for (const f of ['bin/dt-web.mjs', 'src/cli.js', 'src/server.js', 'src/extension.js', 'src/runtime.js', 'src/headers.js', 'scripts/vendor-app.mjs', 'dist/app/SOURCE.json', 'README.md', 'skills/serving-the-web-ui/SKILL.md']) assert.ok(files.includes(f), `${f} is not in the tarball`);
 	assert.ok(!files.some((f) => f.startsWith('test/')), 'tests do not ship');
 });
 
@@ -35,6 +35,8 @@ test('a workspace that installs the packed protocol and web compiles; dt web ans
 	const c = dt(ws, 'compile');
 	assert.equal(c.status, 0, c.stderr + c.stdout);
 
+	const skill = dt(ws, 'get', 'skills/serving-the-web-ui');
+	assert.equal(skill.status, 0, `the session skill is not compiled in: ${skill.stderr}`);
 	const help = dt(ws, 'help');
 	assert.match(help.stdout, /web \[url\|status\|stop\]/, 'dt help lists the verb');
 	const st = dt(ws, 'web', 'status');
