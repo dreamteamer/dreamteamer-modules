@@ -8,7 +8,7 @@
 // The engine is the WORKSPACE's own — `initEngine(root)` loads `<root>/node_modules/dreamteamer`'s public
 // API (`src/api.js`) the way the extension always has, and every compile-gated write re-opens the
 // workspace first (`refreshWorkspace`), refusing with 409 when it will not open (review R5's fix).
-import { matchRoute } from './routes.js';
+import { ROUTES, matchRoute } from './routes.js';
 import { initEngine, refreshWorkspace } from './host/engine.js';
 import { WorkspaceApi } from './host/api.js';
 import { navModel, workspaceNavSettings } from './nav-model.js';
@@ -53,14 +53,23 @@ export async function route(api, method, path, body, { root, settings, host }) {
 		try { api.descriptors(); return { status: 200, body: navModel({ root, settings: settings() ?? {} }) }; }
 		catch (e) { return { status: 400, body: { error: String(e?.message ?? e) } }; }
 	}
-	return host(m, path, body);
+	const res = await host(m, path, body);
+	// a greedy route (history) hands the split name to the host, which refuses the first half: say why
+	if (res?.status >= 400 && !/percent-encoded/.test(String(res.body?.error ?? ''))) {
+		const hint = unencodedHint(api, path);
+		if (hint) return { ...res, body: { ...res.body, error: `${res.body?.error ?? 'refused'} — ${hint}` } };
+	}
+	return res;
 }
+
+/** The first segment of every route whose second is the collection: where a split name can arrive. */
+const COLLECTION_HEADS = new Set(ROUTES.filter((r) => r.pattern.split('/')[2] === ':collection').map((r) => r.pattern.split('/')[1]));
 
 /** A collection name with a slash sent unencoded splits into extra segments and matches no route: say which
  *  collection the caller meant, and why, rather than only "unhandled". */
 function unencodedHint(api, path) {
 	const seg = String(path).split('?')[0].replace(/^\/+/, '').split('/').map((s) => { try { return decodeURIComponent(s); } catch { return s; } });
-	if (seg[0] !== 'collections' || seg.length < 3) return null;
+	if (!COLLECTION_HEADS.has(seg[0]) || seg.length < 3) return null;
 	let names;
 	try { names = api.descriptors(); } catch { return null; }
 	if (names.has(seg[1])) return null;

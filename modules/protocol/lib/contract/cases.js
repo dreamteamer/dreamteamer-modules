@@ -79,6 +79,14 @@ export const cases = [
 		status(res, 404);
 		check(/did you mean "lab\/samples"/.test(res.body.error) && /percent-encoded/.test(res.body.error), `the refusal does not name the collection meant: ${res.body.error}`);
 	} },
+	// every route that takes a collection names the encoding when a namespaced one arrives unencoded — whether no
+	// route matches (fields, commands) or a greedy one hands the split name to the host (history)
+	...[['field-add', 'POST', '/fields/lab/samples'], ['commands', 'GET', '/commands/lab/samples'], ['history', 'GET', '/history/lab/samples/sample-one'], ['history-diff', 'GET', '/history-diff/lab/samples/sample-one?sha=HEAD']].map(([route, method, path]) => ({
+		id: `${route}-namespaced-unencoded`, route, method, path, body: method === 'POST' ? { name: 'unencoded_probe', type: 'string' } : undefined, expect: (res) => {
+			check(res.status >= 400, `${path} answered ${res.status}`);
+			check(/did you mean "lab\/samples"/.test(res.body?.error) && /percent-encoded/.test(res.body?.error), `${path}: the refusal does not name the encoding: ${res.body?.error}`);
+		},
+	})),
 	{ id: 'records-list-filter', route: 'records-list', method: 'GET', path: `/collections/projects/records?filter=${encodeURIComponent(JSON.stringify({ status: { _eq: 'active' } }))}`, expect: (res) => {
 		ok(res); check(res.body.records.every((r) => r.status === 'active') && res.body.records.length >= 1, 'the filter did not narrow to active');
 	} },
