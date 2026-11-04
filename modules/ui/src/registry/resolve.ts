@@ -100,8 +100,11 @@ function warnUnregistered(axis: 'editor' | 'viewer', field: FieldRow, id: string
  * Which Edit draws `field`: its authored `editor` when registered, else the shape's default (a body,
  * a reference, a list, an enum, an object with sub-fields), else the wire type's.
  */
+/** cr-modules-008 D9: a module's kind defaults apply only to fields of its own collections — the module host sets this. */
+export const moduleKindDefault: { find?: (kind: 'edit' | 'view', field: FieldRow) => string | undefined } = {};
+
 export function resolveEdit(field: FieldRow): Resolved<ExtensionDefinition> {
-	const kindDefaultId = shapeEdit(field) ?? kindDefaultEdits[field.type] ?? EDIT_FALLBACK;
+	const kindDefaultId = shapeEdit(field) ?? moduleKindDefault.find?.('edit', field) ?? kindDefaultEdits[field.type] ?? EDIT_FALLBACK;
 	const explicitId = field.editor;
 	if (explicitId) {
 		const explicitEntry = edits.get(explicitId);
@@ -114,7 +117,7 @@ export function resolveEdit(field: FieldRow): Resolved<ExtensionDefinition> {
 
 /** Mirrors `resolveEdit` on the read side, with the authored `viewer` first. */
 export function resolveView(field: FieldRow, context: 'cell' | 'record' = 'cell'): Resolved<ExtensionDefinition> {
-	const kindDefaultId = shapeView(field, context) ?? kindDefaultViews[field.type] ?? VIEW_FALLBACK;
+	const kindDefaultId = shapeView(field, context) ?? moduleKindDefault.find?.('view', field) ?? kindDefaultViews[field.type] ?? VIEW_FALLBACK;
 	const explicitId = field.viewer;
 	if (explicitId) {
 		const explicitEntry = views.get(explicitId);

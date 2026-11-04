@@ -21,7 +21,14 @@
 		"./package.json": "./package.json",
 		"./handler": "./src/handler.js",
 		"./host/*": "./src/host/*.js",
-		"./nav-model": "./src/nav-model.js"
+		"./nav-model": "./src/nav-model.js",
+		"./gate": "./src/gate.js",
+		"./reshape": "./src/reshape.js",
+		"./apply-write": "./src/apply-write.js",
+		"./frame-bridge": "./src/frame-bridge.js",
+		"./module-scope": "./src/module-scope.js",
+		"./module-grant": "./src/module-grant.js",
+		"./frame-document": "./src/frame-document.js"
 	},
 	"files": [
 		"README.md",

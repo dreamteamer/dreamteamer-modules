@@ -308,3 +308,35 @@ Set on `window` before the app's bundle runs:
 A workspace module's prebuilt bundle may call `fetch('/api/…')` directly: over HTTP the route is real (the
 session cookie authenticates it, and a same-origin JSON body is accepted whatever its `Content-Type`); in VS
 Code the app teaches `fetch` to answer `/api/…` from the host.
+
+## Module apps
+
+A module's `ui/app.js` never runs in the app's page. The host loads each module surface in a sandboxed frame
+(`sandbox="allow-scripts"`, never `allow-same-origin`) built by `frame-document.js` — one document, the bundle
+embedded as data and imported as a `blob:`, a frame policy with no host, hash or nonce — and answers the frame's
+`/api` calls itself, through `gate()` and `reshape()` under the module's scope. A frame holds no token, cookie
+or nonce, and makes no network request.
+
+**Boot globals added** (set by the host on the app's page, never served by a route):
+
+| global | value |
+|---|---|
+| `__DT_HOST__.moduleFrames` | `'url'` (dt web: the files origin serves the frame document) or `'srcdoc'` (VS Code) |
+| `__DT_MODULE_GRANTS__` | `{ "<module>": { reads: [collection], writes: [collection] } }` — read by the host from the workspace root's own `.vscode/settings.json` (`dreamteamer.moduleApps`) and nowhere else |
+
+**Frame messages** — every message is `{ dt: 1, id, op, … }`; the host accepts one only from a frame it
+registered (`event.source`), and drops a frame whose document is replaced. Host → frame: `init`, `props`, `state`,
+`route`, `theme`, `invalidate`, `reply`, `render-cells`, `paste`. Frame → host: `registered`, `request`, `emit`,
+`intent`, `navigate`, `resize`, `key`, `cells`, `error`.
+
+**The routes a module app may call** (`kind: 'module'`), each through `gate()`:
+
+| route | when |
+|---|---|
+| `GET /info`, `GET /schema`, `GET /presentation` | always — cut to the module's read scope; `/info` answers `user: null` |
+| `GET /collections/:collection/records`, `GET /collections/:collection/records/*id`, `GET /collections/:collection/values/:field` | the collection is its own, or granted and referenced by its own; filters without relational conditions, without `_regex`, bounded |
+| `GET /commands/:collection` | its own collection |
+| `POST /collections/:collection/records`, `PATCH /collections/:collection/records/*id`, `DELETE /collections/:collection/records/*id`, `PATCH /collections/:collection/position/*id` | its own collection, granted writes, no query of its own; a create lands in the module's own root; an update, delete or move only of a record its own root holds |
+
+Every other route answers `403`; a path that is no route answers `404`. A refusal is `{ error }` with a
+sentence naming the collection or route, the module or root that owns it, and what this module app may reach.

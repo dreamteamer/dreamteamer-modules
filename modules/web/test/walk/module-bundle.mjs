@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // The module-bundle walk (cr-modules-005 line 9, the browser half): a workspace module ships a PREBUILT app
 // bundle (`modules/default/ui/app.js`, no build step, Vue from window.Vue) whose page calls fetch('/api/…');
-// `dt compile` stages it to .dreamteamer/ui/; dt web serves it from /ui-modules/ under the page's CSP, and the
-// page renders the count the API answered. The same file, unchanged, is what the extension loads (the VS Code
+// `dt compile` stages it to .dreamteamer/ui/; since cr-modules-008 dt web serves it inside a sandboxed module frame
+// from the files origin (/_dt/frame/), and the frame renders the count the bridge answered. The same file, unchanged, is what the extension loads (the VS Code
 // half: the CDP smoke on the same fixture).
 // usage: node modules/web/test/walk/module-bundle.mjs   (DT_WEB_APP_DIR, DT_ENGINE_DIR, DT_WALK_SHOTS optional)
 import fs from 'node:fs';
@@ -44,12 +44,13 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 	try {
 		const { page, errors } = await signedIn(b, s.url);
 		const loaded = [];
-		page.on('response', (r) => { if (r.url().includes('/ui-modules/')) loaded.push(`${r.status()} ${new URL(r.url()).pathname}`); });
+		page.on('response', (r) => { if (r.url().includes('/_dt/frame/') || r.url().includes('/ui-modules/')) loaded.push(`${r.status()} ${new URL(r.url()).pathname.replace(/^\/[^/]+/, '')}`); });
 		await page.reload();
 		await page.waitForSelector('.dt-nav-row', { timeout: 30_000 });
 		await go(page, '/a/northwind-stats');
-		const line = await page.waitForSelector('.northwind-stats', { timeout: 10_000 }).then(async (e) => { await page.waitForFunction(() => !/counting/.test(document.querySelector('.northwind-stats').textContent), null, { timeout: 10_000 }).catch(() => {}); return e.textContent(); }, () => '');
-		ok(loaded.some((l) => l.startsWith('200 ')), 'the bundle is served from /ui-modules/', JSON.stringify(loaded));
+		const frame = await (await page.waitForSelector('iframe[title="module app default"]:not([style*="display:none"])', { timeout: 15_000 })).contentFrame();
+		const line = await frame.waitForSelector('.northwind-stats', { timeout: 10_000 }).then(async (e) => { await frame.waitForFunction(() => !/counting/.test(document.querySelector('.northwind-stats').textContent), null, { timeout: 10_000 }).catch(() => {}); return e.textContent(); }, () => '');
+		ok(loaded.some((l) => l === '200 /_dt/frame/default/app.html') && !loaded.some((l) => l.includes('/ui-modules/')), 'the bundle is served in its module frame, never from /ui-modules/', JSON.stringify(loaded));
 		ok(line === 'Northwind projects: 3', "the module's page renders what its fetch('/api/…') answered", JSON.stringify(line));
 		await page.screenshot({ path: shot('module-bundle') });
 		ok(errors.length === 0, 'no page errors (CSP included)', JSON.stringify(errors.slice(0, 3)));

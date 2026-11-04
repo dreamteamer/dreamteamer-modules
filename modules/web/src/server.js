@@ -10,6 +10,8 @@ import { engine } from '@dreamteamer/protocol/host/engine';
 import { envRoots } from '@dreamteamer/protocol/host/folder-images';
 import { changeScope, invalidateMessage } from '@dreamteamer/protocol/host/changes';
 import { appCsp, baseHeaders, FILE_CSP } from './headers.js';
+import { readModuleGrantResult } from '@dreamteamer/protocol/module-grant';
+import { moduleFrameRoute, resolveGuest } from './module-frames.js';
 
 const SIGN_IN_TTL_MS = 10 * 60_000;
 const DEBOUNCE_MS = 150;
@@ -31,7 +33,7 @@ const hostNames = (port) => new Set([`127.0.0.1:${port}`, `localhost:${port}`, `
  * Start dt web for the workspace at `root`. `appDir` holds the built app (index.html + assets/) — @dreamteamer/ui's dist/app.
  * Resolves `{ appUrl, filesOrigin, token, signInUrl(), close(), closed }`.
  */
-export async function startWeb({ root, appDir, port = 0, idleMinutes = 30, ownerPid, onStop, signInTtlMs = SIGN_IN_TTL_MS } = {}) {
+export async function startWeb({ root, appDir, port = 0, idleMinutes = 30, ownerPid, onStop, signInTtlMs = SIGN_IN_TTL_MS, moduleGuest } = {}) {
 	if (!fs.existsSync(path.join(appDir, 'index.html'))) {
 		throw new Error(`the app is missing: ${path.join(appDir, 'index.html')} — @dreamteamer/ui is installed without its build (see the README)`);
 	}
@@ -54,6 +56,8 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 30, owner
 		return out;
 	};
 	const frameRoutes = [];
+	// cr-modules-008: module apps run in frames served here; `moduleGuest: null` forces the missing-guest path in tests
+	frameRoutes.push(moduleFrameRoute({ root, appPort: () => appPort, guest: moduleGuest === undefined ? resolveGuest(path.dirname(new URL(import.meta.url).pathname)) : moduleGuest }));
 	const files = http.createServer((req, res) => {
 		try {
 			serveFile(req, res);
@@ -74,7 +78,7 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 30, owner
 		const kind = parts[1];
 		const rest = parts.slice(2).map((p) => { try { return decodeURIComponent(p); } catch { return '\0'; } });
 		if (kind === '_dt' && rest[0] === 'frame') {
-			for (const r of frameRoutes) { const out = r(rest.slice(1), req); if (out) return sendFile(res, out.body, out.type ?? 'text/html; charset=utf-8', out.headers); }
+			for (const r of frameRoutes) { const out = r(rest.slice(1), req); if (out) return out.status ? send(res, out.status, out.body) : sendFile(res, out.body, out.type ?? 'text/html; charset=utf-8', out.headers); }
 			return send(res, 404, 'no frame');
 		}
 		let file = null;
@@ -97,12 +101,14 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 30, owner
 
 	// ---- the app origin ----------------------------------------------------------------------
 	const appHtml = fs.readFileSync(path.join(appDir, 'index.html'), 'utf8');
-	const filesOrigin = () => `http://127.0.0.1:${filesPort}`;
-	const boot = (nonce) => {
-		const base = `${filesOrigin()}/${filesKey}`;
+	// the files origin on the host the page was opened at: a page at localhost framing 127.0.0.1 would be cross-site,
+	// which the files origin refuses (cr-modules-008 t13)
+	const filesOrigin = (pageHost = '') => `http://${/^localhost(:|$)/i.test(pageHost) ? 'localhost' : '127.0.0.1'}:${filesPort}`;
+	const boot = (nonce, pageHost) => {
+		const base = `${filesOrigin(pageHost)}/${filesKey}`;
 		const globals = {
-			__DT_HOST__: { nav: 'app', commands: false, openFile: 'tab', tabs: false, history: 'hash' },
-			__DT_UI_BASE__: '/ui-modules',
+			__DT_HOST__: { nav: 'app', commands: false, openFile: 'tab', tabs: false, history: 'hash', moduleFrames: 'url' },
+			...((g) => ({ __DT_MODULE_GRANTS__: g.grant, __DT_MODULE_GRANT_PROBLEM__: g.problem }))(readModuleGrantResult(root)),
 			__DT_FILE_BASES__: fileBases().map((b) => ({ ...b, uri: `${base}/w/${b.path}` })),
 			__DT_VAR_ROOTS__: varRoots().map((r) => ({ ...r, uri: `${base}/v/${encodeURIComponent(r.name)}` })),
 			__DT_FILES__: base,
@@ -133,6 +139,11 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 30, owner
 		const origin = req.headers.origin;
 		if (origin !== undefined && !(origin.startsWith('http://') && hostNames(appPort).has(origin.slice(7).toLowerCase()))) return send(res, 403, `Origin "${origin}" may not call this server`);
 		const url = new URL(req.url, 'http://x');
+		// CSP has no IPv6 host-source, so module frames cannot name [::1] as an ancestor: the page moves to 127.0.0.1
+		if (host.startsWith('[::1]') && req.method === 'GET' && !url.pathname.startsWith('/api/')) {
+			res.writeHead(302, { Location: `http://127.0.0.1:${appPort}${req.url}` });
+			return res.end();
+		}
 
 		if (req.method === 'GET' && url.pathname.startsWith('/sign-in/')) {
 			const code = url.pathname.slice('/sign-in/'.length);
@@ -162,17 +173,12 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 30, owner
 
 		if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/index.html')) {
 			const nonce = random(16);
-			res.setHeader('Content-Security-Policy', appCsp(nonce, filesOrigin()));
+			res.setHeader('Content-Security-Policy', appCsp(nonce, filesOrigin(host), filesKey));
 			res.setHeader('Cache-Control', 'no-store');
-			return sendFile(res, appHtml.replace(/<head>/i, `<head>${boot(nonce)}`), 'text/html; charset=utf-8');
+			return sendFile(res, appHtml.replace(/<head>/i, `<head>${boot(nonce, host)}`), 'text/html; charset=utf-8');
 		}
 		if (req.method === 'GET' && url.pathname.startsWith('/assets/')) {
 			const f = contained(path.join(appDir, 'assets'), decodeURIComponent(url.pathname.slice(8)));
-			if (!f) return send(res, 404, 'not found');
-			return sendFile(res, fs.readFileSync(f), MIME[path.extname(f).toLowerCase()] ?? 'application/octet-stream');
-		}
-		if (req.method === 'GET' && url.pathname.startsWith('/ui-modules/')) {
-			const f = contained(path.join(root, '.dreamteamer', 'ui'), decodeURIComponent(url.pathname.slice(12)));
 			if (!f) return send(res, 404, 'not found');
 			return sendFile(res, fs.readFileSync(f), MIME[path.extname(f).toLowerCase()] ?? 'application/octet-stream');
 		}
@@ -229,7 +235,9 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 30, owner
 	let stopped = false;
 	let resolveClosed;
 	const closed = new Promise((r) => { resolveClosed = r; });
+	let v6 = null;
 	const close = async (why = 'stopped') => {
+		try { v6?.close(); } catch { /* not listening */ }
 		if (stopped) return closed;
 		stopped = true;
 		clearTimeout(timer); idle.clear(); clearInterval(ownerTimer);
@@ -255,6 +263,10 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 30, owner
 
 	const listen = (srv, p) => new Promise((resolve, reject) => { srv.once('error', reject); srv.listen(p, '127.0.0.1', () => { srv.off('error', reject); resolve(srv.address().port); }); });
 	appPort = await listen(app, port);
+	// [::1] answers only to send the page to 127.0.0.1: CSP cannot name an IPv6 ancestor for module frames (cr-modules-008 t13)
+	v6 = http.createServer((req, res) => { baseHeaders(res); res.writeHead(302, { Location: `http://127.0.0.1:${appPort}${req.url ?? '/'}` }); res.end(); });
+	v6.on('error', () => { /* no IPv6 loopback here: nothing to redirect */ });
+	v6.listen(appPort, '::1');
 	filesPort = await listen(files, 0);
 	idle.reset();
 	const signInUrl = () => {
