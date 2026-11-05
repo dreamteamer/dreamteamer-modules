@@ -80,11 +80,11 @@ test('h1: the card lets an unbreakable name wrap inside it, and the fit name is 
 		const css = [...read(rel).matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((m) => m[1]!).join('\n').replace(/\/\*[\s\S]*?\*\//g, '');
 		return [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((m) => ({ selector: m[1]!.trim(), body: m[2]! }));
 	};
-	const tc = rules('webview/src/components/browse/TargetChoice.vue');
+	const tc = rules('src/components/browse/TargetChoice.vue');
 	const cardRule = tc.filter((r) => r.selector.split(',').some((s) => s.trim() === '.dt-target-choice__card')).map((r) => r.body).join(';');
 	assert.match(cardRule, /overflow-wrap\s*:\s*anywhere|word-break\s*:\s*break-(all|word)/, 'the card wraps a name with no break character');
 	assert.match(cardRule, /white-space\s*:\s*normal/, 'the card does not inherit the row\'s nowrap');
-	const sm = rules('webview/src/components/SourceMark.vue');
+	const sm = rules('src/components/SourceMark.vue');
 	const fitName = sm.filter((r) => r.selector.includes('.dt-source-mark--fit') && r.selector.includes('.dt-source-mark__name')).map((r) => r.body).join(';');
 	assert.match(fitName, /text-overflow\s*:\s*ellipsis/);
 	assert.match(fitName, /overflow\s*:\s*hidden/);

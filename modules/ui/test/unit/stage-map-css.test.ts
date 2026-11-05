@@ -40,7 +40,7 @@ function rules(file: string): Rule[] {
 	return out;
 }
 
-const R = rules('webview/src/components/StageMap.vue');
+const R = rules('src/components/StageMap.vue');
 const body = (selector: string, at: string | null = null) => R.filter((r) => r.selector === selector && r.at === at).map((r) => r.body).join(';');
 const has = (selector: string, decl: RegExp, at: string | null = null) => assert.match(body(selector, at), decl, `${at ?? ''} ${selector} ${decl}`);
 

@@ -146,7 +146,7 @@ test('t4 (line 2): pointed at from elsewhere, the empty cell is Empty and a mute
 	assert.deepEqual(parts.map((n) => [String(n.props['class']), text(n).trim()]), [['dt-prop__empty', 'Empty'], ['dt-prop__soft', '+2 elsewhere']]);
 	assert.equal(find(rowOf(root, 'tickets'), (n) => hasClass(n, 'codicon-lock')), null, 'no lock glyph in the row');
 	// the muted colour must beat base.css's `.dt-computed * { color: var(--dt-fg-subtle) !important }`
-	const source = fs.readFileSync(path.join(process.cwd(), 'webview', 'src', 'components', 'ItemProperties.vue'), 'utf8');
+	const source = fs.readFileSync(path.join(process.cwd(), 'src', 'components', 'ItemProperties.vue'), 'utf8');
 	assert.match(source, /\.dt-computed \.dt-prop__empty,\s*\.dt-computed \.dt-prop__soft\s*\{[^}]*color:\s*var\(--dt-fg-muted\)\s*!important/);
 });
 

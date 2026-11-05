@@ -38,7 +38,7 @@ test('h1: seven long-titled stages draw as one ol of seven chips, in order, inde
 
 test('h1: the stylesheet keeps the row one line however long a title is, and the narrow rule spares the current stage', () => {
 	const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-	const src = fs.readFileSync(path.join(ROOT, 'webview/src/components/StageMap.vue'), 'utf8');
+	const src = fs.readFileSync(path.join(ROOT, 'src/components/StageMap.vue'), 'utf8');
 	const css = [...src.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((m) => m[1]!).join('\n').replace(/\/\*[\s\S]*?\*\//g, '');
 	const list = [...css.matchAll(/([^{}]*\.dt-stages__list)\s*\{([^{}]*)\}/g)].map((m) => m[2]!).join(';');
 	assert.match(list, /flex-wrap\s*:\s*nowrap/);

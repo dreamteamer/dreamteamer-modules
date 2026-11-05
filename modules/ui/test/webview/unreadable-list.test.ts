@@ -60,7 +60,7 @@ test('a readable collection draws neither the line nor loses Create', async () =
 test('every empty-state "Create record" is withheld while the collection is unreadable', async () => {
 	const fs = await import('node:fs');
 	const path = await import('node:path');
-	const dir = path.join(process.cwd(), 'webview', 'src');
+	const dir = path.join(process.cwd(), 'src');
 	const files = (d: string): string[] => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? files(path.join(d, e.name)) : e.name.endsWith('.vue') ? [path.join(d, e.name)] : []));
 	const offenders = files(dir).flatMap((f) => fs.readFileSync(f, 'utf8').split('\n').filter((l) => />Create record</.test(l) && !/items\.unavailable/.test(l)).map(() => path.relative(dir, f)));
 	assert.deepEqual(offenders, []);
@@ -71,7 +71,7 @@ test('every empty-state "Create record" is withheld while the collection is unre
 test('every button that starts a record is withheld while the collection is unreadable', async () => {
 	const fs = await import('node:fs');
 	const path = await import('node:path');
-	const dir = path.join(process.cwd(), 'webview', 'src');
+	const dir = path.join(process.cwd(), 'src');
 	const files = (d: string): string[] => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? files(path.join(d, e.name)) : e.name.endsWith('.vue') ? [path.join(d, e.name)] : []));
 	const offenders: string[] = [];
 	for (const f of files(dir)) {

@@ -24,7 +24,7 @@ const rule = (file: string, selector: string) => {
 };
 const has = (body: string, prop: string, value: string) => assert.match(body, new RegExp(`(^|[;\\s])${prop}\\s*:\\s*${value.replace(/[()]/g, '\\$&')}\\s*(;|$)`), `${prop}: ${value}`);
 
-const MARK = 'webview/src/components/SourceMark.vue';
+const MARK = 'src/components/SourceMark.vue';
 
 test('SourceMark fit: the mark fills its row, the name ellipsises, the glyph keeps its size at the right edge', () => {
 	const fit = rule(MARK, '.dt-source-mark--fit');
@@ -39,7 +39,7 @@ test('SourceMark fit: the mark fills its row, the name ellipsises, the glyph kee
 	has(glyph, 'flex-shrink', '0');
 });
 
-const MENU = 'webview/src/components/browse/TargetChoice.vue';
+const MENU = 'src/components/browse/TargetChoice.vue';
 
 test('TargetChoice: the menu is capped border-box and never clips its card; only the inner list scrolls', () => {
 	const menu = rule(MENU, '.dt-target-choice');
