@@ -381,7 +381,7 @@ async function onDrop(column: Column): Promise<void> {
 							<span class="dt-kanban-core-label">{{ col.label }}</span>
 							<span class="dt-kanban-core-count">{{ col.records.length }}</span>
 							<button
-								v-if="!col.ungrouped && lock.add"
+								v-if="!col.ungrouped && lock.add && !state.items.unavailable?.value"
 								type="button"
 								class="dt-btn dt-btn--ghost dt-btn--icon dt-btn--sm dt-kanban-core-add"
 								:title="`New record with ${groupField.field} = ${col.value}${laneField && lanePrefill && !lane.ungrouped && lane.value !== '__all__' ? ` and ${laneField.field} = ${lane.value}` : ''}`"

@@ -14,16 +14,23 @@ import NoteText from './NoteText.vue';
 
 const props = defineProps<{ collection: string; id: string }>();
 const notes = ref<NextNote[]>([]);
+/** Where the workspace's sessions were read from (cr-vscode-019): drawn always, note or not, so a layer
+ *  opened alone says plainly that its sessions are its own; nothing without a sessions collection. */
+type SessionsFrom = { roots: string[] } | { unavailable: string } | null;
+const sessionsFrom = ref<SessionsFrom>(null);
 
 let seq = 0;
 async function load(): Promise<void> {
 	const mine = ++seq;
 	try {
-		const { data } = await api.get<{ notes: NextNote[] }>(`/notes/${encodeURIComponent(props.collection)}?ids=${encodeURIComponent(props.id)}`);
-		if (mine === seq) notes.value = Array.isArray(data?.notes) ? data.notes : [];
+		const { data } = await api.get<{ notes: NextNote[]; sessionsFrom?: SessionsFrom }>(`/notes/${encodeURIComponent(props.collection)}?ids=${encodeURIComponent(props.id)}`);
+		if (mine === seq) {
+			notes.value = Array.isArray(data?.notes) ? data.notes : [];
+			sessionsFrom.value = data?.sessionsFrom ?? null;
+		}
 	} catch {
 		// a note is context, never the page: a failed read draws nothing rather than an error band
-		if (mine === seq) notes.value = [];
+		if (mine === seq) { notes.value = []; sessionsFrom.value = null; }
 	}
 }
 watch(() => [props.collection, props.id], load, { immediate: true });
@@ -37,9 +44,18 @@ watch(() => [props.collection, props.id], load, { immediate: true });
 			<span v-if="!n.error" class="dt-next-notes__by">{{ n.by }}</span>
 		</p>
 	</div>
+	<p v-if="sessionsFrom" class="dt-sessions-from" data-sessions-from>
+		<template v-if="'roots' in sessionsFrom">Sessions read from: {{ sessionsFrom.roots.join(', ') }}</template>
+		<template v-else>Sessions not read on this machine: {{ sessionsFrom.unavailable }}</template>
+	</p>
 </template>
 
 <style scoped>
+.dt-sessions-from {
+	margin: 2px 0 8px;
+	font-size: 12px;
+	color: var(--vscode-descriptionForeground, var(--dt-fg-subtle));
+}
 .dt-next-notes {
 	display: flex;
 	flex-direction: column;

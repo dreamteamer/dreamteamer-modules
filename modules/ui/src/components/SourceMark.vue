@@ -36,6 +36,9 @@ const props = defineProps<{
 	via?: SourceVia;
 	/** Why, for anything short of `write` — the hover's second line. */
 	note?: string;
+	/** Fill the row it sits in: the name ellipsises, the glyph keeps a column at the right edge, and there is no
+	 *  native `title` — the caller's own card names the full name at once (the New record menu, cr-vscode-016). */
+	fit?: boolean;
 }>();
 const title = computed(() => markTitle(props.name, { via: props.via, access: props.access, note: props.note, record: props.record }));
 
@@ -48,7 +51,7 @@ const to = computed(() => {
 </script>
 
 <template>
-	<span class="dt-source-mark" :title="title" :data-source="name" :data-access="access">
+	<span class="dt-source-mark" :class="{ 'dt-source-mark--fit': fit }" :title="fit ? undefined : title" :data-source="name" :data-access="access">
 		<span v-if="prefix" class="dt-source-mark__prefix">{{ prefix }} </span>
 		<span class="dt-source-mark__dot" :style="{ background: color }" aria-hidden="true"></span>
 		<DtLink v-if="to" :to="to" class="dt-source-mark__name">{{ name }}</DtLink>
@@ -73,7 +76,8 @@ const to = computed(() => {
 	height: 8px;
 	border-radius: 50%;
 }
-/* The name is never truncated away — a dot with no word is decoration. */
+/* The name is never truncated away — a dot with no word is decoration. (`fit` ellipsises it: the start of the
+   name stays, and the caller's card says it whole.) */
 .dt-source-mark__name {
 	color: inherit;
 	text-decoration: none;
@@ -90,6 +94,21 @@ a.dt-source-mark__name:hover {
 }
 .dt-source-mark[data-access='read'] .dt-source-mark__access {
 	color: var(--dt-fg-muted);
+}
+.dt-source-mark--fit {
+	display: flex;
+	flex: 1 1 auto;
+	min-width: 0;
+}
+.dt-source-mark--fit .dt-source-mark__name {
+	flex: 0 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.dt-source-mark--fit .dt-source-mark__access {
+	margin-left: auto;
+	flex-shrink: 0;
 }
 .dt-source-mark__prefix {
 	color: var(--dt-fg-muted);

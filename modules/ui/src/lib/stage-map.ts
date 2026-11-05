@@ -137,9 +137,80 @@ export function gateEntries(spec: StageSpec, rows: CommandRow[], id: string): Ga
 export function stageState(entries: GateEntry[]): StageState {
 	if (entries.length && entries.every((e) => e.state === 'done')) return 'passed';
 	const at = entries.findIndex((e) => e.state === 'available');
-	if (at === 0) return 'ready';
-	if (at > 0) return 'review';
-	return 'not-started';
+	if (at < 0) return 'not-started';
+	// a review is open only when work before it is DONE; an available binding after only
+	// not-applicable ones is the stage's work (deploy waiting on /rnd:release — cr-vscode-015)
+	return entries.slice(0, at).some((e) => e.state === 'done') ? 'review' : 'ready';
+}
+
+/**
+ * The current stage (cr-vscode-015): the stage holding the FIRST available binding in declared order —
+ * the one `dt next` names. With nothing available anywhere: the stage after the last passed one, or −1
+ * when the last passed stage is the last stage, or nothing passed. rnd's gates skip on real records
+ * (a review never recorded), so "the first stage not passed" is NOT this reading.
+ */
+export function currentStage(gates: GateEntry[][]): number {
+	const at = gates.findIndex((entries) => entries.some((e) => e.state === 'available'));
+	if (at >= 0) return at;
+	let last = -1;
+	gates.forEach((entries, i) => { if (stageState(entries) === 'passed') last = i; });
+	return last >= 0 && last < gates.length - 1 ? last + 1 : -1;
+}
+
+export type StageMark = 'passed' | 'current' | 'skipped' | 'ahead';
+
+/** How a stage is drawn: its own gate passed wins; the current one; one before it (or any, when none is
+ *  current) that did not pass was passed over; the rest are not reached yet. */
+export function stageMark(i: number, current: number, state: StageState): StageMark {
+	if (state === 'passed') return 'passed';
+	if (i === current) return 'current';
+	if (current < 0 || i < current) return 'skipped';
+	return 'ahead';
+}
+
+/** The card's left offset inside the map: under its chip, clamped so the card never leaves the map. */
+export function cardLeft(chipLeft: number, cardWidth: number, mapWidth: number): number {
+	return Math.max(0, Math.min(chipLeft, mapWidth - cardWidth));
+}
+
+/**
+ * Which stage's card is open (cr-vscode-015, design D9 + round 3): the most recent intent decides.
+ * `kbd` is the stage whose item holds KEYBOARD focus (a :focus-visible focus); only that holds a card
+ * against the pointer, and only while focus is inside the card. The 200 ms grace timer is the caller's.
+ */
+export interface CardState { open: number | null; hovered: number | null; kbd: number | null; dismissed: number | null }
+export type CardEvent =
+	| { type: 'enter'; i: number; cardHasFocus: boolean }
+	| { type: 'leave'; i: number }
+	| { type: 'grace'; cardHasFocus: boolean }
+	| { type: 'focus'; i: number; keyboard: boolean; inCard: boolean }
+	| { type: 'blur'; i: number }
+	| { type: 'escape'; i: number };
+export const CARD_CLOSED: CardState = Object.freeze({ open: null, hovered: null, kbd: null, dismissed: null });
+
+export function cardState(s: CardState, e: CardEvent): CardState {
+	const held = (cardHasFocus: boolean) => cardHasFocus && s.kbd !== null && s.kbd === s.open;
+	switch (e.type) {
+		case 'enter':
+			return { ...s, hovered: e.i, dismissed: null, open: held(e.cardHasFocus) ? s.open : e.i };
+		case 'leave':
+			return { ...s, hovered: s.hovered === e.i ? null : s.hovered };
+		case 'grace':
+			return held(e.cardHasFocus) ? s : { ...s, open: s.kbd };
+		case 'focus':
+			if (s.dismissed === e.i) return s;
+			if (e.keyboard) return { ...s, kbd: e.i, open: e.i };
+			return s.kbd === e.i ? { ...s, kbd: null } : s;
+		case 'blur':
+			return {
+				...s,
+				kbd: s.kbd === e.i ? null : s.kbd,
+				dismissed: s.dismissed === e.i ? null : s.dismissed,
+				open: s.open === e.i && s.hovered !== e.i ? null : s.open,
+			};
+		case 'escape':
+			return { ...s, open: null, kbd: null, dismissed: e.i };
+	}
 }
 
 export const STAGE_STATE_LABEL: Record<StageState, string> = {

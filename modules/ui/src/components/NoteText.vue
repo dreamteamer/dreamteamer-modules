@@ -2,8 +2,7 @@
 	ONE NOTE'S SENTENCE (cr-vscode-005), verbatim, with each reference the host marked as held here drawn
 	as a link to that record — core's `(sessions/<id>)` opens the session. A reference to a record this
 	workspace does not hold stays text (`lib/next-notes.ts textParts`). An extension's failure line reads
-	`<by>: <text>`, as `dt next` prints it. Shared by the record page (`NextNotes`) and the Activity page's
-	running sessions (`RunningSessions`), so the two draw a sentence the same way.
+	`<by>: <text>`, as `dt next` prints it. Drawn by the record page (`NextNotes`).
 -->
 <script setup lang="ts">
 import { computed } from 'vue';

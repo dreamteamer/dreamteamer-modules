@@ -29,7 +29,7 @@
 <script setup lang="ts">
 import { computed, ref, watchEffect } from 'vue';
 import type { FieldRow } from '../api/types';
-import { api } from '../api/client';
+import { api, buildQuery } from '../api/client';
 import type { useItem } from '../composables/items';
 import { useCollections } from '../composables/collections';
 import { useFormSections } from '../composables/form-sections';
@@ -46,6 +46,7 @@ import StageMap from './StageMap.vue';
 import RenderEdit from './render/RenderEdit.vue';
 import RenderView from './render/RenderView.vue';
 import DtIcon from './DtIcon.vue';
+import HoverCard, { type HoverLine } from './HoverCard.vue';
 
 const props = defineProps<{
 	fields: FieldRow[];
@@ -130,12 +131,27 @@ function labelOf(field: FieldRow): string {
 }
 
 /**
- * What the property MEANS, hovering over its label: the field's `description` — the raw field name
- * stays on the second line because that is what you type at the CLI.
+ * Everything a property row can say about itself, for its INSTANT hover card (cr-vscode-013 — the
+ * operator: "all data on tooltip"): the label; what the property means (`description`); why it is not
+ * written here (THE computed rule's own sentence, never a second wording); how many records in other
+ * sources point here (a mirror lists only its own repo's); and the raw field name, last, because that
+ * is what you type at the CLI.
  */
-function tooltipOf(field: FieldRow): string {
+function hoverLinesOf(field: FieldRow): HoverLine[] {
+	const lines: HoverLine[] = [{ text: labelOf(field), kind: 'title' }];
 	const note = (field.description ?? '').trim();
-	return note ? `${note}\n\n${field.field}` : field.field;
+	if (note) lines.push({ text: note });
+	const why = computedWhy(field);
+	if (why && why !== note) lines.push({ text: why });
+	const more = mirrorOverflow.value[field.field] ?? 0;
+	if (more > 0) lines.push({ text: `${more} record${more === 1 ? '' : 's'} in other sources point${more === 1 ? 's' : ''} here — this list shows only its own repo's.` });
+	lines.push({ text: field.field, kind: 'code' });
+	return lines;
+}
+
+/** An EMPTY value on the read: the cell is `Empty` (and a soft count), its explanation on the hover. */
+function isEmptyRead(field: FieldRow): boolean {
+	return isFieldReadonly(field) && isEmpty(valueFor(field.field));
 }
 
 function onFieldInput(field: FieldRow, value: unknown): void {
@@ -179,9 +195,11 @@ watchEffect(() => {
 		if (!target) continue;
 		const value = valueFor(field.field);
 		const listed = Array.isArray(value) ? value.length : value ? 1 : 0;
-		const filter = encodeURIComponent(JSON.stringify({ [field.mirror_of]: { _eq: `${collection}/${id}` } }));
+		// the bracket form `buildQuery` writes — the same call StageMap makes (cr-vscode-013: the bare
+		// `filter=<json>` this used to send reached the host as `{}` and counted the whole collection)
+		const query = buildQuery({ limit: 1, filter: { [field.mirror_of]: { _eq: `${collection}/${id}` } } });
 		void api
-			.get(`/items/${encodeURIComponent(target)}?limit=1&filter=${filter}`)
+			.get(`/items/${encodeURIComponent(target)}${query}`)
 			.then((res) => {
 				const meta = res.raw['meta'] as { filter_count?: number } | undefined;
 				const total = meta?.filter_count ?? listed;
@@ -242,23 +260,41 @@ const relationPlans = computed(() => {
 				:class="{ 'dt-prop--stacked': relationPlans.has(field.field), 'dt-prop--computed': computedWhy(field) !== null }"
 				:data-field="field.field"
 			>
-				<div class="dt-prop__key" :title="tooltipOf(field)" :class="{ 'is-documented': Boolean(field.description) }">
+				<!-- the name's explanation opens the moment the pointer is over it (HoverCard) — no native
+				     `title`, which would follow it a second later (cr-vscode-013) -->
+				<HoverCard tag="div" class="dt-prop__key" :class="{ 'is-documented': Boolean(field.description) }" :lines="hoverLinesOf(field)">
 					<DtIcon class="dt-prop__icon" :name="fieldIcon(field)" />
 					<span class="dt-prop__label">{{ labelOf(field) }}</span>
 					<span v-if="field.required" class="dt-prop__required" aria-hidden="true">*</span>
-				</div>
+				</HoverCard>
 
-				<div class="dt-prop__value" :class="{ 'dt-computed': computedWhy(field) !== null }" :title="computedWhy(field) ?? undefined" :dir="field.direction">
+				<!-- AN EMPTY READ: `Empty`, and on a mirror other sources point at a soft `+N elsewhere` —
+				     nothing that reads like a value; the whole cell opens the same card as the name -->
+				<HoverCard
+					v-if="isEmptyRead(field)"
+					tag="div"
+					class="dt-prop__value"
+					:class="{ 'dt-computed': computedWhy(field) !== null }"
+					:dir="field.direction"
+					:lines="hoverLinesOf(field)"
+				>
+					<span class="dt-prop__read">
+						<span class="dt-prop__empty">Empty</span>
+						<span v-if="mirrorOverflow[field.field]" class="dt-prop__soft">+{{ mirrorOverflow[field.field] }} elsewhere</span>
+					</span>
+				</HoverCard>
+
+				<!-- a field holding a value (or with a control) is drawn as in 0.24.27 -->
+				<div v-else class="dt-prop__value" :class="{ 'dt-computed': computedWhy(field) !== null }" :title="computedWhy(field) ?? undefined" :dir="field.direction">
 					<!-- The read wrapper carries the horizontal inset an Edit widget gets from its own
 					     padding + border, so a row's text sits at the SAME x in both modes and the
 					     pencil doesn't nudge the whole column sideways. -->
 					<span v-if="isFieldReadonly(field)" class="dt-prop__read">
-						<span v-if="isEmpty(valueFor(field.field))" class="dt-prop__empty">Empty</span>
 						<!-- A list relation with a resolvable target view gets the TARGET COLLECTION's own
 						     view — its table, its columns, its sort, its paging — scoped to exactly the
 						     related records. Everything else falls through to the RenderView below, which is
 						     what keeps an un-migrated workspace on the links it has always had. -->
-						<RelationField v-else-if="relationPlans.get(field.field)" :plan="relationPlans.get(field.field)!" />
+						<RelationField v-if="relationPlans.get(field.field)" :plan="relationPlans.get(field.field)!" />
 						<span v-else-if="unitValueOf(field) !== null" class="dt-prop__unit-value">{{ unitValueOf(field) }}</span>
 						<RenderView v-else :field="field" :value="valueFor(field.field)" context="record" :record="current" />
 						<span v-if="readonlyHintOf(field)" class="dt-prop__generated" :title="readonlyHintOf(field)">
@@ -378,6 +414,20 @@ const relationPlans = computed(() => {
 
 .dt-prop__empty {
 	color: var(--dt-fg-muted);
+}
+
+/* the soft count beside `Empty` — smaller and dimmer than any value, no icon, no link */
+.dt-prop__soft {
+	margin-left: 6px;
+	font-size: var(--dt-label);
+	color: var(--dt-fg-muted);
+}
+
+/* base.css paints a computed value's whole subtree `--dt-fg-subtle !important` — the empty marker and its
+   soft count stay the dimmer `--dt-fg-muted` there too, so they never read as a (dimmed) value */
+.dt-computed .dt-prop__empty,
+.dt-computed .dt-prop__soft {
+	color: var(--dt-fg-muted) !important;
 }
 
 /* ---- a relation drawn as its target's own view ------------------------------------------------

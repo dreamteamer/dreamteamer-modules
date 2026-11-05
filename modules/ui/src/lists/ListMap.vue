@@ -140,7 +140,7 @@ onBeforeUnmount(() => { ro?.disconnect(); ro = null; map?.remove(); });
 		<div v-else-if="!state.items.items.value.length" class="dt-empty">
 			<DtIcon name="inbox" />
 			<p class="dt-empty__line">{{ state.hasActiveQuery.value ? 'No records match your search/filters' : 'No records yet' }}</p>
-			<button v-if="!state.hasActiveQuery.value" type="button" class="dt-btn dt-btn--sm" @click="state.createRecord()">Create record</button>
+			<button v-if="!state.hasActiveQuery.value && !state.items.unavailable?.value" type="button" class="dt-btn dt-btn--sm" @click="state.createRecord()">Create record</button>
 		</div>
 		<!-- Only NOW is the coordinates advice true: records exist and none of them carry a position. -->
 		<div v-else-if="!plotted.length" class="dt-empty">

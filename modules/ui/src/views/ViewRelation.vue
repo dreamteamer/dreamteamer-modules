@@ -96,7 +96,11 @@ const basePath = computed(() => currentContentBasePath(route));
  * resolved `target`. Anything else stays plain text: a link that might 404 is worse than a label.
  */
 function linkFor(entry: unknown): string | null {
-	if (props.context !== 'record') return null;
+	// A cell stays text — except an UNTARGETED many-reference (refs into any collection, as a session's
+	// `records`): the row opens the session, never the records it lists, so each title links to its own
+	// record (cr-vscode-019, acceptance line 4). DtLink stops the click, so the row's gesture is kept.
+	const anyCollection = (props.field.many === true || props.field.role === 'reference_many') && !target.value;
+	if (props.context !== 'record' && !(anyCollection && typeof entry === 'string')) return null;
 	if (typeof entry === 'string') {
 		const norm = entry.replace(/^\/+/, '');
 		return norm.includes('/') ? `${basePath.value}${norm}` : null;

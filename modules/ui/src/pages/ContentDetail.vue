@@ -285,7 +285,6 @@ const saving = ref(false);
 async function onSave(): Promise<void> {
 	if (saving.value || !item.dirty.value) return;
 	saving.value = true;
-	item.error.value = null;
 	try {
 		// a create carries the chosen root to the host, which writes there (`?target=`, cr-vscode-004)
 		const result = await item.save(props.create ? target.value : null);
@@ -298,9 +297,6 @@ async function onSave(): Promise<void> {
 			void router.replace(`${basePath.value}${props.collection}/${newId}`);
 		}
 		editing.value = false;
-	} catch (err) {
-		// a refused write keeps the edit and the edit mode, and says the engine's own sentence in the error line
-		item.error.value = err instanceof Error ? err.message : String(err);
 	} finally {
 		saving.value = false;
 	}
@@ -314,7 +310,6 @@ function onCancel(): void {
 		return;
 	}
 	if (item.dirty.value && !window.confirm('Discard unsaved changes?')) return;
-	item.error.value = null;
 	item.discard();
 	editing.value = false;
 }
@@ -466,7 +461,6 @@ async function onConfirmDelete(): Promise<void> {
 
 .dt-detail-error {
 	color: var(--dt-danger);
-	white-space: pre-wrap;
 	font-size: var(--dt-text);
 	margin-bottom: 16px;
 }

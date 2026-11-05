@@ -16,7 +16,6 @@ import { computed, getCurrentScope, onScopeDispose, ref, watch } from 'vue';
 import { onPageRefresh } from '../lib/page-refresh';
 import { api, buildQuery, type QueryParams } from '../api/client';
 import type { ItemRecord, SourceEntry } from '../api/types';
-import { onDataChanged } from '../lib/live-data';
 import { DEFAULT_SORT } from '../lib/builtin-fields';
 
 /** `notes`: ask the host for each row's `$notes` — what an extension says about it (a session holding
@@ -25,6 +24,9 @@ export function useItems(collection: string, opts: { notes?: boolean } = {}) {
 	const items = ref<ItemRecord[]>([]);
 	const loading = ref(false);
 	const error = ref<string | null>(null);
+	/** Why this machine cannot read the collection (an env-pointed root whose var is unset) — not an error:
+	 *  the page draws, says so, and offers no create (cr-vscode-019). */
+	const unavailable = ref<string | null>(null);
 	const page = ref(1);
 	const limit = ref(25);
 	// Default sort (operator ask 2026-07-27): most-recently-touched-in-git first, on every
@@ -78,7 +80,8 @@ export function useItems(collection: string, opts: { notes?: boolean } = {}) {
 			if (seq !== requestSeq) return; // superseded by a newer reload — never apply a stale response
 
 			items.value = res.data;
-			const meta = res.raw['meta'] as { filter_count?: number; sources?: SourceEntry[] } | undefined;
+			const meta = res.raw['meta'] as { filter_count?: number; sources?: SourceEntry[]; unavailable?: string } | undefined;
+			unavailable.value = typeof meta?.unavailable === 'string' ? meta.unavailable : null;
 			total.value = meta?.filter_count ?? 0;
 			sources.value = Array.isArray(meta?.sources) ? meta.sources : [];
 		} catch (err) {
@@ -95,11 +98,10 @@ export function useItems(collection: string, opts: { notes?: boolean } = {}) {
 
 	watch([page, limit, sort, search, fields, filter], () => void reload());
 	void reload();
-	onDataChanged(() => void reload());
 	// The refresh button: the same question again — page, sort, search and filter are kept.
 	listenForPageRefresh(() => void reload());
 
-	return { items, loading, error, page, limit, sort, search, fields, filter, total, sources, setSort, reload };
+	return { items, loading, error, unavailable, page, limit, sort, search, fields, filter, total, sources, setSort, reload };
 }
 
 /** Deep-equal enough for record fields: primitives by `===`, arrays/objects (relations) by JSON shape. */
@@ -191,9 +193,6 @@ export function useItem(collection: string, id: string | null) {
 	function discard(): void {
 		edits.value = {};
 	}
-
-	// a record with no unsaved edits re-reads when the workspace changes (browser host only)
-	onDataChanged(() => { if (id !== null && !dirty.value && record.value) void load(); });
 
 	async function remove(): Promise<void> {
 		if (id === null) return;
