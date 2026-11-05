@@ -48,10 +48,15 @@ const staleModules = reactive(new Set<string>());
 // ---- the frame document: by URL from the files origin (dt web) or as srcdoc (VS Code)
 const texts = new Map<string, Promise<string>>();
 const text = (url: string) => { if (!texts.has(url)) texts.set(url, fetch(url).then((r) => r.text())); return texts.get(url)!; };
-async function frameSource(module: string, kind: string): Promise<{ src?: string; srcdoc?: string }> {
+// the stylesheet sits beside the guest on every host (@dreamteamer/ui builds dist/guest/guest.js and guest.css together, as
+// dt web's resolveGuest reads them); a host without one frames unstyled rather than inlining an error page
+const textOrEmpty = (url: string) => { if (!texts.has(url)) texts.set(url, fetch(url).then((r) => (r.ok ? r.text() : ''), () => '')); return texts.get(url)!; };
+/** Exported for its test: the srcdoc path carries the same stylesheet the files origin inlines (D6, D15). */
+export async function frameSource(module: string, kind: string): Promise<{ src?: string; srcdoc?: string }> {
 	if ((window.__DT_HOST__?.moduleFrames ?? 'srcdoc') === 'url') return { src: `${window.__DT_FILES__}/_dt/frame/${encodeURIComponent(module)}/${kind}.html` };
-	const [guestText, bundleText] = await Promise.all([text(window.__DT_GUEST_URL__ ?? ''), text(`${window.__DT_UI_BASE__}/${module}/app.js`)]);
-	return { srcdoc: buildFrameDocument({ guestText, bundleText, meta: true }).html };
+	const guestUrl = window.__DT_GUEST_URL__ ?? '';
+	const [guestText, styleText, bundleText] = await Promise.all([text(guestUrl), textOrEmpty(guestUrl.replace(/guest\.js(?=[?#]|$)/, 'guest.css')), text(`${window.__DT_UI_BASE__}/${module}/app.js`)]);
+	return { srcdoc: buildFrameDocument({ guestText, styleText, bundleText, meta: true }).html };
 }
 async function makeFrame(module: string, kind: string, hidden = false): Promise<HTMLIFrameElement> {
 	const f = document.createElement('iframe');
