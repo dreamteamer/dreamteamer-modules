@@ -13,10 +13,10 @@ import assert from 'node:assert/strict';
 import test, { beforeEach } from 'node:test';
 import { onHostRequest, requests, resetHost } from './host-stub';
 import { all, find, flush, hasClass, render, text, type TestNode } from './render';
-import { invalidateContract } from '../../src/api/adapter';
-import type { CollectionRow, FieldRow } from '../../src/api/types';
+import { invalidateContract } from '../../webview/src/api/adapter';
+import type { CollectionRow, FieldRow } from '../../webview/src/api/types';
 import { enumRow, fieldRow, referenceRow } from '../unit/field-rows';
-import RecordHeaderDisplay from '../../src/components/RecordHeaderDisplay.vue';
+import RecordHeaderDisplay from '../../webview/src/components/RecordHeaderDisplay.vue';
 
 const row = (collection: string, record: CollectionRow['record'], record_title: string): CollectionRow => ({
 	collection,

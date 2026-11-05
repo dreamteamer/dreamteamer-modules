@@ -13,11 +13,11 @@ import test from 'node:test';
 import { createMemoryHistory, createRouter } from 'vue-router';
 import { onHostRequest, resetHost } from './host-stub';
 import { all, find, flush, hasClass, render, text, type TestNode } from './render';
-import { invalidateContract } from '../../src/api/adapter';
-import { refreshCollections } from '../../src/composables/collections';
-import { lists } from '../../src/registry/index';
+import { invalidateContract } from '../../webview/src/api/adapter';
+import { refreshCollections } from '../../webview/src/composables/collections';
+import { lists } from '../../webview/src/registry/index';
 import { fieldRow } from '../unit/field-rows';
-import BrowseView from '../../src/components/BrowseView.vue';
+import BrowseView from '../../webview/src/components/BrowseView.vue';
 
 (globalThis as { window?: unknown }).window ??= { addEventListener() {}, removeEventListener() {} };
 (globalThis as { document?: unknown }).document ??= { addEventListener() {}, removeEventListener() {} };

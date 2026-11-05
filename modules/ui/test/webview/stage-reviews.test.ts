@@ -12,8 +12,8 @@
 import assert from 'node:assert/strict';
 import test, { beforeEach } from 'node:test';
 import { onHostRequest, requests, resetHost } from './host-stub';
-import { invalidateContract } from '../../src/api/adapter';
-import { invalidateStageReviews, openFindingsFor, reviewsFor, stageReviewsRevision } from '../../src/lib/stage-reviews';
+import { invalidateContract } from '../../webview/src/api/adapter';
+import { invalidateStageReviews, openFindingsFor, reviewsFor, stageReviewsRevision } from '../../webview/src/lib/stage-reviews';
 
 (globalThis as { window?: unknown }).window ??= { addEventListener() {}, removeEventListener() {} };
 

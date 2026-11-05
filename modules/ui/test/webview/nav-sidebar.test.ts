@@ -8,7 +8,7 @@ import test, { afterEach, beforeEach } from 'node:test';
 import { createMemoryHistory, createRouter } from 'vue-router';
 import { onHostRequest, requests, resetHost } from './host-stub';
 import { all, flush, render, text, unmountAll, type TestNode } from './render';
-import NavSidebar from '../../src/components/NavSidebar.vue';
+import NavSidebar from '../../webview/src/components/NavSidebar.vue';
 
 const MODEL = [{
 	kind: 'workspace', key: 'workspace', label: 'northwind-hq', icon: 'root-folder', route: '/settings/schema/activity',
@@ -49,7 +49,7 @@ test('draws the host nav, opens a folder and routes a row', async () => {
 });
 
 test('App draws NavSidebar only when the host declares an app nav', async () => {
-	const src = (await import('node:fs')).readFileSync(new URL('../../src/App.vue', import.meta.url).pathname.replace('/.test-build/webview', ''), 'utf8');
+	const src = (await import('node:fs')).readFileSync(new URL('../../webview/src/App.vue', import.meta.url).pathname.replace('/.test-build/webview', ''), 'utf8');
 	assert.match(src, /<NavSidebar v-if="appNav" \/>/);
 	assert.match(src, /__DT_HOST__\?\.nav === 'app'/);
 	assert.equal(w.__DT_HOST__, undefined, 'no host capability is set in this tier, as inside VS Code');

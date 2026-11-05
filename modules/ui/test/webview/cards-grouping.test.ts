@@ -11,10 +11,10 @@ import test, { beforeEach } from 'node:test';
 import { computed, ref, type Ref } from 'vue';
 import { onHostRequest, resetHost } from './host-stub';
 import { all, find, hasClass, render, text, type TestNode } from './render';
-import type { FieldRow, ItemRecord } from '../../src/api/types';
+import type { FieldRow, ItemRecord } from '../../webview/src/api/types';
 import { enumRow, fieldRow } from '../unit/field-rows';
-import { views } from '../../src/registry/index';
-import ListCards from '../../src/lists/ListCards.vue';
+import { views } from '../../webview/src/registry/index';
+import ListCards from '../../webview/src/lists/ListCards.vue';
 
 // The one view a card's subtitle field needs. Registered directly rather than by importing
 // `register-defaults`, which reaches ListMap and therefore leaflet's png-referencing CSS.

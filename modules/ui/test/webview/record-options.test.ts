@@ -20,16 +20,16 @@ import { createRouter, createMemoryHistory } from 'vue-router';
 import { defineComponent, h, ref } from 'vue';
 import { onHostRequest, resetHost } from './host-stub';
 import { all, find, flush, hasClass, render, text, type TestNode } from './render';
-import { invalidateContract } from '../../src/api/adapter';
-import { invalidateRelations } from '../../src/composables/fields';
-import { refreshCollections } from '../../src/composables/collections';
-import { useRecordDisplay } from '../../src/composables/record-display';
-import type { FieldRow } from '../../src/api/types';
+import { invalidateContract } from '../../webview/src/api/adapter';
+import { invalidateRelations } from '../../webview/src/composables/fields';
+import { refreshCollections } from '../../webview/src/composables/collections';
+import { useRecordDisplay } from '../../webview/src/composables/record-display';
+import type { FieldRow } from '../../webview/src/api/types';
 import { fieldRow, mirrorRow } from '../unit/field-rows';
-import { lists, views } from '../../src/registry/index';
-import { uiViews, type UiViewRecord } from '../../src/ui-views';
-import DataTable from '../../src/components/DataTable.vue';
-import ItemProperties from '../../src/components/ItemProperties.vue';
+import { lists, views } from '../../webview/src/registry/index';
+import { uiViews, type UiViewRecord } from '../../webview/src/ui-views';
+import DataTable from '../../webview/src/components/DataTable.vue';
+import ItemProperties from '../../webview/src/components/ItemProperties.vue';
 
 lists.register({ id: 'table', name: 'Table', component: DataTable });
 views.register({

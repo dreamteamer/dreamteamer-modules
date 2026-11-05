@@ -16,9 +16,9 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { ref, computed, type Ref } from 'vue';
 import { all, hasClass, render, text, type TestNode } from './render';
-import type { FieldRow, ItemRecord } from '../../src/api/types';
+import type { FieldRow, ItemRecord } from '../../webview/src/api/types';
 import { enumRow, fieldRow } from '../unit/field-rows';
-import ListKanban from '../../src/lists/ListKanban.vue';
+import ListKanban from '../../webview/src/lists/ListKanban.vue';
 
 /** A synthetic enum field — the render never asks for `type` beyond string. */
 function enumField(name: string, choices: string[], overrides: Partial<FieldRow> = {}): FieldRow {

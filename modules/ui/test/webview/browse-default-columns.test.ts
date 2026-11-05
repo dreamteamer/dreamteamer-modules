@@ -17,10 +17,10 @@ import { createMemoryHistory, createRouter } from 'vue-router';
 import { defineComponent } from 'vue';
 import { onHostRequest, resetHost } from './host-stub';
 import { flush, render } from './render';
-import { invalidateContract } from '../../src/api/adapter';
-import { useFields } from '../../src/composables/fields';
-import { useCollections } from '../../src/composables/collections';
-import { useBrowseState } from '../../src/composables/browse-state';
+import { invalidateContract } from '../../webview/src/api/adapter';
+import { useFields } from '../../webview/src/composables/fields';
+import { useCollections } from '../../webview/src/composables/collections';
+import { useBrowseState } from '../../webview/src/composables/browse-state';
 import { fieldRow } from '../unit/field-rows';
 
 (globalThis as { window?: unknown }).window ??= { addEventListener() {}, removeEventListener() {} };

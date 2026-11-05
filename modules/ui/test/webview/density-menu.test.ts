@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { ref, type Ref } from 'vue';
 import { all, find, flush, hasClass, render, text } from './render';
-import DensityMenu from '../../src/components/browse/DensityMenu.vue';
+import DensityMenu from '../../webview/src/components/browse/DensityMenu.vue';
 
 // The menu closes on an outside mousedown and on Escape — listeners on `document`, which this tier
 // does not have. A sink is enough: the test drives the handlers on the nodes directly.

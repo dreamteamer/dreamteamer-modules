@@ -10,7 +10,7 @@ import test, { beforeEach } from 'node:test';
 import { createMemoryHistory, createRouter } from 'vue-router';
 import { onHostRequest, requests, resetHost } from './host-stub';
 import { all, find, flush, hasClass, render, text } from './render';
-import CommitButton from '../../src/components/CommitButton.vue';
+import CommitButton from '../../webview/src/components/CommitButton.vue';
 
 (globalThis as { document?: unknown }).document ??= { addEventListener() {}, removeEventListener() {} };
 

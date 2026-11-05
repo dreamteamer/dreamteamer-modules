@@ -10,9 +10,9 @@
  */
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { lists } from '../../src/registry/index';
+import { lists } from '../../webview/src/registry/index';
 import { render, text } from './render';
-import UnknownOptionsHint from '../../src/components/browse/UnknownOptionsHint.vue';
+import UnknownOptionsHint from '../../webview/src/components/browse/UnknownOptionsHint.vue';
 
 lists.register({
 	id: 'demo-board',

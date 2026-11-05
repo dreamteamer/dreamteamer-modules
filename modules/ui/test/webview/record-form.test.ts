@@ -18,16 +18,16 @@ import test, { beforeEach } from 'node:test';
 import { ref, type Component } from 'vue';
 import { onHostRequest, resetHost } from './host-stub';
 import { all, find, render, text, type TestNode } from './render';
-import type { FieldRow } from '../../src/api/types';
-import type { useItem } from '../../src/composables/items';
+import type { FieldRow } from '../../webview/src/api/types';
+import type { useItem } from '../../webview/src/composables/items';
 import { bodyRow, fieldRow, mirrorRow } from '../unit/field-rows';
-import { edits, views } from '../../src/registry/index';
-import EditInput from '../../src/edits/EditInput.vue';
-import EditNumber from '../../src/edits/EditNumber.vue';
-import ViewText from '../../src/views/ViewText.vue';
-import ViewMarkdown from '../../src/views/ViewMarkdown.vue';
-import ItemForm from '../../src/components/ItemForm.vue';
-import ItemProperties from '../../src/components/ItemProperties.vue';
+import { edits, views } from '../../webview/src/registry/index';
+import EditInput from '../../webview/src/edits/EditInput.vue';
+import EditNumber from '../../webview/src/edits/EditNumber.vue';
+import ViewText from '../../webview/src/views/ViewText.vue';
+import ViewMarkdown from '../../webview/src/views/ViewMarkdown.vue';
+import ItemForm from '../../webview/src/components/ItemForm.vue';
+import ItemProperties from '../../webview/src/components/ItemProperties.vue';
 
 // The components these fields resolve to, registered directly rather than through
 // `register-defaults`, which reaches ListMap and therefore leaflet's png-referencing CSS.

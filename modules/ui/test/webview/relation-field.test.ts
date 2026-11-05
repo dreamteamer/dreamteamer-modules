@@ -25,15 +25,15 @@ import { createRouter, createMemoryHistory } from 'vue-router';
 import { h, ref } from 'vue';
 import { onHostRequest, requests, resetHost } from './host-stub';
 import { all, find, flush, hasClass, render, text, type TestNode } from './render';
-import { buildQuery } from '../../src/api/client';
-import { invalidateContract } from '../../src/api/adapter';
-import { invalidateRelations } from '../../src/composables/fields';
-import type { FieldRow } from '../../src/api/types';
+import { buildQuery } from '../../webview/src/api/client';
+import { invalidateContract } from '../../webview/src/api/adapter';
+import { invalidateRelations } from '../../webview/src/composables/fields';
+import type { FieldRow } from '../../webview/src/api/types';
 import { fieldRow, mirrorRow, referenceRow } from '../unit/field-rows';
-import { lists, views } from '../../src/registry/index';
-import { uiViews, type UiViewRecord } from '../../src/ui-views';
-import DataTable from '../../src/components/DataTable.vue';
-import ItemProperties from '../../src/components/ItemProperties.vue';
+import { lists, views } from '../../webview/src/registry/index';
+import { uiViews, type UiViewRecord } from '../../webview/src/ui-views';
+import DataTable from '../../webview/src/components/DataTable.vue';
+import ItemProperties from '../../webview/src/components/ItemProperties.vue';
 
 // The built-in `table` List, through the real registry — the point of this tier is that the REAL
 // table renders, with the real column resolution, not a stand-in.

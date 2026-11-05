@@ -9,9 +9,9 @@ import test from 'node:test';
 import { createMemoryHistory, createRouter } from 'vue-router';
 import { ref, type Ref } from 'vue';
 import { all, find, flush, hasClass, render, text, type TestNode } from './render';
-import type { SourceEntry } from '../../src/api/types';
-import type { FilterGroup } from '../../src/lib/filter-query';
-import SourcePicker from '../../src/components/browse/SourcePicker.vue';
+import type { SourceEntry } from '../../webview/src/api/types';
+import type { FilterGroup } from '../../webview/src/lib/filter-query';
+import SourcePicker from '../../webview/src/components/browse/SourcePicker.vue';
 
 const FACETS: SourceEntry[] = [
 	{ name: 'my-hq', kind: 'own', repo: '.', path: 'data/tasks', installed: true, count: 2 },

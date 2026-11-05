@@ -10,7 +10,7 @@ import test from 'node:test';
 import { createMemoryHistory, createRouter } from 'vue-router';
 import { onHostRequest, resetHost } from './host-stub';
 import { all, find, flush, hasClass, render, text, type TestNode } from './render';
-import ModuleList from '../../src/pages/ModuleList.vue';
+import ModuleList from '../../webview/src/pages/ModuleList.vue';
 
 async function router() {
 	const r = createRouter({ history: createMemoryHistory(), routes: [{ path: '/:path(.*)*', component: { render: () => null } }] });

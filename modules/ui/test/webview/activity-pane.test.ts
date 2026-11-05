@@ -9,7 +9,7 @@ import test from 'node:test';
 import { createMemoryHistory, createRouter } from 'vue-router';
 import { notifications, onHostRequest, requests, resetHost } from './host-stub';
 import { all, find, flush, hasClass, render, text, unmountAll, type TestNode } from './render';
-import ActivityPane from '../../src/pages/ActivityPane.vue';
+import ActivityPane from '../../webview/src/pages/ActivityPane.vue';
 
 async function router() {
 	const r = createRouter({ history: createMemoryHistory(), routes: [{ path: '/:path(.*)*', component: { render: () => null } }] });

@@ -19,9 +19,9 @@ import assert from 'node:assert/strict';
 import test, { beforeEach } from 'node:test';
 import { ref } from 'vue';
 import { onHostRequest, requests, resetHost } from './host-stub';
-import { invalidateContract } from '../../src/api/adapter';
-import { invalidateRelations } from '../../src/composables/fields';
-import { useDesignerState } from '../../src/composables/designer-state';
+import { invalidateContract } from '../../webview/src/api/adapter';
+import { invalidateRelations } from '../../webview/src/composables/fields';
+import { useDesignerState } from '../../webview/src/composables/designer-state';
 import { flush } from './render';
 
 const row = (collection: string) => ({

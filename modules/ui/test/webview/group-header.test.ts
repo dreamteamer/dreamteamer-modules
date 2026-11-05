@@ -19,7 +19,7 @@ import assert from 'node:assert/strict';
 import test, { beforeEach } from 'node:test';
 import { onHostRequest, resetHost } from './host-stub';
 import { all, find, hasClass, render, text } from './render';
-import GroupHeader from '../../src/components/browse/GroupHeader.vue';
+import GroupHeader from '../../webview/src/components/browse/GroupHeader.vue';
 
 /** The host injects one entry per `codec: file` collection. Synthetic name, on purpose. */
 function injectFileBases(): void {

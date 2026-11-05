@@ -13,7 +13,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { all, hasClass, render, text, type TestNode } from './render';
 import { onHostRequest } from './host-stub';
-import ItemHistory from '../../src/components/ItemHistory.vue';
+import ItemHistory from '../../webview/src/components/ItemHistory.vue';
 
 // `revert` is refused for every RUNTIME kind, for a structural reason: a compiled record's bytes
 // live in the gitignored runtime, so there is no revision of the RECORD to restore. The stub serves

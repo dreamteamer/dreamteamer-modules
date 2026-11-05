@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createMemoryHistory, createRouter } from 'vue-router';
 import { find, flush, hasClass, render, text } from './render';
-import SaveTarget from '../../src/components/SaveTarget.vue';
+import SaveTarget from '../../webview/src/components/SaveTarget.vue';
 
 async function router() {
 	const r = createRouter({ history: createMemoryHistory(), routes: [{ path: '/:path(.*)*', component: { render: () => null } }] });

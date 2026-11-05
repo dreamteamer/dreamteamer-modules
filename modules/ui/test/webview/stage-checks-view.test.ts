@@ -15,19 +15,19 @@ import test, { beforeEach } from 'node:test';
 import { computed, ref, type Ref } from 'vue';
 import { onHostRequest, requests, resetHost } from './host-stub';
 import { all, find, flush, hasClass, render, text, unmountAll, type TestNode } from './render';
-import { invalidateContract } from '../../src/api/adapter';
-import type { FieldRow, ItemRecord } from '../../src/api/types';
+import { invalidateContract } from '../../webview/src/api/adapter';
+import type { FieldRow, ItemRecord } from '../../webview/src/api/types';
 import { fieldRow } from '../unit/field-rows';
-import { invalidateStageReviews } from '../../src/lib/stage-reviews';
+import { invalidateStageReviews } from '../../webview/src/lib/stage-reviews';
 import { readFileSync } from 'node:fs';
-import { views } from '../../src/registry/index';
-import ViewTags from '../../src/views/ViewTags.vue';
-import ViewText from '../../src/views/ViewText.vue';
-import ViewStageChecks from '../../src/views/ViewStageChecks.vue';
-import RenderView from '../../src/components/render/RenderView.vue';
-import DataTable from '../../src/components/DataTable.vue';
-import ListCards from '../../src/lists/ListCards.vue';
-import DisplayTemplate from '../../src/components/render/DisplayTemplate.vue';
+import { views } from '../../webview/src/registry/index';
+import ViewTags from '../../webview/src/views/ViewTags.vue';
+import ViewText from '../../webview/src/views/ViewText.vue';
+import ViewStageChecks from '../../webview/src/views/ViewStageChecks.vue';
+import RenderView from '../../webview/src/components/render/RenderView.vue';
+import DataTable from '../../webview/src/components/DataTable.vue';
+import ListCards from '../../webview/src/lists/ListCards.vue';
+import DisplayTemplate from '../../webview/src/components/render/DisplayTemplate.vue';
 
 (globalThis as { window?: unknown }).window ??= { addEventListener() {}, removeEventListener() {} };
 
@@ -204,6 +204,6 @@ test('a card and a display template draw them the same', async () => {
 });
 
 test('register-defaults registers the View under the id a descriptor names', () => {
-	const src = readFileSync(new URL('../../src/registry/register-defaults.ts', `file://${process.cwd()}/test/webview/`), 'utf8');
+	const src = readFileSync(new URL('../../webview/src/registry/register-defaults.ts', `file://${process.cwd()}/test/webview/`), 'utf8');
 	assert.match(src, /views\.register\(\{ id: 'stage-checks', name: 'Stage checks', component: ViewStageChecks, types: \[\] \}\)/);
 });

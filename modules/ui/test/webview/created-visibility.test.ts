@@ -10,11 +10,11 @@ import { createMemoryHistory, createRouter } from 'vue-router';
 import { defineComponent } from 'vue';
 import { onHostRequest, resetHost } from './host-stub';
 import { flush, render } from './render';
-import { invalidateContract } from '../../src/api/adapter';
-import { useBrowseState } from '../../src/composables/browse-state';
-import { noteCreated } from '../../src/lib/created-visibility';
-import { selectedSources, withSourceSelection } from '../../src/lib/sources';
-import { emptyFilterGroup, serializeFilterGroup } from '../../src/lib/filter-query';
+import { invalidateContract } from '../../webview/src/api/adapter';
+import { useBrowseState } from '../../webview/src/composables/browse-state';
+import { noteCreated } from '../../webview/src/lib/created-visibility';
+import { selectedSources, withSourceSelection } from '../../webview/src/lib/sources';
+import { emptyFilterGroup, serializeFilterGroup } from '../../webview/src/lib/filter-query';
 import { fieldRow } from '../unit/field-rows';
 
 (globalThis as { window?: unknown }).window ??= { addEventListener() {}, removeEventListener() {} };

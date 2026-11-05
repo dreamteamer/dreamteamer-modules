@@ -21,14 +21,14 @@ import test, { beforeEach } from 'node:test';
 import { createMemoryHistory, createRouter } from 'vue-router';
 import { onHostRequest, requests, resetHost } from './host-stub';
 import { all, find, flush, hasClass, render, text, type TestNode } from './render';
-import { invalidateContract } from '../../src/api/adapter';
-import { invalidateRelations } from '../../src/composables/fields';
+import { invalidateContract } from '../../webview/src/api/adapter';
+import { invalidateRelations } from '../../webview/src/composables/fields';
 import { enumRow, fieldRow, injected } from '../unit/field-rows';
-import { lists } from '../../src/registry/index';
-import { uiViews, type UiViewRecord } from '../../src/ui-views';
-import ListCounts from '../../src/lists/ListCounts.vue';
-import UiPageView from '../../src/pages/UiPageView.vue';
-import ModulePage from '../../src/pages/ModulePage.vue';
+import { lists } from '../../webview/src/registry/index';
+import { uiViews, type UiViewRecord } from '../../webview/src/ui-views';
+import ListCounts from '../../webview/src/lists/ListCounts.vue';
+import UiPageView from '../../webview/src/pages/UiPageView.vue';
+import ModulePage from '../../webview/src/pages/ModulePage.vue';
 
 // The registration the app makes (register-defaults.ts) — repeated, because that module mounts every
 // built-in component and this tier has no DOM for some of them. Tier 1 pins the real registration.

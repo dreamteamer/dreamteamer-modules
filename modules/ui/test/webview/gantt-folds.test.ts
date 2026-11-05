@@ -18,10 +18,10 @@ import test, { beforeEach } from 'node:test';
 import { computed, ref, type Ref } from 'vue';
 import { onHostRequest, resetHost } from './host-stub';
 import { all, find, flush, hasClass, render, text, type TestNode } from './render';
-import type { FieldChoice, FieldRow, ItemRecord } from '../../src/api/types';
+import type { FieldChoice, FieldRow, ItemRecord } from '../../webview/src/api/types';
 import { enumRow, fieldRow } from '../unit/field-rows';
-import { views } from '../../src/registry/index';
-import ListGantt from '../../src/lists/ListGantt.vue';
+import { views } from '../../webview/src/registry/index';
+import ListGantt from '../../webview/src/lists/ListGantt.vue';
 
 views.register({
 	id: 'text',

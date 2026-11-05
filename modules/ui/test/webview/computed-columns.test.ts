@@ -5,9 +5,9 @@
  */
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { defaultColumns } from '../../src/composables/browse-state';
-import { computedFieldRows } from '../../src/lib/computed-fields';
-import type { FieldRow } from '../../src/api/types';
+import { defaultColumns } from '../../webview/src/composables/browse-state';
+import { computedFieldRows } from '../../webview/src/lib/computed-fields';
+import type { FieldRow } from '../../webview/src/api/types';
 
 test('a computed field is never a default column', () => {
 	const name = { collection: 'tasks', field: 'name', type: 'string', title: 'Name' } as FieldRow;

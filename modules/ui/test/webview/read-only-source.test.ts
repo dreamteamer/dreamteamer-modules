@@ -9,11 +9,11 @@ import test from 'node:test';
 import { createMemoryHistory, createRouter } from 'vue-router';
 import { onHostRequest, resetHost } from './host-stub';
 import { all, find, flush, hasClass, render, text, type TestNode } from './render';
-import { invalidateContract } from '../../src/api/adapter';
-import { refreshCollections } from '../../src/composables/collections';
-import { edits, views } from '../../src/registry/index';
+import { invalidateContract } from '../../webview/src/api/adapter';
+import { refreshCollections } from '../../webview/src/composables/collections';
+import { edits, views } from '../../webview/src/registry/index';
 import { fieldRow } from '../unit/field-rows';
-import ContentDetail from '../../src/pages/ContentDetail.vue';
+import ContentDetail from '../../webview/src/pages/ContentDetail.vue';
 
 (globalThis as { window?: unknown }).window ??= { addEventListener() {}, removeEventListener() {}, confirm: () => true };
 (globalThis as { document?: unknown }).document ??= { addEventListener() {}, removeEventListener() {} };

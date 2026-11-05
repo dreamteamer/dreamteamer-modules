@@ -17,9 +17,9 @@ import test, { beforeEach } from 'node:test';
 import { computed, ref, type Ref } from 'vue';
 import { onHostRequest, requests, resetHost } from './host-stub';
 import { all, find, hasClass, render, text, type TestNode } from './render';
-import type { FieldRow, ItemRecord } from '../../src/api/types';
+import type { FieldRow, ItemRecord } from '../../webview/src/api/types';
 import { fieldRow } from '../unit/field-rows';
-import ListCarousel from '../../src/lists/ListCarousel.vue';
+import ListCarousel from '../../webview/src/lists/ListCarousel.vue';
 
 const ROOT = '/mnt/shared';
 const w = ((globalThis as { window?: unknown }).window ??= { addEventListener() {}, removeEventListener() {} }) as {

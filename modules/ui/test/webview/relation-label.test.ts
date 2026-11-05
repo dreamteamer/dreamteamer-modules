@@ -13,10 +13,10 @@ import test, { beforeEach } from 'node:test';
 import { createMemoryHistory, createRouter } from 'vue-router';
 import { onHostRequest, resetHost } from './host-stub';
 import { find, flush, hasClass, render, text } from './render';
-import { invalidateContract } from '../../src/api/adapter';
-import type { CollectionRow } from '../../src/api/types';
+import { invalidateContract } from '../../webview/src/api/adapter';
+import type { CollectionRow } from '../../webview/src/api/types';
 import { referenceRow } from '../unit/field-rows';
-import ViewRelation from '../../src/views/ViewRelation.vue';
+import ViewRelation from '../../webview/src/views/ViewRelation.vue';
 
 (globalThis as { window?: unknown }).window ??= { addEventListener() {}, removeEventListener() {} };
 

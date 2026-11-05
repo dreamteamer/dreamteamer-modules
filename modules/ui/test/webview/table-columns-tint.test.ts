@@ -15,12 +15,12 @@ import test, { beforeEach } from 'node:test';
 import { computed, ref, type Ref } from 'vue';
 import { onHostRequest, resetHost } from './host-stub';
 import { all, hasClass, render, text, type TestNode } from './render';
-import type { CollectionRow, FieldRow, ItemRecord } from '../../src/api/types';
+import type { CollectionRow, FieldRow, ItemRecord } from '../../webview/src/api/types';
 import { enumRow, fieldRow } from '../unit/field-rows';
-import { listSeed } from '../../src/lib/list-seed';
-import { colorByFor, tintOf, tintStyle } from '../../src/lib/collection-display';
-import DataTable from '../../src/components/DataTable.vue';
-import ListCards from '../../src/lists/ListCards.vue';
+import { listSeed } from '../../webview/src/lib/list-seed';
+import { colorByFor, tintOf, tintStyle } from '../../webview/src/lib/collection-display';
+import DataTable from '../../webview/src/components/DataTable.vue';
+import ListCards from '../../webview/src/lists/ListCards.vue';
 
 (globalThis as { window?: unknown }).window ??= { addEventListener() {}, removeEventListener() {} };
 

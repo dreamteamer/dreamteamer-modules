@@ -22,10 +22,10 @@ import test, { beforeEach } from 'node:test';
 import { computed, ref, type Ref } from 'vue';
 import { onHostRequest, resetHost } from './host-stub';
 import { all, find, flush, hasClass, render, text, type TestNode } from './render';
-import type { FieldChoice, FieldRow, ItemRecord } from '../../src/api/types';
+import type { FieldChoice, FieldRow, ItemRecord } from '../../webview/src/api/types';
 import { enumRow, fieldRow, referenceRow } from '../unit/field-rows';
-import { views } from '../../src/registry/index';
-import ListGantt from '../../src/lists/ListGantt.vue';
+import { views } from '../../webview/src/registry/index';
+import ListGantt from '../../webview/src/lists/ListGantt.vue';
 
 // The gantt renders no field values of its own (a bar is a title and a span), but GroupHeader and
 // the shared chrome resolve through the same registry, so one text View keeps the mount honest.
@@ -422,8 +422,8 @@ test('a band grouped by a list of REFERENCES resolves each name through the refe
 	// contract, so the relation has to be seeded THERE and both caches dropped — the adapter's and
 	// the composable's. Stubbing `/relations` alone silently keeps the previous test's empty list,
 	// and the band then falls back to the de-slugged path while looking exactly like a product bug.
-	const { invalidateRelations } = await import('../../src/composables/fields');
-	const { invalidateContract } = await import('../../src/api/adapter');
+	const { invalidateRelations } = await import('../../webview/src/composables/fields');
+	const { invalidateContract } = await import('../../webview/src/api/adapter');
 	invalidateRelations();
 	invalidateContract();
 	// The HOST's record shape — `{ id, fields }` — because that is what the adapter unwraps.
@@ -463,8 +463,8 @@ test('a band wears the FACE of the record it points at, and it beats the enum’
 	// A board of thirty collaborators is a wall of slugs. `GroupHeader` already renders an <img> when
 	// its icon is a reference into a `codec: file` collection — what was missing was anyone feeding
 	// it from the record the band points at.
-	const { invalidateRelations } = await import('../../src/composables/fields');
-	const { invalidateContract } = await import('../../src/api/adapter');
+	const { invalidateRelations } = await import('../../webview/src/composables/fields');
+	const { invalidateContract } = await import('../../webview/src/api/adapter');
 	invalidateRelations();
 	invalidateContract();
 	const people: Record<string, { id: string; fields: Record<string, unknown> }> = {
@@ -527,8 +527,8 @@ test('past the palette the colour axis STOPS rather than repeating, and says how
 test('the ungrouped sentinel is never fetched as a record id', async () => {
 	// `bucketize` appends a bucket valued `__ungrouped__` when show_ungrouped_rows is on. Feeding it
 	// to the band-label resolver fired a guaranteed-404 fetch for an id that cannot exist.
-	const { invalidateRelations } = await import('../../src/composables/fields');
-	const { invalidateContract } = await import('../../src/api/adapter');
+	const { invalidateRelations } = await import('../../webview/src/composables/fields');
+	const { invalidateContract } = await import('../../webview/src/api/adapter');
 	invalidateRelations();
 	invalidateContract();
 	const asked: string[] = [];
@@ -575,8 +575,8 @@ test('a band SUMMARY renders from the record the band points at, beside its name
 	// ⚠ A UNIQUE ID, deliberately. `lib/record-cache` is a module-global Map with no reset hook, so a
 	// key another test in this file already fetched comes back with THAT test's record — which is
 	// correct behaviour for a cache and a real trap for a suite that reuses ids.
-	const { invalidateRelations } = await import('../../src/composables/fields');
-	const { invalidateContract } = await import('../../src/api/adapter');
+	const { invalidateRelations } = await import('../../webview/src/composables/fields');
+	const { invalidateContract } = await import('../../webview/src/api/adapter');
 	invalidateRelations();
 	invalidateContract();
 	onHostRequest((method, path) => {

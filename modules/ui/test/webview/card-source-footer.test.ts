@@ -12,11 +12,11 @@ import test, { beforeEach } from 'node:test';
 import { computed, ref, type Ref } from 'vue';
 import { onHostRequest, resetHost } from './host-stub';
 import { all, find, hasClass, render, type TestNode } from './render';
-import type { FieldRow, ItemRecord } from '../../src/api/types';
+import type { FieldRow, ItemRecord } from '../../webview/src/api/types';
 import { enumRow, fieldRow } from '../unit/field-rows';
-import { views } from '../../src/registry/index';
-import ListCards from '../../src/lists/ListCards.vue';
-import ListKanban from '../../src/lists/ListKanban.vue';
+import { views } from '../../webview/src/registry/index';
+import ListCards from '../../webview/src/lists/ListCards.vue';
+import ListKanban from '../../webview/src/lists/ListKanban.vue';
 
 views.register({ id: 'text', name: 'Text', types: [], component: { props: ['value'], render(this: { value: unknown }) { return String(this.value ?? ''); } } });
 (globalThis as { window?: unknown }).window ??= { addEventListener() {}, removeEventListener() {} };

@@ -10,10 +10,10 @@ import assert from 'node:assert/strict';
 import test, { beforeEach } from 'node:test';
 import { onHostRequest, resetHost } from './host-stub';
 import { all, flush, hasClass, render, text, type TestNode } from './render';
-import type { FieldRow, ItemRecord } from '../../src/api/types';
+import type { FieldRow, ItemRecord } from '../../webview/src/api/types';
 import { fieldRow } from '../unit/field-rows';
-import { views } from '../../src/registry/index';
-import DisplayTemplate from '../../src/components/render/DisplayTemplate.vue';
+import { views } from '../../webview/src/registry/index';
+import DisplayTemplate from '../../webview/src/components/render/DisplayTemplate.vue';
 
 views.register({
 	id: 'text',

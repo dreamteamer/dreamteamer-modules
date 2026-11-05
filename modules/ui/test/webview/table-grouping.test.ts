@@ -16,10 +16,10 @@ import test, { beforeEach } from 'node:test';
 import { computed, ref, type Ref } from 'vue';
 import { onHostRequest, resetHost } from './host-stub';
 import { all, find, hasClass, render, text, type TestNode } from './render';
-import type { FieldChoice, FieldRow, ItemRecord } from '../../src/api/types';
+import type { FieldChoice, FieldRow, ItemRecord } from '../../webview/src/api/types';
 import { enumRow, fieldRow } from '../unit/field-rows';
-import { views } from '../../src/registry/index';
-import DataTable from '../../src/components/DataTable.vue';
+import { views } from '../../webview/src/registry/index';
+import DataTable from '../../webview/src/components/DataTable.vue';
 
 // The ONE view a table cell needs to resolve. Registered here rather than by importing
 // `register-defaults`, which reaches ListMap and therefore leaflet's CSS — png urls this tier has

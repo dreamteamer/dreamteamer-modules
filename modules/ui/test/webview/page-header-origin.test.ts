@@ -10,8 +10,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createMemoryHistory, createRouter } from 'vue-router';
 import { find, flush, hasClass, render, text } from './render';
-import PageHeader from '../../src/components/PageHeader.vue';
-import { recordOrigin } from '../../src/lib/record-origin';
+import PageHeader from '../../webview/src/components/PageHeader.vue';
+import { recordOrigin } from '../../webview/src/lib/record-origin';
 
 async function router() {
 	const r = createRouter({ history: createMemoryHistory(), routes: [{ path: '/:path(.*)*', component: { render: () => null } }] });

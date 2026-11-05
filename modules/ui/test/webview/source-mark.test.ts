@@ -9,13 +9,13 @@ import test from 'node:test';
 import { createMemoryHistory, createRouter } from 'vue-router';
 import { ref } from 'vue';
 import { all, find, flush, hasClass, render, text } from './render';
-import type { SourceEntry } from '../../src/api/types';
-import { sourceFieldRow } from '../../src/lib/sources';
-import SourceMark from '../../src/components/SourceMark.vue';
-import ViewSource from '../../src/views/ViewSource.vue';
-import PageHeader from '../../src/components/PageHeader.vue';
-import SourcePicker from '../../src/components/browse/SourcePicker.vue';
-import { recordOrigin } from '../../src/lib/record-origin';
+import type { SourceEntry } from '../../webview/src/api/types';
+import { sourceFieldRow } from '../../webview/src/lib/sources';
+import SourceMark from '../../webview/src/components/SourceMark.vue';
+import ViewSource from '../../webview/src/views/ViewSource.vue';
+import PageHeader from '../../webview/src/components/PageHeader.vue';
+import SourcePicker from '../../webview/src/components/browse/SourcePicker.vue';
+import { recordOrigin } from '../../webview/src/lib/record-origin';
 
 const SOURCES: SourceEntry[] = [
 	{ name: 'my-hq', kind: 'own', repo: '.', path: 'data/tasks', installed: true, count: 2 },
@@ -116,6 +116,20 @@ test('the hover names the class and the writability, and the reason for anything
 	assert.equal(r.props['title'], 'tasks — installed package · read-only\ntasks is an installed package — nothing is written to it');
 	const c = mark(await render(SourceMark, { name: 'org', access: 'write', via: 'clone' }, [await router()]))!;
 	assert.match(String(c.props['title']), /linked clone · writes here/);
+});
+
+// cr-vscode-016: the New record menu draws the mark `fit` — it fills its row, the name ellipsises, the glyph keeps a
+// column at the right, and the native title goes (the menu's own card names the full name at once). Opt-in only.
+test('fit: the mark fills its row and carries no native title; without fit it is the mark it always was', async () => {
+	const f = mark(await render(SourceMark, { name: 'project-a', access: 'write', via: 'layer', fit: true }, [await router()]))!;
+	assert.ok(hasClass(f, 'dt-source-mark--fit'));
+	assert.equal(f.props['title'], undefined, 'no native tooltip arriving after the instant card');
+	assert.equal(text(find(f, (n) => hasClass(n, 'dt-source-mark__name'))!).trim(), 'project-a');
+	assert.ok(find(f, (n) => hasClass(n, 'dt-source-mark__dot')), 'the dot');
+	assert.equal(glyphName(f), 'edit', 'and the glyph');
+	const plain = mark(await render(SourceMark, { name: 'project-a', access: 'write', via: 'layer' }, [await router()]))!;
+	assert.equal(hasClass(plain, 'dt-source-mark--fit'), false);
+	assert.equal(plain.props['title'], 'project-a — record layer · writes here');
 });
 
 const CLASSED: SourceEntry[] = [
