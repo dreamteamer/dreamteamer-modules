@@ -33,18 +33,29 @@
 	Dragging a card to a column PATCHes that one field through the ordinary items API (one engine
 	commit per move) and reloads; dropping onto the ungrouped column CLEARS it (`null`). Both are
 	things `dreamteamer <collection> set` can do — no UI-only capability here (engine/UI split).
+
+	A LOCKED column field moves nothing (cr-vscode-009). When the edit form would draw no control for
+	the column field — `display.editable: false`, `editable: create`, an engine-held kind — the board
+	asks the same rule (`lib/kanban-lock.ts` over `hasControl`): cards are not draggable between
+	columns, no column accepts a drop, the drop handler itself refuses (a text selection dragged out of
+	a card fires `dragstart` on it all the same), the column `+` follows the CREATE form's rule, and the
+	card's hover names the field. Manual ordering writes its own field, so it stays — inside the
+	card's own column only.
 -->
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import type { BrowseState } from '../composables/browse-state';
 import { rowContext } from '../lib/vscode-context';
-import { choicesOf } from '../lib/field-row';
+import { choicesOf, hasControl } from '../lib/field-row';
+import { kanbanLock } from '../lib/kanban-lock';
 import { api } from '../api/client';
 import type { ItemRecord } from '../api/types';
 import { bucketize, buildLanes, ungroupedAllowed as ungroupedAllowedOf, UNGROUPED, valueOf } from '../lib/grouping';
 import DisplayTemplate from '../components/render/DisplayTemplate.vue';
 import DtIcon from '../components/DtIcon.vue';
 import SourceMark from '../components/SourceMark.vue';
+import NoteMark from '../components/NoteMark.vue';
+import { notesOfRow } from '../lib/next-notes';
 import StubNote from '../components/StubNote.vue';
 
 const props = defineProps<{ state: BrowseState }>();
@@ -188,21 +199,23 @@ const moveError = ref<string | null>(null);
  */
 function addTo(lane: LaneRow, column: Column): void {
 	const field = groupField.value;
-	if (!field || column.ungrouped) return;
+	if (!field || column.ungrouped || !lock.value.add) return;
 	const prefill: Record<string, unknown> = { [field.field]: column.value };
-	if (laneField.value && !lane.ungrouped && lane.value !== '__all__') {
+	if (laneField.value && lanePrefill.value && !lane.ungrouped && lane.value !== '__all__') {
 		prefill[laneField.value.field] = lane.value;
 	}
 	props.state.createRecord(prefill);
 }
 
-function onDragStart(record: ItemRecord): void {
+function onDragStart(record: ItemRecord, lane: LaneRow, column: Column): void {
 	dragging.value = props.state.pkOf(record);
+	dragFrom.value = keyOf(lane, column);
 	moveError.value = null;
 }
 
 function onDragEnd(): void {
 	dragging.value = null;
+	dragFrom.value = null;
 	dropTarget.value = null;
 	dropSlot.value = null;
 }
@@ -214,6 +227,32 @@ function onDragEnd(): void {
  */
 const canReorder = computed<boolean>(() => props.state.manualOrder.value);
 
+/** What the column field lets this board do — the form's own rule, asked once (cr-vscode-009). */
+const lock = computed(() => kanbanLock(groupField.value, { reorder: canReorder.value }));
+
+/** A card drags at all only when it may change column, or reorder within its own. */
+const cardDraggable = computed<boolean>(() => !lock.value.columns || canReorder.value);
+
+/** The lane's prefill on the column `+` rides only when the create form would draw that field too. */
+const lanePrefill = computed<boolean>(() => laneField.value !== null && hasControl(laneField.value, { create: true }));
+
+/** The `<lane>:<column>` a drag started in — on a locked board the only column whose gaps are live. */
+const dragFrom = ref<string | null>(null);
+const keyOf = (lane: LaneRow, column: Column): string => `${lane.value}:${column.value}`;
+
+/** Whether a column offers its insertion gaps to the drag in flight. */
+function gapsLive(lane: LaneRow, column: Column): boolean {
+	if (!canReorder.value || !dragging.value) return false;
+	return !lock.value.columns || keyOf(lane, column) === dragFrom.value;
+}
+
+/** `dragover` on a column: say "a drop is allowed here" and light it — never on a locked board. */
+function onColDragOver(event: DragEvent, lane: LaneRow, column: Column): void {
+	if (lock.value.columns) return;
+	event.preventDefault();
+	dropTarget.value = keyOf(lane, column);
+}
+
 /** The gap a drop would land in: the card it would sit ABOVE, or null for the end of the column. */
 const dropSlot = ref<string | null>(null);
 
@@ -223,13 +262,17 @@ const dropSlot = ref<string | null>(null);
  * engine validates each. The key itself is computed engine-side: this component never spells the
  * alphabet, which is the one thing a second implementation would get silently wrong.
  */
-async function onDropAt(column: Column, above: ItemRecord | null): Promise<void> {
+async function onDropAt(lane: LaneRow, column: Column, above: ItemRecord | null): Promise<void> {
 	const pk = dragging.value;
 	const field = groupField.value;
+	const from = dragFrom.value;
 	dropSlot.value = null;
 	dropTarget.value = null;
 	dragging.value = null;
+	dragFrom.value = null;
 	if (!pk || !field || saving.value || !canReorder.value) return;
+	// a locked column field: a gap in another column would be a move between columns
+	if (lock.value.columns && keyOf(lane, column) !== from) return;
 	if (column.ungrouped && !groupUngroupedAllowed.value) return;
 
 	const aboveId = above ? props.state.pkOf(above) : null;
@@ -241,7 +284,7 @@ async function onDropAt(column: Column, above: ItemRecord | null): Promise<void>
 	saving.value = true;
 	moveError.value = null;
 	try {
-		if (current && groupValueOf(current) !== (next ?? '')) {
+		if (!lock.value.columns && current && groupValueOf(current) !== (next ?? '')) {
 			await api.patch(`/items/${encodeURIComponent(props.state.collection)}/${encodeURIComponent(pk)}`, { [field.field]: next });
 		}
 		await api.patch(
@@ -261,6 +304,10 @@ async function onDrop(column: Column): Promise<void> {
 	const field = groupField.value;
 	dropTarget.value = null;
 	dragging.value = null;
+	dragFrom.value = null;
+	// the guard is HERE, not only on `draggable`: a text selection dragged out of a card still fires
+	// the card's `dragstart` (cr-vscode-009)
+	if (lock.value.columns) return;
 	if (!pk || !field || saving.value) return;
 	if (column.ungrouped && !groupUngroupedAllowed.value) return;
 
@@ -325,7 +372,7 @@ async function onDrop(column: Column): Promise<void> {
 						:key="col.value"
 						class="dt-kanban-core-col"
 						:class="{ 'is-drop': dropTarget === `${lane.value}:${col.value}`, 'is-ungrouped': col.ungrouped }"
-						@dragover.prevent="dropTarget = `${lane.value}:${col.value}`"
+						@dragover="onColDragOver($event, lane, col)"
 						@dragleave="dropTarget === `${lane.value}:${col.value}` && (dropTarget = null)"
 						@drop.prevent="onDrop(col)"
 					>
@@ -334,10 +381,10 @@ async function onDrop(column: Column): Promise<void> {
 							<span class="dt-kanban-core-label">{{ col.label }}</span>
 							<span class="dt-kanban-core-count">{{ col.records.length }}</span>
 							<button
-								v-if="!col.ungrouped"
+								v-if="!col.ungrouped && lock.add && !state.items.unavailable?.value"
 								type="button"
 								class="dt-btn dt-btn--ghost dt-btn--icon dt-btn--sm dt-kanban-core-add"
-								:title="`New record with ${groupField.field} = ${col.value}${laneField && !lane.ungrouped && lane.value !== '__all__' ? ` and ${laneField.field} = ${lane.value}` : ''}`"
+								:title="`New record with ${groupField.field} = ${col.value}${laneField && lanePrefill && !lane.ungrouped && lane.value !== '__all__' ? ` and ${laneField.field} = ${lane.value}` : ''}`"
 								@click="addTo(lane, col)"
 							>
 								<DtIcon name="add" />
@@ -350,20 +397,21 @@ async function onDrop(column: Column): Promise<void> {
 								     operator cannot see take effect. `.stop` so the column's coarse drop does not
 								     also fire. -->
 								<div
-									v-if="canReorder && dragging"
+									v-if="gapsLive(lane, col)"
 									class="dt-kanban-core-slot"
 									:class="{ 'is-over': dropSlot === state.pkOf(r) }"
 									@dragover.prevent="dropSlot = state.pkOf(r)"
 									@dragleave="dropSlot === state.pkOf(r) && (dropSlot = null)"
-									@drop.prevent.stop="onDropAt(col, r)"
+									@drop.prevent.stop="onDropAt(lane, col, r)"
 								></div>
 								<div
 									class="dt-card dt-card--interactive dt-kanban-core-card"
-									:class="{ 'dt-tinted': !!state.tintOf(r) }"
+									:class="{ 'dt-tinted': !!state.tintOf(r), 'is-locked': lock.columns }"
 									:style="state.tintOf(r)"
+									:title="lock.reason ?? undefined"
 									:data-vscode-context="rowContext(state.collection, state.pkOf(r))"
-									draggable="true"
-									@dragstart="onDragStart(r)"
+									:draggable="cardDraggable ? 'true' : 'false'"
+									@dragstart="onDragStart(r, lane, col)"
 									@dragend="onDragEnd"
 									@click="state.openRecord(r)"
 								>
@@ -381,21 +429,22 @@ async function onDrop(column: Column): Promise<void> {
 										<div class="dt-kanban-core-id">{{ state.pkOf(r) }}</div>
 									</template>
 									<!-- the source mark in the card's footer row, never over its content (cr-vscode-004) -->
-									<footer v-if="state.sourceOf?.(r) || state.stubOf?.(r)" class="dt-card-foot">
+									<footer v-if="state.sourceOf?.(r) || state.stubOf?.(r) || notesOfRow(r).length" class="dt-card-foot">
 										<SourceMark v-if="state.sourceOf?.(r)" class="dt-kanban-core-source" v-bind="state.sourceOf?.(r)!" />
 					<StubNote v-if="state.stubOf?.(r)" v-bind="state.stubOf?.(r)!" :sources="state.sourceFacets?.value" />
+										<NoteMark v-if="notesOfRow(r).length" :notes="notesOfRow(r)" />
 									</footer>
 								</div>
 							</template>
 							<!-- The gap after the last card: dropping here means "bottom", which is a different
 							     write from "before X" and the only way to reach the end of a column. -->
 							<div
-								v-if="canReorder && dragging"
+								v-if="gapsLive(lane, col)"
 								class="dt-kanban-core-slot dt-kanban-core-slot--end"
 								:class="{ 'is-over': dropSlot === '__end__' }"
 								@dragover.prevent="dropSlot = '__end__'"
 								@dragleave="dropSlot === '__end__' && (dropSlot = null)"
-								@drop.prevent.stop="onDropAt(col, null)"
+								@drop.prevent.stop="onDropAt(lane, col, null)"
 							></div>
 						</div>
 					</div>
@@ -515,6 +564,9 @@ async function onDrop(column: Column): Promise<void> {
      mid-word). Refusing to shrink is what turns the overflow into a scroll. The card grid's cards
      sit in a grid with no such constraint and need none of it. */
 .dt-kanban-core-card { flex: 0 0 auto; position: relative; }
+/* a card on a board whose column field is locked sets NO cursor of its own: it cannot change column,
+   but a click still opens its record, so it keeps the shared card's pointer (cr-vscode-009 code review;
+   test/unit/kanban-card-cursor.test.ts) */
 /* the footer row a card read from another root carries its mark in — in flow, last (cr-vscode-004) */
 .dt-card-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px; padding-top: 6px; font-size: var(--dt-label); min-width: 0; }
 /* wrap, never shrink — a mark and a stub note side by side otherwise drew over each other */

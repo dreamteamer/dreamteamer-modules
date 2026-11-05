@@ -224,7 +224,8 @@ export function useBrowseState(collection: string, rowTo?: (record: ItemRecord) 
 	}
 
 	const fields = useFields(collection);
-	const items = useItems(collection);
+	// the list on screen is the one reader that draws a note mark, so it alone asks for `$notes`
+	const items = useItems(collection, { notes: true });
 
 	// The collection's own `display.list` (descriptor v2 §3.5) — what a bare route renders: its
 	// layout, columns, sort and layout options. A governing view record is merged over it key by key

@@ -190,6 +190,12 @@ export function reloadCachedFields(): Promise<void[]> {
 	return Promise.all([...fieldsCache.values()].map((state) => state.reload()));
 }
 
+/** Every cached field state's last failure, as `collection: message` — each state catches into its own
+ *  `error` and resolves, so this is how a re-read that failed is told apart from one that did not. */
+export function cachedFieldErrors(): string[] {
+	return [...fieldsCache.entries()].flatMap(([collection, state]) => (state.error.value ? [`${collection}: ${state.error.value}`] : []));
+}
+
 export function useFields(collection: string) {
 	let state = fieldsCache.get(collection);
 

@@ -27,6 +27,11 @@ import type { ItemRecord } from '../api/types';
 
 const recordCache = new Map<string, Promise<ItemRecord | null>>();
 
+/** Forget every fetched record — the refresh button's first step, so the next read goes to the host. */
+export function resetRecordCache(): void {
+	recordCache.clear();
+}
+
 export function fetchRecord(collection: string, id: string): Promise<ItemRecord | null> {
 	const key = `${collection}/${id}`;
 	let promise = recordCache.get(key);

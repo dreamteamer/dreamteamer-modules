@@ -317,9 +317,10 @@ export type TargetChoice =
 	/** Open the form at once — `target` is where it saves; null when the host said nothing about
 	 *  writability (an older host), which is the form as it always opened. */
 	| { mode: 'direct'; target: SourceEntry | null }
-	/** Ask first. `excluded` is each NARROWED source that is not offered, with its reason; `hidden` counts
-	 *  the other sources that take no new record, said in one line rather than one row each. */
-	| { mode: 'choose'; targets: SourceEntry[]; excluded: Array<{ source: SourceEntry; reason: string }>; hidden: number };
+	/** Ask first. `excluded` is each NARROWED source that is not offered, with its reason; `others` the other
+	 *  sources that take no new record, each with its reason — said in one '+N not offered' line rather than one
+	 *  row each (cr-vscode-016) — and `hidden` their number. */
+	| { mode: 'choose'; targets: SourceEntry[]; excluded: Array<{ source: SourceEntry; reason: string }>; others: Array<{ source: SourceEntry; reason: string }>; hidden: number };
 
 /**
  * Decide what New does, from the collection's sources and the picker's selection:
@@ -333,16 +334,64 @@ export function targetChoice(sources: readonly SourceEntry[] | undefined, select
 	const all = sources ?? [];
 	if (!all.some((s) => s.access !== undefined)) return { mode: 'direct', target: null };
 	const targets = all.filter(isTarget);
-	const others = (offered: readonly SourceEntry[], listed: readonly SourceEntry[]) => all.filter((s) => s.installed && !offered.includes(s) && !listed.includes(s)).length;
+	const othersOf = (offered: readonly SourceEntry[], listed: readonly SourceEntry[]) =>
+		all.filter((s) => s.installed && !offered.includes(s) && !listed.includes(s)).map((source) => ({ source, reason: notTargetReason(source) }));
+	const choose = (targets: SourceEntry[], excluded: Array<{ source: SourceEntry; reason: string }>, others: Array<{ source: SourceEntry; reason: string }>): TargetChoice => ({ mode: 'choose', targets, excluded, others, hidden: others.length });
 	const narrowed = selection.length ? all.filter((s) => selection.includes(s.name)) : [];
 	if (narrowed.length) {
 		const narrowedTargets = narrowed.filter(isTarget);
 		if (narrowedTargets.length === 1) return { mode: 'direct', target: narrowedTargets[0]! };
-		if (narrowedTargets.length > 1) return { mode: 'choose', targets: narrowedTargets, excluded: [], hidden: 0 };
-		return { mode: 'choose', targets, excluded: narrowed.map((source) => ({ source, reason: notTargetReason(source) })), hidden: others(targets, narrowed) };
+		if (narrowedTargets.length > 1) return choose(narrowedTargets, [], []);
+		return choose(targets, narrowed.map((source) => ({ source, reason: notTargetReason(source) })), othersOf(targets, narrowed));
 	}
 	if (targets.length === 1) return { mode: 'direct', target: targets[0]! };
-	return { mode: 'choose', targets, excluded: targets.length ? [] : all.filter((s) => s.installed).map((source) => ({ source, reason: notTargetReason(source) })), hidden: targets.length ? others(targets, []) : 0 };
+	return choose(targets, targets.length ? [] : all.filter((s) => s.installed).map((source) => ({ source, reason: notTargetReason(source) })), targets.length ? othersOf(targets, []) : []);
+}
+
+// ---- THE NEW RECORD MENU'S CARD (cr-vscode-016) ------------------------------------------------------
+// The menu draws a target row as its mark alone; every word about it is on a card that opens the moment the
+// pointer is over the row. The lines are cr-vscode-013's HoverCard `lines` shape, so when that component lands
+// the menu swaps its own card for it in one place and these builders stay.
+
+/** One line of a hover card: the title, a body line, or a raw name in monospace. */
+export interface HoverLine {
+	text: string;
+	kind?: 'title' | 'body' | 'code';
+}
+
+function wordsLine(s: SourceEntry): HoverLine[] {
+	const words = [viaWord(s.via), accessWord(s.access)].filter(Boolean).join(' · ');
+	return words ? [{ text: words, kind: 'body' }] : [];
+}
+
+/** A target row's card: the full name, its kind and writability in words, and the host's note when it sent one. */
+export function targetHoverLines(s: SourceEntry): HoverLine[] {
+	return [{ text: s.name, kind: 'title' }, ...wordsLine(s), ...(s.note ? [{ text: s.note, kind: 'body' as const }] : [])];
+}
+
+/** A narrowed source that is not offered: the name and its kind — its reason is visible text under its mark. */
+export function excludedHoverLines(x: { source: SourceEntry; reason: string }): HoverLine[] {
+	return [{ text: x.source.name, kind: 'title' }, ...wordsLine(x.source)];
+}
+
+/** The '+N not offered' line's card: one line per source, its reason (which names the source). */
+export function othersHoverLines(others: ReadonlyArray<{ source: SourceEntry; reason: string }>): HoverLine[] {
+	return [{ text: 'Not offered here', kind: 'title' }, ...others.map((x) => ({ text: x.reason, kind: 'body' as const }))];
+}
+
+/** The card's widest — its CSS `max-width` when the viewport allows. */
+export const CARD_MAX = 280;
+
+/**
+ * Where the card goes, beside the menu that hangs from the + at the header's right edge: LEFT of the menu when
+ * it fits there, else RIGHT of it, else BELOW the menu (covering none of its rows) with its x clamped into the
+ * viewport. `rowTop` is the hovered row's top relative to the menu; `left` (below only) is relative to the menu.
+ */
+export function cardPlace(menu: { left: number; right: number; height: number }, rowTop: number, cardWidth: number, viewportWidth: number): { side: 'left' | 'right' | 'below'; top: number; left?: number } {
+	if (menu.left - 4 - cardWidth >= 4) return { side: 'left', top: rowTop };
+	if (menu.right + 4 + cardWidth <= viewportWidth - 4) return { side: 'right', top: rowTop };
+	const x = Math.max(4, Math.min(menu.left, viewportWidth - cardWidth - 4));
+	return { side: 'below', top: menu.height + 4, left: x - menu.left };
 }
 
 // ---- the commit action --------------------------------------------------------------------------

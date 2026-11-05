@@ -27,6 +27,8 @@ import {
 import ItemHistory from '../components/ItemHistory.vue';
 import RecordHeaderDisplay from '../components/RecordHeaderDisplay.vue';
 import PageHeader from '../components/PageHeader.vue';
+import RefreshSkippedNotice from '../components/RefreshSkippedNotice.vue';
+import NextNotes from '../components/NextNotes.vue';
 import CommandsSection from '../components/sidebar/CommandsSection.vue';
 import InfoSection from '../components/sidebar/InfoSection.vue';
 import TemplatePicker from '../components/TemplatePicker.vue';
@@ -283,7 +285,6 @@ const saving = ref(false);
 async function onSave(): Promise<void> {
 	if (saving.value || !item.dirty.value) return;
 	saving.value = true;
-	item.error.value = null;
 	try {
 		// a create carries the chosen root to the host, which writes there (`?target=`, cr-vscode-004)
 		const result = await item.save(props.create ? target.value : null);
@@ -296,9 +297,6 @@ async function onSave(): Promise<void> {
 			void router.replace(`${basePath.value}${props.collection}/${newId}`);
 		}
 		editing.value = false;
-	} catch (err) {
-		// a refused write keeps the edit and the edit mode, and says the engine's own sentence in the error line
-		item.error.value = err instanceof Error ? err.message : String(err);
 	} finally {
 		saving.value = false;
 	}
@@ -312,7 +310,6 @@ function onCancel(): void {
 		return;
 	}
 	if (item.dirty.value && !window.confirm('Discard unsaved changes?')) return;
-	item.error.value = null;
 	item.discard();
 	editing.value = false;
 }
@@ -374,10 +371,14 @@ async function onConfirmDelete(): Promise<void> {
 				</button>
 			</template>
 		</PageHeader>
+		<RefreshSkippedNotice :show="item.refreshSkipped.value" />
 
 		<!-- The collection's `display.record` line — subtitle, badge, color_by tint — for both record
 		     layouts at once. Static with the header: it says what this record IS, like the title. -->
 		<RecordHeaderDisplay v-if="!create" :row="collectionRow" :fields="fieldRows" :record="item.record.value" />
+		<!-- What extensions say about this record — a session holding it, in core's words (cr-vscode-005).
+		     Static with the header: it is about the record, like its title. Nothing when there is no note. -->
+		<NextNotes v-if="!create && id" :collection="collection" :id="id" />
 <p v-if="!create && formFields.length && !editsFields" class="dt-record-source">Nothing here is edited by hand — every field is read from the record's file or computed.</p>
 
 		<!-- Scroll box, so the PageHeader above it is genuinely static rather than sticky (operator
@@ -460,7 +461,6 @@ async function onConfirmDelete(): Promise<void> {
 
 .dt-detail-error {
 	color: var(--dt-danger);
-	white-space: pre-wrap;
 	font-size: var(--dt-text);
 	margin-bottom: 16px;
 }

@@ -431,7 +431,7 @@ async function onConfirmDelete(): Promise<void> {
 			     bare handler reference would hand it the MouseEvent. Where several roots take a new record
 			     it opens the TARGET CHOICE under this button first (cr-vscode-004); every other "Create
 			     record" button, the kanban column's + included, opens the same popover here. -->
-			<div class="dt-browse-create">
+			<div v-if="!state.items.unavailable.value" class="dt-browse-create">
 				<button type="button" class="dt-btn dt-btn--icon" title="Create" :aria-expanded="!!state.pendingCreate.value" @click="state.pendingCreate.value ? state.cancelCreate() : state.createRecord()">
 					<DtIcon name="add" />
 				</button>
@@ -475,6 +475,12 @@ async function onConfirmDelete(): Promise<void> {
 
 		<div class="dt-page-body" :class="{ 'dt-page-body--fill': listFillsHeight }">
 			<p v-if="state.fields.error.value || state.items.error.value" class="dt-browse-error">{{ state.fields.error.value || state.items.error.value }}</p>
+			<!-- a collection this machine cannot read (its env var unset): one line, the engine's reason, and
+			     no create — not an error, the rest of the page draws (cr-vscode-019) -->
+			<p v-if="state.items.unavailable.value" class="dt-browse-unavailable" data-unavailable>
+				<DtIcon name="info" />
+				Not read on this machine: {{ state.items.unavailable.value }}
+			</p>
 
 			<p v-if="unregisteredLayout" class="dt-browse-degraded">
 				<DtIcon name="info" />

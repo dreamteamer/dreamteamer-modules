@@ -42,6 +42,12 @@ export async function refreshCollections(): Promise<void> {
 	await load();
 }
 
+/** The last overview read's failure, or null — `load` catches into `error` and resolves, so a
+ *  caller that has to REPORT a failed re-read (the refresh button) asks here. */
+export function collectionsError(): string | null {
+	return error.value;
+}
+
 async function registerFolder(path: string): Promise<void> {
 	await api.post('/utils/infer', { paths: [path] });
 	await load();

@@ -218,20 +218,25 @@ interface ParsedQuery {
 	sort: string | null;
 	search: string | null;
 	filter: Record<string, unknown> | null;
+	/** `notes=1`: the browse list asks the host for each row's `$notes` (cr-vscode-005). */
+	notes: boolean;
 }
 
 function parseQueryString(search: string): ParsedQuery {
 	const params = new URLSearchParams(search);
-	const out: ParsedQuery = { limit: 25, page: 1, sort: null, search: null, filter: null };
+	const out: ParsedQuery = { limit: 25, page: 1, sort: null, search: null, filter: null, notes: false };
 	const filterTree: Record<string, unknown> = {};
 	let hasFilter = false;
+	let bare: Record<string, unknown> | null = null;
 
 	for (const [rawKey, value] of params.entries()) {
 		if (rawKey === 'limit') out.limit = Number(value) || 25;
 		else if (rawKey === 'page') out.page = Number(value) || 1;
 		else if (rawKey === 'sort') out.sort = value;
 		else if (rawKey === 'search') out.search = value;
-		else if (rawKey.startsWith('filter[') || rawKey === 'filter') {
+		else if (rawKey === 'notes') out.notes = value === '1';
+		else if (rawKey === 'filter') bare = parseBareFilter(value);
+		else if (rawKey.startsWith('filter[')) {
 			hasFilter = true;
 			setBracketPath(filterTree, rawKey.replace(/^filter/, ''), value);
 		}
@@ -239,8 +244,34 @@ function parseQueryString(search: string): ParsedQuery {
 		// accepted and ignored (no relation expansion — ViewRelation resolves labels itself).
 	}
 
-	if (hasFilter) out.filter = normalizeArrays(filterTree) as Record<string, unknown>;
+	// A bare tree is used AS PARSED — never through normalizeArrays, which would turn an empty `_in`
+	// list into `{}`. Beside bracket keys the two are ANDed, so a clash on one field drops neither
+	// condition (a shallow merge would silently widen the filter — the class of defect a bare
+	// filter's `{}` was, cr-vscode-013).
+	const bracket = hasFilter ? (normalizeArrays(filterTree) as Record<string, unknown>) : null;
+	out.filter = bare && bracket ? { _and: [bare, bracket] } : (bare ?? bracket);
 	return out;
+}
+
+/**
+ * A bare `filter=<json>` — the filter tree in ONE param. Until cr-vscode-013 this branch fell into
+ * `setBracketPath` with no segments, assigned nothing and left `{}`, which the host matches against
+ * every row: the record page's reverse lookup read the whole owner collection as "N more from other
+ * sources". A value that is not a JSON object is REFUSED (400), never read as "no filter": a filter
+ * that cannot be read must narrow or fail, never widen — the engine's own posture for an unknown
+ * operator.
+ */
+function parseBareFilter(value: string): Record<string, unknown> {
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(value);
+	} catch {
+		throw new ApiError(`filter is not JSON: ${value.slice(0, 80)}`, 400, 'bad-filter');
+	}
+	if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+		throw new ApiError('filter must be a JSON object', 400, 'bad-filter');
+	}
+	return parsed as Record<string, unknown>;
 }
 
 /** `[a][0][b]` → nested assignment into `tree` (numeric segments become array-ish objects). */
@@ -310,6 +341,7 @@ async function listItems(collection: string, queryString: string): Promise<Adapt
 	const params: string[] = [`limit=${query.limit}`, `offset=${offset}`];
 	if (query.sort) params.push(`sort=${encodeURIComponent(query.sort.split(',')[0] ?? '')}`);
 	if (query.search) params.push(`q=${encodeURIComponent(query.search)}`);
+	if (query.notes) params.push('notes=1');
 	// ⚠ Relation values cross the boundary in the components' `/collection/id` form and must land as
 	// the engine's `collection/id`. `itemToRecord` does this for record BODIES; a filter is not a
 	// body, so a relation condition used to arrive slashed and match NOTHING — 17 rows became 0, and
@@ -330,10 +362,12 @@ async function listItems(collection: string, queryString: string): Promise<Adapt
 		total: number;
 		/** every source of the collection, counted over the filtered rows (host `listRecords`, 0.24.0) */
 		sources?: unknown[];
+		/** the collection cannot be read on this machine, and why (host `listRecords`, cr-vscode-019) */
+		unavailable?: string;
 	};
 	return {
 		data: res.records.map((r) => recordToItem(contract, collection, r)),
-		raw: { meta: { filter_count: res.total, ...(res.sources ? { sources: res.sources } : {}) } },
+		raw: { meta: { filter_count: res.total, ...(res.sources ? { sources: res.sources } : {}), ...(res.unavailable ? { unavailable: res.unavailable } : {}) } },
 	};
 }
 
@@ -441,6 +475,13 @@ export async function adapterRequest(method: string, path: string, body?: unknow
 
 	// /activity — the Schema tab's Activity page (host `src/activity.ts`). A READ, passed straight through.
 	if (head === 'activity' && method === 'GET') {
+		const result = await cleanFetch('GET', pathname + (queryString ? `?${queryString}` : ''));
+		return { data: result, raw: {} };
+	}
+
+	// /notes/:collection?ids=… — what extensions say about records, and where the sessions were read
+	// from (cr-vscode-005, cr-vscode-019; a clean passthrough, like /commands)
+	if (head === 'notes' && method === 'GET') {
 		const result = await cleanFetch('GET', pathname + (queryString ? `?${queryString}` : ''));
 		return { data: result, raw: {} };
 	}

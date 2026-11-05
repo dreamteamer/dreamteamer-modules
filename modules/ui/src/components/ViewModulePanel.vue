@@ -13,7 +13,7 @@ import { api } from '../api/client';
 import { useModules } from '../composables/modules';
 import { moveUiView } from '../composables/schema';
 import { refusalAnswer, type SaveAnswer } from '../lib/save-answer';
-import { viewModuleTargets } from '../lib/view-module-targets';
+import { recordPageTargets, viewModuleTargets } from '../lib/view-module-targets';
 import { isUnwritableModule } from '../../../src/module-targets';
 import { loadUiViews } from '../ui-views';
 import ViewModuleField from './ViewModuleField.vue';
@@ -39,7 +39,7 @@ onMounted(load);
 watch(() => props.viewId, () => { answer.value = null; void load(); });
 
 /** The workspace module by its id here — a move names a module, never "the default". */
-const targets = computed(() => viewModuleTargets(modules.value, workspaceModule.value).map((t) => (t.id === null ? { ...t, id: workspaceModule.value, label: `${workspaceModule.value ?? 'workspace'} (workspace module)` } : t)));
+const targets = computed(() => recordPageTargets(viewModuleTargets(modules.value, workspaceModule.value), workspaceModule.value));
 const readOnlyReason = computed(() => {
 	const m = modules.value.find((x) => x.id === current.value);
 	return m && isUnwritableModule(m)

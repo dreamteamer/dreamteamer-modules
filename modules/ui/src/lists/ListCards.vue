@@ -48,6 +48,8 @@ import DisplayTemplate from '../components/render/DisplayTemplate.vue';
 import GroupHeader from '../components/browse/GroupHeader.vue';
 import SourceMark from '../components/SourceMark.vue';
 import StubNote from '../components/StubNote.vue';
+import NoteMark from '../components/NoteMark.vue';
+import { notesOfRow } from '../lib/next-notes';
 import type { FieldRow, ItemRecord } from '../api/types';
 import DtIcon from '../components/DtIcon.vue';
 
@@ -149,7 +151,7 @@ function toggleBand(value: string): void {
 		<div v-else-if="!state.items.loading.value && !state.items.items.value.length" class="dt-empty">
 			<DtIcon name="inbox" />
 			<p class="dt-empty__line">{{ state.hasActiveQuery.value ? 'No records match your search/filters' : 'No records yet' }}</p>
-			<button v-if="!state.hasActiveQuery.value" type="button" class="dt-btn dt-btn--sm" @click="state.createRecord()">Create record</button>
+			<button v-if="!state.hasActiveQuery.value && !state.items.unavailable?.value" type="button" class="dt-btn dt-btn--sm" @click="state.createRecord()">Create record</button>
 		</div>
 
 		<template v-else>
@@ -212,9 +214,10 @@ function toggleBand(value: string): void {
 				<!-- WHERE IT COMES FROM, in the card's FOOTER ROW (cr-vscode-004: the corner mark covered the
 				     card's title and cover). Last, in flow — so it can never sit over a field value or the
 				     cover at any width. An own record wears nothing (`lib/sources.ts`, rule 1). -->
-				<footer v-if="state.sourceOf?.(record) || state.stubOf?.(record)" class="dt-card-foot">
+				<footer v-if="state.sourceOf?.(record) || state.stubOf?.(record) || notesOfRow(record).length" class="dt-card-foot">
 					<SourceMark v-if="state.sourceOf?.(record)" class="dt-card-source" v-bind="state.sourceOf?.(record)!" />
 					<StubNote v-if="state.stubOf?.(record)" v-bind="state.stubOf?.(record)!" :sources="state.sourceFacets?.value" />
+					<NoteMark v-if="notesOfRow(record).length" :notes="notesOfRow(record)" />
 				</footer>
 			</article>
 			</div>
