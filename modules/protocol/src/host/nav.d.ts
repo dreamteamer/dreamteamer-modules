@@ -52,6 +52,7 @@ export declare function groupTopLevel(descriptors: Descriptor[], declared: strin
     top: Descriptor[];
     folders: NavFolder[];
 };
+export declare function compareChildren(a: NavFolder, b: NavFolder): number;
 export declare function foldSameLabel(folders: NavFolder[], titleOf: Map<string, string | undefined>, parentKey?: string): NavFolder[];
 export type NavEntry = {
     kind: "collection";

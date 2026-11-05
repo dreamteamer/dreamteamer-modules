@@ -16,6 +16,7 @@ export declare class WorkspaceApi {
     private activityReads;
     private activityPages;
     private activityScopes;
+    private sessionsFrom;
     private activity;
     reload(): void;
     private runtimeModulesCache;

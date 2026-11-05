@@ -12,7 +12,7 @@ import { forgetAhead, locateRecord, repoStateKeys } from "./repo-state.js";
 import { collectionSources, moduleSource, runtimeSources, sourceOfFile, sourcesContext, sourcesStack, withoutSourceClauses } from "./sources.js";
 import { createInLayer } from "./layer-write.js";
 import { byId, notesFor } from "./next-notes.js";
-import { refsIn } from "./note-refs.js";
+import { recordDirsOrNone, unreadableReason } from "./record-dirs.js";
 export class ApiFailure extends Error {
     status;
     constructor(message, status) {
@@ -46,7 +46,7 @@ export class WorkspaceApi {
         const descs = [...store.descriptors.values()];
         const recordDirsOf = (id) => descs
             .filter((d) => !eng.descriptor.isRuntime(d) && eng.descriptor.moduleOf(d) === id)
-            .flatMap((d) => store.recordDirs(d).map((dir) => path.relative(this.root, dir).split(path.sep).join("/")));
+            .flatMap((d) => recordDirsOrNone(store, d).map((dir) => path.relative(this.root, dir).split(path.sep).join("/")));
         const picked = moduleId ? modules.filter((m) => m.id === moduleId) : modules;
         const npm = (m) => m.location === "node_modules" || (m.path ?? "").split("/").includes("node_modules");
         let scopes = picked.flatMap((m) => {
@@ -61,6 +61,15 @@ export class WorkspaceApi {
         if (source)
             scopes = scopes.filter((s) => repoName(s.repo, workspaceName) === source);
         return scopes;
+    }
+    sessionsFrom() {
+        const d = this.store.descriptors.get("sessions");
+        if (!d)
+            return null;
+        const unavailable = unreadableReason(d, this.store.descriptors);
+        if (unavailable)
+            return { unavailable };
+        return { roots: collectionSources(this.root, d, this.sourcesCtx()).map((s) => s.name) };
     }
     async activity(moduleId, limit, offset, settled, source) {
         const key = `${moduleId ?? ""}\0${source ?? ""}\0${limit}\0${offset}`;
@@ -340,10 +349,7 @@ export class WorkspaceApi {
         }
         if (seg[0] === "notes" && seg.length === 2 && method === "GET") {
             const ids = (query.get("ids") ?? "").split(",").map((s) => s.trim()).filter(Boolean);
-            return { notes: notesFor(store, seg[1], ids) };
-        }
-        if (seg[0] === "sessions" && seg[1] === "running" && seg.length === 2 && method === "GET") {
-            return this.runningSessions();
+            return { notes: notesFor(store, seg[1], ids), sessionsFrom: this.sessionsFrom() };
         }
         if (seg[0] === "commit" && seg.length === 1 && method === "POST") {
             if (!(body?.dryRun === true || query.get("dry-run") === "true"))
@@ -384,78 +390,13 @@ export class WorkspaceApi {
                 + `(encodeURIComponent("${candidate}")), or it splits into extra path segments.`, 404);
         }
     }
-    runningSessions() {
-        const eng = engine();
-        const store = new eng.Store(eng.ws);
-        if (!store.descriptors.has("sessions"))
-            return { state: "absent", sessions: [] };
-        let all;
-        try {
-            all = [...store.readAll("sessions")];
-        }
-        catch (e) {
-            return { state: "unreadable", reason: String(e?.message ?? e).split("\n")[0], sessions: [] };
-        }
-        const shown = (v) => (v instanceof Date ? v.toISOString() : v == null ? undefined : String(v));
-        const at = (f) => Date.parse(shown(f.heartbeat ?? f.started) ?? "") || 0;
-        const running = all.filter((s) => s.fields.status === "running").sort((a, b) => at(b.fields) - at(a.fields));
-        const collections = [...store.descriptors.keys()];
-        const split = (ref) => refsIn(ref, collections).find((r) => r.start === 0 && r.end === ref.length);
-        const wanted = new Map();
-        for (const s of running)
-            for (const ref of [].concat(s.fields.records ?? [])) {
-                const r = split(String(ref));
-                if (r)
-                    (wanted.get(r.collection) ?? wanted.set(r.collection, new Set()).get(r.collection)).add(r.id);
-            }
-        const notes = new Map();
-        for (const [c, ids] of wanted)
-            notes.set(c, byId(notesFor(store, c, [...ids])));
-        let fsDescs;
-        const titleOf = (c, id) => {
-            const d = (fsDescs ??= loadDescriptors(this.root)).find((x) => x.name === c);
-            if (!d)
-                return undefined;
-            const t = recordTitle(this.root, d, id);
-            return t && t !== id ? t : undefined;
-        };
-        return {
-            state: "ok",
-            sessions: running.map(({ id, fields }) => ({
-                id,
-                name: String(fields.name ?? id),
-                ...(fields.worker ? { worker: String(fields.worker) } : {}),
-                ...(fields.harness ? { harness: String(fields.harness) } : {}),
-                ...(fields.host ? { host: String(fields.host) } : {}),
-                started: shown(fields.started),
-                ...(fields.heartbeat ? { heartbeat: shown(fields.heartbeat) } : {}),
-                records: [].concat(fields.records ?? []).map((raw) => {
-                    const ref = String(raw);
-                    const r = split(ref);
-                    if (!r || !this.holds(store, r.collection, r.id))
-                        return { ref, notes: [] };
-                    const lines = notes.get(r.collection)?.get(r.id) ?? [];
-                    const anySession = lines.some((n) => n.refs.some((x) => x.collection === "sessions"));
-                    const mine = anySession ? lines.filter((n) => n.refs.some((x) => x.ref === `sessions/${id}`)) : lines;
-                    const title = titleOf(r.collection, r.id);
-                    return { ref, collection: r.collection, id: r.id, ...(title ? { title } : {}), notes: mine };
-                }),
-            })),
-        };
-    }
-    holds(store, collection, id) {
-        try {
-            store.read(collection, id);
-            return true;
-        }
-        catch {
-            return false;
-        }
-    }
     listRecords(name, query, opts = {}) {
         const store = this.store;
         const eng = engine();
         const d = store.descriptor(name);
+        const unavailable = unreadableReason(d, store.descriptors);
+        if (unavailable)
+            return { records: [], total: 0, sources: [], unavailable };
         const bf = eng.bodyField(d);
         const descriptors = [...store.descriptors.values()];
         const history = gitHistoryMap(this.root, store.recordDirs(d), (dir) => repoOfPath(this.root, descriptors, dir));

@@ -25,6 +25,7 @@ export interface DescriptorStorage {
         collection?: string;
         id?: string;
     };
+    unavailable?: string | null;
     max_bytes?: number;
     accept?: string[];
     roots: Array<{
