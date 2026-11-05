@@ -205,17 +205,9 @@ eligible.
 What the workspace's installed extensions say about records — the lines `dt next` prints under its
 commands (a session holding a record, say). Query `ids=<id>,<id>`. `200 { notes: [{ id, text, refs, … }] }`,
 each reference in a line marked by whether this workspace holds it. `200 { notes: [] }` on an engine that
-predates contributed notes.
-
-### GET /sessions/running
-
-The sessions now running in this workspace, newest heartbeat first, with the notes on the records each
-holds — what an Activity page shows. `200 { state, sessions: [...] }`; `state` is `absent` when the workspace
-has no `sessions` collection, `unreadable` (with a `reason`) when its records cannot be read.
-
-**Optional.** A host whose core keeps no running sessions (`@dreamteamer/core` 0.9.0 and later) does not
-serve it and answers `404`; the contract suite skips the case then, and holds a host that does serve it to
-the shape above.
+predates contributed notes. The answer also says where the host reads sessions from — `sessionsFrom`: `null` when the
+workspace has no `sessions` collection, `{ unavailable }` with the reason when its records cannot be read, else
+`{ roots: [<source name>, …] }` — which a record page names beside its sessions.
 
 ### POST /commit
 

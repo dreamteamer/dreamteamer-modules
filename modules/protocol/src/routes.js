@@ -31,8 +31,6 @@ export const ROUTES = [
 	{ id: 'revert', method: 'POST', pattern: '/collections/:collection/records-revert/*id', doc: 'post-collections-collection-records-revert-id' },
 	{ id: 'commands', method: 'GET', pattern: '/commands/:collection', doc: 'get-commands-collection' },
 	{ id: 'notes', method: 'GET', pattern: '/notes/:collection', doc: 'get-notes-collection' },
-	// optional: answered by a host whose core still keeps running sessions; core 0.9.0 keeps none, and its hosts drop it
-	{ id: 'sessions-running', method: 'GET', pattern: '/sessions/running', doc: 'get-sessions-running', optional: true },
 	{ id: 'commit', method: 'POST', pattern: '/commit', doc: 'post-commit' },
 	{ id: 'history', method: 'GET', pattern: '/history/:collection/*id', doc: 'get-history-collection-id' },
 	{ id: 'history-diff', method: 'GET', pattern: '/history-diff/:collection/*id', doc: 'get-history-diff-collection-id' },

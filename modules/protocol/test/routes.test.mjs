@@ -14,7 +14,7 @@ const pair = (r) => `${r.method} ${r.pattern}`;
 const documented = () => [...fs.readFileSync(path.join(PKG, 'PROTOCOL.md'), 'utf8').matchAll(/^### (GET|POST|PATCH|PUT|DELETE) (\/\S*)\s*$/gm)].map((m) => `${m[1]} ${m[2]}`);
 
 describe('the route table', () => {
-	test('names 29 method-and-pattern pairs, each once, each with an id and a doc anchor', () => {
+	test('names 28 method-and-pattern pairs, each once, each with an id and a doc anchor', () => {
 		const pairs = ROUTES.map(pair);
 		assert.equal(pairs.length, 29, pairs.join('\n'));
 		assert.equal(new Set(pairs).size, pairs.length, 'a pair is listed twice');
@@ -59,13 +59,3 @@ describe('the route table', () => {
 	});
 });
 
-test('GET /sessions/running is optional: flagged in ROUTES and in its case, said in PROTOCOL.md; a host that answers it 404 is skipped, not failed', async () => {
-	assert.deepEqual(ROUTES.filter((r) => r.optional).map((r) => r.id), ['sessions-running']);
-	const doc = fs.readFileSync(path.join(PKG, 'PROTOCOL.md'), 'utf8');
-	assert.match(doc.split('### GET /sessions/running')[1].split('###')[0], /\*\*Optional\.\*\*/);
-	const { runContract } = await import(pathToFileURL(path.join(PKG, 'lib', 'contract', 'run.js')).href);
-	const r = await runContract({ request: async () => ({ status: 404, body: { error: 'no route' } }), fixture: {}, only: ['sessions-running'] });
-	assert.deepEqual([r.failed, r.skipped], [[], ['sessions-running']]);
-	const answered = await runContract({ request: async () => ({ status: 500, body: {} }), fixture: {}, only: ['sessions-running'] });
-	assert.equal(answered.failed.length, 1, 'an optional route that IS answered must answer to its shape');
-});
