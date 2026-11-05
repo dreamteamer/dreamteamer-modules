@@ -82,3 +82,30 @@ test('no note: nothing is drawn, not even an empty band', async () => {
 	const root = await mount({ collection: 'rnd/change-requests', id: 'cr-a' });
 	assert.equal(find(root, (n) => hasClass(n, 'dt-next-notes')), null);
 });
+
+// --- cr-vscode-019, acceptance line 3: where the sessions were read from, always ------------------
+test('the record page names where its sessions were read from even with no note (cr-vscode-019 t3)', async () => {
+	resetHost();
+	onHostRequest((method, path) => {
+		if (method === 'GET' && path.startsWith('/notes/')) return { notes: [], sessionsFrom: { roots: ['my-hq', 'project-a'] } };
+		return {};
+	});
+	const root = await mount({ collection: 'rnd/change-requests', id: 'cr-a' });
+	for (let i = 0; i < 5; i++) await Promise.resolve();
+	const line = find(root, (n) => hasClass(n, 'dt-sessions-from'));
+	assert.ok(line, 'the line is drawn');
+	assert.equal(text(line!).replace(/\s+/g, ' ').trim(), 'Sessions read from: my-hq, project-a');
+});
+
+test('sessions not read on this machine: the reason; no sessions collection: no line (cr-vscode-019 t3)', async () => {
+	resetHost();
+	let answer: unknown = { notes: [], sessionsFrom: { unavailable: 'SITTINGS_FOLDER is not set' } };
+	onHostRequest((method, path) => (method === 'GET' && path.startsWith('/notes/') ? answer : {}));
+	const unread = await mount({ collection: 'things', id: 'a' });
+	for (let i = 0; i < 5; i++) await Promise.resolve();
+	assert.match(text(find(unread, (n) => hasClass(n, 'dt-sessions-from'))!), /Sessions not read on this machine: SITTINGS_FOLDER is not set/);
+	answer = { notes: [], sessionsFrom: null };
+	const none = await mount({ collection: 'things', id: 'b' });
+	for (let i = 0; i < 5; i++) await Promise.resolve();
+	assert.equal(find(none, (n) => hasClass(n, 'dt-sessions-from')), null);
+});

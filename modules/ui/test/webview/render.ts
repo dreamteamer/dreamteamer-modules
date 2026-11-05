@@ -46,7 +46,7 @@ const ELEMENT_METHODS: Record<string, unknown> = {
 
 function node(tag: string): TestNode {
 	const n: TestNode = { tag, props: {}, children: [], parent: null };
-	for (const [key, value] of Object.entries(ELEMENT_METHODS)) Object.defineProperty(n, key, { value, enumerable: false });
+	for (const [key, value] of Object.entries(ELEMENT_METHODS)) Object.defineProperty(n, key, { value, enumerable: false, writable: true, configurable: true });
 	return n;
 }
 

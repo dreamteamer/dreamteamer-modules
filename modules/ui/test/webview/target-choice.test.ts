@@ -92,7 +92,14 @@ test('New on a list reading two writable sources opens the choice before the for
 	const rows = targetRows(root);
 	assert.deepEqual(rows.map((r) => r.props['data-target']), ['my-hq', 'project-a']);
 	assert.deepEqual(rows.map(glyphOf), ['edit', 'edit'], 'each with its mark and the pencil that says it writes');
-	assert.match(text(find(root, (n) => hasClass(n, 'dt-target-choice__hidden'))!), /1 other source takes no new record/);
+	// cr-vscode-016: the paragraph is one muted '+N not offered' line, the reason on its card
+	assert.equal(find(root, (n) => hasClass(n, 'dt-target-choice__hidden')), null);
+	const more = find(root, (n) => hasClass(n, 'dt-target-choice__more'))!;
+	assert.equal(text(more).trim(), '+1 not offered');
+	(more.props['onMouseenter'] as () => void)();
+	await settle();
+	assert.match(text(find(root, (n) => n.props['role'] === 'tooltip')!), /project-b has no compiled tasks/);
+	(more.props['onMouseleave'] as () => void)();
 	await press(rows[1]!);
 	assert.equal(popover(root), null, 'a pick closes it');
 	assert.equal(router.currentRoute.value.path, '/content/tasks/+');
