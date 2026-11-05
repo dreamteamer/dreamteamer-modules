@@ -68,11 +68,11 @@ test('a file opens on the files origin, a route in a new tab', () => {
 	assert.deepEqual(opened, ['http://127.0.0.1:9/key/w/data/notes/a%20b.md?frame=1', '#/collections/tasks']);
 });
 
-test('a server-sent event arrives as a window message', () => {
+test('a server-sent invalidation arrives as a window message asking for the page too (the page is the only view)', () => {
 	messages.length = 0;
 	source.onmessage?.({ data: '{"type":"dt:invalidate","scope":"data"}' });
 	source.onmessage?.({ data: 'not json' });
-	assert.deepEqual(messages, [{ type: 'dt:invalidate', scope: 'data' }]);
+	assert.deepEqual(messages, [{ type: 'dt:invalidate', scope: 'data', pages: true }]);
 });
 
 test('a reconnected event stream refetches: what changed while it was down is never missed', () => {
@@ -80,5 +80,5 @@ test('a reconnected event stream refetches: what changed while it was down is ne
 	source.onopen?.();
 	assert.deepEqual(messages, [], 'the first open is not a change');
 	source.onopen?.();
-	assert.deepEqual(messages, [{ type: 'dt:invalidate', scope: 'schema' }]);
+	assert.deepEqual(messages, [{ type: 'dt:invalidate', scope: 'schema', pages: true }]);
 });

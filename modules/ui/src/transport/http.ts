@@ -29,13 +29,19 @@ export function httpTransport(): Transport {
 		// EventSource reconnects by itself, but a change made while it was down is never sent again: on every
 		// open after the first, refetch everything (schema and records) as an invalidation would
 		let opened = false;
+		// In a browser the page is the only view of the workspace, so an invalidation re-fetches the open page
+		// too (`pages`): a `dt set` in a terminal, an agent's write or a `git pull` redraws the list or record
+		// without a reload. Under VS Code the same flag comes only from the refresh button — the editor's
+		// native tree already shows the change, and the watcher there would be a request storm; here the
+		// server debounces its events, so one burst is one re-fetch.
 		events.onopen = () => {
-			if (opened) post({ type: 'dt:invalidate', scope: 'schema' });
+			if (opened) post({ type: 'dt:invalidate', scope: 'schema', pages: true });
 			opened = true;
 		};
 		events.onmessage = (e) => {
 			try {
-				post(JSON.parse(e.data));
+				const m = JSON.parse(e.data) as { type?: string; pages?: boolean };
+				post(m?.type === 'dt:invalidate' ? { ...m, pages: true } : m);
 			} catch {
 				/* a keep-alive or a malformed event — nothing to deliver */
 			}
