@@ -5,7 +5,7 @@
  * and marked by whether this workspace holds them (`src/next-notes.ts`, `src/note-refs.ts`). Nothing
  * here reads the words: the sentence is the extension's (core's "in session by …"), drawn verbatim.
  */
-import type { NextNote } from '../../../src/next-notes';
+import type { NextNote } from '@dreamteamer/protocol/host/next-notes';
 
 export type { NextNote };
 
