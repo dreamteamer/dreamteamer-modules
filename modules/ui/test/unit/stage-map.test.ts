@@ -105,3 +105,83 @@ test('empty is absent, blank, or an empty list — false and 0 are values', () =
 	for (const v of [undefined, null, '', []]) assert.equal(isEmptyValue(v), true);
 	for (const v of [0, false, ['x'], 'x']) assert.equal(isEmptyValue(v), false);
 });
+
+// cr-vscode-015 — the one-line map's readings. Gate shapes are rnd 0.8.0's real gates, letters per
+// binding in declared order: d done · a available · n not-applicable.
+import { CARD_CLOSED, cardLeft, cardState, currentStage, stageMark, type CardEvent, type CardState, type GateEntry } from '../../src/lib/stage-map';
+
+const g = (letters: string): GateEntry[] =>
+	[...letters].map((l, i) => ({ binding: `b${i}`, name: i === 0 ? 'rnd/work' : 'rnd/review', state: l === 'd' ? 'done' : l === 'a' ? 'available' : 'not-applicable' }));
+const shape = (...stages: string[]) => stages.map(g);
+
+describe('cr-vscode-015 — stageState reads work vs review structurally', () => {
+	test('an available binding after only not-applicable ones is the work (deploy waiting on /rnd:release reads ready)', () => {
+		assert.equal(stageState(g('nan')), 'ready');
+		assert.equal(stageState(g('da')), 'review');
+		assert.equal(stageState(g('ddda')), 'review');
+		assert.equal(stageState(g('and')), 'ready');
+	});
+});
+
+describe('cr-vscode-015 — currentStage follows the first available binding', () => {
+	test('a review open on implement', () => assert.equal(currentStage(shape('ddd', 'dd', 'da', 'nn', 'nnn')), 2));
+	test('cr-rnd-001: implement and test skipped, deploy waiting on the release', () => assert.equal(currentStage(shape('ddd', 'dd', 'dn', 'nd', 'nan')), 4));
+	test('cr-core-001: shipped with two stages skipped — none current', () => assert.equal(currentStage(shape('ddd', 'dd', 'dn', 'nd', 'ddd')), -1));
+	test('a design stage passed over, deploy available', () => assert.equal(currentStage(shape('nnd', 'dd', 'dd', 'dd', 'nan')), 4));
+	test('nothing available: the stage after the last passed one', () => assert.equal(currentStage(shape('ddd', 'nn', 'nn', 'nn', 'nnn')), 1));
+	test('nothing available and nothing passed: none', () => assert.equal(currentStage(shape('nnn', 'nn', 'nn', 'nn', 'nnn')), -1));
+});
+
+describe('cr-vscode-015 — stageMark', () => {
+	test('passed wins, then current, then skipped before it, ahead after it', () => {
+		assert.equal(stageMark(3, 1, 'passed'), 'passed');
+		assert.equal(stageMark(1, 1, 'ready'), 'current');
+		assert.equal(stageMark(0, 2, 'not-started'), 'skipped');
+		assert.equal(stageMark(3, 2, 'not-started'), 'ahead');
+		assert.equal(stageMark(2, -1, 'not-started'), 'skipped', 'with none current, a stage not passed was passed over');
+	});
+});
+
+describe('cr-vscode-015 — cardLeft keeps the card inside the map', () => {
+	test('left edge, middle, right edge, wider than the map', () => {
+		assert.equal(cardLeft(0, 360, 800), 0);
+		assert.equal(cardLeft(200, 360, 800), 200);
+		assert.equal(cardLeft(700, 360, 800), 440);
+		assert.equal(cardLeft(100, 360, 300), 0);
+	});
+});
+
+describe('cr-vscode-015 — cardState: the most recent intent picks the card', () => {
+	const run = (events: CardEvent[], from: CardState = CARD_CLOSED): Array<number | null> => {
+		const opens: Array<number | null> = [];
+		let s = from;
+		for (const e of events) { s = cardState(s, e); opens.push(s.open); }
+		return opens;
+	};
+	const enter = (i: number, cardHasFocus = false): CardEvent => ({ type: 'enter', i, cardHasFocus });
+	const leave = (i: number): CardEvent => ({ type: 'leave', i });
+	const grace = (cardHasFocus = false): CardEvent => ({ type: 'grace', cardHasFocus });
+	const focus = (i: number, keyboard: boolean, inCard = false): CardEvent => ({ type: 'focus', i, keyboard, inCard });
+	test('A: a clicked (mouse-focused) chip never pins its card', () => {
+		assert.deepEqual(run([enter(2), focus(2, false), leave(2), enter(4), leave(4), grace()]), [2, 2, 2, 4, 4, null]);
+	});
+	test('B: keyboard focus, Escape, pointer into another stage', () => {
+		assert.deepEqual(run([focus(2, true), { type: 'escape', i: 2 }, focus(2, true), enter(4), leave(4), grace()]), [2, null, null, 4, 4, null]);
+	});
+	test('C: a mouse-focused link in a card does not hold it', () => {
+		assert.deepEqual(run([enter(2), focus(2, false, true), enter(4, true), leave(4), grace(true)]), [2, 2, 4, 4, null]);
+	});
+	test('a keyboard user inside a card keeps it whatever the pointer does', () => {
+		assert.deepEqual(run([focus(2, true), focus(2, true, true), enter(4, true), leave(4), grace(true)]), [2, 2, 2, 2, 2]);
+	});
+	test('keyboard focus on the chip only: the pointer takes the card, the grace gives it back', () => {
+		assert.deepEqual(run([focus(2, true), enter(4), leave(4), grace()]), [2, 4, 4, 2]);
+	});
+	test('a stale keyboard mark: tab in, then a mouse click inside the card clears it', () => {
+		assert.deepEqual(run([focus(2, true), focus(2, false, true), enter(4, true), leave(4), grace(true)]), [2, 2, 4, 4, null]);
+	});
+	test('focus leaving the stage closes its card unless the pointer is on it', () => {
+		assert.deepEqual(run([focus(2, true), { type: 'blur', i: 2 }]), [2, null]);
+		assert.deepEqual(run([enter(2), focus(2, true), { type: 'blur', i: 2 }]), [2, 2, 2]);
+	});
+});

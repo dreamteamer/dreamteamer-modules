@@ -22,6 +22,7 @@ test('two writable sources, nothing narrowed: CHOOSE between them (line 5)', () 
 	assert.deepEqual(names(ch.targets), ['my-hq', 'project-a']);
 	assert.deepEqual(ch.excluded, [], 'un-narrowed, the rest is a count, not a row each');
 	assert.equal(ch.hidden, 1, 'project-b — the absent project-c is not a source anyone reads');
+	assert.equal(ch.hidden, ch.others.length, 'the count is the sources the menu names on its card (cr-vscode-016)');
 });
 
 test('narrowed to exactly ONE writable source: no choice, straight to it (line 6)', () => {

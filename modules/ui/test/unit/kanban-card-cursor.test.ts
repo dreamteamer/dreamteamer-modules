@@ -21,13 +21,13 @@ function rules(file: string): Array<{ selector: string; body: string }> {
 }
 
 test('the shared interactive card draws the pointer', () => {
-	const card = rules('src/styles/base.css').find((r) => r.selector === '.dt-card--interactive');
+	const card = rules('webview/src/styles/base.css').find((r) => r.selector === '.dt-card--interactive');
 	assert.ok(card, 'base.css styles .dt-card--interactive');
 	assert.match(card!.body, /cursor\s*:\s*pointer/);
 });
 
 test('ListKanban.vue: no kanban card rule overrides the cursor — a locked card stays clickable-looking', () => {
-	const offenders = rules('src/lists/ListKanban.vue').filter(
+	const offenders = rules('webview/src/lists/ListKanban.vue').filter(
 		(r) => /\.dt-kanban-core-card\b/.test(r.selector) && /cursor\s*:/.test(r.body),
 	);
 	assert.deepEqual(
