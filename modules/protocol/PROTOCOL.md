@@ -255,7 +255,7 @@ Host to app:
 
 | type | payload | meaning |
 |---|---|---|
-| `dt:invalidate` | `{ scope: "data" \| "schema" }` | records changed (`data`), or the compiled runtime changed (`schema`): refetch what is drawn |
+| `dt:invalidate` | `{ scope: "data" \| "schema", pages?: true }` | records changed (`data`), or the compiled runtime changed (`schema`): refetch what is drawn. With `pages`, the open page re-fetches its records too, after the schema settles: a browser host sets it on every event (the page is the only view there), an editor host only from its refresh button (its native tree already shows the change) |
 | `dt:navigate` | `{ route }` | go to this route |
 | `dt:tab` | `{ route, pinned, active }` | the editor tab's identity (VS Code only) |
 | `dt:rpc-reply` | `{ id, ok, data?, error?, status? }` | the answer to a `dt:rpc` (VS Code only; HTTP answers the request itself) |

@@ -35,8 +35,6 @@ export declare class WorkspaceApi {
     private route;
     private currentHandle;
     private hintUnencoded;
-    private runningSessions;
-    private holds;
     private listRecords;
     private readRecord;
     private createRecord;
