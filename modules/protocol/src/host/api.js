@@ -11,6 +11,8 @@ import { recordTitle } from "./titles.js";
 import { forgetAhead, locateRecord, repoStateKeys } from "./repo-state.js";
 import { collectionSources, moduleSource, runtimeSources, sourceOfFile, sourcesContext, sourcesStack, withoutSourceClauses } from "./sources.js";
 import { createInLayer } from "./layer-write.js";
+import { byId, notesFor } from "./next-notes.js";
+import { recordDirsOrNone, unreadableReason } from "./record-dirs.js";
 export class ApiFailure extends Error {
     status;
     constructor(message, status) {
@@ -44,7 +46,7 @@ export class WorkspaceApi {
         const descs = [...store.descriptors.values()];
         const recordDirsOf = (id) => descs
             .filter((d) => !eng.descriptor.isRuntime(d) && eng.descriptor.moduleOf(d) === id)
-            .flatMap((d) => store.recordDirs(d).map((dir) => path.relative(this.root, dir).split(path.sep).join("/")));
+            .flatMap((d) => recordDirsOrNone(store, d).map((dir) => path.relative(this.root, dir).split(path.sep).join("/")));
         const picked = moduleId ? modules.filter((m) => m.id === moduleId) : modules;
         const npm = (m) => m.location === "node_modules" || (m.path ?? "").split("/").includes("node_modules");
         let scopes = picked.flatMap((m) => {
@@ -59,6 +61,15 @@ export class WorkspaceApi {
         if (source)
             scopes = scopes.filter((s) => repoName(s.repo, workspaceName) === source);
         return scopes;
+    }
+    sessionsFrom() {
+        const d = this.store.descriptors.get("sessions");
+        if (!d)
+            return null;
+        const unavailable = unreadableReason(d, this.store.descriptors);
+        if (unavailable)
+            return { unavailable };
+        return { roots: collectionSources(this.root, d, this.sourcesCtx()).map((s) => s.name) };
     }
     async activity(moduleId, limit, offset, settled, source) {
         const key = `${moduleId ?? ""}\0${source ?? ""}\0${limit}\0${offset}`;
@@ -170,6 +181,12 @@ export class WorkspaceApi {
         const pathname = qIndex === -1 ? rawPath : rawPath.slice(0, qIndex);
         const query = new URLSearchParams(qIndex === -1 ? "" : rawPath.slice(qIndex + 1));
         const seg = pathname.replace(/^\/+/, "").split("/").map(decodeURIComponent);
+        if (method !== "GET") {
+            const dry = query.getAll("dry-run");
+            if (dry.length && !(dry.length === 1 && (dry[0] === "true" || dry[0] === "false"))) {
+                throw new ApiFailure(`${method} ${pathname} does not understand ?dry-run=${dry.join("&dry-run=")} — use ?dry-run=true or ?dry-run=false; nothing was written`, 400);
+            }
+        }
         const store = this.fresh();
         const eng = engine();
         if (seg[0] === "info" && method === "GET") {
@@ -277,7 +294,7 @@ export class WorkspaceApi {
             if (tail === "records") {
                 if (id === "") {
                     if (method === "GET")
-                        return this.listRecords(name, query);
+                        return this.listRecords(name, query, { notes: query.get("notes") === "1" });
                     if (method === "POST")
                         return writtenAsSource ? this.systemWrite("add", name, "", query, body) : this.createRecord(name, body, query.get("target"));
                 }
@@ -324,11 +341,15 @@ export class WorkspaceApi {
                 return store.rename(name, body?.old, body?.new);
             }
             if (tail === "records-revert" && method === "POST")
-                return store.revert(name, id, String(body?.hash ?? ""));
+                return store.revert(name, id, revisionParam(body?.hash));
         }
         if (seg[0] === "commands" && seg.length === 2 && method === "GET") {
             const ids = (query.get("ids") ?? "").split(",").map((s) => s.trim()).filter(Boolean);
             return eng.commandsFor(store, seg[1], ids);
+        }
+        if (seg[0] === "notes" && seg.length === 2 && method === "GET") {
+            const ids = (query.get("ids") ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+            return { notes: notesFor(store, seg[1], ids), sessionsFrom: this.sessionsFrom() };
         }
         if (seg[0] === "commit" && seg.length === 1 && method === "POST") {
             if (!(body?.dryRun === true || query.get("dry-run") === "true"))
@@ -342,7 +363,7 @@ export class WorkspaceApi {
         if (seg[0] === "history" && method === "GET")
             return this.history(seg[1] ?? "", seg.slice(2).join("/"));
         if (seg[0] === "history-diff" && method === "GET")
-            return this.historyDiff(seg[1] ?? "", seg.slice(2).join("/"), query.get("hash") ?? "HEAD");
+            return this.historyDiff(seg[1] ?? "", seg.slice(2).join("/"), revisionParam(query.get("hash") ?? "HEAD"));
         if (seg[0] === "reload" && method === "POST") {
             this.reload();
             return { ok: true };
@@ -369,10 +390,13 @@ export class WorkspaceApi {
                 + `(encodeURIComponent("${candidate}")), or it splits into extra path segments.`, 404);
         }
     }
-    listRecords(name, query) {
+    listRecords(name, query, opts = {}) {
         const store = this.store;
         const eng = engine();
         const d = store.descriptor(name);
+        const unavailable = unreadableReason(d, store.descriptors);
+        if (unavailable)
+            return { records: [], total: 0, sources: [], unavailable };
         const bf = eng.bodyField(d);
         const descriptors = [...store.descriptors.values()];
         const history = gitHistoryMap(this.root, store.recordDirs(d), (dir) => repoOfPath(this.root, descriptors, dir));
@@ -417,7 +441,7 @@ export class WorkspaceApi {
                 facetRows = unsourced === undefined ? rows : rows.filter((r) => eng.matchesFilter(r, unsourced, resolve));
             rows = rows.filter((r) => eng.matchesFilter(r, f, resolve));
         }
-        const KNOWN = new Set(["limit", "offset", "sort", "q", "filter", "with-body"]);
+        const KNOWN = new Set(["limit", "offset", "sort", "q", "filter", "with-body", "notes"]);
         const q = query.get("q")?.toLowerCase();
         const narrow = (list) => {
             for (const [k, v] of query.entries()) {
@@ -437,6 +461,15 @@ export class WorkspaceApi {
         const offset = Number(query.get("offset") ?? 0);
         const limit = Number(query.get("limit") ?? 200);
         rows = rows.slice(offset, offset + limit);
+        if (opts.notes && rows.length) {
+            const notes = byId(notesFor(store, name, rows.map((r) => String(r.id))));
+            if (notes.size)
+                for (const r of rows) {
+                    const n = notes.get(String(r.id));
+                    if (n)
+                        r.$notes = n;
+                }
+        }
         if (bf && query.get("with-body") !== "true")
             for (const r of rows)
                 delete r[bf];
@@ -731,4 +764,10 @@ function opOf(schema, kind, verb) {
         }
         return fn;
     };
+}
+export function revisionParam(value) {
+    const v = typeof value === "string" ? value : "";
+    if (v === "HEAD" || /^[0-9a-f]{4,40}$/.test(v))
+        return v;
+    throw new ApiFailure(`a revision is HEAD or a commit id of 4 to 40 hex characters (got ${JSON.stringify(String(value ?? "")).slice(0, 60)}) — nothing was run`, 400);
 }

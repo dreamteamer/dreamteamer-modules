@@ -150,18 +150,47 @@ export function groupTopLevel(descriptors, declared, workspaceModule, dependsOn,
         for (let parent = namespaceOf(key.slice(3)); parent; parent = namespaceOf(parent))
             folder(`ns:${parent}`);
     }
+    const homeOf = (d) => {
+        const ns = namespaceOf(d.name);
+        if (ns)
+            return `ns:${ns}`;
+        const owner = foldModuleOf(d);
+        if (!owner)
+            return undefined;
+        const folded = folderKeyOf(owner);
+        if (folded)
+            return folded;
+        const home = homeNamespaceOf(owner);
+        return home ? `ns:${home}` : undefined;
+    };
     const sectionParent = new Map();
-    for (const [key, f] of byKey) {
+    for (const [key, f] of [...byKey]) {
         if (!key.startsWith("grp:"))
             continue;
-        const homes = new Set();
-        for (const d of f.collections) {
-            const owner = foldModuleOf(d);
-            homes.add(owner ? folderKeyOf(owner) : undefined);
-        }
+        const homes = new Set(f.collections.map(homeOf));
         const [home] = homes;
-        if (homes.size === 1 && (home?.startsWith("mod:") || home?.startsWith("ns:")) && byKey.has(home))
+        if (homes.size !== 1 || !home)
+            continue;
+        if (home.startsWith("mod:") && byKey.has(home))
             sectionParent.set(key, home);
+        else if (home.startsWith("ns:") && (byKey.has(home) || f.collections.some((d) => namespaceOf(d.name)))) {
+            folder(home);
+            for (let parent = namespaceOf(home.slice(3)); parent; parent = namespaceOf(parent))
+                folder(`ns:${parent}`);
+            sectionParent.set(key, home);
+        }
+    }
+    const labelUnder = (key, parentKey) => groupLabel(key, titleOf, parentKey).trim().toLowerCase();
+    const parentKeyOf = (key) => {
+        const ns = key.startsWith("ns:") ? namespaceOf(key.slice(3)) : "";
+        return ns ? `ns:${ns}` : undefined;
+    };
+    for (const [key, home] of [...sectionParent]) {
+        if (labelUnder(key, home) !== labelUnder(home, parentKeyOf(home)))
+            continue;
+        byKey.get(home).collections.push(...byKey.get(key).collections);
+        byKey.delete(key);
+        sectionParent.delete(key);
     }
     const sorted = [...byKey.values()].sort((a, b) => a.key.localeCompare(b.key));
     const roots = [];
@@ -174,7 +203,21 @@ export function groupTopLevel(descriptors, declared, workspaceModule, dependsOn,
         else
             roots.push(f);
     }
+    for (const f of byKey.values())
+        f.children.sort(compareChildren);
     return { top, folders: foldSameLabel(roots, titleOf) };
+}
+export function compareChildren(a, b) {
+    const sa = a.key.startsWith("grp:"), sb = b.key.startsWith("grp:");
+    if (sa !== sb)
+        return sa ? -1 : 1;
+    if (sa) {
+        const low = (f) => Math.min(Infinity, ...f.collections.map((d) => engine().descriptor.displayOf(d).nav?.order ?? Infinity));
+        const d = low(a) - low(b);
+        if (d !== 0 && !Number.isNaN(d))
+            return d;
+    }
+    return a.key.localeCompare(b.key);
 }
 const FOLD_RANK = ["ns:", "mod:", "grp:"];
 const foldRank = (key) => {
@@ -191,7 +234,7 @@ export function foldSameLabel(folders, titleOf, parentKey) {
         const [keep, ...rest] = [...byLabel.get(labelOf(f))].sort((a, b) => foldRank(a.key) - foldRank(b.key) || a.key.localeCompare(b.key));
         if (keep !== f)
             continue;
-        const children = rest.length ? [...keep.children, ...rest.flatMap((r) => r.children)].sort((a, b) => a.key.localeCompare(b.key)) : keep.children;
+        const children = rest.length ? [...keep.children, ...rest.flatMap((r) => r.children)].sort(compareChildren) : keep.children;
         out.push({
             key: keep.key,
             collections: rest.length ? [...keep.collections, ...rest.flatMap((r) => r.collections)] : keep.collections,

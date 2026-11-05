@@ -16,6 +16,7 @@ export declare class WorkspaceApi {
     private activityReads;
     private activityPages;
     private activityScopes;
+    private sessionsFrom;
     private activity;
     reload(): void;
     private runtimeModulesCache;
@@ -58,3 +59,4 @@ export declare const MODIFIED_BY_KEY = "$last-modified-by";
 export declare const CREATED_BY_KEY = "$created-by";
 export declare const MODULE_KEY = "$module";
 export declare const DUPLICATES_KEY = "$duplicates";
+export declare function revisionParam(value: unknown): string;

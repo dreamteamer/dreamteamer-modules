@@ -81,6 +81,7 @@ export async function initEngine(root, opts = {}) {
         check: api.check,
         contributedViolations: api.contributedViolations,
         commandsFor: api.commandsFor,
+        contributedNotes: api["contributedNotes"],
         recordResolver: api.recordResolver,
         distinctValues: api.distinctValues,
         commitPending: api.commitPending,
