@@ -1,17 +1,20 @@
 name: ci
 
+# Every pushed branch, not only main (cr-modules-001): on a public repo a pushed ref is published the
+# moment it lands, and branch protection on main requires the `ci` context below on a branch's head
+# before main can be fast-forwarded to it.
 on:
   push:
-    branches: [main]
+    branches: ['**']
   pull_request:
 
 permissions:
   contents: read
 
 jobs:
-  # ⚠ WHY SHARDS. A private repo's runner has 2 vCPUs, so `node --test` ran one file at a time and one
-  # job was ~11 minutes, almost all of it inside `npm test` (run 41100010853: 674 s of top-level tests
-  # in a 725 s run). The suite is split into balanced shards (scripts/test-files.mjs) on BOTH Node
+  # ⚠ WHY SHARDS. When this repo was private its runner had 2 vCPUs, so `node --test` ran one file at a
+  # time and one job was ~11 minutes, almost all of it inside `npm test` (run 41100010853: 674 s of
+  # top-level tests in a 725 s run). The public runner has 4 vCPUs; the shard count is unchanged. The suite is split into balanced shards (scripts/test-files.mjs) on BOTH Node
   # versions — every file still runs on 20 and on 22, and tests/test-shards.test.mjs fails if any file
   # would fall outside every shard. The longest single file (proofs' prove.test.js, ~170 s on a runner)
   # is the floor; more shards than this cannot go below it.
@@ -51,3 +54,24 @@ jobs:
       # install IS the distribution smoke the old single package needed a separate step for.
       - name: tests
         run: node scripts/test.mjs --shard=${{ matrix.shard }}/4
+
+  # THE ONE CONTEXT BRANCH PROTECTION REQUIRES. Protection on main names `ci`, never the eight shard
+  # names above: a change to the shard count would otherwise leave a required context that never
+  # reports, and every push to main would wait on it. `if: always()` makes this job report even when a
+  # shard failed or was cancelled — and then it fails, so a red shard can never read as a green `ci`.
+  # tests/workflow-contexts.test.mjs pins the name.
+  ci:
+    name: ci
+    runs-on: ubuntu-latest
+    needs: verify
+    if: always()
+    steps:
+      - name: every shard passed
+        env:
+          VERIFY_RESULT: ${{ needs.verify.result }}
+        run: |
+          if [ "${VERIFY_RESULT:-}" != "success" ]; then
+            echo "::error::the test shards did not all pass (verify: ${VERIFY_RESULT:-none})"
+            exit 1
+          fi
+          echo "✔ every shard passed"
