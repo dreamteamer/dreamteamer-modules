@@ -104,13 +104,13 @@ display:
     order: 48
   list:
     columns:
+      - reviewed_on
       - name
       - kind
       - subject
       - change_request
       - status
       - verdict
-      - reviewed_on
     sort: -reviewed_on
   record:
     badge: verdict

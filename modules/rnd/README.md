@@ -106,6 +106,12 @@ with no open finding, orange when it left remarks, its description on hover; a s
 viewer draws chips. `dt check` warns — never fails — when `deployed` and `deployed_on` disagree, on an
 engine that has the warning channel (`CHECK_WARNINGS`); on one without it the rule is silent.
 
+**A change request is on a board.** Its `stage` names the gate it waits on — the verb `dt next` names, from
+`design` to `live-check`, then `done` or `rejected` — and the **Board** view (`rnd-change-requests-board`)
+draws the requests as kanban columns by it. The lifecycle writes it as it moves a request, never a person;
+`dt check` warns when it disagrees with the request's own record, and `migrate-change-request-stage` fills
+it on an upgrade and repairs one that drifted.
+
 ## the software factory
 
 rnd ships one workflow, `software-factory`, at `data/workflows/software-factory.workflow.md`: the

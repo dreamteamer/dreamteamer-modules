@@ -41,7 +41,7 @@ describe('rnd/change-requests.tags and its stage declaration', () => {
 		for (const s of o.stages) for (const m of s.reviews) for (const k of ['subject', 'since', 'before']) {
 			if (m[k] && m[k] !== 'self' && m[k] !== 'created') assert.ok(crDescriptor.fields[m[k]], `${s.tag}: ${k} names ${m[k]}, not a field`);
 		}
-		assert.deepEqual(crDescriptor.display.list.columns, ['created', 'status', 'name', 'tags', 'products', 'release']);
+		assert.deepEqual(crDescriptor.display.list.columns, ['created', 'status', 'stage', 'name', 'tags', 'products', 'release']);
 	});
 
 	test('a request with stage and free tags checks clean; a tag that breaks the convention is refused', () => {
@@ -111,7 +111,8 @@ describe('dt check: deployed and deployed_on agree, as a warning', async () => {
 		}
 		assert.match(r.stdout, /⚠ data\/rnd\/change-requests\/cr-tagged\.change-request\.md — tagged deployed but deployed_on is empty — set deployed_on, or remove the tag \(@dreamteamer\/rnd\)/);
 		assert.match(r.stdout, /⚠ data\/rnd\/change-requests\/cr-dated\.change-request\.md — deployed_on is set but the record is not tagged deployed/);
-		assert.doesNotMatch(r.stdout, /cr-both/);
+		// cr-both is consistent on the tag rule; rnd's stage rule (lib/cr-stage.mjs) may still name it, for its empty stage
+		assert.doesNotMatch(r.stdout, /cr-both\.change-request\.md — (tagged deployed|deployed_on is set)/);
 		assert.match(r.stdout, /✔ 0 violations/);
 	});
 });
@@ -168,7 +169,8 @@ describe('the 0.7.0 release', () => {
 		// the warning is silent on an engine without CHECK_WARNINGS, so the floor does not move
 		assert.equal(pkg.dreamteamer.engine, '>=0.38.0');
 		assert.match(read('UPDATING.md'), /## 0\.7\.0 — /);
-		assert.doesNotMatch(read('UPDATING.md'), /## Unreleased/);
+		// the stage tags' Unreleased section became 0.7.0; a later Unreleased section (the next release's) is not it
+		assert.doesNotMatch(read('UPDATING.md'), /## Unreleased[^\n]*stage tags/);
 		assert.match(read('README.md'), /## 0\.7\.0 — from 0\.6\.0/);
 	});
 });

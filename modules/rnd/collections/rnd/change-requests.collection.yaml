@@ -47,6 +47,25 @@ fields:
       - rejected
       - implemented
     default: suggested
+  stage:
+    type: string
+    description: 'Where the request is in the lifecycle — the gate `dt next` names on it, the column a board draws it in. Written by the lifecycle as it moves the request (each stage''s skill, and the review whose approve moves it), never by hand; `dt check` warns when it disagrees with the open gate or with the request''s own status, dates and links, and `migrate-change-request-stage` fills or repairs it.'
+    enum:
+      - design
+      - design-review
+      - acceptance
+      - plan
+      - plan-review
+      - implement
+      - code-review
+      - test
+      - test-review
+      - deploy
+      - live-check
+      - done
+      - rejected
+    display:
+      editable: false
   tags:
     type: string
     many: true
@@ -176,6 +195,7 @@ display:
     columns:
       - created
       - status
+      - stage
       - name
       - tags
       - products

@@ -1,0 +1,20 @@
+# Change requests as a board — one column per lifecycle stage, in the order the `stage` enum declares it,
+# so a card's column is the gate the request waits on (the verb `dt next` names on it). The lifecycle moves
+# the cards; `stage` is not editable in the editor. Every request on one page, so no column is cut.
+route: /rnd/change-requests/board
+scope: collection
+collection: collections/rnd/change-requests
+display:
+  nav:
+    title: Board
+    icon: project
+    order: 1
+  list:
+    layout: kanban
+    sort: '-created'
+    options:
+      lanes_by: stage
+      page_size: 100000
+      card_title: |-
+        **{{ name }}**
+        {{ key }} · {{ priority }}
