@@ -131,6 +131,12 @@ export function makeFixture({ engineDir: given, tmp = os.tmpdir() } = {}) {
 	const must = (r, what) => { if (r.status !== 0) throw new Error(`fixture ${what} failed:\n${r.stdout}\n${r.stderr}`); return r; };
 
 	git(['init', '-q']);
+	// a committer identity IN the repo, as any real workspace has one: the host under test commits system writes
+	// with its own process environment, and a runner whose git cannot auto-detect an e-mail (a hostname with no
+	// domain) refuses every such commit — 22 contract cases went red on CI that way while the fixture's own
+	// git() calls, which carry GIT_ENV, passed
+	git(['config', 'user.name', 'Dana Oren']);
+	git(['config', 'user.email', 'dana@northwind.example']);
 	must(dt('init'), 'init');
 	fs.mkdirSync(path.join(root, 'node_modules'), { recursive: true });
 	fs.symlinkSync(fs.realpathSync(engineDir), path.join(root, 'node_modules', 'dreamteamer'), 'dir');
@@ -150,6 +156,8 @@ export function makeFixture({ engineDir: given, tmp = os.tmpdir() } = {}) {
 	fs.writeFileSync(path.join(layer, 'package.json'), JSON.stringify({ name: LAYER, private: true, dreamteamer: { data_path: 'data' } }, null, '\t') + '\n');
 	fs.writeFileSync(path.join(layer, 'data', 'projects', 'harbor-mutual-archive.project.md'), '---\nname: Harbor Mutual archive\nstatus: paused\n---\nHeld by the layer.\n');
 	git(['init', '-q'], layer);
+	git(['config', 'user.name', 'Dana Oren'], layer);
+	git(['config', 'user.email', 'dana@northwind.example'], layer);
 	git(['add', '-A'], layer);
 	git(['commit', '-qm', 'layer: one project'], layer);
 	fs.appendFileSync(path.join(root, '.gitignore'), '\ngit_modules/\n');
