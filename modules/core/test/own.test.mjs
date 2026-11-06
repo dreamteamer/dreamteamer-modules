@@ -19,17 +19,18 @@ describe('the five collections core adds', () => {
 		assert.equal(d.fields.project.type, 'projects');
 		assert.equal(d.fields.tasks.type, 'tasks');
 		assert.equal(d.fields.outcome.body, true);
-		assert.match(d.fields.transcript.examples[0], /^\$\{env:FILES_FOLDER\}/);
+		assert.match(d.fields.transcript.examples[0], /^\$\{env:SESSIONS_FOLDER\}/);
 	});
-	test('sessions is kept in a per-machine folder: storage.path is ${env:SESSIONS_FOLDER}, and core declares the var', () => {
+	test('sessions are plain records in the workspace\'s data; SESSIONS_FOLDER names only the transcripts, and core declares it', () => {
 		const d = own('sessions');
-		assert.equal(d.storage.path, '${env:SESSIONS_FOLDER}');
+		assert.equal(d.storage.path, 'data/sessions');
 		assert.equal(d.storage.format, 'md');
-		assert.ok(!d.storage.under && d.storage.owner !== 'module', 'an env-pointed root combines with neither under nor owner: module');
+		for (const gone of ['status', 'binding', 'heartbeat']) assert.ok(!(gone in d.fields), `sessions still has ${gone}`);
+		assert.equal(d.fields.records.many, true);
 		assert.match(d.ids.from, /^\{\{ started \| date:YYYY\/MM \}\}\//, 'the id shards by month, so the folder does too');
 		const pkg = JSON.parse(fs.readFileSync(path.join(CORE, 'package.json'), 'utf8'));
 		assert.ok(pkg.dreamteamer.vars.includes('SESSIONS_FOLDER'), 'the composed manifest declares SESSIONS_FOLDER');
-		assert.equal(pkg.dreamteamer.engine, '>=0.39.0', 'an env-pointed storage.path needs engine 0.39');
+		assert.equal(pkg.dreamteamer.engine, '>=0.42.0', 'a record\'s sessions in dt next need engine 0.42 (the next contribution)');
 	});
 	test('metrics: a measure with unit, scope, target and a series of readings', () => {
 		const d = own('metrics');

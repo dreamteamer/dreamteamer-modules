@@ -1,6 +1,6 @@
 // @dreamteamer/core — the extension entry CORE authors (compose.json `extension`). It activates the
-// `files` origin's entry (./extension.js, a composed copy: `dt files`) and adds core's own live
-// sessions (./sessions/: the session-bindings kind, `dt session`, `dt sessions`, the claim in `dt next`)
+// `files` origin's entry (./extension.js, a composed copy: `dt files`) and adds core's own
+// sessions (./sessions/: `dt session bind · end · send`, a record's sessions in `dt next`, the retired session-bindings kind)
 // as ONE contribution — the engine loads one entry per package, so the merge happens here.
 import activateFiles from './extension.js';
 import { activateSessions } from './sessions/index.js';

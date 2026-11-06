@@ -21,6 +21,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { findWorkspace } from '../lib/workspace-root.mjs';
 
 /** List price per token, by model id prefix: input · output · cache write (5 min · 1 h) · cache read.
  *  Used only when the transcript carries no `cost-state`; a model not listed leaves `cost_usd` empty. */
@@ -108,13 +109,13 @@ export function fieldsOf(parsed, { sessionId, transcript } = {}) {
 	return out;
 }
 
-/** The workspace root: the nearest ancestor with package.json AND package-lock.json, never a folder directly inside git_modules/. */
-export function findWorkspace(from = process.cwd()) {
-	for (let d = path.resolve(from); ; d = path.dirname(d)) {
-		if (path.basename(path.dirname(d)) !== 'git_modules' && fs.existsSync(path.join(d, 'package.json')) && fs.existsSync(path.join(d, 'package-lock.json'))) return d;
-		if (path.dirname(d) === d) return null;
-	}
-}
+/** The workspace root — one function for session-save and `dt session bind`, so a session is written to
+ *  one workspace whichever writes first (lib/workspace-root.mjs: never a folder directly inside git_modules/). */
+export { findWorkspace };
+
+/** Where a session's transcript copy is kept, as the template the record carries — the one place
+ *  SESSIONS_FOLDER appears: `${env:SESSIONS_FOLDER}/<yyyy>/<mm>/<session id>.jsonl`. */
+export const transcriptTemplate = (id, started) => `\${env:SESSIONS_FOLDER}/${(started ?? new Date().toISOString()).slice(0, 7).replace('-', '/')}/${id}.jsonl`;
 
 /** `dt <args>` in the workspace: the installed engine's bin when there is one, `npx dreamteamer` otherwise. */
 function dt(ws, args, quiet) {
@@ -125,16 +126,17 @@ function dt(ws, args, quiet) {
 	return r;
 }
 
-/** Keep a copy of the transcript where the workspace keeps files, and say how the record should point at it. */
+/** Keep a copy of the transcript under SESSIONS_FOLDER, and say how the record should point at it. Unset,
+ *  the record points at the harness's own copy (swept after a month) and every record verb still works. */
 function keepTranscript(ws, file, id, started, quiet) {
-	const r = dt(ws, ['resolve', '${env:FILES_FOLDER}'], true);
+	const r = dt(ws, ['resolve', '${env:SESSIONS_FOLDER}'], true);
 	const folder = r.status === 0 ? r.stdout.trim() : '';
 	if (!folder || folder.includes('${')) return `\${userHome}/${path.relative(os.homedir(), file).split(path.sep).join('/')}`;
-	const month = (started ?? new Date().toISOString()).slice(0, 7).replace('-', '/');
-	const rel = `sessions/${month}/${id}.jsonl`;
-	try { fs.mkdirSync(path.dirname(path.join(folder, rel)), { recursive: true }); fs.copyFileSync(file, path.join(folder, rel)); }
+	const template = transcriptTemplate(id, started);
+	const target = path.join(folder, template.slice('${env:SESSIONS_FOLDER}/'.length));
+	try { fs.mkdirSync(path.dirname(target), { recursive: true }); fs.copyFileSync(file, target); }
 	catch (e) { if (!quiet) console.error(`transcript not copied: ${e.message}`); }
-	return `\${env:FILES_FOLDER}/${rel}`;
+	return template;
 }
 
 export function main(argv, env = process.env) {
