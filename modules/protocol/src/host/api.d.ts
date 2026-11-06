@@ -1,3 +1,4 @@
+import type { RemoteAccessProvider } from "./remote-access.js";
 export interface ApiResult {
     status: number;
     body: unknown;
@@ -31,6 +32,9 @@ export declare class WorkspaceApi {
     private mtime;
     private fresh;
     descriptors(): Map<string, any>;
+    /** The remote-access seam (cr-vscode-012): the host injects its providers; absent, `/sources/access` says every source is not checked. */
+    useRemoteAccess(ra: RemoteAccessProvider | undefined): void;
+    hasRemoteAccess(): boolean;
     handle(method: string, rawPath: string, body?: any): Promise<ApiResult>;
     private route;
     private currentHandle;

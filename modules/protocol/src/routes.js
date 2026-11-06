@@ -11,6 +11,8 @@ export const ROUTES = [
 	{ id: 'schema', method: 'GET', pattern: '/schema', doc: 'get-schema' },
 	{ id: 'presentation', method: 'GET', pattern: '/presentation', doc: 'get-presentation' },
 	{ id: 'sources', method: 'GET', pattern: '/sources', doc: 'get-sources' },
+	{ id: 'sources-access', method: 'GET', pattern: '/sources/access', doc: 'get-sources-access' },
+	{ id: 'sources-access-members', method: 'GET', pattern: '/sources/access/members', doc: 'get-sources-access-members' },
 	{ id: 'activity', method: 'GET', pattern: '/activity', doc: 'get-activity' },
 	{ id: 'nav', method: 'GET', pattern: '/nav', doc: 'get-nav' },
 	{ id: 'field-add', method: 'POST', pattern: '/fields/:collection', doc: 'post-fields-collection' },

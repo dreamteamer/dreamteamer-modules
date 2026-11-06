@@ -245,7 +245,7 @@ export function sourcesStack(root, descriptors, ctx) {
             repo,
             installed,
             ...layerAccess(root, name, repo, undefined, installed),
-            ...(entry.url ? { url: entry.url } : {}),
+            ...(declaredUrl(ctx, name) ? { url: declaredUrl(ctx, name) } : {}),
             ...withRecord(repoRecordFor([entry.url, ctx.origins.get(repo)], ctx.repos)),
             collections: [],
         });
@@ -263,7 +263,7 @@ export function sourcesStack(root, descriptors, ctx) {
             }
             else {
                 const key = s.repo.startsWith("git_modules/") ? s.repo.slice("git_modules/".length) : undefined;
-                const url = key ? ctx.gitModules[key]?.url : undefined;
+                const url = declaredUrl(ctx, key);
                 const m = modules.get(s.name) ?? (modules.set(s.name, { ...stripCount(s), ...(url ? { url } : {}), collections: [] }), modules.get(s.name));
                 m.collections.push(row);
             }
@@ -284,4 +284,50 @@ export function layerTitle(root, key) {
     catch {
         return undefined;
     }
+}
+/**
+ * A url with its USERINFO removed (cr-vscode-012, held-out h5 and h7, and the line "a
+ * scp-like user@host:path remote never shows its login") — what the host may SEND. A `scheme://` url
+ * of ANY scheme loses everything between `//` and the last `@` of its authority (a token pasted as
+ * `https://<token>@host/…`, and an `ssh://` login, alike); the scheme, host, port and path are kept as
+ * written. A url `new URL` refuses (a raw `/` in a password) is cut at its LAST `@`, so a secret is
+ * never left behind by a parse that gave up. An scp-like `user@host:path` becomes `host:path`, split at
+ * the LAST `@` before the first `:` as ssh splits it; a local path (a `/` before that `:`), a drive path
+ * and a login-free `host:path` are returned unchanged. Matching a remote (`repoRecordFor`) still reads
+ * the raw url: that is local and never sent.
+ */
+export function withoutUserinfo(url) {
+    if (typeof url !== "string")
+        return url;
+    const m = /^([a-z][a-z0-9+.-]*:\/\/)(.*)$/is.exec(url);
+    if (!m) {
+        // scp-like: `user@host:path` — the part before the first `:` names the login and host, unless it
+        // holds a `/` (then it is a local path, as git reads it)
+        const colon = url.indexOf(":");
+        if (colon === -1)
+            return url;
+        const head = url.slice(0, colon);
+        const at = head.lastIndexOf("@");
+        if (at === -1 || head.includes("/") || url.startsWith("//", colon + 1))
+            return url;
+        return url.slice(at + 1);
+    }
+    const [, scheme, rest] = m;
+    let at;
+    try {
+        new URL(url);
+        const end = rest.search(/[/?#]/);
+        at = (end === -1 ? rest : rest.slice(0, end)).lastIndexOf("@");
+    }
+    catch {
+        at = rest.lastIndexOf("@");
+    }
+    if (at === -1)
+        return url;
+    return `${scheme}${rest.slice(at + 1)}`;
+}
+/** The declared `git_modules` url of a key, as the host may send it — the ONE reader `sourcesStack` uses
+ *  for a layer's and a module bundle's `url`, so neither site can send userinfo. */
+export function declaredUrl(ctx, key) {
+    return key ? withoutUserinfo(ctx.gitModules[key]?.url) || undefined : undefined;
 }

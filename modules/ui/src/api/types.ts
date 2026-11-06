@@ -90,6 +90,40 @@ export interface SourceEntry {
 }
 
 export type SourceVia = 'own' | 'clone' | 'layer' | 'package';
+
+/** REMOTE ACCESS (cr-vscode-012, host `src/remote-access.ts`): what a source's remote grants, computed
+ *  live as the account the remote pushes as, never stored. */
+export type RemoteLevel = 'none' | 'read' | 'write' | 'admin';
+export interface RemoteRef {
+	provider: 'github' | 'bitbucket';
+	host: string;
+	owner: string;
+	repo: string;
+}
+export interface OwnAccess {
+	remote?: RemoteRef;
+	state: 'ok' | 'no-login' | 'no-access' | 'unknown' | 'not-checked';
+	level?: RemoteLevel;
+	role?: string;
+	account?: string;
+	tiedToPushKey?: boolean;
+	reason?: string;
+	note?: string;
+}
+export interface RemoteMember {
+	name: string;
+	kind: 'user' | 'team' | 'group';
+	level: RemoteLevel;
+	role?: string;
+	via?: string;
+}
+export interface RemoteMembers {
+	remote?: RemoteRef;
+	state: 'ok' | 'partial' | 'refused' | 'no-login' | 'no-access' | 'unknown';
+	members: RemoteMember[];
+	account?: string;
+	reason?: string;
+}
 export type SourceAccess = 'write' | 'edit' | 'read';
 
 export interface UnregisteredFolder {

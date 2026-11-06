@@ -467,9 +467,11 @@ export async function adapterRequest(method: string, path: string, body?: unknow
 	}
 
 	// /sources — the stack of roots the workspace reads (own data, each layer, each module-owned
-	// collection), for the Schema tab's Sources section. A READ, passed straight through.
+	// collection), for the Schema tab's Sources section. A READ, passed straight through — WITH its
+	// query: `/sources/access?fresh=1` (Re-check) and `/sources/access/members?source=` (cr-vscode-012)
+	// mean nothing without it.
 	if (head === 'sources' && method === 'GET') {
-		const result = await cleanFetch('GET', pathname);
+		const result = await cleanFetch('GET', pathname + (queryString ? `?${queryString}` : ''));
 		return { data: result, raw: {} };
 	}
 

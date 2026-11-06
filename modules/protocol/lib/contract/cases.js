@@ -49,6 +49,21 @@ export const cases = [
 		ok(res); shape(res.body, { workspace: 'object', layers: 'array', modules: 'array' });
 		check(res.body.layers.some((l) => l.name === 'northwind-archive'), 'the layer is not in the stack');
 	} },
+	// cr-vscode-012: a host answers the two remote-access routes whether or not it holds a provider — without one,
+	// every source is not-checked and says why; with one (the VS Code extension), the fixture's remotes are local
+	// paths or absent, so the provider answers without a network call. Shape only: the provider is the host's.
+	{ id: 'sources-access', route: 'sources-access', method: 'GET', path: '/sources/access', expect: (res) => {
+		ok(res); shape(res.body, { available: 'boolean', access: 'object' });
+		const layer = res.body.access['northwind-archive'];
+		check(layer && typeof layer.state === 'string', 'the layer has no access entry');
+		check(res.body.available || layer.state === 'not-checked', 'no provider, yet a source was checked');
+	} },
+	{ id: 'sources-access-members', route: 'sources-access-members', method: 'GET', path: '/sources/access/members?source=northwind-archive', expect: (res) => {
+		ok(res); shape(res.body, { state: 'string', members: 'array' });
+	} },
+	{ id: 'sources-access-members-unknown', route: 'sources-access-members', method: 'GET', path: '/sources/access/members?source=no-such-source', expect: (res) => {
+		status(res, 404); check(/no such source/.test(String(res.body?.error)), 'an unknown source is not 404 no such source');
+	} },
 	{ id: 'activity', route: 'activity', method: 'GET', path: '/activity?limit=5', expect: (res) => {
 		ok(res); shape(res.body, { entries: 'array', hasMore: 'boolean', pending: 'array', settled: 'number' });
 	} },

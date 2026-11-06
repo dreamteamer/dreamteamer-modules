@@ -84,6 +84,24 @@ The stack of roots, top to bottom as `dt status` prints its `layers:` block. `20
 modules: [...] }`, each `{ name, kind, repo, installed, via, access, collections: [{ collection, count }],
 record? }` — `record` is the `repos/<id>` whose `url` matches the root's remote, when one does.
 
+### GET /sources/access
+
+What each source's REMOTE grants, as the account the remote pushes as — computed live by the host's
+remote-access provider and never stored. `200 { available, access: { <source name>: { state, level?, role?,
+account?, tiedToPushKey?, remote?: { provider, host, owner, repo }, reason?, note? } } }`. `state` is one of
+`ok · no-login · no-access · unknown · not-checked`. A host with no provider (dt web, dt serve, a test) answers
+`available: false` and every source `not-checked` with the reason `remote access is not available in this host`.
+Query: `fresh=1` drops what the provider holds in memory and asks again. Nothing a provider says reaches the
+body unredacted: a token shape, or a credential value the host holds, is `[redacted]`.
+
+### GET /sources/access/members
+
+Who has access to one source's remote, by the same provider. Query: `source=<source name>` (required; an
+unknown name is 404 `no such source`). `200 { state, members: [{ name, kind, level, role?, via? }], account?,
+remote?, reason? }` — `state` is one of `ok · partial · refused · no-login · no-access · unknown`; below the
+provider's threshold the list is empty and `reason` says why. Without a provider: `state: unknown`, no members,
+the same reason as `/sources/access`.
+
 ### GET /activity
 
 Git history as named entries. Query: `module` (one module's history; absent, every module merged), `limit`

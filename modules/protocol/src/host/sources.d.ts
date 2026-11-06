@@ -60,3 +60,5 @@ export declare function sourcesStack(root: string, descriptors: Descriptor[], ct
     modules: SourceStackEntry[];
 };
 export declare function layerTitle(root: string, key: string): string | undefined;
+export declare function withoutUserinfo(url: string | undefined): string | undefined;
+export declare function declaredUrl(ctx: Pick<SourcesContext, "gitModules">, key: string | undefined): string | undefined;

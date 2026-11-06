@@ -9,13 +9,20 @@
 	A layer whose clone is absent is drawn greyed with *not installed* and no counts: a fresh checkout
 	before `dreamteamer install`, and the one place that says why nothing is read from it. A source
 	whose remote matches a `repos` record links to that record; one that matches none is plain text.
+
+	REMOTE ACCESS (cr-vscode-012): once the stack has drawn, `GET /sources/access` says what each
+	source's REMOTE grants, as the account that pushes — drawn beside the local mark by
+	`RemoteAccessMark`, with a warning where a push would be refused. Re-check asks again (`fresh=1`);
+	Who has access asks for one source's people, teams and groups, or the provider's reason it will not
+	say. Computed live, held in memory, never stored.
 -->
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { api } from '../api/client';
 import DtIcon from '../components/DtIcon.vue';
 import SourceMark from '../components/SourceMark.vue';
-import type { SourceAccess, SourceVia } from '../api/types';
+import RemoteAccessMark from '../components/RemoteAccessMark.vue';
+import type { OwnAccess, RemoteMembers, SourceAccess, SourceVia } from '../api/types';
 
 interface StackEntry {
 	name: string;
@@ -40,13 +47,61 @@ interface Stack {
 const stack = ref<Stack | null>(null);
 const error = ref<string | null>(null);
 
+const access = ref<Record<string, OwnAccess> | null>(null);
+const accessError = ref(false);
+const checking = ref(false);
+const members = ref<Record<string, RemoteMembers | 'loading'>>({});
+const open = ref<Record<string, boolean>>({});
+
+async function loadAccess(fresh = false) {
+	checking.value = true;
+	accessError.value = false;
+	if (fresh) {
+		access.value = null;
+		members.value = {};
+		open.value = {};
+	}
+	try {
+		const res = await api.get<{ available: boolean; access: Record<string, OwnAccess> }>(fresh ? '/sources/access?fresh=1' : '/sources/access');
+		access.value = res.data.access ?? {};
+	} catch {
+		accessError.value = true;
+	} finally {
+		checking.value = false;
+	}
+}
+
+/** Who has access: a source can be asked once its own level came back as something other than not-checked. */
+const askable = (name: string) => {
+	const a = access.value?.[name];
+	return !!a && a.state !== 'not-checked';
+};
+async function toggleWho(name: string) {
+	open.value = { ...open.value, [name]: !open.value[name] };
+	if (!open.value[name] || members.value[name]) return;
+	members.value = { ...members.value, [name]: 'loading' };
+	try {
+		const res = await api.get<RemoteMembers>(`/sources/access/members?source=${encodeURIComponent(name)}`);
+		members.value = { ...members.value, [name]: res.data };
+	} catch {
+		members.value = { ...members.value, [name]: { state: 'unknown', members: [], reason: 'could not be read' } };
+	}
+}
+const listOf = (name: string): RemoteMembers | null => {
+	const m = members.value[name];
+	return m && m !== 'loading' ? m : null;
+};
+
 onMounted(async () => {
 	try {
 		const res = await api.get<Stack>('/sources');
 		stack.value = res.data;
 	} catch (err) {
 		error.value = err instanceof Error ? err.message : String(err);
+		return;
 	}
+	// the stack is on screen first; the remotes are asked after it, so the network never holds it back
+	await loadAccess();
 });
 
 const total = (e: StackEntry) => e.collections.reduce((n, c) => n + c.count, 0);
@@ -57,12 +112,32 @@ const total = (e: StackEntry) => e.collections.reduce((n, c) => n + c.count, 0);
 		<header class="dt-sources__head">
 			<h2 class="dt-sources__title">Sources</h2>
 			<p class="dt-sources__lead">Where this workspace reads its records from, top to bottom — the first root to hold an id is the one read.</p>
+			<div v-if="stack" class="dt-sources__remote-bar">
+				<span class="dt-sources__note">Remote access is asked live, as the account each remote pushes as — never stored.</span>
+				<button type="button" class="dt-sources__recheck" :disabled="checking" @click="loadAccess(true)"><DtIcon name="refresh" /> Re-check</button>
+			</div>
+			<p v-if="accessError" class="dt-sources__error dt-sources__access-error">remote access could not be read</p>
 		</header>
 		<p v-if="error" class="dt-sources__error">{{ error }}</p>
 		<p v-else-if="!stack" class="dt-sources__empty">Loading…</p>
 		<template v-else>
 			<section class="dt-sources__block" data-kind="own">
 				<h3 class="dt-sources__heading"><DtIcon name="root-folder" /> {{ stack.workspace.name }} <span class="dt-sources__note">this workspace</span></h3>
+				<div v-if="!accessError" class="dt-sources__remote">
+					<RemoteAccessMark :source="stack.workspace.name" :access="access?.[stack.workspace.name]" :local="stack.workspace.access" />
+					<button v-if="askable(stack.workspace.name)" type="button" class="dt-sources__who" :data-source="stack.workspace.name" @click="toggleWho(stack.workspace.name)">Who has access</button>
+				</div>
+				<div v-if="open[stack.workspace.name]" class="dt-remote-members">
+					<p v-if="members[stack.workspace.name] === 'loading'" class="dt-sources__empty">Asking…</p>
+					<template v-else-if="listOf(stack.workspace.name)">
+						<p v-if="listOf(stack.workspace.name)!.reason" class="dt-remote-members__reason">{{ listOf(stack.workspace.name)!.reason }}</p>
+						<table v-if="listOf(stack.workspace.name)!.members.length" class="dt-table dt-remote-members__table">
+							<tbody>
+								<tr v-for="m in listOf(stack.workspace.name)!.members" :key="m.kind + m.name" class="dt-remote-members__row" :title="m.role"><td>{{ m.name }}</td><td>{{ m.kind }}</td><td>{{ m.level }}</td><td v-if="m.via">{{ m.via }}</td></tr>
+							</tbody>
+						</table>
+					</template>
+				</div>
 				<table v-if="stack.workspace.collections.length" class="dt-table dt-sources__table">
 					<thead><tr><th>Collection</th><th>Folder</th><th class="dt-sources__num">Records</th></tr></thead>
 					<tbody>
@@ -80,6 +155,19 @@ const total = (e: StackEntry) => e.collections.reduce((n, c) => n + c.count, 0);
 						<span class="dt-sources__path">{{ layer.repo }}</span>
 						<span v-if="!layer.installed" class="dt-sources__absent">not installed — run <code>dreamteamer install</code></span>
 						<span v-else class="dt-sources__note">{{ total(layer) }} record{{ total(layer) === 1 ? '' : 's' }} read</span>
+						<RemoteAccessMark v-if="!accessError" :source="layer.name" :access="access?.[layer.name]" :local="layer.access" />
+						<button v-if="askable(layer.name)" type="button" class="dt-sources__who" :data-source="layer.name" @click="toggleWho(layer.name)">Who has access</button>
+					</div>
+					<div v-if="open[layer.name]" class="dt-remote-members">
+						<p v-if="members[layer.name] === 'loading'" class="dt-sources__empty">Asking…</p>
+						<template v-else-if="listOf(layer.name)">
+							<p v-if="listOf(layer.name)!.reason" class="dt-remote-members__reason">{{ listOf(layer.name)!.reason }}</p>
+							<table v-if="listOf(layer.name)!.members.length" class="dt-table dt-remote-members__table">
+								<tbody>
+									<tr v-for="m in listOf(layer.name)!.members" :key="m.kind + m.name" class="dt-remote-members__row" :title="m.role"><td>{{ m.name }}</td><td>{{ m.kind }}</td><td>{{ m.level }}</td><td v-if="m.via">{{ m.via }}</td></tr>
+								</tbody>
+							</table>
+						</template>
 					</div>
 					<p v-if="layer.url" class="dt-sources__url">{{ layer.url }}</p>
 					<ul v-if="layer.collections.length" class="dt-sources__list">
@@ -100,6 +188,19 @@ const total = (e: StackEntry) => e.collections.reduce((n, c) => n + c.count, 0);
 						<SourceMark :name="mod.name" :record="mod.record" context="record" :access="mod.access" :via="mod.via" :note="mod.note" />
 						<span class="dt-sources__path">{{ mod.repo === '.' ? 'commits to this workspace' : mod.repo }}</span>
 						<span class="dt-sources__note">{{ total(mod) }} record{{ total(mod) === 1 ? '' : 's' }}</span>
+						<RemoteAccessMark v-if="!accessError && mod.via !== 'package'" :source="mod.name" :access="access?.[mod.name]" :local="mod.access" />
+						<button v-if="askable(mod.name)" type="button" class="dt-sources__who" :data-source="mod.name" @click="toggleWho(mod.name)">Who has access</button>
+					</div>
+					<div v-if="open[mod.name]" class="dt-remote-members">
+						<p v-if="members[mod.name] === 'loading'" class="dt-sources__empty">Asking…</p>
+						<template v-else-if="listOf(mod.name)">
+							<p v-if="listOf(mod.name)!.reason" class="dt-remote-members__reason">{{ listOf(mod.name)!.reason }}</p>
+							<table v-if="listOf(mod.name)!.members.length" class="dt-table dt-remote-members__table">
+								<tbody>
+									<tr v-for="m in listOf(mod.name)!.members" :key="m.kind + m.name" class="dt-remote-members__row" :title="m.role"><td>{{ m.name }}</td><td>{{ m.kind }}</td><td>{{ m.level }}</td><td v-if="m.via">{{ m.via }}</td></tr>
+								</tbody>
+							</table>
+						</template>
 					</div>
 					<p v-if="mod.url" class="dt-sources__url">{{ mod.url }}</p>
 					<ul class="dt-sources__list">
@@ -198,5 +299,38 @@ const total = (e: StackEntry) => e.collections.reduce((n, c) => n + c.count, 0);
 .dt-sources__table {
 	width: auto;
 	min-width: 420px;
+}
+.dt-sources__remote-bar,
+.dt-sources__remote {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 10px;
+	margin-top: 6px;
+}
+.dt-sources__recheck,
+.dt-sources__who {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 1px 8px;
+	border: 1px solid var(--dt-border);
+	border-radius: var(--dt-radius);
+	background: transparent;
+	color: var(--dt-fg-subtle);
+	font-size: var(--dt-label);
+	cursor: pointer;
+}
+.dt-remote-members {
+	margin-top: 8px;
+}
+.dt-remote-members__reason {
+	margin: 0 0 6px;
+	color: var(--dt-fg-subtle);
+	font-size: var(--dt-label);
+}
+.dt-remote-members__table {
+	width: auto;
+	min-width: 320px;
 }
 </style>

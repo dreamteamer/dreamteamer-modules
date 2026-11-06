@@ -11,6 +11,7 @@ import { recordTitle } from "./titles.js";
 import { forgetAhead, locateRecord, repoStateKeys } from "./repo-state.js";
 import { collectionSources, moduleSource, runtimeSources, sourceOfFile, sourcesContext, sourcesStack, withoutSourceClauses } from "./sources.js";
 import { createInLayer } from "./layer-write.js";
+import { accessTargets, redactSecrets, unavailableAccess, NOT_AVAILABLE } from "./remote-access.js";
 import { byId, notesFor } from "./next-notes.js";
 import { recordDirsOrNone, unreadableReason } from "./record-dirs.js";
 export class ApiFailure extends Error {
@@ -158,11 +159,25 @@ export class WorkspaceApi {
     descriptors() {
         return this.fresh().descriptors;
     }
+    /** The remote-access seam (cr-vscode-012): a host injects its providers; absent, `/sources/access` says every
+     *  source is not checked, and why. */
+    remoteAccess;
+    useRemoteAccess(ra) {
+        this.remoteAccess = ra;
+    }
+    hasRemoteAccess() {
+        return !!this.remoteAccess;
+    }
     async handle(method, rawPath, body) {
         try {
             return { status: 200, body: await this.route(method, rawPath, body) };
         }
         catch (err) {
+            // REMOTE ACCESS (cr-vscode-012): whatever was thrown under these routes, its message never reaches
+            // the asker — a provider's words could carry a secret. Our sentence and the route.
+            if (String(rawPath).startsWith("/sources/access") && !(err instanceof ApiFailure)) {
+                return { status: 500, body: { error: `remote access failed (${String(rawPath).split("?")[0]})` } };
+            }
             const msg = err?.message ?? String(err);
             const status = err instanceof ApiFailure
                 ? err.status
@@ -224,6 +239,27 @@ export class WorkspaceApi {
         }
         if (seg[0] === "sources" && seg.length === 1 && method === "GET") {
             return sourcesStack(this.root, [...store.descriptors.values()], this.sourcesCtx());
+        }
+        // GET /sources/access[?fresh=1] · /sources/access/members?source=<name> (cr-vscode-012): who can read and
+        // write each installed source's REMOTE, computed live by the injected provider and never stored. The
+        // answer passes the redaction guard with the credential values the host holds; with nothing injected,
+        // every source says why.
+        if (seg[0] === "sources" && seg[1] === "access" && method === "GET" && (seg.length === 2 || (seg.length === 3 && seg[2] === "members"))) {
+            const ctx = this.sourcesCtx();
+            const targets = accessTargets(sourcesStack(this.root, [...store.descriptors.values()], ctx), this.root, ctx.modules, ctx.gitModules);
+            const ra = this.remoteAccess;
+            if (seg.length === 2) {
+                if (!ra)
+                    return unavailableAccess(targets);
+                const access = await ra.own(targets, { fresh: query.get("fresh") === "1" });
+                return redactSecrets({ available: true, access }, await ra.heldSecrets());
+            }
+            const target = targets.find((t) => t.source === query.get("source"));
+            if (!target)
+                throw new ApiFailure("no such source", 404);
+            if (!ra)
+                return { state: "unknown", members: [], reason: NOT_AVAILABLE };
+            return redactSecrets(await ra.members(target), await ra.heldSecrets());
         }
         if (seg[0] === "activity" && seg.length === 1 && method === "GET") {
             const offset = Math.max(0, Math.floor(Number(query.get("offset") ?? 0)) || 0);
