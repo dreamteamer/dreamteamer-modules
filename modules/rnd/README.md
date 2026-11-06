@@ -145,7 +145,14 @@ windows reads it from a field (`portal: { from: 'field' }`) or a tag (`portal: {
 An identifier — a story key, a question id — is never scrubbed: one the prototype's `scrub` would change
 fails the export, so the record is renamed. The `rnd-prototype` skill holds the contract.
 
-## 0.8.1 — from 0.8.0
+## 0.9.0 — from 0.8.0
+
+A change request carries `stage`: the gate it waits on, one of design · design-review · acceptance · plan ·
+plan-review · implement · code-review · test · test-review · deploy · live-check · done · rejected, written
+by the lifecycle and never by hand (`display.editable: false`). `ui-views/rnd-change-requests-board` draws the
+requests as a kanban by stage; `bin/migrate-change-request-stage.mjs` fills it on existing requests from the
+gate `dt next` names; `dt check` warns when a stage disagrees with the request's own status, dates and links.
+The default list columns of `rnd/reviews` and `rnd/review-findings` change. `UPDATING.md` has the migration.
 
 The R&D nav leads with the lifecycle — change requests, issues, reviews, review findings, products,
 design docs, implementation plans, tests, releases — then a `product` section and a `knowledge`

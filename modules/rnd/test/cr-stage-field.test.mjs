@@ -77,10 +77,10 @@ describe('the operator\'s list defaults for reviews and findings', () => {
 
 describe('what a workspace does on upgrade, and what the README says', () => {
 	const read = (f) => fs.readFileSync(path.join(RND, f), 'utf8');
-	test('UPDATING has an Unreleased section: compile, the migration dry run and --write, check — and the layer order', () => {
+	test('UPDATING has the 0.9.0 section: compile, the migration dry run and --write, check — and the layer order', () => {
 		const u = read('UPDATING.md');
-		const at = u.indexOf('## Unreleased');
-		assert.ok(at >= 0 && at < u.indexOf('## 0.8.0'), 'Unreleased sits above 0.8.0');
+		const at = u.indexOf('## 0.9.0');
+		assert.ok(at >= 0 && at < u.indexOf('## 0.8.0'), '0.9.0 sits above 0.8.0');
 		const sec = u.slice(at, u.indexOf('## 0.8.0'));
 		assert.match(sec, /npx dreamteamer compile/);
 		assert.match(sec, /node node_modules\/@dreamteamer\/rnd\/bin\/migrate-change-request-stage\.mjs\s/);

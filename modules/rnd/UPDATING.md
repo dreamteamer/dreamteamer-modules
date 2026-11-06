@@ -11,7 +11,7 @@ npx dreamteamer check
 
 ---
 
-## Unreleased — change requests carry a stage, drawn as a board
+## 0.9.0 — change requests carry a stage, drawn as a board; the R&D nav leads with the lifecycle
 
 `rnd/change-requests` gains `stage`: the gate a request waits on — the verb `dt next` names on it — one of
 `design · design-review · acceptance · plan · plan-review · implement · code-review · test · test-review ·
@@ -60,7 +60,7 @@ category`, oldest first) change. A workspace that set its own columns keeps them
 
 ---
 
-## 0.8.1 — the R&D nav: the lifecycle first, then Product and Knowledge
+### Also in 0.9.0 — the R&D nav: the lifecycle first, then Product and Knowledge
 
 Presentation only: no field, collection, id or record changes. rnd's descriptors now order the R&D
 folder by the lifecycle — change requests, issues, reviews, review findings, products, design docs,
@@ -71,7 +71,7 @@ research docs, draft docs, open questions, notebooks, wikis).
 **Do this.**
 
 ```bash
-npm install @dreamteamer/rnd@0.8.1
+npm install @dreamteamer/rnd@0.9.0
 npx dreamteamer compile
 npx dreamteamer check
 ```
