@@ -94,7 +94,8 @@ fields:
 display:
   nav:
     icon: symbol-color
-    order: 46
+    order: 36
+    section: product
   list:
     columns:
       - name

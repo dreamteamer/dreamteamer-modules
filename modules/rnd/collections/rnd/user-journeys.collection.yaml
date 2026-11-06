@@ -96,7 +96,8 @@ fields:
 display:
   nav:
     icon: map
-    order: 27
+    order: 30
+    section: product
   list:
     columns:
       - name

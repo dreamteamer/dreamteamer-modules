@@ -59,7 +59,8 @@ fields:
 display:
   nav:
     icon: beaker
-    order: 58
+    order: 40
+    section: knowledge
   list:
     columns:
       - name

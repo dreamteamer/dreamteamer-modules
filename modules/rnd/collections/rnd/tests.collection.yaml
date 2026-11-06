@@ -103,7 +103,7 @@ fields:
 display:
   nav:
     icon: pass
-    order: 47
+    order: 27
   list:
     columns:
       - name

@@ -113,7 +113,7 @@ constraints:
 display:
   nav:
     icon: versions
-    order: 29
+    order: 28
   list:
     columns:
       - version

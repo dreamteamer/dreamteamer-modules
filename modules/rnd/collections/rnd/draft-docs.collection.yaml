@@ -71,7 +71,8 @@ fields:
 display:
   nav:
     icon: edit
-    order: 70
+    order: 43
+    section: knowledge
   list:
     columns:
       - name

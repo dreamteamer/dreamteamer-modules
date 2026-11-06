@@ -79,7 +79,8 @@ fields:
 display:
   nav:
     icon: preview
-    order: 12
+    order: 33
+    section: product
   list:
     columns:
       - name

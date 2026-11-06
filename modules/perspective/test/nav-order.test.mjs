@@ -5,9 +5,9 @@
 // deliberately here: NO collection carried an `order` at all, so all twenty sorted on the fallback,
 // and among the ten named views `nav.order` 1 was unused while 8 and 9 were each used twice.
 //
-// ⚠ `display.nav.section` (the old `group:`) is deliberately NOT used. The engine is retiring it in favour of module ownership
-// (compile.js: "it exists to REPLACE `group:` as the workspace's partition rather than to sit beside
-// it"), and a descriptor that sets both would partition the nav twice.
+// ⚠ `display.nav.section` is deliberately NOT used by perspective: its twenty collections are one module's
+// pipeline and module ownership is partition enough. The key itself is current — the engine documents it
+// as partitioning a module's rows further (using-dreamteamer, data-modeling §31), and rnd 0.8.1 uses it.
 import { test } from 'node:test';
 import assert from 'node:assert';
 import fs from 'node:fs';

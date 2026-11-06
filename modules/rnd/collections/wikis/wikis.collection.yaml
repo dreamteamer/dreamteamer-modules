@@ -97,6 +97,8 @@ fields:
 display:
   nav:
     icon: library
+    order: 46
+    section: knowledge
   # the wikis list — the default a bare /content/wikis renders. No nav entry: the collection row IS the
   # view.
   #

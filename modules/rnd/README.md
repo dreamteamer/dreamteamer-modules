@@ -145,6 +145,14 @@ windows reads it from a field (`portal: { from: 'field' }`) or a tag (`portal: {
 An identifier — a story key, a question id — is never scrubbed: one the prototype's `scrub` would change
 fails the export, so the record is renamed. The `rnd-prototype` skill holds the contract.
 
+## 0.8.1 — from 0.8.0
+
+The R&D nav leads with the lifecycle — change requests, issues, reviews, review findings, products,
+design docs, implementation plans, tests, releases — then a `product` section and a `knowledge`
+section, set by `display.nav.order` and `display.nav.section` on rnd's descriptors (notebooks and wikis
+through their origins, notebooklm 0.1.3 and wikis 0.1.2). Presentation only; `UPDATING.md` says which
+editor draws the sections as folders inside R&D.
+
 ## 0.8.0 — from 0.7.0
 
 rnd ships no session bindings. The three on change requests that 0.6.0 added — design, build, review —
