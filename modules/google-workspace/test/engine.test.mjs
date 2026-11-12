@@ -29,7 +29,10 @@ test('dreamteamer google-setup and the doctor rows arrive through the extension 
 	const doctor = run(root, ['doctor']);
 	assert.match(doctor.stdout, /google-workspace — DEGRADED/, 'an unconfigured optional module degrades, it does not fail');
 	assert.match(doctor.stdout, /OAuth client configuration/);
-	assert.doesNotMatch(doctor.stdout + doctor.stderr, /Account authorization/);
+	// the rows are the setup unit's inspect (one capability, not two): the never-locally-verifiable
+	// authorization row is shown as ⚠ unverified rather than left out — the engine renders what the unit says
+	assert.equal((doctor.stdout.match(/^google-workspace — /gm) ?? []).length, 1, 'one capability for the module');
+	assert.match(doctor.stdout, /⚠ Account authorization/);
 	assert.equal(run(root, ['doctor', '--strict']).status, 0, '--strict keeps its exit code: no row is bad');
 	assert.equal(fs.readdirSync(root).sort().join(), before, 'inspect, plan and doctor created nothing in the workspace');
 });

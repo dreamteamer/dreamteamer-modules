@@ -1,8 +1,9 @@
 // @dreamteamer/google-workspace — the engine extension entry (API 1). It contributes one namespaced
 // command, `dreamteamer google-setup`, and local doctor rows; both read the same inspect. Nothing
 // here starts the MCP server, opens a browser, refreshes a token or reaches the network.
-import { inspect, plan, apply, engineDoctorRows } from './google-setup.mjs';
+import { inspect, plan, apply } from './google-setup.mjs';
 import { redact, SetupRefusal } from './setup-kit.mjs';
+import { SETUP_UNIT } from './google-workspace-setup.mjs';
 
 export const apiVersion = 1;
 
@@ -54,7 +55,11 @@ export function setupCommand({ root, argv = [], env = process.env, out = console
 
 export default function activate() {
 	return {
+		// the setup UNIT the engine drives (dt install / dt setup / dt status); the `google-setup` verb stays
+		// one release as the alias the earlier SETUP.md taught
+		setup: [SETUP_UNIT],
 		commands: { 'google-setup': { usage: USAGE, run: (ws, argv) => setupCommand({ root: ws.root, argv }) } },
-		doctor: ({ root }) => engineDoctorRows({ root }),
+		// no `doctor` of its own any more: the engine renders the unit's inspect as this capability's rows,
+		// the never-locally-verifiable authorization row included — shown as unverified, never left out
 	};
 }

@@ -155,13 +155,15 @@ describe('the existing doctor surfaces', () => {
 		assert.ok(!rows.some((r) => /Account authorization/.test(r.label)), 'the never-locally-verifiable row is left to SETUP.md');
 		assert.ok(engineDoctorRows({ root: m.root, env: { PATH: '' } }).every((r) => r.state === 'warn' && r.fix));
 	});
-	test('the extension activates as API 1 with one namespaced command and a doctor', () => {
+	test('the extension activates as API 1 with one namespaced command and one setup unit (its rows are the doctor\'s)', () => {
 		assert.equal(apiVersion, 1);
 		const ext = activate();
 		assert.deepEqual(Object.keys(ext.commands), ['google-setup']);
 		assert.match(ext.commands['google-setup'].usage, /google-setup/);
-		assert.equal(typeof ext.doctor, 'function');
-		assert.ok(Array.isArray(ext.doctor({ root: machine().root })));
+		assert.equal(ext.doctor, undefined, 'the engine renders the unit\'s inspect as this capability\'s rows');
+		assert.equal(ext.setup.length, 1);
+		assert.equal(ext.setup[0].id, 'google-workspace');
+		assert.ok(Array.isArray(ext.setup[0].inspect({ root: machine().root, env: {}, receiptDir: path.join(machine().root, 'r') }).checks));
 	});
 });
 
