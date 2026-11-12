@@ -1,0 +1,59 @@
+name: meta-analyses
+title: Meta-analyses
+description: >-
+  An evidence-based review across multiple meetings or work records, separating observations from
+  interpretations.
+use_when: >-
+  An evidence-based review across multiple meetings or work records, separating observations from
+  interpretations.
+storage:
+  path: data/meta-analyses
+  format: md
+ids:
+  from: '{{ name | slug }}'
+  pattern: ^[a-z0-9][a-z0-9-]*$
+fields:
+  name:
+    type: string
+    required: true
+    description: A descriptive title.
+  status:
+    type: string
+    enum:
+      - draft
+      - ready
+      - archived
+    default: draft
+    description: Editorial state, not permission to publish or share.
+  sources:
+    type: reference
+    many: true
+    description: Workspace records used as evidence; keep source provenance distinct from interpretation.
+  tags:
+    type: string
+    many: true
+    pattern: ^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$
+    description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
+  content:
+    type: markdown
+    body: true
+    description: The document content. Include limitations and distinguish evidence from recommendations.
+  period_start:
+    type: date
+    description: First date included in the review.
+  period_end:
+    type: date
+    description: Last date included in the review.
+  limitations:
+    type: string
+    description: Missing sources, uncertain attribution or other coverage limits.
+display:
+  list:
+    columns:
+      - name
+      - status
+      - created
+      - tags
+  nav:
+    icon: notebook
+singular: meta-analysis

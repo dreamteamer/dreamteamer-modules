@@ -23,3 +23,15 @@ in; it prints those steps for a person to run.
 
 Nothing is required: every module reads and writes records with no setup at all. Engine `>=0.30.0`.
 Apache-2.0.
+
+### Optional account capabilities
+
+Installing `@dreamteamer/git-identities` adds a local identity diagnostic. Set
+`GIT_IDENTITIES_CONFIG` in the process environment to your private configuration file
+outside Git. The doctor checks the current repository against that configuration;
+it does not run SSH, create keys, change machine settings or prove remote access.
+
+Installing `@dreamteamer/google-workspace` adds its local prerequisite diagnostic.
+The doctor does not authorize accounts or test cloud access. Follow that module's
+onboarding instructions and authorize each selected account separately. Neither
+capability copies another person's credentials or automatically shares records.

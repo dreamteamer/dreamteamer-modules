@@ -150,7 +150,7 @@ export function gpuCheck({ platform = process.platform, arch = process.arch, whi
 	return { state: 'ok', detail: `metal — whisper-cli ${whisperCli} + ggml weights` };
 }
 
-export const OURS = ['core', 'assets', 'users', 'companies', 'contacts', 'engagements', 'tasks', 'routines', 'meetings', 'recordings', 'meeting-docs', 'projects', 'perspective', 'wikis', 'notebooklm', 'search', 'rnd', 'proofs', 'worktrees', 'http', 'protocol', 'ui', 'web', 'docker-workspaces', 'code', 'files', 'workflows'];
+export const OURS = ['core', 'assets', 'users', 'companies', 'contacts', 'engagements', 'tasks', 'routines', 'meetings', 'recordings', 'meeting-docs', 'projects', 'perspective', 'wikis', 'notebooklm', 'search', 'rnd', 'proofs', 'worktrees', 'http', 'protocol', 'ui', 'web', 'docker-workspaces', 'code', 'files', 'workflows', 'git-identities', 'google-workspace', 'personal-workspace'];
 
 /** The modules a COMPOSED module stands in for — `compose.json` at its root names its origins. `core`
  *  installed means every capability of users, meetings, files… applies, read from the package itself. */
@@ -369,6 +369,39 @@ export function capabilities(root) {
 		gitignores(root, '.cache/')
 			? c.ok('.cache/ ignored', 'downloads and the export bundle land there')
 			: c.warn('.cache/ ignored', 'add .cache/ to .gitignore', 'notebook downloads and the export bundle land there; a 40 MB podcast must never be staged');
+		out.push(c.cap);
+	}
+
+	// Opt-in identity diagnostics never perform network requests, authentication or config writes.
+	if (has('git-identities')) {
+		const c = cap('git-identities', 'Folder-scoped commit identity and remote alias checks. Authentication is not tested.');
+		const config = process.env.GIT_IDENTITIES_CONFIG;
+		if (!config) c.warn('private config', 'Set GIT_IDENTITIES_CONFIG to an owner-reviewed private JSON configuration outside Git.');
+		else {
+			let result;
+			try {
+				const text = execFileSync(process.execPath, [binOf(mods, 'git-identities', 'git-identities.mjs'), 'doctor', config, root], {encoding:'utf8', timeout:15000, stdio:['ignore','pipe','ignore']});
+				result = JSON.parse(text);
+			} catch { /* A nonzero doctor result is a warning, never echoed with private values. */ }
+			if (result?.state === 'configured') c.ok('repository identity', 'Commit identity and origin alias match the private configuration; authentication remains untested.');
+			else c.warn('repository identity', 'Run dt-git-identities doctor with your private configuration and this repository; review any mismatch locally.', 'No machine configuration was changed.');
+		}
+		c.warn('SSH routing and account access', 'Have the owner verify the selected SSH key and remote account using the onboarding recipe.', 'The local check does not evaluate SSH configuration or authenticate.');
+		out.push(c.cap);
+	}
+
+	if (has('google-workspace')) {
+		const c = cap('google-workspace', 'Local multi-account bridge prerequisites. Account consent and remote access are not tested.');
+		let result;
+		try {
+			const text = execFileSync(process.execPath, [binOf(mods, 'google-workspace', 'google.mjs'), 'doctor', '--json'], {encoding:'utf8', timeout:15000, stdio:['ignore','pipe','ignore']});
+			result = JSON.parse(text);
+		} catch (error) {
+			try { result = JSON.parse(String(error.stdout ?? '')); } catch { /* Never echo process diagnostics. */ }
+		}
+		const rows = result?.checks;
+		if (Array.isArray(rows) && rows.length && rows.every(row => row.state === 'ok')) c.ok('local prerequisites', 'The local bridge prerequisites are present. Each account still needs owner consent and a live read test.');
+		else c.warn('local prerequisites', 'Run dt-google doctor --json locally and follow the module onboarding instructions.', 'No account was authorized and no network request was made.');
 		out.push(c.cap);
 	}
 

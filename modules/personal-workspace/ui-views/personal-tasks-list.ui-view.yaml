@@ -1,0 +1,24 @@
+route: /tasks/personal-list
+scope: collection
+collection: collections/tasks
+filter:
+  status:
+    _in:
+      - todo
+      - doing
+      - blocked
+display:
+  nav:
+    title: Active List
+    icon: list
+    order: -1
+  list:
+    layout: table
+    columns:
+      - name
+      - status
+      - created
+      - due
+      - assignee
+      - project
+    sort: created

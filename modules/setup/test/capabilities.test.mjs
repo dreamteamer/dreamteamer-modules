@@ -358,3 +358,27 @@ describe('the transcriber: models where the skill reads them, and whether the GP
 		assert.ok(!c.checks.some((k) => /^TRANSCRIB/.test(k.label)), 'the folder has a working default — no variable to demand');
 	});
 });
+
+describe('optional account modules', () => {
+  test('disabled account modules never add readiness rows', () => {
+    const ws = consumer({disable:['modules/google-workspace','modules/git-identities']});
+    const rows = capabilities(ws);
+    assert.equal(cap(rows,'google-workspace'), undefined);
+    assert.equal(cap(rows,'git-identities'), undefined);
+  });
+  test('missing private identity config degrades only the optional capability', () => {
+    const before = process.env.GIT_IDENTITIES_CONFIG;
+    delete process.env.GIT_IDENTITIES_CONFIG;
+    try {
+      const ws = consumer();
+      const row = cap(capabilities(ws),'git-identities');
+      assert.equal(row.checks[0].state,'warn');
+      assert.match(row.checks[0].fix,/GIT_IDENTITIES_CONFIG/);
+      assert.equal(row.checks[0].run,null);
+      assert.equal(row.checks.find(c => c.label === 'SSH routing and account access')?.state, 'warn');
+    } finally {
+      if (before === undefined) delete process.env.GIT_IDENTITIES_CONFIG;
+      else process.env.GIT_IDENTITIES_CONFIG = before;
+    }
+  });
+});

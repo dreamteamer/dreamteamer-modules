@@ -78,6 +78,23 @@ only the modules your `package.json` names. Each module's README has its exact i
 | [`@dreamteamer/code`](modules/code) | `dt-editor`: the browser editor over local files, with a Claude coordinator | — |
 | [`@dreamteamer/docker-workspaces`](modules/docker-workspaces) | `dt-docker`: a workspace as a local Docker container, moved between machines as one encrypted file | — |
 
+## Optional personal workspace capabilities
+
+The following modules are available in this source tree; install from the registry only after
+their reviewed release. They ship no accounts, private records, client configuration or tokens.
+
+| module | capability | needs |
+|---|---|---|
+| [`@dreamteamer/personal-workspace`](modules/personal-workspace) | blurbs, briefs, cross-meeting analyses and focused task Board/List views | core >=0.9.0; engine >=0.43.0 |
+| [`@dreamteamer/google-workspace`](modules/google-workspace) | explicit-account local bridge to a pinned public MCP server; read-only by default | owner-controlled OAuth setup and local Python runtime |
+| [`@dreamteamer/git-identities`](modules/git-identities) | folder-scoped Git configuration proposals and read-only authorship/alias checks | owner-reviewed Git and SSH setup |
+
+Choose capabilities independently. The account modules do not authorize accounts, apply machine
+configuration, import CRM records or prove remote access. The setup board reports unverified
+authentication as a gap. Meetings and transcription remain in `core`; do not install their small
+origin modules alongside it. Content-production and service-usage dashboards are not part of
+this profile.
+
 ## making a module yours
 
 Another label, an extra field, a different list — that is an **overlay** in your own module, never

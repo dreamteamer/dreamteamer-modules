@@ -1,0 +1,45 @@
+name: blurbs
+title: Blurbs
+description: A short reusable piece of wording kept for later editing or inclusion in another document.
+use_when: A short reusable piece of wording kept for later editing or inclusion in another document.
+storage:
+  path: data/blurbs
+  format: md
+ids:
+  from: '{{ name | slug }}'
+  pattern: ^[a-z0-9][a-z0-9-]*$
+fields:
+  name:
+    type: string
+    required: true
+    description: A descriptive title.
+  status:
+    type: string
+    enum:
+      - draft
+      - ready
+      - archived
+    default: draft
+    description: Editorial state, not permission to publish or share.
+  sources:
+    type: reference
+    many: true
+    description: Workspace records used as evidence; keep source provenance distinct from interpretation.
+  tags:
+    type: string
+    many: true
+    pattern: ^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$
+    description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
+  content:
+    type: markdown
+    body: true
+    description: The document content. Include limitations and distinguish evidence from recommendations.
+display:
+  list:
+    columns:
+      - name
+      - status
+      - created
+      - tags
+  nav:
+    icon: symbol-snippet
