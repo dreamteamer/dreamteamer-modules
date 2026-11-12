@@ -86,9 +86,10 @@ their reviewed release. They ship no accounts, private records, client configura
 | module | capability | needs |
 |---|---|---|
 | [`@dreamteamer/knowledge`](modules/knowledge) | raw thought capture, reader-facing briefs and cross-domain synthesis | core >=0.9.0; engine >=0.43.0 |
-| [`@dreamteamer/compact-tasks`](modules/compact-tasks) | focused task Board/List preset, including suggestions, with existing routes preserved | core >=0.9.0; engine >=0.43.0 |
 | [`@dreamteamer/google-workspace`](modules/google-workspace) | explicit-account local bridge to a pinned public MCP server; read-only by default | owner-controlled OAuth setup and local Python runtime |
 | [`@dreamteamer/git-identities`](modules/git-identities) | folder-scoped Git configuration proposals and read-only authorship/alias checks | owner-reviewed Git and SSH setup |
+
+Tasks in `core` use a compact Board and List by default, including suggestions and creation dates; historical routes remain available.
 
 Choose capabilities independently. The account modules do not authorize accounts, apply machine
 configuration, import CRM records or prove remote access. The setup board reports unverified

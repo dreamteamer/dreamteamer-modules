@@ -1,0 +1,28 @@
+route: /tasks/list
+scope: collection
+collection: collections/tasks
+filter:
+  status:
+    _in:
+      - suggested
+      - todo
+      - doing
+      - blocked
+display:
+  nav:
+    title: List
+    icon: list-unordered
+    order: 1
+  list:
+    layout: table
+    columns:
+      - name
+      - status
+      - assignee
+      - created
+      - due
+      - project
+      - tags
+    sort: due
+    options:
+      page_size: 100

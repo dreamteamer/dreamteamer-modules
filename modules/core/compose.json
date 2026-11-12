@@ -140,7 +140,7 @@
 		},
 		"collections/tasks/tasks.collection.yaml": {
 			"from": "tasks/collections/tasks.collection.yaml",
-			"hash": "sha256:0dc6d93d8a93258495e1dd7f351167e30e8a56bfd63fc29a9200c2881aa5c20f"
+			"hash": "sha256:95a252f57e767ce90025f95b52c7007a20ce9d3ef7a2b37c2c133ffafcce007c"
 		},
 		"collections/tasks/users.collection.yaml": {
 			"from": "tasks/collections/users.collection.yaml",
@@ -456,7 +456,7 @@
 		},
 		"ui-views/inbox.ui-view.yaml": {
 			"from": "tasks/ui-views/inbox.ui-view.yaml",
-			"hash": "sha256:076ee13cbbbeb8af03ec43576458404f03afcd9fd2860fcfb96839b564792948"
+			"hash": "sha256:b5fd35d8708b3ae25edf6e386a526b015dc7531c4a4c8a1f2901d387dcf846f6"
 		},
 		"ui-views/meetings-pipeline.ui-view.yaml": {
 			"from": "meeting-docs/ui-views/meetings-pipeline.ui-view.yaml",
@@ -468,31 +468,35 @@
 		},
 		"ui-views/tasks-active-gantt.ui-view.yaml": {
 			"from": "tasks/ui-views/tasks-active-gantt.ui-view.yaml",
-			"hash": "sha256:a16087b654900f9af9f09e6ebcd93edaf9ff9b57372c3046e4f0d2991bfe2842"
+			"hash": "sha256:65b6d409512a0098c97402e6348db27724710c4af1f778b297f652a31f672d44"
 		},
 		"ui-views/tasks-board.ui-view.yaml": {
 			"from": "tasks/ui-views/tasks-board.ui-view.yaml",
-			"hash": "sha256:c38fc50dfaf40140302f3885730ad90d05488eddfeeae2b063b68081503da988"
+			"hash": "sha256:6a908c73c9a88d2619d1e21326a23ede57832642c9a61fc5443c47e82fb2cf6b"
 		},
 		"ui-views/tasks-by-assignee.ui-view.yaml": {
 			"from": "tasks/ui-views/tasks-by-assignee.ui-view.yaml",
-			"hash": "sha256:4509cad708becd0528256080f5f92067cef95c0a791ba59a95caf3b1f0046600"
+			"hash": "sha256:c6fef13c8b7da532a3b0d84dc5822c9ca68dcf70a165e348fa3bcbf336bbd7e0"
+		},
+		"ui-views/tasks-list.ui-view.yaml": {
+			"from": "tasks/ui-views/tasks-list.ui-view.yaml",
+			"hash": "sha256:41c37cb1f2fe14760ccac732830c6b94f70842b04a0d9e9a906ad35543e98ba5"
 		},
 		"ui-views/tasks-mine.ui-view.yaml": {
 			"from": "tasks/ui-views/tasks-mine.ui-view.yaml",
-			"hash": "sha256:4dbb74e51f2c85b855cffd6dd9329f9eaed9218e4985285694ae1e36cdc38431"
+			"hash": "sha256:dee63393c315bcf10393980a05603f8efa711ef9c06eaed7fda6208ae1a1dca1"
 		},
 		"ui-views/tasks-planned-gantt.ui-view.yaml": {
 			"from": "tasks/ui-views/tasks-planned-gantt.ui-view.yaml",
-			"hash": "sha256:64a539237c14771477b18314e6945b9335840b6895f7735d55059f6bb0a023d6"
+			"hash": "sha256:b0e37019f22dc014f3607b7d0daec5ae8294b963ff8aff408305e19273ca7a63"
 		},
 		"ui-views/tasks-retro-gantt.ui-view.yaml": {
 			"from": "tasks/ui-views/tasks-retro-gantt.ui-view.yaml",
-			"hash": "sha256:be3e31614b0eb3e1531e5baf21b21136237f2103416df3668bb978343768e165"
+			"hash": "sha256:5f56e2aa7345741870cbadf294f77b31a6f5de00ab7583074be2a8b7fe0b6d24"
 		},
 		"ui-views/tasks-suggested.ui-view.yaml": {
 			"from": "tasks/ui-views/tasks-suggested.ui-view.yaml",
-			"hash": "sha256:79b32e89656449676044123f1712c37d87c0bb716322229e055133fce39684b1"
+			"hash": "sha256:a6f763bdebd826a2dfd2033cbd09554ce29c355c02c7a2de6b683137241e0f98"
 		}
 	}
 }

@@ -11,6 +11,14 @@ npx dreamteamer check
 
 ---
 
+## 0.9.1 — compact task navigation by default
+
+Run `dt compile`, then `dt check`. Task records, IDs, fields and all lifecycle values are unchanged.
+
+- Board and List show `suggested`, `todo`, `doing` and `blocked`, including creation dates.
+- Other built-in task views are hidden from navigation but retain their routes. Done and closed tasks remain in collection history.
+- Existing workspace-specific display overrides may still apply. Compare before removing only redundant presentation overrides; do not rewrite or delete task records.
+
 ## 0.9.0 — sessions are plain records; session-bindings is gone (breaking)
 
 **Engine floor 0.42.0** — a record's sessions are said by `dt next` through the `next` contribution.

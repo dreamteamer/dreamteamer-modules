@@ -1,15 +1,13 @@
-# Scheduled start to deadline; terminal status does not imply an actual completion date.
+# Compatibility route retained without a navigation entry.
 route: /tasks/retro/gantt
 scope: collection
 collection: collections/tasks
 filter:
   status:
-    _in: [done, closed]
+    _in:
+      - done
+      - closed
 display:
-  nav:
-    title: Retro (gantt)
-    icon: graph-line
-    order: 6
   list:
     layout: gantt
     sort: start

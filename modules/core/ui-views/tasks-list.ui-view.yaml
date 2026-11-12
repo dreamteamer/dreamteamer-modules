@@ -1,7 +1,6 @@
 route: /tasks/list
 scope: collection
 collection: collections/tasks
-title: List
 filter:
   status:
     _in:

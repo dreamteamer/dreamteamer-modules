@@ -11,6 +11,10 @@ npm install @dreamteamer/core
 npx dreamteamer compile
 ```
 
+## Task navigation
+
+Tasks default to a compact Board and List of unfinished work, including suggestions awaiting triage. Creation dates are visible. Alternate built-in task routes remain usable as deep links while staying out of navigation; task records and status meanings are unchanged.
+
 ## composed, not written twice
 
 This package is a COMPOSITION of the small official modules — assets, users, companies, contacts,

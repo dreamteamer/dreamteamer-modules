@@ -1,8 +1,7 @@
 # @dreamteamer/tasks
 
 Concrete commitments: what has to be done, by whom, and by when. Each task names its owner as one
-`users` record, and an empty owner means the workspace's own person. Ships an inbox, a board, a
-by-person view, and the skill an agent follows to create, assign and close tasks.
+`users` record, and an empty owner means the workspace's own person. Ships a focused Board and List, plus the skill an agent follows to create, assign and update tasks.
 
 ```bash
 npm install @dreamteamer/tasks @dreamteamer/users
@@ -11,9 +10,22 @@ npx dreamteamer compile
 
 | alone | with others |
 |---|---|
-| tasks, the inbox (`/inbox`), the board (`/tasks/board` — a column per `status`, a band per `project`), tasks by person (`/tasks/by-assignee`) | **projects** lets a task name the project or activity it serves · **meeting-docs** extracts tasks from a call and lists them on its critique |
+| tasks, Board (`/tasks/board`) and List (`/tasks/list`) for unfinished work | **projects** lets a task name the project or activity it serves · **meeting-docs** extracts tasks from a call and lists them on its critique |
 
 Without the projects module, a task that names a project keeps the reference as written; it resolves once projects is installed.
+
+## Upgrading to 0.3.2: focused task navigation
+
+Only Board and List appear in task subview navigation. They include `suggested`, `todo`, `doing`
+and `blocked`, with creation dates, due dates and assignees. The board has status columns without
+project swimlanes. Completed (`done`) and abandoned (`closed`) records remain in Tasks history;
+this change does not delete records or alter statuses. `suggested` is a candidate, not an accepted
+commitment. The collection's full list remains available for reviewing historical work.
+
+The old inbox, Suggested, Assigned to me, By assignee and Gantt routes still resolve; they no longer
+add navigation entries. Local workspace overlays can intentionally re-enable their nav or change
+filters. Existing overlays take precedence, so inspect them when adopting the new defaults.
+No data migration is needed. The separate experimental compact-tasks preset is not needed.
 
 ## Upgrading to 0.3.0: lanes become tags
 

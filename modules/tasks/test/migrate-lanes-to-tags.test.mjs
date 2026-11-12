@@ -63,11 +63,11 @@ describe('tasks 0.3.0 ships no lane', () => {
 			}
 		}
 	});
-	test('the board keeps status columns and bands by project, showing the tasks with none', () => {
+	test('the board keeps status columns without project bands', () => {
 		const v = yaml.load(fs.readFileSync(path.join(MODULE, 'ui-views', 'tasks-board.ui-view.yaml'), 'utf8'));
 		assert.equal(v.display.list.options.lanes_by, 'status');
-		assert.equal(v.display.list.options.group_by, 'project');
-		assert.equal(v.display.list.options.show_ungrouped_rows, true);
+		assert.equal(v.display.list.options.group_by, undefined);
+		assert.equal(v.display.list.options.show_ungrouped_rows, undefined);
 	});
 	test('the manifest is 0.3.0 or later and ships the migration as an npm bin', () => {
 		const pkg = JSON.parse(fs.readFileSync(path.join(MODULE, 'package.json'), 'utf8'));

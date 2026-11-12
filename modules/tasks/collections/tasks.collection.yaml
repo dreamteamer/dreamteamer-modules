@@ -153,13 +153,19 @@ display:
   list:
     columns:
       - name
-      - assignee
-      - last_modified
       - status
+      - assignee
+      - created
       - due
+      - project
       - tags
+    sort: '-created'
   form:
     sections:
       - title: Provenance
-        fields: [author, creation_context, source, confidence]
+        fields:
+          - author
+          - creation_context
+          - source
+          - confidence
         collapsed: true
