@@ -1,0 +1,38 @@
+{
+  "name": "@dreamteamer/knowledge",
+  "version": "0.1.0",
+  "description": "Optional raw thought capture, reader-facing briefs and cross-record synthesis for dreamteamer workspaces.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dreamteamer/dreamteamer-modules.git",
+    "directory": "modules/knowledge"
+  },
+  "keywords": [
+    "dreamteamer",
+    "dreamteamer-module",
+    "knowledge"
+  ],
+  "files": [
+    "README.md",
+    "collections",
+    "skills",
+    "ui-views"
+  ],
+  "peerDependencies": {
+    "@dreamteamer/core": ">=0.9.0"
+  },
+  "dreamteamer": {
+    "title": "Knowledge",
+    "description": "Capture raw thoughts, prepare reader-facing briefs and synthesize evidence across records and periods. Optional knowledge schemas and procedures; ships no personal records.",
+    "engine": ">=0.43.0",
+    "dependencies": [
+      "@dreamteamer/core"
+    ],
+    "peer_collections": [
+      "companies",
+      "meetings"
+    ]
+  }
+}

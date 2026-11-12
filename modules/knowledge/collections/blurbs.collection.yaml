@@ -1,0 +1,48 @@
+name: blurbs
+description: >-
+  A raw thought captured before its destination is known. Digest it later into a task, document or
+  other record; do not mistake an idea for a commitment.
+use_when: >-
+  A raw thought captured before its destination is known. Digest it later into a task, document or
+  other record; do not mistake an idea for a commitment.
+storage:
+  path: data/blurbs
+  format: md
+ids:
+  from: '{{ created | date }}--{{ name | slug }}'
+  pattern: ^\d{4}-\d{2}-\d{2}--[a-z0-9-]+$
+fields:
+  name:
+    type: string
+    description: A short title for finding the thought again.
+    required: true
+  status:
+    type: string
+    description: draft is raw; digested means it has been processed into its intended outcome.
+    default: draft
+    enum:
+      - draft
+      - digested
+  tags:
+    type: string
+    many: true
+    pattern: ^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$
+    description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
+  raw_input:
+    type: markdown
+    description: >-
+      Verbatim user-provided input, kept separate from interpretation. Never reconstruct an exact
+      quote from memory.
+  content:
+    type: markdown
+    body: true
+    description: Working interpretation or organization of the thought; older records may contain only this.
+display:
+  nav:
+    icon: symbol-snippet
+  list:
+    columns:
+      - name
+      - status
+      - last_modified
+      - tags

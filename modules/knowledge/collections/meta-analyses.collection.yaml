@@ -1,0 +1,69 @@
+name: meta-analyses
+description: >-
+  Cross-record synthesis over a period: recurring patterns, themes, blind spots and strategy. May
+  combine thought captures, documents, sessions and meeting analyses; not a replacement for
+  transcript-grounded meeting critique.
+use_when: >-
+  Cross-record synthesis over a period: recurring patterns, themes, blind spots and strategy. May
+  combine thought captures, documents, sessions and meeting analyses; not a replacement for
+  transcript-grounded meeting critique.
+storage:
+  path: data/meta-analyses
+  format: md
+  suffix: meta-analysis
+ids:
+  from: '{{ created | date }}--{{ title | slug }}'
+  pattern: ^\d{4}-\d{2}-\d{2}--[a-z0-9-]+$
+fields:
+  title:
+    type: string
+    description: The synthesis title, ideally the claim it makes.
+    required: true
+  content:
+    type: markdown
+    body: true
+    description: >-
+      Synthesis with evidence, interpretations, counterexamples and limitations clearly
+      distinguished.
+  description:
+    type: string
+    description: One-line finding.
+  period_start:
+    type: date
+    description: First date included.
+  period_end:
+    type: date
+    description: Last date included.
+  sources_description:
+    type: string
+    description: What was actually read, how selected, and which coverage gaps remain.
+  sources_count:
+    type: integer
+    description: Count of records actually read, not merely discovered.
+  sources_token_count:
+    type: integer
+    description: Text volume read in tokens; identify any estimation method in sources_description.
+  author:
+    type: string
+    description: The agent that wrote this record; absent when a person wrote it.
+  creation_context:
+    type: string
+    description: Why and how this record was produced, including important uncertainty.
+  prompt:
+    type: string
+    description: Self-contained regeneration instructions identifying scope and sources, never credentials.
+  tags:
+    type: string
+    many: true
+    pattern: ^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$
+    description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
+display:
+  nav:
+    icon: notebook
+  list:
+    columns:
+      - title
+      - period_start
+      - period_end
+      - sources_count
+singular: meta-analysis

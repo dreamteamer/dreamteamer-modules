@@ -85,7 +85,8 @@ their reviewed release. They ship no accounts, private records, client configura
 
 | module | capability | needs |
 |---|---|---|
-| [`@dreamteamer/personal-workspace`](modules/personal-workspace) | blurbs, briefs, cross-meeting analyses and focused task Board/List views | core >=0.9.0; engine >=0.43.0 |
+| [`@dreamteamer/knowledge`](modules/knowledge) | raw thought capture, reader-facing briefs and cross-domain synthesis | core >=0.9.0; engine >=0.43.0 |
+| [`@dreamteamer/compact-tasks`](modules/compact-tasks) | focused task Board/List preset, including suggestions, with existing routes preserved | core >=0.9.0; engine >=0.43.0 |
 | [`@dreamteamer/google-workspace`](modules/google-workspace) | explicit-account local bridge to a pinned public MCP server; read-only by default | owner-controlled OAuth setup and local Python runtime |
 | [`@dreamteamer/git-identities`](modules/git-identities) | folder-scoped Git configuration proposals and read-only authorship/alias checks | owner-reviewed Git and SSH setup |
 

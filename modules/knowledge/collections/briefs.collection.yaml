@@ -1,0 +1,86 @@
+name: briefs
+description: >-
+  A document prepared for a reader: a deck outline, positioning thesis, progress report or
+  reference. Use meeting-preps instead when preparing for one specific meeting.
+use_when: >-
+  A document prepared for a reader: a deck outline, positioning thesis, progress report or
+  reference. Use meeting-preps instead when preparing for one specific meeting.
+storage:
+  path: data/briefs
+  format: md
+ids:
+  from: '{{ created | date }}--{{ name | slug }}'
+  pattern: ^\d{4}-\d{2}-\d{2}--[a-z0-9-]+$
+fields:
+  name:
+    type: string
+    description: Document title.
+  date:
+    type: date
+    description: Date the document covers or is written for.
+  company:
+    type: companies
+    description: Company this document concerns, when relevant.
+  meeting:
+    type: meetings
+    description: Related meeting, not a substitute for meeting-preps.
+  person:
+    type: string
+    description: Subject person when not represented by a contact record.
+  projects:
+    type: string
+    description: Project or workstream labels.
+    many: true
+  language:
+    type: string
+    description: Language of the document.
+  audience:
+    type: string
+    description: Who will read this document.
+  purpose:
+    type: string
+    description: What the document should help its reader do.
+  description:
+    type: string
+    description: One-line summary.
+  sources:
+    type: string
+    description: Source record references or provenance paths; preserve original source locations.
+    many: true
+  content:
+    type: markdown
+    body: true
+    description: The document itself.
+  status:
+    type: string
+    description: Editorial state, not publication permission.
+    enum:
+      - draft
+      - final
+  author:
+    type: string
+    description: The agent that wrote this record; absent when a person wrote it.
+  creation_context:
+    type: string
+    description: Why and how this record was produced, including important uncertainty.
+  source:
+    type: string
+    description: Origin of the information, such as a record reference, file path or URL.
+  confidence:
+    type: string
+    description: Confidence in this record.
+    default: normal
+    enum:
+      - low
+      - normal
+      - high
+display:
+  nav:
+    icon: file-text
+  list:
+    columns:
+      - name
+      - last_modified
+      - date
+      - company
+      - status

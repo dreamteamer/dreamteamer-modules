@@ -1,0 +1,33 @@
+overlay: true
+title: Board
+description: Unfinished work including candidates awaiting triage; done and closed remain in task history.
+filter:
+  status:
+    _in:
+      - suggested
+      - todo
+      - doing
+      - blocked
+display:
+  nav:
+    title: Board
+    order: 0
+  list:
+    columns:
+      - name
+      - status
+      - assignee
+      - created
+      - due
+      - project
+      - tags
+    sort: due
+    options:
+      group_by: null
+      show_ungrouped_rows: null
+      show_empty_columns: false
+      card_title: |-
+        **{{ name }}**
+
+        Created: {{ created }} · Due: {{ due }}
+        {{ assignee }} · {{ project }}

@@ -1,0 +1,14 @@
+name: tasks
+overlay: true
+fields: {}
+display:
+  list:
+    columns:
+      - name
+      - status
+      - assignee
+      - created
+      - due
+      - project
+      - tags
+    sort: '-created'

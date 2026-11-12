@@ -210,7 +210,7 @@ export function gpuCheck({ platform = process.platform, arch = process.arch, whi
 	return { state: 'ok', detail: `metal — whisper-cli ${whisperCli} + ggml weights` };
 }
 
-export const OURS = ['core', 'assets', 'users', 'companies', 'contacts', 'engagements', 'tasks', 'routines', 'meetings', 'recordings', 'meeting-docs', 'projects', 'perspective', 'wikis', 'notebooklm', 'search', 'rnd', 'proofs', 'worktrees', 'http', 'protocol', 'ui', 'web', 'docker-workspaces', 'code', 'files', 'workflows', 'git-identities', 'google-workspace', 'personal-workspace'];
+export const OURS = ['core', 'assets', 'users', 'companies', 'contacts', 'engagements', 'tasks', 'routines', 'meetings', 'recordings', 'meeting-docs', 'projects', 'perspective', 'wikis', 'notebooklm', 'search', 'rnd', 'proofs', 'worktrees', 'http', 'protocol', 'ui', 'web', 'docker-workspaces', 'code', 'files', 'workflows', 'git-identities', 'google-workspace', 'knowledge', 'compact-tasks'];
 
 /** The modules a COMPOSED module stands in for — `compose.json` at its root names its origins. `core`
  *  installed means every capability of users, meetings, files… applies, read from the package itself. */

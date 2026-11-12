@@ -14,7 +14,7 @@ const KINDS = ['collections', 'mixins', 'skills', 'commands', 'command-bindings'
 const SEMVER = /^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/;
 
 test('the repo carries every module it is meant to', () => {
-	assert.deepEqual(moduleIds(), ['assets', 'code', 'companies', 'contacts', 'core', 'docker-workspaces', 'engagements', 'files', 'git-identities', 'google-workspace', 'http', 'meeting-docs', 'meetings', 'notebooklm', 'personal-workspace', 'perspective', 'projects', 'proofs', 'protocol', 'recordings', 'rnd', 'routines', 'search', 'setup', 'tasks', 'ui', 'users', 'web', 'wikis', 'workflows', 'worktrees']);
+	assert.deepEqual(moduleIds(), ['assets', 'code', 'compact-tasks', 'companies', 'contacts', 'core', 'docker-workspaces', 'engagements', 'files', 'git-identities', 'google-workspace', 'http', 'knowledge', 'meeting-docs', 'meetings', 'notebooklm', 'perspective', 'projects', 'proofs', 'protocol', 'recordings', 'rnd', 'routines', 'search', 'setup', 'tasks', 'ui', 'users', 'web', 'wikis', 'workflows', 'worktrees']);
 });
 
 for (const m of moduleIds()) {
