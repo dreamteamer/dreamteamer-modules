@@ -5,6 +5,7 @@
 //
 // Read SETUP.md beside this package for the conversation that uses it.
 import fs from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -161,3 +162,71 @@ export function apply({ root, action, expect, workspace: claimed, rows = [], env
 	writeScoped({ root: workspace.root, rel: '.env', content: step.content, expected: expect, recheck });
 	return { action, changed: true, wrote: '.env', added: step.preview.adds.length, workspace, checks: inspect({ root: workspace.root, env, home }).checks };
 }
+
+// ── the SETUP UNIT ──────────────────────────────────────────────────────────────────────────────
+// What the engine's `dt install`, `dt setup` and `dt status` drive (setup contribution, version 1):
+// the same inspect / plan / apply, with each effect as { kind, detail } and the planned action handed
+// back to apply verbatim (its preview carries the .env fingerprint the write is bound to). The live
+// calendar check is the owner's — runBy 'owner', run only under `dt setup meetings --verify --authorize`
+// in a terminal — and a passing one leaves a dated receipt the next inspect turns into `ready`.
+const RECEIPT = 'calendar-access.verified.json';
+const receiptOf = (ctx) => { try { return JSON.parse(fs.readFileSync(path.join(ctx.receiptDir, RECEIPT), 'utf8')); } catch { return null; } };
+const unitEffect = (text) => { const m = /^([a-z-]+):\s*(.*)$/s.exec(text); const kind = { 'workspace-file': 'workspace-files', 'account-access': 'account', network: 'network' }[m?.[1]] ?? 'machine'; return { kind, detail: m ? m[2] : text }; };
+
+function unitInspect(ctx) {
+	const { checks } = inspect({ root: ctx.root, env: ctx.env });
+	const receipt = receiptOf(ctx);
+	// a row this module calls `blocked` only because the calendar rows are not in yet is `missing` to the
+	// engine (an input fixes it); `blocked` is kept for what no input fixes
+	const rowsMissing = checks.some((c) => c.id === 'meetings.work-calendars' && c.status === 'missing');
+	return { checks: checks.map((c) => {
+		const status = c.status === 'blocked' && rowsMissing ? 'missing' : c.status;
+		const row = { id: c.id, status, title: c.label, detail: c.detail, fix: c.fix, evidence: c.evidence };
+		if (c.id === 'meetings.account-access' && receipt) return { ...row, status: 'ready', detail: `every configured calendar answered on this computer (${receipt.rows} row(s))`, evidence: { at: receipt.at, rows: receipt.rows } };
+		return row;
+	}) };
+}
+
+function unitPlan(ctx, inputs = {}) {
+	const rows = Array.isArray(inputs.calendar) ? inputs.calendar : inputs.calendar ? [inputs.calendar] : [];
+	const p = plan({ root: ctx.root, env: ctx.env, rows });
+	const actions = p.actions.map((a) => {
+		const { content, ...rest } = a; // the merged .env text is recomputed by apply, never carried
+		return {
+			...rest, title: a.title ?? a.id,
+			effects: (a.effects ?? []).map(unitEffect),
+			runBy: a.runBy === 'owner' ? 'owner' : 'engine',
+			...(a.id === 'verify-calendar-access' ? { kind: 'verify' } : {}),
+			...(a.preview?.expect ? { expect: a.preview.expect } : {}),
+		};
+	});
+	return { checks: unitInspect(ctx).checks, actions, needs: rows.length ? [] : ['calendar'] };
+}
+
+function unitApply(ctx, action, inputs = {}) {
+	try {
+		if (action.state === 'done') return { ok: true, changed: [], message: `nothing to do — ${action.reason ?? 'already configured'}` };
+		if (action.id === 'add-calendar-rows') {
+			const r = apply({ root: ctx.root, action: action.id, expect: action.expect ?? action.preview?.expect, workspace: ctx.root, rows: action.inputs ?? [], env: ctx.env });
+			return { ok: true, changed: r.changed ? ['.env'] : [], message: r.changed ? `wrote .env (${r.added} row(s) added, every other line kept)` : `nothing to do — ${r.reason}` };
+		}
+		if (action.id === 'verify-calendar-access') {
+			if (!action.command) return { ok: false, changed: [], message: action.reason ?? 'not ready' };
+			const r = spawnSync(action.command[0], action.command.slice(1), { cwd: ctx.root, env: ctx.env, stdio: 'inherit', timeout: 600_000 });
+			if (r.status !== 0) return { ok: false, changed: [], message: `${action.command.slice(0, 2).join(' ')} exited ${r.status ?? r.error?.message}` };
+			fs.mkdirSync(ctx.receiptDir, { recursive: true });
+			const rows = parseWorkCalendars(workCalendars(ctx.root, ctx.env).text).rows.length;
+			fs.writeFileSync(path.join(ctx.receiptDir, RECEIPT), JSON.stringify({ what: 'every configured calendar answered', rows, at: new Date().toISOString().slice(0, 10) }, null, 2) + '\n');
+			return { ok: true, changed: [path.join(ctx.receiptDir, RECEIPT)], message: 'calendar access verified — receipt written' };
+		}
+		return { ok: false, changed: [], message: `unknown action ${action.id}` };
+	} catch (error) {
+		return { ok: false, changed: [], message: error instanceof SetupRefusal ? error.message : redact(error.message) };
+	}
+}
+
+export const SETUP_UNIT = Object.freeze({
+	id: 'meetings', version: 1,
+	inputs: [{ id: 'calendar', kind: 'rows', env: 'WORK_CALENDARS', required: false, title: 'work calendars', prompt: 'A work calendar: calendar id | default company id (or mixed) | account email', rows: { columns: ['calendar id', 'default company', 'account'] } }],
+	inspect: unitInspect, plan: unitPlan, apply: unitApply,
+});
