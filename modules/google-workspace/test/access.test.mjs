@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { call, validateCall, credentialPath } from '../lib/access.mjs';
+import { call, validateCall, credentialPath, configuration } from '../lib/access.mjs';
 import { connect } from '../lib/client.mjs';
 import { doctor } from '../lib/doctor.mjs';
 
@@ -38,6 +38,8 @@ test('successful call binds account last and closes process', async () => {
   assert.equal(f.observed.calls[0][1].arguments.user_google_email, account);
   assert.equal(f.observed.closed, true);
   assert.ok(f.observed.options.args.includes('--read-only'));
+  assert.deepEqual(f.observed.options.args.slice(0, 3), ['--with', 'python-dotenv==1.2.3', 'workspace-mcp==2.4.2']);
+  assert.equal(f.observed.options.env.PYTHON_DOTENV_DISABLED, '1');
   assert.match(f.observed.options.env.BROWSER, /no-browser/);
 });
 test('tool error and renewed consent are not success and always close process', async () => {
@@ -65,11 +67,12 @@ test('real stdio mock handles initialize, notifications and call without credent
     fs.writeFileSync(mock, `import readline from 'node:readline';
       for await (const line of readline.createInterface({input:process.stdin})) {
         const m=JSON.parse(line); if(!m.id) continue;
+        if (process.env.UNRELATED_SECRET || process.env.UV_ENV_FILE || process.env.WORKSPACE_MCP_CREDENTIAL_STORE_BACKEND !== 'local_directory') process.exit(2);
         const result=m.method==='initialize'?{protocolVersion:'2024-11-05',capabilities:{},serverInfo:{name:'mock',version:'1'}}:{content:[{type:'text',text:m.params.arguments.user_google_email}]};
         console.log(JSON.stringify({jsonrpc:'2.0',id:m.id,result}));
       }`);
     const factory = options => connect({ ...options, command: process.execPath, args: [mock], timeoutMs: 2000 });
-    const result = await call({ account, tool, env, fileExists: () => true, connectionFactory: factory });
+    const result = await call({ account, tool, fileExists: () => true, connectionFactory: factory, env: { ...env, PATH: process.env.PATH, HOME: process.env.HOME, UNRELATED_SECRET: 'synthetic-value', UV_ENV_FILE: '/tmp/hostile.env', WORKSPACE_MCP_CREDENTIAL_STORE_BACKEND: 'gcs' } });
     assert.equal(result.content[0].text, account);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
@@ -106,4 +109,33 @@ test('an empty credential directory cannot yield a fully ready doctor', () => {
     assert.equal(report.checks.find(c => c.label === 'Account authorization').state, 'warn');
     assert.equal(report.checks.every(c => c.state === 'ok'), false);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('hostile inherited configuration cannot change local transport, auth or credential storage', () => {
+  const hostile = {
+    ...env, PATH: '/usr/bin', HOME: '/tmp/synthetic-home',
+    WORKSPACE_MCP_CREDENTIAL_STORE_BACKEND: 'gcs', WORKSPACE_MCP_GCS_BUCKET: 'synthetic-bucket',
+    MCP_ENABLE_OAUTH21: 'true', EXTERNAL_OAUTH21_PROVIDER: 'true', TRUST_GATEWAY_IDENTITY: 'true',
+    WORKSPACE_MCP_STATELESS_MODE: 'true', MCP_SINGLE_USER_MODE: '1',
+    WORKSPACE_MCP_BASE_URI: 'https://remote.example', WORKSPACE_EXTERNAL_URL: 'https://remote.example',
+    GOOGLE_OAUTH_REDIRECT_URI: 'https://remote.example/callback', OAUTH_CUSTOM_REDIRECT_URIS: 'https://remote.example',
+    GOOGLE_SERVICE_ACCOUNT_KEY_FILE: '/tmp/other-account.json', GOOGLE_SERVICE_ACCOUNT_KEY_JSON: '{}',
+    GOOGLE_OAUTH_CLIENT_ID: 'synthetic-id', GOOGLE_OAUTH_CLIENT_SECRET: 'synthetic-secret',
+    PYTHON_DOTENV_DISABLED: '0', UV_NO_CONFIG: '0', UV_INDEX_URL: 'https://remote.example', UV_ENV_FILE: '/tmp/hostile.env',
+    BROWSER: 'hostile-browser', NODE_OPTIONS: '--require hostile', PYTHONPATH: '/tmp/injected',
+    HTTP_PROXY: 'https://remote.example', GOOGLE_APPLICATION_CREDENTIALS: '/tmp/other.json',
+    USER_GOOGLE_EMAIL: 'sam@northwind.example', UNRELATED_SECRET: 'synthetic-value',
+  };
+  const actual = configuration(hostile);
+  assert.equal(actual.PATH, hostile.PATH); assert.equal(actual.HOME, hostile.HOME);
+  assert.equal(actual.GOOGLE_CLIENT_SECRET_PATH, env.GOOGLE_CLIENT_SECRET_PATH);
+  assert.equal(actual.WORKSPACE_MCP_CREDENTIALS_DIR, env.WORKSPACE_MCP_CREDENTIALS_DIR);
+  assert.equal(actual.WORKSPACE_MCP_CREDENTIAL_STORE_BACKEND, 'local_directory');
+  assert.equal(actual.WORKSPACE_MCP_BASE_URI, 'http://localhost');
+  assert.equal(actual.WORKSPACE_MCP_TRANSPORT, 'stdio');
+  for (const key of ['MCP_ENABLE_OAUTH21', 'EXTERNAL_OAUTH21_PROVIDER', 'TRUST_GATEWAY_IDENTITY', 'WORKSPACE_MCP_STATELESS_MODE']) assert.equal(actual[key], 'false');
+  for (const key of ['GOOGLE_SERVICE_ACCOUNT_KEY_FILE', 'GOOGLE_SERVICE_ACCOUNT_KEY_JSON', 'GOOGLE_OAUTH_CLIENT_ID', 'GOOGLE_OAUTH_CLIENT_SECRET', 'GOOGLE_OAUTH_REDIRECT_URI', 'WORKSPACE_EXTERNAL_URL', 'OAUTH_CUSTOM_REDIRECT_URIS']) assert.equal(actual[key], '');
+  for (const key of ['WORKSPACE_MCP_GCS_BUCKET', 'UV_INDEX_URL', 'UV_ENV_FILE', 'NODE_OPTIONS', 'PYTHONPATH', 'HTTP_PROXY', 'GOOGLE_APPLICATION_CREDENTIALS', 'USER_GOOGLE_EMAIL', 'UNRELATED_SECRET']) assert.equal(Object.hasOwn(actual, key), false);
+  assert.equal(actual.PYTHON_DOTENV_DISABLED, '1'); assert.equal(actual.UV_NO_CONFIG, '1');
+  assert.match(actual.BROWSER, /no-browser\.mjs$/);
 });

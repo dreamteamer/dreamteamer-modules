@@ -20,7 +20,35 @@ export function configuration(env = process.env) {
   for (const key of ['GOOGLE_CLIENT_SECRET_PATH', 'WORKSPACE_MCP_CREDENTIALS_DIR']) {
     if (!env[key] || !path.isAbsolute(env[key])) throw new Error(`${key} must be an absolute local path.`);
   }
-  return { ...env, BROWSER: fileURLToPath(new URL('../bin/no-browser.mjs', import.meta.url)) };
+  // Deliberately do not inherit application secrets, proxy settings, runtime injection,
+  // alternative credential stores, service accounts or remote callback configuration.
+  const runtime = {};
+  for (const key of ['PATH', 'HOME', 'TMPDIR', 'TMP', 'TEMP', 'SystemRoot', 'SYSTEMROOT', 'WINDIR', 'USERPROFILE', 'APPDATA', 'LOCALAPPDATA', 'COMSPEC', 'LANG', 'LC_ALL', 'TZ']) {
+    if (typeof env[key] === 'string') runtime[key] = env[key];
+  }
+  return {
+    ...runtime,
+    GOOGLE_CLIENT_SECRET_PATH: env.GOOGLE_CLIENT_SECRET_PATH,
+    WORKSPACE_MCP_CREDENTIALS_DIR: env.WORKSPACE_MCP_CREDENTIALS_DIR,
+    WORKSPACE_MCP_CREDENTIAL_STORE_BACKEND: 'local_directory',
+    WORKSPACE_MCP_TRANSPORT: 'stdio',
+    WORKSPACE_MCP_BASE_URI: 'http://localhost',
+    MCP_ENABLE_OAUTH21: 'false',
+    EXTERNAL_OAUTH21_PROVIDER: 'false',
+    TRUST_GATEWAY_IDENTITY: 'false',
+    WORKSPACE_MCP_STATELESS_MODE: 'false',
+    MCP_SINGLE_USER_MODE: '0',
+    GOOGLE_SERVICE_ACCOUNT_KEY_FILE: '',
+    GOOGLE_SERVICE_ACCOUNT_KEY_JSON: '',
+    GOOGLE_OAUTH_CLIENT_ID: '',
+    GOOGLE_OAUTH_CLIENT_SECRET: '',
+    GOOGLE_OAUTH_REDIRECT_URI: '',
+    WORKSPACE_EXTERNAL_URL: '',
+    OAUTH_CUSTOM_REDIRECT_URIS: '',
+    PYTHON_DOTENV_DISABLED: '1',
+    UV_NO_CONFIG: '1',
+    BROWSER: fileURLToPath(new URL('../bin/no-browser.mjs', import.meta.url)),
+  };
 }
 export function credentialPath(directory, email) {
   // Match Python quote(email, safe="@._-") without allowing path traversal.
@@ -32,7 +60,7 @@ export async function call({ account, tool, args = {}, allowWrite = false, env =
   const serverEnv = configuration(env);
   if (!fileExists(serverEnv.GOOGLE_CLIENT_SECRET_PATH)) throw new Error('OAuth client configuration is missing. Complete local setup first.');
   if (!fileExists(credentialPath(serverEnv.WORKSPACE_MCP_CREDENTIALS_DIR, account))) throw new Error('No stored credential for this account. Complete owner-controlled consent separately; no server call was made.');
-  const client = connectionFactory({ env: serverEnv, args: ['workspace-mcp==2.4.2', '--transport', 'stdio', ...(allowWrite ? [] : ['--read-only'])] });
+  const client = connectionFactory({ env: serverEnv, args: ['--with', 'python-dotenv==1.2.3', 'workspace-mcp==2.4.2', '--transport', 'stdio', ...(allowWrite ? [] : ['--read-only'])] });
   try {
     await client.ready();
     const result = await client.send('tools/call', { name: tool, arguments: arguments_ });
