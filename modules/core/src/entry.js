@@ -2,13 +2,21 @@
 // `files` origin's entry (./extension.js, a composed copy: `dt files`) and adds core's own
 // sessions (./sessions/: `dt session bind · end · send`, a record's sessions in `dt next`, the retired session-bindings kind)
 // as ONE contribution — the engine loads one entry per package, so the merge happens here.
+import fs from 'node:fs';
 import activateFiles from './extension.js';
 import { activateSessions } from './sessions/index.js';
 
 export const apiVersion = 1;
 
+/** The origins whose setup unit this package carries — compose.json `setup_units`, written by compose-core. */
+const setupUnits = () => { try { return JSON.parse(fs.readFileSync(new URL('../compose.json', import.meta.url), 'utf8')).setup_units ?? []; } catch { return []; } };
+
 export default async function activate(api) {
-	return mergeContributions([['files', (await activateFiles(api)) ?? {}], ['sessions', activateSessions(api)]]);
+	const parts = [['files', (await activateFiles(api)) ?? {}], ['sessions', activateSessions(api)]];
+	// every origin's setup unit, addressed by the origin's id — `dt setup meetings` inside core is the same
+	// unit as in @dreamteamer/meetings alone (composed copies: lib/<origin>-setup.mjs)
+	for (const o of setupUnits()) parts.push([o, { setup: [(await import(new URL(`../lib/${o}-setup.mjs`, import.meta.url).href)).SETUP_UNIT] }]);
+	return mergeContributions(parts);
 }
 
 /** Two contributions as one: maps and lists are joined (a verb, kind or hook both claim refuses, as the
@@ -27,6 +35,7 @@ export function mergeContributions(parts) {
 		for (const [event, verb] of Object.entries(c.hooks ?? {})) { claim('hook', event, by); (out.hooks ??= {})[event] = verb; }
 		for (const k of c.sourceKinds ?? []) { claim('kind', typeof k === 'string' ? k : k.kind, by); (out.sourceKinds ??= []).push(k); }
 		for (const [id, render] of Object.entries(c.harnesses ?? {})) { claim('harness', id, by); (out.harnesses ??= {})[id] = render; }
+		for (const u of c.setup ?? []) { claim('setup unit', u.id, by); (out.setup ??= []).push(u); }
 	}
 	const fns = (key) => parts.map(([, c]) => c[key]).filter((f) => typeof f === 'function');
 	const lists = async (key, ctx) => (await Promise.all(fns(key).map((f) => f(ctx)))).flatMap((r) => r ?? []);

@@ -137,12 +137,14 @@ export function makeFixture({ engineDir: given, tmp = os.tmpdir() } = {}) {
 	// git() calls, which carry GIT_ENV, passed
 	git(['config', 'user.name', 'Dana Oren']);
 	git(['config', 'user.email', 'dana@northwind.example']);
-	must(dt('init'), 'init');
+	// the engine declared (a file: spec) and linked BEFORE init: since 0.47 init installs a missing engine
+	// from the registry, compiles and commits — declared and present, it runs no npm and the fixture stays offline
 	fs.mkdirSync(path.join(root, 'node_modules'), { recursive: true });
 	fs.symlinkSync(fs.realpathSync(engineDir), path.join(root, 'node_modules', 'dreamteamer'), 'dir');
 	const pkgFile = path.join(root, 'package.json');
+	fs.writeFileSync(pkgFile, JSON.stringify({ name: 'lab', private: true, version: '0.0.1', dependencies: { dreamteamer: `file:${fs.realpathSync(engineDir)}` } }, null, '\t') + '\n');
+	must(dt('init'), 'init');
 	const pkg = JSON.parse(fs.readFileSync(pkgFile, 'utf8'));
-	pkg.dependencies = { ...pkg.dependencies, dreamteamer: '*' };
 	pkg.dreamteamer = { ...pkg.dreamteamer, namespaces: ['lab'], git_modules: { [LAYER]: { url: 'https://git.example/northwind/archive.git', ref: 'main', records: ['projects'] } } };
 	fs.writeFileSync(pkgFile, JSON.stringify(pkg, null, '\t') + '\n');
 	for (const [rel, text] of Object.entries(SOURCES)) {

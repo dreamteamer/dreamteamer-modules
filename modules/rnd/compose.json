@@ -77,5 +77,6 @@
 			"from": "notebooklm/src/harness.js",
 			"hash": "sha256:274f215729491b036f5d23b3bbe2c7850abb6753c0f3f1bc6d25082f6ac0e598"
 		}
-	}
+	},
+	"engine": ">=0.47.0"
 }

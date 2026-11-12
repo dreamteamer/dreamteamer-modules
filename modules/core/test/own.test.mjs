@@ -30,7 +30,7 @@ describe('the five collections core adds', () => {
 		assert.match(d.ids.from, /^\{\{ started \| date:YYYY\/MM \}\}\//, 'the id shards by month, so the folder does too');
 		const pkg = JSON.parse(fs.readFileSync(path.join(CORE, 'package.json'), 'utf8'));
 		assert.ok(pkg.dreamteamer.vars.includes('SESSIONS_FOLDER'), 'the composed manifest declares SESSIONS_FOLDER');
-		assert.equal(pkg.dreamteamer.engine, '>=0.42.0', 'a record\'s sessions in dt next need engine 0.42 (the next contribution)');
+		assert.equal(pkg.dreamteamer.engine, '>=0.47.0', 'the setup units core composes need the engine that reads the setup contribution (0.47, D34); a record\'s sessions in dt next needed 0.42 before that');
 	});
 	test('metrics: a measure with unit, scope, target and a series of readings', () => {
 		const d = own('metrics');

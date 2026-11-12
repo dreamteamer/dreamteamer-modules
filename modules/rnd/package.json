@@ -45,7 +45,7 @@
 			"rnd"
 		],
 		"description": "What a workspace builds and investigates: `products`, `design-docs`, `implementation-plans`, `user-stories`, `screens`, `prototypes`, `tests`, `reviews`, `change-requests`, `features`, `issues`, `research-docs`, `open-questions`, `personas`, `releases` — the lifecycle, /rnd:design to /rnd:release, gated per record (dt next) — plus the `wikis` it reads and the `notebooks` it exports to NotebookLM.",
-		"engine": ">=0.38.0",
+		"engine": ">=0.47.0",
 		"ignore": [
 			"data"
 		],
@@ -54,6 +54,10 @@
 			"companies",
 			"projects",
 			"workflows"
+		],
+		"provides": [
+			"@dreamteamer/notebooklm",
+			"@dreamteamer/wikis"
 		]
 	}
 }

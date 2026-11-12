@@ -17,7 +17,7 @@
 	"title": "Core",
 	"description": "Every core noun from one install: users, companies, contacts, engagements, tasks, projects, meetings, files, assets, artifacts, sessions, metrics, workflows.",
 	"orientation": "Every workspace's nouns, composed from the small official modules into one install: `users` with `teams`, `roles` and `responsibilities`; `companies`, `contacts`, `engagements`; `tasks`; `projects` with `decisions` and `risks`; `meetings` with recordings and docs; `files`; `assets` and `artifacts`; `sessions` and `metrics`; `workflows`. Install core OR the small modules, never both.",
-	"engine": ">=0.42.0",
+	"engine": ">=0.47.0",
 	"vars": [
 		"SESSIONS_FOLDER"
 	],
@@ -282,9 +282,13 @@
 			"from": "workflows/data/workflows/customer-factory.workflow.md",
 			"hash": "sha256:99e559688ba917289e6021fac93f1cba9b0b5affa863be2cad0de8ced9d8e712"
 		},
+		"lib/meetings-extension.mjs": {
+			"from": "meetings/lib/extension.mjs",
+			"hash": "sha256:c140b5282b632752bf2ed1b1849b457c02a9798ae7111bf324572586222b7ad7"
+		},
 		"lib/meetings-setup.mjs": {
 			"from": "meetings/lib/meetings-setup.mjs",
-			"hash": "sha256:ede1411391be9c9584cb809af9ef9f040796f65e7ef207e7d0517669b5f8d984"
+			"hash": "sha256:dd866e7946e4b96d815d628fc12fc0ddb525143934db497bca3c10d47379613a"
 		},
 		"lib/setup-kit.mjs": {
 			"from": "meetings/lib/setup-kit.mjs",
@@ -514,5 +518,8 @@
 			"from": "tasks/ui-views/tasks-suggested.ui-view.yaml",
 			"hash": "sha256:a6f763bdebd826a2dfd2033cbd09554ce29c355c02c7a2de6b683137241e0f98"
 		}
-	}
+	},
+	"setup_units": [
+		"meetings"
+	]
 }

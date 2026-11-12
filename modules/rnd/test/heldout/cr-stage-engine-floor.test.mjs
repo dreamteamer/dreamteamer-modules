@@ -17,8 +17,11 @@ const made = [];
 after(() => { for (const d of made) fs.rmSync(d, { recursive: true, force: true }); });
 const tmp = (p) => { const d = fs.mkdtempSync(path.join(os.tmpdir(), p)); made.push(d); return d; };
 
+// retired with CR-dt-006 (see the test below): the 0.42 engine is not fetched any more
+const RETIRED = true;
 let ENGINE = null;
 try {
+	if (RETIRED) throw new Error('retired');
 	const dir = tmp('h6-eng-');
 	fs.writeFileSync(path.join(dir, 'package.json'), '{"name":"h6","private":true}');
 	execFileSync('npm', ['install', '--no-audit', '--no-fund', '--silent', 'dreamteamer@0.42.0'], { cwd: dir, stdio: 'pipe', timeout: 180_000 });
@@ -28,7 +31,9 @@ try {
 const dt = (root, args) => spawnSync(process.execPath, [path.join(ENGINE, 'bin', 'dreamteamer.js'), ...args], { cwd: root, encoding: 'utf8', timeout: 120_000 });
 const put = (root, rel, text) => { const f = path.join(root, rel); fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, text); };
 
-test('h6 — the engine below the warning channel', { skip: ENGINE ? false : 'dreamteamer@0.42.0 could not be installed from the registry' }, async () => {
+// CR-dt-006: rnd composes with `provides` (an engine 0.47 key) and floors at >=0.47.0, so the 0.42 channel
+// is history for this module — the case stays as a record of what the floor once meant, and is skipped.
+test('h6 — the engine below the warning channel', { skip: 'rnd floors at engine >=0.47.0 since CR-dt-006 (provides); the 0.42 channel is history' }, async () => {
 	assert.equal(JSON.parse(fs.readFileSync(path.join(ENGINE, 'package.json'), 'utf8')).version, '0.42.0');
 	const root = tmp('h6-ws-');
 	execFileSync('git', ['init', '-q'], { cwd: root });

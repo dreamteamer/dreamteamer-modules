@@ -65,7 +65,19 @@ export function destOf(origin, rel) {
 	const [kind, ...rest] = rel.split('/');
 	if (kind === 'collections') return path.posix.join('collections', origin, ...rest);
 	if (kind === 'bin') return path.posix.join('bin', `${origin}-${rest.join('/')}`);
+	// every origin's extension entry has the same name; the composed module activates none of them (its own
+	// entry imports what it needs), so the copy is prefixed to keep the file and let two origins coexist
+	if (rel === 'lib/extension.mjs') return path.posix.join('lib', `${origin}-extension.mjs`);
 	return rel;
+}
+
+/** The origins that ship a setup unit: `lib/<origin>-setup.mjs` exporting SETUP_UNIT — what the composed
+ *  module's own entry activates, so `dt setup <origin>` works inside the composed package exactly as alone. */
+export function setupUnitsOf(origins) {
+	return origins.filter((o) => {
+		const f = path.join(moduleRoot(o), 'lib', `${o}-setup.mjs`);
+		return fs.existsSync(f) && /export const SETUP_UNIT\b/.test(fs.readFileSync(f, 'utf8'));
+	});
 }
 
 const readJson = (f) => JSON.parse(fs.readFileSync(f, 'utf8'));
@@ -99,7 +111,7 @@ export function copiesOf(origin, target = 'core') {
 		for (const rel of walk(dir).map((r) => `${kind}/${r}`)) {
 			const raw = fs.readFileSync(path.join(root, rel));
 			const bytes = TEXT.test(rel) ? Buffer.from(rewrite(raw.toString('utf8'), origin, target), 'utf8') : raw;
-			out.push({ rel, dest: destOf(origin, rel), bytes });
+			out.push({ rel, dest: destOf(origin, rel), bytes, mode: fs.statSync(path.join(root, rel)).mode & 0o777 });
 		}
 	}
 	return out;
@@ -129,14 +141,20 @@ export function setupReference(origins, target) {
  *  and it must import the origin's entry — the module activates that entry itself, so an entry that does not
  *  import it ships the composed package with the origin's verbs and harnesses gone, and nothing says so. Throws
  *  naming the module, the entry and the path it should import; returns the import path when it holds. */
-export function assertOwnEntry(root, target, own, origin, originEntry) {
+export function assertOwnEntry(root, target, own, origin, originEntry, alternatives = []) {
 	const file = path.join(root, own);
 	if (!fs.existsSync(file)) throw new Error(`${target} names its own extension ${own}, which does not exist`);
-	let wanted = path.relative(path.dirname(file), path.join(root, originEntry)).split(path.sep).join('/');
-	if (!wanted.startsWith('.')) wanted = `./${wanted}`;
+	const relTo = (p) => { let w = path.relative(path.dirname(file), path.join(root, p)).split(path.sep).join('/'); return w.startsWith('.') ? w : `./${w}`; };
+	const wanted = relTo(originEntry);
 	const text = fs.readFileSync(file, 'utf8');
-	if (![`'${wanted}'`, `"${wanted}"`].some((q) => text.includes(q))) throw new Error(`${target}'s own extension ${own} does not import ${origin}'s entry (${wanted}) — the origin's contributions would vanish from the composed package`);
-	return wanted;
+	const imports = (w) => [`'${w}'`, `"${w}"`].some((q) => text.includes(q));
+	// an origin whose entry only carries its setup unit is activated through the unit file instead — by a
+	// literal import, or by the generic loop that reads compose.json `setup_units` (core's entry)
+	if (imports(wanted)) return wanted;
+	const alt = alternatives.map(relTo).find(imports);
+	if (alt) return alt;
+	if (alternatives.length && /setup_units/.test(text) && /compose\.json/.test(text)) return alternatives.map(relTo)[0];
+	throw new Error(`${target}'s own extension ${own} does not import ${origin}'s entry (${wanted})${alternatives.length ? ` or its setup unit (${alternatives.map(relTo).join(', ')})` : ''} — the origin's contributions would vanish from the composed package`);
 }
 
 /** The composition as data: the copies and the merged manifest, computed from the origins and the
@@ -150,7 +168,7 @@ export function compose(target = 'core', root = moduleRoot(target)) {
 		for (const c of copiesOf(origin, target)) {
 			const taken = copies.get(c.dest);
 			if (taken && !taken.bytes.equals(c.bytes)) throw new Error(`${origin}/${c.rel} would land on ${c.dest}, already taken by ${taken.from}`);
-			if (!taken) copies.set(c.dest, { from: `${origin}/${c.rel}`, bytes: c.bytes });
+			if (!taken) copies.set(c.dest, { from: `${origin}/${c.rel}`, bytes: c.bytes, mode: c.mode });
 		}
 	}
 	// the origins' setup references, composed into one root SETUP.md (never authored in the module itself)
@@ -168,8 +186,9 @@ export function compose(target = 'core', root = moduleRoot(target)) {
 	// contributions (core's `src/entry.js`: files' `dt files` beside its own sessions) — so its own files
 	// may sit in src/ beside the origin's copies; a path both claim still fails, below and in the copy loop.
 	const extensions = manifests.filter((m) => m.pkg.dreamteamer?.extension);
-	if (extensions.length > 1) throw new Error(`two origins are extensions: ${extensions.map((m) => m.origin).join(', ')} — a module can declare one entry`);
 	const own = spec.extension;
+	// several extension origins are fine when the module owns its entry and activates each of them itself
+	if (extensions.length > 1 && !own) throw new Error(`two origins are extensions: ${extensions.map((m) => m.origin).join(', ')} — name the module's own entry in compose.json \`extension\` and activate each there`);
 	const extension = own ?? extensions[0]?.pkg.dreamteamer.extension ?? authored.extension;
 	if (own && copies.has(own.replace(/^\.\//, ''))) throw new Error(`${target} names its own extension ${own}, and ${copies.get(own.replace(/^\.\//, '')).from} lands on that path`);
 	if (!own && extensions.length && authored.extension && authored.extension !== extension) throw new Error(`${target} declares its own extension ${authored.extension} and ${extensions[0].origin} brings ${extension} — a module can declare one entry`);
@@ -179,8 +198,10 @@ export function compose(target = 'core', root = moduleRoot(target)) {
 	for (const { origin, pkg } of manifests) for (const d of pkg.dreamteamer?.dependencies ?? []) {
 		if (!internal.has(d)) throw new Error(`${origin} depends on ${d}, which is not an origin — ${target} would not compile alone`);
 	}
-	// the module's own entry exists and activates the origin's — or the origin's verbs vanish without a word
-	if (own && extensions.length) assertOwnEntry(root, target, own, extensions[0].origin, extensions[0].pkg.dreamteamer.extension);
+	// the module's own entry exists and activates every extension origin — through its entry, or through its
+	// setup unit when that is all the entry carries — or the origin's contributions vanish without a word
+	const setupUnits = setupUnitsOf(spec.origins);
+	if (own) for (const e of extensions) assertOwnEntry(root, target, own, e.origin, destOf(e.origin, e.pkg.dreamteamer.extension.replace(/^\.\//, '')), setupUnits.includes(e.origin) ? [`lib/${e.origin}-setup.mjs`] : []);
 	// what the module owns: every base collection among the copies, plus its own authored bases
 	const owned = new Set();
 	const yamlName = (text) => text.match(/^name:\s*(\S+)/m)?.[1];
@@ -207,7 +228,7 @@ export function compose(target = 'core', root = moduleRoot(target)) {
 	const kindsPresent = (list) => KINDS.filter((k) => list.some((f) => f.startsWith(`${k}/`)));
 	const allDests = [...copies.keys(), ...(fs.existsSync(root) ? walk(root).filter((f) => !f.startsWith('test/')) : [])];
 	const KNOWN = new Set(['name', 'version', 'description', 'license', 'type', 'repository', 'keywords', 'bin', 'files', 'dependencies', 'dreamteamer']);
-	const KNOWN_DT = new Set(['extension', 'title', 'namespaces', 'description', 'engine', 'env', 'vars', 'peer_collections', 'dependencies', 'ignore']);
+	const KNOWN_DT = new Set(['extension', 'title', 'namespaces', 'description', 'engine', 'env', 'vars', 'peer_collections', 'dependencies', 'ignore', 'provides']);
 	const rest = (obj, known) => Object.fromEntries(Object.entries(obj).filter(([k]) => !known.has(k)));
 	const manifest = {
 		name: `@dreamteamer/${target}`,
@@ -234,10 +255,12 @@ export function compose(target = 'core', root = moduleRoot(target)) {
 			...(union('ignore').length ? { ignore: union('ignore') } : {}),
 			...(peers.length ? { peer_collections: peers } : {}),
 			...(hardDeps.length ? { dependencies: hardDeps } : {}),
+			// what this package composes, so `dt install` refuses a duplicate in both directions
+			provides: spec.origins.map((o) => `@dreamteamer/${o}`).sort(),
 			...rest(authored, KNOWN_DT),
 		},
 	};
-	return { spec, copies, manifest, owned, root };
+	return { spec, copies, manifest, owned, root, setupUnits };
 }
 
 /** What compose.json's `files` should say for these copies. */
@@ -257,6 +280,8 @@ export function problemsOf(target) {
 	const pkgPath = path.join(root, 'package.json');
 	if (!fs.existsSync(pkgPath) || JSON.stringify(readJson(pkgPath)) !== JSON.stringify(manifest)) problems.push('package.json is not the merged manifest');
 	if (JSON.stringify(spec.files ?? {}) !== JSON.stringify(files)) problems.push('compose.json files do not match the copies');
+	const { setupUnits } = compose(target);
+	if (JSON.stringify(spec.setup_units ?? []) !== JSON.stringify(setupUnits)) problems.push(`compose.json setup_units should be ${JSON.stringify(setupUnits)}`);
 	return problems;
 }
 
@@ -270,8 +295,10 @@ function composeOne(target, check) {
 		return 0;
 	}
 	for (const dest of Object.keys(spec.files ?? {})) fs.rmSync(path.join(root, dest), { force: true });
-	for (const [dest, { bytes }] of copies) { fs.mkdirSync(path.dirname(path.join(root, dest)), { recursive: true }); fs.writeFileSync(path.join(root, dest), bytes); }
-	fs.writeFileSync(path.join(root, 'compose.json'), JSON.stringify({ ...spec, files }, null, '\t') + '\n');
+	// the origin's mode travels with the bytes: an executable bin script stays executable in the copy
+	for (const [dest, { bytes, mode }] of copies) { fs.mkdirSync(path.dirname(path.join(root, dest)), { recursive: true }); fs.writeFileSync(path.join(root, dest), bytes, mode ? { mode } : undefined); if (mode) fs.chmodSync(path.join(root, dest), mode); }
+	const { setupUnits } = compose(target);
+	fs.writeFileSync(path.join(root, 'compose.json'), JSON.stringify({ ...spec, ...(setupUnits.length ? { setup_units: setupUnits } : {}), files }, null, '\t') + '\n');
 	fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify(manifest, null, '\t') + '\n');
 	console.log(`${target}: composed ${copies.size} files from ${spec.origins.join(', ')}${problems.length ? ` (${problems.length} were out of date)` : ''}`);
 	return 0;

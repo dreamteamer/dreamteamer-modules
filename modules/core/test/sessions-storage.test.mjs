@@ -32,8 +32,8 @@ describe('sessions are kept in the workspace\'s own data', { skip }, () => {
 		assert.match(tracked, /2026-10-28--northwind-calendar-sync\.session\.md/);
 	});
 
-	test('core\'s engine floor is 0.42.0, the engine that reads `next` contributions', () => {
-		assert.equal(pkgOf('core').dreamteamer.engine, '>=0.42.0');
+	test('core\'s engine floor is 0.47.0 — the engine that reads setup units (0.42 read `next`, which this still needs)', () => {
+		assert.equal(pkgOf('core').dreamteamer.engine, '>=0.47.0');
 	});
 });
 
