@@ -65,7 +65,8 @@ fields:
     description: Why and how this record was produced, including important uncertainty.
   source:
     type: string
-    description: Origin of the information, such as a record reference, file path or URL.
+    title: Information source
+    description: Where the information came from, such as a record reference, file path or URL.
   confidence:
     type: string
     description: Confidence in this record.
@@ -84,3 +85,10 @@ display:
       - date
       - company
       - status
+  form:
+    sections:
+      - title: Brief
+        fields: [name, date, company, meeting, person, projects, language, audience, purpose, description, sources, content, status]
+      - title: Provenance
+        fields: [author, creation_context, source, confidence]
+        collapsed: true
