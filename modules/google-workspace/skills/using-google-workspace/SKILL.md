@@ -18,3 +18,10 @@ Use the pinned server's actual tool schema. The bridge requires an explicit emai
 Only the bridge's exact read allowlist runs by default. Obtain approval for the concrete action before adding `--allow-write`; a flag is not user approval. Never copy OAuth client secrets or tokens into Git, published prompts or logs. Keep account results private; do not forward data to another workspace or recipient without the applicable authorization.
 
 This module is distinct from meetings ingestion: configure the meetings module's calendars, local files and transcription capabilities independently. Do not infer recording access from a successful Gmail read.
+
+
+## Account setup and structured data
+
+Use `npx dt-google whoami` to list stored account handles, not to prove authorization. With owner approval, `npx dt-google auth ACCOUNT` performs one explicit consent attempt and then a verification read. The owner opens the printed Google URL and checks the account/scopes. Do not copy or publish that URL or token stores. An existing credential is never deleted automatically.
+
+For complete Calendar JSON (including cancelled status and attendee resource flags), use `npx dt-google-calendar calendars|events|event`; specify the timezone only when intended. For Drive paths, use `npx dt-google-drive` with explicit root/path and `--as ACCOUNT`. Run mutating commands without `--apply` first to inspect their dry-run result. Permanent removal, remote writes and local deletion need their respective user approval; a successful dry run does not grant it. Mount checks only report drift and never change local data.

@@ -382,3 +382,69 @@ describe('optional account modules', () => {
     }
   });
 });
+
+describe('honest local prerequisite checks', () => {
+  test('effective configuration supports quoted multiline values and process precedence', async () => {
+    const { effectiveEnv, calendarRows } = await import('../lib/capabilities.mjs');
+    const ws = consumer({env:'FILES_FOLDER="/example/old"\nWORK_CALENDARS="team@northwind.example | northwind | dana@northwind.example\nother@northwind.example | northwind | sam@northwind.example"\nEMPTY=""\n'});
+    const values = effectiveEnv(ws, {FILES_FOLDER:'/example/new'});
+    assert.equal(values.FILES_FOLDER, '/example/new');
+    assert.equal(values.EMPTY, '');
+    assert.equal(calendarRows(values.WORK_CALENDARS), true);
+    assert.equal(calendarRows('calendar | company'), false);
+    assert.equal(calendarRows('calendar | company | ../token'), false);
+  });
+  test('only configured account files count, and their presence never means authentication', async () => {
+    const { calendarCredentialPresence } = await import('../lib/capabilities.mjs');
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(),'setup-credentials-')); made.push(dir);
+    const rows='team@northwind.example | northwind | dana@northwind.example';
+    fs.writeFileSync(path.join(dir,'unrelated.json'),'{}');
+    assert.equal(calendarCredentialPresence(rows,dir),false);
+    fs.writeFileSync(path.join(dir,'dana@northwind.example.json'),'');
+    assert.equal(calendarCredentialPresence(rows,dir),false);
+    fs.writeFileSync(path.join(dir,'dana@northwind.example.json'),'{}');
+    assert.equal(calendarCredentialPresence(rows,dir),true, 'presence only, not token validity');
+    const before=process.env.WORKSPACE_MCP_CREDENTIALS_DIR;
+    process.env.WORKSPACE_MCP_CREDENTIALS_DIR=dir;
+    try {
+      const caps=capabilities(consumer({env:`WORK_CALENDARS="${rows}"`}));
+      assert.equal(check(caps,'meetings','credential files').state,'ok');
+      assert.equal(check(caps,'meetings','account access').state,'warn');
+      assert.doesNotMatch(JSON.stringify(cap(caps,'meetings')),/dana@/);
+    } finally { if(before === undefined) delete process.env.WORKSPACE_MCP_CREDENTIALS_DIR; else process.env.WORKSPACE_MCP_CREDENTIALS_DIR=before; }
+  });
+  test('segmentation alone is insufficient and generated environments do not count', async () => {
+    const {transcriptionPrerequisites}=await import('../lib/capabilities.mjs');
+    const dir=fs.mkdtempSync(path.join(os.tmpdir(),'setup-models-')); made.push(dir);
+    const put=(name,data='synthetic')=>{const file=path.join(dir,name);fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,data);};
+    put('models/diarization/segmentation.onnx');
+    assert.deepEqual(transcriptionPrerequisites(dir),{diarization:false,cpuModel:false,venv:false});
+    put('models/diarization/embedding.onnx');
+    put('models/whisper-ct2/snapshots/synthetic/model.bin','');
+    assert.equal(transcriptionPrerequisites(dir).cpuModel,false);
+    put('models/whisper-ct2/blobs/synthetic');
+    fs.rmSync(path.join(dir,'models/whisper-ct2/snapshots/synthetic/model.bin'));
+    fs.symlinkSync('../../blobs/synthetic',path.join(dir,'models/whisper-ct2/snapshots/synthetic/model.bin'));
+    put('venv/pyvenv.cfg'); put('venv/bin/python');
+    assert.deepEqual(transcriptionPrerequisites(dir),{diarization:true,cpuModel:true,venv:true});
+  });
+  test('setup advice exports both paths for both uv commands and quotes shell input', async () => {
+    const {transcriptionSetupCommand}=await import('../lib/capabilities.mjs');
+    const dir=fs.mkdtempSync(path.join(os.tmpdir(),'setup-quote-'));made.push(dir);
+    const skill=path.join(dir,"skill's folder"); fs.mkdirSync(skill);
+    const home=path.join(dir,"model's cache");
+    const command=transcriptionSetupCommand(skill,home);
+    const script=`uv() { printf '%s|%s\\n' "$TRANSCRIPTION_HOME" "$UV_PROJECT_ENVIRONMENT"; }; ${command}`;
+    const result=spawnSync('/bin/sh',['-c',script],{encoding:'utf8'});
+    assert.equal(result.status,0,result.stderr);
+    assert.deepEqual(result.stdout.trim().split('\n'),[`${home}|${home}/venv`,`${home}|${home}/venv`]);
+  });
+  test('configured folders checks actual local directories without writing', async () => {
+    const {configuredFolders}=await import('../lib/capabilities.mjs');
+    const dir=fs.mkdtempSync(path.join(os.tmpdir(),'setup-folders-'));made.push(dir);
+    assert.equal(configuredFolders(dir,dir,true),true);
+    assert.equal(configuredFolders(path.join(dir,'missing'),dir),false);
+    fs.writeFileSync(path.join(dir,'file'),'synthetic');
+    assert.equal(configuredFolders(path.join(dir,'file'),dir),false);
+  });
+});

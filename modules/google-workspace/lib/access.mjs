@@ -60,7 +60,7 @@ export async function call({ account, tool, args = {}, allowWrite = false, env =
   const serverEnv = configuration(env);
   if (!fileExists(serverEnv.GOOGLE_CLIENT_SECRET_PATH)) throw new Error('OAuth client configuration is missing. Complete local setup first.');
   if (!fileExists(credentialPath(serverEnv.WORKSPACE_MCP_CREDENTIALS_DIR, account))) throw new Error('No stored credential for this account. Complete owner-controlled consent separately; no server call was made.');
-  const client = connectionFactory({ env: serverEnv, args: ['--with', 'python-dotenv==1.2.3', 'workspace-mcp==2.4.2', '--transport', 'stdio', ...(allowWrite ? [] : ['--read-only'])] });
+  const client = connectionFactory({ env: serverEnv, args: ['--with', 'python-dotenv==1.2.3', 'workspace-mcp==2.4.2', '--transport', 'stdio', '--tools', 'gmail', 'drive', 'calendar', ...(allowWrite ? [] : ['--read-only'])] });
   try {
     await client.ready();
     const result = await client.send('tools/call', { name: tool, arguments: arguments_ });
@@ -68,5 +68,22 @@ export async function call({ account, tool, args = {}, allowWrite = false, env =
     const text = (result.content ?? []).filter(c => c.type === 'text').map(c => c.text).join('\n');
     if (/Authentication Needed|ACTION REQUIRED|accounts\.google\.com\/o\/oauth2/i.test(text)) throw new Error('Account authorization needs attention. Complete consent separately; do not retry in a loop.');
     return result;
+  } finally { client.close(); }
+}
+
+export async function listTools({ env = process.env, allowWrite = false, connectionFactory = connect } = {}) {
+  const client = connectionFactory({ env: configuration(env), args: ['--with', 'python-dotenv==1.2.3', 'workspace-mcp==2.4.2', '--transport', 'stdio', '--tools', 'gmail', 'drive', 'calendar', ...(allowWrite ? [] : ['--read-only'])] });
+  try {
+    await client.ready();
+    const tools = [], seen = new Set(); let cursor;
+    do {
+      const response = await client.send('tools/list', cursor ? { cursor } : {});
+      if (!Array.isArray(response?.tools)) throw new Error('Server returned an invalid tool catalog.');
+      tools.push(...response.tools.filter(tool => allowWrite || READ_TOOLS.has(tool.name)));
+      cursor = response.nextCursor;
+      if (cursor && seen.has(cursor)) throw new Error('Server repeated a tool pagination cursor.');
+      if (cursor) seen.add(cursor);
+    } while (cursor);
+    return tools;
   } finally { client.close(); }
 }

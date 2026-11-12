@@ -87,6 +87,66 @@ export function envKeys(root) {
 	return set;
 }
 
+/** Local configuration, with process environment taking precedence. Values never appear in reports. */
+export function effectiveEnv(root, env = process.env) {
+	const values = {};
+	try {
+		const text = fs.readFileSync(path.join(root, '.env'), 'utf8');
+		const assignment = /^[ \t]*([A-Z_][A-Z0-9_]*)[ \t]*=[ \t]*(?:"([^"]*)"|'([^']*)'|([^\r\n]*))/gm;
+		for (const m of text.matchAll(assignment)) values[m[1]] = (m[2] ?? m[3] ?? m[4].replace(/\s+#.*$/, '')).trim();
+	} catch { /* optional configuration */ }
+	for (const [key, value] of Object.entries(env)) if (value !== undefined) values[key] = String(value).trim();
+	return values;
+}
+const expandPath = (value, root = process.cwd(), home = os.homedir()) => path.resolve(root, value === '~' || value.startsWith('~/') ? path.join(home, value.slice(2)) : value);
+export function configuredFolders(value, root, writable = false) {
+	const folders = String(value ?? '').split(/\r?\n/).map(v => v.trim()).filter(Boolean);
+	if (!folders.length) return false;
+	return folders.every(value => {
+		try {
+			const folder = expandPath(value, root);
+			if (!fs.statSync(folder).isDirectory()) return false;
+			fs.accessSync(folder, fs.constants.R_OK | (writable ? fs.constants.W_OK : 0));
+			return true;
+		} catch { return false; }
+	});
+}
+export function calendarRows(value) {
+	const rows = String(value ?? '').split(/\r?\n/).map(v => v.trim()).filter(v => v && !v.startsWith('#'));
+	return rows.length > 0 && rows.every(row => {
+		const parts = row.split('|').map(v => v.trim());
+		return parts.length === 3 && parts.every(Boolean) && /^[^\s@/\\]+@[^\s@/\\]+$/.test(parts[2]);
+	});
+}
+export function calendarCredentialPresence(value, directory) {
+	if (!calendarRows(value)) return false;
+	return String(value).split(/\r?\n/).map(v => v.trim()).filter(v => v && !v.startsWith('#')).every(row => {
+		const email = row.split('|')[2].trim();
+		try { const f = path.join(directory, `${email}.json`); return fs.statSync(f).isFile() && fs.statSync(f).size > 0; }
+		catch { return false; }
+	});
+}
+const shellQuote = value => "'" + String(value).replace(/'/g, "'\\''") + "'";
+export function transcriptionSetupCommand(skill, home) {
+	return `(export TRANSCRIPTION_HOME=${shellQuote(home)} UV_PROJECT_ENVIRONMENT=${shellQuote(path.join(home, 'venv'))}; cd ${shellQuote(skill)} && uv sync && uv run python transcribe_meeting.py setup)`;
+}
+const nonemptyFile = p => { try { const st = fs.statSync(p); return st.isFile() && st.size > 0; } catch { return false; } };
+export function transcriptionPrerequisites(home) {
+	const present = name => nonemptyFile(path.join(home, 'models', 'diarization', name));
+	// Match the transcriber's hub-cache layout without walking unrelated files or following directories through symlinks.
+	const containsModel = (dir, depth = 0) => {
+		if (depth > 8) return false;
+		try { return fs.readdirSync(dir, { withFileTypes: true }).some(e => e.name === 'model.bin' ? nonemptyFile(path.join(dir, e.name)) : e.isDirectory() && containsModel(path.join(dir, e.name), depth + 1)); }
+		catch { return false; }
+	};
+	return {
+		diarization: present('segmentation.onnx') && present('embedding.onnx'),
+		cpuModel: containsModel(path.join(home, 'models', 'whisper-ct2')),
+		venv: nonemptyFile(path.join(home, 'venv', 'pyvenv.cfg')) &&
+			(nonemptyFile(path.join(home, 'venv', 'bin', 'python')) || nonemptyFile(path.join(home, 'venv', 'Scripts', 'python.exe'))),
+	};
+}
+
 /** Which modules the workspace actually has, by channel — the same walk the engine's discovery does,
  *  including dropping a module named bare in `dreamteamer.disable`. A switched-off module must not be
  *  asked for its variables or shown a capability, and the engine never compiles it, so it is not
@@ -184,7 +244,8 @@ export const BUNDLE_FLOOR = '0.30.0';
 export function capabilities(root) {
 	const pkg = readJson(path.join(root, 'package.json')) ?? {};
 	const dt = pkg.dreamteamer ?? {};
-	const env = envKeys(root);
+	const config = effectiveEnv(root);
+	const env = new Set(Object.keys(config).filter(key => config[key]));
 	const mods = installedModules(root);
 	const composedIn = new Set([...mods.keys()].flatMap((m) => originsOf(mods, m)));
 	const mine = OURS.filter((m) => mods.has(m) || composedIn.has(m));
@@ -224,7 +285,10 @@ export function capabilities(root) {
 		for (const [name, , why] of wanted) {
 			if (!declared.has(name)) c.bad(`${name} declared`, `add "${name}" to dreamteamer.vars in package.json, then dreamteamer compile`, why);
 			else if (!env.has(name)) c.warn(`${name} set`, `add ${name}=… to .env`, `${why} — declared, but unset here, so templates using it cannot render on this machine`);
-			else c.ok(name, why);
+			else {
+				c.ok(name, why);
+				if (!configuredFolders(config[name], root, name === 'FILES_FOLDER')) c.warn(`${name} folders`, 'Check that every configured folder exists and is readable; the files destination must also be writable.', 'Configured paths are checked locally and not printed.');
+			}
 		}
 		if (!wanted.length) c.ok('none needed', 'no installed module uses a template variable');
 		out.push(c.cap);
@@ -244,17 +308,16 @@ export function capabilities(root) {
 	// ── meetings ─────────────────────────────────────────────────────────────────────────────
 	if (has('meetings')) {
 		const c = cap('meetings', 'reading your calendar. Optional: everything else in the module works without it.');
-		env.has('WORK_CALENDARS')
-			? c.ok('WORK_CALENDARS', 'the calendars that count as work')
-			: c.warn('WORK_CALENDARS', 'add WORK_CALENDARS to .env — one row per calendar: calendar-id | default-company | account-email',
-				'without it there is nothing to sync from');
-		const credDir = path.join(os.homedir(), '.config', 'google-workspace-mcp', 'credentials');
-		let accounts = [];
-		try { accounts = fs.readdirSync(credDir).filter((f) => f.endsWith('.json') && f !== 'oauth_states.json'); } catch { /* none */ }
-		accounts.length
-			? c.ok('google account', `${accounts.length} authenticated`)
-			: c.warn('google account', 'authenticate an account through the google-workspace MCP server (its start_google_auth tool)',
-				'the calendar reader reuses that credential — it never asks for a new grant');
+		calendarRows(config.WORK_CALENDARS)
+			? c.ok('WORK_CALENDARS', 'Calendar rows have three nonempty columns and an explicit account.')
+			: c.warn('WORK_CALENDARS', 'Set WORK_CALENDARS in the environment or .env: calendar-id | default-company | account-email, one row per calendar.', 'Unset or malformed calendar configuration.');
+		const credDir = config.WORKSPACE_MCP_CREDENTIALS_DIR
+			? expandPath(config.WORKSPACE_MCP_CREDENTIALS_DIR, root)
+			: path.join(os.homedir(), '.config', 'google-workspace-mcp', 'credentials');
+		calendarCredentialPresence(config.WORK_CALENDARS, credDir)
+			? c.ok('credential files', 'A nonempty local credential file exists for each configured account; contents and validity are unverified.')
+			: c.warn('credential files', 'Authorize each configured account through the Google Workspace onboarding flow and verify the selected credentials directory.', 'Missing local files or invalid calendar rows; no credentials were read.');
+		c.warn('account access', 'After owner consent, run an explicit read-only test for each configured calendar/account.', 'File presence does not prove consent, expiry, scopes or remote access. No network request was made.');
 		out.push(c.cap);
 	}
 
@@ -268,14 +331,17 @@ export function capabilities(root) {
 		const uvInstall = 'curl -LsSf https://astral.sh/uv/install.sh | sh';
 		uv ? c.ok('uv', uv) : c.bad('uv', uvInstall, 'provisions the pinned Python and its venv', uvInstall);
 		const home = transcriptionHome();
-		if (fs.existsSync(path.join(home, 'models', 'diarization', 'segmentation.onnx'))) {
-			c.ok('model weights', path.join(home, 'models'));
-		} else {
-			c.warn('model weights', `cd ${path.relative(root, skill)} && UV_PROJECT_ENVIRONMENT="${path.join(home, 'venv')}" uv sync && uv run python transcribe_meeting.py setup`,
-				`~1.6 GB, downloaded once into ${path.join(home, 'models')}`);
-		}
+		const prerequisites = transcriptionPrerequisites(home);
+		const setup = transcriptionSetupCommand(skill, home);
+		prerequisites.diarization ? c.ok('diarization weights', 'Both local ONNX files are nonempty; integrity and inference are unverified.')
+			: c.warn('diarization weights', setup, 'Both segmentation and embedding weights are needed for multi-speaker audio.');
+		prerequisites.cpuModel ? c.ok('CPU model cache', 'A nonempty model.bin is present; model loading is unverified.')
+			: c.warn('CPU model cache', setup, 'The CPU fallback model cache is missing or incomplete.');
+		prerequisites.venv ? c.ok('Python environment', 'External environment metadata and interpreter are present; imports are unverified.')
+			: c.warn('Python environment', setup, 'Build the pinned environment outside the generated skill directory.');
 		const gpu = gpuCheck({ whisperCli: bin('whisper-cli'), ggmlSize: fileSize(path.join(home, GGML_FILE)) });
-		gpu.state === 'ok' ? c.ok('gpu', gpu.detail) : c.warn('gpu', gpu.fix, gpu.detail);
+		gpu.state === 'ok' ? c.ok('gpu', gpu.detail) : c.warn('gpu', `${gpu.fix}; then ${setup}`, gpu.detail);
+		c.warn('transcription runtime', 'Run a short synthetic recording and verify the recorded engine; request --engine metal when GPU recognition is required.', 'Local files and binaries do not prove a working Python environment or GPU run; diarization remains CPU.');
 		out.push(c.cap);
 	}
 

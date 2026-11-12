@@ -1,7 +1,8 @@
 import { spawn } from 'node:child_process';
 
 // JSON-RPC over MCP's newline-delimited stdio transport. Server diagnostics stay private.
-export function connect({ command = 'uvx', args = ['--with', 'python-dotenv==1.2.3', 'workspace-mcp==2.4.2', '--transport', 'stdio'], env = process.env, timeoutMs = 30000, spawnProcess = spawn } = {}) {
+export function connect({ platform = process.platform, command = 'uvx', args = ['--with', 'python-dotenv==1.2.3', 'workspace-mcp==2.4.2', '--transport', 'stdio', '--tools', 'gmail', 'drive', 'calendar'], env = process.env, timeoutMs = 30000, spawnProcess = spawn } = {}) {
+  if (platform === 'win32') throw new Error('The MCP bridge is not supported on Windows: its manual-browser boundary is not verified. No server was started.');
   const child = spawnProcess(command, args, { env, stdio: ['pipe', 'pipe', 'pipe'], shell: false });
   const pending = new Map();
   let nextId = 0, buffer = '', stopped = false;

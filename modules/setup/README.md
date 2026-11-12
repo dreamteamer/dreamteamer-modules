@@ -35,3 +35,19 @@ Installing `@dreamteamer/google-workspace` adds its local prerequisite diagnosti
 The doctor does not authorize accounts or test cloud access. Follow that module's
 onboarding instructions and authorize each selected account separately. Neither
 capability copies another person's credentials or automatically shares records.
+
+### Local evidence is not an end-to-end test
+
+The board reads process environment settings before workspace `.env` values. It checks configured
+folders locally without printing their values. Calendar rows need an explicit account, and credential
+file presence is reported separately from consent, token expiry, scopes and remote access; the latter
+remain unverified until an owner-authorized read test.
+
+Transcription diagnostics check both diarization files, a nonempty CPU model cache file and the external
+Python environment. These are prerequisite checks, not model-integrity or Python-import tests. Model
+setup advice exports the external cache and environment for the entire command chain. A short synthetic
+recording must still verify the selected engine; request `--engine metal` when GPU recognition is required.
+Diarization remains CPU. Doctor neither downloads weights nor installs tools nor starts authentication.
+
+The current board has central checks plus delegated account diagnostics. It is not yet a general
+module-owned setup-provider protocol; mounted-file diagnostics also appear in the engine's `doctor`.
