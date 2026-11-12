@@ -49,5 +49,15 @@ setup advice exports the external cache and environment for the entire command c
 recording must still verify the selected engine; request `--engine metal` when GPU recognition is required.
 Diarization remains CPU. Doctor neither downloads weights nor installs tools nor starts authentication.
 
-The current board has central checks plus delegated account diagnostics. It is not yet a general
-module-owned setup-provider protocol; mounted-file diagnostics also appear in the engine's `doctor`.
+### Module-owned checks
+
+Some capabilities now belong to their module, which ships a `SETUP.md` and its own local inspect.
+`lib/capabilities.mjs` keeps a compatibility ownership map (`OWNERSHIP`): a legacy row is replaced by
+the module's rows only when that module is installed, enabled, ships a provider this release
+understands, and its inspect actually returns every check the row stood for. Otherwise — an older
+module, a disabled one, a provider that fails — the legacy row stays, so each check appears once.
+Today that covers `meetings` (calendar rows, credential files, account access) and
+`google-workspace` (its local prerequisites). The board names the owning module and its `SETUP.md`;
+setup steps themselves are the module's, run from that file, not from `dt-setup setup`.
+
+Mounted-file diagnostics appear in the engine's `doctor`, and so do `google-workspace`'s local rows.

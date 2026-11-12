@@ -18,7 +18,9 @@
 	],
 	"files": [
 		"README.md",
+		"SETUP.md",
 		"bin",
+		"lib",
 		"collections",
 		"skills",
 		"commands",

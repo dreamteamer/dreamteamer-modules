@@ -21,6 +21,7 @@
   },
   "files": [
     "README.md",
+    "SETUP.md",
     "bin",
     "lib",
     "skills"
@@ -29,8 +30,9 @@
     "node": ">=20"
   },
   "dreamteamer": {
+    "extension": "./lib/extension.mjs",
     "title": "Google Workspace",
-    "engine": ">=0.30.0",
+    "engine": ">=0.31.0",
     "description": "Access an explicitly selected Google account through a local workspace-mcp process. The bridge defaults to a fixed read-only tool set, refuses calls without a stored account credential, and keeps credentials outside the workspace. Configure and authorize accounts separately on each computer before use.",
     "env": [
       "GOOGLE_CLIENT_SECRET_PATH",

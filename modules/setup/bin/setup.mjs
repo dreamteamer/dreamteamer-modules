@@ -15,7 +15,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import readline from 'node:readline';
 import { execSync } from 'node:child_process';
-import { capabilities, capState, worst, findWorkspace, readJson, installedModules, gitignores, BUNDLE_FLOOR, originsOf, binOf } from '../lib/capabilities.mjs';
+import { capabilities as capabilitiesOf, loadProviders, capState, worst, findWorkspace, readJson, installedModules, gitignores, BUNDLE_FLOOR, originsOf, binOf } from '../lib/capabilities.mjs';
 
 const args = process.argv.slice(2);
 const verb = args.find((a) => !a.startsWith('-')) ?? 'doctor';
@@ -33,11 +33,17 @@ if (!root) {
 	process.exit(1);
 }
 
+// Modules that own their checks supply them (lib/capabilities.mjs OWNERSHIP); every other row is the
+// legacy one. Loaded once: the providers read local state only, so the board can be redrawn freely.
+const providers = verb === 'doctor' || verb === 'setup' ? await loadProviders(root) : new Map();
+const capabilities = (r) => capabilitiesOf(r, { providers });
+
 function board(caps) {
 	console.log(`\n  ${bold('dreamteamer modules')}  ${dim(root)}\n`);
 	for (const c of caps) {
 		console.log(`  ${bold(c.name.padEnd(14))} ${STATE[capState(c)]}`);
 		console.log(`  ${dim(c.note)}`);
+		if (c.provider) console.log(`  ${dim(`checks owned by ${c.provider} — ${c.setup ? `setup steps: ${c.setup}` : 'no SETUP.md ships with it here: doctor only, guided setup is unsupported from this package'}`)}`);
 		for (const chk of c.checks) {
 			console.log(`    ${GLYPH[chk.state]} ${chk.label}${chk.detail ? dim(`  ${chk.detail}`) : ''}`);
 			if (chk.state !== 'ok' && chk.fix) console.log(`        ${dim('fix:')} ${chk.fix}`);

@@ -26,6 +26,10 @@
 			"from": "meetings/bin/migrate-attendees.mjs",
 			"hash": "sha256:7ba0aa85605f7ae740874a91172c6075a362c65c22b58dcd2c1226b431919282"
 		},
+		"bin/meetings-setup.mjs": {
+			"from": "meetings/bin/setup.mjs",
+			"hash": "sha256:4c54cb78de0a7dab9a92dae5ce0452e1c8935955960aa4fdca6ed1ee72696e5c"
+		},
 		"bin/projects-check-records.mjs": {
 			"from": "projects/bin/check-records.mjs",
 			"hash": "sha256:be5f797d75b305153883f4124c6021ea205727dd0b9e9760797ea2a322b55d4f"
@@ -278,9 +282,21 @@
 			"from": "workflows/data/workflows/customer-factory.workflow.md",
 			"hash": "sha256:99e559688ba917289e6021fac93f1cba9b0b5affa863be2cad0de8ced9d8e712"
 		},
+		"lib/meetings-setup.mjs": {
+			"from": "meetings/lib/meetings-setup.mjs",
+			"hash": "sha256:ede1411391be9c9584cb809af9ef9f040796f65e7ef207e7d0517669b5f8d984"
+		},
+		"lib/setup-kit.mjs": {
+			"from": "meetings/lib/setup-kit.mjs",
+			"hash": "sha256:eb312ff8eb128f092e5297e154a275208ba2e03a2c98a7f0954c849ae4154bf1"
+		},
 		"lib/workspace-root.mjs": {
 			"from": "tasks/lib/workspace-root.mjs",
 			"hash": "sha256:4b55f5ee40052d49eb8bb2854dfccba39502d11061f06f8965a4a19aaf503007"
+		},
+		"SETUP.md": {
+			"from": "meetings/SETUP.md",
+			"hash": "sha256:033dae5f14d2f3657b3f5132b8211dfd8f13143b7959a560bbcca8ac70327d11"
 		},
 		"skills/analyzing-meetings/SKILL.md": {
 			"from": "meeting-docs/skills/analyzing-meetings/SKILL.md",

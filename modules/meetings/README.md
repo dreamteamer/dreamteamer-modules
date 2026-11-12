@@ -19,7 +19,7 @@ npx dreamteamer compile
 | `@dreamteamer/companies` | the company a call is with |
 | `@dreamteamer/users` | the people of yours in the room |
 | `@dreamteamer/assets` | contacts and companies need it for avatars and logos |
-| a Google OAuth desktop client, each account authenticated through `workspace-mcp`, and `WORK_CALENDARS` in `.env` | calendar sync only (`fetching-meetings` has the setup); writing meetings by hand works without them |
+| a Google OAuth desktop client, each account authenticated through `workspace-mcp`, and `WORK_CALENDARS` in `.env` | calendar sync only (`SETUP.md` has the setup steps, `fetching-meetings` the details); writing meetings by hand works without them |
 | `INBOX_FOLDERS` and `FILES_FOLDER` declared | filing screenshots only |
 
 Three people fields, modelled after the source: `attendees` is the Calendar API's attendee list as

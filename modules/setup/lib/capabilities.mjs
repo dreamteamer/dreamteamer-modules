@@ -241,7 +241,15 @@ const cmp = (a, b) => { // returns -1/0/1 comparing dotted versions
  *  declares its own `dreamteamer.engine`, which compile enforces; this is the board's early warning. */
 export const BUNDLE_FLOOR = '0.30.0';
 
-export function capabilities(root) {
+/** The board. Without `providers` it is exactly the legacy board; with the map `loadProviders(root)`
+ *  returns, each capability a supported module owns shows that module's rows instead of the legacy ones. */
+export function capabilities(root, { providers } = {}) {
+	const out = legacyCapabilities(root, providers);
+	if (!providers?.size) return out;
+	return out.map((c) => (providers.has(c.name) && OWNERSHIP[c.name] ? delegate(c, providers.get(c.name), OWNERSHIP[c.name], root) : c));
+}
+
+function legacyCapabilities(root, providers) {
 	const pkg = readJson(path.join(root, 'package.json')) ?? {};
 	const dt = pkg.dreamteamer ?? {};
 	const config = effectiveEnv(root);
@@ -459,7 +467,10 @@ export function capabilities(root) {
 	if (has('google-workspace')) {
 		const c = cap('google-workspace', 'Local multi-account bridge prerequisites. Account consent and remote access are not tested.');
 		let result;
-		try {
+		// With the module's own provider loaded its rows replace this one, so its doctor is not also
+		// spawned; if the provider then fails, this row is what the doctor's own warning would have said.
+		if (providers?.has('google-workspace')) result = null;
+		else try {
 			const text = execFileSync(process.execPath, [binOf(mods, 'google-workspace', 'google.mjs'), 'doctor', '--json'], {encoding:'utf8', timeout:15000, stdio:['ignore','pipe','ignore']});
 			result = JSON.parse(text);
 		} catch (error) {
@@ -472,6 +483,62 @@ export function capabilities(root) {
 	}
 
 	return out;
+}
+
+// ── module-owned checks: the compatibility ownership map ─────────────────────────────────────
+// A capability's legacy rows here stay the fallback. A row is replaced only when the module that owns
+// it is installed, enabled, ships its setup provider at `entry`, speaks a protocol listed here, and its
+// inspect actually returns every check id the row maps to. Anything less — an older module, an unknown
+// protocol, a provider that throws or omits a check — leaves the legacy row exactly as it was. The
+// provider's rows then stand in its place, so no check is reported twice. This map is the only place
+// that knows which provider owns what; the engine knows none of it.
+export const OWNERSHIP = Object.freeze({
+	meetings: { provider: 'meetings', entry: 'lib/meetings-setup.mjs', protocols: [1], rows: { 'WORK_CALENDARS': ['meetings.work-calendars'], 'credential files': ['meetings.credential-files'], 'account access': ['meetings.account-access'] } },
+	'google-workspace': { provider: 'google-workspace', entry: 'lib/google-setup.mjs', protocols: [1], rows: { 'local prerequisites': ['google.runtime', 'google.client-config', 'google.credential-store', 'google.account-authorization'] } },
+});
+
+/** The setup providers this workspace's installed, enabled modules supply, keyed by capability name.
+ *  Loading runs the provider module's top level and nothing else; a provider that fails to load is
+ *  simply absent. Pass the result to `capabilities(root, { providers })`. */
+export async function loadProviders(root) {
+	const { pathToFileURL } = await import('node:url');
+	const mods = installedModules(root);
+	const loaded = new Map();
+	for (const [name, owner] of Object.entries(OWNERSHIP)) {
+		const at = rootOf(mods, owner.provider);
+		const file = at && path.join(at, owner.entry);
+		if (!file || !fs.existsSync(file)) continue;
+		try {
+			const m = await import(pathToFileURL(file).href);
+			const meta = m.SETUP_PROVIDER;
+			if (!meta || !owner.protocols.includes(meta.protocol) || typeof m.inspect !== 'function') continue;
+			const setup = path.join(at, 'SETUP.md');
+			loaded.set(name, { module: meta.module, inspect: m.inspect, declared: new Set(meta.checks ?? []), setup: fs.existsSync(setup) ? path.relative(root, setup) : null });
+		} catch { /* an unloadable provider leaves the legacy rows in place */ }
+	}
+	return loaded;
+}
+
+/** Replace a capability's legacy rows with the rows its provider actually supplies. */
+function delegate(c, provider, owner, root) {
+	let result;
+	try { result = provider.inspect({ root }); } catch { return c; }
+	const byId = new Map((Array.isArray(result?.checks) ? result.checks : []).filter((r) => r && typeof r.id === 'string' && provider.declared.has(r.id) && ['ok', 'warn', 'bad'].includes(r.state)).map((r) => [r.id, r]));
+	const row = (r) => ({ label: r.label, state: r.state, detail: r.detail ?? '', fix: r.fix ?? '', run: null, id: r.id, status: r.status, owner: provider.module });
+	const supplied = (legacy) => owner.rows[legacy.label]?.every((id) => byId.has(id));
+	const mapped = c.checks.filter((legacy) => owner.rows[legacy.label]);
+	if (!mapped.some(supplied)) return c;
+	const unmapped = [...byId.values()].filter((r) => !Object.values(owner.rows).flat().includes(r.id));
+	let checks;
+	if (mapped.every(supplied)) {
+		// the provider owns every mapped row: its rows, in its own order, after any row it does not own
+		checks = [...c.checks.filter((legacy) => !owner.rows[legacy.label]), ...[...byId.values()].map(row)];
+	} else {
+		// partial: replace only the rows it supplies, keep the rest, then its new checks
+		checks = c.checks.flatMap((legacy) => (supplied(legacy) ? owner.rows[legacy.label].map((id) => row(byId.get(id))) : [legacy]));
+		checks.push(...unmapped.map(row));
+	}
+	return { ...c, checks, provider: provider.module, ...(provider.setup ? { setup: provider.setup } : {}) };
 }
 
 export const worst = (caps) => {

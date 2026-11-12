@@ -6,6 +6,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { ROOT, CORE, compose, copiesOf, rewrite, destOf, filesEntry, assertOwnEntry } from '../../../scripts/compose-core.mjs';
 
@@ -87,6 +88,26 @@ describe('the composition', () => {
 		assert.match(entry, /from '\.\/extension\.js'/, "the own entry activates the origin's");
 		// the one rule every composed module's own entry meets (scripts/compose-core.mjs assertOwnEntry)
 		assert.equal(assertOwnEntry(CORE, 'core', spec.extension, 'files', './src/extension.js'), './extension.js');
+	});
+	test('the origins\' setup references compose into one shipped root SETUP.md, with core\'s own script paths', () => {
+		const setup = copies.get('SETUP.md');
+		assert.ok(setup, 'meetings ships SETUP.md, so core must carry one');
+		assert.equal(setup.from, 'meetings/SETUP.md');
+		assert.ok(manifest.files.includes('SETUP.md'), 'listed in files, so npm packs it');
+		const text = setup.bytes.toString('utf8');
+		assert.match(text, /^# Setup — @dreamteamer\/core\n/);
+		assert.match(text, /<!-- composed from meetings -->/);
+		assert.match(text, /node_modules\/@dreamteamer\/core\/bin\/meetings-setup\.mjs/);
+		assert.doesNotMatch(text, /@dreamteamer\/meetings\b/);
+		assert.ok(fs.existsSync(path.join(CORE, 'bin', 'meetings-setup.mjs')));
+	});
+	test('a composed module that authors its own SETUP.md beside an origin\'s is refused', () => {
+		const root = fs.mkdtempSync(path.join(os.tmpdir(), 'compose-setup-'));
+		try {
+			fs.writeFileSync(path.join(root, 'compose.json'), JSON.stringify({ origins: ['meetings', 'contacts', 'companies', 'users', 'assets'], files: {} }));
+			fs.writeFileSync(path.join(root, 'SETUP.md'), '# hand-written\n');
+			assert.throws(() => compose('northwind', root), /authors its own SETUP\.md/);
+		} finally { fs.rmSync(root, { recursive: true, force: true }); }
 	});
 	test('--check exits 0 on the committed state', async () => {
 		const { main } = await import('../../../scripts/compose-core.mjs');
