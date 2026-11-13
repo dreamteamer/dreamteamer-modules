@@ -1,6 +1,6 @@
 {
 	"name": "@dreamteamer/meetings",
-	"version": "0.1.2",
+	"version": "0.2.0",
 	"description": "Your calendar meetings as records, synced from Google Calendar, with attendees as contacts and screenshots filed beside each call.",
 	"license": "Apache-2.0",
 	"repository": {

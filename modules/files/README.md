@@ -45,3 +45,7 @@ entry.
 
 `dt doctor` shows each drive's state on this machine; `dt check` reports an entry whose id disagrees
 with its drive and path.
+
+## 0.2.0 — on engine 0.47.0 (CLI-first module lifecycle, CR-dt-006)
+
+Nothing to do but `dt compile` after `dt update @dreamteamer/files` on dreamteamer 0.47.0 or later (the engine floor is `>=0.47.0`). New: the `files` setup unit (`dt setup files`): FILES_FOLDER recorded in `.env` by `dt install`.

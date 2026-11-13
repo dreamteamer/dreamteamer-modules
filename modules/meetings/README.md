@@ -54,3 +54,7 @@ A meeting's `privacy` is `open` or `restricted`. A `restricted` meeting holds a 
 material, so the meeting-docs pipeline stops after transcription. An export cannot withhold that one
 record: `sensitive` applies to a whole collection or a whole field, never to a record, so an exporter
 has to read `privacy` itself, and marking `meetings` sensitive would withhold every meeting.
+
+## 0.2.0 — on engine 0.47.0 (CLI-first module lifecycle, CR-dt-006)
+
+Nothing to do but `dt compile` after `dt update @dreamteamer/meetings` on dreamteamer 0.47.0 or later (the engine floor is `>=0.47.0`). New: the `meetings` setup unit: `--input 'calendar=<id> | <company or mixed> | <account>'` (repeatable; a mixed batch merges the valid rows and names the malformed) merges into `.env`; `dt setup meetings --verify --authorize` runs the live check and writes a receipt only when every calendar answers `full`.

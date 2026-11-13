@@ -49,3 +49,7 @@ procedure here that read `attendees` reads `attendees_contacts`; a prep's own `a
 unchanged and is copied from there. The summarize and analyze procedures also read a recording's
 `transcription.notes` — the transcriber's own caveats, written inside the block it produces — beside
 the recording's top-level `notes`, which is a person's note about the capture.
+
+## 0.1.3
+
+Engine floor `>=0.47.0` and the peer list mirrored for `dt install`'s closure; nothing else changes. `dt update @dreamteamer/meeting-docs` then `dt compile`.

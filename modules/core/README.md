@@ -122,3 +122,7 @@ The small modules' READMEs hold the reasoning behind each noun and travel with t
 one adds only the composition rule above. `FILES_FOLDER` and `INBOX_FOLDERS` are the template
 variables the meetings, recordings and files nouns need — declare them in `dreamteamer.vars` and set
 them in `.env` before `dt resolve` can render a path.
+
+## 0.10.0 — on engine 0.47.0 (CLI-first module lifecycle, CR-dt-006)
+
+Nothing to do but `dt compile` after `dt update @dreamteamer/core` on dreamteamer 0.47.0 or later (the engine floor is `>=0.47.0`). New: every composed module's setup unit, driven by the engine (`dt status`, `dt setup <unit>`); `provides` lists the modules it composes (installing one of them beside core is refused, both ways).

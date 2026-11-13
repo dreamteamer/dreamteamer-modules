@@ -33,3 +33,7 @@ A file handed straight to a session, or a pasted transcript, skips the inbox: th
 | `ffmpeg`, `ffprobe`, `uv` and about 1.6 GB of models, downloaded once | transcribing audio; a pasted transcript needs only `uv` |
 | optional: `TRANSCRIPTION_HOME`, default `~/.cache/dreamteamer/transcription` | the one folder the transcriber keeps outside the package: `models/` (`diarization/`, `whisper-ct2/`, `whisper-ggml/`), `venv/` (reaching uv as `UV_PROJECT_ENVIRONMENT`, which the skill's preamble exports) and `asr/`, the raw recognizer output of each run. Copy `models/` to bring a machine up; delete the folder to uninstall |
 | optional, on Apple Silicon: `whisper-cli` (`brew install whisper-cpp`) and 1.6 GB more of weights, which `setup` fetches when the binary is there | the GPU pass — recognition on Metal, four to five times faster than the CPU pass on an M4 Pro; without it the CPU pass runs as before, and `auto` says why in one line, the summary and the record |
+
+## 0.4.0 — on engine 0.47.0 (CLI-first module lifecycle, CR-dt-006)
+
+Nothing to do but `dt compile` after `dt update @dreamteamer/recordings` on dreamteamer 0.47.0 or later (the engine floor is `>=0.47.0`). New: the `recordings` setup unit: `dt install @dreamteamer/recordings --input files_folder=… --allow download --allow machine` provisions the venv and the models under TRANSCRIPTION_HOME (outside the workspace — a home inside it is refused); `dt setup recordings --verify --allow machine` transcribes a shipped synthetic clip on the CPU and writes the receipt.

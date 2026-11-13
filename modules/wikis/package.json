@@ -1,6 +1,6 @@
 {
 	"name": "@dreamteamer/wikis",
-	"version": "0.1.2",
+	"version": "0.2.0",
 	"description": "Local wikis for a dreamteamer workspace \u2014 corpora of markdown committed in the repo, grepped with nothing installed and asked by meaning once qmd is.",
 	"license": "Apache-2.0",
 	"type": "module",

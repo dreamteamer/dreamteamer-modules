@@ -1,6 +1,6 @@
 {
 	"name": "@dreamteamer/google-workspace",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"description": "Explicit-account Google Workspace access through a local MCP bridge, with read-only tool selection by default.",
 	"license": "Apache-2.0",
 	"type": "module",

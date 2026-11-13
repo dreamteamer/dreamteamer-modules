@@ -50,3 +50,7 @@ from there.
 **Tests** run `test/*.test.mjs` against the engine in the repo's devDependencies, or the checkout
 `DT_ENGINE_DIR` names. No test reaches the real `notebooklm` CLI: every spawn runs with a PATH whose
 only `notebooklm` is a stub.
+
+## 0.2.0 — on engine 0.47.0 (CLI-first module lifecycle, CR-dt-006)
+
+Nothing to do but `dt compile` after `dt update @dreamteamer/notebooklm` on dreamteamer 0.47.0 or later (the engine floor is `>=0.47.0`). New: the `notebooklm` setup unit (`dt setup notebooklm`): the vendor CLI and a login marker.

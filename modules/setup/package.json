@@ -1,6 +1,6 @@
 {
 	"name": "@dreamteamer/setup",
-	"version": "0.2.1",
+	"version": "0.3.0",
 	"description": "A one-release shim: dt-setup doctor and setup hand over to dt status and dt setup; link/unlink preview a local clone of dreamteamer-modules.",
 	"license": "Apache-2.0",
 	"type": "module",

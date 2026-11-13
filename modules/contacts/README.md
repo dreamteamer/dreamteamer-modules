@@ -17,3 +17,7 @@ npx dreamteamer compile
 | `@dreamteamer/companies` | where a contact works |
 | `@dreamteamer/assets` | avatars |
 | Docker and one LinkedIn sign-in | `/scrape-contact` only; everything else works without them |
+
+## 0.1.2
+
+Engine floor `>=0.47.0` and the peer list mirrored for `dt install`'s closure; nothing else changes. `dt update @dreamteamer/contacts` then `dt compile`.

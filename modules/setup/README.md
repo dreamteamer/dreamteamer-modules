@@ -23,3 +23,7 @@ Both print one line on stderr saying where they went, and run the engine's verb.
 
 A workspace that depends on this package can drop it once its scripts say `dt status` and
 `dt setup`. Engine `>=0.47.0`. Apache-2.0.
+
+## 0.3.0 — on engine 0.47.0 (CLI-first module lifecycle, CR-dt-006)
+
+Nothing to do but `dt compile` after `dt update @dreamteamer/setup` on dreamteamer 0.47.0 or later (the engine floor is `>=0.47.0`). New: `dt-setup` is a one-release shim onto `dt status` and `dt setup`; the capabilities board and the ownership map are gone (every module declares its own setup unit; the engine draws the board).

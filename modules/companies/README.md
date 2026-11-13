@@ -30,3 +30,7 @@ npx dt set companies/harbor-mutual --logo assets/logos/harbor-mutual
 ```
 
 A brand that Simple Icons carries uses its slug instead: `assets/logos/<simple-icons-slug>`.
+
+## 0.1.2
+
+Engine floor `>=0.47.0` and the peer list mirrored for `dt install`'s closure; nothing else changes. `dt update @dreamteamer/companies` then `dt compile`.
