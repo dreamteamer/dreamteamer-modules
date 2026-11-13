@@ -97,7 +97,10 @@ describe('the composition', () => {
 	test('the origins\' setup references compose into one shipped root SETUP.md, with core\'s own script paths', () => {
 		const setup = copies.get('SETUP.md');
 		assert.ok(setup, 'meetings ships SETUP.md, so core must carry one');
-		assert.equal(setup.from, 'meetings/SETUP.md + recordings/SETUP.md');
+		// every origin that ships a setup reference, in origin order — the list grows as origins gain units
+		const withRef = spec.origins.filter((o) => fs.existsSync(path.join(ROOT, 'modules', o, 'SETUP.md')));
+		assert.equal(setup.from, withRef.map((o) => `${o}/SETUP.md`).join(' + '));
+		assert.ok(withRef.includes('meetings') && withRef.includes('recordings') && withRef.includes('files'));
 		assert.ok(manifest.files.includes('SETUP.md'), 'listed in files, so npm packs it');
 		const text = setup.bytes.toString('utf8');
 		assert.match(text, /^# Setup — @dreamteamer\/core\n/);

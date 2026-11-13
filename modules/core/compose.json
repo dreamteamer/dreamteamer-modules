@@ -290,6 +290,10 @@
 			"from": "recordings/lib/clip.wav",
 			"hash": "sha256:3097e677ba18bbc89d3381d90ace13a2fb465c8b644138fce28ad383be8a6e76"
 		},
+		"lib/files-setup.mjs": {
+			"from": "files/lib/files-setup.mjs",
+			"hash": "sha256:aa3dc33ba834aa03c19072a8506c17c24cedff2408af84b5a66689c3d2f5b036"
+		},
 		"lib/meetings-extension.mjs": {
 			"from": "meetings/lib/extension.mjs",
 			"hash": "sha256:c140b5282b632752bf2ed1b1849b457c02a9798ae7111bf324572586222b7ad7"
@@ -315,8 +319,8 @@
 			"hash": "sha256:4b55f5ee40052d49eb8bb2854dfccba39502d11061f06f8965a4a19aaf503007"
 		},
 		"SETUP.md": {
-			"from": "meetings/SETUP.md + recordings/SETUP.md",
-			"hash": "sha256:ff0668910fc10d5db4ebbfaf7ead1a49aefa00d9f8ed89756ffebed40bf61079"
+			"from": "meetings/SETUP.md + recordings/SETUP.md + files/SETUP.md",
+			"hash": "sha256:f67de05e699875e7b1278c4d201f0a97042d6b863d30349c1decfbaf77d5406d"
 		},
 		"skills/analyzing-meetings/SKILL.md": {
 			"from": "meeting-docs/skills/analyzing-meetings/SKILL.md",
@@ -440,7 +444,7 @@
 		},
 		"src/extension.js": {
 			"from": "files/src/extension.js",
-			"hash": "sha256:49f2557e80c0aef25ead7cd7302002eb2aee16a1f40c6abcff9503f94c1f3445"
+			"hash": "sha256:54ba75093273b28f058a344b7bd9f9af20f209e989fc53a0857354af32097937"
 		},
 		"src/preview.js": {
 			"from": "files/src/preview.js",
@@ -537,6 +541,7 @@
 	},
 	"setup_units": [
 		"meetings",
-		"recordings"
+		"recordings",
+		"files"
 	]
 }

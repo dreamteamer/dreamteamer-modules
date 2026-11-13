@@ -1,16 +1,32 @@
 {
-  "name": "@dreamteamer/git-identities",
-  "version": "0.1.0",
-  "description": "Plan and verify folder-scoped Git identities without changing machine authentication.",
-  "license": "Apache-2.0",
-  "type": "module",
-  "repository": {"type":"git","url":"git+https://github.com/dreamteamer/dreamteamer-modules.git","directory":"modules/git-identities"},
-  "keywords": ["dreamteamer", "dreamteamer-module"],
-  "bin": {"dt-git-identities":"bin/git-identities.mjs"},
-  "files": ["README.md", "bin", "lib", "skills"],
-  "dreamteamer": {
-    "title": "Git identities",
-    "description": "Optional folder-scoped Git identity planning and verification. The managing-git-identities skill separates commit authorship, remote authentication and AI subscriptions. The CLI prints proposed configuration or checks a local repository, never changing Git, SSH, keys or credentials.",
-    "engine": ">=0.33.0"
-  }
+	"name": "@dreamteamer/git-identities",
+	"version": "0.1.0",
+	"description": "Plan and verify folder-scoped Git identities without changing machine authentication.",
+	"license": "Apache-2.0",
+	"type": "module",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/dreamteamer/dreamteamer-modules.git",
+		"directory": "modules/git-identities"
+	},
+	"keywords": [
+		"dreamteamer",
+		"dreamteamer-module"
+	],
+	"bin": {
+		"dt-git-identities": "bin/git-identities.mjs"
+	},
+	"files": [
+		"README.md",
+		"SETUP.md",
+		"bin",
+		"lib",
+		"skills"
+	],
+	"dreamteamer": {
+		"title": "Git identities",
+		"description": "Optional folder-scoped Git identity planning and verification. The managing-git-identities skill separates commit authorship, remote authentication and AI subscriptions. The CLI prints proposed configuration or checks a local repository, never changing Git, SSH, keys or credentials.",
+		"engine": ">=0.47.0",
+		"extension": "./lib/extension.mjs"
+	}
 }

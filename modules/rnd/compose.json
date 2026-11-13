@@ -41,13 +41,29 @@
 			"from": "notebooklm/commands/restore-notebook.command.md",
 			"hash": "sha256:e23536435970696fa55fb457f0a756b8c34217bf1c5806ba91158a6c6cfcebcb"
 		},
+		"lib/notebooklm-setup.mjs": {
+			"from": "notebooklm/lib/notebooklm-setup.mjs",
+			"hash": "sha256:1e66ebd75d5f7a8dfbc0be74af0c5b1fdad0285c2ba90fdf62205b5d8d746c8d"
+		},
 		"lib/wiki.mjs": {
 			"from": "wikis/lib/wiki.mjs",
 			"hash": "sha256:c5e1e4d150e72fb6e66ea8af52657405923d2f4e4396bedc2624b57c96be182c"
 		},
+		"lib/wikis-extension.mjs": {
+			"from": "wikis/lib/extension.mjs",
+			"hash": "sha256:17659f4a3e6074c12d0613aba79de9431ac53f057aadc2d545c4a6f67079e4b7"
+		},
+		"lib/wikis-setup.mjs": {
+			"from": "wikis/lib/wikis-setup.mjs",
+			"hash": "sha256:63e57ec2a145dc0abb10ee175b4a595599b1e7f029665c97d5e0afc24765b16c"
+		},
 		"lib/workspace-root.mjs": {
 			"from": "wikis/lib/workspace-root.mjs",
 			"hash": "sha256:4b55f5ee40052d49eb8bb2854dfccba39502d11061f06f8965a4a19aaf503007"
+		},
+		"SETUP.md": {
+			"from": "wikis/SETUP.md + notebooklm/SETUP.md",
+			"hash": "sha256:949935d8b19a290f43e551551390271a0d7d83ed12c807e391689a0b6b672161"
 		},
 		"skills/exporting-to-notebooklm/SKILL.md": {
 			"from": "notebooklm/skills/exporting-to-notebooklm/SKILL.md",
@@ -71,12 +87,16 @@
 		},
 		"src/extension.js": {
 			"from": "notebooklm/src/extension.js",
-			"hash": "sha256:85da7cbc752a62985d65a428ed5eaf2f25aa81ef632c0d5242dccbd9893fbcf4"
+			"hash": "sha256:fc692bd6177871adada858d79b788aae1630a0fe8f56610691d1bd07fec1ca25"
 		},
 		"src/harness.js": {
 			"from": "notebooklm/src/harness.js",
 			"hash": "sha256:274f215729491b036f5d23b3bbe2c7850abb6753c0f3f1bc6d25082f6ac0e598"
 		}
 	},
-	"engine": ">=0.47.0"
+	"engine": ">=0.47.0",
+	"setup_units": [
+		"wikis",
+		"notebooklm"
+	]
 }

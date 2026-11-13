@@ -6,6 +6,7 @@ this package. An origin without a section ships no setup reference of its own; `
 
 - **meetings**: the section `composed from meetings` below.
 - **recordings**: the section `composed from recordings` below.
+- **files**: the section `composed from files` below.
 
 ---
 
@@ -151,3 +152,11 @@ dt setup recordings --verify --allow machine        # one CPU transcription of t
 
 Every command runs through `bin/transcribe.mjs`, which reads `.env` and sets `UV_PROJECT_ENVIRONMENT`
 before spawning uv; the skill's commands go through the same entry.
+
+---
+
+<!-- composed from files -->
+
+# Setting up files
+
+One setup unit (`dt status` lists it as `files`): the input `files_folder` (FILES_FOLDER, required) — the mounted root every `file-drives` record resolves under — written into `.env` by `set-files_folder` (a workspace-files effect). The check reads `configured` when the key is set and the folder exists, `blocked` when it is set but not there (a drive not mounted), `missing` when unset. Nothing downloads, nothing reaches the network; `dt files sync` is the next command once a drive record exists.

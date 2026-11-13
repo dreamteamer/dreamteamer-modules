@@ -15,7 +15,9 @@ export default async function activate(api) {
 	const parts = [['files', (await activateFiles(api)) ?? {}], ['sessions', activateSessions(api)]];
 	// every origin's setup unit, addressed by the origin's id — `dt setup meetings` inside core is the same
 	// unit as in @dreamteamer/meetings alone (composed copies: lib/<origin>-setup.mjs)
-	for (const o of setupUnits()) parts.push([o, { setup: [(await import(new URL(`../lib/${o}-setup.mjs`, import.meta.url).href)).SETUP_UNIT] }]);
+	// an origin whose entry core already activates (files) brought its unit along; the loop adds only the rest
+	const have = new Set(parts.flatMap(([, c]) => (c.setup ?? []).map((u) => u.id)));
+	for (const o of setupUnits()) { const { SETUP_UNIT } = await import(new URL(`../lib/${o}-setup.mjs`, import.meta.url).href); if (!have.has(SETUP_UNIT.id)) parts.push([o, { setup: [SETUP_UNIT] }]); }
 	return mergeContributions(parts);
 }
 

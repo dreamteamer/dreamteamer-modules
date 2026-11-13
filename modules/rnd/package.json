@@ -23,6 +23,7 @@
 	"files": [
 		"README.md",
 		"UPDATING.md",
+		"SETUP.md",
 		"compose.json",
 		"collections",
 		"skills",

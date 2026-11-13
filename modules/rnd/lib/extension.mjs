@@ -9,6 +9,7 @@
 //   stage        a change request whose `stage` is not the gate `dt next` names on it, or contradicts its
 //                own status, dates and links — a WARNING (lib/cr-stage.mjs)
 import activateNotebooklm, { apiVersion } from '../src/extension.js';
+import { SETUP_UNIT as wikisUnit } from './wikis-setup.mjs'; // wikis' unit, composed into lib/ (its entry is not activated; this is)
 import { checkReleases } from './releases.mjs';
 import { checkStageTags } from './stage-tags.mjs';
 import { checkChangeRequestStage } from './cr-stage.mjs';
@@ -16,8 +17,11 @@ import { checkChangeRequestStage } from './cr-stage.mjs';
 export { apiVersion };
 
 export default function activate(dt) {
+	const nb = activateNotebooklm(dt);
 	return {
-		...activateNotebooklm(dt),
+		...nb,
+		// both origins' setup units: notebooklm's rides on its entry, wikis' is added here
+		setup: [...(nb.setup ?? []), wikisUnit],
 		check: async (ctx) => {
 			const c = { ...ctx, dt: ctx.dt ?? dt };
 			return [...((await checkReleases(c)) ?? []), ...((await checkStageTags(c)) ?? []), ...((await checkChangeRequestStage(c)) ?? [])];

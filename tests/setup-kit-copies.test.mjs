@@ -27,7 +27,7 @@ test('a module with a setup provider ships SETUP.md in its files — a composed 
 	let seen = 0;
 	for (const m of ids) {
 		const lib = path.join(MODULES, m, 'lib');
-		const providers = fs.existsSync(lib) ? fs.readdirSync(lib).filter((f) => /-setup\.mjs$/.test(f) && /export const SETUP_PROVIDER/.test(fs.readFileSync(path.join(lib, f), 'utf8'))) : [];
+		const providers = fs.existsSync(lib) ? fs.readdirSync(lib).filter((f) => /-setup\.mjs$/.test(f) && /export const (SETUP_PROVIDER|SETUP_UNIT)\b/.test(fs.readFileSync(path.join(lib, f), 'utf8'))) : [];
 		if (!providers.length) continue;
 		seen++;
 		const pkg = JSON.parse(fs.readFileSync(path.join(MODULES, m, 'package.json'), 'utf8'));

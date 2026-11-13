@@ -413,7 +413,7 @@ describe('the CLI', () => {
 test('SETUP.md is shipped and names every action and status this provider has', () => {
 	const pkg = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 	assert.ok(pkg.files.includes('SETUP.md') && pkg.files.includes('lib'));
-	assert.equal(pkg.dreamteamer.extension, undefined, 'core composes meetings beside files, the one extension its composition allows');
+	assert.equal(pkg.dreamteamer.extension, './lib/extension.mjs', 'the setup unit rides on an extension entry; core composes it beside files (CR-dt-006: several extension origins, core owns its entry)');
 	const text = fs.readFileSync(new URL('../SETUP.md', import.meta.url), 'utf8');
 	for (const id of SETUP_PROVIDER.actions) assert.match(text, new RegExp(`\\b${id}\\b`));
 	for (const word of ['configured', 'unverified', 'blocked', 'skipped', 'ready']) assert.match(text, new RegExp(word));

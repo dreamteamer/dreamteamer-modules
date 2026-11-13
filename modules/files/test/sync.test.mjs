@@ -36,6 +36,10 @@ test('a second sync over an unchanged tree writes nothing', () => {
 	sync(ws);
 	const c = ws.dt('commit');
 	assert.equal(c.code, 0, c.stderr + c.stdout);
+	// compile appended FILES_FOLDER to .env.example when the module came in (it declares the var since
+	// CR-dt-006); that is the install's own write, committed here so the sync's silence is what is measured
+	ws.git(['add', '--', '.env.example']);
+	if (ws.git(['status', '--porcelain', '--', '.env.example'])) ws.git(['commit', '-qm', 'env example']);
 	const before = recordMtimes(ws.root);
 	const out = sync(ws);
 	assert.deepEqual(out.drives.map((d) => [d.added, d.updated, d.moved, d.missing, d.unchanged]), [[0, 0, 0, 0, 10]]);

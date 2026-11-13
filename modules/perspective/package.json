@@ -1,7 +1,7 @@
 {
 	"name": "@dreamteamer/perspective",
 	"version": "0.2.1",
-	"description": "Reads a person's past work — git, agent sessions, tickets, mail, documents — and builds the operating model it runs on.",
+	"description": "Reads a person's past work \u2014 git, agent sessions, tickets, mail, documents \u2014 and builds the operating model it runs on.",
 	"license": "Apache-2.0",
 	"type": "module",
 	"repository": {
@@ -15,13 +15,14 @@
 	],
 	"files": [
 		"README.md",
+		"SETUP.md",
 		"bin",
-		"lib",
 		"collections",
-		"skills",
 		"commands",
-		"ui-views",
-		"mixins"
+		"lib",
+		"mixins",
+		"skills",
+		"ui-views"
 	],
 	"dependencies": {
 		"js-yaml": "^4.1.0"
@@ -34,8 +35,8 @@
 		"env": [
 			"ASANA_PAT"
 		],
-		"engine": ">=0.33.0",
-		"description": "Reads a person's past work — git history, coding-agent sessions, tickets, mail, Drive files and notes — and builds the operating model it runs on: activities, projects, decisions, workflows, vocabulary, goals, findings and the assumptions under them, ending in proposals for what your workspace should track. Every record is found, never authored. Start with /run-retrospective.",
+		"engine": ">=0.47.0",
+		"description": "Reads a person's past work \u2014 git history, coding-agent sessions, tickets, mail, Drive files and notes \u2014 and builds the operating model it runs on: activities, projects, decisions, workflows, vocabulary, goals, findings and the assumptions under them, ending in proposals for what your workspace should track. Every record is found, never authored. Start with /run-retrospective.",
 		"peer_collections": [
 			"contacts",
 			"companies",
@@ -46,6 +47,7 @@
 			"tasks",
 			"deliverables",
 			"decisions"
-		]
+		],
+		"extension": "./lib/extension.mjs"
 	}
 }
