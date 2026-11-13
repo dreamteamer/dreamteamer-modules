@@ -13,7 +13,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { SetupRefusal, redact, fingerprint, writeScoped, envAssignments, setEnvValue, safeEnvValue, gitExposure, runGit, leftoverTemps, tempPrefix } from './setup-kit.mjs';
+import { SetupRefusal, redact, fingerprint, writeScoped, envAssignments, setEnvValue, safeEnvValue, gitExposure, runGit, leftoverTemps, tempPrefix, within, realish } from './setup-kit.mjs';
 
 export const UNIT_ID = 'recordings';
 const DEFAULT_HOME = path.join(os.homedir(), '.cache', 'dreamteamer', 'transcription');
@@ -72,6 +72,9 @@ function homeAction(ctx, inputs) {
 	const want = { TRANSCRIPTION_HOME: inputs.transcription_home ?? ctx.env.TRANSCRIPTION_HOME ?? DEFAULT_HOME, FILES_FOLDER: inputs.files_folder ?? ctx.env.FILES_FOLDER, INBOX_FOLDERS: inputs.inbox_folders ?? ctx.env.INBOX_FOLDERS };
 	const needs = Object.entries(want).filter(([, v]) => !v).map(([k]) => k);
 	if (needs.includes('FILES_FOLDER')) return { ...action, state: 'needs-input', reason: 'files_folder is required' };
+	// the models and the venv must sit outside the workspace — compile and npm wipe what is inside it;
+	// judged on the real path, so a symlink from outside that points in is refused too
+	if (within(realish(ctx.root), realish(expand(String(want.TRANSCRIPTION_HOME))))) return { ...action, state: 'blocked', reason: `TRANSCRIPTION_HOME resolves inside the workspace (${want.TRANSCRIPTION_HOME}) — choose a folder outside it` };
 	const envPath = path.join(ctx.root, '.env');
 	let expect;
 	try { expect = fingerprint(envPath); } catch (e) { return { ...action, state: 'blocked', reason: e instanceof SetupRefusal ? e.message : 'the .env file cannot be read' }; }

@@ -75,6 +75,18 @@ describe('the unit, pure', () => {
 		fs.writeFileSync(path.join(ctx.receiptDir, 'cpu-run.verified.json'), JSON.stringify({ at: '2020-01-01', atMs: 0 }));
 		assert.equal(SETUP_UNIT.inspect(ctx).checks.find((c) => c.id === 'recordings.cpu-run').status, 'unverified');
 	});
+	test('a transcription home inside the workspace — even through a symlink from outside — is refused: compile and npm would wipe it', () => {
+		const root = repo();
+		const inside = path.join(root, 'cache'); fs.mkdirSync(inside);
+		const link = path.join(tmp('dtm-link-'), 'home'); fs.symlinkSync(inside, link);
+		const ctx = ctxFor(root, { PATH: fakeBins(['uv', 'ffmpeg']) });
+		for (const home of [inside, link]) {
+			const set = SETUP_UNIT.plan(ctx, { transcription_home: home, files_folder: root }).actions.find((a) => a.id === 'set-home');
+			assert.equal(set.state, 'blocked', home); assert.match(set.reason, /inside the workspace/);
+			assert.equal(SETUP_UNIT.apply(ctx, { ...set, state: 'ready', expect: 'x' }, { transcription_home: home, files_folder: root }).ok, false);
+		}
+		assert.ok(!fs.existsSync(path.join(root, '.env')), 'nothing written');
+	});
 	test('a model folder without its weights (an interrupted download) reads missing, and the download is offered again', () => {
 		const root = repo(), home = tmp('dtm-home-');
 		const ctx = ctxFor(root, { PATH: fakeBins(['uv', 'ffmpeg']), TRANSCRIPTION_HOME: home, FILES_FOLDER: root });

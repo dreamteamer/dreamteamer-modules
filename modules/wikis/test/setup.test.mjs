@@ -26,3 +26,14 @@ describe('wikis: qmd on PATH', () => {
 		assert.equal(SETUP_UNIT.version, 1); assert.deepEqual(SETUP_UNIT.inputs, []);
 	});
 });
+
+describe('wikis: a qmd that is on PATH but not executable', () => {
+	test('says so and names the fix, rather than calling it absent', { skip: process.platform === 'win32' }, () => {
+		const bin = fs.mkdtempSync(path.join(os.tmpdir(), 'dtm-wikis-bin-'));
+		fs.writeFileSync(path.join(bin, 'qmd'), '#!/bin/sh\nexit 0\n', { mode: 0o644 }); fs.chmodSync(path.join(bin, 'qmd'), 0o644);
+		const row = SETUP_UNIT.inspect({ root: bin, env: { PATH: bin } }).checks[0];
+		assert.equal(row.status, 'blocked');
+		assert.match(row.detail, /on PATH but not executable/);
+		assert.match(row.fix, /chmod \+x/);
+	});
+});

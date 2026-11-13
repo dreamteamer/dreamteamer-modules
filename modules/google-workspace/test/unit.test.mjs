@@ -164,7 +164,7 @@ describe('through the engine', { skip: !engineMeets('google-workspace') && `need
 		assert.doesNotMatch(s.stdout, /credential store missing/, 'the store it just created is read back from .env');
 		// with the account named and a client file in place, the sign-in is the owner's step, never run here
 		const client = path.join(fs.realpathSync(path.join(root, '..')), `client-${path.basename(root)}.json`);
-		fs.writeFileSync(client, '{}');
+		fs.writeFileSync(client, '{}', { mode: 0o600 }); fs.chmodSync(client, 0o600);   // a secret-path must be owner-only, or the engine refuses it
 		const named = run(root, ['setup', 'google-workspace', '--input', `credentials_dir=${store}`, '--input', `client_secret=${client}`, '--input', 'account=a@example.invalid', '--no-input']);
 		assert.equal(named.status, 0, named.stderr + named.stdout);
 		if (/uvx is not available/.test(named.stdout)) assert.match(named.stdout, /authorize-account \(blocked\)/, 'no uvx on this machine: the owner\'s step is blocked, named');

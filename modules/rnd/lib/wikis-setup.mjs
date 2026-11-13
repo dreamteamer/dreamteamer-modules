@@ -3,14 +3,25 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
-const onPath = (env, bin) => (env.PATH ?? '').split(path.delimiter).some((d) => { if (!d) return false; try { fs.accessSync(path.join(d, bin), fs.constants.X_OK); return fs.statSync(path.join(d, bin)).isFile(); } catch { return false; } });
+/** Where `bin` sits on PATH, and whether it may be run: { file, executable } or null. */
+const onPath = (env, bin) => {
+	for (const d of (env.PATH ?? '').split(path.delimiter)) {
+		if (!d) continue;
+		const file = path.join(d, bin);
+		try { if (!fs.statSync(file).isFile()) continue; } catch { continue; }
+		try { fs.accessSync(file, fs.constants.X_OK); return { file, executable: true }; } catch { return { file, executable: false }; }
+	}
+	return null;
+};
 
 export function inspect(ctx) {
 	const env = ctx.env ?? {};
-	const present = onPath(env, 'qmd');
-	return { checks: [present
+	const found = onPath(env, 'qmd');
+	return { checks: [found?.executable
 		? { id: 'wikis.tool', status: 'configured', title: 'qmd on PATH', detail: 'qmd is available' }
-		: { id: 'wikis.tool', status: 'blocked', title: 'qmd on PATH', detail: 'qmd is not on PATH', fix: 'dt setup wikis --allow machine --allow network (npm install -g @tobilu/qmd)' }] };
+		: found
+			? { id: 'wikis.tool', status: 'blocked', title: 'qmd on PATH', detail: `qmd is on PATH but not executable (${found.file})`, fix: `chmod +x ${found.file}` }
+			: { id: 'wikis.tool', status: 'blocked', title: 'qmd on PATH', detail: 'qmd is not on PATH', fix: 'dt setup wikis --allow machine --allow network (npm install -g @tobilu/qmd)' }] };
 }
 
 export function plan(ctx, inputs = {}) {

@@ -55,7 +55,7 @@
 		},
 		"lib/wikis-setup.mjs": {
 			"from": "wikis/lib/wikis-setup.mjs",
-			"hash": "sha256:63e57ec2a145dc0abb10ee175b4a595599b1e7f029665c97d5e0afc24765b16c"
+			"hash": "sha256:d9bf88bec3e5b0ee18a002648805acbec9d27caf00a5566aac78be4ccc44fec4"
 		},
 		"lib/workspace-root.mjs": {
 			"from": "wikis/lib/workspace-root.mjs",
