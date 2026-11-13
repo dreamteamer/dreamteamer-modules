@@ -36,31 +36,6 @@ jobs:
 
       - run: npm ci
 
-      # THE CANDIDATE ENGINE (cr-dt-007, D60, D72) — while candidates/engine.json exists, the suites run on
-      # the unpublished engine it pins by commit, never skipped: the engine repository is checked out at
-      # that commit, packed, hashed and installed over node_modules/dreamteamer. The tarball is built here
-      # rather than committed (it is over the leak scan's 210 KB ceiling); the commit is the pin.
-      - name: the candidate engine's commit
-        id: candidate
-        run: |
-          if [ -f candidates/engine.json ]; then echo "commit=$(node -p "require('./candidates/engine.json').commit")" >> "$GITHUB_OUTPUT"; fi
-      - name: check out the candidate engine
-        if: steps.candidate.outputs.commit != ''
-        uses: actions/checkout@v5
-        with:
-          repository: dreamteamer/dreamteamer
-          ref: ${{ steps.candidate.outputs.commit }}
-          path: .engine-candidate
-      - name: install the candidate over node_modules/dreamteamer
-        if: steps.candidate.outputs.commit != ''
-        run: |
-          mkdir -p "$RUNNER_TEMP/candidate"
-          (cd .engine-candidate && npm pack --silent --pack-destination "$RUNNER_TEMP/candidate")
-          rm -rf .engine-candidate
-          (cd "$RUNNER_TEMP/candidate" && sha256sum dreamteamer-*.tgz > SHA256SUMS && cat SHA256SUMS)
-          node scripts/use-candidate.mjs "$RUNNER_TEMP/candidate"
-          echo "DT_CANDIDATES=$RUNNER_TEMP/candidate" >> "$GITHUB_ENV"
-
       - name: does this shard drive a browser
         id: browser
         run: echo "needed=$(node scripts/test.mjs --shard=${{ matrix.shard }}/4 --needs-browser)" >> "$GITHUB_OUTPUT"
