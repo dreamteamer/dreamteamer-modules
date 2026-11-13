@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { SETUP_UNIT } from '../lib/recordings-setup.mjs';
 import { virginWorkspace, packedInto, run, cleanup, ENGINE_VERSION, engineMeets, closure } from '../../../tests/helpers/workspace.mjs';
 
@@ -74,6 +74,23 @@ describe('the unit, pure', () => {
 		assert.equal(ready.find((c) => c.id === 'recordings.cpu-run').evidence.at, '2026-11-13');
 		fs.writeFileSync(path.join(ctx.receiptDir, 'cpu-run.verified.json'), JSON.stringify({ at: '2020-01-01', atMs: 0 }));
 		assert.equal(SETUP_UNIT.inspect(ctx).checks.find((c) => c.id === 'recordings.cpu-run').status, 'unverified');
+	});
+	test('a model folder without its weights (an interrupted download) reads missing, and the download is offered again', () => {
+		const root = repo(), home = tmp('dtm-home-');
+		const ctx = ctxFor(root, { PATH: fakeBins(['uv', 'ffmpeg']), TRANSCRIPTION_HOME: home, FILES_FOLDER: root });
+		for (const rel of ['venv/bin/python', 'models/whisper-ct2/models--x/snapshots/1/model.bin', 'models/diarization/segmentation.onnx', 'models/diarization/embedding.onnx']) { fs.mkdirSync(path.dirname(path.join(home, rel)), { recursive: true }); fs.writeFileSync(path.join(home, rel), ''); }
+		assert.equal(SETUP_UNIT.inspect(ctx).checks.find((c) => c.id === 'recordings.models').status, 'configured', 'the weights nested as the hub cache nests them');
+		fs.rmSync(path.join(home, 'models/whisper-ct2/models--x/snapshots/1/model.bin'));
+		const row = SETUP_UNIT.inspect(ctx).checks.find((c) => c.id === 'recordings.models');
+		assert.equal(row.status, 'missing'); assert.match(row.detail, /whisper-ct2/);
+		assert.equal(SETUP_UNIT.plan(ctx, { files_folder: root }).actions.find((a) => a.id === 'download-models').state, 'ready');
+	});
+	test('the transcriber entry outside a workspace says so in one line, exit 2 — no stack trace', () => {
+		const nowhere = tmp('dtm-nowhere-');
+		const r = spawnSync(process.execPath, [new URL('../bin/transcribe.mjs', import.meta.url).pathname, 'sync'], { cwd: nowhere, encoding: 'utf8' });
+		assert.equal(r.status, 2);
+		assert.match(r.stderr, /not inside a dreamteamer workspace/);
+		assert.doesNotMatch(r.stderr, /TypeError|at Object/);
 	});
 });
 

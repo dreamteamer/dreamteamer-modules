@@ -16,6 +16,7 @@ import { fileURLToPath } from 'node:url';
 import { findWorkspace } from '../lib/workspace-root.mjs';
 
 const root = findWorkspace(process.cwd());
+if (!root) { console.error('✖ not inside a dreamteamer workspace (no package.json with its package-lock.json above here) — run from the workspace root'); process.exit(2); }
 const dotenv = (() => { try { return Object.fromEntries(fs.readFileSync(path.join(root, '.env'), 'utf8').split('\n').map((l) => /^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)=(.*)$/.exec(l)).filter(Boolean).map((m) => [m[1], m[2].replace(/^"(.*)"$/, '$1').replace(/^'(.*)'$/, '$1')])); } catch { return {}; } })();
 const env = { ...dotenv, ...process.env };
 const home = env.TRANSCRIPTION_HOME && env.TRANSCRIPTION_HOME.trim() ? path.resolve(env.TRANSCRIPTION_HOME.replace(/^~(?=$|\/)/, os.homedir())) : path.join(os.homedir(), '.cache', 'dreamteamer', 'transcription');

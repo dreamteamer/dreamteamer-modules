@@ -13,7 +13,7 @@ const made = [];
 after(() => { for (const d of made) fs.rmSync(d, { recursive: true, force: true }); });
 const tmp = () => { const d = fs.mkdtempSync(path.join(os.tmpdir(), 'dtm-cand-')); made.push(d); return d; };
 /** Import the helper in a child with DT_CANDIDATES set; returns { code, stdout, stderr }. */
-const load = (dir) => spawnSync(process.execPath, ['--input-type=module', '-e', `import('${path.join(ROOT, 'tests', 'helpers', 'workspace.mjs')}').then((m) => console.log(m.ENGINE_VERSION))`], { cwd: ROOT, encoding: 'utf8', env: { ...process.env, DT_CANDIDATES: dir, DT_ENGINE_DIR: '' } });
+const load = (dir) => spawnSync(process.execPath, ['--input-type=module', '-e', `import('${path.join(ROOT, 'tests', 'helpers', 'workspace.mjs')}').then((m) => console.log(m.ENGINE_VERSION + ' ' + m.ENGINE))`], { cwd: ROOT, encoding: 'utf8', env: { ...process.env, DT_CANDIDATES: dir, DT_ENGINE_DIR: '' } });
 
 describe('DT_CANDIDATES', () => {
 	test('a folder with no tarball is refused naming the path', () => {
@@ -36,7 +36,12 @@ describe('DT_CANDIDATES', () => {
 		fs.writeFileSync(path.join(dir, 'SHA256SUMS'), `${actual}  ${file}\n`);
 		const ok = load(dir);
 		assert.equal(ok.status, 0, ok.stderr);
-		assert.equal(ok.stdout.trim(), JSON.parse(fs.readFileSync(path.join(ROOT, 'node_modules', 'dreamteamer', 'package.json'), 'utf8')).version);
+		const [version, engine] = ok.stdout.trim().split(' ');
+		assert.equal(version, JSON.parse(fs.readFileSync(path.join(ROOT, 'node_modules', 'dreamteamer', 'package.json'), 'utf8')).version);
+		// extracted once per hash into a folder named by it, so a second process reuses it rather than leaving another copy
+		assert.equal(path.basename(path.dirname(engine)), `dtm-engine-${actual.slice(0, 16)}`);
+		assert.equal(load(dir).stdout.trim().split(' ')[1], engine, 'the same folder the second time');
+		made.push(path.dirname(engine));
 		// no SHA256SUMS at all is a refusal too
 		fs.rmSync(path.join(dir, 'SHA256SUMS'));
 		assert.match(load(dir).stderr, /no SHA256SUMS beside/);

@@ -316,19 +316,16 @@ describe('the commands, the bindings and the agent — every entry names a skill
 	});
 });
 
-describe('the doctor', () => {
-	test('an installed rnd module gets an rnd capability that names ffmpeg', async () => {
-		const { capabilities } = await import('../../setup/lib/capabilities.mjs');   // the board lives in @dreamteamer/setup
-		const ws = fs.mkdtempSync(path.join(os.tmpdir(), 'ext-rnd-'));
-		fs.writeFileSync(path.join(ws, 'package.json'), JSON.stringify({ name: 'c', private: true, dependencies: { '@dreamteamer/extensions': '*' }, dreamteamer: {} }));
-		fs.writeFileSync(path.join(ws, 'package-lock.json'), '{}');
-		fs.mkdirSync(path.join(ws, 'node_modules', '@dreamteamer'), { recursive: true });
-		fs.symlinkSync(ROOT, path.join(ws, 'node_modules', '@dreamteamer', 'extensions'), 'dir');
-		const caps = capabilities(ws);
-		const rnd = caps.find((c) => c.name === 'rnd');
-		assert.ok(rnd, `no rnd capability; saw ${caps.map((c) => c.name).join(', ')}`);
-		assert.ok(rnd.checks.some((k) => k.label === 'ffmpeg'));
-		fs.rmSync(ws, { recursive: true, force: true });
+describe('the setup units', () => {
+	test('an installed rnd module contributes the wikis unit beside notebooklm\'s — the engine draws the board, no capabilities catalog is left (CR-dt-006)', async () => {
+		const { default: activate, apiVersion } = await import('../lib/extension.mjs');
+		assert.equal(apiVersion, 1);
+		const ext = activate({});
+		const ids = (ext.setup ?? []).map((u) => u.id);
+		assert.ok(ids.includes('wikis'), `no wikis unit; saw ${ids.join(', ')}`);
+		assert.ok(ids.includes('notebooklm'), `no notebooklm unit; saw ${ids.join(', ')}`);
+		for (const u of ext.setup) { assert.equal(u.version, 1); for (const f of ['inspect', 'plan', 'apply']) assert.equal(typeof u[f], 'function', `${u.id}.${f}`); }
+		assert.ok(!fs.existsSync(path.join(ROOT, 'modules', 'setup', 'lib', 'board.mjs')), 'the board lives in the engine now');
 	});
 });
 

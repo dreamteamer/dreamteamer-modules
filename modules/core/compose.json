@@ -36,7 +36,7 @@
 		},
 		"bin/recordings-transcribe.mjs": {
 			"from": "recordings/bin/transcribe.mjs",
-			"hash": "sha256:cc043358c962deaf92c4e1717a235a521322b8faa59490d3197bef2731512a3f"
+			"hash": "sha256:a35455cac62ead219088b474d6ef9cdce49385e55486822d513a8524ca91ba58"
 		},
 		"bin/tasks-migrate-lanes-to-tags.mjs": {
 			"from": "tasks/bin/migrate-lanes-to-tags.mjs",
@@ -300,7 +300,7 @@
 		},
 		"lib/meetings-setup.mjs": {
 			"from": "meetings/lib/meetings-setup.mjs",
-			"hash": "sha256:dd866e7946e4b96d815d628fc12fc0ddb525143934db497bca3c10d47379613a"
+			"hash": "sha256:4907619d2490f8c7b6593f96c2211d27de34b303a89e073bfc46c8605458240f"
 		},
 		"lib/recordings-extension.mjs": {
 			"from": "recordings/lib/extension.mjs",
@@ -308,7 +308,7 @@
 		},
 		"lib/recordings-setup.mjs": {
 			"from": "recordings/lib/recordings-setup.mjs",
-			"hash": "sha256:e949c0bb1d1bc31a30de70ae9c1ba73f7264c2bd709882198fe0a1d31cf6159a"
+			"hash": "sha256:c2675fe8e5c701b5519ea17aae30115fd19be8c49c13668b7d2638f08601292a"
 		},
 		"lib/setup-kit.mjs": {
 			"from": "meetings/lib/setup-kit.mjs",

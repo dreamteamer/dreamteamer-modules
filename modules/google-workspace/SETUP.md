@@ -32,8 +32,12 @@ person means before acting.
   workspace and outside synced folders.
 - Each account to connect, named explicitly. Never infer an account.
 
-Both paths are read from the **process environment** of the command that runs. Export them in the
-shell profile the person uses; this release does not read them from the workspace `.env`.
+The engine's `dt install` / `dt setup google-workspace` take both as `--input credentials_dir=…` and
+`--input client_secret=…` (or from the environment, or the declared default for the store) and record
+them in the workspace `.env` (`record-settings`), so `dt status` and the next `dt setup` read them
+back. `dt-google` itself, run by hand, reads the **process environment** only: export the two keys in
+the shell that runs it, or run the owner's steps through `dt setup google-workspace --authorize`,
+which hands the `.env` values to `dt-google`.
 
 ## Reading a check
 
@@ -57,11 +61,15 @@ Run `plan` first and show the person each action's `effects`. Ask for specific a
 Re-run `plan` after every action: state comes from what is on disk, never from an earlier success.
 
 1. **`create-credential-store`** — `runBy: agent`. Effect: one new owner-only directory outside the
-   workspace — **only the last folder of the path**, inside a parent that already exists. Nothing
-   else is created, and no existing permission is ever changed. The plan refuses (`blocked`) when:
+   workspace. Outside the person's home **only the last folder of the path** is made, inside a parent
+   that already exists; under the home the missing folders between are made too, each owner-only, so
+   the default `~/.config/google-workspace-mcp/credentials` can be made on a machine that never ran
+   the bridge. Nothing else is created, and no existing permission is ever changed. The plan refuses
+   (`blocked`) when:
    - the path is not canonical (it passes through a symlink, or holds `.` or `..`); the reason names
      the canonical form to configure instead;
-   - the parent is missing, belongs to another user, or others can write to it;
+   - the nearest existing parent belongs to another user or others can write to it, or (outside the
+     home) the parent is missing;
    - the path is inside the workspace, or holds a file or symlink;
    - a directory already exists there but other users can access it. Restrict it yourself after
      reviewing it; it is never reported `done`.
@@ -93,5 +101,5 @@ action for anything not ready. Never include a path, token, file listing or mess
 
 - Local checks prove presence, never consent, expiry or scopes.
 - Windows: the MCP bridge refuses to start; `authorize-account` is reported blocked there.
-- `google-setup` reads the process environment only; a `.env` value does not reach it.
+- `google-setup` and `dt-google` read the process environment only; the engine's `dt setup` is what carries the `.env` values to them.
 - Offline tests use synthetic files and a mock server; they prove no live Google access.

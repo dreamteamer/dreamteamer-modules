@@ -7,7 +7,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { SETUP_UNIT } from '../lib/meetings-setup.mjs';
+import { SETUP_UNIT, calendarsDigest } from '../lib/meetings-setup.mjs';
+import { parseWorkCalendars } from '../skills/fetching-meetings/bin/gcal.mjs';
 import { virginWorkspace, packedInto, run, cleanup, ENGINE_VERSION, engineMeets, closure } from '../../../tests/helpers/workspace.mjs';
 
 after(cleanup);
@@ -70,9 +71,36 @@ describe('the unit, pure', () => {
 		assert.equal(checks.find((c) => c.id === 'meetings.work-calendars').status, 'configured');
 		assert.equal(checks.find((c) => c.id === 'meetings.account-access').status, 'unverified');
 		fs.mkdirSync(ctx.receiptDir, { recursive: true });
-		fs.writeFileSync(path.join(ctx.receiptDir, 'calendar-access.verified.json'), JSON.stringify({ rows: 1, at: '2026-11-13' }));
+		fs.writeFileSync(path.join(ctx.receiptDir, 'calendar-access.verified.json'), JSON.stringify({ rows: 1, digest: calendarsDigest(parseWorkCalendars(ROW).rows), at: '2026-11-13' }));
 		const after = SETUP_UNIT.inspect(ctx).checks.find((c) => c.id === 'meetings.account-access');
 		assert.equal(after.status, 'ready'); assert.equal(after.evidence.at, '2026-11-13');
+	});
+	test('the engine lays .env under the process env: a WORK_CALENDARS equal to .env\'s does not block a second row; a different process value still does', () => {
+		const root = repo();
+		fs.writeFileSync(path.join(root, '.env'), `WORK_CALENDARS=${ROW}\n`);
+		const row2 = 'two@example.invalid | mixed | me@example.invalid';
+		const merged = ctxFor(root, { WORK_CALENDARS: ROW });   // what the engine hands a unit after the first install
+		const add = SETUP_UNIT.plan(merged, { calendar: [row2] }).actions.find((a) => a.id === 'add-calendar-rows');
+		assert.equal(add.state, 'ready', add.reason);
+		const r = SETUP_UNIT.apply(merged, add, { calendar: [row2] });
+		assert.equal(r.ok, true, r.message);
+		assert.ok(fs.readFileSync(path.join(root, '.env'), 'utf8').includes(row2), 'the second row landed in .env');
+		assert.equal(SETUP_UNIT.inspect(ctxFor(root, { WORK_CALENDARS: `${ROW}\n${row2}` })).checks.find((c) => c.id === 'meetings.work-calendars').evidence.rows, 2);
+		const shadow = ctxFor(root, { WORK_CALENDARS: 'other@example.invalid | mixed | me@example.invalid' });
+		const blocked = SETUP_UNIT.plan(shadow, { calendar: ['three@example.invalid | mixed | me@example.invalid'] }).actions.find((a) => a.id === 'add-calendar-rows');
+		assert.equal(blocked.state, 'blocked'); assert.match(blocked.reason, /process environment/);
+	});
+	test('a receipt counts only for the calendars it proved: a row added since makes access unverified again, naming the date', () => {
+		const root = repo();
+		fs.writeFileSync(path.join(root, '.env'), `WORK_CALENDARS=${ROW}\n`);
+		const ctx = ctxFor(root);
+		fs.mkdirSync(ctx.receiptDir, { recursive: true });
+		fs.writeFileSync(path.join(ctx.receiptDir, 'calendar-access.verified.json'), JSON.stringify({ rows: 1, digest: calendarsDigest(parseWorkCalendars(ROW).rows), at: '2026-11-01' }));
+		assert.equal(SETUP_UNIT.inspect(ctx).checks.find((c) => c.id === 'meetings.account-access').status, 'ready');
+		fs.writeFileSync(path.join(root, '.env'), `WORK_CALENDARS="${ROW}\ntwo@example.invalid | mixed | me@example.invalid"\n`);
+		const after = SETUP_UNIT.inspect(ctx).checks.find((c) => c.id === 'meetings.account-access');
+		assert.equal(after.status, 'unverified'); assert.match(after.detail, /changed since.*2026-11-01/);
+		assert.ok(!JSON.stringify(after).includes('example.invalid'), 'no address in the row');
 	});
 });
 
@@ -95,5 +123,12 @@ describe('through the engine', { skip: !engineMeets('meetings') && `needs engine
 		const s = run(root, ['status']);
 		assert.match(s.stdout, /meetings\s+configured/);
 		assert.match(s.stdout, /account access unverified/);
+		// a second calendar, later, through the same verb: added, not blocked by the row the engine merged from .env
+		const row2 = 'two@example.invalid | mixed | me@example.invalid';
+		const second = run(root, ['setup', 'meetings', '--input', `calendar=${row2}`, '--no-input']);
+		assert.equal(second.status, 0, second.stderr + second.stdout);
+		assert.match(second.stdout, /✔ add-calendar-rows — wrote \.env \(1 row\(s\) added/);
+		const env = fs.readFileSync(path.join(root, '.env'), 'utf8');
+		assert.ok(env.includes(ROW) && env.includes(row2), 'both rows in .env');
 	});
 });

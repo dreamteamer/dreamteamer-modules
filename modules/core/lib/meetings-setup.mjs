@@ -5,6 +5,7 @@
 //
 // Read SETUP.md beside this package for the conversation that uses it.
 import fs from 'node:fs';
+import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
@@ -171,25 +172,46 @@ export function apply({ root, action, expect, workspace: claimed, rows = [], env
 // in a terminal — and a passing one leaves a dated receipt the next inspect turns into `ready`.
 const RECEIPT = 'calendar-access.verified.json';
 const receiptOf = (ctx) => { try { return JSON.parse(fs.readFileSync(path.join(ctx.receiptDir, RECEIPT), 'utf8')); } catch { return null; } };
+/** What a receipt proved — the configured calendar/account pairs — as a short digest, never the addresses. */
+export const calendarsDigest = (rows) => createHash('sha256').update(rows.map((r) => `${r.calendar}|${r.account}`).sort().join('\n')).digest('hex').slice(0, 16);
+/** The environment the module's own functions read. The engine lays the workspace .env UNDER the
+ *  process environment, so a WORK_CALENDARS it merged from .env would read here as a shadowing process
+ *  value and block every later row: a value equal to what .env holds is .env's, and is left out. A
+ *  genuinely different process value still wins, as the calendar reader reads it. */
+function moduleEnv(ctx) {
+	const env = { ...ctx.env };
+	if (env[KEY] !== undefined) {
+		let text = '';
+		try { text = fs.readFileSync(path.join(ctx.root, '.env'), 'utf8'); } catch { /* no .env */ }
+		const found = envAssignments(text, KEY);
+		if (found.length && String(found.at(-1).value).trim() === String(env[KEY]).trim()) delete env[KEY];
+	}
+	return env;
+}
 const unitEffect = (text) => { const m = /^([a-z-]+):\s*(.*)$/s.exec(text); const kind = { 'workspace-file': 'workspace-files', 'account-access': 'account', network: 'network' }[m?.[1]] ?? 'machine'; return { kind, detail: m ? m[2] : text }; };
 
 function unitInspect(ctx) {
-	const { checks } = inspect({ root: ctx.root, env: ctx.env });
+	const env = moduleEnv(ctx);
+	const { checks } = inspect({ root: ctx.root, env });
 	const receipt = receiptOf(ctx);
+	// a receipt counts only for the rows it proved: a calendar added or removed since is unverified again
+	const current = calendarsDigest(parseWorkCalendars(workCalendars(ctx.root, env).text).rows);
+	const proven = receipt && receipt.digest === current;
 	// a row this module calls `blocked` only because the calendar rows are not in yet is `missing` to the
 	// engine (an input fixes it); `blocked` is kept for what no input fixes
 	const rowsMissing = checks.some((c) => c.id === 'meetings.work-calendars' && c.status === 'missing');
 	return { checks: checks.map((c) => {
 		const status = c.status === 'blocked' && rowsMissing ? 'missing' : c.status;
 		const row = { id: c.id, status, title: c.label, detail: c.detail, fix: c.fix, evidence: c.evidence };
-		if (c.id === 'meetings.account-access' && receipt) return { ...row, status: 'ready', detail: `every configured calendar answered on this computer (${receipt.rows} row(s))`, evidence: { at: receipt.at, rows: receipt.rows } };
+		if (c.id === 'meetings.account-access' && proven) return { ...row, status: 'ready', detail: `every configured calendar answered on this computer (${receipt.rows} row(s))`, evidence: { at: receipt.at, rows: receipt.rows } };
+		if (c.id === 'meetings.account-access' && receipt) return { ...row, detail: `the calendars changed since the last verified read (${receipt.at}); verify again`, evidence: { at: receipt.at, rows: receipt.rows } };
 		return row;
 	}) };
 }
 
 function unitPlan(ctx, inputs = {}) {
 	const rows = Array.isArray(inputs.calendar) ? inputs.calendar : inputs.calendar ? [inputs.calendar] : [];
-	const p = plan({ root: ctx.root, env: ctx.env, rows });
+	const p = plan({ root: ctx.root, env: moduleEnv(ctx), rows });
 	const actions = p.actions.map((a) => {
 		const { content, ...rest } = a; // the merged .env text is recomputed by apply, never carried
 		return {
@@ -207,7 +229,7 @@ function unitApply(ctx, action, inputs = {}) {
 	try {
 		if (action.state === 'done') return { ok: true, changed: [], message: `nothing to do — ${action.reason ?? 'already configured'}` };
 		if (action.id === 'add-calendar-rows') {
-			const r = apply({ root: ctx.root, action: action.id, expect: action.expect ?? action.preview?.expect, workspace: ctx.root, rows: action.inputs ?? [], env: ctx.env });
+			const r = apply({ root: ctx.root, action: action.id, expect: action.expect ?? action.preview?.expect, workspace: ctx.root, rows: action.inputs ?? [], env: moduleEnv(ctx) });
 			return { ok: true, changed: r.changed ? ['.env'] : [], message: r.changed ? `wrote .env (${r.added} row(s) added, every other line kept)` : `nothing to do — ${r.reason}` };
 		}
 		if (action.id === 'verify-calendar-access') {
@@ -215,8 +237,8 @@ function unitApply(ctx, action, inputs = {}) {
 			const r = spawnSync(action.command[0], action.command.slice(1), { cwd: ctx.root, env: ctx.env, stdio: 'inherit', timeout: 600_000 });
 			if (r.status !== 0) return { ok: false, changed: [], message: `${action.command.slice(0, 2).join(' ')} exited ${r.status ?? r.error?.message}` };
 			fs.mkdirSync(ctx.receiptDir, { recursive: true });
-			const rows = parseWorkCalendars(workCalendars(ctx.root, ctx.env).text).rows.length;
-			fs.writeFileSync(path.join(ctx.receiptDir, RECEIPT), JSON.stringify({ what: 'every configured calendar answered', rows, at: new Date().toISOString().slice(0, 10) }, null, 2) + '\n');
+			const { rows } = parseWorkCalendars(workCalendars(ctx.root, moduleEnv(ctx)).text);
+			fs.writeFileSync(path.join(ctx.receiptDir, RECEIPT), JSON.stringify({ what: 'every configured calendar answered', rows: rows.length, digest: calendarsDigest(rows), at: new Date().toISOString().slice(0, 10) }, null, 2) + '\n');
 			return { ok: true, changed: [path.join(ctx.receiptDir, RECEIPT)], message: 'calendar access verified — receipt written' };
 		}
 		return { ok: false, changed: [], message: `unknown action ${action.id}` };

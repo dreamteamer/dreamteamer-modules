@@ -26,6 +26,8 @@ const onPath = (env, bin) => (env.PATH ?? '').split(path.delimiter).some((d) => 
 const expand = (p) => (p && (p === '~' || p.startsWith('~/')) ? path.join(os.homedir(), p.slice(1)) : p);
 const homeOf = (ctx, inputs = {}) => expand(inputs.transcription_home ?? ctx.env.TRANSCRIPTION_HOME ?? DEFAULT_HOME);
 const exists = (p) => { try { fs.statSync(p); return true; } catch { return false; } };
+/** Whether a file of that name sits anywhere under the folder (the hub cache nests the weights a few levels down) — a half-downloaded model folder holds none. */
+const holds = (dir, name, depth = 6) => { try { for (const e of fs.readdirSync(dir, { withFileTypes: true })) { if (e.isFile() && e.name === name) return true; if (e.isDirectory() && depth > 0 && holds(path.join(dir, e.name), name, depth - 1)) return true; } } catch { /* absent */ } return false; };
 const newest = (paths) => Math.max(0, ...paths.filter(exists).map((p) => fs.statSync(p).mtimeMs));
 const receiptOf = (ctx) => { try { return JSON.parse(fs.readFileSync(path.join(ctx.receiptDir, RECEIPT), 'utf8')); } catch { return null; } };
 /** This module's node entry, resolved from where this unit was loaded (the package, or a composed copy), relative to the workspace. */
@@ -53,7 +55,7 @@ export function inspect(ctx) {
 		? { id: 'recordings.venv', status: 'configured', title: 'python venv', detail: 'present under TRANSCRIPTION_HOME' }
 		: { id: 'recordings.venv', status: 'missing', title: 'python venv', detail: 'not provisioned', fix: 'dt setup recordings --allow machine' });
 	const models = MODELS(home);
-	const absent = Object.keys(models).filter((k) => !exists(models[k]));
+	const absent = Object.keys(models).filter((k) => (k === 'whisper-ct2' ? !holds(models[k], 'model.bin') : !exists(models[k])));
 	checks.push(absent.length
 		? { id: 'recordings.models', status: 'missing', title: 'models', detail: `${absent.join(', ')} not downloaded`, fix: 'dt setup recordings --allow download' }
 		: { id: 'recordings.models', status: 'configured', title: 'models', detail: 'the CPU pass\'s weights are on disk', evidence: { ggml: exists(path.join(home, 'models', 'whisper-ggml')) } });

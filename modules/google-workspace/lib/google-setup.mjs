@@ -5,6 +5,7 @@
 //
 // Read SETUP.md beside this package for the conversation that uses it.
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { validateCall, credentialPath } from './access.mjs';
 import { SETUP_PROTOCOL, SetupRefusal, boardState, workspaceIdentity, within, realish } from './setup-kit.mjs';
@@ -120,20 +121,31 @@ export function engineDoctorRows(options) {
 const cliArgs = (root, rest) => ['npx', 'dreamteamer', 'google-setup', ...rest, '--workspace', root];
 const identity = (p) => { const st = fs.lstatSync(p, { bigint: true }); return `${st.dev}:${st.ino}`; };
 
-/** The one directory create-credential-store may make, and the existing parent it must be made in.
- *  Scope, on purpose: only the last path component is created, never a missing ancestor; the
- *  configured path must already be canonical (no symlink anywhere in it, no `..`); the parent must be
- *  a directory that only its owner — this user — can write, so nobody else can swap it; an existing
- *  directory is never re-permissioned. */
-function storeTarget(dir, workspaceRoot, platform) {
+/** The directory create-credential-store may make, and the existing parent it is made in. Scope, on
+ *  purpose: the configured path must be canonical (no symlink anywhere in it, no `..`); the nearest
+ *  existing ancestor must be a directory that only its owner — this user — can write, so nobody else
+ *  can swap it; an existing directory is never re-permissioned. Outside the person's home only the last
+ *  folder is created, inside an existing parent; UNDER the home the missing folders between are made
+ *  too, each owner-only, so the declared default (`~/.config/google-workspace-mcp/credentials`) is one
+ *  the action can make on a machine that never ran the bridge. */
+const present = (p) => { try { fs.lstatSync(p); return true; } catch { return false; } };
+function storeTarget(dir, workspaceRoot, platform, home = os.homedir()) {
 	if (!dir || !path.isAbsolute(dir)) return { state: 'needs-input', reason: 'Set WORKSPACE_MCP_CREDENTIALS_DIR to an absolute path outside the workspace and outside synced folders, in the environment that runs dt-google.' };
 	const target = path.resolve(dir);
-	const parent = path.dirname(target);
-	if (target === parent) return { state: 'blocked', reason: 'The filesystem root cannot be the credential directory.' };
+	if (target === path.dirname(target)) return { state: 'blocked', reason: 'The filesystem root cannot be the credential directory.' };
+	// the folders to make, innermost last: the target, and under the home every missing ancestor
+	const make = [target];
+	let parent = path.dirname(target);
+	while (!present(parent)) {
+		if (!within(realish(home), parent)) return { state: 'blocked', reason: 'The parent folder of the configured path does not exist. This action creates only the last folder outside your home: create the parent yourself, or choose a path whose parent exists.' };
+		make.unshift(parent);
+		parent = path.dirname(parent);
+		if (parent === path.dirname(parent)) return { state: 'blocked', reason: 'The filesystem root cannot be the credential directory.' };
+	}
 	let realParent, pst;
 	try { pst = fs.lstatSync(parent); realParent = fs.realpathSync(parent); }
-	catch { return { state: 'blocked', reason: 'The parent folder of the configured path does not exist. This action creates only the last folder: create the parent yourself, or choose a path whose parent exists.' }; }
-	if (realParent !== parent || target !== dir.replace(/(.)[\\/]+$/, '$1')) return { state: 'blocked', reason: `The configured path is not canonical (it passes through a symlink or holds . or ..). Configure its canonical form: ${path.join(realParent, path.basename(target))}` };
+	catch { return { state: 'blocked', reason: 'The parent folder of the configured path cannot be inspected.' }; }
+	if (realParent !== parent || target !== dir.replace(/(.)[\\/]+$/, '$1')) return { state: 'blocked', reason: `The configured path is not canonical (it passes through a symlink or holds . or ..). Configure its canonical form: ${path.join(realParent, path.relative(parent, target))}` };
 	if (!pst.isDirectory()) return { state: 'blocked', reason: 'The parent of the configured path is not a directory.' };
 	const posix = platform !== 'win32';
 	if (posix && typeof process.getuid === 'function' && pst.uid !== process.getuid()) return { state: 'blocked', reason: 'The parent folder belongs to another user; choose a folder you own.' };
@@ -144,11 +156,11 @@ function storeTarget(dir, workspaceRoot, platform) {
 	if (st && !st.isDirectory()) return { state: 'blocked', reason: 'Something other than a directory (a file or a symlink) is at the configured path; nothing is replaced.' };
 	if (st && posix && (st.mode & 0o077)) return { state: 'blocked', reason: 'The directory exists but other local users can access it. This action never changes existing permissions: restrict it yourself (owner-only, 0700) after reviewing what is inside.' };
 	if (st) return { state: 'done', reason: 'The owner-only directory exists.' };
-	return { state: 'ready', target, parent, parentId: identity(parent) };
+	return { state: 'ready', target, parent, parentId: identity(parent), make };
 }
 
 /** What can be done next, each with its effects. Builds nothing and writes nothing. */
-export function plan({ root, env = process.env, platform = process.platform, accounts = [], accessible = readable } = {}) {
+export function plan({ root, env = process.env, platform = process.platform, accounts = [], accessible = readable, home = os.homedir() } = {}) {
 	const workspace = workspaceIdentity(root);
 	const { checks } = inspect({ root: workspace.root, env, platform, accessible });
 	const status = Object.fromEntries(checks.map((c) => [c.id, c.status]));
@@ -156,10 +168,13 @@ export function plan({ root, env = process.env, platform = process.platform, acc
 
 	// 1. the local credential directory — the one action this module performs itself
 	{
-		const action = { id: 'create-credential-store', title: 'Create the owner-only local credential directory', kind: 'local', runBy: 'agent', effects: ['machine-file: one new owner-only directory outside the workspace, inside an existing parent; nothing else is created or changed'] };
-		const t = storeTarget(env.WORKSPACE_MCP_CREDENTIALS_DIR, workspace.root, platform);
+		const t = storeTarget(env.WORKSPACE_MCP_CREDENTIALS_DIR, workspace.root, platform, home);
+		const between = t.state === 'ready' ? t.make.slice(0, -1) : [];
+		const action = { id: 'create-credential-store', title: 'Create the owner-only local credential directory', kind: 'local', runBy: 'agent', effects: [between.length
+			? `machine-file: ${t.make.length} new owner-only folders under your home (${path.relative(realish(home), t.target)}); nothing else is created or changed`
+			: 'machine-file: one new owner-only directory outside the workspace, inside an existing parent; nothing else is created or changed'] };
 		actions.push(t.state === 'ready'
-			? { ...action, state: 'ready', preview: { creates: t.target, parent: t.parent, parentId: t.parentId, mode: '0700' }, command: cliArgs(workspace.root, ['apply', 'create-credential-store', '--target', t.target, '--parent-id', t.parentId]) }
+			? { ...action, state: 'ready', preview: { creates: t.target, parent: t.parent, parentId: t.parentId, mode: '0700', ...(between.length ? { also: between } : {}) }, command: cliArgs(workspace.root, ['apply', 'create-credential-store', '--target', t.target, '--parent-id', t.parentId]) }
 			: { ...action, state: t.state, reason: t.reason });
 	}
 
@@ -190,12 +205,12 @@ export function plan({ root, env = process.env, platform = process.platform, acc
 }
 
 /** Perform one local action after its preview was approved. Live actions are refused here. */
-export function apply({ root, action, target, parentId, workspace: claimed, env = process.env, platform = process.platform, accessible = readable } = {}) {
+export function apply({ root, action, target, parentId, workspace: claimed, env = process.env, platform = process.platform, accessible = readable, home = os.homedir() } = {}) {
 	const workspace = workspaceIdentity(root);
 	if (!claimed || realish(claimed) !== workspace.root) throw new SetupRefusal('workspace', 'The --workspace given does not match the workspace this command runs in. Nothing was changed.');
 	if (action !== 'create-credential-store') throw new SetupRefusal('action', SETUP_PROVIDER.actions.includes(action) ? 'That step is the account owner\'s: run its command from the plan yourself after explicit approval.' : 'Unknown action.');
 	const after = () => inspect({ root: workspace.root, env, platform, accessible }).checks;
-	const step = storeTarget(env.WORKSPACE_MCP_CREDENTIALS_DIR, workspace.root, platform);
+	const step = storeTarget(env.WORKSPACE_MCP_CREDENTIALS_DIR, workspace.root, platform, home);
 	const stale = (why) => new SetupRefusal('stale', `${why} Nothing was changed; inspect and plan again.`);
 	if (!target || !parentId) throw new SetupRefusal('usage', 'apply create-credential-store needs the --target and --parent-id the preview printed.');
 	// bound to the preview: the same canonical path, under the same parent directory (device and inode)
@@ -204,12 +219,15 @@ export function apply({ root, action, target, parentId, workspace: claimed, env 
 	if (step.state === 'done') return { action, changed: false, reason: step.reason, workspace, checks: after() };
 	if (step.state !== 'ready') throw new SetupRefusal('blocked', step.reason);
 	if (step.parentId !== parentId) throw stale('The parent folder was replaced after the preview.');
-	try { fs.mkdirSync(target, { mode: 0o700 }); }
-	catch (error) { if (error.code === 'EEXIST' || error.code === 'ENOENT') throw stale('The path changed after the preview.'); throw error; }
+	// outermost first: each folder is made owner-only inside the one before it
+	for (const dir of step.make) {
+		try { fs.mkdirSync(dir, { mode: 0o700 }); }
+		catch (error) { if (error.code === 'EEXIST' || error.code === 'ENOENT') throw stale('The path changed after the preview.'); throw error; }
+	}
 	// Re-examine what was made. A swap of the parent in the instant between the check and mkdir cannot be
 	// undone safely from here, so it is reported for a person to review rather than deleted.
 	const st = fs.lstatSync(target);
-	if (!st.isDirectory() || identity(path.dirname(target)) !== parentId || fs.realpathSync(target) !== target) throw new SetupRefusal('path', 'The parent folder changed while the directory was created; review the configured path by hand.');
-	if (platform !== 'win32' && (st.mode & 0o077)) throw new SetupRefusal('path', 'The new directory is not owner-only (check the umask); restrict it yourself before any account is authorized.');
-	return { action, changed: true, workspace, checks: after() };
+	if (!st.isDirectory() || identity(step.parent) !== parentId || fs.realpathSync(target) !== target) throw new SetupRefusal('path', 'The parent folder changed while the directory was created; review the configured path by hand.');
+	if (platform !== 'win32' && step.make.some((dir) => fs.lstatSync(dir).mode & 0o077)) throw new SetupRefusal('path', 'The new directory is not owner-only (check the umask); restrict it yourself before any account is authorized.');
+	return { action, changed: true, made: step.make, workspace, checks: after() };
 }
