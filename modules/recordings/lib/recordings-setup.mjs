@@ -26,8 +26,10 @@ const onPath = (env, bin) => (env.PATH ?? '').split(path.delimiter).some((d) => 
 const expand = (p) => (p && (p === '~' || p.startsWith('~/')) ? path.join(os.homedir(), p.slice(1)) : p);
 const homeOf = (ctx, inputs = {}) => expand(inputs.transcription_home ?? ctx.env.TRANSCRIPTION_HOME ?? DEFAULT_HOME);
 const exists = (p) => { try { fs.statSync(p); return true; } catch { return false; } };
-/** Whether a file of that name sits anywhere under the folder (the hub cache nests the weights a few levels down) — a half-downloaded model folder holds none. */
-const holds = (dir, name, depth = 6) => { try { for (const e of fs.readdirSync(dir, { withFileTypes: true })) { if (e.isFile() && e.name === name) return true; if (e.isDirectory() && depth > 0 && holds(path.join(dir, e.name), name, depth - 1)) return true; } } catch { /* absent */ } return false; };
+/** A regular file at that path, following a link — the hub cache's snapshots/<rev>/<file> is a link into blobs/, and a dangling one is an interrupted download. */
+const isFileAt = (p) => { try { return fs.statSync(p).isFile(); } catch { return false; } };
+/** Whether a file of that name sits anywhere under the folder (the hub cache nests the weights a few levels down) — a half-downloaded model folder holds none. Linked folders are not walked. */
+const holds = (dir, name, depth = 6) => { try { for (const e of fs.readdirSync(dir, { withFileTypes: true })) { if (e.name === name && (e.isFile() || (e.isSymbolicLink() && isFileAt(path.join(dir, e.name))))) return true; if (e.isDirectory() && depth > 0 && holds(path.join(dir, e.name), name, depth - 1)) return true; } } catch { /* absent */ } return false; };
 const newest = (paths) => Math.max(0, ...paths.filter(exists).map((p) => fs.statSync(p).mtimeMs));
 const receiptOf = (ctx) => { try { return JSON.parse(fs.readFileSync(path.join(ctx.receiptDir, RECEIPT), 'utf8')); } catch { return null; } };
 /** This module's node entry, resolved from where this unit was loaded (the package, or a composed copy), relative to the workspace. */

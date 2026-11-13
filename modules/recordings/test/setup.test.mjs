@@ -102,6 +102,21 @@ describe('the unit, pure', () => {
 		assert.equal(row.status, 'missing'); assert.match(row.detail, /whisper-ct2/);
 		assert.equal(SETUP_UNIT.plan(ctx, { files_folder: root }).actions.find((a) => a.id === 'download-models').state, 'ready');
 	});
+	test('weights the hub cache keeps as a snapshot SYMLINK into blobs/ read configured; a dangling one reads missing', () => {
+		// huggingface_hub writes snapshots/<rev>/model.bin as a relative link to ../../blobs/<sha> — a
+		// directory walk that asks the entry itself whether it is a file never sees the weights
+		const root = repo(), home = tmp('dtm-home-');
+		const ctx = ctxFor(root, { PATH: fakeBins(['uv', 'ffmpeg']), TRANSCRIPTION_HOME: home, FILES_FOLDER: root });
+		for (const rel of ['venv/bin/python', 'models/diarization/segmentation.onnx', 'models/diarization/embedding.onnx']) { fs.mkdirSync(path.dirname(path.join(home, rel)), { recursive: true }); fs.writeFileSync(path.join(home, rel), ''); }
+		const repoDir = path.join(home, 'models/whisper-ct2/models--x');
+		fs.mkdirSync(path.join(repoDir, 'blobs'), { recursive: true }); fs.mkdirSync(path.join(repoDir, 'snapshots/1'), { recursive: true });
+		fs.writeFileSync(path.join(repoDir, 'blobs/abc123'), 'weights');
+		fs.symlinkSync('../../blobs/abc123', path.join(repoDir, 'snapshots/1/model.bin'));
+		assert.equal(SETUP_UNIT.inspect(ctx).checks.find((c) => c.id === 'recordings.models').status, 'configured', 'a snapshot link to a present blob is the weights on disk');
+		fs.rmSync(path.join(repoDir, 'blobs/abc123'));
+		const row = SETUP_UNIT.inspect(ctx).checks.find((c) => c.id === 'recordings.models');
+		assert.equal(row.status, 'missing', 'a link whose blob is gone is an interrupted download'); assert.match(row.detail, /whisper-ct2/);
+	});
 	test('the transcriber entry outside a workspace says so in one line, exit 2 — no stack trace', () => {
 		const nowhere = tmp('dtm-nowhere-');
 		const r = spawnSync(process.execPath, [new URL('../bin/transcribe.mjs', import.meta.url).pathname, 'sync'], { cwd: nowhere, encoding: 'utf8' });
