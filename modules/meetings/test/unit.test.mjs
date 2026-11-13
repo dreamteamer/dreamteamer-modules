@@ -27,7 +27,7 @@ describe('the unit, pure', () => {
 		assert.equal(SETUP_UNIT.id, 'meetings');
 		assert.deepEqual(SETUP_UNIT.inputs.map((i) => [i.id, i.kind, i.env, i.required, i.rows.columns.length]), [['calendar', 'rows', 'WORK_CALENDARS', false, 3]]);
 	});
-	test('plan: no rows → needs calendar and the write waits for input; rows → a workspace-files action with the .env fingerprint; apply merges, keeps other lines, is idempotent', () => {
+	test('plan: no rows → needs calendar and the write waits for input; rows → an env action naming the merged WORK_CALENDARS (the engine writes it — cr-dt-007); a plan with the rows present is done', () => {
 		const root = repo();
 		fs.writeFileSync(path.join(root, '.env'), 'OTHER=keep\n');
 		const ctx = ctxFor(root);
@@ -38,30 +38,14 @@ describe('the unit, pure', () => {
 		const add = p.actions.find((a) => a.id === 'add-calendar-rows');
 		assert.equal(add.state, 'ready');
 		assert.deepEqual(add.effects.map((e) => e.kind), ['workspace-files']);
-		assert.ok(add.expect && add.expect === add.preview.expect, 'bound to the .env fingerprint');
-		assert.equal(add.content, undefined, 'the merged text is not carried on the action');
+		assert.deepEqual(add.env, { WORK_CALENDARS: ROW });
+		assert.match(add.reason, /^1 row\(s\) added/);
 		const verify = p.actions.find((a) => a.id === 'verify-calendar-access');
 		assert.equal(verify.kind, 'verify'); assert.equal(verify.runBy, 'owner');
 		assert.ok(verify.effects.some((e) => e.kind === 'account'));
-		const r = SETUP_UNIT.apply(ctx, add, { calendar: [ROW] });
-		assert.equal(r.ok, true, r.message);
-		assert.deepEqual(r.changed, ['.env']);
-		const text = fs.readFileSync(path.join(root, '.env'), 'utf8');
-		assert.match(text, /^OTHER=keep$/m);
-		assert.match(text, /WORK_CALENDARS=/);
-		assert.ok(text.includes(ROW));
-		// again: the plan says done, apply does nothing
-		const again = SETUP_UNIT.plan(ctx, { calendar: [ROW] }).actions.find((a) => a.id === 'add-calendar-rows');
-		assert.equal(again.state, 'done');
-		assert.deepEqual(SETUP_UNIT.apply(ctx, again, { calendar: [ROW] }).changed, []);
-		// a stale fingerprint is refused, nothing written
-		fs.appendFileSync(path.join(root, '.env'), 'LATER=1\n');
-		// a NEW row (so the step is not already done) under a stale fingerprint: refused, nothing written
-		const fresh = SETUP_UNIT.plan(ctx, { calendar: ['x@example.invalid | mixed | me@example.invalid'] }).actions.find((a) => a.id === 'add-calendar-rows');
-		assert.equal(fresh.state, 'ready');
-		const stale = SETUP_UNIT.apply(ctx, { ...fresh, expect: 'nope', preview: { ...fresh.preview, expect: 'nope' } }, {});
-		assert.equal(stale.ok, false);
-		assert.match(stale.message, /changed after the preview/);
+		assert.equal(SETUP_UNIT.apply(ctx, add, {}).ok, false, 'apply only knows the live check');
+		fs.writeFileSync(path.join(root, '.env'), `OTHER=keep\nWORK_CALENDARS="${ROW}"\n`);
+		assert.equal(SETUP_UNIT.plan(ctx, { calendar: [ROW] }).actions.find((a) => a.id === 'add-calendar-rows').state, 'done');
 	});
 	test('inspect: configured rows, access unverified until a receipt exists', () => {
 		const root = repo();
@@ -83,10 +67,8 @@ describe('the unit, pure', () => {
 		const add = p.actions.find((a) => a.id === 'add-calendar-rows');
 		assert.equal(add.state, 'ready', add.reason);
 		assert.deepEqual(add.preview.skipped, [2]);
-		const r = SETUP_UNIT.apply(ctx, add, { calendar: [good, 'this is not a row'] });
-		assert.equal(r.ok, true, r.message);
-		assert.match(r.message, /1 row\(s\) added.*Row input 2 skipped/);
-		assert.ok(fs.readFileSync(path.join(root, '.env'), 'utf8').includes(good));
+		assert.match(add.reason, /1 row\(s\) added.*Row input 2 skipped/, 'the engine prints this after the write');
+		assert.deepEqual(add.env, { WORK_CALENDARS: good });
 		// every row malformed is still a refusal
 		const none = SETUP_UNIT.plan(ctx, { calendar: ['nope', 'also nope'] }).actions.find((a) => a.id === 'add-calendar-rows');
 		assert.equal(none.state, 'blocked'); assert.match(none.reason, /Row input 1, 2/);
@@ -120,9 +102,7 @@ describe('the unit, pure', () => {
 		const merged = ctxFor(root, { WORK_CALENDARS: ROW });   // what the engine hands a unit after the first install
 		const add = SETUP_UNIT.plan(merged, { calendar: [row2] }).actions.find((a) => a.id === 'add-calendar-rows');
 		assert.equal(add.state, 'ready', add.reason);
-		const r = SETUP_UNIT.apply(merged, add, { calendar: [row2] });
-		assert.equal(r.ok, true, r.message);
-		assert.ok(fs.readFileSync(path.join(root, '.env'), 'utf8').includes(row2), 'the second row landed in .env');
+		assert.equal(add.env.WORK_CALENDARS, `${ROW}\n${row2}`, 'the second row joins the first');
 		assert.equal(SETUP_UNIT.inspect(ctxFor(root, { WORK_CALENDARS: `${ROW}\n${row2}` })).checks.find((c) => c.id === 'meetings.work-calendars').evidence.rows, 2);
 		const shadow = ctxFor(root, { WORK_CALENDARS: 'other@example.invalid | mixed | me@example.invalid' });
 		const blocked = SETUP_UNIT.plan(shadow, { calendar: ['three@example.invalid | mixed | me@example.invalid'] }).actions.find((a) => a.id === 'add-calendar-rows');
@@ -165,7 +145,7 @@ describe('through the engine', { skip: !engineMeets('meetings') && `needs engine
 		const row2 = 'two@example.invalid | mixed | me@example.invalid';
 		const second = run(root, ['setup', 'meetings', '--input', `calendar=${row2}`, '--no-input']);
 		assert.equal(second.status, 0, second.stderr + second.stdout);
-		assert.match(second.stdout, /✔ add-calendar-rows — wrote \.env \(1 row\(s\) added/);
+		assert.match(second.stdout, /✔ add-calendar-rows — wrote \.env \(WORK_CALENDARS\) — 1 row\(s\) added/);
 		const env = fs.readFileSync(path.join(root, '.env'), 'utf8');
 		assert.ok(env.includes(ROW) && env.includes(row2), 'both rows in .env');
 	});

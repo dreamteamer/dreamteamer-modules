@@ -1,7 +1,8 @@
-// The meetings setup provider: which calendars count as work (WORK_CALENDARS) and whether each
-// account they name has local credentials. One read-only `inspect` feeds the setup board and the
-// plan; the one deterministic action merges calendar rows into the workspace `.env`. The live
-// calendar check is the existing `gcal.mjs access`, run only with the owner's approval.
+// The meetings setup: which calendars count as work (WORK_CALENDARS) and whether each account they name
+// has local credentials. One read-only `inspect` feeds `dt status` and the plan; the calendar rows are an
+// ENV ACTION — the unit merges the rows into the value, the engine writes it (confined, fingerprinted,
+// refused when git would commit .env, never printed — cr-dt-007, D61). The live calendar check is the
+// existing `gcal.mjs access`, run only with the owner's approval (`dt setup meetings --verify --authorize`).
 //
 // Read SETUP.md beside this package for the conversation that uses it.
 import fs from 'node:fs';
@@ -11,14 +12,12 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseWorkCalendars } from '../skills/fetching-meetings/bin/gcal.mjs';
-import { SETUP_PROTOCOL, SetupRefusal, boardState, workspaceIdentity, realish, fingerprint, writeScoped, envAssignments, setEnvValue, safeEnvValue, gitExposure, runGit, leftoverTemps, tempPrefix, redact } from './setup-kit.mjs';
 
-export const SETUP_PROVIDER = Object.freeze({
-	protocol: SETUP_PROTOCOL,
-	module: '@dreamteamer/meetings',
-	checks: Object.freeze(['meetings.work-calendars', 'meetings.oauth-client', 'meetings.credential-files', 'meetings.account-access']),
-	actions: Object.freeze(['add-calendar-rows', 'verify-calendar-access']),
-});
+/** The convention version and module name this setup's own reports carry (its rows, its plan). */
+const PROTOCOL = 1;
+const MODULE = '@dreamteamer/meetings';
+/** A board row's state: present facts are ok, everything else warns. */
+const boardState = (status) => (status === 'ready' || status === 'configured' ? 'ok' : 'warn');
 
 const KEY = 'WORK_CALENDARS';
 const GCAL = '.dreamteamer/skills/fetching-meetings/bin/gcal.mjs';
@@ -32,8 +31,20 @@ function workCalendars(root, env) {
 	if (env[KEY]) return { source: 'environment', text: env[KEY] };
 	let text = null;
 	try { text = fs.readFileSync(path.join(root, '.env'), 'utf8'); } catch { return { source: 'none', text: '' }; }
-	const found = envAssignments(text, KEY);
-	return found.length ? { source: '.env', text: found.at(-1).value } : { source: 'none', text: '' };
+	const found = dotenvValues(text, KEY);
+	return found.length ? { source: '.env', text: found.at(-1) } : { source: 'none', text: '' };
+}
+
+/** Every value `.env` text assigns to `key`, read the way the engine reads `.env` (KEY=value, an optional
+ *  `export `, a single- or double-quoted value that may span lines). Read-only: the write is the engine's. */
+function dotenvValues(text, key) {
+	const out = [];
+	for (const m of String(text).matchAll(/^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)=("(?:[^"\\]|\\.)*"|'[^']*'|[^\n]*)$/gm)) {
+		if (m[1] !== key) continue;
+		const v = m[2].trim();
+		out.push((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'")) ? v.slice(1, -1) : v);
+	}
+	return out;
 }
 
 /** Every local fact, without the network, a process or any credential's contents. Rows carry counts
@@ -64,7 +75,7 @@ export function inspect({ root, env = process.env, home = os.homedir() } = {}) {
 			: { id: 'meetings.credential-files', label: 'credential files', status: 'missing', detail: 'Missing local files or invalid calendar rows; no credentials were read.', fix: 'Authorize each configured account through the Google Workspace onboarding flow and verify the selected credentials directory.', evidence: { accounts: accounts.length, present, directory: dirSource } });
 
 	add({ id: 'meetings.account-access', label: 'account access', status: 'unverified', detail: 'File presence does not prove consent, expiry, scopes or remote access. No network request was made.', fix: 'dt setup meetings --verify --authorize' });
-	return { protocol: SETUP_PROTOCOL, module: SETUP_PROVIDER.module, checks };
+	return { protocol: PROTOCOL, module: MODULE, checks };
 }
 
 // ── input rows ──────────────────────────────────────────────────────────────────────────────────
@@ -81,18 +92,11 @@ export function parseRow(text) {
 	return { calendar, company, account, line: `${calendar} | ${company} | ${account}` };
 }
 
-/** This module's setup script, resolved from where this provider was actually loaded and made relative
- *  to the workspace: `bin/setup.mjs` in the package itself, or the prefixed copy a composed package
- *  carries — so a planned command names a file that exists on every install channel. */
-function script(root) {
-	const own = ['../bin/meetings-setup.mjs', '../bin/setup.mjs'].map((rel) => fileURLToPath(new URL(rel, import.meta.url))).find((f) => fs.existsSync(f));
-	return path.relative(root, own).split(path.sep).join('/');
-}
-const cliArgs = (root, rest) => ['node', script(root), ...rest, '--workspace', root];
-
-/** The calendar-row action for these inputs: what it would write, or why it will not. */
-function calendarRowsAction(workspace, env, inputs, git) {
-	const action = { id: 'add-calendar-rows', title: 'Add work calendar rows to the workspace .env', kind: 'local', runBy: 'agent', effects: ['workspace-file: .env (WORK_CALENDARS only; every other line is kept byte for byte)'] };
+/** The calendar-row action for these inputs: the merged WORK_CALENDARS the engine is to write, or why it
+ *  will not. The merge is the unit's — keep every configured row, add the new ones, refuse a conflict or a
+ *  malformed existing row; whether the file already holds the value, and the write, are the engine's. */
+function calendarRowsAction(root, env, inputs) {
+	const action = { id: 'add-calendar-rows', title: 'Add work calendar rows to the workspace .env', effects: [{ kind: 'workspace-files', detail: '.env (WORK_CALENDARS only; every other line is kept byte for byte)' }] };
 	if (!inputs.length) return { ...action, state: 'needs-input', reason: 'Ask for each work calendar: calendar id, default company id (or mixed) and the account email that reads it.' };
 	const parsedAll = inputs.map(parseRow);
 	const bad = parsedAll.map((r, i) => (r ? null : i + 1)).filter(Boolean);
@@ -100,18 +104,11 @@ function calendarRowsAction(workspace, env, inputs, git) {
 	// a mixed batch: the valid rows go in, the malformed ones are named by input number and left out
 	const parsed = parsedAll.filter(Boolean);
 	if (env[KEY]) return { ...action, state: 'blocked', reason: 'WORK_CALENDARS is set in the process environment, which takes precedence over .env; change it where it is set instead.' };
-	const envPath = path.join(workspace.root, '.env');
-	let expect;
-	try { expect = fingerprint(envPath); } catch (error) { return { ...action, state: 'blocked', reason: error instanceof SetupRefusal ? error.message : 'The .env file cannot be read.' }; }
-	const leftovers = leftoverTemps(envPath);
-	if (leftovers.length) return { ...action, state: 'blocked', reason: `${leftovers.length} temporary file(s) from an interrupted write sit beside .env (${tempPrefix(envPath)}*.tmp). They may hold account addresses and may not be ignored by Git: review and delete them first.` };
-	const exposure = gitExposure(workspace.root, '.env', { git });
-	if (!exposure.safe) return { ...action, state: 'blocked', reason: exposure.reason };
-	const text = expect === 'absent' ? '' : fs.readFileSync(envPath, 'utf8');
-	const found = envAssignments(text, KEY);
+	let text = '';
+	try { text = fs.readFileSync(path.join(root, '.env'), 'utf8'); } catch { /* no .env yet */ }
+	const found = dotenvValues(text, KEY);
 	if (found.length > 1) return { ...action, state: 'blocked', reason: 'WORK_CALENDARS is assigned more than once in .env; resolve that by hand first.' };
-	const current = found[0]?.value ?? '';
-	if (current && !safeEnvValue(current)) return { ...action, state: 'blocked', reason: 'The existing WORK_CALENDARS value contains characters this action does not rewrite; edit it by hand.' };
+	const current = found[0] ?? '';
 	const existing = parseWorkCalendars(current);
 	if (existing.errors.length) return { ...action, state: 'blocked', reason: `The existing WORK_CALENDARS has malformed line(s) ${lineNumbers(existing.errors).join(', ')}; fix them by hand first.` };
 	const additions = [];
@@ -122,23 +119,19 @@ function calendarRowsAction(workspace, env, inputs, git) {
 		else if ((same.mixed ? 'mixed' : same.company) !== row.company) conflicts.push(`row input ${i + 1} names a calendar and account already configured with a different default company`);
 	}
 	if (conflicts.length) return { ...action, state: 'blocked', reason: `Conflict, nothing changed: ${conflicts.join('; ')}. Edit the existing row by hand if the company changed.` };
-	if (!additions.length) return { ...action, state: 'done', reason: 'Every requested row is already configured.' };
-	const value = [current, ...additions.map((r) => r.line)].filter(Boolean).join('\n');
-	return {
-		...action, state: 'ready', inputs: parsed.map((r) => r.line),
-		preview: { file: '.env', expect, vcs: exposure.vcs, change: found.length ? 'update WORK_CALENDARS' : expect === 'absent' ? 'create .env with WORK_CALENDARS' : 'append WORK_CALENDARS', keeps: existing.rows.length, adds: additions.map((r) => r.line), ...(bad.length ? { skipped: bad } : {}), otherLines: 'unchanged' },
-		command: cliArgs(workspace.root, ['apply', 'add-calendar-rows', '--expect', expect, ...parsed.flatMap((r) => ['--row', r.line])]),
-		content: setEnvValue(text, KEY, value),
-	};
+	const skipped = bad.length ? { skipped: bad } : {};
+	if (!additions.length) return { ...action, env: { [KEY]: current }, state: 'done', reason: 'Every requested row is already configured.', preview: { adds: [], ...skipped } };
+	// the reason is printed after the engine's write: how many rows went in, and which inputs were left out
+	const note = `${additions.length} row(s) added, every other line kept${bad.length ? `; Row input ${bad.join(', ')} skipped: not calendar-id | company-id-or-mixed | account-email` : ''}`;
+	return { ...action, env: { [KEY]: [current, ...additions.map((r) => r.line)].filter(Boolean).join('\n') }, state: 'ready', reason: note, preview: { keeps: existing.rows.length, adds: additions.map((r) => r.line), ...skipped } };
 }
 
-/** What can be done next, each with its effects. Writes nothing; the only process it may start is
- *  read-only Git, asking whether `.env` is tracked or ignored (only when rows are given). */
-export function plan({ root, env = process.env, home = os.homedir(), rows = [], git = runGit } = {}) {
-	const workspace = workspaceIdentity(root);
+/** What can be done next, each with its effects. Writes nothing and starts nothing. */
+export function plan({ root, env = process.env, home = os.homedir(), rows = [] } = {}) {
+	const workspace = { root: fs.realpathSync(root) };
 	const { checks } = inspect({ root: workspace.root, env, home });
 	const status = Object.fromEntries(checks.map((c) => [c.id, c.status]));
-	const { content, ...rowsAction } = calendarRowsAction(workspace, env, rows, git);
+	const rowsAction = calendarRowsAction(workspace.root, env, rows);
 	const unmet = ['meetings.work-calendars', 'meetings.oauth-client', 'meetings.credential-files'].filter((id) => status[id] !== 'configured');
 	const verify = {
 		id: 'verify-calendar-access', title: 'Owner-approved live check of every configured calendar', kind: 'live', runBy: 'owner',
@@ -147,29 +140,13 @@ export function plan({ root, env = process.env, home = os.homedir(), rows = [], 
 		command: ['node', GCAL, 'access'],
 		evidence: 'Every row reports verdict full. Report the count of full, free-busy and absent rows only.',
 	};
-	return { protocol: SETUP_PROTOCOL, module: SETUP_PROVIDER.module, workspace, checks, actions: [rowsAction, verify] };
-}
-
-/** Perform the calendar-row action after its preview was approved, then report the fresh checks. */
-export function apply({ root, action, expect, workspace: claimed, rows = [], env = process.env, home = os.homedir(), git = runGit } = {}) {
-	const workspace = workspaceIdentity(root);
-	if (!claimed || realish(claimed) !== workspace.root) throw new SetupRefusal('workspace', 'The --workspace given does not match the workspace this command runs in. Nothing was changed.');
-	if (action !== 'add-calendar-rows') throw new SetupRefusal('action', SETUP_PROVIDER.actions.includes(action) ? 'That step is the account owner\'s: run its command from the plan yourself after explicit approval.' : 'Unknown action.');
-	const step = calendarRowsAction(workspace, env, rows, git);
-	if (step.state === 'done') return { action, changed: false, reason: step.reason, workspace, checks: inspect({ root: workspace.root, env, home }).checks };
-	if (step.state !== 'ready') throw new SetupRefusal(step.state === 'needs-input' ? 'usage' : 'blocked', step.reason);
-	if (!expect || step.preview.expect !== expect) throw new SetupRefusal('stale', 'The .env file changed after the preview. Nothing was written; inspect and plan again.');
-	// Git is asked again after the new content is on disk and just before the rename: a `git add -f` or
-	// an edited .gitignore since the plan stops the write and removes the temporary file.
-	const recheck = () => { const now = gitExposure(workspace.root, '.env', { git }); if (!now.safe) throw new SetupRefusal('blocked', now.reason); };
-	writeScoped({ root: workspace.root, rel: '.env', content: step.content, expected: expect, recheck });
-	return { action, changed: true, wrote: '.env', added: step.preview.adds.length, workspace, checks: inspect({ root: workspace.root, env, home }).checks };
+	return { protocol: PROTOCOL, module: MODULE, workspace, checks, actions: [rowsAction, verify] };
 }
 
 // ── the SETUP UNIT ──────────────────────────────────────────────────────────────────────────────
 // What the engine's `dt install`, `dt setup` and `dt status` drive (setup contribution, version 1):
-// the same inspect / plan / apply, with each effect as { kind, detail } and the planned action handed
-// back to apply verbatim (its preview carries the .env fingerprint the write is bound to). The live
+// the same inspect and plan; the calendar rows an env action the engine writes, `apply` the live check
+// only. The live
 // calendar check is the owner's — runBy 'owner', run only under `dt setup meetings --verify --authorize`
 // in a terminal — and a passing one leaves a dated receipt the next inspect turns into `ready`.
 const RECEIPT = 'calendar-access.verified.json';
@@ -185,8 +162,8 @@ function moduleEnv(ctx) {
 	if (env[KEY] !== undefined) {
 		let text = '';
 		try { text = fs.readFileSync(path.join(ctx.root, '.env'), 'utf8'); } catch { /* no .env */ }
-		const found = envAssignments(text, KEY);
-		if (found.length && String(found.at(-1).value).trim() === String(env[KEY]).trim()) delete env[KEY];
+		const found = dotenvValues(text, KEY);
+		if (found.length && String(found.at(-1)).trim() === String(env[KEY]).trim()) delete env[KEY];
 	}
 	return env;
 }
@@ -214,27 +191,18 @@ function unitInspect(ctx) {
 function unitPlan(ctx, inputs = {}) {
 	const rows = Array.isArray(inputs.calendar) ? inputs.calendar : inputs.calendar ? [inputs.calendar] : [];
 	const p = plan({ root: ctx.root, env: moduleEnv(ctx), rows });
-	const actions = p.actions.map((a) => {
-		const { content, ...rest } = a; // the merged .env text is recomputed by apply, never carried
-		return {
-			...rest, title: a.title ?? a.id,
-			effects: (a.effects ?? []).map(unitEffect),
-			runBy: a.runBy === 'owner' ? 'owner' : 'engine',
-			...(a.id === 'verify-calendar-access' ? { kind: 'verify' } : {}),
-			...(a.preview?.expect ? { expect: a.preview.expect } : {}),
-		};
-	});
+	const actions = p.actions.map((a) => (a.env !== undefined || a.id === 'add-calendar-rows' ? a : {
+		...a, title: a.title ?? a.id,
+		effects: (a.effects ?? []).map(unitEffect),
+		runBy: a.runBy === 'owner' ? 'owner' : 'engine',
+		...(a.id === 'verify-calendar-access' ? { kind: 'verify' } : {}),
+	}));
 	return { checks: unitInspect(ctx).checks, actions, needs: rows.length ? [] : ['calendar'] };
 }
 
 function unitApply(ctx, action, inputs = {}) {
 	try {
 		if (action.state === 'done') return { ok: true, changed: [], message: `nothing to do — ${action.reason ?? 'already configured'}` };
-		if (action.id === 'add-calendar-rows') {
-			const r = apply({ root: ctx.root, action: action.id, expect: action.expect ?? action.preview?.expect, workspace: ctx.root, rows: action.inputs ?? [], env: moduleEnv(ctx) });
-			const skipped = action.preview?.skipped?.length ? `; Row input ${action.preview.skipped.join(', ')} skipped: not calendar-id | company-id-or-mixed | account-email` : '';
-			return { ok: true, changed: r.changed ? ['.env'] : [], message: r.changed ? `wrote .env (${r.added} row(s) added, every other line kept${skipped})` : `nothing to do — ${r.reason}${skipped}` };
-		}
 		if (action.id === 'verify-calendar-access') {
 			if (!action.command) return { ok: false, changed: [], message: action.reason ?? 'not ready' };
 			const r = spawnSync(action.command[0], action.command.slice(1), { cwd: ctx.root, env: ctx.env, stdio: ['inherit', 'pipe', 'inherit'], encoding: 'utf8', timeout: 600_000 });
@@ -256,7 +224,7 @@ function unitApply(ctx, action, inputs = {}) {
 		}
 		return { ok: false, changed: [], message: `unknown action ${action.id}` };
 	} catch (error) {
-		return { ok: false, changed: [], message: error instanceof SetupRefusal ? error.message : redact(error.message) };
+		return { ok: false, changed: [], message: error.message };   // the engine redacts a failed apply's message (D67)
 	}
 }
 
