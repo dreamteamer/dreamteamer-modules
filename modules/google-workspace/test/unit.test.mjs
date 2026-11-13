@@ -178,7 +178,8 @@ describe('through the engine', { skip: !engineMeets('google-workspace') && `need
 		fs.writeFileSync(client, '{}', { mode: 0o600 }); fs.chmodSync(client, 0o600);   // a secret-path must be owner-only, or the engine refuses it
 		const named = run(root, ['setup', 'google-workspace', '--input', `credentials_dir=${store}`, '--input', `client_secret=${client}`, '--input', 'account=a@example.invalid', '--no-input']);
 		assert.equal(named.status, 0, named.stderr + named.stdout);
-		if (/uvx is not available/.test(named.stdout)) assert.match(named.stdout, /authorize-account \(blocked\)/, 'no uvx on this machine: the owner\'s step is blocked, named');
+		// no uvx on this machine (a CI runner): the runtime row reads `missing` (D59) and the owner's step is blocked, naming it
+		if (/workspace-mcp runtime missing/.test(named.stdout)) assert.match(named.stdout, /authorize-account \(blocked\) — Complete first: google\.runtime/, 'no uvx on this machine: the owner\'s step is blocked, named');
 		else assert.match(named.stdout, /authorize-account \(the owner's step: dt setup <unit> --authorize\)/);
 		assert.doesNotMatch(named.stdout, /needs input: client_secret/);
 		fs.rmSync(client, { force: true });
