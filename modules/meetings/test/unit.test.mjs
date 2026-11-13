@@ -75,6 +75,44 @@ describe('the unit, pure', () => {
 		const after = SETUP_UNIT.inspect(ctx).checks.find((c) => c.id === 'meetings.account-access');
 		assert.equal(after.status, 'ready'); assert.equal(after.evidence.at, '2026-11-13');
 	});
+	test('a mixed batch: the valid rows are merged and the malformed ones are named by input number — never the whole batch refused (hm2)', () => {
+		const root = repo();
+		const ctx = ctxFor(root);
+		const good = 'ok@example.invalid | mixed | me@example.invalid';
+		const p = SETUP_UNIT.plan(ctx, { calendar: [good, 'this is not a row'] });
+		const add = p.actions.find((a) => a.id === 'add-calendar-rows');
+		assert.equal(add.state, 'ready', add.reason);
+		assert.deepEqual(add.preview.skipped, [2]);
+		const r = SETUP_UNIT.apply(ctx, add, { calendar: [good, 'this is not a row'] });
+		assert.equal(r.ok, true, r.message);
+		assert.match(r.message, /1 row\(s\) added.*row input 2 skipped/);
+		assert.ok(fs.readFileSync(path.join(root, '.env'), 'utf8').includes(good));
+		// every row malformed is still a refusal
+		const none = SETUP_UNIT.plan(ctx, { calendar: ['nope', 'also nope'] }).actions.find((a) => a.id === 'add-calendar-rows');
+		assert.equal(none.state, 'blocked'); assert.match(none.reason, /Row input 1, 2/);
+	});
+	test('verify-calendar-access writes the receipt only when EVERY row answers full; absent or free-busy rows fail it with counts (never a false ready)', () => {
+		const root = repo();
+		fs.writeFileSync(path.join(root, '.env'), `WORK_CALENDARS=${ROW}\n`);
+		const ctx = ctxFor(root);
+		const fake = (rows) => ['node', '-e', `process.stdout.write(JSON.stringify(${JSON.stringify({ rows, unlisted: [] })}))`];
+		const action = { id: 'verify-calendar-access', command: fake([{ calendar: 'team@example.invalid', account: 'me@example.invalid', verdict: 'absent' }]) };
+		const bad = SETUP_UNIT.apply(ctx, action, {});
+		assert.equal(bad.ok, false); assert.match(bad.message, /1 of 1 calendar\(s\) not readable \(absent: 1\)/);
+		assert.ok(!fs.existsSync(path.join(ctx.receiptDir, 'calendar-access.verified.json')), 'no receipt');
+		const ok = SETUP_UNIT.apply(ctx, { ...action, command: fake([{ calendar: 'team@example.invalid', account: 'me@example.invalid', verdict: 'full' }]) }, {});
+		assert.equal(ok.ok, true, ok.message);
+		assert.ok(fs.existsSync(path.join(ctx.receiptDir, 'calendar-access.verified.json')));
+		assert.equal(SETUP_UNIT.inspect(ctx).checks.find((c) => c.id === 'meetings.account-access').status, 'ready');
+	});
+	test('a receipt that cannot be written is a structured failure, never a ReferenceError (redact is imported)', () => {
+		const root = repo();
+		fs.writeFileSync(path.join(root, '.env'), `WORK_CALENDARS=${ROW}\n`);
+		const ctx = ctxFor(root);
+		fs.mkdirSync(path.dirname(ctx.receiptDir), { recursive: true }); fs.writeFileSync(ctx.receiptDir, 'a file where the folder should be');
+		const r = SETUP_UNIT.apply(ctx, { id: 'verify-calendar-access', command: ['node', '-e', `process.stdout.write(JSON.stringify({ rows: [{ verdict: 'full' }], unlisted: [] }))`] }, {});
+		assert.equal(r.ok, false); assert.match(r.message, /ENOTDIR|not a directory|EEXIST/i); assert.doesNotMatch(r.message, /ReferenceError|redact is not defined/);
+	});
 	test('the engine lays .env under the process env: a WORK_CALENDARS equal to .env\'s does not block a second row; a different process value still does', () => {
 		const root = repo();
 		fs.writeFileSync(path.join(root, '.env'), `WORK_CALENDARS=${ROW}\n`);

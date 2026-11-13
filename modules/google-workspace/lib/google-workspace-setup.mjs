@@ -64,7 +64,8 @@ export function inspect(ctx) {
 		return 'blocked';
 	};
 	return { checks: checks.map((c) => {
-		const row = { id: c.id, status: status(c), title: c.label, detail: c.detail, fix: c.fix, evidence: c.evidence };
+		// the fix of a row is the command that settles it; the sign-in is `dt setup <unit> --authorize`
+		const row = { id: c.id, status: status(c), title: c.label, detail: c.detail, fix: c.id === 'google.account-authorization' ? `dt setup ${UNIT_ID} --authorize` : c.fix, evidence: c.evidence };
 		// the one check only a live read settles: a receipt from `verify-account-read` makes it ready, dated
 		if (c.id === 'google.account-authorization' && seen.length) {
 			const latest = seen.map((r) => r.at).sort().at(-1);

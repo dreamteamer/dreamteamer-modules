@@ -46,6 +46,10 @@ describe('the unit, pure', () => {
 		fs.rmSync(path.join(store, 'a@example.invalid.json'));
 		assert.equal(inspect(ctx).checks.find((c) => c.id === 'google.account-authorization').status, 'unverified');
 	});
+	test('the authorization row\'s fix is the command that settles it — dt setup google-workspace --authorize (hm7)', () => {
+		const row = inspect(ctxFor(tmp(), { PATH: '' })).checks.find((c) => c.id === 'google.account-authorization');
+		assert.equal(row.fix, 'dt setup google-workspace --authorize');
+	});
 	test('an unsafe store stays blocked — never missing — even while other rows wait on an input', { skip: process.platform === 'win32' }, () => {
 		const root = tmp();
 		const store = path.join(tmp(), 'creds'); fs.mkdirSync(store, { mode: 0o755 }); fs.chmodSync(store, 0o755);

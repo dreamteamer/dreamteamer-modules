@@ -11,7 +11,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseWorkCalendars } from '../skills/fetching-meetings/bin/gcal.mjs';
-import { SETUP_PROTOCOL, SetupRefusal, boardState, workspaceIdentity, realish, fingerprint, writeScoped, envAssignments, setEnvValue, safeEnvValue, gitExposure, runGit, leftoverTemps, tempPrefix } from './setup-kit.mjs';
+import { SETUP_PROTOCOL, SetupRefusal, boardState, workspaceIdentity, realish, fingerprint, writeScoped, envAssignments, setEnvValue, safeEnvValue, gitExposure, runGit, leftoverTemps, tempPrefix, redact } from './setup-kit.mjs';
 
 export const SETUP_PROVIDER = Object.freeze({
 	protocol: SETUP_PROTOCOL,
@@ -63,7 +63,7 @@ export function inspect({ root, env = process.env, home = os.homedir() } = {}) {
 			? { id: 'meetings.credential-files', label: 'credential files', status: 'configured', detail: 'A nonempty local credential file exists for each configured account; contents and validity are unverified.', fix: '', evidence: { accounts: accounts.length, present, directory: dirSource } }
 			: { id: 'meetings.credential-files', label: 'credential files', status: 'missing', detail: 'Missing local files or invalid calendar rows; no credentials were read.', fix: 'Authorize each configured account through the Google Workspace onboarding flow and verify the selected credentials directory.', evidence: { accounts: accounts.length, present, directory: dirSource } });
 
-	add({ id: 'meetings.account-access', label: 'account access', status: 'unverified', detail: 'File presence does not prove consent, expiry, scopes or remote access. No network request was made.', fix: 'After owner consent, run an explicit read-only test for each configured calendar/account.' });
+	add({ id: 'meetings.account-access', label: 'account access', status: 'unverified', detail: 'File presence does not prove consent, expiry, scopes or remote access. No network request was made.', fix: 'dt setup meetings --verify --authorize' });
 	return { protocol: SETUP_PROTOCOL, module: SETUP_PROVIDER.module, checks };
 }
 
@@ -94,9 +94,11 @@ const cliArgs = (root, rest) => ['node', script(root), ...rest, '--workspace', r
 function calendarRowsAction(workspace, env, inputs, git) {
 	const action = { id: 'add-calendar-rows', title: 'Add work calendar rows to the workspace .env', kind: 'local', runBy: 'agent', effects: ['workspace-file: .env (WORK_CALENDARS only; every other line is kept byte for byte)'] };
 	if (!inputs.length) return { ...action, state: 'needs-input', reason: 'Ask for each work calendar: calendar id, default company id (or mixed) and the account email that reads it.' };
-	const parsed = inputs.map(parseRow);
-	const bad = parsed.map((r, i) => (r ? null : i + 1)).filter(Boolean);
-	if (bad.length) return { ...action, state: 'blocked', reason: `Row input ${bad.join(', ')} is not calendar-id | company-id-or-mixed | account-email with plain characters.` };
+	const parsedAll = inputs.map(parseRow);
+	const bad = parsedAll.map((r, i) => (r ? null : i + 1)).filter(Boolean);
+	if (bad.length === parsedAll.length) return { ...action, state: 'blocked', reason: `Row input ${bad.join(', ')} is not calendar-id | company-id-or-mixed | account-email with plain characters.` };
+	// a mixed batch: the valid rows go in, the malformed ones are named by input number and left out
+	const parsed = parsedAll.filter(Boolean);
 	if (env[KEY]) return { ...action, state: 'blocked', reason: 'WORK_CALENDARS is set in the process environment, which takes precedence over .env; change it where it is set instead.' };
 	const envPath = path.join(workspace.root, '.env');
 	let expect;
@@ -124,7 +126,7 @@ function calendarRowsAction(workspace, env, inputs, git) {
 	const value = [current, ...additions.map((r) => r.line)].filter(Boolean).join('\n');
 	return {
 		...action, state: 'ready', inputs: parsed.map((r) => r.line),
-		preview: { file: '.env', expect, vcs: exposure.vcs, change: found.length ? 'update WORK_CALENDARS' : expect === 'absent' ? 'create .env with WORK_CALENDARS' : 'append WORK_CALENDARS', keeps: existing.rows.length, adds: additions.map((r) => r.line), otherLines: 'unchanged' },
+		preview: { file: '.env', expect, vcs: exposure.vcs, change: found.length ? 'update WORK_CALENDARS' : expect === 'absent' ? 'create .env with WORK_CALENDARS' : 'append WORK_CALENDARS', keeps: existing.rows.length, adds: additions.map((r) => r.line), ...(bad.length ? { skipped: bad } : {}), otherLines: 'unchanged' },
 		command: cliArgs(workspace.root, ['apply', 'add-calendar-rows', '--expect', expect, ...parsed.flatMap((r) => ['--row', r.line])]),
 		content: setEnvValue(text, KEY, value),
 	};
@@ -230,12 +232,23 @@ function unitApply(ctx, action, inputs = {}) {
 		if (action.state === 'done') return { ok: true, changed: [], message: `nothing to do — ${action.reason ?? 'already configured'}` };
 		if (action.id === 'add-calendar-rows') {
 			const r = apply({ root: ctx.root, action: action.id, expect: action.expect ?? action.preview?.expect, workspace: ctx.root, rows: action.inputs ?? [], env: moduleEnv(ctx) });
-			return { ok: true, changed: r.changed ? ['.env'] : [], message: r.changed ? `wrote .env (${r.added} row(s) added, every other line kept)` : `nothing to do — ${r.reason}` };
+			const skipped = action.preview?.skipped?.length ? `; row input ${action.preview.skipped.join(', ')} skipped: not calendar-id | company-id-or-mixed | account-email` : '';
+			return { ok: true, changed: r.changed ? ['.env'] : [], message: r.changed ? `wrote .env (${r.added} row(s) added, every other line kept${skipped})` : `nothing to do — ${r.reason}${skipped}` };
 		}
 		if (action.id === 'verify-calendar-access') {
 			if (!action.command) return { ok: false, changed: [], message: action.reason ?? 'not ready' };
-			const r = spawnSync(action.command[0], action.command.slice(1), { cwd: ctx.root, env: ctx.env, stdio: 'inherit', timeout: 600_000 });
+			const r = spawnSync(action.command[0], action.command.slice(1), { cwd: ctx.root, env: ctx.env, stdio: ['inherit', 'pipe', 'inherit'], encoding: 'utf8', timeout: 600_000 });
 			if (r.status !== 0) return { ok: false, changed: [], message: `${action.command.slice(0, 2).join(' ')} exited ${r.status ?? r.error?.message}` };
+			// exit 0 is not the verdict: the live check prints one row per calendar, and only `full` on every
+			// row is access — absent or free-busy rows fail the verify with counts (the ids stay private)
+			let answered;
+			try { answered = JSON.parse(r.stdout).rows; } catch { return { ok: false, changed: [], message: 'the live check printed no readable rows — nothing verified' }; }
+			if (!Array.isArray(answered) || !answered.length) return { ok: false, changed: [], message: 'the live check printed no rows — nothing verified' };
+			const notFull = answered.filter((row) => row.verdict !== 'full');
+			if (notFull.length) {
+				const counts = Object.entries(notFull.reduce((acc, row) => ({ ...acc, [row.verdict ?? 'unknown']: (acc[row.verdict ?? 'unknown'] ?? 0) + 1 }), {})).map(([k, v]) => `${k}: ${v}`).join(', ');
+				return { ok: false, changed: [], message: `${notFull.length} of ${answered.length} calendar(s) not readable (${counts}) — share each calendar with its account, then verify again` };
+			}
 			fs.mkdirSync(ctx.receiptDir, { recursive: true });
 			const { rows } = parseWorkCalendars(workCalendars(ctx.root, moduleEnv(ctx)).text);
 			fs.writeFileSync(path.join(ctx.receiptDir, RECEIPT), JSON.stringify({ what: 'every configured calendar answered', rows: rows.length, digest: calendarsDigest(rows), at: new Date().toISOString().slice(0, 10) }, null, 2) + '\n');
