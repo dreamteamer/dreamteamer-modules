@@ -1,6 +1,6 @@
 {
 	"name": "@dreamteamer/files",
-	"version": "0.2.0",
+	"version": "0.3.0",
 	"description": "Files on mounted drives as records: one index record per file or folder, kept level by dt files sync, with your notes on each.",
 	"license": "Apache-2.0",
 	"type": "module",
@@ -30,7 +30,7 @@
 	"dreamteamer": {
 		"extension": "./src/extension.js",
 		"title": "Files",
-		"engine": ">=0.47.0",
+		"engine": ">=0.48.0",
 		"description": "The files under mounted folders as records. A `file-drives` record names one folder as a `${env:\u2026}` template and the subfolders it indexes; `dt files sync` walks it and keeps one `files` record per file or folder \u2014 path, size, modified, hash, a text preview, and which records point at it \u2014 adding, updating, marking missing and renaming on a move, never writing your description, tags and notes.",
 		"vars": [
 			"FILES_FOLDER"

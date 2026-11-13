@@ -46,6 +46,11 @@ entry.
 `dt doctor` shows each drive's state on this machine; `dt check` reports an entry whose id disagrees
 with its drive and path.
 
+## 0.3.0 — on engine 0.48.0: the engine writes `.env` (CR-dt-007)
+
+Nothing to do but `dt update @dreamteamer/files` on dreamteamer 0.48.0 or later, then `dt compile`; nothing a
+workspace's records do changes. `FILES_FOLDER` is now an env action the engine writes into `.env` (confined, fingerprint-checked, refused when git would commit `.env`, never printed); the module carries no copy of the setup kit and no `apply` for it.
+
 ## 0.2.0 — on engine 0.47.0 (CLI-first module lifecycle, CR-dt-006)
 
 Nothing to do but `dt compile` after `dt update @dreamteamer/files` on dreamteamer 0.47.0 or later (the engine floor is `>=0.47.0`). New: the `files` setup unit (`dt setup files`): FILES_FOLDER recorded in `.env` by `dt install`.

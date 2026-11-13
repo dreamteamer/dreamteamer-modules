@@ -1,6 +1,6 @@
 {
 	"name": "@dreamteamer/recordings",
-	"version": "0.4.0",
+	"version": "0.5.0",
 	"description": "Meeting recordings for a dreamteamer workspace \u2014 imported by content hash, matched to their meeting, and transcribed offline in Hebrew and English.",
 	"license": "Apache-2.0",
 	"type": "module",
@@ -30,7 +30,7 @@
 	"dreamteamer": {
 		"title": "Recordings",
 		"description": "One audio file and its transcript per `meeting-recordings` record. Audio dropped into an `${env:INBOX_FOLDERS}` root is deduped by content hash, archived under `${env:FILES_FOLDER}`, matched to its meeting (stamping `meetings.recordings`) and transcribed offline with speaker diarisation, in Hebrew and English. Summaries, tasks and critiques built on a transcript are the `meeting-docs` module.",
-		"engine": ">=0.47.0",
+		"engine": ">=0.48.0",
 		"dependencies": [
 			"@dreamteamer/meetings"
 		],

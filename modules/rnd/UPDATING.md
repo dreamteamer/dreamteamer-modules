@@ -11,6 +11,10 @@ npx dreamteamer check
 
 ---
 
+## 0.10.1 — the setup package is gone (CR-dt-007)
+
+Nothing to do but `dt update @dreamteamer/rnd`, then `dt compile`. The composed `using-notebooklm` skill, the README and `extract-frames.mjs` say `dt status` / `dt doctor` where they said `dt-setup`; the root SETUP.md's header too.
+
 ## 0.10.0 — on engine 0.47.0: the wikis and notebooklm setup units composed in (CR-dt-006)
 
 Nothing to do but `dt update @dreamteamer/rnd` on dreamteamer 0.47.0 or later, then `dt compile`

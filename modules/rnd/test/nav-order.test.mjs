@@ -67,12 +67,12 @@ test('the compiled resolution: core and rnd packed into a fresh workspace resolv
 
 test('released as 0.10.0 (on engine 0.47.0, the setup units composed in): the version, UPDATING.md and the README release note — 0.9.0\'s notes kept', () => {
 	const read = (f) => fs.readFileSync(path.join(MODULES, 'rnd', f), 'utf8');
-	assert.equal(JSON.parse(read('package.json')).version, '0.10.0');
+	assert.match(JSON.parse(read('package.json')).version, /^0\.10\.\d+$/, 'a 0.10.x patch keeps the 0.10.0 notes');
 	assert.match(read('UPDATING.md'), /## 0\.10\.0 — on engine 0\.47\.0/);
 	assert.match(read('UPDATING.md'), /### Also in 0\.9\.0 — the R&D nav/);
 	assert.match(read('README.md'), /## 0\.10\.0 — on engine 0\.47\.0/);
 	assert.match(read('README.md'), /## 0\.9\.0 — from 0\.8\.0/);
-	for (const [m, v] of [['notebooklm', '0.2.0'], ['wikis', '0.2.0']]) {
-		assert.equal(JSON.parse(fs.readFileSync(path.join(MODULES, m, 'package.json'), 'utf8')).version, v, m);
+	for (const [m, v] of [['notebooklm', /^0\.2\.\d+$/], ['wikis', /^0\.2\.\d+$/]]) {
+		assert.match(JSON.parse(fs.readFileSync(path.join(MODULES, m, 'package.json'), 'utf8')).version, v, m);
 	}
 });

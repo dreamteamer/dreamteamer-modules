@@ -55,6 +55,11 @@ material, so the meeting-docs pipeline stops after transcription. An export cann
 record: `sensitive` applies to a whole collection or a whole field, never to a record, so an exporter
 has to read `privacy` itself, and marking `meetings` sensitive would withhold every meeting.
 
+## 0.3.0 — on engine 0.48.0: the engine writes `.env` (CR-dt-007)
+
+Nothing to do but `dt update @dreamteamer/meetings` on dreamteamer 0.48.0 or later, then `dt compile`; nothing a
+workspace's records do changes. the calendar rows are now an env action: the unit merges them into `WORK_CALENDARS`, the engine writes `.env` and prints which inputs it skipped. **`bin/setup.mjs` is gone** — `dt setup meetings --input calendar="<calendar> | <company> | <account>"` replaces it; SETUP.md says so.
+
 ## 0.2.0 — on engine 0.47.0 (CLI-first module lifecycle, CR-dt-006)
 
 Nothing to do but `dt compile` after `dt update @dreamteamer/meetings` on dreamteamer 0.47.0 or later (the engine floor is `>=0.47.0`). New: the `meetings` setup unit: `--input 'calendar=<id> | <company or mixed> | <account>'` (repeatable; a mixed batch merges the valid rows and names the malformed) merges into `.env`; `dt setup meetings --verify --authorize` runs the live check and writes a receipt only when every calendar answers `full`.

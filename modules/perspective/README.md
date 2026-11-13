@@ -15,6 +15,11 @@ source is optional and a run says which it could not reach. Chain the record gua
 `npm run check` — add it to the `check` script:
 `node node_modules/@dreamteamer/perspective/bin/check-records.mjs`.
 
+## 0.4.0 — on engine 0.48.0: the engine writes `.env` (CR-dt-007)
+
+Nothing to do but `dt update @dreamteamer/perspective` on dreamteamer 0.48.0 or later, then `dt compile`; nothing a
+workspace's records do changes. `ASANA_PAT` is now an env action the engine writes into `.env`; the module carries no copy of the setup kit and no `apply`.
+
 ## 0.3.0 — on engine 0.47.0 (CLI-first module lifecycle, CR-dt-006)
 
 Nothing to do but `dt compile` after `dt update @dreamteamer/perspective` on dreamteamer 0.47.0 or later (the engine floor is `>=0.47.0`). New: the `perspective` setup unit (`dt setup perspective`): its folders recorded in `.env`.
