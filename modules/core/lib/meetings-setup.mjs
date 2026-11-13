@@ -97,7 +97,12 @@ export function parseRow(text) {
  *  malformed existing row; whether the file already holds the value, and the write, are the engine's. */
 function calendarRowsAction(root, env, inputs) {
 	const action = { id: 'add-calendar-rows', title: 'Add work calendar rows to the workspace .env', effects: [{ kind: 'workspace-files', detail: '.env (WORK_CALENDARS only; every other line is kept byte for byte)' }] };
-	if (!inputs.length) return { ...action, state: 'needs-input', reason: 'Ask for each work calendar: calendar id, default company id (or mixed) and the account email that reads it.' };
+	if (!inputs.length) {
+		// no row given: done when valid rows are already configured (held-out hm1), otherwise ask for one
+		const configured = parseWorkCalendars(workCalendars(root, env).text);
+		if (configured.rows.length && !configured.errors.length) return { ...action, state: 'done', reason: 'The work calendars are configured; give a row to add another.' };
+		return { ...action, state: 'needs-input', reason: 'Ask for each work calendar: calendar id, default company id (or mixed) and the account email that reads it.' };
+	}
 	const parsedAll = inputs.map(parseRow);
 	const bad = parsedAll.map((r, i) => (r ? null : i + 1)).filter(Boolean);
 	if (bad.length === parsedAll.length) return { ...action, state: 'blocked', reason: `Row input ${bad.join(', ')} is not calendar-id | company-id-or-mixed | account-email with plain characters.` };
@@ -197,7 +202,8 @@ function unitPlan(ctx, inputs = {}) {
 		runBy: a.runBy === 'owner' ? 'owner' : 'engine',
 		...(a.id === 'verify-calendar-access' ? { kind: 'verify' } : {}),
 	}));
-	return { checks: unitInspect(ctx).checks, actions, needs: rows.length ? [] : ['calendar'] };
+	const rowsDone = actions.find((a) => a.id === 'add-calendar-rows')?.state === 'done';
+	return { checks: unitInspect(ctx).checks, actions, needs: rows.length || rowsDone ? [] : ['calendar'] };
 }
 
 function unitApply(ctx, action, inputs = {}) {

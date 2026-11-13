@@ -47,6 +47,17 @@ describe('the unit, pure', () => {
 		fs.writeFileSync(path.join(root, '.env'), `OTHER=keep\nWORK_CALENDARS="${ROW}"\n`);
 		assert.equal(SETUP_UNIT.plan(ctx, { calendar: [ROW] }).actions.find((a) => a.id === 'add-calendar-rows').state, 'done');
 	});
+	test('held-out hm1: calendars already configured and no row given — add-calendar-rows is done and nothing is needed', () => {
+		const root = repo();
+		fs.writeFileSync(path.join(root, '.env'), `WORK_CALENDARS="${ROW}"\n`);
+		const p = SETUP_UNIT.plan(ctxFor(root), {});
+		const add = p.actions.find((a) => a.id === 'add-calendar-rows');
+		assert.equal(add.state, 'done', add.reason);
+		assert.deepEqual(p.needs, []);
+		const none = SETUP_UNIT.plan(ctxFor(repo()), {});
+		assert.equal(none.actions.find((a) => a.id === 'add-calendar-rows').state, 'needs-input', 'with nothing configured a row is still asked for');
+		assert.deepEqual(none.needs, ['calendar']);
+	});
 	test('inspect: configured rows, access unverified until a receipt exists', () => {
 		const root = repo();
 		fs.writeFileSync(path.join(root, '.env'), `WORK_CALENDARS=${ROW}\n`);

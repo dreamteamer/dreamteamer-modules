@@ -296,7 +296,7 @@
 		},
 		"lib/meetings-setup.mjs": {
 			"from": "meetings/lib/meetings-setup.mjs",
-			"hash": "sha256:e37d0a161e8c672ebcdc38822a565e231eccfd317a1c051231f061d77dfd06ea"
+			"hash": "sha256:899143e4ad01976b38e34091efa537fe1361d29da0f828a6027f0b11bc7f51e2"
 		},
 		"lib/recordings-extension.mjs": {
 			"from": "recordings/lib/extension.mjs",
