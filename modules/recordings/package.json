@@ -42,5 +42,8 @@
 			"FILES_FOLDER",
 			"INBOX_FOLDERS"
 		]
+	},
+	"peerDependencies": {
+		"@dreamteamer/meetings": ">=0.1.2"
 	}
 }

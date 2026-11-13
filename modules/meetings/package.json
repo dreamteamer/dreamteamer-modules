@@ -40,5 +40,10 @@
 			"WORK_CALENDARS"
 		],
 		"extension": "./lib/extension.mjs"
+	},
+	"peerDependencies": {
+		"@dreamteamer/companies": ">=0.1.1",
+		"@dreamteamer/contacts": ">=0.1.1",
+		"@dreamteamer/users": ">=0.2.1"
 	}
 }

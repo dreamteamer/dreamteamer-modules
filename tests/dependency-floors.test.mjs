@@ -72,6 +72,38 @@ describe('the declarations', () => {
 	});
 });
 
+describe('the presence graph is mirrored as floors (CR-dt-006)', () => {
+	test('every dreamteamer.dependencies entry is a strict peer with a >=x.y.z floor — the declaration dt install walks, and the floor npm and the engine enforce', () => {
+		for (const m of moduleIds()) {
+			if (fs.existsSync(path.join(MODULES, m, 'compose.json'))) continue; // a composition carries no floor; its origins do
+			for (const dep of pkgOf(m).dreamteamer.dependencies ?? []) {
+				const range = pkgOf(m).peerDependencies?.[dep];
+				assert.ok(range && /^>=\d+\.\d+\.\d+$/.test(range), `${m} depends on ${dep} and floors it at ${JSON.stringify(range)} — mirror the dependency as a strict peer`);
+				assert.equal(optional(m, dep), false, `${m} → ${dep}: a hard dependency is a strict floor`);
+			}
+		}
+	});
+	test('the presence graph has no ring — what dt install refuses, nothing here declares', () => {
+		const seen = new Set();
+		const walk = (m, stack) => {
+			if (stack.includes(m)) assert.fail(`ring: ${[...stack.slice(stack.indexOf(m)), m].join(' → ')}`);
+			if (seen.has(m)) return;
+			for (const dep of pkgOf(m).dreamteamer.dependencies ?? []) walk(folderOf(dep), [...stack, m]);
+			seen.add(m);
+		};
+		for (const m of moduleIds()) walk(m, []);
+	});
+	test('every module that ships a setup unit floors the engine at >=0.47.0, the engine that reads the setup contribution', () => {
+		for (const m of moduleIds()) {
+			const unit = fs.existsSync(path.join(MODULES, m, 'lib', `${m}-setup.mjs`)) && /export const SETUP_UNIT\b/.test(fs.readFileSync(path.join(MODULES, m, 'lib', `${m}-setup.mjs`), 'utf8'));
+			const composedUnits = fs.existsSync(path.join(MODULES, m, 'compose.json')) && (JSON.parse(fs.readFileSync(path.join(MODULES, m, 'compose.json'), 'utf8')).setup_units ?? []).length > 0;
+			if (!unit && !composedUnits) continue;
+			const at = /^>=(\d+)\.(\d+)\.(\d+)$/.exec(pkgOf(m).dreamteamer.engine ?? '');
+			assert.ok(at && (Number(at[1]) > 0 || Number(at[2]) >= 47), `${m} ships a setup unit and floors the engine at ${pkgOf(m).dreamteamer.engine ?? 'nothing'} — needs >=0.47.0`);
+		}
+	});
+});
+
 describe('the composition', () => {
 	test('no composed module carries a floor, and every origin floors only another origin of the same composition', () => {
 		for (const t of composedModules()) {

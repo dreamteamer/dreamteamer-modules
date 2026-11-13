@@ -37,5 +37,13 @@
 			"@dreamteamer/companies",
 			"@dreamteamer/engagements"
 		]
+	},
+	"peerDependencies": {
+		"@dreamteamer/companies": ">=0.1.1",
+		"@dreamteamer/contacts": ">=0.1.1",
+		"@dreamteamer/engagements": ">=0.1.1",
+		"@dreamteamer/meetings": ">=0.1.2",
+		"@dreamteamer/recordings": ">=0.3.0",
+		"@dreamteamer/tasks": ">=0.3.2"
 	}
 }
