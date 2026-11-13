@@ -54,11 +54,13 @@ export function inspect(ctx) {
 	const store = by['google.credential-store'] === 'configured' ? env.WORKSPACE_MCP_CREDENTIALS_DIR : null;
 	const seen = receipts(ctx).filter((r) => store && r.account && fs.existsSync(credentialPath(store, r.account)));
 	// the module says `blocked` for a row it cannot evaluate until an INPUT arrives; to the engine that
-	// is `missing` (an input fixes it). `blocked` is kept for what no input fixes: uvx absent, a store
-	// other users can read, a client file inside the workspace — the rows a person must act on
+	// is `missing` (an input fixes it), and so is the runtime row (an owner install fixes it — D59). `blocked`
+	// is kept for what nothing the person does next fixes: a store other users can read, a client file
+	// inside the workspace — the rows that must be undone first
 	const pathsMissing = by['google.client-config'] !== 'configured' || by['google.credential-store'] !== 'configured';
 	const status = (c) => {
 		if (c.status !== 'blocked') return c.status;
+		if (c.id === 'google.runtime') return 'missing';   // uvx absent: an owner install fixes it — the module degrades to configured, naming it (D59)
 		if (c.id === 'google.stored-accounts' && by['google.credential-store'] !== 'configured') return 'missing';
 		if (c.id === 'google.credential-placement' && pathsMissing && !/Unsafe placement/.test(c.detail)) return 'missing';
 		return 'blocked';

@@ -46,6 +46,11 @@ describe('the unit, pure', () => {
 		fs.rmSync(path.join(store, 'a@example.invalid.json'));
 		assert.equal(inspect(ctx).checks.find((c) => c.id === 'google.account-authorization').status, 'unverified');
 	});
+	test('uvx absent is missing, not blocked: an owner install fixes it, so an unconfigured module degrades to configured naming it (D59)', () => {
+		const by = Object.fromEntries(inspect(ctxFor(tmp(), { PATH: '' })).checks.map((c) => [c.id, c]));
+		assert.equal(by['google.runtime'].status, 'missing');
+		assert.match(by['google.runtime'].fix, /Install uv/);
+	});
 	test('the authorization row\'s fix is the command that settles it — dt setup google-workspace --authorize (hm7)', () => {
 		const row = inspect(ctxFor(tmp(), { PATH: '' })).checks.find((c) => c.id === 'google.account-authorization');
 		assert.equal(row.fix, 'dt setup google-workspace --authorize');
