@@ -1,6 +1,6 @@
-// The Google Workspace setup provider: one local, read-only `inspect` shared by `dt-google doctor`,
-// the engine doctor row set and the setup plan; a plan of small actions; and the one deterministic
-// action this module performs itself. Account consent and live reads stay with the account owner and
+// The Google Workspace setup: one local, read-only `inspect` shared by `dt-google doctor` and the engine
+// unit (google-workspace-setup.mjs); a plan of small actions; and the one deterministic action this module
+// performs itself — the owner-only credential store. Account consent and live reads stay with the account owner and
 // run through the existing `dt-google auth` and `dt-google call` commands — never from here.
 //
 // Read SETUP.md beside this package for the conversation that uses it.
@@ -8,14 +8,43 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { validateCall, credentialPath } from './access.mjs';
-import { SETUP_PROTOCOL, SetupRefusal, boardState, workspaceIdentity, within, realish } from './setup-kit.mjs';
 
-export const SETUP_PROVIDER = Object.freeze({
-	protocol: SETUP_PROTOCOL,
-	module: '@dreamteamer/google-workspace',
-	checks: Object.freeze(['google.runtime', 'google.client-config', 'google.credential-store', 'google.stored-accounts', 'google.credential-placement', 'google.account-authorization']),
-	actions: Object.freeze(['create-credential-store', 'authorize-account', 'verify-account-read']),
-});
+// ── this module's own helpers (cr-dt-007, D70: written here, never shared — the setup kit is gone) ──────
+/** The convention version and module name this setup's own reports carry. */
+const PROTOCOL = 1;
+const MODULE = '@dreamteamer/google-workspace';
+const ACTIONS = ['create-credential-store', 'authorize-account', 'verify-account-read'];
+/** A refusal the module's own CLI prints as is (code: usage, workspace, action, stale, blocked, path). */
+export class SetupRefusal extends Error { constructor(code, message) { super(message); this.code = code; } }
+/** A board row's state: present facts are ok, everything else warns. */
+const boardState = (status) => (status === 'ready' || status === 'configured' ? 'ok' : 'warn');
+/** The workspace an action is scoped to, by real path and package name. */
+function workspaceIdentity(root) {
+	const real = fs.realpathSync(root);
+	let name = null;
+	try { name = JSON.parse(fs.readFileSync(path.join(real, 'package.json'), 'utf8')).name ?? null; } catch { /* unnamed */ }
+	return { root: real, name };
+}
+/** Is `child` the same as, or inside, `parent`? Both real, absolute paths. */
+function within(parent, child) {
+	const rel = path.relative(parent, child);
+	return rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel));
+}
+/** The real path of `p`, or of its nearest existing ancestor joined with the missing remainder. */
+function realish(p) {
+	const missing = [];
+	for (let d = path.resolve(p); ; d = path.dirname(d)) {
+		try { return path.join(fs.realpathSync(d), ...missing.reverse()); }
+		catch (error) { if (error.code !== 'ENOENT' || path.dirname(d) === d) throw error; missing.push(path.basename(d)); }
+	}
+}
+/** What a diagnostic the module's own CLI prints must never carry: addresses, absolute paths, long tokens. */
+export function redact(text) {
+	return String(text ?? '')
+		.replace(/[^\s@"'<>()]+@[^\s@"'<>()]+\.[A-Za-z]{2,}/g, '<email>')
+		.replace(/(^|[\s"'=(:])(?:~|[A-Za-z]:)?[\\/][^\s"')]+/g, '$1<path>')
+		.replace(/[A-Za-z0-9_\-.]{32,}/g, '<redacted>');
+}
 
 /** The rows `dt-google doctor` has always printed, by check id, in their original order. */
 export const LEGACY_DOCTOR_IDS = Object.freeze(['google.runtime', 'google.client-config', 'google.credential-store', 'google.account-authorization']);
@@ -99,7 +128,7 @@ export function inspect({ root = null, env = process.env, platform = process.pla
 		detail: 'Not verified. Local paths and stored files do not prove current authorization.',
 		fix: 'After owner-controlled consent, verify a read for each intended account on this computer. Doctor performs no live account calls.',
 	});
-	return { protocol: SETUP_PROTOCOL, module: SETUP_PROVIDER.module, checks };
+	return { protocol: PROTOCOL, module: MODULE, checks };
 }
 
 /** `dt-google doctor`'s report, unchanged: the legacy rows, with absence as `bad`. */
@@ -201,14 +230,14 @@ export function plan({ root, env = process.env, platform = process.platform, acc
 	if (accounts.length) for (const a of accounts) actions.push(...live(a));
 	else actions.push({ id: 'authorize-account', title: 'Owner consents for one account', kind: 'live', runBy: 'owner', state: 'needs-input', reason: 'Ask which account(s) to connect; each is named explicitly.' });
 
-	return { protocol: SETUP_PROTOCOL, module: SETUP_PROVIDER.module, workspace, checks, actions };
+	return { protocol: PROTOCOL, module: MODULE, workspace, checks, actions };
 }
 
 /** Perform one local action after its preview was approved. Live actions are refused here. */
 export function apply({ root, action, target, parentId, workspace: claimed, env = process.env, platform = process.platform, accessible = readable, home = os.homedir() } = {}) {
 	const workspace = workspaceIdentity(root);
 	if (!claimed || realish(claimed) !== workspace.root) throw new SetupRefusal('workspace', 'The --workspace given does not match the workspace this command runs in. Nothing was changed.');
-	if (action !== 'create-credential-store') throw new SetupRefusal('action', SETUP_PROVIDER.actions.includes(action) ? 'That step is the account owner\'s: run its command from the plan yourself after explicit approval.' : 'Unknown action.');
+	if (action !== 'create-credential-store') throw new SetupRefusal('action', ACTIONS.includes(action) ? 'That step is the account owner\'s: run its command from the plan yourself after explicit approval.' : 'Unknown action.');
 	const after = () => inspect({ root: workspace.root, env, platform, accessible }).checks;
 	const step = storeTarget(env.WORKSPACE_MCP_CREDENTIALS_DIR, workspace.root, platform, home);
 	const stale = (why) => new SetupRefusal('stale', `${why} Nothing was changed; inspect and plan again.`);

@@ -1,8 +1,7 @@
 // @dreamteamer/google-workspace — the engine extension entry (API 1). It contributes one namespaced
 // command, `dreamteamer google-setup`, and local doctor rows; both read the same inspect. Nothing
 // here starts the MCP server, opens a browser, refreshes a token or reaches the network.
-import { inspect, plan, apply } from './google-setup.mjs';
-import { redact, SetupRefusal } from './setup-kit.mjs';
+import { inspect, plan, apply, redact, SetupRefusal } from './google-setup.mjs';
 import { SETUP_UNIT } from './google-workspace-setup.mjs';
 
 export const apiVersion = 1;
