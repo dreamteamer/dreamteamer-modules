@@ -97,7 +97,7 @@ describe('the composition', () => {
 	test('the origins\' setup references compose into one shipped root SETUP.md, with core\'s own script paths', () => {
 		const setup = copies.get('SETUP.md');
 		assert.ok(setup, 'meetings ships SETUP.md, so core must carry one');
-		assert.equal(setup.from, 'meetings/SETUP.md');
+		assert.equal(setup.from, 'meetings/SETUP.md + recordings/SETUP.md');
 		assert.ok(manifest.files.includes('SETUP.md'), 'listed in files, so npm packs it');
 		const text = setup.bytes.toString('utf8');
 		assert.match(text, /^# Setup — @dreamteamer\/core\n/);

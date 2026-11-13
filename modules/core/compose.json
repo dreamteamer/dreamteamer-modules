@@ -34,6 +34,10 @@
 			"from": "projects/bin/check-records.mjs",
 			"hash": "sha256:be5f797d75b305153883f4124c6021ea205727dd0b9e9760797ea2a322b55d4f"
 		},
+		"bin/recordings-transcribe.mjs": {
+			"from": "recordings/bin/transcribe.mjs",
+			"hash": "sha256:cc043358c962deaf92c4e1717a235a521322b8faa59490d3197bef2731512a3f"
+		},
 		"bin/tasks-migrate-lanes-to-tags.mjs": {
 			"from": "tasks/bin/migrate-lanes-to-tags.mjs",
 			"hash": "sha256:a622ae9247cc727c86dd171fd667e909d1bd916b7a60bc1642888df753e7a891"
@@ -282,6 +286,10 @@
 			"from": "workflows/data/workflows/customer-factory.workflow.md",
 			"hash": "sha256:99e559688ba917289e6021fac93f1cba9b0b5affa863be2cad0de8ced9d8e712"
 		},
+		"lib/clip.wav": {
+			"from": "recordings/lib/clip.wav",
+			"hash": "sha256:3097e677ba18bbc89d3381d90ace13a2fb465c8b644138fce28ad383be8a6e76"
+		},
 		"lib/meetings-extension.mjs": {
 			"from": "meetings/lib/extension.mjs",
 			"hash": "sha256:c140b5282b632752bf2ed1b1849b457c02a9798ae7111bf324572586222b7ad7"
@@ -289,6 +297,14 @@
 		"lib/meetings-setup.mjs": {
 			"from": "meetings/lib/meetings-setup.mjs",
 			"hash": "sha256:dd866e7946e4b96d815d628fc12fc0ddb525143934db497bca3c10d47379613a"
+		},
+		"lib/recordings-extension.mjs": {
+			"from": "recordings/lib/extension.mjs",
+			"hash": "sha256:6de7b6d6b108187c105eeac07ba25456e087bc6d6c276cf5fcee433d42998085"
+		},
+		"lib/recordings-setup.mjs": {
+			"from": "recordings/lib/recordings-setup.mjs",
+			"hash": "sha256:b9058282d8d81019079427f2619c57792c0cae41a887e838c38e1d8b21fb4e64"
 		},
 		"lib/setup-kit.mjs": {
 			"from": "meetings/lib/setup-kit.mjs",
@@ -299,8 +315,8 @@
 			"hash": "sha256:4b55f5ee40052d49eb8bb2854dfccba39502d11061f06f8965a4a19aaf503007"
 		},
 		"SETUP.md": {
-			"from": "meetings/SETUP.md",
-			"hash": "sha256:033dae5f14d2f3657b3f5132b8211dfd8f13143b7959a560bbcca8ac70327d11"
+			"from": "meetings/SETUP.md + recordings/SETUP.md",
+			"hash": "sha256:ff0668910fc10d5db4ebbfaf7ead1a49aefa00d9f8ed89756ffebed40bf61079"
 		},
 		"skills/analyzing-meetings/SKILL.md": {
 			"from": "meeting-docs/skills/analyzing-meetings/SKILL.md",
@@ -384,7 +400,7 @@
 		},
 		"skills/transcribing-recordings/SKILL.md": {
 			"from": "recordings/skills/transcribing-recordings/SKILL.md",
-			"hash": "sha256:25a5bb18a0c4b5eae78081c6aa33cb6244a5e8ee4a6c62da38958e14728418c1"
+			"hash": "sha256:c78d2eed23b98b017fc50c99f3606de938401efbd84fa7b8f1f4b6f89c845c13"
 		},
 		"skills/transcribing-recordings/text_source.py": {
 			"from": "recordings/skills/transcribing-recordings/text_source.py",
@@ -520,6 +536,7 @@
 		}
 	},
 	"setup_units": [
-		"meetings"
+		"meetings",
+		"recordings"
 	]
 }

@@ -53,9 +53,12 @@
 		"engine": ">=0.47.0",
 		"env": [
 			"LINKEDIN_USER_AGENT",
+			"TRANSCRIPTION_HOME",
 			"WORK_CALENDARS"
 		],
 		"vars": [
+			"FILES_FOLDER",
+			"INBOX_FOLDERS",
 			"SESSIONS_FOLDER"
 		],
 		"ignore": [

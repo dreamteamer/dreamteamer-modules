@@ -27,15 +27,20 @@ unmapped and say so.
 run from the workspace root, against the compiled copy of this skill. every command below assumes:
 
 ```bash
-SK=.dreamteamer/skills/transcribing-recordings
-export UV_PROJECT_ENVIRONMENT="${TRANSCRIPTION_HOME:-$HOME/.cache/dreamteamer/transcription}/venv"
-cd "$SK" && uv sync && uv run python transcribe_meeting.py setup   # audio route only
+node node_modules/@dreamteamer/recordings/bin/transcribe.mjs sync     # the venv (uv sync)
+node node_modules/@dreamteamer/recordings/bin/transcribe.mjs setup    # the models — audio route only
 ```
+
+The node entry reads the workspace `.env` (`TRANSCRIPTION_HOME`), sets `UV_PROJECT_ENVIRONMENT` and
+only then spawns uv in the compiled skill folder — so no shell has to carry an export line, and an
+agent whose every command starts a fresh shell needs nothing repeated. `dt install @dreamteamer/recordings`
+and `dt setup recordings` run these same steps as the module's setup unit (SETUP.md), with the person's
+consent per effect; `transcribe.mjs run <record.md> <audio> …` is the `run` below through the same entry.
+In a composed `@dreamteamer/core` the entry is `bin/recordings-transcribe.mjs`.
 
 setup provisions a pinned Python 3.12 venv and downloads the models (~1.6 GB, plus 1.6 GB more for the
 GPU pass on a Mac with `whisper-cli`) — only what is missing, so it is safe to re-run; it needs system
-`ffmpeg`. text routes need only `uv sync`. Every command below assumes this export in the SAME
-shell: an agent whose every command starts a fresh shell repeats it.
+`ffmpeg`. text routes need only `uv sync`. Every command below goes through that entry.
 
 **nothing heavy lives in the skill folder.** compile regenerates `.dreamteamer/skills/` and
 `npm install` replaces `node_modules/`, so everything the transcriber keeps lives in ONE folder outside

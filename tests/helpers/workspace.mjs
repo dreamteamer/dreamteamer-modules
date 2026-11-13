@@ -64,7 +64,8 @@ const GIT_ENV = {
 };
 
 /** Run the engine in `cwd`, with a hard timer: a hang is a failure with a message, never a stuck suite. */
-export const run = (cwd, args) => spawnSync(process.execPath, [BIN, ...args], { cwd, encoding: 'utf8', env: GIT_ENV, timeout: 60_000 });
+/** Run the engine in `cwd`, with a hard timer; `env` lays extra variables (a PATH of stand-ins, a unit's keys) over the fixture's. */
+export const run = (cwd, args, env = {}) => spawnSync(process.execPath, [BIN, ...args], { cwd, encoding: 'utf8', env: { ...GIT_ENV, ...env }, timeout: 60_000 });
 
 export const moduleIds = () => fs.readdirSync(MODULES).filter((m) => fs.existsSync(path.join(MODULES, m, 'package.json'))).sort();
 export const pkgOf = (m) => JSON.parse(fs.readFileSync(path.join(MODULES, m, 'package.json'), 'utf8'));
