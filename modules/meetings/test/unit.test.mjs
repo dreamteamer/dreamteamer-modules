@@ -85,7 +85,7 @@ describe('the unit, pure', () => {
 		assert.deepEqual(add.preview.skipped, [2]);
 		const r = SETUP_UNIT.apply(ctx, add, { calendar: [good, 'this is not a row'] });
 		assert.equal(r.ok, true, r.message);
-		assert.match(r.message, /1 row\(s\) added.*row input 2 skipped/);
+		assert.match(r.message, /1 row\(s\) added.*Row input 2 skipped/);
 		assert.ok(fs.readFileSync(path.join(root, '.env'), 'utf8').includes(good));
 		// every row malformed is still a refusal
 		const none = SETUP_UNIT.plan(ctx, { calendar: ['nope', 'also nope'] }).actions.find((a) => a.id === 'add-calendar-rows');

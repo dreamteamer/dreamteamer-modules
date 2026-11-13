@@ -232,7 +232,7 @@ function unitApply(ctx, action, inputs = {}) {
 		if (action.state === 'done') return { ok: true, changed: [], message: `nothing to do — ${action.reason ?? 'already configured'}` };
 		if (action.id === 'add-calendar-rows') {
 			const r = apply({ root: ctx.root, action: action.id, expect: action.expect ?? action.preview?.expect, workspace: ctx.root, rows: action.inputs ?? [], env: moduleEnv(ctx) });
-			const skipped = action.preview?.skipped?.length ? `; row input ${action.preview.skipped.join(', ')} skipped: not calendar-id | company-id-or-mixed | account-email` : '';
+			const skipped = action.preview?.skipped?.length ? `; Row input ${action.preview.skipped.join(', ')} skipped: not calendar-id | company-id-or-mixed | account-email` : '';
 			return { ok: true, changed: r.changed ? ['.env'] : [], message: r.changed ? `wrote .env (${r.added} row(s) added, every other line kept${skipped})` : `nothing to do — ${r.reason}${skipped}` };
 		}
 		if (action.id === 'verify-calendar-access') {
