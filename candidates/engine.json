@@ -1,6 +1,6 @@
 {
 	"why": "The engine this branch is tested on before it is published (cr-dt-007, D60, D72). CI checks the repository out at this commit, packs it, and installs the tarball over node_modules/dreamteamer with scripts/use-candidate.mjs; the commit is the pin. Removed when the devDependency moves to the published version.",
 	"repository": "dreamteamer/dreamteamer",
-	"commit": "c53134e699edd7e507b8bb30e2b600ffaaa31f10",
+	"commit": "54ff7ffb99985d520638b0ac569f7e782413001a",
 	"version": "0.48.0"
 }
