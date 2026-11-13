@@ -128,7 +128,8 @@ export function apply(ctx, action, inputs = {}) {
 		if (r.status !== 0) return { ok: false, changed: [], message: redact(`${action.command.slice(0, 3).join(' ')} exited ${r.status ?? r.error?.message}: ${(r.stderr ?? '').trim().split('\n').at(-1) ?? ''}`) };
 		if (action.id === 'verify-cpu') {
 			const transcript = (r.stdout ?? '').trim();
-			if (!/dreamteamer/i.test(transcript)) return { ok: false, changed: [], message: `the clip transcribed to ${JSON.stringify(transcript.slice(0, 80))} — "dreamteamer" was not heard; the models or the run are not right` };
+			// the recognizer may split the made-up word ("dream teamer"); either spelling is the clip heard
+			if (!/dream\s*-?\s*teamer/i.test(transcript)) return { ok: false, changed: [], message: `the clip transcribed to ${JSON.stringify(transcript.slice(0, 80))} — "dreamteamer" was not heard; the models or the run are not right` };
 			fs.mkdirSync(ctx.receiptDir, { recursive: true });
 			const file = path.join(ctx.receiptDir, RECEIPT);
 			fs.writeFileSync(file, JSON.stringify({ what: 'the synthetic clip transcribed on the CPU', clip: 'lib/clip.wav', transcript, engine: 'cpu', at: new Date().toISOString().slice(0, 10), atMs: Date.now() }, null, 2) + '\n');
