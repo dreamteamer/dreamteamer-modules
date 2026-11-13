@@ -11,6 +11,7 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { ROOT } from './helpers/workspace.mjs';
+import { engineMeets } from 'dreamteamer/testing';
 
 const SCRIPT = path.join(ROOT, 'scripts', 'use-candidate.mjs');
 const made = [];
@@ -72,10 +73,19 @@ describe('use-candidate', () => {
 		assert.equal(r.status, 1);
 		assert.match(r.stderr, new RegExp(`depends on ${dep.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')}`));
 	});
-	test('in CI after the step: the engine in place is the candidate the folder holds', { skip: !process.env.DT_CANDIDATES && 'DT_CANDIDATES is not set — the step did not run here' }, () => {
+	test('in CI after the step: the engine in place is the candidate the folder holds, and it meets the pinned version', { skip: !process.env.DT_CANDIDATES && 'DT_CANDIDATES is not set — the step did not run here' }, () => {
 		const folder = path.resolve(process.env.DT_CANDIDATES);
 		const file = fs.readdirSync(folder).find((f) => f.endsWith('.tgz'));
 		const v = /^dreamteamer-(.+)\.tgz$/.exec(file)[1];
 		assert.equal(ENGINE_PKG.version, v);
+		const pin = path.join(ROOT, 'candidates', 'engine.json');
+		if (fs.existsSync(pin)) assert.ok(engineMeets(`>=${JSON.parse(fs.readFileSync(pin, 'utf8')).version}`), `the engine in place is ${ENGINE_PKG.version}, the pin says ${JSON.parse(fs.readFileSync(pin, 'utf8')).version}`);
+	});
+	// A pin with no candidate in place would run every floor-gated suite skipped on the published engine and
+	// read green — the one outcome D60 forbids. In CI, a pin means the step must have run.
+	test('in CI, a candidates/engine.json means the candidate step ran', { skip: !process.env.CI && 'not CI' }, () => {
+		if (!fs.existsSync(path.join(ROOT, 'candidates', 'engine.json'))) return;
+		assert.ok(process.env.DT_CANDIDATES, 'candidates/engine.json pins an engine but DT_CANDIDATES is unset — the CI step did not install it');
+		assert.ok(engineMeets(`>=${JSON.parse(fs.readFileSync(path.join(ROOT, 'candidates', 'engine.json'), 'utf8')).version}`));
 	});
 });

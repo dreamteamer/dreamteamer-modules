@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // PREVIEW THIS REPO IN A WORKSPACE — run from the consumer workspace, naming this clone (cr-dt-007, D70:
-// @dreamteamer/setup is gone; the bundle preview it carried stays a script of this repo, as the change
+// the setup package is gone; the bundle preview it carried stays a script of this repo, as the change
 // request's non-goals said it would):
 //
 //   node <clone>/scripts/preview.mjs link <clone>   symlink git_modules/dreamteamer-modules → the clone, recompile

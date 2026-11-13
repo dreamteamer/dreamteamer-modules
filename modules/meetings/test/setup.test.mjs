@@ -130,7 +130,8 @@ describe('add-calendar-rows — the value the env action names', () => {
 		assert.equal(step.state, 'ready');
 		assert.deepEqual(step.effects, [{ kind: 'workspace-files', detail: '.env (WORK_CALENDARS only; every other line is kept byte for byte)' }]);
 		assert.deepEqual(step.env, { WORK_CALENDARS: ROW });
-		assert.deepEqual(step.preview.adds, [ROW]);
+		assert.equal(step.preview.adds, 1);
+		assert.ok(!JSON.stringify({ ...step, env: undefined }).includes('dana@'), 'nothing but env carries a row');
 		const v = workspace({ env: `WORK_CALENDARS="${ROW}"\n` });
 		const again = rowsAction(plan({ root: v.root, env: {}, home: v.home, rows: [ROW] }));
 		assert.equal(again.state, 'done');
@@ -140,7 +141,7 @@ describe('add-calendar-rows — the value the env action names', () => {
 		const w = workspace({ env: `# private\nA=1\nWORK_CALENDARS="${ROW}\n# kept comment"\n\nZ='two words'  # trailing\n` });
 		const step = rowsAction(plan({ root: w.root, env: {}, home: w.home, rows: [ROW, ROW2] }));
 		assert.equal(step.preview.keeps, 1);
-		assert.deepEqual(step.preview.adds, [ROW2]);
+		assert.equal(step.preview.adds, 1);
 		assert.equal(value(plan({ root: w.root, env: {}, home: w.home, rows: [ROW, ROW2] })), `${ROW}\n# kept comment\n${ROW2}`);
 	});
 	test('no .env yet: the value is the rows alone', () => {

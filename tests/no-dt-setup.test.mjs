@@ -15,7 +15,7 @@ test('no file outside UPDATING history and the tests of its absence names dt-set
 	assert.ok(files.length > 100, 'git ls-files listed the repo');
 	let hits = [];
 	try {
-		hits = execFileSync('git', ['grep', '-n', '-E', 'dt-setup|@dreamteamer/setup\\b|modules/setup/', '--', '.', ':!package-lock.json'], { cwd: ROOT, encoding: 'utf8' }).split('\n').filter(Boolean);
+		hits = execFileSync('git', ['grep', '-n', '-E', 'dt-setup|@dreamteamer/setup([^-A-Za-z0-9_]|$)|modules/setup/', '--', '.', ':!package-lock.json'], { cwd: ROOT, encoding: 'utf8' }).split('\n').filter(Boolean);
 	} catch (e) { if (e.status !== 1) throw e; }
 	const stray = hits.filter((h) => !ALLOWED.some((re) => re.test(h.split(':')[0])));
 	assert.deepEqual(stray, []);

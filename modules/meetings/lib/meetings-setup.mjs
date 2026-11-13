@@ -120,10 +120,10 @@ function calendarRowsAction(root, env, inputs) {
 	}
 	if (conflicts.length) return { ...action, state: 'blocked', reason: `Conflict, nothing changed: ${conflicts.join('; ')}. Edit the existing row by hand if the company changed.` };
 	const skipped = bad.length ? { skipped: bad } : {};
-	if (!additions.length) return { ...action, env: { [KEY]: current }, state: 'done', reason: 'Every requested row is already configured.', preview: { adds: [], ...skipped } };
+	if (!additions.length) return { ...action, env: { [KEY]: current }, state: 'done', reason: 'Every requested row is already configured.', preview: { adds: 0, ...skipped } };
 	// the reason is printed after the engine's write: how many rows went in, and which inputs were left out
 	const note = `${additions.length} row(s) added, every other line kept${bad.length ? `; Row input ${bad.join(', ')} skipped: not calendar-id | company-id-or-mixed | account-email` : ''}`;
-	return { ...action, env: { [KEY]: [current, ...additions.map((r) => r.line)].filter(Boolean).join('\n') }, state: 'ready', reason: note, preview: { keeps: existing.rows.length, adds: additions.map((r) => r.line), ...skipped } };
+	return { ...action, env: { [KEY]: [current, ...additions.map((r) => r.line)].filter(Boolean).join('\n') }, state: 'ready', reason: note, preview: { keeps: existing.rows.length, adds: additions.length, ...skipped } };   // counts only: a row names an account, and a pending action is printed whole
 }
 
 /** What can be done next, each with its effects. Writes nothing and starts nothing. */

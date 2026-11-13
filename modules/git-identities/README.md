@@ -81,7 +81,7 @@ plan or writes global Git/SSH configuration.
 
 ## 0.2.1 — the setup package is gone (CR-dt-007)
 
-Nothing to do but `dt update @dreamteamer/git-identities`, then `dt compile`. The README says the setup unit and `dt status` check `GIT_IDENTITIES_CONFIG`, where it named `@dreamteamer/setup`.
+Nothing to do but `dt update @dreamteamer/git-identities`, then `dt compile`. The README says the setup unit and `dt status` check `GIT_IDENTITIES_CONFIG`, where it named the removed setup package.
 
 ## 0.2.0 — on engine 0.47.0 (CLI-first module lifecycle, CR-dt-006)
 

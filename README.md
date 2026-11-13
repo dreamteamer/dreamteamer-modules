@@ -167,7 +167,8 @@ uv run --project modules/recordings/skills/transcribing-recordings --with pytest
 
 To try an unreleased change in a real workspace, preview this clone there with
 `node <clone>/scripts/preview.mjs link <clone>` and `unlink` when done (one module alone: `dt install
-./<clone>/modules/<id>`) — a pre-commit guard refuses record commits
+./<clone>/modules/<id>`) — a workspace previewed by the removed setup package refuses every commit
+("linked bundle has no guard") until you run `preview.mjs link` once more, which rewrites its hook — a pre-commit guard refuses record commits
 while a preview is on, because a record may not depend on an unpublished schema.
 
 The house rules — no personal data (the synthetic cast is Dana Oren, Sam Diaz, Northwind, Harbor
