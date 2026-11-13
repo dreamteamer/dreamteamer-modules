@@ -1,6 +1,6 @@
 {
 	"name": "@dreamteamer/contacts",
-	"version": "0.1.1",
+	"version": "0.1.2",
 	"description": "People you deal with, each pointing at the company they work for and filled in from LinkedIn and the web.",
 	"license": "Apache-2.0",
 	"repository": {
@@ -26,7 +26,7 @@
 	],
 	"dreamteamer": {
 		"title": "Contacts",
-		"description": "People you deal with — `contacts`, each pointing at the `companies` record they work for, with an avatar from `assets`. The `scraping-contacts` skill and `/scrape-contact` fill a person in from LinkedIn, one batched container per run, and from web search. With `meetings` installed, each contact also carries the latest meeting they attended.",
+		"description": "People you deal with \u2014 `contacts`, each pointing at the `companies` record they work for, with an avatar from `assets`. The `scraping-contacts` skill and `/scrape-contact` fill a person in from LinkedIn, one batched container per run, and from web search. With `meetings` installed, each contact also carries the latest meeting they attended.",
 		"engine": ">=0.33.0",
 		"dependencies": [
 			"@dreamteamer/assets",
@@ -38,5 +38,9 @@
 		"env": [
 			"LINKEDIN_USER_AGENT"
 		]
+	},
+	"peerDependencies": {
+		"@dreamteamer/assets": ">=0.1.0",
+		"@dreamteamer/companies": ">=0.1.1"
 	}
 }

@@ -1,0 +1,109 @@
+# Setting up meetings
+
+This is the authoritative setup reference for the meetings module. An agent helping a person set up
+their workspace reads it from the installed package root (for example
+`node_modules/@dreamteamer/meetings/SETUP.md`) and follows it in the person's own language.
+
+Meeting records, screenshots and contact stamps work with **no setup at all**. Everything below is
+for the optional calendar sync (`/fetch-meetings`); the person may skip it.
+
+## Scope
+
+Owns: `WORK_CALENDARS` (which calendars count as work, their default company and the account that
+reads each), and the local prerequisites of the calendar reader `gcal.mjs`. Does not own: Google
+consent or the credential directory (the `google-workspace` module's SETUP.md, when installed),
+transcription (the `recordings` module), or the `FILES_FOLDER`/`INBOX_FOLDERS` variables (`dt-setup`).
+
+## Commands
+
+Run from the workspace root. The paths below are for a direct npm install. Elsewhere the script sits
+at another path: in `@dreamteamer/core` it is `node_modules/@dreamteamer/core/bin/meetings-setup.mjs`,
+and an inline or `git_modules` copy has its own location. Every `command` a plan returns already
+names the script that is actually installed, relative to the workspace root. **Run that argv as
+given**; never rebuild it from this table.
+
+| command | effect |
+|---|---|
+| `node node_modules/@dreamteamer/meetings/bin/setup.mjs inspect [--json]` | Local checks only. No write, no network, no credential contents read. |
+| `node node_modules/@dreamteamer/meetings/bin/setup.mjs plan [--row "<calendar> \| <company> \| <account>"]… [--json]` | Checks plus next actions with effects, preview and exact argv. Writes nothing; with rows it asks read-only Git whether `.env` is kept out of commits. |
+| `node node_modules/@dreamteamer/meetings/bin/setup.mjs apply add-calendar-rows --workspace <root> --expect <fingerprint> --row "…"… [--json]` | Merges the previewed rows into `.env`. The only write this module performs. |
+| `npx dt-setup doctor` | When `@dreamteamer/setup` is installed, its meetings rows come from this inspect. |
+
+Every JSON result names the workspace (`workspace.root`, `workspace.name`); check it is the one the
+person means before acting.
+
+## Inputs to ask for
+
+One row per work calendar: the calendar id, the default `companies` id (or `mixed` for a calendar
+holding several companies' meetings) and the account email that reads it. See the
+`fetching-meetings` skill for which calendars count as work.
+
+## Reading a check
+
+| status | meaning | what to say |
+|---|---|---|
+| `configured` | The value or file exists. **Not** proof the account can read the calendar. | configured, unverified |
+| `unverified` | Only the live step can establish it. Never inferred from `ok`. | unverified |
+| `missing` | An input or action can fix it. | needs input or action |
+| `blocked` | Waits on another row (for example, credentials cannot be counted without valid rows). | blocked, with the reason |
+
+`meetings.account-access` is always `unverified` in inspect. Check rows carry counts and line numbers,
+never a calendar id, account address or path.
+
+## Actions
+
+Run `plan` with the person's rows and show each action's `effects` and `preview` before asking for
+approval. Re-run `plan` after every action; state comes from disk, never from an earlier success.
+
+1. **`add-calendar-rows`** — `runBy: agent`. Effect: the workspace `.env` file only, and in it only
+   `WORK_CALENDARS`; every other line, comment and unknown key stays byte for byte. Rows already
+   present are skipped (`done` when nothing is new). A blank `WORK_CALENDARS=` (as `dt-setup setup`
+   writes it) is filled in, not treated as a conflict.
+
+   **Keeping `.env` out of Git.** The rows hold account addresses, so the action first establishes
+   that `.env` cannot be committed. The plan's `preview.vcs` shows which policy applied:
+   - **In a Git repository** (`vcs: git`), Git decides, through read-only `git ls-files` and
+     `git check-ignore`. `.env` must be untracked **and** effectively ignored, so a negation such as
+     `!.en*` that re-includes it is refused.
+   - **Outside Git** (`vcs: none`), the root `.gitignore` must name `.env` (or `/.env`) on a line of its
+     own and hold no `!` negation line at all, so a later `git init` cannot pick it up.
+   - **If Git cannot run** while a `.git` is present, the action is refused.
+
+   **It refuses, changing nothing, when:**
+   - `.env` could be committed (see above), is a symlink, or has temporary files from an interrupted
+     earlier write beside it (`.env.setup-*.tmp`). Those may hold addresses: review and delete them.
+   - `WORK_CALENDARS` is set in the process environment, which would shadow `.env`.
+   - the key is assigned twice, or an existing row is malformed.
+   - a requested row names an existing calendar and account with a different company. Edit that by hand.
+
+   **Applying.** `apply` needs the preview's `--expect` fingerprint. It asks Git again after writing the
+   new content to a temporary file and just before renaming it into place. A change found before
+   that last check stops it, removes the temporary file and asks for a fresh plan.
+   The limit: the last check and the rename are not one atomic step. An editor saving in that instant
+   can still be overwritten, and a killed process can leave its temporary file behind (which the next
+   plan reports).
+2. **Account consent** — the owner's step, owned elsewhere. With `@dreamteamer/google-workspace`
+   installed, follow its SETUP.md (`authorize-account`). Otherwise follow the one-time setup in the
+   `fetching-meetings` skill. This module never starts consent.
+3. **`verify-calendar-access`** — `runBy: owner`, live. Effects: network (token refresh at Google and
+   one calendar-list read per account). Command: `node .dreamteamer/skills/fetching-meetings/bin/gcal.mjs access`.
+   Evidence: every row reports `verdict: full`. The output names private calendars: report only how
+   many rows are `full`, `free-busy` or `absent`.
+
+The calendar reader reads `GOOGLE_CLIENT_SECRET_PATH` and `WORKSPACE_MCP_CREDENTIALS_DIR` from the
+**process environment** (defaults under `~/.config`), and `WORK_CALENDARS` from the environment or
+`.env`. Inspect looks exactly where the reader will.
+
+## Final report
+
+**ready** only after `verify-calendar-access` showed every row `full` in this session;
+**configured, unverified** when rows and credential files exist without a live check; **blocked** with
+the blocking row; **skipped** when the person declined calendar sync. Name the next action for each.
+
+## Limits
+
+- File presence proves nothing about consent, expiry, scopes or calendar access.
+- This package has no engine extension: the composed `@dreamteamer/core` already carries the one
+  extension entry its composition allows. Its setup runs through its own script (the plan's argv), and
+  its checks reach a board through `dt-setup`, not `dt doctor`.
+- `@dreamteamer/core` composes this reference into its own root `SETUP.md`, with core's script path.

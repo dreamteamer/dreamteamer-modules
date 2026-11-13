@@ -1,6 +1,6 @@
 {
 	"name": "@dreamteamer/core",
-	"version": "0.9.1",
+	"version": "0.10.0",
 	"description": "Every core noun from one install: users, companies, contacts, engagements, tasks, projects, meetings, files, assets, artifacts, sessions, metrics, workflows.",
 	"license": "Apache-2.0",
 	"type": "module",
@@ -34,6 +34,7 @@
 	"files": [
 		"README.md",
 		"UPDATING.md",
+		"SETUP.md",
 		"compose.json",
 		"collections",
 		"skills",
@@ -49,12 +50,15 @@
 		"extension": "./src/entry.js",
 		"title": "Core",
 		"description": "Every workspace's nouns, composed from the small official modules into one install: `users` with `teams`, `roles` and `responsibilities`; `companies`, `contacts`, `engagements`; `tasks`; `projects` with `decisions` and `risks`; `meetings` with recordings and docs; `files`; `assets` and `artifacts`; `sessions` and `metrics`; `workflows`. Install core OR the small modules, never both.",
-		"engine": ">=0.42.0",
+		"engine": ">=0.47.0",
 		"env": [
 			"LINKEDIN_USER_AGENT",
+			"TRANSCRIPTION_HOME",
 			"WORK_CALENDARS"
 		],
 		"vars": [
+			"FILES_FOLDER",
+			"INBOX_FOLDERS",
 			"SESSIONS_FOLDER"
 		],
 		"ignore": [
@@ -65,6 +69,20 @@
 			"rnd/products",
 			"rnd/user-journeys",
 			"rnd/user-stories"
+		],
+		"provides": [
+			"@dreamteamer/assets",
+			"@dreamteamer/companies",
+			"@dreamteamer/contacts",
+			"@dreamteamer/engagements",
+			"@dreamteamer/files",
+			"@dreamteamer/meeting-docs",
+			"@dreamteamer/meetings",
+			"@dreamteamer/projects",
+			"@dreamteamer/recordings",
+			"@dreamteamer/tasks",
+			"@dreamteamer/users",
+			"@dreamteamer/workflows"
 		]
 	}
 }

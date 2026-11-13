@@ -288,3 +288,7 @@ and `user-stories.product-design-doc` are renamed. Move the files, rename the tw
 An overlay of the old collection is renamed with it. Everything else in 0.2.0 is additive.
 
 Product planning includes `rnd/product-user-personas` (user roles, separate from research panels), `rnd/user-journeys` (typed cross-product journeys) and `rnd/change-requests` (explicit source-grounded change decisions). User stories retain their legacy journey handle and add typed journeys, personas, change requests and acceptance evidence.
+
+## 0.10.0 — on engine 0.47.0 (CLI-first module lifecycle, CR-dt-006)
+
+Nothing to do but `dt compile` after `dt update @dreamteamer/rnd` on dreamteamer 0.47.0 or later (the engine floor is `>=0.47.0`). New: the `wikis` and `notebooklm` setup units composed in; change requests carry a stage; `dt check` warns on a stage that is not the open gate.

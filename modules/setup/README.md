@@ -1,53 +1,29 @@
 # @dreamteamer/setup
 
-One board for every official dreamteamer module a workspace has. It reads which modules are installed,
-on every channel, and says for each optional capability whether it is ready, degraded or unavailable,
-with the fix on the same line.
+**A shim for one release.** The board this package drew — which optional capability of a workspace
+is ready, degraded or unavailable, with the fix on the row — and the in-workspace edits its `setup`
+verb made are the engine's own since dreamteamer 0.47: every module declares its setup as a **unit**,
+`dt status` is the board, `dt doctor` the rows, and `dt setup <unit>` the repair. Nothing here knows a
+module any more.
 
 ```bash
 npm install --save-dev @dreamteamer/setup
-npx dt-setup doctor      # the board; changes nothing, spends no network request
-npx dt-setup setup       # the in-workspace edits the board asks for, one question each
+npx dt-setup doctor      # → dt status (the setup section is the board); --strict → dt doctor --strict
+npx dt-setup setup       # → dt setup [<unit>] [--input id=value]… [--allow <kind>]…
 ```
 
-`setup` only edits files inside the workspace: it declares the template variables the installed
-modules use, adds their keys to `.env.example` (and creates `.env` with every value blank), and chains
-each installed module's record guard into `npm run check`. It never installs software and never logs
-in; it prints those steps for a person to run.
+Both print one line on stderr saying where they went, and run the engine's verb. On an engine before
+0.47 they refuse with the upgrade line rather than drawing a board the engine disagrees with.
 
 | verb | what it does |
 |---|---|
-| `dt-setup doctor [--strict] [--json]` | the board; exit 1 under `--strict` when anything is not READY |
-| `dt-setup setup` | the edits above, asking before each |
-| `dt-setup link <clone>` · `unlink` | preview a local clone of dreamteamer-modules in place of the published modules, as `git_modules/dreamteamer-modules`; a pre-commit guard refuses record commits while it is on |
+| `dt-setup doctor [--strict] [--json]` | `dt status` (and `dt doctor --strict` under `--strict`) |
+| `dt-setup setup …` | `dt setup …` |
+| `dt-setup link <clone>` · `unlink` | preview a local clone of dreamteamer-modules in place of the published modules, as `git_modules/dreamteamer-modules`; a pre-commit guard refuses record commits while it is on — unchanged, and staying |
 
-Nothing is required: every module reads and writes records with no setup at all. Engine `>=0.30.0`.
-Apache-2.0.
+A workspace that depends on this package can drop it once its scripts say `dt status` and
+`dt setup`. Engine `>=0.47.0`. Apache-2.0.
 
-### Optional account capabilities
+## 0.3.0 — on engine 0.47.0 (CLI-first module lifecycle, CR-dt-006)
 
-Installing `@dreamteamer/git-identities` adds a local identity diagnostic. Set
-`GIT_IDENTITIES_CONFIG` in the process environment to your private configuration file
-outside Git. The doctor checks the current repository against that configuration;
-it does not run SSH, create keys, change machine settings or prove remote access.
-
-Installing `@dreamteamer/google-workspace` adds its local prerequisite diagnostic.
-The doctor does not authorize accounts or test cloud access. Follow that module's
-onboarding instructions and authorize each selected account separately. Neither
-capability copies another person's credentials or automatically shares records.
-
-### Local evidence is not an end-to-end test
-
-The board reads process environment settings before workspace `.env` values. It checks configured
-folders locally without printing their values. Calendar rows need an explicit account, and credential
-file presence is reported separately from consent, token expiry, scopes and remote access; the latter
-remain unverified until an owner-authorized read test.
-
-Transcription diagnostics check both diarization files, a nonempty CPU model cache file and the external
-Python environment. These are prerequisite checks, not model-integrity or Python-import tests. Model
-setup advice exports the external cache and environment for the entire command chain. A short synthetic
-recording must still verify the selected engine; request `--engine metal` when GPU recognition is required.
-Diarization remains CPU. Doctor neither downloads weights nor installs tools nor starts authentication.
-
-The current board has central checks plus delegated account diagnostics. It is not yet a general
-module-owned setup-provider protocol; mounted-file diagnostics also appear in the engine's `doctor`.
+Nothing to do but `dt compile` after `dt update @dreamteamer/setup` on dreamteamer 0.47.0 or later (the engine floor is `>=0.47.0`). New: `dt-setup` is a one-release shim onto `dt status` and `dt setup`; the capabilities board and the ownership map are gone (every module declares its own setup unit; the engine draws the board).

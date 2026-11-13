@@ -1,6 +1,6 @@
 {
 	"name": "@dreamteamer/protocol",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "The host protocol a dreamteamer UI speaks: the written contract, its route table, and a contract suite any host runs",
 	"license": "Apache-2.0",
 	"type": "module",
@@ -38,7 +38,7 @@
 	],
 	"dreamteamer": {
 		"title": "Protocol",
-		"description": "The host protocol the dreamteamer UI speaks to whatever hosts it — the VS Code extension in-process, dt serve and dt web over HTTP: every route with its shapes and errors, the notifications, boot globals and host capabilities in PROTOCOL.md, a contract suite every host runs, and the shared handler that answers it. A library: no collection, no verb.",
+		"description": "The host protocol the dreamteamer UI speaks to whatever hosts it \u2014 the VS Code extension in-process, dt serve and dt web over HTTP: every route with its shapes and errors, the notifications, boot globals and host capabilities in PROTOCOL.md, a contract suite every host runs, and the shared handler that answers it. A library: no collection, no verb.",
 		"engine": ">=0.43.0"
 	},
 	"dependencies": {

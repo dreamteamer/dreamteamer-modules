@@ -233,7 +233,7 @@ describe('the 0.8.0 release, and every release after it', () => {
 		const pkg = JSON.parse(read('package.json'));
 		const [maj, min] = pkg.version.split('.').map(Number);
 		assert.ok(maj > 0 || min >= 8, `version ${pkg.version} is 0.8.0 or later`);
-		assert.equal(pkg.dreamteamer.engine, '>=0.38.0');
+		assert.equal(pkg.dreamteamer.engine, '>=0.47.0' /* CR-dt-006, D44: a composed module declares provides, a 0.47 key */);
 		assert.match(read('UPDATING.md'), /## 0\.8\.0 — rnd ships no session bindings/);
 		assert.match(read('UPDATING.md'), /migrate-session-bindings\.mjs --write/);
 		assert.match(read('README.md'), /## 0\.8\.0 — from 0\.7\.0/);

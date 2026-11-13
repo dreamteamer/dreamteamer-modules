@@ -70,3 +70,7 @@ New tasks default to `suggested`; scheduling explicitly sets `todo`. Existing-ta
 The bundled `/tasks/mine` view contains the experimental `@me` assignee placeholder. It requires an editor that explicitly resolves it; marketplace extension 0.23.3 does not. A workspace using the marketplace should disable this bundled view and generate a private ordinary UI view with a concrete user reference from its local environment. Missing or invalid identity should match no tasks. Identity selection is a presentation preference, not authentication.
 
 The `depends_on` task references expose a reverse `dependents` relation.
+
+## 0.3.3
+
+Engine floor `>=0.47.0` and the peer list mirrored for `dt install`'s closure; nothing else changes. `dt update @dreamteamer/tasks` then `dt compile`.

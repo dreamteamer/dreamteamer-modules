@@ -112,7 +112,10 @@ describe('the composition', () => {
 		assert.ok(origin.startsWith('./src/'), 'the origin\'s entry is the composed src/extension.js');
 		assert.ok(fs.existsSync(path.join(RND, origin)), 'the origin\'s entry still lands in src/');
 		assert.match(fs.readFileSync(path.join(RND, 'lib', 'extension.mjs'), 'utf8'), new RegExp(`from '\\.\\.${origin.slice(1).replace(/\./g, '\\.')}'`), 'the wrapper imports the origin\'s entry');
-		assert.ok(!originPkg('wikis').dreamteamer.extension, 'exactly one origin is an extension');
+		// wikis is an extension too since CR-dt-006 (its setup unit); rnd's own entry activates its unit file, not its entry
+		assert.equal(originPkg('wikis').dreamteamer.extension, './lib/extension.mjs');
+		assert.ok(fs.existsSync(path.join(RND, 'lib', 'wikis-setup.mjs')), 'wikis\' unit is composed into lib/');
+		assert.match(fs.readFileSync(path.join(RND, 'lib', 'extension.mjs'), 'utf8'), /from '\.\/wikis-setup\.mjs'/, 'the wrapper activates wikis\' unit');
 		for (const k of ['bin', 'src', 'lib', 'collections', 'skills', 'commands', 'command-bindings', 'agents', 'compose.json']) assert.ok(manifest.files.includes(k), `files lacks ${k}`);
 		assert.deepEqual(manifest.bin, { 'dt-wiki': 'bin/wikis-wiki.mjs', 'dt-notebook': 'bin/notebooklm-notebook.mjs', 'dt-prototype': 'bin/dt-prototype.mjs' });
 		for (const target of Object.values(manifest.bin)) assert.ok(fs.existsSync(path.join(RND, target)), `${target} is not shipped`);

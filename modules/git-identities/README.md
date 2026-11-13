@@ -78,3 +78,7 @@ Git conditional includes/overrides in isolated temporary homes. No network or re
 For optional `@dreamteamer/setup` integration, set `GIT_IDENTITIES_CONFIG` to this private JSON
 file outside Git. The setup doctor checks the current workspace against it; it never applies the
 plan or writes global Git/SSH configuration.
+
+## 0.2.0 — on engine 0.47.0 (CLI-first module lifecycle, CR-dt-006)
+
+Nothing to do but `dt compile` after `dt update @dreamteamer/git-identities` on dreamteamer 0.47.0 or later (the engine floor is `>=0.47.0`). New: the `git-identities` setup unit (`dt setup git-identities`).

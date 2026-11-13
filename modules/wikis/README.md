@@ -60,3 +60,7 @@ either: `dt-wiki add … --kind url` writes a `pending` stub and says so.
 
 **There is no `dt-wiki delete`.** Removing a corpus is a `rm -r` a person runs while looking at the
 path, not a verb a script can reach by accident.
+
+## 0.2.0 — on engine 0.47.0 (CLI-first module lifecycle, CR-dt-006)
+
+Nothing to do but `dt compile` after `dt update @dreamteamer/wikis` on dreamteamer 0.47.0 or later (the engine floor is `>=0.47.0`). New: the `wikis` setup unit (`dt setup wikis`): qmd on PATH, with `--allow machine --allow network` to install it.

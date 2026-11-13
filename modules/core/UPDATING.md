@@ -11,6 +11,15 @@ npx dreamteamer check
 
 ---
 
+## 0.10.0 — the CLI-first module lifecycle (CR-dt-006)
+
+Nothing to do but `dt update @dreamteamer/core` on dreamteamer 0.47.0 or later, then `dt compile`. What
+changes is how core's modules are SET UP: each composed module's setup unit is driven by the engine —
+`dt status` shows one honest line per unit, `dt setup <unit>` resumes, repairs, verifies or signs in,
+and `dt install` records the inputs you give in `.env`. core declares `provides` for the modules it
+composes, so installing one of them beside core is refused with the reason. `@dreamteamer/setup`'s
+board is gone; `dt-setup` is a one-release shim onto `dt status` and `dt setup`.
+
 ## 0.9.1 — compact task navigation by default
 
 Run `dt compile`, then `dt check`. Task records, IDs, fields and all lifecycle values are unchanged.

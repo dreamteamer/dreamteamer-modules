@@ -1,7 +1,7 @@
 {
 	"name": "@dreamteamer/wikis",
-	"version": "0.1.2",
-	"description": "Local wikis for a dreamteamer workspace — corpora of markdown committed in the repo, grepped with nothing installed and asked by meaning once qmd is.",
+	"version": "0.2.0",
+	"description": "Local wikis for a dreamteamer workspace \u2014 corpora of markdown committed in the repo, grepped with nothing installed and asked by meaning once qmd is.",
 	"license": "Apache-2.0",
 	"type": "module",
 	"repository": {
@@ -23,9 +23,10 @@
 	},
 	"files": [
 		"README.md",
+		"SETUP.md",
 		"bin",
-		"lib",
 		"collections",
+		"lib",
 		"skills"
 	],
 	"dependencies": {
@@ -34,9 +35,10 @@
 	"dreamteamer": {
 		"title": "Wikis",
 		"description": "Local wikis: corpora of markdown committed in the repo, grepped with nothing installed and asked by meaning once qmd is. A `wikis` record points at a folder of sources; a source nothing has fetched yet is a stub marked `completeness: pending`, and `dt-wiki incomplete` exits 1 while any remain. `dt-wiki pull` mirrors a NotebookLM notebook into a folder; `ask` prints file:line, never an answer.",
-		"engine": ">=0.33.0",
+		"engine": ">=0.47.0",
 		"peer_collections": [
 			"notebooks"
-		]
+		],
+		"extension": "./lib/extension.mjs"
 	}
 }

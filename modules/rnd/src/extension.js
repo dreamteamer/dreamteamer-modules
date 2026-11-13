@@ -9,9 +9,11 @@ import { render } from './harness.js';
 
 export const apiVersion = 1;
 
+import { SETUP_UNIT } from '../lib/notebooklm-setup.mjs';
 export default function activate(dt) {
 	bind(dt);
 	return {
+		setup: [SETUP_UNIT],
 		commands: { notebooklm: { usage: USAGE, run: (ws, argv) => notebooklmCommand(ws, argv) } },
 		harnesses: { notebooklm: render },
 	};

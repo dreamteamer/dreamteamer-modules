@@ -47,8 +47,11 @@ describe('a module\'s own extension entry beside an origin\'s', () => {
 			'package.json': fs.readFileSync(path.join(rnd, 'package.json'), 'utf8'),
 			'lib/extension.mjs': 'export default () => ({ check: () => [] });\n',
 		});
+		// the first extension origin in rnd's order is wikis (a setup unit) — forgotten, it is named with the unit file it could import instead
+		assert.throws(() => compose('rnd', root), /rnd's own extension \.\/lib\/extension\.mjs does not import wikis's entry \(\.\/wikis-extension\.mjs\) or its setup unit \(\.\/wikis-setup\.mjs\)/);
+		fs.writeFileSync(path.join(root, 'lib/extension.mjs'), "import './wikis-setup.mjs';\nexport default () => ({ check: () => [] });\n");
 		assert.throws(() => compose('rnd', root), /rnd's own extension \.\/lib\/extension\.mjs does not import notebooklm's entry \(\.\.\/src\/extension\.js\)/);
-		fs.writeFileSync(path.join(root, 'lib/extension.mjs'), "import activate from '../src/extension.js';\nexport default activate;\n");
+		fs.writeFileSync(path.join(root, 'lib/extension.mjs'), "import './wikis-setup.mjs';\nimport activate from '../src/extension.js';\nexport default activate;\n");
 		assert.equal(compose('rnd', root).manifest.dreamteamer.extension, './lib/extension.mjs');
 	});
 	test('every composed module that names its own entry composes, and its manifest names that entry', () => {

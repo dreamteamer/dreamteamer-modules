@@ -21,3 +21,7 @@ npx dt add engagements --name "Northwind rollout" --company companies/northwind
 
 A closed engagement says how it ended in `outcome`: `delivered`, `lost` or `dropped`. The store
 refuses an `outcome` on an open engagement and a `closed` one without it.
+
+## 0.1.2
+
+Engine floor `>=0.47.0` and the peer list mirrored for `dt install`'s closure; nothing else changes. `dt update @dreamteamer/engagements` then `dt compile`.

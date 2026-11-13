@@ -16,9 +16,10 @@ import os from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-export const ENGINE_DIR = fs.realpathSync(process.env.DT_ENGINE_DIR
-	? path.resolve(process.env.DT_ENGINE_DIR)
-	: path.join(ROOT, 'node_modules', 'dreamteamer'));
+// the engine under test is the one workspace.mjs resolves: DT_CANDIDATES (a hash-verified candidate
+// tarball), DT_ENGINE_DIR (a checkout) or this repo's devDependency — one resolution for both helpers
+import { ENGINE } from './workspace.mjs';
+export const ENGINE_DIR = fs.realpathSync(ENGINE);
 export const BIN = path.join(ENGINE_DIR, 'bin', 'dreamteamer.js');
 /** The engine's public API — what `activate(dt)` is handed in a real workspace. */
 export const api = await import(pathToFileURL(path.join(ENGINE_DIR, 'src', 'api.js')).href);
@@ -63,16 +64,15 @@ function baseWorkspace() {
 		git(dir, ['init', '-q']);
 		git(dir, ['config', 'user.email', 'test@example.invalid']);
 		git(dir, ['config', 'user.name', 'dreamteamer test']);
-		const r = spawnSync(process.execPath, [BIN, 'init'], { cwd: dir, env: GIT_ENV, encoding: 'utf8', timeout: SPAWN_TIMEOUT_MS, killSignal: 'SIGKILL' });
-		if (r.status !== 0) throw new Error(`fixture init failed:\n${r.stdout}\n${r.stderr}`);
+		// the engine declared (a file: spec) and linked BEFORE init — init 0.47 installs a missing engine
+		// from the registry, compiles and commits; declared and present, it runs no npm and stays offline
 		fs.mkdirSync(path.join(dir, 'node_modules'), { recursive: true });
 		fs.symlinkSync(ENGINE_DIR, path.join(dir, 'node_modules', 'dreamteamer'), 'dir');
-		const pkgFile = path.join(dir, 'package.json');
-		const pkg = JSON.parse(fs.readFileSync(pkgFile, 'utf8'));
-		pkg.dependencies = { ...pkg.dependencies, dreamteamer: '*' };
-		fs.writeFileSync(pkgFile, JSON.stringify(pkg, null, '\t') + '\n');
+		fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ name: 'ws', private: true, version: '0.0.1', dependencies: { dreamteamer: `file:${ENGINE_DIR}` } }, null, '\t') + '\n');
+		const r = spawnSync(process.execPath, [BIN, 'init'], { cwd: dir, env: GIT_ENV, encoding: 'utf8', timeout: SPAWN_TIMEOUT_MS, killSignal: 'SIGKILL' });
+		if (r.status !== 0) throw new Error(`fixture init failed:\n${r.stdout}\n${r.stderr}`);
 		git(dir, ['add', '-A']);
-		git(dir, ['commit', '-qm', 'fixture: init']);
+		if (git(dir, ['status', '--porcelain'])) git(dir, ['commit', '-qm', 'fixture: init']);
 		fs.writeFileSync(path.join(staging, 'ready'), 'ok');
 		try { fs.renameSync(staging, holder); } catch (e) {
 			if (!['ENOTEMPTY', 'EEXIST', 'EPERM'].includes(e.code)) throw e;

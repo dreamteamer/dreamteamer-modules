@@ -6,8 +6,9 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
-import { ROOT, CORE, compose, copiesOf, rewrite, destOf, filesEntry, assertOwnEntry } from '../../../scripts/compose-core.mjs';
+import { ROOT, CORE, compose, copiesOf, rewrite, destOf, filesEntry, assertOwnEntry, setupUnitsOf } from '../../../scripts/compose-core.mjs';
 
 const spec = JSON.parse(fs.readFileSync(path.join(CORE, 'compose.json'), 'utf8'));
 
@@ -71,11 +72,16 @@ describe('the composition', () => {
 		assert.ok(manifest.dreamteamer.vars.includes('SESSIONS_FOLDER'));
 		for (const o of spec.origins) assert.ok(!(JSON.parse(fs.readFileSync(path.join(ROOT, 'modules', o, 'package.json'), 'utf8')).dreamteamer.vars ?? []).includes('SESSIONS_FOLDER'), `${o} declares SESSIONS_FOLDER already`);
 	});
-	test("compose.json's own engine floor raises the manifest's above the origins' — core's `next` contribution (a record's sessions in dt next) needs it", () => {
+	test("compose.json's own engine floor is the manifest's, and no origin floors higher — core's entry (setup units since 0.47, `next` since 0.42) needs it", () => {
 		assert.ok(spec.engine, 'compose.json declares an engine floor of its own');
 		assert.equal(manifest.dreamteamer.engine, spec.engine);
+		const floor = (r) => (r ?? '>=0.0.0').replace(/^>=/, '').split('.').map(Number);
 		const dts = spec.origins.map((o) => JSON.parse(fs.readFileSync(path.join(ROOT, 'modules', o, 'package.json'), 'utf8')).dreamteamer);
-		for (const d of dts) assert.notEqual(d.engine, spec.engine, `${spec.engine} is an origin's floor already — core's own would be redundant`);
+		for (const d of dts) {
+			const [a, b] = [floor(d.engine), floor(spec.engine)];
+			const higher = a[0] > b[0] || (a[0] === b[0] && (a[1] > b[1] || (a[1] === b[1] && a[2] > b[2])));
+			assert.ok(!higher, `an origin floors at ${d.engine}, above core's own ${spec.engine} — raise compose.json's engine`);
+		}
 	});
 	test("compose.json's own extension entry is the manifest's, it is no copy, and the origin's entry still ships beside it", () => {
 		assert.equal(spec.extension, './src/entry.js');
@@ -88,6 +94,51 @@ describe('the composition', () => {
 		// the one rule every composed module's own entry meets (scripts/compose-core.mjs assertOwnEntry)
 		assert.equal(assertOwnEntry(CORE, 'core', spec.extension, 'files', './src/extension.js'), './extension.js');
 	});
+	test('the origins\' setup references compose into one shipped root SETUP.md, with core\'s own script paths', () => {
+		const setup = copies.get('SETUP.md');
+		assert.ok(setup, 'meetings ships SETUP.md, so core must carry one');
+		// every origin that ships a setup reference, in origin order — the list grows as origins gain units
+		const withRef = spec.origins.filter((o) => fs.existsSync(path.join(ROOT, 'modules', o, 'SETUP.md')));
+		assert.equal(setup.from, withRef.map((o) => `${o}/SETUP.md`).join(' + '));
+		assert.ok(withRef.includes('meetings') && withRef.includes('recordings') && withRef.includes('files'));
+		assert.ok(manifest.files.includes('SETUP.md'), 'listed in files, so npm packs it');
+		const text = setup.bytes.toString('utf8');
+		assert.match(text, /^# Setup — @dreamteamer\/core\n/);
+		assert.match(text, /<!-- composed from meetings -->/);
+		assert.match(text, /node_modules\/@dreamteamer\/core\/bin\/meetings-setup\.mjs/);
+		assert.doesNotMatch(text, /@dreamteamer\/meetings\b/);
+		assert.ok(fs.existsSync(path.join(CORE, 'bin', 'meetings-setup.mjs')));
+	});
+	test('a composed module that authors its own SETUP.md beside an origin\'s is refused', () => {
+		const root = fs.mkdtempSync(path.join(os.tmpdir(), 'compose-setup-'));
+		try {
+			fs.writeFileSync(path.join(root, 'compose.json'), JSON.stringify({ origins: ['meetings', 'contacts', 'companies', 'users', 'assets'], files: {} }));
+			fs.writeFileSync(path.join(root, 'SETUP.md'), '# hand-written\n');
+			assert.throws(() => compose('northwind', root), /authors its own SETUP\.md/);
+		} finally { fs.rmSync(root, { recursive: true, force: true }); }
+	});
+	test('the manifest declares provides — every origin\'s package name — so dt install refuses a duplicate both ways', () => {
+		const { manifest, spec } = compose('core');
+		assert.deepEqual(manifest.dreamteamer.provides, spec.origins.map((o) => `@dreamteamer/${o}`).sort());
+		assert.equal(manifest.dreamteamer.provides.length, 12);
+	});
+
+	test('a setup unit origin is activated through its unit file; every origin\'s extension entry is copied under a prefixed name', () => {
+		// destOf: two origins' lib/extension.mjs no longer collide, and core activates none of them
+		assert.equal(destOf('meetings', 'lib/extension.mjs'), 'lib/meetings-extension.mjs');
+		assert.equal(destOf('meetings', 'lib/meetings-setup.mjs'), 'lib/meetings-setup.mjs');
+		// setupUnitsOf: an origin counts only when lib/<origin>-setup.mjs exports SETUP_UNIT (none of core's today)
+		assert.deepEqual(setupUnitsOf(spec.origins), spec.setup_units ?? []);
+		// assertOwnEntry: the module's own entry may import the origin's unit file instead of its entry
+		const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'dtm-entry-'));
+		fs.mkdirSync(path.join(tmp, 'src'), { recursive: true });
+		fs.writeFileSync(path.join(tmp, 'src', 'entry.js'), "import { SETUP_UNIT } from '../lib/alpha-setup.mjs';\nexport default () => ({ setup: [SETUP_UNIT] });\n");
+		assert.equal(assertOwnEntry(tmp, 'both', './src/entry.js', 'alpha', 'lib/alpha-extension.mjs', ['lib/alpha-setup.mjs']), '../lib/alpha-setup.mjs');
+		assert.throws(() => assertOwnEntry(tmp, 'both', './src/entry.js', 'beta', 'lib/beta-extension.mjs', []), /does not import beta's entry \(\.\.\/lib\/beta-extension\.mjs\)/);
+		assert.throws(() => assertOwnEntry(tmp, 'both', './src/entry.js', 'beta', 'lib/beta-extension.mjs', ['lib/beta-setup.mjs']), /or its setup unit \(\.\.\/lib\/beta-setup\.mjs\)/);
+		fs.rmSync(tmp, { recursive: true, force: true });
+	});
+
 	test('--check exits 0 on the committed state', async () => {
 		const { main } = await import('../../../scripts/compose-core.mjs');
 		const log = console.log; console.log = () => {};

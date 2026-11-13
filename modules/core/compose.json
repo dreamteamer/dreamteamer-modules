@@ -17,7 +17,7 @@
 	"title": "Core",
 	"description": "Every core noun from one install: users, companies, contacts, engagements, tasks, projects, meetings, files, assets, artifacts, sessions, metrics, workflows.",
 	"orientation": "Every workspace's nouns, composed from the small official modules into one install: `users` with `teams`, `roles` and `responsibilities`; `companies`, `contacts`, `engagements`; `tasks`; `projects` with `decisions` and `risks`; `meetings` with recordings and docs; `files`; `assets` and `artifacts`; `sessions` and `metrics`; `workflows`. Install core OR the small modules, never both.",
-	"engine": ">=0.42.0",
+	"engine": ">=0.47.0",
 	"vars": [
 		"SESSIONS_FOLDER"
 	],
@@ -26,9 +26,17 @@
 			"from": "meetings/bin/migrate-attendees.mjs",
 			"hash": "sha256:7ba0aa85605f7ae740874a91172c6075a362c65c22b58dcd2c1226b431919282"
 		},
+		"bin/meetings-setup.mjs": {
+			"from": "meetings/bin/setup.mjs",
+			"hash": "sha256:4c54cb78de0a7dab9a92dae5ce0452e1c8935955960aa4fdca6ed1ee72696e5c"
+		},
 		"bin/projects-check-records.mjs": {
 			"from": "projects/bin/check-records.mjs",
 			"hash": "sha256:be5f797d75b305153883f4124c6021ea205727dd0b9e9760797ea2a322b55d4f"
+		},
+		"bin/recordings-transcribe.mjs": {
+			"from": "recordings/bin/transcribe.mjs",
+			"hash": "sha256:a35455cac62ead219088b474d6ef9cdce49385e55486822d513a8524ca91ba58"
 		},
 		"bin/tasks-migrate-lanes-to-tags.mjs": {
 			"from": "tasks/bin/migrate-lanes-to-tags.mjs",
@@ -278,9 +286,41 @@
 			"from": "workflows/data/workflows/customer-factory.workflow.md",
 			"hash": "sha256:99e559688ba917289e6021fac93f1cba9b0b5affa863be2cad0de8ced9d8e712"
 		},
+		"lib/clip.wav": {
+			"from": "recordings/lib/clip.wav",
+			"hash": "sha256:3097e677ba18bbc89d3381d90ace13a2fb465c8b644138fce28ad383be8a6e76"
+		},
+		"lib/files-setup.mjs": {
+			"from": "files/lib/files-setup.mjs",
+			"hash": "sha256:aa3dc33ba834aa03c19072a8506c17c24cedff2408af84b5a66689c3d2f5b036"
+		},
+		"lib/meetings-extension.mjs": {
+			"from": "meetings/lib/extension.mjs",
+			"hash": "sha256:c140b5282b632752bf2ed1b1849b457c02a9798ae7111bf324572586222b7ad7"
+		},
+		"lib/meetings-setup.mjs": {
+			"from": "meetings/lib/meetings-setup.mjs",
+			"hash": "sha256:1344456b702f760313c018ef2a88e78db356b4998c82c5a58cfa38c17b5a8466"
+		},
+		"lib/recordings-extension.mjs": {
+			"from": "recordings/lib/extension.mjs",
+			"hash": "sha256:6de7b6d6b108187c105eeac07ba25456e087bc6d6c276cf5fcee433d42998085"
+		},
+		"lib/recordings-setup.mjs": {
+			"from": "recordings/lib/recordings-setup.mjs",
+			"hash": "sha256:7bafb05028f6bc4f65acea701354432f934d6d2851b874038bcdabe372edf900"
+		},
+		"lib/setup-kit.mjs": {
+			"from": "meetings/lib/setup-kit.mjs",
+			"hash": "sha256:eb312ff8eb128f092e5297e154a275208ba2e03a2c98a7f0954c849ae4154bf1"
+		},
 		"lib/workspace-root.mjs": {
 			"from": "tasks/lib/workspace-root.mjs",
 			"hash": "sha256:4b55f5ee40052d49eb8bb2854dfccba39502d11061f06f8965a4a19aaf503007"
+		},
+		"SETUP.md": {
+			"from": "meetings/SETUP.md + recordings/SETUP.md + files/SETUP.md",
+			"hash": "sha256:f67de05e699875e7b1278c4d201f0a97042d6b863d30349c1decfbaf77d5406d"
 		},
 		"skills/analyzing-meetings/SKILL.md": {
 			"from": "meeting-docs/skills/analyzing-meetings/SKILL.md",
@@ -364,7 +404,7 @@
 		},
 		"skills/transcribing-recordings/SKILL.md": {
 			"from": "recordings/skills/transcribing-recordings/SKILL.md",
-			"hash": "sha256:25a5bb18a0c4b5eae78081c6aa33cb6244a5e8ee4a6c62da38958e14728418c1"
+			"hash": "sha256:c78d2eed23b98b017fc50c99f3606de938401efbd84fa7b8f1f4b6f89c845c13"
 		},
 		"skills/transcribing-recordings/text_source.py": {
 			"from": "recordings/skills/transcribing-recordings/text_source.py",
@@ -404,7 +444,7 @@
 		},
 		"src/extension.js": {
 			"from": "files/src/extension.js",
-			"hash": "sha256:49f2557e80c0aef25ead7cd7302002eb2aee16a1f40c6abcff9503f94c1f3445"
+			"hash": "sha256:54ba75093273b28f058a344b7bd9f9af20f209e989fc53a0857354af32097937"
 		},
 		"src/preview.js": {
 			"from": "files/src/preview.js",
@@ -498,5 +538,10 @@
 			"from": "tasks/ui-views/tasks-suggested.ui-view.yaml",
 			"hash": "sha256:a6f763bdebd826a2dfd2033cbd09554ce29c355c02c7a2de6b683137241e0f98"
 		}
-	}
+	},
+	"setup_units": [
+		"meetings",
+		"recordings",
+		"files"
+	]
 }

@@ -19,7 +19,7 @@ npx dreamteamer compile
 | `@dreamteamer/companies` | the company a call is with |
 | `@dreamteamer/users` | the people of yours in the room |
 | `@dreamteamer/assets` | contacts and companies need it for avatars and logos |
-| a Google OAuth desktop client, each account authenticated through `workspace-mcp`, and `WORK_CALENDARS` in `.env` | calendar sync only (`fetching-meetings` has the setup); writing meetings by hand works without them |
+| a Google OAuth desktop client, each account authenticated through `workspace-mcp`, and `WORK_CALENDARS` in `.env` | calendar sync only (`SETUP.md` has the setup steps, `fetching-meetings` the details); writing meetings by hand works without them |
 | `INBOX_FOLDERS` and `FILES_FOLDER` declared | filing screenshots only |
 
 Three people fields, modelled after the source: `attendees` is the Calendar API's attendee list as
@@ -54,3 +54,7 @@ A meeting's `privacy` is `open` or `restricted`. A `restricted` meeting holds a 
 material, so the meeting-docs pipeline stops after transcription. An export cannot withhold that one
 record: `sensitive` applies to a whole collection or a whole field, never to a record, so an exporter
 has to read `privacy` itself, and marking `meetings` sensitive would withhold every meeting.
+
+## 0.2.0 — on engine 0.47.0 (CLI-first module lifecycle, CR-dt-006)
+
+Nothing to do but `dt compile` after `dt update @dreamteamer/meetings` on dreamteamer 0.47.0 or later (the engine floor is `>=0.47.0`). New: the `meetings` setup unit: `--input 'calendar=<id> | <company or mixed> | <account>'` (repeatable; a mixed batch merges the valid rows and names the malformed) merges into `.env`; `dt setup meetings --verify --authorize` runs the live check and writes a receipt only when every calendar answers `full`.

@@ -18,3 +18,7 @@ import { ROUTES, matchRoute } from '@dreamteamer/protocol';
 matchRoute('GET', '/collections/lab%2Fsamples/records/2026/11/a');
 // → { route: { id: 'record-read', … }, params: { collection: 'lab/samples', id: '2026/11/a' } }
 ```
+
+## 0.1.1
+
+Engine floor `>=0.47.0` and the peer list mirrored for `dt install`'s closure; nothing else changes. `dt update @dreamteamer/protocol` then `dt compile`.

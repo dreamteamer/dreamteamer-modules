@@ -19,9 +19,47 @@ import path from 'node:path';
 import assert from 'node:assert';
 import { execFileSync, spawnSync } from 'node:child_process';
 
+import { createHash } from 'node:crypto';
+
 export const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', '..');
 export const MODULES = path.join(ROOT, 'modules');
-export const ENGINE = process.env.DT_ENGINE_DIR ? path.resolve(process.env.DT_ENGINE_DIR) : path.join(ROOT, 'node_modules', 'dreamteamer');
+
+// THE CANDIDATE ENGINE — `DT_CANDIDATES` names a folder holding `dreamteamer-<version>.tgz` and a
+// `SHA256SUMS` (the `shasum -c` format). The tarball is verified against the listed hash and extracted
+// ONCE per hash into a temp folder named by it that ENGINE then points at (every test process shares it); its five runtime dependencies are linked
+// from this repo's install, so no registry is asked. A missing file or a wrong hash is a REFUSAL at
+// import, never a silent fall back to the devDependency — a green suite on the wrong engine proves
+// nothing. `DT_ENGINE_DIR` keeps meaning a checkout; the two are exclusive.
+function candidateEngine(dir) {
+	const folder = path.resolve(dir);
+	const tgz = fs.existsSync(folder) ? fs.readdirSync(folder).filter((f) => /^dreamteamer-\d+\.\d+\.\d+.*\.tgz$/.test(f)).sort() : [];
+	if (tgz.length !== 1) throw new Error(`DT_CANDIDATES=${folder}: expected exactly one dreamteamer-<version>.tgz there (found ${tgz.length ? tgz.join(', ') : 'none'})`);
+	const file = path.join(folder, tgz[0]);
+	const sums = path.join(folder, 'SHA256SUMS');
+	if (!fs.existsSync(sums)) throw new Error(`DT_CANDIDATES=${folder}: no SHA256SUMS beside ${tgz[0]} — refusing to test an unverified candidate`);
+	const listed = fs.readFileSync(sums, 'utf8').split('\n').map((l) => /^([0-9a-f]{64})\s+\*?(.+)$/.exec(l.trim())).filter(Boolean).find((m) => m[2] === tgz[0])?.[1];
+	const actual = createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+	if (!listed) throw new Error(`DT_CANDIDATES=${folder}: SHA256SUMS has no line for ${tgz[0]}`);
+	if (listed !== actual) throw new Error(`DT_CANDIDATES=${folder}: ${tgz[0]} is ${actual}, SHA256SUMS says ${listed} — refusing to test a candidate that is not the one hashed`);
+	// extracted ONCE per hash into a folder named by it, shared by every test process (a suite is ~190
+	// of them); a process that finds it there reuses it, and two extracting at once settle by rename
+	const keyed = path.join(os.tmpdir(), `dtm-engine-${actual.slice(0, 16)}`);
+	const engine = path.join(keyed, 'package');
+	if (fs.existsSync(path.join(engine, 'package.json'))) return engine;
+	const staging = fs.mkdtempSync(path.join(os.tmpdir(), 'dtm-engine-staging-'));
+	execFileSync('tar', ['-xzf', file, '-C', staging]);
+	const deps = JSON.parse(fs.readFileSync(path.join(staging, 'package', 'package.json'), 'utf8')).dependencies ?? {};
+	fs.mkdirSync(path.join(staging, 'package', 'node_modules'), { recursive: true });
+	for (const dep of Object.keys(deps)) {
+		const from = path.join(ROOT, 'node_modules', dep);
+		if (!fs.existsSync(from)) { fs.rmSync(staging, { recursive: true, force: true }); throw new Error(`the candidate engine depends on ${dep}, which this repo's npm install does not hold — run npm install`); }
+		fs.symlinkSync(from, path.join(staging, 'package', 'node_modules', dep), 'dir');
+	}
+	try { fs.renameSync(staging, keyed); }
+	catch (error) { fs.rmSync(staging, { recursive: true, force: true }); if (!fs.existsSync(path.join(engine, 'package.json'))) throw error; }
+	return engine;
+}
+export const ENGINE = process.env.DT_CANDIDATES ? candidateEngine(process.env.DT_CANDIDATES) : process.env.DT_ENGINE_DIR ? path.resolve(process.env.DT_ENGINE_DIR) : path.join(ROOT, 'node_modules', 'dreamteamer');
 export const BIN = path.join(ENGINE, 'bin', 'dreamteamer.js');
 export const SCOPE = '@dreamteamer';
 
@@ -32,7 +70,8 @@ const GIT_ENV = {
 };
 
 /** Run the engine in `cwd`, with a hard timer: a hang is a failure with a message, never a stuck suite. */
-export const run = (cwd, args) => spawnSync(process.execPath, [BIN, ...args], { cwd, encoding: 'utf8', env: GIT_ENV, timeout: 60_000 });
+/** Run the engine in `cwd`, with a hard timer; `env` lays extra variables (a PATH of stand-ins, a unit's keys) over the fixture's. */
+export const run = (cwd, args, env = {}) => spawnSync(process.execPath, [BIN, ...args], { cwd, encoding: 'utf8', env: { ...GIT_ENV, ...env }, timeout: 60_000 });
 
 export const moduleIds = () => fs.readdirSync(MODULES).filter((m) => fs.existsSync(path.join(MODULES, m, 'package.json'))).sort();
 export const pkgOf = (m) => JSON.parse(fs.readFileSync(path.join(MODULES, m, 'package.json'), 'utf8'));
@@ -84,6 +123,13 @@ export function packed(m) {
 	const file = path.join(dest, JSON.parse(out)[0].filename);
 	tarballs.set(m, file);
 	return file;
+}
+
+/** Pack several modules into ONE folder — what `dt install --from <dir>` reads; returns the folder. */
+export function packedInto(dir, ...names) {
+	fs.mkdirSync(dir, { recursive: true });
+	for (const m of names) fs.copyFileSync(packed(m), path.join(dir, path.basename(packed(m))));
+	return dir;
 }
 
 /** The files a module's tarball ships, as paths relative to the package root. */
