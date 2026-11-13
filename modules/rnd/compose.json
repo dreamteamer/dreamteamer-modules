@@ -63,7 +63,7 @@
 		},
 		"SETUP.md": {
 			"from": "wikis/SETUP.md + notebooklm/SETUP.md",
-			"hash": "sha256:949935d8b19a290f43e551551390271a0d7d83ed12c807e391689a0b6b672161"
+			"hash": "sha256:52dcc4101c9cf923eef7e563fa622b4cef3e1cc045ae9e80034f2254baa0765d"
 		},
 		"skills/exporting-to-notebooklm/SKILL.md": {
 			"from": "notebooklm/skills/exporting-to-notebooklm/SKILL.md",

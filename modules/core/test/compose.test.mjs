@@ -94,7 +94,7 @@ describe('the composition', () => {
 		// the one rule every composed module's own entry meets (scripts/compose-core.mjs assertOwnEntry)
 		assert.equal(assertOwnEntry(CORE, 'core', spec.extension, 'files', './src/extension.js'), './extension.js');
 	});
-	test('the origins\' setup references compose into one shipped root SETUP.md, with core\'s own script paths', () => {
+	test('the origins\' setup references compose into one shipped root SETUP.md, routed to dt setup — no module script to name (cr-dt-007, D70)', () => {
 		const setup = copies.get('SETUP.md');
 		assert.ok(setup, 'meetings ships SETUP.md, so core must carry one');
 		// every origin that ships a setup reference, in origin order — the list grows as origins gain units
@@ -105,9 +105,10 @@ describe('the composition', () => {
 		const text = setup.bytes.toString('utf8');
 		assert.match(text, /^# Setup — @dreamteamer\/core\n/);
 		assert.match(text, /<!-- composed from meetings -->/);
-		assert.match(text, /node_modules\/@dreamteamer\/core\/bin\/meetings-setup\.mjs/);
+		assert.match(text, /dt setup meetings --input calendar=/);
 		assert.doesNotMatch(text, /@dreamteamer\/meetings\b/);
-		assert.ok(fs.existsSync(path.join(CORE, 'bin', 'meetings-setup.mjs')));
+		assert.doesNotMatch(text, /meetings-setup\.mjs|bin\/setup\.mjs|dt-setup/);
+		assert.ok(!fs.existsSync(path.join(CORE, 'bin', 'meetings-setup.mjs')), 'the dt-setup-era script is not composed (D70)');
 	});
 	test('a composed module that authors its own SETUP.md beside an origin\'s is refused', () => {
 		const root = fs.mkdtempSync(path.join(os.tmpdir(), 'compose-setup-'));

@@ -111,3 +111,29 @@ for (const m of modules) {
 		});
 	});
 }
+
+// THE ENGINE WRITES .env (cr-dt-007, D61, D70). The provider kit each setup module carried as a
+// byte-identical copy is gone: a unit names an env action and the engine performs it. A file of that name
+// coming back is a copy of engine code coming back.
+describe('setup units, repo-wide', () => {
+	const walk = (dir, out = []) => { for (const e of fs.readdirSync(dir, { withFileTypes: true })) { if (e.name === 'node_modules' || e.name.startsWith('.')) continue; const p = path.join(dir, e.name); if (e.isDirectory()) walk(p, out); else out.push(p); } return out; };
+	test('no module carries a setup-kit.mjs', () => {
+		const found = walk(MODULES).filter((f) => path.basename(f) === 'setup-kit.mjs').map((f) => path.relative(ROOT, f));
+		assert.deepEqual(found, []);
+	});
+	test('a module with a setup unit ships SETUP.md in its files, and its SETUP.md names no module script and no dt-setup', () => {
+		let seen = 0;
+		for (const m of modules) {
+			const lib = path.join(MODULES, m, 'lib');
+			const units = fs.existsSync(lib) ? fs.readdirSync(lib).filter((f) => /-setup\.mjs$/.test(f) && /export const SETUP_UNIT\b/.test(fs.readFileSync(path.join(lib, f), 'utf8'))) : [];
+			if (!units.length) continue;
+			seen++;
+			assert.ok(fs.existsSync(path.join(MODULES, m, 'SETUP.md')), `${m} has ${units.join(', ')} but no SETUP.md`);
+			assert.ok(pkgOf(m).files.includes('SETUP.md'), `${m}: SETUP.md is not in files — npm would leave it out`);
+			const text = fs.readFileSync(path.join(MODULES, m, 'SETUP.md'), 'utf8');
+			for (const [, script] of text.matchAll(/node node_modules\/@dreamteamer\/[\w-]+\/(bin\/[\w.-]+\.mjs)/g)) assert.ok(fs.existsSync(path.join(MODULES, m, script)), `${m}/SETUP.md names ${script}, which ${m} does not ship`);
+			assert.doesNotMatch(text, /dt-setup/, `${m}/SETUP.md still names dt-setup`);
+		}
+		assert.ok(seen >= 5, `only ${seen} modules carry a setup unit — the scan is broken, not the repo`);
+	});
+});
