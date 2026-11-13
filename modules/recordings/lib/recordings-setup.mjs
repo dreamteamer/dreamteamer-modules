@@ -5,6 +5,9 @@
 // tools it needs on PATH (ffmpeg, uv), and the one live proof that counts: a CPU transcription of a
 // shipped synthetic clip (`lib/clip.wav`, generated speech, nobody's voice) that leaves a dated receipt.
 //
+// The three .env keys are an ENV ACTION the engine writes (confined, fingerprinted, refused when git would
+// commit .env, never printed — cr-dt-007, D61); `apply` runs the machine steps only.
+//
 // Every command runs through `bin/transcribe.mjs`, the node entry that reads the workspace `.env`, sets
 // UV_PROJECT_ENVIRONMENT from TRANSCRIPTION_HOME and only then spawns uv — uv picks its environment
 // before Python starts, so the variable cannot come from inside the Python code.
@@ -13,11 +16,9 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { SetupRefusal, redact, fingerprint, writeScoped, envAssignments, setEnvValue, safeEnvValue, gitExposure, runGit, leftoverTemps, tempPrefix, within, realish } from './setup-kit.mjs';
 
 export const UNIT_ID = 'recordings';
 const DEFAULT_HOME = path.join(os.homedir(), '.cache', 'dreamteamer', 'transcription');
-const KEYS = ['TRANSCRIPTION_HOME', 'FILES_FOLDER', 'INBOX_FOLDERS'];
 const RECEIPT = 'cpu-run.verified.json';
 /** The three model paths the CPU pass needs; the ggml weights (Apple Silicon + whisper-cli only) are evidence, never required. */
 const MODELS = (home) => ({ 'whisper-ct2': path.join(home, 'models', 'whisper-ct2'), 'segmentation.onnx': path.join(home, 'models', 'diarization', 'segmentation.onnx'), 'embedding.onnx': path.join(home, 'models', 'diarization', 'embedding.onnx') });
@@ -69,34 +70,31 @@ export function inspect(ctx) {
 	return { checks };
 }
 
+/** The env action: the three keys the person named (an optional one left out when nobody gave it), its
+ *  state the unit's own verdict — needs-input without FILES_FOLDER, blocked when the home resolves inside
+ *  the workspace. Whether the file already holds them, and the write, are the engine's. */
 function homeAction(ctx, inputs) {
-	const action = { id: 'set-home', title: 'write TRANSCRIPTION_HOME, FILES_FOLDER and INBOX_FOLDERS into .env', effects: [{ kind: 'workspace-files', detail: '.env: the three keys only, every other line kept' }], runBy: 'engine' };
 	const want = { TRANSCRIPTION_HOME: inputs.transcription_home ?? ctx.env.TRANSCRIPTION_HOME ?? DEFAULT_HOME, FILES_FOLDER: inputs.files_folder ?? ctx.env.FILES_FOLDER, INBOX_FOLDERS: inputs.inbox_folders ?? ctx.env.INBOX_FOLDERS };
-	const needs = Object.entries(want).filter(([, v]) => !v).map(([k]) => k);
-	if (needs.includes('FILES_FOLDER')) return { ...action, state: 'needs-input', reason: 'files_folder is required' };
+	const env = Object.fromEntries(Object.entries(want).filter(([k, v]) => k === 'FILES_FOLDER' || (v !== undefined && v !== null && String(v) !== '')).map(([k, v]) => [k, v ? String(v) : undefined]));
+	const action = { id: 'set-home', title: 'write TRANSCRIPTION_HOME, FILES_FOLDER and INBOX_FOLDERS into .env', env };
+	if (!want.FILES_FOLDER) return { ...action, state: 'needs-input', reason: 'files_folder is required' };
 	const inside = homeInsideWorkspace(ctx, want.TRANSCRIPTION_HOME);
 	if (inside) return { ...action, state: 'blocked', reason: inside };
-	const envPath = path.join(ctx.root, '.env');
-	let expect;
-	try { expect = fingerprint(envPath); } catch (e) { return { ...action, state: 'blocked', reason: e instanceof SetupRefusal ? e.message : 'the .env file cannot be read' }; }
-	if (leftoverTemps(envPath).length) return { ...action, state: 'blocked', reason: `temporary files from an interrupted write sit beside .env (${tempPrefix(envPath)}*.tmp) — review and delete them first` };
-	const exposure = gitExposure(ctx.root, '.env', { git: runGit });
-	if (!exposure.safe) return { ...action, state: 'blocked', reason: exposure.reason };
-	let text = expect === 'absent' ? '' : fs.readFileSync(envPath, 'utf8');
-	const changes = [];
-	for (const [k, v] of Object.entries(want)) {
-		if (!v) continue;
-		if (!safeEnvValue(String(v))) return { ...action, state: 'blocked', reason: `${k}: a value with characters this action does not write — set it by hand` };
-		const found = envAssignments(text, k);
-		if (found.length > 1) return { ...action, state: 'blocked', reason: `${k} is assigned more than once in .env — resolve that by hand first` };
-		// envAssignments trims what it read; compare like with like, or a multi-line quoted value (an
-		// INBOX_FOLDERS of one root per line) differs from itself and is "written" on every run
-		if (found[0]?.value === String(v).trim()) continue;
-		changes.push(k);
-		text = setEnvValue(text, k, String(v));
+	return { ...action, state: 'ready' };
+}
+
+/** Is `child` the same as, or inside, `parent`? Both real, absolute paths. */
+function within(parent, child) {
+	const rel = path.relative(parent, child);
+	return rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel));
+}
+/** The real path of `p`, or of its nearest existing ancestor joined with the missing remainder. */
+function realish(p) {
+	const missing = [];
+	for (let d = path.resolve(p); ; d = path.dirname(d)) {
+		try { return path.join(fs.realpathSync(d), ...missing.reverse()); }
+		catch (error) { if (error.code !== 'ENOENT' || path.dirname(d) === d) throw error; missing.push(path.basename(d)); }
 	}
-	if (!changes.length) return { ...action, state: 'done', reason: 'the three keys already hold these values' };
-	return { ...action, state: 'ready', expect, preview: { file: '.env', expect, sets: changes, keeps: 'every other line' }, content: text };
 }
 
 /** Where a path really leads: a symlink is followed even when its target does not exist yet (a dangling
@@ -120,7 +118,7 @@ export function plan(ctx, inputs = {}) {
 	const { checks } = inspect(withInputs(ctx, inputs));
 	const status = Object.fromEntries(checks.map((c) => [c.id, c.status]));
 	const home = homeOf(ctx, inputs);
-	const { content, ...setHome } = homeAction(ctx, inputs);
+	const setHome = homeAction(ctx, inputs);
 	const bin = entry(ctx.root);
 	const tools = status['recordings.tools'] === 'configured';
 	const inside = homeInsideWorkspace(ctx, inputs.transcription_home ?? ctx.env.TRANSCRIPTION_HOME ?? DEFAULT_HOME);
@@ -139,18 +137,11 @@ export function apply(ctx, action, inputs = {}) {
 	try {
 		if (action.state === 'done') return { ok: true, changed: [], message: `nothing to do — ${action.reason ?? 'already done'}` };
 		if (action.state && action.state !== 'ready') return { ok: false, changed: [], message: action.reason ?? action.state };
-		if (action.id === 'set-home') {
-			const now = homeAction(ctx, inputs);
-			if (now.state === 'done') return { ok: true, changed: [], message: `nothing to do — ${now.reason}` };
-			if (now.state !== 'ready') return { ok: false, changed: [], message: now.reason };
-			if (now.expect !== action.expect) return { ok: false, changed: [], message: '.env changed after the preview — nothing was written; plan again' };
-			writeScoped({ root: ctx.root, rel: '.env', content: now.content, expected: now.expect, recheck: () => { const g = gitExposure(ctx.root, '.env', { git: runGit }); if (!g.safe) throw new SetupRefusal('blocked', g.reason); } });
-			return { ok: true, changed: ['.env'], message: `wrote .env (${now.preview.sets.join(', ')})` };
-		}
 		if (!action.command) return { ok: false, changed: [], message: 'this module\'s node entry is not installed' };
 		const env = { ...withInputs(ctx, inputs).env, TRANSCRIPTION_HOME: homeOf(ctx, inputs) };
 		const r = spawnSync(process.execPath, action.command.slice(1), { cwd: ctx.root, env, stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8', timeout: 3_600_000 });
-		if (r.status !== 0) return { ok: false, changed: [], message: redact(`${action.command.slice(0, 3).join(' ')} exited ${r.status ?? r.error?.message}: ${(r.stderr ?? '').trim().split('\n').at(-1) ?? ''}`) };
+		// the engine redacts a failed apply's message (D67)
+		if (r.status !== 0) return { ok: false, changed: [], message: `${action.command.slice(0, 3).join(' ')} exited ${r.status ?? r.error?.message}: ${(r.stderr ?? '').trim().split('\n').at(-1) ?? ''}` };
 		if (action.id === 'verify-cpu') {
 			const transcript = (r.stdout ?? '').trim();
 			// the recognizer may split the made-up word ("dream teamer"); either spelling is the clip heard
@@ -162,7 +153,7 @@ export function apply(ctx, action, inputs = {}) {
 		}
 		return { ok: true, changed: [], message: `${action.id}: done` };
 	} catch (error) {
-		return { ok: false, changed: [], message: error instanceof SetupRefusal ? error.message : redact(error.message) };
+		return { ok: false, changed: [], message: error.message };
 	}
 }
 

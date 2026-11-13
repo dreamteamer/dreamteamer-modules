@@ -48,29 +48,15 @@ describe('the unit, pure', () => {
 		const p = SETUP_UNIT.plan(ctx, { transcription_home: home, files_folder: files });
 		const by = Object.fromEntries(p.actions.map((a) => [a.id, a]));
 		assert.equal(by['set-home'].state, 'ready');
-		assert.deepEqual(by['set-home'].effects.map((e) => e.kind), ['workspace-files']);
+		assert.deepEqual(Object.keys(by['set-home'].env), ['TRANSCRIPTION_HOME', 'FILES_FOLDER'], 'an env action; INBOX_FOLDERS left out when nobody gave it');
+		assert.equal(SETUP_UNIT.apply(ctx, { id: 'unknown', command: null }, {}).ok, false, 'apply only knows the machine steps');
 		assert.equal(by['provision-venv'].state, 'ready'); assert.deepEqual(by['provision-venv'].effects.map((e) => e.kind), ['machine']);
 		assert.equal(by['download-models'].state, 'blocked'); assert.deepEqual(by['download-models'].effects.map((e) => e.kind), ['download']);
 		assert.equal(by['verify-cpu'].state, 'blocked'); assert.equal(by['verify-cpu'].kind, 'verify');
 		assert.deepEqual(p.needs, []);
 		assert.deepEqual(SETUP_UNIT.plan(ctx, {}).needs, ['files_folder']);
-		const r = SETUP_UNIT.apply(ctx, by['set-home'], { transcription_home: home, files_folder: files });
-		assert.equal(r.ok, true, r.message);
-		const text = fs.readFileSync(path.join(root, '.env'), 'utf8');
-		const esc = (v) => v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-		assert.match(text, new RegExp(`^TRANSCRIPTION_HOME="?${esc(home)}"?$`, 'm'));
-		assert.match(text, new RegExp(`^FILES_FOLDER="?${esc(files)}"?$`, 'm'));
-		const again = SETUP_UNIT.plan({ ...ctx, env: { ...ctx.env, FILES_FOLDER: files } }, { transcription_home: home, files_folder: files }).actions.find((a) => a.id === 'set-home');
-		assert.equal(again.state, 'done');
-	});
-	test('set-home is done when .env already holds a multi-line quoted INBOX_FOLDERS — no rewrite reported every run', () => {
-		// a .env reader hands the value back with its edge newlines; the .env text holds the same bytes
-		const root = repo(), home = tmp('dtm-home-'), files = tmp('dtm-files-');
-		const inbox = '\n/inbox/one\n/inbox/two\n';
-		fs.writeFileSync(path.join(root, '.env'), `TRANSCRIPTION_HOME="${home}"\nFILES_FOLDER="${files}"\nINBOX_FOLDERS="${inbox}"\n`);
-		const ctx = ctxFor(root, { PATH: fakeBins(['uv', 'ffmpeg']), TRANSCRIPTION_HOME: home, FILES_FOLDER: files, INBOX_FOLDERS: inbox });
-		const set = SETUP_UNIT.plan(ctx, {}).actions.find((a) => a.id === 'set-home');
-		assert.equal(set.state, 'done', set.preview ? `would set ${set.preview.sets}` : set.reason);
+		assert.deepEqual(by['set-home'].env, { TRANSCRIPTION_HOME: home, FILES_FOLDER: files });
+		assert.equal(SETUP_UNIT.plan(ctx, {}).actions.find((a) => a.id === 'set-home').state, 'needs-input');
 	});
 	test('the receipt makes the CPU run ready, unless it predates the models', () => {
 		const root = repo(), home = tmp('dtm-home-');
@@ -95,7 +81,6 @@ describe('the unit, pure', () => {
 			const p = SETUP_UNIT.plan(ctx, { transcription_home: home, files_folder: root });
 			const set = p.actions.find((a) => a.id === 'set-home');
 			assert.equal(set.state, 'blocked', home); assert.match(set.reason, /inside the workspace/);
-			assert.equal(SETUP_UNIT.apply(ctx, { ...set, state: 'ready', expect: 'x' }, { transcription_home: home, files_folder: root }).ok, false);
 			// nothing else runs through a refused home: the venv, the download and the verify are blocked on it
 			for (const id of ['provision-venv', 'download-models', 'verify-cpu']) { const a = p.actions.find((x) => x.id === id); assert.equal(a.state, 'blocked', `${id} for ${home}`); assert.match(a.reason, /inside the workspace/); }
 		}
@@ -154,5 +139,24 @@ describe('through the engine', { skip: !engineMeets('recordings') && `needs engi
 		assert.match(v.stdout, /✔ recordings: ready · verified \d{4}-\d{2}-\d{2}/);
 		assert.match(run(root, ['status'], env).stdout, /recordings\s+ready · verified/);
 		assert.match(run(root, ['status'], { ...env, PATH: fakeBins(['uv']) }).stdout, /recordings\s+blocked\s+ffmpeg and uv — ffmpeg not on PATH/);
+	});
+	test('set-home through the engine: written once, then done; a .env already holding a multi-line quoted INBOX_FOLDERS is done, never rewritten', () => {
+		const root = virginWorkspace();
+		const from = packedInto(fs.mkdtempSync(path.join(os.tmpdir(), 'dtm-from-')), ...closure('recordings'));
+		const home = tmp('dtm-home-'), files = tmp('dtm-files-');
+		const env = { PATH: `${fakeBins(['uv', 'ffmpeg'])}:${process.env.PATH}`, HOME: tmp('dtm-HOME-') };
+		const inbox = '\n/inbox/one\n/inbox/two\n';
+		fs.writeFileSync(path.join(root, '.env'), `TRANSCRIPTION_HOME="${home}"\nFILES_FOLDER="${files}"\nINBOX_FOLDERS="${inbox}"\n`);
+		const before = fs.readFileSync(path.join(root, '.env'), 'utf8');
+		const r = run(root, ['install', '@dreamteamer/recordings', '--from', from, '--no-input'], env);
+		assert.equal(r.status, 0, r.stderr + r.stdout);
+		assert.doesNotMatch(r.stdout, /✔ set-home/, 'nothing to write');
+		assert.equal(fs.readFileSync(path.join(root, '.env'), 'utf8'), before, 'byte-identical');
+		const other = tmp('dtm-files2-');
+		const w = run(root, ['setup', 'recordings', '--input', `files_folder=${other}`, '--no-input'], env);
+		assert.match(w.stdout, /✔ set-home — wrote \.env \(FILES_FOLDER\)/);
+		assert.ok(fs.readFileSync(path.join(root, '.env'), 'utf8').includes(`INBOX_FOLDERS="${inbox}"`), 'the multi-line neighbour untouched');
+		const again = run(root, ['setup', 'recordings', '--input', `files_folder=${other}`, '--no-input'], env);
+		assert.doesNotMatch(again.stdout, /✔ set-home/);
 	});
 });
