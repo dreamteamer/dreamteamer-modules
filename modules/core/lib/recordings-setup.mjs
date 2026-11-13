@@ -43,10 +43,12 @@ export function inspect(ctx) {
 	checks.push(missingTools.length
 		? { id: 'recordings.tools', status: 'blocked', title: 'ffmpeg and uv', detail: `${missingTools.join(' and ')} not on PATH`, fix: `install ${missingTools.join(' and ')} (macOS: brew install ${missingTools.join(' ')})` }
 		: { id: 'recordings.tools', status: 'configured', title: 'ffmpeg and uv', detail: 'both on PATH' });
-	const unset = KEYS.filter((k) => !env[k] || String(env[k]).trim() === '');
+	// the two folders transcription cannot do without gate the check; INBOX_FOLDERS is optional and only noted
+	const unset = ['TRANSCRIPTION_HOME', 'FILES_FOLDER'].filter((k) => !env[k] || String(env[k]).trim() === '');
+	const inbox = env.INBOX_FOLDERS && String(env.INBOX_FOLDERS).trim() ? 'INBOX_FOLDERS set' : 'INBOX_FOLDERS unset (optional: nothing is ingested from an inbox)';
 	checks.push(unset.length
 		? { id: 'recordings.home', status: 'missing', title: 'folders', detail: `${unset.join(', ')} not set`, fix: 'dt setup recordings' }
-		: { id: 'recordings.home', status: 'configured', title: 'folders', detail: `TRANSCRIPTION_HOME, FILES_FOLDER, INBOX_FOLDERS set`, evidence: { home: path.basename(home) } });
+		: { id: 'recordings.home', status: 'configured', title: 'folders', detail: `TRANSCRIPTION_HOME and FILES_FOLDER set · ${inbox}`, evidence: { home: path.basename(home) } });
 	checks.push(exists(path.join(home, 'venv', 'bin', 'python'))
 		? { id: 'recordings.venv', status: 'configured', title: 'python venv', detail: 'present under TRANSCRIPTION_HOME' }
 		: { id: 'recordings.venv', status: 'missing', title: 'python venv', detail: 'not provisioned', fix: 'dt setup recordings --allow machine' });
