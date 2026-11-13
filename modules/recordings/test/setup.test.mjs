@@ -63,6 +63,15 @@ describe('the unit, pure', () => {
 		const again = SETUP_UNIT.plan({ ...ctx, env: { ...ctx.env, FILES_FOLDER: files } }, { transcription_home: home, files_folder: files }).actions.find((a) => a.id === 'set-home');
 		assert.equal(again.state, 'done');
 	});
+	test('set-home is done when .env already holds a multi-line quoted INBOX_FOLDERS — no rewrite reported every run', () => {
+		// a .env reader hands the value back with its edge newlines; the .env text holds the same bytes
+		const root = repo(), home = tmp('dtm-home-'), files = tmp('dtm-files-');
+		const inbox = '\n/inbox/one\n/inbox/two\n';
+		fs.writeFileSync(path.join(root, '.env'), `TRANSCRIPTION_HOME="${home}"\nFILES_FOLDER="${files}"\nINBOX_FOLDERS="${inbox}"\n`);
+		const ctx = ctxFor(root, { PATH: fakeBins(['uv', 'ffmpeg']), TRANSCRIPTION_HOME: home, FILES_FOLDER: files, INBOX_FOLDERS: inbox });
+		const set = SETUP_UNIT.plan(ctx, {}).actions.find((a) => a.id === 'set-home');
+		assert.equal(set.state, 'done', set.preview ? `would set ${set.preview.sets}` : set.reason);
+	});
 	test('the receipt makes the CPU run ready, unless it predates the models', () => {
 		const root = repo(), home = tmp('dtm-home-');
 		const ctx = ctxFor(root, { PATH: fakeBins(['uv', 'ffmpeg']), TRANSCRIPTION_HOME: home, FILES_FOLDER: root, INBOX_FOLDERS: root });

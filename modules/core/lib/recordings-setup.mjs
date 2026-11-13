@@ -89,7 +89,9 @@ function homeAction(ctx, inputs) {
 		if (!safeEnvValue(String(v))) return { ...action, state: 'blocked', reason: `${k}: a value with characters this action does not write — set it by hand` };
 		const found = envAssignments(text, k);
 		if (found.length > 1) return { ...action, state: 'blocked', reason: `${k} is assigned more than once in .env — resolve that by hand first` };
-		if (found[0]?.value === String(v)) continue;
+		// envAssignments trims what it read; compare like with like, or a multi-line quoted value (an
+		// INBOX_FOLDERS of one root per line) differs from itself and is "written" on every run
+		if (found[0]?.value === String(v).trim()) continue;
 		changes.push(k);
 		text = setEnvValue(text, k, String(v));
 	}
