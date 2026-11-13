@@ -80,10 +80,15 @@ describe('the unit, pure', () => {
 		const inside = path.join(root, 'cache'); fs.mkdirSync(inside);
 		const link = path.join(tmp('dtm-link-'), 'home'); fs.symlinkSync(inside, link);
 		const ctx = ctxFor(root, { PATH: fakeBins(['uv', 'ffmpeg']) });
-		for (const home of [inside, link]) {
-			const set = SETUP_UNIT.plan(ctx, { transcription_home: home, files_folder: root }).actions.find((a) => a.id === 'set-home');
+		// a dangling link whose target would be inside the workspace is refused the same way
+		const dangling = path.join(tmp('dtm-link-'), 'home2'); fs.symlinkSync(path.join(root, 'not-yet'), dangling);
+		for (const home of [inside, link, dangling]) {
+			const p = SETUP_UNIT.plan(ctx, { transcription_home: home, files_folder: root });
+			const set = p.actions.find((a) => a.id === 'set-home');
 			assert.equal(set.state, 'blocked', home); assert.match(set.reason, /inside the workspace/);
 			assert.equal(SETUP_UNIT.apply(ctx, { ...set, state: 'ready', expect: 'x' }, { transcription_home: home, files_folder: root }).ok, false);
+			// nothing else runs through a refused home: the venv, the download and the verify are blocked on it
+			for (const id of ['provision-venv', 'download-models', 'verify-cpu']) { const a = p.actions.find((x) => x.id === id); assert.equal(a.state, 'blocked', `${id} for ${home}`); assert.match(a.reason, /inside the workspace/); }
 		}
 		assert.ok(!fs.existsSync(path.join(root, '.env')), 'nothing written');
 	});

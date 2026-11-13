@@ -72,9 +72,8 @@ function homeAction(ctx, inputs) {
 	const want = { TRANSCRIPTION_HOME: inputs.transcription_home ?? ctx.env.TRANSCRIPTION_HOME ?? DEFAULT_HOME, FILES_FOLDER: inputs.files_folder ?? ctx.env.FILES_FOLDER, INBOX_FOLDERS: inputs.inbox_folders ?? ctx.env.INBOX_FOLDERS };
 	const needs = Object.entries(want).filter(([, v]) => !v).map(([k]) => k);
 	if (needs.includes('FILES_FOLDER')) return { ...action, state: 'needs-input', reason: 'files_folder is required' };
-	// the models and the venv must sit outside the workspace — compile and npm wipe what is inside it;
-	// judged on the real path, so a symlink from outside that points in is refused too
-	if (within(realish(ctx.root), realish(expand(String(want.TRANSCRIPTION_HOME))))) return { ...action, state: 'blocked', reason: `TRANSCRIPTION_HOME resolves inside the workspace (${want.TRANSCRIPTION_HOME}) — choose a folder outside it` };
+	const inside = homeInsideWorkspace(ctx, want.TRANSCRIPTION_HOME);
+	if (inside) return { ...action, state: 'blocked', reason: inside };
 	const envPath = path.join(ctx.root, '.env');
 	let expect;
 	try { expect = fingerprint(envPath); } catch (e) { return { ...action, state: 'blocked', reason: e instanceof SetupRefusal ? e.message : 'the .env file cannot be read' }; }
@@ -96,6 +95,20 @@ function homeAction(ctx, inputs) {
 	return { ...action, state: 'ready', expect, preview: { file: '.env', expect, sets: changes, keeps: 'every other line' }, content: text };
 }
 
+/** Where a path really leads: a symlink is followed even when its target does not exist yet (a dangling
+ *  link into the workspace is still a link into the workspace), then the deepest existing ancestor is resolved. */
+function realTarget(p, depth = 8) {
+	const abs = path.resolve(p);
+	try { if (depth > 0 && fs.lstatSync(abs).isSymbolicLink()) return realTarget(path.resolve(path.dirname(abs), fs.readlinkSync(abs)), depth - 1); } catch { /* absent: resolve what exists above it */ }
+	return realish(abs);
+}
+/** The models and the venv must sit outside the workspace — compile and npm wipe what is inside it. The
+ *  reason when the home resolves inside, else null; every action of the plan is gated on it. */
+function homeInsideWorkspace(ctx, home) {
+	if (!home) return null;
+	return within(realish(ctx.root), realTarget(expand(String(home)))) ? `TRANSCRIPTION_HOME resolves inside the workspace (${home}) — choose a folder outside it` : null;
+}
+
 /** The inputs laid over the environment — the plan judges the home the person named, not the one .env holds yet. */
 const withInputs = (ctx, inputs = {}) => ({ ...ctx, env: { ...ctx.env, ...(inputs.transcription_home ? { TRANSCRIPTION_HOME: inputs.transcription_home } : {}), ...(inputs.files_folder ? { FILES_FOLDER: inputs.files_folder } : {}), ...(inputs.inbox_folders ? { INBOX_FOLDERS: inputs.inbox_folders } : {}) } });
 
@@ -106,7 +119,8 @@ export function plan(ctx, inputs = {}) {
 	const { content, ...setHome } = homeAction(ctx, inputs);
 	const bin = entry(ctx.root);
 	const tools = status['recordings.tools'] === 'configured';
-	const gate = (ok, reason) => (ok ? {} : { state: 'blocked', reason });
+	const inside = homeInsideWorkspace(ctx, inputs.transcription_home ?? ctx.env.TRANSCRIPTION_HOME ?? DEFAULT_HOME);
+	const gate = (ok, reason) => (inside ? { state: 'blocked', reason: inside } : ok ? {} : { state: 'blocked', reason });
 	const actions = [
 		setHome,
 		{ id: 'provision-venv', title: 'provision the pinned Python venv (uv sync)', effects: [{ kind: 'machine', detail: `${home}/venv — a Python environment from the skill's uv.lock` }], runBy: 'engine', command: bin ? ['node', bin, 'sync'] : null, state: status['recordings.venv'] === 'configured' ? 'done' : 'ready', ...gate(tools, 'ffmpeg and uv must be on PATH first') },
