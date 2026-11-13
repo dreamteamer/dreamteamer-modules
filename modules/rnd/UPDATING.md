@@ -11,6 +11,15 @@ npx dreamteamer check
 
 ---
 
+## 0.10.0 — on engine 0.47.0: the wikis and notebooklm setup units composed in (CR-dt-006)
+
+Nothing to do but `dt update @dreamteamer/rnd` on dreamteamer 0.47.0 or later, then `dt compile`
+(the engine floor is `>=0.47.0`). rnd's extension now contributes the `wikis` and `notebooklm` setup
+units beside its checks: `dt status` shows `wikis` (qmd on PATH; `dt setup wikis --allow machine
+--allow network` installs it) and `notebooklm` (the vendor CLI and a login marker; the login is the
+owner's). `dreamteamer.provides` names the two modules composed in, so installing either beside rnd is
+refused with the reason. The `@dreamteamer/setup` board rnd used to feed is gone.
+
 ## 0.9.0 — change requests carry a stage, drawn as a board; the R&D nav leads with the lifecycle
 
 `rnd/change-requests` gains `stage`: the gate a request waits on — the verb `dt next` names on it — one of
