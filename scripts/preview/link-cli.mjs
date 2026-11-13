@@ -2,15 +2,15 @@
 // lib/link.mjs, which is pure and tested; this file is the part that touches disk, and it is
 // deliberately the only place that does.
 //
-// Everything here runs only through bin/setup.mjs. There is no main guard because there is
+// Everything here runs only through scripts/preview.mjs. There is no main guard because there is
 // no script path — importing this file defines functions and runs nothing.
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
 import {
-	HARNESS_FILES, HOOK, HOOK_MARKER, LINK_DIR, LINK_NAME,
+	HARNESS_FILES, HOOK, HOOK_MARKER, OLD_HOOK_MARKERS, LINK_DIR, LINK_NAME,
 	guardVerdict, linkPath, linkState, linkTarget, looksLikeClone,
-} from '../lib/link.mjs';
+} from './link.mjs';
 
 const C = process.stdout.isTTY && !process.env.NO_COLOR;
 const paint = (s, code) => (C ? `\x1b[${code}m${s}\x1b[0m` : s);
@@ -50,7 +50,7 @@ function installHook(root) {
 	try { gitDir = execFileSync('git', ['rev-parse', '--absolute-git-dir'], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); }
 	catch { return 'not a git repo — no guard installed, so nothing stops a commit against the linked schema'; }
 	const f = path.join(gitDir, 'hooks', 'pre-commit');
-	if (fs.existsSync(f) && !fs.readFileSync(f, 'utf8').includes(HOOK_MARKER)) {
+	if (fs.existsSync(f) && ![HOOK_MARKER, ...OLD_HOOK_MARKERS].some((m) => fs.readFileSync(f, 'utf8').includes(m))) {
 		const lines = HOOK.split('\n').slice(1).join('\n');
 		return `a pre-commit hook already exists at ${f} — left alone; append these lines to the end of it yourself:\n\n${lines}`;
 	}
@@ -65,7 +65,7 @@ function status(root) {
 	if (state === 'off') {
 		const deps = Object.entries(readPkg(root)?.dependencies ?? {}).filter(([n]) => n.startsWith('@dreamteamer/'));
 		say(`  published   ${deps.length ? deps.map(([n, v]) => `${n} ${v}`).join(' · ') : dim('no @dreamteamer module is a declared dependency here')}`);
-		say(dim(`  preview off · npx dt-setup link <path-to-clone>`));
+		say(dim(`  preview off · node <clone>/scripts/preview.mjs link <clone>`));
 		return 0;
 	}
 	const target = state === 'link' ? linkTarget(root) : linkPath(root);

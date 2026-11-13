@@ -7,14 +7,14 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { main as linkMain } from '../bin/link.mjs';
+import { main as linkMain } from '../scripts/preview/link-cli.mjs';
 import {
 	HARNESS_FILES, HOOK, HOOK_MARKER, LINK_DIR, LINK_NAME,
-	guardVerdict, linkPath, linkState, linkTarget, looksLikeClone, refusedPaths,
-} from '../lib/link.mjs';
+	guardVerdict, linkPath, linkState, linkTarget, looksLikeClone, refusedPaths, OLD_HOOK_MARKERS,
+} from '../scripts/preview/link.mjs';
 
 // the repo root
-const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', '..', '..');
+const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'ext-link-'));
 
 describe('the link state at git_modules/dreamteamer-modules', () => {
@@ -69,7 +69,7 @@ describe('the pre-commit guard', () => {
 		assert.match(msg, /data\/rnd\/projects\/x\.project\.md/);
 		assert.match(msg, /CLAUDE\.md/);
 		assert.doesNotMatch(msg, /README\.md/, 'ordinary source work stays committable while previewing');
-		assert.match(msg, /npx dt-setup unlink/, 'the refusal has to carry its own fix');
+		assert.match(msg, /scripts\/preview\.mjs unlink/, 'the refusal has to carry its own fix');
 	});
 	test('linked with nothing schema-shaped staged, the commit proceeds', () => {
 		assert.equal(guardVerdict({ state: 'link', staged: ['README.md', 'package.json'] }), null);
@@ -108,8 +108,8 @@ describe('the installed hook, run by git', () => {
 		return out.join('\n');
 	}
 
-	/** A workspace linked to a bundle clone; the clone and the workspace each carry the setup guard on request. */
-	async function linkedRepo({ cloneGuard = false, installedGuard = false, hook = null } = {}) {
+	/** A workspace linked to a bundle clone; the clone carries this repo's preview script on request. */
+	async function linkedRepo({ cloneGuard = false, hook = null } = {}) {
 		const ws = tmp();
 		assert.equal(git(ws, ['init', '-q']).status, 0);
 		fs.writeFileSync(path.join(ws, 'package.json'), '{"name":"ws","dreamteamer":{}}');
@@ -120,11 +120,7 @@ describe('the installed hook, run by git', () => {
 		const clone = tmp();
 		fs.writeFileSync(path.join(clone, 'package.json'), '{"name":"bundle","dreamteamer":{}}');
 		fs.mkdirSync(path.join(clone, 'modules'));
-		if (cloneGuard) fs.symlinkSync(path.join(ROOT, 'modules', 'setup'), path.join(clone, 'modules', 'setup'), 'dir');
-		if (installedGuard) {
-			fs.mkdirSync(path.join(ws, 'node_modules', '@dreamteamer'), { recursive: true });
-			fs.symlinkSync(path.join(ROOT, 'modules', 'setup'), path.join(ws, 'node_modules', '@dreamteamer', 'setup'), 'dir');
-		}
+		if (cloneGuard) fs.symlinkSync(path.join(ROOT, 'scripts'), path.join(clone, 'scripts'), 'dir');
 		const hookFile = path.join(ws, '.git', 'hooks', 'pre-commit');
 		if (hook) { fs.mkdirSync(path.dirname(hookFile), { recursive: true }); fs.writeFileSync(hookFile, hook, { mode: 0o755 }); }
 		const out = await quietly(() => linkMain([clone], ws, 'link'));
@@ -142,26 +138,14 @@ describe('the installed hook, run by git', () => {
 		return { status: r.status, stderr: r.stderr, npx: fs.existsSync(calls) ? fs.readFileSync(calls, 'utf8') : '' };
 	}
 
-	test('a linked bundle with no guard, and none installed, refuses the commit without calling npx', async () => {
+	test('a linked bundle with no preview script refuses the commit without calling npx', async () => {
 		const { ws } = await linkedRepo();
 		const r = commit(ws, ['README.md']);
 		assert.equal(r.npx, '', 'the hook must never call npx or npm');
 		assert.equal(r.status, 1);
 		assert.match(r.stderr, /linked bundle has no guard — unlink or update it/);
 	});
-	test('a linked bundle with no guard falls back to the installed package\'s guard', async () => {
-		const { ws } = await linkedRepo({ installedGuard: true });
-		const refused = commit(ws, ['data/a.md']);
-		assert.equal(refused.npx, '');
-		assert.equal(refused.status, 1);
-		assert.match(refused.stderr, /data\/a\.md/);
-		assert.match(refused.stderr, /may not carry schema-shaped files/);
-		assert.equal(git(ws, ['reset', '-q']).status, 0);
-		const allowed = commit(ws, ['README.md']);
-		assert.equal(allowed.npx, '');
-		assert.equal(allowed.status, 0, allowed.stderr);
-	});
-	test('the linked clone\'s own guard runs first', async () => {
+	test('the linked clone\'s own guard runs', async () => {
 		const { ws } = await linkedRepo({ cloneGuard: true });
 		const r = commit(ws, ['data/a.md']);
 		assert.equal(r.npx, '');
@@ -176,7 +160,7 @@ describe('the installed hook, run by git', () => {
 		assert.equal(r.status, 0, r.stderr);
 	});
 	test('link rewrites an earlier hook of ours, so its npx line is gone', async () => {
-		const old = `#!/bin/sh\n${HOOK_MARKER} — see lib/link.mjs.\nexec npx --no-install npx dt-setup guard\n`;
+		const old = `#!/bin/sh\n${OLD_HOOK_MARKERS[0]} — see lib/link.mjs.\nexec npx --no-install npx dt-setup guard\n`;
 		const { hookFile } = await linkedRepo({ hook: old });
 		assert.equal(fs.readFileSync(hookFile, 'utf8'), HOOK);
 	});
@@ -185,7 +169,7 @@ describe('the installed hook, run by git', () => {
 		const { hookFile, out } = await linkedRepo({ hook: mine });
 		assert.equal(fs.readFileSync(hookFile, 'utf8'), mine);
 		assert.match(out, /append these lines/);
-		assert.match(out, /node_modules\/@dreamteamer\/setup\/bin\/setup\.mjs/);
+		assert.match(out, /scripts\/preview\.mjs/);
 		assert.doesNotMatch(out, /\bnpx\b[^\n]*guard/);
 	});
 });

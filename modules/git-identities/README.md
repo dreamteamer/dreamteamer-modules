@@ -75,9 +75,13 @@ that test by exit code alone. Stop on an unknown host key rather than disabling 
 `node --test modules/git-identities/test/*.test.mjs` exercises rendering, validation, and actual
 Git conditional includes/overrides in isolated temporary homes. No network or real credentials.
 
-For optional `@dreamteamer/setup` integration, set `GIT_IDENTITIES_CONFIG` to this private JSON
-file outside Git. The setup doctor checks the current workspace against it; it never applies the
+Set `GIT_IDENTITIES_CONFIG` to this private JSON file outside Git and `dt status` checks the current
+workspace against it through the module's setup unit; it never applies the
 plan or writes global Git/SSH configuration.
+
+## 0.2.1 — the setup package is gone (CR-dt-007)
+
+Nothing to do but `dt update @dreamteamer/git-identities`, then `dt compile`. The README says the setup unit and `dt status` check `GIT_IDENTITIES_CONFIG`, where it named the removed setup package.
 
 ## 0.2.0 — on engine 0.47.0 (CLI-first module lifecycle, CR-dt-006)
 

@@ -64,9 +64,11 @@ describe('projects beside a users that ships no teams', () => {
 
 describe('the move is a release a workspace is told about', () => {
 	test('projects 0.4.x ships an UPDATING.md: 0.4.1 says it floors users at 0.2.0, 0.4.0 says it now needs users 0.2.0 for teams', () => {
-		assert.equal(pkgOf('projects').version, '0.4.1');
+		assert.match(pkgOf('projects').version, /^0\.4\.\d+$/);
 		assert.ok(packedFiles('projects').includes('UPDATING.md'), 'UPDATING.md is in the tarball');
-		const [, newest, previous] = fs.readFileSync(path.join(MODULES, 'projects', 'UPDATING.md'), 'utf8').split(/^## /m);
+		const sections = fs.readFileSync(path.join(MODULES, 'projects', 'UPDATING.md'), 'utf8').split(/^## /m);
+		const at = sections.findIndex((s) => s.startsWith('0.4.1 '));
+		const [newest, previous] = [sections[at], sections[at + 1]];
 		assert.match(newest, /^0\.4\.1 — it says it needs users 0\.2\.0/);
 		assert.match(newest, /peer @dreamteamer\/users@">=0\.2\.0"/);
 		assert.match(previous, /^0\.4\.0 — teams moved to @dreamteamer\/users/);

@@ -3,8 +3,8 @@
 // the checks are the same rows, the actions the same actions, with each effect as { kind, detail } and
 // the planned action handed back to apply verbatim (its preview carries the target and parent id the
 // apply is bound to). One action is the unit's own: the two paths the person named are recorded in the
-// workspace `.env`, so the next `dt status` and the next `dt setup` read them back rather than forget
-// them. Sign-in and the live read stay the owner's — runBy 'owner', run only under
+// workspace `.env` — an ENV ACTION the engine writes (cr-dt-007, D61), so the next `dt status` and the
+// next `dt setup` read them back rather than forget them. Sign-in and the live read stay the owner's — runBy 'owner', run only under
 // `dt setup google-workspace --authorize` in a terminal — and a successful live read leaves a dated
 // receipt the next inspect turns into `ready`, for as long as that account's credential is still stored.
 import fs from 'node:fs';
@@ -13,7 +13,6 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { inspect as inspectLocal, plan as planLocal, apply as applyLocal } from './google-setup.mjs';
 import { credentialPath } from './access.mjs';
-import { SetupRefusal, redact, fingerprint, writeScoped, envAssignments, setEnvValue, safeEnvValue, gitExposure, runGit, leftoverTemps, tempPrefix } from './setup-kit.mjs';
 
 export const UNIT_ID = 'google-workspace';
 const DEFAULT_STORE = path.join(os.homedir(), '.config', 'google-workspace-mcp', 'credentials');
@@ -77,31 +76,13 @@ export function inspect(ctx) {
 	}) };
 }
 
-/** The unit's own action: the paths the person named, written into the workspace `.env` so the next
- *  call reads them back. Only the two keys are touched; every other line is kept byte for byte. */
+/** The unit's own action: the paths the person named, as an env action — the two keys in one action, so a
+ *  half-written .env cannot happen; whether .env already holds them, and the write, are the engine's. */
 function settingsAction(ctx, inputs = {}) {
-	const action = { id: 'record-settings', title: 'record the credential store and the OAuth client file in the workspace .env', effects: [{ kind: 'workspace-files', detail: '.env: WORKSPACE_MCP_CREDENTIALS_DIR and GOOGLE_CLIENT_SECRET_PATH only, every other line kept' }], runBy: 'engine' };
 	const want = { [KEYS.credentials_dir]: inputs.credentials_dir ?? ctx.env?.WORKSPACE_MCP_CREDENTIALS_DIR, [KEYS.client_secret]: inputs.client_secret ?? ctx.env?.GOOGLE_CLIENT_SECRET_PATH };
-	if (!want[KEYS.credentials_dir]) return { ...action, state: 'needs-input', reason: 'credentials_dir is required' };
-	const envPath = path.join(ctx.root, '.env');
-	let expect;
-	try { expect = fingerprint(envPath); } catch (e) { return { ...action, state: 'blocked', reason: e instanceof SetupRefusal ? e.message : 'the .env file cannot be read' }; }
-	if (leftoverTemps(envPath).length) return { ...action, state: 'blocked', reason: `temporary files from an interrupted write sit beside .env (${tempPrefix(envPath)}*.tmp) — review and delete them first` };
-	const exposure = gitExposure(ctx.root, '.env', { git: runGit });
-	if (!exposure.safe) return { ...action, state: 'blocked', reason: exposure.reason };
-	let text = expect === 'absent' ? '' : fs.readFileSync(envPath, 'utf8');
-	const changes = [];
-	for (const [k, v] of Object.entries(want)) {
-		if (!v) continue;
-		if (!safeEnvValue(String(v))) return { ...action, state: 'blocked', reason: `${k}: a value with characters this action does not write — set it by hand` };
-		const found = envAssignments(text, k);
-		if (found.length > 1) return { ...action, state: 'blocked', reason: `${k} is assigned more than once in .env — resolve that by hand first` };
-		if (found[0]?.value === String(v)) continue;
-		changes.push(k);
-		text = setEnvValue(text, k, String(v));
-	}
-	if (!changes.length) return { ...action, state: 'done', reason: 'the workspace .env already holds these paths' };
-	return { ...action, state: 'ready', expect, preview: { file: '.env', expect, sets: changes, keeps: 'every other line' }, content: text };
+	const env = Object.fromEntries(Object.entries(want).filter(([k, v]) => k === KEYS.credentials_dir || v).map(([k, v]) => [k, v ? String(v) : undefined]));
+	const action = { id: 'record-settings', title: 'record the credential store and the OAuth client file in the workspace .env', env };
+	return want[KEYS.credentials_dir] ? { ...action, state: 'ready' } : { ...action, state: 'needs-input', reason: 'credentials_dir is required' };
 }
 
 export function plan(ctx, inputs = {}) {
@@ -111,7 +92,7 @@ export function plan(ctx, inputs = {}) {
 	const needs = [];
 	if (!env.GOOGLE_CLIENT_SECRET_PATH) needs.push('client_secret');   // a sign-in prerequisite, not an install one (D41)
 	if (!accounts.length) needs.push('account');
-	const { content, ...settings } = settingsAction(ctx, inputs);   // the merged .env text is recomputed by apply, never carried
+	const settings = settingsAction(ctx, inputs);
 	const actions = [settings, ...p.actions.map((a) => ({
 		id: a.id, title: a.title ?? a.id, account: a.account,
 		effects: (a.effects ?? []).map(effect),
@@ -128,14 +109,6 @@ export function apply(ctx, action, inputs = {}) {
 	const env = envWith(ctx, inputs);
 	try {
 		if (action.state === 'done') return { ok: true, changed: [], message: `nothing to do — ${action.reason ?? 'already done'}` };
-		if (action.id === 'record-settings') {
-			const now = settingsAction(ctx, inputs);
-			if (now.state === 'done') return { ok: true, changed: [], message: `nothing to do — ${now.reason}` };
-			if (now.state !== 'ready') return { ok: false, changed: [], message: now.reason };
-			if (now.expect !== action.expect) return { ok: false, changed: [], message: '.env changed after the preview — nothing was written; plan again' };
-			writeScoped({ root: ctx.root, rel: '.env', content: now.content, expected: now.expect, recheck: () => { const g = gitExposure(ctx.root, '.env', { git: runGit }); if (!g.safe) throw new SetupRefusal('blocked', g.reason); } });
-			return { ok: true, changed: ['.env'], message: `wrote .env (${now.preview.sets.join(', ')})` };
-		}
 		if (action.id === 'create-credential-store') {
 			const r = applyLocal({ root: ctx.root, action: action.id, target: action.preview?.creates, parentId: action.preview?.parentId, workspace: ctx.root, env, home: homeOf(ctx) });
 			const also = action.preview?.also ?? [];
@@ -157,7 +130,7 @@ export function apply(ctx, action, inputs = {}) {
 		}
 		return { ok: false, changed: [], message: `unknown action ${action.id}` };
 	} catch (error) {
-		return { ok: false, changed: [], message: error instanceof SetupRefusal ? error.message : redact(error.message) };
+		return { ok: false, changed: [], message: error.message };   // the engine redacts a failed apply's message (D67)
 	}
 }
 

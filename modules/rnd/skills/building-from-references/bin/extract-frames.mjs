@@ -7,7 +7,7 @@
 // `--every` (default 4) is seconds between frames; `--width` (default 1280) scales each frame, height
 // follows. `--sheet` also writes `sheet.png`, a 4×N tile of the frames at half width — read that first.
 // `--dry-run` prints the ffmpeg calls and touches nothing. ffmpeg is the only dependency, and the doctor
-// (`npx dt-setup doctor`, capability `rnd`) says whether it is on PATH.
+// (`dt status`, the rnd line) says whether it is on PATH.
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';

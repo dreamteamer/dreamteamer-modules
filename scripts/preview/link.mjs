@@ -1,9 +1,9 @@
 // PREVIEW MODE — run a consumer workspace against a LOCAL CLONE of dreamteamer-modules instead of the
 // published one, so a schema change can be reviewed in a real workspace before it is a release.
 //
-//   npx dt-setup link <path-to-clone>   symlink git_modules/dreamteamer-modules → the clone, recompile
-//   npx dt-setup unlink                 remove it, recompile
-//   npx dt-setup link                   say which is live
+//   node <clone>/scripts/preview.mjs link <clone>   symlink git_modules/dreamteamer-modules → the clone, recompile
+//   node <clone>/scripts/preview.mjs unlink         remove it, recompile
+//   node <clone>/scripts/preview.mjs link           say which is live
 //
 // ── the mechanism is the engine's, not ours ──────────────────────────────────────────────────────
 // `discoverModules` scans three channels in precedence order — inline `modules/*`, then
@@ -85,22 +85,22 @@ export function guardVerdict({ state, staged, dataPath = 'data' }) {
 		'  The package ships first, then the records that need it. These were written or regenerated',
 		'  against an UNRELEASED schema, so any other clone of this workspace would fail to compile them.',
 		'',
-		`  fix: npx dt-setup unlink   (then recompile, re-check, and commit)`,
+		`  fix: node git_modules/dreamteamer-modules/scripts/preview.mjs unlink   (then recompile, re-check, and commit)`,
 	].filter((l) => l !== '').join('\n');
 }
 
 // The line that marks a pre-commit hook as ours, so `link` may rewrite it.
-export const HOOK_MARKER = '# installed by `npx dt-setup link`';
+export const HOOK_MARKER = '# installed by `scripts/preview.mjs link`';
+/** The marker the hook carried while this lived in @dreamteamer/setup — still ours, so `link` rewrites it. */
+export const OLD_HOOK_MARKERS = ['# installed by `npx dt-setup link`'];
 
-// The hook runs the linked clone's guard, else the installed package's, else refuses the commit.
-// It never calls npx, so a commit can never fetch and run a package from the registry.
+// The hook runs the linked clone's own guard, or refuses the commit. It never calls npx, so a commit can
+// never fetch and run a package from the registry.
 export const HOOK = `#!/bin/sh
 ${HOOK_MARKER} — a no-op once unlinked.
 L="${LINK_DIR}/${LINK_NAME}"
 [ -L "$L" ] || [ -d "$L" ] || exit 0
-[ -f "$L/modules/setup/bin/setup.mjs" ] && exec node "$L/modules/setup/bin/setup.mjs" guard
-I="node_modules/@dreamteamer/setup/bin/setup.mjs"
-[ -f "$I" ] && exec node "$I" guard
+[ -f "$L/scripts/preview.mjs" ] && exec node "$L/scripts/preview.mjs" guard
 echo "linked bundle has no guard — unlink or update it" >&2
 exit 1
 `;

@@ -11,6 +11,15 @@ npx dreamteamer check
 
 ---
 
+## 0.11.0 — on engine 0.48.0: the engine writes `.env` (CR-dt-007)
+
+Nothing to do but `dt update @dreamteamer/core` on dreamteamer 0.48.0 or later, then `dt compile`; nothing a
+workspace's records do changes. The composed meetings, recordings and files units name their `.env` keys as
+env actions and the engine writes them. **`bin/meetings-setup.mjs` is gone** — `dt setup meetings --input
+calendar="<calendar> | <company> | <account>"` replaces it, and the root SETUP.md says so. `@dreamteamer/setup`
+is deprecated: `dt status`, `dt doctor` and `dt setup` are the engine's. Also composed in: recordings' fixes for
+hub-cache snapshot weights and a multi-line `INBOX_FOLDERS`.
+
 ## 0.10.0 — the CLI-first module lifecycle (CR-dt-006)
 
 Nothing to do but `dt update @dreamteamer/core` on dreamteamer 0.47.0 or later, then `dt compile`. What

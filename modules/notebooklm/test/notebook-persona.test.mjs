@@ -15,7 +15,6 @@ const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..',
 // `dt-notebook` — the module's own command since the pack's dispatcher was split by owner; the
 // wrapper below takes the old leading `notebook` word so every call site reads as it did
 const CLI = path.join(ROOT, 'modules', 'notebooklm', 'bin', 'notebook.mjs');
-const SETUP = path.join(ROOT, 'modules', 'setup', 'bin', 'setup.mjs');
 const made = [];
 after(() => { for (const d of made) fs.rmSync(d, { recursive: true, force: true }); });
 
@@ -58,7 +57,7 @@ function consumer(md) {
 	if (md !== undefined) fs.writeFileSync(path.join(ws, 'NOTEBOOKLM.md'), md);
 	return ws;
 }
-const cli = (ws, ...args) => spawnSync(process.execPath, args[0] === 'notebook' ? [CLI, ...args.slice(1)] : [SETUP, ...args], { cwd: ws, encoding: 'utf8', env: { ...process.env, NO_COLOR: '1' } });
+const cli = (ws, ...args) => spawnSync(process.execPath, [CLI, ...(args[0] === 'notebook' ? args.slice(1) : args)], { cwd: ws, encoding: 'utf8', env: { ...process.env, NO_COLOR: '1' } });
 
 describe('section', () => {
 	test('stops at the next ## heading', () => {
@@ -118,10 +117,5 @@ describe('npx dt-notebook persona', () => {
 	test('an unknown sub-verb exits 2', () => {
 		const r = cli(consumer(FIXTURE), 'notebook', 'bogus');
 		assert.equal(r.status, 2);
-	});
-	test('dt-setup, asked for the old notebook verb, names dt-notebook', () => {
-		const r = cli(consumer(FIXTURE), 'notebook-old-spelling');
-		assert.equal(r.status, 2);
-		assert.match(r.stderr, /dt-notebook/);
 	});
 });

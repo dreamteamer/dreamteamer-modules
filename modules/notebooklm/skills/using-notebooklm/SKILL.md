@@ -37,7 +37,7 @@ account is a second home: `NOTEBOOKLM_HOME=~/.notebooklm-work notebooklm login`.
 `uv tool upgrade notebooklm-py && notebooklm skill install` — the second command regenerates the
 vendor skill, which is why we never edit it.
 
-`npx dt-setup doctor` reports all of this under **notebooklm**, offline.
+`dt status` reports all of this on the **notebooklm** line, and `dt doctor` the rows — offline.
 
 ## preflight
 
@@ -62,7 +62,7 @@ file for commit. Always:
 notebooklm download audio .cache/notebooklm/<notebook>/overview.mp3 -a <artifact_id> -n <notebook_id>
 ```
 
-`.cache/` is gitignored (`dreamteamer init` writes the line; `npx dt-setup setup` adds it to an
+`.cache/` is gitignored (`dreamteamer init` writes the line; add it by hand to an
 older workspace) — the materialised-remote-artifact convention: a copy of something whose home is
 elsewhere, rebuilt on demand. Prose artifacts (report, mind-map, data-table, quiz as markdown) are
 text and may land in `data/` as records — but only where a real collection fits, never invented on

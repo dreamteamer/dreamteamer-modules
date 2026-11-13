@@ -11,6 +11,10 @@ npx dreamteamer check
 
 ---
 
+## 0.4.2 — the setup package is gone (CR-dt-007)
+
+Nothing to do but `dt update @dreamteamer/projects`. The README names the line that chains the plan guard into `npm run check`, where it said `npx dt-setup setup` offers to.
+
 ## 0.4.1 — it says it needs users 0.2.0
 
 Nothing changes in what projects ships. Its package.json now floors its dependency in npm's own

@@ -11,7 +11,7 @@ import http from 'node:http';
 import https from 'node:https';
 import cp from 'node:child_process';
 import { syncBuiltinESMExports } from 'node:module';
-import { inspect, plan, apply, legacyDoctor, engineDoctorRows, SETUP_PROVIDER, LEGACY_DOCTOR_IDS } from '../lib/google-setup.mjs';
+import { inspect, plan, apply, legacyDoctor, engineDoctorRows, LEGACY_DOCTOR_IDS } from '../lib/google-setup.mjs';
 import { doctor } from '../lib/doctor.mjs';
 import activate, { setupCommand, apiVersion } from '../lib/extension.mjs';
 
@@ -311,7 +311,7 @@ describe('the google-setup command', () => {
 	const run = (root, argv, env) => { const out = []; const err = []; const code = setupCommand({ root, argv, env, out: (s) => out.push(s), err: (s) => err.push(s) }); return { code, out: out.join('\n'), err: err.join('\n') }; };
 	test('inspect --json is the inspect result; plan prints effects; apply round-trips', () => {
 		const m = machine({ store: false });
-		assert.equal(JSON.parse(run(m.root, ['inspect', '--json'], m.env).out).module, SETUP_PROVIDER.module);
+		assert.equal(JSON.parse(run(m.root, ['inspect', '--json'], m.env).out).module, '@dreamteamer/google-workspace');
 		const p = run(m.root, ['plan', '--account', account], m.env);
 		assert.equal(p.code, 0);
 		assert.match(p.out, /effects: machine-file/);
@@ -339,7 +339,7 @@ test('SETUP.md is shipped and names every action and command this provider has',
 	assert.ok(pkg.files.includes('SETUP.md'));
 	assert.equal(pkg.dreamteamer.extension, './lib/extension.mjs');
 	const text = fs.readFileSync(new URL('../SETUP.md', import.meta.url), 'utf8');
-	for (const id of SETUP_PROVIDER.actions) assert.match(text, new RegExp(`\\b${id}\\b`));
+	for (const id of ['create-credential-store', 'authorize-account', 'verify-account-read']) assert.match(text, new RegExp(`\\b${id}\\b`));
 	for (const word of ['ready', 'configured', 'unverified', 'blocked', 'skipped']) assert.match(text, new RegExp(word));
 	assert.match(text, /google-setup inspect/);
 });

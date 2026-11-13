@@ -7,7 +7,8 @@
 // engine by path is here, in test support.
 //
 // SPEED: `init` + `git init` is paid once per engine into `<tmp>/base-<key>` and copied per test.
-import { execFileSync, spawnSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
+import { createWorkspace, run as engineRun } from 'dreamteamer/testing';
 import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
@@ -20,8 +21,8 @@ const vaultRoot = () => {
 	for (let d = ROOT; d !== path.dirname(d); d = path.dirname(d)) if (fs.existsSync(path.join(d, 'package-lock.json'))) return d;
 	throw new Error(`no package-lock.json above ${ROOT}`);
 };
-// the engine under test is the one tests/helpers/workspace.mjs resolves: DT_CANDIDATES (a hash-verified
-// candidate tarball), DT_ENGINE_DIR (a checkout) or this repo's devDependency — one resolution everywhere
+// the engine under test is the one tests/helpers/workspace.mjs resolves — DT_ENGINE_DIR (a checkout), else the
+// engine `dreamteamer/testing` belongs to (the candidate, before a release) — one resolution everywhere
 import { ENGINE } from '../../../tests/helpers/workspace.mjs';
 export const ENGINE_DIR = fs.realpathSync(ENGINE);
 export const BIN = path.join(ENGINE_DIR, 'bin', 'dreamteamer.js');
@@ -60,17 +61,13 @@ function baseWorkspace() {
 		// built in a staging dir and RENAMED into place: test files run as concurrent processes
 		const staging = fs.mkdtempSync(path.join(TMP, 'staging-'));
 		const dir = path.join(staging, 'ws');
-		fs.mkdirSync(dir);
-		git(dir, ['init', '-q']);
+		// made by `dreamteamer/testing` (cr-dt-007): the engine declared as a file: dependency and linked before
+		// the engine's own bootstrap, so it runs no npm and stays offline; moved here and named `ws`
+		fs.renameSync(createWorkspace({ engine: ENGINE_DIR }).root, dir);
+		const wsPkg = JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8'));
+		fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ ...wsPkg, name: 'ws', version: '0.0.1' }, null, '\t') + '\n');
 		git(dir, ['config', 'user.email', 'test@example.invalid']);
 		git(dir, ['config', 'user.name', 'dreamteamer test']);
-		// the engine declared (a file: spec) and linked BEFORE init — init 0.47 installs a missing engine
-		// from the registry, compiles and commits; declared and present, it runs no npm and stays offline
-		fs.mkdirSync(path.join(dir, 'node_modules'), { recursive: true });
-		fs.symlinkSync(ENGINE_DIR, path.join(dir, 'node_modules', 'dreamteamer'), 'dir');
-		fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ name: 'ws', private: true, version: '0.0.1', dependencies: { dreamteamer: `file:${ENGINE_DIR}` } }, null, '\t') + '\n');
-		const r = spawnSync(process.execPath, [BIN, 'init'], { cwd: dir, env: GIT_ENV, encoding: 'utf8', timeout: SPAWN_TIMEOUT_MS, killSignal: 'SIGKILL' });
-		if (r.status !== 0) throw new Error(`fixture init failed:\n${r.stdout}\n${r.stderr}`);
 		git(dir, ['add', '-A']);
 		if (git(dir, ['status', '--porcelain'])) git(dir, ['commit', '-qm', 'fixture: init']);
 		fs.writeFileSync(path.join(staging, 'ready'), 'ok');
@@ -123,13 +120,13 @@ export function workspace({ module = true, pkg: extra = {}, compile = true } = {
 
 /** The real CLI in a workspace. Never throws on a non-zero exit. */
 export function dt(cwd, ...args) {
-	const r = spawnSync(process.execPath, [BIN, ...args], { cwd, env: GIT_ENV, encoding: 'utf8', timeout: SPAWN_TIMEOUT_MS, killSignal: 'SIGKILL' });
+	const r = engineRun({ root: cwd, engine: ENGINE_DIR }, args, { timeoutMs: SPAWN_TIMEOUT_MS });
 	return { code: r.status, stdout: r.stdout ?? '', stderr: r.stderr ?? '' };
 }
 
 /** The CLI with a JSON payload on stdin — what a harness hook does. */
 export function dtStdin(cwd, input, ...args) {
-	const r = spawnSync(process.execPath, [BIN, ...args], { cwd, env: GIT_ENV, encoding: 'utf8', input, timeout: SPAWN_TIMEOUT_MS, killSignal: 'SIGKILL' });
+	const r = engineRun({ root: cwd, engine: ENGINE_DIR }, args, { input, timeoutMs: SPAWN_TIMEOUT_MS });
 	return { code: r.status, stdout: r.stdout ?? '', stderr: r.stderr ?? '' };
 }
 
@@ -149,7 +146,7 @@ export function writeSource(root, rel, text) {
 /** The CLI with extra environment variables — e.g. a PATH whose only copy of a binary is a test stub.
  *  Bounded like every other spawn here. */
 export function dtEnv(cwd, env, ...args) {
-	const r = spawnSync(process.execPath, [BIN, ...args], { cwd, env: { ...GIT_ENV, ...env }, encoding: 'utf8', timeout: SPAWN_TIMEOUT_MS, killSignal: 'SIGKILL' });
+	const r = engineRun({ root: cwd, engine: ENGINE_DIR }, args, { env, timeoutMs: SPAWN_TIMEOUT_MS });
 	return { code: r.status, stdout: r.stdout ?? '', stderr: r.stderr ?? '' };
 }
 

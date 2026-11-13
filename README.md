@@ -28,9 +28,9 @@ npx dreamteamer compile
   features, research, personas — and the lifecycle that moves them, `/rnd:design` to `/rnd:deploy`,
   gated per record. It composes `wikis` and `notebooklm`.
 
-Then `npx dt-setup doctor` ([`@dreamteamer/setup`](modules/setup)) prints one board of every
-optional capability — transcription, Google, NotebookLM, retrieval — READY, DEGRADED or UNAVAILABLE,
-with the fix on each row. A bare clone with no `.env` is a working workspace; everything optional
+Then `dt status` prints each installed module's setup line — `configured`, `blocked` or `ready`, with
+the next command — and `dt doctor` the checks behind it; `dt setup <unit>` is the fix (the engine's, since
+dreamteamer 0.47). A bare clone with no `.env` is a working workspace; everything optional
 degrades by name.
 
 ## the modules
@@ -71,7 +71,6 @@ only the modules your `package.json` names. Each module's README has its exact i
 
 | module | what it gives a workspace | needs |
 |---|---|---|
-| [`@dreamteamer/setup`](modules/setup) | `dt-setup`: the capability board, the fixes, and `link` to preview this repo | — |
 | [`@dreamteamer/proofs`](modules/proofs) | `dt prove`: behaviour proofs of skills, commands and scripts, answered by exit code | — |
 | [`@dreamteamer/worktrees`](modules/worktrees) | `dt worktree` and `dt land`: a second checkout, and bringing its records home | — |
 | [`@dreamteamer/http`](modules/http) | `dt serve`: a JSON REST api over the same validating store the CLI uses | — |
@@ -167,7 +166,9 @@ uv run --project modules/recordings/skills/transcribing-recordings --with pytest
 ```
 
 To try an unreleased change in a real workspace, preview this clone there with
-`npx dt-setup link <clone>` and `unlink` when done — a pre-commit guard refuses record commits
+`node <clone>/scripts/preview.mjs link <clone>` and `unlink` when done (one module alone: `dt install
+./<clone>/modules/<id>`) — a workspace previewed by the removed setup package refuses every commit
+("linked bundle has no guard") until you run `preview.mjs link` once more, which rewrites its hook — a pre-commit guard refuses record commits
 while a preview is on, because a record may not depend on an unpublished schema.
 
 The house rules — no personal data (the synthetic cast is Dana Oren, Sam Diaz, Northwind, Harbor

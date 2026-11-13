@@ -17,7 +17,7 @@
 	"title": "Core",
 	"description": "Every core noun from one install: users, companies, contacts, engagements, tasks, projects, meetings, files, assets, artifacts, sessions, metrics, workflows.",
 	"orientation": "Every workspace's nouns, composed from the small official modules into one install: `users` with `teams`, `roles` and `responsibilities`; `companies`, `contacts`, `engagements`; `tasks`; `projects` with `decisions` and `risks`; `meetings` with recordings and docs; `files`; `assets` and `artifacts`; `sessions` and `metrics`; `workflows`. Install core OR the small modules, never both.",
-	"engine": ">=0.47.0",
+	"engine": ">=0.48.0",
 	"vars": [
 		"SESSIONS_FOLDER"
 	],
@@ -25,10 +25,6 @@
 		"bin/meetings-migrate-attendees.mjs": {
 			"from": "meetings/bin/migrate-attendees.mjs",
 			"hash": "sha256:7ba0aa85605f7ae740874a91172c6075a362c65c22b58dcd2c1226b431919282"
-		},
-		"bin/meetings-setup.mjs": {
-			"from": "meetings/bin/setup.mjs",
-			"hash": "sha256:4c54cb78de0a7dab9a92dae5ce0452e1c8935955960aa4fdca6ed1ee72696e5c"
 		},
 		"bin/projects-check-records.mjs": {
 			"from": "projects/bin/check-records.mjs",
@@ -292,7 +288,7 @@
 		},
 		"lib/files-setup.mjs": {
 			"from": "files/lib/files-setup.mjs",
-			"hash": "sha256:aa3dc33ba834aa03c19072a8506c17c24cedff2408af84b5a66689c3d2f5b036"
+			"hash": "sha256:de9ae75f53d36e6c3958c9bcaae4995b9f0d0d48cecc3f9b06d41e41b42c4380"
 		},
 		"lib/meetings-extension.mjs": {
 			"from": "meetings/lib/extension.mjs",
@@ -300,7 +296,7 @@
 		},
 		"lib/meetings-setup.mjs": {
 			"from": "meetings/lib/meetings-setup.mjs",
-			"hash": "sha256:1344456b702f760313c018ef2a88e78db356b4998c82c5a58cfa38c17b5a8466"
+			"hash": "sha256:899143e4ad01976b38e34091efa537fe1361d29da0f828a6027f0b11bc7f51e2"
 		},
 		"lib/recordings-extension.mjs": {
 			"from": "recordings/lib/extension.mjs",
@@ -308,11 +304,7 @@
 		},
 		"lib/recordings-setup.mjs": {
 			"from": "recordings/lib/recordings-setup.mjs",
-			"hash": "sha256:7bafb05028f6bc4f65acea701354432f934d6d2851b874038bcdabe372edf900"
-		},
-		"lib/setup-kit.mjs": {
-			"from": "meetings/lib/setup-kit.mjs",
-			"hash": "sha256:eb312ff8eb128f092e5297e154a275208ba2e03a2c98a7f0954c849ae4154bf1"
+			"hash": "sha256:c672361ef693c1a901260a07e5db75020269378e6f2305145aa96c97b0cd4353"
 		},
 		"lib/workspace-root.mjs": {
 			"from": "tasks/lib/workspace-root.mjs",
@@ -320,7 +312,7 @@
 		},
 		"SETUP.md": {
 			"from": "meetings/SETUP.md + recordings/SETUP.md + files/SETUP.md",
-			"hash": "sha256:f67de05e699875e7b1278c4d201f0a97042d6b863d30349c1decfbaf77d5406d"
+			"hash": "sha256:2a0e4f96a7063c1fad8ff35ccb6a5d222352338959c729a0a19fc89d39e12c5a"
 		},
 		"skills/analyzing-meetings/SKILL.md": {
 			"from": "meeting-docs/skills/analyzing-meetings/SKILL.md",

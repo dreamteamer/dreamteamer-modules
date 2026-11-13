@@ -78,6 +78,11 @@ In pinned upstream 2.4.2, new default read-only authorization requests exactly t
 
 The three identity scopes are not document read scopes. Existing credentials can still carry broader prior grants; dispatch restrictions do not revoke them. New-account `auth --allow-write` additionally requests upstream `gmail.send`, `gmail.compose`, `gmail.modify`, `gmail.labels`, `gmail.settings.basic`, `drive`, `drive.file`, `calendar`, and `calendar.events` (each prefixed `https://www.googleapis.com/auth/`). These are broad service permissions, not permission for one action. Inspect and approve the actual consent screen separately; no live grant has been verified by offline tests.
 
+## 0.3.0 — on engine 0.48.0: the engine writes `.env` (CR-dt-007)
+
+Nothing to do but `dt update @dreamteamer/google-workspace` on dreamteamer 0.48.0 or later, then `dt compile`; nothing a
+workspace's records do changes. `record-settings` is now one env action the engine writes into `.env` — both paths at once, an unnamed client file left out rather than blanked; `google-setup.mjs` keeps the module's own inspect, plan and the owner-only credential store, without the old provider object or the setup kit.
+
 ## 0.2.0 — on engine 0.47.0 (CLI-first module lifecycle, CR-dt-006)
 
 Nothing to do but `dt compile` after `dt update @dreamteamer/google-workspace` on dreamteamer 0.47.0 or later (the engine floor is `>=0.47.0`). New: the `google-workspace` setup unit: `dt install @dreamteamer/google-workspace --allow machine` records the credential store (default `~/.config/google-workspace-mcp/credentials`, created owner-only, parents included) and the OAuth client file in `.env`; `dt setup google-workspace --authorize` is the sign-in; a world-readable client file is refused.

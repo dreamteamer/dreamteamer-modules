@@ -1,6 +1,6 @@
 {
 	"name": "@dreamteamer/google-workspace",
-	"version": "0.2.0",
+	"version": "0.3.0",
 	"description": "Explicit-account Google Workspace access through a local MCP bridge, with read-only tool selection by default.",
 	"license": "Apache-2.0",
 	"type": "module",
@@ -32,7 +32,7 @@
 	"dreamteamer": {
 		"extension": "./lib/extension.mjs",
 		"title": "Google Workspace",
-		"engine": ">=0.47.0",
+		"engine": ">=0.48.0",
 		"description": "Access an explicitly selected Google account through a local workspace-mcp process. The bridge defaults to a fixed read-only tool set, refuses calls without a stored account credential, and keeps credentials outside the workspace. Configure and authorize accounts separately on each computer before use.",
 		"env": [
 			"GOOGLE_CLIENT_SECRET_PATH",

@@ -8,7 +8,7 @@ holds its `dt status` line to the outcome this table declares. Three outcomes:
   inputs or a machine prerequisite, and `status` reads `configured` / `blocked` / `ready` honestly.
 - **no setup** — nothing to set up; `status` reads `no setup`, with `needs: KEY` when the module
   declares an env key or var nobody set.
-- **library** — a package other packages build on (the UI, the protocol, the old setup board): it
+- **library** — a package other packages build on (the UI, the protocol): it
   installs and compiles, contributes no rows, reads `no setup`.
 
 | module | dependencies | outcome | unit inputs |
@@ -36,7 +36,6 @@ holds its `dt status` line to the outcome this table declares. Three outcomes:
 | rnd | composes wikis, notebooklm | unit (notebooklm, wikis) | the origins' |
 | routines | — | no setup | |
 | search | — | unit | — (qmd on PATH) |
-| setup | — | library (deprecated shim) | |
 | tasks | users | no setup | |
 | ui | — | library | |
 | users | — | no setup | |

@@ -58,7 +58,7 @@ const STORY_CONCURRENCY = 6;
 const token = fixture ? '' : (process.env.ASANA_PAT || readEnv().ASANA_PAT || '');
 if (!fixture && !token) {
 	console.error('ASANA_PAT is not set — add it to the workspace .env (see .env.sample) or export it for one command.\n' +
-	              'Mint one at https://app.asana.com/0/my-apps. `npx dt-setup doctor` reports the `perspective` capability.');
+	              'Mint one at https://app.asana.com/0/my-apps. `dt setup perspective --input asana_pat=<token>` writes it; `dt status` reports it.');
 	process.exit(2);
 }
 

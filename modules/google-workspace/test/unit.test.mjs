@@ -67,7 +67,7 @@ describe('the unit, pure', () => {
 		const noClient = Object.fromEntries(inspect(ctxFor(root, { PATH: '', WORKSPACE_MCP_CREDENTIALS_DIR: store })).checks.map((c) => [c.id, c]));
 		assert.equal(noClient['google.credential-placement'].status, 'missing');
 	});
-	test('record-settings writes the two paths into .env (workspace-files), so a later call with no inputs reads the store back; again is done', () => {
+	test('record-settings names the two paths as one env action (the engine writes them — cr-dt-007), first in the plan; without a store it waits for input', () => {
 		const root = ignoring(tmp());
 		const store = path.join(tmp(), 'creds');
 		const client = path.join(tmp(), 'client.json'); fs.writeFileSync(client, '{}');
@@ -75,25 +75,15 @@ describe('the unit, pure', () => {
 		const p = plan(ctx, { credentials_dir: store, client_secret: client });
 		const rec = p.actions.find((a) => a.id === 'record-settings');
 		assert.equal(rec.state, 'ready', rec.reason);
-		assert.deepEqual(rec.effects.map((e) => e.kind), ['workspace-files']);
+		assert.deepEqual(rec.env, { WORKSPACE_MCP_CREDENTIALS_DIR: store, GOOGLE_CLIENT_SECRET_PATH: client }, 'both keys in one action: never half-written');
 		assert.equal(p.actions[0].id, 'record-settings', 'first: the next plan reads what it wrote');
-		const r = apply(ctx, rec, { credentials_dir: store, client_secret: client });
-		assert.equal(r.ok, true, r.message);
-		assert.deepEqual(r.changed, ['.env']);
-		const text = fs.readFileSync(path.join(root, '.env'), 'utf8');
-		assert.match(text, new RegExp(`^WORKSPACE_MCP_CREDENTIALS_DIR="?${store.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"?$`, 'm'));
-		assert.match(text, /^GOOGLE_CLIENT_SECRET_PATH=/m);
-		// the engine merges .env under the process env for the next call: the store is known, the plan says done
+		assert.deepEqual(Object.keys(plan(ctx, { credentials_dir: store }).actions[0].env), ['WORKSPACE_MCP_CREDENTIALS_DIR'], 'an unnamed client file is left out, not blanked');
+		assert.equal(apply(ctx, { id: 'record-settings' }, {}).ok, false, 'apply never writes .env');
+		// the engine merges .env under the process env for the next call: the store is known
 		const merged = ctxFor(root, { PATH: '', WORKSPACE_MCP_CREDENTIALS_DIR: store, GOOGLE_CLIENT_SECRET_PATH: client });
 		fs.mkdirSync(store, { mode: 0o700 });
 		assert.equal(inspect(merged).checks.find((c) => c.id === 'google.credential-store').status, 'configured');
-		assert.equal(plan(merged, {}).actions.find((a) => a.id === 'record-settings').state, 'done');
 		assert.deepEqual(plan(merged, {}).needs, ['account']);
-		// a stale fingerprint is refused, nothing written
-		fs.appendFileSync(path.join(root, '.env'), 'LATER=1\n');
-		const fresh = plan(ctx, { credentials_dir: path.join(tmp(), 'other') }).actions.find((a) => a.id === 'record-settings');
-		const stale = apply(ctx, { ...fresh, expect: 'nope' }, { credentials_dir: path.join(tmp(), 'other') });
-		assert.equal(stale.ok, false); assert.match(stale.message, /changed after the preview/);
 	});
 	test('the declared default store is one the action can make: under the home the missing folders are created too, each owner-only', { skip: process.platform === 'win32' }, () => {
 		const root = tmp();

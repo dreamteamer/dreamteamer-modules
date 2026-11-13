@@ -1,6 +1,6 @@
 {
 	"name": "@dreamteamer/perspective",
-	"version": "0.3.0",
+	"version": "0.4.0",
 	"description": "Reads a person's past work \u2014 git, agent sessions, tickets, mail, documents \u2014 and builds the operating model it runs on.",
 	"license": "Apache-2.0",
 	"type": "module",
@@ -35,7 +35,7 @@
 		"env": [
 			"ASANA_PAT"
 		],
-		"engine": ">=0.47.0",
+		"engine": ">=0.48.0",
 		"description": "Reads a person's past work \u2014 git history, coding-agent sessions, tickets, mail, Drive files and notes \u2014 and builds the operating model it runs on: activities, projects, decisions, workflows, vocabulary, goals, findings and the assumptions under them, ending in proposals for what your workspace should track. Every record is found, never authored. Start with /run-retrospective.",
 		"peer_collections": [
 			"contacts",

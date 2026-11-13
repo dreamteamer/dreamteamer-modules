@@ -11,67 +11,28 @@
 //         and declared as a direct dependency.
 //   copy  the module folder copied into the workspace's `modules/` — an ejected or inlined copy.
 //
-// The engine is this repo's devDependency, or the checkout named by DT_ENGINE_DIR — set that to test
-// a module against an engine that is not published yet.
+// The engine is the one `dreamteamer/testing` runs (cr-dt-007): this repo's devDependency — or, before an
+// engine is published, the candidate `scripts/use-candidate.mjs` put over node_modules/dreamteamer — or the
+// checkout DT_ENGINE_DIR names. Every workspace is made and every engine run goes through that export
+// (D69, D71); what stays here is this repo's own: packing, unpacking and copying modules, and reading git.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import assert from 'node:assert';
-import { execFileSync, spawnSync } from 'node:child_process';
-
-import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
+import { createWorkspace, run as engineRun, engineMeets as engineSatisfies, ENGINE as TESTING_ENGINE } from 'dreamteamer/testing';
 
 export const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', '..');
 export const MODULES = path.join(ROOT, 'modules');
 
-// THE CANDIDATE ENGINE — `DT_CANDIDATES` names a folder holding `dreamteamer-<version>.tgz` and a
-// `SHA256SUMS` (the `shasum -c` format). The tarball is verified against the listed hash and extracted
-// ONCE per hash into a temp folder named by it that ENGINE then points at (every test process shares it); its five runtime dependencies are linked
-// from this repo's install, so no registry is asked. A missing file or a wrong hash is a REFUSAL at
-// import, never a silent fall back to the devDependency — a green suite on the wrong engine proves
-// nothing. `DT_ENGINE_DIR` keeps meaning a checkout; the two are exclusive.
-function candidateEngine(dir) {
-	const folder = path.resolve(dir);
-	const tgz = fs.existsSync(folder) ? fs.readdirSync(folder).filter((f) => /^dreamteamer-\d+\.\d+\.\d+.*\.tgz$/.test(f)).sort() : [];
-	if (tgz.length !== 1) throw new Error(`DT_CANDIDATES=${folder}: expected exactly one dreamteamer-<version>.tgz there (found ${tgz.length ? tgz.join(', ') : 'none'})`);
-	const file = path.join(folder, tgz[0]);
-	const sums = path.join(folder, 'SHA256SUMS');
-	if (!fs.existsSync(sums)) throw new Error(`DT_CANDIDATES=${folder}: no SHA256SUMS beside ${tgz[0]} — refusing to test an unverified candidate`);
-	const listed = fs.readFileSync(sums, 'utf8').split('\n').map((l) => /^([0-9a-f]{64})\s+\*?(.+)$/.exec(l.trim())).filter(Boolean).find((m) => m[2] === tgz[0])?.[1];
-	const actual = createHash('sha256').update(fs.readFileSync(file)).digest('hex');
-	if (!listed) throw new Error(`DT_CANDIDATES=${folder}: SHA256SUMS has no line for ${tgz[0]}`);
-	if (listed !== actual) throw new Error(`DT_CANDIDATES=${folder}: ${tgz[0]} is ${actual}, SHA256SUMS says ${listed} — refusing to test a candidate that is not the one hashed`);
-	// extracted ONCE per hash into a folder named by it, shared by every test process (a suite is ~190
-	// of them); a process that finds it there reuses it, and two extracting at once settle by rename
-	const keyed = path.join(os.tmpdir(), `dtm-engine-${actual.slice(0, 16)}`);
-	const engine = path.join(keyed, 'package');
-	if (fs.existsSync(path.join(engine, 'package.json'))) return engine;
-	const staging = fs.mkdtempSync(path.join(os.tmpdir(), 'dtm-engine-staging-'));
-	execFileSync('tar', ['-xzf', file, '-C', staging]);
-	const deps = JSON.parse(fs.readFileSync(path.join(staging, 'package', 'package.json'), 'utf8')).dependencies ?? {};
-	fs.mkdirSync(path.join(staging, 'package', 'node_modules'), { recursive: true });
-	for (const dep of Object.keys(deps)) {
-		const from = path.join(ROOT, 'node_modules', dep);
-		if (!fs.existsSync(from)) { fs.rmSync(staging, { recursive: true, force: true }); throw new Error(`the candidate engine depends on ${dep}, which this repo's npm install does not hold — run npm install`); }
-		fs.symlinkSync(from, path.join(staging, 'package', 'node_modules', dep), 'dir');
-	}
-	try { fs.renameSync(staging, keyed); }
-	catch (error) { fs.rmSync(staging, { recursive: true, force: true }); if (!fs.existsSync(path.join(engine, 'package.json'))) throw error; }
-	return engine;
-}
-export const ENGINE = process.env.DT_CANDIDATES ? candidateEngine(process.env.DT_CANDIDATES) : process.env.DT_ENGINE_DIR ? path.resolve(process.env.DT_ENGINE_DIR) : path.join(ROOT, 'node_modules', 'dreamteamer');
+/** The engine under test: DT_ENGINE_DIR when set, else the one `dreamteamer/testing` belongs to. */
+export const ENGINE = process.env.DT_ENGINE_DIR ? path.resolve(process.env.DT_ENGINE_DIR) : TESTING_ENGINE;
 export const BIN = path.join(ENGINE, 'bin', 'dreamteamer.js');
 export const SCOPE = '@dreamteamer';
 
-const GIT_ENV = {
-	...process.env,
-	GIT_AUTHOR_NAME: 'probe', GIT_AUTHOR_EMAIL: 'probe@example.invalid',
-	GIT_COMMITTER_NAME: 'probe', GIT_COMMITTER_EMAIL: 'probe@example.invalid',
-};
-
-/** Run the engine in `cwd`, with a hard timer: a hang is a failure with a message, never a stuck suite. */
-/** Run the engine in `cwd`, with a hard timer; `env` lays extra variables (a PATH of stand-ins, a unit's keys) over the fixture's. */
-export const run = (cwd, args, env = {}) => spawnSync(process.execPath, [BIN, ...args], { cwd, encoding: 'utf8', env: { ...GIT_ENV, ...env }, timeout: 60_000 });
+/** Run the engine in `cwd` through `dreamteamer/testing`, with a hard timer (a hang is a failure, never a
+ *  stuck suite); `env` lays extra variables (a PATH of stand-ins, a unit's keys) over the process's. */
+export const run = (cwd, args, env = {}) => engineRun({ root: cwd, engine: ENGINE }, args, { env, timeoutMs: 60_000 });
 
 export const moduleIds = () => fs.readdirSync(MODULES).filter((m) => fs.existsSync(path.join(MODULES, m, 'package.json'))).sort();
 export const pkgOf = (m) => JSON.parse(fs.readFileSync(path.join(MODULES, m, 'package.json'), 'utf8'));
@@ -95,14 +56,8 @@ export const cleanup = () => { for (const r of made.splice(0)) fs.rmSync(r, { re
 /** A fresh `dreamteamer init` workspace with the three template variables declared and set. */
 export function virginWorkspace() {
 	assert.ok(fs.existsSync(BIN), `no engine at ${ENGINE} — run npm install, or point DT_ENGINE_DIR at a checkout`);
-	const root = fs.mkdtempSync(path.join(os.tmpdir(), 'dtm-ws-')); made.push(root);
-	execFileSync('git', ['init', '-q'], { cwd: root });
-	fs.mkdirSync(path.join(root, 'node_modules'));
-	fs.symlinkSync(ENGINE, path.join(root, 'node_modules', 'dreamteamer'), 'dir');
-	fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name: 'probe', private: true, dependencies: { dreamteamer: '*' } }, null, '\t'));
-	const init = run(root, ['init', '--name', 'probe']);
-	assert.equal(init.status, 0, init.stderr + init.stdout);
-	editPkg(root, (pkg) => { pkg.dreamteamer.vars = ['FILES_FOLDER', 'INBOX_FOLDERS', 'REPOS_FOLDER']; });
+	const { root } = createWorkspace({ engine: ENGINE }); made.push(root);
+	editPkg(root, (pkg) => { pkg.name = 'probe'; pkg.dreamteamer.vars = ['FILES_FOLDER', 'INBOX_FOLDERS', 'REPOS_FOLDER']; });
 	fs.writeFileSync(path.join(root, '.env'), `FILES_FOLDER=${root}/files\nINBOX_FOLDERS=${root}/inbox\nREPOS_FOLDER=${root}\n`);
 	return root;
 }
@@ -179,11 +134,8 @@ export const ENGINE_VERSION = JSON.parse(fs.readFileSync(path.join(ENGINE, 'pack
 
 /** Does the engine under test meet a module's `dreamteamer.engine` floor (`>=x.y.z`)? */
 export function engineMeets(m) {
-	const floor = /^>=(\d+)\.(\d+)\.(\d+)$/.exec(pkgOf(m).dreamteamer.engine ?? '');
-	if (!floor) return true;
-	const have = ENGINE_VERSION.split('.').map(Number), want = floor.slice(1).map(Number);
-	for (let i = 0; i < 3; i++) if (have[i] !== want[i]) return have[i] > want[i];
-	return true;
+	const floor = pkgOf(m).dreamteamer.engine;
+	return floor ? engineSatisfies(floor) : true;
 }
 
 /** Does the engine under test refuse a module whose npm `peerDependencies` floor a present sibling

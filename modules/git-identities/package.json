@@ -1,6 +1,6 @@
 {
 	"name": "@dreamteamer/git-identities",
-	"version": "0.2.0",
+	"version": "0.2.1",
 	"description": "Plan and verify folder-scoped Git identities without changing machine authentication.",
 	"license": "Apache-2.0",
 	"type": "module",
