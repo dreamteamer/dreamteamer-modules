@@ -12,7 +12,7 @@ npx dreamteamer compile
 
 Start with `/run-retrospective`; the `running-retrospectives` skill carries the thirteen stages. Every
 source is optional and a run says which it could not reach. Chain the record guard into
-`npm run check` (`npx dt-setup setup` offers to):
+`npm run check` — add it to the `check` script:
 `node node_modules/@dreamteamer/perspective/bin/check-records.mjs`.
 
 ## 0.3.0 — on engine 0.47.0 (CLI-first module lifecycle, CR-dt-006)

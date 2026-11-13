@@ -13,7 +13,7 @@ npx dreamteamer compile
 |---|---|
 | the plan, its views (`/plan/by-lane`, `/plan/by-person`, `/plan/gates`, the gantt) and the plan guard; `projects.teams` staffs a project with users' teams, and each team lists back the projects it is staffed to | **tasks** hangs small commitments off a project or an activity · **contacts** names who accepts a deliverable, owns an outside gate or made an outside decision · **companies** says whose project it is |
 
-Chain the plan guard into your workspace's `check` script (`npx dt-setup setup` offers to):
+Chain the plan guard into your workspace's `check` script:
 `node node_modules/@dreamteamer/projects/bin/check-records.mjs`.
 
 ## what a descriptor cannot say

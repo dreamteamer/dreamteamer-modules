@@ -51,7 +51,6 @@ export const WEIGHTS = {
 	'modules/rnd/test/heldout/play-fails-honestly.test.mjs': 15,
 	'tests/interplay.test.mjs': 14,
 	'modules/proofs/test/integration/extension.test.js': 12,
-	'modules/setup/test/capabilities.test.mjs': 12,
 	'modules/rnd/test/prototype-packed.test.mjs': 10,
 	'modules/workflows/test/install.test.mjs': 9,
 	'modules/rnd/test/prototype-schema.test.mjs': 9,

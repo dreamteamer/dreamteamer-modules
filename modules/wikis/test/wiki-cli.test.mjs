@@ -23,7 +23,6 @@ import { virginWorkspace, installCopied as installModules, closure, run as engin
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', '..', '..');
 // `dt-wiki` — the module's own command since the pack's dispatcher was split by owner
 const CLI = path.join(ROOT, 'modules', 'wikis', 'bin', 'wiki.mjs');
-const SETUP = path.join(ROOT, 'modules', 'setup', 'bin', 'setup.mjs');
 const made = [];
 after(() => { for (const d of made) fs.rmSync(d, { recursive: true, force: true }); });
 
@@ -333,12 +332,6 @@ describe('refusals', () => {
 		assert.match(r.stderr, /wiki incomplete/);
 	});
 
-	test('dt-setup, asked for a verb that moved, names where wiki and notebook went', () => {
-		const { ws } = workspace();
-		const r = spawnSync(process.execPath, [SETUP, 'wiki'], { cwd: ws, encoding: 'utf8' });
-		assert.equal(r.status, 2);
-		assert.match(r.stderr, /(?=.*\bdt-wiki\b)(?=.*\bdt-notebook\b)/);
-	});
 });
 
 // ⚠ THE ONE THAT CANNOT DRIFT WITH ITS OWN FIXTURE. Everything above asserts what the CLI writes

@@ -67,7 +67,7 @@ it in `references`, in our `branding`; the clickable thing is the `prototypes` r
 points back. `plan` on the design doc is a `<collection>/<id>` string — `projects/<id>` where the plan
 module is installed. The chain is bound, so `dt next` on a design doc names the missing hop, and
 `building-from-references` is the procedure. ffmpeg is the one binary this module shells out to
-(`extract-frames.mjs`), and `npx dt-setup doctor` says whether it is there.
+(`extract-frames.mjs`), and `dt status` says whether it is there.
 
 ## the lifecycle
 

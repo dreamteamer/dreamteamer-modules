@@ -16,7 +16,7 @@ import { execFileSync } from 'node:child_process';
 import { MODULES, ROOT, BIN, pkgOf, moduleIds, folderOf, packed, virginWorkspace, run, cleanup, engineReadsFloors } from './helpers/workspace.mjs';
 import { serveRegistry, npmInstall, installedVersion } from './helpers/registry.mjs';
 import { compose, composedModules } from '../scripts/compose-core.mjs';
-import { main as linkMain } from '../modules/setup/bin/link.mjs';
+import { main as linkMain } from '../scripts/preview/link-cli.mjs';
 
 after(cleanup);
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'dtm-floors-'));
@@ -190,7 +190,7 @@ describe('dt compile refuses a half-upgrade npm never saw', { skip }, () => {
 		assert.doesNotMatch(c.stderr, /name collision/);
 	});
 
-	/** A clone of this repo as `dt-setup link` sees one: a bundle root and the two modules under modules/. */
+	/** A clone of this repo as `scripts/preview.mjs link` sees one: a bundle root and the two modules under modules/. */
 	function clone(users) {
 		const dir = fs.mkdtempSync(path.join(tmp, 'clone-'));
 		fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ name: 'dreamteamer-modules', private: true, dreamteamer: {} }, null, '\t'));
@@ -205,7 +205,7 @@ describe('dt compile refuses a half-upgrade npm never saw', { skip }, () => {
 		return root;
 	}
 
-	test('a linked clone whose users is behind its projects: dt-setup link, then compile refuses by the floor', async () => {
+	test('a linked clone whose users is behind its projects: preview link, then compile refuses by the floor', async () => {
 		const root = await linked(standIn('users'));
 		const c = run(root, ['compile']);
 		assert.equal(c.status, 1, c.stderr + c.stdout);
