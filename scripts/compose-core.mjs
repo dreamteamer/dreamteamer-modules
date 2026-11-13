@@ -268,7 +268,7 @@ export const filesEntry = (copies) => Object.fromEntries([...copies.entries()].s
 
 /** Everything out of date in one composed module — `[]` when it is composed. */
 export function problemsOf(target) {
-	const { spec, copies, manifest, root } = compose(target);
+	const { spec, copies, manifest, root, setupUnits } = compose(target);
 	const files = filesEntry(copies);
 	const problems = [];
 	for (const [dest, { bytes }] of copies) {
@@ -280,13 +280,12 @@ export function problemsOf(target) {
 	const pkgPath = path.join(root, 'package.json');
 	if (!fs.existsSync(pkgPath) || JSON.stringify(readJson(pkgPath)) !== JSON.stringify(manifest)) problems.push('package.json is not the merged manifest');
 	if (JSON.stringify(spec.files ?? {}) !== JSON.stringify(files)) problems.push('compose.json files do not match the copies');
-	const { setupUnits } = compose(target);
 	if (JSON.stringify(spec.setup_units ?? []) !== JSON.stringify(setupUnits)) problems.push(`compose.json setup_units should be ${JSON.stringify(setupUnits)}`);
 	return problems;
 }
 
 function composeOne(target, check) {
-	const { spec, copies, manifest, root } = compose(target);
+	const { spec, copies, manifest, root, setupUnits } = compose(target);
 	const files = filesEntry(copies);
 	const problems = problemsOf(target);
 	if (check) {
@@ -297,7 +296,6 @@ function composeOne(target, check) {
 	for (const dest of Object.keys(spec.files ?? {})) fs.rmSync(path.join(root, dest), { force: true });
 	// the origin's mode travels with the bytes: an executable bin script stays executable in the copy
 	for (const [dest, { bytes, mode }] of copies) { fs.mkdirSync(path.dirname(path.join(root, dest)), { recursive: true }); fs.writeFileSync(path.join(root, dest), bytes, mode ? { mode } : undefined); if (mode) fs.chmodSync(path.join(root, dest), mode); }
-	const { setupUnits } = compose(target);
 	fs.writeFileSync(path.join(root, 'compose.json'), JSON.stringify({ ...spec, ...(setupUnits.length ? { setup_units: setupUnits } : {}), files }, null, '\t') + '\n');
 	fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify(manifest, null, '\t') + '\n');
 	console.log(`${target}: composed ${copies.size} files from ${spec.origins.join(', ')}${problems.length ? ` (${problems.length} were out of date)` : ''}`);
