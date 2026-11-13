@@ -158,7 +158,9 @@ describe('through the engine', { skip: !engineMeets('google-workspace') && `need
 	test('dt install creates the store under --allow machine, prints the sign-in line, status reads configured naming client_secret; --authorize without a terminal is exit 2', () => {
 		const root = virginWorkspace();
 		const from = packedInto(fs.mkdtempSync(path.join(os.tmpdir(), 'dtm-from-')), 'google-workspace');
-		const store = path.join(fs.realpathSync(path.join(root, '..')), `creds-${path.basename(root)}`);
+		// the store's parent must be owner-only: the unit refuses a parent other users can write to (the
+		// sticky /tmp on a Linux runner), so a fresh mkdtemp folder (0700) is the parent, never os.tmpdir() itself
+		const store = path.join(tmp(), 'creds');
 		const r = run(root, ['install', '@dreamteamer/google-workspace', '--from', from, '--input', `credentials_dir=${store}`, '--allow', 'machine', '--no-input']);
 		assert.equal(r.status, 0, r.stderr + r.stdout);
 		assert.ok(fs.existsSync(store), 'the store was created');
