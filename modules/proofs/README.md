@@ -26,3 +26,7 @@ is deliberate: a proof nothing validates is a claim nothing checks.
 **What the extension contributes:** the `prove` command, the `proofs` source kind with
 `proofs/fixtures/` excluded, an analysis that validates every proof at compile and notes artifacts
 with no proof yet, and one orientation sentence. Engine `>=0.31.0`. Apache-2.0.
+
+## 0.1.1 — the nav is nav.yaml (cr-dt-008)
+
+`display.nav.order` and `display.nav.section` removed from its descriptor — the nav is `nav.yaml` at the workspace root (engine 0.49), which you arrange; `display.nav.icon` stays. Nothing to do.

@@ -100,7 +100,6 @@ fields:
 display:
   nav:
     icon: graph
-    order: 50
   list:
     columns: [name, scope, unit, current, target, as_of, period, status]
   record:

@@ -145,7 +145,6 @@ fields:
 display:
   nav:
     icon: symbol-keyword
-    order: 120
   list:
     columns:
       - name

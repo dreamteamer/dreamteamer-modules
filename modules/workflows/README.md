@@ -10,8 +10,9 @@ npx dreamteamer compile
 npx dt-workflows install customer-factory
 ```
 
-`@dreamteamer/core` carries this module, so a workspace on core already has it — install core OR this
-module, never both.
+`@dreamteamer/core` is a preset that installs this module among its members, so a workspace on core
+already has it. (Through core 0.11 core carried a composed copy, and installing both was refused; from
+core 0.12.0 core is a preset of the small modules, so this does not apply.)
 
 ## what a workflow is
 
@@ -70,3 +71,7 @@ any record: `dt commit workflows/<id>`.
   engagements**, and the coming client calls prepped. Every command it names is in core.
 - `software-factory` ships with `@dreamteamer/rnd`, whose commands it mostly runs: the same meeting
   intake, then references, change requests, design, review, prototype, plan, build, test and deploy.
+
+## 0.1.2 — the nav is nav.yaml (cr-dt-008)
+
+`display.nav.order` and `display.nav.section` removed from its descriptor — the nav is `nav.yaml` at the workspace root (engine 0.49), which you arrange; `display.nav.icon` stays. Nothing to do.

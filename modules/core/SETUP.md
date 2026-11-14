@@ -31,7 +31,8 @@ SETUP.md, when installed), transcription (the `recordings` module), or `FILES_FO
 ## Commands
 
 Run from the workspace root. The engine drives the unit the same way however the module arrived — its
-own package, an inline copy, or composed into `@dreamteamer/core`.
+own package or an inline copy. (Through core 0.11 it could also arrive composed into `@dreamteamer/core`;
+from core 0.12.0 core is a preset of the small modules, so this does not apply.)
 
 | command | effect |
 |---|---|
@@ -90,7 +91,8 @@ when the person declined calendar sync (`dt setup meetings --skip`). Name the ne
 ## Limits
 
 - File presence proves nothing about consent, expiry, scopes or calendar access.
-- `@dreamteamer/core` composes this reference into its own root `SETUP.md`; the commands are the same.
+- Through core 0.11, `@dreamteamer/core` composed this reference into its own root `SETUP.md`; from core
+  0.12.0 core is a preset of the small modules and this file is the only copy.
 
 ---
 

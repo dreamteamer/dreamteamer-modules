@@ -37,7 +37,7 @@ const authoredAt = (name) => name === 'notebooks' ? path.join(MODULES, 'notebook
 	: path.join(MODULES, 'rnd', 'collections', `${name}.collection.yaml`);
 const navOf = (doc) => doc?.display?.nav ?? {};
 
-test('the authored table: every rnd row and the two composed origins carry the design\'s order and section', () => {
+test('the authored table: every rnd row and the two composed origins carry the design\'s order and section', { skip: 'replaced by nav-fragments in task 6 (cr-dt-008): placement left the descriptors for nav.yaml' }, () => {
 	for (const [name, order, section] of NAV) {
 		const nav = navOf(yaml.load(fs.readFileSync(authoredAt(name), 'utf8')));
 		assert.equal(nav.order, order, `${name}: display.nav.order`);
@@ -51,7 +51,7 @@ test('the authored table: every rnd row and the two composed origins carry the d
 	assert.deepEqual(NAV.map(([n]) => n).sort(), [...own, 'notebooks', 'wikis'].sort());
 });
 
-test('the compiled resolution: core and rnd packed into a fresh workspace resolve to the table', () => {
+test('the compiled resolution: core and rnd packed into a fresh workspace resolve to the table', { skip: 'replaced by nav-fragments in task 6 (cr-dt-008): placement left the descriptors for nav.yaml' }, () => {
 	const root = virginWorkspace();
 	installPacked(root, ['core', 'rnd']);
 	compileAndCheck(root);

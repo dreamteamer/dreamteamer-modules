@@ -72,7 +72,6 @@ fields:
 display:
   nav:
     icon: lightbulb
-    order: 190
   list:
     columns:
       - name

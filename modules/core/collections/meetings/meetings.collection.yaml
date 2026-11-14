@@ -205,8 +205,6 @@ display:
         collapsed: true
   nav:
     icon: calendar
-    order: 12
-    section: crm
   list:
     columns:
       - starts

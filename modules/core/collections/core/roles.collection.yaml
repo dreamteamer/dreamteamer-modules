@@ -55,7 +55,6 @@ fields:
 display:
   nav:
     icon: symbol-class
-    order: 11
   list:
     columns: [name, description, users]
   form:

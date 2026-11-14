@@ -105,7 +105,6 @@ fields:
 display:
   nav:
     icon: file
-    order: 70
   list:
     columns:
       - name

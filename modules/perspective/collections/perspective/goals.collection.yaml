@@ -144,7 +144,6 @@ fields:
 display:
   nav:
     icon: location
-    order: 150
   list:
     columns:
       - name

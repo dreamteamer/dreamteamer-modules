@@ -113,8 +113,6 @@ fields:
 display:
   nav:
     icon: star-full
-    order: 34
-    section: product
   list:
     columns:
       - name

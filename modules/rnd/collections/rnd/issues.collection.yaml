@@ -122,7 +122,6 @@ fields:
 display:
   nav:
     icon: bug
-    order: 21
   list:
     columns:
       - name

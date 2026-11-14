@@ -69,7 +69,6 @@ fields:
 display:
   nav:
     icon: workspace-trusted
-    order: 46
   list:
     columns:
       - name

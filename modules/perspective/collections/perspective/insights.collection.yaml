@@ -45,7 +45,6 @@ fields:
 display:
   nav:
     icon: sparkle
-    order: 170
   list:
     columns:
       - name

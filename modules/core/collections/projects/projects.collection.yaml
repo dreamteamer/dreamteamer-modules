@@ -1,8 +1,8 @@
 name: projects
 description: >-
-  One delivery effort with a start, an end and someone accountable — the record every activity hangs off. Not the thing being BUILT (a workspace with an R&D module keeps that as a product) and not the commercial funnel record: a project is the WORK, and `company` is enough to say whose it is.
+  One delivery effort with a start, an end and someone accountable — the record every deliverable, decision and risk hangs off. Not the thing being BUILT (a workspace with an R&D module keeps that as a product) and not the commercial funnel record: a project is the WORK, and `company` is enough to say whose it is.
 use_when: >-
-  a bounded piece of delivery is agreed and needs a plan — create it here first, then its `activities`; asked "where does this effort stand", "when does it start" or "who is on it", read here. The generated `activities` mirror is the plan itself, `lead` says who is accountable and `teams` who is staffed
+  a bounded piece of delivery is agreed and needs a plan — create it here first, then its deliverables, decisions and risks; asked "where does this effort stand", "when does it start" or "who is on it", read here. The generated `deliverables`, `decisions` and `risks` mirrors are the plan, `lead` says who is accountable and `teams` who is staffed
 storage: {path: data/projects, format: md}
 # A name with no Latin characters (Hebrew, Arabic, Cyrillic, CJK) slugs to an unreadable hash id
 # rather than failing. Pass `--id` explicitly for those: `dt add projects --id <latin-handle> --name "…"`.
@@ -16,7 +16,7 @@ fields:
     description: What the project is called.
   code:
     type: string
-    description: A short handle used in conversation and in activity codes — optional, and free-form because every shop numbers differently.
+    description: A short handle used in conversation and in register codes — optional, and free-form because every shop numbers differently.
   description:
     type: string
     description: One line on what this project delivers.
@@ -30,7 +30,7 @@ fields:
   teams:
     type: teams
     many: true
-    description: The teams staffed to this project. Membership comes from the team, so staffing is not restated per activity.
+    description: The teams staffed to this project. Membership comes from the team, so staffing is not restated per record.
   # Where the code lives. `repos` is an engine collection (`dt install repos/<id>` clones one, `dt status`
   # reports it), so a project points at it. `repo` is the front door; `repos` lists every one it touches.
   repo:
@@ -97,7 +97,6 @@ fields:
 display:
   nav:
     icon: rocket
-    order: 8
   list:
     columns:
       - name

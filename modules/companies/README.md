@@ -31,6 +31,10 @@ npx dt set companies/harbor-mutual --logo assets/logos/harbor-mutual
 
 A brand that Simple Icons carries uses its slug instead: `assets/logos/<simple-icons-slug>`.
 
+## 0.1.3 — the nav is nav.yaml (cr-dt-008)
+
+`display.nav.order` and `display.nav.section` removed from its descriptor — the nav is `nav.yaml` at the workspace root (engine 0.49), which you arrange; `display.nav.icon` stays. Nothing to do.
+
 ## 0.1.2
 
 Engine floor `>=0.47.0` and the peer list mirrored for `dt install`'s closure; nothing else changes. `dt update @dreamteamer/companies` then `dt compile`.

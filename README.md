@@ -15,18 +15,21 @@ Two packages give a workspace almost everything:
 ```bash
 npm install dreamteamer @dreamteamer/core @dreamteamer/rnd
 npx dreamteamer init
-npx dreamteamer compile
 ```
+
+On engine 0.48 or later `init` installs and compiles by itself; there is no separate compile step.
 
 - [`@dreamteamer/core`](modules/core) — every core noun from one install: users with their teams,
   roles and responsibilities, companies, contacts and engagements, tasks, projects with decisions and
   risks, meetings with recordings, preps, summaries and critiques, files on mounted drives, the
-  assets a view draws, artifacts, sessions and metrics, and workflows. It is a *composition* of the
-  small modules below, so you install **core or the small modules, never both**.
+  assets a view draws, artifacts, sessions and metrics, and workflows. From 0.12.0 it is a *preset*: a
+  pinned list of the small modules below, which `dt install` expands into your own dependencies, so
+  any one of them can later be dropped or updated on its own. Nothing is composed.
 - [`@dreamteamer/rnd`](modules/rnd) — what a workspace builds: products, design docs, change
   requests, implementation plans, user stories, screens, prototypes, tests, reviews, issues,
   features, research, personas — and the lifecycle that moves them, `/rnd:design` to `/rnd:deploy`,
-  gated per record. It composes `wikis` and `notebooklm`.
+  gated per record. `wikis` and `notebooklm` are modules of their own, installed beside it by whoever
+  keeps notebooks or wikis.
 
 Then `dt status` prints each installed module's setup line — `configured`, `blocked` or `ready`, with
 the next command — and `dt doctor` the checks behind it; `dt setup <unit>` is the fix (the engine's, since
@@ -39,7 +42,7 @@ Every module needs engine `>=0.33.0`; `rnd` and `workflows` need `>=0.38.0`, `co
 declares what it depends on, and you install the closure as direct dependencies — the engine loads
 only the modules your `package.json` names. Each module's README has its exact install line.
 
-**Work — people, commitments, meetings** (all composed into `core`)
+**Work — people, commitments, meetings** (members of the `core` preset)
 
 | module | what it gives a workspace | needs |
 |---|---|---|
@@ -61,8 +64,8 @@ only the modules your `package.json` names. Each module's README has its exact i
 | module | what it gives a workspace | needs |
 |---|---|---|
 | [`@dreamteamer/rnd`](modules/rnd) | the R&D lifecycle on products, designs, plans, tests and reviews (above) | — |
-| [`@dreamteamer/wikis`](modules/wikis) | local corpora of markdown, grepped with nothing installed, asked by meaning once `qmd` is (composed into `rnd`) | — |
-| [`@dreamteamer/notebooklm`](modules/notebooklm) | `dt notebooklm`: the workspace as NotebookLM sources, each notebook a record it is restored from (composed into `rnd`) | — |
+| [`@dreamteamer/wikis`](modules/wikis) | local corpora of markdown, grepped with nothing installed, asked by meaning once `qmd` is | — |
+| [`@dreamteamer/notebooklm`](modules/notebooklm) | `dt notebooklm`: the workspace as NotebookLM sources, each notebook a record it is restored from | — |
 | [`@dreamteamer/search`](modules/search) | `dt-find`: an effort ladder over the workspace's own records — exact words, meaning, a hedged query, the reference graph | — |
 | [`@dreamteamer/routines`](modules/routines) | recurring commitments: a calendar rule and the next date owed | — |
 | [`@dreamteamer/perspective`](modules/perspective) | a person's operating model, read off their own past work | — |
@@ -74,13 +77,13 @@ only the modules your `package.json` names. Each module's README has its exact i
 | [`@dreamteamer/proofs`](modules/proofs) | `dt prove`: behaviour proofs of skills, commands and scripts, answered by exit code | — |
 | [`@dreamteamer/worktrees`](modules/worktrees) | `dt worktree` and `dt land`: a second checkout, and bringing its records home | — |
 | [`@dreamteamer/http`](modules/http) | `dt serve`: a JSON REST api over the same validating store the CLI uses | — |
-| [`@dreamteamer/code`](modules/code) | `dt-editor`: the browser editor over local files, with a Claude coordinator | — |
+| [`@dreamteamer/code`](modules/code) | `dt-editor`: the browser editor over local files, with a Claude coordinator (not published to npm) | — |
 | [`@dreamteamer/docker-workspaces`](modules/docker-workspaces) | `dt-docker`: a workspace as a local Docker container, moved between machines as one encrypted file | — |
 
 ## Optional personal workspace capabilities
 
-The following modules are available in this source tree; install from the registry only after
-their reviewed release. They ship no accounts, private records, client configuration or tokens.
+The following modules are published like the rest, each installed on its own. They ship no accounts,
+private records, client configuration or tokens.
 
 | module | capability | needs |
 |---|---|---|
@@ -92,8 +95,8 @@ Tasks in `core` use a compact Board and List by default, including suggestions a
 
 Choose capabilities independently. The account modules do not authorize accounts, apply machine
 configuration, import CRM records or prove remote access. The setup board reports unverified
-authentication as a gap. Meetings and transcription remain in `core`; do not install their small
-origin modules alongside it. Content-production and service-usage dashboards are not part of
+authentication as a gap. Meetings and transcription are the `meetings` and `recordings` modules, members of
+the `core` preset. Content-production and service-usage dashboards are not part of
 this profile.
 
 ## making a module yours
@@ -122,9 +125,9 @@ validates every record against it.
 Each module is released on its own, as one git tag `<id>-v<version>` pushed by a person;
 `.github/workflows/release.yml` re-runs the leak gate and the suite, then publishes to npm with
 provenance. A module's `README.md` carries its release notes; `UPDATING.md`, where a module ships
-one, says what a workspace has to do after upgrading. `core` and `rnd` are re-composed and
-re-released when a module they compose changes (`scripts/compose-core.mjs`; `compose.json` in each
-lists every copy with its origin and hash).
+one, says what a workspace has to do after upgrading. Nothing is composed: from 0.12.0
+`core` is a preset — its `package.json` pins each member to an exact version under `dreamteamer.preset`
+— and is re-released when a member it pins is released.
 
 `main` is protected: a commit reaches it only when the `ci` and `leak-scan` checks passed on it, for
 administrators too, and it is never force-pushed. So a change — the version bump included — goes in

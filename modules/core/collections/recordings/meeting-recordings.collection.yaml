@@ -103,8 +103,6 @@ fields:
 display:
   nav:
     icon: mic
-    order: 13
-    section: crm
   list:
     columns:
       - name

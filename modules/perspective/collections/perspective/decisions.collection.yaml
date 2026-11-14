@@ -140,7 +140,6 @@ fields:
 display:
   nav:
     icon: law
-    order: 130
   list:
     columns:
       - name

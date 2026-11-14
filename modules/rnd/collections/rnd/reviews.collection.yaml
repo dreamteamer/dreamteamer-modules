@@ -101,7 +101,6 @@ fields:
 display:
   nav:
     icon: code-review
-    order: 22
   list:
     columns:
       - reviewed_on

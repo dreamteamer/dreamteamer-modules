@@ -15,6 +15,10 @@ source is optional and a run says which it could not reach. Chain the record gua
 `npm run check` — add it to the `check` script:
 `node node_modules/@dreamteamer/perspective/bin/check-records.mjs`.
 
+## 0.4.1 — the nav is nav.yaml (cr-dt-008)
+
+`display.nav.order` and `display.nav.section` removed from its twenty-three descriptors — the nav is `nav.yaml` at the workspace root (engine 0.49), which you arrange; `display.nav.icon` stays. Nothing to do.
+
 ## 0.4.0 — on engine 0.48.0: the engine writes `.env` (CR-dt-007)
 
 Nothing to do but `dt update @dreamteamer/perspective` on dreamteamer 0.48.0 or later, then `dt compile`; nothing a

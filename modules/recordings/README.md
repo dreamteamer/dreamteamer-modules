@@ -34,6 +34,10 @@ A file handed straight to a session, or a pasted transcript, skips the inbox: th
 | optional: `TRANSCRIPTION_HOME`, default `~/.cache/dreamteamer/transcription` | the one folder the transcriber keeps outside the package: `models/` (`diarization/`, `whisper-ct2/`, `whisper-ggml/`), `venv/` (reaching uv as `UV_PROJECT_ENVIRONMENT`, which the skill's preamble exports) and `asr/`, the raw recognizer output of each run. Copy `models/` to bring a machine up; delete the folder to uninstall |
 | optional, on Apple Silicon: `whisper-cli` (`brew install whisper-cpp`) and 1.6 GB more of weights, which `setup` fetches when the binary is there | the GPU pass — recognition on Metal, four to five times faster than the CPU pass on an M4 Pro; without it the CPU pass runs as before, and `auto` says why in one line, the summary and the record |
 
+## 0.5.1 — the nav is nav.yaml (cr-dt-008)
+
+`display.nav.order` and `display.nav.section` removed from its descriptor — the nav is `nav.yaml` at the workspace root (engine 0.49), which you arrange; `display.nav.icon` stays. Nothing to do.
+
 ## 0.5.0 — on engine 0.48.0: the engine writes `.env` (CR-dt-007)
 
 Nothing to do but `dt update @dreamteamer/recordings` on dreamteamer 0.48.0 or later, then `dt compile`; nothing a

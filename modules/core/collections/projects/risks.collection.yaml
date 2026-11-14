@@ -14,7 +14,7 @@ description: >-
 use_when: >-
   an exposure is named — in a meeting, a review, an estimate that rests on an unverified claim — write it here with `owner` and `evidence`, never as a table row in a note; asked "what threatens this plan" or "what does <person> carry", list here by `project` or `owner`. Search here before re-deriving an exposure a review already named, and before calling anything de-risked: `status` only reaches `closed` through a change in the world, written in `mitigation` and quotable
 storage: {path: data/risks, format: md}
-# The register code is the id, as `activities.code` is: a register is read and spoken by its codes.
+# The register code is the id: a register is read and spoken by its codes.
 ids:
   from: "{{ code }}"
   pattern: ^[a-z0-9][a-z0-9-]*$
@@ -108,7 +108,6 @@ fields:
 display:
   nav:
     icon: flame
-    order: 15
   list:
     columns:
       - name

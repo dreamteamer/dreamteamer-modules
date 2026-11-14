@@ -83,7 +83,6 @@ fields:
 display:
   nav:
     icon: browser
-    order: 16
   list:
     columns: [name, kind, company, built_on, published_url]
   form:

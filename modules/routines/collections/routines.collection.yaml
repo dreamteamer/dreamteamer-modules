@@ -66,7 +66,6 @@ fields:
 display:
   nav:
     icon: sync
-    order: 4
   list:
     columns:
       - name

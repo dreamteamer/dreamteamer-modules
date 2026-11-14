@@ -147,7 +147,6 @@ fields:
 display:
   nav:
     icon: history
-    order: 22
   list:
     columns: [name, worker, project, records, started, turns, cost_usd, harness]
     sort: -started

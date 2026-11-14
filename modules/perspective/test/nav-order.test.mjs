@@ -1,13 +1,9 @@
-// The left nav, ordered by the pipeline the work actually follows.
+// The left nav: no order, no section — the ui-view orders stay.
 //
-// The studio sorts collections by a numeric `display.nav.order` on the descriptor (the engine's presentation
-// layer falls back to 999) and puts view entries above them by `nav.order`. Neither was set
-// deliberately here: NO collection carried an `order` at all, so all twenty sorted on the fallback,
-// and among the ten named views `nav.order` 1 was unused while 8 and 9 were each used twice.
-//
-// ⚠ `display.nav.section` is deliberately NOT used by perspective: its twenty collections are one module's
-// pipeline and module ownership is partition enough. The key itself is current — the engine documents it
-// as partitioning a module's rows further (using-dreamteamer, data-modeling §31), and rnd 0.8.1 uses it.
+// Through perspective 0.4.0 each of its collections carried a numeric `display.nav.order`, the pipeline the
+// work follows, ten apart. From cr-dt-008 (engine 0.49) placement is nav.yaml at the workspace root, which the
+// operator arranges by drag and drop; a descriptor keeps only `display.nav.icon`. A named view is a child row
+// of its collection, and its order among its siblings is still its own — those orders stay, contiguous from 1.
 import { test } from 'node:test';
 import assert from 'node:assert';
 import fs from 'node:fs';
@@ -17,33 +13,6 @@ import yaml from 'js-yaml';
 const MOD = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', '..', '..', 'modules', 'perspective');
 const COLS = path.join(MOD, 'collections', 'perspective');
 const VIEWS = path.join(MOD, 'ui-views');
-
-// The pipeline, ten apart so a collection can be inserted between two without renumbering the rest.
-const ORDER = {
-	'retrospective-sessions': 10,   // the run itself
-	gates: 15,                      // the conditions each stage had to meet
-	sources: 20,                    // what it could see
-	conversations: 30,              // ── the evidence it condensed
-	'activity-weeks': 40,
-	tickets: 50,
-	threads: 60,
-	deliverables: 70,
-	activities: 80,         // ── the observed world it reconstructed, in the real world's nouns
-	projects: 90,
-	topics: 100,
-	users: 110,
-	terms: 115,                     // the vocabulary in two steps — the word, verbatim…
-	concepts: 120,                  // …then the meaning several words share
-	decisions: 130,
-	workflows: 140,
-	goals: 150,
-	findings: 160,                  // ── what it concluded
-	insights: 170,
-	assumptions: 175,               // and what it had to believe in order to conclude it
-	questions: 180,
-	proposals: 190,
-	perspectives: 200,              // the answer
-};
 
 /** Every descriptor under `collections/perspective/`, keyed by its name RELATIVE to that folder —
  *  so `users.collection.yaml` is `users`. ⚠ Recursive: `compile` enumerates
@@ -61,27 +30,17 @@ const descriptors = new Map(
 const views = fs.readdirSync(VIEWS).filter((f) => f.endsWith('.ui-view.yaml'))
 	.map((f) => ({ file: f, ...yaml.load(fs.readFileSync(path.join(VIEWS, f), 'utf8')) }));
 
-test('the table covers every collection, and nothing else', () => {
-	assert.deepEqual(Object.keys(ORDER).sort(), [...descriptors.keys()].sort());
+test('the scan sees every perspective collection', () => {
+	assert.ok(descriptors.size >= 20, `expected perspective's collections, saw ${descriptors.size}`);
 });
 
-for (const [name, order] of Object.entries(ORDER)) {
-	test(`${name} sits at ${order} in the nav`, () => {
-		assert.equal(descriptors.get(name).display?.nav?.order, order);
-	});
-}
-
-test('no descriptor sets a nav section — module ownership is the partition', () => {
+test('no descriptor sets a nav order or a nav section — nav.yaml places the rows; every one keeps its icon', () => {
 	for (const [name, d] of descriptors) {
+		assert.ok(d.display?.nav?.order === undefined, `${name} sets display.nav.order`);
 		assert.ok(d.display?.nav?.section === undefined, `${name} sets display.nav.section`);
+		assert.ok(d.display?.nav?.icon, `${name} has no display.nav.icon`);
 		assert.ok(!d.internal, `${name} is marked internal`);
 	}
-});
-
-test('the order runs in the pipeline direction, with no duplicate', () => {
-	const values = Object.values(ORDER);
-	assert.equal(new Set(values).size, values.length, 'two collections share a position');
-	assert.deepEqual(values, [...values].sort((a, b) => a - b), 'the table is not in ascending order');
 });
 
 test('every named view has a unique nav.order, contiguous from 1', () => {

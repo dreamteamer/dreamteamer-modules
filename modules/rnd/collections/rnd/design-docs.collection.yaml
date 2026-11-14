@@ -112,7 +112,6 @@ fields:
 display:
   nav:
     icon: symbol-structure
-    order: 25
   list:
     columns:
       - name

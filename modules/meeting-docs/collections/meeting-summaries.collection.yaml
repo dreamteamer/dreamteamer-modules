@@ -79,8 +79,6 @@ fields:
 display:
   nav:
     icon: note
-    order: 14
-    section: crm
   list:
     columns:
       - name

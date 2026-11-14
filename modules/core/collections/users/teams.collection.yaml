@@ -62,7 +62,6 @@ fields:
 display:
   nav:
     icon: organization
-    order: 7
   list:
     columns:
       - name

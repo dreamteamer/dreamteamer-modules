@@ -36,7 +36,8 @@ only then spawns uv in the compiled skill folder — so no shell has to carry an
 agent whose every command starts a fresh shell needs nothing repeated. `dt install @dreamteamer/core`
 and `dt setup recordings` run these same steps as the module's setup unit (SETUP.md), with the person's
 consent per effect; `transcribe.mjs run <record.md> <audio> …` is the `run` below through the same entry.
-In a composed `@dreamteamer/core` the entry is `bin/recordings-transcribe.mjs`.
+Through core 0.11 a composed `@dreamteamer/core` named the entry `bin/recordings-transcribe.mjs`; from core
+0.12.0 core is a preset of the small modules, so this does not apply.
 
 setup provisions a pinned Python 3.12 venv and downloads the models (~1.6 GB, plus 1.6 GB more for the
 GPU pass on a Mac with `whisper-cli`) — only what is missing, so it is safe to re-run; it needs system

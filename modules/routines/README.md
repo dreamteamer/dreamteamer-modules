@@ -16,3 +16,7 @@ node .dreamteamer/skills/working-with-routines/bin/rrule.mjs roll --apply
 | nothing | records, rendering a rule in English, rolling `next_due` |
 
 `next_due` is written by `roll`, never by hand. A daily routine has no `next_due` by design.
+
+## 0.1.2 — the nav is nav.yaml (cr-dt-008)
+
+`display.nav.order` and `display.nav.section` removed from its descriptor — the nav is `nav.yaml` at the workspace root (engine 0.49), which you arrange; `display.nav.icon` stays. Nothing to do.

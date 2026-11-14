@@ -110,7 +110,6 @@ fields:
 display:
   nav:
     icon: package
-    order: 24
   list:
     columns:
       - name
