@@ -57,8 +57,8 @@ async function prepared() {
 	assert.equal(a.status, 0, a.stderr + a.stdout);
 	const c = run(root, ['add', 'contacts', '--name', 'Dana Oren']);
 	assert.equal(c.status, 0, c.stderr + c.stdout);
-	const records = execFileSync('git', ['ls-files', '--others', '--exclude-standard', 'data'], { cwd: root, encoding: 'utf8' }).split('\n').filter(Boolean)
-		.concat(execFileSync('git', ['ls-files', 'data'], { cwd: root, encoding: 'utf8' }).split('\n').filter(Boolean)).sort();
+	const records = execFileSync('git', ['ls-files', '--others', '--exclude-standard', 'data'], { cwd: root, encoding: 'utf8', timeout: 60_000 }).split('\n').filter(Boolean)
+		.concat(execFileSync('git', ['ls-files', 'data'], { cwd: root, encoding: 'utf8', timeout: 60_000 }).split('\n').filter(Boolean)).sort();
 	assert.equal(records.filter((f) => /^data\/(tasks|contacts)\//.test(f)).length, 2, `records: ${records.join(', ')}`);
 	const before = await getNav(root);
 	const moved = await before.h.handle('PATCH', '/nav', { op: 'new-folder', label: 'Mine' });
@@ -136,7 +136,7 @@ describe('core over existing members', { skip }, () => {
 		const p = JSON.parse(fs.readFileSync(path.join(copy, 'package.json'), 'utf8'));
 		p.version = old;
 		fs.writeFileSync(path.join(copy, 'package.json'), JSON.stringify(p, null, '\t') + '\n');
-		execFileSync('npm', ['pack', copy, '--pack-destination', folder(), '--silent'], { encoding: 'utf8' });
+		execFileSync('npm', ['pack', copy, '--pack-destination', folder(), '--silent'], { encoding: 'utf8', timeout: 120_000 });
 		const tarball = path.join(folder(), `dreamteamer-tasks-${old}.tgz`);
 		assert.ok(fs.existsSync(tarball), 'older tasks not packed');
 		try {
@@ -145,7 +145,7 @@ describe('core over existing members', { skip }, () => {
 			const at = path.join(root, 'node_modules', '@dreamteamer', 'tasks');
 			fs.rmSync(at, { recursive: true, force: true });
 			fs.mkdirSync(at, { recursive: true });
-			execFileSync('tar', ['-xzf', tarball, '-C', at, '--strip-components', '1']);
+			execFileSync('tar', ['-xzf', tarball, '-C', at, '--strip-components', '1'], { timeout: 60_000 });
 			const pj = JSON.parse(pkgText(root));
 			pj.dependencies['@dreamteamer/tasks'] = old;
 			fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify(pj, null, '\t') + '\n');

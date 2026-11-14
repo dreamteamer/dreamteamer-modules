@@ -112,7 +112,12 @@ describe('the seven operations on the design\'s example document', () => {
 		assert.deepEqual(d.hidden, ['file-drives']);
 		d = apply(apply(EXAMPLE(), { op: 'hide', target: { name: 'teams' } }), { op: 'show', target: { name: 'teams' } });
 		assert.equal(JSON.stringify(d.tree).split('"teams"').length - 1, 1, 'teams is not placed exactly once');
-		assert.equal(d.tree.at(-1), 'teams', 'the former parent is not in the document: the top level');
+		assert.equal(d.tree.at(-1), 'teams', 'hidden from People, it comes back at the end of its home level: the top level');
+		assert.equal(at(d, 'People').includes('teams'), false, 'the document does not record the folder a row was hidden from');
+		// a row hidden from a folder inside a namespace comes back at the end of the namespace's entry, not the folder
+		d = apply(apply(EXAMPLE(), { op: 'hide', target: { name: 'rnd/user-stories' } }), { op: 'show', target: { name: 'rnd/user-stories' } });
+		assert.deepEqual(at(d, 'ns:rnd').map(nameOf), ['rnd/change-requests', 'rnd/issues', 'folder:Product', 'rnd/user-stories']);
+		assert.deepEqual(at(d, 'ns:rnd', 'Product'), ['rnd/user-journeys']);
 	});
 	test('show: a hidden folder by path, a hidden namespace by name; a name not hidden is left alone', () => {
 		let d = apply(EXAMPLE(), { op: 'show', target: { folder: ['Old'] } });
