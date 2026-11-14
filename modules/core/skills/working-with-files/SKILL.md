@@ -29,14 +29,14 @@ relative path under `data/files/`. Sync owns the derived fields; `description`, 
 ## the verbs
 
 ```bash
-npx dt files sync                 # every drive
-npx dt files sync drive           # one drive
-npx dt files sync drive/rnd       # one subfolder — records outside it are not touched
-npx dt files sync --dry-run       # the plan, nothing written
-npx dt files sync --hash          # fill in hashes still missing
-npx dt files sync --rehash        # recompute every hash
-npx dt files sync --prune         # remove missing entries nobody annotated or references
-npx dt files status               # per drive: mounted here, entries, missing, cloud-only, last synced
+dt files sync                 # every drive
+dt files sync drive           # one drive
+dt files sync drive/rnd       # one subfolder — records outside it are not touched
+dt files sync --dry-run       # the plan, nothing written
+dt files sync --hash          # fill in hashes still missing
+dt files sync --rehash        # recompute every hash
+dt files sync --prune         # remove missing entries nobody annotated or references
+dt files status               # per drive: mounted here, entries, missing, cloud-only, last synced
 ```
 
 Read the summary line per drive: `walked · added · updated · moved · missing · unchanged`, followed
@@ -99,9 +99,9 @@ record names the files record — pass `--force`, and the next sync drops the st
 ## adding a drive
 
 ```bash
-npx dt add file-drives "Drive" --path '${env:FILES_FOLDER}' --include rnd --include meetings --exclude trash
-npx dt files sync drive --dry-run
-npx dt files sync drive
+dt add file-drives "Drive" --path '${env:FILES_FOLDER}' --include rnd --include meetings --exclude trash
+dt files sync drive --dry-run
+dt files sync drive
 ```
 
 Repeat `--include` once per subfolder. Before the first real sync, read the dry run: its `added`

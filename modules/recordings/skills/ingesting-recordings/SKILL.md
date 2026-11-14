@@ -43,7 +43,7 @@ are about to create a `meeting-recordings` record for a file that came from the 
 
 ### entry B — the audio is in the message
 
-1. `npx dt add meeting-recordings --name "<who and what>" --date YYYY-MM-DD --origin audio`
+1. `dt add meeting-recordings --name "<who and what>" --date YYYY-MM-DD --origin audio`
 2. Optional, and only where `FILES_FOLDER` is a local folder: `node $DET import <uploaded-file> --id <recording-id>`
    files the bytes and prints the `recording_file` and `fingerprint` to set on the record. `import`
    refuses a non-local `FILES_FOLDER` (a `gdrive://…` value) rather than creating folders inside the repo.
@@ -65,7 +65,7 @@ case you are in rather than implying the audio was kept when it was not.
    plus `ffprobe`.
 4. **File**: `node $DET import <file> --id <recording-id>` copies the binary to
    `${env:FILES_FOLDER}/meeting-recordings/<recording-id>.<ext>`, verifies it, moves the original into
-   `trash/`, and prints `recording_file`. Then `npx dt add meeting-recordings` for the record.
+   `trash/`, and prints `recording_file`. Then `dt add meeting-recordings` for the record.
 5. **Then match, then transcribe**: `/match-recording-to-meeting` first, because the linked meeting's
    `attendees_contacts` give the transcriber its speaker count; then `/transcribe-recording`.
 
@@ -135,7 +135,7 @@ cross-root duplicate fingerprint), `proposed_id`, `name`, `name_is_transliterate
 4. **Per genuinely new file: `import` first, then create the record.** Import is the side-effecting
    step; if it fails the workspace is untouched. Once it succeeds, set the record from its output:
    ```bash
-   npx dt add meeting-recordings \
+   dt add meeting-recordings \
      --id <proposed_id> --name "<name>" --date <date> \
      --recording_file '<recording_file from import, as the ${env:FILES_FOLDER}/… template>' \
      --duration <duration> --fingerprint <fingerprint> --origin audio \

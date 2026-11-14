@@ -102,7 +102,7 @@ credentials is not that.
 
 > The `meetings` collection descriptor is the authority on record shape, ids and where a record is
 > stored — read it before writing (`using-dreamteamer` → `references/records.md`). Write with
-> `npx dt add meetings` and `npx dt set`: both validate before anything reaches disk, and `dt add`
+> `dt add meetings` and `dt set`: both validate before anything reaches disk, and `dt add`
 > places the file where the descriptor says. Never compute the path by hand.
 
 ## Record convention
@@ -117,7 +117,7 @@ The id is
 derived by the descriptor's `ids.from` from `starts`, `company` and `name`. `HH-MM` is the start
 time, so records sort by start within a day. The file lands where the descriptor places it: the
 base module stores meetings under the meetings collection's storage path, and a workspace overlay
-may store them elsewhere, under their company for example. Run `npx dt add meetings` and read the
+may store them elsewhere, under their company for example. Run `dt add meetings` and read the
 path it prints. `starts` and `name` are required; a meeting with no company yet takes the shorter
 id. If date+time+company+slug would collide with an existing *different* event, pass `--id` with
 `-2`, `-3` appended. A meeting record holds only the meeting: a transcript belongs to a
@@ -171,7 +171,7 @@ confidence: normal                   # `low` + the reason in creation_context fo
 
 The record is written with no body. The title is `name`, so the body carries no `# title` heading:
 it is the `notes` field, the meeting's own page, empty until someone writes about the call. Write it
-with `--notes "…"` on `dt add` or `npx dt set meetings/<id> notes="…"`. A transcript never goes here.
+with `--notes "…"` on `dt add` or `dt set meetings/<id> notes="…"`. A transcript never goes here.
 
 `privacy` is `open` unless a person set it to `restricted`. The sync never sets or changes it, and an
 update leaves it as it is.
@@ -273,11 +273,11 @@ differs.
 
 `starts`/`ends` are **one `date-time` each**, carrying the local offset. Google returns exactly this
 shape in `start.dateTime`, so pass it through rather than reassembling it. Writing the wall clock
-alone (`2026-06-29T17:00`) is also accepted — `npx dt add meetings` stamps the machine's offset on
+alone (`2026-06-29T17:00`) is also accepted — `dt add meetings` stamps the machine's offset on
 during validation — so only do that on a machine set to the same zone. Keep `timezone:` too: the
 offset says `+02:00`, only the zone name says which zone that was, across DST.
 
-One date-time sorts and range-filters directly: `npx dt list meetings --sort -starts`, or
+One date-time sorts and range-filters directly: `dt list meetings --sort -starts`, or
 `--where '{"starts":{"_gte":"2026-07-01"}}'`.
 
 ## Which calendars count as "work"
@@ -377,7 +377,7 @@ Match these keywords against the **translated meaning** of a non-English title.
    with no company signal, or a large batch of free/busy stubs. Do not write, then ask.
 7. **Write idempotently — and ADOPT shims.** Match an existing record in this order:
 
-   1. **by `eventId`** (`npx dt list meetings --filter eventId=<id> --json`) — the normal case, an
+   1. **by `eventId`** (`dt list meetings --filter eventId=<id> --json`) — the normal case, an
       update.
    2. **by same date + start within ±15 MINUTES, when the existing record has NO `eventId`** and its
       `origin` is `recording`, `manual` or `migration`. That is a shim the calendar can now identify:
@@ -398,8 +398,8 @@ Match these keywords against the **translated meaning** of a non-English title.
    free/busy → full-detail transition. Reconcile a stub with the real meeting in its slot by slot,
    and remove the stub once its body is empty and nothing references it.
 
-   Update a matched record with `npx dt set`; when nothing changed, leave it. Otherwise create it
-   with `npx dt add meetings`. **Never downgrade a non-stub record to a `busy-block` stub** (step 3).
+   Update a matched record with `dt set`; when nothing changed, leave it. Otherwise create it
+   with `dt add meetings`. **Never downgrade a non-stub record to a `busy-block` stub** (step 3).
    **Updating a record preserves fields other modules own**, such as `recordings` — never drop them —
    and `privacy`, which only a person sets.
 
@@ -408,12 +408,12 @@ Match these keywords against the **translated meaning** of a non-English title.
    `ends` and id: report the invite's time beside it and leave both unchanged. Write that note
    whenever a time is corrected by hand, or the next sync moves it back.
 8. **When the invite moves the time, RENAME as well as set** — `HH-MM` is in the id, so a new time
-   means a new path. `npx dt rename meetings/<old-id> <new-id>` moves the file and rewrites every
+   means a new path. `dt rename meetings/<old-id> <new-id>` moves the file and rewrites every
    inbound ref. Skip a record step 7 protects by its `note`. Four things `rename` does not do for you:
 
    - **It does not update `starts`/`ends`.** `rename` moves the path and the refs and touches no
      fields, so a time correction is always two operations: `rename`, then
-     `npx dt set meetings/<new-id> starts=… ends=…`.
+     `dt set meetings/<new-id> starts=… ends=…`.
    - **Raw prose is not rewritten.** Only `[[wikilinks]]` and real refs are maintained; the verb
      warns about prose occurrences — fix those by hand.
    - **Rename a summary that mirrors the meeting's id too**, when meeting-docs is installed.

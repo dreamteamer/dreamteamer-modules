@@ -15,9 +15,9 @@ the CRUD.
 ## 1. resolve the meeting first, and say which one
 
 ```bash
-npx dt list meetings --where '{"starts":{"_gte":"<today>"}}' --sort starts
-npx dt get meetings/<id>
-npx dt list meeting-preps --filter meeting=meetings/<id>
+dt list meetings --where '{"starts":{"_gte":"<today>"}}' --sort starts
+dt get meetings/<id>
+dt list meeting-preps --filter meeting=meetings/<id>
 ```
 
 A hint is a company, a person or a day — "the Northwind call", "tomorrow 11:00", "Sam weekly".
