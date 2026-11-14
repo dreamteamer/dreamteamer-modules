@@ -28,9 +28,10 @@ npx dreamteamer compile
   features, research, personas — and the lifecycle that moves them, `/rnd:design` to `/rnd:deploy`,
   gated per record. It composes `wikis` and `notebooklm`.
 
-Then `dt status` prints each installed module's setup line — `configured`, `blocked` or `ready`, with
-the next command — and `dt doctor` the checks behind it; `dt setup <unit>` is the fix (the engine's, since
-dreamteamer 0.47). A bare clone with no `.env` is a working workspace; everything optional
+Then `npx dreamteamer status` prints each installed module's setup line — `configured`, `blocked` or
+`ready`, with the next command — and `npx dreamteamer doctor` the checks behind it; `npx dreamteamer
+setup <unit>` is the fix (the engine's, since dreamteamer 0.47). The module docs write `dt` for the
+same CLI where an agent is the reader. A bare clone with no `.env` is a working workspace; everything optional
 degrades by name.
 
 ## the modules
@@ -178,5 +179,5 @@ by the removed setup package refuses every commit ("linked bundle has no guard")
 
 The house rules — no personal data (the synthetic cast is Dana Oren, Sam Diaz, Northwind, Harbor
 Mutual), every module compiles alone, a module ships only what its `files` names, and a module that
-needs a sibling at a version says so as an npm `peerDependencies` floor, which npm and `dt compile`
+needs a sibling at a version says so as an npm `peerDependencies` floor, which npm and `dreamteamer compile`
 both refuse below — are in `CLAUDE.md`. Apache-2.0.

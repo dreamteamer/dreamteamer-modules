@@ -10,7 +10,7 @@ npx dreamteamer compile
 
 ## ids and licences
 
-The `assets` collection holds opaque files (`codec: file`): the file is the record and carries no
+The `assets` collection holds opaque files (`storage.format: binary`): the file is the record and carries no
 frontmatter. A record that draws a picture keys it by its own id; a picture from a third-party set
 keys it by set and name, which is enough to fetch it again. A licence belongs to a set, so it is
 listed once here rather than on every file.
@@ -34,12 +34,12 @@ trademark: a company's mark identifies that company and nothing more.
 ```bash
 curl -s https://api.iconify.design/lucide:hotel.svg > /tmp/x.svg
 file -b --mime-type /tmp/x.svg       # a site can answer 200 with an HTML error page
-npx dt add assets icons/lucide/hotel --from /tmp/x.svg
+npx dreamteamer add assets icons/lucide/hotel --from /tmp/x.svg
 ```
 
-`--force` replaces an existing file; `dt set` refuses, because a file record has no fields to set.
+`--force` replaces an existing file; `dreamteamer set` refuses, because a file record has no fields to set.
 Otherwise it is an ordinary record: `rm` refuses while something references it, `history` and `diff`
-work, and a dangling `x-reference: assets` is a `check` violation. Prefer SVG with `currentColor`, so
+work, and a reference to an `assets` record that does not exist is a `check` violation. Prefer SVG with `currentColor`, so
 one file reads correctly in a light and a dark theme.
 
 ## limits

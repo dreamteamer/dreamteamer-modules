@@ -7,7 +7,10 @@ and every terminal run as your OS user, over the original files. This is not a s
 npm install @dreamteamer/code
 ```
 
-This module is an unpublished development build. Install its local packed tarball until released.
+This module is a development build and is not on the registry yet, so the line above fails until its
+first release. Until then pack it from a clone of this repository (`npm pack` in `modules/code`) and
+install the tarball: `npx dreamteamer install ./dreamteamer-code-<version>.tgz`. It needs no setup.
+
 The default installs Dreamteamer 0.23.3 from code-server's configured marketplace (Open VSX by default).
 An exact release is pinned; identical verified installations are reused. A prior local VSIX is replaced
 on the first marketplace start, even if it reports the same version.
