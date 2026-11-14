@@ -91,10 +91,14 @@ try {
 		const after = await frameKey(page).catch(() => null);
 		info(`step 1 (original reading, not counted): frame redrawn from a new key without a reload — ${after && after !== oldKey ? 'yes' : 'no'}`);
 		await page.screenshot({ path: shot('1b-after-restart') });
-		await page.locator('.dt-nav-row').nth(2).click();
+		// The h8 amendment: the sentence is drawn on its own (asserted above) as a full-page cover, so a row under it
+		// cannot take a click. Click only when the sentence is not up, exactly as step 2 guards its click; either way
+		// the sentence must still be there 3 s later (it does not flicker away, and a click never brings the view back).
+		if (!(await text(page)).includes(SIGNED_OUT)) await page.locator('.dt-nav-row').nth(2).click({ timeout: 5000 }).catch((e) => info(`step 1: the click did not land (${String(e.message).split('\n')[0]})`));
+		else info('step 1: the sentence already covers the view — no click needed');
 		await page.waitForTimeout(3000);
 		const t2 = await text(page);
-		ok(t2.includes(SIGNED_OUT), 'step 1 (amended): after the restart, the next click shows the signed-out sentence', t2.includes(SIGNED_OUT) ? '' : JSON.stringify(t2.slice(0, 120)));
+		ok(t2.includes(SIGNED_OUT), 'step 1 (amended): 3 s later the signed-out sentence is still shown (after a click when one could land)', t2.includes(SIGNED_OUT) ? '' : JSON.stringify(t2.slice(0, 120)));
 		await page.screenshot({ path: shot('1b2-after-restart-click') });
 		await context.close();
 		// a fresh dt web open: the frame draws from the new key

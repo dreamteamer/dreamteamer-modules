@@ -136,7 +136,7 @@ describe('step 3: two dt web open at the same instant in a stopped workspace', (
 });
 
 describe('step 4: a read-only state dir', { skip: process.getuid?.() === 0 ? 'root ignores the mode' : false }, () => {
-	let m, D, base, cookie, porcelain;
+	let m, D, base, cookie;
 	before(async () => {
 		m = machine();
 		D = workspaceNamed('h6-delta');
@@ -144,7 +144,6 @@ describe('step 4: a read-only state dir', { skip: process.getuid?.() === 0 ? 'ro
 		assert.equal(open.code, 0, open.stdout + open.stderr);
 		base = `http://127.0.0.1:${rtOf(D.root, m).port}`;
 		cookie = await signIn(urlOf(open.stdout));
-		porcelain = D.git(['status', '--porcelain', '--ignored']);
 		fs.chmodSync(m.state, 0o500);
 	});
 	after(() => { fs.chmodSync(m.state, 0o700); stopAll([D.root], m); D.cleanup(); });
@@ -159,6 +158,9 @@ describe('step 4: a read-only state dir', { skip: process.getuid?.() === 0 ? 'ro
 	});
 
 	test('dt web open with the server stopped works with a warning naming the state dir, or exits non-zero naming it — within 15 s, never writing state into the workspace', () => {
+		// The snapshot is taken here, after the previous test's record PATCH (a write the record asks for), so the
+		// comparison below sees only what stop and open themselves leave in the workspace.
+		const porcelain = D.git(['status', '--porcelain', '--ignored']);
 		assert.equal(dtWeb(D.root, ['stop'], m.env).code, 0);
 		const r = dtWeb(D.root, ['open'], m.env, { timeout: 20_000 });
 		assert.ok(r.ms < 15_000, `open took ${r.ms} ms`);
