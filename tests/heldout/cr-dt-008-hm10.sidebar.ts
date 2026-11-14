@@ -54,6 +54,11 @@ for (const c of cases) {
 		throw new Error(`unexpected ${method} ${path} ${JSON.stringify(body)}`);
 	});
 	const root = await render(NavSidebar, {}, [router()]);
+	// the 2026-11-14 16:30 revision: the nav starts locked and only an unlocked nav drags and has row menus
+	const lock = all(root, (n) => n.tag === 'button' && n.props['data-tool'] === 'arrange')[0];
+	if (!lock) throw new Error('no arrange toggle in the nav toolbar');
+	(lock.props['onClick'] as (e?: unknown) => void)({ stopPropagation() {} });
+	await flush();
 	for (const k of c.gesture.open ?? []) await open(root, k);
 	let state: string | undefined;
 	if (c.gesture.menu) state = await menu(root, c.gesture.menu[0], c.gesture.menu[1]);
