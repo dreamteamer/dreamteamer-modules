@@ -1,6 +1,6 @@
 {
 	"name": "@dreamteamer/protocol",
-	"version": "0.1.1",
+	"version": "0.2.0",
 	"description": "The host protocol a dreamteamer UI speaks: the written contract, its route table, and a contract suite any host runs",
 	"license": "Apache-2.0",
 	"type": "module",
@@ -22,6 +22,7 @@
 		"./handler": "./src/handler.js",
 		"./host/*": "./src/host/*.js",
 		"./nav-model": "./src/nav-model.js",
+		"./nav-doc": "./src/nav-doc.js",
 		"./gate": "./src/gate.js",
 		"./reshape": "./src/reshape.js",
 		"./apply-write": "./src/apply-write.js",
