@@ -60,7 +60,7 @@ Uninstall: `npm uninstall @dreamteamer/web`, then remove the `UserPromptSubmit` 
 | `npx dt web list` | every workspace `dt web open` registered on this machine: name, port, running or stopped, folder |
 | `npx dt web revoke [--token <n>]` | ends every session (the page signs out), or removes one client token |
 | `npx dt web status` | `running at http://127.0.0.1:<port> · pid <n> · level <Level> · since <time>` and exit 0, or `not running` or `not answering: …` and exit 1. It writes nothing |
-| `npx dt web stop [--revoke] [--force]` | stops the server, and with it every session: the page signs out (`--revoke` ends them first, the same end). `--force` sends a server that is not answering `SIGTERM`, only when its recorded start time is that process's own |
+| `npx dt web stop [--revoke] [--force]` | stops the server, and with it every session: the page signs out (`--revoke` ends them first, the same end). `--force` stops a server that is not answering (`SIGTERM` and `SIGCONT`, then `SIGKILL` after 5 seconds), only when the start recorded in its runtime file is that process's own |
 | `npx dt web start [--foreground] [--port <n>] [--idle <minutes>] [--owner-pid <pid>]` | starts the server without pairing. `--foreground` serves in this process (for a launch entry). `--port` or `DT_WEB_PORT` picks the port; `--idle` the minutes with no page and no token request before it stops (default 60, `0` never); `--owner-pid` stops it when that process exits |
 | `npx dt serve [--read\|--edit] [--name <n>]` | `dt web token --name serve`: a client token of this workspace's server |
 
@@ -149,14 +149,17 @@ Found a hole? See [SECURITY.md](../../SECURITY.md). Do not open a public issue.
   challenge under that id, never the id itself. Every verb and the hook ask it, within 2 seconds, before they
   trust the runtime file. A server killed without stopping leaves its file, and its pid or its port can later be
   another program's, so the file is **stale** when its process is gone, the connection is refused, the answer is
-  wrong, or a process that gives no answer started at another time than the one the file recorded
-  (`ps -o lstart=`). With a stale runtime file `dt web status` says `not running`, `dt web open` starts a fresh
+  wrong, or a process that gives no answer started at another time than the one the file recorded. The server
+  records its start as an instant (milliseconds since 1970), and a verb reads the pid's start from its elapsed time
+  (`ps -o etime=`) and allows 3 seconds either way, so the shell's language and timezone do not matter. With a stale runtime file `dt web status` says `not running`, `dt web open` starts a fresh
   server, `dt web stop` removes the file and signals nothing, and the hook sends no token and prints nothing.
   A live server that gives no answer in time, and is not shown to be another process, is **not answering** — it may
   be suspended or busy. Every verb then prints one `not answering: …` line naming its pid and exits 1, and nothing
   removes its runtime file or lock or starts a second server beside it; the hook prints nothing.
-  `dt web stop --force` sends it `SIGTERM`, and only when the start time recorded in the runtime file is that
-  process's own — otherwise it says it cannot prove the pid is this server's and signals nothing.
+  `dt web stop --force` (with or without `--revoke`: a server's sessions end with it) sends it `SIGTERM` and then
+  `SIGCONT`, so a suspended server stops cleanly; one still running after 5 seconds gets `SIGKILL`, and its runtime
+  file and lock are removed. It signals only when the start recorded in the runtime file is that process's own —
+  otherwise it says it cannot prove the pid is this server's and signals nothing.
 - **Levels.** Every protocol route carries one: Read for every read, Edit for record writes, the nav and the
   queue, Admin for the rest (revert, rename, fields, commits, every system collection, and any record write on a
   collection the engine reports internal or runtime). The workspace's level is Edit until `dt web open --read`,

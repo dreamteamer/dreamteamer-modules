@@ -6,12 +6,12 @@
 // removes the file and signals nobody. A live process that gives no proof in time is NOT ANSWERING: every verb says so,
 // exits 1 and changes nothing — no file removed, no second server — and only `stop --force` signals it, when its
 // recorded start time is that process's own.
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { alive, claimStart, clearStale, movedLine, notAnsweringLine, probeServer, processStart, readState, removeState, runtimeDir, stateFile, workspaceKey, writeState } from './runtime.js';
+import { alive, claimStart, clearStale, movedLine, FORCE_GRACE_MS, notAnsweringLine, ownStart, probeServer, readState, removeState, runtimeDir, sameStart, stateFile, workspaceKey, writeState } from './runtime.js';
 import { readRegistry, readWorkspaceState, register, stateDir, writeWorkspaceState } from './state.js';
 import { hookInstalled, installHook } from './hook.js';
 import { workspaceName } from './pane-store.js';
@@ -170,18 +170,18 @@ async function verb(root, o, { log, env, appDir, sdir, ensure }) {
 		return 0;
 	}
 	if (o.cmd === 'stop') {
-		if (o.revoke) { const code = await revoke(root, {}, { log, env }); if (code) return code; }
-		const now = await probeServer(fileOf(root, env));
+		const file = fileOf(root, env);
+		// with --force a server that is not answering is stopped without the revoke: its sessions live in its memory and
+		// end with it, and the revoke would only meet the not-answering line
+		let now = o.force ? await probeServer(file) : undefined;
+		if (o.revoke && now?.state !== 'silent') { const code = await revoke(root, {}, { log, env }); if (code) return code; now = undefined; }
+		if (now === undefined) now = await probeServer(file);
 		if (!now) { log('not running'); return o.revoke ? 0 : 1; }
 		if (now.state === 'silent') {
 			if (!o.force) { log(notAnsweringLine(now)); return 1; }
-			// --force signals only a process shown to be this server: the start time the runtime file recorded is its own
-			if (now.sameProcess !== true) {
-				log(`✖ cannot prove pid ${now.pid} is this workspace's server — it was not signalled (its start time ${now.lstart ? 'could not be read' : 'is not recorded'}); check it yourself: ps -p ${now.pid}`);
-				return 1;
-			}
-			log(`pid ${now.pid} is not answering; its start time is this server's — sending SIGTERM`);
-		} else if (!now.proven) {
+			return forceStop(now, { log });
+		}
+		if (!now.proven) {
 			clearStale(now.file, now);
 			log(`not running — removed a stale runtime file: pid ${now.pid} is not this workspace's server, and was not signalled`);
 			return o.revoke ? 0 : 1;
@@ -263,6 +263,43 @@ async function verb(root, o, { log, env, appDir, sdir, ensure }) {
 	throw bad(`dt web has no verb "${o.cmd}"`);
 }
 
+/** A pid that is running: alive, and not a zombie its parent has yet to reap. */
+const running = (pid) => {
+	if (!alive(pid)) return false;
+	try { return !String(spawnSync('ps', ['-o', 'stat=', '-p', String(pid)], { encoding: 'utf8', timeout: 2000, env: { ...process.env, LC_ALL: 'C' } }).stdout).trim().startsWith('Z'); } catch { return true; }
+};
+
+/**
+ * `dt web stop --force` on a server that is not answering. Only a process shown to be this server — the start the
+ * runtime file recorded (`pstart`) is its own, within START_TOLERANCE_MS — is signalled: SIGTERM, then SIGCONT so a
+ * suspended process can act on it; after FORCE_GRACE_MS, with the start shown again, SIGKILL. A process that ends
+ * without removing its runtime file and lock (SIGKILL) has them removed here.
+ */
+async function forceStop(now, { log }) {
+	const { pid } = now;
+	if (now.sameProcess !== true) {
+		log(`✖ cannot prove pid ${pid} is this workspace's server — it was not signalled (its start ${Number.isFinite(now.pstart) ? 'could not be read' : 'is not recorded in the runtime file'}); check it yourself: ps -p ${pid}`);
+		return 1;
+	}
+	log(`pid ${pid} is not answering; its start is this server's — sending SIGTERM, then SIGCONT`);
+	try { process.kill(pid, 'SIGTERM'); process.kill(pid, 'SIGCONT'); } catch { /* it ended */ }
+	const until = Date.now() + FORCE_GRACE_MS;
+	while (Date.now() < until && running(pid)) await sleep(100);
+	if (running(pid)) {
+		if (sameStart(pid, now.pstart) !== true) {
+			log(`✖ pid ${pid} did not stop within ${FORCE_GRACE_MS / 1000} s, and its start can no longer be shown to be this server's — not killed`);
+			return 1;
+		}
+		log(`pid ${pid} did not stop within ${FORCE_GRACE_MS / 1000} s — sending SIGKILL`);
+		try { process.kill(pid, 'SIGKILL'); } catch { /* it ended */ }
+		for (let i = 0; i < 50 && running(pid); i++) await sleep(100);
+		if (running(pid)) { log(`✖ pid ${pid} did not stop`); return 1; }
+	}
+	clearStale(now.file, now);
+	log('stopped');
+	return 0;
+}
+
 /** `dt web revoke [--token <n>]`: through the server when it runs, else in the state file under the start lock. */
 async function revoke(root, { token }, { log, env }) {
 	const said = (n) => {
@@ -307,7 +344,7 @@ async function foreground(root, o, { log, env, appDir = appDirOf() }) {
 		lock.release();
 		throw e;
 	}
-	writeState(file, { pid: process.pid, port: web.port, started: new Date().toISOString(), owner: o.ownerPid ?? null, token: web.controlToken, instance: web.instance, lstart: processStart(process.pid), ...(web.movedFrom ? { movedFrom: web.movedFrom } : {}) });
+	writeState(file, { pid: process.pid, port: web.port, started: new Date().toISOString(), owner: o.ownerPid ?? null, token: web.controlToken, instance: web.instance, pstart: ownStart(), ...(web.movedFrom ? { movedFrom: web.movedFrom } : {}) });
 	// the handlers before the first line: a caller may signal the moment it reads it
 	const stop = () => web.close('signal');
 	process.once('SIGINT', stop);

@@ -181,7 +181,9 @@ test('a live server suspended with SIGSTOP is not answering: status says so; sto
 	const before = fs.readFileSync(file, 'utf8');
 	const rt = JSON.parse(before);
 	assert.equal(rt.pid, child.pid);
-	assert.equal(typeof rt.lstart, 'string', 'the runtime file records its process start time');
+	assert.equal(Number.isInteger(rt.pstart), true, 'the runtime file records its process start as epoch milliseconds');
+	assert.ok(Math.abs(rt.pstart - Date.now()) < 60_000, `pstart ${rt.pstart} is not this start`);
+	assert.equal('lstart' in rt, false, 'no start time as locale text');
 	const servers = () => spawnSync('pgrep', ['-f', `dt-web.mjs ${f.root} start`], { encoding: 'utf8' }).stdout.trim().split('\n').filter(Boolean).map(Number);
 	const NOT_ANSWERING = new RegExp(`^not answering: pid ${rt.pid} at http://127\\.0\\.0\\.1:${rt.port} is alive but gave no identity proof within 2 s`);
 	child.kill('SIGSTOP');
@@ -194,6 +196,19 @@ test('a live server suspended with SIGSTOP is not answering: status says so; sto
 		assert.equal(stop.status, 1, stop.stdout + stop.stderr);
 		assert.match(stop.stdout, NOT_ANSWERING);
 		assert.match(stop.stdout, /nothing was started, stopped or removed/);
+
+		// review round 3 (the-start-time-is-compared-as-locale-and-timezone-text): the verbs run from a shell whose
+		// timezone or language is not the server's still see the same process
+		const elsewhere = (extra, ...args) => spawnSync(process.execPath, [BIN, f.root, ...args], { env: { ...env, ...extra }, encoding: 'utf8', timeout: 30_000 });
+		for (const extra of [{ TZ: 'UTC' }, { TZ: 'Pacific/Kiritimati' }, { LC_ALL: 'de_DE.UTF-8', LANG: 'de_DE.UTF-8' }, { LC_ALL: 'fr_FR.UTF-8', TZ: 'America/Los_Angeles' }]) {
+			for (const verb of [['status'], ['stop'], ['start'], ['open']]) {
+				const r = elsewhere(extra, ...verb);
+				assert.equal(r.status, 1, `${JSON.stringify(extra)} ${verb[0]}: ${r.stdout}${r.stderr}`);
+				assert.match(r.stdout, NOT_ANSWERING, `${JSON.stringify(extra)} ${verb[0]}`);
+			}
+			assert.equal(fs.readFileSync(file, 'utf8'), before, `${JSON.stringify(extra)}: the runtime file was touched`);
+			assert.deepEqual(servers(), [rt.pid], `${JSON.stringify(extra)}: a second server was started`);
+		}
 
 		for (const verb of [['open'], ['show', 'tasks'], ['select', 'tasks/brief-dana'], ['token'], ['start']]) {
 			const r = run(...verb);
@@ -211,17 +226,14 @@ test('a live server suspended with SIGSTOP is not answering: status says so; sto
 		assert.equal(hook.stdout, '');
 		assert.ok(Date.now() - t0 < 2000, `the hook took ${Date.now() - t0} ms`);
 
-		// --force: the recorded start time is this process's, so SIGTERM goes to it; it acts once it runs again
-		const forced = spawn(process.execPath, [BIN, f.root, 'stop', '--force'], { env, stdio: ['ignore', 'pipe', 'pipe'] });
-		children.push(forced);
-		let out = '';
-		forced.stdout.on('data', (b) => { out += b; });
-		await new Promise((r) => setTimeout(r, 3000));
-		child.kill('SIGCONT');
-		assert.ok(await exited(forced, 15_000), 'stop --force did not return');
-		assert.equal(forced.exitCode, 0, out);
-		assert.match(out, /stopped/);
+		// --force, from another timezone, on a server that STAYS suspended (review round 3,
+		// stop-force-cannot-end-a-server-that-stays-suspended): the recorded start is this process's, so SIGTERM and then
+		// SIGCONT go to it, and it stops cleanly — nobody resumes it but the verb
+		const forced = elsewhere({ TZ: 'UTC' }, 'stop', '--force');
+		assert.equal(forced.status, 0, forced.stdout + forced.stderr);
+		assert.match(forced.stdout, /stopped/);
 		assert.ok(await exited(child, 10_000), 'the server did not exit');
+		assert.equal(child.exitCode, 0, 'the server did not stop cleanly on SIGTERM');
 		assert.equal(fs.existsSync(file), false);
 		assert.equal(fs.existsSync(`${file}.lock`), false);
 	} finally {
@@ -249,13 +261,43 @@ test('a silent stranger on a reused pid: with no recorded start time it is not a
 		assert.ok(fs.existsSync(file) && fs.existsSync(`${file}.lock`), 'an unproven --force removed the files');
 		assert.equal(await exited(stranger, 300), false, '--force signalled an unproven pid');
 
-		forge({ lstart: 'Thu Jan  1 00:00:00 1970' });
+		forge({ pstart: Date.now() - 86_400_000 });
 		const stop = run('stop');
 		assert.equal(stop.status, 1, stop.stdout + stop.stderr);
 		assert.match(stop.stdout, new RegExp(`^not running — removed a stale runtime file: pid ${stranger.pid} is not this workspace's server, and was not signalled`));
 		assert.equal(fs.existsSync(file), false);
 		assert.equal(fs.existsSync(`${file}.lock`), false);
 		assert.equal(await exited(stranger, 300), false, 'the stranger was signalled');
+	} finally {
+		fs.rmSync(file, { force: true });
+		fs.rmSync(`${file}.lock`, { force: true });
+	}
+});
+
+// review round 3 (stop-force-cannot-end-a-server-that-stays-suspended, revoke-beside-force-never-reaches-the-force): a
+// process the runtime file names, whose start is the one recorded, that never answers and ignores SIGTERM — a server held
+// by a debugger looks like this. `stop --revoke --force` reaches the force (a dead server keeps no session), sends
+// SIGTERM and SIGCONT, waits its grace, then SIGKILL; and removes the runtime file and the lock.
+test('stop --revoke --force ends a process that never answers and ignores SIGTERM: SIGKILL after the grace, and the runtime file and lock are removed', { timeout: 120_000 }, async () => {
+	const { stateFile, writeState, FORCE_GRACE_MS } = await import('../src/runtime.js');
+	assert.equal(typeof FORCE_GRACE_MS, 'number');
+	const held = spawn(process.execPath, ['-e', "process.on('SIGTERM', () => {}); require('node:http').createServer(() => {}).listen(0, '127.0.0.1', function () { console.log(JSON.stringify({ port: this.address().port, pstart: Math.round(Date.now() - process.uptime() * 1000) })); }); setInterval(() => {}, 1000);"], { stdio: ['ignore', 'pipe', 'ignore'] });
+	children.push(held);
+	const { port, pstart } = await new Promise((resolve, reject) => { held.stdout.once('data', (b) => resolve(JSON.parse(String(b)))); held.once('exit', () => reject(new Error('it exited'))); });
+	const file = stateFile(f.root, env.DT_WEB_RUNTIME_DIR);
+	writeState(file, { pid: held.pid, port, started: new Date().toISOString(), owner: null, token: 'its-token', instance: 'its-instance', pstart });
+	fs.writeFileSync(`${file}.lock`, String(held.pid), { mode: 0o600 });
+	try {
+		const t0 = Date.now();
+		const r = spawnSync(process.execPath, [BIN, f.root, 'stop', '--revoke', '--force'], { env: { ...env, TZ: 'UTC' }, encoding: 'utf8', timeout: 60_000 });
+		assert.equal(r.status, 0, r.stdout + r.stderr);
+		assert.match(r.stdout, new RegExp(`SIGKILL`));
+		assert.match(r.stdout, /stopped/);
+		assert.ok(Date.now() - t0 >= FORCE_GRACE_MS, 'SIGKILL came before the grace');
+		assert.ok(await exited(held, 5_000), 'the process is still alive');
+		assert.equal(held.signalCode, 'SIGKILL');
+		assert.equal(fs.existsSync(file), false, 'the runtime file was left');
+		assert.equal(fs.existsSync(`${file}.lock`), false, 'the lock was left');
 	} finally {
 		fs.rmSync(file, { force: true });
 		fs.rmSync(`${file}.lock`, { force: true });

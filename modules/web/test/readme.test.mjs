@@ -27,7 +27,7 @@ test('the README names every part of the contract, in order', () => {
 		// review round 1: what reaches another server on 127.0.0.1, and how the verbs and the hook know their own server
 		'Path=/api/', 'Path=/_dt/', 'Another server on `127.0.0.1`', '/_dt/identity', 'instance id', 'a stale runtime file',
 		// review round 2: a live server that does not answer is not stale
-		'not answering', 'dt web stop --force', 'ps -o lstart=',
+		'not answering', 'dt web stop --force', 'ps -o etime=', 'SIGKILL', 'SIGCONT',
 	]) {
 		assert.ok(README.includes(must), `the README does not say ${must}`);
 	}
