@@ -1,6 +1,6 @@
 # @dreamteamer/notebooklm
 
-NotebookLM for a [dreamteamer](https://github.com/dreamteamer/dreamteamer) workspace. `dreamteamer notebooklm`
+NotebookLM for a [dreamteamer](https://github.com/dreamteamer/dreamteamer) workspace. `npx dreamteamer notebooklm`
 renders the workspace as a bounded set of sources and, given a notebook, syncs them; the `notebooklm`
 harness keeps `NOTEBOOKLM.md`'s configuration block current on every compile; and a `notebooks` record
 is the spec a notebook is restored from — its ordered sources, its chat settings, and the id and login

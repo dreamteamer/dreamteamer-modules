@@ -37,7 +37,7 @@ file -b --mime-type /tmp/x.svg       # a site can answer 200 with an HTML error 
 npx dreamteamer add assets icons/lucide/hotel --from /tmp/x.svg
 ```
 
-`--force` replaces an existing file; `dreamteamer set` refuses, because a file record has no fields to set.
+`--force` replaces an existing file; `npx dreamteamer set` refuses, because a file record has no fields to set.
 Otherwise it is an ordinary record: `rm` refuses while something references it, `history` and `diff`
 work, and a reference to an `assets` record that does not exist is a `check` violation. Prefer SVG with `currentColor`, so
 one file reads correctly in a light and a dark theme.

@@ -53,7 +53,7 @@ sync client evicted to the cloud is marked `local: false` and left alone.
 
 Other modules point at a file either as a string `${env:NAME}/<relative path>` or as a typed
 reference `files/<drive>/<relative path>`; both resolve to the same record and both count in
-`referenced_by`. A record that points at a file is listed in that file's `referenced_by`, so `dreamteamer rm`
+`referenced_by`. A record that points at a file is listed in that file's `referenced_by`, so `npx dreamteamer rm`
 of the pointing record names the files record — pass `--force`, and the next sync drops the stale
 entry.
 

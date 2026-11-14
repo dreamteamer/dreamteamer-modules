@@ -43,7 +43,7 @@ objects (`email`, `displayName`, `responseStatus`, `organizer`, `self`, `optiona
 `attendees_contacts` is those people as `contacts` refs — the list every reader uses — and `ours` is
 the subset who are `users`. `organizer` is the API's object too. `attendees` and `organizer` carry
 addresses, so they are `sensitive` and never travel in an export. The sync writes the two API fields
-with `event-people.mjs` from the raw event; the refs are a plain `dreamteamer set`.
+with `event-people.mjs` from the raw event; the refs are a plain `npx dreamteamer set`.
 
 ## upgrading from 0.1.1
 

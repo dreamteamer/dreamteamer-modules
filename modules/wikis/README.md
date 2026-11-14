@@ -56,7 +56,7 @@ rather than growing one**; a notebook points at many. Scraped PDFs, recordings a
 `${env:FILES_FOLDER}`, with a record pointing at them.
 
 **Sources are files, not records.** The file is the record, frontmatter and body; a folder already
-indexes itself, so a record per source would be a second index of it. What is lost is `dreamteamer list` over
+indexes itself, so a record per source would be a second index of it. What is lost is `npx dreamteamer list` over
 sources; what replaces it is `dt-wiki incomplete` and `dt-wiki status`, plus a rollup on the `wikis`
 record that `dt-wiki verify` re-derives from the folder.
 

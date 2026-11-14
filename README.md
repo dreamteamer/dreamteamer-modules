@@ -179,5 +179,5 @@ by the removed setup package refuses every commit ("linked bundle has no guard")
 
 The house rules — no personal data (the synthetic cast is Dana Oren, Sam Diaz, Northwind, Harbor
 Mutual), every module compiles alone, a module ships only what its `files` names, and a module that
-needs a sibling at a version says so as an npm `peerDependencies` floor, which npm and `dreamteamer compile`
+needs a sibling at a version says so as an npm `peerDependencies` floor, which npm and `npx dreamteamer compile`
 both refuse below — are in `CLAUDE.md`. Apache-2.0.
