@@ -35,7 +35,9 @@ degrades by name.
 
 ## the modules
 
-Every module needs engine `>=0.33.0`; `rnd` and `workflows` need `>=0.38.0`, `core` `>=0.39.0`. A module
+Each module states its own engine floor (`dreamteamer.engine` in its `package.json`): from `>=0.33.0`
+for the plain content modules up to `>=0.48.0` for those whose setup unit has the engine write `.env`;
+`npx dreamteamer install` refuses a module whose floor the installed engine does not meet. A module
 declares what it depends on, and you install the closure as direct dependencies — the engine loads
 only the modules your `package.json` names. Each module's README has its exact install line.
 
@@ -98,24 +100,26 @@ this profile.
 
 ## making a module yours
 
-Another label, an extra field, a different list — that is an **overlay** in your own module, never
-an edit to the installed one. Name the module by its full package name (quoted: YAML reserves a
-leading `@`) and declare it as a dependency:
+A different title, an extra field, a different list — that is an **overlay** in your own module,
+never an edit to the installed one. An overlay is a descriptor with the base collection's `name` and
+`overlay: true`; its module declares the owning module as a dependency, by its full package name:
 
 ```yaml
-# modules/mine/collections/contacts.collection.yaml   — and "dependencies": ["@dreamteamer/contacts"]
+# modules/mine/collections/contacts.collection.yaml
+# and in modules/mine/package.json:  "dreamteamer": { "dependencies": ["@dreamteamer/contacts"] }
 name: contacts
-extends: "@dreamteamer/contacts/contacts"
 overlay: true
-label: Kontakte
+title: Kontakte
 fields:
   pronouns:
     type: string
     description: How to refer to them.
 ```
 
-Then `npx dreamteamer compile`; the merged descriptor is what the runtime reads, and `dt check`
-validates every record against it.
+Then `npx dreamteamer compile`; the merged descriptor is what the runtime reads, and
+`npx dreamteamer check` validates every record against it. `npx dreamteamer add-field contacts
+--name pronouns --module mine` writes the same file for you. An overlay adds or tightens fields and
+never removes one, and compile refuses it while its module does not depend on the base's.
 
 ## versions and releases
 
@@ -166,10 +170,11 @@ uv run --project modules/recordings/skills/transcribing-recordings --with pytest
 ```
 
 To try an unreleased change in a real workspace, preview this clone there with
-`node <clone>/scripts/preview.mjs link <clone>` and `unlink` when done (one module alone: `dt install
-./<clone>/modules/<id>`) — a workspace previewed by the removed setup package refuses every commit
-("linked bundle has no guard") until you run `preview.mjs link` once more, which rewrites its hook — a pre-commit guard refuses record commits
-while a preview is on, because a record may not depend on an unpublished schema.
+`node <clone>/scripts/preview.mjs link <clone>`, and `unlink` when done; for one module alone,
+`npx dreamteamer install ./<clone>/modules/<id>`. While a preview is on, a pre-commit guard refuses
+record commits, because a record may not depend on an unpublished schema. A workspace last previewed
+by the removed setup package refuses every commit ("linked bundle has no guard") until you run
+`preview.mjs link` once more, which rewrites its hook.
 
 The house rules — no personal data (the synthetic cast is Dana Oren, Sam Diaz, Northwind, Harbor
 Mutual), every module compiles alone, a module ships only what its `files` names, and a module that
