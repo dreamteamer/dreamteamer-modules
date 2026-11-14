@@ -77,8 +77,11 @@ describe('a fragment after the operator moved a row', { skip }, () => {
 		assert.equal(ns.length, 1, `${ns.length} namespace: rnd entries`);
 		assert.ok(!JSON.stringify(ns[0]).includes('"rnd/issues"'), 'rnd/issues is back inside the namespace');
 		assert.ok(k.hidden.includes('rnd/releases'), 'rnd/releases left hidden');
-		// hide keeps the row's place and lists it in `hidden` (nav-doc.js): "not re-added" is no second occurrence
+		// hide takes the row out of the tree and lists it in `hidden` (nav-doc.js; decisions/2026-11-14--hide-takes-a-row-
+		// out-of-the-tree-and-lists-it-in-hidden-move-to-bottom-keeps-the-recorded-tails-first-rule): "not re-added" is no
+		// new occurrence in the tree — as many as before the install, which is none
 		assert.equal(JSON.stringify(k.tree).split('"rnd/releases"').length - 1, JSON.stringify(s.tree).split('"rnd/releases"').length - 1, `rnd/releases re-added to the tree: ${json}`);
+		assert.equal(JSON.stringify(k.tree).includes('"rnd/releases"'), false, `rnd/releases is hidden and in the tree: ${json}`);
 		const nsFolders = (ns[0].items ?? []).filter((e) => e && typeof e === 'object' && 'folder' in e).map((e) => e.folder);
 		assert.ok(nsFolders.includes('Reading'), `Reading renamed back: ${nsFolders}`);
 		assert.ok(!nsFolders.includes('Knowledge'), 'a Knowledge folder was created inside the rnd namespace');

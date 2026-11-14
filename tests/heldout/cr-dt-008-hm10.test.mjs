@@ -67,6 +67,12 @@ const CASES = [
 	// the drawing is unchanged and the document places the tails; the sidebar keeps Move to bottom disabled on the last
 	// row and sends nothing.
 	{ id: 'g-bottom', row: 'users', op: { op: 'move', target: { name: 'users' }, position: 'bottom' }, expected: ['Work', 'contacts', 'assets', 'companies', 'users'], unchanged: true, tree: [{ folder: 'Work', items: ['tasks'] }, 'contacts', 'assets', 'companies', 'users'], sends: [], gesture: { menu: ['c/users', 'move-bottom'] } },
+	// (g) bottom on rows that are NOT last, added 2026-11-14 at the test review (finding hm10-g-bottom-is-now-a-no-op-case):
+	// the case above moves nothing, so the tails-first rule is proved here, with the one-row-moved check on. A placed row
+	// (contacts) and an unplaced tail row (assets) each draw last; the tails before them are placed first, in drawn order,
+	// and no other row changes its place.
+	{ id: 'g-bottom-placed', row: 'contacts', op: { op: 'move', target: { name: 'contacts' }, position: 'bottom' }, expected: ['Work', 'assets', 'companies', 'users', 'contacts'], tree: [{ folder: 'Work', items: ['tasks'] }, 'assets', 'companies', 'users', 'contacts'], gesture: { menu: ['c/contacts', 'move-bottom'] } },
+	{ id: 'g-bottom-tail', row: 'assets', op: { op: 'move', target: { name: 'assets' }, position: 'bottom' }, expected: ['Work', 'contacts', 'companies', 'users', 'assets'], tree: [{ folder: 'Work', items: ['tasks'] }, 'contacts', 'companies', 'users', 'assets'], gesture: { menu: ['c/assets', 'move-bottom'] } },
 ];
 
 describe('step 1: the original document draws Work, contacts, then the tail by title', () => {
@@ -101,8 +107,10 @@ describe('steps 2-3: each recipe op through applyNavOp, drawn with buildTree', (
 			const walkNodes = (nodes) => { for (const n of nodes) { if (n.kind === 'collection') drawnOrder.push(n.target.name); if (n.children) walkNodes(n.children); } };
 			walkNodes(draw(next));
 			assert.deepEqual(drawnOrder.filter((x) => docOrder.includes(x)), docOrder, 'the document does not list its rows in their drawn order');
-			// applying the op a second time does not throw
-			assert.doesNotThrow(() => applyNavOp(next, c.op, ctx), 'the op threw on its second application');
+			// applying the op a second time does not throw; a move to the top or the bottom applied again changes nothing
+			let again;
+			assert.doesNotThrow(() => { again = applyNavOp(next, c.op, ctx); }, 'the op threw on its second application');
+			if (c.op.position) assert.deepEqual(top(again), drawn, `a second ${c.op.position} moved something`);
 		});
 	}
 });

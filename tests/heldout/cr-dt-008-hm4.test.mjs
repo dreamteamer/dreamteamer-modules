@@ -2,7 +2,7 @@
 //
 // PATCH /nav racing a hand edit of nav.yaml, and twenty concurrent PATCHes, end in a parseable document with no
 // interleaved bytes; each write is atomic and applies to the file as it is on disk at that moment. Through the http
-// host (dt web, in-process) over a real workspace on the engine under test, ten collections row_0 … row_9.
+// host (dt web, in-process) over a real workspace on the engine under test, fifteen collections row_0 … row_14.
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -16,7 +16,7 @@ import { workspace, writeCollection, simpleCollection } from '../helpers/fixture
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const { startWeb } = await import(pathToFileURL(path.join(ROOT, 'modules', 'web', 'src', 'server.js')).href);
 const HEADER = '# The left nav of this workspace. Drag and drop writes this file; so may you.';
-const ROWS = Array.from({ length: 10 }, (_, i) => `row_${i}`);
+const ROWS = Array.from({ length: 15 }, (_, i) => `row_${i}`);
 
 let ws, web, navFile, app;
 const auth = () => ({ authorization: `Bearer ${web.token}` });
@@ -50,50 +50,115 @@ before(async () => {
 });
 after(async () => { await web?.close(); fs.rmSync(app, { recursive: true, force: true }); });
 
-describe('steps 2-3: twenty PATCHes at once', () => {
-	test('every acknowledged op is in the file; the file parses, has the header and one trailing newline', async () => {
+/** Every collection name the tree places, at any depth, with how often (a name twice is a failure). */
+function placed(doc) {
+	const out = new Map();
+	const walk = (items) => {
+		for (const e of items ?? []) {
+			const c = typeof e === 'string' ? e : e?.collection;
+			if (typeof c === 'string') out.set(c, (out.get(c) ?? 0) + 1);
+			if (e && typeof e === 'object' && Array.isArray(e.items)) walk(e.items);
+		}
+	};
+	walk(doc.tree);
+	return out;
+}
+/** The file after a batch: parses, starts with the header, ends with exactly one newline; no temp file left. */
+function readSound() {
+	const text = fs.readFileSync(navFile, 'utf8');
+	const doc = parse(text);
+	assert.ok(isNavDoc(doc), `not a NavDoc:\n${text}`);
+	assert.equal(text.split('\n')[0], HEADER, 'the header comment is not the first line');
+	assert.ok(text.endsWith('\n') && !text.endsWith('\n\n'), 'not exactly one trailing newline');
+	assert.deepEqual(leftovers(), [], 'temp files left in the workspace root');
+	return { text, doc };
+}
+/** Every answer is 200, or a 4xx with a message; returns the ops that answered 200. */
+function acknowledged(ops, answers) {
+	for (const [i, a] of answers.entries()) {
+		if (a.status !== 200) assert.ok(a.status >= 400 && a.status < 500 && a.body?.error, `${JSON.stringify(ops[i])} answered ${a.status} with no message: ${JSON.stringify(a.body)}`);
+	}
+	return ops.filter((_, i) => answers[i].status === 200);
+}
+
+// Amended 2026-11-14 at the test review (finding hm4-amendment-cannot-see-a-lost-hide-or-move). Since
+// decisions/2026-11-14--hide-takes-a-row-out-of-the-tree-and-lists-it-in-hidden-move-to-bottom-keeps-the-recorded-tails-first-rule
+// a name is placed once — in the tree or in hidden — so a move and a hide of the SAME row cannot both be seen in the
+// file, and the first amendment (b1b467f) had to accept either end state for five rows, which made a lost hide or a lost
+// move of those rows invisible. The twenty concurrent ops now touch fifteen rows with no overlap — ten moves of
+// row_0…row_9 into B, five hides of row_10…row_14, five new folders — so every acknowledged op is checked exactly. The
+// overlapping case (a move and a hide of the same row at once) is its own batch below, where the exactly-one rule is the
+// whole claim.
+describe('steps 2-3: twenty PATCHes at once, every op on its own row', () => {
+	test('every acknowledged op is in the file, exactly; the file parses, has the header and one trailing newline', async () => {
+		fs.writeFileSync(navFile, initial());
+		const MOVED = ROWS.slice(0, 10);
+		const HIDDEN = ROWS.slice(10);
 		const ops = [
-			...ROWS.map((r) => ({ op: 'move', target: { name: r }, into: { folder: ['B'] } })),
-			...ROWS.slice(0, 5).map((r) => ({ op: 'hide', target: { name: r } })),
+			...MOVED.map((r) => ({ op: 'move', target: { name: r }, into: { folder: ['B'] } })),
+			...HIDDEN.map((r) => ({ op: 'hide', target: { name: r } })),
 			...[1, 2, 3, 4, 5].map((k) => ({ op: 'new-folder', label: `F_${k}` })),
 		];
+		assert.equal(ops.length, 20);
 		const answers = await Promise.all(ops.map((op) => patch(op)));
-		const text = fs.readFileSync(navFile, 'utf8');
-		const doc = parse(text);
-		assert.ok(isNavDoc(doc), `not a NavDoc:\n${text}`);
-		assert.equal(text.split('\n')[0], HEADER, 'the header comment is not the first line');
-		assert.ok(text.endsWith('\n') && !text.endsWith('\n\n'), 'not exactly one trailing newline');
-		const refused = answers.map((a, i) => [a, ops[i]]).filter(([a]) => a.status !== 200);
-		for (const [a, op] of refused) {
-			assert.ok(a.status >= 400 && a.status < 500 && a.body?.error, `${JSON.stringify(op)} answered ${a.status} with no message: ${JSON.stringify(a.body)}`);
-		}
-		// Amended 2026-11-14 by the orchestrator after
-		// decisions/2026-11-14--hide-takes-a-row-out-of-the-tree-and-lists-it-in-hidden-move-to-bottom-keeps-the-recorded-tails-first-rule:
-		// a name is placed once — in the tree or in hidden. row_0…row_4 each got a move into B and a hide, so each ends in
-		// exactly one of the two (whichever the serialised handler applied last); a write is lost when a row is in neither.
+		const { text, doc } = readSound();
+		const ok = acknowledged(ops, answers);
 		const inB = (r) => (folder(doc, 'B')?.items ?? []).includes(r);
 		const isHidden = (r) => (doc.hidden ?? []).includes(r);
+		const where = placed(doc);
 		const lost = [];
-		for (const [i, op] of ops.entries()) {
-			if (answers[i].status !== 200) continue;
+		for (const op of ok) {
 			const r = op.target?.name;
-			if (op.op === 'move' && !inB(r) && !(ROWS.slice(0, 5).includes(r) && isHidden(r))) lost.push(op);
-			if (op.op === 'hide' && !isHidden(r) && !inB(r)) lost.push(op);
+			// a move is in B and nowhere else, never hidden; a hide is in hidden and nowhere in the tree
+			if (op.op === 'move' && !(inB(r) && where.get(r) === 1 && !isHidden(r))) lost.push(op);
+			if (op.op === 'hide' && !(isHidden(r) && !where.has(r))) lost.push(op);
 			if (op.op === 'new-folder' && !folder(doc, op.label)) lost.push(op);
 		}
 		assert.deepEqual(lost, [], `acknowledged and lost:\n${text}`);
-		assert.deepEqual(refused.map(([, op]) => op), [], 'an op that applies on any order was refused');
-		for (const r of ROWS.slice(0, 5)) assert.ok(inB(r) !== isHidden(r), `${r} must be in exactly one of B and hidden:\n${text}`);
-		for (const r of ROWS.slice(5)) assert.ok(inB(r) && !isHidden(r), `${r} must be in B and not hidden:\n${text}`);
-		assert.ok((doc.hidden ?? []).every((r) => ROWS.slice(0, 5).includes(r)), `only row_0…row_4 may be hidden:\n${text}`);
+		assert.deepEqual(ops.filter((op) => !ok.includes(op)), [], 'an op that applies on any order was refused');
+		assert.deepEqual([...(folder(doc, 'B')?.items ?? [])].sort(), [...MOVED].sort(), `B is not exactly row_0…row_9:\n${text}`);
+		assert.deepEqual([...(doc.hidden ?? [])].sort(), [...HIDDEN].sort(), `hidden is not exactly row_10…row_14:\n${text}`);
+		for (const [name, n] of where) assert.equal(n, 1, `${name} is placed ${n} times:\n${text}`);
 		assert.equal(doc.tree.filter((e) => /^F_\d$/.test(e?.folder ?? '')).length, 5);
+	});
+
+	test('a move and a hide of the same row at once: each such row ends in exactly one of A and hidden, never neither', async () => {
+		fs.writeFileSync(navFile, initial());
+		const BOTH = ROWS.slice(0, 5);
+		const MOVED = ROWS.slice(5, 10);
+		const HIDDEN = ROWS.slice(10);
+		const ops = [
+			...BOTH.flatMap((r) => [{ op: 'move', target: { name: r }, into: { folder: ['A'] } }, { op: 'hide', target: { name: r } }]),
+			...MOVED.map((r) => ({ op: 'move', target: { name: r }, into: { folder: ['B'] } })),
+			...HIDDEN.map((r) => ({ op: 'hide', target: { name: r } })),
+		];
+		assert.equal(ops.length, 20);
+		const answers = await Promise.all(ops.map((op) => patch(op)));
+		const { text, doc } = readSound();
+		const ok = acknowledged(ops, answers);
+		assert.deepEqual(ops.filter((op) => !ok.includes(op)), [], 'an op that applies on any order was refused');
+		const inA = (r) => (folder(doc, 'A')?.items ?? []).includes(r);
+		const inB = (r) => (folder(doc, 'B')?.items ?? []).includes(r);
+		const isHidden = (r) => (doc.hidden ?? []).includes(r);
+		const where = placed(doc);
+		for (const [name, n] of where) assert.equal(n, 1, `${name} is placed ${n} times:\n${text}`);
+		// the rows touched twice: whichever op the serialised handler applied last wins, and nothing is lost
+		for (const r of BOTH) {
+			assert.ok(inA(r) !== isHidden(r), `${r} must be in exactly one of A and hidden:\n${text}`);
+			if (!isHidden(r)) assert.equal(where.get(r), 1, `${r} is in A and elsewhere too:\n${text}`);
+			else assert.ok(!where.has(r), `${r} is hidden and still in the tree:\n${text}`);
+		}
+		// the rows touched once are checked exactly, as above
+		for (const r of MOVED) assert.ok(inB(r) && where.get(r) === 1 && !isHidden(r), `${r} must be in B only:\n${text}`);
+		for (const r of HIDDEN) assert.ok(isHidden(r) && !where.has(r), `${r} must be hidden and out of the tree:\n${text}`);
+		assert.deepEqual([...(doc.hidden ?? [])].filter((r) => !BOTH.includes(r)).sort(), [...HIDDEN].sort(), `only row_0…row_4 and row_10…row_14 may be hidden:\n${text}`);
 	});
 });
 
 describe('step 4: a hand writer racing PATCH icon, 200 iterations, no sleeps', () => {
 	test('no observation is empty, truncated or unparseable; every 200 doc parses; hand content survives; no temp files', async () => {
 		// two hand documents, alternately: one with an extra comment line, one in a different order
-		const handA = `${HEADER}\n# a hand-written comment\ntree:\n  - folder: A\n    items: [row_9]\n  - folder: B\n    items: []\n${ROWS.slice(0, 9).map((r) => `  - ${r}\n`).join('')}`;
+		const handA = `${HEADER}\n# a hand-written comment\ntree:\n  - folder: A\n    items: [row_9]\n  - folder: B\n    items: []\n${ROWS.filter((r) => r !== 'row_9').map((r) => `  - ${r}\n`).join('')}`;
 		const handB = `${HEADER}\ntree:\n${[...ROWS].reverse().map((r) => `  - ${r}\n`).join('')}  - folder: B\n    items: []\n  - folder: A\n    items: []\n`;
 		const handTrees = [parse(handA).tree, parse(handB).tree];
 		const writer = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'hm4-writer-')), 'writer.mjs');
