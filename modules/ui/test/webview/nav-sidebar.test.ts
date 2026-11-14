@@ -38,15 +38,16 @@ test('draws the host nav, opens a folder and routes a row', async () => {
 	const root = await render(NavSidebar, {}, [router]);
 	assert.ok(requests.some((r) => r.method === 'GET' && r.path === '/nav'), 'never asked the host for the nav');
 	let list = rows(root);
-	assert.deepEqual(list.map(labelOf), ['northwind-hq', 'Projects', 'Lab'], 'the workspace row is open, its folder closed');
-	(all(list[2], (n) => n.props['class'] === 'dt-nav-twisty')[0].props['onClick'] as (e: unknown) => void)({ stopPropagation() {} });
+	assert.deepEqual(list.map(labelOf), ['Projects', 'Lab'], 'the workspace is the toolbar name, not a row; its folder closed');
+	assert.equal(text(all(root, (n) => n.props['class'] === 'dt-nav-toolbar__label')[0]), 'northwind-hq');
+	(all(list[1], (n) => n.props['class'] === 'dt-nav-twisty')[0].props['onClick'] as (e: unknown) => void)({ stopPropagation() {} });
 	await flush();
 	list = rows(root);
 	assert.ok(list.some((r) => labelOf(r).includes('Samples')), 'opening Lab did not draw Samples');
 	clickLabel(list.find((r) => labelOf(r).includes('Projects'))!);
 	await flush();
 	assert.equal(router.currentRoute.value.fullPath, '/content/projects');
-	assert.equal(all(root, (n) => n.tag === 'button').length, 0, 'no scope toggle — the editor has none');
+	assert.deepEqual(all(root, (n) => n.tag === 'button').map((b) => b.props['data-tool']), ['arrange'], 'no scope toggle — the editor has none; the toolbar has only the arrange lock while locked');
 	assert.equal(all(root, (n) => n.props['class'] === 'dt-nav-namespace' || String(n.props['class'] ?? '').includes('dt-nav-namespace')).length, 1, 'the namespace node draws as a namespace row');
 });
 

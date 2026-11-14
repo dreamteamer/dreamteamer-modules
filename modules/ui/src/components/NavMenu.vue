@@ -3,6 +3,8 @@
  * A nav row's menu (cr-dt-008): a short list of entries, drawn where the right click was. An entry that needs a
  * value — a folder label, a hidden name, an icon — asks for it in place (a text field, or the IconPicker) before it
  * is picked. What an entry DOES is NavSidebar's: this component only says which entry, and with what value.
+ * A toolbar button that IS one entry (the nav toolbar's New folder, Show hidden…) opens the menu at that entry's ask
+ * (`start`), with no list to choose from first.
  */
 import { ref } from 'vue';
 import IconPicker from './IconPicker.vue';
@@ -20,11 +22,12 @@ export interface NavMenuItem {
 	suggestions?: string[];
 }
 
-const props = defineProps<{ x: number; y: number; items: NavMenuItem[] }>();
+const props = defineProps<{ x: number; y: number; items: NavMenuItem[]; start?: string }>();
 const emit = defineEmits<{ pick: [{ id: string; value?: string | null }]; close: [] }>();
 
-const asking = ref<NavMenuItem | null>(null);
-const text = ref('');
+const first = props.start ? props.items.find((i) => i.id === props.start && i.ask && !i.disabled) ?? null : null;
+const asking = ref<NavMenuItem | null>(first);
+const text = ref(first?.value ?? '');
 
 function choose(item: NavMenuItem): void {
 	if (item.disabled) return;
@@ -43,7 +46,6 @@ function submit(): void {
 function onIcon(name: string): void {
 	if (asking.value) emit('pick', { id: asking.value.id, value: name || null });
 }
-void props;
 </script>
 
 <template>
