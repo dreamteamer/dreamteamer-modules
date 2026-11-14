@@ -9,6 +9,10 @@
 //   e. after the hook's GET /_dt/pane?hook=1, Ask in chat shows Waiting; the hook bin's next run prints the queued
 //      line, and the item shows Delivered
 //   f. the switcher lists the second workspace (stopped); choosing it lands on its page with no sign-in step
+//   g. at 320 px (a narrow desktop pane) the chip and its menu are reachable and inside the page, the name truncates,
+//      the raise notice takes its own row, and the page does not scroll sideways
+//   h. a server restart under that open page (dt web stop, then a verb that starts it): the page shows the signed-out
+//      sentence ON ITS OWN, with no click and no raw 401 (the h8 amendment; sessions live in memory only)
 // usage: node modules/web/test/walk/pane-walk.mjs [<shots dir>]     (DT_WEB_APP_DIR, DT_ENGINE_DIR optional)
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -186,9 +190,43 @@ fetch('/api/info', { credentials: 'include' }).then(async (r) => parent.postMess
 	const real = errors.filter((e) => !/status of (400|403)/.test(e) && !/probe\.html.*sandboxed/.test(e));
 	ok(real.length === 0, 'no page errors besides the refusals the walk asked for', JSON.stringify(real.slice(0, 3)));
 	await context.close();
+
+	// g — a narrow pane: 320 × 640, Admin with its raise notice, the page of the first workspace
+	const SIGNED_OUT = 'This pane is signed out. Ask the chat to show it again — it runs dt web open.';
+	const admin = s.run('open', '--admin');
+	const narrow = await signedIn(b, urlOf(admin.stdout), { viewport: { width: 320, height: 640 } });
+	await narrow.page.waitForSelector('.dt-pane-bar__chip', { timeout: 10_000 });
+	await narrow.page.click('.dt-pane-bar__chip');
+	await narrow.page.waitForSelector('.dt-pane-bar__level .dt-pane-bar__menu', { timeout: 5_000 }).catch(() => null);
+	const fit = await narrow.page.evaluate(() => {
+		const box = (sel) => { const e = document.querySelector(sel); if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.left, right: r.right, y: r.top, bottom: r.bottom }; };
+		const topmost = (sel) => { const e = document.querySelector(sel); if (!e) return false; const r = e.getBoundingClientRect(); const t = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return Boolean(t && (t === e || e.contains(t))); };
+		const area = box('.dt-page-area');
+		const name = document.querySelector('.dt-pane-bar__ws-button');
+		return { area, chip: box('.dt-pane-bar__chip'), menu: box('.dt-pane-bar__level .dt-pane-bar__menu'), notice: box('.dt-pane-bar__notice'), chipTop: topmost('.dt-pane-bar__chip'), itemTop: topmost('.dt-pane-bar__lower'), nameFits: name ? name.scrollWidth <= name.clientWidth || getComputedStyle(name).textOverflow === 'ellipsis' : false, sideways: document.documentElement.scrollWidth > document.documentElement.clientWidth };
+	});
+	const within = (bx) => Boolean(bx && fit.area && bx.x >= fit.area.x - 0.5 && bx.right <= fit.area.right + 0.5);
+	ok(within(fit.chip) && fit.chipTop, 'g: at 320 px the level chip is inside the page and reachable', JSON.stringify({ area: fit.area, chip: fit.chip }));
+	ok(within(fit.menu) && fit.itemTop, 'g: its menu opens inside the page, its first item reachable', JSON.stringify(fit.menu));
+	ok(fit.nameFits && !fit.sideways, 'g: the name fits or truncates with an ellipsis, and the page does not scroll sideways');
+	ok(Boolean(fit.notice && fit.chip && fit.notice.y >= fit.chip.bottom - 0.5), 'g: the raise notice takes a row of its own below the chip', JSON.stringify(fit.notice));
+	await narrow.page.screenshot({ path: step('g-narrow') });
+	await narrow.page.keyboard.press('Escape');
+
+	// h — a restart under that open page: the signed-out sentence comes on its own, with no click
+	const stoppedA = s.run('stop');
+	const restarted = s.run('selection');
+	ok(stoppedA.status === 0 && restarted.status === 0, 'h: dt web stop, then dt web selection starts the server again', `${stoppedA.stdout.trim()} · ${restarted.stdout.split('\n')[0]}`);
+	const out = await until(narrow.page, (want) => document.body.innerText.includes(want), SIGNED_OUT, 15_000);
+	const seen = await narrow.page.evaluate(() => document.body.innerText);
+	ok(out, 'h: the page shows the signed-out sentence on its own, with no click', out ? '' : JSON.stringify(seen.slice(0, 120)));
+	ok(!/\b401\b|unauthori[sz]ed|sign in first/i.test(seen), 'h: and no raw 401 text');
+	await narrow.page.screenshot({ path: step('h-signed-out') });
+	await narrow.context.close();
 } finally {
 	await b.close();
 	runOther('stop');
+	s.run('stop'); // h restarted the first workspace's server detached; the foreground one is gone
 	await s.stop();
 	a.cleanup();
 	other.cleanup();
