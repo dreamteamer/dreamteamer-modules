@@ -14,7 +14,8 @@
 		"dreamteamer-module"
 	],
 	"bin": {
-		"dt-web": "bin/dt-web.mjs"
+		"dt-web": "bin/dt-web.mjs",
+		"dt-web-hook": "bin/dt-web-hook.mjs"
 	},
 	"exports": {
 		".": "./src/server.js",

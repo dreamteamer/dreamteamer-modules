@@ -165,12 +165,17 @@ describe('the queue', () => {
 		} finally { await s.close(); }
 	});
 
-	test('?hook=1 hands a waiting item out once — a second prompt does not get it', async () => {
+	test('?hook=1 hands a waiting item out once — a second prompt does not get it; with no page it hands out nothing', async () => {
 		const q = (await page('/api/queue', 'POST', { command: 'commands/review-project', refs: ['projects/northwind-launch'] })).json.item;
-		const [a, b] = await Promise.all([control('/pane?hook=1'), control('/pane?hook=1')]);
-		const handed = [...a.json.queue, ...b.json.queue].filter((i) => i.id === q.id);
-		assert.equal(handed.length, 1, 'one delivery only');
-		assert.equal((await control('/pane?hook=1')).json.queue.length, 0);
+		assert.deepEqual((await control('/pane?hook=1')).json.queue, [], 'no page connected: the item waits');
+		assert.equal((await page('/api/queue')).json.items.find((i) => i.id === q.id).state, 'waiting');
+		const s = await stream();
+		try {
+			const [a, b] = await Promise.all([control('/pane?hook=1'), control('/pane?hook=1')]);
+			const handed = [...a.json.queue, ...b.json.queue].filter((i) => i.id === q.id);
+			assert.equal(handed.length, 1, 'one delivery only');
+			assert.equal((await control('/pane?hook=1')).json.queue.length, 0);
+		} finally { await s.close(); }
 		const item = (await page('/api/queue')).json.items.find((i) => i.id === q.id);
 		assert.equal(item.state, 'delivered');
 	});

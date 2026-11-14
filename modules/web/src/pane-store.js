@@ -89,7 +89,8 @@ export function createPaneStore({ root, state, save, filesKey, workspace, fileBa
 		 */
 		snapshot({ hook = false, connected = false } = {}) {
 			const t = now();
-			const queue = waiting(t);
+			// the hook prints only while a page is connected: with none, nothing is handed out and an item waits
+			const queue = hook && !connected ? [] : waiting(t);
 			const movedTo = pane.movedTo ?? null;
 			if (hook) {
 				const wasSeen = chatSeen(state, t);
