@@ -1,6 +1,7 @@
 // Where a running server keeps its state and its token: the per-user runtime directory, never the
 // workspace (README: "nothing goes into the workspace, so it never lands in a synced folder"). One file per
 // workspace, named by a hash of the workspace's real path; the directory is 0700 and the file 0600.
+import { spawnSync } from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -24,7 +25,7 @@ export function workspaceKey(root) {
 /** What a start that could not take its stored port says (the runtime file carries `movedFrom` for the verbs). */
 export const movedLine = (from, to) => `port ${from} was taken; moved to ${to} — open the pane again: dt web open`;
 
-/** The runtime file of one workspace's server: `{ pid, port, started, owner, token, instance, movedFrom? }`. */
+/** The runtime file of one workspace's server: `{ pid, port, started, owner, token, instance, lstart, movedFrom? }` — `lstart` the process's start time (processStart). */
 export function stateFile(root, dir = runtimeDir()) {
 	return path.join(dir, `${workspaceKey(root)}.json`);
 }
@@ -68,35 +69,72 @@ export function identityProof(instance, challenge) {
 }
 
 /**
- * Does the server on `rt.port` hold `rt.instance`? False for a runtime file with no instance (an older server), for
- * nothing listening, for a wrong or late answer — never throws. Nothing but the challenge is sent.
+ * Who answers on `rt.port`: `'proven'` — the server holding `rt.instance`; `'stranger'` — a refused connection, an answer
+ * that is not a 200, or a wrong proof (and a runtime file with no instance, an older server): this is not the server;
+ * `'silent'` — no answer in time (or a connection that broke): a process that may be this server, suspended or busy,
+ * and must not be taken for a stranger. Never throws. Nothing but the challenge is sent.
  * @param {{ port?: unknown, instance?: unknown }} rt
  * @param {{ fetchImpl?: typeof fetch, timeoutMs?: number }} [o]
+ * @returns {Promise<'proven'|'stranger'|'silent'>}
  */
-export async function proves(rt, { fetchImpl = fetch, timeoutMs = 2000 } = {}) {
-	if (!rt || !Number.isInteger(rt.port) || rt.port <= 0 || rt.port > 65535 || typeof rt.instance !== 'string' || !rt.instance) return false;
+export async function identify(rt, { fetchImpl = fetch, timeoutMs = 2000 } = {}) {
+	if (!rt || !Number.isInteger(rt.port) || rt.port <= 0 || rt.port > 65535 || typeof rt.instance !== 'string' || !rt.instance) return 'stranger';
 	const challenge = crypto.randomBytes(24).toString('base64url');
+	let res;
 	try {
-		const res = await fetchImpl(`http://127.0.0.1:${rt.port}${IDENTITY_PATH}?challenge=${challenge}`, { redirect: 'manual', signal: AbortSignal.timeout(Math.max(1, timeoutMs)) });
-		if (res.status !== 200) return false;
-		const proof = (await res.json())?.proof;
-		const want = identityProof(rt.instance, challenge);
-		return typeof proof === 'string' && proof.length === want.length && crypto.timingSafeEqual(Buffer.from(proof), Buffer.from(want));
-	} catch {
-		return false;
+		res = await fetchImpl(`http://127.0.0.1:${rt.port}${IDENTITY_PATH}?challenge=${challenge}`, { redirect: 'manual', signal: AbortSignal.timeout(Math.max(1, timeoutMs)) });
+	} catch (e) {
+		return e?.cause?.code === 'ECONNREFUSED' || e?.code === 'ECONNREFUSED' ? 'stranger' : 'silent';
 	}
+	if (res.status !== 200) return 'stranger';
+	let body;
+	try { body = await res.json(); } catch (e) { return e?.name === 'TimeoutError' || e?.name === 'AbortError' ? 'silent' : 'stranger'; }
+	const proof = body?.proof;
+	const want = identityProof(rt.instance, challenge);
+	return typeof proof === 'string' && proof.length === want.length && crypto.timingSafeEqual(Buffer.from(proof), Buffer.from(want)) ? 'proven' : 'stranger';
+}
+
+/** Does the server on `rt.port` hold `rt.instance`? (`identify` is 'proven'.) What the hook asks. */
+export async function proves(rt, o) {
+	return (await identify(rt, o)) === 'proven';
+}
+
+/** When `pid` started, as `ps -o lstart=` prints it (to the second), or null when it cannot be read. */
+export function processStart(pid) {
+	if (!Number.isInteger(pid) || pid <= 0) return null;
+	try {
+		const r = spawnSync('ps', ['-o', 'lstart=', '-p', String(pid)], { encoding: 'utf8', timeout: 2000 });
+		const t = r.status === 0 ? String(r.stdout).trim().replace(/\s+/g, ' ') : '';
+		return t || null;
+	} catch { return null; }
 }
 
 /**
- * The server a runtime file names, proven: null when there is no file or its process is gone (that file is removed);
- * otherwise the file's contents plus `file` and `proven` — false when the process lives but is not this server (its
- * pid reused, its port another program's, or a server on its way down). Every verb reads the server through this.
+ * The server a runtime file names, and in what state: null when there is no file or its process is gone (that file is
+ * removed); otherwise the file's contents plus `file`, `state` and `proven`:
+ * - `'running'` (proven) — it proved this start's instance;
+ * - `'stale'` — a refused connection or a wrong proof, or a silent process whose start time is not the one recorded
+ *   (its pid reused): not this server, so its runtime file may be cleared and a new server started;
+ * - `'silent'` — alive, no answer in time, and not shown to be another process: NOT ANSWERING. Nothing may clear its
+ *   runtime file or lock, or start a server beside it. `sameProcess` is true when the recorded start time is this
+ *   pid's own (what lets `dt web stop --force` signal it), null when that cannot be shown.
+ * Every verb reads the server through this.
  */
 export async function probeServer(file, o) {
 	const s = readState(file);
 	if (!s || typeof s !== 'object') return null;
 	if (!alive(s.pid)) { fs.rmSync(file, { force: true }); return null; }
-	return { ...s, file, proven: await proves(s, o) };
+	const answer = await identify(s, o);
+	if (answer === 'proven') return { ...s, file, state: 'running', proven: true, sameProcess: true };
+	if (answer === 'stranger') return { ...s, file, state: 'stale', proven: false, sameProcess: null };
+	const now = typeof s.lstart === 'string' ? processStart(s.pid) : null;
+	const sameProcess = now === null ? null : now === s.lstart.trim().replace(/\s+/g, ' ');
+	return { ...s, file, state: sameProcess === false ? 'stale' : 'silent', proven: false, sameProcess };
+}
+
+/** The one line every verb prints for a server that is alive and not answering (probeServer state 'silent'). */
+export function notAnsweringLine(p) {
+	return `not answering: pid ${p.pid} at http://127.0.0.1:${p.port} is alive but gave no identity proof within 2 s — it may be suspended or busy; nothing was started, stopped or removed. Try again, or end it: dt web stop --force`;
 }
 
 /** Remove a stale runtime file — only while it still names that pid and instance — and its lock when that pid holds it. */

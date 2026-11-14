@@ -59,8 +59,8 @@ Uninstall: `npm uninstall @dreamteamer/web`, then remove the `UserPromptSubmit` 
 | `npx dt web token [--read\|--edit] [--name <n>]` | a client token for the API and the API base, printed once. Read unless `--edit` |
 | `npx dt web list` | every workspace `dt web open` registered on this machine: name, port, running or stopped, folder |
 | `npx dt web revoke [--token <n>]` | ends every session (the page signs out), or removes one client token |
-| `npx dt web status` | `running at http://127.0.0.1:<port> · pid <n> · level <Level> · since <time>` and exit 0, or `not running` and exit 1. It writes nothing |
-| `npx dt web stop [--revoke]` | stops the server, and with it every session: the page signs out (`--revoke` ends them first, the same end) |
+| `npx dt web status` | `running at http://127.0.0.1:<port> · pid <n> · level <Level> · since <time>` and exit 0, or `not running` or `not answering: …` and exit 1. It writes nothing |
+| `npx dt web stop [--revoke] [--force]` | stops the server, and with it every session: the page signs out (`--revoke` ends them first, the same end). `--force` sends a server that is not answering `SIGTERM`, only when its recorded start time is that process's own |
 | `npx dt web start [--foreground] [--port <n>] [--idle <minutes>] [--owner-pid <pid>]` | starts the server without pairing. `--foreground` serves in this process (for a launch entry). `--port` or `DT_WEB_PORT` picks the port; `--idle` the minutes with no page and no token request before it stops (default 60, `0` never); `--owner-pid` stops it when that process exits |
 | `npx dt serve [--read\|--edit] [--name <n>]` | `dt web token --name serve`: a client token of this workspace's server |
 
@@ -146,11 +146,17 @@ Found a hole? See [SECURITY.md](../../SECURITY.md). Do not open a public issue.
   `dt web revoke --token <name>` removes one and ends its event streams.
 - **The server proves who it is.** Each start also mints an **instance id**, kept in the runtime file beside the
   control token and nowhere else. `GET /_dt/identity?challenge=<random>` answers anyone with an HMAC-SHA256 of the
-  challenge under that id, never the id itself. Every verb and the hook ask it before they trust the runtime file,
-  and a server that cannot answer is not this workspace's: a server killed without stopping leaves its file, and its
-  pid or its port can later be another program's. With such a stale runtime file `dt web status` says
-  `not running`, `dt web open` starts a fresh server, `dt web stop` removes the file and signals nothing, and the
-  hook sends no token and prints nothing.
+  challenge under that id, never the id itself. Every verb and the hook ask it, within 2 seconds, before they
+  trust the runtime file. A server killed without stopping leaves its file, and its pid or its port can later be
+  another program's, so the file is **stale** when its process is gone, the connection is refused, the answer is
+  wrong, or a process that gives no answer started at another time than the one the file recorded
+  (`ps -o lstart=`). With a stale runtime file `dt web status` says `not running`, `dt web open` starts a fresh
+  server, `dt web stop` removes the file and signals nothing, and the hook sends no token and prints nothing.
+  A live server that gives no answer in time, and is not shown to be another process, is **not answering** — it may
+  be suspended or busy. Every verb then prints one `not answering: …` line naming its pid and exits 1, and nothing
+  removes its runtime file or lock or starts a second server beside it; the hook prints nothing.
+  `dt web stop --force` sends it `SIGTERM`, and only when the start time recorded in the runtime file is that
+  process's own — otherwise it says it cannot prove the pid is this server's and signals nothing.
 - **Levels.** Every protocol route carries one: Read for every read, Edit for record writes, the nav and the
   queue, Admin for the rest (revert, rename, fields, commits, every system collection, and any record write on a
   collection the engine reports internal or runtime). The workspace's level is Edit until `dt web open --read`,
@@ -256,6 +262,9 @@ claimed `dt serve` before, must remove `@dreamteamer/http` first — the engine 
 - **"not running — removed a stale runtime file"**: a server was killed without stopping (a crash, `kill -9`, a
   power loss) and its pid now belongs to another program, which was not signalled. `npx dt web open` starts a fresh
   server.
+- **"not answering: pid … is alive but gave no identity proof within 2 s"**: the server is suspended (a stopped
+  terminal job, a debugger) or too busy to answer. Nothing was changed. Resume it (`fg`, `kill -CONT <pid>`) or wait,
+  then run the verb again; to end it, `npx dt web stop --force`.
 - **"This pane is signed out"**: the session ended (the server restarted or stopped, `dt web revoke`, or 7 days
   idle). Ask the chat to show it again — it runs `dt web open`.
 - **"the page cannot raise the level"**: raising is the chat's: `npx dt web open --edit` or `--admin`.

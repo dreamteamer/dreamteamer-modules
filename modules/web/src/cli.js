@@ -1,14 +1,17 @@
 // `dt web` and `dt-web <root>` (cr-modules-017 §8): one argv grammar for both entries; `main` resolves to the exit
 // code. Every verb that needs the server starts it detached when it is not running (`ensureRunning`) — `open`, `show`,
 // `select`, `selection`, `token`, `start`; `status`, `stop`, `list`, `hook` and `revoke` never start one. Every verb
-// knows the server by its proof (runtime.js `probeServer`), never by a live pid: a runtime file whose server cannot prove
-// its instance is stale — status says not running, open starts a fresh server, stop removes the file and signals nobody.
+// knows the server by its proof (runtime.js `probeServer`), never by a live pid: a runtime file whose process is gone,
+// refuses the connection or gives a wrong proof is stale — status says not running, open starts a fresh server, stop
+// removes the file and signals nobody. A live process that gives no proof in time is NOT ANSWERING: every verb says so,
+// exits 1 and changes nothing — no file removed, no second server — and only `stop --force` signals it, when its
+// recorded start time is that process's own.
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { alive, claimStart, clearStale, movedLine, probeServer, readState, removeState, runtimeDir, stateFile, workspaceKey, writeState } from './runtime.js';
+import { alive, claimStart, clearStale, movedLine, notAnsweringLine, probeServer, processStart, readState, removeState, runtimeDir, stateFile, workspaceKey, writeState } from './runtime.js';
 import { readRegistry, readWorkspaceState, register, stateDir, writeWorkspaceState } from './state.js';
 import { hookInstalled, installHook } from './hook.js';
 import { workspaceName } from './pane-store.js';
@@ -16,7 +19,7 @@ import { workspaceName } from './pane-store.js';
 const BIN = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'bin', 'dt-web.mjs');
 // the browser page @dreamteamer/ui builds, served as it is
 const appDirOf = () => path.join(path.dirname(createRequire(import.meta.url).resolve('@dreamteamer/ui/package.json')), 'dist', 'app');
-export const USAGE = 'usage: dt web [open [<ref>|<collection>|<ui-view>] [--read|--edit|--admin] [--browser]] · show <target> · select <ref>… | --clear · selection [--json] · hook --install · token [--read|--edit] [--name <n>] · list · revoke [--token <n>] · status · stop [--revoke] · start [--foreground] [--port <n>] [--idle <minutes>] [--owner-pid <pid>]';
+export const USAGE = 'usage: dt web [open [<ref>|<collection>|<ui-view>] [--read|--edit|--admin] [--browser]] · show <target> · select <ref>… | --clear · selection [--json] · hook --install · token [--read|--edit] [--name <n>] · list · revoke [--token <n>] · status · stop [--revoke] [--force] · start [--foreground] [--port <n>] [--idle <minutes>] [--owner-pid <pid>]';
 const VERBS = new Set(['open', 'show', 'select', 'selection', 'hook', 'token', 'list', 'revoke', 'status', 'stop', 'start']);
 /** Each verb's flags: `level` (one of --read/--edit/--admin), `true` (a switch) or `value` (takes one). */
 const FLAGS = {
@@ -29,10 +32,10 @@ const FLAGS = {
 	list: {},
 	revoke: { '--token': 'value' },
 	status: {},
-	stop: { '--revoke': true },
+	stop: { '--revoke': true, '--force': true },
 	start: { '--foreground': true, '--port': 'value', '--idle': 'value', '--owner-pid': 'value' },
 };
-const SWITCH = { '--browser': 'browser', '--clear': 'clear', '--json': 'json', '--install': 'install', '--revoke': 'revoke', '--foreground': 'foreground' };
+const SWITCH = { '--browser': 'browser', '--clear': 'clear', '--json': 'json', '--install': 'install', '--revoke': 'revoke', '--force': 'force', '--foreground': 'foreground' };
 const START_WAIT_MS = 10_000;
 const LEVEL_WORD = (l) => l[0].toUpperCase() + l.slice(1);
 const bad = (why) => { const e = new Error(`${why} — ${USAGE}`); e.usage = true; return e; };
@@ -100,8 +103,11 @@ async function ask(rt, method, p, body, timeoutMs = 10_000) {
 }
 const fileOf = (root, env) => stateFile(root, runtimeDir(env));
 /** The workspace's server when it proves it is the runtime file's: `{ port, controlToken, pid, movedFrom }`, else null. */
-const current = async (root, env, timeoutMs = 2000) => {
+/** What a verb that needs the server throws when a live server does not answer: it prints the line and exits 1. */
+class NotAnswering extends Error { constructor(p) { super(notAnsweringLine(p)); this.notAnswering = true; } }
+const current = async (root, env, timeoutMs = 2000, { refuseSilent = true } = {}) => {
 	const p = await probeServer(fileOf(root, env), { timeoutMs });
+	if (p?.state === 'silent' && refuseSilent) throw new NotAnswering(p);
 	return p?.proven && typeof p.token === 'string' ? { port: p.port, controlToken: p.token, pid: p.pid, movedFrom: p.movedFrom } : null;
 };
 const failed = (log, r) => { log(`✖ ${r.body?.error ?? (r.status ? `the server answered ${r.status}` : 'the server did not answer')}`); return 1; };
@@ -113,6 +119,7 @@ const failed = (log, r) => { log(`✖ ${r.body?.error ?? (r.status ? `the server
  * @returns {Promise<{ port: number, controlToken: string }>}
  */
 export async function ensureRunning(root, { log = console.log, env = process.env, appDir, bin = BIN } = {}) {
+	// a live server that does not answer throws NotAnswering here: never a second server beside it
 	const now = await current(root, env);
 	if (now) return now;
 	// no server, or a stale runtime file (a server on its way down, a hard-killed one whose pid or port another program
@@ -130,7 +137,7 @@ export async function ensureRunning(root, { log = console.log, env = process.env
 	fs.closeSync(fd);
 	const until = Date.now() + START_WAIT_MS;
 	while (Date.now() < until) {
-		const rt = await current(root, env, 1000);
+		const rt = await current(root, env, 1000, { refuseSilent: false });
 		if (rt) {
 			if (rt.movedFrom) log(movedLine(rt.movedFrom, rt.port));
 			return rt;
@@ -144,9 +151,20 @@ export async function main(root, argv, { log = console.log, env = process.env, a
 	const o = parseArgs(argv, env);
 	const sdir = stateDir(env);
 	const ensure = () => ensureRunning(root, { log, env, appDir });
+	try {
+		return await verb(root, o, { log, env, appDir, sdir, ensure });
+	} catch (e) {
+		if (!e?.notAnswering) throw e;
+		log(e.message);
+		return 1;
+	}
+}
+
+async function verb(root, o, { log, env, appDir, sdir, ensure }) {
 
 	if (o.cmd === 'status') {
 		const now = await probeServer(fileOf(root, env));
+		if (now?.state === 'silent') { log(notAnsweringLine(now)); return 1; }
 		if (!now?.proven) { log('not running'); return 1; }
 		log(`running at http://127.0.0.1:${now.port} · pid ${now.pid} · level ${LEVEL_WORD(readWorkspaceState(root, sdir).level)}${now.owner ? ` · owner ${now.owner}` : ''} · since ${now.started}`);
 		return 0;
@@ -155,7 +173,15 @@ export async function main(root, argv, { log = console.log, env = process.env, a
 		if (o.revoke) { const code = await revoke(root, {}, { log, env }); if (code) return code; }
 		const now = await probeServer(fileOf(root, env));
 		if (!now) { log('not running'); return o.revoke ? 0 : 1; }
-		if (!now.proven) {
+		if (now.state === 'silent') {
+			if (!o.force) { log(notAnsweringLine(now)); return 1; }
+			// --force signals only a process shown to be this server: the start time the runtime file recorded is its own
+			if (now.sameProcess !== true) {
+				log(`✖ cannot prove pid ${now.pid} is this workspace's server — it was not signalled (its start time ${now.lstart ? 'could not be read' : 'is not recorded'}); check it yourself: ps -p ${now.pid}`);
+				return 1;
+			}
+			log(`pid ${now.pid} is not answering; its start time is this server's — sending SIGTERM`);
+		} else if (!now.proven) {
 			clearStale(now.file, now);
 			log(`not running — removed a stale runtime file: pid ${now.pid} is not this workspace's server, and was not signalled`);
 			return o.revoke ? 0 : 1;
@@ -173,9 +199,9 @@ export async function main(root, argv, { log = console.log, env = process.env, a
 		for (const e of rows) {
 			const here = fs.existsSync(e.root);
 			const p = here ? await probeServer(fileOf(e.root, env), { timeoutMs: 1000 }) : null;
-			const r = p?.proven ? p : null;
+			const r = p?.proven || p?.state === 'silent' ? p : null;
 			const port = r?.port ?? (here ? readWorkspaceState(e.root, sdir).port : null);
-			log(`${e.name} · ${port ?? '-'} · ${r ? 'running' : 'stopped'} · ${e.root}`);
+			log(`${e.name} · ${port ?? '-'} · ${p?.state === 'silent' ? 'not answering' : r ? 'running' : 'stopped'} · ${e.root}`);
 		}
 		return 0;
 	}
@@ -268,6 +294,7 @@ async function foreground(root, o, { log, env, appDir = appDirOf() }) {
 	const file = fileOf(root, env);
 	const was = await probeServer(file);
 	if (was?.proven) { log(`already running at http://127.0.0.1:${was.port} (pid ${was.pid})`); return 1; }
+	if (was?.state === 'silent') { log(notAnsweringLine(was)); return 1; }
 	// a runtime file whose process lives but cannot prove it is this server: stale, with its lock when that pid holds it
 	if (was) clearStale(file, was);
 	const { startWeb } = await import('./server.js');
@@ -280,7 +307,7 @@ async function foreground(root, o, { log, env, appDir = appDirOf() }) {
 		lock.release();
 		throw e;
 	}
-	writeState(file, { pid: process.pid, port: web.port, started: new Date().toISOString(), owner: o.ownerPid ?? null, token: web.controlToken, instance: web.instance, ...(web.movedFrom ? { movedFrom: web.movedFrom } : {}) });
+	writeState(file, { pid: process.pid, port: web.port, started: new Date().toISOString(), owner: o.ownerPid ?? null, token: web.controlToken, instance: web.instance, lstart: processStart(process.pid), ...(web.movedFrom ? { movedFrom: web.movedFrom } : {}) });
 	// the handlers before the first line: a caller may signal the moment it reads it
 	const stop = () => web.close('signal');
 	process.once('SIGINT', stop);

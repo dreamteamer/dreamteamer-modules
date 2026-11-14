@@ -35,7 +35,9 @@ export default function activate() {
 			let level = 'edit';
 			try { level = readWorkspaceState(root).level; } catch { /* unreadable: the default */ }
 			const word = level[0].toUpperCase() + level.slice(1);
-			const rows = [{ label: 'web', state: 'ok', detail: `${r ? `running at http://127.0.0.1:${r.port} · pid ${r.pid}` : 'not running'} · level ${word}` }];
+			const rows = [p?.state === 'silent'
+				? { label: 'web', state: 'warn', detail: `not answering: pid ${p.pid} at http://127.0.0.1:${p.port} is alive but gave no identity proof within 2 s · level ${word}`, fix: 'dt web stop --force' }
+				: { label: 'web', state: 'ok', detail: `${r ? `running at http://127.0.0.1:${r.port} · pid ${r.pid}` : 'not running'} · level ${word}` }];
 			rows.push(hookInstalled(root)
 				? { label: 'web hook', state: 'ok', detail: 'the chat sees the pane (.claude/settings.local.json)' }
 				: { label: 'web hook', state: 'warn', detail: 'the chat cannot see the pane', fix: 'dt web hook --install' });

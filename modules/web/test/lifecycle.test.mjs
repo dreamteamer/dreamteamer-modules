@@ -167,3 +167,97 @@ test('a stale runtime file whose pid another program holds: status says not runn
 	assert.equal(run('stop').status, 0);
 	assert.equal(await exited(stranger, 300), false, 'the stranger was signalled');
 });
+
+// review round 2 (a-server-slow-to-answer-is-treated-as-stale): a live server that does not answer the identity proof in
+// time is NOT ANSWERING, never stale — only a dead pid, a refused connection or a wrong proof makes a runtime file stale.
+// Nothing removes its runtime file or lock, nothing starts a second server beside it, the hook stays silent in its
+// budget, and `stop --force` signals it only because the runtime file's recorded start time is that process's own.
+test('a live server suspended with SIGSTOP is not answering: status says so; stop, open, show, select and token change nothing and start nothing; the hook is silent; stop --force ends it', { timeout: 180_000 }, async () => {
+	const { readState, stateFile } = await import('../src/runtime.js');
+	const HOOK = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'bin', 'dt-web-hook.mjs');
+	const { child, first } = start();
+	await first;
+	const file = stateFile(f.root, env.DT_WEB_RUNTIME_DIR);
+	const before = fs.readFileSync(file, 'utf8');
+	const rt = JSON.parse(before);
+	assert.equal(rt.pid, child.pid);
+	assert.equal(typeof rt.lstart, 'string', 'the runtime file records its process start time');
+	const servers = () => spawnSync('pgrep', ['-f', `dt-web.mjs ${f.root} start`], { encoding: 'utf8' }).stdout.trim().split('\n').filter(Boolean).map(Number);
+	const NOT_ANSWERING = new RegExp(`^not answering: pid ${rt.pid} at http://127\\.0\\.0\\.1:${rt.port} is alive but gave no identity proof within 2 s`);
+	child.kill('SIGSTOP');
+	try {
+		const status = run('status');
+		assert.equal(status.status, 1, status.stdout + status.stderr);
+		assert.match(status.stdout, NOT_ANSWERING);
+
+		const stop = run('stop');
+		assert.equal(stop.status, 1, stop.stdout + stop.stderr);
+		assert.match(stop.stdout, NOT_ANSWERING);
+		assert.match(stop.stdout, /nothing was started, stopped or removed/);
+
+		for (const verb of [['open'], ['show', 'tasks'], ['select', 'tasks/brief-dana'], ['token'], ['start']]) {
+			const r = run(...verb);
+			assert.equal(r.status, 1, `${verb[0]}: ${r.stdout}${r.stderr}`);
+			assert.match(r.stdout, NOT_ANSWERING, verb[0]);
+			assert.equal(fs.readFileSync(file, 'utf8'), before, `${verb[0]} rewrote the runtime file`);
+		}
+		assert.equal(fs.readFileSync(file, 'utf8'), before, 'the runtime file was touched');
+		assert.equal(fs.readFileSync(`${file}.lock`, 'utf8').trim(), String(rt.pid), 'the lock was touched');
+		assert.deepEqual(servers(), [rt.pid], 'a second server was started beside the suspended one');
+
+		const t0 = Date.now();
+		const hook = spawnSync(process.execPath, [HOOK], { input: JSON.stringify({ cwd: f.root, prompt: 'x' }), env, encoding: 'utf8', timeout: 10_000 });
+		assert.equal(hook.status, 0);
+		assert.equal(hook.stdout, '');
+		assert.ok(Date.now() - t0 < 2000, `the hook took ${Date.now() - t0} ms`);
+
+		// --force: the recorded start time is this process's, so SIGTERM goes to it; it acts once it runs again
+		const forced = spawn(process.execPath, [BIN, f.root, 'stop', '--force'], { env, stdio: ['ignore', 'pipe', 'pipe'] });
+		children.push(forced);
+		let out = '';
+		forced.stdout.on('data', (b) => { out += b; });
+		await new Promise((r) => setTimeout(r, 3000));
+		child.kill('SIGCONT');
+		assert.ok(await exited(forced, 15_000), 'stop --force did not return');
+		assert.equal(forced.exitCode, 0, out);
+		assert.match(out, /stopped/);
+		assert.ok(await exited(child, 10_000), 'the server did not exit');
+		assert.equal(fs.existsSync(file), false);
+		assert.equal(fs.existsSync(`${file}.lock`), false);
+	} finally {
+		try { child.kill('SIGCONT'); } catch { /* gone */ }
+	}
+});
+
+test('a silent stranger on a reused pid: with no recorded start time it is not answering and --force refuses; with a start time that is not its own it is stale and cleared unsignalled', { timeout: 120_000 }, async () => {
+	const { stateFile, writeState } = await import('../src/runtime.js');
+	// accepts the connection, never answers
+	const stranger = spawn(process.execPath, ['-e', "require('node:http').createServer(() => {}).listen(0, '127.0.0.1', function () { console.log(this.address().port); }); setTimeout(() => {}, 120000);"], { stdio: ['ignore', 'pipe', 'ignore'] });
+	children.push(stranger);
+	const port = await new Promise((resolve, reject) => { stranger.stdout.once('data', (b) => resolve(Number(String(b).trim()))); stranger.once('exit', () => reject(new Error('the stranger exited'))); });
+	const file = stateFile(f.root, env.DT_WEB_RUNTIME_DIR);
+	const forge = (extra = {}) => {
+		writeState(file, { pid: stranger.pid, port, started: new Date().toISOString(), owner: null, token: 'the-dead-servers-token', instance: 'the-dead-servers-instance', ...extra });
+		fs.writeFileSync(`${file}.lock`, String(stranger.pid), { mode: 0o600 });
+	};
+	try {
+		forge();
+		assert.match(run('status').stdout, /^not answering: pid \d+/);
+		const forced = run('stop', '--force');
+		assert.equal(forced.status, 1, forced.stdout + forced.stderr);
+		assert.match(forced.stdout, new RegExp(`cannot prove pid ${stranger.pid} is this workspace's server — it was not signalled`));
+		assert.ok(fs.existsSync(file) && fs.existsSync(`${file}.lock`), 'an unproven --force removed the files');
+		assert.equal(await exited(stranger, 300), false, '--force signalled an unproven pid');
+
+		forge({ lstart: 'Thu Jan  1 00:00:00 1970' });
+		const stop = run('stop');
+		assert.equal(stop.status, 1, stop.stdout + stop.stderr);
+		assert.match(stop.stdout, new RegExp(`^not running — removed a stale runtime file: pid ${stranger.pid} is not this workspace's server, and was not signalled`));
+		assert.equal(fs.existsSync(file), false);
+		assert.equal(fs.existsSync(`${file}.lock`), false);
+		assert.equal(await exited(stranger, 300), false, 'the stranger was signalled');
+	} finally {
+		fs.rmSync(file, { force: true });
+		fs.rmSync(`${file}.lock`, { force: true });
+	}
+});
