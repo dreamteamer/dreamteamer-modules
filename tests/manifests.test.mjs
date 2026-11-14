@@ -67,6 +67,12 @@ import { closure } from './helpers/workspace.mjs';
 for (const m of moduleIds()) {
 	test(`${m}: the README's install line names exactly the module and its dependency closure`, () => {
 		const readme = fs.readFileSync(path.join(MODULES, m, 'README.md'), 'utf8');
+		// a module preset is expanded by the engine, never by npm: its one line is `dt install <the preset>`
+		if (pkgOf(m).dreamteamer?.preset) {
+			assert.ok(readme.split('\n').includes(`dt install @dreamteamer/${m}`), `no \`dt install @dreamteamer/${m}\` line`);
+			assert.ok(!readme.split('\n').some((l) => l.startsWith('npm install ')), 'an `npm install` line installs a preset with no members');
+			return;
+		}
 		const line = readme.split('\n').find((l) => l.startsWith('npm install '));
 		assert.ok(line, 'no `npm install` line');
 		const named = line.replace('npm install ', '').trim().split(/\s+/).filter((w) => !w.startsWith('-')).sort();
