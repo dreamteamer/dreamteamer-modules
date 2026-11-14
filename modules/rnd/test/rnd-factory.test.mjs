@@ -14,10 +14,6 @@ import { ffmpegArgs, parseArgs, main } from '../../../modules/rnd/skills/buildin
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', '..', '..');
 const RND = path.join(ROOT, 'modules', 'rnd');
 const load = (rel) => yaml.load(fs.readFileSync(path.join(RND, rel), 'utf8'));
-// rnd composes wikis and notebooklm (compose.json): a copy is judged in its origin's own tests, and the
-// gates below see only what rnd authors — the /rnd:… family, its bindings, its skills.
-const COPIES = new Set(Object.keys(JSON.parse(fs.readFileSync(path.join(RND, 'compose.json'), 'utf8')).files));
-const authored = (kind, f) => !COPIES.has(`${kind}/${f}`);
 
 describe('extract-frames — the ffmpeg plan', () => {
 	test('one frame every N seconds at the given width, height following', () => {
@@ -254,7 +250,7 @@ describe('the commands, the bindings and the agent — every entry names a skill
 	const commandsDir = path.join(RND, 'commands');
 	const commands = fs.readdirSync(path.join(commandsDir, 'rnd')).filter((f) => f.endsWith('.command.md')).map((f) => `rnd/${f.replace('.command.md', '')}`);
 	test('every command lives in the rnd folder — the family is one namespace — and the nine stage commands each name a skill folder that exists', () => {
-		assert.deepEqual(fs.readdirSync(commandsDir).filter((f) => f.endsWith('.command.md') && authored('commands', f)), [], 'no authored command outside commands/rnd/ — the composed notebooklm commands keep their own ids');
+		assert.deepEqual(fs.readdirSync(commandsDir).filter((f) => f.endsWith('.command.md')), [], 'no command outside commands/rnd/');
 		assert.equal(commands.length, 12, 'nine stages and the three reference-chain commands');
 		for (const c of STAGES) {
 			assert.ok(commands.includes(c), `${c} has no command file`);
@@ -267,7 +263,7 @@ describe('the commands, the bindings and the agent — every entry names a skill
 		}
 	});
 	const dir = path.join(RND, 'command-bindings');
-	const bindings = fs.readdirSync(dir).filter((f) => f.endsWith('.command-binding.yaml') && authored('command-bindings', f)).map((f) => ({ file: f, ...yaml.load(fs.readFileSync(path.join(dir, f), 'utf8')) }));
+	const bindings = fs.readdirSync(dir).filter((f) => f.endsWith('.command-binding.yaml')).map((f) => ({ file: f, ...yaml.load(fs.readFileSync(path.join(dir, f), 'utf8')) }));
 	test('thirty-two bindings: three on the reference chain, twenty-nine on the lifecycle', () => {
 		assert.equal(bindings.length, 32);
 		assert.equal(bindings.filter((b) => STAGES.includes(b.command.replace(/^commands\//, ''))).length, 29);
@@ -316,16 +312,14 @@ describe('the commands, the bindings and the agent — every entry names a skill
 	});
 });
 
-describe('the setup units', () => {
-	test('an installed rnd module contributes the wikis unit beside notebooklm\'s — the engine draws the board, no capabilities catalog is left (CR-dt-006)', async () => {
+describe('the extension', () => {
+	test('rnd contributes its check and no setup unit — wikis and notebooklm bring their own (CR-dt-008)', async () => {
 		const { default: activate, apiVersion } = await import('../lib/extension.mjs');
 		assert.equal(apiVersion, 1);
 		const ext = activate({});
-		const ids = (ext.setup ?? []).map((u) => u.id);
-		assert.ok(ids.includes('wikis'), `no wikis unit; saw ${ids.join(', ')}`);
-		assert.ok(ids.includes('notebooklm'), `no notebooklm unit; saw ${ids.join(', ')}`);
-		for (const u of ext.setup) { assert.equal(u.version, 1); for (const f of ['inspect', 'plan', 'apply']) assert.equal(typeof u[f], 'function', `${u.id}.${f}`); }
-		assert.ok(!fs.existsSync(path.join(ROOT, 'modules', 'setup', 'lib', 'board.mjs')), 'the board lives in the engine now');
+		assert.deepEqual(Object.keys(ext), ['check']);
+		assert.equal(typeof ext.check, 'function');
+		assert.ok(!fs.existsSync(path.join(RND, 'SETUP.md')), 'no SETUP.md: rnd has nothing to set up');
 	});
 });
 
@@ -356,7 +350,7 @@ describe('0.3.0 — the lifecycle fields', () => {
 		assert.deepEqual(b('rnd--deploy--change-requests.command-binding.yaml').available_when.verified_on, { _nempty: true });
 		assert.deepEqual(b('rnd--test--change-requests.command-binding.yaml').available_when.implementation_plans, { code_approved_on: { _nempty: true } });
 		assert.deepEqual(b('rnd--plan--change-requests.command-binding.yaml').available_when.design_docs, { status: { _eq: 'active' } }, 'a request is planned against its active design — none is no longer enough (0.5.2: one next verb)');
-		for (const f of fs.readdirSync(path.join(RND, 'command-bindings'))) if (authored('command-bindings', f) && !/prototype--prototypes|--products|ingest-reference|releases--stamp|releases--rollback/.test(f)) assert.ok(b(f).done_when, `${f} has no done_when — the agent could loop on it`);
+		for (const f of fs.readdirSync(path.join(RND, 'command-bindings'))) if (!/prototype--prototypes|--products|ingest-reference|releases--stamp|releases--rollback/.test(f)) assert.ok(b(f).done_when, `${f} has no done_when — the agent could loop on it`);
 	});
 	test('a defect takes the quick path: a plan may fix an issue, which lists its plans back', () => {
 		assert.equal(plan.fields.issue.type, 'rnd/issues');
@@ -750,11 +744,10 @@ describe('0.6.0 — releases: a product\'s versions, each listing what it ships'
 		assert.match(a, /stop at its cut/);
 		assert.match(a, /never tag, push or publish/);
 	});
-	test('dt check reads releases through rnd\'s own extension, which wraps the composed notebooklm entry', async () => {
+	test('dt check reads releases through rnd\'s own extension', async () => {
 		const pkg = JSON.parse(read('package.json'));
 		assert.equal(pkg.dreamteamer.extension, './lib/extension.mjs');
-		assert.equal(JSON.parse(read('compose.json')).extension, './lib/extension.mjs', 'named in compose.json, the shape core uses too');
-		assert.match(read('lib/extension.mjs'), /from '\.\.\/src\/extension\.js'/);
+		assert.match(read('lib/extension.mjs'), /from '\.\/releases\.mjs'/);
 		const { expectedId, releaseViolations } = await import('../lib/releases.mjs');
 		assert.equal(expectedId({ product: 'rnd/products/grantee-portal', version: '1.4.0' }), 'grantee-portal/1.4.0');
 		assert.equal(expectedId({ product: 'rnd/products/northwind-modules', package: 'roster', version: '0.5.2' }), 'northwind-modules/roster/0.5.2');

@@ -4,12 +4,39 @@ One section per release, newest first. Each says what you have to **do** in a wo
 installs this module; most of the time it is `dt compile`, then `dt check`.
 
 ```bash
-npm install @dreamteamer/rnd@latest
-npx dreamteamer compile
+npx dreamteamer update @dreamteamer/rnd
 npx dreamteamer check
 ```
 
 ---
+
+## 0.11.0 — rnd stands alone of wikis and notebooklm (CR-dt-008) — engine 0.49.0
+
+**Engine floor 0.49.0.** rnd no longer carries copies of `@dreamteamer/wikis` and `@dreamteamer/notebooklm`:
+`compose.json`, `src/`, `SETUP.md`, the `wikis` and `notebooks` collections, the `working-with-wikis`,
+`using-notebooklm` and `exporting-to-notebooklm` skills, `/restore-notebook` and `/capture-notebook-sources`,
+the `dt notebooklm` verb, the `wikis` and `notebooklm` setup units and the `dt-wiki` and `dt-notebook` bins
+left the package, and `dreamteamer.provides` with them. No rnd field points at a notebook or a wiki.
+
+**A workspace that holds `data/notebooks` or `data/wikis` records** (or uses `dt notebooklm`, `npx dt-wiki`,
+`npx dt-notebook`) installs the two packages, which now own them — the records, their folders and the
+`notebooklm` harness entry stay as they are:
+
+```bash
+npx dreamteamer update --engine                                   # dreamteamer 0.49.0 or later
+npx dreamteamer update @dreamteamer/rnd
+npx dreamteamer install @dreamteamer/notebooklm @dreamteamer/wikis
+npx dreamteamer check
+```
+
+Until the second install, `dt check` reports those records as records of no collection. A script path under
+`node_modules/@dreamteamer/rnd/bin/wikis-wiki.mjs` or `notebooklm-notebook.mjs` reads
+`node_modules/@dreamteamer/wikis/bin/wiki.mjs` or `node_modules/@dreamteamer/notebooklm/bin/notebook.mjs`.
+
+**The nav.** `display.nav.order` and `display.nav.section` left every rnd descriptor; `display.nav.icon`
+stays. Where a collection sits in the left nav is the workspace's `nav.yaml` (engine 0.49). A workspace
+whose `.vscode/settings.json` sets `dreamteamer.navGroups`, `navOrder` or `navHidden` saves that nav first —
+`npx -p @dreamteamer/protocol@0.2 dt-nav migrate` — as `@dreamteamer/core`'s UPDATING 0.12.0 says.
 
 ## 0.10.1 — the setup package is gone (CR-dt-007)
 

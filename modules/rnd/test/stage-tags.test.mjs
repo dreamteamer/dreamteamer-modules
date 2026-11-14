@@ -167,7 +167,7 @@ describe('the 0.7.0 release', () => {
 	test('released as 0.7.0, with UPDATING.md and the README release note, the engine floor unmoved', () => {
 		const pkg = JSON.parse(read('package.json'));
 		// the warning is silent on an engine without CHECK_WARNINGS, so the floor does not move
-		assert.equal(pkg.dreamteamer.engine, '>=0.47.0' /* CR-dt-006, D44: a composed module declares provides, a 0.47 key */);
+		assert.equal(pkg.dreamteamer.engine, '>=0.49.0' /* CR-dt-008: rnd ships a nav fragment (dreamteamer.nav), a 0.49 key */);
 		assert.match(read('UPDATING.md'), /## 0\.7\.0 — /);
 		// the stage tags' Unreleased section became 0.7.0; a later Unreleased section (the next release's) is not it
 		assert.doesNotMatch(read('UPDATING.md'), /## Unreleased[^\n]*stage tags/);

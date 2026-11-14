@@ -46,11 +46,8 @@ for (const m of modules) {
 		const mroot = path.join(MODULES, m);
 		const deps = new Set((pkg.dreamteamer?.dependencies ?? []).map(folderOf));
 		const peers = new Set(pkg.dreamteamer?.peer_collections ?? []);
-		// what m authors itself: while core 0.11 still carries the five collections the new packages ship
-		// (cr-dt-008 tasks 1-2), two modules own one name and OWNER keeps only the last
-		const ownBases = new Set(descriptorsOf(m).filter((d) => !d.doc.overlay).map((d) => d.doc.name));
 		/** May module m point at (or overlay) collection t? */
-		const reaches = (t) => CORE.has(t) || OWNER.get(t) === m || ownBases.has(t) || deps.has(OWNER.get(t)) || peers.has(t);
+		const reaches = (t) => CORE.has(t) || OWNER.get(t) === m || deps.has(OWNER.get(t)) || peers.has(t);
 
 		test('has a manifest the engine can read: name = folder, a description, an engine range', () => {
 			assert.equal(pkg.name, `@dreamteamer/${m}`, 'the folder is the name without the scope; a disagreement makes dependencies ambiguous');

@@ -10,18 +10,15 @@ npm install @dreamteamer/rnd
 npx dreamteamer compile
 ```
 
-## wikis and notebooks ride along
+## wikis and notebooks are their own packages
 
-This package also carries `@dreamteamer/wikis` and `@dreamteamer/notebooklm`, composed in the way
-`@dreamteamer/core` is composed from the small modules: `compose.json` names the two origins and
-lists every copy with its hash, `scripts/compose-core.mjs rnd` in the modules repo regenerates them,
-and a test fails when a copy drifts from its origin. So one install brings the `wikis` collection and
-`working-with-wikis`, the `notebooks` collection with `/restore-notebook`, `/capture-notebook-sources`,
-`exporting-to-notebooklm` and `using-notebooklm`, the `dt notebooklm` verb (this package is the
-extension — `src/` is notebooklm's), and the `npx dt-wiki` and `npx dt-notebook` commands
-(`bin/wikis-wiki.mjs`, `bin/notebooklm-notebook.mjs`). A workspace that installs rnd must NOT also
-install `@dreamteamer/wikis` or `@dreamteamer/notebooklm`: two modules shipping `wikis` is a name
-collision, and the engine refuses the same extension verb twice.
+rnd ships only what it authors. The corpora a workspace reads (`wikis`) and the NotebookLM notebooks it
+exports to (`notebooks`, `dt notebooklm`) come from `@dreamteamer/wikis` and `@dreamteamer/notebooklm`,
+installed beside rnd when a workspace wants them — no rnd field points at either:
+
+```bash
+dt install @dreamteamer/wikis @dreamteamer/notebooklm
+```
 
 Fields that point at captured files (`reference_file`, `screenshots_folder`, `media_folder`) hold
 `${env:FILES_FOLDER}/…` templates. Declare `FILES_FOLDER` in your `package.json` `dreamteamer.vars`
@@ -119,7 +116,7 @@ meeting intake (calendar, recordings, transcripts, summaries, commitments, criti
 then references, the change requests the calls asked for, and each change designed, reviewed,
 prototyped where it asks, planned, built, proved and deployed — the lifecycle above, in the
 `rnd-agent`'s order, with its two stops. It runs with `/workflow:run software-factory`, which the
-`workflows` collection brings (`@dreamteamer/core` carries it). Its meeting steps name core's commands,
+`workflows` collection brings (`@dreamteamer/workflows`, a member of `@dreamteamer/core`). Its meeting steps name commands core's members ship,
 so it installs only where both are compiled: `npx dt-workflows install software-factory` refuses
 otherwise, naming each command it lacks.
 
@@ -144,6 +141,14 @@ adapter (the config and the init options). A screen's portal is its `product`; o
 windows reads it from a field (`portal: { from: 'field' }`) or a tag (`portal: { from: 'tag', prefix }`).
 An identifier — a story key, a question id — is never scrubbed: one the prototype's `scrub` would change
 fails the export, so the record is renamed. The `rnd-prototype` skill holds the contract.
+
+## 0.11.0 — rnd stands alone; the nav is nav.yaml (CR-dt-008) — engine 0.49.0
+
+The copies of wikis and notebooklm rnd carried (`compose.json`, `src/`, `SETUP.md`, their collections,
+skills, commands and scripts, `dt-wiki` and `dt-notebook`) and its `provides` are gone; rnd ships no
+setup unit. A workspace holding `data/notebooks` or `data/wikis` records installs the two packages
+(UPDATING.md). `display.nav.order` and `display.nav.section` left rnd's descriptors: where a collection
+sits in the left nav is the workspace's `nav.yaml` (engine 0.49).
 
 ## 0.9.0 — from 0.8.0
 
