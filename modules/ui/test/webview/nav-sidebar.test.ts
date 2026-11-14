@@ -1,6 +1,7 @@
 /**
- * Render tier — THE BROWSER'S NAV (cr-modules-005): NavSidebar draws the host's `GET /nav` rows, routes on a
- * click and opens a folder (no scope toggle: 0.24.26 retired it); App draws it only when the host says it has
+ * Render tier — THE BROWSER'S NAV (cr-modules-005): NavSidebar draws the host's `GET /nav` rows — protocol 0.2's
+ * `folder` and `namespace` nodes, each carrying its `target` (cr-dt-008) — routes on a click and opens a folder
+ * (no scope toggle: 0.24.26 retired it); App draws it only when the host says it has
  * no native tree (`__DT_HOST__.nav === 'app'`) — inside VS Code it is never drawn.
  */
 import assert from 'node:assert/strict';
@@ -13,8 +14,8 @@ import NavSidebar from '../../src/components/NavSidebar.vue';
 const MODEL = [{
 	kind: 'workspace', key: 'workspace', label: 'northwind-hq', icon: 'root-folder', route: '/settings/schema/activity',
 	children: [
-		{ kind: 'collection', key: 'c/projects', label: 'Projects', icon: 'briefcase', description: '3', route: '/content/projects' },
-		{ kind: 'group', key: 'g/ns:lab', label: 'Lab', icon: 'folder-compact', children: [{ kind: 'collection', key: 'c/lab/samples', label: 'Samples', description: '1', route: '/content/lab%2Fsamples' }] },
+		{ kind: 'collection', key: 'c/projects', label: 'Projects', icon: 'briefcase', description: '3', route: '/content/projects', target: { name: 'projects' } },
+		{ kind: 'namespace', key: 'n/ns%3Alab', label: 'Lab', icon: 'folder-compact', target: { name: 'lab' }, children: [{ kind: 'collection', key: 'c/lab/samples', label: 'Samples', description: '1', route: '/content/lab%2Fsamples', target: { name: 'lab/samples' } }] },
 	],
 }];
 
@@ -46,6 +47,7 @@ test('draws the host nav, opens a folder and routes a row', async () => {
 	await flush();
 	assert.equal(router.currentRoute.value.fullPath, '/content/projects');
 	assert.equal(all(root, (n) => n.tag === 'button').length, 0, 'no scope toggle — the editor has none');
+	assert.equal(all(root, (n) => n.props['class'] === 'dt-nav-namespace' || String(n.props['class'] ?? '').includes('dt-nav-namespace')).length, 1, 'the namespace node draws as a namespace row');
 });
 
 test('App draws NavSidebar only when the host declares an app nav', async () => {
