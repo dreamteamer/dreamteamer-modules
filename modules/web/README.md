@@ -79,7 +79,7 @@ asked for it in words).
 ## what you see
 
 - **The nav's toolbar**, the strip above the nav: the workspace's name, which opens a menu of the workspaces opened
-  on this machine (one that is stopped starts when you pick it); the arrange lock (the nav starts locked — unlock it
+  on this machine (one that is stopped starts when you pick it) and, last, Settings; the arrange lock (the nav starts locked — unlock it
   to drag rows, use row menus, add a folder or show a hidden row; arranging needs Edit); and the level as an icon —
   an eye for Read, a pencil for Edit, a shield for Admin — whose tooltip, while a raised level holds, says since when
   ("Admin since 02:41 — opened from the chat"). The level's menu lowers it. A raise is asked in the chat.

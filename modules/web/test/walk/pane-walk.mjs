@@ -214,6 +214,21 @@ fetch('/api/info', { credentials: 'include' }).then(async (r) => parent.postMess
 	ok(Boolean(fit.notice && fit.chip && fit.notice.y >= fit.chip.bottom - 0.5), 'g: the raise notice is at the top of the menu, below the icon', JSON.stringify(fit.notice));
 	await narrow.page.screenshot({ path: step('g-narrow') });
 	await narrow.page.keyboard.press('Escape');
+	// unlocked at 320 px the toolbar holds four buttons: they wrap, and the switcher keeps a visible, clickable target
+	await narrow.page.click('[data-tool="arrange"]');
+	const sw = await narrow.page.evaluate(() => {
+		const e = document.querySelector('.dt-pane-switch');
+		if (!e) return null;
+		const r = e.getBoundingClientRect();
+		const t = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+		const chev = e.querySelector('.dt-pane-switch__chevron')?.getBoundingClientRect();
+		return { w: r.width, topmost: Boolean(t && (t === e || e.contains(t))), chevron: Boolean(chev && chev.width > 0 && chev.right <= r.right + 0.5) };
+	});
+	ok(Boolean(sw && sw.w >= 30 && sw.topmost && sw.chevron), 'g: unlocked at 320 px the switcher keeps its chevron and a hit target nothing covers', JSON.stringify(sw));
+	await narrow.page.click('.dt-pane-switch');
+	ok(await narrow.page.waitForSelector('.dt-pane-switch__menu', { timeout: 5_000 }).then(() => true, () => false), 'g: and a click on it opens the switcher');
+	await narrow.page.screenshot({ path: step('g-narrow-unlocked-switcher') });
+	await narrow.page.keyboard.press('Escape');
 
 	// h — a restart under that open page: the signed-out sentence comes on its own, with no click
 	const stoppedA = s.run('stop');

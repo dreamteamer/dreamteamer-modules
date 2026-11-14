@@ -37,7 +37,8 @@ The host answers `dt:mounted` with a `dt:navigate` window message naming the rou
 `dt:invalidate` when records change. A request that fails rejects with a `HostError` carrying the status.
 
 In a host with no native tree (`window.__DT_HOST__.nav === 'app'`, as under `dt web`) the app draws the nav
-itself from `GET /nav`, under a toolbar holding the workspace's name (a click opens the workspace settings). The nav
+itself from `GET /nav`, under a toolbar holding the workspace's name (a click opens the workspace settings; on a
+`dt web` pane host it opens the workspace switcher, whose last entry is Settings). The nav
 is arranged by hand, behind the toolbar's arrange lock: it starts locked on every load, and locked the nav only
 navigates. Unlocked, drag a row onto another (onto the middle of a folder to put it inside, onto the empty area under
 the rows for the bottom), right-click a row for New folder, Rename, Dissolve, Move up / down / to top / to bottom,

@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import test, { afterEach, beforeEach } from 'node:test';
 import { createMemoryHistory, createRouter } from 'vue-router';
 import { onHostRequest, resetHost } from './host-stub';
-import { all, find, flush, hasClass, render, text, unmountAll, type TestNode } from './render';
+import { all, find, flush, focused, hasClass, render, text, unmountAll, type TestNode } from './render';
 import AppNav from '../../src/components/AppNav.vue';
 import { hostInfo, paneHost } from '../../src/lib/host-boot';
 import { paneMenu } from '../../src/lib/pane-api';
@@ -63,6 +63,7 @@ const click = async (n: TestNode, e: Record<string, unknown> = {}) => { (n.props
 const words = (n: TestNode | null) => (n ? text(n).replace(/\s+/g, ' ').trim() : '');
 const levelIcon = (root: TestNode) => { const b = byClass(root, 'dt-pane-level')[0]; assert.ok(b, 'no level icon in the toolbar'); return b; };
 const glyph = (n: TestNode) => String(all(n, (x) => hasClass(x, 'codicon'))[0]?.props['class'] ?? '');
+const srcOf = async (file: string) => (await import('node:fs')).readFileSync(new URL(`../../src/${file}`, import.meta.url).pathname.replace('/.test-build/webview', ''), 'utf8');
 const lockOf = (root: TestNode) => all(root, (n) => n.tag === 'button' && n.props['data-tool'] === 'arrange')[0];
 
 test('the level is an icon with no text at the toolbar\'s right end, after the arrange lock; its menu offers only lower levels', async () => {
@@ -111,7 +112,7 @@ test('a raised level: the shield in the warning colour, its notice in the toolti
 	assert.match(words(first), /^Admin since \d\d:\d\d — opened from the chat$/);
 	assert.deepEqual(byClass(root, 'dt-pane-level__lower').map(words), ['Edit', 'Read']);
 	const src = (await import('node:fs')).readFileSync(new URL('../../src/components/PaneLevel.vue', import.meta.url).pathname.replace('/.test-build/webview', ''), 'utf8');
-	assert.match(src, /\.dt-pane-level\[data-level='admin'\] \{ color: var\(--dt-warning\); \}/);
+	assert.match(src, /\.dt-pane-level\[data-level='admin'\], \.dt-pane-level\[data-level='admin'\]:hover:not\(:disabled\) \{ color: var\(--dt-warning\); \}/);
 });
 
 test('a refused lower shows its sentence inside the level menu', async () => {
@@ -236,4 +237,122 @@ test('a page opened at Read starts with the lock disabled', async () => {
 	assert.equal(lockOf(root).props['disabled'], true);
 	assert.equal(lockOf(root).props['title'], 'Arranging the nav needs Edit');
 	assert.match(glyph(levelIcon(root)), /codicon-eye\b/);
+});
+
+// ---- the review of the pane branch (round 1) ------------------------------------------------------------------------
+
+const key = (k: string, shiftKey = false) => ({ key: k, shiftKey, preventDefault() {}, stopPropagation() {} });
+const keydown = async (menu: TestNode, k: string, shift = false) => { (menu.props['onKeydown'] as (e: unknown) => void)(key(k, shift)); await flush(); };
+const openRowMenu = async (root: TestNode) => {
+	const row = all(root, (n) => n.tag === 'li' && n.props['data-key'] === 'c/tasks')[0];
+	(row.props['onContextmenu'] as (e: unknown) => void)({ clientX: 40, clientY: 60, preventDefault() {}, stopPropagation() {} });
+	await flush();
+};
+const navMenus = (root: TestNode) => all(root, (n) => n.props['class'] === 'dt-nav-menu').length;
+
+test('the switcher\'s last entry is Settings, which opens the workspace settings; in the pane the name opens the switcher', async () => {
+	const r = router();
+	const root = await render(AppNav, {}, [r]);
+	await click(byClass(root, 'dt-pane-switch')[0]);
+	assert.equal(r.currentRoute.value.fullPath, '/', 'the name navigated instead of opening the switcher');
+	const menu = byClass(root, 'dt-pane-switch__menu')[0];
+	const buttons = all(menu, (n) => n.tag === 'button');
+	assert.equal(words(buttons[buttons.length - 1]), 'Settings', 'Settings is not the last entry');
+	await click(buttons[buttons.length - 1]);
+	assert.equal(r.currentRoute.value.fullPath, '/settings/schema/activity');
+	assert.equal(byClass(root, 'dt-pane-switch__menu').length, 0, 'the menu stayed open');
+	assert.equal(byClass(root, 'dt-nav-toolbar__settings').length, 0, 'the plain settings name is drawn beside the switcher');
+});
+
+test('narrow and unlocked, the switcher keeps its minimum (the buttons wrap instead) and still opens', async () => {
+	w.innerWidth = 320;
+	const root = await mount();
+	await click(lockOf(root));
+	assert.equal(lockOf(root).props['aria-pressed'], 'true');
+	const name = byClass(root, 'dt-nav-toolbar__name')[0];
+	const sw = byClass(name, 'dt-pane-switch')[0];
+	assert.ok(sw, 'the switcher left the name slot');
+	assert.equal(byClass(name, 'dt-nav-tool').length, 0, 'a toolbar button is drawn over the name');
+	await click(sw, { currentTarget: { getBoundingClientRect: () => ({ left: 10, right: 46, top: 4, bottom: 28 }) } });
+	assert.equal(byClass(root, 'dt-pane-switch__menu').length, 1, 'unlocked at 320 px the switcher does not open');
+	const css = await srcOf('components/PaneSwitcher.vue');
+	assert.match(css, /\.dt-pane-switch \{[^}]*flex: 0 1 auto; min-width: 36px;/, 'the switcher has no minimum');
+	assert.match(css, /\.dt-nav-toolbar__name:has\(> \.dt-pane-switch\) \{ flex: 1 0 36px; min-width: 36px; \}/, 'the name slot does not keep the switcher\'s minimum');
+	const nav = await srcOf('components/NavSidebar.vue');
+	assert.match(nav, /\.dt-nav-toolbar__buttons \{[^}]*flex-wrap: wrap;/, 'the buttons do not wrap');
+});
+
+test('one menu at a time across all of them: switcher, level, row menus and the toolbar asks', async () => {
+	const root = await mount();
+	await click(lockOf(root));
+	const state = () => ({ sw: byClass(root, 'dt-pane-switch__menu').length, lv: byClass(root, 'dt-pane-level__menu').length, nav: navMenus(root) });
+	await click(byClass(root, 'dt-pane-switch')[0]);
+	await click(levelIcon(root));
+	assert.deepEqual(state(), { sw: 0, lv: 1, nav: 0 }, 'level after switcher');
+	await click(byClass(root, 'dt-pane-switch')[0]);
+	assert.deepEqual(state(), { sw: 1, lv: 0, nav: 0 }, 'switcher after level');
+	await openRowMenu(root);
+	assert.deepEqual(state(), { sw: 0, lv: 0, nav: 1 }, 'row menu after switcher');
+	await click(byClass(root, 'dt-pane-switch')[0]);
+	assert.deepEqual(state(), { sw: 1, lv: 0, nav: 0 }, 'switcher after row menu');
+	await click(levelIcon(root));
+	await click(all(root, (n) => n.props['data-tool'] === 'new-folder')[0], { currentTarget: null });
+	assert.deepEqual(state(), { sw: 0, lv: 0, nav: 1 }, 'toolbar ask after level');
+	await click(levelIcon(root));
+	assert.deepEqual(state(), { sw: 0, lv: 1, nav: 0 }, 'level after toolbar ask');
+	await openRowMenu(root);
+	assert.deepEqual(state(), { sw: 0, lv: 0, nav: 1 }, 'row menu after level');
+	await click(all(root, (n) => n.props['data-tool'] === 'show-hidden')[0], { currentTarget: null });
+	assert.deepEqual(state(), { sw: 0, lv: 0, nav: 1 }, 'a toolbar ask after a row menu replaces it');
+	await click(byClass(root, 'dt-pane-switch')[0]);
+	assert.deepEqual(state(), { sw: 1, lv: 0, nav: 0 }, 'switcher after toolbar ask');
+});
+
+test('the switcher menu takes focus on open; Tab cycles inside it; Escape closes it and gives focus back to the name', async () => {
+	const root = await mount();
+	focused.length = 0;
+	const button = byClass(root, 'dt-pane-switch')[0];
+	await click(button);
+	const menu = byClass(root, 'dt-pane-switch__menu')[0];
+	const items = all(menu, (n) => n.tag === 'button');
+	assert.deepEqual(items.map(words), ['Northwind', 'Harbor starts when opened', 'Settings']);
+	assert.equal(focused[focused.length - 1], items[0], 'focus did not move to the first item');
+	await keydown(menu, 'Tab');
+	assert.equal(focused[focused.length - 1], items[1]);
+	await keydown(menu, 'Tab');
+	await keydown(menu, 'Tab');
+	assert.equal(focused[focused.length - 1], items[0], 'Tab left the menu after its last item');
+	await keydown(menu, 'Tab', true);
+	assert.equal(focused[focused.length - 1], items[2], 'Shift+Tab left the menu before its first item');
+	await keydown(menu, 'Escape');
+	assert.equal(byClass(root, 'dt-pane-switch__menu').length, 0, 'Escape left the menu open');
+	assert.equal(focused[focused.length - 1], button, 'focus did not return to the name');
+});
+
+test('the level menu takes focus on open (its first lower, or the menu itself at Read); Escape returns focus to the icon', async () => {
+	const root = await mount();
+	focused.length = 0;
+	await click(levelIcon(root));
+	let menu = byClass(root, 'dt-pane-level__menu')[0];
+	assert.equal(focused[focused.length - 1], byClass(menu, 'dt-pane-level__lower')[0], 'focus did not move to the first lower');
+	await keydown(menu, 'Tab');
+	assert.equal(focused[focused.length - 1], byClass(menu, 'dt-pane-level__lower')[0], 'Tab left a one-item menu');
+	await keydown(menu, 'Escape');
+	assert.equal(byClass(root, 'dt-pane-level__menu').length, 0);
+	assert.equal(focused[focused.length - 1], levelIcon(root), 'focus did not return to the level icon');
+	hostInfo.value = { level: 'read', chat: true, workspace: { id: 'a1b2c3d4e5f60718', name: 'Northwind' } };
+	await flush();
+	await click(levelIcon(root));
+	menu = byClass(root, 'dt-pane-level__menu')[0];
+	assert.equal(menu.props['tabindex'], '-1');
+	assert.equal(focused[focused.length - 1], menu, 'at Read (no lower level) the menu itself is not focused');
+});
+
+test('the Admin shield keeps the warning colour on hover: its rule out-specifies the nav tool hover', async () => {
+	const level = await srcOf('components/PaneLevel.vue');
+	const nav = await srcOf('components/NavSidebar.vue');
+	assert.match(nav, /:deep\(\.dt-nav-tool:hover:not\(:disabled\)\)/, 'the nav hover rule this guards against changed');
+	// scoped: `.dt-pane-level[data-level='admin']:hover:not(:disabled)[data-v-…]` is 0,5,0 against `[data-v-…] .dt-nav-tool:hover:not(:disabled)` at 0,4,0
+	assert.match(level, /\.dt-pane-level\[data-level='admin'\]:hover:not\(:disabled\) \{|\.dt-pane-level\[data-level='admin'\]:hover:not\(:disabled\)[^{]*\{ color: var\(--dt-warning\); \}/);
+	assert.match(level, /<style scoped>/);
 });

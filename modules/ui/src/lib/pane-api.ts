@@ -3,9 +3,10 @@
  * controls in the nav toolbar — the workspace switcher and the level — call it with the browser's fetch, the cookie
  * (same-origin) and a JSON Content-Type; a refusal rejects with the server's sentence.
  *
- * `paneMenu` is which of the two controls has its menu open: one at a time, so opening one closes the other.
+ * `paneMenu` is which menu of the nav is open (lib/open-menu.ts): one at a time across the pane's two controls, the
+ * row menus and the toolbar's asks, so opening one closes the others.
  */
-import { ref } from 'vue';
+import { openMenu } from './open-menu';
 
 export async function paneFetch(method: string, path: string, body?: unknown): Promise<any> {
 	const res = await fetch(path, {
@@ -20,5 +21,5 @@ export async function paneFetch(method: string, path: string, body?: unknown): P
 	return data;
 }
 
-/** The pane control whose menu is open: the switcher, the level, or none. */
-export const paneMenu = ref<'switch' | 'level' | null>(null);
+/** The nav menu that is open: the switcher (`'switch'`), the level (`'level'`), a row menu or ask (`'nav'`), or none. */
+export const paneMenu = openMenu;

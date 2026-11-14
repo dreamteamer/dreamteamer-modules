@@ -29,6 +29,7 @@ import NavRow, { NAV_DRAG_TYPE, type DropWhere } from './NavRow';
 import NavMenu, { type NavMenuItem } from './NavMenu.vue';
 import DtIcon from './DtIcon.vue';
 import { menuUnder, rectOf, viewportWidth } from '../lib/menu-place';
+import { openMenu } from '../lib/open-menu';
 
 interface NavNode { kind: string; key: string; label: string; icon?: string; description?: string; tooltip?: string; route?: string; marks?: string; target?: NavTarget; notice?: string; children?: NavNode[] }
 
@@ -80,6 +81,13 @@ const index = computed(() => {
 const workspace = computed(() => nodes.value.find((n) => n.kind === 'workspace') ?? null);
 /** The rows at depth 0: the workspace node's children (and any other top node a host sends beside it). */
 const topLevel = computed(() => nodes.value.flatMap((n) => (n.kind === 'workspace' ? n.children ?? [] : [n])));
+
+// one nav menu at a time (lib/open-menu.ts): a row menu or a toolbar ask open closes a pane menu, and the other way
+watch(menuAt, (m) => {
+	if (m) openMenu.value = 'nav';
+	else if (openMenu.value === 'nav') openMenu.value = null;
+});
+watch(openMenu, (o) => { if (o !== 'nav' && menuAt.value) menuAt.value = null; });
 
 const blocked = computed(() => props.arrangeBlocked || null);
 watch(blocked, (b) => { if (b) lock(); });
