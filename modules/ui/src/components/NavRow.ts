@@ -5,6 +5,10 @@
 // reports where a drag hovers and drops — `before` on its upper part (the top quarter of a folder or namespace row,
 // the upper half of any other), `into` on the middle half of a folder or namespace row, `after` below that — and a
 // right click asks for its menu. What a gesture MEANS (which NavOp, or nothing) is NavSidebar's to decide.
+//
+// 2026-11-14 revision (the arrange lock): all of that only while the nav is unlocked (`arrange`). Locked, a row is a
+// link and nothing else — no `draggable`, no dragover or drop handler (so the browser shows no drop), and no context
+// menu handler (so a right click is the browser's own).
 import { defineComponent, h, type PropType } from 'vue';
 
 /** The MIME type a dragged row's key travels under. */
@@ -35,6 +39,8 @@ const NavRow: any = defineComponent({
 		open: { type: Object as PropType<Set<string>>, required: true },
 		/** The row a drag hovers and where it would drop, for the insertion line. */
 		hint: { type: Object as PropType<{ key: string; where: DropWhere } | null>, default: null },
+		/** The nav is unlocked: rows drag, take drops and have menus. Locked (false) they only navigate. */
+		arrange: { type: Boolean, default: false },
 	},
 	emits: ['toggle', 'activate', 'drag', 'hover', 'move', 'menu'],
 	setup(props, { emit }) {
@@ -43,9 +49,9 @@ const NavRow: any = defineComponent({
 			const hasKids = !!n.children?.length;
 			const isOpen = props.open.has(n.key);
 			const hint = props.hint;
-			const hinted = hint && hint.key === n.key ? `dt-nav-drop-${hint.where}` : null;
-			const row = h('li', {
-				class: ['dt-nav-row', `dt-nav-${n.kind}`, ...(hinted ? [hinted] : [])], role: 'treeitem', 'aria-expanded': hasKids ? String(isOpen) : undefined, 'data-key': n.key, title: n.tooltip ?? undefined, style: { paddingLeft: `${8 + props.depth * 12}px` },
+			const arrange = props.arrange;
+			const hinted = arrange && hint && hint.key === n.key ? `dt-nav-drop-${hint.where}` : null;
+			const gestures = arrange ? {
 				draggable: n.target ? 'true' : undefined,
 				onDragstart: (e: DragEvent) => {
 					if (!n.target) return;
@@ -68,6 +74,10 @@ const NavRow: any = defineComponent({
 					e.stopPropagation();
 					emit('menu', { key: n.key, x: e.clientX, y: e.clientY });
 				},
+			} : {};
+			const row = h('li', {
+				class: ['dt-nav-row', `dt-nav-${n.kind}`, ...(hinted ? [hinted] : [])], role: 'treeitem', 'aria-expanded': hasKids ? String(isOpen) : undefined, 'data-key': n.key, title: n.tooltip ?? undefined, style: { paddingLeft: `${8 + props.depth * 12}px` },
+				...gestures,
 			}, [
 				hasKids ? h('span', { class: 'dt-nav-twisty', onClick: (e: Event) => { e.stopPropagation(); emit('toggle', n); } }, isOpen ? '▾' : '▸') : h('span', { class: 'dt-nav-twisty' }),
 				n.icon ? h('span', { class: `codicon codicon-${n.icon}` }) : null,
@@ -77,7 +87,7 @@ const NavRow: any = defineComponent({
 			]);
 			const kids = hasKids && isOpen
 				? n.children.map((c: any) => h(NavRow, {
-					key: c.key, node: c, depth: props.depth + 1, open: props.open, hint: props.hint,
+					key: c.key, node: c, depth: props.depth + 1, open: props.open, hint: props.hint, arrange: props.arrange,
 					onToggle: (x: any) => emit('toggle', x), onActivate: (x: any) => emit('activate', x), onDrag: (x: any) => emit('drag', x),
 					onHover: (x: any) => emit('hover', x), onMove: (x: any) => emit('move', x), onMenu: (x: any) => emit('menu', x),
 				}))
