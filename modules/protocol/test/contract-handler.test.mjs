@@ -38,6 +38,29 @@ test('the handler passes the contract except the ledger, refuses undocumented ro
 		assert.match(String(r.body?.error), /^unhandled request/);
 	}
 
+	// the pane routes answer a host's own PaneStore when it passes one (dt web), and refuse a selection before the
+	// store sees it; without one, a per-api memory store answers at admin (the editor)
+	const { route } = await load('src/handler.js');
+	const seen = [];
+	const pane = {
+		host: () => ({ level: 'read', chat: true, workspace: { id: 'w1', name: 'northwind' } }),
+		getSelection: () => ({ view: null, refs: [], place: null, at: null }),
+		putSelection: (s) => seen.push(s),
+		getQueue: () => [],
+		addQueue: (i) => ({ id: 'q1', ...i, state: 'waiting', queuedAt: 'now' }),
+	};
+	const viaPane = (m, p, b) => quietly(() => route(handler.api, m, p, b, { root: fixture.root, settings: () => ({}), host: (mm, pp, bb) => handler.api.handle(mm, pp, bb), pane }));
+	assert.deepEqual((await viaPane('GET', '/host')).body, { level: 'read', chat: true, workspace: { id: 'w1', name: 'northwind' } });
+	const put = await viaPane('PUT', '/selection', { view: { collection: 'projects', id: 'northwind-launch' }, refs: [] });
+	assert.equal(put.status, 200, JSON.stringify(put.body));
+	assert.equal(seen.length, 1);
+	assert.equal(seen[0].place, 'projects/northwind-launch');
+	assert.equal((await viaPane('PUT', '/selection', { view: { url: '#/x' }, refs: [] })).status, 400);
+	assert.equal(seen.length, 1, 'a refused selection reached the store');
+	const defaultHost = await request('GET', '/host');
+	assert.equal(defaultHost.body.level, 'admin');
+	assert.equal(defaultHost.body.chat, false);
+
 	// the reopen seat: an extension declared after the handler opened the workspace, and one that throws on
 	// load — the next compile-gated write re-opens, cannot, and writes nothing
 	const mod = path.join(fixture.root, 'modules', 'broken');

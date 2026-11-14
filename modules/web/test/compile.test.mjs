@@ -1,7 +1,8 @@
 // The packed install: what a stranger's workspace gets from npm. protocol, ui and web are packed, unpacked into a
 // fresh workspace's node_modules and compiled (the session skill with it); then `dt web` runs through the ENGINE'S OWN CLI — help lists it,
 // status answers "not running" (exit 1), and the `web` row of `dt doctor` says "not running" and then, while a
-// server started by `dt web --no-open` is up, "running at" its address. Every child is bounded and killed.
+// server started by `dt web start --foreground` is up, "running at" its address; `dt serve` is listed as the pane's
+// client token (cr-modules-017 task 12) and the doctor names the missing hook. Every child is bounded and killed.
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
@@ -18,13 +19,13 @@ after(() => { for (const c of children) try { c.kill('SIGKILL'); } catch { /* go
 const app = path.join(scratch, 'app');
 fs.mkdirSync(path.join(app, 'assets'), { recursive: true });
 fs.writeFileSync(path.join(app, 'index.html'), '<!doctype html><html><head><title>dreamteamer</title></head><body></body></html>');
-const env = { ...process.env, DT_WEB_RUNTIME_DIR: path.join(scratch, 'rt'), DT_WEB_APP_DIR: app, CLAUDE_PID: '', GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@example.invalid', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@example.invalid' };
+const env = { ...process.env, DT_WEB_RUNTIME_DIR: path.join(scratch, 'rt'), DT_WEB_STATE_DIR: path.join(scratch, 'state'), DT_WEB_APP_DIR: app, CLAUDE_PID: '', GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@example.invalid', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@example.invalid' };
 const dt = (cwd, ...args) => spawnSync(process.execPath, [BIN, ...args], { cwd, env, encoding: 'utf8', timeout: 60_000, killSignal: 'SIGKILL' });
 const webRow = (out) => out.split('\n').find((l) => /\bweb\b/.test(l) && /running/.test(l)) ?? '';
 
 test('the tarball ships the bin, the source, the skill and the README — never the tests or an app of its own', () => {
 	const files = packedFiles('web');
-	for (const f of ['bin/dt-web.mjs', 'src/cli.js', 'src/server.js', 'src/extension.js', 'src/runtime.js', 'src/headers.js', 'README.md', 'skills/serving-the-web-ui/SKILL.md']) assert.ok(files.includes(f), `${f} is not in the tarball`);
+	for (const f of ['bin/dt-web.mjs', 'bin/dt-web-hook.mjs', 'commands/web/show.command.md', 'UPDATING.md', 'src/cli.js', 'src/server.js', 'src/extension.js', 'src/runtime.js', 'src/headers.js', 'README.md', 'skills/serving-the-web-ui/SKILL.md']) assert.ok(files.includes(f), `${f} is not in the tarball`);
 	assert.ok(!files.some((f) => f.startsWith('test/')), 'tests do not ship');
 	assert.ok(!files.some((f) => f.startsWith('dist/') || f.startsWith('scripts/')), 'the app comes from @dreamteamer/ui, not a copy in this package');
 });
@@ -38,15 +39,22 @@ test('a workspace that installs the packed protocol and web compiles; dt web ans
 
 	const skill = dt(ws, 'get', 'skills/serving-the-web-ui');
 	assert.equal(skill.status, 0, `the session skill is not compiled in: ${skill.stderr}`);
+	const show = dt(ws, 'get', 'commands/web/show');
+	assert.equal(show.status, 0, `the /web:show command is not compiled in: ${show.stderr}`);
 	const help = dt(ws, 'help');
-	assert.match(help.stdout, /web \[url\|status\|stop\]/, 'dt help lists the verb');
+	const block = /\n@dreamteamer\/web@[^:\n]+:\n((?:  .*\n?)+)/.exec(help.stdout)?.[1] ?? '';
+	assert.match(block, /^  web \[/m, `dt help lists web under @dreamteamer/web:\n${help.stdout}`);
+	assert.match(block, /^  serve \[/m, 'and serve');
+	assert.match(help.stdout, /web \[open\|show\|select\|selection\|hook\|token\|list\|revoke\|status\|stop\|start\]/, 'dt help lists the verb');
+	assert.match(help.stdout, /serve \[--read\|--edit\] \[--name <n>\]/, 'dt help lists dt serve as the pane\'s token');
 	const st = dt(ws, 'web', 'status');
 	assert.equal(st.status, 1, st.stderr + st.stdout);
 	assert.match(st.stdout, /^not running$/m);
 	const before = dt(ws, 'doctor');
-	assert.match(webRow(before.stdout), /not running/, `no web row saying "not running" in:\n${before.stdout}`);
+	assert.match(webRow(before.stdout), /not running · level Edit/, `no web row saying "not running" in:\n${before.stdout}`);
+	assert.match(before.stdout, /web hook.*the chat cannot see the pane — fix: dt web hook --install/, `no hook row in:\n${before.stdout}`);
 
-	const child = spawn(process.execPath, [BIN, 'web', '--no-open', '--idle', '0'], { cwd: ws, env, stdio: ['ignore', 'pipe', 'pipe'] });
+	const child = spawn(process.execPath, [BIN, 'web', 'start', '--foreground', '--idle', '0'], { cwd: ws, env, stdio: ['ignore', 'pipe', 'pipe'] });
 	children.push(child);
 	const first = await new Promise((resolve, reject) => {
 		let out = '', err = '';
@@ -55,8 +63,8 @@ test('a workspace that installs the packed protocol and web compiles; dt web ans
 		child.on('exit', (code) => reject(new Error(`dt web exited ${code} before printing: ${err}`)));
 		setTimeout(() => reject(new Error(`no first line in 60 s: ${err}`)), 60_000).unref();
 	});
-	assert.match(first, /^✔ dreamteamer web at http:\/\/127\.0\.0\.1:(\d+)\/sign-in\/\S+$/);
-	const port = /:(\d+)\//.exec(first)[1];
+	assert.match(first, /^✔ dt web serving \S+ at http:\/\/127\.0\.0\.1:(\d+) · pid \d+$/);
+	const port = /:(\d+) /.exec(first)[1];
 	const during = dt(ws, 'doctor');
 	assert.match(webRow(during.stdout), new RegExp(`running at http://127\\.0\\.0\\.1:${port}`), `the web row does not name the running server:\n${during.stdout}`);
 	const stop = dt(ws, 'web', 'stop');

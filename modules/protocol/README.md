@@ -23,6 +23,17 @@ matchRoute('GET', '/collections/lab%2Fsamples/records/2026/11/a');
 // → { route: { id: 'record-read', … }, params: { collection: 'lab/samples', id: '2026/11/a' } }
 ```
 
+## 0.3.0
+
+0.3.0 — every route carries a level; GET /host, PUT and GET /selection, POST and GET /queue (cr-modules-017).
+
+- `ROUTES[i].level` is `read`, `edit` or `admin`; a host that enforces levels (dt web) refuses a route above the
+  pane's with `403`, and the editor answers every route at admin.
+- `GET /host` answers the pane's level, whether a chat reads it, the workspace, and — on a browser host — the
+  file, frame and variable bases that left the page. `PUT /selection` reports the page's place and ticked rows;
+  `POST /queue` asks the chat to run a command on records.
+- Host to app: `dt:select`, `dt:host`, `dt:queue`.
+
 ## 0.2.0
 
 The left nav is a document a person arranges: `nav.yaml` at the workspace root (engine 0.49, cr-dt-008).

@@ -154,3 +154,68 @@ test('module: no commit-derived key in a filter or sort, and no q, on a collecti
 	assert.equal(g('notes', { filter: JSON.stringify({ '$created-by': { _eq: 'x' } }), q: 'a', sort: '$created-by' }).ok, true);
 	assert.equal(g('users', { filter: JSON.stringify({ $source: { _eq: 'hq' } }) }).ok, true);
 });
+
+// pane kind (cr-modules-017 §4): the route's level against the pane's; record writes on an internal collection need admin
+{
+	const { ROUTES } = await import('../src/routes.js');
+	const { paneScope, internalCollections, levelRank, lowerLevel, LEVELS } = await import('../src/pane-scope.js');
+	const paneDescriptors = [...descriptors, { name: 'ui-views', fields: { title: { type: 'string' } } }, { name: 'modules', runtime: true, fields: {} }];
+	const internal = internalCollections(paneDescriptors, { isInternal: () => false, isRuntime: (d) => d.runtime === true });
+	const pane = (level) => paneScope({ level, internal });
+	const sample = (r) => r.pattern.replace(/:collection/g, 'tasks').replace(/:[a-z]+/g, 'x').replace(/\*[a-z]+/g, 'a/b');
+	const Word = (l) => l[0].toUpperCase() + l.slice(1);
+
+	test('pane: the levels and their order', () => {
+		assert.deepEqual(LEVELS, ['read', 'edit', 'admin']);
+		assert.equal(levelRank('read') < levelRank('edit') && levelRank('edit') < levelRank('admin'), true);
+		assert.equal(levelRank('root'), -1);
+		assert.equal(lowerLevel('admin', 'read'), 'read');
+		assert.equal(lowerLevel('edit', 'admin'), 'edit');
+	});
+	test('pane: internal is the system collections plus what the engine reports internal or runtime', () => {
+		assert.equal(internal.has('ui-views') && internal.has('collections') && internal.has('modules'), true);
+		assert.equal(internal.has('tasks'), false);
+		const more = internalCollections([{ name: 'secrets', internal: true }], { isInternal: (d) => d.internal === true, isRuntime: () => false });
+		assert.equal(more.has('secrets'), true);
+	});
+	test('pane: at read every route above read is 403 naming Read and the level it needs', () => {
+		for (const r of ROUTES) {
+			const res = gate(pane('read'), paneDescriptors, r.method, sample(r), q({}), r.method === 'GET' ? undefined : {});
+			if (r.level === 'read') { assert.equal(res.ok, true, `${r.method} ${r.pattern} at read: ${res.error}`); continue; }
+			assert.equal(res.ok, false, `${r.method} ${r.pattern} passed at read`);
+			assert.equal(res.status, 403);
+			assert.match(res.error, /^this pane is at Read: /);
+			assert.ok(res.error.includes(`needs ${Word(r.level)}`), `${r.method} ${r.pattern}: ${res.error}`);
+			assert.ok(res.error.includes(`${r.method} ${r.pattern}`), res.error);
+		}
+		assert.equal(gate(pane('read'), paneDescriptors, 'PUT', '/selection', q({}), { view: { other: true }, refs: [] }).ok, true);
+	});
+	test('pane: at edit a record write passes, a schema write and an internal record write need Admin', () => {
+		const ok = gate(pane('edit'), paneDescriptors, 'PATCH', '/collections/tasks/records/a', q({}), { status: 'done' });
+		assert.equal(ok.ok, true);
+		assert.deepEqual([ok.call.routeId, ok.call.collection, ok.call.path], ['record-update', 'tasks', '/collections/tasks/records/a']);
+		const field = gate(pane('edit'), paneDescriptors, 'POST', '/fields/tasks', q({}), { name: 'x', type: 'string' });
+		assert.deepEqual([field.ok, field.status], [false, 403]);
+		assert.equal(field.error, 'this pane is at Edit: POST /fields/:collection needs Admin — ask in the chat to open it with --admin');
+		const view = gate(pane('edit'), paneDescriptors, 'PATCH', '/collections/ui-views/records/v', q({}), { title: 'x' });
+		assert.deepEqual([view.ok, view.status], [false, 403]);
+		assert.match(view.error, /needs Admin/);
+		assert.equal(gate(pane('edit'), paneDescriptors, 'POST', '/collections/modules/records', q({}), {}).status, 403);
+		assert.equal(gate(pane('edit'), paneDescriptors, 'GET', '/collections/ui-views/records', q({})).ok, true);
+		assert.equal(gate(pane('read'), paneDescriptors, 'GET', '/collections/ui-views/records/v', q({})).ok, true);
+		assert.equal(gate(pane('admin'), paneDescriptors, 'PATCH', '/collections/ui-views/records/v', q({}), { title: 'x' }).ok, true);
+	});
+	test('pane: at admin every route passes; the module scope query rules do not run', () => {
+		for (const r of ROUTES) {
+			const res = gate(pane('admin'), paneDescriptors, r.method, sample(r), q({}), r.method === 'GET' ? undefined : {});
+			assert.equal(res.ok, true, `${r.method} ${r.pattern} at admin: ${res.error}`);
+		}
+		const f = gate(pane('read'), paneDescriptors, 'GET', '/collections/tasks/records', q({ filter: JSON.stringify({ 'x.y': 1 }), bogus: '1' }));
+		assert.equal(f.ok, true);
+		assert.deepEqual(f.call.query, { filter: '{"x.y":1}', bogus: '1' });
+		assert.equal(gate(pane('admin'), paneDescriptors, 'GET', '/records-batch', q({})).status, 404);
+	});
+	test('pane: an unknown level refuses everything', () => {
+		assert.equal(gate(paneScope({ level: 'root', internal }), paneDescriptors, 'GET', '/info', q({})).status, 403);
+	});
+}

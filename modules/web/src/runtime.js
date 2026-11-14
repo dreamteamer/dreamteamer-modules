@@ -1,6 +1,7 @@
 // Where a running server keeps its state and its token: the per-user runtime directory, never the
 // workspace (README: "nothing goes into the workspace, so it never lands in a synced folder"). One file per
 // workspace, named by a hash of the workspace's real path; the directory is 0700 and the file 0600.
+import { spawnSync } from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -15,18 +16,53 @@ export function runtimeDir(env = process.env, platform = process.platform, home 
 	return path.join(home, '.local', 'share', 'dreamteamer', 'web', 'runtime');
 }
 
-/** The state file of one workspace's server. */
+/** A workspace's key: the first 16 hex of the SHA-256 of its real path — the runtime file's name, the state
+ *  file's (state.js) and the registry id. */
+export function workspaceKey(root) {
+	return crypto.createHash('sha256').update(fs.realpathSync(root)).digest('hex').slice(0, 16);
+}
+
+/** What a start that could not take its stored port says (the runtime file carries `movedFrom` for the verbs). */
+export const movedLine = (from, to) => `port ${from} was taken; moved to ${to} — open the pane again: dt web open`;
+
+/** The runtime file of one workspace's server: `{ pid, port, started, owner, token, instance, pstart, movedFrom? }` — `pstart` the process's start in epoch milliseconds (ownStart). */
 export function stateFile(root, dir = runtimeDir()) {
-	const key = crypto.createHash('sha256').update(fs.realpathSync(root)).digest('hex').slice(0, 16);
-	return path.join(dir, `${key}.json`);
+	return path.join(dir, `${workspaceKey(root)}.json`);
+}
+
+/** What a write into a dir the person made read-only (or a dir of another user's) throws: the dir, its mode, and the
+ *  two ways out. `envName` is the variable that moves the dir (DT_WEB_STATE_DIR, DT_WEB_RUNTIME_DIR). */
+export function notWritable(dir, envName, mode = null) {
+	const m = mode ?? (() => { try { return fs.statSync(dir).mode & 0o777; } catch { return null; } })();
+	const kind = envName === 'DT_WEB_STATE_DIR' ? 'state' : 'runtime';
+	return Object.assign(new Error(`the dt web ${kind} dir ${dir} is not writable${m === null ? '' : ` (mode ${m.toString(8)})`} — dt web keeps its files there and never widens a mode you set: chmod 700 "${dir}", or point ${envName} at another folder`), { code: 'EDTWEBDIR' });
+}
+const DENIED = new Set(['EACCES', 'EPERM', 'EROFS']);
+/** Run `fn` (a write into `dir`); a refusal by the file system becomes notWritable. */
+export function writingInto(dir, envName, fn) {
+	try { return fn(); } catch (e) { throw DENIED.has(e?.code) ? notWritable(dir, envName) : e; }
+}
+
+/**
+ * Make `dir` for this user's files: 0700 when created. A mode that lets the group or others in is tightened to the
+ * owner's bits — what is kept there is this user's alone. A mode the person narrowed (the owner cannot write into it or
+ * enter it) is theirs: it is never widened, and the write is refused naming the dir (notWritable).
+ */
+export function privateDir(dir, envName) {
+	writingInto(dir, envName, () => fs.mkdirSync(dir, { recursive: true, mode: 0o700 }));
+	const mode = fs.statSync(dir).mode & 0o777;
+	if (mode & 0o077) writingInto(dir, envName, () => fs.chmodSync(dir, mode & 0o700));
+	if ((mode & 0o300) !== 0o300) throw notWritable(dir, envName, mode);
 }
 
 export function writeState(file, state) {
-	fs.mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 });
-	fs.chmodSync(path.dirname(file), 0o700);
+	const dir = path.dirname(file);
+	privateDir(dir, 'DT_WEB_RUNTIME_DIR');
 	const tmp = `${file}.${process.pid}.tmp`;
-	fs.writeFileSync(tmp, JSON.stringify(state, null, '\t') + '\n', { mode: 0o600 });
-	fs.renameSync(tmp, file);
+	writingInto(dir, 'DT_WEB_RUNTIME_DIR', () => {
+		fs.writeFileSync(tmp, JSON.stringify(state, null, '\t') + '\n', { mode: 0o600 });
+		fs.renameSync(tmp, file);
+	});
 }
 
 export function readState(file) {
@@ -43,13 +79,127 @@ export function alive(pid) {
 	try { process.kill(pid, 0); return true; } catch (e) { return e.code === 'EPERM'; }
 }
 
-/** The running server of a workspace, or null — a state file whose process is gone is removed. */
-export function running(root) {
-	const file = stateFile(root);
+// ---- who answers on the runtime file's port ---------------------------------------------------------------------
+// A pid outlives nothing: after a hard kill (SIGKILL, a crash, power loss) the runtime file stays, and its pid and its
+// port can both belong to another program later. So a caller never trusts either: it sends a fresh random challenge to
+// the unauthenticated GET /_dt/identity, and only the server that holds the runtime file's `instance` — a random id
+// minted each start, kept in this 0600 file and nowhere else — can answer HMAC-SHA256(instance, challenge). The
+// instance itself never crosses the wire, and the control token is sent only after the proof.
+
+/** The path of the identity route, and what a challenge must look like (base64url, 16 to 128 characters). */
+export const IDENTITY_PATH = '/_dt/identity';
+export const CHALLENGE = /^[A-Za-z0-9_-]{16,128}$/;
+
+/** What the server holding `instance` answers to `challenge`. */
+export function identityProof(instance, challenge) {
+	return crypto.createHmac('sha256', String(instance)).update(`dt-web identity ${challenge}`).digest('base64url');
+}
+
+/**
+ * Who answers on `rt.port`: `'proven'` — the server holding `rt.instance`; `'stranger'` — a refused connection, an answer
+ * that is not a 200, or a wrong proof (and a runtime file with no instance, an older server): this is not the server;
+ * `'silent'` — no answer in time (or a connection that broke): a process that may be this server, suspended or busy,
+ * and must not be taken for a stranger. Never throws. Nothing but the challenge is sent.
+ * @param {{ port?: unknown, instance?: unknown }} rt
+ * @param {{ fetchImpl?: typeof fetch, timeoutMs?: number }} [o]
+ * @returns {Promise<'proven'|'stranger'|'silent'>}
+ */
+export async function identify(rt, { fetchImpl = fetch, timeoutMs = 2000 } = {}) {
+	if (!rt || !Number.isInteger(rt.port) || rt.port <= 0 || rt.port > 65535 || typeof rt.instance !== 'string' || !rt.instance) return 'stranger';
+	const challenge = crypto.randomBytes(24).toString('base64url');
+	let res;
+	try {
+		res = await fetchImpl(`http://127.0.0.1:${rt.port}${IDENTITY_PATH}?challenge=${challenge}`, { redirect: 'manual', signal: AbortSignal.timeout(Math.max(1, timeoutMs)) });
+	} catch (e) {
+		return e?.cause?.code === 'ECONNREFUSED' || e?.code === 'ECONNREFUSED' ? 'stranger' : 'silent';
+	}
+	if (res.status !== 200) return 'stranger';
+	let body;
+	try { body = await res.json(); } catch (e) { return e?.name === 'TimeoutError' || e?.name === 'AbortError' ? 'silent' : 'stranger'; }
+	const proof = body?.proof;
+	const want = identityProof(rt.instance, challenge);
+	return typeof proof === 'string' && proof.length === want.length && crypto.timingSafeEqual(Buffer.from(proof), Buffer.from(want)) ? 'proven' : 'stranger';
+}
+
+/** Does the server on `rt.port` hold `rt.instance`? (`identify` is 'proven'.) What the hook asks. */
+export async function proves(rt, o) {
+	return (await identify(rt, o)) === 'proven';
+}
+
+// ---- is that pid the process that wrote the runtime file? ------------------------------------------------------
+// A start time is compared as an INSTANT, never as text: `ps -o lstart=` prints in the shell's language and timezone,
+// so the same process reads differently from another terminal. The server records its own start in epoch milliseconds
+// (`ownStart`); a verb derives the pid's start from its elapsed time (`ps -o etime=`, digits and colons under LC_ALL=C)
+// as now minus elapsed. etime counts whole seconds and a wall clock can be stepped a little, hence the tolerance.
+
+/** How far apart two readings of one process's start may be and still name the same process. */
+export const START_TOLERANCE_MS = 3000;
+/** How long `dt web stop --force` waits after SIGTERM and SIGCONT before it sends SIGKILL. */
+export const FORCE_GRACE_MS = 5000;
+
+/** This process's start, in epoch milliseconds — what the runtime file records as `pstart`. */
+export function ownStart(now = Date.now()) {
+	return Math.round(now - process.uptime() * 1000);
+}
+
+/** `[[dd-]hh:]mm:ss` (ps's etime) → seconds, or null. */
+export function etimeSeconds(text) {
+	const m = /^(?:(?:(\d+)-)?(\d+):)?(\d+):(\d+)$/.exec(String(text ?? '').trim());
+	if (!m) return null;
+	const [, d = 0, h = 0, mm, ss] = m;
+	return ((Number(d) * 24 + Number(h)) * 60 + Number(mm)) * 60 + Number(ss);
+}
+
+/** When `pid` started, in epoch milliseconds (now minus its elapsed time), or null when it cannot be read. */
+export function processStartMs(pid, now = Date.now()) {
+	if (!Number.isInteger(pid) || pid <= 0) return null;
+	try {
+		const r = spawnSync('ps', ['-o', 'etime=', '-p', String(pid)], { encoding: 'utf8', timeout: 2000, env: { ...process.env, LC_ALL: 'C', LANG: 'C', TZ: 'UTC' } });
+		const secs = r.status === 0 ? etimeSeconds(r.stdout) : null;
+		return secs === null ? null : now - secs * 1000;
+	} catch { return null; }
+}
+
+/** true — `pid` started when `recorded` says; false — it did not (a reused pid); null — it cannot be shown. */
+export function sameStart(pid, recorded) {
+	if (!Number.isFinite(recorded)) return null;
+	const now = processStartMs(pid);
+	return now === null ? null : Math.abs(now - recorded) <= START_TOLERANCE_MS;
+}
+
+/**
+ * The server a runtime file names, and in what state: null when there is no file or its process is gone (that file is
+ * removed); otherwise the file's contents plus `file`, `state` and `proven`:
+ * - `'running'` (proven) — it proved this start's instance;
+ * - `'stale'` — a refused connection or a wrong proof, or a silent process whose start time is not the one recorded
+ *   (its pid reused): not this server, so its runtime file may be cleared and a new server started;
+ * - `'silent'` — alive, no answer in time, and not shown to be another process: NOT ANSWERING. Nothing may clear its
+ *   runtime file or lock, or start a server beside it. `sameProcess` is true when the recorded start (`pstart`) is this
+ *   pid's own, within START_TOLERANCE_MS (what lets `dt web stop --force` signal it), null when that cannot be shown.
+ * Every verb reads the server through this.
+ */
+export async function probeServer(file, o) {
 	const s = readState(file);
-	if (!s) return null;
+	if (!s || typeof s !== 'object') return null;
 	if (!alive(s.pid)) { fs.rmSync(file, { force: true }); return null; }
-	return { ...s, file };
+	const answer = await identify(s, o);
+	if (answer === 'proven') return { ...s, file, state: 'running', proven: true, sameProcess: true };
+	if (answer === 'stranger') return { ...s, file, state: 'stale', proven: false, sameProcess: null };
+	const sameProcess = sameStart(s.pid, s.pstart);
+	return { ...s, file, state: sameProcess === false ? 'stale' : 'silent', proven: false, sameProcess };
+}
+
+/** The one line every verb prints for a server that is alive and not answering (probeServer state 'silent'). */
+export function notAnsweringLine(p) {
+	return `not answering: pid ${p.pid} at http://127.0.0.1:${p.port} is alive but gave no identity proof within 2 s — it may be suspended or busy; nothing was started, stopped or removed. Try again, or end it: dt web stop --force`;
+}
+
+/** Remove a stale runtime file — only while it still names that pid and instance — and its lock when that pid holds it. */
+export function clearStale(file, stale) {
+	const now = readState(file);
+	if (now && now.pid === stale.pid && now.instance === stale.instance) fs.rmSync(file, { force: true });
+	const lock = `${file}.lock`;
+	try { if (Number(fs.readFileSync(lock, 'utf8')) === stale.pid) fs.rmSync(lock, { force: true }); } catch { /* no lock */ }
 }
 
 /**
@@ -62,10 +212,10 @@ export function claimStart(file, pid = process.pid) {
 	const lock = `${file}.lock`;
 	const take = `${lock}.takeover`;
 	const holder = (f) => { try { return Number(fs.readFileSync(f, 'utf8')); } catch { return null; } };
-	fs.mkdirSync(path.dirname(lock), { recursive: true, mode: 0o700 });
+	privateDir(path.dirname(lock), 'DT_WEB_RUNTIME_DIR');
 	for (let attempt = 0; attempt < 2; attempt++) {
 		try {
-			fs.writeFileSync(lock, String(pid), { flag: 'wx', mode: 0o600 });
+			writingInto(path.dirname(lock), 'DT_WEB_RUNTIME_DIR', () => fs.writeFileSync(lock, String(pid), { flag: 'wx', mode: 0o600 }));
 			let released = false;
 			return { ok: true, release: () => { if (released) return; released = true; if (holder(lock) === pid) fs.rmSync(lock, { force: true }); } };
 		} catch (e) {

@@ -1,4 +1,5 @@
-// cr-modules-008 task 6: the files origin serves each module surface as ONE self-contained frame document —
+// cr-modules-008 task 6, on the one listener since cr-modules-017: /_frames/<key>/<module>/<kind>.html serves each
+// module surface as ONE self-contained frame document under `sandbox allow-scripts` —
 // the module's app.js read once and embedded as data, the guest (Vue + the guest runtime) from @dreamteamer/ui,
 // the frame policy with no host, hash or nonce. Nothing in the frame is fetched afterwards.
 import fs from 'node:fs';
@@ -20,7 +21,7 @@ export function resolveGuest(from) {
 }
 
 /**
- * A frame route for startWeb's addFrameRoute: segments after /_dt/frame/ are [module, "<kind>.html"].
+ * The frame route startWeb serves under /_frames/<key>/: the segments after the key are [module, "<kind>.html"].
  * @param {{ root: string, appPort: () => number, guest: {guestText: string, styleText?: string} | null }} o
  */
 export function moduleFrameRoute({ root, appPort, guest }) {

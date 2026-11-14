@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// dt-web <workspace root> [url|status|stop] [flags] — dt web without adding a dependency to the workspace.
+// dt-web <workspace root> [verb] [flags] — dt web without adding a dependency to the workspace (cli.js's grammar).
+// Exit 2 on a usage error or a failure, else the verb's code.
 import fs from 'node:fs';
 import path from 'node:path';
 import { main } from '../src/cli.js';

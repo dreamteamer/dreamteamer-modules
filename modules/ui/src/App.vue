@@ -17,6 +17,10 @@ import { liveSchemaCaches } from './composables/schema-caches';
 import { invalidateStageReviews } from './lib/stage-reviews';
 import { handleInvalidate } from './lib/host-invalidate';
 import { refreshPages } from './composables/page-caches';
+import PaneBar from './components/PaneBar.vue';
+import { loadHost, paneHost, signedOut, SIGNED_OUT } from './lib/host-boot';
+import { receiveSelect, startPaneReport } from './composables/pane-report';
+import { useCollections } from './composables/collections';
 
 // Host → app navigation: the extension posts `dt:navigate` when the operator clicks a collection
 // or record in the native tree. App → host: every route change is reported back so the TAB can
@@ -59,6 +63,10 @@ window.addEventListener('message', (e: MessageEvent) => {
 			refreshPages,
 		});
 	}
+	// cr-modules-017: the level, the chat flag or the files key changed on the server — ask GET /host again
+	if (m?.type === 'dt:host') void loadHost();
+	// cr-modules-017 §5: the chat ticked rows (`dt web select`) — tick them here, on that collection's list
+	if (m?.type === 'dt:select') receiveSelect(m.refs, { router, collections: paneCollections });
 	if (m?.type === 'dt:tab') {
 		pinned = !!m.pinned;
 		document.documentElement.dataset.dtActive = m.active ? '1' : '0';
@@ -76,6 +84,21 @@ watch(
 	},
 );
 
+// cr-modules-017 §5: on a pane host the page reports its place and ticked rows to the server the chat's hook reads.
+// The host can only answer once GET /host did (main-browser reads it before mount), so a page that is not a pane
+// host never starts the reporter.
+const { tree: collectionTree } = useCollections();
+const paneCollections = () => collectionTree.value.map((row) => row.collection);
+let stopReport: (() => void) | null = null;
+watch(
+	() => paneHost(),
+	(on) => {
+		if (on && !stopReport) stopReport = startPaneReport({ route, collections: paneCollections });
+		else if (!on && stopReport) { stopReport(); stopReport = null; }
+	},
+	{ immediate: true },
+);
+
 onMounted(() => hostNotify('dt:ready'));
 </script>
 
@@ -83,9 +106,14 @@ onMounted(() => hostNotify('dt:ready'));
 	<div class="dt-shell">
 		<NavSidebar v-if="appNav" />
 		<main class="dt-page-area">
+			<PaneBar v-if="paneHost()" />
 			<router-view />
 		</main>
 		<RightSidebar />
+		<!-- cr-modules-017: a 401 from any request means the session is gone; the chat is where a person gets back in -->
+		<div v-if="signedOut" class="dt-signed-out" role="alert">
+			<p>{{ SIGNED_OUT }}</p>
+		</div>
 	</div>
 </template>
 
@@ -103,6 +131,19 @@ onMounted(() => hostNotify('dt:ready'));
 	flex-direction: column;
 	background: var(--dt-bg);
 	overflow-y: auto;
+}
+
+.dt-signed-out {
+	position: fixed;
+	inset: 0;
+	z-index: 1000;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 32px;
+	background: var(--dt-bg);
+	color: var(--dt-fg);
+	text-align: center;
 }
 
 .dt-shell-error {

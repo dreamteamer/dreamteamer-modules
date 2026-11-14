@@ -219,6 +219,8 @@ onUnmounted(() => { window.removeEventListener('message', onMessage); window.rem
 
 <style scoped>
 .dt-nav { width: 260px; flex: none; overflow-y: auto; background: var(--dt-bg-subtle); border-right: 1px solid var(--dt-border); font-size: var(--dt-text); }
+/* a narrow pane (a desktop side pane can be 320 px): the nav gives up most of its width, so the page keeps a usable column */
+@media (max-width: 560px) { .dt-nav { width: clamp(96px, 32vw, 260px); } }
 .dt-nav-error { color: var(--dt-danger); padding: 6px 8px; }
 .dt-nav-notice { display: flex; align-items: flex-start; gap: 6px; margin: 4px 6px; padding: 6px 8px; border-radius: var(--dt-radius); background: var(--dt-accent-subtle); color: var(--dt-fg); font-size: var(--dt-label); }
 .dt-nav-notice span { flex: 1; }

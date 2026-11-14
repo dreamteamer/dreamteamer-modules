@@ -9,6 +9,7 @@
  * ⚠ Everything here keys off the injected LIST, never off a collection name. The dogfood vault's is called
  * `assets`; nothing in this repo may know that (decision 268).
  */
+import { hostInfo } from './host-boot';
 
 export interface FileBase {
 	collection: string;
@@ -24,8 +25,11 @@ declare global {
 	}
 }
 
-/** The injected list, or empty when the workspace declares no file-codec collection. */
+/** GET /host's list (dt web, cr-modules-017), else the injected one (the editor), else empty when the workspace
+ *  declares no file-codec collection. */
 export function fileBases(): FileBase[] {
+	const fromHost = hostInfo.value?.fileBases as FileBase[] | undefined;
+	if (Array.isArray(fromHost)) return fromHost;
 	return (typeof window !== 'undefined' && window.__DT_FILE_BASES__) || [];
 }
 

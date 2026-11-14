@@ -130,6 +130,53 @@ export const cases = [
 	{ id: 'notes', route: 'notes', method: 'GET', path: '/notes/projects?ids=northwind-launch', expect: (res) => {
 		ok(res); shape(res.body, { notes: 'array' });
 	} },
+	// ---- the pane (cr-modules-017): GET /host, the place and selection, the queue -------------------------------------
+	{ id: 'host', route: 'host', method: 'GET', path: '/host', expect: (res, { fixture }) => {
+		ok(res); shape(res.body, { level: 'string', chat: 'boolean', workspace: 'object' });
+		check(['read', 'edit', 'admin'].includes(res.body.level), `level ${res.body.level}`);
+		shape(res.body.workspace, { name: 'string' }, 'workspace');
+		const roots = [fixture.root, fs.realpathSync(fixture.root)];
+		const walk = (v, at) => {
+			if (typeof v === 'string') {
+				check(!(path.isAbsolute(v) && (fs.existsSync(v) || roots.some((r) => v.startsWith(r)))), `${at} is a path on disk: ${v}`);
+			} else if (v && typeof v === 'object') for (const [k, x] of Object.entries(v)) walk(x, `${at}.${k}`);
+		};
+		walk(res.body, 'body');
+	} },
+	{ id: 'selection-put', route: 'selection-put', method: 'PUT', path: '/selection',
+		body: { view: { collection: 'projects' }, refs: ['projects/northwind-launch'] }, expect: (res) => {
+			ok(res); shape(res.body, { view: 'object', refs: 'array', place: 'string' });
+			check(res.body.place === 'projects · List', `place ${res.body.place}`);
+			check(res.body.refs.length === 1 && res.body.refs[0] === 'projects/northwind-launch', `refs ${JSON.stringify(res.body.refs)}`);
+		} },
+	{ id: 'selection-put-refused', route: 'selection-put', method: 'PUT', path: '/selection', body: { view: { url: '/x' }, refs: [] }, expect: async (res, { request }) => {
+		status(res, 400); shape(res.body, { error: 'string' });
+		const many = await request('PUT', '/selection', { view: { collection: 'projects' }, refs: Array(51).fill('projects/northwind-launch') });
+		status(many, 400);
+		const missing = await request('PUT', '/selection', { view: { collection: 'projects' }, refs: ['projects/nope'] });
+		status(missing, 400);
+		check(String(missing.body?.error).includes('projects/nope'), `the refusal does not name projects/nope: ${missing.body?.error}`);
+	} },
+	{ id: 'selection-get', route: 'selection-get', method: 'GET', path: '/selection', expect: (res) => {
+		ok(res); shape(res.body, { view: 'object', refs: 'array', place: 'string', at: 'string' });
+		check(res.body.view.collection === 'projects' && res.body.refs[0] === 'projects/northwind-launch', `not the last put: ${JSON.stringify(res.body)}`);
+	} },
+	{ id: 'queue-post', route: 'queue-post', method: 'POST', path: '/queue',
+		body: { command: 'commands/review-project', refs: ['projects/northwind-launch'] }, expect: (res, ctx) => {
+			ok(res); shape(res.body, { item: 'object' });
+			shape(res.body.item, { id: 'string', command: 'string', refs: 'array', invocation: 'string', state: 'string', queuedAt: 'string' }, 'item');
+			check(res.body.item.state === 'waiting', `state ${res.body.item.state}`);
+			check(res.body.item.invocation.startsWith('/review-project'), `invocation ${res.body.item.invocation}`);
+			ctx.state.queued = res.body.item.id;
+		} },
+	{ id: 'queue-post-refused', route: 'queue-post', method: 'POST', path: '/queue',
+		body: { command: 'commands/no-such-command', refs: ['projects/northwind-launch'] }, expect: (res) => {
+			status(res, 400); shape(res.body, { error: 'string' });
+		} },
+	{ id: 'queue-get', route: 'queue-get', method: 'GET', path: '/queue', expect: (res, ctx) => {
+		ok(res); shape(res.body, { items: 'array' });
+		check(res.body.items.some((i) => i.id === ctx.state.queued && i.state === 'waiting'), 'the posted item is not listed waiting');
+	} },
 	{ id: 'records-list-notes', route: 'records-list', method: 'GET', path: '/collections/projects/records?notes=1', expect: (res) => {
 		ok(res); shape(res.body, { records: 'array', total: 'number' }); check(res.body.total >= 3, `total ${res.body.total}`);
 	} },
