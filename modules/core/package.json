@@ -39,7 +39,7 @@
 	],
 	"dreamteamer": {
 		"title": "Core",
-		"description": "Every workspace's nouns from one install line, as a module preset: `users` with `teams`, `roles` and `responsibilities`; `companies`, `contacts`, `engagements`; `tasks`; `projects` with `decisions` and `risks`; `meetings` with recordings and docs; `files`; `assets` and `artifacts`; `sessions` and `metrics`; `workflows` \u2014 seventeen small modules that `dt install` and `dt update` move together.",
+		"description": "Every workspace's nouns from one install line, as a module preset: `users` with `teams`, `roles` and `responsibilities`; `companies`, `contacts`, `engagements`; `tasks`; `projects` with `decisions` and `risks`; `meetings` with recordings and docs; `files`; `assets` and `artifacts`; `sessions` and `metrics`; `workflows` — seventeen small modules that `dt install` and `dt update` move together.",
 		"engine": ">=0.49.0",
 		"preset": {
 			"@dreamteamer/assets": "0.1.0",
