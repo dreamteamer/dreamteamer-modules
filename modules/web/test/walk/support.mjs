@@ -2,7 +2,7 @@
 // starts it (the bin, --no-open, the first stdout line) and bounded by a hard timer, headless Chromium, and
 // screenshots named YYYY-MM-DD--HHMM--<name>.png. A walk is a script, not a suite test: it needs the BUILT app
 // (@dreamteamer/ui's dist/app, built and gitignored) and a browser, so it runs by hand or in .github/workflows/web-walk.yml.
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -37,36 +37,38 @@ export async function browser() {
 }
 
 /**
- * `dt-web <root> --no-open --idle <n>` as a child, killed by a hard timer after `limitMs` whatever happens.
- * Resolves `{ url, child, stop(), stderr() }` once the first stdout line — the sign-in URL — is printed.
+ * `dt-web <root> start --foreground --idle <n>` as a child (what `dt web open` runs detached), killed by a hard timer
+ * after `limitMs` whatever happens; the sign-in URL comes from `dt-web <root> open`, as a session gets it.
+ * Resolves `{ url, child, stop(), signInUrl(), stderr(), runtime }` once the server answers.
  */
 export async function serve(root, { limitMs = 10 * 60_000, idle = 10, env = {} } = {}) {
 	const runtime = fs.mkdtempSync(path.join(os.tmpdir(), 'dt-web-walk-rt-'));
-	const child = spawn(process.execPath, [BIN, root, '--no-open', '--idle', String(idle)], {
-		env: { ...process.env, DT_WEB_RUNTIME_DIR: runtime, DT_WEB_APP_DIR: appDir(), CLAUDE_PID: '', ...env },
-		stdio: ['ignore', 'pipe', 'pipe'],
-	});
+	const state = fs.mkdtempSync(path.join(os.tmpdir(), 'dt-web-walk-state-'));
+	const childEnv = { ...process.env, DT_WEB_RUNTIME_DIR: runtime, DT_WEB_STATE_DIR: state, DT_WEB_APP_DIR: appDir(), CLAUDE_PID: '', ...env };
+	const child = spawn(process.execPath, [BIN, root, 'start', '--foreground', '--idle', String(idle)], { env: childEnv, stdio: ['ignore', 'pipe', 'pipe'] });
 	const killer = setTimeout(() => child.kill('SIGKILL'), limitMs);
 	killer.unref();
 	let err = '';
 	child.stderr.on('data', (b) => { err += b; });
 	const exited = new Promise((r) => child.once('exit', (code, signal) => { clearTimeout(killer); r({ code, signal }); }));
-	const url = await new Promise((resolve, reject) => {
+	await new Promise((resolve, reject) => {
 		let out = '';
-		child.stdout.on('data', (b) => { out += b; if (out.includes('\n')) resolve(out.split('\n')[0].replace(/^✔ dreamteamer web at /, '')); });
-		exited.then(({ code }) => reject(new Error(`dt-web exited ${code} before printing: ${err}`)));
-		setTimeout(() => reject(new Error(`no sign-in URL within 60 s: ${err}`)), 60_000).unref();
+		child.stdout.on('data', (b) => { out += b; if (out.includes('\n')) resolve(); });
+		exited.then(({ code }) => reject(new Error(`dt-web exited ${code} before serving: ${err}`)));
+		setTimeout(() => reject(new Error(`dt-web did not serve within 60 s: ${err}`)), 60_000).unref();
 	});
+	// a fresh single-use sign-in URL, as `dt web open` mints one (it finds this server running and starts nothing)
+	const signInUrl = async () => {
+		const r = spawnSync(process.execPath, [BIN, root, 'open'], { env: childEnv, encoding: 'utf8', timeout: 30_000 });
+		const url = /^✔ open in the pane: (\S+)$/m.exec(r.stdout ?? '')?.[1];
+		if (!url) throw new Error(`dt web open printed no URL: ${r.stdout}${r.stderr}`);
+		return url;
+	};
+	const url = await signInUrl();
 	const stop = async () => {
 		if (child.exitCode === null && child.signalCode === null) child.kill('SIGTERM');
 		await exited;
-		fs.rmSync(runtime, { recursive: true, force: true });
-	};
-	// a fresh single-use sign-in URL from the running server, as `dt web url` mints one
-	const signInUrl = async () => {
-		const state = JSON.parse(fs.readFileSync(path.join(runtime, fs.readdirSync(runtime).find((n) => n.endsWith('.json'))), 'utf8'));
-		const r = await fetch(`http://127.0.0.1:${state.port}/_dt/sign-in`, { method: 'POST', headers: { authorization: `Bearer ${state.token}` }, signal: AbortSignal.timeout(10_000) });
-		return (await r.json()).url;
+		for (const d of [runtime, state]) fs.rmSync(d, { recursive: true, force: true });
 	};
 	return { url, child, stop, signInUrl, stderr: () => err, runtime };
 }

@@ -319,8 +319,13 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 60, owner
 	};
 	/** /_dt/ under the control token: the verbs' routes. */
 	const controlRoutes = {
-		'POST /_dt/pair': (body) => {
-			const route = typeof body?.route === 'string' && body.route.startsWith('/') ? body.route : '/';
+		'POST /_dt/pair': async (body) => {
+			let route = typeof body?.route === 'string' && body.route.startsWith('/') ? body.route : '/';
+			// `dt web open <target>`: the same resolver as the push
+			if (body?.target !== undefined) {
+				route = await resolveTarget(body.target);
+				if (!route) return [400, { error: `no record, collection or ui-view ${body.target}` }];
+			}
 			const cap = LEVELS.includes(body?.cap) ? body.cap : null;
 			return [200, { url: pairUrl({ route, cap }) }];
 		},
