@@ -88,14 +88,20 @@ describe('the shell', () => {
 });
 
 describe('sign-in', () => {
-	test('a code signs in once, into dt_pane_<port>: HttpOnly, SameSite=Strict, Path=/, no Max-Age (a browser-session cookie)', async () => {
+	test('a code signs in once, into dt_pane_<port>: HttpOnly, SameSite=Strict, no Max-Age (a browser-session cookie), sent only to /api/ and /_dt/', async () => {
 		const url = web.pair();
 		assert.match(url, new RegExp(`^http://127\\.0\\.0\\.1:${web.port}/sign-in/[\\w-]+$`));
 		assert.equal(url.includes(web.controlToken), false);
 		const first = await call(url);
 		assert.equal(first.status, 302);
 		assert.equal(first.headers.get('location'), '/app/#/');
-		assert.match(first.headers.get('set-cookie'), new RegExp(`^dt_pane_${web.port}=[\\w-]+; HttpOnly; SameSite=Strict; Path=/$`));
+		// two cookies, one sid: a browser sends them only on the two prefixes that read them, so another server on
+		// 127.0.0.1 (cookies ignore the port) gets the sid only when the browser asks it for one of those paths
+		const set = first.headers.getSetCookie();
+		assert.equal(set.length, 2, set.join(' | '));
+		const sid = /^dt_pane_\d+=([\w-]+);/.exec(set[0])?.[1];
+		assert.ok(sid, set[0]);
+		assert.deepEqual(set, [`dt_pane_${web.port}=${sid}; HttpOnly; SameSite=Strict; Path=/api/`, `dt_pane_${web.port}=${sid}; HttpOnly; SameSite=Strict; Path=/_dt/`]);
 		const again = await call(url);
 		assert.equal(again.status, 401);
 		assert.match(again.text, /This sign-in link was used or is older than a minute — ask the chat to show the pane again \(dt web open\)\./);

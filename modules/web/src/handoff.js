@@ -7,17 +7,18 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { lowerLevel } from '@dreamteamer/protocol/pane-scope';
 import { ensureRunning } from './cli.js';
-import { alive, readState, runtimeDir as defaultRuntimeDir, stateFile } from './runtime.js';
+import { probeServer, runtimeDir as defaultRuntimeDir, stateFile } from './runtime.js';
 import { lookup, readRegistry, readWorkspaceState } from './state.js';
 
 const TARGET_BIN = path.join('node_modules', '@dreamteamer', 'web', 'bin', 'dt-web.mjs');
-const isRunning = (root, rdir) => {
-	try { const r = readState(stateFile(root, rdir)); return Boolean(r && alive(r.pid)); } catch { return false; }
+/** Running = the server its runtime file names proves it is that server (runtime.js `probeServer`), not a live pid. */
+const isRunning = async (root, rdir) => {
+	try { return (await probeServer(stateFile(root, rdir), { timeoutMs: 1000 }))?.proven === true; } catch { return false; }
 };
 
 /** `GET /_dt/workspaces`: `[{ id, name, running, current }]` — never a root path. */
-export function listWorkspaces({ selfId, stateDir, runtimeDir = defaultRuntimeDir() }) {
-	return readRegistry(stateDir).map((e) => ({ id: e.id, name: e.name, running: fs.existsSync(e.root) && isRunning(e.root, runtimeDir), current: e.id === selfId }));
+export async function listWorkspaces({ selfId, stateDir, runtimeDir = defaultRuntimeDir() }) {
+	return Promise.all(readRegistry(stateDir).map(async (e) => ({ id: e.id, name: e.name, running: fs.existsSync(e.root) && await isRunning(e.root, runtimeDir), current: e.id === selfId })));
 }
 
 /** What a registered root lacks to be handed the pane, or null. */

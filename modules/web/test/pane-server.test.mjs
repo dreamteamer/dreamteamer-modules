@@ -29,9 +29,10 @@ const page = (p, method = 'GET', body) => call(`${web.url}${p}`, { method, heade
 const control = (p, method = 'GET', body) => call(`${web.url}/_dt${p}`, { method, headers: { authorization: `Bearer ${web.controlToken}`, ...(body ? JSON_TYPE : {}) }, body: body ? JSON.stringify(body) : undefined });
 
 /** An open /api/events stream: `next(type)` resolves the next message of that type (3 s), `close()` ends it. */
-async function stream() {
+async function stream(headers = { cookie, ...sameOrigin() }) {
 	const ctrl = new AbortController();
-	const res = await fetch(`${web.url}/api/events`, { headers: { cookie, ...sameOrigin() }, signal: ctrl.signal });
+	const res = await fetch(`${web.url}/api/events`, { headers, signal: ctrl.signal });
+	assert.equal(res.status, 200);
 	const reader = res.body.getReader();
 	let buf = '';
 	const seen = [];
@@ -225,5 +226,43 @@ describe('the hook seen', () => {
 		assert.equal((await control('/pane')).json.movedTo.name, 'Harbor');
 		assert.equal((await control('/pane?hook=1')).json.movedTo.name, 'Harbor');
 		assert.equal((await control('/pane?hook=1')).json.movedTo, null);
+	});
+});
+
+// review round 1 (a-client-token-s-event-stream-counts-as-the-pane): only a page signed in with the pane's cookie is a
+// connected page — a client token's event stream still hears every change, but show, select and the hook never count it
+describe('a client token\'s event stream', () => {
+	test('is not the pane: a push delivers to 0, the hook reads connected false and hands nothing out, and the stream still hears the push', async () => {
+		const token = (await control('/token', 'POST', { name: 'watcher', level: 'read' })).json.token;
+		const s = await stream({ authorization: `Bearer ${token}` });
+		try {
+			assert.equal(web.clients(), 0, 'a client token\'s stream counted as a page');
+			const item = (await page('/api/queue', 'POST', { command: 'commands/review-project', refs: ['projects/northwind-launch'] })).json.item;
+			const nav = await control('/push', 'POST', { type: 'navigate', target: 'tasks' });
+			assert.equal(nav.status, 200, nav.text);
+			assert.equal(nav.json.delivered, 0);
+			assert.equal((await control('/push', 'POST', { type: 'select', clear: true })).json.delivered, 0);
+			await s.next('dt:navigate');
+			const hook = (await control('/pane?hook=1')).json;
+			assert.equal(hook.connected, false);
+			assert.deepEqual(hook.queue, []);
+			assert.equal((await page('/api/queue')).json.items.find((i) => i.id === item.id).state, 'waiting');
+		} finally { await s.close(); }
+	});
+
+	test('a page stream beside it is counted once; revoking the token ends the token\'s stream and leaves the page\'s', async () => {
+		const token = (await control('/token', 'POST', { name: 'watcher-2', level: 'read' })).json.token;
+		const ctrl = new AbortController();
+		const res = await fetch(`${web.url}/api/events`, { headers: { authorization: `Bearer ${token}` }, signal: ctrl.signal });
+		const reader = res.body.getReader();
+		const ended = (async () => { try { for (;;) { const { done } = await reader.read(); if (done) return true; } } catch { return false; } })();
+		const p = await stream();
+		try {
+			assert.equal(web.clients(), 1);
+			assert.equal((await control('/push', 'POST', { type: 'navigate', target: 'tasks' })).json.delivered, 1);
+			assert.equal((await control('/revoke', 'POST', { token: 'watcher-2' })).json.revoked, 1);
+			assert.equal(await Promise.race([ended, new Promise((r) => setTimeout(() => r('still open'), 2000))]), true, 'the revoked token\'s stream stayed open');
+			assert.equal(web.clients(), 1, 'the page\'s stream was ended with the token\'s');
+		} finally { ctrl.abort(); await p.close(); }
 	});
 });

@@ -2,7 +2,7 @@
 // one process (cr-modules-017 §8) — and a `web` row in `dt doctor`: running or not, the level, and the hook.
 import { main, parseArgs, USAGE } from './cli.js';
 import { hookInstalled } from './hook.js';
-import { running } from './runtime.js';
+import { probeServer, stateFile } from './runtime.js';
 import { readWorkspaceState } from './state.js';
 
 export const apiVersion = 1;
@@ -28,8 +28,10 @@ export default function activate() {
 				},
 			},
 		},
-		doctor({ root }) {
-			const r = running(root);
+		async doctor({ root }) {
+			// running = the server proves it is the runtime file's, never a live pid alone (runtime.js `probeServer`)
+			const p = await probeServer(stateFile(root));
+			const r = p?.proven ? p : null;
 			let level = 'edit';
 			try { level = readWorkspaceState(root).level; } catch { /* unreadable: the default */ }
 			const word = level[0].toUpperCase() + level.slice(1);

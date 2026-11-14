@@ -30,7 +30,7 @@ before(async () => {
 	for (const [ws, name] of [[a, 'alpha'], [b, 'bravo'], [gone, 'gone']]) await register({ root: ws.root, name }, a.state);
 	fs.rmSync(gone.root, { recursive: true, force: true });
 	web = await startWeb({ root: a.root, appDir: a.app, idleMinutes: 0, stateDir: a.state });
-	writeState(stateFile(a.root, runtime), { pid: process.pid, port: web.port, token: web.controlToken });
+	writeState(stateFile(a.root, runtime), { pid: process.pid, port: web.port, token: web.controlToken, instance: web.instance });
 	cookie = await pair(web);
 });
 after(async () => {

@@ -127,3 +127,43 @@ test('a stale lock is taken over by one claimant only; a takeover in progress re
 	assert.ok(!fs.existsSync(`${file}.lock`));
 	fs.rmSync(dir, { recursive: true, force: true });
 });
+
+// review round 1 (a-stale-runtime-file-with-a-reused-pid-blocks-open-and-stop-signals-a-stranger): a runtime file whose
+// process is alive but is not this workspace's server — a hard-killed server's pid reused by another program, which
+// here also answers every request on the port — is stale for status, open and stop alike
+test('a stale runtime file whose pid another program holds: status says not running, open starts a fresh server promptly, stop removes it and signals nothing', { timeout: 120_000 }, async () => {
+	const { readState, stateFile, writeState } = await import('../src/runtime.js');
+	const stranger = spawn(process.execPath, ['-e', "require('node:http').createServer((q, s) => { s.writeHead(200, { 'content-type': 'application/json' }); s.end('{\"connected\":true,\"url\":\"http://127.0.0.1:1/sign-in/x\",\"proof\":\"x\"}'); }).listen(0, '127.0.0.1', function () { console.log(this.address().port); }); setTimeout(() => {}, 120000);"], { stdio: ['ignore', 'pipe', 'ignore'] });
+	children.push(stranger);
+	const port = await new Promise((resolve, reject) => { stranger.stdout.once('data', (b) => resolve(Number(String(b).trim()))); stranger.once('exit', () => reject(new Error('the stranger exited'))); });
+	const file = stateFile(f.root, env.DT_WEB_RUNTIME_DIR);
+	const forge = () => {
+		writeState(file, { pid: stranger.pid, port, started: new Date().toISOString(), owner: null, token: 'the-dead-servers-token', instance: 'the-dead-servers-instance' });
+		fs.writeFileSync(`${file}.lock`, String(stranger.pid), { mode: 0o600 });
+	};
+	forge();
+	const status = run('status');
+	assert.equal(status.status, 1, status.stdout + status.stderr);
+	assert.match(status.stdout, /^not running/);
+
+	const stop = run('stop');
+	assert.equal(stop.status, 1, stop.stdout + stop.stderr);
+	assert.match(stop.stdout, new RegExp(`^not running — removed a stale runtime file: pid ${stranger.pid} is not this workspace's server, and was not signalled`));
+	assert.equal(fs.existsSync(file), false, 'the stale runtime file is still there');
+	assert.equal(fs.existsSync(`${file}.lock`), false, 'the stale lock is still there');
+	assert.equal(await exited(stranger, 500), false, 'stop signalled the stranger');
+
+	forge();
+	const t0 = Date.now();
+	const open = run('open');
+	const ms = Date.now() - t0;
+	assert.equal(open.status, 0, open.stdout + open.stderr);
+	assert.ok(ms < 10_000, `open took ${ms} ms`);
+	assert.match(open.stdout, /^✔ open in the pane: http:\/\/127\.0\.0\.1:\d+\/sign-in\//);
+	const fresh = readState(file);
+	assert.notEqual(fresh.pid, stranger.pid);
+	assert.notEqual(fresh.port, port, 'the fresh server is on its own port');
+	assert.equal(run('status').status, 0);
+	assert.equal(run('stop').status, 0);
+	assert.equal(await exited(stranger, 300), false, 'the stranger was signalled');
+});

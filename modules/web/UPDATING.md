@@ -20,7 +20,8 @@ npm install --save-dev @dreamteamer/web@latest
   keeps its address. When another program took it, the server moves and says so.
 - **A restart signs the pane out.** The session lives in the server's memory only: `dt web stop`, the idle stop or
   a reboot ends it, and the next `dt web open` pairs the pane again. The cookie (`dt_pane_<port>`) is a
-  browser-session cookie, renewed on use while the server runs and ended after 7 days idle. `dt web revoke` ends
+  browser-session cookie, sent only on `/api/` and `/_dt/`, renewed on use while the server runs and ended after 7
+  days idle. `dt web revoke` ends
   every session; `dt web stop` does too.
 - **The server stops after 60 minutes** with no page and no token request (it was 30), and no longer stops with the
   chat that started it unless you pass `--owner-pid`.

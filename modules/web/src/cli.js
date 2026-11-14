@@ -1,12 +1,14 @@
 // `dt web` and `dt-web <root>` (cr-modules-017 §8): one argv grammar for both entries; `main` resolves to the exit
 // code. Every verb that needs the server starts it detached when it is not running (`ensureRunning`) — `open`, `show`,
-// `select`, `selection`, `token`, `start`; `status`, `stop`, `list`, `hook` and `revoke` never start one.
+// `select`, `selection`, `token`, `start`; `status`, `stop`, `list`, `hook` and `revoke` never start one. Every verb
+// knows the server by its proof (runtime.js `probeServer`), never by a live pid: a runtime file whose server cannot prove
+// its instance is stale — status says not running, open starts a fresh server, stop removes the file and signals nobody.
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { alive, claimStart, movedLine, readState, removeState, running, runtimeDir, stateFile, workspaceKey, writeState } from './runtime.js';
+import { alive, claimStart, clearStale, movedLine, probeServer, readState, removeState, runtimeDir, stateFile, workspaceKey, writeState } from './runtime.js';
 import { readRegistry, readWorkspaceState, register, stateDir, writeWorkspaceState } from './state.js';
 import { hookInstalled, installHook } from './hook.js';
 import { workspaceName } from './pane-store.js';
@@ -96,12 +98,11 @@ async function ask(rt, method, p, body, timeoutMs = 10_000) {
 		return { status: r.status, body: json };
 	} catch { return { status: 0, body: null }; }
 }
-const answers = async (rt) => (await ask(rt, 'GET', '/_dt/pane', undefined, 2000)).status === 200;
-const current = (root, env) => {
-	const file = stateFile(root, runtimeDir(env));
-	const r = readState(file);
-	if (!r || !alive(r.pid)) return null;
-	return Number.isInteger(r.port) && typeof r.token === 'string' ? { port: r.port, controlToken: r.token, pid: r.pid, movedFrom: r.movedFrom } : null;
+const fileOf = (root, env) => stateFile(root, runtimeDir(env));
+/** The workspace's server when it proves it is the runtime file's: `{ port, controlToken, pid, movedFrom }`, else null. */
+const current = async (root, env, timeoutMs = 2000) => {
+	const p = await probeServer(fileOf(root, env), { timeoutMs });
+	return p?.proven && typeof p.token === 'string' ? { port: p.port, controlToken: p.token, pid: p.pid, movedFrom: p.movedFrom } : null;
 };
 const failed = (log, r) => { log(`✖ ${r.body?.error ?? (r.status ? `the server answered ${r.status}` : 'the server did not answer')}`); return 1; };
 
@@ -112,10 +113,10 @@ const failed = (log, r) => { log(`✖ ${r.body?.error ?? (r.status ? `the server
  * @returns {Promise<{ port: number, controlToken: string }>}
  */
 export async function ensureRunning(root, { log = console.log, env = process.env, appDir, bin = BIN } = {}) {
-	const now = current(root, env);
-	if (now && await answers(now)) return now;
-	// a server on its way down (its idle stop): let it go before the next starts
-	if (now) for (let i = 0; i < 30 && current(root, env); i++) await sleep(100);
+	const now = await current(root, env);
+	if (now) return now;
+	// no server, or a stale runtime file (a server on its way down, a hard-killed one whose pid or port another program
+	// holds): the child clears what is stale and starts
 	const dir = runtimeDir(env);
 	fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
 	const logFile = path.join(dir, `${workspaceKey(root)}.log`);
@@ -129,8 +130,8 @@ export async function ensureRunning(root, { log = console.log, env = process.env
 	fs.closeSync(fd);
 	const until = Date.now() + START_WAIT_MS;
 	while (Date.now() < until) {
-		const rt = current(root, env);
-		if (rt && await answers(rt)) {
+		const rt = await current(root, env, 1000);
+		if (rt) {
 			if (rt.movedFrom) log(movedLine(rt.movedFrom, rt.port));
 			return rt;
 		}
@@ -145,15 +146,20 @@ export async function main(root, argv, { log = console.log, env = process.env, a
 	const ensure = () => ensureRunning(root, { log, env, appDir });
 
 	if (o.cmd === 'status') {
-		const now = running(root);
-		if (!now) { log('not running'); return 1; }
+		const now = await probeServer(fileOf(root, env));
+		if (!now?.proven) { log('not running'); return 1; }
 		log(`running at http://127.0.0.1:${now.port} · pid ${now.pid} · level ${LEVEL_WORD(readWorkspaceState(root, sdir).level)}${now.owner ? ` · owner ${now.owner}` : ''} · since ${now.started}`);
 		return 0;
 	}
 	if (o.cmd === 'stop') {
 		if (o.revoke) { const code = await revoke(root, {}, { log, env }); if (code) return code; }
-		const now = running(root);
+		const now = await probeServer(fileOf(root, env));
 		if (!now) { log('not running'); return o.revoke ? 0 : 1; }
+		if (!now.proven) {
+			clearStale(now.file, now);
+			log(`not running — removed a stale runtime file: pid ${now.pid} is not this workspace's server, and was not signalled`);
+			return o.revoke ? 0 : 1;
+		}
 		process.kill(now.pid, 'SIGTERM');
 		// stopped = the server removed its runtime file (a process its parent has not reaped yet still answers kill 0)
 		const gone = () => !readState(now.file) || !alive(now.pid);
@@ -166,7 +172,8 @@ export async function main(root, argv, { log = console.log, env = process.env, a
 		if (!rows.length) { log('no workspace was opened with dt web on this machine'); return 0; }
 		for (const e of rows) {
 			const here = fs.existsSync(e.root);
-			const r = here ? running(e.root) : null;
+			const p = here ? await probeServer(fileOf(e.root, env), { timeoutMs: 1000 }) : null;
+			const r = p?.proven ? p : null;
 			const port = r?.port ?? (here ? readWorkspaceState(e.root, sdir).port : null);
 			log(`${e.name} · ${port ?? '-'} · ${r ? 'running' : 'stopped'} · ${e.root}`);
 		}
@@ -236,8 +243,8 @@ async function revoke(root, { token }, { log, env }) {
 		log(token !== undefined ? (n ? `✔ revoked the token ${token}` : `no token named ${token}`) : `✔ revoked ${n} session(s)`);
 		return token !== undefined && !n ? 1 : 0;
 	};
-	const rt = current(root, env);
-	if (rt && await answers(rt)) {
+	const rt = await current(root, env);
+	if (rt) {
 		const r = await ask(rt, 'POST', '/_dt/revoke', token !== undefined ? { token } : {});
 		if (r.status !== 200) return failed(log, r);
 		return said(r.body.revoked);
@@ -258,10 +265,12 @@ async function revoke(root, { token }, { log, env }) {
 
 /** `dt web start --foreground`: serve in this process — what the detached child runs, and a launch.json entry. */
 async function foreground(root, o, { log, env, appDir = appDirOf() }) {
-	const was = running(root);
-	if (was) { log(`already running at http://127.0.0.1:${was.port} (pid ${was.pid})`); return 1; }
+	const file = fileOf(root, env);
+	const was = await probeServer(file);
+	if (was?.proven) { log(`already running at http://127.0.0.1:${was.port} (pid ${was.pid})`); return 1; }
+	// a runtime file whose process lives but cannot prove it is this server: stale, with its lock when that pid holds it
+	if (was) clearStale(file, was);
 	const { startWeb } = await import('./server.js');
-	const file = stateFile(root, runtimeDir(env));
 	const lock = claimStart(file);
 	if (!lock.ok) { log(`already running or starting${lock.pid ? ` (pid ${lock.pid})` : ''} — dt web status`); return 1; }
 	let web;
@@ -271,7 +280,7 @@ async function foreground(root, o, { log, env, appDir = appDirOf() }) {
 		lock.release();
 		throw e;
 	}
-	writeState(file, { pid: process.pid, port: web.port, started: new Date().toISOString(), owner: o.ownerPid ?? null, token: web.controlToken, ...(web.movedFrom ? { movedFrom: web.movedFrom } : {}) });
+	writeState(file, { pid: process.pid, port: web.port, started: new Date().toISOString(), owner: o.ownerPid ?? null, token: web.controlToken, instance: web.instance, ...(web.movedFrom ? { movedFrom: web.movedFrom } : {}) });
 	// the handlers before the first line: a caller may signal the moment it reads it
 	const stop = () => web.close('signal');
 	process.once('SIGINT', stop);

@@ -3,14 +3,16 @@
 // workspace's .claude/settings.local.json (per machine, never committed). The bin reads the prompt's payload, finds
 // the workspace from its cwd, reads that workspace's runtime file and asks its server GET /_dt/pane?hook=1 inside a
 // 1.5 s budget; it prints at most three lines, only while a page is connected (or the one moved line), and on any
-// failure prints nothing. It never starts a server, and writes only through the server.
+// failure prints nothing. It never starts a server, and writes only through the server. Before it sends the control
+// token or prints a word it makes the server prove it is the runtime file's (runtime.js `proves`): a dead pid, or a
+// port another program answers on, prints nothing.
 //
 // This file is loaded by the hook on every prompt: it imports node built-ins and runtime.js only.
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { readState, runtimeDir as defaultRuntimeDir, stateFile } from './runtime.js';
+import { alive, proves, readState, runtimeDir as defaultRuntimeDir, stateFile } from './runtime.js';
 
 export const HOOK_BUDGET_MS = 1500;
 export const MAX_HOOK_LINES = 3;
@@ -118,7 +120,9 @@ export async function runHook(stdinText, { runtimeDir = defaultRuntimeDir(), fet
 		const root = findWorkspaceRoot(payload?.cwd);
 		if (!root) return '';
 		const rt = readState(stateFile(root, runtimeDir));
-		if (!rt || !Number.isInteger(rt.port) || typeof rt.token !== 'string') return '';
+		if (!rt || !Number.isInteger(rt.port) || typeof rt.token !== 'string' || !alive(rt.pid)) return '';
+		// the runtime file's own server, or nobody: the token and the chat's context are never given to a stranger
+		if (!await proves(rt, { fetchImpl, timeoutMs: deadline - Date.now() })) return '';
 		const base = `http://127.0.0.1:${rt.port}/_dt`;
 		const auth = { authorization: `Bearer ${rt.token}` };
 		const res = await fetchImpl(`${base}/pane?hook=1`, { headers: auth, signal: AbortSignal.timeout(Math.max(1, deadline - Date.now())) });

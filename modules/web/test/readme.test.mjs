@@ -24,6 +24,8 @@ test('the README names every part of the contract, in order', () => {
 		'does not protect against', '### served', 'SECURITY.md', 'an open question', '@dreamteamer/ui', '@dreamteamer/protocol', '@dreamteamer/http', '>=0.43.0',
 		// the residual risks of §9 as revised, each with what bounds it
 		'Codex', "'unsafe-inline'", 'files key', 'reads the control token', 'whichever chat', 'record ids', 'another registered workspace',
+		// review round 1: what reaches another server on 127.0.0.1, and how the verbs and the hook know their own server
+		'Path=/api/', 'Path=/_dt/', 'Another server on `127.0.0.1`', '/_dt/identity', 'instance id', 'a stale runtime file',
 	]) {
 		assert.ok(README.includes(must), `the README does not say ${must}`);
 	}

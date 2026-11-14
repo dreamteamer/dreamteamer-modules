@@ -25,6 +25,7 @@ import { createSessions } from './sessions.js';
 import { readWorkspaceState, stateDir as defaultStateDir, workspaceKey, writeWorkspaceState } from './state.js';
 import { matchClientToken, mintClientToken } from './tokens.js';
 import { createPaneStore, workspaceName } from './pane-store.js';
+import { CHALLENGE, IDENTITY_PATH, identityProof } from './runtime.js';
 import { handoff, listWorkspaces } from './handoff.js';
 
 const DEBOUNCE_MS = 150;
@@ -60,7 +61,9 @@ const decode = (s) => { try { return decodeURIComponent(s); } catch { throw new 
  * Start dt web for the workspace at `root` on one listener. `appDir` holds the built app (index.html + assets/) —
  * @dreamteamer/ui's dist/app. `stateDir` is the per-user state dir (state.js); `pane` the PaneStore the protocol's
  * pane routes answer from (absent: the handler's own memory store).
- * Resolves `{ url, port, controlToken, filesKey, pair({ route?, cap? }) → url, broadcast(msg), clients() → number, close(why?), closed, movedFrom? }` — `movedFrom` the stored port it could not take.
+ * Resolves `{ url, port, controlToken, instance, filesKey, pair({ route?, cap? }) → url, broadcast(msg), clients() → number, close(why?), closed, movedFrom? }` —
+ * `instance` the per-start id the runtime file keeps and GET /_dt/identity proves, `clients()` the pages connected with
+ * the cookie (a client token's stream is not one), `movedFrom` the stored port it could not take.
  */
 export async function startWeb({ root, appDir, port = 0, idleMinutes = 60, ownerPid, onStop, now = Date.now, stateDir = defaultStateDir(), moduleGuest, pane } = {}) {
 	if (!fs.existsSync(path.join(appDir, 'index.html'))) {
@@ -71,6 +74,7 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 60, owner
 	const sessions = createSessions({ now });
 	const pairing = createPairing({ now });
 	const controlToken = random(32);
+	const instance = random(32);
 	const filesKey = random(18);
 	let handler = null;
 	const store = pane ?? createPaneStore({
@@ -97,7 +101,13 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 60, owner
 		}
 	};
 
-	const clientStreams = new Set();
+	// the event streams: the PAGES (the cookie) are what `dt web show` delivers to, what the hook calls connected and
+	// what keeps the server from its idle stop; a client token's stream hears the same messages and counts for none of it
+	const pageStreams = new Set();
+	/** @type {Map<import('node:http').ServerResponse, object>} each client token's stream → its token record */
+	const clientStreams = new Map();
+	/** End the streams of a client token that is no longer in the state (revoked, or minted again under its name). */
+	const endRevokedStreams = () => { for (const [res, rec] of clientStreams) if (!state.clientTokens.includes(rec)) res.end(); };
 	let listenPort;
 	const cookieName = () => `dt_pane_${listenPort}`;
 
@@ -173,8 +183,10 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 60, owner
 		const taken = pairing.take(url.pathname.slice('/sign-in/'.length));
 		if (!taken) return page(res, 401, SIGN_IN_REFUSED);
 		const sid = sessions.mint(taken.cap ?? null);
-		// a browser-session cookie: no Max-Age, since the session itself lives only as long as this process
-		res.setHeader('Set-Cookie', `${cookieName()}=${sid}; HttpOnly; SameSite=Strict; Path=/`);
+		// a browser-session cookie: no Max-Age, since the session itself lives only as long as this process. Cookies ignore
+		// the port, so every other server on 127.0.0.1 is sent this one too — Path keeps that to the two prefixes that read
+		// it, never a page, an asset or the root (README, "does not protect against")
+		res.setHeader('Set-Cookie', ['/api/', '/_dt/'].map((p) => `${cookieName()}=${sid}; HttpOnly; SameSite=Strict; Path=${p}`));
 		res.writeHead(302, { Location: `/app/#${taken.route}` });
 		return res.end();
 	};
@@ -261,7 +273,7 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 60, owner
 		const who = apiCaller(req);
 		if (who.refuse) return json(res, who.refuse[0], { error: who.refuse[1] });
 		if (who.kind === 'client') idle.reset();
-		if (req.method === 'GET' && url.pathname === '/api/events') return openStream(req, res);
+		if (req.method === 'GET' && url.pathname === '/api/events') return openStream(req, res, who);
 		const body = await jsonBody(req);
 		const apiPath = req.url.slice(4);
 		const hit = matchRoute(req.method, apiPath);
@@ -274,7 +286,9 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 60, owner
 		const log = console.log;
 		console.log = () => {};
 		try {
-			const migrated = req.method === 'GET' && url.pathname === '/api/nav' && migrateNavOnce();
+			// the migration writes nav.yaml, so it waits for a caller at Edit or above; below, the handler draws the old
+			// settings' tree and nothing is written
+			const migrated = req.method === 'GET' && url.pathname === '/api/nav' && levelRank(level) >= levelRank('edit') && migrateNavOnce();
 			const out = await handler.handle(req.method, apiPath, body);
 			if (migrated && out.status === 200 && Array.isArray(out.body) && out.body[0]?.kind === 'workspace') out.body[0] = { ...out.body[0], notice: NAV_MIGRATED_NOTICE };
 			return json(res, out.status, out.body ?? null);
@@ -332,6 +346,7 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 60, owner
 			try { minted = mintClientToken({ name: body?.name, level: body?.level ?? 'read', now }); } catch (e) { throw new HttpError(400, e.message); }
 			state.clientTokens = [...state.clientTokens.filter((t) => t.name !== minted.record.name), minted.record];
 			save();
+			endRevokedStreams();
 			return [200, { token: minted.token, api: `http://127.0.0.1:${listenPort}/api` }];
 		},
 		'POST /_dt/revoke': (body) => {
@@ -339,10 +354,11 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 60, owner
 				const n = state.clientTokens.length;
 				state.clientTokens = state.clientTokens.filter((t) => t.name !== body.token);
 				save();
+				endRevokedStreams();
 				return [200, { revoked: n - state.clientTokens.length }];
 			}
 			const n = sessions.revokeAll();
-			for (const c of clientStreams) c.end();
+			for (const c of pageStreams) c.end();
 			return [200, { revoked: n }];
 		},
 		'POST /_dt/level': (body) => { setLevel(levelIn(body)); return [200, { level: state.level, raisedAt: state.raisedAt ?? null }]; },
@@ -351,16 +367,16 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 60, owner
 				const route = await resolveTarget(body.target);
 				if (!route) return [400, { error: `no record, collection or ui-view ${body.target}` }];
 				broadcast({ type: 'dt:navigate', route });
-				return [200, { route, delivered: clientStreams.size }];
+				return [200, { route, delivered: pageStreams.size }];
 			}
 			if (body?.type === 'select') {
 				const refs = body.clear === true ? [] : await checkRefs(body.refs);
 				broadcast({ type: 'dt:select', refs });
-				return [200, { refs, delivered: clientStreams.size }];
+				return [200, { refs, delivered: pageStreams.size }];
 			}
 			return [400, { error: 'a push is { type: "navigate", target } or { type: "select", refs | clear: true }' }];
 		},
-		'GET /_dt/pane': (_body, _who, url) => [200, store.snapshot({ hook: url.searchParams.get('hook') === '1', connected: clientStreams.size > 0 })],
+		'GET /_dt/pane': (_body, _who, url) => [200, store.snapshot({ hook: url.searchParams.get('hook') === '1', connected: pageStreams.size > 0 })],
 		'POST /_dt/pane/delivered': (body) => [200, { delivered: store.delivered(body?.ids) }],
 	};
 	/** /_dt/ under the cookie: the page's own routes. */
@@ -371,7 +387,7 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 60, owner
 			if (level !== state.level) setLevel(level);
 			return [200, { level }];
 		},
-		'GET /_dt/workspaces': () => [200, listWorkspaces({ selfId: workspaceKey(root), stateDir })],
+		'GET /_dt/workspaces': async () => [200, await listWorkspaces({ selfId: workspaceKey(root), stateDir })],
 		'POST /_dt/handoff': async (body, who) => {
 			const r = await handoff({ id: body?.id, pageLevel: levelOf(who), selfId: workspaceKey(root), stateDir, now, moved: (to) => store.moved?.(to) });
 			return [r.status, r.body];
@@ -380,6 +396,15 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 60, owner
 
 	const serveDt = async (req, res, url) => {
 		const key = `${req.method} ${url.pathname}`;
+		// anyone may ask the server to prove it is the one its runtime file names: a fresh challenge in, an HMAC under the
+		// per-start instance out — no token, no data, and nothing that names the instance (runtime.js `proves`)
+		if (url.pathname === IDENTITY_PATH) {
+			if (req.method !== 'GET') return json(res, 405, { error: `${IDENTITY_PATH} takes GET` });
+			const challenge = url.searchParams.get('challenge');
+			if (typeof challenge !== 'string' || !CHALLENGE.test(challenge)) return json(res, 400, { error: 'a challenge is 16 to 128 base64url characters' });
+			res.setHeader('Cache-Control', 'no-store');
+			return json(res, 200, { proof: identityProof(instance, challenge) });
+		}
 		const bearer = bearerOf(req);
 		if (bearer !== null) {
 			if (!same(bearer, controlToken)) {
@@ -408,16 +433,18 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 60, owner
 	};
 
 	// ---- the event stream ----------------------------------------------------------------------
-	const openStream = (req, res) => {
+	const openStream = (req, res, who) => {
 		res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-store', Connection: 'keep-alive' });
 		res.write(': open\n\n');
-		clientStreams.add(res);
+		if (who.kind === 'client') clientStreams.set(res, who.record);
+		else pageStreams.add(res);
 		idle.reset();
-		req.on('close', () => { clientStreams.delete(res); idle.reset(); });
+		req.on('close', () => { pageStreams.delete(res); clientStreams.delete(res); idle.reset(); });
 	};
 	const broadcast = (msg) => {
 		const data = `data: ${JSON.stringify(msg)}\n\n`;
-		for (const c of clientStreams) c.write(data);
+		for (const c of pageStreams) c.write(data);
+		for (const c of clientStreams.keys()) c.write(data);
 	};
 
 	// ---- one request ---------------------------------------------------------------------------
@@ -494,7 +521,8 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 60, owner
 		stopped = true;
 		clearTimeout(timer); idle.clear(); clearInterval(ownerTimer);
 		for (const w of watchers) w.close();
-		for (const c of clientStreams) c.end();
+		for (const c of pageStreams) c.end();
+		for (const c of clientStreams.keys()) c.end();
 		try { store.flush?.(); } catch { /* the state dir went away: the next start reads what was written */ }
 		const done = new Promise((r) => server.close(r));
 		server.closeAllConnections?.();
@@ -508,7 +536,7 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 60, owner
 		clear() { clearTimeout(this.t); this.t = null; },
 		reset() {
 			this.clear();
-			if (idleMinutes > 0 && clientStreams.size === 0) this.t = setTimeout(() => close('idle'), idleMinutes * 60_000);
+			if (idleMinutes > 0 && pageStreams.size === 0) this.t = setTimeout(() => close('idle'), idleMinutes * 60_000);
 		},
 	};
 	const ownerTimer = ownerPid ? setInterval(() => { try { process.kill(ownerPid, 0); } catch (e) { if (e.code !== 'EPERM') close('owner gone'); } }, 5_000) : null;
@@ -547,10 +575,11 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 60, owner
 		url: `http://127.0.0.1:${listenPort}`,
 		port: listenPort,
 		controlToken,
+		instance,
 		filesKey,
 		pair: pairUrl,
 		broadcast,
-		clients: () => clientStreams.size,
+		clients: () => pageStreams.size,
 		close,
 		closed,
 		...(movedFrom !== undefined ? { movedFrom } : {}),

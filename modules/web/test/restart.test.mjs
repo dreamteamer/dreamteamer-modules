@@ -112,6 +112,18 @@ describe('the idle stop', () => {
 		assert.equal(why, 'idle');
 	});
 
+	test('a client token\'s open event stream does not keep it up: the idle stop still comes, and ends that stream', async () => {
+		const w = await start({ idleMinutes: 0.01 });
+		const minted = await call(`${w.url}/_dt/token`, { method: 'POST', headers: { authorization: `Bearer ${w.controlToken}`, 'content-type': 'application/json' }, body: JSON.stringify({ name: 'watcher' }) });
+		const ctrl = new AbortController();
+		const res = await fetch(`${w.url}/api/events`, { headers: { authorization: `Bearer ${minted.json.token}` }, signal: ctrl.signal });
+		assert.equal(res.status, 200);
+		try {
+			const why = await Promise.race([w.closed, new Promise((r) => setTimeout(() => r('still up'), 3000))]);
+			assert.equal(why, 'idle');
+		} finally { ctrl.abort(); }
+	});
+
 	test('a client-token request resets the clock', async () => {
 		const w = await start({ idleMinutes: 0.01 });
 		const minted = await call(`${w.url}/_dt/token`, { method: 'POST', headers: { authorization: `Bearer ${w.controlToken}`, 'content-type': 'application/json' }, body: JSON.stringify({ name: 'ci' }) });

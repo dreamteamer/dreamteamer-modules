@@ -24,7 +24,7 @@ export function workspaceKey(root) {
 /** What a start that could not take its stored port says (the runtime file carries `movedFrom` for the verbs). */
 export const movedLine = (from, to) => `port ${from} was taken; moved to ${to} — open the pane again: dt web open`;
 
-/** The runtime file of one workspace's server: `{ pid, port, started, owner, token, movedFrom? }`. */
+/** The runtime file of one workspace's server: `{ pid, port, started, owner, token, instance, movedFrom? }`. */
 export function stateFile(root, dir = runtimeDir()) {
 	return path.join(dir, `${workspaceKey(root)}.json`);
 }
@@ -51,13 +51,60 @@ export function alive(pid) {
 	try { process.kill(pid, 0); return true; } catch (e) { return e.code === 'EPERM'; }
 }
 
-/** The running server of a workspace, or null — a state file whose process is gone is removed. */
-export function running(root) {
-	const file = stateFile(root);
+// ---- who answers on the runtime file's port ---------------------------------------------------------------------
+// A pid outlives nothing: after a hard kill (SIGKILL, a crash, power loss) the runtime file stays, and its pid and its
+// port can both belong to another program later. So a caller never trusts either: it sends a fresh random challenge to
+// the unauthenticated GET /_dt/identity, and only the server that holds the runtime file's `instance` — a random id
+// minted each start, kept in this 0600 file and nowhere else — can answer HMAC-SHA256(instance, challenge). The
+// instance itself never crosses the wire, and the control token is sent only after the proof.
+
+/** The path of the identity route, and what a challenge must look like (base64url, 16 to 128 characters). */
+export const IDENTITY_PATH = '/_dt/identity';
+export const CHALLENGE = /^[A-Za-z0-9_-]{16,128}$/;
+
+/** What the server holding `instance` answers to `challenge`. */
+export function identityProof(instance, challenge) {
+	return crypto.createHmac('sha256', String(instance)).update(`dt-web identity ${challenge}`).digest('base64url');
+}
+
+/**
+ * Does the server on `rt.port` hold `rt.instance`? False for a runtime file with no instance (an older server), for
+ * nothing listening, for a wrong or late answer — never throws. Nothing but the challenge is sent.
+ * @param {{ port?: unknown, instance?: unknown }} rt
+ * @param {{ fetchImpl?: typeof fetch, timeoutMs?: number }} [o]
+ */
+export async function proves(rt, { fetchImpl = fetch, timeoutMs = 2000 } = {}) {
+	if (!rt || !Number.isInteger(rt.port) || rt.port <= 0 || rt.port > 65535 || typeof rt.instance !== 'string' || !rt.instance) return false;
+	const challenge = crypto.randomBytes(24).toString('base64url');
+	try {
+		const res = await fetchImpl(`http://127.0.0.1:${rt.port}${IDENTITY_PATH}?challenge=${challenge}`, { redirect: 'manual', signal: AbortSignal.timeout(Math.max(1, timeoutMs)) });
+		if (res.status !== 200) return false;
+		const proof = (await res.json())?.proof;
+		const want = identityProof(rt.instance, challenge);
+		return typeof proof === 'string' && proof.length === want.length && crypto.timingSafeEqual(Buffer.from(proof), Buffer.from(want));
+	} catch {
+		return false;
+	}
+}
+
+/**
+ * The server a runtime file names, proven: null when there is no file or its process is gone (that file is removed);
+ * otherwise the file's contents plus `file` and `proven` — false when the process lives but is not this server (its
+ * pid reused, its port another program's, or a server on its way down). Every verb reads the server through this.
+ */
+export async function probeServer(file, o) {
 	const s = readState(file);
-	if (!s) return null;
+	if (!s || typeof s !== 'object') return null;
 	if (!alive(s.pid)) { fs.rmSync(file, { force: true }); return null; }
-	return { ...s, file };
+	return { ...s, file, proven: await proves(s, o) };
+}
+
+/** Remove a stale runtime file — only while it still names that pid and instance — and its lock when that pid holds it. */
+export function clearStale(file, stale) {
+	const now = readState(file);
+	if (now && now.pid === stale.pid && now.instance === stale.instance) fs.rmSync(file, { force: true });
+	const lock = `${file}.lock`;
+	try { if (Number(fs.readFileSync(lock, 'utf8')) === stale.pid) fs.rmSync(lock, { force: true }); } catch { /* no lock */ }
 }
 
 /**

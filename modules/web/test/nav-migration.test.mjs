@@ -101,3 +101,34 @@ describe('a workspace with no nav settings', () => {
 		assert.equal(fs.existsSync(path.join(f.root, 'nav.yaml')), false);
 	});
 });
+
+// review round 1 (a-read-pane-s-first-get-nav-writes-nav-yaml): the migration is a write, so it waits for a caller at
+// Edit or above; below Edit the legacy tree is drawn from the settings and nothing is written
+describe('at Read, a workspace with old nav settings and no nav.yaml', () => {
+	test('GET /api/nav from the Read page and from a read client token draws the settings\' tree and writes nothing; the first GET at Edit writes nav.yaml', async () => {
+		const f = fixture();
+		fixtures.push(f);
+		fs.mkdirSync(path.join(f.root, '.vscode'), { recursive: true });
+		fs.writeFileSync(path.join(f.root, '.vscode', 'settings.json'), SETTINGS);
+		await initEngine(f.root);
+		const legacy = navModel({ root: f.root, settings: workspaceNavSettings(f.root) });
+		const web = await startWeb({ root: f.root, appDir: f.app, idleMinutes: 0, stateDir: f.state });
+		servers.push(web);
+		await signIn(web);
+		const control = (p, body) => call(`${web.url}/_dt${p}`, { method: 'POST', headers: { authorization: `Bearer ${web.controlToken}`, 'content-type': 'application/json' }, body: JSON.stringify(body) });
+		assert.equal((await control('/level', { level: 'read' })).status, 200);
+		const token = (await control('/token', { name: 'watcher', level: 'read' })).json.token;
+		for (const [who, headers] of [['the Read page', auth(web)], ['a read client token', { authorization: `Bearer ${token}` }]]) {
+			const r = await call(`${web.url}/api/nav`, { headers });
+			assert.equal(r.status, 200, `${who}: ${r.text}`);
+			assert.equal(r.json[0].notice, undefined, who);
+			assert.deepEqual(comparable(r.json[0].children), comparable(legacy[0].children), who);
+			assert.equal(fs.existsSync(path.join(f.root, 'nav.yaml')), false, `${who} wrote nav.yaml`);
+		}
+		assert.equal((await control('/level', { level: 'edit' })).status, 200);
+		const edit = await call(`${web.url}/api/nav`, { headers: auth(web) });
+		assert.equal(edit.status, 200, edit.text);
+		assert.equal(edit.json[0].notice, NOTICE);
+		assert.equal(fs.existsSync(path.join(f.root, 'nav.yaml')), true);
+	});
+});

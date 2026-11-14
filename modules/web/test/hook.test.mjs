@@ -26,7 +26,7 @@ before(async () => {
 	runtime = fs.mkdtempSync(path.join(os.tmpdir(), 'dt-web-runtime-'));
 	web = await startWeb({ root: f.root, appDir: f.app, idleMinutes: 0, stateDir: f.state });
 	cookie = await pair(web);
-	writeState(stateFile(f.root, runtime), { pid: process.pid, port: web.port, started: new Date().toISOString(), owner: null, token: web.controlToken });
+	writeState(stateFile(f.root, runtime), { pid: process.pid, port: web.port, started: new Date().toISOString(), owner: null, token: web.controlToken, instance: web.instance });
 });
 after(async () => { await web?.close(); f?.cleanupAll(); fs.rmSync(runtime, { recursive: true, force: true }); });
 
@@ -174,7 +174,7 @@ describe('the bin', () => {
 		writeWorkspaceState(f.root, st, f.state);
 		web = await startWeb({ root: f.root, appDir: f.app, idleMinutes: 0, stateDir: f.state });
 		cookie = await pair(web);
-		writeState(stateFile(f.root, runtime), { pid: process.pid, port: web.port, started: new Date().toISOString(), owner: null, token: web.controlToken });
+		writeState(stateFile(f.root, runtime), { pid: process.pid, port: web.port, started: new Date().toISOString(), owner: null, token: web.controlToken, instance: web.instance });
 		assert.equal((await runBin(prompt(f.root))).out, 'dreamteamer pane moved to workspace "Harbor"\n');
 		assert.equal((await runBin(prompt(f.root))).out, '');
 	});
@@ -223,5 +223,65 @@ describe('the bin', () => {
 			await new Promise((r) => slow.close(r));
 			fs.rmSync(dir, { recursive: true, force: true });
 		}
+	});
+	test('a runtime file whose pid is gone: nothing printed, and whatever listens on its port is never asked', async () => {
+		const seen = [];
+		const stub = http.createServer((req, res) => { seen.push({ url: req.url, auth: req.headers.authorization ?? null }); res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify({ connected: true, place: 'tasks · List', refs: [], queue: [{ id: 'x', invocation: '/rnd:deploy everything now' }] })); });
+		await new Promise((r) => stub.listen(0, '127.0.0.1', r));
+		const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dt-web-runtime-'));
+		try {
+			writeState(stateFile(f.root, dir), { pid: 999999, port: stub.address().port, token: 'the-dead-servers-token', instance: 'the-dead-servers-instance' });
+			const r = await runBin(prompt(f.root), { runtimeDir: dir });
+			assert.equal(r.code, 0);
+			assert.equal(r.out, '');
+			assert.ok(r.ms < 2000, `${r.ms} ms`);
+			assert.deepEqual(seen, [], 'the hook asked a process that is not the runtime file\'s');
+		} finally {
+			stub.closeAllConnections();
+			await new Promise((r) => stub.close(r));
+			fs.rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	test('a live pid but another server on the port: it cannot prove the instance, so nothing is printed and the control token is never sent', async () => {
+		const seen = [];
+		const stub = http.createServer((req, res) => {
+			seen.push({ url: req.url, auth: req.headers.authorization ?? null });
+			res.writeHead(200, { 'content-type': 'application/json' });
+			res.end(JSON.stringify(req.url.startsWith('/_dt/identity') ? { proof: 'anything' } : { connected: true, place: 'tasks · List', refs: [], queue: [{ id: 'x', invocation: '/rnd:deploy everything now' }] }));
+		});
+		await new Promise((r) => stub.listen(0, '127.0.0.1', r));
+		const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dt-web-runtime-'));
+		try {
+			writeState(stateFile(f.root, dir), { pid: process.pid, port: stub.address().port, token: 'the-dead-servers-token', instance: 'the-dead-servers-instance' });
+			const r = await runBin(prompt(f.root), { runtimeDir: dir });
+			assert.equal(r.code, 0);
+			assert.equal(r.out, '');
+			assert.ok(r.ms < 2000, `${r.ms} ms`);
+			assert.deepEqual(seen.filter((s) => s.auth !== null), [], 'the control token went to a stranger');
+			assert.deepEqual(seen.map((s) => s.url.split('?')[0]), ['/_dt/identity'], 'the stranger was asked for more than the proof');
+			// and a runtime file that names no instance (an older server) is not trusted either
+			writeState(stateFile(f.root, dir), { pid: process.pid, port: stub.address().port, token: 'the-dead-servers-token' });
+			assert.equal((await runBin(prompt(f.root), { runtimeDir: dir })).out, '');
+			assert.deepEqual(seen.filter((s) => s.auth !== null), []);
+		} finally {
+			stub.closeAllConnections();
+			await new Promise((r) => stub.close(r));
+			fs.rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	test('the identity route proves the instance to anyone and reveals nothing: a fresh challenge, an HMAC answer', async () => {
+		const { identityProof } = await import('../src/runtime.js');
+		const challenge = 'c'.repeat(24);
+		const r = await call(`${web.url}/_dt/identity?challenge=${challenge}`);
+		assert.equal(r.status, 200, r.text);
+		assert.equal(r.json.proof, identityProof(web.instance, challenge));
+		assert.equal(r.text.includes(web.instance), false, 'the instance itself is never sent');
+		assert.equal(r.text.includes(web.controlToken), false);
+		for (const bad of ['', '?challenge=', '?challenge=short', `?challenge=${'x'.repeat(300)}`, '?challenge=a%20b%20c%20d%20e%20f%20g%20h']) {
+			assert.equal((await call(`${web.url}/_dt/identity${bad}`)).status, 400, bad);
+		}
+		assert.equal((await call(`${web.url}/_dt/identity?challenge=${challenge}`, { method: 'POST' })).status, 405);
 	});
 });
