@@ -45,6 +45,8 @@ export const WEIGHTS = {
 	'tests/compiles-alone.test.mjs': 65,
 	// measured 61 s on a developer machine (2026-11-14, engine 0.49 candidate, concurrency 4); re-measure on a runner
 	'tests/check-alone.test.mjs': 61,
+	// measured 18 s on a developer machine (2026-11-14, engine 0.49 candidate): nineteen dt installs in three workspaces
+	'tests/nav-workspaces.test.mjs': 18,
 	'modules/files/test/sync.test.mjs': 45,
 	'modules/worktrees/test/integration/worktrees.test.js': 36,
 	'modules/rnd/test/prototype-play.test.mjs': 21,
