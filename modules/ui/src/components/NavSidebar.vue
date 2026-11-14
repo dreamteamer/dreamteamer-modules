@@ -123,6 +123,16 @@ function dropOp(key: string | null, targetKey: string, where: DropWhere): NavOp 
 	if (onto.kind === 'workspace') return { op: 'move', target: dragged.target, position: 'bottom' };
 	if (!onto.target) return null;
 	if (where === 'into' && (onto.kind === 'folder' || onto.kind === 'namespace')) return { op: 'move', target: dragged.target, into: onto.target };
+	if (where === 'before') {
+		// before the first row of a level is the top of that level; before any other, right after the row above it
+		const sibs = siblingsOf(onto);
+		const i = sibs.findIndex((s) => s.key === onto!.key);
+		if (i === 0) return { op: 'move', target: dragged.target, ...parentInto(onto), position: 'top' };
+		const above = i > 0 ? sibs[i - 1] : undefined;
+		if (!above?.target) return null;
+		if (above.key === dragged.key) return null; // already right there
+		return { op: 'move', target: dragged.target, after: above.target };
+	}
 	return { op: 'move', target: dragged.target, after: onto.target };
 }
 
@@ -228,6 +238,7 @@ onUnmounted(() => { window.removeEventListener('message', onMessage); window.rem
 :deep(.dt-nav-row:hover) { background: var(--dt-bg-hover); }
 :deep(.dt-nav-row[draggable='true']) { cursor: grab; }
 :deep(.dt-nav-drop-after) { box-shadow: inset 0 -2px 0 var(--dt-accent); }
+:deep(.dt-nav-drop-before) { box-shadow: inset 0 2px 0 var(--dt-accent); }
 :deep(.dt-nav-drop-into) { background: var(--dt-accent-subtle); outline: 1px solid var(--dt-accent); outline-offset: -1px; }
 :deep(.dt-nav-twisty) { width: 12px; color: var(--dt-fg-subtle); }
 :deep(.dt-nav-label) { flex: 1; overflow: hidden; text-overflow: ellipsis; }

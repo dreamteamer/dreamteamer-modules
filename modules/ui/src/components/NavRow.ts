@@ -2,22 +2,28 @@
 // draws the same way. A render function, so the recursion needs no self-reference in a template.
 //
 // cr-dt-008: a row whose node carries a `target` (a folder, a namespace, a collection) can be dragged; every row
-// reports where a drag hovers and drops — `into` on the middle of a folder or namespace row, `after` anywhere else —
-// and a right click asks for its menu. What a gesture MEANS (which NavOp, or nothing) is NavSidebar's to decide.
+// reports where a drag hovers and drops — `before` on its upper part (the top quarter of a folder or namespace row,
+// the upper half of any other), `into` on the middle half of a folder or namespace row, `after` below that — and a
+// right click asks for its menu. What a gesture MEANS (which NavOp, or nothing) is NavSidebar's to decide.
 import { defineComponent, h, type PropType } from 'vue';
 
 /** The MIME type a dragged row's key travels under. */
 export const NAV_DRAG_TYPE = 'text/x-dt-nav';
 
-export type DropWhere = 'into' | 'after';
+export type DropWhere = 'before' | 'into' | 'after';
 
-/** Where a pointer at `clientY` over the row drops: `into` on the middle half of a folder or namespace row. */
+/**
+ * Where a pointer at `clientY` over the row drops. A folder or namespace row: `before` on its top quarter, `into` on
+ * the middle half, `after` on its bottom quarter. Any other row: `before` on its upper half, `after` on its lower.
+ * With no pointer position, a container takes `into` and any other row `after`.
+ */
 export function dropWhere(node: { kind: string }, e: { clientY?: number; currentTarget?: unknown }): DropWhere {
-	if (node.kind !== 'folder' && node.kind !== 'namespace') return 'after';
+	const container = node.kind === 'folder' || node.kind === 'namespace';
 	const r = (e.currentTarget as { getBoundingClientRect?: () => { top: number; height: number } } | null)?.getBoundingClientRect?.();
-	if (!r || !r.height || typeof e.clientY !== 'number') return 'into';
+	if (!r || !r.height || typeof e.clientY !== 'number') return container ? 'into' : 'after';
 	const at = (e.clientY - r.top) / r.height;
-	return at >= 0.25 && at <= 0.75 ? 'into' : 'after';
+	if (!container) return at < 0.5 ? 'before' : 'after';
+	return at < 0.25 ? 'before' : at <= 0.75 ? 'into' : 'after';
 }
 
 /** One row and, when open, its children — recursive, so a module folder inside a layer draws the same way. */
