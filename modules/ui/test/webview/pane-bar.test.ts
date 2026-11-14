@@ -113,3 +113,20 @@ test('a host answering no workspace id (the editor) draws no pane bar: App gates
 	assert.match(src, /<PaneBar v-if="paneHost\(\)" \/>/);
 	assert.match(src, /dt:host/, 'App refetches GET /host on dt:host');
 });
+
+test('with only the current workspace registered the switcher shows it checked and says no other was opened', async () => {
+	answers['GET /_dt/workspaces'] = () => ({ status: 200, body: [{ id: 'a1b2c3d4e5f60718', name: 'Northwind', running: true, current: true }] });
+	const root = await render(PaneBar);
+	await click(byClass(root, 'dt-pane-bar__ws-button')[0]);
+	const items = byClass(root, 'dt-pane-bar__ws-item');
+	assert.deepEqual(items.map(words), ['Northwind']);
+	assert.equal(items[0].props['aria-checked'], 'true');
+	assert.deepEqual(byClass(root, 'dt-pane-bar__hint').map(words), ['No other workspace was opened on this machine']);
+});
+
+test('with another workspace in the list there is no such line', async () => {
+	const root = await render(PaneBar);
+	await click(byClass(root, 'dt-pane-bar__ws-button')[0]);
+	assert.equal(byClass(root, 'dt-pane-bar__ws-item').length, 2);
+	assert.deepEqual(byClass(root, 'dt-pane-bar__hint').map(words), []);
+});

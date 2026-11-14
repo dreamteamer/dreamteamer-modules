@@ -24,6 +24,8 @@ const wsOpen = ref(false);
 const levelOpen = ref(false);
 const workspaces = ref<WorkspaceRow[]>([]);
 const error = ref<string | null>(null);
+/** The list always holds the current workspace once `dt web open` registered it: the line says there is nothing else. */
+const others = computed(() => workspaces.value.some((w) => !w.current));
 const busy = ref(false);
 
 async function dt(method: string, path: string, body?: unknown): Promise<any> {
@@ -99,7 +101,7 @@ async function lower(to: PaneLevel): Promise<void> {
 					:aria-checked="w.current ? 'true' : 'false'"
 					@click.stop="pick(w)"
 				>{{ w.name }} <span v-if="!w.current && !w.running" class="dt-pane-bar__muted">starts when opened</span></button>
-				<p v-if="!workspaces.length" class="dt-pane-bar__hint">No other workspace was opened on this machine</p>
+				<p v-if="!others" class="dt-pane-bar__hint">No other workspace was opened on this machine</p>
 			</div>
 		</div>
 		<span v-if="error" class="dt-pane-bar__error" role="alert">{{ error }}</span>
