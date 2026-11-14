@@ -105,7 +105,6 @@ async function lower(to: PaneLevel): Promise<void> {
 			</div>
 		</div>
 		<span v-if="error" class="dt-pane-bar__error" role="alert">{{ error }}</span>
-		<span class="dt-pane-bar__spacer" />
 		<span v-if="notice" class="dt-pane-bar__notice">{{ notice }}</span>
 		<div class="dt-pane-bar__level">
 			<button type="button" class="dt-pane-bar__chip" :data-level="level" aria-haspopup="menu" :aria-expanded="levelOpen ? 'true' : 'false'" @click.stop="toggleLevel">{{ levelWord(level) }}</button>
@@ -118,20 +117,33 @@ async function lower(to: PaneLevel): Promise<void> {
 </template>
 
 <style scoped>
+/*
+ * A narrow pane (a desktop side pane can be 320 px wide) keeps the bar usable: the workspace grows and shrinks,
+ * truncating its name, so the chip always has its row; the menus hang from the BAR, inset by its padding and never
+ * wider than it, so neither is clipped by the page area; under 560 px the raise notice and an error take a row of
+ * their own below rather than wrapping into word fragments.
+ */
 .dt-pane-bar {
+	/* one horizontal inset for the bar and its menus (--dt-page-pad is a two-value shorthand, not a length) */
+	--dt-pane-bar-pad: 12px;
+	position: relative;
+	flex: none;
 	display: flex;
 	align-items: center;
 	gap: 8px;
 	min-height: 28px;
-	padding: 2px var(--dt-page-pad, 12px);
+	padding: 2px var(--dt-pane-bar-pad);
 	border-bottom: 1px solid var(--dt-border);
 	background: var(--dt-bg-subtle);
 	font-size: var(--dt-text, 13px);
 	flex-wrap: wrap;
 }
-.dt-pane-bar__ws,
+.dt-pane-bar__ws {
+	flex: 1 1 0;
+	min-width: 0;
+}
 .dt-pane-bar__level {
-	position: relative;
+	flex: none;
 }
 .dt-pane-bar__ws-button,
 .dt-pane-bar__chip {
@@ -144,23 +156,25 @@ async function lower(to: PaneLevel): Promise<void> {
 	font: inherit;
 }
 .dt-pane-bar__ws-button {
-	max-width: 40vw;
+	max-width: min(40vw, 100%);
 	overflow: hidden;
 	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.dt-pane-bar__chip {
 	white-space: nowrap;
 }
 .dt-pane-bar__chip[data-level='admin'] {
 	border-color: var(--dt-warning);
 }
-.dt-pane-bar__spacer {
-	flex: 1;
-}
 .dt-pane-bar__menu {
 	position: absolute;
 	top: calc(100% + 2px);
-	left: 0;
+	left: var(--dt-pane-bar-pad);
 	z-index: 50;
-	min-width: 180px;
+	box-sizing: border-box;
+	min-width: min(180px, calc(100% - 2 * var(--dt-pane-bar-pad)));
+	max-width: calc(100% - 2 * var(--dt-pane-bar-pad));
 	display: flex;
 	flex-direction: column;
 	padding: 4px;
@@ -171,7 +185,11 @@ async function lower(to: PaneLevel): Promise<void> {
 }
 .dt-pane-bar__menu--right {
 	left: auto;
-	right: 0;
+	right: var(--dt-pane-bar-pad);
+}
+.dt-pane-bar__menu button {
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 .dt-pane-bar__menu button {
 	text-align: left;
@@ -201,5 +219,12 @@ async function lower(to: PaneLevel): Promise<void> {
 }
 .dt-pane-bar__error {
 	color: var(--dt-danger);
+}
+@media (max-width: 560px) {
+	.dt-pane-bar__notice,
+	.dt-pane-bar__error {
+		order: 10;
+		flex-basis: 100%;
+	}
 }
 </style>
