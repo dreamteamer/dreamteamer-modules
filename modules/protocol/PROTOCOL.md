@@ -58,7 +58,6 @@ keys the host computes, each prefixed `$` (or named as below) so a write never p
 | `$module` | the module that owns the record's collection or root |
 | `$repo`, `$dirty`, `$ahead` | the repository holding the file (workspace-relative, `.` the workspace), whether the file has uncommitted changes, and how many commits that repository holds that no remote has |
 | `$duplicates` | other roots holding the same id (the first root wins) |
-| `$stubs` | roots holding a `stub: true` record of this id that this row shadows |
 
 ## Routes
 
@@ -291,6 +290,60 @@ Before every compile-gated write the host re-opens the workspace, so a write aft
 changed compiles against what is declared now; a workspace that will not open is `409` and nothing is
 written. A successful system write's result carries `commits`, including a commit in another repository
 for a module that lives in a `git_modules` clone.
+
+## The nav document
+
+`nav.yaml` at the workspace root is the left nav, arranged by a person and tracked like any other file. Every host
+reads and writes it through one grammar (`src/nav-doc.js`, typed in `nav-doc.d.ts`; the engine's own reader and
+writer from 0.49):
+
+```yaml
+# The left nav of this workspace. Drag and drop writes this file; so may you.
+tree:
+  - folder: Work                 # a folder: a label, an optional icon, its items; folders nest
+    icon: rocket
+    items: [tasks, projects, { folder: Plans, items: [deliverables, risks] }]
+  - { collection: contacts, icon: person }   # a row with its icon overridden; a bare name is a row
+  - namespace: rnd               # a namespace folder: its label is its module's title
+    items: [rnd/change-requests, { folder: Product, items: [rnd/user-stories] }]
+  - { folder: Old, hidden: true, items: [metrics] }
+hidden: [teams]                  # rows (or whole namespaces) not drawn
+```
+
+What the document does not place still draws: an unplaced row trails its parent (the top level, or its namespace's
+folder) by title, an unplaced namespace draws as a folder after the top level's rows, and a name listed twice draws
+at its first place. A name that resolves to nothing is skipped (`dt check` warns about it).
+
+**NavTarget** — what a host sends back to address a node, read from the node's `target` and never decoded from its
+key: `{ name }` is a collection or a namespace exactly as `nav.yaml` writes it; `{ folder: [labels] }` is the label
+path from the top level, a namespace entry being the element `ns:<name>` (`{ folder: ['ns:rnd', 'Product'] }`).
+Labels match exactly, at their first occurrence at each level; the path is an array, never a joined string.
+
+**NavOp** — the body of `PATCH /nav`, one gesture:
+
+| op | body | does | refused (400) when |
+|---|---|---|---|
+| `move` | `{ target, into?, after?, position?: top \| bottom }` | moves the target right after `after`, or to the top or bottom of `into` (a folder, or `{ name }` of a namespace), or of the top level | the target or anchor is unknown; `into` is a row; a folder into itself or its descendant; both `into` and `after`; `position` beside `after` |
+| `new-folder` | `{ label, into? }` | appends an empty folder | the label is empty or starts with `ns:` |
+| `rename` | `{ target: { folder }, label }` | relabels a folder | the path resolves to nothing, or to a namespace; the label as above |
+| `dissolve` | `{ target: { folder } }` | puts a folder's items where it stood | as rename |
+| `icon` | `{ target, icon: name \| null }` | sets or clears an icon | the icon is neither a name nor `null` |
+| `hide` | `{ target }` | a name goes to `hidden`; a folder gets `hidden: true` | the target is unknown |
+| `show` | `{ target }` | the reverse | the target is unknown |
+
+A name the document does not place but the workspace has is a valid target and a valid anchor: `move` places it,
+`icon` places it at the end of its parent with the icon, `hide` adds it to `hidden`. Placing one never moves anything
+else on screen — an anchor among unplaced rows first places the rows of its parent that draw before it, in drawn
+order. Move up is `move` with `after` the sibling two above (or `into` the parent with `position: top` for the second
+row); Move down is `after` the next sibling.
+
+**The old settings.** Before `nav.yaml`, `dreamteamer.navGroups`, `dreamteamer.navOrder` and `dreamteamer.navHidden`
+in `.vscode/settings.json` arranged the nav. While they are set and there is no `nav.yaml`, `GET /nav` draws the tree
+they drew and both write routes answer `409`. They are migrated once — by the editor on activation, by `dt web` on
+its first `GET /nav`, or by hand with `npx -p @dreamteamer/protocol@0.2 dt-nav migrate` — into a `nav.yaml` that draws
+the same folders, rows and order (a hidden folder kept with `hidden: true`), after which they are no longer read. On
+an engine that merges module nav fragments (0.49) the migration applies them after; they place only what the
+document does not.
 
 ## Notifications and gestures
 

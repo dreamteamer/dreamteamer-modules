@@ -161,3 +161,14 @@ export declare function legacyTree(descriptors: Descriptor[], settings?: { navGr
     titleOf?: Map<string, string | undefined>;
     layers?: (NavEntry & { kind: "layers" }) | Array<NavEntry & { kind: "layers" }>;
 }): NavEntry[];
+/** The icon a legacy folder draws (an authored name): its module's look, else the module icon; undefined for a plain folder. */
+export declare function legacyFolderIcon(folder: NavFolder, modules: ReadonlyArray<ModuleRecord>, byName: Map<string, Descriptor>): string | undefined;
+/** What legacyTree and legacyDoc need of a workspace, from its compiled runtime. */
+export declare function legacyContext(root: string): {
+    declared: string[];
+    workspaceModule: string | undefined;
+    dependsOn: Map<string, string[]>;
+    namespacesOf: Map<string, string[]>;
+    titleOf: Map<string, string | undefined>;
+    iconOf: (folder: NavFolder) => string | undefined;
+};

@@ -1,6 +1,6 @@
 // Ported from the dreamteamer VS Code extension's host side (src/nav.ts); PROTOCOL.md is the contract it answers.
 import { engine } from "./engine.js";
-import { isInternal, isRuntime, navViewsOf, viewRow } from "./fsdata.js";
+import { isInternal, isRuntime, loadDescriptors, loadModules, moduleDependencies, moduleNamespaces, navViewsOf, viewRow, workspaceModule } from "./fsdata.js";
 import { describeSources } from "./sources.js";
 export function keepsRuntimeRecords(d) {
     return engine().descriptor.overlaidByOf(d).length > 0;
@@ -576,4 +576,30 @@ export function hasNavSettings(settings) {
 export function legacyTree(descriptors, settings = {}, ctx = {}) {
     const { top, folders } = groupTopLevel(descriptors, ctx.declared ?? [], ctx.workspaceModule, ctx.dependsOn, navGroupsOf(settings?.navGroups), ctx.namespacesOf, ctx.titleOf ?? new Map());
     return withoutHidden(orderTopLevel(top, folders, navOrderOf(settings?.navOrder), ctx.layers), navHiddenOf(settings?.navHidden));
+}
+/** The icon a legacy folder draws (an authored name, before codiconFor): its module's look — the first shipped
+ *  collection's icon by nav order — else the module icon; undefined for a folder no module owns (a plain folder). */
+export function legacyFolderIcon(folder, modules, byName) {
+    const module = folderModule(folder, modules);
+    if (!module)
+        return undefined;
+    const { displayOf } = engine().descriptor;
+    return moduleIcon(modules.find((m) => m.id === module), (c) => {
+        const d = byName.get(c);
+        return d ? { icon: displayOf(d).nav?.icon, order: displayOf(d).nav?.order, runtime: isRuntime(d) } : undefined;
+    }) ?? MODULE_ICON;
+}
+/** What `legacyTree` and `legacyDoc` need of a workspace, read from its compiled runtime: the declared namespaces,
+ *  its own module, the module graph, module titles, and each legacy folder's icon. */
+export function legacyContext(root) {
+    const modules = loadModules(root);
+    const byName = new Map(loadDescriptors(root).map((d) => [d.name, d]));
+    return {
+        declared: engine().namespaces,
+        workspaceModule: workspaceModule(root),
+        dependsOn: moduleDependencies(root),
+        namespacesOf: moduleNamespaces(root),
+        titleOf: new Map(modules.map((m) => [m.id, m.title])),
+        iconOf: (folder) => legacyFolderIcon(folder, modules, byName),
+    };
 }

@@ -18,6 +18,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import yaml from 'js-yaml';
 import { engine, engineLoaded } from './host/engine.js';
+import { loadDescriptors } from './host/fsdata.js';
+import { groupLabel, hasNavSettings, legacyContext, legacyTree, navHiddenOf, navKey } from './host/nav.js';
 
 /** A refused op: the message names the input. A host answers it 400. */
 export class NavOpError extends Error {
@@ -478,4 +480,59 @@ export function unknownNavNames(doc, { collections, namespaces }) {
 	}
 	for (const h of doc.hidden) if (!ctx.collections.has(h) && !declared.has(h)) out.push(`unknown collection "${h}"`);
 	return [...new Set(out)];
+}
+
+// ── the migration from the old settings ─────────────────────────────────────────────────────────────────────
+// Before nav.yaml, three settings in .vscode/settings.json arranged the nav: navOrder (the top level's order),
+// navGroups (modules gathered into a named folder), navHidden (top-level names not drawn). The migration writes the
+// tree they drew as a document, once, so the drawing does not change: every folder keeps its label, nesting, order
+// and icon; a hidden top-level folder is kept with `hidden: true`, a hidden top-level row goes to `hidden`.
+
+/**
+ * The legacy tree's entries (legacyTree, BEFORE navHidden is applied) as a NavDoc. A top-level row is its name; a
+ * module or group folder `{ folder: <label as drawn>, icon?, items }`; a namespace folder `{ namespace, icon?, items }`;
+ * a folder's rows come before its subfolders, as the legacy tree draws them. A navHidden name matching a top-level
+ * row puts it in `hidden`; matching a top-level folder, that entry gets `hidden: true` — the legacy tree hid nothing
+ * deeper, so nothing deeper is hidden. The layers entry is dropped: layers draw after the tree.
+ * @param {Array} entries  legacyTree's top level, computed with no navHidden
+ * @param {{ navHidden?: unknown }} settings
+ * @param {{ titleOf?: Map<string, string|undefined>, iconOf?: (folder) => string|undefined }} ctx
+ */
+export function legacyDoc(entries, settings = {}, { titleOf = new Map(), iconOf = () => undefined } = {}) {
+	const hidden = new Set(navHiddenOf(settings?.navHidden));
+	const folderEntry = (f, parentKey) => {
+		const icon = iconOf(f);
+		const items = [...f.collections.map((d) => d.name), ...f.children.map((c) => folderEntry(c, f.key))];
+		return f.key.startsWith('ns:')
+			? { namespace: f.key.slice(3), ...(icon ? { icon } : {}), items }
+			: { folder: groupLabel(f.key, titleOf, parentKey), ...(icon ? { icon } : {}), items };
+	};
+	const doc = { tree: [], hidden: [] };
+	for (const e of entries) {
+		if (e.kind === 'collection') {
+			(hidden.has(navKey(e).toLowerCase()) ? doc.hidden : doc.tree).push(e.descriptor.name);
+		} else if (e.kind === 'folder') {
+			const entry = folderEntry(e.folder);
+			if (hidden.has(navKey(e).toLowerCase())) entry.hidden = true;
+			doc.tree.push(entry);
+		}
+	}
+	return doc;
+}
+
+/**
+ * Write a workspace's old nav settings into nav.yaml — once: only when nav.yaml is absent and one of navGroups,
+ * navOrder, navHidden holds something. Then, on an engine that merges module fragments (0.49), apply them (they place
+ * only what the document does not). `{ written, fragments }`; the engine must be loaded for `root`.
+ * @param {string} root
+ * @param {{ navGroups?: unknown, navOrder?: unknown, navHidden?: unknown }} settings
+ */
+export function migrateNavSettings(root, settings = {}) {
+	if (fs.existsSync(path.join(root, NAV_FILE)) || !hasNavSettings(settings)) return { written: false, fragments: false };
+	const ctx = legacyContext(root);
+	const entries = legacyTree(loadDescriptors(root), { ...settings, navHidden: [] }, ctx);
+	writeNavDoc(root, legacyDoc(entries, settings, ctx));
+	const apply = engineNav('applyNavFragments');
+	if (apply) apply(root);
+	return { written: true, fragments: Boolean(apply) };
 }

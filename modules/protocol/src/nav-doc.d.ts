@@ -81,3 +81,17 @@ export declare function writeNavDoc(root: string, doc: NavDoc): boolean;
 export declare function checkNavDoc(input: unknown): NavDoc;
 /** `unknown collection "x"` / `unknown namespace "y"` for each name the workspace does not have. */
 export declare function unknownNavNames(doc: NavDoc, ctx: { collections: Set<string> | Iterable<string>; namespaces: readonly string[] }): string[];
+
+/** The legacy tree's top level (computed with no navHidden) as a NavDoc: folders keep label, nesting, order and icon;
+ *  a hidden top-level row goes to `hidden`, a hidden top-level folder gets `hidden: true`; the layers entry is dropped. */
+export declare function legacyDoc(
+	entries: ReadonlyArray<unknown>,
+	settings?: { navHidden?: unknown },
+	ctx?: { titleOf?: Map<string, string | undefined>; iconOf?: (folder: any) => string | undefined },
+): NavDoc;
+/** Write the old nav settings into nav.yaml once (absent file, a setting set), then apply the engine's fragments when
+ *  it merges them (0.49). The engine must be loaded for `root`. */
+export declare function migrateNavSettings(
+	root: string,
+	settings?: { navGroups?: unknown; navOrder?: unknown; navHidden?: unknown },
+): { written: boolean; fragments: boolean };

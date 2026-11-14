@@ -31,9 +31,13 @@
 		"./module-grant": "./src/module-grant.js",
 		"./frame-document": "./src/frame-document.js"
 	},
+	"bin": {
+		"dt-nav": "bin/dt-nav.mjs"
+	},
 	"files": [
 		"README.md",
 		"PROTOCOL.md",
+		"bin",
 		"src",
 		"lib"
 	],
