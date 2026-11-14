@@ -54,6 +54,8 @@ export function contained(root, rel) {
 }
 
 const hostNames = (port) => new Set([`127.0.0.1:${port}`, `localhost:${port}`, `[::1]:${port}`]);
+/** The methods each prefix answers, for the Allow header of a 405 to OPTIONS. */
+const ALLOW = { root: 'GET, HEAD', shell: 'GET, HEAD', 'sign-in': 'GET', api: 'GET, HEAD, POST, PUT, PATCH, DELETE', dt: 'GET, POST', files: 'GET, HEAD', frames: 'GET, HEAD' };
 class HttpError extends Error { constructor(status, message) { super(message); this.status = status; } }
 const decode = (s) => { try { return decodeURIComponent(s); } catch { throw new HttpError(400, 'a malformed percent-escape in the path'); } };
 
@@ -465,6 +467,12 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 60, owner
 		const kind = classify(rawPath);
 		// a sandboxed document (a record file, a module frame) has an opaque origin: it reaches nothing but bytes
 		if (origin === 'null' && kind !== 'files' && kind !== 'frames') return kind === 'api' || kind === 'dt' ? json(res, 403, { error: NOT_FROM_THE_PANE }) : send(res, 403, 'a request from a sandboxed document is refused');
+		// no cross-origin request is ever granted, so there is no preflight to answer: OPTIONS is refused as a method on
+		// every prefix (never a redirect, a 404 that says the route is missing, or a 401 that asks for a token)
+		if (req.method === 'OPTIONS' && ALLOW[kind]) {
+			res.setHeader('Allow', ALLOW[kind]);
+			return kind === 'api' || kind === 'dt' ? json(res, 405, { error: `OPTIONS is not answered here — ${ALLOW[kind]}` }) : send(res, 405, `OPTIONS is not answered here — ${ALLOW[kind]}`);
+		}
 		switch (kind) {
 			case 'root':
 				res.writeHead(302, { Location: '/app/' });

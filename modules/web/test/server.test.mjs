@@ -236,6 +236,28 @@ describe('record files under /_files/<key>/', () => {
 	});
 });
 
+describe('OPTIONS', () => {
+	test('every prefix refuses it as a method: 405 with an Allow header, never a redirect, a 404 or a 401, never a CORS grant', async () => {
+		const code = new URL(web.pair()).pathname;
+		const paths = ['/', '/app/', code, '/api/info', '/api/collections/tasks/records', '/_dt/workspaces', '/_dt/level', files('/v/DT_WEB_TEST_MEDIA/board.png').slice(web.url.length), `/_frames/${web.filesKey}/probe/app.html`];
+		for (const p of paths) {
+			for (const headers of [{ cookie, ...sameOrigin() }, {}]) {
+				const r = await call(`${web.url}${p}`, { method: 'OPTIONS', headers });
+				assert.equal(r.status, 405, `OPTIONS ${p} (${headers.cookie ? 'cookie' : 'nothing'}): ${r.status} ${r.text}`);
+				assert.match(r.headers.get('allow') ?? '', /^[A-Z, ]+$/, `OPTIONS ${p}: Allow ${r.headers.get('allow')}`);
+				assert.equal([...r.headers.keys()].filter((k) => k.startsWith('access-control-')).length, 0, `OPTIONS ${p} sent a CORS header`);
+			}
+		}
+		// a preflight from another site is still refused as that, first
+		const evil = await call(`${web.url}/api/info`, { method: 'OPTIONS', headers: { origin: 'http://evil.example', 'access-control-request-method': 'PATCH' } });
+		assert.equal(evil.status, 403);
+		// a path no prefix names stays 404, whatever the method
+		assert.equal((await call(`${web.url}/apix/info`, { method: 'OPTIONS' })).status, 404);
+		// the server answers on: the sign-in code was not taken by an OPTIONS
+		assert.equal((await call(`${web.url}${code}`)).status, 302);
+	});
+});
+
 describe('[::1]', () => {
 	test('a request at [::1] is sent to 127.0.0.1, path and query kept', async () => {
 		const viaHost = await new Promise((resolve, reject) => {
