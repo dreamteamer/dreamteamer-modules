@@ -164,6 +164,44 @@ test('the drop line is drawn above the row on its upper part, and a folder keeps
 	assert.match(String(rowOf(root, 'n/ns%3Arnd').props['class']), /dt-nav-drop-into/);
 });
 
+test('inside a folder: before its first row is the top of that folder; a folder dragged before its own child is sent and refused by the host', async () => {
+	const root = await render(NavSidebar, {}, [router()]);
+	await open(root, 'n/ns%3Arnd');
+	await open(root, 'f/ns%3Arnd/Product');
+	await drop(root, 'c/tasks', 'c/rnd/user-stories', 2);
+	await drop(root, 'f/ns%3Arnd/Product', 'c/rnd/user-stories', 2);
+	assert.deepEqual(patches(), [
+		{ op: 'move', target: { name: 'tasks' }, into: { folder: ['ns:rnd', 'Product'] }, position: 'top' },
+		{ op: 'move', target: { folder: ['ns:rnd', 'Product'] }, into: { folder: ['ns:rnd', 'Product'] }, position: 'top' },
+	]);
+});
+
+test('the lower edge of an open folder is the top inside it; of a closed one, after it', async () => {
+	const root = await render(NavSidebar, {}, [router()]);
+	await drop(root, 'c/tasks', 'n/ns%3Arnd', 18);
+	await open(root, 'n/ns%3Arnd');
+	await drop(root, 'c/tasks', 'n/ns%3Arnd', 18);
+	assert.deepEqual(patches(), [
+		{ op: 'move', target: { name: 'tasks' }, after: { name: 'rnd' } },
+		{ op: 'move', target: { name: 'tasks' }, into: { name: 'rnd' }, position: 'top' },
+	]);
+});
+
+test('the line is drawn where the drop lands: over a view row, after its collection; over the workspace row, into it', async () => {
+	const root = await render(NavSidebar, {}, [router()]);
+	await open(root, 'c/companies');
+	const store = new Map<string, string>();
+	const ev = (y: number) => ({ clientY: y, currentTarget: { getBoundingClientRect: () => ({ top: 0, height: 20 }) }, dataTransfer: { setData: (t: string, v: string) => store.set(t, v), getData: (t: string) => store.get(t) ?? '' }, preventDefault() {}, stopPropagation() {} });
+	(rowOf(root, 'c/tasks').props['onDragstart'] as (e: unknown) => void)(ev(10));
+	(rowOf(root, 'v/companies-map').props['onDragover'] as (e: unknown) => void)(ev(2));
+	await flush();
+	assert.match(String(rowOf(root, 'c/companies').props['class']), /dt-nav-drop-after/);
+	assert.doesNotMatch(String(rowOf(root, 'v/companies-map').props['class']), /dt-nav-drop/);
+	(rowOf(root, 'workspace').props['onDragover'] as (e: unknown) => void)(ev(2));
+	await flush();
+	assert.match(String(rowOf(root, 'workspace').props['class']), /dt-nav-drop-into/);
+});
+
 test('a drop on the upper part of a view row is still a drop after its collection', async () => {
 	const root = await render(NavSidebar, {}, [router()]);
 	await open(root, 'c/companies');

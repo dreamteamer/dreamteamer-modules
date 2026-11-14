@@ -122,7 +122,10 @@ function dropOp(key: string | null, targetKey: string, where: DropWhere): NavOp 
 	if (!onto) return null;
 	if (onto.kind === 'workspace') return { op: 'move', target: dragged.target, position: 'bottom' };
 	if (!onto.target) return null;
-	if (where === 'into' && (onto.kind === 'folder' || onto.kind === 'namespace')) return { op: 'move', target: dragged.target, into: onto.target };
+	const container = onto.kind === 'folder' || onto.kind === 'namespace';
+	if (where === 'into' && container) return { op: 'move', target: dragged.target, into: onto.target };
+	// the lower edge of an OPEN folder is the top of its first row, so it means the top inside it — one place per line
+	if (where === 'after' && container && opensOnto(onto)) return { op: 'move', target: dragged.target, into: onto.target, position: 'top' };
 	if (where === 'before') {
 		// before the first row of a level is the top of that level; before any other, right after the row above it
 		const sibs = siblingsOf(onto);
@@ -136,10 +139,19 @@ function dropOp(key: string | null, targetKey: string, where: DropWhere): NavOp 
 	return { op: 'move', target: dragged.target, after: onto.target };
 }
 
+/** An open folder or namespace whose arranged rows are drawn right under it. */
+function opensOnto(n: NavNode): boolean {
+	return open.value.has(n.key) && (n.children ?? []).some((c) => c.target && ARRANGED.has(c.kind));
+}
+
 function onDrag(key: string) { dragging.value = key; }
+/** The line is drawn where the drop lands: a view row's drop is after its collection, the workspace row's into it. */
 function onHover(h: { key: string; where: DropWhere }) {
 	const onto = index.value.byKey.get(h.key);
-	hint.value = onto && !LAYER_KINDS.has(onto.kind) ? h : null;
+	if (!onto || LAYER_KINDS.has(onto.kind)) { hint.value = null; return; }
+	if (onto.kind === 'view') { const p = index.value.parentOf.get(onto.key); hint.value = p ? { key: p.key, where: 'after' } : null; return; }
+	if (onto.kind === 'workspace') { hint.value = { key: onto.key, where: 'into' }; return; }
+	hint.value = h;
 }
 function onMove(m: { key: string | null; targetKey: string; where: DropWhere }) {
 	const op = dropOp(m.key ?? dragging.value, m.targetKey, m.where);
