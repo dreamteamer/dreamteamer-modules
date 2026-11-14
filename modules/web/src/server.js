@@ -21,7 +21,7 @@ import { appCsp, baseHeaders, FILE_CSP } from './headers.js';
 import { classify } from './dispatch.js';
 import { moduleFrameRoute, resolveGuest } from './module-frames.js';
 import { createPairing } from './pairing.js';
-import { createSessions, SESSION_MAX_AGE_S } from './sessions.js';
+import { createSessions } from './sessions.js';
 import { readWorkspaceState, stateDir as defaultStateDir, workspaceKey, writeWorkspaceState } from './state.js';
 import { matchClientToken, mintClientToken } from './tokens.js';
 import { createPaneStore, workspaceName } from './pane-store.js';
@@ -68,7 +68,7 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 60, owner
 	}
 	const state = readWorkspaceState(root, stateDir);
 	const save = () => writeWorkspaceState(root, state, stateDir);
-	const sessions = createSessions({ state, save, now });
+	const sessions = createSessions({ now });
 	const pairing = createPairing({ now });
 	const controlToken = random(32);
 	const filesKey = random(18);
@@ -173,7 +173,8 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 60, owner
 		const taken = pairing.take(url.pathname.slice('/sign-in/'.length));
 		if (!taken) return page(res, 401, SIGN_IN_REFUSED);
 		const sid = sessions.mint(taken.cap ?? null);
-		res.setHeader('Set-Cookie', `${cookieName()}=${sid}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${SESSION_MAX_AGE_S}`);
+		// a browser-session cookie: no Max-Age, since the session itself lives only as long as this process
+		res.setHeader('Set-Cookie', `${cookieName()}=${sid}; HttpOnly; SameSite=Strict; Path=/`);
 		res.writeHead(302, { Location: `/app/#${taken.route}` });
 		return res.end();
 	};
@@ -231,7 +232,6 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 60, owner
 	};
 	/** The level a request is answered at: the stored level lowered by the session's cap, or the client token's own. */
 	const levelOf = (who) => (who.kind === 'client' ? who.record.level : lowerLevel(state.level, who.cap ?? 'admin'));
-	const renewCookie = (res, sid) => res.setHeader('Set-Cookie', `${cookieName()}=${sid}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${SESSION_MAX_AGE_S}`);
 	const setLevel = (level) => {
 		const was = state.level;
 		if (levelRank(level) > levelRank(was)) state.raisedAt = new Date(now()).toISOString();
@@ -270,10 +270,7 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 60, owner
 		const decision = gate(paneScope({ level, internal: internalNow(), label: who.kind === 'client' ? 'this token' : 'this pane' }), handler.api.descriptors(), req.method, apiPath, url.searchParams, body);
 		// no route: the handler answers its own 404, with the encoding hint
 		if (!decision.ok && decision.status !== 404) return json(res, decision.status, { error: decision.error });
-		if (hit?.route.id === 'host') {
-			if (who.kind === 'cookie') renewCookie(res, who.sid);
-			return json(res, 200, await store.host({ level }));
-		}
+		if (hit?.route.id === 'host') return json(res, 200, await store.host({ level }));
 		const log = console.log;
 		console.log = () => {};
 		try {
@@ -344,8 +341,7 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 60, owner
 				save();
 				return [200, { revoked: n - state.clientTokens.length }];
 			}
-			const n = Object.keys(state.sessions).length;
-			sessions.revokeAll();
+			const n = sessions.revokeAll();
 			for (const c of clientStreams) c.end();
 			return [200, { revoked: n }];
 		},
@@ -499,7 +495,7 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 60, owner
 		clearTimeout(timer); idle.clear(); clearInterval(ownerTimer);
 		for (const w of watchers) w.close();
 		for (const c of clientStreams) c.end();
-		try { sessions.flush(); store.flush?.(); } catch { /* the state dir went away: the next start reads what was written */ }
+		try { store.flush?.(); } catch { /* the state dir went away: the next start reads what was written */ }
 		const done = new Promise((r) => server.close(r));
 		server.closeAllConnections?.();
 		await done;
@@ -518,9 +514,9 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 60, owner
 	const ownerTimer = ownerPid ? setInterval(() => { try { process.kill(ownerPid, 0); } catch (e) { if (e.code !== 'EPERM') close('owner gone'); } }, 5_000) : null;
 	ownerTimer?.unref?.();
 
-	// the port: the one asked for, else the stored one, else any. A stored port another process took moves the server —
-	// every session ends (a cookie of the old port is someone else's to replay) and the caller says where from; a port
-	// the person asked for is theirs, and taken it is an error. The port is stored at once.
+	// the port: the one asked for, else the stored one, else any. A stored port another process took moves the server and
+	// the caller says where from (no session outlives a process, so the old port's cookie names nothing here); a port the
+	// person asked for is theirs, and taken it is an error. The port is stored at once.
 	const listenOn = (p) => new Promise((resolve, reject) => {
 		const fail = (e) => reject(e);
 		server.once('error', fail);
@@ -533,7 +529,6 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 60, owner
 			listenPort = await listenOn(port || stored || 0);
 		} catch (e) {
 			if (e?.code !== 'EADDRINUSE' || !stored) throw e;
-			sessions.invalidateAll();
 			movedFrom = stored;
 			listenPort = await listenOn(0);
 		}

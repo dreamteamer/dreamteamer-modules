@@ -60,13 +60,15 @@ Uninstall: `npm uninstall @dreamteamer/web`, then remove the `UserPromptSubmit` 
 | `npx dt web list` | every workspace `dt web open` registered on this machine: name, port, running or stopped, folder |
 | `npx dt web revoke [--token <n>]` | ends every session (the page signs out), or removes one client token |
 | `npx dt web status` | `running at http://127.0.0.1:<port> · pid <n> · level <Level> · since <time>` and exit 0, or `not running` and exit 1. It writes nothing |
-| `npx dt web stop [--revoke]` | stops the server; `--revoke` ends every session first |
+| `npx dt web stop [--revoke]` | stops the server, and with it every session: the page signs out (`--revoke` ends them first, the same end) |
 | `npx dt web start [--foreground] [--port <n>] [--idle <minutes>] [--owner-pid <pid>]` | starts the server without pairing. `--foreground` serves in this process (for a launch entry). `--port` or `DT_WEB_PORT` picks the port; `--idle` the minutes with no page and no token request before it stops (default 60, `0` never); `--owner-pid` stops it when that process exits |
 | `npx dt serve [--read\|--edit] [--name <n>]` | `dt web token --name serve`: a client token of this workspace's server |
 
 One server serves one workspace, on a port it keeps: the first start picks a free one and stores it, and later
 starts reuse it. When that port is taken by another program, the server moves and prints
-`port <old> was taken; moved to <new> — open the pane again: dt web open`, and every session of the old port ends.
+`port <old> was taken; moved to <new> — open the pane again: dt web open`. The pane's sessions live in the server's
+memory only, so a restart signs the pane out — `dt web stop`, the idle stop, a reboot — and the next `dt web open`
+pairs it again.
 `npx dt doctor` shows a `web` row (running or not, and the level) and a `web hook` row while the chat cannot see
 the pane.
 
@@ -102,8 +104,8 @@ running an editor command.
 
 | | |
 |---|---|
-| **protects against** | web pages on other origins, including DNS names rebound to `127.0.0.1` (Host and Origin checks); a page on another site making your browser read or write here (`Sec-Fetch-Site: cross-site` is refused on every prefix, and the cookie counts only with `Sec-Fetch-Site: same-origin` or an `Origin` naming this server); a hostile image, SVG or `.html` file a record points at running script as you (record files are served sandboxed under `/_files/`, where no cookie and no API answer); a page or a client token doing more than its level allows (the server checks every route against the level, and a page can only lower it); other users on the machine reading your tokens (they are in your per-user directories, mode `0600`); a module's app — from an npm package or a workspace under `git_modules/` — using your session: it runs in a sandboxed frame under `/_frames/` with no cookie and no network API (`connect-src 'none'`); every record it asks for, every value it is shown and every change it sends back goes through a bridge that allows only its own collections, plus the collections and the writes YOU grant it in this workspace's own `.vscode/settings.json` (`dreamteamer.moduleApps` — the same entry in your user settings or in a `.code-workspace` file grants nothing), never anything a layer's own files declare; without a grant it is read-only |
-| **does not protect against** | **A program that takes the stored port while the server is down.** The page reconnects to it and sends its cookie, which that program can replay until the session expires (7 days idle), until `dt web revoke`, or until the server's next start finds the port taken and ends every session. **A pane that sends no Fetch-Metadata**: every Chromium-based pane sends it; the Codex desktop pane is untested, and a page there that sends neither `Sec-Fetch-Site` nor `Origin` is refused rather than trusted. **Inline styles**: the app's policy keeps `style-src 'self' 'unsafe-inline'`, because the editor the UI ships injects styles; scripts are this page's nonce and `/app/` only. **The files key**: record files are reachable under `/_files/<key>/` with no cookie until the next start, so a program that learns the key reads the record files the page could show until then. **Another process running as you**: it reads the control token in your runtime directory, as it can read your files, and so drives every `dt web` verb. **Which chat gets a queued item**: an item goes to whichever chat in the workspace prompts next; one person per machine makes that your own. **What the hook prints**: record ids (never names or values) and the page's place go into the model's context, framed as data, not instructions. **A switch between workspaces**: a page at any level can hand itself to another registered workspace, at the lower of its level and that workspace's stored level. **A browser extension** with access to `127.0.0.1`: the cookies API reads `HttpOnly` cookies. **Where the sign-in URL is written down** before it is used or refused: a session transcript, a pane's logs, your shell history. **What a module's app does inside its reach**: it can copy what it may read into the collections you let it write, and a layer's records leave the machine when you push the layer; and, as for any web page, a peer connection (WebRTC) to a server it names and your browser's DNS prefetch of a link's host, which no page policy governs. **Your grant is the workspace's**: `.vscode/settings.json` is a file git tracks, so a grant is shared with everyone who clones the workspace |
+| **protects against** | web pages on other origins, including DNS names rebound to `127.0.0.1` (Host and Origin checks); a page on another site making your browser read or write here (`Sec-Fetch-Site: cross-site` is refused on every prefix, and the cookie counts only with `Sec-Fetch-Site: same-origin` or an `Origin` naming this server); a hostile image, SVG or `.html` file a record points at running script as you (record files are served sandboxed under `/_files/`, where no cookie and no API answer); a page or a client token doing more than its level allows (the server checks every route against the level, and a page can only lower it); a program that takes the port while the server is down replaying the pane's cookie (the sessions live in the server's memory only and never in a file, so a restart signs the pane out and an old cookie names no session); other users on the machine reading your tokens (they are in your per-user directories, mode `0600`); a module's app — from an npm package or a workspace under `git_modules/` — using your session: it runs in a sandboxed frame under `/_frames/` with no cookie and no network API (`connect-src 'none'`); every record it asks for, every value it is shown and every change it sends back goes through a bridge that allows only its own collections, plus the collections and the writes YOU grant it in this workspace's own `.vscode/settings.json` (`dreamteamer.moduleApps` — the same entry in your user settings or in a `.code-workspace` file grants nothing), never anything a layer's own files declare; without a grant it is read-only |
+| **does not protect against** | **A pane that sends no Fetch-Metadata**: every Chromium-based pane sends it; the Codex desktop pane is untested, and a page there that sends neither `Sec-Fetch-Site` nor `Origin` is refused rather than trusted. **Inline styles**: the app's policy keeps `style-src 'self' 'unsafe-inline'`, because the editor the UI ships injects styles; scripts are this page's nonce and `/app/` only. **The files key**: record files are reachable under `/_files/<key>/` with no cookie until the next start, so a program that learns the key reads the record files the page could show until then. **Another process running as you**: it reads the control token in your runtime directory, as it can read your files, and so drives every `dt web` verb. **Which chat gets a queued item**: an item goes to whichever chat in the workspace prompts next; one person per machine makes that your own. **What the hook prints**: record ids (never names or values) and the page's place go into the model's context, framed as data, not instructions. **A switch between workspaces**: a page at any level can hand itself to another registered workspace, at the lower of its level and that workspace's stored level. **A browser extension** with access to `127.0.0.1`: the cookies API reads `HttpOnly` cookies. **Where the sign-in URL is written down** before it is used or refused: a session transcript, a pane's logs, your shell history. **What a module's app does inside its reach**: it can copy what it may read into the collections you let it write, and a layer's records leave the machine when you push the layer; and, as for any web page, a peer connection (WebRTC) to a server it names and your browser's DNS prefetch of a link's host, which no page policy governs. **Your grant is the workspace's**: `.vscode/settings.json` is a file git tracks, so a grant is shared with everyone who clones the workspace |
 
 Found a hole? See [SECURITY.md](../../SECURITY.md). Do not open a public issue.
 
@@ -125,13 +127,15 @@ Found a hole? See [SECURITY.md](../../SECURITY.md). Do not open a public issue.
 - **Host and Origin.** A request's `Host` must be `127.0.0.1:<port>`, `localhost:<port>` or `[::1]:<port>`, with
   this server's port. An `Origin`, when sent, must be `http://` plus one of those. Anything else gets `403`. The
   shell and `/sign-in/` accept `Sec-Fetch-Site` same-origin, same-site or none, never cross-site.
-- **Sessions.** The sign-in sets `dt_pane_<port>` with `HttpOnly; SameSite=Strict; Path=/; Max-Age=604800`: a
-  random session id, renewed on use, that ends after 7 days idle. The server keeps only its SHA-256, in the
-  per-user state directory (on macOS `~/Library/Application Support/dreamteamer/web/state/`, on Linux
-  `$XDG_STATE_HOME/dreamteamer/web/`): mode `0700`, files `0600`, nothing in the workspace. A restart keeps the
-  sessions, so the pane stays signed in. The cookie counts on `/api/` and `/_dt/` only with
+- **Sessions.** The sign-in sets `dt_pane_<port>` with `HttpOnly; SameSite=Strict; Path=/` and no `Max-Age`: a
+  browser-session cookie holding a random session id, renewed on use, that ends after 7 days idle. The server keeps
+  the sessions in its memory only, never in a file, so a restart signs the pane out — `dt web stop`, the idle stop,
+  a reboot — and the next `dt web open` pairs it again. The cookie counts on `/api/` and `/_dt/` only with
   `Sec-Fetch-Site: same-origin` or an `Origin` naming this server. A page whose session ended shows one sentence:
-  ask the chat to show it again.
+  ask the chat to show it again. What does outlive a restart — the port, the level, the pane's place, selection
+  and queue, and the client tokens (by SHA-256 only) — is in the per-user state directory (on macOS
+  `~/Library/Application Support/dreamteamer/web/state/`, on Linux `$XDG_STATE_HOME/dreamteamer/web/`): mode
+  `0700`, files `0600`, nothing in the workspace.
 - **Tokens.** The **control token** is minted each start and kept in your per-user runtime directory (on Linux
   `$XDG_RUNTIME_DIR/dreamteamer-web/`, on macOS `~/Library/Application Support/dreamteamer/web/runtime/`); the
   verbs use it, and only on `/_dt/`. A **client token** (`dt web token`, `dt serve`) is for a program of yours:
@@ -237,8 +241,8 @@ claimed `dt serve` before, must remove `@dreamteamer/http` first — the engine 
 ## troubleshooting
 
 - **"This sign-in link was used or is older than a minute"**: run `npx dt web open` again and open the new URL.
-- **"This pane is signed out"**: the session ended (`dt web revoke`, 7 days idle, or the port moved). Ask the chat
-  to show it again — it runs `dt web open`.
+- **"This pane is signed out"**: the session ended (the server restarted or stopped, `dt web revoke`, or 7 days
+  idle). Ask the chat to show it again — it runs `dt web open`.
 - **"the page cannot raise the level"**: raising is the chat's: `npx dt web open --edit` or `--admin`.
 - **The chat does not see the pane**: run `npx dt web hook --install` in the workspace, and check that a page is
   connected (`npx dt web selection`). After a Node upgrade that moved `node`, run it again.

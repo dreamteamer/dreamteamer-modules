@@ -33,6 +33,10 @@ Hand the URL to what shows it:
 Never paste the URL or a token into a file, a commit, a record or a note: until it is used it is a key to the
 workspace.
 
+A restart signs the pane out — `dt web stop`, the idle stop after an hour with no page, a reboot — because the
+session lives in the server's memory only. A page that says **This pane is signed out**, or a verb that just
+brought the server back, means: run `npx dt web open` again and hand the new URL over the same way.
+
 ## 2. When `open` says the chat cannot see the pane
 
 `the chat cannot see the pane yet — run: dt web hook --install` means the prompt hook is not installed in this
@@ -75,7 +79,7 @@ chat raises it, and the pane shows since when a raise holds.
 
 ```bash
 npx dt web status         # "running at http://127.0.0.1:<port> · pid <n> · level <Level> · since <time>", or "not running" (exit 1)
-npx dt web stop           # stopped; --revoke also signs every page out
+npx dt web stop           # stopped, and every page signed out (the next dt web open pairs again)
 npx dt web revoke         # signs every page out, the server keeps running
 ```
 

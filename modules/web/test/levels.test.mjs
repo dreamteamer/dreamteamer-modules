@@ -213,9 +213,10 @@ describe('GET /host', () => {
 		assert.equal(img.status, 200);
 	});
 
-	test('a cookie GET /host renews the cookie: the same sid, a fresh Max-Age', async () => {
+	test('a cookie GET /host sets no cookie: a browser-session cookie has no Max-Age to renew', async () => {
 		const r = await api('/host');
-		assert.equal(r.headers.get('set-cookie'), `${cookie}; HttpOnly; SameSite=Strict; Path=/; Max-Age=604800`);
+		assert.equal(r.status, 200);
+		assert.equal(r.headers.get('set-cookie'), null);
 		assert.equal((await api('/info')).headers.get('set-cookie'), null);
 	});
 

@@ -1,8 +1,9 @@
 // The per-user STATE of dt web (cr-modules-017 §2): what outlives a server — its port, the workspace's level, the
-// hashed sessions, the client tokens, the pane's place, selection and queue — one file per workspace, named like
-// the runtime file (the realpath hash), plus registry.json, the workspaces `dt web open` has seen. The dir is
-// 0700 and every file 0600, written through a temp file and a rename; nothing here holds a sid, a code or a token
-// in clear. The runtime dir (runtime.js) keeps only what one process owns: pid, control token, start lock.
+// hashed client tokens, the pane's place, selection and queue — one file per workspace, named like the runtime file
+// (the realpath hash), plus registry.json, the workspaces `dt web open` has seen. The dir is 0700 and every file 0600,
+// written through a temp file and a rename; nothing here holds a sid, a code or a token in clear. The pane's sessions
+// are NOT here: they live in the server's memory only (sessions.js), so a restart signs the pane out. The runtime
+// dir (runtime.js) keeps only what one process owns: pid, control token, start lock.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -22,10 +23,10 @@ export function stateDir(env = process.env, platform = process.platform, home = 
 const LEVELS = new Set(['read', 'edit', 'admin']);
 const PANE = { view: null, refs: [], place: null, at: null, queue: [], connectedAt: null, movedTo: null };
 export const DEFAULT_STATE = Object.freeze({
-	port: null, level: 'edit', raisedAt: null, hookSeenAt: null, sessions: Object.freeze({}), clientTokens: Object.freeze([]),
+	port: null, level: 'edit', raisedAt: null, hookSeenAt: null, clientTokens: Object.freeze([]),
 	pane: Object.freeze({ ...PANE, refs: Object.freeze([]), queue: Object.freeze([]) }),
 });
-const defaults = () => ({ ...DEFAULT_STATE, sessions: {}, clientTokens: [], pane: { ...PANE, refs: [], queue: [] } });
+const defaults = () => ({ ...DEFAULT_STATE, clientTokens: [], pane: { ...PANE, refs: [], queue: [] } });
 const HEX64 = /^[0-9a-f]{64}$/;
 const isPlain = (o) => o !== null && typeof o === 'object' && !Array.isArray(o);
 const validPort = (p) => Number.isInteger(p) && p > 0 && p < 65536;
@@ -59,9 +60,7 @@ export function readWorkspaceState(root, dir = stateDir()) {
 	if (validPort(raw.port)) out.port = raw.port;
 	if (LEVELS.has(raw.level)) out.level = raw.level;
 	for (const k of ['raisedAt', 'hookSeenAt']) if (typeof raw[k] === 'string') out[k] = raw[k];
-	if (isPlain(raw.sessions)) {
-		for (const [h, v] of Object.entries(raw.sessions)) if (HEX64.test(h) && isPlain(v)) out.sessions[h] = v;
-	}
+	// a `sessions` key (an earlier candidate's) is never read, and the next write drops it
 	if (Array.isArray(raw.clientTokens)) out.clientTokens = raw.clientTokens.filter((t) => isPlain(t) && HEX64.test(String(t.sha256)) && LEVELS.has(t.level));
 	if (isPlain(raw.pane)) {
 		const p = raw.pane;
@@ -74,11 +73,9 @@ export function readWorkspaceState(root, dir = stateDir()) {
 	return out;
 }
 
-/** Written whole, atomically: dir 0700, file 0600. Refuses a session key that is not a SHA-256 hex digest. */
+/** Written whole, atomically: dir 0700, file 0600. Refuses a state that carries sessions: they live in memory only. */
 export function writeWorkspaceState(root, state, dir = stateDir()) {
-	for (const k of Object.keys(state?.sessions ?? {})) {
-		if (!HEX64.test(k)) throw new Error('a session is stored by the SHA-256 of its sid, never the sid');
-	}
+	if (state && Object.hasOwn(state, 'sessions')) throw new Error('the pane\'s sessions live in the server\'s memory only, never in the state file');
 	writeFileAtomic(workspaceStateFile(root, dir), JSON.stringify(state, null, '\t') + '\n');
 }
 

@@ -1,9 +1,10 @@
 // dt web's ONE listener (cr-modules-017 §1, §3; rnd/tests/dreamteamer-modules/pane-a3-one-listener-one-process, first
-// half): the shell without a cookie under the app policy, sign-in by a single-use code into a 7-day SameSite=Strict
+// half): the shell without a cookie under the app policy, sign-in by a single-use code into a browser-session SameSite=Strict
 // cookie, Fetch-Metadata on every cookie request, JSON-only writes, record files and frames on the same port under
 // sandbox, the [::1] redirect, and a bad request that never stops the server.
 import { test, before, after, describe } from 'node:test';
 import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import http from 'node:http';
 import net from 'node:net';
@@ -87,14 +88,14 @@ describe('the shell', () => {
 });
 
 describe('sign-in', () => {
-	test('a code signs in once, into dt_pane_<port>: HttpOnly, SameSite=Strict, Path=/, Max-Age 7 days', async () => {
+	test('a code signs in once, into dt_pane_<port>: HttpOnly, SameSite=Strict, Path=/, no Max-Age (a browser-session cookie)', async () => {
 		const url = web.pair();
 		assert.match(url, new RegExp(`^http://127\\.0\\.0\\.1:${web.port}/sign-in/[\\w-]+$`));
 		assert.equal(url.includes(web.controlToken), false);
 		const first = await call(url);
 		assert.equal(first.status, 302);
 		assert.equal(first.headers.get('location'), '/app/#/');
-		assert.match(first.headers.get('set-cookie'), new RegExp(`^dt_pane_${web.port}=[\\w-]+; HttpOnly; SameSite=Strict; Path=/; Max-Age=604800$`));
+		assert.match(first.headers.get('set-cookie'), new RegExp(`^dt_pane_${web.port}=[\\w-]+; HttpOnly; SameSite=Strict; Path=/$`));
 		const again = await call(url);
 		assert.equal(again.status, 401);
 		assert.match(again.text, /This sign-in link was used or is older than a minute — ask the chat to show the pane again \(dt web open\)\./);
@@ -106,11 +107,14 @@ describe('sign-in', () => {
 		assert.equal(r.headers.get('location'), '/app/#/content/tasks');
 	});
 
-	test('the state file holds the session\'s hash, never the sid', () => {
+	test('the state file holds no session: neither the sid nor its hash', () => {
 		const sid = cookie.split('=')[1];
+		const sha = crypto.createHash('sha256').update(sid).digest('hex');
 		const text = fs.readdirSync(f.state).filter((n) => n.endsWith('.json')).map((n) => fs.readFileSync(path.join(f.state, n), 'utf8')).join('\n');
 		assert.ok(text.length > 0, 'no state was written');
 		assert.equal(text.includes(sid), false);
+		assert.equal(text.includes(sha), false);
+		assert.doesNotMatch(text, /"sessions"/);
 	});
 });
 

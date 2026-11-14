@@ -1,8 +1,10 @@
-// A stable port, sessions across restarts, the idle stop (cr-modules-017 §2; rnd/tests/dreamteamer-modules/
-// pane-a2-restart-keeps-the-pane, server half; pane-s1-the-pane-is-still-there-tomorrow with auth-primitives): the
-// second start reuses the stored port and the pane's cookie still answers with no new sign-in; a pairing code dies
-// with its process; a stored port another process holds moves the server, ends every session and says where from;
-// the server stops after its idle minutes with no page and no bearer request, and the state never holds a cookie.
+// A stable port, a restart that signs the pane out, the idle stop (cr-modules-017 §2 as the security sign-off revised
+// it — decisions/2026-11-14--the-pane-re-pairs-after-every-server-restart-sessions-live-in-memory-only;
+// rnd/tests/dreamteamer-modules/pane-a2-restart-keeps-the-pane, server half): the second start reuses the stored port,
+// the pane's old cookie is refused 401 with the signed-out sentence and a new pairing signs it in again; a pairing code
+// dies with its process; a stored port another process holds moves the server and says where from; the server stops
+// after its idle minutes with no page and no bearer request, and that stop signs the pane out too; the state file
+// never holds a session — neither a sid nor its hash.
 import { test, before, after, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -12,6 +14,8 @@ import { startWeb } from '../src/server.js';
 import { readWorkspaceState } from '../src/state.js';
 import { movedLine } from '../src/runtime.js';
 import { fixture, call, pair, sameOrigin } from './support.mjs';
+
+const SIGNED_OUT = 'sign in: ask the chat to show the pane (dt web open)';
 
 let f;
 const open = [];
@@ -24,20 +28,27 @@ const stateText = () => fs.readdirSync(f.state).filter((n) => n.endsWith('.json'
 const sidOf = (cookie) => cookie.split('=')[1];
 
 describe('a restart', () => {
-	test('reuses the stored port; the old cookie answers with no new sign-in; a code minted before is refused after', async () => {
+	test('reuses the stored port; the old cookie is refused with the signed-out sentence; a new pairing signs in; a code minted before is refused after', async () => {
 		const a = await start();
 		assert.equal(readWorkspaceState(f.root, f.state).port, a.port, 'the port is stored at once');
 		const cookie = await pair(a);
+		assert.equal((await host(a, cookie)).status, 200);
 		const code = a.pair();
 		await a.close();
 		const b = await start();
 		assert.equal(b.port, a.port);
 		assert.equal(b.movedFrom, undefined);
 		const r = await host(b, cookie);
-		assert.equal(r.status, 200, r.text);
+		assert.equal(r.status, 401, 'a restart signs the pane out');
+		assert.equal(r.json.error, SIGNED_OUT);
 		const late = await call(code);
 		assert.equal(late.status, 401, 'a code lives in one process');
+		const again = await pair(b);
+		assert.equal((await host(b, again)).status, 200, 'dt web open pairs it again');
 		assert.equal(stateText().includes(sidOf(cookie)), false);
+		assert.equal(stateText().includes(sidOf(again)), false);
+		assert.equal('sessions' in readWorkspaceState(f.root, f.state), false, 'the state holds no session');
+		assert.doesNotMatch(stateText(), /"sessions"/);
 		await b.close();
 	});
 
@@ -54,8 +65,9 @@ describe('a restart', () => {
 			assert.equal(b.movedFrom, old);
 			assert.equal(movedLine(old, b.port), `port ${old} was taken; moved to ${b.port} — open the pane again: dt web open`);
 			assert.equal(readWorkspaceState(f.root, f.state).port, b.port, 'the new port is stored at once');
-			assert.deepEqual(readWorkspaceState(f.root, f.state).sessions, {}, 'every session ended');
-			assert.equal((await host(b, cookie)).status, 401);
+			const r = await host(b, cookie);
+			assert.equal(r.status, 401);
+			assert.equal(r.json.error, SIGNED_OUT);
 			assert.equal((await host(b, `dt_pane_${b.port}=${sidOf(cookie)}`)).status, 401, 'the sid itself is gone, not only its cookie name');
 			const fresh = await pair(b);
 			assert.equal((await host(b, fresh)).status, 200);
@@ -74,10 +86,17 @@ describe('a restart', () => {
 });
 
 describe('the idle stop', () => {
-	test('no page and no bearer request: it stops with idle', async () => {
+	test('no page and no bearer request: it stops with idle, and the next start has the pane signed out', async () => {
 		const w = await start({ idleMinutes: 0.01 });
+		const cookie = await pair(w);
 		const why = await Promise.race([w.closed, new Promise((r) => setTimeout(() => r('still up'), 3000))]);
 		assert.equal(why, 'idle');
+		const b = await start();
+		assert.equal(b.port, w.port);
+		const r = await host(b, cookie);
+		assert.equal(r.status, 401, 'an idle stop signs the pane out');
+		assert.equal(r.json.error, SIGNED_OUT);
+		await b.close();
 	});
 
 	test('an open event stream keeps it up past the idle minutes; closing it starts the clock again', async () => {

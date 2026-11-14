@@ -242,16 +242,17 @@ async function revoke(root, { token }, { log, env }) {
 		if (r.status !== 200) return failed(log, r);
 		return said(r.body.revoked);
 	}
+	// no server, no session: they live in its memory only, so a stopped server has signed every page out already
+	if (token === undefined) return said(0);
 	const lock = claimStart(stateFile(root, runtimeDir(env)));
 	if (!lock.ok) { log(`dt web is starting${lock.pid ? ` (pid ${lock.pid})` : ''} — run dt web revoke again`); return 1; }
 	try {
 		const dir = stateDir(env);
 		const state = readWorkspaceState(root, dir);
-		let n;
-		if (token !== undefined) { n = state.clientTokens.length; state.clientTokens = state.clientTokens.filter((t) => t.name !== token); n -= state.clientTokens.length; }
-		else { n = Object.keys(state.sessions).length; state.sessions = {}; }
+		const n = state.clientTokens.length;
+		state.clientTokens = state.clientTokens.filter((t) => t.name !== token);
 		writeWorkspaceState(root, state, dir);
-		return said(n);
+		return said(n - state.clientTokens.length);
 	} finally { lock.release(); }
 }
 

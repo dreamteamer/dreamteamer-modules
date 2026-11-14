@@ -53,22 +53,28 @@ test('absent state reads as the defaults; a write is 0700 / 0600; garbage reads 
 	const odd = readWorkspaceState(root, dir);
 	assert.equal(odd.port, 4872, 'a readable port is kept');
 	assert.equal(odd.level, 'edit', 'an unknown level reads as the default');
-	assert.deepEqual(odd.sessions, {});
+	assert.equal('sessions' in odd, false, 'a sessions key is never read: sessions live in memory only');
 	assert.deepEqual(odd.pane, DEFAULT_STATE.pane);
 	const fresh = readWorkspaceState(root, dir);
-	fresh.sessions.x = 1;
-	assert.deepEqual(DEFAULT_STATE.sessions, {}, 'the defaults are never shared by reference');
+	fresh.clientTokens.push(1);
+	fresh.pane.refs.push('x');
+	assert.deepEqual(DEFAULT_STATE.clientTokens, [], 'the defaults are never shared by reference');
+	assert.deepEqual(DEFAULT_STATE.pane.refs, []);
 });
 
-test('the written file holds no sid: only hashes go in', () => {
+test('the written file holds no session: a state carrying one is refused, a file that has one drops it on the next write', () => {
 	const root = workspace('hashes');
 	const dir = path.join(tmp, 'state-b');
-	const sid = 'sid-4f1c0b9e2d7a';
 	const s = readWorkspaceState(root, dir);
-	s.sessions['a'.repeat(64)] = { created: 1, seen: 1 };
-	writeWorkspaceState(root, s, dir);
-	assert.equal(fs.readFileSync(path.join(dir, `${workspaceKey(root)}.json`), 'utf8').includes(sid), false);
-	assert.throws(() => writeWorkspaceState(root, { ...s, sessions: { [sid]: { created: 1, seen: 1 } } }, dir), /sha-256/i);
+	assert.equal('sessions' in DEFAULT_STATE, false);
+	assert.throws(() => writeWorkspaceState(root, { ...s, sessions: { ['a'.repeat(64)]: { created: 1, seen: 1 } } }, dir), /memory only/);
+	const file = path.join(dir, `${workspaceKey(root)}.json`);
+	fs.mkdirSync(dir, { recursive: true });
+	fs.writeFileSync(file, JSON.stringify({ port: 4873, sessions: { ['b'.repeat(64)]: { created: 1, seen: 1 } } }));
+	const back = readWorkspaceState(root, dir);
+	assert.equal(back.port, 4873);
+	writeWorkspaceState(root, back, dir);
+	assert.doesNotMatch(fs.readFileSync(file, 'utf8'), /sessions|b{64}/);
 });
 
 test('register: upsert by id, lastOpened moves; lookup; twenty concurrent registers keep twenty', async () => {

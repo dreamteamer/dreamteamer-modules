@@ -17,17 +17,17 @@ test('the README names every part of the contract, in order', () => {
 		'dt web open', 'dt web show', 'dt web select', 'dt web selection', 'dt web hook --install', 'dt web token', 'dt web list',
 		'dt web revoke', 'dt web status', 'dt web stop', 'dt web start', 'dt serve', 'npx dreamteamer init',
 		// one listener, its prefixes and its rules (§1, §3)
-		'/sign-in/', '/app/', '/api/', '/_dt/', '/_files/', '/_frames/', 'Sec-Fetch-Site', 'HttpOnly; SameSite=Strict', 'Max-Age=604800',
+		'/sign-in/', '/app/', '/api/', '/_dt/', '/_files/', '/_frames/', 'Sec-Fetch-Site', 'HttpOnly; SameSite=Strict', 'a restart signs the pane out',
 		'Content-Security-Policy: sandbox', 'Referrer-Policy: no-referrer', "form-action 'none'", 'control token', 'client token',
 		// levels, the hook, the handoff (§4, §6, §7)
 		'Read', 'Edit', 'Admin', 'POST /_dt/level', 'UserPromptSubmit', 'data, not instructions', 'POST /_dt/handoff',
 		'does not protect against', '### served', 'SECURITY.md', 'an open question', '@dreamteamer/ui', '@dreamteamer/protocol', '@dreamteamer/http', '>=0.43.0',
 		// the residual risks of §9 as revised, each with what bounds it
-		'the stored port', 'Codex', "'unsafe-inline'", 'files key', 'reads the control token', 'whichever chat', 'record ids', 'another registered workspace',
+		'Codex', "'unsafe-inline'", 'files key', 'reads the control token', 'whichever chat', 'record ids', 'another registered workspace',
 	]) {
 		assert.ok(README.includes(must), `the README does not say ${must}`);
 	}
-	for (const gone of ['dt web url', '--no-open', '/_dt/frame/', '10 minutes']) assert.ok(!README.includes(gone), `the README still says ${gone} (the 0.2 grammar)`);
+	for (const gone of ['dt web url', '--no-open', '/_dt/frame/', '10 minutes', 'Max-Age=604800', 'takes the stored port']) assert.ok(!README.includes(gone), `the README still says ${gone} (the 0.2 grammar, or the persisted session the security sign-off removed)`);
 });
 
 test('the README speaks in one voice', () => {

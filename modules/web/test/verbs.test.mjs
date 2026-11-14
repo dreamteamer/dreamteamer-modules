@@ -1,8 +1,8 @@
 // The verbs (cr-modules-017 §8; rnd/tests/dreamteamer-modules/pane-a2-restart-keeps-the-pane, process half;
 // pane-a3-one-listener-one-process, process half): `dt web open` starts ONE detached server with ONE loopback listener
 // and prints a sign-in URL that lands on its target; `dt serve` is a client token of that same process; a stop and
-// the next verb bring it back on the same port with the pane still signed in; show, select, token, revoke, list, the
-// level flags and the usage line. Every server is stopped in after().
+// the next verb bring it back on the same port with the pane signed out (sessions live in memory only — the security
+// sign-off) until the next open pairs it; show, select, token, revoke, list, the level flags and the usage line. Every server is stopped in after().
 import { test, before, after, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
@@ -164,32 +164,45 @@ describe('tokens and revoke', () => {
 });
 
 describe('stop and come back', () => {
-	test('stop, then selection brings it back on the same port, and the pane is still signed in', { timeout: 60_000 }, async () => {
+	test('stop, then selection brings it back on the same port, signed out: the old cookie gets 401 and the signed-out sentence; open pairs it again', { timeout: 60_000 }, async () => {
 		assert.equal(run('stop').status, 0);
 		assert.equal(run('status').status, 1);
 		const r = run('selection');
 		assert.equal(r.status, 0, r.stdout + r.stderr);
 		assert.equal(runtimeFile().port, port);
+		const old = await host(port, cookie);
+		assert.equal(old.status, 401, 'a restart signs the pane out');
+		assert.equal(old.json.error, 'sign in: ask the chat to show the pane (dt web open)');
+		const fresh = await signIn(/(http\S+)$/.exec(run('open').lines[0])[1]);
+		assert.equal((await host(port, fresh.cookie)).status, 200, 'one dt web open signs it in again');
+		cookie = fresh.cookie;
+	});
+
+	test('revoke signs the page out while the server keeps running', async () => {
 		assert.equal((await host(port, cookie)).status, 200);
+		const rv = run('revoke');
+		assert.equal(rv.status, 0, rv.stdout);
+		assert.equal(rv.stdout.trim(), '✔ revoked 1 session(s)');
+		assert.equal(run('status').status, 0, 'still running');
+		assert.equal((await host(port, cookie)).status, 401);
 	});
 
 	test('stop --revoke, then start: the old cookie is refused', { timeout: 60_000 }, async () => {
+		const fresh = await signIn(/(http\S+)$/.exec(run('open').lines[0])[1]);
 		assert.equal(run('stop', '--revoke').status, 0);
 		const r = run('start');
 		assert.equal(r.status, 0, r.stdout + r.stderr);
 		assert.equal(r.stdout.trim(), `running at http://127.0.0.1:${port}`);
-		assert.equal((await host(port, cookie)).status, 401);
+		assert.equal((await host(port, fresh.cookie)).status, 401);
 	});
 
-	test('revoke with no server running edits the state', async () => {
-		const fresh = await signIn(/(http\S+)$/.exec(run('open').lines[0])[1]);
-		assert.equal((await host(port, fresh.cookie)).status, 200);
+	test('revoke with no server running starts nothing: no page is signed in to revoke', () => {
 		assert.equal(run('stop').status, 0);
 		const rv = run('revoke');
 		assert.equal(rv.status, 0, rv.stdout);
+		assert.equal(rv.stdout.trim(), '✔ revoked 0 session(s)');
 		assert.equal(run('status').status, 1, 'revoke started nothing');
 		assert.equal(run('start').status, 0);
-		assert.equal((await host(port, fresh.cookie)).status, 401);
 	});
 });
 

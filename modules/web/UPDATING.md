@@ -17,9 +17,11 @@ npm install --save-dev @dreamteamer/web@latest
 - **A 60-second code.** The code in the URL signs in once and is refused a minute after it was minted (it was
   10 minutes). Mint it right before you open it.
 - **A stable port.** The first start picks a free port and stores it; every later start reuses it, so the pane
-  keeps its address. When another program took it, the server moves, says so, and every session ends.
-- **A 7-day session.** The cookie (`dt_pane_<port>`, `Max-Age=604800`) is renewed on use and ends after 7 days
-  idle, across restarts. `dt web revoke` ends every session; `dt web stop --revoke` stops and revokes.
+  keeps its address. When another program took it, the server moves and says so.
+- **A restart signs the pane out.** The session lives in the server's memory only: `dt web stop`, the idle stop or
+  a reboot ends it, and the next `dt web open` pairs the pane again. The cookie (`dt_pane_<port>`) is a
+  browser-session cookie, renewed on use while the server runs and ended after 7 days idle. `dt web revoke` ends
+  every session; `dt web stop` does too.
 - **The server stops after 60 minutes** with no page and no token request (it was 30), and no longer stops with the
   chat that started it unless you pass `--owner-pid`.
 - **`dt serve` is this package's** and prints a client token of the pane's own server (`dt web token --name serve`):
