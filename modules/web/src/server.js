@@ -13,18 +13,26 @@ import { changeScope, invalidateMessage, NAV_DOC_FILE } from '@dreamteamer/proto
 import { hasNavSettings } from '@dreamteamer/protocol/host/nav';
 import { migrateNavSettings } from '@dreamteamer/protocol/nav-doc';
 import { workspaceNavSettings } from '@dreamteamer/protocol/nav-model';
+import { gate } from '@dreamteamer/protocol/gate';
+import { internalCollections, LEVELS, levelRank, lowerLevel, paneScope } from '@dreamteamer/protocol/pane-scope';
+import { matchRoute } from '@dreamteamer/protocol/routes';
 import { appCsp, baseHeaders, FILE_CSP } from './headers.js';
 import { classify } from './dispatch.js';
 import { moduleFrameRoute, resolveGuest } from './module-frames.js';
 import { createPairing } from './pairing.js';
 import { createSessions, SESSION_MAX_AGE_S } from './sessions.js';
-import { readWorkspaceState, stateDir as defaultStateDir, writeWorkspaceState } from './state.js';
+import { readWorkspaceState, stateDir as defaultStateDir, workspaceKey, writeWorkspaceState } from './state.js';
+import { matchClientToken, mintClientToken } from './tokens.js';
+import { createPaneStore, workspaceName } from './pane-store.js';
 
 const DEBOUNCE_MS = 150;
 const MAX_BODY_BYTES = 16 * 1024 * 1024;
 export const NAV_MIGRATED_NOTICE = 'nav.yaml written from your nav settings — they are no longer read';
 export const SIGN_IN_REFUSED = 'This sign-in link was used or is older than a minute — ask the chat to show the pane again (dt web open).';
 export const NOT_FROM_THE_PANE = "a request with the pane's cookie must come from the pane";
+export const CLIENT_NOT_PANE = "a client token cannot set the pane's selection or queue — they are the page's";
+export const PAGE_CANNOT_RAISE = (level) => `the page cannot raise the level — ask in the chat (dt web open --${level})`;
+const SIGN_IN_FIRST = 'sign in: ask the chat to show the pane (dt web open)';
 export const HOST_CAPABILITIES = { nav: 'app', commands: false, openFile: 'tab', tabs: false, history: 'hash', moduleFrames: 'url' };
 const random = (n = 24) => crypto.randomBytes(n).toString('base64url');
 const same = (a, b) => typeof a === 'string' && typeof b === 'string' && a.length === b.length && crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
@@ -56,7 +64,20 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 60, owner
 	if (!fs.existsSync(path.join(appDir, 'index.html'))) {
 		throw new Error(`the app is missing: ${path.join(appDir, 'index.html')} — @dreamteamer/ui is installed without its build (see the README)`);
 	}
-	const handler = await createHandler({ root, pane });
+	const state = readWorkspaceState(root, stateDir);
+	const save = () => writeWorkspaceState(root, state, stateDir);
+	const sessions = createSessions({ state, save, now });
+	const pairing = createPairing({ now });
+	const controlToken = random(32);
+	const filesKey = random(18);
+	let handler = null;
+	const store = pane ?? createPaneStore({
+		root, state, save, filesKey, now,
+		workspace: { id: workspaceKey(root), name: workspaceName(root) },
+		fileBases: () => fileBases(),
+		varRoots: () => varRoots(),
+	});
+	handler = await createHandler({ root, pane: store });
 	// cr-dt-008: the old nav settings are written into nav.yaml on the first GET /nav of this server's life, once; a
 	// failure is logged and the request still answers (the legacy tree, from the settings)
 	let navMigrationTried = false;
@@ -73,12 +94,6 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 60, owner
 		}
 	};
 
-	const state = readWorkspaceState(root, stateDir);
-	const save = () => writeWorkspaceState(root, state, stateDir);
-	const sessions = createSessions({ state, save, now });
-	const pairing = createPairing({ now });
-	const controlToken = random(32);
-	const filesKey = random(18);
 	const clientStreams = new Set();
 	let listenPort;
 	const cookieName = () => `dt_pane_${listenPort}`;
@@ -197,19 +212,69 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 60, owner
 		try { return JSON.parse(raw); } catch { throw new HttpError(400, 'the body is not JSON'); }
 	};
 
+	// ---- levels ---------------------------------------------------------------------------------
+	// the collections whose record WRITES need admin (reading 1), recomputed when the descriptors change
+	let internalFor = null;
+	let internal = null;
+	const internalNow = () => {
+		const d = handler.api.descriptors();
+		if (d !== internalFor) {
+			let e = {};
+			try { e = engine().descriptor; } catch { /* no engine: system collections only */ }
+			internal = internalCollections(d.values(), e);
+			internalFor = d;
+		}
+		return internal;
+	};
+	/** The level a request is answered at: the stored level lowered by the session's cap, or the client token's own. */
+	const levelOf = (who) => (who.kind === 'client' ? who.record.level : lowerLevel(state.level, who.cap ?? 'admin'));
+	const renewCookie = (res, sid) => res.setHeader('Set-Cookie', `${cookieName()}=${sid}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${SESSION_MAX_AGE_S}`);
+	const setLevel = (level) => {
+		const was = state.level;
+		if (levelRank(level) > levelRank(was)) state.raisedAt = new Date(now()).toISOString();
+		else if (levelRank(level) < levelRank(was)) state.raisedAt = null;
+		state.level = level;
+		save();
+		broadcast({ type: 'dt:host' });
+	};
+
 	// ---- /api/ and /_dt/ -----------------------------------------------------------------------
-	const serveApi = async (req, res, url) => {
+	/** Who asks /api/: a client token (bearer), or the cookie from the pane's own page. The control token is not one. */
+	const apiCaller = (req) => {
+		const bearer = bearerOf(req);
+		if (bearer !== null) {
+			const record = matchClientToken(state.clientTokens, bearer);
+			if (!record) return { refuse: [401, same(bearer, controlToken) ? 'the control token opens /_dt/ only — /api/ takes the cookie or a client token (dt web token)' : 'not a client token of this server'] };
+			return { kind: 'client', record };
+		}
 		const sid = cookieOf(req);
 		const session = sid ? sessions.check(sid) : null;
-		if (!session) return json(res, 401, { error: 'sign in: ask the chat to show the pane (dt web open)' });
-		if (!fromThePane(req)) return json(res, 403, { error: NOT_FROM_THE_PANE });
+		if (!session) return { refuse: [401, SIGN_IN_FIRST] };
+		if (!fromThePane(req)) return { refuse: [403, NOT_FROM_THE_PANE] };
+		return { kind: 'cookie', cap: session.cap, sid };
+	};
+
+	const serveApi = async (req, res, url) => {
+		const who = apiCaller(req);
+		if (who.refuse) return json(res, who.refuse[0], { error: who.refuse[1] });
 		if (req.method === 'GET' && url.pathname === '/api/events') return openStream(req, res);
 		const body = await jsonBody(req);
+		const apiPath = req.url.slice(4);
+		const hit = matchRoute(req.method, apiPath);
+		if (who.kind === 'client' && (hit?.route.id === 'selection-put' || hit?.route.id === 'queue-post')) return json(res, 403, { error: CLIENT_NOT_PANE });
+		const level = levelOf(who);
+		const decision = gate(paneScope({ level, internal: internalNow(), label: who.kind === 'client' ? 'this token' : 'this pane' }), handler.api.descriptors(), req.method, apiPath, url.searchParams, body);
+		// no route: the handler answers its own 404, with the encoding hint
+		if (!decision.ok && decision.status !== 404) return json(res, decision.status, { error: decision.error });
+		if (hit?.route.id === 'host') {
+			if (who.kind === 'cookie') renewCookie(res, who.sid);
+			return json(res, 200, await store.host({ level }));
+		}
 		const log = console.log;
 		console.log = () => {};
 		try {
 			const migrated = req.method === 'GET' && url.pathname === '/api/nav' && migrateNavOnce();
-			const out = await handler.handle(req.method, req.url.slice(4), body);
+			const out = await handler.handle(req.method, apiPath, body);
 			if (migrated && out.status === 200 && Array.isArray(out.body) && out.body[0]?.kind === 'workspace') out.body[0] = { ...out.body[0], notice: NAV_MIGRATED_NOTICE };
 			return json(res, out.status, out.body ?? null);
 		} catch (e) {
@@ -218,24 +283,72 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 60, owner
 		} finally { console.log = log; }
 	};
 
+	const levelIn = (body) => {
+		if (!LEVELS.includes(body?.level)) throw new HttpError(400, `a level is ${LEVELS.join(', ')}`);
+		return body.level;
+	};
+	/** /_dt/ under the control token: the verbs' routes. */
+	const controlRoutes = {
+		'POST /_dt/pair': (body) => {
+			const route = typeof body?.route === 'string' && body.route.startsWith('/') ? body.route : '/';
+			const cap = LEVELS.includes(body?.cap) ? body.cap : null;
+			return [200, { url: pairUrl({ route, cap }) }];
+		},
+		'POST /_dt/token': (body) => {
+			let minted;
+			try { minted = mintClientToken({ name: body?.name, level: body?.level ?? 'read', now }); } catch (e) { throw new HttpError(400, e.message); }
+			state.clientTokens = [...state.clientTokens.filter((t) => t.name !== minted.record.name), minted.record];
+			save();
+			return [200, { token: minted.token, api: `http://127.0.0.1:${listenPort}/api` }];
+		},
+		'POST /_dt/revoke': (body) => {
+			if (body?.token !== undefined) {
+				const n = state.clientTokens.length;
+				state.clientTokens = state.clientTokens.filter((t) => t.name !== body.token);
+				save();
+				return [200, { revoked: n - state.clientTokens.length }];
+			}
+			const n = Object.keys(state.sessions).length;
+			sessions.revokeAll();
+			for (const c of clientStreams) c.end();
+			return [200, { revoked: n }];
+		},
+		'POST /_dt/level': (body) => { setLevel(levelIn(body)); return [200, { level: state.level, raisedAt: state.raisedAt ?? null }]; },
+	};
+	/** /_dt/ under the cookie: the page's own routes. */
+	const pageRoutes = {
+		'POST /_dt/level': (body, who) => {
+			const level = levelIn(body);
+			if (levelRank(level) > levelRank(levelOf(who))) return [403, { error: PAGE_CANNOT_RAISE(level) }];
+			if (level !== state.level) setLevel(level);
+			return [200, { level }];
+		},
+	};
+
 	const serveDt = async (req, res, url) => {
+		const key = `${req.method} ${url.pathname}`;
 		const bearer = bearerOf(req);
 		if (bearer !== null) {
-			if (!same(bearer, controlToken)) return json(res, 401, { error: 'not this server\'s control token' });
-			const body = await jsonBody(req);
-			if (req.method === 'POST' && url.pathname === '/_dt/pair') {
-				const route = typeof body?.route === 'string' && body.route.startsWith('/') ? body.route : '/';
-				const cap = ['read', 'edit', 'admin'].includes(body?.cap) ? body.cap : null;
-				return json(res, 200, { url: pairUrl({ route, cap }) });
+			if (!same(bearer, controlToken)) {
+				const client = matchClientToken(state.clientTokens, bearer);
+				return json(res, 401, { error: client ? 'a client token opens /api/ only' : 'not this server\'s control token' });
 			}
-			return json(res, 404, { error: `no route ${req.method} ${url.pathname}` });
+			const body = await jsonBody(req);
+			const fn = controlRoutes[key];
+			if (!fn) return json(res, 404, { error: `no route ${key}` });
+			const [status, out] = await fn(body, { kind: 'control' }, url);
+			return json(res, status, out);
 		}
 		const sid = cookieOf(req);
 		if (sid !== null) {
 			if (!fromThePane(req)) return json(res, 403, { error: NOT_FROM_THE_PANE });
-			if (!sessions.check(sid)) return json(res, 401, { error: 'sign in: ask the chat to show the pane (dt web open)' });
-			await jsonBody(req);
-			return json(res, 401, { error: `${req.method} ${url.pathname} takes the control token` });
+			const session = sessions.check(sid);
+			if (!session) return json(res, 401, { error: SIGN_IN_FIRST });
+			const body = await jsonBody(req);
+			const fn = pageRoutes[key];
+			if (!fn) return json(res, 401, { error: `${key} takes the control token` });
+			const [status, out] = await fn(body, { kind: 'cookie', cap: session.cap, sid }, url);
+			return json(res, status, out);
 		}
 		return json(res, 401, { error: `${url.pathname} takes the control token` });
 	};
