@@ -3,7 +3,7 @@
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import path from 'node:path';
-import { claimStart, readState, removeState, running, stateFile, writeState, alive } from './runtime.js';
+import { claimStart, movedLine, readState, removeState, running, stateFile, writeState, alive } from './runtime.js';
 
 // the browser page @dreamteamer/ui builds, served as it is
 const appDirOf = () => path.join(path.dirname(createRequire(import.meta.url).resolve('@dreamteamer/ui/package.json')), 'dist', 'app');
@@ -64,7 +64,8 @@ export async function main(root, argv, { log = console.log, env = process.env, a
 		lock.release();
 		throw e;
 	}
-	writeState(file, { pid: process.pid, port: web.port, started: new Date().toISOString(), owner: ownerPid ?? null, token: web.controlToken });
+	writeState(file, { pid: process.pid, port: web.port, started: new Date().toISOString(), owner: ownerPid ?? null, token: web.controlToken, ...(web.movedFrom ? { movedFrom: web.movedFrom } : {}) });
+	if (web.movedFrom) log(movedLine(web.movedFrom, web.port));
 	// the handlers before the first line: a caller may signal the moment it reads the URL
 	const stop = () => web.close('signal');
 	process.once('SIGINT', stop);

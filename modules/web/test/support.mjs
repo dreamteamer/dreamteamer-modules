@@ -36,7 +36,10 @@ export function fixture() {
 /** One request; `headers` override; the body parsed when it is JSON. Node's fetch sends no Origin and no
  *  Sec-Fetch-* headers unless given — a script, not a browser. */
 export async function call(url, { method = 'GET', headers = {}, body, redirect = 'manual' } = {}) {
-	const res = await fetch(url, { method, headers, body, redirect, signal: AbortSignal.timeout(20_000) });
+	const go = () => fetch(url, { method, headers, body, redirect, signal: AbortSignal.timeout(20_000) });
+	// a server restarted on the same port (cr-modules-017 task 10): fetch's pool may hand the first request a socket
+	// the old server closed — once, the request goes again on a fresh one
+	const res = await go().catch((e) => { if (e?.cause?.code === 'ECONNRESET') return go(); throw e; });
 	const text = await res.text();
 	let json = null;
 	try { json = JSON.parse(text); } catch { /* not JSON */ }

@@ -21,7 +21,10 @@ export function workspaceKey(root) {
 	return crypto.createHash('sha256').update(fs.realpathSync(root)).digest('hex').slice(0, 16);
 }
 
-/** The runtime file of one workspace's server. */
+/** What a start that could not take its stored port says (the runtime file carries `movedFrom` for the verbs). */
+export const movedLine = (from, to) => `port ${from} was taken; moved to ${to} — open the pane again: dt web open`;
+
+/** The runtime file of one workspace's server: `{ pid, port, started, owner, token, movedFrom? }`. */
 export function stateFile(root, dir = runtimeDir()) {
 	return path.join(dir, `${workspaceKey(root)}.json`);
 }

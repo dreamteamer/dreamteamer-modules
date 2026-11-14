@@ -59,7 +59,7 @@ const decode = (s) => { try { return decodeURIComponent(s); } catch { throw new 
  * Start dt web for the workspace at `root` on one listener. `appDir` holds the built app (index.html + assets/) —
  * @dreamteamer/ui's dist/app. `stateDir` is the per-user state dir (state.js); `pane` the PaneStore the protocol's
  * pane routes answer from (absent: the handler's own memory store).
- * Resolves `{ url, port, controlToken, filesKey, pair({ route?, cap? }) → url, broadcast(msg), clients() → number, close(why?), closed }`.
+ * Resolves `{ url, port, controlToken, filesKey, pair({ route?, cap? }) → url, broadcast(msg), clients() → number, close(why?), closed, movedFrom? }` — `movedFrom` the stored port it could not take.
  */
 export async function startWeb({ root, appDir, port = 0, idleMinutes = 60, ownerPid, onStop, now = Date.now, stateDir = defaultStateDir(), moduleGuest, pane } = {}) {
 	if (!fs.existsSync(path.join(appDir, 'index.html'))) {
@@ -259,6 +259,7 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 60, owner
 	const serveApi = async (req, res, url) => {
 		const who = apiCaller(req);
 		if (who.refuse) return json(res, who.refuse[0], { error: who.refuse[1] });
+		if (who.kind === 'client') idle.reset();
 		if (req.method === 'GET' && url.pathname === '/api/events') return openStream(req, res);
 		const body = await jsonBody(req);
 		const apiPath = req.url.slice(4);
@@ -378,6 +379,7 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 60, owner
 				const client = matchClientToken(state.clientTokens, bearer);
 				return json(res, 401, { error: client ? 'a client token opens /api/ only' : 'not this server\'s control token' });
 			}
+			idle.reset();
 			const body = await jsonBody(req);
 			const fn = controlRoutes[key];
 			if (!fn) return json(res, 404, { error: `no route ${key}` });
@@ -505,10 +507,31 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 60, owner
 	const ownerTimer = ownerPid ? setInterval(() => { try { process.kill(ownerPid, 0); } catch (e) { if (e.code !== 'EPERM') close('owner gone'); } }, 5_000) : null;
 	ownerTimer?.unref?.();
 
-	listenPort = await new Promise((resolve, reject) => {
-		server.once('error', reject);
-		server.listen(port, '127.0.0.1', () => { server.off('error', reject); resolve(server.address().port); });
+	// the port: the one asked for, else the stored one, else any. A stored port another process took moves the server —
+	// every session ends (a cookie of the old port is someone else's to replay) and the caller says where from; a port
+	// the person asked for is theirs, and taken it is an error. The port is stored at once.
+	const listenOn = (p) => new Promise((resolve, reject) => {
+		const fail = (e) => reject(e);
+		server.once('error', fail);
+		server.listen(p, '127.0.0.1', () => { server.off('error', fail); resolve(server.address().port); });
 	});
+	const stored = port ? null : state.port;
+	let movedFrom;
+	try {
+		try {
+			listenPort = await listenOn(port || stored || 0);
+		} catch (e) {
+			if (e?.code !== 'EADDRINUSE' || !stored) throw e;
+			sessions.invalidateAll();
+			movedFrom = stored;
+			listenPort = await listenOn(0);
+		}
+	} catch (e) {
+		clearTimeout(timer); clearInterval(ownerTimer);
+		for (const w of watchers) w.close();
+		throw e;
+	}
+	if (state.port !== listenPort) { state.port = listenPort; save(); }
 	// [::1] answers only to send the page to 127.0.0.1: CSP cannot name an IPv6 ancestor for module frames (cr-modules-008 t13)
 	v6 = http.createServer((req, res) => { baseHeaders(res); res.writeHead(302, { Location: `http://127.0.0.1:${listenPort}${req.url ?? '/'}` }); res.end(); });
 	v6.on('error', () => { /* no IPv6 loopback here: nothing to redirect */ });
@@ -524,6 +547,7 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 60, owner
 		clients: () => clientStreams.size,
 		close,
 		closed,
+		...(movedFrom !== undefined ? { movedFrom } : {}),
 	};
 }
 
