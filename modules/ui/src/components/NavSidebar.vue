@@ -48,7 +48,7 @@ const props = defineProps<{
 
 const router = useRouter();
 const nodes = ref<NavNode[]>([]);
-const open = ref<Set<string>>(new Set(['workspace']));
+const open = ref<Set<string>>(new Set());
 const error = ref<string | null>(null);
 const notice = ref<string | null>(null);
 const dragging = ref<string | null>(null);
@@ -149,6 +149,12 @@ function toggle(n: NavNode) {
 	open.value = s;
 }
 
+/** The toolbar's name: the workspace node's route (its settings — the root row's click before the revision). */
+function openSettings() {
+	const r = workspace.value?.route;
+	if (r) void router.push(r);
+}
+
 function activate(n: NavNode) {
 	if (n.route) void router.push(n.route);
 	else if (n.children?.length) toggle(n);
@@ -211,12 +217,21 @@ function onHover(h: { key: string; where: DropWhere }) {
 	if (onto.kind === 'view') { const p = index.value.parentOf.get(onto.key); hint.value = p ? { key: p.key, where: 'after' } : null; return; }
 	hint.value = h;
 }
-/** The empty area under the last row: a drop line on its top edge, then the bottom of the top level. Locked, the
+/** The empty area under the last row: a drop line where it lands, then the bottom of the top level. Locked, the
  *  handlers are not bound at all (the template binds them only while arranging), so the browser shows no drop. */
 function onTailOver(e: DragEvent) {
 	e.preventDefault();
-	hint.value = { key: TAIL, where: 'after' };
+	hint.value = tailLine.value;
 }
+/** Where the empty area's drop line draws: where `position: bottom` lands — after the last ARRANGED top-level row, so
+ *  above a Layers folder drawn below it (as a line on that row's top edge), else on the empty area's own top edge. */
+const tailLine = computed<{ key: string; where: DropWhere }>(() => {
+	const top = topLevel.value;
+	let last = -1;
+	top.forEach((n, i) => { if (n.target && ARRANGED.has(n.kind)) last = i; });
+	const below = top[last + 1];
+	return below ? { key: below.key, where: 'before' } : { key: TAIL, where: 'after' };
+});
 function onTailDrop(e: DragEvent) {
 	e.preventDefault();
 	e.stopPropagation();
@@ -311,7 +326,14 @@ onUnmounted(() => { window.removeEventListener('message', onMessage); window.rem
 		<div class="dt-nav-toolbar" :class="{ 'dt-nav-toolbar--scrolled': scrolled }" role="toolbar" aria-label="Nav">
 			<div class="dt-nav-toolbar__name">
 				<slot name="name" :label="workspace?.label ?? ''">
-					<span class="dt-nav-toolbar__label" :title="workspace?.label ?? undefined">{{ workspace?.label ?? '' }}</span>
+					<button
+						v-if="workspace?.route"
+						type="button"
+						class="dt-nav-toolbar__label dt-nav-toolbar__settings"
+						:title="`${workspace.label} — Workspace settings`"
+						@click.stop="openSettings"
+					>{{ workspace.label }}</button>
+					<span v-else class="dt-nav-toolbar__label" :title="workspace?.label ?? undefined">{{ workspace?.label ?? '' }}</span>
 				</slot>
 			</div>
 			<div class="dt-nav-toolbar__buttons">
@@ -363,6 +385,8 @@ onUnmounted(() => { window.removeEventListener('message', onMessage); window.rem
 .dt-nav-toolbar--scrolled { box-shadow: 0 1px 3px rgb(0 0 0 / 0.14); }
 .dt-nav-toolbar__name { flex: 1 1 0; min-width: 0; display: flex; align-items: center; overflow: hidden; }
 .dt-nav-toolbar__label, :deep(.dt-nav-toolbar__label) { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; color: var(--dt-fg); }
+.dt-nav-toolbar__settings { max-width: 100%; height: 24px; margin: 0; padding: 0 4px; border: 0; border-radius: var(--dt-radius); background: transparent; font: inherit; font-weight: 600; text-align: left; cursor: default; }
+.dt-nav-toolbar__settings:hover { background: var(--dt-bg-hover); }
 .dt-nav-toolbar__buttons { flex: 0 1 auto; min-width: 0; display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 2px; }
 .dt-nav-tool, :deep(.dt-nav-tool) { position: relative; flex: none; display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; padding: 0; border: 0; border-radius: var(--dt-radius); background: transparent; color: var(--dt-fg-subtle); font: inherit; cursor: default; }
 .dt-nav-tool:hover:not(:disabled), :deep(.dt-nav-tool:hover:not(:disabled)) { background: var(--dt-bg-hover); color: var(--dt-fg); }

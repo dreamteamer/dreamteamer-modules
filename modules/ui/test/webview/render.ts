@@ -34,10 +34,13 @@ export interface TestNode {
  * search threshold the search input's `v-model` threw `el.addEventListener is not a function`.
  */
 const NOOP = (): void => {};
+/** Every element a component focused, in order — `focus` is otherwise a no-op here, so a test of "the field is
+ *  focused when it opens" reads this. */
+export const focused: unknown[] = [];
 const ELEMENT_METHODS: Record<string, unknown> = {
 	addEventListener: NOOP,
 	removeEventListener: NOOP,
-	focus: NOOP,
+	focus(this: unknown) { focused.push(this); },
 	blur: NOOP,
 	scrollIntoView: NOOP,
 	querySelector: () => null,

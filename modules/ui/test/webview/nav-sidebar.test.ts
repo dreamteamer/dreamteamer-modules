@@ -39,7 +39,7 @@ test('draws the host nav, opens a folder and routes a row', async () => {
 	assert.ok(requests.some((r) => r.method === 'GET' && r.path === '/nav'), 'never asked the host for the nav');
 	let list = rows(root);
 	assert.deepEqual(list.map(labelOf), ['Projects', 'Lab'], 'the workspace is the toolbar name, not a row; its folder closed');
-	assert.equal(text(all(root, (n) => n.props['class'] === 'dt-nav-toolbar__label')[0]), 'northwind-hq');
+	assert.equal(text(all(root, (n) => String(n.props['class'] ?? '').split(' ').includes('dt-nav-toolbar__label'))[0]), 'northwind-hq');
 	(all(list[1], (n) => n.props['class'] === 'dt-nav-twisty')[0].props['onClick'] as (e: unknown) => void)({ stopPropagation() {} });
 	await flush();
 	list = rows(root);
@@ -47,8 +47,20 @@ test('draws the host nav, opens a folder and routes a row', async () => {
 	clickLabel(list.find((r) => labelOf(r).includes('Projects'))!);
 	await flush();
 	assert.equal(router.currentRoute.value.fullPath, '/content/projects');
-	assert.deepEqual(all(root, (n) => n.tag === 'button').map((b) => b.props['data-tool']), ['arrange'], 'no scope toggle — the editor has none; the toolbar has only the arrange lock while locked');
+	assert.deepEqual(all(root, (n) => n.tag === 'button').map((b) => b.props['data-tool'] ?? b.props['class']), ['dt-nav-toolbar__label dt-nav-toolbar__settings', 'arrange'], 'no scope toggle — the editor has none; the toolbar has only its name and the arrange lock while locked');
 	assert.equal(all(root, (n) => n.props['class'] === 'dt-nav-namespace' || String(n.props['class'] ?? '').includes('dt-nav-namespace')).length, 1, 'the namespace node draws as a namespace row');
+});
+
+test('with no Layers folder below, the empty area draws its drop line on its own top edge', async () => {
+	const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/:path(.*)*', component: { render: () => null } }] });
+	const root = await render(NavSidebar, {}, [router]);
+	(all(root, (n) => n.tag === 'button' && n.props['data-tool'] === 'arrange')[0].props['onClick'] as (e?: unknown) => void)({ stopPropagation() {} });
+	await flush();
+	const tail = () => all(root, (n) => String(n.props['class'] ?? '').includes('dt-nav-tail'))[0];
+	(tail().props['onDragover'] as (e: unknown) => void)({ preventDefault() {} });
+	await flush();
+	assert.match(String(tail().props['class']), /dt-nav-drop-tail/);
+	assert.equal(all(root, (n) => /dt-nav-drop-/.test(String(n.props['class'] ?? '')) && n.tag === 'li').length, 0, 'a row drew the line too');
 });
 
 test('App draws NavSidebar only when the host declares an app nav', async () => {
