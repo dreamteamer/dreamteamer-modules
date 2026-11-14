@@ -1,5 +1,5 @@
 // The prompt hook (cr-modules-017 §6): what the chat sees of the pane. `dt web hook --install` writes ONE
-// UserPromptSubmit entry — the absolute node that ran the install and the absolute dt-web-hook.mjs, quoted — into the
+// UserPromptSubmit entry — the absolute node that ran the install and the absolute dt-web-hook.mjs, each quoted for the shell — into the
 // workspace's .claude/settings.local.json (per machine, never committed). The bin reads the prompt's payload, finds
 // the workspace from its cwd, reads that workspace's runtime file and asks its server GET /_dt/pane?hook=1 inside a
 // 1.5 s budget; it prints at most three lines, only while a page is connected (or the one moved line), and on any
@@ -20,9 +20,15 @@ export const HOOK_BIN = path.resolve(path.dirname(fileURLToPath(import.meta.url)
 const SETTINGS = path.join('.claude', 'settings.local.json');
 const OURS = 'dt-web-hook.mjs';
 
-/** The entry's command: `"<node>" "<bin>"`, both absolute. */
+/** One argument for the shell the harness runs the command in. A path with none of the four characters the shell
+ *  still reads inside double quotes (`"`, `\`, `$`, a backquote) keeps the double-quoted form an earlier install
+ *  wrote; any other is single-quoted, where the shell reads nothing (a `'` in it is written `'\''`), so the path
+ *  reaches node as written — never closes the string, expands a variable or runs a command. */
+const shellQuote = (s) => (/["\\$`]/.test(String(s)) ? `'${String(s).replace(/'/g, "'\\''")}'` : `"${s}"`);
+
+/** The entry's command: `"<node>" "<bin>"`, both absolute, each quoted for the shell the harness runs it in. */
 export function hookCommand({ node = process.execPath, bin = HOOK_BIN } = {}) {
-	return `"${node}" "${bin}"`;
+	return `${shellQuote(node)} ${shellQuote(bin)}`;
 }
 
 const readSettings = (file) => {

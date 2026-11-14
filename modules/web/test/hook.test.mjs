@@ -120,6 +120,27 @@ describe('the installer', () => {
 	});
 });
 
+describe('the command a shell runs', () => {
+	test('a path holding a double quote, a dollar, a backquote, a single quote or a backslash reaches node intact through /bin/sh -c', () => {
+		const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dt-hook-q-'));
+		try {
+			// .cjs: node's ES module loader refuses any path with a backslash in it, whatever the shell hands it
+			const odd = path.join(dir, `my ws "q" $HOME \`id\` it's back\\slash`);
+			fs.mkdirSync(odd);
+			const bin = path.join(odd, 'dt-web-hook.cjs');
+			fs.writeFileSync(bin, 'console.log(JSON.stringify(process.argv[1]));\n');
+			const cmd = hookCommand({ bin });
+			const out = execFileSync('/bin/sh', ['-c', cmd], { encoding: 'utf8', timeout: 10_000 });
+			assert.equal(JSON.parse(out), bin, `the shell handed node another path: ${cmd}`);
+			const plain = path.join(dir, 'my ws "q"', 'dt-web-hook.mjs');
+			assert.ok(hookCommand({ bin: plain }).includes(plain), 'a path without a single quote is written as it is, so it can be found in the settings');
+		} finally { fs.rmSync(dir, { recursive: true, force: true }); }
+	});
+	test('a plain path keeps the double-quoted form an earlier install wrote', () => {
+		assert.equal(hookCommand({ node: '/opt/node/bin/node', bin: '/w/my ws/bin/dt-web-hook.mjs' }), '"/opt/node/bin/node" "/w/my ws/bin/dt-web-hook.mjs"');
+	});
+});
+
 describe('the lines', () => {
 	test('the shapes: showing and selected; selected alone; the queue joined by ·; moved alone; never more than three lines', () => {
 		assert.deepEqual(hookLines({ connected: true, place: 'tasks · List', refs: ['tasks/a', 'tasks/b'], queue: [] }), [`${LINE1}showing: tasks · List; selected: tasks/a, tasks/b`]);
