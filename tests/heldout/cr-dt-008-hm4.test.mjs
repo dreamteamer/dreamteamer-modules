@@ -67,17 +67,25 @@ describe('steps 2-3: twenty PATCHes at once', () => {
 		for (const [a, op] of refused) {
 			assert.ok(a.status >= 400 && a.status < 500 && a.body?.error, `${JSON.stringify(op)} answered ${a.status} with no message: ${JSON.stringify(a.body)}`);
 		}
+		// Amended 2026-11-14 by the orchestrator after
+		// decisions/2026-11-14--hide-takes-a-row-out-of-the-tree-and-lists-it-in-hidden-move-to-bottom-keeps-the-recorded-tails-first-rule:
+		// a name is placed once — in the tree or in hidden. row_0…row_4 each got a move into B and a hide, so each ends in
+		// exactly one of the two (whichever the serialised handler applied last); a write is lost when a row is in neither.
+		const inB = (r) => (folder(doc, 'B')?.items ?? []).includes(r);
+		const isHidden = (r) => (doc.hidden ?? []).includes(r);
 		const lost = [];
 		for (const [i, op] of ops.entries()) {
 			if (answers[i].status !== 200) continue;
-			if (op.op === 'move' && !(folder(doc, 'B')?.items ?? []).includes(op.target.name)) lost.push(op);
-			if (op.op === 'hide' && !(doc.hidden ?? []).includes(op.target.name)) lost.push(op);
+			const r = op.target?.name;
+			if (op.op === 'move' && !inB(r) && !(ROWS.slice(0, 5).includes(r) && isHidden(r))) lost.push(op);
+			if (op.op === 'hide' && !isHidden(r) && !inB(r)) lost.push(op);
 			if (op.op === 'new-folder' && !folder(doc, op.label)) lost.push(op);
 		}
 		assert.deepEqual(lost, [], `acknowledged and lost:\n${text}`);
 		assert.deepEqual(refused.map(([, op]) => op), [], 'an op that applies on any order was refused');
-		assert.deepEqual(folder(doc, 'B').items.slice().sort(), [...ROWS].sort());
-		assert.deepEqual((doc.hidden ?? []).slice().sort(), ROWS.slice(0, 5).sort());
+		for (const r of ROWS.slice(0, 5)) assert.ok(inB(r) !== isHidden(r), `${r} must be in exactly one of B and hidden:\n${text}`);
+		for (const r of ROWS.slice(5)) assert.ok(inB(r) && !isHidden(r), `${r} must be in B and not hidden:\n${text}`);
+		assert.ok((doc.hidden ?? []).every((r) => ROWS.slice(0, 5).includes(r)), `only row_0…row_4 may be hidden:\n${text}`);
 		assert.equal(doc.tree.filter((e) => /^F_\d$/.test(e?.folder ?? '')).length, 5);
 	});
 });
