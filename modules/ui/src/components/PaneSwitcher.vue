@@ -34,6 +34,8 @@ const error = ref<string | null>(null);
 /** The list always holds the current workspace once `dt web open` registered it: the line says there is nothing else. */
 const others = computed(() => workspaces.value.some((w) => !w.current));
 const busy = ref(false);
+/** The list has not answered yet: the menu says Loading…, never "no other workspace". */
+const loading = ref(false);
 
 const button = shallowRef<{ focus?: () => void } | null>(null);
 const menuEl = shallowRef<{ focus?: () => void } | null>(null);
@@ -46,23 +48,27 @@ async function toggle(e: MouseEvent): Promise<void> {
 	at.value = menuUnder(rectOf(e?.currentTarget), 'start', MENU_WIDTH, viewportWidth());
 	paneMenu.value = 'switch';
 	error.value = null;
+	workspaces.value = [];
+	loading.value = true;
 	try {
 		const rows = await paneFetch('GET', '/_dt/workspaces');
 		workspaces.value = Array.isArray(rows) ? rows : [];
 	} catch (err) {
 		error.value = (err as Error).message;
+	} finally {
+		loading.value = false;
 	}
 	if (open.value) keys.opened();
 }
 
 async function pick(w: WorkspaceRow): Promise<void> {
-	if (w.current || busy.value) { paneMenu.value = null; return; }
+	if (w.current || busy.value) { keys.done(); return; }
 	busy.value = true;
 	error.value = null;
 	try {
 		const answer = await paneFetch('POST', '/_dt/handoff', { id: w.id });
-		paneMenu.value = null;
-		if (typeof answer?.url === 'string') window.location.href = answer.url;
+		if (typeof answer?.url === 'string') { paneMenu.value = null; window.location.href = answer.url; }
+		else keys.done();
 	} catch (err) {
 		error.value = (err as Error).message;
 	} finally {
@@ -109,7 +115,8 @@ onUnmounted(() => window.removeEventListener('click', away));
 				:aria-checked="w.current ? 'true' : 'false'"
 				@click.stop="pick(w)"
 			>{{ w.name }} <span v-if="!w.current && !w.running" class="dt-pane-menu__muted">starts when opened</span></button>
-			<p v-if="!others && !error" class="dt-pane-menu__hint">No other workspace was opened on this machine</p>
+			<p v-if="loading" class="dt-pane-menu__hint dt-pane-switch__loading" role="status">Loading…</p>
+			<p v-else-if="!others && !error" class="dt-pane-menu__hint">No other workspace was opened on this machine</p>
 			<button ref="settingsEl" type="button" role="menuitem" class="dt-pane-switch__settings" @click.stop="settings">Settings</button>
 		</div>
 	</Teleport>
@@ -117,16 +124,21 @@ onUnmounted(() => window.removeEventListener('click', away));
 
 <style scoped>
 /* the name, as a button: it ellipsises in a narrow nav but never below the chevron and a usable hit target */
-.dt-pane-switch { display: inline-flex; align-items: center; gap: 2px; flex: 0 1 auto; min-width: 36px; max-width: 100%; height: 24px; padding: 0 4px; border: 0; border-radius: var(--dt-radius); background: transparent; color: var(--dt-fg); font: inherit; font-weight: 600; cursor: default; }
+.dt-pane-switch { display: inline-flex; align-items: center; gap: 2px; flex: 0 1 auto; min-width: 30px; max-width: 100%; height: 24px; padding: 0 4px; border: 0; border-radius: var(--dt-radius); background: transparent; color: var(--dt-fg); font: inherit; font-weight: 600; cursor: default; }
 .dt-pane-switch:hover, .dt-pane-switch[aria-expanded='true'] { background: var(--dt-bg-hover); }
 .dt-pane-switch__name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dt-pane-switch__chevron { flex: none; font-size: 12px; color: var(--dt-fg-subtle); }
 </style>
 
 <style>
-/* The toolbar's name slot holds the switcher: it keeps the switcher's minimum, so in a narrow nav the toolbar's
-   buttons wrap to a second line rather than squeezing the switcher to nothing (NavSidebar lets a plain name give way). */
-.dt-nav-toolbar__name:has(> .dt-pane-switch) { flex: 1 0 36px; min-width: 36px; }
+/* The toolbar's name slot holds the switcher: it keeps the switcher's minimum (some of the name, the chevron, a hit
+   target), so in a narrow nav the toolbar's buttons wrap rather than squeezing the switcher to nothing (NavSidebar
+   lets a plain name give way). The buttons wrap ONE BY ONE as the toolbar's own items (their group is `contents`),
+   so a 320 px pane keeps one 32 px line locked (name, lock, level) and two unlocked; a 6 px start inset buys the room.
+   `.dt-nav` in front out-specifies NavSidebar's scoped rules. */
+.dt-nav .dt-nav-toolbar:has(> .dt-nav-toolbar__name > .dt-pane-switch) { flex-wrap: wrap; justify-content: flex-end; row-gap: 2px; padding-left: 6px; }
+.dt-nav .dt-nav-toolbar:has(> .dt-nav-toolbar__name > .dt-pane-switch) > .dt-nav-toolbar__buttons { display: contents; }
+.dt-nav .dt-nav-toolbar__name:has(> .dt-pane-switch) { flex: 1 0 30px; min-width: 30px; }
 /* The pane's two toolbar menus (this one and PaneLevel's): fixed, placed under their button inside the window. */
 .dt-pane-menu { position: fixed; z-index: 60; box-sizing: border-box; width: 220px; max-width: calc(100vw - 8px); display: flex; flex-direction: column; padding: 4px; border: 1px solid var(--dt-border-strong, var(--dt-border)); border-radius: var(--dt-radius); background: var(--dt-bg); box-shadow: var(--dt-shadow-lg, var(--dt-shadow)); font-size: var(--dt-text, 13px); font-weight: normal; outline: none; }
 .dt-pane-menu > button { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; border: 0; background: none; color: var(--dt-fg); padding: 4px 8px; border-radius: var(--dt-radius); cursor: default; font: inherit; }

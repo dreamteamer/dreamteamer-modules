@@ -214,8 +214,13 @@ fetch('/api/info', { credentials: 'include' }).then(async (r) => parent.postMess
 	ok(Boolean(fit.notice && fit.chip && fit.notice.y >= fit.chip.bottom - 0.5), 'g: the raise notice is at the top of the menu, below the icon', JSON.stringify(fit.notice));
 	await narrow.page.screenshot({ path: step('g-narrow') });
 	await narrow.page.keyboard.press('Escape');
+	const toolbarH = () => narrow.page.$eval('.dt-nav-toolbar', (e) => e.getBoundingClientRect().height).catch(() => -1);
+	const lockedH = await toolbarH();
+	ok(lockedH > 0 && lockedH <= 32.5, 'g: locked at 320 px the nav toolbar is one 32 px line (name, lock, level)', String(lockedH));
 	// unlocked at 320 px the toolbar holds four buttons: they wrap, and the switcher keeps a visible, clickable target
 	await narrow.page.click('[data-tool="arrange"]');
+	const unlockedH = await toolbarH();
+	ok(unlockedH > 0 && unlockedH <= 60, 'g: unlocked at 320 px it wraps to two lines at most', String(unlockedH));
 	const sw = await narrow.page.evaluate(() => {
 		const e = document.querySelector('.dt-pane-switch');
 		if (!e) return null;

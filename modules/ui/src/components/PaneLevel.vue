@@ -44,7 +44,7 @@ async function lower(to: PaneLevel): Promise<void> {
 	error.value = null;
 	try {
 		await paneFetch('POST', '/_dt/level', { level: to });
-		paneMenu.value = null;
+		keys.done();
 		await loadHost();
 	} catch (err) {
 		error.value = (err as Error).message;

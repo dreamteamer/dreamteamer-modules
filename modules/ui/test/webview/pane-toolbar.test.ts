@@ -276,10 +276,12 @@ test('narrow and unlocked, the switcher keeps its minimum (the buttons wrap inst
 	await click(sw, { currentTarget: { getBoundingClientRect: () => ({ left: 10, right: 46, top: 4, bottom: 28 }) } });
 	assert.equal(byClass(root, 'dt-pane-switch__menu').length, 1, 'unlocked at 320 px the switcher does not open');
 	const css = await srcOf('components/PaneSwitcher.vue');
-	assert.match(css, /\.dt-pane-switch \{[^}]*flex: 0 1 auto; min-width: 36px;/, 'the switcher has no minimum');
-	assert.match(css, /\.dt-nav-toolbar__name:has\(> \.dt-pane-switch\) \{ flex: 1 0 36px; min-width: 36px; \}/, 'the name slot does not keep the switcher\'s minimum');
-	const nav = await srcOf('components/NavSidebar.vue');
-	assert.match(nav, /\.dt-nav-toolbar__buttons \{[^}]*flex-wrap: wrap;/, 'the buttons do not wrap');
+	// 30 px: some of the name, the chevron and a hit target (the held-out walk asks ≥ 24) — and small enough that a
+	// 320 px pane keeps one 32 px toolbar line when locked (name, lock, level); the pane walk measures that line
+	assert.match(css, /\.dt-pane-switch \{[^}]*flex: 0 1 auto; min-width: 30px;/, 'the switcher has no minimum');
+	assert.match(css, /\.dt-nav \.dt-nav-toolbar__name:has\(> \.dt-pane-switch\) \{ flex: 1 0 30px; min-width: 30px; \}/, 'the name slot does not keep the switcher\'s minimum');
+	assert.match(css, /\.dt-nav \.dt-nav-toolbar:has\(> \.dt-nav-toolbar__name > \.dt-pane-switch\) \{ flex-wrap: wrap;[^}]*padding-left: 6px; \}/, 'the toolbar does not wrap its buttons one by one');
+	assert.match(css, /> \.dt-nav-toolbar__buttons \{ display: contents; \}/, 'the buttons wrap as a group, not one by one');
 });
 
 test('one menu at a time across all of them: switcher, level, row menus and the toolbar asks', async () => {
@@ -355,4 +357,44 @@ test('the Admin shield keeps the warning colour on hover: its rule out-specifies
 	// scoped: `.dt-pane-level[data-level='admin']:hover:not(:disabled)[data-v-…]` is 0,5,0 against `[data-v-…] .dt-nav-tool:hover:not(:disabled)` at 0,4,0
 	assert.match(level, /\.dt-pane-level\[data-level='admin'\]:hover:not\(:disabled\) \{|\.dt-pane-level\[data-level='admin'\]:hover:not\(:disabled\)[^{]*\{ color: var\(--dt-warning\); \}/);
 	assert.match(level, /<style scoped>/);
+});
+
+// ---- the review of the pane branch (round 2) ------------------------------------------------------------------------
+
+test('while the list loads the switcher says Loading…, and "no other workspace" only once the list has answered', async () => {
+	let answer: (v: { status: number; body: unknown }) => void = () => {};
+	const pending = new Promise<{ status: number; body: unknown }>((r) => { answer = r; });
+	const realFetch = w.fetch;
+	const slow = async (url: string, init: RequestInit = {}) => (url === '/_dt/workspaces'
+		? pending.then((a) => new Response(JSON.stringify(a.body), { status: a.status, headers: { 'content-type': 'application/json' } }))
+		: realFetch(url, init));
+	(globalThis as { fetch?: unknown }).fetch = slow;
+	w.fetch = slow;
+	try {
+		const root = await mount();
+		await click(byClass(root, 'dt-pane-switch')[0]);
+		assert.deepEqual(byClass(root, 'dt-pane-menu__hint').map(words), ['Loading…'], 'the loading list says something else');
+		assert.equal(byClass(root, 'dt-pane-switch__item').length, 0);
+		answer({ status: 200, body: [{ id: 'a1b2c3d4e5f60718', name: 'Northwind', running: true, current: true }] });
+		await flush();
+		assert.deepEqual(byClass(root, 'dt-pane-menu__hint').map(words), ['No other workspace was opened on this machine']);
+	} finally {
+		(globalThis as { fetch?: unknown }).fetch = realFetch;
+		w.fetch = realFetch;
+	}
+});
+
+test('a pick that stays on the page gives focus back to its button: a lower level, the current workspace', async () => {
+	const root = await mount();
+	await click(levelIcon(root));
+	focused.length = 0;
+	await click(byClass(root, 'dt-pane-level__lower')[0]);
+	assert.equal(byClass(root, 'dt-pane-level__menu').length, 0);
+	assert.equal(focused[focused.length - 1], levelIcon(root), 'after a lower, focus is not on the level icon');
+	const sw = byClass(root, 'dt-pane-switch')[0];
+	await click(sw);
+	focused.length = 0;
+	await click(byClass(root, 'dt-pane-switch__item')[0]);
+	assert.equal(byClass(root, 'dt-pane-switch__menu').length, 0);
+	assert.equal(focused[focused.length - 1], sw, 'after picking the current workspace, focus is not on the name');
 });
