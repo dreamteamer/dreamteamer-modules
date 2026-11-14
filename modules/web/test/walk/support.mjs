@@ -1,5 +1,5 @@
-// What every walk shares: the built app, the synthetic Northwind workspace, dt-web started the way a person
-// starts it (the bin, --no-open, the first stdout line) and bounded by a hard timer, headless Chromium, and
+// What every walk shares: the built app, the synthetic Northwind workspace, dt-web started the way a session
+// starts it (the bin's `start --foreground`, a URL from `open`) and bounded by a hard timer, headless Chromium, and
 // screenshots named YYYY-MM-DD--HHMM--<name>.png. A walk is a script, not a suite test: it needs the BUILT app
 // (@dreamteamer/ui's dist/app, built and gitignored) and a browser, so it runs by hand or in .github/workflows/web-walk.yml.
 import { spawn, spawnSync } from 'node:child_process';
@@ -30,6 +30,26 @@ export async function northwind() {
 	return makeFixture({ engineDir: ENGINE_DIR });
 }
 
+/**
+ * A second fixture helper (cr-modules-017, the pane walk): a Northwind workspace named `name` (its package.json name,
+ * what the switcher shows), with `tasks` added beside the fixture's own, and this package linked in as
+ * node_modules/@dreamteamer/web — a handoff starts a target through the dt-web the TARGET installed.
+ */
+export async function paneWorkspace(name, { tasks = [] } = {}) {
+	const f = await northwind();
+	const pkgFile = path.join(f.root, 'package.json');
+	const pkg = JSON.parse(fs.readFileSync(pkgFile, 'utf8'));
+	pkg.name = name;
+	fs.writeFileSync(pkgFile, JSON.stringify(pkg, null, '\t') + '\n');
+	for (const t of tasks) {
+		const r = f.dt('add', 'tasks', '--name', t);
+		if (r.status !== 0) throw new Error(`could not add the task ${t}: ${r.stderr}${r.stdout}`);
+	}
+	fs.mkdirSync(path.join(f.root, 'node_modules', '@dreamteamer'), { recursive: true });
+	fs.symlinkSync(WEB, path.join(f.root, 'node_modules', '@dreamteamer', 'web'), 'dir');
+	return f;
+}
+
 /** Headless Chromium through rnd's resolver (playwright-core from the npx cache, or PLAYWRIGHT_CHROMIUM_EXECUTABLE). */
 export async function browser() {
 	const { chromium } = await import(pathToFileURL(path.join(MODULES, 'rnd', 'lib', 'prototype', 'node', 'devdep.mjs')).href);
@@ -41,9 +61,11 @@ export async function browser() {
  * after `limitMs` whatever happens; the sign-in URL comes from `dt-web <root> open`, as a session gets it.
  * Resolves `{ url, child, stop(), signInUrl(), stderr(), runtime }` once the server answers.
  */
-export async function serve(root, { limitMs = 10 * 60_000, idle = 10, env = {} } = {}) {
-	const runtime = fs.mkdtempSync(path.join(os.tmpdir(), 'dt-web-walk-rt-'));
-	const state = fs.mkdtempSync(path.join(os.tmpdir(), 'dt-web-walk-state-'));
+export async function serve(root, { limitMs = 10 * 60_000, idle = 10, env = {}, dirs = null } = {}) {
+	// `dirs` ({ runtime, state }) lets two workspaces share one machine's state — the switcher's registry; the walk
+	// that passes them removes them
+	const runtime = dirs?.runtime ?? fs.mkdtempSync(path.join(os.tmpdir(), 'dt-web-walk-rt-'));
+	const state = dirs?.state ?? fs.mkdtempSync(path.join(os.tmpdir(), 'dt-web-walk-state-'));
 	const childEnv = { ...process.env, DT_WEB_RUNTIME_DIR: runtime, DT_WEB_STATE_DIR: state, DT_WEB_APP_DIR: appDir(), CLAUDE_PID: '', ...env };
 	const child = spawn(process.execPath, [BIN, root, 'start', '--foreground', '--idle', String(idle)], { env: childEnv, stdio: ['ignore', 'pipe', 'pipe'] });
 	const killer = setTimeout(() => child.kill('SIGKILL'), limitMs);
@@ -68,9 +90,11 @@ export async function serve(root, { limitMs = 10 * 60_000, idle = 10, env = {} }
 	const stop = async () => {
 		if (child.exitCode === null && child.signalCode === null) child.kill('SIGTERM');
 		await exited;
-		for (const d of [runtime, state]) fs.rmSync(d, { recursive: true, force: true });
+		if (!dirs) for (const d of [runtime, state]) fs.rmSync(d, { recursive: true, force: true });
 	};
-	return { url, child, stop, signInUrl, stderr: () => err, runtime };
+	/** The bin over this workspace with this server's env — `dt web <args…>` as the chat runs it. */
+	const run = (...args) => spawnSync(process.execPath, [BIN, root, ...args], { env: childEnv, encoding: 'utf8', timeout: 30_000 });
+	return { url, child, stop, signInUrl, run, env: childEnv, stderr: () => err, runtime, state };
 }
 
 /** A page signed in through the URL, with page errors collected. */

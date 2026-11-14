@@ -119,7 +119,8 @@ try {
 	for (const [label, text] of [['unparsable', '{ "dreamteamer.moduleApps": {'], ['string', '{"dreamteamer.moduleApps": "all"}'], ['array', '{"dreamteamer.moduleApps": ["pattern"]}']]) {
 		fs.writeFileSync(settings, text); const n = consoleLines.length;
 		await page.reload(); const loaded = await page.waitForSelector('.dt-nav-row', { timeout: 30_000 }).then(() => true, () => false);
-		const grants = await page.evaluate(() => window.__DT_MODULE_GRANTS__);
+		// the grant the page boots with: GET /api/host behind the cookie (cr-modules-017), no longer a shell global
+		const grants = await page.evaluate(async () => (await (await fetch('/api/host', { credentials: 'same-origin' })).json()).moduleGrants);
 		ok(loaded && JSON.stringify(grants) === '{}', `h2: a ${label} settings file yields an empty grant and the editor loads`, JSON.stringify(grants));
 		ok(consoleLines.slice(n).some((x) => /grant could not be read/i.test(x)), `h2: the page console says the ${label} grant could not be read`);
 	}
