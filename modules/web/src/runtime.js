@@ -15,10 +15,15 @@ export function runtimeDir(env = process.env, platform = process.platform, home 
 	return path.join(home, '.local', 'share', 'dreamteamer', 'web', 'runtime');
 }
 
-/** The state file of one workspace's server. */
+/** A workspace's key: the first 16 hex of the SHA-256 of its real path — the runtime file's name, the state
+ *  file's (state.js) and the registry id. */
+export function workspaceKey(root) {
+	return crypto.createHash('sha256').update(fs.realpathSync(root)).digest('hex').slice(0, 16);
+}
+
+/** The runtime file of one workspace's server. */
 export function stateFile(root, dir = runtimeDir()) {
-	const key = crypto.createHash('sha256').update(fs.realpathSync(root)).digest('hex').slice(0, 16);
-	return path.join(dir, `${key}.json`);
+	return path.join(dir, `${workspaceKey(root)}.json`);
 }
 
 export function writeState(file, state) {

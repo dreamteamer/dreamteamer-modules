@@ -1,6 +1,6 @@
 {
 	"name": "@dreamteamer/web",
-	"version": "0.2.0",
+	"version": "0.3.0",
 	"description": "dt web: the dreamteamer UI in your browser over a workspace on your machine — loopback, a sign-in URL, live updates",
 	"license": "Apache-2.0",
 	"type": "module",
@@ -28,7 +28,7 @@
 		"skills"
 	],
 	"dependencies": {
-		"@dreamteamer/protocol": "^0.2.0",
+		"@dreamteamer/protocol": "^0.3.0",
 		"@dreamteamer/ui": "^0.2.0"
 	},
 	"dreamteamer": {
