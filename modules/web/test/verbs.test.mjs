@@ -7,6 +7,7 @@ import { test, before, after, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
+import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -202,6 +203,50 @@ describe('stop and come back', () => {
 		assert.equal(rv.status, 0, rv.stdout);
 		assert.equal(rv.stdout.trim(), '✔ revoked 0 session(s)');
 		assert.equal(run('status').status, 1, 'revoke started nothing');
+		assert.equal(run('start').status, 0);
+	});
+});
+
+describe('start, detached, with its flags', () => {
+	const freePort = () => new Promise((resolve) => { const s = http.createServer(); s.listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => resolve(p)); }); });
+	test('--port, --idle and --owner-pid reach the server the verb starts', { timeout: 60_000 }, async () => {
+		run('stop');
+		assert.equal(run('status').status, 1, 'stopped');
+		const q = await freePort();
+		const r = run('start', '--port', String(q), '--idle', '7', '--owner-pid', String(process.pid));
+		assert.equal(r.status, 0, r.stdout + r.stderr);
+		assert.equal(r.stdout.trim(), `running at http://127.0.0.1:${q}`);
+		const rt = runtimeFile();
+		assert.equal(rt.port, q);
+		assert.equal(rt.owner, process.pid);
+		assert.equal(rt.idle, 7);
+		assert.match(run('status').stdout, new RegExp(`running at http://127.0.0.1:${q} · .* · owner ${process.pid} · `));
+	});
+	test('on a running server a flag it already has is fine; one it does not is refused, naming the server and the way out', { timeout: 60_000 }, async () => {
+		const rt = runtimeFile();
+		assert.equal(run('start').status, 0);
+		const same = run('start', '--port', String(rt.port), '--idle', '7', '--owner-pid', String(process.pid));
+		assert.equal(same.status, 0, same.stdout + same.stderr);
+		for (const flags of [['--port', String(await freePort())], ['--idle', '9'], ['--owner-pid', '1']]) {
+			const r = run('start', ...flags);
+			assert.equal(r.status, 1, `${flags.join(' ')}: ${r.stdout}${r.stderr}`);
+			assert.match(r.stdout, new RegExp(`already running at http://127\\.0\\.0\\.1:${rt.port} — ${flags[0]} ${flags[1]} .*dt web stop`), flags.join(' '));
+		}
+		assert.equal(runtimeFile().pid, rt.pid, 'the server was not replaced');
+	});
+	test('a --port another program holds fails at once, naming the port — never a wait or another port', { timeout: 60_000 }, async () => {
+		run('stop');
+		assert.equal(run('status').status, 1, 'stopped');
+		const holder = http.createServer();
+		await new Promise((resolve) => holder.listen(0, '127.0.0.1', resolve));
+		const taken = holder.address().port;
+		try {
+			const r = run('start', '--port', String(taken));
+			assert.notEqual(r.status, 0, r.stdout + r.stderr);
+			assert.ok(r.ms < 8_000, `${r.ms} ms`);
+			assert.match(r.stdout + r.stderr, new RegExp(`port ${taken} is taken`));
+			assert.equal(run('status').status, 1, 'nothing runs');
+		} finally { await new Promise((resolve) => holder.close(resolve)); }
 		assert.equal(run('start').status, 0);
 	});
 });

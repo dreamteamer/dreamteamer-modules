@@ -82,7 +82,7 @@ export function parseArgs(argv, env = process.env) {
 	if (!['open', 'show', 'select'].includes(cmd) && positional.length) throw bad(`dt web ${cmd} takes no "${positional[0]}"`);
 	if ((cmd === 'open' || cmd === 'show') && positional[0] !== undefined) out.target = positional[0];
 	if (cmd === 'select' && !out.clear) out.refs = positional;
-	if (cmd === 'start' && out.port === undefined && env.DT_WEB_PORT) out.port = wholeNumber('DT_WEB_PORT', env.DT_WEB_PORT, 65535);
+	if (cmd === 'start' && out.port === undefined && env.DT_WEB_PORT) { out.port = wholeNumber('DT_WEB_PORT', env.DT_WEB_PORT, 65535); out.portFromEnv = true; }
 	return out;
 }
 
@@ -108,17 +108,18 @@ class NotAnswering extends Error { constructor(p) { super(notAnsweringLine(p)); 
 const current = async (root, env, timeoutMs = 2000, { refuseSilent = true } = {}) => {
 	const p = await probeServer(fileOf(root, env), { timeoutMs });
 	if (p?.state === 'silent' && refuseSilent) throw new NotAnswering(p);
-	return p?.proven && typeof p.token === 'string' ? { port: p.port, controlToken: p.token, pid: p.pid, movedFrom: p.movedFrom } : null;
+	return p?.proven && typeof p.token === 'string' ? { port: p.port, controlToken: p.token, pid: p.pid, movedFrom: p.movedFrom, owner: p.owner ?? null, idle: p.idle } : null;
 };
 const failed = (log, r) => { log(`✖ ${r.body?.error ?? (r.status ? `the server answered ${r.status}` : 'the server did not answer')}`); return 1; };
 
 /**
  * The workspace's server, started detached when it is not running (or is on its way down): `dt-web <root> start
- * --foreground` with its output in `<runtime dir>/<key>.log`, waited for up to ten seconds. `bin` is this package's
- * dt-web, or — for a handoff — the one the target workspace installed.
+ * --foreground [args…]` with its output in `<runtime dir>/<key>.log`, waited for up to ten seconds — or until the child
+ * exits, when the line it ended on is the error. `bin` is this package's dt-web, or — for a handoff — the one the target
+ * workspace installed; `args` the flags `dt web start` was given (`--port`, `--idle`, `--owner-pid`).
  * @returns {Promise<{ port: number, controlToken: string }>}
  */
-export async function ensureRunning(root, { log = console.log, env = process.env, appDir, bin = BIN } = {}) {
+export async function ensureRunning(root, { log = console.log, env = process.env, appDir, bin = BIN, args = [] } = {}) {
 	// a live server that does not answer throws NotAnswering here: never a second server beside it
 	const now = await current(root, env);
 	if (now) return now;
@@ -128,11 +129,14 @@ export async function ensureRunning(root, { log = console.log, env = process.env
 	fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
 	const logFile = path.join(dir, `${workspaceKey(root)}.log`);
 	const fd = fs.openSync(logFile, 'a', 0o600);
-	const child = spawn(process.execPath, [bin, root, 'start', '--foreground'], {
+	const from = fs.fstatSync(fd).size;
+	const child = spawn(process.execPath, [bin, root, 'start', '--foreground', ...args], {
 		detached: true,
 		stdio: ['ignore', fd, fd],
 		env: { ...env, ...(appDir ? { DT_WEB_APP_DIR: appDir } : {}) },
 	});
+	let exited = null;
+	child.once('exit', (code) => { exited = code; });
 	child.unref();
 	fs.closeSync(fd);
 	const until = Date.now() + START_WAIT_MS;
@@ -142,10 +146,32 @@ export async function ensureRunning(root, { log = console.log, env = process.env
 			if (rt.movedFrom) log(movedLine(rt.movedFrom, rt.port));
 			return rt;
 		}
+		// a child that has exited will not come up (another start that won the lock is found above on the next turn)
+		if (exited !== null) {
+			const again = await current(root, env, 1000, { refuseSilent: false });
+			if (again) return again;
+			const said = logTail(logFile, from);
+			throw new Error(`dt web did not start${said ? `: ${said.replace(/^✖ /, '')}` : ` (exit ${exited})`} — its log: ${logFile}`);
+		}
 		await sleep(100);
 	}
 	throw new Error(`dt web did not start within ${START_WAIT_MS / 1000} s — its log: ${logFile}`);
 }
+
+/** The last line the child wrote to its log since `from` (the log is kept across starts). */
+function logTail(file, from) {
+	try {
+		const text = fs.readFileSync(file).subarray(from).toString('utf8');
+		return text.trim().split('\n').filter((l) => l.trim() && !/^\s+at /.test(l)).at(-1)?.trim() ?? '';
+	} catch { return ''; }
+}
+
+/** The `start` flags as given (`--port` from DT_WEB_PORT too) — what the detached child is started with. */
+const startFlags = (o) => [
+	...(o.port !== undefined ? ['--port', String(o.port)] : []),
+	...(o.idle !== undefined ? ['--idle', String(o.idle)] : []),
+	...(o.ownerPid !== undefined ? ['--owner-pid', String(o.ownerPid)] : []),
+];
 
 export async function main(root, argv, { log = console.log, env = process.env, appDir = env.DT_WEB_APP_DIR || undefined } = {}) {
 	const o = parseArgs(argv, env);
@@ -215,7 +241,22 @@ async function verb(root, o, { log, env, appDir, sdir, ensure }) {
 	if (o.cmd === 'revoke') return revoke(root, { token: o.token }, { log, env });
 	if (o.cmd === 'start') {
 		if (o.foreground) return foreground(root, o, { log, env, appDir });
-		const rt = await ensure();
+		// a server already running keeps its port, idle stop and owner: a flag asking for another is refused, never dropped
+		const was = await current(root, env);
+		if (was) {
+			const differs = [
+				o.port !== undefined && o.port !== was.port && `${o.portFromEnv ? 'DT_WEB_PORT=' : '--port '}${o.port}`,
+				o.idle !== undefined && o.idle !== was.idle && `--idle ${o.idle}`,
+				o.ownerPid !== undefined && o.ownerPid !== was.owner && `--owner-pid ${o.ownerPid}`,
+			].filter(Boolean);
+			if (differs.length) {
+				log(`already running at http://127.0.0.1:${was.port} — ${differs.join(', ')} applies only to a server this verb starts: dt web stop, then dt web start again`);
+				return 1;
+			}
+			log(`running at http://127.0.0.1:${was.port}`);
+			return 0;
+		}
+		const rt = await ensureRunning(root, { log, env, appDir, args: startFlags(o) });
 		log(`running at http://127.0.0.1:${rt.port}`);
 		return 0;
 	}
@@ -342,9 +383,11 @@ async function foreground(root, o, { log, env, appDir = appDirOf() }) {
 		web = await startWeb({ root, appDir, port: o.port ?? 0, idleMinutes: o.idle ?? 60, ownerPid: o.ownerPid, stateDir: stateDir(env), onStop: () => { removeState(file); lock.release(); } });
 	} catch (e) {
 		lock.release();
+		// a port the person named is never swapped for another (server.js moves only a stored one)
+		if (e?.code === 'EADDRINUSE' && o.port) throw new Error(`port ${o.port} is taken by another program — pick another --port, or leave it out`);
 		throw e;
 	}
-	writeState(file, { pid: process.pid, port: web.port, started: new Date().toISOString(), owner: o.ownerPid ?? null, token: web.controlToken, instance: web.instance, pstart: ownStart(), ...(web.movedFrom ? { movedFrom: web.movedFrom } : {}) });
+	writeState(file, { pid: process.pid, port: web.port, started: new Date().toISOString(), owner: o.ownerPid ?? null, idle: o.idle ?? 60, token: web.controlToken, instance: web.instance, pstart: ownStart(), ...(web.movedFrom ? { movedFrom: web.movedFrom } : {}) });
 	// the handlers before the first line: a caller may signal the moment it reads it
 	const stop = () => web.close('signal');
 	process.once('SIGINT', stop);
