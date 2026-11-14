@@ -67,5 +67,5 @@ if (!Number.isInteger(concurrency) || concurrency < 1) {
 }
 
 console.log(`${files.length} test files, ${concurrency} at a time${shardArg ? `, shard ${shardArg}` : ''}${mod ? `, module ${mod}` : ''}`);
-const r = spawnSync(process.execPath, ['--test', `--test-concurrency=${concurrency}`, ...files], { stdio: 'inherit', cwd: ROOT });
+const r = spawnSync(process.execPath, ['--test', `--test-concurrency=${concurrency}`, ...files], { stdio: 'inherit', cwd: ROOT, env: { ...process.env, ...(mod ? { DT_RELEASE_MODULE: mod } : {}) } });
 process.exit(r.status ?? 1);
