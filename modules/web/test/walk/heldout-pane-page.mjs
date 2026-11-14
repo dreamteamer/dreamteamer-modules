@@ -144,7 +144,7 @@ try {
 		await context.close();
 	}
 
-	// ---- step 4: the pane's level (an icon in the nav toolbar since the 2026-11-14 16:30 revision) at 320 px, Admin with raisedAt, a 40-character name -------------------------------
+	// ---- step 4: the pane's level (an icon in the nav toolbar since the 2026-11-14 16:30 revision) at 320 px, Admin with raisedAt, a 40-character name; then the switcher (the name), locked and unlocked ----
 	{
 		const up = s.run('open', '--admin');
 		const url = /^✔ open in the pane: (\S+)$/m.exec(up.stdout)?.[1];
@@ -164,11 +164,62 @@ try {
 		ok(inside(m.chip) && m.chip.visible && m.reach.chip && !m.clip.chip, 'step 4: the level chip is reachable and inside the viewport (topmost at its centre, not clipped)', JSON.stringify({ box: m.chip && { x: m.chip.x, right: m.chip.right, text: m.chip.text }, topmost: m.reach.chip, clippedBy: m.clip.chip }));
 		ok(inside(m.menu) && m.menu.visible && m.reach.menu && !m.clip.menu, 'step 4: the level menu is reachable and inside the viewport (topmost, not clipped)', JSON.stringify({ box: m.menu && { x: m.menu.x, right: m.menu.right }, topmost: m.reach.menu, clippedBy: m.clip.menu }));
 		ok(m.docSW <= m.docCW, 'step 4: no horizontal scroll of the page', `scrollWidth ${m.docSW}, clientWidth ${m.docCW}`);
-		ok(m.name?.overflow === 'ellipsis' && m.name.sw > m.name.cw, 'step 4: the workspace name truncates with an ellipsis', JSON.stringify(m.name && { overflow: m.name.overflow, sw: m.name.sw, cw: m.name.cw }));
+		// a name squeezed to no width also "overflows with an ellipsis" — so the visible part must be wider than nothing
+		ok(m.name?.overflow === 'ellipsis' && m.name.sw > m.name.cw && m.name.cw > 0, 'step 4: the workspace name truncates with an ellipsis, part of it still drawn (not squeezed to nothing)', JSON.stringify(m.name && { overflow: m.name.overflow, sw: m.name.sw, cw: m.name.cw }));
 		const covers = m.notice?.visible && m.chip && !(m.notice.right <= m.chip.x || m.notice.x >= m.chip.right || m.notice.bottom <= m.chip.y || m.notice.y >= m.chip.bottom);
 		ok(!covers, 'step 4: the raise notice wraps or hides, never covers the chip', JSON.stringify(m.notice && { visible: m.notice.visible, x: m.notice.x, right: m.notice.right, text: m.notice.text }));
 		info(`step 4: raise notice ${m.notice?.visible ? `shown: "${m.notice.text}"` : 'hidden at this width'}`);
 		await page.screenshot({ path: shot('4-narrow-bar-level-menu') });
+
+		// The name IS the workspace switcher (the 2026-11-14 16:30 revision): at 320 px it must stay a visible, clickable
+		// button — the nav's default (locked) state and unlocked, where the toolbar gains New folder and Show hidden.
+		// Visible = some of the name and the chevron drawn, inside the viewport, topmost at its centre and not clipped;
+		// clickable = a click opens the switcher's menu, inside the viewport, with the current workspace checked.
+		const switcher = async (state) => {
+			const v = await page.evaluate(() => {
+				const btn = document.querySelector('.dt-pane-switch');
+				if (!btn) return null;
+				const b = btn.getBoundingClientRect();
+				const at = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
+				const name = btn.querySelector('.dt-pane-switch__name')?.getBoundingClientRect();
+				const chev = btn.querySelector('.dt-pane-switch__chevron')?.getBoundingClientRect();
+				let clippedBy = null;
+				for (let p = btn.parentElement; p; p = p.parentElement) {
+					const cs = getComputedStyle(p);
+					if (cs.overflow === 'visible' && cs.overflowX === 'visible') continue;
+					const q = p.getBoundingClientRect();
+					if (b.left < q.left - 0.5 || b.right > q.right + 0.5) { clippedBy = String(p.className || p.tagName); break; }
+				}
+				return { x: b.left, right: b.right, w: b.width, h: b.height, topmost: Boolean(at && btn.contains(at)), nameW: name?.width ?? 0, chevronW: chev?.width ?? 0, chevronInside: Boolean(chev && chev.right <= b.right + 0.5 && chev.left >= b.left - 0.5), clippedBy, vw: window.innerWidth };
+			});
+			ok(Boolean(v && v.x >= 0 && v.right <= v.vw + 0.5 && v.w >= 24 && v.h >= 20 && v.topmost && !v.clippedBy), `step 4 (${state}): the workspace switcher is a visible hit target inside the viewport (≥ 24 px wide, topmost at its centre, not clipped)`, JSON.stringify(v));
+			ok(Boolean(v && v.nameW > 0 && v.chevronW > 0 && v.chevronInside), `step 4 (${state}): some of the name and the switcher's chevron are drawn`, JSON.stringify(v && { nameW: v.nameW, chevronW: v.chevronW, chevronInside: v.chevronInside }));
+			if (!v?.topmost) return;
+			await page.click('.dt-pane-switch');
+			const opened = await page.waitForSelector('.dt-pane-switch__menu [aria-checked="true"]', { timeout: 10_000 }).then(() => true, () => false);
+			const menu = await page.evaluate(() => {
+				const e = document.querySelector('.dt-pane-switch__menu');
+				if (!e) return null;
+				const b = e.getBoundingClientRect();
+				return { x: b.left, right: b.right, vw: window.innerWidth, checked: [...e.querySelectorAll('[aria-checked="true"]')].map((x) => x.innerText.trim()) };
+			});
+			ok(opened && Boolean(menu && menu.x >= 0 && menu.right <= menu.vw + 0.5 && menu.checked.some((x) => x.startsWith(NAME))), `step 4 (${state}): a click on the switcher opens its menu inside the viewport, the current workspace checked`, JSON.stringify(menu));
+			await page.screenshot({ path: shot(`4-narrow-switcher-${state}`) });
+			await page.keyboard.press('Escape');
+			await page.mouse.click(250, 600);
+			await page.waitForTimeout(300);
+		};
+		await page.keyboard.press('Escape');
+		await page.mouse.click(250, 600);
+		await page.waitForTimeout(300);
+		await switcher('locked');
+		await page.click('.dt-nav-lock');
+		const unlocked = await page.waitForFunction(() => document.querySelector('.dt-nav-lock')?.getAttribute('aria-pressed') === 'true', null, { timeout: 5_000 }).then(() => true, () => false);
+		ok(unlocked, 'step 4: the arrange lock unlocks at Admin');
+		await page.waitForTimeout(300);
+		await switcher('unlocked');
+		const sideways = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
+		ok(!sideways, 'step 4 (unlocked): no horizontal scroll of the page');
 		await context.close();
 	}
 } catch (e) {
