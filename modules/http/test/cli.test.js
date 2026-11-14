@@ -72,7 +72,8 @@ describe('dt serve', () => {
 		const r = bare.dt('serve', '--port', '0');
 		assert.equal(r.code, 2);
 		assert.match(r.stderr, /`dt serve` comes from an extension this workspace does not have/);
-		// the install line the engine prints: `npm i …` before 0.49, `dt install …` from it
-		assert.match(r.stderr, /(?:npm i|dt install) @dreamteamer\/http\n/);
+		// the install line the engine prints: `npm i …` before 0.49, `dt install …` from it — and from 0.49 it names
+		// @dreamteamer/web, where dt serve moved (this package is deprecated)
+		assert.match(r.stderr, /(?:npm i|dt install) @dreamteamer\/(?:http|web)\n/);
 	});
 });
