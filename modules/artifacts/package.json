@@ -1,0 +1,29 @@
+{
+	"name": "@dreamteamer/artifacts",
+	"version": "0.1.0",
+	"description": "Built pages a person opens — a pitch, a prototype, a report — kept as a folder whose index.html runs straight from disk.",
+	"license": "Apache-2.0",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/dreamteamer/dreamteamer-modules.git",
+		"directory": "modules/artifacts"
+	},
+	"keywords": [
+		"dreamteamer",
+		"dreamteamer-module",
+		"artifacts"
+	],
+	"files": [
+		"README.md",
+		"UPDATING.md",
+		"collections"
+	],
+	"dreamteamer": {
+		"title": "Artifacts",
+		"description": "`artifacts`: a built page someone OPENS — a pitch, a prototype, a report, a canvas — kept as a folder whose `index.md` carries the fields and the tour and whose `index.html` runs straight from disk; a published copy is recorded on `published_url`. Not `assets`, which are pictures a view draws. Peers `companies`.",
+		"engine": ">=0.48.0",
+		"peer_collections": [
+			"companies"
+		]
+	}
+}

@@ -11,6 +11,13 @@ npx dreamteamer check
 
 ---
 
+## 0.3.0 — `manager` and `reports` are users' own
+
+`manager` (who a person reports to) and its generated far side `reports` moved in from the users overlay
+`@dreamteamer/core` 0.11 shipped; they reference only users, so they belong here rather than in a package of
+their own. Nothing to do: no field was renamed and no record moves. A workspace on core 0.11 already had
+both fields; a workspace with users alone gains them at the next `dt compile`.
+
 ## 0.2.1 — the pairing with projects is declared
 
 Nothing changes in what users ships. Its package.json now says, in npm's own `peerDependencies`,
@@ -66,9 +73,9 @@ npx dreamteamer compile
 npx dreamteamer check
 ```
 
-**An overlay of yours.** If your own module overlays `teams` (`extends: "@dreamteamer/projects/teams"`),
-point it at the new owner, `"@dreamteamer/users/teams"`, and declare `@dreamteamer/users` as its
-dependency.
+**An overlay of yours.** An overlay of `teams` is a descriptor with `name: teams` and `overlay: true`
+(compile refuses an `extends:` key); it adds to whichever installed module owns `teams`, now users. Declare
+`@dreamteamer/users` as your module's dependency in place of `@dreamteamer/projects`.
 
 ## 0.1.1 and earlier
 

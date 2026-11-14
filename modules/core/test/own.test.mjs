@@ -48,8 +48,7 @@ describe('the five collections core adds', () => {
 			assert.equal(d.fields.users.type, 'users'); assert.equal(d.fields.users.many, true); assert.equal(d.fields.users.mirror_of, c);
 			assert.equal(users.fields[c].type, c); assert.equal(users.fields[c].many, true);
 		}
-		assert.equal(users.fields.manager.type, 'users');
-		assert.equal(users.fields.reports.mirror_of, 'manager');
+		assert.ok(!('manager' in users.fields) && !('reports' in users.fields), 'manager and reports are users\' own from users 0.3.0');
 	});
 	test('artifacts is a folder whose entry is index.md, keyed by name, with built_from distinct from source', () => {
 		const d = own('artifacts');
@@ -63,8 +62,11 @@ describe('the five collections core adds', () => {
 		const d = own('agents');
 		assert.equal(d.overlay, true); assert.deepEqual(d.fields, {}); assert.ok(d.display.nav.icon);
 	});
-	test('the users base core composes is the one the overlay extends', () => {
-		assert.ok(composedFields('collections/users/users.collection.yaml').name, 'users base is composed');
-		for (const f of ['roles', 'responsibilities', 'manager', 'reports']) assert.ok(!composedFields('collections/users/users.collection.yaml')[f], `${f} is the overlay's, not the base's`);
+	test('the users base core composes is the one the overlay extends, and carries manager and reports (users 0.3.0)', () => {
+		const base = composedFields('collections/users/users.collection.yaml');
+		assert.ok(base.name, 'users base is composed');
+		for (const f of ['roles', 'responsibilities']) assert.ok(!base[f], `${f} is the overlay's, not the base's`);
+		assert.equal(base.manager.type, 'users');
+		assert.equal(base.reports.mirror_of, 'manager');
 	});
 });

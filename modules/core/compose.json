@@ -156,7 +156,7 @@
 		},
 		"collections/users/users.collection.yaml": {
 			"from": "users/collections/users.collection.yaml",
-			"hash": "sha256:6704d9247aff95b79e67bdf6278380bd70a2f2c70638d128492826522f6b48bb"
+			"hash": "sha256:8211be49cb02967ec82d60e0845875e985cee3f2ff487382e44a584ac14b9b94"
 		},
 		"collections/workflows/workflows.collection.yaml": {
 			"from": "workflows/collections/workflows.collection.yaml",

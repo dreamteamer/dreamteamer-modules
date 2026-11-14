@@ -76,6 +76,14 @@ fields:
     many: true
     mirror_of: lead
     description: The teams this person runs — generated from `teams.lead`.
+  manager:
+    type: users
+    description: Who they report to.
+  reports:
+    type: users
+    many: true
+    mirror_of: manager
+    description: GENERATED — who reports to them. Set `manager` on the report.
   notes:
     type: markdown
     body: true
