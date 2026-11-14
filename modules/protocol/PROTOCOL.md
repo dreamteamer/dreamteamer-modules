@@ -30,8 +30,10 @@ record ids are paths (`2026/11/northwind-kickoff`) and are sent unencoded. The q
 
 Every error body is `{ "error": "<the engine's own sentence>" }`.
 
-**Transport errors** — a network host's alone, never the contract's: `401` (no or a wrong token), `403`
-(a `Host` or `Origin` that is not the server's own), `415` (a write body that is not JSON).
+**Transport errors** — a network host's alone, never the contract's: `401` (no or a wrong token, or a token on a
+prefix it does not open), `403` (a `Host` or `Origin` that is not the server's own, a cross-site request, a route
+above the pane's level — `this pane is at <Level>: <METHOD> <pattern> needs <Level> …`), `415` (a write whose
+`Content-Type` is not `application/json`).
 
 ## Dry run
 
@@ -61,7 +63,16 @@ keys the host computes, each prefixed `$` (or named as below) so a write never p
 
 ## Routes
 
+Every route carries a **level** — the least a pane must be at to be answered: `read` (every `GET`, and `PUT
+/selection`, so a Read pane still reports its place), `edit` (record writes, the nav writes, `POST /queue`) and
+`admin` (fields, rename, revert, commit, reload). A host that enforces levels (dt web) refuses a route above the
+pane's level with `403` naming both — and a record write on a collection the engine reports internal or runtime
+needs `admin` there; the editor answers every route at admin. `src/routes.js` carries the same `level` on each
+entry.
+
 ### GET /info
+
+Level: read
 
 The workspace, as the host loaded it. `200 { name, host, compiled, modules: [...], ui: [...], user, stale,
 collections: [name, ...] }` — `user` is the person's id slug from `git config user.name`, or `null`;
@@ -69,9 +80,13 @@ collections: [name, ...] }` — `user` is the person's id slug from `git config 
 
 ### GET /schema
 
+Level: read
+
 Every compiled descriptor, ordered by `display.nav.order`. `200 [descriptor, ...]`.
 
 ### GET /presentation
+
+Level: read
 
 How to render each collection and field — the engine's `presentation()` — with one key the host adds to
 each collection row: `sources`, every root the collection's records are read from (name, kind, repo, path,
@@ -79,11 +94,15 @@ installed, count, access). `200 { collections: [row, ...], … }`.
 
 ### GET /sources
 
+Level: read
+
 The stack of roots, top to bottom as `dt status` prints its `layers:` block. `200 { workspace, layers: [...],
 modules: [...] }`, each `{ name, kind, repo, installed, via, access, collections: [{ collection, count }],
 record? }` — `record` is the `repos/<id>` whose `url` matches the root's remote, when one does.
 
 ### GET /sources/access
+
+Level: read
 
 What each source's REMOTE grants, as the account the remote pushes as — computed live by the host's
 remote-access provider and never stored. `200 { available, access: { <source name>: { state, level?, role?,
@@ -95,6 +114,8 @@ body unredacted: a token shape, or a credential value the host holds, is `[redac
 
 ### GET /sources/access/members
 
+Level: read
+
 Who has access to one source's remote, by the same provider. Query: `source=<source name>` (required; an
 unknown name is 404 `no such source`). `200 { state, members: [{ name, kind, level, role?, via? }], account?,
 remote?, reason? }` — `state` is one of `ok · partial · refused · no-login · no-access · unknown`; below the
@@ -102,6 +123,8 @@ provider's threshold the list is empty and `reason` says why. Without a provider
 the same reason as `/sources/access`.
 
 ### GET /activity
+
+Level: read
 
 Git history as named entries. Query: `module` (one module's history; absent, every module merged), `limit`
 (default 20, at most 500), `offset`, `settled` (how many scopes the asker already has). `200 { module,
@@ -111,6 +134,8 @@ its slowest repository is read: `pending` names those still being read, and the 
 with `settled` until it is empty.
 
 ### GET /nav
+
+Level: read
 
 The navigation the editor draws as its tree, as data, so a host without a native tree draws the same
 folders. `200 [NavNode, ...]`, `NavNode = { kind, key, label, icon?, route?, marks?, description?, tooltip?,
@@ -131,6 +156,8 @@ chip (`$source`), never by a host-wide scope.
 
 ### PUT /nav
 
+Level: edit
+
 Replace the whole `nav.yaml`. Body: a NavDoc `{ tree: [Entry, ...], hidden?: [name, ...] }`. The shape is
 checked first — every entry a collection name, `{ collection, icon? }`, `{ folder, icon?, hidden?, items }` or
 `{ namespace, icon?, hidden?, items? }`, a folder label not empty and not starting with `ns:` — then every
@@ -140,6 +167,8 @@ trailing newline) and the answer is `200 { doc }`. PUT is how a `nav.yaml` that 
 `409` when there is no `nav.yaml` and an old nav setting is still set (below).
 
 ### PATCH /nav
+
+Level: edit
 
 One gesture. Body: one NavOp (see *The nav document*) — `move`, `new-folder`, `rename`, `dissolve`, `icon`,
 `hide`, `show`. The host reads `nav.yaml` (none is an empty document), applies the op with the workspace's
@@ -153,31 +182,43 @@ unset), both write routes answer `409 your nav settings are not in nav.yaml yet 
 
 ### POST /fields/:collection
 
+Level: admin
+
 Add a field. Body `{ name, field }` with a whole field object, or `{ name, type, required?, many?, enum?, … }`
 in the CLI's flag vocabulary. The source is written, compiled and committed; a compile refusal is `400` and
 the source is restored. `200 { collection, field, file, value, commits?, … }` — `value` the field as written.
 
 ### PATCH /fields/:collection/:field
 
+Level: admin
+
 Edit a field. Body `{ field }` replaces it; flags change only what they name over the field as its source
 declares it. `?module=<id>` selects which module's source the edit lands in. `200` as for add.
 
 ### DELETE /fields/:collection/:field
+
+Level: admin
 
 Remove a field — its values are cleared from every record. `?dry-run=true` answers the plan: the records
 and descriptors it would touch. `200 { collection, field, … }`.
 
 ### POST /fields/:collection/:field/rename
 
+Level: admin
+
 Rename a field everywhere — every record, descriptor, view and binding that names it. Body `{ "to": "<new>" }`.
 `?dry-run=true` answers the plan. `200 { collection, from, to, … }`.
 
 ### POST /fields/:collection/:field/rename-value
 
+Level: admin
+
 Rename one enum value in every record and every descriptor. Body `{ "from": "<old>", "to": "<new>" }`.
 `?dry-run=true` answers the plan. `200 { … }`.
 
 ### GET /folder/:collection/*id
+
+Level: read
 
 The images a record's folder-template field points at. Query `field` (required). `200 { path, files:
 [name, ...], reason }` — `path` the folder rendered for this machine (or `null`), `reason` why nothing is
@@ -186,11 +227,15 @@ a missing folder: a reason the UI shows.
 
 ### GET /collections/:collection/values/:field
 
+Level: read
+
 The values a field actually uses, with counts, for filter vocabularies. Query `limit`. `200 { collection,
 field, values: [{ value, count }], total, truncated }`. The computed keys (`$source`, `$module`,
 `$last-modified-by`, `$created-by`) are answered the same way.
 
 ### GET /collections/:collection/records
+
+Level: read
 
 A page of rows. Query: `limit` (default 200), `offset`, `sort` (`field` or `-field`), `q` (substring over the
 row), `filter` (JSON, the engine's operators `_eq` `_contains` `_in` `_and` … and one-hop relational
@@ -201,6 +246,8 @@ rows the filter leaves before paging. Rows carry the computed keys above.
 
 ### POST /collections/:collection/records
 
+Level: edit
+
 Create a record. Body: the fields, plus `id` for an explicit id. Query `target=<source name>` chooses which
 root a new record is written to (a layer that takes writes); absent, the collection's write root. A system
 collection (`collections`, `modules`, `skills`, `ui-views`, …) is written through its schema operation
@@ -208,9 +255,13 @@ instead — see *System writes*. `200 { id, path, source }`; a refusal is `400` 
 
 ### GET /collections/:collection/records/*id
 
+Level: read
+
 One record. `200 { id, fields: { …, computed keys }, path }`.
 
 ### PATCH /collections/:collection/records/*id
+
+Level: edit
 
 Set fields. Body: the fields to change; echoed computed keys are ignored, never written. The record is
 validated exactly as `dt set` validates it; a refusal is `400` and nothing is written. A record held by a
@@ -218,15 +269,21 @@ validated exactly as `dt set` validates it; a refusal is `400` and nothing is wr
 
 ### DELETE /collections/:collection/records/*id
 
+Level: edit
+
 Remove a record. Query `force=true` removes one that others reference. `409` when it is referenced and not
 forced. `200 { id }`.
 
 ### POST /collections/:collection/files
 
+Level: edit
+
 Import a file AS a record of a binary collection. Body `{ id, from, force? }` — `from` a path the host can
 read. `200 { id, path }`.
 
 ### PATCH /collections/:collection/position/*id
+
+Level: edit
 
 Manual order, on the collection's one `position` field. Body `{ top: true }`, `{ bottom: true }`,
 `{ before: <id> }` or `{ after: <id> }`. One record is written. `400` when the collection has no position
@@ -234,15 +291,21 @@ field or the neighbour is not in the order. `200 { id }`.
 
 ### POST /collections/:collection/rename
 
+Level: admin
+
 Rename a record (or, on a system collection, the entity). Body `{ old, new }`. Every reference to it is
 rewritten. A record held by a `git_modules` layer is refused: `… is held by layer <name> … a layer's record
 is renamed in its own workspace, never from here. nothing was renamed.` `200` the engine's rename result.
 
 ### POST /collections/:collection/records-revert/*id
 
+Level: admin
+
 Restore a record to a commit. Body `{ hash }`. `200` the engine's revert result.
 
 ### GET /commands/:collection
+
+Level: read
 
 The commands bound to a collection and each record's state against them — what `dt next` answers. Query
 `ids=<id>,<id>`. `200 { collection, ids, commands: [{ binding, command, name, description, argument-hint,
@@ -250,6 +313,8 @@ scope, invocation, states?, eligible?, done? }, ...] }` — `states` maps each i
 eligible.
 
 ### GET /notes/:collection
+
+Level: read
 
 What the workspace's installed extensions say about records — the lines `dt next` prints under its
 commands (a session holding a record, say). Query `ids=<id>,<id>`. `200 { notes: [{ id, text, refs, … }] }`,
@@ -260,21 +325,78 @@ workspace has no `sessions` collection, `{ unavailable }` with the reason when i
 
 ### POST /commit
 
+Level: admin
+
 Publish pending record writes — `dt commit`. Body `{ only?: ["<collection>/<id>" or "<collection>", ...],
 message?, dryRun? }`. `200 [result, ...]` exactly as `dt commit --json` prints them; `{dryRun: true}` is the
 pending count a header shows. A blocked repository makes it `409` on a network host.
 
 ### GET /history/:collection/*id
 
+Level: read
+
 The record's commits. `200 [{ hash, date, author, subject }, ...]`.
 
 ### GET /history-diff/:collection/*id
+
+Level: read
 
 One commit's diff of the record. Query `hash` (default `HEAD`). `200 { … }` the engine's `historyDiff`.
 
 ### POST /reload
 
+Level: admin
+
 Rebuild the host's store now (a compile elsewhere is picked up on the next request anyway). `200 { ok: true }`.
+
+### GET /host
+
+Level: read
+
+What the page needs from its host before it draws: `200 { level, chat, workspace: { id?, name }, raisedAt?,
+filesBase?, framesBase?, fileBases?, varRoots?, moduleGrants?, moduleGrantProblem? }`. `level` is the pane's
+(`read`, `edit` or `admin`); `chat` is `true` only when a chat of this workspace can read the page's place and
+queue (dt web: a prompt hook ran in the last 24 hours); `workspace.id` is present on a host that can switch
+workspaces. A browser host answers here, behind its cookie, what it no longer puts in the page: the record-file
+base (`filesBase`, `fileBases`), the frame base (`framesBase`), `varRoots` (`[{ name, path, uri }]`) and the
+module grants. No value is the workspace root's path. The editor answers `{ level: 'admin', chat: false,
+workspace: { name } }`.
+
+### PUT /selection
+
+Level: read
+
+The page's place and ticked rows, reported on every navigation and selection change. Body `{ view, refs }` and
+nothing else. `view` is exactly one of `{ collection }` (a list), `{ collection, id }` (a record), `{ uiView }` (a
+compiled ui-view's id) or `{ other: true }` (a page none of those name — home, a module app, settings — which
+clears the place); the collection, the record and the ui-view must exist. `refs` is at most 50
+`<collection>/<id>` references of existing records (a namespaced collection splits at its declared prefix). The
+host renders the place itself — `tasks · List`, `rnd/change-requests/cr-x`, `<ui-view id> · View`, or `null` —
+and answers `200 { view, refs, place }`. Anything else is `400` naming the first problem (`a view is {
+collection }, { collection, id }, { uiView } or { other: true }`, `more than 50 refs`, `no record <ref>`).
+
+### GET /selection
+
+Level: read
+
+The last place and selection put. `200 { view, refs, place, at }` — `view` and `place` `null`, `refs` empty, until
+the page reports.
+
+### POST /queue
+
+Level: edit
+
+Ask the chat to run a command on records. Body `{ command, refs }`: `refs` 1 to 50 existing records of ONE
+collection; `command` a command `GET /commands/<collection>` lists for them with an `invocation`. `200 { item }`,
+`item = { id, command, refs, invocation, state: 'waiting', queuedAt }` — `invocation` is the ready-to-paste `/name
+<ref> …`. A command not available for those records is `400 <command> is not available for these records`.
+
+### GET /queue
+
+Level: read
+
+The queued items, newest first, at most 20: `200 { items: [item, ...] }`. An item is `waiting` until a chat's
+hook delivers it (`delivered`, with `deliveredAt`) and `expired` one hour after `queuedAt`.
 
 ## System writes
 
@@ -360,7 +482,10 @@ Host to app:
 | type | payload | meaning |
 |---|---|---|
 | `dt:invalidate` | `{ scope: "data" \| "schema", pages?: true }` | records changed (`data`), or the compiled runtime changed (`schema`): refetch what is drawn. With `pages`, the open page re-fetches its records too, after the schema settles: a browser host sets it on every event (the page is the only view there), an editor host only from its refresh button (its native tree already shows the change) |
-| `dt:navigate` | `{ route }` | go to this route |
+| `dt:navigate` | `{ route }` | go to this route — also pushed by `dt web show` |
+| `dt:select` | `{ refs: string[] }` | tick these rows on the drawn list (`[]` clears) — pushed by `dt web select` |
+| `dt:host` | `{}` | what `GET /host` answers changed (the level, `chat`, a new files key): refetch it |
+| `dt:queue` | `{}` | an item of `GET /queue` changed state: refetch it |
 | `dt:tab` | `{ route, pinned, active }` | the editor tab's identity (VS Code only) |
 | `dt:rpc-reply` | `{ id, ok, data?, error?, status? }` | the answer to a `dt:rpc` (VS Code only; HTTP answers the request itself) |
 
@@ -378,13 +503,16 @@ App to host:
 
 ## Boot globals
 
-Set on `window` before the app's bundle runs:
+Set on `window` before the app's bundle runs. A browser host (dt web) puts only `__DT_HOST__` in the page — its
+shell is served without a cookie and holds no workspace data — and delivers the file bases, the variable roots,
+the files and frames bases and the module grants through `GET /host`, behind the session cookie. The editor sets
+them in the page as before.
 
 | global | value |
 |---|---|
 | `__DT_UI_BASE__` | the URL of the workspace's `.dreamteamer/ui/` — module app bundles are imported from it |
-| `__DT_FILE_BASES__` | the URLs under which file-record bytes are served |
-| `__DT_VAR_ROOTS__` | `[{ name, path, uri }]` — each declared variable that renders to a folder, and the URL its files are served at |
+| `__DT_FILE_BASES__` | the URLs under which file-record bytes are served (dt web: `GET /host`'s `fileBases`) |
+| `__DT_VAR_ROOTS__` | `[{ name, path, uri }]` — each declared variable that renders to a folder, and the URL its files are served at (dt web: `GET /host`'s `varRoots`) |
 | `__DT_HOST__` | the host's capabilities (below); absent means the VS Code host |
 
 ## Hosts
@@ -402,7 +530,7 @@ Set on `window` before the app's bundle runs:
 `dt serve` answers the routes alone and serves no app.
 
 A workspace module's prebuilt bundle may call `fetch('/api/…')` directly: over HTTP the route is real (the
-session cookie authenticates it, and a same-origin JSON body is accepted whatever its `Content-Type`); in VS
+session cookie authenticates it from the page's own origin, and a write sends `Content-Type: application/json`); in VS
 Code the app teaches `fetch` to answer `/api/…` from the host.
 
 ## Module apps
@@ -413,12 +541,12 @@ embedded as data and imported as a `blob:`, a frame policy with no host, hash or
 `/api` calls itself, through `gate()` and `reshape()` under the module's scope. A frame holds no token, cookie
 or nonce, and makes no network request.
 
-**Boot globals added** (set by the host on the app's page, never served by a route):
+**Boot globals added** (set by the editor on the app's page; dt web answers them from `GET /host`, behind the cookie):
 
 | global | value |
 |---|---|
-| `__DT_HOST__.moduleFrames` | `'url'` (dt web: the files origin serves the frame document) or `'srcdoc'` (VS Code) |
-| `__DT_MODULE_GRANTS__` | `{ "<module>": { reads: [collection], writes: [collection] } }` — read by the host from the workspace root's own `.vscode/settings.json` (`dreamteamer.moduleApps`) and nowhere else |
+| `__DT_HOST__.moduleFrames` | `'url'` (dt web: `/_frames/<key>/…`, under `GET /host`'s `framesBase`, serves the frame document) or `'srcdoc'` (VS Code) |
+| `__DT_MODULE_GRANTS__` | `{ "<module>": { reads: [collection], writes: [collection] } }` — read by the host from the workspace root's own `.vscode/settings.json` (`dreamteamer.moduleApps`) and nowhere else (dt web: `GET /host`'s `moduleGrants`) |
 
 **Frame messages** — every message is `{ dt: 1, id, op, … }`; the host accepts one only from a frame it
 registered (`event.source`), and drops a frame whose document is replaced. Host → frame: `init`, `props`, `state`,
