@@ -17,6 +17,7 @@ import { liveSchemaCaches } from './composables/schema-caches';
 import { invalidateStageReviews } from './lib/stage-reviews';
 import { handleInvalidate } from './lib/host-invalidate';
 import { refreshPages } from './composables/page-caches';
+import { signedOut, SIGNED_OUT } from './lib/host-boot';
 
 // Host → app navigation: the extension posts `dt:navigate` when the operator clicks a collection
 // or record in the native tree. App → host: every route change is reported back so the TAB can
@@ -86,6 +87,10 @@ onMounted(() => hostNotify('dt:ready'));
 			<router-view />
 		</main>
 		<RightSidebar />
+		<!-- cr-modules-017: a 401 from any request means the session is gone; the chat is where a person gets back in -->
+		<div v-if="signedOut" class="dt-signed-out" role="alert">
+			<p>{{ SIGNED_OUT }}</p>
+		</div>
 	</div>
 </template>
 
@@ -103,6 +108,19 @@ onMounted(() => hostNotify('dt:ready'));
 	flex-direction: column;
 	background: var(--dt-bg);
 	overflow-y: auto;
+}
+
+.dt-signed-out {
+	position: fixed;
+	inset: 0;
+	z-index: 1000;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 32px;
+	background: var(--dt-bg);
+	color: var(--dt-fg);
+	text-align: center;
 }
 
 .dt-shell-error {

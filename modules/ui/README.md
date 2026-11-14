@@ -42,6 +42,14 @@ put it inside), or right-click a row for New folder, Rename, Dissolve, Move up /
 and Hide — and the workspace row for Show hidden. Each gesture is one `PATCH /nav` that writes the workspace's
 `nav.yaml`; a refusal shows the host's sentence above the tree. Layers keep their own nav: nothing drops onto them.
 
+Over the HTTP transport (`dt web`) the page reads its boot values from `GET /host` before it mounts: the level, the
+workspace, the files and frames bases, the file-codec bases, the declared var roots and the module grants. The files
+key rotates every time the server starts, so the page asks again after every reconnect of its event stream and then
+redraws; images and module frames drawn from those values follow. A `401` from any request draws one sentence over
+the page — *This pane is signed out. Ask the chat to show it again — it runs dt web open.* The editor injects the same
+values as window globals (`__DT_FILE_BASES__`, `__DT_VAR_ROOTS__`, `__DT_MODULE_GRANTS__`); a host that answers
+`GET /host` wins over them.
+
 Workspace modules' `app` bundles are loaded from `window.__DT_UI_BASE__` before the first render; they get
 the host's Vue as `window.Vue` and may call `fetch('/api/…')`, which the UI routes through the transport.
 
@@ -58,5 +66,6 @@ The build runs before every publish (`prepublishOnly`). Nothing under `dist/` is
 
 | @dreamteamer/ui | @dreamteamer/protocol | engine (`dreamteamer`) |
 |---|---|---|
+| 0.3.x | ^0.3.0 | `>=0.43.0`; the pane routes (`GET /host`, selection, queue) are the protocol's |
 | 0.2.x | ^0.2.0 | `>=0.43.0`; the nav is `nav.yaml` (module fragments from 0.49) |
 | 0.1.x | ^0.1.0 | `>=0.43.0` |

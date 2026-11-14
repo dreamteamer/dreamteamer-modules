@@ -19,6 +19,7 @@ import { hostRequest } from './api/transport';
 import { apps, edits, lists, panels, views, type ExtensionDefinition } from './registry/index';
 import { moduleKindDefault, resolveEdit, resolveView } from './registry/resolve';
 import { recordTitle } from './lib/record-titles';
+import { framesBase, hostInfo } from './lib/host-boot';
 import { buildSnapshot, checkIntent, checkNavigate, createBounds, forwardKey, invalidationFor, sanitizeCellHtml } from './modules/policy';
 
 type AnyScope = ReturnType<typeof buildModuleScope> & { ownViews?: string[]; ownApps?: string[] };
@@ -53,7 +54,8 @@ const text = (url: string) => { if (!texts.has(url)) texts.set(url, fetch(url).t
 const textOrEmpty = (url: string) => { if (!texts.has(url)) texts.set(url, fetch(url).then((r) => (r.ok ? r.text() : ''), () => '')); return texts.get(url)!; };
 /** Exported for its test: the srcdoc path carries the same stylesheet the files origin inlines (D6, D15). */
 export async function frameSource(module: string, kind: string): Promise<{ src?: string; srcdoc?: string }> {
-	if ((window.__DT_HOST__?.moduleFrames ?? 'srcdoc') === 'url') return { src: `${window.__DT_FILES__}/_dt/frame/${encodeURIComponent(module)}/${kind}.html` };
+	// dt web (cr-modules-017): the frames base comes from GET /host and rotates with the files key every start
+	if ((window.__DT_HOST__?.moduleFrames ?? 'srcdoc') === 'url') return { src: `${framesBase()}/${encodeURIComponent(module)}/${kind}.html` };
 	const guestUrl = window.__DT_GUEST_URL__ ?? '';
 	const [guestText, styleText, bundleText] = await Promise.all([text(guestUrl), textOrEmpty(guestUrl.replace(/guest\.js(?=[?#]|$)/, 'guest.css')), text(`${window.__DT_UI_BASE__}/${module}/app.js`)]);
 	return { srcdoc: buildFrameDocument({ guestText, styleText, bundleText, meta: true }).html };
@@ -337,8 +339,9 @@ export async function loadModules(router: Router): Promise<void> {
 		]);
 		descriptors = schema;
 		const views = ((await hostRequest('GET', '/collections/ui-views/records?limit=2000').catch(() => ({ records: [] }))) as any).records ?? [];
-		const grants = window.__DT_MODULE_GRANTS__ ?? {};
-		const problem = (window as any).__DT_MODULE_GRANT_PROBLEM__;
+		// dt web answers the grant on GET /host (cr-modules-017); the editor still injects it
+		const grants = (hostInfo.value?.moduleGrants as Record<string, { reads: string[]; writes: string[] }> | null | undefined) ?? window.__DT_MODULE_GRANTS__ ?? {};
+		const problem = hostInfo.value ? hostInfo.value.moduleGrantProblem : (window as any).__DT_MODULE_GRANT_PROBLEM__;
 		if (problem) warn(`the module-app grant could not be read (${problem}) — no grant applies`);
 		for (const name of names) {
 			const home = (sources.layers ?? []).find((l: any) => l.name === name || (l.modules ?? []).includes?.(name))?.name ?? sources.workspace?.name ?? sources.workspace ?? '.';
