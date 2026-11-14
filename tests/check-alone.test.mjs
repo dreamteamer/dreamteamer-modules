@@ -21,10 +21,13 @@ const skip = !engineMeets('>=0.49.0') && `dt check --alone walks module presets 
 // the registry really lacks every version the pin accepts. It never skips for the module a release tag is
 // publishing (scripts/test.mjs --module=<id> sets DT_RELEASE_MODULE): there a missing sibling fails, so a tag
 // pushed out of order publishes nothing.
+// Only the registry SAYING so counts as "not there": an empty answer (no version matches the pin) or E404 (no
+// such package). Offline, a timeout, an auth error — anything else — reads as "there", so the case runs and
+// fails in its own words rather than skipping on a guess.
 const onNpm = (name, range) => {
 	try {
-		return execFileSync('npm', ['view', `${name}@${range}`, 'version', '--json'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 60_000 }).trim() !== '';
-	} catch { return false; }
+		return execFileSync('npm', ['view', `${name}@${range}`, 'version', '--json'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 60_000 }).trim() !== '';
+	} catch (e) { return !/\bE404\b/.test(`${e.stderr ?? ''}${e.stdout ?? ''}`); }
 };
 const awaitsSibling = (m) => {
 	if (skip || process.env.DT_RELEASE_MODULE === m) return false;
