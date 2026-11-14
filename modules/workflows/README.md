@@ -32,7 +32,8 @@ steps:
     stop: for each company here, a new lead or nothing
 ```
 
-and a body with one `## <n>. <name>` section per step, saying why it is there. `command` and
+and a body with one `## <n>. <name>` section per step, saying why it is there. (`dt` below is the
+dreamteamer CLI, `npx dreamteamer`.) `command` and
 `collection` are references, so `dt check` refuses a workflow naming a command or a collection the
 workspace does not have; a step with no command must carry a `stop`. `where` is one filter object
 exactly as `dt list <collection> --where` takes it; `$today` and `$now` are the engine's tokens, and

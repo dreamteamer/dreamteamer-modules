@@ -7,7 +7,7 @@ stands today, what is owed, and the whole arc so far.
 ```bash
 npm install @dreamteamer/engagements @dreamteamer/companies @dreamteamer/assets
 npx dreamteamer compile
-npx dt add engagements --name "Northwind rollout" --company companies/northwind
+npx dreamteamer add engagements --name "Northwind rollout" --company companies/northwind
 ```
 
 | alone | with others |
@@ -21,6 +21,9 @@ npx dt add engagements --name "Northwind rollout" --company companies/northwind
 
 A closed engagement says how it ended in `outcome`: `delivered`, `lost` or `dropped`. The store
 refuses an `outcome` on an open engagement and a `closed` one without it.
+
+The module needs no setup. `/update-engagements` is its one command: it brings each engagement level
+with the meeting summaries written since it was last updated (with **meeting-docs** installed).
 
 ## 0.1.3 — the nav is nav.yaml (cr-dt-008)
 

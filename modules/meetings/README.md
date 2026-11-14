@@ -19,15 +19,31 @@ npx dreamteamer compile
 | `@dreamteamer/companies` | the company a call is with |
 | `@dreamteamer/users` | the people of yours in the room |
 | `@dreamteamer/assets` | contacts and companies need it for avatars and logos |
-| a Google OAuth desktop client, each account authenticated through `workspace-mcp`, and `WORK_CALENDARS` in `.env` | calendar sync only (`SETUP.md` has the setup steps, `fetching-meetings` the details); writing meetings by hand works without them |
+| a Google OAuth desktop client, each account authenticated through `workspace-mcp`, and `WORK_CALENDARS` in `.env` | calendar sync only; writing meetings by hand works without them |
 | `INBOX_FOLDERS` and `FILES_FOLDER` declared | filing screenshots only |
+
+## setup
+
+Meeting records, screenshots and contact stamps work with no setup. The calendar sync is optional,
+and the module declares what it needs as its setup unit, `meetings`:
+
+```bash
+npx dreamteamer setup meetings --input calendar="<calendar> | <company or mixed> | <account>"   # repeat per calendar
+npx dreamteamer setup meetings --verify --authorize    # the live check, yours to run in a terminal
+npx dreamteamer status                                 # the unit's line: configured, blocked or ready
+```
+
+The first command merges the rows into `WORK_CALENDARS` in `.env`. Google consent is a separate step
+you perform yourself. [SETUP.md](SETUP.md) is the reference; the `fetching-meetings` skill carries the
+sync itself, and the three commands are `/fetch-meetings`, `/fetch-meeting-screenshots` and
+`/update-contacts-from-meetings`.
 
 Three people fields, modelled after the source: `attendees` is the Calendar API's attendee list as
 objects (`email`, `displayName`, `responseStatus`, `organizer`, `self`, `optional`; rooms dropped),
 `attendees_contacts` is those people as `contacts` refs — the list every reader uses — and `ours` is
 the subset who are `users`. `organizer` is the API's object too. `attendees` and `organizer` carry
 addresses, so they are `sensitive` and never travel in an export. The sync writes the two API fields
-with `event-people.mjs` from the raw event; the refs are a plain `dt set`.
+with `event-people.mjs` from the raw event; the refs are a plain `npx dreamteamer set`.
 
 ## upgrading from 0.1.1
 

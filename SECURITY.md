@@ -9,8 +9,8 @@ record), and what they get.
 
 ## Supported versions
 
-The newest minor version of each `@dreamteamer/*` package gets security fixes. Older minors do not; `UPDATING.md`
-in each package says how to move up.
+The newest minor version of each `@dreamteamer/*` package gets security fixes. Older minors do not; a package's
+`UPDATING.md`, or the release notes at the end of its `README.md` where it ships none, says how to move up.
 
 ## Known advisories in dependencies
 

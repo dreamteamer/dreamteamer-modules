@@ -5,7 +5,7 @@ description: "Use when reading or acting on Google Workspace through the local w
 
 # Google Workspace through local MCP
 
-Run `npx dt-google doctor --json` before initial use. It checks local prerequisites without opening a browser, reading token contents or making a network request. Complete the module README's owner-controlled setup if missing. Account authorization is not established by a green doctor.
+Run `npx dt-google doctor --json` before initial use. It checks local prerequisites without opening a browser, reading token contents or making a network request. If setup is missing, follow the module's `SETUP.md` (`node_modules/@dreamteamer/google-workspace/SETUP.md`): `dt status` prints the `google-workspace` unit's line and its next command, and the sign-in (`dt setup google-workspace --authorize`) is the owner's step. Account authorization is not established by a green doctor.
 
 Select the intended Google account from the user's private configuration or ask when ambiguous. Never infer the account from whichever token is available. Call:
 

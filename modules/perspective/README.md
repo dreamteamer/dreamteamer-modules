@@ -15,6 +15,19 @@ source is optional and a run says which it could not reach. Chain the record gua
 `npm run check` — add it to the `check` script:
 `node node_modules/@dreamteamer/perspective/bin/check-records.mjs`.
 
+## setup
+
+Optional, and one input: an Asana personal access token, so tickets can be read. The module's setup
+unit, `perspective`, has the engine write it into `.env` as `ASANA_PAT`; the value is never shown or
+committed.
+
+```bash
+npx dreamteamer setup perspective --input asana_pat=<token>
+```
+
+Without it tickets stay out of the perspective and everything else runs.
+[SETUP.md](SETUP.md) says what the unit's status line means.
+
 ## 0.4.1 — the nav is nav.yaml (cr-dt-008)
 
 `display.nav.order` and `display.nav.section` removed from its twenty-three descriptors — the nav is `nav.yaml` at the workspace root (engine 0.49), which you arrange; `display.nav.icon` stays. Nothing to do.

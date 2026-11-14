@@ -14,7 +14,7 @@ name reattaches them.
 ## when to use
 
 someone asks to run, open or stop a workspace in Docker; to try a template; to move workspaces
-between containers; or a `dt start` / `dt export` typed in a workspace failed saying it left core.
+between containers; or a `dt start` / `dt export` typed in a workspace failed saying it is not a workspace verb.
 
 **not for:** the records inside the workspace (`using-dreamteamer`).
 

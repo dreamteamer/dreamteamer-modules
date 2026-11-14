@@ -17,20 +17,20 @@ what is specific to tasks.
 
 ```bash
 date +%F            # today; on a Saturday, "next friday" is six days later
-npx dt add tasks --name "Review the Q3 roadmap" --due '2026-07-31'
+dt add tasks --name "Review the Q3 roadmap" --due '2026-07-31'
 # someone else's:  --assignee users/sam-diaz
 # written by an agent:  --author agents/claude-code --creation_context "<model>; from <where>"
 # ✔ data/tasks/2026-07-25--review-the-q3-roadmap.task.md   (written, not yet committed)
-npx dt commit tasks/2026-07-25--review-the-q3-roadmap
+dt commit tasks/2026-07-25--review-the-q3-roadmap
 ```
 
 - `add` generates the id from the creation date and `--slug`, or the name when no slug is given, and
   fills `status: suggested`; explicitly set `--status todo` for scheduled work. Pass `--slug` whenever the name is not in latin script, or the id is a hash
   nobody can read or type.
-- `add` writes but does not commit. Publish with a scoped `npx dt commit tasks/<id>` once the change
-  is complete, never a bare `npx dt commit`.
+- `add` writes but does not commit. Publish with a scoped `dt commit tasks/<id>` once the change
+  is complete, never a bare `dt commit`.
 - `--description "…"` is the body: what was actually said and what "done" looks like.
-- An inbox is a filtered list: `npx dt list tasks --filter status=todo`, plus
+- An inbox is a filtered list: `dt list tasks --filter status=todo`, plus
   `--filter assignee=users/<id>` for one person's.
 
 ## fields that matter
@@ -45,7 +45,7 @@ npx dt commit tasks/2026-07-25--review-the-q3-roadmap
 - **tags** — free labels, lowercase and hyphenated: the domain the task is about (`crm`, `finance`)
   and anything narrower (`client:northwind`, `decision`). Infer the domain from the task's actual
   work, not from where it was surfaced, and reuse the tags the workspace already has —
-  `npx dt list tasks --filter tags=crm` finds one domain's tasks. Leave it out when the domain is
+  `dt list tasks --filter tags=crm` finds one domain's tasks. Leave it out when the domain is
   unclear rather than inventing a bin.
 - **start** — optional scheduled start as an ISO 8601 datetime with timezone, for example
   `--start '2026-07-30T09:00:00+03:00'`. Capture an agreed start, never invent it from
@@ -73,10 +73,10 @@ reason in the body. The record of having decided not to is worth more than a cle
 |---|---|
 | `--assignee contacts/<id>` or a free-text name | the field references `users`; a contact is rejected. Name an outside owner in the body. |
 | `--assignee` set to the workspace's own person on every task | empty already means them. Fill it only when the task is someone else's. |
-| hand-writing `data/tasks/<something>.task.md` | skips validation, defaults and the id pattern. Use `npx dt add tasks`. |
+| hand-writing `data/tasks/<something>.task.md` | skips validation, defaults and the id pattern. Use `dt add tasks`. |
 | an id built from the due date | ids come from the creation date and never change; `due` does. |
 | `due: next friday` or `due: 31/07/2026` | `format: date` means `YYYY-MM-DD`. Compute the real date. |
-| assuming `add` committed | it wrote to disk only. Publish with a scoped `npx dt commit tasks/<id>`. |
+| assuming `add` committed | it wrote to disk only. Publish with a scoped `dt commit tasks/<id>`. |
 | deleting a task that became moot | set `status=closed` with the reason in the body. |
 | `--tags Finance` or `--tags "client: northwind"` | tags are lowercase and hyphenated, `key:value` with no space. The write is refused. |
 | a new tag for a domain that already has one | `finance` beside `money` splits one domain in two. List the existing tags first. |

@@ -21,7 +21,7 @@ directory, and each account's consent and live read. Does not own: which calenda
 | `npx dt-google doctor --json` | The original four-row report, from the same inspect. |
 | `npx dreamteamer doctor` | Shows this module's local rows under `google-workspace`. Missing setup is a warning, never a failure; the never-locally-verifiable authorization row is left out. |
 
-The `google-setup` command needs the engine to have compiled this module (engine 0.31 or later).
+The `google-setup` command exists once the engine has compiled this module (`dt compile`; the module needs engine 0.48.0 or later).
 Every JSON result names the workspace (`workspace.root`, `workspace.name`); check it is the one the
 person means before acting.
 
