@@ -107,10 +107,11 @@ const failed = (log, r) => { log(`✖ ${r.body?.error ?? (r.status ? `the server
 
 /**
  * The workspace's server, started detached when it is not running (or is on its way down): `dt-web <root> start
- * --foreground` with its output in `<runtime dir>/<key>.log`, waited for up to ten seconds.
+ * --foreground` with its output in `<runtime dir>/<key>.log`, waited for up to ten seconds. `bin` is this package's
+ * dt-web, or — for a handoff — the one the target workspace installed.
  * @returns {Promise<{ port: number, controlToken: string }>}
  */
-export async function ensureRunning(root, { log = console.log, env = process.env, appDir } = {}) {
+export async function ensureRunning(root, { log = console.log, env = process.env, appDir, bin = BIN } = {}) {
 	const now = current(root, env);
 	if (now && await answers(now)) return now;
 	// a server on its way down (its idle stop): let it go before the next starts
@@ -119,7 +120,7 @@ export async function ensureRunning(root, { log = console.log, env = process.env
 	fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
 	const logFile = path.join(dir, `${workspaceKey(root)}.log`);
 	const fd = fs.openSync(logFile, 'a', 0o600);
-	const child = spawn(process.execPath, [BIN, root, 'start', '--foreground'], {
+	const child = spawn(process.execPath, [bin, root, 'start', '--foreground'], {
 		detached: true,
 		stdio: ['ignore', fd, fd],
 		env: { ...env, ...(appDir ? { DT_WEB_APP_DIR: appDir } : {}) },

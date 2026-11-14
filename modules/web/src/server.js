@@ -25,6 +25,7 @@ import { createSessions, SESSION_MAX_AGE_S } from './sessions.js';
 import { readWorkspaceState, stateDir as defaultStateDir, workspaceKey, writeWorkspaceState } from './state.js';
 import { matchClientToken, mintClientToken } from './tokens.js';
 import { createPaneStore, workspaceName } from './pane-store.js';
+import { handoff, listWorkspaces } from './handoff.js';
 
 const DEBOUNCE_MS = 150;
 const MAX_BODY_BYTES = 16 * 1024 * 1024;
@@ -373,6 +374,11 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 60, owner
 			if (levelRank(level) > levelRank(levelOf(who))) return [403, { error: PAGE_CANNOT_RAISE(level) }];
 			if (level !== state.level) setLevel(level);
 			return [200, { level }];
+		},
+		'GET /_dt/workspaces': () => [200, listWorkspaces({ selfId: workspaceKey(root), stateDir })],
+		'POST /_dt/handoff': async (body, who) => {
+			const r = await handoff({ id: body?.id, pageLevel: levelOf(who), selfId: workspaceKey(root), stateDir, now, moved: (to) => store.moved?.(to) });
+			return [r.status, r.body];
 		},
 	};
 
