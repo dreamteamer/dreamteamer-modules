@@ -1,12 +1,20 @@
-# Git identities
+# @dreamteamer/git-identities
 
 An optional, dependency-free module for planning and checking folder-scoped Git identities.
-Install alongside any Dreamteamer workspace, then compile. It ships no records, accounts or keys.
+Install alongside any dreamteamer workspace, then compile. It ships no records, accounts or keys:
+one command, `dt-git-identities`, and the `managing-git-identities` skill a session follows.
 
 ```sh
 npm install @dreamteamer/git-identities
-npm run compile
+npx dreamteamer compile
 ```
+
+## Setup
+
+Nothing to configure for the workspace itself. The module's setup unit only reports: `npx dreamteamer
+status` says whether `git` is on PATH and whether this repository has a committer identity
+(`user.name` and `user.email`; the values are never shown). It writes nothing — choosing and applying
+an identity is yours, planned with the command below. [SETUP.md](SETUP.md) is the reference.
 
 Three independent concerns:
 
@@ -37,11 +45,11 @@ values below are synthetic. Paths may be absolute or begin with `~/`; roots must
 }
 ```
 
-Run from anywhere, passing the private configuration and repository explicitly:
+Run from the workspace, passing the private configuration and repository explicitly:
 
 ```sh
-dt-git-identities plan /path/to/private-config.json
-dt-git-identities doctor /path/to/private-config.json /path/to/repository
+npx dt-git-identities plan /path/to/private-config.json
+npx dt-git-identities doctor /path/to/private-config.json /path/to/repository
 ```
 
 Equivalent package invocation: `node node_modules/@dreamteamer/git-identities/bin/git-identities.mjs`.
@@ -74,10 +82,6 @@ that test by exit code alone. Stop on an unknown host key rather than disabling 
 
 `node --test modules/git-identities/test/*.test.mjs` exercises rendering, validation, and actual
 Git conditional includes/overrides in isolated temporary homes. No network or real credentials.
-
-Set `GIT_IDENTITIES_CONFIG` to this private JSON file outside Git and `dt status` checks the current
-workspace against it through the module's setup unit; it never applies the
-plan or writes global Git/SSH configuration.
 
 ## 0.2.1 — the setup package is gone (CR-dt-007)
 

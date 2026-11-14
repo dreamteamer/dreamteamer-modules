@@ -124,6 +124,6 @@ personal to anyone — but if you work elsewhere, you will want to change the we
 
 ## more
 
-- Working on this package: [CONTRIBUTING.md](CONTRIBUTING.md)
-- Publishing a release: [RELEASING.md](RELEASING.md)
-- How it was designed: [docs/](docs/)
+- Working on this package: [CONTRIBUTING.md](extensions-CONTRIBUTING.md)
+- Publishing a release: [RELEASING.md](extensions-RELEASING.md)
+- How it was designed: [docs/](2026-09-09-extensions-module-design.md)

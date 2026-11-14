@@ -37,8 +37,9 @@ its `"dreamteamer": {}` key exists only so a clone can be previewed as a bundle 
    users, projects and perspective), and its README names the line that chains it into `npm run check`.
 8. **A module declares every npm package its shipped code imports** (`js-yaml`, `express`). The
    repo's devDependencies are not there for a consumer.
-9. **Code modules need engine 0.31** (`dreamteamer.extension`); content modules are tested on 0.30.
-   The floor in each manifest is the oldest engine the suite runs it on, never a guess.
+9. **The floor in each manifest (`dreamteamer.engine`) is the oldest engine the suite runs it on, never
+   a guess.** The lowest today is `>=0.33.0`; a module that ships a setup unit needs at least `>=0.47.0`,
+   and one whose unit has the engine write `.env` (an env action) `>=0.48.0`.
 10. **Publishing is the operator's act.** Nothing is pushed, tagged or published from a session
    without an explicit go. A release is one `<id>-v<version>` tag.
 11. **Historical documents keep the spellings of their day.** `docs/extensions-*` and every

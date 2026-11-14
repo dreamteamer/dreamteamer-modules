@@ -18,7 +18,7 @@ import path from 'node:path';
 import { engine, engineLoaded } from './host/engine.js';
 import { isRuntime, loadDescriptors, loadModules, loadUiViews, moduleDependencies, moduleNamespaces, navViewsOf, viewRow, workspaceModule } from './host/fsdata.js';
 import { WORKSPACE_ROUTE, buildTree, collectionRow, folderModule, folderPresentation, groupLabel, hasNavSettings, layerTree, legacyTree, moduleIcon, navGroupsOf, navOrderOf, navPathKey, rowMarks, groupedLayerFolders, layerEntries, layerNote, moduleLabel, routeFor, shouldFoldOutOfRecordTree, tailOrder } from './host/nav.js';
-import { readNavDoc } from './nav-doc.js';
+import { navDocProblems, navProblemsSentence, readNavDoc } from './nav-doc.js';
 import { collectionSources, layerTitle, sourcesContext, sourcesStack } from './host/sources.js';
 import { codiconFor } from './host/icon-name.js';
 
@@ -57,6 +57,15 @@ const groupsOf = navGroupsOf;
 const orderOf = navOrderOf;
 
 export { readNavDoc };
+
+/** A document as read, without the entries of no valid shape; `say` gets the sentence naming them, when any. */
+function drawable(doc, say) {
+	if (!doc) return doc;
+	const { doc: clean, problems } = navDocProblems(doc);
+	if (!problems.length) return doc;
+	say(navProblemsSentence(problems));
+	return clean;
+}
 
 /** What a nav write is checked against: the rows the tree can draw (`collections`, in drawn tail order — what
  *  applyNavOp places unplaced rows by), every compiled collection (`known`, what a PUT may name: an internal
@@ -166,7 +175,7 @@ export function navModel({ root, settings = workspaceNavSettings(root) }) {
 	const layerChildren = (l, node) => {
 		let doc = null;
 		try {
-			doc = readNavDoc(path.join(root, 'git_modules', l.key));
+			doc = drawable(readNavDoc(path.join(root, 'git_modules', l.key)), (problem) => { node.notice = problem; });
 		} catch (e) {
 			node.notice = String(e?.message ?? e);
 			if (!/nav\.yaml/.test(node.notice)) node.notice = `nav.yaml: ${node.notice}`;
@@ -202,7 +211,7 @@ export function navModel({ root, settings = workspaceNavSettings(root) }) {
 		let doc = null;
 		let absent = false;
 		try {
-			doc = readNavDoc(root);
+			doc = drawable(readNavDoc(root), (problem) => { notice = problem; });
 			absent = doc === null;
 		} catch (e) {
 			notice = String(e?.message ?? e);

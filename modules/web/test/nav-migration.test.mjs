@@ -132,3 +132,24 @@ describe('at Read, a workspace with old nav settings and no nav.yaml', () => {
 		assert.equal(fs.existsSync(path.join(f.root, 'nav.yaml')), true);
 	});
 });
+
+describe('a hand-edited nav.yaml that cannot be drawn as written', () => {
+	test('a folder that contains itself by a YAML alias: GET answers 200 with a notice, PATCH answers 400 — the connection is never dropped', async () => {
+		const f = fixture();
+		fixtures.push(f);
+		const web = await startWeb({ root: f.root, appDir: f.app, idleMinutes: 0, stateDir: f.state });
+		servers.push(web);
+		await signIn(web);
+		const control = (p, body) => call(`${web.url}/_dt${p}`, { method: 'POST', headers: { authorization: `Bearer ${web.controlToken}`, 'content-type': 'application/json' }, body: JSON.stringify(body) });
+		assert.equal((await control('/level', { level: 'edit' })).status, 200);
+		const text = 'tree:\n  - &a { folder: Loop, items: [tasks, *a] }\n';
+		fs.writeFileSync(path.join(f.root, 'nav.yaml'), text);
+		const r = await call(`${web.url}/api/nav`, { headers: auth(web) });
+		assert.equal(r.status, 200, r.text);
+		assert.match(String(r.json[0].notice), /nav\.yaml/);
+		const p = await call(`${web.url}/api/nav`, { method: 'PATCH', headers: { ...auth(web), 'content-type': 'application/json' }, body: JSON.stringify({ op: 'hide', target: { name: 'tasks' } }) });
+		assert.equal(p.status, 400, p.text);
+		assert.match(String(p.json?.error), /nav\.yaml/);
+		assert.equal(fs.readFileSync(path.join(f.root, 'nav.yaml'), 'utf8'), text);
+	});
+});

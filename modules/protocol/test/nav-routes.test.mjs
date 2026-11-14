@@ -157,6 +157,64 @@ test('over a nav.yaml that cannot be read, PATCH is 400 naming the file and writ
 	assert.deepEqual(yaml.load(bytes()).tree, ['projects']);
 });
 
+test('entries of no valid shape in a parseable nav.yaml: GET draws the rest with a notice naming them; PATCH is 400 and writes nothing', async () => {
+	reset();
+	const text = 'tree:\n  - tasks\n  - { folder: [1, 2], items: x }\n  - null\n  - { namespace: 3 }\nhidden: [7]\n';
+	fs.writeFileSync(navFile, text);
+	const ws = await top();
+	assert.equal(ws.children[0].key, 'c/tasks', 'the valid entry is not drawn first');
+	assert.match(String(ws.notice), /nav\.yaml/);
+	for (const bad of ['{"folder":[1,2],"items":"x"}', 'null', '{"namespace":3}', '7']) assert.ok(String(ws.notice).includes(bad), `the notice does not name ${bad}: ${ws.notice}`);
+	const res = await request('PATCH', '/nav', { op: 'hide', target: { name: 'projects' } });
+	assert.equal(res.status, 400, JSON.stringify(res.body));
+	assert.match(res.body.error, /nav\.yaml/);
+	assert.match(res.body.error, /null/);
+	assert.equal(bytes(), text, 'PATCH wrote over the bad entries');
+	const put = await request('PUT', '/nav', { tree: ['projects'], hidden: [] });
+	assert.equal(put.status, 200, JSON.stringify(put.body));
+});
+
+test('a folder that contains itself by a YAML alias is unreadable: GET draws flat with a notice, PATCH is 400 — never a stack overflow', async () => {
+	reset();
+	const text = 'tree:\n  - &a { folder: Loop, items: [tasks, *a] }\n';
+	fs.writeFileSync(navFile, text);
+	const ws = await top();
+	assert.match(String(ws.notice), /nav\.yaml/);
+	assert.match(String(ws.notice), /itself/);
+	assert.ok(!ws.children.some((n) => n.kind === 'folder'), 'the looping folder is drawn');
+	assert.ok(ws.children.some((n) => n.key === 'c/tasks'), 'the flat drawing is missing tasks');
+	const res = await request('PATCH', '/nav', { op: 'hide', target: { name: 'tasks' } });
+	assert.equal(res.status, 400, JSON.stringify(res.body));
+	assert.match(res.body.error, /nav\.yaml/);
+	assert.equal(bytes(), text);
+	// an alias that does not loop is two equal entries, not a loop
+	fs.writeFileSync(navFile, 'tree:\n  - &a { folder: Twice, items: [tasks] }\n  - { folder: Outer, items: [*a] }\n');
+	assert.equal((await top()).notice, undefined);
+});
+
+test('nav.yaml as a directory: GET draws flat with a notice; PATCH is 400 naming it; PUT replaces an empty one and refuses a non-empty one with 400', async () => {
+	reset();
+	fs.mkdirSync(navFile);
+	try {
+		assert.match(String((await top()).notice), /nav\.yaml/);
+		const patch = await request('PATCH', '/nav', { op: 'hide', target: { name: 'tasks' } });
+		assert.equal(patch.status, 400, JSON.stringify(patch.body));
+		assert.match(patch.body.error, /nav\.yaml/);
+		fs.writeFileSync(path.join(navFile, 'keep.txt'), 'x');
+		const full = await request('PUT', '/nav', { tree: ['projects'], hidden: [] });
+		assert.equal(full.status, 400, JSON.stringify(full.body));
+		assert.match(full.body.error, /nav\.yaml is a directory/);
+		assert.deepEqual(fs.readdirSync(navFile), ['keep.txt'], 'the directory was touched');
+		fs.rmSync(path.join(navFile, 'keep.txt'));
+		const put = await request('PUT', '/nav', { tree: ['projects'], hidden: [] });
+		assert.equal(put.status, 200, JSON.stringify(put.body));
+		assert.ok(fs.statSync(navFile).isFile());
+		assert.deepEqual(yaml.load(bytes()).tree, ['projects']);
+	} finally {
+		fs.rmSync(navFile, { recursive: true, force: true });
+	}
+});
+
 test('with no nav.yaml and an old nav setting set, PATCH and PUT are 409 naming dt-nav migrate, and write nothing', async () => {
 	reset();
 	fs.mkdirSync(path.dirname(settingsFile), { recursive: true });

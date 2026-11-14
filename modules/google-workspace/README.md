@@ -1,4 +1,4 @@
-# Google Workspace
+# @dreamteamer/google-workspace
 
 An optional, local bridge to the public `workspace-mcp` Python server. It does not include an account, OAuth client, cloud service, credential, folder identifier or personal data.
 
@@ -10,7 +10,7 @@ npx dt-google doctor --json
 
 ## Configure on each computer
 
-`SETUP.md` in this package is the step-by-step setup reference an assistant follows: `npx dreamteamer google-setup inspect|plan` reports local facts and next steps without changing anything, and the only write it performs is creating the owner-only credential directory after approval. The steps below are the background.
+[SETUP.md](SETUP.md) is the step-by-step setup reference an assistant follows. The module's setup unit, `google-workspace`, is driven by the engine: `npx dreamteamer status` prints its line, `npx dreamteamer setup google-workspace --input client_secret=<file> --allow machine` records the two paths in `.env` and creates the owner-only credential directory, and `npx dreamteamer setup google-workspace --authorize` is the sign-in, yours to perform in a terminal. `npx dreamteamer google-setup inspect|plan` reports the same local facts and next steps without changing anything. The steps below are the background.
 
 1. Install `uv` using its official instructions after approval. The bridge starts `uvx --with python-dotenv==1.2.3 workspace-mcp==2.4.2 --transport stdio --tools gmail drive calendar --read-only` for default reads; the first invocation may download that pinned public package. No server is started by compile or doctor. The child process receives only a small OS runtime environment, the two selected local credential paths and fixed local OAuth settings. Inherited cloud credential backends, service accounts, proxies, remote callbacks and runtime injection settings are not forwarded. Automatic uv configuration discovery and upstream dotenv loading are disabled. The dotenv dependency is pinned to 1.2.3, whose disabled flag is required for this boundary.
 2. Use a Google **Desktop OAuth client** configured for the services required. Keep its client configuration file outside Git. Set `GOOGLE_CLIENT_SECRET_PATH` to its absolute path and `WORKSPACE_MCP_CREDENTIALS_DIR` to an absolute, local credential directory outside the workspace and outside synced folders. Restrict filesystem access to the account owner. Do not copy another person's credential store.

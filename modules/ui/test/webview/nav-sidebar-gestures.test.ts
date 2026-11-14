@@ -198,6 +198,18 @@ test('the root menu: Show hidden… sends show for the name given', async () => 
 	assert.deepEqual(patches(), [{ op: 'show', target: { name: 'contacts' } }]);
 });
 
+test('Show hidden… offers the names the last write hid: hidden rows and a namespace hidden in place', async () => {
+	patchAnswer = () => ({ doc: { tree: ['tasks', { namespace: 'rnd', hidden: true, items: ['rnd/issues'] }], hidden: ['contacts'] } });
+	const root = await render(NavSidebar, {}, [router()]);
+	await menu(root, 'n/ns%3Arnd');
+	await pick(root, 'hide');
+	assert.deepEqual(patches(), [{ op: 'hide', target: { name: 'rnd' } }]);
+	await menu(root, 'workspace');
+	await pick(root, 'show-hidden');
+	const offered = all(root, (n) => n.tag === 'option').map((n) => n.props['value']);
+	assert.deepEqual(offered, ['contacts', 'rnd']);
+});
+
 test('a refused op shows the host sentence', async () => {
 	patchAnswer = () => { throw new HostError('no folder ["Plans"] in nav.yaml — "Plans" is not there', 400); };
 	const root = await render(NavSidebar, {}, [router()]);

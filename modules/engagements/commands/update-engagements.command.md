@@ -13,8 +13,8 @@ recording and no summary is a gap to report, not to fill here.
 ## 1. what is new
 
 ```bash
-npx dt list engagements --json
-npx dt list meeting-summaries --json
+dt list engagements --json
+dt list meeting-summaries --json
 ```
 
 Join a summary to an engagement through the summary's meeting and that meeting's `company`. When

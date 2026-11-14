@@ -147,7 +147,10 @@ The tree is the workspace's `nav.yaml` (see *The nav document*): its entries in 
 place — rows by title, then namespaces — and the layers folder last. With no `nav.yaml` and none of the old
 settings `dreamteamer.navGroups`, `dreamteamer.navOrder`, `dreamteamer.navHidden`, the tree is flat; with no
 `nav.yaml` and one of them set, it is the tree those settings drew, until they are migrated. A `nav.yaml` that
-cannot be read draws the flat tree and puts the reason on the workspace node's `notice` — never a 500.
+cannot be read — not YAML, not a mapping, `tree` or `hidden` not a list, a folder that contains itself through a
+YAML alias, a directory — draws the flat tree and puts the reason on the workspace node's `notice` — never a 500.
+One that reads but holds entries of none of the four shapes (`null`, `{ folder: [1, 2] }`, a non-name in `hidden`)
+draws the rest and names each skipped entry on the `notice`.
 `dreamteamer.layersFolder` still names the layers folder. A record layer draws the same way from its own clone:
 by the `nav.yaml` in `git_modules/<key>`, over the rows it holds (its folders and namespaces as `layer-group`
 nodes, keyed `l/<key>/<the key it would have in that workspace>`), else as its own old settings drew it; an
@@ -163,7 +166,8 @@ checked first — every entry a collection name, `{ collection, icon? }`, `{ fol
 `{ namespace, icon?, hidden?, items? }`, a folder label not empty and not starting with `ns:` — then every
 name: a collection or a namespace this workspace does not have is `400` naming each. Then the file is written
 (the engine's writer when the loaded engine has one, else the protocol's own: atomic, the header comment, one
-trailing newline) and the answer is `200 { doc }`. PUT is how a `nav.yaml` that cannot be read is replaced.
+trailing newline) and the answer is `200 { doc }`. PUT is how a `nav.yaml` that cannot be read is replaced —
+an empty directory named `nav.yaml` included; a directory that holds files is `400` naming it and is left alone.
 `409` when there is no `nav.yaml` and an old nav setting is still set (below).
 
 ### PATCH /nav
@@ -174,8 +178,9 @@ One gesture. Body: one NavOp (see *The nav document*) — `move`, `new-folder`, 
 `hide`, `show`. The host reads `nav.yaml` (none is an empty document), applies the op with the workspace's
 collections in drawn order, writes the result as `PUT /nav` does and answers `200 { doc }`. Refused, with
 nothing written: a malformed op, an unknown name, a folder path that resolves to nothing, a move into a row or
-into the moved folder itself — `400` with the sentence naming the input; a `nav.yaml` that cannot be read —
-`400` naming the file, which is left byte for byte as it was. With no `nav.yaml` and any of
+into the moved folder itself — `400` with the sentence naming the input; a `nav.yaml` that cannot be read, or
+that holds entries of no valid shape — `400` naming the file (and each such entry), which is left byte for byte as
+it was. With no `nav.yaml` and any of
 `dreamteamer.navGroups`, `dreamteamer.navOrder`, `dreamteamer.navHidden` set (an empty list or object counts as
 unset), both write routes answer `409 your nav settings are not in nav.yaml yet — run: npx -p
 @dreamteamer/protocol@0.2 dt-nav migrate`, so the first write can never strand the settings.
@@ -453,11 +458,12 @@ Labels match exactly, at their first occurrence at each level; the path is an ar
 | `rename` | `{ target: { folder }, label }` | relabels a folder | the path resolves to nothing, or to a namespace; the label as above |
 | `dissolve` | `{ target: { folder } }` | puts a folder's items where it stood | as rename |
 | `icon` | `{ target, icon: name \| null }` | sets or clears an icon | the icon is neither a name nor `null` |
-| `hide` | `{ target }` | a name goes to `hidden`; a folder gets `hidden: true` | the target is unknown |
-| `show` | `{ target }` | the reverse | the target is unknown |
+| `hide` | `{ target }` | a row leaves its place in the tree and goes to `hidden`; a folder, and a namespace the document places, get `hidden: true` and keep their arrangement; an unplaced namespace goes to `hidden` | the target is unknown |
+| `show` | `{ target }` | the reverse: a row hidden and placed nowhere goes back at the end of its home level — its namespace's entry, or the top level (the document does not record the folder it left); `hidden: true` is cleared | the target is unknown |
 
 A name the document does not place but the workspace has is a valid target and a valid anchor: `move` places it,
-`icon` places it at the end of its parent with the icon, `hide` adds it to `hidden`. Placing one never moves anything
+`icon` places it at the end of its parent with the icon, `hide` adds it to `hidden`. Either way a name is placed
+once: in the tree, or in `hidden`. Placing one never moves anything
 else on screen — an anchor among unplaced rows first places the rows of its parent that draw before it, in drawn
 order, and an unplaced namespace a gesture reaches into (`into` it, or a row inside it as target or anchor) is placed
 the same way, after its level's unplaced rows and the namespaces drawn before it. Move up is `move` with `after` the sibling two above (or `into` the parent with `position: top` for the second

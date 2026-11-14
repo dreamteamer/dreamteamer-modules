@@ -7,7 +7,7 @@ owed. A one-off commitment is a task; a routine is what would otherwise make you
 ```bash
 npm install @dreamteamer/routines
 npx dreamteamer compile
-npx dt add routines --name "renew the car insurance" --recurrence "RRULE:FREQ=YEARLY" --anchor 2027-08-31
+npx dreamteamer add routines --name "renew the car insurance" --recurrence "RRULE:FREQ=YEARLY" --anchor 2027-08-31
 node .dreamteamer/skills/working-with-routines/bin/rrule.mjs roll --apply
 ```
 
@@ -15,7 +15,9 @@ node .dreamteamer/skills/working-with-routines/bin/rrule.mjs roll --apply
 |---|---|
 | nothing | records, rendering a rule in English, rolling `next_due` |
 
-`next_due` is written by `roll`, never by hand. A daily routine has no `next_due` by design.
+`next_due` is written by `roll`, never by hand. A daily routine has no `next_due` by design. The
+module needs no setup; the `working-with-routines` skill carries the rule grammar and how
+`rrule.mjs` renders a rule and rolls `next_due`.
 
 ## 0.1.2 — the nav is nav.yaml (cr-dt-008)
 

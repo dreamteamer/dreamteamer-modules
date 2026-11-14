@@ -69,8 +69,12 @@ export declare const NAV_FILE = "nav.yaml";
 /** The first line of every nav.yaml a host writes. */
 export declare const NAV_HEADER = "# The left nav of this workspace. Drag and drop writes this file; so may you.";
 /** `<root>/nav.yaml` through the engine's reader when the loaded engine has one (0.49), else the protocol's own:
- *  null when absent; throws NavDocError when unreadable. */
+ *  null when absent; throws NavDocError when unreadable — a folder that contains itself through a YAML alias included. */
 export declare function readNavDoc(root: string): NavDoc | null;
+/** The entries of none of the four shapes in a document as read — one sentence each — and the document without them. */
+export declare function navDocProblems(doc: unknown): { doc: NavDoc; problems: string[] };
+/** The notice (or refusal) for those problems: names nav.yaml and every entry. */
+export declare function navProblemsSentence(problems: string[]): string;
 /** A NavDoc as nav.yaml's text: the header line, `tree`, and `hidden` only when it holds a name. */
 export declare function serializeNavDoc(doc: NavDoc): string;
 /** The protocol's own atomic writer (an engine before 0.49). False when the bytes were already there. */

@@ -14,8 +14,8 @@ npx dreamteamer compile
 |---|---|
 | sessions saved from the transcript, analysed, bound to any record and listed back by `dt next` | **projects** lets a session name the project it served · **tasks** lists the tasks it produced or closed |
 
-Until core 0.12.0 this shipped inside `@dreamteamer/core`; the records, their folder (`data/sessions/`) and
-their ids are unchanged. A `Stop` hook written for core names core's copy of `session-save.mjs` —
+Through core 0.11 this shipped inside the core module, before core became the module preset; the records,
+their folder (`data/sessions/`) and their ids are unchanged. A `Stop` hook written for core names core's copy of `session-save.mjs` —
 repoint it at `@dreamteamer/sessions/bin/session-save.mjs` (below).
 
 ## sessions: save and analyze

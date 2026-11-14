@@ -37,20 +37,23 @@ not expand a preset: `npm install @dreamteamer/core` installs a package with no 
   beside it by whoever keeps notebooks or wikis — and its nav fragment places its rows under one R&D
   namespace with Product and Knowledge folders.
 
-Then `dt status` prints each installed module's setup line — `configured`, `blocked` or `ready`, with
-the next command — and `dt doctor` the checks behind it; `dt setup <unit>` is the fix (the engine's, since
-dreamteamer 0.47). A bare clone with no `.env` is a working workspace; everything optional
+Then `npx dreamteamer status` prints each installed module's setup line — `configured`, `blocked` or
+`ready`, with the next command — and `npx dreamteamer doctor` the checks behind it; `npx dreamteamer
+setup <unit>` is the fix (the engine's, since dreamteamer 0.47). The module docs write `dt` for the
+same CLI where an agent is the reader. A bare clone with no `.env` is a working workspace; everything optional
 degrades by name.
 
 ## the modules
 
-Every module needs engine `>=0.33.0` at least, and each README names its own floor; `core`, `rnd` and
-`knowledge` need `>=0.49.0`, the first engine that installs a preset and merges a nav fragment. A module
-declares what it depends on, and `dt install @dreamteamer/<id>` installs it with that closure as direct
-dependencies — the engine loads only the modules your `package.json` names. Each module's README has
-its exact install line. A module that ships no nav fragment draws its rows flat, alphabetical by
-title, until you file them; installing the seventeen members one by one draws the same rows as `core`
-does, unfolded.
+Each module states its own engine floor (`dreamteamer.engine` in its `package.json`): from `>=0.33.0`
+for the plain content modules up to `>=0.48.0` for those whose setup unit has the engine write `.env`,
+and `>=0.49.0` for `core`, `rnd` and `knowledge`, the first engine that installs a preset and merges a
+nav fragment; `npx dreamteamer install` refuses a module whose floor the installed engine does not meet.
+A module declares what it depends on, and `npx dreamteamer install @dreamteamer/<id>` installs it with
+that closure as direct dependencies — the engine loads only the modules your `package.json` names. Each
+module's README has its exact install line. A module that ships no nav fragment draws its rows flat,
+alphabetical by title, until you file them; installing the seventeen members one by one draws the same
+rows as `core` does, unfolded.
 
 **Work — people, commitments, meetings** (the seventeen members of the `core` preset)
 
@@ -122,24 +125,26 @@ this profile.
 
 ## making a module yours
 
-Another label, an extra field, a different list — that is an **overlay** in your own module, never
-an edit to the installed one. Name the module by its full package name (quoted: YAML reserves a
-leading `@`) and declare it as a dependency:
+A different title, an extra field, a different list — that is an **overlay** in your own module,
+never an edit to the installed one. An overlay is a descriptor with the base collection's `name` and
+`overlay: true`; its module declares the owning module as a dependency, by its full package name:
 
 ```yaml
-# modules/mine/collections/contacts.collection.yaml   — and "dependencies": ["@dreamteamer/contacts"]
+# modules/mine/collections/contacts.collection.yaml
+# and in modules/mine/package.json:  "dreamteamer": { "dependencies": ["@dreamteamer/contacts"] }
 name: contacts
-extends: "@dreamteamer/contacts/contacts"
 overlay: true
-label: Kontakte
+title: Kontakte
 fields:
   pronouns:
     type: string
     description: How to refer to them.
 ```
 
-Then `npx dreamteamer compile`; the merged descriptor is what the runtime reads, and `dt check`
-validates every record against it.
+Then `npx dreamteamer compile`; the merged descriptor is what the runtime reads, and
+`npx dreamteamer check` validates every record against it. `npx dreamteamer add-field contacts
+--name pronouns --module mine` writes the same file for you. An overlay adds or tightens fields and
+never removes one, and compile refuses it while its module does not depend on the base's.
 
 ## versions and releases
 
@@ -190,12 +195,13 @@ uv run --project modules/recordings/skills/transcribing-recordings --with pytest
 ```
 
 To try an unreleased change in a real workspace, preview this clone there with
-`node <clone>/scripts/preview.mjs link <clone>` and `unlink` when done (one module alone: `dt install
-./<clone>/modules/<id>`) — a workspace previewed by the removed setup package refuses every commit
-("linked bundle has no guard") until you run `preview.mjs link` once more, which rewrites its hook — a pre-commit guard refuses record commits
-while a preview is on, because a record may not depend on an unpublished schema.
+`node <clone>/scripts/preview.mjs link <clone>`, and `unlink` when done; for one module alone,
+`npx dreamteamer install ./<clone>/modules/<id>`. While a preview is on, a pre-commit guard refuses
+record commits, because a record may not depend on an unpublished schema. A workspace last previewed
+by the removed setup package refuses every commit ("linked bundle has no guard") until you run
+`preview.mjs link` once more, which rewrites its hook.
 
 The house rules — no personal data (the synthetic cast is Dana Oren, Sam Diaz, Northwind, Harbor
 Mutual), every module compiles alone, a module ships only what its `files` names, and a module that
-needs a sibling at a version says so as an npm `peerDependencies` floor, which npm and `dt compile`
+needs a sibling at a version says so as an npm `peerDependencies` floor, which npm and `npx dreamteamer compile`
 both refuse below — are in `CLAUDE.md`. Apache-2.0.

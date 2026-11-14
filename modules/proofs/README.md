@@ -6,8 +6,10 @@ exit code, so a person or a script can rely on it.
 
 ```bash
 npm install --save-dev @dreamteamer/proofs
-dt compile                 # the proofs kind, the proofs collection and the proving-artifacts skill arrive
+npx dreamteamer compile    # the proofs kind, the proofs collection and the proving-artifacts skill arrive
 ```
+
+`dt` below is the dreamteamer CLI: `npx dreamteamer prove …`.
 
 | verb | what it does |
 |---|---|
@@ -25,7 +27,8 @@ is deliberate: a proof nothing validates is a claim nothing checks.
 
 **What the extension contributes:** the `prove` command, the `proofs` source kind with
 `proofs/fixtures/` excluded, an analysis that validates every proof at compile and notes artifacts
-with no proof yet, and one orientation sentence. Engine `>=0.31.0`. Apache-2.0.
+with no proof yet, and one orientation sentence. The `proving-artifacts` skill carries the method:
+how a proof is written, run and read. Engine `>=0.33.0`. Apache-2.0.
 
 ## 0.1.1 — the nav is nav.yaml (cr-dt-008)
 
