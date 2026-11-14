@@ -79,3 +79,6 @@ test('readModuleGrantResult says why a grant could not be read; an absent file o
 	writeFileSync(join(root, '.vscode', 'settings.json'), '{"editor.tabSize": 2}');
 	assert.deepEqual(readModuleGrantResult(root), { grant: {}, problem: null });
 });
+test('no pane route is a module route', () => {
+	for (const id of ['host', 'selection-put', 'selection-get', 'queue-post', 'queue-get']) assert.equal(MODULE_ROUTES.includes(id), false, id);
+});
