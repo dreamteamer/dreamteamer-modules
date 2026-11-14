@@ -1,6 +1,6 @@
 # @dreamteamer/notebooklm
 
-NotebookLM for a [dreamteamer](https://github.com/dreamteamer/dreamteamer) workspace. `dt notebooklm`
+NotebookLM for a [dreamteamer](https://github.com/dreamteamer/dreamteamer) workspace. `dreamteamer notebooklm`
 renders the workspace as a bounded set of sources and, given a notebook, syncs them; the `notebooklm`
 harness keeps `NOTEBOOKLM.md`'s configuration block current on every compile; and a `notebooks` record
 is the spec a notebook is restored from — its ordered sources, its chat settings, and the id and login
@@ -15,9 +15,16 @@ npx dt-notebook capture <id>           # write a record from a notebook that alr
 npx dt-notebook persona <id>           # apply NOTEBOOKLM.md's persona in one safe call
 ```
 
-Add `notebooklm` to `dreamteamer.harnesses` in `package.json` for the harness. Syncing and the
-three `dt-notebook` verbs need the `notebooklm` CLI and one login; rendering the sources locally and
-writing the record need neither. Engine `>=0.31.0`.
+Add `notebooklm` to `dreamteamer.harnesses` in `package.json` for the harness. Engine `>=0.47.0`.
+
+## setup
+
+Rendering the sources locally and writing a `notebooks` record need nothing. Syncing and the three
+`dt-notebook` verbs need the vendor's `notebooklm` CLI (`uv tool install notebooklm-py`) and one
+Google login, which is yours to perform (`notebooklm login`). The module's setup unit reports both:
+`npx dreamteamer status` reads `blocked` until the CLI is on PATH, then `configured` with the login
+unverified, because nothing local can prove a login. [SETUP.md](SETUP.md) has the details, and the
+`using-notebooklm` skill the rules a session follows.
 
 | alone | with others |
 |---|---|

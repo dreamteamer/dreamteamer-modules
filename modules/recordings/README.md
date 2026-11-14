@@ -32,7 +32,24 @@ A file handed straight to a session, or a pasted transcript, skips the inbox: th
 | `INBOX_FOLDERS` and `FILES_FOLDER`, declared in your workspace's `dreamteamer.vars` | where recordings arrive (a newline-separated list of roots) and where they are archived (a local folder) |
 | `ffmpeg`, `ffprobe`, `uv` and about 1.6 GB of models, downloaded once | transcribing audio; a pasted transcript needs only `uv` |
 | optional: `TRANSCRIPTION_HOME`, default `~/.cache/dreamteamer/transcription` | the one folder the transcriber keeps outside the package: `models/` (`diarization/`, `whisper-ct2/`, `whisper-ggml/`), `venv/` (reaching uv as `UV_PROJECT_ENVIRONMENT`, which the skill's preamble exports) and `asr/`, the raw recognizer output of each run. Copy `models/` to bring a machine up; delete the folder to uninstall |
-| optional, on Apple Silicon: `whisper-cli` (`brew install whisper-cpp`) and 1.6 GB more of weights, which `setup` fetches when the binary is there | the GPU pass — recognition on Metal, four to five times faster than the CPU pass on an M4 Pro; without it the CPU pass runs as before, and `auto` says why in one line, the summary and the record |
+| optional, on Apple Silicon: `whisper-cli` (`brew install whisper-cpp`) and 1.6 GB more of weights, which the model download fetches when the binary is there | the GPU pass — recognition on Metal, four to five times faster than the CPU pass on an M4 Pro; without it the CPU pass runs as before, and `auto` says why in one line, the summary and the record |
+
+## setup
+
+Recording records, inbox ingestion and matching work with no setup. Transcribing audio needs this
+machine prepared once, and the module declares that as its setup unit, `recordings`:
+
+```bash
+npx dreamteamer setup recordings --input files_folder=<folder> --allow download --allow machine
+npx dreamteamer setup recordings --verify --allow machine    # one CPU transcription of a shipped synthetic clip
+npx dreamteamer status                                       # the unit's line: configured, blocked or ready
+```
+
+The first command writes `FILES_FOLDER`, `INBOX_FOLDERS` and `TRANSCRIPTION_HOME` into `.env`,
+provisions the Python environment and downloads the models; each download or machine change waits for
+its own `--allow`. [SETUP.md](SETUP.md) lists the inputs, the checks and what each status means, and
+the `ingesting-recordings` and `transcribing-recordings` skills carry the procedures behind the three
+commands above.
 
 ## 0.5.0 — on engine 0.48.0: the engine writes `.env` (CR-dt-007)
 

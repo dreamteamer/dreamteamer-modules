@@ -22,6 +22,19 @@ npx dt-wiki incomplete             # exits 1 while any source is still a stub
 | `qmd` (`npm install -g @tobilu/qmd`, ~2.1 GB of local models once) | `ask`; without it `ask` says so and `search` still works |
 | the `notebooklm` CLI and one login | `pull` only |
 
+## setup
+
+Nothing, for everything that greps. Asking by meaning needs `qmd` on PATH; the module's setup unit,
+`wikis`, checks for it and can install it:
+
+```bash
+npx dreamteamer status                                        # blocked, naming qmd, until it is there
+npx dreamteamer setup wikis --allow machine --allow network   # runs npm install -g @tobilu/qmd
+```
+
+[SETUP.md](SETUP.md) is the reference, and the `working-with-wikis` skill carries the method: building,
+filling, checking and searching a corpus.
+
 ## the promise, and where it stops
 
 **No Google prerequisites** — no account, no login, no vendor, no network, nothing that can be
@@ -43,7 +56,7 @@ rather than growing one**; a notebook points at many. Scraped PDFs, recordings a
 `${env:FILES_FOLDER}`, with a record pointing at them.
 
 **Sources are files, not records.** The file is the record, frontmatter and body; a folder already
-indexes itself, so a record per source would be a second index of it. What is lost is `dt list` over
+indexes itself, so a record per source would be a second index of it. What is lost is `dreamteamer list` over
 sources; what replaces it is `dt-wiki incomplete` and `dt-wiki status`, plus a rollup on the `wikis`
 record that `dt-wiki verify` re-derives from the folder.
 
