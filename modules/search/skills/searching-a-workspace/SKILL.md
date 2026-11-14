@@ -59,8 +59,9 @@ weak plurality, which would hand back a confident set built on one coincidence.
 
 ## four things that will bite
 
-1. **Every rung needs `qmd`** (`npm install -g @tobilu/qmd`, fully on-device). Without it `dt-find`
-   exits 1 with the install line. `grep` is the route that needs nothing installed.
+1. **Every rung needs `qmd`** (`npm install -g @tobilu/qmd`, fully on-device; `dt setup search
+   --allow machine --allow network` runs that install, and `dt status` says whether it is there).
+   Without it `dt-find` exits 1 with the install line. `grep` is the route that needs nothing installed.
 2. **The index is derived, and `dt-find` does not build it.** Build it with `qmd init`, `qmd collection add`
    and `qmd embed` over the workspace's `data/` folders. An EMPTY or stale index answers as if nothing
    matched, which is indistinguishable from a real miss — check `qmd status` before believing a
@@ -75,6 +76,6 @@ weak plurality, which would hand back a confident set built on one coincidence.
 
 ## when NOT to use this skill
 
-Searching one assembled corpus of prose you built — that is `working-with-wikis` and `wiki ask`.
+Searching one assembled corpus of prose you built — that is `working-with-wikis` and `npx dt-wiki ask`.
 The difference is the graph: **records carry references and a corpus of documents does not**, which is
 why rung 3 exists here and nowhere else.
