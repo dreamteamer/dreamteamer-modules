@@ -5,7 +5,7 @@
 // sign-off) until the next open pairs it; show, select, token, revoke, list, the level flags and the usage line. Every server is stopped in after().
 import { test, before, after, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import http from 'node:http';
 import os from 'node:os';
@@ -244,6 +244,23 @@ describe('start, detached, with its flags', () => {
 			assert.match(r.stdout, new RegExp(`already running at http://127\\.0\\.0\\.1:${rt.port} — ${flags[0]} ${flags[1]} .*dt web stop`), flags.join(' '));
 		}
 		assert.equal(runtimeFile().pid, rt.pid, 'the server was not replaced');
+	});
+	test('starts at the same instant: the ones that lose the start lock wait for the winner, never fail on its lock', { timeout: 60_000 }, async () => {
+		run('stop');
+		assert.equal(run('status').status, 1, 'stopped');
+		const at = (args) => new Promise((resolve) => {
+			const c = spawn(process.execPath, [BIN, f.root, ...args], { env, stdio: ['ignore', 'pipe', 'pipe'] });
+			let out = '';
+			c.stdout.on('data', (b) => { out += b; });
+			c.stderr.on('data', (b) => { out += b; });
+			const k = setTimeout(() => c.kill('SIGKILL'), 30_000);
+			c.on('exit', (code) => { clearTimeout(k); resolve({ code, out }); });
+		});
+		const all = await Promise.all([at(['start']), at(['start']), at(['open']), at(['open'])]);
+		for (const r of all) assert.equal(r.code, 0, r.out);
+		const ports = new Set(all.map((r) => /127\.0\.0\.1:(\d+)/.exec(r.out)?.[1]));
+		assert.equal(ports.size, 1, `one port: ${[...ports]}`);
+		assert.equal(Number([...ports][0]), runtimeFile().port);
 	});
 	test('a --port another program holds fails at once, naming the port — never a wait or another port', { timeout: 60_000 }, async () => {
 		run('stop');

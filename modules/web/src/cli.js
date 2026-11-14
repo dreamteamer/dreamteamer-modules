@@ -146,8 +146,10 @@ export async function ensureRunning(root, { log = console.log, env = process.env
 			if (rt.movedFrom) log(movedLine(rt.movedFrom, rt.port));
 			return rt;
 		}
-		// a child that has exited will not come up (another start that won the lock is found above on the next turn)
-		if (exited !== null) {
+		// a child that has exited will not come up itself. When another live process holds the start lock, that child
+		// lost the race to a start at the same instant: the winner is found above on a later turn. Otherwise the line
+		// it ended on is why it did not start, said now rather than after the whole wait.
+		if (exited !== null && !startingElsewhere(fileOf(root, env), child.pid)) {
 			const again = await current(root, env, 1000, { refuseSilent: false });
 			if (again) return again;
 			const said = logTail(logFile, from);
@@ -156,6 +158,13 @@ export async function ensureRunning(root, { log = console.log, env = process.env
 		await sleep(100);
 	}
 	throw new Error(`dt web did not start within ${START_WAIT_MS / 1000} s — its log: ${logFile}`);
+}
+
+/** Another live process holds this workspace's start lock (runtime.js claimStart): a server is on its way up. */
+function startingElsewhere(file, childPid) {
+	let holder = null;
+	try { holder = Number(fs.readFileSync(`${file}.lock`, 'utf8')); } catch { return false; }
+	return Number.isInteger(holder) && holder > 0 && holder !== childPid && alive(holder);
 }
 
 /** The last line the child wrote to its log since `from` (the log is kept across starts). */
