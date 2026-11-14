@@ -78,9 +78,11 @@ asked for it in words).
 
 ## what you see
 
-- **The pane bar** across the top: the workspace's name, a menu of the workspaces opened on this machine (one
-  that is stopped starts when you pick it), the level chip, and while a raised level holds, since when
-  ("Admin since 02:41 — opened from the chat"). The chip's menu lowers the level. A raise is asked in the chat.
+- **The nav's toolbar**, the strip above the nav: the workspace's name, which opens a menu of the workspaces opened
+  on this machine (one that is stopped starts when you pick it); the arrange lock (the nav starts locked — unlock it
+  to drag rows, use row menus, add a folder or show a hidden row; arranging needs Edit); and the level as an icon —
+  an eye for Read, a pencil for Edit, a shield for Admin — whose tooltip, while a raised level holds, says since when
+  ("Admin since 02:41 — opened from the chat"). The level's menu lowers it. A raise is asked in the chat.
 - **The nav** on the left, built from the same model as the extension's tree: the folders and rows of the
   workspace's `nav.yaml`, collections with their record counts, saved views, and a Layers folder for the
   workspaces under `git_modules/`. A workspace still arranged by the old settings in `.vscode/settings.json`

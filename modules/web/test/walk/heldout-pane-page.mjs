@@ -131,10 +131,10 @@ try {
 	// ---- step 3: the switcher with no other workspace ----------------------------------------------------------
 	{
 		const { context, page } = await fresh(await s.signInUrl());
-		await page.click('.dt-pane-bar__ws-button');
+		await page.click('.dt-pane-switch');
 		await page.waitForTimeout(800);
 		const menu = await page.evaluate(() => {
-			const m = document.querySelector('.dt-pane-bar__ws .dt-pane-bar__menu');
+			const m = document.querySelector('.dt-pane-switch__menu');
 			return m ? { text: m.innerText, checked: [...m.querySelectorAll('[aria-checked="true"]')].map((e) => e.innerText.trim()) } : null;
 		});
 		ok(Boolean(menu), 'step 3: the switcher opens a menu');
@@ -144,21 +144,21 @@ try {
 		await context.close();
 	}
 
-	// ---- step 4: the pane bar at 320 px, Admin with raisedAt, a 40-character name -------------------------------
+	// ---- step 4: the pane's level (an icon in the nav toolbar since the 2026-11-14 16:30 revision) at 320 px, Admin with raisedAt, a 40-character name -------------------------------
 	{
 		const up = s.run('open', '--admin');
 		const url = /^✔ open in the pane: (\S+)$/m.exec(up.stdout)?.[1];
 		ok(Boolean(url), 'step 4: dt web open --admin', up.stdout.trim().split('\n').join(' · '));
 		const { context, page } = await fresh(url, { width: 320, height: 640 });
 		await page.waitForTimeout(800);
-		await page.click('.dt-pane-bar__chip');
+		await page.click('.dt-pane-level');
 		await page.waitForTimeout(600);
 		const m = await page.evaluate(() => {
 			const r = (sel) => { const e = document.querySelector(sel); if (!e) return null; const b = e.getBoundingClientRect(); const cs = getComputedStyle(e); return { x: b.left, y: b.top, right: b.right, bottom: b.bottom, w: b.width, h: b.height, visible: cs.display !== 'none' && cs.visibility !== 'hidden' && b.width > 0, overflow: cs.textOverflow, sw: e.scrollWidth, cw: e.clientWidth, text: e.innerText }; };
 			// reachable = the topmost element at its centre is it (not clipped by an ancestor, not covered)
 			const top = (sel) => { const e = document.querySelector(sel); if (!e) return false; const b = e.getBoundingClientRect(); const t = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2); return Boolean(t && (t === e || e.contains(t))); };
 			const clipped = (sel) => { const e = document.querySelector(sel); if (!e) return null; const b = e.getBoundingClientRect(); let p = e.parentElement; while (p) { const cs = getComputedStyle(p); if (cs.overflow !== 'visible' || cs.overflowX !== 'visible') { const q = p.getBoundingClientRect(); if (b.left < q.left - 0.5 || b.right > q.right + 0.5) return p.className || p.tagName; } p = p.parentElement; } return null; };
-			return { reach: { chip: top('.dt-pane-bar__chip'), menu: top('.dt-pane-bar__level .dt-pane-bar__menu button') || top('.dt-pane-bar__level .dt-pane-bar__menu .dt-pane-bar__hint') }, clip: { chip: clipped('.dt-pane-bar__chip'), menu: clipped('.dt-pane-bar__level .dt-pane-bar__menu') }, vw: window.innerWidth, docSW: document.documentElement.scrollWidth, docCW: document.documentElement.clientWidth, chip: r('.dt-pane-bar__chip'), menu: r('.dt-pane-bar__level .dt-pane-bar__menu'), name: r('.dt-pane-bar__ws-button'), notice: r('.dt-pane-bar__notice') };
+			return { reach: { chip: top('.dt-pane-level'), menu: top('.dt-pane-level__menu button') || top('.dt-pane-level__menu .dt-pane-menu__hint') }, clip: { chip: clipped('.dt-pane-level'), menu: clipped('.dt-pane-level__menu') }, vw: window.innerWidth, docSW: document.documentElement.scrollWidth, docCW: document.documentElement.clientWidth, chip: r('.dt-pane-level'), menu: r('.dt-pane-level__menu'), name: r('.dt-pane-switch__name'), notice: r('.dt-pane-level__menu .dt-pane-menu__notice') };
 		});
 		const inside = (b) => b && b.x >= 0 && b.right <= m.vw + 0.5;
 		ok(inside(m.chip) && m.chip.visible && m.reach.chip && !m.clip.chip, 'step 4: the level chip is reachable and inside the viewport (topmost at its centre, not clipped)', JSON.stringify({ box: m.chip && { x: m.chip.x, right: m.chip.right, text: m.chip.text }, topmost: m.reach.chip, clippedBy: m.clip.chip }));

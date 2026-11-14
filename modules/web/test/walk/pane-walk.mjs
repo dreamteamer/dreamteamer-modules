@@ -3,13 +3,14 @@
 // share one machine's state, in headless Chromium, the bin driven as a chat session drives it:
 //   a. `dt web open tasks` → the page shows the tasks list, with no 401
 //   b. a record's .html file framed by the page (sandboxed, as the page frames one) cannot read /api with the session
-//   c. at Read the chip reads Read and a field edit is refused naming Read; lowered from Edit in the menu, the chip
+//   c. at Read the level icon reads Read and a field edit is refused naming Read; lowered from Edit in the menu, the icon
 //      reads Read and the menu offers no raise
 //   d. two rows ticked → `dt web selection` prints both; `dt web show <ref>` moves the page; `dt web select` ticks
 //   e. after the hook's GET /_dt/pane?hook=1, Ask in chat shows Waiting; the hook bin's next run prints the queued
 //      line, and the item shows Delivered
 //   f. the switcher lists the second workspace (stopped); choosing it lands on its page with no sign-in step
-//   g. at 320 px (a narrow desktop pane) the chip and its menu are reachable and inside the page, the name truncates,
+//   g. at 320 px (a narrow desktop pane) the level icon in the nav toolbar and its menu are reachable and inside the
+//      window, the name truncates,
 //      the raise notice takes its own row, and the page does not scroll sideways
 //   h. a server restart under that open page (dt web stop, then a verb that starts it): the page shows the signed-out
 //      sentence ON ITS OWN, with no click and no raw 401 (the h8 amendment; sessions live in memory only)
@@ -32,7 +33,8 @@ const b = await browser();
 const HOOK = path.join(WEB, 'bin', 'dt-web-hook.mjs');
 const runOther = (...args) => spawnSync(process.execPath, [path.join(WEB, 'bin', 'dt-web.mjs'), other.root, ...args], { env: s.env, encoding: 'utf8', timeout: 30_000 });
 const urlOf = (out) => /^✔ open in the pane: (\S+)$/m.exec(out ?? '')?.[1];
-const chip = (page) => page.$eval('.dt-pane-bar__chip', (e) => e.textContent.trim()).catch(() => '');
+// the level is an icon in the nav toolbar (2026-11-14 16:30 revision): its word is its aria-label, "Level: <word>"
+const chip = (page) => page.$eval('.dt-pane-level', (e) => (e.getAttribute('aria-label') ?? '').replace(/^Level: /, '')).catch(() => '');
 const hash = (page) => page.evaluate(() => decodeURIComponent(location.hash.slice(1)));
 const until = (page, fn, arg, ms = 10_000) => page.waitForFunction(fn, arg, { timeout: ms }).then(() => true, () => false);
 const ticked = (page) => page.$$eval('tbody .dt-table__checkbox-col input:checked', (e) => e.length).catch(() => -1);
@@ -52,7 +54,7 @@ try {
 	ok(await until(page, () => decodeURIComponent(location.hash).startsWith('#/content/tasks') && document.body.innerText.includes('Brief Dana')), 'a: the page shows the tasks list', await hash(page));
 	await page.waitForTimeout(600);
 	ok(unauthorised.length === 0, 'a: no request answered 401', JSON.stringify(unauthorised));
-	ok((await chip(page)) === 'Edit', 'a: the pane bar draws, the chip reads the stored level', await chip(page));
+	ok((await chip(page)) === 'Edit', 'a: the nav toolbar draws the level icon, reading the stored level', await chip(page));
 	await page.screenshot({ path: step('a-open') });
 
 	// b — a record's .html file in a sandboxed frame: its script either never runs (the files policy is `sandbox`) or
@@ -77,12 +79,12 @@ fetch('/api/info', { credentials: 'include' }).then(async (r) => parent.postMess
 	const readNothing = probe.probe === 'failed' || probe.probe === 'no script ran' || (probe.probe === 'answered' && probe.status === 403);
 	ok(readNothing, 'b: a framed record file cannot read /api with the session', JSON.stringify(probe));
 
-	// c — at Read: the chip, and a field edit refused naming Read
+	// c — at Read: the level icon, and a field edit refused naming Read
 	const atRead = s.run('open', '--read', 'tasks/brief-dana');
 	ok(/^level: Read$/m.test(atRead.stdout), 'c: dt web open --read sets the level', atRead.stdout.split('\n')[1]);
 	await page.goto(urlOf(atRead.stdout));
-	await page.waitForSelector('.dt-pane-bar__chip', { timeout: 30_000 });
-	ok((await chip(page)) === 'Read', 'c: after the reload the chip reads Read', await chip(page));
+	await page.waitForSelector('.dt-pane-level', { timeout: 30_000 });
+	ok((await chip(page)) === 'Read', 'c: after the reload the level icon reads Read', await chip(page));
 	// the record page has drawn its value before the edit starts (an Edit pressed on a page still loading is lost)
 	await until(page, () => document.body.innerText.includes('Brief Dana') && !!document.querySelector('button[title="Edit"]'), null, 15_000);
 	await page.waitForTimeout(500);
@@ -99,27 +101,27 @@ fetch('/api/info', { credentials: 'include' }).then(async (r) => parent.postMess
 	// lowered from Edit in the menu
 	const atEdit = s.run('open', '--edit', 'tasks');
 	await page.goto(urlOf(atEdit.stdout));
-	await page.waitForSelector('.dt-pane-bar__chip', { timeout: 30_000 });
-	ok((await chip(page)) === 'Edit', 'c: raised from the chat, the chip reads Edit', await chip(page));
-	const notice = await page.$eval('.dt-pane-bar__notice', (e) => e.textContent.trim()).catch(() => '');
-	ok(/^Edit since \d\d:\d\d — opened from the chat$/.test(notice), 'c: the raise notice draws beside the chip', notice);
-	await page.click('.dt-pane-bar__chip');
-	const lowers = await page.$$eval('.dt-pane-bar__lower', (e) => e.map((x) => x.textContent.trim()));
+	await page.waitForSelector('.dt-pane-level', { timeout: 30_000 });
+	ok((await chip(page)) === 'Edit', 'c: raised from the chat, the level icon reads Edit', await chip(page));
+	const notice = await page.$eval('.dt-pane-level', (e) => e.title).catch(() => '');
+	ok(/^Level: Edit — Edit since \d\d:\d\d — opened from the chat$/.test(notice), 'c: the level icon\'s tooltip names the level and the raise', notice);
+	await page.click('.dt-pane-level');
+	const lowers = await page.$$eval('.dt-pane-level__lower', (e) => e.map((x) => x.textContent.trim()));
 	ok(JSON.stringify(lowers) === '["Read"]', 'c: the menu offers Read only', JSON.stringify(lowers));
-	await page.click('.dt-pane-bar__lower[data-level="read"]');
-	ok(await until(page, () => document.querySelector('.dt-pane-bar__chip')?.textContent.trim() === 'Read'), 'c: lowered in the menu, the chip reads Read', await chip(page));
-	await page.click('.dt-pane-bar__chip');
-	const after = await page.$$eval('.dt-pane-bar__lower', (e) => e.length);
-	const hint = await page.$eval('.dt-pane-bar__hint', (e) => e.textContent.trim()).catch(() => '');
+	await page.click('.dt-pane-level__lower[data-level="read"]');
+	ok(await until(page, () => document.querySelector('.dt-pane-level')?.dataset.level === 'read'), 'c: lowered in the menu, the level icon reads Read', await chip(page));
+	await page.click('.dt-pane-level');
+	const after = await page.$$eval('.dt-pane-level__lower', (e) => e.length);
+	const hint = await page.$eval('.dt-pane-level__menu .dt-pane-menu__hint', (e) => e.textContent.trim()).catch(() => '');
 	ok(after === 0 && hint === 'To raise it, ask in the chat', 'c: and the menu offers no raise', `${after} items · ${hint}`);
 	ok(/level Read/.test(s.run('status').stdout), 'c: dt web status reads the lowered level');
 	await page.screenshot({ path: step('c-lowered') });
-	await page.click('.dt-pane-bar__chip');
+	await page.click('.dt-pane-level');
 
 	// d — the selection both ways (story s3); back at Edit so the rest of the walk can queue
 	s.run('open', '--edit');
 	await page.reload();
-	await page.waitForSelector('.dt-pane-bar__chip', { timeout: 30_000 });
+	await page.waitForSelector('.dt-pane-level', { timeout: 30_000 });
 	await go(page, '/content/tasks');
 	await page.waitForSelector('tbody tr', { timeout: 15_000 });
 	await tick(page, 'Brief Dana');
@@ -170,16 +172,16 @@ fetch('/api/info', { credentials: 'include' }).then(async (r) => parent.postMess
 	ok(Boolean(urlOf(reg.stdout)), 'f: dt web open registered the second workspace', reg.stdout.split('\n')[0]?.replace(/sign-in\/\S+/, 'sign-in/<code>'));
 	const stopped = runOther('stop');
 	ok(stopped.status === 0 && runOther('status').status === 1, 'f: and it was stopped before the switch', stopped.stdout.trim());
-	await page.click('.dt-pane-bar__ws-button');
-	await page.waitForSelector('.dt-pane-bar__ws-item', { timeout: 10_000 });
-	const listed = await page.$$eval('.dt-pane-bar__ws-item', (e) => e.map((x) => x.textContent.replace(/\s+/g, ' ').trim()));
+	await page.click('.dt-pane-switch');
+	await page.waitForSelector('.dt-pane-switch__item', { timeout: 10_000 });
+	const listed = await page.$$eval('.dt-pane-switch__item', (e) => e.map((x) => x.textContent.replace(/\s+/g, ' ').trim()));
 	ok(listed.includes('harbor starts when opened') && listed.includes('northwind'), 'f: the switcher lists the second workspace, marked stopped', JSON.stringify(listed));
 	await page.screenshot({ path: step('f-switcher') });
 	const before = new URL(page.url()).port;
-	await page.click('.dt-pane-bar__ws-item:has-text("harbor")');
+	await page.click('.dt-pane-switch__item:has-text("harbor")');
 	const landed = await page.waitForURL((u) => u.port !== before && u.pathname.startsWith('/app/'), { timeout: 30_000 }).then(() => true, () => false);
 	const nav = landed && await page.waitForSelector('.dt-nav-row', { timeout: 30_000 }).then(() => true, () => false);
-	const name = await page.$eval('.dt-pane-bar__ws-button', (e) => e.textContent.trim()).catch(() => '');
+	const name = await page.$eval('.dt-pane-switch', (e) => e.textContent.trim()).catch(() => '');
 	ok(landed && nav && name === 'harbor', 'f: choosing it lands on its page, signed in, with no sign-in step', `${page.url().replace(/sign-in\/\S+/, 'sign-in/<code>')} · ${name}`);
 	ok(runOther('status').status === 0, 'f: the second workspace runs now');
 	const moved = spawnSync(process.execPath, [HOOK], { input: JSON.stringify({ cwd: a.root }), env: s.env, encoding: 'utf8', timeout: 10_000 });
@@ -195,21 +197,21 @@ fetch('/api/info', { credentials: 'include' }).then(async (r) => parent.postMess
 	const SIGNED_OUT = 'This pane is signed out. Ask the chat to show it again — it runs dt web open.';
 	const admin = s.run('open', '--admin');
 	const narrow = await signedIn(b, urlOf(admin.stdout), { viewport: { width: 320, height: 640 } });
-	await narrow.page.waitForSelector('.dt-pane-bar__chip', { timeout: 10_000 });
-	await narrow.page.click('.dt-pane-bar__chip');
-	await narrow.page.waitForSelector('.dt-pane-bar__level .dt-pane-bar__menu', { timeout: 5_000 }).catch(() => null);
+	await narrow.page.waitForSelector('.dt-pane-level', { timeout: 10_000 });
+	await narrow.page.click('.dt-pane-level');
+	await narrow.page.waitForSelector('.dt-pane-level__menu', { timeout: 5_000 }).catch(() => null);
 	const fit = await narrow.page.evaluate(() => {
 		const box = (sel) => { const e = document.querySelector(sel); if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.left, right: r.right, y: r.top, bottom: r.bottom }; };
 		const topmost = (sel) => { const e = document.querySelector(sel); if (!e) return false; const r = e.getBoundingClientRect(); const t = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return Boolean(t && (t === e || e.contains(t))); };
-		const area = box('.dt-page-area');
-		const name = document.querySelector('.dt-pane-bar__ws-button');
-		return { area, chip: box('.dt-pane-bar__chip'), menu: box('.dt-pane-bar__level .dt-pane-bar__menu'), notice: box('.dt-pane-bar__notice'), chipTop: topmost('.dt-pane-bar__chip'), itemTop: topmost('.dt-pane-bar__lower'), nameFits: name ? name.scrollWidth <= name.clientWidth || getComputedStyle(name).textOverflow === 'ellipsis' : false, sideways: document.documentElement.scrollWidth > document.documentElement.clientWidth };
+		const area = { x: 0, right: document.documentElement.clientWidth };
+		const name = document.querySelector('.dt-pane-switch__name');
+		return { area, chip: box('.dt-pane-level'), menu: box('.dt-pane-level__menu'), notice: box('.dt-pane-level__menu .dt-pane-menu__notice'), chipTop: topmost('.dt-pane-level'), itemTop: topmost('.dt-pane-level__lower'), nameFits: name ? name.scrollWidth <= name.clientWidth || getComputedStyle(name).textOverflow === 'ellipsis' : false, sideways: document.documentElement.scrollWidth > document.documentElement.clientWidth };
 	});
 	const within = (bx) => Boolean(bx && fit.area && bx.x >= fit.area.x - 0.5 && bx.right <= fit.area.right + 0.5);
-	ok(within(fit.chip) && fit.chipTop, 'g: at 320 px the level chip is inside the page and reachable', JSON.stringify({ area: fit.area, chip: fit.chip }));
-	ok(within(fit.menu) && fit.itemTop, 'g: its menu opens inside the page, its first item reachable', JSON.stringify(fit.menu));
+	ok(within(fit.chip) && fit.chipTop, 'g: at 320 px the level icon is inside the window and reachable', JSON.stringify({ area: fit.area, chip: fit.chip }));
+	ok(within(fit.menu) && fit.itemTop, 'g: its menu opens inside the window, its first item reachable', JSON.stringify(fit.menu));
 	ok(fit.nameFits && !fit.sideways, 'g: the name fits or truncates with an ellipsis, and the page does not scroll sideways');
-	ok(Boolean(fit.notice && fit.chip && fit.notice.y >= fit.chip.bottom - 0.5), 'g: the raise notice takes a row of its own below the chip', JSON.stringify(fit.notice));
+	ok(Boolean(fit.notice && fit.chip && fit.notice.y >= fit.chip.bottom - 0.5), 'g: the raise notice is at the top of the menu, below the icon', JSON.stringify(fit.notice));
 	await narrow.page.screenshot({ path: step('g-narrow') });
 	await narrow.page.keyboard.press('Escape');
 

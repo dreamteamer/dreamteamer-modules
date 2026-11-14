@@ -53,7 +53,9 @@ test('draws the host nav, opens a folder and routes a row', async () => {
 
 test('App draws NavSidebar only when the host declares an app nav', async () => {
 	const src = (await import('node:fs')).readFileSync(new URL('../../src/App.vue', import.meta.url).pathname.replace('/.test-build/webview', ''), 'utf8');
-	assert.match(src, /<NavSidebar v-if="appNav" \/>/);
+	assert.match(src, /<AppNav v-if="appNav" \/>/);
+	const nav = (await import('node:fs')).readFileSync(new URL('../../src/components/AppNav.vue', import.meta.url).pathname.replace('/.test-build/webview', ''), 'utf8');
+	assert.match(nav, /<NavSidebar /, 'AppNav draws NavSidebar');
 	assert.match(src, /__DT_HOST__\?\.nav === 'app'/);
 	assert.equal(w.__DT_HOST__, undefined, 'no host capability is set in this tier, as inside VS Code');
 });

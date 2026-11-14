@@ -52,7 +52,7 @@ export function framesBase(): string | undefined {
 	return hostInfo.value?.framesBase;
 }
 
-/** A host that answered a workspace id is a pane host: the pane bar, the place report and Ask in chat draw
+/** A host that answered a workspace id is a pane host: the switcher and level in the nav toolbar, the place report and Ask in chat draw
  *  only there (reading 3 — the editor answers no id). */
 export function paneHost(): boolean {
 	return typeof hostInfo.value?.workspace?.id === 'string';

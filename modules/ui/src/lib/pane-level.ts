@@ -1,7 +1,7 @@
 /**
  * The pane's level, in words (cr-modules-017 §4). A page can LOWER its own level (`POST /_dt/level`); a raise is
- * the chat's (`dt web open --edit|--admin`), so the chip's menu lists only the levels below and sends a person to the
- * chat for anything higher. While a raise holds, the bar says since when.
+ * the chat's (`dt web open --edit|--admin`), so the level menu lists only the levels below and sends a person to the
+ * chat for anything higher. While a raise holds, the level icon's tooltip and menu say since when.
  */
 export type PaneLevel = 'read' | 'edit' | 'admin';
 

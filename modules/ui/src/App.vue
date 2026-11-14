@@ -9,7 +9,7 @@
 import { onMounted, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import RightSidebar from './components/RightSidebar.vue';
-import NavSidebar from './components/NavSidebar.vue';
+import AppNav from './components/AppNav.vue';
 import { hostNotify, hostSetState } from './api/transport';
 import { loadUiViews } from './ui-views';
 import { refreshSchema } from './lib/schema-refresh';
@@ -17,7 +17,6 @@ import { liveSchemaCaches } from './composables/schema-caches';
 import { invalidateStageReviews } from './lib/stage-reviews';
 import { handleInvalidate } from './lib/host-invalidate';
 import { refreshPages } from './composables/page-caches';
-import PaneBar from './components/PaneBar.vue';
 import { loadHost, paneHost, signedOut, SIGNED_OUT } from './lib/host-boot';
 import { receiveSelect, startPaneReport } from './composables/pane-report';
 import { useCollections } from './composables/collections';
@@ -104,9 +103,9 @@ onMounted(() => hostNotify('dt:ready'));
 
 <template>
 	<div class="dt-shell">
-		<NavSidebar v-if="appNav" />
+		<!-- the nav, and on a pane host its switcher and level in the nav's toolbar (no bar above the page) -->
+		<AppNav v-if="appNav" />
 		<main class="dt-page-area">
-			<PaneBar v-if="paneHost()" />
 			<router-view />
 		</main>
 		<RightSidebar />
