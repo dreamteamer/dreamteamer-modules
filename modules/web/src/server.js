@@ -1,6 +1,7 @@
-// dt web's two loopback listeners. The APP origin serves the UI, the protocol at /api/ and the live channel;
-// the FILES origin serves the record files a record points at, sandboxed, with no cookie and no API, under a
-// per-start key (README § security). Every rule here is written in modules/web/README.md.
+// dt web's ONE loopback listener (cr-modules-017 §1). A strict prefix dispatcher (dispatch.js) names what a path is
+// before anything else runs: the shell (/app/, no cookie, no data), sign-in (/sign-in/<code>), the protocol (/api/,
+// the cookie with Fetch-Metadata), the server's own routes (/_dt/), record files (/_files/<key>/, sandboxed) and module
+// frames (/_frames/<key>/, sandbox allow-scripts). Every rule here is written in modules/web/README.md.
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import http from 'node:http';
@@ -12,16 +13,26 @@ import { changeScope, invalidateMessage, NAV_DOC_FILE } from '@dreamteamer/proto
 import { hasNavSettings } from '@dreamteamer/protocol/host/nav';
 import { migrateNavSettings } from '@dreamteamer/protocol/nav-doc';
 import { workspaceNavSettings } from '@dreamteamer/protocol/nav-model';
-import { twoOriginCsp as appCsp, baseHeaders, FILE_CSP } from './headers.js';
-import { readModuleGrantResult } from '@dreamteamer/protocol/module-grant';
+import { appCsp, baseHeaders, FILE_CSP } from './headers.js';
+import { classify } from './dispatch.js';
 import { moduleFrameRoute, resolveGuest } from './module-frames.js';
+import { createPairing } from './pairing.js';
+import { createSessions, SESSION_MAX_AGE_S } from './sessions.js';
+import { readWorkspaceState, stateDir as defaultStateDir, writeWorkspaceState } from './state.js';
 
-const SIGN_IN_TTL_MS = 10 * 60_000;
 const DEBOUNCE_MS = 150;
+const MAX_BODY_BYTES = 16 * 1024 * 1024;
 export const NAV_MIGRATED_NOTICE = 'nav.yaml written from your nav settings — they are no longer read';
+export const SIGN_IN_REFUSED = 'This sign-in link was used or is older than a minute — ask the chat to show the pane again (dt web open).';
+export const NOT_FROM_THE_PANE = "a request with the pane's cookie must come from the pane";
+export const HOST_CAPABILITIES = { nav: 'app', commands: false, openFile: 'tab', tabs: false, history: 'hash', moduleFrames: 'url' };
 const random = (n = 24) => crypto.randomBytes(n).toString('base64url');
 const same = (a, b) => typeof a === 'string' && typeof b === 'string' && a.length === b.length && crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
-const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp', '.ttf': 'font/ttf', '.woff': 'font/woff', '.woff2': 'font/woff2', '.ico': 'image/x-icon', '.pdf': 'application/pdf', '.txt': 'text/plain; charset=utf-8' };
+const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp', '.ttf': 'font/ttf', '.woff': 'font/woff', '.woff2': 'font/woff2', '.ico': 'image/x-icon', '.pdf': 'application/pdf', '.txt': 'text/plain; charset=utf-8', '.map': 'application/json' };
+/** A record file's bytes are data, never code or style the browser would apply. */
+const NEVER_ACTIVE = new Set(['.js', '.mjs', '.cjs', '.css']);
+const WRITES = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+const JSON_TYPE = /^application\/json\s*(;|$)/i;
 
 /** `file` under `root` after resolving every link, or null — `..`, absolute paths and links out are refused. */
 export function contained(root, rel) {
@@ -32,16 +43,20 @@ export function contained(root, rel) {
 }
 
 const hostNames = (port) => new Set([`127.0.0.1:${port}`, `localhost:${port}`, `[::1]:${port}`]);
+class HttpError extends Error { constructor(status, message) { super(message); this.status = status; } }
+const decode = (s) => { try { return decodeURIComponent(s); } catch { throw new HttpError(400, 'a malformed percent-escape in the path'); } };
 
 /**
- * Start dt web for the workspace at `root`. `appDir` holds the built app (index.html + assets/) — @dreamteamer/ui's dist/app.
- * Resolves `{ appUrl, filesOrigin, token, signInUrl(), close(), closed }`.
+ * Start dt web for the workspace at `root` on one listener. `appDir` holds the built app (index.html + assets/) —
+ * @dreamteamer/ui's dist/app. `stateDir` is the per-user state dir (state.js); `pane` the PaneStore the protocol's
+ * pane routes answer from (absent: the handler's own memory store).
+ * Resolves `{ url, port, controlToken, filesKey, pair({ route?, cap? }) → url, broadcast(msg), clients() → number, close(why?), closed }`.
  */
-export async function startWeb({ root, appDir, port = 0, idleMinutes = 30, ownerPid, onStop, signInTtlMs = SIGN_IN_TTL_MS, moduleGuest } = {}) {
+export async function startWeb({ root, appDir, port = 0, idleMinutes = 60, ownerPid, onStop, now = Date.now, stateDir = defaultStateDir(), moduleGuest, pane } = {}) {
 	if (!fs.existsSync(path.join(appDir, 'index.html'))) {
 		throw new Error(`the app is missing: ${path.join(appDir, 'index.html')} — @dreamteamer/ui is installed without its build (see the README)`);
 	}
-	const handler = await createHandler({ root });
+	const handler = await createHandler({ root, pane });
 	// cr-dt-008: the old nav settings are written into nav.yaml on the first GET /nav of this server's life, once; a
 	// failure is logged and the request still answers (the legacy tree, from the settings)
 	let navMigrationTried = false;
@@ -57,14 +72,18 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 30, owner
 			return false;
 		}
 	};
-	const token = random(32);
-	const filesKey = random(18);
-	const signIns = new Map(); // code → expiry
-	const sessions = new Set();
-	const clients = new Set();
-	let appPort, filesPort;
 
-	// ---- the files origin --------------------------------------------------------------------
+	const state = readWorkspaceState(root, stateDir);
+	const save = () => writeWorkspaceState(root, state, stateDir);
+	const sessions = createSessions({ state, save, now });
+	const pairing = createPairing({ now });
+	const controlToken = random(32);
+	const filesKey = random(18);
+	const clientStreams = new Set();
+	let listenPort;
+	const cookieName = () => `dt_pane_${listenPort}`;
+
+	// ---- record files and module frames --------------------------------------------------------
 	const varRoots = () => { try { const e = engine(); return envRoots(e.declaredVars ?? [], e.renderEnv); } catch { return []; } };
 	const fileBases = () => {
 		const out = [];
@@ -74,38 +93,21 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 30, owner
 		} catch { /* no binary collections */ }
 		return out;
 	};
-	const frameRoutes = [];
-	// cr-modules-008: module apps run in frames served here; `moduleGuest: null` forces the missing-guest path in tests
-	frameRoutes.push(moduleFrameRoute({ root, appPort: () => appPort, guest: moduleGuest === undefined ? resolveGuest(path.dirname(new URL(import.meta.url).pathname)) : moduleGuest }));
-	const files = http.createServer((req, res) => {
-		try {
-			serveFile(req, res);
-		} catch {
-			if (res.headersSent) return void res.destroy();
-			send(res, 400, 'bad request');
-		}
-	});
-	const serveFile = (req, res) => {
-		baseHeaders(res);
+	// cr-modules-008: module apps run in frames; `moduleGuest: null` forces the missing-guest path in tests
+	const frameRoute = moduleFrameRoute({ root, appPort: () => listenPort, guest: moduleGuest === undefined ? resolveGuest(path.dirname(new URL(import.meta.url).pathname)) : moduleGuest });
+
+	const serveFile = (req, res, url, rest) => {
 		res.setHeader('Content-Security-Policy', FILE_CSP);
-		if (!hostNames(filesPort).has(String(req.headers.host ?? '').toLowerCase())) return send(res, 403, 'not this server');
-		if (req.headers['sec-fetch-site'] === 'cross-site') return send(res, 403, 'cross-site');
 		if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, 'read only');
-		const url = new URL(req.url, 'http://x');
-		const parts = url.pathname.split('/').slice(1);
-		if (!same(parts[0], filesKey)) return send(res, 404, 'not found');
-		const kind = parts[1];
-		const rest = parts.slice(2).map((p) => { try { return decodeURIComponent(p); } catch { return '\0'; } });
-		if (kind === '_dt' && rest[0] === 'frame') {
-			for (const r of frameRoutes) { const out = r(rest.slice(1), req); if (out) return out.status ? send(res, out.status, out.body) : sendFile(res, out.body, out.type ?? 'text/html; charset=utf-8', out.headers); }
-			return send(res, 404, 'no frame');
-		}
+		const [key, kind, ...tail] = rest;
+		if (!same(key, filesKey)) return send(res, 404, 'not found');
+		const parts = tail.map(decode);
 		let file = null;
 		if (kind === 'v') {
-			const r = varRoots().find((x) => x.name === rest[0]);
-			if (r) file = contained(r.path, rest.slice(1).join('/'));
+			const r = varRoots().find((x) => x.name === parts[0]);
+			if (r) file = contained(r.path, parts.slice(1).join('/'));
 		} else if (kind === 'w') {
-			const rel = rest.join('/');
+			const rel = parts.join('/');
 			const allowed = rel.endsWith('.html') && !rel.split('/').some((s) => s.startsWith('.') || s === 'node_modules')
 				|| fileBases().some((b) => rel.startsWith(b.path.replace(/\\/g, '/') + '/'));
 			if (allowed) file = contained(root, rel);
@@ -114,135 +116,195 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 30, owner
 		const ext = path.extname(file).toLowerCase();
 		const headers = {};
 		if ((ext === '.svg' || ext === '.html') && url.searchParams.get('frame') !== '1') headers['Content-Disposition'] = 'attachment';
-		return sendFile(res, fs.readFileSync(file), MIME[ext] ?? 'application/octet-stream', headers);
+		const type = NEVER_ACTIVE.has(ext) ? 'application/octet-stream' : (MIME[ext] ?? 'application/octet-stream');
+		return sendFile(res, fs.readFileSync(file), type, headers, req.method === 'HEAD');
+	};
+	const serveFrame = (req, res, rest) => {
+		if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, 'read only');
+		const [key, ...tail] = rest;
+		if (!same(key, filesKey)) return send(res, 404, 'not found');
+		const out = frameRoute(tail.map(decode), req);
+		if (!out) return send(res, 404, 'no frame');
+		if (out.status) return send(res, out.status, out.body);
+		return sendFile(res, out.body, out.type ?? 'text/html; charset=utf-8', out.headers, req.method === 'HEAD');
 	};
 
-
-	// ---- the app origin ----------------------------------------------------------------------
+	// ---- the shell -----------------------------------------------------------------------------
 	const appHtml = fs.readFileSync(path.join(appDir, 'index.html'), 'utf8');
-	// the files origin on the host the page was opened at: a page at localhost framing 127.0.0.1 would be cross-site,
-	// which the files origin refuses (cr-modules-008 t13)
-	const filesOrigin = (pageHost = '') => `http://${/^localhost(:|$)/i.test(pageHost) ? 'localhost' : '127.0.0.1'}:${filesPort}`;
-	const boot = (nonce, pageHost) => {
-		const base = `${filesOrigin(pageHost)}/${filesKey}`;
-		const globals = {
-			__DT_HOST__: { nav: 'app', commands: false, openFile: 'tab', tabs: false, history: 'hash', moduleFrames: 'url' },
-			...((g) => ({ __DT_MODULE_GRANTS__: g.grant, __DT_MODULE_GRANT_PROBLEM__: g.problem }))(readModuleGrantResult(root)),
-			__DT_FILE_BASES__: fileBases().map((b) => ({ ...b, uri: `${base}/w/${b.path}` })),
-			__DT_VAR_ROOTS__: varRoots().map((r) => ({ ...r, uri: `${base}/v/${encodeURIComponent(r.name)}` })),
-			__DT_FILES__: base,
-		};
-		const json = JSON.stringify(globals).replace(/</g, '\\u003c');
+	const boot = (nonce) => {
+		const json = JSON.stringify({ __DT_HOST__: HOST_CAPABILITIES }).replace(/</g, '\\u003c');
 		return `<script nonce="${nonce}">Object.assign(window, ${json});</script>`;
 	};
-
-	const authed = (req) => {
-		const m = /^Bearer (.+)$/.exec(req.headers.authorization ?? '');
-		if (m && same(m[1], token)) return 'bearer';
-		const sid = new RegExp(`(?:^|;\\s*)dt_session_${appPort}=([^;]+)`).exec(req.headers.cookie ?? '')?.[1];
-		return sid && sessions.has(sid) ? 'cookie' : null;
+	const serveShell = (req, res, url, host) => {
+		if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, 'the app is read only');
+		const rel = url.pathname.slice('/app/'.length);
+		if (rel === '' || rel === 'index.html') {
+			const nonce = random(16);
+			res.setHeader('Content-Security-Policy', appCsp(nonce, host));
+			res.setHeader('Cache-Control', 'no-store');
+			return sendFile(res, appHtml.replace(/<head>/i, `<head>${boot(nonce)}`), 'text/html; charset=utf-8', {}, req.method === 'HEAD');
+		}
+		const f = contained(appDir, decode(rel));
+		if (!f || !fs.statSync(f).isFile()) return send(res, 404, 'not found');
+		return sendFile(res, fs.readFileSync(f), MIME[path.extname(f).toLowerCase()] ?? 'application/octet-stream', {}, req.method === 'HEAD');
 	};
-	// a request that throws — a malformed percent-escape, a client gone mid-body — answers or is dropped, never
-	// takes the server down with it
-	const app = http.createServer((req, res) => {
-		handle(req, res).catch((err) => {
-			if (res.headersSent || req.destroyed) return void res.destroy();
-			json(res, err instanceof URIError ? 400 : 500, { error: err instanceof URIError ? 'a malformed percent-escape in the path' : 'the request failed' });
-		});
-	});
+
+	// ---- sign-in -------------------------------------------------------------------------------
+	const signIn = (req, res, url) => {
+		if (req.method !== 'GET') return send(res, 405, 'sign in with GET');
+		const taken = pairing.take(url.pathname.slice('/sign-in/'.length));
+		if (!taken) return page(res, 401, SIGN_IN_REFUSED);
+		const sid = sessions.mint(taken.cap ?? null);
+		res.setHeader('Set-Cookie', `${cookieName()}=${sid}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${SESSION_MAX_AGE_S}`);
+		res.writeHead(302, { Location: `/app/#${taken.route}` });
+		return res.end();
+	};
+	const pairUrl = ({ route = '/', cap = null } = {}) => `http://127.0.0.1:${listenPort}/sign-in/${pairing.mint({ route, cap })}`;
+
+	// ---- who is asking -------------------------------------------------------------------------
+	const bearerOf = (req) => /^Bearer (.+)$/.exec(req.headers.authorization ?? '')?.[1] ?? null;
+	const cookieOf = (req) => {
+		const name = cookieName();
+		for (const part of String(req.headers.cookie ?? '').split(';')) {
+			const i = part.indexOf('=');
+			if (i > 0 && part.slice(0, i).trim() === name) return part.slice(i + 1).trim();
+		}
+		return null;
+	};
+	/** A cookie counts only from the pane's own page: Sec-Fetch-Site same-origin, or an Origin equal to this request's. */
+	const fromThePane = (req) => {
+		const site = req.headers['sec-fetch-site'];
+		const origin = req.headers.origin;
+		if (origin !== undefined) return origin === `http://${String(req.headers.host ?? '').toLowerCase()}` && (site === undefined || site === 'same-origin');
+		return site === 'same-origin';
+	};
+
+	const readBody = async (req) => {
+		let size = 0;
+		const chunks = [];
+		for await (const chunk of req) {
+			size += chunk.length;
+			if (size > MAX_BODY_BYTES) throw new HttpError(413, 'the body is too large');
+			chunks.push(chunk);
+		}
+		return Buffer.concat(chunks).toString('utf8');
+	};
+	/** A write's body: JSON only, by Content-Type — 415 for any other type, 400 for JSON that does not parse. */
+	const jsonBody = async (req) => {
+		const raw = await readBody(req);
+		if (!WRITES.has(req.method) || !raw.length) return undefined;
+		if (!JSON_TYPE.test(String(req.headers['content-type'] ?? ''))) throw new HttpError(415, `${req.method} takes Content-Type: application/json`);
+		try { return JSON.parse(raw); } catch { throw new HttpError(400, 'the body is not JSON'); }
+	};
+
+	// ---- /api/ and /_dt/ -----------------------------------------------------------------------
+	const serveApi = async (req, res, url) => {
+		const sid = cookieOf(req);
+		const session = sid ? sessions.check(sid) : null;
+		if (!session) return json(res, 401, { error: 'sign in: ask the chat to show the pane (dt web open)' });
+		if (!fromThePane(req)) return json(res, 403, { error: NOT_FROM_THE_PANE });
+		if (req.method === 'GET' && url.pathname === '/api/events') return openStream(req, res);
+		const body = await jsonBody(req);
+		const log = console.log;
+		console.log = () => {};
+		try {
+			const migrated = req.method === 'GET' && url.pathname === '/api/nav' && migrateNavOnce();
+			const out = await handler.handle(req.method, req.url.slice(4), body);
+			if (migrated && out.status === 200 && Array.isArray(out.body) && out.body[0]?.kind === 'workspace') out.body[0] = { ...out.body[0], notice: NAV_MIGRATED_NOTICE };
+			return json(res, out.status, out.body ?? null);
+		} catch (e) {
+			if (e instanceof URIError) throw new HttpError(400, 'a malformed percent-escape in the path');
+			return json(res, 500, { error: String(e?.message ?? e) });
+		} finally { console.log = log; }
+	};
+
+	const serveDt = async (req, res, url) => {
+		const bearer = bearerOf(req);
+		if (bearer !== null) {
+			if (!same(bearer, controlToken)) return json(res, 401, { error: 'not this server\'s control token' });
+			const body = await jsonBody(req);
+			if (req.method === 'POST' && url.pathname === '/_dt/pair') {
+				const route = typeof body?.route === 'string' && body.route.startsWith('/') ? body.route : '/';
+				const cap = ['read', 'edit', 'admin'].includes(body?.cap) ? body.cap : null;
+				return json(res, 200, { url: pairUrl({ route, cap }) });
+			}
+			return json(res, 404, { error: `no route ${req.method} ${url.pathname}` });
+		}
+		const sid = cookieOf(req);
+		if (sid !== null) {
+			if (!fromThePane(req)) return json(res, 403, { error: NOT_FROM_THE_PANE });
+			if (!sessions.check(sid)) return json(res, 401, { error: 'sign in: ask the chat to show the pane (dt web open)' });
+			await jsonBody(req);
+			return json(res, 401, { error: `${req.method} ${url.pathname} takes the control token` });
+		}
+		return json(res, 401, { error: `${url.pathname} takes the control token` });
+	};
+
+	// ---- the event stream ----------------------------------------------------------------------
+	const openStream = (req, res) => {
+		res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-store', Connection: 'keep-alive' });
+		res.write(': open\n\n');
+		clientStreams.add(res);
+		idle.reset();
+		req.on('close', () => { clientStreams.delete(res); idle.reset(); });
+	};
+	const broadcast = (msg) => {
+		const data = `data: ${JSON.stringify(msg)}\n\n`;
+		for (const c of clientStreams) c.write(data);
+	};
+
+	// ---- one request ---------------------------------------------------------------------------
 	const handle = async (req, res) => {
 		baseHeaders(res);
 		const host = String(req.headers.host ?? '').toLowerCase();
-		if (!hostNames(appPort).has(host)) return send(res, 403, `Host "${req.headers.host ?? ''}" is not this server — use 127.0.0.1:${appPort}`);
+		if (!hostNames(listenPort).has(host)) return send(res, 403, `Host "${req.headers.host ?? ''}" is not this server — use 127.0.0.1:${listenPort}`);
 		if (req.headers['sec-fetch-site'] === 'cross-site') return send(res, 403, 'a request from another site is refused');
 		const origin = req.headers.origin;
-		if (origin !== undefined && !(origin.startsWith('http://') && hostNames(appPort).has(origin.slice(7).toLowerCase()))) return send(res, 403, `Origin "${origin}" may not call this server`);
-		const url = new URL(req.url, 'http://x');
+		if (origin !== undefined && origin !== 'null' && !(origin.startsWith('http://') && hostNames(listenPort).has(origin.slice(7).toLowerCase()))) return send(res, 403, `Origin "${origin}" may not call this server`);
 		// CSP has no IPv6 host-source, so module frames cannot name [::1] as an ancestor: the page moves to 127.0.0.1
-		if (host.startsWith('[::1]') && req.method === 'GET' && !url.pathname.startsWith('/api/')) {
-			res.writeHead(302, { Location: `http://127.0.0.1:${appPort}${req.url}` });
+		if (host.startsWith('[::1]')) {
+			res.writeHead(302, { Location: `http://127.0.0.1:${listenPort}${req.url}` });
 			return res.end();
 		}
-
-		if (req.method === 'GET' && url.pathname.startsWith('/sign-in/')) {
-			const code = url.pathname.slice('/sign-in/'.length);
-			const exp = signIns.get(code);
-			signIns.delete(code);
-			if (!exp || exp < Date.now()) return page(res, 401, 'Sign in with the URL <code>dt web</code> printed — run <code>npx dt web url</code> for a new one.');
-			const sid = random(32);
-			sessions.add(sid);
-			res.setHeader('Set-Cookie', `dt_session_${appPort}=${sid}; HttpOnly; SameSite=Strict; Path=/`);
-			res.writeHead(302, { Location: '/' });
-			return res.end();
+		const url = new URL(req.url, 'http://x');
+		const rawPath = String(req.url).split('?')[0];
+		const kind = classify(rawPath);
+		// a sandboxed document (a record file, a module frame) has an opaque origin: it reaches nothing but bytes
+		if (origin === 'null' && kind !== 'files' && kind !== 'frames') return kind === 'api' || kind === 'dt' ? json(res, 403, { error: NOT_FROM_THE_PANE }) : send(res, 403, 'a request from a sandboxed document is refused');
+		switch (kind) {
+			case 'root':
+				res.writeHead(302, { Location: '/app/' });
+				return res.end();
+			case 'shell': return serveShell(req, res, url, host);
+			case 'sign-in': return signIn(req, res, url);
+			case 'api': return serveApi(req, res, url);
+			case 'dt': return serveDt(req, res, url);
+			case 'files': return serveFile(req, res, url, rawPath.slice('/_files/'.length).split('/'));
+			case 'frames': return serveFrame(req, res, rawPath.slice('/_frames/'.length).split('/'));
+			default: return send(res, 404, 'not found');
 		}
-		if (req.method === 'POST' && url.pathname === '/_dt/sign-in') {
-			if (authed(req) !== 'bearer') return send(res, 401, 'a new sign-in URL needs the bearer token');
-			return json(res, 200, { url: signInUrl() });
-		}
-		const who = authed(req);
-		if (!who) {
-			if (url.pathname.startsWith('/api/')) { res.setHeader('WWW-Authenticate', 'Bearer'); return json(res, 401, { error: 'sign in with the URL dt web printed, or send Authorization: Bearer <token>' }); }
-			return page(res, 401, 'Sign in with the URL <code>dt web</code> printed — run <code>npx dt web url</code> for a new one.');
-		}
-		const write = !['GET', 'HEAD', 'OPTIONS'].includes(req.method);
-		if (write && who === 'cookie') {
-			const named = (origin !== undefined) || req.headers['sec-fetch-site'] === 'same-origin';
-			if (!named) return json(res, 403, { error: 'a write with the session cookie must carry this server\'s Origin or Sec-Fetch-Site: same-origin — or send Authorization: Bearer <token>' });
-		}
-
-		if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/index.html')) {
-			const nonce = random(16);
-			res.setHeader('Content-Security-Policy', appCsp(nonce, filesOrigin(host), filesKey));
-			res.setHeader('Cache-Control', 'no-store');
-			return sendFile(res, appHtml.replace(/<head>/i, `<head>${boot(nonce, host)}`), 'text/html; charset=utf-8');
-		}
-		if (req.method === 'GET' && url.pathname.startsWith('/assets/')) {
-			const f = contained(path.join(appDir, 'assets'), decodeURIComponent(url.pathname.slice(8)));
-			if (!f) return send(res, 404, 'not found');
-			return sendFile(res, fs.readFileSync(f), MIME[path.extname(f).toLowerCase()] ?? 'application/octet-stream');
-		}
-		if (req.method === 'GET' && url.pathname === '/api/events') {
-			res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-store', Connection: 'keep-alive' });
-			res.write(': open\n\n');
-			clients.add(res);
-			idle.reset();
-			req.on('close', () => { clients.delete(res); idle.reset(); });
-			return;
-		}
-		if (url.pathname.startsWith('/api/')) {
-			let raw = '';
-			for await (const chunk of req) raw += chunk;
-			let body;
-			if (write && raw.length) {
-				try { body = JSON.parse(raw); } catch { return json(res, 415, { error: `${req.method} ${url.pathname} takes a JSON body` }); }
-			}
-			const log = console.log;
-			console.log = () => {};
-			try {
-				const migrated = req.method === 'GET' && url.pathname === '/api/nav' && migrateNavOnce();
-				const out = await handler.handle(req.method, req.url.slice(4), body);
-				if (migrated && out.status === 200 && Array.isArray(out.body) && out.body[0]?.kind === 'workspace') out.body[0] = { ...out.body[0], notice: NAV_MIGRATED_NOTICE };
-				return json(res, out.status, out.body ?? null);
-			} catch (e) {
-				return json(res, 500, { error: String(e?.message ?? e) });
-			} finally { console.log = log; }
-		}
-		return send(res, 404, 'not found');
 	};
-
+	// a request that throws — a malformed percent-escape, a client gone mid-body — answers or is dropped, never takes
+	// the server down with it
+	const server = http.createServer((req, res) => {
+		handle(req, res).catch((err) => {
+			// a request whose body was read to its end is `destroyed` by then; only a gone socket is beyond answering
+			if (res.headersSent || res.destroyed || req.socket?.destroyed) return void res.destroy();
+			const status = err instanceof HttpError ? err.status : err instanceof URIError ? 400 : 500;
+			const message = err instanceof HttpError ? err.message : err instanceof URIError ? 'a malformed percent-escape in the path' : 'the request failed';
+			const kind = classify(String(req.url ?? '').split('?')[0]);
+			return kind === 'api' || kind === 'dt' ? json(res, status, { error: message }) : send(res, status, message);
+		});
+	});
 
 	// ---- live updates ------------------------------------------------------------------------
 	let pending = null;
 	let timer = null;
-	const broadcast = (scope) => {
-		const data = `data: ${JSON.stringify(invalidateMessage(scope))}\n\n`;
-		for (const c of clients) c.write(data);
-	};
 	const changed = (file) => {
 		const scope = changeScope(root, file);
 		pending = pending === 'schema' || scope === 'schema' ? 'schema' : 'data';
 		clearTimeout(timer);
-		timer = setTimeout(() => { const s = pending; pending = null; broadcast(s); }, DEBOUNCE_MS);
+		timer = setTimeout(() => { const s = pending; pending = null; broadcast(invalidateMessage(s)); }, DEBOUNCE_MS);
 	};
 	const watchers = [];
 	const watchDir = (dir) => {
@@ -265,9 +327,10 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 30, owner
 		stopped = true;
 		clearTimeout(timer); idle.clear(); clearInterval(ownerTimer);
 		for (const w of watchers) w.close();
-		for (const c of clients) c.end();
-		const done = Promise.all([new Promise((r) => app.close(r)), new Promise((r) => files.close(r))]);
-		app.closeAllConnections?.(); files.closeAllConnections?.();
+		for (const c of clientStreams) c.end();
+		try { sessions.flush(); } catch { /* the state dir went away: the next start reads what was written */ }
+		const done = new Promise((r) => server.close(r));
+		server.closeAllConnections?.();
 		await done;
 		onStop?.(why);
 		resolveClosed(why);
@@ -278,34 +341,29 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 30, owner
 		clear() { clearTimeout(this.t); this.t = null; },
 		reset() {
 			this.clear();
-			if (idleMinutes > 0 && clients.size === 0) this.t = setTimeout(() => close('idle'), idleMinutes * 60_000);
+			if (idleMinutes > 0 && clientStreams.size === 0) this.t = setTimeout(() => close('idle'), idleMinutes * 60_000);
 		},
 	};
 	const ownerTimer = ownerPid ? setInterval(() => { try { process.kill(ownerPid, 0); } catch (e) { if (e.code !== 'EPERM') close('owner gone'); } }, 5_000) : null;
 	ownerTimer?.unref?.();
 
-	const listen = (srv, p) => new Promise((resolve, reject) => { srv.once('error', reject); srv.listen(p, '127.0.0.1', () => { srv.off('error', reject); resolve(srv.address().port); }); });
-	appPort = await listen(app, port);
+	listenPort = await new Promise((resolve, reject) => {
+		server.once('error', reject);
+		server.listen(port, '127.0.0.1', () => { server.off('error', reject); resolve(server.address().port); });
+	});
 	// [::1] answers only to send the page to 127.0.0.1: CSP cannot name an IPv6 ancestor for module frames (cr-modules-008 t13)
-	v6 = http.createServer((req, res) => { baseHeaders(res); res.writeHead(302, { Location: `http://127.0.0.1:${appPort}${req.url ?? '/'}` }); res.end(); });
+	v6 = http.createServer((req, res) => { baseHeaders(res); res.writeHead(302, { Location: `http://127.0.0.1:${listenPort}${req.url ?? '/'}` }); res.end(); });
 	v6.on('error', () => { /* no IPv6 loopback here: nothing to redirect */ });
-	v6.listen(appPort, '::1');
-	filesPort = await listen(files, 0);
+	v6.listen(listenPort, '::1');
 	idle.reset();
-	const signInUrl = () => {
-		const code = random(24);
-		signIns.set(code, Date.now() + signInTtlMs);
-		return `http://127.0.0.1:${appPort}/sign-in/${code}`;
-	};
 	return {
-		appUrl: `http://127.0.0.1:${appPort}`,
-		appPort,
-		filesPort,
-		filesOrigin: filesOrigin(),
-		token,
-		signInUrl,
-		/** cr-modules-008's frame document plugs in here: (segments after /_dt/frame/, req) → { body, type?, headers? } | null */
-		addFrameRoute: (fn) => frameRoutes.push(fn),
+		url: `http://127.0.0.1:${listenPort}`,
+		port: listenPort,
+		controlToken,
+		filesKey,
+		pair: pairUrl,
+		broadcast,
+		clients: () => clientStreams.size,
 		close,
 		closed,
 	};
@@ -319,11 +377,11 @@ function json(res, status, body) {
 	res.writeHead(status, { 'Content-Type': 'application/json' });
 	res.end(JSON.stringify(body));
 }
-function page(res, status, html) {
+function page(res, status, text) {
 	res.writeHead(status, { 'Content-Type': 'text/html; charset=utf-8', 'Content-Security-Policy': "default-src 'none'" });
-	res.end(`<!doctype html><meta charset="utf-8"><title>dreamteamer</title><p style="font:14px system-ui;margin:2em">${html}</p>`);
+	res.end(`<!doctype html><meta charset="utf-8"><title>dreamteamer</title><p style="font:14px system-ui;margin:2em">${text.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</p>`);
 }
-function sendFile(res, body, type, headers = {}) {
-	res.writeHead(200, { 'Content-Type': type, ...headers });
-	res.end(body);
+function sendFile(res, body, type, headers = {}, headOnly = false) {
+	res.writeHead(200, { 'Content-Type': type, 'Content-Length': Buffer.byteLength(body), ...headers });
+	res.end(headOnly ? undefined : body);
 }

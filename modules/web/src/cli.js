@@ -46,7 +46,7 @@ export async function main(root, argv, { log = console.log, env = process.env, a
 	}
 	if (o.cmd === 'url') {
 		if (!now) { log('not running'); return 1; }
-		const r = await fetch(`http://127.0.0.1:${now.port}/_dt/sign-in`, { method: 'POST', headers: { authorization: `Bearer ${now.token}` }, signal: AbortSignal.timeout(10_000) });
+		const r = await fetch(`http://127.0.0.1:${now.port}/_dt/pair`, { method: 'POST', headers: { authorization: `Bearer ${now.token}`, 'content-type': 'application/json' }, body: '{}', signal: AbortSignal.timeout(10_000) });
 		if (!r.ok) { log(`the server refused: ${r.status}`); return 1; }
 		log((await r.json()).url);
 		return 0;
@@ -64,12 +64,12 @@ export async function main(root, argv, { log = console.log, env = process.env, a
 		lock.release();
 		throw e;
 	}
-	writeState(file, { pid: process.pid, port: web.appPort, filesPort: web.filesPort, started: new Date().toISOString(), owner: ownerPid ?? null, token: web.token });
+	writeState(file, { pid: process.pid, port: web.port, started: new Date().toISOString(), owner: ownerPid ?? null, token: web.controlToken });
 	// the handlers before the first line: a caller may signal the moment it reads the URL
 	const stop = () => web.close('signal');
 	process.once('SIGINT', stop);
 	process.once('SIGTERM', stop);
-	const url = web.signInUrl();
+	const url = web.pair();
 	log(`✔ dreamteamer web at ${url}`);
 	if (o.open) openBrowser(url);
 	await web.closed;

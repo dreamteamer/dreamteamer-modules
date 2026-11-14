@@ -13,7 +13,7 @@ import yaml from 'js-yaml';
 import { startWeb } from '../src/server.js';
 import { initEngine } from '@dreamteamer/protocol/host/engine';
 import { navModel, workspaceNavSettings } from '@dreamteamer/protocol/nav-model';
-import { fixture, call } from './support.mjs';
+import { fixture, call, pair, sameOrigin } from './support.mjs';
 
 const NOTICE = 'nav.yaml written from your nav settings — they are no longer read';
 const SETTINGS = '{\n\t// arranged before nav.yaml\n\t"dreamteamer.navOrder": ["tasks", "lab"],\n\t"dreamteamer.navHidden": ["projects"],\n}\n';
@@ -28,7 +28,9 @@ after(async () => {
 	for (const w of servers) await w.close();
 	for (const f of fixtures) f.cleanupAll();
 });
-const auth = (web) => ({ authorization: `Bearer ${web.token}` });
+const cookies = new Map();
+const signIn = async (web) => { cookies.set(web, await pair(web)); };
+const auth = (web) => ({ cookie: cookies.get(web), ...sameOrigin() });
 
 describe('a workspace with old nav settings and no nav.yaml', () => {
 	let f, web, legacy;
@@ -39,32 +41,33 @@ describe('a workspace with old nav settings and no nav.yaml', () => {
 		fs.writeFileSync(path.join(f.root, '.vscode', 'settings.json'), SETTINGS);
 		await initEngine(f.root);
 		legacy = navModel({ root: f.root, settings: workspaceNavSettings(f.root) });
-		web = await startWeb({ root: f.root, appDir: f.app, idleMinutes: 0 });
+		web = await startWeb({ root: f.root, appDir: f.app, idleMinutes: 0, stateDir: f.state });
 		servers.push(web);
+		await signIn(web);
 	});
 
 	test('the first GET /api/nav writes nav.yaml and says so; the second does not', async () => {
 		assert.equal(fs.existsSync(path.join(f.root, 'nav.yaml')), false);
-		const first = await call(`${web.appUrl}/api/nav`, { headers: auth(web) });
+		const first = await call(`${web.url}/api/nav`, { headers: auth(web) });
 		assert.equal(first.status, 200, first.text);
 		assert.equal(first.json[0].notice, NOTICE);
 		const doc = yaml.load(fs.readFileSync(path.join(f.root, 'nav.yaml'), 'utf8'));
 		assert.equal(doc.tree[0], 'tasks');
 		assert.deepEqual(doc.hidden, ['projects']);
-		const second = await call(`${web.appUrl}/api/nav`, { headers: auth(web) });
+		const second = await call(`${web.url}/api/nav`, { headers: auth(web) });
 		assert.equal(second.status, 200);
 		assert.equal(second.json[0].notice, undefined);
 	});
 
 	test('the tree drawn is the tree the settings drew, less marks, routes and module tooltips', async () => {
-		const now = await call(`${web.appUrl}/api/nav`, { headers: auth(web) });
+		const now = await call(`${web.url}/api/nav`, { headers: auth(web) });
 		assert.deepEqual(comparable(now.json[0].children), comparable(legacy[0].children));
 		assert.equal(now.json[0].children[0].key, 'c/tasks');
 	});
 
 	test('a hand edit of nav.yaml reaches an open event stream within five seconds', async () => {
 		const ctrl = new AbortController();
-		const res = await fetch(`${web.appUrl}/api/events`, { headers: auth(web), signal: ctrl.signal });
+		const res = await fetch(`${web.url}/api/events`, { headers: auth(web), signal: ctrl.signal });
 		const reader = res.body.getReader();
 		const t0 = Date.now();
 		setTimeout(() => {
@@ -89,9 +92,10 @@ describe('a workspace with no nav settings', () => {
 	test('GET /api/nav writes nothing and carries no notice', async () => {
 		const f = fixture();
 		fixtures.push(f);
-		const web = await startWeb({ root: f.root, appDir: f.app, idleMinutes: 0 });
+		const web = await startWeb({ root: f.root, appDir: f.app, idleMinutes: 0, stateDir: f.state });
 		servers.push(web);
-		const r = await call(`${web.appUrl}/api/nav`, { headers: auth(web) });
+		await signIn(web);
+		const r = await call(`${web.url}/api/nav`, { headers: auth(web) });
 		assert.equal(r.status, 200, r.text);
 		assert.equal(r.json[0].notice, undefined);
 		assert.equal(fs.existsSync(path.join(f.root, 'nav.yaml')), false);

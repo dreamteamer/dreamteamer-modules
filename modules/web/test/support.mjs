@@ -1,5 +1,5 @@
-// A contract fixture workspace (synthetic Northwind), a minimal app dir standing in for the built webview,
-// and a request helper with a hard timeout. Every server a test starts is closed in after().
+// A contract fixture workspace (synthetic Northwind), a minimal app dir standing in for the built webview, a
+// private state dir, and a request helper with a hard timeout. Every server a test starts is closed in after().
 import fs from 'node:fs';
 import http from 'node:http';
 import os from 'node:os';
@@ -23,11 +23,14 @@ export function fixture() {
 	fs.writeFileSync(pkgFile, JSON.stringify(pkg, null, '\t') + '\n');
 	fs.writeFileSync(path.join(f.root, '.env'), `DT_WEB_TEST_MEDIA=${media}\n`);
 	fs.writeFileSync(path.join(f.root, 'report.html'), '<!doctype html><p>Northwind report</p><script>alert(1)</script>');
+	fs.writeFileSync(path.join(media, 'widget.js'), 'alert(1)\n');
+	fs.writeFileSync(path.join(media, 'theme.css'), 'body{}\n');
+	const state = fs.mkdtempSync(path.join(os.tmpdir(), 'dt-web-state-'));
 	const app = fs.mkdtempSync(path.join(os.tmpdir(), 'dt-web-app-'));
 	fs.mkdirSync(path.join(app, 'assets'));
 	fs.writeFileSync(path.join(app, 'index.html'), '<!doctype html><html><head><title>dreamteamer</title><script type="module" src="./assets/app.js"></script></head><body><div id="app"></div></body></html>');
 	fs.writeFileSync(path.join(app, 'assets', 'app.js'), 'export {};\n');
-	return { ...f, media, app, cleanupAll: () => { f.cleanup(); fs.rmSync(media, { recursive: true, force: true }); fs.rmSync(app, { recursive: true, force: true }); } };
+	return { ...f, media, app, state, cleanupAll: () => { f.cleanup(); for (const d of [media, app, state]) fs.rmSync(d, { recursive: true, force: true }); } };
 }
 
 /** One request; `headers` override; the body parsed when it is JSON. Node's fetch sends no Origin and no
@@ -50,3 +53,13 @@ export function rawGet(url, headers) {
 		req.end();
 	});
 }
+
+/** Sign in the way the pane does — a code from `web.pair()` — and answer the cookie pair `dt_pane_<port>=<sid>`. */
+export async function pair(web, route) {
+	const r = await call(web.pair(route ? { route } : {}));
+	if (r.status !== 302) throw new Error(`sign-in answered ${r.status}: ${r.text}`);
+	return r.headers.get('set-cookie').split(';')[0];
+}
+
+/** What a browser page of the pane sends with a cookie request to its own server. */
+export const sameOrigin = () => ({ 'sec-fetch-site': 'same-origin' });

@@ -16,7 +16,7 @@ const children = [];
 before(() => {
 	f = fixture();
 	runtime = fs.mkdtempSync(path.join(os.tmpdir(), 'dt-web-runtime-'));
-	env = { ...process.env, DT_WEB_RUNTIME_DIR: path.join(runtime, 'rt'), DT_WEB_APP_DIR: f.app, CLAUDE_PID: '' };
+	env = { ...process.env, DT_WEB_RUNTIME_DIR: path.join(runtime, 'rt'), DT_WEB_STATE_DIR: f.state, DT_WEB_APP_DIR: f.app, CLAUDE_PID: '' };
 });
 after(() => { for (const c of children) try { c.kill('SIGKILL'); } catch { /* gone */ } f?.cleanupAll(); fs.rmSync(runtime, { recursive: true, force: true }); });
 

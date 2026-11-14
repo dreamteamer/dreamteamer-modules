@@ -24,22 +24,6 @@ export function appCsp(nonce, host) {
 	].join('; ');
 }
 
-/** The two-origin policy dt web 0.2 served; server.js uses it until the one listener replaces it (task 7). */
-export function twoOriginCsp(nonce, filesOrigin, filesKey) {
-	return [
-		"default-src 'self'",
-		`script-src 'self' 'nonce-${nonce}'`,
-		"style-src 'self' 'unsafe-inline'",
-		`img-src 'self' ${filesOrigin} data: blob:`,
-		"font-src 'self' data:",
-		"connect-src 'self'",
-		filesKey ? `frame-src ${filesOrigin}/${filesKey}/_dt/frame/ ${filesOrigin}/${filesKey}/w/` : `frame-src ${filesOrigin}`,
-		"frame-ancestors 'none'",
-		"base-uri 'none'",
-		"form-action 'none'",
-	].join('; ');
-}
-
 /** A record file under /_files/: script off, a unique origin. */
 export const FILE_CSP = 'sandbox';
 /** A module frame document under /_frames/: scripts, never the page's origin. */
