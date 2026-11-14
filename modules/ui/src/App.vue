@@ -17,7 +17,8 @@ import { liveSchemaCaches } from './composables/schema-caches';
 import { invalidateStageReviews } from './lib/stage-reviews';
 import { handleInvalidate } from './lib/host-invalidate';
 import { refreshPages } from './composables/page-caches';
-import { signedOut, SIGNED_OUT } from './lib/host-boot';
+import PaneBar from './components/PaneBar.vue';
+import { loadHost, paneHost, signedOut, SIGNED_OUT } from './lib/host-boot';
 
 // Host → app navigation: the extension posts `dt:navigate` when the operator clicks a collection
 // or record in the native tree. App → host: every route change is reported back so the TAB can
@@ -60,6 +61,8 @@ window.addEventListener('message', (e: MessageEvent) => {
 			refreshPages,
 		});
 	}
+	// cr-modules-017: the level, the chat flag or the files key changed on the server — ask GET /host again
+	if (m?.type === 'dt:host') void loadHost();
 	if (m?.type === 'dt:tab') {
 		pinned = !!m.pinned;
 		document.documentElement.dataset.dtActive = m.active ? '1' : '0';
@@ -84,6 +87,7 @@ onMounted(() => hostNotify('dt:ready'));
 	<div class="dt-shell">
 		<NavSidebar v-if="appNav" />
 		<main class="dt-page-area">
+			<PaneBar v-if="paneHost()" />
 			<router-view />
 		</main>
 		<RightSidebar />
