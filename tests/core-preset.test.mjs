@@ -11,6 +11,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import yaml from 'js-yaml';
 import { ROOT, pkgOf, packedInto, packedFiles, virginWorkspace, run, cleanup, engineMeets, ENGINE_VERSION } from './helpers/workspace.mjs';
 
 after(cleanup);
@@ -74,9 +75,11 @@ describe('dt install @dreamteamer/core on the candidate', { skip: onCandidate },
 		assert.equal(listed.status, 0, listed.stderr);
 		assert.match(listed.stdout, /^core\s+preset · 17 members\b/m);
 	});
-	test('nav.yaml is written with core\'s six folders', { skip: 'engine nav merge lands in engine task 9; re-run in modules task 16' }, () => {
+	test('nav.yaml is written with core\'s six folders, in order, each holding the rows the fragment names', () => {
 		assert.ok(root, 'the install case did not run');
-		const doc = fs.readFileSync(path.join(root, 'nav.yaml'), 'utf8');
-		for (const f of ['Work', 'People', 'CRM', 'Meetings', 'Library', 'Activity']) assert.match(doc, new RegExp(`folder: ${f}\\b`));
+		const doc = yaml.load(fs.readFileSync(path.join(root, 'nav.yaml'), 'utf8'));
+		const shipped = yaml.load(fs.readFileSync(path.join(ROOT, 'modules', 'core', 'nav.yaml'), 'utf8'));
+		assert.deepEqual(doc.tree.map((e) => e.folder), ['Work', 'People', 'CRM', 'Meetings', 'Library', 'Activity']);
+		assert.deepEqual(doc.tree, shipped.tree);
 	});
 });
