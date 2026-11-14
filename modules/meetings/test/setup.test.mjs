@@ -230,7 +230,7 @@ describe('through the engine', { skip: !engineMeets('meetings') && `needs engine
 test('SETUP.md is shipped and names every action and status this provider has', () => {
 	const pkg = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 	assert.ok(pkg.files.includes('SETUP.md') && pkg.files.includes('lib'));
-	assert.equal(pkg.dreamteamer.extension, './lib/extension.mjs', 'the setup unit rides on an extension entry; core composes it beside files (CR-dt-006: several extension origins, core owns its entry)');
+	assert.equal(pkg.dreamteamer.extension, './lib/extension.mjs', 'the setup unit rides on the module\'s own extension entry');
 	const text = fs.readFileSync(new URL('../SETUP.md', import.meta.url), 'utf8');
 	for (const id of ['add-calendar-rows', 'verify-calendar-access']) assert.match(text, new RegExp(`\\b${id}\\b`));
 	assert.doesNotMatch(text, /dt-setup|bin\/setup\.mjs/, 'the dt-setup-era script and board are gone (D70)');

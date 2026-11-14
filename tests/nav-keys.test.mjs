@@ -3,7 +3,7 @@
 // The left nav is nav.yaml at the workspace root (engine 0.49): its order and its folders are the
 // operator's, filled at install by the fragments a module ships. A collection descriptor keeps only what
 // the row looks like — `display.nav.icon` — and never says where the row goes: no `display.nav.order`,
-// no `display.nav.section`, in any descriptor of any module (a composed copy included, while one exists).
+// no `display.nav.section`, in any descriptor of any module.
 // A ui-view is a child row of its collection, and its order among its siblings stays its own.
 import { test, describe } from 'node:test';
 import assert from 'node:assert';
@@ -24,8 +24,8 @@ const walk = (dir, suffix, out = []) => {
 const modules = fs.readdirSync(MODULES).filter((m) => fs.existsSync(path.join(MODULES, m, 'package.json')));
 const rel = (f) => path.relative(path.dirname(MODULES), f);
 
-/** The ui-views that ordered themselves among their collection's views at base 383cd1f — composed copies
- *  aside, which follow their origin. */
+/** The ui-views that ordered themselves among their collection's views at base 383cd1f, at the module
+ *  that authors them. */
 const VIEWS_WITH_ORDER = [
 	'modules/assets/ui-views/assets-gallery.ui-view.yaml',
 	'modules/perspective/ui-views/by-contributor.ui-view.yaml',
@@ -46,7 +46,8 @@ const VIEWS_WITH_ORDER = [
 describe('collection descriptors carry no placement', () => {
 	const every = modules.flatMap((m) => walk(path.join(MODULES, m, 'collections'), '.collection.yaml'));
 	test('the scan sees the whole repo', () => {
-		assert.ok(every.length >= 100, `expected every descriptor, saw ${every.length}`);
+		// 92 once core's composed copies left (cr-dt-008 task 3), 90 once rnd's left (task 5)
+		assert.ok(every.length >= 85, `expected every descriptor, saw ${every.length}`);
 	});
 	test('no descriptor carries display.nav.order or display.nav.section', () => {
 		const placed = [];

@@ -14,24 +14,26 @@ const TABLE = fs.readFileSync(path.join(ROOT, 'docs', 'setup-table.md'), 'utf8')
 const rows = Object.fromEntries([...TABLE.matchAll(/^\| ([a-z-]+) \| ([^|]*) \| ([^|]*) \|/gm)].filter((m) => m[1] !== 'module').map((m) => [m[1], m[3].trim()]));
 const unitFile = (m) => path.join(MODULES, m, 'lib', `${m}-setup.mjs`);
 const shipsUnit = (m) => fs.existsSync(unitFile(m)) && /export const SETUP_UNIT\b/.test(fs.readFileSync(unitFile(m), 'utf8'));
-const composedUnits = (m) => { try { return JSON.parse(fs.readFileSync(path.join(MODULES, m, 'compose.json'), 'utf8')).setup_units ?? []; } catch { return []; } };
 let FROM;
 before(() => { FROM = packedInto(fs.mkdtempSync(path.join(os.tmpdir(), 'dtm-all-')), ...moduleIds()); });
 
 describe('the table', () => {
-	test('names every module of this repo, once, with one of the three outcomes', () => {
+	test('names every module of this repo, once, with one of the four outcomes', () => {
 		assert.deepEqual(Object.keys(rows).sort(), moduleIds());
-		for (const [m, o] of Object.entries(rows)) assert.match(o, /^(unit|no setup|library)/, `${m}: ${o}`);
+		for (const [m, o] of Object.entries(rows)) assert.match(o, /^(unit|no setup|library|preset)/, `${m}: ${o}`);
 	});
-	test('an outcome of unit means the module ships one (or composes some); no setup and library mean it ships none', () => {
+	test('an outcome of unit means the module ships one; no setup, library and preset mean it ships none', () => {
 		for (const m of moduleIds()) {
-			const has = shipsUnit(m) || composedUnits(m).length > 0;
+			const has = shipsUnit(m);
 			assert.equal(has, rows[m].startsWith('unit'), `${m}: the table says "${rows[m]}", the module ${has ? 'ships' : 'ships no'} unit`);
 		}
 	});
+	test('an outcome of preset means the module is a module preset (dreamteamer.preset), and only then', () => {
+		for (const m of moduleIds()) assert.equal(!!pkgOf(m).dreamteamer?.preset, rows[m].startsWith('preset'), `${m}: the table says "${rows[m]}"`);
+	});
 });
 
-describe('every package installs on the engine under test and reads as the table says', { skip: !engineMeets('core') && `needs engine >=0.47.0, this is ${ENGINE_VERSION}` }, () => {
+describe('every package installs on the engine under test and reads as the table says', { skip: !engineMeets('core') && `core, a module preset, needs engine ${pkgOf('core').dreamteamer.engine}; this is ${ENGINE_VERSION}` }, () => {
 	for (const m of moduleIds()) {
 		test(`${m} → ${rows[m]}`, () => {
 			const root = virginWorkspace();
@@ -40,10 +42,17 @@ describe('every package installs on the engine under test and reads as the table
 			assert.ok(r.status === 0 || r.status === 3, `${m}: exit ${r.status}\n${r.stderr}\n${r.stdout.slice(-600)}`);
 			const s = run(root, ['status', '--json'], env);
 			assert.equal(s.status, 0, s.stderr);
-			const lines = JSON.parse(s.stdout).setup;
-			const mine = lines.filter((l) => l.package === `@dreamteamer/${m}`);
+			const status = JSON.parse(s.stdout);
+			const mine = status.setup.filter((l) => l.package === `@dreamteamer/${m}`);
 			assert.ok(mine.length, `${m}: no status line`);
-			if (rows[m].startsWith('unit')) {
+			if (rows[m].startsWith('preset')) {
+				// a module preset: no unit of its own; dt status's modules entry lists every member, all installed
+				assert.ok(mine.every((l) => !l.unit && l.state === 'no-setup'), `${m}: ${JSON.stringify(mine.map((l) => [l.unit, l.state]))}`);
+				const entry = status.modules.find((x) => x.name === `@dreamteamer/${m}`);
+				assert.ok(entry?.preset, `${m}: dt status does not read it as a preset`);
+				assert.deepEqual(entry.members.map((x) => x.name).sort(), Object.keys(pkgOf(m).dreamteamer.preset).sort());
+				assert.ok(entry.members.every((x) => x.installed === x.pinned), `${m}: ${JSON.stringify(entry.members.filter((x) => x.installed !== x.pinned))}`);
+			} else if (rows[m].startsWith('unit')) {
 				assert.ok(mine.every((l) => l.unit && ['configured', 'blocked', 'ready', 'no-evidence'].includes(l.state)), `${m}: ${JSON.stringify(mine.map((l) => [l.unit, l.state]))}`);
 				assert.ok(!mine.some((l) => l.state === 'no-evidence'), `${m}: a unit with zero checks`);
 			} else {

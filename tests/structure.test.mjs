@@ -6,7 +6,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
-import { ROOT, MODULES, CORE, ALL, OWNER, moduleIds, descriptorsOf, mixinsOf, targetsOf, fieldsOf, originsOf, composed } from './helpers/descriptors.mjs';
+import { ROOT, MODULES, CORE, ALL, OWNER, moduleIds, descriptorsOf, mixinsOf, targetsOf, fieldsOf } from './helpers/descriptors.mjs';
 
 const KINDS = new Set(['collections', 'skills', 'agents', 'commands', 'command-bindings', 'ui-views', 'mixins']);
 const NON_SOURCE = new Set(['bin', 'src', 'lib', 'data', 'test', 'docs', 'scripts', 'dist', 'node_modules']);
@@ -46,19 +46,25 @@ for (const m of modules) {
 		const mroot = path.join(MODULES, m);
 		const deps = new Set((pkg.dreamteamer?.dependencies ?? []).map(folderOf));
 		const peers = new Set(pkg.dreamteamer?.peer_collections ?? []);
-		const origins = new Set(originsOf(m)); // a composed module owns what its origins own
 		// what m authors itself: while core 0.11 still carries the five collections the new packages ship
 		// (cr-dt-008 tasks 1-2), two modules own one name and OWNER keeps only the last
 		const ownBases = new Set(descriptorsOf(m).filter((d) => !d.doc.overlay).map((d) => d.doc.name));
 		/** May module m point at (or overlay) collection t? */
-		const reaches = (t) => CORE.has(t) || OWNER.get(t) === m || ownBases.has(t) || origins.has(OWNER.get(t)) || deps.has(OWNER.get(t)) || peers.has(t);
+		const reaches = (t) => CORE.has(t) || OWNER.get(t) === m || ownBases.has(t) || deps.has(OWNER.get(t)) || peers.has(t);
 
 		test('has a manifest the engine can read: name = folder, a description, an engine range', () => {
 			assert.equal(pkg.name, `@dreamteamer/${m}`, 'the folder is the name without the scope; a disagreement makes dependencies ambiguous');
 			assert.ok(pkg.dreamteamer && typeof pkg.dreamteamer.description === 'string' && pkg.dreamteamer.description.length > 40, 'dreamteamer.description orients every session');
 			assert.ok(pkg.dreamteamer.engine, 'declare the engine range the module was compiled against');
 		});
-		test('carries only source kinds and the folders compile allows at a module root', () => {
+		test('carries only source kinds and the folders compile allows at a module root — a module preset carries none', () => {
+			// a MODULE PRESET (dreamteamer.preset, engine 0.49) lists modules and ships none: compile refuses one
+			// with a kind folder or a modules/ bundle, so it carries no folder at all
+			if (pkg.dreamteamer?.preset) {
+				const dirs = fs.readdirSync(mroot, { withFileTypes: true }).filter((e) => e.isDirectory() && !e.name.startsWith('.') && e.name !== 'node_modules').map((e) => e.name);
+				assert.deepEqual(dirs, [], `${m} is a module preset and carries ${dirs.join(', ')}/`);
+				return;
+			}
 			for (const e of fs.readdirSync(mroot, { withFileTypes: true })) {
 				if (!e.isDirectory() || e.name.startsWith('.')) continue;
 				// a folder the module lists in dreamteamer.ignore is not a stray to compile — compile skips it
@@ -99,21 +105,23 @@ for (const m of modules) {
 			};
 			for (const d of pkg.dreamteamer.dependencies ?? []) visit(folderOf(d));
 		});
-		// core and rnd are compositions: each copy is judged at its origin, and the module owns what its
-		// origins own — so an origin must be a module here, and every listed copy must be on disk.
-		test('a composed module names origins this repo ships, and carries every copy it lists', () => {
-			for (const o of origins) assert.ok(fs.existsSync(path.join(MODULES, o, 'package.json')), `${m} composes ${o}, which this repo does not ship`);
-			for (const f of composed(m)) assert.ok(fs.existsSync(path.join(ROOT, f)), `${f} is listed in ${m}/compose.json but absent — run node scripts/compose-core.mjs ${m}`);
-			for (const o of origins) assert.ok(!(pkg.dreamteamer?.dependencies ?? []).map(folderOf).includes(o), `${m} both composes and depends on ${o}`);
-		});
 		test('a declared peer is a collection some OTHER module provides (a peer nothing provides is a typo)', () => {
 			for (const p of pkg.dreamteamer.peer_collections ?? []) {
 				const owner = OWNER.get(p);
-				assert.ok(owner && owner !== m && !origins.has(owner), `${m} peers "${p}" — ${owner === m || origins.has(owner) ? 'it owns that collection itself' : 'nothing in this repo provides it'}`);
+				assert.ok(owner && owner !== m, `${m} peers "${p}" — ${owner === m ? 'it owns that collection itself' : 'nothing in this repo provides it'}`);
 			}
 		});
 	});
 }
+
+// NOTHING IS COMPOSED (cr-dt-008; rnd/tests dreamteamer-modules/no-composition). core became a module preset
+// and rnd stands alone: no package carries another's copies, and no manifest claims to provide another package.
+describe('composition, repo-wide', () => {
+	test('no module carries compose.json or a provides key', () => {
+		const found = modules.filter((m) => fs.existsSync(path.join(MODULES, m, 'compose.json')) || 'provides' in (pkgOf(m).dreamteamer ?? {}));
+		assert.deepEqual(found, [], `still composed: ${found.join(', ')}`);
+	});
+});
 
 // THE ENGINE WRITES .env (cr-dt-007, D61, D70). The provider kit each setup module carried as a
 // byte-identical copy is gone: a unit names an env action and the engine performs it. A file of that name

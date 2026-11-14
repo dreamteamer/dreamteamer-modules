@@ -1,6 +1,6 @@
 // THE WORKFLOWS MODULE, pinned by shape: a workflow is a DOCUMENT — steps that name a command, the
 // collection it walks, the filter that makes its record set and where a person decides — and nothing
-// that records a run. The runner is one command and one skill; core carries all of it by composition.
+// that records a run. The runner is one command and one skill; core's preset installs the module whole.
 import { test, describe } from 'node:test';
 import assert from 'node:assert';
 import fs from 'node:fs';
@@ -75,19 +75,10 @@ describe('the runner', () => {
 	});
 });
 
-describe('core carries workflows', () => {
-	const spec = JSON.parse(read(MODULES, 'core', 'compose.json'));
-	const corePkg = JSON.parse(read(MODULES, 'core', 'package.json'));
-	test('workflows is an origin of core', () => {
-		assert.ok(spec.origins.includes('workflows'));
-	});
-	test('the collection, the command, the skill, the script and customer-factory are all composed into core', () => {
-		for (const dest of ['collections/workflows/workflows.collection.yaml', 'commands/workflow/run.command.md', 'skills/running-workflows/SKILL.md', 'bin/workflows-install.mjs', 'lib/workspace-root.mjs', 'data/workflows/customer-factory.workflow.md']) {
-			assert.ok(spec.files[dest], `${dest} is not listed in core/compose.json`);
-			assert.ok(fs.existsSync(path.join(MODULES, 'core', dest)), `${dest} is not in modules/core`);
-		}
-		assert.equal(corePkg.bin['dt-workflows'], 'bin/workflows-install.mjs');
-		assert.ok(corePkg.files.includes('data'));
+describe('core installs workflows', () => {
+	test('core is a module preset that names @dreamteamer/workflows at the version this repo holds', () => {
+		const core = JSON.parse(read(MODULES, 'core', 'package.json'));
+		assert.equal(core.dreamteamer.preset['@dreamteamer/workflows'], JSON.parse(read(HERE, 'package.json')).version);
 	});
 	test('software-factory ships with rnd, which peers the workflows collection', () => {
 		assert.ok(fs.existsSync(path.join(MODULES, 'rnd', 'data', 'workflows', 'software-factory.workflow.md')));
