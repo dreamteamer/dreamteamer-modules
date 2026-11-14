@@ -237,6 +237,12 @@ export function applyNavOp(input, op, ctx) {
 	if (!OPS.has(op.op)) throw new NavOpError(`unknown op ${show(op.op)} — one of ${[...OPS].join(', ')}`);
 	const c = { collections: ctx?.collections instanceof Set ? ctx.collections : new Set(ctx?.collections ?? []), namespaces: [...(ctx?.namespaces ?? [])] };
 	const doc = normalizeNavDoc(input);
+	if (op.op === 'hide' || op.op === 'show') return visibility(doc, c, op);
+	return onePlacement(applyPlacing(doc, c, op), op.op === 'move' && typeof op.target?.name === 'string' ? op.target.name : undefined);
+}
+
+/** The ops that place: move, new-folder, rename, dissolve, icon. */
+function applyPlacing(doc, c, op) {
 	switch (op.op) {
 		case 'move': return move(doc, c, op);
 		case 'new-folder': {
@@ -264,8 +270,28 @@ export function applyNavOp(input, op, ctx) {
 			return doc;
 		}
 		case 'icon': return icon(doc, c, op);
-		case 'hide':
-		case 'show': return visibility(doc, c, op);
+	}
+	return doc;
+}
+
+/**
+ * A name is placed once — in the tree, or in `hidden` — whatever an op placed on the way. A row listed in `hidden`
+ * that the op placed in the tree: the moved row is shown where it was moved (taken out of `hidden`); one placed as a
+ * side effect (an anchor, an icon) stays hidden and leaves the tree. A namespace listed in `hidden` that now has an
+ * entry carries its hiding on the entry (`hidden: true`) instead.
+ */
+function onePlacement(doc, moved) {
+	for (const name of [...doc.hidden]) {
+		if (firstCollection(doc, name)) {
+			if (name === moved) doc.hidden = doc.hidden.filter((h) => h !== name);
+			else for (let w = firstCollection(doc, name); w; w = firstCollection(doc, name)) detach(w);
+			continue;
+		}
+		const ns = firstNamespace(doc, name);
+		if (ns) {
+			ns.entry.hidden = true;
+			doc.hidden = doc.hidden.filter((h) => h !== name);
+		}
 	}
 	return doc;
 }
@@ -362,25 +388,46 @@ function icon(doc, ctx, op) {
 	return doc;
 }
 
+/**
+ * Hide and show keep every name placed once — in the tree, or in `hidden`. Hide: a row leaves every place it has in
+ * the tree and is listed in `hidden`; a folder (by path) and a namespace entry the document places get `hidden: true`
+ * and keep their arrangement; an unplaced namespace is listed in `hidden`. Show: the reverse — a row listed in `hidden` and placed nowhere goes back at the end of its home level
+ * (its namespace's entry, or the top level: the document does not record the folder it left); one also placed (an
+ * older hide wrote both) is only un-hidden; a name the workspace no longer has is only taken out of `hidden`.
+ */
 function visibility(doc, ctx, op) {
 	const t = checkTarget(op.target, 'target');
 	const hide = op.op === 'hide';
-	if (typeof t.name === 'string') {
-		// a name the document already holds may be hidden or shown even when its module is gone, so a stale
-		// entry can be cleaned; any other name must be the workspace's
-		if (!knows(ctx, t.name) && !placedNames(doc).has(t.name) && !firstNamespace(doc, t.name)) resolveName(doc, ctx, t.name);
-		if (hide) {
-			if (!doc.hidden.includes(t.name)) doc.hidden.push(t.name);
-		} else {
-			doc.hidden = doc.hidden.filter((h) => h !== t.name);
-			const ns = firstNamespace(doc, t.name);
-			if (ns && !ctx.collections.has(t.name)) delete ns.entry.hidden;
-		}
+	if (typeof t.name !== 'string') {
+		const w = resolvePath(doc, t.folder);
+		if (hide) w.entry.hidden = true;
+		else delete w.entry.hidden;
 		return doc;
 	}
-	const w = resolvePath(doc, t.folder);
-	if (hide) w.entry.hidden = true;
-	else delete w.entry.hidden;
+	const name = t.name;
+	// a name the document already holds may be hidden or shown even when its module is gone, so a stale entry can
+	// be cleaned; any other name must be the workspace's
+	if (!knows(ctx, name) && !placedNames(doc).has(name) && !firstNamespace(doc, name)) resolveName(doc, ctx, name);
+	const isRow = ctx.collections.has(name) || (!ctx.namespaces.includes(name) && firstCollection(doc, name) !== undefined);
+	if (hide) {
+		if (isRow) {
+			for (let w = firstCollection(doc, name); w; w = firstCollection(doc, name)) detach(w);
+			if (!doc.hidden.includes(name)) doc.hidden.push(name);
+			return doc;
+		}
+		const ns = firstNamespace(doc, name);
+		if (ns) ns.entry.hidden = true;
+		else if (!doc.hidden.includes(name)) doc.hidden.push(name);
+		return doc;
+	}
+	const wasHidden = doc.hidden.includes(name);
+	doc.hidden = doc.hidden.filter((h) => h !== name);
+	if (isRow) {
+		if (wasHidden && ctx.collections.has(name) && !firstCollection(doc, name)) levelItems(doc, ctx, namespaceOf(name, ctx.namespaces)).push(name);
+		return doc;
+	}
+	const ns = firstNamespace(doc, name);
+	if (ns) delete ns.entry.hidden;
 	return doc;
 }
 
@@ -401,15 +448,88 @@ const engineNav = (name) => {
  *  throws NavDocError when unreadable. */
 export function readNavDoc(root) {
 	const viaEngine = engineNav('readNavDoc');
-	if (!viaEngine) return readNavDocFile(root);
-	try {
-		return viaEngine(root);
-	} catch (e) {
-		// the engine's NavDocError is its own class: carried over as the protocol's, so a host tells it by one name
-		if (e?.name === 'NavDocError' && !(e instanceof NavDocError)) throw new NavDocError(e.message);
-		throw e;
+	let doc;
+	if (!viaEngine) doc = readNavDocFile(root);
+	else {
+		try {
+			doc = viaEngine(root);
+		} catch (e) {
+			// the engine's NavDocError is its own class: carried over as the protocol's, so a host tells it by one name
+			if (e?.name === 'NavDocError' && !(e instanceof NavDocError)) throw new NavDocError(e.message);
+			throw e;
+		}
 	}
+	if (doc) refuseLoops(doc);
+	return doc;
 }
+
+/** A YAML alias can make a folder contain itself; every walk of such a tree recurses forever, so the read refuses
+ *  it as unreadable. An alias that does not loop (the same folder written twice) is two equal entries. */
+function refuseLoops(doc) {
+	const open = new Set();
+	const visit = (v) => {
+		if (!v || typeof v !== 'object') return;
+		if (open.has(v)) {
+			const label = typeof v.folder === 'string' ? `folder ${show(v.folder)}` : typeof v.namespace === 'string' ? `namespace ${show(v.namespace)}` : 'an entry';
+			throw new NavDocError(`nav.yaml: ${label} contains itself (a YAML alias loops back to it) — fix the file by hand, or PUT a whole document`);
+		}
+		open.add(v);
+		for (const child of Array.isArray(v) ? v : Object.values(v)) visit(child);
+		open.delete(v);
+	};
+	visit(doc.tree);
+	visit(doc.hidden);
+}
+
+/**
+ * What a document read from nav.yaml holds that is none of the four entry shapes — each problem a sentence naming
+ * the entry and where it is (`null in ["Work"] is not a collection, a folder or a namespace`) — and the document
+ * without those entries, which is what can still be drawn. A host draws `doc` with the problems on its notice, and
+ * refuses a PATCH over them: a gesture never rewrites a hand-edited file around entries it cannot read.
+ * @returns {{ doc: NavDoc, problems: string[] }}
+ */
+export function navDocProblems(input) {
+	const problems = [];
+	const d = normalizeNavDoc(input);
+	const where = (path) => (path.length ? ` in ${show(path)}` : '');
+	const level = (items, path) => items.filter((e) => {
+		const problem = entryProblem(e, path, where, { drawing: true });
+		if (problem) { problems.push(problem); return false; }
+		if (e && typeof e === 'object' && typeof e.folder === 'string') e.items = level(e.items, [...path, e.folder]);
+		else if (e && typeof e === 'object' && typeof e.namespace === 'string' && Array.isArray(e.items)) e.items = level(e.items, [...path, `ns:${e.namespace}`]);
+		return true;
+	});
+	d.tree = level(d.tree, []);
+	for (const h of Array.isArray(input?.hidden) ? input.hidden : []) if (typeof h !== 'string' || !h) problems.push(`hidden holds ${show(h)}, which is not a name`);
+	return { doc: d, problems };
+}
+
+/** The sentence for an entry of none of the four shapes, or undefined for a good one (its items checked apart).
+ *  `drawing`: what a read must refuse to draw — the shape only; a label, an icon or a hidden flag a writer would
+ *  refuse (a hand-written folder `ns:rnd`) still draws. */
+function entryProblem(e, path, where, { drawing = false } = {}) {
+	if (typeof e === 'string') return e ? undefined : `an empty name${where(path)}`;
+	if (!e || typeof e !== 'object' || Array.isArray(e)) return `${show(e)}${where(path)} is not a collection, a folder or a namespace`;
+	if (!drawing && e.icon !== undefined && (typeof e.icon !== 'string' || !e.icon)) return `icon ${show(e.icon)}${where(path)} is not a codicon name`;
+	if (!drawing && e.hidden !== undefined && typeof e.hidden !== 'boolean') return `hidden ${show(e.hidden)}${where(path)} is not true or false`;
+	if (typeof e.collection === 'string' && e.collection) return undefined;
+	if (typeof e.folder === 'string') {
+		if (drawing) return Array.isArray(e.items) ? undefined : `folder ${show(e.folder)}${where(path)} has no items list`;
+		if (!e.folder.trim()) return `the folder label${where(path)} is empty — a folder needs a name`;
+		if (e.folder.startsWith('ns:')) return `the folder label ${show(e.folder)}${where(path)} starts with ns:, which names a namespace in a folder path`;
+		if (!Array.isArray(e.items)) return `folder ${show(e.folder)}${where(path)} has no items list`;
+		return undefined;
+	}
+	if (typeof e.namespace === 'string' && e.namespace) {
+		if (e.items !== undefined && !Array.isArray(e.items)) return `namespace ${show(e.namespace)}${where(path)}: items is not a list`;
+		return undefined;
+	}
+	return `${show(e)}${where(path)} is not a collection, a folder or a namespace`;
+}
+
+/** The notice (or the refusal) for a document's problems: names nav.yaml and every entry. */
+export const navProblemsSentence = (problems) =>
+	`nav.yaml holds ${problems.length === 1 ? 'an entry' : `${problems.length} entries`} of no valid shape — ${problems.join('; ')}`;
 
 /** A NavDoc as the text of a nav.yaml: the header line, `tree`, and `hidden` only when it holds a name. */
 export function serializeNavDoc(doc) {
@@ -447,23 +567,11 @@ export function checkNavDoc(input) {
 	const where = (path) => (path.length ? ` in ${show(path)}` : '');
 	const level = (items, path) => {
 		for (const e of items) {
-			if (typeof e === 'string') { if (!e) throw new NavOpError(`an empty name${where(path)}`); continue; }
-			if (!e || typeof e !== 'object' || Array.isArray(e)) throw new NavOpError(`${show(e)}${where(path)} is not a collection, a folder or a namespace`);
-			if (e.icon !== undefined && (typeof e.icon !== 'string' || !e.icon)) throw new NavOpError(`icon ${show(e.icon)}${where(path)} is not a codicon name`);
-			if (e.hidden !== undefined && typeof e.hidden !== 'boolean') throw new NavOpError(`hidden ${show(e.hidden)}${where(path)} is not true or false`);
-			if (typeof e.collection === 'string' && e.collection) continue;
-			if (typeof e.folder === 'string') {
-				validLabel(e.folder);
-				if (!Array.isArray(e.items)) throw new NavOpError(`folder ${show(e.folder)}${where(path)} has no items list`);
-				level(e.items, [...path, e.folder]);
-				continue;
-			}
-			if (typeof e.namespace === 'string' && e.namespace) {
-				if (e.items !== undefined && !Array.isArray(e.items)) throw new NavOpError(`namespace ${show(e.namespace)}${where(path)}: items is not a list`);
-				level(e.items ?? [], [...path, `ns:${e.namespace}`]);
-				continue;
-			}
-			throw new NavOpError(`${show(e)}${where(path)} is not a collection, a folder or a namespace`);
+			const problem = entryProblem(e, path, where);
+			if (problem) throw new NavOpError(problem);
+			if (typeof e === 'string' || typeof e.collection === 'string') continue;
+			if (typeof e.folder === 'string') level(e.items, [...path, e.folder]);
+			else level(e.items ?? [], [...path, `ns:${e.namespace}`]);
 		}
 	};
 	level(input.tree, []);

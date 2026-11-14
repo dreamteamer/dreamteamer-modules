@@ -316,8 +316,12 @@ function send(res, status, text) {
 	res.end(text);
 }
 function json(res, status, body) {
+	// serialised before the head is written: a body that cannot be (a cycle) is a 500 that says so, never a dropped
+	// connection
+	let text;
+	try { text = JSON.stringify(body); } catch (e) { status = 500; text = JSON.stringify({ error: `the answer could not be sent as JSON: ${e?.message ?? e}` }); }
 	res.writeHead(status, { 'Content-Type': 'application/json' });
-	res.end(JSON.stringify(body));
+	res.end(text);
 }
 function page(res, status, html) {
 	res.writeHead(status, { 'Content-Type': 'text/html; charset=utf-8', 'Content-Security-Policy': "default-src 'none'" });

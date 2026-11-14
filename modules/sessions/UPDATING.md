@@ -13,7 +13,7 @@ npx dreamteamer check
 
 ## 0.1.0 — out of core, a package of its own
 
-`sessions` shipped inside `@dreamteamer/core` through 0.11; from core 0.12.0 core is a preset of the small
+`sessions` shipped inside the core module through core 0.11; from core 0.12.0 core is a preset of the small
 modules and this is one of them. The descriptor moved verbatim — the same fields, the same storage path
 and the same id shape — so no record moves and nothing is migrated. A workspace that updates core gets
 this package as a preset member; nothing to do but `dt compile`.

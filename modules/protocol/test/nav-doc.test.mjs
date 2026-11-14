@@ -80,20 +80,52 @@ describe('the seven operations on the design\'s example document', () => {
 		d = apply(EXAMPLE(), { op: 'icon', target: { name: 'rnd' }, icon: 'beaker' });
 		assert.equal(d.tree[3].icon, 'beaker');
 	});
-	test('hide: a row by name, a folder by path, an unplaced namespace by name', () => {
+	test('hide: a row by name leaves its place for hidden; a folder by path, a placed namespace get hidden: true; an unplaced namespace goes to hidden', () => {
 		let d = apply(EXAMPLE(), { op: 'hide', target: { name: 'teams' } });
 		assert.deepEqual(d.hidden, ['file-drives', 'teams']);
-		assert.deepEqual(at(d, 'People').map(nameOf), ['users', 'teams', 'roles', 'responsibilities', 'agents'], 'a hidden row keeps its place');
+		assert.deepEqual(at(d, 'People').map(nameOf), ['users', 'roles', 'responsibilities', 'agents'], 'a hidden row is out of the tree: one placement, in hidden');
+		d = apply(EXAMPLE(), { op: 'hide', target: { name: 'contacts' } });
+		assert.ok(!d.tree.some((e) => e.collection === 'contacts'), 'the long form left in the tree');
+		assert.deepEqual(d.hidden, ['file-drives', 'contacts']);
 		d = apply(EXAMPLE(), { op: 'hide', target: { folder: ['People'] } });
 		assert.equal(d.tree[1].hidden, true);
+		d = apply(EXAMPLE(), { op: 'hide', target: { name: 'rnd' } });
+		assert.equal(at(d, 'ns:rnd').length, 3, 'the namespace keeps its arrangement');
+		assert.equal(d.tree[3].hidden, true);
+		assert.deepEqual(d.hidden, ['file-drives'], 'a placed namespace is not also listed in hidden');
 		d = apply(EXAMPLE(), { op: 'hide', target: { name: 'lab' } }, { ...CTX, namespaces: ['rnd', 'lab'] });
 		assert.deepEqual(d.hidden, ['file-drives', 'lab']);
 	});
-	test('show: a hidden row by name, a hidden folder by path', () => {
+	test('hide: a name the document places twice leaves both places', () => {
+		const doc = EXAMPLE();
+		doc.tree.push('teams');
+		const d = apply(doc, { op: 'hide', target: { name: 'teams' } });
+		assert.equal(JSON.stringify(d.tree).includes('"teams"'), false, JSON.stringify(d.tree));
+		assert.deepEqual(d.hidden, ['file-drives', 'teams']);
+	});
+	test('show: a hidden row goes back at the end of its home level — the top level, or its namespace — named once', () => {
 		let d = apply(EXAMPLE(), { op: 'show', target: { name: 'file-drives' } });
 		assert.deepEqual(d.hidden, []);
-		d = apply(EXAMPLE(), { op: 'show', target: { folder: ['Old'] } });
+		assert.equal(d.tree.at(-1), 'file-drives');
+		d = apply(apply(EXAMPLE(), { op: 'hide', target: { name: 'rnd/issues' } }), { op: 'show', target: { name: 'rnd/issues' } });
+		assert.deepEqual(at(d, 'ns:rnd').map(nameOf), ['rnd/change-requests', 'folder:Product', 'rnd/issues']);
+		assert.deepEqual(d.hidden, ['file-drives']);
+		d = apply(apply(EXAMPLE(), { op: 'hide', target: { name: 'teams' } }), { op: 'show', target: { name: 'teams' } });
+		assert.equal(JSON.stringify(d.tree).split('"teams"').length - 1, 1, 'teams is not placed exactly once');
+		assert.equal(d.tree.at(-1), 'teams', 'the former parent is not in the document: the top level');
+	});
+	test('show: a hidden folder by path, a hidden namespace by name; a name not hidden is left alone', () => {
+		let d = apply(EXAMPLE(), { op: 'show', target: { folder: ['Old'] } });
 		assert.equal('hidden' in d.tree[4], false);
+		d = apply(apply(EXAMPLE(), { op: 'hide', target: { name: 'rnd' } }), { op: 'show', target: { name: 'rnd' } });
+		assert.equal('hidden' in d.tree[3], false);
+		assert.deepEqual(apply(EXAMPLE(), { op: 'show', target: { name: 'teams' } }), EXAMPLE());
+	});
+	test('show: a name listed in hidden AND placed (written by an older hide) is only un-hidden', () => {
+		const doc = EXAMPLE();
+		doc.hidden.push('teams');
+		const d = apply(doc, { op: 'show', target: { name: 'teams' } });
+		assert.deepEqual(d, EXAMPLE());
 	});
 	test('pure: the input document is never touched', () => {
 		const doc = EXAMPLE();
@@ -209,9 +241,31 @@ describe('a gesture inside an unplaced namespace leaves that namespace where it 
 		d = applyNavOp(null, { op: 'icon', target: { name: 'finance/ledger' }, icon: 'book' }, TWO);
 		assert.deepEqual(drawn(d), BEFORE);
 	});
-	test('a namespace the document hides without placing is placed at the end of its level, and nothing else is placed', () => {
+	test('a namespace the document hides without placing is placed at the end of its level, still hidden (hidden: true, not also listed), and nothing else is placed', () => {
 		const d = applyNavOp({ tree: [], hidden: ['health'] }, { op: 'move', target: { name: 'tasks' }, into: { name: 'health' }, position: 'top' }, TWO);
-		assert.deepEqual(d.tree, [{ namespace: 'health', items: ['tasks'] }]);
+		assert.deepEqual(d, { tree: [{ namespace: 'health', hidden: true, items: ['tasks'] }], hidden: [] });
+	});
+});
+
+describe('one placement: no op leaves a name both in the tree and in hidden', () => {
+	const named = (doc, name) => JSON.stringify(doc.tree).split(`"${name}"`).length - 1 + doc.hidden.filter((h) => h === name).length;
+	test('moving a hidden row places it and takes it out of hidden', () => {
+		const d = apply(EXAMPLE(), { op: 'move', target: { name: 'file-drives' }, into: { folder: ['Work'] } });
+		assert.equal(at(d, 'Work').at(-1), 'file-drives');
+		assert.deepEqual(d.hidden, []);
+	});
+	test('moving a row after a hidden row: the anchor stays hidden, and the row lands at the end of the anchor\'s level', () => {
+		const d = apply(EXAMPLE(), { op: 'move', target: { name: 'tasks' }, after: { name: 'file-drives' } });
+		assert.equal(named(d, 'file-drives'), 1, JSON.stringify(d));
+		assert.deepEqual(d.hidden, ['file-drives']);
+		assert.equal(named(d, 'tasks'), 1);
+	});
+	test('an icon on a hidden row the document does not place changes nothing', () => {
+		assert.deepEqual(apply(EXAMPLE(), { op: 'icon', target: { name: 'file-drives' }, icon: 'folder' }), EXAMPLE());
+	});
+	test('moving a namespace listed in hidden places it, still hidden by hidden: true', () => {
+		const d = apply({ tree: [], hidden: ['rnd'] }, { op: 'move', target: { name: 'rnd' }, position: 'top' });
+		assert.deepEqual(d, { tree: [{ namespace: 'rnd', hidden: true }], hidden: [] });
 	});
 });
 

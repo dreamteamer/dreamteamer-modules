@@ -61,7 +61,12 @@ const CASES = [
 	{ id: 'e', row: 'assets', op: { op: 'move', target: { name: 'assets' }, after: { name: 'companies' } }, expected: ['Work', 'contacts', 'companies', 'assets', 'users'], gesture: { menu: ['c/assets', 'move-down'] } },
 	{ id: 'f', row: 'tasks', op: { op: 'move', target: { name: 'tasks' }, after: { name: 'users' } }, expected: ['Work', 'contacts', 'assets', 'companies', 'users', 'tasks'], gesture: { open: ['f/Work'], drop: ['c/tasks', 'c/users'] } },
 	{ id: 'g-top', row: 'users', op: { op: 'move', target: { name: 'users' }, position: 'top' }, expected: ['users', 'Work', 'contacts', 'assets', 'companies'], gesture: { menu: ['c/users', 'move-top'] } },
-	{ id: 'g-bottom', row: 'users', op: { op: 'move', target: { name: 'users' }, position: 'bottom' }, expected: ['Work', 'contacts', 'users', 'assets', 'companies'], gesture: { menu: ['c/users', 'move-bottom'] } },
+	// (g) bottom, amended 2026-11-14 by decisions/2026-11-14--hide-takes-a-row-out-of-the-tree-and-lists-it-in-hidden-move-
+	// to-bottom-keeps-the-recorded-tails-first-rule: the recorded tails-first rule stands — a move to the bottom of a level
+	// with unplaced tails places those tails first (in drawn order) so the row draws last. users already draws last, so
+	// the drawing is unchanged and the document places the tails; the sidebar keeps Move to bottom disabled on the last
+	// row and sends nothing.
+	{ id: 'g-bottom', row: 'users', op: { op: 'move', target: { name: 'users' }, position: 'bottom' }, expected: ['Work', 'contacts', 'assets', 'companies', 'users'], unchanged: true, tree: [{ folder: 'Work', items: ['tasks'] }, 'contacts', 'assets', 'companies', 'users'], sends: [], gesture: { menu: ['c/users', 'move-bottom'] } },
 ];
 
 describe('step 1: the original document draws Work, contacts, then the tail by title', () => {
@@ -79,8 +84,9 @@ describe('steps 2-3: each recipe op through applyNavOp, drawn with buildTree', (
 			const drawn = top(next);
 			// the general rules first, so a failure says which one broke
 			for (const [name, n] of namedCounts(next)) assert.equal(n, 1, `${name} is named ${n} times in the document`);
-			if (c.id !== 'f') oneRowMoved(before, drawn, c.row);
+			if (c.id !== 'f' && !c.unchanged) oneRowMoved(before, drawn, c.row);
 			assert.deepEqual(drawn, c.expected);
+			if (c.tree) assert.deepEqual(next.tree, c.tree, 'the tails are not placed first, in drawn order');
 			if (c.id === 'f') {
 				const work = draw(next).find((n) => n.label === 'Work');
 				assert.ok(work, 'Work is no longer drawn');
@@ -158,7 +164,7 @@ describe('step 4: the same gestures through the ui sidebar send exactly the reci
 		const wrong = [];
 		for (const c of CASES) {
 			const got = sent[c.id];
-			if (JSON.stringify(got?.patches) !== JSON.stringify([c.op])) wrong.push(`(${c.id}) ${c.gesture.menu?.join(' ') ?? `drop ${c.gesture.drop.join(' onto ')}`}: sent ${JSON.stringify(got?.patches)}${got?.state === 'disabled' ? ' (the entry is disabled)' : ''}, the recipe is ${JSON.stringify(c.op)}`);
+			if (JSON.stringify(got?.patches) !== JSON.stringify(c.sends ?? [c.op])) wrong.push(`(${c.id}) ${c.gesture.menu?.join(' ') ?? `drop ${c.gesture.drop.join(' onto ')}`}: sent ${JSON.stringify(got?.patches)}${got?.state === 'disabled' ? ' (the entry is disabled)' : ''}, the recipe is ${JSON.stringify(c.op)}`);
 		}
 		assert.deepEqual(wrong, []);
 	});

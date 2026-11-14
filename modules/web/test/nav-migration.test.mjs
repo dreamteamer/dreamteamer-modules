@@ -97,3 +97,21 @@ describe('a workspace with no nav settings', () => {
 		assert.equal(fs.existsSync(path.join(f.root, 'nav.yaml')), false);
 	});
 });
+
+describe('a hand-edited nav.yaml that cannot be drawn as written', () => {
+	test('a folder that contains itself by a YAML alias: GET answers 200 with a notice, PATCH answers 400 — the connection is never dropped', async () => {
+		const f = fixture();
+		fixtures.push(f);
+		const web = await startWeb({ root: f.root, appDir: f.app, idleMinutes: 0 });
+		servers.push(web);
+		const text = 'tree:\n  - &a { folder: Loop, items: [tasks, *a] }\n';
+		fs.writeFileSync(path.join(f.root, 'nav.yaml'), text);
+		const r = await call(`${web.appUrl}/api/nav`, { headers: auth(web) });
+		assert.equal(r.status, 200, r.text);
+		assert.match(String(r.json[0].notice), /nav\.yaml/);
+		const p = await call(`${web.appUrl}/api/nav`, { method: 'PATCH', headers: { ...auth(web), 'content-type': 'application/json' }, body: JSON.stringify({ op: 'hide', target: { name: 'tasks' } }) });
+		assert.equal(p.status, 400, p.text);
+		assert.match(String(p.json?.error), /nav\.yaml/);
+		assert.equal(fs.readFileSync(path.join(f.root, 'nav.yaml'), 'utf8'), text);
+	});
+});

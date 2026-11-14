@@ -14,7 +14,7 @@ import { ROUTES, matchRoute } from './routes.js';
 import { initEngine, refreshWorkspace } from './host/engine.js';
 import { WorkspaceApi } from './host/api.js';
 import { navModel, navOpContext, workspaceNavSettings } from './nav-model.js';
-import { NAV_FILE, NavDocError, NavOpError, applyNavOp, checkNavDoc, readNavDoc, unknownNavNames, writeNavDoc } from './nav-doc.js';
+import { NAV_FILE, NavDocError, NavOpError, applyNavOp, checkNavDoc, navDocProblems, navProblemsSentence, readNavDoc, unknownNavNames, writeNavDoc } from './nav-doc.js';
 import { hasNavSettings } from './host/nav.js';
 
 /**
@@ -82,12 +82,21 @@ async function navWrite(api, id, body, { root, settings }) {
 		if (!fs.existsSync(pathJoin(root, NAV_FILE)) && hasNavSettings(settings() ?? {})) return { status: 409, body: { error: NAV_UNMIGRATED } };
 		const ctx = navOpContext(root);
 		let doc;
+		const file = pathJoin(root, NAV_FILE);
 		if (id === 'nav-patch') {
-			doc = applyNavOp(readNavDoc(root), body, ctx);
+			const current = readNavDoc(root);
+			const { problems } = navDocProblems(current);
+			if (current && problems.length) return { status: 400, body: { error: `${navProblemsSentence(problems)} — fix them by hand, or PUT a whole document; nothing was written` } };
+			doc = applyNavOp(current, body, ctx);
 		} else {
 			doc = checkNavDoc(body);
 			const unknown = unknownNavNames(doc, { collections: ctx.known, namespaces: ctx.namespaces });
 			if (unknown.length) return { status: 400, body: { error: `nav.yaml would name what this workspace does not have: ${unknown.join(', ')} — nothing was written` } };
+			// a nav.yaml that is a directory: PUT replaces an empty one, and never deletes what one holds
+			if (isDirectory(file)) {
+				if (fs.readdirSync(file).length) return { status: 400, body: { error: `nav.yaml is a directory with files in it — move it aside and PUT again; nothing was written` } };
+				fs.rmdirSync(file);
+			}
 		}
 		writeNavDoc(root, doc);
 		return { status: 200, body: { doc } };
@@ -96,6 +105,8 @@ async function navWrite(api, id, body, { root, settings }) {
 		return { status: 500, body: { error: String(e?.message ?? e) } };
 	}
 }
+
+const isDirectory = (file) => { try { return fs.statSync(file).isDirectory(); } catch { return false; } };
 
 /** The first segment of every route whose second is the collection: where a split name can arrive. */
 const COLLECTION_HEADS = new Set(ROUTES.filter((r) => r.pattern.split('/')[2] === ':collection').map((r) => r.pattern.split('/')[1]));

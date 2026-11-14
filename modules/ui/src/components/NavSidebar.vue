@@ -60,13 +60,30 @@ async function load() {
 	}
 }
 
+/** What Show hidden… offers from a written document: the names in `hidden`, then every namespace entry hidden in
+ *  place (`hidden: true` — hide keeps a placed namespace's arrangement). */
+function hiddenIn(doc: { tree?: unknown; hidden?: unknown }): string[] {
+	const out = Array.isArray(doc.hidden) ? doc.hidden.filter((h): h is string => typeof h === 'string') : [];
+	const walk = (items: unknown) => {
+		if (!Array.isArray(items)) return;
+		for (const e of items) {
+			if (!e || typeof e !== 'object') continue;
+			const entry = e as { namespace?: unknown; hidden?: unknown; items?: unknown };
+			if (typeof entry.namespace === 'string' && entry.hidden === true && !out.includes(entry.namespace)) out.push(entry.namespace);
+			walk(entry.items);
+		}
+	};
+	walk(doc.tree);
+	return out;
+}
+
 /** One gesture: one PATCH /nav, then the nav as the host now draws it — or the host's refusal, shown. */
 async function send(op: NavOp | null) {
 	menuAt.value = null;
 	if (!op) return;
 	try {
-		const res = (await hostRequest('PATCH', '/nav', op)) as { doc?: { hidden?: unknown } } | null;
-		if (Array.isArray(res?.doc?.hidden)) hiddenNames.value = res.doc.hidden.filter((h): h is string => typeof h === 'string');
+		const res = (await hostRequest('PATCH', '/nav', op)) as { doc?: { tree?: unknown; hidden?: unknown } } | null;
+		if (res?.doc) hiddenNames.value = hiddenIn(res.doc);
 		error.value = null;
 		await load();
 	} catch (e) {
