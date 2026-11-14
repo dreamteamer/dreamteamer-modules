@@ -120,8 +120,6 @@ fields:
 display:
   nav:
     icon: window
-    order: 32
-    section: product
   list:
     columns:
       - name

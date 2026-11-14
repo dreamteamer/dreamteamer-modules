@@ -23,10 +23,8 @@ function importsOf(file) {
 }
 
 describe('held-out: the packed install', () => {
-	test('step 1: the composed modules have not drifted (compose-core --check)', () => {
-		const r = spawnSync(process.execPath, [path.join(REPO, 'scripts', 'compose-core.mjs'), '--check'], { cwd: REPO, encoding: 'utf8', timeout: 120_000 });
-		assert.equal(r.status, 0, `${r.stdout}\n${r.stderr}`);
-	});
+	// step 1 (the composed modules had not drifted, compose-core --check) left with the composition (CR-dt-008):
+	// rnd carries no copies
 
 	test('steps 2–3: every file the bin reaches and every browser file vendor copies is in the tarball', () => {
 		const files = new Set(packedFiles('rnd'));

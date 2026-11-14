@@ -1,6 +1,6 @@
 {
 	"name": "@dreamteamer/workflows",
-	"version": "0.1.1",
+	"version": "0.1.2",
 	"description": "Workflows: a chain of commands over sets of records, written down once and run with /workflow:run — the progress lives on the records.",
 	"license": "Apache-2.0",
 	"type": "module",

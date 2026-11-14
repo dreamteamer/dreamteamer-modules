@@ -11,10 +11,14 @@ export function changeScope(root, file) {
 const RUNTIME_DIR = ".dreamteamer";
 export const RECORD_WATCH_GLOB = "{data,state,.dreamteamer,git_modules,modules}/**";
 const ALWAYS_WATCHED = new Set(["data", "state", RUNTIME_DIR]);
+export const NAV_DOC_FILE = "nav.yaml";
 export function isWatchedChange(root, file, underRecordRoot) {
     const rel = relativeSegments(root, file);
     if (!rel.length)
         return false;
+    // the left nav (cr-dt-008): a hand edit of nav.yaml redraws it like a record change
+    if (rel.length === 1 && rel[0] === NAV_DOC_FILE)
+        return true;
     if (ALWAYS_WATCHED.has(rel[0]))
         return true;
     return underRecordRoot(file);

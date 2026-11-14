@@ -68,10 +68,12 @@ only what is above: `--no-open`, `--owner-pid`, and the URL as the first line.
 
 ## what you see
 
-- **The nav** on the left, built from the same model as the extension's tree: module folders, collections
-  with their record counts, saved views, and a Layers folder for the workspaces under `git_modules/`. It
-  follows the workspace's `.vscode/settings.json` (`dreamteamer.navGroups`, `navOrder`, `navHidden`,
-  `layersFolder`).
+- **The nav** on the left, built from the same model as the extension's tree: the folders and rows of the
+  workspace's `nav.yaml`, collections with their record counts, saved views, and a Layers folder for the
+  workspaces under `git_modules/`. A workspace still arranged by the old settings in `.vscode/settings.json`
+  (`dreamteamer.navGroups`, `navOrder`, `navHidden`) has them written into `nav.yaml` on the first page load,
+  once, and the nav says so; the drawing does not change. A hand edit of `nav.yaml` redraws the nav like a
+  record change. `dreamteamer.layersFolder` still names the Layers folder.
 - **The pages** are the extension's own: lists, boards, calendars, record pages, and the schema and
   activity pages.
 - **Live updates.** A record written by `dt set`, by an agent or by a `git pull` appears within a second.
@@ -166,6 +168,7 @@ way to ask whether a server is running.
 
 | @dreamteamer/web | @dreamteamer/protocol | @dreamteamer/ui | engine (`dreamteamer`) |
 |---|---|---|---|
+| 0.2.x | ^0.2.0 | ^0.2.0 | `>=0.43.0`; `nav.yaml` fragments from modules need 0.49 |
 | 0.1.x | ^0.1.0 | ^0.1.0 | `>=0.43.0`, tested on 0.43 and 0.44 |
 
 The app is `@dreamteamer/ui`'s browser page (`dist/app/` in that package), the same UI the VS Code
@@ -176,8 +179,8 @@ advisories in dependencies, and whether they reach a request, are listed in `SEC
 ## limits
 
 - One workspace per server, and one person per machine.
-- The nav reads the workspace's `.vscode/settings.json` only. A setting kept in your VS Code user settings
-  is not seen.
+- The nav reads the workspace's `nav.yaml`, and before it exists the workspace's `.vscode/settings.json` only.
+  A setting kept in your VS Code user settings is not seen.
 - Browsers: current Chrome, Edge, Firefox and Safari. Live updates use server-sent events, which Safari
   supports.
 - Linux: live updates need Node 20 or newer (recursive file watching). A workspace with very many files can

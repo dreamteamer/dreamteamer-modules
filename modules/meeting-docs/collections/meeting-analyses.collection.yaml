@@ -92,8 +92,6 @@ fields:
 display:
   nav:
     icon: report
-    order: 15
-    section: crm
   list:
     columns:
       - name

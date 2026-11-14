@@ -26,7 +26,7 @@ record ids are paths (`2026/11/northwind-kickoff`) and are sent unencoded. The q
 |---|---|
 | `400` | validation refused the write; a compile refused a schema write (the source is restored); a malformed request |
 | `404` | no such record; no such route (`unhandled request <METHOD> <path>`, or `unhandled field op …` under `/fields`). A collection name with a `/` sent unencoded matches no route, and the message goes on to name the collection meant: `… — unknown collection "lab" — did you mean "lab/samples"? a collection name containing "/" must be percent-encoded …` |
-| `409` | the record is referenced by another, or already exists; a repository is blocked (an in-progress merge or rebase); the workspace would not re-open before a compile-gated write (`… did not load, so nothing was written`) |
+| `409` | the record is referenced by another, or already exists; a repository is blocked (an in-progress merge or rebase); the workspace would not re-open before a compile-gated write (`… did not load, so nothing was written`); a nav write while the old nav settings are not migrated |
 
 Every error body is `{ "error": "<the engine's own sentence>" }`.
 
@@ -58,7 +58,6 @@ keys the host computes, each prefixed `$` (or named as below) so a write never p
 | `$module` | the module that owns the record's collection or root |
 | `$repo`, `$dirty`, `$ahead` | the repository holding the file (workspace-relative, `.` the workspace), whether the file has uncommitted changes, and how many commits that repository holds that no remote has |
 | `$duplicates` | other roots holding the same id (the first root wins) |
-| `$stubs` | roots holding a `stub: true` record of this id that this row shadows |
 
 ## Routes
 
@@ -114,11 +113,48 @@ with `settled` until it is empty.
 ### GET /nav
 
 The navigation the editor draws as its tree, as data, so a host without a native tree draws the same
-folders. `200 [NavNode, ...]`, `NavNode = { kind, key, label, icon?, route?, marks?, count?, tooltip?,
-children? }`, `kind` one of `workspace`, `page`, `folder`, `collection`, `view`, `layers`, `layer`,
-`layer-group`, `layer-collection`, `note`. It honours the workspace's `dreamteamer.navGroups`,
-`dreamteamer.navOrder`, `dreamteamer.navHidden` and `dreamteamer.layersFolder` settings. A list is narrowed
-to some sources by an ordinary filter chip (`$source`), never by a host-wide scope.
+folders. `200 [NavNode, ...]`, `NavNode = { kind, key, label, icon?, route?, marks?, description?, tooltip?,
+target?, notice?, children? }`, `kind` one of `workspace`, `folder`, `namespace`, `collection`, `view`,
+`layers`, `layer`, `layer-group`, `layer-collection`, `layer-note`, `message`. Every `folder`, `namespace` and
+`collection` node carries `target`, the NavTarget a host sends back in a `PATCH /nav` op; a key is never decoded.
+
+The tree is the workspace's `nav.yaml` (see *The nav document*): its entries in order, then what it does not
+place — rows by title, then namespaces — and the layers folder last. With no `nav.yaml` and none of the old
+settings `dreamteamer.navGroups`, `dreamteamer.navOrder`, `dreamteamer.navHidden`, the tree is flat; with no
+`nav.yaml` and one of them set, it is the tree those settings drew, until they are migrated. A `nav.yaml` that
+cannot be read — not YAML, not a mapping, `tree` or `hidden` not a list, a folder that contains itself through a
+YAML alias, a directory — draws the flat tree and puts the reason on the workspace node's `notice` — never a 500.
+One that reads but holds entries of none of the four shapes (`null`, `{ folder: [1, 2] }`, a non-name in `hidden`)
+draws the rest and names each skipped entry on the `notice`.
+`dreamteamer.layersFolder` still names the layers folder. A record layer draws the same way from its own clone:
+by the `nav.yaml` in `git_modules/<key>`, over the rows it holds (its folders and namespaces as `layer-group`
+nodes, keyed `l/<key>/<the key it would have in that workspace>`), else as its own old settings drew it; an
+unreadable one draws the layer flat with the reason on the `layer` node's `notice`. A list is narrowed to some sources by an ordinary filter
+chip (`$source`), never by a host-wide scope.
+
+### PUT /nav
+
+Replace the whole `nav.yaml`. Body: a NavDoc `{ tree: [Entry, ...], hidden?: [name, ...] }`. The shape is
+checked first — every entry a collection name, `{ collection, icon? }`, `{ folder, icon?, hidden?, items }` or
+`{ namespace, icon?, hidden?, items? }`, a folder label not empty and not starting with `ns:` — then every
+name: a collection or a namespace this workspace does not have is `400` naming each. Then the file is written
+(the engine's writer when the loaded engine has one, else the protocol's own: atomic, the header comment, one
+trailing newline) and the answer is `200 { doc }`. PUT is how a `nav.yaml` that cannot be read is replaced —
+an empty directory named `nav.yaml` included; a directory that holds files is `400` naming it and is left alone.
+`409` when there is no `nav.yaml` and an old nav setting is still set (below).
+
+### PATCH /nav
+
+One gesture. Body: one NavOp (see *The nav document*) — `move`, `new-folder`, `rename`, `dissolve`, `icon`,
+`hide`, `show`. The host reads `nav.yaml` (none is an empty document), applies the op with the workspace's
+collections in drawn order, writes the result as `PUT /nav` does and answers `200 { doc }`. Refused, with
+nothing written: a malformed op, an unknown name, a folder path that resolves to nothing, a move into a row or
+into the moved folder itself — `400` with the sentence naming the input; a `nav.yaml` that cannot be read, or
+that holds entries of no valid shape — `400` naming the file (and each such entry), which is left byte for byte as
+it was. With no `nav.yaml` and any of
+`dreamteamer.navGroups`, `dreamteamer.navOrder`, `dreamteamer.navHidden` set (an empty list or object counts as
+unset), both write routes answer `409 your nav settings are not in nav.yaml yet — run: npx -p
+@dreamteamer/protocol@0.2 dt-nav migrate`, so the first write can never strand the settings.
 
 ### POST /fields/:collection
 
@@ -262,6 +298,62 @@ Before every compile-gated write the host re-opens the workspace, so a write aft
 changed compiles against what is declared now; a workspace that will not open is `409` and nothing is
 written. A successful system write's result carries `commits`, including a commit in another repository
 for a module that lives in a `git_modules` clone.
+
+## The nav document
+
+`nav.yaml` at the workspace root is the left nav, arranged by a person and tracked like any other file. Every host
+reads and writes it through one grammar (`src/nav-doc.js`, typed in `nav-doc.d.ts`; the engine's own reader and
+writer from 0.49):
+
+```yaml
+# The left nav of this workspace. Drag and drop writes this file; so may you.
+tree:
+  - folder: Work                 # a folder: a label, an optional icon, its items; folders nest
+    icon: rocket
+    items: [tasks, projects, { folder: Plans, items: [deliverables, risks] }]
+  - { collection: contacts, icon: person }   # a row with its icon overridden; a bare name is a row
+  - namespace: rnd               # a namespace folder: its label is its module's title
+    items: [rnd/change-requests, { folder: Product, items: [rnd/user-stories] }]
+  - { folder: Old, hidden: true, items: [metrics] }
+hidden: [teams]                  # rows (or whole namespaces) not drawn
+```
+
+What the document does not place still draws: an unplaced row trails its parent (the top level, or its namespace's
+folder) by title, an unplaced namespace draws as a folder after the top level's rows, and a name listed twice draws
+at its first place. A name that resolves to nothing is skipped (`dt check` warns about it).
+
+**NavTarget** — what a host sends back to address a node, read from the node's `target` and never decoded from its
+key: `{ name }` is a collection or a namespace exactly as `nav.yaml` writes it; `{ folder: [labels] }` is the label
+path from the top level, a namespace entry being the element `ns:<name>` (`{ folder: ['ns:rnd', 'Product'] }`).
+Labels match exactly, at their first occurrence at each level; the path is an array, never a joined string.
+
+**NavOp** — the body of `PATCH /nav`, one gesture:
+
+| op | body | does | refused (400) when |
+|---|---|---|---|
+| `move` | `{ target, into?, after?, position?: top \| bottom }` | moves the target right after `after`, or to the top or bottom of `into` (a folder, or `{ name }` of a namespace), or of the top level | the target or anchor is unknown; `into` is a row; a folder into itself or its descendant; both `into` and `after`; `position` beside `after` |
+| `new-folder` | `{ label, into? }` | appends an empty folder | the label is empty or starts with `ns:` |
+| `rename` | `{ target: { folder }, label }` | relabels a folder | the path resolves to nothing, or to a namespace; the label as above |
+| `dissolve` | `{ target: { folder } }` | puts a folder's items where it stood | as rename |
+| `icon` | `{ target, icon: name \| null }` | sets or clears an icon | the icon is neither a name nor `null` |
+| `hide` | `{ target }` | a row leaves its place in the tree and goes to `hidden`; a folder, and a namespace the document places, get `hidden: true` and keep their arrangement; an unplaced namespace goes to `hidden` | the target is unknown |
+| `show` | `{ target }` | the reverse: a row hidden and placed nowhere goes back at the end of its home level — its namespace's entry, or the top level (the document does not record the folder it left); `hidden: true` is cleared | the target is unknown |
+
+A name the document does not place but the workspace has is a valid target and a valid anchor: `move` places it,
+`icon` places it at the end of its parent with the icon, `hide` adds it to `hidden`. Either way a name is placed
+once: in the tree, or in `hidden`. Placing one never moves anything
+else on screen — an anchor among unplaced rows first places the rows of its parent that draw before it, in drawn
+order, and an unplaced namespace a gesture reaches into (`into` it, or a row inside it as target or anchor) is placed
+the same way, after its level's unplaced rows and the namespaces drawn before it. Move up is `move` with `after` the sibling two above (or `into` the parent with `position: top` for the second
+row); Move down is `after` the next sibling.
+
+**The old settings.** Before `nav.yaml`, `dreamteamer.navGroups`, `dreamteamer.navOrder` and `dreamteamer.navHidden`
+in `.vscode/settings.json` arranged the nav. While they are set and there is no `nav.yaml`, `GET /nav` draws the tree
+they drew and both write routes answer `409`. They are migrated once — by the editor on activation, by `dt web` on
+its first `GET /nav`, or by hand with `npx -p @dreamteamer/protocol@0.2 dt-nav migrate` — into a `nav.yaml` that draws
+the same folders, rows and order (a hidden folder kept with `hidden: true`), after which they are no longer read. On
+an engine that merges module nav fragments (0.49) the migration applies them after; they place only what the
+document does not.
 
 ## Notifications and gestures
 

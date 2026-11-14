@@ -1,0 +1,5 @@
+# knowledge's shipped nav fragment: its three collections in one Knowledge folder, placed on install only
+# where the workspace's nav.yaml does not name them yet.
+tree:
+  - folder: Knowledge
+    items: [blurbs, briefs, meta-analyses]

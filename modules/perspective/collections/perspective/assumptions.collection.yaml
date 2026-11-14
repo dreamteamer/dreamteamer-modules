@@ -98,7 +98,6 @@ fields:
 display:
   nav:
     icon: warning
-    order: 175
   list:
     columns:
       - name

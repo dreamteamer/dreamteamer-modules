@@ -148,7 +148,6 @@ fields:
 display:
   nav:
     icon: project
-    order: 90
   list:
     columns:
       - name

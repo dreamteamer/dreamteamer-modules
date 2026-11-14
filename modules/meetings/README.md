@@ -71,6 +71,10 @@ material, so the meeting-docs pipeline stops after transcription. An export cann
 record: `sensitive` applies to a whole collection or a whole field, never to a record, so an exporter
 has to read `privacy` itself, and marking `meetings` sensitive would withhold every meeting.
 
+## 0.3.1 — the nav is nav.yaml (cr-dt-008)
+
+`display.nav.order` and `display.nav.section` removed from its descriptor — the nav is `nav.yaml` at the workspace root (engine 0.49), which you arrange; `display.nav.icon` stays. Nothing to do.
+
 ## 0.3.0 — on engine 0.48.0: the engine writes `.env` (CR-dt-007)
 
 Nothing to do but `dt update @dreamteamer/meetings` on dreamteamer 0.48.0 or later, then `dt compile`; nothing a

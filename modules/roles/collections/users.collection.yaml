@@ -1,0 +1,8 @@
+# OVERLAY of users — the roles a person holds, so "who are the backend developers" is a filter.
+name: users
+overlay: true
+fields:
+  roles:
+    type: roles
+    many: true
+    description: The positions they hold — `roles` records, one list the whole workspace shares.

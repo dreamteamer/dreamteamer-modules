@@ -13,20 +13,29 @@ official module, one npm package each under `@dreamteamer/<id>`, versioned and r
 Two packages give a workspace almost everything:
 
 ```bash
-npm install dreamteamer @dreamteamer/core @dreamteamer/rnd
 npx dreamteamer init
-npx dreamteamer compile
+dt install @dreamteamer/core @dreamteamer/rnd
 ```
+
+On engine 0.48 or later `init` installs and compiles by itself; there is no separate compile step.
+`dt install` (engine 0.49 or later) pins each package and everything it depends on in your
+`package.json`, writes their nav fragments into `nav.yaml`, and compiles. `npm install` alone does
+not expand a preset: `npm install @dreamteamer/core` installs a package with no collections.
 
 - [`@dreamteamer/core`](modules/core) — every core noun from one install: users with their teams,
   roles and responsibilities, companies, contacts and engagements, tasks, projects with decisions and
   risks, meetings with recordings, preps, summaries and critiques, files on mounted drives, the
-  assets a view draws, artifacts, sessions and metrics, and workflows. It is a *composition* of the
-  small modules below, so you install **core or the small modules, never both**.
+  assets a view draws, artifacts, sessions and metrics, and workflows. From 0.12.0 it is a *module
+  preset of seventeen*: a pinned list of the small modules below, which `dt install` expands into your
+  own dependencies, so any one of them can later be dropped or updated on its own. Nothing is
+  composed. Its nav fragment files those rows into six folders — Work, People, CRM, Meetings, Library,
+  Activity — that `nav.yaml` then keeps as yours to rearrange.
 - [`@dreamteamer/rnd`](modules/rnd) — what a workspace builds: products, design docs, change
   requests, implementation plans, user stories, screens, prototypes, tests, reviews, issues,
   features, research, personas — and the lifecycle that moves them, `/rnd:design` to `/rnd:deploy`,
-  gated per record. It composes `wikis` and `notebooklm`.
+  gated per record. It stands alone — `wikis` and `notebooklm` are modules of their own, installed
+  beside it by whoever keeps notebooks or wikis — and its nav fragment places its rows under one R&D
+  namespace with Product and Knowledge folders.
 
 Then `npx dreamteamer status` prints each installed module's setup line — `configured`, `blocked` or
 `ready`, with the next command — and `npx dreamteamer doctor` the checks behind it; `npx dreamteamer
@@ -37,16 +46,22 @@ degrades by name.
 ## the modules
 
 Each module states its own engine floor (`dreamteamer.engine` in its `package.json`): from `>=0.33.0`
-for the plain content modules up to `>=0.48.0` for those whose setup unit has the engine write `.env`;
-`npx dreamteamer install` refuses a module whose floor the installed engine does not meet. A module
-declares what it depends on, and you install the closure as direct dependencies — the engine loads
-only the modules your `package.json` names. Each module's README has its exact install line.
+for the plain content modules up to `>=0.48.0` for those whose setup unit has the engine write `.env`,
+and `>=0.49.0` for `core`, `rnd` and `knowledge`, the first engine that installs a preset and merges a
+nav fragment; `npx dreamteamer install` refuses a module whose floor the installed engine does not meet.
+A module declares what it depends on, and `npx dreamteamer install @dreamteamer/<id>` installs it with
+that closure as direct dependencies — the engine loads only the modules your `package.json` names. Each
+module's README has its exact install line. A module that ships no nav fragment draws its rows flat,
+alphabetical by title, until you file them; installing the seventeen members one by one draws the same
+rows as `core` does, unfolded.
 
-**Work — people, commitments, meetings** (all composed into `core`)
+**Work — people, commitments, meetings** (the seventeen members of the `core` preset)
 
 | module | what it gives a workspace | needs |
 |---|---|---|
 | [`@dreamteamer/users`](modules/users) | the people and agents work is assigned to, and the teams they form | — |
+| [`@dreamteamer/roles`](modules/roles) | the positions people hold — team leader, backend developer — listed on each user | users |
+| [`@dreamteamer/responsibilities`](modules/responsibilities) | areas of ownership — release sign-off, a client relationship — and who carries each | users |
 | [`@dreamteamer/assets`](modules/assets) | icons, logos and avatars as file records, 200 KB each at most | — |
 | [`@dreamteamer/companies`](modules/companies) | organisations: the record every other module points at | assets |
 | [`@dreamteamer/contacts`](modules/contacts) | people you deal with, each at a company, enriched from LinkedIn | companies · assets |
@@ -58,14 +73,17 @@ only the modules your `package.json` names. Each module's README has its exact i
 | [`@dreamteamer/meeting-docs`](modules/meeting-docs) | a prep before the call, a summary after it, a critique on the transcript, and the tasks it produced | engagements · meetings · recordings · tasks · contacts · companies |
 | [`@dreamteamer/files`](modules/files) | files on mounted drives as records, kept level by `dt files sync`, with your notes on each | — |
 | [`@dreamteamer/workflows`](modules/workflows) | a chain of commands over sets of records, written once, run with `/workflow:run` | — |
+| [`@dreamteamer/artifacts`](modules/artifacts) | built pages a person opens — a pitch, a prototype, a report — kept as a folder with `index.html` | — |
+| [`@dreamteamer/sessions`](modules/sessions) | sittings of work — a coding-agent session, a person's block — with `dt session` and the metrics read from a transcript | users |
+| [`@dreamteamer/metrics`](modules/metrics) | named measures tracked over time, the definition and its dated readings in one record | users |
 
 **Knowledge and review**
 
 | module | what it gives a workspace | needs |
 |---|---|---|
-| [`@dreamteamer/rnd`](modules/rnd) | the R&D lifecycle on products, designs, plans, tests and reviews (above) | — |
-| [`@dreamteamer/wikis`](modules/wikis) | local corpora of markdown, grepped with nothing installed, asked by meaning once `qmd` is (composed into `rnd`) | — |
-| [`@dreamteamer/notebooklm`](modules/notebooklm) | `dt notebooklm`: the workspace as NotebookLM sources, each notebook a record it is restored from (composed into `rnd`) | — |
+| [`@dreamteamer/rnd`](modules/rnd) | the R&D lifecycle on products, designs, plans, tests and reviews, standing alone (above) | — |
+| [`@dreamteamer/wikis`](modules/wikis) | local corpora of markdown, grepped with nothing installed, asked by meaning once `qmd` is | — |
+| [`@dreamteamer/notebooklm`](modules/notebooklm) | `dt notebooklm`: the workspace as NotebookLM sources, each notebook a record it is restored from | — |
 | [`@dreamteamer/search`](modules/search) | `dt-find`: an effort ladder over the workspace's own records — exact words, meaning, a hedged query, the reference graph | — |
 | [`@dreamteamer/routines`](modules/routines) | recurring commitments: a calendar rule and the next date owed | — |
 | [`@dreamteamer/perspective`](modules/perspective) | a person's operating model, read off their own past work | — |
@@ -77,17 +95,23 @@ only the modules your `package.json` names. Each module's README has its exact i
 | [`@dreamteamer/proofs`](modules/proofs) | `dt prove`: behaviour proofs of skills, commands and scripts, answered by exit code | — |
 | [`@dreamteamer/worktrees`](modules/worktrees) | `dt worktree` and `dt land`: a second checkout, and bringing its records home | — |
 | [`@dreamteamer/http`](modules/http) | `dt serve`: a JSON REST api over the same validating store the CLI uses | — |
-| [`@dreamteamer/code`](modules/code) | `dt-editor`: the browser editor over local files, with a Claude coordinator | — |
+| [`@dreamteamer/web`](modules/web) | `dt web`: the UI in your browser over a workspace on your machine — loopback only, live as records change; drag a nav row to rearrange `nav.yaml` | — |
+| [`@dreamteamer/code`](modules/code) | `dt-editor`: the browser editor over local files, with a Claude coordinator (not published to npm) | — |
 | [`@dreamteamer/docker-workspaces`](modules/docker-workspaces) | `dt-docker`: a workspace as a local Docker container, moved between machines as one encrypted file | — |
+
+Two libraries sit under `web`, `http` and the VS Code extension and give a workspace nothing on their
+own: [`@dreamteamer/protocol`](modules/protocol) — the host protocol the UI speaks, the nav document
+(`nav.yaml`) every host reads and writes, and `dt-nav migrate`, which writes a workspace's old nav
+settings into it — and [`@dreamteamer/ui`](modules/ui), the UI as one Vue app any host mounts.
 
 ## Optional personal workspace capabilities
 
-The following modules are available in this source tree; install from the registry only after
-their reviewed release. They ship no accounts, private records, client configuration or tokens.
+The following modules are published like the rest, each installed on its own. They ship no accounts,
+private records, client configuration or tokens.
 
 | module | capability | needs |
 |---|---|---|
-| [`@dreamteamer/knowledge`](modules/knowledge) | raw thought capture, reader-facing briefs and cross-domain synthesis | core >=0.9.0; engine >=0.43.0 |
+| [`@dreamteamer/knowledge`](modules/knowledge) | raw thought capture, reader-facing briefs and cross-domain synthesis | companies · meetings; engine >=0.49.0 |
 | [`@dreamteamer/google-workspace`](modules/google-workspace) | explicit-account local bridge to a pinned public MCP server; read-only by default | owner-controlled OAuth setup and local Python runtime |
 | [`@dreamteamer/git-identities`](modules/git-identities) | folder-scoped Git configuration proposals and read-only authorship/alias checks | owner-reviewed Git and SSH setup |
 
@@ -95,8 +119,8 @@ Tasks in `core` use a compact Board and List by default, including suggestions a
 
 Choose capabilities independently. The account modules do not authorize accounts, apply machine
 configuration, import CRM records or prove remote access. The setup board reports unverified
-authentication as a gap. Meetings and transcription remain in `core`; do not install their small
-origin modules alongside it. Content-production and service-usage dashboards are not part of
+authentication as a gap. Meetings and transcription are the `meetings` and `recordings` modules, members of
+the `core` preset. Content-production and service-usage dashboards are not part of
 this profile.
 
 ## making a module yours
@@ -127,9 +151,9 @@ never removes one, and compile refuses it while its module does not depend on th
 Each module is released on its own, as one git tag `<id>-v<version>` pushed by a person;
 `.github/workflows/release.yml` re-runs the leak gate and the suite, then publishes to npm with
 provenance. A module's `README.md` carries its release notes; `UPDATING.md`, where a module ships
-one, says what a workspace has to do after upgrading. `core` and `rnd` are re-composed and
-re-released when a module they compose changes (`scripts/compose-core.mjs`; `compose.json` in each
-lists every copy with its origin and hash).
+one, says what a workspace has to do after upgrading. Nothing is composed: from 0.12.0
+`core` is a preset — its `package.json` pins each member to an exact version under `dreamteamer.preset`
+— and is re-released when a member it pins is released.
 
 `main` is protected: a commit reaches it only when the `ci` and `leak-scan` checks passed on it, for
 administrators too, and it is never force-pushed. So a change — the version bump included — goes in

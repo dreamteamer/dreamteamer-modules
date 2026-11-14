@@ -36,6 +36,12 @@ await mount('#app', { transport });
 The host answers `dt:mounted` with a `dt:navigate` window message naming the route to show, and sends
 `dt:invalidate` when records change. A request that fails rejects with a `HostError` carrying the status.
 
+In a host with no native tree (`window.__DT_HOST__.nav === 'app'`, as under `dt web`) the app draws the nav
+itself from `GET /nav`, and the nav is arranged by hand: drag a row onto another (onto the middle of a folder to
+put it inside), or right-click a row for New folder, Rename, Dissolve, Move up / down / to top / to bottom, Set icon
+and Hide — and the workspace row for Show hidden. Each gesture is one `PATCH /nav` that writes the workspace's
+`nav.yaml`; a refusal shows the host's sentence above the tree. Layers keep their own nav: nothing drops onto them.
+
 Workspace modules' `app` bundles are loaded from `window.__DT_UI_BASE__` before the first render; they get
 the host's Vue as `window.Vue` and may call `fetch('/api/…')`, which the UI routes through the transport.
 
@@ -52,4 +58,5 @@ The build runs before every publish (`prepublishOnly`). Nothing under `dist/` is
 
 | @dreamteamer/ui | @dreamteamer/protocol | engine (`dreamteamer`) |
 |---|---|---|
+| 0.2.x | ^0.2.0 | `>=0.43.0`; the nav is `nav.yaml` (module fragments from 0.49) |
 | 0.1.x | ^0.1.0 | `>=0.43.0` |

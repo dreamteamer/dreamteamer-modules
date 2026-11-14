@@ -95,7 +95,6 @@ fields:
 display:
   nav:
     icon: comment-unresolved
-    order: 23
   list:
     columns:
       - created

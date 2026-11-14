@@ -1,0 +1,32 @@
+{
+	"name": "@dreamteamer/roles",
+	"version": "0.1.0",
+	"description": "The positions people hold — team leader, backend developer — as one shared list each person names on users.roles.",
+	"license": "Apache-2.0",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/dreamteamer/dreamteamer-modules.git",
+		"directory": "modules/roles"
+	},
+	"keywords": [
+		"dreamteamer",
+		"dreamteamer-module",
+		"roles"
+	],
+	"files": [
+		"README.md",
+		"UPDATING.md",
+		"collections"
+	],
+	"peerDependencies": {
+		"@dreamteamer/users": ">=0.3.0"
+	},
+	"dreamteamer": {
+		"title": "Roles",
+		"description": "`roles`: a position a person holds — team leader, backend developer, product manager, QA engineer — one record per role, and an overlay of `users` adding `roles`, so \"who are the backend developers\" is a filter and each role lists its people back. Depends on `users`.",
+		"engine": ">=0.48.0",
+		"dependencies": [
+			"@dreamteamer/users"
+		]
+	}
+}

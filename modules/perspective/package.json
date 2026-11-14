@@ -1,6 +1,6 @@
 {
 	"name": "@dreamteamer/perspective",
-	"version": "0.4.0",
+	"version": "0.4.1",
 	"description": "Reads a person's past work \u2014 git, agent sessions, tickets, mail, documents \u2014 and builds the operating model it runs on.",
 	"license": "Apache-2.0",
 	"type": "module",

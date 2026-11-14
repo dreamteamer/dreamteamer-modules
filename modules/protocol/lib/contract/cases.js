@@ -70,6 +70,15 @@ export const cases = [
 	{ id: 'nav', route: 'nav', method: 'GET', path: '/nav', expect: (res) => {
 		ok(res); check(Array.isArray(res.body) && res.body.length > 0, 'no nav nodes');
 		shape(res.body[0], { kind: 'string', key: 'string', label: 'string' }, 'nav[0]');
+		// protocol 0.2 (cr-dt-008): with no nav.yaml and no nav settings the tree is flat — rows, then the lab
+		// namespace as a `namespace` node; every folder, namespace and collection node carries its NavTarget
+		const kids = Array.isArray(res.body[0].children) ? res.body[0].children : [];
+		const lab = kids.find((n) => n.kind === 'namespace');
+		check(lab && lab.key === 'n/ns%3Alab' && lab.target?.name === 'lab', 'no namespace node n/ns%3Alab with target { name: lab }');
+		check(lab.children?.some((n) => n.key === 'c/lab/samples' && n.target?.name === 'lab/samples'), 'lab/samples is not drawn inside its namespace');
+		check(!kids.some((n) => n.kind === 'group'), 'a group node — protocol 0.2 draws folder and namespace nodes');
+		const walk = (ns) => ns.flatMap((n) => [n, ...walk(n.children ?? [])]);
+		for (const n of walk(kids).filter((x) => ['folder', 'namespace', 'collection'].includes(x.kind))) check(n.target && (typeof n.target.name === 'string' || Array.isArray(n.target.folder)), `${n.key} carries no target`);
 	} },
 	{ id: 'folder', route: 'folder', method: 'GET', path: '/folder/projects/northwind-launch?field=media', expect: (res) => {
 		ok(res); shape(res.body, { path: 'string|null', files: 'array', reason: 'string|null' });
@@ -283,6 +292,31 @@ export const cases = [
 	{ id: 'dry-run-module-rm', route: 'record-remove', method: 'DELETE', path: '/collections/modules/records/northwind-extras?dry-run=true&force=true', before: snapshot, expect: A_PLAN },
 	{ id: 'modules-rm', route: 'record-remove', method: 'DELETE', path: '/collections/modules/records/northwind-extras?force=true', expect: async (res, { request }) => {
 		ok(res); status(await request('GET', '/collections/modules/records/northwind-extras'), 404);
+	} },
+
+	// ---- the nav document (protocol 0.2, cr-dt-008): last, because the file they write changes GET /nav ------
+	{ id: 'nav-patch', route: 'nav-patch', method: 'PATCH', path: '/nav', body: { op: 'move', target: { name: 'lab/samples' }, into: { name: 'lab' } }, expect: async (res, { request, fixture }) => {
+		ok(res); shape(res.body, { doc: 'object' }); shape(res.body.doc, { tree: 'array', hidden: 'array' }, 'doc');
+		const ns = res.body.doc.tree.find((e) => e && e.namespace === 'lab');
+		check(ns && Array.isArray(ns.items) && ns.items.includes('lab/samples'), `lab/samples is not placed in the lab namespace: ${JSON.stringify(res.body.doc)}`);
+		check(fs.existsSync(path.join(fixture.root, 'nav.yaml')), 'no nav.yaml written');
+		const nav = await request('GET', '/nav');
+		const lab = (nav.body?.[0]?.children ?? []).find((n) => n.key === 'n/ns%3Alab');
+		check(lab?.children?.some((n) => n.key === 'c/lab/samples'), 'GET /nav does not draw the written document');
+	} },
+	{ id: 'nav-patch-refused', route: 'nav-patch', method: 'PATCH', path: '/nav', body: { op: 'move', target: { name: 'tasks' }, into: { folder: ['No such folder'] } },
+		before: ({ fixture }) => fs.readFileSync(path.join(fixture.root, 'nav.yaml'), 'utf8'),
+		expect: (res, { fixture }, was) => {
+			status(res, 400); check(/No such folder/.test(String(res.body?.error)), 'the refusal does not name the folder path');
+			check(fs.readFileSync(path.join(fixture.root, 'nav.yaml'), 'utf8') === was, 'a refused op changed nav.yaml');
+		} },
+	{ id: 'nav-put', route: 'nav-put', method: 'PUT', path: '/nav', body: { tree: [{ folder: 'Work', items: ['tasks', 'projects'] }], hidden: [] }, expect: async (res, { request }) => {
+		ok(res); shape(res.body, { doc: 'object' });
+		const kids = (await request('GET', '/nav')).body?.[0]?.children ?? [];
+		check(kids[0]?.kind === 'folder' && kids[0].label === 'Work' && kids[0].children?.map((n) => n.key).join(',') === 'c/tasks,c/projects', 'GET /nav does not draw the PUT document');
+	} },
+	{ id: 'nav-put-unknown', route: 'nav-put', method: 'PUT', path: '/nav', body: { tree: ['no-such-collection'], hidden: [] }, expect: (res) => {
+		status(res, 400); check(/no-such-collection/.test(String(res.body?.error)), 'the refusal does not name the unknown collection');
 	} },
 
 	{ id: 'reload', route: 'reload', method: 'POST', path: '/reload', body: {}, expect: (res) => { ok(res); shape(res.body, { ok: 'boolean' }); } },

@@ -295,36 +295,24 @@ export function walkIds(dir, d) {
     }
     return out;
 }
-export function duplicateIds(root, d, isStub) {
-    return contestedIds(root, d, isStub).duplicates;
+export function duplicateIds(root, d) {
+    return contestedIds(root, d).duplicates;
 }
-export function contestedIds(root, d, isStub) {
+export function contestedIds(root, d) {
     const roots = collectionRoots(root, d);
     const duplicates = new Map();
-    const stubs = new Map();
     if (roots.length < 2 || acc().storageOf(d).under?.collection)
-        return { duplicates, stubs };
+        return { duplicates };
     const seen = new Map();
     for (const r of roots) {
         for (const [id, file] of walkIds(r.dir, d))
             seen.set(id, [...(seen.get(id) ?? []), { r, file }]);
     }
     for (const [id, claims] of seen) {
-        if (claims.length < 2)
-            continue;
-        if (!isStub) {
+        if (claims.length > 1)
             duplicates.set(id, claims.map((c) => c.r));
-            continue;
-        }
-        const real = claims.filter((c) => !isStub(c.file));
-        if (real.length > 1)
-            duplicates.set(id, real.map((c) => c.r));
-        if (real.length >= 1 && real.length < claims.length)
-            stubs.set(id, claims.filter((c) => !real.includes(c)).map((c) => c.r));
-        if (real.length === 0)
-            stubs.set(id, claims.slice(1).map((c) => c.r));
     }
-    return { duplicates, stubs };
+    return { duplicates };
 }
 export function fieldVerbTargets(d) {
     return Object.entries(acc().fieldsOf(d))

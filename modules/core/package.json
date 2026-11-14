@@ -1,7 +1,7 @@
 {
 	"name": "@dreamteamer/core",
-	"version": "0.11.0",
-	"description": "Every core noun from one install: users, companies, contacts, engagements, tasks, projects, meetings, files, assets, artifacts, sessions, metrics, workflows.",
+	"version": "0.12.0",
+	"description": "Every core noun from one install line: a module preset of seventeen small modules, installed and moved as one set by dt install and dt update.",
 	"license": "Apache-2.0",
 	"type": "module",
 	"repository": {
@@ -12,6 +12,7 @@
 	"keywords": [
 		"dreamteamer",
 		"dreamteamer-module",
+		"dreamteamer-preset",
 		"core",
 		"assets",
 		"users",
@@ -24,65 +25,41 @@
 		"recordings",
 		"meeting-docs",
 		"files",
-		"workflows"
+		"workflows",
+		"sessions",
+		"metrics",
+		"roles",
+		"responsibilities",
+		"artifacts"
 	],
-	"bin": {
-		"dt-workflows": "bin/workflows-install.mjs",
-		"dt-migrate-lanes-to-tags": "bin/tasks-migrate-lanes-to-tags.mjs",
-		"dt-sessions-migrate": "bin/sessions-migrate.mjs"
-	},
 	"files": [
 		"README.md",
 		"UPDATING.md",
-		"SETUP.md",
-		"compose.json",
-		"collections",
-		"skills",
-		"commands",
-		"command-bindings",
-		"ui-views",
-		"bin",
-		"src",
-		"lib",
-		"data"
+		"nav.yaml"
 	],
 	"dreamteamer": {
-		"extension": "./src/entry.js",
 		"title": "Core",
-		"description": "Every workspace's nouns, composed from the small official modules into one install: `users` with `teams`, `roles` and `responsibilities`; `companies`, `contacts`, `engagements`; `tasks`; `projects` with `decisions` and `risks`; `meetings` with recordings and docs; `files`; `assets` and `artifacts`; `sessions` and `metrics`; `workflows`. Install core OR the small modules, never both.",
-		"engine": ">=0.48.0",
-		"env": [
-			"LINKEDIN_USER_AGENT",
-			"TRANSCRIPTION_HOME",
-			"WORK_CALENDARS"
-		],
-		"vars": [
-			"FILES_FOLDER",
-			"INBOX_FOLDERS",
-			"SESSIONS_FOLDER"
-		],
-		"ignore": [
-			"data"
-		],
-		"peer_collections": [
-			"rnd/change-requests",
-			"rnd/products",
-			"rnd/user-journeys",
-			"rnd/user-stories"
-		],
-		"provides": [
-			"@dreamteamer/assets",
-			"@dreamteamer/companies",
-			"@dreamteamer/contacts",
-			"@dreamteamer/engagements",
-			"@dreamteamer/files",
-			"@dreamteamer/meeting-docs",
-			"@dreamteamer/meetings",
-			"@dreamteamer/projects",
-			"@dreamteamer/recordings",
-			"@dreamteamer/tasks",
-			"@dreamteamer/users",
-			"@dreamteamer/workflows"
-		]
+		"description": "Every workspace's nouns from one install line, as a module preset: `users` with `teams`, `roles` and `responsibilities`; `companies`, `contacts`, `engagements`; `tasks`; `projects` with `decisions` and `risks`; `meetings` with recordings and docs; `files`; `assets` and `artifacts`; `sessions` and `metrics`; `workflows` — seventeen small modules that `dt install` and `dt update` move together.",
+		"engine": ">=0.49.0",
+		"preset": {
+			"@dreamteamer/assets": "0.1.0",
+			"@dreamteamer/users": "0.3.0",
+			"@dreamteamer/companies": "0.1.3",
+			"@dreamteamer/contacts": "0.1.3",
+			"@dreamteamer/engagements": "0.1.3",
+			"@dreamteamer/tasks": "0.3.4",
+			"@dreamteamer/projects": "0.4.3",
+			"@dreamteamer/meetings": "0.3.1",
+			"@dreamteamer/recordings": "0.5.1",
+			"@dreamteamer/meeting-docs": "0.1.4",
+			"@dreamteamer/files": "0.3.1",
+			"@dreamteamer/workflows": "0.1.2",
+			"@dreamteamer/sessions": "0.1.0",
+			"@dreamteamer/metrics": "0.1.0",
+			"@dreamteamer/roles": "0.1.0",
+			"@dreamteamer/responsibilities": "0.1.0",
+			"@dreamteamer/artifacts": "0.1.0"
+		},
+		"nav": "nav.yaml"
 	}
 }

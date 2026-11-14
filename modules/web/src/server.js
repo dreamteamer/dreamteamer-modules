@@ -8,13 +8,17 @@ import path from 'node:path';
 import { createHandler } from '@dreamteamer/protocol/handler';
 import { engine } from '@dreamteamer/protocol/host/engine';
 import { envRoots } from '@dreamteamer/protocol/host/folder-images';
-import { changeScope, invalidateMessage } from '@dreamteamer/protocol/host/changes';
+import { changeScope, invalidateMessage, NAV_DOC_FILE } from '@dreamteamer/protocol/host/changes';
+import { hasNavSettings } from '@dreamteamer/protocol/host/nav';
+import { migrateNavSettings } from '@dreamteamer/protocol/nav-doc';
+import { workspaceNavSettings } from '@dreamteamer/protocol/nav-model';
 import { appCsp, baseHeaders, FILE_CSP } from './headers.js';
 import { readModuleGrantResult } from '@dreamteamer/protocol/module-grant';
 import { moduleFrameRoute, resolveGuest } from './module-frames.js';
 
 const SIGN_IN_TTL_MS = 10 * 60_000;
 const DEBOUNCE_MS = 150;
+export const NAV_MIGRATED_NOTICE = 'nav.yaml written from your nav settings — they are no longer read';
 const random = (n = 24) => crypto.randomBytes(n).toString('base64url');
 const same = (a, b) => typeof a === 'string' && typeof b === 'string' && a.length === b.length && crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp', '.ttf': 'font/ttf', '.woff': 'font/woff', '.woff2': 'font/woff2', '.ico': 'image/x-icon', '.pdf': 'application/pdf', '.txt': 'text/plain; charset=utf-8' };
@@ -38,6 +42,21 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 30, owner
 		throw new Error(`the app is missing: ${path.join(appDir, 'index.html')} — @dreamteamer/ui is installed without its build (see the README)`);
 	}
 	const handler = await createHandler({ root });
+	// cr-dt-008: the old nav settings are written into nav.yaml on the first GET /nav of this server's life, once; a
+	// failure is logged and the request still answers (the legacy tree, from the settings)
+	let navMigrationTried = false;
+	const migrateNavOnce = () => {
+		if (navMigrationTried) return false;
+		navMigrationTried = true;
+		try {
+			if (fs.existsSync(path.join(root, NAV_DOC_FILE))) return false;
+			const settings = workspaceNavSettings(root);
+			return hasNavSettings(settings) && migrateNavSettings(root, settings).written;
+		} catch (e) {
+			console.error(`dt web: your nav settings were not written into nav.yaml — ${String(e?.message ?? e).split('\n')[0]}`);
+			return false;
+		}
+	};
 	const token = random(32);
 	const filesKey = random(18);
 	const signIns = new Map(); // code → expiry
@@ -200,7 +219,9 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 30, owner
 			const log = console.log;
 			console.log = () => {};
 			try {
+				const migrated = req.method === 'GET' && url.pathname === '/api/nav' && migrateNavOnce();
 				const out = await handler.handle(req.method, req.url.slice(4), body);
+				if (migrated && out.status === 200 && Array.isArray(out.body) && out.body[0]?.kind === 'workspace') out.body[0] = { ...out.body[0], notice: NAV_MIGRATED_NOTICE };
 				return json(res, out.status, out.body ?? null);
 			} catch (e) {
 				return json(res, 500, { error: String(e?.message ?? e) });
@@ -229,6 +250,8 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 30, owner
 		try { watchers.push(fs.watch(dir, { recursive: true }, (_e, f) => f && changed(path.join(dir, String(f))))); } catch { /* unwatchable */ }
 	};
 	for (const d of ['data', 'state', '.dreamteamer']) watchDir(path.join(root, d));
+	// nav.yaml at the root, by name: a save renames a temp file over it, which only a watch on the folder sees
+	try { watchers.push(fs.watch(root, (_e, f) => f && String(f) === NAV_DOC_FILE && changed(path.join(root, NAV_DOC_FILE)))); } catch { /* unwatchable */ }
 	try { for (const l of fs.readdirSync(path.join(root, 'git_modules'))) watchDir(path.join(root, 'git_modules', l, 'data')); } catch { /* no layers */ }
 
 	// ---- lifetime ----------------------------------------------------------------------------
@@ -293,8 +316,12 @@ function send(res, status, text) {
 	res.end(text);
 }
 function json(res, status, body) {
+	// serialised before the head is written: a body that cannot be (a cycle) is a 500 that says so, never a dropped
+	// connection
+	let text;
+	try { text = JSON.stringify(body); } catch (e) { status = 500; text = JSON.stringify({ error: `the answer could not be sent as JSON: ${e?.message ?? e}` }); }
 	res.writeHead(status, { 'Content-Type': 'application/json' });
-	res.end(JSON.stringify(body));
+	res.end(text);
 }
 function page(res, status, html) {
 	res.writeHead(status, { 'Content-Type': 'text/html; charset=utf-8', 'Content-Security-Policy': "default-src 'none'" });

@@ -1,15 +1,85 @@
 # Updating @dreamteamer/core
 
 One section per release, newest first. Each says what you have to **do** in a workspace that
-installs this module; most of the time it is `dt compile`, then `dt check`.
+installs this module. From 0.12.0 core is a module preset, so an update is the engine's verb, which
+moves every installed member with it:
 
 ```bash
-npm install @dreamteamer/core@latest
-npx dreamteamer compile
+npx dreamteamer update @dreamteamer/core
 npx dreamteamer check
 ```
 
 ---
+
+## 0.12.0 — core is a module preset of seventeen small modules (CR-dt-008) — engine 0.49.0
+
+core ships no collections, skills, commands, scripts or extension any more: its manifest's
+`dreamteamer.preset` names seventeen small modules at exact versions — assets, users, companies,
+contacts, engagements, tasks, projects, meetings, recordings, meeting-docs, files, workflows, and five that
+were core's own until now: **sessions, metrics, roles, responsibilities and artifacts**. `dt update
+@dreamteamer/core` installs each member and pins it; ownership of every collection moves from `core` to
+the member that authors it, at the same storage path with the same ids, so **no record moves**. `manager`
+and `reports` on `users` now come from `@dreamteamer/users` itself (0.3.0).
+
+Do these, in this order, from the workspace root:
+
+```bash
+npx -p @dreamteamer/protocol@0.2 dt-nav migrate   # only when .vscode/settings.json sets dreamteamer.navGroups, navOrder or navHidden
+npx dreamteamer update --engine                   # dreamteamer 0.49.0 or later
+npx dreamteamer update @dreamteamer/core          # the preset: installs the seventeen members
+npx dreamteamer update @dreamteamer/rnd           # when you have rnd: 0.11.0 stands alone of core
+npx dreamteamer check
+```
+
+The first step saves the nav you have today into `nav.yaml` before the update changes which module owns
+each collection; `dt update @dreamteamer/core` refuses while those settings are set and `nav.yaml` is
+absent, naming that command. Without nav settings the nav redraws from core's fragment (folders Work,
+People, CRM, Meetings, Library, Activity); with a `nav.yaml` nothing you placed moves.
+
+**The `Stop` hook.** A hook that runs core's copy of the session reader now names the sessions package:
+
+```json
+"command": "node node_modules/@dreamteamer/sessions/bin/session-save.mjs --write --hook --quiet"
+```
+
+**The scripts** moved with their modules: `dt-sessions-migrate` is `@dreamteamer/sessions`'s,
+`dt-migrate-lanes-to-tags` is `@dreamteamer/tasks`'s, `dt-workflows` is `@dreamteamer/workflows`'s. Core
+0.12 ships no `bin/` folder, so every path under `node_modules/@dreamteamer/core/bin/` stops resolving —
+most file names change too:
+
+| core 0.11 (`node_modules/@dreamteamer/core/bin/…`) | from 0.12.0 |
+|---|---|
+| `projects-check-records.mjs` | `node_modules/@dreamteamer/projects/bin/check-records.mjs` |
+| `users-check-records.mjs` | `node_modules/@dreamteamer/users/bin/check-records.mjs` |
+| `meetings-migrate-attendees.mjs` | `node_modules/@dreamteamer/meetings/bin/migrate-attendees.mjs` |
+| `recordings-transcribe.mjs` | `node_modules/@dreamteamer/recordings/bin/transcribe.mjs` |
+| `tasks-migrate-lanes-to-tags.mjs` | `node_modules/@dreamteamer/tasks/bin/migrate-lanes-to-tags.mjs` |
+| `workflows-install.mjs` | `node_modules/@dreamteamer/workflows/bin/install.mjs` |
+| `session-save.mjs` | `node_modules/@dreamteamer/sessions/bin/session-save.mjs` |
+| `sessions-migrate.mjs` | `node_modules/@dreamteamer/sessions/bin/sessions-migrate.mjs` |
+
+The two that bite are the record checks a workspace's `npm run check` chains after `dreamteamer check`
+(core's README gave that line): left alone, `npm run check` dies with `MODULE_NOT_FOUND` after `dt check`
+itself passed. In `package.json`, replace
+
+```json
+"check": "dreamteamer check && node node_modules/@dreamteamer/core/bin/projects-check-records.mjs && node node_modules/@dreamteamer/core/bin/users-check-records.mjs"
+```
+
+with
+
+```json
+"check": "dreamteamer check && node node_modules/@dreamteamer/projects/bin/check-records.mjs && node node_modules/@dreamteamer/users/bin/check-records.mjs"
+```
+
+keeping anything your line chains after them.
+
+**Env keys and variables** are declared by the member that reads them, no longer by core — nothing to
+change in `.env`: `LINKEDIN_USER_AGENT` (contacts), `WORK_CALENDARS` (meetings), `TRANSCRIPTION_HOME`,
+`FILES_FOLDER` and `INBOX_FOLDERS` (recordings), `FILES_FOLDER` (files), `SESSIONS_FOLDER` (sessions).
+
+`npm install @dreamteamer/core` on its own installs a package with no collections: a preset is expanded
+by `dt install` and `dt update`, never by npm.
 
 ## 0.11.0 — on engine 0.48.0: the engine writes `.env` (CR-dt-007)
 
@@ -118,8 +188,9 @@ is now an overlay carrying only `teams.projects`. The manifest's description rea
 `teams`, `roles` and `responsibilities`, and `projects` with `decisions` and `risks`; a harness file
 your compile writes from it (the orientation block in `CLAUDE.md`, `AGENTS.md`) changes by that line.
 
-**An overlay of yours.** If your own module overlays `teams` with `extends: "@dreamteamer/core/teams"`,
-it keeps working — core still owns teams.
+**An overlay of yours.** An overlay of `teams` is a descriptor with `name: teams` and `overlay: true`
+(compile refuses an `extends:` key); it adds to whichever installed module owns `teams` — core, then;
+`@dreamteamer/users` from core 0.12.0.
 
 ## 0.6.0 — the transcriber keeps everything in one folder, `$TRANSCRIPTION_HOME` (recordings 0.3.0) — breaking
 

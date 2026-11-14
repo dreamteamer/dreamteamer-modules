@@ -41,11 +41,13 @@ export const pkgOf = (m) => JSON.parse(fs.readFileSync(path.join(MODULES, m, 'pa
  *  (`@dreamteamer/assets`) for `dependencies` and `extends`, so that is how a manifest spells one. */
 export const folderOf = (dep) => dep.replace(/^@dreamteamer\//, '');
 
-/** A module plus everything it transitively declares as a hard dependency, as folder names. */
+/** A module plus everything it transitively declares as a hard dependency, as folder names. A module
+ *  preset (`dreamteamer.preset`, engine 0.49) brings its members, and theirs, the way `dt install` does. */
 export function closure(m, acc = new Set()) {
 	if (acc.has(m)) return acc;
 	acc.add(m);
-	for (const d of pkgOf(m).dreamteamer.dependencies ?? []) closure(folderOf(d), acc);
+	const dt = pkgOf(m).dreamteamer;
+	for (const d of [...(dt.dependencies ?? []), ...Object.keys(dt.preset ?? {})]) closure(folderOf(d), acc);
 	return acc;
 }
 

@@ -150,7 +150,6 @@ fields:
 display:
   nav:
     icon: pulse
-    order: 80
   list:
     columns:
       - name

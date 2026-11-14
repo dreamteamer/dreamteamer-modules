@@ -14,7 +14,7 @@ const KINDS = ['collections', 'mixins', 'skills', 'commands', 'command-bindings'
 const SEMVER = /^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/;
 
 test('the repo carries every module it is meant to', () => {
-	assert.deepEqual(moduleIds(), ['assets', 'code', 'companies', 'contacts', 'core', 'docker-workspaces', 'engagements', 'files', 'git-identities', 'google-workspace', 'http', 'knowledge', 'meeting-docs', 'meetings', 'notebooklm', 'perspective', 'projects', 'proofs', 'protocol', 'recordings', 'rnd', 'routines', 'search', 'tasks', 'ui', 'users', 'web', 'wikis', 'workflows', 'worktrees']);
+	assert.deepEqual(moduleIds(), ['artifacts', 'assets', 'code', 'companies', 'contacts', 'core', 'docker-workspaces', 'engagements', 'files', 'git-identities', 'google-workspace', 'http', 'knowledge', 'meeting-docs', 'meetings', 'metrics', 'notebooklm', 'perspective', 'projects', 'proofs', 'protocol', 'recordings', 'responsibilities', 'rnd', 'roles', 'routines', 'search', 'sessions', 'tasks', 'ui', 'users', 'web', 'wikis', 'workflows', 'worktrees']);
 });
 
 for (const m of moduleIds()) {
@@ -67,6 +67,12 @@ import { closure } from './helpers/workspace.mjs';
 for (const m of moduleIds()) {
 	test(`${m}: the README's install line names exactly the module and its dependency closure`, () => {
 		const readme = fs.readFileSync(path.join(MODULES, m, 'README.md'), 'utf8');
+		// a module preset is expanded by the engine, never by npm: its one line is `dt install <the preset>`
+		if (pkgOf(m).dreamteamer?.preset) {
+			assert.ok(readme.split('\n').includes(`dt install @dreamteamer/${m}`), `no \`dt install @dreamteamer/${m}\` line`);
+			assert.ok(!readme.split('\n').some((l) => l.startsWith('npm install ')), 'an `npm install` line installs a preset with no members');
+			return;
+		}
 		const line = readme.split('\n').find((l) => l.startsWith('npm install '));
 		assert.ok(line, 'no `npm install` line');
 		const named = line.replace('npm install ', '').trim().split(/\s+/).filter((w) => !w.startsWith('-')).sort();

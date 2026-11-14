@@ -6,6 +6,12 @@ One section per release, newest first. Each says what a caller of `dt serve` has
 npm install --save-dev @dreamteamer/http@latest
 ```
 
+## 0.2.1
+
+`@dreamteamer/protocol` ^0.2.0: `dt serve` answers `PUT /nav` and `PATCH /nav`, which write the workspace's
+`nav.yaml`, and `GET /nav` draws that file (see the protocol's `PROTOCOL.md`, "The nav document"). Rows no longer
+carry `$stubs`. Nothing to do.
+
 ## 0.2.0
 
 `dt serve` now answers through the shared handler in `@dreamteamer/protocol` — the routes and shapes the

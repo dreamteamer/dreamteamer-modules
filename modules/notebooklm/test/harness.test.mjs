@@ -147,7 +147,8 @@ describe('it is the user\'s file, with a managed block inside', () => {
 		assert.notEqual(verb.code, 0);
 		// engine 0.33: a verb an extension answers, typed without its package, prints the install line
 		assert.match(verb.stderr, /`dt notebooklm` comes from an extension this workspace does not have/, 'the verb without its module names the package that answers it');
-		assert.match(verb.stderr, /npm i @dreamteamer\/notebooklm\n/);
+		// the install line the engine prints: `npm i …` before 0.49, `dt install …` from it
+		assert.match(verb.stderr, /(?:npm i|dt install) @dreamteamer\/notebooklm\n/);
 	});
 
 	test('removing the module whose block was the whole file deletes the file it created', () => {

@@ -1,6 +1,6 @@
 {
 	"name": "@dreamteamer/engagements",
-	"version": "0.1.2",
+	"version": "0.1.3",
 	"description": "Working relationships for a dreamteamer workspace \u2014 one record per company you sell to or work for, from lead to client to closed.",
 	"license": "Apache-2.0",
 	"repository": {

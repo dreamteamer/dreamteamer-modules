@@ -12,4 +12,6 @@ export declare function route(
 	body: unknown,
 	opts: { root: string; settings: () => object; host: (method: string, path: string, body?: unknown) => Promise<{ status: number; body: unknown }> },
 ): Promise<{ status: number; body: unknown }>;
+/** The 409 PATCH and PUT /nav answer while nav.yaml is absent and an old nav setting is still set. */
+export declare const NAV_UNMIGRATED: string;
 export declare function unreadableDryRun(method: string, path: string): string | null;

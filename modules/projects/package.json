@@ -1,6 +1,6 @@
 {
 	"name": "@dreamteamer/projects",
-	"version": "0.4.2",
+	"version": "0.4.3",
 	"description": "The plan and everyone in it: projects, decisions, deliverables and risks, staffed with the teams users ships.",
 	"license": "Apache-2.0",
 	"type": "module",

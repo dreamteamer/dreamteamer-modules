@@ -58,8 +58,6 @@ fields:
 display:
   nav:
     icon: references
-    order: 42
-    section: knowledge
   list:
     columns:
       - name
