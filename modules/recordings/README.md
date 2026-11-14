@@ -45,11 +45,12 @@ npx dreamteamer setup recordings --verify --allow machine    # one CPU transcrip
 npx dreamteamer status                                       # the unit's line: configured, blocked or ready
 ```
 
-The first command writes `FILES_FOLDER`, `INBOX_FOLDERS` and `TRANSCRIPTION_HOME` into `.env`,
-provisions the Python environment and downloads the models; each download or machine change waits for
-its own `--allow`. [SETUP.md](SETUP.md) lists the inputs, the checks and what each status means, and
-the `ingesting-recordings` and `transcribing-recordings` skills carry the procedures behind the three
-commands above.
+`ffmpeg` and `uv` have to be on PATH first; the unit reads `blocked` until they are. The first command
+writes `FILES_FOLDER` and `TRANSCRIPTION_HOME` into `.env` (and `INBOX_FOLDERS`, given
+`--input inbox_folders=…`), provisions the Python environment and downloads the models; each download
+or machine change waits for its own `--allow`. [SETUP.md](SETUP.md) lists the inputs, the checks and
+what each status means, and the `ingesting-recordings` and `transcribing-recordings` skills carry the
+procedures behind the three slash commands of the flow.
 
 ## 0.5.0 — on engine 0.48.0: the engine writes `.env` (CR-dt-007)
 
