@@ -12,13 +12,13 @@ Git identity planning and inspection; it does not switch assistant accounts or h
    Identify the private repository destination and shared repositories without reading credentials.
 2. Read the package README. Build the private configuration outside tracked files using the owner's
    paths, identity values and SSH aliases. Never use another person's configuration or keys.
-3. Run `dt-git-identities plan <private-config.json>`. This prints a proposal only. Review existing
+3. Run `npx dt-git-identities plan <private-config.json>`. This prints a proposal only. Review existing
    Git/SSH configuration before proposing edits; obtain approval for the concrete machine changes.
    Preserve existing entries and backups. Do not create keys, change permissions or add provider
    credentials just because a plan exists.
 4. Clone using the explicit SSH alias into the intended identity folder, only when authorized.
    Folder matching does not authenticate the initial clone. Do not add global URL rewriting by default.
-5. Run `dt-git-identities doctor <private-config.json> <repository>` for each actual working tree.
+5. Run `npx dt-git-identities doctor <private-config.json> <repository>` for each actual working tree.
    A green local check proves neither remote authorization nor account ownership. Inspect effective
    Git values privately if it fails. A linked worktree may resolve includes against the primary Git dir.
 6. If authorized, verify SSH authentication and the provider's account greeting. Do not suppress
