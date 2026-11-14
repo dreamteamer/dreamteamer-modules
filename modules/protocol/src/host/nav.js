@@ -467,15 +467,18 @@ export function buildTree({ descriptors, doc, namespaces = [], titleOf = (d) => 
     const collectionName = (e) => (typeof e === "string" ? e : e && typeof e === "object" && typeof e.collection === "string" ? e.collection : undefined);
     const isFolder = (e) => e && typeof e === "object" && typeof e.folder === "string";
     const isNamespace = (e) => e && typeof e === "object" && typeof e.namespace === "string";
-    // the first occurrence of every name in document order: the one entry that draws it (rule 5)
+    // the first occurrence of every name in document order: the one entry that draws it (rule 5). Held by POSITION
+    // (the items array and the index in it), never by the entry: two plain-string entries `tasks` are equal, so an
+    // identity test would let both draw
     const first = new Map();
     const placed = new Set(hidden);
+    const isFirst = (id, items, i) => { const f = first.get(id); return f !== undefined && f.items === items && f.i === i; };
     const scan = (items) => {
-        for (const e of Array.isArray(items) ? items : []) {
+        for (const [i, e] of (Array.isArray(items) ? items : []).entries()) {
             const c = collectionName(e);
             const id = c !== undefined ? `c:${c}` : isNamespace(e) ? `n:${e.namespace}` : undefined;
             if (id && !first.has(id))
-                first.set(id, e);
+                first.set(id, { items, i });
             if (c !== undefined)
                 placed.add(c);
             if (isNamespace(e))
@@ -527,10 +530,10 @@ export function buildTree({ descriptors, doc, namespaces = [], titleOf = (d) => 
     };
     function drawItems(items, path) {
         const out = [];
-        for (const e of Array.isArray(items) ? items : []) {
+        for (const [i, e] of (Array.isArray(items) ? items : []).entries()) {
             const c = collectionName(e);
             if (c !== undefined) {
-                if (first.get(`c:${c}`) !== e || hidden.has(c) || !byName.has(c))
+                if (!isFirst(`c:${c}`, items, i) || hidden.has(c) || !byName.has(c))
                     continue;
                 out.push(collectionNode(byName.get(c), typeof e === "object" ? e.icon : undefined));
             }
@@ -541,7 +544,7 @@ export function buildTree({ descriptors, doc, namespaces = [], titleOf = (d) => 
                 out.push({ kind: "folder", key: uniqueKey(navPathKey("f", p)), label: e.folder, icon: icon(e.icon ?? PLAIN_FOLDER_ICON), target: { folder: p }, children: drawItems(e.items, p) });
             }
             else if (isNamespace(e)) {
-                if (first.get(`n:${e.namespace}`) !== e || e.hidden === true || hidden.has(e.namespace))
+                if (!isFirst(`n:${e.namespace}`, items, i) || e.hidden === true || hidden.has(e.namespace))
                     continue;
                 out.push(namespaceNode(e.namespace, path, e));
             }
@@ -549,6 +552,24 @@ export function buildTree({ descriptors, doc, namespaces = [], titleOf = (d) => 
         return out;
     }
     return [...drawItems(tree, []), ...tailsOf("", [])];
+}
+/**
+ * A record layer's tree when its clone holds nav.yaml (design §3 rule 9): buildTree's rules over the rows the layer
+ * holds and nothing else. A name the layer does not hold is skipped, a declared namespace it holds no row of draws no
+ * folder, and every collection node carries its layer `row` ({ collection, title, icon, count, route }). Keys and
+ * targets are buildTree's; the host prefixes the keys with the layer. A layer with no nav.yaml draws `layerEntries`.
+ * @param {{ rows: Array<{ collection: string }>, descriptors: Array<{ name: string }>, doc: object | null, namespaces?: string[], titleOf?: (d) => string, namespaceTitle?: (ns: string, parentNs: string) => string, icon?: (name?: string) => string }} o
+ */
+export function layerTree({ rows, descriptors, doc, namespaces = [], titleOf, namespaceTitle, icon }) {
+    const rowOf = new Map(rows.map((r) => [r.collection, r]));
+    const held = descriptors.filter((d) => rowOf.has(d.name));
+    return buildTree({
+        descriptors: held, doc, titleOf, namespaceTitle, icon,
+        namespaces: namespaces.filter((ns) => held.some((d) => d.name.startsWith(`${ns}/`))),
+        // a layer's rows are the records it holds, already chosen; nothing it holds is folded out
+        internal: () => false,
+        nodeOf: (d) => ({ row: rowOf.get(d.name) }),
+    });
 }
 /** `dreamteamer.navGroups` as a Map — module ids per group label; anything else is empty. */
 export function navGroupsOf(raw) {

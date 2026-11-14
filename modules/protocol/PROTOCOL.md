@@ -123,7 +123,10 @@ place — rows by title, then namespaces — and the layers folder last. With no
 settings `dreamteamer.navGroups`, `dreamteamer.navOrder`, `dreamteamer.navHidden`, the tree is flat; with no
 `nav.yaml` and one of them set, it is the tree those settings drew, until they are migrated. A `nav.yaml` that
 cannot be read draws the flat tree and puts the reason on the workspace node's `notice` — never a 500.
-`dreamteamer.layersFolder` still names the layers folder. A list is narrowed to some sources by an ordinary filter
+`dreamteamer.layersFolder` still names the layers folder. A record layer draws the same way from its own clone:
+by the `nav.yaml` in `git_modules/<key>`, over the rows it holds (its folders and namespaces as `layer-group`
+nodes, keyed `l/<key>/<the key it would have in that workspace>`), else as its own old settings drew it; an
+unreadable one draws the layer flat with the reason on the `layer` node's `notice`. A list is narrowed to some sources by an ordinary filter
 chip (`$source`), never by a host-wide scope.
 
 ### PUT /nav

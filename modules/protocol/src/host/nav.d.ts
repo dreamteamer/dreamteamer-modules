@@ -148,6 +148,17 @@ export declare function buildTree(o: {
     icon?: (name?: string) => string | undefined;
     internal?: (d: any) => boolean;
 }): Array<NavNode & { target?: NavTarget }>;
+/** A record layer's tree when its clone holds nav.yaml (design §3 rule 9): buildTree over the rows the layer holds;
+ *  a declared namespace it holds no row of draws no folder; every collection node carries its `row`. */
+export declare function layerTree(o: {
+    rows: LayerRow[];
+    descriptors: ReadonlyArray<{ name: string; title?: string; internal?: boolean; display?: any }>;
+    doc: NavDoc | null | undefined;
+    namespaces?: string[];
+    titleOf?: (d: any) => string;
+    namespaceTitle?: (ns: string, parentNs: string) => string;
+    icon?: (name?: string) => string | undefined;
+}): Array<NavNode & { target?: NavTarget; row?: LayerRow }>;
 export declare function navGroupsOf(raw: unknown): Map<string, string[]>;
 export declare const navOrderOf: (raw: unknown) => string[];
 /** Whether any of navGroups · navOrder · navHidden holds something (an empty array or object is unset). */

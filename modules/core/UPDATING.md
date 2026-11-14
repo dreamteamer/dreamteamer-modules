@@ -43,9 +43,36 @@ People, CRM, Meetings, Library, Activity); with a `nav.yaml` nothing you placed 
 ```
 
 **The scripts** moved with their modules: `dt-sessions-migrate` is `@dreamteamer/sessions`'s,
-`dt-migrate-lanes-to-tags` is `@dreamteamer/tasks`'s, `dt-workflows` is `@dreamteamer/workflows`'s; a
-path under `node_modules/@dreamteamer/core/bin/` reads `node_modules/@dreamteamer/<member>/bin/` with the
-member's own file name.
+`dt-migrate-lanes-to-tags` is `@dreamteamer/tasks`'s, `dt-workflows` is `@dreamteamer/workflows`'s. Core
+0.12 ships no `bin/` folder, so every path under `node_modules/@dreamteamer/core/bin/` stops resolving —
+most file names change too:
+
+| core 0.11 (`node_modules/@dreamteamer/core/bin/…`) | from 0.12.0 |
+|---|---|
+| `projects-check-records.mjs` | `node_modules/@dreamteamer/projects/bin/check-records.mjs` |
+| `users-check-records.mjs` | `node_modules/@dreamteamer/users/bin/check-records.mjs` |
+| `meetings-migrate-attendees.mjs` | `node_modules/@dreamteamer/meetings/bin/migrate-attendees.mjs` |
+| `recordings-transcribe.mjs` | `node_modules/@dreamteamer/recordings/bin/transcribe.mjs` |
+| `tasks-migrate-lanes-to-tags.mjs` | `node_modules/@dreamteamer/tasks/bin/migrate-lanes-to-tags.mjs` |
+| `workflows-install.mjs` | `node_modules/@dreamteamer/workflows/bin/install.mjs` |
+| `session-save.mjs` | `node_modules/@dreamteamer/sessions/bin/session-save.mjs` |
+| `sessions-migrate.mjs` | `node_modules/@dreamteamer/sessions/bin/sessions-migrate.mjs` |
+
+The two that bite are the record checks a workspace's `npm run check` chains after `dreamteamer check`
+(core's README gave that line): left alone, `npm run check` dies with `MODULE_NOT_FOUND` after `dt check`
+itself passed. In `package.json`, replace
+
+```json
+"check": "dreamteamer check && node node_modules/@dreamteamer/core/bin/projects-check-records.mjs && node node_modules/@dreamteamer/core/bin/users-check-records.mjs"
+```
+
+with
+
+```json
+"check": "dreamteamer check && node node_modules/@dreamteamer/projects/bin/check-records.mjs && node node_modules/@dreamteamer/users/bin/check-records.mjs"
+```
+
+keeping anything your line chains after them.
 
 **Env keys and variables** are declared by the member that reads them, no longer by core — nothing to
 change in `.env`: `LINKEDIN_USER_AGENT` (contacts), `WORK_CALENDARS` (meetings), `TRANSCRIPTION_HOME`,

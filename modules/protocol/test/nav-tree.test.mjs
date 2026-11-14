@@ -89,11 +89,32 @@ describe('the drawing rules at their edges', () => {
 		const nodes = draw({ tree: [{ folder: 'Empty', items: [] }], hidden: [] });
 		assert.deepEqual([nodes[0].key, nodes[0].children], ['f/Empty', []]);
 	});
+	// rows counted by the collection they draw (`target.name`), never by key: a second drawing of one name would be
+	// keyed `c/<name>~2` and slip past a count by key
+	const rowsOf = (nodes, name) => every(nodes).filter((n) => n.kind === 'collection' && n.target?.name === name);
 	test('a name listed twice draws at its first occurrence; a name that resolves to nothing is skipped', () => {
 		const nodes = draw({ tree: [{ folder: 'A', items: ['tasks', 'invoices'] }, 'tasks', 'invoices'], hidden: [] });
 		assert.deepEqual(keys(nodes[0].children), ['c/tasks']);
-		assert.equal(every(nodes).filter((n) => n.key === 'c/tasks').length, 1);
+		assert.equal(rowsOf(nodes, 'tasks').length, 1);
 		assert.equal(find(nodes, 'c/invoices'), undefined);
+	});
+	test('a name listed twice in either form draws once, at its first place, whichever form comes first', () => {
+		const docs = [
+			{ tree: ['tasks', { folder: 'F', items: ['tasks'] }], at: [] },
+			{ tree: [{ folder: 'F', items: ['tasks'] }, 'tasks'], at: ['f/F'] },
+			{ tree: ['tasks', { folder: 'F', items: [{ collection: 'tasks' }] }], at: [] },
+			{ tree: [{ collection: 'tasks' }, { folder: 'F', items: ['tasks'] }], at: [] },
+			{ tree: [{ namespace: 'rnd', items: ['rnd/issues', { folder: 'P', items: ['rnd/issues'] }] }, 'rnd/issues'], at: ['n/ns%3Arnd'] },
+		];
+		for (const { tree, at } of docs) {
+			const nodes = draw({ tree, hidden: [] });
+			const name = JSON.stringify(tree).includes('rnd/issues') ? 'rnd/issues' : 'tasks';
+			const rows = rowsOf(nodes, name);
+			assert.equal(rows.length, 1, `${JSON.stringify(tree)} draws ${name} ${rows.length} times`);
+			const parent = at.length ? find(nodes, at[0]).children : nodes;
+			assert.ok(parent.includes(rows[0]), `${JSON.stringify(tree)}: ${name} draws at its first place`);
+			assert.equal(rows[0].key, `c/${name}`);
+		}
 	});
 	test('a namespaced row placed outside its namespace, a plain row placed inside it', () => {
 		const nodes = draw({ tree: ['rnd/issues', { namespace: 'rnd', items: ['tasks'] }], hidden: [] });
