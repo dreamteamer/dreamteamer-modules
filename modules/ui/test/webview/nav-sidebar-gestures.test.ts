@@ -13,7 +13,7 @@ import assert from 'node:assert/strict';
 import test, { afterEach, beforeEach } from 'node:test';
 import { createMemoryHistory, createRouter } from 'vue-router';
 import { HostError, onHostRequest, requests, resetHost } from './host-stub';
-import { all, flush, hasClass, render, text, unmountAll, type TestNode } from './render';
+import { all, flush, focused, hasClass, render, text, unmountAll, type TestNode } from './render';
 import NavSidebar from '../../src/components/NavSidebar.vue';
 
 const col = (name: string, label: string) => ({ kind: 'collection', key: `c/${name}`, label, target: { name }, route: `/content/${encodeURIComponent(name)}` });
@@ -388,7 +388,7 @@ test('no root row: the workspace is the toolbar name, its children are the top l
 	assert.equal(all(root, (n) => n.tag === 'li' && n.props['data-key'] === 'workspace').length, 0, 'the workspace is drawn as a row');
 	const name = all(root, (n) => hasClass(n, 'dt-nav-toolbar__label'))[0];
 	assert.equal(text(name), 'northwind-hq');
-	assert.equal(name.props['title'], 'northwind-hq', 'the whole name is the tooltip');
+	assert.equal(name.props['title'], 'northwind-hq — Workspace settings', 'the whole name is the tooltip, and what a click does');
 	assert.equal(all(root, (n) => n.tag === 'li' && text(n).includes('northwind-hq')).length, 0, 'the name is drawn twice');
 	for (const key of ['c/tasks', 'c/contacts', 'c/companies', 'n/ns%3Arnd', 'layers/Layers']) {
 		assert.deepEqual(rowOf(root, key).props['style'], { paddingLeft: '8px' }, `${key} is not at depth 0`);
@@ -406,10 +406,12 @@ test('the empty area under the last row is the bottom of the top level: its line
 	(rowOf(root, 'c/rnd/issues').props['onDragstart'] as (e: unknown) => void)(ev());
 	(tail().props['onDragover'] as (e: unknown) => void)(ev());
 	await flush();
-	assert.ok(hasClass(tail(), 'dt-nav-drop-tail'), 'no drop line under the last row');
+	// position bottom lands after the last ARRANGED row (R&D), so the line is above the Layers folder drawn below it
+	assert.match(String(rowOf(root, 'layers/Layers').props['class']), /dt-nav-drop-before/, 'the line is not above Layers');
+	assert.ok(!hasClass(tail(), 'dt-nav-drop-tail'), 'the line is drawn under Layers, where the drop does not land');
 	(tail().props['onDrop'] as (e: unknown) => void)(ev());
 	await flush();
-	assert.ok(!hasClass(tail(), 'dt-nav-drop-tail'), 'the line outlived the drop');
+	assert.doesNotMatch(String(rowOf(root, 'layers/Layers').props['class']), /dt-nav-drop/, 'the line outlived the drop');
 	// the last arranged top-level row is already at the bottom: nothing to send
 	store.clear();
 	(rowOf(root, 'n/ns%3Arnd').props['onDragstart'] as (e: unknown) => void)(ev());
@@ -470,4 +472,64 @@ test('arrangeBlocked disables the toggle with its reason, and locks a nav that w
 	reason.value = null;
 	await flush();
 	assert.equal(lockOf(root).props['disabled'], undefined);
+});
+
+// ---- the review of 838fe13 ------------------------------------------------------------------------------------------
+
+test('the toolbar name opens the workspace settings — the root row\'s click, kept', async () => {
+	const r = router();
+	const root = await render(NavSidebar, {}, [r]);
+	const name = all(root, (n) => hasClass(n, 'dt-nav-toolbar__settings'))[0];
+	assert.equal(name?.tag, 'button', 'the name is not a button');
+	(name.props['onClick'] as (e?: unknown) => void)({ stopPropagation() {} });
+	await flush();
+	assert.equal(r.currentRoute.value.fullPath, '/settings/schema/activity');
+});
+
+test('New folder and Show hidden… focus their text field on open, and Escape closes the menu', async () => {
+	const root = await unlocked();
+	for (const id of ['new-folder', 'show-hidden']) {
+		focused.length = 0;
+		await clickTool(root, id);
+		const input = all(root, (n) => n.tag === 'input' && n.props['class'] === 'dt-nav-menu-input')[0];
+		assert.ok(input, `${id} opened no text field`);
+		assert.ok(focused.includes(input), `${id}: the text field is not focused`);
+		// the field has two keydown listeners (Enter submits, Escape closes): a real key event reaches both
+		for (const on of ([] as unknown[]).concat(input.props['onKeydown'])) (on as (e: unknown) => void)({ key: 'Escape', stopPropagation() {}, preventDefault() {} });
+		await flush();
+		assert.equal(all(root, (n) => n.props['class'] === 'dt-nav-menu').length, 0, `${id}: Escape left the menu open`);
+	}
+	// an entry with an ask chosen from a row menu focuses its field too
+	focused.length = 0;
+	await menu(root, 'n/ns%3Arnd');
+	await pick(root, 'new-folder');
+	const input = all(root, (n) => n.tag === 'input' && n.props['class'] === 'dt-nav-menu-input')[0];
+	assert.ok(focused.includes(input), 'a row menu ask is not focused');
+	assert.deepEqual(patches(), []);
+});
+
+test('the toolbar sits outside the rows, and the rows container is the scroller: 32 px, the name gives way, the buttons wrap', async () => {
+	const root = await render(NavSidebar, {}, [router()]);
+	const nav = all(root, (n) => n.tag === 'nav')[0];
+	const kids = nav.children.filter((c): c is TestNode => typeof c !== 'string');
+	const toolbar = kids.find((c) => hasClass(c, 'dt-nav-toolbar'));
+	const rows = kids.find((c) => hasClass(c, 'dt-nav-rows'));
+	assert.ok(toolbar && rows, 'the toolbar and the rows are not both children of the nav');
+	assert.ok(kids.indexOf(toolbar) < kids.indexOf(rows), 'the toolbar is not above the rows');
+	assert.equal(all(rows, (n) => hasClass(n, 'dt-nav-toolbar')).length, 0, 'the toolbar scrolls with the rows');
+	assert.equal(all(rows, (n) => n.tag === 'ul' && n.props['role'] === 'tree').length, 1, 'the tree is not inside the rows container');
+	assert.equal(typeof rows.props['onScroll'], 'function', 'the rows container does not report its scroll (the toolbar shadow)');
+	const src = (await import('node:fs')).readFileSync(new URL('../../src/components/NavSidebar.vue', import.meta.url).pathname.replace('/.test-build/webview', ''), 'utf8');
+	const rule = (sel: string) => { const m = new RegExp(`(?:^|\\n)${sel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} \\{([^}]*)\\}`).exec(src); assert.ok(m, `no rule ${sel}`); return m[1]; };
+	assert.match(rule('.dt-nav'), /display: flex; flex-direction: column;/);
+	assert.match(rule('.dt-nav'), /overflow: hidden;/, 'the nav itself scrolls');
+	assert.match(rule('.dt-nav-rows'), /overflow-y: auto;/, 'the rows do not scroll');
+	assert.match(rule('.dt-nav-rows'), /min-height: 0;/);
+	assert.match(rule('.dt-nav-toolbar'), /flex: none;/, 'the toolbar shrinks');
+	assert.match(rule('.dt-nav-toolbar'), /min-height: 32px;/, 'the toolbar is not the page header\'s 32 px');
+	assert.match(rule('.dt-nav-toolbar--scrolled'), /box-shadow/);
+	assert.match(rule('.dt-nav-toolbar__name'), /flex: 1 1 0; min-width: 0;/, 'the name does not give way first');
+	assert.match(rule('.dt-nav-toolbar__buttons'), /flex: 0 1 auto; min-width: 0; display: flex; flex-wrap: wrap;/, 'the buttons do not wrap');
+	const header = (await import('node:fs')).readFileSync(new URL('../../src/components/PageHeader.vue', import.meta.url).pathname.replace('/.test-build/webview', ''), 'utf8');
+	assert.match(header, /\.dt-page-nav \{[^}]*height: 32px;/, 'the page header\'s first row is no longer 32 px — the toolbar no longer matches it');
 });

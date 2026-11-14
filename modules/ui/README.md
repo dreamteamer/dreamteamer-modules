@@ -37,10 +37,13 @@ The host answers `dt:mounted` with a `dt:navigate` window message naming the rou
 `dt:invalidate` when records change. A request that fails rejects with a `HostError` carrying the status.
 
 In a host with no native tree (`window.__DT_HOST__.nav === 'app'`, as under `dt web`) the app draws the nav
-itself from `GET /nav`, and the nav is arranged by hand: drag a row onto another (onto the middle of a folder to
-put it inside), or right-click a row for New folder, Rename, Dissolve, Move up / down / to top / to bottom, Set icon
-and Hide — and the workspace row for Show hidden. Each gesture is one `PATCH /nav` that writes the workspace's
-`nav.yaml`; a refusal shows the host's sentence above the tree. Layers keep their own nav: nothing drops onto them.
+itself from `GET /nav`, under a toolbar holding the workspace's name (a click opens the workspace settings). The nav
+is arranged by hand, behind the toolbar's arrange lock: it starts locked on every load, and locked the nav only
+navigates. Unlocked, drag a row onto another (onto the middle of a folder to put it inside, onto the empty area under
+the rows for the bottom), right-click a row for New folder, Rename, Dissolve, Move up / down / to top / to bottom,
+Set icon and Hide, and use the toolbar's New folder and Show hidden… buttons. Each gesture is one `PATCH /nav` that
+writes the workspace's `nav.yaml`; a refusal shows the host's sentence above the rows. Layers keep their own nav:
+nothing drops onto them.
 
 Over the HTTP transport (`dt web`) the page reads its boot values from `GET /host` before it mounts: the level, the
 workspace, the files and frames bases, the file-codec bases, the declared var roots and the module grants. The files

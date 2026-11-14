@@ -6,7 +6,7 @@
  * A toolbar button that IS one entry (the nav toolbar's New folder, Show hidden…) opens the menu at that entry's ask
  * (`start`), with no list to choose from first.
  */
-import { ref } from 'vue';
+import { nextTick, onMounted, ref, shallowRef, watch } from 'vue';
 import IconPicker from './IconPicker.vue';
 
 export interface NavMenuItem {
@@ -28,6 +28,11 @@ const emit = defineEmits<{ pick: [{ id: string; value?: string | null }]; close:
 const first = props.start ? props.items.find((i) => i.id === props.start && i.ask && !i.disabled) ?? null : null;
 const asking = ref<NavMenuItem | null>(first);
 const text = ref(first?.value ?? '');
+/** The text field of an ask: focused the moment the ask opens (straight from a toolbar button, or from an entry). */
+const field = shallowRef<{ focus?: () => void } | null>(null);
+const focusField = () => { void nextTick(() => field.value?.focus?.()); };
+onMounted(() => { if (asking.value?.ask === 'text') focusField(); });
+watch(asking, (a) => { if (a?.ask === 'text') focusField(); });
 
 function choose(item: NavMenuItem): void {
 	if (item.disabled) return;
@@ -65,6 +70,7 @@ function onIcon(name: string): void {
 		<form v-else-if="asking.ask === 'text'" class="dt-nav-menu-ask" @submit.prevent="submit">
 			<label class="dt-nav-menu-title">{{ asking.label.replace(/…$/, '') }}</label>
 			<input
+				ref="field"
 				class="dt-nav-menu-input"
 				type="text"
 				:value="text"
@@ -73,6 +79,7 @@ function onIcon(name: string): void {
 				spellcheck="false"
 				@input="text = ($event.target as HTMLInputElement).value"
 				@keydown.enter.prevent="submit"
+				@keydown.esc.stop="emit('close')"
 			/>
 			<datalist v-if="asking.suggestions?.length" id="dt-nav-menu-suggestions">
 				<option v-for="s in asking.suggestions" :key="s" :value="s" />
