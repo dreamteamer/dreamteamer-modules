@@ -16,14 +16,17 @@ import { WorkspaceApi } from './host/api.js';
 import { navModel, navOpContext, workspaceNavSettings } from './nav-model.js';
 import { NAV_FILE, NavDocError, NavOpError, applyNavOp, checkNavDoc, readNavDoc, unknownNavNames, writeNavDoc } from './nav-doc.js';
 import { hasNavSettings } from './host/nav.js';
+import { PANE_ROUTES, answerPane, defaultPane } from './pane.js';
 
 /**
  * @param {{ root: string, onSystemWrite?: (result: unknown) => void,
- *           settings?: () => object }} opts — `settings` answers the four nav settings (default: the workspace's .vscode/settings.json)
+ *           settings?: () => object, pane?: import('./pane.d.ts').PaneStore }} opts — `settings` answers the four nav
+ *           settings (default: the workspace's .vscode/settings.json); `pane` the store the five pane routes answer from
+ *           (default: one in memory, at admin)
  * @returns {Promise<{ handle: (method: string, path: string, body?: unknown) => Promise<{ status: number, body: unknown }>,
  *                    readonly api: WorkspaceApi, reopen: () => Promise<void> }>}
  */
-export async function createHandler({ root, onSystemWrite, settings = () => workspaceNavSettings(root) } = {}) {
+export async function createHandler({ root, onSystemWrite, settings = () => workspaceNavSettings(root), pane } = {}) {
 	if (!root) throw new Error('createHandler: no workspace root');
 	await initEngine(root);
 	const api = new WorkspaceApi(root);
@@ -31,7 +34,7 @@ export async function createHandler({ root, onSystemWrite, settings = () => work
 	return {
 		api,
 		reopen: () => refreshWorkspace(),
-		handle: (method, path, body) => route(api, method, path, body, { root, settings, host: (m, p, b) => api.handle(m, p, b) }),
+		handle: (method, path, body) => route(api, method, path, body, { root, settings, host: (m, p, b) => api.handle(m, p, b), pane }),
 	};
 }
 
@@ -39,11 +42,13 @@ export async function createHandler({ root, onSystemWrite, settings = () => work
  * One request through the protocol's router in front of a host that is already open — what createHandler
  * answers with, and what a host that opened the workspace itself (the VS Code extension) calls directly: an
  * unnamed method and path is 404 `unhandled request`, an unreadable `?dry-run` is 400, `GET /nav` is the nav
- * model, `PATCH /nav` and `PUT /nav` write nav.yaml, and everything else is the host's.
+ * model, `PATCH /nav` and `PUT /nav` write nav.yaml, the five pane routes answer from `pane` (a memory store per
+ * api when absent), and everything else is the host's.
  * @param {{ descriptors(): unknown }} api
- * @param {{ root: string, settings: () => object, host: (method: string, path: string, body?: unknown) => Promise<{ status: number, body: unknown }> }} opts
+ * @param {{ root: string, settings: () => object, host: (method: string, path: string, body?: unknown) => Promise<{ status: number, body: unknown }>,
+ *           pane?: import('./pane.d.ts').PaneStore }} opts
  */
-export async function route(api, method, path, body, { root, settings, host }) {
+export async function route(api, method, path, body, { root, settings, host, pane }) {
 	const m = String(method).toUpperCase();
 	const hit = matchRoute(m, path);
 	if (!hit) {
@@ -58,6 +63,10 @@ export async function route(api, method, path, body, { root, settings, host }) {
 		catch (e) { return { status: 400, body: { error: String(e?.message ?? e) } }; }
 	}
 	if (hit.route.id === 'nav-patch' || hit.route.id === 'nav-put') return navWrite(api, hit.route.id, body, { root, settings });
+	if (PANE_ROUTES.has(hit.route.id)) {
+		const reader = { descriptors: () => api.descriptors(), handle: (m2, p2) => host(m2, p2) };
+		return answerPane(hit.route.id, body, { pane: pane ?? defaultPane(api, host), reader });
+	}
 	const res = await host(m, path, body);
 	// a greedy route (history) hands the split name to the host, which refuses the first half: say why
 	if (res?.status >= 400 && !/percent-encoded/.test(String(res.body?.error ?? ''))) {

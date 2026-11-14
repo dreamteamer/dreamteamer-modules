@@ -25,6 +25,7 @@
 		"./nav-doc": "./src/nav-doc.js",
 		"./gate": "./src/gate.js",
 		"./pane-scope": "./src/pane-scope.js",
+		"./pane": "./src/pane.js",
 		"./reshape": "./src/reshape.js",
 		"./apply-write": "./src/apply-write.js",
 		"./frame-bridge": "./src/frame-bridge.js",
