@@ -8,7 +8,7 @@ import path from 'node:path';
 import { lowerLevel } from '@dreamteamer/protocol/pane-scope';
 import { ensureRunning } from './cli.js';
 import { probeServer, runtimeDir as defaultRuntimeDir, stateFile } from './runtime.js';
-import { lookup, readRegistry, readWorkspaceState } from './state.js';
+import { lookup, nameNow, readRegistry, readWorkspaceState } from './state.js';
 
 const TARGET_BIN = path.join('node_modules', '@dreamteamer', 'web', 'bin', 'dt-web.mjs');
 /** Running = the server its runtime file names proves it is that server (runtime.js `probeServer`), not a live pid. */
@@ -18,7 +18,7 @@ const isRunning = async (root, rdir) => {
 
 /** `GET /_dt/workspaces`: `[{ id, name, running, current }]` — never a root path. */
 export async function listWorkspaces({ selfId, stateDir, runtimeDir = defaultRuntimeDir() }) {
-	return Promise.all(readRegistry(stateDir).map(async (e) => ({ id: e.id, name: e.name, running: fs.existsSync(e.root) && await isRunning(e.root, runtimeDir), current: e.id === selfId })));
+	return Promise.all(readRegistry(stateDir).map(async (e) => ({ id: e.id, name: nameNow(e), running: fs.existsSync(e.root) && await isRunning(e.root, runtimeDir), current: e.id === selfId })));
 }
 
 /** What a registered root lacks to be handed the pane, or null. */
@@ -37,8 +37,9 @@ export function missingFor(root) {
  *           moved: (to: { name: string, at: string }) => void, now?: () => number }} o
  */
 export async function handoff({ id, pageLevel, selfId, stateDir, runtimeDir = defaultRuntimeDir(), moved, now = Date.now }) {
-	const entry = typeof id === 'string' && /^[0-9a-f]{16}$/.test(id) ? lookup(id, stateDir) : null;
-	if (!entry) return { status: 404, body: { error: `no workspace ${String(id)} was opened on this machine` } };
+	const found = typeof id === 'string' && /^[0-9a-f]{16}$/.test(id) ? lookup(id, stateDir) : null;
+	if (!found) return { status: 404, body: { error: `no workspace ${String(id)} was opened on this machine` } };
+	const entry = { ...found, name: nameNow(found) };
 	if (entry.id === selfId) return { status: 400, body: { error: `the pane already shows ${entry.name}` } };
 	const missing = missingFor(entry.root);
 	if (missing) return { status: 409, body: { error: `${entry.name} cannot take the pane: ${missing}` } };

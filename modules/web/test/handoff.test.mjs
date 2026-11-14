@@ -15,6 +15,11 @@ import { readWorkspaceState, register } from '../src/state.js';
 import { fixture, call, pair, sameOrigin } from './support.mjs';
 
 const WEB = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+/** Give a fixture's package.json a name — what `dt web open` registers it under (workspaceName). */
+const named = (f, name) => {
+	const file = path.join(f.root, 'package.json');
+	fs.writeFileSync(file, JSON.stringify({ ...JSON.parse(fs.readFileSync(file, 'utf8')), name }, null, '\t') + '\n');
+};
 let a, b, gone, web, cookie, runtime;
 const saved = {};
 before(async () => {
@@ -27,7 +32,7 @@ before(async () => {
 	// B has dt web installed, as `npm i @dreamteamer/web` leaves it
 	fs.mkdirSync(path.join(b.root, 'node_modules', '@dreamteamer'), { recursive: true });
 	fs.symlinkSync(WEB, path.join(b.root, 'node_modules', '@dreamteamer', 'web'), 'dir');
-	for (const [ws, name] of [[a, 'alpha'], [b, 'bravo'], [gone, 'gone']]) await register({ root: ws.root, name }, a.state);
+	for (const [ws, name] of [[a, 'alpha'], [b, 'bravo'], [gone, 'gone']]) { named(ws, name); await register({ root: ws.root, name }, a.state); }
 	fs.rmSync(gone.root, { recursive: true, force: true });
 	web = await startWeb({ root: a.root, appDir: a.app, idleMinutes: 0, stateDir: a.state });
 	writeState(stateFile(a.root, runtime), { pid: process.pid, port: web.port, token: web.controlToken, instance: web.instance });
@@ -124,9 +129,22 @@ describe('the handoff', () => {
 		assert.equal((await page('/_dt/handoff', 'POST', { id: '../x' })).status, 404);
 	});
 
+	test('a root that has come to hold another workspace is listed and handed off under the name it has now', { timeout: 60_000 }, async () => {
+		named(b, 'bravo-now');
+		try {
+			const listed = (await page('/_dt/workspaces')).json.find((w) => w.id === workspaceKey(b.root));
+			assert.equal(listed.name, 'bravo-now', 'the switcher offers the registered name, not the one the root has now');
+			assert.equal((await page('/_dt/workspaces')).json.find((w) => w.name === 'gone')?.name, 'gone', 'a root gone from disk keeps the name it was registered under');
+			const r = await page('/_dt/handoff', 'POST', { id: workspaceKey(b.root) });
+			assert.equal(r.status, 200, r.text);
+			assert.equal((await control('/pane?hook=1')).json.movedTo?.name, 'bravo-now', 'the hook names the workspace the pane went to');
+		} finally { named(b, 'bravo'); }
+	});
+
 	test('a registered workspace without dt web installed is 409 naming what is missing', async () => {
 		const c = fixture();
 		try {
+			named(c, 'charlie');
 			await register({ root: c.root, name: 'charlie' }, a.state);
 			const r = await page('/_dt/handoff', 'POST', { id: workspaceKey(c.root) });
 			assert.equal(r.status, 409);

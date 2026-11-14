@@ -108,6 +108,17 @@ describe('open', () => {
 		assert.match(list.stdout, new RegExp(`^lab · ${port} · running · ${fs.realpathSync(f.root).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'm'));
 	});
 
+	test('list names a registered root by the name it has now', () => {
+		const file = path.join(f.root, 'package.json');
+		const before = fs.readFileSync(file, 'utf8');
+		fs.writeFileSync(file, JSON.stringify({ ...JSON.parse(before), name: 'lab-renamed' }, null, '\t') + '\n');
+		try {
+			const list = run('list');
+			assert.equal(list.status, 0);
+			assert.match(list.stdout, /^lab-renamed · /m, list.stdout);
+		} finally { fs.writeFileSync(file, before); }
+	});
+
 	test('a target that names nothing is refused', () => {
 		const r = run('open', 'tasks/nope');
 		assert.equal(r.status, 1);

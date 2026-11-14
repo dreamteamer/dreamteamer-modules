@@ -12,7 +12,7 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { alive, claimStart, clearStale, FORCE_GRACE_MS, movedLine, notAnsweringLine, ownStart, privateDir, probeServer, readState, removeState, runtimeDir, sameStart, stateFile, workspaceKey, writeState } from './runtime.js';
-import { readRegistry, readWorkspaceState, register, stateDir, writeWorkspaceState } from './state.js';
+import { nameNow, readRegistry, readWorkspaceState, register, stateDir, writeWorkspaceState } from './state.js';
 import { hookInstalled, installHook } from './hook.js';
 import { workspaceName } from './pane-store.js';
 
@@ -227,7 +227,7 @@ async function verb(root, o, { log, env, appDir, sdir, ensure }) {
 			const p = here ? await probeServer(fileOf(e.root, env), { timeoutMs: 1000 }) : null;
 			const r = p?.proven || p?.state === 'silent' ? p : null;
 			const port = r?.port ?? (here ? readWorkspaceState(e.root, sdir).port : null);
-			log(`${e.name} · ${port ?? '-'} · ${p?.state === 'silent' ? 'not answering' : r ? 'running' : 'stopped'} · ${e.root}`);
+			log(`${nameNow(e)} · ${port ?? '-'} · ${p?.state === 'silent' ? 'not answering' : r ? 'running' : 'stopped'} · ${e.root}`);
 		}
 		return 0;
 	}

@@ -95,6 +95,16 @@ export function lookup(id, dir = stateDir()) {
 	return readRegistry(dir).find((e) => e.id === id) ?? null;
 }
 
+/** A registered workspace's name as its root holds it NOW: the folder may hold another workspace since `dt web open`
+ *  registered it (same path, so the same id). The registered name when the root or its package.json is gone. */
+export function nameNow(entry) {
+	try {
+		const name = JSON.parse(fs.readFileSync(path.join(entry.root, 'package.json'), 'utf8')).name;
+		if (typeof name === 'string' && name) return name;
+	} catch { /* gone, or not JSON */ }
+	return entry.name;
+}
+
 const LOCK_TRIES = 20;
 const LOCK_WAIT_MS = 50;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
