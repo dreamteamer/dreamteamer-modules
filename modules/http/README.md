@@ -7,7 +7,7 @@ installed extension judges it.
 
 ## install
 
-In a dreamteamer workspace (engine `>=0.31.0`):
+In a dreamteamer workspace (engine `>=0.33.0`):
 
 ```bash
 npm install --save-dev @dreamteamer/http

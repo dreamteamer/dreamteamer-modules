@@ -38,6 +38,13 @@ describe('every package installs on the engine under test and reads as the table
 		test(`${m} → ${rows[m]}`, () => {
 			const root = virginWorkspace();
 			const env = { HOME: fs.mkdtempSync(path.join(os.tmpdir(), 'dtm-HOME-')) };
+			// an @dreamteamer package named in plain npm `dependencies` (web and http need protocol, web needs ui) is not
+			// in dt install's closure, so npm would fetch it from the registry — where a version this repo has not
+			// published yet does not exist. Installed first from the same folder, it is already there when npm looks.
+			for (const dep of Object.keys(pkgOf(m).dependencies ?? {}).filter((d) => d.startsWith('@dreamteamer/'))) {
+				const pre = run(root, ['install', dep, '--from', FROM, '--no-input'], env);
+				assert.ok(pre.status === 0 || pre.status === 3, `${m}: installing ${dep} first: exit ${pre.status}\n${pre.stderr}`);
+			}
 			const r = run(root, ['install', `@dreamteamer/${m}`, '--from', FROM, '--no-input'], env);
 			assert.ok(r.status === 0 || r.status === 3, `${m}: exit ${r.status}\n${r.stderr}\n${r.stdout.slice(-600)}`);
 			const s = run(root, ['status', '--json'], env);

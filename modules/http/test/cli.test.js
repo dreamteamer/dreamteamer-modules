@@ -72,6 +72,7 @@ describe('dt serve', () => {
 		const r = bare.dt('serve', '--port', '0');
 		assert.equal(r.code, 2);
 		assert.match(r.stderr, /`dt serve` comes from an extension this workspace does not have/);
-		assert.match(r.stderr, /npm i @dreamteamer\/http\n/);
+		// the install line the engine prints: `npm i …` before 0.49, `dt install …` from it
+		assert.match(r.stderr, /(?:npm i|dt install) @dreamteamer\/http\n/);
 	});
 });
