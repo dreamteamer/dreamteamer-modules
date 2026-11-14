@@ -1,7 +1,7 @@
 {
 	"name": "@dreamteamer/http",
-	"version": "0.2.1",
-	"description": "dt serve: a JSON REST api at /api over a dreamteamer workspace, through the same validating store the CLI uses",
+	"version": "0.2.2",
+	"description": "Deprecated: dt serve moved to @dreamteamer/web (dt web token). A JSON REST api at /api over a dreamteamer workspace",
 	"license": "Apache-2.0",
 	"type": "module",
 	"repository": {
@@ -30,7 +30,7 @@
 	"dreamteamer": {
 		"extension": "./src/extension.js",
 		"title": "HTTP",
-		"description": "dt serve: a JSON REST api at /api over a dreamteamer workspace, through the same validating store the CLI uses. Read, create, edit, reorder, revert and remove records; create and move collections and add, edit and rename fields, each behind a real compile; read history, presentation and bound commands; publish named pending writes. Loopback by default; a wider host needs a bearer token.",
+		"description": "Deprecated: dt serve moved to @dreamteamer/web (dt web token), and this package gets no new routes. dt serve here is a JSON REST api at /api over a dreamteamer workspace, through the same validating store the CLI uses: records, collections and fields behind a real compile, history and bound commands. Loopback by default; a wider host needs a bearer token.",
 		"engine": ">=0.33.0"
 	}
 }

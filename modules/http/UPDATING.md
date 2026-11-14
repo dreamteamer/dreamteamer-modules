@@ -6,6 +6,26 @@ One section per release, newest first. Each says what a caller of `dt serve` has
 npm install --save-dev @dreamteamer/http@latest
 ```
 
+## 0.2.2
+
+**Deprecated.** `dt serve` moved to `@dreamteamer/web`, and this package gets no new routes. To move:
+
+```bash
+npm uninstall @dreamteamer/http
+npm install --save-dev @dreamteamer/web
+npx dt web token --edit        # the API base and a client token, printed once; --read for a read-only one
+```
+
+What changes for a caller:
+
+- The API is the same protocol at `/api/`, on the workspace's own `dt web` server (loopback only; there is no
+  `--host`). Send the printed token as `Authorization: Bearer <token>`.
+- A client token has a level: Read, or Edit with `--edit`. Admin routes (revert, rename, fields, commits, system
+  collections) answer `403` to a client token; use the CLI for those.
+- A write takes `Content-Type: application/json` only.
+- `dt serve` now means `dt web token --name serve`. Keep only one of the two packages: both claim `dt serve`, and the
+  engine refuses two packages claiming one verb.
+
 ## 0.2.1
 
 `@dreamteamer/protocol` ^0.2.0: `dt serve` answers `PUT /nav` and `PATCH /nav`, which write the workspace's

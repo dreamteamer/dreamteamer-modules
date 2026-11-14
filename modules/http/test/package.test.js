@@ -27,6 +27,18 @@ describe('importing the package', () => {
 	});
 });
 
+describe('the README', () => {
+	test('opens with the deprecation sentence: dt serve moved to @dreamteamer/web', async () => {
+		const fs = await import('node:fs');
+		const readme = fs.readFileSync(path.join(packageDir('http'), 'README.md'), 'utf8');
+		const first = readme.split(/\n\s*\n/).map((p) => p.trim()).filter((p) => p && !p.startsWith('#'))[0];
+		assert.equal(first, '**Deprecated.** dt serve moved to @dreamteamer/web (dt web token); this package gets no new routes.');
+		const pkg = JSON.parse(fs.readFileSync(path.join(packageDir('http'), 'package.json'), 'utf8'));
+		assert.match(pkg.description, /^Deprecated:/);
+		assert.equal(pkg.version, '0.2.2');
+	});
+});
+
 describe('activate(dt)', () => {
 	test('targets extension API 1 and contributes exactly the serve verb', () => {
 		assert.equal(apiVersion, 1);

@@ -25,7 +25,7 @@ const webRow = (out) => out.split('\n').find((l) => /\bweb\b/.test(l) && /runnin
 
 test('the tarball ships the bin, the source, the skill and the README — never the tests or an app of its own', () => {
 	const files = packedFiles('web');
-	for (const f of ['bin/dt-web.mjs', 'src/cli.js', 'src/server.js', 'src/extension.js', 'src/runtime.js', 'src/headers.js', 'README.md', 'skills/serving-the-web-ui/SKILL.md']) assert.ok(files.includes(f), `${f} is not in the tarball`);
+	for (const f of ['bin/dt-web.mjs', 'bin/dt-web-hook.mjs', 'commands/web/show.command.md', 'UPDATING.md', 'src/cli.js', 'src/server.js', 'src/extension.js', 'src/runtime.js', 'src/headers.js', 'README.md', 'skills/serving-the-web-ui/SKILL.md']) assert.ok(files.includes(f), `${f} is not in the tarball`);
 	assert.ok(!files.some((f) => f.startsWith('test/')), 'tests do not ship');
 	assert.ok(!files.some((f) => f.startsWith('dist/') || f.startsWith('scripts/')), 'the app comes from @dreamteamer/ui, not a copy in this package');
 });
@@ -39,7 +39,12 @@ test('a workspace that installs the packed protocol and web compiles; dt web ans
 
 	const skill = dt(ws, 'get', 'skills/serving-the-web-ui');
 	assert.equal(skill.status, 0, `the session skill is not compiled in: ${skill.stderr}`);
+	const show = dt(ws, 'get', 'commands/web/show');
+	assert.equal(show.status, 0, `the /web:show command is not compiled in: ${show.stderr}`);
 	const help = dt(ws, 'help');
+	const block = /\n@dreamteamer\/web@[^:\n]+:\n((?:  .*\n?)+)/.exec(help.stdout)?.[1] ?? '';
+	assert.match(block, /^  web \[/m, `dt help lists web under @dreamteamer/web:\n${help.stdout}`);
+	assert.match(block, /^  serve \[/m, 'and serve');
 	assert.match(help.stdout, /web \[open\|show\|select\|selection\|hook\|token\|list\|revoke\|status\|stop\|start\]/, 'dt help lists the verb');
 	assert.match(help.stdout, /serve \[--read\|--edit\] \[--name <n>\]/, 'dt help lists dt serve as the pane\'s token');
 	const st = dt(ws, 'web', 'status');

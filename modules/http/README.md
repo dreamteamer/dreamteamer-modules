@@ -1,5 +1,11 @@
 # @dreamteamer/http
 
+**Deprecated.** dt serve moved to @dreamteamer/web (dt web token); this package gets no new routes.
+
+To move: `npm uninstall @dreamteamer/http`, then `npm install --save-dev @dreamteamer/web` and run `npx dt web token` (or
+`npx dt serve`, which is now a client token of the pane's own server, loopback only). `UPDATING.md` says what changes for a
+caller. Both packages claim `dt serve`, and the engine refuses two packages claiming one verb, so keep only one.
+
 `dt serve` — a JSON REST api at `/api` over a dreamteamer workspace, through the same validating
 store the CLI uses. A record written over HTTP is validated, serialized and refused exactly as
 `dt add` / `dt set` would; a schema write compiles through the same workspace handle, so every

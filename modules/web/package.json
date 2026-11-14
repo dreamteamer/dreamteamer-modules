@@ -1,7 +1,7 @@
 {
 	"name": "@dreamteamer/web",
 	"version": "0.3.0",
-	"description": "dt web: the dreamteamer UI in your browser over a workspace on your machine — loopback, a sign-in URL, live updates",
+	"description": "dt web: the dreamteamer UI in the pane beside your chat, over a workspace on your machine — one step, levels, a shared selection",
 	"license": "Apache-2.0",
 	"type": "module",
 	"repository": {
@@ -24,9 +24,11 @@
 	},
 	"files": [
 		"README.md",
+		"UPDATING.md",
 		"bin",
 		"src",
-		"skills"
+		"skills",
+		"commands"
 	],
 	"dependencies": {
 		"@dreamteamer/protocol": "^0.3.0",
@@ -35,7 +37,7 @@
 	"dreamteamer": {
 		"extension": "./src/extension.js",
 		"title": "Web",
-		"description": "dt web: the dreamteamer UI in a browser over a workspace on your own machine — the extension's nav, lists, boards and record pages, served on loopback behind a single-use sign-in, with record files on a second sandboxed origin and live updates as records change on disk. Adds the dt web verb and a web row in dt doctor.",
+		"description": "dt web: the dreamteamer UI in the pane beside an agent chat or in a browser, over a workspace on your own machine — the extension's pages on one loopback listener, opened in one step (dt web open), at a Read, Edit or Admin level the server enforces. The page and the chat share place and selection through a prompt hook. Adds dt web, dt serve, /web:show and web rows in dt doctor.",
 		"engine": ">=0.43.0"
 	}
 }
