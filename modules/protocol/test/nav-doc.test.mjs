@@ -151,9 +151,9 @@ describe('Move up, down, to top and to bottom on unplaced rows, by the contract\
 
 describe('namespaces and folders inside them', () => {
 	const NS = { collections: new Set(['assets', 'tasks', 'rnd/issues', 'rnd/reviews']), namespaces: ['rnd'] };
-	test('into { name: rnd } with rnd unplaced: the namespace entry is added at the end of the top level, the row lands last', () => {
+	test('into { name: rnd } with rnd unplaced: the rows drawn before rnd are placed, then rnd, and the row lands last in it', () => {
 		const d = applyNavOp(null, { op: 'move', target: { name: 'tasks' }, into: { name: 'rnd' } }, NS);
-		assert.deepEqual(d.tree, [{ namespace: 'rnd', items: ['rnd/issues', 'rnd/reviews', 'tasks'] }]);
+		assert.deepEqual(d.tree, ['assets', { namespace: 'rnd', items: ['rnd/issues', 'rnd/reviews', 'tasks'] }]);
 	});
 	test('a namespace name that is also a collection: the collection as target, the namespace as into', () => {
 		const ctx = { collections: new Set(['lab', 'lab/samples']), namespaces: ['lab'] };
@@ -173,6 +173,45 @@ describe('namespaces and folders inside them', () => {
 		d = apply(d, { op: 'rename', target: { folder: ['Sales/CRM'] }, label: 'Sales/CRM/EU' });
 		assert.deepEqual(at(d, 'Sales/CRM/EU'), [{ collection: 'contacts', icon: 'person' }]);
 		refuses(() => apply(d, { op: 'dissolve', target: { folder: ['Sales', 'CRM'] } }), /Sales/);
+	});
+});
+
+describe('a gesture inside an unplaced namespace leaves that namespace where it draws (review finding gesture-inside-an-unplaced-namespace-lifts-it-to-the-top)', () => {
+	// The editor's tier-3 fixture, as the review probed it: three unplaced rows, then two unplaced namespaces.
+	const TWO = { collections: new Set(['agents', 'notes', 'tasks', 'finance/ledger', 'health/clinic', 'health/visits']), namespaces: ['finance', 'health'] };
+	/** The top level as drawn: placed entries, then unplaced rows, then unplaced namespaces (as `ns:<name>`). */
+	const drawn = (doc) => {
+		const all = (items) => items.flatMap((e) => [nameOf(e), ...(Array.isArray(e.items) ? all(e.items) : [])]);
+		const placed = new Set([...all(doc.tree), ...doc.hidden, ...doc.hidden.map((h) => `ns:${h}`)]);
+		const rows = [...TWO.collections].filter((c) => !c.includes('/') && !placed.has(c));
+		const nss = TWO.namespaces.map((n) => `ns:${n}`).filter((n) => !placed.has(n));
+		return [...doc.tree.map(nameOf), ...rows, ...nss];
+	};
+	const BEFORE = ['agents', 'notes', 'tasks', 'ns:finance', 'ns:health'];
+	test('Move up on the second row of health (into health, top): the top level draws as before', () => {
+		const d = applyNavOp(null, { op: 'move', target: { name: 'health/visits' }, into: { name: 'health' }, position: 'top' }, TWO);
+		assert.deepEqual(drawn(d), BEFORE);
+		assert.deepEqual(at(d, 'ns:health'), ['health/visits']);
+	});
+	test('a row dropped onto health (into health, bottom): the rest of the top level keeps its order', () => {
+		const d = applyNavOp(null, { op: 'move', target: { name: 'tasks' }, into: { name: 'health' }, position: 'bottom' }, TWO);
+		assert.deepEqual(drawn(d), ['agents', 'notes', 'ns:finance', 'ns:health']);
+		assert.deepEqual(at(d, 'ns:health'), ['health/clinic', 'health/visits', 'tasks']);
+	});
+	test('a row dropped after a row inside health: the rest of the top level keeps its order', () => {
+		const d = applyNavOp(null, { op: 'move', target: { name: 'tasks' }, after: { name: 'health/clinic' } }, TWO);
+		assert.deepEqual(drawn(d), ['agents', 'notes', 'ns:finance', 'ns:health']);
+		assert.deepEqual(at(d, 'ns:health'), ['health/clinic', 'tasks']);
+	});
+	test('new-folder and icon inside the unplaced finance: health still draws after it', () => {
+		let d = applyNavOp(null, { op: 'new-folder', label: 'Q4', into: { name: 'finance' } }, TWO);
+		assert.deepEqual(drawn(d), BEFORE);
+		d = applyNavOp(null, { op: 'icon', target: { name: 'finance/ledger' }, icon: 'book' }, TWO);
+		assert.deepEqual(drawn(d), BEFORE);
+	});
+	test('a namespace the document hides without placing is placed at the end of its level, and nothing else is placed', () => {
+		const d = applyNavOp({ tree: [], hidden: ['health'] }, { op: 'move', target: { name: 'tasks' }, into: { name: 'health' }, position: 'top' }, TWO);
+		assert.deepEqual(d.tree, [{ namespace: 'health', items: ['tasks'] }]);
 	});
 });
 

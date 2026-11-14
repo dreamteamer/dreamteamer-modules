@@ -337,7 +337,8 @@ Labels match exactly, at their first occurrence at each level; the path is an ar
 A name the document does not place but the workspace has is a valid target and a valid anchor: `move` places it,
 `icon` places it at the end of its parent with the icon, `hide` adds it to `hidden`. Placing one never moves anything
 else on screen — an anchor among unplaced rows first places the rows of its parent that draw before it, in drawn
-order. Move up is `move` with `after` the sibling two above (or `into` the parent with `position: top` for the second
+order, and an unplaced namespace a gesture reaches into (`into` it, or a row inside it as target or anchor) is placed
+the same way, after its level's unplaced rows and the namespaces drawn before it. Move up is `move` with `after` the sibling two above (or `into` the parent with `position: top` for the second
 row); Move down is `after` the next sibling.
 
 **The old settings.** Before `nav.yaml`, `dreamteamer.navGroups`, `dreamteamer.navOrder` and `dreamteamer.navHidden`

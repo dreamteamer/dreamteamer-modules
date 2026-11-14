@@ -12,7 +12,8 @@
 // What the document does not place still exists: a collection it does not name trails its parent (the top level,
 // or its namespace) in drawn order, and a namespace it does not name draws after the top level's unplaced rows.
 // Such a name is a valid target and a valid anchor. Placing one never moves anything else on screen: an anchor
-// among unplaced rows first places, in drawn order, the rows of its parent that draw before it and itself.
+// among unplaced rows first places, in drawn order, the rows of its parent that draw before it and itself — and an
+// unplaced namespace a gesture reaches into (a move into it, a row placed in it) is placed the same way.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -142,18 +143,23 @@ const parentNamespaceOf = (ns, namespaces) => namespaceOf(ns, namespaces.filter(
 const unplacedNamespacesOf = (doc, ctx, parentNs) =>
 	ctx.namespaces.filter((n) => !isPlacedNamespace(placedNames(doc), n, doc) && parentNamespaceOf(n, ctx.namespaces) === parentNs);
 
-/** The items array a level's unplaced tails draw in: the top level, or the namespace's entry — placed first, at
- *  the end of its own parent, when the document does not name it yet. */
+/** The items array a level's unplaced tails draw in: the top level, or the namespace's entry — placed first, where
+ *  it draws, when the document does not name it yet. */
 function levelItems(doc, ctx, ns) {
 	if (!ns) return doc.tree;
 	return itemsOf(ensureNamespace(doc, ctx, ns).entry);
 }
 
-/** The namespace entry, materialised at the end of its parent's level when the document does not place it. */
+/** The namespace entry. One the document does not place is placed the way an anchor is (materialiseNamespace): its
+ *  level's unplaced rows and the unplaced namespaces drawn before it go first, so a gesture inside it — a move into
+ *  it, a row placed in it — never lifts it above them. One drawn nowhere (hidden without a place) goes at the end of
+ *  its level, and nothing else is placed. */
 function ensureNamespace(doc, ctx, ns) {
 	const at = firstNamespace(doc, ns);
 	if (at) return at;
-	const parent = levelItems(doc, ctx, parentNamespaceOf(ns, ctx.namespaces));
+	const parentNs = parentNamespaceOf(ns, ctx.namespaces);
+	if (unplacedNamespacesOf(doc, ctx, parentNs).includes(ns)) return materialiseNamespace(doc, ctx, ns);
+	const parent = levelItems(doc, ctx, parentNs);
 	parent.push({ namespace: ns });
 	return { entry: parent.at(-1), parent, index: parent.length - 1 };
 }
