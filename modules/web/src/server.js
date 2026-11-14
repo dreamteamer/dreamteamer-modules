@@ -12,7 +12,7 @@ import { changeScope, invalidateMessage, NAV_DOC_FILE } from '@dreamteamer/proto
 import { hasNavSettings } from '@dreamteamer/protocol/host/nav';
 import { migrateNavSettings } from '@dreamteamer/protocol/nav-doc';
 import { workspaceNavSettings } from '@dreamteamer/protocol/nav-model';
-import { appCsp, baseHeaders, FILE_CSP } from './headers.js';
+import { twoOriginCsp as appCsp, baseHeaders, FILE_CSP } from './headers.js';
 import { readModuleGrantResult } from '@dreamteamer/protocol/module-grant';
 import { moduleFrameRoute, resolveGuest } from './module-frames.js';
 
