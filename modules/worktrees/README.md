@@ -5,9 +5,11 @@ its committed records come home. Cut a worktree, work there in parallel, then la
 
 ```bash
 npm install --save-dev @dreamteamer/worktrees
-dt compile
-dt install --print-adapters      # includes the WorktreeCreate / WorktreeRemove hooks to merge
+npx dreamteamer compile
+npx dreamteamer install --print-adapters   # includes the WorktreeCreate / WorktreeRemove hooks to merge
 ```
+
+`dt` below is the dreamteamer CLI: `npx dreamteamer worktree …`, `npx dreamteamer land …`.
 
 | verb | what it does |
 |---|---|
@@ -17,8 +19,9 @@ dt install --print-adapters      # includes the WorktreeCreate / WorktreeRemove 
 | `dt worktree add --hook` · `dt worktree rm --hook` | the WorktreeCreate and WorktreeRemove hook forms, reading the harness's JSON on stdin; `rm --hook` removes the tree under `rm`'s guard |
 
 Every verb refuses a flag it does not know. `--json` (on `add`, `list`, `get` and `land`) gives one JSON
-value on stdout. A new worktree loads
-the same engine and modules: every symlinked direct dependency is mirrored into it.
+value on stdout. A new worktree loads the same engine and modules: every symlinked direct dependency
+is mirrored into it. The module needs no setup; merging the two hooks into your coding agent's own
+settings file is your step, and `install --print-adapters` prints the snippet.
 
 The `working-in-worktrees` skill carries the method: the lifecycle, the landing and the merge policy.
-Engine `>=0.31.0`. Apache-2.0.
+Engine `>=0.33.0`. Apache-2.0.
