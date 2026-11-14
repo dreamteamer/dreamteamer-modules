@@ -1,4 +1,6 @@
 import { Descriptor, type ModuleRecord } from "./fsdata.js";
+import type { NavDoc, NavTarget } from "../nav-doc.js";
+import type { NavNode } from "../nav-model.js";
 import { type SourceEntry } from "./sources.js";
 export declare function keepsRuntimeRecords(d: Descriptor): boolean;
 export declare function shouldFoldOutOfRecordTree(d: Descriptor): boolean;
@@ -129,3 +131,33 @@ export declare function layerEntries(rows: LayerRow[], descriptors: Descriptor[]
     titleOf?: Map<string, string | undefined>;
     namespacesOf?: Map<string, string[]>;
 }): LayerEntry[];
+/** The unplaced-row order: by title, then name. Passed to applyNavOp as its `collections`. */
+export declare function tailOrder(descriptors: ReadonlyArray<{ name: string }>, titleOf?: (d: any) => string): Set<string>;
+/** A node key: the letter, then each path element URI-encoded and joined by "/". */
+export declare function navPathKey(letter: "f" | "n", path: string[]): string;
+/** The tree nav.yaml describes (design §3). `doc` null draws the flat tree. Every folder, namespace and collection
+ *  node carries `target`. */
+export declare function buildTree(o: {
+    descriptors: ReadonlyArray<{ name: string; title?: string; internal?: boolean; display?: any }>;
+    doc: NavDoc | null | undefined;
+    namespaces?: string[];
+    titleOf?: (d: any) => string;
+    views?: any[];
+    namespaceTitle?: (ns: string, parentNs: string) => string;
+    nodeOf?: (d: any) => Partial<NavNode>;
+    icon?: (name?: string) => string | undefined;
+    internal?: (d: any) => boolean;
+}): Array<NavNode & { target?: NavTarget }>;
+export declare function navGroupsOf(raw: unknown): Map<string, string[]>;
+export declare const navOrderOf: (raw: unknown) => string[];
+/** Whether any of navGroups · navOrder · navHidden holds something (an empty array or object is unset). */
+export declare function hasNavSettings(settings: { navGroups?: unknown; navOrder?: unknown; navHidden?: unknown } | undefined): boolean;
+/** The tree the old settings drew: groupTopLevel → orderTopLevel → withoutHidden, unchanged. */
+export declare function legacyTree(descriptors: Descriptor[], settings?: { navGroups?: unknown; navOrder?: unknown; navHidden?: unknown }, ctx?: {
+    declared?: string[];
+    workspaceModule?: string;
+    dependsOn?: Map<string, string[]>;
+    namespacesOf?: Map<string, string[]>;
+    titleOf?: Map<string, string | undefined>;
+    layers?: (NavEntry & { kind: "layers" }) | Array<NavEntry & { kind: "layers" }>;
+}): NavEntry[];

@@ -4,8 +4,9 @@ export interface NavSettings {
 	navHidden?: unknown;
 	layersFolder?: unknown;
 }
+import type { NavTarget, NavDoc } from './nav-doc.js';
 export interface NavNode {
-	kind: 'workspace' | 'group' | 'collection' | 'view' | 'layers' | 'layer' | 'layer-group' | 'layer-collection' | 'layer-note' | 'message';
+	kind: 'workspace' | 'folder' | 'namespace' | 'collection' | 'view' | 'layers' | 'layer' | 'layer-group' | 'layer-collection' | 'layer-note' | 'message';
 	key: string;
 	label: string;
 	icon?: string;
@@ -13,7 +14,13 @@ export interface NavNode {
 	tooltip?: string;
 	route?: string;
 	marks?: string;
+	/** On folder, namespace and collection nodes: what a host sends back in a PATCH /nav op. */
+	target?: NavTarget;
+	/** On the workspace node: a message to draw once above the tree (an unreadable nav.yaml). */
+	notice?: string;
 	children?: NavNode[];
 }
 export declare function workspaceNavSettings(root: string): NavSettings;
+/** `<root>/nav.yaml` through the engine's reader when it has one, else the protocol's own; null when absent. */
+export declare function readNavDoc(root: string): NavDoc | null;
 export declare function navModel(ctx: { root: string; settings?: NavSettings }): NavNode[];

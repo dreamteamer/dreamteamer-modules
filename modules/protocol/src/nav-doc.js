@@ -14,12 +14,40 @@
 // Such a name is a valid target and a valid anchor. Placing one never moves anything else on screen: an anchor
 // among unplaced rows first places, in drawn order, the rows of its parent that draw before it and itself.
 
+import fs from 'node:fs';
+import path from 'node:path';
+import yaml from 'js-yaml';
+
 /** A refused op: the message names the input. A host answers it 400. */
 export class NavOpError extends Error {
 	constructor(message) {
 		super(message);
 		this.name = 'NavOpError';
 	}
+}
+
+/** nav.yaml exists and cannot be read as a document: the message names the problem. A host draws the flat tree and
+ *  shows the message; it never answers 500. */
+export class NavDocError extends Error {
+	constructor(message) {
+		super(message);
+		this.name = 'NavDocError';
+	}
+}
+
+/** The protocol's own reader of `<root>/nav.yaml`, for an engine before 0.49 (which has no `readNavDoc`): null when
+ *  the file is absent; a NavDocError when it is not YAML, not a mapping, or its `tree` or `hidden` is not a list. */
+export function readNavDocFile(root) {
+	const file = path.join(root, 'nav.yaml');
+	let text;
+	try { text = fs.readFileSync(file, 'utf8'); } catch (e) { if (e.code === 'ENOENT') return null; throw new NavDocError(`nav.yaml cannot be read: ${e.message}`); }
+	let raw;
+	try { raw = yaml.load(text); } catch (e) { throw new NavDocError(`nav.yaml is not valid YAML: ${String(e.message).split('\n')[0]}`); }
+	if (raw === undefined || raw === null) return { tree: [], hidden: [] };
+	if (typeof raw !== 'object' || Array.isArray(raw)) throw new NavDocError('nav.yaml is not a mapping — it holds `tree:` and `hidden:`');
+	if (raw.tree !== undefined && raw.tree !== null && !Array.isArray(raw.tree)) throw new NavDocError('nav.yaml: `tree` is not a list');
+	if (raw.hidden !== undefined && raw.hidden !== null && !Array.isArray(raw.hidden)) throw new NavDocError('nav.yaml: `hidden` is not a list');
+	return { tree: raw.tree ?? [], hidden: (raw.hidden ?? []).filter((h) => typeof h === 'string') };
 }
 
 const OPS = new Set(['move', 'new-folder', 'rename', 'dissolve', 'icon', 'hide', 'show']);

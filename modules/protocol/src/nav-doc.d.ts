@@ -43,6 +43,14 @@ export declare class NavOpError extends Error {
 	name: 'NavOpError';
 }
 
+/** nav.yaml exists and cannot be read; the message names the problem. */
+export declare class NavDocError extends Error {
+	constructor(message: string);
+	name: 'NavDocError';
+}
+/** The protocol's own reader of `<root>/nav.yaml` (for an engine without `readNavDoc`): null when absent. Throws NavDocError. */
+export declare function readNavDocFile(root: string): NavDoc | null;
+
 /** The next document after one op. Pure: the input is never touched; an absent document is `{ tree: [], hidden: [] }`.
  *  A name the document does not place but the workspace has is a valid target or anchor, and placing it moves
  *  nothing else on screen. Throws NavOpError on any refusal. */

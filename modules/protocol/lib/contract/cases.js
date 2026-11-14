@@ -70,6 +70,15 @@ export const cases = [
 	{ id: 'nav', route: 'nav', method: 'GET', path: '/nav', expect: (res) => {
 		ok(res); check(Array.isArray(res.body) && res.body.length > 0, 'no nav nodes');
 		shape(res.body[0], { kind: 'string', key: 'string', label: 'string' }, 'nav[0]');
+		// protocol 0.2 (cr-dt-008): with no nav.yaml and no nav settings the tree is flat — rows, then the lab
+		// namespace as a `namespace` node; every folder, namespace and collection node carries its NavTarget
+		const kids = Array.isArray(res.body[0].children) ? res.body[0].children : [];
+		const lab = kids.find((n) => n.kind === 'namespace');
+		check(lab && lab.key === 'n/ns%3Alab' && lab.target?.name === 'lab', 'no namespace node n/ns%3Alab with target { name: lab }');
+		check(lab.children?.some((n) => n.key === 'c/lab/samples' && n.target?.name === 'lab/samples'), 'lab/samples is not drawn inside its namespace');
+		check(!kids.some((n) => n.kind === 'group'), 'a group node — protocol 0.2 draws folder and namespace nodes');
+		const walk = (ns) => ns.flatMap((n) => [n, ...walk(n.children ?? [])]);
+		for (const n of walk(kids).filter((x) => ['folder', 'namespace', 'collection'].includes(x.kind))) check(n.target && (typeof n.target.name === 'string' || Array.isArray(n.target.folder)), `${n.key} carries no target`);
 	} },
 	{ id: 'folder', route: 'folder', method: 'GET', path: '/folder/projects/northwind-launch?field=media', expect: (res) => {
 		ok(res); shape(res.body, { path: 'string|null', files: 'array', reason: 'string|null' });
