@@ -173,6 +173,39 @@ describe('tokens and revoke', () => {
 		assert.equal((await call(`http://127.0.0.1:${port}/api/info`, { headers: { authorization: `Bearer ${token}` } })).status, 401);
 		assert.equal(run('revoke', '--token', 'ci').status, 1, 'no token of that name now');
 	});
+	test('with the state dir read-only, token and revoke --token refuse naming the dir, as open does, and the earlier token keeps working', { skip: process.getuid?.() === 0 ? 'root ignores the mode' : false }, async () => {
+		const minted = run('token', '--name', 'serve');
+		assert.equal(minted.status, 0, minted.stdout + minted.stderr);
+		const first = minted.lines[1].replace(/^token /, '');
+		const info = async () => (await call(`http://127.0.0.1:${port}/api/info`, { headers: { authorization: `Bearer ${first}` } })).status;
+		assert.equal(await info(), 200);
+		const stateFile = () => fs.readdirSync(f.state).filter((n) => n !== 'registry.json').map((n) => fs.readFileSync(path.join(f.state, n), 'utf8')).join('\n');
+		const before = stateFile();
+		fs.chmodSync(f.state, 0o500);
+		try {
+			const open = run('open');
+			assert.equal(open.status, 2, 'open, the reference: ' + open.stdout + open.stderr);
+			const said = (r) => r.stdout + r.stderr;
+			const named = (r) => said(r).includes(f.state) && /chmod 700/.test(said(r)) && /DT_WEB_STATE_DIR/.test(said(r));
+			const again = run('token', '--name', 'serve');
+			assert.equal(again.status, 2, said(again));
+			assert.ok(named(again), `token did not name the dir and the fix:\n${said(again)}`);
+			assert.doesNotMatch(said(again), /^token /m, 'no token printed');
+			assert.equal(await info(), 200, 'a refused re-mint never ends the earlier token');
+			const rv = run('revoke', '--token', 'serve');
+			assert.equal(rv.status, 2, said(rv));
+			assert.ok(named(rv), `revoke --token did not name the dir and the fix:\n${said(rv)}`);
+			assert.equal(await info(), 200, 'a refused revoke never ends the token');
+			const none = run('revoke', '--token', 'nope');
+			assert.equal(none.status, 1, said(none));
+			assert.equal(none.stdout.trim(), 'no token named nope', 'nothing to write, so nothing refused');
+			assert.equal(fs.statSync(f.state).mode & 0o777, 0o500, 'the mode the person set');
+		} finally { fs.chmodSync(f.state, 0o700); }
+		assert.equal(stateFile(), before, 'the state file is what it was');
+		assert.equal(await info(), 200, 'and after the dir is writable again');
+		assert.equal(run('revoke', '--token', 'serve').status, 0);
+		assert.equal(await info(), 401);
+	});
 });
 
 describe('stop and come back', () => {
@@ -243,6 +276,15 @@ describe('start, detached, with its flags', () => {
 			assert.equal(r.status, 1, `${flags.join(' ')}: ${r.stdout}${r.stderr}`);
 			assert.match(r.stdout, new RegExp(`already running at http://127\\.0\\.0\\.1:${rt.port} — ${flags[0]} ${flags[1]} .*dt web stop`), flags.join(' '));
 		}
+		assert.equal(runtimeFile().pid, rt.pid, 'the server was not replaced');
+	});
+	test('--port 0 asks for any port, so it agrees with a running server on whatever port it has', { timeout: 60_000 }, () => {
+		const rt = runtimeFile();
+		const r = run('start', '--port', '0');
+		assert.equal(r.status, 0, r.stdout + r.stderr);
+		assert.equal(r.stdout.trim(), `running at http://127.0.0.1:${rt.port}`);
+		const env0 = spawnSync(process.execPath, [BIN, f.root, 'start'], { env: { ...env, DT_WEB_PORT: '0' }, encoding: 'utf8', timeout: 30_000 });
+		assert.equal(env0.status, 0, env0.stdout + env0.stderr);
 		assert.equal(runtimeFile().pid, rt.pid, 'the server was not replaced');
 	});
 	test('starts at the same instant: the ones that lose the start lock wait for the winner, never fail on its lock', { timeout: 60_000 }, async () => {

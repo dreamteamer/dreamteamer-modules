@@ -73,6 +73,11 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 60, owner
 	}
 	const state = readWorkspaceState(root, stateDir);
 	const save = () => writeWorkspaceState(root, state, stateDir);
+	/** The client tokens as `next`: the state file first, then memory — a write that throws changes neither. */
+	const saveTokens = (next) => {
+		writeWorkspaceState(root, { ...state, clientTokens: next }, stateDir);
+		state.clientTokens = next;
+	};
 	const sessions = createSessions({ now });
 	const pairing = createPairing({ now });
 	const controlToken = random(32);
@@ -346,18 +351,19 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 60, owner
 		'POST /_dt/token': (body) => {
 			let minted;
 			try { minted = mintClientToken({ name: body?.name, level: body?.level ?? 'read', now }); } catch (e) { throw new HttpError(400, e.message); }
-			state.clientTokens = [...state.clientTokens.filter((t) => t.name !== minted.record.name), minted.record];
-			save();
+			// written first, then swapped in memory: a refused write (a read-only state dir) leaves the earlier token of
+			// that name working, here and in the file
+			saveTokens([...state.clientTokens.filter((t) => t.name !== minted.record.name), minted.record]);
 			endRevokedStreams();
 			return [200, { token: minted.token, api: `http://127.0.0.1:${listenPort}/api` }];
 		},
 		'POST /_dt/revoke': (body) => {
 			if (body?.token !== undefined) {
-				const n = state.clientTokens.length;
-				state.clientTokens = state.clientTokens.filter((t) => t.name !== body.token);
-				save();
-				endRevokedStreams();
-				return [200, { revoked: n - state.clientTokens.length }];
+				const kept = state.clientTokens.filter((t) => t.name !== body.token);
+				const n = state.clientTokens.length - kept.length;
+				// nothing to revoke, nothing to write; otherwise written first, then swapped (as a token is)
+				if (n) { saveTokens(kept); endRevokedStreams(); }
+				return [200, { revoked: n }];
 			}
 			const n = sessions.revokeAll();
 			for (const c of pageStreams) c.end();
@@ -417,7 +423,13 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 60, owner
 			const body = await jsonBody(req);
 			const fn = controlRoutes[key];
 			if (!fn) return json(res, 404, { error: `no route ${key}` });
-			const [status, out] = await fn(body, { kind: 'control' }, url);
+			let answer;
+			// a state write refused by the dir's mode answers its sentence, with the code the verbs refuse on as open does
+			try { answer = await fn(body, { kind: 'control' }, url); } catch (e) {
+				if (e?.code === 'EDTWEBDIR') return json(res, 500, { error: e.message, code: e.code });
+				throw e;
+			}
+			const [status, out] = answer;
 			return json(res, status, out);
 		}
 		const sid = cookieOf(req);

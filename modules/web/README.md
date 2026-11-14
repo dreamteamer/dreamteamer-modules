@@ -61,7 +61,7 @@ Uninstall: `npm uninstall @dreamteamer/web`, then remove the `UserPromptSubmit` 
 | `npx dt web revoke [--token <n>]` | ends every session (the page signs out), or removes one client token |
 | `npx dt web status` | `running at http://127.0.0.1:<port> · pid <n> · level <Level> · since <time>` and exit 0, or `not running` or `not answering: …` and exit 1. It writes nothing |
 | `npx dt web stop [--revoke] [--force]` | stops the server, and with it every session: the page signs out (`--revoke` ends them first, the same end). `--force` stops a server that is not answering (`SIGTERM` and `SIGCONT`, then `SIGKILL` after 5 seconds), only when the start recorded in its runtime file is that process's own |
-| `npx dt web start [--foreground] [--port <n>] [--idle <minutes>] [--owner-pid <pid>]` | starts the server without pairing. `--foreground` serves in this process (for a launch entry). `--port` or `DT_WEB_PORT` picks the port; `--idle` the minutes with no page and no token request before it stops (default 60, `0` never); `--owner-pid` stops it when that process exits. A port named here is never swapped for another: taken, the start fails naming it. A server already running keeps its own: a flag asking for another value exits 1, naming the server — `dt web stop`, then start again |
+| `npx dt web start [--foreground] [--port <n>] [--idle <minutes>] [--owner-pid <pid>]` | starts the server without pairing. `--foreground` serves in this process (for a launch entry). `--port` or `DT_WEB_PORT` picks the port; `--idle` the minutes with no page and no token request before it stops (default 60, `0` never); `--owner-pid` stops it when that process exits. A port named here is never swapped for another: taken, the start fails naming it. A server already running keeps its own: a flag asking for another value exits 1, naming the server — `dt web stop`, then start again (`--port 0`, any port, agrees with whatever port it has) |
 | `npx dt serve [--read\|--edit] [--name <n>]` | `dt web token --name serve`: a client token of this workspace's server |
 
 One server serves one workspace, on a port it keeps: the first start picks a free one and stores it, and later
@@ -137,7 +137,8 @@ Found a hole? See [SECURITY.md](../../SECURITY.md). Do not open a public issue.
   and queue, and the client tokens (by SHA-256 only) — is in the per-user state directory (on macOS
   `~/Library/Application Support/dreamteamer/web/state/`, on Linux `$XDG_STATE_HOME/dreamteamer/web/`): mode
   `0700`, files `0600`, nothing in the workspace. A mode that lets others in is tightened to `0700`; one you made
-  read-only is never widened — the verb stops, naming the directory, `chmod 700` and `DT_WEB_STATE_DIR`.
+  read-only is never widened — the verb stops, naming the directory, `chmod 700` and `DT_WEB_STATE_DIR`; on a
+  running server `dt web token` and `dt web revoke --token` stop the same way, and a token that worked before still does.
 - **Tokens.** The **control token** is minted each start and kept in your per-user runtime directory (on Linux
   `$XDG_RUNTIME_DIR/dreamteamer-web/`, on macOS `~/Library/Application Support/dreamteamer/web/runtime/`); the
   verbs use it, and only on `/_dt/`. A **client token** (`dt web token`, `dt serve`) is for a program of yours:

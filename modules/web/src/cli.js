@@ -110,7 +110,13 @@ const current = async (root, env, timeoutMs = 2000, { refuseSilent = true } = {}
 	if (p?.state === 'silent' && refuseSilent) throw new NotAnswering(p);
 	return p?.proven && typeof p.token === 'string' ? { port: p.port, controlToken: p.token, pid: p.pid, movedFrom: p.movedFrom, owner: p.owner ?? null, idle: p.idle } : null;
 };
-const failed = (log, r) => { log(`✖ ${r.body?.error ?? (r.status ? `the server answered ${r.status}` : 'the server did not answer')}`); return 1; };
+const failed = (log, r) => {
+	// the server refused a state write on the dir's mode: the verb fails as open does on the same dir — the sentence
+	// naming the dir and the fix, exit 2
+	if (r.body?.code === 'EDTWEBDIR') throw Object.assign(new Error(r.body.error), { code: r.body.code });
+	log(`✖ ${r.body?.error ?? (r.status ? `the server answered ${r.status}` : 'the server did not answer')}`);
+	return 1;
+};
 
 /**
  * The workspace's server, started detached when it is not running (or is on its way down): `dt-web <root> start
@@ -254,7 +260,8 @@ async function verb(root, o, { log, env, appDir, sdir, ensure }) {
 		const was = await current(root, env);
 		if (was) {
 			const differs = [
-				o.port !== undefined && o.port !== was.port && `${o.portFromEnv ? 'DT_WEB_PORT=' : '--port '}${o.port}`,
+				// --port 0 asks for no particular port, so any running server's port agrees with it
+				o.port !== undefined && o.port !== 0 && o.port !== was.port && `${o.portFromEnv ? 'DT_WEB_PORT=' : '--port '}${o.port}`,
 				o.idle !== undefined && o.idle !== was.idle && `--idle ${o.idle}`,
 				o.ownerPid !== undefined && o.ownerPid !== was.owner && `--owner-pid ${o.ownerPid}`,
 			].filter(Boolean);
