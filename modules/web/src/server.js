@@ -7,6 +7,7 @@ import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
 import { createHandler } from '@dreamteamer/protocol/handler';
+import { validateSelection } from '@dreamteamer/protocol/pane';
 import { engine } from '@dreamteamer/protocol/host/engine';
 import { envRoots } from '@dreamteamer/protocol/host/folder-images';
 import { changeScope, invalidateMessage, NAV_DOC_FILE } from '@dreamteamer/protocol/host/changes';
@@ -76,6 +77,7 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 60, owner
 		workspace: { id: workspaceKey(root), name: workspaceName(root) },
 		fileBases: () => fileBases(),
 		varRoots: () => varRoots(),
+		onChange: (type) => broadcast({ type }),
 	});
 	handler = await createHandler({ root, pane: store });
 	// cr-dt-008: the old nav settings are written into nav.yaml on the first GET /nav of this server's life, once; a
@@ -283,6 +285,33 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 60, owner
 		} finally { console.log = log; }
 	};
 
+	// ---- the push's targets --------------------------------------------------------------------
+	const reader = { descriptors: () => handler.api.descriptors(), handle: (m, p) => handler.handle(m, p) };
+	const parseRef = (ref) => { try { return engine().parseRef(ref); } catch { return null; } };
+	/** `dt web show`'s target → the app route: a collection, then a record ref, then a ui-view id; null for none. */
+	const resolveTarget = async (target) => {
+		if (typeof target !== 'string' || !target || target.length > 500) return null;
+		if (handler.api.descriptors().has(target)) return `/content/${target}`;
+		const ref = parseRef(target);
+		if (ref?.collection && ref.id && handler.api.descriptors().has(ref.collection)) {
+			const r = await handler.handle('GET', `/collections/${encodeURIComponent(ref.collection)}/records/${ref.id.split('/').map(encodeURIComponent).join('/')}`);
+			if (r.status === 200) return `/content/${ref.collection}/${ref.id}`;
+		}
+		if (!target.includes('/')) {
+			const v = await handler.handle('GET', `/collections/ui-views/records/${encodeURIComponent(target)}`);
+			const route = v.status === 200 ? v.body?.fields?.route : null;
+			if (typeof route === 'string' && route.startsWith('/')) return route;
+		}
+		return null;
+	};
+	/** `dt web select`'s refs: existing records, at most 50, all of one collection (as PUT /selection checks them). */
+	const checkRefs = async (refs) => {
+		const r = await validateSelection(reader, { view: { other: true }, refs });
+		if (!r.ok) throw new HttpError(400, r.error);
+		if (new Set(r.value.refs.map((x) => parseRef(x)?.collection)).size > 1) throw new HttpError(400, 'the refs of a selection are all of one collection');
+		return r.value.refs;
+	};
+
 	const levelIn = (body) => {
 		if (!LEVELS.includes(body?.level)) throw new HttpError(400, `a level is ${LEVELS.join(', ')}`);
 		return body.level;
@@ -314,6 +343,22 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 60, owner
 			return [200, { revoked: n }];
 		},
 		'POST /_dt/level': (body) => { setLevel(levelIn(body)); return [200, { level: state.level, raisedAt: state.raisedAt ?? null }]; },
+		'POST /_dt/push': async (body) => {
+			if (body?.type === 'navigate') {
+				const route = await resolveTarget(body.target);
+				if (!route) return [400, { error: `no record, collection or ui-view ${body.target}` }];
+				broadcast({ type: 'dt:navigate', route });
+				return [200, { route, delivered: clientStreams.size }];
+			}
+			if (body?.type === 'select') {
+				const refs = body.clear === true ? [] : await checkRefs(body.refs);
+				broadcast({ type: 'dt:select', refs });
+				return [200, { refs, delivered: clientStreams.size }];
+			}
+			return [400, { error: 'a push is { type: "navigate", target } or { type: "select", refs | clear: true }' }];
+		},
+		'GET /_dt/pane': (_body, _who, url) => [200, store.snapshot({ hook: url.searchParams.get('hook') === '1', connected: clientStreams.size > 0 })],
+		'POST /_dt/pane/delivered': (body) => [200, { delivered: store.delivered(body?.ids) }],
 	};
 	/** /_dt/ under the cookie: the page's own routes. */
 	const pageRoutes = {
@@ -441,7 +486,7 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 60, owner
 		clearTimeout(timer); idle.clear(); clearInterval(ownerTimer);
 		for (const w of watchers) w.close();
 		for (const c of clientStreams) c.end();
-		try { sessions.flush(); } catch { /* the state dir went away: the next start reads what was written */ }
+		try { sessions.flush(); store.flush?.(); } catch { /* the state dir went away: the next start reads what was written */ }
 		const done = new Promise((r) => server.close(r));
 		server.closeAllConnections?.();
 		await done;
