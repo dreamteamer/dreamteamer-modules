@@ -1,14 +1,28 @@
 # @dreamteamer/files
 
 The files under your mounted folders — a synced drive, a cloud folder, a local archive — as records.
-A `file-drives` record names one folder and the subfolders you want indexed; `dt files sync` walks it
-and keeps one `files` record per file or folder, so "which files does nothing reference", "what
-landed in this folder" and "what did I note about that PDF" are queries rather than a `find`.
+A `file-drives` record names one folder and the subfolders you want indexed; `npx dreamteamer files
+sync` walks it and keeps one `files` record per file or folder, so "which files does nothing
+reference", "what landed in this folder" and "what did I note about that PDF" are queries rather
+than a `find`.
 
 ```bash
 npm install @dreamteamer/files
 npx dreamteamer compile
 ```
+
+## setup
+
+One input: `FILES_FOLDER`, the mounted root your `file-drives` records resolve under. The module's
+setup unit, `files`, has the engine write it into `.env`:
+
+```bash
+npx dreamteamer setup files --input files_folder=<folder>
+npx dreamteamer status          # configured once the key is set and the folder exists; blocked when it is not mounted
+```
+
+Nothing downloads and nothing reaches the network. [SETUP.md](SETUP.md) is the reference; the
+`working-with-files` skill and `/sync-files` carry the procedure.
 
 ## the two collections
 
@@ -39,12 +53,12 @@ sync client evicted to the cloud is marked `local: false` and left alone.
 
 Other modules point at a file either as a string `${env:NAME}/<relative path>` or as a typed
 reference `files/<drive>/<relative path>`; both resolve to the same record and both count in
-`referenced_by`. A record that points at a file is listed in that file's `referenced_by`, so `dt rm`
+`referenced_by`. A record that points at a file is listed in that file's `referenced_by`, so `npx dreamteamer rm`
 of the pointing record names the files record — pass `--force`, and the next sync drops the stale
 entry.
 
-`dt doctor` shows each drive's state on this machine; `dt check` reports an entry whose id disagrees
-with its drive and path.
+`npx dreamteamer doctor` shows each drive's state on this machine; `npx dreamteamer check` reports an
+entry whose id disagrees with its drive and path.
 
 ## 0.3.0 — on engine 0.48.0: the engine writes `.env` (CR-dt-007)
 

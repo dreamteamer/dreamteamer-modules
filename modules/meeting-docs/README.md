@@ -24,6 +24,12 @@ npx dreamteamer compile
 The module also ships the `/meetings/pipeline` view: which recent meetings have a prep, a summary,
 a critique.
 
+It needs no setup of its own; what the calendar sync and the transcriber need is in the `SETUP.md` of
+**meetings** and **recordings**. Six commands: `/prepare-for-meeting`, `/create-meeting`,
+`/summarize-meeting`, `/extract-tasks-from-meetings`, `/analyze-meetings`, and `/process-new-meetings`,
+which runs the whole pipeline. The `preparing-for-meetings` and `analyzing-meetings` skills carry the
+method behind a prep and a critique.
+
 A prep can be written for any meeting, with no recording. A summary, its tasks and a critique need a
 transcribed recording; their commands are offered on a meeting only once one of its recordings has
 been transcribed, and never on a meeting whose `privacy` is `restricted` — one that holds a third

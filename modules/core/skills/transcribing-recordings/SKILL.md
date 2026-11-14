@@ -122,7 +122,7 @@ around Hebrew punctuation are stripped. The window-to-window text prompt is off 
 (`-mc 0` / `condition_on_previous_text=False`); voice-activity filtering exists only on `cpu`.
 
 **the recording record is the target.** Its `recording_file` template points at the archived copy of
-the binary — render it with `npx dt resolve meeting-recordings/<id> recording_file`; the record's
+the binary — render it with `dt resolve meeting-recordings/<id> recording_file`; the record's
 template is the only pointer. Its `meeting:` points back at the meeting. The script takes the
 **record path and the audio path** — it does not resolve refs, place binaries, or create records. Those
 are `ingesting-recordings` and `/match-recording-to-meeting`.
@@ -144,7 +144,7 @@ takes any audio path ffmpeg can open, so the only new part is minting the record
 
 ```bash
 # 1. the record. It is the transcript's home; `recording_file` may stay empty.
-npx dt add meeting-recordings --name "<who and what>" --date YYYY-MM-DD --origin audio
+dt add meeting-recordings --name "<who and what>" --date YYYY-MM-DD --origin audio
 
 # 2. OPTIONAL, LOCAL FILES_FOLDER ONLY — keep the bytes. Copies the file to
 #    ${env:FILES_FOLDER}/meeting-recordings/<id>.<ext>, verifies it, and prints the recording_file to set on the record.
@@ -172,7 +172,7 @@ full script usage: `setup | run <record.md> <audio> [--date YYYY-MM-DD] [--speak
 ## audio route
 
 1. **resolve.** the recording record and its `recording_file`, rendered to a local path with
-   `npx dt resolve meeting-recordings/<id> recording_file`. If the record has no `recording_file`, stop —
+   `dt resolve meeting-recordings/<id> recording_file`. If the record has no `recording_file`, stop —
    there is nothing to transcribe (that is why the binding's `can-enter` is `recording_file._nempty`).
 2. **decide the language, and pass it when you know it.** `--language en` / `--language he`. A
    recording often **opens in Hebrew** (a spoken announcement, a greeting) even when the call is
@@ -199,7 +199,7 @@ full script usage: `setup | run <record.md> <audio> [--date YYYY-MM-DD] [--speak
    mixes both, expect Hebrew-script renderings of English terms and set `confidence: low`.
 
 3. **decide the speaker count**, in this order:
-   - the linked meeting's `attendees_contacts | length` — `npx dt get meetings/<id>`, the ideal path
+   - the linked meeting's `attendees_contacts | length` — `dt get meetings/<id>`, the ideal path
      (the people resolved to contacts; the raw `attendees` list also counts people who declined)
    - no meeting, a free/busy stub, or fewer than 2 attendees → **pass `--speakers 2`**; a 1:1 is the
      commonest call
@@ -226,7 +226,7 @@ full script usage: `setup | run <record.md> <audio> [--date YYYY-MM-DD] [--speak
 6. **fill the speaker name-map.** skim just enough to map labels to people; edit
    `transcription.speakers:` (`speaker_0: Dana Oren`). unsure → leave unmapped, say why in
    `transcription.notes:`.
-7. **commit** (`npx dt commit meeting-recordings/<id>`) and **report** language(s), duration,
+7. **commit** (`dt commit meeting-recordings/<id>`) and **report** language(s), duration,
    speaker count, recording id, meeting id, speaker map — no transcript body in the report.
 
 ## text routes
@@ -267,7 +267,7 @@ Hebrew ASR that came out rough is `confidence: low` with the reason in `creation
 transcript and its own speaker map, and the meeting's `recordings:` array lists them all in date order.
 If you find yourself merging transcripts, stop.
 
-after transcribing, run `npx dt check` — the recording must validate. The meeting's `recordings:`
+after transcribing, run `dt check` — the recording must validate. The meeting's `recordings:`
 is generated from each recording's `meeting:`, so the link is written once, on the recording.
 
 ## common mistakes

@@ -15,7 +15,7 @@ destination sit in the same synced tree, `archive` is one local move.
 holds a single pointer — `meetings.screenshots_folder`, a FULL
 `${env:FILES_FOLDER}/meetings/<meeting-id>/screenshots` template — and the folder holds the images
 under their original names. The pointer is inert data; a reader renders it with
-`npx dt resolve meetings/<meeting-id> screenshots_folder`, which gives a local path on a machine with
+`dt resolve meetings/<meeting-id> screenshots_folder`, which gives a local path on a machine with
 the synced folder and a `gdrive://…` address on a cloud session. The capture time is already in each
 filename, so no record restates it.
 
@@ -148,10 +148,10 @@ own `screenshots_folder` pointer.
    template. Single-quote it so the shell does not expand `${…}`; nothing substitutes until
    `dt resolve` is called:
    ```bash
-   npx dt set meetings/<meeting-id> \
+   dt set meetings/<meeting-id> \
      'screenshots_folder=${env:FILES_FOLDER}/meetings/<meeting-id>/screenshots'
    # check it renders on this machine:
-   npx dt resolve meetings/<meeting-id> screenshots_folder
+   dt resolve meetings/<meeting-id> screenshots_folder
    ```
 5. **`npx dreamteamer check`**, then **report**: which meetings gained visuals and how many, the
    unmatched shots, and anything you asked about.

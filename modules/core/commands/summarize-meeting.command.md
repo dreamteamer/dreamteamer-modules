@@ -18,7 +18,7 @@ the writing date, so it is only a fallback. One summary per meeting (`meeting` i
 re-summary updates the existing record with `dt set`, never adds a second.
 
 ```bash
-npx dt add meeting-summaries --id <meeting id> --name "<the meeting's name>" \
+dt add meeting-summaries --id <meeting id> --name "<the meeting's name>" \
   --meeting meetings/<meeting id> --date <the meeting's starts> \
   --author agents/<harness> --source meeting-recordings/<id> [--source meeting-recordings/<id> …]
 ```
@@ -39,7 +39,7 @@ npx dt add meeting-summaries --id <meeting id> --name "<the meeting's name>" \
    `${env:FILES_FOLDER}/meetings/<the meeting's id>/screenshots` template. Let the engine render it,
    then LOOK at each image:
    ```bash
-   DIR=$(npx dt resolve meetings/<id> screenshots_folder)
+   DIR=$(dt resolve meetings/<id> screenshots_folder)
    ls "$DIR"
    # then read each image by its path: "$DIR/<filename>"
    ```

@@ -25,8 +25,8 @@ company's own site icon, stored as `assets/logos/<company id>` and found from `d
 ```bash
 curl -sL https://harbor-mutual.example/ | grep -ioE '<link[^>]*rel="[^"]*icon[^"]*"[^>]*>'
 curl -sL -o /tmp/x.png https://<the href>      # check: file -b --mime-type /tmp/x.png
-npx dt add assets logos/harbor-mutual --from /tmp/x.png
-npx dt set companies/harbor-mutual --logo assets/logos/harbor-mutual
+npx dreamteamer add assets logos/harbor-mutual --from /tmp/x.png
+npx dreamteamer set companies/harbor-mutual logo=assets/logos/harbor-mutual
 ```
 
 A brand that Simple Icons carries uses its slug instead: `assets/logos/<simple-icons-slug>`.

@@ -256,11 +256,11 @@
 		},
 		"commands/summarize-meeting.command.md": {
 			"from": "meeting-docs/commands/summarize-meeting.command.md",
-			"hash": "sha256:8fa81c09d1d01ee28293ebdc8d31d928490b60885aafe709baf1cc97a366d313"
+			"hash": "sha256:b4de68f2e50c9262380a696962660f81344dee5f2eb90c14d84066eca6ec3580"
 		},
 		"commands/sync-files.command.md": {
 			"from": "files/commands/sync-files.command.md",
-			"hash": "sha256:c89217cd206afec19b5b382821cf930bfb641bea728d7e876fd08e4207d093a5"
+			"hash": "sha256:2e2971d21404ea3f19173708e6666ba84532d95409676e2fb79b913eb7d0e776"
 		},
 		"commands/transcribe-recording.command.md": {
 			"from": "recordings/commands/transcribe-recording.command.md",
@@ -272,7 +272,7 @@
 		},
 		"commands/update-engagements.command.md": {
 			"from": "engagements/commands/update-engagements.command.md",
-			"hash": "sha256:a88783ef379c80115ecc1aea1221100632913e7a830a07955e38462c204e919b"
+			"hash": "sha256:8ac3469ddc9971f0f4aefa04ed54f1347d4d93ffd691faa6b18a71fee246e45b"
 		},
 		"commands/workflow/run.command.md": {
 			"from": "workflows/commands/workflow/run.command.md",
@@ -332,7 +332,7 @@
 		},
 		"skills/fetching-meetings/SKILL.md": {
 			"from": "meetings/skills/fetching-meetings/SKILL.md",
-			"hash": "sha256:4b86ebf25a7e01d28c91bcab7009027f128dcb86fc9786626629c18d4224b900"
+			"hash": "sha256:3d07c2a560d8efbee162e3cac881b1fd071cd51985494d1970db57ba3dbcaa00"
 		},
 		"skills/ingesting-meeting-screenshots/bin/detect.mjs": {
 			"from": "meetings/skills/ingesting-meeting-screenshots/bin/detect.mjs",
@@ -340,7 +340,7 @@
 		},
 		"skills/ingesting-meeting-screenshots/SKILL.md": {
 			"from": "meetings/skills/ingesting-meeting-screenshots/SKILL.md",
-			"hash": "sha256:7a6fa0837e619668eb84fb91f1edbf0874040799a385104cc034cf5d7d8ffc38"
+			"hash": "sha256:d3544c6a8f6bcbd77e1d1afc5988df4e5592913f6ce1aa2fa2c32175f4749c5a"
 		},
 		"skills/ingesting-recordings/bin/detect.mjs": {
 			"from": "recordings/skills/ingesting-recordings/bin/detect.mjs",
@@ -348,11 +348,11 @@
 		},
 		"skills/ingesting-recordings/SKILL.md": {
 			"from": "recordings/skills/ingesting-recordings/SKILL.md",
-			"hash": "sha256:c6527e3db15697caec15545227bf90a5fa45f19fae782a5074a7c9b196895e0f"
+			"hash": "sha256:57e0b263cb46b48dd2c10267c3cbdec8a55e76fb3ec2d5fc6b2f36df0dbdb8cd"
 		},
 		"skills/preparing-for-meetings/SKILL.md": {
 			"from": "meeting-docs/skills/preparing-for-meetings/SKILL.md",
-			"hash": "sha256:b057f49f6c5acd4193caeb1cec48d9be63414985e7e1e3215b55ee8978acff88"
+			"hash": "sha256:fa18f47fe4cd9f084ee444ae3b524b8f383d9d7eb1ed29efb363c803b67bfd14"
 		},
 		"skills/running-workflows/SKILL.md": {
 			"from": "workflows/skills/running-workflows/SKILL.md",
@@ -396,7 +396,7 @@
 		},
 		"skills/transcribing-recordings/SKILL.md": {
 			"from": "recordings/skills/transcribing-recordings/SKILL.md",
-			"hash": "sha256:c78d2eed23b98b017fc50c99f3606de938401efbd84fa7b8f1f4b6f89c845c13"
+			"hash": "sha256:64325a32cbe9af65ebd18de57afd6d9e0b69292d692019260030b1974f908f20"
 		},
 		"skills/transcribing-recordings/text_source.py": {
 			"from": "recordings/skills/transcribing-recordings/text_source.py",
@@ -412,11 +412,11 @@
 		},
 		"skills/working-with-files/SKILL.md": {
 			"from": "files/skills/working-with-files/SKILL.md",
-			"hash": "sha256:02fc36b1bc8d654e81b2031f1cee3b6bd4c392f371c56444a65ff9e685a7c5b0"
+			"hash": "sha256:e1e8202010eb1ac0357ef80036f12c133b4844aeb6218b20917e3aa07b1284de"
 		},
 		"skills/working-with-tasks/SKILL.md": {
 			"from": "tasks/skills/working-with-tasks/SKILL.md",
-			"hash": "sha256:80ed14d17f8abf00d2c8e3aa3e68a76884e4432755b1b52f91b090bc99b511e9"
+			"hash": "sha256:47da8c51cac046451a7f8fe5226cc51b63afccec6a77af00e46b2af6a684a27e"
 		},
 		"src/check.js": {
 			"from": "files/src/check.js",

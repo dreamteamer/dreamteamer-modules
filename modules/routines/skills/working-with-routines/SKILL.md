@@ -37,7 +37,7 @@ signal.
 ## the loop
 
 ```bash
-npx dt add routines --name "renew the car insurance" --recurrence "RRULE:FREQ=YEARLY" --anchor 2027-08-31 --tags insurance
+dt add routines --name "renew the car insurance" --recurrence "RRULE:FREQ=YEARLY" --anchor 2027-08-31 --tags insurance
 node .dreamteamer/skills/working-with-routines/bin/rrule.mjs render "RRULE:FREQ=YEARLY" --anchor 2027-08-31
 node .dreamteamer/skills/working-with-routines/bin/rrule.mjs roll            # what is stale
 node .dreamteamer/skills/working-with-routines/bin/rrule.mjs roll --apply    # fix it through `dt set`

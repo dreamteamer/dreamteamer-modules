@@ -15,6 +15,19 @@ source is optional and a run says which it could not reach. Chain the record gua
 `npm run check` — add it to the `check` script:
 `node node_modules/@dreamteamer/perspective/bin/check-records.mjs`.
 
+## setup
+
+Optional, and one input: an Asana personal access token, so tickets can be read. The module's setup
+unit, `perspective`, has the engine write it into `.env` as `ASANA_PAT`; the value is never shown or
+committed.
+
+```bash
+npx dreamteamer setup perspective --input asana_pat=<token>
+```
+
+Without it tickets stay out of the perspective and everything else runs.
+[SETUP.md](SETUP.md) says what the unit's status line means.
+
 ## 0.4.0 — on engine 0.48.0: the engine writes `.env` (CR-dt-007)
 
 Nothing to do but `dt update @dreamteamer/perspective` on dreamteamer 0.48.0 or later, then `dt compile`; nothing a
