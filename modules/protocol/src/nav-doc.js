@@ -1,4 +1,4 @@
-// THE NAV DOCUMENT — nav.yaml at a workspace's root, the left nav the operator arranges (cr-dt-008). This file is
+// THE NAV DOCUMENT — nav.yaml at a workspace's root, the left nav a person arranges (cr-dt-008). This file is
 // the protocol's half of the cross-repo contract: the types every host speaks (NavDoc, NavTarget, NavOp, in
 // nav-doc.d.ts) and `applyNavOp`, the one pure function every gesture goes through — a drop, a menu entry, a
 // PATCH /nav. The engine reads, validates and writes the file (dreamteamer 0.49); a host turns a gesture into one
@@ -17,6 +17,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import yaml from 'js-yaml';
+import { engine, engineLoaded } from './host/engine.js';
 
 /** A refused op: the message names the input. A host answers it 400. */
 export class NavOpError extends Error {
@@ -373,4 +374,108 @@ function visibility(doc, ctx, op) {
 	if (hide) w.entry.hidden = true;
 	else delete w.entry.hidden;
 	return doc;
+}
+
+// ── reading and writing the file ────────────────────────────────────────────────────────────────────────────
+// The engine owns the file from 0.49 (readNavDoc · validateNavDoc · writeNavDoc); on an older engine the protocol's
+// own reader, name check and writer stand in, with the same header and the same bytes for the same document.
+
+export const NAV_FILE = 'nav.yaml';
+export const NAV_HEADER = '# The left nav of this workspace. Drag and drop writes this file; so may you.';
+
+/** The loaded engine's nav member, when the workspace's engine has one. */
+const engineNav = (name) => {
+	const fn = engineLoaded() ? engine()[name] : undefined;
+	return typeof fn === 'function' ? fn : undefined;
+};
+
+/** `<root>/nav.yaml` through the engine's reader when it has one (0.49), else the protocol's own. Null when absent;
+ *  throws NavDocError when unreadable. */
+export function readNavDoc(root) {
+	const viaEngine = engineNav('readNavDoc');
+	if (!viaEngine) return readNavDocFile(root);
+	try {
+		return viaEngine(root);
+	} catch (e) {
+		// the engine's NavDocError is its own class: carried over as the protocol's, so a host tells it by one name
+		if (e?.name === 'NavDocError' && !(e instanceof NavDocError)) throw new NavDocError(e.message);
+		throw e;
+	}
+}
+
+/** A NavDoc as the text of a nav.yaml: the header line, `tree`, and `hidden` only when it holds a name. */
+export function serializeNavDoc(doc) {
+	const d = normalizeNavDoc(doc);
+	const body = { tree: d.tree };
+	if (d.hidden.length) body.hidden = d.hidden;
+	return `${NAV_HEADER}\n${yaml.dump(body, { lineWidth: 120 }).replace(/\n+$/, '')}\n`;
+}
+
+/** The protocol's own writer, for an engine before 0.49: the whole document, atomically (a temp file renamed over
+ *  the old one). False when the bytes were already there. */
+export function writeNavDocFile(root, doc) {
+	const file = path.join(root, NAV_FILE);
+	const text = serializeNavDoc(doc);
+	try { if (fs.readFileSync(file, 'utf8') === text) return false; } catch { /* absent: written below */ }
+	const tmp = `${file}.tmp-${process.pid}`;
+	fs.writeFileSync(tmp, text);
+	fs.renameSync(tmp, file);
+	return true;
+}
+
+/** Write `<root>/nav.yaml`: the engine's writer when the loaded engine exports it, else the protocol's own. */
+export function writeNavDoc(root, doc) {
+	const viaEngine = engineNav('writeNavDoc');
+	return viaEngine ? viaEngine(root, normalizeNavDoc(doc)) : writeNavDocFile(root, doc);
+}
+
+/** A PUT body checked for shape: every entry one of the four forms, a folder label neither empty nor `ns:…`, an
+ *  icon a string, `hidden` a list of names. Returns the document as a whole one; throws NavOpError naming the
+ *  first problem. */
+export function checkNavDoc(input) {
+	if (!input || typeof input !== 'object' || Array.isArray(input)) throw new NavOpError(`not a NavDoc: ${show(input)} — { tree: [entries], hidden?: [names] }`);
+	if (!Array.isArray(input.tree)) throw new NavOpError(`tree ${show(input.tree)} is not a list of entries`);
+	if (input.hidden !== undefined && (!Array.isArray(input.hidden) || !input.hidden.every((h) => typeof h === 'string' && h))) throw new NavOpError(`hidden ${show(input.hidden)} is not a list of names`);
+	const where = (path) => (path.length ? ` in ${show(path)}` : '');
+	const level = (items, path) => {
+		for (const e of items) {
+			if (typeof e === 'string') { if (!e) throw new NavOpError(`an empty name${where(path)}`); continue; }
+			if (!e || typeof e !== 'object' || Array.isArray(e)) throw new NavOpError(`${show(e)}${where(path)} is not a collection, a folder or a namespace`);
+			if (e.icon !== undefined && (typeof e.icon !== 'string' || !e.icon)) throw new NavOpError(`icon ${show(e.icon)}${where(path)} is not a codicon name`);
+			if (e.hidden !== undefined && typeof e.hidden !== 'boolean') throw new NavOpError(`hidden ${show(e.hidden)}${where(path)} is not true or false`);
+			if (typeof e.collection === 'string' && e.collection) continue;
+			if (typeof e.folder === 'string') {
+				validLabel(e.folder);
+				if (!Array.isArray(e.items)) throw new NavOpError(`folder ${show(e.folder)}${where(path)} has no items list`);
+				level(e.items, [...path, e.folder]);
+				continue;
+			}
+			if (typeof e.namespace === 'string' && e.namespace) {
+				if (e.items !== undefined && !Array.isArray(e.items)) throw new NavOpError(`namespace ${show(e.namespace)}${where(path)}: items is not a list`);
+				level(e.items ?? [], [...path, `ns:${e.namespace}`]);
+				continue;
+			}
+			throw new NavOpError(`${show(e)}${where(path)} is not a collection, a folder or a namespace`);
+		}
+	};
+	level(input.tree, []);
+	return normalizeNavDoc(input);
+}
+
+/** The names a document places that the workspace does not have — `unknown collection "x"`, `unknown namespace
+ *  "y"` — through the engine's validateNavDoc when it has one, else the protocol's own check. A name listed twice
+ *  is not refused: it draws at its first place. */
+export function unknownNavNames(doc, { collections, namespaces }) {
+	const ctx = { collections: collections instanceof Set ? collections : new Set(collections), namespaces: [...namespaces] };
+	const viaEngine = engineNav('validateNavDoc');
+	if (viaEngine) return viaEngine(doc, ctx).map((w) => w.warning).filter((w) => /^unknown /.test(w));
+	const out = [];
+	const declared = new Set(ctx.namespaces);
+	for (const { entry } of walk(doc.tree)) {
+		const c = collectionOf(entry);
+		if (c !== undefined && !ctx.collections.has(c)) out.push(`unknown collection "${c}"`);
+		else if (isNamespace(entry) && !declared.has(entry.namespace)) out.push(`unknown namespace "${entry.namespace}"`);
+	}
+	for (const h of doc.hidden) if (!ctx.collections.has(h) && !declared.has(h)) out.push(`unknown collection "${h}"`);
+	return [...new Set(out)];
 }

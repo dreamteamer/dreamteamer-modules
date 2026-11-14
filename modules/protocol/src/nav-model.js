@@ -15,8 +15,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { engine, engineLoaded } from './host/engine.js';
 import { isRuntime, loadDescriptors, loadModules, loadUiViews, moduleDependencies, moduleNamespaces, navViewsOf, viewRow, workspaceModule } from './host/fsdata.js';
-import { WORKSPACE_ROUTE, buildTree, collectionRow, folderModule, folderPresentation, groupLabel, hasNavSettings, legacyTree, moduleIcon, navGroupsOf, navOrderOf, navPathKey, rowMarks, groupedLayerFolders, layerEntries, layerNote, moduleLabel, routeFor, shouldFoldOutOfRecordTree } from './host/nav.js';
-import { readNavDocFile } from './nav-doc.js';
+import { WORKSPACE_ROUTE, buildTree, collectionRow, folderModule, folderPresentation, groupLabel, hasNavSettings, legacyTree, moduleIcon, navGroupsOf, navOrderOf, navPathKey, rowMarks, groupedLayerFolders, layerEntries, layerNote, moduleLabel, routeFor, shouldFoldOutOfRecordTree, tailOrder } from './host/nav.js';
+import { readNavDoc } from './nav-doc.js';
 import { collectionSources, layerTitle, sourcesContext, sourcesStack } from './host/sources.js';
 import { codiconFor } from './host/icon-name.js';
 
@@ -54,11 +54,19 @@ function stripJsonComments(text) {
 const groupsOf = navGroupsOf;
 const orderOf = navOrderOf;
 
-/** `<root>/nav.yaml` through the engine's reader when it has one (0.49), else the protocol's own. Null when absent;
- *  throws NavDocError when unreadable. */
-export function readNavDoc(root) {
-	const viaEngine = engineLoaded() ? engine().readNavDoc : undefined;
-	return typeof viaEngine === 'function' ? viaEngine(root) : readNavDocFile(root);
+export { readNavDoc };
+
+/** What a nav write is checked against: the rows the tree can draw (`collections`, in drawn tail order — what
+ *  applyNavOp places unplaced rows by), every compiled collection (`known`, what a PUT may name: an internal
+ *  collection is not drawn but is not unknown) and the declared namespaces. */
+export function navOpContext(root) {
+	const descriptors = loadDescriptors(root);
+	const { titleOf } = engine().descriptor;
+	return {
+		collections: tailOrder(descriptors.filter((d) => !shouldFoldOutOfRecordTree(d)), titleOf),
+		known: new Set(descriptors.map((d) => d.name)),
+		namespaces: [...(engineLoaded() ? engine().namespaces : [])],
+	};
 }
 const layerSettings = (root, key) => {
 	try {
@@ -176,7 +184,7 @@ export function navModel({ root, settings = workspaceNavSettings(root) }) {
 			if (!/nav\.yaml/.test(notice)) notice = `nav.yaml: ${notice}`;
 		}
 		if (absent && hasNavSettings(settings)) {
-			// the tree the operator had, until the settings are migrated into nav.yaml (dt-nav migrate, or a host's first open)
+			// the tree the person had, until the settings are migrated into nav.yaml (dt-nav migrate, or a host's first open)
 			top = legacyTree(descriptors, settings, { declared, workspaceModule: workspaceModule(root), dependsOn: moduleDependencies(root), namespacesOf: moduleNamespaces(root), titleOf, layers: layersEntries }).map((e) =>
 				e.kind === 'collection' ? collectionNode(e.descriptor)
 					: e.kind === 'layers' ? layersNode(e)

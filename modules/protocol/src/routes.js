@@ -15,6 +15,8 @@ export const ROUTES = [
 	{ id: 'sources-access-members', method: 'GET', pattern: '/sources/access/members', doc: 'get-sources-access-members' },
 	{ id: 'activity', method: 'GET', pattern: '/activity', doc: 'get-activity' },
 	{ id: 'nav', method: 'GET', pattern: '/nav', doc: 'get-nav' },
+	{ id: 'nav-put', method: 'PUT', pattern: '/nav', doc: 'put-nav' },
+	{ id: 'nav-patch', method: 'PATCH', pattern: '/nav', doc: 'patch-nav' },
 	{ id: 'field-add', method: 'POST', pattern: '/fields/:collection', doc: 'post-fields-collection' },
 	{ id: 'field-edit', method: 'PATCH', pattern: '/fields/:collection/:field', doc: 'patch-fields-collection-field' },
 	{ id: 'field-remove', method: 'DELETE', pattern: '/fields/:collection/:field', doc: 'delete-fields-collection-field' },

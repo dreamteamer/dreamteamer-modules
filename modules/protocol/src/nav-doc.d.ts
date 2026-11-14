@@ -64,3 +64,20 @@ export declare function collectionOf(entry: Entry): string | undefined;
 export declare function namespaceOf(name: string, namespaces: readonly string[]): string;
 /** Every name the document places: collection names, `ns:<name>` for namespace entries, and every hidden name. */
 export declare function placedNames(doc: NavDoc): Set<string>;
+
+export declare const NAV_FILE = "nav.yaml";
+/** The first line of every nav.yaml a host writes. */
+export declare const NAV_HEADER = "# The left nav of this workspace. Drag and drop writes this file; so may you.";
+/** `<root>/nav.yaml` through the engine's reader when the loaded engine has one (0.49), else the protocol's own:
+ *  null when absent; throws NavDocError when unreadable. */
+export declare function readNavDoc(root: string): NavDoc | null;
+/** A NavDoc as nav.yaml's text: the header line, `tree`, and `hidden` only when it holds a name. */
+export declare function serializeNavDoc(doc: NavDoc): string;
+/** The protocol's own atomic writer (an engine before 0.49). False when the bytes were already there. */
+export declare function writeNavDocFile(root: string, doc: NavDoc): boolean;
+/** Write `<root>/nav.yaml` through the engine's writer when the loaded engine has one, else the protocol's own. */
+export declare function writeNavDoc(root: string, doc: NavDoc): boolean;
+/** A PUT body checked for shape; the document as a whole one. Throws NavOpError naming the first problem. */
+export declare function checkNavDoc(input: unknown): NavDoc;
+/** `unknown collection "x"` / `unknown namespace "y"` for each name the workspace does not have. */
+export declare function unknownNavNames(doc: NavDoc, ctx: { collections: Set<string> | Iterable<string>; namespaces: readonly string[] }): string[];

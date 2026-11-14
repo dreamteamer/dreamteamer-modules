@@ -23,4 +23,6 @@ export interface NavNode {
 export declare function workspaceNavSettings(root: string): NavSettings;
 /** `<root>/nav.yaml` through the engine's reader when it has one, else the protocol's own; null when absent. */
 export declare function readNavDoc(root: string): NavDoc | null;
+/** What a nav write is checked against: drawable rows in drawn tail order, every compiled collection, the namespaces. */
+export declare function navOpContext(root: string): { collections: Set<string>; known: Set<string>; namespaces: string[] };
 export declare function navModel(ctx: { root: string; settings?: NavSettings }): NavNode[];

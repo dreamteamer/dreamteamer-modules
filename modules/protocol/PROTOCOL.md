@@ -26,7 +26,7 @@ record ids are paths (`2026/11/northwind-kickoff`) and are sent unencoded. The q
 |---|---|
 | `400` | validation refused the write; a compile refused a schema write (the source is restored); a malformed request |
 | `404` | no such record; no such route (`unhandled request <METHOD> <path>`, or `unhandled field op …` under `/fields`). A collection name with a `/` sent unencoded matches no route, and the message goes on to name the collection meant: `… — unknown collection "lab" — did you mean "lab/samples"? a collection name containing "/" must be percent-encoded …` |
-| `409` | the record is referenced by another, or already exists; a repository is blocked (an in-progress merge or rebase); the workspace would not re-open before a compile-gated write (`… did not load, so nothing was written`) |
+| `409` | the record is referenced by another, or already exists; a repository is blocked (an in-progress merge or rebase); the workspace would not re-open before a compile-gated write (`… did not load, so nothing was written`); a nav write while the old nav settings are not migrated |
 
 Every error body is `{ "error": "<the engine's own sentence>" }`.
 
@@ -114,11 +114,40 @@ with `settled` until it is empty.
 ### GET /nav
 
 The navigation the editor draws as its tree, as data, so a host without a native tree draws the same
-folders. `200 [NavNode, ...]`, `NavNode = { kind, key, label, icon?, route?, marks?, count?, tooltip?,
-children? }`, `kind` one of `workspace`, `page`, `folder`, `collection`, `view`, `layers`, `layer`,
-`layer-group`, `layer-collection`, `note`. It honours the workspace's `dreamteamer.navGroups`,
-`dreamteamer.navOrder`, `dreamteamer.navHidden` and `dreamteamer.layersFolder` settings. A list is narrowed
-to some sources by an ordinary filter chip (`$source`), never by a host-wide scope.
+folders. `200 [NavNode, ...]`, `NavNode = { kind, key, label, icon?, route?, marks?, description?, tooltip?,
+target?, notice?, children? }`, `kind` one of `workspace`, `folder`, `namespace`, `collection`, `view`,
+`layers`, `layer`, `layer-group`, `layer-collection`, `layer-note`, `message`. Every `folder`, `namespace` and
+`collection` node carries `target`, the NavTarget a host sends back in a `PATCH /nav` op; a key is never decoded.
+
+The tree is the workspace's `nav.yaml` (see *The nav document*): its entries in order, then what it does not
+place — rows by title, then namespaces — and the layers folder last. With no `nav.yaml` and none of the old
+settings `dreamteamer.navGroups`, `dreamteamer.navOrder`, `dreamteamer.navHidden`, the tree is flat; with no
+`nav.yaml` and one of them set, it is the tree those settings drew, until they are migrated. A `nav.yaml` that
+cannot be read draws the flat tree and puts the reason on the workspace node's `notice` — never a 500.
+`dreamteamer.layersFolder` still names the layers folder. A list is narrowed to some sources by an ordinary filter
+chip (`$source`), never by a host-wide scope.
+
+### PUT /nav
+
+Replace the whole `nav.yaml`. Body: a NavDoc `{ tree: [Entry, ...], hidden?: [name, ...] }`. The shape is
+checked first — every entry a collection name, `{ collection, icon? }`, `{ folder, icon?, hidden?, items }` or
+`{ namespace, icon?, hidden?, items? }`, a folder label not empty and not starting with `ns:` — then every
+name: a collection or a namespace this workspace does not have is `400` naming each. Then the file is written
+(the engine's writer when the loaded engine has one, else the protocol's own: atomic, the header comment, one
+trailing newline) and the answer is `200 { doc }`. PUT is how a `nav.yaml` that cannot be read is replaced.
+`409` when there is no `nav.yaml` and an old nav setting is still set (below).
+
+### PATCH /nav
+
+One gesture. Body: one NavOp (see *The nav document*) — `move`, `new-folder`, `rename`, `dissolve`, `icon`,
+`hide`, `show`. The host reads `nav.yaml` (none is an empty document), applies the op with the workspace's
+collections in drawn order, writes the result as `PUT /nav` does and answers `200 { doc }`. Refused, with
+nothing written: a malformed op, an unknown name, a folder path that resolves to nothing, a move into a row or
+into the moved folder itself — `400` with the sentence naming the input; a `nav.yaml` that cannot be read —
+`400` naming the file, which is left byte for byte as it was. With no `nav.yaml` and any of
+`dreamteamer.navGroups`, `dreamteamer.navOrder`, `dreamteamer.navHidden` set (an empty list or object counts as
+unset), both write routes answer `409 your nav settings are not in nav.yaml yet — run: npx -p
+@dreamteamer/protocol@0.2 dt-nav migrate`, so the first write can never strand the settings.
 
 ### POST /fields/:collection
 

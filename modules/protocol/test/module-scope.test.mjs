@@ -41,8 +41,8 @@ test('writes: only granted own collections, never a system collection; no grant 
 	assert.equal(s.routes.has('records-create'), true);
 	assert.equal(s.home, 'lab-layer');
 });
-test('module routes never include commit, history, fields, folder, files, rename, revert, sources, activity, nav, notes, sessions', () => {
-	for (const id of ['commit', 'history', 'history-diff', 'field-add', 'folder', 'file-import', 'rename', 'revert', 'sources', 'activity', 'nav', 'reload']) assert.equal(MODULE_ROUTES.includes(id), false, id);
+test('module routes never include commit, history, fields, folder, files, rename, revert, sources, activity, nav (read or write), notes, sessions', () => {
+	for (const id of ['commit', 'history', 'history-diff', 'field-add', 'folder', 'file-import', 'rename', 'revert', 'sources', 'activity', 'nav', 'nav-put', 'nav-patch', 'reload']) assert.equal(MODULE_ROUTES.includes(id), false, id);
 });
 test('refusal sentences name the collection or route, its owner, and the reach', () => {
 	const s = build({});

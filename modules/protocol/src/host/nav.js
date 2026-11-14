@@ -420,7 +420,7 @@ export function layerEntries(rows, descriptors, nav) {
     return orderTopLevel(rowsTop, folders, nav.navOrder).flatMap((e) => e.kind === "collection" ? [{ kind: "row", row: rowOf.get(e.descriptor.name) }] : e.kind === "folder" ? [folderEntry(e.folder)] : []);
 }
 // ── nav.yaml (cr-dt-008) ─────────────────────────────────────────────────────────────────────────────────────
-// The left nav is a document the operator arranges (nav.yaml at the workspace root, nav-doc.js). `buildTree` draws
+// The left nav is a document the person arranges (nav.yaml at the workspace root, nav-doc.js). `buildTree` draws
 // it by the design's rules; `legacyTree` is the grouping above (module folders, sections, navGroups/navOrder/
 // navHidden), kept under one name for exactly two uses: the lossless migration of old settings into nav.yaml, and
 // a workspace or layer that still has those settings and no nav.yaml.
