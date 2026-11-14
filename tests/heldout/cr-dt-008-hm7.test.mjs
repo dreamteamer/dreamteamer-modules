@@ -56,10 +56,10 @@ function core011Record() {
 	const engine = path.join(ROOT, 'node_modules', 'dreamteamer');
 	const { root } = createWorkspace({ engine });
 	const dest = tmp('dtm-hm7-core011-');
-	const tgz = path.join(dest, JSON.parse(execFileSync('npm', ['pack', main, '--pack-destination', dest, '--json', '--silent'], { encoding: 'utf8' }))[0].filename);
+	const tgz = path.join(dest, JSON.parse(execFileSync('npm', ['pack', main, '--pack-destination', dest, '--json', '--silent'], { encoding: 'utf8', timeout: 120_000 }))[0].filename);
 	const at = path.join(root, 'node_modules', '@dreamteamer', 'core');
 	fs.mkdirSync(at, { recursive: true });
-	execFileSync('tar', ['-xzf', tgz, '-C', at, '--strip-components', '1']);
+	execFileSync('tar', ['-xzf', tgz, '-C', at, '--strip-components', '1'], { timeout: 60_000 });
 	const pj = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
 	pj.dependencies['@dreamteamer/core'] = '0.11.0';
 	fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify(pj, null, '\t') + '\n');
@@ -132,7 +132,7 @@ describe('sessions without core', { skip }, () => {
 		assert.equal(mig.status, 0, `${mig.stdout}\n${mig.stderr}`);
 		assert.equal(fs.realpathSync(path.join(root, 'node_modules', '.bin', 'dt-sessions-migrate')), fs.realpathSync(path.join(root, 'node_modules', '@dreamteamer', 'sessions', 'bin', 'sessions-migrate.mjs')));
 		// step 6
-		const g = spawnSync('grep', ['-rn', '@dreamteamer/core', path.join(root, 'node_modules', '@dreamteamer', 'sessions')], { encoding: 'utf8' });
+		const g = spawnSync('grep', ['-rn', '@dreamteamer/core', path.join(root, 'node_modules', '@dreamteamer', 'sessions')], { encoding: 'utf8', timeout: 60_000 });
 		const step6 = g.stdout; // asserted last, so step 7 still runs and reports
 		// step 7
 		const more = packedInto(folder, ...new Set([...closure('projects'), ...closure('tasks')]));

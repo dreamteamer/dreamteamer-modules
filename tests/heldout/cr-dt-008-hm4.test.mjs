@@ -12,6 +12,7 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import yaml from 'js-yaml';
 import { workspace, writeCollection, simpleCollection } from '../helpers/fixture.mjs';
+import { apiBase, authHeaders, TIMEOUT } from './cr-dt-008-web.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const { startWeb } = await import(pathToFileURL(path.join(ROOT, 'modules', 'web', 'src', 'server.js')).href);
@@ -19,15 +20,16 @@ const HEADER = '# The left nav of this workspace. Drag and drop writes this file
 const ROWS = Array.from({ length: 15 }, (_, i) => `row_${i}`);
 
 let ws, web, navFile, app;
-const auth = () => ({ authorization: `Bearer ${web.token}` });
+/** Writer children still running: killed and awaited in `after` whatever the outcome (see step 4). */
+const children = new Set();
 async function patch(op) {
-	const r = await fetch(`${web.appUrl}/api/nav`, { method: 'PATCH', headers: { ...auth(), 'content-type': 'application/json' }, body: JSON.stringify(op), signal: AbortSignal.timeout(20_000) });
+	const r = await fetch(`${apiBase(web)}/api/nav`, { method: 'PATCH', headers: { ...authHeaders(web), 'content-type': 'application/json' }, body: JSON.stringify(op), signal: AbortSignal.timeout(20_000) });
 	const text = await r.text();
 	let json = null; try { json = JSON.parse(text); } catch { /* not JSON */ }
 	return { status: r.status, body: json ?? text };
 }
 async function getNav() {
-	const r = await fetch(`${web.appUrl}/api/nav`, { headers: auth(), signal: AbortSignal.timeout(20_000) });
+	const r = await fetch(`${apiBase(web)}/api/nav`, { headers: authHeaders(web), signal: AbortSignal.timeout(20_000) });
 	return { status: r.status, body: await r.json() };
 }
 const initial = () => `${HEADER}\ntree:\n  - folder: A\n    items: []\n  - folder: B\n    items: []\n${ROWS.map((r) => `  - ${r}\n`).join('')}`;
@@ -47,8 +49,24 @@ before(async () => {
 	navFile = path.join(ws.root, 'nav.yaml');
 	fs.writeFileSync(navFile, initial());
 	web = await startWeb({ root: ws.root, appDir: app, idleMinutes: 0 });
-});
-after(async () => { await web?.close(); fs.rmSync(app, { recursive: true, force: true }); });
+	apiBase(web); // a server that resolved no URL fails here, once, naming what it resolved
+}, { timeout: TIMEOUT.hook });
+after(async () => {
+	await Promise.all([...children].map(stopChild));
+	await web?.close();
+	if (app) fs.rmSync(app, { recursive: true, force: true });
+}, { timeout: TIMEOUT.hook });
+
+/** Stop a child for good: ask it (IPC), then SIGKILL after a second; resolves once it has exited. */
+function stopChild(child) {
+	return new Promise((resolve) => {
+		if (child.exitCode !== null || child.signalCode !== null) { children.delete(child); return resolve(); }
+		const done = () => { clearTimeout(kill); children.delete(child); resolve(); };
+		child.once('exit', done);
+		const kill = setTimeout(() => child.kill('SIGKILL'), 1_000);
+		try { if (child.connected) child.send('stop'); else child.kill('SIGKILL'); } catch { child.kill('SIGKILL'); }
+	});
+}
 
 /** Every collection name the tree places, at any depth, with how often (a name twice is a failure). */
 function placed(doc) {
@@ -90,7 +108,7 @@ function acknowledged(ops, answers) {
 // overlapping case (a move and a hide of the same row at once) is its own batch below, where the exactly-one rule is the
 // whole claim.
 describe('steps 2-3: twenty PATCHes at once, every op on its own row', () => {
-	test('every acknowledged op is in the file, exactly; the file parses, has the header and one trailing newline', async () => {
+	test('every acknowledged op is in the file, exactly; the file parses, has the header and one trailing newline', { timeout: TIMEOUT.test }, async () => {
 		fs.writeFileSync(navFile, initial());
 		const MOVED = ROWS.slice(0, 10);
 		const HIDDEN = ROWS.slice(10);
@@ -122,7 +140,7 @@ describe('steps 2-3: twenty PATCHes at once, every op on its own row', () => {
 		assert.equal(doc.tree.filter((e) => /^F_\d$/.test(e?.folder ?? '')).length, 5);
 	});
 
-	test('a move and a hide of the same row at once: each such row ends in exactly one of A and hidden, never neither', async () => {
+	test('a move and a hide of the same row at once: each such row ends in exactly one of A and hidden, never neither', { timeout: TIMEOUT.test }, async () => {
 		fs.writeFileSync(navFile, initial());
 		const BOTH = ROWS.slice(0, 5);
 		const MOVED = ROWS.slice(5, 10);
@@ -156,7 +174,9 @@ describe('steps 2-3: twenty PATCHes at once, every op on its own row', () => {
 });
 
 describe('step 4: a hand writer racing PATCH icon, 200 iterations, no sleeps', () => {
-	test('no observation is empty, truncated or unparseable; every 200 doc parses; hand content survives; no temp files', async () => {
+	test('no observation is empty, truncated or unparseable; every 200 doc parses; hand content survives; no temp files', { timeout: TIMEOUT.test }, async (t) => {
+		// no workspace (the before hook failed): never start a writer that would write a file named after `undefined`
+		assert.ok(navFile && web, 'the workspace or the server did not start — see the before hook');
 		// two hand documents, alternately: one with an extra comment line, one in a different order
 		const handA = `${HEADER}\n# a hand-written comment\ntree:\n  - folder: A\n    items: [row_9]\n  - folder: B\n    items: []\n${ROWS.filter((r) => r !== 'row_9').map((r) => `  - ${r}\n`).join('')}`;
 		const handB = `${HEADER}\ntree:\n${[...ROWS].reverse().map((r) => `  - ${r}\n`).join('')}  - folder: B\n    items: []\n  - folder: A\n    items: []\n`;
@@ -166,6 +186,8 @@ describe('step 4: a hand writer racing PATCH icon, 200 iterations, no sleeps', (
 const [file, a, b] = [process.argv[2], fs.readFileSync(process.argv[3], 'utf8'), fs.readFileSync(process.argv[4], 'utf8')];
 let i = 0; let stop = false;
 process.on('message', () => { stop = true; });
+// the test process gone (killed, crashed, timed out) is a stop too: a writer never outlives its test
+process.on('disconnect', () => process.exit(0));
 // to the same path, through a temp file renamed over it (the expected's "the writer uses a temp file and rename"):
 // a hand writer that truncated in place would itself make the file empty for a moment, which no handler can prevent
 const loop = () => { if (stop) { process.send?.({ writes: i }); return process.exit(0); } const tmp = file + '.hand-' + process.pid; fs.writeFileSync(tmp, i++ % 2 ? b : a); fs.renameSync(tmp, file); setImmediate(loop); };
@@ -176,31 +198,41 @@ loop();
 		fs.writeFileSync(path.join(texts, 'a.yaml'), handA);
 		fs.writeFileSync(path.join(texts, 'b.yaml'), handB);
 		const child = spawn(process.execPath, [writer, navFile, path.join(texts, 'a.yaml'), path.join(texts, 'b.yaml')], { stdio: ['ignore', 'inherit', 'inherit', 'ipc'] });
-		await new Promise((r) => child.once('message', r));
+		children.add(child);
+		// a timed-out test is aborted without reaching `finally`: stop the writer then too, so the next step starts clean
+		t.signal.addEventListener('abort', () => { stopChild(child); }, { once: true });
 		const bad = [];
 		const badDocs = [];
 		const notOnTop = [];
 		let ok = 0;
-		const stripIcons = (tree) => JSON.parse(JSON.stringify(tree, (k, v) => (v && typeof v === 'object' && !Array.isArray(v) && typeof v.collection === 'string' ? v.collection : v)));
-		const known = (tree) => [parse(initial()).tree, ...handTrees].some((t) => JSON.stringify(stripIcons(tree)) === JSON.stringify(t));
-		for (let i = 0; i < 200; i++) {
-			const res = await patch({ op: 'icon', target: { name: 'row_1' }, icon: 'star' });
-			const seen = fs.readFileSync(navFile, 'utf8');
-			let parsed;
-			try { parsed = parse(seen); } catch { parsed = undefined; }
-			if (!isNavDoc(parsed)) bad.push(seen);
-			if (res.status === 200) {
-				ok++;
-				let round;
-				try { round = parse(yaml.dump(res.body.doc)); } catch (e) { badDocs.push(String(e)); continue; }
-				if (!isNavDoc(round)) badDocs.push(JSON.stringify(res.body.doc));
-				else if (!known(round.tree)) notOnTop.push(JSON.stringify(res.body.doc.tree));
-			} else {
-				assert.ok(res.status >= 400 && res.status < 500, `PATCH answered ${res.status}: ${JSON.stringify(res.body)}`);
+		try {
+			await new Promise((resolve, reject) => {
+				child.once('message', resolve);
+				child.once('exit', (code, signal) => reject(new Error(`the hand writer exited before it was ready (${code ?? signal})`)));
+			});
+			const stripIcons = (tree) => JSON.parse(JSON.stringify(tree, (k, v) => (v && typeof v === 'object' && !Array.isArray(v) && typeof v.collection === 'string' ? v.collection : v)));
+			const known = (tree) => [parse(initial()).tree, ...handTrees].some((t) => JSON.stringify(stripIcons(tree)) === JSON.stringify(t));
+			for (let i = 0; i < 200; i++) {
+				const res = await patch({ op: 'icon', target: { name: 'row_1' }, icon: 'star' });
+				const seen = fs.readFileSync(navFile, 'utf8');
+				let parsed;
+				try { parsed = parse(seen); } catch { parsed = undefined; }
+				if (!isNavDoc(parsed)) bad.push(seen);
+				if (res.status === 200) {
+					ok++;
+					let round;
+					try { round = parse(yaml.dump(res.body.doc)); } catch (e) { badDocs.push(String(e)); continue; }
+					if (!isNavDoc(round)) badDocs.push(JSON.stringify(res.body.doc));
+					else if (!known(round.tree)) notOnTop.push(JSON.stringify(res.body.doc.tree));
+				} else {
+					assert.ok(res.status >= 400 && res.status < 500, `PATCH answered ${res.status}: ${JSON.stringify(res.body)}`);
+				}
 			}
+		} finally {
+			// whatever happened above, the writer is stopped and awaited before the test ends
+			await stopChild(child);
+			fs.rmSync(texts, { recursive: true, force: true });
 		}
-		child.send('stop');
-		await new Promise((r) => child.once('exit', r));
 		console.log(`# ${ok} of 200 PATCHes answered 200`);
 		assert.deepEqual(bad, [], 'an observation the handler left unparseable');
 		assert.deepEqual(badDocs, [], 'a 200 whose doc does not parse');
@@ -211,7 +243,7 @@ loop();
 });
 
 describe('step 5: a hand edit between two ops, no race', () => {
-	test('GET, add folder H by hand, PATCH move row_2 into H: 200 and row_2 inside H', async () => {
+	test('GET, add folder H by hand, PATCH move row_2 into H: 200 and row_2 inside H', { timeout: TIMEOUT.test }, async () => {
 		fs.writeFileSync(navFile, initial());
 		assert.equal((await getNav()).status, 200);
 		const doc = parse(fs.readFileSync(navFile, 'utf8'));

@@ -72,7 +72,7 @@ function publishedWorkspace() {
 		const name = out[0].name;
 		const dir = path.join(root, 'node_modules', name);
 		fs.mkdirSync(dir, { recursive: true });
-		execFileSync('tar', ['-xzf', path.join(dl, out[0].filename), '-C', dir, '--strip-components', '1']);
+		execFileSync('tar', ['-xzf', path.join(dl, out[0].filename), '-C', dir, '--strip-components', '1'], { timeout: 60_000 });
 		deps[name] = out[0].version;
 		const pkg = JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8'));
 		for (const d of Object.keys(pkg.dependencies ?? {})) {
@@ -113,27 +113,27 @@ const migrate = (root) => spawnSync(process.execPath, [DT_NAV, 'migrate'], { cwd
 for (const [variant, make, candidate] of [['candidate engine, core preset + rnd from this repo', candidateWorkspace, true], [`published engine ${OLD_VERSION}, composed core 0.11.0 + rnd 0.10.1`, publishedWorkspace, false]]) {
 	describe(variant, () => {
 		let root, legacy, legacyTop;
-		test('step 1: the workspace compiles', () => {
+		test('step 1: the workspace compiles', { timeout: 120_000 }, () => {
 			root = make();
 			const r = spawnSync(process.execPath, [path.join(candidate ? ENGINE : OLD_ENGINE, 'bin', 'dreamteamer.js'), 'compile'], { cwd: root, encoding: 'utf8', timeout: 120_000 });
 			assert.equal(r.status, 0, `${r.stdout}\n${r.stderr}`);
 			assert.equal(fs.existsSync(path.join(root, 'nav.yaml')), false, 'nav.yaml exists before the migration');
 		});
-		test('step 2: the legacy tree is recorded', () => {
+		test('step 2: the legacy tree is recorded', { timeout: 120_000 }, () => {
 			legacyTop = navModelOf(root);
 			legacy = comparable(legacyTop.children);
 			const names = collections(legacy);
 			assert.ok(names.includes('c/solos'), `the single-collection module's row is not drawn before the migration: ${JSON.stringify(legacy.map((n) => n.label))}`);
 			console.log(`# legacy top level: ${legacy.map((n) => `${n.label}${n.children ? `[${n.children.map((c) => c.label).join(', ')}]` : ''}`).join(' · ')}`);
 		});
-		test('step 3: dt-nav migrate writes nav.yaml from the settings', () => {
+		test('step 3: dt-nav migrate writes nav.yaml from the settings', { timeout: 120_000 }, () => {
 			const r = migrate(root);
 			assert.equal(r.status, 0, `${r.stdout}\n${r.stderr}`);
 			assert.match(r.stdout, /✔ nav\.yaml written from your nav settings/);
 			if (!candidate) assert.doesNotMatch(r.stdout, /fragments applied/, 'engine 0.48 applied fragments');
 			assert.ok(fs.existsSync(path.join(root, 'nav.yaml')));
 		});
-		test('step 4: the drawing from the written file equals the legacy tree (labels, nesting, row order); the hidden group is recorded', () => {
+		test('step 4: the drawing from the written file equals the legacy tree (labels, nesting, row order); the hidden group is recorded', { timeout: 120_000 }, () => {
 			const now = navModelOf(root);
 			assert.equal(now.notice, undefined, `a notice: ${now.notice}`);
 			const drawn = comparable(now.children);
@@ -149,14 +149,14 @@ for (const [variant, make, candidate] of [['candidate engine, core preset + rnd 
 			const ghosts = doc.tree.find((e) => e && e.folder === 'Ghosts');
 			if (!legacy.some((n) => n.label === 'Ghosts')) assert.equal(ghosts, undefined, 'an empty Ghosts folder the legacy tree did not draw');
 		});
-		test('step 5: a second migrate prints nothing to migrate, exit 0, file byte-identical', () => {
+		test('step 5: a second migrate prints nothing to migrate, exit 0, file byte-identical', { timeout: 120_000 }, () => {
 			const before = fs.readFileSync(path.join(root, 'nav.yaml'), 'utf8');
 			const r = migrate(root);
 			assert.equal(r.status, 0, r.stderr);
 			assert.match(r.stdout, /nothing to migrate/);
 			assert.equal(fs.readFileSync(path.join(root, 'nav.yaml'), 'utf8'), before);
 		});
-		test('step 6: dt check gives no nav.yaml warning', () => {
+		test('step 6: dt check gives no nav.yaml warning', { timeout: 120_000 }, () => {
 			const r = spawnSync(process.execPath, [path.join(candidate ? ENGINE : OLD_ENGINE, 'bin', 'dreamteamer.js'), 'check'], { cwd: root, encoding: 'utf8', timeout: 120_000 });
 			assert.doesNotMatch(`${r.stdout}\n${r.stderr}`, /nav\.yaml/, `${r.stdout}\n${r.stderr}`);
 		});

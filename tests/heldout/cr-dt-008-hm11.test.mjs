@@ -22,7 +22,7 @@ const made = [];
 after(() => { for (const d of made) fs.rmSync(d, { recursive: true, force: true }); });
 const SKIP_COPY = /(^|\/)(node_modules|__pycache__|\.venv|\.pytest_cache|\.git|\.dreamteamer|\.perspective|\.claude)(\/|$)/;
 const GIT = { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@example.invalid', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@example.invalid' };
-const git = (cwd, args) => execFileSync('git', args, { cwd, env: GIT, encoding: 'utf8' });
+const git = (cwd, args) => execFileSync('git', args, { cwd, env: GIT, encoding: 'utf8', timeout: 60_000 });
 
 /** Step 1: the candidate repo copied to a temp dir, committed, node_modules linked. */
 function copyRepo() {

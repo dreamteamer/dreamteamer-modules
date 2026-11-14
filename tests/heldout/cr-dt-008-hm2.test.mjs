@@ -106,7 +106,7 @@ describe('a fragment after the operator moved a row', { skip }, () => {
 		const frag = yaml.load(fs.readFileSync(path.join(copy, 'nav.yaml'), 'utf8'));
 		frag.tree.find((e) => e.namespace === 'rnd').items.push('rnd/extras');
 		fs.writeFileSync(path.join(copy, 'nav.yaml'), yaml.dump(frag));
-		execFileSync('npm', ['pack', copy, '--pack-destination', folder, '--silent'], { encoding: 'utf8' });
+		execFileSync('npm', ['pack', copy, '--pack-destination', folder, '--silent'], { encoding: 'utf8', timeout: 120_000 });
 		const up = run(root, ['update', '@dreamteamer/rnd', '--from', folder], HOME());
 		assert.equal(up.status, 0, `dt update: exit ${up.status}\n${up.stderr}\n${up.stdout.slice(-1200)}`);
 		assert.equal(JSON.parse(fs.readFileSync(path.join(root, 'node_modules', '@dreamteamer', 'rnd', 'package.json'), 'utf8')).version, pj.version);

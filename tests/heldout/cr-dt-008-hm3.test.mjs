@@ -11,6 +11,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { inspect } from 'node:util';
+import { apiBase, authHeaders, TIMEOUT } from './cr-dt-008-web.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const MODULES = path.join(ROOT, 'modules');
@@ -31,12 +32,11 @@ const CASES = {
 
 let f, web, handler, navFile, flat;
 const quietly = async (fn) => { const log = console.log; console.log = () => {}; try { return await fn(); } finally { console.log = log; } };
-const auth = () => ({ authorization: `Bearer ${web.token}` });
 const hosts = {
 	handler: async (method, p, body) => quietly(() => handler.handle(method, p, body)),
 	http: async (method, p, body) => {
 		let r;
-		try { r = await call(`${web.appUrl}/api${p}`, { method, headers: { ...auth(), ...(body !== undefined ? { 'content-type': 'application/json' } : {}) }, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) }); } catch (e) { return { status: `no answer (${e.cause?.message ?? e.message})`, body: null }; }
+		try { r = await call(`${apiBase(web)}/api${p}`, { method, headers: { ...authHeaders(web), ...(body !== undefined ? { 'content-type': 'application/json' } : {}) }, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) }); } catch (e) { return { status: `no answer (${e.cause?.message ?? e.message})`, body: null }; }
 		return { status: r.status, body: r.json ?? r.text };
 	},
 };
@@ -49,6 +49,7 @@ before(async () => {
 	f = fixture();
 	handler = await createHandler({ root: f.root });
 	web = await startWeb({ root: f.root, appDir: f.app, idleMinutes: 0 });
+	apiBase(web); // a server that resolved no URL fails here, once, naming what it resolved
 	navFile = path.join(f.root, 'nav.yaml');
 	clear();
 	const res = await hosts.handler('GET', '/nav');
@@ -58,13 +59,13 @@ before(async () => {
 	// the no-document drawing: rows alphabetical by title, then the namespace folder (then the layers folder)
 	const kinds = flat.children.map((n) => n.kind);
 	assert.ok(kinds.indexOf('namespace') > kinds.lastIndexOf('collection'), `the namespace folder is not after the rows: ${kinds}`);
-});
-after(async () => { await web?.close(); f?.cleanupAll(); });
+}, { timeout: TIMEOUT.hook });
+after(async () => { await web?.close(); f?.cleanupAll(); }, { timeout: TIMEOUT.hook });
 
 for (const [id, c] of Object.entries(CASES)) {
 	describe(`(${id}) ${c.what}`, () => {
 		for (const [hostName, host] of Object.entries(hosts)) {
-			test(`${hostName}: GET 200 within a second, the flat tail, a message naming nav.yaml`, async () => {
+			test(`${hostName}: GET 200 within a second, the flat tail, a message naming nav.yaml`, { timeout: TIMEOUT.test }, async () => {
 				clear(); c.write(navFile);
 				const t0 = Date.now();
 				const res = await Promise.race([host('GET', '/nav'), new Promise((r) => setTimeout(() => r({ status: 'hang' }), 5_000))]);
@@ -78,7 +79,7 @@ for (const [id, c] of Object.entries(CASES)) {
 				const msg = messageOf(top);
 				if (!(c.emptyOk && !msg)) assert.match(msg, /nav\.yaml/, `no notice or message naming nav.yaml (got ${JSON.stringify(msg)})`);
 			});
-			test(`${hostName}: PATCH hide answers 4xx naming nav.yaml, the file byte-identical`, async () => {
+			test(`${hostName}: PATCH hide answers 4xx naming nav.yaml, the file byte-identical`, { timeout: TIMEOUT.test }, async () => {
 				clear(); c.write(navFile);
 				const before = snapshot();
 				const res = await host('PATCH', '/nav', { op: 'hide', target: { name: 'tasks' } });
@@ -90,7 +91,7 @@ for (const [id, c] of Object.entries(CASES)) {
 				assert.match(String(res.body?.error ?? res.body), /nav\.yaml/, 'the refusal does not name nav.yaml');
 				assert.equal(snapshot(), before, 'PATCH changed the broken file');
 			});
-			test(`${hostName}: PUT with a valid document answers 200 and replaces it`, async () => {
+			test(`${hostName}: PUT with a valid document answers 200 and replaces it`, { timeout: TIMEOUT.test }, async () => {
 				clear(); c.write(navFile);
 				const res = await host('PUT', '/nav', { tree: ['tasks', 'projects'], hidden: [] });
 				assert.equal(res.status, 200, `PUT answered ${res.status}: ${JSON.stringify(res.body)}`);
@@ -103,7 +104,7 @@ for (const [id, c] of Object.entries(CASES)) {
 
 describe('step 4: fixed by hand, drawn with no restart', () => {
 	for (const [hostName, host] of Object.entries(hosts)) {
-		test(`${hostName}: a broken file then a valid one — GET draws the valid document`, async () => {
+		test(`${hostName}: a broken file then a valid one — GET draws the valid document`, { timeout: TIMEOUT.test }, async () => {
 			clear(); CASES.c.write(navFile);
 			assert.equal((await host('GET', '/nav')).status, 200);
 			fs.writeFileSync(navFile, `${HEADER}\ntree:\n  - { folder: Fixed, items: [tasks] }\n`);

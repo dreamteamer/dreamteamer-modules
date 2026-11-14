@@ -76,12 +76,12 @@ const CASES = [
 ];
 
 describe('step 1: the original document draws Work, contacts, then the tail by title', () => {
-	test('top level', () => assert.deepEqual(top(ORIGINAL()), ['Work', 'contacts', 'assets', 'companies', 'users']));
+	test('top level', { timeout: 120_000 }, () => assert.deepEqual(top(ORIGINAL()), ['Work', 'contacts', 'assets', 'companies', 'users']));
 });
 
 describe('steps 2-3: each recipe op through applyNavOp, drawn with buildTree', () => {
 	for (const c of CASES) {
-		test(`(${c.id}) ${JSON.stringify(c.op)} → ${c.expected.join(', ')}`, () => {
+		test(`(${c.id}) ${JSON.stringify(c.op)} → ${c.expected.join(', ')}`, { timeout: 120_000 }, () => {
 			const doc = ORIGINAL();
 			const before = top(doc);
 			let next;
@@ -165,8 +165,8 @@ function sidebar(bundle, cases) {
 
 describe('step 4: the same gestures through the ui sidebar send exactly the recipe ops', () => {
 	let bundle;
-	test('the sidebar harness bundles with the ui runner\'s SFC compile', async () => { bundle = await bundleSidebar(); assert.ok(fs.existsSync(bundle)); });
-	test('each Move entry (and the drop) sends the recipe op', () => {
+	test('the sidebar harness bundles with the ui runner\'s SFC compile', { timeout: 120_000 }, async () => { bundle = await bundleSidebar(); assert.ok(fs.existsSync(bundle)); });
+	test('each Move entry (and the drop) sends the recipe op', { timeout: 120_000 }, () => {
 		const model = wsModel(draw(ORIGINAL()));
 		const sent = sidebar(bundle, CASES.map((c) => ({ id: c.id, model, gesture: c.gesture })));
 		const wrong = [];
@@ -186,7 +186,7 @@ describe('step 4: the same gestures through the ui sidebar send exactly the reci
 		{ id: 'd', row: 'contacts', menu: 'move-down' },
 		{ id: 'e', row: 'assets', menu: 'move-down' },
 	];
-	test('doc = null: (a)-(e) through the sidebar move the row one place over the flat five', () => {
+	test('doc = null: (a)-(e) through the sidebar move the row one place over the flat five', { timeout: 120_000 }, () => {
 		const flat = top(null);
 		assert.deepEqual(flat, ['assets', 'companies', 'contacts', 'tasks', 'users']);
 		const sent = sidebar(bundle, FLAT.map((f) => ({ id: f.id, model: wsModel(draw(null)), gesture: { menu: [`c/${f.row}`, f.menu] } })));
@@ -207,6 +207,6 @@ describe('step 4: the same gestures through the ui sidebar send exactly the reci
 	});
 });
 
-test('NavOpError is what a refusal throws (sanity: an unknown anchor)', () => {
+test('NavOpError is what a refusal throws (sanity: an unknown anchor)', { timeout: 120_000 }, () => {
 	assert.throws(() => applyNavOp(ORIGINAL(), { op: 'move', target: { name: 'users' }, after: { name: 'ghost' } }, ctx), NavOpError);
 });
