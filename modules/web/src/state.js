@@ -7,7 +7,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { alive, workspaceKey } from './runtime.js';
+import { alive, privateDir, workspaceKey, writingInto } from './runtime.js';
 
 export { workspaceKey };
 
@@ -31,15 +31,17 @@ const HEX64 = /^[0-9a-f]{64}$/;
 const isPlain = (o) => o !== null && typeof o === 'object' && !Array.isArray(o);
 const validPort = (p) => Number.isInteger(p) && p > 0 && p < 65536;
 
-function ensureDir(dir) {
-	fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
-	fs.chmodSync(dir, 0o700);
-}
+// the state dir is this user's (runtime.js privateDir): tightened to 0700 when others can read it, never widened when
+// the person made it read-only — a write there fails naming the dir, chmod 700 and DT_WEB_STATE_DIR
+const ensureDir = (dir) => privateDir(dir, 'DT_WEB_STATE_DIR');
 function writeFileAtomic(file, text) {
-	ensureDir(path.dirname(file));
+	const dir = path.dirname(file);
+	ensureDir(dir);
 	const tmp = `${file}.${process.pid}.${Math.random().toString(16).slice(2)}.tmp`;
-	fs.writeFileSync(tmp, text, { mode: 0o600 });
-	fs.renameSync(tmp, file);
+	writingInto(dir, 'DT_WEB_STATE_DIR', () => {
+		fs.writeFileSync(tmp, text, { mode: 0o600 });
+		fs.renameSync(tmp, file);
+	});
 }
 
 export const workspaceStateFile = (root, dir = stateDir()) => path.join(dir, `${workspaceKey(root)}.json`);
@@ -104,7 +106,7 @@ export async function register({ root, name }, dir = stateDir(), now = Date.now)
 	const lock = `${registryFile(dir)}.lock`;
 	for (let attempt = 0; attempt < LOCK_TRIES; attempt++) {
 		try {
-			fs.writeFileSync(lock, String(process.pid), { flag: 'wx', mode: 0o600 });
+			writingInto(dir, 'DT_WEB_STATE_DIR', () => fs.writeFileSync(lock, String(process.pid), { flag: 'wx', mode: 0o600 }));
 		} catch (e) {
 			if (e.code !== 'EEXIST') throw e;
 			let holder = null;

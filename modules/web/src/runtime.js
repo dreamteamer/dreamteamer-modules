@@ -30,12 +30,39 @@ export function stateFile(root, dir = runtimeDir()) {
 	return path.join(dir, `${workspaceKey(root)}.json`);
 }
 
+/** What a write into a dir the person made read-only (or a dir of another user's) throws: the dir, its mode, and the
+ *  two ways out. `envName` is the variable that moves the dir (DT_WEB_STATE_DIR, DT_WEB_RUNTIME_DIR). */
+export function notWritable(dir, envName, mode = null) {
+	const m = mode ?? (() => { try { return fs.statSync(dir).mode & 0o777; } catch { return null; } })();
+	const kind = envName === 'DT_WEB_STATE_DIR' ? 'state' : 'runtime';
+	return Object.assign(new Error(`the dt web ${kind} dir ${dir} is not writable${m === null ? '' : ` (mode ${m.toString(8)})`} — dt web keeps its files there and never widens a mode you set: chmod 700 "${dir}", or point ${envName} at another folder`), { code: 'EDTWEBDIR' });
+}
+const DENIED = new Set(['EACCES', 'EPERM', 'EROFS']);
+/** Run `fn` (a write into `dir`); a refusal by the file system becomes notWritable. */
+export function writingInto(dir, envName, fn) {
+	try { return fn(); } catch (e) { throw DENIED.has(e?.code) ? notWritable(dir, envName) : e; }
+}
+
+/**
+ * Make `dir` for this user's files: 0700 when created. A mode that lets the group or others in is tightened to the
+ * owner's bits — what is kept there is this user's alone. A mode the person narrowed (the owner cannot write into it or
+ * enter it) is theirs: it is never widened, and the write is refused naming the dir (notWritable).
+ */
+export function privateDir(dir, envName) {
+	writingInto(dir, envName, () => fs.mkdirSync(dir, { recursive: true, mode: 0o700 }));
+	const mode = fs.statSync(dir).mode & 0o777;
+	if (mode & 0o077) writingInto(dir, envName, () => fs.chmodSync(dir, mode & 0o700));
+	if ((mode & 0o300) !== 0o300) throw notWritable(dir, envName, mode);
+}
+
 export function writeState(file, state) {
-	fs.mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 });
-	fs.chmodSync(path.dirname(file), 0o700);
+	const dir = path.dirname(file);
+	privateDir(dir, 'DT_WEB_RUNTIME_DIR');
 	const tmp = `${file}.${process.pid}.tmp`;
-	fs.writeFileSync(tmp, JSON.stringify(state, null, '\t') + '\n', { mode: 0o600 });
-	fs.renameSync(tmp, file);
+	writingInto(dir, 'DT_WEB_RUNTIME_DIR', () => {
+		fs.writeFileSync(tmp, JSON.stringify(state, null, '\t') + '\n', { mode: 0o600 });
+		fs.renameSync(tmp, file);
+	});
 }
 
 export function readState(file) {
@@ -185,10 +212,10 @@ export function claimStart(file, pid = process.pid) {
 	const lock = `${file}.lock`;
 	const take = `${lock}.takeover`;
 	const holder = (f) => { try { return Number(fs.readFileSync(f, 'utf8')); } catch { return null; } };
-	fs.mkdirSync(path.dirname(lock), { recursive: true, mode: 0o700 });
+	privateDir(path.dirname(lock), 'DT_WEB_RUNTIME_DIR');
 	for (let attempt = 0; attempt < 2; attempt++) {
 		try {
-			fs.writeFileSync(lock, String(pid), { flag: 'wx', mode: 0o600 });
+			writingInto(path.dirname(lock), 'DT_WEB_RUNTIME_DIR', () => fs.writeFileSync(lock, String(pid), { flag: 'wx', mode: 0o600 }));
 			let released = false;
 			return { ok: true, release: () => { if (released) return; released = true; if (holder(lock) === pid) fs.rmSync(lock, { force: true }); } };
 		} catch (e) {

@@ -1,13 +1,13 @@
 // The per-user state of dt web (cr-modules-017 §2): one file per workspace in a private dir outside every workspace,
 // keyed like the runtime file; a registry of the workspaces `dt web open` has seen. Nothing in clear: a sid, a code
 // or a token never reaches a file.
-import { test, after } from 'node:test';
+import { test, after, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { stateDir, workspaceKey, readWorkspaceState, writeWorkspaceState, DEFAULT_STATE, readRegistry, register, lookup } from '../src/state.js';
-import { stateFile } from '../src/runtime.js';
+import { stateFile, writeState } from '../src/runtime.js';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'dt-web-state-'));
 after(() => fs.rmSync(tmp, { recursive: true, force: true }));
@@ -113,4 +113,39 @@ test('register waits for a lock another process holds, and gives up after twenty
 	fs.writeFileSync(lock, '999999999');
 	await register({ root: workspace('after-a-crash'), name: 'c' }, dir);
 	assert.equal(readRegistry(dir).length, 2, 'a lock whose process is gone is taken over');
+});
+
+describe('a mode the person set on the dirs', { skip: process.getuid?.() === 0 ? 'root ignores the mode' : false }, () => {
+	test('a state dir others can read is tightened to 0700 on the next write', () => {
+		const dir = path.join(tmp, 'state-open');
+		fs.mkdirSync(dir, { recursive: true, mode: 0o755 });
+		fs.chmodSync(dir, 0o755);
+		writeWorkspaceState(workspace('opened'), readWorkspaceState(workspace('opened'), dir), dir);
+		assert.equal(fs.statSync(dir).mode & 0o777, 0o700);
+	});
+	test('a read-only state dir is never widened: the write and register fail naming the dir and the fix, the mode stays', async () => {
+		const dir = path.join(tmp, 'state-ro');
+		fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
+		fs.chmodSync(dir, 0o500);
+		try {
+			const root = workspace('locked');
+			const said = (e) => e.message.includes(dir) && /chmod 700/.test(e.message) && /DT_WEB_STATE_DIR/.test(e.message);
+			assert.throws(() => writeWorkspaceState(root, readWorkspaceState(root, dir), dir), said);
+			await assert.rejects(register({ root, name: 'locked' }, dir), said);
+			assert.equal(fs.statSync(dir).mode & 0o777, 0o500, 'the mode the person set');
+			assert.deepEqual(fs.readdirSync(dir), [], 'nothing written');
+		} finally { fs.chmodSync(dir, 0o700); }
+	});
+	test('the runtime dir likewise: tightened when open, never widened when read-only', () => {
+		const dir = path.join(tmp, 'rt-ro');
+		fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
+		fs.chmodSync(dir, 0o755);
+		writeState(path.join(dir, 'a.json'), { pid: 1 });
+		assert.equal(fs.statSync(dir).mode & 0o777, 0o700);
+		fs.chmodSync(dir, 0o500);
+		try {
+			assert.throws(() => writeState(path.join(dir, 'b.json'), { pid: 1 }), (e) => e.message.includes(dir) && /chmod 700/.test(e.message) && /DT_WEB_RUNTIME_DIR/.test(e.message));
+			assert.equal(fs.statSync(dir).mode & 0o777, 0o500);
+		} finally { fs.chmodSync(dir, 0o700); }
+	});
 });

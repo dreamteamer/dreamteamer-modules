@@ -136,7 +136,8 @@ Found a hole? See [SECURITY.md](../../SECURITY.md). Do not open a public issue.
   ask the chat to show it again. What does outlive a restart — the port, the level, the pane's place, selection
   and queue, and the client tokens (by SHA-256 only) — is in the per-user state directory (on macOS
   `~/Library/Application Support/dreamteamer/web/state/`, on Linux `$XDG_STATE_HOME/dreamteamer/web/`): mode
-  `0700`, files `0600`, nothing in the workspace.
+  `0700`, files `0600`, nothing in the workspace. A mode that lets others in is tightened to `0700`; one you made
+  read-only is never widened — the verb stops, naming the directory, `chmod 700` and `DT_WEB_STATE_DIR`.
 - **Tokens.** The **control token** is minted each start and kept in your per-user runtime directory (on Linux
   `$XDG_RUNTIME_DIR/dreamteamer-web/`, on macOS `~/Library/Application Support/dreamteamer/web/runtime/`); the
   verbs use it, and only on `/_dt/`. A **client token** (`dt web token`, `dt serve`) is for a program of yours:

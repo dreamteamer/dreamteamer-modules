@@ -11,7 +11,7 @@ import fs from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { alive, claimStart, clearStale, movedLine, FORCE_GRACE_MS, notAnsweringLine, ownStart, probeServer, readState, removeState, runtimeDir, sameStart, stateFile, workspaceKey, writeState } from './runtime.js';
+import { alive, claimStart, clearStale, FORCE_GRACE_MS, movedLine, notAnsweringLine, ownStart, privateDir, probeServer, readState, removeState, runtimeDir, sameStart, stateFile, workspaceKey, writeState } from './runtime.js';
 import { readRegistry, readWorkspaceState, register, stateDir, writeWorkspaceState } from './state.js';
 import { hookInstalled, installHook } from './hook.js';
 import { workspaceName } from './pane-store.js';
@@ -126,7 +126,7 @@ export async function ensureRunning(root, { log = console.log, env = process.env
 	// no server, or a stale runtime file (a server on its way down, a hard-killed one whose pid or port another program
 	// holds): the child clears what is stale and starts
 	const dir = runtimeDir(env);
-	fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
+	privateDir(dir, 'DT_WEB_RUNTIME_DIR');
 	const logFile = path.join(dir, `${workspaceKey(root)}.log`);
 	const fd = fs.openSync(logFile, 'a', 0o600);
 	const from = fs.fstatSync(fd).size;
