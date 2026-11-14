@@ -34,7 +34,9 @@ Until the second install, `dt check` reports those records as records of no coll
 `node_modules/@dreamteamer/wikis/bin/wiki.mjs` or `node_modules/@dreamteamer/notebooklm/bin/notebook.mjs`.
 
 **The nav.** `display.nav.order` and `display.nav.section` left every rnd descriptor; `display.nav.icon`
-stays. Where a collection sits in the left nav is the workspace's `nav.yaml` (engine 0.49). A workspace
+stays. Where a collection sits in the left nav is the workspace's `nav.yaml` (engine 0.49); rnd ships
+`nav.yaml`, a fragment the engine merges into it on install — the `rnd` namespace with the lifecycle rows,
+then a Product and a Knowledge folder — placing only what the workspace's file does not name yet. A workspace
 whose `.vscode/settings.json` sets `dreamteamer.navGroups`, `navOrder` or `navHidden` saves that nav first —
 `npx -p @dreamteamer/protocol@0.2 dt-nav migrate` — as `@dreamteamer/core`'s UPDATING 0.12.0 says.
 

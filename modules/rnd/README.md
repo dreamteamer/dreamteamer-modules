@@ -148,7 +148,8 @@ The copies of wikis and notebooklm rnd carried (`compose.json`, `src/`, `SETUP.m
 skills, commands and scripts, `dt-wiki` and `dt-notebook`) and its `provides` are gone; rnd ships no
 setup unit. A workspace holding `data/notebooks` or `data/wikis` records installs the two packages
 (UPDATING.md). `display.nav.order` and `display.nav.section` left rnd's descriptors: where a collection
-sits in the left nav is the workspace's `nav.yaml` (engine 0.49).
+sits in the left nav is the workspace's `nav.yaml` (engine 0.49), which rnd's own `nav.yaml` fills on
+install: the lifecycle rows, then Product and Knowledge folders, inside the `rnd` namespace.
 
 ## 0.9.0 — from 0.8.0
 

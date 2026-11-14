@@ -28,7 +28,7 @@ holds its `dt status` line to the outcome this table declares. Four outcomes:
 | git-identities | — | unit | — (identities per repo) |
 | google-workspace | — | unit | credentials_dir, client_secret, account |
 | http | — | no setup | |
-| knowledge | core | no setup | |
+| knowledge | companies, meetings | no setup | |
 | meeting-docs | six | no setup | |
 | meetings | contacts, companies, users | unit | calendar |
 | metrics | users | no setup | |

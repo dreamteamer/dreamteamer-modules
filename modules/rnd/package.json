@@ -21,6 +21,7 @@
 	"files": [
 		"README.md",
 		"UPDATING.md",
+		"nav.yaml",
 		"collections",
 		"skills",
 		"commands",
@@ -42,6 +43,7 @@
 		],
 		"description": "What a workspace builds and investigates: `products`, `design-docs`, `implementation-plans`, `user-stories`, `screens`, `prototypes`, `tests`, `reviews`, `change-requests`, `features`, `issues`, `research-docs`, `open-questions`, `personas`, `releases` — the lifecycle, /rnd:design to /rnd:release, gated per record (dt next).",
 		"engine": ">=0.49.0",
+		"nav": "nav.yaml",
 		"ignore": [
 			"data"
 		],
