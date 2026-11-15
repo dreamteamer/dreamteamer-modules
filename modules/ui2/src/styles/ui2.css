@@ -1,0 +1,453 @@
+/*
+ * ui2's one stylesheet: tokens, then the shell, nav, pages, table and form. Every colour is a token; each
+ * token reads the VS Code theme variable first, so inside a webview the app wears the editor's theme, and
+ * falls back to its own light or dark value in a browser. Classes are `ui2-` prefixed so the app can share a
+ * page with a host's own styles.
+ */
+:root {
+  --ui2-font: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --ui2-mono: ui-monospace, "SF Mono", Menlo, monospace;
+  --ui2-text: 13px;
+  --ui2-small: 11px;
+  --ui2-radius: 6px;
+
+  --ui2-bg: var(--vscode-editor-background, #ffffff);
+  --ui2-bg-subtle: var(--vscode-sideBar-background, #f4f6fa);
+  --ui2-bg-hover: var(--vscode-list-hoverBackground, #e9eef5);
+  --ui2-bg-active: var(--vscode-list-activeSelectionBackground, #dfe7f1);
+  --ui2-fg: var(--vscode-foreground, #172940);
+  --ui2-fg-active: var(--vscode-list-activeSelectionForeground, #172940);
+  --ui2-fg-subtle: var(--vscode-descriptionForeground, #67788f);
+  --ui2-border: var(--vscode-panel-border, #e1e7ef);
+  --ui2-accent: var(--vscode-button-background, #5b3df5);
+  --ui2-accent-fg: var(--vscode-button-foreground, #ffffff);
+  --ui2-link: var(--vscode-textLink-foreground, #2f6feb);
+  --ui2-danger: var(--vscode-errorForeground, #d1435b);
+  --ui2-input-bg: var(--vscode-input-background, #ffffff);
+  --ui2-input-border: var(--vscode-input-border, #d3dae4);
+  --ui2-focus: var(--vscode-focusBorder, #5b3df5);
+
+  /* enum colours: the names descriptors use (`charts.green`) */
+  --ui2-charts-green: var(--vscode-charts-green, #2e9d6e);
+  --ui2-charts-orange: var(--vscode-charts-orange, #d9822b);
+  --ui2-charts-red: var(--vscode-charts-red, #d1435b);
+  --ui2-charts-blue: var(--vscode-charts-blue, #2f6feb);
+  --ui2-charts-yellow: var(--vscode-charts-yellow, #c9a227);
+  --ui2-charts-purple: var(--vscode-charts-purple, #8a4fd8);
+  --ui2-chip-fallback: var(--ui2-fg-subtle);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ui2-bg: var(--vscode-editor-background, #16191f);
+    --ui2-bg-subtle: var(--vscode-sideBar-background, #1d2129);
+    --ui2-bg-hover: var(--vscode-list-hoverBackground, #262b35);
+    --ui2-bg-active: var(--vscode-list-activeSelectionBackground, #2d3442);
+    --ui2-fg: var(--vscode-foreground, #e3e8ef);
+    --ui2-fg-active: var(--vscode-list-activeSelectionForeground, #ffffff);
+    --ui2-fg-subtle: var(--vscode-descriptionForeground, #95a3b8);
+    --ui2-border: var(--vscode-panel-border, #2c323d);
+    --ui2-accent: var(--vscode-button-background, #7a63ff);
+    --ui2-link: var(--vscode-textLink-foreground, #7aa7ff);
+    --ui2-danger: var(--vscode-errorForeground, #ff7a8e);
+    --ui2-input-bg: var(--vscode-input-background, #12151a);
+    --ui2-input-border: var(--vscode-input-border, #363d4a);
+    --ui2-charts-green: var(--vscode-charts-green, #4fc08d);
+    --ui2-charts-orange: var(--vscode-charts-orange, #f0a050);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
+body {
+  background: var(--ui2-bg);
+  color: var(--ui2-fg);
+  font: var(--ui2-text) / 1.45 var(--ui2-font);
+}
+#app {
+  height: 100%;
+}
+a {
+  color: var(--ui2-link);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+:focus-visible {
+  outline: 2px solid var(--ui2-focus);
+  outline-offset: 1px;
+}
+h1 {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0;
+}
+
+/* ---- shell ---------------------------------------------------------------------------------- */
+.ui2-shell {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  height: 100%;
+}
+.ui2-main {
+  overflow: auto;
+  min-width: 0;
+}
+@media (max-width: 720px) {
+  .ui2-shell {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+  .ui2-nav {
+    max-height: 40vh;
+    border-right: 0;
+    border-bottom: 1px solid var(--ui2-border);
+  }
+}
+
+/* ---- nav ------------------------------------------------------------------------------------ */
+.ui2-nav {
+  background: var(--ui2-bg-subtle);
+  border-right: 1px solid var(--ui2-border);
+  overflow: auto;
+  padding-bottom: 12px;
+}
+.ui2-nav-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 12px 8px;
+  font-weight: 600;
+}
+.ui2-nav-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ui2-nav-notice {
+  margin: 0 12px 8px;
+  font-size: var(--ui2-small);
+  color: var(--ui2-fg-subtle);
+}
+.ui2-nav ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.ui2-nav-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding-right: 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+}
+.ui2-nav-row:hover {
+  background: var(--ui2-bg-hover);
+}
+.ui2-nav-row.is-active {
+  background: var(--ui2-bg-active);
+  color: var(--ui2-fg-active);
+}
+.ui2-nav-twisty {
+  width: 16px;
+  display: inline-flex;
+  justify-content: center;
+}
+.ui2-nav-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ui2-nav-count,
+.ui2-nav-marks {
+  color: var(--ui2-fg-subtle);
+  font-size: var(--ui2-small);
+}
+
+/* ---- pages ---------------------------------------------------------------------------------- */
+.ui2-page {
+  padding: 20px 24px;
+}
+.ui2-page-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.ui2-page-head p {
+  margin: 4px 0 0;
+}
+.ui2-crumbs {
+  margin: 0 0 4px !important;
+  font-size: var(--ui2-small);
+}
+.ui2-subtle {
+  color: var(--ui2-fg-subtle);
+}
+.ui2-mono {
+  font-family: var(--ui2-mono);
+  font-size: 12px;
+  word-break: break-all;
+}
+.ui2-error {
+  color: var(--ui2-danger);
+  border: 1px solid color-mix(in srgb, var(--ui2-danger) 35%, transparent);
+  background: color-mix(in srgb, var(--ui2-danger) 8%, transparent);
+  border-radius: var(--ui2-radius);
+  padding: 8px 12px;
+  white-space: pre-wrap;
+}
+.ui2-signed-out {
+  padding: 24px;
+  color: var(--ui2-fg-subtle);
+}
+.ui2-empty {
+  color: var(--ui2-fg-subtle);
+}
+.ui2-toolbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* ---- controls ------------------------------------------------------------------------------- */
+.ui2-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--ui2-input-border);
+  border-radius: var(--ui2-radius);
+  background: var(--ui2-bg);
+  color: var(--ui2-fg);
+  font: inherit;
+  cursor: pointer;
+}
+.ui2-button:hover:not(:disabled) {
+  background: var(--ui2-bg-hover);
+}
+.ui2-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.ui2-button.is-primary {
+  background: var(--ui2-accent);
+  border-color: var(--ui2-accent);
+  color: var(--ui2-accent-fg);
+}
+.ui2-button.is-primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--ui2-accent) 88%, black);
+}
+.ui2-button.is-danger {
+  color: var(--ui2-danger);
+}
+input,
+select,
+textarea {
+  font: inherit;
+  color: var(--ui2-fg);
+  background: var(--ui2-input-bg);
+  border: 1px solid var(--ui2-input-border);
+  border-radius: var(--ui2-radius);
+  padding: 5px 8px;
+  min-height: 30px;
+}
+textarea {
+  resize: vertical;
+  font-family: var(--ui2-mono);
+  font-size: 12px;
+}
+input[type="checkbox"] {
+  min-height: 0;
+  width: 16px;
+  height: 16px;
+  justify-self: start;
+}
+.ui2-search {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--ui2-input-border);
+  border-radius: var(--ui2-radius);
+  background: var(--ui2-input-bg);
+  padding-left: 8px;
+}
+.ui2-search input {
+  border: 0;
+  background: transparent;
+  outline: none;
+  width: 200px;
+}
+
+/* ---- table ---------------------------------------------------------------------------------- */
+.ui2-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--ui2-border);
+  border-radius: var(--ui2-radius);
+}
+.ui2-table-wrap[aria-busy="true"] {
+  opacity: 0.7;
+}
+.ui2-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.ui2-table th,
+.ui2-table td {
+  text-align: left;
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--ui2-border);
+  white-space: nowrap;
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ui2-table th {
+  font-size: var(--ui2-small);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ui2-fg-subtle);
+  font-weight: 600;
+  background: var(--ui2-bg-subtle);
+}
+.ui2-table th.is-sortable {
+  cursor: pointer;
+}
+.ui2-table tbody tr {
+  cursor: pointer;
+}
+.ui2-table tbody tr:hover {
+  background: var(--ui2-bg-hover);
+}
+.ui2-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+.ui2-cell-title {
+  font-weight: 500;
+}
+.ui2-empty-row td {
+  color: var(--ui2-fg-subtle);
+  cursor: default;
+  text-align: center;
+  padding: 24px;
+}
+.ui2-pager {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+.ui2-pager .ui2-subtle {
+  margin-right: auto;
+}
+
+/* ---- values --------------------------------------------------------------------------------- */
+.ui2-chip {
+  --chip: var(--ui2-chip-fallback);
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: var(--ui2-small);
+  color: var(--chip);
+  background: color-mix(in srgb, var(--chip) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--chip) 35%, transparent);
+}
+.ui2-refs {
+  display: inline-flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* ---- record --------------------------------------------------------------------------------- */
+.ui2-record {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 24px;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .ui2-record {
+    grid-template-columns: 1fr;
+  }
+}
+.ui2-form {
+  display: grid;
+  gap: 14px;
+  max-width: 720px;
+}
+.ui2-form-row {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: 12px;
+  align-items: center;
+}
+.ui2-form-row.is-body {
+  grid-template-columns: 1fr;
+}
+.ui2-form-row label {
+  color: var(--ui2-fg-subtle);
+}
+.ui2-required {
+  color: var(--ui2-danger);
+}
+.ui2-body {
+  white-space: pre-wrap;
+}
+.ui2-meta {
+  border: 1px solid var(--ui2-border);
+  border-radius: var(--ui2-radius);
+  background: var(--ui2-bg-subtle);
+  padding: 12px 14px;
+}
+.ui2-meta dl {
+  margin: 0;
+  display: grid;
+  gap: 10px;
+}
+.ui2-meta dt {
+  font-size: var(--ui2-small);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ui2-fg-subtle);
+}
+.ui2-meta dd {
+  margin: 2px 0 0;
+}
+
+/* ---- home ----------------------------------------------------------------------------------- */
+.ui2-cards {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+.ui2-card {
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+  border: 1px solid var(--ui2-border);
+  border-radius: var(--ui2-radius);
+  color: inherit;
+  height: 100%;
+}
+.ui2-card:hover {
+  background: var(--ui2-bg-hover);
+  text-decoration: none;
+}
