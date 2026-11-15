@@ -13,7 +13,7 @@ test(
   "the build, packed: dist/lib/index.js with its types and style.css, and dist/app/index.html with its assets",
   { timeout: 300_000 },
   () => {
-    const built = spawnSync(process.execPath, ["scripts/build.mjs"], { cwd: UI, encoding: "utf8", timeout: 240_000 })
+    const built = spawnSync(process.execPath, ["scripts/build.ts"], { cwd: UI, encoding: "utf8", timeout: 240_000 })
     assert.equal(built.status, 0, `the build failed:\n${built.stdout}\n${built.stderr}`)
     const packed = spawnSync("npm", ["pack", "--dry-run", "--json", "--ignore-scripts"], {
       cwd: UI,

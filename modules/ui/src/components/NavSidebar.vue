@@ -416,10 +416,7 @@ onUnmounted(() => {
     class="dt-nav"
     :class="{ 'dt-nav--arranging': arranging }"
     aria-label="Workspace"
-    @dragend="
-      hint = null
-      dragging = null
-    "
+    @dragend="((hint = null), (dragging = null))"
   >
     <div class="dt-nav-toolbar" :class="{ 'dt-nav-toolbar--scrolled': scrolled }" role="toolbar" aria-label="Nav">
       <div class="dt-nav-toolbar__name">

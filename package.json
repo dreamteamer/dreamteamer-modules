@@ -12,7 +12,8 @@
 		"typecheck": "tsc -p tsconfig.json",
 		"typecheck:test": "tsc -p tests/tsconfig.json",
 		"format": "prettier --write .",
-		"format:check": "prettier --check ."
+		"format:check": "prettier --check .",
+		"ui": "node playground/dev.ts"
 	},
 	"devDependencies": {
 		"@types/express": "^5.0.6",

@@ -159,7 +159,7 @@ const built = [
   ...unitEntries.map(e => join(".test-build", "unit", basename(e).replace(/\.ts$/, ".mjs"))),
   ...webviewEntries.map(e => join(".test-build", "webview", basename(e).replace(/\.ts$/, ".mjs"))),
 ]
-const reporter = flag("verbose") ? "spec" : join(ROOT, "scripts", "test-reporter.mjs")
+const reporter = flag("verbose") ? "spec" : join(ROOT, "scripts", "test-reporter.ts")
 const res = spawnSync(process.execPath, ["--test", `--test-reporter=${reporter}`, ...built], {
   cwd: ROOT,
   stdio: "inherit",
