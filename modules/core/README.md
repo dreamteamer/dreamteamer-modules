@@ -32,11 +32,11 @@ version the preset names.
 | `@dreamteamer/assets` | `assets` — the pictures a view draws | none |
 | `@dreamteamer/users` | `users` (with `manager` and `reports`) and `teams` | none |
 | `@dreamteamer/companies` | `companies` | none |
-| `@dreamteamer/contacts` | `contacts`, enriched from LinkedIn | `LINKEDIN_USER_AGENT` |
+| `@dreamteamer/contacts` | `contacts` — the people you deal with | none |
 | `@dreamteamer/engagements` | `engagements` — one per company sold to or worked for | none |
 | `@dreamteamer/tasks` | `tasks` | none |
 | `@dreamteamer/projects` | `projects`, `decisions`, `deliverables`, `risks` | none |
-| `@dreamteamer/meetings` | `meetings`, synced from Google Calendar | unit `meetings` (`WORK_CALENDARS`) |
+| `@dreamteamer/meetings` | `meetings`, written by hand or by `/create-meeting`; screenshots and the contacts stamp | none |
 | `@dreamteamer/recordings` | `meeting-recordings`, transcribed offline | unit `recordings` (`TRANSCRIPTION_HOME`, `FILES_FOLDER`, `INBOX_FOLDERS`) |
 | `@dreamteamer/meeting-docs` | `meeting-preps`, `meeting-summaries`, `meeting-analyses` | none |
 | `@dreamteamer/files` | `files` and `file-drives` | unit `files` (`FILES_FOLDER`) |
@@ -49,12 +49,36 @@ version the preset names.
 
 `dt status` shows one line per member's setup unit; `dt setup <unit>` resumes, repairs or verifies one.
 
+## not in core — install when you want them
+
+Nothing in core reaches LinkedIn or Google. Two optional packages do, each installed on its own next to
+core:
+
+| package | what it brings back | setup |
+|---|---|---|
+| `@dreamteamer/connectors-linkedin` | `/scrape-contact` and the `scraping-contacts` skill, the two LinkedIn views under contacts (`/contacts/needs-linkedin`, `/contacts/review-linkedin`) | `LINKEDIN_USER_AGENT` (optional) |
+| `@dreamteamer/connectors-google-workspace` | `/fetch-meetings` and the `fetching-meetings` skill, the calendar setup `dt setup meetings`, and the Google Workspace bridge (`dt-google`, `dt-google-calendar`, `dt-google-drive`) | units `meetings` (`WORK_CALENDARS`) and `google-workspace` |
+
+```bash
+dt install @dreamteamer/connectors-linkedin
+dt install @dreamteamer/connectors-google-workspace
+```
+
 ## the nav
 
 `nav.yaml` here is core's nav fragment: on install the engine places each member's collection into the
 workspace's own `nav.yaml` — folders Work, People, CRM, Meetings, Library and Activity — but only a
 collection the workspace's file does not name yet. After that the file is yours: drag rows in the
 editor or `dt web`, or edit it by hand.
+
+## 0.13.0 — LinkedIn and Google Calendar leave core (cr-modules-018)
+
+The preset pins contacts 0.2.0 and meetings 0.4.0, which ship no LinkedIn scraper, no calendar sync,
+no `LINKEDIN_USER_AGENT`, no `WORK_CALENDARS` and no `meetings` setup unit; meeting-docs 0.1.5,
+recordings 0.5.3 and workflows 0.1.3 say which connector ships the sync and the scraper their commands
+name. Every field stays and no record moves. To keep `/scrape-contact` or `/fetch-meetings`, install
+the connector that ships it — UPDATING.md has the steps, including the switch from
+`@dreamteamer/google-workspace`.
 
 ## 0.12.0 — core is a module preset (CR-dt-008)
 

@@ -11,6 +11,84 @@ npx dreamteamer check
 
 ---
 
+## 0.13.0 — LinkedIn and Google Calendar leave core (cr-modules-018)
+
+Nothing in core reaches LinkedIn or Google any more. The preset pins `@dreamteamer/contacts` 0.2.0 and
+`@dreamteamer/meetings` 0.4.0, and these left them:
+
+- from contacts: the LinkedIn scraper — `/scrape-contact`, its binding on `draft` contacts, the
+  `scraping-contacts` skill, the two views `/contacts/needs-linkedin` and `/contacts/review-linkedin`,
+  and the `LINKEDIN_USER_AGENT` key;
+- from meetings: the Google Calendar sync — `/fetch-meetings`, its binding, the `fetching-meetings`
+  skill, the `meetings` setup unit (`dt setup meetings`) and the `WORK_CALENDARS` key.
+
+meeting-docs 0.1.5, recordings 0.5.3 and workflows 0.1.3 change only wording: `/process-new-meetings`,
+`/match-recording-to-meeting` and the `customer-factory` workflow name the connector that ships the
+sync or the scraper they call. The two commands go on without it; `npx dt-workflows install
+customer-factory` names the missing command until the connector is installed or the step is removed
+from your copy. Every field of `contacts` and `meetings` stays; no record changes and nothing is
+migrated.
+
+Update core first — each connector's floor refuses the old contacts and meetings, which ship the same
+skills and commands:
+
+```bash
+npx dreamteamer update @dreamteamer/core
+```
+
+To keep `/scrape-contact` and the two LinkedIn views, install the LinkedIn connector:
+
+```bash
+npx dreamteamer install @dreamteamer/connectors-linkedin
+```
+
+To keep `/fetch-meetings` and the calendar setup `dt setup meetings`, install the Google Workspace
+connector:
+
+```bash
+npx dreamteamer install @dreamteamer/connectors-google-workspace
+```
+
+**A workspace that has `@dreamteamer/google-workspace`** (0.3.0 or earlier): that package is renamed
+`@dreamteamer/connectors-google-workspace`, and the two cannot be installed together — they ship the
+same skill, setup unit and bins. Uninstall the old one before you install the connector:
+
+```bash
+npx dreamteamer update @dreamteamer/core
+npm uninstall @dreamteamer/google-workspace
+npx dreamteamer install @dreamteamer/connectors-google-workspace
+npx dreamteamer status
+```
+
+Nothing is lost in the switch: the env names (`GOOGLE_CLIENT_SECRET_PATH`,
+`WORKSPACE_MCP_CREDENTIALS_DIR`, `WORK_CALENDARS`) and their values in `.env`, the credential
+directories outside the workspace, the receipts under `.dreamteamer/setup/`, the commands `dt setup
+meetings` and `dt setup google-workspace`, and every record stay as they are.
+
+**`dreamteamer.setup.skipped`.** An entry `meetings` in `package.json` keeps applying once the Google
+Workspace connector is installed. Without the connector, `dt status` names it as provided by no
+package — remove `"meetings"` from `dreamteamer.setup.skipped` if you do not mean to install it.
+
+**`.env`.** `WORK_CALENDARS` and `LINKEDIN_USER_AGENT` stay in `.env` and are read by nothing until the
+connector that declares each one is installed. Leave them, or delete the lines.
+
+**The moved scripts.** The two record-writing scripts of the calendar sync stay in meetings, at a new
+path:
+
+| up to meetings 0.3.1 | from meetings 0.4.0 |
+|---|---|
+| `.dreamteamer/skills/fetching-meetings/bin/touch-contacts.mjs` | `node_modules/@dreamteamer/meetings/bin/touch-contacts.mjs` |
+| `.dreamteamer/skills/fetching-meetings/bin/event-people.mjs` | `node_modules/@dreamteamer/meetings/bin/event-people.mjs` |
+
+Run each from the workspace root (`node node_modules/@dreamteamer/meetings/bin/touch-contacts.mjs
+--all`); a hook or a script of yours that names the old path needs the new one.
+
+```bash
+npx dreamteamer check
+```
+
+---
+
 ## 0.12.0 — core is a module preset of seventeen small modules (CR-dt-008) — engine 0.49.0
 
 core ships no collections, skills, commands, scripts or extension any more: its manifest's
