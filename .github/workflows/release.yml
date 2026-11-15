@@ -166,8 +166,9 @@ jobs:
       # this tag publishes. A wave of 16 tags used to run the whole ~10-minute suite 16 times.
       # @dreamteamer/ui ships its build (dist/lib, dist/app), never committed: built here so its suite tests the
       # tree that publishes, and again by its prepublishOnly inside npm publish.
+      # Built on EVERY tag, not only ui's: tests/ holds the pane's held-out tests, which import the built app, so a
+      # tag for any other module died at that import (protocol-v0.3.0, 2026-11-15) — the same gap ci.yml closed.
       - name: build the ui
-        if: steps.mod.outputs.id == 'ui'
         run: npm run build -w modules/ui
 
       - name: tests
