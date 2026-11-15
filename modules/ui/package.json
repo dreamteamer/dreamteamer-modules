@@ -21,10 +21,10 @@
 		"dist"
 	],
 	"scripts": {
-		"build": "node scripts/build.mjs",
-		"test": "node scripts/test.mjs",
+		"build": "node scripts/build.ts",
+		"test": "node scripts/test.ts",
 		"typecheck": "vue-tsc --noEmit -p src/tsconfig.json",
-		"prepublishOnly": "node scripts/build.mjs"
+		"prepublishOnly": "node scripts/build.ts"
 	},
 	"dreamteamer": {
 		"title": "UI",

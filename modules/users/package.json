@@ -3,6 +3,7 @@
 	"version": "0.3.0",
 	"description": "The people and agents work is assigned to in a dreamteamer workspace, which owner, lead and assignee fields point at, and the teams they form.",
 	"license": "Apache-2.0",
+	"type": "module",
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/dreamteamer/dreamteamer-modules.git",
