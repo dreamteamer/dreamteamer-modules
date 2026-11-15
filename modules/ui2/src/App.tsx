@@ -1,14 +1,16 @@
 /**
  * THE APP — the nav beside the page the route names. It owns the route (moved by `dt:navigate` from the host
- * and by in-app links, reported back with `dt:route`) and the workspace's descriptors (re-read on every
+ * and by in-app links, reported back with `dt:route`) and the workspace's schema, the display contract (re-read on every
  * `dt:invalidate`). A signed-out session draws one sentence instead.
  */
 import { Component, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
-import { getSchema, notify } from "./api/client.ts"
-import { AppContext, useApp, useAsync, useSignal, type AppState } from "./app-context.tsx"
+import { getPresentation, notify } from "./api/client.ts"
+import { AppContext, EMPTY_SCHEMA, useApp, useAsync, useSignal, type AppState } from "./app-context.tsx"
 import { Nav } from "./components/Nav.tsx"
 import { canEdit, hostInfo, SIGNED_OUT, signedOut } from "./lib/host.ts"
 import { pageOf } from "./lib/route.ts"
+import { buildSchema } from "./lib/schema.ts"
+import "./registry/register-defaults.ts"
 import { HomePage } from "./pages/HomePage.tsx"
 import { ListPage } from "./pages/ListPage.tsx"
 import { RecordPage } from "./pages/RecordPage.tsx"
@@ -43,18 +45,17 @@ export function App({ onMounted }: { onMounted?: () => void }) {
     notify("dt:route", { route: to })
   }, [])
 
-  const schema = useAsync(getSchema, [version])
-  const descriptors = useMemo(() => schema.data ?? [], [schema.data])
+  const presentation = useAsync(getPresentation, [version])
+  const schema = useMemo(() => (presentation.data ? buildSchema(presentation.data) : null), [presentation.data])
   const app: AppState = useMemo(
     () => ({
       route,
       navigate,
-      descriptors,
-      collections: descriptors.map(d => d.name),
+      schema: schema ?? EMPTY_SCHEMA,
       editable: canEdit(host),
       version,
     }),
-    [route, navigate, descriptors, host, version]
+    [route, navigate, schema, host, version]
   )
 
   if (out) return <p className="ui2-signed-out">{SIGNED_OUT}</p>
@@ -64,8 +65,8 @@ export function App({ onMounted }: { onMounted?: () => void }) {
       <div className="ui2-shell">
         <Nav />
         <main className="ui2-main">
-          {schema.error && <p className="ui2-error">{schema.error}</p>}
-          {schema.data && (
+          {presentation.error && <p className="ui2-error">{presentation.error}</p>}
+          {schema && (
             <Boundary key={route}>
               <Page />
             </Boundary>
@@ -77,8 +78,8 @@ export function App({ onMounted }: { onMounted?: () => void }) {
 }
 
 function Page() {
-  const { route, collections } = useApp()
-  const page = pageOf(route, collections)
+  const { route, schema } = useApp()
+  const page = pageOf(route, schema.names)
   switch (page.kind) {
     case "home":
       return <HomePage />

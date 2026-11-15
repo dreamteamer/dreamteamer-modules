@@ -1,23 +1,23 @@
 /**
- * What every page reads: the route and how to move it, the workspace's descriptors, whether edits are offered,
- * and the invalidation counter — bumped on every `dt:invalidate` the host posts, so a page that keys its fetch
+ * What every page reads: the route and how to move it, the workspace's schema (the display contract, read
+ * once per invalidation), whether edits are offered, and the invalidation counter — bumped on every `dt:invalidate` the host posts, so a page that keys its fetch
  * on it re-reads when the workspace changes on disk.
  */
 import { createContext, useContext, useEffect, useState, useSyncExternalStore } from "react"
-import type { Descriptor } from "./api/client.ts"
+import { EMPTY_SCHEMA, type Schema } from "./lib/schema.ts"
 import type { Signal } from "./lib/signal.ts"
 
 export interface AppState {
   route: string
   navigate(route: string): void
-  descriptors: Descriptor[]
-  /** Every collection name the workspace has, runtime ones included. */
-  collections: string[]
+  schema: Schema
   editable: boolean
   version: number
 }
 
 export const AppContext = createContext<AppState | null>(null)
+
+export { EMPTY_SCHEMA }
 
 export function useApp(): AppState {
   const app = useContext(AppContext)

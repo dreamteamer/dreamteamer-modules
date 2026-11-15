@@ -48,6 +48,14 @@ the page out.
 | `/content/<collection>/+` | a new record |
 
 Routes are the same as `ui`'s. A collection or id holding `/` resolves against the workspace's collections.
+
+Every page draws from the display contract (`GET /presentation`), as `ui` does: a collection's title, icon,
+list columns and sort, form sections and record title template; a field's surfaces (`hidden`), choices with
+their labels and colours, and its `editor` and `viewer`. Fields are drawn through the same registries as in
+`ui`, under the same ids (`input`, `textarea`, `select-dropdown`, `relation-picker`, `label`, `relation`, …),
+resolved in the same order: the field's own id, then its shape (body, reference, enum, list), then its type.
+A module can register its own Edit or View with `edits.register` or `views.register`.
+
 Save sends only the changed fields, and the host validates them as `dt set` does. If it refuses, the page
 shows its reason and nothing is written. When the host answers `GET /host` with level `read`, the page
 draws values and offers no edits.

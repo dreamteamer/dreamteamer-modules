@@ -28,13 +28,13 @@
   --ui2-focus: var(--vscode-focusBorder, #5b3df5);
 
   /* enum colours: the names descriptors use (`charts.green`) */
-  --ui2-charts-green: var(--vscode-charts-green, #2e9d6e);
-  --ui2-charts-orange: var(--vscode-charts-orange, #d9822b);
-  --ui2-charts-red: var(--vscode-charts-red, #d1435b);
-  --ui2-charts-blue: var(--vscode-charts-blue, #2f6feb);
-  --ui2-charts-yellow: var(--vscode-charts-yellow, #c9a227);
-  --ui2-charts-purple: var(--vscode-charts-purple, #8a4fd8);
-  --ui2-chip-fallback: var(--ui2-fg-subtle);
+  --dt-color-charts-green: var(--vscode-charts-green, #2e9d6e);
+  --dt-color-charts-orange: var(--vscode-charts-orange, #d9822b);
+  --dt-color-charts-red: var(--vscode-charts-red, #d1435b);
+  --dt-color-charts-blue: var(--vscode-charts-blue, #2f6feb);
+  --dt-color-charts-yellow: var(--vscode-charts-yellow, #c9a227);
+  --dt-color-charts-purple: var(--vscode-charts-purple, #8a4fd8);
+  --dt-unknown-color: var(--ui2-fg-subtle);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -52,8 +52,8 @@
     --ui2-danger: var(--vscode-errorForeground, #ff7a8e);
     --ui2-input-bg: var(--vscode-input-background, #12151a);
     --ui2-input-border: var(--vscode-input-border, #363d4a);
-    --ui2-charts-green: var(--vscode-charts-green, #4fc08d);
-    --ui2-charts-orange: var(--vscode-charts-orange, #f0a050);
+    --dt-color-charts-green: var(--vscode-charts-green, #4fc08d);
+    --dt-color-charts-orange: var(--vscode-charts-orange, #f0a050);
   }
 }
 
@@ -358,14 +358,23 @@ input[type="checkbox"] {
 
 /* ---- values --------------------------------------------------------------------------------- */
 .ui2-chip {
-  --chip: var(--ui2-chip-fallback);
-  display: inline-block;
+  --chip: var(--dt-unknown-color);
+  --chip-bg: color-mix(in srgb, var(--chip) 14%, transparent);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   padding: 1px 8px;
   border-radius: 999px;
   font-size: var(--ui2-small);
   color: var(--chip);
-  background: color-mix(in srgb, var(--chip) 14%, transparent);
+  background: var(--chip-bg);
   border: 1px solid color-mix(in srgb, var(--chip) 35%, transparent);
+  white-space: nowrap;
+}
+.ui2-chips {
+  display: inline-flex;
+  gap: 4px;
+  flex-wrap: wrap;
 }
 .ui2-refs {
   display: inline-flex;
@@ -450,4 +459,75 @@ input[type="checkbox"] {
 .ui2-card:hover {
   background: var(--ui2-bg-hover);
   text-decoration: none;
+}
+
+/* ---- rendered fields ------------------------------------------------------------------------ */
+.ui2-wrap {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.ui2-pre {
+  margin: 0;
+  font-family: var(--ui2-mono);
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+.ui2-yes {
+  color: var(--dt-color-charts-green);
+}
+.ui2-render-fallback {
+  color: var(--ui2-fg-subtle);
+  font-family: var(--ui2-mono);
+}
+.ui2-stack {
+  display: grid;
+  gap: 4px;
+}
+.ui2-hint {
+  font-size: var(--ui2-small);
+  color: var(--ui2-fg-subtle);
+}
+.ui2-hint.is-error,
+.is-invalid {
+  color: var(--ui2-danger);
+  border-color: var(--ui2-danger);
+}
+.ui2-with-unit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.ui2-body-input {
+  min-height: 240px;
+}
+.ui2-form-row.is-computed label {
+  opacity: 0.7;
+}
+.ui2-section {
+  border: 0;
+  border-top: 1px solid var(--ui2-border);
+  margin: 6px 0 0;
+  padding: 10px 0 0;
+  display: grid;
+  gap: 14px;
+}
+.ui2-section legend {
+  font-size: var(--ui2-small);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ui2-fg-subtle);
+  padding: 0 6px 0 0;
+}
+.ui2-link-button {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }

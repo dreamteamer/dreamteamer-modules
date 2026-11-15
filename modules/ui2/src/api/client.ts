@@ -3,6 +3,8 @@
  * typed. Every call goes through the transport `mount` was handed; nothing here knows HTTP or postMessage.
  */
 import type { Transport } from "../transport/types.ts"
+import type { FieldRow } from "./types.ts"
+import type { PresentationCollection } from "./collection-rows.ts"
 
 let current: Transport | null = null
 
@@ -40,27 +42,20 @@ export interface NavNode {
   children?: NavNode[]
 }
 
-export interface FieldDef {
-  type: string
-  title?: string
-  description?: string
-  required?: boolean
-  many?: boolean
-  body?: boolean
-  virtual?: boolean
-  derived?: boolean
-  enum?: string[] | Record<string, { color?: string; title?: string } | null>
+/** One relation the display contract names: `collection.field` holds refs to `related_collection`. */
+export interface Relation {
+  collection: string
+  field: string
+  related_collection: string
+  list: boolean
 }
 
-export interface Descriptor {
-  name: string
-  description?: string
-  fields?: Record<string, FieldDef>
-  compiled?: {
-    runtime?: boolean
-    fields?: Record<string, FieldDef>
-    defaults?: { title?: string; singular?: string; record_title?: string }
-  }
+/** `GET /presentation` — the display contract: every collection's resolved display, its field rows, the
+ *  relations between them. What every page draws from (descriptor format v2, §4.3). */
+export interface Presentation {
+  collections: PresentationCollection[]
+  fields: Record<string, FieldRow[]>
+  relations: Relation[]
 }
 
 export type Row = Record<string, unknown> & { id: string }
@@ -80,7 +75,7 @@ export interface RecordDoc {
 // ---- calls ----------------------------------------------------------------------------------------------
 
 export const getNav = () => request("GET", "/nav") as Promise<NavNode[]>
-export const getSchema = () => request("GET", "/schema") as Promise<Descriptor[]>
+export const getPresentation = () => request("GET", "/presentation") as Promise<Presentation>
 
 export interface ListQuery {
   limit?: number

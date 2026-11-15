@@ -1,31 +1,26 @@
 /**
- * ONE RECORD — its fields as a form, the body last, and beside it what the engine says about it (when it was
- * made and last changed, by whom, which source holds it). Save sends only the fields that changed (`PATCH`),
- * validated by the host exactly as `dt set` validates; a refusal is shown as the host's sentence and nothing
- * is written. The same page with no id is the new-record form (`POST`), which moves to the record it made.
+ * ONE RECORD — drawn from the display contract: the form's fields in the collection's `form.sections` (an
+ * unnamed section for the rest; a collapsed one shut and last), each by its resolved Edit when the field takes
+ * a control here and by its View when it does not (a computed or create-only field), the body last; beside it
+ * the engine's facts (the fields the record surface draws and the form leaves out) and where the record lives.
+ *
+ * Save sends only the fields that changed (`PATCH`), validated by the host exactly as `dt set` validates; a
+ * refusal is shown as the host's sentence and nothing is written. The same page with no id is the new-record
+ * form (`POST`), which moves to the record it made.
  *
  * A draft survives an invalidation: a change on disk re-reads the record, and the form takes the new values
  * only while nothing is edited.
  */
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react"
 import { createRecord, getRecord, removeRecord, updateRecord, type RecordDoc } from "../api/client.ts"
+import type { FieldRow } from "../api/types.ts"
 import { useApp, useAsync } from "../app-context.tsx"
-import { FieldInput } from "../components/FieldInput.tsx"
 import { Icon } from "../components/Icon.tsx"
 import { Link } from "../components/Link.tsx"
-import { Value } from "../components/Value.tsx"
-import {
-  changedFields,
-  editableOf,
-  fieldsOf,
-  formatValue,
-  isComputed,
-  labelOf,
-  recordTitle,
-  singularOf,
-  titleOf,
-} from "../lib/fields.ts"
+import { computedReason, formSections, isBodyField } from "../lib/field-row.ts"
+import { changedFields, formFields, recordFacts, recordLabel } from "../lib/schema.ts"
 import { listRoute, recordRoute } from "../lib/route.ts"
+import { RenderEdit, RenderView } from "../render/Render.tsx"
 
 const META: [string, string][] = [
   ["$source", "Source"],
@@ -34,12 +29,16 @@ const META: [string, string][] = [
   ["$last-commit-message", "Last commit"],
 ]
 
+/** A record's value for a field, whichever spelling the host used (`last_modified` / `last-modified`). */
+const valueOf = (fields: Record<string, unknown>, name: string) => fields[name] ?? fields[name.replace(/_/g, "-")]
+
 export function RecordPage({ collection, id }: { collection: string; id: string | null }) {
-  const { descriptors, navigate, editable, version } = useApp()
-  const d = descriptors.find(x => x.name === collection)
-  const fields = fieldsOf(d)
-  const form = editableOf(fields)
-  const computed = fields.filter(isComputed)
+  const { schema, navigate, editable, version } = useApp()
+  const create = id === null
+  const row = schema.collection(collection)
+  const all = schema.fields(collection)
+  const drawn = formFields(all, create)
+  const controls = drawn.filter(d => d.control).map(d => d.field)
 
   const doc = useAsync<RecordDoc | null>(
     () => (id ? getRecord(collection, id) : Promise.resolve(null)),
@@ -47,14 +46,15 @@ export function RecordPage({ collection, id }: { collection: string; id: string 
   )
   const saved = useMemo(() => {
     const out: Record<string, unknown> = {}
-    for (const f of form) out[f.name] = doc.data?.fields[f.name] ?? null
+    for (const f of controls) out[f.field] = doc.data?.fields[f.field] ?? f.default ?? null
     return out
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- form follows the descriptor, which follows collection
-  }, [doc.data, collection])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the controls follow the schema, which follows collection
+  }, [doc.data, collection, schema])
 
   const [draft, setDraft] = useState<Record<string, unknown>>(saved)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [open, setOpen] = useState<Set<string>>(new Set())
   const dirty = Object.keys(changedFields(saved, draft)).length > 0
 
   // a re-read takes the form only while nothing is edited — compared with the PREVIOUS read, which is what
@@ -101,7 +101,7 @@ export function RecordPage({ collection, id }: { collection: string; id: string 
   }
 
   const remove = () => {
-    if (!id || !confirm(`Delete ${recordTitle(doc.data?.fields ?? {}, id)}? This removes its file.`)) return
+    if (!id || !confirm(`Delete ${recordLabel(row, doc.data?.fields ?? {}, id)}? This removes its file.`)) return
     void run(async () => {
       await removeRecord(collection, id)
       navigate(listRoute(collection))
@@ -112,20 +112,52 @@ export function RecordPage({ collection, id }: { collection: string; id: string 
   // the previous record stays in hand while the next one loads: draw neither until it arrives
   if (id && doc.data?.id !== id) return <section className="ui2-page ui2-subtle">Loading…</section>
 
-  const all = doc.data?.fields ?? {}
-  const title = id ? recordTitle(all, id) : `New ${singularOf(d)}`
+  const values = doc.data?.fields ?? {}
+  const title = id ? recordLabel(row, values, id) : `New ${row?.record_type ?? "record"}`
+  const canWrite = editable && !row?.runtime
+
+  const fieldRow = (f: FieldRow) => {
+    const control = canWrite && controls.includes(f)
+    const reason = control ? null : computedReason(f, { create, target: schema.target(f)?.collection })
+    return (
+      <div key={f.field} className={`ui2-form-row${isBodyField(f) ? " is-body" : ""}${control ? "" : " is-computed"}`}>
+        <label htmlFor={`f-${f.field}`} title={f.description}>
+          {f.title}
+          {f.required && control && <span className="ui2-required"> *</span>}
+        </label>
+        {control ? (
+          <RenderEdit
+            id={`f-${f.field}`}
+            field={f}
+            value={draft[f.field]}
+            create={create}
+            onChange={v => setDraft(dr => ({ ...dr, [f.field]: v }))}
+          />
+        ) : (
+          <div id={`f-${f.field}`} title={reason ?? undefined}>
+            <RenderView field={f} value={valueOf(values, f.field)} context="record" record={values} />
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  const shownFields = drawn.map(d => d.field)
+  const sections = formSections(shownFields, row?.form.sections)
+  const body = shownFields.find(isBodyField)
+  const facts = recordFacts(all)
 
   return (
     <section className="ui2-page">
       <header className="ui2-page-head">
         <div>
           <p className="ui2-crumbs">
-            <Link to={listRoute(collection)}>{titleOf(d, collection)}</Link>
+            <Link to={listRoute(collection)}>{row?.title ?? collection}</Link>
             {id && <span className="ui2-subtle"> / {id}</span>}
           </p>
           <h1>{title}</h1>
         </div>
-        {editable && (
+        {canWrite && (
           <div className="ui2-toolbar">
             {id && (
               <button type="button" className="ui2-button is-danger" onClick={remove} disabled={busy}>
@@ -141,9 +173,9 @@ export function RecordPage({ collection, id }: { collection: string; id: string 
               type="submit"
               form="ui2-record"
               className="ui2-button is-primary"
-              disabled={busy || (!!id && !dirty)}
+              disabled={busy || (!create && !dirty)}
             >
-              <Icon name="save" /> {id ? "Save" : "Create"}
+              <Icon name="save" /> {create ? "Create" : "Save"}
             </button>
           </div>
         )}
@@ -157,41 +189,61 @@ export function RecordPage({ collection, id }: { collection: string; id: string 
 
       <div className="ui2-record">
         <form id="ui2-record" className="ui2-form" onSubmit={save}>
-          {form.map(f => (
-            <div key={f.name} className={`ui2-form-row${f.body ? " is-body" : ""}`}>
-              <label htmlFor={`f-${f.name}`} title={f.description}>
-                {labelOf(f)}
-                {f.required && <span className="ui2-required"> *</span>}
-              </label>
-              {editable ? (
-                <FieldInput
-                  id={`f-${f.name}`}
-                  field={f}
-                  value={draft[f.name]}
-                  onChange={v => setDraft(dr => ({ ...dr, [f.name]: v }))}
-                />
-              ) : (
-                <div id={`f-${f.name}`} className={f.body ? "ui2-body" : ""}>
-                  <Value field={f} value={all[f.name]} />
-                </div>
-              )}
-            </div>
-          ))}
+          {sections.map(s =>
+            s.title ? (
+              <fieldset key={s.title} className="ui2-section">
+                <legend>
+                  {s.collapsed ? (
+                    <button
+                      type="button"
+                      className="ui2-link-button"
+                      onClick={() =>
+                        setOpen(o => {
+                          const n = new Set(o)
+                          if (n.has(s.title)) n.delete(s.title)
+                          else n.add(s.title)
+                          return n
+                        })
+                      }
+                    >
+                      <Icon name={open.has(s.title) ? "chevron-down" : "chevron-right"} /> {s.title}
+                    </button>
+                  ) : (
+                    s.title
+                  )}
+                </legend>
+                {(!s.collapsed || open.has(s.title)) && s.fields.map(fieldRow)}
+              </fieldset>
+            ) : (
+              <div key="" className="ui2-form">
+                {s.fields.map(fieldRow)}
+              </div>
+            )
+          )}
+          {body && fieldRow(body)}
         </form>
 
         {id && (
           <aside className="ui2-meta">
             <dl>
-              {computed.map(f => (
-                <div key={f.name}>
-                  <dt>{labelOf(f)}</dt>
-                  <dd>{f.name === "id" ? id : formatValue(all[f.name] ?? all[f.name.replace(/_/g, "-")], f) || "—"}</dd>
-                </div>
-              ))}
-              {META.filter(([k]) => all[k]).map(([k, label]) => (
+              <div>
+                <dt>Id</dt>
+                <dd>{id}</dd>
+              </div>
+              {facts
+                .filter(f => f.field !== "id")
+                .map(f => (
+                  <div key={f.field}>
+                    <dt title={f.description}>{f.title}</dt>
+                    <dd>
+                      <RenderView field={f} value={valueOf(values, f.field)} context="record" record={values} />
+                    </dd>
+                  </div>
+                ))}
+              {META.filter(([k]) => values[k]).map(([k, label]) => (
                 <div key={k}>
                   <dt>{label}</dt>
-                  <dd>{String(all[k])}</dd>
+                  <dd>{String(values[k])}</dd>
                 </div>
               ))}
               {doc.data?.path && (
@@ -209,16 +261,11 @@ export function RecordPage({ collection, id }: { collection: string; id: string 
 }
 
 function Problem({ collection, text }: { collection: string; text: string }) {
-  const { descriptors } = useApp()
+  const { schema } = useApp()
   return (
     <section className="ui2-page">
       <p className="ui2-crumbs">
-        <Link to={listRoute(collection)}>
-          {titleOf(
-            descriptors.find(x => x.name === collection),
-            collection
-          )}
-        </Link>
+        <Link to={listRoute(collection)}>{schema.collection(collection)?.title ?? collection}</Link>
       </p>
       <p className="ui2-error">{text}</p>
     </section>
