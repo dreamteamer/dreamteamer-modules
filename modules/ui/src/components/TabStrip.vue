@@ -16,7 +16,8 @@ const activePath = computed(() => tabPath(route.fullPath));
 
 restoreTabs();
 watch(() => route.fullPath, (full) => {
-	if (!full || full === '/') return;
+	// '/' and the bare '/content/' are transit routes: ContentBrowse sends them on to the first collection
+	if (!full || full === '/' || tabPath(full) === '/content') return;
 	const next = visit(tabs.value, full);
 	if (next !== tabs.value) { tabs.value = next; saveTabs(); }
 }, { immediate: true });

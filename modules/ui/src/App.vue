@@ -12,6 +12,7 @@ import RightSidebar from './components/RightSidebar.vue';
 import AppNav from './components/AppNav.vue';
 import ToastHost from './components/ToastHost.vue';
 import TabStrip from './components/TabStrip.vue';
+import SearchModal from './components/SearchModal.vue';
 import { hostNotify, hostSetState } from './api/transport';
 import { loadUiViews } from './ui-views';
 import { refreshSchema } from './lib/schema-refresh';
@@ -120,6 +121,8 @@ onMounted(() => hostNotify('dt:ready'));
 		<RightSidebar />
 		<!-- the browser host's shell reports writes as toasts (cr-modules-022); the editor has its own notifications -->
 		<ToastHost v-if="appNav" />
+		<!-- Cmd/Ctrl-K: one search across the nav's collections (cr-modules-022); the editor has its own quick open -->
+		<SearchModal v-if="appTabs" />
 		<!-- cr-modules-017: a 401 from any request means the session is gone; the chat is where a person gets back in -->
 		<div v-if="signedOut" class="dt-signed-out" role="alert">
 			<p>{{ SIGNED_OUT }}</p>
