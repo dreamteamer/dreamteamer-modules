@@ -22,7 +22,7 @@
  * the toggle is disabled with that reason as its tooltip, and an unlocked nav locks.
  */
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import type { NavOp, NavTarget } from '@dreamteamer/protocol/nav-doc';
 import { hostRequest } from '../api/transport';
 import NavRow, { NAV_DRAG_TYPE, type DropWhere } from './NavRow';
@@ -48,6 +48,7 @@ const props = defineProps<{
 }>();
 
 const router = useRouter();
+const route = useRoute();
 const nodes = ref<NavNode[]>([]);
 const open = ref<Set<string>>(new Set());
 const error = ref<string | null>(null);
@@ -75,6 +76,33 @@ const index = computed(() => {
 	};
 	walk(nodes.value);
 	return { byKey, parentOf };
+});
+
+/** A route compared as text: decoded, without its query or a trailing slash. */
+const routeText = (r: string) => { let p = r.split('?')[0].replace(/\/+$/, ''); try { p = decodeURIComponent(p); } catch { /* keep it as it is */ } return p; };
+/** The CURRENT row (cr-modules-021): the row whose route is the open page's, or the deepest one the page sits under (a
+ *  record page marks its collection). The workspace node is the toolbar's name, never a row, so it is never current. */
+const currentKey = computed<string | null>(() => {
+	const here = routeText(route?.path ?? '');
+	if (!here) return null;
+	let best: { key: string; len: number } | null = null;
+	for (const n of index.value.byKey.values()) {
+		if (!n.route || n.kind === 'workspace') continue;
+		const r = routeText(n.route);
+		if (!r || (here !== r && !here.startsWith(`${r}/`))) continue;
+		if (!best || r.length > best.len) best = { key: n.key, len: r.length };
+	}
+	return best?.key ?? null;
+});
+// the current row is never hidden inside a closed folder: its folders open when the page changes
+watch(currentKey, (key) => {
+	if (!key) return;
+	const s = new Set(open.value);
+	let grew = false;
+	for (let p = index.value.parentOf.get(key); p && p.kind !== 'workspace'; p = index.value.parentOf.get(p.key)) {
+		if (!s.has(p.key)) { s.add(p.key); grew = true; }
+	}
+	if (grew) open.value = s;
 });
 
 /** The workspace node — drawn as the toolbar's name, never as a row. */
@@ -373,7 +401,7 @@ onUnmounted(() => { window.removeEventListener('message', onMessage); window.rem
 		<div class="dt-nav-rows" @scroll="onRowsScroll">
 			<ul class="dt-nav-list" role="tree">
 				<template v-for="n in topLevel" :key="n.key">
-					<NavRow :node="n" :depth="0" :open="open" :hint="hint" :arrange="arranging" @toggle="toggle" @activate="activate" @drag="onDrag" @hover="onHover" @move="onMove" @menu="onMenu" />
+					<NavRow :node="n" :depth="0" :open="open" :hint="hint" :arrange="arranging" :current="currentKey" @toggle="toggle" @activate="activate" @drag="onDrag" @hover="onHover" @move="onMove" @menu="onMenu" />
 				</template>
 			</ul>
 			<div v-if="arranging" class="dt-nav-tail" :class="{ 'dt-nav-drop-tail': hint?.key === TAIL }" data-key="::tail" @dragover="onTailOver" @drop="onTailDrop"></div>
@@ -416,14 +444,27 @@ onUnmounted(() => { window.removeEventListener('message', onMessage); window.rem
 /* the empty area under the last row: the bottom of the top level as a drop, its line on the top edge */
 .dt-nav-tail { flex: 1 0 24px; }
 .dt-nav-drop-tail { box-shadow: inset 0 2px 0 var(--dt-accent); }
-/* the ordinary arrow everywhere; the grab hand only on a row that can be dragged, which is only while arranging */
-:deep(.dt-nav-row) { display: flex; align-items: center; gap: 4px; height: 24px; cursor: default; color: var(--dt-fg); white-space: nowrap; }
-:deep(.dt-nav-row:hover) { background: var(--dt-bg-hover); }
+/* the ordinary arrow everywhere; the grab hand only on a row that can be dragged, which is only while arranging.
+   ROWS (cr-modules-021): 30 px tall on one x-grid — a 14 px twisty slot, a 16 px icon box and the label, then ONE right-hand
+   column for marks and counts. The highlight is a ::before layer inset 6 px from each side, so hover (a light accent tint)
+   and the current row (a white card with a hairline ring, weight 600) never move the icon or the label. */
+:deep(.dt-nav-row) { position: relative; isolation: isolate; display: flex; align-items: center; gap: 6px; height: 30px; padding-right: 14px; cursor: default; color: var(--dt-fg); white-space: nowrap; }
+:deep(.dt-nav-row)::before { content: ''; position: absolute; inset: 1px 6px; z-index: -1; border-radius: var(--dt-radius-lg); background: transparent; transition: background-color var(--dt-dur-fast) var(--dt-ease), box-shadow var(--dt-dur-fast) var(--dt-ease); }
+:deep(.dt-nav-row:hover)::before { background: var(--dt-accent-tint); }
+:deep(.dt-nav-row.is-current)::before { background: var(--dt-surface); box-shadow: var(--dt-shadow-card); }
+:deep(.dt-nav-row.is-current) { font-weight: var(--dt-weight-strong); }
+:deep(.dt-nav-row.is-current .dt-nav-icon) { color: var(--dt-accent); }
 :deep(.dt-nav-row[draggable='true']) { cursor: grab; }
 :deep(.dt-nav-drop-after) { box-shadow: inset 0 -2px 0 var(--dt-accent); }
 :deep(.dt-nav-drop-before) { box-shadow: inset 0 2px 0 var(--dt-accent); }
-:deep(.dt-nav-drop-into) { background: var(--dt-accent-subtle); outline: 1px solid var(--dt-accent); outline-offset: -1px; }
-:deep(.dt-nav-twisty) { width: 12px; color: var(--dt-fg-subtle); }
-:deep(.dt-nav-label) { flex: 1; overflow: hidden; text-overflow: ellipsis; }
-:deep(.dt-nav-count), :deep(.dt-nav-marks) { color: var(--dt-fg-subtle); font-size: var(--dt-label); padding-right: 8px; }
+:deep(.dt-nav-drop-into)::before { background: var(--dt-accent-subtle); box-shadow: 0 0 0 1px var(--dt-accent); }
+:deep(.dt-nav-twisty) { flex: none; width: 14px; display: inline-flex; justify-content: center; color: var(--dt-fg-muted); }
+:deep(.dt-nav-twisty .codicon) { font-size: var(--dt-label); }
+:deep(.dt-nav-icon) { flex: none; width: var(--dt-icon); height: var(--dt-icon); display: inline-flex; align-items: center; justify-content: center; color: var(--dt-fg-subtle); }
+:deep(.dt-nav-label) { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+:deep(.dt-nav-end) { flex: none; min-width: 24px; display: inline-flex; align-items: center; justify-content: flex-end; gap: 4px; color: var(--dt-fg-muted); font-size: var(--dt-label); font-variant-numeric: tabular-nums; }
+/* A SECTION — a folder, namespace or layers row at the top level: a small uppercase, letter-spaced, muted label */
+:deep(.dt-nav-section) { margin-top: 2px; color: var(--dt-fg-subtle); }
+:deep(.dt-nav-section .dt-nav-label) { font-size: var(--dt-label); font-weight: var(--dt-weight-strong); text-transform: uppercase; letter-spacing: 0.05em; }
+:deep(.dt-nav-section .dt-nav-icon) { color: var(--dt-fg-muted); }
 </style>
