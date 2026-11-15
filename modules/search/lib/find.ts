@@ -78,7 +78,7 @@ export function contentWords(question) {
  * question itself because the semantic lane wants prose; `hyde` has NO mechanical fallback, because a
  * hypothetical answer cannot be derived from the question without a model.
  */
-export function buildQueryDocument({ question, lex, vec, hyde } = {}) {
+export function buildQueryDocument({ question, lex, vec, hyde }: Record<string, any> = {}) {
   const q = String(question ?? "").trim()
   if (!q) throw new Error("a query document needs a question")
   const lines = [`intent: ${q}`]

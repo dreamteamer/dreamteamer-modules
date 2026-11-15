@@ -144,7 +144,7 @@ const round = (n, d) => (n == null ? n : Math.round(n * 10 ** d) / 10 ** d)
 const minutes = ms => (ms == null ? null : round(ms / 60000, 1))
 
 /** The record's fields, from a parsed transcript. `cost-state` wins; the usage sum fills what it lacks. */
-export function fieldsOf(parsed, { sessionId, transcript } = {}) {
+export function fieldsOf(parsed, { sessionId, transcript }: Record<string, any> = {}) {
   const c = parsed.costState
   const models = c?.modelUsage ? Object.keys(c.modelUsage) : [...parsed.models]
   const sum = k => Object.values(c.modelUsage).reduce((n, m) => n + (m[k] ?? 0), 0)

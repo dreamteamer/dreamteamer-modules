@@ -88,7 +88,7 @@ for (const h of homes) perTree.set(h.account, { weeks: new Map(), first: "", las
 const rows = limit ? transcripts.slice(0, limit) : transcripts
 for (const t of rows) {
   const sourceId = `${who()}/claude-transcripts--${t.account}`
-  const m = await computeMetrics(t.path, t)
+  const m: Record<string, any> = await computeMetrics(t.path, t)
   if (since && m.started_at && m.started_at.slice(0, 10) < since) continue
   const tree = perTree.get(t.account)
   tree.conversations++
@@ -167,7 +167,7 @@ for (const h of homes) {
   const tree = perTree.get(h.account)
   const sourceId = `${who()}/claude-transcripts--${h.account}`
   if (flag("dry-run")) continue
-  const counts = { files: rec.files, conversations: tree.conversations }
+  const counts: Record<string, any> = { files: rec.files, conversations: tree.conversations }
   if (tree.first) counts.first = tree.first.slice(0, 10)
   if (tree.last) counts.last = tree.last.slice(0, 10)
   writeSource(recordPath("sources", sourceId, "source", dataRoot), {

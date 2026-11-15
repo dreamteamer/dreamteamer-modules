@@ -100,7 +100,7 @@ function compiledStorage(name) {
   } catch {
     return null
   }
-  const d = yamlMaps(text)
+  const d: any = yamlMaps(text)
   if (!d.compiled) return null
   const authored = d.storage ?? {}
   const supplied = d.compiled.defaults?.storage ?? {}
@@ -283,7 +283,7 @@ function zoneOffset(t, zone) {
  * has a valid one, else the offset written on its `starts`, else the machine zone. Returns the
  * instant and the zone used, so a scan row can say which reading it matched on.
  */
-function wallToInstant([y, mo, d, h, mi, s], { timezone, startsOffset } = {}) {
+function wallToInstant([y, mo, d, h, mi, s]: number[], { timezone, startsOffset }: Record<string, any> = {}) {
   const asUtc = Date.UTC(y, mo - 1, d, h, mi, s)
   if (timezone) {
     try {

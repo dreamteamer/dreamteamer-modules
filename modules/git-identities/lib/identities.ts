@@ -55,7 +55,7 @@ export function validateConfig(input, { home = os.homedir() } = {}) {
 }
 
 /** Pure proposal: no configuration or key files are read or written. */
-export function renderPlan(input, options) {
+export function renderPlan(input, options?) {
   const rows = validateConfig(input, options)
   return {
     warning:

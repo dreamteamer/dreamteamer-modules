@@ -13,7 +13,7 @@ export const READ_TOOLS = new Set([
   "search_drive_files",
   "get_drive_file_content",
 ])
-export function validateCall(account, tool, args = {}, allowWrite = false) {
+export function validateCall(account, tool, args: Record<string, any> = {}, allowWrite = false) {
   if (typeof account !== "string" || !/^[A-Za-z0-9.!#$%&'*+_=~-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(account))
     throw new Error("An explicit valid account email is required.")
   if (!tool || typeof tool !== "string") throw new Error("A tool name is required.")
@@ -115,7 +115,7 @@ export async function call({
   })
   try {
     await client.ready()
-    const result = await client.send("tools/call", { name: tool, arguments: arguments_ })
+    const result: any = await client.send("tools/call", { name: tool, arguments: arguments_ })
     if (!result || result.isError)
       throw new Error("Google Workspace tool failed. Check authorization and arguments locally.")
     const text = (result.content ?? [])
@@ -152,7 +152,7 @@ export async function listTools({ env = process.env, allowWrite = false, connect
       seen = new Set()
     let cursor
     do {
-      const response = await client.send("tools/list", cursor ? { cursor } : {})
+      const response: any = await client.send("tools/list", cursor ? { cursor } : {})
       if (!Array.isArray(response?.tools)) throw new Error("Server returned an invalid tool catalog.")
       tools.push(...response.tools.filter(tool => allowWrite || READ_TOOLS.has(tool.name)))
       cursor = response.nextCursor

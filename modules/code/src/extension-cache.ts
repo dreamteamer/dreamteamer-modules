@@ -44,7 +44,7 @@ export async function installMarketplace({ runtime, common, extensions, profile,
   const marker = path.join(profile, `marketplace-${id}.json`)
   const verify = async () => {
     const bytes = await fs.readFile(path.join(extensions, "extensions.json"))
-    const entry = JSON.parse(bytes).find(
+    const entry = JSON.parse(String(bytes)).find(
       e => e.identifier?.id?.toLowerCase() === id.toLowerCase() && e.version === version
     )
     if (!entry?.relativeLocation) throw new Error("Marketplace extension missing from inventory")

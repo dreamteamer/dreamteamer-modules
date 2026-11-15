@@ -31,7 +31,7 @@ const GIT_TIMEOUT_MS = 30_000
  * `host` is the name the server was bound to; `token`, when set, is required on every request as
  * `Authorization: Bearer <token>`.
  */
-export function createApp(ws, { host, token } = {}) {
+export function createApp(ws, { host, token }: Record<string, any> = {}) {
   if (!dt)
     throw new Error(
       "@dreamteamer/http: no engine bound — activate(dt) binds it; a tool mounting createApp calls bind(api) first"
@@ -88,7 +88,7 @@ async function quietly(fn) {
 
 /** Listen on `host:port` (loopback by default). Resolves with the http.Server once it is listening.
  *  A host beyond loopback is refused unless `token` is set. */
-export async function serve(ws, { port = 8080, host = "127.0.0.1", token } = {}) {
+export async function serve(ws, { port = 8080, host = "127.0.0.1", token }: Record<string, any> = {}) {
   assertExposure(host, token)
   const server = http.createServer(createApp(ws, { host, token }))
   return new Promise((resolve, reject) => {
@@ -96,7 +96,9 @@ export async function serve(ws, { port = 8080, host = "127.0.0.1", token } = {})
     server.listen(port, host, () => {
       server.off("error", reject)
       const shown = host.includes(":") ? `[${host}]` : host
-      console.log(`✔ dreamteamer api at http://${shown}:${server.address().port}/api`)
+      console.log(
+        `✔ dreamteamer api at http://${shown}:${(server.address() as import("node:net").AddressInfo).port}/api`
+      )
       resolve(server)
     })
   })

@@ -86,7 +86,7 @@ if (!myHandles.size) {
 // ticket is evidenced by that ticket's source, and stamping the retrospective there instead is a
 // reference at the wrong collection, which `dt check` refuses.
 const people = new Map() // `${role}\u0000${sourceRef}` → Map(key → { email, name, days:Set, count })
-function met(role, sourceRef, key, { name, on } = {}) {
+function met(role, sourceRef, key, { name, on }: Record<string, any> = {}) {
   if (!key || !String(key).includes("@")) return // an email or a system id; a bare name is not a key
   if (!sourceRef) return // no source record to evidence it against
   const group = `${role}\u0000${sourceRef}`
@@ -217,7 +217,7 @@ for (const file of listRecords(path.join(collectionDir("activities", dataRoot), 
   // derivation may do is add what the evidence proves and correct the flag; what it may not do is
   // delete what it merely failed to find. A wrong ref is caught by `dt check`, not by this.
   const collaborators = [...new Set([...list(fields.collaborators), ...refs])].sort()
-  const next = { ...fields }
+  const next: Record<string, any> = { ...fields }
   if (collaborators.length) {
     next.collaborators = collaborators
     next.collaborative = true

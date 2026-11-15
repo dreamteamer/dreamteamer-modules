@@ -127,7 +127,7 @@ export function recordPath(root, collection, id) {
   return own
 }
 
-function readRecord(file) {
+function readRecord(file): { fields: Record<string, any>; body: string } {
   const text = fs.readFileSync(file, "utf8")
   if (!text.startsWith("---\n")) return { fields: {}, body: text }
   const end = text.indexOf("\n---", 4)
@@ -228,7 +228,7 @@ function allWikiIds(root) {
 
 /** The corpus's own frontmatter. `index.md` wins; a bare-YAML `wiki.yaml` is read when it is all the
  *  folder has, and is never rewritten. */
-const indexOf = w => {
+const indexOf = (w): { fields: Record<string, any>; body: string } => {
   for (const f of [w.paths.index, w.paths.legacyManifest]) {
     if (fs.existsSync(f)) return parseIndex(fs.readFileSync(f, "utf8"))
   }
@@ -450,7 +450,7 @@ function list(argv, root) {
       rows.push({ id, error: w.refusal })
       continue
     }
-    const m = manifestOf(w)
+    const m: any = manifestOf(w)
     const s = summarise(listSources(w.dir))
     rows.push({
       id,
@@ -490,7 +490,7 @@ function show(argv, root) {
     console.error(`✖ ${w.refusal}`)
     return 1
   }
-  const m = manifestOf(w)
+  const m: any = manifestOf(w)
   const sources = listSources(w.dir)
   const s = summarise(sources)
   if (has(argv, "json")) {
@@ -539,7 +539,7 @@ function add(argv, root) {
   const section = opt(argv, "section")
   let title = opt(argv, "title") ?? ""
   let body = ""
-  let observation = { attempted: false }
+  let observation: Record<string, any> = { attempted: false }
 
   if (kind === "text") {
     body = ref === "-" ? fs.readFileSync(0, "utf8") : ref

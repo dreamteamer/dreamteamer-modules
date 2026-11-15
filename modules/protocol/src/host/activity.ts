@@ -92,7 +92,7 @@ function startRead(read) {
   })()
   return r
 }
-export async function activityFeed(root, scopes, page, recordOf, opts = {}) {
+export async function activityFeed(root, scopes, page, recordOf, opts: Record<string, any> = {}) {
   const { limit, offset, workspace, settled: known } = page
   const read = opts.read ?? ((s, n) => readLog(root, s, n))
   const reads = opts.reads ?? new Map()
@@ -107,7 +107,7 @@ export async function activityFeed(root, scopes, page, recordOf, opts = {}) {
   })
   const settledCount = () => mine.filter(m => m.r.state !== "reading").length
   if (settledCount() < mine.length) {
-    await new Promise(resolve => {
+    await new Promise<void>(resolve => {
       let over = false
       let grace
       const budget = opts.budgetMs === undefined ? undefined : setTimeout(finish, opts.budgetMs)

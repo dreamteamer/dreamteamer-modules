@@ -4,7 +4,7 @@ import crypto from "node:crypto"
 
 const hash = s => crypto.createHash("sha256").update(s).digest()
 
-export function mintClientToken({ name, level = "read", now = Date.now } = {}) {
+export function mintClientToken({ name, level = "read", now = Date.now }: Record<string, any> = {}) {
   if (typeof name !== "string" || !name.trim()) throw new Error("a client token needs a name")
   if (level !== "read" && level !== "edit") throw new Error(`a client token is read or edit, not ${level}`)
   const token = `dtw_${crypto.randomBytes(32).toString("base64url")}`

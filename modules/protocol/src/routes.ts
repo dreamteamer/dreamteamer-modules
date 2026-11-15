@@ -185,7 +185,7 @@ export function matchRoute(method, rawPath) {
     if (route.method !== m) continue
     const hit = re.exec(pathname)
     if (!hit) continue
-    const params = {}
+    const params: Record<string, string> = {}
     names.forEach((n, i) => {
       params[n] = hit[i + 1].split("/").map(decodeURIComponent).join("/")
     })

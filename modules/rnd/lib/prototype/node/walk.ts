@@ -7,6 +7,10 @@ import { loadConfig } from "./config.ts"
 import { serve } from "./serve.ts"
 import { chromium, browserNoise } from "./devdep.ts"
 
+// The callbacks handed to page.evaluate / page.waitForFunction run in the prototype's page, not in Node: these
+// are that page's globals, declared here (type-only) rather than adding the DOM library to every Node file.
+declare const window: any, document: any, location: any, scrollY: number, CSS: any, NodeFilter: any
+
 export const SKIP =
   ".demo-fab, .demo-bar, .demo-guide, #meta-pane, .harness-toasts, .meta-only, [data-meta], code, pre, [data-ident], script, style"
 
@@ -23,7 +27,7 @@ export function forbiddenOf(text) {
 /** the prototype's portal keys, or null (every screen that has a portal) when a field or tag source has no map */
 export const portalsOf = c =>
   c.portal.from === "product"
-    ? new Set(Object.values(c.products).map(p => p.key))
+    ? new Set(Object.values(c.products).map((p: any) => p.key))
     : c.portal.map
       ? new Set(Object.values(c.portal.map))
       : null

@@ -97,7 +97,7 @@ export const ADAPTERS = ["local", "notebooklm"]
  * served by NotebookLM, one without is a folder. Setting it overrides that, for a notebook that
  * exists upstream but should be served from its folder.
  */
-export function adapterOf(record = {}, override) {
+export function adapterOf(record: Record<string, any> = {}, override?) {
   const pick = override ?? record.adapter
   if (pick) {
     if (!ADAPTERS.includes(pick)) throw new Error(`unknown adapter "${pick}" — one of ${ADAPTERS.join(" · ")}`)
@@ -181,7 +181,7 @@ export function sourcePath(index, title, section) {
  *
  *  `bodyLine` is the 1-based line of the file that `body` starts on. A hit numbered inside the body
  *  alone would be short by the frontmatter's height and open the wrong line. */
-export function parseSource(text) {
+export function parseSource(text): { fields: Record<string, any>; body: string; bodyLine: number } {
   const s = String(text ?? "")
   if (!s.startsWith("---\n")) return { fields: {}, body: s, bodyLine: 1 }
   const end = s.indexOf("\n---", 4)
@@ -205,7 +205,15 @@ export function renderSource(fields, body = "") {
 }
 
 /** The frontmatter a source carries before anything has been fetched. */
-export function stubFields({ kind, ref = "", title = "", upstream_id, adapter, section, source_file }) {
+export function stubFields({
+  kind,
+  ref = "",
+  title = "",
+  upstream_id,
+  adapter,
+  section,
+  source_file,
+}: Record<string, any>) {
   return {
     kind,
     ref,
@@ -399,7 +407,7 @@ export function kindFromUpstream(type) {
  * Every live source produces a step, including the ones being skipped: the plan is the inventory,
  * and a dropped step would be a source that stops being counted.
  */
-export function pullPlan(live, existing = [], opts = {}) {
+export function pullPlan(live, existing = [], opts: Record<string, any> = {}) {
   const rows = Array.isArray(live) ? live : (live?.sources ?? [])
   const by = new Map(existing.filter(e => e?.upstream_id).map(e => [e.upstream_id, e]))
   const section = opts.section ?? (() => "")

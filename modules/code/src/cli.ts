@@ -17,7 +17,7 @@ start runs in the foreground. Ctrl-C stops the editor. url prints a URL; message
 Defaults to Dreamteamer 0.23.3 from the code-server marketplace. --extension-version pins another release; --vsix is a development override.`
 
 export function parseArgs(argv) {
-  const opts = { verb: "start", workspace: "." }
+  const opts: Record<string, any> = { verb: "start", workspace: "." }
   let positional = false
   if (["start", "url", "message", "state", "claude"].includes(argv[0])) opts.verb = argv.shift()
   for (let i = 0; i < argv.length; i++) {

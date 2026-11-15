@@ -26,6 +26,7 @@ import { readdirSync, existsSync, readFileSync, rmSync, mkdirSync } from "node:f
 import { resolve, dirname, join, basename } from "node:path"
 import { fileURLToPath } from "node:url"
 import * as esbuild from "esbuild"
+import type { BuildOptions } from "esbuild"
 import * as sfc from "vue/compiler-sfc"
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..")
@@ -78,7 +79,7 @@ const stubVscode = {
   },
 }
 
-const common = {
+const common: BuildOptions = {
   // .mjs so Node does not have to guess the module type of a bundle in a CJS package (the extension
   // itself ships CJS for VS Code, so package.json cannot say "type": "module")
   outExtension: { ".js": ".mjs" },

@@ -22,7 +22,7 @@ const settings = "this workspace's .vscode/settings.json"
  */
 export function buildModuleScope({ module, home, collectionsRows, descriptors, grant }) {
   const ownerOf = new Map(collectionsRows.map(r => [r.id, r.$module]))
-  const byName = new Map(descriptors.map(d => [d.name, d]))
+  const byName = new Map<any, any>(descriptors.map(d => [d.name, d]))
   const own = new Set(
     descriptors
       .filter(
@@ -36,7 +36,7 @@ export function buildModuleScope({ module, home, collectionsRows, descriptors, g
   )
   const referenced = new Set()
   for (const c of own)
-    for (const f of Object.values(byName.get(c)?.fields ?? {})) if (byName.has(f?.type)) referenced.add(f.type)
+    for (const f of Object.values<any>(byName.get(c)?.fields ?? {})) if (byName.has(f?.type)) referenced.add(f.type)
   const g = grant?.[module] ?? {}
   const reads = new Set([
     ...own,

@@ -451,7 +451,7 @@ export class WorkspaceApi {
       )
     }
   }
-  listRecords(name, query, opts = {}) {
+  listRecords(name, query, opts: Record<string, any> = {}) {
     const store = this.store
     const eng = engine()
     const d = store.descriptor(name)
@@ -520,7 +520,7 @@ export class WorkspaceApi {
     rows = narrow(rows)
     eng.sortRows(rows, query.get("sort"), eng.descriptor.jsonSchemaOf(d))
     const total = rows.length
-    const facet = new Map(sources.map(x => [x.name, 0]))
+    const facet = new Map<any, number>(sources.map(x => [x.name, 0]))
     for (const r of facetRows ? narrow(facetRows) : rows) facet.set(r[SOURCE_KEY], (facet.get(r[SOURCE_KEY]) ?? 0) + 1)
     const offset = Number(query.get("offset") ?? 0)
     const limit = Number(query.get("limit") ?? 200)
@@ -736,7 +736,7 @@ export class WorkspaceApi {
     return engine().historyDiff(this.store, name, id, hash)
   }
 }
-export function gitHistoryMap(root, dirs, repoOf = () => ".") {
+export function gitHistoryMap(root, dirs, repoOf: (dir: string) => string = () => ".") {
   const map = new Map()
   const byRepo = new Map()
   for (const dir of dirs) {

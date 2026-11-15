@@ -84,14 +84,14 @@ async function accessToken(email) {
       grant_type: "refresh_token",
     }),
   })
-  const j = await r.json()
+  const j: any = await r.json()
   if (!r.ok || !j.access_token) die(`token refresh failed for ${email}: ${r.status} ${JSON.stringify(j)}`)
   return j.access_token
 }
 
 async function api(token, path, params = {}) {
   const url = new URL(`https://www.googleapis.com/calendar/v3/${path}`)
-  for (const [k, v] of Object.entries(params)) if (v !== undefined && v !== null) url.searchParams.set(k, v)
+  for (const [k, v] of Object.entries<any>(params)) if (v !== undefined && v !== null) url.searchParams.set(k, v)
   const r = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
   const j = await r.json()
   if (!r.ok) die(`API ${r.status} on ${path}: ${JSON.stringify(j).slice(0, 400)}`)
@@ -103,7 +103,7 @@ async function paged(token, path, params) {
   const items = []
   let pageToken
   do {
-    const j = await api(token, path, { ...params, maxResults: 2500, pageToken })
+    const j: any = await api(token, path, { ...params, maxResults: 2500, pageToken })
     items.push(...(j.items ?? []))
     pageToken = j.nextPageToken
   } while (pageToken)
@@ -172,7 +172,7 @@ export function classifyAccess(rows, calendarsByAccount) {
     return { ...r, accessRole, verdict }
   })
   const named = new Set(rows.map(r => r.calendar))
-  const unlisted = Object.entries(calendarsByAccount).flatMap(([account, cals]) =>
+  const unlisted = Object.entries<any>(calendarsByAccount).flatMap(([account, cals]) =>
     (cals ?? [])
       .filter(c => (c.accessRole === "owner" || c.accessRole === "writer") && !named.has(c.id))
       .map(c => ({ account, id: c.id, summary: c.summary, accessRole: c.accessRole }))

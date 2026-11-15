@@ -74,7 +74,8 @@ export const UNSAFE_NAME = /[\u0000-\u001f\u007f\\]/
  * under them is unknown, not gone.
  */
 export function walkDrive(root, { include = [], exclude = [], subfolder = null } = {}) {
-  const out = []
+  // the entries, with the skipped paths hung on as non-enumerable `unsafe` and `unreadable`
+  const out: any[] & { unsafe?: string[]; unreadable?: string[] } = []
   const unsafe = [],
     unreadable = []
   Object.defineProperty(out, "unsafe", { value: unsafe })

@@ -7,14 +7,14 @@
 import fs from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
-import { build } from "vite"
+import { build, type InlineConfig } from "vite"
 import vue from "@vitejs/plugin-vue"
 
 const UI = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 const SRC = path.join(UI, "src")
 const DIST = path.join(UI, "dist")
 
-const common = {
+const common: InlineConfig = {
   configFile: false,
   root: SRC,
   base: "./",

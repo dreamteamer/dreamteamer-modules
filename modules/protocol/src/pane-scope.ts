@@ -24,7 +24,7 @@ const word = level => (typeof level === "string" && level ? level[0].toUpperCase
  * @param {Iterable<{name: string}>} descriptors
  * @param {{ isInternal?: (d: any) => boolean, isRuntime?: (d: any) => boolean }} engine
  */
-export function internalCollections(descriptors, { isInternal, isRuntime } = {}) {
+export function internalCollections(descriptors, { isInternal, isRuntime }: Record<string, any> = {}) {
   const out = new Set(SYSTEM_COLLECTIONS)
   for (const d of descriptors ?? []) {
     if (!d?.name) continue

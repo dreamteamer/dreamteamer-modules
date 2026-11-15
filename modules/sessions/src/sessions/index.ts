@@ -20,7 +20,7 @@ export function retiredBindings(draft) {
 }
 
 export function activateSessions(dt) {
-  const c = {
+  const c: Record<string, any> = {
     commands: {
       session: {
         usage: SESSION_USAGE,

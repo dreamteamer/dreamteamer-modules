@@ -35,7 +35,7 @@ export function compare(c, records, registry) {
   }
   const portals = new Set(
     c.portal.from === "product"
-      ? Object.values(c.products).map(p => p.key)
+      ? Object.values(c.products).map((p: any) => p.key)
       : c.portal.map
         ? Object.values(c.portal.map)
         : records.screens.map(portalOf).filter(Boolean)
@@ -95,7 +95,14 @@ export function compare(c, records, registry) {
 
 export async function run(
   dir,
-  { json = false, apply = false, strict = false, dt, log = console.log, error = console.error } = {}
+  {
+    json = false,
+    apply = false,
+    strict = false,
+    dt,
+    log = console.log,
+    error = console.error,
+  }: Record<string, any> = {}
 ) {
   const c = await loadConfig(dir)
   if (apply && !c.prototype) {

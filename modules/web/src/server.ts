@@ -112,6 +112,7 @@ const ALLOW = {
   frames: "GET, HEAD",
 }
 class HttpError extends Error {
+  declare status: number
   constructor(status, message) {
     super(message)
     this.status = status
@@ -144,7 +145,7 @@ export async function startWeb({
   stateDir = defaultStateDir(),
   moduleGuest,
   pane,
-} = {}) {
+}: Record<string, any> = {}) {
   if (!fs.existsSync(path.join(appDir, "index.html"))) {
     throw new Error(
       `the app is missing: ${path.join(appDir, "index.html")} — @dreamteamer/ui is installed without its build (see the README)`
@@ -197,7 +198,7 @@ export async function startWeb({
 
   // the event streams: the PAGES (the cookie) are what `dt web show` delivers to, what the hook calls connected and
   // what keeps the server from its idle stop; a client token's stream hears the same messages and counts for none of it
-  const pageStreams = new Set()
+  const pageStreams = new Set<any>()
   /** @type {Map<import('node:http').ServerResponse, object>} each client token's stream → its token record */
   const clientStreams = new Map()
   /** End the streams of a client token that is no longer in the state (revoked, or minted again under its name). */
@@ -740,8 +741,8 @@ export async function startWeb({
     }, DEBOUNCE_MS)
   }
   let stopped = false
-  const watchers = new Set()
-  const rewatches = new Set()
+  const watchers = new Set<any>()
+  const rewatches = new Set<any>()
   // A watcher reports trouble as an 'error' event, and an EventEmitter with no 'error' listener throws it — out of the
   // server, uncaught. On Linux a recursive watch is Node's own walk (readdir of each new folder), so a folder that a
   // compile creates and removes again (.dreamteamer/skills) fails that walk with ENOENT. That is a change, not a fault:
@@ -876,7 +877,7 @@ export async function startWeb({
       server.once("error", fail)
       server.listen(p, "127.0.0.1", () => {
         server.off("error", fail)
-        resolve(server.address().port)
+        resolve((server.address() as import("node:net").AddressInfo).port)
       })
     })
   const stored = port ? null : state.port

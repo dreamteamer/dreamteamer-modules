@@ -70,7 +70,7 @@ export async function authorize({
   env = process.env,
   connectionFactory = connect,
   fileExists = fs.existsSync,
-  onConsentUrl = () => {},
+  onConsentUrl = (_url?: string) => {},
   signal,
   waitMs = 9 * 60 * 1000,
   now = Date.now,
@@ -132,7 +132,7 @@ export async function authorize({
     }
     if (signal?.aborted) throw new Error("Authorization cancelled.")
     if (!fileExists(credential)) throw new Error("Consent timed out. Start a fresh explicit authorization when ready.")
-    const verification = await probe()
+    const verification: any = await probe()
     const text = (verification?.content ?? []).map(c => c.text ?? "").join("\n")
     if (
       !verification ||

@@ -39,7 +39,7 @@ export function sha256(abs) {
 }
 
 /** The derived fields a walked entry contributes — never hash, preview or referenced_by, which the plan and apply decide. */
-export function derivedOf(driveId, e) {
+export function derivedOf(driveId, e): Record<string, any> {
   const f = { drive: `file-drives/${driveId}`, path: e.path, name: e.name, kind: e.kind, status: "present" }
   if (e.kind === "file")
     Object.assign(f, { ext: e.ext, mime: e.mime, bytes: e.bytes, modified: e.modified, local: e.local })
@@ -149,7 +149,7 @@ export async function syncDrive(
   drive,
   { subfolder = null, hash = false, rehash = false, prune = false, dryRun = false, log = console.error } = {}
 ) {
-  const row = {
+  const row: Record<string, any> = {
     id: driveId,
     walked: 0,
     added: 0,
@@ -269,7 +269,7 @@ export async function syncDrive(
     if (write(`files/${u.id}`, () => store.set("files", u.id, ch))) row.updated++
   }
   for (const g of plan.missing) {
-    const ch = { status: "missing" }
+    const ch: Record<string, any> = { status: "missing" }
     if (!same(g.prev.referenced_by, refs.get(g.id)))
       ch.referenced_by = norm(refs.get(g.id)) === null ? "" : refs.get(g.id)
     if (write(`files/${g.id}`, () => store.set("files", g.id, ch))) row.missing++

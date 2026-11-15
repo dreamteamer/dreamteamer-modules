@@ -109,7 +109,7 @@ for (const l of read(path.join(vault, ".perspective", "activity-candidates", `${
   const st = [...new Set(titles.map(t => t.title))].slice(0, 10)
   if (st.length) blk.push("session titles:\n" + st.map(t => `  - ${t}`).join("\n"))
   const cs = [...new Set((c.commits ?? []).map(s => subj.get(s)).filter(Boolean))].slice(0, 12)
-  if (cs.length) blk.push("commit subjects:\n" + cs.map(t => `  - ${t.slice(0, 150)}`).join("\n"))
+  if (cs.length) blk.push("commit subjects:\n" + cs.map((t: any) => `  - ${t.slice(0, 150)}`).join("\n"))
   const tt = [...new Set((c.tickets ?? []).map(t => ticketTitle.get(t)).filter(Boolean))].slice(0, 12)
   if (tt.length) blk.push("tickets:\n" + tt.map(t => `  - ${t}`).join("\n"))
   lines.push(blk.join("\n"))

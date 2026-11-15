@@ -27,7 +27,7 @@ export async function messageCoordinator({ coordinator, text, workspace, timeout
     replied = false,
     resultError,
     exitCode
-  const exited = new Promise(resolve => {
+  const exited = new Promise<void>(resolve => {
     child.once("error", error => {
       resultError = error
       resolve()

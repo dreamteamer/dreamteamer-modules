@@ -10,7 +10,7 @@ const USAGE = `  serve [--port <n>] [--host <addr>] [--token <secret>]   the RES
 /** `--port`, `--host` and `--token`, each spaced or with `=`; anything else is refused, and so is a
  *  host beyond loopback without a token. */
 export function parseServeArgs(argv) {
-  const out = { port: 8080, host: "127.0.0.1" }
+  const out: Record<string, any> = { port: 8080, host: "127.0.0.1" }
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]
     const m = /^--(port|host|token)(?:=(.*))?$/.exec(a)
@@ -40,7 +40,7 @@ export default function activate(api) {
         async run(ws, argv) {
           const opts = parseServeArgs(argv)
           dt.warnIfStale(ws.root)
-          const server = await serve(ws, opts)
+          const server: any = await serve(ws, opts)
           // the verb's promise IS the process lifetime: it settles only when the server closes
           await new Promise(resolve => server.once("close", resolve))
           return 0

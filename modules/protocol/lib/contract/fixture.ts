@@ -121,7 +121,7 @@ const LAYER = "northwind-archive"
  * Build the fixture with the engine at `engineDir` (a dreamteamer checkout or package with `bin/` and
  * `src/api.js`). Returns `{ root, layer, git, dt, head, cleanup }`.
  */
-export function makeFixture({ engineDir: given, tmp = os.tmpdir() } = {}) {
+export function makeFixture({ engineDir: given, tmp = os.tmpdir() }: Record<string, any> = {}) {
   const engineDir = given && path.resolve(given)
   if (!engineDir || !fs.existsSync(path.join(engineDir, "bin", "dreamteamer.js")))
     throw new Error(`makeFixture: no engine at ${engineDir}`)

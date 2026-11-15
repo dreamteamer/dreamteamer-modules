@@ -15,6 +15,11 @@ export const MAX_REFS = 50
 export const QUEUE_TTL_MS = 3_600_000
 export const QUEUE_LIST_MAX = 20
 export const PANE_ROUTES = new Set(["host", "selection-put", "selection-get", "queue-post", "queue-get"])
+/** What every validator returns: `ok` with a value, or not `ok` with the reason. One shape, not a union:
+ *  without strictNullChecks `if (!r.ok)` does not narrow a union. */
+type Result<T> = { ok: boolean; value?: T; error?: string }
+type Ref = { ref: string; collection: string; id: string }
+
 const VIEW_SHAPE = "a view is { collection }, { collection, id }, { uiView } or { other: true }"
 
 const isPlain = o => o !== null && typeof o === "object" && !Array.isArray(o)
@@ -24,7 +29,7 @@ const keysAre = (o, keys) => {
 }
 const nonEmpty = s => typeof s === "string" && s.length > 0
 const encId = id => id.split("/").map(encodeURIComponent).join("/")
-const fail = error => ({ ok: false, error })
+const fail = (error: string): Result<never> => ({ ok: false, error })
 const defaultParseRef = ref => engine().parseRef(ref)
 const has = (descriptors, name) =>
   descriptors instanceof Map ? descriptors.has(name) : ((descriptors ?? []).some?.(d => d?.name === name) ?? false)
@@ -36,7 +41,7 @@ async function exists(api, collection, id) {
 }
 
 /** Each ref split and checked; `min` the least count. → { ok, value: [{ ref, collection, id }] } | { ok: false, error } */
-async function checkRefs(api, refs, { parseRef = defaultParseRef, min = 0 } = {}) {
+async function checkRefs(api, refs, { parseRef = defaultParseRef, min = 0 } = {}): Promise<Result<Ref[]>> {
   if (!Array.isArray(refs)) return fail("refs is a list of <collection>/<id>")
   if (refs.length > MAX_REFS) return fail(`more than ${MAX_REFS} refs`)
   if (refs.length < min) return fail("name at least one record")
@@ -60,7 +65,7 @@ async function checkRefs(api, refs, { parseRef = defaultParseRef, min = 0 } = {}
   return { ok: true, value: out }
 }
 
-async function checkView(api, view) {
+async function checkView(api, view): Promise<Result<any>> {
   if (!isPlain(view)) return fail(VIEW_SHAPE)
   if (keysAre(view, ["other"])) return view.other === true ? { ok: true, value: { other: true } } : fail(VIEW_SHAPE)
   if (keysAre(view, ["uiView"])) {
@@ -84,21 +89,25 @@ async function checkView(api, view) {
  * `PUT /selection`'s body: `{ view, refs }` and nothing else.
  * @param {{ descriptors(): Map<string, unknown>, handle(method: string, path: string): Promise<{ status: number }> }} api
  */
-export async function validateSelection(api, body, opts = {}) {
+export async function validateSelection(api, body, opts = {}): Promise<Result<{ view: any; refs: string[] }>> {
   if (!isPlain(body) || !keysAre(body, ["view", "refs"])) return fail("a selection is { view, refs } and nothing else")
   const view = await checkView(api, body.view)
   if (!view.ok) return view
   const refs = await checkRefs(api, body.refs, opts)
-  if (!refs.ok) return refs
+  if (!refs.ok) return fail(refs.error)
   return { ok: true, value: { view: view.value, refs: refs.value.map(r => r.ref) } }
 }
 
 /** `POST /queue`'s body: `{ command, refs }` — 1..50 refs of one collection, and a command bound to them with an invocation. */
-export async function validateQueue(api, body, opts = {}) {
+export async function validateQueue(
+  api,
+  body,
+  opts = {}
+): Promise<Result<{ command: string; refs: string[]; invocation: string }>> {
   if (!isPlain(body) || !keysAre(body, ["command", "refs"]) || !nonEmpty(body.command))
     return fail("a queued command is { command, refs } and nothing else")
   const refs = await checkRefs(api, body.refs, { ...opts, min: 1 })
-  if (!refs.ok) return refs
+  if (!refs.ok) return fail(refs.error)
   const collections = new Set(refs.value.map(r => r.collection))
   if (collections.size !== 1) return fail("the refs of a queued command are all of one collection")
   const [collection] = collections
@@ -113,7 +122,7 @@ export async function validateQueue(api, body, opts = {}) {
 }
 
 /** The place a view names, from ids: `tasks · List`, `rnd/change-requests/cr-x`, `<ui-view> · View`; `null` for none. */
-export function renderPlace(view, uiViewTitle) {
+export function renderPlace(view, uiViewTitle?) {
   if (!isPlain(view) || view.other === true) return null
   if (nonEmpty(view.uiView)) return `${uiViewTitle?.(view.uiView) ?? view.uiView} · View`
   if (nonEmpty(view.collection) && nonEmpty(view.id)) return `${view.collection}/${view.id}`
@@ -183,7 +192,7 @@ export function defaultPane(api, host) {
  * One pane route. `reader` is `{ descriptors(), handle(method, path) }` — the host the router fronts.
  * @returns {Promise<{ status: number, body: unknown }>}
  */
-export async function answerPane(id, body, { pane, reader, parseRef }) {
+export async function answerPane(id, body, { pane, reader, parseRef }: { pane: any; reader: any; parseRef?: any }) {
   try {
     if (id === "host") return { status: 200, body: await pane.host() }
     if (id === "selection-get") return { status: 200, body: pane.getSelection() }

@@ -35,7 +35,7 @@ const ok = res => status(res, 200)
 const layerFile = ({ fixture }) => path.join(fixture.layer, "data", "projects", "harbor-mutual-archive.project.md")
 
 /** @type {Array<{ id: string, route: string, method: string, path: string | Function, body?: unknown, before?: Function, expect: Function }>} */
-export const cases = [
+export const cases: Record<string, any>[] = [
   // ---- reads ---------------------------------------------------------------------------------
   {
     id: "info",

@@ -611,7 +611,7 @@ export const navProblemsSentence = problems =>
 /** A NavDoc as the text of a nav.yaml: the header line, `tree`, and `hidden` only when it holds a name. */
 export function serializeNavDoc(doc) {
   const d = normalizeNavDoc(doc)
-  const body = { tree: d.tree }
+  const body: Record<string, any> = { tree: d.tree }
   if (d.hidden.length) body.hidden = d.hidden
   return `${NAV_HEADER}\n${yaml.dump(body, { lineWidth: 120 }).replace(/\n+$/, "")}\n`
 }
@@ -704,9 +704,13 @@ export function unknownNavNames(doc, { collections, namespaces }) {
  * @param {{ navHidden?: unknown }} settings
  * @param {{ titleOf?: Map<string, string|undefined>, iconOf?: (folder) => string|undefined }} ctx
  */
-export function legacyDoc(entries, settings = {}, { titleOf = new Map(), iconOf = () => undefined } = {}) {
+export function legacyDoc(
+  entries,
+  settings: Record<string, any> = {},
+  { titleOf = new Map(), iconOf = (_f: any): any => undefined }: Record<string, any> = {}
+) {
   const hidden = new Set(navHiddenOf(settings?.navHidden))
-  const folderEntry = (f, parentKey) => {
+  const folderEntry = (f, parentKey?): Record<string, any> => {
     const icon = iconOf(f)
     const items = [...f.collections.map(d => d.name), ...f.children.map(c => folderEntry(c, f.key))]
     return f.key.startsWith("ns:")

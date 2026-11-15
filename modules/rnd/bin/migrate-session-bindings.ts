@@ -63,7 +63,9 @@ export function compiledState(root) {
     if (!fs.existsSync(path.join(root, ".dreamteamer", name))) continue
     entries ??= (() => {
       try {
-        return yaml.load(fs.readFileSync(path.join(root, ".dreamteamer", "manifest.yaml"), "utf8"))?.entries ?? {}
+        return (
+          (yaml.load(fs.readFileSync(path.join(root, ".dreamteamer", "manifest.yaml"), "utf8")) as any)?.entries ?? {}
+        )
       } catch {
         return {}
       }

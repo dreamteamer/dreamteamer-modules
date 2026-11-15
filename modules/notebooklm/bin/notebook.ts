@@ -202,7 +202,7 @@ function resolvePersona(chat, root, exists, read) {
  * `opts`: `title` overrides the notebook title · `env` (default process.env) renders `${env:…}` ·
  * `root` locates `persona_file` · `exists`/`read` are injectable for tests.
  */
-export function restorePlan(record, opts = {}) {
+export function restorePlan(record, opts: Record<string, any> = {}) {
   const env = opts.env ?? process.env
   const exists = opts.exists ?? fs.existsSync
   const read = opts.read ?? (f => fs.readFileSync(f, "utf8"))
@@ -393,7 +393,7 @@ export function captureSources(listJson, existing = []) {
     // A url the record already knows stays a url: the same live id is the same source, and a list
     // that stopped carrying its url has not turned it into a file nobody holds.
     const keepsUrl = prior?.ref && (prior.kind === "url" || prior.kind === "youtube") && source.kind === "file"
-    const merged = prior
+    const merged: Record<string, any> = prior
       ? {
           ...source,
           ...(keepsUrl ? { kind: prior.kind } : {}),
@@ -412,7 +412,7 @@ export function captureSources(listJson, existing = []) {
 // ─── the record file ────────────────────────────────────────────────────────────────────────────────
 
 /** Read a `<id>.notebook.md` — frontmatter as an object, body verbatim. */
-export function readRecord(file) {
+export function readRecord(file): { fields: Record<string, any>; body: string } {
   const text = fs.readFileSync(file, "utf8")
   if (!text.startsWith("---\n")) return { fields: {}, body: text }
   const end = text.indexOf("\n---", 4)
@@ -533,7 +533,7 @@ function restoreMain(rest, root) {
 
   const ids = new Map() // source index → live id
   let notebookId
-  const fill = (argv, at) => argv.map(a => (a === NOTEBOOK ? notebookId : a === SOURCE ? ids.get(at) : a))
+  const fill = (argv, at?) => argv.map(a => (a === NOTEBOOK ? notebookId : a === SOURCE ? ids.get(at) : a))
   try {
     for (const s of plan.steps) {
       if (s.purpose === "create") {

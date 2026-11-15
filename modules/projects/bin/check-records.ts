@@ -141,7 +141,7 @@ function main() {
     for (const line of text.slice(4, end).split("\n")) {
       const m = /^([a-z_]+):\s*(.*)$/.exec(line)
       if (!m) continue
-      let v = m[2].trim()
+      let v: string | boolean = m[2].trim()
       if (v === "") v = ""
       else if (v === "true" || v === "false") v = v === "true"
       else v = v.replace(/^['"]|['"]$/g, "")

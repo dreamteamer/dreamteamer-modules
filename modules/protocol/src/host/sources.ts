@@ -52,7 +52,7 @@ export function sourcesContext(root, iterable) {
 }
 export function layerKeys(gitModules, descriptors) {
   const out = new Set()
-  for (const [name, entry] of Object.entries(gitModules)) if (entry && entry.records !== undefined) out.add(name)
+  for (const [name, entry] of Object.entries<any>(gitModules)) if (entry && entry.records !== undefined) out.add(name)
   for (const d of descriptors)
     for (const l of engine().descriptor.storageOf(d).layers ?? []) if (l.name in gitModules) out.add(l.name)
   return out
@@ -273,7 +273,7 @@ export function sourcesStack(root, descriptors, ctx) {
   }
   const layers = new Map()
   const modules = new Map()
-  for (const [name, entry] of Object.entries(ctx.gitModules)) {
+  for (const [name, entry] of Object.entries<any>(ctx.gitModules)) {
     if (!entry || !ctx.layers.has(name)) continue
     const repo = path.posix.join("git_modules", name)
     const installed = fs.existsSync(path.join(root, repo))

@@ -59,7 +59,7 @@ export const gitZ = (git, root, args) =>
  * @returns {{ flags: Record<string, true|string>, pos: string[] }}
  */
 export function parseFlags(argv, { bool = [], value = [] }, form) {
-  const flags = {}
+  const flags: Record<string, any> = {}
   const pos = []
   const all = [...bool, ...value]
   const unknown = argv

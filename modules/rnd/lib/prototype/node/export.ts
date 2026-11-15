@@ -37,10 +37,10 @@ export function build(
 ) {
   const errors = [],
     warnings = []
-  const S = new Map(records.screens.map(r => [r.id, r]))
+  const S = new Map<any, any>(records.screens.map(r => [r.id, r]))
   const ST = new Map(records.stories.map(r => [r.id, r]))
   const PE = new Map(records.personas.map(r => [r.id, r]))
-  const Q = new Map(records.questions.map(r => [r.id, r]))
+  const Q = new Map<any, any>(records.questions.map(r => [r.id, r]))
   const JR = new Map(records.journeys.map(r => [r.id, r]))
   const productNames = new Map()
 
@@ -96,11 +96,11 @@ export function build(
   }
 
   const personaKey = ref => {
-    const p = PE.get(idOf(ref, "rnd/personas"))
+    const p: any = PE.get(idOf(ref, "rnd/personas"))
     return p ? (p.key ?? p.id) : null
   }
   const usedPersonas = new Set()
-  const relevantQ = new Set()
+  const relevantQ = new Set<any>()
   const blockedBy = target => records.questions.filter(q => (q.blocks ?? []).includes(target)).map(q => q.id)
   const storyUse = new Map() // story id → [{ journey, n }]
   const journeys = []
@@ -152,7 +152,7 @@ export function build(
       }
       if (s.persona) usedPersonas.add(personaKey(s.persona))
       const info = screenInfo.get(sid)
-      const step = {
+      const step: Record<string, any> = {
         n: i + 1,
         story: story ? story.key : null,
         sentence: story ? story.name : null,
@@ -178,7 +178,7 @@ export function build(
     }
     const jOpen = blockedBy(where)
     jOpen.forEach(q => relevantQ.add(q))
-    const jo = {
+    const jo: Record<string, any> = {
       key: j.key ?? j.id,
       name: j.name ?? null,
       description: j.description ?? null,
@@ -271,9 +271,9 @@ export function build(
       if (s != null && !S.has(s)) errors.push(`rnd/open-questions/${q}: blocks ${b}, which resolves to nothing`)
       if (jr != null && !JR.has(jr)) errors.push(`rnd/open-questions/${q}: blocks ${b}, which resolves to nothing`)
     }
-  const open = {}
+  const open: Record<string, any> = {}
   for (const q of [...relevantQ].sort()) {
-    const r = Q.get(q)
+    const r: any = Q.get(q)
     open[q] = { q: cut(r.question ?? r.name ?? "", 320), s: r.status ?? "open", l: cut(r.lean ?? "", 240) }
   }
 
@@ -308,7 +308,7 @@ export function build(
     personas: Object.fromEntries(Object.entries(personas).map(([k, v]) => [id(k, "persona"), prose(v)])),
     journeys: journeys.map(j =>
       Object.fromEntries(
-        Object.entries(j).map(([k, v]) => [
+        Object.entries<any>(j).map(([k, v]) => [
           k,
           k === "key"
             ? id(v, "journey")
@@ -321,7 +321,7 @@ export function build(
                   : k === "steps"
                     ? v.map(s =>
                         Object.fromEntries(
-                          Object.entries(s).map(([sk, sv]) => [
+                          Object.entries<any>(s).map(([sk, sv]) => [
                             sk,
                             ID_STEP.includes(sk)
                               ? id(sv, sk)
@@ -338,9 +338,14 @@ export function build(
       )
     ),
     stories: Object.fromEntries(
-      Object.entries(stories).map(([k, v]) => [id(k, "story"), { name: prose(v.name), screen: id(v.screen, "screen") }])
+      Object.entries<any>(stories).map(([k, v]) => [
+        id(k, "story"),
+        { name: prose(v.name), screen: id(v.screen, "screen") },
+      ])
     ),
-    anchors: Object.fromEntries(Object.entries(anchors).map(([k, v]) => [id(k, "screen"), v.map(x => id(x, "story"))])),
+    anchors: Object.fromEntries(
+      Object.entries<any>(anchors).map(([k, v]) => [id(k, "screen"), v.map(x => id(x, "story"))])
+    ),
   }
   const keyed = (m, what) => Object.fromEntries(Object.entries(m).map(([k, v]) => [id(k, what), prose(v)]))
   const M = {
@@ -398,7 +403,10 @@ export async function loadInputs(c, journeyKeys) {
 }
 
 /** `dt-prototype export` — exit 0 written or unchanged; 1 on a failure, a warning under --strict, or a pending change under --check. */
-export async function run(dir, { check = false, strict = false, dt, log = console.log, error = console.error } = {}) {
+export async function run(
+  dir,
+  { check = false, strict = false, dt, log = console.log, error = console.error }: Record<string, any> = {}
+) {
   const c = await loadConfig(dir)
   const records = readRecords(c, dt ? { dt } : {})
   const keys = records.journeys.map(j => j.key ?? j.id)

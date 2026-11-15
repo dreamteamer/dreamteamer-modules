@@ -229,7 +229,7 @@ export function sameStart(pid, recorded) {
  *   pid's own, within START_TOLERANCE_MS (what lets `dt web stop --force` signal it), null when that cannot be shown.
  * Every verb reads the server through this.
  */
-export async function probeServer(file, o) {
+export async function probeServer(file, o?) {
   const s = readState(file)
   if (!s || typeof s !== "object") return null
   if (!alive(s.pid)) {

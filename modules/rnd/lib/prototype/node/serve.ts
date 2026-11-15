@@ -9,7 +9,7 @@ export const freePort = () =>
     s.unref()
     s.on("error", rej)
     s.listen(0, "127.0.0.1", () => {
-      const { port } = s.address()
+      const { port }: any = s.address()
       s.close(() => res(port))
     })
   })

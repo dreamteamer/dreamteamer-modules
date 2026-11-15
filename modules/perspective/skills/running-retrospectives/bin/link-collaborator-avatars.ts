@@ -90,7 +90,7 @@ for (const file of listRecords(path.join(collectionDir("users", dataRoot), who()
     // An avatar that no longer resolves is REMOVED, not left pointing at nothing: a broken
     // image in a board is worse than an initial, and a stale ref outlives the file it named.
     if (fields.avatar) {
-      const next = { ...fields }
+      const next: Record<string, any> = { ...fields }
       delete next.avatar
       if (!dryRun) writeRecord(file, next, body)
       cleared++

@@ -47,7 +47,7 @@ const ORD = { 1: "first", 2: "second", 3: "third", 4: "fourth", 5: "fifth", "-1"
 export function parse(rrule) {
   if (typeof rrule !== "string") throw new Error("recurrence must be a string")
   const body = rrule.startsWith("RRULE:") ? rrule.slice(6) : rrule
-  const r = { interval: 1, byday: [], bymonthday: [], bymonth: [] }
+  const r: Record<string, any> = { interval: 1, byday: [], bymonthday: [], bymonth: [] }
   for (const part of body.split(";").filter(Boolean)) {
     const [k, v] = part.split("=")
     if (v === undefined) throw new Error(`malformed part "${part}"`)
@@ -162,7 +162,7 @@ function matches(d, r, a) {
     case "DAILY":
       return Math.round((d - a) / 86400000) % r.interval === 0
     case "WEEKLY": {
-      const weeks = Math.round((mondayOf(d) - mondayOf(a)) / (7 * 86400000))
+      const weeks = Math.round((mondayOf(d).getTime() - mondayOf(a).getTime()) / (7 * 86400000))
       if (weeks % r.interval !== 0) return false
       const days = r.byday.length ? r.byday.map(b => b.day) : [weekday(a)]
       return days.includes(weekday(d))
@@ -276,7 +276,7 @@ function roll(argv) {
     .filter(x => x.endsWith(".routine.md"))
     .sort()) {
     const id = f.replace(/\.routine\.md$/, "")
-    const rec = readRecord(path.join(dir, f))
+    const rec: any = readRecord(path.join(dir, f))
     if ((rec.status ?? "active") !== "active") continue
     let want
     try {
@@ -285,10 +285,10 @@ function roll(argv) {
       out.push({ id, error: e.message })
       continue
     }
-    const changes = {}
+    const changes: Record<string, any> = {}
     if ((rec.next_due ?? "") !== (want.next_due ?? "")) changes.next_due = want.next_due ?? ""
     if (!Object.keys(changes).length) continue
-    const row = { id, changes, text: want.text }
+    const row: Record<string, any> = { id, changes, text: want.text }
     if (want.next_due === null && !rec.anchor && !want.text.startsWith("Daily"))
       row.note = "no anchor — next_due cannot be derived"
     if (apply) {

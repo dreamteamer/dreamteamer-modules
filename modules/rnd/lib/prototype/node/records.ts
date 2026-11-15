@@ -40,12 +40,12 @@ const parse = (args, out) => {
 /** Read the five collections and their descriptors. A collection marked sensitive is refused; every field a
  *  descriptor marks sensitive is dropped from its rows before anything else sees them. */
 export function readRecords(config, { dt = dtRunner(config.workspace) } = {}) {
-  const out = { descriptors: {}, dropped: {} }
+  const out: Record<string, any> = { descriptors: {}, dropped: {} }
   for (const [name, collection] of Object.entries(COLLECTIONS)) {
     const dargs = ["get", `collections/${collection}`, "--json"]
     const d = parse(dargs, dt(dargs))
     if (d.sensitive === true) throw new Error(`${collection} is marked sensitive — the harness exports nothing from it`)
-    const sensitive = Object.entries(d.fields ?? {})
+    const sensitive = Object.entries<any>(d.fields ?? {})
       .filter(([, f]) => f?.sensitive === true)
       .map(([k]) => k)
     out.descriptors[name] = { fields: Object.keys(d.fields ?? {}), sensitive }

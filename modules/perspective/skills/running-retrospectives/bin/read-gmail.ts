@@ -110,7 +110,7 @@ const q = `from:${contributor} after:${since.replace(/-/g, "/")}`
 const ids = []
 let pageToken
 do {
-  const page = await gmail(token, "threads", { q, maxResults: 500, pageToken })
+  const page: any = await gmail(token, "threads", { q, maxResults: 500, pageToken })
   for (const t of page.threads ?? []) ids.push(t.id)
   pageToken = page.nextPageToken
   if (limit && ids.length >= limit) break

@@ -48,7 +48,7 @@ for (const file of walk(root)) {
     continue
   }
   // Keep the field order the readers use: the dates sit right after `period`.
-  const next = {}
+  const next: Record<string, any> = {}
   for (const [k, v] of Object.entries(fields)) {
     if (k === "start_date" || k === "end_date") continue
     next[k] = v

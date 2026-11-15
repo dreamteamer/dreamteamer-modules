@@ -22,7 +22,7 @@ const KEYS = { credentials_dir: "WORKSPACE_MCP_CREDENTIALS_DIR", client_secret: 
 const homeOf = ctx => (ctx.env?.HOME && String(ctx.env.HOME).trim() ? ctx.env.HOME : os.homedir())
 
 /** The environment the module's own functions read, with the unit's inputs laid over it. */
-const envWith = (ctx, inputs = {}) => ({
+const envWith = (ctx, inputs: Record<string, any> = {}) => ({
   ...ctx.env,
   ...(inputs.client_secret ? { GOOGLE_CLIENT_SECRET_PATH: inputs.client_secret } : {}),
   ...(inputs.credentials_dir ? { WORKSPACE_MCP_CREDENTIALS_DIR: inputs.credentials_dir } : {}),
@@ -109,7 +109,7 @@ export function inspect(ctx) {
 
 /** The unit's own action: the paths the person named, as an env action — the two keys in one action, so a
  *  half-written .env cannot happen; whether .env already holds them, and the write, are the engine's. */
-function settingsAction(ctx, inputs = {}) {
+function settingsAction(ctx, inputs: Record<string, any> = {}) {
   const want = {
     [KEYS.credentials_dir]: inputs.credentials_dir ?? ctx.env?.WORKSPACE_MCP_CREDENTIALS_DIR,
     [KEYS.client_secret]: inputs.client_secret ?? ctx.env?.GOOGLE_CLIENT_SECRET_PATH,
@@ -129,7 +129,7 @@ function settingsAction(ctx, inputs = {}) {
     : { ...action, state: "needs-input", reason: "credentials_dir is required" }
 }
 
-export function plan(ctx, inputs = {}) {
+export function plan(ctx, inputs: Record<string, any> = {}) {
   const env = envWith(ctx, inputs)
   const accounts = inputs.account ? [inputs.account] : []
   const p = planLocal({ root: ctx.root, env, accounts, home: homeOf(ctx) })

@@ -26,8 +26,8 @@ export const DATA = path.join(WORKSPACE_ROOT, "data")
 export const SCRATCH = path.join(WORKSPACE_ROOT, ".perspective")
 
 /** Parse .env for NAME=value lines. Values stay in-process; nothing here prints them. */
-export function readEnv(file = path.join(WORKSPACE_ROOT, ".env")) {
-  const out = {}
+export function readEnv(file = path.join(WORKSPACE_ROOT, ".env")): Record<string, string> {
+  const out: Record<string, string> = {}
   if (!fs.existsSync(file)) return out
   for (const line of fs.readFileSync(file, "utf8").split("\n")) {
     const m = /^\s*(?:export\s+)?([A-Z0-9_]+)\s*=\s*(.*)\s*$/.exec(line)
@@ -40,7 +40,7 @@ export function readEnv(file = path.join(WORKSPACE_ROOT, ".env")) {
 }
 
 /** Run the dreamteamer CLI in the workspace; returns stdout. Throws with stderr on failure. */
-export function dt(args, { input } = {}) {
+export function dt(args, { input }: Record<string, any> = {}) {
   const bin = path.join(WORKSPACE_ROOT, "node_modules", ".bin", "dreamteamer")
   return execFileSync(bin, args, { cwd: WORKSPACE_ROOT, encoding: "utf8", input, stdio: ["pipe", "pipe", "pipe"] })
 }
@@ -60,7 +60,7 @@ export function render(template, env = readEnv()) {
 }
 
 /** The inverse: a real path → the template a record may carry. Longest-prefix wins; unknown prefixes stay absolute (check-records will refuse them). */
-export function templatize(abs, env = readEnv()) {
+export function templatize(abs, env: any = readEnv()) {
   const cands = []
   const repos = (process.env.REPOS_FOLDER ?? env.REPOS_FOLDER ?? "").replace(/^~(?=\/|$)/, os.homedir())
   if (repos) cands.push([repos, "${env:REPOS_FOLDER}"])
@@ -76,7 +76,7 @@ export function isoWeek(d) {
   const day = t.getUTCDay() || 7
   t.setUTCDate(t.getUTCDate() + 4 - day)
   const y = t.getUTCFullYear()
-  const w = Math.ceil(((t - Date.UTC(y, 0, 1)) / 86400000 + 1) / 7)
+  const w = Math.ceil(((t.getTime() - Date.UTC(y, 0, 1)) / 86400000 + 1) / 7)
   return `${y}-W${String(w).padStart(2, "0")}`
 }
 

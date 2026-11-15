@@ -81,7 +81,7 @@ export function parseRawAttendee(raw) {
   const emails = bare.match(EMAIL) ?? []
   if (emails.length !== 1) return { attendee: null, remarks: [s], resource: false }
   const email = emails[0]
-  const a = { email }
+  const a: Record<string, any> = { email }
   // the display name: `Name <email>` (explicit, taken verbatim) or `email — Name` (checked for shape)
   const before = bare.slice(0, bare.indexOf(email)).replace(/<\s*$/, "").trim()
   const after = bare
@@ -124,7 +124,7 @@ export function planRecord(fields) {
   const organizerIsString = typeof fields.organizer === "string"
   if (!refs && !raw.length && !organizerIsString) return null
 
-  const changes = {}
+  const changes: Record<string, any> = {}
   const residue = []
   const attendees = []
   const seen = new Set()
@@ -151,7 +151,7 @@ export function planRecord(fields) {
   if (organizerIsString) {
     const email = (fields.organizer.match(EMAIL) ?? [])[0]
     if (email && fields.organizer.trim() === email) {
-      const o = { email: email.toLowerCase() }
+      const o: Record<string, any> = { email: email.toLowerCase() }
       if (attendees.some(a => a.email === o.email && a.self)) o.self = true
       changes.organizer = o
     } else {

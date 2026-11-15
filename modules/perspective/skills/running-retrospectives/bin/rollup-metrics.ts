@@ -284,7 +284,7 @@ for (const file of listRecords(projDir)) {
     commits_change_request: acc.commits_change_request,
   }
   const has = k => acc[k] > 0
-  const next = {
+  const next: Record<string, any> = {
     ...fields,
     // NO `activities_count`: `projects` has no such field — the count comes off the generated
     // `activities` mirror — and `dt set` refuses a WHOLE write that carries an unknown key.

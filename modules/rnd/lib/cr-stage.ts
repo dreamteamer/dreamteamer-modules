@@ -78,7 +78,7 @@ export function expectedStage({ status, available = [] }) {
 }
 
 /** What the request's own record says against `stage` — one message per broken row, in table order. */
-export function stageContradictions(f = {}, stage) {
+export function stageContradictions(f: Record<string, any> = {}, stage) {
   const out = []
   const s = stage
   const st = f.status ?? "(empty)"

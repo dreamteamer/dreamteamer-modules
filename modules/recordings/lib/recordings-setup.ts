@@ -38,7 +38,8 @@ const onPath = (env, bin) =>
     }
   })
 const expand = p => (p && (p === "~" || p.startsWith("~/")) ? path.join(os.homedir(), p.slice(1)) : p)
-const homeOf = (ctx, inputs = {}) => expand(inputs.transcription_home ?? ctx.env.TRANSCRIPTION_HOME ?? DEFAULT_HOME)
+const homeOf = (ctx, inputs: Record<string, any> = {}) =>
+  expand(inputs.transcription_home ?? ctx.env.TRANSCRIPTION_HOME ?? DEFAULT_HOME)
 const exists = p => {
   try {
     fs.statSync(p)
@@ -268,7 +269,7 @@ function homeInsideWorkspace(ctx, home) {
 }
 
 /** The inputs laid over the environment — the plan judges the home the person named, not the one .env holds yet. */
-const withInputs = (ctx, inputs = {}) => ({
+const withInputs = (ctx, inputs: Record<string, any> = {}) => ({
   ...ctx,
   env: {
     ...ctx.env,
@@ -278,7 +279,7 @@ const withInputs = (ctx, inputs = {}) => ({
   },
 })
 
-export function plan(ctx, inputs = {}) {
+export function plan(ctx, inputs: Record<string, any> = {}) {
   const { checks } = inspect(withInputs(ctx, inputs))
   const status = Object.fromEntries(checks.map(c => [c.id, c.status]))
   const home = homeOf(ctx, inputs)

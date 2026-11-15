@@ -200,7 +200,7 @@ for (const group of rows) {
 }
 
 if (!flag("dry-run")) {
-  const counts = { files: found.length, conversations }
+  const counts: Record<string, any> = { files: found.length, conversations }
   if (first) counts.first = first.slice(0, 10)
   if (last) counts.last = last.slice(0, 10)
   writeSource(

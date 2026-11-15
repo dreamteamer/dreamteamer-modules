@@ -170,7 +170,7 @@ for (const f of listRecords(collectionDir("tickets", dataRoot))) {
 // one of them; a run that declares none filters NOTHING, which is honest for a solo workspace rather
 // than an empty timeline. `lib/identity.mjs` holds the rule.
 const contributorHandles = handlesOf(retrospective, dataRoot)
-const isContributor = (email, name) => isThem(contributorHandles, email, name)
+const isContributor = (email, name?) => isThem(contributorHandles, email, name)
 let foreignCommits = 0
 
 for (const f of listRecords(collectionDir("threads", dataRoot))) {

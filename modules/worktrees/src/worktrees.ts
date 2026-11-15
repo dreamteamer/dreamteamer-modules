@@ -116,7 +116,11 @@ export function mirrorLinkedDeps(fromRoot, pkg, toRoot) {
  * `quiet` pipes the install's output instead of inheriting stdio, so a caller printing one JSON
  * object on stdout does not get a compile transcript spliced in ahead of it.
  */
-export function createWorktree(ws, { name, dir, base = "HEAD", temp = false, quiet = false }, git = defaultGit) {
+export function createWorktree(
+  ws,
+  { name, dir, base = "HEAD", temp = false, quiet = false }: Record<string, any>,
+  git = defaultGit
+) {
   if (!name) throw new Error("dt worktree add needs --name <name>")
   const c = dt.describeCheckout(ws.root, git)
   // a --temp sandbox MAY reuse a name — its random holder keeps the paths apart, and the ambiguous

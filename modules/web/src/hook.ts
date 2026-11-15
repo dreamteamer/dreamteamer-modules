@@ -165,7 +165,7 @@ export async function runHook(
       signal: AbortSignal.timeout(Math.max(1, deadline - Date.now())),
     })
     if (!res.ok) return ""
-    const pane = await res.json()
+    const pane: any = await res.json()
     if (!pane.movedTo && pane.connected !== true) return ""
     const lines = hookLines(pane)
     const ids = (Array.isArray(pane.queue) ? pane.queue : []).map(i => i?.id).filter(x => typeof x === "string")

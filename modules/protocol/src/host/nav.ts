@@ -21,7 +21,7 @@ export function shouldFoldOutOfRecordTree(d) {
 export function routeFor(d) {
   return isInternal(d) ? `/settings/system/${d.name}` : `/content/${d.name}`
 }
-export function collectionRow(d, sources) {
+export function collectionRow(d, sources): Record<string, any> {
   const { titleOf, displayOf, storageOf } = engine().descriptor
   const count = sources ? sources.reduce((n, s) => n + (s.installed ? s.count : 0), 0) : undefined
   const row = {
@@ -69,7 +69,7 @@ export function moduleIcon(module, look) {
     .sort((a, b) => (a.order ?? Infinity) - (b.order ?? Infinity) || a.i - b.i)
   return shipped[0]?.icon
 }
-export function folderPresentation(module, about, opts = {}) {
+export function folderPresentation(module, about, opts: Record<string, any> = {}): Record<string, any> {
   const marks = rowMarks({ module: Boolean(module), shared: opts.shared })
   if (!module) return { icon: PLAIN_FOLDER_ICON, ...(about ? { tooltip: about } : {}), ...(marks ? { marks } : {}) }
   return {
@@ -173,7 +173,7 @@ export function groupTopLevel(
   const sectionParent = new Map()
   for (const [key, f] of [...byKey]) {
     if (!key.startsWith("grp:")) continue
-    const homes = new Set(f.collections.map(homeOf))
+    const homes = new Set<any>(f.collections.map(homeOf))
     const [home] = homes
     if (homes.size !== 1 || !home) continue
     if (home.startsWith("mod:") && byKey.has(home)) sectionParent.set(key, home)
@@ -222,7 +222,7 @@ const foldRank = key => {
   const i = FOLD_RANK.findIndex(p => key.startsWith(p))
   return i < 0 ? FOLD_RANK.length : i
 }
-export function foldSameLabel(folders, titleOf, parentKey) {
+export function foldSameLabel(folders, titleOf, parentKey?) {
   const labelOf = f => groupLabel(f.key, titleOf, parentKey).trim().toLowerCase()
   const byLabel = new Map()
   for (const f of folders) byLabel.set(labelOf(f), [...(byLabel.get(labelOf(f)) ?? []), f])
@@ -258,7 +258,7 @@ export function withoutHidden(entries, hidden) {
   const names = new Set(hidden.map(n => n.trim().toLowerCase()))
   return entries.filter(e => !names.has(navKey(e).toLowerCase()))
 }
-export function orderTopLevel(top, folders, navOrder, layers) {
+export function orderTopLevel(top, folders, navOrder, layers?): any[] {
   const tail = !layers ? [] : Array.isArray(layers) ? layers : [layers]
   if (!navOrder?.length) {
     return [
@@ -294,13 +294,13 @@ export function orderTopLevel(top, folders, navOrder, layers) {
     ...remaining.map(f => ({ kind: "folder", folder: f })),
     ...tail,
   ]
-  const rank = new Map(navOrder.map((n, i) => [n, i]))
+  const rank = new Map<any, number>(navOrder.map((n, i) => [n, i]))
   return entries
     .map((e, i) => ({ e, i, r: rank.get(navKey(e)) ?? Number.POSITIVE_INFINITY }))
     .sort((a, b) => a.r - b.r || a.i - b.i)
     .map(({ e }) => e)
 }
-export function groupLabel(key, titleOf, parentKey) {
+export function groupLabel(key, titleOf, parentKey?) {
   if (key.startsWith("ns:")) {
     const ns = key.slice(3)
     const authored = titleOf.get(ns)
@@ -311,7 +311,7 @@ export function groupLabel(key, titleOf, parentKey) {
   const id = key.slice(4)
   return moduleLabel(id, titleOf.get(id))
 }
-export function moduleLabel(id, title) {
+export function moduleLabel(id, title?) {
   if (title) return title
   return id
     .split(/[_\-\s/]+/)
@@ -370,7 +370,7 @@ export function layerFolders(layers, descriptors, titles) {
     layers.map(l => l.name),
     titles
   )
-  const position = new Map(descriptors.map((d, i) => [d.name, i]))
+  const position = new Map<any, number>(descriptors.map((d, i) => [d.name, i]))
   const byName = new Map(descriptors.map(d => [d.name, d]))
   return layers
     .map(l => {
@@ -429,11 +429,11 @@ export function layerEntries(rows, descriptors, nav) {
     f.children.forEach(walk)
   }
   folders.forEach(walk)
-  const position = new Map(held.map((d, i) => [d.name, i]))
+  const position = new Map<any, number>(held.map((d, i) => [d.name, i]))
   const rowsTop = [...top, ...held.filter(d => !placed.has(d.name))].sort(
     (a, b) => position.get(a.name) - position.get(b.name)
   )
-  const folderEntry = (f, parentKey) => ({
+  const folderEntry = (f, parentKey?): Record<string, any> => ({
     kind: "folder",
     folder: f,
     label: groupLabel(f.key, titleOf, parentKey),
@@ -442,7 +442,7 @@ export function layerEntries(rows, descriptors, nav) {
       ...f.children.map(c => folderEntry(c, f.key)),
     ],
   })
-  return orderTopLevel(rowsTop, folders, nav.navOrder).flatMap(e =>
+  return orderTopLevel(rowsTop, folders, nav.navOrder).flatMap((e): Record<string, any>[] =>
     e.kind === "collection"
       ? [{ kind: "row", row: rowOf.get(e.descriptor.name) }]
       : e.kind === "folder"
@@ -566,7 +566,7 @@ export function buildTree({
       ...(kids.length ? { children: kids } : {}),
     }
   }
-  const collectionNode = (d, entryIcon) => {
+  const collectionNode = (d, entryIcon?) => {
     const node = { ...(nodeOf ? nodeOf(d) : defaultNode(d)) }
     node.kind = "collection"
     node.key = uniqueKey(`c/${d.name}`)
@@ -574,7 +574,7 @@ export function buildTree({
     if (entryIcon) node.icon = icon(entryIcon)
     return node
   }
-  const namespaceNode = (ns, path, entry) => {
+  const namespaceNode = (ns, path, entry?) => {
     const p = [...path, `ns:${ns}`]
     return {
       kind: "namespace",
@@ -671,7 +671,7 @@ export function hasNavSettings(settings) {
  * @param {{ navGroups?: unknown, navOrder?: unknown, navHidden?: unknown }} settings
  * @param {{ declared?: string[], workspaceModule?: string, dependsOn?: Map, namespacesOf?: Map, titleOf?: Map, layers?: unknown }} ctx
  */
-export function legacyTree(descriptors, settings = {}, ctx = {}) {
+export function legacyTree(descriptors, settings: Record<string, any> = {}, ctx: Record<string, any> = {}) {
   const { top, folders } = groupTopLevel(
     descriptors,
     ctx.declared ?? [],

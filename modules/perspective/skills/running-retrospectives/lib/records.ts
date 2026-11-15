@@ -93,7 +93,7 @@ export function writeRecord(file, fields, body = "") {
  */
 const SCHEMA = yaml.CORE_SCHEMA
 
-export function readRecord(file) {
+export function readRecord(file): { fields: Record<string, any>; body: string } {
   const text = fs.readFileSync(file, "utf8")
   if (!text.startsWith("---\n")) return { fields: {}, body: text }
   const end = text.indexOf("\n---", 4)

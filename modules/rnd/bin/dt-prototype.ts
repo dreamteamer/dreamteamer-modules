@@ -27,7 +27,7 @@ const VERBS = {
 
 export function parse(argv) {
   const [verb, ...rest] = argv
-  const f = { dir: process.cwd() }
+  const f: Record<string, any> = { dir: process.cwd() }
   while (rest.length) {
     const a = rest.shift()
     if (!a.startsWith("--")) return { error: `unexpected argument: ${a}` }

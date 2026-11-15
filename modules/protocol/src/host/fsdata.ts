@@ -71,7 +71,7 @@ export function loadModules(root) {
   for (const f of fs.readdirSync(dir)) {
     if (!f.endsWith(".module.yaml")) continue
     try {
-      const doc = yaml.load(fs.readFileSync(path.join(dir, f), "utf8"))
+      const doc: any = yaml.load(fs.readFileSync(path.join(dir, f), "utf8"))
       out.push({ ...doc, id: f.replace(/\.module\.yaml$/, "") })
     } catch {}
   }
@@ -202,7 +202,7 @@ function recordIdOf(rel, d) {
 function placedUnder(descriptors, parent) {
   return descriptors.filter(c => acc().storageOf(c).under?.collection === parent.name)
 }
-export function recordRoots(root, d, descriptors) {
+export function recordRoots(root, d, descriptors?) {
   const [own, ...layers] = collectionRoots(root, d).map(r => r.dir)
   const under = acc().storageOf(d).under
   if (!under?.collection) return [own, ...layers]
@@ -217,7 +217,7 @@ export function recordRoots(root, d, descriptors) {
   }
   return roots
 }
-export function recordFileFor(root, d, id, descriptors) {
+export function recordFileFor(root, d, id, descriptors?) {
   const storage = acc().storageOf(d)
   const name = storage.shape === "folder" ? path.join(id, storage.entry ?? "SKILL.md") : `${id}${recordTail(d)}`
   for (const dir of recordRoots(root, d, descriptors)) {
@@ -291,7 +291,7 @@ export function contestedIds(root, d) {
   return { duplicates }
 }
 export function fieldVerbTargets(d) {
-  return Object.entries(acc().fieldsOf(d))
+  return Object.entries<any>(acc().fieldsOf(d))
     .filter(([, f]) => !f.virtual && !f.derived)
     .map(([k]) => k)
 }
@@ -314,7 +314,7 @@ export function loadUiViews(root) {
   for (const f of fs.readdirSync(dir)) {
     if (!f.endsWith(".ui-view.yaml")) continue
     try {
-      const v = yaml.load(fs.readFileSync(path.join(dir, f), "utf8"))
+      const v: any = yaml.load(fs.readFileSync(path.join(dir, f), "utf8"))
       v.id = f.slice(0, -".ui-view.yaml".length)
       out.push(v)
     } catch {}
@@ -340,7 +340,7 @@ export function operatorId(root) {
 }
 export function matchesFilter(fields, filter, me) {
   const meRef = me ? `users/${me}` : null
-  for (const [k, v] of Object.entries(filter ?? {})) {
+  for (const [k, v] of Object.entries<any>(filter ?? {})) {
     if (k === "_and") {
       if (!v.every(f => matchesFilter(fields, f, me))) return false
     } else if (k === "_or") {

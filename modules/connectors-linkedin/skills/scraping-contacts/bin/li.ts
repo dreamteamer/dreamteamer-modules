@@ -89,7 +89,7 @@ function readEnvFile(key) {
 
 // ---------- doctor: answer "is the session alive" from disk, spending no LinkedIn request --------
 function doctor() {
-  const out = { profile_dir: PROFILE, exists: fs.existsSync(PROFILE) }
+  const out: Record<string, any> = { profile_dir: PROFILE, exists: fs.existsSync(PROFILE) }
   if (!out.exists) {
     out.verdict = "no profile — run: uvx mcp-server-linkedin@latest --import-from-browser"
     return out
@@ -263,7 +263,7 @@ async function runBatch(calls) {
       p.stdin.write(JSON.stringify({ jsonrpc: "2.0", id, method, params }) + "\n")
     })
 
-  const init = await rpc("initialize", {
+  const init: any = await rpc("initialize", {
     protocolVersion: "2024-11-05",
     capabilities: {},
     clientInfo: { name: "dt-li", version: "1" },
@@ -273,9 +273,9 @@ async function runBatch(calls) {
   const out = []
   for (const [n, c] of calls.entries()) {
     console.error(`[li] ${n + 1}/${calls.length} ${c.tool} ${JSON.stringify(c.args ?? {})}`)
-    let row = { tool: c.tool, args: c.args ?? {} }
+    let row: Record<string, any> = { tool: c.tool, args: c.args ?? {} }
     try {
-      const m = await rpc("tools/call", { name: c.tool, arguments: c.args ?? {} })
+      const m: any = await rpc("tools/call", { name: c.tool, arguments: c.args ?? {} })
       if (m.error) row = { ...row, ok: false, error: m.error }
       else {
         const text = (m.result?.content ?? [])

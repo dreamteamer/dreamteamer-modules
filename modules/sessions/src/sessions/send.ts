@@ -67,7 +67,7 @@ export function sendTo(fields, text, { spawn = spawnSync, env = process.env } = 
     })
     if (r.error)
       throw new Error(
-        r.error.code === "ENOENT"
+        (r.error as NodeJS.ErrnoException).code === "ENOENT"
           ? "claude is not on PATH — dt session send runs the Claude Code CLI"
           : `claude: ${r.error.message}`
       )

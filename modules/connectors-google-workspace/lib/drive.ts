@@ -27,9 +27,9 @@ const safeName = name => {
 }
 
 export function createDrive(request) {
-  const api = (endpoint, options = {}) =>
+  const api = (endpoint, options: Record<string, any> = {}) =>
     request(endpoint, { ...options, params: { supportsAllDrives: "true", ...options.params } })
-  async function listChildren(parent, name) {
+  async function listChildren(parent, name?) {
     const files = [],
       seen = new Set()
     let pageToken
@@ -151,7 +151,7 @@ export function createDrive(request) {
     const { file, parent } = await needed(ref)
     if (operation === "rm" && (native(file) || file.mimeType === FOLDER))
       throw new Error("Permanent deletion of native documents or folders is not supported.")
-    let params = { fields },
+    let params: Record<string, any> = { fields },
       body
     if (operation === "trash") body = { trashed: true }
     if (operation === "rename") body = { name: safeName(value) }

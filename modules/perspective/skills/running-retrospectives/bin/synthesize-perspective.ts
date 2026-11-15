@@ -104,7 +104,7 @@ const countIn = (field, name) => conversations.filter(c => Array.isArray(c[field
 // ── the record: read what is there, or make the minimum ───────────────────────────────────────
 const file = recordPath("perspectives", who(), "perspective", dataRoot)
 const introFile = recordPath("retrospective-sessions", base, "retrospective-session", dataRoot)
-let fields = {}
+let fields: Record<string, any> = {}
 let body = ""
 let created = false
 if (fs.existsSync(file)) {
@@ -223,7 +223,7 @@ function commitsFile(rec) {
 const repos = underRun("sources")
   .filter(r => r.fields.kind === "git-repo")
   .map(r => {
-    const entry = {
+    const entry: Record<string, any> = {
       name: String(
         r.fields.label ??
           r.id

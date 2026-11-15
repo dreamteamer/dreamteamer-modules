@@ -63,7 +63,7 @@ const flat = s =>
 // ---- projection -----------------------------------------------------------------------------------
 
 export function omittedFields(d) {
-  return Object.entries(dt.fieldsOf(d))
+  return Object.entries<any>(dt.fieldsOf(d))
     .filter(([, f]) => f?.sensitive === true)
     .map(([k]) => k)
     .sort()
@@ -348,7 +348,7 @@ export function renderInstructions(template, vars) {
 
 // ---- the bundle -----------------------------------------------------------------------------------
 
-export function buildBundle(ws, flags = {}) {
+export function buildBundle(ws, flags: Record<string, any> = {}) {
   const store = new dt.Store(ws)
   const version = dt.engineVersion()
   const exportedAt = new Date().toISOString().slice(0, 16).replace("T", " ") + "Z"
@@ -452,7 +452,7 @@ export function buildBundle(ws, flags = {}) {
   const omittedText =
     [
       ...omitted.collections.map(c => `the whole collection ${c}`),
-      ...Object.entries(omitted.fields).map(([c, fs_]) => `${c}.${fs_.join(`, ${c}.`)}`),
+      ...Object.entries<any>(omitted.fields).map(([c, fs_]) => `${c}.${fs_.join(`, ${c}.`)}`),
     ].join("; ") || "nothing"
   const template =
     flags.instructions !== undefined
@@ -530,11 +530,11 @@ export function writeBundle(outDir, bundle) {
 export function planSync(wanted, existing, state = {}, ownedFiles = new Set()) {
   const plan = { add: [], replace: [], skip: [], remove: [] }
   const byId = new Map(existing.map(e => [e.id, e]))
-  const tracked = new Set(Object.values(state).map(s => s.source_id))
+  const tracked = new Set(Object.values(state).map((s: any) => s.source_id))
   const accounted = new Set()
   for (const w of wanted) {
     const prev = state[w.title]
-    const live = prev ? byId.get(prev.source_id) : undefined
+    const live: any = prev ? byId.get(prev.source_id) : undefined
     if (live && prev.sha256 === w.sha256) {
       plan.skip.push({ ...w, sourceId: live.id, renameFrom: live.title !== w.title ? live.title : null })
       accounted.add(live.id)
@@ -564,8 +564,9 @@ function vendor(args, timeoutMs) {
     killSignal: "SIGKILL",
     maxBuffer: 64 * 1024 * 1024,
   })
-  if (res.error?.code === "ENOENT") throw new Error(NOT_INSTALLED)
-  if (res.error?.code === "ETIMEDOUT" || (res.status === null && res.signal))
+  const code = (res.error as NodeJS.ErrnoException | undefined)?.code
+  if (code === "ENOENT") throw new Error(NOT_INSTALLED)
+  if (code === "ETIMEDOUT" || (res.status === null && res.signal))
     throw new Error(
       `notebooklm ${args
         .filter(a => a !== "--quiet")
@@ -610,7 +611,7 @@ export function syncNotebook(outDir, manifest, flags, log = line => dt.emit(line
   preflight()
   let notebookId = flags.notebook !== undefined ? String(flags.notebook) : undefined
   const stateFile = path.join(outDir, "notebook.json")
-  let state = {}
+  let state: Record<string, any> = {}
   try {
     state = JSON.parse(fs.readFileSync(stateFile, "utf8"))
   } catch {
@@ -751,7 +752,8 @@ export function notebooklmCommand(ws, argv) {
       )
     if (manifest.omitted.collections.length)
       log(`  omitted collections (sensitive): ${manifest.omitted.collections.join(", ")}`)
-    for (const [c, f] of Object.entries(manifest.omitted.fields)) log(`  omitted fields: ${c}.${f.join(`, ${c}.`)}`)
+    for (const [c, f] of Object.entries<any>(manifest.omitted.fields))
+      log(`  omitted fields: ${c}.${f.join(`, ${c}.`)}`)
   }
   if (wantsSync) {
     sync = syncNotebook(outDir, manifest, flags, log)

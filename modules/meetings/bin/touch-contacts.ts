@@ -44,7 +44,7 @@ export function computeRecent(meetings, contacts, now = new Date()) {
   const byId = new Map(contacts.map(c => [`contacts/${c.id}`, c]))
   const changes = []
   for (const [contactRef, best] of latest) {
-    const c = byId.get(contactRef)
+    const c: any = byId.get(contactRef)
     if (!c) continue // an attendee ref with no record — check reports that, not this script
     const have = c.recent_meeting_date ? Date.parse(c.recent_meeting_date) : NaN
     if (!Number.isNaN(have) && have > best.t) continue // only move forward

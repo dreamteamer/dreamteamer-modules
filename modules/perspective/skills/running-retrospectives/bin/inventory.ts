@@ -40,7 +40,7 @@ const dataRoot = opt("data-root", DATA)
 let _who = null
 const who = () => (_who ??= contributorOf(retrospectiveRef, dataRoot))
 const home = opt("home", os.homedir())
-const env = readEnv()
+const env: any = readEnv()
 const reposRoot = opt(
   "repos-root",
   (process.env.REPOS_FOLDER ?? env.REPOS_FOLDER ?? "").replace(/^~(?=\/|$)/, os.homedir())

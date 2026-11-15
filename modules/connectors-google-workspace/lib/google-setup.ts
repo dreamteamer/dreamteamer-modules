@@ -16,6 +16,7 @@ const MODULE = "@dreamteamer/connectors-google-workspace"
 const ACTIONS = ["create-credential-store", "authorize-account", "verify-account-read"]
 /** A refusal the module's own CLI prints as is (code: usage, workspace, action, stale, blocked, path). */
 export class SetupRefusal extends Error {
+  declare code: string
   constructor(code, message) {
     super(message)
     this.code = code
@@ -120,7 +121,7 @@ export function inspect({ root = null, env = process.env, platform = process.pla
     fix: "Install uv from its official distribution after owner approval.",
   })
 
-  const configured = {}
+  const configured: Record<string, any> = {}
   for (const [id, key, label] of [
     ["google.client-config", "GOOGLE_CLIENT_SECRET_PATH", "OAuth client configuration"],
     ["google.credential-store", "WORKSPACE_MCP_CREDENTIALS_DIR", "Local account credential store"],
@@ -350,7 +351,7 @@ export function plan({
   accounts = [],
   accessible = readable,
   home = os.homedir(),
-} = {}) {
+}: Record<string, any> = {}) {
   const workspace = workspaceIdentity(root)
   const { checks } = inspect({ root: workspace.root, env, platform, accessible })
   const status = Object.fromEntries(checks.map(c => [c.id, c.status]))
@@ -489,7 +490,7 @@ export function apply({
   platform = process.platform,
   accessible = readable,
   home = os.homedir(),
-} = {}) {
+}: Record<string, any> = {}) {
   const workspace = workspaceIdentity(root)
   if (!claimed || realish(claimed) !== workspace.root)
     throw new SetupRefusal(

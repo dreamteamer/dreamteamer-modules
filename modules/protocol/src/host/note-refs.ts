@@ -3,7 +3,7 @@ const CONTINUES = /[A-Za-z0-9_\-./]/
 const ID_END = /[\s)]/
 const TRAILING = /[.,;:]+$/
 export function refsIn(text, collections) {
-  const names = [...new Set(collections)].filter(Boolean).sort((a, b) => b.length - a.length)
+  const names = [...new Set(collections)].filter(Boolean).sort((a: any, b: any) => b.length - a.length)
   if (!names.length || !text) return []
   const out = []
   let i = 0
@@ -12,7 +12,7 @@ export function refsIn(text, collections) {
       i++
       continue
     }
-    const name = names.find(n => text.startsWith(`${n}/`, i))
+    const name: any = names.find(n => text.startsWith(`${n}/`, i))
     if (!name) {
       i++
       continue

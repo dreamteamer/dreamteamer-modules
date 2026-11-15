@@ -21,7 +21,7 @@ const SWITCHES = new Set(["json", "hook", "force"])
 /** argv → { pos, flags }; a switch never swallows the next word, and a repeated flag is refused. */
 export function parse(argv) {
   const pos = []
-  const flags = {}
+  const flags: Record<string, any> = {}
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]
     if (!a.startsWith("--")) {
@@ -77,7 +77,7 @@ function readSession(store, sid) {
   }
 }
 
-export async function bind(ws, dt, refs, flags = {}, env = process.env) {
+export async function bind(ws, dt, refs, flags: Record<string, any> = {}, env = process.env) {
   const sid = sessionOf(flags, null, env)
   if (!sid)
     throw new Error(
@@ -145,7 +145,7 @@ export async function bind(ws, dt, refs, flags = {}, env = process.env) {
   }
 }
 
-export async function end(ws, dt, pos, flags = {}, env = process.env) {
+export async function end(ws, dt, pos, flags: Record<string, any> = {}, env = process.env) {
   const sid = sessionOf({}, pos[0], env)
   if (!sid)
     throw new Error("dt session end needs a session: dt session end <session id>, or run it inside the harness session")
@@ -170,7 +170,7 @@ export function messageOf(args) {
   return { sid, text, json }
 }
 
-export async function send(ws, dt, args, { env = process.env, spawn } = {}) {
+export async function send(ws, dt, args, { env = process.env, spawn }: Record<string, any> = {}) {
   const { sid, text } = messageOf(args)
   if (!sid || !text)
     throw new Error(

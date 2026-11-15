@@ -168,7 +168,7 @@ export function main(argv, ws = findWorkspace()) {
     console.error(USAGE)
     return 2
   }
-  const flags = new Set(rest.filter(a => a.startsWith("--")))
+  const flags = new Set<string>(rest.filter(a => a.startsWith("--")))
   const unknown = [...flags].filter(f => !["--all", "--force", "--dry-run"].includes(f))
   if (unknown.length) {
     console.error(`✖ unknown flag ${unknown.join(", ")}\n${USAGE}`)

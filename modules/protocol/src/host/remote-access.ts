@@ -48,7 +48,7 @@ export function accessTargets(stack, root, modules, gitModules, git = realGit) {
   const pushUrl = top => (top ? git(["remote", "get-url", "--push", "origin"], top) : undefined)
   const wsUrl = pushUrl(wsTop)
   const out = []
-  const at = (source, url, repoDir, extra = {}) =>
+  const at = (source, url, repoDir, extra: Record<string, any> = {}) =>
     url
       ? { source, url, ...(repoDir ? { repoDir } : {}), ...extra }
       : { source, reason: extra.reason ?? "no remote", ...(extra.note ? { note: extra.note } : {}) }

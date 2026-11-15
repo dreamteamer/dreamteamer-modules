@@ -3,7 +3,7 @@
 // ENV ACTION the engine performs (confined, fingerprinted, refused when git would commit .env, never
 // printed — cr-dt-007, D61): the unit names the key and its value and declares no apply.
 const KEY = "ASANA_PAT"
-const valueOf = (ctx, inputs = {}) => inputs.asana_pat ?? ctx.env?.[KEY]
+const valueOf = (ctx, inputs: Record<string, any> = {}) => inputs.asana_pat ?? ctx.env?.[KEY]
 
 export function inspect(ctx) {
   const v = ctx.env?.[KEY]

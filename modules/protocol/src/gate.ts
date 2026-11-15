@@ -59,7 +59,7 @@ export const COMMIT_KEYS = new Set([
 ])
 
 const refuse = (status, error) => ({ ok: false, status, error })
-const entries = q => (q instanceof URLSearchParams ? [...q.entries()] : Object.entries(q ?? {}))
+const entries = q => (q instanceof URLSearchParams ? [...q.entries()] : Object.entries<any>(q ?? {}))
 const descriptorOf = (descriptors, name) =>
   descriptors instanceof Map ? descriptors.get(name) : (descriptors ?? []).find(d => d.name === name)
 
@@ -110,7 +110,7 @@ function operandProblem(v) {
 /**
  * @returns {{ok: true, call: {method, path, query, body, routeId, collection?}, needsSource?: 'home', commit?: {only: string[]|null, message: string}} | {ok: false, status: number, error: string}}
  */
-export function gate(scope, descriptors, method, path, query, body) {
+export function gate(scope, descriptors, method, path, query, body): Record<string, any> {
   const m = String(method).toUpperCase()
   const hit = matchRoute(m, path)
   if (!hit) return refuse(404, `no route ${m} ${String(path).split("?")[0]}`)
@@ -200,7 +200,7 @@ export function gate(scope, descriptors, method, path, query, body) {
       400,
       s.collectionWrite(scope, { collection, op, reason: "a commit by id cannot carry a moved mirror" })
     )
-  const decision = {
+  const decision: Record<string, any> = {
     ok: true,
     call: {
       method: m,

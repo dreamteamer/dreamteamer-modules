@@ -172,7 +172,7 @@ export function navModel({ root, settings = workspaceNavSettings(root) }) {
     if (p.route) node.route = p.route
     return node
   }
-  const folderLook = (module, collections) => {
+  const folderLook = (module, collections?) => {
     const { displayOf } = engine().descriptor
     const iconName = module
       ? moduleIcon(

@@ -39,7 +39,7 @@ let belowFloor = null
 export function engineBelowFloor() {
   return belowFloor
 }
-export async function initEngine(root, opts = {}) {
+export async function initEngine(root, opts: Record<string, any> = {}) {
   const base = engineRoot(root)
   resolvedBase = base
   const version = readEngineVersion(base)

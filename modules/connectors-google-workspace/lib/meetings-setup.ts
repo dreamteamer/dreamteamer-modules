@@ -62,7 +62,7 @@ function dotenvValues(text, key) {
 
 /** Every local fact, without the network, a process or any credential's contents. Rows carry counts
  *  and line numbers, never a calendar id, an account address or a path. */
-export function inspect({ root, env = process.env, home = os.homedir() } = {}) {
+export function inspect({ root, env = process.env, home = os.homedir() }: Record<string, any> = {}) {
   const checks = []
   const add = row => checks.push({ ...row, state: boardState(row.status) })
   const config = workCalendars(root, env)
@@ -270,7 +270,7 @@ function calendarRowsAction(root, env, inputs) {
 }
 
 /** What can be done next, each with its effects. Writes nothing and starts nothing. */
-export function plan({ root, env = process.env, home = os.homedir(), rows = [] } = {}) {
+export function plan({ root, env = process.env, home = os.homedir(), rows = [] }: Record<string, any> = {}) {
   const workspace = { root: fs.realpathSync(root) }
   const { checks } = inspect({ root: workspace.root, env, home })
   const status = Object.fromEntries(checks.map(c => [c.id, c.status]))
@@ -377,10 +377,10 @@ function unitInspect(ctx) {
   }
 }
 
-function unitPlan(ctx, inputs = {}) {
+function unitPlan(ctx, inputs: Record<string, any> = {}) {
   const rows = Array.isArray(inputs.calendar) ? inputs.calendar : inputs.calendar ? [inputs.calendar] : []
   const p = plan({ root: ctx.root, env: moduleEnv(ctx), rows })
-  const actions = p.actions.map(a =>
+  const actions = p.actions.map((a: Record<string, any>) =>
     a.env !== undefined || a.id === "add-calendar-rows"
       ? a
       : {

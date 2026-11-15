@@ -27,7 +27,7 @@ export function resolveGuest(from) {
  * @param {{ root: string, appPort: () => number, guest: {guestText: string, styleText?: string} | null }} o
  */
 export function moduleFrameRoute({ root, appPort, guest }) {
-  return segments => {
+  return (segments, _req?) => {
     if (segments.length !== 2) return null
     const [module, file] = segments
     const kind = file.endsWith(".html") ? file.slice(0, -5) : ""

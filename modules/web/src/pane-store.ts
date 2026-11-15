@@ -42,7 +42,7 @@ export function createPaneStore({
   workspace,
   fileBases = () => [],
   varRoots = () => [],
-  onChange = () => {},
+  onChange = (_type?: string) => {},
   now = Date.now,
   writeEveryMs = 60_000,
 }) {
@@ -80,7 +80,7 @@ export function createPaneStore({
     /** The boot values at `level` (the asking page's effective level; the workspace's stored one when absent). */
     host({ level = state.level } = {}) {
       const grants = readModuleGrantResult(root)
-      const out = {
+      const out: Record<string, any> = {
         level,
         chat: chatSeen(state, now()),
         workspace: { id: workspace.id, name: workspace.name },

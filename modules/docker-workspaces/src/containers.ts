@@ -90,7 +90,7 @@ export function dockerTimeoutSeconds() {
  *  `send` streams a body (a tar upload) instead of JSON; `stream` resolves a 2xx with the response
  *  itself, unread (a tar download) — both under the same idle timer, which keeps running while the
  *  bytes move. */
-export function api(method, urlPath, body, { onLine, raw, send, stream } = {}) {
+export function api(method, urlPath, body?, { onLine, raw, send, stream }: Record<string, any> = {}): Promise<any> {
   const sock = socketPath()
   const seconds = dockerTimeoutSeconds()
   return new Promise((resolve, reject) => {
@@ -150,7 +150,9 @@ export function api(method, urlPath, body, { onLine, raw, send, stream } = {}) {
         })
       }
     )
-    req.on("error", e => reject(e.code === "ENOENT" || e.code === "ECONNREFUSED" ? unreachable(sock) : e))
+    req.on("error", (e: NodeJS.ErrnoException) =>
+      reject(e.code === "ENOENT" || e.code === "ECONNREFUSED" ? unreachable(sock) : e)
+    )
     // idle-based: fires only when NOTHING has moved on the socket for `seconds` — a streaming
     // pull resets it with every progress line, a paused daemon never does
     if (seconds)
@@ -208,14 +210,14 @@ export async function listImages() {
 }
 
 export async function inspectImage(ref) {
-  const res = await api("GET", `/images/${encodeURIComponent(ref)}/json`)
+  const res: any = await api("GET", `/images/${encodeURIComponent(ref)}/json`)
   return res.status === 404 ? null : ok(res, `get image ${ref}`)
 }
 
 export async function pullImage(ref, log = console.error) {
   const [name, tag] = splitTag(ref)
   let last = ""
-  const res = await api(
+  const res: any = await api(
     "POST",
     `/images/create?fromImage=${encodeURIComponent(name)}&tag=${encodeURIComponent(tag)}`,
     undefined,
@@ -262,7 +264,7 @@ const containerRow = c => {
 export const workspaceDir = name => `/workspaces/${name}`
 /** A bare URL opens the machine home (`/opt/dt-launcher`: every workspace, create, clone) — `?folder=`
  *  only when the caller asks for one workspace (`--workspace`). */
-const editorUrl = (port, folder) => `http://localhost:${port}/${folder ? `?folder=${folder}` : ""}`
+const editorUrl = (port, folder?) => `http://localhost:${port}/${folder ? `?folder=${folder}` : ""}`
 /** Where `--mount` may land: the image's own trees. Anywhere else (`/etc`, `/usr/local/bin`, `/opt`)
  *  replaces what the image runs — a mount there is a way round the image, not a mount. */
 export const MOUNT_ROOTS = ["/workspaces", "/home/node", "/files", "/mnt"]
@@ -306,7 +308,7 @@ export async function listContainers() {
 }
 
 export async function inspectContainer(name) {
-  const res = await api("GET", `/containers/${encodeURIComponent(name)}/json`)
+  const res: any = await api("GET", `/containers/${encodeURIComponent(name)}/json`)
   if (res.status === 404) return null
   const c = ok(res, `get container ${name}`)
   if (!c.Config?.Labels?.[LABEL.workspace])
@@ -318,7 +320,7 @@ export async function inspectContainer(name) {
 
 /** The shape `dt-docker get container <name>` prints: the categorised view over `docker inspect`. */
 export function containerDetail(c) {
-  const binding = Object.values(c.HostConfig?.PortBindings ?? {}).flat()[0]
+  const binding: any = Object.values(c.HostConfig?.PortBindings ?? {}).flat()[0]
   const name = c.Name.replace(/^\//, "")
   const wsDir = c.Config.Labels?.[LABEL.workdir] ?? workspaceDir(name)
   const own = new Set([wsDir, "/home/node", "/files"])
@@ -358,8 +360,8 @@ export async function allocatePort(env = hostEnv()) {
   // otherwise the second workspace lands on the first one's port the moment the first is stopped.
   for (const c of all)
     if (c.State !== "running") {
-      const d = await api("GET", `/containers/${c.Id}/json`)
-      for (const b of Object.values(d.body?.HostConfig?.PortBindings ?? {}).flat()) taken.add(Number(b.HostPort))
+      const d: any = await api("GET", `/containers/${c.Id}/json`)
+      for (const b of Object.values<any>(d.body?.HostConfig?.PortBindings ?? {}).flat()) taken.add(Number(b.HostPort))
     }
   let port = base
   while (taken.has(port)) port++
@@ -542,7 +544,7 @@ export async function startContainer(name, flags, log = console.log) {
     )
   }
   if (c.State?.Status !== "running") {
-    const res = await api("POST", `/containers/${c.Id}/start`)
+    const res: any = await api("POST", `/containers/${c.Id}/start`)
     if (res.status !== 204 && res.status !== 304) ok(res, `start container ${name}`)
     c = await inspectContainer(name)
   }
@@ -556,7 +558,7 @@ export async function startContainer(name, flags, log = console.log) {
 
 async function ensureNetwork(name) {
   const net = networkName(name)
-  const res = await api("GET", `/networks/${encodeURIComponent(net)}`)
+  const res: any = await api("GET", `/networks/${encodeURIComponent(net)}`)
   if (res.status === 404) {
     ok(
       await api("POST", "/networks/create", {
@@ -578,7 +580,7 @@ async function ensureNetwork(name) {
 /** Run `cmd` (an argv, never a shell line) in a running container as `user` — one Docker exec under
  *  the same idle timer as every request. Answers { code, stdout, stderr }; a non-zero exit is the
  *  caller's to judge. */
-export async function exec(name, cmd, { user } = {}) {
+export async function exec(name, cmd, { user }: Record<string, any> = {}) {
   const what = `exec ${cmd[0]} in ${name}`
   const { Id } = ok(
     await api("POST", `/containers/${encodeURIComponent(name)}/exec`, {
@@ -589,7 +591,7 @@ export async function exec(name, cmd, { user } = {}) {
     }),
     what
   )
-  const res = await api("POST", `/exec/${Id}/start`, { Detach: false, Tty: false }, { raw: true })
+  const res: any = await api("POST", `/exec/${Id}/start`, { Detach: false, Tty: false }, { raw: true })
   ok({ status: res.status, body: res.body.toString("utf8") }, what)
   // Tty:false answers Docker's multiplexed stream: per frame an 8-byte header — stream (1 out, 2 err),
   // three zero bytes, a big-endian length — then that many bytes
@@ -698,7 +700,7 @@ export function openUrl({ text, secret }, log) {
 export async function stopContainer(name) {
   const c = await inspectContainer(name)
   if (!c) throw new Error(`no container "${name}" — dt-docker list containers`)
-  const res = await api("POST", `/containers/${c.Id}/stop?t=10`)
+  const res: any = await api("POST", `/containers/${c.Id}/stop?t=10`)
   if (res.status !== 204 && res.status !== 304) ok(res, `stop container ${name}`)
   return containerDetail(await inspectContainer(name))
 }
@@ -711,13 +713,13 @@ export async function removeContainer(name, { force = false } = {}, log = consol
   // `restarting` too: a crash-looping container refuses DELETE until it is stopped (measured, Docker Desktop)
   if (["running", "restarting"].includes(c.State?.Status)) await api("POST", `/containers/${c.Id}/stop?t=10`)
   ok(await api("DELETE", `/containers/${c.Id}?v=false`), `rm container ${name}`)
-  const net = await api("GET", `/networks/${encodeURIComponent(networkName(name))}`)
+  const net: any = await api("GET", `/networks/${encodeURIComponent(networkName(name))}`)
   if (net.status === 200 && net.body?.Labels?.["dreamteamer.name"] === name)
     ok(await api("DELETE", `/networks/${encodeURIComponent(networkName(name))}`), `rm network ${networkName(name)}`)
   const named = Object.values(vols).filter(Boolean)
   if (force) {
     for (const v of named) {
-      const r = await api("DELETE", `/volumes/${encodeURIComponent(v)}`)
+      const r: any = await api("DELETE", `/volumes/${encodeURIComponent(v)}`)
       if (r.status !== 204 && r.status !== 404) ok(r, `rm volume ${v}`)
     }
     log(`✔ removed ${name}, its network and its volumes ${named.join(", ")}`)

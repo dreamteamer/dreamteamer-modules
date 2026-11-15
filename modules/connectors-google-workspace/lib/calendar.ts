@@ -15,7 +15,7 @@ export function calendarReader(request) {
   }
   return {
     calendars: () => pages("users/me/calendarList", {}, 250),
-    events: (calendar, from, to, { timeZone, showDeleted = false } = {}) => {
+    events: (calendar, from, to, { timeZone, showDeleted = false }: Record<string, any> = {}) => {
       if (
         !calendar ||
         !Number.isFinite(Date.parse(from)) ||

@@ -101,7 +101,7 @@ const BOOLEAN = new Set(["no-open", "json", "force", "vscode", "rotate-token", "
 /** `--k v`, `--k=v`, bare `--k` → true. `--mount` repeats into an array; `--workspace` repeats into
  *  `workspaces` (export/import read every value; start/open keep the last). Any other repeat: last wins. */
 export function parseFlags(args) {
-  const flags = {}
+  const flags: Record<string, any> = {}
   const pos = []
   const put = (k, v) => {
     if (k === "mount") flags.mount = [...(flags.mount ?? []), v]

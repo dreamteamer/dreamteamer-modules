@@ -106,7 +106,7 @@ async function getAll(pathname, params) {
   const out = []
   let offset = null
   do {
-    const page = await get(pathname, { ...params, ...(offset ? { offset } : {}) })
+    const page: any = await get(pathname, { ...params, ...(offset ? { offset } : {}) })
     out.push(...(page.data ?? []))
     offset = page.next_page?.offset ?? null
   } while (offset)

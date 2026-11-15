@@ -16,6 +16,10 @@ import { chromium, browserNoise } from "./devdep.ts"
 import { vendorStatus } from "./vendor.ts"
 import { VERSION } from "./export.ts"
 
+// The callbacks handed to page.evaluate / page.waitForFunction run in the prototype's page, not in Node: these
+// are that page's globals, declared here (type-only) rather than adding the DOM library to every Node file.
+declare const window: any, document: any, location: any, scrollY: number, CSS: any, NodeFilter: any
+
 /** the steps a journey plays: every index that is not out of scope, with the anchor the player will look for */
 export function playable(j, mod) {
   return j.steps
@@ -81,7 +85,7 @@ async function playJourney(browser, base, c, j, mod) {
   page.on("console", m => {
     if (m.type() === "error" && !browserNoise(m)) errs.push(`console.error: ${m.text().split("\n")[0]}`)
   })
-  const out = { key: j.key, group: j.group, steps: [], restoreOk: null, fatal: null }
+  const out: Record<string, any> = { key: j.key, group: j.group, steps: [], restoreOk: null, fatal: null }
   const app = c.app
   try {
     await page.goto(`${base}#/`)
@@ -92,7 +96,7 @@ async function playJourney(browser, base, c, j, mod) {
     for (let k = 0; k < plan.length; k++) {
       const p = plan[k]
       errs = []
-      const st = { n: p.i + 1, screen: p.screen, fail: [] }
+      const st: Record<string, any> = { n: p.i + 1, screen: p.screen, fail: [] }
       const call = await page.evaluate(
         async ({ app, key, i, first }) => {
           try {

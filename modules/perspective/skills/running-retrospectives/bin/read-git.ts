@@ -127,7 +127,7 @@ function zip(raws, nums, rich) {
     return nums.map(n => ({ path: rich ? destPath(n.path) : n.path, status: "", add: n.add, del: n.del }))
   if (raws.length === nums.length)
     return nums.map((n, i) => ({ path: raws[i].path, status: raws[i].status, add: n.add, del: n.del }))
-  const byPath = new Map(raws.map(r => [r.path, r]))
+  const byPath = new Map<string, any>(raws.map(r => [r.path, r]))
   return nums.map(n => {
     const p = destPath(n.path)
     return { path: p, status: byPath.get(p)?.status ?? "", add: n.add, del: n.del }
@@ -342,7 +342,7 @@ for (const t of targets) {
     const { start: start_date, end: end_date } = isoWeekRange(period)
     // `retrospective` is REQUIRED on every collection, and only a FRESH read shows its
     // absence — a migrated tree looks clean.
-    const fields = {
+    const fields: Record<string, any> = {
       retrospective,
       contributor: who(),
       source: sourceRef,

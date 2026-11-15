@@ -38,7 +38,7 @@ export function attendeeOf(a) {
     .trim()
     .toLowerCase()
   if (!email.includes("@")) return null
-  const out = { email }
+  const out: Record<string, any> = { email }
   const name = String(a.displayName ?? "").trim()
   if (name) out.displayName = name
   const status = RESPONSE_STATUS[a.responseStatus]
@@ -68,7 +68,7 @@ export function organizerOf(event) {
     .trim()
     .toLowerCase()
   if (!email.includes("@")) return null
-  const out = { email }
+  const out: Record<string, any> = { email }
   const name = String(o.displayName ?? "").trim()
   if (name) out.displayName = name
   if (o.self === true) out.self = true

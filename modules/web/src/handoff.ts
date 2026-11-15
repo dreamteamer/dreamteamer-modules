@@ -84,7 +84,7 @@ export async function handoff({
       body: JSON.stringify({ cap }),
       signal: AbortSignal.timeout(10_000),
     })
-    if (r.ok) url = (await r.json())?.url ?? null
+    if (r.ok) url = ((await r.json()) as any)?.url ?? null
   } catch {
     /* below */
   }

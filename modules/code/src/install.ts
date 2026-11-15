@@ -5,7 +5,7 @@ import { spawn } from "node:child_process"
 
 export const CODE_SERVER_VERSION = "4.138.0"
 export function run(file, args, opts = {}) {
-  return new Promise((resolve, reject) => {
+  return new Promise<void>((resolve, reject) => {
     const child = spawn(file, args, { stdio: ["ignore", "inherit", "inherit"], ...opts })
     child.once("error", reject)
     child.once("exit", (code, signal) =>
@@ -30,7 +30,7 @@ export async function ensureRuntime(home, explicit) {
     signal: AbortSignal.timeout(30000),
   })
   if (!response.ok) throw new Error(`Release lookup failed: ${response.status}`)
-  const release = await response.json()
+  const release: any = await response.json()
   const asset = release.assets?.find(a => a.name === name + ".tar.gz")
   if (!asset || !/^sha256:[a-f0-9]{64}$/.test(asset.digest ?? ""))
     throw new Error(

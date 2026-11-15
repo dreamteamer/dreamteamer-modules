@@ -57,7 +57,7 @@ export function normalize(raw, dir) {
   for (const k of ["products", "app", "registry"]) if (raw[k] == null) fail(`"${k}" is required`)
   if (!isObj(raw.products) || !Object.keys(raw.products).length)
     fail('"products" maps rnd/products/<id> to { key, label? }')
-  for (const [ref, v] of Object.entries(raw.products)) {
+  for (const [ref, v] of Object.entries<any>(raw.products)) {
     if (!/^rnd\/products\/[^/]+$/.test(ref)) fail(`products: "${ref}" is not an rnd/products/<id> reference`)
     if (!isObj(v) || typeof v.key !== "string" || !v.key) fail(`products["${ref}"] needs a string key`)
   }

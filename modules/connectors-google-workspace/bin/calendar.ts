@@ -24,9 +24,9 @@ export async function main(argv = process.argv.slice(2)) {
     result = await reader.calendars()
   } else if (command === "event") {
     if (args.length !== 2) throw new Error("Expected calendar and event identifiers.")
-    result = await reader.event(...args)
+    result = await reader.event(...(args as [string, string]))
   } else {
-    const options = {}
+    const options: Record<string, any> = {}
     const rest = args.slice(3)
     while (rest.length) {
       const flag = rest.shift()

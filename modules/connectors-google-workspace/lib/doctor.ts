@@ -2,6 +2,6 @@
 // and the engine doctor also read (lib/google-setup.mjs). The report shape and wording are unchanged.
 import { legacyDoctor } from "./google-setup.ts"
 
-export function doctor({ env = process.env, accessible } = {}) {
+export function doctor({ env = process.env, accessible }: Record<string, any> = {}) {
   return legacyDoctor({ env, ...(accessible ? { accessible } : {}) })
 }

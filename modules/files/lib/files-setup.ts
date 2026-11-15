@@ -8,7 +8,7 @@ import path from "node:path"
 
 const KEY = "FILES_FOLDER"
 const expand = p => (p && (p === "~" || p.startsWith("~/")) ? path.join(os.homedir(), p.slice(1)) : p)
-const valueOf = (ctx, inputs = {}) => inputs.files_folder ?? ctx.env?.[KEY]
+const valueOf = (ctx, inputs: Record<string, any> = {}) => inputs.files_folder ?? ctx.env?.[KEY]
 
 export function inspect(ctx) {
   const v = ctx.env?.[KEY]

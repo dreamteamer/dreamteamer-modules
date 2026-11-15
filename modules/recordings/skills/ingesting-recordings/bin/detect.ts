@@ -384,7 +384,7 @@ function compiledStorage(name) {
   } catch {
     return null
   }
-  const d = yamlMaps(text)
+  const d: any = yamlMaps(text)
   if (!d.compiled) return null
   const authored = d.storage ?? {}
   const supplied = d.compiled.defaults?.storage ?? {}
@@ -435,7 +435,7 @@ function localDay(v) {
   if (!v) return null
   if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v
   const t = new Date(v)
-  return isNaN(t) ? String(v).slice(0, 10) : iso(t.getFullYear(), t.getMonth() + 1, t.getDate())
+  return isNaN(t.getTime()) ? String(v).slice(0, 10) : iso(t.getFullYear(), t.getMonth() + 1, t.getDate())
 }
 
 // ---------------------------------------------------------------- verbs

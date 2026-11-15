@@ -37,7 +37,12 @@ import { PANE_ROUTES, answerPane, defaultPane } from "./pane.ts"
  * @returns {Promise<{ handle: (method: string, path: string, body?: unknown) => Promise<{ status: number, body: unknown }>,
  *                    readonly api: WorkspaceApi, reopen: () => Promise<void> }>}
  */
-export async function createHandler({ root, onSystemWrite, settings = () => workspaceNavSettings(root), pane } = {}) {
+export async function createHandler({
+  root,
+  onSystemWrite,
+  settings = () => workspaceNavSettings(root),
+  pane,
+}: Record<string, any> = {}) {
   if (!root) throw new Error("createHandler: no workspace root")
   await initEngine(root)
   const api = new WorkspaceApi(root)

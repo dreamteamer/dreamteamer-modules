@@ -63,7 +63,7 @@ export async function accessTokenFor(email, dir = CRED_DIR) {
     }),
   })
   if (!res.ok) return null // a revoked grant is unavailable, not a crash
-  const json = await res.json().catch(() => null)
+  const json: any = await res.json().catch(() => null)
   return json?.access_token ?? null
 }
 

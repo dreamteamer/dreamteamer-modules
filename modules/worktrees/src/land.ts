@@ -135,7 +135,7 @@ const FF_ATTEMPTS = 3
 /** Every raw git spawn in the runner is bounded. */
 const GIT_TIMEOUT_MS = 5 * 60_000
 const NPM_TIMEOUT_MS = 10 * 60_000
-const spawnGit = (args, env) =>
+const spawnGit = (args, env?) =>
   spawnSync("git", args, { encoding: "utf8", timeout: GIT_TIMEOUT_MS, killSignal: "SIGKILL", ...(env ? { env } : {}) })
 
 /** `git status --porcelain -z` paths. A rename is two records in the `-z` format — the source
@@ -282,7 +282,7 @@ function printRefusal(name, reasons) {
 export async function landWorktree(
   ws,
   ref,
-  { keep = false, dryRun = false, branch = null, npmRun } = {},
+  { keep = false, dryRun = false, branch = null, npmRun }: Record<string, any> = {},
   git = defaultGit
 ) {
   const c = dt.describeCheckout(ws.root, git)
@@ -545,7 +545,7 @@ export const LAND_USAGE = `  land <name|path> [--keep] [--dry-run] [--branch <na
               worktree its branch worktree-<name> first · --dry-run print the plan, change nothing`
 
 /** `dt land …` — the surface. */
-export async function landCommand(ws, argv, { npmRun } = {}) {
+export async function landCommand(ws, argv, { npmRun }: Record<string, any> = {}) {
   const { flags, pos } = parseFlags(argv, { bool: ["keep", "dry-run", "json"], value: ["branch"] }, "dt land <name>")
   const ref = pos[0]
   if (pos.length > 1) throw new Error(`dt land takes ONE worktree — got ${pos.join(", ")}`)

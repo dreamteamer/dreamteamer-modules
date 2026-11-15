@@ -13,7 +13,7 @@ export function moduleOfSource(source, modules) {
 }
 export function runtimeModules(entries, modules) {
   const out = new Map()
-  for (const [file, entry] of Object.entries(entries ?? {})) {
+  for (const [file, entry] of Object.entries<any>(entries ?? {})) {
     const source = entry?.sources?.[0]?.path
     const id = source ? moduleOfSource(source, modules) : undefined
     if (id) out.set(file, id)
@@ -32,7 +32,7 @@ export function moduleOfRuntimeFile(rel, map) {
 }
 export function loadRuntimeModules(root, modules) {
   try {
-    const doc = yaml.load(fs.readFileSync(path.join(root, ".dreamteamer", "manifest.yaml"), "utf8"))
+    const doc: any = yaml.load(fs.readFileSync(path.join(root, ".dreamteamer", "manifest.yaml"), "utf8"))
     return runtimeModules(doc?.entries, modules)
   } catch {
     return new Map()

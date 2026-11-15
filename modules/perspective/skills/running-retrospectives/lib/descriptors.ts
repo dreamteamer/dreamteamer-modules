@@ -51,7 +51,7 @@ export function enumValues(e) {
   return null
 }
 
-let mixinCache = null
+let mixinCache: Map<string, Record<string, any>> | null = null
 /** Every mixin this module ships: name → its fields. */
 function shippedMixins() {
   if (mixinCache) return mixinCache
@@ -61,7 +61,7 @@ function shippedMixins() {
       .readdirSync(SHIPPED_MIXINS)
       .filter(n => n.endsWith(".mixin.yaml"))
       .sort()) {
-      const doc = load(path.join(SHIPPED_MIXINS, f))
+      const doc: any = load(path.join(SHIPPED_MIXINS, f))
       if (doc?.name) mixinCache.set(doc.name, doc.fields ?? {})
     }
   }
@@ -71,9 +71,9 @@ function shippedMixins() {
 /** The authored descriptor this module ships for `name`, or null. Its mixins' fields are merged in
  *  ahead of the body field, as compile places them. */
 export function shippedDescriptor(name) {
-  const doc = load(path.join(SHIPPED_COLLECTIONS, `${name}.collection.yaml`))
+  const doc: any = load(path.join(SHIPPED_COLLECTIONS, `${name}.collection.yaml`))
   if (!doc) return null
-  const own = Object.entries(doc.fields ?? {})
+  const own = Object.entries<any>(doc.fields ?? {})
   const added = (doc.mixins ?? []).flatMap(m => Object.entries(shippedMixins().get(m) ?? {}))
   const bodyAt = own.findIndex(([, f]) => f?.body)
   const fields = Object.fromEntries(
@@ -85,7 +85,7 @@ export function shippedDescriptor(name) {
 /** The descriptor `name` has in the workspace at `workspaceRoot`: the compiled copy, else the shipped
  *  one, else null. */
 export function readDescriptor(workspaceRoot, name) {
-  const compiled = load(path.join(workspaceRoot, ".dreamteamer", "collections", `${name}.collection.yaml`))
+  const compiled: any = load(path.join(workspaceRoot, ".dreamteamer", "collections", `${name}.collection.yaml`))
   if (compiled?.compiled) {
     // compile records what it decided under `compiled`: the RESOLVED storage path in
     // `compiled.defaults.storage` (it differs from the authored one under an owns-data module), the

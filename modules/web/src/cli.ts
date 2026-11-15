@@ -78,7 +78,7 @@ const SWITCH = {
 const START_WAIT_MS = 10_000
 const LEVEL_WORD = l => l[0].toUpperCase() + l.slice(1)
 const bad = why => {
-  const e = new Error(`${why} — ${USAGE}`)
+  const e: Error & { usage?: boolean } = new Error(`${why} — ${USAGE}`)
   e.usage = true
   return e
 }
@@ -93,7 +93,7 @@ export function parseArgs(argv, env = process.env) {
   const args = [...argv]
   const cmd = args.length && !args[0].startsWith("-") ? args.shift() : "open"
   if (!VERBS.has(cmd)) throw bad(`dt web has no verb "${cmd}"`)
-  const out = { cmd }
+  const out: Record<string, any> = { cmd }
   const positional = []
   const flags = FLAGS[cmd]
   for (let i = 0; i < args.length; i++) {
@@ -140,7 +140,7 @@ export function parseArgs(argv, env = process.env) {
 
 const sleep = ms => new Promise(r => setTimeout(r, ms))
 /** A request to the running server under its control token: → { status, body } (status 0 when it did not answer). */
-async function ask(rt, method, p, body, timeoutMs = 10_000) {
+async function ask(rt, method, p, body?, timeoutMs = 10_000) {
   try {
     const r = await fetch(`http://127.0.0.1:${rt.port}${p}`, {
       method,
@@ -166,6 +166,7 @@ const fileOf = (root, env) => stateFile(root, runtimeDir(env))
 /** The workspace's server when it proves it is the runtime file's: `{ port, controlToken, pid, movedFrom }`, else null. */
 /** What a verb that needs the server throws when a live server does not answer: it prints the line and exits 1. */
 class NotAnswering extends Error {
+  declare notAnswering: boolean
   constructor(p) {
     super(notAnsweringLine(p))
     this.notAnswering = true
@@ -193,7 +194,10 @@ const failed = (log, r) => {
  * workspace installed; `args` the flags `dt web start` was given (`--port`, `--idle`, `--owner-pid`).
  * @returns {Promise<{ port: number, controlToken: string }>}
  */
-export async function ensureRunning(root, { log = console.log, env = process.env, appDir, bin = BIN, args = [] } = {}) {
+export async function ensureRunning(
+  root,
+  { log = console.log, env = process.env, appDir, bin = BIN, args = [] }: Record<string, any> = {}
+) {
   // a live server that does not answer throws NotAnswering here: never a second server beside it
   const now = await current(root, env)
   if (now) return now
@@ -521,7 +525,7 @@ async function forceStop(now, { log }) {
 }
 
 /** `dt web revoke [--token <n>]`: through the server when it runs, else in the state file under the start lock. */
-async function revoke(root, { token }, { log, env }) {
+async function revoke(root, { token }: { token?: any }, { log, env }) {
   const said = n => {
     log(
       token !== undefined

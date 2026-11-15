@@ -8,7 +8,7 @@ const equals = (a, b) =>
 export async function gateway({ socketPath, workspace, port = 0, token = randomBytes(32).toString("base64url") }) {
   const cookieName = `dt_editor_${randomBytes(8).toString("hex")}`
   let origin
-  const sockets = new Set()
+  const sockets = new Set<any>()
   const cookies = req =>
     (req.headers.cookie ?? "")
       .split(";")
@@ -99,11 +99,11 @@ export async function gateway({ socketPath, workspace, port = 0, token = randomB
     upstream.on("error", () => socket.destroy())
     upstream.end()
   })
-  await new Promise((resolve, reject) => {
+  await new Promise<void>((resolve, reject) => {
     server.once("error", reject)
     server.listen(port, "127.0.0.1", resolve)
   })
-  origin = `http://127.0.0.1:${server.address().port}`
+  origin = `http://127.0.0.1:${(server.address() as import("node:net").AddressInfo).port}`
   return {
     origin,
     token,

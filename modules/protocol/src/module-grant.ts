@@ -67,7 +67,7 @@ export function readModuleGrantResult(root) {
     return { grant: {}, problem: '"dreamteamer.moduleApps" in .vscode/settings.json is not an object of modules' }
   return {
     grant: Object.fromEntries(
-      Object.entries(block).map(([m, g]) => [m, { reads: strings(g?.reads), writes: strings(g?.writes) }])
+      Object.entries<any>(block).map(([m, g]) => [m, { reads: strings(g?.reads), writes: strings(g?.writes) }])
     ),
     problem: null,
   }

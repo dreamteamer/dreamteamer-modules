@@ -49,7 +49,10 @@ export async function createGoogleRequest(
   }
   if (!refresh.ok || typeof token.access_token !== "string" || !token.access_token)
     throw new Error("OAuth token refresh failed; complete account authorization separately.")
-  return async (resource, { method = "GET", params = {}, body, raw = false, upload = false, headers = {} } = {}) => {
+  return async (
+    resource,
+    { method = "GET", params = {}, body, raw = false, upload = false, headers = {} }: Record<string, any> = {}
+  ) => {
     if (typeof resource !== "string" || resource.startsWith("/") || resource.includes("..") || /[?#:\\]/.test(resource))
       throw new Error("Expected a relative Google API resource path.")
     const base =
@@ -73,7 +76,7 @@ export async function createGoogleRequest(
       ...(body !== undefined ? { body: Buffer.isBuffer(body) ? body : JSON.stringify(body) } : {}),
     })
     if (!response.ok) {
-      const error = new Error(`Google ${service} API request failed (${response.status}).`)
+      const error: Error & { status?: number } = new Error(`Google ${service} API request failed (${response.status}).`)
       error.status = response.status
       throw error
     }

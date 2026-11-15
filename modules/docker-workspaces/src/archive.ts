@@ -34,7 +34,10 @@ import path from "node:path"
 import zlib from "node:zlib"
 import crypto from "node:crypto"
 import { Readable } from "node:stream"
-import { pipeline } from "node:stream/promises"
+import { pipeline as streamPipeline } from "node:stream/promises"
+
+// node:stream/promises types pipeline by fixed arity; this file builds its stages as a spread list.
+const pipeline = streamPipeline as (...stages: any[]) => Promise<void>
 import { api, ok, inspectContainer, exec } from "./containers.ts"
 
 const ROOT = "/workspaces"
@@ -85,7 +88,7 @@ const sum = h => {
 const pad = n => (512 - (n % 512)) % 512
 export const TAR_END = Buffer.alloc(1024)
 
-function header({ name, type, mode, size, mtime, linkname = "" }) {
+function header({ name, type, mode, size, mtime, linkname = "" }: Record<string, any>) {
   const h = Buffer.alloc(512)
   const oct = (v, o, n) =>
     h.write(
@@ -150,7 +153,7 @@ export async function* retar(source, decide) {
     buf = buf.subarray(n)
     return b
   }
-  let ext = {}
+  let ext: Record<string, any> = {}
   for (;;) {
     if (!(await fill(512))) throw new Error("the archive ends without its end marker")
     const h = await take(512)
@@ -167,7 +170,7 @@ export async function* retar(source, decide) {
       continue
     }
     const prefix = str(h, 345, 155)
-    const e = {
+    const e: Record<string, any> = {
       name: ext.path ?? (prefix ? `${prefix}/${str(h, 0, 100)}` : str(h, 0, 100)),
       linkname: ext.linkpath ?? str(h, 157, 100),
       type: type === "7" ? FILE : type,
@@ -231,7 +234,7 @@ async function newSeal(pass) {
   h[11] = KDF.p
   h.writeUInt32BE(CHUNK, 12)
   crypto.randomFillSync(h, 16, 23) // salt 16..31 · nonce prefix 32..38 · 39 reserved
-  const keys = await scryptKeys(pass, h.subarray(16, 32), KDF.log2N, KDF.r, KDF.p)
+  const keys: any = await scryptKeys(pass, h.subarray(16, 32), KDF.log2N, KDF.r, KDF.p)
   return { keys, head: Buffer.concat([h, hmac(keys.mac, h)]) }
 }
 
@@ -254,7 +257,7 @@ export async function openSeal(file, pass) {
     throw new Error(
       `${file}: its header asks for scrypt N=2^${log2N} r=${r} p=${p} and ${chunk}-byte chunks — version 1 is exactly N=2^${KDF.log2N} r=${KDF.r} p=${KDF.p}, ${CHUNK}; refusing these parameters before any work`
     )
-  const keys = await scryptKeys(typeof pass === "function" ? await pass() : pass, h.subarray(16, 32), log2N, r, p)
+  const keys: any = await scryptKeys(typeof pass === "function" ? await pass() : pass, h.subarray(16, 32), log2N, r, p)
   if (!crypto.timingSafeEqual(hmac(keys.mac, h.subarray(0, HEAD)), h.subarray(HEAD)))
     throw new Error(`wrong passphrase for ${file} (or its header is damaged) — nothing was written`)
   return { keys, prefix: h.subarray(32, 39), chunk }
@@ -319,7 +322,7 @@ async function passphrase({ confirm }) {
 }
 
 function ask(prompt) {
-  return new Promise((resolve, reject) => {
+  return new Promise<string>((resolve, reject) => {
     const s = process.stdin
     let v = ""
     const done = f => {
@@ -421,7 +424,7 @@ export async function exportContainer(name, flags, log = console.log) {
   }
   async function* tar() {
     for (const s of sources) {
-      const r = await api("GET", `/containers/${c.Id}/archive?path=${encodeURIComponent(s.at)}`, undefined, {
+      const r: any = await api("GET", `/containers/${c.Id}/archive?path=${encodeURIComponent(s.at)}`, undefined, {
         stream: true,
       })
       if (r.status === 404) throw new Error(`${name} has no ${s.at}`)
@@ -532,13 +535,13 @@ export async function importContainer(name, file, flags, log = console.log) {
     throw new Error(`${file} is neither a dreamteamer export nor a .tar.gz`)
   const key = sealed ? await openSeal(file, () => passphrase({ confirm: false })) : null
   if (!sealed) log(`… ${file} is NOT encrypted — reading it as a plain .tar.gz`)
-  const only = new Set(flags.workspaces ?? [])
+  const only = new Set<string>(flags.workspaces ?? [])
   const as = flags.as
   if (as !== undefined && (typeof as !== "string" || !NEW_NAME.test(as) || RESERVED.has(as)))
     throw new Error(
       `--as takes a workspace name: 1–40 of a-z, 0-9 and '-', starting with a letter or digit, not files · lost-found · trash (got "${as === true ? "" : as}")`
     )
-  const read = (found, stage, checked) => [
+  const read = (found, stage?, checked?) => [
     fs.createReadStream(file, { start: sealed ? HEAD + MAC : 0 }),
     ...(key ? [src => unseal(src, key)] : []),
     zlib.createGunzip(),
@@ -548,11 +551,13 @@ export async function importContainer(name, file, flags, log = console.log) {
     },
   ]
   // pass 1: every chunk authenticated and every entry checked before anything is written
-  const found = new Set()
+  const found = new Set<string>()
   await pipeline(...read(found), async src => {
     for await (const _ of src);
   })
-  const installs = [...found].filter(w => w.endsWith("/package.json")).map(w => `${ROOT}/${as ?? w.split("/")[0]}`)
+  const installs = [...found]
+    .filter((w: any) => w.endsWith("/package.json"))
+    .map((w: any) => `${ROOT}/${as ?? w.split("/")[0]}`)
   for (const w of [...found]) if (w.includes("/")) found.delete(w)
   const missing = [...only].filter(w => !found.has(w))
   if (missing.length)

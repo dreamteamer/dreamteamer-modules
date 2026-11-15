@@ -62,7 +62,11 @@ export function installedChromiums(dir = browsersDir()) {
   for (const b of fs
     .readdirSync(dir)
     .filter(x => /^chromium(_headless_shell)?-\d+$/.test(x))
-    .sort((a, b) => /headless/.test(b) - /headless/.test(a) || Number(b.split("-").pop()) - Number(a.split("-").pop())))
+    .sort(
+      (a, b) =>
+        Number(/headless/.test(b)) - Number(/headless/.test(a)) ||
+        Number(b.split("-").pop()) - Number(a.split("-").pop())
+    ))
     walk(path.join(dir, b), 0)
   return found
 }

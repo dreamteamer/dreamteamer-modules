@@ -68,7 +68,7 @@ function existingRefs(collection) {
 // ── concepts: the vocabulary the workspace already defines ────────────────────────────────────────
 const conceptCandidates = []
 for (const file of walk(path.join(RUNTIME, "collections"), n => n.endsWith(".collection.yaml"))) {
-  const doc = yaml.load(fs.readFileSync(file, "utf8")) ?? {}
+  const doc: any = yaml.load(fs.readFileSync(file, "utf8")) ?? {}
   const name = doc.name || path.basename(file, ".collection.yaml")
   // the module does not describe ITSELF as the person's DSL
   if (String(name) === "perspective" || String(name).startsWith("perspective/")) continue
@@ -208,7 +208,7 @@ const skills = walk(path.join(RUNTIME, "skills"), n => n === "SKILL.md").map(fil
 })
 const routines = listRecords(path.join(workspaceRoot, "data", "routines")).map(file => {
   const { fields } = readRecord(file)
-  const entry = { name: String(fields.name ?? path.basename(file).replace(/\.[^./]+\.md$/, "")) }
+  const entry: Record<string, any> = { name: String(fields.name ?? path.basename(file).replace(/\.[^./]+\.md$/, "")) }
   const description = fields.notes ?? fields.description
   if (description) entry.description = String(description)
   if (fields.recurrence) entry.recurrence = String(fields.recurrence)

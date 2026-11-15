@@ -108,7 +108,9 @@ if (onlyDrive) drives.push({ id: onlyDrive, name: onlyDrive })
 else {
   // Named only so the receipt and the source body can say what was in reach; the scan itself is
   // one `allDrives` pass, because per-drive paging cannot see My Drive or shared-with-me at all.
-  const list = await drive(token, "drives", { pageSize: 100, fields: "drives(id,name)" }).catch(() => ({ drives: [] }))
+  const list: any = await drive(token, "drives", { pageSize: 100, fields: "drives(id,name)" }).catch(() => ({
+    drives: [],
+  }))
   for (const d of list.drives ?? []) drives.push({ id: d.id, name: d.name })
   drives.push({ id: null, name: `My Drive + shared with ${as}` })
 }
@@ -127,7 +129,7 @@ let seen = 0
 const mine = []
 let pageToken
 do {
-  const page = await drive(token, "files", {
+  const page: any = await drive(token, "files", {
     q: q.join(" and "),
     ...(onlyDrive ? { corpora: "drive", driveId: onlyDrive } : { corpora: "allDrives" }),
     includeItemsFromAllDrives: true,
@@ -168,24 +170,23 @@ const KIND = mime => {
   if (mime === "application/pdf") return "pdf"
   return "other"
 }
-// The source ref, computed BEFORE the records that cite it — a deliverable carries it, and the
-// source record itself is written further down once the counts are known.
-const sourceId = `${who()}/drive--${slug(as)}`
-const sourceRef = `perspective/sources/${sourceId}`
-const kindOf = new Map(mine.map(f => [f.id, KIND(f.mimeType)]))
-const histogram = {}
-for (const f of mine) histogram[kindOf.get(f.id)] = (histogram[kindOf.get(f.id)] ?? 0) + 1
-const kept = onlyKinds ? mine.filter(f => onlyKinds.has(kindOf.get(f.id))) : mine
-const rows = limit ? kept.slice(0, limit) : kept
-
-// ── write ────────────────────────────────────────────────────────────────────────────────────────
 const slug = s =>
   String(s)
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "")
     .slice(0, 70) || "untitled"
+// The source ref, computed BEFORE the records that cite it — a deliverable carries it, and the
+// source record itself is written further down once the counts are known.
+const sourceId = `${who()}/drive--${slug(as)}`
+const sourceRef = `perspective/sources/${sourceId}`
+const kindOf = new Map(mine.map(f => [f.id, KIND(f.mimeType)]))
+const histogram: Record<string, number> = {}
+for (const f of mine) histogram[kindOf.get(f.id)] = (histogram[kindOf.get(f.id)] ?? 0) + 1
+const kept = onlyKinds ? mine.filter(f => onlyKinds.has(kindOf.get(f.id))) : mine
+const rows = limit ? kept.slice(0, limit) : kept
 
+// ── write ────────────────────────────────────────────────────────────────────────────────────────
 const weeks = new Map()
 let written = 0
 for (const f of rows) {

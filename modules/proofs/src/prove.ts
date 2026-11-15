@@ -81,7 +81,7 @@ function fromEntries(entries) {
     else if ((m = /^command-bindings\/(.+)\.command-binding\.yaml$/.exec(rt)))
       out.bindings.push(`command-bindings/${m[1]}`)
     else if ((m = /^modules\/(.+)\.module\.yaml$/.exec(rt))) {
-      let d = {}
+      let d: Record<string, any> = {}
       try {
         d = dt.loadYaml(e.bytes.toString("utf8")) ?? {}
       } catch {
@@ -101,7 +101,7 @@ function fromStore(store) {
     ["skills", out.skills, "skills/"],
     ["commands", out.commands, "commands/"],
     ["command-bindings", out.bindings, "command-bindings/"],
-  ]) {
+  ] as [string, string[], string][]) {
     if (!has(collection)) continue
     for (const { id } of store.readAll(collection)) sink.push(`${prefix}${id}`)
   }
@@ -580,7 +580,7 @@ function enumErrors(errors, field, prop, values) {
  * @param {{record?: {ref: string, fields: object}}} ctx
  * @param {{strict?: boolean}} [options]
  */
-export function substitute(text, ctx, options) {
+export function substitute(text, ctx, options?) {
   if (typeof text !== "string") return text
   if (options?.strict) {
     for (const [, dollar, token] of text.matchAll(BRACE_TOKEN)) {
@@ -1031,7 +1031,7 @@ export function flagEnabled(args, name) {
 }
 
 function parseProveArgs(rest) {
-  const flags = {}
+  const flags: Record<string, any> = {}
   const targets = []
   for (let i = 0; i < rest.length; i++) {
     const a = rest[i]
@@ -2027,7 +2027,7 @@ function listProofs(ws, store, proofs, target, flags) {
     if (!missing.length) console.log("(every artifact has a proof)")
     return { code: EXIT.PASS }
   }
-  let select = () => true
+  let select: (id: any, p?: any) => boolean = () => true
   if (target) {
     if (proofs.has(target)) select = id => id === target
     else if (artifactRefs(store).all.has(target)) select = (id, p) => (p.about ?? []).map(String).includes(target)

@@ -136,7 +136,7 @@ function attach(rows) {
     unmatched = 0
   for (const g of load("goals")) {
     const key = g.fields.from_candidate ? String(g.fields.from_candidate) : ""
-    const row = byKey.get(key)
+    const row: any = byKey.get(key)
     if (!row) {
       unmatched++
       continue

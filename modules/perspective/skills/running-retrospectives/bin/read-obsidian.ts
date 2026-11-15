@@ -190,7 +190,7 @@ for (const file of files) {
 }
 
 if (!dryRun) {
-  const counts = { files: files.length, notes: written + skipped, words, links }
+  const counts: Record<string, any> = { files: files.length, notes: written + skipped, words, links }
   if (first) counts.first = first
   if (last) counts.last = last
   writeSource(

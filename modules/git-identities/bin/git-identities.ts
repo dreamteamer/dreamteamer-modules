@@ -16,7 +16,7 @@ export function main(args = process.argv.slice(2)) {
   }
   try {
     const config = JSON.parse(fs.readFileSync(configFile, "utf8"))
-    const result = verb === "plan" ? renderPlan(config) : inspectRepository(repo, config)
+    const result: Record<string, any> = verb === "plan" ? renderPlan(config) : inspectRepository(repo, config)
     console.log(JSON.stringify(result, null, 2))
     return verb === "doctor" && result.state !== "configured" ? 1 : 0
   } catch {

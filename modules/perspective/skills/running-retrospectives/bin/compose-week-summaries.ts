@@ -171,7 +171,7 @@ const myHandles = contributorHandles(retrospective, dataRoot)
 // hole in the model, which is the reading that sends someone hunting for a bug.
 const period = (() => {
   try {
-    const f = readRecord(recordPath("retrospective-sessions", base, "retrospective-session", dataRoot)).fields
+    const f: any = readRecord(recordPath("retrospective-sessions", base, "retrospective-session", dataRoot)).fields
     return { from: day(f.period_start), to: day(f.period_end) }
   } catch {
     return { from: "", to: "" }
