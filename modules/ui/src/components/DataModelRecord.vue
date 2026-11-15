@@ -18,26 +18,28 @@
 	record.
 -->
 <script setup lang="ts">
-import { computed } from 'vue';
-import DataModelDetail from '../pages/DataModelDetail.vue';
+import { computed } from "vue"
+import DataModelDetail from "../pages/DataModelDetail.vue"
 
 const props = defineProps<{
-	/** The record being drawn — for `collections`, its id IS the collection name. */
-	record?: Record<string, unknown> | null;
-}>();
+  /** The record being drawn — for `collections`, its id IS the collection name. */
+  record?: Record<string, unknown> | null
+}>()
 
-const name = computed(() => String(props.record?.['name'] ?? props.record?.['id'] ?? '').trim());
+const name = computed(() => String(props.record?.["name"] ?? props.record?.["id"] ?? "").trim())
 </script>
 
 <template>
-	<DataModelDetail v-if="name" :collection="name" embedded />
-	<p v-else class="dt-dm-empty">no collection on this record — the designer draws records of <code>collections</code></p>
+  <DataModelDetail v-if="name" :collection="name" embedded />
+  <p v-else class="dt-dm-empty">
+    no collection on this record — the designer draws records of <code>collections</code>
+  </p>
 </template>
 
 <style scoped>
 .dt-dm-empty {
-	padding: 16px 0;
-	color: var(--dt-fg-subtle);
-	font-size: 12px;
+  padding: 16px 0;
+  color: var(--dt-fg-subtle);
+  font-size: 12px;
 }
 </style>

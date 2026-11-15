@@ -9,39 +9,43 @@
 	in its own sentence, on the record page's save — nothing here composes a refusal of its own.
 -->
 <script setup lang="ts">
-import { computed, ref } from 'vue';
-import CreateCollectionDialog from './CreateCollectionDialog.vue';
-import DtIcon from './DtIcon.vue';
-import { useModules } from '../composables/modules';
+import { computed, ref } from "vue"
+import CreateCollectionDialog from "./CreateCollectionDialog.vue"
+import DtIcon from "./DtIcon.vue"
+import { useModules } from "../composables/modules"
 
-const props = defineProps<{ moduleId: string }>();
+const props = defineProps<{ moduleId: string }>()
 
-const { modules } = useModules();
-const entry = computed(() => modules.value.find((m) => m.id === props.moduleId));
+const { modules } = useModules()
+const entry = computed(() => modules.value.find(m => m.id === props.moduleId))
 /** `node_modules` is the one location a write cannot survive. */
-const readOnly = computed(() => entry.value?.location === 'node_modules');
-const createOpen = ref(false);
+const readOnly = computed(() => entry.value?.location === "node_modules")
+const createOpen = ref(false)
 </script>
 
 <template>
-	<section v-if="entry" class="dt-module-collections">
-		<button
-			type="button"
-			class="dt-btn dt-btn--secondary dt-btn--sm"
-			:disabled="readOnly"
-			:title="readOnly ? 'This module lives under node_modules — a new collection would be erased by the next npm install' : `New collection in ${moduleId}`"
-			@click="createOpen = true"
-		>
-			<DtIcon name="add" /> New collection in this module…
-		</button>
+  <section v-if="entry" class="dt-module-collections">
+    <button
+      type="button"
+      class="dt-btn dt-btn--secondary dt-btn--sm"
+      :disabled="readOnly"
+      :title="
+        readOnly
+          ? 'This module lives under node_modules — a new collection would be erased by the next npm install'
+          : `New collection in ${moduleId}`
+      "
+      @click="createOpen = true"
+    >
+      <DtIcon name="add" /> New collection in this module…
+    </button>
 
-		<!-- The module TARGET is the whole point: the dialog posts `?module=<id>`. -->
-		<CreateCollectionDialog v-model:open="createOpen" :module="moduleId" />
-	</section>
+    <!-- The module TARGET is the whole point: the dialog posts `?module=<id>`. -->
+    <CreateCollectionDialog v-model:open="createOpen" :module="moduleId" />
+  </section>
 </template>
 
 <style scoped>
 .dt-module-collections {
-	margin-top: 20px;
+  margin-top: 20px;
 }
 </style>

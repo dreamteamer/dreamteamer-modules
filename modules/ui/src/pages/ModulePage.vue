@@ -8,18 +8,18 @@
 	moduleRoute): the page, or the Activity, is scoped to that layer's records.
 -->
 <script setup lang="ts">
-import { computed } from 'vue';
-import { modulePageView } from '../lib/page-view';
-import { uiViews } from '../ui-views';
-import ActivityPane from './ActivityPane.vue';
-import UiPageView from './UiPageView.vue';
+import { computed } from "vue"
+import { modulePageView } from "../lib/page-view"
+import { uiViews } from "../ui-views"
+import ActivityPane from "./ActivityPane.vue"
+import UiPageView from "./UiPageView.vue"
 
-const props = defineProps<{ module?: string; moduleTitle?: string; source?: string }>();
+const props = defineProps<{ module?: string; moduleTitle?: string; source?: string }>()
 
-const page = computed(() => (props.module ? modulePageView(uiViews.value, props.module) : undefined));
+const page = computed(() => (props.module ? modulePageView(uiViews.value, props.module) : undefined))
 </script>
 
 <template>
-	<UiPageView v-if="page" :key="`${page.id}:${source ?? ''}`" :view-id="page.id" :source="source" />
-	<ActivityPane v-else :module="module" :module-title="moduleTitle" :source="source" />
+  <UiPageView v-if="page" :key="`${page.id}:${source ?? ''}`" :view-id="page.id" :source="source" />
+  <ActivityPane v-else :module="module" :module-title="moduleTitle" :source="source" />
 </template>

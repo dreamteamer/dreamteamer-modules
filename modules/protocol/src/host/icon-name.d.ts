@@ -1,1 +1,1 @@
-export declare function codiconFor(name?: string | null): string;
+export declare function codiconFor(name?: string | null): string

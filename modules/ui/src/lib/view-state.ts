@@ -5,7 +5,7 @@
  * `lib/filter-query.ts`'s pure-logic-plus-thin-UI split: `composables/browse-state.ts` and
  * `composables/saved-views.ts` are the Vue-facing shells around this.
  */
-import { emptyFilterGroup, type FilterGroup } from './filter-query';
+import { emptyFilterGroup, type FilterGroup } from "./filter-query"
 
 /**
  * A registered list-layout id. Was the closed union `'table' | 'cards'`; widened to `string` for
@@ -14,36 +14,36 @@ import { emptyFilterGroup, type FilterGroup } from './filter-query';
  * is the authority on which ids actually resolve — an unregistered id degrades to the built-in
  * table there rather than being rejected here.
  */
-export type BrowseLayout = string;
+export type BrowseLayout = string
 
 export interface ViewState {
-	layout: BrowseLayout;
-	search: string;
-	filter: FilterGroup;
-	sort: string;
-	columns: string[];
-	/** Per-List declared-option values, keyed by list id (Task 5). Absent on pre-Task-5 saved
-	 *  views; `parseViewState`/`applyViewState` default it to `{}`. */
-	listOptions: Record<string, Record<string, unknown>>;
+  layout: BrowseLayout
+  search: string
+  filter: FilterGroup
+  sort: string
+  columns: string[]
+  /** Per-List declared-option values, keyed by list id (Task 5). Absent on pre-Task-5 saved
+   *  views; `parseViewState`/`applyViewState` default it to `{}`. */
+  listOptions: Record<string, Record<string, unknown>>
 }
 
 export function defaultViewState(columns: string[] = []): ViewState {
-	return { layout: 'table', search: '', filter: emptyFilterGroup(), sort: '', columns, listOptions: {} };
+  return { layout: "table", search: "", filter: emptyFilterGroup(), sort: "", columns, listOptions: {} }
 }
 
 function isValidLayout(value: unknown): value is BrowseLayout {
-	return typeof value === 'string' && value.length > 0;
+  return typeof value === "string" && value.length > 0
 }
 
 function isFilterGroup(value: unknown): value is FilterGroup {
-	if (value === null || typeof value !== 'object') return false;
-	const v = value as { logic?: unknown; rules?: unknown };
-	return (v.logic === '_and' || v.logic === '_or') && Array.isArray(v.rules);
+  if (value === null || typeof value !== "object") return false
+  const v = value as { logic?: unknown; rules?: unknown }
+  return (v.logic === "_and" || v.logic === "_or") && Array.isArray(v.rules)
 }
 
 /** JSON-serialize a `ViewState` for storage (the `.schema/presets` record's `state` field). */
 export function serializeViewState(state: ViewState): string {
-	return JSON.stringify(state);
+  return JSON.stringify(state)
 }
 
 /**
@@ -53,25 +53,27 @@ export function serializeViewState(state: ViewState): string {
  * error" posture (`lib/filter-query.ts#parseFilterGroup`'s same contract).
  */
 export function parseViewState(raw: string | null | undefined): ViewState | null {
-	if (!raw) return null;
+  if (!raw) return null
 
-	try {
-		const parsed: unknown = JSON.parse(raw);
-		if (parsed === null || typeof parsed !== 'object') return null;
+  try {
+    const parsed: unknown = JSON.parse(raw)
+    if (parsed === null || typeof parsed !== "object") return null
 
-		const obj = parsed as Record<string, unknown>;
-		const layout = isValidLayout(obj['layout']) ? obj['layout'] : 'table';
-		const search = typeof obj['search'] === 'string' ? obj['search'] : '';
-		const filter = isFilterGroup(obj['filter']) ? (obj['filter'] as FilterGroup) : emptyFilterGroup();
-		const sort = typeof obj['sort'] === 'string' ? obj['sort'] : '';
-		const columns = Array.isArray(obj['columns']) ? obj['columns'].filter((c): c is string => typeof c === 'string') : [];
-		const listOptions =
-			obj['listOptions'] !== null && typeof obj['listOptions'] === 'object'
-				? (obj['listOptions'] as Record<string, Record<string, unknown>>)
-				: {};
+    const obj = parsed as Record<string, unknown>
+    const layout = isValidLayout(obj["layout"]) ? obj["layout"] : "table"
+    const search = typeof obj["search"] === "string" ? obj["search"] : ""
+    const filter = isFilterGroup(obj["filter"]) ? (obj["filter"] as FilterGroup) : emptyFilterGroup()
+    const sort = typeof obj["sort"] === "string" ? obj["sort"] : ""
+    const columns = Array.isArray(obj["columns"])
+      ? obj["columns"].filter((c): c is string => typeof c === "string")
+      : []
+    const listOptions =
+      obj["listOptions"] !== null && typeof obj["listOptions"] === "object"
+        ? (obj["listOptions"] as Record<string, Record<string, unknown>>)
+        : {}
 
-		return { layout, search, filter, sort, columns, listOptions };
-	} catch {
-		return null;
-	}
+    return { layout, search, filter, sort, columns, listOptions }
+  } catch {
+    return null
+  }
 }

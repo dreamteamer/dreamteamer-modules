@@ -1,76 +1,81 @@
 // Record files: <id>.<suffix>.md with YAML frontmatter. Written directly (the engine's bulk-write
 // recipe) and proven by `dt check`; js-yaml is the engine's own dependency, resolved from node_modules.
-import fs from 'node:fs';
-import path from 'node:path';
-import yaml from 'js-yaml';
-import { spawnSync } from 'node:child_process';
-import { DATA } from './workspace.ts';
-import { readDescriptor, SHIPPED_COLLECTIONS, NAMESPACE } from './descriptors.ts';
+import fs from "node:fs"
+import path from "node:path"
+import yaml from "js-yaml"
+import { spawnSync } from "node:child_process"
+import { DATA } from "./workspace.ts"
+import { readDescriptor, SHIPPED_COLLECTIONS, NAMESPACE } from "./descriptors.ts"
 
-export const nowIso = () => new Date().toISOString();
+export const nowIso = () => new Date().toISOString()
 
 // ── where this module's collections keep their records ──────────────────────────────────────────
 // Every script reaches a `perspective/*` folder through these helpers and never joins a path by hand.
 // The descriptor is the authority, read through `lib/descriptors.mjs`: the workspace's compiled copy
 // first (an overlay may re-home a collection), then the one this package ships.
-const storageCache = new Map();
+const storageCache = new Map()
 
 /** The bare names of the collections this module ships, e.g. `decisions`, `activity-weeks`. */
 export function shippedCollections() {
-	const dir = path.join(SHIPPED_COLLECTIONS, NAMESPACE);
-	if (!fs.existsSync(dir)) return [];
-	return fs.readdirSync(dir).filter((f) => f.endsWith('.collection.yaml')).map((f) => f.slice(0, -'.collection.yaml'.length)).sort();
+  const dir = path.join(SHIPPED_COLLECTIONS, NAMESPACE)
+  if (!fs.existsSync(dir)) return []
+  return fs
+    .readdirSync(dir)
+    .filter(f => f.endsWith(".collection.yaml"))
+    .map(f => f.slice(0, -".collection.yaml".length))
+    .sort()
 }
 
 /** `{ dir, suffix }` for `perspective/<bare>` under `dataRoot`. Throws for a name no descriptor carries. */
 export function collectionStorage(bare, dataRoot = DATA) {
-	const key = `${dataRoot}\0${bare}`;
-	if (storageCache.has(key)) return storageCache.get(key);
-	const workspaceRoot = path.dirname(dataRoot);
-	const storage = readDescriptor(workspaceRoot, `${NAMESPACE}/${bare}`)?.storage;
-	if (!storage) throw new Error(`${NAMESPACE}/${bare} is not a collection this module ships`);
-	const rel = storage.path;
-	const dir = rel.startsWith('data/') ? path.join(dataRoot, rel.slice('data/'.length)) : path.join(workspaceRoot, rel);
-	const out = { dir, suffix: storage.suffix };
-	storageCache.set(key, out);
-	return out;
+  const key = `${dataRoot}\0${bare}`
+  if (storageCache.has(key)) return storageCache.get(key)
+  const workspaceRoot = path.dirname(dataRoot)
+  const storage = readDescriptor(workspaceRoot, `${NAMESPACE}/${bare}`)?.storage
+  if (!storage) throw new Error(`${NAMESPACE}/${bare} is not a collection this module ships`)
+  const rel = storage.path
+  const dir = rel.startsWith("data/") ? path.join(dataRoot, rel.slice("data/".length)) : path.join(workspaceRoot, rel)
+  const out = { dir, suffix: storage.suffix }
+  storageCache.set(key, out)
+  return out
 }
 
 /** The folder `perspective/<bare>` keeps its records in. */
 export function collectionDir(bare, dataRoot = DATA) {
-	return collectionStorage(bare, dataRoot).dir;
+  return collectionStorage(bare, dataRoot).dir
 }
 
 /** The file of record `<id>` in `perspective/<bare>`. `suffix` must match the descriptor's. */
 export function recordPath(bare, id, suffix, dataRoot = DATA) {
-	const storage = collectionStorage(bare, dataRoot);
-	if (suffix !== undefined && suffix !== storage.suffix) throw new Error(`${NAMESPACE}/${bare} records carry .${storage.suffix}.md, not .${suffix}.md`);
-	return path.join(storage.dir, `${id}.${storage.suffix}.md`);
+  const storage = collectionStorage(bare, dataRoot)
+  if (suffix !== undefined && suffix !== storage.suffix)
+    throw new Error(`${NAMESPACE}/${bare} records carry .${storage.suffix}.md, not .${suffix}.md`)
+  return path.join(storage.dir, `${id}.${storage.suffix}.md`)
 }
 
 /** The id of a record file in `perspective/<bare>` — its path inside the collection folder, suffix dropped. */
 export function recordId(bare, file, dataRoot = DATA) {
-	const storage = collectionStorage(bare, dataRoot);
-	return path.relative(storage.dir, file).slice(0, -`.${storage.suffix}.md`.length);
+  const storage = collectionStorage(bare, dataRoot)
+  return path.relative(storage.dir, file).slice(0, -`.${storage.suffix}.md`.length)
 }
 
 /** Frontmatter keys are written in the order given; undefined/null/'' values are dropped. */
-export function writeRecord(file, fields, body = '') {
-	const clean = {};
-	for (const [k, v] of Object.entries(fields)) {
-		if (v === undefined || v === null || v === '') continue;
-		if (Array.isArray(v) && v.length === 0) continue;
-		clean[k] = v;
-	}
-	// DUMPED WITH THE DEFAULT SCHEMA, deliberately, even though we LOAD with the core one. Under
-	// the core schema a date-looking string needs no quotes, so dumping there would write
-	// `first_seen: 2025-10-15` bare — and the next reader using a default schema (the engine's own
-	// `check`, the extension) resolves that to a Date again. The default dumper quotes it, which is
-	// the style already on disk and the only spelling that means "string" to everyone.
-	const fm = yaml.dump(clean, { lineWidth: 120, noRefs: true, quotingType: '"' });
-	fs.mkdirSync(path.dirname(file), { recursive: true });
-	fs.writeFileSync(file, `---\n${fm}---\n${body ? '\n' + body.replace(/\s+$/, '') + '\n' : ''}`);
-	return file;
+export function writeRecord(file, fields, body = "") {
+  const clean = {}
+  for (const [k, v] of Object.entries(fields)) {
+    if (v === undefined || v === null || v === "") continue
+    if (Array.isArray(v) && v.length === 0) continue
+    clean[k] = v
+  }
+  // DUMPED WITH THE DEFAULT SCHEMA, deliberately, even though we LOAD with the core one. Under
+  // the core schema a date-looking string needs no quotes, so dumping there would write
+  // `first_seen: 2025-10-15` bare — and the next reader using a default schema (the engine's own
+  // `check`, the extension) resolves that to a Date again. The default dumper quotes it, which is
+  // the style already on disk and the only spelling that means "string" to everyone.
+  const fm = yaml.dump(clean, { lineWidth: 120, noRefs: true, quotingType: '"' })
+  fs.mkdirSync(path.dirname(file), { recursive: true })
+  fs.writeFileSync(file, `---\n${fm}---\n${body ? "\n" + body.replace(/\s+$/, "") + "\n" : ""}`)
+  return file
 }
 
 /**
@@ -86,24 +91,24 @@ export function writeRecord(file, fields, body = '') {
  * The WRITE keeps the default schema — see writeRecord: under the core schema a date-looking
  * string needs no quotes, and a bare `2025-10-15` is a Date again to the next reader.
  */
-const SCHEMA = yaml.CORE_SCHEMA;
+const SCHEMA = yaml.CORE_SCHEMA
 
 export function readRecord(file) {
-	const text = fs.readFileSync(file, 'utf8');
-	if (!text.startsWith('---\n')) return { fields: {}, body: text };
-	const end = text.indexOf('\n---', 4);
-	if (end === -1) return { fields: {}, body: text };
-	const fields = yaml.load(text.slice(4, end), { schema: SCHEMA }) ?? {};
-	const body = text.slice(end + 4).replace(/^\n+/, '');
-	return { fields, body };
+  const text = fs.readFileSync(file, "utf8")
+  if (!text.startsWith("---\n")) return { fields: {}, body: text }
+  const end = text.indexOf("\n---", 4)
+  if (end === -1) return { fields: {}, body: text }
+  const fields = yaml.load(text.slice(4, end), { schema: SCHEMA }) ?? {}
+  const body = text.slice(end + 4).replace(/^\n+/, "")
+  return { fields, body }
 }
 
 export function listRecords(dir) {
-	if (!fs.existsSync(dir)) return [];
-	return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
-		const p = path.join(dir, e.name);
-		return e.isDirectory() ? listRecords(p) : e.name.endsWith('.md') ? [p] : [];
-	});
+  if (!fs.existsSync(dir)) return []
+  return fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => {
+    const p = path.join(dir, e.name)
+    return e.isDirectory() ? listRecords(p) : e.name.endsWith(".md") ? [p] : []
+  })
 }
 
 /**
@@ -118,18 +123,22 @@ export function listRecords(dir) {
  * This function is the ONE place it becomes a list, and it APPENDS rather than replacing: a writer
  * that overwrote the list would make every earlier run invisible.
  */
-export function writeSource(file, fields, body = '') {
-	// `last_seen_in` is destructured out and DROPPED: it is not a field on `sources` any more, and a
-	// caller spreading a record read off disk would otherwise carry the retired key back into the
-	// file, where `check` reports it as an unknown field on a record nobody edited.
-	const { retrospective, retrospectives, last_seen_in: _retired, ...rest } = fields;
-	let prior = retrospectives;
-	if (prior === undefined) {
-		try { prior = readRecord(file).fields.retrospectives; } catch { /* first write */ }
-	}
-	const list = Array.isArray(prior) ? [...prior] : prior ? [String(prior)] : [];
-	if (retrospective && !list.includes(retrospective)) list.push(retrospective);
-	return writeRecord(file, { retrospectives: list, ...rest }, body);
+export function writeSource(file, fields, body = "") {
+  // `last_seen_in` is destructured out and DROPPED: it is not a field on `sources` any more, and a
+  // caller spreading a record read off disk would otherwise carry the retired key back into the
+  // file, where `check` reports it as an unknown field on a record nobody edited.
+  const { retrospective, retrospectives, last_seen_in: _retired, ...rest } = fields
+  let prior = retrospectives
+  if (prior === undefined) {
+    try {
+      prior = readRecord(file).fields.retrospectives
+    } catch {
+      /* first write */
+    }
+  }
+  const list = Array.isArray(prior) ? [...prior] : prior ? [String(prior)] : []
+  if (retrospective && !list.includes(retrospective)) list.push(retrospective)
+  return writeRecord(file, { retrospectives: list, ...rest }, body)
 }
 
 /**
@@ -144,14 +153,19 @@ export function writeSource(file, fields, body = '') {
  * `undefined/`, and a scatter is far more expensive to undo than a refusal.
  */
 export function contributorOf(retrospectiveRef, dataRoot = DATA) {
-	const base = String(retrospectiveRef).split('/').pop();
-	const file = recordPath('retrospective-sessions', base, 'retrospective-session', dataRoot);
-	let fields;
-	try { fields = readRecord(file).fields; }
-	catch { throw new Error(`no retrospective session at ${file} — every evidence and model id is keyed by its contributor, which lives on that record`); }
-	const c = String(fields.contributor ?? '').trim();
-	if (!c) throw new Error(`${file} carries no contributor, and every id this run writes begins with it`);
-	return c;
+  const base = String(retrospectiveRef).split("/").pop()
+  const file = recordPath("retrospective-sessions", base, "retrospective-session", dataRoot)
+  let fields
+  try {
+    fields = readRecord(file).fields
+  } catch {
+    throw new Error(
+      `no retrospective session at ${file} — every evidence and model id is keyed by its contributor, which lives on that record`
+    )
+  }
+  const c = String(fields.contributor ?? "").trim()
+  if (!c) throw new Error(`${file} carries no contributor, and every id this run writes begins with it`)
+  return c
 }
 
 /**
@@ -167,15 +181,15 @@ export function contributorOf(retrospectiveRef, dataRoot = DATA) {
  * against, and shelling `dt` there would reach the real workspace.
  */
 export function rebuildRelations(collections, dataRoot = DATA) {
-	const root = path.dirname(dataRoot);
-	if (!fs.existsSync(path.join(root, '.dreamteamer'))) return { skipped: true, collections: [] };
-	const done = [];
-	for (const c of [].concat(collections)) {
-		const r = spawnSync('npx', ['dreamteamer', 'relations', 'rebuild', c], { cwd: root, encoding: 'utf8' });
-		if (r.status === 0) done.push(c);
-		else process.stderr.write(`  ⚠ could not rebuild ${c}: ${(r.stderr || r.stdout || '').trim().split('\n')[0]}\n`);
-	}
-	return { skipped: false, collections: done };
+  const root = path.dirname(dataRoot)
+  if (!fs.existsSync(path.join(root, ".dreamteamer"))) return { skipped: true, collections: [] }
+  const done = []
+  for (const c of [].concat(collections)) {
+    const r = spawnSync("npx", ["dreamteamer", "relations", "rebuild", c], { cwd: root, encoding: "utf8" })
+    if (r.status === 0) done.push(c)
+    else process.stderr.write(`  ⚠ could not rebuild ${c}: ${(r.stderr || r.stdout || "").trim().split("\n")[0]}\n`)
+  }
+  return { skipped: false, collections: done }
 }
 
 // ── a PEER collection's records, wherever its descriptor puts them ────────────────────────────────
@@ -187,53 +201,58 @@ export function rebuildRelations(collections, dataRoot = DATA) {
 /** The compiled storage block of a collection, with the parent's folder resolved when it is stored
  *  under one — or the shipped defaults for a fixture with no compiled runtime beside it. */
 export function compiledStorage(workspaceRoot, collection, fallbackPath, fallbackSuffix) {
-	const read = (name) => {
-		const d = readDescriptor(workspaceRoot, name);
-		return d?.compiled ? d.storage : null;
-	};
-	const own = read(collection);
-	const dir = path.join(workspaceRoot, String(own?.path || fallbackPath));
-	const suffix = String(own?.suffix || fallbackSuffix);
-	const under = own?.under ?? null;
-	const parent = under ? read(under.collection) : null;
-	return {
-		dir, suffix, compiled: Boolean(own?.path),
-		under: under && parent?.path ? { ...under, parentDir: path.join(workspaceRoot, String(parent.path)) } : null,
-	};
+  const read = name => {
+    const d = readDescriptor(workspaceRoot, name)
+    return d?.compiled ? d.storage : null
+  }
+  const own = read(collection)
+  const dir = path.join(workspaceRoot, String(own?.path || fallbackPath))
+  const suffix = String(own?.suffix || fallbackSuffix)
+  const under = own?.under ?? null
+  const parent = under ? read(under.collection) : null
+  return {
+    dir,
+    suffix,
+    compiled: Boolean(own?.path),
+    under: under && parent?.path ? { ...under, parentDir: path.join(workspaceRoot, String(parent.path)) } : null,
+  }
 }
 
 /** Every record file of a collection as `{ file, root, id }` — its own root, then each parent record's
  *  child folder. The id is the path inside WHICHEVER root the file sits in, which is what makes it
  *  independent of placement. */
 export function recordFilesOf(storage) {
-	const tail = `.${storage.suffix}.md`;
-	const roots = [storage.dir];
-	if (storage.under && fs.existsSync(storage.under.parentDir)) {
-		for (const e of fs.readdirSync(storage.under.parentDir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
-			if (e.isDirectory() && !e.name.startsWith('.')) roots.push(path.join(storage.under.parentDir, e.name, storage.under.path));
-		}
-	}
-	const out = [];
-	for (const root of roots) {
-		for (const file of listRecords(root)) {
-			if (!file.endsWith(tail)) continue;
-			out.push({ file, root, id: path.relative(root, file).slice(0, -tail.length) });
-		}
-	}
-	return out;
+  const tail = `.${storage.suffix}.md`
+  const roots = [storage.dir]
+  if (storage.under && fs.existsSync(storage.under.parentDir)) {
+    for (const e of fs
+      .readdirSync(storage.under.parentDir, { withFileTypes: true })
+      .sort((a, b) => a.name.localeCompare(b.name))) {
+      if (e.isDirectory() && !e.name.startsWith("."))
+        roots.push(path.join(storage.under.parentDir, e.name, storage.under.path))
+    }
+  }
+  const out = []
+  for (const root of roots) {
+    for (const file of listRecords(root)) {
+      if (!file.endsWith(tail)) continue
+      out.push({ file, root, id: path.relative(root, file).slice(0, -tail.length) })
+    }
+  }
+  return out
 }
 
 /** The file one record id names, or null — a direct probe of the own root and of every parent's child
  *  folder, never a walk. */
 export function recordFileFor(storage, id) {
-	const name = `${id}.${storage.suffix}.md`;
-	const own = path.join(storage.dir, name);
-	if (fs.existsSync(own)) return own;
-	if (!storage.under || !fs.existsSync(storage.under.parentDir)) return null;
-	for (const e of fs.readdirSync(storage.under.parentDir, { withFileTypes: true })) {
-		if (!e.isDirectory() || e.name.startsWith('.')) continue;
-		const f = path.join(storage.under.parentDir, e.name, storage.under.path, name);
-		if (fs.existsSync(f)) return f;
-	}
-	return null;
+  const name = `${id}.${storage.suffix}.md`
+  const own = path.join(storage.dir, name)
+  if (fs.existsSync(own)) return own
+  if (!storage.under || !fs.existsSync(storage.under.parentDir)) return null
+  for (const e of fs.readdirSync(storage.under.parentDir, { withFileTypes: true })) {
+    if (!e.isDirectory() || e.name.startsWith(".")) continue
+    const f = path.join(storage.under.parentDir, e.name, storage.under.path, name)
+    if (fs.existsSync(f)) return f
+  }
+  return null
 }

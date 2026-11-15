@@ -12,118 +12,118 @@
 	test that calls the handlers directly.
 -->
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue';
-import type { BrowseState } from '../../composables/browse-state';
-import { ROW_SIZES, ROW_SIZE_LABELS, resolveRowSize, type RowSize } from '../../lib/row-size';
-import DtIcon from '../DtIcon.vue';
+import { computed, onMounted, onUnmounted, ref } from "vue"
+import type { BrowseState } from "../../composables/browse-state"
+import { ROW_SIZES, ROW_SIZE_LABELS, resolveRowSize, type RowSize } from "../../lib/row-size"
+import DtIcon from "../DtIcon.vue"
 
-const props = defineProps<{ state: BrowseState }>();
+const props = defineProps<{ state: BrowseState }>()
 
-const LAYOUT = 'table';
+const LAYOUT = "table"
 
-const current = computed(() => resolveRowSize(props.state.listOptions.value[LAYOUT]));
-const open = ref(false);
-const anchorEl = ref<HTMLElement | null>(null);
+const current = computed(() => resolveRowSize(props.state.listOptions.value[LAYOUT]))
+const open = ref(false)
+const anchorEl = ref<HTMLElement | null>(null)
 
 function pick(size: RowSize): void {
-	// Merged over the rest of the table's options, never replacing them — a density pick must not
-	// drop the grouping or the page size the same slice holds.
-	props.state.setListOptions(LAYOUT, { ...(props.state.listOptions.value[LAYOUT] ?? {}), row_size: size });
-	open.value = false;
+  // Merged over the rest of the table's options, never replacing them — a density pick must not
+  // drop the grouping or the page size the same slice holds.
+  props.state.setListOptions(LAYOUT, { ...(props.state.listOptions.value[LAYOUT] ?? {}), row_size: size })
+  open.value = false
 }
 
 function onDocumentMousedown(event: MouseEvent): void {
-	if (!open.value) return;
-	const target = event.target as Node | null;
-	if (target && anchorEl.value?.contains(target)) return;
-	open.value = false;
+  if (!open.value) return
+  const target = event.target as Node | null
+  if (target && anchorEl.value?.contains(target)) return
+  open.value = false
 }
 
 function onDocumentKeydown(event: KeyboardEvent): void {
-	if (event.key === 'Escape' && open.value) open.value = false;
+  if (event.key === "Escape" && open.value) open.value = false
 }
 
 onMounted(() => {
-	document.addEventListener('mousedown', onDocumentMousedown);
-	document.addEventListener('keydown', onDocumentKeydown);
-});
+  document.addEventListener("mousedown", onDocumentMousedown)
+  document.addEventListener("keydown", onDocumentKeydown)
+})
 
 onUnmounted(() => {
-	document.removeEventListener('mousedown', onDocumentMousedown);
-	document.removeEventListener('keydown', onDocumentKeydown);
-});
+  document.removeEventListener("mousedown", onDocumentMousedown)
+  document.removeEventListener("keydown", onDocumentKeydown)
+})
 </script>
 
 <template>
-	<div ref="anchorEl" class="dt-density">
-		<button
-			type="button"
-			class="dt-btn dt-btn--secondary dt-btn--icon dt-density__trigger"
-			:class="{ 'is-active': open }"
-			:title="`Row density — ${ROW_SIZE_LABELS[current]}`"
-			aria-haspopup="menu"
-			:aria-expanded="open"
-			@click="open = !open"
-		>
-			<DtIcon name="list-flat" />
-		</button>
+  <div ref="anchorEl" class="dt-density">
+    <button
+      type="button"
+      class="dt-btn dt-btn--secondary dt-btn--icon dt-density__trigger"
+      :class="{ 'is-active': open }"
+      :title="`Row density — ${ROW_SIZE_LABELS[current]}`"
+      aria-haspopup="menu"
+      :aria-expanded="open"
+      @click="open = !open"
+    >
+      <DtIcon name="list-flat" />
+    </button>
 
-		<div v-if="open" class="dt-menu dt-density__menu" role="menu" aria-label="Row density">
-			<button
-				v-for="size in ROW_SIZES"
-				:key="size"
-				type="button"
-				class="dt-menu-item dt-density__item"
-				role="menuitemradio"
-				:aria-checked="size === current"
-				:data-size="size"
-				@click="pick(size)"
-			>
-				<span class="dt-menu-item__check">
-					<DtIcon v-if="size === current" name="check" />
-				</span>
-				{{ ROW_SIZE_LABELS[size] }}
-			</button>
-		</div>
-	</div>
+    <div v-if="open" class="dt-menu dt-density__menu" role="menu" aria-label="Row density">
+      <button
+        v-for="size in ROW_SIZES"
+        :key="size"
+        type="button"
+        class="dt-menu-item dt-density__item"
+        role="menuitemradio"
+        :aria-checked="size === current"
+        :data-size="size"
+        @click="pick(size)"
+      >
+        <span class="dt-menu-item__check">
+          <DtIcon v-if="size === current" name="check" />
+        </span>
+        {{ ROW_SIZE_LABELS[size] }}
+      </button>
+    </div>
+  </div>
 </template>
 
 <style scoped>
 .dt-density {
-	position: relative;
-	display: flex;
+  position: relative;
+  display: flex;
 }
 
 .dt-density__trigger.is-active {
-	background: var(--dt-accent-subtle);
-	color: var(--dt-accent);
+  background: var(--dt-accent-subtle);
+  color: var(--dt-accent);
 }
 
 /* Anchored under the trigger, right-aligned to it, over the rows — the filter panel's placement.
    `.dt-menu` (base.css) supplies the chrome; this only positions. */
 .dt-density__menu {
-	position: absolute;
-	top: calc(100% + 6px);
-	right: 0;
-	min-width: 160px;
-	display: flex;
-	flex-direction: column;
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 160px;
+  display: flex;
+  flex-direction: column;
 }
 
 /* `.dt-menu-item` is written for reka-ui's items (`data-highlighted`); a real <button> needs the
    reset and its own hover. */
 .dt-density__item {
-	width: 100%;
-	border: none;
-	background: none;
-	font-family: inherit;
-	text-align: left;
+  width: 100%;
+  border: none;
+  background: none;
+  font-family: inherit;
+  text-align: left;
 }
 .dt-density__item:hover,
 .dt-density__item:focus-visible {
-	background: var(--dt-bg-subtle);
+  background: var(--dt-bg-subtle);
 }
-.dt-density__item[aria-checked='true'] {
-	color: var(--dt-fg);
+.dt-density__item[aria-checked="true"] {
+  color: var(--dt-fg);
 }
 </style>

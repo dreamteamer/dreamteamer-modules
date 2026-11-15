@@ -3,20 +3,36 @@
 // may still send a reader to `dt-setup` or to the package. What may still name it: UPDATING.md entries
 // (history — what a release changed), tests asserting it is absent, and the preview's legacy hook marker,
 // which recognises a hook an older install wrote.
-import { test } from 'node:test';
-import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
-import { ROOT } from './helpers/workspace.ts';
+import { test } from "node:test"
+import assert from "node:assert/strict"
+import { execFileSync } from "node:child_process"
+import { ROOT } from "./helpers/workspace.ts"
 
-const ALLOWED = [/(^|\/)UPDATING\.md$/, /(^|\/)tests?\//, /^scripts\/preview\/link\.mjs$/];
+const ALLOWED = [/(^|\/)UPDATING\.md$/, /(^|\/)tests?\//, /^scripts\/preview\/link\.mjs$/]
 
-test('no file outside UPDATING history and the tests of its absence names dt-setup or @dreamteamer/setup', () => {
-	const files = execFileSync('git', ['ls-files'], { cwd: ROOT, encoding: 'utf8' }).split('\n').filter(Boolean);
-	assert.ok(files.length > 100, 'git ls-files listed the repo');
-	let hits = [];
-	try {
-		hits = execFileSync('git', ['grep', '-n', '-E', 'dt-setup|@dreamteamer/setup([^-A-Za-z0-9_]|$)|modules/setup/', '--', '.', ':!package-lock.json'], { cwd: ROOT, encoding: 'utf8' }).split('\n').filter(Boolean);
-	} catch (e) { if (e.status !== 1) throw e; }
-	const stray = hits.filter((h) => !ALLOWED.some((re) => re.test(h.split(':')[0])));
-	assert.deepEqual(stray, []);
-});
+test("no file outside UPDATING history and the tests of its absence names dt-setup or @dreamteamer/setup", () => {
+  const files = execFileSync("git", ["ls-files"], { cwd: ROOT, encoding: "utf8" }).split("\n").filter(Boolean)
+  assert.ok(files.length > 100, "git ls-files listed the repo")
+  let hits = []
+  try {
+    hits = execFileSync(
+      "git",
+      [
+        "grep",
+        "-n",
+        "-E",
+        "dt-setup|@dreamteamer/setup([^-A-Za-z0-9_]|$)|modules/setup/",
+        "--",
+        ".",
+        ":!package-lock.json",
+      ],
+      { cwd: ROOT, encoding: "utf8" }
+    )
+      .split("\n")
+      .filter(Boolean)
+  } catch (e) {
+    if (e.status !== 1) throw e
+  }
+  const stray = hits.filter(h => !ALLOWED.some(re => re.test(h.split(":")[0])))
+  assert.deepEqual(stray, [])
+})

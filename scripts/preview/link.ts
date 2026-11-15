@@ -26,73 +26,85 @@
 // until someone else pulls. So `link` installs a pre-commit hook that REFUSES a commit touching the
 // record tree or the regenerated harness files while the link is on. `dt commit` goes through git,
 // so it is covered too. Bypass is git's own `--no-verify`, and that is a stop-and-ask.
-import fs from 'node:fs';
-import path from 'node:path';
+import fs from "node:fs"
+import path from "node:path"
 
-export const LINK_DIR = 'git_modules';
-export const LINK_NAME = 'dreamteamer-modules';
-export const linkPath = (root) => path.join(root, LINK_DIR, LINK_NAME);
+export const LINK_DIR = "git_modules"
+export const LINK_NAME = "dreamteamer-modules"
+export const linkPath = root => path.join(root, LINK_DIR, LINK_NAME)
 
 /** What is at git_modules/dreamteamer-modules: 'off' | 'link' (ours, safe to remove) | 'real' (a genuine
  *  clone or checkout someone put there — reported, never touched). */
 export function linkState(root) {
-	const p = linkPath(root);
-	let st;
-	try { st = fs.lstatSync(p); } catch { return 'off'; }
-	return st.isSymbolicLink() ? 'link' : 'real';
+  const p = linkPath(root)
+  let st
+  try {
+    st = fs.lstatSync(p)
+  } catch {
+    return "off"
+  }
+  return st.isSymbolicLink() ? "link" : "real"
 }
 
 /** Where the link points, or null. Not resolved through the target — the raw link is what a reader
  *  needs to see, so a stale link reads as a stale path rather than as an error. */
 export function linkTarget(root) {
-	try { return fs.readlinkSync(linkPath(root)); } catch { return null; }
+  try {
+    return fs.readlinkSync(linkPath(root))
+  } catch {
+    return null
+  }
 }
 
 /** Is `dir` a clone of dreamteamer-modules — a bundle root with a `modules/` folder and our name? */
 export function looksLikeClone(dir) {
-	try {
-		const pkg = JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8'));
-		if (!('dreamteamer' in pkg)) return 'no "dreamteamer" section in its package.json — not a dreamteamer package';
-		if (!fs.existsSync(path.join(dir, 'modules'))) return 'no modules/ folder — a bundle root is what gets unpacked';
-		return null;
-	} catch { return 'no readable package.json there'; }
+  try {
+    const pkg = JSON.parse(fs.readFileSync(path.join(dir, "package.json"), "utf8"))
+    if (!("dreamteamer" in pkg)) return 'no "dreamteamer" section in its package.json — not a dreamteamer package'
+    if (!fs.existsSync(path.join(dir, "modules"))) return "no modules/ folder — a bundle root is what gets unpacked"
+    return null
+  } catch {
+    return "no readable package.json there"
+  }
 }
 
 // ---- the guard ------------------------------------------------------------------------------
 // What a commit may NOT carry while the link is on. Records are the obvious half; the harness
 // blocks are the half that surprises people, because `compile` rewrites them from the linked
 // schema without anyone asking and `git status` then shows three modified files nobody edited.
-export const HARNESS_FILES = ['CLAUDE.md', 'AGENTS.md', 'GEMINI.md'];
+export const HARNESS_FILES = ["CLAUDE.md", "AGENTS.md", "GEMINI.md"]
 
 /** Which of `staged` this guard refuses, given the workspace's data path. Pure, so the rule is
  *  testable without a repo: paths are workspace-relative, forward-slashed, as `git diff` prints. */
-export function refusedPaths(staged, dataPath = 'data') {
-	const d = `${String(dataPath).replace(/\/+$/, '')}/`;
-	return staged.filter((p) => p === dataPath || p.startsWith(d) || HARNESS_FILES.includes(p));
+export function refusedPaths(staged, dataPath = "data") {
+  const d = `${String(dataPath).replace(/\/+$/, "")}/`
+  return staged.filter(p => p === dataPath || p.startsWith(d) || HARNESS_FILES.includes(p))
 }
 
 /** The whole verdict: null when the commit may proceed, else the message to print and exit 1 on. */
-export function guardVerdict({ state, staged, dataPath = 'data' }) {
-	if (state === 'off') return null;
-	const refused = refusedPaths(staged, dataPath);
-	if (!refused.length) return null;
-	return [
-		`✖ ${LINK_DIR}/${LINK_NAME} is linked to a local clone — this commit may not carry schema-shaped files.`,
-		'',
-		...refused.slice(0, 10).map((p) => `    ${p}`),
-		refused.length > 10 ? `    … and ${refused.length - 10} more` : '',
-		'',
-		'  The package ships first, then the records that need it. These were written or regenerated',
-		'  against an UNRELEASED schema, so any other clone of this workspace would fail to compile them.',
-		'',
-		`  fix: node git_modules/dreamteamer-modules/scripts/preview.mjs unlink   (then recompile, re-check, and commit)`,
-	].filter((l) => l !== '').join('\n');
+export function guardVerdict({ state, staged, dataPath = "data" }) {
+  if (state === "off") return null
+  const refused = refusedPaths(staged, dataPath)
+  if (!refused.length) return null
+  return [
+    `✖ ${LINK_DIR}/${LINK_NAME} is linked to a local clone — this commit may not carry schema-shaped files.`,
+    "",
+    ...refused.slice(0, 10).map(p => `    ${p}`),
+    refused.length > 10 ? `    … and ${refused.length - 10} more` : "",
+    "",
+    "  The package ships first, then the records that need it. These were written or regenerated",
+    "  against an UNRELEASED schema, so any other clone of this workspace would fail to compile them.",
+    "",
+    `  fix: node git_modules/dreamteamer-modules/scripts/preview.mjs unlink   (then recompile, re-check, and commit)`,
+  ]
+    .filter(l => l !== "")
+    .join("\n")
 }
 
 // The line that marks a pre-commit hook as ours, so `link` may rewrite it.
-export const HOOK_MARKER = '# installed by `scripts/preview.mjs link`';
+export const HOOK_MARKER = "# installed by `scripts/preview.mjs link`"
 /** The marker the hook carried while this lived in @dreamteamer/setup — still ours, so `link` rewrites it. */
-export const OLD_HOOK_MARKERS = ['# installed by `npx dt-setup link`'];
+export const OLD_HOOK_MARKERS = ["# installed by `npx dt-setup link`"]
 
 // The hook runs the linked clone's own guard, or refuses the commit. It never calls npx, so a commit can
 // never fetch and run a package from the registry.
@@ -103,4 +115,4 @@ L="${LINK_DIR}/${LINK_NAME}"
 [ -f "$L/scripts/preview.mjs" ] && exec node "$L/scripts/preview.mjs" guard
 echo "linked bundle has no guard — unlink or update it" >&2
 exit 1
-`;
+`

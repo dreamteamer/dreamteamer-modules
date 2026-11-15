@@ -9,20 +9,20 @@
  * still narrowed. It ends when a navigation lands on a kind's list (or the tab's root) without it —
  * the banner's ✕, or the gear opening the whole schema.
  */
-export const MODULE_FIELD = '$module';
+export const MODULE_FIELD = "$module"
 
 export function moduleScopeFilter(id: string): Record<string, unknown> {
-	return { [MODULE_FIELD]: { _eq: id } };
+  return { [MODULE_FIELD]: { _eq: id } }
 }
 
 /** A Schema-tab path carrying the scope, when there is one. */
 export function withModuleScope(path: string, id: string | undefined): string {
-	return id ? `${path}?module=${encodeURIComponent(id)}` : path;
+  return id ? `${path}?module=${encodeURIComponent(id)}` : path
 }
 
 /** The scope after a navigation: the route's `?module=` when it names one; kept on a record page; ended on a list or the root. */
 export function nextModuleScope(current: string | undefined, query: unknown, onRecord: boolean): string | undefined {
-	const named = Array.isArray(query) ? query[0] : query;
-	if (typeof named === 'string' && named) return named;
-	return onRecord ? current : undefined;
+  const named = Array.isArray(query) ? query[0] : query
+  if (typeof named === "string" && named) return named
+  return onRecord ? current : undefined
 }

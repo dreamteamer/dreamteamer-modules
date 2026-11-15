@@ -16,15 +16,15 @@
 
 /** What this module reads off a collection row: the contract's own `runtime` answer. */
 export interface RevertSource {
-	runtime?: boolean;
+  runtime?: boolean
 }
 
 export function revertRefused(row: RevertSource | null | undefined): boolean {
-	return row?.runtime === true;
+  return row?.runtime === true
 }
 
 /** Why Restore is unavailable, for a `title`. Empty when it IS available. */
 export function revertRefusedSentence(collection: string, row: RevertSource | null | undefined): string {
-	if (!revertRefused(row)) return '';
-	return `${collection} is compiled — a version of its SOURCE is what git holds, so there is no record revision to restore. Use git on the file under its module.`;
+  if (!revertRefused(row)) return ""
+  return `${collection} is compiled — a version of its SOURCE is what git holds, so there is no record revision to restore. Use git on the file under its module.`
 }

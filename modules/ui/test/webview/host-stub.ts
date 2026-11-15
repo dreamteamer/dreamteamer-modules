@@ -10,50 +10,50 @@
  */
 
 export class HostError extends Error {
-	status: number;
-	constructor(message: string, status: number) {
-		super(message);
-		this.name = 'HostError';
-		this.status = status;
-	}
+  status: number
+  constructor(message: string, status: number) {
+    super(message)
+    this.name = "HostError"
+    this.status = status
+  }
 }
 
-export type Responder = (method: string, path: string, body?: unknown) => unknown | Promise<unknown>;
+export type Responder = (method: string, path: string, body?: unknown) => unknown | Promise<unknown>
 
 /** Every request the run has seen, in order — assert on WHAT a gesture called, not only its result. */
-export const requests: Array<{ method: string; path: string; body?: unknown }> = [];
+export const requests: Array<{ method: string; path: string; body?: unknown }> = []
 
 let responder: Responder = () => {
-	throw new HostError('no host responder installed — call onHostRequest() first', 500);
-};
+  throw new HostError("no host responder installed — call onHostRequest() first", 500)
+}
 
 export function onHostRequest(fn: Responder): void {
-	responder = fn;
+  responder = fn
 }
 
 /** Fresh state per test: the adapter caches `/presentation` module-side, so seed before the first read. */
 export function resetHost(): void {
-	requests.length = 0;
-	responder = () => {
-		throw new HostError('no host responder installed — call onHostRequest() first', 500);
-	};
+  requests.length = 0
+  responder = () => {
+    throw new HostError("no host responder installed — call onHostRequest() first", 500)
+  }
 }
 
 export async function hostRequest(method: string, path: string, body?: unknown): Promise<unknown> {
-	requests.push({ method, path, ...(body === undefined ? {} : { body }) });
-	return await responder(method, path, body);
+  requests.push({ method, path, ...(body === undefined ? {} : { body }) })
+  return await responder(method, path, body)
 }
 
-export const notifications: Array<{ type: string; payload?: unknown }> = [];
+export const notifications: Array<{ type: string; payload?: unknown }> = []
 
 export function hostNotify(type: string, payload?: unknown): void {
-	notifications.push({ type, payload });
+  notifications.push({ type, payload })
 }
 
 export function installApiFetchShim(): void {
-	/* no fetch to shim under node --test */
+  /* no fetch to shim under node --test */
 }
 
 export function hostSetState(_state: unknown): void {
-	/* the webview-state round trip is the host's, not this tier's */
+  /* the webview-state round trip is the host's, not this tier's */
 }

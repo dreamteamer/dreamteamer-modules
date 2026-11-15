@@ -20,28 +20,28 @@
  */
 
 function pad(n: number): string {
-	return String(n).padStart(2, '0');
+  return String(n).padStart(2, "0")
 }
 
 /** Stored value → what the widget can display. `''` for anything unparseable, which blanks it. */
 export function toLocalInputValue(value: unknown, dateOnly: boolean): string {
-	if (typeof value !== 'string' || !value) return '';
+  if (typeof value !== "string" || !value) return ""
 
-	// A date-only field is a calendar day, not an instant: take the day AS WRITTEN rather than
-	// round-tripping through Date, which would resolve `2026-07-28` at UTC midnight and hand back
-	// the 27th to anyone west of Greenwich.
-	if (dateOnly) return value.slice(0, 10);
+  // A date-only field is a calendar day, not an instant: take the day AS WRITTEN rather than
+  // round-tripping through Date, which would resolve `2026-07-28` at UTC midnight and hand back
+  // the 27th to anyone west of Greenwich.
+  if (dateOnly) return value.slice(0, 10)
 
-	const date = new Date(value);
-	if (Number.isNaN(date.getTime())) {
-		// Not yet a full timestamp — most likely a half-typed `2026-07-` the input is mid-edit on.
-		// Echo it back rather than blanking the field out from under the operator.
-		return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(value) ? value.slice(0, 16) : '';
-	}
-	return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    // Not yet a full timestamp — most likely a half-typed `2026-07-` the input is mid-edit on.
+    // Echo it back rather than blanking the field out from under the operator.
+    return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(value) ? value.slice(0, 16) : ""
+  }
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 
 /** Widget → what we send. Empty clears the field; otherwise the raw wall clock, offset-free. */
 export function fromLocalInputValue(raw: string): string | null {
-	return raw ? raw : null;
+  return raw ? raw : null
 }

@@ -19,9 +19,9 @@
  * behaves. Single-target gestures (reveal) ignore `dtIds` and use `dtId`.
  */
 export function rowContext(collection: string, id: string, selection?: Iterable<string>): string {
-	const picked = selection ? [...selection] : [];
-	const batch = picked.length > 1 && picked.includes(id) ? picked : undefined;
-	return JSON.stringify({ webviewSection: 'dt-row', dtCollection: collection, dtId: id, dtIds: batch });
+  const picked = selection ? [...selection] : []
+  const batch = picked.length > 1 && picked.includes(id) ? picked : undefined
+  return JSON.stringify({ webviewSection: "dt-row", dtCollection: collection, dtId: id, dtIds: batch })
 }
 
 /**
@@ -36,16 +36,16 @@ export function rowContext(collection: string, id: string, selection?: Iterable<
  * entity. Still no path — the host owns the filesystem (`src/reveal.ts`).
  */
 export function schemaRowContext(kind: string, id: string, module?: string, location?: string): string {
-	return JSON.stringify({
-		webviewSection: 'dt-schema-row',
-		dtSchemaKind: kind,
-		dtSchemaId: id,
-		dtSchemaModule: module,
-		dtSchemaLocation: location,
-	});
+  return JSON.stringify({
+    webviewSection: "dt-schema-row",
+    dtSchemaKind: kind,
+    dtSchemaId: id,
+    dtSchemaModule: module,
+    dtSchemaLocation: location,
+  })
 }
 
 /** Mark a KIND row in the left rail, so New… is reachable with no row selected. */
 export function schemaKindContext(kind: string): string {
-	return JSON.stringify({ webviewSection: 'dt-schema-kind', dtSchemaKind: kind });
+  return JSON.stringify({ webviewSection: "dt-schema-kind", dtSchemaKind: kind })
 }

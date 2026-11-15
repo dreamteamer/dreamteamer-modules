@@ -10,40 +10,47 @@
 //          current folder is in. `--json` prints { written, fragments } instead of the sentence.
 //
 // Exit 0 when done or nothing to do; 1 on any failure (✖ and the reason); 2 on an unknown subcommand.
-import fs from 'node:fs';
-import path from 'node:path';
-import { findWorkspace } from '../lib/workspace-root.ts';
-import { initEngine } from '../src/host/engine.ts';
-import { workspaceNavSettings } from '../src/nav-model.ts';
-import { migrateNavSettings } from '../src/nav-doc.ts';
+import fs from "node:fs"
+import path from "node:path"
+import { findWorkspace } from "../lib/workspace-root.ts"
+import { initEngine } from "../src/host/engine.ts"
+import { workspaceNavSettings } from "../src/nav-model.ts"
+import { migrateNavSettings } from "../src/nav-doc.ts"
 
 const USAGE = `usage: dt-nav migrate [root] [--json]
   migrate   write this workspace's old nav settings (navGroups, navOrder, navHidden) into nav.yaml, once
-`;
+`
 
-const args = process.argv.slice(2);
-const json = args.includes('--json');
-const [sub, given] = args.filter((a) => a !== '--json');
-if (sub === '--help' || sub === '-h' || sub === 'help') {
-	process.stdout.write(USAGE);
-	process.exit(0);
+const args = process.argv.slice(2)
+const json = args.includes("--json")
+const [sub, given] = args.filter(a => a !== "--json")
+if (sub === "--help" || sub === "-h" || sub === "help") {
+  process.stdout.write(USAGE)
+  process.exit(0)
 }
-if (sub !== 'migrate') {
-	process.stderr.write(`${sub ? `unknown subcommand: ${sub}\n` : ''}${USAGE}`);
-	process.exit(2);
+if (sub !== "migrate") {
+  process.stderr.write(`${sub ? `unknown subcommand: ${sub}\n` : ""}${USAGE}`)
+  process.exit(2)
 }
 
 try {
-	const root = given ? path.resolve(given) : findWorkspace();
-	if (!root || !fs.existsSync(path.join(root, 'package.json'))) {
-		throw new Error(`no workspace at ${given ? path.resolve(given) : process.cwd()} — run it inside a workspace, or name its root`);
-	}
-	await initEngine(root, { minEngine: '0.43.0' });
-	const result = migrateNavSettings(root, workspaceNavSettings(root));
-	if (json) console.log(JSON.stringify(result));
-	else console.log(result.written ? `✔ nav.yaml written from your nav settings${result.fragments ? ' · fragments applied' : ''}` : 'nothing to migrate');
-	process.exit(0);
+  const root = given ? path.resolve(given) : findWorkspace()
+  if (!root || !fs.existsSync(path.join(root, "package.json"))) {
+    throw new Error(
+      `no workspace at ${given ? path.resolve(given) : process.cwd()} — run it inside a workspace, or name its root`
+    )
+  }
+  await initEngine(root, { minEngine: "0.43.0" })
+  const result = migrateNavSettings(root, workspaceNavSettings(root))
+  if (json) console.log(JSON.stringify(result))
+  else
+    console.log(
+      result.written
+        ? `✔ nav.yaml written from your nav settings${result.fragments ? " · fragments applied" : ""}`
+        : "nothing to migrate"
+    )
+  process.exit(0)
 } catch (e) {
-	console.error(`✖ ${String(e?.message ?? e).split('\n')[0]}`);
-	process.exit(1);
+  console.error(`✖ ${String(e?.message ?? e).split("\n")[0]}`)
+  process.exit(1)
 }

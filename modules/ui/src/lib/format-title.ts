@@ -5,11 +5,11 @@
  * '_'/'-'/whitespace, capitalize each word: 'due_date' -> 'Due Date', 'assignee-id' -> 'Assignee Id'.
  */
 export function formatTitle(field: string): string {
-	return field
-		.split(/[_\-\s]+/)
-		.filter(Boolean)
-		.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-		.join(' ');
+  return field
+    .split(/[_\-\s]+/)
+    .filter(Boolean)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ")
 }
 
 /**
@@ -19,5 +19,5 @@ export function formatTitle(field: string): string {
  * builds for its own registry options, which carry a name and no title.
  */
 export function labelOf(field: { field: string; title?: string }): string {
-	return field.title ? field.title : formatTitle(field.field);
+  return field.title ? field.title : formatTitle(field.field)
 }

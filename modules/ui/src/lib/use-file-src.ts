@@ -13,9 +13,9 @@
  * PREVIOUS reference's src into the current row draws one record's picture on another. So the
  * result is dropped unless the reference is still the one that was asked for.
  */
-import { computed, ref, watchEffect, type Ref } from 'vue';
-import { fileRecordRef, srcForRecord, isImageExt } from './file-record';
-import { fetchRecord } from './record-cache';
+import { computed, ref, watchEffect, type Ref } from "vue"
+import { fileRecordRef, srcForRecord, isImageExt } from "./file-record"
+import { fetchRecord } from "./record-cache"
 
 /**
  * `src` is non-null only once the record has arrived AND its extension is one an `<img>` can draw.
@@ -26,20 +26,20 @@ import { fetchRecord } from './record-cache';
  * lands — it decides whether to reserve space for a picture or render the value as it always did.
  */
 export function useFileSrc(value: () => unknown): { src: Ref<string | null>; isFile: Ref<boolean> } {
-	const target = computed(() => (typeof value() === 'string' ? fileRecordRef(value() as string) : null));
-	const src = ref<string | null>(null);
+  const target = computed(() => (typeof value() === "string" ? fileRecordRef(value() as string) : null))
+  const src = ref<string | null>(null)
 
-	watchEffect(() => {
-		const want = target.value;
-		src.value = null;
-		if (!want) return;
-		void fetchRecord(want.collection, want.id).then((record) => {
-			if (target.value?.collection !== want.collection || target.value?.id !== want.id) return;
-			const ext = record?.['ext'];
-			if (!isImageExt(typeof ext === 'string' ? ext : null)) return;
-			src.value = srcForRecord(want.collection, want.id, ext);
-		});
-	});
+  watchEffect(() => {
+    const want = target.value
+    src.value = null
+    if (!want) return
+    void fetchRecord(want.collection, want.id).then(record => {
+      if (target.value?.collection !== want.collection || target.value?.id !== want.id) return
+      const ext = record?.["ext"]
+      if (!isImageExt(typeof ext === "string" ? ext : null)) return
+      src.value = srcForRecord(want.collection, want.id, ext)
+    })
+  })
 
-	return { src, isFile: computed(() => target.value !== null) };
+  return { src, isFile: computed(() => target.value !== null) }
 }

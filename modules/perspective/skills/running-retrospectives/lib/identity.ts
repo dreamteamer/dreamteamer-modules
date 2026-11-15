@@ -9,12 +9,15 @@
 // The seed is the RUN RECORD's `handles`, not the users record's, because the first reader runs
 // before any users record exists. Once one does, its handles are the merge read-git
 // already did, and they are unioned in. `references/identity.md` is the method; this is the code.
-import path from 'node:path';
-import { DATA } from './workspace.ts';
-import { recordPath, readRecord, listRecords, contributorOf, collectionDir } from './records.ts';
+import path from "node:path"
+import { DATA } from "./workspace.ts"
+import { recordPath, readRecord, listRecords, contributorOf, collectionDir } from "./records.ts"
 
-const lower = (s) => String(s ?? '').trim().toLowerCase();
-const list = (v) => (Array.isArray(v) ? v : v === undefined || v === null || v === '' ? [] : [v]);
+const lower = s =>
+  String(s ?? "")
+    .trim()
+    .toLowerCase()
+const list = v => (Array.isArray(v) ? v : v === undefined || v === null || v === "" ? [] : [v])
 
 /**
  * Every address, gid and name variant the retrospective's contributor appears under, lowercased.
@@ -25,26 +28,32 @@ const list = (v) => (Array.isArray(v) ? v : v === undefined || v === null || v =
  * distinction already; making it the documented contract of one function is the point of the move.
  */
 export function contributorHandles(retrospectiveRef, dataRoot = DATA) {
-	const base = String(retrospectiveRef).split('/').pop();
-	let seeds;
-	try {
-		const { fields } = readRecord(recordPath('retrospective-sessions', base, 'retrospective-session', dataRoot));
-		seeds = list(fields.handles).map(lower).filter(Boolean);
-	} catch { return null; }
-	if (!seeds.length) return null;
+  const base = String(retrospectiveRef).split("/").pop()
+  let seeds
+  try {
+    const { fields } = readRecord(recordPath("retrospective-sessions", base, "retrospective-session", dataRoot))
+    seeds = list(fields.handles).map(lower).filter(Boolean)
+  } catch {
+    return null
+  }
+  if (!seeds.length) return null
 
-	const all = new Set(seeds);
-	let slug;
-	try { slug = contributorOf(retrospectiveRef, dataRoot); } catch { return all; }
-	for (const f of listRecords(path.join(collectionDir('users', dataRoot), slug))) {
-		const handles = list(readRecord(f).fields.handles).map(lower).filter(Boolean);
-		if (handles.some((h) => all.has(h))) for (const h of handles) all.add(h);
-	}
-	return all;
+  const all = new Set(seeds)
+  let slug
+  try {
+    slug = contributorOf(retrospectiveRef, dataRoot)
+  } catch {
+    return all
+  }
+  for (const f of listRecords(path.join(collectionDir("users", dataRoot), slug))) {
+    const handles = list(readRecord(f).fields.handles).map(lower).filter(Boolean)
+    if (handles.some(h => all.has(h))) for (const h of handles) all.add(h)
+  }
+  return all
 }
 
 /** True when a row's author email or display name is one of the contributor's handles. */
 export function isContributor(handles, email, name) {
-	if (!handles) return true;   // nothing declared → filter nothing, never filter everything
-	return handles.has(lower(email)) || handles.has(lower(name));
+  if (!handles) return true // nothing declared → filter nothing, never filter everything
+  return handles.has(lower(email)) || handles.has(lower(name))
 }

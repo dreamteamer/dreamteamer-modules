@@ -19,13 +19,13 @@
 	up wearing the table's geometry (measured in the dev host, first cut).
 -->
 <script setup lang="ts">
-import { computed } from 'vue';
-import BrowseView from './BrowseView.vue';
-import { viewToConfig } from '../composables/collection-views';
-import { drawnDisplay, uiViewFingerprint } from '../ui-views';
-import type { EmbeddedRelationPlan } from '../lib/relation-view';
+import { computed } from "vue"
+import BrowseView from "./BrowseView.vue"
+import { viewToConfig } from "../composables/collection-views"
+import { drawnDisplay, uiViewFingerprint } from "../ui-views"
+import type { EmbeddedRelationPlan } from "../lib/relation-view"
 
-const props = defineProps<{ plan: EmbeddedRelationPlan }>();
+const props = defineProps<{ plan: EmbeddedRelationPlan }>()
 
 /**
  * A named view's settings — layout, columns, order, per-layout options — through the SAME
@@ -36,7 +36,7 @@ const props = defineProps<{ plan: EmbeddedRelationPlan }>();
  * underneath would hide related records with no explanation on screen, which is the one outcome
  * worse than a list of links. See `lib/relation-view.ts` for the argument.
  */
-const config = computed(() => (props.plan.view ? viewToConfig(props.plan.view) : undefined));
+const config = computed(() => (props.plan.view ? viewToConfig(props.plan.view) : undefined))
 
 /**
  * Remount when the SET of related records changes, or when the view record does.
@@ -46,21 +46,21 @@ const config = computed(() => (props.plan.view ? viewToConfig(props.plan.view) :
  * value, so an unchanged relation re-renders nothing.
  */
 const browseKey = computed(() =>
-	JSON.stringify([props.plan.view ? uiViewFingerprint(props.plan.view) : null, props.plan.ids]),
-);
+  JSON.stringify([props.plan.view ? uiViewFingerprint(props.plan.view) : null, props.plan.ids])
+)
 </script>
 
 <template>
-	<BrowseView
-		:key="browseKey"
-		embedded
-		:collection="plan.collection"
-		:layout="config?.layout"
-		:base-filter="plan.filter"
-		:columns="config?.columns"
-		:sort="config?.sort"
-		:list-options="config?.listOptions"
-		:view-options="plan.view ? drawnDisplay(plan.view).list?.options : undefined"
-		:view-id="plan.view?.id"
-	/>
+  <BrowseView
+    :key="browseKey"
+    embedded
+    :collection="plan.collection"
+    :layout="config?.layout"
+    :base-filter="plan.filter"
+    :columns="config?.columns"
+    :sort="config?.sort"
+    :list-options="config?.listOptions"
+    :view-options="plan.view ? drawnDisplay(plan.view).list?.options : undefined"
+    :view-id="plan.view?.id"
+  />
 </template>

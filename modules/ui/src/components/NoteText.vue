@@ -5,14 +5,21 @@
 	`<by>: <text>`, as `dt next` prints it. Drawn by the record page (`NextNotes`).
 -->
 <script setup lang="ts">
-import { computed } from 'vue';
-import { textParts, type NextNote } from '../lib/next-notes';
-import DtLink from './DtLink.vue';
+import { computed } from "vue"
+import { textParts, type NextNote } from "../lib/next-notes"
+import DtLink from "./DtLink.vue"
 
-const props = defineProps<{ note: NextNote }>();
-const parts = computed(() => (props.note.error ? [{ text: `${props.note.by}: ${props.note.text}` }] : textParts(props.note)));
+const props = defineProps<{ note: NextNote }>()
+const parts = computed(() =>
+  props.note.error ? [{ text: `${props.note.by}: ${props.note.text}` }] : textParts(props.note)
+)
 </script>
 
 <template>
-	<span class="dt-next-notes__text"><template v-for="(p, i) in parts" :key="i"><DtLink v-if="p.ref" :to="`/content/${p.ref}`">{{ p.text }}</DtLink><template v-else>{{ p.text }}</template></template></span>
+  <span class="dt-next-notes__text"
+    ><template v-for="(p, i) in parts" :key="i"
+      ><DtLink v-if="p.ref" :to="`/content/${p.ref}`">{{ p.text }}</DtLink
+      ><template v-else>{{ p.text }}</template></template
+    ></span
+  >
 </template>

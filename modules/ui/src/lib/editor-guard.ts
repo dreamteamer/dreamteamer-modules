@@ -17,17 +17,17 @@
  * the same synchronous dispatch), so it can't recognize the INTERMEDIATE text a stale render
  * captured. The ring keeps those around for the handful of renders that can still be in flight.
  */
-export const RING_SIZE = 4;
+export const RING_SIZE = 4
 
 /** Append `text` to `ring` (oldest-first), capped at `maxSize`. Pure — returns a new array. */
 export function pushEmitted(ring: string[], text: string, maxSize = RING_SIZE): string[] {
-	const next = ring.concat([text]);
-	return next.length > maxSize ? next.slice(next.length - maxSize) : next;
+  const next = ring.concat([text])
+  return next.length > maxSize ? next.slice(next.length - maxSize) : next
 }
 
 /** True when `incoming` is a genuine external change worth resetting the doc to — i.e. it matches
  * neither the live doc nor anything this editor recently emitted itself. */
 export function shouldReset(incoming: string, liveDoc: string, recentEmitted: string[]): boolean {
-	if (incoming === liveDoc) return false;
-	return !recentEmitted.includes(incoming);
+  if (incoming === liveDoc) return false
+  return !recentEmitted.includes(incoming)
 }

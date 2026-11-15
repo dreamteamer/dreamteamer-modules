@@ -18,15 +18,15 @@
  */
 
 /** collection → (field → target collection), for the fields that hold references. */
-export type RelationTargets = (collection: string, field: string) => string | undefined;
+export type RelationTargets = (collection: string, field: string) => string | undefined
 
-const isOperator = (key: string) => key.startsWith('_');
+const isOperator = (key: string) => key.startsWith("_")
 
 /** `/contacts/ada` → `contacts/ada`. Anything that is not a slashed string is left alone. */
 function unslash(value: unknown): unknown {
-	if (typeof value === 'string' && value.startsWith('/')) return value.slice(1);
-	if (Array.isArray(value)) return value.map(unslash);
-	return value;
+  if (typeof value === "string" && value.startsWith("/")) return value.slice(1)
+  if (Array.isArray(value)) return value.map(unslash)
+  return value
 }
 
 /**
@@ -37,41 +37,41 @@ function unslash(value: unknown): unknown {
  * relation two levels down) correct rather than only the top level.
  */
 export function normalizeFilterRefs(filter: unknown, collection: string, targetOf: RelationTargets): unknown {
-	if (filter === null || typeof filter !== 'object' || Array.isArray(filter)) return filter;
-	const out: Record<string, unknown> = {};
+  if (filter === null || typeof filter !== "object" || Array.isArray(filter)) return filter
+  const out: Record<string, unknown> = {}
 
-	for (const [key, value] of Object.entries(filter as Record<string, unknown>)) {
-		if (key === '_and' || key === '_or') {
-			out[key] = Array.isArray(value) ? value.map((clause) => normalizeFilterRefs(clause, collection, targetOf)) : value;
-			continue;
-		}
-		if (isOperator(key)) {
-			// Reached only via `fieldCondition` below, which already decided this field is a relation.
-			out[key] = unslash(value);
-			continue;
-		}
+  for (const [key, value] of Object.entries(filter as Record<string, unknown>)) {
+    if (key === "_and" || key === "_or") {
+      out[key] = Array.isArray(value) ? value.map(clause => normalizeFilterRefs(clause, collection, targetOf)) : value
+      continue
+    }
+    if (isOperator(key)) {
+      // Reached only via `fieldCondition` below, which already decided this field is a relation.
+      out[key] = unslash(value)
+      continue
+    }
 
-		const target = targetOf(collection, key);
-		if (!target) {
-			// Not a relation: leave the condition entirely alone, slashes and all.
-			out[key] = value;
-			continue;
-		}
-		out[key] = fieldCondition(value, target, targetOf);
-	}
-	return out;
+    const target = targetOf(collection, key)
+    if (!target) {
+      // Not a relation: leave the condition entirely alone, slashes and all.
+      out[key] = value
+      continue
+    }
+    out[key] = fieldCondition(value, target, targetOf)
+  }
+  return out
 }
 
 /** The condition on a RELATION field: operator operands get unslashed, hops recurse into the target. */
 function fieldCondition(cond: unknown, target: string, targetOf: RelationTargets): unknown {
-	// `{ attendees: "/contacts/ada" }` — the engine's scalar shorthand for `_eq`.
-	if (cond === null || typeof cond !== 'object' || Array.isArray(cond)) return unslash(cond);
+  // `{ attendees: "/contacts/ada" }` — the engine's scalar shorthand for `_eq`.
+  if (cond === null || typeof cond !== "object" || Array.isArray(cond)) return unslash(cond)
 
-	const out: Record<string, unknown> = {};
-	for (const [key, value] of Object.entries(cond as Record<string, unknown>)) {
-		if (isOperator(key)) out[key] = unslash(value);
-		// A non-operator key under a relation field is a hop into the target record.
-		else out[key] = (normalizeFilterRefs({ [key]: value }, target, targetOf) as Record<string, unknown>)[key];
-	}
-	return out;
+  const out: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(cond as Record<string, unknown>)) {
+    if (isOperator(key)) out[key] = unslash(value)
+    // A non-operator key under a relation field is a hop into the target record.
+    else out[key] = (normalizeFilterRefs({ [key]: value }, target, targetOf) as Record<string, unknown>)[key]
+  }
+  return out
 }

@@ -10,11 +10,11 @@
 *,
 *::before,
 *::after {
-	box-sizing: border-box;
+  box-sizing: border-box;
 }
 
 * {
-	margin: 0;
+  margin: 0;
 }
 
 /* Form controls do NOT inherit typography from `body` — the UA substitutes its own font (Arial on
@@ -31,22 +31,22 @@ button,
 input,
 select,
 textarea {
-	font-family: inherit;
-	font-size: inherit;
-	font-weight: inherit;
-	line-height: inherit;
-	letter-spacing: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
 }
 
 /* ---------- Body typography / colors ---------- */
 body {
-	font-family: var(--dt-font);
-	/* VS Code's own UI size (13px default) — the app tracks the user's setting, not its own base */
-	font-size: var(--dt-text);
-	line-height: 1.45;
-	color: var(--dt-fg);
-	background: var(--dt-bg);
-	-webkit-font-smoothing: antialiased;
+  font-family: var(--dt-font);
+  /* VS Code's own UI size (13px default) — the app tracks the user's setting, not its own base */
+  font-size: var(--dt-text);
+  line-height: 1.45;
+  color: var(--dt-fg);
+  background: var(--dt-bg);
+  -webkit-font-smoothing: antialiased;
 }
 
 /* ---------- Icons ---------- */
@@ -60,28 +60,28 @@ body {
    so every descriptor icon had to be translated by a hand-kept map. `!important` is not needed
    here; the codicon CSS sets 16px and this token matches it. */
 .codicon {
-	font-size: var(--dt-icon);
-	line-height: 1;
+  font-size: var(--dt-icon);
+  line-height: 1;
 }
 
 /* ---------- Scrollbars ---------- */
 * {
-	scrollbar-width: thin;
-	scrollbar-color: var(--dt-border-strong) transparent;
+  scrollbar-width: thin;
+  scrollbar-color: var(--dt-border-strong) transparent;
 }
 
 *::-webkit-scrollbar {
-	width: 8px;
-	height: 8px;
+  width: 8px;
+  height: 8px;
 }
 
 *::-webkit-scrollbar-track {
-	background: transparent;
+  background: transparent;
 }
 
 *::-webkit-scrollbar-thumb {
-	background: var(--dt-border-strong);
-	border-radius: 999px;
+  background: var(--dt-border-strong);
+  border-radius: 999px;
 }
 
 /* ---------- Page body layout ---------- */
@@ -89,12 +89,12 @@ body {
    Measured against the workbench (2026-07-27): explorer rows are 22px tall at 13px text — the
    app's geometry, not its type scale, was what read "not on par with VS Code". */
 .dt-page-body {
-	padding: var(--dt-page-pad);
+  padding: var(--dt-page-pad);
 }
 
 .dt-page-body--form {
-	max-width: 920px;
-	padding: var(--dt-page-pad-form);
+  max-width: 920px;
+  padding: var(--dt-page-pad-form);
 }
 
 /* ---------- Dropdown menus ---------- */
@@ -108,61 +108,61 @@ body {
    it (z-index 100 vs 60, min-width 160 vs 180). One definition, no scoping to lose.
    z-index sits above `.dt-page-header-wrap` (10) and the dialog overlay's own layer. */
 .dt-menu {
-	min-width: 180px;
-	padding: 4px;
-	background: var(--dt-bg);
-	border: 1px solid var(--dt-border);
-	border-radius: var(--dt-radius);
-	box-shadow: var(--dt-shadow-lg, 0 8px 24px rgb(0 0 0 / 0.12));
-	z-index: 1000;
+  min-width: 180px;
+  padding: 4px;
+  background: var(--dt-bg);
+  border: 1px solid var(--dt-border);
+  border-radius: var(--dt-radius);
+  box-shadow: var(--dt-shadow-lg, 0 8px 24px rgb(0 0 0 / 0.12));
+  z-index: 1000;
 }
 
 .dt-menu-item {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	padding: 7px 10px;
-	font-size: var(--dt-text);
-	color: var(--dt-fg);
-	border-radius: var(--dt-radius);
-	cursor: pointer;
-	user-select: none;
-	outline: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  font-size: var(--dt-text);
+  color: var(--dt-fg);
+  border-radius: var(--dt-radius);
+  cursor: pointer;
+  user-select: none;
+  outline: none;
 }
 
 .dt-menu-item[data-highlighted] {
-	background: var(--dt-bg-subtle);
+  background: var(--dt-bg-subtle);
 }
 
 .dt-menu-item .codicon {
-	font-size: var(--dt-icon);
-	color: var(--dt-fg-subtle);
+  font-size: var(--dt-icon);
+  color: var(--dt-fg-subtle);
 }
 
 .dt-menu-item--sub {
-	justify-content: flex-start;
+  justify-content: flex-start;
 }
 
 .dt-menu-item__chevron {
-	margin-left: auto;
+  margin-left: auto;
 }
 
 .dt-menu-item__check {
-	width: 18px;
+  width: 18px;
 }
 
 .dt-menu-item--danger {
-	color: var(--dt-danger);
+  color: var(--dt-danger);
 }
 
 .dt-menu-item--danger .codicon {
-	color: var(--dt-danger);
+  color: var(--dt-danger);
 }
 
 .dt-menu-separator {
-	height: 1px;
-	background: var(--dt-border);
-	margin: 4px 0;
+  height: 1px;
+  background: var(--dt-border);
+  margin: 4px 0;
 }
 
 /* ---------- Links ---------- */
@@ -170,147 +170,147 @@ body {
    on hover only, so a property list of ten relations doesn't read as a wall of rules, but the
    colour alone never has to carry the affordance. */
 .dt-link {
-	color: var(--dt-link);
-	text-decoration: none;
-	cursor: pointer;
-	border-radius: 2px;
+  color: var(--dt-link);
+  text-decoration: none;
+  cursor: pointer;
+  border-radius: 2px;
 }
 
 .dt-link:hover {
-	color: var(--dt-link-hover);
-	text-decoration: underline;
+  color: var(--dt-link-hover);
+  text-decoration: underline;
 }
 
 .dt-link:focus-visible {
-	outline: 1px solid var(--dt-link);
-	outline-offset: 1px;
+  outline: 1px solid var(--dt-link);
+  outline-offset: 1px;
 }
 
 /* ---------- Buttons ---------- */
 .dt-btn {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	gap: var(--dt-space-1);
-	height: var(--dt-control-height);
-	padding: 0 11px;
-	border: none;
-	border-radius: var(--dt-radius);
-	background: var(--dt-accent);
-	color: #ffffff;
-	font-family: var(--dt-font);
-	font-size: var(--dt-text);
-	font-weight: 400;
-	cursor: pointer;
-	transition:
-		background-color 0.12s ease,
-		color 0.12s ease,
-		border-color 0.12s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--dt-space-1);
+  height: var(--dt-control-height);
+  padding: 0 11px;
+  border: none;
+  border-radius: var(--dt-radius);
+  background: var(--dt-accent);
+  color: #ffffff;
+  font-family: var(--dt-font);
+  font-size: var(--dt-text);
+  font-weight: 400;
+  cursor: pointer;
+  transition:
+    background-color 0.12s ease,
+    color 0.12s ease,
+    border-color 0.12s ease;
 }
 
 .dt-btn:hover {
-	background: var(--dt-accent-hover);
+  background: var(--dt-accent-hover);
 }
 
 .dt-btn:disabled {
-	opacity: 0.5;
-	cursor: not-allowed;
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .dt-btn--secondary {
-	background: var(--dt-bg-subtle);
-	color: var(--dt-fg);
+  background: var(--dt-bg-subtle);
+  color: var(--dt-fg);
 }
 
 .dt-btn--secondary:hover {
-	background: var(--dt-bg-hover);
+  background: var(--dt-bg-hover);
 }
 
 .dt-btn--danger {
-	background: var(--dt-danger);
-	color: #ffffff;
+  background: var(--dt-danger);
+  color: #ffffff;
 }
 
 .dt-btn--danger:hover {
-	filter: brightness(0.92);
+  filter: brightness(0.92);
 }
 
 /* Subtle-danger circular icon button (polish wave defect 6): a solid filled red circle reads as
    the loudest thing on a detail page even though "delete this record" isn't (necessarily) the
    primary action — a secondary-weight button whose ICON carries the danger color instead. */
 .dt-btn--icon-danger {
-	background: var(--dt-bg-subtle);
-	color: var(--dt-danger);
+  background: var(--dt-bg-subtle);
+  color: var(--dt-danger);
 }
 
 .dt-btn--icon-danger:hover {
-	background: color-mix(in srgb, var(--dt-danger) 14%, var(--dt-bg-subtle));
+  background: color-mix(in srgb, var(--dt-danger) 14%, var(--dt-bg-subtle));
 }
 
 .dt-btn--ghost {
-	background: transparent;
-	color: var(--dt-fg-subtle);
+  background: transparent;
+  color: var(--dt-fg-subtle);
 }
 
 .dt-btn--ghost:hover {
-	background: var(--dt-bg-subtle);
+  background: var(--dt-bg-subtle);
 }
 
 .dt-btn--icon {
-	width: var(--dt-control-height);
-	height: var(--dt-control-height);
-	padding: 0;
-	border-radius: 50%;
+  width: var(--dt-control-height);
+  height: var(--dt-control-height);
+  padding: 0;
+  border-radius: 50%;
 }
 
 .dt-btn--sm {
-	height: 22px;
-	padding: 0 8px;
-	font-size: var(--dt-text);
+  height: 22px;
+  padding: 0 8px;
+  font-size: var(--dt-text);
 }
 
 .dt-btn--sm.dt-btn--icon {
-	width: 22px;
-	height: 22px;
+  width: 22px;
+  height: 22px;
 }
 
 /* ---------- Inputs ---------- */
 .dt-input,
 .dt-select,
 .dt-textarea {
-	display: block;
-	width: 100%;
-	min-height: var(--dt-input-height);
-	padding: 0 var(--dt-space-2);
-	border: 1px solid var(--dt-border-strong);
-	border-radius: var(--dt-radius);
-	background: var(--dt-bg-subtle);
-	color: var(--dt-fg);
-	font-family: var(--dt-font);
-	font-size: var(--dt-text);
-	transition:
-		background-color 0.12s ease,
-		border-color 0.12s ease;
+  display: block;
+  width: 100%;
+  min-height: var(--dt-input-height);
+  padding: 0 var(--dt-space-2);
+  border: 1px solid var(--dt-border-strong);
+  border-radius: var(--dt-radius);
+  background: var(--dt-bg-subtle);
+  color: var(--dt-fg);
+  font-family: var(--dt-font);
+  font-size: var(--dt-text);
+  transition:
+    background-color 0.12s ease,
+    border-color 0.12s ease;
 }
 
 .dt-textarea {
-	height: auto;
-	padding: 6px var(--dt-space-2);
-	line-height: 1.45;
-	resize: vertical;
+  height: auto;
+  padding: 6px var(--dt-space-2);
+  line-height: 1.45;
+  resize: vertical;
 }
 
 .dt-input:focus,
 .dt-select:focus,
 .dt-textarea:focus {
-	outline: none;
-	background: var(--dt-bg);
-	border-color: var(--dt-accent);
+  outline: none;
+  background: var(--dt-bg);
+  border-color: var(--dt-accent);
 }
 
 .dt-input::placeholder,
 .dt-textarea::placeholder {
-	color: var(--dt-fg-muted);
+  color: var(--dt-fg-muted);
 }
 
 /* ---------- Checkbox ---------- */
@@ -319,100 +319,100 @@ body {
    `appearance: none` + the `:checked::after` checkmark is what actually renders in evergreen
    browsers, so it looks the same as every other `.dt-*` control rather than the OS-native box. */
 .dt-checkbox {
-	appearance: none;
-	-webkit-appearance: none;
-	flex-shrink: 0;
-	position: relative;
-	width: 16px;
-	height: 16px;
-	margin: 0;
-	border: 1px solid var(--dt-border-strong);
-	border-radius: 4px;
-	background: var(--dt-bg);
-	accent-color: var(--dt-accent);
-	cursor: pointer;
-	transition:
-		background-color 0.12s ease,
-		border-color 0.12s ease;
+  appearance: none;
+  -webkit-appearance: none;
+  flex-shrink: 0;
+  position: relative;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  border: 1px solid var(--dt-border-strong);
+  border-radius: 4px;
+  background: var(--dt-bg);
+  accent-color: var(--dt-accent);
+  cursor: pointer;
+  transition:
+    background-color 0.12s ease,
+    border-color 0.12s ease;
 }
 
 .dt-checkbox:hover {
-	border-color: var(--dt-accent);
+  border-color: var(--dt-accent);
 }
 
 .dt-checkbox:checked {
-	background: var(--dt-accent);
-	border-color: var(--dt-accent);
+  background: var(--dt-accent);
+  border-color: var(--dt-accent);
 }
 
 .dt-checkbox:checked::after {
-	content: '';
-	position: absolute;
-	left: 4px;
-	top: 1px;
-	width: 5px;
-	height: 9px;
-	border: solid #ffffff;
-	border-width: 0 2px 2px 0;
-	transform: rotate(45deg);
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 1px;
+  width: 5px;
+  height: 9px;
+  border: solid #ffffff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
 }
 
 .dt-checkbox:focus-visible {
-	outline: 2px solid var(--dt-accent);
-	outline-offset: 2px;
+  outline: 2px solid var(--dt-accent);
+  outline-offset: 2px;
 }
 
 /* ---------- Chip ---------- */
 .dt-chip {
-	display: inline-flex;
-	align-items: center;
-	gap: 4px;
-	height: 20px;
-	padding: 0 8px;
-	border: 1px solid var(--dt-border);
-	border-radius: 999px;
-	background: var(--dt-bg-subtle);
-	color: var(--dt-fg);
-	font-size: var(--dt-text);
-	line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 20px;
+  padding: 0 8px;
+  border: 1px solid var(--dt-border);
+  border-radius: 999px;
+  background: var(--dt-bg-subtle);
+  color: var(--dt-fg);
+  font-size: var(--dt-text);
+  line-height: 1;
 }
 
 .dt-chip__remove {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	border: none;
-	background: transparent;
-	color: var(--dt-fg-subtle);
-	cursor: pointer;
-	padding: 0;
-	font-size: var(--dt-text);
-	line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--dt-fg-subtle);
+  cursor: pointer;
+  padding: 0;
+  font-size: var(--dt-text);
+  line-height: 1;
 }
 
 .dt-chip__remove:hover {
-	color: var(--dt-fg);
+  color: var(--dt-fg);
 }
 
 /* Compact table-cell chip modifier (promoted from ViewTags.vue's scoped style — flagged as a
    shared-utility gap by the previous agent; ViewJson's object chip uses it too). */
 .dt-chip--sm {
-	height: 20px;
-	padding: 0 8px;
-	font-size: var(--dt-label);
-	white-space: nowrap;
+  height: 20px;
+  padding: 0 8px;
+  font-size: var(--dt-label);
+  white-space: nowrap;
 }
 
 /* ---------- Card ---------- */
 .dt-card {
-	background: var(--dt-bg);
-	border: 1px solid var(--dt-border);
-	border-radius: var(--dt-radius-lg);
-	transition: box-shadow 0.12s ease;
+  background: var(--dt-bg);
+  border: 1px solid var(--dt-border);
+  border-radius: var(--dt-radius-lg);
+  transition: box-shadow 0.12s ease;
 }
 
 .dt-card:hover {
-	box-shadow: var(--dt-shadow);
+  box-shadow: var(--dt-shadow);
 }
 
 /* A card you CLICK, as opposed to a card that is just a panel (DataModelDetail's sections use plain
@@ -421,64 +421,64 @@ body {
    surface: same radius, same hover, same wrap rules. `overflow-wrap: anywhere` is load-bearing for
    both — a long id or url in a display template must break rather than widen the card. */
 .dt-card--interactive {
-	border-radius: var(--dt-radius);
-	padding: 10px 12px;
-	cursor: pointer;
-	font-size: var(--dt-text);
-	color: var(--dt-fg);
-	overflow: hidden;
-	overflow-wrap: anywhere;
-	transition:
-		box-shadow 0.12s ease,
-		border-color 0.1s ease;
+  border-radius: var(--dt-radius);
+  padding: 10px 12px;
+  cursor: pointer;
+  font-size: var(--dt-text);
+  color: var(--dt-fg);
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  transition:
+    box-shadow 0.12s ease,
+    border-color 0.1s ease;
 }
 
 .dt-card--interactive:hover {
-	border-color: var(--dt-border-strong);
-	box-shadow: var(--dt-shadow);
+  border-color: var(--dt-border-strong);
+  box-shadow: var(--dt-shadow);
 }
 
 /* ---------- Table ---------- */
 .dt-table {
-	width: 100%;
-	border-collapse: collapse;
-	font-size: var(--dt-text);
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--dt-text);
 }
 
 .dt-table thead th {
-	height: var(--dt-control-height);
-	padding: 0 var(--dt-cell-pad);
-	border-bottom: 1px solid var(--dt-border-strong);
-	text-align: left;
-	font-size: var(--dt-label);
-	font-weight: 600;
-	text-transform: uppercase;
-	letter-spacing: 0.04em;
-	color: var(--dt-fg-subtle);
-	white-space: nowrap;
+  height: var(--dt-control-height);
+  padding: 0 var(--dt-cell-pad);
+  border-bottom: 1px solid var(--dt-border-strong);
+  text-align: left;
+  font-size: var(--dt-label);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--dt-fg-subtle);
+  white-space: nowrap;
 }
 
 /* --dt-row-height: roomier than the workbench tree (22px) — a multi-column data row is not a
    filename. See the token comment in vscode.css. */
 .dt-table tbody tr {
-	height: var(--dt-row-height);
-	border-bottom: 1px solid var(--dt-border);
+  height: var(--dt-row-height);
+  border-bottom: 1px solid var(--dt-border);
 }
 
 .dt-table tbody td {
-	padding: 0 var(--dt-cell-pad);
+  padding: 0 var(--dt-cell-pad);
 }
 
 .dt-table tbody tr:hover {
-	background: color-mix(in srgb, var(--dt-bg-subtle) 50%, transparent);
+  background: color-mix(in srgb, var(--dt-bg-subtle) 50%, transparent);
 }
 
 .dt-table tbody tr.is-selected {
-	background: var(--dt-accent-subtle);
+  background: var(--dt-accent-subtle);
 }
 
 .dt-table .dt-table__checkbox-col {
-	width: 30px;
+  width: 30px;
 }
 
 /* ---------- color_by tint ---------- */
@@ -488,36 +488,36 @@ body {
    fill is deliberately faint for the same reason a group band's is: a saturated row behind text is
    unreadable in one of the two themes, and the rail already carries the identity. */
 .dt-table tbody tr.dt-tinted > td {
-	background: color-mix(in srgb, var(--dt-tint-bg) 8%, transparent);
+  background: color-mix(in srgb, var(--dt-tint-bg) 8%, transparent);
 }
 .dt-table tbody tr.dt-tinted > td:first-child {
-	box-shadow: inset 3px 0 0 var(--dt-tint);
+  box-shadow: inset 3px 0 0 var(--dt-tint);
 }
 .dt-card.dt-tinted {
-	border-left: 3px solid var(--dt-tint);
-	background: color-mix(in srgb, var(--dt-tint-bg) 8%, var(--dt-bg));
+  border-left: 3px solid var(--dt-tint);
+  background: color-mix(in srgb, var(--dt-tint-bg) 8%, var(--dt-bg));
 }
 
 /* ---------- Empty state ---------- */
 .dt-empty {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-	gap: 12px;
-	min-height: 240px;
-	padding: 24px;
-	text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 240px;
+  padding: 24px;
+  text-align: center;
 }
 
 .dt-empty .codicon {
-	font-size: 48px;
-	color: var(--dt-fg-muted);
+  font-size: 48px;
+  color: var(--dt-fg-muted);
 }
 
 .dt-empty__line {
-	font-size: var(--dt-text);
-	color: var(--dt-fg-subtle);
+  font-size: var(--dt-text);
+  color: var(--dt-fg-subtle);
 }
 
 /* ---------- Dialog ---------- */
@@ -525,53 +525,53 @@ body {
    dialog opened from inside a drawer (e.g. ItemHistory's restore, launched from the right-sidebar
    Revisions drawer) must not be click-shielded by the drawer's own overlay. */
 .dt-dialog-overlay {
-	position: fixed;
-	inset: 0;
-	background: rgba(23, 41, 64, 0.5);
-	z-index: 300;
+  position: fixed;
+  inset: 0;
+  background: rgba(23, 41, 64, 0.5);
+  z-index: 300;
 }
 
 /* Self-positioning, NOT reliant on the overlay for centering: reka-ui portals render Overlay and
    Content as SIBLINGS under <body>, so a flex-centering overlay never contains the dialog and its
    z-index would swallow the dialog's clicks. Fixed+translate centering works in both DOM shapes. */
 .dt-dialog {
-	position: fixed;
-	top: 50%;
-	left: 50%;
-	transform: translate(-50%, -50%);
-	z-index: 301;
-	width: 540px;
-	max-width: calc(100vw - 32px);
-	max-height: calc(100vh - 32px);
-	overflow-y: auto;
-	background: var(--dt-bg);
-	border-radius: var(--dt-radius-lg);
-	box-shadow: var(--dt-shadow-lg);
-	padding: 24px;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 301;
+  width: 540px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  background: var(--dt-bg);
+  border-radius: var(--dt-radius-lg);
+  box-shadow: var(--dt-shadow-lg);
+  padding: 24px;
 }
 
 .dt-dialog--wide {
-	width: 720px;
+  width: 720px;
 }
 
 .dt-dialog__title {
-	font-size: 18px;
-	font-weight: 600;
-	margin-bottom: 16px;
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 16px;
 }
 
 /* ---------- Typography helpers ---------- */
 .dt-page-title {
-	font-size: 20px;
-	font-weight: 600;
+  font-size: 20px;
+  font-weight: 600;
 }
 
 .dt-section-label {
-	font-size: var(--dt-label);
-	font-weight: 600;
-	text-transform: uppercase;
-	letter-spacing: 0.08em;
-	color: var(--dt-fg-muted);
+  font-size: var(--dt-label);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--dt-fg-muted);
 }
 
 /* COMPUTED — a value nobody writes on this form (`lib/field-row.ts#computedReason`): a mirror, an
@@ -581,24 +581,24 @@ body {
    Never a "(computed)" label: the dimming is the signal and the tooltip says why (operator 2026-10-30). */
 .dt-computed,
 .dt-computed * {
-	color: var(--dt-fg-subtle) !important;
+  color: var(--dt-fg-subtle) !important;
 }
 
 /* A COLLAPSED form section's heading (`display.form.sections[].collapsed`): the same quiet uppercase
    label as any section heading, made a button — a chevron, no box. Both record layouts use it. */
 .dt-section-toggle {
-	display: inline-flex;
-	align-items: center;
-	gap: 4px;
-	background: none;
-	border: 0;
-	padding: 0 0 0 var(--dt-space-1);
-	cursor: pointer;
-	font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: 0;
+  padding: 0 0 0 var(--dt-space-1);
+  cursor: pointer;
+  font-family: inherit;
 }
 .dt-section-toggle:hover {
-	color: var(--dt-fg);
+  color: var(--dt-fg);
 }
 .dt-section-toggle .codicon {
-	font-size: var(--dt-icon);
+  font-size: var(--dt-icon);
 }

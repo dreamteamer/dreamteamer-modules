@@ -15,64 +15,67 @@
  * no path in its label or hint: the path is the option's hover (`title`) and one line under the
  * control for the selected module (`whereOf`).
  */
-import { isUnwritableModule } from './module-writable';
-import type { ModuleEntry } from '../composables/modules';
-import type { Choice } from './listbox';
+import { isUnwritableModule } from "./module-writable"
+import type { ModuleEntry } from "../composables/modules"
+import type { Choice } from "./listbox"
 
 export interface ViewModuleTarget {
-	/** The `?module=` value; `null` is the workspace module — the engine's default, sent as no selector. */
-	id: string | null;
-	label: string;
-	/** Quiet trailing text: the id, and where its sources live (kept for callers that read it). */
-	hint: string;
-	locked: boolean;
-	/** Why a locked row cannot be picked. */
-	reason?: string;
-	/** The module's id on EVERY row — on the workspace row the workspace module's, '' when none is declared. */
-	name: string;
-	/** Workspace-relative root of its sources; '' when unknown. */
-	path: string;
-	/** Its sources are a linked clone's (`git_modules/`). */
-	linked: boolean;
-	/** The workspace module's row. */
-	workspace: boolean;
+  /** The `?module=` value; `null` is the workspace module — the engine's default, sent as no selector. */
+  id: string | null
+  label: string
+  /** Quiet trailing text: the id, and where its sources live (kept for callers that read it). */
+  hint: string
+  locked: boolean
+  /** Why a locked row cannot be picked. */
+  reason?: string
+  /** The module's id on EVERY row — on the workspace row the workspace module's, '' when none is declared. */
+  name: string
+  /** Workspace-relative root of its sources; '' when unknown. */
+  path: string
+  /** Its sources are a linked clone's (`git_modules/`). */
+  linked: boolean
+  /** The workspace module's row. */
+  workspace: boolean
 }
 
-export const LOCKED_REASON = 'installed by npm — a write there is erased by the next npm install';
+export const LOCKED_REASON = "installed by npm — a write there is erased by the next npm install"
 
-export function viewModuleTargets(modules: ReadonlyArray<Pick<ModuleEntry, 'id' | 'title' | 'location' | 'path'>>, workspaceModule: string | null): ViewModuleTarget[] {
-	const own = modules.find((m) => m.id === workspaceModule);
-	const rows = modules
-		.filter((m) => m.id !== workspaceModule)
-		.map((m): ViewModuleTarget => {
-			const locked = isUnwritableModule(m);
-			const linked = m.location === 'git_modules';
-			const where = linked ? `linked · ${m.path}` : m.path;
-			return {
-				id: m.id,
-				label: m.title || m.id,
-				hint: [m.id !== (m.title || m.id) ? m.id : '', where].filter(Boolean).join(' · '),
-				locked,
-				...(locked ? { reason: LOCKED_REASON } : {}),
-				name: m.id,
-				path: m.path ?? '',
-				linked,
-				workspace: false,
-			};
-		});
-	// writable first, each half in the manifest's order — a locked row is not competing for the cursor
-	rows.sort((a, b) => Number(a.locked) - Number(b.locked));
-	const workspace: ViewModuleTarget = {
-		id: null,
-		label: 'Workspace module',
-		hint: own ? `${own.id} · the default` : 'the default',
-		locked: false,
-		name: own?.id ?? '',
-		path: own?.path ?? '',
-		linked: own?.location === 'git_modules',
-		workspace: true,
-	};
-	return [workspace, ...rows];
+export function viewModuleTargets(
+  modules: ReadonlyArray<Pick<ModuleEntry, "id" | "title" | "location" | "path">>,
+  workspaceModule: string | null
+): ViewModuleTarget[] {
+  const own = modules.find(m => m.id === workspaceModule)
+  const rows = modules
+    .filter(m => m.id !== workspaceModule)
+    .map((m): ViewModuleTarget => {
+      const locked = isUnwritableModule(m)
+      const linked = m.location === "git_modules"
+      const where = linked ? `linked · ${m.path}` : m.path
+      return {
+        id: m.id,
+        label: m.title || m.id,
+        hint: [m.id !== (m.title || m.id) ? m.id : "", where].filter(Boolean).join(" · "),
+        locked,
+        ...(locked ? { reason: LOCKED_REASON } : {}),
+        name: m.id,
+        path: m.path ?? "",
+        linked,
+        workspace: false,
+      }
+    })
+  // writable first, each half in the manifest's order — a locked row is not competing for the cursor
+  rows.sort((a, b) => Number(a.locked) - Number(b.locked))
+  const workspace: ViewModuleTarget = {
+    id: null,
+    label: "Workspace module",
+    hint: own ? `${own.id} · the default` : "the default",
+    locked: false,
+    name: own?.id ?? "",
+    path: own?.path ?? "",
+    linked: own?.location === "git_modules",
+    workspace: true,
+  }
+  return [workspace, ...rows]
 }
 
 /**
@@ -81,11 +84,11 @@ export function viewModuleTargets(modules: ReadonlyArray<Pick<ModuleEntry, 'id' 
  * nothing to name, so the row goes (and a view whose module is not read yet matches no row).
  */
 export function recordPageTargets(targets: ViewModuleTarget[], workspaceModule: string | null): ViewModuleTarget[] {
-	return targets.flatMap((t) => {
-		if (!t.workspace) return [t];
-		if (!workspaceModule) return [];
-		return [{ ...t, id: workspaceModule, label: `${workspaceModule} (workspace module)` }];
-	});
+  return targets.flatMap(t => {
+    if (!t.workspace) return [t]
+    if (!workspaceModule) return []
+    return [{ ...t, id: workspaceModule, label: `${workspaceModule} (workspace module)` }]
+  })
 }
 
 /**
@@ -94,7 +97,7 @@ export function recordPageTargets(targets: ViewModuleTarget[], workspaceModule: 
  * `the default`, so the line under the control is never blank.
  */
 export function whereOf(t: ViewModuleTarget): string {
-	return [t.name, t.linked ? 'linked' : '', t.path].filter(Boolean).join(' · ') || 'the default';
+  return [t.name, t.linked ? "linked" : "", t.path].filter(Boolean).join(" · ") || "the default"
 }
 
 /**
@@ -104,22 +107,22 @@ export function whereOf(t: ViewModuleTarget): string {
  * names the module) is not; a linked module reads `linked`; an inline one nothing.
  */
 export function moduleChoices(targets: ViewModuleTarget[]): { choices: Choice[]; locked: ViewModuleTarget[] } {
-	const choices: Choice[] = [];
-	const locked: ViewModuleTarget[] = [];
-	for (const t of targets) {
-		if (t.locked) {
-			locked.push(t);
-			continue;
-		}
-		const hint = t.workspace ? (t.id === null && t.name ? t.name : undefined) : t.linked ? 'linked' : undefined;
-		choices.push({ value: t.id, text: t.label, title: whereOf(t), ...(hint ? { hint } : {}) });
-	}
-	return { choices, locked };
+  const choices: Choice[] = []
+  const locked: ViewModuleTarget[] = []
+  for (const t of targets) {
+    if (t.locked) {
+      locked.push(t)
+      continue
+    }
+    const hint = t.workspace ? (t.id === null && t.name ? t.name : undefined) : t.linked ? "linked" : undefined
+    choices.push({ value: t.id, text: t.label, title: whereOf(t), ...(hint ? { hint } : {}) })
+  }
+  return { choices, locked }
 }
 
 /** The one sentence for the modules that are not offered. */
 export function lockedNote(count: number): string {
-	return count === 1
-		? '1 module installed by npm is not offered — a write there is erased by the next npm install.'
-		: `${count} modules installed by npm are not offered — a write there is erased by the next npm install.`;
+  return count === 1
+    ? "1 module installed by npm is not offered — a write there is erased by the next npm install."
+    : `${count} modules installed by npm are not offered — a write there is erased by the next npm install.`
 }

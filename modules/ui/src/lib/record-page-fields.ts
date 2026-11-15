@@ -8,16 +8,16 @@
 //    json_schema — as one JSON row larger than everything the operator authored above it. It is build
 //    output, never authored, and the engine's own description of it says so. `display` is authored and
 //    stays.
-import type { FieldRow } from '../api/types';
+import type { FieldRow } from "../api/types"
 
 /** collection → the fields of it that compile writes and nobody authors */
 const COMPILE_WRITTEN: Record<string, ReadonlySet<string>> = {
-	collections: new Set(['compiled']),
-};
+  collections: new Set(["compiled"]),
+}
 
 export function recordPageFields(collection: string, fields: FieldRow[]): FieldRow[] {
-	const written = COMPILE_WRITTEN[collection];
-	return fields.filter((f) => !written?.has(f.field)).map(stubOnForm);
+  const written = COMPILE_WRITTEN[collection]
+  return fields.filter(f => !written?.has(f.field)).map(stubOnForm)
 }
 
 /**
@@ -31,6 +31,6 @@ export function recordPageFields(collection: string, fields: FieldRow[]): FieldR
  * module may declare.
  */
 export function stubOnForm(f: FieldRow): FieldRow {
-	if (f.field !== 'stub' || f.type !== 'boolean' || f.kind || !f.hidden?.includes('form')) return f;
-	return { ...f, hidden: f.hidden.filter((s) => s !== 'form') };
+  if (f.field !== "stub" || f.type !== "boolean" || f.kind || !f.hidden?.includes("form")) return f
+  return { ...f, hidden: f.hidden.filter(s => s !== "form") }
 }

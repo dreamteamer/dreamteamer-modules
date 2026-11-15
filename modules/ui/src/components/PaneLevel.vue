@@ -6,84 +6,126 @@
  * line sends a person to the chat, where `dt web open --edit|--admin` is. A raise in force is said at the menu's top;
  * a refused lower shows inside the menu. Keyboard: lib/menu-keys.ts. One nav menu at a time: lib/open-menu.ts.
  */
-import { computed, onUnmounted, ref, shallowRef, watch } from 'vue';
-import DtIcon from './DtIcon.vue';
-import { hostInfo, loadHost } from '../lib/host-boot';
-import { levelWord, lowerChoices, raiseNotice, type PaneLevel } from '../lib/pane-level';
-import { paneFetch, paneMenu } from '../lib/pane-api';
-import { menuUnder, rectOf, viewportWidth } from '../lib/menu-place';
-import { menuKeys } from '../lib/menu-keys';
+import { computed, onUnmounted, ref, shallowRef, watch } from "vue"
+import DtIcon from "./DtIcon.vue"
+import { hostInfo, loadHost } from "../lib/host-boot"
+import { levelWord, lowerChoices, raiseNotice, type PaneLevel } from "../lib/pane-level"
+import { paneFetch, paneMenu } from "../lib/pane-api"
+import { menuUnder, rectOf, viewportWidth } from "../lib/menu-place"
+import { menuKeys } from "../lib/menu-keys"
 
-const MENU_WIDTH = 220;
-const ICONS: Record<PaneLevel, string> = { read: 'eye', edit: 'edit', admin: 'shield' };
+const MENU_WIDTH = 220
+const ICONS: Record<PaneLevel, string> = { read: "eye", edit: "edit", admin: "shield" }
 
-const level = computed<PaneLevel>(() => (hostInfo.value?.level as PaneLevel | undefined) ?? 'read');
-const notice = computed(() => (hostInfo.value ? raiseNotice({ level: level.value, raisedAt: hostInfo.value.raisedAt }) : null));
-const lowers = computed(() => lowerChoices(level.value));
-const title = computed(() => `Level: ${levelWord(level.value)}${notice.value ? ` — ${notice.value}` : ''}`);
-const open = computed(() => paneMenu.value === 'level');
-const at = ref({ x: 0, y: 0 });
+const level = computed<PaneLevel>(() => (hostInfo.value?.level as PaneLevel | undefined) ?? "read")
+const notice = computed(() =>
+  hostInfo.value ? raiseNotice({ level: level.value, raisedAt: hostInfo.value.raisedAt }) : null
+)
+const lowers = computed(() => lowerChoices(level.value))
+const title = computed(() => `Level: ${levelWord(level.value)}${notice.value ? ` — ${notice.value}` : ""}`)
+const open = computed(() => paneMenu.value === "level")
+const at = ref({ x: 0, y: 0 })
 /** A document to hang the menu in (the render test tier has none, and draws it in place). */
-const hasBody = typeof document !== 'undefined' && !!(document as { body?: unknown }).body;
-const error = ref<string | null>(null);
+const hasBody = typeof document !== "undefined" && !!(document as { body?: unknown }).body
+const error = ref<string | null>(null)
 
-const button = shallowRef<{ focus?: () => void } | null>(null);
-const menuEl = shallowRef<{ focus?: () => void } | null>(null);
-const itemEls = shallowRef<Array<{ focus?: () => void } | null>>([]);
-const keys = menuKeys({ items: () => itemEls.value, menu: () => menuEl.value, button: () => button.value, close: () => { paneMenu.value = null; } });
+const button = shallowRef<{ focus?: () => void } | null>(null)
+const menuEl = shallowRef<{ focus?: () => void } | null>(null)
+const itemEls = shallowRef<Array<{ focus?: () => void } | null>>([])
+const keys = menuKeys({
+  items: () => itemEls.value,
+  menu: () => menuEl.value,
+  button: () => button.value,
+  close: () => {
+    paneMenu.value = null
+  },
+})
 
 function toggle(e: MouseEvent): void {
-	if (open.value) { paneMenu.value = null; return; }
-	at.value = menuUnder(rectOf(e?.currentTarget), 'end', MENU_WIDTH, viewportWidth());
-	error.value = null;
-	paneMenu.value = 'level';
-	keys.opened();
+  if (open.value) {
+    paneMenu.value = null
+    return
+  }
+  at.value = menuUnder(rectOf(e?.currentTarget), "end", MENU_WIDTH, viewportWidth())
+  error.value = null
+  paneMenu.value = "level"
+  keys.opened()
 }
 
 async function lower(to: PaneLevel): Promise<void> {
-	error.value = null;
-	try {
-		await paneFetch('POST', '/_dt/level', { level: to });
-		keys.done();
-		await loadHost();
-	} catch (err) {
-		error.value = (err as Error).message;
-	}
+  error.value = null
+  try {
+    await paneFetch("POST", "/_dt/level", { level: to })
+    keys.done()
+    await loadHost()
+  } catch (err) {
+    error.value = (err as Error).message
+  }
 }
 
-const away = () => { if (open.value) paneMenu.value = null; };
-watch(open, (on) => {
-	if (on) window.addEventListener('click', away);
-	else window.removeEventListener('click', away);
-});
-onUnmounted(() => window.removeEventListener('click', away));
+const away = () => {
+  if (open.value) paneMenu.value = null
+}
+watch(open, on => {
+  if (on) window.addEventListener("click", away)
+  else window.removeEventListener("click", away)
+})
+onUnmounted(() => window.removeEventListener("click", away))
 </script>
 
 <template>
-	<button
-		ref="button"
-		type="button"
-		class="dt-nav-tool dt-pane-level"
-		:data-level="level"
-		:title="title"
-		:aria-label="`Level: ${levelWord(level)}`"
-		aria-haspopup="menu"
-		:aria-expanded="open ? 'true' : 'false'"
-		@click.stop="toggle"
-	><DtIcon :name="ICONS[level]" /></button>
-	<!-- in the body, so no ancestor of the nav (its toolbar, its overflow) can clip or cover it; in place where there is no body -->
-	<Teleport to="body" :disabled="!hasBody">
-		<div v-if="open" ref="menuEl" class="dt-pane-menu dt-pane-level__menu" role="menu" tabindex="-1" :style="{ left: `${at.x}px`, top: `${at.y}px` }" @click.stop @keydown="keys.keydown" @focusin="keys.focusin">
-			<p v-if="notice" class="dt-pane-menu__notice">{{ notice }}</p>
-			<p v-if="error" class="dt-pane-menu__error" role="alert">{{ error }}</p>
-			<button v-for="l in lowers" :key="l" ref="itemEls" type="button" role="menuitem" class="dt-pane-level__lower" :data-level="l" @click.stop="lower(l)">{{ levelWord(l) }}</button>
-			<p class="dt-pane-menu__hint">To raise it, ask in the chat</p>
-		</div>
-	</Teleport>
+  <button
+    ref="button"
+    type="button"
+    class="dt-nav-tool dt-pane-level"
+    :data-level="level"
+    :title="title"
+    :aria-label="`Level: ${levelWord(level)}`"
+    aria-haspopup="menu"
+    :aria-expanded="open ? 'true' : 'false'"
+    @click.stop="toggle"
+  >
+    <DtIcon :name="ICONS[level]" />
+  </button>
+  <!-- in the body, so no ancestor of the nav (its toolbar, its overflow) can clip or cover it; in place where there is no body -->
+  <Teleport to="body" :disabled="!hasBody">
+    <div
+      v-if="open"
+      ref="menuEl"
+      class="dt-pane-menu dt-pane-level__menu"
+      role="menu"
+      tabindex="-1"
+      :style="{ left: `${at.x}px`, top: `${at.y}px` }"
+      @click.stop
+      @keydown="keys.keydown"
+      @focusin="keys.focusin"
+    >
+      <p v-if="notice" class="dt-pane-menu__notice">{{ notice }}</p>
+      <p v-if="error" class="dt-pane-menu__error" role="alert">{{ error }}</p>
+      <button
+        v-for="l in lowers"
+        :key="l"
+        ref="itemEls"
+        type="button"
+        role="menuitem"
+        class="dt-pane-level__lower"
+        :data-level="l"
+        @click.stop="lower(l)"
+      >
+        {{ levelWord(l) }}
+      </button>
+      <p class="dt-pane-menu__hint">To raise it, ask in the chat</p>
+    </div>
+  </Teleport>
 </template>
 
 <style scoped>
 /* the shield keeps the warning colour on hover: this out-specifies NavSidebar's `.dt-nav-tool:hover:not(:disabled)` */
-.dt-pane-level[data-level='admin'], .dt-pane-level[data-level='admin']:hover:not(:disabled) { color: var(--dt-warning); }
-.dt-pane-level[aria-expanded='true'] { background: var(--dt-bg-hover); }
+.dt-pane-level[data-level="admin"],
+.dt-pane-level[data-level="admin"]:hover:not(:disabled) {
+  color: var(--dt-warning);
+}
+.dt-pane-level[aria-expanded="true"] {
+  background: var(--dt-bg-hover);
+}
 </style>

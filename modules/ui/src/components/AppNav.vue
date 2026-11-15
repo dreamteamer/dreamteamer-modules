@@ -9,22 +9,22 @@
  * Arranging needs Edit: at Read the arrange lock is disabled with that reason, and a lower to Read while the nav is
  * unlocked locks it (NavSidebar locks whenever `arrangeBlocked` turns on).
  */
-import { computed } from 'vue';
-import NavSidebar from './NavSidebar.vue';
-import PaneSwitcher from './PaneSwitcher.vue';
-import PaneLevel from './PaneLevel.vue';
-import { hostInfo, paneHost } from '../lib/host-boot';
+import { computed } from "vue"
+import NavSidebar from "./NavSidebar.vue"
+import PaneSwitcher from "./PaneSwitcher.vue"
+import PaneLevel from "./PaneLevel.vue"
+import { hostInfo, paneHost } from "../lib/host-boot"
 
 /** The sentence the disabled arrange lock says at Read. */
-const NEEDS_EDIT = 'Arranging the nav needs Edit';
+const NEEDS_EDIT = "Arranging the nav needs Edit"
 
-const pane = computed(() => paneHost());
-const blocked = computed(() => (pane.value && (hostInfo.value?.level ?? 'read') === 'read' ? NEEDS_EDIT : null));
+const pane = computed(() => paneHost())
+const blocked = computed(() => (pane.value && (hostInfo.value?.level ?? "read") === "read" ? NEEDS_EDIT : null))
 </script>
 
 <template>
-	<NavSidebar :arrange-blocked="blocked">
-		<template v-if="pane" #name="{ label }"><PaneSwitcher :label="label" /></template>
-		<template v-if="pane" #end><PaneLevel /></template>
-	</NavSidebar>
+  <NavSidebar :arrange-blocked="blocked">
+    <template v-if="pane" #name="{ label }"><PaneSwitcher :label="label" /></template>
+    <template v-if="pane" #end><PaneLevel /></template>
+  </NavSidebar>
 </template>

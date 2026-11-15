@@ -22,16 +22,16 @@
  */
 
 export interface SchemaCaches {
-	/** drop the cached `/presentation` contract — MUST run before any re-read */
-	invalidateContract: () => void;
-	/** drop the cached `/info` */
-	invalidateServerInfo: () => void;
-	/** drop the cached `/relations` + per-collection field promises */
-	invalidateRelations: () => void;
-	/** re-read the collections overview, if anything had read it */
-	refreshCollections: () => Promise<unknown>;
-	/** re-read every field state a mounted component holds */
-	reloadCachedFields: () => Promise<unknown>;
+  /** drop the cached `/presentation` contract — MUST run before any re-read */
+  invalidateContract: () => void
+  /** drop the cached `/info` */
+  invalidateServerInfo: () => void
+  /** drop the cached `/relations` + per-collection field promises */
+  invalidateRelations: () => void
+  /** re-read the collections overview, if anything had read it */
+  refreshCollections: () => Promise<unknown>
+  /** re-read every field state a mounted component holds */
+  reloadCachedFields: () => Promise<unknown>
 }
 
 /**
@@ -39,8 +39,8 @@ export interface SchemaCaches {
  * rather than a module import so tier 1 can pin that ordering.
  */
 export async function refreshSchema(caches: SchemaCaches): Promise<void> {
-	caches.invalidateContract();
-	caches.invalidateServerInfo();
-	caches.invalidateRelations();
-	await Promise.all([caches.refreshCollections(), caches.reloadCachedFields()]);
+  caches.invalidateContract()
+  caches.invalidateServerInfo()
+  caches.invalidateRelations()
+  await Promise.all([caches.refreshCollections(), caches.reloadCachedFields()])
 }

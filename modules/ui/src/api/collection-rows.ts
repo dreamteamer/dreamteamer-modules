@@ -5,10 +5,10 @@
  * decision worth a test, and `adapter.ts` cannot be imported by one — it pulls in `transport.ts`,
  * which registers a `window` listener at module scope. Same reasoning as `lib/schema-rail.ts`.
  */
-import type { CollectionRow } from './types';
+import type { CollectionRow } from "./types"
 
 /** A collection row exactly as the engine's `presentation()` emits it (descriptor v2, §4.3). */
-export type PresentationCollection = Omit<CollectionRow, 'provenance' | 'layer'>;
+export type PresentationCollection = Omit<CollectionRow, "provenance" | "layer">
 
 /**
  * ⚠ THE KEYS ARE NAMED, NOT SPREAD, so a key the engine adds is a contract change this function has
@@ -30,21 +30,21 @@ export type PresentationCollection = Omit<CollectionRow, 'provenance' | 'layer'>
  * registered collection" marker) and `layer: ''` (= the local workspace).
  */
 export function collectionRows(rows: readonly PresentationCollection[]): CollectionRow[] {
-	return rows.map((c) => ({
-		collection: c.collection,
-		title: c.title,
-		nav: c.nav,
-		list: c.list,
-		record: c.record,
-		form: c.form,
-		...(c.position_field === undefined ? {} : { position_field: c.position_field }),
-		record_title: c.record_title,
-		record_type: c.record_type,
-		runtime: c.runtime,
-		internal: c.internal,
-		// the host's own key, not the engine's: every root the collection reads, named (0.24.0)
-		...(c.sources === undefined ? {} : { sources: c.sources }),
-		provenance: 'disk',
-		layer: '',
-	}));
+  return rows.map(c => ({
+    collection: c.collection,
+    title: c.title,
+    nav: c.nav,
+    list: c.list,
+    record: c.record,
+    form: c.form,
+    ...(c.position_field === undefined ? {} : { position_field: c.position_field }),
+    record_title: c.record_title,
+    record_type: c.record_type,
+    runtime: c.runtime,
+    internal: c.internal,
+    // the host's own key, not the engine's: every root the collection reads, named (0.24.0)
+    ...(c.sources === undefined ? {} : { sources: c.sources }),
+    provenance: "disk",
+    layer: "",
+  }))
 }

@@ -9,12 +9,12 @@
 // 2026-11-14 revision (the arrange lock): all of that only while the nav is unlocked (`arrange`). Locked, a row is a
 // link and nothing else — no `draggable`, no dragover or drop handler (so the browser shows no drop), and no context
 // menu handler (so a right click is the browser's own).
-import { defineComponent, h, type PropType } from 'vue';
+import { defineComponent, h, type PropType } from "vue"
 
 /** The MIME type a dragged row's key travels under. */
-export const NAV_DRAG_TYPE = 'text/x-dt-nav';
+export const NAV_DRAG_TYPE = "text/x-dt-nav"
 
-export type DropWhere = 'before' | 'into' | 'after';
+export type DropWhere = "before" | "into" | "after"
 
 /**
  * Where a pointer at `clientY` over the row drops. A folder or namespace row: `before` on its top quarter, `into` on
@@ -22,78 +22,119 @@ export type DropWhere = 'before' | 'into' | 'after';
  * With no pointer position, a container takes `into` and any other row `after`.
  */
 export function dropWhere(node: { kind: string }, e: { clientY?: number; currentTarget?: unknown }): DropWhere {
-	const container = node.kind === 'folder' || node.kind === 'namespace';
-	const r = (e.currentTarget as { getBoundingClientRect?: () => { top: number; height: number } } | null)?.getBoundingClientRect?.();
-	if (!r || !r.height || typeof e.clientY !== 'number') return container ? 'into' : 'after';
-	const at = (e.clientY - r.top) / r.height;
-	if (!container) return at < 0.5 ? 'before' : 'after';
-	return at < 0.25 ? 'before' : at <= 0.75 ? 'into' : 'after';
+  const container = node.kind === "folder" || node.kind === "namespace"
+  const r = (
+    e.currentTarget as { getBoundingClientRect?: () => { top: number; height: number } } | null
+  )?.getBoundingClientRect?.()
+  if (!r || !r.height || typeof e.clientY !== "number") return container ? "into" : "after"
+  const at = (e.clientY - r.top) / r.height
+  if (!container) return at < 0.5 ? "before" : "after"
+  return at < 0.25 ? "before" : at <= 0.75 ? "into" : "after"
 }
 
 /** One row and, when open, its children — recursive, so a module folder inside a layer draws the same way. */
 const NavRow: any = defineComponent({
-	name: 'NavRow',
-	props: {
-		node: { type: Object as PropType<any>, required: true },
-		depth: { type: Number, required: true },
-		open: { type: Object as PropType<Set<string>>, required: true },
-		/** The row a drag hovers and where it would drop, for the insertion line. */
-		hint: { type: Object as PropType<{ key: string; where: DropWhere } | null>, default: null },
-		/** The nav is unlocked: rows drag, take drops and have menus. Locked (false) they only navigate. */
-		arrange: { type: Boolean, default: false },
-	},
-	emits: ['toggle', 'activate', 'drag', 'hover', 'move', 'menu'],
-	setup(props, { emit }) {
-		return () => {
-			const n = props.node;
-			const hasKids = !!n.children?.length;
-			const isOpen = props.open.has(n.key);
-			const hint = props.hint;
-			const arrange = props.arrange;
-			const hinted = arrange && hint && hint.key === n.key ? `dt-nav-drop-${hint.where}` : null;
-			const gestures = arrange ? {
-				draggable: n.target ? 'true' : undefined,
-				onDragstart: (e: DragEvent) => {
-					if (!n.target) return;
-					e.dataTransfer?.setData(NAV_DRAG_TYPE, n.key);
-					e.dataTransfer?.setData('text/plain', n.label ?? n.key);
-					if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
-					emit('drag', n.key);
-				},
-				onDragover: (e: DragEvent) => {
-					e.preventDefault();
-					emit('hover', { key: n.key, where: dropWhere(n, e) });
-				},
-				onDrop: (e: DragEvent) => {
-					e.preventDefault();
-					e.stopPropagation();
-					emit('move', { key: e.dataTransfer?.getData(NAV_DRAG_TYPE) || null, targetKey: n.key, where: dropWhere(n, e) });
-				},
-				onContextmenu: (e: MouseEvent) => {
-					e.preventDefault();
-					e.stopPropagation();
-					emit('menu', { key: n.key, x: e.clientX, y: e.clientY });
-				},
-			} : {};
-			const row = h('li', {
-				class: ['dt-nav-row', `dt-nav-${n.kind}`, ...(hinted ? [hinted] : [])], role: 'treeitem', 'aria-expanded': hasKids ? String(isOpen) : undefined, 'data-key': n.key, title: n.tooltip ?? undefined, style: { paddingLeft: `${8 + props.depth * 12}px` },
-				...gestures,
-			}, [
-				hasKids ? h('span', { class: 'dt-nav-twisty', onClick: (e: Event) => { e.stopPropagation(); emit('toggle', n); } }, isOpen ? '▾' : '▸') : h('span', { class: 'dt-nav-twisty' }),
-				n.icon ? h('span', { class: `codicon codicon-${n.icon}` }) : null,
-				h('span', { class: 'dt-nav-label', onClick: () => emit('activate', n) }, n.label),
-				n.marks ? h('span', { class: 'dt-nav-marks' }, n.marks) : null,
-				n.description ? h('span', { class: 'dt-nav-count' }, n.description) : null,
-			]);
-			const kids = hasKids && isOpen
-				? n.children.map((c: any) => h(NavRow, {
-					key: c.key, node: c, depth: props.depth + 1, open: props.open, hint: props.hint, arrange: props.arrange,
-					onToggle: (x: any) => emit('toggle', x), onActivate: (x: any) => emit('activate', x), onDrag: (x: any) => emit('drag', x),
-					onHover: (x: any) => emit('hover', x), onMove: (x: any) => emit('move', x), onMenu: (x: any) => emit('menu', x),
-				}))
-				: [];
-			return [row, ...kids];
-		};
-	},
-});
-export default NavRow;
+  name: "NavRow",
+  props: {
+    node: { type: Object as PropType<any>, required: true },
+    depth: { type: Number, required: true },
+    open: { type: Object as PropType<Set<string>>, required: true },
+    /** The row a drag hovers and where it would drop, for the insertion line. */
+    hint: { type: Object as PropType<{ key: string; where: DropWhere } | null>, default: null },
+    /** The nav is unlocked: rows drag, take drops and have menus. Locked (false) they only navigate. */
+    arrange: { type: Boolean, default: false },
+  },
+  emits: ["toggle", "activate", "drag", "hover", "move", "menu"],
+  setup(props, { emit }) {
+    return () => {
+      const n = props.node
+      const hasKids = !!n.children?.length
+      const isOpen = props.open.has(n.key)
+      const hint = props.hint
+      const arrange = props.arrange
+      const hinted = arrange && hint && hint.key === n.key ? `dt-nav-drop-${hint.where}` : null
+      const gestures = arrange
+        ? {
+            draggable: n.target ? "true" : undefined,
+            onDragstart: (e: DragEvent) => {
+              if (!n.target) return
+              e.dataTransfer?.setData(NAV_DRAG_TYPE, n.key)
+              e.dataTransfer?.setData("text/plain", n.label ?? n.key)
+              if (e.dataTransfer) e.dataTransfer.effectAllowed = "move"
+              emit("drag", n.key)
+            },
+            onDragover: (e: DragEvent) => {
+              e.preventDefault()
+              emit("hover", { key: n.key, where: dropWhere(n, e) })
+            },
+            onDrop: (e: DragEvent) => {
+              e.preventDefault()
+              e.stopPropagation()
+              emit("move", {
+                key: e.dataTransfer?.getData(NAV_DRAG_TYPE) || null,
+                targetKey: n.key,
+                where: dropWhere(n, e),
+              })
+            },
+            onContextmenu: (e: MouseEvent) => {
+              e.preventDefault()
+              e.stopPropagation()
+              emit("menu", { key: n.key, x: e.clientX, y: e.clientY })
+            },
+          }
+        : {}
+      const row = h(
+        "li",
+        {
+          class: ["dt-nav-row", `dt-nav-${n.kind}`, ...(hinted ? [hinted] : [])],
+          role: "treeitem",
+          "aria-expanded": hasKids ? String(isOpen) : undefined,
+          "data-key": n.key,
+          title: n.tooltip ?? undefined,
+          style: { paddingLeft: `${8 + props.depth * 12}px` },
+          ...gestures,
+        },
+        [
+          hasKids
+            ? h(
+                "span",
+                {
+                  class: "dt-nav-twisty",
+                  onClick: (e: Event) => {
+                    e.stopPropagation()
+                    emit("toggle", n)
+                  },
+                },
+                isOpen ? "▾" : "▸"
+              )
+            : h("span", { class: "dt-nav-twisty" }),
+          n.icon ? h("span", { class: `codicon codicon-${n.icon}` }) : null,
+          h("span", { class: "dt-nav-label", onClick: () => emit("activate", n) }, n.label),
+          n.marks ? h("span", { class: "dt-nav-marks" }, n.marks) : null,
+          n.description ? h("span", { class: "dt-nav-count" }, n.description) : null,
+        ]
+      )
+      const kids =
+        hasKids && isOpen
+          ? n.children.map((c: any) =>
+              h(NavRow, {
+                key: c.key,
+                node: c,
+                depth: props.depth + 1,
+                open: props.open,
+                hint: props.hint,
+                arrange: props.arrange,
+                onToggle: (x: any) => emit("toggle", x),
+                onActivate: (x: any) => emit("activate", x),
+                onDrag: (x: any) => emit("drag", x),
+                onHover: (x: any) => emit("hover", x),
+                onMove: (x: any) => emit("move", x),
+                onMenu: (x: any) => emit("menu", x),
+              })
+            )
+          : []
+      return [row, ...kids]
+    }
+  },
+})
+export default NavRow

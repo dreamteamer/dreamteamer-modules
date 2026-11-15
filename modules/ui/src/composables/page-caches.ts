@@ -5,16 +5,16 @@
  * `api/transport.ts`, which registers a `window` listener at import time, and tier 1 must not bundle
  * that.
  */
-import { requestPageRefresh } from '../lib/page-refresh';
-import { resetRecordCache } from '../lib/record-cache';
-import { resetReferenceTitles } from '../lib/record-titles';
+import { requestPageRefresh } from "../lib/page-refresh"
+import { resetRecordCache } from "../lib/record-cache"
+import { resetReferenceTitles } from "../lib/record-titles"
 
 /**
  * Re-fetch what the open page shows. ORDER: drop the caches first, then signal — a subscriber that
  * re-reads before the record cache is cleared gets the old record back and reports success.
  */
 export function refreshPages(): void {
-	resetRecordCache();
-	resetReferenceTitles();
-	requestPageRefresh();
+  resetRecordCache()
+  resetReferenceTitles()
+  requestPageRefresh()
 }

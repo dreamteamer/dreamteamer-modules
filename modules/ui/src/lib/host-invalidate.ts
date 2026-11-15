@@ -13,25 +13,25 @@
  */
 
 export interface InvalidateDeps {
-	loadUiViews: () => Promise<unknown>;
-	refreshSchema: () => Promise<unknown>;
-	refreshPages: () => unknown;
-	warn?: (...args: unknown[]) => void;
+  loadUiViews: () => Promise<unknown>
+  refreshSchema: () => Promise<unknown>
+  refreshPages: () => unknown
+  warn?: (...args: unknown[]) => void
 }
 
 export async function handleInvalidate(m: { scope?: string; pages?: boolean }, deps: InvalidateDeps): Promise<void> {
-	const warn = deps.warn ?? ((...a: unknown[]) => console.warn(...a));
-	const work: Array<Promise<unknown>> = [deps.loadUiViews()];
-	// An older host sends no scope at all — treat that as `schema` (App.vue's long-standing rule).
-	if (m.scope !== 'data') work.push(deps.refreshSchema());
-	for (const r of await Promise.allSettled(work)) {
-		if (r.status === 'rejected') warn('dreamteamer: refresh —', r.reason);
-	}
-	if (m.pages) {
-		try {
-			deps.refreshPages();
-		} catch (err) {
-			warn('dreamteamer: page refresh —', err);
-		}
-	}
+  const warn = deps.warn ?? ((...a: unknown[]) => console.warn(...a))
+  const work: Array<Promise<unknown>> = [deps.loadUiViews()]
+  // An older host sends no scope at all — treat that as `schema` (App.vue's long-standing rule).
+  if (m.scope !== "data") work.push(deps.refreshSchema())
+  for (const r of await Promise.allSettled(work)) {
+    if (r.status === "rejected") warn("dreamteamer: refresh —", r.reason)
+  }
+  if (m.pages) {
+    try {
+      deps.refreshPages()
+    } catch (err) {
+      warn("dreamteamer: page refresh —", err)
+    }
+  }
 }

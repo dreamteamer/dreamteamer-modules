@@ -10,14 +10,14 @@
  * ⚠ A mirror is locked by its `kind`, which nothing relaxes: every writer is refused by the store, so
  * no form — create included — may offer a control for it.
  */
-import type { FieldRow } from '../api/types';
-import { isMirrorField } from './field-row';
+import type { FieldRow } from "../api/types"
+import { isMirrorField } from "./field-row"
 
-export { isMirrorField };
+export { isMirrorField }
 
 export interface MirrorOwner {
-	collection: string;
-	field: string;
+  collection: string
+  field: string
 }
 
 /**
@@ -25,21 +25,24 @@ export interface MirrorOwner {
  * relation target — the collection holding the key — names where. The target comes from the
  * relation rows (`useFields(...).relationTargets`), because a field row does not carry it.
  */
-export function mirrorOwnerOf(field: Pick<FieldRow, 'kind' | 'mirror_of'>, target: string | undefined): MirrorOwner | null {
-	if (!isMirrorField(field) || !field.mirror_of || !target) return null;
-	return { collection: target, field: field.mirror_of };
+export function mirrorOwnerOf(
+  field: Pick<FieldRow, "kind" | "mirror_of">,
+  target: string | undefined
+): MirrorOwner | null {
+  if (!isMirrorField(field) || !field.mirror_of || !target) return null
+  return { collection: target, field: field.mirror_of }
 }
 
 /** The bare name of a collection — its namespace prefix dropped. */
 export function baseNameOf(collection: string): string {
-	const slash = collection.lastIndexOf('/');
-	return slash === -1 ? collection : collection.slice(slash + 1);
+  const slash = collection.lastIndexOf("/")
+  return slash === -1 ? collection : collection.slice(slash + 1)
 }
 
 function singular(name: string): string {
-	if (name.endsWith('ies')) return `${name.slice(0, -3)}y`;
-	if (name.endsWith('s')) return name.slice(0, -1);
-	return name;
+  if (name.endsWith("ies")) return `${name.slice(0, -3)}y`
+  if (name.endsWith("s")) return name.slice(0, -1)
+  return name
 }
 
 /**
@@ -56,12 +59,12 @@ function singular(name: string): string {
  * a base carries no slash, so the last-slash split is the same answer `baseNameOf` gives the engine.
  */
 export function defaultInverseName(owner: string, target: string, unique: boolean): string | null {
-	const base = baseNameOf(owner);
-	const targetBase = baseNameOf(target);
-	if (base === targetBase) return null;
-	const prefix = `${singular(targetBase)}-`;
-	const stripped = base.startsWith(prefix) ? base.slice(prefix.length) : base;
-	return unique ? singular(stripped) : stripped;
+  const base = baseNameOf(owner)
+  const targetBase = baseNameOf(target)
+  if (base === targetBase) return null
+  const prefix = `${singular(targetBase)}-`
+  const stripped = base.startsWith(prefix) ? base.slice(prefix.length) : base
+  return unique ? singular(stripped) : stripped
 }
 
 // ---- WHICH SIDE STORES THE LINK, and the two shapes that answer it ------------------------------
@@ -80,21 +83,21 @@ export function defaultInverseName(owner: string, target: string, unique: boolea
 // pair, and the choice is only about where the sentence reads best: a question in the UI rather than
 // a fact about the schema.
 
-export type LinkSide = 'here' | 'target';
+export type LinkSide = "here" | "target"
 
 /** The whole relation, in the drawer's vocabulary — no descriptor keyword in sight. */
 export interface RelationIntent {
-	/** Which collection stores the foreign key. */
-	side: LinkSide;
-	/** The OTHER collection, slashless (`family/travel/trips`). */
-	target: string;
-	/** The field on the other collection. Empty with side 'here' means a one-way reference. */
-	farField: string;
-	/** THIS field holds a list of references. */
-	list: boolean;
-	/** side 'here' only — each target record may be claimed once, so the far field is single. */
-	unique: boolean;
-	onDelete: 'restrict' | 'set-null';
+  /** Which collection stores the foreign key. */
+  side: LinkSide
+  /** The OTHER collection, slashless (`family/travel/trips`). */
+  target: string
+  /** The field on the other collection. Empty with side 'here' means a one-way reference. */
+  farField: string
+  /** THIS field holds a list of references. */
+  list: boolean
+  /** side 'here' only — each target record may be claimed once, so the far field is single. */
+  unique: boolean
+  onDelete: "restrict" | "set-null"
 }
 
 /**
@@ -104,16 +107,16 @@ export interface RelationIntent {
  * `title` used to (`upsertField` guards that one).
  */
 export function isGeneratedDescription(text: string | undefined): boolean {
-	return typeof text === 'string' && /^Generated from \S+ — set that field\.$/.test(text);
+  return typeof text === "string" && /^Generated from \S+ — set that field\.$/.test(text)
 }
 
 /** Crude English singular — the same three rules `schema-ops.js#singular` applies. Exported because
  *  every LABEL about a link is about one record of a collection, not the collection: "on each
  *  meetings" and "each meetings has at most one" are the two sentences that gave the first cut away. */
 export function singularOf(name: string): string {
-	if (name.endsWith('ies')) return `${name.slice(0, -3)}y`;
-	if (name.endsWith('s')) return name.slice(0, -1);
-	return name;
+  if (name.endsWith("ies")) return `${name.slice(0, -3)}y`
+  if (name.endsWith("s")) return name.slice(0, -1)
+  return name
 }
 
 /**
@@ -125,9 +128,9 @@ export function singularOf(name: string): string {
  * called on both sides — so it answers `parent`, the word a tree actually uses.
  */
 export function defaultForeignKeyName(here: string, target: string): string {
-	const base = baseNameOf(here);
-	if (base === baseNameOf(target)) return 'parent';
-	return singularOf(base);
+  const base = baseNameOf(here)
+  if (base === baseNameOf(target)) return "parent"
+  return singularOf(base)
 }
 
 /**
@@ -137,16 +140,16 @@ export function defaultForeignKeyName(here: string, target: string): string {
  * target. Either way it is a radio the operator can move, not a decision they have to make.
  */
 export function defaultLinkSide(list: boolean): LinkSide {
-	return list ? 'target' : 'here';
+  return list ? "target" : "here"
 }
 
-export type Cardinality = 'm2o' | 'o2o' | 'm2m' | 'o2m';
+export type Cardinality = "m2o" | "o2o" | "m2m" | "o2m"
 
 /** The cardinality the two facts already on screen imply — never a separate question. */
 export function cardinalityOf(side: LinkSide, list: boolean, unique: boolean): Cardinality {
-	if (side === 'target') return list ? 'o2m' : 'o2o';
-	if (list) return 'm2m';
-	return unique ? 'o2o' : 'm2o';
+  if (side === "target") return list ? "o2m" : "o2o"
+  if (list) return "m2m"
+  return unique ? "o2o" : "m2o"
 }
 
 /**
@@ -154,21 +157,23 @@ export function cardinalityOf(side: LinkSide, list: boolean, unique: boolean): C
  * anything shows the operator: `m2o` is a word from the engine's log, not from the vault.
  */
 export function describeLink(intent: RelationIntent, here: string): string {
-	const H = baseNameOf(here), T = baseNameOf(intent.target);
-	const h = singularOf(H), t = singularOf(T);
-	switch (cardinalityOf(intent.side, intent.list, intent.unique)) {
-		case 'o2m':
-			return `Each ${h} has many ${T}; each ${t} belongs to one ${h}.`;
-		case 'o2o':
-			return `Each ${h} has at most one ${t}, and each ${t} at most one ${h}.`;
-		case 'm2m':
-			return `Each ${h} can have many ${T}, and each ${t} many ${H}.`;
-		default:
-			return `Each ${h} has one ${t}; each ${t} can have many ${H}.`;
-	}
+  const H = baseNameOf(here),
+    T = baseNameOf(intent.target)
+  const h = singularOf(H),
+    t = singularOf(T)
+  switch (cardinalityOf(intent.side, intent.list, intent.unique)) {
+    case "o2m":
+      return `Each ${h} has many ${T}; each ${t} belongs to one ${h}.`
+    case "o2o":
+      return `Each ${h} has at most one ${t}, and each ${t} at most one ${h}.`
+    case "m2m":
+      return `Each ${h} can have many ${T}, and each ${t} many ${H}.`
+    default:
+      return `Each ${h} has one ${t}; each ${t} can have many ${H}.`
+  }
 }
 
 /** Which collection's records disappear under the delete rule — the one the FOREIGN KEY points at. */
 export function deleteRuleTarget(intent: RelationIntent, here: string): string {
-	return intent.side === 'here' ? intent.target : here;
+  return intent.side === "here" ? intent.target : here
 }

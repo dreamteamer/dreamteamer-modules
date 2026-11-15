@@ -45,14 +45,14 @@
  * sees no filter and renders THE WHOLE COLLECTION. `embeddedRelationPlan` therefore refuses to
  * embed an empty relation (the caller falls back), and that refusal is what the test pins.
  */
-import type { FieldRow } from '../api/types';
-import type { UiViewRecord } from '../ui-views';
-import { isRelationField, isRelationList } from './field-row';
+import type { FieldRow } from "../api/types"
+import type { UiViewRecord } from "../ui-views"
+import { isRelationField, isRelationList } from "./field-row"
 
-export { isRelationField, isRelationList };
+export { isRelationField, isRelationList }
 
 /** The option key on a record page's ui-view `options` that carries the per-field overrides. */
-export const RELATION_VIEWS_OPTION = 'relation_views';
+export const RELATION_VIEWS_OPTION = "relation_views"
 
 /*
  * A LIST relation (`lib/field-row.ts#isRelationList`: a key or a mirror, `many`) is the only shape
@@ -72,20 +72,20 @@ export const RELATION_VIEWS_OPTION = 'relation_views';
  * first slash is meaningless on both sides. Same rule `ViewRelation#idFor` follows.
  */
 export function relationIds(value: unknown, target: string): string[] {
-	const entries = value === null || value === undefined || value === '' ? [] : Array.isArray(value) ? value : [value];
-	const out: string[] = [];
-	for (const entry of entries) {
-		if (typeof entry !== 'string' || entry === '') continue;
-		const norm = entry.replace(/^\/+/, '');
-		const id = norm.startsWith(`${target}/`) ? norm.slice(target.length + 1) : norm;
-		if (id) out.push(id);
-	}
-	return out;
+  const entries = value === null || value === undefined || value === "" ? [] : Array.isArray(value) ? value : [value]
+  const out: string[] = []
+  for (const entry of entries) {
+    if (typeof entry !== "string" || entry === "") continue
+    const norm = entry.replace(/^\/+/, "")
+    const id = norm.startsWith(`${target}/`) ? norm.slice(target.length + 1) : norm
+    if (id) out.push(id)
+  }
+  return out
 }
 
 /** The server-side scope: exactly these records of the target collection, and no others. */
 export function relationScopeFilter(ids: string[]): Record<string, unknown> {
-	return { id: { _in: ids } };
+  return { id: { _in: ids } }
 }
 
 /**
@@ -99,24 +99,31 @@ export function relationScopeFilter(ids: string[]): Record<string, unknown> {
  * shape warns and reads as unset, because the RECORD is what wants fixing and a silent fallback
  * makes the source rot invisibly.
  */
-export function relationViewOption(options: Record<string, unknown> | undefined, field: string): string | false | undefined {
-	const raw = options?.[RELATION_VIEWS_OPTION];
-	if (raw === undefined || raw === null) return undefined;
-	if (typeof raw !== 'object' || Array.isArray(raw)) {
-		console.warn(`[relation-view] options.${RELATION_VIEWS_OPTION} is a ${typeof raw}, not a map of field → view — ignoring it. Fix the record.`);
-		return undefined;
-	}
-	const entry = (raw as Record<string, unknown>)[field];
-	if (entry === undefined || entry === null) return undefined;
-	if (entry === false || entry === 'false' || entry === 'links') return false;
-	if (typeof entry === 'string' && entry.length > 0) return entry;
-	console.warn(`[relation-view] options.${RELATION_VIEWS_OPTION}.${field} is neither a view name nor false — ignoring it. Fix the record.`);
-	return undefined;
+export function relationViewOption(
+  options: Record<string, unknown> | undefined,
+  field: string
+): string | false | undefined {
+  const raw = options?.[RELATION_VIEWS_OPTION]
+  if (raw === undefined || raw === null) return undefined
+  if (typeof raw !== "object" || Array.isArray(raw)) {
+    console.warn(
+      `[relation-view] options.${RELATION_VIEWS_OPTION} is a ${typeof raw}, not a map of field → view — ignoring it. Fix the record.`
+    )
+    return undefined
+  }
+  const entry = (raw as Record<string, unknown>)[field]
+  if (entry === undefined || entry === null) return undefined
+  if (entry === false || entry === "false" || entry === "links") return false
+  if (typeof entry === "string" && entry.length > 0) return entry
+  console.warn(
+    `[relation-view] options.${RELATION_VIEWS_OPTION}.${field} is neither a view name nor false — ignoring it. Fix the record.`
+  )
+  return undefined
 }
 
 /** A ui-view's collection ref (`collections/activities`) as a bare collection name. */
 function collectionOf(view: UiViewRecord): string {
-	return (view.collection ?? '').replace(/^collections\//, '');
+  return (view.collection ?? "").replace(/^collections\//, "")
 }
 
 /**
@@ -128,31 +135,40 @@ function collectionOf(view: UiViewRecord): string {
  * collection is a mis-authored record: it warns and falls through to the collection's own display
  * rather than drawing the wrong collection's rows, which is the one outcome worse than a list of links.
  */
-export function pickRelationView(views: UiViewRecord[], target: string, named: string | undefined, field: string): UiViewRecord | null {
-	if (!named) return null;
-	const hit = views.find((v) => v.id === named) ?? views.find((v) => v.route === named);
-	if (!hit) {
-		console.warn(`[relation-view] field '${field}': no ui-view '${named}' — falling back to ${target}'s own display.`);
-	} else if (hit.scope !== 'collection') {
-		console.warn(`[relation-view] field '${field}': ui-view '${named}' is a '${hit.scope}' view, not a collection view — falling back to ${target}'s own display.`);
-	} else if (collectionOf(hit) !== target) {
-		console.warn(`[relation-view] field '${field}': ui-view '${named}' is of '${collectionOf(hit)}', not '${target}' — falling back to ${target}'s own display.`);
-	} else {
-		return hit;
-	}
-	return null;
+export function pickRelationView(
+  views: UiViewRecord[],
+  target: string,
+  named: string | undefined,
+  field: string
+): UiViewRecord | null {
+  if (!named) return null
+  const hit = views.find(v => v.id === named) ?? views.find(v => v.route === named)
+  if (!hit) {
+    console.warn(`[relation-view] field '${field}': no ui-view '${named}' — falling back to ${target}'s own display.`)
+  } else if (hit.scope !== "collection") {
+    console.warn(
+      `[relation-view] field '${field}': ui-view '${named}' is a '${hit.scope}' view, not a collection view — falling back to ${target}'s own display.`
+    )
+  } else if (collectionOf(hit) !== target) {
+    console.warn(
+      `[relation-view] field '${field}': ui-view '${named}' is of '${collectionOf(hit)}', not '${target}' — falling back to ${target}'s own display.`
+    )
+  } else {
+    return hit
+  }
+  return null
 }
 
 export interface EmbeddedRelationPlan {
-	/** The collection whose view is drawn. */
-	collection: string;
-	/** The named view that supplies layout, columns, sort and layout options — or null for the
-	 *  target collection's own `display.list`, which the embedded browse seeds itself from. */
-	view: UiViewRecord | null;
-	/** The ids the embedded view is scoped to — in the relation's own order. */
-	ids: string[];
-	/** The server filter that scopes it. Never empty, never absent. */
-	filter: Record<string, unknown>;
+  /** The collection whose view is drawn. */
+  collection: string
+  /** The named view that supplies layout, columns, sort and layout options — or null for the
+   *  target collection's own `display.list`, which the embedded browse seeds itself from. */
+  view: UiViewRecord | null
+  /** The ids the embedded view is scoped to — in the relation's own order. */
+  ids: string[]
+  /** The server filter that scopes it. Never empty, never absent. */
+  filter: Record<string, unknown>
 }
 
 /**
@@ -171,24 +187,29 @@ export interface EmbeddedRelationPlan {
  * display.
  */
 export function embeddedRelationPlan(args: {
-	field: FieldRow;
-	value: unknown;
-	target: string | undefined;
-	views: UiViewRecord[];
-	/** The record display's `options` — where `relation_views` is authored. */
-	pageOptions?: Record<string, unknown>;
+  field: FieldRow
+  value: unknown
+  target: string | undefined
+  views: UiViewRecord[]
+  /** The record display's `options` — where `relation_views` is authored. */
+  pageOptions?: Record<string, unknown>
 }): EmbeddedRelationPlan | null {
-	const { field, value, target, views, pageOptions } = args;
-	if (!target) return null;
-	if (!isRelationList(field)) return null;
+  const { field, value, target, views, pageOptions } = args
+  if (!target) return null
+  if (!isRelationList(field)) return null
 
-	const named = relationViewOption(pageOptions, field.field);
-	if (named === false) return null;
+  const named = relationViewOption(pageOptions, field.field)
+  if (named === false) return null
 
-	const ids = relationIds(value, target);
-	// ⚠ Not a stylistic guard. An empty `_in` flattens to no query params at all, and the browse
-	// would render the ENTIRE target collection under a field that names none of it.
-	if (ids.length === 0) return null;
+  const ids = relationIds(value, target)
+  // ⚠ Not a stylistic guard. An empty `_in` flattens to no query params at all, and the browse
+  // would render the ENTIRE target collection under a field that names none of it.
+  if (ids.length === 0) return null
 
-	return { collection: target, view: pickRelationView(views, target, named, field.field), ids, filter: relationScopeFilter(ids) };
+  return {
+    collection: target,
+    view: pickRelationView(views, target, named, field.field),
+    ids,
+    filter: relationScopeFilter(ids),
+  }
 }

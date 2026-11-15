@@ -15,30 +15,30 @@
  * the consuming Edits fall back to a plain text input, so a field-select in that position still
  * accepts a hand-typed name instead of rendering an empty, useless dropdown.
  */
-import { inject, provide, type InjectionKey, type Ref } from 'vue';
-import type { FieldRow } from '../api/types';
-import { choicesOf } from './field-row';
+import { inject, provide, type InjectionKey, type Ref } from "vue"
+import type { FieldRow } from "../api/types"
+import { choicesOf } from "./field-row"
 
 export interface FieldContext {
-	/** Collection whose fields these are — for labels/notes, not for fetching (fields arrive resolved). */
-	collection: string;
-	/** The collection's selectable fields, already filtered to what a human should see. */
-	fields: Ref<FieldRow[]>;
+  /** Collection whose fields these are — for labels/notes, not for fetching (fields arrive resolved). */
+  collection: string
+  /** The collection's selectable fields, already filtered to what a human should see. */
+  fields: Ref<FieldRow[]>
 }
 
-const FIELD_CONTEXT: InjectionKey<FieldContext> = Symbol('dt-field-context');
+const FIELD_CONTEXT: InjectionKey<FieldContext> = Symbol("dt-field-context")
 
 export function provideFieldContext(context: FieldContext): void {
-	provide(FIELD_CONTEXT, context);
+  provide(FIELD_CONTEXT, context)
 }
 
 export function useFieldContext(): FieldContext | null {
-	return inject(FIELD_CONTEXT, null);
+  return inject(FIELD_CONTEXT, null)
 }
 
 /** True when `field` declares a fixed vocabulary — a natural board/group axis. */
 export function hasChoices(field: FieldRow): boolean {
-	return choicesOf(field) !== null;
+  return choicesOf(field) !== null
 }
 
 /**
@@ -50,19 +50,19 @@ export function hasChoices(field: FieldRow): boolean {
  * everywhere else.
  */
 export function selectableFields(fields: FieldRow[], options?: Record<string, unknown>): FieldRow[] {
-	const types = options?.['types'];
-	const wanted = Array.isArray(types) ? types.map(String) : null;
-	let filtered = wanted ? fields.filter((f) => wanted.includes(f.type)) : [...fields];
+  const types = options?.["types"]
+  const wanted = Array.isArray(types) ? types.map(String) : null
+  let filtered = wanted ? fields.filter(f => wanted.includes(f.type)) : [...fields]
 
-	// `roles` narrows by the display contract's `role` rather than by wire type — which is how a
-	// diagram asks for "the reference fields" without knowing what a reference is stored as (they
-	// travel as plain strings; `role` is what makes one a relation).
-	const roles = options?.['roles'];
-	if (Array.isArray(roles) && roles.length) {
-		const wantedRoles = roles.map(String);
-		filtered = filtered.filter((f) => f.role !== undefined && wantedRoles.includes(f.role));
-	}
+  // `roles` narrows by the display contract's `role` rather than by wire type — which is how a
+  // diagram asks for "the reference fields" without knowing what a reference is stored as (they
+  // travel as plain strings; `role` is what makes one a relation).
+  const roles = options?.["roles"]
+  if (Array.isArray(roles) && roles.length) {
+    const wantedRoles = roles.map(String)
+    filtered = filtered.filter(f => f.role !== undefined && wantedRoles.includes(f.role))
+  }
 
-	if (options?.['prefer'] !== 'choices') return filtered;
-	return filtered.sort((a, b) => Number(hasChoices(b)) - Number(hasChoices(a)));
+  if (options?.["prefer"] !== "choices") return filtered
+  return filtered.sort((a, b) => Number(hasChoices(b)) - Number(hasChoices(a)))
 }

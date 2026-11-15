@@ -15,23 +15,26 @@
  * Manual ordering (a `position_field`) writes its own field, not the column's, so it stays available
  * within a card's column — the reason says so when it is on.
  */
-import type { FieldRow } from '../api/types';
-import { hasControl } from './field-row';
+import type { FieldRow } from "../api/types"
+import { hasControl } from "./field-row"
 
 export interface KanbanLock {
-	columns: boolean;
-	add: boolean;
-	reason: string | null;
+  columns: boolean
+  add: boolean
+  reason: string | null
 }
 
-export function kanbanLock(field: Pick<FieldRow, 'field' | 'title' | 'kind' | 'editable'> | null, opts: { reorder: boolean }): KanbanLock {
-	if (!field) return { columns: false, add: true, reason: null };
-	const columns = !hasControl(field, { create: false });
-	const add = hasControl(field, { create: true });
-	if (!columns) return { columns, add, reason: null };
-	const name = field.title || field.field;
-	const reason = opts.reorder
-		? `${name} is not editable here — this card can be reordered within its column, not moved to another.`
-		: `${name} is not editable here, so this card cannot be moved to another column.`;
-	return { columns, add, reason };
+export function kanbanLock(
+  field: Pick<FieldRow, "field" | "title" | "kind" | "editable"> | null,
+  opts: { reorder: boolean }
+): KanbanLock {
+  if (!field) return { columns: false, add: true, reason: null }
+  const columns = !hasControl(field, { create: false })
+  const add = hasControl(field, { create: true })
+  if (!columns) return { columns, add, reason: null }
+  const name = field.title || field.field
+  const reason = opts.reorder
+    ? `${name} is not editable here — this card can be reordered within its column, not moved to another.`
+    : `${name} is not editable here, so this card cannot be moved to another column.`
+  return { columns, add, reason }
 }

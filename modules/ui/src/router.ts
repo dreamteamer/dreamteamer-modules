@@ -15,17 +15,17 @@
  *                                       (nested namespaces), so the split can't be a static route.
  *   '/settings/data-model[/:path]'  → data-model designer list + detail, greedy for the same reason.
  */
-import { createRouter, createMemoryHistory, type RouteRecordRaw } from 'vue-router';
-import './registry/register-defaults';
-import { apps } from './registry/index';
+import { createRouter, createMemoryHistory, type RouteRecordRaw } from "vue-router"
+import "./registry/register-defaults"
+import { apps } from "./registry/index"
 
-const routes: RouteRecordRaw[] = [{ path: '/', redirect: '/content/' }, ...apps.all().flatMap((app) => app.routes)];
+const routes: RouteRecordRaw[] = [{ path: "/", redirect: "/content/" }, ...apps.all().flatMap(app => app.routes)]
 
 // MEMORY history (decision 48): the document is a `vscode-webview://` resource loaded off disk —
 // there is no server to SPA-fallback deep links and no address bar to show a URL. Routes are
 // driven programmatically: the extension posts `dt:navigate` when a tree node is clicked, and the
 // app posts its current route back so a reloaded window restores where the operator was.
 export const router = createRouter({
-	history: createMemoryHistory(),
-	routes,
-});
+  history: createMemoryHistory(),
+  routes,
+})

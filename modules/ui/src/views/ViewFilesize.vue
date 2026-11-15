@@ -4,26 +4,26 @@
 	byte-count field, only reachable via explicit `viewer: filesize`.
 -->
 <script setup lang="ts">
-import { computed } from 'vue';
-import type { FieldRow } from '../api/types';
-import { formatFilesize } from '../lib/format-filesize';
+import { computed } from "vue"
+import type { FieldRow } from "../api/types"
+import { formatFilesize } from "../lib/format-filesize"
 
 const props = defineProps<{
-	value: unknown;
-	field: FieldRow;
-	options?: Record<string, unknown>;
-}>();
+  value: unknown
+  field: FieldRow
+  options?: Record<string, unknown>
+}>()
 
-const text = computed(() => formatFilesize(props.value));
+const text = computed(() => formatFilesize(props.value))
 </script>
 
 <template>
-	<span class="dt-display-filesize">{{ text }}</span>
+  <span class="dt-display-filesize">{{ text }}</span>
 </template>
 
 <style scoped>
 .dt-display-filesize {
-	color: var(--dt-fg);
-	white-space: nowrap;
+  color: var(--dt-fg);
+  white-space: nowrap;
 }
 </style>

@@ -22,51 +22,53 @@
 	opened: `router.addRoute` froze the boot-time record and navigating back re-used it.
 -->
 <script setup lang="ts">
-import { computed } from 'vue';
-import BrowseView from '../components/BrowseView.vue';
-import { viewToConfig } from '../composables/collection-views';
-import { collectionOf, drawnDisplay, resolvedUiView, uiViewFingerprint, viewLabel } from '../ui-views';
-import DtIcon from '../components/DtIcon.vue';
-import { useCollections } from '../composables/collections';
-import { sourcesKey } from '../lib/sources';
+import { computed } from "vue"
+import BrowseView from "../components/BrowseView.vue"
+import { viewToConfig } from "../composables/collection-views"
+import { collectionOf, drawnDisplay, resolvedUiView, uiViewFingerprint, viewLabel } from "../ui-views"
+import DtIcon from "../components/DtIcon.vue"
+import { useCollections } from "../composables/collections"
+import { sourcesKey } from "../lib/sources"
 
-const props = defineProps<{ viewId: string }>();
+const props = defineProps<{ viewId: string }>()
 
-const view = computed(() => resolvedUiView(props.viewId));
+const view = computed(() => resolvedUiView(props.viewId))
 
-const collection = computed(() => (view.value ? collectionOf(view.value) : ''));
+const collection = computed(() => (view.value ? collectionOf(view.value) : ""))
 
 // Note on `sort`: `''` is a real value (explicitly unsorted) and must survive the trip — only a
 // missing key means "unset". `viewToConfig` preserves that distinction.
-const config = computed(() => (view.value ? viewToConfig(view.value) : undefined));
+const config = computed(() => (view.value ? viewToConfig(view.value) : undefined))
 
 // Remount when the RECORD changes, not merely when the route does. Stable by value, so a refresh
 // that finds the same record re-renders nothing.
 // …and when the sources the collection reads change — a layer installed (`sourcesKey`).
-const { tree } = useCollections();
-const browseKey = computed(() => `${uiViewFingerprint(view.value)}::${sourcesKey(tree.value.find((r) => r.collection === collection.value))}`);
+const { tree } = useCollections()
+const browseKey = computed(
+  () => `${uiViewFingerprint(view.value)}::${sourcesKey(tree.value.find(r => r.collection === collection.value))}`
+)
 </script>
 
 <template>
-	<div v-if="!view" class="dt-empty">
-		<DtIcon name="dashboard" />
-		<p class="dt-empty__line">ui-view '{{ viewId }}' no longer exists</p>
-	</div>
-	<div v-else-if="!collection" class="dt-empty">
-		<DtIcon name="dashboard" />
-		<p class="dt-empty__line">ui-view '{{ view.id }}' references no collection</p>
-	</div>
-	<BrowseView
-		v-else
-		:key="browseKey"
-		:collection="collection"
-		:layout="config?.layout"
-		:base-filter="view.filter"
-		:columns="config?.columns"
-		:sort="config?.sort"
-		:list-options="config?.listOptions"
-		:view-options="drawnDisplay(view).list?.options"
-		:title="viewLabel(view)"
-		:view-id="view.id"
-	/>
+  <div v-if="!view" class="dt-empty">
+    <DtIcon name="dashboard" />
+    <p class="dt-empty__line">ui-view '{{ viewId }}' no longer exists</p>
+  </div>
+  <div v-else-if="!collection" class="dt-empty">
+    <DtIcon name="dashboard" />
+    <p class="dt-empty__line">ui-view '{{ view.id }}' references no collection</p>
+  </div>
+  <BrowseView
+    v-else
+    :key="browseKey"
+    :collection="collection"
+    :layout="config?.layout"
+    :base-filter="view.filter"
+    :columns="config?.columns"
+    :sort="config?.sort"
+    :list-options="config?.listOptions"
+    :view-options="drawnDisplay(view).list?.options"
+    :title="viewLabel(view)"
+    :view-id="view.id"
+  />
 </template>

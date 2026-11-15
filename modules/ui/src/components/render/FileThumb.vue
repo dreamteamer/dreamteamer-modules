@@ -16,18 +16,18 @@
 	a broken icon where a filename would have been useful.
 -->
 <script setup lang="ts">
-import { useFileSrc } from '../../lib/use-file-src';
+import { useFileSrc } from "../../lib/use-file-src"
 
-const props = defineProps<{ value: string; alt?: string }>();
+const props = defineProps<{ value: string; alt?: string }>()
 
 // The shared resolver — same one `GroupHeader` uses, so the two can never disagree about where a
 // reference's bytes are or about dropping a result whose value changed mid-flight.
-const { src } = useFileSrc(() => props.value);
+const { src } = useFileSrc(() => props.value)
 </script>
 
 <template>
-	<img v-if="src" :src="src" :alt="alt ?? ''" class="dt-file-thumb" />
-	<span v-else class="dt-file-thumb__text">{{ value }}</span>
+  <img v-if="src" :src="src" :alt="alt ?? ''" class="dt-file-thumb" />
+  <span v-else class="dt-file-thumb__text">{{ value }}</span>
 </template>
 
 <style>
@@ -35,15 +35,15 @@ const { src } = useFileSrc(() => props.value);
    tooltip. `1.6em` follows whatever type scale the surface set rather than pinning a pixel size that
    is right in one place and wrong in the other two. */
 .dt-file-thumb {
-	width: 1.6em;
-	height: 1.6em;
-	object-fit: cover;
-	border-radius: 50%;
-	vertical-align: -0.45em;
-	margin-right: 0.25em;
-	background: var(--vscode-editorWidget-background, var(--dt-bg-subtle));
+  width: 1.6em;
+  height: 1.6em;
+  object-fit: cover;
+  border-radius: 50%;
+  vertical-align: -0.45em;
+  margin-right: 0.25em;
+  background: var(--vscode-editorWidget-background, var(--dt-bg-subtle));
 }
 .dt-file-thumb__text {
-	white-space: nowrap;
+  white-space: nowrap;
 }
 </style>

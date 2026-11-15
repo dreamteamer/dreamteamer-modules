@@ -13,15 +13,15 @@
 
 /** "All", as a number both servers can slice with. Large enough to clear any collection a workspace
  *  realistically holds, and positive — which is the whole point. */
-export const ALL = 100000;
+export const ALL = 100000
 
 /** What every browse has always requested when nothing said otherwise. */
-export const DEFAULT_PAGE_SIZE = 25;
+export const DEFAULT_PAGE_SIZE = 25
 
 /** Offered in the layout options, in this order; `ALL` renders as "All". */
-export const PAGE_SIZE_CHOICES = [25, 50, 100, 200, ALL];
+export const PAGE_SIZE_CHOICES = [25, 50, 100, 200, ALL]
 
-export const isAll = (n: unknown): boolean => n === ALL;
+export const isAll = (n: unknown): boolean => n === ALL
 
 /**
  * The limit to request, given the view's declared `page_size` and whether its rows are grouped.
@@ -32,7 +32,7 @@ export const isAll = (n: unknown): boolean => n === ALL;
  * whatever this view would have asked for having said nothing at all.
  */
 export function effectiveLimit(raw: unknown, hasRowGroup: boolean): number {
-	const fallback = hasRowGroup ? ALL : DEFAULT_PAGE_SIZE;
-	const n = typeof raw === 'number' ? raw : typeof raw === 'string' && raw.trim() !== '' ? Number(raw) : NaN;
-	return Number.isInteger(n) && n > 0 ? n : fallback;
+  const fallback = hasRowGroup ? ALL : DEFAULT_PAGE_SIZE
+  const n = typeof raw === "number" ? raw : typeof raw === "string" && raw.trim() !== "" ? Number(raw) : NaN
+  return Number.isInteger(n) && n > 0 ? n : fallback
 }

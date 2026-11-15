@@ -45,12 +45,21 @@
 // `--data-root <dir>` points the whole check at a fixture tree; the default is `data/` under the
 // workspace the CURRENT DIRECTORY sits in. It REFUSES (exit 2) when there is no workspace there,
 // rather than reporting a clean zero — see `workspaceRootFromCwd`.
-import fs from 'node:fs';
-import path from 'node:path';
-import yaml from 'js-yaml';
-import { execFileSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
-import { listRecords, readRecord, compiledStorage, recordFileFor, shippedCollections, collectionStorage, recordPath, recordId } from '../skills/running-retrospectives/lib/records.ts';
+import fs from "node:fs"
+import path from "node:path"
+import yaml from "js-yaml"
+import { execFileSync } from "node:child_process"
+import { fileURLToPath } from "node:url"
+import {
+  listRecords,
+  readRecord,
+  compiledStorage,
+  recordFileFor,
+  shippedCollections,
+  collectionStorage,
+  recordPath,
+  recordId,
+} from "../skills/running-retrospectives/lib/records.ts"
 // `lib/workspace.mjs`'s DATA is deliberately NOT imported — see `workspaceRootFromCwd` below. It
 // resolves from the SCRIPT, which is the wrong question the moment the module is linked for
 // preview.
@@ -59,27 +68,33 @@ import { listRecords, readRecord, compiledStorage, recordFileFor, shippedCollect
  *  many-to-one: several contributors' observed copies of one thing point at the same real record,
  *  and no real record ever points back. */
 const REAL_TARGET = {
-	users: 'users',
-	projects: 'projects',
-	decisions: 'decisions',
-	deliverables: 'deliverables',
-};
+  users: "users",
+  projects: "projects",
+  decisions: "decisions",
+  deliverables: "deliverables",
+}
 /** A commit SHA as it may be cited: git's own abbreviation floor to a full hash. */
-const SHA = /^[0-9a-f]{7,40}$/;
+const SHA = /^[0-9a-f]{7,40}$/
 /** What a decision's `source_ref` must look like, per `source_kind`. A shape, not a lookup — the
  *  lookup happens too, but only for the refs that point inside this module's own data. */
 const SOURCE_REF_SHAPE = {
-	'git-commit': { test: (ref) => SHA.test(ref), want: 'a 7–40 hex commit SHA' },
-	'agent-session': { test: (ref) => ref.startsWith('perspective/conversations/'), want: 'perspective/conversations/<id>' },
-	'decision-log': {
-		test: (ref) => ref.startsWith('agent-decision-log/') || /^DECISION-LOG\.md#\d+$/.test(ref),
-		want: 'agent-decision-log/<id> or DECISION-LOG.md#<row>',
-	},
-	ticket: { test: (ref) => ref.startsWith('perspective/tickets/'), want: 'perspective/tickets/<id>' },
-	meeting: { test: (ref) => ref.startsWith('meetings/'), want: 'meetings/<id>' },
-	interview: { test: (ref) => ref.startsWith('perspective/questions/'), want: 'perspective/questions/<id>' },
-	email: { test: (ref) => ref.startsWith('perspective/threads/'), want: 'perspective/threads/<id> — the thread record, never a mail URL' },
-};
+  "git-commit": { test: ref => SHA.test(ref), want: "a 7–40 hex commit SHA" },
+  "agent-session": {
+    test: ref => ref.startsWith("perspective/conversations/"),
+    want: "perspective/conversations/<id>",
+  },
+  "decision-log": {
+    test: ref => ref.startsWith("agent-decision-log/") || /^DECISION-LOG\.md#\d+$/.test(ref),
+    want: "agent-decision-log/<id> or DECISION-LOG.md#<row>",
+  },
+  ticket: { test: ref => ref.startsWith("perspective/tickets/"), want: "perspective/tickets/<id>" },
+  meeting: { test: ref => ref.startsWith("meetings/"), want: "meetings/<id>" },
+  interview: { test: ref => ref.startsWith("perspective/questions/"), want: "perspective/questions/<id>" },
+  email: {
+    test: ref => ref.startsWith("perspective/threads/"),
+    want: "perspective/threads/<id> — the thread record, never a mail URL",
+  },
+}
 /** What a finding's polymorphic `evidence` may point at. */
 // Activities, tickets and decisions are legal evidence — a finding about a contributor with no
 // transcripts rests on tickets and commits, not sessions. An answer is a field on the question that
@@ -89,14 +104,25 @@ const SOURCE_REF_SHAPE = {
 //   somebody's week is spent rests on the calendar directly; copying a meeting into this module's
 //   data to make the ref local would put a domain object here, which is the one thing the module
 //   never holds. It resolves against the workspace's own meetings collection — see PEER below.
-const EVIDENCE_COLLECTIONS = ['conversations', 'activity-weeks', 'questions', 'activities', 'tickets', 'decisions', 'deliverables', 'threads', 'meetings'];
+const EVIDENCE_COLLECTIONS = [
+  "conversations",
+  "activity-weeks",
+  "questions",
+  "activities",
+  "tickets",
+  "decisions",
+  "deliverables",
+  "threads",
+  "meetings",
+]
 /** The count a finding's body must close with — sessions, weeks or answers, whichever it counted.
  *  `windows` is accepted as a synonym of `weeks`. */
 // SWEEP THIS WITH `EVIDENCE_COLLECTIONS`: the two lists are one vocabulary, and they drift apart
 //   silently because the compiler cannot connect them.
 // A trailing full stop is allowed. `(4 activities).` is ordinary English and refusing it made the
 //   guard a punctuation checker; the thing being enforced is that the COUNT IS THERE.
-const COUNT_TAIL = /\(\s*\d+\s+(?:sessions?|weeks?|windows?|answers?|tickets?|activities|activity|commits?|decisions?|threads?|meetings?)\s*\)\s*\.?\s*$/;
+const COUNT_TAIL =
+  /\(\s*\d+\s+(?:sessions?|weeks?|windows?|answers?|tickets?|activities|activity|commits?|decisions?|threads?|meetings?)\s*\)\s*\.?\s*$/
 
 /**
  * WHERE THE RECORDS ARE. Walk up from the CURRENT DIRECTORY, the way the engine resolves a workspace,
@@ -115,43 +141,43 @@ const COUNT_TAIL = /\(\s*\d+\s+(?:sessions?|weeks?|windows?|answers?|tickets?|ac
  * refusal keys on "no workspace root", never on "no records".
  */
 function workspaceRootFromCwd(start = process.cwd()) {
-	for (let d = path.resolve(start); ; d = path.dirname(d)) {
-		const inGitModules = path.basename(path.dirname(d)) === 'git_modules';
-		if (!inGitModules && fs.existsSync(path.join(d, 'package-lock.json'))) return d;
-		if (path.dirname(d) === d) return null;
-	}
+  for (let d = path.resolve(start); ; d = path.dirname(d)) {
+    const inGitModules = path.basename(path.dirname(d)) === "git_modules"
+    if (!inGitModules && fs.existsSync(path.join(d, "package-lock.json"))) return d
+    if (path.dirname(d) === d) return null
+  }
 }
 
 function dataRootFromArgv(argv) {
-	const i = argv.indexOf('--data-root');
-	if (i >= 0) {
-		const value = argv[i + 1];
-		if (!value) throw new Error('--data-root needs a directory');
-		return path.resolve(value);
-	}
-	const ws = workspaceRootFromCwd();
-	if (!ws) {
-		console.error('✖ perspective guard: no workspace here.');
-		console.error(`    Looked for package-lock.json in ${process.cwd()} and every directory above it.`);
-		console.error('    Run this from inside the workspace whose records you want checked, or pass --data-root <dir>.');
-		console.error('    ⚠ Refusing rather than reporting "0 checked, 0 violations" — a guard that says nothing');
-		console.error('      while checking nothing is indistinguishable from a guard that passed.');
-		process.exit(2);
-	}
-	return path.join(ws, 'data');
+  const i = argv.indexOf("--data-root")
+  if (i >= 0) {
+    const value = argv[i + 1]
+    if (!value) throw new Error("--data-root needs a directory")
+    return path.resolve(value)
+  }
+  const ws = workspaceRootFromCwd()
+  if (!ws) {
+    console.error("✖ perspective guard: no workspace here.")
+    console.error(`    Looked for package-lock.json in ${process.cwd()} and every directory above it.`)
+    console.error("    Run this from inside the workspace whose records you want checked, or pass --data-root <dir>.")
+    console.error('    ⚠ Refusing rather than reporting "0 checked, 0 violations" — a guard that says nothing')
+    console.error("      while checking nothing is indistinguishable from a guard that passed.")
+    process.exit(2)
+  }
+  return path.join(ws, "data")
 }
 
-const dataRoot = dataRootFromArgv(process.argv.slice(2));
+const dataRoot = dataRootFromArgv(process.argv.slice(2))
 
 // ── this module's collections, read off the shipped descriptors — never a hand-kept list ──────────
-const COLLECTIONS = shippedCollections();
+const COLLECTIONS = shippedCollections()
 /** Record file → the collection whose storage folder holds it. */
-const collectionOfFile = new Map();
+const collectionOfFile = new Map()
 for (const collection of COLLECTIONS) {
-	const { dir, suffix } = collectionStorage(collection, dataRoot);
-	for (const file of listRecords(dir)) if (file.endsWith(`.${suffix}.md`)) collectionOfFile.set(file, collection);
+  const { dir, suffix } = collectionStorage(collection, dataRoot)
+  for (const file of listRecords(dir)) if (file.endsWith(`.${suffix}.md`)) collectionOfFile.set(file, collection)
 }
-const rel = (file) => path.relative(path.dirname(dataRoot), file);
+const rel = file => path.relative(path.dirname(dataRoot), file)
 
 // ── the PEER collections a ref may legally point OUT of this module at ──────────────────────────
 // A ref into a peer is RESOLVED, not only shape-checked: a decision citing a meeting that was
@@ -163,72 +189,78 @@ const rel = (file) => path.relative(path.dirname(dataRoot), file);
 // is not installed AT ALL, a ref into it is a WARNING and never a violation: the meetings module is
 // a peer, a workspace may legitimately not have it, and failing `check` over a record whose own
 // fields are innocent would block that workspace for someone else's absence.
-const workspaceRoot = path.dirname(dataRoot);
+const workspaceRoot = path.dirname(dataRoot)
 const PEER = (() => {
-	const out = {};
-	// THE REAL WORLD. Every `perspective/*` collection carries `real`, a one-way SOFT
-	// reference to the record it appears to be — a plain string rather than a reference type, so the
-	// engine's own `check` ignores it whether the collection is absent or the record is. That is deliberate (a
-	// correspondence is a judgement a run made on a date, and a deleted project must not turn a whole
-	// workspace red), but "ignored" must not mean "unsaid": a `real` that points at nothing is
-	// reported HERE, as a warning, which is what makes the softness honest rather than silent.
-	for (const [collection, fallbackPath, fallbackSuffix] of [
-		['meetings', 'data/meetings', 'meeting'],
-		['users', 'data/users', 'user'],
-		['projects', 'data/projects', 'project'],
-		['tasks', 'data/tasks', 'task'],
-	]) {
-		// the compiled storage block, parent folder included when the collection is stored under
-		// another (`storage.under`) — `lib/records.mjs` owns the rule, and `refTarget` probes through it
-		const storage = compiledStorage(workspaceRoot, collection, fallbackPath, fallbackSuffix);
-		out[collection] = { ...storage, installed: storage.compiled || fs.existsSync(storage.dir) };
-	}
-	return out;
-})();
-const peerGaps = new Map();   // collection → how many refs could not be resolved because it is absent
+  const out = {}
+  // THE REAL WORLD. Every `perspective/*` collection carries `real`, a one-way SOFT
+  // reference to the record it appears to be — a plain string rather than a reference type, so the
+  // engine's own `check` ignores it whether the collection is absent or the record is. That is deliberate (a
+  // correspondence is a judgement a run made on a date, and a deleted project must not turn a whole
+  // workspace red), but "ignored" must not mean "unsaid": a `real` that points at nothing is
+  // reported HERE, as a warning, which is what makes the softness honest rather than silent.
+  for (const [collection, fallbackPath, fallbackSuffix] of [
+    ["meetings", "data/meetings", "meeting"],
+    ["users", "data/users", "user"],
+    ["projects", "data/projects", "project"],
+    ["tasks", "data/tasks", "task"],
+  ]) {
+    // the compiled storage block, parent folder included when the collection is stored under
+    // another (`storage.under`) — `lib/records.mjs` owns the rule, and `refTarget` probes through it
+    const storage = compiledStorage(workspaceRoot, collection, fallbackPath, fallbackSuffix)
+    out[collection] = { ...storage, installed: storage.compiled || fs.existsSync(storage.dir) }
+  }
+  return out
+})()
+const peerGaps = new Map() // collection → how many refs could not be resolved because it is absent
 
 /** A qualified ref → where its file would be. Null when the ref names no collection this can resolve. */
 function refTarget(ref) {
-	const parts = String(ref).split('/');
-	if (parts.length < 2) return null;
-	if (parts[0] !== 'perspective') {
-		const peer = PEER[parts[0]];
-		if (!peer || parts.length < 2) return null;
-		const id = parts.slice(1).join('/');
-		return { collection: parts[0], id, peer, file: recordFileFor(peer, id) ?? path.join(peer.dir, `${id}.${peer.suffix}.md`) };
-	}
-	if (parts.length < 3) return null;
-	const collection = parts[1];
-	if (!COLLECTIONS.includes(collection)) return null;
-	const id = parts.slice(2).join('/');
-	return { collection, id, file: recordPath(collection, id, undefined, dataRoot) };
+  const parts = String(ref).split("/")
+  if (parts.length < 2) return null
+  if (parts[0] !== "perspective") {
+    const peer = PEER[parts[0]]
+    if (!peer || parts.length < 2) return null
+    const id = parts.slice(1).join("/")
+    return {
+      collection: parts[0],
+      id,
+      peer,
+      file: recordFileFor(peer, id) ?? path.join(peer.dir, `${id}.${peer.suffix}.md`),
+    }
+  }
+  if (parts.length < 3) return null
+  const collection = parts[1]
+  if (!COLLECTIONS.includes(collection)) return null
+  const id = parts.slice(2).join("/")
+  return { collection, id, file: recordPath(collection, id, undefined, dataRoot) }
 }
 
 /** Does the record a ref names exist? `null` = unanswerable, because the peer collection is absent. */
 function resolves(target) {
-	if (target.peer && !target.peer.installed) {
-		peerGaps.set(target.collection, (peerGaps.get(target.collection) ?? 0) + 1);
-		return null;
-	}
-	return fs.existsSync(target.file);
+  if (target.peer && !target.peer.installed) {
+    peerGaps.set(target.collection, (peerGaps.get(target.collection) ?? 0) + 1)
+    return null
+  }
+  return fs.existsSync(target.file)
 }
 
-const violations = [];
-const fail = (file, rule) => violations.push(`${rel(file)}: ${rule}`);
+const violations = []
+const fail = (file, rule) => violations.push(`${rel(file)}: ${rule}`)
 /** Not a violation: a state a run in flight legitimately passes through. Printed, never exited on. */
-const warnings = [];
-const warn = (file, note) => warnings.push(`⚠ ${rel(file)}: ${note}`);
+const warnings = []
+const warn = (file, note) => warnings.push(`⚠ ${rel(file)}: ${note}`)
 /** A field the schema types as an array, read defensively — a hand-edit may leave a bare string. */
-const list = (value) => (Array.isArray(value) ? value : value === undefined || value === null || value === '' ? [] : [value]);
+const list = value =>
+  Array.isArray(value) ? value : value === undefined || value === null || value === "" ? [] : [value]
 
-const files = [...collectionOfFile.keys()];
-const records = new Map();
+const files = [...collectionOfFile.keys()]
+const records = new Map()
 for (const file of files) {
-	try {
-		records.set(file, readRecord(file));
-	} catch (error) {
-		fail(file, `unreadable frontmatter — ${error.message}`);
-	}
+  try {
+    records.set(file, readRecord(file))
+  } catch (error) {
+    fail(file, `unreadable frontmatter — ${error.message}`)
+  }
 }
 
 /** A finding is confirmed or refuted only by the person, and the only place the person speaks in this
@@ -236,265 +268,295 @@ for (const file of files) {
  *  unanswered question is a question, and a finding may not be promoted to `confirmed` by the fact
  *  that somebody once thought of asking. The answer must actually be there. */
 function citesAnsweredQuestion(evidence) {
-	for (const ref of evidence) {
-		const target = refTarget(ref);
-		if (!target || target.collection !== 'questions') continue;
-		const q = records.get(target.file);
-		if (String(q?.fields?.answer ?? '').trim()) return true;
-	}
-	return false;
+  for (const ref of evidence) {
+    const target = refTarget(ref)
+    if (!target || target.collection !== "questions") continue
+    const q = records.get(target.file)
+    if (String(q?.fields?.answer ?? "").trim()) return true
+  }
+  return false
 }
 
 for (const [file, { fields, body }] of records) {
-	const collection = collectionOfFile.get(file);
+  const collection = collectionOfFile.get(file)
 
-	/* A GOAL'S COUNT IS ITS REFS, and the descriptor says which: decisions, activities and
-	 *  projects, once each. Hand counts drift — each pass counts a slightly different subset — so the
-	 *  count is DERIVED here and a mismatch is a violation, and
-	 *  `corroborated` needs three, and `confirmed`/`refuted` need a person — a goal is never asked
-	 *  directly, so the only route is a cited finding that an answered question already confirmed. */
-	if (collection === 'goals') {
-		const refs = new Set([...list(fields.decisions), ...list(fields.activities), ...list(fields.projects)]);
-		const count = Number(fields.evidence_count ?? 0);
-		if (count !== refs.size) {
-			fail(file, `evidence_count ${count} but ${refs.size} distinct decisions+activities+projects are attached — the count is the refs`);
-		}
-		const standing = fields.standing;
-		if (standing === 'corroborated' && refs.size < 3) {
-			fail(file, `standing corroborated with ${refs.size} refs — under three it is inferred`);
-		}
-		if (standing === 'confirmed' || standing === 'refuted') {
-			const viaFinding = list(fields.findings).some((ref) => {
-				const t = refTarget(ref);
-				const f = t && records.get(t.file);
-				return f && (f.fields.standing === 'confirmed' || f.fields.standing === 'refuted');
-			});
-			if (!viaFinding) fail(file, `standing ${standing} — a goal is ${standing} only through a cited finding a person has confirmed or refuted`);
-		}
-	}
+  /* A GOAL'S COUNT IS ITS REFS, and the descriptor says which: decisions, activities and
+   *  projects, once each. Hand counts drift — each pass counts a slightly different subset — so the
+   *  count is DERIVED here and a mismatch is a violation, and
+   *  `corroborated` needs three, and `confirmed`/`refuted` need a person — a goal is never asked
+   *  directly, so the only route is a cited finding that an answered question already confirmed. */
+  if (collection === "goals") {
+    const refs = new Set([...list(fields.decisions), ...list(fields.activities), ...list(fields.projects)])
+    const count = Number(fields.evidence_count ?? 0)
+    if (count !== refs.size) {
+      fail(
+        file,
+        `evidence_count ${count} but ${refs.size} distinct decisions+activities+projects are attached — the count is the refs`
+      )
+    }
+    const standing = fields.standing
+    if (standing === "corroborated" && refs.size < 3) {
+      fail(file, `standing corroborated with ${refs.size} refs — under three it is inferred`)
+    }
+    if (standing === "confirmed" || standing === "refuted") {
+      const viaFinding = list(fields.findings).some(ref => {
+        const t = refTarget(ref)
+        const f = t && records.get(t.file)
+        return f && (f.fields.standing === "confirmed" || f.fields.standing === "refuted")
+      })
+      if (!viaFinding)
+        fail(
+          file,
+          `standing ${standing} — a goal is ${standing} only through a cited finding a person has confirmed or refuted`
+        )
+    }
+  }
 
-	/* A SUGGESTION IS NOT AN ANSWER, and the two fields exist so nobody has to pretend otherwise.
-	 *  Two ways the separation breaks, both refused: a suggestion with no `suggestion_evidence` is a
-	 *  guess wearing a record, and an `answer` that is byte-for-byte the suggestion is the machine
-	 *  quoting itself in the one field where only the person speaks. The interviewer who copies a
-	 *  suggestion into `answer` because the person nodded has changed `answer_origin` to a lie. */
-	if (collection === 'questions') {
-		const suggested = String(fields.suggested_answer ?? '').trim();
-		const answer = String(fields.answer ?? '').trim();
-		if (suggested && !list(fields.suggestion_evidence).length) {
-			fail(file, 'suggested_answer with no suggestion_evidence — a suggestion is read out of records, name them');
-		}
-		if (suggested && answer && suggested === answer) {
-			fail(file, 'answer is identical to suggested_answer — the person did not say it, the run did; leave answer empty or record their actual words');
-		}
-		if (answer && !fields.answer_origin) {
-			fail(file, 'answer without answer_origin — say whether it was spoken, typed or relayed');
-		}
-	}
+  /* A SUGGESTION IS NOT AN ANSWER, and the two fields exist so nobody has to pretend otherwise.
+   *  Two ways the separation breaks, both refused: a suggestion with no `suggestion_evidence` is a
+   *  guess wearing a record, and an `answer` that is byte-for-byte the suggestion is the machine
+   *  quoting itself in the one field where only the person speaks. The interviewer who copies a
+   *  suggestion into `answer` because the person nodded has changed `answer_origin` to a lie. */
+  if (collection === "questions") {
+    const suggested = String(fields.suggested_answer ?? "").trim()
+    const answer = String(fields.answer ?? "").trim()
+    if (suggested && !list(fields.suggestion_evidence).length) {
+      fail(file, "suggested_answer with no suggestion_evidence — a suggestion is read out of records, name them")
+    }
+    if (suggested && answer && suggested === answer) {
+      fail(
+        file,
+        "answer is identical to suggested_answer — the person did not say it, the run did; leave answer empty or record their actual words"
+      )
+    }
+    if (answer && !fields.answer_origin) {
+      fail(file, "answer without answer_origin — say whether it was spoken, typed or relayed")
+    }
+  }
 
-	if (collection === 'findings') {
-		if (!COUNT_TAIL.test(body ?? '')) {
-			fail(file, 'finding body must end with its evidence count, e.g. `(3 sessions)`');
-		}
-		const evidence = Array.isArray(fields.evidence) ? fields.evidence : fields.evidence ? [fields.evidence] : [];
-		for (const ref of evidence) {
-			const target = refTarget(ref);
-			if (!target) {
-				fail(file, `evidence ${ref} is not perspective/<${EVIDENCE_COLLECTIONS.filter((c) => c !== 'meetings').join('|')}>/<id> or meetings/<id>`);
-				continue;
-			}
-			if (!EVIDENCE_COLLECTIONS.includes(target.collection)) {
-				fail(file, `evidence ${ref} points at ${target.collection}; evidence is ${EVIDENCE_COLLECTIONS.join(', ')}`);
-				continue;
-			}
-			if (resolves(target) === false) fail(file, `evidence ${ref} does not resolve to a record`);
-		}
-		const count = Number(fields.evidence_count ?? 0);
-		const standing = fields.standing;
-		if (citesAnsweredQuestion(evidence)) {
-			if (standing !== 'confirmed' && standing !== 'refuted') {
-				fail(file, `standing ${standing} — an ANSWERED interview question is cited, so it is confirmed or refuted`);
-			}
-		} else {
-			const expected = count >= 3 ? 'pattern' : 'anecdote';
-			if (standing !== expected) {
-				fail(file, `standing ${standing} with evidence_count ${count} — unconfirmed findings are ${expected}`);
-			}
-		}
-	}
+  if (collection === "findings") {
+    if (!COUNT_TAIL.test(body ?? "")) {
+      fail(file, "finding body must end with its evidence count, e.g. `(3 sessions)`")
+    }
+    const evidence = Array.isArray(fields.evidence) ? fields.evidence : fields.evidence ? [fields.evidence] : []
+    for (const ref of evidence) {
+      const target = refTarget(ref)
+      if (!target) {
+        fail(
+          file,
+          `evidence ${ref} is not perspective/<${EVIDENCE_COLLECTIONS.filter(c => c !== "meetings").join("|")}>/<id> or meetings/<id>`
+        )
+        continue
+      }
+      if (!EVIDENCE_COLLECTIONS.includes(target.collection)) {
+        fail(file, `evidence ${ref} points at ${target.collection}; evidence is ${EVIDENCE_COLLECTIONS.join(", ")}`)
+        continue
+      }
+      if (resolves(target) === false) fail(file, `evidence ${ref} does not resolve to a record`)
+    }
+    const count = Number(fields.evidence_count ?? 0)
+    const standing = fields.standing
+    if (citesAnsweredQuestion(evidence)) {
+      if (standing !== "confirmed" && standing !== "refuted") {
+        fail(file, `standing ${standing} — an ANSWERED interview question is cited, so it is confirmed or refuted`)
+      }
+    } else {
+      const expected = count >= 3 ? "pattern" : "anecdote"
+      if (standing !== expected) {
+        fail(file, `standing ${standing} with evidence_count ${count} — unconfirmed findings are ${expected}`)
+      }
+    }
+  }
 
-	if (collection === 'conversations' && fields.depth === 'summarized') {
-		const text = body ?? '';
-		if (!/^#\s+\S/m.test(text)) fail(file, 'summarized conversation body must open with `# <title>`');
-		if (!/^##\s+recap\s*\(no PII\)\s*$/im.test(text)) fail(file, 'summarized conversation body must carry a `## recap (no PII)` section — the paragraph that is safe to export');
-	}
+  if (collection === "conversations" && fields.depth === "summarized") {
+    const text = body ?? ""
+    if (!/^#\s+\S/m.test(text)) fail(file, "summarized conversation body must open with `# <title>`")
+    if (!/^##\s+recap\s*\(no PII\)\s*$/im.test(text))
+      fail(
+        file,
+        "summarized conversation body must carry a `## recap (no PII)` section — the paragraph that is safe to export"
+      )
+  }
 
-	if (collection === 'proposals') {
-		const justified = Array.isArray(fields.justified_by)
-			? fields.justified_by
-			: fields.justified_by
-				? [fields.justified_by]
-				: [];
-		for (const ref of justified) {
-			const target = refTarget(ref);
-			if (!target || target.collection !== 'findings') {
-				fail(file, `justified_by ${ref} is not perspective/findings/<id>`);
-				continue;
-			}
-			const finding = records.get(target.file);
-			if (!finding) {
-				fail(file, `justified_by ${ref} does not resolve to a finding`);
-				continue;
-			}
-			if (finding.fields?.standing === 'refuted') fail(file, `justified_by ${ref} is refuted — a proposal may not cite one`);
-		}
-	}
+  if (collection === "proposals") {
+    const justified = Array.isArray(fields.justified_by)
+      ? fields.justified_by
+      : fields.justified_by
+        ? [fields.justified_by]
+        : []
+    for (const ref of justified) {
+      const target = refTarget(ref)
+      if (!target || target.collection !== "findings") {
+        fail(file, `justified_by ${ref} is not perspective/findings/<id>`)
+        continue
+      }
+      const finding = records.get(target.file)
+      if (!finding) {
+        fail(file, `justified_by ${ref} does not resolve to a finding`)
+        continue
+      }
+      if (finding.fields?.standing === "refuted")
+        fail(file, `justified_by ${ref} is refuted — a proposal may not cite one`)
+    }
+  }
 
-	if (collection === 'insights') {
-		const findings = list(fields.findings);
-		if (findings.length < 2) {
-			fail(file, `findings has ${findings.length} ref(s) — an insight is drawn ACROSS at least two findings`);
-		}
-		for (const ref of findings) {
-			const target = refTarget(ref);
-			if (!target || target.collection !== 'findings') {
-				fail(file, `findings ${ref} is not perspective/findings/<id>`);
-				continue;
-			}
-			if (!records.has(target.file)) fail(file, `findings ${ref} does not resolve to a finding`);
-		}
-	}
+  if (collection === "insights") {
+    const findings = list(fields.findings)
+    if (findings.length < 2) {
+      fail(file, `findings has ${findings.length} ref(s) — an insight is drawn ACROSS at least two findings`)
+    }
+    for (const ref of findings) {
+      const target = refTarget(ref)
+      if (!target || target.collection !== "findings") {
+        fail(file, `findings ${ref} is not perspective/findings/<id>`)
+        continue
+      }
+      if (!records.has(target.file)) fail(file, `findings ${ref} does not resolve to a finding`)
+    }
+  }
 
-	if (collection === 'activities' || collection === 'workflows') {
-		const collaborators = list(fields.collaborators);
-		const collaborative = fields.collaborative === true;
-		if (collaborators.length && !collaborative) {
-			fail(file, `collaborative is not true but ${collaborators.length} collaborator(s) are named — the derived field must agree`);
-		}
-		if (!collaborators.length && collaborative) {
-			fail(file, 'collaborative is true but no collaborators are named — the derived field must agree');
-		}
-	}
+  if (collection === "activities" || collection === "workflows") {
+    const collaborators = list(fields.collaborators)
+    const collaborative = fields.collaborative === true
+    if (collaborators.length && !collaborative) {
+      fail(
+        file,
+        `collaborative is not true but ${collaborators.length} collaborator(s) are named — the derived field must agree`
+      )
+    }
+    if (!collaborators.length && collaborative) {
+      fail(file, "collaborative is true but no collaborators are named — the derived field must agree")
+    }
+  }
 
-	if (collection === 'activities') {
-		for (const sha of list(fields.commits)) {
-			if (!SHA.test(String(sha))) fail(file, `commits ${sha} is not a 7–40 hex commit SHA`);
-		}
-		if (fields.ended && fields.started && String(fields.ended) < String(fields.started)) {
-			fail(file, `ended ${fields.ended} is before started ${fields.started}`);
-		}
-	}
+  if (collection === "activities") {
+    for (const sha of list(fields.commits)) {
+      if (!SHA.test(String(sha))) fail(file, `commits ${sha} is not a 7–40 hex commit SHA`)
+    }
+    if (fields.ended && fields.started && String(fields.ended) < String(fields.started)) {
+      fail(file, `ended ${fields.ended} is before started ${fields.started}`)
+    }
+  }
 
-	// 11. A `real` THAT POINTS AT NOTHING. The field is a plain string, so the engine's own
-	//     `check` ignores it whether the collection is absent or the record is — deliberately, because
-	//     a correspondence is a judgement a run made on a date and a deleted project must not turn a
-	//     whole workspace red. But soft must not mean silent: a wrong TARGET is a violation (an
-	//     observed project claiming to be a task is a corrupt record, not a stale one), and a right
-	//     target that resolves to nothing is a warning.
-	if (REAL_TARGET[collection] && typeof fields.real === 'string' && fields.real.trim()) {
-		const want = REAL_TARGET[collection];
-		const target = refTarget(fields.real.trim());
-		if (!target || target.collection !== want) {
-			fail(file, `real ${fields.real} is not ${want}/<id> — an observed object joins to its OWN real collection, never to another`);
-		} else if (resolves(target) === false) {
-			warn(file, `real ${fields.real} resolves to no record — the correspondence is kept (it is what the run judged), but nothing is there now`);
-		}
-	}
+  // 11. A `real` THAT POINTS AT NOTHING. The field is a plain string, so the engine's own
+  //     `check` ignores it whether the collection is absent or the record is — deliberately, because
+  //     a correspondence is a judgement a run made on a date and a deleted project must not turn a
+  //     whole workspace red. But soft must not mean silent: a wrong TARGET is a violation (an
+  //     observed project claiming to be a task is a corrupt record, not a stale one), and a right
+  //     target that resolves to nothing is a warning.
+  if (REAL_TARGET[collection] && typeof fields.real === "string" && fields.real.trim()) {
+    const want = REAL_TARGET[collection]
+    const target = refTarget(fields.real.trim())
+    if (!target || target.collection !== want) {
+      fail(
+        file,
+        `real ${fields.real} is not ${want}/<id> — an observed object joins to its OWN real collection, never to another`
+      )
+    } else if (resolves(target) === false) {
+      warn(
+        file,
+        `real ${fields.real} resolves to no record — the correspondence is kept (it is what the run judged), but nothing is there now`
+      )
+    }
+  }
 
-	if (collection === 'decisions') {
-		const ref = typeof fields.source_ref === 'string' ? fields.source_ref.trim() : '';
-		const kind = fields.source_kind;
-		if (!ref) {
-			fail(file, 'source_ref is empty — a decision must name where it was extracted from');
-		} else {
-			const shape = SOURCE_REF_SHAPE[kind];
-			if (!shape) {
-				fail(file, `source_kind ${kind} is not one of ${Object.keys(SOURCE_REF_SHAPE).join(', ')}`);
-			} else if (!shape.test(ref)) {
-				fail(file, `source_ref ${ref} is not shaped for source_kind ${kind} — expected ${shape.want}`);
-			}
-			const target = refTarget(ref);
-			if (target && resolves(target) === false) fail(file, `source_ref ${ref} does not resolve to a record`);
-		}
-	}
+  if (collection === "decisions") {
+    const ref = typeof fields.source_ref === "string" ? fields.source_ref.trim() : ""
+    const kind = fields.source_kind
+    if (!ref) {
+      fail(file, "source_ref is empty — a decision must name where it was extracted from")
+    } else {
+      const shape = SOURCE_REF_SHAPE[kind]
+      if (!shape) {
+        fail(file, `source_kind ${kind} is not one of ${Object.keys(SOURCE_REF_SHAPE).join(", ")}`)
+      } else if (!shape.test(ref)) {
+        fail(file, `source_ref ${ref} is not shaped for source_kind ${kind} — expected ${shape.want}`)
+      }
+      const target = refTarget(ref)
+      if (target && resolves(target) === false) fail(file, `source_ref ${ref} does not resolve to a record`)
+    }
+  }
 
-	if (collection === 'perspectives') {
-		const self = `perspective/perspectives/${recordId('perspectives', file, dataRoot)}`;
-		const target = refTarget(fields.retrospective);
-		if (!target || target.collection !== 'retrospective-sessions') {
-			fail(file, `retrospective ${fields.retrospective} is not perspective/retrospective-sessions/<id>`);
-		} else if (!records.has(target.file)) {
-			fail(file, `retrospective ${fields.retrospective} does not resolve to a retrospective`);
-		}
-		// NO BACK-POINTER CHECK: `retrospective-sessions.perspective` is a GENERATED mirror
-		// (`mirror_of: retrospective`), so it cannot disagree with
-		// `perspectives.retrospective` — the engine maintains it on every `dt` write and reports it
-		// stale after a raw one. A guard whose job the schema can do will one day disagree with it.
-		void self;
-	}
+  if (collection === "perspectives") {
+    const self = `perspective/perspectives/${recordId("perspectives", file, dataRoot)}`
+    const target = refTarget(fields.retrospective)
+    if (!target || target.collection !== "retrospective-sessions") {
+      fail(file, `retrospective ${fields.retrospective} is not perspective/retrospective-sessions/<id>`)
+    } else if (!records.has(target.file)) {
+      fail(file, `retrospective ${fields.retrospective} does not resolve to a retrospective`)
+    }
+    // NO BACK-POINTER CHECK: `retrospective-sessions.perspective` is a GENERATED mirror
+    // (`mirror_of: retrospective`), so it cannot disagree with
+    // `perspectives.retrospective` — the engine maintains it on every `dt` write and reports it
+    // stale after a raw one. A guard whose job the schema can do will one day disagree with it.
+    void self
+  }
 
-	// 12. A GATE'S VERDICT WITHOUT ITS MEASUREMENT is success reported rather than a result quoted. And a waiver with no reason is an undocumented
-	//     shortcut that reads, later, exactly like a pass.
-	if (collection === 'gates') {
-		if (fields.verdict && fields.verdict !== 'not-run' && !String(fields.measured ?? '').trim()) {
-			fail(file, `verdict ${fields.verdict} with no \`measured\` — quote the count, the command's line, or the person's words`);
-		}
-		if (fields.verdict === 'waived' && !String(fields.waived_because ?? '').trim()) {
-			fail(file, 'waived with no `waived_because` — a waiver without a reason is an undocumented shortcut');
-		}
-	}
+  // 12. A GATE'S VERDICT WITHOUT ITS MEASUREMENT is success reported rather than a result quoted. And a waiver with no reason is an undocumented
+  //     shortcut that reads, later, exactly like a pass.
+  if (collection === "gates") {
+    if (fields.verdict && fields.verdict !== "not-run" && !String(fields.measured ?? "").trim()) {
+      fail(
+        file,
+        `verdict ${fields.verdict} with no \`measured\` — quote the count, the command's line, or the person's words`
+      )
+    }
+    if (fields.verdict === "waived" && !String(fields.waived_because ?? "").trim()) {
+      fail(file, "waived with no `waived_because` — a waiver without a reason is an undocumented shortcut")
+    }
+  }
 
-	if (collection === 'workflows') {
-		if (!list(fields.steps).length) fail(file, 'steps is empty — the ordered steps ARE the workflow');
-		const activities = list(fields.activities);
-		if (!activities.length) fail(file, 'activities is empty — a workflow is observed across activities, never asserted');
-		for (const ref of activities) {
-			const target = refTarget(ref);
-			if (!target || target.collection !== 'activities') {
-				fail(file, `activities ${ref} is not perspective/activities/<id>`);
-				continue;
-			}
-			if (!records.has(target.file)) fail(file, `activities ${ref} does not resolve to an activity`);
-		}
-	}
+  if (collection === "workflows") {
+    if (!list(fields.steps).length) fail(file, "steps is empty — the ordered steps ARE the workflow")
+    const activities = list(fields.activities)
+    if (!activities.length) fail(file, "activities is empty — a workflow is observed across activities, never asserted")
+    for (const ref of activities) {
+      const target = refTarget(ref)
+      if (!target || target.collection !== "activities") {
+        fail(file, `activities ${ref} is not perspective/activities/<id>`)
+        continue
+      }
+      if (!records.has(target.file)) fail(file, `activities ${ref} does not resolve to an activity`)
+    }
+  }
 
-	if (collection === 'users' && !list(fields.handles).length) {
-		fail(file, 'handles is empty — it is the merge key, and an observed person without one can never be matched');
-	}
+  if (collection === "users" && !list(fields.handles).length) {
+    fail(file, "handles is empty — it is the merge key, and an observed person without one can never be matched")
+  }
 
-	for (const field of ['location', 'transcript_path']) {
-		const value = fields[field];
-		if (typeof value !== 'string' || value === '') continue;
-		// A `url:` location is machine-independent by nature — the Asana source carries one — so it is
-		// as legal as a template. The rule exists to stop a resolved filesystem path travelling, nothing else.
-		// A BARE http(s) URL is machine-independent by the SAME argument: read-drive writes a Drive web
-		// link, the only sane `location` for an artefact that does not live in the workspace. A link is
-		// not a path.
-		if (/^(url:|https?:\/\/)/.test(value)) continue;
-		if (!value.startsWith('${') || value.startsWith('/')) {
-			fail(file, `${field} must be a \${…} template or a url:, never a machine path`);
-		}
-	}
+  for (const field of ["location", "transcript_path"]) {
+    const value = fields[field]
+    if (typeof value !== "string" || value === "") continue
+    // A `url:` location is machine-independent by nature — the Asana source carries one — so it is
+    // as legal as a template. The rule exists to stop a resolved filesystem path travelling, nothing else.
+    // A BARE http(s) URL is machine-independent by the SAME argument: read-drive writes a Drive web
+    // link, the only sane `location` for an artefact that does not live in the workspace. A link is
+    // not a path.
+    if (/^(url:|https?:\/\/)/.test(value)) continue
+    if (!value.startsWith("${") || value.startsWith("/")) {
+      fail(file, `${field} must be a \${…} template or a url:, never a machine path`)
+    }
+  }
 }
 
 // Two observed people under one retrospective sharing a handle is the unmerged duplicate: the readers
 // upsert into the record whose `handles` already carry the identity, so a second record means one
 // person's work is being split in two. BOTH files are named, because only a person can say which
 // record survives — and this is a violation, not a warning, because the readers should never make one.
-const handleOwners = new Map(); // `${retrospective}\0${handle}` → first file that claimed it
+const handleOwners = new Map() // `${retrospective}\0${handle}` → first file that claimed it
 for (const [file, { fields }] of records) {
-	if (collectionOfFile.get(file) !== 'users') continue;
-	const run = fields.retrospective ?? '';
-	for (const handle of list(fields.handles)) {
-		const key = `${run}\0${String(handle).trim().toLowerCase()}`;
-		const first = handleOwners.get(key);
-		if (first === undefined) {
-			handleOwners.set(key, file);
-			continue;
-		}
-		fail(first, `handle ${handle} is also on ${rel(file)} — two collaborators for one person, merge them`);
-		fail(file, `handle ${handle} is also on ${rel(first)} — two collaborators for one person, merge them`);
-	}
+  if (collectionOfFile.get(file) !== "users") continue
+  const run = fields.retrospective ?? ""
+  for (const handle of list(fields.handles)) {
+    const key = `${run}\0${String(handle).trim().toLowerCase()}`
+    const first = handleOwners.get(key)
+    if (first === undefined) {
+      handleOwners.set(key, file)
+      continue
+    }
+    fail(first, `handle ${handle} is also on ${rel(file)} — two collaborators for one person, merge them`)
+    fail(file, `handle ${handle} is also on ${rel(first)} — two collaborators for one person, merge them`)
+  }
 }
 
 // ── the module clone's own unpushed work ────────────────────────────────────────────────────────
@@ -508,49 +570,55 @@ for (const [file, { fields }] of records) {
 // A WARNING, not a violation: the work is not wrong, it is merely stranded, and refusing `check`
 // would block a workspace over a state its own records are innocent of.
 function strandedCloneWarning() {
-	const here = fileURLToPath(new URL('..', import.meta.url));
-	if (!here.includes(`${path.sep}git_modules${path.sep}`)) return null;   // running from the module repo itself
-	const git = (args) => {
-		try { return execFileSync('git', ['-C', here, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); }
-		catch { return null; }
-	};
-	const ahead = git(['rev-list', '--count', 'origin/main..HEAD']);
-	const dirty = git(['status', '--porcelain']);
-	if (ahead === null) return null;                                        // no origin, or not a clone — not our business
-	const commits = Number(ahead) || 0;
-	const files = dirty ? dirty.split('\n').filter(Boolean).length : 0;
-	if (!commits && !files) return null;
-	const parts = [];
-	if (commits) parts.push(`${commits} commit(s) not on origin`);
-	if (files) parts.push(`${files} uncommitted file(s)`);
-	return [
-		`⚠ the consumed module clone has work that exists NOWHERE ELSE — ${parts.join(' and ')}.`,
-		`    ${here}`,
-		'    This directory is gitignored by THIS workspace and is a clone of the module repo, so an edit',
-		'    made here (the studio commits ui-view saves into it) is invisible to the module, invisible to',
-		'    every other workspace, and lost on the next pull — which will itself refuse, because the clone',
-		'    has diverged.',
-		'    Carry it to the module repo by hand, then `git -C <the clone> reset --hard origin/main`.',
-	].join('\n');
+  const here = fileURLToPath(new URL("..", import.meta.url))
+  if (!here.includes(`${path.sep}git_modules${path.sep}`)) return null // running from the module repo itself
+  const git = args => {
+    try {
+      return execFileSync("git", ["-C", here, ...args], {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "ignore"],
+      }).trim()
+    } catch {
+      return null
+    }
+  }
+  const ahead = git(["rev-list", "--count", "origin/main..HEAD"])
+  const dirty = git(["status", "--porcelain"])
+  if (ahead === null) return null // no origin, or not a clone — not our business
+  const commits = Number(ahead) || 0
+  const files = dirty ? dirty.split("\n").filter(Boolean).length : 0
+  if (!commits && !files) return null
+  const parts = []
+  if (commits) parts.push(`${commits} commit(s) not on origin`)
+  if (files) parts.push(`${files} uncommitted file(s)`)
+  return [
+    `⚠ the consumed module clone has work that exists NOWHERE ELSE — ${parts.join(" and ")}.`,
+    `    ${here}`,
+    "    This directory is gitignored by THIS workspace and is a clone of the module repo, so an edit",
+    "    made here (the studio commits ui-view saves into it) is invisible to the module, invisible to",
+    "    every other workspace, and lost on the next pull — which will itself refuse, because the clone",
+    "    has diverged.",
+    "    Carry it to the module repo by hand, then `git -C <the clone> reset --hard origin/main`.",
+  ].join("\n")
 }
-const stranded = strandedCloneWarning();
-if (stranded) warnings.push(stranded);
+const stranded = strandedCloneWarning()
+if (stranded) warnings.push(stranded)
 
 // A ref into a peer collection this workspace does not have is UNCHECKED, and saying so is the
 // whole point: silence here would read exactly like a pass.
 for (const [collection, n] of peerGaps) {
-	warnings.push(
-		`⚠ ${n} ref(s) point at \`${collection}/…\`, which this workspace does not have — they were NOT resolved.`
-		+ `\n    Install the \`${collection}\` module (it is a declared peer) and re-run to have them checked.`,
-	);
+  warnings.push(
+    `⚠ ${n} ref(s) point at \`${collection}/…\`, which this workspace does not have — they were NOT resolved.` +
+      `\n    Install the \`${collection}\` module (it is a declared peer) and re-run to have them checked.`
+  )
 }
 
-for (const warning of warnings) console.log(warning);
+for (const warning of warnings) console.log(warning)
 
 if (violations.length) {
-	console.error(`\nperspective guard: ${violations.length} violation(s)`);
-	for (const violation of violations) console.error(violation);
-	process.exit(1);
+  console.error(`\nperspective guard: ${violations.length} violation(s)`)
+  for (const violation of violations) console.error(violation)
+  process.exit(1)
 }
 
-console.log(`✔ perspective records: ${files.length} checked, 0 violations`);
+console.log(`✔ perspective records: ${files.length} checked, 0 violations`)

@@ -4,18 +4,18 @@
  * both record layouts — `ItemProperties` and `ItemForm` — so the two cannot disagree about what is
  * shut. Page-local on purpose: a fresh record page starts with the provenance block out of the way.
  */
-import { ref } from 'vue';
-import type { FormSection } from '../lib/field-row';
+import { ref } from "vue"
+import type { FormSection } from "../lib/field-row"
 
 export function useSectionDisclosure() {
-	const opened = ref(new Set<string>());
-	return {
-		isShut: (section: FormSection): boolean => section.collapsed === true && !opened.value.has(section.title),
-		toggle(section: FormSection): void {
-			const next = new Set(opened.value);
-			if (next.has(section.title)) next.delete(section.title);
-			else next.add(section.title);
-			opened.value = next;
-		},
-	};
+  const opened = ref(new Set<string>())
+  return {
+    isShut: (section: FormSection): boolean => section.collapsed === true && !opened.value.has(section.title),
+    toggle(section: FormSection): void {
+      const next = new Set(opened.value)
+      if (next.has(section.title)) next.delete(section.title)
+      else next.add(section.title)
+      opened.value = next
+    },
+  }
 }

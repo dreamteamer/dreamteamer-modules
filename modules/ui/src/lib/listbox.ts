@@ -10,20 +10,20 @@
 
 /** `{text, value}` — the dropdown's own row; `lib/choices.ts` turns an enum's choice rows into these. */
 export interface Choice {
-	text: string;
-	value: unknown;
-	/** Optional trailing hint, right-aligned and quiet (a collection path, a type). */
-	hint?: string;
-	/** A codicon name, from the field's enum map (its choice row's `icon`). Drawn before the label so
-	 *  an enum reads the same in a dropdown as it does on a group header. A binary-record reference is NOT
-	 *  resolved here — a dropdown row is not worth a fetch per option; those fall back to a glyph. */
-	icon?: string;
-	/** Theme colour id, tinting the glyph only. The label stays the foreground colour: a coloured
-	 *  option label is unreadable against half the themes and reads as "disabled" in the other half. */
-	color?: string;
-	/** Optional hover text — the option's `title`, and the control's while it is the selected one. Where
-	 *  a choice keeps a detail too long to draw on every option (a module's source path, cr-vscode-010). */
-	title?: string;
+  text: string
+  value: unknown
+  /** Optional trailing hint, right-aligned and quiet (a collection path, a type). */
+  hint?: string
+  /** A codicon name, from the field's enum map (its choice row's `icon`). Drawn before the label so
+   *  an enum reads the same in a dropdown as it does on a group header. A binary-record reference is NOT
+   *  resolved here — a dropdown row is not worth a fetch per option; those fall back to a glyph. */
+  icon?: string
+  /** Theme colour id, tinting the glyph only. The label stays the foreground colour: a coloured
+   *  option label is unreadable against half the themes and reads as "disabled" in the other half. */
+  color?: string
+  /** Optional hover text — the option's `title`, and the control's while it is the selected one. Where
+   *  a choice keeps a detail too long to draw on every option (a module's source path, cr-vscode-010). */
+  title?: string
 }
 
 /**
@@ -33,7 +33,7 @@ export interface Choice {
  * keystroke between you and a two-item choice. Type-ahead still works at any size — the threshold
  * governs the visible INPUT, not the ability to filter.
  */
-export const SEARCH_THRESHOLD = 7;
+export const SEARCH_THRESHOLD = 7
 
 /**
  * Choices matching `query`, by the same rule the filter field tree uses: every whitespace-separated
@@ -43,12 +43,12 @@ export const SEARCH_THRESHOLD = 7;
  * WRONG value, and a value you did not mean is worse than a list that finds nothing.
  */
 export function filterChoices(choices: readonly Choice[], query: string): Choice[] {
-	const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
-	if (!terms.length) return [...choices];
-	return choices.filter((c) => {
-		const hay = `${c.text} ${c.hint ?? ''} ${String(c.value ?? '')}`.toLowerCase();
-		return terms.every((t) => hay.includes(t));
-	});
+  const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean)
+  if (!terms.length) return [...choices]
+  return choices.filter(c => {
+    const hay = `${c.text} ${c.hint ?? ""} ${String(c.value ?? "")}`.toLowerCase()
+    return terms.every(t => hay.includes(t))
+  })
 }
 
 /**
@@ -60,14 +60,14 @@ export function filterChoices(choices: readonly Choice[], query: string): Choice
  * freshly opened panel responds to either arrow.
  */
 export function moveActive(current: number, delta: number, length: number): number {
-	if (length <= 0) return -1;
-	if (current < 0) return delta > 0 ? 0 : length - 1;
-	return (current + delta + length) % length;
+  if (length <= 0) return -1
+  if (current < 0) return delta > 0 ? 0 : length - 1
+  return (current + delta + length) % length
 }
 
 /** Where the current value sits in a filtered list, or -1 — what the panel opens focused on. */
 export function indexOfValue(choices: readonly Choice[], value: unknown): number {
-	return choices.findIndex((c) => sameValue(c.value, value));
+  return choices.findIndex(c => sameValue(c.value, value))
 }
 
 /**
@@ -79,21 +79,21 @@ export function indexOfValue(choices: readonly Choice[], value: unknown): number
  * This component never goes through the DOM, but its callers still hold values that came from one.
  */
 export function sameValue(a: unknown, b: unknown): boolean {
-	if (a === b) return true;
-	if (a == null || b == null) return false;
-	if (typeof a === 'object' || typeof b === 'object') return false;
-	return String(a) === String(b);
+  if (a === b) return true
+  if (a == null || b == null) return false
+  if (typeof a === "object" || typeof b === "object") return false
+  return String(a) === String(b)
 }
 
 /** A panel's vertical placement against the viewport — computed, never assumed. */
 export interface Placement {
-	/** Viewport coordinates for a `position: fixed` panel. */
-	top: number;
-	left: number;
-	width: number;
-	maxHeight: number;
-	/** True when the panel had to open UPWARD because there was not enough room below. */
-	flipped: boolean;
+  /** Viewport coordinates for a `position: fixed` panel. */
+  top: number
+  left: number
+  width: number
+  maxHeight: number
+  /** True when the panel had to open UPWARD because there was not enough room below. */
+  flipped: boolean
 }
 
 /**
@@ -107,28 +107,28 @@ export interface Placement {
  * ancestor with `transform`/`filter`/`will-change`; this app has none on a container.
  */
 export function placePanel(
-	anchor: { top: number; bottom: number; left: number; width: number },
-	viewport: { width: number; height: number },
-	desiredHeight: number,
-	options: { gap?: number; margin?: number; minWidth?: number } = {},
+  anchor: { top: number; bottom: number; left: number; width: number },
+  viewport: { width: number; height: number },
+  desiredHeight: number,
+  options: { gap?: number; margin?: number; minWidth?: number } = {}
 ): Placement {
-	const gap = options.gap ?? 4;
-	const margin = options.margin ?? 8;
-	const below = viewport.height - anchor.bottom - gap - margin;
-	const above = anchor.top - gap - margin;
-	// Flip only when below genuinely cannot hold it AND above is roomier — never merely because
-	// below is smaller, or a control near the middle of a tall page would flip for no reason.
-	const flipped = below < desiredHeight && above > below;
-	const maxHeight = Math.max(120, Math.min(desiredHeight, flipped ? above : below));
-	const width = Math.max(options.minWidth ?? 0, anchor.width);
-	// Keep the panel on screen horizontally: a control near the right edge would otherwise render a
-	// wider panel off the side, where its rightmost text is unreachable.
-	const left = Math.max(margin, Math.min(anchor.left, viewport.width - width - margin));
-	return {
-		top: flipped ? anchor.top - gap - maxHeight : anchor.bottom + gap,
-		left,
-		width,
-		maxHeight,
-		flipped,
-	};
+  const gap = options.gap ?? 4
+  const margin = options.margin ?? 8
+  const below = viewport.height - anchor.bottom - gap - margin
+  const above = anchor.top - gap - margin
+  // Flip only when below genuinely cannot hold it AND above is roomier — never merely because
+  // below is smaller, or a control near the middle of a tall page would flip for no reason.
+  const flipped = below < desiredHeight && above > below
+  const maxHeight = Math.max(120, Math.min(desiredHeight, flipped ? above : below))
+  const width = Math.max(options.minWidth ?? 0, anchor.width)
+  // Keep the panel on screen horizontally: a control near the right edge would otherwise render a
+  // wider panel off the side, where its rightmost text is unreachable.
+  const left = Math.max(margin, Math.min(anchor.left, viewport.width - width - margin))
+  return {
+    top: flipped ? anchor.top - gap - maxHeight : anchor.bottom + gap,
+    left,
+    width,
+    maxHeight,
+    flipped,
+  }
 }

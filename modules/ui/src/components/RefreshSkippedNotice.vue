@@ -5,18 +5,20 @@
 	mount it — ContentDetail reaches `document` and cannot be mounted there.
 -->
 <script setup lang="ts">
-defineProps<{ show: boolean }>();
+defineProps<{ show: boolean }>()
 </script>
 
 <template>
-	<p v-if="show" class="dt-refresh-skipped">Not reloaded — this record has unsaved changes. Save or discard them, then refresh.</p>
+  <p v-if="show" class="dt-refresh-skipped">
+    Not reloaded — this record has unsaved changes. Save or discard them, then refresh.
+  </p>
 </template>
 
 <style scoped>
 .dt-refresh-skipped {
-	margin: 0;
-	padding: 4px 24px 8px;
-	font-size: 12px;
-	color: var(--dt-fg-muted);
+  margin: 0;
+  padding: 4px 24px 8px;
+  font-size: 12px;
+  color: var(--dt-fg-muted);
 }
 </style>

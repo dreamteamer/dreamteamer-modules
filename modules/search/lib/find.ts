@@ -11,17 +11,61 @@
 
 /** Words that carry no retrieval signal. Deliberately short: an aggressive stop list throws away the
  *  domain nouns that are the whole point of the lexical lane. */
-const STOP = new Set(['a', 'an', 'the', 'is', 'are', 'was', 'were', 'be', 'to', 'of', 'in', 'on', 'at',
-	'for', 'and', 'or', 'but', 'it', 'its', 'this', 'that', 'we', 'i', 'my', 'our', 'you', 'your',
-	'what', 'which', 'who', 'when', 'where', 'how', 'why', 'do', 'does', 'did', 'with', 'from', 'about']);
+const STOP = new Set([
+  "a",
+  "an",
+  "the",
+  "is",
+  "are",
+  "was",
+  "were",
+  "be",
+  "to",
+  "of",
+  "in",
+  "on",
+  "at",
+  "for",
+  "and",
+  "or",
+  "but",
+  "it",
+  "its",
+  "this",
+  "that",
+  "we",
+  "i",
+  "my",
+  "our",
+  "you",
+  "your",
+  "what",
+  "which",
+  "who",
+  "when",
+  "where",
+  "how",
+  "why",
+  "do",
+  "does",
+  "did",
+  "with",
+  "from",
+  "about",
+])
 
 /** The question reduced to its content words — the mechanical `lex:` default when a caller supplies
  *  none. It is a floor, not a good expansion: it cannot help a question that shares no vocabulary
  *  with its answer, which is exactly when a caller should pass `--lex`. */
 export function contentWords(question) {
-	// The leading dot is part of the token: `.env` and `.gitignore` are rare, decisive domain nouns, and
-	// dropping the dot turns a filename into a generic word.
-	return String(question ?? '').toLowerCase().match(/\.?[a-z0-9][a-z0-9._-]*/g)?.filter((w) => !STOP.has(w) && w.replace(/\W/g, '').length > 1) ?? [];
+  // The leading dot is part of the token: `.env` and `.gitignore` are rare, decisive domain nouns, and
+  // dropping the dot turns a filename into a generic word.
+  return (
+    String(question ?? "")
+      .toLowerCase()
+      .match(/\.?[a-z0-9][a-z0-9._-]*/g)
+      ?.filter(w => !STOP.has(w) && w.replace(/\W/g, "").length > 1) ?? []
+  )
 }
 
 /**
@@ -35,16 +79,16 @@ export function contentWords(question) {
  * hypothetical answer cannot be derived from the question without a model.
  */
 export function buildQueryDocument({ question, lex, vec, hyde } = {}) {
-	const q = String(question ?? '').trim();
-	if (!q) throw new Error('a query document needs a question');
-	const lines = [`intent: ${q}`];
-	const lexLine = (lex ?? '').trim() || contentWords(q).join(' ');
-	if (lexLine) lines.push(`lex: ${lexLine}`);
-	const vecLine = (vec ?? '').trim() || q;
-	if (vecLine) lines.push(`vec: ${vecLine}`);
-	const hydeLine = (hyde ?? '').trim();
-	if (hydeLine) lines.push(`hyde: ${hydeLine}`);
-	return lines.join('\n');
+  const q = String(question ?? "").trim()
+  if (!q) throw new Error("a query document needs a question")
+  const lines = [`intent: ${q}`]
+  const lexLine = (lex ?? "").trim() || contentWords(q).join(" ")
+  if (lexLine) lines.push(`lex: ${lexLine}`)
+  const vecLine = (vec ?? "").trim() || q
+  if (vecLine) lines.push(`vec: ${vecLine}`)
+  const hydeLine = (hyde ?? "").trim()
+  if (hydeLine) lines.push(`hyde: ${hydeLine}`)
+  return lines.join("\n")
 }
 
 /**
@@ -52,7 +96,7 @@ export function buildQueryDocument({ question, lex, vec, hyde } = {}) {
  * but `data/notes/x.md:8` is not a file: resolving the anchored path finds nothing, silently.
  */
 export function stripLineAnchor(hit) {
-	return String(hit ?? '').replace(/:\d+(?::\d+)?$/, '');
+  return String(hit ?? "").replace(/:\d+(?::\d+)?$/, "")
 }
 
 /**
@@ -66,28 +110,40 @@ export function stripLineAnchor(hit) {
  * agreeing with itself is not agreement.
  */
 export function agreedReference(refsPerHit, { min = 2, ratio = 0.5 } = {}) {
-	const counts = new Map();
-	let carrying = 0;
-	for (const ref of refsPerHit ?? []) {
-		if (!ref) continue;
-		carrying += 1;
-		counts.set(ref, (counts.get(ref) ?? 0) + 1);
-	}
-	if (carrying === 0) return null;
-	let best = null;
-	let bestN = 0;
-	for (const [ref, n] of counts) if (n > bestN) { best = ref; bestN = n; }
-	if (bestN < min || bestN / carrying <= ratio) return null;
-	return { ref: best, agreeing: bestN, carrying };
+  const counts = new Map()
+  let carrying = 0
+  for (const ref of refsPerHit ?? []) {
+    if (!ref) continue
+    carrying += 1
+    counts.set(ref, (counts.get(ref) ?? 0) + 1)
+  }
+  if (carrying === 0) return null
+  let best = null
+  let bestN = 0
+  for (const [ref, n] of counts)
+    if (n > bestN) {
+      best = ref
+      bestN = n
+    }
+  if (bestN < min || bestN / carrying <= ratio) return null
+  return { ref: best, agreeing: bestN, carrying }
 }
 
 /** The rungs, named. `effort` is the caller's budget, not a quality dial — see the header. */
 export const RUNGS = {
-	0: { name: 'lexical', verb: 'search', why: 'exact words. The cheapest exact answer when you already know the phrase' },
-	1: { name: 'vector', verb: 'vsearch', why: 'embeddings. The strongest single backend on a paraphrased question' },
-	2: { name: 'structured', verb: 'query', why: 'lex+vec+hyde in ONE invocation — hedges a vocabulary gap against an abstraction gap' },
-	3: { name: 'structured+graph', verb: 'query', why: 'then close the set through the reference the hits agree on' },
-};
+  0: {
+    name: "lexical",
+    verb: "search",
+    why: "exact words. The cheapest exact answer when you already know the phrase",
+  },
+  1: { name: "vector", verb: "vsearch", why: "embeddings. The strongest single backend on a paraphrased question" },
+  2: {
+    name: "structured",
+    verb: "query",
+    why: "lex+vec+hyde in ONE invocation — hedges a vocabulary gap against an abstraction gap",
+  },
+  3: { name: "structured+graph", verb: "query", why: "then close the set through the reference the hits agree on" },
+}
 
 /**
  * Which rung a question wants, when the caller did not say.
@@ -99,9 +155,9 @@ export const RUNGS = {
  * what the ASKER wants back, which a heuristic on wording has no business making for them.
  */
 export function suggestEffort(question) {
-	const q = String(question ?? '').trim();
-	if (/^".*"$/.test(q) || /^'.*'$/.test(q)) return 0;
-	return 2;
+  const q = String(question ?? "").trim()
+  if (/^".*"$/.test(q) || /^'.*'$/.test(q)) return 0
+  return 2
 }
 
 /**
@@ -112,10 +168,15 @@ export function suggestEffort(question) {
  * collections may qualify — an issue and a feature can both point at one repo — so the commonest wins.
  */
 export function collectionOfAgreeing(carried, ref) {
-	const counts = new Map();
-	for (const c of carried ?? []) if (c && c.ref === ref && c.collection) counts.set(c.collection, (counts.get(c.collection) ?? 0) + 1);
-	let best = null;
-	let bestN = 0;
-	for (const [c, n] of counts) if (n > bestN) { best = c; bestN = n; }
-	return best;
+  const counts = new Map()
+  for (const c of carried ?? [])
+    if (c && c.ref === ref && c.collection) counts.set(c.collection, (counts.get(c.collection) ?? 0) + 1)
+  let best = null
+  let bestN = 0
+  for (const [c, n] of counts)
+    if (n > bestN) {
+      best = c
+      bestN = n
+    }
+  return best
 }

@@ -14,8 +14,8 @@
  * collection's field descriptors, produce the subset of field values worth copying into a new
  * (unsaved) record.
  */
-import type { FieldRow, ItemRecord } from '../api/types';
-import { hasControl } from './field-row';
+import type { FieldRow, ItemRecord } from "../api/types"
+import { hasControl } from "./field-row"
 
 /**
  * Copy exactly what the CREATE form offers a control for — a duplicate is the create form, prefilled.
@@ -26,15 +26,15 @@ import { hasControl } from './field-row';
  * through verbatim, the body included.
  */
 export function prefillFromRecord(record: ItemRecord, fields: FieldRow[]): ItemRecord {
-	const prefill: ItemRecord = {};
+  const prefill: ItemRecord = {}
 
-	for (const field of fields) {
-		if (field.field === 'id') continue;
-		if (!hasControl(field, { create: true })) continue;
-		if (field.field.startsWith('$')) continue;
-		if (!(field.field in record)) continue;
-		prefill[field.field] = record[field.field];
-	}
+  for (const field of fields) {
+    if (field.field === "id") continue
+    if (!hasControl(field, { create: true })) continue
+    if (field.field.startsWith("$")) continue
+    if (!(field.field in record)) continue
+    prefill[field.field] = record[field.field]
+  }
 
-	return prefill;
+  return prefill
 }

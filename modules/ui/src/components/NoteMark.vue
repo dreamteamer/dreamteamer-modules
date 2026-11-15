@@ -7,28 +7,28 @@
 	the table's first cell, a card's and a kanban card's footer row.
 -->
 <script setup lang="ts">
-import { computed } from 'vue';
-import { markTitle, type NextNote } from '../lib/next-notes';
-import DtIcon from './DtIcon.vue';
+import { computed } from "vue"
+import { markTitle, type NextNote } from "../lib/next-notes"
+import DtIcon from "./DtIcon.vue"
 
-const props = defineProps<{ notes: readonly NextNote[] }>();
-const title = computed(() => markTitle(props.notes));
+const props = defineProps<{ notes: readonly NextNote[] }>()
+const title = computed(() => markTitle(props.notes))
 </script>
 
 <template>
-	<span class="dt-note-mark" :title="title" role="img" aria-label="note from an extension" data-next-notes>
-		<DtIcon name="broadcast" />
-	</span>
+  <span class="dt-note-mark" :title="title" role="img" aria-label="note from an extension" data-next-notes>
+    <DtIcon name="broadcast" />
+  </span>
 </template>
 
 <style scoped>
 .dt-note-mark {
-	flex-shrink: 0;
-	display: inline-flex;
-	align-items: center;
-	color: var(--vscode-charts-blue, var(--dt-color-charts-blue, var(--dt-unknown-color)));
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  color: var(--vscode-charts-blue, var(--dt-color-charts-blue, var(--dt-unknown-color)));
 }
 .dt-note-mark :deep(.codicon) {
-	font-size: 12px;
+  font-size: 12px;
 }
 </style>

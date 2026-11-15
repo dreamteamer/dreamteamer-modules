@@ -16,59 +16,71 @@
  * a collection name may carry a namespace (`health/patients`) and an id may carry folders, so only
  * the registered names can say where one ends and the other begins (CLAUDE.md, namespaces).
  */
-import { ref } from 'vue';
-import type { CollectionRow } from '../api/types';
-import { tryRenderDisplay, type RenderOptions } from './template';
+import { ref } from "vue"
+import type { CollectionRow } from "../api/types"
+import { tryRenderDisplay, type RenderOptions } from "./template"
 
 /** A reference split into the collection it names and the id inside it, or null for neither. */
-export function splitReference(reference: string, collections: readonly string[]): { collection: string; id: string } | null {
-	const ref = reference.startsWith('/') ? reference.slice(1) : reference;
-	let best: string | null = null;
-	for (const c of collections) {
-		if (ref.startsWith(`${c}/`) && (!best || c.length > best.length)) best = c;
-	}
-	return best ? { collection: best, id: ref.slice(best.length + 1) } : null;
+export function splitReference(
+  reference: string,
+  collections: readonly string[]
+): { collection: string; id: string } | null {
+  const ref = reference.startsWith("/") ? reference.slice(1) : reference
+  let best: string | null = null
+  for (const c of collections) {
+    if (ref.startsWith(`${c}/`) && (!best || c.length > best.length)) best = c
+  }
+  return best ? { collection: best, id: ref.slice(best.length + 1) } : null
 }
 
 /**
  * A record's title under its collection's `record_title`. `fallback` (the id, usually) when the
  * template renders to nothing — a nameless header reads as a loading bug.
  */
-export function recordTitle(row: CollectionRow | null | undefined, record: Record<string, unknown> | null | undefined, fallback: string, opts: RenderOptions = {}): string {
-	if (!row || !record) return fallback;
-	const rendered = (tryRenderDisplay(row.record_title, record, opts) ?? '').trim();
-	return rendered || fallback;
+export function recordTitle(
+  row: CollectionRow | null | undefined,
+  record: Record<string, unknown> | null | undefined,
+  fallback: string,
+  opts: RenderOptions = {}
+): string {
+  if (!row || !record) return fallback
+  const rendered = (tryRenderDisplay(row.record_title, record, opts) ?? "").trim()
+  return rendered || fallback
 }
 
 /** reference → the target's rendered title, once fetched. Module-level: one answer per webview. */
-const titles = ref<Record<string, string>>({});
+const titles = ref<Record<string, string>>({})
 /** reference → the generation it was last asked in. */
-const asked = new Map<string, number>();
+const asked = new Map<string, number>()
 /**
  * Bumped by the refresh button (`resetReferenceTitles`). REACTIVE, and read by every
  * `knownReferenceTitle` call, so every computed and render that resolved a title through it depends
  * on it and runs again — that re-run is what asks again. A plain counter would answer correctly when
  * asked while telling no relation cell to ask, and the cell would keep the old name.
  */
-const generation = ref(0);
+const generation = ref(0)
 
-async function load(reference: string, parts: { collection: string; id: string }, row: CollectionRow | undefined): Promise<void> {
-	const asOf = generation.value;
-	// lazily: record-cache reaches api/client, which registers a window listener at module scope
-	const { fetchRecord } = await import('./record-cache');
-	const record = await fetchRecord(parts.collection, parts.id);
-	// a load started before a refresh answers what the disk said THEN — never write it over the new one
-	if (asOf !== generation.value) return;
-	if (!record) {
-		// a dangling reference keeps the value it holds — and one whose target was REMOVED since its title
-		// was drawn loses that title, so a refresh agrees with the disk as a fresh window would
-		if (reference in titles.value) {
-			const { [reference]: _gone, ...rest } = titles.value;
-			titles.value = rest;
-		}
-		return;
-	}
-	titles.value = { ...titles.value, [reference]: recordTitle(row, { ...record, id: parts.id }, parts.id) };
+async function load(
+  reference: string,
+  parts: { collection: string; id: string },
+  row: CollectionRow | undefined
+): Promise<void> {
+  const asOf = generation.value
+  // lazily: record-cache reaches api/client, which registers a window listener at module scope
+  const { fetchRecord } = await import("./record-cache")
+  const record = await fetchRecord(parts.collection, parts.id)
+  // a load started before a refresh answers what the disk said THEN — never write it over the new one
+  if (asOf !== generation.value) return
+  if (!record) {
+    // a dangling reference keeps the value it holds — and one whose target was REMOVED since its title
+    // was drawn loses that title, so a refresh agrees with the disk as a fresh window would
+    if (reference in titles.value) {
+      const { [reference]: _gone, ...rest } = titles.value
+      titles.value = rest
+    }
+    return
+  }
+  titles.value = { ...titles.value, [reference]: recordTitle(row, { ...record, id: parts.id }, parts.id) }
 }
 
 /**
@@ -76,7 +88,7 @@ async function load(reference: string, parts: { collection: string; id: string }
  * the known titles stay drawn until the new ones land, so no cell flashes to its bare reference.
  */
 export function resetReferenceTitles(): void {
-	generation.value++;
+  generation.value++
 }
 
 /**
@@ -86,17 +98,24 @@ export function resetReferenceTitles(): void {
  * reference, a relation cell its de-slugged stem.
  */
 export function knownReferenceTitle(raw: string, rows: readonly CollectionRow[]): string | null {
-	const reference = raw.startsWith('/') ? raw.slice(1) : raw;
-	const current = generation.value; // read on EVERY call: this is the dependency a refresh re-runs
-	const known = titles.value[reference];
-	if (asked.get(reference) !== current) {
-		const parts = splitReference(reference, rows.map((r) => r.collection));
-		if (parts) {
-			asked.set(reference, current);
-			void load(reference, parts, rows.find((r) => r.collection === parts.collection));
-		}
-	}
-	return known ?? null;
+  const reference = raw.startsWith("/") ? raw.slice(1) : raw
+  const current = generation.value // read on EVERY call: this is the dependency a refresh re-runs
+  const known = titles.value[reference]
+  if (asked.get(reference) !== current) {
+    const parts = splitReference(
+      reference,
+      rows.map(r => r.collection)
+    )
+    if (parts) {
+      asked.set(reference, current)
+      void load(
+        reference,
+        parts,
+        rows.find(r => r.collection === parts.collection)
+      )
+    }
+  }
+  return known ?? null
 }
 
 /**
@@ -108,5 +127,5 @@ export function knownReferenceTitle(raw: string, rows: readonly CollectionRow[])
  * against an empty list and never resolved.
  */
 export function referenceTitles(rows: () => readonly CollectionRow[]): (reference: string) => string {
-	return (raw) => knownReferenceTitle(raw, rows()) ?? (raw.startsWith('/') ? raw.slice(1) : raw);
+  return raw => knownReferenceTitle(raw, rows()) ?? (raw.startsWith("/") ? raw.slice(1) : raw)
 }

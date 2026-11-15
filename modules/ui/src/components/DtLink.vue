@@ -21,25 +21,25 @@
 	It still renders a real `<a href>`, so hover/right-click/keyboard behave like a link.
 -->
 <script setup lang="ts">
-import { useRouter } from 'vue-router';
-import { hostNotify } from '../api/transport';
+import { useRouter } from "vue-router"
+import { hostNotify } from "../api/transport"
 
-const props = defineProps<{ to: string }>();
+const props = defineProps<{ to: string }>()
 
-const router = useRouter();
+const router = useRouter()
 
 function onClick(event: MouseEvent): void {
-	event.preventDefault();
-	// A link can sit inside a clickable row (a card, a table row); the link's target wins.
-	event.stopPropagation();
-	if (event.metaKey || event.ctrlKey || event.button === 1) {
-		hostNotify('dt:open', { route: props.to });
-		return;
-	}
-	void router.push(props.to);
+  event.preventDefault()
+  // A link can sit inside a clickable row (a card, a table row); the link's target wins.
+  event.stopPropagation()
+  if (event.metaKey || event.ctrlKey || event.button === 1) {
+    hostNotify("dt:open", { route: props.to })
+    return
+  }
+  void router.push(props.to)
 }
 </script>
 
 <template>
-	<a class="dt-link" :href="to" @click="onClick" @auxclick.middle="onClick"><slot /></a>
+  <a class="dt-link" :href="to" @click="onClick" @auxclick.middle="onClick"><slot /></a>
 </template>

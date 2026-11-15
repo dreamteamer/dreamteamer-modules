@@ -56,14 +56,14 @@
  * then to an integer through `Date.UTC`, which is offset-free by construction.
  */
 
-export type Scale = 'day' | 'week' | 'month';
+export type Scale = "day" | "week" | "month"
 
-export const MS_DAY = 86_400_000;
+export const MS_DAY = 86_400_000
 
-export const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+export const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
 /** The width of one DAY column at each scale. The bar-label fit test reads it too. */
-export const DAY_PX: Record<Scale, number> = { day: 30, week: 7, month: 2.4 };
+export const DAY_PX: Record<Scale, number> = { day: 30, week: 7, month: 2.4 }
 
 /**
  * How much dead screen a run has to waste before it is worth folding — the ONE invented number in
@@ -73,140 +73,140 @@ export const DAY_PX: Record<Scale, number> = { day: 30, week: 7, month: 2.4 };
  * above), which is what keeps it from being circular. At 250 it would fold only the two longest
  * stretches of a typical year-long plan; 120 also takes the month-sized ones.
  */
-const FOLD_MIN_PX = 120;
+const FOLD_MIN_PX = 120
 
 /** `2026-03-02T09:00:00+03:00` → `2026-03-02`, and anything that is not a date at all → null. */
 export function dayKeyOf(value: unknown): string | null {
-	if (typeof value !== 'string' || value.length < 10) return null;
-	const key = value.slice(0, 10);
-	return /^\d{4}-\d{2}-\d{2}$/.test(key) ? key : null;
+  if (typeof value !== "string" || value.length < 10) return null
+  const key = value.slice(0, 10)
+  return /^\d{4}-\d{2}-\d{2}$/.test(key) ? key : null
 }
 
 /** Whole days since the epoch, through `Date.UTC` — the offset-free integer everything else uses. */
 export function dayNumber(key: string): number {
-	return Math.round(Date.UTC(Number(key.slice(0, 4)), Number(key.slice(5, 7)) - 1, Number(key.slice(8, 10))) / MS_DAY);
+  return Math.round(Date.UTC(Number(key.slice(0, 4)), Number(key.slice(5, 7)) - 1, Number(key.slice(8, 10))) / MS_DAY)
 }
 
 /** A `Date` positioned so the getUTC* accessors read back the day this number names. */
-export const dateOf = (day: number): Date => new Date(day * MS_DAY);
+export const dateOf = (day: number): Date => new Date(day * MS_DAY)
 
 /** Today, as a day number, offset-free like everything else here. */
 export function todayNumber(now: Date = new Date()): number {
-	return Math.round(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) / MS_DAY);
+  return Math.round(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) / MS_DAY)
 }
 
 /** ISO-8601 week number. Thursday decides the year, which is the whole of the rule — a week label
  *  that disagrees with the reader's own calendar is worse than no label. */
 export function isoWeek(day: number): number {
-	const d = dateOf(day);
-	const thursday = new Date(d.getTime() + ((3 - ((d.getUTCDay() + 6) % 7)) * MS_DAY));
-	const jan1 = Date.UTC(thursday.getUTCFullYear(), 0, 1);
-	return Math.floor((thursday.getTime() - jan1) / MS_DAY / 7) + 1;
+  const d = dateOf(day)
+  const thursday = new Date(d.getTime() + (3 - ((d.getUTCDay() + 6) % 7)) * MS_DAY)
+  const jan1 = Date.UTC(thursday.getUTCFullYear(), 0, 1)
+  return Math.floor((thursday.getTime() - jan1) / MS_DAY / 7) + 1
 }
 
 // ── unit edges, per scale ────────────────────────────────────────────────────────────────────────
 // A "unit" is what one header tick covers: a day, an ISO week (Monday–Sunday), or a calendar month.
-const mondayOf = (day: number): number => day - ((dateOf(day).getUTCDay() + 6) % 7);
-const sundayOf = (day: number): number => day + (6 - ((dateOf(day).getUTCDay() + 6) % 7));
+const mondayOf = (day: number): number => day - ((dateOf(day).getUTCDay() + 6) % 7)
+const sundayOf = (day: number): number => day + (6 - ((dateOf(day).getUTCDay() + 6) % 7))
 const monthStartOf = (day: number): number => {
-	const d = dateOf(day);
-	return Math.round(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1) / MS_DAY);
-};
+  const d = dateOf(day)
+  return Math.round(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1) / MS_DAY)
+}
 const monthEndOf = (day: number): number => {
-	const d = dateOf(day);
-	return Math.round(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0) / MS_DAY);
-};
+  const d = dateOf(day)
+  return Math.round(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0) / MS_DAY)
+}
 
 /** The first day of the unit containing this one. */
 function unitStart(day: number, scale: Scale): number {
-	return scale === 'day' ? day : scale === 'week' ? mondayOf(day) : monthStartOf(day);
+  return scale === "day" ? day : scale === "week" ? mondayOf(day) : monthStartOf(day)
 }
 /** The last day of the unit containing this one. */
 function unitEnd(day: number, scale: Scale): number {
-	return scale === 'day' ? day : scale === 'week' ? sundayOf(day) : monthEndOf(day);
+  return scale === "day" ? day : scale === "week" ? sundayOf(day) : monthEndOf(day)
 }
 /** The first day of the first WHOLE unit at or after this day — inward snapping, lower edge. */
 function unitStartAtOrAfter(day: number, scale: Scale): number {
-	const start = unitStart(day, scale);
-	return start === day ? day : unitEnd(day, scale) + 1;
+  const start = unitStart(day, scale)
+  return start === day ? day : unitEnd(day, scale) + 1
 }
 /** The last day of the last WHOLE unit at or before this day — inward snapping, upper edge. */
 function unitEndAtOrBefore(day: number, scale: Scale): number {
-	const end = unitEnd(day, scale);
-	return end === day ? day : unitStart(day, scale) - 1;
+  const end = unitEnd(day, scale)
+  return end === day ? day : unitStart(day, scale) - 1
 }
 
 /** The scale a span of this many days is drawn at. Untouched since the layout shipped. */
 export function scaleFor(days: number): Scale {
-	return days <= 60 ? 'day' : days <= 400 ? 'week' : 'month';
+  return days <= 60 ? "day" : days <= 400 ? "week" : "month"
 }
 
 // ── the shapes ───────────────────────────────────────────────────────────────────────────────────
 
 /** All the axis needs of a record: where its bar begins and ends, as day numbers. */
 export interface AxisSpan {
-	start: number;
-	/** Inclusive last day. Equals `start` for a point. */
-	end: number;
+  start: number
+  /** Inclusive last day. Equals `start` for a point. */
+  end: number
 }
 
 export interface Tick {
-	key: string;
-	label: string;
-	/** 1-based grid column of the tick's first day, and how many columns it covers. */
-	column: number;
-	columns: number;
+  key: string
+  label: string
+  /** 1-based grid column of the tick's first day, and how many columns it covers. */
+  column: number
+  columns: number
 }
 
 export interface Fold {
-	/** Stable across renders — the run's first day. What the reader's expanded set holds. */
-	key: string;
-	/** `W42…W52` at week scale, `Jan 3…Feb 18` at day, `Feb ’26…Nov ’26` at month. */
-	label: string;
-	title: string;
-	firstDay: number;
-	lastDay: number;
-	days: number;
-	/** The fold's own single narrow column. When expanded, its days follow from `column + 1`. */
-	column: number;
-	expanded: boolean;
+  /** Stable across renders — the run's first day. What the reader's expanded set holds. */
+  key: string
+  /** `W42…W52` at week scale, `Jan 3…Feb 18` at day, `Feb ’26…Nov ’26` at month. */
+  label: string
+  title: string
+  firstDay: number
+  lastDay: number
+  days: number
+  /** The fold's own single narrow column. When expanded, its days follow from `column + 1`. */
+  column: number
+  expanded: boolean
 }
 
 interface Segment {
-	kind: 'live' | 'fold';
-	firstDay: number;
-	lastDay: number;
-	column: number;
-	columns: number;
+  kind: "live" | "fold"
+  firstDay: number
+  lastDay: number
+  column: number
+  columns: number
 }
 
 export interface Axis {
-	scale: Scale;
-	/** Day number of the first drawn day. */
-	origin: number;
-	/** Drawn days — live AND folded. The calendar the picture covers. */
-	days: number;
-	/** Days that actually get a column of their own. The width the picture spends. */
-	liveDays: number;
-	/** Total grid columns, folds included. */
-	columns: number;
-	/** The one `grid-template-columns` string, shared by the header and every row. */
-	template: string;
-	ticks: Tick[];
-	folds: Fold[];
-	/** The 1-based grid column a day sits in. Total: every day maps somewhere. */
-	columnOf(day: number): number;
-	/** A day's left offset as a CSS `calc()`, for anything positioned rather than placed. */
-	offsetOf(day: number): string;
+  scale: Scale
+  /** Day number of the first drawn day. */
+  origin: number
+  /** Drawn days — live AND folded. The calendar the picture covers. */
+  days: number
+  /** Days that actually get a column of their own. The width the picture spends. */
+  liveDays: number
+  /** Total grid columns, folds included. */
+  columns: number
+  /** The one `grid-template-columns` string, shared by the header and every row. */
+  template: string
+  ticks: Tick[]
+  folds: Fold[]
+  /** The 1-based grid column a day sits in. Total: every day maps somewhere. */
+  columnOf(day: number): number
+  /** A day's left offset as a CSS `calc()`, for anything positioned rather than placed. */
+  offsetOf(day: number): string
 }
 
 export interface AxisOptions {
-	/** Today, as a day number. A boundary, so it can never hide inside a fold. */
-	today?: number;
-	/** `false` restores the uniform axis this layout had before folding existed. */
-	fold?: boolean;
-	/** Folds the reader has opened, by `Fold.key`. Never changes the scale — see `buildAxis`. */
-	expanded?: ReadonlySet<string>;
+  /** Today, as a day number. A boundary, so it can never hide inside a fold. */
+  today?: number
+  /** `false` restores the uniform axis this layout had before folding existed. */
+  fold?: boolean
+  /** Folds the reader has opened, by `Fold.key`. Never changes the scale — see `buildAxis`. */
+  expanded?: ReadonlySet<string>
 }
 
 /**
@@ -215,153 +215,153 @@ export interface AxisOptions {
  * the reader opens and shuts the runs the rule found, and cannot fold a run it did not.
  */
 export function buildAxis(spans: readonly AxisSpan[], options: AxisOptions = {}): Axis | null {
-	if (!spans.length) return null;
+  if (!spans.length) return null
 
-	let first = spans[0]!.start;
-	let last = spans[0]!.end;
-	for (const span of spans) {
-		if (span.start < first) first = span.start;
-		if (span.end > last) last = span.end;
-	}
+  let first = spans[0]!.start
+  let last = spans[0]!.end
+  for (const span of spans) {
+    if (span.start < first) first = span.start
+    if (span.end > last) last = span.end
+  }
 
-	// 1 · boundaries, and 2 · the raw scale.
-	const raw = last - first + 1;
-	const rawScale = scaleFor(raw);
-	const marks = new Set<number>();
-	for (const span of spans) {
-		marks.add(span.start);
-		marks.add(span.end);
-	}
-	const today = options.today;
-	if (today !== undefined && today >= first && today <= last) marks.add(today);
+  // 1 · boundaries, and 2 · the raw scale.
+  const raw = last - first + 1
+  const rawScale = scaleFor(raw)
+  const marks = new Set<number>()
+  for (const span of spans) {
+    marks.add(span.start)
+    marks.add(span.end)
+  }
+  const today = options.today
+  if (today !== undefined && today >= first && today <= last) marks.add(today)
 
-	// 3 · the threshold, at the RAW scale. 4 · the runs that clear it, snapped inward.
-	const threshold = Math.ceil(FOLD_MIN_PX / DAY_PX[rawScale]);
-	const runs: Array<{ firstDay: number; lastDay: number }> = [];
-	if (options.fold !== false) {
-		const ordered = [...marks].sort((a, b) => a - b);
-		for (let i = 0; i < ordered.length - 1; i++) {
-			const from = unitStartAtOrAfter(ordered[i]! + 1, rawScale);
-			const to = unitEndAtOrBefore(ordered[i + 1]! - 1, rawScale);
-			if (to >= from && to - from + 1 >= threshold) runs.push({ firstDay: from, lastDay: to });
-		}
-	}
+  // 3 · the threshold, at the RAW scale. 4 · the runs that clear it, snapped inward.
+  const threshold = Math.ceil(FOLD_MIN_PX / DAY_PX[rawScale])
+  const runs: Array<{ firstDay: number; lastDay: number }> = []
+  if (options.fold !== false) {
+    const ordered = [...marks].sort((a, b) => a - b)
+    for (let i = 0; i < ordered.length - 1; i++) {
+      const from = unitStartAtOrAfter(ordered[i]! + 1, rawScale)
+      const to = unitEndAtOrBefore(ordered[i + 1]! - 1, rawScale)
+      if (to >= from && to - from + 1 >= threshold) runs.push({ firstDay: from, lastDay: to })
+    }
+  }
 
-	// 5 · the final scale, from the live days — and ONLY from the automatic runs, so a click cannot
-	// move it. The outer edges are snapped after the fact, exactly as they always were.
-	let foldedDays = 0;
-	for (const run of runs) foldedDays += run.lastDay - run.firstDay + 1;
-	const scale = scaleFor(raw - foldedDays);
-	const origin = unitStart(first, scale);
-	const end = unitEnd(last, scale);
+  // 5 · the final scale, from the live days — and ONLY from the automatic runs, so a click cannot
+  // move it. The outer edges are snapped after the fact, exactly as they always were.
+  let foldedDays = 0
+  for (const run of runs) foldedDays += run.lastDay - run.firstDay + 1
+  const scale = scaleFor(raw - foldedDays)
+  const origin = unitStart(first, scale)
+  const end = unitEnd(last, scale)
 
-	// ── segments ───────────────────────────────────────────────────────────────────────────────────
-	const segments: Segment[] = [];
-	const folds: Fold[] = [];
-	let column = 1;
-	let liveDays = 0;
-	const live = (firstDay: number, lastDay: number): void => {
-		const columns = lastDay - firstDay + 1;
-		if (columns <= 0) return;
-		segments.push({ kind: 'live', firstDay, lastDay, column, columns });
-		column += columns;
-		liveDays += columns;
-	};
-	let cursor = origin;
-	for (const run of runs) {
-		live(cursor, run.firstDay - 1);
-		const key = String(run.firstDay);
-		const expanded = options.expanded?.has(key) ?? false;
-		const days = run.lastDay - run.firstDay + 1;
-		segments.push({ kind: 'fold', firstDay: run.firstDay, lastDay: run.lastDay, column, columns: 1 });
-		folds.push({
-			key,
-			label: foldLabel(run.firstDay, run.lastDay, scale),
-			title: expanded
-				? `${days} ${days === 1 ? 'day' : 'days'} shown — click to fold`
-				: `${days} ${days === 1 ? 'day' : 'days'} hidden — click to show`,
-			firstDay: run.firstDay,
-			lastDay: run.lastDay,
-			days,
-			column,
-			expanded,
-		});
-		column += 1;
-		// An opened run keeps its seam AND gets its days, so it can always be shut again.
-		if (expanded) live(run.firstDay, run.lastDay);
-		cursor = run.lastDay + 1;
-	}
-	live(cursor, end);
+  // ── segments ───────────────────────────────────────────────────────────────────────────────────
+  const segments: Segment[] = []
+  const folds: Fold[] = []
+  let column = 1
+  let liveDays = 0
+  const live = (firstDay: number, lastDay: number): void => {
+    const columns = lastDay - firstDay + 1
+    if (columns <= 0) return
+    segments.push({ kind: "live", firstDay, lastDay, column, columns })
+    column += columns
+    liveDays += columns
+  }
+  let cursor = origin
+  for (const run of runs) {
+    live(cursor, run.firstDay - 1)
+    const key = String(run.firstDay)
+    const expanded = options.expanded?.has(key) ?? false
+    const days = run.lastDay - run.firstDay + 1
+    segments.push({ kind: "fold", firstDay: run.firstDay, lastDay: run.lastDay, column, columns: 1 })
+    folds.push({
+      key,
+      label: foldLabel(run.firstDay, run.lastDay, scale),
+      title: expanded
+        ? `${days} ${days === 1 ? "day" : "days"} shown — click to fold`
+        : `${days} ${days === 1 ? "day" : "days"} hidden — click to show`,
+      firstDay: run.firstDay,
+      lastDay: run.lastDay,
+      days,
+      column,
+      expanded,
+    })
+    column += 1
+    // An opened run keeps its seam AND gets its days, so it can always be shut again.
+    if (expanded) live(run.firstDay, run.lastDay)
+    cursor = run.lastDay + 1
+  }
+  live(cursor, end)
 
-	const columns = column - 1;
-	const template = segments
-		.map((s) => (s.kind === 'live' ? `repeat(${s.columns}, var(--dt-gantt-day))` : 'var(--dt-gantt-fold)'))
-		.join(' ');
+  const columns = column - 1
+  const template = segments
+    .map(s => (s.kind === "live" ? `repeat(${s.columns}, var(--dt-gantt-day))` : "var(--dt-gantt-fold)"))
+    .join(" ")
 
-	// Ticks are generated PER LIVE SEGMENT and clipped to it, so none can straddle a fold. A partial
-	// first or last tick is honest — it says the week is cut, which it is.
-	const ticks: Tick[] = [];
-	for (const segment of segments) {
-		if (segment.kind !== 'live') continue;
-		let day = segment.firstDay;
-		while (day <= segment.lastDay) {
-			const stop = Math.min(unitEnd(day, scale), segment.lastDay);
-			ticks.push({
-				key: String(day),
-				label: tickLabel(day, scale, day === segment.firstDay),
-				column: segment.column + (day - segment.firstDay),
-				columns: stop - day + 1,
-			});
-			day = stop + 1;
-		}
-	}
+  // Ticks are generated PER LIVE SEGMENT and clipped to it, so none can straddle a fold. A partial
+  // first or last tick is honest — it says the week is cut, which it is.
+  const ticks: Tick[] = []
+  for (const segment of segments) {
+    if (segment.kind !== "live") continue
+    let day = segment.firstDay
+    while (day <= segment.lastDay) {
+      const stop = Math.min(unitEnd(day, scale), segment.lastDay)
+      ticks.push({
+        key: String(day),
+        label: tickLabel(day, scale, day === segment.firstDay),
+        column: segment.column + (day - segment.firstDay),
+        columns: stop - day + 1,
+      })
+      day = stop + 1
+    }
+  }
 
-	return {
-		scale,
-		origin,
-		days: end - origin + 1,
-		liveDays,
-		columns,
-		template,
-		ticks,
-		folds,
-		columnOf(day: number): number {
-			if (day <= origin) return 1;
-			if (day >= end) return columns;
-			let at = 1;
-			for (const segment of segments) {
-				if (day < segment.firstDay) break;
-				if (day <= segment.lastDay) {
-					// An expanded fold's seam segment is followed by its live one; the live column is the
-					// answer, so a collapsed fold returns here and an expanded one falls through.
-					if (segment.kind === 'live') return segment.column + (day - segment.firstDay);
-					if (!folds.find((f) => f.key === String(segment.firstDay))?.expanded) return segment.column;
-				}
-				at = segment.column + segment.columns;
-			}
-			return Math.min(at, columns);
-		},
-		offsetOf(day: number): string {
-			let liveBefore = 0;
-			let foldsBefore = 0;
-			for (const segment of segments) {
-				if (day < segment.firstDay) break;
-				if (day <= segment.lastDay) {
-					if (segment.kind === 'live') {
-						liveBefore += day - segment.firstDay;
-						break;
-					}
-					// A collapsed fold has nowhere finer to point than its own seam.
-					if (!folds.find((f) => f.key === String(segment.firstDay))?.expanded) break;
-					foldsBefore += 1;
-					continue;
-				}
-				if (segment.kind === 'live') liveBefore += segment.columns;
-				else foldsBefore += 1;
-			}
-			return `calc(var(--dt-gantt-gutter) + ${liveBefore} * var(--dt-gantt-day) + ${foldsBefore} * var(--dt-gantt-fold))`;
-		},
-	};
+  return {
+    scale,
+    origin,
+    days: end - origin + 1,
+    liveDays,
+    columns,
+    template,
+    ticks,
+    folds,
+    columnOf(day: number): number {
+      if (day <= origin) return 1
+      if (day >= end) return columns
+      let at = 1
+      for (const segment of segments) {
+        if (day < segment.firstDay) break
+        if (day <= segment.lastDay) {
+          // An expanded fold's seam segment is followed by its live one; the live column is the
+          // answer, so a collapsed fold returns here and an expanded one falls through.
+          if (segment.kind === "live") return segment.column + (day - segment.firstDay)
+          if (!folds.find(f => f.key === String(segment.firstDay))?.expanded) return segment.column
+        }
+        at = segment.column + segment.columns
+      }
+      return Math.min(at, columns)
+    },
+    offsetOf(day: number): string {
+      let liveBefore = 0
+      let foldsBefore = 0
+      for (const segment of segments) {
+        if (day < segment.firstDay) break
+        if (day <= segment.lastDay) {
+          if (segment.kind === "live") {
+            liveBefore += day - segment.firstDay
+            break
+          }
+          // A collapsed fold has nowhere finer to point than its own seam.
+          if (!folds.find(f => f.key === String(segment.firstDay))?.expanded) break
+          foldsBefore += 1
+          continue
+        }
+        if (segment.kind === "live") liveBefore += segment.columns
+        else foldsBefore += 1
+      }
+      return `calc(var(--dt-gantt-gutter) + ${liveBefore} * var(--dt-gantt-day) + ${foldsBefore} * var(--dt-gantt-fold))`
+    },
+  }
 }
 
 /**
@@ -385,21 +385,21 @@ export function buildAxis(spans: readonly AxisSpan[], options: AxisOptions = {})
  * coincide by construction, and neither needs a threshold of its own.
  */
 export function bandRuns(spans: readonly AxisSpan[]): Array<{ start: number; end: number }> {
-	const ordered = spans
-		.map((s) => ({ start: s.start, end: Math.max(s.start, s.end) }))
-		.sort((a, b) => a.start - b.start || a.end - b.end);
-	const runs: Array<{ start: number; end: number }> = [];
-	for (const span of ordered) {
-		const last = runs[runs.length - 1];
-		// `+ 1` so two records that merely ABUT are one run — a lane is not shredded by every record
-		// boundary inside it.
-		if (last && span.start <= last.end + 1) {
-			if (span.end > last.end) last.end = span.end;
-			continue;
-		}
-		runs.push({ ...span });
-	}
-	return runs;
+  const ordered = spans
+    .map(s => ({ start: s.start, end: Math.max(s.start, s.end) }))
+    .sort((a, b) => a.start - b.start || a.end - b.end)
+  const runs: Array<{ start: number; end: number }> = []
+  for (const span of ordered) {
+    const last = runs[runs.length - 1]
+    // `+ 1` so two records that merely ABUT are one run — a lane is not shredded by every record
+    // boundary inside it.
+    if (last && span.start <= last.end + 1) {
+      if (span.end > last.end) last.end = span.end
+      continue
+    }
+    runs.push({ ...span })
+  }
+  return runs
 }
 
 /**
@@ -412,34 +412,34 @@ export function bandRuns(spans: readonly AxisSpan[]): Array<{ start: number; end
  * spellings of a year in one header is its own kind of noise.
  */
 export function rangeLabel(startKey: string, endKey: string): string {
-	const pretty = (key: string, withYear: boolean): string => {
-		const d = dateOf(dayNumber(key));
-		const base = `${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}`;
-		return withYear ? `${base} ’${String(d.getUTCFullYear()).slice(2)}` : base;
-	};
-	if (startKey === endKey) return pretty(startKey, false);
-	const withYear = startKey.slice(0, 4) !== endKey.slice(0, 4);
-	return `${pretty(startKey, withYear)} – ${pretty(endKey, withYear)}`;
+  const pretty = (key: string, withYear: boolean): string => {
+    const d = dateOf(dayNumber(key))
+    const base = `${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}`
+    return withYear ? `${base} ’${String(d.getUTCFullYear()).slice(2)}` : base
+  }
+  if (startKey === endKey) return pretty(startKey, false)
+  const withYear = startKey.slice(0, 4) !== endKey.slice(0, 4)
+  return `${pretty(startKey, withYear)} – ${pretty(endKey, withYear)}`
 }
 
 /** What a header tick says. The month name rides the 1st AND the first column of every live segment,
  *  so a bar can be read without scrolling back — or, now, without opening a fold — to place it. */
 function tickLabel(day: number, scale: Scale, segmentStart: boolean): string {
-	const d = dateOf(day);
-	if (scale === 'week') return `W${isoWeek(day)}`;
-	if (scale === 'month') return `${MONTHS[d.getUTCMonth()]} ${String(d.getUTCFullYear()).slice(2)}`;
-	const date = d.getUTCDate();
-	return date === 1 || segmentStart ? `${MONTHS[d.getUTCMonth()]} ${date}` : String(date);
+  const d = dateOf(day)
+  if (scale === "week") return `W${isoWeek(day)}`
+  if (scale === "month") return `${MONTHS[d.getUTCMonth()]} ${String(d.getUTCFullYear()).slice(2)}`
+  const date = d.getUTCDate()
+  return date === 1 || segmentStart ? `${MONTHS[d.getUTCMonth()]} ${date}` : String(date)
 }
 
 /** What a FOLD says, in the vocabulary of the scale around it — `W42…W52`, never a day count, because
  *  the reader is looking for where in their own calendar the missing time was. */
 function foldLabel(firstDay: number, lastDay: number, scale: Scale): string {
-	if (scale === 'week') return `W${isoWeek(firstDay)}…W${isoWeek(lastDay)}`;
-	const a = dateOf(firstDay);
-	const b = dateOf(lastDay);
-	if (scale === 'month') {
-		return `${MONTHS[a.getUTCMonth()]} ’${String(a.getUTCFullYear()).slice(2)}…${MONTHS[b.getUTCMonth()]} ’${String(b.getUTCFullYear()).slice(2)}`;
-	}
-	return `${MONTHS[a.getUTCMonth()]} ${a.getUTCDate()}…${MONTHS[b.getUTCMonth()]} ${b.getUTCDate()}`;
+  if (scale === "week") return `W${isoWeek(firstDay)}…W${isoWeek(lastDay)}`
+  const a = dateOf(firstDay)
+  const b = dateOf(lastDay)
+  if (scale === "month") {
+    return `${MONTHS[a.getUTCMonth()]} ’${String(a.getUTCFullYear()).slice(2)}…${MONTHS[b.getUTCMonth()]} ’${String(b.getUTCFullYear()).slice(2)}`
+  }
+  return `${MONTHS[a.getUTCMonth()]} ${a.getUTCDate()}…${MONTHS[b.getUTCMonth()]} ${b.getUTCDate()}`
 }

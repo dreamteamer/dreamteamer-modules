@@ -11,27 +11,27 @@
  * error — it is one stale panel in an otherwise refreshed app, which reads as a rendering bug and
  * gets debugged as one.
  */
-import type { SchemaCaches } from '../lib/schema-refresh';
-import { invalidateContract } from '../api/adapter';
-import { invalidateServerInfo } from '../api/info';
-import { collectionsError, refreshCollections } from './collections';
-import { cachedFieldErrors, invalidateRelations, reloadCachedFields } from './fields';
+import type { SchemaCaches } from "../lib/schema-refresh"
+import { invalidateContract } from "../api/adapter"
+import { invalidateServerInfo } from "../api/info"
+import { collectionsError, refreshCollections } from "./collections"
+import { cachedFieldErrors, invalidateRelations, reloadCachedFields } from "./fields"
 
 export const liveSchemaCaches: SchemaCaches = {
-	invalidateContract,
-	invalidateServerInfo,
-	invalidateRelations,
-	// ⚠ BOTH RE-READS CATCH THEIR OWN ERRORS and resolve, which suits a component (it draws `error`) and
-	// hid every failure from the refresh button: `handleInvalidate` logs what REJECTS, and nothing did.
-	// So the live wiring turns a failed re-read back into a rejection, carrying the host's own words.
-	refreshCollections: async () => {
-		await refreshCollections();
-		const err = collectionsError();
-		if (err) throw new Error(`collections: ${err}`);
-	},
-	reloadCachedFields: async () => {
-		await reloadCachedFields();
-		const errs = cachedFieldErrors();
-		if (errs.length) throw new Error(`fields: ${errs.join('; ')}`);
-	},
-};
+  invalidateContract,
+  invalidateServerInfo,
+  invalidateRelations,
+  // ⚠ BOTH RE-READS CATCH THEIR OWN ERRORS and resolve, which suits a component (it draws `error`) and
+  // hid every failure from the refresh button: `handleInvalidate` logs what REJECTS, and nothing did.
+  // So the live wiring turns a failed re-read back into a rejection, carrying the host's own words.
+  refreshCollections: async () => {
+    await refreshCollections()
+    const err = collectionsError()
+    if (err) throw new Error(`collections: ${err}`)
+  },
+  reloadCachedFields: async () => {
+    await reloadCachedFields()
+    const errs = cachedFieldErrors()
+    if (errs.length) throw new Error(`fields: ${errs.join("; ")}`)
+  },
+}

@@ -3,147 +3,209 @@
 // list --where` narrows an unknown key to NOTHING, silently — so each step is checked here against the
 // repo itself: the command exists, it is BOUND to the step's collection (or `dt next` has nothing to
 // say about the step), and every key of its `where` is a field of that collection, one hop included.
-import { test, describe } from 'node:test';
-import assert from 'node:assert';
-import fs from 'node:fs';
-import path from 'node:path';
-import yaml from 'js-yaml';
-import { MODULES, moduleIds, ALL, targetsOf } from '../../../tests/helpers/descriptors.ts';
-import { closure } from '../../../tests/helpers/workspace.ts';
+import { test, describe } from "node:test"
+import assert from "node:assert"
+import fs from "node:fs"
+import path from "node:path"
+import yaml from "js-yaml"
+import { MODULES, moduleIds, ALL, targetsOf } from "../../../tests/helpers/descriptors.ts"
+import { closure } from "../../../tests/helpers/workspace.ts"
 
-const OPERATORS = new Set(['_eq', '_neq', '_ieq', '_nieq', '_lt', '_lte', '_gt', '_gte', '_in', '_nin', '_null', '_nnull', '_empty', '_nempty', '_contains', '_ncontains', '_icontains', '_starts_with', '_istarts_with', '_ends_with', '_iends_with', '_between', '_nbetween', '_regex']);
-const TOKENS = new Set(['$today', '$now', '$from', '$to']);
+const OPERATORS = new Set([
+  "_eq",
+  "_neq",
+  "_ieq",
+  "_nieq",
+  "_lt",
+  "_lte",
+  "_gt",
+  "_gte",
+  "_in",
+  "_nin",
+  "_null",
+  "_nnull",
+  "_empty",
+  "_nempty",
+  "_contains",
+  "_ncontains",
+  "_icontains",
+  "_starts_with",
+  "_istarts_with",
+  "_ends_with",
+  "_iends_with",
+  "_between",
+  "_nbetween",
+  "_regex",
+])
+const TOKENS = new Set(["$today", "$now", "$from", "$to"])
 
 /** Every shipped workflow, by module: { module, id, file, doc }. */
-const shipped = moduleIds().flatMap((m) => {
-	const dir = path.join(MODULES, m, 'data', 'workflows');
-	if (!fs.existsSync(dir)) return [];
-	return fs.readdirSync(dir).filter((f) => f.endsWith('.workflow.md')).map((f) => {
-		const text = fs.readFileSync(path.join(dir, f), 'utf8');
-		return { module: m, id: f.replace(/\.workflow\.md$/, ''), file: `${m}/data/workflows/${f}`, text, doc: yaml.load(text.split(/^---\s*$/m)[1]) };
-	});
-});
+const shipped = moduleIds().flatMap(m => {
+  const dir = path.join(MODULES, m, "data", "workflows")
+  if (!fs.existsSync(dir)) return []
+  return fs
+    .readdirSync(dir)
+    .filter(f => f.endsWith(".workflow.md"))
+    .map(f => {
+      const text = fs.readFileSync(path.join(dir, f), "utf8")
+      return {
+        module: m,
+        id: f.replace(/\.workflow\.md$/, ""),
+        file: `${m}/data/workflows/${f}`,
+        text,
+        doc: yaml.load(text.split(/^---\s*$/m)[1]),
+      }
+    })
+})
 
 /** command id → the modules that ship it. */
-const COMMANDS = new Map();
+const COMMANDS = new Map()
 for (const m of moduleIds()) {
-	const walk = (dir, prefix = '') => {
-		if (!fs.existsSync(dir)) return;
-		for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
-			if (e.isDirectory()) walk(path.join(dir, e.name), `${prefix}${e.name}/`);
-			else if (e.name.endsWith('.command.md')) {
-				const id = prefix + e.name.replace(/\.command\.md$/, '');
-				COMMANDS.set(id, [...(COMMANDS.get(id) ?? []), m]);
-			}
-		}
-	};
-	walk(path.join(MODULES, m, 'commands'));
+  const walk = (dir, prefix = "") => {
+    if (!fs.existsSync(dir)) return
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (e.isDirectory()) walk(path.join(dir, e.name), `${prefix}${e.name}/`)
+      else if (e.name.endsWith(".command.md")) {
+        const id = prefix + e.name.replace(/\.command\.md$/, "")
+        COMMANDS.set(id, [...(COMMANDS.get(id) ?? []), m])
+      }
+    }
+  }
+  walk(path.join(MODULES, m, "commands"))
 }
 
 /** (command, collection) pairs some binding in the repo declares. */
-const BOUND = new Set();
+const BOUND = new Set()
 for (const m of moduleIds()) {
-	const dir = path.join(MODULES, m, 'command-bindings');
-	if (!fs.existsSync(dir)) continue;
-	for (const f of fs.readdirSync(dir).filter((x) => x.endsWith('.command-binding.yaml'))) {
-		const b = yaml.load(fs.readFileSync(path.join(dir, f), 'utf8'));
-		BOUND.add(`${b.command} ${b.collection}`);
-	}
+  const dir = path.join(MODULES, m, "command-bindings")
+  if (!fs.existsSync(dir)) continue
+  for (const f of fs.readdirSync(dir).filter(x => x.endsWith(".command-binding.yaml"))) {
+    const b = yaml.load(fs.readFileSync(path.join(dir, f), "utf8"))
+    BOUND.add(`${b.command} ${b.collection}`)
+  }
 }
 
 /** collection name → every field any descriptor (base or overlay) gives it, with its spec. */
-const FIELDS = new Map();
-for (const { doc } of ALL) for (const [n, spec] of Object.entries(doc.fields ?? {})) {
-	if (!FIELDS.has(doc.name)) FIELDS.set(doc.name, new Map());
-	FIELDS.get(doc.name).set(n, spec);
-}
-const BASES = new Set(ALL.filter((d) => !d.doc.overlay).map((d) => d.doc.name));
+const FIELDS = new Map()
+for (const { doc } of ALL)
+  for (const [n, spec] of Object.entries(doc.fields ?? {})) {
+    if (!FIELDS.has(doc.name)) FIELDS.set(doc.name, new Map())
+    FIELDS.get(doc.name).set(n, spec)
+  }
+const BASES = new Set(ALL.filter(d => !d.doc.overlay).map(d => d.doc.name))
 
 /** Problems with one filter object against one collection, following a reference one hop. */
 function filterProblems(where, collection, hop = 0) {
-	const out = [];
-	for (const [k, v] of Object.entries(where)) {
-		if (k === '_and' || k === '_or') { for (const c of v) out.push(...filterProblems(c, collection, hop)); continue; }
-		const spec = FIELDS.get(collection)?.get(k);
-		if (!spec) { out.push(`${collection} has no field "${k}"`); continue; }
-		for (const [op, val] of Object.entries(v)) {
-			if (OPERATORS.has(op)) {
-				for (const x of [val].flat()) if (typeof x === 'string' && x.startsWith('$') && !TOKENS.has(x)) out.push(`unknown token ${x}`);
-				continue;
-			}
-			// not an operator: a sub-condition on the referenced record
-			const targets = targetsOf(spec);
-			if (!targets.length) out.push(`${collection}.${k} is not a reference, so "${op}" cannot be a field of its target`);
-			else if (hop >= 1) out.push(`${collection}.${k}.${op}: a filter reaches ONE hop`);
-			else for (const t of targets) out.push(...filterProblems({ [op]: val }, t, hop + 1));
-		}
-	}
-	return out;
+  const out = []
+  for (const [k, v] of Object.entries(where)) {
+    if (k === "_and" || k === "_or") {
+      for (const c of v) out.push(...filterProblems(c, collection, hop))
+      continue
+    }
+    const spec = FIELDS.get(collection)?.get(k)
+    if (!spec) {
+      out.push(`${collection} has no field "${k}"`)
+      continue
+    }
+    for (const [op, val] of Object.entries(v)) {
+      if (OPERATORS.has(op)) {
+        for (const x of [val].flat())
+          if (typeof x === "string" && x.startsWith("$") && !TOKENS.has(x)) out.push(`unknown token ${x}`)
+        continue
+      }
+      // not an operator: a sub-condition on the referenced record
+      const targets = targetsOf(spec)
+      if (!targets.length) out.push(`${collection}.${k} is not a reference, so "${op}" cannot be a field of its target`)
+      else if (hop >= 1) out.push(`${collection}.${k}.${op}: a filter reaches ONE hop`)
+      else for (const t of targets) out.push(...filterProblems({ [op]: val }, t, hop + 1))
+    }
+  }
+  return out
 }
 
-test('the scan sees both shipped workflows', () => {
-	const at = shipped.map((w) => `${w.module}/${w.id}`).sort();
-	assert.deepEqual(at, ['rnd/software-factory', 'workflows/customer-factory']);
-});
+test("the scan sees both shipped workflows", () => {
+  const at = shipped.map(w => `${w.module}/${w.id}`).sort()
+  assert.deepEqual(at, ["rnd/software-factory", "workflows/customer-factory"])
+})
 
 for (const w of shipped) {
-	describe(`${w.file}`, () => {
-		test('is an active workflow whose body has one section per step', () => {
-			assert.equal(w.doc.status, 'active');
-			const sections = w.text.split('\n').filter((l) => /^## \d+\. /.test(l));
-			assert.deepEqual(sections, w.doc.steps.map((s, i) => `## ${i + 1}. ${s.name}`));
-		});
-		w.doc.steps.forEach((s, i) => {
-			const label = `step ${i + 1} (${s.name})`;
-			test(`${label}: its collection exists and its command exists and is bound to it`, () => {
-				const coll = s.collection.replace(/^collections\//, '');
-				assert.ok(BASES.has(coll), `${coll}: no module here owns it`);
-				if (!s.command) { assert.ok(s.stop, 'a step with no command is a stop for a person'); return; }
-				const cmd = s.command.replace(/^commands\//, '');
-				assert.ok(COMMANDS.has(cmd), `${s.command} is not a command any module ships`);
-				assert.ok(BOUND.has(`${s.command} ${s.collection}`), `${s.command} is not bound to ${s.collection} — dt next says nothing about this step`);
-			});
-			test(`${label}: its where is one JSON filter over real fields`, () => {
-				if (!s.where) return;
-				let where;
-				assert.doesNotThrow(() => { where = JSON.parse(s.where); }, `not JSON: ${s.where}`);
-				assert.equal(typeof where, 'object');
-				assert.deepEqual(filterProblems(where, s.collection.replace(/^collections\//, '')), []);
-			});
-		});
-	});
+  describe(`${w.file}`, () => {
+    test("is an active workflow whose body has one section per step", () => {
+      assert.equal(w.doc.status, "active")
+      const sections = w.text.split("\n").filter(l => /^## \d+\. /.test(l))
+      assert.deepEqual(
+        sections,
+        w.doc.steps.map((s, i) => `## ${i + 1}. ${s.name}`)
+      )
+    })
+    w.doc.steps.forEach((s, i) => {
+      const label = `step ${i + 1} (${s.name})`
+      test(`${label}: its collection exists and its command exists and is bound to it`, () => {
+        const coll = s.collection.replace(/^collections\//, "")
+        assert.ok(BASES.has(coll), `${coll}: no module here owns it`)
+        if (!s.command) {
+          assert.ok(s.stop, "a step with no command is a stop for a person")
+          return
+        }
+        const cmd = s.command.replace(/^commands\//, "")
+        assert.ok(COMMANDS.has(cmd), `${s.command} is not a command any module ships`)
+        assert.ok(
+          BOUND.has(`${s.command} ${s.collection}`),
+          `${s.command} is not bound to ${s.collection} — dt next says nothing about this step`
+        )
+      })
+      test(`${label}: its where is one JSON filter over real fields`, () => {
+        if (!s.where) return
+        let where
+        assert.doesNotThrow(() => {
+          where = JSON.parse(s.where)
+        }, `not JSON: ${s.where}`)
+        assert.equal(typeof where, "object")
+        assert.deepEqual(filterProblems(where, s.collection.replace(/^collections\//, "")), [])
+      })
+    })
+  })
 }
 
 // a command is looked up in the module that ships it; core is a module preset, so "core installs it" means
 // a member of core's preset (or one of their dependencies) ships it
-const CORE_SET = closure('core');
+const CORE_SET = closure("core")
 // from core 0.13.0 (cr-modules-018) the calendar sync and the LinkedIn scraper ship in these two connectors, not
 // in core; a workflow step that runs one is installed only where its connector is, and the installer refuses
 // the workflow otherwise, naming the command
-const CONNECTORS = new Set(['connectors-google-workspace', 'connectors-linkedin']);
+const CONNECTORS = new Set(["connectors-google-workspace", "connectors-linkedin"])
 
-test('customer-factory names only commands a member of core ships, or a connector its body names', () => {
-	const w = shipped.find((x) => x.module === 'workflows');
-	const body = w.text.split(/^---\s*$/m).slice(2).join('---');
-	for (const s of w.doc.steps.filter((x) => x.command)) {
-		const by = COMMANDS.get(s.command.replace(/^commands\//, '')) ?? [];
-		if (by.some((m) => CORE_SET.has(m))) continue;
-		const connector = by.find((m) => CONNECTORS.has(m));
-		assert.ok(connector, `${s.command} is shipped by ${by.join(', ') || 'no module'}, neither in core nor a connector`);
-		assert.ok(body.includes(`@dreamteamer/${connector}`), `step "${s.name}" needs @dreamteamer/${connector}, and the body does not say so`);
-	}
-});
+test("customer-factory names only commands a member of core ships, or a connector its body names", () => {
+  const w = shipped.find(x => x.module === "workflows")
+  const body = w.text
+    .split(/^---\s*$/m)
+    .slice(2)
+    .join("---")
+  for (const s of w.doc.steps.filter(x => x.command)) {
+    const by = COMMANDS.get(s.command.replace(/^commands\//, "")) ?? []
+    if (by.some(m => CORE_SET.has(m))) continue
+    const connector = by.find(m => CONNECTORS.has(m))
+    assert.ok(connector, `${s.command} is shipped by ${by.join(", ") || "no module"}, neither in core nor a connector`)
+    assert.ok(
+      body.includes(`@dreamteamer/${connector}`),
+      `step "${s.name}" needs @dreamteamer/${connector}, and the body does not say so`
+    )
+  }
+})
 
-test('software-factory names only commands core, rnd or a connector ship — the pair it installs into, plus the sync', () => {
-	for (const s of shipped.find((w) => w.id === 'software-factory').doc.steps.filter((x) => x.command)) {
-		const by = COMMANDS.get(s.command.replace(/^commands\//, '')) ?? [];
-		assert.ok(by.some((m) => CORE_SET.has(m) || m === 'rnd' || CONNECTORS.has(m)), `${s.command} is shipped by ${by.join(', ') || 'no module'}, in neither core, rnd nor a connector`);
-	}
-});
+test("software-factory names only commands core, rnd or a connector ship — the pair it installs into, plus the sync", () => {
+  for (const s of shipped.find(w => w.id === "software-factory").doc.steps.filter(x => x.command)) {
+    const by = COMMANDS.get(s.command.replace(/^commands\//, "")) ?? []
+    assert.ok(
+      by.some(m => CORE_SET.has(m) || m === "rnd" || CONNECTORS.has(m)),
+      `${s.command} is shipped by ${by.join(", ") || "no module"}, in neither core, rnd nor a connector`
+    )
+  }
+})
 
-test('the filter check is not vacuous: a misspelt field, a second hop and an unknown token are each caught', () => {
-	assert.deepEqual(filterProblems({ startz: { _gte: '$from' } }, 'meetings'), ['meetings has no field "startz"']);
-	assert.match(filterProblems({ company: { engagements: { stage: { _eq: 'lead' } } } }, 'meetings')[0], /ONE hop/);
-	assert.deepEqual(filterProblems({ starts: { _gte: '$yesterday' } }, 'meetings'), ['unknown token $yesterday']);
-	assert.deepEqual(filterProblems({ company: { engagements: { _empty: true } } }, 'meetings'), []);
-});
+test("the filter check is not vacuous: a misspelt field, a second hop and an unknown token are each caught", () => {
+  assert.deepEqual(filterProblems({ startz: { _gte: "$from" } }, "meetings"), ['meetings has no field "startz"'])
+  assert.match(filterProblems({ company: { engagements: { stage: { _eq: "lead" } } } }, "meetings")[0], /ONE hop/)
+  assert.deepEqual(filterProblems({ starts: { _gte: "$yesterday" } }, "meetings"), ["unknown token $yesterday"])
+  assert.deepEqual(filterProblems({ company: { engagements: { _empty: true } } }, "meetings"), [])
+})

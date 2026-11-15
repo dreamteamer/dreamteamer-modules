@@ -8,17 +8,17 @@
  * what a section is or which fields it holds; `lib/field-row.ts#formSections` is the arrangement. A
  * collection the overview does not (yet) carry draws its fields unsectioned, never a broken page.
  */
-import { computed, type ComputedRef } from 'vue';
-import type { CollectionRow } from '../api/types';
-import { useCollections } from './collections';
+import { computed, type ComputedRef } from "vue"
+import type { CollectionRow } from "../api/types"
+import { useCollections } from "./collections"
 
-export type FormSectionSpec = CollectionRow['form']['sections'][number];
+export type FormSectionSpec = CollectionRow["form"]["sections"][number]
 
 export function useFormSections(collection: () => string | undefined): ComputedRef<FormSectionSpec[]> {
-	const { tree } = useCollections();
-	return computed(() => {
-		const name = collection();
-		if (!name) return [];
-		return tree.value.find((r) => r.collection === name)?.form?.sections ?? [];
-	});
+  const { tree } = useCollections()
+  return computed(() => {
+    const name = collection()
+    if (!name) return []
+    return tree.value.find(r => r.collection === name)?.form?.sections ?? []
+  })
 }

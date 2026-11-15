@@ -15,19 +15,19 @@
 	so the option is still editable by hand rather than a dropdown with nothing in it.
 -->
 <script setup lang="ts">
-import { computed } from 'vue';
-import type { FieldRow } from '../api/types';
-import { hasChoices, selectableFields, useFieldContext } from '../lib/field-context';
-import DtSelect from '../components/DtSelect.vue';
+import { computed } from "vue"
+import type { FieldRow } from "../api/types"
+import { hasChoices, selectableFields, useFieldContext } from "../lib/field-context"
+import DtSelect from "../components/DtSelect.vue"
 
 const props = defineProps<{
-	value: unknown;
-	field: FieldRow;
-	options?: Record<string, unknown>;
-	autofocus?: boolean;
-}>();
+  value: unknown
+  field: FieldRow
+  options?: Record<string, unknown>
+  autofocus?: boolean
+}>()
 
-const emit = defineEmits<{ 'update:value': [value: unknown] }>();
+const emit = defineEmits<{ "update:value": [value: unknown] }>()
 
 /**
  * What an empty selection MEANS, declared by the option rather than guessed from it.
@@ -41,65 +41,65 @@ const emit = defineEmits<{ 'update:value': [value: unknown] }>();
  * The heuristic is kept as the fallback so every other `field-select` renders exactly as before.
  */
 const placeholder = computed(() => {
-	const declared = props.field.editor_options?.['placeholder'];
-	if (typeof declared === 'string' && declared) return declared;
-	return props.field.description ? 'Auto' : '—';
-});
+  const declared = props.field.editor_options?.["placeholder"]
+  if (typeof declared === "string" && declared) return declared
+  return props.field.description ? "Auto" : "—"
+})
 
-const context = useFieldContext();
+const context = useFieldContext()
 
 const candidates = computed<FieldRow[]>(() =>
-	context ? selectableFields(context.fields.value, props.field.editor_options) : [],
-);
+  context ? selectableFields(context.fields.value, props.field.editor_options) : []
+)
 
 /** Enum-ish fields get a marker: it is the difference between schema-ordered columns and columns
  *  derived from whatever values happen to be in the data. */
 function labelFor(row: FieldRow): string {
-	return hasChoices(row) ? `${row.field} — choices` : row.field;
+  return hasChoices(row) ? `${row.field} — choices` : row.field
 }
 
-const current = computed(() => (props.value == null ? '' : String(props.value)));
+const current = computed(() => (props.value == null ? "" : String(props.value)))
 
 /** A value the schema no longer has (renamed field, hand-edited view record) must stay visible
  *  rather than silently reading as "auto" — otherwise Save would quietly rewrite it. */
-const orphaned = computed(() => current.value !== '' && !candidates.value.some((f) => f.field === current.value));
+const orphaned = computed(() => current.value !== "" && !candidates.value.some(f => f.field === current.value))
 
 function onChange(event: Event): void {
-	const next = (event.target as HTMLSelectElement | HTMLInputElement).value;
-	emitValue(next);
+  const next = (event.target as HTMLSelectElement | HTMLInputElement).value
+  emitValue(next)
 }
 
 function emitValue(next: string): void {
-	emit('update:value', next === '' ? null : next);
+  emit("update:value", next === "" ? null : next)
 }
 
 /** The dropdown's options. An ORPHANED value keeps a row of its own so the control shows what is
  *  actually stored instead of falling back to the placeholder and letting Save rewrite it. */
 const fieldChoices = computed(() => [
-	...(orphaned.value ? [{ text: `${current.value} (not in schema)`, value: current.value }] : []),
-	...candidates.value.map((row) => ({ text: labelFor(row), value: row.field })),
-]);
+  ...(orphaned.value ? [{ text: `${current.value} (not in schema)`, value: current.value }] : []),
+  ...candidates.value.map(row => ({ text: labelFor(row), value: row.field })),
+])
 </script>
 
 <template>
-	<input
-		v-if="!context"
-		class="dt-input"
-		type="text"
-		:value="current"
-		:autofocus="autofocus"
-		placeholder="field name"
-		@input="onChange"
-	/>
-	<DtSelect
-		v-else
-		:model-value="current"
-		:choices="fieldChoices"
-		:placeholder="placeholder"
-		:autofocus="autofocus"
-		:aria-label="field.title || field.field"
-		@update:model-value="emitValue(String($event ?? ''))"
-	/>
+  <input
+    v-if="!context"
+    class="dt-input"
+    type="text"
+    :value="current"
+    :autofocus="autofocus"
+    placeholder="field name"
+    @input="onChange"
+  />
+  <DtSelect
+    v-else
+    :model-value="current"
+    :choices="fieldChoices"
+    :placeholder="placeholder"
+    :autofocus="autofocus"
+    :aria-label="field.title || field.field"
+    @update:model-value="emitValue(String($event ?? ''))"
+  />
 </template>
 
 <!-- Styling is the shared `.dt-select` / `.dt-input` utility (styles/base.css) — no local overrides. -->

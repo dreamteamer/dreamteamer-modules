@@ -19,97 +19,96 @@
 	collapses back to the compact row once a pick completes (one-shot, same as before).
 -->
 <script setup lang="ts">
-import { computed, nextTick, ref } from 'vue';
-import type { FieldRow, ItemRecord } from '../api/types';
-import { useItems } from '../composables/items';
-import type { useItem } from '../composables/items';
-import { titleOf } from '../lib/record-title';
-import { prefillFromRecord } from '../lib/template-prefill';
-import DtSelect from './DtSelect.vue';
-import DtIcon from './DtIcon.vue';
+import { computed, nextTick, ref } from "vue"
+import type { FieldRow, ItemRecord } from "../api/types"
+import { useItems } from "../composables/items"
+import type { useItem } from "../composables/items"
+import { titleOf } from "../lib/record-title"
+import { prefillFromRecord } from "../lib/template-prefill"
+import DtSelect from "./DtSelect.vue"
+import DtIcon from "./DtIcon.vue"
 
 const props = defineProps<{
-	collection: string;
-	fields: FieldRow[];
-	pkField: string;
-	item: ReturnType<typeof useItem>;
-}>();
+  collection: string
+  fields: FieldRow[]
+  pkField: string
+  item: ReturnType<typeof useItem>
+}>()
 
 // A plain top-level useItems call is safe here: TemplatePicker is only ever mounted for the
 // lifetime of one create-mode ContentDetail instance (itself remounted fresh per nav — see
 // ContentBrowse's header), never reused across a collection change.
-const source = useItems(props.collection);
-source.limit.value = 25;
+const source = useItems(props.collection)
+source.limit.value = 25
 
-const hasCandidates = computed(() => !source.loading.value && source.items.value.length > 0);
+const hasCandidates = computed(() => !source.loading.value && source.items.value.length > 0)
 
 function pkOf(record: ItemRecord): string {
-	return String(record[props.pkField] ?? record['id'] ?? '');
+  return String(record[props.pkField] ?? record["id"] ?? "")
 }
 
 function titleFor(record: ItemRecord): string {
-	return titleOf(record) || pkOf(record);
+  return titleOf(record) || pkOf(record)
 }
 
-const revealed = ref(false);
-
+const revealed = ref(false)
 
 function reveal(): void {
-	revealed.value = true;
+  revealed.value = true
 }
 
 /** The records this picker can duplicate from. */
-const recordChoices = computed(() => source.items.value.map((r) => ({ text: titleFor(r), value: pkOf(r) })));
+const recordChoices = computed(() => source.items.value.map(r => ({ text: titleFor(r), value: pkOf(r) })))
 
 /**
  * A one-shot action, not a persistent selection: `model-value` is pinned to `''` so the control
  * never shows a lingering pick, and the row collapses once a choice completes.
  */
 function pick(pk: string): void {
-	revealed.value = false;
+  revealed.value = false
 
-	const record = source.items.value.find((r) => pkOf(r) === pk);
-	if (!record) return;
+  const record = source.items.value.find(r => pkOf(r) === pk)
+  if (!record) return
 
-	const prefill = prefillFromRecord(record, props.fields);
-	for (const [field, value] of Object.entries(prefill)) {
-		props.item.setField(field, value);
-	}
+  const prefill = prefillFromRecord(record, props.fields)
+  for (const [field, value] of Object.entries(prefill)) {
+    props.item.setField(field, value)
+  }
 }
 </script>
 
 <template>
-	<div v-if="hasCandidates" class="dt-template-picker">
-		<button v-if="!revealed" type="button" class="dt-btn dt-btn--ghost dt-btn--sm dt-template-trigger" @click="reveal">
-			<DtIcon name="copy" />
-			Start from existing…
-		</button>
-		<div v-else class="dt-template-inline">
-			<DtSelect
-				class="dt-template-select"
-				:model-value="''"
-				:choices="recordChoices"
-				placeholder="Choose a record to duplicate…"
-				aria-label="Choose a record to duplicate"
-				autofocus
-				@update:model-value="pick(String($event ?? ''))"
-			/>
-		</div>
-	</div>
+  <div v-if="hasCandidates" class="dt-template-picker">
+    <button v-if="!revealed" type="button" class="dt-btn dt-btn--ghost dt-btn--sm dt-template-trigger" @click="reveal">
+      <DtIcon name="copy" />
+      Start from existing…
+    </button>
+    <div v-else class="dt-template-inline">
+      <DtSelect
+        class="dt-template-select"
+        :model-value="''"
+        :choices="recordChoices"
+        placeholder="Choose a record to duplicate…"
+        aria-label="Choose a record to duplicate"
+        autofocus
+        @update:model-value="pick(String($event ?? ''))"
+      />
+    </div>
+  </div>
 </template>
 
 <style scoped>
 .dt-template-picker {
-	margin-bottom: 20px;
+  margin-bottom: 20px;
 }
 .dt-template-trigger {
-	padding: 0 10px;
+  padding: 0 10px;
 }
 .dt-template-inline {
-	display: block;
-	max-width: 320px;
+  display: block;
+  max-width: 320px;
 }
 .dt-template-select {
-	min-height: var(--dt-control-height);
+  min-height: var(--dt-control-height);
 }
 </style>

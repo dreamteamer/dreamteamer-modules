@@ -15,13 +15,13 @@
 
 /** `<indent><n>.<space><rest>` — an ordered-list marker. `)` is deliberately not accepted: the logs
  * this reads use `.`, and every widened delimiter is a line of prose that could start an item. */
-const ITEM_RE = /^([ \t]*)(\d+)\.[ \t]+(.*)$/;
+const ITEM_RE = /^([ \t]*)(\d+)\.[ \t]+(.*)$/
 
 /** Block starts that interrupt a paragraph, so a list item never swallows the heading after it. */
-const INTERRUPTS_RE = /^(?:#{1,6}\s|>|```|~~~|(?:[-*_][ \t]*){3,}$|[-*+][ \t]+)/;
+const INTERRUPTS_RE = /^(?:#{1,6}\s|>|```|~~~|(?:[-*_][ \t]*){3,}$|[-*+][ \t]+)/
 
 /** Tabs count as four columns, so indentation compares the way it reads. */
-const indentOf = (line) => line.match(/^[ \t]*/)[0].replace(/\t/g, '    ').length;
+const indentOf = line => line.match(/^[ \t]*/)[0].replace(/\t/g, "    ").length
 
 /**
  * Every top-level numbered list item in `markdown`, in document order.
@@ -42,48 +42,58 @@ const indentOf = (line) => line.match(/^[ \t]*/)[0].replace(/\t/g, '    ').lengt
  *   collapsed onto one line.
  */
 export function numberedListItems(markdown) {
-	const lines = String(markdown ?? '').split('\n');
-	const items = [];
-	let open = null;      // { indent, number, line, lines }
-	let pending = [];     // blank lines held back — part of the item only if indented content follows
+  const lines = String(markdown ?? "").split("\n")
+  const items = []
+  let open = null // { indent, number, line, lines }
+  let pending = [] // blank lines held back — part of the item only if indented content follows
 
-	const close = () => {
-		if (open) items.push(finish(open));
-		open = null;
-		pending = [];
-	};
+  const close = () => {
+    if (open) items.push(finish(open))
+    open = null
+    pending = []
+  }
 
-	for (let i = 0; i < lines.length; i++) {
-		const line = lines[i];
-		if (!line.trim()) { if (open) pending.push(line); continue; }
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]
+    if (!line.trim()) {
+      if (open) pending.push(line)
+      continue
+    }
 
-		const m = ITEM_RE.exec(line);
-		const indent = indentOf(line);
+    const m = ITEM_RE.exec(line)
+    const indent = indentOf(line)
 
-		if (m && (!open || indent <= open.indent)) {
-			close();
-			open = { indent, number: Number(m[2]), line: i + 1, lines: [line] };
-			continue;
-		}
-		if (!open) continue;                                        // prose outside any list
-		if (indent > open.indent) { open.lines.push(...pending, line); pending = []; continue; }
-		// At or left of the marker: only a lazy continuation of the paragraph still in hand survives,
-		// and only while it starts nothing of its own.
-		if (!pending.length && !m && !INTERRUPTS_RE.test(line.trim())) { open.lines.push(line); continue; }
-		close();
-	}
-	close();
-	return items;
+    if (m && (!open || indent <= open.indent)) {
+      close()
+      open = { indent, number: Number(m[2]), line: i + 1, lines: [line] }
+      continue
+    }
+    if (!open) continue // prose outside any list
+    if (indent > open.indent) {
+      open.lines.push(...pending, line)
+      pending = []
+      continue
+    }
+    // At or left of the marker: only a lazy continuation of the paragraph still in hand survives,
+    // and only while it starts nothing of its own.
+    if (!pending.length && !m && !INTERRUPTS_RE.test(line.trim())) {
+      open.lines.push(line)
+      continue
+    }
+    close()
+  }
+  close()
+  return items
 }
 
 function finish(open) {
-	const raw = open.lines.join('\n').replace(/\s+$/, '');
-	const marker = ITEM_RE.exec(open.lines[0]);
-	const rest = [marker[3], ...open.lines.slice(1)];
-	return {
-		number: open.number,
-		line: open.line,
-		raw,
-		content: rest.join(' ').replace(/\s+/g, ' ').trim(),
-	};
+  const raw = open.lines.join("\n").replace(/\s+$/, "")
+  const marker = ITEM_RE.exec(open.lines[0])
+  const rest = [marker[3], ...open.lines.slice(1)]
+  return {
+    number: open.number,
+    line: open.line,
+    raw,
+    content: rest.join(" ").replace(/\s+/g, " ").trim(),
+  }
 }

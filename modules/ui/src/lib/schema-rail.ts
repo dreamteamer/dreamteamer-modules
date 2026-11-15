@@ -24,22 +24,22 @@
 
 /** What the rail needs off a collection row — the engine projection's v2 keys (design §4.3). */
 export interface RailInput {
-	collection: string;
-	/** The engine-resolved title. */
-	title?: string;
-	/** `display.nav` — the icon and the position the descriptor authored. */
-	nav?: { icon?: string; order?: number };
-	/** Workspace plumbing, drawn here rather than in the record tree — what this rail derives from. */
-	internal?: boolean;
+  collection: string
+  /** The engine-resolved title. */
+  title?: string
+  /** `display.nav` — the icon and the position the descriptor authored. */
+  nav?: { icon?: string; order?: number }
+  /** Workspace plumbing, drawn here rather than in the record tree — what this rail derives from. */
+  internal?: boolean
 }
 
 export interface SchemaKind {
-	/** The collection name, which is also the route segment: `/settings/schema/<kind>`. */
-	kind: string;
-	/** The engine-resolved title. Never title-cased here — compile already answered this. */
-	title: string;
-	/** A codicon id; `symbol-structure` for a kind whose descriptor authors none. */
-	icon: string;
+  /** The collection name, which is also the route segment: `/settings/schema/<kind>`. */
+  kind: string
+  /** The engine-resolved title. Never title-cased here — compile already answered this. */
+  title: string
+  /** A codicon id; `symbol-structure` for a kind whose descriptor authors none. */
+  icon: string
 }
 
 /**
@@ -52,30 +52,30 @@ export interface SchemaKind {
  * is the engine's own machinery and orders itself.
  */
 export function schemaRail(rows: readonly RailInput[]): SchemaKind[] {
-	const PINNED = ['modules', 'collections'];
-	const rank = (name: string) => {
-		const at = PINNED.indexOf(name);
-		return at === -1 ? PINNED.length : at;
-	};
+  const PINNED = ["modules", "collections"]
+  const rank = (name: string) => {
+    const at = PINNED.indexOf(name)
+    return at === -1 ? PINNED.length : at
+  }
 
-	return rows
-		.filter((r) => r.internal === true)
-		.map((r) => ({
-			kind: r.collection,
-			title: r.title ?? r.collection,
-			icon: r.nav?.icon ?? 'symbol-structure',
-			order: r.nav?.order ?? 999,
-		}))
-		.sort((a, b) => {
-			if (rank(a.kind) !== rank(b.kind)) return rank(a.kind) - rank(b.kind);
-			if (a.order !== b.order) return a.order - b.order;
-			return a.kind.localeCompare(b.kind);
-		})
-		.map(({ kind, title, icon }) => ({ kind, title, icon }));
+  return rows
+    .filter(r => r.internal === true)
+    .map(r => ({
+      kind: r.collection,
+      title: r.title ?? r.collection,
+      icon: r.nav?.icon ?? "symbol-structure",
+      order: r.nav?.order ?? 999,
+    }))
+    .sort((a, b) => {
+      if (rank(a.kind) !== rank(b.kind)) return rank(a.kind) - rank(b.kind)
+      if (a.order !== b.order) return a.order - b.order
+      return a.kind.localeCompare(b.kind)
+    })
+    .map(({ kind, title, icon }) => ({ kind, title, icon }))
 }
 
 /** The kind the tab opens on when the route names none. */
-export const DEFAULT_SCHEMA_KIND = 'collections';
+export const DEFAULT_SCHEMA_KIND = "collections"
 
 /**
  * Split a `/settings/schema/<kind>/<id>` tail into its two halves.
@@ -85,8 +85,11 @@ export const DEFAULT_SCHEMA_KIND = 'collections';
  * collection name (`health/doctors`) and a slash-path record id (`meetings/2026/07/kickoff`).
  */
 export function splitSchemaRoute(tail: string): { kind: string; id: string | null } {
-	const segments = tail.replace(/^\/+|\/+$/g, '').split('/').filter(Boolean);
-	if (!segments.length) return { kind: DEFAULT_SCHEMA_KIND, id: null };
-	const [kind, ...rest] = segments;
-	return { kind: kind as string, id: rest.length ? rest.join('/') : null };
+  const segments = tail
+    .replace(/^\/+|\/+$/g, "")
+    .split("/")
+    .filter(Boolean)
+  if (!segments.length) return { kind: DEFAULT_SCHEMA_KIND, id: null }
+  const [kind, ...rest] = segments
+  return { kind: kind as string, id: rest.length ? rest.join("/") : null }
 }

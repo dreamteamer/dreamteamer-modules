@@ -21,40 +21,45 @@
 // `tree.ts` uses TypeScript parameter properties, which strip-only mode refuses outright, and the
 // source uses extensionless relative imports, which Node's ESM resolver refuses. esbuild is already a
 // dependency for the real build and handles both in ~50ms, so testing needs no new tool.
-import { spawnSync } from 'node:child_process';
-import { readdirSync, existsSync, readFileSync, rmSync, mkdirSync } from 'node:fs';
-import { resolve, dirname, join, basename } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import * as esbuild from 'esbuild';
-import * as sfc from 'vue/compiler-sfc';
+import { spawnSync } from "node:child_process"
+import { readdirSync, existsSync, readFileSync, rmSync, mkdirSync } from "node:fs"
+import { resolve, dirname, join, basename } from "node:path"
+import { fileURLToPath } from "node:url"
+import * as esbuild from "esbuild"
+import * as sfc from "vue/compiler-sfc"
 
-const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const args = process.argv.slice(2);
-const flag = (n) => args.includes(`--${n}`);
-const value = (n) => args.find((a) => a.startsWith(`--${n}=`))?.split('=').slice(1).join('=');
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..")
+const args = process.argv.slice(2)
+const flag = n => args.includes(`--${n}`)
+const value = n =>
+  args
+    .find(a => a.startsWith(`--${n}=`))
+    ?.split("=")
+    .slice(1)
+    .join("=")
 
-const only = value('only');
+const only = value("only")
 
 function testFiles(dir) {
-	if (!existsSync(dir)) return [];
-	return readdirSync(dir)
-		.filter((f) => f.endsWith('.test.ts'))
-		.sort()
-		.map((f) => join(dir, f))
-		.filter((f) => !only || f.includes(only));
+  if (!existsSync(dir)) return []
+  return readdirSync(dir)
+    .filter(f => f.endsWith(".test.ts"))
+    .sort()
+    .map(f => join(dir, f))
+    .filter(f => !only || f.includes(only))
 }
 
-const unitEntries = testFiles(join(ROOT, 'test', 'unit'));
-const webviewEntries = testFiles(join(ROOT, 'test', 'webview'));
+const unitEntries = testFiles(join(ROOT, "test", "unit"))
+const webviewEntries = testFiles(join(ROOT, "test", "webview"))
 
 if (!unitEntries.length && !webviewEntries.length) {
-	console.error(only ? `✖ no test files match --only=${only}` : '✖ no test files found');
-	process.exit(1);
+  console.error(only ? `✖ no test files match --only=${only}` : "✖ no test files found")
+  process.exit(1)
 }
 
-const outDir = join(ROOT, '.test-build');
-rmSync(outDir, { recursive: true, force: true });
-mkdirSync(outDir, { recursive: true });
+const outDir = join(ROOT, ".test-build")
+rmSync(outDir, { recursive: true, force: true })
+mkdirSync(outDir, { recursive: true })
 
 // One bundle per test file, with the src modules under test inlined. `vscode` is stubbed to an empty
 // object: a module that genuinely needs the editor API has no business in this tier, and a stub makes
@@ -66,40 +71,43 @@ mkdirSync(outDir, { recursive: true });
 // untestable for a reason that had nothing to do with the composable. Rendering is tier 3's job; a
 // stub component turns "this test accidentally renders" into an obvious failure where it happens.
 const stubVscode = {
-	name: 'stub-vscode',
-	setup(build) {
-		build.onResolve({ filter: /^vscode$/ }, () => ({ path: 'vscode', namespace: 'stub' }));
-		build.onLoad({ filter: /.*/, namespace: 'stub' }, () => ({ contents: 'export default {};', loader: 'js' }));
-	},
-};
+  name: "stub-vscode",
+  setup(build) {
+    build.onResolve({ filter: /^vscode$/ }, () => ({ path: "vscode", namespace: "stub" }))
+    build.onLoad({ filter: /.*/, namespace: "stub" }, () => ({ contents: "export default {};", loader: "js" }))
+  },
+}
 
 const common = {
-	// .mjs so Node does not have to guess the module type of a bundle in a CJS package (the extension
-	// itself ships CJS for VS Code, so package.json cannot say "type": "module")
-	outExtension: { '.js': '.mjs' },
-	bundle: true,
-	platform: 'node',
-	format: 'esm',
-	target: 'node20',
-	sourcemap: 'inline',
-	external: ['node:*'],
-};
+  // .mjs so Node does not have to guess the module type of a bundle in a CJS package (the extension
+  // itself ships CJS for VS Code, so package.json cannot say "type": "module")
+  outExtension: { ".js": ".mjs" },
+  bundle: true,
+  platform: "node",
+  format: "esm",
+  target: "node20",
+  sourcemap: "inline",
+  external: ["node:*"],
+}
 
 if (unitEntries.length) {
-	await esbuild.build({
-		...common,
-		entryPoints: unitEntries,
-		outdir: join(outDir, 'unit'),
-		plugins: [stubVscode, {
-			name: 'stub-vue-sfc',
-			setup(build) {
-				build.onLoad({ filter: /\.vue$/ }, ({ path }) => ({
-					contents: `export default { name: ${JSON.stringify(basename(path))}, render() { throw new Error('tier 1 does not render components — ${basename(path)}'); } };`,
-					loader: 'js',
-				}));
-			},
-		}],
-	});
+  await esbuild.build({
+    ...common,
+    entryPoints: unitEntries,
+    outdir: join(outDir, "unit"),
+    plugins: [
+      stubVscode,
+      {
+        name: "stub-vue-sfc",
+        setup(build) {
+          build.onLoad({ filter: /\.vue$/ }, ({ path }) => ({
+            contents: `export default { name: ${JSON.stringify(basename(path))}, render() { throw new Error('tier 1 does not render components — ${basename(path)}'); } };`,
+            loader: "js",
+          }))
+        },
+      },
+    ],
+  })
 }
 
 // ---- TIER 2: the webview RENDER tier -----------------------------------------------------------
@@ -109,46 +117,50 @@ if (unitEntries.length) {
 // where no control exists, so nothing asserted what a button actually renders, and a live defect
 // (Restore offered on a compiled record, its refusal swallowed) sat under a green suite.
 if (webviewEntries.length) {
-	await esbuild.build({
-		...common,
-		entryPoints: webviewEntries,
-		outdir: join(outDir, 'webview'),
-		plugins: [stubVscode, {
-			name: 'vue-sfc',
-			setup(build) {
-				build.onLoad({ filter: /\.vue$/ }, ({ path }) => {
-					const { descriptor } = sfc.parse(readFileSync(path, 'utf8'), { filename: path });
-					const id = basename(path);
-					if (!descriptor.script && !descriptor.scriptSetup) {
-						const template = sfc.compileTemplate({ source: descriptor.template?.content ?? '', filename: path, id });
-						return { contents: `${template.code}\nexport default { render };`, loader: 'ts' };
-					}
-					// `inlineTemplate` keeps the render function closed over the setup bindings, which is
-					// what makes a `<script setup>` ref reactive without a binding-metadata round trip.
-					const compiled = sfc.compileScript(descriptor, { id, inlineTemplate: !!descriptor.template });
-					return {
-						contents: `${compiled.content.replace(/export default/, 'const __sfc__ =')}\nexport default __sfc__;`,
-						loader: 'ts',
-					};
-				});
-			},
-		}, {
-			name: 'host-stub',
-			setup(build) {
-				const stub = join(ROOT, 'test', 'webview', 'host-stub.ts');
-				build.onResolve({ filter: /(^|\/)transport$/ }, () => ({ path: stub }));
-			},
-		}],
-	});
+  await esbuild.build({
+    ...common,
+    entryPoints: webviewEntries,
+    outdir: join(outDir, "webview"),
+    plugins: [
+      stubVscode,
+      {
+        name: "vue-sfc",
+        setup(build) {
+          build.onLoad({ filter: /\.vue$/ }, ({ path }) => {
+            const { descriptor } = sfc.parse(readFileSync(path, "utf8"), { filename: path })
+            const id = basename(path)
+            if (!descriptor.script && !descriptor.scriptSetup) {
+              const template = sfc.compileTemplate({ source: descriptor.template?.content ?? "", filename: path, id })
+              return { contents: `${template.code}\nexport default { render };`, loader: "ts" }
+            }
+            // `inlineTemplate` keeps the render function closed over the setup bindings, which is
+            // what makes a `<script setup>` ref reactive without a binding-metadata round trip.
+            const compiled = sfc.compileScript(descriptor, { id, inlineTemplate: !!descriptor.template })
+            return {
+              contents: `${compiled.content.replace(/export default/, "const __sfc__ =")}\nexport default __sfc__;`,
+              loader: "ts",
+            }
+          })
+        },
+      },
+      {
+        name: "host-stub",
+        setup(build) {
+          const stub = join(ROOT, "test", "webview", "host-stub.ts")
+          build.onResolve({ filter: /(^|\/)transport$/ }, () => ({ path: stub }))
+        },
+      },
+    ],
+  })
 }
 
 const built = [
-	...unitEntries.map((e) => join('.test-build', 'unit', basename(e).replace(/\.ts$/, '.mjs'))),
-	...webviewEntries.map((e) => join('.test-build', 'webview', basename(e).replace(/\.ts$/, '.mjs'))),
-];
-const reporter = flag('verbose') ? 'spec' : join(ROOT, 'scripts', 'test-reporter.mjs');
-const res = spawnSync(process.execPath, ['--test', `--test-reporter=${reporter}`, ...built], {
-	cwd: ROOT,
-	stdio: 'inherit',
-});
-process.exit(res.status ?? 1);
+  ...unitEntries.map(e => join(".test-build", "unit", basename(e).replace(/\.ts$/, ".mjs"))),
+  ...webviewEntries.map(e => join(".test-build", "webview", basename(e).replace(/\.ts$/, ".mjs"))),
+]
+const reporter = flag("verbose") ? "spec" : join(ROOT, "scripts", "test-reporter.mjs")
+const res = spawnSync(process.execPath, ["--test", `--test-reporter=${reporter}`, ...built], {
+  cwd: ROOT,
+  stdio: "inherit",
+})
+process.exit(res.status ?? 1)

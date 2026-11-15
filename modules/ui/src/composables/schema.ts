@@ -23,36 +23,36 @@
  * one-shot mutation; callers refresh the shared read caches (`useCollections().reload()`,
  * `useFields(collection).reload()`, `loadUiViews(router)`) afterward.
  */
-import { api } from '../api/client';
+import { api } from "../api/client"
 
 /** `?module=<id>` when there is one, nothing when there is not. One spelling, every call site. */
 function selector(module?: string): string {
-	return module ? `?module=${encodeURIComponent(module)}` : '';
+  return module ? `?module=${encodeURIComponent(module)}` : ""
 }
 
 /** `/fields/<collection>[/<field>]` — the field verbs' path. ⚠ Percent-encoded, always: a collection
  *  name may carry a namespace slash and `:collection` is ONE segment on both routers. */
 function fieldsPath(collection: string, field?: string): string {
-	return `/fields/${encodeURIComponent(collection)}${field ? `/${encodeURIComponent(field)}` : ''}`;
+  return `/fields/${encodeURIComponent(collection)}${field ? `/${encodeURIComponent(field)}` : ""}`
 }
 
 export interface CreateCollectionInput {
-	name: string;
-	/** `mixins` record ids, applied in this order — omitted = the minimal compilable descriptor. */
-	mixins?: string[];
-	/** `ids.from` — the id template; omitted = the engine's default. */
-	idFrom?: string;
-	/** Which module's sources the descriptor is written into. Omitted = the workspace module, the
-	 *  engine's own default. A SELECTOR, so it rides in the query string, never in the body. */
-	module?: string;
+  name: string
+  /** `mixins` record ids, applied in this order — omitted = the minimal compilable descriptor. */
+  mixins?: string[]
+  /** `ids.from` — the id template; omitted = the engine's default. */
+  idFrom?: string
+  /** Which module's sources the descriptor is written into. Omitted = the workspace module, the
+   *  engine's own default. A SELECTOR, so it rides in the query string, never in the body. */
+  module?: string
 }
 
 export async function createCollection({ module, ...fields }: CreateCollectionInput): Promise<void> {
-	await api.post(`/collections/collections/records${selector(module)}`, fields);
+  await api.post(`/collections/collections/records${selector(module)}`, fields)
 }
 
 export async function deleteCollection(collection: string): Promise<void> {
-	await api.delete(`/collections/collections/records/${encodeURIComponent(collection)}`);
+  await api.delete(`/collections/collections/records/${encodeURIComponent(collection)}`)
 }
 
 /**
@@ -62,24 +62,24 @@ export async function deleteCollection(collection: string): Promise<void> {
  * source that declares it, so the caller builds it over the field as authored.
  */
 export async function createField(collection: string, name: string, field: Record<string, unknown>): Promise<void> {
-	await api.post(fieldsPath(collection), { name, field });
+  await api.post(fieldsPath(collection), { name, field })
 }
 
 export async function updateField(collection: string, name: string, field: Record<string, unknown>): Promise<void> {
-	await api.patch(fieldsPath(collection, name), { field });
+  await api.patch(fieldsPath(collection, name), { field })
 }
 
 /** The field as its source authored it — the collection record's own `fields` entry, or `{}`. What a
  *  whole-field update is built over, so keys the designer does not model are carried. */
 export async function authoredField(collection: string, name: string): Promise<Record<string, unknown>> {
-	try {
-		const res = await api.get<Record<string, unknown>>(`/items/collections/${encodeURIComponent(collection)}`);
-		const fields = res.data?.['fields'];
-		const field = fields && typeof fields === 'object' ? (fields as Record<string, unknown>)[name] : undefined;
-		return field && typeof field === 'object' && !Array.isArray(field) ? (field as Record<string, unknown>) : {};
-	} catch {
-		return {};
-	}
+  try {
+    const res = await api.get<Record<string, unknown>>(`/items/collections/${encodeURIComponent(collection)}`)
+    const fields = res.data?.["fields"]
+    const field = fields && typeof fields === "object" ? (fields as Record<string, unknown>)[name] : undefined
+    return field && typeof field === "object" && !Array.isArray(field) ? (field as Record<string, unknown>) : {}
+  } catch {
+    return {}
+  }
 }
 
 /**
@@ -88,13 +88,17 @@ export async function authoredField(collection: string, name: string): Promise<R
  * field on ANOTHER collection — the key of a relation kept over there, whose enum, format, default
  * and display the operator is not looking at. An update that would change nothing exits 0 saying so.
  */
-export async function updateFieldFlags(collection: string, field: string, flags: Record<string, unknown>): Promise<void> {
-	await api.patch(fieldsPath(collection, field), flags);
+export async function updateFieldFlags(
+  collection: string,
+  field: string,
+  flags: Record<string, unknown>
+): Promise<void> {
+  await api.patch(fieldsPath(collection, field), flags)
 }
 
 /** Create a field from the flag vocabulary — `type` may name a collection, which makes it a reference. */
 export async function createFieldFlags(collection: string, flags: Record<string, unknown>): Promise<void> {
-	await api.post(fieldsPath(collection), flags);
+  await api.post(fieldsPath(collection), flags)
 }
 
 /**
@@ -106,13 +110,13 @@ export async function createFieldFlags(collection: string, flags: Record<string,
  * reported one are different acts, so this returns it too.
  */
 export interface FieldRemoval {
-	/** Records whose values for this field were cleared with it. `git show HEAD~1` holds them. */
-	cleared?: number;
+  /** Records whose values for this field were cleared with it. `git show HEAD~1` holds them. */
+  cleared?: number
 }
 
 export async function deleteField(collection: string, field: string): Promise<FieldRemoval> {
-	const res = await api.delete<FieldRemoval>(fieldsPath(collection, field));
-	return res.data ?? {};
+  const res = await api.delete<FieldRemoval>(fieldsPath(collection, field))
+  return res.data ?? {}
 }
 
 /**
@@ -125,13 +129,13 @@ export async function deleteField(collection: string, field: string): Promise<Fi
  * (`?dry-run=true`) — which is what the native gesture does.
  */
 export async function renameFieldTo(collection: string, field: string, to: string): Promise<void> {
-	await api.post(`${fieldsPath(collection, field)}/rename`, { to });
+  await api.post(`${fieldsPath(collection, field)}/rename`, { to })
 }
 
 // ---- saved views = ui-view records (spec: "agents and users reshape the app by editing records") --
 
-export type { ViewWrite as UiViewWrite } from '../lib/view-write';
-import type { ViewWrite } from '../lib/view-write';
+export type { ViewWrite as UiViewWrite } from "../lib/view-write"
+import type { ViewWrite } from "../lib/view-write"
 
 /**
  * Save a view. ⚠ THE `{id, view}` WRAPPER IS GONE from the wire: a ui-view is written like any other
@@ -139,9 +143,16 @@ import type { ViewWrite } from '../lib/view-write';
  * the transport. The host routes it to the engine's UPSERT, so saving an existing view is the same
  * call as saving a new one. With no `id` the engine derives it from the route (`{{ route | slug }}`).
  */
-export async function saveUiView(id: string | undefined, view: ViewWrite, module?: string): Promise<Record<string, unknown>> {
-	const res = await api.post<Record<string, unknown>>(`/collections/ui-views/records${selector(module)}`, { ...(id ? { id } : {}), ...view });
-	return res.data ?? {};
+export async function saveUiView(
+  id: string | undefined,
+  view: ViewWrite,
+  module?: string
+): Promise<Record<string, unknown>> {
+  const res = await api.post<Record<string, unknown>>(`/collections/ui-views/records${selector(module)}`, {
+    ...(id ? { id } : {}),
+    ...view,
+  })
+  return res.data ?? {}
 }
 
 /**
@@ -150,19 +161,27 @@ export async function saveUiView(id: string | undefined, view: ViewWrite, module
  * compile gate and commits in the repo that holds the destination (a linked clone's, for its modules).
  */
 export async function moveUiView(id: string, module: string): Promise<Record<string, unknown>> {
-	const res = await api.patch<Record<string, unknown>>(`/collections/ui-views/records/${encodeURIComponent(id)}`, { module });
-	return res.data ?? {};
+  const res = await api.patch<Record<string, unknown>>(`/collections/ui-views/records/${encodeURIComponent(id)}`, {
+    module,
+  })
+  return res.data ?? {}
 }
 
 /**
  * Set collection-level keys by their v2 path — `dt set collections/<c> display.list.columns=…`. An
  * empty value removes the key. Compile-gated host-side like every other source write.
  */
-export async function setCollectionKeys(collection: string, changes: Record<string, unknown>): Promise<Record<string, unknown>> {
-	const res = await api.patch<Record<string, unknown>>(`/collections/collections/records/${encodeURIComponent(collection)}`, changes);
-	return res.data ?? {};
+export async function setCollectionKeys(
+  collection: string,
+  changes: Record<string, unknown>
+): Promise<Record<string, unknown>> {
+  const res = await api.patch<Record<string, unknown>>(
+    `/collections/collections/records/${encodeURIComponent(collection)}`,
+    changes
+  )
+  return res.data ?? {}
 }
 
 export async function deleteUiView(id: string): Promise<void> {
-	await api.delete(`/collections/ui-views/records/${encodeURIComponent(id)}`);
+  await api.delete(`/collections/ui-views/records/${encodeURIComponent(id)}`)
 }

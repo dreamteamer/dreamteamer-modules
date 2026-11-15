@@ -10,13 +10,13 @@
 	live, and it keeps every site the same shape whether its name is a literal or an expression.
 -->
 <script setup lang="ts">
-import { computed } from 'vue';
-import { codiconFor } from '@dreamteamer/protocol/host/icon-name';
+import { computed } from "vue"
+import { codiconFor } from "@dreamteamer/protocol/host/icon-name"
 
-const props = defineProps<{ name?: string | null }>();
-const glyph = computed(() => codiconFor(props.name));
+const props = defineProps<{ name?: string | null }>()
+const glyph = computed(() => codiconFor(props.name))
 </script>
 
 <template>
-	<span class="codicon" :class="`codicon-${glyph}`" aria-hidden="true"></span>
+  <span class="codicon" :class="`codicon-${glyph}`" aria-hidden="true"></span>
 </template>

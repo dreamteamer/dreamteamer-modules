@@ -1,9 +1,20 @@
 // cr-modules-008 held-out h1-h8: the extra Northwind fixture modules both surfaces' held-out walks use.
-import fs from 'node:fs';
-import path from 'node:path';
-import { execFileSync } from 'node:child_process';
+import fs from "node:fs"
+import path from "node:path"
+import { execFileSync } from "node:child_process"
 
-const coll = (name, fields, extra = '') => `name: ${name}\ndescription: ${name} for the held-out walk.\nuse_when: never\nids:\n  from: '{{ name | slug }}'\nfields:\n${Object.entries(fields).map(([f, y]) => `  ${f}:\n${y.split('\n').map((l) => `    ${l}`).join('\n')}`).join('\n')}\n${extra}`;
+const coll = (name, fields, extra = "") =>
+  `name: ${name}\ndescription: ${name} for the held-out walk.\nuse_when: never\nids:\n  from: '{{ name | slug }}'\nfields:\n${Object.entries(
+    fields
+  )
+    .map(
+      ([f, y]) =>
+        `  ${f}:\n${y
+          .split("\n")
+          .map(l => `    ${l}`)
+          .join("\n")}`
+    )
+    .join("\n")}\n${extra}`
 
 const PATTERN = `export default ({ registerApp, registerEdit, registerView }) => {
 	const { defineComponent, h, onMounted } = window.Vue;
@@ -32,7 +43,7 @@ const PATTERN = `export default ({ registerApp, registerEdit, registerView }) =>
 	registerEdit({ id: 'pattern-edit', name: 'pattern edit', types: ['string'], component: Edit });
 	registerView({ id: 'pattern-view', name: 'pattern view', types: ['string'], component: Edit });
 };
-`;
+`
 
 const PROBE2 = `export default ({ registerApp, registerEdit, registerView, registerList }) => {
 	const { defineComponent, h, onMounted } = window.Vue;
@@ -71,32 +82,124 @@ const PROBE2 = `export default ({ registerApp, registerEdit, registerView, regis
 		return h('ul', rows.slice(0, 20).map((r) => h('li', s.recordTitleOf(r)))); }; } });
 	registerList({ id: 'probe-list', name: 'probe list', component: List, fillsHeight: true });
 };
-`;
+`
 
 /** Adds the held-out modules, a layer record of pattern-items, and the 1000 probe rows; compiles; returns the module names. */
 export function addHeldout(f) {
-	const mod = (name, files) => { for (const [rel, text] of Object.entries(files)) { const p = path.join(f.root, 'modules', name, rel); fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, text); } };
-	const pkg = (name, extra = {}) => JSON.stringify({ name, private: true, version: '0.0.1', dreamteamer: { title: name, description: `the ${name} module of the held-out walk`, engine: '>=0.43.0', ...extra } }, null, '\t');
-	mod('pattern', { 'package.json': pkg('pattern'), 'collections/pattern-items.collection.yaml': coll('pattern-items', { name: 'type: string\nrequired: true', pv: 'type: string\ndisplay:\n  editor: pattern-edit\n  viewer: pattern-view', qv: 'type: string\ndisplay:\n  editor: probe-edit\n  viewer: probe-view' }), 'ui/app.js': PATTERN });
-	mod('probe2', { 'package.json': pkg('probe2', { peer_collections: ['projects', 'pattern-items'] }), 'collections/probe-items.collection.yaml': coll('probe-items', { name: 'type: string\nrequired: true\ndisplay:\n  viewer: probe-cell', ref: 'type: projects', pat: 'type: pattern-items' }, "record_title: '{{ name }} — {{ ref }}'\n"), 'ui/app.js': PROBE2,
-		'ui-views/probe-list.ui-view.yaml': 'route: /probe-list\nname: probe list\nscope: collection\ncollection: collections/probe-items\ndisplay:\n  list:\n    layout: probe-list\n' });
-	mod('other', { 'package.json': pkg('other'), 'collections/other-items.collection.yaml': coll('other-items', { name: 'type: string\nrequired: true' }) });
-	mod('named-only', { 'package.json': pkg('named-only'), 'collections/named-items.collection.yaml': coll('named-items', { name: 'type: string\nrequired: true' }), 'ui/app.js': 'export function register() {}\n' });
-	mod('meta-url', { 'package.json': pkg('meta-url'), 'collections/meta-items.collection.yaml': coll('meta-items', { name: 'type: string\nrequired: true' }), 'ui/app.js': "export default () => { new URL('./x.json', import.meta.url); return fetch(new URL('./x.json', import.meta.url)); };\n" });
-	mod('chunked', { 'package.json': pkg('chunked'), 'collections/chunk-items.collection.yaml': coll('chunk-items', { name: 'type: string\nrequired: true' }), 'ui/app.js': "export default async () => { await import('./chunk-a.js'); };\n" });
-	const rec = (dir, id, body) => { fs.mkdirSync(dir, { recursive: true }); const suffix = path.basename(dir).replace(/s$/, ''); fs.writeFileSync(path.join(dir, `${id}.${suffix}.md`), `---\n${body}---\n`); };
-	const ids = fs.readdirSync(path.join(f.root, 'data', 'projects')).map((n) => n.split('.')[0]);
-	for (let i = 0; i < 1000; i++) rec(path.join(f.root, 'data', 'probe-items'), `p${String(i).padStart(4, '0')}`, `name: Row ${i} <img src=x onerror="document.body.dataset.marker='cell'">\nref: projects/${i % 2 ? ids[i % ids.length] : 'missing-' + i}\n`);
-	rec(path.join(f.root, 'data', 'pattern-items'), 'pattern-one', 'name: Pattern one\npv: pattern view\nqv: probe view\n');
-	for (const [c, id] of [['other-items', 'other-one'], ['named-items', 'n1'], ['meta-items', 'm1'], ['chunk-items', 'c1']]) rec(path.join(f.root, 'data', c), id, `name: ${id}\n`);
-	// the layer also holds one pattern-items record
-	const layer = path.join(f.root, 'git_modules', 'northwind-archive');
-	rec(path.join(layer, 'data', 'pattern-items'), 'pattern-held', 'name: Pattern held by the layer\n');
-	execFileSync('git', ['add', '-A'], { cwd: layer }); execFileSync('git', ['-c', 'user.name=Dana Oren', '-c', 'user.email=dana@northwind.example', 'commit', '-qm', 'pattern-held'], { cwd: layer });
-	const pkgFile = path.join(f.root, 'package.json'); const p = JSON.parse(fs.readFileSync(pkgFile, 'utf8'));
-	p.dreamteamer.git_modules['northwind-archive'].records = [...p.dreamteamer.git_modules['northwind-archive'].records, 'pattern-items'];
-	fs.writeFileSync(pkgFile, JSON.stringify(p, null, '\t') + '\n');
-	const c = f.dt('compile'); if (c.status !== 0) throw new Error(`compile: ${c.stdout}\n${c.stderr}`);
-	execFileSync('git', ['add', '-A'], { cwd: f.root }); execFileSync('git', ['-c', 'user.name=Dana Oren', '-c', 'user.email=dana@northwind.example', 'commit', '-qm', 'held-out modules'], { cwd: f.root });
-	return { ui: fs.readdirSync(path.join(f.root, '.dreamteamer', 'ui')) };
+  const mod = (name, files) => {
+    for (const [rel, text] of Object.entries(files)) {
+      const p = path.join(f.root, "modules", name, rel)
+      fs.mkdirSync(path.dirname(p), { recursive: true })
+      fs.writeFileSync(p, text)
+    }
+  }
+  const pkg = (name, extra = {}) =>
+    JSON.stringify(
+      {
+        name,
+        private: true,
+        version: "0.0.1",
+        dreamteamer: {
+          title: name,
+          description: `the ${name} module of the held-out walk`,
+          engine: ">=0.43.0",
+          ...extra,
+        },
+      },
+      null,
+      "\t"
+    )
+  mod("pattern", {
+    "package.json": pkg("pattern"),
+    "collections/pattern-items.collection.yaml": coll("pattern-items", {
+      name: "type: string\nrequired: true",
+      pv: "type: string\ndisplay:\n  editor: pattern-edit\n  viewer: pattern-view",
+      qv: "type: string\ndisplay:\n  editor: probe-edit\n  viewer: probe-view",
+    }),
+    "ui/app.js": PATTERN,
+  })
+  mod("probe2", {
+    "package.json": pkg("probe2", { peer_collections: ["projects", "pattern-items"] }),
+    "collections/probe-items.collection.yaml": coll(
+      "probe-items",
+      {
+        name: "type: string\nrequired: true\ndisplay:\n  viewer: probe-cell",
+        ref: "type: projects",
+        pat: "type: pattern-items",
+      },
+      "record_title: '{{ name }} — {{ ref }}'\n"
+    ),
+    "ui/app.js": PROBE2,
+    "ui-views/probe-list.ui-view.yaml":
+      "route: /probe-list\nname: probe list\nscope: collection\ncollection: collections/probe-items\ndisplay:\n  list:\n    layout: probe-list\n",
+  })
+  mod("other", {
+    "package.json": pkg("other"),
+    "collections/other-items.collection.yaml": coll("other-items", { name: "type: string\nrequired: true" }),
+  })
+  mod("named-only", {
+    "package.json": pkg("named-only"),
+    "collections/named-items.collection.yaml": coll("named-items", { name: "type: string\nrequired: true" }),
+    "ui/app.js": "export function register() {}\n",
+  })
+  mod("meta-url", {
+    "package.json": pkg("meta-url"),
+    "collections/meta-items.collection.yaml": coll("meta-items", { name: "type: string\nrequired: true" }),
+    "ui/app.js":
+      "export default () => { new URL('./x.json', import.meta.url); return fetch(new URL('./x.json', import.meta.url)); };\n",
+  })
+  mod("chunked", {
+    "package.json": pkg("chunked"),
+    "collections/chunk-items.collection.yaml": coll("chunk-items", { name: "type: string\nrequired: true" }),
+    "ui/app.js": "export default async () => { await import('./chunk-a.js'); };\n",
+  })
+  const rec = (dir, id, body) => {
+    fs.mkdirSync(dir, { recursive: true })
+    const suffix = path.basename(dir).replace(/s$/, "")
+    fs.writeFileSync(path.join(dir, `${id}.${suffix}.md`), `---\n${body}---\n`)
+  }
+  const ids = fs.readdirSync(path.join(f.root, "data", "projects")).map(n => n.split(".")[0])
+  for (let i = 0; i < 1000; i++)
+    rec(
+      path.join(f.root, "data", "probe-items"),
+      `p${String(i).padStart(4, "0")}`,
+      `name: Row ${i} <img src=x onerror="document.body.dataset.marker='cell'">\nref: projects/${i % 2 ? ids[i % ids.length] : "missing-" + i}\n`
+    )
+  rec(
+    path.join(f.root, "data", "pattern-items"),
+    "pattern-one",
+    "name: Pattern one\npv: pattern view\nqv: probe view\n"
+  )
+  for (const [c, id] of [
+    ["other-items", "other-one"],
+    ["named-items", "n1"],
+    ["meta-items", "m1"],
+    ["chunk-items", "c1"],
+  ])
+    rec(path.join(f.root, "data", c), id, `name: ${id}\n`)
+  // the layer also holds one pattern-items record
+  const layer = path.join(f.root, "git_modules", "northwind-archive")
+  rec(path.join(layer, "data", "pattern-items"), "pattern-held", "name: Pattern held by the layer\n")
+  execFileSync("git", ["add", "-A"], { cwd: layer })
+  execFileSync(
+    "git",
+    ["-c", "user.name=Dana Oren", "-c", "user.email=dana@northwind.example", "commit", "-qm", "pattern-held"],
+    { cwd: layer }
+  )
+  const pkgFile = path.join(f.root, "package.json")
+  const p = JSON.parse(fs.readFileSync(pkgFile, "utf8"))
+  p.dreamteamer.git_modules["northwind-archive"].records = [
+    ...p.dreamteamer.git_modules["northwind-archive"].records,
+    "pattern-items",
+  ]
+  fs.writeFileSync(pkgFile, JSON.stringify(p, null, "\t") + "\n")
+  const c = f.dt("compile")
+  if (c.status !== 0) throw new Error(`compile: ${c.stdout}\n${c.stderr}`)
+  execFileSync("git", ["add", "-A"], { cwd: f.root })
+  execFileSync(
+    "git",
+    ["-c", "user.name=Dana Oren", "-c", "user.email=dana@northwind.example", "commit", "-qm", "held-out modules"],
+    { cwd: f.root }
+  )
+  return { ui: fs.readdirSync(path.join(f.root, ".dreamteamer", "ui")) }
 }

@@ -26,57 +26,57 @@
  * which import PageHeader, which imports this module. A top-level `router.afterEach()` there
  * throws during module init and blanks the entire app (cost the other build).
  */
-import { readonly, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { readonly, ref } from "vue"
+import { useRouter } from "vue-router"
 
-const canBack = ref(false);
-const canForward = ref(false);
+const canBack = ref(false)
+const canForward = ref(false)
 
-let position = -1;
-let length = 0;
-let pendingDelta = 0;
-let wired = false;
+let position = -1
+let length = 0
+let pendingDelta = 0
+let wired = false
 
 function refresh(): void {
-	canBack.value = position > 0;
-	canForward.value = position < length - 1;
+  canBack.value = position > 0
+  canForward.value = position < length - 1
 }
 
 export function useNavHistory() {
-	const router = useRouter();
+  const router = useRouter()
 
-	if (!wired) {
-		wired = true;
-		router.afterEach((_to, _from, failure) => {
-			// An aborted/redirected-away navigation never moved us; drop the intent with it.
-			if (failure) {
-				pendingDelta = 0;
-				return;
-			}
-			if (pendingDelta !== 0) {
-				position = Math.min(Math.max(position + pendingDelta, 0), Math.max(length - 1, 0));
-				pendingDelta = 0;
-			} else {
-				position += 1;
-				length = position + 1;
-			}
-			refresh();
-		});
-		refresh();
-	}
+  if (!wired) {
+    wired = true
+    router.afterEach((_to, _from, failure) => {
+      // An aborted/redirected-away navigation never moved us; drop the intent with it.
+      if (failure) {
+        pendingDelta = 0
+        return
+      }
+      if (pendingDelta !== 0) {
+        position = Math.min(Math.max(position + pendingDelta, 0), Math.max(length - 1, 0))
+        pendingDelta = 0
+      } else {
+        position += 1
+        length = position + 1
+      }
+      refresh()
+    })
+    refresh()
+  }
 
-	return {
-		canBack: readonly(canBack),
-		canForward: readonly(canForward),
-		back: (): void => {
-			if (!canBack.value) return;
-			pendingDelta = -1;
-			router.back();
-		},
-		forward: (): void => {
-			if (!canForward.value) return;
-			pendingDelta = 1;
-			router.forward();
-		},
-	};
+  return {
+    canBack: readonly(canBack),
+    canForward: readonly(canForward),
+    back: (): void => {
+      if (!canBack.value) return
+      pendingDelta = -1
+      router.back()
+    },
+    forward: (): void => {
+      if (!canForward.value) return
+      pendingDelta = 1
+      router.forward()
+    },
+  }
 }

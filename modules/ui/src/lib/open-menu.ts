@@ -3,6 +3,6 @@
  * Show hidden… asks (`'nav'`), and on a pane host the workspace switcher (`'switch'`) and the level (`'level'`).
  * Opening any one sets this, and every other watches it and closes.
  */
-import { ref } from 'vue';
+import { ref } from "vue"
 
-export const openMenu = ref<string | null>(null);
+export const openMenu = ref<string | null>(null)

@@ -16,20 +16,20 @@
  * component can only be tested by rendering it.
  */
 
-export const ROW_SIZES = ['compact', 'cozy', 'comfortable'] as const;
-export type RowSize = (typeof ROW_SIZES)[number];
+export const ROW_SIZES = ["compact", "cozy", "comfortable"] as const
+export type RowSize = (typeof ROW_SIZES)[number]
 
-export const DEFAULT_ROW_SIZE: RowSize = 'cozy';
+export const DEFAULT_ROW_SIZE: RowSize = "cozy"
 
 /** What a density is called in the toolbar and the drawer — one spelling, both surfaces. */
 export const ROW_SIZE_LABELS: Readonly<Record<RowSize, string>> = {
-	compact: 'Compact',
-	cozy: 'Cozy',
-	comfortable: 'Comfortable',
-};
+  compact: "Compact",
+  cozy: "Cozy",
+  comfortable: "Comfortable",
+}
 
 export function isRowSize(value: unknown): value is RowSize {
-	return typeof value === 'string' && (ROW_SIZES as readonly string[]).includes(value);
+  return typeof value === "string" && (ROW_SIZES as readonly string[]).includes(value)
 }
 
 /**
@@ -39,13 +39,13 @@ export function isRowSize(value: unknown): value is RowSize {
  * the default: a misspelt option must not erase the table, the same posture `group_by` takes.
  */
 export function resolveRowSize(options: Record<string, unknown> | undefined | null): RowSize {
-	const value = options?.['row_size'];
-	return isRowSize(value) ? value : DEFAULT_ROW_SIZE;
+  const value = options?.["row_size"]
+  return isRowSize(value) ? value : DEFAULT_ROW_SIZE
 }
 
 /** The class `.dt-table` carries for a density — the ONLY way a density reaches the stylesheet. */
 export function tableDensityClass(size: RowSize): string {
-	return `dt-table--${size}`;
+  return `dt-table--${size}`
 }
 
 /**
@@ -55,7 +55,7 @@ export function tableDensityClass(size: RowSize): string {
  * every near-square avatar — is the mobile-list look this exists to avoid.
  */
 export function isSquarish(width: number, height: number): boolean {
-	if (!(width > 0) || !(height > 0)) return false;
-	const ratio = width / height;
-	return ratio >= 0.8 && ratio <= 1.25;
+  if (!(width > 0) || !(height > 0)) return false
+  const ratio = width / height
+  return ratio >= 0.8 && ratio <= 1.25
 }

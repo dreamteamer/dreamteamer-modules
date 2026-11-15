@@ -5,28 +5,28 @@
  * the top edge or past the left one — its first line is always on screen. Pure: the caller measures.
  */
 export interface Rect {
-	top: number;
-	bottom: number;
-	left: number;
-	right: number;
+  top: number
+  bottom: number
+  left: number
+  right: number
 }
 
-const MARGIN = 4;
+const MARGIN = 4
 
-const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(v, Math.max(lo, hi)));
+const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(v, Math.max(lo, hi)))
 
 export function hoverPlace(
-	trigger: Rect,
-	card: { width: number; height: number },
-	viewport: { width: number; height: number },
-	gap = 4,
+  trigger: Rect,
+  card: { width: number; height: number },
+  viewport: { width: number; height: number },
+  gap = 4
 ): { top: number; left: number; above: boolean } {
-	const roomBelow = viewport.height - trigger.bottom;
-	const above = trigger.bottom + gap + card.height > viewport.height && trigger.top > roomBelow;
-	const top = above ? trigger.top - gap - card.height : trigger.bottom + gap;
-	return {
-		top: clamp(top, MARGIN, viewport.height - card.height - MARGIN),
-		left: clamp(trigger.left, MARGIN, viewport.width - card.width - MARGIN),
-		above,
-	};
+  const roomBelow = viewport.height - trigger.bottom
+  const above = trigger.bottom + gap + card.height > viewport.height && trigger.top > roomBelow
+  const top = above ? trigger.top - gap - card.height : trigger.bottom + gap
+  return {
+    top: clamp(top, MARGIN, viewport.height - card.height - MARGIN),
+    left: clamp(trigger.left, MARGIN, viewport.width - card.width - MARGIN),
+    above,
+  }
 }

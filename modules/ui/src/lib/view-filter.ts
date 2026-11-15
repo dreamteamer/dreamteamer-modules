@@ -7,15 +7,22 @@
  * here, framework-free, because the interesting cases are decidable by running them: an opaque
  * filter, a cleared filter, and a URL filter arriving at a view that already has one.
  */
-import { decompileFilter, compileFilter, emptyFilterGroup, parseFilterGroup, serializeFilterGroup, type FilterGroup } from './filter-query';
+import {
+  decompileFilter,
+  compileFilter,
+  emptyFilterGroup,
+  parseFilterGroup,
+  serializeFilterGroup,
+  type FilterGroup,
+} from "./filter-query"
 
 export interface SeededFilter {
-	/** What the builder starts holding. */
-	initial: FilterGroup;
-	/** What the RECORD says, for `dirty` and Reset. `null` when the record's filter is opaque. */
-	record: FilterGroup | null;
-	/** True when the stored filter could not be decompiled — the builder never held it. */
-	opaque: boolean;
+  /** What the builder starts holding. */
+  initial: FilterGroup
+  /** What the RECORD says, for `dirty` and Reset. `null` when the record's filter is opaque. */
+  record: FilterGroup | null
+  /** True when the stored filter could not be decompiled — the builder never held it. */
+  opaque: boolean
 }
 
 /**
@@ -33,14 +40,14 @@ export interface SeededFilter {
  * chip listing 52 record ids, carrying a ✕ that silently widens the row to the whole collection.
  */
 export function seedFilter(baseFilter: unknown, urlFilter: string | null, forceOpaque = false): SeededFilter {
-	const decompiled = forceOpaque ? null : decompileFilter(baseFilter);
-	const opaque = Boolean(baseFilter) && !decompiled;
-	const seeded = urlFilter ? null : decompiled;
-	return {
-		initial: seeded ?? parseFilterGroup(urlFilter),
-		record: opaque ? null : (decompiled ?? emptyFilterGroup()),
-		opaque,
-	};
+  const decompiled = forceOpaque ? null : decompileFilter(baseFilter)
+  const opaque = Boolean(baseFilter) && !decompiled
+  const seeded = urlFilter ? null : decompiled
+  return {
+    initial: seeded ?? parseFilterGroup(urlFilter),
+    record: opaque ? null : (decompiled ?? emptyFilterGroup()),
+    opaque,
+  }
 }
 
 /**
@@ -51,15 +58,15 @@ export function seedFilter(baseFilter: unknown, urlFilter: string | null, forceO
  * so without this the second layer's row showed the first layer's records (operator 2026-10-29).
  */
 export function filterFromUrl(
-	urlFilter: string | null,
-	current: FilterGroup,
-	baseFilter: unknown,
-	forceOpaque = false,
+  urlFilter: string | null,
+  current: FilterGroup,
+  baseFilter: unknown,
+  forceOpaque = false
 ): FilterGroup | null {
-	if (urlFilter === serializeFilterGroup(current)) return null;
-	const next = seedFilter(baseFilter, urlFilter, forceOpaque).initial;
-	// compared compiled: a re-seed mints new rule ids, so the groups never match as objects
-	return JSON.stringify(compileFilter(next) ?? null) === JSON.stringify(compileFilter(current) ?? null) ? null : next;
+  if (urlFilter === serializeFilterGroup(current)) return null
+  const next = seedFilter(baseFilter, urlFilter, forceOpaque).initial
+  // compared compiled: a re-seed mints new rule ids, so the groups never match as objects
+  return JSON.stringify(compileFilter(next) ?? null) === JSON.stringify(compileFilter(current) ?? null) ? null : next
 }
 
 /**
@@ -71,9 +78,9 @@ export function filterFromUrl(
  * source file, so an absent key is an absent filter.
  */
 export function filterToWrite(
-	group: FilterGroup,
-	opts: { opaque: boolean; stored?: unknown },
+  group: FilterGroup,
+  opts: { opaque: boolean; stored?: unknown }
 ): Record<string, unknown> | undefined {
-	if (opts.opaque) return (opts.stored as Record<string, unknown> | undefined) ?? undefined;
-	return compileFilter(group);
+  if (opts.opaque) return (opts.stored as Record<string, unknown> | undefined) ?? undefined
+  return compileFilter(group)
 }

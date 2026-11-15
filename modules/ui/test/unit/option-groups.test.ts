@@ -18,60 +18,60 @@
  * ⚠ `page_size` is the ONE deliberate exception to 3: a lone trailing control whose own label says
  * everything, and a section heading over a single dropdown is the noise this file exists to stop.
  */
-import assert from 'node:assert/strict';
-import { describe, test } from 'node:test';
-import '../../src/registry/register-defaults';
-import { lists, OPTION_GROUPS } from '../../src/registry/index';
+import assert from "node:assert/strict"
+import { describe, test } from "node:test"
+import "../../src/registry/register-defaults"
+import { lists, OPTION_GROUPS } from "../../src/registry/index"
 
-const layouts = () => lists.all().filter((l) => (l.options?.length ?? 0) > 0);
+const layouts = () => lists.all().filter(l => (l.options?.length ?? 0) > 0)
 
-describe('every layout renders its options as sections', () => {
-	test('the fixture is real — several layouts declare options', () => {
-		assert.ok(layouts().length >= 5, `got ${layouts().length} layouts with options`);
-	});
+describe("every layout renders its options as sections", () => {
+  test("the fixture is real — several layouts declare options", () => {
+    assert.ok(layouts().length >= 5, `got ${layouts().length} layouts with options`)
+  })
 
-	test('every group id used anywhere has a heading in the one shared map', () => {
-		for (const layout of layouts()) {
-			for (const option of layout.options ?? []) {
-				if (!option.group) continue;
-				assert.ok(
-					OPTION_GROUPS[option.group],
-					`${layout.id}.${option.field} is in group "${option.group}", which has no heading — add it to OPTION_GROUPS rather than giving the option its own label`,
-				);
-			}
-		}
-	});
+  test("every group id used anywhere has a heading in the one shared map", () => {
+    for (const layout of layouts()) {
+      for (const option of layout.options ?? []) {
+        if (!option.group) continue
+        assert.ok(
+          OPTION_GROUPS[option.group],
+          `${layout.id}.${option.field} is in group "${option.group}", which has no heading — add it to OPTION_GROUPS rather than giving the option its own label`
+        )
+      }
+    }
+  })
 
-	test('no group is split into two runs, so no heading is ever drawn twice', () => {
-		for (const layout of layouts()) {
-			const runs: Array<string | undefined> = [];
-			for (const option of layout.options ?? []) {
-				if (!runs.length || runs[runs.length - 1] !== option.group) runs.push(option.group);
-			}
-			const named = runs.filter((g): g is string => !!g);
-			assert.equal(
-				new Set(named).size,
-				named.length,
-				`${layout.id} declares a group in two separate runs (${named.join(' → ')}) — OptionsForm merges only CONSECUTIVE options, so move them together`,
-			);
-		}
-	});
+  test("no group is split into two runs, so no heading is ever drawn twice", () => {
+    for (const layout of layouts()) {
+      const runs: Array<string | undefined> = []
+      for (const option of layout.options ?? []) {
+        if (!runs.length || runs[runs.length - 1] !== option.group) runs.push(option.group)
+      }
+      const named = runs.filter((g): g is string => !!g)
+      assert.equal(
+        new Set(named).size,
+        named.length,
+        `${layout.id} declares a group in two separate runs (${named.join(" → ")}) — OptionsForm merges only CONSECUTIVE options, so move them together`
+      )
+    }
+  })
 
-	test('nothing floats unheaded between two headed sections', () => {
-		for (const layout of layouts()) {
-			const options = layout.options ?? [];
-			options.forEach((option, i) => {
-				if (option.group || option.field === 'page_size') return;
-				const before = options.slice(0, i).some((o) => o.group);
-				const after = options.slice(i + 1).some((o) => o.group);
-				assert.ok(
-					!(before && after),
-					`${layout.id}.${option.field} has no group but sits between headed sections — give it their group, or a new one with a heading`,
-				);
-			});
-		}
-	});
-});
+  test("nothing floats unheaded between two headed sections", () => {
+    for (const layout of layouts()) {
+      const options = layout.options ?? []
+      options.forEach((option, i) => {
+        if (option.group || option.field === "page_size") return
+        const before = options.slice(0, i).some(o => o.group)
+        const after = options.slice(i + 1).some(o => o.group)
+        assert.ok(
+          !(before && after),
+          `${layout.id}.${option.field} has no group but sits between headed sections — give it their group, or a new one with a heading`
+        )
+      })
+    }
+  })
+})
 
 /**
  * ⚠ A TOGGLE MUST NOT LIE ABOUT THE LIVE STATE. `OptionsForm` renders
@@ -83,23 +83,23 @@ describe('every layout renders its options as sections', () => {
  * Declaring the default is the whole fix, and it writes nothing to the record — `setValue` fires
  * only on a real change, so an untouched view stays untouched.
  */
-describe('a boolean option declares the default it actually has', () => {
-	test('every boolean option on every layout declares one', () => {
-		for (const layout of layouts()) {
-			for (const option of layout.options ?? []) {
-				if (option.type !== 'boolean') continue;
-				assert.notEqual(
-					option.default,
-					undefined,
-					`${layout.id}.${option.field} is a boolean with no declared default — the toggle will render OFF whatever the component does with an absent value`,
-				);
-			}
-		}
-	});
+describe("a boolean option declares the default it actually has", () => {
+  test("every boolean option on every layout declares one", () => {
+    for (const layout of layouts()) {
+      for (const option of layout.options ?? []) {
+        if (option.type !== "boolean") continue
+        assert.notEqual(
+          option.default,
+          undefined,
+          `${layout.id}.${option.field} is a boolean with no declared default — the toggle will render OFF whatever the component does with an absent value`
+        )
+      }
+    }
+  })
 
-	test('the two default-ON gantt toggles say so', () => {
-		const of = (field: string) => lists.get('gantt')?.options?.find((o) => o.field === field);
-		assert.equal(of('fold_gaps')?.default, true, 'folding is on until a view turns it off');
-		assert.equal(of('start_collapsed')?.default, true, 'a grouped gantt opens with its lanes shut');
-	});
-});
+  test("the two default-ON gantt toggles say so", () => {
+    const of = (field: string) => lists.get("gantt")?.options?.find(o => o.field === field)
+    assert.equal(of("fold_gaps")?.default, true, "folding is on until a view turns it off")
+    assert.equal(of("start_collapsed")?.default, true, "a grouped gantt opens with its lanes shut")
+  })
+})

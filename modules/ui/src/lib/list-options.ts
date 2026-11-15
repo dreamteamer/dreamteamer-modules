@@ -25,40 +25,40 @@
  * option may not end in `_field` any more (`test/unit/option-names.test.ts`).
  */
 export const RENAMED_OPTIONS: Readonly<Record<string, string>> = {
-	color_by_field: 'color_by',
-	group_rows_by_field: 'group_by',
-	group_columns_by_field: 'lanes_by',
-	start_field: 'start',
-	end_field: 'end',
-	date_field: 'start',
-	lat_field: 'lat',
-	lng_field: 'lng',
-	template: 'card_title',
-	group_template: 'group_title',
-	group_summary_template: 'group_summary',
-	folder_field: 'folder',
-	text_field: 'text',
-	image_field: 'image',
-	bar_label_field: 'bar_label',
-	group_icon_field: 'group_icon',
-};
+  color_by_field: "color_by",
+  group_rows_by_field: "group_by",
+  group_columns_by_field: "lanes_by",
+  start_field: "start",
+  end_field: "end",
+  date_field: "start",
+  lat_field: "lat",
+  lng_field: "lng",
+  template: "card_title",
+  group_template: "group_title",
+  group_summary_template: "group_summary",
+  folder_field: "folder",
+  text_field: "text",
+  image_field: "image",
+  bar_label_field: "bar_label",
+  group_icon_field: "group_icon",
+}
 
 export interface UnknownOption {
-	key: string;
-	/** The v2 name this layout declares for the same option, when the key is an old spelling. */
-	renamedTo?: string;
+  key: string
+  /** The v2 name this layout declares for the same option, when the key is an old spelling. */
+  renamedTo?: string
 }
 
 export function unknownOptions(
-	viewOptions: Record<string, unknown> | undefined,
-	declared: ReadonlyArray<{ field: string }> | undefined,
+  viewOptions: Record<string, unknown> | undefined,
+  declared: ReadonlyArray<{ field: string }> | undefined
 ): UnknownOption[] {
-	if (!viewOptions) return [];
-	const known = new Set((declared ?? []).map((d) => d.field));
-	return Object.keys(viewOptions)
-		.filter((k) => !known.has(k))
-		.map((key) => {
-			const renamed = RENAMED_OPTIONS[key];
-			return renamed && known.has(renamed) ? { key, renamedTo: renamed } : { key };
-		});
+  if (!viewOptions) return []
+  const known = new Set((declared ?? []).map(d => d.field))
+  return Object.keys(viewOptions)
+    .filter(k => !known.has(k))
+    .map(key => {
+      const renamed = RENAMED_OPTIONS[key]
+      return renamed && known.has(renamed) ? { key, renamedTo: renamed } : { key }
+    })
 }

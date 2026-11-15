@@ -11,26 +11,26 @@
  * fires on every agent write, and a page re-fetch on each would be a request storm.
  */
 
-const subscribers = new Set<() => void>();
+const subscribers = new Set<() => void>()
 
 /** Subscribe; returns the unsubscribe. */
 export function onPageRefresh(fn: () => void): () => void {
-	subscribers.add(fn);
-	return () => {
-		subscribers.delete(fn);
-	};
+  subscribers.add(fn)
+  return () => {
+    subscribers.delete(fn)
+  }
 }
 
 /** Run every subscriber, in subscription order; a throwing one is logged and skipped. Returns how many ran. */
 export function requestPageRefresh(): number {
-	let ran = 0;
-	for (const fn of [...subscribers]) {
-		try {
-			fn();
-			ran++;
-		} catch (err) {
-			console.warn('dreamteamer: a page refresh subscriber failed —', err);
-		}
-	}
-	return ran;
+  let ran = 0
+  for (const fn of [...subscribers]) {
+    try {
+      fn()
+      ran++
+    } catch (err) {
+      console.warn("dreamteamer: a page refresh subscriber failed —", err)
+    }
+  }
+  return ran
 }

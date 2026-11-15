@@ -17,23 +17,23 @@
  * session — a vocabulary that gains one value mid-session is not worth a refetch strategy; reopening
  * the window is the escape hatch.
  */
-import { ref, type Ref } from 'vue';
-import { api } from '../api/client';
+import { ref, type Ref } from "vue"
+import { api } from "../api/client"
 
 export interface FieldValueChoice {
-	text: string;
-	value: unknown;
+  text: string
+  value: unknown
 }
 
 interface ValuesPayload {
-	values: Array<{ value: unknown; count: number | null }>;
-	total: number;
-	truncated: boolean;
-	skipped?: string;
+  values: Array<{ value: unknown; count: number | null }>
+  total: number
+  truncated: boolean
+  skipped?: string
 }
 
 /** null = not (yet) known / not offerable; an array = render a dropdown of exactly these. */
-const cache = new Map<string, Ref<FieldValueChoice[] | null>>();
+const cache = new Map<string, Ref<FieldValueChoice[] | null>>()
 
 /**
  * Choices for `collection.field`, or null while loading / when a dropdown is the wrong control.
@@ -41,24 +41,24 @@ const cache = new Map<string, Ref<FieldValueChoice[] | null>>();
  * offers, and silently dropping the other 750 from an equality filter would be worse than a text box.
  */
 export function fieldValues(collection: string, field: string): Ref<FieldValueChoice[] | null> {
-	const key = `${collection}::${field}`;
-	const hit = cache.get(key);
-	if (hit) return hit;
+  const key = `${collection}::${field}`
+  const hit = cache.get(key)
+  if (hit) return hit
 
-	const out = ref<FieldValueChoice[] | null>(null);
-	cache.set(key, out);
+  const out = ref<FieldValueChoice[] | null>(null)
+  cache.set(key, out)
 
-	void (async () => {
-		try {
-			const { data } = await api.get<ValuesPayload>(
-				`/collections/${encodeURIComponent(collection)}/values/${encodeURIComponent(field)}`,
-			);
-			if (data.skipped || data.truncated || !data.values?.length) return;
-			out.value = data.values.map(({ value }) => ({ text: String(value), value }));
-		} catch {
-			// no engine support, unknown field, or a read error — the caller falls back to free text
-		}
-	})();
+  void (async () => {
+    try {
+      const { data } = await api.get<ValuesPayload>(
+        `/collections/${encodeURIComponent(collection)}/values/${encodeURIComponent(field)}`
+      )
+      if (data.skipped || data.truncated || !data.values?.length) return
+      out.value = data.values.map(({ value }) => ({ text: String(value), value }))
+    } catch {
+      // no engine support, unknown field, or a read error — the caller falls back to free text
+    }
+  })()
 
-	return out;
+  return out
 }

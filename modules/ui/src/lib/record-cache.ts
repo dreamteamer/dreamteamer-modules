@@ -22,25 +22,25 @@
  * two caches would have been two answers to "what is this reference", and the second one would have
  * been a cache miss for every row the first had already paid for.
  */
-import { api } from '../api/client';
-import type { ItemRecord } from '../api/types';
+import { api } from "../api/client"
+import type { ItemRecord } from "../api/types"
 
-const recordCache = new Map<string, Promise<ItemRecord | null>>();
+const recordCache = new Map<string, Promise<ItemRecord | null>>()
 
 /** Forget every fetched record — the refresh button's first step, so the next read goes to the host. */
 export function resetRecordCache(): void {
-	recordCache.clear();
+  recordCache.clear()
 }
 
 export function fetchRecord(collection: string, id: string): Promise<ItemRecord | null> {
-	const key = `${collection}/${id}`;
-	let promise = recordCache.get(key);
-	if (!promise) {
-		promise = api
-			.get<ItemRecord>(`/items/${encodeURIComponent(collection)}/${encodeURIComponent(id)}`)
-			.then((res) => res.data)
-			.catch(() => null);
-		recordCache.set(key, promise);
-	}
-	return promise;
+  const key = `${collection}/${id}`
+  let promise = recordCache.get(key)
+  if (!promise) {
+    promise = api
+      .get<ItemRecord>(`/items/${encodeURIComponent(collection)}/${encodeURIComponent(id)}`)
+      .then(res => res.data)
+      .catch(() => null)
+    recordCache.set(key, promise)
+  }
+  return promise
 }

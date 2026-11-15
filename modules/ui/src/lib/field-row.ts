@@ -13,36 +13,36 @@
  *    only. The CLI and syncs still write such a field; only this surface declines to.
  *  - `hidden` — the surfaces not to draw it on: `list`, `form` (edit and create), `record` (the read).
  */
-import type { FieldChoice, FieldRow, FieldSurface } from '../api/types';
+import type { FieldChoice, FieldRow, FieldSurface } from "../api/types"
 
 /** The record's prose — drawn last, label-less, as the page. */
-export function isBodyField(field: Pick<FieldRow, 'role'>): boolean {
-	return field.role === 'body';
+export function isBodyField(field: Pick<FieldRow, "role">): boolean {
+  return field.role === "body"
 }
 
 /** A foreign key, single or list. A mirror is not one: it is generated, never written. */
-export function isReferenceField(field: Pick<FieldRow, 'role'>): boolean {
-	return field.role === 'reference' || field.role === 'reference_many';
+export function isReferenceField(field: Pick<FieldRow, "role">): boolean {
+  return field.role === "reference" || field.role === "reference_many"
 }
 
 /** The generated far side of a relation. */
-export function isMirrorField(field: Pick<FieldRow, 'kind'>): boolean {
-	return field.kind === 'mirror';
+export function isMirrorField(field: Pick<FieldRow, "kind">): boolean {
+  return field.kind === "mirror"
 }
 
 /** Any field whose value names records of another collection — a key, or the mirror of one. */
-export function isRelationField(field: Pick<FieldRow, 'role'>): boolean {
-	return isReferenceField(field) || field.role === 'mirror';
+export function isRelationField(field: Pick<FieldRow, "role">): boolean {
+  return isReferenceField(field) || field.role === "mirror"
 }
 
 /** A relation holding a LIST of references (a `many` key, or a mirror of a non-unique key). */
-export function isRelationList(field: Pick<FieldRow, 'role' | 'many'>): boolean {
-	return isRelationField(field) && field.many === true;
+export function isRelationList(field: Pick<FieldRow, "role" | "many">): boolean {
+  return isRelationField(field) && field.many === true
 }
 
 /** Whether a surface draws the field at all. */
-export function drawnOn(field: Pick<FieldRow, 'hidden'>, surface: FieldSurface): boolean {
-	return !(field.hidden ?? []).includes(surface);
+export function drawnOn(field: Pick<FieldRow, "hidden">, surface: FieldSurface): boolean {
+  return !(field.hidden ?? []).includes(surface)
 }
 
 /**
@@ -52,10 +52,10 @@ export function drawnOn(field: Pick<FieldRow, 'hidden'>, surface: FieldSurface):
  * and a value everywhere else (the id-like field an operator types once). `editable: false` is never
  * a control.
  */
-export function hasControl(field: Pick<FieldRow, 'kind' | 'editable'>, opts: { create: boolean }): boolean {
-	if (field.kind !== undefined) return false;
-	if (field.editable === 'create') return opts.create;
-	return field.editable === true;
+export function hasControl(field: Pick<FieldRow, "kind" | "editable">, opts: { create: boolean }): boolean {
+  if (field.kind !== undefined) return false
+  if (field.editable === "create") return opts.create
+  return field.editable === true
 }
 
 /**
@@ -68,17 +68,21 @@ export function hasControl(field: Pick<FieldRow, 'kind' | 'editable'>, opts: { c
  * The answer is the TOOLTIP; the dimming is the signal. A field with a control here returns null.
  */
 export function computedReason(
-	field: Pick<FieldRow, 'kind' | 'editable' | 'mirror_of' | 'description'>,
-	opts: { create: boolean; target?: string },
+  field: Pick<FieldRow, "kind" | "editable" | "mirror_of" | "description">,
+  opts: { create: boolean; target?: string }
 ): string | null {
-	if (hasControl(field, opts)) return null;
-	if (isMirrorField(field)) {
-		const owner = field.mirror_of ? (opts.target ? `${opts.target}.${field.mirror_of}` : field.mirror_of) : 'the other side of the link';
-		return `Generated from ${owner} — set that field.`;
-	}
-	if (field.kind !== undefined) return (field.description ?? '').trim() || 'Computed — never written by hand.';
-	if (field.editable === 'create') return 'Set when the record is created; read-only afterwards.';
-	return 'Read-only — the schema does not let it be edited here.';
+  if (hasControl(field, opts)) return null
+  if (isMirrorField(field)) {
+    const owner = field.mirror_of
+      ? opts.target
+        ? `${opts.target}.${field.mirror_of}`
+        : field.mirror_of
+      : "the other side of the link"
+    return `Generated from ${owner} — set that field.`
+  }
+  if (field.kind !== undefined) return (field.description ?? "").trim() || "Computed — never written by hand."
+  if (field.editable === "create") return "Set when the record is created; read-only afterwards."
+  return "Read-only — the schema does not let it be edited here."
 }
 
 /**
@@ -86,20 +90,20 @@ export function computedReason(
  * are all read from its file, so its page used to offer Edit and open a form with no control in it and a
  * Save that could never enable — a dead end that said nothing about why. No control, no Edit.
  */
-export function editsAnything(fields: readonly Pick<FieldRow, 'kind' | 'editable'>[]): boolean {
-	return fields.some((f) => hasControl(f, { create: false }));
+export function editsAnything(fields: readonly Pick<FieldRow, "kind" | "editable">[]): boolean {
+  return fields.some(f => hasControl(f, { create: false }))
 }
 
 /** The enum's choice rows, or null for a field with no enum. */
-export function choicesOf(field: Pick<FieldRow, 'editor_options'>): FieldChoice[] | null {
-	const choices = field.editor_options?.choices;
-	return Array.isArray(choices) ? choices : null;
+export function choicesOf(field: Pick<FieldRow, "editor_options">): FieldChoice[] | null {
+  const choices = field.editor_options?.choices
+  return Array.isArray(choices) ? choices : null
 }
 
 /** An object's sub-field rows — each a full field row of the contract. */
-export function subFieldsOf(field: Pick<FieldRow, 'editor_options'>): FieldRow[] {
-	const fields = field.editor_options?.fields;
-	return Array.isArray(fields) ? fields : [];
+export function subFieldsOf(field: Pick<FieldRow, "editor_options">): FieldRow[] {
+  const fields = field.editor_options?.fields
+  return Array.isArray(fields) ? fields : []
 }
 
 /**
@@ -116,30 +120,34 @@ export function subFieldsOf(field: Pick<FieldRow, 'editor_options'>): FieldRow[]
  * order here (`test/unit/api-form-sections.test.ts` proves it against a real compile).
  */
 export interface FormSection {
-	/** `''` for the trailing unnamed section. */
-	title: string;
-	fields: FieldRow[];
-	/** Drawn SHUT until opened, and AFTER every other field — the unclaimed ones included: what a
-	 *  person rarely reads and an agent writes (the provenance quad). Authored `collapsed: true`. */
-	collapsed?: true;
+  /** `''` for the trailing unnamed section. */
+  title: string
+  fields: FieldRow[]
+  /** Drawn SHUT until opened, and AFTER every other field — the unclaimed ones included: what a
+   *  person rarely reads and an agent writes (the provenance quad). Authored `collapsed: true`. */
+  collapsed?: true
 }
 
-export function formSections(fields: readonly FieldRow[], sections: ReadonlyArray<{ title: string; fields: readonly string[]; collapsed?: boolean }> | undefined): FormSection[] {
-	const byName = new Map(fields.filter((f) => !isBodyField(f)).map((f) => [f.field, f]));
-	const claimed = new Set<string>();
-	const out: FormSection[] = [];
-	for (const s of sections ?? []) {
-		const rows: FieldRow[] = [];
-		for (const name of s.fields) {
-			const row = byName.get(name);
-			if (!row || claimed.has(name)) continue;
-			claimed.add(name);
-			rows.push(row);
-		}
-		if (rows.length) out.push({ title: s.title, fields: rows, ...(s.collapsed === true ? { collapsed: true as const } : {}) });
-	}
-	const rest = [...byName.values()].filter((f) => !claimed.has(f.field));
-	if (rest.length) out.push({ title: '', fields: rest });
-	// a collapsed section goes last — below the unclaimed fields too — so shutting it costs nothing above it
-	return [...out.filter((s) => !s.collapsed), ...out.filter((s) => s.collapsed)];
+export function formSections(
+  fields: readonly FieldRow[],
+  sections: ReadonlyArray<{ title: string; fields: readonly string[]; collapsed?: boolean }> | undefined
+): FormSection[] {
+  const byName = new Map(fields.filter(f => !isBodyField(f)).map(f => [f.field, f]))
+  const claimed = new Set<string>()
+  const out: FormSection[] = []
+  for (const s of sections ?? []) {
+    const rows: FieldRow[] = []
+    for (const name of s.fields) {
+      const row = byName.get(name)
+      if (!row || claimed.has(name)) continue
+      claimed.add(name)
+      rows.push(row)
+    }
+    if (rows.length)
+      out.push({ title: s.title, fields: rows, ...(s.collapsed === true ? { collapsed: true as const } : {}) })
+  }
+  const rest = [...byName.values()].filter(f => !claimed.has(f.field))
+  if (rest.length) out.push({ title: "", fields: rest })
+  // a collapsed section goes last — below the unclaimed fields too — so shutting it costs nothing above it
+  return [...out.filter(s => !s.collapsed), ...out.filter(s => s.collapsed)]
 }

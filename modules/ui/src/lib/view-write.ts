@@ -15,72 +15,88 @@
  *    a collection's display (§3.5: a view carries `filter`, a collection does not), so it is named
  *    back as unsaved rather than dropped silently — the remedy is a named view.
  */
-import type { UiViewRecord, ViewDisplay } from '../ui-views';
-import { engineFieldName, engineSort } from './builtin-fields';
+import type { UiViewRecord, ViewDisplay } from "../ui-views"
+import { engineFieldName, engineSort } from "./builtin-fields"
 
 /** What the screen shows, as a view's list block holds it. */
 export interface ListPresentation {
-	layout: string;
-	columns: string[];
-	/** `''` is "explicitly unsorted", and is written as such. */
-	sort: string;
-	/** The active layout's options. */
-	options: Record<string, unknown>;
+  layout: string
+  columns: string[]
+  /** `''` is "explicitly unsorted", and is written as such. */
+  sort: string
+  /** The active layout's options. */
+  options: Record<string, unknown>
 }
 
 /** A ui-view source as the transport writes it (`id` beside the fields, or derived from `route`). */
 export interface ViewWrite {
-	name?: string;
-	route: string;
-	scope: 'collection';
-	collection: string;
-	title?: string;
-	description?: string;
-	filter?: Record<string, unknown>;
-	display: ViewDisplay;
+  name?: string
+  route: string
+  scope: "collection"
+  collection: string
+  title?: string
+  description?: string
+  filter?: Record<string, unknown>
+  display: ViewDisplay
 }
 
 /** The columns and the sort under the engine's names — a built-in is `last_modified` in every write,
  *  whatever the screen's state still spells it (`lib/builtin-fields.ts`, cr-vscode-011). */
-const engineColumns = (p: ListPresentation) => p.columns.map(engineFieldName);
+const engineColumns = (p: ListPresentation) => p.columns.map(engineFieldName)
 
-function listBlock(p: ListPresentation): NonNullable<ViewDisplay['list']> {
-	return { layout: p.layout, columns: engineColumns(p), sort: engineSort(p.sort), ...(Object.keys(p.options).length ? { options: { ...p.options } } : {}) };
+function listBlock(p: ListPresentation): NonNullable<ViewDisplay["list"]> {
+  return {
+    layout: p.layout,
+    columns: engineColumns(p),
+    sort: engineSort(p.sort),
+    ...(Object.keys(p.options).length ? { options: { ...p.options } } : {}),
+  }
 }
 
 /** The whole source of an EXISTING named view, with the screen's list and filter. */
-export function namedViewWrite(existing: UiViewRecord, collection: string, p: ListPresentation, filter: Record<string, unknown> | undefined): ViewWrite {
-	return {
-		route: existing.route,
-		scope: 'collection',
-		collection: `collections/${collection}`,
-		// every top-level key the view carries and this panel does not edit goes back as it came: the
-		// write REPLACES the view, and over a package's view an omitted key becomes `key: null` in the
-		// overlay — a removal nobody asked for (review finding drawer-save-nulls-name)
-		...(existing.name ? { name: existing.name } : {}),
-		...(existing.title ? { title: existing.title } : {}),
-		...(existing.description ? { description: existing.description } : {}),
-		...(filter ? { filter } : {}),
-		display: { ...(existing.display ?? {}), list: listBlock(p) },
-	};
+export function namedViewWrite(
+  existing: UiViewRecord,
+  collection: string,
+  p: ListPresentation,
+  filter: Record<string, unknown> | undefined
+): ViewWrite {
+  return {
+    route: existing.route,
+    scope: "collection",
+    collection: `collections/${collection}`,
+    // every top-level key the view carries and this panel does not edit goes back as it came: the
+    // write REPLACES the view, and over a package's view an omitted key becomes `key: null` in the
+    // overlay — a removal nobody asked for (review finding drawer-save-nulls-name)
+    ...(existing.name ? { name: existing.name } : {}),
+    ...(existing.title ? { title: existing.title } : {}),
+    ...(existing.description ? { description: existing.description } : {}),
+    ...(filter ? { filter } : {}),
+    display: { ...(existing.display ?? {}), list: listBlock(p) },
+  }
 }
 
 /** A NEW named view: always titled in the nav, so it is never anonymous. */
-export function newViewWrite(route: string, collection: string, nav: { title: string; icon?: string }, p: ListPresentation, filter: Record<string, unknown> | undefined): ViewWrite {
-	return {
-		route,
-		scope: 'collection',
-		collection: `collections/${collection}`,
-		...(filter ? { filter } : {}),
-		display: { nav: { title: nav.title, ...(nav.icon ? { icon: nav.icon } : {}) }, list: listBlock(p) },
-	};
+export function newViewWrite(
+  route: string,
+  collection: string,
+  nav: { title: string; icon?: string },
+  p: ListPresentation,
+  filter: Record<string, unknown> | undefined
+): ViewWrite {
+  return {
+    route,
+    scope: "collection",
+    collection: `collections/${collection}`,
+    ...(filter ? { filter } : {}),
+    display: { nav: { title: nav.title, ...(nav.icon ? { icon: nav.icon } : {}) }, list: listBlock(p) },
+  }
 }
 
 /** The engine's default list layout — what a collection with no `display.list.layout` draws. */
-const DEFAULT_LIST_LAYOUT = 'table';
+const DEFAULT_LIST_LAYOUT = "table"
 
 /** An option value that says nothing — written as the empty value, which removes the key. */
-const isUnset = (v: unknown) => v === undefined || v === null || v === '';
+const isUnset = (v: unknown) => v === undefined || v === null || v === ""
 
 /**
  * The collection-display save: the keys `dt set collections/<c>` takes — columns and sort always,
@@ -91,18 +107,21 @@ const isUnset = (v: unknown) => v === undefined || v === null || v === '';
  * and its `options` are exactly the authored ones (compile supplies none).
  */
 export function collectionListWrite(
-	own: { layout?: string; options?: Record<string, unknown> } | undefined,
-	p: ListPresentation,
-	filter: Record<string, unknown> | undefined,
+  own: { layout?: string; options?: Record<string, unknown> } | undefined,
+  p: ListPresentation,
+  filter: Record<string, unknown> | undefined
 ): { changes: Record<string, unknown>; unsaved: string[] } {
-	const changes: Record<string, unknown> = { 'display.list.columns': engineColumns(p), 'display.list.sort': engineSort(p.sort) };
-	if (p.layout !== (own?.layout ?? DEFAULT_LIST_LAYOUT)) changes['display.list.layout'] = p.layout;
-	const was = own?.options ?? {};
-	for (const [key, value] of Object.entries(p.options)) {
-		if (JSON.stringify(value) === JSON.stringify(was[key])) continue;
-		changes[`display.list.options.${key}`] = isUnset(value) ? '' : JSON.stringify(value);
-	}
-	for (const key of Object.keys(was)) if (!(key in p.options)) changes[`display.list.options.${key}`] = '';
-	const unsaved = filter && Object.keys(filter).length ? ['filter'] : [];
-	return { changes, unsaved };
+  const changes: Record<string, unknown> = {
+    "display.list.columns": engineColumns(p),
+    "display.list.sort": engineSort(p.sort),
+  }
+  if (p.layout !== (own?.layout ?? DEFAULT_LIST_LAYOUT)) changes["display.list.layout"] = p.layout
+  const was = own?.options ?? {}
+  for (const [key, value] of Object.entries(p.options)) {
+    if (JSON.stringify(value) === JSON.stringify(was[key])) continue
+    changes[`display.list.options.${key}`] = isUnset(value) ? "" : JSON.stringify(value)
+  }
+  for (const key of Object.keys(was)) if (!(key in p.options)) changes[`display.list.options.${key}`] = ""
+  const unsaved = filter && Object.keys(filter).length ? ["filter"] : []
+  return { changes, unsaved }
 }

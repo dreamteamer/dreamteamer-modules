@@ -12,57 +12,62 @@
  * caller draws it with the field's own View, because a unit on a value it does not describe is a
  * wrong answer, not a decoration.
  */
-import { formatFilesize } from './format-filesize';
+import { formatFilesize } from "./format-filesize"
 
 /** The two display keys a unit is read from — a field row's `unit` and `unit_field`. */
 interface UnitField {
-	unit?: string;
-	unit_field?: string;
+  unit?: string
+  unit_field?: string
 }
 
 function numeric(value: unknown): number | null {
-	if (typeof value === 'number') return Number.isFinite(value) ? value : null;
-	if (typeof value === 'string' && value.trim() !== '') {
-		const n = Number(value);
-		return Number.isFinite(n) ? n : null;
-	}
-	return null;
+  if (typeof value === "number") return Number.isFinite(value) ? value : null
+  if (typeof value === "string" && value.trim() !== "") {
+    const n = Number(value)
+    return Number.isFinite(n) ? n : null
+  }
+  return null
 }
 
 /** The ISO code a currency field's sibling holds, upper-cased; null when it holds none. */
 export function currencyCodeOf(field: UnitField, record: Record<string, unknown> | null | undefined): string | null {
-	if (field.unit !== 'currency' || !field.unit_field) return null;
-	const code = record?.[field.unit_field];
-	return typeof code === 'string' && /^[A-Za-z]{3}$/.test(code.trim()) ? code.trim().toUpperCase() : null;
+  if (field.unit !== "currency" || !field.unit_field) return null
+  const code = record?.[field.unit_field]
+  return typeof code === "string" && /^[A-Za-z]{3}$/.test(code.trim()) ? code.trim().toUpperCase() : null
 }
 
 /**
  * The value as it reads with its unit, or null when there is no unit to apply (no `unit`, or a value
  * that is not a number). `locale` is the viewer's; undefined means the runtime's default.
  */
-export function formatWithUnit(field: UnitField, value: unknown, record: Record<string, unknown> | null | undefined, locale?: string): string | null {
-	if (!field.unit) return null;
-	const n = numeric(value);
-	if (n === null) return null;
-	switch (field.unit) {
-		case 'currency': {
-			const code = currencyCodeOf(field, record);
-			// No code on the record: the amount alone, never a guessed currency.
-			if (!code) return new Intl.NumberFormat(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
-			try {
-				return new Intl.NumberFormat(locale, { style: 'currency', currency: code }).format(n);
-			} catch {
-				// A three-letter code Intl does not know: the amount and the code as written.
-				return `${new Intl.NumberFormat(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n)} ${code}`;
-			}
-		}
-		case 'percent':
-			return `${new Intl.NumberFormat(locale).format(n)}%`;
-		case 'bytes':
-			return formatFilesize(n);
-		default:
-			return `${new Intl.NumberFormat(locale).format(n)} ${field.unit}`;
-	}
+export function formatWithUnit(
+  field: UnitField,
+  value: unknown,
+  record: Record<string, unknown> | null | undefined,
+  locale?: string
+): string | null {
+  if (!field.unit) return null
+  const n = numeric(value)
+  if (n === null) return null
+  switch (field.unit) {
+    case "currency": {
+      const code = currencyCodeOf(field, record)
+      // No code on the record: the amount alone, never a guessed currency.
+      if (!code) return new Intl.NumberFormat(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n)
+      try {
+        return new Intl.NumberFormat(locale, { style: "currency", currency: code }).format(n)
+      } catch {
+        // A three-letter code Intl does not know: the amount and the code as written.
+        return `${new Intl.NumberFormat(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n)} ${code}`
+      }
+    }
+    case "percent":
+      return `${new Intl.NumberFormat(locale).format(n)}%`
+    case "bytes":
+      return formatFilesize(n)
+    default:
+      return `${new Intl.NumberFormat(locale).format(n)} ${field.unit}`
+  }
 }
 
 /**
@@ -71,17 +76,17 @@ export function formatWithUnit(field: UnitField, value: unknown, record: Record<
  * literal suffix. Empty for a field with no unit.
  */
 export function unitSuffix(field: UnitField, record: Record<string, unknown> | null | undefined): string {
-	switch (field.unit) {
-		case undefined:
-		case '':
-			return '';
-		case 'currency':
-			return currencyCodeOf(field, record) ?? 'currency';
-		case 'percent':
-			return '%';
-		case 'bytes':
-			return 'bytes';
-		default:
-			return field.unit;
-	}
+  switch (field.unit) {
+    case undefined:
+    case "":
+      return ""
+    case "currency":
+      return currencyCodeOf(field, record) ?? "currency"
+    case "percent":
+      return "%"
+    case "bytes":
+      return "bytes"
+    default:
+      return field.unit
+  }
 }

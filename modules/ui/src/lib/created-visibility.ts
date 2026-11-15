@@ -15,62 +15,70 @@
  *
  * The hand-off between the create page and the list is one module-level note, consumed once.
  */
-import type { FilterGroup } from './filter-query';
-import type { SourceEntry } from '../api/types';
-import { keepsSource, ownSource, selectedSources, withSourceSelection } from './sources';
+import type { FilterGroup } from "./filter-query"
+import type { SourceEntry } from "../api/types"
+import { keepsSource, ownSource, selectedSources, withSourceSelection } from "./sources"
 
 /** The create route's query key carrying the browse's source selection. */
-export const SOURCES_QUERY = 'sources';
+export const SOURCES_QUERY = "sources"
 /** The create route's query key naming the root the record saves to — the target choice's answer
  *  (cr-vscode-004), carried to the save as `POST …/records?target=`. */
-export const TARGET_QUERY = 'target';
+export const TARGET_QUERY = "target"
 
 export interface CreatedNote {
-	collection: string;
-	id: string;
-	/** The root it was saved to — its `$source`. */
-	source: string;
+  collection: string
+  id: string
+  /** The root it was saved to — its `$source`. */
+  source: string
 }
 
-let note: CreatedNote | null = null;
+let note: CreatedNote | null = null
 
 /** Said by the create page after a successful save. */
 export function noteCreated(created: CreatedNote): void {
-	note = created;
+  note = created
 }
 
 /** The note for this collection, consumed — a list reads it once, on the mount it was meant for. */
 export function takeCreated(collection: string): CreatedNote | null {
-	if (!note || note.collection !== collection) return null;
-	const out = note;
-	note = null;
-	return out;
+  if (!note || note.collection !== collection) return null
+  const out = note
+  note = null
+  return out
 }
 
 /** The selection widened to show a record read from `source`, or null when it already shows it. */
 export function widenedFor(group: FilterGroup, source: string): FilterGroup | null {
-	if (keepsSource(group, source)) return null;
-	return withSourceSelection(group, [...selectedSources(group), source]);
+  if (keepsSource(group, source)) return null
+  return withSourceSelection(group, [...selectedSources(group), source])
 }
 
 /** Where a NEW record of the collection is saved: the workspace's own root, else (a module-owned list,
  *  which has none) the module's — the one root `dt add` writes. */
 export function saveRoot(sources: readonly SourceEntry[] | undefined): SourceEntry | undefined {
-	return ownSource(sources) ?? sources?.find((s) => s.kind === 'module');
+  return ownSource(sources) ?? sources?.find(s => s.kind === "module")
 }
 
 /** Where a new record saves when the create route NAMES a target the collection reads; else the one
  *  root `dt add` writes (`saveRoot`). */
-export function saveRootFor(sources: readonly SourceEntry[] | undefined, target: string | null | undefined): SourceEntry | undefined {
-	return (target ? sources?.find((s) => s.name === target) : undefined) ?? saveRoot(sources);
+export function saveRootFor(
+  sources: readonly SourceEntry[] | undefined,
+  target: string | null | undefined
+): SourceEntry | undefined {
+  return (target ? sources?.find(s => s.name === target) : undefined) ?? saveRoot(sources)
 }
 
 /** The selected sources a new record saved to `root` will NOT be in — what the form warns about. */
 export function excludedBy(selection: readonly string[], root: string | undefined): string[] {
-	return root && selection.length && !selection.includes(root) ? [...selection] : [];
+  return root && selection.length && !selection.includes(root) ? [...selection] : []
 }
 
 /** The create route's `?sources=` value, parsed. */
 export function selectionFromQuery(raw: unknown): string[] {
-	return typeof raw === 'string' && raw ? raw.split(',').map((s) => s.trim()).filter(Boolean) : [];
+  return typeof raw === "string" && raw
+    ? raw
+        .split(",")
+        .map(s => s.trim())
+        .filter(Boolean)
+    : []
 }
