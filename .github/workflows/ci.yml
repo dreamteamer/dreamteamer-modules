@@ -36,6 +36,12 @@ jobs:
 
       - run: npm ci
 
+      # The pane's held-out tests (tests/heldout/cr-modules-017-*) serve @dreamteamer/ui's browser page, which is
+      # built and gitignored. Without this step only the shard whose ui tarball test happened to build it first
+      # could run them; every other shard died at import with "no built app".
+      - name: the app dt web serves — @dreamteamer/ui built
+        run: npm run build -w modules/ui
+
       - name: does this shard drive a browser
         id: browser
         run: echo "needed=$(node scripts/test.mjs --shard=${{ matrix.shard }}/4 --needs-browser)" >> "$GITHUB_OUTPUT"
