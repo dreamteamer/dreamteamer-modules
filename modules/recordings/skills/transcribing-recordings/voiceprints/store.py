@@ -18,6 +18,8 @@ One store per user, shared by all of that user's workspaces:
 
 Folders 0700, files 0600, every write a temp file in the same folder and an `os.replace`. A
 signature file holds no person's name: `write_signature` refuses one that carries a name-like key.
+A folder or lock file whose real path leaves the store's real path (a model folder linked into a
+synced folder, say) is refused before anything is made or written there.
 
 Standard library only (the `engines.py` rule), so a bare python3 runs everything that judges a voice
 print; only `embed.py` needs numpy and sherpa-onnx.
@@ -147,9 +149,29 @@ def _ancestors(p):
         p = parent
 
 
+# Sync names that are also ordinary words: a bare hyphen after them ("Box-art", "sync-scripts") is
+# not taken for an account suffix. Box's own "Box-Box" lives under ~/Library/CloudStorage, refused
+# there.
+_WORDS = frozenset(("box", "sync", "mega"))
+
+
 def _is_sync_name(component):
+    """A sync service's folder name (`SYNC_NAMES`, case-insensitive) alone, or followed by an account
+    or team suffix: `<name> - <suffix>` (`OneDrive - Northwind`), `<name> (<suffix>` (Dropbox's team
+    form, `Dropbox (Northwind)`), or `<name>-<suffix>` (`Dropbox-Northwind`) — the last not for the
+    ordinary words in `_WORDS`. `Boxes` or `Synchronised` is no sync name."""
     c = component.casefold()
-    return c in _SYNC or c.split(" - ", 1)[0] in _SYNC
+    if c in _SYNC:
+        return True
+    for n in _SYNC:
+        if not c.startswith(n):
+            continue
+        rest = c[len(n):]
+        seps = (" - ", " (") if n in _WORDS else (" - ", " (", "-")
+        for sep in seps:
+            if rest.startswith(sep) and rest[len(sep):].strip():
+                return True
+    return False
 
 
 def _roots(value):
@@ -165,7 +187,8 @@ def check_location(home, guard=None):
     tree, inside `guard["workspace"]`, a `guard["files_folder"]` or any `guard["inbox_folders"]` root
     (a list, or a newline-separated string), under `~/Library/CloudStorage` or
     `~/Library/Mobile Documents`, or has a component named for a sync service (`SYNC_NAMES`,
-    case-insensitive, also as `<name> - <suffix>`). There is no override. Creates nothing."""
+    case-insensitive, also with an account suffix — see `_is_sync_name`). There is no override.
+    Creates nothing."""
     guard = guard or {}
     forms = _forms(home)
 
@@ -359,36 +382,53 @@ class Store:
 
     # -- the folder ---------------------------------------------------------------------------------
     def ensure(self):
+        """Check the location, then make the store. A store path that is a link is made at the link's
+        real target, which `check_location` has judged too (a link to a folder not made yet included)."""
         check_location(self.home, self.guard)
-        created = not os.path.isdir(self.home)
+        real = os.path.realpath(self.home)
+        created = not os.path.isdir(real)
         if created:
-            parent = os.path.dirname(self.home)
+            parent = os.path.dirname(real)
             if parent and not os.path.isdir(parent):
                 os.makedirs(parent, exist_ok=True)
             try:
-                os.mkdir(self.home, 0o700)
+                os.mkdir(real, 0o700)
             except FileExistsError:
                 created = False
-        _chmod(self.home, 0o700)
-        readme = os.path.join(self.home, "README.txt")
+            if not os.path.isdir(real):
+                raise OSError(f"the voice-print store {self.home} leads to {real}, which is not a folder")
+        _chmod(real, 0o700)
+        readme = os.path.join(real, "README.txt")
         if not os.path.exists(readme):
             _atomic_write(readme, README.encode("utf-8"))
         if created and self.exclude_backup:
             try:
-                self.exclude_backup(self.home)
+                self.exclude_backup(real)
             except Exception as e:  # reported, never fatal
                 self.notices.append(f"the voice-print store could not be excluded from Time Machine "
-                                    f"backups ({e}); exclude {self.home} by hand")
+                                    f"backups ({e}); exclude {real} by hand")
         return self
 
+    def _refuse_outside(self, path, what="folder"):
+        """Raise `StoreRefused` unless the real path of `path` (symlinks resolved, also a link that
+        points at nothing yet) is inside the store's real path: a sub-folder or a lock file linked out
+        of the store — into a synced folder, say — never receives a print. Returns the real path."""
+        real = os.path.realpath(path)
+        if not _inside(real, os.path.realpath(self.home)):
+            raise StoreRefused(f"holding a {what} linked out of it ({path} leads to {real})", self.home)
+        return real
+
     def _dirs(self, folder):
-        """Create `folder` and every missing folder between the store and it, each 0700."""
+        """Create `folder` and every missing folder between the store and it, each 0700 — at their
+        real paths, after `_refuse_outside` has passed on the folder."""
         folder = os.path.abspath(folder)
         if not _inside(folder, self.home):
             raise ValueError(f"{folder} is outside the store")
+        real = self._refuse_outside(folder)
+        home = os.path.realpath(self.home)
         missing = []
-        p = folder
-        while not os.path.isdir(p) and _key(p) != _key(self.home):
+        p = real
+        while not os.path.isdir(p) and _key(p) != _key(home):
             missing.append(p)
             p = os.path.dirname(p)
         for d in reversed(missing):
@@ -421,7 +461,7 @@ class Store:
         self.ensure()
         folder = self.home if model_id is None else self.model_dir(model_id)
         self._dirs(folder)
-        path = os.path.realpath(os.path.join(folder, ".lock"))
+        path = self._refuse_outside(os.path.join(folder, ".lock"), "lock file")
         with _LOCKS_GUARD:
             held = _LOCKS.get(path)
             if held is None:
@@ -520,6 +560,7 @@ class Store:
             _check_no_names(record, "record")
         audio = sig["audio"]
         diar_id = sig["diarization"]["id"]
+        self._refuse_outside(self.signature_dir(model_id, audio))   # before the lock file is made
         with self.lock(model_id):
             path = self.signature_path(model_id, audio, diar_id)
             old = self.read_json(path) or {}
@@ -550,6 +591,7 @@ class Store:
     def remove_windows(self, model_id, audio, diar_id, label):
         """Delete one label's windows from one signature file and add the label to `removed`. False when
         there is no such file."""
+        self._refuse_outside(self.signature_dir(model_id, audio))   # before the lock file is made
         with self.lock(model_id):
             path = self.signature_path(model_id, audio, diar_id)
             sig = self.read_json(path)

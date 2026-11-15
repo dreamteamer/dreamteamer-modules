@@ -210,6 +210,107 @@ class Line13(Tmp):
         store.check_location(self.path("dropboxes-old", "vp"), self.guard())
         store.check_location(self.path("Boxing", "vp"), self.guard())
 
+    def test_a_sync_name_with_a_team_or_account_suffix(self):
+        # Dropbox's team-folder form, the hyphenated account forms, and the spaced-dash form
+        for name in ("Dropbox (Northwind)", "dropbox (northwind)", "Dropbox-Northwind", "OneDrive-Northwind",
+                     "OneDrive - Harbor Mutual", "Google Drive (Northwind)", "Google Drive-Northwind",
+                     "Box (Northwind)", "Sync (Northwind)", "MEGA - Northwind", "Nextcloud-Northwind",
+                     "Syncthing-Northwind"):
+            e = self.assertRefused(self.path(name, "voice-prints"))
+            self.assertIn("sync", e.reason.lower(), name)
+            self.assertFalse(os.path.exists(self.path(name)), name)
+
+    def test_ordinary_words_that_start_with_a_sync_name_are_accepted(self):
+        # Box, Sync and MEGA are ordinary words: a bare hyphen after them is not an account suffix,
+        # and no suffix at all is not a sync folder
+        for name in ("Boxes", "Boxing", "Synchronised", "Syncopation", "Megaphone", "Box-art", "sync-scripts",
+                     "mega-project", "dropboxes-old", "OneDriver"):
+            store.check_location(self.path(name, "vp"), self.guard())
+
+    def assertSubfolderRefused(self, s, write, outside):
+        """`write` against store `s` is refused, and nothing is created anywhere under the temp root —
+        in particular nothing at `outside`, the folder the link points at."""
+        before = self.tree()
+        with self.assertRaises(store.StoreRefused) as cm:
+            write()
+        self.assertIn("link", cm.exception.reason)
+        self.assertEqual(self.tree(), before, "a refused write created something")
+        if os.path.isdir(outside):
+            self.assertEqual(os.listdir(outside), [])
+        return cm.exception
+
+    @unittest.skipUnless(POSIX, "symlinks")
+    def test_a_model_folder_linked_into_a_synced_folder_receives_nothing(self):
+        s = store.Store(self.path("vp"), exclude_backup=no_exclude, guard=self.guard())
+        s.ensure()
+        os.makedirs(self.path("Dropbox", "stolen"))
+        os.symlink(self.path("Dropbox", "stolen"), s.model_dir("m1"))
+        out = self.path("Dropbox", "stolen")
+        self.assertSubfolderRefused(s, lambda: s.write_print("m1", a_print("p-1")), out)
+        self.assertSubfolderRefused(s, lambda: s.write_signature("m1", signature(),
+                                                                 record={"workspace": "w", "record": "r"}), out)
+
+        def take():
+            with s.lock("m1"):
+                pass
+        self.assertSubfolderRefused(s, take, out)
+        self.assertSubfolderRefused(s, lambda: s.remove_windows("m1", AUDIO, "7c1d09a4e2b1", "speaker_0"), out)
+
+    @unittest.skipUnless(POSIX, "symlinks")
+    def test_a_dangling_model_folder_link_creates_no_target(self):
+        s = store.Store(self.path("vp"), exclude_backup=no_exclude, guard=self.guard())
+        s.ensure()
+        os.symlink(self.path("Dropbox", "not-yet", "m1"), s.model_dir("m1"))
+        self.assertSubfolderRefused(s, lambda: s.write_print("m1", a_print("p-1")), self.path("Dropbox"))
+        self.assertFalse(os.path.exists(self.path("Dropbox")))
+
+    @unittest.skipUnless(POSIX, "symlinks")
+    def test_a_prints_signatures_or_labels_folder_linked_out_receives_nothing(self):
+        s = store.Store(self.path("vp"), exclude_backup=no_exclude, guard=self.guard())
+        s.ensure()
+        os.makedirs(self.path("elsewhere", "a"))
+        os.makedirs(self.path("elsewhere", "b"))
+        os.makedirs(self.path("elsewhere", "c"))
+        os.makedirs(os.path.join(s.model_dir("m1"), "signatures"))
+        os.symlink(self.path("elsewhere", "a"), os.path.join(s.model_dir("m1"), "prints"))
+        os.symlink(self.path("elsewhere", "b"), os.path.join(s.model_dir("m1"), "signatures", AUDIO[:2]))
+        os.symlink(self.path("elsewhere", "c"), s.calibration_labels_dir())
+        self.assertSubfolderRefused(s, lambda: s.write_print("m1", a_print("p-1")), self.path("elsewhere", "a"))
+        self.assertSubfolderRefused(s, lambda: s.write_signature("m1", signature(),
+                                                                 record={"workspace": "w", "record": "r"}),
+                                    self.path("elsewhere", "b"))
+        self.assertSubfolderRefused(
+            s, lambda: s.write_json(os.path.join(s.calibration_labels_dir(), "x.json"), {"a": 1}),
+            self.path("elsewhere", "c"))
+
+    @unittest.skipUnless(POSIX, "symlinks")
+    def test_a_lock_file_linked_out_is_never_created_at_its_target(self):
+        s = store.Store(self.path("vp"), exclude_backup=no_exclude, guard=self.guard())
+        s.ensure()
+        os.makedirs(self.path("elsewhere"))
+        os.makedirs(s.model_dir("m1"))
+        os.symlink(self.path("elsewhere", "lock"), os.path.join(s.model_dir("m1"), ".lock"))
+        os.symlink(self.path("elsewhere", "root-lock"), os.path.join(s.home, ".lock"))
+        for model_id in ("m1", None):
+            def take():
+                with s.lock(model_id):
+                    pass
+            self.assertSubfolderRefused(s, take, self.path("elsewhere"))
+        self.assertSubfolderRefused(s, lambda: s.add_never({"workspace": "w", "person": "contacts/sam-diaz",
+                                                            "name": "Sam Diaz", "at": "2026-11-20T10:00:00Z"}),
+                                    self.path("elsewhere"))
+
+    @unittest.skipUnless(POSIX, "symlinks")
+    def test_a_link_that_stays_inside_the_store_is_accepted(self):
+        s = store.Store(self.path("vp"), exclude_backup=no_exclude, guard=self.guard())
+        s.ensure()
+        os.makedirs(os.path.join(s.home, "m1-real"))
+        os.symlink(os.path.join(s.home, "m1-real"), s.model_dir("m1"))
+        s.write_print("m1", a_print("p-1"))
+        with s.lock("m1"):
+            pass
+        self.assertEqual(os.listdir(os.path.join(s.home, "m1-real", "prints")), ["p-1.json"])
+
     @unittest.skipUnless(POSIX, "symlinks")
     def test_a_symlink_into_a_git_tree_leaves_nothing_at_either_end(self):
         os.makedirs(self.path("repo", ".git"))
@@ -280,6 +381,24 @@ class EnsureTest(Tmp):
         calls = []
         store.Store(self.path("vp"), exclude_backup=calls.append).ensure()
         self.assertEqual(calls, [])
+
+    @unittest.skipUnless(POSIX, "symlinks")
+    def test_a_store_linked_to_an_allowed_folder_not_yet_made_is_made_at_the_target(self):
+        target = self.path("ok", "later", "vp")
+        link = self.path("link-vp")
+        os.symlink(target, link)
+        calls = []
+        s = store.Store(link, exclude_backup=calls.append)
+        s.ensure()
+        self.assertTrue(os.path.islink(link))
+        self.assertTrue(os.path.isdir(target))
+        self.assertTrue(os.path.isfile(os.path.join(target, "README.txt")))
+        self.assertEqual(os.stat(target).st_mode & 0o777, 0o700)
+        self.assertEqual(calls, [target])   # excluded from backups once, at the folder that holds it
+        s.ensure()
+        self.assertEqual(calls, [target])
+        s.write_print(MODEL_A.id, a_print("p-1"))
+        self.assertEqual(os.listdir(os.path.join(target, MODEL_A.id, "prints")), ["p-1.json"])
 
     def test_the_darwin_default_runs_tmutil_addexclusion(self):
         seen = []
