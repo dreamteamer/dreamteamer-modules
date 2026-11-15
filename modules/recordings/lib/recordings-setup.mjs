@@ -70,11 +70,23 @@ export function inspect(ctx) {
 	return { checks };
 }
 
+/** INBOX_FOLDERS is a newline-separated list of roots (README); the prompt takes them comma-separated. Each line is
+ *  trimmed and blanks dropped; a line that is not an existing path and holds a comma is split on commas — so a folder
+ *  whose name holds a comma stays one root. The ingest script reads the variable by the same rule. */
+export function inboxList(value) {
+	return String(value).split('\n').map((l) => l.trim()).filter(Boolean)
+		.flatMap((l) => (l.includes(',') && !fs.existsSync(l) ? l.split(',').map((p) => p.trim()).filter(Boolean) : [l]))
+		.join('\n');
+}
+
 /** The env action: the three keys the person named (an optional one left out when nobody gave it), its
  *  state the unit's own verdict — needs-input without FILES_FOLDER, blocked when the home resolves inside
- *  the workspace. Whether the file already holds them, and the write, are the engine's. */
+ *  the workspace. Whether the file already holds them, and the write, are the engine's. The engine fills an
+ *  input from .env when no flag gives it, so an inbox_folders equal to the stored value IS the stored value,
+ *  carried as it is: a value already in .env is never rewritten unless the person gives another. */
 function homeAction(ctx, inputs) {
-	const want = { TRANSCRIPTION_HOME: inputs.transcription_home ?? ctx.env.TRANSCRIPTION_HOME ?? DEFAULT_HOME, FILES_FOLDER: inputs.files_folder ?? ctx.env.FILES_FOLDER, INBOX_FOLDERS: inputs.inbox_folders ?? ctx.env.INBOX_FOLDERS };
+	const inbox = inputs.inbox_folders == null || inputs.inbox_folders === ctx.env.INBOX_FOLDERS ? ctx.env.INBOX_FOLDERS : inboxList(inputs.inbox_folders);
+	const want = { TRANSCRIPTION_HOME: inputs.transcription_home ?? ctx.env.TRANSCRIPTION_HOME ?? DEFAULT_HOME, FILES_FOLDER: inputs.files_folder ?? ctx.env.FILES_FOLDER, INBOX_FOLDERS: inbox };
 	const env = Object.fromEntries(Object.entries(want).filter(([k, v]) => k === 'FILES_FOLDER' || (v !== undefined && v !== null && String(v) !== '')).map(([k, v]) => [k, v ? String(v) : undefined]));
 	const action = { id: 'set-home', title: 'write TRANSCRIPTION_HOME, FILES_FOLDER and INBOX_FOLDERS into .env', env };
 	if (!want.FILES_FOLDER) return { ...action, state: 'needs-input', reason: 'files_folder is required' };

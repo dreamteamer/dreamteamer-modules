@@ -152,6 +152,21 @@ test('resolveInboxRoots splits on newlines, trims, drops blanks, and skips a roo
 	}
 });
 
+// recordings 0.5.1's setup wrote a comma-separated inbox_folders into INBOX_FOLDERS verbatim; a line that is not a
+// folder on this machine and holds a comma is that list, while a real folder whose name holds a comma stays whole.
+test('0.5.2 comma INBOX_FOLDERS: a comma list is read as its roots; an existing folder named with a comma is one root', () => {
+	const parent = fs.mkdtempSync(path.join(os.tmpdir(), 'detect-inbox-comma-'));
+	const desktop = path.join(parent, 'desktop'), phone = path.join(parent, 'phone'), comma = path.join(parent, 'north,wind');
+	for (const r of [desktop, phone, comma]) fs.mkdirSync(path.join(r, 'meeting-recordings'), { recursive: true });
+	try {
+		const scan = (raw) => JSON.parse(execFileSync('node', [SCRIPT, 'scan', '--inbox-folders', raw], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })).inbox_roots;
+		assert.deepEqual(scan(`${desktop},${phone}`), [desktop, phone].map((r) => path.join(r, 'meeting-recordings')));
+		assert.deepEqual(scan(comma), [path.join(comma, 'meeting-recordings')]);
+	} finally {
+		fs.rmSync(parent, { recursive: true, force: true });
+	}
+});
+
 test('resolveInboxRoots dies with no usable root, rather than silently reporting zero', () => {
 	try {
 		execFileSync('node', [SCRIPT, 'scan', '--inbox-folders', '\n  \n'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });

@@ -118,6 +118,22 @@ describe('the unit, pure', () => {
 		assert.match(r.stderr, /not inside a dreamteamer workspace/);
 		assert.doesNotMatch(r.stderr, /TypeError|at Object/);
 	});
+	// The prompt asks for the inbox roots comma-separated; INBOX_FOLDERS is a newline-separated list (README), and the
+	// ingest script reads it one root per line. 0.5.1 wrote the comma list verbatim: one root that does not exist.
+	test('0.5.2 inbox_folders input: a comma list is written one root per line; a folder named with a comma, a single root and a stored value are kept', () => {
+		const root = repo(), home = tmp('dtm-home-'), files = tmp('dtm-files-');
+		const setHome = (env, inputs) => SETUP_UNIT.plan(ctxFor(root, { PATH: fakeBins(['uv', 'ffmpeg']), ...env }), { transcription_home: home, files_folder: files, ...inputs }).actions.find((a) => a.id === 'set-home');
+		assert.equal(setHome({}, { inbox_folders: '/inbox/desktop, /inbox/phone,' }).env.INBOX_FOLDERS, '/inbox/desktop\n/inbox/phone');
+		const comma = path.join(tmp('dtm-inbox-'), 'north,wind');
+		fs.mkdirSync(comma);
+		assert.equal(setHome({}, { inbox_folders: comma }).env.INBOX_FOLDERS, comma, 'an existing folder whose name holds a comma is one root');
+		assert.equal(setHome({}, { inbox_folders: '/inbox/desktop' }).env.INBOX_FOLDERS, '/inbox/desktop');
+		// the engine fills an input from .env when no flag gives it: a value equal to the stored one is the stored one
+		for (const stored of ['/inbox/desktop,/inbox/phone', '\n/inbox/one\n/inbox/two\n']) {
+			assert.equal(setHome({ INBOX_FOLDERS: stored }, { inbox_folders: stored }).env.INBOX_FOLDERS, stored, `${JSON.stringify(stored)} rewritten`);
+			assert.equal(setHome({ INBOX_FOLDERS: stored }, {}).env.INBOX_FOLDERS, stored);
+		}
+	});
 });
 
 describe('through the engine', { skip: !engineMeets('recordings') && `needs engine ${JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8')).dreamteamer.engine}, this is ${ENGINE_VERSION}` }, () => {
@@ -158,5 +174,34 @@ describe('through the engine', { skip: !engineMeets('recordings') && `needs engi
 		assert.ok(fs.readFileSync(path.join(root, '.env'), 'utf8').includes(`INBOX_FOLDERS="${inbox}"`), 'the multi-line neighbour untouched');
 		const again = run(root, ['setup', 'recordings', '--input', `files_folder=${other}`, '--no-input'], env);
 		assert.doesNotMatch(again.stdout, /✔ set-home/);
+	});
+	test('0.5.2 comma list through the engine: stored one root per line, resolved as two, scanned as two; never rewritten unasked; a value the engine will not write leaves .env alone', () => {
+		const root = virginWorkspace();
+		const from = packedInto(fs.mkdtempSync(path.join(os.tmpdir(), 'dtm-from-')), ...closure('recordings'));
+		const home = tmp('dtm-home-'), files = tmp('dtm-files-');
+		const env = { PATH: `${fakeBins(['uv', 'ffmpeg'])}:${process.env.PATH}`, HOME: tmp('dtm-HOME-') };
+		const roots = [tmp('dtm-inbox-desktop-'), tmp('dtm-inbox-phone-')];
+		for (const r of roots) fs.mkdirSync(path.join(r, 'meeting-recordings'));
+		const i = run(root, ['install', '@dreamteamer/recordings', '--from', from, '--input', `transcription_home=${home}`, '--input', `files_folder=${files}`, '--no-input'], env);
+		assert.equal(i.status, 0, i.stderr + i.stdout);
+		const s = run(root, ['setup', 'recordings', '--input', `files_folder=${files}`, '--input', `inbox_folders=${roots.join(',')}`, '--no-input'], env);
+		assert.equal(s.status, 0, s.stderr + s.stdout);
+		const dotenv = () => fs.readFileSync(path.join(root, '.env'), 'utf8');
+		assert.ok(dotenv().includes(`INBOX_FOLDERS="${roots.join('\n')}"`), `INBOX_FOLDERS is not one root per line:\n${dotenv()}`);
+		const resolved = run(root, ['resolve', '${env:INBOX_FOLDERS}'], env);
+		assert.equal(resolved.status, 0, resolved.stderr);
+		assert.equal(resolved.stdout.trim(), roots.join('\n'));
+		const detect = new URL('../skills/ingesting-recordings/bin/detect.mjs', import.meta.url).pathname;
+		const scan = JSON.parse(execFileSync(process.execPath, [detect, 'scan', '--inbox-folders', resolved.stdout.trim()], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }));
+		assert.deepEqual(scan.inbox_roots, roots.map((r) => path.join(r, 'meeting-recordings')));
+		const before = dotenv();
+		const unasked = run(root, ['setup', 'recordings', '--input', `files_folder=${files}`, '--no-input'], env);
+		assert.doesNotMatch(unasked.stdout, /✔ set-home/, 'nothing to write');
+		assert.equal(dotenv(), before, 'byte-identical');
+		// two roots are written double-quoted, and the engine's writer refuses a backslash inside quotes: set-home is
+		// blocked naming the key, and nothing is written
+		const refused = run(root, ['setup', 'recordings', '--input', `files_folder=${files}`, '--input', 'inbox_folders=C:\\inbox\\a,C:\\inbox\\b', '--no-input'], env);
+		assert.match(refused.stdout + refused.stderr, /INBOX_FOLDERS/);
+		assert.equal(dotenv(), before, 'a refused value wrote nothing');
 	});
 });

@@ -52,6 +52,14 @@ or machine change waits for its own `--allow`. [SETUP.md](SETUP.md) lists the in
 what each status means, and the `ingesting-recordings` and `transcribing-recordings` skills carry the
 procedures behind the three slash commands of the flow.
 
+## 0.5.2 — INBOX_FOLDERS from the setup prompt is read as a list
+
+Nothing to do. The setup asks for the inbox roots comma-separated, and 0.5.1 wrote that line into `.env` as it was,
+so `/fetch-new-recordings` read it as one root that does not exist. A comma list given to `dt setup recordings` is
+now stored one root per line, the documented format, and a comma list already in `.env` is read as its roots. A
+folder whose name holds a comma stays one root. `/fetch-meeting-screenshots` (`@dreamteamer/meetings`) still reads
+one root per line: if 0.5.1 stored yours with commas, put one root per line in `.env`.
+
 ## 0.5.1 — the nav is nav.yaml (cr-dt-008)
 
 `display.nav.order` and `display.nav.section` removed from its descriptor — the nav is `nav.yaml` at the workspace root (engine 0.49), which you arrange; `display.nav.icon` stays. Nothing to do.
