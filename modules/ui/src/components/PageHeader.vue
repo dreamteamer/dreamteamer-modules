@@ -32,8 +32,11 @@
 	The band draws for an origin alone too — a record no commit holds yet still says where it lives.
 -->
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import DtLink from './DtLink.vue';
+import { appShell } from '../lib/app-shell';
+import { titleTab } from '../lib/tabs';
 import { useNavHistory } from '../composables/nav-history';
 import { initialsOf } from '../lib/initials';
 import { relativeTime } from '../lib/relative-time';
@@ -66,6 +69,10 @@ const props = withDefaults(
 );
 
 const { canBack, canForward, back, forward } = useNavHistory();
+
+// the browser host's tab strip (cr-modules-022) titles the open page's tab with what this header says
+const route = appShell ? useRoute() : null;
+if (route) watch(() => [route.fullPath, props.title, props.icon] as const, ([full, title, icon]) => titleTab(full, title, icon), { immediate: true });
 
 const commitRelativeTime = computed(() => {
 	if (!props.commit) return '';

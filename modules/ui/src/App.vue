@@ -11,6 +11,7 @@ import { useRouter, useRoute } from 'vue-router';
 import RightSidebar from './components/RightSidebar.vue';
 import AppNav from './components/AppNav.vue';
 import ToastHost from './components/ToastHost.vue';
+import TabStrip from './components/TabStrip.vue';
 import { hostNotify, hostSetState } from './api/transport';
 import { loadUiViews } from './ui-views';
 import { refreshSchema } from './lib/schema-refresh';
@@ -29,6 +30,8 @@ const router = useRouter();
 const route = useRoute();
 /** A host with no native tree (dt web) asks the app to draw the nav; VS Code never does. */
 const appNav = (window as any).__DT_HOST__?.nav === 'app';
+/** The browser shell draws its own pill tabs unless the host declares it draws tabs itself (VS Code: `tabs: true`). */
+const appTabs = appNav && (window as any).__DT_HOST__?.tabs !== true;
 
 // This tab's identity, mirrored into webview state on every change so a window reload restores
 // each tab on its own route with its own pinning (the host is the authority; we just persist).
@@ -106,8 +109,13 @@ onMounted(() => hostNotify('dt:ready'));
 	<div class="dt-shell" :class="{ 'dt-shell--app': appNav }">
 		<!-- the nav, and on a pane host its switcher and level in the nav's toolbar (no bar above the page) -->
 		<AppNav v-if="appNav" />
-		<main class="dt-page-area">
-			<router-view />
+		<main class="dt-page-area" :class="{ 'dt-page-area--tabs': appTabs }">
+			<template v-if="appTabs">
+				<TabStrip />
+				<!-- the page scrolls under the strip, which stays put -->
+				<div class="dt-page-scroll"><router-view /></div>
+			</template>
+			<router-view v-else />
 		</main>
 		<RightSidebar />
 		<!-- the browser host's shell reports writes as toasts (cr-modules-022); the editor has its own notifications -->
@@ -149,6 +157,18 @@ onMounted(() => hostNotify('dt:ready'));
 	background: var(--dt-surface);
 	border-top-left-radius: var(--dt-radius-sheet);
 	box-shadow: var(--dt-shadow-sheet);
+}
+
+.dt-page-area--tabs {
+	overflow: hidden;
+}
+
+.dt-page-scroll {
+	flex: 1;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+	overflow-y: auto;
 }
 
 .dt-signed-out {
