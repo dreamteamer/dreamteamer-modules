@@ -10,6 +10,9 @@ import { httpTransport, mount } from './index';
 import { setTransport } from './api/transport';
 import { loadHost, signedOut, SIGNED_OUT } from './lib/host-boot';
 import './styles/browser.css';
+// Inter, from the package (cr-modules-021): --dt-font always named it, but nothing loaded it, so a machine without
+// Inter installed drew system-ui. Bundled into the page's assets — no font is fetched from the network.
+import '@fontsource-variable/inter/index.css';
 
 (window as any).__DT_HOST__ ??= { nav: 'app', commands: false, openFile: 'tab', tabs: false, history: 'hash' };
 

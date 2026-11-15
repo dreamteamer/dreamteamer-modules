@@ -46,7 +46,9 @@
 	--dt-font: 'Inter Variable', Inter, system-ui, sans-serif;
 	--dt-font-mono: ui-monospace, 'SF Mono', Menlo, monospace;
 
-	--dt-input-height: 48px;
+	/* Inputs sit beside 26px buttons: one control height in both hosts (it was 48px here, and only VS Code's
+	   vscode.css brought it back down — so the browser drew 48px fields next to 26px buttons). */
+	--dt-input-height: var(--dt-control-height);
 
 	/* ---- SCALE TOKENS (the single source for size/space) --------------------------------------
 	   Added 2026-07-27 after "too many font sizes" / "a zoo in many places": components had been
@@ -73,4 +75,83 @@
 	--dt-page-pad: 16px 20px;
 	--dt-page-pad-form: 20px 24px;
 	--dt-icon: 16px; /* every material-symbol glyph — icons were their own 16/17/18/20px zoo */
+
+	/* ---- THE HELD SYSTEM (2026-11-16, cr-modules-021) --------------------------------------------------------
+	   One written scale for colour, type, space, radius, motion, elevation and focus. Every NEW token here has a
+	   NEUTRAL default derived from the tokens above, so the VS Code webview — where vscode.css maps those onto the
+	   editor theme — draws exactly what it drew before. The warm values live in browser.css alone. Nothing above is
+	   renamed or removed: module frames receive every --dt-* token by name (modules.ts themeNow). */
+
+	/* Ink: the colour every hairline and fill is an alpha of. A triplet so `rgb(var(--dt-ink) / a)` can step it;
+	   the steps themselves default to a mix of the foreground, which in VS Code is the editor's own. */
+	--dt-ink: 23 41 64;
+	--dt-ink-1: color-mix(in srgb, var(--dt-fg) 3%, transparent);
+	--dt-ink-2: color-mix(in srgb, var(--dt-fg) 5%, transparent);
+	--dt-ink-3: color-mix(in srgb, var(--dt-fg) 8%, transparent);
+	--dt-ink-4: color-mix(in srgb, var(--dt-fg) 11%, transparent);
+	--dt-ink-5: color-mix(in srgb, var(--dt-fg) 15%, transparent);
+
+	/* Surfaces: the canvas the shell sits on, the sheet a page is drawn on, a quiet panel, a filled well. */
+	--dt-canvas: var(--dt-bg);
+	--dt-surface: var(--dt-bg);
+	--dt-subtle: var(--dt-bg-subtle);
+	--dt-fill: var(--dt-bg-subtle);
+	--dt-hairline: var(--dt-border);
+	/* A light accent tint: the nav's hover, a pressed toggle's ground. */
+	--dt-accent-tint: var(--dt-bg-hover);
+
+	/* Type: the held scale. --dt-text and --dt-label above stay the two everyday sizes. */
+	--dt-text-2xs: 10px;
+	--dt-text-sm: 12px;
+	--dt-text-md: 14px;
+	--dt-text-lg: 16px;
+	--dt-text-xl: 20px;
+	--dt-text-2xl: 28px;
+	--dt-leading-tight: 1.25;
+	--dt-leading: 1.45;
+	--dt-leading-loose: 1.6;
+	--dt-weight-medium: 500;
+	--dt-weight-strong: 600;
+
+	/* Space: the 4pt scale continues (--dt-space-1 … 5 above are 4, 8, 12, 16, 24). */
+	--dt-space-half: 2px;
+	--dt-space-6: 32px;
+	--dt-space-7: 40px;
+
+	/* Radius: --dt-radius and --dt-radius-lg above are the control and the card. */
+	--dt-radius-xs: 3px;
+	--dt-radius-sm: 4px;
+	--dt-radius-xl: 12px;
+	--dt-radius-sheet: 18px;
+	--dt-radius-pill: 999px;
+
+	/* Motion: one easing, two speeds — all of it zero under prefers-reduced-motion (below). */
+	--dt-ease: cubic-bezier(0.2, 0, 0, 1);
+	--dt-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+	--dt-dur-fast: 120ms;
+	--dt-dur-med: 200ms;
+
+	/* Elevation: a card that lifts, the sheet on the canvas, a menu or popover. */
+	--dt-shadow-card: var(--dt-shadow);
+	--dt-shadow-sheet: none;
+	--dt-shadow-menu: var(--dt-shadow-lg);
+	/* The dim behind a dialog — the ink at half, which is the overlay's old literal exactly. */
+	--dt-backdrop: rgb(var(--dt-ink) / 0.5);
+
+	/* Focus: the ONE ring every control shows on keyboard focus. The default is VS Code's own (1px focusBorder,
+	   inset), so the editor looks as it always did; the browser draws a softer, outset ring. */
+	--dt-focus-outline: 1px solid var(--dt-focus-ring);
+	--dt-focus-offset: -1px;
+
+	/* Menus: every dropdown, context menu and listbox — one radius, one shadow, one layer. */
+	--dt-menu-radius: var(--dt-radius);
+	--dt-menu-border: var(--dt-border);
+	--dt-z-menu: 1000;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	:root {
+		--dt-dur-fast: 0ms;
+		--dt-dur-med: 0ms;
+	}
 }
