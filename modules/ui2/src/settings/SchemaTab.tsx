@@ -18,7 +18,7 @@
  */
 import { useEffect, useMemo } from "react"
 import { listRecords } from "../api/client.ts"
-import { RouteBase, useApp, useAsync } from "../app-context.tsx"
+import { RouteBase, useApp, useAsync, useSignal } from "../app-context.tsx"
 import { Browse } from "../browse/Browse.tsx"
 import { Icon } from "../components/Icon.tsx"
 import { moduleScopeFilter, nextModuleScope, withModuleScope } from "../lib/module-scope.ts"
@@ -28,6 +28,9 @@ import { signal } from "../lib/signal.ts"
 import { sourcesKey } from "../lib/sources.ts"
 import { schemaKindContext } from "../lib/vscode-context.ts"
 import { RecordPage } from "../pages/RecordPage.tsx"
+import { modulePageView } from "../lib/page-view.ts"
+import { uiViews } from "../lib/ui-views.ts"
+import { PageView } from "../pages/PageView.tsx"
 import { ActivityPane } from "./ActivityPane.tsx"
 import { DataModelDetail } from "./DataModelDetail.tsx"
 import { DataModelList } from "./DataModelList.tsx"
@@ -171,10 +174,15 @@ function Pane({
   source?: string
 }) {
   const { schema } = useApp()
-  if (kind === ACTIVITY)
+  const views = useSignal(uiViews) ?? []
+  if (kind === ACTIVITY) {
+    // a module's page: the page view naming it when one does (the nearest wins), else its Activity
+    const page = scope ? modulePageView(views, scope) : undefined
+    if (page) return <PageView key={`${page.id}:${source ?? ""}`} viewId={page.id} source={source} />
     return (
       <ActivityPane key={`${scope ?? ""}:${source ?? ""}`} module={scope} moduleTitle={scopeTitle} source={source} />
     )
+  }
   if (kind === SOURCES) return <SourcesPane />
   if (kind === "collections") {
     if (id) return <DataModelDetail key={id} collection={id} openField={field} />

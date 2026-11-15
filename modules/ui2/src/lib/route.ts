@@ -14,7 +14,10 @@
  *   /<a ui-view's route>           a collection-scope ui-view (`/projects-board`): the collection's browse,
  *                                  seeded from the view
  *
- * Any other path (page views, module apps) is a page this app does not draw yet. A query
+ *   /<a page ui-view's route>      a `scope: page` view of layout `page` or `activity` (pages/PageView.tsx);
+ *                                  `?source=<layer>` scopes it to one record layer
+ *
+ * Any other path (a page view whose layout is a module's app) is a page this app does not draw yet. A query
  * (`?filter=…`) rides on any of them and never changes which page it is.
  */
 
@@ -48,6 +51,7 @@ export type Page =
   | { kind: "create"; collection: string; base?: string }
   | { kind: "settings"; tail: string }
   | { kind: "view"; id: string }
+  | { kind: "page-view"; id: string; source?: string }
   | { kind: "unknown-collection"; path: string }
   | { kind: "unsupported"; route: string }
 
@@ -58,7 +62,14 @@ export interface ViewRoute {
   scope: string
   /** `collections/<name>` — a record-scope view's records are this collection's. */
   collection?: string
+  /** What a page view draws — compile's merge, else what it authored: `list.layout` picks the page kind. */
+  compiled?: { display?: { list?: { layout?: string } } }
+  display?: { list?: { layout?: string } }
 }
+
+/** The page layouts this app draws itself (pages/PageView.tsx); any other page layout is a module's app. */
+export const SURFACE_PAGE_LAYOUTS: ReadonlySet<string> = new Set(["page", "activity"])
+const pageLayoutOf = (v: ViewRoute) => (v.compiled?.display ?? v.display)?.list?.layout ?? ""
 
 /** The page a route names, given the workspace's collection names and its ui-views. */
 export function pageOf(route: string, collections: readonly string[], views: readonly ViewRoute[] = []): Page {
@@ -70,6 +81,11 @@ export function pageOf(route: string, collections: readonly string[], views: rea
     const trimmed = path.replace(/\/+$/, "")
     const view = views.find(v => v.scope === "collection" && v.route === trimmed)
     if (view) return { kind: "view", id: view.id }
+    const page = views.find(v => v.scope === "page" && v.route === trimmed && SURFACE_PAGE_LAYOUTS.has(pageLayoutOf(v)))
+    if (page) {
+      const source = queryOf(route)["source"]
+      return { kind: "page-view", id: page.id, ...(source ? { source } : {}) }
+    }
     // a record-scope view answers `<route>/<id>`: its collection's record, drawn by the view's `display.record`
     const recordView = views.find(
       v =>

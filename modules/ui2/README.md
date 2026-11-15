@@ -46,6 +46,7 @@ window `message` events. The app re-reads the nav, the schema and the open page 
 | `/` | the workspace's collections |
 | `/content/<collection>` | the browse: the collection's records, by the List its layout names |
 | `/<a ui-view's route>` | a collection ui-view (`/projects-board`): the same browse, seeded from the view |
+| `/<a page ui-view's route>` | a page ui-view (layout `page` or `activity`): its nested views as panels; `?source=<layer>` scopes it |
 | `/content/<collection>/<id>` | the record page: its record layout, the commit line and source, Commands, Info and Revisions |
 | `/content/<collection>/+` | a new record |
 | `/<a record ui-view's route>/<id>` | a record drawn by a record-scope ui-view's `display.record` |
@@ -114,6 +115,29 @@ whose View is `image`; a URL or a file record; `image_fit`), the record's title 
 banded by `group_by`. On both, `card_title` is a markdown template whose `{{ field }}` tokens are drawn by each
 field's own View, and `color_by` tints the card.
 
+`calendar` is a Monday-first month grid, a record on the day its `start` field (else the first date field) names.
+`gantt` draws a bar per record from `start` to `end` on a time axis of day columns: runs where nothing starts or
+ends fold into one narrow column a click opens (`fold_gaps`), a record with no start is listed under the chart, an
+end before its start is drawn as a marked point, `color_by` colours the bars (past six values the rest go neutral,
+and it says so), and `group_by` makes lanes — collapsed at first (`start_collapsed`), each with its extent drawn
+one segment per run, a reference lane named, pictured and summarised from the record it points at
+(`group_title`, `group_icon`, `group_summary`). The bar's text is `template`, else `bar_label`, else the title.
+`carousel` is a card per record over the images in the folder its `folder` field (a `${env:…}` template) points at
+(`GET /folder/…`), or the reason there are none. `counts` is one number per value of `group_by`, each a link to the
+list filtered to it (the view's own filter carried, and the page's layer). `map` plots records with coordinates on
+OpenStreetMap tiles (Leaflet), fitting them on open (`auto_fit`). `diagram` is a node-and-edge canvas (React Flow):
+over `collections` with `link_by: schema` it draws each collection as a table of its fields with an edge per
+reference, grouped by module; over any other collection a record is a dot sized by its links, linked by reference,
+a shared value or a value of its own, optionally grouped. Names appear as you zoom in; hovering a node dims the
+rest; dragging a node or a group (which carries its members), or resizing a group from its corner, is kept in the
+view's `arrangement` for **Save**. Calendar, gantt and carousel cards carry the row context too.
+
+A page ui-view (`scope: page`, `display.list.layout: page`) draws the views in `options.views` as panels in one or
+two columns (`grid_columns`): each collection view in its own layout through the embedded browse, an `activity`
+view as the module's feed, a nested page as its own grid. A reference to nothing, a cycle, a record view or a
+module app's page is refused in its panel, saying why. A module whose page view names it (`options.module`) lands
+on that page in the Schema tab instead of its Activity.
+
 The record page draws the record by the record-scoped Edit or View its `display.record.layout` names (a
 record-scope ui-view's, else the collection's): `properties` by default (`page`) — one line per property,
 `icon · label · value`, then the body as the document — or `form`/`doc`, the two-column form; a module can
@@ -122,7 +146,10 @@ last), each field's `hidden`, and draw a computed field dimmed with the reason o
 pencil switches the same layout to edit mode in place, and Cancel/Save (or Cmd/Ctrl-S) end it. A list relation
 on the read is drawn as the target collection's own browse (its table or board, its columns, sort and paging),
 scoped to the related records; `display.record.options.relation_views.<field>` names another ui-view, or
-`false` for links. The header says the id's path, the title from `record_title` (a reference read as its
+`false` for links. A collection that declares `display.record.options.stages` gets its stage map above the
+properties on the read: the stages in a row, each checked when its gate's commands are done and the current one
+marked, the current stage's next command under it (a click copies its invocation), and each stage's fields,
+reviews and gate in a card on hover or focus. The header says the id's path, the title from `record_title` (a reference read as its
 target's title), a duplicate id, the last commit, and where the record is read from with its repo state
 (`ahead 1 · uncommitted`); a root that takes no write draws the record read-only and says why. Under it come the
 `display.record` subtitle, badge and `color_by` tint, and what extensions say about the record (`GET /notes`).
@@ -161,9 +188,8 @@ live (Re-check, Who has access). Every other kind is the ordinary browse and rec
 ui-view's record page has its **Module** dropdown, which moves the view's source. **Save as…** picks the new
 view's icon and module too.
 
-Not yet in `ui2`, all of which `ui` has: the other Lists — calendar, map, gantt, diagram, counts and carousel
-(a view naming one draws the table, and says so); page ui-views (so a module page that names one draws the
-module's Activity); the record's stage map (`display.record.options.stages`); module apps; registering an
+Not yet in `ui2`, all of which `ui` has: module apps (a page ui-view whose layout is a module's app draws a
+line saying so); registering an
 unregistered folder and the source picker on the data model and module lists; note marks on rows and cards;
 file uploads. A route to one of these shows a line saying `ui2`
 doesn't draw it yet, and the nav still lists it.
@@ -172,7 +198,7 @@ doesn't draw it yet, and the nav still lists it.
 
 ```bash
 npm run build -w modules/ui2       # dist/lib and dist/app
-npm test -w modules/ui2            # routes, fields, filters, grouping, the board's moves, card templates, the record page's rules, the nav's gestures and history, the pane report, the designer's writes, the settings pages, markdown, the API client
+npm test -w modules/ui2            # routes, fields, filters, grouping, the board's moves, card templates, the calendar, gantt, map and page views, the stage map, the record page's rules, the nav's gestures and history, the pane report, the designer's writes, the settings pages, markdown, the API client
 npm run typecheck -w modules/ui2   # tsc, strict, over src/
 npm run ui2                        # from the repo root: the app from source, over a sample workspace
 ```

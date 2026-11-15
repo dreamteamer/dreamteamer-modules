@@ -10,8 +10,8 @@
  * exists. The page does not wait for the slowest repo: the host answers with the repos that are in, names the
  * rest `pending`, and the page asks again with what it has (`settled`) until none is.
  *
- * ui draws a module's PAGE view here when one names the module (`lib/page-view.ts`); page-scope views are not
- * drawn by ui2 yet, so a module always lands on its Activity.
+ * A module's PAGE view (`lib/page-view.ts#modulePageView`) is drawn instead of this page when one names the module
+ * (SchemaTab); a page view's `activity` panel draws this one `embedded` — no heading, the panel has the title.
  */
 import { useEffect, useRef, useState } from "react"
 import { getActivity, notify } from "../api/client.ts"
@@ -32,10 +32,13 @@ export function ActivityPane({
   module,
   moduleTitle,
   source,
+  embedded = false,
 }: {
   module?: string
   moduleTitle?: string
-  source?: string
+  source?: string | undefined
+  /** Drawn inside a page view's panel, which carries the title: no heading, no page padding. */
+  embedded?: boolean
 }) {
   const [page, setPage] = useState(0)
   const [activity, setActivity] = useState<Activity | null>(null)
@@ -126,17 +129,19 @@ export function ActivityPane({
     ))
 
   return (
-    <section className="ui2-page ui2-activity">
-      <header className="ui2-page-head">
-        <div>
-          <h1>Activity</h1>
-          <p className="ui2-subtle">
-            {module
-              ? `Commits to ${moduleTitle ?? module}, newest first.`
-              : "Commits across every module, newest first."}
-          </p>
-        </div>
-      </header>
+    <section className={embedded ? "ui2-activity is-embedded" : "ui2-page ui2-activity"}>
+      {!embedded && (
+        <header className="ui2-page-head">
+          <div>
+            <h1>Activity</h1>
+            <p className="ui2-subtle">
+              {module
+                ? `Commits to ${moduleTitle ?? module}, newest first.`
+                : "Commits across every module, newest first."}
+            </p>
+          </div>
+        </header>
+      )}
       {pending.length > 0 && <p className="ui2-subtle">Still reading {pending.join(", ")}…</p>}
       {failed.length > 0 && <p className="ui2-error">Could not read {failed.join(", ")} — git took too long.</p>}
       {body}

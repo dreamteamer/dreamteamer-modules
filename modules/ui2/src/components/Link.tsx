@@ -5,7 +5,20 @@
 import type { MouseEvent, ReactNode } from "react"
 import { useApp } from "../app-context.tsx"
 
-export function Link({ to, children, className }: { to: string; children: ReactNode; className?: string }) {
+export function Link({
+  to,
+  children,
+  className,
+  title,
+  ...data
+}: {
+  to: string
+  children: ReactNode
+  className?: string
+  title?: string
+  /** `data-*` attributes, passed through (a driver or a test finds the link by them). */
+  [data: `data-${string}`]: string | undefined
+}) {
   const { navigate } = useApp()
   const onClick = (e: MouseEvent<HTMLAnchorElement>) => {
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return
@@ -13,7 +26,7 @@ export function Link({ to, children, className }: { to: string; children: ReactN
     navigate(to)
   }
   return (
-    <a href={`#${to}`} onClick={onClick} className={className}>
+    <a href={`#${to}`} onClick={onClick} className={className} title={title} {...data}>
       {children}
     </a>
   )

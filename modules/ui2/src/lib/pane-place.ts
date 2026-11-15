@@ -36,6 +36,7 @@ export function placeOf(page: Page): PaneView {
       // a record-scope ui-view's page is the view, as ui's `ui-view:<id>` route names it
       return page.viewId ? { uiView: page.viewId } : { collection: page.collection, id: page.id }
     case "view":
+    case "page-view": // a page view is a ui-view too, named the way ui names its route
       return { uiView: page.id }
     default:
       return { other: true }

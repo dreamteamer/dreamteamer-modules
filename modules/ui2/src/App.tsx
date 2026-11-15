@@ -20,6 +20,7 @@ import "./registry/register-defaults.ts"
 import { HomePage } from "./pages/HomePage.tsx"
 import { ListPage } from "./pages/ListPage.tsx"
 import { RecordPage } from "./pages/RecordPage.tsx"
+import { PageView } from "./pages/PageView.tsx"
 import { ViewPage } from "./pages/ViewPage.tsx"
 import { SchemaTab } from "./settings/SchemaTab.tsx"
 
@@ -177,6 +178,8 @@ function Page() {
       return <SchemaTab tail={page.tail} />
     case "view":
       return <ViewPage id={page.id} />
+    case "page-view":
+      return <PageView viewId={page.id} source={page.source} />
     case "unknown-collection":
       return <p className="ui2-page ui2-error">No collection {page.path} in this workspace.</p>
     case "unsupported":

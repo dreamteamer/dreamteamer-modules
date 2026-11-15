@@ -35,6 +35,7 @@ import { listSeed, scratchKey as scratchKeyFor } from "../lib/list-seed.ts"
 import { effectiveLimit } from "../lib/page-size.ts"
 import { createRoute, pathOf, queryOf, recordRoute, withQuery } from "../lib/route.ts"
 import { recordLabel } from "../lib/schema.ts"
+import { lists } from "../registry/index.ts"
 import { resolveView } from "../registry/resolve.ts"
 import {
   SOURCE_FIELD,
@@ -187,7 +188,9 @@ export function useBrowseState(collection: string, config: BrowseConfig = {}) {
   // ---- the query --------------------------------------------------------------------------------------
   const activeOptions = listOptions[layout] ?? {}
   const grouped = typeof activeOptions["group_by"] === "string" && !!activeOptions["group_by"]
-  const limit = effectiveLimit(activeOptions["page_size"], grouped)
+  // a layout may DECLARE a bigger default page (the diagram's 500: a picture of 25 records is a picture of nothing)
+  const declaredSize = lists.get(layout)?.options?.find(o => o.field === "page_size")?.default
+  const limit = effectiveLimit(activeOptions["page_size"] ?? declaredSize, grouped)
 
   /** The filter sent: the builder's, compiled — with an opaque stored filter anded underneath, the one case the
    *  builder never held it — and every reference compared in the engine's `collection/id` form. */

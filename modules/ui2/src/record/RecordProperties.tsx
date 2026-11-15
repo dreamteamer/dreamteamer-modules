@@ -12,6 +12,9 @@
  * paging, scoped to exactly the related records (`RelationField`, `lib/relation-view.ts`); the row then stacks
  * to full width. The plan is decided once per row, for both the component and the geometry.
  *
+ * On the read, a collection that declares `display.record.options.stages` gets its STAGE MAP above the rows
+ * (`StageMap.tsx`).
+ *
  * A generated MIRROR lists only the owners in its own repo; on a collection that reads another root the owner
  * collection is asked how many records point here, and the difference is said beside it.
  */
@@ -31,6 +34,7 @@ import { uiViews } from "../lib/ui-views.ts"
 import type { RecordLayoutProps } from "../registry/props.ts"
 import { RenderEdit, RenderView } from "../render/Render.tsx"
 import { RelationField } from "./RelationField.tsx"
+import { StageMap } from "./StageMap.tsx"
 import { useSections } from "./use-sections.ts"
 
 export function RecordProperties(props: RecordLayoutProps) {
@@ -169,6 +173,10 @@ export function RecordProperties(props: RecordLayoutProps) {
 
   return (
     <div className="ui2-props" data-layout="properties">
+      {/* the lifecycle its collection declares, on the read only — nothing at all for a collection with no stages */}
+      {readonly && !create && record && (
+        <StageMap collection={collection} record={record} fields={fields} options={options} />
+      )}
       {sections.map(s => (
         <section
           key={s.title}

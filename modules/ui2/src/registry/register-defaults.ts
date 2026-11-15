@@ -9,9 +9,10 @@
  * those would be wrong for nearly every such field) or by SHAPE in resolve.ts (`tags`, `list`, `nested`,
  * `markdown-body`, `relation-picker`, `select-dropdown`, `label`, `relation`).
  *
- * The Lists — a collection's browse arrangements — register here too: the built-in `table`, `cards` and `kanban`,
- * with the options every list shares (grouping, colour, page size) and each one's own. Calendar, map, gantt,
- * diagram, counts and carousel come in later steps; the browse says so for a view naming one.
+ * The Lists — a collection's browse arrangements — register here too, under ui's ids and option keys: `table`,
+ * `cards`, `kanban`, `calendar`, `gantt`, `carousel`, `counts`, `map` and `diagram`, with the options every list
+ * shares (grouping, colour, page size) and each one's own. A view naming any other id is drawn as a table, and the
+ * browse says so.
  *
  * The RECORD-SCOPED entries draw a whole record page (`RecordLayoutProps`): `properties` (the built-in, both an
  * Edit and a View, so the pencil flips it in place), `form` (an Edit) and `doc` (its read-only View). A
@@ -54,8 +55,14 @@ import { ViewSource } from "../views/ViewSource.tsx"
 import { ViewStageChecks } from "../views/ViewStageChecks.tsx"
 import { ViewTags } from "../views/ViewTags.tsx"
 import { ViewText } from "../views/ViewText.tsx"
+import { ListCalendar } from "../lists/ListCalendar.tsx"
 import { ListCards } from "../lists/ListCards.tsx"
+import { ListCarousel } from "../lists/ListCarousel.tsx"
+import { ListCounts } from "../lists/ListCounts.tsx"
+import { ListDiagram } from "../lists/ListDiagram.tsx"
+import { ListGantt } from "../lists/ListGantt.tsx"
 import { ListKanban } from "../lists/ListKanban.tsx"
+import { ListMap } from "../lists/ListMap.tsx"
 import { ListTable } from "../lists/ListTable.tsx"
 import { ALL, PAGE_SIZE_CHOICES } from "../lib/page-size.ts"
 import { DEFAULT_ROW_SIZE, ROW_SIZES, ROW_SIZE_LABELS } from "../lib/row-size.ts"
@@ -298,6 +305,392 @@ lists.register({
     ...groupRowsOptions(),
     cardTitleOption("the record title + id"),
     colorByOption("card"),
+    pageSizeOption(),
+  ],
+})
+
+// ── the other layouts (step 8): under ui's ids, with ui's options ────────────────────────────────────────────
+// A carousel per record over the images in the folder a `${env:…}` field points at — the host renders the template
+// and lists the folder (`GET /folder/…`); the layout only says WHICH field holds it.
+lists.register({
+  id: "carousel",
+  name: "Carousel",
+  component: ListCarousel,
+  options: [
+    {
+      field: "folder",
+      group: "card",
+      name: "Folder",
+      type: "string",
+      editor: "field-select",
+      editor_options: { types: ["string"] },
+      note: "the `${env:…}/…` folder template the images live in; defaults to screenshots_folder, else the first *_folder field",
+    },
+    {
+      field: "text",
+      group: "card",
+      name: "Text",
+      type: "string",
+      editor: "field-select",
+      editor_options: { types: ["string"] },
+      note: "shown under the title; defaults to description",
+    },
+  ],
+})
+
+lists.register({
+  id: "counts",
+  name: "Counts",
+  component: ListCounts,
+  summarizes: true,
+  options: groupRowsOptions(),
+})
+
+lists.register({
+  id: "calendar",
+  name: "Calendar",
+  component: ListCalendar,
+  options: [
+    // Same picker as the board's group_by, narrowed to the wire types a calendar can plot.
+    {
+      field: "start",
+      group: "span",
+      name: "Start",
+      type: "string",
+      editor: "field-select",
+      editor_options: { types: ["date", "datetime"] },
+      note: "defaults to the first date, then datetime field",
+    },
+  ],
+})
+
+lists.register({
+  id: "map",
+  name: "Map",
+  component: ListMap,
+  options: [
+    // `object` is in the type list because ListMap also accepts a single `{lat,lng}` object field.
+    {
+      field: "lat",
+      name: "Latitude",
+      type: "string",
+      editor: "field-select",
+      editor_options: { types: ["number", "integer", "string", "object"] },
+    },
+    {
+      field: "lng",
+      name: "Longitude",
+      type: "string",
+      editor: "field-select",
+      editor_options: { types: ["number", "integer", "string", "object"] },
+    },
+    // ON by default (operator 2026-08-11: the map "opens to show full globe"). A map that opens
+    // on the whole world when it knows where its markers are is asking the operator to do the
+    // zooming it could have done — so the interesting default is fit, and this switch exists for
+    // the case where a fixed view is the point.
+    {
+      field: "auto_fit",
+      name: "Fit to markers on open",
+      type: "boolean",
+      default: true,
+      note: "zoom to the plotted points; off keeps wherever the map was left",
+    },
+  ],
+})
+
+lists.register({
+  id: "diagram",
+  name: "Diagram",
+  component: ListDiagram,
+  fillsHeight: true,
+  // Every control below is CONTEXTUAL — `when` hides what cannot apply to the current choices, so
+  // the panel shows the four or five knobs that matter here instead of the twelve that exist
+  // (operator 2026-08-11: "controls should be enabled disabled where they are relevant").
+  options: [
+    {
+      field: "link_by",
+      group: "links",
+      name: "Link by",
+      type: "string",
+      editor: "select-dropdown",
+      editor_options: {
+        choices: [
+          { label: "References — typed relations", value: "references" },
+          { label: "Shared value — records carrying the same value", value: "shared" },
+          { label: "Values — each value becomes a node", value: "values" },
+          { label: "Schema — references inside collection descriptors", value: "schema" },
+        ],
+      },
+      default: "references",
+      note: "what makes an edge",
+    },
+    // TWO fields, not one with two `when` variants. A shared storage key meant flipping Link by
+    // carried the chosen REFERENCE fields over as if they were value fields, silently — and it
+    // forced OptionsForm to key rows by index to tolerate the duplicate.
+    {
+      field: "ref_fields",
+      group: "links",
+      name: "Link fields",
+      type: "string",
+      many: true,
+      editor: "field-multi-select",
+      editor_options: { roles: ["reference", "reference_many"] },
+      note: "which relations to draw — none ticked draws all of them",
+      when: v => v["link_by"] === "references",
+    },
+    {
+      field: "value_fields",
+      group: "links",
+      name: "Link fields",
+      type: "string",
+      many: true,
+      editor: "field-multi-select",
+      note: "which fields hold the shared values",
+      when: v => v["link_by"] === "shared" || v["link_by"] === "values",
+    },
+    {
+      field: "node",
+      group: "nodes",
+      name: "Node",
+      type: "string",
+      editor: "select-dropdown",
+      editor_options: {
+        choices: [
+          { label: "Dot — size by connections", value: "dot" },
+          { label: "Box — a titled card", value: "box" },
+          { label: "Table — a box with field rows", value: "table" },
+        ],
+      },
+      note: "how a node is drawn",
+    },
+    {
+      field: "detail",
+      group: "nodes",
+      name: "Rows",
+      type: "string",
+      editor: "select-dropdown",
+      editor_options: {
+        choices: [
+          { label: "Reference fields only", value: "refs" },
+          { label: "Every field", value: "all" },
+        ],
+      },
+      note: "a whole schema at every field does not fit a screen — reference-only usually does",
+      when: v => v["node"] === "table" && v["link_by"] === "schema",
+    },
+    {
+      field: "label_template",
+      group: "nodes",
+      name: "Label",
+      type: "string",
+      editor: "display-template",
+      note: "what a node reads. empty = the collection’s own title template",
+      when: v => v["link_by"] !== "schema",
+    },
+    {
+      field: "hide_leaves",
+      group: "nodes",
+      name: "Hide leaf targets",
+      type: "boolean",
+      // `=== true` in ListDiagram, so absent means OFF — declared so the toggle and the
+      // behaviour cannot drift apart, the same reason the gantt's two say `true`.
+      default: false,
+      editor: "boolean",
+      note: "drop referenced records that nothing else connects to",
+      when: v => v["link_by"] !== "schema",
+    },
+    {
+      field: "show_system",
+      group: "nodes",
+      name: "Engine collections",
+      type: "boolean",
+      // `=== true` in ListDiagram, so absent means OFF — declared for the same reason.
+      default: false,
+      editor: "boolean",
+      note: "include the engine’s own collections (skills, commands, ui-views…)",
+      when: v => v["link_by"] === "schema",
+    },
+    {
+      field: "show_isolated",
+      group: "nodes",
+      name: "Unconnected collections",
+      type: "boolean",
+      // `=== true` in ListDiagram, so absent means OFF — declared for the same reason.
+      default: false,
+      editor: "boolean",
+      note: "draw collections with no references either way (hidden by default)",
+      when: v => v["link_by"] === "schema",
+    },
+    {
+      field: "group_by",
+      group: "rows",
+      name: "Group by",
+      type: "string",
+      editor: "field-select",
+      note: "draw a container per distinct value",
+      when: v => v["link_by"] !== "schema",
+    },
+    {
+      field: "page_size",
+      name: "Records to draw",
+      type: "integer",
+      editor: "input-number",
+      default: 500,
+      note: "a picture needs a bigger page than a table — narrowing is still the filter’s job",
+    },
+  ],
+})
+
+lists.register({
+  id: "gantt",
+  name: "Gantt",
+  component: ListGantt,
+  fillsHeight: true,
+  options: [
+    // Blank IS automatic here (first date, then datetime) — the same fallback the calendar's
+    // `start` makes, and the reason this placeholder may say "Auto" while the two below
+    // may not (@dreamteamer/ui's option-placeholders test pins that distinction).
+    {
+      field: "start",
+      group: "span",
+      name: "Start",
+      type: "string",
+      editor: "field-select",
+      editor_options: { types: ["date", "datetime"], placeholder: "Auto — first date field" },
+      note: "the bar’s left edge. A record without one is listed in the undated tail, never dropped",
+    },
+    // NOT inferred. A second date field is as likely to be `reviewed_on` as an end, and inventing
+    // a duration nobody authored is worse than drawing a point.
+    {
+      field: "end",
+      group: "span",
+      name: "End",
+      type: "string",
+      editor: "field-select",
+      editor_options: { types: ["date", "datetime"], placeholder: "None — a point, not a bar" },
+      note: "the bar’s right edge. An end before its start is drawn as a marked point, never hidden",
+    },
+    // ⚠ DEFAULT TRUE, the same shape and the same argument as `start_collapsed` one axis over. A
+    // year-long plan spends most of its width on months in which nothing starts and nothing ends,
+    // and the shape of the year is the one thing that width hides. Off restores the uniform axis.
+    //
+    // No threshold option, deliberately: the budget is 120 wasted pixels at the chart's unfolded
+    // scale, which is a constant with a comment in `lib/gantt-axis.ts`. A dropdown here would be a
+    // second way to say what the data already says — the same reason the SCALE has no option.
+    {
+      field: "fold_gaps",
+      group: "span",
+      name: "Fold dead time",
+      type: "boolean",
+      // ⚠ DECLARED, because the component reads `!== false` — so with no `default` here the
+      // toggle rendered OFF while the behaviour was ON. Caught in a screenshot of the live panel: "Fold dead time" showed off over a chart that was visibly folded.
+      default: true,
+      editor: "boolean",
+      note: "default ON — a long run where nothing starts or ends becomes one narrow column a click opens",
+    },
+    // The text that rides in the timeline beside or inside each bar. Blank is NOT "no label" — it
+    // is the record's own title, because the 180px gutter truncates anything longer than about
+    // 24 characters and the chart next to it is mostly empty space. Naming a field here overrides
+    // what the bar says without touching what the gutter says; the two are different questions.
+    {
+      field: "bar_label",
+      group: "bars",
+      name: "Bar label",
+      type: "string",
+      editor: "field-select",
+      editor_options: { placeholder: "Auto — the record title" },
+      note: "text drawn in the timeline: inside the bar when it fits, beside it when it does not",
+    },
+    // The same option name, the same Edit and the same syntax the cards and the kanban use for
+    // their card body — one template idea, configured one way, wherever a layout draws text from
+    // a record. It WINS over `bar_label`, which stays because a one-field label needs no
+    // braces and every view that set it keeps working.
+    //
+    // ⚠ Rendered as PLAIN TEXT here, not markdown-with-Views like a card. A bar label is one line
+    // inside a 16px rounded rectangle that may be three pixels wide; a chip or an image in there
+    // is not a smaller card, it is a broken bar. Same syntax, same parser, different rendering,
+    // chosen by what the surface can hold — ListGantt's `barLabel` carries that argument.
+    {
+      field: "template",
+      group: "bars",
+      name: "Bar label template",
+      type: "string",
+      editor: "display-template",
+      editor_options: { placeholder: "Blank — the bar label field, else the record title" },
+      note: "e.g. `{{ name }} — {{ status }}`; plain text, one line. Wins over the field above",
+    },
+    {
+      field: "color_by",
+      group: "bars",
+      name: "Colour by",
+      type: "string",
+      editor: "field-select",
+      // `prefer`, not a filter — colouring by a plain string field is legal, it just takes its
+      // colours from the palette instead of from the enum's own.
+      editor_options: { prefer: "choices", placeholder: "Auto — the collection’s color_by, else one colour" },
+      note: "a value’s own enum colour when it has one, otherwise a stable palette slot",
+    },
+    // The band axis, shared with every other list. The gantt is the first caller to ask for the
+    // MULTI mode: a group field holding a list puts the record in one band per value.
+    ...groupRowsOptions(),
+    // What a BAND is called, when its value is a reference. Blank is not "no label": it is the
+    // referenced record rendered through its collection's `record_title` — what a relation CELL
+    // for it shows — and only when that is absent does the band fall back to the de-slugged last
+    // segment of the path. Setting this overrides both, for this view only. (`lib/group-label.ts`.)
+    {
+      field: "group_title",
+      group: "rows",
+      name: "Band title",
+      type: "string",
+      editor: "display-template",
+      editor_options: { placeholder: "Auto — the referenced record’s own display" },
+      note: "rendered against the record a band’s value points at, e.g. `{{ name }}`",
+      when: v => typeof v["group_by"] === "string" && !!v["group_by"],
+    },
+    // What a BAND shows beside its name. Blank is not "no picture": the referenced record is
+    // probed for `avatar`, then `icon`, then `image` — the three names a record uses for the same
+    // idea — and a resolved face WINS over a codicon the enum declared, because a glyph standing
+    // in for a person is exactly what the face replaces.
+    {
+      field: "group_icon",
+      group: "rows",
+      name: "Band icon",
+      type: "string",
+      // ui names an `editor: string` no registry has (it falls back with a warning); the plain input is meant
+      editor: "input",
+      editor_options: { placeholder: "Auto — the record’s avatar, icon or image" },
+      note: "a field on the REFERENCED record holding a picture or a codicon name",
+      when: v => typeof v["group_by"] === "string" && !!v["group_by"],
+    },
+    // What a band SAYS about itself, on the one line beside its name — rendered against the record
+    // the band points at, so a project's own rolled-up numbers ("12 activities · 41 decisions ·
+    // building") land there without the view computing anything. Blank falls back to the enum's
+    // own `description`, which is the same idea authored in the schema instead of in the view.
+    {
+      field: "group_summary",
+      group: "rows",
+      name: "Band summary",
+      type: "string",
+      editor: "display-template",
+      editor_options: { placeholder: "Blank — the choice’s own description, if it has one" },
+      note: "one line, rendered against the referenced record — e.g. `{{ status }} · {{ activities_count }} activities`",
+      when: v => typeof v["group_by"] === "string" && !!v["group_by"],
+    },
+    // ⚠ DEFAULT TRUE, and deliberately so. Expanded, a grouped chart of a few hundred records
+    // opens as a wall in which the shape of the year is the one thing you cannot see; collapsed,
+    // each lane is one row carrying its extent bar and its summary. Only applies when grouped.
+    {
+      field: "start_collapsed",
+      group: "rows",
+      name: "Start collapsed",
+      type: "boolean",
+      // ⚠ DECLARED, because the component reads `!== false` — so with no `default` here the
+      // toggle rendered OFF while the behaviour was ON. Same defect, same cause, one axis over.
+      default: true,
+      editor: "boolean",
+      note: "default ON — every lane opens shut, showing its extent bar and summary; a click opens one",
+      when: v => typeof v["group_by"] === "string" && !!v["group_by"],
+    },
     pageSizeOption(),
   ],
 })

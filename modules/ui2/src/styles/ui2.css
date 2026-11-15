@@ -3692,3 +3692,978 @@ input[type="checkbox"] {
   margin: 4px 0 0 22px;
   align-items: center;
 }
+
+/* ── a band's picture (a face on a gantt lane, a company's mark) ─────────────────────────────────────────── */
+.ui2-group-picture {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex: none;
+}
+
+/* ── calendar ────────────────────────────────────────────────────────────────────────────────────────── */
+.ui2-cal {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ui2-cal-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ui2-cal-month {
+  font-weight: 600;
+  margin-left: 6px;
+}
+.ui2-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--ui2-border);
+  border: 1px solid var(--ui2-border);
+  border-radius: var(--ui2-radius);
+  overflow: hidden;
+}
+.ui2-cal-grid.is-revalidating {
+  opacity: 0.7;
+}
+.ui2-cal-weekday {
+  background: var(--ui2-bg-subtle);
+  padding: 6px 8px;
+  font-size: var(--ui2-small);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ui2-fg-subtle);
+}
+.ui2-cal-cell {
+  background: var(--ui2-bg);
+  min-height: 96px;
+  padding: 6px;
+  min-width: 0;
+}
+.ui2-cal-cell.is-out {
+  background: var(--ui2-bg-subtle);
+  opacity: 0.6;
+}
+.ui2-cal-day {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  margin-bottom: 4px;
+}
+.ui2-cal-cell.is-today .ui2-cal-day {
+  background: var(--ui2-accent);
+  color: var(--ui2-accent-fg);
+}
+.ui2-cal-chip {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  font-size: var(--ui2-small);
+  color: var(--ui2-fg);
+  background: var(--ui2-bg-subtle);
+  border: 1px solid var(--ui2-border);
+  border-radius: 4px;
+  padding: 2px 6px;
+  margin-bottom: 3px;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ui2-cal-chip.is-tinted {
+  border-left: 3px solid var(--dt-tint);
+}
+.ui2-cal-chip:hover {
+  border-color: var(--ui2-accent);
+}
+.ui2-cal-more {
+  font-size: var(--ui2-small);
+  color: var(--ui2-fg-subtle);
+}
+
+/* ── counts ──────────────────────────────────────────────────────────────────────────────────────────── */
+.ui2-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ui2-counts-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 72px;
+  padding: 6px 10px;
+  border: 1px solid var(--ui2-border);
+  border-radius: 4px;
+  color: var(--ui2-fg);
+  text-decoration: none;
+}
+.ui2-counts-total {
+  background: var(--ui2-bg-subtle);
+}
+a.ui2-counts-item:hover {
+  border-color: var(--ui2-focus);
+  text-decoration: none;
+}
+.ui2-counts-item.is-unlinked {
+  cursor: default;
+}
+.ui2-counts-num {
+  font-size: calc(var(--ui2-text) + 6px);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+.ui2-counts-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--ui2-fg-subtle);
+  font-size: var(--ui2-small);
+  white-space: nowrap;
+}
+
+/* ── carousel ────────────────────────────────────────────────────────────────────────────────────────── */
+.ui2-carousel-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 8px 0;
+}
+.ui2-carousel-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  cursor: default;
+  outline: none;
+}
+.ui2-carousel-card:focus-visible {
+  box-shadow: 0 0 0 2px var(--ui2-focus);
+}
+.ui2-carousel-head {
+  cursor: pointer;
+}
+.ui2-carousel-text {
+  margin: 4px 0 0;
+  color: var(--ui2-fg-subtle);
+  line-height: 1.45;
+}
+.ui2-carousel-stage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 160px;
+  max-height: 60vh;
+  background: var(--ui2-bg-subtle);
+  border: 1px solid var(--ui2-border);
+  border-radius: var(--ui2-radius);
+  overflow: hidden;
+}
+.ui2-carousel-img {
+  display: block;
+  max-width: 100%;
+  max-height: 60vh;
+  object-fit: contain;
+}
+.ui2-carousel-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--vscode-button-secondaryBackground, var(--ui2-bg-hover));
+  color: var(--vscode-button-secondaryForeground, var(--ui2-fg));
+  cursor: pointer;
+  opacity: 0.85;
+}
+.ui2-carousel-nav:hover {
+  opacity: 1;
+}
+.ui2-carousel-nav.is-prev {
+  left: 8px;
+}
+.ui2-carousel-nav.is-next {
+  right: 8px;
+}
+.ui2-carousel-counter {
+  position: absolute;
+  bottom: 6px;
+  right: 10px;
+  font-size: var(--ui2-small);
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--vscode-badge-background, var(--ui2-accent));
+  color: var(--vscode-badge-foreground, var(--ui2-accent-fg));
+}
+.ui2-carousel-empty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 24px;
+  color: var(--ui2-fg-subtle);
+}
+.ui2-carousel-strip {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+.ui2-carousel-thumb {
+  flex: none;
+  width: 84px;
+  height: 52px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--ui2-bg-subtle);
+  cursor: pointer;
+}
+.ui2-carousel-thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.ui2-carousel-thumb.is-current {
+  border-color: var(--ui2-focus);
+}
+
+/* ── map ─────────────────────────────────────────────────────────────────────────────────────────────── */
+.ui2-map-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ui2-map {
+  height: 68vh;
+  border: 1px solid var(--ui2-border);
+  border-radius: var(--ui2-radius);
+}
+/* the circles' colour: Leaflet writes SVG attributes, and a class rule outranks an attribute */
+.ui2-map .ui2-map-marker {
+  stroke: var(--ui2-accent);
+  fill: var(--ui2-accent);
+}
+
+/* ── gantt ───────────────────────────────────────────────────────────────────────────────────────────── */
+/* fills the browse's height, so the horizontal scroll lives inside the chart. The axis (lib/gantt-axis.ts) writes
+   its grid template and offsets in the three `--dt-gantt-*` lengths, so they keep ui's names. */
+.ui2-gantt {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  gap: 10px;
+}
+.ui2-gantt-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+.ui2-gantt-scroll.is-revalidating {
+  opacity: 0.7;
+}
+.ui2-gantt-canvas {
+  position: relative;
+  width: max-content;
+  min-width: 100%;
+  --dt-gantt-gutter: 180px;
+  --dt-gantt-fold: 84px;
+}
+.ui2-gantt-canvas.is-day {
+  --dt-gantt-day: 30px;
+}
+.ui2-gantt-canvas.is-week {
+  --dt-gantt-day: 7px;
+}
+.ui2-gantt-canvas.is-month {
+  --dt-gantt-day: 2.4px;
+}
+.ui2-gantt-head,
+.ui2-gantt-row,
+.ui2-gantt-band-row {
+  display: flex;
+  align-items: stretch;
+}
+.ui2-gantt-head {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--ui2-bg);
+  box-shadow: inset 0 -1px 0 var(--ui2-border);
+}
+.ui2-gantt-gutter {
+  flex: 0 0 var(--dt-gantt-gutter);
+  width: var(--dt-gantt-gutter);
+  box-sizing: border-box;
+  position: sticky;
+  left: 0;
+  /* over the today marker and the fold strips, which scroll under it */
+  z-index: 2;
+  background: var(--ui2-bg);
+  padding: 4px 10px 4px 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ui2-gantt-head-gutter {
+  color: var(--ui2-fg-subtle);
+  font-size: var(--ui2-small);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+.ui2-gantt-track {
+  display: grid;
+  flex: none;
+  align-items: center;
+  min-height: 28px;
+}
+/* row 1 on both: the folds come after the ticks in the DOM, and auto-placement never walks back */
+.ui2-gantt-tick,
+.ui2-gantt-fold {
+  grid-row: 1;
+}
+.ui2-gantt-tick {
+  font-size: var(--ui2-small);
+  color: var(--ui2-fg-subtle);
+  padding: 4px 0;
+  border-left: 1px solid var(--ui2-border);
+  overflow: hidden;
+  white-space: nowrap;
+  text-align: center;
+}
+.ui2-gantt-row {
+  cursor: pointer;
+}
+.ui2-gantt-row:hover,
+.ui2-gantt-row:hover .ui2-gantt-gutter {
+  background: var(--ui2-bg-hover);
+}
+.ui2-gantt-bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 16px;
+  min-width: 3px;
+  border-radius: 3px;
+  background: var(--dt-gantt-bar, var(--ui2-accent));
+}
+.ui2-gantt-bar.is-point {
+  border-radius: 999px;
+}
+.ui2-gantt-bar.is-inverted {
+  background: transparent;
+  border: 1px dashed var(--ui2-danger);
+}
+.ui2-gantt-bar-label {
+  font-size: var(--ui2-small);
+  line-height: 1;
+  white-space: nowrap;
+  pointer-events: none;
+}
+/* inside: clipped by the bar; fixed light-on-fill, the fill being a chart colour in both themes */
+.ui2-gantt-bar-label.is-inside {
+  padding: 0 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--vscode-editor-background, #fff);
+  font-weight: 500;
+}
+.ui2-gantt-bar.is-inverted .ui2-gantt-bar-label.is-inside {
+  color: var(--ui2-danger);
+}
+/* beside: from the bar's START over the empty track, out of flow so it never stretches a column */
+.ui2-gantt-bar-label.is-beside {
+  position: absolute;
+  left: 0;
+  padding: 0 4px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--ui2-bg) 72%, transparent);
+  color: var(--ui2-fg-subtle);
+  max-width: 60ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ui2-gantt-row:hover .ui2-gantt-bar-label.is-beside {
+  color: var(--ui2-fg);
+}
+/* lanes: a rail on the sticky gutter (it stays put when the chart scrolls sideways), a rule between lanes.
+   ⚠ no overflow:hidden on a lane — it would kill the gutter's sticky. */
+.ui2-gantt-band.is-lane {
+  --ui2-lane-rail: var(--ui2-border);
+  padding-bottom: 6px;
+}
+.ui2-gantt-band.is-lane + .ui2-gantt-band.is-lane {
+  margin-top: 10px;
+  border-top: 1px solid var(--ui2-border);
+  padding-top: 6px;
+}
+.ui2-gantt-band.is-lane.is-collapsed {
+  padding-bottom: 0;
+}
+.ui2-gantt-band-row {
+  margin-bottom: 2px;
+}
+/* tall enough to hold the range label under the lane's bar, so the sticky gutter covers it when scrolled */
+.ui2-gantt-band-row .ui2-gantt-track,
+.ui2-gantt-band-row .ui2-gantt-gutter {
+  min-height: 36px;
+}
+.ui2-gantt-band-header {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding-right: 0;
+}
+.ui2-gantt-band.is-lane .ui2-gantt-band-header,
+.ui2-gantt-band.is-lane .ui2-gantt-row .ui2-gantt-gutter {
+  border-left: 2px solid var(--ui2-lane-rail);
+}
+.ui2-gantt-band.is-lane .ui2-gantt-row .ui2-gantt-gutter {
+  padding-left: 12px;
+}
+.ui2-gantt-band-bar {
+  position: relative;
+  height: 3px;
+  min-width: 2px;
+  border-radius: 999px;
+  background: var(--ui2-lane-rail, var(--ui2-border));
+}
+.ui2-gantt-band-bar::before,
+.ui2-gantt-band-bar::after {
+  content: "";
+  position: absolute;
+  top: -3px;
+  width: 2px;
+  height: 9px;
+  border-radius: 1px;
+  background: inherit;
+}
+.ui2-gantt-band-bar::before {
+  left: 0;
+}
+.ui2-gantt-band-bar::after {
+  right: 0;
+}
+.ui2-gantt-band-bar-label {
+  position: absolute;
+  left: 0;
+  top: 8px;
+  white-space: nowrap;
+  font-size: var(--ui2-small);
+  color: var(--ui2-fg-subtle);
+  pointer-events: none;
+}
+/* a fold: a button in the header (what you click) and an inert strip down the canvas (what you see) */
+.ui2-gantt-fold {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding: 4px 0;
+  border: 0;
+  border-left: 1px dashed var(--ui2-border);
+  border-right: 1px dashed var(--ui2-border);
+  background: color-mix(in srgb, var(--ui2-fg-subtle) 10%, transparent);
+  color: var(--ui2-fg-subtle);
+  font: inherit;
+  font-size: var(--ui2-small);
+  line-height: 1;
+  cursor: pointer;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.ui2-gantt-fold:hover {
+  color: var(--ui2-fg);
+  background: var(--ui2-bg-hover);
+}
+.ui2-gantt-fold-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ui2-gantt-fold.is-open .ui2-gantt-fold-label {
+  display: none;
+}
+.ui2-gantt-fold-strip {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: var(--dt-gantt-fold);
+  background: color-mix(in srgb, var(--ui2-fg-subtle) 7%, transparent);
+  border-left: 1px dashed var(--ui2-border);
+  border-right: 1px dashed var(--ui2-border);
+  pointer-events: none;
+  z-index: 0;
+}
+.ui2-gantt-fold-strip.is-open {
+  background: none;
+  border-right: 0;
+}
+.ui2-gantt-today {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  border-left: 1px solid var(--ui2-accent);
+  pointer-events: none;
+  z-index: 1;
+}
+.ui2-gantt-undated {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  padding-top: 6px;
+  border-top: 1px solid var(--ui2-border);
+  font-size: var(--ui2-small);
+}
+.ui2-gantt-chip {
+  display: inline-block;
+  width: auto;
+  max-width: 220px;
+  margin: 0;
+}
+
+/* ── diagram ─────────────────────────────────────────────────────────────────────────────────────────── */
+/* the canvas owns its panning, so it fills the browse's height; React Flow paints the page's own surface */
+.ui2-diagram {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 420px;
+}
+.ui2-diagram-flow {
+  flex: 1;
+  min-height: 0;
+}
+.ui2-diagram-flow.react-flow {
+  background: var(--ui2-bg);
+}
+.ui2-diagram-flow .react-flow__edge-path {
+  stroke: var(--ui2-fg-subtle);
+  stroke-width: 1.3;
+}
+.ui2-diagram-flow .react-flow__edge-text {
+  fill: var(--ui2-fg-subtle);
+  font-size: 9px;
+  font-family: var(--ui2-mono);
+}
+.ui2-diagram-flow .react-flow__edge-textbg {
+  fill: var(--ui2-bg);
+}
+.ui2-diagram-flow .react-flow__controls-button {
+  background: var(--ui2-bg);
+  border-bottom: 1px solid var(--ui2-border);
+  fill: var(--ui2-fg);
+  color: var(--ui2-fg);
+}
+.ui2-diagram-flow .react-flow__minimap {
+  background-color: var(--ui2-bg);
+  border: 1px solid var(--ui2-border);
+  border-radius: var(--ui2-radius);
+}
+/* React Flow's own node chrome off: each kind below draws itself */
+.ui2-diagram-flow .react-flow__node-dtentity,
+.ui2-diagram-flow .react-flow__node-dtdot,
+.ui2-diagram-flow .react-flow__node-dtgroup {
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  border-radius: 0;
+}
+/* a dot: the box IS the dot, the label out of flow beside it */
+.ui2-gnode {
+  position: relative;
+  transition: opacity 120ms ease;
+  cursor: pointer;
+}
+.ui2-gnode.is-dimmed {
+  opacity: 0.2;
+}
+.ui2-gnode-dot {
+  display: block;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 2px solid;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.25);
+}
+.ui2-gnode-label {
+  position: absolute;
+  left: calc(100% + 6px);
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 10.5px;
+  line-height: 1.3;
+  color: var(--ui2-fg);
+  white-space: nowrap;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow:
+    0 0 3px var(--ui2-bg),
+    0 0 3px var(--ui2-bg);
+}
+.ui2-gnode.is-ghost .ui2-gnode-label {
+  color: var(--ui2-fg-subtle);
+}
+.ui2-gnode-handle {
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  min-width: 0;
+  min-height: 0;
+  border: 0;
+  pointer-events: none;
+}
+/* an entity: a header band, one row per field; HEAD_H/ROW_H in ListDiagram.tsx track these */
+.ui2-entity {
+  min-width: 232px;
+  background: var(--ui2-bg);
+  border: 1px solid var(--ui2-border);
+  border-radius: 10px;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.12);
+  overflow: hidden;
+  transition: opacity 120ms ease;
+}
+.ui2-entity.is-dimmed {
+  opacity: 0.35;
+}
+.ui2-entity-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  color: #fff;
+  font-weight: 600;
+  font-size: 12px;
+}
+.ui2-entity-title {
+  flex: 1;
+  white-space: nowrap;
+}
+.ui2-entity-sys {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.75;
+  border: 1px solid rgb(255 255 255 / 0.5);
+  border-radius: 3px;
+  padding: 0 3px;
+}
+.ui2-entity-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  font-size: 11.5px;
+  border-top: 1px solid var(--ui2-border);
+  color: var(--ui2-fg);
+}
+.ui2-entity-row.is-id {
+  font-weight: 600;
+}
+.ui2-entity-row.is-ref .ui2-entity-name {
+  color: var(--ui2-link);
+}
+.ui2-entity-name {
+  flex: 1;
+  white-space: nowrap;
+}
+.ui2-entity-key {
+  color: var(--ui2-fg-subtle);
+}
+.ui2-entity-type {
+  font-family: var(--ui2-mono);
+  font-size: 10.5px;
+  color: var(--ui2-fg-subtle);
+  white-space: nowrap;
+}
+.ui2-diagram-flow .ui2-entity-handle {
+  width: 7px;
+  height: 7px;
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid var(--ui2-bg);
+  background: var(--ui2-fg-subtle);
+}
+/* a group: the tinted region behind its members, grabbed from the space between them */
+.ui2-diagram-group {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 8px 12px;
+  border: 1.5px solid var(--ui2-group-accent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--ui2-group-accent) 7%, transparent);
+  cursor: grab;
+}
+.ui2-diagram-group:active {
+  cursor: grabbing;
+}
+.ui2-diagram-group-grip {
+  color: var(--ui2-group-accent);
+  opacity: 0.7;
+}
+.ui2-diagram-group-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ui2-group-accent);
+}
+.ui2-diagram-group-resize {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  width: 14px;
+  height: 14px;
+  cursor: nwse-resize;
+  border-right: 2px solid var(--ui2-group-accent);
+  border-bottom: 2px solid var(--ui2-group-accent);
+  border-bottom-right-radius: 10px;
+  opacity: 0.6;
+}
+
+/* ── the stage map (record page, read) ─────────────────────────────────────────────────────────────────── */
+/* two lines at most (cr-vscode-015): the section is the size container and the card's containing block; the row
+   and its items are NOT positioned, so the row's clipping never clips the card */
+.ui2-stages {
+  position: relative;
+  container-type: inline-size;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--ui2-border);
+}
+.ui2-stages-list {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.ui2-stage {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 4px;
+}
+.ui2-stage + .ui2-stage::before {
+  content: "";
+  display: inline-block;
+  width: 12px;
+  height: 1px;
+  background: var(--ui2-border);
+}
+.ui2-stage-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px;
+  border: 0;
+  border-radius: var(--ui2-radius);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: default;
+}
+.ui2-stage-chip:hover,
+.ui2-stage-chip[aria-expanded="true"] {
+  background: var(--vscode-toolbar-hoverBackground, var(--ui2-bg-hover));
+}
+.ui2-stage-chip:focus-visible {
+  outline: 1px solid var(--ui2-focus);
+  outline-offset: 1px;
+}
+.ui2-stage-index {
+  font-variant-numeric: tabular-nums;
+}
+.ui2-stage-title {
+  text-transform: capitalize;
+}
+.ui2-stage[data-mark="passed"] .ui2-stage-icon {
+  color: var(--vscode-testing-iconPassed, var(--ui2-accent));
+}
+.ui2-stage[data-mark="current"] .ui2-stage-icon {
+  color: var(--ui2-accent);
+}
+.ui2-stage[data-mark="current"] .ui2-stage-title {
+  font-weight: 600;
+}
+.ui2-stage[data-mark="ahead"] .ui2-stage-chip,
+.ui2-stage[data-mark="skipped"] .ui2-stage-chip {
+  color: var(--ui2-fg-subtle);
+}
+.ui2-stages-next {
+  margin: 2px 0 0;
+  min-height: 1.4em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: var(--ui2-small);
+  color: var(--ui2-fg-subtle);
+}
+.ui2-stages-cmd {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ui2-accent);
+  font: inherit;
+  cursor: pointer;
+}
+.ui2-stages-cmd:hover {
+  text-decoration: underline;
+}
+.ui2-stage-card {
+  position: absolute;
+  top: 100%;
+  z-index: 20;
+  width: min(360px, 100%);
+  max-height: 60vh;
+  overflow: auto;
+  box-sizing: border-box;
+  padding: 8px;
+  white-space: normal;
+  border: 1px solid var(--vscode-editorHoverWidget-border, var(--ui2-border));
+  border-radius: var(--ui2-radius);
+  background: var(--vscode-editorHoverWidget-background, var(--ui2-bg));
+  color: var(--vscode-editorHoverWidget-foreground, inherit);
+  box-shadow: 0 2px 8px var(--vscode-widget-shadow, rgb(0 0 0 / 0.16));
+}
+.ui2-stage-head {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+.ui2-stage-card-title {
+  text-transform: capitalize;
+  font-weight: 600;
+}
+.ui2-stage-state,
+.ui2-stage-empty,
+.ui2-stage-verdict {
+  color: var(--ui2-fg-subtle);
+}
+.ui2-stage-state,
+.ui2-stage-verdict,
+.ui2-stage-binding {
+  font-size: var(--ui2-small);
+}
+.ui2-stage-body {
+  margin: 0;
+}
+.ui2-stage-key {
+  margin-top: 4px;
+  font-size: var(--ui2-small);
+  color: var(--ui2-fg-subtle);
+}
+.ui2-stage-value {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.ui2-stage-review,
+.ui2-stage-binding {
+  display: block;
+}
+.ui2-stage-verdict {
+  margin-left: 6px;
+}
+.ui2-stage-binding {
+  color: var(--ui2-fg-subtle);
+}
+.ui2-stage-binding[data-state="available"] {
+  color: var(--ui2-accent);
+}
+/* narrow: only the current stage keeps its title; narrower: indices only, no connectors */
+@container (max-width: 559px) {
+  .ui2-stage:not([data-current]) .ui2-stage-chip .ui2-stage-title {
+    display: none;
+  }
+}
+@container (max-width: 399px) {
+  .ui2-stage-chip .ui2-stage-title {
+    display: none;
+  }
+  .ui2-stage + .ui2-stage::before {
+    display: none;
+  }
+  .ui2-stages-list {
+    gap: 2px;
+  }
+  .ui2-stage-chip {
+    gap: 2px;
+    padding: 2px 1px;
+  }
+}
+
+/* ── a page view: panels in a grid ───────────────────────────────────────────────────────────────────── */
+.ui2-page-view {
+  overflow-y: auto;
+}
+.ui2-page-view-grid {
+  display: grid;
+  gap: 16px;
+  align-items: start;
+}
+.ui2-page-view-cell {
+  min-width: 0;
+}
+.ui2-panel {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--ui2-border);
+  border-radius: 4px;
+}
+.ui2-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ui2-panel-title {
+  font-weight: 600;
+  color: var(--ui2-fg);
+  text-decoration: none;
+}
+a.ui2-panel-title:hover {
+  color: var(--ui2-link);
+  text-decoration: underline;
+}
+.ui2-panel-refused {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ui2-warning);
+}
+.ui2-activity.is-embedded {
+  padding: 0;
+}

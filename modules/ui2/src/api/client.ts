@@ -97,6 +97,15 @@ export const listRecords = (collection: string, query: ListQuery = {}) =>
 export const getRecord = (collection: string, id: string) =>
   request("GET", `/collections/${encName(collection)}/records/${encId(id)}`) as Promise<RecordDoc>
 
+/** The images a record's folder-template field points at (the carousel): the folder as rendered for this machine,
+ *  its image files, or why nothing is listed — never an error for a missing folder. */
+export const getFolder = (collection: string, id: string, field: string) =>
+  request("GET", `/folder/${encName(collection)}/${encId(id)}?field=${encodeURIComponent(field)}`) as Promise<{
+    path?: string | null
+    files?: string[]
+    reason?: string | null
+  }>
+
 export const updateRecord = (collection: string, id: string, fields: Record<string, unknown>) =>
   request("PATCH", `/collections/${encName(collection)}/records/${encId(id)}`, fields) as Promise<{ id: string }>
 
