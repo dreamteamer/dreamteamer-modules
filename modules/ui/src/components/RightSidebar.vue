@@ -17,7 +17,7 @@
 	specific view. Expanded/collapsed state survives navigation (see the note on `open` there).
 -->
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onBeforeUnmount, watch } from 'vue';
 import { useSidebarStore } from '../composables/page-sidebar';
 import DtIcon from './DtIcon.vue';
 
@@ -25,26 +25,46 @@ const { sections, activeId, open, openSection, close } = useSidebarStore();
 
 const hasSections = computed(() => sections.value.length > 0);
 const active = computed(() => sections.value.find((section) => section.id === activeId.value) ?? null);
+
+/*
+ * SLIDE-OVER (cr-modules-022), under a host that draws the app's own nav (dt web) only: the rail stays in the row, and
+ * the open panel is laid OVER the sheet's right edge instead of taking a column, so opening it never changes the page's
+ * width (a table keeps its columns). It is still non-modal — no overlay, no focus trap — because the Commands tab reads
+ * the table's ticks while it is open. Escape closes it, unless a menu or a dialog is open and the Escape is theirs.
+ * Inside VS Code it is the inline column it always was.
+ */
+const overlay = (window as any).__DT_HOST__?.nav === 'app';
+function onKey(e: KeyboardEvent) {
+	if (e.key !== 'Escape' || e.defaultPrevented || !open.value) return;
+	if (document.querySelector('[role="dialog"], [role="menu"], [role="listbox"], .dt-nav-menu, .dt-pane-menu')) return;
+	close();
+}
+if (overlay) {
+	watch(open, (o) => (o ? window.addEventListener('keydown', onKey) : window.removeEventListener('keydown', onKey)), { immediate: true });
+	onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
+}
 </script>
 
 <template>
-	<aside v-if="hasSections" class="dt-rsb" :class="{ 'is-open': open }">
-		<!-- Collapsed: icon rail. Clicking an icon expands on that section. -->
-		<div v-if="!open" class="dt-rsb-rail">
+	<aside v-if="hasSections" class="dt-rsb" :class="{ 'is-open': open, 'dt-rsb--over': overlay }">
+		<!-- Collapsed: icon rail. Clicking an icon expands on that section. A slide-over keeps the rail beside it. -->
+		<div v-if="!open || overlay" class="dt-rsb-rail">
 			<button
 				v-for="section in sections"
 				:key="section.id"
 				type="button"
 				class="dt-rsb-rail-btn"
-				:title="`${section.title} — click to expand`"
-				@click="openSection(section.id)"
+				:class="{ 'is-active': overlay && open && section.id === activeId }"
+				:title="`${section.title} — click to ${overlay && open && section.id === activeId ? 'close' : 'expand'}`"
+				@click="overlay && open && section.id === activeId ? close() : openSection(section.id)"
 			>
 				<DtIcon :name="section.icon" />
 			</button>
 		</div>
 
 		<!-- Expanded: tabs + actions row + body. -->
-		<template v-else>
+		<Transition :name="overlay ? 'dt-rsb-slide' : 'dt-rsb-none'">
+		<div v-if="open" class="dt-rsb-panel" role="complementary" aria-label="Page panel">
 			<header class="dt-rsb-head">
 				<nav class="dt-rsb-tabs" role="tablist">
 					<button
@@ -71,7 +91,8 @@ const active = computed(() => sections.value.find((section) => section.id === ac
 			<div class="dt-rsb-body">
 				<component :is="active.component" v-if="active" v-bind="active.props ?? {}" />
 			</div>
-		</template>
+		</div>
+		</Transition>
 	</aside>
 </template>
 
@@ -117,6 +138,54 @@ const active = computed(() => sections.value.find((section) => section.id === ac
 .dt-rsb-rail-btn:hover {
 	background: var(--dt-bg-hover);
 	color: var(--dt-fg);
+}
+
+/* the expanded panel's own box: inline, it fills the 320px column */
+.dt-rsb-panel {
+	flex: 1 1 auto;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+}
+
+/* ---- the slide-over (browser host) ---------------------------------------------------------- */
+/* The aside stays a 36px rail on the canvas — no ground, no line — and the panel is fixed over the sheet's right edge,
+   below the shell's top inset, so the page under it keeps its width. */
+.dt-rsb--over,
+.dt-rsb--over.is-open {
+	width: 36px;
+	background: transparent;
+	border-left: 0;
+}
+.dt-rsb--over .dt-rsb-rail-btn:hover {
+	background: var(--dt-ink-3);
+}
+.dt-rsb--over .dt-rsb-rail-btn.is-active {
+	background: var(--dt-accent-tint);
+	color: var(--dt-accent);
+}
+.dt-rsb--over .dt-rsb-panel {
+	position: fixed;
+	z-index: 40;
+	top: var(--dt-space-2);
+	right: 36px;
+	bottom: 0;
+	width: min(380px, calc(100vw - 72px));
+	background: var(--dt-surface);
+	border-top-left-radius: var(--dt-radius-xl);
+	box-shadow: var(--dt-shadow-menu);
+	overflow: hidden;
+}
+.dt-rsb-slide-enter-active,
+.dt-rsb-slide-leave-active {
+	transition:
+		transform var(--dt-dur-med) var(--dt-ease),
+		opacity var(--dt-dur-med) var(--dt-ease);
+}
+.dt-rsb-slide-enter-from,
+.dt-rsb-slide-leave-to {
+	transform: translateX(16px);
+	opacity: 0;
 }
 
 /* header bar at the workbench's own pane-header height */
