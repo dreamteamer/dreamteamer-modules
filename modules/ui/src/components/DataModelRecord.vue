@@ -38,6 +38,6 @@ const name = computed(() => String(props.record?.['name'] ?? props.record?.['id'
 .dt-dm-empty {
 	padding: 16px 0;
 	color: var(--dt-fg-subtle);
-	font-size: 12px;
+	font-size: var(--dt-text-sm);
 }
 </style>

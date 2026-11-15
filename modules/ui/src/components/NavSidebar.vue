@@ -433,7 +433,7 @@ onUnmounted(() => { window.removeEventListener('message', onMessage); window.rem
 .dt-nav-tool:hover:not(:disabled), :deep(.dt-nav-tool:hover:not(:disabled)) { background: var(--dt-ink-3); color: var(--dt-fg); }
 .dt-nav-tool:disabled { opacity: 0.45; }
 .dt-nav-tool[aria-pressed='true'] { background: var(--dt-accent-subtle); color: var(--dt-accent); }
-.dt-nav-tool .codicon, :deep(.dt-nav-tool .codicon) { font-size: 16px; }
+.dt-nav-tool .codicon, :deep(.dt-nav-tool .codicon) { font-size: var(--dt-icon); }
 /* the lock is a badge on the tree: bottom-right, cut out of the button's ground so it reads at 16 px */
 .dt-nav-lock .dt-nav-lock__badge { position: absolute; right: 1px; bottom: 1px; font-size: var(--dt-text-2xs); line-height: 10px; border-radius: var(--dt-radius-xs); background: var(--dt-canvas); }
 .dt-nav-lock[aria-pressed='true'] .dt-nav-lock__badge { background: var(--dt-accent-subtle); }

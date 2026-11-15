@@ -253,8 +253,8 @@ watch(query, () => { active.value = visible.value.length ? 0 : -1; });
 .dt-dd__control:disabled { cursor: default; opacity: 0.6; }
 .dt-dd__label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dt-dd__control.is-placeholder .dt-dd__label { opacity: 0.6; }
-.dt-dd__hint { font-size: 11px; opacity: 0.55; flex: none; }
-.dt-dd__caret { font-size: 16px; opacity: 0.7; flex: none; }
+.dt-dd__hint { font-size: var(--dt-label); opacity: 0.55; flex: none; }
+.dt-dd__caret { font-size: var(--dt-icon); opacity: 0.7; flex: none; }
 
 /* fixed, not absolute — see the header comment */
 .dt-dd__panel {
@@ -273,7 +273,7 @@ watch(query, () => { active.value = visible.value.length ? 0 : -1; });
 
 .dt-dd__option {
 	display: flex; align-items: baseline; gap: 8px; width: 100%;
-	background: none; border: 0; padding: 5px 8px; border-radius: 4px;
+	background: none; border: 0; padding: 5px 8px; border-radius: var(--dt-radius-sm);
 	text-align: left; cursor: pointer; color: inherit; font: inherit;
 }
 /* `is-active` is KEYBOARD position, `is-selected` is the committed value — they are different
@@ -284,7 +284,7 @@ watch(query, () => { active.value = visible.value.length ? 0 : -1; });
 .dt-dd__option.is-selected.is-active { background: var(--vscode-list-activeSelectionBackground, var(--dt-bg-active)); color: var(--vscode-list-activeSelectionForeground, var(--dt-fg)); }
 .dt-dd__option-icon { flex: 0 0 auto; }
 .dt-dd__option-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dt-dd__option-hint { margin-left: auto; padding-left: 8px; font-size: 11px; opacity: 0.55; flex: none; }
+.dt-dd__option-hint { margin-left: auto; padding-left: 8px; font-size: var(--dt-label); opacity: 0.55; flex: none; }
 
-.dt-dd__empty { padding: 8px; opacity: 0.7; font-size: 12px; }
+.dt-dd__empty { padding: 8px; opacity: 0.7; font-size: var(--dt-text-sm); }
 </style>

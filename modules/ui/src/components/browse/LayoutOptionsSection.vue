@@ -525,7 +525,7 @@ const addableChoices = computed(() => addableFields.value.map((f) => ({ text: la
 	gap: 4px;
 	height: 24px;
 	padding: 0 2px 0 0;
-	border-radius: 3px;
+	border-radius: var(--dt-radius-xs);
 	font-size: var(--dt-text);
 	color: var(--dt-fg);
 	cursor: grab;
@@ -573,7 +573,7 @@ const addableChoices = computed(() => addableFields.value.map((f) => ({ text: la
 	width: 20px;
 	height: 20px;
 	border: none;
-	border-radius: 3px;
+	border-radius: var(--dt-radius-xs);
 	background: transparent;
 	color: var(--dt-fg-subtle);
 	cursor: pointer;

@@ -99,6 +99,8 @@
 	--dt-hairline: var(--dt-border);
 	/* A light accent tint: the nav's hover, a pressed toggle's ground. */
 	--dt-accent-tint: var(--dt-bg-hover);
+	/* Text and marks drawn ON the accent (a primary button, a selected chip, a count badge) — the old literal white. */
+	--dt-on-accent: #ffffff;
 
 	/* Type: the held scale. --dt-text and --dt-label above stay the two everyday sizes. */
 	--dt-text-2xs: 10px;

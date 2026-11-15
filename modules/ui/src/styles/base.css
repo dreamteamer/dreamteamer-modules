@@ -91,7 +91,7 @@ body {
 
 *::-webkit-scrollbar-thumb {
 	background: var(--dt-border-strong);
-	border-radius: 999px;
+	border-radius: var(--dt-radius-pill);
 }
 
 /* ---------- Page body layout ---------- */
@@ -207,7 +207,7 @@ body {
 	border: none;
 	border-radius: var(--dt-radius);
 	background: var(--dt-accent);
-	color: #ffffff;
+	color: var(--dt-on-accent);
 	font-family: var(--dt-font);
 	font-size: var(--dt-text);
 	font-weight: 400;
@@ -244,7 +244,7 @@ body {
 
 .dt-btn--danger {
 	background: var(--dt-danger);
-	color: #ffffff;
+	color: var(--dt-on-accent);
 }
 
 .dt-btn--danger:hover {
@@ -345,7 +345,7 @@ body {
 	height: 16px;
 	margin: 0;
 	border: 1px solid var(--dt-border-strong);
-	border-radius: 4px;
+	border-radius: var(--dt-radius-sm);
 	background: var(--dt-bg);
 	accent-color: var(--dt-accent);
 	cursor: pointer;
@@ -370,7 +370,7 @@ body {
 	top: 1px;
 	width: 5px;
 	height: 9px;
-	border: solid #ffffff;
+	border: solid var(--dt-on-accent);
 	border-width: 0 2px 2px 0;
 	transform: rotate(45deg);
 }
@@ -388,7 +388,7 @@ body {
 	height: 20px;
 	padding: 0 8px;
 	border: 1px solid var(--dt-border);
-	border-radius: 999px;
+	border-radius: var(--dt-radius-pill);
 	background: var(--dt-bg-subtle);
 	color: var(--dt-fg);
 	font-size: var(--dt-text);
@@ -580,7 +580,7 @@ body {
 
 /* ---------- Typography helpers ---------- */
 .dt-page-title {
-	font-size: 20px;
+	font-size: var(--dt-text-xl);
 	font-weight: 600;
 }
 

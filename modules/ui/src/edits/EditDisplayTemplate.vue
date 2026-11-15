@@ -179,7 +179,7 @@ function insert(name: string): void {
 .dt-tpl-token {
 	padding: 1px 8px;
 	border: 1px solid var(--dt-border);
-	border-radius: 999px;
+	border-radius: var(--dt-radius-pill);
 	background: var(--dt-bg-subtle);
 	color: var(--dt-fg-subtle);
 	font-size: var(--dt-label);

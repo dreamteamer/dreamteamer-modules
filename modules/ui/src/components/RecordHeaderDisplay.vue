@@ -104,7 +104,7 @@ function chipStyle(chip: { color?: string; background?: string }): Record<string
 	gap: 4px;
 	height: 20px;
 	padding: 0 8px;
-	border-radius: 999px;
+	border-radius: var(--dt-radius-pill);
 	border: 1px solid var(--dt-border);
 	font-size: var(--dt-label);
 	white-space: nowrap;

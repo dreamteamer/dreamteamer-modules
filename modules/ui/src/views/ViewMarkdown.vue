@@ -53,7 +53,7 @@ export default defineComponent({
 <style>
 .dt-md {
 	max-width: 720px;
-	font-size: 14px;
+	font-size: var(--dt-text-md);
 	line-height: 1.65;
 	color: var(--dt-fg);
 }
@@ -64,9 +64,9 @@ export default defineComponent({
 	color: var(--dt-fg);
 	white-space: nowrap;
 }
-.dt-md h1 { font-size: 20px; font-weight: 700; margin: 14px 0 6px; }
-.dt-md h2 { font-size: 16px; font-weight: 700; margin: 14px 0 4px; }
-.dt-md h3 { font-size: 14px; font-weight: 700; margin: 12px 0 3px; }
+.dt-md h1 { font-size: var(--dt-text-xl); font-weight: 700; margin: 14px 0 6px; }
+.dt-md h2 { font-size: var(--dt-text-lg); font-weight: 700; margin: 14px 0 4px; }
+.dt-md h3 { font-size: var(--dt-text-md); font-weight: 700; margin: 12px 0 3px; }
 .dt-md h4 { font-size: 13px; font-weight: 700; margin: 10px 0 2px; }
 .dt-md > :first-child { margin-top: 0; }
 .dt-md p { margin: 6px 0; }
@@ -82,10 +82,10 @@ export default defineComponent({
 .dt-md li.dt-md-task input { margin-inline-end: 6px; vertical-align: -2px; }
 .dt-md-code {
 	background: var(--dt-bg-subtle);
-	border-radius: 4px;
+	border-radius: var(--dt-radius-sm);
 	padding: 1px 5px;
 	font-family: var(--dt-font-mono);
-	font-size: 12px;
+	font-size: var(--dt-text-sm);
 }
 .dt-md-link { color: var(--dt-accent); }
 .dt-md-pre {
@@ -94,7 +94,7 @@ export default defineComponent({
 	padding: 10px 12px;
 	margin: 8px 0;
 	font-family: var(--dt-font-mono);
-	font-size: 12px;
+	font-size: var(--dt-text-sm);
 	overflow-x: auto;
 }
 .dt-md-quote {
@@ -108,7 +108,7 @@ export default defineComponent({
 .dt-md th {
 	border-bottom: 1px solid var(--dt-border);
 	padding: 5px 9px;
-	font-size: 11px;
+	font-size: var(--dt-label);
 	letter-spacing: 0.5px;
 	text-transform: uppercase;
 	color: var(--dt-fg-subtle);

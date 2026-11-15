@@ -38,7 +38,7 @@ function onUpdate(checked: boolean): void {
 	width: var(--_w);
 	height: var(--_h);
 	padding: var(--_pad);
-	border-radius: 999px;
+	border-radius: var(--dt-radius-pill);
 	background: var(--dt-border-strong);
 	border: none;
 	cursor: pointer;

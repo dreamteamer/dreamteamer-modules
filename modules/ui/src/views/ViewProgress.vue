@@ -47,7 +47,7 @@ const pct = computed(() => {
 	position: relative;
 	width: 72px;
 	height: 6px;
-	border-radius: 999px;
+	border-radius: var(--dt-radius-pill);
 	background: var(--dt-border);
 	overflow: hidden;
 }
@@ -55,7 +55,7 @@ const pct = computed(() => {
 	position: absolute;
 	inset: 0 auto 0 0;
 	height: 100%;
-	border-radius: 999px;
+	border-radius: var(--dt-radius-pill);
 	background: var(--dt-accent);
 }
 .dt-display-progress-label {

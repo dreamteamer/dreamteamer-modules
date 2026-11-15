@@ -75,9 +75,9 @@ const fields = computed(() => props.data.fields ?? []);
 	align-items: center;
 	gap: 6px;
 	padding: 7px 10px;
-	color: #fff;
+	color: var(--dt-on-accent);
 	font-weight: 600;
-	font-size: 12px;
+	font-size: var(--dt-text-sm);
 	letter-spacing: 0.01em;
 }
 .dt-entity__icon {
@@ -94,7 +94,7 @@ const fields = computed(() => props.data.fields ?? []);
 	letter-spacing: 0.06em;
 	opacity: 0.75;
 	border: 1px solid rgba(255, 255, 255, 0.5);
-	border-radius: 3px;
+	border-radius: var(--dt-radius-xs);
 	padding: 0 3px;
 }
 

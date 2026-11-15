@@ -245,7 +245,7 @@ function select(kind: string): void {
 	gap: 6px;
 	margin: 0 0 6px;
 	padding: 4px 4px 4px 8px;
-	border-radius: 3px;
+	border-radius: var(--dt-radius-xs);
 	background: var(--dt-accent-subtle);
 	color: var(--dt-fg);
 	font-size: var(--dt-text);
@@ -265,7 +265,7 @@ function select(kind: string): void {
 	width: 100%;
 	padding: 5px 8px;
 	border: none;
-	border-radius: 3px;
+	border-radius: var(--dt-radius-xs);
 	background: none;
 	color: var(--dt-fg);
 	font-size: var(--dt-text);

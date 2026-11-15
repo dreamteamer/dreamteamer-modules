@@ -53,7 +53,7 @@ watch(() => [props.collection, props.id], load, { immediate: true });
 <style scoped>
 .dt-sessions-from {
 	margin: 2px 0 8px;
-	font-size: 12px;
+	font-size: var(--dt-text-sm);
 	color: var(--vscode-descriptionForeground, var(--dt-fg-subtle));
 }
 .dt-next-notes {
@@ -61,7 +61,7 @@ watch(() => [props.collection, props.id], load, { immediate: true });
 	flex-direction: column;
 	gap: 2px;
 	padding: 4px 24px 6px;
-	font-size: 12px;
+	font-size: var(--dt-text-sm);
 }
 .dt-next-notes__line {
 	display: flex;

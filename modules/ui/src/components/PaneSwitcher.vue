@@ -127,7 +127,7 @@ onUnmounted(() => window.removeEventListener('click', away));
 .dt-pane-switch { display: inline-flex; align-items: center; gap: 2px; flex: 0 1 auto; min-width: 30px; max-width: 100%; height: 24px; padding: 0 4px; border: 0; border-radius: var(--dt-radius); background: transparent; color: var(--dt-fg); font: inherit; font-weight: 600; cursor: default; }
 .dt-pane-switch:hover, .dt-pane-switch[aria-expanded='true'] { background: var(--dt-bg-hover); }
 .dt-pane-switch__name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dt-pane-switch__chevron { flex: none; font-size: 12px; color: var(--dt-fg-subtle); }
+.dt-pane-switch__chevron { flex: none; font-size: var(--dt-text-sm); color: var(--dt-fg-subtle); }
 </style>
 
 <style>

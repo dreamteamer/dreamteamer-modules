@@ -506,7 +506,7 @@ async function onDrop(column: Column): Promise<void> {
 .dt-kanban-core-lane-count {
 	margin-left: auto;
 	padding: 0 8px;
-	border-radius: 999px;
+	border-radius: var(--dt-radius-pill);
 	border: 1px solid var(--dt-border-strong);
 	background: var(--dt-bg);
 	font-size: var(--dt-label);
@@ -541,7 +541,7 @@ async function onDrop(column: Column): Promise<void> {
 /* `flex: 0 0 auto` — the header never shrinks and never scrolls away. */
 .dt-kanban-core-header { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; padding: 2px 0 10px 4px; font-size: var(--dt-label); font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--dt-fg-subtle); }
 .dt-kanban-core-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dt-kanban-core-count { margin-left: auto; padding: 0 8px; border-radius: 999px; border: 1px solid var(--dt-border-strong); background: var(--dt-bg); font-size: var(--dt-label); font-weight: 600; }
+.dt-kanban-core-count { margin-left: auto; padding: 0 8px; border-radius: var(--dt-radius-pill); border: 1px solid var(--dt-border-strong); background: var(--dt-bg); font-size: var(--dt-label); font-weight: 600; }
 /* Always present (it is an affordance, not an easter egg), but quiet: a ghost icon button that
    comes up to full strength on column hover so it never competes with the page header's own
    accent-filled create action. */

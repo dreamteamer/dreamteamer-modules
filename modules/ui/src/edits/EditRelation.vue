@@ -341,7 +341,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown));
 }
 .dt-relation-item.selected {
 	background: var(--dt-accent);
-	color: #ffffff;
+	color: var(--dt-on-accent);
 }
 .dt-relation-empty {
 	padding: 8px 10px;

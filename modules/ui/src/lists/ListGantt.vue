@@ -789,14 +789,14 @@ function toggleBand(value: string): void {
 .dt-gantt-bar {
 	position: relative;
 	height: 16px;
-	border-radius: 3px;
+	border-radius: var(--dt-radius-xs);
 	background: var(--dt-gantt-bar, var(--dt-accent));
 	min-width: 3px;
 	display: flex;
 	align-items: center;
 }
 .dt-gantt-bar--point {
-	border-radius: 999px;
+	border-radius: var(--dt-radius-pill);
 }
 /* THE LABEL IN THE TIMELINE. Two placements, one element — see the script for why a point-sized bar
    must be able to speak. */
@@ -896,7 +896,7 @@ function toggleBand(value: string): void {
 .dt-gantt-band-bar {
 	position: relative;
 	height: 3px;
-	border-radius: 999px;
+	border-radius: var(--dt-radius-pill);
 	background: var(--dt-lane-rail, var(--dt-border-strong));
 	min-width: 2px;
 }
@@ -1033,7 +1033,7 @@ function toggleBand(value: string): void {
 .dt-gantt-chip {
 	background: var(--dt-bg-subtle);
 	border: 1px solid var(--dt-border);
-	border-radius: 4px;
+	border-radius: var(--dt-radius-sm);
 	padding: 2px 6px;
 	font-size: var(--dt-label);
 	cursor: pointer;

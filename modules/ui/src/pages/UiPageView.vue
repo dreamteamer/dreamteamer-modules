@@ -169,7 +169,7 @@ function browseOf(child: UiViewRecord) {
 	min-width: 0;
 	padding: 12px;
 	border: 1px solid var(--dt-border);
-	border-radius: 4px;
+	border-radius: var(--dt-radius-sm);
 	display: flex;
 	flex-direction: column;
 	gap: 8px;

@@ -467,7 +467,7 @@ function toggleBand(value: string): void {
 .dt-bundle-chip {
 	flex-shrink: 0;
 	padding: 0 6px;
-	border-radius: 999px;
+	border-radius: var(--dt-radius-pill);
 	border: 1px solid color-mix(in srgb, var(--dt-accent) 30%, transparent);
 	background: color-mix(in srgb, var(--dt-accent) 10%, transparent);
 	color: var(--dt-accent);

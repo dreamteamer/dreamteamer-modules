@@ -99,7 +99,7 @@ const loading = computed(() => props.state.items.loading.value && !props.state.i
 	min-width: 72px;
 	padding: 6px 10px;
 	border: 1px solid var(--dt-border);
-	border-radius: 4px;
+	border-radius: var(--dt-radius-sm);
 	color: var(--dt-fg);
 	text-decoration: none;
 }

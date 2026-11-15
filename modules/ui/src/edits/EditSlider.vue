@@ -62,7 +62,7 @@ function onInput(event: Event): void {
 	min-width: 36px;
 	height: 24px;
 	padding: 0 8px;
-	border-radius: 999px;
+	border-radius: var(--dt-radius-pill);
 	background: var(--dt-accent-subtle);
 	color: var(--dt-accent);
 	font-size: var(--dt-text);

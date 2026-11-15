@@ -162,7 +162,7 @@ watch(open, (isOpen) => {
 	width: 18px;
 	height: 18px;
 	border: none;
-	border-radius: 3px;
+	border-radius: var(--dt-radius-xs);
 	background: transparent;
 	cursor: pointer;
 	padding: 0;
@@ -215,7 +215,7 @@ watch(open, (isOpen) => {
 	justify-content: center;
 	aspect-ratio: 1;
 	border: none;
-	border-radius: 3px;
+	border-radius: var(--dt-radius-xs);
 	background: transparent;
 	color: var(--dt-fg-subtle);
 	cursor: pointer;

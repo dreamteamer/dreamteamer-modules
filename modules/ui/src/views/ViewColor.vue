@@ -37,7 +37,7 @@ const hex = computed(() => (typeof props.value === 'string' && HEX_RE.test(props
 	display: inline-block;
 	width: 14px;
 	height: 14px;
-	border-radius: 4px;
+	border-radius: var(--dt-radius-sm);
 	border: 1px solid var(--dt-border);
 }
 .dt-display-color-empty {
