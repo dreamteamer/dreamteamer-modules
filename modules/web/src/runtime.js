@@ -203,6 +203,18 @@ export function clearStale(file, stale) {
 }
 
 /**
+ * Create `file` holding `pid`, failing with EEXIST when it exists — and never visible empty. An exclusive create
+ * (flag 'wx') opens the file before it writes the pid, and a rival that reads it in between gets '' — pid 0, "not
+ * alive" — and takes the lock over: two servers on two ports, seen on Linux CI (cr-modules-017, four starts at once).
+ * So the pid is written to a temp file of this claimant's first, and the lock appears by link(2), whole or not at all.
+ */
+function createHolding(file, pid) {
+	const tmp = `${file}.${pid}.${crypto.randomBytes(6).toString('hex')}.tmp`;
+	fs.writeFileSync(tmp, String(pid), { flag: 'wx', mode: 0o600 });
+	try { fs.linkSync(tmp, file); } finally { fs.rmSync(tmp, { force: true }); }
+}
+
+/**
  * Claim the right to serve this workspace: a lock file created exclusively beside the state file, holding
  * this pid for the server's whole life. Two starts at the same moment cannot both pass the "already
  * running" check — only one creates the lock. A lock whose process is gone is taken over by one starter
@@ -215,7 +227,7 @@ export function claimStart(file, pid = process.pid) {
 	privateDir(path.dirname(lock), 'DT_WEB_RUNTIME_DIR');
 	for (let attempt = 0; attempt < 2; attempt++) {
 		try {
-			writingInto(path.dirname(lock), 'DT_WEB_RUNTIME_DIR', () => fs.writeFileSync(lock, String(pid), { flag: 'wx', mode: 0o600 }));
+			writingInto(path.dirname(lock), 'DT_WEB_RUNTIME_DIR', () => createHolding(lock, pid));
 			let released = false;
 			return { ok: true, release: () => { if (released) return; released = true; if (holder(lock) === pid) fs.rmSync(lock, { force: true }); } };
 		} catch (e) {
@@ -224,7 +236,7 @@ export function claimStart(file, pid = process.pid) {
 			if (held !== null && alive(held)) return { ok: false, pid: held };
 			const taker = holder(take);
 			if (taker !== null && !alive(taker)) fs.rmSync(take, { force: true });
-			try { fs.writeFileSync(take, String(pid), { flag: 'wx', mode: 0o600 }); } catch { return { ok: false, pid: held }; }
+			try { createHolding(take, pid); } catch { return { ok: false, pid: held }; }
 			try { if (holder(lock) === held) fs.rmSync(lock, { force: true }); } finally { fs.rmSync(take, { force: true }); }
 		}
 	}
