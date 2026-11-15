@@ -302,3 +302,41 @@ describe('a bad request never stops the server', () => {
 		assert.equal((await call(files('/v/DT_WEB_TEST_MEDIA/locked.png'))).status, 200);
 	});
 });
+
+describe('a watcher error never stops the server', () => {
+	// On Linux a recursive fs.watch is Node's own folder walk; a folder a compile creates and removes again
+	// (.dreamteamer/skills) fails it with ENOENT, emitted as the watcher's 'error' — which, unheard, is uncaught and ends
+	// the process. Seen on ubuntu CI (cr-modules-017 h3, node 22). Here the error is emitted by hand, on any platform.
+	test('an ENOENT from the .dreamteamer watch reaches the page as a schema invalidation, and the server still serves', async () => {
+		const made = [];
+		const real = fs.watch;
+		fs.watch = (...args) => { const w = real(...args); made.push({ dir: String(args[0]), w }); return w; };
+		let w2;
+		const state = fs.mkdtempSync(path.join(path.dirname(f.state), 'dt-web-state-watch-'));
+		try { w2 = await startWeb({ root: f.root, appDir: f.app, idleMinutes: 0, stateDir: state }); } finally { fs.watch = real; }
+		const ctrl = new AbortController();
+		try {
+			const runtime = made.find((m) => m.dir === path.join(f.root, '.dreamteamer'));
+			assert.ok(runtime, `no watch on .dreamteamer: ${made.map((m) => m.dir)}`);
+			const c2 = await pair(w2);
+			const res = await fetch(`${w2.url}/api/events`, { headers: { cookie: c2, ...sameOrigin() }, signal: ctrl.signal });
+			assert.equal(res.status, 200);
+			const reader = res.body.getReader();
+			const gone = Object.assign(new Error(`ENOENT: no such file or directory, scandir '${path.join(f.root, '.dreamteamer', 'skills')}'`), { code: 'ENOENT', syscall: 'scandir', path: path.join(f.root, '.dreamteamer', 'skills') });
+			runtime.w.emit('error', gone);
+			let got = '';
+			const t0 = Date.now();
+			while (!got.includes('dt:invalidate') && Date.now() - t0 < 3000) {
+				const { value, done } = await Promise.race([reader.read(), new Promise((r) => setTimeout(() => r({ value: undefined }), 3000))]);
+				if (done) break;
+				if (value) got += Buffer.from(value).toString();
+			}
+			assert.match(got, /"type":"dt:invalidate","scope":"schema"/);
+			assert.equal((await call(`${w2.url}/api/info`, { headers: { cookie: c2, ...sameOrigin() } })).status, 200, 'the server died');
+		} finally {
+			ctrl.abort();
+			await w2.close();
+			fs.rmSync(state, { recursive: true, force: true });
+		}
+	});
+});

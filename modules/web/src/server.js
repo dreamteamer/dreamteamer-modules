@@ -521,13 +521,18 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 60, owner
 		timer = setTimeout(() => { const s = pending; pending = null; broadcast(invalidateMessage(s)); }, DEBOUNCE_MS);
 	};
 	const watchers = [];
+	// A watcher reports trouble as an 'error' event, and an EventEmitter with no 'error' listener throws it — out of the
+	// server, uncaught. On Linux a recursive watch is Node's own walk (readdir of each new folder), so a folder that a
+	// compile creates and removes again (.dreamteamer/skills) fails that walk with ENOENT. That is a change, not a fault:
+	// it is sent as one, and the watch goes on.
+	const watched = (w, dir) => { w.on('error', (e) => { if (!stopped) changed(typeof e?.path === 'string' ? e.path : dir); }); watchers.push(w); };
 	const watchDir = (dir) => {
 		if (!fs.existsSync(dir)) return;
-		try { watchers.push(fs.watch(dir, { recursive: true }, (_e, f) => f && changed(path.join(dir, String(f))))); } catch { /* unwatchable */ }
+		try { watched(fs.watch(dir, { recursive: true }, (_e, f) => f && changed(path.join(dir, String(f)))), dir); } catch { /* unwatchable */ }
 	};
 	for (const d of ['data', 'state', '.dreamteamer']) watchDir(path.join(root, d));
 	// nav.yaml at the root, by name: a save renames a temp file over it, which only a watch on the folder sees
-	try { watchers.push(fs.watch(root, (_e, f) => f && String(f) === NAV_DOC_FILE && changed(path.join(root, NAV_DOC_FILE)))); } catch { /* unwatchable */ }
+	try { watched(fs.watch(root, (_e, f) => f && String(f) === NAV_DOC_FILE && changed(path.join(root, NAV_DOC_FILE))), path.join(root, NAV_DOC_FILE)); } catch { /* unwatchable */ }
 	try { for (const l of fs.readdirSync(path.join(root, 'git_modules'))) watchDir(path.join(root, 'git_modules', l, 'data')); } catch { /* no layers */ }
 
 	// ---- lifetime ----------------------------------------------------------------------------
