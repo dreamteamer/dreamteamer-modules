@@ -107,7 +107,9 @@ const api: Plugin = {
 // a change on disk (a `dt add` in a terminal, an edit in the page) redraws every open page, debounced
 let timer: NodeJS.Timeout | null = null
 fs.watch(root, { recursive: true }, (_type, file) => {
-  if (!file || file.startsWith(".git") || file.includes("node_modules")) return
+  // any .git folder, a layer's included: a git command's lock files are not a change to the workspace
+  const parts = file ? file.split(path.sep) : []
+  if (!file || parts.includes(".git") || parts.includes("node_modules")) return
   if (timer) clearTimeout(timer)
   timer = setTimeout(async () => {
     await handler.reopen().catch(() => {})
