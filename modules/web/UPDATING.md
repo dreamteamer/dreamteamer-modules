@@ -6,6 +6,12 @@ One section per release, newest first. Each says what a person or a session usin
 npm install --save-dev @dreamteamer/web@latest
 ```
 
+## 0.3.1
+
+Nothing to do. The pane no longer stops refreshing after a file-watch error: on macOS, and for `nav.yaml` on
+every system, the folder's watch was closed by the error and never opened again. It is now opened again within a
+second, and at most 30 seconds apart while the folder keeps failing; the page refreshes when it is.
+
 ## 0.3.0
 
 `dt web` is now one step to the pane beside the chat, on one listener that keeps its port.

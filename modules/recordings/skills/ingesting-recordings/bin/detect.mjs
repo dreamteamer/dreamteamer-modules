@@ -58,17 +58,22 @@ function resolveVar(name) {
 // ── INBOX_FOLDERS: a LIST of inbox roots, every one scanned ─────────────────────────────────────
 // A newline-separated list — a desktop may carry a synced-drive root and a phone-share root, a cloud
 // session one. Splits on newlines, trims, drops blanks, and SKIPS a root that does not exist on this
-// machine with a printed note rather than dying. `override` mirrors `--files-folder`, so a fixture
-// pins this without touching `.env` or a real synced folder.
+// machine with a printed note rather than dying. A line that is not an existing path and holds a comma
+// is a comma-separated list (what the recordings setup wrote before 0.5.2) and is split on commas; a
+// folder whose name holds a comma stays one root. The setup writes the variable by the same rule.
+// `override` mirrors `--files-folder`, so a fixture pins this without touching `.env` or a real synced folder.
 function resolveInboxRoots(override) {
 	const raw = override ?? resolveVar('INBOX_FOLDERS');
 	if (!raw) return [];
 	const roots = [];
 	for (const line of raw.split('\n')) {
-		const root = line.trim();
-		if (!root) continue;
-		if (!fs.existsSync(root)) { console.error(`  (skipping inbox root — does not exist on this machine: ${root})`); continue; }
-		roots.push(root);
+		const entry = line.trim();
+		if (!entry) continue;
+		const parts = entry.includes(',') && !fs.existsSync(entry) ? entry.split(',').map((p) => p.trim()).filter(Boolean) : [entry];
+		for (const root of parts) {
+			if (!fs.existsSync(root)) { console.error(`  (skipping inbox root — does not exist on this machine: ${root})`); continue; }
+			roots.push(root);
+		}
 	}
 	return roots;
 }

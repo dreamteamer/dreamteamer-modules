@@ -10,9 +10,11 @@ dt setup recordings --verify --allow machine        # one CPU transcription of t
 ```
 
 - **Inputs:** `files_folder` (FILES_FOLDER, required — where recordings are archived), `inbox_folders`
-  (INBOX_FOLDERS, optional), `transcription_home` (TRANSCRIPTION_HOME, default
-  `~/.cache/dreamteamer/transcription` — the models and the venv, outside the workspace and outside
-  `node_modules`, so neither compile nor npm touches them).
+  (INBOX_FOLDERS, optional — given comma-separated, stored one root per line; a value the engine will not write,
+  such as a `"`, `$` or backtick in a path, or a backslash in a list of two or more roots, leaves `set-home` blocked
+  and `.env` untouched: run the setup again without it and put the roots in `.env` by hand, one per line),
+  `transcription_home` (TRANSCRIPTION_HOME, default `~/.cache/dreamteamer/transcription` — the models and
+  the venv, outside the workspace and outside `node_modules`, so neither compile nor npm touches them).
 - **Checks:** `ffmpeg` and `uv` on PATH (blocked until they are — `brew install ffmpeg uv`); the three
   keys in `.env`; the venv; the CPU pass's three model files; the CPU run's receipt.
 - **Actions and their effects:** `set-home` writes the keys into `.env` (workspace-files);
