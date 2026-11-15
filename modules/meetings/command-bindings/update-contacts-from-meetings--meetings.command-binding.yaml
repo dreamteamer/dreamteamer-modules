@@ -2,8 +2,8 @@ command: commands/update-contacts-from-meetings
 collection: collections/meetings
 scope: record
 # a meeting can stamp its attendees once it HAS them as contacts — an empty invite, or one the sync
-# never resolved, stamps nobody, and the fix for that is fetching-meetings correcting the record,
-# not this command.
+# never resolved, stamps nobody, and the fix for that is correcting the record (by hand, or with
+# the calendar sync from @dreamteamer/connectors-google-workspace), not this command.
 available_when:
   attendees_contacts:
     _nempty: true

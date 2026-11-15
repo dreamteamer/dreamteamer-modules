@@ -52,6 +52,13 @@ or machine change waits for its own `--allow`. [SETUP.md](SETUP.md) lists the in
 what each status means, and the `ingesting-recordings` and `transcribing-recordings` skills carry the
 procedures behind the three slash commands of the flow.
 
+## 0.5.3 — matching a recording without the calendar sync (cr-modules-018)
+
+Wording only; nothing to do. From core 0.13.0 the `fetching-meetings` skill ships with
+`@dreamteamer/connectors-google-workspace`, not with core: `/match-recording-to-meeting` rung 2 now says that where it
+is not installed, the ladder goes to rung 3 (a shim meeting) and says why, and the `ingesting-recordings` skill
+describes the `<original> (English gloss)` name convention in place.
+
 ## 0.5.2 — INBOX_FOLDERS from the setup prompt is read as a list
 
 Nothing to do. The setup asks for the inbox roots comma-separated, and 0.5.1 wrote that line into `.env` as it was,

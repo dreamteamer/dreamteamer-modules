@@ -15,6 +15,7 @@ just running this again.
 1. **`/fetch-meetings <range>`** — the calendar is the spine; nothing downstream can match without it.
    **Always sync the range even if the workspace looks populated.** A meeting added or moved after an
    earlier sync is invisible until you re-fetch, and back-dated events are normal.
+   When `/fetch-meetings` is not installed (it ships with `@dreamteamer/connectors-google-workspace`), skip the sync, say so in the report, and work from the meetings already in the workspace.
 2. **`/fetch-new-recordings`** — audio inbox → recording records. Reports counts before writing.
 3. **`/match-recording-to-meeting <recording refs>`** — for every recording with no `meeting`. Walks the
    ladder: in the workspace → sync that single date → shim. **Ask when two meetings fit.**

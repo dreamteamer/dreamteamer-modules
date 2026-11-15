@@ -3,8 +3,10 @@
 // From core 0.12 `@dreamteamer/core` ships no source: its manifest's `dreamteamer.preset` maps seventeen small
 // modules to exact versions, and the engine (0.49) installs them as the set. The map is pinned once, here,
 // to versions no later change of this candidate moves; the test holds the map to every member's own
-// package.json, so a member bumped after the pin fails it. The members together still declare every env key
-// and template variable core 0.11 declared, and a fresh workspace that runs `dt install @dreamteamer/core`
+// package.json, so a member bumped after the pin fails it. The members together still declare every template
+// variable core 0.11 declared and every env key but the two that left core with its connectors (cr-modules-018,
+// core 0.13.0): no member declares LINKEDIN_USER_AGENT or WORK_CALENDARS, which @dreamteamer/connectors-linkedin
+// and @dreamteamer/connectors-google-workspace declare. A fresh workspace that runs `dt install @dreamteamer/core`
 // compiles the very collection set core 0.11 compiled (frozen in tests/fixtures/core-0.11-collections.json).
 import { test, describe, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -17,6 +19,8 @@ import { ROOT, pkgOf, packedInto, packedFiles, virginWorkspace, run, cleanup, en
 after(cleanup);
 const MEMBERS = ['assets', 'users', 'companies', 'contacts', 'engagements', 'tasks', 'projects', 'meetings', 'recordings', 'meeting-docs', 'files', 'workflows', 'sessions', 'metrics', 'roles', 'responsibilities', 'artifacts'];
 const CORE_011 = { env: ['LINKEDIN_USER_AGENT', 'TRANSCRIPTION_HOME', 'WORK_CALENDARS'], vars: ['FILES_FOLDER', 'INBOX_FOLDERS', 'SESSIONS_FOLDER'] };
+/** The env keys that left core 0.13.0 (cr-modules-018), each with the connector that declares it now. */
+const LEFT_013 = { LINKEDIN_USER_AGENT: 'connectors-linkedin', WORK_CALENDARS: 'connectors-google-workspace' };
 const COLLECTIONS_011 = JSON.parse(fs.readFileSync(path.join(ROOT, 'tests', 'fixtures', 'core-0.11-collections.json'), 'utf8')).collections;
 const preset = () => pkgOf('core').dreamteamer.preset ?? {};
 const onCandidate = !engineMeets('core') || !/^>=0\.49\./.test(pkgOf('core').dreamteamer.engine ?? '')
@@ -31,16 +35,20 @@ describe('the preset map', () => {
 		const pkg = pkgOf('core');
 		for (const k of ['extension', 'env', 'vars', 'provides', 'peer_collections', 'dependencies']) assert.ok(!(k in pkg.dreamteamer), `dreamteamer.${k} is still declared`);
 		assert.ok(!('bin' in pkg), 'bin is still declared');
-		assert.equal(pkg.version, '0.12.0');
+		assert.equal(pkg.version, '0.13.0');
 		assert.equal(pkg.dreamteamer.engine, '>=0.49.0');
 		assert.equal(pkg.dreamteamer.nav, 'nav.yaml');
 		assert.deepEqual([...pkg.files].sort(), ['README.md', 'UPDATING.md', 'nav.yaml']);
 	});
-	test('the members together declare every env key and template variable core 0.11 declared', () => {
+	test('the members declare TRANSCRIPTION_HOME and the three vars; no member declares LINKEDIN_USER_AGENT or WORK_CALENDARS, which the connectors do', () => {
 		const env = new Set(MEMBERS.flatMap((m) => pkgOf(m).dreamteamer.env ?? []));
 		const vars = new Set(MEMBERS.flatMap((m) => pkgOf(m).dreamteamer.vars ?? []));
-		for (const k of CORE_011.env) assert.ok(env.has(k), `no member declares env ${k}`);
+		for (const k of CORE_011.env.filter((k) => !(k in LEFT_013))) assert.ok(env.has(k), `no member declares env ${k}`);
 		for (const k of CORE_011.vars) assert.ok(vars.has(k), `no member declares var ${k}`);
+		for (const [k, connector] of Object.entries(LEFT_013)) {
+			assert.deepEqual(MEMBERS.filter((m) => (pkgOf(m).dreamteamer.env ?? []).includes(k)), [], `a core member still declares ${k}`);
+			assert.ok((pkgOf(connector).dreamteamer.env ?? []).includes(k), `${connector} does not declare ${k}`);
+		}
 	});
 	test('the tarball ships exactly README.md, UPDATING.md, nav.yaml and package.json', () => {
 		assert.deepEqual(packedFiles('core').sort(), ['README.md', 'UPDATING.md', 'nav.yaml', 'package.json']);

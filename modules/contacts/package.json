@@ -1,7 +1,7 @@
 {
 	"name": "@dreamteamer/contacts",
-	"version": "0.1.3",
-	"description": "People you deal with, each pointing at the company they work for and filled in from LinkedIn and the web.",
+	"version": "0.2.0",
+	"description": "People you deal with, each pointing at the company they work for.",
 	"license": "Apache-2.0",
 	"repository": {
 		"type": "git",
@@ -13,20 +13,15 @@
 		"dreamteamer-module",
 		"contacts",
 		"people",
-		"linkedin",
 		"crm"
 	],
 	"files": [
 		"README.md",
-		"collections",
-		"skills",
-		"commands",
-		"command-bindings",
-		"ui-views"
+		"collections"
 	],
 	"dreamteamer": {
 		"title": "Contacts",
-		"description": "People you deal with \u2014 `contacts`, each pointing at the `companies` record they work for, with an avatar from `assets`. The `scraping-contacts` skill and `/scrape-contact` fill a person in from LinkedIn, one batched container per run, and from web search. With `meetings` installed, each contact also carries the latest meeting they attended.",
+		"description": "People you deal with — `contacts`, each pointing at the `companies` record they work for, with an avatar from `assets`. With `meetings` installed, each contact also carries the latest meeting they attended. Filling a person in from LinkedIn is `@dreamteamer/connectors-linkedin`, installed separately.",
 		"engine": ">=0.33.0",
 		"dependencies": [
 			"@dreamteamer/assets",
@@ -34,9 +29,6 @@
 		],
 		"peer_collections": [
 			"meetings"
-		],
-		"env": [
-			"LINKEDIN_USER_AGENT"
 		]
 	},
 	"peerDependencies": {

@@ -51,6 +51,8 @@ steps:
     collection: collections/meetings
     where: '{"starts":{"_gte":"$now","_lte":"$to"},"company":{"_nempty":true},"prep":{"_empty":true}}'
 ---
+Two steps run a command that is not in core: "sync the calendar" (`/fetch-meetings`) needs `@dreamteamer/connectors-google-workspace`, and "enrich the new people" (`/scrape-contact`) needs `@dreamteamer/connectors-linkedin`. Without them `npx dt-workflows install customer-factory` refuses, naming the missing command: install the connector (`npx dreamteamer install <package>`), or remove the step from your copy.
+
 ## 1. sync the calendar
 
 The calendar is the spine: nothing downstream can match a recording or name a company without the meeting record. Sync the whole range even when the workspace looks current — a meeting moved or added after the last sync is invisible until it is fetched again.

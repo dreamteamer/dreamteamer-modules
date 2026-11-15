@@ -11,7 +11,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import yaml from 'js-yaml';
 import { virginWorkspace, installPacked, closure, compileAndCheck, compiledDescriptor, run, cleanup } from '../../../tests/helpers/workspace.mjs';
-import { attendeeOf, attendeesOf, organizerOf, peopleOf } from '../skills/fetching-meetings/bin/event-people.mjs';
+import { attendeeOf, attendeesOf, organizerOf, peopleOf } from '../bin/event-people.mjs';
 import { parseRawAttendee, planRecord, RESIDUE_HEADING } from '../bin/migrate-attendees.mjs';
 
 // One Calendar API event, as `gcal.mjs event` prints it: an accepted organizer, a pending guest, a room.
@@ -138,7 +138,7 @@ describe('on the engine, from the packed module', () => {
 	test('event-people writes two attendee objects and the organizer from the event, and no room', () => {
 		const eventFile = path.join(root, 'event.json');
 		fs.writeFileSync(eventFile, JSON.stringify(EVENT));
-		const r = runScript(path.join(pkg, 'skills', 'fetching-meetings', 'bin', 'event-people.mjs'), [`meetings/${meetingId}`, '--event', eventFile]);
+		const r = runScript(path.join(pkg, 'bin', 'event-people.mjs'), [`meetings/${meetingId}`, '--event', eventFile]);
 		assert.equal(r.status, 0, r.stderr + r.stdout);
 		assert.match(r.stdout, /wrote 2 attendee\(s\) and the organizer .* \(1 room\(s\) dropped\)/);
 		const fm = frontmatter(meetingFile);

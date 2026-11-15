@@ -28,7 +28,7 @@ Read every step's command once before running it: each loads its own skill, and 
 1. **Status.** `retired`: stop and say so. `draft`: run as `--dry-run` unless the person says go.
 2. **The range.** `$from` and `$to` are dates (`YYYY-MM-DD`): the range given to `/workflow:run`, or seven days back to seven days ahead. Replace them in every `where` before listing. The engine refuses a `$` token it does not know, so a step whose `$from` you forgot fails loudly instead of listing everything. `$today` and `$now` stay as they are; the engine reads them.
 3. **Each step, in order** (from `--from-step N` when given):
-   - A command bound to the collection rather than to a record (`dt next <collection>` shows it as `[collection]`) runs once. Pass the range when its argument hint takes one (`/fetch-meetings <from>..<to>`).
+   - A command bound to the collection rather than to a record (`dt next <collection>` shows it as `[collection]`) runs once. Pass the range when its argument hint takes one (`/fetch-meetings <from>..<to>`, which ships with `@dreamteamer/connectors-google-workspace`).
    - Otherwise list the set, then ask which of it is ready:
      ```bash
      dt list <collection> --where '<where, with $from/$to replaced>' --json      # the ids

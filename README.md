@@ -64,11 +64,11 @@ rows as `core` does, unfolded.
 | [`@dreamteamer/responsibilities`](modules/responsibilities) | areas of ownership — release sign-off, a client relationship — and who carries each | users |
 | [`@dreamteamer/assets`](modules/assets) | icons, logos and avatars as file records, 200 KB each at most | — |
 | [`@dreamteamer/companies`](modules/companies) | organisations: the record every other module points at | assets |
-| [`@dreamteamer/contacts`](modules/contacts) | people you deal with, each at a company, enriched from LinkedIn | companies · assets |
+| [`@dreamteamer/contacts`](modules/contacts) | people you deal with, each at a company | companies · assets |
 | [`@dreamteamer/engagements`](modules/engagements) | one record per relationship with a company: lead, client, closed | companies |
 | [`@dreamteamer/tasks`](modules/tasks) | who owes what by when: inbox, board, by person | users |
 | [`@dreamteamer/projects`](modules/projects) | the plan and everyone in it: projects, decisions, deliverables, risks — staffed with users' teams | users |
-| [`@dreamteamer/meetings`](modules/meetings) | calendar meetings synced from Google Calendar, attendees as contacts, screenshots filed beside each call | contacts · companies · users |
+| [`@dreamteamer/meetings`](modules/meetings) | meetings as records, attendees as contacts, screenshots filed beside each call | contacts · companies · users |
 | [`@dreamteamer/recordings`](modules/recordings) | recordings imported by content hash, matched to their meeting, transcribed offline (Hebrew and English, on the GPU where there is one) | meetings |
 | [`@dreamteamer/meeting-docs`](modules/meeting-docs) | a prep before the call, a summary after it, a critique on the transcript, and the tasks it produced | engagements · meetings · recordings · tasks · contacts · companies |
 | [`@dreamteamer/files`](modules/files) | files on mounted drives as records, kept level by `dt files sync`, with your notes on each | — |
@@ -112,7 +112,8 @@ private records, client configuration or tokens.
 | module | capability | needs |
 |---|---|---|
 | [`@dreamteamer/knowledge`](modules/knowledge) | raw thought capture, reader-facing briefs and cross-domain synthesis | companies · meetings; engine >=0.49.0 |
-| [`@dreamteamer/google-workspace`](modules/google-workspace) | explicit-account local bridge to a pinned public MCP server; read-only by default | owner-controlled OAuth setup and local Python runtime |
+| [`@dreamteamer/connectors-google-workspace`](modules/connectors-google-workspace) | explicit-account local bridge to a pinned public MCP server, read-only by default; the Google Calendar sync into meetings (`/fetch-meetings`, `WORK_CALENDARS`) | meetings; owner-controlled OAuth setup and local Python runtime |
+| [`@dreamteamer/connectors-linkedin`](modules/connectors-linkedin) | the LinkedIn scraper: `/scrape-contact` and the two contacts views (needs a LinkedIn link, needs review) | contacts · companies · assets; Docker and a LinkedIn sign-in |
 | [`@dreamteamer/git-identities`](modules/git-identities) | folder-scoped Git configuration proposals and read-only authorship/alias checks | owner-reviewed Git and SSH setup |
 
 Tasks in `core` use a compact Board and List by default, including suggestions and creation dates; historical routes remain available.
@@ -120,7 +121,8 @@ Tasks in `core` use a compact Board and List by default, including suggestions a
 Choose capabilities independently. The account modules do not authorize accounts, apply machine
 configuration, import CRM records or prove remote access. The setup board reports unverified
 authentication as a gap. Meetings and transcription are the `meetings` and `recordings` modules, members of
-the `core` preset. Content-production and service-usage dashboards are not part of
+the `core` preset; the calendar sync that fills `meetings` is `connectors-google-workspace`, and the LinkedIn
+enrichment of `contacts` is `connectors-linkedin`. Content-production and service-usage dashboards are not part of
 this profile.
 
 ## making a module yours

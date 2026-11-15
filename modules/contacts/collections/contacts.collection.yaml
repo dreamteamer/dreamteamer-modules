@@ -1,7 +1,7 @@
 name: contacts
-description: A person you deal with, enriched from LinkedIn and the web. The person, never the org — that is `companies`.
+description: A person you deal with. The person, never the org — that is `companies`.
 use_when: >-
-  a person is named — an attendee, a sender, a LinkedIn profile — find or create them here before writing the record that mentions them; a `draft` here is the queue /scrape-contact enriches
+  a person is named — an attendee, a sender, a LinkedIn profile — find or create them here before writing the record that mentions them; a `draft` here is a placeholder still to be filled in
 storage:
   path: data/contacts
   format: md
@@ -53,7 +53,7 @@ fields:
       - enriched
       - verified
     description: >-
-      How complete this record is — `draft` means discovered as an attendee, email only. This is what makes the enrichment queue derivable, since /scrape-contact enters on draft and exits on enriched/verified.
+      How complete this record is — `draft` means discovered as an attendee, email only. This is what makes the enrichment queue derivable: an enrichment step (for example `@dreamteamer/connectors-linkedin`) moves it to `enriched`; `verified` is a person's.
   notes:
     type: markdown
     body: true
