@@ -37,6 +37,7 @@ export function placeOf(page: Page): PaneView {
       return page.viewId ? { uiView: page.viewId } : { collection: page.collection, id: page.id }
     case "view":
     case "page-view": // a page view is a ui-view too, named the way ui names its route
+    case "app-page": // …and so is one whose layout names a module app
       return { uiView: page.id }
     default:
       return { other: true }

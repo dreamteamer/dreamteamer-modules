@@ -17,8 +17,12 @@
  *   /<a page ui-view's route>      a `scope: page` view of layout `page` or `activity` (pages/PageView.tsx);
  *                                  `?source=<layer>` scopes it to one record layer
  *
- * Any other path (a page view whose layout is a module's app) is a page this app does not draw yet. A query
- * (`?filter=…`) rides on any of them and never changes which page it is.
+ *   /a/<app>[/…]                   a module app (modules/host.tsx frames it); `<app>` is the id it registered
+ *   /<any other page view's route> a `scope: page` view whose layout NAMES a module app: that app's page, or a
+ *                                  "not registered" line when no loaded module registered it
+ *
+ * Any other path is a page this app does not draw. A query (`?filter=…`) rides on any of them and never changes
+ * which page it is.
  */
 
 export interface ResolvedContentPath {
@@ -52,6 +56,8 @@ export type Page =
   | { kind: "settings"; tail: string }
   | { kind: "view"; id: string }
   | { kind: "page-view"; id: string; source?: string }
+  | { kind: "app"; id: string }
+  | { kind: "app-page"; id: string; layout: string }
   | { kind: "unknown-collection"; path: string }
   | { kind: "unsupported"; route: string }
 
@@ -79,6 +85,8 @@ export function pageOf(route: string, collections: readonly string[], views: rea
   if (settings) return settings
   if (!path.startsWith("/content/")) {
     const trimmed = path.replace(/\/+$/, "")
+    const app = /^\/a\/([^/]+)(?:\/|$)/.exec(trimmed)
+    if (app) return { kind: "app", id: decodeURIComponent(app[1]) }
     const view = views.find(v => v.scope === "collection" && v.route === trimmed)
     if (view) return { kind: "view", id: view.id }
     const page = views.find(v => v.scope === "page" && v.route === trimmed && SURFACE_PAGE_LAYOUTS.has(pageLayoutOf(v)))
@@ -86,6 +94,9 @@ export function pageOf(route: string, collections: readonly string[], views: rea
       const source = queryOf(route)["source"]
       return { kind: "page-view", id: page.id, ...(source ? { source } : {}) }
     }
+    // any other page layout names a module's app (ui: `apps.get(layout)`, its index route)
+    const appPage = views.find(v => v.scope === "page" && v.route === trimmed)
+    if (appPage) return { kind: "app-page", id: appPage.id, layout: pageLayoutOf(appPage) }
     // a record-scope view answers `<route>/<id>`: its collection's record, drawn by the view's `display.record`
     const recordView = views.find(
       v =>

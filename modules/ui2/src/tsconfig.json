@@ -16,7 +16,10 @@
 		"verbatimModuleSyntax": true,
 		"isolatedModules": true,
 		"skipLibCheck": true,
-		"noEmit": true
+		"noEmit": true,
+		// @dreamteamer/protocol's declarations resolve to its non-strict .ts sources: read them restated
+		// (modules/protocol-types.d.ts says why)
+		"paths": { "@dreamteamer/protocol/*": ["./modules/protocol-types.d.ts"] }
 	},
 	"include": ["./**/*.ts", "./**/*.tsx", "./vite-env.d.ts"]
 }

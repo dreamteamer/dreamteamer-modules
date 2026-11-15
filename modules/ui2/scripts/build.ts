@@ -2,6 +2,7 @@
 // Two builds of one source, as @dreamteamer/ui makes them:
 //   dist/lib/   the library a host bundles — index.js (`mount`, the transports), index.d.ts, style.css
 //   dist/app/   the browser page a web host serves — index.html + assets/, over the HTTP transport
+// then dist/guest/ (scripts/build-guest.ts): the module frames' guest, Vue and all, with this stylesheet.
 // Both relative (`base: './'`), so a webview can rewrite `./assets/*` and a web host can serve the page at `/`.
 import fs from "node:fs"
 import path from "node:path"
@@ -69,3 +70,4 @@ await build({
 })
 
 console.log("built dist/lib/ and dist/app/")
+await import("./build-guest.ts")

@@ -4,7 +4,7 @@ The dreamteamer UI in React and TypeScript: the nav, collection lists and record
 mounted the same way as [`@dreamteamer/ui`](../ui) (the Vue app) and speaks the same REST contract, written in
 [`@dreamteamer/protocol`](../protocol/PROTOCOL.md), so a host can mount either one.
 
-> `0.x` and a subset of `ui`: see [what it draws](#what-it-draws). Apache-2.0.
+> `0.x`; what `ui` draws that `ui2` does not yet is listed under [module apps](#module-apps). Apache-2.0.
 
 ```bash
 npm install @dreamteamer/ui2
@@ -16,9 +16,12 @@ npm install @dreamteamer/ui2
   `index.d.ts` and `style.css` (icons, tokens and styles, light and dark). Each colour reads the VS Code
   theme variable first, so inside a webview the app takes on the editor's theme.
 - `dist/app/` — the browser page (`index.html` + `assets/`) over the HTTP transport.
-- `src/` — the source both are built from.
+- `dist/guest/` — the module frames' guest: `guest.js` (the Vue runtime, then the guest runtime, as one inline
+  text), `guest.css` (this app's stylesheet, fonts inlined) and `SOURCE.json` (the Vue version). See
+  [module apps](#module-apps).
+- `src/` — the source all three are built from.
 
-React is bundled into both builds, so a host does not install it.
+React is bundled into the library and the page, Vue into the guest, so a host installs neither.
 
 ## mounting it
 
@@ -46,7 +49,8 @@ window `message` events. The app re-reads the nav, the schema and the open page 
 | `/` | the workspace's collections |
 | `/content/<collection>` | the browse: the collection's records, by the List its layout names |
 | `/<a ui-view's route>` | a collection ui-view (`/projects-board`): the same browse, seeded from the view |
-| `/<a page ui-view's route>` | a page ui-view (layout `page` or `activity`): its nested views as panels; `?source=<layer>` scopes it |
+| `/<a page ui-view's route>` | a page ui-view (layout `page` or `activity`): its nested views as panels; `?source=<layer>` scopes it; any other layout names a module app, drawn in its frame |
+| `/a/<app>[/…]` | a module app ([module apps](#module-apps)) |
 | `/content/<collection>/<id>` | the record page: its record layout, the commit line and source, Commands, Info and Revisions |
 | `/content/<collection>/+` | a new record |
 | `/<a record ui-view's route>/<id>` | a record drawn by a record-scope ui-view's `display.record` |
@@ -75,7 +79,7 @@ list columns and sort, form sections and record title template; a field's surfac
 their labels, icons and colours, and its `editor` and `viewer`. Fields are drawn through the same registries
 as in `ui`, under the same ids and `types`, resolved in the same order: the field's own id, then its shape
 (body, reference, enum, list, object with sub-fields), then its type. A module can register its own Edit or
-View with `edits.register` or `views.register`.
+View (see [module apps](#module-apps)); it is registered under its own id and drawn in its frame.
 
 The Edits: `input`, `input-number`, `textarea`, `markdown-body` (CodeMirror with live preview, a toolbar and
 a source toggle), `boolean`, `datetime` (a date as a calendar day, a datetime as the wall clock),
@@ -90,8 +94,8 @@ record page), `markdown` (rendered; one plain line in a cell), `tags`, `json`, `
 whole value.
 
 The browse draws a collection's records by the List its `display.list.layout` (or the view's) names, from the
-`lists` registry; a module can register its own with `lists.register`, and it is handed `state`, `collection`,
-`query` and `options`, as in `ui`. The built-in List is `table`: a column per field (the collection's
+`lists` registry; a module app's List is registered there too and drawn in its frame, handed the documented
+`collection`, `query` and `options` and a snapshot of the browse's `state`, as in `ui`. The built-in List is `table`: a column per field (the collection's
 `list.columns`, else the title, the status and short scalars), sorted by a header click, a checkbox per row for
 batch delete, row density (compact, cozy, comfortable), colour by an enum, and bands by a field's value
 (`group_by`), a reference's band named by the referenced record's title. Search is the host's `q`; the filter
@@ -188,22 +192,69 @@ live (Re-check, Who has access). Every other kind is the ordinary browse and rec
 ui-view's record page has its **Module** dropdown, which moves the view's source. **Save as…** picks the new
 view's icon and module too.
 
-Not yet in `ui2`, all of which `ui` has: module apps (a page ui-view whose layout is a module's app draws a
-line saying so); registering an
-unregistered folder and the source picker on the data model and module lists; note marks on rows and cards;
-file uploads. A route to one of these shows a line saying `ui2`
-doesn't draw it yet, and the nav still lists it.
+## module apps
+
+A module's own UI is a prebuilt bundle, `ui/app.js` in the module, which `dt compile` stages to
+`.dreamteamer/ui/<module>/app.js` and `GET /info` names in `ui` (cr-modules-005, cr-modules-008). Its default export
+takes the register API — `registerEdit`, `registerView`, `registerList`, `registerApp`, `registerPanel`,
+`registerKindDefault` and a `router` — and its components are **Vue**, read from `window.Vue`, because that is what
+the bundle was built against. That contract is the module's, not the app's: it is the same under `ui2` as under
+`ui`, and a module built for one runs unchanged in the other.
+
+No module code runs in this page. Before the first render, `mount` opens one hidden **registry frame** per module
+(sandboxed, `allow-scripts` only, the frame policy loading nothing by URL), which loads the bundle with the guest
+and reports what it registered. For each id nobody holds yet, `ui2` registers a React **proxy** in its own registry
+— `edits`, `views`, `lists`, `apps` — so the field, list or page that resolves to it draws a **surface frame**:
+
+| registered | drawn |
+|---|---|
+| an Edit | a frame where the field's Edit goes; a value it sends is written only to a collection the person granted the module |
+| a View | a frame on the record page; in a cell, the registry frame's markup, sanitised to a short allow-list of tags |
+| a List | a frame filling the browse, handed a snapshot of the rows, columns, selection and sort; its actions (open, select, sort, page) come back as intents the host checks |
+| an app | a page at `/a/<id>[/…]`, the frame kept across the app's own routes; and a page ui-view whose `display.list.layout` names the app draws it at the view's route |
+
+Every `fetch('/api/…')` a frame makes is a message: the host checks it with `@dreamteamer/protocol`'s gate under
+the module's scope (its own collections, plus what the person's grant adds — `moduleGrants` on `GET /host`, or
+the editor's `__DT_MODULE_GRANTS__`), sends it through the transport and reshapes the answer. Navigation is held
+to the module's own apps and views and the collections it reads; requests, intents and writes are rate-bounded;
+`dt:invalidate` reaches a frame only for collections it reads, and a schema change marks its frames "updated —
+reload". A field outside the module's read scope falls back to the built-in. The checks are `ui`'s, in
+`src/modules/policy.ts`, and the host is `src/modules/host.tsx`.
+
+Where the frame's document comes from is the host's choice: dt web (`__DT_HOST__.moduleFrames: "url"`) serves it
+from the frames base `GET /host` answers; an editor (the default) lets the page build it as `srcdoc` from the
+guest at `__DT_GUEST_URL__`, the stylesheet beside it and the bundle under `__DT_UI_BASE__`. A host that offers
+neither loads no module app and says so in the console — the playground is one: a page view naming an app then
+draws "Page '<id>' is not registered".
+
+`mount` also teaches the page's `fetch` to answer `/api/*` through the transport (`src/api/fetch-shim.ts`), as
+`ui` does, for any code in the page that still speaks the HTTP contract.
+
+**The React contract.** Inside `ui2` everything drawable is a React component in a registry: an Edit takes
+`EditProps` (`field`, `value`, `onChange`, `options`, `record`), a View `ViewProps` (`field`, `value`, `options`,
+`context`, `record`), a List `ListProps` (`state`, `collection`, `query`, `options`), a record layout
+`RecordLayoutProps`, an app `{ route }` (`src/registry/props.ts`, `src/registry/index.ts`). The built-ins and the
+module proxies register through it; it is not a module's contract, which stays the frame and the bundle above.
+
+Not yet in `ui2`, all of which `ui` has: registering an unregistered folder and the source picker on the data
+model and module lists; note marks on rows and cards; file uploads; a module's panels (registered and held, as in
+`ui`, which draws none either).
 
 ## building and testing
 
 ```bash
-npm run build -w modules/ui2       # dist/lib and dist/app
-npm test -w modules/ui2            # routes, fields, filters, grouping, the board's moves, card templates, the calendar, gantt, map and page views, the stage map, the record page's rules, the nav's gestures and history, the pane report, the designer's writes, the settings pages, markdown, the API client
+npm run build -w modules/ui2       # dist/lib, dist/app and dist/guest
+npm test -w modules/ui2            # routes, fields, filters, grouping, the board's moves, card templates, the calendar, gantt, map and page views, the stage map, the record page's rules, the nav's gestures and history, the pane report, the designer's writes, the settings pages, markdown, the API client, the module-frame rules and the fetch shim
 npm run typecheck -w modules/ui2   # tsc, strict, over src/
 npm run ui2                        # from the repo root: the app from source, over a sample workspace
 ```
 
-`npm run ui2` serves `src/` with Vite and hot reload, at http://localhost:5173. The playground
+`npm run ui2` serves `src/` with Vite and hot reload, at http://localhost:5173.
+
+From the repo's runner, `test/repo/ui2-suite.test.ts` runs the unit tests and the typecheck as children, and
+`test/repo/tarball.test.ts` builds and packs the package and checks it carries `dist/lib`, `dist/app`,
+`dist/guest`, the source and this README, and no tests. They sit one folder down so `npm test` stays fast and never
+runs itself. The playground
 ([`playground/dev.ts`](../../playground/dev.ts)) answers `/api` with the protocol's shared handler over the
 Northwind sample workspace, the same as for `ui`.
 

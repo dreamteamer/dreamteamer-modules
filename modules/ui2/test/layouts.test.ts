@@ -132,7 +132,7 @@ const views = [
   { id: "app", route: "/app", scope: "page", display: { list: { layout: "northwind-planner" } } },
 ]
 
-test("a page view's route is its page — scoped by ?source=; a module app's page is still not drawn here", () => {
+test("a page view's route is its page — scoped by ?source=; any other page layout names a module app", () => {
   assert.deepEqual(pageOf("/desk", [], views), { kind: "page-view", id: "desk" })
   assert.deepEqual(pageOf("/desk?source=northwind-archive", [], views), {
     kind: "page-view",
@@ -140,6 +140,7 @@ test("a page view's route is its page — scoped by ?source=; a module app's pag
     source: "northwind-archive",
   })
   assert.deepEqual(pageOf("/feed/", [], views), { kind: "page-view", id: "feed" })
-  assert.deepEqual(pageOf("/app", [], views), { kind: "unsupported", route: "/app" })
+  assert.deepEqual(pageOf("/app", [], views), { kind: "app-page", id: "app", layout: "northwind-planner" })
   assert.deepEqual(placeOf(pageOf("/desk", [], views)), { uiView: "desk" })
+  assert.deepEqual(placeOf(pageOf("/app", [], views)), { uiView: "app" })
 })

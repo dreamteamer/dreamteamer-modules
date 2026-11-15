@@ -23,6 +23,7 @@ import { RecordPage } from "./pages/RecordPage.tsx"
 import { PageView } from "./pages/PageView.tsx"
 import { ViewPage } from "./pages/ViewPage.tsx"
 import { SchemaTab } from "./settings/SchemaTab.tsx"
+import { AppPage } from "./modules/host.tsx"
 
 /** The page's place, in the shapes the pane reports (lib/pane-place.ts) — set on every route change. */
 const place = signal<PaneView>({ other: true })
@@ -138,8 +139,9 @@ export function App({ onMounted }: { onMounted?: () => void }) {
         <main className="ui2-main">
           {presentation.error && <p className="ui2-error">{presentation.error}</p>}
           {schema && (
-            // keyed on the PATH: a query (`?filter=…`) is the page's own state, written back as it changes
-            <Boundary key={pathOf(route)}>
+            // keyed on the PATH: a query (`?filter=…`) is the page's own state, written back as it changes; a module
+            // app keeps its frame across its own routes (`/a/<id>/…`), which it hears as messages
+            <Boundary key={pathOf(route).replace(/^(\/a\/[^/]+)\/.*$/, "$1")}>
               <Page />
             </Boundary>
           )}
@@ -180,6 +182,11 @@ function Page() {
       return <ViewPage id={page.id} />
     case "page-view":
       return <PageView viewId={page.id} source={page.source} />
+    case "app":
+      return <AppPage id={page.id} />
+    case "app-page":
+      // ui: the registered app named by the view's `display.list.layout`, its index route
+      return <AppPage id={page.layout} />
     case "unknown-collection":
       return <p className="ui2-page ui2-error">No collection {page.path} in this workspace.</p>
     case "unsupported":

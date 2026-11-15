@@ -4667,3 +4667,27 @@ a.ui2-panel-title:hover {
 .ui2-activity.is-embedded {
   padding: 0;
 }
+
+/* ---- module apps (modules/host.tsx): a sandboxed frame where a module's Edit, View, List or app draws ---- */
+.ui2-app-page {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.ui2-module-frame-wrap.is-fill {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.ui2-module-frame-wrap.is-fill .ui2-module-frame {
+  flex: 1;
+  min-height: 0;
+}
+.ui2-module-frame iframe {
+  color-scheme: normal;
+}
+.ui2-module-cell {
+  vertical-align: bottom;
+}

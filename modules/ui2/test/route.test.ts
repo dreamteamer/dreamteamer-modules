@@ -56,3 +56,19 @@ test("a record-scope ui-view answers <route>/<id> with its collection's record a
   )
   assert.deepEqual(pageOf("/projects-board", COLLECTIONS, views), { kind: "view", id: "projects-board" })
 })
+
+test("a module app answers /a/<id> and below; a page view whose layout names an app draws that app", () => {
+  assert.deepEqual(pageOf("/a/northwind-stats", COLLECTIONS), { kind: "app", id: "northwind-stats" })
+  assert.deepEqual(pageOf("/a/northwind-stats/week/2?x=1", COLLECTIONS), { kind: "app", id: "northwind-stats" })
+  assert.equal(pageOf("/a", COLLECTIONS).kind, "unsupported")
+  const views = [
+    { id: "stats-page", route: "/stats", scope: "page", display: { list: { layout: "northwind-stats" } } },
+    { id: "hub", route: "/hub", scope: "page", compiled: { display: { list: { layout: "page" } } } },
+  ]
+  assert.deepEqual(pageOf("/stats", COLLECTIONS, views), {
+    kind: "app-page",
+    id: "stats-page",
+    layout: "northwind-stats",
+  })
+  assert.deepEqual(pageOf("/hub", COLLECTIONS, views), { kind: "page-view", id: "hub" })
+})

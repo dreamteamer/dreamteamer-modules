@@ -127,6 +127,8 @@ export interface ExtensionDefinition {
   /** Views that pair well with this Edit, best first — a hint the future field editor surfaces
    *  when a field uses this Edit (no runtime consumer yet; contract-only for now). */
   recommendedViews?: string[]
+  /** The module whose frame draws this entry (modules/host.tsx registers a proxy); absent on a built-in. */
+  module?: string
 }
 
 /**
@@ -158,6 +160,8 @@ export interface ListDefinition {
    * pager and no `1–25 of 40` under it: there is no next page of a number.
    */
   summarizes?: boolean
+  /** The module whose frame draws this List; absent on a built-in. */
+  module?: string
 }
 
 /**
@@ -171,6 +175,8 @@ export interface AppDefinition {
   /** The route prefix the app answers (`/a/<id>` for a module app). */
   prefix: string
   component: ComponentType<{ route: string }>
+  /** The module whose frame draws this app; absent on a built-in. */
+  module?: string
 }
 
 export function defineRegistry<T extends { id: string }>(kind: string) {
