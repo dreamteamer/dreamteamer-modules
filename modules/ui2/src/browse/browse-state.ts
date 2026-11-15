@@ -1,0 +1,425 @@
+/**
+ * ONE BROWSE'S STATE — search, filter, columns and their order, sort, layout, layout options, paging and the
+ * row selection — owned once by the browse frame (`Browse.tsx`) and handed to whichever List draws the rows as
+ * a plain `state` prop, so switching layout never re-fetches or loses a half-built filter. Ported from
+ * @dreamteamer/ui's composables/browse-state.ts.
+ *
+ * WHERE IT STARTS (descriptor v2 §3.5): the governing ui-view's `display.list` merged key by key over the
+ * collection's own (`lib/list-seed.ts`), the view's filter decompiled into editable conditions
+ * (`lib/view-filter.ts`), and the URL's `?search`, `?filter`, `?layout` over both — the URL is the operator
+ * having already edited this session. The schema is loaded before any page mounts, so all of it is decided once,
+ * on the first render; the browse is remounted (keyed by its caller) when the view or the collection's list
+ * block changes underneath it.
+ *
+ * WHAT THE RECORD SAYS is kept beside it as `baseline`: `dirty` compares the screen with it, Reset returns to it,
+ * Save makes the record say what the screen says. Unsaved tweaks live in an in-memory scratch pad per collection
+ * and view — never localStorage: a reload returns to what git says, so "what I see" and "what is committed"
+ * cannot drift apart across sessions. A tweak never carries a SOURCE selection to the next mount: which sources a
+ * list shows is the navigation's fact.
+ *
+ * Paging is server-side (`limit`/`offset`); a grouped table defaults to every row (`lib/page-size.ts`). Any
+ * change to what is asked — search, filter, sort, page size — starts again at page 1, and drops the selection,
+ * which is scoped to the rows on screen.
+ */
+import { useEffect, useMemo, useRef, useState } from "react"
+import { listRecords, removeRecord, type Row } from "../api/client.ts"
+import type { FieldRow, SourceEntry } from "../api/types.ts"
+import { useApp, useAsync } from "../app-context.tsx"
+import { browseFields, moveItem, seedColumns, toggledSort } from "../lib/browse-fields.ts"
+import { DEFAULT_SORT } from "../lib/builtin-fields.ts"
+import { colorByFor, tintOf as tintFor, tintStyle } from "../lib/collection-display.ts"
+import { SOURCES_QUERY, TARGET_QUERY } from "../lib/created-visibility.ts"
+import { compileFilter, emptyFilterGroup, serializeFilterGroup, type FilterGroup } from "../lib/filter-query.ts"
+import { normalizeFilterRefs } from "../lib/filter-wire.ts"
+import { listSeed, scratchKey as scratchKeyFor } from "../lib/list-seed.ts"
+import { effectiveLimit } from "../lib/page-size.ts"
+import { createRoute, pathOf, queryOf, recordRoute, withQuery } from "../lib/route.ts"
+import { recordLabel } from "../lib/schema.ts"
+import {
+  SOURCE_FIELD,
+  isOwnSource,
+  selectedSources,
+  sourceEntry,
+  targetChoice,
+  withSourceSelection,
+  type SourceMarkProps,
+  type TargetChoice,
+} from "../lib/sources.ts"
+import { templateFields } from "../lib/template.ts"
+import { filterFromUrl, seedFilter } from "../lib/view-filter.ts"
+
+/** What a governing ui-view pins (`lib/ui-views.ts#viewToConfig`); empty for a bare collection. */
+export interface BrowseConfig {
+  layout?: string
+  /** The view's filter, in the engine's shape — decompiled into the builder where it can be. */
+  baseFilter?: Record<string, unknown>
+  columns?: string[]
+  /** `''` is a view saying "unsorted", and it wins. */
+  sort?: string
+  listOptions?: Record<string, Record<string, unknown>>
+  /** The governing view record — what Save writes back to. Absent: the collection's own display. */
+  viewId?: string
+}
+
+/** Everything a view record stores. `filter: null` — the stored filter is not the builder's to speak for. */
+export interface Snapshot {
+  layout: string
+  columns: string[]
+  sort: string
+  listOptions: Record<string, Record<string, unknown>>
+  filter: FilterGroup | null
+}
+
+const scratchByView = new Map<string, Snapshot>()
+
+/** A snapshot as `dirty` compares it: the filter by what it ASKS, not by its rules' ids — the URL's copy of a
+ *  view's own filter re-mints every id, and must not read as an edit. */
+function compareKey(s: Snapshot): string {
+  return JSON.stringify({ ...s, filter: s.filter ? (compileFilter(s.filter) ?? null) : null })
+}
+const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T
+
+export function useBrowseState(collection: string, config: BrowseConfig = {}) {
+  const { schema, route, navigate, version } = useApp()
+  const row = schema.collection(collection)
+  const sources = row?.sources
+  const fields = useMemo(
+    () => browseFields(schema.fields(collection), collection, sources),
+    [schema, collection, sources]
+  )
+  const fieldByName = useMemo(() => new Map(fields.map(f => [f.field, f])), [fields])
+
+  // ---- the start, decided once ------------------------------------------------------------------------
+  const start = useRef<ReturnType<typeof initial> | null>(null)
+  if (!start.current) start.current = initial()
+  function initial() {
+    const q = queryOf(route)
+    const urlFilter = q["filter"] ?? null
+    const seeded = seedFilter(config.baseFilter, urlFilter)
+    const seed = listSeed(config, row?.list)
+    const known = new Set(fields.map(f => f.field))
+    // what the RECORD resolves to — a column the schema no longer has drops out here, so a fresh page is clean
+    const baseline: Snapshot = {
+      layout: seed.layout,
+      columns: seedColumns(seed.columns, fields, sources).filter(c => known.has(c)),
+      sort: seed.sort ?? DEFAULT_SORT,
+      listOptions: clone(seed.listOptions),
+      filter: seeded.opaque ? null : seeded.record,
+    }
+    let live: Snapshot & { filter: FilterGroup } = {
+      ...clone(baseline),
+      layout: q["layout"] || seed.layout,
+      filter: seeded.initial,
+    }
+    const scratch = scratchByView.get(scratchKeyFor(collection, config.viewId))
+    if (scratch) {
+      const filter = urlFilter !== null || !scratch.filter ? live.filter : withSourceSelection(scratch.filter, null)
+      live = { ...clone(scratch), filter: clone(filter) }
+    }
+    return { baseline, live, opaque: seeded.opaque, search: q["search"] ?? "", defaultLayout: seed.layout }
+  }
+  const init = start.current
+  const opaque = init.opaque
+  const scratchKey = scratchKeyFor(collection, config.viewId)
+
+  const [layout, setLayout] = useState(init.live.layout)
+  const [columnNames, setColumnNames] = useState<string[]>(init.live.columns)
+  const [sort, setSortRaw] = useState(init.live.sort)
+  const [listOptions, setListOptionsAll] = useState(init.live.listOptions)
+  const [filterGroup, setFilterGroup] = useState<FilterGroup>(init.live.filter)
+  const [baseline, setBaseline] = useState<Snapshot>(init.baseline)
+  const [searchInput, setSearchInput] = useState(init.search)
+  const [search, setSearch] = useState(init.search)
+  const [filterOpen, setFilterOpen] = useState(false)
+  const [reloads, setReloads] = useState(0)
+
+  // the search is sent once typing pauses
+  useEffect(() => {
+    const t = setTimeout(() => setSearch(searchInput.trim()), 300)
+    return () => clearTimeout(t)
+  }, [searchInput])
+
+  // ---- columns ----------------------------------------------------------------------------------------
+  const columns = useMemo(
+    () => columnNames.map(n => fieldByName.get(n)).filter((f): f is FieldRow => f !== undefined),
+    [columnNames, fieldByName]
+  )
+  const hiddenFields = useMemo(() => fields.filter(f => !columnNames.includes(f.field)), [fields, columnNames])
+
+  const snapshot = (): Snapshot => ({
+    layout,
+    columns: columns.map(f => f.field),
+    sort,
+    listOptions: clone(listOptions),
+    filter: opaque ? null : clone(filterGroup),
+  })
+  const snap = JSON.stringify(snapshot())
+  const dirty = compareKey(JSON.parse(snap) as Snapshot) !== compareKey(baseline)
+
+  // unsaved tweaks outlive the mount, for this session only
+  useEffect(() => {
+    const now = JSON.parse(snap) as Snapshot
+    if (compareKey(now) === compareKey(baseline)) scratchByView.delete(scratchKey)
+    else scratchByView.set(scratchKey, now)
+  }, [snap, baseline, scratchKey])
+
+  function apply(next: Snapshot): void {
+    setLayout(next.layout)
+    setColumnNames([...next.columns])
+    setSortRaw(next.sort)
+    setListOptionsAll(clone(next.listOptions))
+    if (next.filter) setFilterGroup(clone(next.filter))
+  }
+
+  // ---- the query --------------------------------------------------------------------------------------
+  const activeOptions = listOptions[layout] ?? {}
+  const grouped = typeof activeOptions["group_by"] === "string" && !!activeOptions["group_by"]
+  const limit = effectiveLimit(activeOptions["page_size"], grouped)
+
+  /** The filter sent: the builder's, compiled — with an opaque stored filter anded underneath, the one case the
+   *  builder never held it — and every reference compared in the engine's `collection/id` form. */
+  const filter = useMemo(() => {
+    const compiled = compileFilter(filterGroup)
+    const base = opaque ? config.baseFilter : undefined
+    const both = base && compiled ? { _and: [base, compiled] } : (base ?? compiled)
+    if (!both) return undefined
+    return normalizeFilterRefs(both, collection, (c, f) => {
+      const field = schema.field(c, f)
+      return field ? schema.target(field)?.collection : undefined
+    }) as Record<string, unknown>
+  }, [filterGroup, opaque, config.baseFilter, collection, schema])
+
+  // page 1 again whenever what is asked changes — staying on page 7 of a new question shows rows that have
+  // nothing to do with it
+  const queryKey = JSON.stringify([search, filter ?? null, sort, limit])
+  const [paging, setPaging] = useState({ key: queryKey, page: 1 })
+  const page = paging.key === queryKey ? paging.page : 1
+  const setPage = (p: number) => setPaging({ key: queryKey, page: p })
+
+  const answer = useAsync(
+    () =>
+      listRecords(collection, {
+        limit,
+        offset: (page - 1) * limit,
+        sort: sort || undefined,
+        q: search || undefined,
+        filter,
+      }),
+    [collection, queryKey, page, version, reloads]
+  )
+  const records: Row[] = answer.data?.records ?? []
+  const total = answer.data?.total ?? 0
+  const from = total === 0 ? 0 : (page - 1) * limit + 1
+  const to = Math.min(page * limit, total)
+
+  // ---- the URL: search, filter and layout ride on it ------------------------------------------------------
+  const routeNow = useRef(route)
+  routeNow.current = route
+  const serialized = serializeFilterGroup(filterGroup)
+  useEffect(() => {
+    const current = routeNow.current
+    const rest = queryOf(current)
+    delete rest["search"]
+    delete rest["filter"]
+    delete rest["layout"]
+    const next = withQuery(pathOf(current), {
+      ...rest,
+      search,
+      filter: serialized,
+      layout: layout !== init.defaultLayout ? layout : undefined,
+    })
+    if (next !== current) navigate(next)
+  }, [search, serialized, layout, navigate, init.defaultLayout])
+
+  // a navigation that changes only `?filter=` (a layer's nav row, a nav row with none) reaches a mounted browse:
+  // re-seed the builder from it; its own writes echo back as no-ops
+  const urlFilter = queryOf(route)["filter"] ?? null
+  const firstUrl = useRef(true)
+  useEffect(() => {
+    if (firstUrl.current) {
+      firstUrl.current = false
+      return
+    }
+    setFilterGroup(current => filterFromUrl(urlFilter, current, config.baseFilter) ?? current)
+  }, [urlFilter, config.baseFilter])
+
+  // ---- selection: the rows on screen -------------------------------------------------------------------------
+  const selectionKey = `${queryKey}|${page}|${layout}`
+  const [selection, setSelection] = useState<{ key: string; ids: Set<string> }>({ key: selectionKey, ids: new Set() })
+  const selectedIds = selection.key === selectionKey ? selection.ids : new Set<string>()
+  const setSelected = (ids: Set<string>) => setSelection({ key: selectionKey, ids })
+  const allVisibleSelected = records.length > 0 && records.every(r => selectedIds.has(r.id))
+  const [deleting, setDeleting] = useState(false)
+
+  // ---- sources ----------------------------------------------------------------------------------------------
+  /** The picker's rows: the host's per-query counts once an answer landed, the collection's before. */
+  const sourceFacets: SourceEntry[] = answer.data?.sources?.length ? answer.data.sources : (sources ?? [])
+
+  // ---- creating ---------------------------------------------------------------------------------------------
+  const [pendingCreate, setPendingCreate] = useState<{
+    prefill: Record<string, unknown> | undefined
+    choice: Extract<TargetChoice, { mode: "choose" }>
+  } | null>(null)
+
+  function openCreateForm(prefill: Record<string, unknown> | undefined, target: string | undefined): void {
+    const picked = selectedSources(filterGroup)
+    navigate(
+      withQuery(createRoute(collection), {
+        prefill: prefill && Object.keys(prefill).length ? JSON.stringify(prefill) : undefined,
+        [SOURCES_QUERY]: picked.length ? picked.join(",") : undefined,
+        [TARGET_QUERY]: target,
+      })
+    )
+  }
+
+  // ---- the collection's display -------------------------------------------------------------------------------
+  /** The column that names a record: the first visible field its `record_title` reads, else `title`/`name`. */
+  const titleField = useMemo(() => {
+    const known = new Set(fields.map(f => f.field))
+    return (
+      templateFields(row?.record_title ?? "").find(f => known.has(f)) ??
+      ["title", "name"].find(f => known.has(f)) ??
+      null
+    )
+  }, [fields, row?.record_title])
+  const colorBy = colorByFor(row, listOptions[layout])
+
+  return {
+    collection,
+    row,
+    fields,
+    columns,
+    hiddenFields,
+    titleField,
+    // search + filter
+    searchInput,
+    setSearchInput,
+    search,
+    filterGroup,
+    setFilterGroup,
+    filterOpen,
+    setFilterOpen,
+    /** True when the view's stored filter never reached the builder — Save must keep it as stored. */
+    filterOpaque: opaque,
+    filter,
+    hasActiveQuery: Boolean(searchInput) || filterGroup.rules.length > 0,
+    // layout + options
+    layout,
+    setLayout,
+    listOptions,
+    setListOptions(listId: string, values: Record<string, unknown>) {
+      setListOptionsAll(o => ({ ...o, [listId]: values }))
+    },
+    // columns
+    toggleColumn(field: string) {
+      setColumnNames(names => (names.includes(field) ? names.filter(n => n !== field) : [...names, field]))
+    },
+    moveColumn(from: number, to: number) {
+      setColumnNames(
+        moveItem(
+          columns.map(f => f.field),
+          from,
+          to
+        )
+      )
+    },
+    setColumns: (names: string[]) => setColumnNames([...names]),
+    // sort
+    sort,
+    /** The sort outright (`field`, `-field`, `''`) — the Layout options control. */
+    setSort: (value: string) => setSortRaw(value),
+    /** A column header: ascending, then descending. */
+    toggleSort: (field: string) => setSortRaw(s => toggledSort(s, field)),
+    sortField: sort.replace(/^-/, ""),
+    sortDesc: sort.startsWith("-"),
+    sortIndicator: (field: string): "asc" | "desc" | "" =>
+      sort === field ? "asc" : sort === `-${field}` ? "desc" : "",
+    // the saved-view half
+    viewId: config.viewId,
+    dirty,
+    snapshot,
+    resetToView() {
+      scratchByView.delete(scratchKey)
+      apply(baseline)
+    },
+    markSaved() {
+      setBaseline(snapshot())
+      scratchByView.delete(scratchKey)
+    },
+    // rows
+    records,
+    total,
+    loading: answer.loading,
+    error: answer.error,
+    unavailable: answer.data?.unavailable ?? null,
+    reload: () => setReloads(n => n + 1),
+    page,
+    limit,
+    from,
+    to,
+    hasPrev: page > 1,
+    hasNext: page * limit < total,
+    prevPage: () => page > 1 && setPage(page - 1),
+    nextPage: () => page * limit < total && setPage(page + 1),
+    openRecord: (record: Row) => navigate(recordRoute(collection, record.id)),
+    recordTitleOf: (record: Row) => recordLabel(row, record, record.id),
+    colorBy,
+    tintOf: (record: Row) => tintStyle(tintFor(colorBy, fields, record)),
+    // selection
+    selectedIds,
+    isSelected: (id: string) => selectedIds.has(id),
+    toggleSelect(id: string) {
+      const next = new Set(selectedIds)
+      if (!next.delete(id)) next.add(id)
+      setSelected(next)
+    },
+    allVisibleSelected,
+    toggleSelectAllVisible: () => setSelected(allVisibleSelected ? new Set() : new Set(records.map(r => r.id))),
+    clearSelection: () => setSelected(new Set()),
+    deleting,
+    async deleteSelected() {
+      if (!selectedIds.size) return
+      setDeleting(true)
+      try {
+        await Promise.all([...selectedIds].map(id => removeRecord(collection, id)))
+        setSelected(new Set())
+        setReloads(n => n + 1)
+      } finally {
+        setDeleting(false)
+      }
+    },
+    // sources
+    sources,
+    sourceFacets,
+    /** A record's mark, or null for one read from the workspace's own root, which carries none. */
+    sourceOf(record: Row): SourceMarkProps | null {
+      const name = record[SOURCE_FIELD]
+      if (typeof name !== "string" || !name || isOwnSource(name, sources)) return null
+      const entry = sourceEntry(sourceFacets, name) ?? sourceEntry(sources, name)
+      return {
+        name,
+        record: entry?.record ?? null,
+        ...(entry?.access ? { access: entry.access } : {}),
+        ...(entry?.via ? { via: entry.via } : {}),
+        ...(entry?.note ? { note: entry.note } : {}),
+      }
+    },
+    // creating — where several roots take a new record, ask first (`TargetChoice`)
+    pendingCreate,
+    createRecord(prefill?: Record<string, unknown>) {
+      const choice = targetChoice(sourceFacets, selectedSources(filterGroup))
+      if (choice.mode === "choose") setPendingCreate({ prefill, choice })
+      else openCreateForm(prefill, choice.target?.name)
+    },
+    chooseTarget(name: string) {
+      const pending = pendingCreate
+      setPendingCreate(null)
+      openCreateForm(pending?.prefill, name)
+    },
+    cancelCreate: () => setPendingCreate(null),
+    clearFilters: () => setFilterGroup(g => ({ ...g, rules: [] })),
+    emptyFilter: emptyFilterGroup,
+  }
+}
+
+export type BrowseState = ReturnType<typeof useBrowseState>

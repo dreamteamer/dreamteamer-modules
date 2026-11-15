@@ -8,7 +8,11 @@
  *
  * A collection name may hold `/` too (`lab/samples`), so the split is resolved against the collections the
  * workspace has, longest name first — `resolveContentPath`, copied from @dreamteamer/ui's lib/content-path.ts.
- * Any other path (ui-views, settings, module apps) is a page this app does not draw yet.
+ *   /<a ui-view's route>           a collection-scope ui-view (`/projects-board`): the collection's browse,
+ *                                  seeded from the view
+ *
+ * Any other path (record and page views, settings, module apps) is a page this app does not draw yet. A query
+ * (`?filter=…`) rides on any of them and never changes which page it is.
  */
 
 export interface ResolvedContentPath {
@@ -39,14 +43,26 @@ export type Page =
   | { kind: "list"; collection: string }
   | { kind: "record"; collection: string; id: string }
   | { kind: "create"; collection: string }
+  | { kind: "view"; id: string }
   | { kind: "unknown-collection"; path: string }
   | { kind: "unsupported"; route: string }
 
-/** The page a route names, given the workspace's collection names. */
-export function pageOf(route: string, collections: readonly string[]): Page {
-  const path = route.split("?")[0] || "/"
+/** What `pageOf` needs to know of a ui-view. */
+export interface ViewRoute {
+  id: string
+  route: string
+  scope: string
+}
+
+/** The page a route names, given the workspace's collection names and its ui-views. */
+export function pageOf(route: string, collections: readonly string[], views: readonly ViewRoute[] = []): Page {
+  const path = pathOf(route)
   if (path === "/" || path === "/content" || path === "/content/") return { kind: "home" }
-  if (!path.startsWith("/content/")) return { kind: "unsupported", route }
+  if (!path.startsWith("/content/")) {
+    const trimmed = path.replace(/\/+$/, "")
+    const view = views.find(v => v.scope === "collection" && v.route === trimmed)
+    return view ? { kind: "view", id: view.id } : { kind: "unsupported", route }
+  }
   const rest = decodeURIComponent(path.slice("/content/".length))
   const r = resolveContentPath(rest, collections)
   if (!r.collection) return { kind: "unknown-collection", path: rest }
@@ -58,3 +74,21 @@ export function pageOf(route: string, collections: readonly string[]): Page {
 export const listRoute = (collection: string) => `/content/${collection}`
 export const recordRoute = (collection: string, id: string) => `/content/${collection}/${id}`
 export const createRoute = (collection: string) => `/content/${collection}/+`
+
+/** The path of a route, without its query. */
+export const pathOf = (route: string): string => route.split("?")[0] || "/"
+
+/** A route's query as plain pairs (`?filter=…&layout=table`). */
+export function queryOf(route: string): Record<string, string> {
+  const i = route.indexOf("?")
+  if (i < 0) return {}
+  return Object.fromEntries(new URLSearchParams(route.slice(i + 1)))
+}
+
+/** `path` with `query`'s non-empty pairs, in a stable order. */
+export function withQuery(path: string, query: Record<string, string | undefined | null>): string {
+  const p = new URLSearchParams()
+  for (const [k, v] of Object.entries(query)) if (v) p.set(k, v)
+  const s = p.toString()
+  return s ? `${path}?${s}` : path
+}

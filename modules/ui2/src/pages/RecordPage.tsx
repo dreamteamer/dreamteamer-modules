@@ -19,7 +19,8 @@ import { Icon } from "../components/Icon.tsx"
 import { Link } from "../components/Link.tsx"
 import { computedReason, formSections, isBodyField } from "../lib/field-row.ts"
 import { changedFields, formFields, recordFacts, recordLabel } from "../lib/schema.ts"
-import { listRoute, recordRoute } from "../lib/route.ts"
+import { listRoute, queryOf, recordRoute } from "../lib/route.ts"
+import { TARGET_QUERY } from "../lib/created-visibility.ts"
 import { RenderEdit, RenderView } from "../render/Render.tsx"
 
 const META: [string, string][] = [
@@ -32,9 +33,25 @@ const META: [string, string][] = [
 /** A record's value for a field, whichever spelling the host used (`last_modified` / `last-modified`). */
 const valueOf = (fields: Record<string, unknown>, name: string) => fields[name] ?? fields[name.replace(/_/g, "-")]
 
+/** `?prefill=` as an object of field values; anything else is no prefill. */
+function parsePrefill(raw: string | undefined): Record<string, unknown> {
+  if (!raw) return {}
+  try {
+    const v = JSON.parse(raw) as unknown
+    return v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {}
+  } catch {
+    return {}
+  }
+}
+
 export function RecordPage({ collection, id }: { collection: string; id: string | null }) {
-  const { schema, navigate, editable, version } = useApp()
+  const { schema, navigate, editable, version, route } = useApp()
   const create = id === null
+  // a create from a list carries where it saves (`?target=`, the list's target choice) and what it starts with
+  // (`?prefill=`, a JSON object of field values)
+  const query = queryOf(route)
+  const target = create ? query[TARGET_QUERY] : undefined
+  const prefill = create ? parsePrefill(query["prefill"]) : {}
   const row = schema.collection(collection)
   const all = schema.fields(collection)
   const drawn = formFields(all, create)
@@ -46,7 +63,7 @@ export function RecordPage({ collection, id }: { collection: string; id: string 
   )
   const saved = useMemo(() => {
     const out: Record<string, unknown> = {}
-    for (const f of controls) out[f.field] = doc.data?.fields[f.field] ?? f.default ?? null
+    for (const f of controls) out[f.field] = doc.data?.fields[f.field] ?? prefill[f.field] ?? f.default ?? null
     return out
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the controls follow the schema, which follows collection
   }, [doc.data, collection, schema])
@@ -88,7 +105,7 @@ export function RecordPage({ collection, id }: { collection: string; id: string 
     void run(async () => {
       if (!id) {
         const body = Object.fromEntries(Object.entries(draft).filter(([, v]) => v !== null && v !== ""))
-        const made = await createRecord(collection, body)
+        const made = await createRecord(collection, body, target)
         navigate(recordRoute(collection, made.id))
         return
       }

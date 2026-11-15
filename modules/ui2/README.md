@@ -43,7 +43,8 @@ the page out.
 | route | page |
 |---|---|
 | `/` | the workspace's collections |
-| `/content/<collection>` | the list: search, sort by a column, 200 rows a page |
+| `/content/<collection>` | the browse: the collection's records, by the List its layout names |
+| `/<a ui-view's route>` | a collection ui-view (`/projects-board`): the same browse, seeded from the view |
 | `/content/<collection>/<id>` | the record: its fields as a form, each by its Edit, and what the engine knows about it (created, last changed, source, file) |
 | `/content/<collection>/+` | a new record |
 
@@ -68,20 +69,34 @@ record page), `markdown` (rendered; one plain line in a cell), `tags`, `json`, `
 `list`, `nested`, `progress`, `source` and `stage-checks`. A cell is one line; the record page shows the
 whole value.
 
+The browse draws a collection's records by the List its `display.list.layout` (or the view's) names, from the
+`lists` registry; a module can register its own with `lists.register`, and it is handed `state`, `collection`,
+`query` and `options`, as in `ui`. The built-in List is `table`: a column per field (the collection's
+`list.columns`, else the title, the status and short scalars), sorted by a header click, a checkbox per row for
+batch delete, row density (compact, cozy, comfortable), colour by an enum, and bands by a field's value
+(`group_by`), a reference's band named by the referenced record's title. Search is the host's `q`; the filter
+builder sends the engine's `filter` with `ui`'s operators, values picked by the field's own Edit (a reference by
+the record picker, a string from the values its records hold), and fields of referenced records reachable by
+path (`project.status`). A collection read from more than one source has the source picker. Layout options (the
+panel beside the list) sets the layout, sort, the List's options and the columns and their order; **Save**
+writes them to the governing ui-view, or to the collection's own `display.list`, and **Save as…** writes a new
+ui-view at `/views/<collection>/<name>`. Search, filter and layout ride on the URL (`?filter=…`), as in `ui`.
+
 Save sends only the changed fields, and the host validates them as `dt set` does. If it refuses, the page
 shows its reason and nothing is written. When the host answers `GET /host` with level `read`, the page
 draws values and offers no edits.
 
-Not yet in `ui2`, all of which `ui` has: boards, calendars, maps and other ui-views; filters and grouping;
-the record-scoped pages (`form`, `doc`, `properties`, `data-model`); module apps; the schema editor and
-settings; nav arranging; history, commit and revert; notes and commands; file uploads. A route to one of
-these shows a line saying `ui2` doesn't draw it yet, and the nav still lists it.
+Not yet in `ui2`, all of which `ui` has: the other Lists — board, cards, calendar, map, gantt, diagram, counts
+and carousel (a view naming one draws the table, and says so); record and page ui-views; the record-scoped
+pages (`form`, `doc`, `properties`, `data-model`); module apps; the schema editor and settings; nav arranging;
+history, commit and revert; notes and commands; file uploads. A route to one of these shows a line saying `ui2`
+doesn't draw it yet, and the nav still lists it.
 
 ## building and testing
 
 ```bash
 npm run build -w modules/ui2       # dist/lib and dist/app
-npm test -w modules/ui2            # routes, fields, value rules, markdown and the API client (node --test)
+npm test -w modules/ui2            # routes, fields, filters, grouping, views, markdown and the API client
 npm run typecheck -w modules/ui2   # tsc, strict, over src/
 npm run ui2                        # from the repo root: the app from source, over a sample workspace
 ```

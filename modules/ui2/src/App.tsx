@@ -8,12 +8,14 @@ import { getPresentation, notify } from "./api/client.ts"
 import { AppContext, EMPTY_SCHEMA, useApp, useAsync, useSignal, type AppState } from "./app-context.tsx"
 import { Nav } from "./components/Nav.tsx"
 import { canEdit, hostInfo, SIGNED_OUT, signedOut } from "./lib/host.ts"
-import { pageOf } from "./lib/route.ts"
+import { pageOf, pathOf } from "./lib/route.ts"
+import { loadUiViews, uiViews } from "./lib/ui-views.ts"
 import { buildSchema } from "./lib/schema.ts"
 import "./registry/register-defaults.ts"
 import { HomePage } from "./pages/HomePage.tsx"
 import { ListPage } from "./pages/ListPage.tsx"
 import { RecordPage } from "./pages/RecordPage.tsx"
+import { ViewPage } from "./pages/ViewPage.tsx"
 
 /** `onMounted` runs once, after the first commit: the message listener is in place, so the host's answer to
  *  `dt:mounted` (the route to show) cannot arrive before anything listens. */
@@ -46,6 +48,8 @@ export function App({ onMounted }: { onMounted?: () => void }) {
   }, [])
 
   const presentation = useAsync(getPresentation, [version])
+  // the ui-view table, re-read with everything else: a view's route is a page only once it is known
+  useEffect(() => void loadUiViews(), [version])
   const schema = useMemo(() => (presentation.data ? buildSchema(presentation.data) : null), [presentation.data])
   const app: AppState = useMemo(
     () => ({
@@ -67,7 +71,8 @@ export function App({ onMounted }: { onMounted?: () => void }) {
         <main className="ui2-main">
           {presentation.error && <p className="ui2-error">{presentation.error}</p>}
           {schema && (
-            <Boundary key={route}>
+            // keyed on the PATH: a query (`?filter=…`) is the page's own state, written back as it changes
+            <Boundary key={pathOf(route)}>
               <Page />
             </Boundary>
           )}
@@ -79,7 +84,8 @@ export function App({ onMounted }: { onMounted?: () => void }) {
 
 function Page() {
   const { route, schema } = useApp()
-  const page = pageOf(route, schema.names)
+  const views = useSignal(uiViews)
+  const page = pageOf(route, schema.names, views ?? [])
   switch (page.kind) {
     case "home":
       return <HomePage />
@@ -89,9 +95,12 @@ function Page() {
       return <RecordPage collection={page.collection} id={page.id} />
     case "create":
       return <RecordPage collection={page.collection} id={null} />
+    case "view":
+      return <ViewPage id={page.id} />
     case "unknown-collection":
       return <p className="ui2-page ui2-error">No collection {page.path} in this workspace.</p>
     case "unsupported":
+      if (views === null) return null // the view table is still being read
       return (
         <p className="ui2-page ui2-subtle">
           <code>{page.route}</code> is a page @dreamteamer/ui draws; ui2 does not draw it yet.

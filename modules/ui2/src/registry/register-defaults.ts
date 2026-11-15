@@ -9,6 +9,10 @@
  * those would be wrong for nearly every such field) or by SHAPE in resolve.ts (`tags`, `list`, `nested`,
  * `markdown-body`, `relation-picker`, `select-dropdown`, `label`, `relation`).
  *
+ * The Lists — a collection's browse arrangements — register here too: today the built-in `table`, with the
+ * options every list shares (grouping, colour, page size) and the table's own density. Board, cards, calendar,
+ * map, gantt, diagram, counts and carousel come in later steps; a view naming one draws the table meanwhile.
+ *
  * Not here yet: the record-scoped `form`/`doc`, `properties` and `data-model` (record pages, a later step).
  */
 import { EditBoolean } from "../edits/EditBoolean.tsx"
@@ -45,7 +49,10 @@ import { ViewSource } from "../views/ViewSource.tsx"
 import { ViewStageChecks } from "../views/ViewStageChecks.tsx"
 import { ViewTags } from "../views/ViewTags.tsx"
 import { ViewText } from "../views/ViewText.tsx"
-import { edits, optionRows, views } from "./index.ts"
+import { ListTable } from "../lists/ListTable.tsx"
+import { ALL, PAGE_SIZE_CHOICES } from "../lib/page-size.ts"
+import { DEFAULT_ROW_SIZE, ROW_SIZES, ROW_SIZE_LABELS } from "../lib/row-size.ts"
+import { edits, lists, optionRows, views, type OptionFieldDef } from "./index.ts"
 
 edits.register({ id: "input", name: "Input", component: EditInput, types: ["string", "url", "email", "position"] })
 edits.register({ id: "textarea", name: "Textarea", component: EditTextarea, types: ["markdown"] })
@@ -110,3 +117,82 @@ views.register({ id: "stage-checks", name: "Stage checks", component: ViewStageC
 views.register({ id: "json", name: "JSON", component: ViewJson, types: ["object", "map"] })
 views.register({ id: "list", name: "List", component: ViewList, types: [] })
 views.register({ id: "nested", name: "Nested", component: ViewNested, types: [] })
+
+// ── options every list shares ────────────────────────────────────────────────────────────────────────────
+// GROUPING IS ONE CONCEPT WITH TWO AXES, NAMED FOR THE AXIS: `group_by` makes horizontal bands and every list has
+// it; `lanes_by` makes the kanban's columns. An option that takes a field is named for the role the field plays,
+// with no `_field` suffix (descriptor v2 §3.5.1); `lib/list-options.ts` knows the old spellings.
+const groupRowsOptions = (): OptionFieldDef[] => [
+  {
+    field: "group_by",
+    group: "rows",
+    name: "Group by",
+    type: "string",
+    editor: "field-select",
+    // `prefer`, not a filter: a non-enum field is a legal axis too, and blank means no bands at all
+    editor_options: { prefer: "choices", placeholder: "None — no bands" },
+    note: "horizontal bands, one per value — blank leaves the list ungrouped",
+  },
+  {
+    field: "show_ungrouped_rows",
+    group: "rows",
+    name: "Show ungrouped band",
+    type: "boolean",
+    default: false,
+    note: "a band for records with no value",
+    when: v => typeof v["group_by"] === "string" && !!v["group_by"],
+  },
+  // empty BANDS default to hidden (a band is not a drop target), empty kanban COLUMNS to shown (a column is)
+  {
+    field: "show_empty_rows",
+    group: "rows",
+    name: "Show empty bands",
+    type: "boolean",
+    default: false,
+    note: "keep a band whose value has no records",
+    when: v => typeof v["group_by"] === "string" && !!v["group_by"],
+  },
+]
+
+// blank is the collection's own `display.record.color_by` — the view's key wins, the collection's is the default
+const colorByOption = (group?: string): OptionFieldDef => ({
+  field: "color_by",
+  ...(group ? { group } : {}),
+  name: "Colour by",
+  type: "string",
+  editor: "field-select",
+  editor_options: { prefer: "choices", placeholder: "Auto — the collection’s color_by" },
+  note: "tint each record with its value’s enum colour",
+})
+
+// paging is server-side; a grouped view defaults to All (`lib/page-size.ts`), an explicit choice still wins
+const pageSizeOption = (): OptionFieldDef => ({
+  field: "page_size",
+  name: "Page size",
+  type: "integer",
+  editor: "select-dropdown",
+  editor_options: {
+    choices: PAGE_SIZE_CHOICES.map(n => ({ label: n === ALL ? "All" : String(n), value: n })),
+  },
+  note: "defaults to All while rows are grouped, otherwise 25",
+})
+
+// the table's density; the header's density menu writes the same key (`lib/row-size.ts` is the one reader)
+const rowSizeOption = (): OptionFieldDef => ({
+  field: "row_size",
+  group: "density",
+  name: "Row size",
+  type: "string",
+  editor: "select-dropdown",
+  editor_options: { choices: ROW_SIZES.map(size => ({ label: ROW_SIZE_LABELS[size], value: size })) },
+  default: DEFAULT_ROW_SIZE,
+  note: "comfortable draws a leading picture at 48px with the title weighted, like a contacts list",
+})
+
+lists.register({
+  id: "table",
+  name: "Table",
+  component: ListTable,
+  fillsHeight: true,
+  options: [rowSizeOption(), ...groupRowsOptions(), colorByOption(), pageSizeOption()],
+})

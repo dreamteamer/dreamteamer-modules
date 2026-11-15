@@ -1,0 +1,394 @@
+/**
+ * THE LAYOUT OPTIONS PANEL — beside the list: the layout, the sort, the active List's own options, the columns in
+ * their real order (reorder by drag or by the arrows, hide, add one back), and the saved-view actions in its title
+ * bar (ported from @dreamteamer/ui's browse/LayoutOptionsSection.vue and ViewSaveActions.vue; ui draws it in the
+ * right rail, which ui2 does not have yet).
+ *
+ * SAVE writes what the screen shows to whichever governs the page (descriptor v2 §3.5, `lib/view-write.ts`):
+ *  - a NAMED ui-view → the view record, rewritten whole: its route, scope, collection, every display block it
+ *    carried, `display.list` from the screen, and the builder's filter — except an opaque stored filter, which
+ *    is kept as stored rather than flattened;
+ *  - the bare collection → its own `display.list` (`dt set collections/<c>`): columns, sort, the layout and each
+ *    option where they differ. A collection's display holds no filter, so one on screen is named as unsaved and
+ *    the page stays dirty, rather than reading as saved and reverting on the next compile.
+ * SAVE AS… writes a NEW ui-view at `/views/<collection>/<slug>`, titled in the nav. The answer — the engine's
+ * sentence verbatim and the one next action it implies (`lib/save-answer.ts`) — drops down under the buttons, in
+ * view by construction.
+ *
+ * Not ported: ui's icon picker (the icon is typed) and its module picker (a new view lands in the workspace module,
+ * the engine's default).
+ */
+import { useState, type DragEvent, type FormEvent } from "react"
+import { saveUiView, setCollectionKeys } from "../api/client.ts"
+import { useSignal } from "../app-context.tsx"
+import { Icon } from "../components/Icon.tsx"
+import { Link } from "../components/Link.tsx"
+import { Select } from "../components/Select.tsx"
+import { computedReason } from "../lib/field-row.ts"
+import { compileFilter } from "../lib/filter-query.ts"
+import { labelOf } from "../lib/format-title.ts"
+import { refusalAnswer, savedAnswer, type SaveAnswer } from "../lib/save-answer.ts"
+import { signal } from "../lib/signal.ts"
+import { slugify } from "../lib/slugify.ts"
+import { SOURCE_FIELD } from "../lib/sources.ts"
+import { loadUiViews, uiViews } from "../lib/ui-views.ts"
+import { filterToWrite } from "../lib/view-filter.ts"
+import { collectionListWrite, namedViewWrite, newViewWrite, type ListPresentation } from "../lib/view-write.ts"
+import { lists } from "../registry/index.ts"
+import { FieldContext } from "../render/FieldContext.tsx"
+import { OptionsForm } from "../render/OptionsForm.tsx"
+import type { BrowseState } from "./browse-state.ts"
+
+const lastAnswer = signal<{ key: string; a: SaveAnswer; route?: string } | null>(null)
+
+export function LayoutOptions({ state, onClose }: { state: BrowseState; onClose(): void }) {
+  const views = useSignal(uiViews) ?? []
+  const collection = state.collection
+  const entry = lists.get(state.layout)
+  const options = entry?.options ?? []
+  const selfHeaded = options.length > 0 && options.every(o => !!o.group || o.field === "page_size")
+  const drawsTable = !entry || state.layout === "table"
+
+  const layoutChoices = lists.all().map(e => ({ text: e.name, value: e.id }))
+  if (!entry) layoutChoices.push({ text: `${state.layout} (not in ui2 yet)`, value: state.layout })
+
+  // ---- saving ----------------------------------------------------------------------------------------------
+  const [saving, setSaving] = useState(false)
+  const [formOpen, setFormOpen] = useState(false)
+  // kept outside the component: a Save rewrites the record, which remounts the browse (and this panel) on it
+  const answerKey = `${collection}::${state.viewId ?? ""}`
+  const kept = useSignal(lastAnswer)
+  const answer = kept?.key === answerKey ? kept : null
+  const setAnswer = (a: { a: SaveAnswer; route?: string } | null) => lastAnswer.set(a ? { ...a, key: answerKey } : null)
+  const [name, setName] = useState("")
+  const [icon, setIcon] = useState("")
+  const slug = slugify(name)
+
+  /** What the screen contributes to a list block. `sort: ''` is written as such: explicitly unsorted.
+   *  ⚠ The Source column is left out: compile refuses `$source` in `display.list.columns` ("not a field of
+   *  collections/<c>"), and it joins the default columns of a mixed-source list on its own — written, it made
+   *  every Save on such a list fail (ui writes it, and fails the same way). */
+  const presentation = (): ListPresentation => {
+    const snap = state.snapshot()
+    return {
+      layout: snap.layout,
+      columns: snap.columns.filter(c => c !== SOURCE_FIELD),
+      sort: snap.sort,
+      options: { ...(snap.listOptions[snap.layout] ?? {}) },
+    }
+  }
+
+  async function save(): Promise<void> {
+    if (saving) return
+    setSaving(true)
+    setAnswer(null)
+    try {
+      const existing = views.find(v => v.id === state.viewId)
+      const p = presentation()
+      const filter = filterToWrite(state.filterGroup, { opaque: state.filterOpaque, stored: existing?.filter })
+      if (existing) {
+        const out = await saveUiView(existing.id, namedViewWrite(existing, collection, p, filter))
+        state.markSaved()
+        setAnswer({ a: savedAnswer("view", out ?? undefined) })
+        await loadUiViews()
+        return
+      }
+      const { changes, unsaved } = collectionListWrite(state.row?.list, p, filter)
+      const out = await setCollectionKeys(collection, changes)
+      if (!unsaved.length) state.markSaved()
+      setAnswer({ a: savedAnswer("collection", out ?? undefined, { unsaved }) })
+    } catch (err) {
+      setAnswer({ a: refusalAnswer(err, { saveAs: false }) })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function saveAs(e: FormEvent): Promise<void> {
+    e.preventDefault()
+    if (!slug || saving) return
+    setSaving(true)
+    setAnswer(null)
+    try {
+      const view = newViewWrite(
+        `/views/${collection.replace(/\//g, "-")}/${slug}`,
+        collection,
+        { title: name.trim(), icon: icon.trim() || undefined },
+        presentation(),
+        compileFilter(state.filterGroup) ?? undefined
+      )
+      await saveUiView(undefined, view)
+      await loadUiViews()
+      setFormOpen(false)
+      setAnswer({ a: savedAnswer("new-view", undefined, { route: view.route }), route: view.route })
+    } catch (err) {
+      // the form stays open: every next step a refusal names (another name) is in it
+      setAnswer({ a: refusalAnswer(err, { saveAs: true }) })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const openForm = () => {
+    setAnswer(null)
+    setName("")
+    setIcon("")
+    setFormOpen(true)
+  }
+
+  // ---- columns ----------------------------------------------------------------------------------------------
+  const [dragFrom, setDragFrom] = useState<number | null>(null)
+  const [dragOver, setDragOver] = useState<number | null>(null)
+  const onDragStart = (i: number, e: DragEvent) => {
+    setDragFrom(i)
+    e.dataTransfer.effectAllowed = "move"
+    e.dataTransfer.setData("text/plain", String(i))
+  }
+  const onDrop = (i: number) => {
+    if (dragFrom !== null) state.moveColumn(dragFrom, i)
+    setDragFrom(null)
+    setDragOver(null)
+  }
+
+  return (
+    <aside className="ui2-layout-options" aria-label="Layout options">
+      <header className="ui2-lo-head">
+        <span className="ui2-lo-title">Layout options</span>
+        <div className="ui2-lo-actions" data-view-save-actions>
+          {state.dirty && (
+            <span className="ui2-lo-dirty" title="Unsaved changes to this view">
+              ●
+            </span>
+          )}
+          <button
+            type="button"
+            className={`ui2-lo-btn${state.dirty ? " is-strong" : ""}`}
+            data-action="save"
+            disabled={!state.dirty || saving}
+            title={
+              state.viewId
+                ? "Save this presentation to the current view record"
+                : "Save the layout, its options, the columns and the sort to the collection's own display"
+            }
+            onClick={() => void save()}
+          >
+            <Icon name="save" /> {saving && !formOpen ? "Saving…" : "Save"}
+          </button>
+          <button
+            type="button"
+            className="ui2-lo-btn"
+            data-action="save-as"
+            title="Save as a new named view"
+            onClick={openForm}
+          >
+            <Icon name="bookmark" /> Save as…
+          </button>
+          <button
+            type="button"
+            className="ui2-lo-btn"
+            data-action="reset"
+            disabled={!state.dirty}
+            title="Discard unsaved changes"
+            onClick={() => {
+              state.resetToView()
+              setAnswer(null)
+            }}
+          >
+            <Icon name="discard" />
+          </button>
+          <button
+            type="button"
+            className="ui2-lo-btn"
+            title="Close"
+            aria-label="Close layout options"
+            onClick={onClose}
+          >
+            <Icon name="close" />
+          </button>
+
+          {(formOpen || answer) && (
+            <div className="ui2-lo-pop">
+              {formOpen && (
+                <form className="ui2-lo-form" data-save-as-form onSubmit={e => void saveAs(e)}>
+                  <p className="ui2-lo-label">Save as a new view</p>
+                  <input
+                    autoFocus
+                    value={name}
+                    placeholder="View name…"
+                    aria-label="View name"
+                    onChange={e => setName(e.target.value)}
+                  />
+                  <input
+                    value={icon}
+                    placeholder="Icon (optional, a codicon name)"
+                    aria-label="View icon"
+                    onChange={e => setIcon(e.target.value)}
+                  />
+                  <p className="ui2-hint">
+                    Appears in the nav
+                    {slug && (
+                      <>
+                        {" "}
+                        at{" "}
+                        <code>
+                          /views/{collection.replace(/\//g, "-")}/{slug}
+                        </code>
+                      </>
+                    )}
+                  </p>
+                  <div className="ui2-lo-row">
+                    <button type="submit" className="ui2-button is-primary is-small" disabled={!slug || saving}>
+                      {saving ? "Saving…" : "Save"}
+                    </button>
+                    <button type="button" className="ui2-button is-small" onClick={() => setFormOpen(false)}>
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              )}
+              {answer && (
+                <div
+                  className={`ui2-lo-answer ${answer.a.tone === "error" ? "is-error" : "is-ok"}`}
+                  role={answer.a.tone === "error" ? "alert" : "status"}
+                  data-save-answer
+                >
+                  <p>{answer.a.sentence}</p>
+                  {answer.a.detail && <pre>{answer.a.detail}</pre>}
+                  <div className="ui2-lo-row">
+                    {answer.route && <Link to={answer.route}>Open it</Link>}
+                    {answer.a.next?.action ? (
+                      <button type="button" className="ui2-button is-small" onClick={openForm}>
+                        {answer.a.next.label}
+                      </button>
+                    ) : (
+                      answer.a.next && <span>{answer.a.next.label}</span>
+                    )}
+                    <button type="button" className="ui2-icon-button" title="Dismiss" onClick={() => setAnswer(null)}>
+                      <Icon name="close" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </header>
+
+      <section className="ui2-lo-section">
+        <p className="ui2-lo-label">Layout</p>
+        <Select
+          value={state.layout}
+          choices={layoutChoices}
+          ariaLabel="Layout"
+          onChange={v => state.setLayout(String(v))}
+        />
+      </section>
+
+      <section className="ui2-lo-section">
+        <p className="ui2-lo-label">Sort</p>
+        <div className="ui2-lo-sort">
+          <Select
+            value={state.sortField}
+            choices={state.fields.map(f => ({ text: labelOf(f), value: f.field }))}
+            placeholder="Unsorted"
+            ariaLabel="Sort"
+            onChange={v => {
+              const f = String(v ?? "")
+              state.setSort(f ? (state.sortDesc ? `-${f}` : f) : "")
+            }}
+          />
+          <div className="ui2-lo-dir" role="group" aria-label="Sort direction">
+            {([false, true] as const).map(desc => (
+              <button
+                key={String(desc)}
+                type="button"
+                title={desc ? "Descending" : "Ascending"}
+                className={state.sortField && state.sortDesc === desc ? "is-on" : undefined}
+                disabled={!state.sortField}
+                onClick={() => state.setSort(desc ? `-${state.sortField}` : state.sortField)}
+              >
+                <Icon name={desc ? "arrow-down" : "arrow-up"} />
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {options.length > 0 && (
+        <section className="ui2-lo-section">
+          {!selfHeaded && <p className="ui2-lo-label">Options</p>}
+          <FieldContext.Provider value={{ collection, fields: state.fields }}>
+            <OptionsForm
+              options={options}
+              value={state.listOptions[state.layout] ?? {}}
+              onChange={v => state.setListOptions(state.layout, v)}
+            />
+          </FieldContext.Provider>
+        </section>
+      )}
+
+      {drawsTable && (
+        <section className="ui2-lo-section">
+          <p className="ui2-lo-label">Columns</p>
+          <ul className="ui2-lo-cols">
+            {state.columns.map((f, i) => {
+              const reason = computedReason(f, { create: false })
+              return (
+                <li
+                  key={f.field}
+                  className={`ui2-lo-col${dragFrom === i ? " is-dragging" : ""}${dragOver === i && dragFrom !== i ? " is-over" : ""}`}
+                  draggable
+                  onDragStart={e => onDragStart(i, e)}
+                  onDragOver={e => {
+                    e.preventDefault()
+                    if (dragFrom !== null) setDragOver(i)
+                  }}
+                  onDrop={e => {
+                    e.preventDefault()
+                    onDrop(i)
+                  }}
+                  onDragEnd={() => {
+                    setDragFrom(null)
+                    setDragOver(null)
+                  }}
+                >
+                  <Icon name="gripper" />
+                  <span
+                    className={`ui2-lo-col-name${reason !== null ? " is-computed" : ""}`}
+                    title={reason ?? undefined}
+                  >
+                    {labelOf(f)}
+                  </span>
+                  <button type="button" title="Move up" disabled={i === 0} onClick={() => state.moveColumn(i, i - 1)}>
+                    <Icon name="chevron-up" />
+                  </button>
+                  <button
+                    type="button"
+                    title="Move down"
+                    disabled={i === state.columns.length - 1}
+                    onClick={() => state.moveColumn(i, i + 1)}
+                  >
+                    <Icon name="chevron-down" />
+                  </button>
+                  <button type="button" title="Hide column" onClick={() => state.toggleColumn(f.field)}>
+                    <Icon name="close" />
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+          {!state.columns.length && <p className="ui2-subtle">No columns shown</p>}
+          {state.hiddenFields.length > 0 && (
+            <Select
+              value=""
+              choices={state.hiddenFields.map(f => ({ text: labelOf(f), value: f.field }))}
+              placeholder="+ Add column…"
+              ariaLabel="Add column"
+              onChange={v => v && state.toggleColumn(String(v))}
+            />
+          )}
+        </section>
+      )}
+    </aside>
+  )
+}

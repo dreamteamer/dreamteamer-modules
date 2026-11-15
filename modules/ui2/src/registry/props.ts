@@ -28,3 +28,16 @@ export interface ViewProps {
   /** The row the value belongs to. */
   record?: Record<string, unknown>
 }
+
+/**
+ * The props every registered List receives — the same set @dreamteamer/ui's BrowseView hands its Lists. A built-in
+ * reads the browse's whole `state` (rows, columns, grouping options, selection, paging); a module's List may read
+ * only the documented three and fetch for itself: the collection, the query the browse is asking
+ * (`filter` is the effective one, ready for the records API), and the options its view or preset gave it.
+ */
+export interface ListProps {
+  state: import("../browse/browse-state.ts").BrowseState
+  collection: string
+  query: { search: string; filter: Record<string, unknown> | undefined; sort: string }
+  options: Record<string, unknown>
+}

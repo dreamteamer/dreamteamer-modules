@@ -7,6 +7,7 @@ import { useState } from "react"
 import { getNav, type NavNode } from "../api/client.ts"
 import { useApp, useAsync } from "../app-context.tsx"
 import { Icon } from "./Icon.tsx"
+import { pathOf } from "../lib/route.ts"
 
 export function Nav() {
   const { version } = useApp()
@@ -36,7 +37,9 @@ function NavRow({ node, depth }: { node: NavNode; depth: number }) {
   const { route, navigate } = useApp()
   const [open, setOpen] = useState(true)
   const kids = node.children ?? []
-  const active = node.route !== undefined && (route === node.route || route.startsWith(`${node.route}/`))
+  // a row naming a query (a layer's `?filter=`) is active on exactly that route; any other on its path and below
+  const here = node.route?.includes("?") ? route : pathOf(route)
+  const active = node.route !== undefined && (here === node.route || here.startsWith(`${node.route}/`))
   const click = () => {
     if (node.route) navigate(node.route)
     else if (kids.length) setOpen(o => !o)
