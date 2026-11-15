@@ -180,7 +180,10 @@ before taking it in.
 ```bash
 npm install
 npm test                                   # every gate, against the engine in devDependencies
-DT_ENGINE_DIR=../dreamteamer npm test      # the same, against an engine checkout
+DT_ENGINE_DIR=../dreamteamer npm test      # the same, spawning dt from an engine checkout
+node scripts/test-candidate.mjs ../dreamteamer [--only=… | --module=…]
+                                           # the checkout packed and installed over node_modules/dreamteamer
+                                           # (dreamteamer/testing too), the suite run, the published engine put back
 node scripts/test.mjs --module=users       # tests/ + one module's suite — what its release tag runs
 node scripts/test.mjs --shard=2/4          # one of CI's four balanced shards (--list to see its files)
 ```

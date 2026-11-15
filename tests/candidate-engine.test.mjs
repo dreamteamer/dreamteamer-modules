@@ -31,7 +31,7 @@ function scratchRoot() {
 /** A candidate folder: the installed engine packed, its sums written (or a wrong one). */
 function candidate({ wrong = false } = {}) {
 	const dir = tmp();
-	const out = execFileSync('npm', ['pack', path.join(ROOT, 'node_modules', 'dreamteamer'), '--pack-destination', dir, '--json', '--silent'], { cwd: ROOT, encoding: 'utf8' });
+	const out = execFileSync('npm', ['pack', path.join(ROOT, 'node_modules', 'dreamteamer'), '--pack-destination', dir, '--json', '--silent', '--ignore-scripts'], { cwd: ROOT, encoding: 'utf8' });
 	const file = JSON.parse(out)[0].filename;
 	const sha = createHash('sha256').update(fs.readFileSync(path.join(dir, file))).digest('hex');
 	fs.writeFileSync(path.join(dir, 'SHA256SUMS'), `${wrong ? '0'.repeat(64) : sha}  ${file}\n`);
