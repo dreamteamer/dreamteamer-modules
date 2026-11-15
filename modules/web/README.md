@@ -284,5 +284,6 @@ claimed `dt serve` before, must remove `@dreamteamer/http` first — the engine 
   or `localhost` with the printed port.
 - **"port 4870 is in use"**: a `--port` you chose is taken; drop it to let the server keep its own.
 - **The page doesn't change when a record does**: check that the server is still running (`npx dt web status`).
-  On Linux, check the Node version and the inotify limit.
+  On Linux, check the Node version and the inotify limit. A folder whose file watch failed is watched again on its
+  own, within a second, and at most 30 seconds apart while it keeps failing; the page refreshes when it is.
 - **"the app is missing"**: `@dreamteamer/ui` is installed without its build. Reinstall it.

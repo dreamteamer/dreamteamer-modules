@@ -29,6 +29,10 @@ import { CHALLENGE, IDENTITY_PATH, identityProof } from './runtime.js';
 import { handoff, listWorkspaces } from './handoff.js';
 
 const DEBOUNCE_MS = 150;
+// a watcher an error closed is opened again after REWATCH_FIRST_MS, doubling to REWATCH_MAX_MS while it keeps failing
+const REWATCH_FIRST_MS = 500;
+const REWATCH_MAX_MS = 30_000;
+const REWATCH_HEALTHY_MS = 10_000;
 const MAX_BODY_BYTES = 16 * 1024 * 1024;
 export const NAV_MIGRATED_NOTICE = 'nav.yaml written from your nav settings — they are no longer read';
 export const SIGN_IN_REFUSED = 'This sign-in link was used or is older than a minute — ask the chat to show the pane again (dt web open).';
@@ -520,23 +524,62 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 60, owner
 		clearTimeout(timer);
 		timer = setTimeout(() => { const s = pending; pending = null; broadcast(invalidateMessage(s)); }, DEBOUNCE_MS);
 	};
-	const watchers = [];
+	let stopped = false;
+	const watchers = new Set();
+	const rewatches = new Set();
 	// A watcher reports trouble as an 'error' event, and an EventEmitter with no 'error' listener throws it — out of the
 	// server, uncaught. On Linux a recursive watch is Node's own walk (readdir of each new folder), so a folder that a
 	// compile creates and removes again (.dreamteamer/skills) fails that walk with ENOENT. That is a change, not a fault:
-	// it is sent as one, and the watch goes on.
-	const watched = (w, dir) => { w.on('error', (e) => { if (!stopped) changed(typeof e?.path === 'string' ? e.path : dir); }); watchers.push(w); };
+	// it is sent as one.
+	// And the watch is opened again: Node closes a watcher that reports an error (macOS's FSEvents, and the watch on the
+	// root on every OS), and a closed watcher hears nothing more — the pane would stop refreshing. So every error closes
+	// the watcher here too (Linux's keeps running otherwise; closing twice is nothing) and a fresh one is opened after a
+	// delay that doubles while the folder keeps failing (REWATCH_FIRST_MS up to REWATCH_MAX_MS, never a loop), back to
+	// the first once a watcher has lived REWATCH_HEALTHY_MS. The reopen is sent as a change too: what was written while
+	// nothing listened reaches the page. Nothing is reopened once the server stops.
+	const watch = (dir, open, delay = 0) => {
+		let w;
+		try { w = open(); } catch {
+			// a first open that fails is an unwatchable folder; a reopen that fails (the folder is gone) tries again later
+			if (delay) rewatch(dir, open, Math.min(delay * 2, REWATCH_MAX_MS));
+			return;
+		}
+		const opened = Date.now();
+		let failed = false;
+		watchers.add(w);
+		w.on('error', (e) => {
+			if (failed) return;   // one reopen per watcher, however many errors it reports
+			failed = true;
+			watchers.delete(w);
+			try { w.close(); } catch { /* closed by Node already */ }
+			if (stopped) return;
+			changed(typeof e?.path === 'string' ? e.path : dir);
+			rewatch(dir, open, !delay || Date.now() - opened >= REWATCH_HEALTHY_MS ? REWATCH_FIRST_MS : Math.min(delay * 2, REWATCH_MAX_MS));
+		});
+		if (delay) changed(dir);
+	};
+	const rewatch = (dir, open, delay) => {
+		if (stopped) return;
+		const t = setTimeout(() => { rewatches.delete(t); if (!stopped) watch(dir, open, delay); }, delay);
+		t.unref?.();
+		rewatches.add(t);
+	};
+	const unwatch = () => {
+		for (const t of rewatches) clearTimeout(t);
+		rewatches.clear();
+		for (const w of watchers) w.close();
+		watchers.clear();
+	};
 	const watchDir = (dir) => {
 		if (!fs.existsSync(dir)) return;
-		try { watched(fs.watch(dir, { recursive: true }, (_e, f) => f && changed(path.join(dir, String(f)))), dir); } catch { /* unwatchable */ }
+		watch(dir, () => fs.watch(dir, { recursive: true }, (_e, f) => f && changed(path.join(dir, String(f)))));
 	};
 	for (const d of ['data', 'state', '.dreamteamer']) watchDir(path.join(root, d));
 	// nav.yaml at the root, by name: a save renames a temp file over it, which only a watch on the folder sees
-	try { watched(fs.watch(root, (_e, f) => f && String(f) === NAV_DOC_FILE && changed(path.join(root, NAV_DOC_FILE))), path.join(root, NAV_DOC_FILE)); } catch { /* unwatchable */ }
+	watch(path.join(root, NAV_DOC_FILE), () => fs.watch(root, (_e, f) => f && String(f) === NAV_DOC_FILE && changed(path.join(root, NAV_DOC_FILE))));
 	try { for (const l of fs.readdirSync(path.join(root, 'git_modules'))) watchDir(path.join(root, 'git_modules', l, 'data')); } catch { /* no layers */ }
 
 	// ---- lifetime ----------------------------------------------------------------------------
-	let stopped = false;
 	let resolveClosed;
 	const closed = new Promise((r) => { resolveClosed = r; });
 	let v6 = null;
@@ -545,7 +588,7 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 60, owner
 		if (stopped) return closed;
 		stopped = true;
 		clearTimeout(timer); idle.clear(); clearInterval(ownerTimer);
-		for (const w of watchers) w.close();
+		unwatch();
 		for (const c of pageStreams) c.end();
 		for (const c of clientStreams.keys()) c.end();
 		try { store.flush?.(); } catch { /* the state dir went away: the next start reads what was written */ }
@@ -586,8 +629,9 @@ export async function startWeb({ root, appDir, port = 0, idleMinutes = 60, owner
 			listenPort = await listenOn(0);
 		}
 	} catch (e) {
+		stopped = true;
 		clearTimeout(timer); clearInterval(ownerTimer);
-		for (const w of watchers) w.close();
+		unwatch();
 		throw e;
 	}
 	if (state.port !== listenPort) { state.port = listenPort; save(); }

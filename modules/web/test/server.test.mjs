@@ -341,3 +341,104 @@ describe('a watcher error never stops the server', () => {
 		}
 	});
 });
+
+describe('a watcher Node closed after an error is opened again', () => {
+	// Node closes a watcher that reports an error (macOS's FSEvents, and the non-recursive watch on the workspace root
+	// on every OS) and emits the error after. 0.3.0 heard the error, sent one change and never watched that folder
+	// again: the pane stopped refreshing. Here Node's part is done by hand — close, then emit — on any platform.
+	const emfile = () => Object.assign(new Error('EMFILE: too many open files, watch'), { code: 'EMFILE', syscall: 'watch' });
+	/** A server whose every fs.watch call is recorded, the wrapper left in place for the test (the reopen calls it). */
+	async function watchedServer() {
+		const made = [];
+		const real = fs.watch;
+		fs.watch = (...args) => { const w = real(...args); made.push({ dir: String(args[0]), recursive: args[1]?.recursive === true, w }); return w; };
+		const state = fs.mkdtempSync(path.join(path.dirname(f.state), 'dt-web-state-rewatch-'));
+		const w2 = await startWeb({ root: f.root, appDir: f.app, idleMinutes: 0, stateDir: state });
+		const restore = async () => { fs.watch = real; await w2.close(); fs.rmSync(state, { recursive: true, force: true }); };
+		return { w2, made, restore };
+	}
+	/** An open event stream whose chunks are read as they come, so a wait sees only what arrived after it began. */
+	async function events(w2) {
+		const ctrl = new AbortController();
+		const c2 = await pair(w2);
+		const res = await fetch(`${w2.url}/api/events`, { headers: { cookie: c2, ...sameOrigin() }, signal: ctrl.signal });
+		assert.equal(res.status, 200);
+		const reader = res.body.getReader();
+		let got = '';
+		(async () => { try { for (;;) { const { value, done } = await reader.read(); if (done) return; got += Buffer.from(value).toString(); } } catch { /* aborted */ } })();
+		return {
+			mark: () => got.length,
+			async invalidatedSince(from, ms = 5000) {
+				const t0 = Date.now();
+				while (Date.now() - t0 < ms) { if (got.slice(from).includes('"type":"dt:invalidate"')) return got.slice(from); await new Promise((r) => setTimeout(r, 50)); }
+				return null;
+			},
+			close: () => ctrl.abort(),
+		};
+	}
+	const until = async (cond, ms = 5000) => { const t0 = Date.now(); while (!cond() && Date.now() - t0 < ms) await new Promise((r) => setTimeout(r, 50)); return cond(); };
+	const quiet = (ms) => new Promise((r) => setTimeout(r, ms));
+
+	test('the data/ watch: reopened, and a record edited after the reopen reaches the page', { timeout: 30_000 }, async () => {
+		const { w2, made, restore } = await watchedServer();
+		const s = await events(w2);
+		try {
+			const dataDir = path.join(f.root, 'data');
+			const on = () => made.filter((m) => m.recursive && m.dir === dataDir);
+			assert.equal(on().length, 1, `one watch on data/: ${made.map((m) => m.dir)}`);
+			on()[0].w.close();
+			on()[0].w.emit('error', emfile());
+			assert.ok(await until(() => on().length === 2), 'data/ was not watched again within 5 s');
+			// the error's and the reopen's own notices have come and gone; nothing else is changing
+			await quiet(600);
+			const from = s.mark();
+			await quiet(300);
+			assert.equal(await s.invalidatedSince(from, 1), null, 'an invalidation arrived with nothing changed');
+			// a value no other run wrote, so the set always writes the file
+			f.dt('set', 'projects/northwind-launch', `notes=reopened ${Date.now()}`);
+			const after = await s.invalidatedSince(from);
+			assert.ok(after, 'a record edited after the reopen never reached the page');
+			assert.match(after, /"type":"dt:invalidate","scope":"data"/);
+		} finally { s.close(); await restore(); }
+	});
+
+	test('the root nav.yaml watch: reopened, and nav.yaml saved after the reopen reaches the page', { timeout: 30_000 }, async () => {
+		const { w2, made, restore } = await watchedServer();
+		const s = await events(w2);
+		const file = path.join(f.root, 'nav.yaml');
+		const existed = fs.existsSync(file);
+		const was = existed ? fs.readFileSync(file, 'utf8') : 'sections: []\n';
+		try {
+			const on = () => made.filter((m) => !m.recursive && m.dir === f.root);
+			assert.equal(on().length, 1, `one watch on the root: ${made.map((m) => m.dir)}`);
+			on()[0].w.close();
+			on()[0].w.emit('error', emfile());
+			assert.ok(await until(() => on().length === 2), 'the workspace root was not watched again within 5 s');
+			await quiet(600);
+			const from = s.mark();
+			await quiet(300);
+			assert.equal(await s.invalidatedSince(from, 1), null, 'an invalidation arrived with nothing changed');
+			// the way an editor saves: a temp file renamed over the old one
+			fs.writeFileSync(`${file}.swp`, `${was}\n`);
+			fs.renameSync(`${file}.swp`, file);
+			assert.ok(await s.invalidatedSince(from), 'nav.yaml saved after the reopen never reached the page');
+		} finally {
+			s.close(); await restore();
+			if (existed) fs.writeFileSync(file, was); else fs.rmSync(file, { force: true });
+		}
+	});
+
+	test('a watcher that errors after the server stopped is never opened again', { timeout: 30_000 }, async () => {
+		const { w2, made, restore } = await watchedServer();
+		try {
+			const dataDir = path.join(f.root, 'data');
+			const w = made.find((m) => m.recursive && m.dir === dataDir).w;
+			await w2.close();
+			const before = made.length;
+			w.close();
+			w.emit('error', emfile());
+			await quiet(1500);
+			assert.equal(made.length, before, `a watch was opened after the stop: ${made.slice(before).map((m) => m.dir)}`);
+		} finally { await restore(); }
+	});
+});
