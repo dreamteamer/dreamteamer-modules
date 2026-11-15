@@ -425,10 +425,12 @@ onUnmounted(() => { window.removeEventListener('message', onMessage); window.rem
 .dt-nav-toolbar__name { flex: 1 1 0; min-width: 0; display: flex; align-items: center; overflow: hidden; }
 .dt-nav-toolbar__label, :deep(.dt-nav-toolbar__label) { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; color: var(--dt-fg); }
 .dt-nav-toolbar__settings { max-width: 100%; height: 24px; margin: 0; padding: 0 4px; border: 0; border-radius: var(--dt-radius); background: transparent; font: inherit; font-weight: 600; text-align: left; cursor: default; }
-.dt-nav-toolbar__settings:hover { background: var(--dt-bg-hover); }
+.dt-nav-toolbar__settings:hover { background: var(--dt-ink-3); }
 .dt-nav-toolbar__buttons { flex: 0 1 auto; min-width: 0; display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 2px; }
-.dt-nav-tool, :deep(.dt-nav-tool) { position: relative; flex: none; display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; padding: 0; border: 0; border-radius: var(--dt-radius); background: transparent; color: var(--dt-fg-subtle); font: inherit; cursor: default; }
-.dt-nav-tool:hover:not(:disabled), :deep(.dt-nav-tool:hover:not(:disabled)) { background: var(--dt-bg-hover); color: var(--dt-fg); }
+/* the one icon-button shape (base.css .dt-btn--icon): the control height, the control radius, a press */
+.dt-nav-tool, :deep(.dt-nav-tool) { position: relative; flex: none; display: inline-flex; align-items: center; justify-content: center; width: var(--dt-control-height); height: var(--dt-control-height); padding: 0; border: 0; border-radius: var(--dt-radius); background: transparent; color: var(--dt-fg-subtle); font: inherit; cursor: default; transition: background-color var(--dt-dur-fast) ease, transform var(--dt-dur-fast) var(--dt-ease); }
+.dt-nav-tool:active:not(:disabled), :deep(.dt-nav-tool:active:not(:disabled)) { transform: scale(0.97); }
+.dt-nav-tool:hover:not(:disabled), :deep(.dt-nav-tool:hover:not(:disabled)) { background: var(--dt-ink-3); color: var(--dt-fg); }
 .dt-nav-tool:disabled { opacity: 0.45; }
 .dt-nav-tool[aria-pressed='true'] { background: var(--dt-accent-subtle); color: var(--dt-accent); }
 .dt-nav-tool .codicon, :deep(.dt-nav-tool .codicon) { font-size: 16px; }
@@ -454,6 +456,8 @@ onUnmounted(() => { window.removeEventListener('message', onMessage); window.rem
 :deep(.dt-nav-row.is-current)::before { background: var(--dt-surface); box-shadow: var(--dt-shadow-card); }
 :deep(.dt-nav-row.is-current) { font-weight: var(--dt-weight-strong); }
 :deep(.dt-nav-row.is-current .dt-nav-icon) { color: var(--dt-accent); }
+:deep(.dt-nav-row:focus-visible) { outline: none; }
+:deep(.dt-nav-row:focus-visible)::before { outline: var(--dt-focus-outline); outline-offset: var(--dt-focus-offset); }
 :deep(.dt-nav-row[draggable='true']) { cursor: grab; }
 :deep(.dt-nav-drop-after) { box-shadow: inset 0 -2px 0 var(--dt-accent); }
 :deep(.dt-nav-drop-before) { box-shadow: inset 0 2px 0 var(--dt-accent); }

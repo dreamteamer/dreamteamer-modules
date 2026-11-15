@@ -258,13 +258,13 @@ watch(query, () => { active.value = visible.value.length ? 0 : -1; });
 
 /* fixed, not absolute — see the header comment */
 .dt-dd__panel {
-	position: fixed; z-index: 1000;
+	position: fixed; z-index: var(--dt-z-menu);
 	display: flex; flex-direction: column; gap: 6px;
 	padding: 6px;
 	background: var(--vscode-quickInput-background, var(--vscode-editorWidget-background, var(--dt-bg-subtle)));
 	border: 1px solid var(--vscode-widget-border, var(--vscode-editorWidget-border, var(--dt-border)));
-	border-radius: 6px;
-	box-shadow: 0 8px 24px rgb(0 0 0 / 32%);
+	border-radius: var(--dt-menu-radius);
+	box-shadow: var(--dt-shadow-menu);
 	overflow: hidden;
 }
 

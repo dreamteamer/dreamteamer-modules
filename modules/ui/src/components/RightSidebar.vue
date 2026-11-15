@@ -102,8 +102,8 @@ const active = computed(() => sections.value.find((section) => section.id === ac
 }
 
 .dt-rsb-rail-btn {
-	width: 28px;
-	height: 28px;
+	width: var(--dt-control-height);
+	height: var(--dt-control-height);
 	border: none;
 	border-radius: var(--dt-radius);
 	background: transparent;
@@ -150,7 +150,6 @@ const active = computed(() => sections.value.find((section) => section.id === ac
 	flex-shrink: 0;
 	/* underline via inset shadow, not border — a border shifts the row's baseline */
 	box-shadow: inset 0 -2px 0 transparent;
-	outline: none;
 }
 
 .dt-rsb-tab:hover {

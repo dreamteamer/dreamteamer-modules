@@ -140,7 +140,7 @@ onUnmounted(() => window.removeEventListener('click', away));
 .dt-nav .dt-nav-toolbar:has(> .dt-nav-toolbar__name > .dt-pane-switch) > .dt-nav-toolbar__buttons { display: contents; }
 .dt-nav .dt-nav-toolbar__name:has(> .dt-pane-switch) { flex: 1 0 30px; min-width: 30px; }
 /* The pane's two toolbar menus (this one and PaneLevel's): fixed, placed under their button inside the window. */
-.dt-pane-menu { position: fixed; z-index: 60; box-sizing: border-box; width: 220px; max-width: calc(100vw - 8px); display: flex; flex-direction: column; padding: 4px; border: 1px solid var(--dt-border-strong, var(--dt-border)); border-radius: var(--dt-radius); background: var(--dt-bg); box-shadow: var(--dt-shadow-lg, var(--dt-shadow)); font-size: var(--dt-text, 13px); font-weight: normal; outline: none; }
+.dt-pane-menu { position: fixed; z-index: var(--dt-z-menu); box-sizing: border-box; width: 220px; max-width: calc(100vw - 8px); display: flex; flex-direction: column; padding: 4px; border: 1px solid var(--dt-menu-border); border-radius: var(--dt-menu-radius); background: var(--dt-bg); box-shadow: var(--dt-shadow-menu); font-size: var(--dt-text, 13px); font-weight: normal; outline: none; }
 .dt-pane-menu > button { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; border: 0; background: none; color: var(--dt-fg); padding: 4px 8px; border-radius: var(--dt-radius); cursor: default; font: inherit; }
 .dt-pane-menu > button:hover, .dt-pane-menu > button:focus-visible { background: var(--dt-bg-hover); outline: none; }
 .dt-pane-menu > button[aria-checked='true'] { font-weight: 600; }

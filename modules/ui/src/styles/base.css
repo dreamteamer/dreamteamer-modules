@@ -64,6 +64,16 @@ body {
 	line-height: 1;
 }
 
+/* ---------- Focus ---------- */
+/* THE focus ring (cr-modules-021): every control that takes keyboard focus shows the one ring the tokens define. Its
+   default is VS Code's own (1px focusBorder, inset — and vscode.css draws the same rule after this one), so the editor
+   looks as before; the browser host draws a softer outset ring. A component that hides it must draw focus another way
+   (a field's accent border, a carousel card's shadow). */
+:focus-visible {
+	outline: var(--dt-focus-outline);
+	outline-offset: var(--dt-focus-offset);
+}
+
 /* ---------- Scrollbars ---------- */
 * {
 	scrollbar-width: thin;
@@ -111,10 +121,10 @@ body {
 	min-width: 180px;
 	padding: 4px;
 	background: var(--dt-bg);
-	border: 1px solid var(--dt-border);
-	border-radius: var(--dt-radius);
-	box-shadow: var(--dt-shadow-lg, 0 8px 24px rgb(0 0 0 / 0.12));
-	z-index: 1000;
+	border: 1px solid var(--dt-menu-border);
+	border-radius: var(--dt-menu-radius);
+	box-shadow: var(--dt-shadow-menu);
+	z-index: var(--dt-z-menu);
 }
 
 .dt-menu-item {
@@ -203,13 +213,19 @@ body {
 	font-weight: 400;
 	cursor: pointer;
 	transition:
-		background-color 0.12s ease,
-		color 0.12s ease,
-		border-color 0.12s ease;
+		background-color var(--dt-dur-fast) ease,
+		color var(--dt-dur-fast) ease,
+		border-color var(--dt-dur-fast) ease,
+		transform var(--dt-dur-fast) var(--dt-ease);
 }
 
 .dt-btn:hover {
 	background: var(--dt-accent-hover);
+}
+
+/* PRESSED: every button gives under the pointer and never changes size mid-action (a transform, not a box change). */
+.dt-btn:active:not(:disabled) {
+	transform: scale(0.97);
 }
 
 .dt-btn:disabled {
@@ -256,11 +272,13 @@ body {
 	background: var(--dt-bg-subtle);
 }
 
+/* ONE icon-button shape (cr-modules-021): a rounded square at the control radius — the page's icon buttons, the nav
+   toolbar's tools and the right panel's rail are the same shape (they were a circle, a 6px square and another). */
 .dt-btn--icon {
 	width: var(--dt-control-height);
 	height: var(--dt-control-height);
 	padding: 0;
-	border-radius: 50%;
+	border-radius: var(--dt-radius);
 }
 
 .dt-btn--sm {

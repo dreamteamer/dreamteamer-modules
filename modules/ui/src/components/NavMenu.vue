@@ -101,7 +101,8 @@ function onIcon(name: string): void {
 </template>
 
 <style scoped>
-.dt-nav-menu { position: fixed; z-index: 50; min-width: 180px; display: flex; flex-direction: column; padding: 4px 0; background: var(--dt-bg); border: 1px solid var(--dt-border-strong); border-radius: var(--dt-radius); box-shadow: var(--dt-shadow-lg); font-size: var(--dt-text); }
+/* the menu look every menu shares (tokens.css: --dt-menu-*, --dt-shadow-menu, --dt-z-menu) */
+.dt-nav-menu { position: fixed; z-index: var(--dt-z-menu); min-width: 180px; display: flex; flex-direction: column; padding: 4px 0; background: var(--dt-bg); border: 1px solid var(--dt-menu-border); border-radius: var(--dt-menu-radius); box-shadow: var(--dt-shadow-menu); font-size: var(--dt-text); }
 .dt-nav-menu-item { text-align: left; padding: 4px 12px; background: none; border: 0; color: var(--dt-fg); font: inherit; cursor: pointer; }
 .dt-nav-menu-item:hover:not(:disabled) { background: var(--dt-bg-hover); }
 .dt-nav-menu-item:disabled { color: var(--dt-fg-subtle); cursor: default; }

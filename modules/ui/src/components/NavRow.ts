@@ -85,6 +85,13 @@ const NavRow: any = defineComponent({
 			const section = props.depth === 0 && hasKids && n.kind !== 'collection';
 			const row = h('li', {
 				class: ['dt-nav-row', `dt-nav-${n.kind}`, ...(section ? ['dt-nav-section'] : []), ...(isCurrent ? ['is-current'] : []), ...(hinted ? [hinted] : [])], role: 'treeitem', 'aria-expanded': hasKids ? String(isOpen) : undefined, 'aria-current': isCurrent ? 'page' : undefined, 'data-key': n.key, title: n.tooltip ?? undefined, style: { paddingLeft: `${8 + props.depth * 12}px` },
+				// keyboard (cr-modules-021): every row is a tab stop — Enter or Space opens it, → and ← open and close a folder
+				tabindex: 0,
+				onKeydown: (e: KeyboardEvent) => {
+					if (e.target !== e.currentTarget) return;
+					if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); emit('activate', n); }
+					else if (hasKids && ((e.key === 'ArrowRight' && !isOpen) || (e.key === 'ArrowLeft' && isOpen))) { e.preventDefault(); emit('toggle', n); }
+				},
 				...gestures,
 			}, [
 				hasKids ? h('span', { class: 'dt-nav-twisty', onClick: (e: Event) => { e.stopPropagation(); emit('toggle', n); } }, [h('span', { class: `codicon codicon-chevron-${isOpen ? 'down' : 'right'}`, 'aria-hidden': 'true' })]) : h('span', { class: 'dt-nav-twisty' }),
