@@ -15,6 +15,8 @@ appDir();
 const { ok, done } = checks();
 const f = await northwind();
 const s = await serve(f.root);
+// at Admin (cr-modules-017 levels): step 4 asks the engine for a rename, an Admin route — below it the level refuses first
+s.run('open', '--admin');
 const b = await browser();
 const status = (cwd = f.root) => f.git(['status', '--porcelain'], cwd);
 const RECORD = 'data/projects/northwind-launch.project.md';

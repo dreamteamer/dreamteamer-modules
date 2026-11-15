@@ -69,7 +69,8 @@ describe('collection icons', () => {
 
 	test('no two collections share a glyph', () => {
 		const byIcon = new Map();
-		for (const c of ALL) byIcon.set(c.icon, [...(byIcon.get(c.icon) ?? []), c.name]);
+		// one collection authored twice (core 0.11's copy beside its own package, cr-dt-008 tasks 1-2) is still one collection
+		for (const c of ALL) byIcon.set(c.icon, [...new Set([...(byIcon.get(c.icon) ?? []), c.name])]);
 		const shared = [...byIcon.entries()].filter(([, names]) => names.length > 1).map(([icon, names]) => `${icon}: ${names.join(', ')}`);
 		assert.deepEqual(shared, [], `shared glyphs — a reader mis-clicks these:\n  ${shared.join('\n  ')}`);
 	});

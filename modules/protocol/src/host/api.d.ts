@@ -27,7 +27,6 @@ export declare class WorkspaceApi {
     private runtimeModuleOf;
     private sourcesOf;
     private contested;
-    private stubRootNames;
     private sourceOfFile;
     private mtime;
     private fresh;
@@ -58,7 +57,6 @@ export interface FileHistory {
 export declare function parseGitHistory(out: string, keyOf: (line: string) => string, into?: Map<string, FileHistory>): Map<string, FileHistory>;
 export declare const SOURCE_KEY = "$source";
 export declare const SOURCE_KIND_KEY = "$source-kind";
-export declare const STUBS_KEY = "$stubs";
 export declare const MODIFIED_BY_KEY = "$last-modified-by";
 export declare const CREATED_BY_KEY = "$created-by";
 export declare const MODULE_KEY = "$module";

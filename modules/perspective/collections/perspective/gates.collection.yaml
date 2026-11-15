@@ -108,7 +108,6 @@ fields:
 display:
   nav:
     icon: shield
-    order: 15
   list:
     columns:
       - gate

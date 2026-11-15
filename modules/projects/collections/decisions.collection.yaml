@@ -29,7 +29,7 @@ ids:
     - "{{ decided_on | date }}--{{ name | slug }}"
   pattern: ^\d{4}-\d{2}-\d{2}--[a-z0-9-]+$
 fields:
-  slug: {type: string, title: Slug, pattern: '^[a-z0-9][a-z0-9-]*$', description: 'An optional Latin handle that becomes the id; when empty, the id comes from the name. Set it when the name has no Latin characters, which would otherwise slug to a hash. Unlike `activities.code`, it is never shown to a reader.'}
+  slug: {type: string, title: Slug, pattern: '^[a-z0-9][a-z0-9-]*$', description: 'An optional Latin handle that becomes the id; when empty, the id comes from the name. Set it when the name has no Latin characters, which would otherwise slug to a hash. It is never shown to a reader.'}
   name:
     type: string
     required: true
@@ -53,7 +53,7 @@ fields:
   external_decider:
     type: contacts
     description: >-
-      Who outside this workspace decided: the client approving a price or a scope, a partner choosing an environment. A `contacts` reference, as `activities.external_owner` is. No `x-inverse`, because a mirror would write a field into the contacts module, which this module does not own.
+      Who outside this workspace decided: the client approving a price or a scope, a partner choosing an environment. A `contacts` reference, as `deliverables.accepted_by` is. No `x-inverse`, because a mirror would write a field into the contacts module, which this module does not own.
   agent:
     type: string
     description: >-
@@ -162,7 +162,6 @@ constraints:
 display:
   nav:
     icon: git-branch
-    order: 14
   list:
     columns:
       - name

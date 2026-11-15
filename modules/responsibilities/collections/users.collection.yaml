@@ -1,0 +1,8 @@
+# OVERLAY of users — the areas a person owns, so "who owns onboarding" is a filter.
+name: users
+overlay: true
+fields:
+  responsibilities:
+    type: responsibilities
+    many: true
+    description: The areas they own — `responsibilities` records, one list the whole workspace shares.

@@ -213,7 +213,6 @@ fields:
 display:
   nav:
     icon: comment-discussion
-    order: 30
   list:
     columns:
       - title

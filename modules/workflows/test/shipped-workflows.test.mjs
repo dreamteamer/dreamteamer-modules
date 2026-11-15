@@ -9,11 +9,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import yaml from 'js-yaml';
 import { MODULES, moduleIds, ALL, targetsOf } from '../../../tests/helpers/descriptors.mjs';
+import { closure } from '../../../tests/helpers/workspace.mjs';
 
 const OPERATORS = new Set(['_eq', '_neq', '_ieq', '_nieq', '_lt', '_lte', '_gt', '_gte', '_in', '_nin', '_null', '_nnull', '_empty', '_nempty', '_contains', '_ncontains', '_icontains', '_starts_with', '_istarts_with', '_ends_with', '_iends_with', '_between', '_nbetween', '_regex']);
 const TOKENS = new Set(['$today', '$now', '$from', '$to']);
 
-/** Every shipped workflow, by module: { module, id, file, doc } — composed copies included, since core ships them too. */
+/** Every shipped workflow, by module: { module, id, file, doc }. */
 const shipped = moduleIds().flatMap((m) => {
 	const dir = path.join(MODULES, m, 'data', 'workflows');
 	if (!fs.existsSync(dir)) return [];
@@ -80,9 +81,9 @@ function filterProblems(where, collection, hop = 0) {
 	return out;
 }
 
-test('the scan sees both shipped workflows, and core carries customer-factory', () => {
+test('the scan sees both shipped workflows', () => {
 	const at = shipped.map((w) => `${w.module}/${w.id}`).sort();
-	assert.deepEqual(at, ['core/customer-factory', 'rnd/software-factory', 'workflows/customer-factory']);
+	assert.deepEqual(at, ['rnd/software-factory', 'workflows/customer-factory']);
 });
 
 for (const w of shipped) {
@@ -113,16 +114,21 @@ for (const w of shipped) {
 	});
 }
 
-test('customer-factory names only commands core ships, so core installs it alone', () => {
+// a command is looked up in the module that ships it; core is a module preset, so "core installs it" means
+// a member of core's preset (or one of their dependencies) ships it
+const CORE_SET = closure('core');
+
+test('customer-factory names only commands a member of core ships, so core installs it alone', () => {
 	for (const s of shipped.find((w) => w.module === 'workflows').doc.steps.filter((x) => x.command)) {
-		assert.ok(fs.existsSync(path.join(MODULES, 'core', 'commands', `${s.command.replace(/^commands\//, '')}.command.md`)), `${s.command} is not in core`);
+		const by = COMMANDS.get(s.command.replace(/^commands\//, '')) ?? [];
+		assert.ok(by.some((m) => CORE_SET.has(m)), `${s.command} is shipped by ${by.join(', ') || 'no module'}, none of them in core`);
 	}
 });
 
 test('software-factory names only commands core or rnd ship — the pair it installs into', () => {
 	for (const s of shipped.find((w) => w.id === 'software-factory').doc.steps.filter((x) => x.command)) {
-		const cmd = s.command.replace(/^commands\//, '');
-		assert.ok(['core', 'rnd'].some((m) => fs.existsSync(path.join(MODULES, m, 'commands', `${cmd}.command.md`))), `${s.command} is in neither core nor rnd`);
+		const by = COMMANDS.get(s.command.replace(/^commands\//, '')) ?? [];
+		assert.ok(by.some((m) => CORE_SET.has(m) || m === 'rnd'), `${s.command} is shipped by ${by.join(', ') || 'no module'}, in neither core nor rnd`);
 	}
 });
 

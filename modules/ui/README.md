@@ -36,6 +36,24 @@ await mount('#app', { transport });
 The host answers `dt:mounted` with a `dt:navigate` window message naming the route to show, and sends
 `dt:invalidate` when records change. A request that fails rejects with a `HostError` carrying the status.
 
+In a host with no native tree (`window.__DT_HOST__.nav === 'app'`, as under `dt web`) the app draws the nav
+itself from `GET /nav`, under a toolbar holding the workspace's name (a click opens the workspace settings; on a
+`dt web` pane host it opens the workspace switcher, whose last entry is Settings). The nav
+is arranged by hand, behind the toolbar's arrange lock: it starts locked on every load, and locked the nav only
+navigates. Unlocked, drag a row onto another (onto the middle of a folder to put it inside, onto the empty area under
+the rows for the bottom), right-click a row for New folder, Rename, Dissolve, Move up / down / to top / to bottom,
+Set icon and Hide, and use the toolbar's New folder and Show hidden… buttons. Each gesture is one `PATCH /nav` that
+writes the workspace's `nav.yaml`; a refusal shows the host's sentence above the rows. Layers keep their own nav:
+nothing drops onto them.
+
+Over the HTTP transport (`dt web`) the page reads its boot values from `GET /host` before it mounts: the level, the
+workspace, the files and frames bases, the file-codec bases, the declared var roots and the module grants. The files
+key rotates every time the server starts, so the page asks again after every reconnect of its event stream and then
+redraws; images and module frames drawn from those values follow. A `401` from any request draws one sentence over
+the page — *This pane is signed out. Ask the chat to show it again — it runs dt web open.* The editor injects the same
+values as window globals (`__DT_FILE_BASES__`, `__DT_VAR_ROOTS__`, `__DT_MODULE_GRANTS__`); a host that answers
+`GET /host` wins over them.
+
 Workspace modules' `app` bundles are loaded from `window.__DT_UI_BASE__` before the first render; they get
 the host's Vue as `window.Vue` and may call `fetch('/api/…')`, which the UI routes through the transport.
 
@@ -52,4 +70,6 @@ The build runs before every publish (`prepublishOnly`). Nothing under `dist/` is
 
 | @dreamteamer/ui | @dreamteamer/protocol | engine (`dreamteamer`) |
 |---|---|---|
+| 0.3.x | ^0.3.0 | `>=0.43.0`; the pane routes (`GET /host`, selection, queue) are the protocol's |
+| 0.2.x | ^0.2.0 | `>=0.43.0`; the nav is `nav.yaml` (module fragments from 0.49) |
 | 0.1.x | ^0.1.0 | `>=0.43.0` |

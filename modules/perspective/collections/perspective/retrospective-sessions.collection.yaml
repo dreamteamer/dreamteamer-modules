@@ -137,7 +137,6 @@ fields:
 display:
   nav:
     icon: telescope
-    order: 10
   list:
     columns:
       - contributor

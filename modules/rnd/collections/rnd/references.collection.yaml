@@ -84,8 +84,6 @@ fields:
 display:
   nav:
     icon: eye
-    order: 41
-    section: knowledge
   # the references list — the default a bare /content/rnd/references renders.
   #
   # `carousel`, not `table`: a reference IS its screenshots. The layout draws one card per record —

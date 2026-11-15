@@ -1,0 +1,157 @@
+# sessions — one sitting of work by a person or an agent. The unit the metrics count.
+#
+# An ordinary record in the workspace's own data (`data/sessions/`), committed like any other: a colleague
+# who pulls the workspace lists it. The one per-machine part is the transcript, which `transcript` names
+# as `${env:SESSIONS_FOLDER}/<yyyy>/<mm>/<session id>.jsonl` — the only place that var appears. `records`
+# is what `dt session bind` adds: any number of references to records of any collection.
+name: sessions
+description: >-
+  One sitting of work — a coding-agent session, an agent run, a person's focused block — on a project: who, when, how long, what came out of it. The event, never the plan (`projects`) and never the commitment (`tasks`).
+use_when: >-
+  work happened and should be accounted for — an agent session ended, a person logs a block — write it here with `started`, who did it and what it produced; asked "what was done on X this week" or "how much agent time did Y take", list here by project and date
+storage:
+  path: data/sessions
+  format: md
+ids:
+  from: '{{ started | date:YYYY/MM }}/{{ started | date }}--{{ name | slug }}'
+  pattern: ^(\d{4}/\d{2}/\d{4}-\d{2}-\d{2}--[a-z0-9-]+|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$
+fields:
+  name:
+    type: string
+    required: true
+    description: What the session was about, in one line.
+  started:
+    type: datetime
+    required: true
+    description: When it began — shards the id by month.
+  ended:
+    type: datetime
+    description: When it ended. Empty while it runs.
+  worker:
+    type: [users, agents]
+    description: Who did the work — a person (`users/<id>`) or one of the workspace's agents (`agents/<id>`, the engine's own kind).
+  project:
+    type: projects
+    description: The project the work served.
+  repo:
+    type: repos
+    description: The repository it ran in, when it was a coding session.
+  harness:
+    type: string
+    examples: ['claude-code', 'codex', 'manual']
+    description: What hosted the session.
+  records:
+    type: reference
+    many: true
+    description: >-
+      The records this session worked on — any number, of any collection — added by `dt session bind <ref>…`.
+      A record's own `dt next` lists the sessions that bound it, read at call time; nothing is written to it.
+  host:
+    type: string
+    description: The machine the session ran on — information only; `dt session send` looks for the transcript itself.
+  session_id:
+    type: string
+    description: The harness's own id for it — the transcript's name and the address `dt session send` resumes. A session the harness saved itself (`/session:save`) or bound (`dt session bind`) takes this id as its record id.
+  description:
+    type: string
+    maxLength: 400
+    description: What the session did, in one or two sentences a list can show — written by `/session:analyze`, from the transcript.
+  transcript:
+    type: string
+    examples: ['${env:SESSIONS_FOLDER}/2026/10/3e880550-0000-4000-8000-000000000001.jsonl']
+    description: Where the transcript or log is kept — a `${env:…}` template, never a machine path. The harness sweeps its own copy after a month; `/session:save` keeps one under `SESSIONS_FOLDER` and points here.
+  turns:
+    type: integer
+    minimum: 0
+    description: How many times the person prompted — a tool result, a sidechain or a meta line is not a turn.
+  tool_calls:
+    type: integer
+    minimum: 0
+    description: How many tool calls the agent made.
+  input_tokens:
+    type: integer
+    minimum: 0
+    description: Uncached input tokens, summed over every model.
+  output_tokens:
+    type: integer
+    minimum: 0
+    description: Output tokens, thinking included, summed over every model.
+  cache_read_tokens:
+    type: integer
+    minimum: 0
+    description: Input tokens served from the prompt cache — the bulk of a long session.
+  cache_write_tokens:
+    type: integer
+    minimum: 0
+    description: Input tokens written to the prompt cache.
+  cost_usd:
+    type: number
+    minimum: 0
+    description: The session at list price, as the harness computes it — a shadow figure under a subscription, never a bill. Empty when a model's price is unknown.
+  models:
+    type: string
+    many: true
+    examples: ['claude-fable-5-1', 'claude-sonnet-5-5']
+    description: Every model that answered in the session.
+  wall_minutes:
+    type: number
+    minimum: 0
+    description: Minutes from the first prompt to the last answer.
+  api_minutes:
+    type: number
+    minimum: 0
+    description: Minutes the model was actually working — the part of the wall time spent in API calls.
+  lines_added:
+    type: integer
+    minimum: 0
+    description: Lines the agent's edits added, as the harness counts them.
+  lines_removed:
+    type: integer
+    minimum: 0
+    description: Lines the agent's edits removed, as the harness counts them.
+  tasks:
+    type: tasks
+    many: true
+    description: The tasks this session produced or closed.
+  analysis:
+    type: markdown
+    description: What `/session:analyze` found — what the session set out to do, what it did, where it went wrong and what it cost, built on the transcript rather than on memory.
+  outcome:
+    type: markdown
+    body: true
+    description: What came out of it — commits, decisions, what is left — written when it ends.
+  tags:
+    type: string
+    many: true
+    examples: ['onboarding', 'client:northwind']
+    pattern: ^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$
+    description: Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.
+  author:
+    type: string
+    examples: ['agents/claude-code', 'scripts/read-git@2']
+    pattern: '^(agents|scripts)/[a-z0-9][a-z0-9-]*(@[a-z0-9][a-z0-9./-]*)?$'
+    description: >-
+      Which agent or script wrote this record: `agents/<harness>`, or `scripts/<name>@<version>` for a reader. Absent when a person wrote it. The model, when it matters, goes in `creation_context`.
+  creation_context:
+    type: string
+    description: How and why this record came to be, in one line — and the reason whenever confidence is low.
+  source:
+    title: Information source
+    type: string
+    description: 'Where the INFORMATION came from, prefixed so it stays machine-readable: <collection>/<id> · file:<path> · url:<…> · migration:<id>.'
+  confidence:
+    type: string
+    default: normal
+    enum: [low, normal, high]
+    description: How much to trust this record. When low, the reason goes in creation_context — there is no separate note field.
+display:
+  nav:
+    icon: history
+  list:
+    columns: [name, worker, project, records, started, turns, cost_usd, harness]
+    sort: -started
+  form:
+    sections:
+      - title: Provenance
+        fields: [author, creation_context, source, confidence]
+        collapsed: true

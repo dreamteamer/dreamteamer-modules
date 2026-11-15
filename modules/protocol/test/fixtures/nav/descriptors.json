@@ -1,0 +1,423 @@
+{
+	"$comment": "Compiled descriptors (name, title as the engine titles it, display.nav.icon, internal) of the core preset members plus the agents overlay, and of rnd under its namespace — read from a workspace compiled on engine 0.48.0 from this repo at cr-dt-008 task 9. agents is an engine kind (internal) that an overlay draws, so overlaid: true.",
+	"core": [
+		{
+			"name": "tasks",
+			"title": "Tasks",
+			"display": {
+				"nav": {
+					"icon": "checklist"
+				}
+			}
+		},
+		{
+			"name": "projects",
+			"title": "Projects",
+			"display": {
+				"nav": {
+					"icon": "rocket"
+				}
+			}
+		},
+		{
+			"name": "deliverables",
+			"title": "Deliverables",
+			"display": {
+				"nav": {
+					"icon": "export"
+				}
+			}
+		},
+		{
+			"name": "decisions",
+			"title": "Decisions",
+			"display": {
+				"nav": {
+					"icon": "git-branch"
+				}
+			}
+		},
+		{
+			"name": "risks",
+			"title": "Risks",
+			"display": {
+				"nav": {
+					"icon": "flame"
+				}
+			}
+		},
+		{
+			"name": "workflows",
+			"title": "Workflows",
+			"display": {
+				"nav": {
+					"icon": "run-all"
+				}
+			}
+		},
+		{
+			"name": "users",
+			"title": "Users",
+			"display": {
+				"nav": {
+					"icon": "person"
+				}
+			}
+		},
+		{
+			"name": "teams",
+			"title": "Teams",
+			"display": {
+				"nav": {
+					"icon": "organization"
+				}
+			}
+		},
+		{
+			"name": "roles",
+			"title": "Roles",
+			"display": {
+				"nav": {
+					"icon": "symbol-class"
+				}
+			}
+		},
+		{
+			"name": "responsibilities",
+			"title": "Responsibilities",
+			"display": {
+				"nav": {
+					"icon": "key"
+				}
+			}
+		},
+		{
+			"name": "agents",
+			"title": "Agents",
+			"display": {
+				"nav": {
+					"icon": "robot"
+				}
+			},
+			"internal": true,
+			"overlaid": true
+		},
+		{
+			"name": "companies",
+			"title": "Companies",
+			"display": {
+				"nav": {
+					"icon": "briefcase"
+				}
+			}
+		},
+		{
+			"name": "contacts",
+			"title": "Contacts",
+			"display": {
+				"nav": {
+					"icon": "account"
+				}
+			}
+		},
+		{
+			"name": "engagements",
+			"title": "Engagements",
+			"display": {
+				"nav": {
+					"icon": "filter"
+				}
+			}
+		},
+		{
+			"name": "meetings",
+			"title": "Meetings",
+			"display": {
+				"nav": {
+					"icon": "calendar"
+				}
+			}
+		},
+		{
+			"name": "meeting-preps",
+			"title": "Meeting Preps",
+			"display": {
+				"nav": {
+					"icon": "verified"
+				}
+			}
+		},
+		{
+			"name": "meeting-recordings",
+			"title": "Meeting Recordings",
+			"display": {
+				"nav": {
+					"icon": "mic"
+				}
+			}
+		},
+		{
+			"name": "meeting-summaries",
+			"title": "Meeting Summaries",
+			"display": {
+				"nav": {
+					"icon": "note"
+				}
+			}
+		},
+		{
+			"name": "meeting-analyses",
+			"title": "Meeting Analyses",
+			"display": {
+				"nav": {
+					"icon": "report"
+				}
+			}
+		},
+		{
+			"name": "files",
+			"title": "Files",
+			"display": {
+				"nav": {
+					"icon": "files"
+				}
+			}
+		},
+		{
+			"name": "file-drives",
+			"title": "File Drives",
+			"display": {
+				"nav": {
+					"icon": "cloud"
+				}
+			}
+		},
+		{
+			"name": "assets",
+			"title": "Assets",
+			"display": {
+				"nav": {
+					"icon": "file-media"
+				}
+			}
+		},
+		{
+			"name": "artifacts",
+			"title": "Artifacts",
+			"display": {
+				"nav": {
+					"icon": "browser"
+				}
+			}
+		},
+		{
+			"name": "sessions",
+			"title": "Sessions",
+			"display": {
+				"nav": {
+					"icon": "history"
+				}
+			}
+		},
+		{
+			"name": "metrics",
+			"title": "Metrics",
+			"display": {
+				"nav": {
+					"icon": "graph"
+				}
+			}
+		}
+	],
+	"rnd": [
+		{
+			"name": "rnd/change-requests",
+			"title": "Change Requests",
+			"display": {
+				"nav": {
+					"icon": "git-pull-request"
+				}
+			}
+		},
+		{
+			"name": "rnd/design-docs",
+			"title": "Design Docs",
+			"display": {
+				"nav": {
+					"icon": "symbol-structure"
+				}
+			}
+		},
+		{
+			"name": "rnd/design-systems",
+			"title": "Design Systems",
+			"display": {
+				"nav": {
+					"icon": "symbol-color"
+				}
+			}
+		},
+		{
+			"name": "rnd/draft-docs",
+			"title": "Draft Docs",
+			"display": {
+				"nav": {
+					"icon": "edit"
+				}
+			}
+		},
+		{
+			"name": "rnd/experiments",
+			"title": "Experiments",
+			"display": {
+				"nav": {
+					"icon": "beaker"
+				}
+			}
+		},
+		{
+			"name": "rnd/features",
+			"title": "Features",
+			"display": {
+				"nav": {
+					"icon": "star-full"
+				}
+			}
+		},
+		{
+			"name": "rnd/implementation-plans",
+			"title": "Implementation Plans",
+			"display": {
+				"nav": {
+					"icon": "tasklist"
+				}
+			}
+		},
+		{
+			"name": "rnd/issues",
+			"title": "Issues",
+			"display": {
+				"nav": {
+					"icon": "bug"
+				}
+			}
+		},
+		{
+			"name": "rnd/open-questions",
+			"title": "Open Questions",
+			"display": {
+				"nav": {
+					"icon": "watch"
+				}
+			}
+		},
+		{
+			"name": "rnd/personas",
+			"title": "Personas",
+			"display": {
+				"nav": {
+					"icon": "feedback"
+				}
+			}
+		},
+		{
+			"name": "rnd/products",
+			"title": "Products",
+			"display": {
+				"nav": {
+					"icon": "package"
+				}
+			}
+		},
+		{
+			"name": "rnd/prototypes",
+			"title": "Prototypes",
+			"display": {
+				"nav": {
+					"icon": "preview"
+				}
+			}
+		},
+		{
+			"name": "rnd/references",
+			"title": "References",
+			"display": {
+				"nav": {
+					"icon": "eye"
+				}
+			}
+		},
+		{
+			"name": "rnd/releases",
+			"title": "Releases",
+			"display": {
+				"nav": {
+					"icon": "versions"
+				}
+			}
+		},
+		{
+			"name": "rnd/research-docs",
+			"title": "Research Docs",
+			"display": {
+				"nav": {
+					"icon": "references"
+				}
+			}
+		},
+		{
+			"name": "rnd/review-findings",
+			"title": "Review Findings",
+			"display": {
+				"nav": {
+					"icon": "comment-unresolved"
+				}
+			}
+		},
+		{
+			"name": "rnd/reviews",
+			"title": "Reviews",
+			"display": {
+				"nav": {
+					"icon": "code-review"
+				}
+			}
+		},
+		{
+			"name": "rnd/screens",
+			"title": "Screens",
+			"display": {
+				"nav": {
+					"icon": "window"
+				}
+			}
+		},
+		{
+			"name": "rnd/tests",
+			"title": "Tests",
+			"display": {
+				"nav": {
+					"icon": "pass"
+				}
+			}
+		},
+		{
+			"name": "rnd/user-journeys",
+			"title": "User Journeys",
+			"display": {
+				"nav": {
+					"icon": "map"
+				}
+			}
+		},
+		{
+			"name": "rnd/user-stories",
+			"title": "User Stories",
+			"display": {
+				"nav": {
+					"icon": "comment"
+				}
+			}
+		}
+	]
+}

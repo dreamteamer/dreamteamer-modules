@@ -58,6 +58,10 @@ from there.
 `DT_ENGINE_DIR` names. No test reaches the real `notebooklm` CLI: every spawn runs with a PATH whose
 only `notebooklm` is a stub.
 
+## 0.2.2 — the nav is nav.yaml (cr-dt-008)
+
+`display.nav.order` and `display.nav.section` removed from its descriptor — the nav is `nav.yaml` at the workspace root (engine 0.49), which you arrange; `display.nav.icon` stays. Nothing to do.
+
 ## 0.2.1 — the setup package is gone (CR-dt-007)
 
 Nothing to do but `dt update @dreamteamer/notebooklm`, then `dt compile`. The `using-notebooklm` skill says `dt status` / `dt doctor` where it named the removed setup package.

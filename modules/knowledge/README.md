@@ -4,20 +4,20 @@ Optional knowledge capture and synthesis for personal or shared workspaces. No r
 machine-specific configuration are shipped.
 
 ```sh
-npm install @dreamteamer/core @dreamteamer/knowledge
-npm install dreamteamer
-npx dreamteamer compile
-npx dreamteamer check
+npm install @dreamteamer/knowledge @dreamteamer/companies @dreamteamer/meetings @dreamteamer/assets @dreamteamer/contacts @dreamteamer/users
 ```
 
-Install core, never core alongside its individual component modules. Engine >=0.43.0 and core
->=0.9.0 are required. `working-with-knowledge` routes requests among:
+`dt install @dreamteamer/knowledge` brings the same set: knowledge depends on `@dreamteamer/companies`
+(a brief's `companies`) and `@dreamteamer/meetings` (a brief's `meetings`), and those on theirs. A
+workspace on `@dreamteamer/core` already has them. Engine >=0.49.0 is required. On install the engine
+places the three collections in a Knowledge folder of the workspace's `nav.yaml`, unless it already
+places them. `working-with-knowledge` routes requests among:
 
 - `blurbs`: raw thoughts, preserving `raw_input` separately from interpreted content; draft → digested.
 - `briefs`: reader-facing documents with audience, purpose and sources; draft/final editorial state.
 - `meta-analyses`: cross-record, cross-domain period synthesis with evidence coverage and a regeneration prompt.
 
-Meeting preps and transcript-grounded meeting critiques remain in core. A collection's presence
+Meeting preps and transcript-grounded meeting critiques remain in `@dreamteamer/meeting-docs`. A collection's presence
 never authorizes publication, cross-repository sharing or automatic task creation.
 
 ## Existing local schemas

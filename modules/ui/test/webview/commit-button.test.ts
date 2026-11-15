@@ -87,3 +87,19 @@ test('several repos: a dropdown with one row per repo and its count, and a row c
 	assert.deepEqual(commits.map((r) => r.body), [{ only: ['people/dana'] }], 'scoped to that repo\'s own records');
 	assert.equal(items(root).length, 0, 'the menu closed on the pick');
 });
+
+// cr-modules-017: a commit is an Admin route. A pane below Admin never asks for the dry run (a 403 on every page)
+// and draws no button; at Admin, and in the editor (no GET /host), it does as before.
+test('a pane below Admin asks no dry run and draws no button; at Admin it does', async () => {
+	const { hostInfo } = await import('../../src/lib/host-boot');
+	host([{ repo: '.', rows: [{ collection: 'tasks', id: 'a', verb: 'set' }] }]);
+	hostInfo.value = { level: 'edit', chat: false, workspace: { id: 'w1', name: 'my-hq' } };
+	const root = await render(CommitButton, {}, [await router()]);
+	assert.equal(requests.filter((r) => r.path === '/commit').length, 0, 'no POST /commit below Admin');
+	assert.equal(button(root), null);
+	hostInfo.value = { level: 'admin', chat: false, workspace: { id: 'w1', name: 'my-hq' } };
+	await flush();
+	assert.ok(requests.some((r) => r.path === '/commit'), 'raised to Admin, the dry run is asked');
+	assert.ok(button(root), 'and the button draws');
+	hostInfo.value = null;
+});

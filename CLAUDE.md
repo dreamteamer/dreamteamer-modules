@@ -10,7 +10,9 @@ its `"dreamteamer": {}` key exists only so a clone can be previewed as a bundle 
    public half of the leak gate; the private half (real client and colleague names) runs from the
    operator's vault before anything is pushed.
 2. **Every module compiles alone** with only its declared dependencies, on both channels. A module
-   that needs a sibling it did not declare is not a module.
+   that needs a sibling it did not declare is not a module. **A module preset** (`dreamteamer.preset`,
+   `@dreamteamer/core`) is a map of member package names to exact versions and ships no source: nothing
+   is composed, and no package carries another's copies or a `provides` key.
 3. **A dependency is spelled as the full package name**, `"@dreamteamer/users"`. The engine keys a
    module by its package name for `dependencies` and `extends`, and strips the scope only for display
    and `disable`.
@@ -18,10 +20,11 @@ its `"dreamteamer": {}` key exists only so a clone can be previewed as a bundle 
    `dreamteamer`: strict on a module the declarer lists in `dreamteamer.dependencies`, optional
    (`peerDependenciesMeta`) on any other, so npm never installs a module nobody asked for. npm refuses
    the install below it and `dt compile` (engine 0.42.0 or later) refuses it on every channel; a floor
-   the sibling in this repo does not meet, or one on a module a composition leaves out, fails
-   `tests/dependency-floors.test.mjs`.
-4. **A peer is a collection name.** Every official module lives here, so the structure test's
-   `PROVIDED_ELSEWHERE` is empty and a peer nothing here provides is a typo.
+   the sibling in this repo does not meet fails `tests/dependency-floors.test.mjs`. A preset's member
+   pins are exact versions, and `tests/core-preset.test.mjs` holds each to the member's own version.
+4. **A peer is a collection name.** Every official module lives here, so a peer nothing here provides
+   is a typo. A collection is owned by the one module that authors it; a member of a preset owns its
+   own collections, never the preset.
 5. **A module ships only what its `files` list names.** Tests live in `modules/<id>/test/` — a skill's
    tests in `test/<skill>/` — never inside a skill, because compile copies a skill folder into every
    harness. Design history lives in `modules/<id>/docs/` and is not shipped.

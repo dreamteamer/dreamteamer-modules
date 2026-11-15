@@ -93,6 +93,12 @@ export async function initEngine(root, opts = {}) {
         renderEnv: (template) => api.renderTemplate(template, api.envContext(engine().ws)),
         declaredVars: declaredVarsOf(ws.pkg),
         loadDescriptors: api.loadDescriptors,
+        // the nav document (engine 0.49, cr-dt-008): each undefined on an older engine, where the protocol's own
+        // reader, name check and writer stand in (nav-doc.js) and there are no fragments to apply
+        readNavDoc: api["readNavDoc"],
+        validateNavDoc: api["validateNavDoc"],
+        writeNavDoc: api["writeNavDoc"],
+        applyNavFragments: api["applyNavFragments"],
         descriptor: {
             moduleOf: api.moduleOf,
             isInternal: api.isInternal,

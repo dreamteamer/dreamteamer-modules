@@ -56,6 +56,10 @@ unchanged and is copied from there. The summarize and analyze procedures also re
 `transcription.notes` — the transcriber's own caveats, written inside the block it produces — beside
 the recording's top-level `notes`, which is a person's note about the capture.
 
+## 0.1.4 — the nav is nav.yaml (cr-dt-008)
+
+`display.nav.order` and `display.nav.section` removed from its three descriptors — the nav is `nav.yaml` at the workspace root (engine 0.49), which you arrange; `display.nav.icon` stays. Nothing to do.
+
 ## 0.1.3
 
 Engine floor `>=0.47.0` and the peer list mirrored for `dt install`'s closure; nothing else changes. `dt update @dreamteamer/meeting-docs` then `dt compile`.

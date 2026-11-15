@@ -12,7 +12,7 @@ describe('the contribution, as the engine sees it', () => {
 		const ws = workspace();
 		const status = ws.dt('status');
 		assert.equal(status.code, 0, status.stderr);
-		assert.match(status.stdout, /^extensions: @dreamteamer\/proofs@0\.1\.0$/m);
+		assert.match(status.stdout, /^extensions: @dreamteamer\/proofs@0\.1\.1$/m);
 		const help = ws.dt('help');
 		assert.equal(help.code, 0, help.stderr);
 		assert.ok(help.stdout.includes('prove <proof>'), 'prove usage missing');

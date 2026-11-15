@@ -1,6 +1,6 @@
 {
 	"name": "@dreamteamer/tasks",
-	"version": "0.3.3",
+	"version": "0.3.4",
 	"description": "Concrete commitments with a focused unfinished-work Board and List, creation dates and preserved task history.",
 	"license": "Apache-2.0",
 	"repository": {

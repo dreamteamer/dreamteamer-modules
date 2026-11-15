@@ -1,13 +1,13 @@
 // THE CALENDAR ROWS LAND HOWEVER THE MODULE ARRIVED. Since cr-dt-007 the rows are an env action the engine
 // writes — `dt setup meetings --input calendar=<row>` — so there is no module script to name per channel:
-// the direct npm package, an inline copy under modules/, and the composed `@dreamteamer/core` all go
-// through the one engine verb. Each case installs the packed or copied module into a fresh workspace (a
+// the direct npm package, an inline copy under modules/, and `@dreamteamer/core` (a module preset whose
+// members include meetings) all go through the one engine verb. Each case installs the packed or copied module into a fresh workspace (a
 // Git repository), runs the verb, and proves a second run is a no-op. Synthetic rows; no account touched.
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { virginWorkspace, installPacked, installCopied, closure, packedFiles, run, cleanup } from '../../../tests/helpers/workspace.mjs';
+import { virginWorkspace, installPacked, installCopied, closure, packedFiles, pkgOf, run, cleanup, engineMeets, ENGINE_VERSION } from '../../../tests/helpers/workspace.mjs';
 
 after(cleanup);
 const ROW = 'team@northwind.example | northwind | dana@northwind.example';
@@ -52,16 +52,12 @@ test('inline copy under modules/', () => {
 	roundTrip(root);
 });
 
-test('core only: its root SETUP.md routes to dt setup meetings, and that verb writes the rows', () => {
+test('core: the preset brings meetings as a member, and dt setup meetings writes the rows', { skip: !engineMeets('core') && `core is a module preset, read by engine ${pkgOf('core').dreamteamer.engine}; testing ${ENGINE_VERSION}` }, () => {
 	const root = virginWorkspace();
+	assert.ok(closure('core').has('meetings'), 'core\'s preset does not bring meetings');
 	installPacked(root, [...closure('core')]);
 	ignoreEnv(root);
-	assert.ok(!fs.existsSync(path.join(root, 'node_modules', '@dreamteamer', 'meetings')), 'no separate meetings package');
-	assert.ok(packedFiles('core').includes('SETUP.md'));
-	assert.ok(!packedFiles('core').includes('bin/meetings-setup.mjs'), 'no composed copy of the removed script');
-	const reference = fs.readFileSync(path.join(root, 'node_modules', '@dreamteamer', 'core', 'SETUP.md'), 'utf8');
-	assert.match(reference, /composed from meetings/);
-	assert.match(reference, /dt setup meetings --input calendar=/);
-	assert.doesNotMatch(reference, /bin\/meetings-setup\.mjs|bin\/setup\.mjs/);
+	assert.ok(fs.existsSync(path.join(root, 'node_modules', '@dreamteamer', 'meetings', 'SETUP.md')), 'meetings arrives as its own package, with its SETUP.md');
+	assert.ok(!packedFiles('core').includes('SETUP.md'), 'core ships no SETUP.md of its own');
 	roundTrip(root);
 });

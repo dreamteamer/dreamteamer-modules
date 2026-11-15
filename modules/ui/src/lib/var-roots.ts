@@ -7,6 +7,8 @@
  * ⚠ Nothing here knows a variable's name. The dogfood vault declares FILES_FOLDER; another workspace
  * declares whatever it declares. Only the injected LIST decides.
  */
+import { hostInfo } from './host-boot';
+
 export interface VarRoot {
 	name: string;
 	path: string;
@@ -17,7 +19,10 @@ declare global {
 		__DT_VAR_ROOTS__?: VarRoot[];
 	}
 }
+/** GET /host's roots (dt web, cr-modules-017), else the injected ones (the editor). */
 export function varRoots(): VarRoot[] {
+	const fromHost = hostInfo.value?.varRoots as VarRoot[] | undefined;
+	if (Array.isArray(fromHost)) return fromHost;
 	return (typeof window !== 'undefined' && window.__DT_VAR_ROOTS__) || [];
 }
 /** The webview uri for an absolute path under one of the roots, or null when no root contains it.

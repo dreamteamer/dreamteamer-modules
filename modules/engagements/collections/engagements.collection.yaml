@@ -118,8 +118,6 @@ constraints:
 display:
   nav:
     icon: filter
-    order: 9
-    section: crm
   # The default engagements view: everything, most recently updated first.
   list:
     columns:

@@ -2,126 +2,65 @@
 
 Every core noun of a workspace from one install line: people with the teams they form and the
 roles and responsibilities they hold, companies, contacts and engagements, tasks, projects with their
-decisions and risks, meetings with recordings, preps, summaries and analyses, files on mounted drives, the assets a view
-draws, the artifacts a person opens, sessions of work and the metrics that count them, and the
-workflows that run chains of those commands over sets of records.
+decisions and risks, meetings with recordings, preps, summaries and analyses, files on mounted drives,
+the assets a view draws, the artifacts a person opens, sessions of work and the metrics that count them,
+and the workflows that run chains of those commands over sets of records.
 
 ```bash
-npm install @dreamteamer/core
-npx dreamteamer compile
+dt install @dreamteamer/core
 ```
 
-## Task navigation
+## a module preset
 
-Tasks default to a compact Board and List of unfinished work, including suggestions awaiting triage. Creation dates are visible. Alternate built-in task routes remain usable as deep links while staying out of navigation; task records and status meanings are unchanged.
+From 0.12.0 core is a **module preset**: its manifest's `dreamteamer.preset` maps seventeen small
+modules to exact versions, and ships nothing else but this README, UPDATING.md and the nav fragment
+`nav.yaml`. `dt install @dreamteamer/core` (dreamteamer 0.49.0 or later) installs every member at the
+version the preset names, pins each one and core itself in `package.json`, and compiles; `dt update
+@dreamteamer/core` moves every installed member to the new preset's pins together. npm alone does not
+expand a preset — `npm install @dreamteamer/core` installs a package with no collections; use `dt
+install`.
 
-## composed, not written twice
+Each member is an ordinary package with its own README and UPDATING: read those for the reasoning behind
+each noun, its commands and its setup. A member is yours to remove (`npm uninstall
+@dreamteamer/metrics`, then `dt compile`): compile warns that the preset names it, `dt status` lists it as
+`not installed — dt install @dreamteamer/metrics`, and `dt update @dreamteamer/core` never puts it back. A
+member moved on its own (`dt update @dreamteamer/tasks@<version>`) is allowed; `dt status` says which
+version the preset names.
 
-This package is a COMPOSITION of the small official modules — assets, users, companies, contacts,
-engagements, tasks, projects, meetings, recordings, meeting-docs, files, workflows — plus what no small module
-has (below). Each descriptor, skill and command is authored in its small module and copied here by
-`scripts/compose-core.mjs` in the modules repo (the same script composes `rnd`); `compose.json` lists every copy with its origin and
-hash, and a test fails when a copy differs. A collection copied from `contacts` sits under
-`collections/contacts/`, a script from `users/bin/` is `bin/users-<script>`; the one rewrite a copy
-undergoes is its package name, so `node node_modules/@dreamteamer/users/bin/check-records.mjs` reads
-`node node_modules/@dreamteamer/core/bin/users-check-records.mjs` here.
+| member | what it keeps | setup |
+|---|---|---|
+| `@dreamteamer/assets` | `assets` — the pictures a view draws | none |
+| `@dreamteamer/users` | `users` (with `manager` and `reports`) and `teams` | none |
+| `@dreamteamer/companies` | `companies` | none |
+| `@dreamteamer/contacts` | `contacts`, enriched from LinkedIn | `LINKEDIN_USER_AGENT` |
+| `@dreamteamer/engagements` | `engagements` — one per company sold to or worked for | none |
+| `@dreamteamer/tasks` | `tasks` | none |
+| `@dreamteamer/projects` | `projects`, `decisions`, `deliverables`, `risks` | none |
+| `@dreamteamer/meetings` | `meetings`, synced from Google Calendar | unit `meetings` (`WORK_CALENDARS`) |
+| `@dreamteamer/recordings` | `meeting-recordings`, transcribed offline | unit `recordings` (`TRANSCRIPTION_HOME`, `FILES_FOLDER`, `INBOX_FOLDERS`) |
+| `@dreamteamer/meeting-docs` | `meeting-preps`, `meeting-summaries`, `meeting-analyses` | none |
+| `@dreamteamer/files` | `files` and `file-drives` | unit `files` (`FILES_FOLDER`) |
+| `@dreamteamer/workflows` | `workflows`; ships `customer-factory` (`npx dt-workflows install`) | none |
+| `@dreamteamer/sessions` | `sessions`, `dt session bind · end · send`, the workers row of `agents` | `SESSIONS_FOLDER` (optional) |
+| `@dreamteamer/metrics` | `metrics` | none |
+| `@dreamteamer/roles` | `roles`, and `roles` on `users` | none |
+| `@dreamteamer/responsibilities` | `responsibilities`, and `responsibilities` on `users` | none |
+| `@dreamteamer/artifacts` | `artifacts` — a built page someone opens | none |
 
-Install core OR the small modules, never both: two modules shipping `users` is a name collision
-compile refuses, and that is the right answer.
+`dt status` shows one line per member's setup unit; `dt setup <unit>` resumes, repairs or verifies one.
 
-## what core adds
+## the nav
 
-- `sessions` — one sitting of work by a person or an agent on a project: who, when, how long, what
-  came out of it. The event, never the plan and never the commitment.
-- `metrics` — a named measure with its unit, scope, target and dated readings. The series is the
-  record, so "how is X trending" is one file.
-- `roles` and `responsibilities` — shared lists a person names on `users.roles` and
-  `users.responsibilities`; each lists its people back.
-- `artifacts` — a built page someone OPENS, kept as a folder whose `index.html` runs from disk.
-- on `users`: `roles`, `responsibilities`, `manager` and the generated `reports`.
-- the workspace's `agents` drawn in the nav beside users, as the workers tasks and sessions name.
+`nav.yaml` here is core's nav fragment: on install the engine places each member's collection into the
+workspace's own `nav.yaml` — folders Work, People, CRM, Meetings, Library and Activity — but only a
+collection the workspace's file does not name yet. After that the file is yours: drag rows in the
+editor or `dt web`, or edit it by hand.
 
-## sessions: save and analyze
+## 0.12.0 — core is a module preset (CR-dt-008)
 
-`/session:save` reads the transcript the harness keeps for the current session and upserts
-`sessions/<session id>` with what it holds — turns, tool calls, input and output tokens, cache read
-and written, cost at list price, wall and API minutes, the models that answered, lines added and
-removed — and keeps a copy of the transcript under `${env:SESSIONS_FOLDER}/`, since the harness
-sweeps its own after a month. `/session:analyze` reads that transcript as a reviewer and writes
-`analysis` and a one-line `description` onto the record. Both are the `managing-sessions` skill; the
-reader is `bin/session-save.mjs` (`--json` prints the fields and writes nothing).
-
-A session record is an ordinary record under `data/sessions/`, committed like any other — a
-colleague who pulls the workspace lists it. `SESSIONS_FOLDER` (core requests it in `dreamteamer.vars`;
-the workspace declares it and `.env` sets it per machine) names only where transcript copies go:
-`transcript` reads `${env:SESSIONS_FOLDER}/<yyyy>/<mm>/<session id>.jsonl`. Unset, every record verb
-still works and the record points at the harness's own copy. To keep the
-metrics current without anyone remembering, bind the reader to the harness's `Stop` hook in the
-workspace's `.claude/settings.json` — the module ships the reader, not the binding:
-
-```json
-{
-  "hooks": {
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node node_modules/@dreamteamer/core/bin/session-save.mjs --write --hook --quiet",
-            "timeout": 30
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-The hook writes metrics only; `outcome`, `analysis` and `description` stay the session's and the
-reviewer's words. Namespaced commands (`commands/session/save.command.md` typed as `/session:save`)
-need engine 0.38; an env-pointed `storage.path` needs 0.39, which is core's floor.
-
-## binding records to a session, and asking one
-
-```bash
-dt session bind <collection>/<id>… [--session <id>]   # add records to the current session's `records` (/session:bind)
-dt next <collection>/<id>                             # "worked on in sessions/<id> — …", one line per session
-dt session end [<session>] [--outcome <text>]         # stamp `ended` once; the outcome is the body
-dt session send <session> "<question>"                # ask a past session, through a fork with no tools
-```
-
-`records` takes any number of references to records of any collection. A session record is written to
-the workspace the session runs in — never inside a `git_modules/` layer — so one harness session is
-one record, and a layer's record is bound from the workspace that reads the layer. Binding again changes
-nothing. There is no claim and no lock: when another session already lists a record, `bind` names it
-in one line and binds anyway. A record's sessions are read when `dt next` asks, from every root the
-open workspace reads; nothing is written to the bound record, so a layer opened on its own sees only
-its own sessions.
-
-`dt session send` resumes the session's transcript by its stored `session_id` with
-`claude -p --resume <id> --fork-session`, with no tools, no MCP servers and no hooks, from a temporary
-folder, the question on stdin: the session's own history is untouched and the fork can only answer. It
-needs the transcript on this machine and a claude-code session, and refuses naming which otherwise.
-
-Core 0.8.0's live sessions (session-bindings, `dt session start`, `dt sessions open`, the heartbeat
-and the claim) are gone; a `session-bindings/` folder a layer or an older package still ships compiles
-with one `retired … ignored` line. `bin/sessions-migrate.mjs` moves a 0.8.0 workspace (UPDATING 0.9.0).
-
-## workflows
-
-`workflows` comes from `@dreamteamer/workflows`: a record that names a chain of commands, the records
-each one walks and where a person decides, run with `/workflow:run <id>`. Nothing about a run is
-recorded — the records the commands touch are the progress. Core ships `customer-factory` (the week's
-calls to its leads and suggested engagements) in `data/workflows/`, a folder compile does not read;
-`npx dt-workflows install customer-factory` copies it into the workspace, which then owns and commits
-it. The workflows module's README has the record's shape.
-
-## what a descriptor cannot say
-
-The small modules' READMEs hold the reasoning behind each noun and travel with their packages; this
-one adds only the composition rule above. `FILES_FOLDER` and `INBOX_FOLDERS` are the template
-variables the meetings, recordings and files nouns need — declare them in `dreamteamer.vars` and set
-them in `.env` before `dt resolve` can render a path.
+The 127 composed copies, `compose.json`, the extension, the scripts and `SETUP.md` left core: every
+collection, skill, command and script now comes from the member that authors it, at the same storage path
+and with the same ids, so no record moves. UPDATING.md has the four steps.
 
 ## 0.10.0 — on engine 0.47.0 (CLI-first module lifecycle, CR-dt-006)
 

@@ -149,7 +149,6 @@ fields:
 display:
   nav:
     icon: checklist
-    order: 1
   list:
     columns:
       - name

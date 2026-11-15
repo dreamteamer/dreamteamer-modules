@@ -53,7 +53,6 @@ fields:
 display:
   nav:
     icon: mail
-    order: 60
   list:
     columns:
       - subject

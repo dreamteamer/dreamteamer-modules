@@ -44,6 +44,7 @@ import { SOURCE_FIELD, hasForeignSource, isSourceRule, selectedSources, sourceCh
 import { formatTitle } from '../lib/format-title';
 import { resolveRendererEntry, resolvePreset, type PresetRecord } from '../lib/presets';
 import { lists } from '../registry/index';
+import { pageSelection, pushedSelection } from '../lib/pane-place';
 import DtIcon from './DtIcon.vue';
 import UnknownOptionsHint from './browse/UnknownOptionsHint.vue';
 
@@ -182,6 +183,21 @@ watch(
 // section re-fetches, debounced, as rows are ticked). Single top-level ref, per the
 // double-unwrap note above.
 const selectedIdList = computed(() => [...state.selectedIds.value]);
+// cr-modules-017 §5: the page's own browse publishes its ticked rows (the pane reporter sends them to the chat), and
+// applies the chat's push (`dt:select`) — the ids of the refs in THIS collection; `[]` clears. A push is consumed by the
+// list it was for, so it is not applied again when that list mounts later.
+if (!props.embedded) {
+	watch(selectedIdList, (ids) => { pageSelection.value = { collection: collection.value, ids }; }, { immediate: true });
+	watch(pushedSelection, (push) => {
+		if (!push) return;
+		const prefix = collection.value + '/';
+		const mine = push.refs.filter((r) => r.startsWith(prefix)).map((r) => r.slice(prefix.length));
+		if (push.refs.length && !mine.length) return;
+		state.selectedIds.value = new Set(mine);
+		pushedSelection.value = null;
+	}, { immediate: true });
+	onUnmounted(() => { if (pageSelection.value?.collection === collection.value) pageSelection.value = null; });
+}
 // ⚠ Guarded, not merged: registration REPLACES the rail (composables/page-sidebar.ts), so an
 // embedded browse would wipe the record page's own sections. See the `embedded` prop.
 if (!props.embedded) useSidebarSections([

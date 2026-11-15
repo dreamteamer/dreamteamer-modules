@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// cr-modules-008 task 8, dt web half: a workspace module's app runs in a sandboxed frame on the files origin and
+// cr-modules-008 task 8, dt web half: a workspace module's app runs in a sandboxed frame under /_frames/<key>/ and
 // reaches records only through the host's gate. A `probe` app makes every attempt the acceptance lines name and
 // writes each outcome into its own DOM; the walk reads them through the frame, then grants a write and reads again.
 // usage: node modules/web/test/walk/module-sandbox.mjs   (DT_WEB_APP_DIR, DT_ENGINE_DIR, DT_WALK_SHOTS optional)
@@ -60,7 +60,7 @@ async function probeRun(label) {
 		const { page } = await signedIn(b, s.url);
 		const consoleLog = []; page.on('console', (m) => consoleLog.push(`${m.type()}: ${m.text()}`.slice(0, 300)));
 		const frameRequests = [];
-		page.on('requestfinished', (r) => { const fr = r.frame(); if (fr && fr.url().includes('/_dt/frame/') && !r.url().startsWith('blob:') && !r.url().includes('/_dt/frame/')) frameRequests.push(r.url()); });
+		page.on('requestfinished', (r) => { const fr = r.frame(); if (fr && fr.url().includes('/_frames/') && !r.url().startsWith('blob:') && !r.url().includes('/_frames/')) frameRequests.push(r.url()); });
 		await go(page, '/a/probe');
 		await page.waitForTimeout(800);
 		const frameEl = await page.waitForSelector('iframe[title="module app default"]:not([style*="display:none"])', { timeout: 15_000 });
@@ -73,7 +73,7 @@ async function probeRun(label) {
 		});
 		const data = await fr.evaluate(() => ({ ...document.body.dataset }));
 		await page.screenshot({ path: shot(`module-sandbox-${label}`) });
-		const reg = page.frames().find((x) => x.url().includes('/_dt/frame/default/registry.html'));
+		const reg = page.frames().find((x) => /\/_frames\/[^/]+\/default\/registry\.html$/.test(x.url()));
 		data.regflood = reg ? await reg.evaluate(() => document.body.dataset.regflood ?? 'none') : 'no registry frame';
 		return { page, s, data, sandbox, frameUrl: fr.url(), frameRequests };
 	} catch (e) { await s.stop(); throw e; }
@@ -84,7 +84,9 @@ try {
 	const d = r.data;
 	console.log(JSON.stringify(d, null, 1).slice(0, 2500));
 	ok(r.sandbox === 'allow-scripts', 'line 2: the frame is sandbox="allow-scripts" only', r.sandbox);
-	ok(/\/_dt\/frame\/default\/app\.html$/.test(r.frameUrl) && !r.frameUrl.startsWith(new URL(r.s.url).origin), 'line 2: the frame document comes from the files origin', r.frameUrl);
+	// one listener (cr-modules-017): the frame document is served under /_frames/<key>/, and its CSP sandbox gives it an
+	// opaque origin — the no-cookie, no-storage and no-parent-document checks below are what that origin buys
+	ok(/\/_frames\/[^/]+\/default\/app\.html$/.test(r.frameUrl), 'line 2: the frame document comes from /_frames/<key>/', r.frameUrl);
 	ok(d.commit?.startsWith('403:'), 'line 1: POST /api/commit is 403', d.commit);
 	ok(d.ownwrite?.startsWith('403:') && /no write is granted/.test(d.ownwrite), 'line 1: a write to its own collection without a grant is 403 with the grant sentence', d.ownwrite);
 	ok(d.system?.startsWith('403:'), 'line 1: a schema write is 403', d.system);

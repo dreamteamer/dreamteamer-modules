@@ -122,7 +122,6 @@ fields:
 display:
   nav:
     icon: quote
-    order: 115
   list:
     columns:
       - name

@@ -13,9 +13,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { MODULES, ROOT, BIN, pkgOf, moduleIds, folderOf, packed, virginWorkspace, run, cleanup, engineReadsFloors } from './helpers/workspace.mjs';
+import { MODULES, ROOT, BIN, pkgOf, moduleIds, folderOf, packed, virginWorkspace, run, cleanup, engineReadsFloors, engineMeets, ENGINE_VERSION } from './helpers/workspace.mjs';
 import { serveRegistry, npmInstall, installedVersion } from './helpers/registry.mjs';
-import { compose, composedModules } from '../scripts/compose-core.mjs';
 import { main as linkMain } from '../scripts/preview/link-cli.mjs';
 
 after(cleanup);
@@ -75,7 +74,6 @@ describe('the declarations', () => {
 describe('the presence graph is mirrored as floors (CR-dt-006)', () => {
 	test('every dreamteamer.dependencies entry is a strict peer with a >=x.y.z floor — the declaration dt install walks, and the floor npm and the engine enforce', () => {
 		for (const m of moduleIds()) {
-			if (fs.existsSync(path.join(MODULES, m, 'compose.json'))) continue; // a composition carries no floor; its origins do
 			for (const dep of pkgOf(m).dreamteamer.dependencies ?? []) {
 				const range = pkgOf(m).peerDependencies?.[dep];
 				assert.ok(range && /^>=\d+\.\d+\.\d+$/.test(range), `${m} depends on ${dep} and floors it at ${JSON.stringify(range)} — mirror the dependency as a strict peer`);
@@ -96,23 +94,9 @@ describe('the presence graph is mirrored as floors (CR-dt-006)', () => {
 	test('every module that ships a setup unit floors the engine at >=0.47.0, the engine that reads the setup contribution', () => {
 		for (const m of moduleIds()) {
 			const unit = fs.existsSync(path.join(MODULES, m, 'lib', `${m}-setup.mjs`)) && /export const SETUP_UNIT\b/.test(fs.readFileSync(path.join(MODULES, m, 'lib', `${m}-setup.mjs`), 'utf8'));
-			const composedUnits = fs.existsSync(path.join(MODULES, m, 'compose.json')) && (JSON.parse(fs.readFileSync(path.join(MODULES, m, 'compose.json'), 'utf8')).setup_units ?? []).length > 0;
-			if (!unit && !composedUnits) continue;
+			if (!unit) continue;
 			const at = /^>=(\d+)\.(\d+)\.(\d+)$/.exec(pkgOf(m).dreamteamer.engine ?? '');
 			assert.ok(at && (Number(at[1]) > 0 || Number(at[2]) >= 47), `${m} ships a setup unit and floors the engine at ${pkgOf(m).dreamteamer.engine ?? 'nothing'} — needs >=0.47.0`);
-		}
-	});
-});
-
-describe('the composition', () => {
-	test('no composed module carries a floor, and every origin floors only another origin of the same composition', () => {
-		for (const t of composedModules()) {
-			const { spec, manifest } = compose(t);
-			assert.equal(manifest.peerDependencies, undefined, `${t}'s merged manifest carries peerDependencies`);
-			assert.equal(pkgOf(t).peerDependencies, undefined, `${t}/package.json carries peerDependencies`);
-			for (const o of spec.origins) for (const [dep] of floorsOf(o)) {
-				assert.ok(spec.origins.includes(folderOf(dep)), `${o} floors ${dep}, which ${t} does not compose — ${t} would ship without the floor`);
-			}
 		}
 	});
 });
@@ -213,7 +197,9 @@ describe('dt compile refuses a half-upgrade npm never saw', { skip }, () => {
 		assert.ok(c.stderr.includes('fix: bring git_modules/dreamteamer-modules/modules/users to a version in >=0.2.0'), c.stderr);
 	});
 
-	test('a linked clone of this repo as it is compiles — a floor never refuses its own repo', async () => {
+	// skipped below engine 0.49 with the rest of the repo: core is a module preset from 0.12.0, and a
+	// workspace previewing this repo reads it only on 0.49 or later
+	test('a linked clone of this repo as it is compiles — a floor never refuses its own repo', { skip: !engineMeets('core') && `core is a module preset, read by engine 0.49.0 or later; testing ${ENGINE_VERSION}` }, async () => {
 		const root = await linked(here('users'));
 		const c = run(root, ['compile']);
 		assert.equal(c.status, 0, c.stderr + c.stdout);

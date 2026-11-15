@@ -96,8 +96,6 @@ fields:
 display:
   nav:
     icon: map
-    order: 30
-    section: product
   list:
     columns:
       - name

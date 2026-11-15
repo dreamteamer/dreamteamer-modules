@@ -156,7 +156,6 @@ fields:
 display:
   nav:
     icon: person-voice
-    order: 110
   list:
     columns:
       - name

@@ -1,4 +1,5 @@
 import { type BelowFloorNotice } from "./floor.js";
+import type { NavDoc } from "../nav-doc.js";
 export declare const ENGINE_API_VERSION = 1;
 export interface EngineWorkspace {
     root: string;
@@ -126,6 +127,23 @@ export interface EngineModules {
     } | null;
     namespaces: string[];
     loadDescriptors: (root: string) => Map<string, any> | null;
+    /** The nav document (engine 0.49, cr-dt-008); each undefined on an engine before it. */
+    readNavDoc?: (root: string) => NavDoc | null;
+    validateNavDoc?: (doc: NavDoc, ctx: {
+        collections: Set<string>;
+        namespaces: string[];
+    }) => {
+        warning: string;
+    }[];
+    writeNavDoc?: (root: string, doc: NavDoc) => boolean;
+    applyNavFragments?: (root: string, opts?: {
+        names?: string[];
+        ignoreSettings?: boolean;
+    }) => {
+        written: boolean;
+        placed: string[];
+        skipped?: "settings";
+    };
     descriptor: {
         moduleOf: (d: any) => string | undefined;
         isInternal: (d: any) => boolean;

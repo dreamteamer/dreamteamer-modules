@@ -122,23 +122,7 @@ export class WorkspaceApi {
         return runtimeSources([...this.store.readAll(d.name)].map(({ file }) => this.runtimeModuleOf(file)), this.sourcesCtx());
     }
     contested(d) {
-        const isStub = (file) => {
-            try {
-                return engine().parseRecordText(fs.readFileSync(file, "utf8"), d)?.stub === true;
-            }
-            catch {
-                return false;
-            }
-        };
-        return contestedIds(this.root, d, isStub);
-    }
-    stubRootNames(stubs, sources) {
-        const out = new Map();
-        for (const [id, roots] of stubs) {
-            const names = roots.map((r) => sources.find((x) => x.path === path.relative(this.root, r.dir).split(path.sep).join("/"))?.name ?? r.repo);
-            out.set(id, [...new Set(names)]);
-        }
-        return out;
+        return contestedIds(this.root, d);
     }
     sourceOfFile(d, file, sources) {
         if (!engine().descriptor.isRuntime(d))
@@ -451,7 +435,6 @@ export class WorkspaceApi {
                         : undefined;
             return id ? { [MODULE_KEY]: id } : {};
         };
-        const stubsById = this.stubRootNames(contested.stubs, sources);
         let rows = [];
         for (const { id, file, fields } of store.readAll(name)) {
             const created = fields.created === undefined ? store.createdOf(name, id, fields, file) : undefined;
@@ -464,7 +447,6 @@ export class WorkspaceApi {
                 ...sourceKeys(this.sourceOfFile(d, file, sources)),
                 ...moduleOfRow(file, this.sourceOfFile(d, file, sources)),
                 ...(dupe ? { [DUPLICATES_KEY]: dupe.map((r) => sources.find((x) => x.path === path.relative(this.root, r.dir).split(path.sep).join("/"))?.name ?? r.repo) } : {}),
-                ...(stubsById.get(id)?.length ? { [STUBS_KEY]: stubsById.get(id) } : {}),
             });
         }
         const filter = query.get("filter");
@@ -519,7 +501,6 @@ export class WorkspaceApi {
         const sources = this.sourcesOf(d);
         const contested = this.contested(d);
         const dupe = contested.duplicates.get(id);
-        const stubs = this.stubRootNames(contested.stubs, sources).get(id);
         return {
             id,
             fields: {
@@ -532,7 +513,6 @@ export class WorkspaceApi {
                 ...(engine().descriptor.isRuntime(d) ? {} : repoStateKeys(this.root, locateRecord(this.store, name, id))),
                 ...(engine().descriptor.isRuntime(d) && this.runtimeModuleOf(file) ? { [MODULE_KEY]: this.runtimeModuleOf(file) } : {}),
                 ...(dupe ? { [DUPLICATES_KEY]: dupe.map((r) => sources.find((x) => x.path === path.relative(this.root, r.dir).split(path.sep).join("/"))?.name ?? r.repo) } : {}),
-                ...(stubs?.length ? { [STUBS_KEY]: stubs } : {}),
             },
             path: path.relative(this.root, file),
         };
@@ -762,7 +742,6 @@ function gitLastCommit(root, file) {
 }
 export const SOURCE_KEY = "$source";
 export const SOURCE_KIND_KEY = "$source-kind";
-export const STUBS_KEY = "$stubs";
 export const MODIFIED_BY_KEY = "$last-modified-by";
 export const CREATED_BY_KEY = "$created-by";
 function historyKeys(h) {

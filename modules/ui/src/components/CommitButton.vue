@@ -25,6 +25,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { api } from '../api/client';
 import { commitRepoLabel, pendingByRepo, type PendingRepo } from '../lib/sources';
+import { hostInfo } from '../lib/host-boot';
 import DtIcon from './DtIcon.vue';
 
 interface CommitResult extends PendingRepo {
@@ -51,7 +52,15 @@ const repos = computed(() => pendingByRepo(plan.value));
 const pending = computed(() => repos.value.reduce((n, r) => n + r.count, 0));
 const label = (repo: string) => commitRepoLabel(repo, workspace.value);
 
+/** A commit is an Admin route (cr-modules-017 §4): a pane below Admin neither asks for the dry run (a 403 on
+ *  every page) nor draws the button. The editor answers no GET /host to the app, so it always may. */
+const mayCommit = (): boolean => !hostInfo.value || hostInfo.value.level === 'admin';
+
 async function refresh(): Promise<void> {
+	if (!mayCommit()) {
+		plan.value = [];
+		return;
+	}
 	try {
 		const { data } = await api.post<CommitResult[]>('/commit', { dryRun: true });
 		plan.value = data ?? [];
@@ -106,6 +115,7 @@ onUnmounted(() => {
 // Navigating is the cheapest honest moment to re-sample: the count is a fact about the working
 // tree, not about this page, and anything this window did to it went through a route change.
 watch(() => route.fullPath, refresh);
+watch(() => hostInfo.value?.level, refresh);
 </script>
 
 <template>

@@ -1,0 +1,35 @@
+{
+	"name": "@dreamteamer/metrics",
+	"version": "0.1.0",
+	"description": "Named measures a workspace watches — unit, scope, target and the dated readings that make the series — one record per measure.",
+	"license": "Apache-2.0",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/dreamteamer/dreamteamer-modules.git",
+		"directory": "modules/metrics"
+	},
+	"keywords": [
+		"dreamteamer",
+		"dreamteamer-module",
+		"metrics"
+	],
+	"files": [
+		"README.md",
+		"UPDATING.md",
+		"collections"
+	],
+	"peerDependencies": {
+		"@dreamteamer/users": ">=0.3.0"
+	},
+	"dreamteamer": {
+		"title": "Metrics",
+		"description": "`metrics`: one named measure a workspace watches — agent hours per project, open tasks per person, sessions per week — with its unit, the record it is scoped to, its target and the dated readings that make its series, the latest copied into `current` and `as_of`. Depends on `users` (a measure may be scoped to a person); peers `projects`.",
+		"engine": ">=0.48.0",
+		"dependencies": [
+			"@dreamteamer/users"
+		],
+		"peer_collections": [
+			"projects"
+		]
+	}
+}

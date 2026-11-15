@@ -11,6 +11,10 @@ npx dreamteamer check
 
 ---
 
+## 0.4.3 — the nav is nav.yaml (cr-dt-008)
+
+`display.nav.order` and `display.nav.section` removed from its four descriptors — the nav is `nav.yaml` at the workspace root (engine 0.49), which you arrange; `display.nav.icon` stays. Nothing to do.
+
 ## 0.4.2 — the setup package is gone (CR-dt-007)
 
 Nothing to do but `dt update @dreamteamer/projects`. The README names the line that chains the plan guard into `npm run check`, where it said `npx dt-setup setup` offers to.
@@ -60,11 +64,12 @@ npx dreamteamer check
 - users 0.2.0 beside projects 0.3.x: compile refuses, `name collision on collection "teams"`.
   Install projects 0.4.0.
 
-On `@dreamteamer/core` there is nothing to do: core 0.7.0 composes both.
+On `@dreamteamer/core` there was nothing to do: core 0.7.0 composed both. From core 0.12.0 core is a
+preset of the small modules; this does not apply.
 
-**An overlay of yours.** If your own module overlays `teams` with
-`extends: "@dreamteamer/projects/teams"`, change it to `"@dreamteamer/users/teams"` and declare
-`@dreamteamer/users` as the dependency.
+**An overlay of yours.** An overlay of `teams` is a descriptor with `name: teams` and `overlay: true`
+(compile refuses an `extends:` key); it adds to whichever installed module owns `teams`, now users.
+Declare `@dreamteamer/users` as your module's dependency in place of `@dreamteamer/projects`.
 
 ## 0.3.1 and earlier
 

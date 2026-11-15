@@ -71,6 +71,10 @@ The bundled `/tasks/mine` view contains the experimental `@me` assignee placehol
 
 The `depends_on` task references expose a reverse `dependents` relation.
 
+## 0.3.4 — the nav is nav.yaml (cr-dt-008)
+
+`display.nav.order` and `display.nav.section` removed from its descriptor — the nav is `nav.yaml` at the workspace root (engine 0.49), which you arrange; `display.nav.icon` stays. Nothing to do.
+
 ## 0.3.3
 
 Engine floor `>=0.47.0` and the peer list mirrored for `dt install`'s closure; nothing else changes. `dt update @dreamteamer/tasks` then `dt compile`.

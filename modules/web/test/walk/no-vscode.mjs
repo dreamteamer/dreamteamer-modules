@@ -2,15 +2,16 @@
 // The machine-with-no-editor walk (cr-modules-005 line 7), run by .github/workflows/web-walk.yml on a fresh
 // ubuntu runner: the synthetic Northwind hq with one git_modules layer, `npm install` of the packed protocol, ui
 // and web tarballs (the app is @dreamteamer/ui's built page, inside the ui tarball), `dt compile`, then the
-// one command — `dt web --no-open` through the workspace's own engine CLI — and headless Chromium:
+// one command — `dt web open` through the workspace's own engine CLI — and headless Chromium:
 //   - no `code` on PATH, and no .dreamteamer/editor.json before the start (no editor ever opened it)
 //   - the page draws the nav (with its Layers folder) and the layer's record in the projects list
 //   - the layer's record, edited in the browser, lands in the layer's clone
 //   - renaming it is refused by the engine, naming the layer (the record page has no rename gesture: the
 //     refusal is the API's answer to the signed-in page)
 // usage: node modules/web/test/walk/no-vscode.mjs <protocol.tgz> <ui.tgz> <web.tgz>   (DT_ENGINE_DIR: the fixture's engine)
-import { execFileSync, spawn, spawnSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { browser, checks, go, northwind, shot } from './support.mjs';
 
@@ -32,17 +33,14 @@ const compile = spawnSync(DT, ['compile'], { cwd: f.root, encoding: 'utf8', time
 ok(compile.status === 0, 'dt compile', `exit ${compile.status} ${compile.stderr.slice(0, 200)}`);
 ok(!fs.existsSync(path.join(f.root, '.dreamteamer', 'editor.json')), 'no editor marker before the start');
 
-const child = spawn(DT, ['web', '--no-open', '--idle', '10'], { cwd: f.root, env: { ...process.env, CLAUDE_PID: '' }, stdio: ['ignore', 'pipe', 'pipe'] });
-const killer = setTimeout(() => child.kill('SIGKILL'), 10 * 60_000);
-let err = '';
-child.stderr.on('data', (x) => { err += x; });
-const url = await new Promise((resolve, reject) => {
-	let out = '';
-	child.stdout.on('data', (x) => { out += x; if (out.includes('\n')) resolve(out.split('\n')[0].replace(/^✔ dreamteamer web at /, '')); });
-	child.on('exit', (code) => reject(new Error(`dt web exited ${code}: ${err}`)));
-	setTimeout(() => reject(new Error(`no URL in 60 s: ${err}`)), 60_000).unref();
-});
-ok(/^http:\/\/127\.0\.0\.1:\d+\/sign-in\/\S+$/.test(url), 'dt web printed a loopback sign-in URL first', url.replace(/sign-in\/.*/, 'sign-in/<code>'));
+// one step: `dt web open` starts the server detached and prints the sign-in URL as its first line
+// its own runtime and state dirs, so a run on a workstation never touches the person's real ones
+const env = { ...process.env, CLAUDE_PID: '', DT_WEB_RUNTIME_DIR: fs.mkdtempSync(path.join(os.tmpdir(), 'dt-web-novs-rt-')), DT_WEB_STATE_DIR: fs.mkdtempSync(path.join(os.tmpdir(), 'dt-web-novs-state-')) };
+// at Admin: the walk asks the engine for a rename, an Admin route (below it the level refuses first)
+const opened = spawnSync(DT, ['web', 'open', '--admin'], { cwd: f.root, env, encoding: 'utf8', timeout: 60_000 });
+const url = /^✔ open in the pane: (\S+)$/m.exec(opened.stdout ?? '')?.[1] ?? '';
+ok(opened.status === 0, 'dt web open', `exit ${opened.status} ${opened.stderr.slice(0, 200)}`);
+ok(/^http:\/\/127\.0\.0\.1:\d+\/sign-in\/\S+$/.test(url) && opened.stdout.startsWith('✔ open in the pane: '), 'dt web open printed a loopback sign-in URL first', url.replace(/sign-in\/.*/, 'sign-in/<code>'));
 
 const b = await browser();
 try {
@@ -75,10 +73,9 @@ try {
 	ok(errors.length === 0, 'no page errors', JSON.stringify(errors.slice(0, 3)));
 } finally {
 	await b.close();
-	const stop = spawnSync(DT, ['web', 'stop'], { cwd: f.root, encoding: 'utf8', timeout: 30_000 });
+	const stop = spawnSync(DT, ['web', 'stop'], { cwd: f.root, env, encoding: 'utf8', timeout: 30_000 });
 	ok(stop.status === 0, 'dt web stop', stop.stdout.trim());
-	clearTimeout(killer);
-	child.kill('SIGKILL');
 	f.cleanup();
+	for (const d of [env.DT_WEB_RUNTIME_DIR, env.DT_WEB_STATE_DIR]) fs.rmSync(d, { recursive: true, force: true });
 }
 process.exit(done());

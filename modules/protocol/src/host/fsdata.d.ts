@@ -102,10 +102,9 @@ export declare function recordRoots(root: string, d: Descriptor, descriptors?: D
 export declare function recordFileFor(root: string, d: Descriptor, id: string, descriptors?: Descriptor[]): string | undefined;
 export declare function listRecords(root: string, d: Descriptor): RecordEntry[];
 export declare function walkIds(dir: string, d: Descriptor): Map<string, string>;
-export declare function duplicateIds(root: string, d: Descriptor, isStub?: (file: string) => boolean): Map<string, CollectionRoot[]>;
-export declare function contestedIds(root: string, d: Descriptor, isStub?: (file: string) => boolean): {
+export declare function duplicateIds(root: string, d: Descriptor): Map<string, CollectionRoot[]>;
+export declare function contestedIds(root: string, d: Descriptor): {
     duplicates: Map<string, CollectionRoot[]>;
-    stubs: Map<string, CollectionRoot[]>;
 };
 export declare function fieldVerbTargets(d: Descriptor): string[];
 export declare function titleField(d: Descriptor): string | undefined;

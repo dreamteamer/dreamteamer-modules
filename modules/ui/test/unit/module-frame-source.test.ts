@@ -31,3 +31,13 @@ test('a guest without a stylesheet beside it still frames — unstyled, never br
 	assert.ok(s.srcdoc, 'the document is built');
 	assert.doesNotMatch(s.srcdoc!, /not found/, 'a 404 body is never inlined as a stylesheet');
 });
+
+test('cr-modules-017: a url-framed host draws the frame from the frames base GET /host answered', async () => {
+	const { hostInfo } = await import('../../src/lib/host-boot');
+	(globalThis as any).window.__DT_HOST__ = { moduleFrames: 'url' };
+	hostInfo.value = { level: 'admin', chat: false, workspace: { id: 'w', name: 'w' }, framesBase: '/_frames/k1' };
+	assert.deepEqual(await frameSource('m1', 'edit'), { src: '/_frames/k1/m1/edit.html' });
+	hostInfo.value = { ...hostInfo.value, framesBase: '/_frames/k2' };
+	assert.deepEqual(await frameSource('m1', 'edit'), { src: '/_frames/k2/m1/edit.html' });
+	(globalThis as any).window.__DT_HOST__ = { moduleFrames: 'srcdoc' };
+});

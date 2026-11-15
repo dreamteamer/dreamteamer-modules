@@ -1,6 +1,6 @@
 {
 	"name": "@dreamteamer/files",
-	"version": "0.3.0",
+	"version": "0.3.1",
 	"description": "Files on mounted drives as records: one index record per file or folder, kept level by dt files sync, with your notes on each.",
 	"license": "Apache-2.0",
 	"type": "module",

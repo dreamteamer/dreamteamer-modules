@@ -25,9 +25,9 @@ const skip = !engineMeets('core') && `needs engine ${pkgOf('core').dreamteamer.e
 // core 0.9.0 (cr-modules-010) removed live sessions — the session-bindings collection, `dt session start`,
 // `dt sessions open`, status and heartbeat — so the claims below, written against core 0.8.0, have no
 // subject on this repo's core: they are skipped, saying so. What replaces them (no binding, no claim;
-// a stray session-bindings source compiles as retired) is pinned in core's own sessions tests.
+// a stray session-bindings source compiles as retired) is pinned in the sessions module's own tests (core's, before core 0.12.0).
 const coreLive = Number(pkgOf('core').version.split('.')[1]) < 9 || pkgOf('core').version.startsWith('1');
-const live = skip || (!coreLive && `core ${pkgOf('core').version} has no live sessions (cr-modules-010); core's test/session*.test.mjs pin what replaced them`);
+const live = skip || (!coreLive && `core ${pkgOf('core').version} has no live sessions (cr-modules-010); the sessions module's test/session*.test.mjs pin what replaced them`);
 const RND = path.join(MODULES, 'rnd');
 
 /** The environment every child runs in: no harness session id leaking in from whatever runs the suite. */
@@ -233,7 +233,7 @@ describe('the 0.8.0 release, and every release after it', () => {
 		const pkg = JSON.parse(read('package.json'));
 		const [maj, min] = pkg.version.split('.').map(Number);
 		assert.ok(maj > 0 || min >= 8, `version ${pkg.version} is 0.8.0 or later`);
-		assert.equal(pkg.dreamteamer.engine, '>=0.47.0' /* CR-dt-006, D44: a composed module declares provides, a 0.47 key */);
+		assert.equal(pkg.dreamteamer.engine, '>=0.49.0' /* CR-dt-008: rnd ships a nav fragment (dreamteamer.nav), a 0.49 key */);
 		assert.match(read('UPDATING.md'), /## 0\.8\.0 — rnd ships no session bindings/);
 		assert.match(read('UPDATING.md'), /migrate-session-bindings\.mjs --write/);
 		assert.match(read('README.md'), /## 0\.8\.0 — from 0\.7\.0/);

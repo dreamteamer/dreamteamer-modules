@@ -1,0 +1,32 @@
+{
+	"name": "@dreamteamer/responsibilities",
+	"version": "0.1.0",
+	"description": "Areas of ownership — release sign-off, a client relationship, onboarding — as one shared list each person names on users.responsibilities.",
+	"license": "Apache-2.0",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/dreamteamer/dreamteamer-modules.git",
+		"directory": "modules/responsibilities"
+	},
+	"keywords": [
+		"dreamteamer",
+		"dreamteamer-module",
+		"responsibilities"
+	],
+	"files": [
+		"README.md",
+		"UPDATING.md",
+		"collections"
+	],
+	"peerDependencies": {
+		"@dreamteamer/users": ">=0.3.0"
+	},
+	"dreamteamer": {
+		"title": "Responsibilities",
+		"description": "`responsibilities`: an area of ownership — release sign-off, the relationship with a client, the CI pipeline, onboarding — one record per area, and an overlay of `users` adding `responsibilities`, so \"who owns X\" is one read and each area lists who carries it. Not a task and not a role. Depends on `users`.",
+		"engine": ">=0.48.0",
+		"dependencies": [
+			"@dreamteamer/users"
+		]
+	}
+}

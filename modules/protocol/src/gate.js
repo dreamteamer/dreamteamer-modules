@@ -1,6 +1,7 @@
 // The shared gate (cr-modules-007 design §4c; cr-modules-008 §4). Pure: no I/O, no clock, no headers.
 // It decides WHAT a scope may call — the host adapter decides WHO and HOW MUCH around it.
 import { matchRoute } from './routes.js';
+import { levelRank, RECORD_WRITE_ROUTES } from './pane-scope.js';
 
 /** The engine's filter operators (0.44 `KNOWN_OPERATORS`) minus the `_regex` family and the `_and`/`_or` structure keys. */
 export const OPERATORS = new Set(['_eq', '_neq', '_ieq', '_nieq', '_lt', '_lte', '_gt', '_gte', '_in', '_nin', '_null', '_nnull',
@@ -57,6 +58,7 @@ export function gate(scope, descriptors, method, path, query, body) {
 	if (!hit) return refuse(404, `no route ${m} ${String(path).split('?')[0]}`);
 	const { route, params } = hit;
 	const s = scope.sentences;
+	if (scope.kind === 'pane') return paneGate(scope, m, route, params, path, query, body);
 	if (!scope.routes.has(route.id)) return refuse(403, s.route(scope, { method: m, pattern: route.pattern }));
 	const collection = params.collection;
 	const pathname = String(path).split('?')[0];
@@ -111,4 +113,14 @@ export function gate(scope, descriptors, method, path, query, body) {
 	if (scope.kind === 'module' && op !== 'create') decision.needsSource = 'home';
 	if (grant.commit) decision.commit = { only: op === 'create' ? null : [`${collection}/${params.id}`], message: `${scope.label}: ${op} ${collection}/${op === 'create' ? '<new>' : params.id}` };
 	return decision;
+}
+
+/** The pane kind (cr-modules-017 §4): the route's level against the pane's — no query, filter or body rules. */
+function paneGate(scope, m, route, params, path, query, body) {
+	const collection = params.collection;
+	const need = RECORD_WRITE_ROUTES.has(route.id) && collection !== undefined && scope.internal?.has(collection) ? 'admin' : route.level;
+	if (levelRank(scope.level) < 0 || levelRank(need) > levelRank(scope.level)) {
+		return refuse(403, scope.sentences.level(scope, { method: m, pattern: route.pattern, need }));
+	}
+	return { ok: true, call: { method: m, path: String(path).split('?')[0], query: Object.fromEntries(entries(query)), body: m === 'GET' ? undefined : body, routeId: route.id, collection } };
 }

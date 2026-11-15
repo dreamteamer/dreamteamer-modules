@@ -25,6 +25,10 @@ refuses an `outcome` on an open engagement and a `closed` one without it.
 The module needs no setup. `/update-engagements` is its one command: it brings each engagement level
 with the meeting summaries written since it was last updated (with **meeting-docs** installed).
 
+## 0.1.3 — the nav is nav.yaml (cr-dt-008)
+
+`display.nav.order` and `display.nav.section` removed from its descriptor — the nav is `nav.yaml` at the workspace root (engine 0.49), which you arrange; `display.nav.icon` stays. Nothing to do.
+
 ## 0.1.2
 
 Engine floor `>=0.47.0` and the peer list mirrored for `dt install`'s closure; nothing else changes. `dt update @dreamteamer/engagements` then `dt compile`.

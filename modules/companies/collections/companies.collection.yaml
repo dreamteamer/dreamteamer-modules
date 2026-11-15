@@ -63,8 +63,6 @@ fields:
 display:
   nav:
     icon: briefcase
-    order: 11
-    section: crm
   list:
     columns:
       - logo

@@ -190,7 +190,6 @@ fields:
 display:
   nav:
     icon: git-pull-request
-    order: 20
   list:
     columns:
       - created

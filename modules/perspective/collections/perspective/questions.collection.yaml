@@ -86,7 +86,6 @@ fields:
 display:
   nav:
     icon: question
-    order: 180
   list:
     columns:
       - n

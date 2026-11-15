@@ -34,7 +34,7 @@ describe('LINKED: both modules linked in, the way a developer works', () => {
 
 	test('dt status lists both, and each brings its own verbs', () => {
 		const ws = fixture.workspace({ packages: ['proofs', 'worktrees'] });
-		assert.match(ws.dt('status').stdout, /^extensions: @dreamteamer\/proofs@0\.1\.0 · @dreamteamer\/worktrees@0\.1\.0$/m);
+		assert.match(ws.dt('status').stdout, /^extensions: @dreamteamer\/proofs@0\.1\.1 · @dreamteamer\/worktrees@0\.1\.0$/m);
 		const help = ws.dt('help').stdout;
 		for (const verb of ['prove <proof>', 'land <name|path>', 'worktree add --name <n>']) assert.ok(help.includes(verb), verb);
 	});

@@ -29,3 +29,7 @@ is deliberate: a proof nothing validates is a claim nothing checks.
 `proofs/fixtures/` excluded, an analysis that validates every proof at compile and notes artifacts
 with no proof yet, and one orientation sentence. The `proving-artifacts` skill carries the method:
 how a proof is written, run and read. Engine `>=0.33.0`. Apache-2.0.
+
+## 0.1.1 — the nav is nav.yaml (cr-dt-008)
+
+`display.nav.order` and `display.nav.section` removed from its descriptor — the nav is `nav.yaml` at the workspace root (engine 0.49), which you arrange; `display.nav.icon` stays. Nothing to do.

@@ -1,0 +1,49 @@
+{
+	"name": "@dreamteamer/sessions",
+	"version": "0.1.0",
+	"description": "Sittings of work by a person or an agent — who, when, how long, what came out — saved from the transcript, analysed and bound to records.",
+	"license": "Apache-2.0",
+	"type": "module",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/dreamteamer/dreamteamer-modules.git",
+		"directory": "modules/sessions"
+	},
+	"keywords": [
+		"dreamteamer",
+		"dreamteamer-module",
+		"sessions"
+	],
+	"bin": {
+		"dt-sessions-migrate": "bin/sessions-migrate.mjs"
+	},
+	"files": [
+		"README.md",
+		"UPDATING.md",
+		"bin",
+		"collections",
+		"commands",
+		"lib",
+		"skills",
+		"src"
+	],
+	"peerDependencies": {
+		"@dreamteamer/users": ">=0.3.0"
+	},
+	"dreamteamer": {
+		"title": "Sessions",
+		"description": "`sessions`: one sitting of work — an agent session, an agent run, a person's focused block — with who, when, how long, what it cost and what came out. /session:save reads the metrics from the transcript, /session:analyze writes the critique, `dt session bind` names the records a session worked on and `dt next` lists them. Draws `agents` in the nav. Depends on `users`; peers `projects`, `tasks`.",
+		"engine": ">=0.48.0",
+		"extension": "./src/entry.js",
+		"vars": [
+			"SESSIONS_FOLDER"
+		],
+		"dependencies": [
+			"@dreamteamer/users"
+		],
+		"peer_collections": [
+			"projects",
+			"tasks"
+		]
+	}
+}

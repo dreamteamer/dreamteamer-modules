@@ -93,7 +93,6 @@ constraints:
 display:
   nav:
     icon: run-all
-    order: 30
   list:
     columns:
       - name

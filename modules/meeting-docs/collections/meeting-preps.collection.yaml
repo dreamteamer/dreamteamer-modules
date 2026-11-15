@@ -83,8 +83,6 @@ fields:
 display:
   nav:
     icon: verified
-    order: 13
-    section: crm
   list:
     columns:
       - name

@@ -1,0 +1,19 @@
+# rnd's shipped fragment — copied verbatim from the design doc §4
+# (rnd/design-docs/2026-11-14--presets-replace-composed-packs-and-the-nav-is-one-document-the-operator-arranges);
+# modules/rnd/nav.yaml (cr-dt-008 task 6) ships the same tree, and nav-tree.test.mjs holds the two equal once it exists.
+tree:
+  - namespace: rnd
+    items:
+      - rnd/change-requests
+      - rnd/issues
+      - rnd/reviews
+      - rnd/review-findings
+      - rnd/products
+      - rnd/design-docs
+      - rnd/implementation-plans
+      - rnd/tests
+      - rnd/releases
+      - folder: Product
+        items: [rnd/user-journeys, rnd/user-stories, rnd/screens, rnd/prototypes, rnd/features, rnd/personas, rnd/design-systems]
+      - folder: Knowledge
+        items: [rnd/experiments, rnd/references, rnd/research-docs, rnd/draft-docs, rnd/open-questions]

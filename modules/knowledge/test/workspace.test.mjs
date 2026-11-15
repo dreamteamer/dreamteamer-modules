@@ -3,9 +3,17 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
-import {CHANNELS, cleanup, virginWorkspace, compileAndCheck, compiledDescriptor, run, packedFiles} from '../../../tests/helpers/workspace.mjs';
+import {CHANNELS, cleanup, virginWorkspace, compileAndCheck, compiledDescriptor, run, packedFiles, closure, pkgOf, engineMeets, ENGINE_VERSION} from '../../../tests/helpers/workspace.mjs';
 
 after(cleanup);
+// knowledge without core (cr-dt-008; rnd/tests dreamteamer-modules/knowledge-without-core): its closure is the
+// modules it declares — companies and meetings, and theirs — and never core, a module preset of seventeen
+const CLOSURE = [...closure('knowledge')];
+const skip = CLOSURE.some(m => !engineMeets(m)) && `knowledge needs engine ${pkgOf('knowledge').dreamteamer.engine}; testing ${ENGINE_VERSION}`;
+test('the closure is knowledge, companies, assets, meetings, contacts and users — never core', () => {
+  assert.deepEqual([...CLOSURE].sort(), ['assets', 'companies', 'contacts', 'knowledge', 'meetings', 'users']);
+  assert.ok(!CLOSURE.includes('core'));
+});
 const hash = f => createHash('sha256').update(fs.readFileSync(f)).digest('hex');
 const fixtures = {
   blurbs: ['blurb', 'name: Preserve an idea\nstatus: draft\nraw_input: "Maybe try this later, not a commitment."\ntags: [idea]\n', 'Original interpretation.'],
@@ -13,9 +21,9 @@ const fixtures = {
   'meta-analyses': ['meta-analysis', 'title: A cross-domain pattern\nperiod_start: 2026-01-01\nperiod_end: 2026-01-31\nsources_count: 3\nsources_token_count: 1000\nsources_description: Three synthetic notes, estimated tokens\nprompt: Review the same three notes\n', 'Thoughts and documents show a recurring pattern.']
 };
 for (const [channel, install] of Object.entries(CHANNELS)) {
-  test(`${channel}: preserves existing dated records and operates all three collections`, () => {
+  test(`${channel}: preserves existing dated records and operates all three collections`, {skip}, () => {
     const root=virginWorkspace();
-    install(root,['core','knowledge']);
+    install(root,CLOSURE);
     const paths=[];
     for(const [name,[suffix,fields,body]] of Object.entries(fixtures)){
       const folder=path.join(root,'data',name);fs.mkdirSync(folder,{recursive:true});

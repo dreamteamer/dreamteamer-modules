@@ -7,7 +7,8 @@ is both. Agents can be users too, and every agent row names the human who owns i
 
 `teams` is a named group of users — a delivery team, a squad, a function. Membership is a list on
 the TEAM (`members`, and the `lead`), so somebody joins or leaves by editing one record, and each
-person reads the generated `teams` and `led_teams` on their own. A team is never the assignee: work
+person reads the generated `teams` and `led_teams` on their own. Who a person reports to is `manager`, and
+each person reads the generated `reports` — who reports to them (in users itself from 0.3.0). A team is never the assignee: work
 still goes to a person, and the team says who is available to be that person. Teams shipped with
 `projects` until users 0.2.0; see `UPDATING.md`.
 

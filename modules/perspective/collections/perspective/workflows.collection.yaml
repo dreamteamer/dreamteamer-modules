@@ -55,7 +55,6 @@ fields:
 display:
   nav:
     icon: list-ordered
-    order: 140
   list:
     columns:
       - name

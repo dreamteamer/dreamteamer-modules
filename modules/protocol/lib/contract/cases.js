@@ -70,6 +70,15 @@ export const cases = [
 	{ id: 'nav', route: 'nav', method: 'GET', path: '/nav', expect: (res) => {
 		ok(res); check(Array.isArray(res.body) && res.body.length > 0, 'no nav nodes');
 		shape(res.body[0], { kind: 'string', key: 'string', label: 'string' }, 'nav[0]');
+		// protocol 0.2 (cr-dt-008): with no nav.yaml and no nav settings the tree is flat — rows, then the lab
+		// namespace as a `namespace` node; every folder, namespace and collection node carries its NavTarget
+		const kids = Array.isArray(res.body[0].children) ? res.body[0].children : [];
+		const lab = kids.find((n) => n.kind === 'namespace');
+		check(lab && lab.key === 'n/ns%3Alab' && lab.target?.name === 'lab', 'no namespace node n/ns%3Alab with target { name: lab }');
+		check(lab.children?.some((n) => n.key === 'c/lab/samples' && n.target?.name === 'lab/samples'), 'lab/samples is not drawn inside its namespace');
+		check(!kids.some((n) => n.kind === 'group'), 'a group node — protocol 0.2 draws folder and namespace nodes');
+		const walk = (ns) => ns.flatMap((n) => [n, ...walk(n.children ?? [])]);
+		for (const n of walk(kids).filter((x) => ['folder', 'namespace', 'collection'].includes(x.kind))) check(n.target && (typeof n.target.name === 'string' || Array.isArray(n.target.folder)), `${n.key} carries no target`);
 	} },
 	{ id: 'folder', route: 'folder', method: 'GET', path: '/folder/projects/northwind-launch?field=media', expect: (res) => {
 		ok(res); shape(res.body, { path: 'string|null', files: 'array', reason: 'string|null' });
@@ -120,6 +129,53 @@ export const cases = [
 	} },
 	{ id: 'notes', route: 'notes', method: 'GET', path: '/notes/projects?ids=northwind-launch', expect: (res) => {
 		ok(res); shape(res.body, { notes: 'array' });
+	} },
+	// ---- the pane (cr-modules-017): GET /host, the place and selection, the queue -------------------------------------
+	{ id: 'host', route: 'host', method: 'GET', path: '/host', expect: (res, { fixture }) => {
+		ok(res); shape(res.body, { level: 'string', chat: 'boolean', workspace: 'object' });
+		check(['read', 'edit', 'admin'].includes(res.body.level), `level ${res.body.level}`);
+		shape(res.body.workspace, { name: 'string' }, 'workspace');
+		const roots = [fixture.root, fs.realpathSync(fixture.root)];
+		const walk = (v, at) => {
+			if (typeof v === 'string') {
+				check(!(path.isAbsolute(v) && (fs.existsSync(v) || roots.some((r) => v.startsWith(r)))), `${at} is a path on disk: ${v}`);
+			} else if (v && typeof v === 'object') for (const [k, x] of Object.entries(v)) walk(x, `${at}.${k}`);
+		};
+		walk(res.body, 'body');
+	} },
+	{ id: 'selection-put', route: 'selection-put', method: 'PUT', path: '/selection',
+		body: { view: { collection: 'projects' }, refs: ['projects/northwind-launch'] }, expect: (res) => {
+			ok(res); shape(res.body, { view: 'object', refs: 'array', place: 'string' });
+			check(res.body.place === 'projects · List', `place ${res.body.place}`);
+			check(res.body.refs.length === 1 && res.body.refs[0] === 'projects/northwind-launch', `refs ${JSON.stringify(res.body.refs)}`);
+		} },
+	{ id: 'selection-put-refused', route: 'selection-put', method: 'PUT', path: '/selection', body: { view: { url: '/x' }, refs: [] }, expect: async (res, { request }) => {
+		status(res, 400); shape(res.body, { error: 'string' });
+		const many = await request('PUT', '/selection', { view: { collection: 'projects' }, refs: Array(51).fill('projects/northwind-launch') });
+		status(many, 400);
+		const missing = await request('PUT', '/selection', { view: { collection: 'projects' }, refs: ['projects/nope'] });
+		status(missing, 400);
+		check(String(missing.body?.error).includes('projects/nope'), `the refusal does not name projects/nope: ${missing.body?.error}`);
+	} },
+	{ id: 'selection-get', route: 'selection-get', method: 'GET', path: '/selection', expect: (res) => {
+		ok(res); shape(res.body, { view: 'object', refs: 'array', place: 'string', at: 'string' });
+		check(res.body.view.collection === 'projects' && res.body.refs[0] === 'projects/northwind-launch', `not the last put: ${JSON.stringify(res.body)}`);
+	} },
+	{ id: 'queue-post', route: 'queue-post', method: 'POST', path: '/queue',
+		body: { command: 'commands/review-project', refs: ['projects/northwind-launch'] }, expect: (res, ctx) => {
+			ok(res); shape(res.body, { item: 'object' });
+			shape(res.body.item, { id: 'string', command: 'string', refs: 'array', invocation: 'string', state: 'string', queuedAt: 'string' }, 'item');
+			check(res.body.item.state === 'waiting', `state ${res.body.item.state}`);
+			check(res.body.item.invocation.startsWith('/review-project'), `invocation ${res.body.item.invocation}`);
+			ctx.state.queued = res.body.item.id;
+		} },
+	{ id: 'queue-post-refused', route: 'queue-post', method: 'POST', path: '/queue',
+		body: { command: 'commands/no-such-command', refs: ['projects/northwind-launch'] }, expect: (res) => {
+			status(res, 400); shape(res.body, { error: 'string' });
+		} },
+	{ id: 'queue-get', route: 'queue-get', method: 'GET', path: '/queue', expect: (res, ctx) => {
+		ok(res); shape(res.body, { items: 'array' });
+		check(res.body.items.some((i) => i.id === ctx.state.queued && i.state === 'waiting'), 'the posted item is not listed waiting');
 	} },
 	{ id: 'records-list-notes', route: 'records-list', method: 'GET', path: '/collections/projects/records?notes=1', expect: (res) => {
 		ok(res); shape(res.body, { records: 'array', total: 'number' }); check(res.body.total >= 3, `total ${res.body.total}`);
@@ -283,6 +339,31 @@ export const cases = [
 	{ id: 'dry-run-module-rm', route: 'record-remove', method: 'DELETE', path: '/collections/modules/records/northwind-extras?dry-run=true&force=true', before: snapshot, expect: A_PLAN },
 	{ id: 'modules-rm', route: 'record-remove', method: 'DELETE', path: '/collections/modules/records/northwind-extras?force=true', expect: async (res, { request }) => {
 		ok(res); status(await request('GET', '/collections/modules/records/northwind-extras'), 404);
+	} },
+
+	// ---- the nav document (protocol 0.2, cr-dt-008): last, because the file they write changes GET /nav ------
+	{ id: 'nav-patch', route: 'nav-patch', method: 'PATCH', path: '/nav', body: { op: 'move', target: { name: 'lab/samples' }, into: { name: 'lab' } }, expect: async (res, { request, fixture }) => {
+		ok(res); shape(res.body, { doc: 'object' }); shape(res.body.doc, { tree: 'array', hidden: 'array' }, 'doc');
+		const ns = res.body.doc.tree.find((e) => e && e.namespace === 'lab');
+		check(ns && Array.isArray(ns.items) && ns.items.includes('lab/samples'), `lab/samples is not placed in the lab namespace: ${JSON.stringify(res.body.doc)}`);
+		check(fs.existsSync(path.join(fixture.root, 'nav.yaml')), 'no nav.yaml written');
+		const nav = await request('GET', '/nav');
+		const lab = (nav.body?.[0]?.children ?? []).find((n) => n.key === 'n/ns%3Alab');
+		check(lab?.children?.some((n) => n.key === 'c/lab/samples'), 'GET /nav does not draw the written document');
+	} },
+	{ id: 'nav-patch-refused', route: 'nav-patch', method: 'PATCH', path: '/nav', body: { op: 'move', target: { name: 'tasks' }, into: { folder: ['No such folder'] } },
+		before: ({ fixture }) => fs.readFileSync(path.join(fixture.root, 'nav.yaml'), 'utf8'),
+		expect: (res, { fixture }, was) => {
+			status(res, 400); check(/No such folder/.test(String(res.body?.error)), 'the refusal does not name the folder path');
+			check(fs.readFileSync(path.join(fixture.root, 'nav.yaml'), 'utf8') === was, 'a refused op changed nav.yaml');
+		} },
+	{ id: 'nav-put', route: 'nav-put', method: 'PUT', path: '/nav', body: { tree: [{ folder: 'Work', items: ['tasks', 'projects'] }], hidden: [] }, expect: async (res, { request }) => {
+		ok(res); shape(res.body, { doc: 'object' });
+		const kids = (await request('GET', '/nav')).body?.[0]?.children ?? [];
+		check(kids[0]?.kind === 'folder' && kids[0].label === 'Work' && kids[0].children?.map((n) => n.key).join(',') === 'c/tasks,c/projects', 'GET /nav does not draw the PUT document');
+	} },
+	{ id: 'nav-put-unknown', route: 'nav-put', method: 'PUT', path: '/nav', body: { tree: ['no-such-collection'], hidden: [] }, expect: (res) => {
+		status(res, 400); check(/no-such-collection/.test(String(res.body?.error)), 'the refusal does not name the unknown collection');
 	} },
 
 	{ id: 'reload', route: 'reload', method: 'POST', path: '/reload', body: {}, expect: (res) => { ok(res); shape(res.body, { ok: 'boolean' }); } },

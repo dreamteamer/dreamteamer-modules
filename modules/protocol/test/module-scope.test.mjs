@@ -41,8 +41,8 @@ test('writes: only granted own collections, never a system collection; no grant 
 	assert.equal(s.routes.has('records-create'), true);
 	assert.equal(s.home, 'lab-layer');
 });
-test('module routes never include commit, history, fields, folder, files, rename, revert, sources, activity, nav, notes, sessions', () => {
-	for (const id of ['commit', 'history', 'history-diff', 'field-add', 'folder', 'file-import', 'rename', 'revert', 'sources', 'activity', 'nav', 'reload']) assert.equal(MODULE_ROUTES.includes(id), false, id);
+test('module routes never include commit, history, fields, folder, files, rename, revert, sources, activity, nav (read or write), notes, sessions', () => {
+	for (const id of ['commit', 'history', 'history-diff', 'field-add', 'folder', 'file-import', 'rename', 'revert', 'sources', 'activity', 'nav', 'nav-put', 'nav-patch', 'reload']) assert.equal(MODULE_ROUTES.includes(id), false, id);
 });
 test('refusal sentences name the collection or route, its owner, and the reach', () => {
 	const s = build({});
@@ -78,4 +78,7 @@ test('readModuleGrantResult says why a grant could not be read; an absent file o
 	for (const v of ['"all"', '["lab"]']) { writeFileSync(join(root, '.vscode', 'settings.json'), `{"dreamteamer.moduleApps": ${v}}`); assert.match(readModuleGrantResult(root).problem, /not an object/); }
 	writeFileSync(join(root, '.vscode', 'settings.json'), '{"editor.tabSize": 2}');
 	assert.deepEqual(readModuleGrantResult(root), { grant: {}, problem: null });
+});
+test('no pane route is a module route', () => {
+	for (const id of ['host', 'selection-put', 'selection-get', 'queue-post', 'queue-get']) assert.equal(MODULE_ROUTES.includes(id), false, id);
 });

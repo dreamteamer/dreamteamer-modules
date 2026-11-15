@@ -1,6 +1,6 @@
 // Ported from the dreamteamer VS Code extension's host side (src/nav.ts); PROTOCOL.md is the contract it answers.
 import { engine } from "./engine.js";
-import { isInternal, isRuntime } from "./fsdata.js";
+import { isInternal, isRuntime, loadDescriptors, loadModules, moduleDependencies, moduleNamespaces, navViewsOf, viewRow, workspaceModule } from "./fsdata.js";
 import { describeSources } from "./sources.js";
 export function keepsRuntimeRecords(d) {
     return engine().descriptor.overlaidByOf(d).length > 0;
@@ -418,4 +418,209 @@ export function layerEntries(rows, descriptors, nav) {
         ],
     });
     return orderTopLevel(rowsTop, folders, nav.navOrder).flatMap((e) => e.kind === "collection" ? [{ kind: "row", row: rowOf.get(e.descriptor.name) }] : e.kind === "folder" ? [folderEntry(e.folder)] : []);
+}
+// ── nav.yaml (cr-dt-008) ─────────────────────────────────────────────────────────────────────────────────────
+// The left nav is a document the person arranges (nav.yaml at the workspace root, nav-doc.js). `buildTree` draws
+// it by the design's rules; `legacyTree` is the grouping above (module folders, sections, navGroups/navOrder/
+// navHidden), kept under one name for exactly two uses: the lossless migration of old settings into nav.yaml, and
+// a workspace or layer that still has those settings and no nav.yaml.
+
+/** The unplaced-row order: by title, then name. Passed to applyNavOp as its `collections`. */
+export function tailOrder(descriptors, titleOf = (d) => d.title ?? d.name) {
+    return new Set([...descriptors]
+        .map((d) => ({ name: d.name, title: String(titleOf(d) ?? d.name) }))
+        .sort((a, b) => a.title.localeCompare(b.title, "en") || a.name.localeCompare(b.name, "en"))
+        .map((x) => x.name));
+}
+/** A node key: the kind's letter, then each path element URI-encoded and joined by "/" — a label `Sales/CRM` is
+ *  `f/Sales%2FCRM`, never `f/Sales/CRM`. */
+export const navPathKey = (letter, path) => `${letter}/${path.map((el) => encodeURIComponent(el)).join("/")}`;
+const longestNamespace = (name, namespaces) => {
+    let best = "";
+    for (const ns of namespaces)
+        if (name.startsWith(`${ns}/`) && ns.length > best.length)
+            best = ns;
+    return best;
+};
+/**
+ * The tree nav.yaml describes, as nodes (design §3, rules 1-8). `doc` null draws the flat tree: every row by
+ * title, then each namespace as a folder. Every folder, namespace and collection node carries `target`, the
+ * NavTarget a host sends back in an op. No module marks and no module routes on folders.
+ * @param {object} o
+ * @param {Array<{ name: string }>} o.descriptors  the compiled collections
+ * @param {object | null} o.doc  the NavDoc (normalised here)
+ * @param {string[]} o.namespaces  the declared namespaces
+ * @param {(d) => string} o.titleOf  a collection's title (the unplaced rows sort by it)
+ * @param {Array} [o.views]  the workspace's ui-views; a collection's nav views draw under it (default node only)
+ * @param {(ns: string, parentNs: string) => string} [o.namespaceTitle]  a namespace folder's label
+ * @param {(d) => object} [o.nodeOf]  a collection's node (label, icon, route, count…); key and target are set here
+ * @param {(name?: string) => string} [o.icon]  maps an authored icon name to the drawn one
+ * @param {(d) => boolean} [o.internal]  a collection that stays out of the tree
+ */
+export function buildTree({ descriptors, doc, namespaces = [], titleOf = (d) => d.title ?? d.name, views = [], namespaceTitle, nodeOf, icon = (n) => n, internal = (d) => d.internal === true && !d.overlaid }) {
+    const usable = descriptors.filter((d) => !internal(d));
+    const byName = new Map(usable.map((d) => [d.name, d]));
+    const tree = Array.isArray(doc?.tree) ? doc.tree : [];
+    const hidden = new Set(Array.isArray(doc?.hidden) ? doc.hidden.filter((h) => typeof h === "string") : []);
+    const nsTitle = namespaceTitle ?? ((ns, parent) => moduleLabel(parent && ns.startsWith(parent + "/") ? ns.slice(parent.length + 1) : ns));
+    const parentNs = (ns) => longestNamespace(ns, namespaces.filter((n) => n !== ns));
+    const collectionName = (e) => (typeof e === "string" ? e : e && typeof e === "object" && typeof e.collection === "string" ? e.collection : undefined);
+    const isFolder = (e) => e && typeof e === "object" && typeof e.folder === "string";
+    const isNamespace = (e) => e && typeof e === "object" && typeof e.namespace === "string";
+    // the first occurrence of every name in document order: the one entry that draws it (rule 5). Held by POSITION
+    // (the items array and the index in it), never by the entry: two plain-string entries `tasks` are equal, so an
+    // identity test would let both draw
+    const first = new Map();
+    const placed = new Set(hidden);
+    const isFirst = (id, items, i) => { const f = first.get(id); return f !== undefined && f.items === items && f.i === i; };
+    const scan = (items) => {
+        for (const [i, e] of (Array.isArray(items) ? items : []).entries()) {
+            const c = collectionName(e);
+            const id = c !== undefined ? `c:${c}` : isNamespace(e) ? `n:${e.namespace}` : undefined;
+            if (id && !first.has(id))
+                first.set(id, { items, i });
+            if (c !== undefined)
+                placed.add(c);
+            if (isNamespace(e))
+                placed.add(`ns:${e.namespace}`);
+            if (isFolder(e) || isNamespace(e))
+                scan(e.items);
+        }
+    };
+    scan(tree);
+    const order = [...tailOrder(usable, titleOf)];
+    const used = new Map();
+    const uniqueKey = (key) => {
+        const n = (used.get(key) ?? 0) + 1;
+        used.set(key, n);
+        return n === 1 ? key : `${key}~${n}`;
+    };
+    const defaultNode = (d) => {
+        const kids = navViewsOf(views, d.name).map((v) => {
+            const r = viewRow(v);
+            return { kind: "view", key: `v/${v.id}`, label: r.label, icon: icon(r.icon), ...(r.description ? { description: r.description } : {}), tooltip: r.tooltip, ...(v.route ? { route: v.route } : {}) };
+        });
+        return { kind: "collection", label: String(titleOf(d) ?? d.name), icon: icon(d.display?.nav?.icon), ...(kids.length ? { children: kids } : {}) };
+    };
+    const collectionNode = (d, entryIcon) => {
+        const node = { ...(nodeOf ? nodeOf(d) : defaultNode(d)) };
+        node.kind = "collection";
+        node.key = uniqueKey(`c/${d.name}`);
+        node.target = { name: d.name };
+        if (entryIcon)
+            node.icon = icon(entryIcon);
+        return node;
+    };
+    const namespaceNode = (ns, path, entry) => {
+        const p = [...path, `ns:${ns}`];
+        return {
+            kind: "namespace", key: uniqueKey(navPathKey("n", p)), label: nsTitle(ns, parentNs(ns)), icon: icon(entry?.icon ?? PLAIN_FOLDER_ICON), target: { name: ns },
+            children: [...drawItems(entry?.items, p), ...tailsOf(ns, p)],
+        };
+    };
+    /** What a level draws after its entries: its unplaced rows by title, then its unplaced namespaces by label. */
+    const tailsOf = (ns, path) => {
+        const rows = order.filter((n) => !placed.has(n) && longestNamespace(n, namespaces) === ns).map((n) => collectionNode(byName.get(n)));
+        const nested = namespaces
+            .filter((n) => !placed.has(`ns:${n}`) && !hidden.has(n) && parentNs(n) === ns)
+            .map((n) => ({ n, label: nsTitle(n, parentNs(n)) }))
+            .sort((a, b) => a.label.localeCompare(b.label, "en") || a.n.localeCompare(b.n, "en"))
+            .map(({ n }) => namespaceNode(n, path));
+        return [...rows, ...nested];
+    };
+    function drawItems(items, path) {
+        const out = [];
+        for (const [i, e] of (Array.isArray(items) ? items : []).entries()) {
+            const c = collectionName(e);
+            if (c !== undefined) {
+                if (!isFirst(`c:${c}`, items, i) || hidden.has(c) || !byName.has(c))
+                    continue;
+                out.push(collectionNode(byName.get(c), typeof e === "object" ? e.icon : undefined));
+            }
+            else if (isFolder(e)) {
+                if (e.hidden === true)
+                    continue;
+                const p = [...path, e.folder];
+                out.push({ kind: "folder", key: uniqueKey(navPathKey("f", p)), label: e.folder, icon: icon(e.icon ?? PLAIN_FOLDER_ICON), target: { folder: p }, children: drawItems(e.items, p) });
+            }
+            else if (isNamespace(e)) {
+                if (!isFirst(`n:${e.namespace}`, items, i) || e.hidden === true || hidden.has(e.namespace))
+                    continue;
+                out.push(namespaceNode(e.namespace, path, e));
+            }
+        }
+        return out;
+    }
+    return [...drawItems(tree, []), ...tailsOf("", [])];
+}
+/**
+ * A record layer's tree when its clone holds nav.yaml (design §3 rule 9): buildTree's rules over the rows the layer
+ * holds and nothing else. A name the layer does not hold is skipped, a declared namespace it holds no row of draws no
+ * folder, and every collection node carries its layer `row` ({ collection, title, icon, count, route }). Keys and
+ * targets are buildTree's; the host prefixes the keys with the layer. A layer with no nav.yaml draws `layerEntries`.
+ * @param {{ rows: Array<{ collection: string }>, descriptors: Array<{ name: string }>, doc: object | null, namespaces?: string[], titleOf?: (d) => string, namespaceTitle?: (ns: string, parentNs: string) => string, icon?: (name?: string) => string }} o
+ */
+export function layerTree({ rows, descriptors, doc, namespaces = [], titleOf, namespaceTitle, icon }) {
+    const rowOf = new Map(rows.map((r) => [r.collection, r]));
+    const held = descriptors.filter((d) => rowOf.has(d.name));
+    return buildTree({
+        descriptors: held, doc, titleOf, namespaceTitle, icon,
+        namespaces: namespaces.filter((ns) => held.some((d) => d.name.startsWith(`${ns}/`))),
+        // a layer's rows are the records it holds, already chosen; nothing it holds is folded out
+        internal: () => false,
+        nodeOf: (d) => ({ row: rowOf.get(d.name) }),
+    });
+}
+/** `dreamteamer.navGroups` as a Map — module ids per group label; anything else is empty. */
+export function navGroupsOf(raw) {
+    const out = new Map();
+    if (!raw || typeof raw !== "object" || Array.isArray(raw))
+        return out;
+    for (const [key, ids] of Object.entries(raw))
+        if (Array.isArray(ids))
+            out.set(key, ids.filter((i) => typeof i === "string"));
+    return out;
+}
+/** `dreamteamer.navOrder` as a list of names. */
+export const navOrderOf = (raw) => (Array.isArray(raw) ? raw.filter((n) => typeof n === "string") : []);
+/** Whether any of the three old nav settings holds something (an empty array or object counts as unset). */
+export function hasNavSettings(settings) {
+    const set = (v) => (Array.isArray(v) ? v.length > 0 : v && typeof v === "object" ? Object.keys(v).length > 0 : false);
+    return Boolean(settings) && (set(settings.navGroups) || set(settings.navOrder) || set(settings.navHidden));
+}
+/**
+ * The tree the old settings drew: groupTopLevel → orderTopLevel → withoutHidden, unchanged.
+ * @param {Array} descriptors
+ * @param {{ navGroups?: unknown, navOrder?: unknown, navHidden?: unknown }} settings
+ * @param {{ declared?: string[], workspaceModule?: string, dependsOn?: Map, namespacesOf?: Map, titleOf?: Map, layers?: unknown }} ctx
+ */
+export function legacyTree(descriptors, settings = {}, ctx = {}) {
+    const { top, folders } = groupTopLevel(descriptors, ctx.declared ?? [], ctx.workspaceModule, ctx.dependsOn, navGroupsOf(settings?.navGroups), ctx.namespacesOf, ctx.titleOf ?? new Map());
+    return withoutHidden(orderTopLevel(top, folders, navOrderOf(settings?.navOrder), ctx.layers), navHiddenOf(settings?.navHidden));
+}
+/** The icon a legacy folder draws (an authored name, before codiconFor): its module's look — the first shipped
+ *  collection's icon by nav order — else the module icon; undefined for a folder no module owns (a plain folder). */
+export function legacyFolderIcon(folder, modules, byName) {
+    const module = folderModule(folder, modules);
+    if (!module)
+        return undefined;
+    const { displayOf } = engine().descriptor;
+    return moduleIcon(modules.find((m) => m.id === module), (c) => {
+        const d = byName.get(c);
+        return d ? { icon: displayOf(d).nav?.icon, order: displayOf(d).nav?.order, runtime: isRuntime(d) } : undefined;
+    }) ?? MODULE_ICON;
+}
+/** What `legacyTree` and `legacyDoc` need of a workspace, read from its compiled runtime: the declared namespaces,
+ *  its own module, the module graph, module titles, and each legacy folder's icon. */
+export function legacyContext(root) {
+    const modules = loadModules(root);
+    const byName = new Map(loadDescriptors(root).map((d) => [d.name, d]));
+    return {
+        declared: engine().namespaces,
+        workspaceModule: workspaceModule(root),
+        dependsOn: moduleDependencies(root),
+        namespacesOf: moduleNamespaces(root),
+        titleOf: new Map(modules.map((m) => [m.id, m.title])),
+        iconOf: (folder) => legacyFolderIcon(folder, modules, byName),
+    };
 }

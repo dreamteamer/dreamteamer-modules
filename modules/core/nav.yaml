@@ -1,0 +1,16 @@
+# core's shipped nav fragment: where the members' collections sit in a workspace's nav.yaml on install.
+# The engine places a collection only when the workspace's nav.yaml does not name it yet; rename,
+# reorder or drag anything after that — the file is the workspace's own.
+tree:
+  - folder: Work
+    items: [tasks, projects, deliverables, decisions, risks, workflows]
+  - folder: People
+    items: [users, teams, roles, responsibilities, agents]
+  - folder: CRM
+    items: [companies, contacts, engagements]
+  - folder: Meetings
+    items: [meetings, meeting-preps, meeting-recordings, meeting-summaries, meeting-analyses]
+  - folder: Library
+    items: [files, file-drives, assets, artifacts]
+  - folder: Activity
+    items: [sessions, metrics]

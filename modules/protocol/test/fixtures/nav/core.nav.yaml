@@ -1,0 +1,16 @@
+# core's shipped fragment — copied verbatim from the design doc §4
+# (rnd/design-docs/2026-11-14--presets-replace-composed-packs-and-the-nav-is-one-document-the-operator-arranges);
+# modules/core/nav.yaml (cr-dt-008 task 3) ships the same tree, and nav-tree.test.mjs holds the two equal once it exists.
+tree:
+  - folder: Work
+    items: [tasks, projects, deliverables, decisions, risks, workflows]
+  - folder: People
+    items: [users, teams, roles, responsibilities, agents]
+  - folder: CRM
+    items: [companies, contacts, engagements]
+  - folder: Meetings
+    items: [meetings, meeting-preps, meeting-recordings, meeting-summaries, meeting-analyses]
+  - folder: Library
+    items: [files, file-drives, assets, artifacts]
+  - folder: Activity
+    items: [sessions, metrics]

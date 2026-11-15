@@ -83,7 +83,6 @@ fields:
 display:
   nav:
     icon: search
-    order: 160
   list:
     columns:
       - name

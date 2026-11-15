@@ -31,9 +31,10 @@ try {
 const dt = (root, args) => spawnSync(process.execPath, [path.join(ENGINE, 'bin', 'dreamteamer.js'), ...args], { cwd: root, encoding: 'utf8', timeout: 120_000 });
 const put = (root, rel, text) => { const f = path.join(root, rel); fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, text); };
 
-// CR-dt-006: rnd composes with `provides` (an engine 0.47 key) and floors at >=0.47.0, so the 0.42 channel
-// is history for this module — the case stays as a record of what the floor once meant, and is skipped.
-test('h6 — the engine below the warning channel', { skip: 'rnd floors at engine >=0.47.0 since CR-dt-006 (provides); the 0.42 channel is history' }, async () => {
+// rnd floored at >=0.47.0 from CR-dt-006 (provides, an engine 0.47 key) and at >=0.49.0 from CR-dt-008 (its nav
+// fragment, an engine 0.49 key), so the 0.42 channel is history for this module — the case stays as a record of
+// what the floor once meant, and is skipped.
+test('h6 — the engine below the warning channel', { skip: 'rnd floors at engine >=0.49.0 since CR-dt-008 (dreamteamer.nav); the 0.42 channel is history' }, async () => {
 	assert.equal(JSON.parse(fs.readFileSync(path.join(ENGINE, 'package.json'), 'utf8')).version, '0.42.0');
 	const root = tmp('h6-ws-');
 	execFileSync('git', ['init', '-q'], { cwd: root });

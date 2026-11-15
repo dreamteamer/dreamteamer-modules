@@ -65,7 +65,6 @@ fields:
 display:
   nav:
     icon: tag
-    order: 100
   list:
     columns:
       - name

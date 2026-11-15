@@ -119,7 +119,6 @@ fields:
 display:
   nav:
     icon: tasklist
-    order: 26
   list:
     columns:
       - name

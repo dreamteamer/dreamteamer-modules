@@ -64,7 +64,6 @@ fields:
 display:
   nav:
     icon: issues
-    order: 50
   list:
     columns:
       - title

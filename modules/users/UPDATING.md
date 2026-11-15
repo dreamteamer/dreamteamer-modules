@@ -11,6 +11,15 @@ npx dreamteamer check
 
 ---
 
+## 0.3.0 — `manager` and `reports` are users' own
+
+`manager` (who a person reports to) and its generated far side `reports` moved in from the users overlay
+`@dreamteamer/core` 0.11 shipped; they reference only users, so they belong here rather than in a package of
+their own. Nothing to do: no field was renamed and no record moves. A workspace on core 0.11 already had
+both fields; a workspace with users alone gains them at the next `dt compile`.
+
+`display.nav.order` and `display.nav.section` removed from users and teams — the nav is `nav.yaml` at the workspace root (engine 0.49), which you arrange; `display.nav.icon` stays. Nothing to do.
+
 ## 0.2.1 — the pairing with projects is declared
 
 Nothing changes in what users ships. Its package.json now says, in npm's own `peerDependencies`,
@@ -48,7 +57,7 @@ What you do depends on what else you install:
 |---|---|
 | users without projects | nothing but `dt compile`: `teams` appears, and `dt add teams --name … --members users/<id> --members users/<id> --lead users/<id>` groups people |
 | users with projects | upgrade **both at once**, to users 0.2.0 and projects 0.4.0 — see below |
-| `@dreamteamer/core` | nothing: core composes both and re-releases them together (core 0.7.0) |
+| `@dreamteamer/core` | nothing: core composed both and re-released them together (core 0.7.0). From core 0.12.0 core is a preset of the small modules; this does not apply |
 
 **Upgrade users and projects together.** Each half on its own breaks the workspace:
 
@@ -66,9 +75,9 @@ npx dreamteamer compile
 npx dreamteamer check
 ```
 
-**An overlay of yours.** If your own module overlays `teams` (`extends: "@dreamteamer/projects/teams"`),
-point it at the new owner, `"@dreamteamer/users/teams"`, and declare `@dreamteamer/users` as its
-dependency.
+**An overlay of yours.** An overlay of `teams` is a descriptor with `name: teams` and `overlay: true`
+(compile refuses an `extends:` key); it adds to whichever installed module owns `teams`, now users. Declare
+`@dreamteamer/users` as your module's dependency in place of `@dreamteamer/projects`.
 
 ## 0.1.1 and earlier
 

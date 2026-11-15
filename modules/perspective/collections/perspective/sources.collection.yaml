@@ -109,7 +109,6 @@ fields:
 display:
   nav:
     icon: database
-    order: 20
   list:
     columns:
       - label

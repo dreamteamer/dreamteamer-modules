@@ -122,8 +122,6 @@ fields:
 display:
   nav:
     icon: comment
-    order: 31
-    section: product
   list:
     columns:
       - name

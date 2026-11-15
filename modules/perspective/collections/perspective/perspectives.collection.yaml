@@ -140,7 +140,6 @@ fields:
 display:
   nav:
     icon: compass
-    order: 200
   list:
     columns:
       - contributor

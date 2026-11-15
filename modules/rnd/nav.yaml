@@ -1,0 +1,19 @@
+# rnd's shipped nav fragment: where its collections sit in a workspace's nav.yaml on install. The engine
+# places a collection only when the workspace's nav.yaml does not name it yet; after that the file is the
+# workspace's own.
+tree:
+  - namespace: rnd
+    items:
+      - rnd/change-requests
+      - rnd/issues
+      - rnd/reviews
+      - rnd/review-findings
+      - rnd/products
+      - rnd/design-docs
+      - rnd/implementation-plans
+      - rnd/tests
+      - rnd/releases
+      - folder: Product
+        items: [rnd/user-journeys, rnd/user-stories, rnd/screens, rnd/prototypes, rnd/features, rnd/personas, rnd/design-systems]
+      - folder: Knowledge
+        items: [rnd/experiments, rnd/references, rnd/research-docs, rnd/draft-docs, rnd/open-questions]

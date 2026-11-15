@@ -13,14 +13,22 @@
 	the clipboard for whatever agent session the operator has open. Deliberately no execution
 	magic — triggering a command IS a coding-agent turn, and that stays with the operator.
 
+	cr-modules-017 §6: on a pane whose chat runs the prompt hook (GET /host `chat: true`), Ask in chat
+	beside Copy queues the picked command and its eligible records for the chat's NEXT prompt
+	(`POST /queue`) — still a turn the operator takes, only without the paste. The section then lists
+	the queue's items for this collection, refetched on `dt:queue`.
+
 	`ids` is accepted as plain array or Ref and unref()'d (see InfoSection's header for the
 	ref-in-section-props story).
 -->
 <script setup lang="ts">
-import { computed, onMounted, ref, unref, watch, type Ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref, unref, watch, type Ref } from 'vue';
 import { api } from '../../api/client';
+import { hostRequest } from '../../api/transport';
 import DtIcon from '../DtIcon.vue';
 import { commandAllDone, commandIcon, commandStatus, type CommandRow } from '../../lib/command-rows';
+import { hostInfo } from '../../lib/host-boot';
+import { canAsk, itemLabel, type QueueItem } from '../../lib/queue-items';
 
 const props = defineProps<{
 	collection: string;
@@ -62,11 +70,59 @@ const runnable = (row: CommandRow) => row.invocation !== null;
 // per-row status text: single-record pages read as a state word, selections as counts
 const statusText = (row: CommandRow): string => commandStatus(row, ids.value);
 
+const pickedRow = ref<CommandRow | null>(null);
+
 function pick(row: CommandRow): void {
 	if (!runnable(row)) return;
+	pickedRow.value = row;
 	invocation.value = row.invocation ?? '';
 	copied.value = false;
+	askError.value = '';
 }
+
+// ---- Ask in chat (cr-modules-017) -----------------------------------------------------------
+const askError = ref('');
+const asking = ref(false);
+const queue = ref<QueueItem[]>([]);
+const showAsk = computed(() => !!pickedRow.value && canAsk(hostInfo.value, pickedRow.value));
+const prefix = computed(() => `${props.collection}/`);
+const queueHere = computed(() => queue.value.filter((i) => i.refs.some((r) => r.startsWith(prefix.value))));
+
+async function loadQueue(): Promise<void> {
+	if (!hostInfo.value?.chat) return;
+	try {
+		const answer = (await hostRequest('GET', '/queue')) as { items?: QueueItem[] } | null;
+		queue.value = Array.isArray(answer?.items) ? answer!.items : [];
+	} catch {
+		/* the list is a convenience: a failed read leaves the last one */
+	}
+}
+
+async function ask(): Promise<void> {
+	const row = pickedRow.value;
+	if (!row || asking.value) return;
+	// the eligible records the invocation covers; a collection-scope row covers the ticked ones
+	const targets = row.eligible ?? (row.scope === 'collection' ? ids.value : []);
+	asking.value = true;
+	askError.value = '';
+	try {
+		await hostRequest('POST', '/queue', { command: row.command, refs: targets.map((id) => `${props.collection}/${id}`) });
+		await loadQueue();
+	} catch (err) {
+		askError.value = err instanceof Error ? err.message : String(err);
+	} finally {
+		asking.value = false;
+	}
+}
+
+const onMessage = (e: MessageEvent) => {
+	if (e.data?.type === 'dt:queue') void loadQueue();
+};
+onMounted(() => {
+	window.addEventListener('message', onMessage as EventListener);
+	void loadQueue();
+});
+onUnmounted(() => window.removeEventListener('message', onMessage as EventListener));
 
 const textareaEl = ref<HTMLTextAreaElement | null>(null);
 
@@ -120,10 +176,23 @@ async function copy(): Promise<void> {
 				placeholder="pick a command — its invocation lands here, ready to paste into your session"
 				spellcheck="false"
 			/>
-			<button type="button" class="dt-btn dt-btn--secondary dt-cmds__copy" :disabled="!invocation" @click="copy">
-				<DtIcon :name="copied ? 'check' : 'copy'" />
-				{{ copied ? 'Copied' : 'Copy' }}
-			</button>
+			<div class="dt-cmds__actions">
+				<button v-if="showAsk" type="button" class="dt-btn dt-btn--secondary dt-cmds__ask" :disabled="asking" @click="ask">
+					<DtIcon name="comment-discussion" />
+					Ask in chat
+				</button>
+				<button type="button" class="dt-btn dt-btn--secondary dt-cmds__copy" :disabled="!invocation" @click="copy">
+					<DtIcon :name="copied ? 'check' : 'copy'" />
+					{{ copied ? 'Copied' : 'Copy' }}
+				</button>
+			</div>
+			<p v-if="askError" class="dt-cmds__error">{{ askError }}</p>
+			<ul v-if="queueHere.length" class="dt-cmds__queue">
+				<li v-for="item in queueHere" :key="item.id" class="dt-cmds__queue-item" :data-state="item.state">
+					<span class="dt-cmds__queue-cmd">{{ item.invocation }}</span>
+					<span class="dt-cmds__queue-state">{{ itemLabel(item) }}</span>
+				</li>
+			</ul>
 		</div>
 	</div>
 </template>
@@ -225,7 +294,39 @@ async function copy(): Promise<void> {
 	background: var(--dt-bg);
 	color: var(--dt-fg);
 }
-.dt-cmds__copy {
+.dt-cmds__actions {
 	align-self: flex-end;
+	display: flex;
+	gap: var(--dt-space-2);
+}
+.dt-cmds__queue {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: var(--dt-space-1);
+}
+.dt-cmds__queue-item {
+	display: flex;
+	gap: var(--dt-space-2);
+	align-items: baseline;
+}
+.dt-cmds__queue-cmd {
+	flex: 1;
+	min-width: 0;
+	font-family: var(--dt-font-mono);
+	font-size: var(--dt-text-mono);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.dt-cmds__queue-state {
+	font-size: var(--dt-label);
+	color: var(--dt-fg-subtle);
+	white-space: nowrap;
+}
+.dt-cmds__queue-item[data-state='expired'] .dt-cmds__queue-state {
+	color: var(--dt-warning);
 }
 </style>
