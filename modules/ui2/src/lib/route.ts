@@ -41,7 +41,7 @@ export function resolveContentPath(rawPath: string, collections: readonly string
 export type Page =
   | { kind: "home" }
   | { kind: "list"; collection: string }
-  | { kind: "record"; collection: string; id: string }
+  | { kind: "record"; collection: string; id: string; viewId?: string }
   | { kind: "create"; collection: string }
   | { kind: "view"; id: string }
   | { kind: "unknown-collection"; path: string }
@@ -52,6 +52,8 @@ export interface ViewRoute {
   id: string
   route: string
   scope: string
+  /** `collections/<name>` — a record-scope view's records are this collection's. */
+  collection?: string
 }
 
 /** The page a route names, given the workspace's collection names and its ui-views. */
@@ -61,7 +63,20 @@ export function pageOf(route: string, collections: readonly string[], views: rea
   if (!path.startsWith("/content/")) {
     const trimmed = path.replace(/\/+$/, "")
     const view = views.find(v => v.scope === "collection" && v.route === trimmed)
-    return view ? { kind: "view", id: view.id } : { kind: "unsupported", route }
+    if (view) return { kind: "view", id: view.id }
+    // a record-scope view answers `<route>/<id>`: its collection's record, drawn by the view's `display.record`
+    const recordView = views.find(
+      v =>
+        v.scope === "record" && v.collection && trimmed.startsWith(`${v.route}/`) && trimmed.length > v.route.length + 1
+    )
+    if (recordView && collections.includes(recordView.collection!.replace(/^collections\//, "")))
+      return {
+        kind: "record",
+        collection: recordView.collection!.replace(/^collections\//, ""),
+        id: decodeURIComponent(trimmed.slice(recordView.route.length + 1)),
+        viewId: recordView.id,
+      }
+    return { kind: "unsupported", route }
   }
   const rest = decodeURIComponent(path.slice("/content/".length))
   const r = resolveContentPath(rest, collections)

@@ -17,6 +17,7 @@ export function RenderEdit(props: {
   onChange(value: unknown): void
   id: string
   create?: boolean
+  record?: Record<string, unknown>
 }) {
   const resolved = useMemo(() => resolveEdit(props.field), [props.field])
   const Edit = resolved.entry.component

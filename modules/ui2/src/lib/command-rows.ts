@@ -41,8 +41,10 @@ export function commandAllDone(row: CommandRow, ids: string[]): boolean {
   return row.scope === "record" && ids.length > 0 && (row.done?.length ?? 0) === ids.length
 }
 
-/** The row's icon: the collection's, a check when it is done everywhere it applies, else a terminal. */
+/** The row's icon: a database for a collection-scope command, a check when it is done everywhere it applies,
+ *  else a terminal. Codicon names — ui's `dataset`/`check_circle` are Material names its codicon font draws as
+ *  nothing. */
 export function commandIcon(row: CommandRow): string {
-  if (row.scope === "collection") return "dataset"
-  return (row.done?.length ?? 0) > 0 && (row.eligible?.length ?? 0) === 0 ? "check_circle" : "terminal"
+  if (row.scope === "collection") return "database"
+  return (row.done?.length ?? 0) > 0 && (row.eligible?.length ?? 0) === 0 ? "pass" : "terminal"
 }

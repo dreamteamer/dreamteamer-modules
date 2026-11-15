@@ -2,7 +2,22 @@
 // a query only when asked for.
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { getRecord, listQuery, listRecords, moveRecord, setTransport, updateRecord } from "../src/api/client.ts"
+import {
+  commit,
+  getCommands,
+  getHistory,
+  getHistoryDiff,
+  getNotes,
+  getRecord,
+  listQuery,
+  listRecords,
+  moveRecord,
+  removeRecord,
+  renameRecord,
+  revertRecord,
+  setTransport,
+  updateRecord,
+} from "../src/api/client.ts"
 
 const calls: unknown[][] = []
 setTransport({
@@ -38,5 +53,31 @@ test("a hand-set order moves through the protocol's position route", async () =>
   assert.deepEqual(calls, [
     ["PATCH", "/collections/projects/position/northwind-launch", { before: "harbor-mutual-renewal" }],
     ["PATCH", "/collections/lab%2Fsamples/position/2026/one", { bottom: true }],
+  ])
+})
+
+test("the record page's routes: forced delete, rename, history, diff, revert, commit, commands and notes", async () => {
+  calls.length = 0
+  await removeRecord("projects", "northwind-launch")
+  await removeRecord("lab/samples", "2026/one", true)
+  await renameRecord("tasks", "brief-dana", "brief-dana-oren")
+  await getHistory("lab/samples", "2026/one")
+  await getHistoryDiff("projects", "northwind-launch", "ff04675")
+  await revertRecord("lab/samples", "2026/one", "ff04675")
+  await commit({ dryRun: true })
+  await getCommands("projects", ["northwind-launch", "harbor-mutual-renewal"])
+  await getCommands("projects", [])
+  await getNotes("lab/samples", ["2026/one"])
+  assert.deepEqual(calls, [
+    ["DELETE", "/collections/projects/records/northwind-launch", undefined],
+    ["DELETE", "/collections/lab%2Fsamples/records/2026/one?force=true", undefined],
+    ["POST", "/collections/tasks/rename", { old: "brief-dana", new: "brief-dana-oren" }],
+    ["GET", "/history/lab%2Fsamples/2026/one", undefined],
+    ["GET", "/history-diff/projects/northwind-launch?hash=ff04675", undefined],
+    ["POST", "/collections/lab%2Fsamples/records-revert/2026/one", { hash: "ff04675" }],
+    ["POST", "/commit", { dryRun: true }],
+    ["GET", "/commands/projects?ids=northwind-launch%2Charbor-mutual-renewal", undefined],
+    ["GET", "/commands/projects", undefined],
+    ["GET", "/notes/lab%2Fsamples?ids=2026%2Fone", undefined],
   ])
 })

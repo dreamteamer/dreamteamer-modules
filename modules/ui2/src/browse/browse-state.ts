@@ -60,6 +60,14 @@ export interface BrowseConfig {
   listOptions?: Record<string, Record<string, unknown>>
   /** The governing view record — what Save writes back to. Absent: the collection's own display. */
   viewId?: string
+  /**
+   * A browse EMBEDDED in another page — a relation field's records on a record page (`record/RelationField.tsx`).
+   * It neither reads nor writes the route's `?search=`/`?filter=`/`?layout=` (they are the page's, and three
+   * relation fields would fight over them), keeps its unsaved tweaks apart from the collection's own browse page,
+   * and treats `baseFilter` as SCOPE: applied under everything, never decompiled into an editable rule (a ✕ on
+   * it would widen the relation to the whole collection).
+   */
+  embedded?: boolean
 }
 
 /** Everything a view record stores. `filter: null` — the stored filter is not the builder's to speak for. */
@@ -91,12 +99,13 @@ export function useBrowseState(collection: string, config: BrowseConfig = {}) {
   const fieldByName = useMemo(() => new Map(fields.map(f => [f.field, f])), [fields])
 
   // ---- the start, decided once ------------------------------------------------------------------------
+  const scratchKey = `${scratchKeyFor(collection, config.viewId)}${config.embedded ? "::embedded" : ""}`
   const start = useRef<ReturnType<typeof initial> | null>(null)
   if (!start.current) start.current = initial()
   function initial() {
-    const q = queryOf(route)
+    const q = config.embedded ? {} : queryOf(route)
     const urlFilter = q["filter"] ?? null
-    const seeded = seedFilter(config.baseFilter, urlFilter)
+    const seeded = seedFilter(config.baseFilter, urlFilter, config.embedded)
     const seed = listSeed(config, row?.list)
     const known = new Set(fields.map(f => f.field))
     // what the RECORD resolves to — a column the schema no longer has drops out here, so a fresh page is clean
@@ -112,7 +121,7 @@ export function useBrowseState(collection: string, config: BrowseConfig = {}) {
       layout: q["layout"] || seed.layout,
       filter: seeded.initial,
     }
-    const scratch = scratchByView.get(scratchKeyFor(collection, config.viewId))
+    const scratch = scratchByView.get(scratchKey)
     if (scratch) {
       const filter = urlFilter !== null || !scratch.filter ? live.filter : withSourceSelection(scratch.filter, null)
       live = { ...clone(scratch), filter: clone(filter) }
@@ -121,7 +130,6 @@ export function useBrowseState(collection: string, config: BrowseConfig = {}) {
   }
   const init = start.current
   const opaque = init.opaque
-  const scratchKey = scratchKeyFor(collection, config.viewId)
 
   const [layout, setLayout] = useState(init.live.layout)
   const [columnNames, setColumnNames] = useState<string[]>(init.live.columns)
@@ -229,15 +237,16 @@ export function useBrowseState(collection: string, config: BrowseConfig = {}) {
       filter: serialized,
       layout: layout !== init.defaultLayout ? layout : undefined,
     })
+    if (config.embedded) return
     if (next !== current) navigate(next)
-  }, [search, serialized, layout, navigate, init.defaultLayout])
+  }, [search, serialized, layout, navigate, init.defaultLayout, config.embedded])
 
   // a navigation that changes only `?filter=` (a layer's nav row, a nav row with none) reaches a mounted browse:
   // re-seed the builder from it; its own writes echo back as no-ops
-  const urlFilter = queryOf(route)["filter"] ?? null
+  const urlFilter = config.embedded ? null : (queryOf(route)["filter"] ?? null)
   const firstUrl = useRef(true)
   useEffect(() => {
-    if (firstUrl.current) {
+    if (firstUrl.current || config.embedded) {
       firstUrl.current = false
       return
     }

@@ -30,7 +30,8 @@ import {
 import { signal } from "../lib/signal.ts"
 import { lists } from "../registry/index.ts"
 import type { ListProps } from "../registry/props.ts"
-import { useBrowseState, type BrowseConfig } from "./browse-state.ts"
+import { CommitButton } from "../components/CommitButton.tsx"
+import { useBrowseState, type BrowseConfig, type BrowseState } from "./browse-state.ts"
 import { DensityMenu } from "./DensityMenu.tsx"
 import { FilterBuilder } from "./FilterBuilder.tsx"
 import { LayoutOptions } from "./LayoutOptions.tsx"
@@ -104,6 +105,29 @@ export function Browse({
 
   const canCreate = editable && !row?.runtime && !state.unavailable
 
+  // EMBEDDED (a relation's records on a record page): the List and its pager, no header — the record page is
+  // the page. A List's own create gesture (a column's +) still asks its target choice, drawn above the List.
+  if (config?.embedded)
+    return (
+      <section className="ui2-browse is-embedded" data-embedded-browse={collection}>
+        {state.error && <p className="ui2-error">{state.error}</p>}
+        {!entry && (
+          <p className="ui2-note" data-degraded>
+            <Icon name="info" /> Layout <code>{state.layout}</code> isn’t drawn by ui2 yet — showing the table instead.
+          </p>
+        )}
+        {state.pendingCreate && (
+          <div className="ui2-popover-anchor">
+            <TargetChoice choice={state.pendingCreate.choice} onPick={state.chooseTarget} />
+          </div>
+        )}
+        <div className="ui2-browse-list">
+          <List {...listProps} />
+          {!list.summarizes && (state.hasNext || state.hasPrev) && <Pager state={state} />}
+        </div>
+      </section>
+    )
+
   return (
     <section className={`ui2-browse${list.fillsHeight ? " is-fill" : ""}`}>
       <header className="ui2-page-head ui2-browse-head">
@@ -124,6 +148,8 @@ export function Browse({
               aria-label="Search records"
             />
           </label>
+
+          <CommitButton onCommitted={state.reload} />
 
           {hasForeignSource(state.sources) && (
             <SourcePicker
@@ -295,34 +321,38 @@ export function Browse({
       <div className="ui2-browse-body">
         <div className="ui2-browse-list">
           <List {...listProps} />
-          {!list.summarizes && (
-            <footer className="ui2-pager">
-              <span className="ui2-subtle">
-                {state.loading && <Icon name="loading" />} {state.from}–{state.to} of {state.total}
-              </span>
-              <button
-                type="button"
-                className="ui2-button is-icon"
-                disabled={!state.hasPrev}
-                onClick={state.prevPage}
-                title="Previous page"
-              >
-                <Icon name="chevron-left" />
-              </button>
-              <button
-                type="button"
-                className="ui2-button is-icon"
-                disabled={!state.hasNext}
-                onClick={state.nextPage}
-                title="Next page"
-              >
-                <Icon name="chevron-right" />
-              </button>
-            </footer>
-          )}
+          {!list.summarizes && <Pager state={state} />}
         </div>
         {panelOpen && <LayoutOptions state={state} onClose={() => optionsOpen.set(false)} />}
       </div>
     </section>
+  )
+}
+
+function Pager({ state }: { state: BrowseState }) {
+  return (
+    <footer className="ui2-pager">
+      <span className="ui2-subtle">
+        {state.loading && <Icon name="loading" />} {state.from}–{state.to} of {state.total}
+      </span>
+      <button
+        type="button"
+        className="ui2-button is-icon"
+        disabled={!state.hasPrev}
+        onClick={state.prevPage}
+        title="Previous page"
+      >
+        <Icon name="chevron-left" />
+      </button>
+      <button
+        type="button"
+        className="ui2-button is-icon"
+        disabled={!state.hasNext}
+        onClick={state.nextPage}
+        title="Next page"
+      >
+        <Icon name="chevron-right" />
+      </button>
+    </footer>
   )
 }

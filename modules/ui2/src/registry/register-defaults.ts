@@ -13,7 +13,9 @@
  * with the options every list shares (grouping, colour, page size) and each one's own. Calendar, map, gantt,
  * diagram, counts and carousel come in later steps; the browse says so for a view naming one.
  *
- * Not here yet: the record-scoped `form`/`doc`, `properties` and `data-model` (record pages, a later step).
+ * The RECORD-SCOPED entries draw a whole record page (`RecordLayoutProps`): `properties` (the built-in, both an
+ * Edit and a View, so the pencil flips it in place), `form` (an Edit) and `doc` (its read-only View). A
+ * collection's `display.record.layout` names one; `page` means the built-in. Not here yet: `data-model`.
  */
 import { EditBoolean } from "../edits/EditBoolean.tsx"
 import { EditCode } from "../edits/EditCode.tsx"
@@ -33,6 +35,8 @@ import { EditSelect } from "../edits/EditSelect.tsx"
 import { EditSlider } from "../edits/EditSlider.tsx"
 import { EditTags } from "../edits/EditTags.tsx"
 import { EditTextarea } from "../edits/EditTextarea.tsx"
+import { RecordForm } from "../record/RecordForm.tsx"
+import { RecordProperties } from "../record/RecordProperties.tsx"
 import { ViewBoolean } from "../views/ViewBoolean.tsx"
 import { ViewColor } from "../views/ViewColor.tsx"
 import { ViewDate } from "../views/ViewDate.tsx"
@@ -119,6 +123,12 @@ views.register({ id: "stage-checks", name: "Stage checks", component: ViewStageC
 views.register({ id: "json", name: "JSON", component: ViewJson, types: ["object", "map"] })
 views.register({ id: "list", name: "List", component: ViewList, types: [] })
 views.register({ id: "nested", name: "Nested", component: ViewNested, types: [] })
+
+// ── record pages ────────────────────────────────────────────────────────────────────────────────────────────
+edits.register({ id: "properties", name: "Properties", component: RecordProperties, types: [], scope: "record" })
+views.register({ id: "properties", name: "Properties", component: RecordProperties, types: [], scope: "record" })
+edits.register({ id: "form", name: "Form", component: RecordForm, types: [], scope: "record" })
+views.register({ id: "doc", name: "Doc", component: RecordForm, types: [], scope: "record" })
 
 // ── options every list shares ────────────────────────────────────────────────────────────────────────────
 // GROUPING IS ONE CONCEPT WITH TWO AXES, NAMED FOR THE AXIS: `group_by` makes horizontal bands and every list has

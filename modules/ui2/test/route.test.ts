@@ -36,3 +36,23 @@ test("an encoded route reads as its name, and a record route round-trips", () =>
   const r = recordRoute("lab/samples", "sample-one")
   assert.deepEqual(pageOf(r, COLLECTIONS), { kind: "record", collection: "lab/samples", id: "sample-one" })
 })
+
+test("a record-scope ui-view answers <route>/<id> with its collection's record and the view", () => {
+  const views = [
+    { id: "task-sheet", route: "/task-sheet", scope: "record", collection: "collections/tasks" },
+    { id: "projects-board", route: "/projects-board", scope: "collection", collection: "collections/projects" },
+  ]
+  assert.deepEqual(pageOf("/task-sheet/2026/brief-dana", COLLECTIONS, views), {
+    kind: "record",
+    collection: "tasks",
+    id: "2026/brief-dana",
+    viewId: "task-sheet",
+  })
+  // the bare route names no record, and a record view of a collection this workspace lacks draws nothing
+  assert.equal(pageOf("/task-sheet", COLLECTIONS, views).kind, "unsupported")
+  assert.equal(
+    pageOf("/x/one", COLLECTIONS, [{ id: "x", route: "/x", scope: "record", collection: "collections/nope" }]).kind,
+    "unsupported"
+  )
+  assert.deepEqual(pageOf("/projects-board", COLLECTIONS, views), { kind: "view", id: "projects-board" })
+})

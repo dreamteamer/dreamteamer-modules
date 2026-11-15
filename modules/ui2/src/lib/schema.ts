@@ -12,7 +12,7 @@ import { collectionRows } from "../api/collection-rows.ts"
 import type { CollectionRow, FieldRow } from "../api/types.ts"
 import { drawnOn, hasControl, isBodyField, isRelationField } from "./field-row.ts"
 import { titleOf } from "./record-title.ts"
-import { templateFields, tryRenderDisplay } from "./template.ts"
+import { templateFields, tryRenderDisplay, type RenderOptions } from "./template.ts"
 
 export interface Schema {
   /** Every collection row, in the order the host sent them. */
@@ -51,9 +51,14 @@ export function buildSchema(p: Presentation): Schema {
 }
 
 /** What a record is called: the collection's `record_title` template over the record, else its title or name
- *  field, else its id. */
-export function recordLabel(row: CollectionRow | undefined, record: Record<string, unknown>, id: string): string {
-  const rendered = row?.record_title ? tryRenderDisplay(row.record_title, { id, ...record })?.trim() : ""
+ *  field, else its id. `opts` resolves a reference in the template to its target's own title. */
+export function recordLabel(
+  row: CollectionRow | undefined,
+  record: Record<string, unknown>,
+  id: string,
+  opts?: RenderOptions
+): string {
+  const rendered = row?.record_title ? tryRenderDisplay(row.record_title, { id, ...record }, opts)?.trim() : ""
   return rendered || titleOf({ ...record, id }) || id
 }
 

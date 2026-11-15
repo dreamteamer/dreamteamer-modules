@@ -50,3 +50,9 @@ export function filesBase(): string | undefined {
 export function canEdit(info: HostInfo | null): boolean {
   return info?.level !== "read"
 }
+
+/** Admin routes (commit, rename, revert) are offered only at admin; a host that answers no level (an editor)
+ *  answers every route at admin. */
+export function isAdmin(info: HostInfo | null): boolean {
+  return !info || info.level === undefined || info.level === "admin"
+}

@@ -6,8 +6,8 @@ import { unitSuffix } from "../lib/field-unit.ts"
 import { inputText, numberFromInput } from "../lib/edit-values.ts"
 import type { EditProps } from "../registry/props.ts"
 
-export function EditNumber({ field, value, onChange, id }: EditProps) {
-  const suffix = unitSuffix(field, null)
+export function EditNumber({ field, value, onChange, id, record }: EditProps) {
+  const suffix = unitSuffix(field, record ?? null)
   return (
     <span className="ui2-with-unit">
       <input

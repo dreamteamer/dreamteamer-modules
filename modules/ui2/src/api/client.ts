@@ -124,8 +124,77 @@ export type PositionMove = { top: true } | { bottom: true } | { before: string }
 export const moveRecord = (collection: string, id: string, move: PositionMove) =>
   request("PATCH", `/collections/${encName(collection)}/position/${encId(id)}`, move) as Promise<unknown>
 
-export const removeRecord = (collection: string, id: string) =>
-  request("DELETE", `/collections/${encName(collection)}/records/${encId(id)}`) as Promise<{ id: string }>
+/** `force` removes a record others reference (the host answers `409` without it), leaving their references. */
+export const removeRecord = (collection: string, id: string, force = false) =>
+  request(
+    "DELETE",
+    `/collections/${encName(collection)}/records/${encId(id)}${force ? "?force=true" : ""}`
+  ) as Promise<{
+    id: string
+  }>
+
+/** `POST /collections/:c/rename` — a new id for a record; every reference to it is rewritten (admin). */
+export const renameRecord = (collection: string, from: string, to: string) =>
+  request("POST", `/collections/${encName(collection)}/rename`, { old: from, new: to }) as Promise<unknown>
+
+// ---- a record's history, commits, commands and notes -------------------------------------------------------
+
+/** One commit touching a record's file, newest first. */
+export interface HistoryEntry {
+  hash: string
+  date: string
+  author: string
+  subject: string
+}
+
+export const getHistory = (collection: string, id: string) =>
+  request("GET", `/history/${encName(collection)}/${encId(id)}`) as Promise<HistoryEntry[]>
+
+/** One commit's diff of the record's file against its parent. */
+export const getHistoryDiff = (collection: string, id: string, hash: string) =>
+  request("GET", `/history-diff/${encName(collection)}/${encId(id)}?hash=${encodeURIComponent(hash)}`) as Promise<{
+    hash?: string
+    path?: string
+    diff?: string
+  }>
+
+/** Restore a record's content as of `hash`, validated against today's schema, as one new commit (admin). */
+export const revertRecord = (collection: string, id: string, hash: string) =>
+  request("POST", `/collections/${encName(collection)}/records-revert/${encId(id)}`, { hash }) as Promise<unknown>
+
+/** One repo's pending rows, as `POST /commit` answers per repo (`dt commit --json`). */
+export interface CommitPlan {
+  repo: string
+  rows: Array<{ collection: string; id: string; verb?: string }>
+  subject?: string
+  sha?: string | null
+  /** an in-progress merge or rebase — the engine refused, and said why */
+  blocked?: string | null
+  /** committed, but worth saying (a detached HEAD) */
+  warning?: string | null
+}
+
+/** `dryRun` is the pending count; `only` scopes a commit to `<collection>/<id>` refs or collections. */
+export const commit = (body: { dryRun?: boolean; only?: string[]; message?: string }) =>
+  request("POST", "/commit", body) as Promise<CommitPlan[] | null>
+
+export const getCommands = (collection: string, ids: readonly string[]) =>
+  request(
+    "GET",
+    `/commands/${encName(collection)}${ids.length ? `?ids=${encodeURIComponent(ids.join(","))}` : ""}`
+  ) as Promise<{ commands: import("../lib/command-rows.ts").CommandRow[] }>
+
+export const getNotes = (collection: string, ids: readonly string[]) =>
+  request("GET", `/notes/${encName(collection)}?ids=${encodeURIComponent(ids.join(","))}`) as Promise<{
+    notes?: import("../lib/next-notes.ts").NextNote[]
+    sessionsFrom?: import("../lib/next-notes.ts").SessionsFrom
+  }>
+
+export const getQueue = () =>
+  request("GET", "/queue") as Promise<{ items?: import("../lib/queue-items.ts").QueueItem[] }>
+
+export const queueCommand = (command: string, refs: string[]) =>
+  request("POST", "/queue", { command, refs }) as Promise<unknown>
 
 /** `GET /collections/:c/values/:field` — the values a field actually holds, with counts: a filter's vocabulary. */
 export interface FieldValues {

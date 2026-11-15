@@ -45,8 +45,9 @@ the page out.
 | `/` | the workspace's collections |
 | `/content/<collection>` | the browse: the collection's records, by the List its layout names |
 | `/<a ui-view's route>` | a collection ui-view (`/projects-board`): the same browse, seeded from the view |
-| `/content/<collection>/<id>` | the record: its fields as a form, each by its Edit, and what the engine knows about it (created, last changed, source, file) |
+| `/content/<collection>/<id>` | the record page: its record layout, the commit line and source, Commands, Info and Revisions |
 | `/content/<collection>/+` | a new record |
+| `/<a record ui-view's route>/<id>` | a record drawn by a record-scope ui-view's `display.record` |
 
 Routes are the same as `ui`'s. A collection or id holding `/` resolves against the workspace's collections.
 
@@ -92,21 +93,42 @@ whose View is `image`; a URL or a file record; `image_fit`), the record's title 
 banded by `group_by`. On both, `card_title` is a markdown template whose `{{ field }}` tokens are drawn by each
 field's own View, and `color_by` tints the card.
 
+The record page draws the record by the record-scoped Edit or View its `display.record.layout` names (a
+record-scope ui-view's, else the collection's): `properties` by default (`page`) — one line per property,
+`icon · label · value`, then the body as the document — or `form`/`doc`, the two-column form; a module can
+register its own with `scope: "record"`. Both follow `form.sections` (a `collapsed` one starts shut and comes
+last), each field's `hidden`, and draw a computed field dimmed with the reason on hover. A record opens read; the
+pencil switches the same layout to edit mode in place, and Cancel/Save (or Cmd/Ctrl-S) end it. A list relation
+on the read is drawn as the target collection's own browse (its table or board, its columns, sort and paging),
+scoped to the related records; `display.record.options.relation_views.<field>` names another ui-view, or
+`false` for links. The header says the id's path, the title from `record_title` (a reference read as its
+target's title), a duplicate id, the last commit, and where the record is read from with its repo state
+(`ahead 1 · uncommitted`); a root that takes no write draws the record read-only and says why. Under it come the
+`display.record` subtitle, badge and `color_by` tint, and what extensions say about the record (`GET /notes`).
+The side panel has Commands (the bound commands and the record's state against each, `dt next`; pick one to copy
+its invocation, or, where a chat reads the page, Ask in chat), Info, and Revisions (each commit, its diff, and
+restore). **Commit to <repo>** publishes pending writes (`dt commit`), per repo, on the record page and the
+browse. **⋯** has Rename (every reference rewritten) and Delete; a record others reference is refused and
+can then be deleted anyway. Leaving with unsaved edits asks first.
+
 Save sends only the changed fields, and the host validates them as `dt set` does. If it refuses, the page
-shows its reason and nothing is written. When the host answers `GET /host` with level `read`, the page
-draws values and offers no edits.
+shows its reason and nothing is written. A new record says where it saves when there is more than one answer,
+can start from an existing record (**Start from existing…**), and takes `?prefill=` and `?target=` from a
+list. When the host answers `GET /host` with level `read`, the page draws values and offers no edits; rename,
+restore and commit are offered at `admin` only.
 
 Not yet in `ui2`, all of which `ui` has: the other Lists — calendar, map, gantt, diagram, counts and carousel
-(a view naming one draws the table, and says so); record and page ui-views; the record-scoped
-pages (`form`, `doc`, `properties`, `data-model`); module apps; the schema editor and settings; nav arranging;
-history, commit and revert; notes and commands; file uploads. A route to one of these shows a line saying `ui2`
+(a view naming one draws the table, and says so); page ui-views; the `data-model` record page and the record's
+stage map (`display.record.options.stages`); module apps; the schema editor and settings; nav arranging; the
+browse's Commands panel over a selection; note marks on rows and cards; the "created here" notice on a list;
+file uploads. A route to one of these shows a line saying `ui2`
 doesn't draw it yet, and the nav still lists it.
 
 ## building and testing
 
 ```bash
 npm run build -w modules/ui2       # dist/lib and dist/app
-npm test -w modules/ui2            # routes, fields, filters, grouping, the board's moves, card templates, markdown, the API client
+npm test -w modules/ui2            # routes, fields, filters, grouping, the board's moves, card templates, the record page's rules, markdown, the API client
 npm run typecheck -w modules/ui2   # tsc, strict, over src/
 npm run ui2                        # from the repo root: the app from source, over a sample workspace
 ```

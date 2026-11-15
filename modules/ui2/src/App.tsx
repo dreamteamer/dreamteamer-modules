@@ -8,6 +8,7 @@ import { getPresentation, notify } from "./api/client.ts"
 import { AppContext, EMPTY_SCHEMA, useApp, useAsync, useSignal, type AppState } from "./app-context.tsx"
 import { Nav } from "./components/Nav.tsx"
 import { canEdit, hostInfo, SIGNED_OUT, signedOut } from "./lib/host.ts"
+import { mayLeave } from "./lib/leave-guard.ts"
 import { pageOf, pathOf } from "./lib/route.ts"
 import { loadUiViews, uiViews } from "./lib/ui-views.ts"
 import { buildSchema } from "./lib/schema.ts"
@@ -25,11 +26,18 @@ export function App({ onMounted }: { onMounted?: () => void }) {
   const [route, setRoute] = useState("/")
   const [version, setVersion] = useState(0)
   const mounted = useRef(false)
+  // the route as of the last render — what a refused move puts back
+  const routeNow = useRef(route)
+  routeNow.current = route
 
   useEffect(() => {
     const onMessage = (e: MessageEvent) => {
       const m = e.data as { type?: string; route?: unknown } | null
-      if (m?.type === "dt:navigate" && typeof m.route === "string") setRoute(m.route)
+      if (m?.type === "dt:navigate" && typeof m.route === "string") {
+        // a page with unsaved changes may refuse; the host's address (the hash) is put back
+        if (mayLeave(routeNow.current, m.route)) setRoute(m.route)
+        else notify("dt:route", { route: routeNow.current })
+      }
       if (m?.type === "dt:invalidate") setVersion(v => v + 1)
     }
     window.addEventListener("message", onMessage)
@@ -43,6 +51,8 @@ export function App({ onMounted }: { onMounted?: () => void }) {
   }, [onMounted])
 
   const navigate = useCallback((to: string) => {
+    if (!mayLeave(routeNow.current, to)) return
+    routeNow.current = to
     setRoute(to)
     notify("dt:route", { route: to })
   }, [])
@@ -92,7 +102,7 @@ function Page() {
     case "list":
       return <ListPage collection={page.collection} />
     case "record":
-      return <RecordPage collection={page.collection} id={page.id} />
+      return <RecordPage collection={page.collection} id={page.id} viewId={page.viewId} />
     case "create":
       return <RecordPage collection={page.collection} id={null} />
     case "view":
