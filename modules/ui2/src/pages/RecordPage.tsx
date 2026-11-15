@@ -31,7 +31,14 @@ import { Dialog } from "../components/Dialog.tsx"
 import { Icon } from "../components/Icon.tsx"
 import { Link } from "../components/Link.tsx"
 import { isReferenceField } from "../lib/collection-display.ts"
-import { excludedBy, saveRootFor, selectionFromQuery, SOURCES_QUERY, TARGET_QUERY } from "../lib/created-visibility.ts"
+import {
+  excludedBy,
+  noteCreated,
+  saveRootFor,
+  selectionFromQuery,
+  SOURCES_QUERY,
+  TARGET_QUERY,
+} from "../lib/created-visibility.ts"
 import { editsAnything } from "../lib/field-row.ts"
 import { hostInfo, isAdmin } from "../lib/host.ts"
 import { setLeaveGuard } from "../lib/leave-guard.ts"
@@ -227,6 +234,9 @@ export function RecordPage({ collection, id, viewId }: { collection: string; id:
       if (create) {
         const body = Object.fromEntries(Object.entries(edits).filter(([, v]) => v !== null && v !== ""))
         const made = await createRecord(collection, body, target ?? undefined)
+        // the list it came from widens its Sources selection to show it (`lib/created-visibility.ts`)
+        const root = saveRootFor(sources, target)?.name
+        if (root && made.id) noteCreated({ collection, id: made.id, source: root })
         go(recordRoute(collection, made.id))
         return
       }

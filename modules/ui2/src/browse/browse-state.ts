@@ -28,7 +28,7 @@ import { useApp, useAsync } from "../app-context.tsx"
 import { browseFields, moveItem, seedColumns, toggledSort } from "../lib/browse-fields.ts"
 import { DEFAULT_SORT } from "../lib/builtin-fields.ts"
 import { colorByFor, tintOf as tintFor, tintStyle } from "../lib/collection-display.ts"
-import { SOURCES_QUERY, TARGET_QUERY } from "../lib/created-visibility.ts"
+import { SOURCES_QUERY, TARGET_QUERY, takeCreated, widenedFor, type CreatedNote } from "../lib/created-visibility.ts"
 import { compileFilter, emptyFilterGroup, serializeFilterGroup, type FilterGroup } from "../lib/filter-query.ts"
 import { normalizeFilterRefs } from "../lib/filter-wire.ts"
 import { listSeed, scratchKey as scratchKeyFor } from "../lib/list-seed.ts"
@@ -224,6 +224,8 @@ export function useBrowseState(collection: string, config: BrowseConfig = {}) {
   // ---- the URL: search, filter and layout ride on it ------------------------------------------------------
   const routeNow = useRef(route)
   routeNow.current = route
+  /** Every `?filter=` this browse wrote: its own echoes, never a navigation to re-seed from. */
+  const written = useRef(new Set<string>())
   const serialized = serializeFilterGroup(filterGroup)
   useEffect(() => {
     const current = routeNow.current
@@ -238,18 +240,36 @@ export function useBrowseState(collection: string, config: BrowseConfig = {}) {
       layout: layout !== init.defaultLayout ? layout : undefined,
     })
     if (config.embedded) return
-    if (next !== current) navigate(next)
+    if (next === current) return
+    written.current.add(serialized ?? "")
+    navigate(next)
   }, [search, serialized, layout, navigate, init.defaultLayout, config.embedded])
 
-  // a navigation that changes only `?filter=` (a layer's nav row, a nav row with none) reaches a mounted browse:
-  // re-seed the builder from it; its own writes echo back as no-ops
-  const urlFilter = config.embedded ? null : (queryOf(route)["filter"] ?? null)
-  const firstUrl = useRef(true)
+  // A record just created from this list under a Sources selection that leaves out the root it was saved to: WIDEN
+  // the selection to that root, so the record is in the list the person comes back to, and say so (`createdNotice`).
+  // Taken in an effect, not during render: the note is consumed once, and a render may run twice.
+  const [createdNotice, setCreatedNotice] = useState<CreatedNote | null>(null)
   useEffect(() => {
-    if (firstUrl.current || config.embedded) {
-      firstUrl.current = false
-      return
-    }
+    if (config.embedded) return
+    const note = takeCreated(collection)
+    if (!note) return
+    const widened = widenedFor(filterGroup, note.source)
+    if (!widened) return
+    setFilterGroup(widened)
+    setCreatedNotice(note)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, on the mount the note was meant for
+  }, [])
+
+  // a navigation that changes only `?filter=` (a layer's nav row, a nav row with none) reaches a mounted browse:
+  // re-seed the builder from it. Only a CHANGE re-seeds (compared with the last one seen, so StrictMode's second run
+  // cannot undo a change made on mount), and never to a filter this browse wrote itself: a write the route has not
+  // caught up with yet (the id re-mint on mount, then the created-here widening) would otherwise undo the next one.
+  const urlFilter = config.embedded ? null : (queryOf(route)["filter"] ?? null)
+  const lastUrl = useRef(urlFilter)
+  useEffect(() => {
+    if (config.embedded || lastUrl.current === urlFilter) return
+    lastUrl.current = urlFilter
+    if (urlFilter !== null && written.current.has(urlFilter)) return
     setFilterGroup(current => filterFromUrl(urlFilter, current, config.baseFilter) ?? current)
   }, [urlFilter, config.baseFilter])
 
@@ -405,6 +425,10 @@ export function useBrowseState(collection: string, config: BrowseConfig = {}) {
     allVisibleSelected,
     toggleSelectAllVisible: () => setSelected(allVisibleSelected ? new Set() : new Set(records.map(r => r.id))),
     clearSelection: () => setSelected(new Set()),
+    createdNotice,
+    dismissCreated: () => setCreatedNotice(null),
+    /** Tick exactly these rows — the chat's push (`dt:select`). */
+    setSelection: (ids: Iterable<string>) => setSelected(new Set(ids)),
     deleting,
     async deleteSelected() {
       if (!selectedIds.size) return

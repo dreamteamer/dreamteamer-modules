@@ -34,9 +34,10 @@ await mount("#app", { transport })
 ```
 
 After its first render the app sends `dt:mounted`, and the host replies with a `dt:navigate` message naming
-the route to show. Messages from the host (`dt:navigate`, `dt:invalidate`) arrive as window `message` events.
-The app re-reads the nav, the schema and the open page on every `dt:invalidate`. A 401 from the host signs
-the page out.
+the route to show. Messages from the host (`dt:navigate`, `dt:invalidate`, `dt:host`, `dt:select`) arrive as
+window `message` events. The app re-reads the nav, the schema and the open page on every `dt:invalidate`, and
+`GET /host` on `dt:host`. A 401 from the host signs the page out. Table rows and cards carry
+`data-vscode-context` (`{ webviewSection: "dt-row", dtCollection, dtId, dtIds }`) for an editor's native row menu.
 
 ## what it draws
 
@@ -50,6 +51,20 @@ the page out.
 | `/<a record ui-view's route>/<id>` | a record drawn by a record-scope ui-view's `display.record` |
 
 Routes are the same as `ui`'s. A collection or id holding `/` resolves against the workspace's collections.
+
+The nav is `GET /nav` (the workspace's `nav.yaml`, resolved by the host) under a toolbar: the workspace's name,
+Back and Forward through the app's own history (a move that changes only the query, such as the browse writing
+its filter back, replaces the entry rather than adding one), and the arrange lock. The lock starts locked;
+unlocked, rows drag (before, into or after a row, or to the bottom of the top level) and have a right-click menu
+— New folder, Rename, Dissolve, Move up/down/to top/to bottom, Set icon, Hide — and the toolbar offers New folder
+and Show hidden…. Each gesture is one `PATCH /nav` op, built from the nodes' `target`s; a refusal shows the
+host's sentence. Layers keep their own nav and take no gesture.
+
+On a pane host (`GET /host` answers a workspace id, as `dt web` does; never the editor) the name is the
+workspace switcher (`/_dt/workspaces`, `/_dt/handoff`) and the toolbar ends in the level (`eye`, `edit`,
+`shield`), whose menu lowers it (`POST /_dt/level`) and sends a raise to the chat; at Read the arrange lock is
+disabled. The page reports its place and ticked rows with `PUT /selection` (200 ms after the last change, at most
+50 refs), and the chat's `dt:select` ticks those rows, going to their list first.
 
 Every page draws from the display contract (`GET /presentation`), as `ui` does: a collection's title, icon,
 list columns and sort, form sections and record title template; a field's surfaces (`hidden`), choices with
@@ -78,7 +93,10 @@ batch delete, row density (compact, cozy, comfortable), colour by an enum, and b
 (`group_by`), a reference's band named by the referenced record's title. Search is the host's `q`; the filter
 builder sends the engine's `filter` with `ui`'s operators, values picked by the field's own Edit (a reference by
 the record picker, a string from the values its records hold), and fields of referenced records reachable by
-path (`project.status`). A collection read from more than one source has the source picker. Layout options (the
+path (`project.status`). A collection read from more than one source has the source picker; a record just
+created from a list whose sources leave out the root it was saved to widens the list to that root, and says so.
+The Commands panel lists the collection's bound commands over the ticked rows, with Ask in chat where a chat
+reads the page. Layout options (the
 panel beside the list) sets the layout, sort, the List's options and the columns and their order; **Save**
 writes them to the governing ui-view, or to the collection's own `display.list`, and **Save as…** writes a new
 ui-view at `/views/<collection>/<name>`. Search, filter and layout ride on the URL (`?filter=…`), as in `ui`.
@@ -119,16 +137,15 @@ restore and commit are offered at `admin` only.
 
 Not yet in `ui2`, all of which `ui` has: the other Lists — calendar, map, gantt, diagram, counts and carousel
 (a view naming one draws the table, and says so); page ui-views; the `data-model` record page and the record's
-stage map (`display.record.options.stages`); module apps; the schema editor and settings; nav arranging; the
-browse's Commands panel over a selection; note marks on rows and cards; the "created here" notice on a list;
-file uploads. A route to one of these shows a line saying `ui2`
+stage map (`display.record.options.stages`); module apps; the schema editor and settings (and the remote-access mark of
+its Sources pane); note marks on rows and cards; file uploads. A route to one of these shows a line saying `ui2`
 doesn't draw it yet, and the nav still lists it.
 
 ## building and testing
 
 ```bash
 npm run build -w modules/ui2       # dist/lib and dist/app
-npm test -w modules/ui2            # routes, fields, filters, grouping, the board's moves, card templates, the record page's rules, markdown, the API client
+npm test -w modules/ui2            # routes, fields, filters, grouping, the board's moves, card templates, the record page's rules, the nav's gestures and history, the pane report, markdown, the API client
 npm run typecheck -w modules/ui2   # tsc, strict, over src/
 npm run ui2                        # from the repo root: the app from source, over a sample workspace
 ```

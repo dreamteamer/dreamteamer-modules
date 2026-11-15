@@ -15,6 +15,7 @@
  * re-read is in flight.
  */
 import { useEffect, useMemo, useState } from "react"
+import { rowContext } from "../lib/vscode-context.ts"
 import type { FieldRow } from "../api/types.ts"
 import type { Row } from "../api/client.ts"
 import { useApp, useSignal } from "../app-context.tsx"
@@ -177,6 +178,7 @@ export function ListTable({ state }: ListProps) {
                       key={`${String(r["$source"] ?? "")}/${r.id}`}
                       className={`${state.isSelected(r.id) ? "is-selected" : ""}${tint ? " is-tinted" : ""}`}
                       style={tint}
+                      data-vscode-context={rowContext(state.collection, r.id, state.selectedIds)}
                       onClick={() => state.openRecord(r)}
                     >
                       <td className="ui2-check-col" onClick={e => e.stopPropagation()}>

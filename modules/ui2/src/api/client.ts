@@ -5,6 +5,7 @@
 import type { Transport } from "../transport/types.ts"
 import type { FieldRow, SourceEntry } from "./types.ts"
 import type { PresentationCollection } from "./collection-rows.ts"
+import type { NavNode } from "../lib/nav-tree.ts"
 
 let current: Transport | null = null
 
@@ -29,18 +30,8 @@ const encName = (name: string): string => encodeURIComponent(name)
 
 // ---- shapes ---------------------------------------------------------------------------------------------
 
-export interface NavNode {
-  kind: "workspace" | "collection" | "namespace" | "view" | "folder" | string
-  key: string
-  label: string
-  icon?: string
-  route?: string
-  tooltip?: string
-  description?: string
-  marks?: string
-  notice?: string
-  children?: NavNode[]
-}
+/** One node of `GET /nav` — the shape lives with the gestures that read its `target` (lib/nav-tree.ts). */
+export type { NavNode } from "../lib/nav-tree.ts"
 
 /** One relation the display contract names: `collection.field` holds refs to `related_collection`. */
 export interface Relation {

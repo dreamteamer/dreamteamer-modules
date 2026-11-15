@@ -23,6 +23,7 @@
  * list is the only scroll box — the header stays pinned above it.
  */
 import { useEffect, useMemo, useRef, useState, type DragEvent } from "react"
+import { rowContext } from "../lib/vscode-context.ts"
 import { moveRecord, updateRecord, type Row } from "../api/client.ts"
 import { useApp, useSignal } from "../app-context.tsx"
 import { Icon } from "../components/Icon.tsx"
@@ -281,6 +282,7 @@ export function ListKanban({ state }: ListProps) {
                                   drag?.id === r.id ? " is-dragging" : ""
                                 }`}
                                 style={tint}
+                                data-vscode-context={rowContext(state.collection, r.id)}
                                 title={lock.reason ?? undefined}
                                 draggable={cardDraggable}
                                 onDragStart={e => onDragStart(e, r, lane, column)}

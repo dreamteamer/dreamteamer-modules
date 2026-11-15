@@ -10,6 +10,8 @@ export interface HostInfo {
   level?: "read" | "edit" | "admin"
   chat?: boolean
   workspace?: { id?: string; name?: string }
+  /** While a raise from the chat holds (`dt web open --edit|--admin`): since when, ISO. */
+  raisedAt?: string
   filesBase?: string
   framesBase?: string
   [key: string]: unknown
@@ -55,4 +57,10 @@ export function canEdit(info: HostInfo | null): boolean {
  *  answers every route at admin. */
 export function isAdmin(info: HostInfo | null): boolean {
   return !info || info.level === undefined || info.level === "admin"
+}
+
+/** A host that answered a workspace id is a PANE host (reading 3 — the editor answers no id): the switcher and the
+ *  level in the nav toolbar, the place report and the arrange lock's level rule apply only there. */
+export function paneHost(info: HostInfo | null): boolean {
+  return typeof info?.workspace?.id === "string"
 }

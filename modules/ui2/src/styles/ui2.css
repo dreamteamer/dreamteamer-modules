@@ -23,6 +23,7 @@
   --ui2-accent-fg: var(--vscode-button-foreground, #ffffff);
   --ui2-link: var(--vscode-textLink-foreground, #2f6feb);
   --ui2-danger: var(--vscode-errorForeground, #d1435b);
+  --ui2-warning: var(--vscode-editorWarning-foreground, #b7791f);
   --ui2-input-bg: var(--vscode-input-background, #ffffff);
   --ui2-input-border: var(--vscode-input-border, #d3dae4);
   --ui2-focus: var(--vscode-focusBorder, #5b3df5);
@@ -50,6 +51,7 @@
     --ui2-accent: var(--vscode-button-background, #7a63ff);
     --ui2-link: var(--vscode-textLink-foreground, #7aa7ff);
     --ui2-danger: var(--vscode-errorForeground, #ff7a8e);
+    --ui2-warning: var(--vscode-editorWarning-foreground, #e0a84a);
     --ui2-input-bg: var(--vscode-input-background, #12151a);
     --ui2-input-border: var(--vscode-input-border, #363d4a);
     --dt-color-charts-green: var(--vscode-charts-green, #4fc08d);
@@ -113,33 +115,158 @@ h1 {
 }
 
 /* ---- nav ------------------------------------------------------------------------------------ */
+/* The nav is a column: the toolbar never scrolls, the rows scroll beneath it. */
 .ui2-nav {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
   background: var(--ui2-bg-subtle);
   border-right: 1px solid var(--ui2-border);
-  overflow: auto;
-  padding-bottom: 12px;
 }
-.ui2-nav-head {
+/* 32 px: the page header's first row's height. Narrow, the name gives way first, then the buttons wrap. */
+.ui2-nav-toolbar {
+  position: relative;
+  z-index: 2;
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  row-gap: 2px;
+  gap: 4px;
+  min-height: 32px;
+  padding: 3px 4px 3px 8px;
+  background: var(--ui2-bg-subtle);
+  transition: box-shadow 0.12s;
+}
+.ui2-nav-toolbar.is-scrolled {
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.14);
+}
+.ui2-nav-toolbar-name {
+  flex: 1 0 30px;
+  min-width: 30px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 12px 8px;
-  font-weight: 600;
+  overflow: hidden;
 }
-.ui2-nav-title {
+.ui2-nav-toolbar-label {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-weight: 600;
+  color: var(--ui2-fg);
+}
+.ui2-nav-toolbar-label.is-button {
+  max-width: 100%;
+  height: 24px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: var(--ui2-radius);
+  background: transparent;
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+}
+.ui2-nav-toolbar-label.is-button:hover {
+  background: var(--ui2-bg-hover);
+}
+.ui2-nav-toolbar-buttons {
+  display: contents;
+}
+.ui2-nav-tool {
+  position: relative;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--ui2-radius);
+  background: transparent;
+  color: var(--ui2-fg-subtle);
+  font: inherit;
+}
+.ui2-nav-tool:hover:not(:disabled) {
+  background: var(--ui2-bg-hover);
+  color: var(--ui2-fg);
+}
+.ui2-nav-tool:disabled {
+  opacity: 0.45;
+}
+.ui2-nav-tool[aria-pressed="true"] {
+  background: var(--ui2-bg-active);
+  color: var(--ui2-accent);
+}
+.ui2-nav-tool > .codicon {
+  font-size: 16px;
+}
+/* the lock is a badge on the tree: bottom-right, cut out of the button's ground so it reads at 16 px */
+.ui2-nav-lock .ui2-nav-lock-badge {
+  position: absolute;
+  right: 1px;
+  bottom: 1px;
+  font-size: 10px;
+  line-height: 10px;
+  border-radius: 3px;
+  background: var(--ui2-bg-subtle);
+}
+.ui2-nav-lock[aria-pressed="true"] .ui2-nav-lock-badge {
+  background: var(--ui2-bg-active);
+}
+/* the shield keeps the warning colour on hover: this out-specifies the tool hover */
+.ui2-nav-tool.ui2-pane-level[data-level="admin"],
+.ui2-nav-tool.ui2-pane-level[data-level="admin"]:hover:not(:disabled) {
+  color: var(--ui2-warning);
+}
+.ui2-pane-level[aria-expanded="true"] {
+  background: var(--ui2-bg-hover);
 }
 .ui2-nav-notice {
-  margin: 0 12px 8px;
+  flex: none;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 4px 6px;
+  padding: 6px 8px;
+  border-radius: var(--ui2-radius);
+  background: var(--ui2-bg-active);
   font-size: var(--ui2-small);
-  color: var(--ui2-fg-subtle);
+}
+.ui2-nav-notice > span {
+  flex: 1;
+}
+.ui2-nav-error {
+  flex: none;
+  margin: 0;
+  padding: 6px 8px;
+  color: var(--ui2-danger);
+}
+.ui2-nav-rows {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 }
 .ui2-nav ul {
   list-style: none;
   margin: 0;
   padding: 0;
+}
+.ui2-nav-tree {
+  flex: none;
+  padding-bottom: 4px !important;
+}
+/* the empty area under the last row: the bottom of the top level as a drop, its line on the top edge */
+.ui2-nav-tail {
+  flex: 1 0 24px;
+}
+.ui2-nav-tail.is-drop-after {
+  box-shadow: inset 0 2px 0 var(--ui2-accent);
 }
 .ui2-nav-row {
   display: flex;
@@ -149,7 +276,6 @@ h1 {
   padding-right: 10px;
   cursor: pointer;
   white-space: nowrap;
-  user-select: none;
 }
 .ui2-nav-row:hover {
   background: var(--ui2-bg-hover);
@@ -157,6 +283,21 @@ h1 {
 .ui2-nav-row.is-active {
   background: var(--ui2-bg-active);
   color: var(--ui2-fg-active);
+}
+/* the grab hand only on a row that can be dragged, which is only while arranging */
+.ui2-nav-row[draggable="true"] {
+  cursor: grab;
+}
+.ui2-nav-row.is-drop-after {
+  box-shadow: inset 0 -2px 0 var(--ui2-accent);
+}
+.ui2-nav-row.is-drop-before {
+  box-shadow: inset 0 2px 0 var(--ui2-accent);
+}
+.ui2-nav-row.is-drop-into {
+  outline: 1px solid var(--ui2-accent);
+  outline-offset: -1px;
+  background: var(--ui2-bg-active);
 }
 .ui2-nav-twisty {
   width: 16px;
@@ -172,6 +313,181 @@ h1 {
 .ui2-nav-marks {
   color: var(--ui2-fg-subtle);
   font-size: var(--ui2-small);
+}
+
+/* a row's menu and the toolbar's asks: drawn where the click was */
+.ui2-nav-menu {
+  position: fixed;
+  z-index: 50;
+  min-width: 180px;
+  max-width: calc(100vw - 8px);
+  display: flex;
+  flex-direction: column;
+  padding: 4px 0;
+  background: var(--ui2-bg);
+  border: 1px solid var(--ui2-border);
+  border-radius: var(--ui2-radius);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.16);
+}
+.ui2-nav-menu-item {
+  text-align: left;
+  padding: 4px 12px;
+  background: none;
+  border: 0;
+  color: var(--ui2-fg);
+  font: inherit;
+  cursor: pointer;
+}
+.ui2-nav-menu-item:hover:not(:disabled) {
+  background: var(--ui2-bg-hover);
+}
+.ui2-nav-menu-item:disabled {
+  color: var(--ui2-fg-subtle);
+  cursor: default;
+}
+.ui2-nav-menu-item.is-ok {
+  color: var(--ui2-link);
+}
+.ui2-nav-menu-ask {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px 10px;
+  width: 220px;
+}
+.ui2-nav-menu-title {
+  color: var(--ui2-fg-subtle);
+  font-size: var(--ui2-small);
+}
+.ui2-nav-menu-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+}
+.ui2-icon-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 28px);
+  gap: 2px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+.ui2-icon-grid-cell {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: var(--ui2-radius);
+  background: transparent;
+  color: var(--ui2-fg);
+}
+.ui2-icon-grid-cell:hover,
+.ui2-icon-grid-cell.is-current {
+  background: var(--ui2-bg-hover);
+}
+.ui2-icon-grid-cell.is-current {
+  outline: 1px solid var(--ui2-accent);
+}
+
+/* the pane's switcher: the name as a button — it ellipsises but keeps the chevron and a usable hit target */
+.ui2-pane-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex: 0 1 auto;
+  min-width: 30px;
+  max-width: 100%;
+  height: 24px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: var(--ui2-radius);
+  background: transparent;
+  color: var(--ui2-fg);
+  font: inherit;
+  font-weight: 600;
+}
+.ui2-pane-switch:hover,
+.ui2-pane-switch[aria-expanded="true"] {
+  background: var(--ui2-bg-hover);
+}
+.ui2-pane-switch-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ui2-pane-switch-chevron {
+  flex: none;
+  font-size: 12px !important;
+  color: var(--ui2-fg-subtle);
+}
+/* the pane's two toolbar menus (the switcher's, the level's): fixed, under their button, inside the window */
+.ui2-pane-menu {
+  position: fixed;
+  z-index: 60;
+  width: 220px;
+  max-width: calc(100vw - 8px);
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+  border: 1px solid var(--ui2-border);
+  border-radius: var(--ui2-radius);
+  background: var(--ui2-bg);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.16);
+  outline: none;
+}
+.ui2-pane-menu > button {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+  border: 0;
+  background: none;
+  color: var(--ui2-fg);
+  padding: 4px 8px;
+  border-radius: var(--ui2-radius);
+  font: inherit;
+}
+.ui2-pane-menu > button:hover,
+.ui2-pane-menu > button:focus-visible {
+  background: var(--ui2-bg-hover);
+  outline: none;
+}
+.ui2-pane-menu > button[aria-checked="true"] {
+  font-weight: 600;
+}
+.ui2-pane-menu > .ui2-pane-switch-settings {
+  border-top: 1px solid var(--ui2-border);
+  border-radius: 0;
+  margin-top: 2px;
+  padding-top: 6px;
+}
+.ui2-pane-menu-hint,
+.ui2-pane-menu-muted,
+.ui2-pane-menu-notice {
+  color: var(--ui2-fg-subtle);
+  margin: 0;
+}
+.ui2-pane-menu-hint {
+  padding: 4px 8px;
+  border-top: 1px solid var(--ui2-border);
+}
+.ui2-pane-menu-notice {
+  padding: 4px 8px 6px;
+  border-bottom: 1px solid var(--ui2-border);
+}
+.ui2-pane-menu-error {
+  margin: 0;
+  padding: 4px 8px;
+  color: var(--ui2-danger);
+}
+
+/* the browse's "created here" line: the selection widened to the root a new record was saved to */
+.ui2-browse-created {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 /* ---- pages ---------------------------------------------------------------------------------- */

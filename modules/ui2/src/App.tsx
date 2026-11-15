@@ -4,10 +4,14 @@
  * `dt:invalidate`). A signed-out session draws one sentence instead.
  */
 import { Component, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
-import { getPresentation, notify } from "./api/client.ts"
+import { getPresentation, notify, request } from "./api/client.ts"
 import { AppContext, EMPTY_SCHEMA, useApp, useAsync, useSignal, type AppState } from "./app-context.tsx"
 import { Nav } from "./components/Nav.tsx"
-import { canEdit, hostInfo, SIGNED_OUT, signedOut } from "./lib/host.ts"
+import { canEdit, hostInfo, loadHost, paneHost, SIGNED_OUT, signedOut } from "./lib/host.ts"
+import { navHistory, peek, step, visit } from "./lib/nav-history.ts"
+import { placeOf, type PaneView } from "./lib/pane-place.ts"
+import { receiveSelect, startPaneReport } from "./lib/pane-report.ts"
+import { signal } from "./lib/signal.ts"
 import { mayLeave } from "./lib/leave-guard.ts"
 import { pageOf, pathOf } from "./lib/route.ts"
 import { loadUiViews, uiViews } from "./lib/ui-views.ts"
@@ -17,6 +21,9 @@ import { HomePage } from "./pages/HomePage.tsx"
 import { ListPage } from "./pages/ListPage.tsx"
 import { RecordPage } from "./pages/RecordPage.tsx"
 import { ViewPage } from "./pages/ViewPage.tsx"
+
+/** The page's place, in the shapes the pane reports (lib/pane-place.ts) — set on every route change. */
+const place = signal<PaneView>({ other: true })
 
 /** `onMounted` runs once, after the first commit: the message listener is in place, so the host's answer to
  *  `dt:mounted` (the route to show) cannot arrive before anything listens. */
@@ -35,10 +42,22 @@ export function App({ onMounted }: { onMounted?: () => void }) {
       const m = e.data as { type?: string; route?: unknown } | null
       if (m?.type === "dt:navigate" && typeof m.route === "string") {
         // a page with unsaved changes may refuse; the host's address (the hash) is put back
-        if (mayLeave(routeNow.current, m.route)) setRoute(m.route)
-        else notify("dt:route", { route: routeNow.current })
+        if (mayLeave(routeNow.current, m.route)) {
+          routeNow.current = m.route
+          navHistory.set(visit(navHistory.get(), m.route))
+          setRoute(m.route)
+        } else notify("dt:route", { route: routeNow.current })
       }
       if (m?.type === "dt:invalidate") setVersion(v => v + 1)
+      // cr-modules-017: the level, the chat flag or the files key changed on the server — ask GET /host again
+      if (m?.type === "dt:host") void loadHost(request)
+      // cr-modules-017 §5: the chat ticked rows (`dt web select`) — tick them here, on that collection's list
+      if (m?.type === "dt:select")
+        receiveSelect((m as { refs?: unknown }).refs, {
+          collections: namesNow.current,
+          here: place.get(),
+          navigate: navigateNow.current,
+        })
     }
     window.addEventListener("message", onMessage)
     // once, though StrictMode runs effects twice in development
@@ -53,23 +72,55 @@ export function App({ onMounted }: { onMounted?: () => void }) {
   const navigate = useCallback((to: string) => {
     if (!mayLeave(routeNow.current, to)) return
     routeNow.current = to
+    navHistory.set(visit(navHistory.get(), to))
     setRoute(to)
     notify("dt:route", { route: to })
   }, [])
+  const navigateNow = useRef(navigate)
+  navigateNow.current = navigate
+
+  const go = useCallback((delta: number) => {
+    const to = peek(navHistory.get(), delta)
+    if (to === null || !mayLeave(routeNow.current, to)) return
+    routeNow.current = to
+    navHistory.set(step(navHistory.get(), delta))
+    setRoute(to)
+    notify("dt:route", { route: to })
+  }, [])
+
+  // dev-loop handle: a driver reads which route this tab shows
+  useEffect(() => {
+    document.documentElement.dataset["dtRoute"] = route
+  }, [route])
 
   const presentation = useAsync(getPresentation, [version])
   // the ui-view table, re-read with everything else: a view's route is a page only once it is known
   useEffect(() => void loadUiViews(), [version])
   const schema = useMemo(() => (presentation.data ? buildSchema(presentation.data) : null), [presentation.data])
+  const views = useSignal(uiViews)
+  const names = schema?.names ?? EMPTY_SCHEMA.names
+  const namesNow = useRef(names)
+  namesNow.current = names
+  useEffect(() => {
+    // a re-read schema is a new object naming the same place: only a different place is a change to report
+    const next = placeOf(pageOf(route, names, views ?? []))
+    if (JSON.stringify(next) !== JSON.stringify(place.get())) place.set(next)
+  }, [route, names, views])
+
+  // cr-modules-017 §5: on a pane host the page reports its place and ticked rows to the server the chat's hook reads.
+  // GET /host answered before mount (main-browser), so a page that is not a pane host never starts the reporter.
+  const pane = paneHost(host)
+  useEffect(() => (pane ? startPaneReport({ place, request }) : undefined), [pane])
   const app: AppState = useMemo(
     () => ({
       route,
       navigate,
+      go,
       schema: schema ?? EMPTY_SCHEMA,
       editable: canEdit(host),
       version,
     }),
-    [route, navigate, schema, host, version]
+    [route, navigate, go, schema, host, version]
   )
 
   if (out) return <p className="ui2-signed-out">{SIGNED_OUT}</p>

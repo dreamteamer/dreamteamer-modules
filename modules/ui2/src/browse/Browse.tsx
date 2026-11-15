@@ -13,7 +13,7 @@
  * the component on what it consumed at the start (the collection's list block, its sources, the view record), so
  * a change to any of them remounts it.
  */
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useApp, useSignal } from "../app-context.tsx"
 import { Icon } from "../components/Icon.tsx"
 import { displayValue, filterToProse, operatorLabel, operatorTakesPair } from "../lib/filter-query.ts"
@@ -31,6 +31,9 @@ import { signal } from "../lib/signal.ts"
 import { lists } from "../registry/index.ts"
 import type { ListProps } from "../registry/props.ts"
 import { CommitButton } from "../components/CommitButton.tsx"
+import { SourceMark } from "../components/SourceMark.tsx"
+import { pageSelection, pushedIds, pushedSelection } from "../lib/pane-place.ts"
+import { RecordCommands } from "../record/RecordCommands.tsx"
 import { useBrowseState, type BrowseConfig, type BrowseState } from "./browse-state.ts"
 import { DensityMenu } from "./DensityMenu.tsx"
 import { FilterBuilder } from "./FilterBuilder.tsx"
@@ -41,6 +44,46 @@ import { usePopover } from "./use-popover.ts"
 
 /** The Layout options panel stays open across pages until closed — it is a working surface, not a dialog. */
 const optionsOpen = signal(false)
+/** So does the Commands panel: the commands bound to the collection, over the ticked rows. */
+const commandsOpen = signal(false)
+
+/**
+ * cr-modules-017 §5: the page's own browse publishes its ticked rows (the pane reporter sends them to the chat) and
+ * applies the chat's push (`dt:select`) — the ids of the refs in THIS collection; `[]` clears. A push is consumed by
+ * the list it was for, so it is not applied again when that list mounts later.
+ */
+function usePaneSelection(state: BrowseState, collection: string, embedded: boolean) {
+  const ids = [...state.selectedIds]
+  const key = ids.join("\n")
+  useEffect(() => {
+    if (!embedded) pageSelection.set({ collection, ids: key ? key.split("\n") : [] })
+  }, [collection, key, embedded])
+  useEffect(
+    () => () => {
+      if (!embedded && pageSelection.get()?.collection === collection) pageSelection.set(null)
+    },
+    [collection, embedded]
+  )
+  const push = useSignal(pushedSelection)
+  const { setSelection } = state
+  useEffect(() => {
+    if (embedded || !push) return
+    const mine = pushedIds(push, collection)
+    if (mine === null) return
+    setSelection(mine)
+    pushedSelection.set(null)
+  }, [push, collection, embedded, setSelection])
+}
+
+/** The selection, settled: one engine call per pause in the ticking, not one per tick. */
+function useSettled<T>(value: T, ms: number): T {
+  const [settled, setSettled] = useState(value)
+  useEffect(() => {
+    const t = setTimeout(() => setSettled(value), ms)
+    return () => clearTimeout(t)
+  }, [value, ms])
+  return settled
+}
 
 export function Browse({
   collection,
@@ -59,6 +102,9 @@ export function Browse({
   const state = useBrowseState(collection, config)
   const row = state.row
   const panelOpen = useSignal(optionsOpen)
+  const cmdsOpen = useSignal(commandsOpen)
+  usePaneSelection(state, collection, !!config?.embedded)
+  const selectedKey = useSettled([...state.selectedIds].join(","), 300)
   const filter = usePopover([state.filterOpen, state.setFilterOpen])
   const [sourcesOpen, setSourcesOpen] = useState(false)
 
@@ -223,6 +269,17 @@ export function Browse({
 
           <button
             type="button"
+            className={`ui2-button is-icon${cmdsOpen ? " is-active" : ""}`}
+            title="Commands — over the ticked rows"
+            aria-pressed={cmdsOpen}
+            data-commands-toggle
+            onClick={() => commandsOpen.set(!cmdsOpen)}
+          >
+            <Icon name="terminal" />
+          </button>
+
+          <button
+            type="button"
             className={`ui2-button is-icon${panelOpen ? " is-active" : ""}`}
             title="Layout options"
             aria-pressed={panelOpen}
@@ -286,6 +343,18 @@ export function Browse({
         </div>
       )}
 
+      {state.createdNotice && (
+        // a record just created from this list, which the Sources selection would have hidden: the selection
+        // widened to its root (`lib/created-visibility.ts`), said once
+        <p className="ui2-note ui2-browse-created" data-created-notice>
+          <span>Showing</span>
+          <SourceMark name={state.createdNotice.source} />
+          <span>too — the new record {state.createdNotice.id} was saved there.</span>
+          <button type="button" className="ui2-icon-button" title="Dismiss" onClick={state.dismissCreated}>
+            <Icon name="close" />
+          </button>
+        </p>
+      )}
       {state.error && <p className="ui2-error">{state.error}</p>}
       {state.unavailable && (
         <p className="ui2-note" data-unavailable>
@@ -323,6 +392,25 @@ export function Browse({
           <List {...listProps} />
           {!list.summarizes && <Pager state={state} />}
         </div>
+        {cmdsOpen && (
+          <aside className="ui2-layout-options ui2-browse-commands" aria-label="Commands">
+            <header className="ui2-lo-head">
+              <span className="ui2-lo-title">Commands</span>
+              <span className="ui2-subtle">
+                {state.selectedIds.size ? `${state.selectedIds.size} ticked` : "tick rows to run one on them"}
+              </span>
+              <button
+                type="button"
+                className="ui2-icon-button"
+                aria-label="Close commands"
+                onClick={() => commandsOpen.set(false)}
+              >
+                <Icon name="close" />
+              </button>
+            </header>
+            <RecordCommands collection={collection} ids={selectedKey ? selectedKey.split(",") : []} />
+          </aside>
+        )}
         {panelOpen && <LayoutOptions state={state} onClose={() => optionsOpen.set(false)} />}
       </div>
     </section>

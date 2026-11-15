@@ -18,6 +18,7 @@
  * it does not fill the page.
  */
 import { useEffect, useMemo, useState } from "react"
+import { rowContext } from "../lib/vscode-context.ts"
 import type { FieldRow } from "../api/types.ts"
 import type { Row } from "../api/client.ts"
 import { useApp, useSignal } from "../app-context.tsx"
@@ -154,6 +155,7 @@ export function ListCards({ state }: ListProps) {
                     key={`${String(r["$source"] ?? "")}/${r.id}`}
                     className={`ui2-record-card ui2-cards-card${tint ? " is-tinted" : ""}`}
                     style={tint}
+                    data-vscode-context={rowContext(state.collection, r.id)}
                     onClick={() => state.openRecord(r)}
                   >
                     {selfImaged ? (
