@@ -20,6 +20,7 @@
 import { computed, onBeforeUnmount, watch } from 'vue';
 import { useSidebarStore } from '../composables/page-sidebar';
 import DtIcon from './DtIcon.vue';
+import { appShell } from '../lib/app-shell';
 
 const { sections, activeId, open, openSection, close } = useSidebarStore();
 
@@ -33,7 +34,7 @@ const active = computed(() => sections.value.find((section) => section.id === ac
  * the table's ticks while it is open. Escape closes it, unless a menu or a dialog is open and the Escape is theirs.
  * Inside VS Code it is the inline column it always was.
  */
-const overlay = (window as any).__DT_HOST__?.nav === 'app';
+const overlay = appShell;
 function onKey(e: KeyboardEvent) {
 	if (e.key !== 'Escape' || e.defaultPrevented || !open.value) return;
 	if (document.querySelector('[role="dialog"], [role="menu"], [role="listbox"], .dt-nav-menu, .dt-pane-menu')) return;

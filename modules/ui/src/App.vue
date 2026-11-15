@@ -10,6 +10,7 @@ import { onMounted, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import RightSidebar from './components/RightSidebar.vue';
 import AppNav from './components/AppNav.vue';
+import ToastHost from './components/ToastHost.vue';
 import { hostNotify, hostSetState } from './api/transport';
 import { loadUiViews } from './ui-views';
 import { refreshSchema } from './lib/schema-refresh';
@@ -109,6 +110,8 @@ onMounted(() => hostNotify('dt:ready'));
 			<router-view />
 		</main>
 		<RightSidebar />
+		<!-- the browser host's shell reports writes as toasts (cr-modules-022); the editor has its own notifications -->
+		<ToastHost v-if="appNav" />
 		<!-- cr-modules-017: a 401 from any request means the session is gone; the chat is where a person gets back in -->
 		<div v-if="signedOut" class="dt-signed-out" role="alert">
 			<p>{{ SIGNED_OUT }}</p>

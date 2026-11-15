@@ -21,6 +21,7 @@
  * Also adds batch-selection state (checkbox column + header-bar delete) — page/query-scoped, see
  * the watcher below.
  */
+import { reported } from '../lib/toasts';
 import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter, type RouteLocationRaw } from 'vue-router';
 import { api } from '../api/client';
@@ -686,7 +687,12 @@ export function useBrowseState(collection: string, rowTo?: (record: ItemRecord) 
 		if (!selectedIds.value.size) return;
 		deleting.value = true;
 		try {
-			await Promise.all([...selectedIds.value].map((id) => api.delete(`/items/${encodeURIComponent(collection)}/${encodeURIComponent(id)}`)));
+			const ids = [...selectedIds.value];
+			await reported(
+				() => Promise.all(ids.map((id) => api.delete(`/items/${encodeURIComponent(collection)}/${encodeURIComponent(id)}`))),
+				ids.length === 1 ? 'Record deleted' : `${ids.length} records deleted`,
+				'Not every record was deleted',
+			);
 			clearSelection();
 			await items.reload();
 		} finally {

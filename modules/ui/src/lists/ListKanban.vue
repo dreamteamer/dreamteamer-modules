@@ -43,6 +43,7 @@
 	card's own column only.
 -->
 <script setup lang="ts">
+import { reported } from '../lib/toasts';
 import { computed, ref } from 'vue';
 import type { BrowseState } from '../composables/browse-state';
 import { rowContext } from '../lib/vscode-context';
@@ -318,7 +319,11 @@ async function onDrop(column: Column): Promise<void> {
 	saving.value = true;
 	moveError.value = null;
 	try {
-		await api.patch(`/items/${encodeURIComponent(props.state.collection)}/${encodeURIComponent(pk)}`, { [field.field]: next });
+		await reported(
+			() => api.patch(`/items/${encodeURIComponent(props.state.collection)}/${encodeURIComponent(pk)}`, { [field.field]: next }),
+			`Moved to ${column.ungrouped ? `no ${field.field}` : column.value}`,
+			'The card was not moved',
+		);
 		await props.state.items.reload();
 	} catch (error) {
 		// The engine validates on write, so a rejected move is real information (a required field, a
