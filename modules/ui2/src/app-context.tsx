@@ -15,6 +15,9 @@ export interface AppState {
   schema: Schema
   editable: boolean
   version: number
+  /** Re-read everything keyed on `version` now — what a schema write calls once the host has compiled and
+   *  committed, rather than waiting for the host's `dt:invalidate` (a host that watches no files sends none). */
+  refresh(): void
 }
 
 export const AppContext = createContext<AppState | null>(null)
@@ -26,6 +29,15 @@ export function useApp(): AppState {
   if (!app) throw new Error("ui2: useApp outside <App>")
   return app
 }
+
+/**
+ * Where the open page's records live in the route space — `/content` everywhere but inside the Schema tab, whose
+ * generic browse keeps a row it opens in the tab (`/settings/schema/<kind>/<id>`) and the system browse
+ * (`/settings/system/…`). A list or record page builds its links with it (`listRoute(c, base)`).
+ */
+export const RouteBase = createContext("/content")
+
+export const useRouteBase = (): string => useContext(RouteBase)
 
 export function useSignal<T>(s: Signal<T>): T {
   return useSyncExternalStore(s.subscribe, s.get, s.get)

@@ -35,6 +35,7 @@ import { EditSelect } from "../edits/EditSelect.tsx"
 import { EditSlider } from "../edits/EditSlider.tsx"
 import { EditTags } from "../edits/EditTags.tsx"
 import { EditTextarea } from "../edits/EditTextarea.tsx"
+import { DataModelRecord } from "../record/DataModelRecord.tsx"
 import { RecordForm } from "../record/RecordForm.tsx"
 import { RecordProperties } from "../record/RecordProperties.tsx"
 import { ViewBoolean } from "../views/ViewBoolean.tsx"
@@ -129,6 +130,9 @@ edits.register({ id: "properties", name: "Properties", component: RecordProperti
 views.register({ id: "properties", name: "Properties", component: RecordProperties, types: [], scope: "record" })
 edits.register({ id: "form", name: "Form", component: RecordForm, types: [], scope: "record" })
 views.register({ id: "doc", name: "Doc", component: RecordForm, types: [], scope: "record" })
+// a record of `collections` drawn as its designer (`display.record.layout: data-model`)
+edits.register({ id: "data-model", name: "Data model", component: DataModelRecord, types: [], scope: "record" })
+views.register({ id: "data-model", name: "Data model", component: DataModelRecord, types: [], scope: "record" })
 
 // ── options every list shares ────────────────────────────────────────────────────────────────────────────
 // GROUPING IS ONE CONCEPT WITH TWO AXES, NAMED FOR THE AXIS: `group_by` makes horizontal bands and every list has

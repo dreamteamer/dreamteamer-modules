@@ -13,17 +13,17 @@
  *    the page stays dirty, rather than reading as saved and reverting on the next compile.
  * SAVE AS… writes a NEW ui-view at `/views/<collection>/<slug>`, titled in the nav. The answer — the engine's
  * sentence verbatim and the one next action it implies (`lib/save-answer.ts`) — drops down under the buttons, in
- * view by construction.
- *
- * Not ported: ui's icon picker (the icon is typed) and its module picker (a new view lands in the workspace module,
- * the engine's default).
+ * view by construction. The form picks the view's icon (components/IconPicker.tsx) and the module it is written into
+ * (components/ViewModuleSelect.tsx — `?module=`, the workspace module by default).
  */
-import { useState, type DragEvent, type FormEvent } from "react"
+import { useMemo, useState, type DragEvent, type FormEvent } from "react"
 import { saveUiView, setCollectionKeys } from "../api/client.ts"
 import { useSignal } from "../app-context.tsx"
 import { Icon } from "../components/Icon.tsx"
+import { IconPicker } from "../components/IconPicker.tsx"
 import { Link } from "../components/Link.tsx"
 import { Select } from "../components/Select.tsx"
+import { ViewModuleSelect } from "../components/ViewModuleSelect.tsx"
 import { computedReason } from "../lib/field-row.ts"
 import { compileFilter } from "../lib/filter-query.ts"
 import { labelOf } from "../lib/format-title.ts"
@@ -34,9 +34,11 @@ import { SOURCE_FIELD } from "../lib/sources.ts"
 import { loadUiViews, uiViews } from "../lib/ui-views.ts"
 import { filterToWrite } from "../lib/view-filter.ts"
 import { collectionListWrite, namedViewWrite, newViewWrite, type ListPresentation } from "../lib/view-write.ts"
+import { viewModuleTargets } from "../lib/view-module-targets.ts"
 import { lists } from "../registry/index.ts"
 import { FieldContext } from "../render/FieldContext.tsx"
 import { OptionsForm } from "../render/OptionsForm.tsx"
+import { useModules } from "../settings/use-modules.ts"
 import type { BrowseState } from "./browse-state.ts"
 
 const lastAnswer = signal<{ key: string; a: SaveAnswer; route?: string } | null>(null)
@@ -62,6 +64,10 @@ export function LayoutOptions({ state, onClose }: { state: BrowseState; onClose(
   const setAnswer = (a: { a: SaveAnswer; route?: string } | null) => lastAnswer.set(a ? { ...a, key: answerKey } : null)
   const [name, setName] = useState("")
   const [icon, setIcon] = useState("")
+  /** Save as…'s module: `null` is the workspace module, the engine's default (no `?module=`). */
+  const [module, setModule] = useState<string | null>(null)
+  const { modules, workspaceModule } = useModules()
+  const targets = useMemo(() => viewModuleTargets(modules, workspaceModule), [modules, workspaceModule])
   const slug = slugify(name)
 
   /** What the screen contributes to a list block. `sort: ''` is written as such: explicitly unsorted.
@@ -117,7 +123,7 @@ export function LayoutOptions({ state, onClose }: { state: BrowseState; onClose(
         presentation(),
         compileFilter(state.filterGroup) ?? undefined
       )
-      await saveUiView(undefined, view)
+      await saveUiView(undefined, view, module ?? undefined)
       await loadUiViews()
       setFormOpen(false)
       setAnswer({ a: savedAnswer("new-view", undefined, { route: view.route }), route: view.route })
@@ -133,6 +139,7 @@ export function LayoutOptions({ state, onClose }: { state: BrowseState; onClose(
     setAnswer(null)
     setName("")
     setIcon("")
+    setModule(null)
     setFormOpen(true)
   }
 
@@ -218,12 +225,8 @@ export function LayoutOptions({ state, onClose }: { state: BrowseState; onClose(
                     aria-label="View name"
                     onChange={e => setName(e.target.value)}
                   />
-                  <input
-                    value={icon}
-                    placeholder="Icon (optional, a codicon name)"
-                    aria-label="View icon"
-                    onChange={e => setIcon(e.target.value)}
-                  />
+                  <IconPicker value={icon} onChange={setIcon} placeholder="Icon (optional)" />
+                  <ViewModuleSelect value={module} targets={targets} onChange={setModule} />
                   <p className="ui2-hint">
                     Appears in the nav
                     {slug && (

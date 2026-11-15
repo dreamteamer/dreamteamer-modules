@@ -22,9 +22,9 @@
  * A record whose root takes no write from here (`access: read`), or whose every field is computed, draws read
  * only, and says why. A re-read while edits are pending keeps the edits, and says the record changed under them.
  */
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { createRecord, getRecord, removeRecord, renameRecord, updateRecord, type RecordDoc } from "../api/client.ts"
-import { useApp, useAsync, useSignal } from "../app-context.tsx"
+import { useApp, useAsync, useRouteBase, useSignal } from "../app-context.tsx"
 import { usePopover } from "../browse/use-popover.ts"
 import { CommitButton } from "../components/CommitButton.tsx"
 import { Dialog } from "../components/Dialog.tsx"
@@ -89,8 +89,20 @@ function parsePrefill(raw: string | undefined): Record<string, unknown> {
 
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e))
 
-export function RecordPage({ collection, id, viewId }: { collection: string; id: string | null; viewId?: string }) {
+export function RecordPage({
+  collection,
+  id,
+  viewId,
+  after,
+}: {
+  collection: string
+  id: string | null
+  viewId?: string
+  /** Drawn under the record's body — what only some records have (a module's New collection…, a view's module). */
+  after?: ReactNode
+}) {
   const { schema, navigate, editable, version, route } = useApp()
+  const base = useRouteBase()
   const host = useSignal(hostInfo)
   const views = useSignal(uiViews)
   useSignal(referenceTitlesChanged)
@@ -237,14 +249,14 @@ export function RecordPage({ collection, id, viewId }: { collection: string; id:
         // the list it came from widens its Sources selection to show it (`lib/created-visibility.ts`)
         const root = saveRootFor(sources, target)?.name
         if (root && made.id) noteCreated({ collection, id: made.id, source: root })
-        go(recordRoute(collection, made.id))
+        go(recordRoute(collection, made.id, base))
         return
       }
       const out = await updateRecord(collection, id!, edits)
       setCommitSample(n => n + 1)
       // an id template the edit changed moves the record
       if (out?.id && out.id !== id) {
-        go(recordRoute(collection, out.id))
+        go(recordRoute(collection, out.id, base))
         return
       }
       setEdits({})
@@ -260,7 +272,7 @@ export function RecordPage({ collection, id, viewId }: { collection: string; id:
 
   const cancel = () => {
     if (create) {
-      navigate(listRoute(collection)) // the leave guard asks when there is something to lose
+      navigate(listRoute(collection, base)) // the leave guard asks when there is something to lose
       return
     }
     if (dirty && !confirm(DISCARD)) return
@@ -316,7 +328,7 @@ export function RecordPage({ collection, id, viewId }: { collection: string; id:
     setDialogError(null)
     try {
       await removeRecord(collection, id, force)
-      go(listRoute(collection))
+      go(listRoute(collection, base))
     } catch (err) {
       setReferenced(!force && isReferencedRefusal(err))
       setDialogError(message(err))
@@ -330,7 +342,7 @@ export function RecordPage({ collection, id, viewId }: { collection: string; id:
     setDialogError(null)
     try {
       await renameRecord(collection, id, newId.trim())
-      go(recordRoute(collection, newId.trim()))
+      go(recordRoute(collection, newId.trim(), base))
     } catch (err) {
       setDialogError(message(err))
     } finally {
@@ -453,7 +465,7 @@ export function RecordPage({ collection, id, viewId }: { collection: string; id:
       <RecordHeader
         icon={row?.nav.icon}
         title={title}
-        crumbs={pathCrumbs(collection, id)}
+        crumbs={pathCrumbs(collection, id, base)}
         commit={create ? null : commitInfo(record)}
         origin={origin}
         badge={
@@ -516,6 +528,7 @@ export function RecordPage({ collection, id, viewId }: { collection: string; id:
               <Layout {...layoutProps} />
             </ErrorBoundary>
           </form>
+          {!create && after}
         </div>
         {tabs.length > 0 && <RecordSidebar tabs={tabs} />}
       </div>
@@ -590,10 +603,11 @@ export function RecordPage({ collection, id, viewId }: { collection: string; id:
 
 function Problem({ collection, text }: { collection: string; text: string }) {
   const { schema } = useApp()
+  const base = useRouteBase()
   return (
     <section className="ui2-page">
       <p className="ui2-crumbs">
-        <Link to={listRoute(collection)}>{schema.collection(collection)?.title ?? collection}</Link>
+        <Link to={listRoute(collection, base)}>{schema.collection(collection)?.title ?? collection}</Link>
       </p>
       <p className="ui2-error">{text}</p>
     </section>

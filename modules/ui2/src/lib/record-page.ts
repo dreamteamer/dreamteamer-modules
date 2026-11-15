@@ -18,8 +18,8 @@ export interface Crumb {
  * 07 / kickoff`, the way a note's folder path reads. Only the collection links: an id's segments are folder
  * names inside it, not routes. A new record ends in `new`.
  */
-export function pathCrumbs(collection: string, id: string | null): Crumb[] {
-  const crumbs: Crumb[] = [{ label: collection, to: listRoute(collection) }]
+export function pathCrumbs(collection: string, id: string | null, base?: string): Crumb[] {
+  const crumbs: Crumb[] = [{ label: collection, to: listRoute(collection, base) }]
   if (id === null) return [...crumbs, { label: "new" }]
   for (const segment of id.split("/").filter(Boolean)) crumbs.push({ label: segment })
   return crumbs

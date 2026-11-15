@@ -8,10 +8,13 @@
  *
  * A collection name may hold `/` too (`lab/samples`), so the split is resolved against the collections the
  * workspace has, longest name first — `resolveContentPath`, copied from @dreamteamer/ui's lib/content-path.ts.
+ *   /settings/schema[/<kind>[/<id>]]  the Schema tab (settings/SchemaTab.tsx): `/settings/data-model[/<name>]`
+ *                                  folds into `/settings/schema/collections[/<name>]`, its query kept
+ *   /settings/system/<collection>[/<id>|/+]  a list or record kept under the settings prefix
  *   /<a ui-view's route>           a collection-scope ui-view (`/projects-board`): the collection's browse,
  *                                  seeded from the view
  *
- * Any other path (record and page views, settings, module apps) is a page this app does not draw yet. A query
+ * Any other path (page views, module apps) is a page this app does not draw yet. A query
  * (`?filter=…`) rides on any of them and never changes which page it is.
  */
 
@@ -40,9 +43,10 @@ export function resolveContentPath(rawPath: string, collections: readonly string
 
 export type Page =
   | { kind: "home" }
-  | { kind: "list"; collection: string }
-  | { kind: "record"; collection: string; id: string; viewId?: string }
-  | { kind: "create"; collection: string }
+  | { kind: "list"; collection: string; base?: string }
+  | { kind: "record"; collection: string; id: string; viewId?: string; base?: string }
+  | { kind: "create"; collection: string; base?: string }
+  | { kind: "settings"; tail: string }
   | { kind: "view"; id: string }
   | { kind: "unknown-collection"; path: string }
   | { kind: "unsupported"; route: string }
@@ -60,6 +64,8 @@ export interface ViewRoute {
 export function pageOf(route: string, collections: readonly string[], views: readonly ViewRoute[] = []): Page {
   const path = pathOf(route)
   if (path === "/" || path === "/content" || path === "/content/") return { kind: "home" }
+  const settings = settingsPage(path, collections)
+  if (settings) return settings
   if (!path.startsWith("/content/")) {
     const trimmed = path.replace(/\/+$/, "")
     const view = views.find(v => v.scope === "collection" && v.route === trimmed)
@@ -78,17 +84,51 @@ export function pageOf(route: string, collections: readonly string[], views: rea
       }
     return { kind: "unsupported", route }
   }
-  const rest = decodeURIComponent(path.slice("/content/".length))
-  const r = resolveContentPath(rest, collections)
-  if (!r.collection) return { kind: "unknown-collection", path: rest }
-  if (r.create) return { kind: "create", collection: r.collection }
-  if (r.id) return { kind: "record", collection: r.collection, id: r.id }
-  return { kind: "list", collection: r.collection }
+  return contentPage(decodeURIComponent(path.slice("/content/".length)), collections)
 }
 
-export const listRoute = (collection: string) => `/content/${collection}`
-export const recordRoute = (collection: string, id: string) => `/content/${collection}/${id}`
-export const createRoute = (collection: string) => `/content/${collection}/+`
+function contentPage(rest: string, collections: readonly string[], base?: string): Page {
+  const r = resolveContentPath(rest, collections)
+  const at = base ? { base } : {}
+  if (!r.collection) return { kind: "unknown-collection", path: rest }
+  if (r.create) return { kind: "create", collection: r.collection, ...at }
+  if (r.id) return { kind: "record", collection: r.collection, id: r.id, ...at }
+  return { kind: "list", collection: r.collection, ...at }
+}
+
+/** The routes under `/settings`: the Schema tab, and the system browse that keeps its own prefix. */
+export const SCHEMA_BASE = "/settings/schema"
+export const SYSTEM_BASE = "/settings/system"
+
+function settingsPage(path: string, collections: readonly string[]): Page | null {
+  const trimmed = path.replace(/\/+$/, "")
+  if (trimmed === "/settings" || trimmed === SCHEMA_BASE) return { kind: "settings", tail: "" }
+  if (trimmed.startsWith(`${SCHEMA_BASE}/`))
+    return { kind: "settings", tail: decodeURIComponent(trimmed.slice(SCHEMA_BASE.length + 1)) }
+  if (trimmed.startsWith(`${SYSTEM_BASE}/`))
+    return contentPage(decodeURIComponent(trimmed.slice(SYSTEM_BASE.length + 1)), collections, SYSTEM_BASE)
+  return null
+}
+
+/**
+ * `/settings/data-model[/<name>]` is the Schema tab's collections surface under its old address — ui keeps it as a
+ * redirect so every link it ever wrote still lands. The route it stands for, its query carried (`?field=` is a deep
+ * link into one field's drawer); null for any other route.
+ */
+export function settingsRedirect(route: string): string | null {
+  const path = pathOf(route)
+  const old = "/settings/data-model"
+  if (path !== old && !path.startsWith(`${old}/`)) return null
+  const q = route.indexOf("?")
+  return `${SCHEMA_BASE}/collections${path.slice(old.length)}${q < 0 ? "" : route.slice(q)}`
+}
+
+/** `base` is where a list's records live in the route space: `/content` by default; the Schema tab's generic
+ *  browse passes `/settings/schema`, so a row opened from it stays in the tab. */
+export const CONTENT_BASE = "/content"
+export const listRoute = (collection: string, base = CONTENT_BASE) => `${base}/${collection}`
+export const recordRoute = (collection: string, id: string, base = CONTENT_BASE) => `${base}/${collection}/${id}`
+export const createRoute = (collection: string, base = CONTENT_BASE) => `${base}/${collection}/+`
 
 /** The path of a route, without its query. */
 export const pathOf = (route: string): string => route.split("?")[0] || "/"

@@ -49,6 +49,9 @@ window `message` events. The app re-reads the nav, the schema and the open page 
 | `/content/<collection>/<id>` | the record page: its record layout, the commit line and source, Commands, Info and Revisions |
 | `/content/<collection>/+` | a new record |
 | `/<a record ui-view's route>/<id>` | a record drawn by a record-scope ui-view's `display.record` |
+| `/settings/schema[/<kind>[/<id>]]` | the Schema tab: Activity, every internal collection (modules, collections, skills, …), Sources |
+| `/settings/data-model[/<name>]` | the old address of the data model: lands on `/settings/schema/collections[/<name>]` |
+| `/settings/system/<collection>[/<id>]` | a list or record kept under the settings prefix |
 
 Routes are the same as `ui`'s. A collection or id holding `/` resolves against the workspace's collections.
 
@@ -135,17 +138,41 @@ can start from an existing record (**Start from existing…**), and takes `?pref
 list. When the host answers `GET /host` with level `read`, the page draws values and offers no edits; rename,
 restore and commit are offered at `admin` only.
 
+The Schema tab (`/settings/schema`, where the nav's workspace row lands) has a rail of kinds — Activity, every
+collection the engine marks internal (Modules and Collections first, each with its record count), Sources — and
+the kind's page beside it. `?module=<id>` narrows every count and list to that module (`$module`), with a banner
+whose ✕ widens it again. **Activity** is git history as named entries, grouped by day, paged, each with the
+records it touched (`GET /activity`, asked again while a repo is still being read). **Collections** is the data
+model: every collection by namespace, **New collection** (namespace, name, the mixins it starts from in the order
+ticked, an id template, an icon, the module it is written into), and per collection the **designer**: its
+fields as a grid, engine-held ones locked on top, the rest dragged to reorder (local only — the engine stores no
+order), each with Edit field, Hide, Rename field…, Rename value… and Delete. The field drawer has Field (type,
+description, required, editable, hidden surfaces, form section, placeholder, unit, direction, width), Edit and
+View (which registered Edit and View, and their own options — an enum's values are the `select-dropdown`
+choices) and, for a reference, Relationship: where the link is kept, two-way, at most one, the delete rule, the
+field on the other collection (checked live), the display template. Changes stage until **Save changes**, which
+writes one compile-gated op per field (`POST`/`PATCH`/`DELETE /fields/…`, the other side of a relation too) and
+reports what each did; a rename shows the engine's dry-run plan, then rewrites and commits at once. Delete
+collection asks for its name. `?field=<name>` opens one field. A record of `collections` can be drawn as the
+designer with `display.record.layout: data-model`. **Modules** lists them as `dt list modules` does; a module's
+record page adds **New collection in this module…**. **Sources** is the stack of roots — the workspace, each
+layer (installed or not), each module-owned collection, with their records — and what each remote grants, asked
+live (Re-check, Who has access). Every other kind is the ordinary browse and record page, kept inside the tab; a
+ui-view's record page has its **Module** dropdown, which moves the view's source. **Save as…** picks the new
+view's icon and module too.
+
 Not yet in `ui2`, all of which `ui` has: the other Lists — calendar, map, gantt, diagram, counts and carousel
-(a view naming one draws the table, and says so); page ui-views; the `data-model` record page and the record's
-stage map (`display.record.options.stages`); module apps; the schema editor and settings (and the remote-access mark of
-its Sources pane); note marks on rows and cards; file uploads. A route to one of these shows a line saying `ui2`
+(a view naming one draws the table, and says so); page ui-views (so a module page that names one draws the
+module's Activity); the record's stage map (`display.record.options.stages`); module apps; registering an
+unregistered folder and the source picker on the data model and module lists; note marks on rows and cards;
+file uploads. A route to one of these shows a line saying `ui2`
 doesn't draw it yet, and the nav still lists it.
 
 ## building and testing
 
 ```bash
 npm run build -w modules/ui2       # dist/lib and dist/app
-npm test -w modules/ui2            # routes, fields, filters, grouping, the board's moves, card templates, the record page's rules, the nav's gestures and history, the pane report, markdown, the API client
+npm test -w modules/ui2            # routes, fields, filters, grouping, the board's moves, card templates, the record page's rules, the nav's gestures and history, the pane report, the designer's writes, the settings pages, markdown, the API client
 npm run typecheck -w modules/ui2   # tsc, strict, over src/
 npm run ui2                        # from the repo root: the app from source, over a sample workspace
 ```

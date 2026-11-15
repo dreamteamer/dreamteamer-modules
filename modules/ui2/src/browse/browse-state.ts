@@ -24,7 +24,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { listRecords, removeRecord, type Row } from "../api/client.ts"
 import type { FieldRow, SourceEntry } from "../api/types.ts"
-import { useApp, useAsync } from "../app-context.tsx"
+import { useApp, useAsync, useRouteBase } from "../app-context.tsx"
 import { browseFields, moveItem, seedColumns, toggledSort } from "../lib/browse-fields.ts"
 import { DEFAULT_SORT } from "../lib/builtin-fields.ts"
 import { colorByFor, tintOf as tintFor, tintStyle } from "../lib/collection-display.ts"
@@ -68,6 +68,9 @@ export interface BrowseConfig {
    * it would widen the relation to the whole collection).
    */
   embedded?: boolean
+  /** A narrowing the page imposes, never the builder's — the Schema tab's module scope (`$module is <id>`):
+   *  anded under every query, drawn as no rule, so nothing in the browse can widen past it. */
+  scopeFilter?: Record<string, unknown>
 }
 
 /** Everything a view record stores. `filter: null` — the stored filter is not the builder's to speak for. */
@@ -90,6 +93,7 @@ const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T
 
 export function useBrowseState(collection: string, config: BrowseConfig = {}) {
   const { schema, route, navigate, version } = useApp()
+  const base = useRouteBase()
   const row = schema.collection(collection)
   const sources = row?.sources
   const fields = useMemo(
@@ -189,14 +193,16 @@ export function useBrowseState(collection: string, config: BrowseConfig = {}) {
    *  builder never held it — and every reference compared in the engine's `collection/id` form. */
   const filter = useMemo(() => {
     const compiled = compileFilter(filterGroup)
-    const base = opaque ? config.baseFilter : undefined
-    const both = base && compiled ? { _and: [base, compiled] } : (base ?? compiled)
+    const parts = [opaque ? config.baseFilter : undefined, config.scopeFilter, compiled].filter(
+      (f): f is Record<string, unknown> => !!f
+    )
+    const both = parts.length > 1 ? { _and: parts } : parts[0]
     if (!both) return undefined
     return normalizeFilterRefs(both, collection, (c, f) => {
       const field = schema.field(c, f)
       return field ? schema.target(field)?.collection : undefined
     }) as Record<string, unknown>
-  }, [filterGroup, opaque, config.baseFilter, collection, schema])
+  }, [filterGroup, opaque, config.baseFilter, config.scopeFilter, collection, schema])
 
   // page 1 again whenever what is asked changes — staying on page 7 of a new question shows rows that have
   // nothing to do with it
@@ -294,7 +300,7 @@ export function useBrowseState(collection: string, config: BrowseConfig = {}) {
   function openCreateForm(prefill: Record<string, unknown> | undefined, target: string | undefined): void {
     const picked = selectedSources(filterGroup)
     navigate(
-      withQuery(createRoute(collection), {
+      withQuery(createRoute(collection, base), {
         prefill: prefill && Object.keys(prefill).length ? JSON.stringify(prefill) : undefined,
         [SOURCES_QUERY]: picked.length ? picked.join(",") : undefined,
         [TARGET_QUERY]: target,
@@ -408,7 +414,7 @@ export function useBrowseState(collection: string, config: BrowseConfig = {}) {
     hasNext: page * limit < total,
     prevPage: () => page > 1 && setPage(page - 1),
     nextPage: () => page * limit < total && setPage(page + 1),
-    openRecord: (record: Row) => navigate(recordRoute(collection, record.id)),
+    openRecord: (record: Row) => navigate(recordRoute(collection, record.id, base)),
     recordTitleOf: (record: Row) => recordLabel(row, record, record.id),
     colorBy,
     tintOf: (record: Row) => tintStyle(tintFor(colorBy, fields, record)),

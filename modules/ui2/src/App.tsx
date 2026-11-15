@@ -5,7 +5,7 @@
  */
 import { Component, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { getPresentation, notify, request } from "./api/client.ts"
-import { AppContext, EMPTY_SCHEMA, useApp, useAsync, useSignal, type AppState } from "./app-context.tsx"
+import { AppContext, EMPTY_SCHEMA, RouteBase, useApp, useAsync, useSignal, type AppState } from "./app-context.tsx"
 import { Nav } from "./components/Nav.tsx"
 import { canEdit, hostInfo, loadHost, paneHost, SIGNED_OUT, signedOut } from "./lib/host.ts"
 import { navHistory, peek, step, visit } from "./lib/nav-history.ts"
@@ -13,7 +13,7 @@ import { placeOf, type PaneView } from "./lib/pane-place.ts"
 import { receiveSelect, startPaneReport } from "./lib/pane-report.ts"
 import { signal } from "./lib/signal.ts"
 import { mayLeave } from "./lib/leave-guard.ts"
-import { pageOf, pathOf } from "./lib/route.ts"
+import { pageOf, pathOf, settingsRedirect } from "./lib/route.ts"
 import { loadUiViews, uiViews } from "./lib/ui-views.ts"
 import { buildSchema } from "./lib/schema.ts"
 import "./registry/register-defaults.ts"
@@ -21,6 +21,7 @@ import { HomePage } from "./pages/HomePage.tsx"
 import { ListPage } from "./pages/ListPage.tsx"
 import { RecordPage } from "./pages/RecordPage.tsx"
 import { ViewPage } from "./pages/ViewPage.tsx"
+import { SchemaTab } from "./settings/SchemaTab.tsx"
 
 /** The page's place, in the shapes the pane reports (lib/pane-place.ts) — set on every route change. */
 const place = signal<PaneView>({ other: true })
@@ -41,11 +42,13 @@ export function App({ onMounted }: { onMounted?: () => void }) {
     const onMessage = (e: MessageEvent) => {
       const m = e.data as { type?: string; route?: unknown } | null
       if (m?.type === "dt:navigate" && typeof m.route === "string") {
+        // an old address (`/settings/data-model/…`) lands where it moved
+        const to = settingsRedirect(m.route) ?? m.route
         // a page with unsaved changes may refuse; the host's address (the hash) is put back
-        if (mayLeave(routeNow.current, m.route)) {
-          routeNow.current = m.route
-          navHistory.set(visit(navHistory.get(), m.route))
-          setRoute(m.route)
+        if (mayLeave(routeNow.current, to)) {
+          routeNow.current = to
+          navHistory.set(visit(navHistory.get(), to))
+          setRoute(to)
         } else notify("dt:route", { route: routeNow.current })
       }
       if (m?.type === "dt:invalidate") setVersion(v => v + 1)
@@ -69,7 +72,8 @@ export function App({ onMounted }: { onMounted?: () => void }) {
     return () => window.removeEventListener("message", onMessage)
   }, [onMounted])
 
-  const navigate = useCallback((to: string) => {
+  const navigate = useCallback((wanted: string) => {
+    const to = settingsRedirect(wanted) ?? wanted
     if (!mayLeave(routeNow.current, to)) return
     routeNow.current = to
     navHistory.set(visit(navHistory.get(), to))
@@ -119,6 +123,7 @@ export function App({ onMounted }: { onMounted?: () => void }) {
       schema: schema ?? EMPTY_SCHEMA,
       editable: canEdit(host),
       version,
+      refresh: () => setVersion(v => v + 1),
     }),
     [route, navigate, go, schema, host, version]
   )
@@ -151,11 +156,25 @@ function Page() {
     case "home":
       return <HomePage />
     case "list":
-      return <ListPage collection={page.collection} />
+      return (
+        <RouteBase.Provider value={page.base ?? "/content"}>
+          <ListPage collection={page.collection} />
+        </RouteBase.Provider>
+      )
     case "record":
-      return <RecordPage collection={page.collection} id={page.id} viewId={page.viewId} />
+      return (
+        <RouteBase.Provider value={page.base ?? "/content"}>
+          <RecordPage collection={page.collection} id={page.id} viewId={page.viewId} />
+        </RouteBase.Provider>
+      )
     case "create":
-      return <RecordPage collection={page.collection} id={null} />
+      return (
+        <RouteBase.Provider value={page.base ?? "/content"}>
+          <RecordPage collection={page.collection} id={null} />
+        </RouteBase.Provider>
+      )
+    case "settings":
+      return <SchemaTab tail={page.tail} />
     case "view":
       return <ViewPage id={page.id} />
     case "unknown-collection":

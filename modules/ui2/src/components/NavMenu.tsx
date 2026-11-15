@@ -4,16 +4,11 @@
  * it is picked. What an entry DOES is lib/nav-tree.ts's: this component only says which entry, and with what value.
  * A toolbar button that IS one entry (New folder, Show hidden…) opens the menu straight at that entry's ask (`start`).
  *
- * ui asks for an icon with its IconPicker; ui2 has none yet, so the ask here is a small searchable grid over the
- * codicon names (lib/icon-names.ts) — the same names, the same Clear icon.
+ * The icon ask is a search box over components/IconPicker.tsx's `IconGrid` — the grid the IconPicker draws.
  */
-import { useEffect, useMemo, useRef, useState } from "react"
-import { ALL_ICONS, COMMON_ICONS } from "../lib/icon-names.ts"
+import { useEffect, useRef, useState } from "react"
 import type { NavMenuItem } from "../lib/nav-tree.ts"
-import { Icon } from "./Icon.tsx"
-
-/** At most this many icons are drawn for a search, so one letter never paints the whole font. */
-const MAX_ICONS = 96
+import { IconGrid } from "./IconPicker.tsx"
 
 export function NavMenu({
   x,
@@ -145,39 +140,6 @@ export function NavMenu({
           </div>
         </div>
       )}
-    </div>
-  )
-}
-
-function IconGrid({ query, current, onPick }: { query: string; current?: string; onPick: (name: string) => void }) {
-  const names = useMemo(() => {
-    const q = query
-      .trim()
-      .toLowerCase()
-      .replace(/[\s_]+/g, "-")
-    if (!q) return COMMON_ICONS
-    // prefix matches first — "cal" leads with `calendar`
-    const starts = ALL_ICONS.filter(n => n.startsWith(q))
-    const contains = ALL_ICONS.filter(n => !n.startsWith(q) && n.includes(q))
-    return [...starts, ...contains].slice(0, MAX_ICONS)
-  }, [query])
-  return (
-    <div className="ui2-icon-grid" role="listbox" aria-label="Icons">
-      {names.map(name => (
-        <button
-          key={name}
-          type="button"
-          role="option"
-          aria-selected={name === current}
-          className={`ui2-icon-grid-cell${name === current ? " is-current" : ""}`}
-          title={name}
-          data-icon={name}
-          onClick={() => onPick(name)}
-        >
-          <Icon name={name} />
-        </button>
-      ))}
-      {names.length === 0 && <p className="ui2-subtle">No icon matches.</p>}
     </div>
   )
 }

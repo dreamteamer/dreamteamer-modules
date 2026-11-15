@@ -215,3 +215,104 @@ export const setCollectionKeys = (collection: string, changes: Record<string, un
     string,
     unknown
   > | null>
+
+// ---- schema writes ----------------------------------------------------------------------------------------
+// Each is a compile-gated SOURCE write host-side: the engine writes the descriptor, proves it with a real compile
+// (400 with the compiler's own sentence, the source restored), commits, and reloads. ⚠ A selector rides in the
+// QUERY (`?module=<id>` — which module's source a write lands in); a `module` in a BODY is a value being written
+// (the move). The two never blur.
+
+const selector = (module?: string | null) => (module ? `?module=${encodeURIComponent(module)}` : "")
+const fieldsPath = (collection: string, field?: string) =>
+  `/fields/${encName(collection)}${field ? `/${encName(field)}` : ""}`
+const dryRunQuery = (dryRun?: boolean) => (dryRun ? "?dry-run=true" : "")
+
+/** `GET /info` — the workspace as the host loaded it; `modules` is the manifest's (where each module came from). */
+export interface HostWorkspace {
+  name?: string
+  modules?: Array<{ name?: string; location?: string; channel?: string; path?: string; root?: string }>
+  workspace_module?: string | null
+  user?: string | null
+}
+export const getInfo = () => request("GET", "/info") as Promise<HostWorkspace>
+
+/** A collection's descriptor as its source authored it — the `collections` record's own fields (`fields` is the
+ *  authored field map). */
+export const getCollectionSource = (collection: string) => getRecord("collections", collection).then(doc => doc.fields)
+
+/** `POST /collections/collections/records[?module=]` — a new collection (`lib/create-collection.ts` builds the body). */
+export const createCollection = (body: Record<string, unknown>, module?: string | null) =>
+  request("POST", `/collections/collections/records${selector(module)}`, body) as Promise<unknown>
+
+export const deleteCollection = (collection: string) =>
+  request("DELETE", `/collections/collections/records/${encName(collection)}`) as Promise<unknown>
+
+/** A whole v2 field (`lib/field-def.ts`): a new one. */
+export const createField = (collection: string, name: string, field: Record<string, unknown>) =>
+  request("POST", fieldsPath(collection), { name, field }) as Promise<unknown>
+
+/** A whole v2 field REPLACES the one in the source that declares it. */
+export const updateField = (collection: string, name: string, field: Record<string, unknown>) =>
+  request("PATCH", fieldsPath(collection, name), { field }) as Promise<unknown>
+
+/** The CLI's flag vocabulary (`{ name, type, unique, "mirror-of" }`) — `type` may name a collection. */
+export const createFieldFlags = (collection: string, flags: Record<string, unknown>) =>
+  request("POST", fieldsPath(collection), flags) as Promise<unknown>
+
+/** Flags restate only what they name over the field as declared — the safe write on ANOTHER collection's field. */
+export const updateFieldFlags = (collection: string, field: string, flags: Record<string, unknown>) =>
+  request("PATCH", fieldsPath(collection, field), flags) as Promise<unknown>
+
+/** Remove a field; its values go with it, in the same commit. `cleared` counts the records touched. */
+export const deleteField = (collection: string, field: string) =>
+  request("DELETE", fieldsPath(collection, field)) as Promise<{ cleared?: number } | null>
+
+/** Rename a field in every record, descriptor, view and binding that names it; `dryRun` answers the plan. */
+export const renameField = (collection: string, field: string, to: string, dryRun?: boolean) =>
+  request("POST", `${fieldsPath(collection, field)}/rename${dryRunQuery(dryRun)}`, { to }) as Promise<Record<
+    string,
+    unknown
+  > | null>
+
+/** Rename one enum value in every record and descriptor; `dryRun` answers the plan. */
+export const renameFieldValue = (collection: string, field: string, from: string, to: string, dryRun?: boolean) =>
+  request("POST", `${fieldsPath(collection, field)}/rename-value${dryRunQuery(dryRun)}`, {
+    from,
+    to,
+  }) as Promise<Record<string, unknown> | null>
+
+/** MOVE a view's source to another module — `module` in the BODY is the value written. */
+export const moveUiView = (id: string, module: string) =>
+  request("PATCH", `/collections/ui-views/records/${encName(id)}`, { module }) as Promise<Record<
+    string,
+    unknown
+  > | null>
+
+// ---- sources and activity ---------------------------------------------------------------------------------
+
+export const getSources = () => request("GET", "/sources") as Promise<import("../lib/sources-stack.ts").SourceStack>
+
+export const getSourcesAccess = (fresh = false) =>
+  request("GET", `/sources/access${fresh ? "?fresh=1" : ""}`) as Promise<{
+    available: boolean
+    access: Record<string, import("./types.ts").OwnAccess>
+  }>
+
+export const getSourceMembers = (source: string) =>
+  request("GET", `/sources/access/members?source=${encodeURIComponent(source)}`) as Promise<
+    import("./types.ts").RemoteMembers
+  >
+
+export const getActivity = (q: {
+  module?: string
+  source?: string
+  limit: number
+  offset: number
+  settled?: number
+}) => {
+  const p = new URLSearchParams({ limit: String(q.limit), offset: String(q.offset) })
+  if (q.module) p.set("module", q.module)
+  if (q.source) p.set("source", q.source)
+  if (q.settled !== undefined) p.set("settled", String(q.settled))
+  return request("GET", `/activity?${p}`) as Promise<import("../lib/activity.ts").Activity>
+}
