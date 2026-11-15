@@ -19,12 +19,16 @@ const COMMAND = 'npx -p @dreamteamer/protocol@0.3 dt-nav migrate';
 const FIRST_WITH_DT_NAV = [0, 3];
 const TEXT = /\.(md|js|mjs|cjs|ts|json|yaml|yml|vue|html|css|sh|txt)$/;
 
-/** Every text file each package ships, as `{ pkg, file, abs }`, from `npm pack --dry-run --json --workspaces`. */
+/** Every text file each package ships, as `{ pkg, file, abs }`, from `npm pack --dry-run --json --workspaces`.
+ *  ⚠ Less @dreamteamer/ui's `dist/`: gitignored build output of the `src/` this scan reads, and rebuilt (vite
+ *  `emptyOutDir`) by modules/ui/test/tarball.test.mjs in the same run — read while it is emptied, a listed file is
+ *  gone and the scan fails on ENOENT though nothing changed (code review finding scan-races-ui-rebuild; reproduced
+ *  2 of 42 scans beside a build). The leak gate leaves it out for the same reason. */
 const shipped = (() => {
 	let cache;
 	return () => (cache ??= JSON.parse(execFileSync('npm', ['pack', '--dry-run', '--json', '--workspaces'], { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }))
 		.flatMap((p) => p.files.map((f) => ({ pkg: p.name, file: f.path, abs: path.join(ROOT, 'modules', p.name.replace(/^@dreamteamer\//, ''), f.path) })))
-		.filter((f) => TEXT.test(f.file)));
+		.filter((f) => TEXT.test(f.file) && !(f.pkg === '@dreamteamer/ui' && f.file.startsWith('dist/'))));
 })();
 /** Each shipped line matching `re`, as `<package>:<file>:<line>: <text>`. */
 const lines = (re, keep = () => true) => {

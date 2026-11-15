@@ -28,7 +28,8 @@ matchRoute('GET', '/collections/lab%2Fsamples/records/2026/11/a');
 The nav migration command names a protocol version npm holds. The `409` both nav write routes answer while the old
 nav settings stand unmigrated, `dt-nav`'s usage line, this README and PROTOCOL.md now say
 `npx -p @dreamteamer/protocol@0.3 dt-nav migrate`; the version they named was never published, so the command they
-printed could not run. Nothing else changes.
+printed could not run. The contract suite's check message about group nodes names protocol 0.3 for the same reason.
+Nothing else changes.
 
 - A workspace that installs `@dreamteamer/protocol` itself: `npx dreamteamer update @dreamteamer/protocol`.
 - A workspace that has it only through `@dreamteamer/http` (`dt serve`) or `@dreamteamer/web` (`dt web`), which take
