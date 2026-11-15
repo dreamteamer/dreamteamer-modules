@@ -109,8 +109,9 @@ cross-root duplicate fingerprint), `proposed_id`, `name`, `name_is_transliterate
 **What the script deliberately will not decide:**
 
 - **a Hebrew or garbled name.** `name_is_transliterated: true` means the slug came from a character
-  map, not a translation. Write `name` as `<original> (English gloss)` the way `fetching-meetings`
-  does for Hebrew titles — the slug in the id stays the transliteration.
+  map, not a translation. Write `name` in the original script followed by an English gloss —
+  `<original> (English gloss)`, as the calendar sync writes it for a Hebrew meeting title — and the
+  slug in the id stays the transliteration.
 - **whether `confident: false` is acceptable.** That means no date was parseable and the file's mtime
   was used. Keep it, but set `confidence: low` and say so in `creation_context`.
 - **whether a file is worth a record at all.** A 1–2 minute recording is usually a false start. Ask

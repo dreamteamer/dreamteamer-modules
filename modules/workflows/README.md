@@ -69,9 +69,19 @@ any record: `dt commit workflows/<id>`.
 - `customer-factory` (this module) — from the week's calls to its leads: calendar, recordings,
   transcripts, summaries of client calls, contacts stamped and new people enriched, selling calls
   critiqued, engagements brought level, companies met with no engagement offered as **suggested
-  engagements**, and the coming client calls prepped. Every command it names is in core.
+  engagements**, and the coming client calls prepped. All but two of the commands it names are in core:
+  "sync the calendar" (`/fetch-meetings`) needs `@dreamteamer/connectors-google-workspace` and
+  "enrich the new people" (`/scrape-contact`) needs `@dreamteamer/connectors-linkedin`; without them
+  `install` refuses, naming the missing command — install the connector or drop the step from your copy.
 - `software-factory` ships with `@dreamteamer/rnd`, whose commands it mostly runs: the same meeting
   intake, then references, change requests, design, review, prototype, plan, build, test and deploy.
+
+## 0.1.3 — customer-factory names the connectors two of its steps need (cr-modules-018)
+
+Wording only; nothing to do. From core 0.13.0 the calendar sync and the LinkedIn scraper are not in core: the
+customer-factory body and this README say that "sync the calendar" needs `@dreamteamer/connectors-google-workspace`
+and "enrich the new people" needs `@dreamteamer/connectors-linkedin`. The steps are unchanged, and an installed copy
+keeps working wherever both connectors are installed.
 
 ## 0.1.2 — the nav is nav.yaml (cr-dt-008)
 

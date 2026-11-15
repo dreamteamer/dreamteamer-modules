@@ -117,18 +117,27 @@ for (const w of shipped) {
 // a command is looked up in the module that ships it; core is a module preset, so "core installs it" means
 // a member of core's preset (or one of their dependencies) ships it
 const CORE_SET = closure('core');
+// from core 0.13.0 (cr-modules-018) the calendar sync and the LinkedIn scraper ship in these two connectors, not
+// in core; a workflow step that runs one is installed only where its connector is, and the installer refuses
+// the workflow otherwise, naming the command
+const CONNECTORS = new Set(['connectors-google-workspace', 'connectors-linkedin']);
 
-test('customer-factory names only commands a member of core ships, so core installs it alone', () => {
-	for (const s of shipped.find((w) => w.module === 'workflows').doc.steps.filter((x) => x.command)) {
+test('customer-factory names only commands a member of core ships, or a connector its body names', () => {
+	const w = shipped.find((x) => x.module === 'workflows');
+	const body = w.text.split(/^---\s*$/m).slice(2).join('---');
+	for (const s of w.doc.steps.filter((x) => x.command)) {
 		const by = COMMANDS.get(s.command.replace(/^commands\//, '')) ?? [];
-		assert.ok(by.some((m) => CORE_SET.has(m)), `${s.command} is shipped by ${by.join(', ') || 'no module'}, none of them in core`);
+		if (by.some((m) => CORE_SET.has(m))) continue;
+		const connector = by.find((m) => CONNECTORS.has(m));
+		assert.ok(connector, `${s.command} is shipped by ${by.join(', ') || 'no module'}, neither in core nor a connector`);
+		assert.ok(body.includes(`@dreamteamer/${connector}`), `step "${s.name}" needs @dreamteamer/${connector}, and the body does not say so`);
 	}
 });
 
-test('software-factory names only commands core or rnd ship — the pair it installs into', () => {
+test('software-factory names only commands core, rnd or a connector ship — the pair it installs into, plus the sync', () => {
 	for (const s of shipped.find((w) => w.id === 'software-factory').doc.steps.filter((x) => x.command)) {
 		const by = COMMANDS.get(s.command.replace(/^commands\//, '')) ?? [];
-		assert.ok(by.some((m) => CORE_SET.has(m) || m === 'rnd'), `${s.command} is shipped by ${by.join(', ') || 'no module'}, in neither core nor rnd`);
+		assert.ok(by.some((m) => CORE_SET.has(m) || m === 'rnd' || CONNECTORS.has(m)), `${s.command} is shipped by ${by.join(', ') || 'no module'}, in neither core, rnd nor a connector`);
 	}
 });
 

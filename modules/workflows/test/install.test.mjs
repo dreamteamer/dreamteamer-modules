@@ -122,9 +122,22 @@ describe('on the real engine, from the packed tarball', () => {
 		assert.ok(!fs.existsSync(path.join(root, 'data', 'workflows', 'customer-factory.workflow.md')));
 	});
 
-	test('beside the meeting modules: installed, dt check clean, its sets list, and dt next answers its steps', () => {
+	// from core 0.13.0 (cr-modules-018) the calendar sync and the scraper are not in core: "sync the calendar" and
+	// "enrich the new people" need the two connectors, and without them the install refuses naming exactly those
+	test('beside the meeting modules but no connector: refused, naming /fetch-meetings and /scrape-contact only', () => {
 		const root = virginWorkspace();
 		installPacked(root, ['workflows', ...MEETING_MODULES]);
+		fs.writeFileSync(path.join(root, 'package-lock.json'), '{}');
+		compileAndCheck(root);
+		const r = tool(root, 'install', 'customer-factory');
+		assert.equal(r.status, 1, r.stdout + r.stderr);
+		assert.match(r.stderr, /names commands\/fetch-meetings, commands\/scrape-contact, which this workspace has not compiled/);
+		assert.ok(!fs.existsSync(path.join(root, 'data', 'workflows', 'customer-factory.workflow.md')));
+	});
+
+	test('beside the meeting modules and both connectors: installed, dt check clean, its sets list, and dt next answers its steps', () => {
+		const root = virginWorkspace();
+		installPacked(root, ['workflows', ...MEETING_MODULES, 'connectors-google-workspace', 'connectors-linkedin']);
 		fs.writeFileSync(path.join(root, 'package-lock.json'), '{}');
 		compileAndCheck(root);
 		const listed = tool(root, 'list');

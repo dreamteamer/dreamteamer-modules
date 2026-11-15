@@ -12,6 +12,7 @@ it records, walking this ladder and **stopping at the first hit**:
    evidence; a 20 min gap is not a match). if two meetings fit, **show both and ask** — never guess.
 2. **not in the workspace.** load `fetching-meetings` and sync that single date first: the event may exist
    on a calendar nobody has snapshotted yet. then retry step 1.
+   When the `fetching-meetings` skill is not installed (it ships with `@dreamteamer/connectors-google-workspace`), go to rung 3 and say why.
 3. **still nothing.** create a **shim** meeting: `origin: recording`, `confidence: low`,
    `source: meeting-recordings/<id>`, `creation_context` saying no calendar event was found and that
    date/participants are estimated from the recording filename, `starts` from the recording's `date`
