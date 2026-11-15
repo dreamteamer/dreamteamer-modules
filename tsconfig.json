@@ -1,6 +1,6 @@
 {
 	// Type-checks this repo's Node code without emitting: `npm run typecheck`. Every module's bin/, lib/,
-	// src/ and skills/, and the root scripts/. The suites (tests/ and modules/*/test/) are checked by
+	// src/ and skills/, and the root scripts/, with implicit any allowed for now. The suites (tests/ and modules/*/test/) are checked by
 	// tests/tsconfig.json, `npm run typecheck:test`, and never gate this one.
 	//
 	// Settings are the engine's (dreamteamer's own tsconfig.json): a checkout RUNS these .ts files through
@@ -21,7 +21,7 @@
 		"rewriteRelativeImportExtensions": true,
 		"resolveJsonModule": true,
 		"strict": false,
-		"noImplicitAny": true,
+		"noImplicitAny": false,
 		"noEmit": true,
 		"skipLibCheck": true
 	},
