@@ -21,5 +21,10 @@
 	"dreamteamer": {
 		"harnesses": [],
 		"gitignore_runtime_folder": true
+	},
+	"allowScripts": {
+		"vue-demi@0.14.10": true,
+		"esbuild@0.28.2": true,
+		"fsevents@2.3.3": true
 	}
 }
