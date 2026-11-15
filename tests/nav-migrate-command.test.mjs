@@ -1,0 +1,68 @@
+// THE NAV MIGRATION COMMAND NAMES A PROTOCOL NPM HOLDS (rnd/tests dreamteamer-modules/nav-migrate-command-names-published-protocol
+// and dreamteamer-modules/nav-hint-release-versions).
+//
+// `dt-nav` first shipped in @dreamteamer/protocol 0.3.0; npm holds 0.0.0-stage, 0.1.0, 0.1.1 and 0.3.0 and never a 0.2.
+// The 409 a host answers, the bin's usage line and the upgrade notes once told a person to run the command at @0.2,
+// which ends in ETARGET. This scan reads every text file the packages SHIP — the list npm itself would pack, not
+// the source tree, so history under docs/ and tests are not its business — and refuses that spelling, any protocol
+// minor below the first with `dt-nav` or above this repo's own, the editor version that never wrote nav.yaml, and a
+// contract check message that sends a host author to protocol 0.2. The command's form is the engine's (0.49.1,
+// NAV_GUARD_LINE): `npx -p @dreamteamer/protocol@0.3 dt-nav migrate`.
+import { test, describe } from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { execFileSync } from 'node:child_process';
+import { ROOT, pkgOf } from './helpers/workspace.mjs';
+
+const COMMAND = 'npx -p @dreamteamer/protocol@0.3 dt-nav migrate';
+const FIRST_WITH_DT_NAV = [0, 3];
+const TEXT = /\.(md|js|mjs|cjs|ts|json|yaml|yml|vue|html|css|sh|txt)$/;
+
+/** Every text file each package ships, as `{ pkg, file, abs }`, from `npm pack --dry-run --json --workspaces`. */
+const shipped = (() => {
+	let cache;
+	return () => (cache ??= JSON.parse(execFileSync('npm', ['pack', '--dry-run', '--json', '--workspaces'], { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }))
+		.flatMap((p) => p.files.map((f) => ({ pkg: p.name, file: f.path, abs: path.join(ROOT, 'modules', p.name.replace(/^@dreamteamer\//, ''), f.path) })))
+		.filter((f) => TEXT.test(f.file)));
+})();
+/** Each shipped line matching `re`, as `<package>:<file>:<line>: <text>`. */
+const lines = (re, keep = () => true) => {
+	const out = [];
+	for (const f of shipped()) {
+		fs.readFileSync(f.abs, 'utf8').split('\n').forEach((l, i) => { if (re.test(l) && keep(f, l)) out.push(`${f.pkg}:${f.file}:${i + 1}: ${l.trim().slice(0, 140)}`); });
+	}
+	return out;
+};
+const minor = (v) => v.split('.').slice(0, 2).map(Number);
+const cmp = ([a, b], [c, d]) => a - c || b - d;
+
+describe('shipped text', () => {
+	test('npm lists the shipped files of every package in the repo', () => {
+		const pkgs = new Set(shipped().map((f) => f.pkg));
+		const dirs = fs.readdirSync(path.join(ROOT, 'modules')).filter((m) => fs.existsSync(path.join(ROOT, 'modules', m, 'package.json')));
+		assert.equal(pkgs.size, dirs.length, `npm pack listed ${pkgs.size} packages, modules/ holds ${dirs.length}`);
+		assert.ok(shipped().some((f) => f.pkg === '@dreamteamer/protocol' && f.file === 'src/handler.js'), 'protocol src/handler.js is not in the list');
+	});
+	test('no shipped file spells the never-published @dreamteamer/protocol@0.2', () => {
+		assert.deepEqual(lines(/@dreamteamer\/protocol@\^?~?0\.2(?![0-9])/), []);
+	});
+	test('every @dreamteamer/protocol@<version> a shipped file spells is a minor from the first with dt-nav to this repo\'s own', () => {
+		const own = minor(pkgOf('protocol').version);
+		const wrong = lines(/@dreamteamer\/protocol@/, (f, l) => [...l.matchAll(/@dreamteamer\/protocol@\^?~?(\d+)\.(\d+)/g)].some((m) => {
+			const v = [Number(m[1]), Number(m[2])];
+			return cmp(v, FIRST_WITH_DT_NAV) < 0 || cmp(v, own) > 0;
+		}));
+		assert.deepEqual(wrong, []);
+	});
+	test('no shipped file names the editor 0.26 (the first editor that writes nav.yaml is 0.27)', () => {
+		assert.deepEqual(lines(/\beditor 0\.26\b/), []);
+	});
+	test('no check message of the shipped contract suite sends a host author to protocol 0.2', () => {
+		assert.deepEqual(lines(/\bprotocol 0\.2(?![0-9])/, (f, l) => f.pkg === '@dreamteamer/protocol' && f.file.startsWith('lib/contract/') && /\bcheck\(/.test(l)), []);
+	});
+	test('the 409 a host answers for unmigrated nav settings carries the command as the engine spells it', async () => {
+		const { NAV_UNMIGRATED } = await import(path.join(ROOT, 'modules', 'protocol', 'src', 'handler.js'));
+		assert.ok(NAV_UNMIGRATED.includes(COMMAND), NAV_UNMIGRATED);
+	});
+});

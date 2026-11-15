@@ -102,7 +102,7 @@ and `reports` on `users` now come from `@dreamteamer/users` itself (0.3.0).
 Do these, in this order, from the workspace root:
 
 ```bash
-npx -p @dreamteamer/protocol@0.2 dt-nav migrate   # only when .vscode/settings.json sets dreamteamer.navGroups, navOrder or navHidden
+npx -p @dreamteamer/protocol@0.3 dt-nav migrate   # only when .vscode/settings.json sets dreamteamer.navGroups, navOrder or navHidden
 npx dreamteamer update --engine                   # dreamteamer 0.49.0 or later
 npx dreamteamer update @dreamteamer/core          # the preset: installs the seventeen members
 npx dreamteamer update @dreamteamer/rnd           # when you have rnd: 0.11.0 stands alone of core

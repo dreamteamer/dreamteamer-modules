@@ -34,7 +34,7 @@ matchRoute('GET', '/collections/lab%2Fsamples/records/2026/11/a');
   `POST /queue` asks the chat to run a command on records.
 - Host to app: `dt:select`, `dt:host`, `dt:queue`.
 
-## 0.2.0
+## 0.2.0 — never published on its own; first on npm in 0.3.0
 
 The left nav is a document a person arranges: `nav.yaml` at the workspace root (engine 0.49, cr-dt-008).
 
@@ -47,7 +47,7 @@ The left nav is a document a person arranges: `nav.yaml` at the workspace root (
   while they stand unmigrated the two write routes answer 409. To migrate by hand:
 
   ```bash
-  npx -p @dreamteamer/protocol@0.2 dt-nav migrate
+  npx -p @dreamteamer/protocol@0.3 dt-nav migrate
   ```
 
   The editor migrates on activation and `dt web` on its first `GET /nav`, so most workspaces never run it.

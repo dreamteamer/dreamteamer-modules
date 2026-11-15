@@ -1,7 +1,7 @@
 // dt-nav migrate (cr-dt-008, task 11; rnd/tests dreamteamer-modules/dt-nav-migrate).
 //
 // The one command that writes a workspace's old nav settings into nav.yaml, for a person who uses neither the editor
-// nor dt web: `npx -p @dreamteamer/protocol@0.2 dt-nav migrate [root]`. It loads the WORKSPACE's own engine, so on
+// nor dt web: `npx -p @dreamteamer/protocol@0.3 dt-nav migrate [root]`. It loads the WORKSPACE's own engine, so on
 // an engine that merges nav fragments (0.49) it applies them after writing and says so, and on an older one it does
 // not. No settings: nothing to migrate, exit 0. No workspace: ✖ and exit 1. An unknown subcommand: usage, exit 2.
 import { test, after } from 'node:test';

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // dt-nav — the left nav's one command outside the editor and dt web (cr-dt-008).
 //
-//   npx -p @dreamteamer/protocol@0.2 dt-nav migrate [root] [--json]
+//   npx -p @dreamteamer/protocol@0.3 dt-nav migrate [root] [--json]
 //
 // migrate  writes a workspace's old nav settings (dreamteamer.navGroups · navOrder · navHidden in its
 //          .vscode/settings.json) into nav.yaml, so the nav draws as it did, once: nothing happens when nav.yaml
