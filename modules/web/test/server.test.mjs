@@ -310,13 +310,14 @@ describe('a watcher error never stops the server', () => {
 	test('an ENOENT from the .dreamteamer watch reaches the page as a schema invalidation, and the server still serves', async () => {
 		const made = [];
 		const real = fs.watch;
-		fs.watch = (...args) => { const w = real(...args); made.push({ dir: String(args[0]), w }); return w; };
+		fs.watch = (...args) => { const w = real(...args); made.push({ dir: String(args[0]), recursive: args[1]?.recursive === true, w }); return w; };
 		let w2;
 		const state = fs.mkdtempSync(path.join(path.dirname(f.state), 'dt-web-state-watch-'));
 		try { w2 = await startWeb({ root: f.root, appDir: f.app, idleMinutes: 0, stateDir: state }); } finally { fs.watch = real; }
 		const ctrl = new AbortController();
 		try {
-			const runtime = made.find((m) => m.dir === path.join(f.root, '.dreamteamer'));
+			// the server's own watch: on Linux Node's recursive walk calls fs.watch again, per folder and without `recursive`
+			const runtime = made.find((m) => m.recursive && m.dir === path.join(f.root, '.dreamteamer'));
 			assert.ok(runtime, `no watch on .dreamteamer: ${made.map((m) => m.dir)}`);
 			const c2 = await pair(w2);
 			const res = await fetch(`${w2.url}/api/events`, { headers: { cookie: c2, ...sameOrigin() }, signal: ctrl.signal });
