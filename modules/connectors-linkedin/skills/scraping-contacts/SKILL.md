@@ -274,7 +274,7 @@ Anything you inferred rather than read gets `confidence: low` and the reason in 
 **`status` is what makes the queue derivable** — `/scrape-contact` enters on `draft`:
 
 - **`draft`** — a placeholder, usually created from a meeting's attendee list (`fetching-meetings`, in
-  the meetings module): a name, maybe an email.
+  `@dreamteamer/connectors-google-workspace`): a name, maybe an email.
 - **`enriched`** — set it after a pass that actually produced something, from LinkedIn, web search or
   both. A pass that found nothing leaves the record `draft` and says why in `creation_context`; an empty
   record marked `enriched` drops out of the queue for good.
