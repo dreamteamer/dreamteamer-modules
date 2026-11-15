@@ -385,13 +385,14 @@ onUnmounted(() => { window.removeEventListener('message', onMessage); window.rem
 
 <style scoped>
 /* The nav is a column: the toolbar never scrolls, the rows scroll beneath it. */
-.dt-nav { width: 260px; flex: none; display: flex; flex-direction: column; min-height: 0; overflow: hidden; background: var(--dt-bg-subtle); border-right: 1px solid var(--dt-border); font-size: var(--dt-text); cursor: default; }
+/* On the canvas (cr-modules-022): no ground of its own and no line — the sheet beside it carries the edge. */
+.dt-nav { width: 260px; flex: none; display: flex; flex-direction: column; min-height: 0; overflow: hidden; background: transparent; font-size: var(--dt-text); cursor: default; }
 /* a narrow pane (a desktop side pane can be 320 px): the nav gives up most of its width, so the page keeps a usable column */
 @media (max-width: 560px) { .dt-nav { width: clamp(96px, 32vw, 260px); } }
 /* 32 px: the page header's first row (history, path, search, refresh), so the two read as one band across the window.
    Narrow, the name gives way first (its basis is 0, its min-width 0) and the buttons, which shrink only once it is
    gone, wrap to a second line rather than being clipped. */
-.dt-nav-toolbar { position: relative; z-index: 2; flex: none; display: flex; align-items: center; gap: 4px; box-sizing: border-box; min-height: 32px; padding: 3px 4px 3px 10px; background: var(--dt-bg-subtle); transition: box-shadow 0.12s; }
+.dt-nav-toolbar { position: relative; z-index: 2; flex: none; display: flex; align-items: center; gap: 4px; box-sizing: border-box; min-height: 32px; padding: 3px 4px 3px 10px; background: var(--dt-canvas); transition: box-shadow var(--dt-dur-fast) var(--dt-ease); }
 .dt-nav-toolbar--scrolled { box-shadow: 0 1px 3px rgb(0 0 0 / 0.14); }
 .dt-nav-toolbar__name { flex: 1 1 0; min-width: 0; display: flex; align-items: center; overflow: hidden; }
 .dt-nav-toolbar__label, :deep(.dt-nav-toolbar__label) { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; color: var(--dt-fg); }
@@ -404,7 +405,7 @@ onUnmounted(() => { window.removeEventListener('message', onMessage); window.rem
 .dt-nav-tool[aria-pressed='true'] { background: var(--dt-accent-subtle); color: var(--dt-accent); }
 .dt-nav-tool .codicon, :deep(.dt-nav-tool .codicon) { font-size: 16px; }
 /* the lock is a badge on the tree: bottom-right, cut out of the button's ground so it reads at 16 px */
-.dt-nav-lock .dt-nav-lock__badge { position: absolute; right: 1px; bottom: 1px; font-size: 10px; line-height: 10px; border-radius: 3px; background: var(--dt-bg-subtle); }
+.dt-nav-lock .dt-nav-lock__badge { position: absolute; right: 1px; bottom: 1px; font-size: var(--dt-text-2xs); line-height: 10px; border-radius: var(--dt-radius-xs); background: var(--dt-canvas); }
 .dt-nav-lock[aria-pressed='true'] .dt-nav-lock__badge { background: var(--dt-accent-subtle); }
 .dt-nav-error { color: var(--dt-danger); padding: 6px 8px; margin: 0; flex: none; }
 .dt-nav-notice { flex: none; display: flex; align-items: flex-start; gap: 6px; margin: 4px 6px; padding: 6px 8px; border-radius: var(--dt-radius); background: var(--dt-accent-subtle); color: var(--dt-fg); font-size: var(--dt-label); }

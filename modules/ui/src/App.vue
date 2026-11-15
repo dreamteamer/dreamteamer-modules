@@ -102,7 +102,7 @@ onMounted(() => hostNotify('dt:ready'));
 </script>
 
 <template>
-	<div class="dt-shell">
+	<div class="dt-shell" :class="{ 'dt-shell--app': appNav }">
 		<!-- the nav, and on a pane host its switcher and level in the nav's toolbar (no bar above the page) -->
 		<AppNav v-if="appNav" />
 		<main class="dt-page-area">
@@ -130,6 +130,22 @@ onMounted(() => hostNotify('dt:ready'));
 	flex-direction: column;
 	background: var(--dt-bg);
 	overflow-y: auto;
+}
+
+/* The browser host's shell (cr-modules-022): the nav sits on the warm canvas and the page is a sheet laid on it —
+   a rounded top-left corner, a hairline ring and a soft shadow instead of a border line between the two. Only under a
+   host that draws the app's own nav (dt web); inside VS Code the page area is the whole webview, as before. The 8px
+   above both keeps the nav's toolbar and the page's first header row one band, and lets the corner read. */
+.dt-shell--app {
+	padding-top: var(--dt-space-2);
+	background: var(--dt-canvas);
+}
+
+.dt-shell--app .dt-page-area {
+	position: relative;
+	background: var(--dt-surface);
+	border-top-left-radius: var(--dt-radius-sheet);
+	box-shadow: var(--dt-shadow-sheet);
 }
 
 .dt-signed-out {
