@@ -1,0 +1,32 @@
+{
+	// Type-checks the suites without emitting: `npm run typecheck:test`. The repo-wide checks here in
+	// tests/ and every module's own suite in modules/*/test/. Kept out of the root tsconfig.json on
+	// purpose, as the engine keeps its test/tsconfig.json: the suites are not shipped code, so they are
+	// checked permissively (no strict, implicit any allowed) and never gate the modules' own typecheck.
+	//
+	// Not here: the ui module's webview and unit suites and the held-out sidebar (tests/heldout/*.sidebar.ts),
+	// which import the Vue app with bundler resolution and are checked with it by vue-tsc; test fixtures,
+	// which stand for a consumer's files.
+	"extends": "../tsconfig.json",
+	"compilerOptions": {
+		// The rnd prototype's browser files stay JavaScript; suites import them, so they lend their types
+		// without being checked.
+		"allowJs": true,
+		"checkJs": false,
+		"strict": false,
+		"noImplicitAny": false,
+		"noImplicitThis": false,
+		"useUnknownInCatchVariables": false,
+		"noUnusedLocals": false,
+		"noUnusedParameters": false
+	},
+	"include": ["**/*.ts", "../modules/*/test/**/*.ts"],
+	"exclude": [
+		"**/node_modules/**",
+		"**/fixtures/**",
+		"**/*.d.ts",
+		"heldout/*.sidebar.ts",
+		"../modules/ui/test/unit/**",
+		"../modules/ui/test/webview/**"
+	]
+}

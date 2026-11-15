@@ -1,13 +1,14 @@
 {
 	// Type-checks this repo's Node code without emitting: `npm run typecheck`. Every module's bin/, lib/,
-	// src/ and skills/, the root scripts/, and every suite (tests/ and modules/*/test/).
+	// src/ and skills/, and the root scripts/. The suites (tests/ and modules/*/test/) are checked by
+	// tests/tsconfig.json, `npm run typecheck:test`, and never gate this one.
 	//
 	// Settings are the engine's (dreamteamer's own tsconfig.json): a checkout RUNS these .ts files through
 	// Node's type stripping, so only erasable syntax is allowed and a relative import names the .ts file.
 	//
-	// Not here: the ui module's Vue app (modules/ui/src) and its webview/unit suites, which are bundled and
-	// checked by `vue-tsc -p modules/ui/src/tsconfig.json` with bundler resolution; test fixtures (consumer
-	// data, run as JavaScript); the rnd prototype's browser files, which are served to a browser as-is.
+	// Not here: the ui module's Vue app (modules/ui/src), which is bundled and checked by
+	// `vue-tsc -p modules/ui/src/tsconfig.json` with bundler resolution; the rnd prototype's browser files,
+	// which are served to a browser as-is.
 	"compilerOptions": {
 		"target": "es2023",
 		"module": "nodenext",
@@ -19,24 +20,18 @@
 		"allowImportingTsExtensions": true,
 		"rewriteRelativeImportExtensions": true,
 		"resolveJsonModule": true,
-		// The rnd prototype's browser files stay JavaScript; suites import them, so they lend their types
-		// without being checked.
-		"allowJs": true,
-		"checkJs": false,
 		"strict": false,
 		"noImplicitAny": true,
 		"noEmit": true,
 		"skipLibCheck": true
 	},
-	"include": ["modules/**/*.ts", "scripts/**/*.ts", "tests/**/*.ts"],
+	"include": ["modules/**/*.ts", "scripts/**/*.ts"],
 	"exclude": [
 		"**/node_modules/**",
 		"**/fixtures/**",
 		"**/*.d.ts",
+		"modules/*/test/**",
 		"modules/ui/src/**",
-		"modules/ui/test/unit/**",
-		"modules/ui/test/webview/**",
-		"modules/ui/dist/**",
-		"tests/heldout/*.sidebar.ts"
+		"modules/ui/dist/**"
 	]
 }

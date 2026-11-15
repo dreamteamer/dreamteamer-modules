@@ -10,6 +10,7 @@
 	"scripts": {
 		"test": "node scripts/test.ts",
 		"typecheck": "tsc -p tsconfig.json",
+		"typecheck:test": "tsc -p tests/tsconfig.json",
 		"format": "prettier --write .",
 		"format:check": "prettier --check ."
 	},
