@@ -44,31 +44,44 @@ the page out.
 |---|---|
 | `/` | the workspace's collections |
 | `/content/<collection>` | the list: search, sort by a column, 200 rows a page |
-| `/content/<collection>/<id>` | the record: its fields as a form, a select for an enum or a relation, and what the engine knows about it (created, last changed, source, file) |
+| `/content/<collection>/<id>` | the record: its fields as a form, each by its Edit, and what the engine knows about it (created, last changed, source, file) |
 | `/content/<collection>/+` | a new record |
 
 Routes are the same as `ui`'s. A collection or id holding `/` resolves against the workspace's collections.
 
 Every page draws from the display contract (`GET /presentation`), as `ui` does: a collection's title, icon,
 list columns and sort, form sections and record title template; a field's surfaces (`hidden`), choices with
-their labels and colours, and its `editor` and `viewer`. Fields are drawn through the same registries as in
-`ui`, under the same ids (`input`, `textarea`, `select-dropdown`, `relation-picker`, `label`, `relation`, …),
-resolved in the same order: the field's own id, then its shape (body, reference, enum, list), then its type.
-A module can register its own Edit or View with `edits.register` or `views.register`.
+their labels, icons and colours, and its `editor` and `viewer`. Fields are drawn through the same registries
+as in `ui`, under the same ids and `types`, resolved in the same order: the field's own id, then its shape
+(body, reference, enum, list, object with sub-fields), then its type. A module can register its own Edit or
+View with `edits.register` or `views.register`.
+
+The Edits: `input`, `input-number`, `textarea`, `markdown-body` (CodeMirror with live preview, a toolbar and
+a source toggle), `boolean`, `datetime` (a date as a calendar day, a datetime as the wall clock),
+`select-dropdown` (searchable), `relation-picker` (searches the target, names records by their title, a chip
+per record of a list), `tags`, `json`, `code`, `color`, `slider`, `list`, `nested`, `field-select`,
+`field-multi-select` and `display-template`. A cleared field is written as null, a reference as
+`collection/id`.
+
+The Views: `text`, `label`, `boolean`, `date`, `relation` (the target's title, a hover card, a link on the
+record page), `markdown` (rendered; one plain line in a cell), `tags`, `json`, `color`, `filesize`, `image`,
+`list`, `nested`, `progress`, `source` and `stage-checks`. A cell is one line; the record page shows the
+whole value.
 
 Save sends only the changed fields, and the host validates them as `dt set` does. If it refuses, the page
 shows its reason and nothing is written. When the host answers `GET /host` with level `read`, the page
 draws values and offers no edits.
 
-Not yet in `ui2`, all of which `ui` has: boards, calendars, maps and other ui-views; module apps; the
-schema editor and settings; nav arranging; history, commit and revert; notes and commands; files and
-images. A route to one of these shows a line saying `ui2` doesn't draw it yet, and the nav still lists it.
+Not yet in `ui2`, all of which `ui` has: boards, calendars, maps and other ui-views; filters and grouping;
+the record-scoped pages (`form`, `doc`, `properties`, `data-model`); module apps; the schema editor and
+settings; nav arranging; history, commit and revert; notes and commands; file uploads. A route to one of
+these shows a line saying `ui2` doesn't draw it yet, and the nav still lists it.
 
 ## building and testing
 
 ```bash
 npm run build -w modules/ui2       # dist/lib and dist/app
-npm test -w modules/ui2            # routes, fields and the API client (node --test, no browser)
+npm test -w modules/ui2            # routes, fields, value rules, markdown and the API client (node --test)
 npm run typecheck -w modules/ui2   # tsc, strict, over src/
 npm run ui2                        # from the repo root: the app from source, over a sample workspace
 ```

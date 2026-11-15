@@ -82,14 +82,17 @@ export interface ListQuery {
   offset?: number
   sort?: string
   q?: string
+  /** The engine's filter object (`{ subject: { _in: [...] } }`), sent as JSON. */
+  filter?: unknown
 }
 
-export function listQuery({ limit, offset, sort, q }: ListQuery = {}): string {
+export function listQuery({ limit, offset, sort, q, filter }: ListQuery = {}): string {
   const p = new URLSearchParams()
   if (limit !== undefined) p.set("limit", String(limit))
   if (offset) p.set("offset", String(offset))
   if (sort) p.set("sort", sort)
   if (q) p.set("q", q)
+  if (filter !== undefined) p.set("filter", JSON.stringify(filter))
   const s = p.toString()
   return s ? `?${s}` : ""
 }

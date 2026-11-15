@@ -401,9 +401,12 @@ input[type="checkbox"] {
 }
 .ui2-form-row {
   display: grid;
-  grid-template-columns: 160px 1fr;
+  grid-template-columns: 160px minmax(0, 1fr);
   gap: 12px;
-  align-items: center;
+  align-items: start;
+}
+.ui2-form-row > label {
+  padding-top: 6px;
 }
 .ui2-form-row.is-body {
   grid-template-columns: 1fr;
@@ -413,9 +416,6 @@ input[type="checkbox"] {
 }
 .ui2-required {
   color: var(--ui2-danger);
-}
-.ui2-body {
-  white-space: pre-wrap;
 }
 .ui2-meta {
   border: 1px solid var(--ui2-border);
@@ -497,9 +497,6 @@ input[type="checkbox"] {
   align-items: center;
   gap: 6px;
 }
-.ui2-body-input {
-  min-height: 240px;
-}
 .ui2-form-row.is-computed label {
   opacity: 0.7;
 }
@@ -530,4 +527,830 @@ input[type="checkbox"] {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+}
+
+/* ---- edits ---------------------------------------------------------------------------------- */
+.ui2-input,
+.ui2-textarea {
+  width: 100%;
+}
+.ui2-with-unit .ui2-input {
+  width: auto;
+  flex: 1 1 auto;
+}
+.ui2-code {
+  font-family: var(--ui2-mono);
+  font-size: 12px;
+  tab-size: 2;
+}
+.ui2-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--ui2-fg-subtle);
+  cursor: pointer;
+}
+.ui2-icon-button:hover {
+  background: var(--ui2-bg-hover);
+  color: var(--ui2-fg);
+}
+
+/* the switch: sized from two properties, so a dense surface shrinks it without a variant; the OFF track is a
+   real neutral, never the accent, or on and off read as one colour */
+.ui2-switch {
+  --_h: var(--ui2-switch-h, 22px);
+  --_w: var(--ui2-switch-w, calc(var(--_h) * 1.8));
+  width: var(--_w);
+  height: var(--_h);
+  padding: 2px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ui2-input-border);
+  cursor: pointer;
+  justify-self: start;
+  transition: background-color 0.12s ease;
+}
+.ui2-switch.is-on {
+  background: var(--ui2-accent);
+}
+.ui2-switch-thumb {
+  display: block;
+  width: calc(var(--_h) - 4px);
+  height: calc(var(--_h) - 4px);
+  border-radius: 50%;
+  background: var(--ui2-accent-fg);
+  transition: transform 0.15s;
+}
+.ui2-switch.is-on .ui2-switch-thumb {
+  transform: translateX(calc(var(--_w) - var(--_h)));
+}
+@media (prefers-reduced-motion: reduce) {
+  .ui2-switch,
+  .ui2-switch-thumb {
+    transition: none;
+  }
+}
+
+/* the dropdown: the panel is fixed, placed from the control's rect (Select.tsx) */
+.ui2-dd {
+  position: relative;
+  min-width: 0;
+}
+.ui2-dd-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 30px;
+  padding: 4px 8px;
+  font: inherit;
+  text-align: left;
+  color: var(--ui2-fg);
+  background: var(--ui2-input-bg);
+  border: 1px solid var(--ui2-input-border);
+  border-radius: var(--ui2-radius);
+  cursor: pointer;
+}
+.ui2-dd-control:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+.ui2-dd-control.is-open {
+  border-color: var(--ui2-focus);
+}
+.ui2-dd-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ui2-dd-control.is-placeholder .ui2-dd-label {
+  opacity: 0.6;
+}
+.ui2-dd-hint {
+  flex: none;
+  font-size: var(--ui2-small);
+  opacity: 0.6;
+}
+.ui2-dd-caret {
+  flex: none;
+  opacity: 0.7;
+}
+.ui2-dd-icon {
+  flex: none;
+  display: inline-flex;
+}
+.ui2-dd-panel {
+  position: fixed;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px;
+  color: var(--ui2-fg);
+  background: var(--vscode-quickInput-background, var(--vscode-editorWidget-background, var(--ui2-bg)));
+  border: 1px solid var(--vscode-widget-border, var(--ui2-border));
+  border-radius: var(--ui2-radius);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 22%);
+  overflow: hidden;
+}
+.ui2-dd-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  min-height: 0;
+}
+.ui2-dd-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+}
+.ui2-dd-option.is-active {
+  background: var(--ui2-bg-hover);
+}
+.ui2-dd-option.is-selected {
+  font-weight: 600;
+}
+.ui2-dd-option.is-selected.is-active {
+  background: var(--ui2-bg-active);
+  color: var(--ui2-fg-active);
+}
+.ui2-dd-empty {
+  padding: 8px;
+  opacity: 0.7;
+}
+
+/* chips with a remove button: tags and a list reference */
+.ui2-chip-remove {
+  display: inline-flex;
+  padding: 0;
+  margin-right: -4px;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.7;
+}
+.ui2-chip-remove:hover {
+  opacity: 1;
+}
+.ui2-chip-remove .codicon {
+  font-size: 12px;
+}
+.ui2-tags-edit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  min-height: 30px;
+  padding: 3px 6px;
+  background: var(--ui2-input-bg);
+  border: 1px solid var(--ui2-input-border);
+  border-radius: var(--ui2-radius);
+}
+.ui2-tags-edit:focus-within {
+  border-color: var(--ui2-focus);
+}
+.ui2-tags-edit input {
+  flex: 1 1 80px;
+  min-width: 80px;
+  min-height: 0;
+  padding: 2px;
+  border: 0;
+  outline: none;
+  background: transparent;
+}
+
+/* the relation picker */
+.ui2-relation {
+  position: relative;
+  min-width: 0;
+}
+.ui2-relation-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 2px 4px 2px 0;
+  background: var(--ui2-input-bg);
+  border: 1px solid var(--ui2-input-border);
+  border-radius: var(--ui2-radius);
+}
+.ui2-relation-control.is-open,
+.ui2-relation-control:focus-within {
+  border-color: var(--ui2-focus);
+}
+.ui2-relation-open {
+  flex: 1 1 auto;
+  min-width: 40px;
+  align-self: stretch;
+  padding: 0 0 0 8px;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--ui2-fg);
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ui2-relation-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  order: -1;
+  padding-left: 6px;
+}
+.ui2-relation-chips + .ui2-relation-actions {
+  margin-left: auto;
+}
+.ui2-relation-placeholder {
+  color: var(--ui2-fg-subtle);
+}
+.ui2-relation-actions {
+  display: inline-flex;
+  flex: none;
+}
+.ui2-relation-popover {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 320px;
+  padding: 8px;
+  background: var(--vscode-quickInput-background, var(--vscode-editorWidget-background, var(--ui2-bg)));
+  border: 1px solid var(--vscode-widget-border, var(--ui2-border));
+  border-radius: var(--ui2-radius);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 22%);
+}
+.ui2-relation-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+}
+.ui2-relation-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.ui2-relation-item.is-active {
+  background: var(--ui2-bg-hover);
+}
+.ui2-relation-item.is-selected {
+  font-weight: 600;
+}
+.ui2-relation-check {
+  flex: none;
+  color: var(--ui2-accent);
+}
+.ui2-relation-empty {
+  padding: 6px 8px;
+  color: var(--ui2-fg-subtle);
+}
+.ui2-relation-empty.is-error {
+  color: var(--ui2-danger);
+}
+
+/* the markdown body editor */
+.ui2-markdown-edit {
+  background: var(--ui2-input-bg);
+  border: 1px solid var(--ui2-input-border);
+  border-radius: var(--ui2-radius);
+}
+.ui2-markdown-edit:focus-within {
+  border-color: var(--ui2-focus);
+}
+.ui2-markdown-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--ui2-border);
+}
+.ui2-markdown-toolbar button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ui2-fg-subtle);
+  font: 600 11px / 1 var(--ui2-font);
+  cursor: pointer;
+}
+.ui2-markdown-toolbar button:hover {
+  background: var(--ui2-bg-hover);
+  color: var(--ui2-fg);
+}
+.ui2-markdown-toolbar button.is-active {
+  background: color-mix(in srgb, var(--ui2-accent) 16%, transparent);
+  color: var(--ui2-accent);
+}
+.ui2-toolbar-gap {
+  width: 8px;
+}
+.ui2-toolbar-spacer {
+  flex: 1;
+}
+
+.ui2-color-edit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ui2-color-swatch {
+  flex: none;
+  width: 44px;
+  height: 30px;
+  padding: 2px;
+  cursor: pointer;
+}
+.ui2-slider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.ui2-slider input {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  accent-color: var(--ui2-accent);
+}
+.ui2-slider-value {
+  min-width: 36px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  text-align: center;
+  font-weight: 600;
+  color: var(--ui2-accent);
+  background: color-mix(in srgb, var(--ui2-accent) 14%, transparent);
+}
+
+/* list / nested sub-forms */
+.ui2-list-edit,
+.ui2-list-view {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.ui2-list-row {
+  border: 1px solid var(--ui2-border);
+  border-radius: var(--ui2-radius);
+  background: var(--ui2-bg);
+}
+.ui2-list-row.is-dragging {
+  opacity: 0.5;
+}
+.ui2-list-row-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px 2px 2px;
+}
+.ui2-list-grip {
+  display: inline-flex;
+  padding: 4px;
+  color: var(--ui2-fg-subtle);
+  cursor: grab;
+}
+.ui2-list-summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
+  padding: 6px 8px;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--ui2-fg);
+  text-align: left;
+  cursor: pointer;
+}
+.ui2-list-row-head .ui2-list-summary {
+  padding-left: 0;
+}
+.ui2-list-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ui2-list-row-body {
+  padding: 8px 12px 12px 30px;
+  border-top: 1px solid var(--ui2-border);
+}
+.ui2-list-add {
+  align-self: flex-start;
+}
+.ui2-nested-edit {
+  padding: 10px 12px;
+  border: 1px solid var(--ui2-border);
+  border-radius: var(--ui2-radius);
+}
+.ui2-options-form {
+  display: grid;
+  gap: 12px;
+}
+.ui2-options-block {
+  display: grid;
+  gap: 8px;
+}
+.ui2-options-heading {
+  margin: 0;
+  font-size: var(--ui2-small);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ui2-fg-subtle);
+}
+.ui2-options-row {
+  display: grid;
+  gap: 4px;
+}
+.ui2-options-row > label {
+  color: var(--ui2-fg-subtle);
+}
+.ui2-options-row .ui2-hint {
+  margin: 0;
+}
+.ui2-field-multi {
+  display: grid;
+  gap: 2px;
+}
+.ui2-field-multi label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+.ui2-tpl-fields > summary {
+  cursor: pointer;
+  user-select: none;
+}
+.ui2-tpl-fields .ui2-chips {
+  margin-top: 6px;
+}
+.ui2-tpl-token {
+  padding: 1px 8px;
+  border: 1px solid var(--ui2-border);
+  border-radius: 999px;
+  background: var(--ui2-bg-subtle);
+  color: var(--ui2-fg-subtle);
+  font: var(--ui2-small) var(--ui2-mono);
+  cursor: pointer;
+}
+.ui2-tpl-token:hover,
+.ui2-tpl-token.is-used {
+  color: var(--ui2-fg);
+  border-color: var(--ui2-accent);
+}
+.ui2-hint code {
+  font-family: var(--ui2-mono);
+  color: var(--ui2-fg);
+}
+
+/* ---- views ---------------------------------------------------------------------------------- */
+.ui2-nowrap {
+  white-space: nowrap;
+}
+.ui2-labels {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+.ui2-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.ui2-label-icon {
+  display: inline-flex;
+}
+.ui2-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ui2-fg-subtle);
+}
+.ui2-dot.is-accent {
+  background: var(--ui2-accent);
+}
+.ui2-dot.is-success {
+  background: var(--dt-color-charts-green);
+}
+.ui2-dot.is-danger {
+  background: var(--ui2-danger);
+}
+.ui2-refs.is-record {
+  white-space: normal;
+}
+.ui2-ref {
+  display: inline-flex;
+  align-items: center;
+}
+.ui2-ref-image {
+  height: 1.35em;
+  width: auto;
+  max-width: 120px;
+  object-fit: contain;
+  vertical-align: text-bottom;
+}
+.ui2-refs.is-record .ui2-ref-image {
+  height: 2.4em;
+  max-width: 240px;
+}
+.ui2-hover-card {
+  position: fixed;
+  z-index: 50;
+  max-width: 360px;
+  padding: 6px 9px;
+  border: 1px solid var(--vscode-editorHoverWidget-border, var(--ui2-border));
+  border-radius: var(--ui2-radius);
+  background: var(--vscode-editorHoverWidget-background, var(--ui2-bg));
+  color: var(--vscode-editorHoverWidget-foreground, var(--ui2-fg));
+  box-shadow: 0 6px 18px rgb(0 0 0 / 18%);
+  font-size: var(--ui2-small);
+  font-weight: normal;
+  line-height: 1.45;
+  text-align: start;
+  text-transform: none;
+  letter-spacing: normal;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+}
+.ui2-hover-line + .ui2-hover-line {
+  margin-top: 3px;
+}
+.ui2-hover-line.is-title {
+  font-weight: 600;
+}
+.ui2-hover-line.is-code {
+  font-family: var(--ui2-mono);
+  opacity: 0.8;
+}
+.ui2-json {
+  max-height: 420px;
+  overflow: auto;
+  padding: 10px 12px;
+  border: 1px solid var(--ui2-border);
+  border-radius: var(--ui2-radius);
+}
+.ui2-color {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.ui2-color-chip {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  border: 1px solid var(--ui2-border);
+}
+.ui2-progress {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.ui2-progress-track {
+  position: relative;
+  width: 72px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--ui2-border);
+  overflow: hidden;
+}
+.ui2-progress-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 999px;
+  background: var(--ui2-accent);
+}
+.ui2-kv {
+  display: grid;
+  grid-template-columns: minmax(90px, max-content) 1fr;
+  gap: 4px 14px;
+  margin: 0;
+}
+.ui2-kv > div {
+  display: contents;
+}
+.ui2-kv dt {
+  color: var(--ui2-fg-subtle);
+}
+.ui2-kv dd {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.ui2-image-link {
+  display: inline-block;
+  line-height: 0;
+}
+.ui2-image {
+  width: 32px;
+  height: 32px;
+  object-fit: cover;
+  border-radius: 4px;
+  border: 1px solid var(--ui2-border);
+}
+.ui2-image.is-record {
+  width: auto;
+  height: auto;
+  max-width: 240px;
+  max-height: 180px;
+}
+.ui2-image.is-square {
+  border-radius: 50%;
+}
+.ui2-source-cell,
+.ui2-stub-note {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.ui2-source-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  color: var(--ui2-fg-subtle);
+}
+.ui2-source-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.ui2-source-access {
+  font-size: 12px;
+  opacity: 0.85;
+}
+.ui2-stub-item {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 4px;
+  padding: 0 6px;
+  border: 1px dashed var(--ui2-border);
+  border-radius: 10px;
+  font-size: var(--ui2-small);
+}
+.ui2-stage-checks {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+.ui2-stage-check {
+  display: inline-flex;
+  justify-content: center;
+  width: 16px;
+  color: var(--ui2-fg-subtle);
+}
+.ui2-stage-check.is-approved {
+  color: var(--dt-color-charts-green);
+}
+.ui2-stage-check.is-remarks {
+  color: var(--dt-color-charts-orange);
+}
+
+/* ---- rendered markdown (lib/render-md.ts): direction is decided per block, so lists keep their gutter on
+   the item, where an RTL item indents on its own side ---------------------------------------------------- */
+.ui2-md {
+  max-width: 720px;
+  font-size: 14px;
+  line-height: 1.65;
+}
+.ui2-md > :first-child {
+  margin-top: 0;
+}
+.ui2-md h1 {
+  font-size: 20px;
+  margin: 14px 0 6px;
+}
+.ui2-md h2 {
+  font-size: 16px;
+  margin: 14px 0 4px;
+}
+.ui2-md h3 {
+  font-size: 14px;
+  margin: 12px 0 3px;
+}
+.ui2-md h4 {
+  font-size: 13px;
+  margin: 10px 0 2px;
+}
+.ui2-md p {
+  margin: 6px 0;
+}
+.ui2-md ul,
+.ui2-md ol {
+  margin: 4px 0;
+  padding-inline-start: 0;
+}
+.ui2-md li {
+  margin: 2px 0 2px;
+  margin-inline-start: 22px;
+}
+.ui2-md li.ui2-md-task {
+  list-style: none;
+  margin-inline-start: 4px;
+}
+.ui2-md li.ui2-md-task input {
+  margin-inline-end: 6px;
+  vertical-align: -2px;
+}
+.ui2-md-code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--ui2-bg-subtle);
+  font-family: var(--ui2-mono);
+  font-size: 12px;
+}
+.ui2-md-pre {
+  margin: 8px 0;
+  padding: 10px 12px;
+  border-radius: var(--ui2-radius);
+  background: var(--ui2-bg-subtle);
+  font-family: var(--ui2-mono);
+  font-size: 12px;
+  overflow-x: auto;
+}
+.ui2-md-quote {
+  margin: 8px 0;
+  padding: 2px 14px;
+  border-inline-start: 3px solid var(--ui2-input-border);
+  color: var(--ui2-fg-subtle);
+}
+.ui2-md-table-wrap {
+  margin: 8px 0;
+  overflow-x: auto;
+}
+.ui2-md table {
+  border-collapse: collapse;
+  min-width: 50%;
+}
+.ui2-md th,
+.ui2-md td {
+  padding: 5px 9px;
+  border-bottom: 1px solid var(--ui2-border);
+  text-align: start;
+  vertical-align: top;
+}
+.ui2-md th {
+  font-size: var(--ui2-small);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ui2-fg-subtle);
+}
+.ui2-relation-popover input {
+  width: 100%;
+}
+/* a cell is one line: chips, labels and references keep to it (the table clips what does not fit) */
+.ui2-table td .ui2-chips,
+.ui2-table td .ui2-labels,
+.ui2-table td .ui2-refs {
+  flex-wrap: nowrap;
+}
+.ui2-form-row.is-computed > label {
+  padding-top: 0;
 }
