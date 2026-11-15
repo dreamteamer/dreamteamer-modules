@@ -66,3 +66,22 @@ describe('shipped text', () => {
 		assert.ok(NAV_UNMIGRATED.includes(COMMAND), NAV_UNMIGRATED);
 	});
 });
+
+// The release that carries the fix: each package whose tarball it changes, at least at the version that first ships
+// it, with the lockfile in step and a release-notes section of that version. "At least", not "equal": a later release
+// of the same package must not have to rewrite this test.
+describe('the release', () => {
+	const FIRST = { protocol: ['0.3.1', 'README.md'], core: ['0.13.1', 'UPDATING.md'], rnd: ['0.11.1', 'UPDATING.md'] };
+	const semver = (v) => v.split('-')[0].split('.').map(Number);
+	const atLeast = (v, floor) => { const [a, b] = [semver(v), semver(floor)]; return (a[0] - b[0] || a[1] - b[1] || a[2] - b[2]) >= 0; };
+	const lock = JSON.parse(fs.readFileSync(path.join(ROOT, 'package-lock.json'), 'utf8'));
+	for (const [id, [version, notes]] of Object.entries(FIRST)) {
+		test(`${id} is ${version} or later, the lockfile agrees, and ${notes} has a ## ${version} section`, () => {
+			const v = pkgOf(id).version;
+			assert.ok(atLeast(v, version), `modules/${id}/package.json is ${v}`);
+			assert.equal(lock.packages[`modules/${id}`]?.version, v, `package-lock.json's modules/${id} is not ${v}`);
+			const text = fs.readFileSync(path.join(ROOT, 'modules', id, notes), 'utf8');
+			assert.ok(new RegExp(`^## ${version.replace(/\./g, '\\.')}(?![0-9.])`, 'm').test(text), `modules/${id}/${notes} has no ## ${version} section`);
+		});
+	}
+});

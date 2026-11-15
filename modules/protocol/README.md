@@ -23,6 +23,18 @@ matchRoute('GET', '/collections/lab%2Fsamples/records/2026/11/a');
 // → { route: { id: 'record-read', … }, params: { collection: 'lab/samples', id: '2026/11/a' } }
 ```
 
+## 0.3.1
+
+The nav migration command names a protocol version npm holds. The `409` both nav write routes answer while the old
+nav settings stand unmigrated, `dt-nav`'s usage line, this README and PROTOCOL.md now say
+`npx -p @dreamteamer/protocol@0.3 dt-nav migrate`; the version they named was never published, so the command they
+printed could not run. Nothing else changes.
+
+- A workspace that installs `@dreamteamer/protocol` itself: `npx dreamteamer update @dreamteamer/protocol`.
+- A workspace that has it only through `@dreamteamer/http` (`dt serve`) or `@dreamteamer/web` (`dt web`), which take
+  it as `^0.3.0`: `npm update @dreamteamer/protocol`, then restart `dt serve` or `dt web`. A fresh install takes 0.3.1
+  with no step.
+
 ## 0.3.0
 
 0.3.0 — every route carries a level; GET /host, PUT and GET /selection, POST and GET /queue (cr-modules-017).

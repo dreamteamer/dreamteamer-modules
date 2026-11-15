@@ -10,6 +10,12 @@ npx dreamteamer check
 
 ---
 
+## 0.11.1 — the nav migration step names a protocol version npm holds
+
+Nothing to do but `npx dreamteamer update @dreamteamer/rnd`. The nav paragraph of the 0.11.0 section below named a
+version of `@dreamteamer/protocol` that was never published, so the command could not run; it now reads
+`npx -p @dreamteamer/protocol@0.3 dt-nav migrate`, as `@dreamteamer/core`'s UPDATING says.
+
 ## 0.11.0 — rnd stands alone of wikis and notebooklm (CR-dt-008) — engine 0.49.0
 
 **Engine floor 0.49.0.** rnd no longer carries copies of `@dreamteamer/wikis` and `@dreamteamer/notebooklm`:

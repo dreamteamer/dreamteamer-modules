@@ -224,8 +224,8 @@ describe('t7 UPDATING names both connectors (line 7)', () => {
 		const end = rest.indexOf('\n## ', 1);
 		return end < 0 ? rest : rest.slice(0, end);
 	};
-	test('core is 0.13.0 and its UPDATING has the section', () => {
-		assert.equal(pkgOf('core').version, '0.13.0');
+	test('core is 0.13.x and its UPDATING has the 0.13.0 section', () => {
+		assert.match(pkgOf('core').version, /^0\.13\.\d+$/); // a patch of 0.13 (0.13.1: a docs fix) keeps what cr-modules-018 proved
 		section();
 	});
 	test('the section installs connectors-linkedin beside /scrape-contact and connectors-google-workspace beside /fetch-meetings', () => {
