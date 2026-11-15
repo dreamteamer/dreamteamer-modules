@@ -1,5 +1,5 @@
 // The Google Workspace setup: one local, read-only `inspect` shared by `dt-google doctor` and the engine
-// unit (google-workspace-setup.mjs); a plan of small actions; and the one deterministic action this module
+// unit (connectors-google-workspace-setup.mjs); a plan of small actions; and the one deterministic action this module
 // performs itself — the owner-only credential store. Account consent and live reads stay with the account owner and
 // run through the existing `dt-google auth` and `dt-google call` commands — never from here.
 //
@@ -12,7 +12,7 @@ import { validateCall, credentialPath } from './access.mjs';
 // ── this module's own helpers (cr-dt-007, D70: written here, never shared — the setup kit is gone) ──────
 /** The convention version and module name this setup's own reports carry. */
 const PROTOCOL = 1;
-const MODULE = '@dreamteamer/google-workspace';
+const MODULE = '@dreamteamer/connectors-google-workspace';
 const ACTIONS = ['create-credential-store', 'authorize-account', 'verify-account-read'];
 /** A refusal the module's own CLI prints as is (code: usage, workspace, action, stale, blocked, path). */
 export class SetupRefusal extends Error { constructor(code, message) { super(message); this.code = code; } }

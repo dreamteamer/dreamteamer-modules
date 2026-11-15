@@ -1,8 +1,8 @@
 name: meetings
 description: >-
-  One calendar meeting, synced from Google Calendar — the anchor every prep, recording, summary and analysis hangs off.
+  One calendar meeting — the anchor every prep, recording, summary and analysis hangs off.
 use_when: >-
-  anything with a date and attendees. Before planning work that spans more than one sitting, read the next seven days here; before writing a prep, summary or analysis, find the meeting it hangs off — or /fetch-meetings if it is not synced yet
+  anything with a date and attendees. Before planning work that spans more than one sitting, read the next seven days here; before writing a prep, summary or analysis, find the meeting it hangs off — or create it (by hand, with `/create-meeting`, or with the Google Calendar sync where the Google Workspace connector is installed)
 storage:
   path: data/meetings
   format: md
@@ -70,7 +70,7 @@ fields:
         type: boolean
         description: True when the invite marked them optional.
     description: >-
-      The invite's attendee list as the Calendar API returns it, one object per person, rooms (`resource: true`) dropped at ingest. Sensitive because it carries addresses. Written by the sync (`event-people.mjs`), never typed by hand; who these people are to us is `attendees_contacts`.
+      The invite's attendee list as the Calendar API returns it, one object per person, rooms (`resource: true`) dropped at ingest. Sensitive because it carries addresses. Written by the calendar sync (`@dreamteamer/connectors-google-workspace`) through `node_modules/@dreamteamer/meetings/bin/event-people.mjs`, never typed by hand; who these people are to us is `attendees_contacts`.
   attendees_contacts:
     type: contacts
     many: true

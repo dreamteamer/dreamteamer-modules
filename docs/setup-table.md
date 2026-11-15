@@ -20,17 +20,18 @@ holds its `dt status` line to the outcome this table declares. Four outcomes:
 | assets | — | no setup | |
 | code | — | no setup | |
 | companies | assets | no setup | |
-| contacts | assets, companies | no setup (needs LINKEDIN_USER_AGENT) | |
+| connectors-google-workspace | meetings | unit | credentials_dir, client_secret, account (unit google-workspace); calendar (unit meetings) |
+| connectors-linkedin | contacts, companies, assets | no setup (needs LINKEDIN_USER_AGENT) | |
+| contacts | assets, companies | no setup | |
 | core | members: seventeen | preset | the members' |
 | docker-workspaces | — | no setup | |
 | engagements | companies | no setup | |
 | files | — | unit | files_folder |
 | git-identities | — | unit | — (identities per repo) |
-| google-workspace | — | unit | credentials_dir, client_secret, account |
 | http | — | no setup | |
 | knowledge | companies, meetings | no setup | |
 | meeting-docs | six | no setup | |
-| meetings | contacts, companies, users | unit | calendar |
+| meetings | contacts, companies, users | no setup | |
 | metrics | users | no setup | |
 | notebooklm | — | unit | — (the vendor CLI, a login) |
 | perspective | — | unit | asana_pat |

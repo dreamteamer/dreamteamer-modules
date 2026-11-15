@@ -27,6 +27,9 @@ after(() => { for (const d of made) fs.rmSync(d, { recursive: true, force: true 
 const tmp = (p) => { const d = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), p))); made.push(d); return d; };
 const ROW = 'team@northwind.example | northwind | dana@northwind.example';
 const ROW2 = 'board@harbor.example | harbor-mutual | sam@harbor.example';
+/** .env without the keys the package's OTHER unit (google-workspace) records on the same install — its
+ *  record-settings writes the default credential store path — so the meetings unit's bytes are compared alone. */
+const meetingsBytes = (text) => text.split('\n').filter((l) => !/^(WORKSPACE_MCP_CREDENTIALS_DIR|GOOGLE_CLIENT_SECRET_PATH)=/.test(l)).join('\n');
 
 /** A workspace with a .gitignore ignoring .env, and a separate synthetic home for the reader's defaults. */
 function workspace({ env, gitignore = 'node_modules/\n.env\n' } = {}) {
@@ -199,31 +202,31 @@ describe('the live step', () => {
 });
 
 
-describe('through the engine', { skip: !engineMeets('meetings') && `needs engine ${JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8')).dreamteamer.engine}, this is ${ENGINE_VERSION}` }, () => {
+describe('through the engine', { skip: !engineMeets('connectors-google-workspace') && `needs engine ${JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8')).dreamteamer.engine}, this is ${ENGINE_VERSION}` }, () => {
 	test('the engine writes the rows, keeps every other byte, never prints them, and a second run writes nothing', () => {
 		const root = virginWorkspace();
-		const from = packedInto(fs.mkdtempSync(path.join(os.tmpdir(), 'dtm-from-')), ...closure('meetings'));
+		const from = packedInto(fs.mkdtempSync(path.join(os.tmpdir(), 'dtm-from-')), ...closure('connectors-google-workspace'));
 		const head = `# private\nA=1\nWORK_CALENDARS="${ROW}\n# kept comment"\n`;
 		const tail = `\nZ='two words'  # trailing\n`;
 		fs.writeFileSync(path.join(root, '.env'), head + tail);
 		const env = { HOME: tmp('meetings-home-') };
-		const i = run(root, ['install', '@dreamteamer/meetings', '--from', from, '--input', `calendar=${ROW2}`, '--no-input'], env);
+		const i = run(root, ['install', '@dreamteamer/connectors-google-workspace', '--from', from, '--input', `calendar=${ROW2}`, '--no-input'], env);
 		assert.equal(i.status, 0, i.stderr + i.stdout);
 		assert.match(i.stdout, /✔ add-calendar-rows — wrote \.env \(WORK_CALENDARS\)/);
 		assert.ok(!(i.stdout + i.stderr).includes('board@harbor.example'), 'the rows are never printed');
-		assert.equal(fs.readFileSync(path.join(root, '.env'), 'utf8'), `# private\nA=1\nWORK_CALENDARS="${ROW}\n# kept comment\n${ROW2}"\n${tail}`);
+		assert.equal(meetingsBytes(fs.readFileSync(path.join(root, '.env'), 'utf8')), `# private\nA=1\nWORK_CALENDARS="${ROW}\n# kept comment\n${ROW2}"\n${tail}`);
 		const again = run(root, ['setup', 'meetings', '--input', `calendar=${ROW2}`, '--no-input'], env);
 		assert.equal(again.status, 0);
 		assert.doesNotMatch(again.stdout, /✔ add-calendar-rows/);
 	});
 	test('an existing value a shell would read differently ($HOME) is refused, changing nothing', () => {
 		const root = virginWorkspace();
-		const from = packedInto(fs.mkdtempSync(path.join(os.tmpdir(), 'dtm-from-')), ...closure('meetings'));
+		const from = packedInto(fs.mkdtempSync(path.join(os.tmpdir(), 'dtm-from-')), ...closure('connectors-google-workspace'));
 		const before = 'WORK_CALENDARS=\'$HOME | x | y\'\n';
 		fs.writeFileSync(path.join(root, '.env'), before);
-		const r = run(root, ['install', '@dreamteamer/meetings', '--from', from, '--input', `calendar=${ROW2}`, '--no-input'], { HOME: tmp('meetings-home-') });
+		const r = run(root, ['install', '@dreamteamer/connectors-google-workspace', '--from', from, '--input', `calendar=${ROW2}`, '--no-input'], { HOME: tmp('meetings-home-') });
 		assert.ok([0, 3].includes(r.status), r.stderr + r.stdout);
-		assert.equal(fs.readFileSync(path.join(root, '.env'), 'utf8'), before);
+		assert.equal(meetingsBytes(fs.readFileSync(path.join(root, '.env'), 'utf8')), before);
 	});
 });
 

@@ -198,12 +198,12 @@ update leaves it as it is.
 Three fields, modelled after the source. **`attendees` is the Calendar API's own attendee list**, one
 object per person with the API's keys (`email`, `displayName`, `responseStatus`, `organizer`, `self`,
 `optional`); rooms (`resource: true`) are dropped. **`organizer` is the API's organizer object.** Both
-are written by the script that ships here, straight from the event JSON `gcal.mjs` printed — a list
+are written by a script that ships with `@dreamteamer/meetings` (`bin/event-people.mjs`), straight from the event JSON `gcal.mjs` printed — a list
 of objects cannot be spelled on the `dt` command line, and retyping it would lose the structure:
 
 ```bash
-node .dreamteamer/skills/fetching-meetings/bin/event-people.mjs meetings/<id> --event <event.json>
-node .dreamteamer/skills/fetching-meetings/bin/event-people.mjs meetings/<id> --event <events.json> --event-id <eventId>
+node node_modules/@dreamteamer/meetings/bin/event-people.mjs meetings/<id> --event <event.json>
+node node_modules/@dreamteamer/meetings/bin/event-people.mjs meetings/<id> --event <events.json> --event-id <eventId>
 ```
 
 It validates through the engine's store exactly as `dt set` does, maps the API's `needsAction` to the
@@ -239,8 +239,8 @@ as well as in `attendees_contacts`. Never create a user here: a person with no `
   rather than minting a contact called "All". Same for `no-reply@`, `noreply@`, room and resource
   addresses (the API flags those with `resource: true`) and anything that reads like a group alias.
 
-**Do not enrich here.** Enrichment is `/scrape-contact`'s job when the contacts module ships it — a
-`draft` contact is the queue. Creating placeholders is the whole contribution of this step.
+**Do not enrich here.** Enrichment is `/scrape-contact`'s job where `@dreamteamer/connectors-linkedin`
+is installed — a `draft` contact is the queue. Creating placeholders is the whole contribution of this step.
 
 ### Titles & slugs
 - **`name:`** = the cleaned event summary. First **strip cruft**: `FW:`/`RE:` prefixes, trailing
@@ -420,12 +420,12 @@ Match these keywords against the **translated meaning** of a non-English title.
    - **A `description` can now be wrong.** One that asserts the old time ("weekly, 11:00") is false
      after the correction. Re-read and replace any text that names what changed.
 
-9. **Stamp the attendees' contacts** with `bin/touch-contacts.mjs`, which ships in this skill and is
-   what `/update-contacts-from-meetings` runs. It reads `attendees_contacts`. Run it over every meeting
+9. **Stamp the attendees' contacts** with `bin/touch-contacts.mjs`, which ships with
+   `@dreamteamer/meetings` and is what `/update-contacts-from-meetings` runs. It reads `attendees_contacts`. Run it over every meeting
    this sync created, adopted or changed the `attendees_contacts` of:
 
    ```bash
-   node .dreamteamer/skills/fetching-meetings/bin/touch-contacts.mjs meetings/<id> [meetings/<id> …]
+   node node_modules/@dreamteamer/meetings/bin/touch-contacts.mjs meetings/<id> [meetings/<id> …]
    ```
 
    It sets each attendee's `recent_meeting` and `recent_meeting_date` to their latest meeting that

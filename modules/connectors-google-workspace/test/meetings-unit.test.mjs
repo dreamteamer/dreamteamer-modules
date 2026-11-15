@@ -133,11 +133,11 @@ describe('the unit, pure', () => {
 	});
 });
 
-describe('through the engine', { skip: !engineMeets('meetings') && `needs engine ${JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8')).dreamteamer.engine}, this is ${ENGINE_VERSION}` }, () => {
+describe('through the engine', { skip: !engineMeets('connectors-google-workspace') && `needs engine ${JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8')).dreamteamer.engine}, this is ${ENGINE_VERSION}` }, () => {
 	test('dt install merges the row into .env, commits nothing of .env, is idempotent; status reads configured with access unverified', () => {
 		const root = virginWorkspace();
-		const from = packedInto(fs.mkdtempSync(path.join(os.tmpdir(), 'dtm-from-')), ...closure('meetings'));
-		const r = run(root, ['install', '@dreamteamer/meetings', '--from', from, '--input', `calendar=${ROW}`, '--no-input']);
+		const from = packedInto(fs.mkdtempSync(path.join(os.tmpdir(), 'dtm-from-')), ...closure('connectors-google-workspace'));
+		const r = run(root, ['install', '@dreamteamer/connectors-google-workspace', '--from', from, '--input', `calendar=${ROW}`, '--no-input']);
 		assert.equal(r.status, 0, r.stderr + r.stdout);
 		assert.match(r.stdout, /✔ add-calendar-rows — wrote \.env/);
 		assert.match(fs.readFileSync(path.join(root, '.env'), 'utf8'), new RegExp(`WORK_CALENDARS=.*${ROW.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`));

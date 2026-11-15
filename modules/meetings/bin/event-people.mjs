@@ -74,11 +74,19 @@ export function peopleOf(event) {
 // ── plumbing ─────────────────────────────────────────────────────────────────────────────────
 function workspaceRoot(from) {
 	// package-lock.json, not package.json — a module folder carries the latter too. And a folder sitting directly inside `git_modules/` is a module clone, never the workspace, even when `npm install` left it a lockfile.
-	for (let d = from; d !== path.dirname(d); d = path.dirname(d)) {
+	for (let d = path.resolve(from); d !== path.dirname(d); d = path.dirname(d)) {
 		const inGitModules = path.basename(path.dirname(d)) === 'git_modules';
 		if (!inGitModules && fs.existsSync(path.join(d, 'package-lock.json'))) return d;
 	}
-	throw new Error('no package-lock.json above ' + from);
+	return null;
+}
+
+/** The workspace the person runs the script FROM, else the one the script sits in: an inline copy or a
+ *  preview link puts this file outside the workspace it serves, so the working directory comes first. */
+function findRoot() {
+	const root = workspaceRoot(process.cwd()) ?? workspaceRoot(path.dirname(fileURLToPath(import.meta.url)));
+	if (!root) throw new Error('no workspace here or above this script (no package-lock.json)');
+	return root;
 }
 
 async function engineStore(root) {
@@ -114,7 +122,7 @@ async function main(argv) {
 	const event = readEvent(argv);
 	const people = peopleOf(event);
 	const dryRun = flags.has('--dry-run');
-	const root = workspaceRoot(path.dirname(fileURLToPath(import.meta.url)));
+	const root = findRoot();
 	if (!dryRun) {
 		const store = await engineStore(root);
 		store.set('meetings', id, people);

@@ -1,0 +1,54 @@
+{
+	"name": "@dreamteamer/connectors-google-workspace",
+	"version": "0.4.0",
+	"description": "Google Workspace connector: explicit-account access through a local MCP bridge, read-only by default, and the Google Calendar sync into meetings.",
+	"license": "Apache-2.0",
+	"type": "module",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/dreamteamer/dreamteamer-modules.git",
+		"directory": "modules/connectors-google-workspace"
+	},
+	"keywords": [
+		"dreamteamer",
+		"dreamteamer-module",
+		"google-workspace",
+		"google-calendar",
+		"meetings",
+		"connectors"
+	],
+	"bin": {
+		"dt-google": "bin/google.mjs",
+		"dt-google-calendar": "bin/calendar.mjs",
+		"dt-google-drive": "bin/drive.mjs"
+	},
+	"files": [
+		"README.md",
+		"SETUP.md",
+		"bin",
+		"lib",
+		"skills",
+		"commands",
+		"command-bindings"
+	],
+	"engines": {
+		"node": ">=20"
+	},
+	"dreamteamer": {
+		"extension": "./lib/extension.mjs",
+		"title": "Google Workspace connector",
+		"engine": ">=0.48.0",
+		"description": "Access an explicitly selected Google account through a local workspace-mcp process — a fixed read-only tool set by default, no call without a stored credential, credentials kept outside the workspace — and sync work calendars into `meetings` records (`/fetch-meetings`). Two setup units: `google-workspace` (the account) and `meetings` (`WORK_CALENDARS`). Authorize each account per computer.",
+		"env": [
+			"GOOGLE_CLIENT_SECRET_PATH",
+			"WORKSPACE_MCP_CREDENTIALS_DIR",
+			"WORK_CALENDARS"
+		],
+		"dependencies": [
+			"@dreamteamer/meetings"
+		]
+	},
+	"peerDependencies": {
+		"@dreamteamer/meetings": ">=0.4.0"
+	}
+}

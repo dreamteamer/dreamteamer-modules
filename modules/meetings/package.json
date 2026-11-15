@@ -1,7 +1,7 @@
 {
 	"name": "@dreamteamer/meetings",
-	"version": "0.3.1",
-	"description": "Your calendar meetings as records, synced from Google Calendar, with attendees as contacts and screenshots filed beside each call.",
+	"version": "0.4.0",
+	"description": "Your meetings as records, with attendees as contacts and screenshots filed beside each call; the calendar sync is @dreamteamer/connectors-google-workspace.",
 	"license": "Apache-2.0",
 	"repository": {
 		"type": "git",
@@ -13,14 +13,11 @@
 		"dreamteamer-module",
 		"meetings",
 		"calendar",
-		"google-calendar",
 		"screenshots"
 	],
 	"files": [
 		"README.md",
-		"SETUP.md",
 		"bin",
-		"lib",
 		"collections",
 		"skills",
 		"commands",
@@ -29,17 +26,13 @@
 	],
 	"dreamteamer": {
 		"title": "Meetings",
-		"description": "Your calendar meetings as records: synced from Google Calendar (`/fetch-meetings`), with attendees as `contacts`, the company as `companies` and your own people in the room as `users` (`ours`). Files screenshots taken during a call beside its meeting (`/fetch-meeting-screenshots`) and stamps each attendee's contact with their latest meeting (`/update-contacts-from-meetings`).",
+		"description": "Your meetings as records — written by hand, by `/create-meeting` or by the calendar sync in `@dreamteamer/connectors-google-workspace` — with attendees as `contacts`, the company as `companies` and your people in the room as `users` (`ours`). Files a call's screenshots beside it (`/fetch-meeting-screenshots`) and stamps each attendee's contact with their latest meeting.",
 		"engine": ">=0.48.0",
 		"dependencies": [
 			"@dreamteamer/contacts",
 			"@dreamteamer/companies",
 			"@dreamteamer/users"
-		],
-		"env": [
-			"WORK_CALENDARS"
-		],
-		"extension": "./lib/extension.mjs"
+		]
 	},
 	"peerDependencies": {
 		"@dreamteamer/companies": ">=0.1.1",

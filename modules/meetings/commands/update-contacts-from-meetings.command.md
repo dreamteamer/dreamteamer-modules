@@ -12,8 +12,8 @@ a contact's recent meeting is the latest by `starts` that lists them in `attende
 started, and is not cancelled; a record only ever moves forward, so re-running over any subset is safe.
 
 ```bash
-node .dreamteamer/skills/fetching-meetings/bin/touch-contacts.mjs <meetings/id …> [--dry-run]
-node .dreamteamer/skills/fetching-meetings/bin/touch-contacts.mjs --all [--dry-run]
+node node_modules/@dreamteamer/meetings/bin/touch-contacts.mjs <meetings/id …> [--dry-run]
+node node_modules/@dreamteamer/meetings/bin/touch-contacts.mjs --all [--dry-run]
 ```
 
 It reads through `dt list --json` and writes through `dt set`, so every write is schema-validated and
@@ -24,17 +24,18 @@ replaced. Nothing is committed — publish with `dt commit contacts/<id> …` na
 ## what it deliberately does not do
 
 - **Fix the attendee list.** A meeting whose `attendees_contacts` is wrong (an invite with none, a
-  self-logged call, a sync that never resolved its people) stamps nobody or the wrong people. Correct the meeting first — `fetching-meetings` owns that —
-  and re-run; the forward-only rule makes the re-run free.
+  self-logged call, a sync that never resolved its people) stamps nobody or the wrong people. Correct the meeting first — by hand, or with the calendar sync where
+  `@dreamteamer/connectors-google-workspace` is installed — and re-run; the forward-only rule makes the re-run free.
 - **Count a future meeting.** The calendar sync writes next week's meetings too; "recent" means
   "has happened".
 - **Touch a contact with no past meeting.** Both fields stay empty — that is the honest state, and it
   is what a "who have I not met" filter keys on.
-- **Enrich anything.** It moves two fields. `/scrape-contact` is the enrichment queue.
+- **Enrich anything.** It moves two fields. Enrichment ships with `@dreamteamer/connectors-linkedin`;
+  a `draft` contact is its queue.
 
 ## in the pipeline
 
-`/fetch-meetings` runs this script as its step 9, over every meeting the sync created, adopted or
+The calendar sync (`@dreamteamer/connectors-google-workspace`) runs this script as its step 9, over every meeting the sync created, adopted or
 changed the `attendees_contacts` of. Run it by hand after a meeting is entered or its attendees are corrected by
 hand. When meeting-docs is installed, `/process-new-meetings` runs it as its last step
 over every meeting in the batch.

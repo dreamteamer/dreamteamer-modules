@@ -13,15 +13,15 @@ const dirHash = (dir) => { const h = createHash('sha256'); if (fs.existsSync(dir
 const SECRET = '{"installed":{"client_secret":"SECRET-CONTENT-NEVER-SHOWN-9c1d"}}';
 const noSecret = (text) => assert.doesNotMatch(text, /SECRET-CONTENT/, 'the secret file\'s contents are never printed');
 
-describe('hm7', { skip: skipUnless('google-workspace') }, () => {
+describe('hm7', { skip: skipUnless('connectors-google-workspace') }, () => {
 	let root, env, creds, receipts;
 	test('install without a secret exits 0 with the authorize line; status reads configured naming the client secret as what is missing', () => {
-		const from = packedInto(tmp('dtm-from-'), ...closure('google-workspace'));
+		const from = packedInto(tmp('dtm-from-'), ...closure('connectors-google-workspace'));
 		root = virginWorkspace(); env = cleanEnv();
 		// no uvx, no browser opener: node's folder and the system folders only
 		env.PATH = [path.dirname(process.execPath), '/usr/bin', '/bin'].join(path.delimiter);
 		creds = path.join(tmp('dtm-creds-'), 'creds'); receipts = path.join(root, '.dreamteamer', 'setup', 'google-workspace');
-		const r = dt(root, ['install', '@dreamteamer/google-workspace', '--from', from, '--input', `credentials_dir=${creds}`, '--allow', 'machine', '--no-input'], env);
+		const r = dt(root, ['install', '@dreamteamer/connectors-google-workspace', '--from', from, '--input', `credentials_dir=${creds}`, '--allow', 'machine', '--no-input'], env);
 		assert.equal(r.code, 0, r.stderr + r.stdout.slice(-500));
 		assert.match(r.stdout, /authorize-account/, 'the authorize step is printed as pending');
 		assert.match(r.stdout, /--authorize/, 'with the command that runs it (the record: "prints the authorize line")');

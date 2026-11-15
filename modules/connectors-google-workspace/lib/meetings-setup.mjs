@@ -15,7 +15,7 @@ import { parseWorkCalendars } from '../skills/fetching-meetings/bin/gcal.mjs';
 
 /** The convention version and module name this setup's own reports carry (its rows, its plan). */
 const PROTOCOL = 1;
-const MODULE = '@dreamteamer/meetings';
+const MODULE = '@dreamteamer/connectors-google-workspace';
 /** A board row's state: present facts are ok, everything else warns. */
 const boardState = (status) => (status === 'ready' || status === 'configured' ? 'ok' : 'warn');
 

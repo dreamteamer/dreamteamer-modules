@@ -1,8 +1,10 @@
 # @dreamteamer/meetings
 
-Your calendar meetings, synced from Google Calendar, with the invite's attendee list as the Calendar
-API returns it, the same people resolved to contacts, and the screenshots taken during a call filed
-beside it. The anchor the other meeting modules hang off.
+Your meetings as records, with the invite's attendee list as the Calendar API returns it, the same
+people resolved to contacts, and the screenshots taken during a call filed beside it. The anchor the
+other meeting modules hang off. A meeting is written by hand, by `/create-meeting`
+(`@dreamteamer/meeting-docs`), or by the Google Calendar sync, which ships in
+`@dreamteamer/connectors-google-workspace`.
 
 ```bash
 npm install @dreamteamer/meetings @dreamteamer/contacts @dreamteamer/companies @dreamteamer/users @dreamteamer/assets
@@ -11,7 +13,7 @@ npx dreamteamer compile
 
 | alone | with others |
 |---|---|
-| meetings synced or written by hand, each attendee's latest meeting stamped on their contact, screenshots filed per meeting | **recordings** adds the audio and transcript (`meetings.recordings`) · **meeting-docs** adds the prep, the summary and the critique (`meetings.prep`, `.summary`, `.analyses`) and the pipeline that writes them |
+| meetings written by hand, each attendee's latest meeting stamped on their contact, screenshots filed per meeting | **`@dreamteamer/connectors-google-workspace`** adds the Google Calendar sync (`/fetch-meetings`) · **recordings** adds the audio and transcript (`meetings.recordings`) · **meeting-docs** adds the prep, the summary and the critique (`meetings.prep`, `.summary`, `.analyses`) and the pipeline that writes them |
 
 | needs | for |
 |---|---|
@@ -19,31 +21,27 @@ npx dreamteamer compile
 | `@dreamteamer/companies` | the company a call is with |
 | `@dreamteamer/users` | the people of yours in the room |
 | `@dreamteamer/assets` | contacts and companies need it for avatars and logos |
-| a Google OAuth desktop client, each account authenticated through `workspace-mcp`, and `WORK_CALENDARS` in `.env` | calendar sync only; writing meetings by hand works without them |
 | `INBOX_FOLDERS` and `FILES_FOLDER` declared | filing screenshots only |
 
 ## setup
 
-Meeting records, screenshots and contact stamps work with no setup. The calendar sync is optional,
-and the module declares what it needs as its setup unit, `meetings`:
+None. Meeting records, screenshots and contact stamps work with nothing set up, and the module asks for
+no account and no `.env` key. Its two commands are `/fetch-meeting-screenshots` and
+`/update-contacts-from-meetings`; the second runs `node node_modules/@dreamteamer/meetings/bin/touch-contacts.mjs`.
+
+The Google Calendar sync — `/fetch-meetings`, the `fetching-meetings` skill, `WORK_CALENDARS` and the
+`meetings` setup unit (`dt setup meetings …`) — ships in `@dreamteamer/connectors-google-workspace`:
 
 ```bash
-npx dreamteamer setup meetings --input calendar="<calendar> | <company or mixed> | <account>"   # repeat per calendar
-npx dreamteamer setup meetings --verify --authorize    # the live check, yours to run in a terminal
-npx dreamteamer status                                 # the unit's line: configured, blocked or ready
+npx dreamteamer install @dreamteamer/connectors-google-workspace
 ```
-
-The first command merges the rows into `WORK_CALENDARS` in `.env`. Google consent is a separate step
-you perform yourself. [SETUP.md](SETUP.md) is the reference; the `fetching-meetings` skill carries the
-sync itself, and the three commands are `/fetch-meetings`, `/fetch-meeting-screenshots` and
-`/update-contacts-from-meetings`.
 
 Three people fields, modelled after the source: `attendees` is the Calendar API's attendee list as
 objects (`email`, `displayName`, `responseStatus`, `organizer`, `self`, `optional`; rooms dropped),
 `attendees_contacts` is those people as `contacts` refs — the list every reader uses — and `ours` is
 the subset who are `users`. `organizer` is the API's object too. `attendees` and `organizer` carry
-addresses, so they are `sensitive` and never travel in an export. The sync writes the two API fields
-with `event-people.mjs` from the raw event; the refs are a plain `npx dreamteamer set`.
+addresses, so they are `sensitive` and never travel in an export. The calendar sync writes the two API
+fields with `node node_modules/@dreamteamer/meetings/bin/event-people.mjs` from the raw event; the refs are a plain `npx dreamteamer set`.
 
 ## upgrading from 0.1.1
 
@@ -70,6 +68,22 @@ A meeting's `privacy` is `open` or `restricted`. A `restricted` meeting holds a 
 material, so the meeting-docs pipeline stops after transcription. An export cannot withhold that one
 record: `sensitive` applies to a whole collection or a whole field, never to a record, so an exporter
 has to read `privacy` itself, and marking `meetings` sensitive would withhold every meeting.
+
+## 0.4.0 — the Google Calendar sync leaves core (cr-modules-018)
+
+`/fetch-meetings`, the `fetching-meetings` skill (with `gcal.mjs`), the `meetings` setup unit, `SETUP.md`
+and `WORK_CALENDARS` moved to `@dreamteamer/connectors-google-workspace`. To keep them:
+
+```bash
+npx dreamteamer install @dreamteamer/connectors-google-workspace
+```
+
+The setup unit keeps its id, so `dt setup meetings …`, a `dreamteamer.setup.skipped` entry `meetings` and
+the receipt under `.dreamteamer/setup/meetings/` work as before once the connector is installed. Without
+it, `WORK_CALENDARS` stays in `.env`, unread. The two record-writing scripts stay here and moved to the
+module's `bin/`: `.dreamteamer/skills/fetching-meetings/bin/touch-contacts.mjs` is now
+`node_modules/@dreamteamer/meetings/bin/touch-contacts.mjs`, and the same for `event-people.mjs`; each
+writes the workspace it is run from. No field changes and no record moves; nothing to migrate.
 
 ## 0.3.1 — the nav is nav.yaml (cr-dt-008)
 

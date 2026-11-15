@@ -84,7 +84,7 @@ describe('classifyAccess', () => {
 
 describe('gcal.mjs rows, from the compiled skill folder', () => {
 	const root = virginWorkspace();
-	installPacked(root, [...closure('meetings')]);
+	installPacked(root, [...closure('connectors-google-workspace')]);
 	compileAndCheck(root);
 	fs.writeFileSync(path.join(root, 'package-lock.json'), '{}\n');
 	const script = path.join(root, '.dreamteamer', 'skills', 'fetching-meetings', 'bin', 'gcal.mjs');

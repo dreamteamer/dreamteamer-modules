@@ -10,14 +10,14 @@ import { virginWorkspace, packedInto, closure, dt, cleanEnv, cleanup, tmp, skipU
 after(cleanup);
 const SECRET = '{"installed":{"client_secret":"SECRET-CONTENT-NEVER-SHOWN-7f3a"}}';
 
-describe('hm4', { skip: skipUnless('google-workspace') }, () => {
+describe('hm4', { skip: skipUnless('connectors-google-workspace') }, () => {
 	let root, env, from, shared, args;
 	test('group-writable parent: the store is not created as configured; placement never reads configured; nothing printed is the secret', () => {
-		from = packedInto(tmp('dtm-from-'), ...closure('google-workspace'));
+		from = packedInto(tmp('dtm-from-'), ...closure('connectors-google-workspace'));
 		root = virginWorkspace(); env = cleanEnv();
 		shared = path.join(tmp('dtm-shared-'), 'shared'); fs.mkdirSync(shared, { mode: 0o775 }); fs.chmodSync(shared, 0o775);
 		const secret = path.join(tmp('dtm-secret-'), 'secret.json'); fs.writeFileSync(secret, SECRET, { mode: 0o600 });
-		args = ['install', '@dreamteamer/google-workspace', '--from', from, '--input', `credentials_dir=${path.join(shared, 'creds')}`, '--input', `client_secret=${secret}`, '--allow', 'machine', '--no-input'];
+		args = ['install', '@dreamteamer/connectors-google-workspace', '--from', from, '--input', `credentials_dir=${path.join(shared, 'creds')}`, '--input', `client_secret=${secret}`, '--allow', 'machine', '--no-input'];
 		const r = dt(root, args, env);
 		assert.equal(r.code, 0, r.stderr + r.stdout.slice(-500));
 		const out = r.stdout + r.stderr;

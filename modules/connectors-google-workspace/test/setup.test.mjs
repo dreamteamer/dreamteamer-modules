@@ -155,14 +155,13 @@ describe('the existing doctor surfaces', () => {
 		assert.ok(!rows.some((r) => /Account authorization/.test(r.label)), 'the never-locally-verifiable row is left to SETUP.md');
 		assert.ok(engineDoctorRows({ root: m.root, env: { PATH: '' } }).every((r) => r.state === 'warn' && r.fix));
 	});
-	test('the extension activates as API 1 with one namespaced command and one setup unit (its rows are the doctor\'s)', () => {
+	test('the extension activates as API 1 with one namespaced command and two setup units, the account unit first (its rows are the doctor\'s)', () => {
 		assert.equal(apiVersion, 1);
 		const ext = activate();
 		assert.deepEqual(Object.keys(ext.commands), ['google-setup']);
 		assert.match(ext.commands['google-setup'].usage, /google-setup/);
 		assert.equal(ext.doctor, undefined, 'the engine renders the unit\'s inspect as this capability\'s rows');
-		assert.equal(ext.setup.length, 1);
-		assert.equal(ext.setup[0].id, 'google-workspace');
+		assert.deepEqual(ext.setup.map((u) => u.id), ['google-workspace', 'meetings'], 'the calendar unit moved in from meetings keeps its id (cr-modules-018)');
 		assert.ok(Array.isArray(ext.setup[0].inspect({ root: machine().root, env: {}, receiptDir: path.join(machine().root, 'r') }).checks));
 	});
 });
@@ -311,7 +310,7 @@ describe('the google-setup command', () => {
 	const run = (root, argv, env) => { const out = []; const err = []; const code = setupCommand({ root, argv, env, out: (s) => out.push(s), err: (s) => err.push(s) }); return { code, out: out.join('\n'), err: err.join('\n') }; };
 	test('inspect --json is the inspect result; plan prints effects; apply round-trips', () => {
 		const m = machine({ store: false });
-		assert.equal(JSON.parse(run(m.root, ['inspect', '--json'], m.env).out).module, '@dreamteamer/google-workspace');
+		assert.equal(JSON.parse(run(m.root, ['inspect', '--json'], m.env).out).module, '@dreamteamer/connectors-google-workspace');
 		const p = run(m.root, ['plan', '--account', account], m.env);
 		assert.equal(p.code, 0);
 		assert.match(p.out, /effects: machine-file/);

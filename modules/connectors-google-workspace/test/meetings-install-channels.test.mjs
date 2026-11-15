@@ -1,7 +1,8 @@
-// THE CALENDAR ROWS LAND HOWEVER THE MODULE ARRIVED. Since cr-dt-007 the rows are an env action the engine
+// THE CALENDAR ROWS LAND HOWEVER THE PACKAGE ARRIVED. Since cr-dt-007 the rows are an env action the engine
 // writes — `dt setup meetings --input calendar=<row>` — so there is no module script to name per channel:
-// the direct npm package, an inline copy under modules/, and `@dreamteamer/core` (a module preset whose
-// members include meetings) all go through the one engine verb. Each case installs the packed or copied module into a fresh workspace (a
+// the direct npm package, an inline copy under modules/, and the package next to `@dreamteamer/core` (a
+// module preset whose members include meetings, but since core 0.13.0 not the sync) all go through the one
+// engine verb. The `meetings` unit moved here from @dreamteamer/meetings in cr-modules-018, id unchanged. Each case installs the packed or copied module into a fresh workspace (a
 // Git repository), runs the verb, and proves a second run is a no-op. Synthetic rows; no account touched.
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -38,26 +39,28 @@ function roundTrip(root) {
 
 test('direct npm install', () => {
 	const root = virginWorkspace();
-	installPacked(root, [...closure('meetings')]);
+	installPacked(root, [...closure('connectors-google-workspace')]);
 	ignoreEnv(root);
-	assert.ok(packedFiles('meetings').includes('SETUP.md'));
-	assert.ok(!packedFiles('meetings').includes('bin/setup.mjs'), 'the dt-setup-era script is gone (D70)');
+	assert.ok(packedFiles('connectors-google-workspace').includes('SETUP.md'));
+	assert.ok(!packedFiles('connectors-google-workspace').includes('bin/setup.mjs'), 'the dt-setup-era script is gone (D70)');
+	assert.ok(!packedFiles('meetings').includes('SETUP.md'), 'meetings ships no SETUP.md: it has nothing to set up');
 	roundTrip(root);
 });
 
 test('inline copy under modules/', () => {
 	const root = virginWorkspace();
-	installCopied(root, [...closure('meetings')]);
+	installCopied(root, [...closure('connectors-google-workspace')]);
 	ignoreEnv(root);
 	roundTrip(root);
 });
 
-test('core: the preset brings meetings as a member, and dt setup meetings writes the rows', { skip: !engineMeets('core') && `core is a module preset, read by engine ${pkgOf('core').dreamteamer.engine}; testing ${ENGINE_VERSION}` }, () => {
+test('core plus the connector: the preset brings meetings as a member, the connector the unit, and dt setup meetings writes the rows', { skip: !engineMeets('core') && `core is a module preset, read by engine ${pkgOf('core').dreamteamer.engine}; testing ${ENGINE_VERSION}` }, () => {
 	const root = virginWorkspace();
 	assert.ok(closure('core').has('meetings'), 'core\'s preset does not bring meetings');
-	installPacked(root, [...closure('core')]);
+	assert.ok(!closure('core').has('connectors-google-workspace'), 'core brings the connector: the sync is meant to be optional');
+	installPacked(root, [...new Set([...closure('core'), ...closure('connectors-google-workspace')])]);
 	ignoreEnv(root);
-	assert.ok(fs.existsSync(path.join(root, 'node_modules', '@dreamteamer', 'meetings', 'SETUP.md')), 'meetings arrives as its own package, with its SETUP.md');
+	assert.ok(fs.existsSync(path.join(root, 'node_modules', '@dreamteamer', 'connectors-google-workspace', 'SETUP.md')), 'the connector arrives as its own package, with its SETUP.md');
 	assert.ok(!packedFiles('core').includes('SETUP.md'), 'core ships no SETUP.md of its own');
 	roundTrip(root);
 });

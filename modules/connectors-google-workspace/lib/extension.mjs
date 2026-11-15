@@ -1,8 +1,11 @@
-// @dreamteamer/google-workspace — the engine extension entry (API 1). It contributes one namespaced
-// command, `dreamteamer google-setup`, and local doctor rows; both read the same inspect. Nothing
-// here starts the MCP server, opens a browser, refreshes a token or reaches the network.
+// @dreamteamer/connectors-google-workspace — the engine extension entry (API 1). It contributes two setup
+// units — `google-workspace` (the account credentials) and `meetings` (which calendars the calendar sync
+// reads, moved in from @dreamteamer/meetings with its id unchanged) — and one namespaced command,
+// `dreamteamer google-setup`, which reads the same inspect as the first unit. Nothing here starts the MCP
+// server, opens a browser, refreshes a token or reaches the network.
 import { inspect, plan, apply, redact, SetupRefusal } from './google-setup.mjs';
-import { SETUP_UNIT } from './google-workspace-setup.mjs';
+import { SETUP_UNIT } from './connectors-google-workspace-setup.mjs';
+import { SETUP_UNIT as MEETINGS_UNIT } from './meetings-setup.mjs';
 
 export const apiVersion = 1;
 
@@ -54,9 +57,9 @@ export function setupCommand({ root, argv = [], env = process.env, out = console
 
 export default function activate() {
 	return {
-		// the setup UNIT the engine drives (dt install / dt setup / dt status); the `google-setup` verb stays
-		// one release as the alias the earlier SETUP.md taught
-		setup: [SETUP_UNIT],
+		// the setup UNITS the engine drives (dt install / dt setup / dt status), the account unit first; the
+		// `google-setup` verb stays as the alias the earlier SETUP.md taught
+		setup: [SETUP_UNIT, MEETINGS_UNIT],
 		commands: { 'google-setup': { usage: USAGE, run: (ws, argv) => setupCommand({ root: ws.root, argv }) } },
 		// no `doctor` of its own any more: the engine renders the unit's inspect as this capability's rows,
 		// the never-locally-verifiable authorization row included — shown as unverified, never left out

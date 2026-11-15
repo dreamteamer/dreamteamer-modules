@@ -23,7 +23,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { attendeeOf } from '../skills/fetching-meetings/bin/event-people.mjs';
+import { attendeeOf } from './event-people.mjs';
 
 export const RESIDUE_HEADING = '## attendee notes (carried from attendees_raw)';
 

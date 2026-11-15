@@ -7,8 +7,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { SETUP_UNIT, inspect, plan, apply } from '../lib/google-workspace-setup.mjs';
-import { virginWorkspace, packedInto, run, cleanup, ENGINE_VERSION, engineMeets } from '../../../tests/helpers/workspace.mjs';
+import { SETUP_UNIT, inspect, plan, apply } from '../lib/connectors-google-workspace-setup.mjs';
+import { virginWorkspace, packedInto, run, cleanup, ENGINE_VERSION, engineMeets, closure } from '../../../tests/helpers/workspace.mjs';
 
 after(cleanup);
 // realpath: the module refuses a store path that passes through a symlink, and macOS's tmp does
@@ -144,14 +144,14 @@ describe('the unit, pure', () => {
 	});
 });
 
-describe('through the engine', { skip: !engineMeets('google-workspace') && `needs engine ${JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8')).dreamteamer.engine}, this is ${ENGINE_VERSION}` }, () => {
+describe('through the engine', { skip: !engineMeets('connectors-google-workspace') && `needs engine ${JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8')).dreamteamer.engine}, this is ${ENGINE_VERSION}` }, () => {
 	test('dt install creates the store under --allow machine, prints the sign-in line, status reads configured naming client_secret; --authorize without a terminal is exit 2', () => {
 		const root = virginWorkspace();
-		const from = packedInto(fs.mkdtempSync(path.join(os.tmpdir(), 'dtm-from-')), 'google-workspace');
+		const from = packedInto(fs.mkdtempSync(path.join(os.tmpdir(), 'dtm-from-')), ...closure('connectors-google-workspace'));
 		// the store's parent must be owner-only: the unit refuses a parent other users can write to (the
 		// sticky /tmp on a Linux runner), so a fresh mkdtemp folder (0700) is the parent, never os.tmpdir() itself
 		const store = path.join(tmp(), 'creds');
-		const r = run(root, ['install', '@dreamteamer/google-workspace', '--from', from, '--input', `credentials_dir=${store}`, '--allow', 'machine', '--no-input']);
+		const r = run(root, ['install', '@dreamteamer/connectors-google-workspace', '--from', from, '--input', `credentials_dir=${store}`, '--allow', 'machine', '--no-input']);
 		assert.equal(r.status, 0, r.stderr + r.stdout);
 		assert.ok(fs.existsSync(store), 'the store was created');
 		assert.match(r.stdout, /✔ create-credential-store — created/);
@@ -180,9 +180,9 @@ describe('through the engine', { skip: !engineMeets('google-workspace') && `need
 	});
 	test('the README line as written — no credentials_dir named, a fresh HOME — creates the default store under that home', { skip: process.platform === 'win32' }, () => {
 		const root = virginWorkspace();
-		const from = packedInto(fs.mkdtempSync(path.join(os.tmpdir(), 'dtm-from-')), 'google-workspace');
+		const from = packedInto(fs.mkdtempSync(path.join(os.tmpdir(), 'dtm-from-')), ...closure('connectors-google-workspace'));
 		const home = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'dtm-HOME-')));
-		const r = run(root, ['install', '@dreamteamer/google-workspace', '--from', from, '--allow', 'machine', '--no-input'], { HOME: home });
+		const r = run(root, ['install', '@dreamteamer/connectors-google-workspace', '--from', from, '--allow', 'machine', '--no-input'], { HOME: home });
 		assert.equal(r.status, 0, r.stderr + r.stdout);
 		assert.match(r.stdout, /✔ create-credential-store — created/);
 		const store = path.join(home, '.config', 'google-workspace-mcp', 'credentials');
