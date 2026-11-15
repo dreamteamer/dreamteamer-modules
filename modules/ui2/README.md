@@ -82,12 +82,22 @@ panel beside the list) sets the layout, sort, the List's options and the columns
 writes them to the governing ui-view, or to the collection's own `display.list`, and **Save as…** writes a new
 ui-view at `/views/<collection>/<name>`. Search, filter and layout ride on the URL (`?filter=…`), as in `ui`.
 
+`kanban` is the board: a column per value of a field (`lanes_by`, else the first enum; enum order, with each
+value's colour), optional lanes by another (`group_by`), each column scrolling its own cards under a pinned
+header. Dragging a card to another column writes that field; while the list is sorted by the collection's
+`position_field`, dropping between cards also places it there (the protocol's position route). A column field the
+form would not let you edit moves nothing, and the card says why. The `+` on a column opens a new record with the
+column's value filled in. `cards` is a grid of cards with a cover picture (the `image` field, or the first field
+whose View is `image`; a URL or a file record; `image_fit`), the record's title and three of the chosen columns,
+banded by `group_by`. On both, `card_title` is a markdown template whose `{{ field }}` tokens are drawn by each
+field's own View, and `color_by` tints the card.
+
 Save sends only the changed fields, and the host validates them as `dt set` does. If it refuses, the page
 shows its reason and nothing is written. When the host answers `GET /host` with level `read`, the page
 draws values and offers no edits.
 
-Not yet in `ui2`, all of which `ui` has: the other Lists — board, cards, calendar, map, gantt, diagram, counts
-and carousel (a view naming one draws the table, and says so); record and page ui-views; the record-scoped
+Not yet in `ui2`, all of which `ui` has: the other Lists — calendar, map, gantt, diagram, counts and carousel
+(a view naming one draws the table, and says so); record and page ui-views; the record-scoped
 pages (`form`, `doc`, `properties`, `data-model`); module apps; the schema editor and settings; nav arranging;
 history, commit and revert; notes and commands; file uploads. A route to one of these shows a line saying `ui2`
 doesn't draw it yet, and the nav still lists it.
@@ -96,7 +106,7 @@ doesn't draw it yet, and the nav still lists it.
 
 ```bash
 npm run build -w modules/ui2       # dist/lib and dist/app
-npm test -w modules/ui2            # routes, fields, filters, grouping, views, markdown and the API client
+npm test -w modules/ui2            # routes, fields, filters, grouping, the board's moves, card templates, markdown, the API client
 npm run typecheck -w modules/ui2   # tsc, strict, over src/
 npm run ui2                        # from the repo root: the app from source, over a sample workspace
 ```

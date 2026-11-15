@@ -9,9 +9,9 @@
  * those would be wrong for nearly every such field) or by SHAPE in resolve.ts (`tags`, `list`, `nested`,
  * `markdown-body`, `relation-picker`, `select-dropdown`, `label`, `relation`).
  *
- * The Lists — a collection's browse arrangements — register here too: today the built-in `table`, with the
- * options every list shares (grouping, colour, page size) and the table's own density. Board, cards, calendar,
- * map, gantt, diagram, counts and carousel come in later steps; a view naming one draws the table meanwhile.
+ * The Lists — a collection's browse arrangements — register here too: the built-in `table`, `cards` and `kanban`,
+ * with the options every list shares (grouping, colour, page size) and each one's own. Calendar, map, gantt,
+ * diagram, counts and carousel come in later steps; the browse says so for a view naming one.
  *
  * Not here yet: the record-scoped `form`/`doc`, `properties` and `data-model` (record pages, a later step).
  */
@@ -49,6 +49,8 @@ import { ViewSource } from "../views/ViewSource.tsx"
 import { ViewStageChecks } from "../views/ViewStageChecks.tsx"
 import { ViewTags } from "../views/ViewTags.tsx"
 import { ViewText } from "../views/ViewText.tsx"
+import { ListCards } from "../lists/ListCards.tsx"
+import { ListKanban } from "../lists/ListKanban.tsx"
 import { ListTable } from "../lists/ListTable.tsx"
 import { ALL, PAGE_SIZE_CHOICES } from "../lib/page-size.ts"
 import { DEFAULT_ROW_SIZE, ROW_SIZES, ROW_SIZE_LABELS } from "../lib/row-size.ts"
@@ -195,4 +197,93 @@ lists.register({
   component: ListTable,
   fillsHeight: true,
   options: [rowSizeOption(), ...groupRowsOptions(), colorByOption(), pageSizeOption()],
+})
+
+// a card's content, the same option on the grid and the board: markdown whose `{{ field }}` tokens keep their Views
+const cardTitleOption = (blank: string): OptionFieldDef => ({
+  field: "card_title",
+  group: "card",
+  name: "Card title",
+  type: "string",
+  editor: "display-template",
+  note: `markdown; fields render through their own display. Blank = ${blank}`,
+})
+
+lists.register({
+  id: "cards",
+  name: "Cards",
+  component: ListCards,
+  options: [
+    cardTitleOption("the record title + visible fields"),
+    colorByOption("card"),
+    // blank keeps the auto-pick (the first field whose View is `image`) — an explicit pick makes a second image
+    // field, or a plain string holding a file reference, usable as the cover
+    {
+      field: "image",
+      group: "card",
+      name: "Image",
+      type: "string",
+      editor: "field-select",
+      editor_options: { types: ["string"] },
+      note: "defaults to the first image field",
+    },
+    {
+      field: "image_fit",
+      group: "card",
+      name: "Image fit",
+      type: "string",
+      editor: "select-dropdown",
+      editor_options: {
+        choices: [
+          { label: "Cover", value: "cover" },
+          { label: "Contain", value: "contain" },
+        ],
+      },
+      default: "cover",
+    },
+    ...groupRowsOptions(),
+    pageSizeOption(),
+  ],
+})
+
+// a board is a fixed frame with columns that each scroll their own cards — it fills the page
+lists.register({
+  id: "kanban",
+  name: "Kanban",
+  component: ListKanban,
+  fillsHeight: true,
+  options: [
+    // `prefer`, not a filter: a non-enum field is a legal column axis too, its columns drawn from the data
+    {
+      field: "lanes_by",
+      group: "columns",
+      name: "Group columns by field",
+      type: "string",
+      editor: "field-select",
+      editor_options: { prefer: "choices", placeholder: "Auto — first enum field" },
+      note: "defaults to the first enum field",
+    },
+    {
+      field: "show_ungrouped_columns",
+      group: "columns",
+      name: "Show ungrouped column",
+      type: "boolean",
+      default: false,
+      note: "a column for records with no value — drop a card there to clear the field",
+      when: v => v["lanes_by"] !== "",
+    },
+    {
+      field: "show_empty_columns",
+      group: "columns",
+      name: "Show empty columns",
+      type: "boolean",
+      default: true,
+      note: "a column is a drop target, so an empty one is still somewhere to drag to",
+    },
+    // the LANE axis: blank is the single strip; a drag still writes the column field alone
+    ...groupRowsOptions(),
+    cardTitleOption("the record title + id"),
+    colorByOption("card"),
+    pageSizeOption(),
+  ],
 })

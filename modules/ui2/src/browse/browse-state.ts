@@ -35,6 +35,7 @@ import { listSeed, scratchKey as scratchKeyFor } from "../lib/list-seed.ts"
 import { effectiveLimit } from "../lib/page-size.ts"
 import { createRoute, pathOf, queryOf, recordRoute, withQuery } from "../lib/route.ts"
 import { recordLabel } from "../lib/schema.ts"
+import { resolveView } from "../registry/resolve.ts"
 import {
   SOURCE_FIELD,
   isOwnSource,
@@ -284,6 +285,19 @@ export function useBrowseState(collection: string, config: BrowseConfig = {}) {
   }, [fields, row?.record_title])
   const colorBy = colorByFor(row, listOptions[layout])
 
+  // ---- hand-set order and card pictures ---------------------------------------------------------------------
+  // A drag writes the collection's `position_field` — offered only while the list is SORTED by it: a drag on a
+  // list sorted by anything else would write a position the reader cannot see take effect.
+  const positionField = row?.position_field ?? null
+  const manualOrder = !!positionField && sort.replace(/^-/, "") === positionField
+  // a card's picture: the first field whose View is `image` (opt-in only); up to three other chosen columns are
+  // its subtitle lines — the table's own column choice, so switching layout needs no second "which fields"
+  const imageField = useMemo(() => fields.find(f => resolveView(f).entry.id === "image") ?? null, [fields])
+  const subtitleFields = useMemo(
+    () => columns.filter(f => f.field !== imageField?.field).slice(0, 3),
+    [columns, imageField]
+  )
+
   return {
     collection,
     row,
@@ -330,6 +344,10 @@ export function useBrowseState(collection: string, config: BrowseConfig = {}) {
     setSort: (value: string) => setSortRaw(value),
     /** A column header: ascending, then descending. */
     toggleSort: (field: string) => setSortRaw(s => toggledSort(s, field)),
+    /** The collection's `position_field` (a field of type `position`), or null. */
+    positionField,
+    /** True while the list is sorted by the position field — the only time a drag may reorder. */
+    manualOrder,
     sortField: sort.replace(/^-/, ""),
     sortDesc: sort.startsWith("-"),
     sortIndicator: (field: string): "asc" | "desc" | "" =>
@@ -365,6 +383,8 @@ export function useBrowseState(collection: string, config: BrowseConfig = {}) {
     recordTitleOf: (record: Row) => recordLabel(row, record, record.id),
     colorBy,
     tintOf: (record: Row) => tintStyle(tintFor(colorBy, fields, record)),
+    imageField,
+    subtitleFields,
     // selection
     selectedIds,
     isSelected: (id: string) => selectedIds.has(id),

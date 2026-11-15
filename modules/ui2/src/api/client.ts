@@ -117,6 +117,13 @@ export const createRecord = (collection: string, fields: Record<string, unknown>
     fields
   ) as Promise<{ id: string; path?: string }>
 
+/** Where a hand-set order puts a record: `PATCH /collections/:c/position/*id` writes the collection's one
+ *  `position` field, its key computed by the engine. */
+export type PositionMove = { top: true } | { bottom: true } | { before: string } | { after: string }
+
+export const moveRecord = (collection: string, id: string, move: PositionMove) =>
+  request("PATCH", `/collections/${encName(collection)}/position/${encId(id)}`, move) as Promise<unknown>
+
 export const removeRecord = (collection: string, id: string) =>
   request("DELETE", `/collections/${encName(collection)}/records/${encId(id)}`) as Promise<{ id: string }>
 

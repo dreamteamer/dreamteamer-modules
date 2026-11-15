@@ -1939,3 +1939,353 @@ input[type="checkbox"] {
     flex-basis: auto;
   }
 }
+
+/* ---- record cards (lists/ListKanban.tsx, lists/ListCards.tsx) ------------------------------------------------
+   One card surface for the board and the grid, so radius, padding, hover and wrapping cannot drift apart. A card
+   is clickable whether or not it may be dragged, so no card rule sets a cursor of its own (a locked board's card
+   still opens its record). `overflow-wrap: anywhere`: a long id or url in a template breaks rather than widens. */
+.ui2-record-card {
+  position: relative;
+  background: var(--ui2-bg);
+  border: 1px solid var(--ui2-border);
+  border-radius: var(--ui2-radius);
+  padding: 10px 12px;
+  cursor: pointer;
+  font-size: var(--ui2-text);
+  color: var(--ui2-fg);
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  transition:
+    box-shadow 0.12s ease,
+    border-color 0.1s ease;
+}
+.ui2-record-card:hover {
+  border-color: var(--ui2-input-border);
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--ui2-fg) 12%, transparent);
+}
+.ui2-record-card.is-tinted {
+  border-left: 3px solid var(--dt-tint);
+  background: color-mix(in srgb, var(--dt-tint-bg) 8%, var(--ui2-bg));
+}
+.ui2-record-card-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: auto;
+  padding-top: 6px;
+  font-size: var(--ui2-small);
+  min-width: 0;
+}
+.ui2-record-card-foot > * {
+  flex-shrink: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+.ui2-list-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 40px 16px;
+  color: var(--ui2-fg-subtle);
+}
+.ui2-list-empty p {
+  margin: 0;
+}
+
+/* a display template on a card (render/DisplayTemplate.tsx): the record page's markdown, tightened to a card */
+.ui2-md.ui2-md-tpl {
+  max-width: none;
+  font-size: inherit;
+  line-height: 1.45;
+}
+.ui2-md-tpl p {
+  margin: 0;
+}
+.ui2-md-tpl p + p {
+  margin-top: 3px;
+}
+.ui2-md-tpl h1,
+.ui2-md-tpl h2,
+.ui2-md-tpl h3,
+.ui2-md-tpl h4 {
+  margin: 0;
+  font-size: inherit;
+  line-height: 1.35;
+}
+.ui2-md-tpl h1,
+.ui2-md-tpl h2 {
+  font-size: calc(1em + 1px);
+}
+.ui2-md-tpl ul,
+.ui2-md-tpl ol {
+  margin: 2px 0;
+  padding-left: 16px;
+}
+.ui2-md-tpl blockquote,
+.ui2-md-tpl pre,
+.ui2-md-tpl .ui2-md-table-wrap {
+  margin: 3px 0;
+}
+.ui2-md-tpl pre {
+  white-space: pre-wrap;
+}
+.ui2-md-tpl p > * {
+  vertical-align: baseline;
+}
+.ui2-file-thumb {
+  max-width: 100%;
+  max-height: 120px;
+  border-radius: 4px;
+  vertical-align: middle;
+}
+
+/* ---- the board (lists/ListKanban.tsx) ----------------------------------------------------------------------
+   Full height: the wrap fills the browse's box, the strip fills the wrap, each column stretches to the strip,
+   and a column's card list is the only scroll box — its header stays pinned. No viewport-relative height. */
+.ui2-kanban-wrap {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.ui2-kanban-lanes {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.ui2-kanban-lanes.is-laned {
+  overflow-y: auto;
+  row-gap: 12px;
+}
+.ui2-kanban-lanes.is-saving {
+  opacity: 0.6;
+  pointer-events: none;
+}
+.ui2-kanban-lane {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.ui2-kanban-lanes.is-laned > .ui2-kanban-lane {
+  flex: 0 0 auto;
+  padding: 8px 12px 12px;
+  background: var(--ui2-bg-subtle);
+  border: 1px solid var(--ui2-border);
+  border-radius: var(--ui2-radius);
+}
+.ui2-kanban-lanes.is-laned > .ui2-kanban-lane.is-ungrouped {
+  border-style: dashed;
+}
+.ui2-kanban-lane-head,
+.ui2-kanban-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--ui2-small);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ui2-fg-subtle);
+}
+.ui2-kanban-lane-head {
+  padding: 2px 4px 8px;
+}
+.ui2-kanban-head {
+  padding: 2px 0 10px 4px;
+}
+.ui2-kanban-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ui2-kanban-dot {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.ui2-kanban-count {
+  margin-left: auto;
+  padding: 0 8px;
+  border-radius: 999px;
+  border: 1px solid var(--ui2-border);
+  background: var(--ui2-bg);
+  font-weight: 600;
+}
+/* stretch (the default) is what makes the columns equal-height */
+.ui2-kanban {
+  display: flex;
+  align-items: stretch;
+  gap: 16px;
+  overflow-x: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.ui2-kanban-lanes.is-laned .ui2-kanban {
+  flex: 0 0 auto;
+  min-height: 260px;
+}
+/* `min-width: 0`: a flex item's minimum is its min-content width, so a card whose template can't shrink would
+   drag the column past its 270px basis */
+.ui2-kanban-col {
+  flex: 0 0 270px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--ui2-bg-subtle);
+  border: 1px solid var(--ui2-border);
+  border-radius: var(--ui2-radius);
+  padding: 10px;
+  transition: border-color 0.1s;
+}
+.ui2-kanban-col.is-drop {
+  border-color: var(--ui2-accent);
+}
+.ui2-kanban-col.is-ungrouped {
+  border-style: dashed;
+}
+.ui2-kanban-add {
+  flex: 0 0 auto;
+  opacity: 0.5;
+  transition: opacity 0.1s;
+}
+.ui2-kanban-col:hover .ui2-kanban-add,
+.ui2-kanban-add:hover,
+.ui2-kanban-add:focus-visible {
+  opacity: 1;
+}
+.ui2-kanban-cards {
+  flex: 1 1 auto;
+  min-height: 24px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-right: 2px;
+}
+/* never shrink: in a height-constrained column, items shrink before the column scrolls — cards lost lines */
+.ui2-kanban-item {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+}
+.ui2-kanban-card.is-dragging {
+  opacity: 0.5;
+}
+/* the insertion gaps exist only during a drag on a list sorted by the position field — nearly invisible until
+   one is the target */
+.ui2-kanban-slot {
+  height: 8px;
+  margin: -4px 0 4px;
+  border-radius: 2px;
+}
+.ui2-kanban-slot.is-end {
+  flex: 0 0 auto;
+  height: 24px;
+  margin: 0;
+}
+.ui2-kanban-slot.is-over {
+  background: var(--ui2-accent);
+  height: 3px;
+  margin: 4px 0 8px;
+}
+.ui2-kanban-title {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ui2-kanban-id {
+  margin-top: 4px;
+  font-size: var(--ui2-small);
+  color: var(--ui2-fg-subtle);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ui2-kanban-error {
+  flex: 0 0 auto;
+  margin: 0 0 10px;
+}
+.ui2-kanban-hint {
+  flex: 0 0 auto;
+  margin: 10px 0 0;
+  color: var(--ui2-fg-subtle);
+  font-size: var(--ui2-small);
+}
+
+/* ---- the card grid (lists/ListCards.tsx) -------------------------------------------------------------------- */
+.ui2-card-band + .ui2-card-band {
+  margin-top: 14px;
+}
+.ui2-card-band-head {
+  margin-bottom: 8px;
+}
+.ui2-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+}
+.ui2-card-grid.is-revalidating {
+  opacity: 0.55;
+  transition: opacity 0.15s ease 0.15s;
+  pointer-events: none;
+}
+.ui2-cards-card {
+  display: flex;
+  flex-direction: column;
+}
+/* a full-bleed cover inside the padded card: negative margins cancel the padding */
+.ui2-record-card-cover {
+  margin: -10px -12px 10px;
+  aspect-ratio: 16 / 9;
+  background: var(--ui2-bg-subtle);
+}
+.ui2-record-card-cover img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.ui2-cards-title {
+  margin: 0;
+  font-size: var(--ui2-text);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ui2-cards-fields {
+  margin: 6px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ui2-cards-fields > div {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+.ui2-cards-fields dt {
+  flex: 0 0 auto;
+  color: var(--ui2-fg-subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  font-size: var(--ui2-small);
+}
+.ui2-cards-fields dd {
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
