@@ -107,7 +107,7 @@ onMounted(() => hostNotify('dt:ready'));
 </script>
 
 <template>
-	<div class="dt-shell" :class="{ 'dt-shell--app': appNav }">
+	<div class="dt-shell" :class="{ 'dt-shell--app': appNav, 'dt-shell--tabs': appTabs }">
 		<!-- the nav, and on a pane host its switcher and level in the nav's toolbar (no bar above the page) -->
 		<AppNav v-if="appNav" />
 		<main class="dt-page-area" :class="{ 'dt-page-area--tabs': appTabs }">
@@ -160,6 +160,11 @@ onMounted(() => hostNotify('dt:ready'));
 	background: var(--dt-surface);
 	border-top-left-radius: var(--dt-radius-sheet);
 	box-shadow: var(--dt-shadow-sheet);
+}
+
+.dt-shell--tabs {
+	/* the slide-over right panel opens under the 32px tab strip (RightSidebar.vue) */
+	--dt-rsb-top: calc(var(--dt-space-2) + 32px);
 }
 
 .dt-page-area--tabs {

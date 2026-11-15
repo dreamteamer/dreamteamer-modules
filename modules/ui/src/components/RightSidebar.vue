@@ -168,7 +168,8 @@ if (overlay) {
 .dt-rsb--over .dt-rsb-panel {
 	position: fixed;
 	z-index: 40;
-	top: var(--dt-space-2);
+	/* below the tab strip when the shell draws one (App sets --dt-rsb-top), so the tabs stay reachable */
+	top: var(--dt-rsb-top, var(--dt-space-2));
 	right: 36px;
 	bottom: 0;
 	width: min(380px, calc(100vw - 72px));
