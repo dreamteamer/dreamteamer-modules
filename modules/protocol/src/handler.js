@@ -76,7 +76,7 @@ export async function route(api, method, path, body, { root, settings, host, pan
 	return res;
 }
 
-export const NAV_UNMIGRATED = 'your nav settings are not in nav.yaml yet — run: npx -p @dreamteamer/protocol@0.2 dt-nav migrate';
+export const NAV_UNMIGRATED = 'your nav settings are not in nav.yaml yet — run: npx -p @dreamteamer/protocol@0.3 dt-nav migrate';
 
 /**
  * `PATCH /nav` (one NavOp) and `PUT /nav` (a whole NavDoc): checked, applied, written through the engine's writer

@@ -29,7 +29,7 @@ const MIGRATIONS = ['migrate-change-request-stage.mjs', 'migrate-journey-steps.m
 describe('rnd bins after the decomposition', { skip }, () => {
 	test('steps 1–5', { timeout: 900_000 }, () => {
 		// step 1 — the tarball, and rnd alone from it
-		assert.equal(pkgOf('rnd').version, '0.11.0');
+		assert.match(pkgOf('rnd').version, /^0\.11\.\d+$/); // rnd 0.11.x: the decomposition shipped in 0.11.0; a patch keeps it
 		const files = packedFiles('rnd');
 		assert.ok(files.includes('lib/workspace-root.mjs'), 'lib/workspace-root.mjs is not in the tarball');
 		for (const f of ['SETUP.md', 'compose.json', 'lib/wiki.mjs', 'bin/notebooklm-notebook.mjs', 'bin/wikis-wiki.mjs']) assert.ok(!files.includes(f), `${f} ships`);

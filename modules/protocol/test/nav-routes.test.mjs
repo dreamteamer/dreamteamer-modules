@@ -223,7 +223,7 @@ test('with no nav.yaml and an old nav setting set, PATCH and PUT are 409 naming 
 		for (const [m, body] of [['PATCH', { op: 'hide', target: { name: 'tasks' } }], ['PUT', { tree: ['tasks'], hidden: [] }]]) {
 			const res = await request(m, '/nav', body);
 			assert.equal(res.status, 409, `${m} answered ${res.status}`);
-			assert.equal(res.body.error, 'your nav settings are not in nav.yaml yet — run: npx -p @dreamteamer/protocol@0.2 dt-nav migrate');
+			assert.equal(res.body.error, 'your nav settings are not in nav.yaml yet — run: npx -p @dreamteamer/protocol@0.3 dt-nav migrate');
 			assert.equal(bytes(), null, `${m} wrote nav.yaml`);
 		}
 		// empty settings count as unset

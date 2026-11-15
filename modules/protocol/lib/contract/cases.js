@@ -76,7 +76,7 @@ export const cases = [
 		const lab = kids.find((n) => n.kind === 'namespace');
 		check(lab && lab.key === 'n/ns%3Alab' && lab.target?.name === 'lab', 'no namespace node n/ns%3Alab with target { name: lab }');
 		check(lab.children?.some((n) => n.key === 'c/lab/samples' && n.target?.name === 'lab/samples'), 'lab/samples is not drawn inside its namespace');
-		check(!kids.some((n) => n.kind === 'group'), 'a group node — protocol 0.2 draws folder and namespace nodes');
+		check(!kids.some((n) => n.kind === 'group'), 'a group node — protocol 0.3 draws folder and namespace nodes');
 		const walk = (ns) => ns.flatMap((n) => [n, ...walk(n.children ?? [])]);
 		for (const n of walk(kids).filter((x) => ['folder', 'namespace', 'collection'].includes(x.kind))) check(n.target && (typeof n.target.name === 'string' || Array.isArray(n.target.folder)), `${n.key} carries no target`);
 	} },

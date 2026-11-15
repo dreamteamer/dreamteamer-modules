@@ -35,7 +35,7 @@ describe('the preset map', () => {
 		const pkg = pkgOf('core');
 		for (const k of ['extension', 'env', 'vars', 'provides', 'peer_collections', 'dependencies']) assert.ok(!(k in pkg.dreamteamer), `dreamteamer.${k} is still declared`);
 		assert.ok(!('bin' in pkg), 'bin is still declared');
-		assert.equal(pkg.version, '0.13.0');
+		assert.equal(pkg.version, '0.13.1');
 		assert.equal(pkg.dreamteamer.engine, '>=0.49.0');
 		assert.equal(pkg.dreamteamer.nav, 'nav.yaml');
 		assert.deepEqual([...pkg.files].sort(), ['README.md', 'UPDATING.md', 'nav.yaml']);

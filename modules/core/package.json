@@ -1,6 +1,6 @@
 {
 	"name": "@dreamteamer/core",
-	"version": "0.13.0",
+	"version": "0.13.1",
 	"description": "Every core noun from one install line: a module preset of seventeen small modules, installed and moved as one set by dt install and dt update.",
 	"license": "Apache-2.0",
 	"type": "module",
