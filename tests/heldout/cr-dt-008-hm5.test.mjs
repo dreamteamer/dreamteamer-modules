@@ -21,7 +21,8 @@ import { ENGINE, closure, installPacked, editPkg, run, SCOPE } from '../helpers/
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const PROTOCOL = path.join(ROOT, 'modules', 'protocol');
 const DT_NAV = path.join(PROTOCOL, 'bin', 'dt-nav.mjs');
-const OLD_ENGINE = fs.realpathSync(path.join(ROOT, 'node_modules', 'dreamteamer'));
+// the last engine below 0.49, under the root devDependency alias `dreamteamer-0-48` (0.49.0 is the published one now)
+const OLD_ENGINE = fs.realpathSync(path.join(ROOT, 'node_modules', 'dreamteamer-0-48'));
 const OLD_VERSION = JSON.parse(fs.readFileSync(path.join(OLD_ENGINE, 'package.json'), 'utf8')).version;
 
 const SETTINGS = {

@@ -19,7 +19,9 @@ const BIN = path.join(PKG, 'bin', 'dt-nav.mjs');
 const { makeFixture } = await import(pathToFileURL(path.join(PKG, 'lib', 'contract', 'fixture.js')).href);
 const { meetsFloor } = await import(pathToFileURL(path.join(PKG, 'src', 'host', 'floor.js')).href);
 
-const PUBLISHED = fs.realpathSync(path.join(ROOT, 'node_modules', 'dreamteamer'));
+// The engine BELOW the nav document's floor: the last 0.48, installed beside the current one under an alias
+// (the root devDependency `dreamteamer-0-48`), so the "older engine" half survives 0.49.0 being the published one.
+const PUBLISHED = fs.realpathSync(path.join(ROOT, 'node_modules', 'dreamteamer-0-48'));
 const versionOf = (dir) => JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8')).version;
 const CANDIDATE = meetsFloor(versionOf(ENGINE_DIR), '0.49.0');
 
@@ -40,7 +42,7 @@ function withSettings(engineDir) {
 	return f;
 }
 
-const engines = [['the published engine', PUBLISHED, false], ...(CANDIDATE ? [['the candidate', ENGINE_DIR, true]] : [])];
+const engines = [['the last engine below the floor', PUBLISHED, false], ...(CANDIDATE ? [['the candidate', ENGINE_DIR, true]] : [])];
 for (const [label, engineDir, fragments] of engines) {
 	test(`on ${label} (${versionOf(engineDir)}): dt-nav migrate writes nav.yaml${fragments ? ' and applies the fragments' : ', no fragments'}`, { timeout: 180_000 }, () => {
 		const f = withSettings(engineDir);
