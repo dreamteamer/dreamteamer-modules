@@ -48,15 +48,17 @@ function payload(cwd) {
 }
 const HOOK_ARGS = ['--write', '--hook', '--quiet']; // the README's Stop-hook command line
 
-/** What core 0.11's own bin writes for the same payload: core 0.11 (this repo's main clone) on engine 0.48. */
+/** What core 0.11's own bin writes for the same payload: core 0.11.0 as npm publishes it. (It was read from a sibling
+ *  main clone while main held 0.11.0 — a path that exists on one machine only: on CI it is this checkout, core 0.12.) */
 function core011Record() {
-	const main = path.resolve(ROOT, '..', 'dreamteamer-modules', 'modules', 'core');
-	const pkg = JSON.parse(fs.readFileSync(path.join(main, 'package.json'), 'utf8'));
-	if (pkg.version !== '0.11.0' || !fs.existsSync(path.join(main, 'bin', 'session-save.mjs'))) return { skipped: `no core 0.11 at ${main}` };
 	const engine = path.join(ROOT, 'node_modules', 'dreamteamer');
 	const { root } = createWorkspace({ engine });
 	const dest = tmp('dtm-hm7-core011-');
-	const tgz = path.join(dest, JSON.parse(execFileSync('npm', ['pack', main, '--pack-destination', dest, '--json', '--silent'], { encoding: 'utf8', timeout: 120_000 }))[0].filename);
+	let packed;
+	try {
+		packed = JSON.parse(execFileSync('npm', ['pack', '@dreamteamer/core@0.11.0', '--pack-destination', dest, '--json', '--silent'], { cwd: dest, encoding: 'utf8', timeout: 120_000 }))[0];
+	} catch (e) { return { skipped: `no core 0.11.0 from npm: ${e.message}` }; }
+	const tgz = path.join(dest, packed.filename);
 	const at = path.join(root, 'node_modules', '@dreamteamer', 'core');
 	fs.mkdirSync(at, { recursive: true });
 	execFileSync('tar', ['-xzf', tgz, '-C', at, '--strip-components', '1'], { timeout: 60_000 });
