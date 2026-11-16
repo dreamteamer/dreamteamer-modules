@@ -9,6 +9,7 @@ import { notify } from "../api/client.ts"
 import { formatWithUnit } from "../lib/field-unit.ts"
 import type { ViewProps } from "../registry/props.ts"
 import { CELL_MAX, Empty, isEmpty } from "./empty.tsx"
+import { wrap } from "../styles/classes.ts"
 
 const LOCAL_PAGE = /^(?!\/)(?!.*(?:^|[/\\])\.\.(?:[/\\]|$))[\w./-]+\.html?$/i
 
@@ -20,20 +21,20 @@ export function ViewText({ field, value, context, record }: ViewProps) {
     const v = s.trim()
     if (/^https?:\/\/\S+$/i.test(v))
       return (
-        <a className="dt-wrap" href={v} target="_blank" rel="noopener noreferrer" dir="auto">
+        <a className={wrap} href={v} target="_blank" rel="noopener noreferrer" dir="auto">
           {s}
         </a>
       )
     if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v))
       return (
-        <a className="dt-wrap" href={`mailto:${v}`} dir="auto">
+        <a className={wrap} href={`mailto:${v}`} dir="auto">
           {s}
         </a>
       )
     if (LOCAL_PAGE.test(v))
       return (
         <a
-          className="dt-wrap"
+          className={wrap}
           href="#"
           dir="auto"
           title="Open in browser"
@@ -46,7 +47,7 @@ export function ViewText({ field, value, context, record }: ViewProps) {
         </a>
       )
     return (
-      <span className="dt-wrap" dir={field.direction ?? "auto"}>
+      <span className={wrap} dir={field.direction ?? "auto"}>
         {s}
       </span>
     )

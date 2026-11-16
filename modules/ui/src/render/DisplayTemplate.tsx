@@ -12,7 +12,7 @@
 import { useMemo } from "react"
 import type { FieldRow } from "../api/types.ts"
 import { FileThumb } from "../components/FileThumb.tsx"
-import { MdNodes } from "../components/Markdown.tsx"
+import { MdNodes, mdTemplate } from "../components/Markdown.tsx"
 import { compileTemplate } from "../lib/display-template.ts"
 import { renderMd } from "../lib/render-md.ts"
 import { RenderView } from "./Render.tsx"
@@ -38,7 +38,7 @@ export function DisplayTemplate({
     [compiled]
   )
   return (
-    <div className="dt-md dt-md-tpl">
+    <div className={mdTemplate}>
       <MdNodes
         nodes={nodes}
         slot={i => {

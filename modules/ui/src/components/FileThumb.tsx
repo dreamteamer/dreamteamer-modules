@@ -12,6 +12,7 @@ import { useEffect, useState } from "react"
 import { useApp } from "../app-context.tsx"
 import { fileRecordRef, isImageExt, srcForRecord } from "../lib/file-record.ts"
 import { fetchRecord } from "../lib/record-cache.ts"
+import { subtle } from "../styles/classes.ts"
 
 const URL_RE = /^(https?:\/\/|data:image\/)/i
 
@@ -39,5 +40,9 @@ export function useImageSrc(value: unknown): string | null {
 /** A file-codec reference drawn as the picture it is — or its text, when it is not an image. */
 export function FileThumb({ value, alt = "" }: { value: string; alt?: string }) {
   const src = useImageSrc(value)
-  return src ? <img src={src} alt={alt} className="dt-file-thumb" /> : <span className="dt-subtle">{value}</span>
+  return src ? (
+    <img src={src} alt={alt} className="max-w-full max-h-[120px] rounded align-middle" />
+  ) : (
+    <span className={subtle}>{value}</span>
+  )
 }

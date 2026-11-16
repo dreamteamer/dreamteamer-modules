@@ -109,6 +109,11 @@ export const check = "flex items-start gap-2 [&_input]:mt-0.5 [&_input]:mb-0 [&_
 export const invalid = "text-danger! border-danger!"
 
 // ---- values --------------------------------------------------------------------------------------------------------
+/** Key–value pairs: a nested object, a list row opened. (was dt-kv) */
+export const kv =
+  "grid grid-cols-[minmax(90px,max-content)_1fr] gap-x-3.5 gap-y-1 m-0 [&>div]:contents [&_dt]:text-fg-subtle [&_dd]:m-0 [&_dd]:whitespace-pre-wrap [&_dd]:[overflow-wrap:anywhere]"
+/** A row of chips, labels or references; a table cell keeps it on one line by its `data-items`. (was dt-chips) */
+export const items = "inline-flex flex-wrap gap-1"
 /** A value chip; set `--chip` (and optionally `--chip-bg`) inline for its colour. (was dt-chip) */
 export const chip =
   "[--chip:var(--dt-unknown-color)] [--chip-bg:color-mix(in_srgb,var(--chip)_14%,transparent)] inline-flex items-center gap-1 px-2 py-px rounded-full text-small text-(--chip) bg-(--chip-bg) border border-[color-mix(in_srgb,var(--chip)_35%,transparent)] whitespace-nowrap"

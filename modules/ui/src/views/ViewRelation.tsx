@@ -23,6 +23,7 @@ import { recordRoute } from "../lib/route.ts"
 import { splitRef } from "../lib/schema.ts"
 import type { ViewProps } from "../registry/props.ts"
 import { Empty } from "./empty.tsx"
+import { cx, subtle } from "../styles/classes.ts"
 
 /** A file-codec reference's image src, once its record (and so its extension) has landed. */
 function useFileSrc(ref: string, version: number): string | null {
@@ -44,7 +45,7 @@ function useFileSrc(ref: string, version: number): string | null {
   return src
 }
 
-function Reference({ refValue, linked }: { refValue: string; linked: boolean }) {
+function Reference({ refValue, linked, record }: { refValue: string; linked: boolean; record: boolean }) {
   const { schema, version } = useApp()
   const at = splitRef(refValue, schema.names)
   const label = knownTitle(refValue) ?? refStem(refValue)
@@ -55,9 +56,20 @@ function Reference({ refValue, linked }: { refValue: string; linked: boolean }) 
     { text: at ? `in ${collectionTitle}` : "" },
     { text: refValue, kind: "code" as const },
   ]
-  const body = src ? <img className="dt-ref-image" src={src} alt={label} /> : <span dir="auto">{label}</span>
+  const body = src ? (
+    <img
+      className={cx(
+        "w-auto object-contain align-text-bottom",
+        record ? "h-[2.4em] max-w-[240px]" : "h-[1.35em] max-w-[120px]"
+      )}
+      src={src}
+      alt={label}
+    />
+  ) : (
+    <span dir="auto">{label}</span>
+  )
   return (
-    <HoverCard lines={lines} className="dt-ref">
+    <HoverCard lines={lines} className="inline-flex items-center">
       {linked && at ? (
         <span onClick={e => e.stopPropagation()}>
           <Link to={recordRoute(at.collection, at.id)}>{body}</Link>
@@ -78,11 +90,11 @@ export function ViewRelation({ field, value, context }: ViewProps) {
   const anyCollection = (field.many === true || field.role === "reference_many") && !schema.target(field)
   const linked = context === "record" || anyCollection
   return (
-    <span className={`dt-refs${context === "record" ? " is-record" : ""}`}>
+    <span className={cx("inline-flex flex-wrap gap-1.5", context === "record" && "whitespace-normal")} data-items>
       {refs.map((ref, i) => (
         <span key={`${ref}-${i}`}>
-          <Reference refValue={ref} linked={linked} />
-          {i < refs.length - 1 && <span className="dt-subtle">, </span>}
+          <Reference refValue={ref} linked={linked} record={context === "record"} />
+          {i < refs.length - 1 && <span className={subtle}>, </span>}
         </span>
       ))}
     </span>

@@ -22,6 +22,10 @@ import {
 } from "../lib/stage-checks.ts"
 import { openFindingsFor, reviewsFor } from "../lib/stage-reviews.ts"
 import type { ViewProps } from "../registry/props.ts"
+import { chip, cx, subtle } from "../styles/classes.ts"
+
+/** A check's colour by its state: approved green, approved with remarks orange, else quiet. */
+const CHECK: Record<string, string> = { approved: "text-chart-green", remarks: "text-chart-orange" }
 
 const MAX_CHIPS = 3
 
@@ -85,11 +89,11 @@ export function ViewStageChecks({ field, value, options, record }: ViewProps) {
   const icon = (c: StageCheck) => (c.state === "none" ? undefined : c.state === "done" ? "check" : "check-all")
 
   return (
-    <span className="dt-stage-checks">
+    <span className="inline-flex flex-wrap items-center gap-1">
       {checks.map(c => (
         <span
           key={c.stage.tag}
-          className={`dt-stage-check is-${c.state}`}
+          className={cx("inline-flex justify-center w-4", CHECK[c.state] ?? "text-fg-subtle")}
           data-stage={c.stage.tag}
           data-state={c.state}
           role={c.state === "none" ? undefined : "img"}
@@ -101,11 +105,11 @@ export function ViewStageChecks({ field, value, options, record }: ViewProps) {
         </span>
       ))}
       {chips.slice(0, MAX_CHIPS).map(tag => (
-        <span key={tag} className="dt-chip">
+        <span key={tag} className={chip}>
           {tag}
         </span>
       ))}
-      {chips.length > MAX_CHIPS && <span className="dt-subtle">+{chips.length - MAX_CHIPS}</span>}
+      {chips.length > MAX_CHIPS && <span className={subtle}>+{chips.length - MAX_CHIPS}</span>}
     </span>
   )
 }

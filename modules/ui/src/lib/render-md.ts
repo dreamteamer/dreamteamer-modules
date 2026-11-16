@@ -16,7 +16,8 @@
 
 export interface MdElement {
   tag: string
-  /** `class`, `dir`, `href`, … as the DOM spells them; `checked`/`disabled` booleans on a task's checkbox. */
+  /** `dir`, `href`, `data-md` (what a node is, for the look: code, pre, quote, table, task), … as the DOM spells
+   *  them; `checked`/`disabled` booleans on a task's checkbox. */
   attrs?: Record<string, string | boolean>
   children: MdNode[]
 }
@@ -81,14 +82,11 @@ function inline(s: string, slots: readonly string[]): MdNode[] {
     if (m.index) pushText(out, rest.slice(0, m.index), slots)
     if (m[2]) out.push(el("strong", null, inline(m[2], slots)))
     else if (m[4]) out.push(el("em", null, inline(m[4], slots)))
-    else if (m[6]) out.push(el("code", { class: "dt-md-code" }, [flatten(m[6], slots)]))
+    else if (m[6]) out.push(el("code", { "data-md": "code" }, [flatten(m[6], slots)]))
     else if (m[8]) {
       const href = flatten(m[9] ?? "", slots).trim()
       // React refuses a `javascript:` URL only with a warning; a record body is untrusted, so it never gets one
-      if (safeHref(href))
-        out.push(
-          el("a", { class: "dt-md-link", href, target: "_blank", rel: "noopener noreferrer" }, inline(m[8], slots))
-        )
+      if (safeHref(href)) out.push(el("a", { href, target: "_blank", rel: "noopener noreferrer" }, inline(m[8], slots)))
       else out.push(...inline(m[8], slots))
     }
     rest = rest.slice(m.index + m[0].length)
@@ -156,7 +154,7 @@ function listItem(text: string, slots: readonly string[]): MdNode {
   // GFM task item: the checkbox state, inert (a view, not an edit)
   const task = /^\[([ xX])\]\s+(.*)$/.exec(text)
   if (task) {
-    return el("li", { class: "dt-md-task", ...DIR }, [
+    return el("li", { "data-md": "task", ...DIR }, [
       el("input", { type: "checkbox", checked: task[1] !== " ", disabled: true }, []),
       ...inline(task[2] ?? "", slots),
     ])
@@ -185,7 +183,7 @@ export function renderMd(text: unknown, slots: readonly string[] = []): MdNode[]
       i++
       while (i < lines.length && !/^```/.test(lines[i] as string)) buf.push(lines[i++] as string)
       i++
-      nodes.push(el("pre", { class: "dt-md-pre" }, [flatten(buf.join("\n"), slots)]))
+      nodes.push(el("pre", { "data-md": "pre" }, [flatten(buf.join("\n"), slots)]))
       continue
     }
     if (/^\s*>\s?/.test(l)) {
@@ -193,7 +191,7 @@ export function renderMd(text: unknown, slots: readonly string[] = []): MdNode[]
       while (i < lines.length && /^\s*>\s?/.test(lines[i] as string))
         buf.push((lines[i++] as string).replace(/^\s*>\s?/, ""))
       const quote = buf.join("\n")
-      nodes.push(el("blockquote", { class: "dt-md-quote", dir: firstStrongDir(quote) }, renderMd(quote, slots)))
+      nodes.push(el("blockquote", { "data-md": "quote", dir: firstStrongDir(quote) }, renderMd(quote, slots)))
       continue
     }
     if (/^\s*([-*]|\d+\.)\s+/.test(l)) {
@@ -216,7 +214,7 @@ export function renderMd(text: unknown, slots: readonly string[] = []): MdNode[]
       const rows: string[][] = []
       while (i < lines.length && /^\|.*\|\s*$/.test(lines[i] as string)) rows.push(cells(lines[i++] as string))
       nodes.push(
-        el("div", { class: "dt-md-table-wrap" }, [
+        el("div", { "data-md": "table" }, [
           el("table", { dir: firstStrongDir([head, ...rows].flat().join(" ")) }, [
             el("thead", null, [
               el(

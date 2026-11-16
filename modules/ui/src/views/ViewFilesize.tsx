@@ -7,5 +7,5 @@ import { Empty, isEmpty } from "./empty.tsx"
 
 export function ViewFilesize({ value }: ViewProps) {
   if (isEmpty(value)) return <Empty />
-  return <span className="dt-nowrap">{formatFilesize(value)}</span>
+  return <span className="whitespace-nowrap">{formatFilesize(value)}</span>
 }

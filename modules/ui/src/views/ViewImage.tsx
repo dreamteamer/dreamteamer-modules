@@ -11,6 +11,7 @@ import { useImageSrc } from "../components/FileThumb.tsx"
 import { isSquarish } from "../lib/row-size.ts"
 import type { ViewProps } from "../registry/props.ts"
 import { Empty } from "./empty.tsx"
+import { cx, subtle } from "../styles/classes.ts"
 
 export function ViewImage({ value, context }: ViewProps) {
   const raw = typeof value === "string" ? value.trim() : ""
@@ -18,19 +19,24 @@ export function ViewImage({ value, context }: ViewProps) {
   const [square, setSquare] = useState(false)
 
   if (!raw) return <Empty />
-  if (!src) return <span className="dt-subtle">{raw}</span>
+  if (!src) return <span className={subtle}>{raw}</span>
   return (
     <a
       href={src}
       target="_blank"
       rel="noopener noreferrer"
-      className="dt-image-link"
+      className="inline-block leading-[0]"
       onClick={e => e.stopPropagation()}
     >
       <img
         src={src}
         alt=""
-        className={`dt-image${context === "record" ? " is-record" : ""}${square ? " is-square" : ""}`}
+        className={cx(
+          "object-cover border border-border",
+          context === "record" ? "w-auto h-auto max-w-[240px] max-h-[180px]" : "w-8 h-8",
+          square ? "rounded-full" : "rounded"
+        )}
+        data-image
         onLoad={e => setSquare(isSquarish(e.currentTarget.naturalWidth, e.currentTarget.naturalHeight))}
       />
     </a>

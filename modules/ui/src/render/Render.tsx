@@ -7,6 +7,7 @@ import { useMemo } from "react"
 import type { FieldRow } from "../api/types.ts"
 import { resolveEdit, resolveView } from "../registry/resolve.ts"
 import { ErrorBoundary } from "./ErrorBoundary.tsx"
+import { subtle } from "../styles/classes.ts"
 
 const raw = (v: unknown) =>
   v === null || v === undefined ? "—" : typeof v === "object" ? JSON.stringify(v) : String(v)
@@ -25,8 +26,8 @@ export function RenderEdit(props: {
     <ErrorBoundary
       name={`edit:${resolved.entry.id}:${props.field.field}`}
       fallback={
-        <span className="dt-render-fallback">
-          {raw(props.value)} <em className="dt-subtle">— editor failed, value shown read-only</em>
+        <span className="text-fg-subtle font-mono">
+          {raw(props.value)} <em className={subtle}>— editor failed, value shown read-only</em>
         </span>
       }
     >
@@ -47,7 +48,7 @@ export function RenderView(props: {
   return (
     <ErrorBoundary
       name={`view:${resolved.entry.id}:${props.field.field}`}
-      fallback={<span className="dt-render-fallback">{raw(props.value)}</span>}
+      fallback={<span className="text-fg-subtle font-mono">{raw(props.value)}</span>}
     >
       <View {...props} context={context} options={props.field.viewer_options} />
     </ErrorBoundary>

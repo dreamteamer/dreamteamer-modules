@@ -30,7 +30,7 @@ export function formatDate(value: string, type: string, context: "cell" | "recor
 export function ViewDate({ field, value, context, options }: ViewProps) {
   if (isEmpty(value) || typeof value !== "string") return isEmpty(value) ? <Empty /> : <span>{String(value)}</span>
   return (
-    <span className="dt-nowrap" title={value}>
+    <span className="whitespace-nowrap" title={value}>
       {formatDate(value, field.type, context, Boolean(options?.["relative"]))}
     </span>
   )

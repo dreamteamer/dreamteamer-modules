@@ -16,9 +16,9 @@ export function ViewSource({ value, options, context, record }: ViewProps) {
   const entry = sources.find(s => s.name === name)
   const foreign = !!name && name !== own
   const stub = stubNoteOf(record)
-  if (!foreign && !stub) return <span className="dt-source-own" aria-hidden="true" />
+  if (!foreign && !stub) return <span aria-hidden="true" />
   return (
-    <span className="dt-source-cell">
+    <span className="inline-flex flex-wrap items-center gap-2 min-w-0">
       {foreign && (
         <SourceMark
           name={name}

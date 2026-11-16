@@ -9,6 +9,7 @@ import { rowSummary } from "../edits/EditList.tsx"
 import { entriesOf, showValue } from "../lib/edit-values.ts"
 import type { ViewProps } from "../registry/props.ts"
 import { Empty } from "./empty.tsx"
+import { cx, kv, mono, subtle } from "../styles/classes.ts"
 
 export function ViewList({ value, options, context }: ViewProps) {
   const [open, setOpen] = useState<Set<number>>(new Set())
@@ -34,16 +35,21 @@ export function ViewList({ value, options, context }: ViewProps) {
       return n
     })
   return (
-    <div className="dt-list-view">
+    <div className="flex flex-col gap-1.5 min-w-0">
       {rows.map((row, i) => (
-        <div key={i} className="dt-list-row">
-          <button type="button" className="dt-list-summary" aria-expanded={open.has(i)} onClick={() => toggle(i)}>
+        <div key={i} className="border border-border rounded-dt bg-bg">
+          <button
+            type="button"
+            className="flex items-center gap-1.5 flex-auto min-w-0 w-full py-1.5 px-2 border-0 bg-transparent text-fg text-left cursor-pointer"
+            aria-expanded={open.has(i)}
+            onClick={() => toggle(i)}
+          >
             <Icon name={open.has(i) ? "chevron-down" : "chevron-right"} />
-            <span className="dt-subtle dt-mono">{i + 1}</span>
-            <span className="dt-list-label">{summaries[i]}</span>
+            <span className={cx(subtle, mono)}>{i + 1}</span>
+            <span className="overflow-hidden text-ellipsis whitespace-nowrap">{summaries[i]}</span>
           </button>
           {open.has(i) && (
-            <dl className="dt-kv dt-list-row-body">
+            <dl className={cx(kv, "pt-2 pr-3 pb-3 pl-[30px] border-t border-border")}>
               {entriesOf(row, fields).map(([k, v]) => (
                 <div key={k}>
                   <dt>{k}</dt>

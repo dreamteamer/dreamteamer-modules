@@ -16,6 +16,15 @@ export interface HoverLine {
 
 const PROVISIONAL = { width: 360, height: 120 }
 
+/** The card: the editor's hover-widget colours, and none of the trigger's text styling (a header cell's capitals). */
+const cardCls =
+  "fixed z-50 max-w-[360px] px-[9px] py-1.5 border [border-color:var(--vscode-editorHoverWidget-border,var(--dt-border))] rounded-dt [background-color:var(--vscode-editorHoverWidget-background,var(--dt-bg))] [color:var(--vscode-editorHoverWidget-foreground,var(--dt-fg))] shadow-[0_6px_18px_rgb(0_0_0/18%)] text-small font-normal leading-[1.45] text-start normal-case tracking-normal whitespace-normal [overflow-wrap:anywhere] pointer-events-none [&>div+div]:mt-[3px]"
+const LINE: Record<NonNullable<HoverLine["kind"]>, string | undefined> = {
+  title: "font-semibold",
+  body: undefined,
+  code: "font-mono opacity-80",
+}
+
 export function HoverCard({
   lines,
   children,
@@ -61,9 +70,9 @@ export function HoverCard({
     >
       {children}
       {open && (
-        <div id={id} ref={card} role="tooltip" className="dt-hover-card" style={{ top: at.top, left: at.left }}>
+        <div id={id} ref={card} role="tooltip" className={cardCls} style={{ top: at.top, left: at.left }}>
           {shown.map((l, i) => (
-            <div key={i} className={`dt-hover-line is-${l.kind ?? "body"}`}>
+            <div key={i} className={LINE[l.kind ?? "body"]}>
               {l.text}
             </div>
           ))}

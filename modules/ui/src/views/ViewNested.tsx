@@ -6,6 +6,7 @@
 import { entriesOf, showValue } from "../lib/edit-values.ts"
 import type { ViewProps } from "../registry/props.ts"
 import { Empty } from "./empty.tsx"
+import { kv } from "../styles/classes.ts"
 
 export function ViewNested({ value, options, context }: ViewProps) {
   const model =
@@ -18,7 +19,7 @@ export function ViewNested({ value, options, context }: ViewProps) {
     return <span title={line}>{line.length > 80 ? `${line.slice(0, 80)}…` : line}</span>
   }
   return (
-    <dl className="dt-kv">
+    <dl className={kv}>
       {entries.map(([k, v]) => (
         <div key={k}>
           <dt>{k}</dt>

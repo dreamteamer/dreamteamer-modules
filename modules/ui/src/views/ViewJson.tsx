@@ -5,13 +5,19 @@
  */
 import type { ViewProps } from "../registry/props.ts"
 import { Empty } from "./empty.tsx"
+import { chip, cx } from "../styles/classes.ts"
 
 const PREVIEW = 120
 
 export function ViewJson({ value, context }: ViewProps) {
   if (value === null || value === undefined || typeof value !== "object")
     return value === null || value === undefined || value === "" ? <Empty /> : <span>{String(value)}</span>
-  if (context === "record") return <pre className="dt-pre dt-json">{JSON.stringify(value, null, 2)}</pre>
+  if (context === "record")
+    return (
+      <pre className="m-0 font-mono text-[12px] whitespace-pre-wrap max-h-[420px] overflow-auto py-2.5 px-3 border border-border rounded-dt">
+        {JSON.stringify(value, null, 2)}
+      </pre>
+    )
   if (Array.isArray(value))
     return (
       <span>
@@ -20,7 +26,10 @@ export function ViewJson({ value, context }: ViewProps) {
     )
   const json = JSON.stringify(value)
   return (
-    <span className="dt-chip dt-mono" title={json.length > PREVIEW ? `${json.slice(0, PREVIEW)}…` : json}>
+    <span
+      className={cx(chip, "font-mono break-all")}
+      title={json.length > PREVIEW ? `${json.slice(0, PREVIEW)}…` : json}
+    >
       {"{…}"}
     </span>
   )

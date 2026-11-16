@@ -38,8 +38,8 @@ import { cx, iconButton, linkButton } from "../styles/classes.ts"
 // tie with a row's or a density's override, and Tailwind orders ties by the stylesheet, not by intent.
 /** What every cell shares. */
 const cellCore = "text-left px-3 border-b border-border whitespace-nowrap overflow-hidden text-ellipsis"
-/** …and a body cell, which also caps its width and keeps a cell's chips on one line. */
-const cellCapped = "max-w-[320px] [&_.dt-chips]:flex-nowrap! [&_.dt-labels]:flex-nowrap! [&_.dt-refs]:flex-nowrap!"
+/** …and a body cell, which also caps its width and keeps a View's row of chips, labels or references on one line. */
+const cellCapped = "max-w-[320px] [&_[data-items]]:flex-nowrap"
 const padY = (size: string, head = false) =>
   size === "compact" ? "py-[3px]" : size === "comfortable" && !head ? "py-3" : "py-[7px]"
 const headCell = (size: string) =>
@@ -248,7 +248,7 @@ export function ListTable({ state }: ListProps) {
                             i === 0 && tint && "shadow-[inset_3px_0_0_var(--dt-tint)]",
                             i === 0 &&
                               rowSize === "comfortable" &&
-                              "[&_img]:w-12! [&_img]:h-12! [&_img]:max-h-none! [&_img]:object-cover!"
+                              "[&_[data-image]]:w-12 [&_[data-image]]:h-12 [&_[data-image]]:max-h-none [&_[data-image]]:object-cover"
                           )}
                         >
                           {rowSize === "comfortable" && i === 0 && leadIsPicture && isEmpty(r[f.field]) ? (
