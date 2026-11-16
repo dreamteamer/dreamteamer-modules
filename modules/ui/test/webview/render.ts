@@ -47,9 +47,53 @@ const ELEMENT_METHODS: Record<string, unknown> = {
 	getBoundingClientRect: () => ({ top: 0, bottom: 0, left: 0, right: 0, width: 0, height: 0, x: 0, y: 0 }),
 };
 
+/**
+ * `querySelectorAll` for the attribute and class selectors a component asks its OWN elements for (DtMenu finds its items
+ * with `[role="menuitem"], …`): a comma list of compounds, each an optional tag, `.class`es and `[attr]` /
+ * `[attr="value"]`. Anything else matches nothing. `getAttribute` reads a prop the way the DOM reads an attribute, and
+ * `textContent` is the visible words — both non-enumerable like the methods above.
+ */
+function matchesCompound(n: TestNode, compound: string): boolean {
+	const m = /^([a-z][a-z0-9-]*)?((?:\.[\w-]+|\[[^\]]+\])*)$/i.exec(compound.trim());
+	if (!m) return false;
+	if (m[1] && n.tag !== m[1]) return false;
+	for (const part of m[2]!.match(/\.[\w-]+|\[[^\]]+\]/g) ?? []) {
+		if (part.startsWith('.')) {
+			if (!String(n.props['class'] ?? '').split(/\s+/).includes(part.slice(1))) return false;
+			continue;
+		}
+		const a = /^\[([^=\]]+)(?:="([^"]*)")?\]$/.exec(part);
+		if (!a) return false;
+		const v = n.props[a[1]!];
+		if (v == null || v === false) return false;
+		if (a[2] !== undefined && String(v) !== a[2]) return false;
+	}
+	return true;
+}
+function querySelectorAll(this: TestNode, selector: string): TestNode[] {
+	const compounds = selector.split(',');
+	const out: TestNode[] = [];
+	const walk = (x: TestNode): void => {
+		for (const c of x.children) {
+			if (typeof c === 'string' || c.tag.startsWith('#')) continue;
+			if (compounds.some((k) => matchesCompound(c, k))) out.push(c);
+			walk(c);
+		}
+	};
+	walk(this);
+	return out;
+}
+function getAttribute(this: TestNode, name: string): string | null {
+	const v = this.props[name];
+	return v == null || v === false ? null : String(v);
+}
+
 function node(tag: string): TestNode {
 	const n: TestNode = { tag, props: {}, children: [], parent: null };
 	for (const [key, value] of Object.entries(ELEMENT_METHODS)) Object.defineProperty(n, key, { value, enumerable: false, writable: true, configurable: true });
+	Object.defineProperty(n, 'querySelectorAll', { value: querySelectorAll, enumerable: false, writable: true, configurable: true });
+	Object.defineProperty(n, 'getAttribute', { value: getAttribute, enumerable: false, writable: true, configurable: true });
+	Object.defineProperty(n, 'textContent', { get() { return text(n); }, enumerable: false, configurable: true });
 	return n;
 }
 

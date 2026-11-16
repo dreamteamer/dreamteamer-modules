@@ -21,12 +21,13 @@
 	to that repo's own rows (and, by its own rule, the relation partners a scoped commit must carry).
 -->
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { api } from '../api/client';
 import { commitRepoLabel, pendingByRepo, type PendingRepo } from '../lib/sources';
 import { hostInfo } from '../lib/host-boot';
 import DtIcon from './DtIcon.vue';
+import DtMenu from './DtMenu.vue';
 
 interface CommitResult extends PendingRepo {
 	subject?: string;
@@ -44,7 +45,7 @@ const plan = ref<CommitResult[]>([]);
 const busy = ref(false);
 const note = ref('');
 const open = ref(false);
-const anchorEl = ref<HTMLElement | null>(null);
+const menuTrigger = ref<HTMLElement | null>(null);
 /** The workspace's own name — what the repo `.` is called on the button (`/info`). */
 const workspace = ref<string | undefined>();
 
@@ -92,25 +93,9 @@ async function commit(only?: string[]): Promise<void> {
 	}
 }
 
-function onDocumentMousedown(event: MouseEvent): void {
-	if (!open.value) return;
-	const target = event.target as Node | null;
-	if (target && anchorEl.value?.contains(target)) return;
-	open.value = false;
-}
-function onDocumentKeydown(event: KeyboardEvent): void {
-	if (event.key === 'Escape' && open.value) open.value = false;
-}
-
 onMounted(() => {
 	void refresh();
 	void api.get<{ name?: string }>('/info').then((res) => { workspace.value = res.data?.name; }).catch(() => {});
-	document.addEventListener('mousedown', onDocumentMousedown);
-	document.addEventListener('keydown', onDocumentKeydown);
-});
-onUnmounted(() => {
-	document.removeEventListener('mousedown', onDocumentMousedown);
-	document.removeEventListener('keydown', onDocumentKeydown);
 });
 // Navigating is the cheapest honest moment to re-sample: the count is a fact about the working
 // tree, not about this page, and anything this window did to it went through a route change.
@@ -119,7 +104,7 @@ watch(() => hostInfo.value?.level, refresh);
 </script>
 
 <template>
-	<div v-if="pending || note" ref="anchorEl" class="dt-commit">
+	<div v-if="pending || note" class="dt-commit">
 		<span v-if="note" class="dt-commit__note" :title="note">{{ note }}</span>
 		<!-- one repo: the button names it -->
 		<button
@@ -137,6 +122,7 @@ watch(() => hostInfo.value?.level, refresh);
 		<!-- several repos: a dropdown, one row per repo with its count -->
 		<template v-else-if="repos.length > 1">
 			<button
+				ref="menuTrigger"
 				type="button"
 				class="dt-btn dt-btn--secondary dt-commit__button"
 				:class="{ 'is-active': open }"
@@ -150,7 +136,7 @@ watch(() => hostInfo.value?.level, refresh);
 				<span>Commit {{ pending }}</span>
 				<DtIcon name="chevron-down" />
 			</button>
-			<div v-if="open" class="dt-menu dt-commit__menu" role="menu" aria-label="Commit to">
+			<DtMenu v-if="open" class="dt-commit__menu" label="Commit to" align="end" :min-width="220" :trigger="menuTrigger" @close="open = false">
 				<button
 					v-for="r in repos"
 					:key="r.repo"
@@ -163,7 +149,7 @@ watch(() => hostInfo.value?.level, refresh);
 					<span class="dt-commit__item-label">Commit to {{ label(r.repo) }}</span>
 					<span class="dt-commit__item-count">{{ r.count }}</span>
 				</button>
-			</div>
+			</DtMenu>
 		</template>
 	</div>
 </template>
@@ -197,29 +183,9 @@ watch(() => hostInfo.value?.level, refresh);
 	color: var(--dt-fg-muted);
 }
 
-/* Anchored under the trigger — the density menu's placement; `.dt-menu` (base.css) is the chrome. */
-.dt-commit__menu {
-	position: absolute;
-	top: calc(100% + 6px);
-	right: 0;
-	z-index: 30;
-	min-width: 220px;
-	display: flex;
-	flex-direction: column;
-}
+/* DtMenu hangs the menu under the trigger and draws its surface; a row is a `.dt-menu-item` with a wider gap */
 .dt-commit__item {
-	width: 100%;
-	display: flex;
-	align-items: center;
 	gap: 12px;
-	border: none;
-	background: none;
-	font-family: inherit;
-	text-align: left;
-}
-.dt-commit__item:hover,
-.dt-commit__item:focus-visible {
-	background: var(--dt-bg-subtle);
 }
 .dt-commit__item-label {
 	flex: 1;

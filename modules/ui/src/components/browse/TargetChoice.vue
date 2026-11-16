@@ -14,19 +14,22 @@
 	(`lib/sources.ts` `targetHoverLines` / `excludedHoverLines` / `othersHoverLines`), so the swap is one place.
 	It hangs OUTSIDE the scrolling list, beside the menu (`cardPlace`), so the list never clips it.
 
-	Anchored under the header's + (the filter panel's technique: absolute, no portal), closed by Escape,
-	an outside click, or a pick. `lib/sources.ts` `targetChoice` decides when it opens and what it lists.
+	Drawn by DtMenu (the one menu): hung under the header's +, closed by Escape, an outside press, or a pick;
+	it opens with focus on the menu itself, so the arrows enter the rows without a card popping up unasked.
+	`lib/sources.ts` `targetChoice` decides when it opens and what it lists.
 -->
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue';
+import { computed, ref } from 'vue';
 import type { HoverLine, TargetChoice } from '../../lib/sources';
 import { CARD_MAX, cardPlace, excludedHoverLines, othersHoverLines, targetHoverLines } from '../../lib/sources';
 import SourceMark from '../SourceMark.vue';
+import DtMenu from '../DtMenu.vue';
 
 const props = defineProps<{ choice: Extract<TargetChoice, { mode: 'choose' }> }>();
 const emit = defineEmits<{ pick: [name: string]; cancel: [] }>();
 
-const panel = ref<HTMLElement | null>(null);
+const menu = ref<{ el: HTMLElement | null } | null>(null);
+const panel = computed(() => menu.value?.el ?? null);
 
 // ---- the card ---------------------------------------------------------------------------------------------
 const cardId = `dt-target-choice-card-${Math.random().toString(36).slice(2, 9)}`;
@@ -57,32 +60,15 @@ function pick(name: string): void {
 	emit('pick', name);
 }
 
-function onDocumentMousedown(event: MouseEvent): void {
-	const target = event.target as Node | null;
-	// the + itself toggles; a click anywhere else closes
-	if (target && (panel.value?.contains(target) || panel.value?.parentElement?.contains(target))) return;
+/** Escape or a press outside: the card goes with the menu. */
+function onClose(): void {
 	card.value = null;
 	emit('cancel');
 }
-function onDocumentKeydown(event: KeyboardEvent): void {
-	if (event.key !== 'Escape') return;
-	card.value = null;
-	emit('cancel');
-}
-onMounted(() => {
-	if (typeof document === 'undefined') return;
-	document.addEventListener('mousedown', onDocumentMousedown);
-	document.addEventListener('keydown', onDocumentKeydown);
-});
-onUnmounted(() => {
-	if (typeof document === 'undefined') return;
-	document.removeEventListener('mousedown', onDocumentMousedown);
-	document.removeEventListener('keydown', onDocumentKeydown);
-});
 </script>
 
 <template>
-	<div ref="panel" class="dt-target-choice" role="menu" aria-label="New record in…" data-target-choice>
+	<DtMenu ref="menu" class="dt-target-choice" label="New record in…" align="end" autofocus="menu" data-target-choice @close="onClose">
 		<p class="dt-target-choice__head">New record in…</p>
 		<div class="dt-target-choice__list">
 			<button
@@ -131,28 +117,17 @@ onUnmounted(() => {
 		<div v-if="card" :id="cardId" class="dt-target-choice__card" role="tooltip" :data-side="card.place.side" :style="cardStyle(card.place)">
 			<div v-for="(line, i) in card.lines" :key="i" :class="`dt-target-choice__line dt-target-choice__line--${line.kind ?? 'body'}`">{{ line.text }}</div>
 		</div>
-	</div>
+	</DtMenu>
 </template>
 
 <style scoped>
-/* The outer box clips NOTHING (no overflow, no max-height): the card hangs outside it. Only the list scrolls. */
+/* The outer box clips NOTHING (no overflow, no max-height): the card hangs outside it. Only the list scrolls.
+   DtMenu hangs it under the + and draws the surface (`.dt-menu`); this only sizes it. */
 .dt-target-choice {
-	position: absolute;
-	top: calc(100% + 6px);
-	right: 0;
-	z-index: 30;
 	box-sizing: border-box;
 	width: max-content;
 	min-width: 180px;
 	max-width: min(280px, calc(100vw - 16px));
-	display: flex;
-	flex-direction: column;
-	padding: 4px;
-	background: var(--dt-bg);
-	border: 1px solid var(--dt-border);
-	border-radius: var(--dt-radius-lg);
-	box-shadow: var(--dt-shadow-lg);
-	text-align: left;
 }
 .dt-target-choice__list {
 	display: flex;

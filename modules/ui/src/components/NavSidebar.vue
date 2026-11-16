@@ -56,7 +56,7 @@ const error = ref<string | null>(null);
 const notice = ref<string | null>(null);
 const dragging = ref<string | null>(null);
 const hint = ref<{ key: string; where: DropWhere } | null>(null);
-const menuAt = ref<{ key: string; x: number; y: number; start?: string } | null>(null);
+const menuAt = ref<{ key: string; x: number; y: number; start?: string; trigger?: unknown } | null>(null);
 /** Unlocked: rows drag, take drops and have menus. Starts locked on every load; kept nowhere. */
 const arranging = ref(false);
 /** The rows are scrolled under the toolbar (its shadow shows). */
@@ -342,7 +342,7 @@ function openToolbarMenu(id: 'new-folder' | 'show-hidden', e: MouseEvent) {
 	if (!arranging.value) return;
 	if (menuAt.value?.key === TOOLBAR && menuAt.value.start === id) { menuAt.value = null; return; }
 	const at = menuUnder(rectOf(e.currentTarget), 'start', MENU_WIDTH, viewportWidth());
-	menuAt.value = { key: TOOLBAR, ...at, start: id };
+	menuAt.value = { key: TOOLBAR, ...at, start: id, trigger: e.currentTarget };
 }
 function onRowsScroll(e: Event) {
 	scrolled.value = ((e.target as { scrollTop?: number } | null)?.scrollTop ?? 0) > 0;
@@ -483,7 +483,7 @@ onUnmounted(() => { window.removeEventListener('message', onMessage); window.rem
 			@keydown="onResizeKey"
 			@dblclick="resetWidth"
 		></div>
-		<NavMenu v-if="menuAt && menu" :key="`${menuAt.key}:${menuAt.start ?? ''}`" :x="menuAt.x" :y="menuAt.y" :items="menu.items" :start="menuAt.start" @pick="onPick" @close="menuAt = null" />
+		<NavMenu v-if="menuAt && menu" :key="`${menuAt.key}:${menuAt.start ?? ''}`" :x="menuAt.x" :y="menuAt.y" :items="menu.items" :start="menuAt.start" :trigger="menuAt.trigger" @pick="onPick" @close="menuAt = null" />
 	</nav>
 </template>
 

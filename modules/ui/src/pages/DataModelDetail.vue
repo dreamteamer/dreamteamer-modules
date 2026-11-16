@@ -24,12 +24,6 @@ import {
 	DialogPortal,
 	DialogRoot,
 	DialogTitle,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuPortal,
-	DropdownMenuRoot,
-	DropdownMenuSeparator,
-	DropdownMenuTrigger,
 } from 'reka-ui';
 import { useRouter } from 'vue-router';
 import { useCollections } from '../composables/collections';
@@ -38,6 +32,7 @@ import { deleteCollection } from '../composables/schema';
 import FieldDrawer from '../components/designer/FieldDrawer.vue';
 import PageHeader from '../components/PageHeader.vue';
 import DtIcon from '../components/DtIcon.vue';
+import DtMenu from '../components/DtMenu.vue';
 
 const props = defineProps<{
 	collection: string;
@@ -156,6 +151,16 @@ function removeField(field: StagedField): void {
 
 // --- drag reorder (native HTML5 drag; editable rows only) --------------------------------------
 
+/** The field whose ⋯ menu (DtMenu) is open, and its trigger. */
+const fieldMenu = ref<{ key: string; trigger: HTMLElement | null } | null>(null);
+function toggleFieldMenu(key: string, e: MouseEvent): void {
+	fieldMenu.value = fieldMenu.value?.key === key ? null : { key, trigger: (e?.currentTarget as HTMLElement | null) ?? null };
+}
+/** A pick closes the menu first, so focus is back on the ⋯ before the drawer or the confirm takes it. */
+function fromFieldMenu(run: () => void): void {
+	fieldMenu.value = null;
+	run();
+}
 const dragKey = ref<string | null>(null);
 const dragOverKey = ref<string | null>(null);
 
@@ -332,29 +337,25 @@ async function onConfirmDeleteCollection(): Promise<void> {
 								<span v-if="isHidden(field)" class="dt-badge dt-badge-hidden">hidden</span>
 							</span>
 						</div>
-						<DropdownMenuRoot>
-							<DropdownMenuTrigger as-child>
-								<button type="button" class="dt-btn dt-btn--ghost dt-btn--icon dt-btn--sm" title="Field actions">
-									<DtIcon name="ellipsis" />
-								</button>
-							</DropdownMenuTrigger>
-							<DropdownMenuPortal>
-								<DropdownMenuContent class="dt-menu" align="end" :side-offset="4">
-									<template v-if="field.mirror">
-										<DropdownMenuItem class="dt-menu-item" @select="openEditField(field)">
-											<DtIcon name="edit" />Edit field
-										</DropdownMenuItem>
-										<DropdownMenuSeparator class="dt-menu-separator" />
-										<DropdownMenuItem class="dt-menu-item dt-menu-item--danger" @select="removeField(field)">
-											<DtIcon name="trash" />Delete field
-										</DropdownMenuItem>
-									</template>
-									<DropdownMenuItem v-else class="dt-menu-item" @select="openEditField(field)">
+						<span class="dt-menu-anchor">
+							<button type="button" class="dt-btn dt-btn--ghost dt-btn--icon dt-btn--sm" title="Field actions" aria-haspopup="menu" :aria-expanded="fieldMenu?.key === `i:${field.key}`" @click="toggleFieldMenu(`i:${field.key}`, $event)">
+								<DtIcon name="ellipsis" />
+							</button>
+							<DtMenu v-if="fieldMenu?.key === `i:${field.key}`" label="Field actions" align="end" :trigger="fieldMenu.trigger" @close="fieldMenu = null">
+								<template v-if="field.mirror">
+									<button type="button" role="menuitem" class="dt-menu-item" @click="fromFieldMenu(() => openEditField(field))">
 										<DtIcon name="edit" />Edit field
-									</DropdownMenuItem>
-								</DropdownMenuContent>
-							</DropdownMenuPortal>
-						</DropdownMenuRoot>
+									</button>
+									<div class="dt-menu-separator" role="separator"></div>
+									<button type="button" role="menuitem" class="dt-menu-item dt-menu-item--danger" @click="fromFieldMenu(() => removeField(field))">
+										<DtIcon name="trash" />Delete field
+									</button>
+								</template>
+								<button v-else type="button" role="menuitem" class="dt-menu-item" @click="fromFieldMenu(() => openEditField(field))">
+									<DtIcon name="edit" />Edit field
+								</button>
+							</DtMenu>
+						</span>
 					</div>
 				</div>
 
@@ -381,28 +382,24 @@ async function onConfirmDeleteCollection(): Promise<void> {
 								<span v-if="isHidden(field)" class="dt-badge dt-badge-hidden">hidden</span>
 							</span>
 						</div>
-						<DropdownMenuRoot>
-							<DropdownMenuTrigger as-child>
-								<button type="button" class="dt-btn dt-btn--ghost dt-btn--icon dt-btn--sm" title="Field actions">
-									<DtIcon name="ellipsis" />
+						<span class="dt-menu-anchor">
+							<button type="button" class="dt-btn dt-btn--ghost dt-btn--icon dt-btn--sm" title="Field actions" aria-haspopup="menu" :aria-expanded="fieldMenu?.key === `e:${field.key}`" @click="toggleFieldMenu(`e:${field.key}`, $event)">
+								<DtIcon name="ellipsis" />
+							</button>
+							<DtMenu v-if="fieldMenu?.key === `e:${field.key}`" label="Field actions" align="end" :trigger="fieldMenu.trigger" @close="fieldMenu = null">
+								<button type="button" role="menuitem" class="dt-menu-item" @click="fromFieldMenu(() => openEditField(field))">
+									<DtIcon name="edit" />Edit field
 								</button>
-							</DropdownMenuTrigger>
-							<DropdownMenuPortal>
-								<DropdownMenuContent class="dt-menu" align="end" :side-offset="4">
-									<DropdownMenuItem class="dt-menu-item" @select="openEditField(field)">
-										<DtIcon name="edit" />Edit field
-									</DropdownMenuItem>
-									<DropdownMenuItem class="dt-menu-item" @select="toggleHidden(field)">
-										<DtIcon :name="isHidden(field) ? 'visibility' : 'visibility_off'" />
-										{{ isHidden(field) ? 'Show field' : 'Hide field' }}
-									</DropdownMenuItem>
-									<DropdownMenuSeparator class="dt-menu-separator" />
-									<DropdownMenuItem class="dt-menu-item dt-menu-item--danger" @select="removeField(field)">
-										<DtIcon name="trash" />Delete field
-									</DropdownMenuItem>
-								</DropdownMenuContent>
-							</DropdownMenuPortal>
-						</DropdownMenuRoot>
+								<button type="button" role="menuitem" class="dt-menu-item" @click="fromFieldMenu(() => toggleHidden(field))">
+									<DtIcon :name="isHidden(field) ? 'visibility' : 'visibility_off'" />
+									{{ isHidden(field) ? 'Show field' : 'Hide field' }}
+								</button>
+								<div class="dt-menu-separator" role="separator"></div>
+								<button type="button" role="menuitem" class="dt-menu-item dt-menu-item--danger" @click="fromFieldMenu(() => removeField(field))">
+									<DtIcon name="trash" />Delete field
+								</button>
+							</DtMenu>
+						</span>
 					</div>
 				</div>
 

@@ -92,7 +92,7 @@ const patches = () => requests.filter((r) => r.method === 'PATCH' && r.path === 
 async function menu(root: TestNode, key: string) {
 	(rowOf(root, key).props['onContextmenu'] as (e: unknown) => void)({ clientX: 40, clientY: 60, preventDefault() {}, stopPropagation() {} });
 	await flush();
-	const m = all(root, (n) => n.props['class'] === 'dt-nav-menu')[0];
+	const m = all(root, (n) => String(n.props['class'] ?? '').split(' ').includes('dt-nav-menu'))[0];
 	assert.ok(m, `no menu for ${key}`);
 	return m;
 }
@@ -360,7 +360,7 @@ test('locked (the default): no row is draggable, a right click opens no menu, an
 	assert.equal(tail.props['onDrop'], undefined);
 	await drop(root, 'c/contacts', 'c/tasks');
 	assert.deepEqual(patches(), [], 'a locked nav sent a write');
-	assert.equal(all(root, (n) => n.props['class'] === 'dt-nav-menu').length, 0);
+	assert.equal(all(root, (n) => String(n.props['class'] ?? '').split(' ').includes('dt-nav-menu')).length, 0);
 	assert.equal(tool(root, 'new-folder'), undefined, 'New folder shows while locked');
 	assert.equal(tool(root, 'show-hidden'), undefined, 'Show hidden shows while locked');
 });
@@ -379,7 +379,7 @@ test('the toggle unlocks and relocks; aria-pressed and the tooltip follow, and r
 	await toggleLock(root);
 	assert.equal(lockOf(root).props['aria-pressed'], 'false');
 	assert.equal(rowOf(root, 'c/tasks').props['draggable'], undefined);
-	assert.equal(all(root, (n) => n.props['class'] === 'dt-nav-menu').length, 0, 'locking left a row menu open');
+	assert.equal(all(root, (n) => String(n.props['class'] ?? '').split(' ').includes('dt-nav-menu')).length, 0, 'locking left a row menu open');
 	assert.equal(tool(root, 'new-folder'), undefined);
 });
 
@@ -423,7 +423,7 @@ test('the empty area under the last row is the bottom of the top level: its line
 test('New folder and Show hidden… in the toolbar go straight to their ask and send the top-level op', async () => {
 	const root = await unlocked();
 	await clickTool(root, 'new-folder');
-	const m = all(root, (n) => n.props['class'] === 'dt-nav-menu')[0];
+	const m = all(root, (n) => String(n.props['class'] ?? '').split(' ').includes('dt-nav-menu'))[0];
 	assert.ok(m, 'New folder opened no menu');
 	assert.equal(all(m, (n) => n.props['role'] === 'menuitem').length, 0, 'it shows a list before the ask');
 	const input = all(root, (n) => n.tag === 'input' && n.props['class'] === 'dt-nav-menu-input')[0];
@@ -497,7 +497,7 @@ test('New folder and Show hidden… focus their text field on open, and Escape c
 		// the field has two keydown listeners (Enter submits, Escape closes): a real key event reaches both
 		for (const on of ([] as unknown[]).concat(input.props['onKeydown'])) (on as (e: unknown) => void)({ key: 'Escape', stopPropagation() {}, preventDefault() {} });
 		await flush();
-		assert.equal(all(root, (n) => n.props['class'] === 'dt-nav-menu').length, 0, `${id}: Escape left the menu open`);
+		assert.equal(all(root, (n) => String(n.props['class'] ?? '').split(' ').includes('dt-nav-menu')).length, 0, `${id}: Escape left the menu open`);
 	}
 	// an entry with an ask chosen from a row menu focuses its field too
 	focused.length = 0;

@@ -17,13 +17,6 @@
 <script setup lang="ts">
 import { computed, markRaw, onMounted, onUnmounted, ref } from 'vue';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
-import {
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuPortal,
-	DropdownMenuRoot,
-	DropdownMenuTrigger,
-} from 'reka-ui';
 import ItemHistory from '../components/ItemHistory.vue';
 import RecordHeaderDisplay from '../components/RecordHeaderDisplay.vue';
 import PageHeader from '../components/PageHeader.vue';
@@ -43,6 +36,7 @@ import { currentContentBasePath } from '../lib/content-path';
 import { resolveRendererEntry, resolvePreset } from '../lib/presets';
 import { useRecordDisplay } from '../composables/record-display';
 import DtIcon from '../components/DtIcon.vue';
+import DtMenu from '../components/DtMenu.vue';
 import { recordPageFields } from '../lib/record-page-fields';
 import { editsAnything } from '../lib/field-row';
 import { hasForeignSource, isTarget, notTargetReason, sourceEntry, stubNoteOf } from '../lib/sources';
@@ -322,6 +316,9 @@ function onCancel(): void {
 // --- delete ---------------------------------------------------------------------------------------
 
 const deleteOpen = ref(false);
+/** The ⋯ menu (DtMenu) and its trigger. */
+const moreOpen = ref(false);
+const moreTrigger = ref<HTMLElement | null>(null);
 const deleting = ref(false);
 
 async function onConfirmDelete(): Promise<void> {
@@ -342,20 +339,16 @@ async function onConfirmDelete(): Promise<void> {
 			<!-- View mode: pencil (rightmost — the primary action) enters edit; destructive/rare
 			     actions live in the ⋯ overflow menu to its left. -->
 			<template v-if="mode === 'view'">
-				<DropdownMenuRoot v-if="!create && !readOnlySource">
-					<DropdownMenuTrigger as-child>
-						<button type="button" class="dt-btn dt-btn--icon" title="More actions">
-							<DtIcon name="ellipsis" />
+				<span v-if="!create && !readOnlySource" class="dt-menu-anchor">
+					<button ref="moreTrigger" type="button" class="dt-btn dt-btn--icon" title="More actions" aria-haspopup="menu" :aria-expanded="moreOpen" @click="moreOpen = !moreOpen">
+						<DtIcon name="ellipsis" />
+					</button>
+					<DtMenu v-if="moreOpen" label="More actions" align="end" :trigger="moreTrigger" @close="moreOpen = false">
+						<button type="button" role="menuitem" class="dt-menu-item dt-menu-item--danger" @click="moreOpen = false; deleteOpen = true">
+							<DtIcon name="trash" />Delete
 						</button>
-					</DropdownMenuTrigger>
-					<DropdownMenuPortal>
-						<DropdownMenuContent class="dt-menu" align="end" :side-offset="4">
-							<DropdownMenuItem class="dt-menu-item dt-menu-item--danger" @select="deleteOpen = true">
-								<DtIcon name="trash" />Delete
-							</DropdownMenuItem>
-						</DropdownMenuContent>
-					</DropdownMenuPortal>
-				</DropdownMenuRoot>
+					</DtMenu>
+				</span>
 				<button v-if="editable" type="button" class="dt-btn dt-btn--icon" title="Edit" @click="editing = true">
 					<DtIcon name="edit" />
 				</button>

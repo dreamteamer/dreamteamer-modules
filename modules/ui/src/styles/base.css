@@ -108,15 +108,11 @@ body {
 }
 
 /* ---------- Dropdown menus ---------- */
-/* GLOBAL on purpose (moved out of ContentDetail/DataModelDetail's scoped blocks 2026-07-29,
-   operator: "menu for ⋯ opens below and not showing correctly").
-   `DropdownMenuPortal` teleports the panel to <body>, OUTSIDE the component's subtree — so
-   whether a scoped rule reaches it depends on reka-ui happening to carry the `data-v-…`
-   attribute onto the teleported node. When it doesn't, the panel renders with NO background,
-   NO border and NO z-index, which is exactly the symptom: bare menu text sitting behind the
-   page. Menu chrome is app-level furniture anyway, and both components had drifted copies of
-   it (z-index 100 vs 60, min-width 160 vs 180). One definition, no scoping to lose.
-   z-index sits above `.dt-page-header-wrap` (10) and the dialog overlay's own layer. */
+/* THE MENU SURFACE — drawn by DtMenu.vue, the one menu component (every dropdown, context menu and combobox panel).
+   GLOBAL on purpose: a menu hung in <body> (`teleport`) is outside its caller's subtree, where no scoped rule reaches.
+   One background, one border, one radius, one shadow, one layer — all tokens, so VS Code's theme mapping (vscode.css)
+   covers the editor and browser.css the browser. z-index sits above `.dt-page-header-wrap` (10), the drawers (200/201)
+   and the dialog overlay's own layer. */
 .dt-menu {
 	min-width: 180px;
 	padding: 4px;
@@ -125,23 +121,46 @@ body {
 	border-radius: var(--dt-menu-radius);
 	box-shadow: var(--dt-shadow-menu);
 	z-index: var(--dt-z-menu);
+	font-size: var(--dt-text);
+	font-weight: normal;
 }
 
+/* The box a menu hangs under (DtMenu without `at`): it holds the trigger, and the menu lines up with its edge. */
+.dt-menu-anchor {
+	position: relative;
+	display: inline-flex;
+}
+
+/* An item: a <button> with an item role. Hover and keyboard focus draw the same ground. */
 .dt-menu-item {
 	display: flex;
 	align-items: center;
 	gap: 8px;
+	width: 100%;
+	box-sizing: border-box;
 	padding: 7px 10px;
+	border: 0;
+	background: none;
+	font-family: inherit;
 	font-size: var(--dt-text);
 	color: var(--dt-fg);
+	text-align: left;
 	border-radius: var(--dt-radius);
 	cursor: pointer;
 	user-select: none;
 	outline: none;
 }
 
+.dt-menu-item:hover:not(:disabled),
+.dt-menu-item:focus-visible,
 .dt-menu-item[data-highlighted] {
-	background: var(--dt-bg-subtle);
+	background: var(--dt-bg-hover);
+}
+
+.dt-menu-item:disabled,
+.dt-menu-item[aria-disabled='true'] {
+	color: var(--dt-fg-subtle);
+	cursor: default;
 }
 
 .dt-menu-item .codicon {
