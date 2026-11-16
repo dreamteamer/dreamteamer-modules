@@ -13,6 +13,8 @@ import { addMonths, calendarWeeks, startOfMonth, WEEKDAYS } from "../lib/calenda
 import { rowContext } from "../lib/vscode-context.ts"
 import type { ListProps } from "../registry/props.ts"
 import { ListEmpty } from "./ListEmpty.tsx"
+import { button, cx, listEmpty, subtle } from "../styles/classes.ts"
+import { calChip } from "./looks.ts"
 
 const SHOWN = 4
 
@@ -41,32 +43,42 @@ export function ListCalendar({ state }: ListProps) {
 
   if (!state.records.length) return <ListEmpty state={state} />
   if (!dateField)
-    return <p className="dt-list-empty">No date field to place records on — set one in Layout options (Start).</p>
+    return <p className={listEmpty}>No date field to place records on — set one in Layout options (Start).</p>
 
   const weeks = calendarWeeks(cursor, new Date())
   return (
-    <div className="dt-cal">
-      <div className="dt-cal-bar">
+    <div className="flex flex-col gap-2.5">
+      <div className="flex items-center gap-2">
         <button
           type="button"
-          className="dt-button"
+          className={button}
           title="Previous month"
           onClick={() => setCursor(addMonths(cursor, -1))}
         >
           ‹
         </button>
-        <button type="button" className="dt-button" onClick={() => setCursor(startOfMonth(new Date()))}>
+        <button type="button" className={button} onClick={() => setCursor(startOfMonth(new Date()))}>
           Today
         </button>
-        <button type="button" className="dt-button" title="Next month" onClick={() => setCursor(addMonths(cursor, 1))}>
+        <button type="button" className={button} title="Next month" onClick={() => setCursor(addMonths(cursor, 1))}>
           ›
         </button>
-        <span className="dt-cal-month">{cursor.toLocaleDateString(undefined, { month: "long", year: "numeric" })}</span>
-        <span className="dt-subtle">on {dateField}</span>
+        <span className="font-semibold ml-1.5">
+          {cursor.toLocaleDateString(undefined, { month: "long", year: "numeric" })}
+        </span>
+        <span className={subtle}>on {dateField}</span>
       </div>
-      <div className={`dt-cal-grid${state.loading ? " is-revalidating" : ""}`}>
+      <div
+        className={cx(
+          "grid grid-cols-[repeat(7,minmax(0,1fr))] gap-px bg-border border border-border rounded-dt overflow-hidden",
+          state.loading && "opacity-70"
+        )}
+      >
         {WEEKDAYS.map(d => (
-          <div key={d} className="dt-cal-weekday">
+          <div
+            key={d}
+            className="bg-bg-subtle py-1.5 px-2 text-small font-bold uppercase tracking-[0.04em] text-fg-subtle"
+          >
             {d}
           </div>
         ))}
@@ -75,17 +87,24 @@ export function ListCalendar({ state }: ListProps) {
           return (
             <div
               key={cell.key}
-              className={`dt-cal-cell${cell.inMonth ? "" : " is-out"}${cell.isToday ? " is-today" : ""}`}
+              className={cx("min-h-24 p-1.5 min-w-0", cell.inMonth ? "bg-bg" : "bg-bg-subtle opacity-60")}
               data-day={cell.key}
             >
-              <div className="dt-cal-day">{cell.day}</div>
+              <div
+                className={cx(
+                  "inline-flex items-center justify-center w-[22px] h-[22px] rounded-full mb-1",
+                  cell.isToday && "bg-accent text-accent-fg"
+                )}
+              >
+                {cell.day}
+              </div>
               {records.slice(0, SHOWN).map(r => {
                 const title = state.recordTitleOf(r) || r.id
                 return (
                   <button
                     type="button"
                     key={`${String(r["$source"] ?? "")}/${r.id}`}
-                    className={`dt-cal-chip${state.tintOf(r) ? " is-tinted" : ""}`}
+                    className={calChip(!!state.tintOf(r))}
                     style={state.tintOf(r)}
                     title={title}
                     data-vscode-context={rowContext(state.collection, r.id)}
@@ -95,7 +114,9 @@ export function ListCalendar({ state }: ListProps) {
                   </button>
                 )
               })}
-              {records.length > SHOWN && <div className="dt-cal-more">+{records.length - SHOWN} more</div>}
+              {records.length > SHOWN && (
+                <div className="text-small text-fg-subtle">+{records.length - SHOWN} more</div>
+              )}
             </div>
           )
         })}

@@ -23,6 +23,7 @@ import { countLink, UNLINKED_COUNT } from "../lib/page-view.ts"
 import { uiViews, type UiViewRecord } from "../lib/ui-views.ts"
 import { PageSource } from "../pages/page-source.ts"
 import type { ListProps } from "../registry/props.ts"
+import { cx } from "../styles/classes.ts"
 
 export function ListCounts({ state }: ListProps) {
   const options = state.listOptions["counts"] ?? {}
@@ -53,10 +54,10 @@ export function ListCounts({ state }: ListProps) {
   const totalLink = countLink(subject, undefined, null, source)
 
   return (
-    <div className="dt-counts" data-group-by={groupField?.field ?? ""}>
+    <div className="flex flex-wrap gap-1.5" data-group-by={groupField?.field ?? ""}>
       <Count
         to={totalLink}
-        className="dt-counts-total"
+        className="bg-bg-subtle"
         title={totalLink ? "Open the whole list" : UNLINKED_COUNT}
         num={loading ? "…" : String(state.total)}
         label="total"
@@ -97,16 +98,23 @@ function Count(props: {
 }) {
   const body = (
     <>
-      <span className="dt-counts-num" style={props.color ? { color: themeColor(props.color) } : undefined}>
+      <span
+        className="text-[length:calc(var(--dt-text)+6px)] font-semibold tabular-nums leading-[1.2]"
+        style={props.color ? { color: themeColor(props.color) } : undefined}
+      >
         {props.num}
       </span>
-      <span className="dt-counts-label">
+      <span className="flex items-center gap-1 text-fg-subtle text-small whitespace-nowrap">
         {props.icon && <Icon name={props.icon} />}
         {props.label}
       </span>
     </>
   )
-  const className = `dt-counts-item ${props.className ?? ""}${props.to ? "" : " is-unlinked"}`
+  const className = cx(
+    "flex flex-col items-start min-w-[72px] py-1.5 px-2.5 border border-border rounded text-fg no-underline",
+    props.className,
+    props.to ? "hover:border-focus hover:no-underline" : "cursor-default"
+  )
   return props.to ? (
     <Link to={props.to} className={className} title={props.title} data-value={props.value}>
       {body}

@@ -179,7 +179,7 @@ function Canvas({ model, positions, groupBoxes, fitToken, onMove, onDragging, on
 
   return (
     <ReactFlow
-      className="dt-diagram-flow"
+      className="dt-diagram-flow flex-1 min-h-0"
       nodes={nodes}
       edges={edges}
       nodeTypes={nodeTypes}

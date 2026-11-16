@@ -19,6 +19,7 @@ import { Icon } from "../components/Icon.tsx"
 import { coordOf, fitKey } from "../lib/map-coords.ts"
 import type { ListProps } from "../registry/props.ts"
 import { ListEmpty } from "./ListEmpty.tsx"
+import { listEmpty, subtle } from "../styles/classes.ts"
 
 const TILES = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
 
@@ -97,12 +98,12 @@ export function ListMap({ state }: ListProps) {
   }, [autoFit])
 
   return (
-    <div className="dt-map-wrap">
+    <div className="flex flex-col gap-1.5">
       {!state.records.length ? (
         <ListEmpty state={state} />
       ) : (
         !show && (
-          <div className="dt-list-empty">
+          <div className={listEmpty}>
             <Icon name="circle-slash" />
             <p>
               {state.records.length} records, none with coordinates — add numeric lat/lng fields (or an object field
@@ -112,9 +113,13 @@ export function ListMap({ state }: ListProps) {
         )
       )}
       {/* always mounted, hidden while empty: the map is made once and keeps its pan across reloads */}
-      <div ref={el} className="dt-map" style={show ? undefined : { display: "none" }} />
+      <div
+        ref={el}
+        className="h-[68vh] border border-border rounded-dt"
+        style={show ? undefined : { display: "none" }}
+      />
       {show && (
-        <div className="dt-subtle dt-map-note">
+        <div className={subtle}>
           {plotted.length} of {state.records.length} records plotted
         </div>
       )}

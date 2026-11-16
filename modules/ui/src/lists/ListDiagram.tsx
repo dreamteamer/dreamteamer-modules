@@ -33,6 +33,7 @@ import {
 import { isRelationField } from "../lib/field-row.ts"
 import { tryRenderDisplay } from "../lib/template.ts"
 import type { ListProps } from "../registry/props.ts"
+import { listEmpty } from "../styles/classes.ts"
 
 /** Entity node size has to be known BEFORE the DOM exists — the solver places boxes, not elements. These track the
  *  entity node's row padding and font size in ui.css; change them together. A dot is uniform. */
@@ -250,9 +251,9 @@ export function ListDiagram({ state }: ListProps) {
           : "Nothing to draw."
 
   return (
-    <div className="dt-diagram">
+    <div className="flex flex-col flex-auto min-h-[420px]">
       {!model.nodes.length ? (
-        <p className="dt-list-empty">{emptyReason}</p>
+        <p className={listEmpty}>{emptyReason}</p>
       ) : (
         <DiagramCanvas
           model={model}

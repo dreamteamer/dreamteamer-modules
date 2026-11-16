@@ -43,6 +43,34 @@ import { rowContext } from "../lib/vscode-context.ts"
 import type { ListProps } from "../registry/props.ts"
 import { ListEmpty } from "./ListEmpty.tsx"
 import { useGroupLabels } from "./use-group-labels.ts"
+import { cx, iconButton, listEmpty, subtle } from "../styles/classes.ts"
+import { calChip } from "./looks.ts"
+
+// ---- the looks (was dt-gantt-*) ---------------------------------------------------------------------------------
+// The axis sizes ride on three variables the canvas sets (lib/gantt-axis.ts writes its grid in them): the gutter,
+// a fold's column and a day's width at the scale. A lane's rail colour is `--dt-lane-rail`, set inline per band.
+const SCALE: Record<string, string> = {
+  day: "[--dt-gantt-day:30px]",
+  week: "[--dt-gantt-day:7px]",
+  month: "[--dt-gantt-day:2.4px]",
+}
+/** The sticky left column: a row's title, the header's field names, a band's header. */
+const gutter = (opts: { band?: boolean; lane?: boolean; head?: boolean; row?: boolean } = {}) =>
+  cx(
+    "flex-[0_0_var(--dt-gantt-gutter)] w-(--dt-gantt-gutter) box-border sticky left-0 z-[2] bg-bg py-1 overflow-hidden text-ellipsis whitespace-nowrap",
+    opts.band ? "min-h-9 flex items-center gap-0.5 pr-0" : "pr-2.5",
+    opts.lane && "border-l-2 border-l-(--dt-lane-rail)",
+    opts.lane && opts.row ? "pl-3" : "pl-0",
+    opts.row && "group-hover/row:bg-bg-hover",
+    opts.head && "text-fg-subtle text-small uppercase tracking-[0.02em]"
+  )
+/** The day grid of a row; its columns are the axis template, set inline. */
+const track = (band = false) => cx("grid flex-none items-center", band ? "min-h-9" : "min-h-7")
+const barLabelBase = "text-small leading-none whitespace-nowrap pointer-events-none"
+/** A band's span under its header, with an end tick at either side. */
+const bandBar =
+  "relative h-[3px] min-w-[2px] rounded-full bg-[var(--dt-lane-rail,var(--dt-border))] before:content-[''] before:absolute before:-top-[3px] before:left-0 before:w-[2px] before:h-[9px] before:rounded-[1px] before:bg-inherit after:content-[''] after:absolute after:-top-[3px] after:right-0 after:w-[2px] after:h-[9px] after:rounded-[1px] after:bg-inherit"
+const undatedCls = "flex flex-wrap items-center gap-1.5 flex-none pt-1.5 border-t border-border text-small"
 
 /** Roughly the narrowest bar that can hold readable text plus its own padding. */
 const LABEL_FITS_PX = 72
@@ -154,21 +182,30 @@ export function ListGantt({ state }: ListProps) {
 
   if (!records.length) return <ListEmpty state={state} />
   if (!startField)
-    return <p className="dt-list-empty">No date field to lay records out on — set one in Layout options (Start).</p>
+    return <p className={listEmpty}>No date field to lay records out on — set one in Layout options (Start).</p>
 
   return (
-    <div className="dt-gantt">
+    <div className="flex flex-col flex-auto min-h-0 gap-2.5">
       {axis && (
-        <div className={`dt-gantt-scroll${state.loading ? " is-revalidating" : ""}`}>
-          <div className={`dt-gantt-canvas is-${axis.scale}`}>
-            <div className="dt-gantt-head">
-              <div className="dt-gantt-gutter dt-gantt-head-gutter">
+        <div className={cx("flex-1 min-h-0 overflow-auto", state.loading && "opacity-70")}>
+          <div
+            className={cx(
+              "relative w-max min-w-full [--dt-gantt-gutter:180px] [--dt-gantt-fold:84px]",
+              SCALE[axis.scale]
+            )}
+          >
+            <div className="flex items-stretch sticky top-0 z-[3] bg-bg shadow-[inset_0_-1px_0_var(--dt-border)]">
+              <div className={gutter({ head: true })}>
                 {startField.field}
                 {endField && <> → {endField.field}</>}
               </div>
-              <div className="dt-gantt-track" style={{ gridTemplateColumns: template }}>
+              <div className={track()} style={{ gridTemplateColumns: template }}>
                 {axis.ticks.map(t => (
-                  <div key={t.key} className="dt-gantt-tick" style={{ gridColumn: `${t.column} / span ${t.columns}` }}>
+                  <div
+                    key={t.key}
+                    className="row-start-1 text-small text-fg-subtle py-1 px-0 border-l border-border overflow-hidden whitespace-nowrap text-center"
+                    style={{ gridColumn: `${t.column} / span ${t.columns}` }}
+                  >
                     {t.label}
                   </div>
                 ))}
@@ -176,14 +213,14 @@ export function ListGantt({ state }: ListProps) {
                   <button
                     key={f.key}
                     type="button"
-                    className={`dt-gantt-fold${f.expanded ? " is-open" : ""}`}
+                    className="row-start-1 flex items-center justify-center gap-px py-1 px-0 border-y-0 border-x border-dashed border-border bg-[color-mix(in_srgb,var(--dt-fg-subtle)_10%,transparent)] text-fg-subtle text-small leading-none cursor-pointer overflow-hidden whitespace-nowrap hover:text-fg hover:bg-bg-hover"
                     style={{ gridColumn: String(f.column) }}
                     title={f.title}
                     aria-expanded={f.expanded}
                     onClick={() => toggleFold(f.key)}
                   >
                     <Icon name={f.expanded ? "chevron-left" : "chevron-right"} />
-                    <span className="dt-gantt-fold-label">{f.label}</span>
+                    <span className={cx("overflow-hidden text-ellipsis", f.expanded && "hidden")}>{f.label}</span>
                   </button>
                 ))}
               </div>
@@ -191,12 +228,21 @@ export function ListGantt({ state }: ListProps) {
             {axis.folds.map(f => (
               <div
                 key={`strip/${f.key}`}
-                className={`dt-gantt-fold-strip${f.expanded ? " is-open" : ""}`}
+                className={cx(
+                  "absolute top-0 bottom-0 w-(--dt-gantt-fold) border-y-0 border-dashed border-border pointer-events-none z-0",
+                  f.expanded ? "border-l" : "border-x bg-[color-mix(in_srgb,var(--dt-fg-subtle)_7%,transparent)]"
+                )}
                 style={{ left: axis.offsetOf(f.firstDay) }}
                 aria-hidden="true"
               />
             ))}
-            {todayOffset && <div className="dt-gantt-today" style={{ left: todayOffset }} aria-hidden="true" />}
+            {todayOffset && (
+              <div
+                className="absolute top-0 bottom-0 w-0 border-l border-accent pointer-events-none z-[1]"
+                style={{ left: todayOffset }}
+                aria-hidden="true"
+              />
+            )}
             {bands.map(band => {
               const shut = collapsed.has(band.value)
               const shape = shapes.get(band.value)
@@ -204,15 +250,22 @@ export function ListGantt({ state }: ListProps) {
               return (
                 <section
                   key={band.value}
-                  className={`dt-gantt-band${grouped ? " is-lane" : ""}${shut ? " is-collapsed" : ""}`}
+                  className={
+                    grouped
+                      ? cx(
+                          "[--dt-lane-rail:var(--dt-border)] [section+&]:mt-2.5 [section+&]:border-t [section+&]:border-border [section+&]:pt-1.5",
+                          shut ? "pb-0" : "pb-1.5"
+                        )
+                      : undefined
+                  }
                   style={rail ? ({ "--dt-lane-rail": themeColor(rail) } as CSSProperties) : undefined}
                 >
                   {grouped && (
-                    <div className="dt-gantt-band-row">
-                      <div className="dt-gantt-gutter dt-gantt-band-header">
+                    <div className="flex items-stretch mb-0.5">
+                      <div className={gutter({ band: true, lane: true })}>
                         <button
                           type="button"
-                          className="dt-icon-button"
+                          className={iconButton}
                           aria-expanded={!shut}
                           title={shut ? "Expand" : "Collapse"}
                           onClick={() => toggleBand(band.value)}
@@ -228,15 +281,19 @@ export function ListGantt({ state }: ListProps) {
                           background={band.background}
                         />
                       </div>
-                      <div className="dt-gantt-track" style={{ gridTemplateColumns: template }}>
+                      <div className={track(true)} style={{ gridTemplateColumns: template }}>
                         {shape?.runs.map((run, i) => (
                           <div
                             key={`run/${run.start}`}
-                            className="dt-gantt-band-bar"
+                            className={bandBar}
                             style={{ gridColumn: `${axis.columnOf(run.start)} / ${axis.columnOf(run.end) + 1}` }}
                             title={`${bandLabel(band)} — ${bandRange(shape)}`}
                           >
-                            {i === 0 && <span className="dt-gantt-band-bar-label">{bandRange(shape)}</span>}
+                            {i === 0 && (
+                              <span className="absolute left-0 top-2 whitespace-nowrap text-small text-fg-subtle pointer-events-none">
+                                {bandRange(shape)}
+                              </span>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -250,21 +307,37 @@ export function ListGantt({ state }: ListProps) {
                       return (
                         <div
                           key={`${band.value}/${String(r["$source"] ?? "")}/${r.id}`}
-                          className="dt-gantt-row"
+                          className="group/row flex items-stretch cursor-pointer hover:bg-bg-hover"
                           data-vscode-context={rowContext(state.collection, r.id)}
                           onClick={() => state.openRecord(r)}
                         >
-                          <div className="dt-gantt-gutter" title={s.title}>
+                          <div className={gutter({ lane: grouped, row: true })} title={s.title}>
                             {s.title || "—"}
                           </div>
-                          <div className="dt-gantt-track" style={{ gridTemplateColumns: template }}>
+                          <div className={track()} style={{ gridTemplateColumns: template }}>
                             <div
-                              className={`dt-gantt-bar${s.start === s.end ? " is-point" : ""}${s.inverted ? " is-inverted" : ""}`}
+                              className={cx(
+                                "relative flex items-center h-4 min-w-[3px]",
+                                s.start === s.end ? "rounded-full" : "rounded-[3px]",
+                                s.inverted
+                                  ? "bg-transparent border border-dashed border-danger"
+                                  : "bg-[var(--dt-gantt-bar,var(--dt-accent))]"
+                              )}
                               style={barStyle(s)}
                               title={barTitle(s)}
                             >
                               {label && (
-                                <span className={`dt-gantt-bar-label ${inside ? "is-inside" : "is-beside"}`}>
+                                <span
+                                  className={cx(
+                                    barLabelBase,
+                                    inside
+                                      ? cx(
+                                          "py-0 px-1.5 overflow-hidden text-ellipsis font-medium",
+                                          s.inverted ? "text-danger" : "[color:var(--vscode-editor-background,#fff)]"
+                                        )
+                                      : "absolute left-0 py-0 px-1 rounded-xs bg-[color-mix(in_srgb,var(--dt-bg)_72%,transparent)] text-fg-subtle max-w-[60ch] overflow-hidden text-ellipsis group-hover/row:text-fg"
+                                  )}
+                                >
                                   {label}
                                 </span>
                               )}
@@ -280,23 +353,23 @@ export function ListGantt({ state }: ListProps) {
         </div>
       )}
       {colors.uncoloured > 0 && (
-        <div className="dt-gantt-undated">
-          <span className="dt-subtle">
+        <div className={undatedCls}>
+          <span className={subtle}>
             {colors.uncoloured} more value{colors.uncoloured > 1 ? "s" : ""} of {colorField?.field} than the palette has
             colours — {colors.uncoloured > 1 ? "those bars share" : "that bar keeps"} the neutral
           </span>
         </div>
       )}
       {undated.length > 0 && (
-        <div className="dt-gantt-undated">
-          <span className="dt-subtle">
+        <div className={undatedCls}>
+          <span className={subtle}>
             {undated.length} undated — no {startField.field} to place {undated.length > 1 ? "them" : "it"} on
           </span>
           {undated.map(r => (
             <button
               type="button"
               key={`${String(r["$source"] ?? "")}/${r.id}`}
-              className="dt-cal-chip dt-gantt-chip"
+              className={calChip(false, true)}
               data-vscode-context={rowContext(state.collection, r.id)}
               onClick={() => state.openRecord(r)}
             >

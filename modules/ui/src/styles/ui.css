@@ -3846,10 +3846,6 @@ a.dt-counts-item:hover {
   border-radius: var(--dt-radius);
 }
 /* the circles' colour: Leaflet writes SVG attributes, and a class rule outranks an attribute */
-.dt-map .dt-map-marker {
-  stroke: var(--dt-accent);
-  fill: var(--dt-accent);
-}
 
 /* ── gantt ───────────────────────────────────────────────────────────────────────────────────────────── */
 /* fills the browse's height, so the horizontal scroll lives inside the chart. The axis (lib/gantt-axis.ts) writes
@@ -4143,42 +4139,6 @@ a.dt-counts-item:hover {
   flex: 1;
   min-height: 0;
 }
-.dt-diagram-flow.react-flow {
-  background: var(--dt-bg);
-}
-.dt-diagram-flow .react-flow__edge-path {
-  stroke: var(--dt-fg-subtle);
-  stroke-width: 1.3;
-}
-.dt-diagram-flow .react-flow__edge-text {
-  fill: var(--dt-fg-subtle);
-  font-size: 9px;
-  font-family: var(--dt-mono);
-}
-.dt-diagram-flow .react-flow__edge-textbg {
-  fill: var(--dt-bg);
-}
-.dt-diagram-flow .react-flow__controls-button {
-  background: var(--dt-bg);
-  border-bottom: 1px solid var(--dt-border);
-  fill: var(--dt-fg);
-  color: var(--dt-fg);
-}
-.dt-diagram-flow .react-flow__minimap {
-  background-color: var(--dt-bg);
-  border: 1px solid var(--dt-border);
-  border-radius: var(--dt-radius);
-}
-/* React Flow's own node chrome off: each kind below draws itself */
-.dt-diagram-flow .react-flow__node-dtentity,
-.dt-diagram-flow .react-flow__node-dtdot,
-.dt-diagram-flow .react-flow__node-dtgroup {
-  padding: 0;
-  border: 0;
-  background: none;
-  box-shadow: none;
-  border-radius: 0;
-}
 /* a dot: the box IS the dot, the label out of flow beside it */
 .dt-gnode {
   position: relative;
@@ -4215,15 +4175,6 @@ a.dt-counts-item:hover {
 }
 .dt-gnode.is-ghost .dt-gnode-label {
   color: var(--dt-fg-subtle);
-}
-.dt-gnode-handle {
-  opacity: 0;
-  width: 1px;
-  height: 1px;
-  min-width: 0;
-  min-height: 0;
-  border: 0;
-  pointer-events: none;
 }
 /* an entity: a header band, one row per field; HEAD_H/ROW_H in ListDiagram.tsx track these */
 .dt-entity {
@@ -4288,14 +4239,6 @@ a.dt-counts-item:hover {
   font-size: 10.5px;
   color: var(--dt-fg-subtle);
   white-space: nowrap;
-}
-.dt-diagram-flow .dt-entity-handle {
-  width: 7px;
-  height: 7px;
-  min-width: 0;
-  min-height: 0;
-  border: 1px solid var(--dt-bg);
-  background: var(--dt-fg-subtle);
 }
 /* a group: the tinted region behind its members, grabbed from the space between them */
 .dt-diagram-group {

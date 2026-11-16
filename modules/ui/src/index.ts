@@ -3,6 +3,7 @@
 import "@vscode/codicons/dist/codicon.css"
 import "./styles/app.css"
 import "./styles/ui.css"
+import "./styles/vendor.css"
 export { mount, type MountOptions } from "./mount.tsx"
 export { HostError, type Transport } from "./transport/types.ts"
 export { httpTransport } from "./transport/http.ts"
