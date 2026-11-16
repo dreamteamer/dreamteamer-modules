@@ -12,7 +12,7 @@ import { hostInfo } from "../lib/host.ts"
 import { paneFetch } from "../lib/pane-api.ts"
 import { usePaneMenu } from "./use-pane-menu.ts"
 import { cx } from "../styles/classes.ts"
-import { paneMenu, paneMenuError, paneMenuQuiet } from "./looks.ts"
+import { paneMenu, paneMenuError, paneMenuItem, paneMenuItemPlace, paneMenuQuiet } from "./looks.ts"
 
 interface WorkspaceRow {
   id: string
@@ -117,6 +117,7 @@ export function PaneSwitcher({ label }: { label?: string }) {
                 key={w.id}
                 type="button"
                 role="menuitemradio"
+                className={cx(paneMenuItem, paneMenuItemPlace.default)}
                 data-id={w.id}
                 aria-checked={w.current}
                 onClick={() => void pick(w)}
@@ -135,7 +136,7 @@ export function PaneSwitcher({ label }: { label?: string }) {
             <button
               type="button"
               role="menuitem"
-              className="border-t! border-border mt-0.5 pt-1.5! rounded-none!"
+              className={cx(paneMenuItem, paneMenuItemPlace.footer)}
               onClick={() => {
                 m.close()
                 navigate(SETTINGS_ROUTE)

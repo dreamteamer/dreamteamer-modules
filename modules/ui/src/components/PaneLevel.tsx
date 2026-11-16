@@ -15,7 +15,7 @@ import { levelWord, lowerChoices, raiseNotice, type PaneLevel as Level } from ".
 import { Icon } from "./Icon.tsx"
 import { usePaneMenu } from "./use-pane-menu.ts"
 import { cx } from "../styles/classes.ts"
-import { navTool, paneMenu, paneMenuError, paneMenuQuiet } from "./looks.ts"
+import { navTool, paneMenu, paneMenuError, paneMenuItem, paneMenuItemPlace, paneMenuQuiet } from "./looks.ts"
 
 const ICONS: Record<Level, string> = { read: "eye", edit: "edit", admin: "shield" }
 
@@ -80,7 +80,14 @@ export function PaneLevel() {
               </p>
             )}
             {lowerChoices(level).map(l => (
-              <button key={l} type="button" role="menuitem" data-level={l} onClick={() => void lower(l)}>
+              <button
+                key={l}
+                type="button"
+                role="menuitem"
+                className={cx(paneMenuItem, paneMenuItemPlace.default)}
+                data-level={l}
+                onClick={() => void lower(l)}
+              >
                 {levelWord(l)}
               </button>
             ))}

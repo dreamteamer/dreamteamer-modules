@@ -9,7 +9,15 @@ export const navTool =
 
 /** A menu a nav toolbar button opens, portalled to the body and placed fixed. (was dt-pane-menu) */
 export const paneMenu =
-  "fixed z-60 w-[220px] max-w-[calc(100vw-8px)] flex flex-col p-1 border border-border rounded-dt bg-bg shadow-[0_8px_24px_rgb(0_0_0/0.16)] outline-none [&>button]:overflow-hidden [&>button]:text-ellipsis [&>button]:whitespace-nowrap [&>button]:text-left [&>button]:border-0 [&>button]:bg-transparent [&>button]:text-fg [&>button]:px-2 [&>button]:py-1 [&>button]:rounded-dt [&>button:hover]:bg-bg-hover [&>button:focus-visible]:bg-bg-hover [&>button:focus-visible]:outline-none [&>button[aria-checked=true]]:font-semibold"
+  "fixed z-60 w-[220px] max-w-[calc(100vw-8px)] flex flex-col p-1 border border-border rounded-dt bg-bg shadow-[0_8px_24px_rgb(0_0_0/0.16)] outline-none"
+/** One entry of a pane menu, and one entry of `paneMenuItemPlace`. (was dt-pane-menu > button) */
+export const paneMenuItem =
+  "overflow-hidden text-ellipsis whitespace-nowrap text-left bg-transparent text-fg px-2 pb-1 hover:bg-bg-hover focus-visible:bg-bg-hover focus-visible:outline-none aria-checked:font-semibold"
+/** Where an entry sits: among the choices, or the last row, ruled off from them. */
+export const paneMenuItemPlace = {
+  default: "border-0 pt-1 rounded-dt",
+  footer: "border-x-0 border-b-0 border-t border-border mt-0.5 pt-1.5 rounded-none",
+} as const satisfies Record<string, string>
 /** A quiet line in a pane menu. (was dt-pane-menu-hint / -muted / -notice) */
 export const paneMenuQuiet = "text-fg-subtle m-0"
 /** A refusal shown inside a pane menu. (was dt-pane-menu-error) */
