@@ -196,9 +196,9 @@ export function DataModelDetail({
       ) : (
         <header className={cx(pageHead, pageHeadSpace.page)}>
           <div>
-            <p className="mt-0! mb-1! text-small">
+            <div className="mb-1 text-small">
               <Link to={`${SCHEMA_BASE}/collections`}>Data Model</Link>
-            </p>
+            </div>
             <h1>
               <Icon name={row?.nav.icon ?? "database"} /> {collection}
             </h1>
