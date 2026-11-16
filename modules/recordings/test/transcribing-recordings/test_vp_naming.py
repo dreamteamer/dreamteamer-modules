@@ -63,9 +63,9 @@ def a_print(vector, ref, trust="trusted", auto=True):
             "known_as": [{"workspace": "northwind-hq", "person": ref, "name": CAND[ref]["name"]}]}
 
 
-def ctx_of(refs, meeting=True, certain=True, count=None):
+def ctx_of(refs, meeting=True, certain=True, count=None, workspace="northwind-hq"):
     cands = [dict(CAND[r]) for r in refs]
-    return {"candidates": cands,
+    return {"workspace": workspace, "candidates": cands,
             "attendee_count": (len(cands) if count is None else count) if meeting else None,
             "attendee_count_certain": certain if meeting else False,
             "meeting": {"id": "meetings/2026/11/2026-11-20--northwind-weekly"} if meeting else None}
@@ -334,14 +334,26 @@ class MarginTest(Base):
         self.assertEqual(out["names"], {})
         self.assertEqual(out["proposals"]["speaker_0"]["person"], DANA_REF)
 
-    def test_a_second_group_below_accept_but_within_margin(self):
+    def test_a_second_group_below_accept_but_within_margin_is_mixed(self):
+        # review round 1: both labels resemble Dana's print (at `suggest`, 0.86 and 0.78) and lie within
+        # `margin` of each other — line 4's contradiction, so neither is named NOR preselected
         a, b = vp_synth.near(DANA, 0.86, seed="sa"), vp_synth.near(DANA, 0.78, seed="sb")
         self.assertLess(vec.cos(a, b), TH["same"])
         s = sig_of({"speaker_0": voice_label(a, "m3", noise=0.05), "speaker_1": voice_label(b, "m4", noise=0.05)})
         prints = {DANA_REF: a_print(DANA, DANA_REF)}
         out = self.decide(s, ctx_of([DANA_REF, SAM_REF], certain=False), prints)
-        self.assertNotIn("speaker_0", out["names"])
-        self.assertEqual(out["proposals"]["speaker_0"]["person"], DANA_REF)
+        self.assertEqual(out["outcome"], "mixed-suspected")
+        self.assertEqual(out["names"], {})
+        self.assertEqual(out["proposals"], {})
+        self.assertEqual(out["flags"], {"speaker_0": ["mixed-suspected"], "speaker_1": ["mixed-suspected"]})
+
+    def test_a_second_group_outside_the_margin_does_not_contradict(self):
+        a, b = vp_synth.near(DANA, 0.92, seed="sc"), vp_synth.near(DANA, 0.70, seed="sd")
+        s = sig_of({"speaker_0": voice_label(a, "m6", noise=0.05), "speaker_1": voice_label(b, "m7", noise=0.05)})
+        out = self.decide(s, ctx_of([DANA_REF, SAM_REF], certain=False), {DANA_REF: a_print(DANA, DANA_REF)})
+        self.assertEqual(out["names"]["speaker_0"]["person"], DANA_REF)
+        self.assertEqual(out["flags"], {})
+        self.assertNotEqual(out["outcome"], "mixed-suspected")
 
 
 class TwoGroupsOnePrintTest(Base):
@@ -360,6 +372,22 @@ class TwoGroupsOnePrintTest(Base):
         self.assertIn("mixed-suspected", out["flags"]["speaker_0"])
         self.assertIn("mixed-suspected", out["flags"]["speaker_1"])
         self.assertEqual(out["proposals"], {})
+
+    def test_neither_named_nor_proposed_whatever_the_print_s_trust(self):
+        # review round 1: line 4 carries no trust qualifier — a proposing print (a mixed first source
+        # keeps it from ever being trusted) or a corrected one must not preselect one of the two labels
+        p = vp_synth.near(DANA, 1.0)
+        a = vp_synth.near(p, 0.84, seed="ga")
+        b = vp_synth.near(p, 0.82, seed="gb")
+        s = sig_of({"speaker_0": voice_label(a, "g0", noise=0.05), "speaker_1": voice_label(b, "g1", noise=0.05)})
+        for trust, auto in (("proposing", True), ("trusted", False)):
+            out = self.decide(s, ctx_of([DANA_REF, SAM_REF]), {DANA_REF: a_print(p, DANA_REF, trust=trust, auto=auto),
+                                                               SAM_REF: trusted_both()[SAM_REF]})
+            self.assertEqual(out["outcome"], "mixed-suspected", (trust, auto))
+            self.assertEqual(out["names"], {})
+            self.assertEqual(out["proposals"], {})
+            self.assertEqual(out["flags"], {"speaker_0": ["mixed-suspected"], "speaker_1": ["mixed-suspected"]})
+            self.assertTrue(any("both resemble Dana Oren" in r for r in out["reports"]), out["reports"])
 
 
 class NoMeetingTest(Base):
@@ -388,6 +416,25 @@ class NoMeetingTest(Base):
                           calib=dict(CALIB, print_open="propose"))
         self.assertEqual(out["names"], {})
         self.assertEqual(out["proposals"]["speaker_0"]["person"], DANA_REF)
+
+    def test_one_label_under_a_declared_count_of_two_is_collapsed(self):
+        # review round 1: --speakers 2, the diariser fell back to one label holding both voices (the
+        # second at 15%, under check 5) — the declared count stands in for the attendee count, as in
+        # enrolment's call of `usable`, so naming and admission agree on one signature
+        s = sig_of({"speaker_0": lab(vp_synth.mixed(DANA, SAM, 60, 0.15, seed="fb"))},
+                   hint=2, fallback="diariser exited -10; one speaker")
+        prints = {DANA_REF: a_print(vp_synth.near(DANA, 0.97, seed="fbp"), DANA_REF)}
+        out = self.decide(s, ctx_of([DANA_REF], meeting=False), prints)
+        self.assertEqual(out["outcome"], "collapsed")
+        self.assertEqual(out["outcome"], naming.usable(s, 2, True, TH)["outcome"])
+        self.assertEqual(out["names"], {})
+        self.assertEqual(out["proposals"], {})
+        self.assertEqual(out["flags"], {"speaker_0": ["collapsed"]})
+        self.assertTrue(any("--speakers 2" in r for r in out["reports"]), out["reports"])
+        # --speakers 1 declared with no meeting is still solo, and named at accept_open
+        solo = sig_of({"speaker_0": voice_label(DANA, "fs", noise=0.05)}, hint=1)
+        out = self.decide(solo, ctx_of([DANA_REF], meeting=False), prints)
+        self.assertEqual(out["names"]["speaker_0"]["person"], DANA_REF)
 
 
 class ExistingNameTest(Base):
@@ -456,6 +503,17 @@ class EliminationTest(Base):
         self.assertEqual(out["proposals"], {})
         self.assertIn(naming.no_match_line("speaker_1"), out["reports"])
 
+    def test_not_onto_a_label_that_may_hold_more_than_one_voice(self):
+        # review round 1: the only label left has a 31-minute turn (check 4) — it is asked about with
+        # no attendee preselected
+        s = sig_of({"speaker_0": voice_label(DANA, "e0"),
+                    "speaker_1": voice_label(PRIYA, "e1", seconds=1900.0, longest=1900.0)})
+        out = self.decide(s, ctx_of([DANA_REF, SAM_REF]), {DANA_REF: trusted_both()[DANA_REF]})
+        self.assertEqual(out["names"]["speaker_0"]["person"], DANA_REF)
+        self.assertEqual(out["flags"], {"speaker_1": ["may-hold-more-than-one-voice"]})
+        self.assertEqual(out["proposals"], {})
+        self.assertEqual(out["outcome"], "waiting")
+
 
 class LongTurnLabelTest(Base):
     """Line 26: a label with a turn over five minutes is not named from a print, and is flagged."""
@@ -468,6 +526,26 @@ class LongTurnLabelTest(Base):
         self.assertEqual(out["flags"]["speaker_0"], ["may-hold-more-than-one-voice"])
         self.assertEqual(out["names"]["speaker_1"]["person"], SAM_REF)
         self.assertEqual(out["outcome"], "waiting")
+
+    def test_a_flag_on_a_label_that_already_has_a_name_is_not_a_question(self):
+        # review round 1 (section 11): a label with a name of any status is never rewritten and is not
+        # re-asked, so a step-3 flag on it stays out of decide's flags and the outcome is `named`;
+        # `usable` itself still flags it, which is what enrolment's admission reads
+        s = sig_of({"speaker_0": voice_label(DANA, "l0", seconds=1920.0, longest=1920.0),
+                    "speaker_1": voice_label(SAM, "l1", seconds=300.0)})
+        existing = {"speaker_0": {"name": "Dana Oren", "person": DANA_REF, "status": "confirmed"}}
+        out = self.decide(s, ctx_of([DANA_REF, SAM_REF]), trusted_both(), existing)
+        self.assertEqual(out["outcome"], "named")
+        self.assertEqual(out["flags"], {})
+        self.assertEqual(out["names"], {"speaker_1": out["names"]["speaker_1"]})
+        self.assertEqual(out["names"]["speaker_1"]["person"], SAM_REF)
+        self.assertEqual(naming.usable(s, 2, True, TH)["flags"], {"speaker_0": ["may-hold-more-than-one-voice"]})
+        # two alike labels under a forced count, both already named by a person: nothing left to ask
+        alike = sig_of({"speaker_0": voice_label(DANA, "x0"), "speaker_1": voice_label(DANA, "x1")}, hint=2)
+        named = {"speaker_0": {"name": "Dana Oren", "person": DANA_REF, "status": "confirmed"},
+                 "speaker_1": {"name": "Sam Diaz", "person": SAM_REF, "status": "confirmed"}}
+        out = self.decide(alike, ctx_of([DANA_REF, SAM_REF]), trusted_both(), named)
+        self.assertEqual((out["outcome"], out["flags"], out["names"], out["proposals"]), ("named", {}, {}, {}))
 
 
 class TrustAndSwitchTest(Base):
@@ -514,6 +592,18 @@ class ReportsTest(Base):
         self.assertNotIn("speaker_1", out["names"])
         self.assertNotIn(TOM_REF, [p["person"] for p in out["proposals"].values()])
         self.assertIn("Speaker 1 sounds like Tom Whitfield, who was not invited", out["reports"])
+
+    def test_an_uninvited_print_known_only_in_another_workspace_is_never_named(self):
+        # review round 1 (acceptance line 31): run in northwind-hq, Tom's print is known only in another
+        # workspace — the report says a print from elsewhere resembles the voice, and gives no name
+        s = sig_of({"speaker_0": voice_label(DANA, "r0"), "speaker_1": voice_label(TOM, "r1")})
+        tom = a_print(vp_synth.near(TOM, 0.93, seed="pt"), TOM_REF)
+        tom["known_as"] = [{"workspace": "harbor-mutual-hq", "person": TOM_REF, "name": "Tom Whitfield"}]
+        out = self.decide(s, ctx_of([DANA_REF, SAM_REF], certain=False), dict(trusted_both(), **{TOM_REF: tom}))
+        self.assertNotIn("speaker_1", out["names"])
+        self.assertNotIn("speaker_1", out["proposals"])
+        self.assertFalse(any("Tom Whitfield" in r for r in out["reports"]), out["reports"])
+        self.assertIn("Speaker 1 resembles a voice print from another workspace", out["reports"])
 
     def test_a_removed_label_is_never_scored_or_proposed(self):
         s = sig_of({"speaker_0": voice_label(DANA, "x0"), "speaker_1": lab([], seconds=200.0)}, removed=["speaker_1"])

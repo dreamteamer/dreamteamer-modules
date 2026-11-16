@@ -115,8 +115,8 @@ def usable(sig, attendee_count, attendee_count_certain, thresholds):
         if attendee_count is not None and attendee_count >= 2:
             how = (f"the diariser fell back: {fallback}" if fallback
                    else "one speaker was declared" if hint == 1 else "the diariser found one voice")
-            reports.append(f"{display(only)} is the only speaker label but the meeting has {attendee_count} "
-                           f"attendees ({how}): no name and no question — transcribe again with "
+            reports.append(f"{display(only)} is the only speaker label but {attendee_count} speakers are "
+                           f"expected ({how}): no name and no question — transcribe again with "
                            f"--speakers {attendee_count}")
             return {"outcome": "collapsed", "flags": {only: [COLLAPSED]}, "reports": reports}
         if attendee_count == 1 or (attendee_count is None and hint == 1):
@@ -180,19 +180,29 @@ def decide(sig, ctx, prints, existing, calib):
       string against the candidates) is taken: a label another taken person's print would be accepted
       on is flagged `conflicts-with:<label>` and gets nothing. A taken person still counts as a rival
       in the margin test (a voice between two people is not named).
-    - Step 3 (`usable`) runs before any naming; its flagged labels get no machine name.
+    - Step 3 (`usable`) runs before any naming; its flagged labels get no machine name. With no meeting
+      a declared `speakers_hint` stands in for the attendee count, exactly as enrolment's admission calls
+      `usable`, so one label under `--speakers 2` (a fallback) is `collapsed` here too. A step-3 flag on a
+      label that already has a name (any status) is informational: it is reported but kept out of
+      `flags`, because that label is never rewritten nor re-asked (section 11); a record whose every
+      label has a name is `named` (a `collapsed` diarisation stays `collapsed`).
     - Step 4 folds alike unflagged, unnamed labels when the diariser was unconstrained or there are
       more labels than attendees; a group's name lands on each of its labels.
     - Step 5: greedy one-to-one by score; accepted only from a `trusted` print with `auto` true, at
       `accept` (`accept_open` with no meeting; a contact never without one), beating every other
-      candidate and every other label by `margin`; two groups both at the threshold against one
-      trusted print, within `margin`, are both flagged `mixed-suspected` and neither is named. A pair at
-      `suggest` that is not accepted is a proposal (`origin: print`).
+      candidate and every other label by `margin`. A pair at `suggest` that is not accepted is a
+      proposal (`origin: print`). Before the pairing, two or more groups that both RESEMBLE one print —
+      each at `suggest` or above, within `margin` of the best of them — contradict each other (line 4),
+      whatever the print's trust or `auto`: all are flagged `mixed-suspected`, none is named or
+      proposed, and the outcome is `mixed-suspected`. `suggest` is the bar because it is where the print
+      would otherwise preselect one of two labels that both sound like it.
     - Step 6: elimination proposes only (`origin: attendees`), with a certain count equal to the
-      groups; never onto a group flagged mixed or conflicting, nor against the left attendee's own
-      trusted print scoring below `suggest`.
+      groups; never onto a group carrying any flag (step 3's suspect or mixed, step 5's mixed, a
+      conflict), nor against the left attendee's own trusted print scoring below `suggest`.
     - Step 7: a label at `accept` against a trusted print of a workspace user not on the invite is
-      reported, never named; an unnamed label with nothing to say gets `no_match_line`.
+      reported, never named, by the name of the print's `known_as` entry for `ctx["workspace"]`; a print
+      known only in other workspaces is reported as resembling a print from another workspace, with no
+      name. An unnamed label with nothing to say gets `no_match_line`.
     - Step 8: `print_closed` (with a meeting) or `print_open` (without) must be `auto` to write.
     """
     existing = existing or {}
@@ -260,14 +270,22 @@ def decide(sig, ctx, prints, existing, calib):
         if p and p not in taken:
             taken[p] = l
 
-    # step 3: refusals win before any naming
-    u = usable(sig, count, certain, th)
+    # step 3: refusals win before any naming. Without a meeting the declared count stands in for the
+    # attendee count — the call enrolment's admission makes — so the two agree on one signature.
+    if meeting is not None:
+        u = usable(sig, count, certain, th)
+    else:
+        u = usable(sig, hint, hint is not None, th)
     reports.extend(u["reports"])
+    if u["outcome"] == "collapsed":
+        flags.update({l: list(fs) for l, fs in u["flags"].items()})
+        return result("collapsed")
     for l, fs in u["flags"].items():
-        flags[l] = list(fs)
-    mixed = u["outcome"] == MIXED
-    if u["outcome"] == "collapsed" or (mixed and len(labels) == 1):
-        return result(u["outcome"])
+        if l not in held:                 # a named label is never re-asked: its flag is informational
+            flags[l] = list(fs)
+    mixed = u["outcome"] == MIXED and any(l in flags for l in labels)
+    if mixed and len(labels) == 1:
+        return result(MIXED)
 
     cent = {}
     for l in labels:
@@ -341,13 +359,14 @@ def decide(sig, ctx, prints, existing, calib):
                                    f"named on {display(taken[p])}: no name written; asked")
                 break
 
-    # two groups both resembling one trusted print contradict each other
+    # two groups both resembling one print — trusted or not — contradict each other (line 4)
     active = [g for g in groups if g not in conflict]
     contradicted = set()
     for p in scored:
-        if not trusted(p) or p in taken:
+        if p in taken:
             continue
-        hits = sorted(((S[g, p], i) for i, g in enumerate(active) if S[g, p] >= thr), key=lambda t: (-t[0], t[1]))
+        hits = sorted(((S[g, p], i) for i, g in enumerate(active) if S[g, p] >= suggest),
+                      key=lambda t: (-t[0], t[1]))
         if len(hits) >= 2 and hits[0][0] - hits[1][0] < margin:
             close = [active[i] for s, i in hits if hits[0][0] - s < margin]
             contradicted.update(close)
@@ -407,8 +426,7 @@ def decide(sig, ctx, prints, existing, calib):
             left_groups = [g for g in voices if not any(l in held or l in names or l in proposals for l in g)]
             if len(left_people) == 1 and len(left_groups) == 1:
                 g, p = left_groups[0], left_people[0]
-                blocked = any(l in removed or any(f == MIXED or f.startswith(CONFLICT) for f in flags.get(l, []))
-                              for l in g)
+                blocked = any(l in removed or flags.get(l) for l in g)     # any flag: asked, never preselected
                 against = g in gcent and p in scored and trusted(p) and S[g, p] < suggest
                 if not blocked and not against:
                     for l in g:
@@ -422,20 +440,29 @@ def decide(sig, ctx, prints, existing, calib):
             continue
         said = False
         if l in cent:
+            elsewhere = False
             for p in uninvited:
-                known = [k for k in prints[p].get("known_as") or [] if k.get("person") == p and k.get("name")]
-                mine = [k for k in known if k.get("workspace") == ctx.get("workspace")] or known
-                if mine and vec.cos(cent[l], prints[p]["vector"]) >= th["accept"]:
+                if vec.cos(cent[l], prints[p]["vector"]) < th["accept"]:
+                    continue
+                # only this workspace's name for the person; one known elsewhere is never named
+                mine = [k for k in prints[p].get("known_as") or [] if k.get("workspace") == ctx.get("workspace")
+                        and k.get("person") == p and k.get("name")]
+                if mine:
                     reports.append(f"{display(l)} sounds like {mine[0]['name']}, who was not invited")
                     said = True
+                else:
+                    elsewhere = True
+            if elsewhere and not said:
+                reports.append(f"{display(l)} resembles a voice print from another workspace")
+                said = True
         if not said:
             reports.append(no_match_line(l))
 
-    if mixed:
-        return result(MIXED)
     open_labels = [l for l in labels if l not in removed and l not in held and l not in names]
     if not open_labels:
         return result("named")
+    if mixed:
+        return result(MIXED)
     if not names and not proposals and not flags:
         return result("none")
     return result("waiting")
