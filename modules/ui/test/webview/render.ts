@@ -94,6 +94,22 @@ function node(tag: string): TestNode {
 	Object.defineProperty(n, 'querySelectorAll', { value: querySelectorAll, enumerable: false, writable: true, configurable: true });
 	Object.defineProperty(n, 'getAttribute', { value: getAttribute, enumerable: false, writable: true, configurable: true });
 	Object.defineProperty(n, 'textContent', { get() { return text(n); }, enumerable: false, configurable: true });
+	// What Vue's <Transition> / <TransitionGroup> reach for on an element (the toast stack animates in and out): a class
+	// list that keeps the transition classes apart from `class`, a style object, a node type, a parent, a clone to measure
+	// and a document to force a reflow on. A test that mounts one also gives `window` a getComputedStyle with no
+	// durations and the global a requestAnimationFrame, so every transition ends at once.
+	const transitionClasses = new Set<string>();
+	const hidden: Record<string, unknown> = {
+		classList: { add: (c: string) => void transitionClasses.add(c), remove: (c: string) => void transitionClasses.delete(c), contains: (c: string) => transitionClasses.has(c) },
+		style: {},
+		nodeType: tag === '#text' ? 3 : tag === '#comment' ? 8 : 1,
+		cloneNode: () => node(tag),
+		appendChild: (c: TestNode) => insert(c, n, null),
+		removeChild: (c: TestNode) => remove(c),
+		ownerDocument: { body: { offsetHeight: 0 } },
+	};
+	for (const [key, value] of Object.entries(hidden)) Object.defineProperty(n, key, { value, enumerable: false, writable: true, configurable: true });
+	Object.defineProperty(n, 'parentNode', { get() { return n.parent; }, enumerable: false, configurable: true });
 	return n;
 }
 
