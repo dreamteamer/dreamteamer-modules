@@ -12,6 +12,12 @@ cr-modules-019), plus the five findings earlier reviews carried into this task:
   2): a live answer judges only what is new only when the signature files and never/forgotten are as the
   last pass read them.
 
+And the five findings of this task's review round 1: `forgotten-label-computed-again` (Line24: a signature
+computed after the forget gives none of the person's labels windows), `confirm-racing-forget-keeps-its-windows`
+(ForgetHoldsTheStore), `non-active-folder-loses-vectors-silently` (PrintsWaitingForRebuild),
+`rebuild-line-lost-once-confirmed-under-new-model` (RebuildLineStays) and
+`never-removes-namesake-print-elsewhere-silently` (Line25: never counts what it removed elsewhere).
+
 Standard library only, so a bare python3 runs it (vp-prints.test.mjs). Every voice is synthetic and made at
 run time by vp_synth.py, a distinct seed per voice and per source (ruling D13); every store is a temp folder
 with a fake `exclude_backup` (ruling D14); records are written by vp_records (JSON frontmatter). The harness
@@ -27,6 +33,7 @@ import os
 import re
 import subprocess
 import sys
+import threading
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -547,6 +554,76 @@ class Line24(Harness):
                                                      "name": "Dana Oren", "confirmed": "2026-11-21T09:00:00+02:00"}])
         self.assertEqual(len(rep["stored"]), 1)
 
+    # review round 1, `forgotten-label-computed-again`: a signature computed after the forget (identify, or
+    # `prints rebuild`) gives none of the forgotten person's labels windows
+    SAM_BEFORE = {"name": "Sam Diaz", "person": SAM_REF, "origin": "hand", "status": "confirmed",
+                  "named": "2026-11-02T10:00:00+02:00"}
+
+    def test_after_forget_and_forget_recording_identify_computes_none_of_their_labels(self):
+        self.teach(SAM_REF, SAM)
+        rec = self.two("l24-again", a=DANA, b=SAM)
+        self.identify(rec)
+        self.cli("--shown", rec.path, recs=[rec])
+        self.answered(rec, "speaker_1", "correct")
+        self.forget(SAM_REF, [rec])
+        self.p("forget-recording", rec.path, ctx=rec.ctx)
+        self.assertIsNone(self.sig(rec.audio, rec.diar))
+        self.identify(rec, compute=self.compute_for(MODEL))
+        self.assertEqual(self.wins(rec.audio, rec.diar, "speaker_1"), 0)
+        self.assertIn("speaker_1", self.removed(rec.audio, rec.diar))
+        self.assertGreater(self.wins(rec.audio, rec.diar, "speaker_0"), 0)
+
+    def test_a_hand_name_with_no_signature_is_not_computed_after_the_forget(self):
+        rec = self.two("l24-hand", a=DANA, b=SAM, write_sig=False, speakers={"speaker_1": "Sam Diaz"})
+        self.forget(SAM_REF, [rec])
+        self.identify(rec, compute=self.compute_for(MODEL))
+        self.assertEqual((self.wins(rec.audio, rec.diar, "speaker_1"), self.removed(rec.audio, rec.diar)),
+                         (0, ["speaker_1"]))
+        self.assertGreater(self.wins(rec.audio, rec.diar, "speaker_0"), 0)
+
+    def test_a_name_forget_never_saw_is_not_computed_and_one_given_after_the_forget_is(self):
+        old = self.two("l24-unseen", a=DANA, b=SAM, write_sig=False, speakers={"speaker_1": "Sam Diaz"},
+                       sources={"speaker_1": dict(self.SAM_BEFORE)})
+        self.forget(SAM_REF, [])                     # the record was not among the ones handed to forget
+        new = self.two("l24-later", a=DANA, b=SAM, write_sig=False, speakers={"speaker_1": "Sam Diaz"},
+                       sources={"speaker_1": dict(self.SAM_BEFORE, named="2026-11-21T10:00:00+02:00")})
+        mk = self.compute_for(MODEL)
+        self.identify(old, compute=mk)
+        self.identify(new, compute=mk)
+        self.assertEqual((self.wins(old.audio, old.diar, "speaker_1"), self.removed(old.audio, old.diar)),
+                         (0, ["speaker_1"]))
+        self.assertGreater(self.wins(new.audio, new.diar, "speaker_1"), 0)      # named after the forget: enrols again
+        self.assertEqual(self.removed(new.audio, new.diar), [])
+
+    def test_a_proposal_forget_swept_is_not_computed_once_its_file_is_gone(self):
+        rec = self.two("l24-swept", a=DANA, b=SAM)
+        fm, body = self.records.read(rec.path)
+        fm["transcription"]["speaker_questions"] = {"speaker_1": {"quotes": [], "flags": [], "proposed": {
+            "person": SAM_REF, "name": "Sam Diaz", "origin": "attendees", "why": "the only attendee left"}}}
+        self.records.write(rec.path, fm, body)
+        self.forget(SAM_REF, [rec])
+        self.assertNotIn("proposed", self.t(rec)["speaker_questions"]["speaker_1"])   # the record names them no more
+        self.p("forget-recording", rec.path, ctx=rec.ctx)
+        self.identify(rec, compute=self.compute_for(MODEL))
+        self.assertEqual(self.wins(rec.audio, rec.diar, "speaker_1"), 0)
+        self.assertIn("speaker_1", self.removed(rec.audio, rec.diar))
+
+    def test_a_rebuild_computes_none_of_their_labels_when_the_old_models_file_is_gone(self):
+        rec = self.two("l24-rebuild", a=DANA, b=SAM, speakers={"speaker_0": "Dana Oren", "speaker_1": "Sam Diaz"},
+                       sources={"speaker_0": dict(self.SAM_BEFORE, name="Dana Oren", person=DANA_REF),
+                                "speaker_1": dict(self.SAM_BEFORE)})
+        enrol.confirm(self.store, MODEL, TH, [{"audio": rec.audio, "diarization": rec.diar, "label": "speaker_0",
+                                               "workspace": WS, "person": DANA_REF, "name": "Dana Oren",
+                                               "confirmed": "2026-11-03T09:00:00+02:00"}])
+        self.forget(SAM_REF, [rec])
+        self.assertEqual(self.wins(rec.audio, rec.diar, "speaker_1"), 0)
+        os.remove(self.store.signature_path(MODEL.id, rec.audio, rec.diar))     # a person deleted the old model's file
+        self.p("rebuild", ctx=self.records_ctx([rec.ctx]), active=ACTIVE_B, compute=self.compute_for(MODEL_B))
+        self.assertIsNotNone(self.sig(rec.audio, rec.diar, MODEL_B))
+        self.assertEqual(self.wins(rec.audio, rec.diar, "speaker_1", MODEL_B), 0)
+        self.assertIn("speaker_1", self.removed(rec.audio, rec.diar, MODEL_B))
+        self.assertGreater(self.wins(rec.audio, rec.diar, "speaker_0", MODEL_B), 0)
+
 
 class Line25(Harness):
     """After a user says a person's voice is never to be kept (`prints never <person>`), that person's voice print
@@ -564,6 +641,7 @@ class Line25(Harness):
         self.assertEqual([(e["workspace"], e["person"], e["name"]) for e in nv], [(WS, DANA_REF, "Dana Oren")])
         self.assertEqual(len(self.store.forgotten()), 1)
         self.assertIn("not kept", out["reply"])
+        self.assertNotIn("with this name", out["reply"])              # no namesake anywhere: nothing to count
         later = self.two("l25-later")
         self.identify(later)
         reply = self.answered(later, "speaker_0", DANA_REF)["reply"]
@@ -578,6 +656,21 @@ class Line25(Harness):
         reps = self.teach_in(WS_B, "contacts/dana-o", "Dana Oren", DANA, tag="l25")
         self.assertTrue(all(r["stored"] == [] for r in reps))
         self.assertEqual(self.all_prints_of(WS_B, "contacts/dana-o"), [])
+
+    def test_never_says_how_many_namesake_prints_in_other_workspaces_it_removed_naming_none(self):
+        # review round 1, `never-removes-namesake-print-elsewhere-silently`; the coordinator's ruling
+        # `decisions/2026-11-16--cr-modules-019-build-task-10-never-keeps-the-design-s-by-name-reach-and-counts-it`
+        self.teach(SAM_REF, SAM)
+        self.teach_in(WS_B, "users/sam-d", "Sam Diaz", vp_synth.voice("l25-another-sam"), tag="l25n")
+        self.assertEqual(self.print_of("users/sam-d", ws=WS_B)["trust"], "trusted")
+        out = self.forget(SAM_REF, verb="never")
+        self.assertIsNone(self.print_of("users/sam-d", ws=WS_B))           # the design's by-name reach, kept
+        self.assertIn("1 voice print of a person with this name in another workspace", out["reply"])
+        self.assertEqual(out["namesakes_removed"], 1)
+        self.assertNotIn(WS_B, json.dumps(out))
+        self.assertNotIn("users/sam-d", json.dumps(out))
+        out = self.forget(SAM_REF)                    # forget never reaches a namesake (line 35): nothing to count
+        self.assertNotIn("with this name", out["reply"])
 
 
 class Line31(Harness):
@@ -1017,6 +1110,101 @@ class DigestReadsWhatThePassRead(Harness):
                                                      "name": "Tom Whitfield", "confirmed": "2026-11-21T10:00:00+02:00"}])
         self.assertEqual(rep["pass"], "full")
         self.assertIsNone(self.print_of(DANA_REF))
+
+
+# ======================================================================================================
+# task 10 review round 1
+
+class ForgetHoldsTheStore(Harness):
+    """Finding `confirm-racing-forget-keeps-its-windows`: a confirmation applied while `prints forget` runs leaves no
+    voice windows of the forgotten person once forget returns — forget reads the prints under the store's locks
+    (ruling D3: every model folder's lock, then the root's), so another session's answer waits for it."""
+
+    def test_an_answer_from_another_thread_waits_for_forget_and_keeps_nothing_of_them(self):
+        self.teach(SAM_REF, SAM)
+        fresh = self.signature("race", {"speaker_0": lab(DANA, "race:d"), "speaker_1": lab(SAM, "race:s")})
+        self.store.write_signature(MODEL.id, fresh, record={"workspace": WS, "record": "meeting-recordings/race"})
+        audio, diar = fresh["audio"], fresh["diarization"]["id"]
+        real = self.store.add_forgotten
+        got, errors, threads = [], [], []
+
+        def answer():
+            try:
+                got.append(enrol.confirm(self.store, MODEL, TH, [{
+                    "audio": audio, "diarization": diar, "label": "speaker_1", "workspace": WS, "person": SAM_REF,
+                    "name": "Sam Diaz", "confirmed": "2026-11-20T09:59:00+02:00"}]))   # stamped before the forget
+            except Exception as e:  # pragma: no cover - reported below
+                errors.append(e)
+
+        def racing(entry):
+            if not threads:      # another session's `identify --answer` lands while forget is under way
+                th = threading.Thread(target=answer)
+                threads.append(th)
+                th.start()
+                th.join(1.0)     # it finishes now, unless forget holds the store
+            return real(entry)
+        with mock.patch.object(self.store, "add_forgotten", racing):
+            self.forget(SAM_REF, [])
+        threads[0].join(30)
+        self.assertEqual(errors, [])
+        self.assertEqual(self.all_prints_of(WS, SAM_REF), [])
+        stored, left = got[0]["stored"], self.wins(audio, diar, "speaker_1")
+        self.assertTrue(stored == [] or left == 0, f"the racing answer stored {stored} and {left} windows stayed")
+
+
+class PrintsWaitingForRebuild(Harness):
+    """Finding `non-active-folder-loses-vectors-silently`: voice prints that need rebuilding after the speaker
+    model changes back say so in identification and in `prints list`, naming `prints rebuild`."""
+
+    def test_prints_a_forget_left_without_a_voice_name_prints_rebuild_until_it_runs(self):
+        self.teach(DANA_REF, DANA)
+        self.teach(SAM_REF, SAM)
+        mk = self.compute_for(MODEL_B)
+        for c in self.train:
+            self.store.write_signature(MODEL_B.id, mk(MODEL_B.id, c, c["fingerprint"][7:]),
+                                       record={"workspace": WS, "record": c["record"]})
+        self.p("rebuild", ctx=self.records_ctx(self.train), active=ACTIVE_B, compute=mk)
+        self.forget(SAM_REF, [], active=ACTIVE_B)       # the old folder is replayed with no calibration of its own
+        old = self.print_of(DANA_REF)
+        self.assertEqual((old["trust"], bool(old.get("vector"))), ("proposing", False))
+        # the old model is the active one again (a rollback)
+        r = self.identify(self.two("pw-a", b=STRANGER), active=ACTIVE)
+        self.assertTrue(any("prints rebuild" in x for x in r["lines"]), r["lines"])
+        self.assertIn("prints rebuild", self.p("list", active=ACTIVE)["reply"])
+        self.p("rebuild", active=ACTIVE)
+        self.assertEqual(self.print_of(DANA_REF)["trust"], "trusted")
+        rec = self.two("pw-b", b=STRANGER)
+        r = self.identify(rec, active=ACTIVE)
+        self.assertFalse(any("prints rebuild" in x for x in r["lines"]), r["lines"])
+        self.assertEqual(self.t(rec)["speakers"].get("speaker_0"), "Dana Oren")
+        self.assertNotIn("prints rebuild", self.p("list", active=ACTIVE)["reply"])
+
+
+class RebuildLineStays(Harness):
+    """Finding `rebuild-line-lost-once-confirmed-under-new-model` (acceptance line 11): identify's `prints rebuild`
+    line stays while a person of this workspace has a trusted print in another model folder whose recordings
+    the active model's print of them lacks."""
+
+    def test_the_line_stays_after_a_confirmation_under_the_new_model_and_goes_after_the_rebuild(self):
+        self.teach(DANA_REF, DANA)
+        self.teach(SAM_REF, SAM)
+        rec = self.two("rl-a", model=MODEL_B)
+        r = self.identify(rec, active=ACTIVE_B)
+        self.assertTrue(any("prints rebuild" in x for x in r["lines"]), r["lines"])
+        self.cli("--shown", rec.path, recs=[rec], active=ACTIVE_B)
+        code, outs = self.cli("--answer", rec.path, f"speaker_0={DANA_REF}", f"speaker_1={SAM_REF}", recs=[rec],
+                              active=ACTIVE_B)
+        self.assertEqual(code, 0, outs)
+        self.assertEqual(self.print_of(DANA_REF, model=MODEL_B)["trust"], "proposing")
+        r = self.identify(self.two("rl-b", model=MODEL_B), active=ACTIVE_B)
+        self.assertTrue(any("prints rebuild" in x for x in r["lines"]), r["lines"])
+        self.assertIn("prints rebuild", self.p("list", active=ACTIVE_B)["reply"])
+        self.p("rebuild", ctx=self.records_ctx(self.train), active=ACTIVE_B, compute=self.compute_for(MODEL_B))
+        self.assertEqual(self.print_of(DANA_REF, model=MODEL_B)["trust"], "trusted")
+        rec = self.two("rl-c", model=MODEL_B)
+        r = self.identify(rec, active=ACTIVE_B)
+        self.assertFalse(any("prints rebuild" in x for x in r["lines"]), r["lines"])
+        self.assertEqual(self.t(rec)["speakers"].get("speaker_0"), "Dana Oren")
 
 
 # ======================================================================================================

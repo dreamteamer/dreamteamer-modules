@@ -235,16 +235,29 @@ def workspace_prints(store, active, workspace):
     return out
 
 
+def _source_keys(p):
+    return {(s.get("audio"), s.get("diarization"), s.get("label")) for s in (p or {}).get("sources") or []}
+
+
 def other_model_people(store, model_id, workspace, have=()):
-    """The people this workspace knows (a `known_as` entry for it) whose voice print exists only in OTHER model
-    folders — made with another speaker model, so not used with `model_id` until `prints rebuild` makes it again
-    (acceptance line 11). References only, never read from elsewhere."""
+    """The people this workspace knows (a `known_as` entry for it) whose voice print in OTHER model folders is not
+    used with `model_id` until `prints rebuild` makes it again (acceptance line 11): one with no print here, and
+    — given `have` as `{person: the active folder's print}` — one whose trusted print elsewhere has recordings
+    the print here lacks (review round 1, `rebuild-line-lost-once-confirmed-under-new-model`). References only,
+    never read from elsewhere."""
+    here = have if isinstance(have, dict) else {r: None for r in have}
     out = set()
     for mid in enrol._model_folders(store, but=model_id):
         for p in store.prints(mid):
             for k in p.get("known_as") or []:
-                if k.get("workspace") == workspace and k.get("person") and k["person"] not in have:
-                    out.add(k["person"])
+                person = k.get("person")
+                if k.get("workspace") != workspace or not person:
+                    continue
+                if person not in here:
+                    out.add(person)
+                elif here[person] is not None and p.get("trust") == "trusted" \
+                        and _source_keys(p) - _source_keys(here[person]):
+                    out.add(person)
     return sorted(out)
 
 
@@ -253,6 +266,25 @@ def rebuild_line(n, model_id):
     return (f"{n} voice print{'s' if many else ''} of people this workspace knows {'were' if many else 'was'} made "
             f"with another speaker model and {'are' if many else 'is'} not used with the active model {model_id}; "
             f"run `prints rebuild` to make {'them' if many else 'it'} again")
+
+
+def unbuilt_people(prints, thresholds):
+    """The people whose print in the active folder keeps recordings judged with no calibration (`uncalibrated`)
+    while a calibration exists now: after a forget replayed a folder that was not active (D29 d), or once a
+    calibration first arrives. `prints rebuild` judges them again (review round 1,
+    `non-active-folder-loses-vectors-silently`)."""
+    if thresholds is None:
+        return []
+    return sorted(person for person, p in (prints or {}).items()
+                  if any(s.get("status") == enrol.UNCALIBRATED for s in (p or {}).get("sources") or []))
+
+
+def unbuilt_line(n, model_id):
+    many = n != 1
+    return (f"{n} voice print{'s' if many else ''} of people this workspace knows {'keep' if many else 'keeps'} "
+            f"{'their' if many else 'its'} recordings but {'have' if many else 'has'} no voice for the active model "
+            f"{model_id} yet, so {'they name' if many else 'it names'} nobody; run `prints rebuild` to make "
+            f"{'them' if many else 'it'} again")
 
 
 def _pid_of(store, active, workspace, person):
@@ -295,6 +327,47 @@ def _recheck_forgotten(t, forgotten, workspace):
     return gone, carry.forgotten_unplaced({"labels": entries})
 
 
+def record_forgotten(t, forgotten, workspace):
+    """The labels of the record's own diarisation it attributes to a person forgotten in `workspace`, by value
+    (carry's test): a name of any status — by its source's person, else by the name — given before the forget's
+    `at`, and an open proposal of them. A name given after the forget is a later enrolment and is not here
+    (design section 8 step 4)."""
+    out = set()
+    if not workspace or not isinstance(t, dict):
+        return out
+    speakers, srcs = _map(t.get("speakers")), _map(t.get("speaker_sources"))
+    for label in set(speakers) | set(srcs):
+        src = _map(srcs.get(label))
+        name = speakers.get(label) if _named(speakers.get(label)) else src.get("name")
+        if carry._forgotten({"name": name if isinstance(name, str) else None, "source": src}, forgotten, workspace):
+            out.add(label)
+    for label, q in _map(t.get("speaker_questions")).items():
+        p = _map(_map(q).get("proposed"))
+        if p and carry._forgotten({"name": p.get("name") if isinstance(p.get("name"), str) else None,
+                                   "source": {"person": p.get("person")}}, forgotten, workspace):
+            out.add(label)
+    return out
+
+
+def swept(forgotten, audio, diar):
+    """The labels of one diarisation of one recording a forget removed (its entries' `swept`, written by
+    `prints forget`): remembered by the store, so a signature computed after the file is gone keeps none of
+    them whatever the records say now."""
+    out = set()
+    for f in forgotten or []:
+        for s in _map(f).get("swept") or []:
+            if isinstance(s, dict) and s.get("audio") == audio and s.get("diarization") == diar:
+                out |= {x for x in s.get("labels") or [] if isinstance(x, str) and x}
+    return out
+
+
+def keep_out(t, forgotten, workspace, audio, diar):
+    """Every label of this diarisation no signature may give windows (review round 1,
+    `forgotten-label-computed-again`): what a forget swept here, and what the record attributes to a forgotten
+    person (`record_forgotten`). Carried earlier names are `_recheck_forgotten`'s."""
+    return swept(forgotten, audio, diar) | record_forgotten(t, forgotten, workspace)
+
+
 def _windows(sig, label):
     return [w for w in (_map(_map(sig.get("labels")).get(label)).get("windows") or []) if w.get("vector")]
 
@@ -326,7 +399,9 @@ def run(fm, body, ctx, store, active, *, compute=None, audio_key=None, now=None)
     workspace = ctx.get("workspace")
     diar = t["diarization_id"]
     audio = audio_of(ctx, fm, audio_key)
-    gone, unplaced = _recheck_forgotten(t, store.forgotten(), workspace)
+    forgotten = store.forgotten()
+    gone, unplaced = _recheck_forgotten(t, forgotten, workspace)
+    gone = set(gone) | keep_out(t, forgotten, workspace, audio, diar)
     extra = []
 
     sig = store.read_signature(model_id, audio, diar, model=pin) if audio else None
@@ -360,9 +435,12 @@ def run(fm, body, ctx, store, active, *, compute=None, audio_key=None, now=None)
     labels = sorted(_map(sig.get("labels")), key=_order)
     ex = existing(t)
     prints = workspace_prints(store, active, workspace)
-    stale = other_model_people(store, model_id, workspace, set(prints))
+    stale = other_model_people(store, model_id, workspace, prints)
     if stale:
         extra.append(rebuild_line(len(stale), model_id))
+    unbuilt = unbuilt_people(prints, _thresholds(active))
+    if unbuilt:
+        extra.append(unbuilt_line(len(unbuilt), model_id))
     d = naming.decide(sig, ctx, prints, ex, calib)
     # a label a person closed ("nobody", "different people") is honoured until `run` replaces the block: no
     # machine name, no proposal, no question (review round 1, `closed-label-named-again-on-rerun`)

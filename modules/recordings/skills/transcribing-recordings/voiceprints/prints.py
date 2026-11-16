@@ -6,10 +6,12 @@
                               that fed it and of every label this workspace's records attribute to the person (a
                               name of any status, an earlier name, an open proposal), in every model folder; the
                               proposals removed from the records; one forgotten.json entry per print with every
-                              `known_as` entry; the offer of `identify --revert --person`; a count of the other
-                              workspaces that know them
+                              `known_as` entry and the labels it `swept` (so a signature computed later keeps
+                              none of them); the offer of `identify --revert --person`; a count of the other
+                              workspaces that know them. All of it under every model folder's lock, then the
+                              root's (D3), the prints read inside them
     never <person>            forget, plus a never.json entry (matched by workspace and reference, and by name
-                              in other workspaces)
+                              in other workspaces); the reply counts the namesakes' prints it removed there
     forget-recording <record> every diarisation file of that audio in every model folder, then the prints that
                               used it rebuilt
     link <person>             joins this workspace's print of the person with the one print from another
@@ -31,6 +33,7 @@ Standard library only (the `engines.py` rule).
 """
 from __future__ import annotations
 
+import contextlib
 import copy
 import json
 import os
@@ -178,18 +181,20 @@ def _row(p, ctx, ref, pin):
 def do_list(store, active, ctx):
     ws, pin = ctx.get("workspace"), active["pin"]
     here = store.prints(pin.id)
-    rows = []
+    rows, mine = [], {}
     for p in here:
         for k in p.get("known_as") or []:
             if k.get("workspace") == ws and k.get("person"):
                 rows.append(_row(p, ctx, k["person"], pin))
+                mine.setdefault(k["person"], p)
     rows.sort(key=lambda r: (_norm(r["name"]), r["person"]))
     elsewhere = set()
     for mid in folders(store):
         for p in store.prints(mid):
             if not _known(p, ws):
                 elsewhere.add(p.get("id"))
-    stale = identify.other_model_people(store, pin.id, ws, {r["person"] for r in rows})
+    stale = identify.other_model_people(store, pin.id, ws, mine)
+    unbuilt = identify.unbuilt_people({r: p for r, p in mine.items() if _same_pin(p, pin)}, identify._thresholds(active))
     lines = [f"Voice prints of people this workspace knows (speaker model {pin.id}):" if rows
              else f"No voice print of anyone this workspace knows (speaker model {pin.id})."]
     for r in rows:
@@ -209,8 +214,10 @@ def do_list(store, active, ctx):
         lines.append("Some of these were made with another file of this speaker model; run `prints rebuild`.")
     if stale:
         lines.append(identify.rebuild_line(len(stale), pin.id))
+    if unbuilt:
+        lines.append(identify.unbuilt_line(len(unbuilt), pin.id))
     return {"workspace": ws, "model": pin.id, "people": rows, "elsewhere": len(elsewhere),
-            "other_models": len(stale), "reply": "\n".join(lines)}
+            "other_models": len(stale), "unbuilt": len(unbuilt), "reply": "\n".join(lines)}
 
 
 # -- forget and never ------------------------------------------------------------------------------------------
@@ -286,71 +293,100 @@ def _union_known(entries, more):
     return entries
 
 
-def forget(store, active, ctx, ref, stamp, *, read, write, never=False, audio_key=None):
-    ws = ctx.get("workspace")
-    hits = []                                   # (model id, print)
+def _namesakes(store, ws, name, but):
+    """The ids of the prints, in every model folder, of a person another workspace knows by `name` — the ones a
+    never.json entry reaches by name (design section 8) — other than `but`."""
+    out = set()
     for mid in folders(store):
         for p in store.prints(mid):
-            if _known(p, ws, ref):
-                hits.append((mid, p))
-    name = name_here(ctx, ref, [p for _, p in hits])
+            if p.get("id") in but:
+                continue
+            if any(k.get("workspace") != ws and k.get("name") and _norm(k["name"]) == _norm(name)
+                   for k in p.get("known_as") or []):
+                out.add(p.get("id"))
+    return out
+
+
+def _print_ids(store):
+    return {p.get("id") for mid in folders(store) for p in store.prints(mid)}
+
+
+def forget(store, active, ctx, ref, stamp, *, read, write, never=False, audio_key=None):
+    ws = ctx.get("workspace")
     rows = [r for r in ctx.get("person_records") or [] if isinstance(r, dict) and r.get("record_path")]
-    if not name and not hits and not rows:
-        raise Usage(f"{ref} is not a person this workspace knows")
-    name = name or ref
+    # Every model folder's lock, then the root's (ruling D3), before the prints are read: a confirmation another
+    # session applies waits until the print is deleted, the windows removed and forgotten.json says `at`, and is
+    # then before the forget (review round 1, `confirm-racing-forget-keeps-its-windows`).
+    with contextlib.ExitStack() as held:
+        for mid in folders(store):
+            held.enter_context(store.lock(mid))
+        held.enter_context(store.lock(None))
+        hits = []                                   # (model id, print)
+        for mid in folders(store):
+            for p in store.prints(mid):
+                if _known(p, ws, ref):
+                    hits.append((mid, p))
+        name = name_here(ctx, ref, [p for _, p in hits])
+        if not name and not hits and not rows:
+            raise Usage(f"{ref} is not a person this workspace knows")
+        name = name or ref
 
-    # step 4 first, so a confirmation racing this forget is already before `at`
-    by_pid = {}
-    for _, p in hits:
-        _union_known(by_pid.setdefault(p["id"], []), p.get("known_as"))
-    if never:
-        store.add_never({"workspace": ws, "person": ref, "name": name, "at": stamp})
-    entries = [{"print": pid, "known_as": ka, "at": stamp} for pid, ka in sorted(by_pid.items())] or \
-        [{"print": None, "known_as": [{"workspace": ws, "person": ref, "name": name}], "at": stamp}]
-    for e in entries:
-        store.add_forgotten(e)
+        # what to remove: the labels that fed the print (step 2), the labels the records attribute (step 3)
+        targets = {}
+        for _, p in hits:
+            for s in p.get("sources") or []:
+                if s.get("audio") and s.get("diarization") and s.get("label"):
+                    targets.setdefault(s["audio"], {}).setdefault(s["diarization"], set()).add(s["label"])
+        changed, mine, proposals, provisional, prov_records = [], {}, 0, 0, 0
+        for row in rows:
+            path = row["record_path"]
+            fm, body = read(path)
+            audio = identify.audio_of(row, fm, audio_key)
+            did, pid, cur, old = attributed(fm, ref, name)
+            for m in row.get("matches") or []:
+                if m.get("where") == "previous_speakers":
+                    if m.get("label") and not str(m["label"]).startswith("earlier:") and m.get("diarization_id"):
+                        old.add(m["label"])
+                    if m.get("new_label"):
+                        cur.add(m["new_label"])
+                elif m.get("label"):
+                    cur.add(m["label"])
+            if audio:
+                if did and cur:
+                    targets.setdefault(audio, {}).setdefault(did, set()).update(cur)
+                if pid and old:
+                    targets.setdefault(audio, {}).setdefault(pid, set()).update(old)
+                mine.setdefault(audio, {"keep": set(), "records": set()})
+                mine[audio]["keep"] |= {x for x in (did, pid) if x}
+                mine[audio]["records"].add((ws, row.get("record")))
+            fm2, n_prop, n_marked, n_prov = scrub(fm, ref, name, stamp)
+            proposals += n_prop
+            provisional += n_prov
+            prov_records += 1 if n_prov else 0
+            if n_prop or n_marked:
+                changed.append((path, fm2, body, row.get("record")))
 
-    # what to remove: the labels that fed the print (step 2), the labels the records attribute (step 3)
-    targets = {}
-    for _, p in hits:
-        for s in p.get("sources") or []:
-            if s.get("audio") and s.get("diarization") and s.get("label"):
-                targets.setdefault(s["audio"], {}).setdefault(s["diarization"], set()).add(s["label"])
-    records, mine, proposals, provisional, prov_records = [], {}, 0, 0, 0
-    for row in rows:
-        path = row["record_path"]
-        fm, body = read(path)
-        audio = identify.audio_of(row, fm, audio_key)
-        did, pid, cur, old = attributed(fm, ref, name)
-        for m in row.get("matches") or []:
-            if m.get("where") == "previous_speakers":
-                if m.get("label") and not str(m["label"]).startswith("earlier:") and m.get("diarization_id"):
-                    old.add(m["label"])
-                if m.get("new_label"):
-                    cur.add(m["new_label"])
-            elif m.get("label"):
-                cur.add(m["label"])
-        if audio:
-            if did and cur:
-                targets.setdefault(audio, {}).setdefault(did, set()).update(cur)
-            if pid and old:
-                targets.setdefault(audio, {}).setdefault(pid, set()).update(old)
-            mine.setdefault(audio, {"keep": set(), "records": set()})
-            mine[audio]["keep"] |= {x for x in (did, pid) if x}
-            mine[audio]["records"].add((ws, row.get("record")))
-        fm2, n_prop, n_marked, n_prov = scrub(fm, ref, name, stamp)
-        proposals += n_prop
-        provisional += n_prov
-        prov_records += 1 if n_prov else 0
-        if n_prop or n_marked:
-            write(path, fm2, body)
-            records.append(row.get("record"))
+        # step 4, with what was swept: the store remembers every label removed here, so a signature computed
+        # after its file is gone keeps none of them (review round 1, `forgotten-label-computed-again`)
+        by_pid = {}
+        for _, p in hits:
+            _union_known(by_pid.setdefault(p["id"], []), p.get("known_as"))
+        swept = [{"audio": a, "diarization": d, "labels": sorted(ls)}
+                 for a, by in sorted(targets.items()) for d, ls in sorted(by.items())]
+        if never:
+            store.add_never({"workspace": ws, "person": ref, "name": name, "at": stamp})
+        entries = [{"print": pid, "known_as": ka, "at": stamp} for pid, ka in sorted(by_pid.items())] or \
+            [{"print": None, "known_as": [{"workspace": ws, "person": ref, "name": name}], "at": stamp}]
+        for e in entries:
+            if swept:
+                e["swept"] = copy.deepcopy(swept)
+            store.add_forgotten(e)
 
-    # steps 1 to 3 in every model folder
-    deleted, windows = 0, set()
-    gone_ids = {p["id"] for _, p in hits}
-    for mid in folders(store):
-        with store.lock(mid):
+        # steps 1 to 3 in every model folder
+        deleted, windows = 0, set()
+        gone_ids = {p["id"] for _, p in hits}
+        namesakes = _namesakes(store, ws, name, gone_ids) if never else set()
+        for mid in folders(store):
             for pid in sorted(gone_ids):
                 try:
                     os.remove(store.print_path(mid, pid))
@@ -366,8 +402,14 @@ def forget(store, active, ctx, ref, stamp, *, read, write, never=False, audio_ke
                         if any(w.get("vector") for w in _map(_map(sig.get("labels")).get(label)).get("windows") or []):
                             windows.add((audio, diar, label))
                         store.remove_windows(mid, audio, diar, label)
+
+    records = []
+    for path, fm2, body, record in changed:
+        write(path, fm2, body)
+        records.append(record)
     superseded = _superseded(store, mine)
     reps = replay_all(store, active)
+    namesakes_removed = len(namesakes - _print_ids(store)) if namesakes else 0
 
     others = sorted({k.get("workspace") for ka in by_pid.values() for k in ka if k.get("workspace") != ws})
     lines = []
@@ -386,6 +428,11 @@ def forget(store, active, ctx, ref, stamp, *, read, write, never=False, audio_ke
     if never:
         lines.append(f"{name}'s voice is not kept from now on: confirming their name writes the name and stores no "
                      "voice print.")
+        if namesakes_removed:
+            n = namesakes_removed
+            lines.append(f"Removed {n} voice print{_s(n)} of {'a person' if n == 1 else 'people'} with this name in "
+                         f"{'another workspace' if n == 1 else 'other workspaces'}: a voice that is never kept is "
+                         "matched by name there.")
     else:
         lines.append(f"Confirmations of {name} made before now never teach a voice print again, in any workspace; "
                      "naming them from now on does.")
@@ -398,7 +445,7 @@ def forget(store, active, ctx, ref, stamp, *, read, write, never=False, audio_ke
     lines += _notices(reps.values(), ctx)
     return {"person": ref, "never": bool(never), "prints_deleted": deleted, "windows_removed": len(windows),
             "proposals_removed": proposals, "records_changed": records, "other_workspaces": len(others),
-            "reply": "\n".join(lines)}
+            "namesakes_removed": namesakes_removed, "reply": "\n".join(lines)}
 
 
 def _superseded(store, mine):
@@ -504,10 +551,27 @@ def set_aside(store, pin):
     return moved
 
 
-def compute_missing(store, pin, ctx, compute, audio_key=None):
+def _kept_out(store, rc, audio, diar, forgotten, read):
+    """The labels a signature computed for this record must not hold: every sibling file's `removed`, what a
+    forget swept there, and what the record (read when `read` is given) attributes to a forgotten person
+    (review round 1, `forgotten-label-computed-again`)."""
+    out = identify._sibling_removed(store, None, audio, diar) | identify.swept(forgotten, audio, diar)
+    if read is not None and rc.get("record_path"):
+        try:
+            fm, _ = read(rc["record_path"])
+        except (OSError, ValueError):
+            fm = None
+        t = _map(_map(fm).get("transcription"))
+        if t.get("diarization_id") == diar:
+            out |= identify.record_forgotten(t, forgotten, rc.get("workspace"))
+    return out
+
+
+def compute_missing(store, pin, ctx, compute, audio_key=None, read=None):
     """Every signature a source or a negative of the active folder's prints needs and the folder lacks,
     computed from the records the context hands (`records`) through the signature maker identify and
-    evaluate-speakers use, `removed` copied from every sibling file. Returns `(computed, failed, missing)`."""
+    evaluate-speakers use, keeping out every sibling file's `removed` and every forgotten person's label
+    (`_kept_out`). Returns `(computed, failed, missing)`."""
     missing = set()
     for p in store.prints(pin.id):
         for s in list(p.get("sources") or []) + list(p.get("negatives") or []):
@@ -516,14 +580,16 @@ def compute_missing(store, pin, ctx, compute, audio_key=None):
                 missing.add((a, d))
     computed, failed = 0, []
     recs = [c for c in ctx.get("records") or [] if isinstance(c, dict)]
+    forgotten = store.forgotten() if missing and compute is not None else []
     for a, d in sorted(missing):
         if compute is None:
             continue
         rc = next((c for c in recs if c.get("diarization_id") == d and identify.audio_of(c, None, audio_key) == a), None)
         if rc is None:
             continue
+        rc = dict(rc, workspace=rc.get("workspace") or ctx.get("workspace"))
         try:
-            sig = compute(pin.id, rc, a, sorted(identify._sibling_removed(store, pin.id, a, d)))
+            sig = compute(pin.id, rc, a, sorted(_kept_out(store, rc, a, d, forgotten, read)))
             store.write_signature(pin.id, sig, record={"workspace": rc.get("workspace") or ctx.get("workspace"),
                                                        "record": rc.get("record")})
             computed += 1
@@ -532,14 +598,14 @@ def compute_missing(store, pin, ctx, compute, audio_key=None):
     return computed, failed, len(missing)
 
 
-def rebuild(store, active, ctx, *, compute=None, audio_key=None):
+def rebuild(store, active, ctx, *, compute=None, audio_key=None, read=None):
     ws, pin, th = ctx.get("workspace"), active["pin"], identify._thresholds(active)
     moved = set_aside(store, pin)
     carried = set()
     for mid in folders(store):
         if mid != pin.id and store.prints(mid):
             carried.update(enrol.carry(store, mid, pin))
-    computed, failed, missing = compute_missing(store, pin, ctx, compute, audio_key)
+    computed, failed, missing = compute_missing(store, pin, ctx, compute, audio_key, read=read)
     rep = enrol.replay(store, pin, th)
     here = store.prints(pin.id, model=pin)
     people = []
@@ -705,7 +771,7 @@ def main(args, *, skill_dir=None, read=None, write=None, store=None, active=None
         if sub == "list":
             result = do_list(store, active, ctx)
         elif sub == "rebuild":
-            result = rebuild(store, active, ctx, compute=compute, audio_key=audio_key)
+            result = rebuild(store, active, ctx, compute=compute, audio_key=audio_key, read=read)
         elif sub in ("forget", "never"):
             result = forget(store, active, ctx, rest[0], stamp, read=read, write=write, never=(sub == "never"),
                             audio_key=audio_key)
