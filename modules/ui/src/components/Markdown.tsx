@@ -13,10 +13,12 @@ import { cx } from "../styles/classes.ts"
 // Set on the container and reaching each node by its tag or its `data-md` (lib/render-md.ts). Direction is decided
 // per block, so a list keeps its gutter on the item, where an RTL item indents on its own side. The document and
 // the template are two whole looks, not one with overrides: an override of a descendant rule ties with it. Every
-// class is written out whole, as Tailwind finds them only so.
+// class is written out whole, as Tailwind finds them only so. The first block's `mt-0` outranks every block margin by
+// specificity — `>:first-child` (0,2,0) over a tag (0,1,1) — so a box's margin reaches it by `:where([data-md=…])`
+// (0,1,0), not `[data-md=…]` (0,2,0), which would tie.
 /** What both share: list items and task items, inline code, the code/quote/table boxes' own look, tables. */
 const mdShared = cx(
-  "[&>:first-child]:mt-0!",
+  "[&>:first-child]:mt-0",
   "[&_li]:my-0.5 [&_li]:me-0 [&_li]:ms-[22px]",
   "[&_li[data-md=task]]:list-none [&_li[data-md=task]]:ms-1",
   "[&_li[data-md=task]_input]:me-1.5 [&_li[data-md=task]_input]:align-[-2px]",
@@ -39,9 +41,9 @@ export const mdDoc = cx(
   "[&_p]:my-1.5 [&_p]:mx-0",
   "[&_ul]:my-1 [&_ul]:mx-0 [&_ul]:ps-0",
   "[&_ol]:my-1 [&_ol]:mx-0 [&_ol]:ps-0",
-  "[&_[data-md=pre]]:my-2 [&_[data-md=pre]]:mx-0",
-  "[&_[data-md=quote]]:my-2 [&_[data-md=quote]]:mx-0",
-  "[&_[data-md=table]]:my-2 [&_[data-md=table]]:mx-0"
+  "[&_:where([data-md=pre])]:my-2 [&_:where([data-md=pre])]:mx-0",
+  "[&_:where([data-md=quote])]:my-2 [&_:where([data-md=quote])]:mx-0",
+  "[&_:where([data-md=table])]:my-2 [&_:where([data-md=table])]:mx-0"
 )
 /** A display template on a card or in a cell: the document tightened to its box. (was dt-md dt-md-tpl) */
 export const mdTemplate = cx(
@@ -56,9 +58,9 @@ export const mdTemplate = cx(
   "[&_p>*]:align-baseline",
   "[&_ul]:my-0.5 [&_ul]:mx-0 [&_ul]:pl-4 [&_ul]:pr-0",
   "[&_ol]:my-0.5 [&_ol]:mx-0 [&_ol]:pl-4 [&_ol]:pr-0",
-  "[&_[data-md=pre]]:my-[3px] [&_[data-md=pre]]:mx-0 [&_[data-md=pre]]:whitespace-pre-wrap",
-  "[&_[data-md=quote]]:my-[3px] [&_[data-md=quote]]:mx-0",
-  "[&_[data-md=table]]:my-[3px] [&_[data-md=table]]:mx-0"
+  "[&_:where([data-md=pre])]:my-[3px] [&_:where([data-md=pre])]:mx-0 [&_[data-md=pre]]:whitespace-pre-wrap",
+  "[&_:where([data-md=quote])]:my-[3px] [&_:where([data-md=quote])]:mx-0",
+  "[&_:where([data-md=table])]:my-[3px] [&_:where([data-md=table])]:mx-0"
 )
 
 function draw(node: MdNode, key: number, slot?: (i: number) => ReactNode): ReactNode {
