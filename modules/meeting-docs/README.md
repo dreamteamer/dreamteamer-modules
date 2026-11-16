@@ -38,6 +38,26 @@ been transcribed, and never on a meeting whose `privacy` is `restricted` — one
 party's private material, whose pipeline ends at the transcript. The three bindings name the
 `privacy` field, so this module needs a `@dreamteamer/meetings` that declares it.
 
+## Speakers named after transcription
+
+Where the installed `@dreamteamer/recordings` ships `/identify-speakers`, `/process-new-meetings` runs it as
+step 4b, after transcription and before the summary, with no command typed: it names each speaker from voice
+prints kept on this computer and leaves an open question on the rest. The questions of every recording come
+as **one question at the end of the run**, with the pipeline's other end-of-run questions, and only a person
+answers them. The summary and the tasks are written with the names that exist; the critique and the
+engagement update of a meeting with an open question wait for the answer, so each engagement takes each call
+once. After the answer, the summary and tasks of a meeting whose names changed are written again, and the
+report lists every document written before a name it now carries. An unattended run asks nothing: it holds
+back the critique of each meeting with an open question and the update of each engagement with such a
+meeting, and lists them for the next attended run. Where the installed recordings has no
+`/identify-speakers`, the step is skipped and the run says so.
+
+A name a machine wrote from a voice print is provisional until a person confirms it: a summary, a critique
+and a task write that speaker as `<Name> (unconfirmed)` — "Dana Oren (unconfirmed)" — and say the names
+were machine-written. A name a person gave, or one written before voice prints, is used as before.
+
+## Summaries
+
 A summary's id is its meeting's id, passed as `--id`, so it is filed under the month the call was
 held. Its `source` lists every recording whose transcript was read, one element each; a summary that
 holds a single recording as a plain string still validates.
