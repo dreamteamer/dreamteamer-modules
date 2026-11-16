@@ -211,15 +211,15 @@ class Harness(unittest.TestCase):
         return self.make(name, {"speaker_0": lab(a, f"{name}:a"), "speaker_1": lab(b, f"{name}:b")}, **kw)
 
     # -- the verb -------------------------------------------------------------------------------------
-    def cli(self, *args, recs=(), ctx=None, active=ACTIVE, skill_dir=None, compute=None):
+    def cli(self, *args, recs=(), ctx=None, active=ACTIVE, skill_dir=None, compute=None, store_=None):
         if ctx is None:
             ctx = recs[0].ctx if len(recs) == 1 else dict(copy.deepcopy(BASE), records=[r.ctx for r in recs])
         cf = self.root / f"ctx-{self.tick}-{len(self.records.writes)}.json"
         cf.write_text(json.dumps(ctx), encoding="utf-8")
         outs = []
         code = identify.main(["identify", *args, "--context", str(cf)], skill_dir=skill_dir, read=self.records.read,
-                             write=self.records.write, store=self.store, active=active, compute=compute,
-                             out=outs.append, now=self.now)
+                             write=self.records.write, store=store_ if store_ is not None else self.store,
+                             active=active, compute=compute, out=outs.append, now=self.now)
         self.outs = outs
         parsed = []
         for o in outs:
@@ -872,6 +872,8 @@ class Line23(Harness):
         self.assertEqual(len(un["quotes"]), 2)
 
     def test_confirm_prints_the_two_quotes_first(self):
+        self.question(self.rec)
+        self.shown(self.rec)
         code, outs = self.cli("--confirm", self.rec.path, "speaker_0", recs=[self.rec])
         self.assertEqual(code, 0, outs)
         reply = outs[0]["reply"]
@@ -879,6 +881,76 @@ class Line23(Harness):
         self.assertLess(quotes_at, reply.index("confirmed"))
         s = self.t(self.rec)["speaker_sources"]["speaker_0"]
         self.assertEqual((s["status"], s["origin"], s["proposed_by"]), ("confirmed", "hand", "print"))
+
+    # review round 1, `confirm-needs-no-shown-question` (decision ...-task-9-confirm-only-what-was-shown): a label
+    # is confirmed only when `speaker_questions.<label>.shown` is stamped
+    def test_confirm_of_a_name_never_shown_prints_its_quotes_and_confirms_nothing(self):
+        before = len(self.print_of(DANA_REF)["sources"])
+        for args in (("speaker_0",), ()):                    # named, and bare
+            code, outs = self.cli("--confirm", self.rec.path, *args, recs=[self.rec])
+            self.assertEqual(code, 0, outs)
+            reply = outs[0]["reply"]
+            self.assertIn("**Speaker 0 → Dana Oren** — [", reply)
+            self.assertEqual(reply.count('] "'), 2)
+            self.assertIn("not confirmed", reply)
+            self.assertIn("--shown", reply)
+            self.assertNotIn("Dana Oren, confirmed", reply)
+            t = self.t(self.rec)
+            self.assertEqual(t["speaker_sources"]["speaker_0"]["status"], "provisional")
+            self.assertIsNone(t["speaker_questions"]["speaker_0"].get("shown"))     # --confirm never stamps shown
+            self.assertEqual(len(self.print_of(DANA_REF)["sources"]), before)
+
+    def test_correct_on_a_name_never_shown_confirms_nothing(self):
+        before = len(self.print_of(DANA_REF)["sources"])
+        out = self.answer(self.rec, "speaker_0=correct")
+        self.assertIn("not confirmed", out["reply"])
+        self.assertEqual(self.t(self.rec)["speaker_sources"]["speaker_0"]["status"], "provisional")
+        self.assertEqual(len(self.print_of(DANA_REF)["sources"]), before)
+        self.shown(self.rec)
+        out = self.answer(self.rec, "speaker_0=correct")
+        self.assertIn("Speaker 0 → Dana Oren, confirmed.", out["reply"])
+        self.assertEqual(self.t(self.rec)["speaker_sources"]["speaker_0"]["status"], "confirmed")
+        self.assertEqual(len(self.print_of(DANA_REF)["sources"]), before + 1)
+
+    def test_bare_confirm_confirms_only_the_names_that_were_shown(self):
+        self.teach(SAM_REF, SAM)
+        rec = self.two("shown-half")
+        self.identify(rec)
+        self.shown(rec)
+        fm, body = self.records.read(rec.path)
+        del fm["transcription"]["speaker_questions"]["speaker_1"]["shown"]
+        self.records.write(rec.path, fm, body)
+        code, outs = self.cli("--confirm", rec.path, recs=[rec])
+        self.assertEqual(code, 0, outs)
+        t = self.t(rec)
+        self.assertEqual(t["speaker_sources"]["speaker_0"]["status"], "confirmed")
+        self.assertEqual(t["speaker_sources"]["speaker_1"]["status"], "provisional")
+        self.assertIn("Speaker 0 → Dana Oren, confirmed.", outs[0]["reply"])
+        self.assertIn("**Speaker 1 → Sam Diaz** — [", outs[0]["reply"])
+
+    def test_unverified_names_are_offered_with_two_quotes_and_confirmed_once_shown(self):
+        rec = self.two("unverified-offer", speakers={"speaker_0": "Dana Oren"})
+        self.identify(rec)
+        msg = self.question(rec)
+        text = msg["message"]
+        self.assertIn("1 name here was not confirmed by you; confirm it to teach the voice?", text)
+        line = next(ln for ln in text.splitlines() if ln.startswith("**Speaker 0 → Dana Oren**"))
+        self.assertEqual(line.count('] "'), 2)
+        un = next(x for x in msg["records"][0]["labels"] if x["label"] == "speaker_0")
+        self.assertEqual((un["kind"], len(un["quotes"])), ("unverified", 2))
+        self.assertEqual(un["choices"][0]["answer"], "speaker_0=correct")
+        self.assertEqual(self.fm(rec)["speaker_naming"], "waiting")          # speaker_1 is still asked
+        self.shown(rec)
+        q0 = self.t(rec)["speaker_questions"]["speaker_0"]
+        store.parse_instant(q0["shown"])
+        self.assertEqual(q0["quotes"], un["quotes"])                          # the quotes that were shown
+        code, outs = self.cli("--confirm", rec.path, recs=[rec])
+        self.assertEqual(code, 0, outs)
+        s = self.t(rec)["speaker_sources"]["speaker_0"]
+        self.assertEqual((s["status"], s["person"]), ("confirmed", DANA_REF))
+        self.assertEqual([x["status"] for x in self.print_of(DANA_REF)["sources"]], ["admitted"] * 3)  # 2 taught + this
+        again = self.question(rec)
+        self.assertNotIn("Speaker 0 → Dana Oren", (again or {}).get("message") or "")
 
 
 class Line25(Harness):
@@ -1167,6 +1239,76 @@ class Line41(Harness):
         self.identify(rec)                                   # not asked about again
         self.assertEqual(self.fm(rec)["speaker_naming"], "named")
 
+    # review round 1, `closed-label-named-again-on-rerun`: a label a person closed is never named again
+    def closed_then_rerun(self, name, answer):
+        rec = self.two(name, a=DANA, b=STRANGER)
+        self.identify(rec)
+        self.assertEqual(self.t(rec)["speakers"], {"speaker_0": "Dana Oren"})
+        self.question(rec)
+        self.shown(rec)
+        self.answer(rec, f"speaker_0={answer}", "speaker_1=skip")
+        self.assertEqual(self.fm(rec)["speaker_naming"], "waiting")
+        r = self.identify(rec)                               # the next attended run, speaker_1 still open
+        t = self.t(rec)
+        self.assertNotIn("speaker_0", t["speakers"])
+        self.assertNotIn("speaker_0", t.get("speaker_sources") or {})
+        self.assertEqual(t["speaker_questions"]["speaker_0"]["closed"], answer)
+        self.assertNotIn("proposed", t["speaker_questions"]["speaker_0"])
+        self.assertIn("closed", r["labels"]["speaker_0"])
+        self.assertNotIn("Dana Oren", r["labels"]["speaker_0"])
+        msg = self.question(rec)
+        self.assertEqual([x["label"] for x in msg["records"][0]["labels"]], ["speaker_1"])
+        self.assertNotIn("Speaker 0", msg["message"])
+        self.shown(rec)
+        self.answer(rec, "speaker_1=nobody")
+        self.identify(rec)
+        self.assertEqual(self.fm(rec)["speaker_naming"], "named")
+        self.assertEqual(self.t(rec)["speakers"], {})        # never named on a name the person rejected
+        return rec
+
+    def test_a_machine_name_closed_by_nobody_is_not_written_again_by_a_later_run(self):
+        self.closed_then_rerun("rejected-nobody", "nobody")
+
+    def test_a_machine_name_closed_by_different_is_not_written_again_by_a_later_run(self):
+        rec = self.closed_then_rerun("rejected-different", "different")
+        self.assertEqual(self.t(rec)["speaker_questions"]["speaker_0"]["flags"], [naming.MIXED])
+
+
+class ClosedByAPerson(Harness):
+    """Design section 6: "'Nobody I can name' closes the label: it stays `Speaker N` and is not asked about
+    again" and "'Different people' names nothing ... and marks the label mixed" — until `run` replaces the
+    block (transcribed again), no later identify writes a name on it, proposes one, or puts it in the question
+    (review round 1, `closed-label-named-again-on-rerun`)."""
+
+    def test_a_carried_or_attendee_proposal_is_not_put_on_a_closed_label(self):
+        prev = {"diarization_id": "0123456789ab", "labels": {
+            "speaker_0": {"name": "Dana Oren", "new_label": "speaker_0", "share": 1.0, "offered": True}}}
+        rec = self.two("closed-carried", prev=prev)
+        self.identify(rec)
+        self.assertEqual(self.t(rec)["speaker_questions"]["speaker_0"]["proposed"]["origin"], "carried")
+        self.answer(rec, "speaker_0=nobody", "speaker_1=different")
+        closed = copy.deepcopy(self.t(rec)["speaker_questions"])
+        r = self.identify(rec)
+        t = self.t(rec)
+        self.assertEqual(t["speaker_questions"], closed)
+        self.assertEqual(t["speakers"], {})
+        self.assertEqual(self.fm(rec)["speaker_naming"], "named")
+        self.assertIsNone(self.question(rec))
+        for label in ("speaker_0", "speaker_1"):
+            self.assertIn("closed", r["labels"][label])
+
+    def test_run_replacing_the_block_lifts_the_closure(self):
+        self.teach(DANA_REF, DANA)
+        rec = self.two("closed-retranscribed", a=DANA, b=STRANGER)
+        self.identify(rec)
+        self.answer(rec, "speaker_0=nobody")
+        fm, body = self.records.read(rec.path)
+        fm["transcription"].pop("speaker_questions")        # what `run` does: a new transcription block
+        fm.pop("speaker_naming")
+        self.records.write(rec.path, fm, body)
+        self.identify(rec)
+        self.assertEqual(self.t(rec)["speakers"], {"speaker_0": "Dana Oren"})
+
 
 # ======================================================================================================
 # the obligations of earlier reviews
@@ -1377,6 +1519,74 @@ class Corrections(Harness):
         d = self.print_of(DANA_REF)
         self.assertEqual([s["status"] for s in (d or {}).get("sources") or []], ["corrected"])
         self.assertEqual([s["status"] for s in self.print_of(PRIYA_REF)["sources"]], ["admitted"])
+
+
+class RefusedStore:
+    """A store whose location is refused: `ensure` raises, and so does every other use, so a verb that works
+    from the records alone is proved never to touch it."""
+
+    def __getattr__(self, name):
+        def refuse(*a, **k):
+            raise store.StoreRefused("inside a synced folder", "/synced/voice-prints")
+        return refuse
+
+
+class WithoutTheStore(Harness):
+    """Review round 1, `refused-store-blocks-question-and-revert`: with the print store refused or the
+    calibration ambiguous, the end-of-run question is still asked (and stamped shown) from what the records
+    hold, and reverting still removes provisional names; only naming and enrolment stop, and say why."""
+
+    def setUp(self):
+        super().setUp()
+        self.teach(DANA_REF, DANA)
+        self.rec = self.two("refused", a=DANA, b=STRANGER, speakers=None)
+        self.identify(self.rec)
+        self.unverified = self.two("refused-unverified", speakers={"speaker_0": "Dana Oren"})
+        self.identify(self.unverified)
+
+    def check_record_verbs(self, **kw):
+        code, outs = self.cli("--question", self.rec.path, self.unverified.path, recs=[self.rec, self.unverified], **kw)
+        self.assertEqual(code, 0, outs)
+        msg = outs[0]
+        self.assertIn("**Speaker 0 → Dana Oren**", msg["message"])
+        self.assertEqual(sorted(x["kind"] for r in msg["records"] for x in r["labels"]),
+                         ["ask", "ask", "unconfirmed", "unverified"])
+        for r in msg["records"]:
+            for x in r["labels"]:
+                self.assertEqual(len(x["quotes"]), 2, x)
+        code, outs = self.cli("--shown", self.rec.path, self.unverified.path, recs=[self.rec, self.unverified], **kw)
+        self.assertEqual(code, 0, outs)
+        self.assertEqual(self.fm(self.rec)["speaker_naming"], "waiting")       # speaker_1 still asked
+        store.parse_instant(self.t(self.rec)["speaker_questions"]["speaker_0"]["shown"])
+        store.parse_instant(self.t(self.unverified)["speaker_questions"]["speaker_0"]["shown"])
+        code, outs = self.cli("--revert", self.rec.path, recs=[self.rec], **kw)
+        self.assertEqual(code, 0, outs)
+        self.assertEqual(self.t(self.rec)["speakers"], {})
+        self.assertNotIn("speaker_naming", self.fm(self.rec))
+        rows = [{"record": self.unverified.ref, "record_path": self.unverified.path, "matches": []}]
+        ctx = dict(copy.deepcopy(BASE), person={"ref": DANA_REF, "name": "Dana Oren"}, person_records=rows)
+        code, outs = self.cli("--revert", "--person", DANA_REF, ctx=ctx, **kw)
+        self.assertEqual(code, 0, outs)
+
+    def check_naming_stops(self, why, **kw):
+        before = self.fm(self.unverified)
+        for args in ((self.unverified.path,), ("--answer", self.unverified.path, f"speaker_1={SAM_REF}"),
+                     ("--confirm", self.unverified.path)):
+            code, outs = self.cli(*args, recs=[self.unverified], **kw)
+            self.assertEqual(code, 1, (args, outs))
+            self.assertIn(why, outs[0])
+        self.assertEqual(self.fm(self.unverified), before)
+
+    def test_a_refused_store(self):
+        self.check_record_verbs(store_=RefusedStore())
+        self.check_naming_stops("synced folder", store_=RefusedStore())
+
+    def test_an_ambiguous_calibration(self):
+        def ambiguous(skill_dir, st):
+            raise models.CalibrationAmbiguous("calibration/ names two models: campp-test, other-test")
+        with mock.patch.object(identify, "resolve_active", ambiguous):
+            self.check_record_verbs(active=None)
+            self.check_naming_stops("names two models", active=None)
 
 
 class TheVerb(Harness):

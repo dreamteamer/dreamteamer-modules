@@ -6,11 +6,17 @@ re-implements a check or the enrolment:
 
     run(fm, body, ctx, store, active)        names (provisional, from a print), proposals, questions,
                                              `identification` and `speaker_naming` (section 11's table)
-    question([(fm, ctx), ...])               ONE message for all given records, or None when nothing is open
+    question([(fm, ctx, body), ...])         ONE message for all given records, or None when nothing is offered
     shown(fm, now)                           stamps `speaker_questions.<label>.shown`
     answer(fm, ctx, store, active, pairs)    a person's reply: names confirmed, `enrol.confirm`, the reply
     confirm_names / correct / revert         `--confirm`, `--correct`, `--revert` (and `--revert --person`)
     main(args, ...)                          the verb `transcribe_meeting.py identify`
+
+Review round 1 of task 9: a label a person closed (`nobody`, `different`) gets no machine name, proposal or
+question again until `run` replaces the block; a provisional or unverified name is confirmed (`--confirm`,
+`<label>=correct`) only once its two quotes were shown (the `shown` stamp), and `--question` offers unverified
+names with their quotes; `--question`, `--shown` and `--revert` work from the records when the store is
+refused or the calibration ambiguous — only naming and enrolment stop.
 
 `active` is `{model, pin, calib, source}`: the active speaker model (`models.active_model`, through
 `calibration.active`), its pin (`store.Model`), and the calibration naming runs with (None: nothing is
@@ -116,6 +122,29 @@ def open_questions(fm):
             out[label] = "ask"
         elif st == "provisional" and not q.get("shown"):
             out[label] = "unconfirmed"
+    return out
+
+
+def is_shown(t, label):
+    """True when `speaker_questions.<label>.shown` is stamped: the label's two quotes were put to a person."""
+    q = _map((t or {}).get("speaker_questions")).get(label)
+    return isinstance(q, dict) and bool(q.get("shown"))
+
+
+def offers(fm):
+    """What the end-of-run question puts to a person: `open_questions`, plus every unverified name not yet shown
+    and not closed (`"unverified"`: design section 6's offer, once). Unverified names never make a record
+    `waiting`; they are only offered."""
+    t = _t(fm) or {}
+    out = open_questions(fm)
+    qs = _map(t.get("speaker_questions"))
+    for label in _map(t.get("speakers")):
+        if label in out or status_of(t, label) != "unverified":
+            continue
+        q = qs.get(label)
+        if isinstance(q, dict) and (q.get("closed") or q.get("shown")):
+            continue
+        out[label] = "unverified"
     return out
 
 
@@ -312,9 +341,16 @@ def run(fm, body, ctx, store, active, *, compute=None, audio_key=None, now=None)
     ex = existing(t)
     prints = workspace_prints(store, active, workspace)
     d = naming.decide(sig, ctx, prints, ex, calib)
-    names, flags = d["names"], d["flags"]
+    # a label a person closed ("nobody", "different people") is honoured until `run` replaces the block: no
+    # machine name, no proposal, no question (review round 1, `closed-label-named-again-on-rerun`)
+    old_q = _map(t.get("speaker_questions"))
+    closed = {l for l, q in old_q.items() if isinstance(q, dict) and q.get("closed") and l not in ex}
+    names = {l: n for l, n in d["names"].items() if l not in closed}
+    flags = d["flags"]
     proposals = {}
     for label, p in d["proposals"].items():
+        if label in closed:
+            continue
         proposals[label] = dict(p, name=person_name(ctx, p["person"]) or p["person"])
         proposals[label] = {k: proposals[label][k] for k in ("person", "name", "origin", "why")}
 
@@ -325,7 +361,7 @@ def run(fm, body, ctx, store, active, *, compute=None, audio_key=None, now=None)
             if not isinstance(e, dict) or e.get("offered") is not True or e.get("forgotten") is True:
                 continue
             nl, name = e.get("new_label"), e.get("name")
-            if not nl or nl not in labels or nl in removed or nl in ex or not _named(name):
+            if not nl or nl not in labels or nl in removed or nl in ex or nl in closed or not _named(name):
                 continue
             src = _map(e.get("source"))
             person = src.get("person") or resolve_name(ctx, name)
@@ -343,7 +379,6 @@ def run(fm, body, ctx, store, active, *, compute=None, audio_key=None, now=None)
                     del proposals[other]
 
     # the questions: decide's flags (D18), two quotes for every label shown
-    old_q = _map(t.get("speaker_questions"))
     qs = {}
     if d["outcome"] != "collapsed":
         turns = vp_segments.parse_body_turns(body or "")
@@ -353,10 +388,11 @@ def run(fm, body, ctx, store, active, *, compute=None, audio_key=None, now=None)
             st = status_of(t, label)
             old = old_q.get(label) if isinstance(old_q.get(label), dict) else None
             if st is not None:
-                if st == "provisional" and old is not None:
+                # a provisional name's question, and an unverified name's offer once shown or closed, are kept
+                if st in ("provisional", "unverified") and old is not None:
                     qs[label] = old
                 continue
-            if old is not None and old.get("closed"):
+            if label in closed:
                 qs[label] = old
                 continue
             q = {"quotes": quotes.pick(_windows(sig, label), turns, label)}
@@ -386,7 +422,7 @@ def run(fm, body, ctx, store, active, *, compute=None, audio_key=None, now=None)
 
     outcome = d["outcome"]
     if outcome not in ("collapsed", naming.MIXED):
-        unnamed = [l for l in labels if l not in removed and l not in ex and l not in names]
+        unnamed = [l for l in labels if l not in removed and l not in ex and l not in names and l not in closed]
         if not unnamed:
             outcome = "named"
         elif proposals or names or any(flags.get(l) for l in unnamed):
@@ -397,7 +433,8 @@ def run(fm, body, ctx, store, active, *, compute=None, audio_key=None, now=None)
     if unverified:
         many = len(unverified) != 1
         extra.append(f"{len(unverified)} name{'s' if many else ''} here {'were' if many else 'was'} not confirmed by "
-                     "you; confirm them to teach the voices (`identify --confirm <record>`)")
+                     f"you; {'they are' if many else 'it is'} offered with two quotes in the end-of-run question, "
+                     "and confirmed once a person has heard them")
     reports = list(d["reports"]) + extra
     t["identification"] = {"generated": stamp[:10], "model": model_id, "calibration": _calibration_label(active),
                            "attendees": ctx.get("attendee_count") if ctx.get("meeting") is not None else None,
@@ -410,6 +447,9 @@ def run(fm, body, ctx, store, active, *, compute=None, audio_key=None, now=None)
             line = f"{disp}: its voice windows were removed (a forgotten person); not named and not asked"
         elif label in ex:
             line = f"{disp}: {ex[label]['name']} ({ex[label]['status']}), kept"
+        elif label in closed:
+            why = "different people" if old_q[label].get("closed") == "different" else "nobody you can name"
+            line = f"{disp}: closed by you ({why}); not named and not asked again until it is transcribed again"
         elif label in names:
             line = f"{disp} → {speakers[label]} (score {names[label]['score']:.2f}), from a voice print, unconfirmed"
         elif label in proposals:
@@ -470,22 +510,38 @@ def _choices(ctx, label, proposed):
     return out
 
 
-def question(items):
-    """ONE message for every given `(fm, ctx)`: per record, each open label with its two quotes, its flags and
-    the choices, then the machine-written names not yet shown under `Named from voice prints, unconfirmed:`,
-    and the storage line once at the end. None when nothing is open."""
+def unverified_head(n):
+    many = n != 1
+    return (f"{n} name{'s' if many else ''} here {'were' if many else 'was'} not confirmed by you; confirm "
+            f"{'them' if many else 'it'} to teach the voice{'s' if many else ''}?")
+
+
+def _confirm_choices(label):
+    return [{"answer": f"{label}=correct", "text": "correct"},
+            {"answer": f"{label}=someone:<name>", "text": "someone else"},
+            {"answer": f"{label}=different", "text": "different people"}]
+
+
+def question(items, quotes_of=None):
+    """ONE message for every given `(fm, ctx)` or `(fm, ctx, body)`: per record, each open label with its two
+    quotes, its flags and the choices, then the machine-written names not yet shown under `Named from voice
+    prints, unconfirmed:`, then the unverified names not yet shown (design section 6's offer) with the same
+    two quotes each, and the storage line once at the end. None when nothing is offered. An unverified name's
+    quotes come from `quotes_of(fm, body, ctx, label)` when it has no question entry yet."""
     blocks, data = [], []
-    for fm, ctx in items:
-        ctx = ctx or {}
+    for item in items:
+        fm, ctx = item[0], item[1] or {}
+        body = item[2] if len(item) > 2 else ""
         if naming_state(fm) == "closed":
             continue
-        oq = open_questions(fm)
+        oq = offers(fm)
         if not oq:
             continue
         t = _t(fm)
         qs = _map(t.get("speaker_questions"))
         ask = sorted((l for l, k in oq.items() if k == "ask"), key=_order)
         unconfirmed = sorted((l for l, k in oq.items() if k == "unconfirmed"), key=_order)
+        unverified = sorted((l for l, k in oq.items() if k == "unverified"), key=_order)
         title = _map(ctx.get("meeting")).get("name") or fm.get("name") or ctx.get("record")
         date = str(_map(ctx.get("meeting")).get("date") or fm.get("date") or "")[:10]
         lines, labels = [], []
@@ -514,13 +570,23 @@ def question(items):
             for label in unconfirmed:
                 q, s = qs[label], src[label]
                 disp = naming.display(label)
-                ch = [{"answer": f"{label}=correct", "text": "correct"},
-                      {"answer": f"{label}=someone:<name>", "text": "someone else"},
-                      {"answer": f"{label}=different", "text": "different people"}]
+                ch = _confirm_choices(label)
                 lines.append(f"**{disp} → {s['name']}** ({float(s.get('score') or 0):.2f}) — {_quote_line(q.get('quotes'))}  "
                              + " ".join(f"{_n(i)} {c['text']}" for i, c in enumerate(ch, 1)))
                 labels.append({"label": label, "kind": "unconfirmed", "name": s["name"], "person": s.get("person"),
                                "score": s.get("score"), "quotes": q.get("quotes") or [], "choices": ch})
+        if unverified:
+            lines.append("")
+            lines.append(unverified_head(len(unverified)))
+            for label in unverified:
+                q = _map(qs.get(label))
+                qq = q.get("quotes") or (quotes_of(fm, body, ctx, label) if quotes_of else []) or []
+                name = _map(t.get("speakers"))[label].strip()
+                disp = naming.display(label)
+                ch = _confirm_choices(label)
+                lines.append(f"**{disp} → {name}** — {_quote_line(qq)}  "
+                             + " ".join(f"{_n(i)} {c['text']}" for i, c in enumerate(ch, 1)))
+                labels.append({"label": label, "kind": "unverified", "name": name, "quotes": qq, "choices": ch})
         blocks.append("\n".join(lines))
         data.append({"record": ctx.get("record"), "record_path": ctx.get("record_path"), "labels": labels})
     if not blocks:
@@ -528,14 +594,23 @@ def question(items):
     return {"message": "\n\n".join(blocks + [STORE_LINE]), "records": data}
 
 
-def shown(fm, stamp):
-    """`--shown`: every open question has been put to a person."""
+def shown(fm, stamp, quotes_of=None):
+    """`--shown`: everything `--question` offered has been put to a person — every open question, and every
+    unverified name, whose entry is made with the quotes shown (`quotes_of(label)`) when it has none."""
     fm = copy.deepcopy(fm)
     t = _t(fm)
     if t is None:
         return fm
+    offered = offers(fm)
+    if offered and not isinstance(t.get("speaker_questions"), dict):
+        t["speaker_questions"] = {}
     qs = _map(t.get("speaker_questions"))
-    for label in open_questions(fm):
+    for label, kind in offered.items():
+        if kind == "unverified":
+            q = qs.get(label) if isinstance(qs.get(label), dict) else {}
+            if not q.get("quotes"):
+                q["quotes"] = (quotes_of(label) if quotes_of else []) or []
+            qs[label] = q
         qs[label]["shown"] = stamp
     if t.get("diarization_id"):
         _set_state(fm)
@@ -614,10 +689,17 @@ def _advice(ctx, t):
     return f"transcribe it again with the right speaker count (`--speakers {n}`)"
 
 
+def not_shown_line(disp, name):
+    return (f"{disp} → {name}: not confirmed — its two quotes were not shown to a person yet. Show them "
+            "(`identify --question <record>`), stamp them (`identify --shown <record>`), and confirm after the "
+            "person has heard them.")
+
+
 def answer(fm, ctx, store, active, pairs, stamp, *, audio_key=None):
     """Apply a person's reply (`[(label, value)]`): `<person>` or `someone:<name>` names the label as confirmed
     (`origin: hand`, `proposed_by` when it answered a proposal; on a provisional name another person is a
-    correction); `correct` confirms the name already there; `different` names nothing, closes the label as
+    correction); `correct` confirms the name already there, only once its two quotes were shown (`--shown`),
+    else it confirms nothing and says so; `different` names nothing, closes the label as
     mixed with the advice to transcribe again; `different:<person>` names it and keeps it out of the print;
     `nobody` closes it; `skip` leaves it open. Confirmations go through `enrol.confirm`. Returns `(fm, lines)`.
     Raises Usage for a label or person this record or workspace does not have, before anything is written."""
@@ -645,6 +727,10 @@ def answer(fm, ctx, store, active, pairs, stamp, *, audio_key=None):
             if st not in ("provisional", "unverified"):
                 raise Usage(f"{label} has no unconfirmed name to confirm")
             name = speakers[label].strip()
+            if not is_shown(t, label):
+                # confirmed only once its two quotes were shown (decision ...-task-9-confirm-only-what-was-shown)
+                plan.append((label, "unshown", None, name, False))
+                continue
             person = _map(sources.get(label)).get("person") if st == "provisional" else resolve_name(ctx, name)
         elif v.startswith("someone:"):
             name = v[len("someone:"):].strip()
@@ -667,6 +753,10 @@ def answer(fm, ctx, store, active, pairs, stamp, *, audio_key=None):
         st = status_of(t, label)
         if kind == "skip":
             lines.append(f"{disp}: skipped — the question stays on the record.")
+            continue
+        if kind == "unshown":
+            ql = _quote_line(q.get("quotes"))
+            lines.append(not_shown_line(disp, name) + (f" Its quotes: {ql}" if ql else ""))
             continue
         if kind in ("nobody", "different"):
             if st == "provisional":
@@ -742,38 +832,50 @@ def answer(fm, ctx, store, active, pairs, stamp, *, audio_key=None):
 
 
 def label_quotes(fm, body, ctx, store, active, label, audio_key=None):
-    """A label's two quotes: its question's, else picked again from the signature and the transcript."""
+    """A label's two quotes: its question's, else picked again from the signature and the transcript — from the
+    transcript alone when there is no store or no active model (refused or ambiguous: the record verbs still
+    work) or the signature cannot be read."""
     t = _t(fm) or {}
     q = _map(_map(t.get("speaker_questions")).get(label))
     if q.get("quotes"):
         return q["quotes"]
-    audio = audio_of(ctx, fm, audio_key)
     sig = None
-    if audio and t.get("diarization_id"):
-        sig = store.read_signature(active["model"], audio, t["diarization_id"], model=active["pin"])
+    if store is not None and active and t.get("diarization_id"):
+        try:
+            audio = audio_of(ctx, fm, audio_key)
+            if audio:
+                sig = store.read_signature(active["model"], audio, t["diarization_id"], model=active["pin"])
+        except (vp_store.StoreRefused, vp_store.ModelMismatch, OSError, ValueError, KeyError):
+            sig = None
     return quotes.pick(_windows(sig or {}, label), vp_segments.parse_body_turns(body or ""), label)
 
 
 def confirm_names(fm, body, ctx, store, active, labels, stamp, *, audio_key=None):
     """`--confirm`: provisional or unverified names confirmed on a person's word — each label's two quotes are
-    printed first, then the confirmation and its enrolment."""
+    printed first, then the confirmation and its enrolment. A label whose quotes were never shown to a person
+    (no `speaker_questions.<label>.shown`) is not confirmed: its quotes are printed and the reply says to
+    confirm after the person has heard them; `--confirm` never stamps `shown` itself."""
     t = _t(fm) or {}
     if not labels:
         labels = sorted((l for l in _map(t.get("speakers")) if status_of(t, l) in ("provisional", "unverified")), key=_order)
-    head, pairs = [], []
+    head, pairs, unshown = [], [], []
     for label in labels:
         st = status_of(t, label)
         if st is None:
             raise Usage(f"{label} has no name to confirm")
         name = _map(t.get("speakers"))[label]
-        head.append(f"**{naming.display(label)} → {name}** — "
+        disp = naming.display(label)
+        head.append(f"**{disp} → {name}** — "
                     f"{_quote_line(label_quotes(fm, body, ctx, store, active, label, audio_key))}")
         if st == "confirmed":
-            head.append(f"{naming.display(label)}: already confirmed.")
+            head.append(f"{disp}: already confirmed.")
+            continue
+        if not is_shown(t, label):
+            unshown.append(not_shown_line(disp, name.strip()))
             continue
         pairs.append((label, "correct"))
     fm, lines = answer(fm, ctx, store, active, pairs, stamp, audio_key=audio_key) if pairs else (fm, [])
-    return fm, head + lines
+    return fm, head + lines + unshown
 
 
 def correct(fm, ctx, store, active, label, person, stamp, *, audio_key=None):
@@ -876,6 +978,10 @@ def _ctx_for(ctx, path):
     raise Usage(f"the voice context has no entry for {path}")
 
 
+_REFUSALS = (vp_store.StoreRefused, vp_store.ModelMismatch, models.CalibrationAmbiguous, models.ModelRefused,
+             calibration.CalibrationInvalid, OSError, ValueError, KeyError)
+
+
 def main(args, *, skill_dir=None, read=None, write=None, store=None, active=None, compute=None, audio_key=None,
          out=print, now=None):
     """`identify …` (args[0] is the verb). Prints one JSON object (none for `--question` with nothing open).
@@ -911,11 +1017,31 @@ def main(args, *, skill_dir=None, read=None, write=None, store=None, active=None
             ctx = json.load(f)
         if not isinstance(ctx, dict):
             raise Usage("the voice context is not an object")
-        if store is None:
-            store = vp_store.Store(vp_store.default_home(), guard=ctx.get("guard") or {})
-        store.ensure()
-        if active is None:
-            active = resolve_active(skill_dir, store)
+        if verb in (None, "--answer", "--confirm", "--correct"):
+            # naming and enrolment need the store and the calibration: a refusal stops them and says why
+            if store is None:
+                store = vp_store.Store(vp_store.default_home(), guard=ctx.get("guard") or {})
+            store.ensure()
+            if active is None:
+                active = resolve_active(skill_dir, store)
+        else:
+            # --question, --shown and --revert work from what the records hold (review round 1,
+            # `refused-store-blocks-question-and-revert`); the store, when it answers, only supplies an
+            # unverified name's quotes from its signature
+            try:
+                if store is None:
+                    store = vp_store.Store(vp_store.default_home(), guard=ctx.get("guard") or {})
+                store.ensure()
+            except _REFUSALS:
+                store = None
+            if active is None and store is not None:
+                try:
+                    active = resolve_active(skill_dir, store)
+                except _REFUSALS:
+                    active = None
+
+        def quotes_of(fm, body, c, label):
+            return label_quotes(fm, body, c, store, active, label, audio_key)
 
         if verb == "--revert" and person is not None:
             done = []
@@ -947,8 +1073,11 @@ def main(args, *, skill_dir=None, read=None, write=None, store=None, active=None
             out(json.dumps({"records": reports}, ensure_ascii=False))
             return code
         if verb == "--question":
-            items = [(read(p)[0], _ctx_for(ctx, p)) for p in pos]
-            msg = question(items)
+            items = []
+            for p in pos:
+                fm, body = read(p)
+                items.append((fm, _ctx_for(ctx, p), body))
+            msg = question(items, quotes_of=quotes_of)
             if msg is not None:
                 out(json.dumps(msg, ensure_ascii=False))
             return 0
@@ -957,7 +1086,7 @@ def main(args, *, skill_dir=None, read=None, write=None, store=None, active=None
             for path in pos:
                 c = _ctx_for(ctx, path)
                 fm, body = read(path)
-                fm2 = shown(fm, stamp)
+                fm2 = shown(fm, stamp, quotes_of=lambda label, fm=fm, body=body, c=c: quotes_of(fm, body, c, label))
                 write(path, fm2, body)
                 done.append({"record": c.get("record"), "speaker_naming": fm2.get("speaker_naming")})
             out(json.dumps({"records": done}, ensure_ascii=False))
@@ -985,7 +1114,6 @@ def main(args, *, skill_dir=None, read=None, write=None, store=None, active=None
     except Usage as e:
         out(f"✖ {e}\n  usage: {USAGE}")
         return 2
-    except (vp_store.StoreRefused, vp_store.ModelMismatch, models.CalibrationAmbiguous, models.ModelRefused,
-            calibration.CalibrationInvalid, OSError, ValueError, KeyError) as e:
+    except _REFUSALS as e:
         out(f"✖ {e}")
         return 1
