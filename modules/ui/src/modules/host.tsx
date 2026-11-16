@@ -40,6 +40,7 @@ import {
   invalidationFor,
   sanitizeCellHtml,
 } from "./policy.ts"
+import { cx, listEmpty, notice, noticeError, noticeWarning } from "../styles/classes.ts"
 
 type Scope = ReturnType<typeof buildModuleScope> & { ownViews?: string[]; ownApps?: string[] }
 type Msg = { dt: 1; id: unknown; op: string; [k: string]: any }
@@ -404,18 +405,18 @@ function ModuleFrame({ module, kind, defId, collection, frameProps, listState, o
   }, [route]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className={`dt-module-frame-wrap${fills ? " is-fill" : ""}`}>
+    <div className={fills ? "flex flex-1 flex-col min-h-0 h-full" : undefined}>
       {stale && (
-        <div className="dt-notice is-warning" role="status">
+        <div className={cx(notice, noticeWarning)} role="status">
           module app updated — reload to use its new code ({module})
         </div>
       )}
       {stopped && (
-        <div className="dt-notice is-error" role="alert">
+        <div className={cx(notice, noticeError)} role="alert">
           {stopped}
         </div>
       )}
-      <div ref={host} className="dt-module-frame" />
+      <div ref={host} className={cx("[&_iframe]:[color-scheme:normal]", fills && "flex-1 min-h-0")} />
     </div>
   )
 }
@@ -476,7 +477,7 @@ function fieldProxy(module: string, kind: "edit" | "view", defId: string): Compo
     if (cell)
       return (
         <span
-          className="dt-module-cell"
+          className="align-bottom"
           style={{ contain: "paint", overflow: "hidden", display: "inline-block", maxWidth: "100%" }}
           dangerouslySetInnerHTML={{ __html: html }}
         />
@@ -696,14 +697,14 @@ export function AppPage({ id }: { id: string }): ReactNode {
   const app = apps.get(id)
   if (!app)
     return (
-      <div className="dt-page dt-list-empty">
+      <div className={listEmpty}>
         <span className="codicon codicon-extensions" aria-hidden="true" />
         <p>Page '{id}' is not registered — is its module installed and loaded?</p>
       </div>
     )
   const Component = app.component
   return (
-    <div className="dt-app-page">
+    <div className="h-full flex flex-col">
       <Component route={route} />
     </div>
   )

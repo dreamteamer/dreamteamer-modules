@@ -11,14 +11,15 @@ import { useApp, useSignal } from "../app-context.tsx"
 import { Browse } from "../browse/Browse.tsx"
 import { sourcesKey } from "../lib/sources.ts"
 import { collectionOf, drawnDisplay, uiViewFingerprint, uiViews, viewLabel, viewToConfig } from "../lib/ui-views.ts"
+import { cx, error, page, subtle } from "../styles/classes.ts"
 
 export function ViewPage({ id }: { id: string }) {
   const { schema } = useApp()
   const view = (useSignal(uiViews) ?? []).find(v => v.id === id)
-  if (!view) return <p className="dt-page dt-subtle">ui-view {id} no longer exists.</p>
+  if (!view) return <p className={cx(page, subtle)}>ui-view {id} no longer exists.</p>
   const collection = collectionOf(view)
   if (!collection || !schema.collection(collection))
-    return <p className="dt-page dt-error">ui-view {id} names no collection of this workspace.</p>
+    return <p className={error}>ui-view {id} names no collection of this workspace.</p>
   const config = viewToConfig(view)
   return (
     <Browse

@@ -46,6 +46,10 @@ import {
 import { ActivityPane } from "../settings/ActivityPane.tsx"
 import { useModules } from "../settings/use-modules.ts"
 import { PageSource } from "./page-source.ts"
+import { cx, listEmpty, page, pageHead, subtle } from "../styles/classes.ts"
+
+/** A panel's title: plain text, or a link that reads as one until hovered. (was dt-panel-title) */
+const panelTitle = "font-semibold text-fg no-underline"
 
 export function PageView({
   viewId,
@@ -66,7 +70,7 @@ export function PageView({
   const view = views.find(v => v.id === viewId)
   if (!view)
     return (
-      <div className="dt-list-empty">
+      <div className={listEmpty}>
         <Icon name="dashboard" />
         <p>ui-view {viewId} no longer exists.</p>
       </div>
@@ -89,18 +93,18 @@ export function PageView({
   const columns = gridColumns(view)
 
   const grid = !panels.length ? (
-    <p className="dt-subtle">
+    <p className={subtle}>
       This page nests no views yet — list them in <code>display.list.options.views</code>.
     </p>
   ) : (
     <div
-      className="dt-page-view-grid"
+      className="grid gap-4 items-start"
       data-columns={columns}
       style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
     >
       {panels.map((p, i) =>
         p.kind === "page" ? (
-          <div key={`${i}:${p.ref}`} className="dt-page-view-cell">
+          <div key={`${i}:${p.ref}`} className="min-w-0">
             <PageView viewId={p.view.id} source={source} nested ancestry={[...ancestry, view.id]} />
           </div>
         ) : (
@@ -115,18 +119,18 @@ export function PageView({
       {nested ? (
         grid
       ) : (
-        <div className="dt-page dt-page-view" data-view={view.id}>
-          <header className="dt-page-head">
+        <div className={cx(page, "overflow-y-auto")} data-view={view.id}>
+          <header className={pageHead}>
             <div>
               <h1>{viewLabel(view)}</h1>
-              {view.description && <p className="dt-subtle">{view.description}</p>}
+              {view.description && <p className={subtle}>{view.description}</p>}
               {source && (
-                <p className="dt-subtle">
+                <p className={subtle}>
                   Records from <SourceMark name={source} />
                 </p>
               )}
               <p
-                className="dt-subtle"
+                className={subtle}
                 title="The page view drawn here — the nearest one naming this module wins: the workspace's own, then a layer's, then a package's"
               >
                 {pageOrigin(view)}
@@ -142,18 +146,26 @@ export function PageView({
 
 function Panel({ plan, source }: { plan: Exclude<PanelPlan, { kind: "page" }>; source: string | undefined }) {
   return (
-    <section className="dt-panel" data-ref={plan.ref} data-kind={plan.kind}>
-      <header className="dt-panel-head">
+    <section
+      className="min-w-0 flex flex-col gap-2 p-3 border border-border rounded"
+      data-ref={plan.ref}
+      data-kind={plan.kind}
+    >
+      <header className="flex items-center gap-2">
         {plan.kind === "refused" ? (
-          <span className="dt-panel-title">{plan.ref}</span>
+          <span className={panelTitle}>{plan.ref}</span>
         ) : (
-          <Link to={panelLink(plan.view, source)} className="dt-panel-title" title={`Open ${viewLabel(plan.view)}`}>
+          <Link
+            to={panelLink(plan.view, source)}
+            className={cx(panelTitle, "hover:text-link hover:underline")}
+            title={`Open ${viewLabel(plan.view)}`}
+          >
             {viewLabel(plan.view)}
           </Link>
         )}
       </header>
       {plan.kind === "refused" ? (
-        <p className="dt-panel-refused">
+        <p className="m-0 flex items-center gap-1.5 text-warning">
           <Icon name="warning" /> {plan.reason}
         </p>
       ) : plan.kind === "activity" ? (
