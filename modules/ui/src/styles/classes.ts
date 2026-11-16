@@ -6,7 +6,7 @@
  *
  * `cx(...)` joins class names, dropping false, null and undefined: `cx(menuItem, danger && menuItemDanger)`.
  *
- * A MODIFIER (menuItemDanger, noticeOk, …) marks the properties it overrides `!important`:
+ * A MODIFIER (menuItemDanger, menuItemAbsent) marks the properties it overrides `!important`:
  * two utilities that set one property are ordered by the stylesheet, never by the class list, so without it
  * `cx(menuItem, menuItemDanger)` could draw a plain entry. The old rules won the same way, by a compound selector.
  */
@@ -32,14 +32,15 @@ export const error =
   "text-danger border border-[color-mix(in_srgb,var(--dt-danger)_35%,transparent)] bg-[color-mix(in_srgb,var(--dt-danger)_8%,transparent)] rounded-dt px-3 py-2 whitespace-pre-wrap"
 /** A quiet line with an icon. (was dt-note) */
 export const note = "m-0 flex items-center gap-1.5 text-fg-subtle"
-/** A boxed notice; add one of the tones. (was dt-notice) */
-export const notice = "flex items-start gap-2 max-w-[920px] mb-1.5 px-3 py-[7px] border border-border rounded-dt"
-export const noticeOk =
-  "border-[color-mix(in_srgb,var(--dt-color-charts-green)_40%,transparent)]! bg-[color-mix(in_srgb,var(--dt-color-charts-green)_9%,transparent)] font-mono text-[12px] [&_.codicon]:text-chart-green"
-export const noticeWarning =
-  "border-[color-mix(in_srgb,var(--dt-warning)_40%,transparent)]! bg-[color-mix(in_srgb,var(--dt-warning)_9%,transparent)] [&_.codicon]:text-warning"
-export const noticeError =
-  "border-[color-mix(in_srgb,var(--dt-danger)_40%,transparent)]! bg-[color-mix(in_srgb,var(--dt-danger)_9%,transparent)] [&_.codicon]:text-danger"
+/** A boxed notice: the frame, and one entry of `noticeTone` for its colours. (was dt-notice) */
+export const notice = "flex items-start gap-2 max-w-[920px] mb-1.5 px-3 py-[7px] border rounded-dt"
+export const noticeTone = {
+  ok: "border-[color-mix(in_srgb,var(--dt-color-charts-green)_40%,transparent)] bg-[color-mix(in_srgb,var(--dt-color-charts-green)_9%,transparent)] font-mono text-[12px] [&_.codicon]:text-chart-green",
+  warning:
+    "border-[color-mix(in_srgb,var(--dt-warning)_40%,transparent)] bg-[color-mix(in_srgb,var(--dt-warning)_9%,transparent)] [&_.codicon]:text-warning",
+  error:
+    "border-[color-mix(in_srgb,var(--dt-danger)_40%,transparent)] bg-[color-mix(in_srgb,var(--dt-danger)_9%,transparent)] [&_.codicon]:text-danger",
+} as const satisfies Record<string, string>
 /** A list or page with nothing to show: centred, quiet. (was dt-list-empty) */
 export const listEmpty = "flex flex-col items-center justify-center gap-2 px-4 py-10 text-fg-subtle [&_p]:m-0"
 

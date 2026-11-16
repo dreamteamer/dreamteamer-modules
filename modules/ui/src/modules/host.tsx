@@ -40,7 +40,7 @@ import {
   invalidationFor,
   sanitizeCellHtml,
 } from "./policy.ts"
-import { cx, listEmpty, notice, noticeError, noticeWarning } from "../styles/classes.ts"
+import { cx, listEmpty, notice, noticeTone } from "../styles/classes.ts"
 
 type Scope = ReturnType<typeof buildModuleScope> & { ownViews?: string[]; ownApps?: string[] }
 type Msg = { dt: 1; id: unknown; op: string; [k: string]: any }
@@ -407,12 +407,12 @@ function ModuleFrame({ module, kind, defId, collection, frameProps, listState, o
   return (
     <div className={fills ? "flex flex-1 flex-col min-h-0 h-full" : undefined}>
       {stale && (
-        <div className={cx(notice, noticeWarning)} role="status">
+        <div className={cx(notice, noticeTone.warning)} role="status">
           module app updated — reload to use its new code ({module})
         </div>
       )}
       {stopped && (
-        <div className={cx(notice, noticeError)} role="alert">
+        <div className={cx(notice, noticeTone.error)} role="alert">
           {stopped}
         </div>
       )}

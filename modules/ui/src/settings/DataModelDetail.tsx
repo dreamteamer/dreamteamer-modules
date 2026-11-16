@@ -55,9 +55,7 @@ import {
   menuItemDanger,
   mono,
   notice,
-  noticeError,
-  noticeOk,
-  noticeWarning,
+  noticeTone,
   page,
   pageHead,
   popoverAnchor,
@@ -225,17 +223,17 @@ export function DataModelDetail({
       <h2 className={sectionLabel}>Fields</h2>
       {loadError && <p className={errorBox}>{loadError}</p>}
       {outcome?.notices.map((n, i) => (
-        <p key={`n${i}`} className={cx(notice, "mt-0", noticeOk)} data-save-notice>
+        <p key={`n${i}`} className={cx(notice, "mt-0", noticeTone.ok)} data-save-notice>
           <Icon name="check" /> {n}
         </p>
       ))}
       {outcome?.errors.map((n, i) => (
-        <p key={`e${i}`} className={cx(notice, "mt-0", noticeError)} role="alert" data-save-error>
+        <p key={`e${i}`} className={cx(notice, "mt-0", noticeTone.error)} role="alert" data-save-error>
           <Icon name="error" /> {n}
         </p>
       ))}
       {outcome?.warnings.map((n, i) => (
-        <p key={`w${i}`} className={cx(notice, "mt-0", noticeWarning)} data-save-warning>
+        <p key={`w${i}`} className={cx(notice, "mt-0", noticeTone.warning)} data-save-warning>
           <Icon name="warning" /> {n}
         </p>
       ))}
