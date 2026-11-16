@@ -7,16 +7,17 @@ import { cx, hintError } from "../styles/classes.ts"
 /** A small uppercase heading over a block. (was dt-section-label) */
 export const sectionLabel = "mt-[18px] mx-0 mb-2 text-small font-semibold tracking-[0.06em] uppercase text-fg-subtle"
 
-/** A plain data table: header row tinted, rows hover. (was dt-table) */
+/** A plain data table: header row tinted, rows hover. Its cells inherit its `text-left`, so one cell's own
+ * alignment (`num`) wins without `!`. (was dt-table) */
 export const table = cx(
-  "w-full border-collapse",
-  "[&_th]:text-left [&_th]:px-3 [&_th]:py-[7px] [&_th]:border-b [&_th]:border-border [&_th]:whitespace-nowrap [&_th]:max-w-[320px] [&_th]:overflow-hidden [&_th]:text-ellipsis",
-  "[&_td]:text-left [&_td]:px-3 [&_td]:py-[7px] [&_td]:border-b [&_td]:border-border [&_td]:whitespace-nowrap [&_td]:max-w-[320px] [&_td]:overflow-hidden [&_td]:text-ellipsis",
+  "w-full border-collapse text-left",
+  "[&_th]:px-3 [&_th]:py-[7px] [&_th]:border-b [&_th]:border-border [&_th]:whitespace-nowrap [&_th]:max-w-[320px] [&_th]:overflow-hidden [&_th]:text-ellipsis",
+  "[&_td]:px-3 [&_td]:py-[7px] [&_td]:border-b [&_td]:border-border [&_td]:whitespace-nowrap [&_td]:max-w-[320px] [&_td]:overflow-hidden [&_td]:text-ellipsis",
   "[&_th]:text-small [&_th]:uppercase [&_th]:tracking-[0.04em] [&_th]:text-fg-subtle [&_th]:font-semibold [&_th]:bg-bg-subtle",
   "[&_tbody_tr]:cursor-pointer [&_tbody_tr:hover]:bg-bg-hover [&_tbody_tr:last-child_td]:border-b-0"
 )
-/** A number column of a table. (was dt-table .is-num) — `!` beats the table's `[&_td]:text-left`. */
-export const num = "text-right! tabular-nums"
+/** A number column of a table. (was dt-table .is-num) */
+export const num = "text-right tabular-nums"
 
 /** A dialog's form: its rows stacked, no paragraph margins. (was dt-dialog-form) */
 export const dialogForm = "grid gap-3 [&_p]:m-0"
