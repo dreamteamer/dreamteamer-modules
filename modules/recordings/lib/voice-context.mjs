@@ -288,7 +288,8 @@ export async function baseContext(root) {
  *  `speaker_questions.*.proposed` name the person — by reference, or by the name string where a label
  *  carries no reference. Each row: `{record, record_path, audio, fingerprint, diarization_id,
  *  matches: [{label, where, diarization_id, new_label?}]}`; a label in `previous_speakers` belongs to the
- *  earlier diarisation, so its match carries that diarisation's id and the new label its time went to. */
+ *  earlier diarisation, so its match carries that diarisation's id and the new label its time went to — and
+ *  an entry kept under `earlier:<key>` reports the earlier diarisation's label it carries in `label`. */
 export async function personRecords(root, personRef, snap = null) {
 	const [s, all] = await Promise.all([snap ?? snapshot(root), list(root, RECORDINGS)]);
 	const name = s.base.known[personRef] ?? null;
@@ -311,7 +312,9 @@ export async function personRecords(root, personRef, snap = null) {
 		const prev = t.previous_speakers;
 		if (prev && typeof prev === 'object' && prev.labels && typeof prev.labels === 'object') {
 			for (const [label, e] of Object.entries(prev.labels)) {
-				if (e && names(e.name, e.source?.person)) matches.push({ label, where: 'previous_speakers', diarization_id: prev.diarization_id ?? null, new_label: e.new_label ?? null });
+				// an `earlier:<key>` entry names the label it sat on in `label` (carry.py): that is the earlier
+				// diarisation's label, the key is not
+				if (e && names(e.name, e.source?.person)) matches.push({ label: typeof e.label === 'string' && e.label ? e.label : label, where: 'previous_speakers', diarization_id: prev.diarization_id ?? null, new_label: e.new_label ?? null });
 			}
 		}
 		for (const [label, q] of Object.entries(t.speaker_questions && typeof t.speaker_questions === 'object' ? t.speaker_questions : {})) {

@@ -11,6 +11,12 @@ overlaps most:
         speaker_1: {name: Sam Diaz, new_label: null, share: 0.0, offered: false, forgotten: true}
       note: ...                              # only when the earlier transcript has no timestamps
 
+An entry whose key is not the label it sat on (an `earlier:<key>`, carried from an older diarisation) also
+carries `label`: that label of `diarization_id`, so a later forget reaches its windows (task 10, finding
+`earlier-key-drops-its-label`). A forgotten mark carries `forgotten_at`, the forget's instant: a source named
+or confirmed after it lifts the mark (design section 8 step 4, finding
+`sticky-forgotten-overrides-later-confirmation`); a mark with no instant stays.
+
 The old label's time comes from the old segments when the caller hands a matching ASR cache, else from
 the `[mm:ss] Speaker N:` turns of the body `run` is about to replace, each turn lasting until the next
 starts. Two old labels on one new label are both `offered: false`; so is an old label mapped nowhere.
@@ -124,8 +130,10 @@ def earlier(fm):
             if same is not None:   # the same claim twice: one entry, nothing of either lost
                 if "source" not in same and isinstance(e.get("source"), dict):
                     same["source"] = dict(e["source"])
-                if e.get("forgotten") is True:
+                if e.get("forgotten") is True and not _lifted(same, e.get("forgotten_at")):
                     same["forgotten"] = True
+                    if e.get("forgotten_at"):
+                        same["forgotten_at"] = e["forgotten_at"]
                 continue
             key = at if at and at not in keys else (k if k.startswith("earlier:") else f"earlier:{k}")
             base, n = key, 2
@@ -137,6 +145,8 @@ def earlier(fm):
                 x["source"] = dict(e["source"])
             if e.get("forgotten") is True:
                 x["forgotten"] = True
+                if e.get("forgotten_at"):
+                    x["forgotten_at"] = e["forgotten_at"]
             entries.append(x)
     return entries, unreadable
 
@@ -200,11 +210,15 @@ def previous(fm, body, cache_or_none, new_segments, duration, earlier_names=None
         x = {"name": e["name"]}
         if "source" in e:
             x["source"] = e["source"]
+        if e["at"] and e["key"] != e["at"]:
+            x["label"] = e["at"]          # the label of `diarization_id` it sat on (finding earlier-key-drops-its-label)
         x["new_label"] = m["new_label"]
         x["share"] = round(m["share"], 3)
         x["offered"] = bool(m["new_label"]) and landed[m["new_label"]] == 1 and not e.get("forgotten")
         if e.get("forgotten"):
             x["forgotten"] = True
+            if e.get("forgotten_at"):
+                x["forgotten_at"] = e["forgotten_at"]
         labels[e["key"]] = x
         if spans_out is not None:
             spans_out[e["key"]] = list(spans.get(e["at"], [])) if e["at"] else []
@@ -230,11 +244,27 @@ def _same_name(a, b):
     return _named(a) and _named(b) and a.strip().casefold() == b.strip().casefold()
 
 
+def _source_instant(entry):
+    src = entry.get("source") if isinstance(entry.get("source"), dict) else {}
+    return _instant(src.get("named") or src.get("confirmed"))
+
+
+def _lifted(entry, forgotten_at):
+    """Whether `entry`'s own source was named or confirmed after the forget's instant `forgotten_at` — a later
+    enrolment that lifts a forgotten mark (design section 8 step 4). A mark with no instant is never lifted:
+    privacy first."""
+    at = _instant(forgotten_at)
+    named = _source_instant(entry)
+    if at is None or named is None:
+        return False
+    return named > at
+
+
 def _forgotten(entry, forgotten_entries, workspace):
-    """Whether a carried name is a person forgotten in `workspace`: matched by the source's `person`, or —
-    when no source names a person — by the name string, against each forgotten.json entry's `known_as`
-    for this workspace. A name confirmed after that entry's `at` is a later enrolment, not forgotten
-    (design section 8, step 4)."""
+    """The instant (`at`) of the forgotten.json entry that forgets this carried name in `workspace`, or None:
+    matched by the source's `person`, or — when no source names a person — by the name string, against each
+    entry's `known_as` for this workspace. A name confirmed after that entry's `at` is a later enrolment, not
+    forgotten (design section 8, step 4)."""
     src = entry.get("source") if isinstance(entry.get("source"), dict) else {}
     person = src.get("person")
     named = _instant(src.get("named") or src.get("confirmed"))
@@ -247,8 +277,8 @@ def _forgotten(entry, forgotten_entries, workspace):
                 continue
             hit = (ka.get("person") == person) if person else _same_name(ka.get("name"), entry.get("name"))
             if hit and (named is None or at is None or named < at):
-                return True
-    return False
+                return f.get("at") if isinstance(f.get("at"), str) and f.get("at") else True
+    return None
 
 
 FORGOTTEN_UNPLACED = "an earlier speaker who was forgotten cannot be placed in this transcript"
@@ -285,8 +315,9 @@ def _mostly(forgotten_spans, new_segments):
 def forgotten_new_labels(previous, forgotten_entries, workspace, spans=None, new_segments=None):
     """The new labels that carry the earlier name of a person forgotten in `workspace` (seam 5): their
     windows are never embedded and they go to the signature file's `removed`. A carried name is
-    forgotten when `forgotten.json` says so (`_forgotten`) or an earlier run already marked it; each is
-    marked in place `offered: false, forgotten: true`, so it is never proposed. Removed are the new
+    forgotten when `forgotten.json` says so (`_forgotten`) or an earlier run already marked it and no
+    source of its own was named or confirmed after the mark's `forgotten_at`; each is marked in place
+    `offered: false, forgotten: true, forgotten_at: <the forget's instant>`, so it is never proposed. Removed are the new
     label each such name was mapped to and — given `spans` (`previous(..., spans_out=)`) and this run's
     `new_segments` — every new label whose time is mostly (over half) those names' earlier time, so an
     over-split voice keeps no windows on any of its pieces."""
@@ -295,9 +326,16 @@ def forgotten_new_labels(previous, forgotten_entries, workspace, spans=None, new
         return out
     gone = []
     for key, e in (previous.get("labels") or {}).items():
-        if e.get("forgotten") is True or _forgotten(e, forgotten_entries, workspace):
+        marked = e.get("forgotten") is True and not _lifted(e, e.get("forgotten_at"))
+        if e.get("forgotten") is True and not marked:      # confirmed again after the forget: enrols again
+            e.pop("forgotten", None)
+            e.pop("forgotten_at", None)
+        at = None if marked else _forgotten(e, forgotten_entries, workspace)
+        if marked or at:
             e["offered"] = False
             e["forgotten"] = True
+            if isinstance(at, str):
+                e["forgotten_at"] = at
             if e.get("new_label"):
                 out.add(e["new_label"])
             gone.extend((spans or {}).get(key) or [])

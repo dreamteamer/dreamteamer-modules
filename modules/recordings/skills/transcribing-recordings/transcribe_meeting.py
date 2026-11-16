@@ -656,6 +656,19 @@ if __name__ == "__main__":
                 read_meeting=read_meeting, read_asr_cache=read_asr_cache, asr_cache_path_for=asr_cache_path_for,
                 asr_cache_matches=asr_cache_matches),
             out=lambda s: print(s, flush=True)))
+    elif args and args[0] == "prints":
+        # The voice-print store from one workspace (design sections 8 and 9): list, forget, never,
+        # forget-recording, link, rebuild, reseed. `rebuild` computes a signature the active model lacks from
+        # a record the context hands, the way identify and evaluate-speakers compute one.
+        from voiceprints import evaluate as vp_evaluate
+        from voiceprints import prints as vp_prints
+        sys.exit(vp_prints.main(
+            args, skill_dir=HERE, read=read_meeting, write=write_meeting, audio_key=audio_key,
+            compute=vp_evaluate.signature_maker(
+                decode_audio=decode_audio, load_embedder=load_embedder, read_samples=read_samples,
+                read_meeting=read_meeting, read_asr_cache=read_asr_cache, asr_cache_path_for=asr_cache_path_for,
+                asr_cache_matches=asr_cache_matches),
+            out=lambda s: print(s, flush=True)))
     else:
         sys.exit(
             "usage: transcribe_meeting.py setup [--speaker-models all|<id>[,<id>…]]"
@@ -668,4 +681,6 @@ if __name__ == "__main__":
             " | identify <record>… [--question | --shown | --answer <record> <label>=<answer>… | --confirm <record>"
             " [label…] | --correct <record> <label> <person> | --revert <record> | --revert --person <ref>]"
             " --context <file.json>"
+            " | prints list | rebuild | forget <person> | never <person> | forget-recording <record> | link <person>"
+            " | reseed <person>   --context <file.json>"
         )

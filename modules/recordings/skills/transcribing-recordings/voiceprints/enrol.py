@@ -7,7 +7,10 @@ A print's `sources` are the confirmation log. Each source is
     {audio, diarization, label, workspace, person, condition, seconds, confirmed, status, reason}
 
 `status` is either COMPUTED by the replay — `admitted`, `held`, `uncalibrated` (ruling D4: the
-confirmation failed only check 2) — and judged again from the start by every replay, or a person's
+confirmation failed only check 2), `waiting` (task 10: this model has no signature of its diarisation yet,
+another model folder has its windows — a model change before `prints rebuild` computed it; kept, never
+judged, out of the vector, judged by the first replay that finds the file) — and judged again from the
+start by every replay, or a person's
 EXCLUSION stored as an input to every replay — `reseeded` (`prints reseed`) and `corrected` (a confirmed
 name corrected to another person); an exclusion also carries `at`. A source the user said holds
 different people also carries `different: true`, so every replay keeps check 10. A source holds a
@@ -37,8 +40,10 @@ and the store is as the last pass left it (`<model>/enrolment.json` holds a dige
 never.json, forgotten.json and the prints that pass wrote), `confirm` judges only the new confirmations
 against the prints as they stand: a computed status depends only on what precedes it, so this is the
 full pass's result without re-judging every source. Anything else — an earlier instant, a print written
-outside a pass (a correction, a reseed, `carry`), other thresholds, a never or forget entry — replays
-everything. Both hold `Store.lock(model id)` (ruling D3).
+outside a pass (a correction, a reseed, `carry`), other thresholds, a never or forget entry, a signature
+file a source or negative uses that changed or went (task 10, finding `fast-path-blind-to-signature-files`)
+— replays everything. The digest takes never.json and forgotten.json as the pass READ them (finding
+`digest-reads-never-and-forgotten-after-the-pass`). Both hold `Store.lock(model id)` (ruling D3).
 
 Checks 4 and 5, the label centroid and step 3 are `naming`'s (ruling D15): imported, never re-implemented.
 
@@ -63,7 +68,9 @@ MIN_SPEECH = naming.MIN_SPEECH      # check 3: 20 s of speech
 TRUST_SOURCES = 2                   # a print is trusted with at least two admitted sources ...
 TRUST_SECONDS = 60.0                # ... and at least 60 s of speech across them
 
-ADMITTED, HELD, UNCALIBRATED = "admitted", "held", "uncalibrated"
+ADMITTED, HELD, UNCALIBRATED, WAITING = "admitted", "held", "uncalibrated", "waiting"
+WAITING_WHY = ("its voice signature for this speaker model is not computed yet; `prints rebuild` computes it "
+               "from the recording")
 RESEEDED, CORRECTED = "reseeded", "corrected"
 EXCLUSIONS = (RESEEDED, CORRECTED)  # a person's act, stored; every replay reads it
 
@@ -374,14 +381,46 @@ class _Stale(Exception):
     """The store is not as the last pass left it; the caller replays everything."""
 
 
-def _run(store, model, th, stored, new=(), order=None, fast=False):
+def _model_folders(store, but=None):
+    """The model folders of the store (each holding `prints/` or `signatures/`), except `but`."""
+    try:
+        names = sorted(os.listdir(store.home))
+    except OSError:
+        return []
+    return [n for n in names if n != but and not n.startswith(".")
+            and (os.path.isdir(os.path.join(store.home, n, "signatures"))
+                 or os.path.isdir(os.path.join(store.home, n, "prints")))]
+
+
+def _elsewhere(store, model_id, audio, diar, label):
+    """Another model folder's view of a diarisation this one has no file of: `waiting` when one holds the
+    label's windows and none lists it in `removed`, `removed` when one does, None when no folder has it."""
+    seen = None
+    for mid in _model_folders(store, but=model_id):
+        try:
+            sig = store.read_json(store.signature_path(mid, audio, diar))
+        except (OSError, ValueError):
+            continue
+        if sig is None:
+            continue
+        if label in set(sig.get("removed") or []):
+            return "removed"
+        if _has_windows(sig, label):
+            seen = WAITING
+    return seen
+
+
+def _run(store, model, th, stored, new=(), order=None, fast=False, read=None):
     """The one pass. `stored` are the prints as read, `new` confirmations not yet stored. Full (`fast`
     False): every stored print is reduced to its inputs and every source judged again in order. Fast: the
     stored prints are taken as they stand (the last pass's output) and only `new` is judged — the caller
     has checked that every new confirmation sorts after every stored source. Returns `(work, report)`,
     `work` the prints by id as they should now be stored. A fast pass that meets a source whose voice
-    windows are gone raises `_Stale`."""
+    windows are gone raises `_Stale`. `read`, when given, receives the never.json and forgotten.json
+    entries the pass read (`_save_state` digests those)."""
     never, forgotten = store.never(), store.forgotten()
+    if read is not None:
+        read["never"], read["forgotten"] = copy.deepcopy(never), copy.deepcopy(forgotten)
     key = _key_fn(order)
     work, cents, adm, since = {}, {}, {}, {}
     for p in stored:
@@ -508,6 +547,19 @@ def _run(store, model, th, stored, new=(), order=None, fast=False):
                                       "text": _namesake_notice()})
 
         sig = sig_of(s["audio"], s["diarization"])
+        if sig is None and kind == "stored" and _elsewhere(store, model.id, s["audio"], s["diarization"],
+                                                           s["label"]) == WAITING:
+            seen.add(dup)                # a model change before its signature was computed: kept, not judged
+            kept = {k2: s.get(k2) for k2 in _SOURCE_KEYS}
+            if s.get("status") in EXCLUSIONS:
+                kept["at"] = s.get("at")
+            else:
+                kept["status"], kept["reason"] = WAITING, WAITING_WHY
+            if s.get("different"):
+                kept["different"] = True
+            target["sources"].append(kept)
+            report.setdefault("waiting", []).append(dict(where, print=pid))
+            continue
         if sig is None or not _has_windows(sig, s["label"]):
             if kind == "stored":
                 why = "its diarisation file is gone" if sig is None else "its voice windows are gone"
@@ -575,7 +627,8 @@ def _run(store, model, th, stored, new=(), order=None, fast=False):
 
     by_id = {p["id"]: p for p in stored}
     for pid, p in work.items():
-        _finish(p, by_id.get(pid), th, sig_of, memo)
+        _finish(p, by_id.get(pid), th, sig_of, memo,
+                lambda a, d, lab: _elsewhere(store, model.id, a, d, lab) == WAITING)
         report["prints"][pid] = {"trust": p["trust"], "auto": p["auto"],
                                  "admitted": sum(s["status"] == ADMITTED for s in p["sources"]),
                                  "held": sum(s["status"] == HELD for s in p["sources"]),
@@ -626,16 +679,21 @@ def _admit(s, sig, cent, target, adm, work, th, memo):
     return ADMITTED, None
 
 
-def _finish(p, old, th, sig_of, memo):
-    """Trust, seconds, negatives and `auto` once every source is in."""
+def _finish(p, old, th, sig_of, memo, waits=None):
+    """Trust, seconds, negatives and `auto` once every source is in. A negative whose signature this model has
+    not computed yet while another model folder holds its windows (`waits`) is kept, and keeps `auto` off
+    until it can be compared."""
     adm = [s for s in p["sources"] if s["status"] == ADMITTED]
     p["seconds"] = round(sum(float(s.get("seconds") or 0.0) for s in adm), 3)
     p["trust"] = trust(p)
-    kept, gone = [], False
+    kept, gone, waiting = [], False, False
     for n in p.get("negatives") or []:
         sig = sig_of(n.get("audio"), n.get("diarization"))
         if sig is not None and _has_windows(sig, n.get("label")):
             kept.append(n)
+        elif sig is None and waits is not None and waits(n.get("audio"), n.get("diarization"), n.get("label")):
+            kept.append(n)
+            waiting = True
         else:
             gone = True
     p["negatives"] = kept
@@ -649,7 +707,7 @@ def _finish(p, old, th, sig_of, memo):
     if not kept and hold is None:
         p["auto"] = True
         return
-    ok = th is not None and bool(p["vector"]) and p["trust"] == "trusted" and hold is None
+    ok = th is not None and bool(p["vector"]) and p["trust"] == "trusted" and hold is None and not waiting
     if ok:
         for n in kept:
             c = memo.centroid(sig_of(n["audio"], n["diarization"]), n["label"])
@@ -687,22 +745,62 @@ def _state_path(store, model):
     return os.path.join(store.model_dir(model.id), "enrolment.json")
 
 
-def _digest(th, never, forgotten, prints):
+def _stat(path):
+    try:
+        st = os.stat(path)
+    except (OSError, ValueError):
+        return None
+    return [st.st_size, st.st_mtime_ns]
+
+
+def _signature_state(store, model, prints):
+    """What the prints stand on: the size and modification time of every signature file a source or a
+    negative uses (another folder's for a source still waiting), so a file deleted or rewritten outside a
+    pass — `prints forget-recording` interrupted, `remove_windows`, a person deleting it — is seen."""
+    keys = sorted({(str(s.get("audio")), str(s.get("diarization"))) for p in prints
+                   for s in list(p.get("sources") or []) + list(p.get("negatives") or [])
+                   if s.get("audio") and s.get("diarization")})
+    out = []
+    for audio, diar in keys:
+        try:
+            here = _stat(store.signature_path(model.id, audio, diar))
+        except ValueError:
+            here = None
+        row = [audio, diar, here]
+        if here is None:
+            for mid in _model_folders(store, but=model.id):
+                try:
+                    row.append([mid, _stat(store.signature_path(mid, audio, diar))])
+                except ValueError:
+                    pass
+        out.append(row)
+    return out
+
+
+def _digest(th, never, forgotten, prints, signatures=None):
     body = {"thresholds": th, "never": never, "forgotten": forgotten,
-            "prints": sorted((_essence(p) for p in prints if p.get("sources")), key=lambda p: p["id"])}
+            "prints": sorted((_essence(p) for p in prints if p.get("sources")), key=lambda p: p["id"]),
+            "signatures": signatures}
     return hashlib.sha256(json.dumps(body, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
 
 
-def _save_state(store, model, th, work, order=None):
-    """Written by every pass: what it read and the prints it left. A custom-order pass leaves no state a
+def _save_state(store, model, th, work, order=None, read=None):
+    """Written by every pass: what it read — never.json and forgotten.json as the pass read them (`read`),
+    the signature files the prints stand on — and the prints it left. A custom-order pass leaves no state a
     live answer can build on."""
-    d = None if order is not None else _digest(th, store.never(), store.forgotten(), list(work.values()))
+    read = read if read is not None else {"never": store.never(), "forgotten": store.forgotten()}
+    prints = [p for p in work.values() if p.get("sources")]
+    d = None if order is not None else _digest(th, read["never"], read["forgotten"], prints,
+                                                _signature_state(store, model, prints))
     store.write_json(_state_path(store, model), {"version": 1, "digest": d})
 
 
 def _can_judge_only_new(store, model, th, stored, new):
     state = store.read_json(_state_path(store, model)) or {}
-    if not state.get("digest") or state["digest"] != _digest(th, store.never(), store.forgotten(), stored):
+    if not state.get("digest"):
+        return False
+    live = [p for p in stored if p.get("sources")]
+    if state["digest"] != _digest(th, store.never(), store.forgotten(), live, _signature_state(store, model, live)):
         return False
     last = max((total_order(s) for p in stored for s in p.get("sources") or []), default=None)
     return last is None or all(total_order(c) >= last for c in new)
@@ -720,9 +818,10 @@ def replay(store, model, thresholds, order=None):
     notices, stuck, pass: "full"}`. A print of another model raises `store.ModelMismatch`."""
     with store.lock(model.id):
         stored = _stored_prints(store, model)
-        work, report = _run(store, model, thresholds, stored, (), order)
+        read = {}
+        work, report = _run(store, model, thresholds, stored, (), order, read=read)
         _persist(store, model, stored, work, report)
-        _save_state(store, model, thresholds, work, order)
+        _save_state(store, model, thresholds, work, order, read=read)
     report["stuck"] = sorted(pid for pid, p in work.items() if _stuck(p))
     report["pass"] = "full"
     return report
@@ -758,13 +857,14 @@ def confirm(store, model, thresholds, confirmations):
         stored = _stored_prints(store, model)
         before = {p["id"] for p in stored if _stuck(p)}
         fast = _can_judge_only_new(store, model, thresholds, stored, new)
+        read = {}
         try:
-            work, report = _run(store, model, thresholds, stored, new, fast=fast)
+            work, report = _run(store, model, thresholds, stored, new, fast=fast, read=read)
         except _Stale:
             fast = False
-            work, report = _run(store, model, thresholds, stored, new)
+            work, report = _run(store, model, thresholds, stored, new, read=read)
         _persist(store, model, stored, work, report)
-        _save_state(store, model, thresholds, work)
+        _save_state(store, model, thresholds, work, read=read)
     touched = {}
     for s in report["stored"]:
         touched.setdefault(s["print"], s["workspace"])
@@ -848,26 +948,50 @@ def correct_provisional(store, model, source_ref, pid):
     return {"print": pid, "negative": neg, "auto": False}
 
 
+def _carried_source(s):
+    s = {k: s.get(k) for k in _SOURCE_KEYS + ("at", "different") if k in s}
+    if s.get("status") not in EXCLUSIONS:
+        s.pop("status", None)
+        s.pop("reason", None)
+        s.pop("at", None)
+    return s
+
+
 def carry(store, from_model_id, model):
     """Start `model`'s folder from the prints of another model folder: each print's identity, `known_as`,
     negatives and sources as inputs (computed statuses dropped, exclusions kept), with no vector. A print
-    already in the target folder is left alone. `replay` then builds them; `prints rebuild` after a model
-    change is this, then `replay`. Returns the ids carried."""
+    already in the target folder gains what it lacks — `known_as` entries, negatives, sources (by audio,
+    diarisation, label, workspace and person) — so a partial first rebuild is completed by the next (task 10,
+    finding `rebuild-before-new-model-signatures-drops-sources`). `replay` then builds them; `prints rebuild`
+    after a model change is this, then `replay`. Returns the ids carried or added to."""
     carried = []
     with store.lock(model.id):
-        have = {p["id"] for p in store.prints(model.id)}
+        have = {p["id"]: p for p in store.prints(model.id)}
         for p in store.prints(from_model_id):
-            if p["id"] in have:
+            q = have.get(p["id"])
+            if q is None:
+                q = _shell(p, model)
+                q["auto"] = p.get("auto", True)
+                for s in p.get("sources") or []:
+                    q["sources"].append(_carried_source(s))
+                store.write_print(model.id, q)
+                carried.append(p["id"])
                 continue
-            q = _shell(p, model)
-            q["auto"] = p.get("auto", True)
+            changed = False
+            for e in p.get("known_as") or []:
+                if not _known(q, e.get("workspace"), e.get("person")):
+                    q.setdefault("known_as", []).append(copy.deepcopy(e))
+                    changed = True
+            for n in p.get("negatives") or []:
+                if not any(_ref_key(m) == _ref_key(n) for m in q.get("negatives") or []):
+                    q.setdefault("negatives", []).append(_ref(n))
+                    changed = True
+            mine = {(_ref_key(s), s.get("workspace"), s.get("person")) for s in q.get("sources") or []}
             for s in p.get("sources") or []:
-                s = {k: s.get(k) for k in _SOURCE_KEYS + ("at", "different") if k in s}
-                if s.get("status") not in EXCLUSIONS:
-                    s.pop("status", None)
-                    s.pop("reason", None)
-                    s.pop("at", None)
-                q["sources"].append(s)
-            store.write_print(model.id, q)
-            carried.append(p["id"])
+                if (_ref_key(s), s.get("workspace"), s.get("person")) not in mine:
+                    q.setdefault("sources", []).append(_carried_source(s))
+                    changed = True
+            if changed:
+                store.write_print(model.id, q)
+                carried.append(p["id"])
     return carried

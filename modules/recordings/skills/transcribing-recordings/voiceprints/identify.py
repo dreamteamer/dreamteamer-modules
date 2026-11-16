@@ -235,6 +235,26 @@ def workspace_prints(store, active, workspace):
     return out
 
 
+def other_model_people(store, model_id, workspace, have=()):
+    """The people this workspace knows (a `known_as` entry for it) whose voice print exists only in OTHER model
+    folders — made with another speaker model, so not used with `model_id` until `prints rebuild` makes it again
+    (acceptance line 11). References only, never read from elsewhere."""
+    out = set()
+    for mid in enrol._model_folders(store, but=model_id):
+        for p in store.prints(mid):
+            for k in p.get("known_as") or []:
+                if k.get("workspace") == workspace and k.get("person") and k["person"] not in have:
+                    out.add(k["person"])
+    return sorted(out)
+
+
+def rebuild_line(n, model_id):
+    many = n != 1
+    return (f"{n} voice print{'s' if many else ''} of people this workspace knows {'were' if many else 'was'} made "
+            f"with another speaker model and {'are' if many else 'is'} not used with the active model {model_id}; "
+            f"run `prints rebuild` to make {'them' if many else 'it'} again")
+
+
 def _pid_of(store, active, workspace, person):
     p = workspace_prints(store, active, workspace).get(person)
     return p["id"] if p else None
@@ -340,6 +360,9 @@ def run(fm, body, ctx, store, active, *, compute=None, audio_key=None, now=None)
     labels = sorted(_map(sig.get("labels")), key=_order)
     ex = existing(t)
     prints = workspace_prints(store, active, workspace)
+    stale = other_model_people(store, model_id, workspace, set(prints))
+    if stale:
+        extra.append(rebuild_line(len(stale), model_id))
     d = naming.decide(sig, ctx, prints, ex, calib)
     # a label a person closed ("nobody", "different people") is honoured until `run` replaces the block: no
     # machine name, no proposal, no question (review round 1, `closed-label-named-again-on-rerun`)

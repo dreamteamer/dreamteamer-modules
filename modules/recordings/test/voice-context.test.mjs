@@ -254,6 +254,22 @@ describe('personRecords — this workspace\'s recordings that name a person', ()
 			'a source entry naming another person under the same string would not match: the reference decides');
 		assert.deepEqual(await personRecords(root, 'contacts/tom-whitfield'), []);
 	});
+
+	test('an `earlier:<key>` entry is reported on the earlier diarisation\'s label it carries (finding earlier-key-drops-its-label)', async () => {
+		seed();
+		const ref = (() => {
+			const out = dt('add', 'meeting-recordings', '--name', 'Northwind retro', '--date', '2026-09-05T10:00:00+03:00');
+			return `meeting-recordings/${idOf(out)}`;
+		})();
+		patch(ref, { transcription: { speakers: {}, previous_speakers: { diarization_id: 'aabbccddeeff', labels: {
+			speaker_0: { name: 'Priya Raman', new_label: 'speaker_0', share: 1, offered: true },
+			'earlier:speaker_3': { name: 'Tom Whitfield', source: { person: 'contacts/tom-whitfield' }, label: 'speaker_0', new_label: 'speaker_1', share: 0.5, offered: false },
+			'earlier:speaker_4': { name: 'Tom Whitfield', source: { person: 'contacts/tom-whitfield' }, new_label: null, share: 0, offered: false } } } } });
+		const tom = await personRecords(root, 'contacts/tom-whitfield');
+		assert.deepEqual(tom.map((r) => [r.record, r.matches]), [[ref, [
+			{ label: 'speaker_0', where: 'previous_speakers', diarization_id: 'aabbccddeeff', new_label: 'speaker_1' },
+			{ label: 'earlier:speaker_4', where: 'previous_speakers', diarization_id: 'aabbccddeeff', new_label: null }]]]);
+	});
 });
 
 // ── the node entry: a stand-in transcriber copies what it was handed ────────────────────────────────
@@ -364,6 +380,8 @@ describe('transcribe.mjs hands the child its context', () => {
 		const rebuild = entry(['prints', 'rebuild']);
 		assert.equal(rebuild.r.status, 0, rebuild.r.stderr);
 		assert.deepEqual([rebuild.context.workspace, rebuild.context.record, rebuild.context.known['users/dana-oren']], ['probe', undefined, 'Dana Oren']);
+		// rebuild computes from the diarised recordings what the active model lacks (finding rebuild-before-new-model-signatures-drops-sources)
+		assert.deepEqual(rebuild.context.records.map((c) => c.record).sort(), [S.rec1, S.rec2, S.rec3].sort());
 	});
 
 	test('an unknown verb prints the usage line naming every verb, and exits 2', () => {

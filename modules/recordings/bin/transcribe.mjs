@@ -101,6 +101,8 @@ async function plan(verbName, args) {
 		const [sub, target] = pos.map((i) => args[i]);
 		if ((sub === 'forget' || sub === 'never') && target) context = await vc.personContext(root, target);
 		else if (sub === 'forget-recording' && target) context = await recordsAt([pos[1]]);
+		// rebuild computes the signatures the active model lacks from the workspace's diarised recordings
+		else if (sub === 'rebuild') context = await vc.diarisedContext(root);
 		else {
 			context = await vc.baseContext(root);
 			if (target && (sub === 'link' || sub === 'reseed')) context.person = { ref: target, name: context.known[target] ?? null };
