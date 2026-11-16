@@ -153,6 +153,10 @@
 		--dt-shadow-card: 0 0 0 1px rgb(var(--dt-ink) / 0.07), 0 8px 20px -10px rgb(0 0 0 / 0.5);
 		--dt-shadow-sheet: 0 0 0 1px rgb(var(--dt-ink) / 0.06), 0 8px 24px rgb(0 0 0 / 0.35);
 		--dt-shadow-menu: 0 0 0 1px rgb(var(--dt-ink) / 0.08), 0 12px 28px -6px rgb(0 0 0 / 0.6);
+		/* The slide-over panel's edge is a DARK hairline here: the menu's ring is the light ink, which along a panel's full
+		   height read as a faint light edge — and the sheet's own light ring showed just outside the panel's right side. A
+		   1px dark ring covers that one too. */
+		--dt-shadow-panel: 0 0 0 1px rgb(0 0 0 / 0.45), -8px 0 28px -6px rgb(0 0 0 / 0.6);
 		--dt-backdrop: rgb(0 0 0 / 0.5);
 	}
 }

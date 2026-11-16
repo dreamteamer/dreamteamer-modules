@@ -137,6 +137,8 @@
 	--dt-shadow-card: var(--dt-shadow);
 	--dt-shadow-sheet: none;
 	--dt-shadow-menu: var(--dt-shadow-lg);
+	/* A panel docked over the sheet's edge (the browser host's slide-over right panel): the menu's lift by default. */
+	--dt-shadow-panel: var(--dt-shadow-menu);
 	/* The dim behind a dialog — the ink at half, which is the overlay's old literal exactly. */
 	--dt-backdrop: rgb(var(--dt-ink) / 0.5);
 

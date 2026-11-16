@@ -175,7 +175,7 @@ if (overlay) {
 	width: min(380px, calc(100vw - 72px));
 	background: var(--dt-surface);
 	border-top-left-radius: var(--dt-radius-xl);
-	box-shadow: var(--dt-shadow-menu);
+	box-shadow: var(--dt-shadow-panel);
 	overflow: hidden;
 }
 .dt-rsb-slide-enter-active,
