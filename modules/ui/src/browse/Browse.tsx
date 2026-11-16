@@ -43,10 +43,8 @@ import { TargetChoice } from "./TargetChoice.tsx"
 import { usePopover } from "./use-popover.ts"
 import {
   button,
-  buttonActive,
-  buttonDanger,
-  buttonIcon,
-  buttonPrimary,
+  buttonSize,
+  buttonTone,
   chipRemove,
   cx,
   error,
@@ -248,7 +246,7 @@ export function Browse({
           <div ref={filter.anchor} className={popoverAnchor}>
             <button
               type="button"
-              className={cx(button, buttonIcon, filter.open && buttonActive)}
+              className={cx(button, buttonTone[filter.open ? "active" : "default"], buttonSize.icon)}
               title={prose ? `Filtered — ${prose}` : "Filter"}
               aria-expanded={filter.open}
               onClick={() => filter.setOpen(!filter.open)}
@@ -292,7 +290,7 @@ export function Browse({
               {editable && (
                 <button
                   type="button"
-                  className={cx(button, buttonIcon, buttonDanger)}
+                  className={cx(button, buttonTone.danger, buttonSize.icon)}
                   title="Delete selected"
                   disabled={state.deleting}
                   onClick={() => {
@@ -308,7 +306,7 @@ export function Browse({
 
           <button
             type="button"
-            className={cx(button, buttonIcon, cmdsOpen && buttonActive)}
+            className={cx(button, buttonTone[cmdsOpen ? "active" : "default"], buttonSize.icon)}
             title="Commands — over the ticked rows"
             aria-pressed={cmdsOpen}
             data-commands-toggle
@@ -319,7 +317,7 @@ export function Browse({
 
           <button
             type="button"
-            className={cx(button, buttonIcon, panelOpen && buttonActive)}
+            className={cx(button, buttonTone[panelOpen ? "active" : "default"], buttonSize.icon)}
             title="Layout options"
             aria-pressed={panelOpen}
             onClick={() => optionsOpen.set(!panelOpen)}
@@ -331,7 +329,7 @@ export function Browse({
             <div className={popoverAnchor}>
               <button
                 type="button"
-                className={cx(button, buttonPrimary)}
+                className={cx(button, buttonTone.primary, buttonSize.default)}
                 aria-expanded={!!state.pendingCreate}
                 onClick={() => (state.pendingCreate ? state.cancelCreate() : state.createRecord())}
               >
@@ -459,7 +457,7 @@ function Pager({ state }: { state: BrowseState }) {
       </span>
       <button
         type="button"
-        className={cx(button, buttonIcon)}
+        className={cx(button, buttonTone.default, buttonSize.icon)}
         disabled={!state.hasPrev}
         onClick={state.prevPage}
         title="Previous page"
@@ -468,7 +466,7 @@ function Pager({ state }: { state: BrowseState }) {
       </button>
       <button
         type="button"
-        className={cx(button, buttonIcon)}
+        className={cx(button, buttonTone.default, buttonSize.icon)}
         disabled={!state.hasNext}
         onClick={state.nextPage}
         title="Next page"

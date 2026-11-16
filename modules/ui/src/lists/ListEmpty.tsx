@@ -5,7 +5,7 @@
  */
 import { Icon } from "../components/Icon.tsx"
 import type { ListProps } from "../registry/props.ts"
-import { button, listEmpty } from "../styles/classes.ts"
+import { button, buttonSize, buttonTone, cx, listEmpty } from "../styles/classes.ts"
 
 export function ListEmpty({ state }: { state: ListProps["state"] }) {
   return (
@@ -19,7 +19,11 @@ export function ListEmpty({ state }: { state: ListProps["state"] }) {
             : "No records yet."}
       </p>
       {!state.loading && !state.hasActiveQuery && !state.unavailable && (
-        <button type="button" className={button} onClick={() => state.createRecord()}>
+        <button
+          type="button"
+          className={cx(button, buttonTone.default, buttonSize.default)}
+          onClick={() => state.createRecord()}
+        >
           Create record
         </button>
       )}

@@ -22,7 +22,8 @@ import { byDay, entryRest, type Activity, type ActivityEntry } from "../lib/acti
 import { recordRoute } from "../lib/route.ts"
 import {
   button,
-  buttonSmall,
+  buttonSize,
+  buttonTone,
   chip,
   cx,
   error as errorBox,
@@ -40,7 +41,7 @@ const dayOf = (iso: string) =>
 const timeOf = (iso: string) => new Date(iso).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e))
 /** The pager's ‹ › buttons. (was dt-button is-icon is-small) */
-const pagerButton = cx(button, buttonSmall)
+const pagerButton = cx(button, buttonTone.default, buttonSize.small)
 
 export function ActivityPane({
   module,

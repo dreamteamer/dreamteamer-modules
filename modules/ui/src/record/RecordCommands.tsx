@@ -16,7 +16,7 @@ import { Icon } from "../components/Icon.tsx"
 import { commandAllDone, commandIcon, commandStatus, type CommandRow } from "../lib/command-rows.ts"
 import { hostInfo } from "../lib/host.ts"
 import { canAsk, itemLabel, type QueueItem } from "../lib/queue-items.ts"
-import { button, code, cx, error, subtle, textarea, toolbar } from "../styles/classes.ts"
+import { button, buttonSize, buttonTone, code, cx, error, subtle, textarea, toolbar } from "../styles/classes.ts"
 
 export function RecordCommands({ collection, ids }: { collection: string; ids: string[] }) {
   const { version } = useApp()
@@ -134,11 +134,21 @@ export function RecordCommands({ collection, ids }: { collection: string; ids: s
       />
       <div className={toolbar}>
         {picked && canAsk({ chat }, picked) && (
-          <button type="button" className={button} disabled={asking} onClick={() => void ask()}>
+          <button
+            type="button"
+            className={cx(button, buttonTone.default, buttonSize.default)}
+            disabled={asking}
+            onClick={() => void ask()}
+          >
             <Icon name="comment-discussion" /> Ask in chat
           </button>
         )}
-        <button type="button" className={button} disabled={!invocation} onClick={() => void copy()}>
+        <button
+          type="button"
+          className={cx(button, buttonTone.default, buttonSize.default)}
+          disabled={!invocation}
+          onClick={() => void copy()}
+        >
           <Icon name={copied ? "check" : "copy"} /> {copied ? "Copied" : "Copy"}
         </button>
       </div>

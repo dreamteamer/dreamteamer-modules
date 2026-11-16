@@ -14,7 +14,18 @@ import { shipsOf } from "../lib/modules.ts"
 import { SCHEMA_BASE } from "../lib/route.ts"
 import { schemaRowContext } from "../lib/vscode-context.ts"
 import { useModules } from "./use-modules.ts"
-import { button, chip, cx, error as errorBox, mono, page, pageHead, subtle } from "../styles/classes.ts"
+import {
+  button,
+  buttonSize,
+  buttonTone,
+  chip,
+  cx,
+  error as errorBox,
+  mono,
+  page,
+  pageHead,
+  subtle,
+} from "../styles/classes.ts"
 import { table } from "./looks.ts"
 
 export function ModuleList({ only }: { only: readonly string[] | null }) {
@@ -33,7 +44,7 @@ export function ModuleList({ only }: { only: readonly string[] | null }) {
         </div>
         <button
           type="button"
-          className={button}
+          className={cx(button, buttonTone.default, buttonSize.default)}
           title="New module (a host command)"
           onClick={() => notify("dt:command", { command: "dreamteamer.newModule" })}
         >

@@ -41,8 +41,8 @@ import { setLeaveGuard } from "../lib/leave-guard.ts"
 import { SCHEMA_BASE } from "../lib/route.ts"
 import {
   button,
-  buttonDanger,
-  buttonPrimary,
+  buttonSize,
+  buttonTone,
   cx,
   dialogActions,
   error as errorBox,
@@ -171,12 +171,17 @@ export function DataModelDetail({
   const free = fields.filter(f => !f.implicit)
   const actions = (
     <>
-      <button type="button" className={button} data-action="add-field" onClick={() => setDrawer({ field: null })}>
+      <button
+        type="button"
+        className={cx(button, buttonTone.default, buttonSize.default)}
+        data-action="add-field"
+        onClick={() => setDrawer({ field: null })}
+      >
         <Icon name="add" /> Add field
       </button>
       <button
         type="button"
-        className={cx(button, buttonDanger)}
+        className={cx(button, buttonTone.danger, buttonSize.default)}
         data-action="delete-collection"
         onClick={() => setDeleting(true)}
       >
@@ -292,12 +297,17 @@ export function DataModelDetail({
           </span>
           {saveError && <span className="text-danger font-normal">{saveError}</span>}
           <span className="flex-1" />
-          <button type="button" className={button} disabled={saving} onClick={() => void discard()}>
+          <button
+            type="button"
+            className={cx(button, buttonTone.default, buttonSize.default)}
+            disabled={saving}
+            onClick={() => void discard()}
+          >
             Discard
           </button>
           <button
             type="button"
-            className={cx(button, buttonPrimary)}
+            className={cx(button, buttonTone.primary, buttonSize.default)}
             data-action="save"
             disabled={saving}
             onClick={() => void save()}
@@ -596,12 +606,12 @@ function RenameDialog({
         )}
         {error && <p className={errorBox}>{error}</p>}
         <div className={dialogActions}>
-          <button type="button" className={button} onClick={onClose}>
+          <button type="button" className={cx(button, buttonTone.default, buttonSize.default)} onClick={onClose}>
             Cancel
           </button>
           <button
             type="submit"
-            className={cx(button, buttonPrimary)}
+            className={cx(button, buttonTone.primary, buttonSize.default)}
             data-action={planned ? "rename" : "preview"}
             disabled={busy || !!problem}
           >
@@ -655,10 +665,14 @@ function DeleteCollectionDialog({
         />
         {error && <p className={errorBox}>{error}</p>}
         <div className={dialogActions}>
-          <button type="button" className={button} onClick={onClose}>
+          <button type="button" className={cx(button, buttonTone.default, buttonSize.default)} onClick={onClose}>
             Cancel
           </button>
-          <button type="submit" className={cx(button, buttonDanger)} disabled={typed !== collection || busy}>
+          <button
+            type="submit"
+            className={cx(button, buttonTone.danger, buttonSize.default)}
+            disabled={typed !== collection || busy}
+          >
             {busy ? "Deleting…" : "Delete descriptor"}
           </button>
         </div>

@@ -14,7 +14,7 @@ import { listOrNull, moveItem, rowsOf } from "../lib/edit-values.ts"
 import { tryRenderDisplay } from "../lib/template.ts"
 import { OptionsForm } from "../render/OptionsForm.tsx"
 import type { EditProps } from "../registry/props.ts"
-import { button, cx, iconButton } from "../styles/classes.ts"
+import { button, buttonSize, buttonTone, cx, iconButton } from "../styles/classes.ts"
 
 export function rowSummary(
   row: Record<string, unknown>,
@@ -131,7 +131,7 @@ export function EditList({ value, onChange, options, id }: EditProps) {
           </div>
         )
       })}
-      <button type="button" className={cx(button, "self-start")} onClick={add}>
+      <button type="button" className={cx(button, buttonTone.default, buttonSize.default, "self-start")} onClick={add}>
         <Icon name="add" /> Add item
       </button>
     </div>

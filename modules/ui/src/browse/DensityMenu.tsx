@@ -9,7 +9,7 @@ import { Icon } from "../components/Icon.tsx"
 import { ROW_SIZES, ROW_SIZE_LABELS, resolveRowSize } from "../lib/row-size.ts"
 import type { BrowseState } from "./browse-state.ts"
 import { usePopover } from "./use-popover.ts"
-import { button, buttonActive, buttonIcon, cx, menu, menuCheck, menuItem, popoverAnchor } from "../styles/classes.ts"
+import { button, buttonSize, buttonTone, cx, menu, menuCheck, menuItem, popoverAnchor } from "../styles/classes.ts"
 
 const LAYOUT = "table"
 
@@ -20,7 +20,7 @@ export function DensityMenu({ state }: { state: BrowseState }) {
     <div ref={anchor} className={popoverAnchor}>
       <button
         type="button"
-        className={cx(button, buttonIcon, open && buttonActive)}
+        className={cx(button, buttonTone[open ? "active" : "default"], buttonSize.icon)}
         title={`Row density — ${ROW_SIZE_LABELS[current]}`}
         aria-haspopup="menu"
         aria-expanded={open}

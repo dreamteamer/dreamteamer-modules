@@ -13,7 +13,7 @@ import { addMonths, calendarWeeks, startOfMonth, WEEKDAYS } from "../lib/calenda
 import { rowContext } from "../lib/vscode-context.ts"
 import type { ListProps } from "../registry/props.ts"
 import { ListEmpty } from "./ListEmpty.tsx"
-import { button, cx, listEmpty, subtle } from "../styles/classes.ts"
+import { button, buttonSize, buttonTone, cx, listEmpty, subtle } from "../styles/classes.ts"
 import { calChip } from "./looks.ts"
 
 const SHOWN = 4
@@ -51,16 +51,25 @@ export function ListCalendar({ state }: ListProps) {
       <div className="flex items-center gap-2">
         <button
           type="button"
-          className={button}
+          className={cx(button, buttonTone.default, buttonSize.default)}
           title="Previous month"
           onClick={() => setCursor(addMonths(cursor, -1))}
         >
           ‹
         </button>
-        <button type="button" className={button} onClick={() => setCursor(startOfMonth(new Date()))}>
+        <button
+          type="button"
+          className={cx(button, buttonTone.default, buttonSize.default)}
+          onClick={() => setCursor(startOfMonth(new Date()))}
+        >
           Today
         </button>
-        <button type="button" className={button} title="Next month" onClick={() => setCursor(addMonths(cursor, 1))}>
+        <button
+          type="button"
+          className={cx(button, buttonTone.default, buttonSize.default)}
+          title="Next month"
+          onClick={() => setCursor(addMonths(cursor, 1))}
+        >
           ›
         </button>
         <span className="font-semibold ml-1.5">

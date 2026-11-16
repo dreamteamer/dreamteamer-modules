@@ -20,7 +20,8 @@ import { SourceMark } from "../components/SourceMark.tsx"
 import { recordCount, recordsIn, type StackEntry } from "../lib/sources-stack.ts"
 import {
   button,
-  buttonSmall,
+  buttonSize,
+  buttonTone,
   cx,
   error,
   hint,
@@ -137,7 +138,7 @@ export function SourcesPane() {
             </span>
             <button
               type="button"
-              className={cx(button, buttonSmall)}
+              className={cx(button, buttonTone.default, buttonSize.small)}
               disabled={checking}
               onClick={() => void loadAccess(true)}
             >

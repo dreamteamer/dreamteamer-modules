@@ -4,11 +4,11 @@
  * (a button, a menu, a hint, a notice, a chip, a page frame, a form row) comes from here. Each string is the old
  * `dt-*` rule it replaced, written as utilities over the tokens in app.css.
  *
- * `cx(...)` joins class names, dropping false, null and undefined: `cx(button, primary && buttonPrimary)`.
+ * `cx(...)` joins class names, dropping false, null and undefined: `cx(menuItem, danger && menuItemDanger)`.
  *
- * A MODIFIER (buttonPrimary, menuItemDanger, noticeOk, invalid, …) marks the properties it overrides `!important`:
+ * A MODIFIER (menuItemDanger, noticeOk, …) marks the properties it overrides `!important`:
  * two utilities that set one property are ordered by the stylesheet, never by the class list, so without it
- * `cx(button, buttonPrimary)` could draw a plain button. The old rules won the same way, by a compound selector.
+ * `cx(menuItem, menuItemDanger)` could draw a plain entry. The old rules won the same way, by a compound selector.
  */
 export const cx = (...parts: Array<string | false | null | undefined | 0>): string => parts.filter(Boolean).join(" ")
 
@@ -56,20 +56,26 @@ export const dialogActions = "flex justify-end gap-2"
 export const stack = "grid gap-1"
 
 // ---- buttons -------------------------------------------------------------------------------------------------------
-/** The ordinary button. (was dt-button) */
+/**
+ * A button is three strings: its frame, one tone and one size — `cx(button, buttonTone.primary, buttonSize.small)`.
+ * The frame sets no colour and no size, and no two tones (or sizes) are ever combined, so no two classes on a button
+ * set the same property and none needs `!`. (was dt-button and its is-* modifiers)
+ */
 export const button =
-  "inline-flex items-center gap-1.5 h-[30px] px-3 py-0 border border-input-border rounded-dt bg-bg text-fg cursor-pointer enabled:hover:bg-bg-hover disabled:opacity-50 disabled:cursor-default"
-/** …the one action of a form or dialog. (was dt-button.is-primary) — use with `button`. */
-export const buttonPrimary =
-  "bg-accent! border-accent! text-accent-fg! enabled:hover:bg-[color-mix(in_srgb,var(--dt-accent)_88%,black)]!"
-/** …destructive. (was dt-button.is-danger) */
-export const buttonDanger = "text-danger!"
-/** …small. (was dt-button.is-small) */
-export const buttonSmall = "h-6! px-2! text-small!"
-/** …an icon only. (was dt-button.is-icon) */
-export const buttonIcon = "px-2!"
-/** …pressed / open; hovering still shows the hover ground. (was dt-button.is-active) */
-export const buttonActive = "border-focus! bg-bg-active! enabled:hover:bg-bg-hover!"
+  "inline-flex items-center gap-1.5 py-0 border rounded-dt cursor-pointer disabled:opacity-50 disabled:cursor-default"
+/** A button's colours: ordinary, the one action of a form or dialog, destructive, pressed / open. */
+export const buttonTone = {
+  default: "border-input-border bg-bg text-fg enabled:hover:bg-bg-hover",
+  primary: "border-accent bg-accent text-accent-fg enabled:hover:bg-[color-mix(in_srgb,var(--dt-accent)_88%,black)]",
+  danger: "border-input-border bg-bg text-danger enabled:hover:bg-bg-hover",
+  active: "border-focus bg-bg-active text-fg enabled:hover:bg-bg-hover",
+} as const satisfies Record<string, string>
+/** A button's height and padding: ordinary, small, an icon only. */
+export const buttonSize = {
+  default: "h-[30px] px-3",
+  small: "h-6 px-2 text-small",
+  icon: "h-[30px] px-2",
+} as const satisfies Record<string, string>
 /** A round icon button with no frame. (was dt-icon-button) */
 export const iconButton =
   "inline-flex items-center justify-center w-[22px] h-[22px] p-0 border-0 rounded-full bg-transparent text-fg-subtle cursor-pointer hover:bg-bg-hover hover:text-fg"
@@ -107,8 +113,6 @@ export const textarea = "w-full"
 export const code = "font-mono text-[12px] [tab-size:2]"
 /** A checkbox with its label beside it. (was dt-check) */
 export const check = "flex items-start gap-2 [&_input]:mt-0.5 [&_input]:mb-0 [&_input]:mx-0"
-/** A control showing an invalid value. (was is-invalid) */
-export const invalid = "text-danger! border-danger!"
 
 // ---- values --------------------------------------------------------------------------------------------------------
 /** Key–value pairs: a nested object, a list row opened. (was dt-kv) */

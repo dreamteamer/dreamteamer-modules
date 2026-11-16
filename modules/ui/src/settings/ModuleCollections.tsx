@@ -8,7 +8,7 @@ import { Icon } from "../components/Icon.tsx"
 import { isUnwritableModule } from "../lib/module-writable.ts"
 import { CreateCollectionDialog } from "./CreateCollectionDialog.tsx"
 import { useModules } from "./use-modules.ts"
-import { button } from "../styles/classes.ts"
+import { button, buttonSize, buttonTone, cx } from "../styles/classes.ts"
 
 export function ModuleCollections({ moduleId }: { moduleId: string }) {
   const { modules } = useModules()
@@ -20,7 +20,7 @@ export function ModuleCollections({ moduleId }: { moduleId: string }) {
     <section className="max-w-[420px] mt-5">
       <button
         type="button"
-        className={button}
+        className={cx(button, buttonTone.default, buttonSize.default)}
         data-action="new-collection-in-module"
         disabled={readOnly}
         title={

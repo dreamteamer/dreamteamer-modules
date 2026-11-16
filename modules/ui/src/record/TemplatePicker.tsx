@@ -13,7 +13,7 @@ import { Icon } from "../components/Icon.tsx"
 import { Select } from "../components/Select.tsx"
 import { recordLabel } from "../lib/schema.ts"
 import { prefillFromRecord } from "../lib/template-prefill.ts"
-import { button, buttonSmall, cx } from "../styles/classes.ts"
+import { button, buttonSize, buttonTone, cx } from "../styles/classes.ts"
 
 export function TemplatePicker({
   collection,
@@ -38,7 +38,11 @@ export function TemplatePicker({
   return (
     <div data-template-picker>
       {!open ? (
-        <button type="button" className={cx(button, buttonSmall)} onClick={() => setOpen(true)}>
+        <button
+          type="button"
+          className={cx(button, buttonTone.default, buttonSize.small)}
+          onClick={() => setOpen(true)}
+        >
           <Icon name="copy" /> Start from existing…
         </button>
       ) : (

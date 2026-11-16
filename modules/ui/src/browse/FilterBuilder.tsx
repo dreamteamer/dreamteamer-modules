@@ -37,7 +37,7 @@ import { filterValueField } from "../lib/filter-widget.ts"
 import { RenderEdit } from "../render/Render.tsx"
 import { useFieldValues } from "./field-values.ts"
 import { FilterFieldPicker } from "./FilterFieldPicker.tsx"
-import { button, buttonActive, buttonSmall, cx, iconButton, subtle } from "../styles/classes.ts"
+import { button, buttonSize, buttonTone, cx, iconButton, subtle } from "../styles/classes.ts"
 
 /** A value control's box; a text input in it fills it. (was dt-filter-value) */
 const valueCls = "flex-1 min-w-0 [&_input:not([type=checkbox])]:w-full"
@@ -154,7 +154,7 @@ export function FilterBuilder({
             <button
               key={logic}
               type="button"
-              className={cx(button, buttonSmall, group.logic === logic && buttonActive)}
+              className={cx(button, buttonTone[group.logic === logic ? "active" : "default"], buttonSize.small)}
               onClick={() => setValue(g => ({ ...g, logic }))}
             >
               {logic === "_and" ? "All" : "Any"}
@@ -244,7 +244,7 @@ export function FilterBuilder({
           </div>
         )
       })}
-      <button type="button" className={cx(button, buttonSmall)} onClick={addRule}>
+      <button type="button" className={cx(button, buttonTone.default, buttonSize.small)} onClick={addRule}>
         <Icon name="add" /> Add condition
       </button>
     </div>

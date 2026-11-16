@@ -46,7 +46,7 @@ import { templateFields } from "../lib/template.ts"
 import { edits, kindDefaultEdits, kindDefaultViews, views } from "../registry/index.ts"
 import { FieldContext } from "../render/FieldContext.tsx"
 import { OptionsForm } from "../render/OptionsForm.tsx"
-import { button, buttonPrimary, check, cx, formRow, hint, iconButton, input, mono } from "../styles/classes.ts"
+import { button, buttonSize, buttonTone, check, cx, formRow, hint, iconButton, input, mono } from "../styles/classes.ts"
 import { FieldDisplayKeys } from "./FieldDisplayKeys.tsx"
 import { hintErr, panel } from "./looks.ts"
 
@@ -513,12 +513,12 @@ export function FieldDrawer({
           )}
         </div>
         <footer className="flex justify-end gap-2 py-2.5 px-4 border-t border-border">
-          <button type="button" className={button} onClick={onClose}>
+          <button type="button" className={cx(button, buttonTone.default, buttonSize.default)} onClick={onClose}>
             Cancel
           </button>
           <button
             type="button"
-            className={cx(button, buttonPrimary)}
+            className={cx(button, buttonTone.primary, buttonSize.default)}
             data-action="apply"
             disabled={!canApply}
             onClick={apply}

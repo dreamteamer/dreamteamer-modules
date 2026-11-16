@@ -48,19 +48,19 @@ window `message` events. The app re-reads the nav, the schema and the open page 
 
 ## what it draws
 
-| route | page |
-|---|---|
-| `/` | the workspace's collections |
-| `/content/<collection>` | the browse: the collection's records, by the List its layout names |
-| `/<a ui-view's route>` | a collection ui-view (`/projects-board`): the same browse, seeded from the view |
-| `/<a page ui-view's route>` | a page ui-view (layout `page` or `activity`): its nested views as panels; `?source=<layer>` scopes it; any other layout names a module app, drawn in its frame |
-| `/a/<app>[/…]` | a module app ([module apps](#module-apps)) |
-| `/content/<collection>/<id>` | the record page: its record layout, the commit line and source, Commands, Info and Revisions |
-| `/content/<collection>/+` | a new record |
-| `/<a record ui-view's route>/<id>` | a record drawn by a record-scope ui-view's `display.record` |
-| `/settings/schema[/<kind>[/<id>]]` | the Schema tab: Activity, every internal collection (modules, collections, skills, …), Sources |
-| `/settings/data-model[/<name>]` | the old address of the data model: lands on `/settings/schema/collections[/<name>]` |
-| `/settings/system/<collection>[/<id>]` | a list or record kept under the settings prefix |
+| route                                  | page                                                                                                                                                           |
+| -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/`                                    | the workspace's collections                                                                                                                                    |
+| `/content/<collection>`                | the browse: the collection's records, by the List its layout names                                                                                             |
+| `/<a ui-view's route>`                 | a collection ui-view (`/projects-board`): the same browse, seeded from the view                                                                                |
+| `/<a page ui-view's route>`            | a page ui-view (layout `page` or `activity`): its nested views as panels; `?source=<layer>` scopes it; any other layout names a module app, drawn in its frame |
+| `/a/<app>[/…]`                         | a module app ([module apps](#module-apps))                                                                                                                     |
+| `/content/<collection>/<id>`           | the record page: its record layout, the commit line and source, Commands, Info and Revisions                                                                   |
+| `/content/<collection>/+`              | a new record                                                                                                                                                   |
+| `/<a record ui-view's route>/<id>`     | a record drawn by a record-scope ui-view's `display.record`                                                                                                    |
+| `/settings/schema[/<kind>[/<id>]]`     | the Schema tab: Activity, every internal collection (modules, collections, skills, …), Sources                                                                 |
+| `/settings/data-model[/<name>]`        | the old address of the data model: lands on `/settings/schema/collections[/<name>]`                                                                            |
+| `/settings/system/<collection>[/<id>]` | a list or record kept under the settings prefix                                                                                                                |
 
 A collection or id holding `/` resolves against the workspace's collections.
 
@@ -247,12 +247,12 @@ No module code runs in this page. Before the first render, `mount` opens one hid
 and reports what it registered. For each id nobody holds yet, the app registers a React **proxy** in its own registry
 — `edits`, `views`, `lists`, `apps` — so the field, list or page that resolves to it draws a **surface frame**:
 
-| registered | drawn |
-|---|---|
-| an Edit | a frame where the field's Edit goes; a value it sends is written only to a collection the person granted the module |
-| a View | a frame on the record page; in a cell, the registry frame's markup, sanitised to a short allow-list of tags |
-| a List | a frame filling the browse, handed a snapshot of the rows, columns, selection and sort; its actions (open, select, sort, page) come back as intents the host checks |
-| an app | a page at `/a/<id>[/…]`, the frame kept across the app's own routes; and a page ui-view whose `display.list.layout` names the app draws it at the view's route |
+| registered | drawn                                                                                                                                                               |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| an Edit    | a frame where the field's Edit goes; a value it sends is written only to a collection the person granted the module                                                 |
+| a View     | a frame on the record page; in a cell, the registry frame's markup, sanitised to a short allow-list of tags                                                         |
+| a List     | a frame filling the browse, handed a snapshot of the rows, columns, selection and sort; its actions (open, select, sort, page) come back as intents the host checks |
+| an app     | a page at `/a/<id>[/…]`, the frame kept across the app's own routes; and a page ui-view whose `display.list.layout` names the app draws it at the view's route      |
 
 Every `fetch('/api/…')` a frame makes is a message: the host checks it with `@dreamteamer/protocol`'s gate under
 the module's scope (its own collections, plus what the person's grant adds — `moduleGrants` on `GET /host`, or
@@ -291,15 +291,17 @@ tokens — never Tailwind's palette:
   around a mounted app is left alone), and a `@theme` that names the tokens for Tailwind and clears its colours:
   `bg-bg-subtle`, `text-fg-subtle`, `border-border`, `text-danger`, `bg-chart-green`, `font-mono`, `text-small`,
   `rounded-dt`, … A component can only reach for a token.
-- `src/styles/classes.ts` — the looks several parts share, as class strings (`button`, `buttonPrimary`, `menu`,
+- `src/styles/classes.ts` — the looks several parts share, as class strings and variant maps (`button`, `buttonTone`, `menu`,
   `menuItem`, `hint`, `notice`, `chip`, `page`, `formRow`, …) and `cx(...)` to join them; a folder's own shared looks
   sit in its `looks.ts` (`browse/`, `lists/`, `record/`, `settings/`, `components/`).
 - `src/styles/vendor.css` — the few rules for DOM a library draws (Leaflet's markers, React Flow's canvas and
   handles), hooked on a class the app hands the library. CodeMirror is themed in code.
 
 Three rules keep it honest. Two utilities that set one property are ordered by the stylesheet, not the class list,
-so a modifier marks what it overrides `!important` (`buttonPrimary`), or the choice is made in code
-(`open ? "border-focus" : "border-input-border"`), and a parent's `[&_td]:…` is never overridden by a class on the
+so no two classes on an element set the same property: a look with variants is a frame plus flat
+`as const satisfies Record<string, string>` maps, one entry from each (`cx(button, buttonTone.primary,
+buttonSize.small)`), or the choice is made in code (`open ? "border-focus" : "border-input-border"`); `!important`
+only beats a library's unlayered stylesheet (codicon.css), and a parent's `[&_td]:…` is never overridden by a class on the
 child — the child carries its own. A class is written out whole in the source: Tailwind finds class names by reading
 the files, so one built at run time is never generated. And code never finds an element by its look: a hook is a
 `data-*` attribute (`data-nav-row`, `data-control`, `data-items`, `data-md`).
@@ -326,9 +328,9 @@ The build runs before every publish (`prepublishOnly`). Nothing under `dist/` is
 
 ## versions
 
-| @dreamteamer/ui | @dreamteamer/protocol | engine (`dreamteamer`) |
-|---|---|---|
-| 0.4.x | ^0.3.0 | `>=0.43.0`; the app is React (Vue through 0.3) over the same transport, routes and host messages, styled with Tailwind over the same `--dt-*` tokens. A module app's components are mount functions, with no framework from the guest (0.3 handed modules `window.Vue`): a 0.3 bundle must be rebuilt. Module frames get this app's stylesheet — the tokens and the base, and only the utilities the app itself uses; 0.3's `dt-` classes are gone, so a bundle styled with them carries its own CSS (drawn in the tokens, it still wears the editor's theme) |
-| 0.3.x | ^0.3.0 | `>=0.43.0`; the pane routes (`GET /host`, selection, queue) are the protocol's |
-| 0.2.x | ^0.2.0 | `>=0.43.0`; the nav is `nav.yaml` (module fragments from 0.49) |
-| 0.1.x | ^0.1.0 | `>=0.43.0` |
+| @dreamteamer/ui | @dreamteamer/protocol | engine (`dreamteamer`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| --------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0.4.x           | ^0.3.0                | `>=0.43.0`; the app is React (Vue through 0.3) over the same transport, routes and host messages, styled with Tailwind over the same `--dt-*` tokens. A module app's components are mount functions, with no framework from the guest (0.3 handed modules `window.Vue`): a 0.3 bundle must be rebuilt. Module frames get this app's stylesheet — the tokens and the base, and only the utilities the app itself uses; 0.3's `dt-` classes are gone, so a bundle styled with them carries its own CSS (drawn in the tokens, it still wears the editor's theme) |
+| 0.3.x           | ^0.3.0                | `>=0.43.0`; the pane routes (`GET /host`, selection, queue) are the protocol's                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| 0.2.x           | ^0.2.0                | `>=0.43.0`; the nav is `nav.yaml` (module fragments from 0.49)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| 0.1.x           | ^0.1.0                | `>=0.43.0`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |

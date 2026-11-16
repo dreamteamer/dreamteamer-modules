@@ -17,7 +17,8 @@ import { selectedSources, sourceColor, toggleSource, viaWord, withSourceSelectio
 import { usePopover } from "./use-popover.ts"
 import {
   button,
-  buttonActive,
+  buttonSize,
+  buttonTone,
   cx,
   menu,
   menuCheck,
@@ -59,7 +60,7 @@ export function SourcePicker({
     <div ref={anchor} className={popoverAnchor}>
       <button
         type="button"
-        className={cx(button, open && buttonActive)}
+        className={cx(button, buttonTone[open ? "active" : "default"], buttonSize.default)}
         aria-expanded={open}
         aria-haspopup="listbox"
         title={all ? "Sources — showing all" : `Sources — showing ${selected.join(", ")}`}

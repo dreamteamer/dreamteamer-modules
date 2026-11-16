@@ -21,7 +21,8 @@ import { commitRepoLabel, pendingByRepo } from "../lib/sources.ts"
 import { Icon } from "./Icon.tsx"
 import {
   button,
-  buttonActive,
+  buttonSize,
+  buttonTone,
   cx,
   menu as menuCls,
   menuItem,
@@ -101,7 +102,7 @@ export function CommitButton({
       {repos.length === 1 && (
         <button
           type="button"
-          className={button}
+          className={cx(button, buttonTone.default, buttonSize.default)}
           disabled={busy}
           data-repo={repos[0]!.repo}
           title={`Commit ${pending} pending record change${s} to ${label(repos[0]!.repo)}`}
@@ -114,7 +115,7 @@ export function CommitButton({
         <>
           <button
             type="button"
-            className={cx(button, menu.open && buttonActive)}
+            className={cx(button, buttonTone[menu.open ? "active" : "default"], buttonSize.default)}
             disabled={busy}
             title={`${pending} pending record change${s} across ${repos.length} repos`}
             aria-haspopup="menu"

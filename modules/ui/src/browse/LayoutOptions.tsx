@@ -40,7 +40,7 @@ import { FieldContext } from "../render/FieldContext.tsx"
 import { OptionsForm } from "../render/OptionsForm.tsx"
 import { useModules } from "../settings/use-modules.ts"
 import type { BrowseState } from "./browse-state.ts"
-import { button, buttonPrimary, buttonSmall, cx, hint, iconButton, subtle } from "../styles/classes.ts"
+import { button, buttonSize, buttonTone, cx, hint, iconButton, subtle } from "../styles/classes.ts"
 import { floatingPanel, panelHead, panelLabel, panelTitle, sidePanel } from "./looks.ts"
 
 // ---- the looks (was dt-lo-*) -----------------------------------------------------------------------------------
@@ -261,10 +261,18 @@ export function LayoutOptions({ state, onClose }: { state: BrowseState; onClose(
                     )}
                   </p>
                   <div className={rowCls}>
-                    <button type="submit" className={cx(button, buttonPrimary, buttonSmall)} disabled={!slug || saving}>
+                    <button
+                      type="submit"
+                      className={cx(button, buttonTone.primary, buttonSize.small)}
+                      disabled={!slug || saving}
+                    >
                       {saving ? "Saving…" : "Save"}
                     </button>
-                    <button type="button" className={cx(button, buttonSmall)} onClick={() => setFormOpen(false)}>
+                    <button
+                      type="button"
+                      className={cx(button, buttonTone.default, buttonSize.small)}
+                      onClick={() => setFormOpen(false)}
+                    >
                       Cancel
                     </button>
                   </div>
@@ -284,7 +292,11 @@ export function LayoutOptions({ state, onClose }: { state: BrowseState; onClose(
                   <div className={rowCls}>
                     {answer.route && <Link to={answer.route}>Open it</Link>}
                     {answer.a.next?.action ? (
-                      <button type="button" className={cx(button, buttonSmall)} onClick={openForm}>
+                      <button
+                        type="button"
+                        className={cx(button, buttonTone.default, buttonSize.small)}
+                        onClick={openForm}
+                      >
                         {answer.a.next.label}
                       </button>
                     ) : (

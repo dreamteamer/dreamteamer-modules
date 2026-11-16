@@ -15,7 +15,7 @@ import { SCHEMA_BASE } from "../lib/route.ts"
 import { schemaRowContext } from "../lib/vscode-context.ts"
 import { CreateCollectionDialog } from "./CreateCollectionDialog.tsx"
 import type { CollectionRow } from "../api/types.ts"
-import { button, buttonPrimary, cx, page, pageHead, subtle } from "../styles/classes.ts"
+import { button, buttonSize, buttonTone, cx, page, pageHead, subtle } from "../styles/classes.ts"
 import { num, table } from "./looks.ts"
 
 /** Rows by namespace: un-namespaced first, then each namespace in first-seen order. */
@@ -48,7 +48,7 @@ export function DataModelList({ only }: { only: readonly string[] | null }) {
         </div>
         <button
           type="button"
-          className={cx(button, buttonPrimary)}
+          className={cx(button, buttonTone.primary, buttonSize.default)}
           data-action="new-collection"
           onClick={() => setCreating(true)}
         >

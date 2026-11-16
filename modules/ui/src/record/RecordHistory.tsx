@@ -17,7 +17,7 @@ import { classifyDiffLines, type ClassifiedDiffLine } from "../lib/diff-lines.ts
 import { hostInfo, isAdmin } from "../lib/host.ts"
 import { revertRefused, revertRefusedSentence } from "../lib/readonly-source.ts"
 import { relativeTime } from "../lib/relative-time.ts"
-import { button, buttonDanger, cx, dialogActions, error, subtle } from "../styles/classes.ts"
+import { button, buttonSize, buttonTone, cx, dialogActions, error, subtle } from "../styles/classes.ts"
 import { linkAction } from "./looks.ts"
 
 /** A diff line's colour by its kind: added green, removed red, the hunk headers quiet. */
@@ -170,12 +170,16 @@ export function RecordHistory({
           </p>
           {revertError && <p className={error}>{revertError}</p>}
           <div className={dialogActions}>
-            <button type="button" className={button} onClick={() => setAsking(null)}>
+            <button
+              type="button"
+              className={cx(button, buttonTone.default, buttonSize.default)}
+              onClick={() => setAsking(null)}
+            >
               Cancel
             </button>
             <button
               type="button"
-              className={cx(button, buttonDanger)}
+              className={cx(button, buttonTone.danger, buttonSize.default)}
               disabled={reverting}
               onClick={() => void restore()}
             >

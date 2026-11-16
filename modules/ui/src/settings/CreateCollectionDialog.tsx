@@ -22,7 +22,8 @@ import { joinCollectionPath, slugify } from "../lib/slugify.ts"
 import { viewModuleTargets } from "../lib/view-module-targets.ts"
 import {
   button,
-  buttonPrimary,
+  buttonSize,
+  buttonTone,
   check,
   cx,
   dialogActions,
@@ -162,10 +163,10 @@ export function CreateCollectionDialog({ module, onClose }: { module?: string; o
         {module && <p className={hint}>Written into the module {module}.</p>}
         {error && <p className={errorBox}>{error}</p>}
         <div className={dialogActions}>
-          <button type="button" className={button} onClick={onClose}>
+          <button type="button" className={cx(button, buttonTone.default, buttonSize.default)} onClick={onClose}>
             Cancel
           </button>
-          <button type="submit" className={cx(button, buttonPrimary)} disabled={busy || !slug}>
+          <button type="submit" className={cx(button, buttonTone.primary, buttonSize.default)} disabled={busy || !slug}>
             {busy ? "Creating…" : "Create"}
           </button>
         </div>

@@ -35,7 +35,7 @@ import { askTitles, knownTitle, referenceTitlesChanged } from "../lib/record-cac
 import type { ListProps } from "../registry/props.ts"
 import { DisplayTemplate } from "../render/DisplayTemplate.tsx"
 import { RenderView } from "../render/Render.tsx"
-import { button, cx, iconButton, listEmpty } from "../styles/classes.ts"
+import { button, buttonSize, buttonTone, cx, iconButton, listEmpty } from "../styles/classes.ts"
 import { cardFoot, recordCard } from "./looks.ts"
 
 /** The cover slot is drawn even empty, so a grid's cards line up; a picture that fails to load leaves it empty
@@ -115,7 +115,11 @@ export function ListCards({ state }: ListProps) {
               : "No records yet."}
         </p>
         {!state.loading && !state.hasActiveQuery && !state.unavailable && (
-          <button type="button" className={button} onClick={() => state.createRecord()}>
+          <button
+            type="button"
+            className={cx(button, buttonTone.default, buttonSize.default)}
+            onClick={() => state.createRecord()}
+          >
             Create record
           </button>
         )}

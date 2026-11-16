@@ -74,10 +74,8 @@ import { SaveTarget } from "../record/SaveTarget.tsx"
 import { TemplatePicker } from "../record/TemplatePicker.tsx"
 import {
   button,
-  buttonActive,
-  buttonDanger,
-  buttonIcon,
-  buttonPrimary,
+  buttonSize,
+  buttonTone,
   cx,
   dialogActions,
   dupBadge,
@@ -386,7 +384,7 @@ export function RecordPage({
           <div className={popoverAnchor} ref={menu.anchor}>
             <button
               type="button"
-              className={cx(button, buttonIcon, menu.open && buttonActive)}
+              className={cx(button, buttonTone[menu.open ? "active" : "default"], buttonSize.icon)}
               title="More actions"
               aria-haspopup="menu"
               aria-expanded={menu.open}
@@ -414,19 +412,30 @@ export function RecordPage({
           </div>
         )}
         {canEdit && (
-          <button type="button" className={cx(button, buttonPrimary)} title="Edit" onClick={() => setEditing(true)}>
+          <button
+            type="button"
+            className={cx(button, buttonTone.primary, buttonSize.default)}
+            title="Edit"
+            onClick={() => setEditing(true)}
+          >
             <Icon name="edit" /> Edit
           </button>
         )}
       </>
     ) : (
       <>
-        <button type="button" className={button} title="Cancel" onClick={cancel} disabled={busy}>
+        <button
+          type="button"
+          className={cx(button, buttonTone.default, buttonSize.default)}
+          title="Cancel"
+          onClick={cancel}
+          disabled={busy}
+        >
           <Icon name="close" /> Cancel
         </button>
         <button
           type="button"
-          className={cx(button, buttonPrimary)}
+          className={cx(button, buttonTone.primary, buttonSize.default)}
           title={create ? "Create" : "Save (⌘S / Ctrl-S)"}
           disabled={busy || (!create && !dirty)}
           onClick={() => void save()}
@@ -564,13 +573,17 @@ export function RecordPage({
           </p>
           {dialogError && <p className={errorCls}>{dialogError}</p>}
           <div className={dialogActions}>
-            <button type="button" className={button} onClick={() => setDialog(null)}>
+            <button
+              type="button"
+              className={cx(button, buttonTone.default, buttonSize.default)}
+              onClick={() => setDialog(null)}
+            >
               Cancel
             </button>
             {referenced ? (
               <button
                 type="button"
-                className={cx(button, buttonDanger)}
+                className={cx(button, buttonTone.danger, buttonSize.default)}
                 disabled={busy}
                 data-force
                 onClick={() => void remove(true)}
@@ -580,7 +593,7 @@ export function RecordPage({
             ) : (
               <button
                 type="button"
-                className={cx(button, buttonDanger)}
+                className={cx(button, buttonTone.danger, buttonSize.default)}
                 disabled={busy}
                 onClick={() => void remove(false)}
               >
@@ -612,10 +625,18 @@ export function RecordPage({
             {newId !== id && renameProblem(id, newId) && <p className={hintError}>{renameProblem(id, newId)}</p>}
             {dialogError && <p className={errorCls}>{dialogError}</p>}
             <div className={dialogActions}>
-              <button type="button" className={button} onClick={() => setDialog(null)}>
+              <button
+                type="button"
+                className={cx(button, buttonTone.default, buttonSize.default)}
+                onClick={() => setDialog(null)}
+              >
                 Cancel
               </button>
-              <button type="submit" className={cx(button, buttonPrimary)} disabled={busy || !!renameProblem(id, newId)}>
+              <button
+                type="submit"
+                className={cx(button, buttonTone.primary, buttonSize.default)}
+                disabled={busy || !!renameProblem(id, newId)}
+              >
                 {busy ? "Renaming…" : "Rename"}
               </button>
             </div>
