@@ -20,6 +20,7 @@ from meeting_io import read_meeting, write_meeting, count_attendees, asr_cache_p
 from text_source import parse_labeled, log as log_text_source
 import engines
 import locations
+from voiceprints import models as vp_models
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 # Everything under $TRANSCRIPTION_HOME/models (locations.py).
@@ -67,21 +68,58 @@ def ct2_ready(whisper_dir=None):
     return False
 
 
-def missing_models(engine, num_speakers, seg=None, emb=None, whisper_dir=None):
+def missing_models(engine, num_speakers, seg=None, emb=None, whisper_dir=None, speaker=False,
+                   models_dir=None, skill_dir=None):
     """What a run needs and does not have. Diarization needs both onnx files unless the run is solo; the
     cpu engine needs the ct2 weights (metal's ggml file is checked by engine selection). A run that went
-    ahead without them would diarize nothing and fall back to one speaker, or pull 1.5 GB mid-run."""
+    ahead without them would diarize nothing and fall back to one speaker, or pull 1.5 GB mid-run.
+
+    The active speaker model (voice signatures) is reported only when asked (`speaker=True`): a missing
+    speaker model never blocks transcription — `run` writes the transcript and says signatures were not
+    kept (ruling D16)."""
     seg, emb = seg or SEG_MODEL, emb or EMB_MODEL
     missing = []
     if num_speakers != 1:
         missing += [p for p in (seg, emb) if not (os.path.isfile(p) and os.path.getsize(p) > 0)]
     if engine == "cpu" and not ct2_ready(whisper_dir):
         missing.append(whisper_dir or WHISPER_DIR)
+    if speaker:
+        mdir = models_dir or MODELS_DIR
+        active = vp_models.active_model(skill_dir or HERE)
+        if not vp_models.ready(active, mdir):
+            missing.append(vp_models.model_path(active, mdir))
     return missing
 
 
-def setup():
+def setup_args(args):
+    """`setup [--speaker-models all|<id>[,<id>…]]` → the speaker model ids asked for, or None (no flag)."""
+    if "--speaker-models" not in args:
+        return None
+    i = args.index("--speaker-models")
+    if i + 1 >= len(args):
+        raise vp_models.ModelRefused("--speaker-models needs `all` or a comma list of model ids")
+    return vp_models.parse_speaker_models(args[i + 1])
+
+
+def setup_speaker_models(model_ids, models_dir=None, download=None):
+    """Fetch speaker models into $TRANSCRIPTION_HOME/models/speaker/ (pinned by sha256), apart from
+    the diariser's copy in models/diarization/."""
+    mdir = models_dir or MODELS_DIR
+    for pin in vp_models.fetch(model_ids, mdir, download or engines.download_verified):
+        print(f"setup: speaker model {pin.id} ready ({pin.dim}-d, sha256 {pin.sha256[:12]}…) in "
+              f"{vp_models.speaker_dir(mdir)}", file=sys.stderr)
+
+
+def setup(speaker_models=None, models_dir=None, skill_dir=None, download=None):
+    """Every model a run needs, plus the active speaker model. With `speaker_models` (from
+    `--speaker-models all|<ids>`) only those speaker models are fetched: the developer's calibration
+    needs every registered one on a machine whose transcription models are already in place."""
     warn_if_venv_in_skill()
+    if speaker_models is not None:
+        setup_speaker_models(speaker_models, models_dir, download)
+        print("setup: speaker models only — the diarisation and whisper models are left as they are",
+              file=sys.stderr)
+        return
     os.makedirs(DIARIZATION_DIR, exist_ok=True)
     if not os.path.exists(SEG_MODEL):
         tar_path = os.path.join(DIARIZATION_DIR, "seg.tar.bz2")
@@ -96,6 +134,8 @@ def setup():
                 os.remove(tar_path)
     if not os.path.exists(EMB_MODEL):
         _download(_EMB_URL, EMB_MODEL)
+    # The speaker model voice signatures are embedded with: the active one (models.active_model).
+    setup_speaker_models([vp_models.active_model(skill_dir or HERE)], models_dir, download)
     # Prefetch the whisper weights.
     from faster_whisper import WhisperModel
     WhisperModel(WHISPER_ID, device="cpu", compute_type="int8", download_root=WHISPER_DIR)
@@ -325,7 +365,10 @@ def run(meeting_md, audio, generated, num_speakers=None, language=None, engine="
 if __name__ == "__main__":
     args = sys.argv[1:]
     if args and args[0] == "setup":
-        setup()
+        try:
+            setup(speaker_models=setup_args(args[1:]))
+        except (vp_models.ModelRefused, vp_models.CalibrationAmbiguous) as e:
+            sys.exit(f"✖ {e}")
     elif len(args) == 3 and args[0] == "_diarize-worker":
         # Internal. Runs in a child so a sherpa-onnx SIGBUS is an exit code, not a dead pipeline.
         n = int(args[2]) or None
@@ -357,7 +400,7 @@ if __name__ == "__main__":
         print(json.dumps(parse_labeled(_text), ensure_ascii=False, indent=2))
     else:
         sys.exit(
-            "usage: transcribe_meeting.py setup"
+            "usage: transcribe_meeting.py setup [--speaker-models all|<id>[,<id>…]]"
             " | run <meeting.md> <audio> [--date YYYY-MM-DD] [--speakers N] [--language en|he]"
             " [--engine auto|metal|cpu]"
             " | log <meeting.md> <turns.json> [--date YYYY-MM-DD]"
