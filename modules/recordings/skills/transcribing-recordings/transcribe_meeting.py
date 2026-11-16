@@ -628,10 +628,28 @@ if __name__ == "__main__":
         with open(args[1], encoding="utf-8") as _f:
             _text = _f.read()
         print(json.dumps(parse_labeled(_text), ensure_ascii=False, indent=2))
+    elif len(args) >= 2 and args[0] == "label":
+        # The developer's listening session (design section 13): a person at a terminal, with sound.
+        from voiceprints import label as vp_label
+        sys.exit(vp_label.main(args, read=read_meeting, read_cache=read_asr_cache, cache_path_for=asr_cache_path_for,
+                               matches=asr_cache_matches, audio_key=audio_key, out=lambda s: print(s, flush=True)))
+    elif args and args[0] == "evaluate-speakers":
+        # The developer's evaluation (design section 13), over every diarised recording the entry hands in.
+        from voiceprints import evaluate as vp_evaluate
+        sys.exit(vp_evaluate.main(
+            args, skill_dir=HERE, models_dir=MODELS_DIR, read=read_meeting, audio_key=audio_key,
+            compute=vp_evaluate.signature_maker(
+                decode_audio=decode_audio, load_embedder=load_embedder, read_samples=read_samples,
+                read_meeting=read_meeting, read_asr_cache=read_asr_cache, asr_cache_path_for=asr_cache_path_for,
+                asr_cache_matches=asr_cache_matches),
+            out=lambda s: print(s, flush=True)))
     else:
         sys.exit(
             "usage: transcribe_meeting.py setup [--speaker-models all|<id>[,<id>…]]"
             " | " + RUN_USAGE +
             " | log <meeting.md> <turns.json> [--date YYYY-MM-DD]"
             " | parse-labeled <text-file>"
+            " | label <record.md> [--only <label>] [--context <file.json>]"
+            " | evaluate-speakers [plan] [--write [--install-local]] [--only <model id>] [--room <record>]…"
+            " [--pilot <record>] [--me <person>] [--context <file.json>]"
         )
