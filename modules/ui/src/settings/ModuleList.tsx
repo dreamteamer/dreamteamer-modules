@@ -24,6 +24,7 @@ import {
   mono,
   page,
   pageHead,
+  pageHeadSpace,
   subtle,
 } from "../styles/classes.ts"
 import { table } from "./looks.ts"
@@ -33,7 +34,7 @@ export function ModuleList({ only }: { only: readonly string[] | null }) {
   const shown = modules.filter(m => !only || only.includes(m.id))
   return (
     <section className={page}>
-      <header className={pageHead}>
+      <header className={cx(pageHead, pageHeadSpace.page)}>
         <div>
           <h1>
             <Icon name="package" /> Modules

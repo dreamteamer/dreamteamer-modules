@@ -29,6 +29,7 @@ import {
   mono,
   page,
   pageHead,
+  pageHeadSpace,
   subtle,
   toolbar,
 } from "../styles/classes.ts"
@@ -124,7 +125,7 @@ export function SourcesPane() {
 
   return (
     <section className={page}>
-      <header className={pageHead}>
+      <header className={cx(pageHead, pageHeadSpace.page)}>
         <div>
           <h1>Sources</h1>
           <p className={subtle}>

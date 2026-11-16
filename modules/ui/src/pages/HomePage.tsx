@@ -3,7 +3,7 @@ import { useApp } from "../app-context.tsx"
 import { Icon } from "../components/Icon.tsx"
 import { Link } from "../components/Link.tsx"
 import { listRoute } from "../lib/route.ts"
-import { page, pageHead, subtle } from "../styles/classes.ts"
+import { cx, page, pageHead, pageHeadSpace, subtle } from "../styles/classes.ts"
 
 /** The collections as a grid of cards. (was dt-cards / dt-card) */
 const cards = "list-none p-0 m-0 grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3"
@@ -17,7 +17,7 @@ export function HomePage() {
     .sort((a, b) => (a.nav.order ?? 1e9) - (b.nav.order ?? 1e9) || a.title.localeCompare(b.title))
   return (
     <section className={page}>
-      <header className={pageHead}>
+      <header className={cx(pageHead, pageHeadSpace.page)}>
         <h1>Collections</h1>
       </header>
       <ul className={cards}>

@@ -46,7 +46,7 @@ import {
 import { ActivityPane } from "../settings/ActivityPane.tsx"
 import { useModules } from "../settings/use-modules.ts"
 import { PageSource } from "./page-source.ts"
-import { cx, listEmpty, page, pageHead, subtle } from "../styles/classes.ts"
+import { cx, listEmpty, page, pageHead, pageHeadSpace, subtle } from "../styles/classes.ts"
 
 /** A panel's title: plain text, or a link that reads as one until hovered. (was dt-panel-title) */
 const panelTitle = "font-semibold text-fg no-underline"
@@ -120,7 +120,7 @@ export function PageView({
         grid
       ) : (
         <div className={cx(page, "overflow-y-auto")} data-view={view.id}>
-          <header className={pageHead}>
+          <header className={cx(pageHead, pageHeadSpace.page)}>
             <div>
               <h1>{viewLabel(view)}</h1>
               {view.description && <p className={subtle}>{view.description}</p>}

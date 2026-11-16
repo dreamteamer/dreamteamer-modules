@@ -58,6 +58,7 @@ import {
   noticeTone,
   page,
   pageHead,
+  pageHeadSpace,
   popoverAnchor,
   subtle,
   toolbar,
@@ -193,7 +194,7 @@ export function DataModelDetail({
       {embedded ? (
         <div className={cx(toolbar, "justify-end mb-2")}>{actions}</div>
       ) : (
-        <header className={pageHead}>
+        <header className={cx(pageHead, pageHeadSpace.page)}>
           <div>
             <p className="mt-0! mb-1! text-small">
               <Link to={`${SCHEMA_BASE}/collections`}>Data Model</Link>

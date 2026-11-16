@@ -52,6 +52,7 @@ import {
   linkButton,
   note,
   pageHead,
+  pageHeadSpace,
   popoverAnchor,
   subtle,
   toolbar,
@@ -211,7 +212,7 @@ export function Browse({
 
   return (
     <section className={cx("flex flex-col gap-2.5 min-h-full px-6 py-5", list.fillsHeight && "h-full")}>
-      <header className={cx(pageHead, "mb-0!")}>
+      <header className={cx(pageHead, pageHeadSpace.column)}>
         <div>
           {segments.length > 1 && (
             <p className={cx(subtle, "m-0! mb-1! text-small")}>{segments.slice(0, -1).join("/")}</p>

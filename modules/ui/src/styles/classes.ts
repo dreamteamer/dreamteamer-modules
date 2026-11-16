@@ -48,8 +48,13 @@ export const listEmpty = "flex flex-col items-center justify-center gap-2 px-4 p
 // ---- page frame ----------------------------------------------------------------------------------------------------
 /** A page's padding. (was dt-page) */
 export const page = "px-6 py-5"
-/** A page's header: title on the left, toolbar on the right. (was dt-page-head) */
-export const pageHead = "flex items-start justify-between gap-4 flex-wrap mb-4 [&_p]:mt-1 [&_p]:mb-0"
+/** A page's header: title on the left, toolbar on the right, and one entry of `pageHeadSpace`. (was dt-page-head) */
+export const pageHead = "flex items-start justify-between gap-4 flex-wrap [&_p]:mt-1 [&_p]:mb-0"
+/** The space under a page's header: on a page, or in a column that spaces its children itself. */
+export const pageHeadSpace = {
+  page: "mb-4",
+  column: "mb-0",
+} as const satisfies Record<string, string>
 /** A row of controls. (was dt-toolbar) */
 export const toolbar = "flex gap-2 items-center flex-wrap"
 /** A dialog's buttons. (was dt-dialog-actions) */

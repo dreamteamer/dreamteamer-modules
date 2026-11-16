@@ -30,6 +30,7 @@ import {
   linkButton,
   page as pagePad,
   pageHead,
+  pageHeadSpace,
   subtle,
 } from "../styles/classes.ts"
 import { sectionLabel } from "./looks.ts"
@@ -150,7 +151,7 @@ export function ActivityPane({
   return (
     <section className={embedded ? undefined : pagePad}>
       {!embedded && (
-        <header className={pageHead}>
+        <header className={cx(pageHead, pageHeadSpace.page)}>
           <div>
             <h1>Activity</h1>
             <p className={subtle}>

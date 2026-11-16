@@ -15,7 +15,7 @@ import { SCHEMA_BASE } from "../lib/route.ts"
 import { schemaRowContext } from "../lib/vscode-context.ts"
 import { CreateCollectionDialog } from "./CreateCollectionDialog.tsx"
 import type { CollectionRow } from "../api/types.ts"
-import { button, buttonSize, buttonTone, cx, page, pageHead, subtle } from "../styles/classes.ts"
+import { button, buttonSize, buttonTone, cx, page, pageHead, pageHeadSpace, subtle } from "../styles/classes.ts"
 import { num, table } from "./looks.ts"
 
 /** Rows by namespace: un-namespaced first, then each namespace in first-seen order. */
@@ -39,7 +39,7 @@ export function DataModelList({ only }: { only: readonly string[] | null }) {
   const groups = namespaceGroups(rows)
   return (
     <section className={page}>
-      <header className={pageHead}>
+      <header className={cx(pageHead, pageHeadSpace.page)}>
         <div>
           <h1>
             <Icon name="symbol-structure" /> Data Model
