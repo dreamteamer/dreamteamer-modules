@@ -14,12 +14,29 @@ const fields = (rel) => yaml.load(read(rel)).fields;
 const MEETINGS = fields('meetings/collections/meetings.collection.yaml');
 const RECORDINGS = fields('recordings/collections/meeting-recordings.collection.yaml');
 
-/** Every prose file this module ships. */
+/** Every prose file this module ships: the commands, the skills (the identifying skill and /identify-speakers
+ *  among them, cr-modules-019), the README and SETUP. */
 const shipped = ['commands', 'skills'].flatMap((d) => {
 	const out = [];
 	const walk = (p) => { for (const e of fs.readdirSync(p, { withFileTypes: true })) e.isDirectory() ? walk(path.join(p, e.name)) : e.name.endsWith('.md') && out.push(path.join(p, e.name)); };
 	walk(path.join(MODULES, 'recordings', d));
 	return out;
+}).concat(['README.md', 'SETUP.md'].map((f) => path.join(MODULES, 'recordings', f)));
+
+test('the shipped walk reaches every prose file the package ships, the identifying skill and /identify-speakers included', () => {
+	const rel = shipped.map((f) => path.relative(path.join(MODULES, 'recordings'), f));
+	for (const f of ['skills/identifying-speakers/SKILL.md', 'commands/identify-speakers.command.md', 'skills/transcribing-recordings/SKILL.md', 'commands/transcribe-recording.command.md', 'README.md', 'SETUP.md']) {
+		assert.ok(rel.includes(f), `${f} is not in the walk`);
+	}
+	const files = JSON.parse(read('recordings/package.json')).files;
+	for (const f of rel) assert.ok(files.includes(f.split('/')[0]), `${f} is outside the package's files`);
+});
+
+test('every command this module ships has its binding on meeting-recordings, and every binding names a shipped command', () => {
+	const cmds = fs.readdirSync(path.join(MODULES, 'recordings', 'commands')).map((f) => f.replace(/\.command\.md$/, '')).sort();
+	const bound = fs.readdirSync(path.join(MODULES, 'recordings', 'command-bindings')).map((f) => yaml.load(read(`recordings/command-bindings/${f}`)).command.replace(/^commands\//, '')).sort();
+	assert.deepEqual(bound, cmds);
+	assert.ok(cmds.includes('identify-speakers'));
 });
 
 test('the speaker count is the meeting\'s `attendees_contacts | length`, a field the meetings module declares', () => {
