@@ -1,29 +1,21 @@
 // A LOCKED KANBAN CARD KEEPS THE POINTER (ported from the Vue ui's kanban-card-cursor test, cr-vscode-009). A
 // card on a board whose column field is locked cannot change column, but a click still opens its record — so it
-// keeps the shared record card's pointer. A `cursor` on a kanban card rule would draw the arrow over a clickable card.
+// keeps the shared record card's pointer. A `cursor-*` utility the board adds to a card would draw the arrow over
+// a clickable card.
 import { test } from "node:test"
 import assert from "node:assert/strict"
 import fs from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
+import { recordCard } from "../src/lists/looks.ts"
 
-const CSS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "src", "styles", "ui.css")
+const KANBAN = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "src", "lists", "ListKanban.tsx")
 
-function rules(): Array<{ selector: string; body: string }> {
-  const css = fs.readFileSync(CSS, "utf8").replace(/\/\*[\s\S]*?\*\//g, "")
-  return [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(m => ({ selector: m[1]!.trim(), body: m[2]! }))
-}
-
-test("the shared record card draws the pointer", () => {
-  const card = rules().find(r => r.selector === ".dt-record-card")
-  assert.ok(card, "ui.css styles .dt-record-card")
-  assert.match(card!.body, /cursor\s*:\s*pointer/)
+test("the shared record card draws the pointer, tinted or not", () => {
+  for (const tinted of [false, true]) assert.match(recordCard(tinted), /(^|\s)cursor-pointer(\s|$)/)
 })
 
-test("no kanban card rule overrides the cursor — a locked card stays clickable-looking", () => {
-  const offenders = rules().filter(r => /\.dt-kanban-(card|item)\b/.test(r.selector) && /cursor\s*:/.test(r.body))
-  assert.deepEqual(
-    offenders.map(r => `${r.selector} { ${r.body.trim()} }`),
-    []
-  )
+test("the board sets no cursor of its own — a locked card stays clickable-looking", () => {
+  const source = fs.readFileSync(KANBAN, "utf8")
+  assert.deepEqual(source.match(/(^|[\s"'`])cursor-[a-z-]+/g) ?? [], [])
 })

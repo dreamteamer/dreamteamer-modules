@@ -35,13 +35,15 @@ import { askTitles, knownTitle, referenceTitlesChanged } from "../lib/record-cac
 import type { ListProps } from "../registry/props.ts"
 import { DisplayTemplate } from "../render/DisplayTemplate.tsx"
 import { RenderView } from "../render/Render.tsx"
+import { button, cx, iconButton, listEmpty } from "../styles/classes.ts"
+import { cardFoot, recordCard } from "./looks.ts"
 
 /** The cover slot is drawn even empty, so a grid's cards line up; a picture that fails to load leaves it empty
  *  rather than drawing the browser's broken-image glyph. */
 function Cover({ src, fit }: { src: string | null; fit: "cover" | "contain" }) {
   const [failed, setFailed] = useState<string | null>(null)
   return (
-    <div className="dt-record-card-cover">
+    <div className="-mt-2.5 -mx-3 mb-2.5 aspect-video bg-bg-subtle [&_img]:block [&_img]:w-full [&_img]:h-full [&_img]:object-cover">
       {src && failed !== src && <img src={src} alt="" style={{ objectFit: fit }} onError={() => setFailed(src)} />}
     </div>
   )
@@ -103,7 +105,7 @@ export function ListCards({ state }: ListProps) {
 
   if (!records.length)
     return (
-      <div className="dt-list-empty">
+      <div className={listEmpty}>
         <Icon name={state.loading ? "loading" : "inbox"} />
         <p>
           {state.loading
@@ -113,7 +115,7 @@ export function ListCards({ state }: ListProps) {
               : "No records yet."}
         </p>
         {!state.loading && !state.hasActiveQuery && !state.unavailable && (
-          <button type="button" className="dt-button" onClick={() => state.createRecord()}>
+          <button type="button" className={button} onClick={() => state.createRecord()}>
             Create record
           </button>
         )}
@@ -121,14 +123,14 @@ export function ListCards({ state }: ListProps) {
     )
 
   return (
-    <div className="dt-card-grid-wrap">
+    <div>
       {bands.map(band => (
-        <section key={band.value} className="dt-card-band">
+        <section key={band.value} className="not-first:mt-3.5">
           {groupField && (
-            <div className="dt-group-band dt-card-band-head">
+            <div className="flex items-center gap-1 mb-2">
               <button
                 type="button"
-                className="dt-icon-button"
+                className={iconButton}
                 aria-expanded={!collapsed.has(band.value)}
                 title={collapsed.has(band.value) ? "Expand" : "Collapse"}
                 onClick={() => toggleBand(band.value)}
@@ -146,14 +148,19 @@ export function ListCards({ state }: ListProps) {
             </div>
           )}
           {!collapsed.has(band.value) && (
-            <div className={`dt-card-grid${state.loading ? " is-revalidating" : ""}`}>
+            <div
+              className={cx(
+                "grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-4",
+                state.loading && "opacity-55 [transition:opacity_0.15s_ease_0.15s] pointer-events-none"
+              )}
+            >
               {(band.records as Row[]).map(r => {
                 const tint = state.tintOf(r)
                 const source = state.sourceOf(r)
                 return (
                   <article
                     key={`${String(r["$source"] ?? "")}/${r.id}`}
-                    className={`dt-record-card dt-cards-card${tint ? " is-tinted" : ""}`}
+                    className={cx(recordCard(!!tint), "flex flex-col")}
                     style={tint}
                     data-vscode-context={rowContext(state.collection, r.id)}
                     onClick={() => state.openRecord(r)}
@@ -167,9 +174,11 @@ export function ListCards({ state }: ListProps) {
                       <DisplayTemplate template={template} record={r} fields={state.fields} context="record" />
                     ) : (
                       <>
-                        <h3 className="dt-cards-title">{state.recordTitleOf(r) || "—"}</h3>
+                        <h3 className="m-0 text-ui font-semibold overflow-hidden text-ellipsis whitespace-nowrap">
+                          {state.recordTitleOf(r) || "—"}
+                        </h3>
                         {state.subtitleFields.length > 0 && (
-                          <dl className="dt-cards-fields">
+                          <dl className="mt-1.5 mx-0 mb-0 flex flex-col gap-1 [&>div]:flex [&>div]:items-baseline [&>div]:gap-1.5 [&>div]:min-w-0 [&_dt]:flex-none [&_dt]:text-fg-subtle [&_dt]:uppercase [&_dt]:tracking-[0.02em] [&_dt]:text-small [&_dd]:m-0 [&_dd]:min-w-0 [&_dd]:overflow-hidden [&_dd]:text-ellipsis [&_dd]:whitespace-nowrap">
                             {state.subtitleFields.map(f => (
                               <div key={f.field}>
                                 <dt>{labelOf(f)}</dt>
@@ -183,7 +192,7 @@ export function ListCards({ state }: ListProps) {
                       </>
                     )}
                     {source && (
-                      <footer className="dt-record-card-foot">
+                      <footer className={cardFoot}>
                         <SourceMark {...source} />
                       </footer>
                     )}

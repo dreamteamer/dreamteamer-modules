@@ -37,6 +37,40 @@ import { kanbanLock } from "../lib/kanban-lock.ts"
 import { askTitles, knownTitle, referenceTitlesChanged } from "../lib/record-cache.ts"
 import type { ListProps } from "../registry/props.ts"
 import { DisplayTemplate } from "../render/DisplayTemplate.tsx"
+import { cx, error, iconButton, listEmpty } from "../styles/classes.ts"
+import { cardFoot, recordCard } from "./looks.ts"
+
+// ---- the looks (was dt-kanban-*) ----------------------------------------------------------------------------------
+// Full height: the wrap fills the browse's box, the strip fills the wrap, each column stretches to the strip, and a
+// column's card list is the only scroll box — its header stays pinned. No viewport-relative height.
+/** A lane's or a column's header: small capitals. */
+const headCls = "flex-none flex items-center gap-2 text-small font-bold tracking-[0.04em] uppercase text-fg-subtle"
+const labelCls = "overflow-hidden text-ellipsis whitespace-nowrap"
+const countCls = "ml-auto px-2 rounded-full border border-border bg-bg font-semibold"
+/** A lane: the whole board, or (laned) one framed band of it. */
+const laneCls = (laned: boolean, ungrouped: boolean) =>
+  laned
+    ? cx(
+        "flex flex-col flex-none min-h-0 pt-2 px-3 pb-3 bg-bg-subtle border border-border rounded-dt",
+        ungrouped && "border-dashed"
+      )
+    : "flex flex-col flex-auto min-h-0"
+/** A column; `min-w-0`: a card whose template can't shrink would drag it past its 270px basis. */
+const columnCls = (drop: boolean, ungrouped: boolean) =>
+  cx(
+    "group flex-[0_0_270px] min-w-0 flex flex-col min-h-0 p-2.5 bg-bg-subtle border rounded-dt [transition:border-color_0.1s]",
+    drop ? "border-accent" : "border-border",
+    ungrouped && "border-dashed"
+  )
+/** An insertion gap: there only during a drag on a list sorted by the position field, nearly invisible until it
+ *  is the target. */
+const slotCls = (end: boolean, over: boolean) =>
+  cx(
+    "rounded-xs",
+    end && "flex-none",
+    over ? "h-[3px] mt-1 mx-0 mb-2 bg-accent" : end ? "h-6 m-0" : "h-2 -mt-1 mx-0 mb-1"
+  )
+const hintCls = "flex-none mt-2.5 mx-0 mb-0 text-fg-subtle text-small"
 
 const ALL = "__all__"
 const END = "__end__"
@@ -185,7 +219,7 @@ export function ListKanban({ state }: ListProps) {
 
   if (!columnField)
     return (
-      <div className="dt-list-empty">
+      <div className={listEmpty}>
         <Icon name="split-horizontal" />
         <p>No field to group by — pick one in Layout options (Group columns by field).</p>
       </div>
@@ -195,33 +229,44 @@ export function ListKanban({ state }: ListProps) {
   const empty = !lanes.length || lanes.every(l => !l.columns.length)
 
   return (
-    <div className="dt-kanban-wrap">
-      {moveError && <p className="dt-error dt-kanban-error">{moveError}</p>}
+    <div className="flex flex-col flex-auto min-h-0">
+      {moveError && <p className={cx(error, "flex-none mt-0 mx-0 mb-2.5")}>{moveError}</p>}
       {empty ? (
-        <div className="dt-list-empty">
+        <div className={listEmpty}>
           <Icon name="inbox" />
           <p>{state.loading ? "Loading…" : `No ${columnField.field} values to build columns from yet`}</p>
         </div>
       ) : (
-        <div className={`dt-kanban-lanes${saving ? " is-saving" : ""}${laned ? " is-laned" : ""}`}>
+        <div
+          className={cx(
+            "flex flex-col flex-auto min-h-0",
+            laned && "overflow-y-auto gap-y-3",
+            saving && "opacity-60 pointer-events-none"
+          )}
+        >
           {lanes.map(lane => (
-            <section key={lane.value} className={`dt-kanban-lane${lane.ungrouped ? " is-ungrouped" : ""}`}>
+            <section key={lane.value} className={laneCls(laned, !!lane.ungrouped)}>
               {laned && (
-                <header className="dt-kanban-lane-head">
-                  <span className="dt-kanban-label">{labelOf(laneField, lane)}</span>
-                  <span className="dt-kanban-count" title={`${count(lane)} record(s) in this lane`}>
+                <header className={cx(headCls, "pt-0.5 px-1 pb-2")}>
+                  <span className={labelCls}>{labelOf(laneField, lane)}</span>
+                  <span className={countCls} title={`${count(lane)} record(s) in this lane`}>
                     {count(lane)}
                   </span>
                 </header>
               )}
-              <div className="dt-kanban">
+              <div
+                className={cx(
+                  "flex items-stretch gap-4 overflow-x-auto min-h-0",
+                  laned ? "flex-none min-h-[260px]" : "flex-auto"
+                )}
+              >
                 {lane.columns.map(column => {
                   const key = keyOf(lane, column)
                   const live = gapsLive(lane, column)
                   return (
                     <div
                       key={column.value}
-                      className={`dt-kanban-col${dropTarget === key ? " is-drop" : ""}${column.ungrouped ? " is-ungrouped" : ""}`}
+                      className={columnCls(dropTarget === key, !!column.ungrouped)}
                       onDragOver={e => {
                         if (lock.columns) return
                         e.preventDefault()
@@ -236,18 +281,24 @@ export function ListKanban({ state }: ListProps) {
                         void drop(lane, column)
                       }}
                     >
-                      <div className="dt-kanban-head">
+                      <div className={cx(headCls, "pt-0.5 pr-0 pb-2.5 pl-1")}>
                         {column.color && (
-                          <span className="dt-kanban-dot" style={{ background: themeColor(column.color) }} />
+                          <span
+                            className="flex-none w-2 h-2 rounded-full"
+                            style={{ background: themeColor(column.color) }}
+                          />
                         )}
-                        <span className="dt-kanban-label" title={column.description}>
+                        <span className={labelCls} title={column.description}>
                           {labelOf(columnField, column)}
                         </span>
-                        <span className="dt-kanban-count">{column.records.length}</span>
+                        <span className={countCls}>{column.records.length}</span>
                         {!column.ungrouped && lock.add && !state.unavailable && (
                           <button
                             type="button"
-                            className="dt-icon-button dt-kanban-add"
+                            className={cx(
+                              iconButton,
+                              "flex-none opacity-50 [transition:opacity_0.1s] group-hover:opacity-100 hover:opacity-100 focus-visible:opacity-100"
+                            )}
                             title={addTitle(lane, column)}
                             onClick={() => addTo(lane, column)}
                           >
@@ -255,15 +306,15 @@ export function ListKanban({ state }: ListProps) {
                           </button>
                         )}
                       </div>
-                      <div className="dt-kanban-cards">
+                      <div className="flex-auto min-h-6 overflow-y-auto overflow-x-hidden flex flex-col gap-2 pr-0.5">
                         {(column.records as Row[]).map(r => {
                           const tint = state.tintOf(r)
                           const source = state.sourceOf(r)
                           return (
-                            <div key={rowKey(r)} className="dt-kanban-item">
+                            <div key={rowKey(r)} className="flex-none flex flex-col">
                               {live && (
                                 <div
-                                  className={`dt-kanban-slot${dropSlot === r.id ? " is-over" : ""}`}
+                                  className={slotCls(false, dropSlot === r.id)}
                                   onDragOver={e => {
                                     e.preventDefault()
                                     e.stopPropagation()
@@ -278,9 +329,7 @@ export function ListKanban({ state }: ListProps) {
                                 />
                               )}
                               <div
-                                className={`dt-record-card dt-kanban-card${tint ? " is-tinted" : ""}${
-                                  drag?.id === r.id ? " is-dragging" : ""
-                                }`}
+                                className={cx(recordCard(!!tint), drag?.id === r.id && "opacity-50")}
                                 style={tint}
                                 data-vscode-context={rowContext(state.collection, r.id)}
                                 title={lock.reason ?? undefined}
@@ -298,12 +347,16 @@ export function ListKanban({ state }: ListProps) {
                                   />
                                 ) : (
                                   <>
-                                    <div className="dt-kanban-title">{state.recordTitleOf(r)}</div>
-                                    <div className="dt-kanban-id">{r.id}</div>
+                                    <div className="font-semibold overflow-hidden text-ellipsis">
+                                      {state.recordTitleOf(r)}
+                                    </div>
+                                    <div className="mt-1 text-small text-fg-subtle overflow-hidden text-ellipsis whitespace-nowrap">
+                                      {r.id}
+                                    </div>
                                   </>
                                 )}
                                 {source && (
-                                  <footer className="dt-record-card-foot">
+                                  <footer className={cardFoot}>
                                     <SourceMark {...source} />
                                   </footer>
                                 )}
@@ -313,7 +366,7 @@ export function ListKanban({ state }: ListProps) {
                         })}
                         {live && (
                           <div
-                            className={`dt-kanban-slot is-end${dropSlot === END ? " is-over" : ""}`}
+                            className={slotCls(true, dropSlot === END)}
                             onDragOver={e => {
                               e.preventDefault()
                               e.stopPropagation()
@@ -337,13 +390,13 @@ export function ListKanban({ state }: ListProps) {
         </div>
       )}
       {hidden > 0 && (
-        <p className="dt-kanban-hint">
+        <p className={hintCls}>
           {hidden} record{hidden === 1 ? "" : "s"} with no {columnField.field} hidden — turn on “Show ungrouped column”
           in Layout options to see {hidden === 1 ? "it" : "them"}.
         </p>
       )}
       {laneField && laneHidden > 0 && (
-        <p className="dt-kanban-hint">
+        <p className={hintCls}>
           {laneHidden} record{laneHidden === 1 ? "" : "s"} with no {laneField.field} lane hidden — turn on “Show
           ungrouped band” in Layout options to see {laneHidden === 1 ? "it" : "them"}.
         </p>
