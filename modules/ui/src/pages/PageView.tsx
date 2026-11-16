@@ -4,7 +4,7 @@
  * `activity`, a module's feed. Reached at the view's own route (`lib/createRoute.ts` → `{ kind: "page-view" }`), and from
  * the Schema tab as a module's page when a page view names that module (`modulePageView`).
  *
- * What it draws is decided by lib/page-view.ts (pure): one panel per entry of `display.list.options.views`, in a
+ * What it draws is decided by lib/pageView.ts (pure): one panel per entry of `display.list.options.views`, in a
  * grid of `options.grid_columns` (1 or 2). Each panel IS the child view — a collection view through the embedded
  * browse in its own layout (table, board, cards, counts…), an activity view through ActivityPane, a nested PAGE as
  * a grid of its own panels with no frame. A framed panel's title links to the child's full view. A reference to no
@@ -33,7 +33,7 @@ import {
   panelLink,
   scopedFilter,
   type PanelPlan,
-} from "../lib/page-view.ts"
+} from "../lib/pageView.ts"
 import {
   collectionOf,
   drawnDisplay,

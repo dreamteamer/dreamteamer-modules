@@ -11,7 +11,7 @@ import http from "node:http"
 import https from "node:https"
 import cp from "node:child_process"
 import { syncBuiltinESMExports } from "node:module"
-import { inspect, plan, apply, legacyDoctor, engineDoctorRows, LEGACY_DOCTOR_IDS } from "../lib/google-setup.ts"
+import { inspect, plan, apply, legacyDoctor, engineDoctorRows, LEGACY_DOCTOR_IDS } from "../lib/googleSetup.ts"
 import { doctor } from "../lib/doctor.ts"
 import activate, { setupCommand, apiVersion } from "../lib/activate.ts"
 

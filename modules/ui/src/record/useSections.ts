@@ -9,7 +9,7 @@
 import { useState } from "react"
 import type { FieldRow } from "../api/types.ts"
 import { useApp } from "../AppContext.tsx"
-import { drawnOn, formSections, isBodyField, type FormSection } from "../lib/field-row.ts"
+import { drawnOn, formSections, isBodyField, type FormSection } from "../lib/fieldRow.ts"
 
 export function useSections(collection: string, fields: readonly FieldRow[], readonly: boolean) {
   const { schema } = useApp()

@@ -7,7 +7,7 @@ import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
 import { execFileSync } from "node:child_process"
-import { SETUP_UNIT, calendarsDigest } from "../lib/meetings-setup.ts"
+import { SETUP_UNIT, calendarsDigest } from "../lib/meetingsSetup.ts"
 import { parseWorkCalendars } from "../skills/fetching-meetings/bin/gcal.ts"
 import {
   virginWorkspace,

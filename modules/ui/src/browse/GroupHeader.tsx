@@ -6,13 +6,13 @@
  *
  * Colours are theme colour ids (`charts.green`), reaching the DOM only as `var(--vscode-…)` through
  * `themeColor`, so a band survives both themes. An `icon` holding a `/` is a PICTURE — a URL or a reference into
- * a file-codec collection (a person's face on a gantt lane, `lib/group-label.ts`) — drawn through the one picture
+ * a file-codec collection (a person's face on a gantt lane, `lib/groupLabel.ts`) — drawn through the one picture
  * resolver, `useImageSrc`; anything else is a codicon name.
  */
 import type { CSSProperties } from "react"
 import { useImageSrc } from "../components/FileThumb.tsx"
 import { Icon } from "../components/Icon.tsx"
-import { themeColor } from "../lib/collection-display.ts"
+import { themeColor } from "../lib/collectionDisplay.ts"
 import { cx } from "../styles/classes.ts"
 
 export function GroupHeader({

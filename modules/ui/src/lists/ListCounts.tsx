@@ -10,16 +10,16 @@
  * total alone; a list-valued field counts a record once under each of its values.
  *
  * A link carries the view's own filter, `<field> is <value>` and the page's `$source` as ordinary removable rules
- * (`lib/page-view.ts#countLink`); a view filter the flat builder cannot carry leaves the number unlinked, and says
+ * (`lib/pageView.ts#countLink`); a view filter the flat builder cannot carry leaves the number unlinked, and says
  * why.
  */
 import { useContext, useMemo } from "react"
 import { useSignal } from "../AppContext.tsx"
 import { Icon } from "../components/Icon.tsx"
 import { Link } from "../components/Link.tsx"
-import { themeColor } from "../lib/collection-display.ts"
+import { themeColor } from "../lib/collectionDisplay.ts"
 import { bucketize, type Bucket } from "../lib/grouping.ts"
-import { countLink, UNLINKED_COUNT } from "../lib/page-view.ts"
+import { countLink, UNLINKED_COUNT } from "../lib/pageView.ts"
 import { uiViews, type UiViewRecord } from "../lib/uiViews.ts"
 import { PageSource } from "../pages/PageSource.ts"
 import type { ListProps } from "../registry/props.ts"

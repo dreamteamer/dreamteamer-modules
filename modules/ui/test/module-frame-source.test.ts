@@ -1,9 +1,9 @@
 // cr-modules-008 D6/D15: a module frame is ONE self-contained document carrying the host's stylesheet — the Vue ui's
-// test/unit/module-frame-source.test.ts, re-pointed at ui's modules/frame-source.ts with the protocol's real
+// test/unit/module-frame-source.test.ts, re-pointed at ui's modules/makeFrameSource.ts with the protocol's real
 // document builder. Plus ui's own rule: a host that can frame nothing loads no module.
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { buildFrameDocument } from "../../protocol/src/frame-document.ts"
+import { buildFrameDocument } from "../../protocol/src/buildFrameDocument.ts"
 
 const served: Record<string, string> = {
   "vscode-resource://x/guest/guest.js": "window.guest=1",
@@ -22,7 +22,7 @@ const win: Record<string, unknown> = {
   status: url in served ? 200 : 404,
   text: async () => served[url] ?? "not found",
 })
-const { canFrame, makeFrameSource } = await import("../src/modules/frame-source.ts")
+const { canFrame, makeFrameSource } = await import("../src/modules/makeFrameSource.ts")
 const { hostInfo } = await import("../src/lib/host.ts")
 const frameSource = makeFrameSource(buildFrameDocument)
 

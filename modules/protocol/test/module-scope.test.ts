@@ -3,8 +3,8 @@ import assert from "node:assert/strict"
 import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { buildModuleScope, MODULE_ROUTES } from "../src/module-scope.ts"
-import { readModuleGrant, readModuleGrantResult } from "../src/module-grant.ts"
+import { buildModuleScope, MODULE_ROUTES } from "../src/buildModuleScope.ts"
+import { readModuleGrant, readModuleGrantResult } from "../src/readModuleGrant.ts"
 import { gate } from "../src/gate.ts"
 
 const descriptors = [

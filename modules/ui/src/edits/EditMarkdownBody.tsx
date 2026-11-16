@@ -5,10 +5,10 @@
  *
  * Two modes, one document: LIVE PREVIEW (markers hide until the cursor reaches them) and SOURCE (raw markdown).
  * The toggle swaps the preview extension through a Compartment, so switching never remounts the editor or loses
- * its undo history; the choice is remembered per browser. The toolbar (`lib/editor-commands.ts`) edits the
+ * its undo history; the choice is remembered per browser. The toolbar (`lib/editorCommands.ts`) edits the
  * source text and works the same in both; Mod-b / Mod-i / Mod-k are bold, italic and link.
  *
- * The incoming value is ECHO-GUARDED (`lib/editor-guard.ts`): every keystroke goes out through `onChange` and
+ * The incoming value is ECHO-GUARDED (`lib/editorGuard.ts`): every keystroke goes out through `onChange` and
  * comes back as `value`; only a text this editor never emitted itself (a re-read, Revert) resets the document —
  * a stale render's value must never "correct" text typed since.
  */
@@ -18,8 +18,8 @@ import { EditorView, keymap } from "@codemirror/view"
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands"
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown"
 import { Icon } from "../components/Icon.tsx"
-import { insertLink, setHeading, toggleFence, toggleInline, toggleLinePrefix } from "../lib/editor-commands.ts"
-import { pushEmitted, shouldReset } from "../lib/editor-guard.ts"
+import { insertLink, setHeading, toggleFence, toggleInline, toggleLinePrefix } from "../lib/editorCommands.ts"
+import { pushEmitted, shouldReset } from "../lib/editorGuard.ts"
 import { livePreview } from "../lib/livePreview.ts"
 import type { EditProps } from "../registry/props.ts"
 import { controlFrame } from "../components/looks.ts"

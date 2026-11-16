@@ -6,11 +6,11 @@
  * against the other collection's real fields.
  *
  * ⚠ NOTHING HERE NAMES A DESCRIPTOR KEYWORD. `link_side` / `far_field` / `unique` / `on_delete` on the def are the
- * drawer's vocabulary; `lib/field-def.ts` turns them into the one v2 relation spelling and
- * `lib/designer-state.ts` writes the other collection's field too.
+ * drawer's vocabulary; `lib/fieldDef.ts` turns them into the one v2 relation spelling and
+ * `lib/designerState.ts` writes the other collection's field too.
  */
 import type { FieldRow } from "../api/types.ts"
-import { isMirrorField, isRelationField, isRelationList } from "./field-row.ts"
+import { isMirrorField, isRelationField, isRelationList } from "./fieldRow.ts"
 import {
   baseNameOf,
   defaultForeignKeyName,
@@ -18,7 +18,7 @@ import {
   defaultLinkSide,
   singularOf,
   type LinkSide,
-} from "./relation-meta.ts"
+} from "./relationMeta.ts"
 
 type Def = Record<string, unknown>
 

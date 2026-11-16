@@ -49,7 +49,7 @@
  */
 import type { FieldRow } from "../api/types.ts"
 import type { UiViewRecord } from "./uiViews.ts"
-import { isRelationField, isRelationList } from "./field-row.ts"
+import { isRelationField, isRelationList } from "./fieldRow.ts"
 
 export { isRelationField, isRelationList }
 
@@ -57,7 +57,7 @@ export { isRelationField, isRelationList }
 export const RELATION_VIEWS_OPTION = "relation_views"
 
 /*
- * A LIST relation (`lib/field-row.ts#isRelationList`: a key or a mirror, `many`) is the only shape
+ * A LIST relation (`lib/fieldRow.ts#isRelationList`: a key or a mirror, `many`) is the only shape
  * that embeds. A single reference (`company` on a contact) stays a link, deliberately: a whole table
  * drawn for one record is more chrome than value, and Directus draws its m2o as a display for the
  * same reason. The rule is the field's SHAPE, so it needs no per-field authoring to be right by

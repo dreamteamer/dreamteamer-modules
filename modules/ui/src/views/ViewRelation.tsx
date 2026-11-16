@@ -1,6 +1,6 @@
 /**
  * `relation` — a reference reads as its TARGET's name: the target collection's `record_title`, fetched once per
- * record through the shared cache (`lib/record-cache.ts`), so a column of 90 rows naming 20 records costs 20
+ * record through the shared cache (`lib/recordCache.ts`), so a column of 90 rows naming 20 records costs 20
  * requests, and a relation cell, the picker and the record header never name one record two ways. Until a title
  * lands — and for a reference that resolves to nothing — the de-slugged last segment stands.
  *
@@ -8,7 +8,7 @@
  * already the click target — EXCEPT an untargeted list reference (refs into any collection), whose row opens
  * something else entirely, so each title links to its own record (the click does not reach the row).
  *
- * A reference to a FILE-CODEC record (`lib/file-record.ts`) draws its picture when the bytes are an image — the
+ * A reference to a FILE-CODEC record (`lib/fileRecord.ts`) draws its picture when the bytes are an image — the
  * picture IS the value, the title its alt text. Hovering a reference opens an instant card: the title, the
  * collection it lives in, the reference itself.
  */
@@ -16,9 +16,9 @@ import { useEffect, useState } from "react"
 import { useApp, useSignal } from "../AppContext.tsx"
 import { HoverCard } from "../components/HoverCard.tsx"
 import { Link } from "../components/Link.tsx"
-import { refsOf } from "../lib/edit-values.ts"
-import { fileRecordRef, isImageExt, srcForRecord } from "../lib/file-record.ts"
-import { askTitles, fetchRecord, knownTitle, referenceTitlesChanged, refStem } from "../lib/record-cache.ts"
+import { refsOf } from "../lib/editValues.ts"
+import { fileRecordRef, isImageExt, srcForRecord } from "../lib/fileRecord.ts"
+import { askTitles, fetchRecord, knownTitle, referenceTitlesChanged, refStem } from "../lib/recordCache.ts"
 import { recordRoute } from "../lib/createRoute.ts"
 import { splitRef } from "../lib/schema.ts"
 import type { ViewProps } from "../registry/props.ts"

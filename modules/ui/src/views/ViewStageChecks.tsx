@@ -1,12 +1,12 @@
 /**
  * `stage-checks` — a `many` tags field whose collection declared its stages (`viewer_options.stages`, read by
- * `lib/stage-checks.ts`). One slot per stage, in declared order and of one width, so the stages line up down a
+ * `lib/stageChecks.ts`). One slot per stage, in declared order and of one width, so the stages line up down a
  * column: empty while the stage is not tagged, one check when it is, two once a review of it exists — green when
  * it approves with no open finding, orange when it left remarks; the review's words are the hover and the slot's
  * accessible name. Tags that are not a stage follow as chips.
  *
  * It needs the ROW to place a review (`record`); without one it draws tag-only and asks the host nothing. The
- * reviews come through `lib/stage-reviews.ts` — one batched request per list, re-read on every invalidation.
+ * reviews come through `lib/stageReviews.ts` — one batched request per list, re-read on every invalidation.
  */
 import { useEffect, useState } from "react"
 import { useApp } from "../AppContext.tsx"
@@ -19,8 +19,8 @@ import {
   stageChecksSpec,
   type Review,
   type StageCheck,
-} from "../lib/stage-checks.ts"
-import { openFindingsFor, reviewsFor } from "../lib/stage-reviews.ts"
+} from "../lib/stageChecks.ts"
+import { openFindingsFor, reviewsFor } from "../lib/stageReviews.ts"
 import type { ViewProps } from "../registry/props.ts"
 import { chip, cx, subtle } from "../styles/classes.ts"
 

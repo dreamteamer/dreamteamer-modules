@@ -5,7 +5,7 @@
  */
 import { Select } from "../components/Select.tsx"
 import { normalizeChoices } from "../lib/normalizeChoices.ts"
-import { choicesOf } from "../lib/field-row.ts"
+import { choicesOf } from "../lib/fieldRow.ts"
 import type { Choice } from "../lib/listbox.ts"
 import type { EditProps } from "../registry/props.ts"
 

@@ -28,7 +28,7 @@
  */
 import type { UiViewRecord, ViewDisplay } from "./uiViews.ts"
 import { SOURCE_FIELD } from "./sources.ts"
-import { decompileFilter } from "./filter-query.ts"
+import { decompileFilter } from "./filterQuery.ts"
 
 /** What a view draws — `uiViews.ts#drawnDisplay`'s rule (compile's merge, else what it authored),
  *  restated here so this file stays free of the view table's fetch. */

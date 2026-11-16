@@ -2,7 +2,7 @@
  * `color` — a swatch and the hex beside it. The native picker takes `#rrggbb` only; the text accepts anything,
  * so a value mid-edit or seeded as `#abc` is never clobbered, and only the swatch falls back to grey. Opt-in.
  */
-import { swatchValue, textOrNull } from "../lib/edit-values.ts"
+import { swatchValue, textOrNull } from "../lib/editValues.ts"
 import type { EditProps } from "../registry/props.ts"
 import { input } from "../styles/classes.ts"
 

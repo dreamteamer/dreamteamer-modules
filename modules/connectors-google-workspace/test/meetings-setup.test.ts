@@ -14,7 +14,7 @@ import https from "node:https"
 import cp from "node:child_process"
 import { syncBuiltinESMExports } from "node:module"
 import { fileURLToPath } from "node:url"
-import { inspect, plan, parseRow, SETUP_UNIT } from "../lib/meetings-setup.ts"
+import { inspect, plan, parseRow, SETUP_UNIT } from "../lib/meetingsSetup.ts"
 import {
   virginWorkspace,
   packedInto,

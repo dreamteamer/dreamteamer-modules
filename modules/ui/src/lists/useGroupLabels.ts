@@ -1,6 +1,6 @@
 /**
  * A band's NAME, PICTURE and SUMMARY when its value is a reference — the fetching half of the Vue ui's
- * lib/group-label.ts `useGroupLabels`, as a hook (the pure half is lib/group-label.ts). The gantt asks it for
+ * lib/groupLabel.ts `useGroupLabels`, as a hook (the pure half is lib/groupLabel.ts). The gantt asks it for
  * every band value; it reads each referenced record through the shared record cache and renders the band's
  * templates against it. A value missing from a map means "no better answer than the fallback".
  *
@@ -11,9 +11,9 @@
 import { useEffect, useState } from "react"
 import type { FieldRow } from "../api/types.ts"
 import { useApp } from "../AppContext.tsx"
-import { bandTitleTemplate, iconOf, idFor } from "../lib/group-label.ts"
+import { bandTitleTemplate, iconOf, idFor } from "../lib/groupLabel.ts"
 import { UNGROUPED } from "../lib/grouping.ts"
-import { fetchRecord } from "../lib/record-cache.ts"
+import { fetchRecord } from "../lib/recordCache.ts"
 import { tryRenderDisplay } from "../lib/template.ts"
 
 export interface GroupLabels {

@@ -64,8 +64,8 @@ import { ListGantt } from "../lists/ListGantt.tsx"
 import { ListKanban } from "../lists/ListKanban.tsx"
 import { ListMap } from "../lists/ListMap.tsx"
 import { ListTable } from "../lists/ListTable.tsx"
-import { ALL, PAGE_SIZE_CHOICES } from "../lib/page-size.ts"
-import { DEFAULT_ROW_SIZE, ROW_SIZES, ROW_SIZE_LABELS } from "../lib/row-size.ts"
+import { ALL, PAGE_SIZE_CHOICES } from "../lib/pageSize.ts"
+import { DEFAULT_ROW_SIZE, ROW_SIZES, ROW_SIZE_LABELS } from "../lib/rowSize.ts"
 import { edits, lists, optionRows, views, type OptionFieldDef } from "./index.ts"
 
 edits.register({ id: "input", name: "Input", component: EditInput, types: ["string", "url", "email", "position"] })
@@ -144,7 +144,7 @@ views.register({ id: "data-model", name: "Data model", component: DataModelRecor
 // ── options every list shares ────────────────────────────────────────────────────────────────────────────
 // GROUPING IS ONE CONCEPT WITH TWO AXES, NAMED FOR THE AXIS: `group_by` makes horizontal bands and every list has
 // it; `lanes_by` makes the kanban's columns. An option that takes a field is named for the role the field plays,
-// with no `_field` suffix (descriptor v2 §3.5.1); `lib/list-options.ts` knows the old spellings.
+// with no `_field` suffix (descriptor v2 §3.5.1); `lib/listOptions.ts` knows the old spellings.
 const groupRowsOptions = (): OptionFieldDef[] => [
   {
     field: "group_by",
@@ -188,7 +188,7 @@ const colorByOption = (group?: string): OptionFieldDef => ({
   note: "tint each record with its value’s enum colour",
 })
 
-// paging is server-side; a grouped view defaults to All (`lib/page-size.ts`), an explicit choice still wins
+// paging is server-side; a grouped view defaults to All (`lib/pageSize.ts`), an explicit choice still wins
 const pageSizeOption = (): OptionFieldDef => ({
   field: "page_size",
   name: "Page size",
@@ -200,7 +200,7 @@ const pageSizeOption = (): OptionFieldDef => ({
   note: "defaults to All while rows are grouped, otherwise 25",
 })
 
-// the table's density; the header's density menu writes the same key (`lib/row-size.ts` is the one reader)
+// the table's density; the header's density menu writes the same key (`lib/rowSize.ts` is the one reader)
 const rowSizeOption = (): OptionFieldDef => ({
   field: "row_size",
   group: "density",
@@ -575,7 +575,7 @@ lists.register({
     // and the shape of the year is the one thing that width hides. Off restores the uniform axis.
     //
     // No threshold option, deliberately: the budget is 120 wasted pixels at the chart's unfolded
-    // scale, which is a constant with a comment in `lib/gantt-axis.ts`. A dropdown here would be a
+    // scale, which is a constant with a comment in `lib/ganttAxis.ts`. A dropdown here would be a
     // second way to say what the data already says — the same reason the SCALE has no option.
     {
       field: "fold_gaps",
@@ -636,7 +636,7 @@ lists.register({
     // What a BAND is called, when its value is a reference. Blank is not "no label": it is the
     // referenced record rendered through its collection's `record_title` — what a relation CELL
     // for it shows — and only when that is absent does the band fall back to the de-slugged last
-    // segment of the path. Setting this overrides both, for this view only. (`lib/group-label.ts`.)
+    // segment of the path. Setting this overrides both, for this view only. (`lib/groupLabel.ts`.)
     {
       field: "group_title",
       group: "rows",

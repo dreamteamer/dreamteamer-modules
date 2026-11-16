@@ -9,7 +9,7 @@
  *
  * The lock starts locked on every load and is kept nowhere: locked, the nav only navigates; unlocked, rows drag and
  * have a right-click menu, and the toolbar offers New folder and Show hidden…. Every gesture is ONE NavOp sent as
- * `PATCH /nav` (lib/nav-tree.ts decides which), then the nav is read again; a refusal shows the host's sentence.
+ * `PATCH /nav` (lib/navTree.ts decides which), then the nav is read again; a refusal shows the host's sentence.
  * Arranging needs Edit: on a pane host at Read the lock is disabled saying so, and a lower to Read while unlocked
  * locks it.
  */
@@ -17,7 +17,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type
 import { getNav, request } from "../api/client.ts"
 import { useApp, useSignal } from "../AppContext.tsx"
 import { hostInfo, paneHost } from "../lib/host.ts"
-import { menuUnder, rectOf, viewportWidth } from "../lib/menu-place.ts"
+import { menuUnder, rectOf, viewportWidth } from "../lib/menuPlace.ts"
 import { canBack, canForward, navHistory } from "../lib/navHistory.ts"
 import {
   NAV_DRAG_TYPE,
@@ -36,7 +36,7 @@ import {
   type NavIndex,
   type NavNode,
   type NavOp,
-} from "../lib/nav-tree.ts"
+} from "../lib/navTree.ts"
 import { openMenu } from "../lib/openMenu.ts"
 import { Icon } from "./Icon.tsx"
 import { NavMenu } from "./NavMenu.tsx"

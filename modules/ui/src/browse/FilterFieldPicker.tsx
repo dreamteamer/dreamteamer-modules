@@ -22,7 +22,7 @@ import {
   visitedAlong,
   type FieldNode,
   type RelationLookup,
-} from "../lib/filter-field-tree.ts"
+} from "../lib/filterFieldTree.ts"
 import { formatTitle } from "../lib/formatTitle.ts"
 import { usePopover } from "./usePopover.ts"
 import { ddControl } from "../components/looks.ts"

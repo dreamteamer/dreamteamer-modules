@@ -7,7 +7,7 @@
  */
 import assert from "node:assert/strict"
 import { describe, test } from "node:test"
-import { unknownOptions, RENAMED_OPTIONS } from "../src/lib/list-options.ts"
+import { unknownOptions, RENAMED_OPTIONS } from "../src/lib/listOptions.ts"
 
 const unknownOptionKeys = (o: Record<string, unknown> | undefined, d?: ReadonlyArray<{ field: string }>) =>
   unknownOptions(o, d).map(u => u.key)

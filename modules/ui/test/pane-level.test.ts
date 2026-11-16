@@ -3,7 +3,7 @@
 // (dt web open --edit|--admin), and while one is in force the bar says since when.
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { levelWord, lowerChoices, raiseNotice } from "../src/lib/pane-level.ts"
+import { levelWord, lowerChoices, raiseNotice } from "../src/lib/paneLevel.ts"
 
 test("levelWord names each level with a capital", () => {
   assert.equal(levelWord("read"), "Read")

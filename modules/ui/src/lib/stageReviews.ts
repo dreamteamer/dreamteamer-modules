@@ -16,8 +16,8 @@
  * follow the app's invalidation counter: a caller hands its `version`, and a new one drops both.
  */
 import { listRecords } from "../api/client.ts"
-import { ALL } from "./page-size.ts"
-import { bareRef, type Review } from "./stage-checks.ts"
+import { ALL } from "./pageSize.ts"
+import { bareRef, type Review } from "./stageChecks.ts"
 
 interface Batch<T> {
   keys: Set<string>

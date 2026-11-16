@@ -3,7 +3,7 @@ import assert from "node:assert/strict"
 import fs from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
-import { installVsix } from "../src/extension-cache.ts"
+import { installVsix } from "../src/extensionCache.ts"
 test("identical content skips; changed content, missing install, and failed installs do not", async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "extension-cache-"))
   try {
@@ -42,7 +42,7 @@ test("identical content skips; changed content, missing install, and failed inst
 })
 
 test("marketplace replaces same-version local installs, caches verification, and retries failures", async () => {
-  const { installMarketplace } = await import("../src/extension-cache.ts")
+  const { installMarketplace } = await import("../src/extensionCache.ts")
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "marketplace-cache-"))
   try {
     const extensions = path.join(root, "extensions"),

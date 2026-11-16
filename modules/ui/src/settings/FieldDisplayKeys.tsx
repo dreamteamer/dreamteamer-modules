@@ -2,7 +2,7 @@
  * The field drawer's DISPLAY keys (descriptor v2, §3.4.2; ported from the Vue ui's FieldDisplayKeys.vue): whether
  * a control is offered (`editable`), the surfaces it is hidden from, its form section, placeholder, unit (and the
  * currency field), the direction of its values, and its list column width in characters. Each control goes
- * through `lib/field-display-keys.ts` on a copy of the draft, so an untouched control writes nothing the field did
+ * through `lib/fieldDisplayKeys.ts` on a copy of the draft, so an untouched control writes nothing the field did
  * not already say.
  */
 import { Select } from "../components/Select.tsx"
@@ -18,7 +18,7 @@ import {
   widthOf,
   type Editable,
   type Surface,
-} from "../lib/field-display-keys.ts"
+} from "../lib/fieldDisplayKeys.ts"
 import { check, formRow, input } from "../styles/classes.ts"
 import { checks, formPair, panel } from "./looks.ts"
 

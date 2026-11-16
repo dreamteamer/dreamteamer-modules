@@ -13,7 +13,7 @@ import {
   searchNodes,
   visitedAlong,
   type FieldNode,
-} from "../src/lib/filter-field-tree.ts"
+} from "../src/lib/filterFieldTree.ts"
 import type { FieldRow } from "../src/api/types.ts"
 import { fieldRow } from "./field-rows.ts"
 

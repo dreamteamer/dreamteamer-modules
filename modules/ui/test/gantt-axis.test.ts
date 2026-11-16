@@ -22,7 +22,7 @@
  */
 import assert from "node:assert/strict"
 import test from "node:test"
-import { bandRuns, buildAxis, dayNumber, rangeLabel, DAY_PX, type Axis, type AxisSpan } from "../src/lib/gantt-axis.ts"
+import { bandRuns, buildAxis, dayNumber, rangeLabel, DAY_PX, type Axis, type AxisSpan } from "../src/lib/ganttAxis.ts"
 
 const day = (key: string): number => dayNumber(key)
 const point = (key: string) => ({ start: day(key), end: day(key) })

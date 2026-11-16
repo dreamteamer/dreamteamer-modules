@@ -1,13 +1,13 @@
 /**
  * A nav row's menu (cr-dt-008), ported from the Vue ui's NavMenu.vue: a short list of entries drawn where the
  * right click was. An entry that needs a value — a folder label, a hidden name, an icon — asks for it in place before
- * it is picked. What an entry DOES is lib/nav-tree.ts's: this component only says which entry, and with what value.
+ * it is picked. What an entry DOES is lib/navTree.ts's: this component only says which entry, and with what value.
  * A toolbar button that IS one entry (New folder, Show hidden…) opens the menu straight at that entry's ask (`start`).
  *
  * The icon ask is a search box over components/IconPicker.tsx's `IconGrid` — the grid the IconPicker draws.
  */
 import { useEffect, useRef, useState } from "react"
-import type { NavMenuItem } from "../lib/nav-tree.ts"
+import type { NavMenuItem } from "../lib/navTree.ts"
 import { IconGrid } from "./IconPicker.tsx"
 import { cx, input } from "../styles/classes.ts"
 

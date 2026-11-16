@@ -3,15 +3,15 @@
  * file token share, so the three cannot disagree about where a reference's bytes are (ported from
  * the Vue ui's lib/use-file-src.ts and components/render/FileThumb.vue).
  *
- * A URL (`https:`, `data:image/`) is its own source. A FILE-CODEC reference (`lib/file-record.ts`) is decided by
+ * A URL (`https:`, `data:image/`) is its own source. A FILE-CODEC reference (`lib/fileRecord.ts`) is decided by
  * the value against the host's file-base list, then the record is read for its `ext`: only an image extension
  * yields a source, so a PDF in the same collection keeps its reference as text instead of a broken `<img>`.
  * Anything else has no source. A result that lands after the value changed is dropped.
  */
 import { useEffect, useState } from "react"
 import { useApp } from "../AppContext.tsx"
-import { fileRecordRef, isImageExt, srcForRecord } from "../lib/file-record.ts"
-import { fetchRecord } from "../lib/record-cache.ts"
+import { fileRecordRef, isImageExt, srcForRecord } from "../lib/fileRecord.ts"
+import { fetchRecord } from "../lib/recordCache.ts"
 import { subtle } from "../styles/classes.ts"
 
 const URL_RE = /^(https?:\/\/|data:image\/)/i

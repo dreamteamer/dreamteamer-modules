@@ -7,7 +7,7 @@
  * field rows), grouped by module, an edge per reference (`lib/diagram/providers/buildSchemaRefs.ts`, over the display
  * contract: the presentation's collection rows, field rows and relation rows). Over any other collection a record
  * is a DOT and an edge is a typed reference, a shared value, or a value drawn as a node of its own
- * (`providers/record-links.ts`).
+ * (`providers/buildRecordLinks.ts`).
  *
  * LAYOUT: a grouped packing (dagre per group, `lib/diagram/layout.ts`) for entity nodes or a chosen `group_by`,
  * a settled force simulation otherwise — re-solved only when WHICH nodes exist, their heights, the edge count or
@@ -23,14 +23,14 @@ import { getPresentation, listRecords, type Row } from "../api/client.ts"
 import { useApp, useAsync } from "../AppContext.tsx"
 import { DiagramCanvas } from "../components/diagram/DiagramCanvas.tsx"
 import { layoutForce, layoutGrouped, type LayoutBox, type SizedNode } from "../lib/diagram/layout.ts"
-import { buildRecordLinks, type LinkMode } from "../lib/diagram/providers/record-links.ts"
+import { buildRecordLinks, type LinkMode } from "../lib/diagram/providers/buildRecordLinks.ts"
 import {
   buildSchemaRefs,
   type SchemaCollectionRow,
   type SchemaFieldRow,
   type SchemaRelationRow,
 } from "../lib/diagram/providers/buildSchemaRefs.ts"
-import { isRelationField } from "../lib/field-row.ts"
+import { isRelationField } from "../lib/fieldRow.ts"
 import { tryRenderDisplay } from "../lib/template.ts"
 import type { ListProps } from "../registry/props.ts"
 import { listEmpty } from "../styles/classes.ts"

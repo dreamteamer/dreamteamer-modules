@@ -2,7 +2,7 @@
  * `slider` — a number as a range, `editor_options.min`/`max`/`step` (defaults 0/100/1), its value beside it.
  * Opt-in only: a year, a count or a price defaulting to a 0–100 slider would be wrong for most number fields.
  */
-import { sliderScale } from "../lib/edit-values.ts"
+import { sliderScale } from "../lib/editValues.ts"
 import type { EditProps } from "../registry/props.ts"
 
 export function EditSlider({ value, onChange, id, options }: EditProps) {

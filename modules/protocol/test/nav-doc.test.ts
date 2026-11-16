@@ -7,7 +7,7 @@
 // moves anything else on screen. Every refusal is a NavOpError naming its input, which a host answers 400.
 import { test, describe } from "node:test"
 import assert from "node:assert/strict"
-import { applyNavOp, NavOpError } from "../src/nav-doc.ts"
+import { applyNavOp, NavOpError } from "../src/navDoc.ts"
 
 /** The design's §3 example document. */
 const EXAMPLE = () => ({

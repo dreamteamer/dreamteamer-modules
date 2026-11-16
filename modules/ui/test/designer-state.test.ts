@@ -1,5 +1,5 @@
 // The designer's SAVE, as the host sees it (ported from the Vue ui's webview/designer-save.test.ts, now over the
-// pure lib/designer-state.ts): what the write path sends is the contract. Every fixture is invented here
+// pure lib/designerState.ts): what the write path sends is the contract. Every fixture is invented here
 // (`patients`, `visits`, `samples`).
 import assert from "node:assert/strict"
 import test, { beforeEach } from "node:test"
@@ -14,7 +14,7 @@ import {
   patchStaged,
   renameProblem,
   saveDesigner,
-} from "../src/lib/designer-state.ts"
+} from "../src/lib/designerState.ts"
 
 const row = (collection: string) => ({
   collection,
@@ -269,7 +269,7 @@ test("enum values and rename problems", () => {
 })
 
 test("a rename plan reads as one sentence and its files", async () => {
-  const { planFiles, renamePlanLine } = await import("../src/lib/designer-state.ts")
+  const { planFiles, renamePlanLine } = await import("../src/lib/designerState.ts")
   const plan = {
     records: 3,
     positions: [

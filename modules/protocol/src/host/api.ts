@@ -3,9 +3,9 @@ import * as fs from "node:fs"
 import * as path from "node:path"
 import { execFileSync } from "node:child_process"
 import { engine, refreshWorkspace } from "./engine.ts"
-import { listFolderImages } from "./folder-images.ts"
+import { listFolderImages } from "./listFolderImages.ts"
 import { contestedIds, fileToRecord, loadDescriptors, loadModules, repoOfPath, workspaceModule } from "./fsdata.ts"
-import { loadRuntimeModules, moduleOfRuntimeFile } from "./module-of.ts"
+import { loadRuntimeModules, moduleOfRuntimeFile } from "./moduleOf.ts"
 import {
   ACTIVITY_BUDGET_MS,
   ACTIVITY_GRACE_MS,
@@ -17,7 +17,7 @@ import {
   repoName,
 } from "./activity.ts"
 import { recordTitle } from "./titles.ts"
-import { forgetAhead, locateRecord, repoStateKeys } from "./repo-state.ts"
+import { forgetAhead, locateRecord, repoStateKeys } from "./repoState.ts"
 import {
   collectionSources,
   moduleSource,
@@ -28,9 +28,9 @@ import {
   withoutSourceClauses,
 } from "./sources.ts"
 import { createInLayer } from "./createInLayer.ts"
-import { accessTargets, redactSecrets, unavailableAccess, NOT_AVAILABLE } from "./remote-access.ts"
-import { byId, notesFor } from "./next-notes.ts"
-import { recordDirsOrNone, unreadableReason } from "./record-dirs.ts"
+import { accessTargets, redactSecrets, unavailableAccess, NOT_AVAILABLE } from "./remoteAccess.ts"
+import { byId, notesFor } from "./nextNotes.ts"
+import { recordDirsOrNone, unreadableReason } from "./recordDirs.ts"
 export class ApiFailure extends Error {
   status
   constructor(message, status) {

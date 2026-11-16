@@ -1,8 +1,8 @@
-// THE BOARD'S DECISIONS (lib/kanban-board.ts): which field makes the columns and the lanes, and what a drop writes —
+// THE BOARD'S DECISIONS (lib/kanbanBoard.ts): which field makes the columns and the lanes, and what a drop writes —
 // pinned without a renderer, so a drag that would write the wrong thing fails here first.
 import assert from "node:assert/strict"
 import test from "node:test"
-import { addPrefill, columnFieldOf, laneFieldOf, planDrop, type DropInput } from "../src/lib/kanban-board.ts"
+import { addPrefill, columnFieldOf, laneFieldOf, planDrop, type DropInput } from "../src/lib/kanbanBoard.ts"
 import { enumRow, fieldRow } from "./field-rows.ts"
 
 const fields = [fieldRow("name"), enumRow("status", ["active", "paused"]), enumRow("stage", ["a", "b"])]

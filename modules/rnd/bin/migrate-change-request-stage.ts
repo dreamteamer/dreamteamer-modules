@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // migrate-change-request-stage — fills `stage` on a workspace's own change requests: the gate `dt next`
-// names on each (lib/cr-stage.mjs, read through the workspace's own engine), dry run first. Also the repair
+// names on each (lib/crStage.mjs, read through the workspace's own engine), dry run first. Also the repair
 // for a stage that drifted — a card dragged on the board, a lifecycle step that skipped the write.
 //
 //   node node_modules/@dreamteamer/rnd/bin/migrate-change-request-stage.mjs            # the plan, nothing written
@@ -19,7 +19,7 @@ import { spawnSync } from "node:child_process"
 import { createRequire } from "node:module"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import { findWorkspace } from "../lib/findWorkspace.ts"
-import { COLLECTION, compilesStage, readRequests, allowedStages, stageContradictions } from "../lib/cr-stage.ts"
+import { COLLECTION, compilesStage, readRequests, allowedStages, stageContradictions } from "../lib/crStage.ts"
 
 /** The workspace's own engine: its API module and its CLI, with no harness session id leaking in. */
 async function engineOf(root) {

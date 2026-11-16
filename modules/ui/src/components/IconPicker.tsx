@@ -1,11 +1,11 @@
 /**
  * THE ICON CHOOSER (ported from the Vue ui's IconPicker.vue): a trigger showing the chosen glyph and its name,
- * and under it a search box over every codicon name (lib/icon-names.ts) with a grid of live previews — a curated
+ * and under it a search box over every codicon name (lib/iconNames.ts) with a grid of live previews — a curated
  * shortlist before anything is typed, prefix matches first after, capped so one letter never paints the whole font.
  * The nav's "Set icon…" ask draws the same `IconGrid`.
  */
 import { useEffect, useMemo, useRef, useState } from "react"
-import { ALL_ICONS, COMMON_ICONS } from "../lib/icon-names.ts"
+import { ALL_ICONS, COMMON_ICONS } from "../lib/iconNames.ts"
 import { usePopover } from "../browse/usePopover.ts"
 import { Icon } from "./Icon.tsx"
 import { cx, hint, iconButton, input, subtle } from "../styles/classes.ts"

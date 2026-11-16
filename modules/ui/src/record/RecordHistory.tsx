@@ -6,7 +6,7 @@
  * validated against today's schema, as a pending write (`dt revert`) — and a refusal is shown in the dialog, verbatim.
  *
  * Restore is DISABLED on a compiled collection, with the engine's reason as its tooltip
- * (`lib/readonly-source.ts`): there is no record revision to restore, and a refusal after the click is worse
+ * (`lib/readonlySource.ts`): there is no record revision to restore, and a refusal after the click is worse
  * than a control that says why first. Restore is an admin route, so a pane below admin does not offer it.
  */
 import { useState } from "react"
@@ -15,7 +15,7 @@ import { useApp, useAsync, useSignal } from "../AppContext.tsx"
 import { Dialog } from "../components/Dialog.tsx"
 import { classifyDiffLines, type ClassifiedDiffLine } from "../lib/classifyDiffLines.ts"
 import { hostInfo, isAdmin } from "../lib/host.ts"
-import { revertRefused, revertRefusedSentence } from "../lib/readonly-source.ts"
+import { revertRefused, revertRefusedSentence } from "../lib/readonlySource.ts"
 import { relativeTime } from "../lib/relativeTime.ts"
 import { button, buttonSize, buttonTone, cx, dialogActions, error, subtle } from "../styles/classes.ts"
 import { linkAction } from "./looks.ts"

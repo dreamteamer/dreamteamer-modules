@@ -4,7 +4,7 @@
  * when the schema names something this build doesn't have registered.
  */
 import type { FieldRow } from "../api/types.ts"
-import { choicesOf, isBodyField, isRelationField, subFieldsOf } from "../lib/field-row.ts"
+import { choicesOf, isBodyField, isRelationField, subFieldsOf } from "../lib/fieldRow.ts"
 import { type ExtensionDefinition, edits, kindDefaultEdits, kindDefaultViews, views } from "./index.ts"
 
 export interface Resolved<T> {

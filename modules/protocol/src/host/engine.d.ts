@@ -1,5 +1,5 @@
 import { type BelowFloorNotice } from "./floor.js"
-import type { NavDoc } from "../nav-doc.js"
+import type { NavDoc } from "../navDoc.js"
 export declare const ENGINE_API_VERSION = 1
 export interface EngineWorkspace {
   root: string

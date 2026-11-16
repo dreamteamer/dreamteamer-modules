@@ -16,11 +16,11 @@ import {
   withTwoWay,
   withType,
   withViewer,
-} from "../src/lib/field-drawer.ts"
+} from "../src/lib/fieldDrawer.ts"
 import { moduleEntries, shipsOf } from "../src/lib/modules.ts"
-import { remoteMark } from "../src/lib/remote-access.ts"
+import { remoteMark } from "../src/lib/remoteAccess.ts"
 import { createRoute, listRoute, pageOf, recordRoute, settingsRedirect } from "../src/lib/createRoute.ts"
-import { recordCount, recordsIn } from "../src/lib/sources-stack.ts"
+import { recordCount, recordsIn } from "../src/lib/sourcesStack.ts"
 import type { FieldRow } from "../src/api/types.ts"
 
 const NAMES = ["projects", "lab/samples", "skills"]

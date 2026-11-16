@@ -7,7 +7,7 @@ import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
 import { execFileSync } from "node:child_process"
-import { SETUP_UNIT, inspect, plan, apply } from "../lib/connectors-google-workspace-setup.ts"
+import { SETUP_UNIT, inspect, plan, apply } from "../lib/connectorsGoogleWorkspaceSetup.ts"
 import {
   virginWorkspace,
   packedInto,

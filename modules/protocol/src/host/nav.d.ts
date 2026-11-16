@@ -1,5 +1,5 @@
 import { Descriptor, type ModuleRecord } from "./fsdata.js"
-import type { NavDoc, NavTarget } from "../nav-doc.js"
+import type { NavDoc, NavTarget } from "../navDoc.js"
 import type { NavNode } from "../navModel.js"
 import { type SourceEntry } from "./sources.js"
 export declare function keepsRuntimeRecords(d: Descriptor): boolean

@@ -18,7 +18,7 @@
  *    engine's to compute; nothing here spells the alphabet.
  */
 import type { FieldRow } from "../api/types.ts"
-import { choicesOf } from "./field-row.ts"
+import { choicesOf } from "./fieldRow.ts"
 
 /** The COLUMN field: the `lanes_by` option when it names a field, else the first field declaring choices. */
 export function columnFieldOf(fields: readonly FieldRow[], options: Record<string, unknown>): FieldRow | null {

@@ -6,8 +6,8 @@
  * would otherwise be the biggest thing on the panel. Fields already used are marked. Blank clears to null.
  */
 import { useRef } from "react"
-import { selectableFields } from "../lib/field-context.ts"
-import { inputText, textOrNull } from "../lib/edit-values.ts"
+import { selectableFields } from "../lib/fieldContext.ts"
+import { inputText, textOrNull } from "../lib/editValues.ts"
 import { templateFields } from "../lib/template.ts"
 import { useFieldContext } from "../render/FieldContext.tsx"
 import type { EditProps } from "../registry/props.ts"

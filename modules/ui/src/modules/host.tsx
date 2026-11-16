@@ -30,7 +30,7 @@ import { uiViews } from "../lib/uiViews.ts"
 import { apps, edits, lists, panels, views, type ExtensionDefinition } from "../registry/index.ts"
 import type { EditProps, ListProps, ViewProps } from "../registry/props.ts"
 import { moduleKindDefault, resolveEdit, resolveView } from "../registry/resolve.ts"
-import { canFrame, makeFrameSource } from "./frame-source.ts"
+import { canFrame, makeFrameSource } from "./makeFrameSource.ts"
 import {
   buildSnapshot,
   checkIntent,

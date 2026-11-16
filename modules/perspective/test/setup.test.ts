@@ -5,7 +5,7 @@ import assert from "node:assert/strict"
 import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
-import { SETUP_UNIT } from "../lib/perspective-setup.ts"
+import { SETUP_UNIT } from "../lib/perspectiveSetup.ts"
 import {
   virginWorkspace,
   packedInto,

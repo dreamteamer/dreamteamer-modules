@@ -1,10 +1,10 @@
 /**
- * What an extension says about a record (`lib/next-notes.ts`): the sentence verbatim, cut at the host's offsets
+ * What an extension says about a record (`lib/nextNotes.ts`): the sentence verbatim, cut at the host's offsets
  * into text and references, a reference this workspace does not hold left as text.
  */
 import assert from "node:assert/strict"
 import test from "node:test"
-import { markTitle, notesOfRow, textParts, type NextNote } from "../src/lib/next-notes.ts"
+import { markTitle, notesOfRow, textParts, type NextNote } from "../src/lib/nextNotes.ts"
 
 const note = (text: string, refs: NextNote["refs"] = []): NextNote => ({ id: "brief-dana", text, by: "core", refs })
 

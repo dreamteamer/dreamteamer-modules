@@ -3,7 +3,7 @@
  * direction, else `auto`: a Hebrew value must not flip to LTR the moment it is edited. An object that lands
  * here (a mis-typed field) shows as JSON, never "[object Object]"; an emptied field clears to null.
  */
-import { inputText, textOrNull } from "../lib/edit-values.ts"
+import { inputText, textOrNull } from "../lib/editValues.ts"
 import type { EditProps } from "../registry/props.ts"
 import { input } from "../styles/classes.ts"
 

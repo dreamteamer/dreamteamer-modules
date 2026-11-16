@@ -5,7 +5,7 @@
  * schema says "this is a status". A value outside the enum shows as itself. A list draws one per value.
  */
 import { Icon } from "../components/Icon.tsx"
-import { choiceOf, themeColor } from "../lib/collection-display.ts"
+import { choiceOf, themeColor } from "../lib/collectionDisplay.ts"
 import type { ViewProps } from "../registry/props.ts"
 import { Empty, isEmpty } from "./Empty.tsx"
 import { cx } from "../styles/classes.ts"

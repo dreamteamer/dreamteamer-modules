@@ -1,4 +1,4 @@
-// Tier 1 — the filter builder's pure logic. No Vue, no editor API: `filter-query.ts` is deliberately
+// Tier 1 — the filter builder's pure logic. No Vue, no editor API: `filterQuery.ts` is deliberately
 // framework-free so exactly this is possible.
 //
 // ⚠ The bug that forced this file into existence: opening the filter panel on a SAVED VIEW showed
@@ -15,7 +15,7 @@ import {
   newRule,
   splitFieldPath,
   type FilterGroup,
-} from "../src/lib/filter-query.ts"
+} from "../src/lib/filterQuery.ts"
 
 /** Compare ignoring rule ids — they are v-for keys, explicitly not data, and are re-minted on parse. */
 const shape = (g: FilterGroup | null) =>

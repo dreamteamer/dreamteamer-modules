@@ -4,7 +4,7 @@
 // and nothing else on screen. Five collections whose titles are their names; the document places Work (holding tasks)
 // and contacts, so the top level draws Work, contacts, then the tail assets, companies, users. Each recipe op is
 // applied with applyNavOp, drawn with buildTree, and the top-level labels compared with the held-out's expected; the
-// same gestures are asked of the ui's own gesture rules (modules/ui/src/lib/nav-tree.ts; until ui 0.4 the real
+// same gestures are asked of the ui's own gesture rules (modules/ui/src/lib/navTree.ts; until ui 0.4 the real
 // NavSidebar.vue, rendered) and the ops they send compared with the recipes; with no document the same Move gestures
 // move one row one place.
 import { test, describe } from "node:test"
@@ -16,7 +16,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.resolve(HERE, "..", "..")
 const PROTOCOL = path.join(ROOT, "modules", "protocol")
 const { buildTree, tailOrder } = await import(pathToFileURL(path.join(PROTOCOL, "src", "host", "nav.ts")).href)
-const { applyNavOp, NavOpError } = await import(pathToFileURL(path.join(PROTOCOL, "src", "nav-doc.ts")).href)
+const { applyNavOp, NavOpError } = await import(pathToFileURL(path.join(PROTOCOL, "src", "navDoc.ts")).href)
 
 const NAMES = ["assets", "companies", "contacts", "tasks", "users"]
 const descriptors = NAMES.map(name => ({ name, title: name }))
@@ -198,10 +198,10 @@ describe("steps 2-3: each recipe op through applyNavOp, drawn with buildTree", (
 // ── step 4: the ui's own gesture rules ─────────────────────────────────────────────────────────────────────────────
 // The sidebar was Vue through @dreamteamer/ui 0.3, and this step rendered the real NavSidebar.vue. The React app (0.4)
 // keeps what each gesture sends in pure functions — `rowMenu` (the row menu's entries and the op each sends) and
-// `dropOp` (a drop as an op) in modules/ui/src/lib/nav-tree.ts — so the same gestures are asked of them over the same
+// `dropOp` (a drop as an op) in modules/ui/src/lib/navTree.ts — so the same gestures are asked of them over the same
 // drawing. The old harness dropped 18 px into the target row, its lower part: `after`.
 const { navIndex, rowMenu, dropOp } = await import(
-  pathToFileURL(path.join(ROOT, "modules", "ui", "src", "lib", "nav-tree.ts")).href
+  pathToFileURL(path.join(ROOT, "modules", "ui", "src", "lib", "navTree.ts")).href
 )
 const wsModel = nodes => [
   { kind: "workspace", key: "workspace", label: "hm10", route: "/settings/schema/activity", children: nodes },

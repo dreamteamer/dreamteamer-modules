@@ -2,7 +2,7 @@
  * `progress` — a number as a bar against `viewer_options.max` (default 100), clamped to the track, the value and
  * the scale beside it. Opt-in only: most numbers are not a progress.
  */
-import { progressOf } from "../lib/edit-values.ts"
+import { progressOf } from "../lib/editValues.ts"
 import type { ViewProps } from "../registry/props.ts"
 import { Empty } from "./Empty.tsx"
 import { subtle } from "../styles/classes.ts"

@@ -24,7 +24,7 @@
  *   - `required`, `kind` and `editable` are properties of the record, not of a query about it.
  */
 import type { FieldRow } from "../api/types.ts"
-import { kindOfField } from "./filter-query.ts"
+import { kindOfField } from "./filterQuery.ts"
 
 /** `{text, value}` pairs, as `GET …/values/:field` arrives (composables/field-values.ts). */
 interface Choice {

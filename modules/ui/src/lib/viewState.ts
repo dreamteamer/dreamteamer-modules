@@ -2,10 +2,10 @@
  * Saved-view state shape (phase E scope item 4): the full "how am I browsing this collection"
  * snapshot — layout, search, filter tree, sort, and visible columns — that a saved view captures
  * and re-applies. Kept framework-free (no Vue imports) so it's cheaply unit-testable, mirroring
- * `lib/filter-query.ts`'s pure-logic-plus-thin-UI split: `composables/browse-state.ts` and
+ * `lib/filterQuery.ts`'s pure-logic-plus-thin-UI split: `composables/browse-state.ts` and
  * `composables/saved-views.ts` are the Vue-facing shells around this.
  */
-import { emptyFilterGroup, type FilterGroup } from "./filter-query.ts"
+import { emptyFilterGroup, type FilterGroup } from "./filterQuery.ts"
 
 /**
  * A registered list-layout id. Was the closed union `'table' | 'cards'`; widened to `string` for
@@ -50,7 +50,7 @@ export function serializeViewState(state: ViewState): string {
  * Parse a stored/URL-carried view state back into a `ViewState`, never throwing — malformed or
  * partial input (an old saved view, a hand-edited preset record) degrades field-by-field to the
  * default rather than rejecting the whole view, matching the rest of the studio's "never an
- * error" posture (`lib/filter-query.ts#parseFilterGroup`'s same contract).
+ * error" posture (`lib/filterQuery.ts#parseFilterGroup`'s same contract).
  */
 export function parseViewState(raw: string | null | undefined): ViewState | null {
   if (!raw) return null

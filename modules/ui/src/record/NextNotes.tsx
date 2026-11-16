@@ -10,7 +10,7 @@ import { getNotes } from "../api/client.ts"
 import { useApp, useAsync } from "../AppContext.tsx"
 import { Icon } from "../components/Icon.tsx"
 import { Link } from "../components/Link.tsx"
-import { textParts, type NextNote } from "../lib/next-notes.ts"
+import { textParts, type NextNote } from "../lib/nextNotes.ts"
 import { subtle } from "../styles/classes.ts"
 
 function NoteText({ note }: { note: NextNote }) {

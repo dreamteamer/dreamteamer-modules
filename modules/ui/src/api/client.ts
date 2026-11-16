@@ -5,7 +5,7 @@
 import type { Transport } from "../transport/HostError.ts"
 import type { FieldRow, SourceEntry } from "./types.ts"
 import type { PresentationCollection } from "./collectionRows.ts"
-import type { NavNode } from "../lib/nav-tree.ts"
+import type { NavNode } from "../lib/navTree.ts"
 
 let current: Transport | null = null
 
@@ -30,8 +30,8 @@ const encName = (name: string): string => encodeURIComponent(name)
 
 // ---- shapes ---------------------------------------------------------------------------------------------
 
-/** One node of `GET /nav` — the shape lives with the gestures that read its `target` (lib/nav-tree.ts). */
-export type { NavNode } from "../lib/nav-tree.ts"
+/** One node of `GET /nav` — the shape lives with the gestures that read its `target` (lib/navTree.ts). */
+export type { NavNode } from "../lib/navTree.ts"
 
 /** One relation the display contract names: `collection.field` holds refs to `related_collection`. */
 export interface Relation {
@@ -182,16 +182,16 @@ export const getCommands = (collection: string, ids: readonly string[]) =>
   request(
     "GET",
     `/commands/${encName(collection)}${ids.length ? `?ids=${encodeURIComponent(ids.join(","))}` : ""}`
-  ) as Promise<{ commands: import("../lib/command-rows.ts").CommandRow[] }>
+  ) as Promise<{ commands: import("../lib/commandRows.ts").CommandRow[] }>
 
 export const getNotes = (collection: string, ids: readonly string[]) =>
   request("GET", `/notes/${encName(collection)}?ids=${encodeURIComponent(ids.join(","))}`) as Promise<{
-    notes?: import("../lib/next-notes.ts").NextNote[]
-    sessionsFrom?: import("../lib/next-notes.ts").SessionsFrom
+    notes?: import("../lib/nextNotes.ts").NextNote[]
+    sessionsFrom?: import("../lib/nextNotes.ts").SessionsFrom
   }>
 
 export const getQueue = () =>
-  request("GET", "/queue") as Promise<{ items?: import("../lib/queue-items.ts").QueueItem[] }>
+  request("GET", "/queue") as Promise<{ items?: import("../lib/queueItems.ts").QueueItem[] }>
 
 export const queueCommand = (command: string, refs: string[]) =>
   request("POST", "/queue", { command, refs }) as Promise<unknown>
@@ -249,14 +249,14 @@ export const getInfo = () => request("GET", "/info") as Promise<HostWorkspace>
  *  authored field map). */
 export const getCollectionSource = (collection: string) => getRecord("collections", collection).then(doc => doc.fields)
 
-/** `POST /collections/collections/records[?module=]` — a new collection (`lib/create-collection.ts` builds the body). */
+/** `POST /collections/collections/records[?module=]` — a new collection (`lib/createCollection.ts` builds the body). */
 export const createCollection = (body: Record<string, unknown>, module?: string | null) =>
   request("POST", `/collections/collections/records${selector(module)}`, body) as Promise<unknown>
 
 export const deleteCollection = (collection: string) =>
   request("DELETE", `/collections/collections/records/${encName(collection)}`) as Promise<unknown>
 
-/** A whole v2 field (`lib/field-def.ts`): a new one. */
+/** A whole v2 field (`lib/fieldDef.ts`): a new one. */
 export const createField = (collection: string, name: string, field: Record<string, unknown>) =>
   request("POST", fieldsPath(collection), { name, field }) as Promise<unknown>
 
@@ -299,7 +299,7 @@ export const moveUiView = (id: string, module: string) =>
 
 // ---- sources and activity ---------------------------------------------------------------------------------
 
-export const getSources = () => request("GET", "/sources") as Promise<import("../lib/sources-stack.ts").SourceStack>
+export const getSources = () => request("GET", "/sources") as Promise<import("../lib/sourcesStack.ts").SourceStack>
 
 export const getSourcesAccess = (fresh = false) =>
   request("GET", `/sources/access${fresh ? "?fresh=1" : ""}`) as Promise<{

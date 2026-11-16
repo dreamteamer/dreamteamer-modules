@@ -1,5 +1,5 @@
 // @dreamteamer/git-identities — the engine extension entry (API 1): the module's setup unit, and nothing else.
-import { SETUP_UNIT } from "./git-identities-setup.ts"
+import { SETUP_UNIT } from "./gitIdentitiesSetup.ts"
 
 export const apiVersion = 1
 

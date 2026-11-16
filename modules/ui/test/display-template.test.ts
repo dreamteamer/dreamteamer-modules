@@ -1,8 +1,8 @@
-// A CARD'S DISPLAY TEMPLATE, compiled (lib/display-template.ts): a bare token naming a field is a slot drawn by the
+// A CARD'S DISPLAY TEMPLATE, compiled (lib/displayTemplate.ts): a bare token naming a field is a slot drawn by the
 // field's View; a filtered token or one naming no field is the grammar's text; line breaks are kept.
 import assert from "node:assert/strict"
 import test from "node:test"
-import { compileTemplate, templateOption } from "../src/lib/display-template.ts"
+import { compileTemplate, templateOption } from "../src/lib/displayTemplate.ts"
 import { renderMd, slotToken } from "../src/lib/renderMd.ts"
 import { enumRow, fieldRow } from "./field-rows.ts"
 

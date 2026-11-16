@@ -4,7 +4,7 @@ export interface NavSettings {
   navHidden?: unknown
   layersFolder?: unknown
 }
-import type { NavTarget, NavDoc } from "./nav-doc.js"
+import type { NavTarget, NavDoc } from "./navDoc.js"
 export interface NavNode {
   kind:
     | "workspace"

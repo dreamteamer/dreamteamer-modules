@@ -12,7 +12,7 @@
  * Sources are pages, no collection; every other kind is the ordinary browse and record page, kept inside the tab
  * (`RouteBase`), a ui-view's record page carrying its module picker.
  *
- * THE MODULE SCOPE (`?module=<id>`, `lib/module-scope.ts`): every count and list narrowed to `$module is <id>`, a
+ * THE MODULE SCOPE (`?module=<id>`, `lib/moduleScope.ts`): every count and list narrowed to `$module is <id>`, a
  * banner says so and its ✕ widens back. Sticky across a row opened from a narrowed list — the page remounts on
  * every path, so the scope lives in a module-level signal rather than component state.
  */
@@ -21,14 +21,14 @@ import { listRecords } from "../api/client.ts"
 import { RouteBase, useApp, useAsync, useSignal } from "../AppContext.tsx"
 import { Browse } from "../browse/Browse.tsx"
 import { Icon } from "../components/Icon.tsx"
-import { moduleScopeFilter, nextModuleScope, withModuleScope } from "../lib/module-scope.ts"
+import { moduleScopeFilter, nextModuleScope, withModuleScope } from "../lib/moduleScope.ts"
 import { queryOf, SCHEMA_BASE } from "../lib/createRoute.ts"
 import { schemaRail, splitSchemaRoute } from "../lib/schemaRail.ts"
 import { signal } from "../lib/signal.ts"
 import { sourcesKey } from "../lib/sources.ts"
-import { schemaKindContext } from "../lib/vscode-context.ts"
+import { schemaKindContext } from "../lib/vscodeContext.ts"
 import { RecordPage } from "../pages/RecordPage.tsx"
-import { modulePageView } from "../lib/page-view.ts"
+import { modulePageView } from "../lib/pageView.ts"
 import { uiViews } from "../lib/uiViews.ts"
 import { PageView } from "../pages/PageView.tsx"
 import { ActivityPane } from "./ActivityPane.tsx"

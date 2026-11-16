@@ -5,7 +5,7 @@ import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
 import { execFileSync } from "node:child_process"
-import { SETUP_UNIT } from "../lib/notebooklm-setup.ts"
+import { SETUP_UNIT } from "../lib/notebooklmSetup.ts"
 
 const tmp = () => fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "dtm-notebooklm-")))
 const bins = names => {

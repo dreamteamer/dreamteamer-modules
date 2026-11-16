@@ -14,7 +14,7 @@
 //
 // WHAT IT KEEPS AND WHAT IT REFUSES TO. Subject, participants (as handles), counts, dates, the
 // thread URL. NO bodies, NO snippets, NO attachments, NO labels — `lib/gmail.mjs` says why. The
-// reader mints its token from the credential the google-workspace tool already holds (`lib/google-auth.mjs`):
+// reader mints its token from the credential the google-workspace tool already holds (`lib/googleAuth.mjs`):
 // no new grant, no browser, no broad permission. A missing credential is a `sources` record with
 // `reach: unavailable`, not an error.
 import { DATA, isoWeek, isoWeekRange, slug } from "../lib/workspace.ts"
@@ -27,7 +27,7 @@ import {
   writeSource,
   collectionDir,
 } from "../lib/records.ts"
-import { accessTokenFor, googleAccounts, gmail } from "../lib/google-auth.ts"
+import { accessTokenFor, googleAccounts, gmail } from "../lib/googleAuth.ts"
 import { summarizeThread } from "../lib/gmail.ts"
 import { upsertCollaborators } from "../lib/upsertCollaborators.ts"
 import path from "node:path"

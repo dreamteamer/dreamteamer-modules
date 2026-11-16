@@ -1,5 +1,5 @@
 // The Google Workspace setup: one local, read-only `inspect` shared by `dt-google doctor` and the engine
-// unit (connectors-google-workspace-setup.mjs); a plan of small actions; and the one deterministic action this module
+// unit (connectorsGoogleWorkspaceSetup.mjs); a plan of small actions; and the one deterministic action this module
 // performs itself — the owner-only credential store. Account consent and live reads stay with the account owner and
 // run through the existing `dt-google auth` and `dt-google call` commands — never from here.
 //

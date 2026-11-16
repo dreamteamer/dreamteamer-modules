@@ -21,7 +21,7 @@ import {
   relationIds,
   relationScopeFilter,
   relationViewOption,
-} from "../src/lib/relation-view.ts"
+} from "../src/lib/relationView.ts"
 
 // ---- synthetic fixtures ------------------------------------------------------------------------
 

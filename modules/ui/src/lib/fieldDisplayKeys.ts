@@ -1,6 +1,6 @@
 /**
  * The field editor's DISPLAY keys (descriptor v2, §3.4.2), read and written on the designer's staged
- * def — pure, so each control's round-trip is a test. `lib/field-def.ts` turns the def into the
+ * def — pure, so each control's round-trip is a test. `lib/fieldDef.ts` turns the def into the
  * field's `display` block; these helpers are the def's side of that contract:
  *
  *   editable      true (default, the key is absent) · false · 'create' (only on the create form)
@@ -8,7 +8,7 @@
  *   form_section · placeholder · unit · unit_field · direction · width — one value each; an empty
  *                 value removes the key, so an untouched field writes nothing it did not have.
  */
-import { SURFACES, hiddenSurfaces } from "./field-def.ts"
+import { SURFACES, hiddenSurfaces } from "./fieldDef.ts"
 
 type Def = Record<string, unknown>
 export type Editable = "true" | "false" | "create"

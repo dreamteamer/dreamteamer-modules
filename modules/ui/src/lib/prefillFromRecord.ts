@@ -15,7 +15,7 @@
  * (unsaved) record.
  */
 import type { FieldRow, ItemRecord } from "../api/types.ts"
-import { hasControl } from "./field-row.ts"
+import { hasControl } from "./fieldRow.ts"
 
 /**
  * Copy exactly what the CREATE form offers a control for — a duplicate is the create form, prefilled.

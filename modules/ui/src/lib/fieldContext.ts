@@ -1,11 +1,11 @@
 /**
  * Which of a collection's fields an option should OFFER — the pure half of the Vue ui's
- * lib/field-context.ts. The ambient "whose fields am I configuring?" itself is a React context
+ * lib/fieldContext.ts. The ambient "whose fields am I configuring?" itself is a React context
  * (`render/FieldContext.tsx`); the `field-select`, `field-multi-select` and `display-template` Edits read it,
  * and fall back to typing a name where nobody provided one (an EditList row, a bare options form).
  */
 import type { FieldRow } from "../api/types.ts"
-import { choicesOf } from "./field-row.ts"
+import { choicesOf } from "./fieldRow.ts"
 
 /** True when `field` declares a fixed vocabulary — a natural board/group axis. */
 export function hasChoices(field: FieldRow): boolean {

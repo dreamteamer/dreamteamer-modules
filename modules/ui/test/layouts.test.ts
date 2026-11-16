@@ -2,8 +2,8 @@
 // decisions (spans, colours, labels, lanes), and the routes a page view answers. Synthetic Northwind data only.
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { calendarWeeks, dayKey, addMonths, startOfMonth } from "../src/lib/calendar-grid.ts"
-import { coordOf, fitKey } from "../src/lib/map-coords.ts"
+import { calendarWeeks, dayKey, addMonths, startOfMonth } from "../src/lib/calendarGrid.ts"
+import { coordOf, fitKey } from "../src/lib/mapCoords.ts"
 import {
   bandRange,
   bandShapeOf,
@@ -13,9 +13,9 @@ import {
   colorMapOf,
   PALETTE,
   spansOf,
-} from "../src/lib/gantt-rows.ts"
-import { iconOf } from "../src/lib/group-label.ts"
-import { placeOf } from "../src/lib/pane-place.ts"
+} from "../src/lib/ganttRows.ts"
+import { iconOf } from "../src/lib/groupLabel.ts"
+import { placeOf } from "../src/lib/panePlace.ts"
 import { pageOf } from "../src/lib/createRoute.ts"
 import { enumRow, fieldRow } from "./field-rows.ts"
 

@@ -1,10 +1,10 @@
 /**
- * Which record layout a page draws (`lib/record-display.ts`): a record-scope view's display wins over its
+ * Which record layout a page draws (`lib/recordDisplay.ts`): a record-scope view's display wins over its
  * collection's, `page` is the built-in, and a layout no registry holds for the mode falls back to `properties`.
  */
 import assert from "node:assert/strict"
 import test from "node:test"
-import { BUILTIN_RECORD_LAYOUT, recordDisplayOf, recordRendererId } from "../src/lib/record-display.ts"
+import { BUILTIN_RECORD_LAYOUT, recordDisplayOf, recordRendererId } from "../src/lib/recordDisplay.ts"
 import type { UiViewRecord } from "../src/lib/uiViews.ts"
 
 const view = (over: Partial<UiViewRecord>): UiViewRecord => ({ id: "v", route: "/v", scope: "record", ...over })

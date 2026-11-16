@@ -1,7 +1,7 @@
 /**
  * THE FILTER BUILDER — per condition a field (a tree, `FilterFieldPicker`), an operator and a value; an All/Any
  * toggle over them; add and remove (ported from the Vue ui's FilterBuilder.vue). Pure presentation over
- * `lib/filter-query.ts`'s group: the browse owns the one copy, compiles it and sends it to the host as `filter`.
+ * `lib/filterQuery.ts`'s group: the browse owns the one copy, compiles it and sends it to the host as `filter`.
  *
  * The value control is the RECORD FORM'S OWN Edit, resolved through the registry over a synthetic per-operator
  * field row (`lib/filterValueField.ts`): a reference filters with the record picker, an enum with its choices, a
@@ -18,7 +18,7 @@ import type { FieldRow } from "../api/types.ts"
 import { useApp } from "../AppContext.tsx"
 import { Icon } from "../components/Icon.tsx"
 import { Select } from "../components/Select.tsx"
-import { resolvePathTarget, type RelationLookup } from "../lib/filter-field-tree.ts"
+import { resolvePathTarget, type RelationLookup } from "../lib/filterFieldTree.ts"
 import {
   ALL_OPERATORS,
   emptyValueFor,
@@ -32,7 +32,7 @@ import {
   valueList,
   type FilterGroup,
   type FilterRule,
-} from "../lib/filter-query.ts"
+} from "../lib/filterQuery.ts"
 import { filterValueField } from "../lib/filterValueField.ts"
 import { RenderEdit } from "../render/Render.tsx"
 import { useFieldValues } from "./useFieldValues.ts"

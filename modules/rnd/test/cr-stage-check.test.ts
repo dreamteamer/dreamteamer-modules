@@ -1,5 +1,5 @@
 // THE STAGE RULE — `dt check` warns when a change request's `stage` is not the gate `dt next` names on it, or
-// contradicts the request's own status, dates and links. The pure half first (lib/cr-stage.mjs: every
+// contradicts the request's own status, dates and links. The pure half first (lib/crStage.mjs: every
 // reading is a test), then the rule end to end through `dt check` on fixtures.
 import { test, describe, after } from "node:test"
 import assert from "node:assert"
@@ -12,7 +12,7 @@ import { seedStates, settleAll, T } from "./helpers/cr-stage-fixtures.ts"
 after(() => cleanupAll())
 
 const RND = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..")
-const lib = await import(path.join(RND, "lib", "cr-stage.mjs"))
+const lib = await import(path.join(RND, "lib", "crStage.mjs"))
 const { STAGES, GATES, expectedStage, stageContradictions, allowedStages, stageWarnings, gateCommand } = lib
 
 // a request's own facts, by the state it is in
@@ -38,7 +38,7 @@ at["live-check"] = { ...at.deploy, deployed_on: T }
 at.done = { ...at["live-check"], status: "implemented" }
 at.rejected = { ...base, status: "rejected", design_docs: ["rnd/design-docs/d"] }
 
-describe("lib/cr-stage.mjs — the pure rule", () => {
+describe("lib/crStage.mjs — the pure rule", () => {
   test("STAGES is the descriptor's enum, in order", () => {
     const d = yaml.load(fs.readFileSync(path.join(RND, "collections/rnd/change-requests.collection.yaml"), "utf8"))
     assert.deepEqual(STAGES, d.fields.stage.enum)

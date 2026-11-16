@@ -8,7 +8,7 @@
  * — the field picker was a flat `<select>` of the root collection's own fields. Filtering a related
  * record BY ITS NAME was never a feature of its own; it is the one-hop case of this.
  *
- * Framework-free on purpose (no Vue), like `filter-query.ts`: the parts worth arguing about — the
+ * Framework-free on purpose (no Vue), like `filterQuery.ts`: the parts worth arguing about — the
  * depth cap, the cycle guard, what search matches — are then testable by running them.
  */
 import type { FieldRow } from "../api/types.ts"

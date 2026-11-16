@@ -6,7 +6,7 @@
  * row's own click. `dir="auto"` per value: a Hebrew string must not take the page's LTR base.
  */
 import { notify } from "../api/client.ts"
-import { formatWithUnit } from "../lib/field-unit.ts"
+import { formatWithUnit } from "../lib/fieldUnit.ts"
 import type { ViewProps } from "../registry/props.ts"
 import { CELL_MAX, Empty, isEmpty } from "./Empty.tsx"
 import { wrap } from "../styles/classes.ts"

@@ -1,10 +1,10 @@
-// The page's report to the chat (lib/pane-report.ts) — the expectations of the Vue ui's render-tier
+// The page's report to the chat (lib/paneReport.ts) — the expectations of the Vue ui's render-tier
 // test/webview/pane-select.test.ts, asked of the reporter itself: ONE PUT /selection per settle, the place and at
 // most 50 refs, a refusal dropped; and the chat's push held for its collection's list, going there first.
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { pushedSelection, type PaneView } from "../src/lib/pane-place.ts"
-import { MAX_REPORTED, receiveSelect, startPaneReport } from "../src/lib/pane-report.ts"
+import { pushedSelection, type PaneView } from "../src/lib/panePlace.ts"
+import { MAX_REPORTED, receiveSelect, startPaneReport } from "../src/lib/paneReport.ts"
 import { signal } from "../src/lib/signal.ts"
 
 const wait = (ms: number) => new Promise(r => setTimeout(r, ms))

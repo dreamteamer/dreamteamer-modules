@@ -19,7 +19,7 @@ import {
   isGeneratedDescription,
   isMirrorField,
   mirrorOwnerOf,
-} from "../src/lib/relation-meta.ts"
+} from "../src/lib/relationMeta.ts"
 
 // The ERD's half of this file moved to `schema-refs.test.ts`, which builds it from a real compile.
 

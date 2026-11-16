@@ -1,13 +1,13 @@
 // rnd's engine extension — one contribution, `check`, made of three rules a descriptor cannot say:
 //   releases     one release per product, package and version (lib/releases.mjs)
 //   stage tags   a change request tagged `deployed` without `deployed_on`, or the reverse — a WARNING
-//                (lib/stage-tags.mjs)
+//                (lib/checkStageTags.mjs)
 //   stage        a change request whose `stage` is not the gate `dt next` names on it, or contradicts its
-//                own status, dates and links — a WARNING (lib/cr-stage.mjs)
+//                own status, dates and links — a WARNING (lib/crStage.mjs)
 // rnd ships no setup unit: wikis and notebooklm are their own packages, with their own entries.
 import { checkReleases } from "./releases.ts"
-import { checkStageTags } from "./stage-tags.ts"
-import { checkChangeRequestStage } from "./cr-stage.ts"
+import { checkStageTags } from "./checkStageTags.ts"
+import { checkChangeRequestStage } from "./crStage.ts"
 
 export const apiVersion = 1
 

@@ -1,6 +1,6 @@
 /**
  * The gantt's record-side decisions (ported out of the Vue ui's ListGantt.vue so they can be pinned; the axis
- * itself — scale, ticks, folds, the day → column map — is lib/gantt-axis.ts):
+ * itself — scale, ticks, folds, the day → column map — is lib/ganttAxis.ts):
  *
  *   · a record's SPAN: its start and end as day numbers. No start → not placed (the layout lists it in the undated
  *     tail, never drops it). An end before its start is drawn as a point at the start, marked `inverted` — the
@@ -14,7 +14,7 @@
  *     template that renders to nothing is a miss, not a label.
  */
 import type { FieldRow } from "../api/types.ts"
-import { bandRuns, dayKeyOf, dayNumber, rangeLabel, type AxisSpan } from "./gantt-axis.ts"
+import { bandRuns, dayKeyOf, dayNumber, rangeLabel, type AxisSpan } from "./ganttAxis.ts"
 import { declaredChoicesOf } from "./grouping.ts"
 import { tryRenderDisplay } from "./template.ts"
 

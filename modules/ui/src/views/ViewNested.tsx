@@ -3,7 +3,7 @@
  * first, in order, then any extras. The read-side twin of EditNested. A cell gets the same grid's first line
  * of each, as `key: value` joined — a grid would break the row height.
  */
-import { entriesOf, showValue } from "../lib/edit-values.ts"
+import { entriesOf, showValue } from "../lib/editValues.ts"
 import type { ViewProps } from "../registry/props.ts"
 import { Empty } from "./Empty.tsx"
 import { kv } from "../styles/classes.ts"

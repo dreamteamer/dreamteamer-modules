@@ -9,7 +9,7 @@
  * surface; a control only where `hasControl` says so; a computed value dimmed with THE computed rule's sentence.
  *
  * A LIST RELATION on the read is drawn as the TARGET COLLECTION'S OWN VIEW — its table, columns, sort and
- * paging, scoped to exactly the related records (`RelationField`, `lib/relation-view.ts`); the row then stacks
+ * paging, scoped to exactly the related records (`RelationField`, `lib/relationView.ts`); the row then stacks
  * to full width. The plan is decided once per row, for both the component and the geometry.
  *
  * On the read, a collection that declares `display.record.options.stages` gets its STAGE MAP above the rows
@@ -24,11 +24,11 @@ import type { FieldRow } from "../api/types.ts"
 import { useApp, useSignal } from "../AppContext.tsx"
 import { HoverCard, type HoverLine } from "../components/HoverCard.tsx"
 import { Icon } from "../components/Icon.tsx"
-import { computedReason, hasControl, isMirrorField } from "../lib/field-row.ts"
+import { computedReason, hasControl, isMirrorField } from "../lib/fieldRow.ts"
 import { fieldIcon } from "../lib/fieldIcon.ts"
 import { labelOf } from "../lib/formatTitle.ts"
-import { isEmptyValue, withEdits } from "../lib/record-page.ts"
-import { embeddedRelationPlan, type EmbeddedRelationPlan } from "../lib/relation-view.ts"
+import { isEmptyValue, withEdits } from "../lib/recordPage.ts"
+import { embeddedRelationPlan, type EmbeddedRelationPlan } from "../lib/relationView.ts"
 import { hasForeignSource } from "../lib/sources.ts"
 import { uiViews } from "../lib/uiViews.ts"
 import type { RecordLayoutProps } from "../registry/props.ts"

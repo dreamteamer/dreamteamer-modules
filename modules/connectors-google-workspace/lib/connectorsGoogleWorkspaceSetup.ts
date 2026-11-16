@@ -1,5 +1,5 @@
 // The google-workspace SETUP UNIT — what the engine's `dt install`, `dt setup` and `dt status` drive
-// (setup contribution, version 1). It wraps the module's own inspect / plan / apply (google-setup.mjs):
+// (setup contribution, version 1). It wraps the module's own inspect / plan / apply (googleSetup.mjs):
 // the checks are the same rows, the actions the same actions, with each effect as { kind, detail } and
 // the planned action handed back to apply verbatim (its preview carries the target and parent id the
 // apply is bound to). One action is the unit's own: the two paths the person named are recorded in the
@@ -11,7 +11,7 @@ import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
 import { spawnSync } from "node:child_process"
-import { inspect as inspectLocal, plan as planLocal, apply as applyLocal } from "./google-setup.ts"
+import { inspect as inspectLocal, plan as planLocal, apply as applyLocal } from "./googleSetup.ts"
 import { credentialPath } from "./access.ts"
 
 export const UNIT_ID = "google-workspace"

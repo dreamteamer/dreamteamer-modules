@@ -6,7 +6,7 @@
  * or the page size the same slice holds.
  */
 import { Icon } from "../components/Icon.tsx"
-import { ROW_SIZES, ROW_SIZE_LABELS, resolveRowSize } from "../lib/row-size.ts"
+import { ROW_SIZES, ROW_SIZE_LABELS, resolveRowSize } from "../lib/rowSize.ts"
 import type { BrowseState } from "./useBrowseState.ts"
 import { usePopover } from "./usePopover.ts"
 import {

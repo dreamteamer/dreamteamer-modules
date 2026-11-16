@@ -14,7 +14,7 @@ import {
   parseFilterGroup,
   serializeFilterGroup,
   type FilterGroup,
-} from "./filter-query.ts"
+} from "./filterQuery.ts"
 
 export interface SeededFilter {
   /** What the builder starts holding. */

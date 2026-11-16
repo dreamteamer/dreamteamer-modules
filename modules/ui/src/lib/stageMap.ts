@@ -16,7 +16,7 @@
  * Pure, so every reading — what a malformed declaration draws, which review lands in which stage,
  * what the gate says — is a unit test. `components/StageMap.vue` only fetches and draws.
  */
-import type { CommandRow } from "./command-rows.ts"
+import type { CommandRow } from "./commandRows.ts"
 
 export interface StageMatcher {
   kind?: string[]

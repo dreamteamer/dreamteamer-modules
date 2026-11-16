@@ -3,7 +3,7 @@
  * leaving the field (the normal textarea gesture, which makes structured text painful). Opt-in only.
  */
 import { useRef, type KeyboardEvent } from "react"
-import { inputText, textOrNull } from "../lib/edit-values.ts"
+import { inputText, textOrNull } from "../lib/editValues.ts"
 import type { EditProps } from "../registry/props.ts"
 import { code, cx, textarea } from "../styles/classes.ts"
 

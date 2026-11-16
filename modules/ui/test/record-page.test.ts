@@ -1,5 +1,5 @@
 /**
- * The record page's small answers (`lib/record-page.ts`): the path row, the commit line, which refusal offers a
+ * The record page's small answers (`lib/recordPage.ts`): the path row, the commit line, which refusal offers a
  * forced delete, the save chord, what a rename may be, the duplicate-id badge, emptiness, and the one write path
  * a record layout's `setField` goes through.
  */
@@ -15,7 +15,7 @@ import {
   renameProblem,
   setEdit,
   withEdits,
-} from "../src/lib/record-page.ts"
+} from "../src/lib/recordPage.ts"
 import { HostError } from "../src/transport/HostError.ts"
 
 test("the path row: the collection links back to its browse, the id's folders are plain words, a new record ends in new", () => {

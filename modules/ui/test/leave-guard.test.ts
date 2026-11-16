@@ -1,7 +1,7 @@
-/** Leaving a page with unsaved edits (`lib/leave-guard.ts`): a query-only move always passes; a path move asks. */
+/** Leaving a page with unsaved edits (`lib/leaveGuard.ts`): a query-only move always passes; a path move asks. */
 import assert from "node:assert/strict"
 import test from "node:test"
-import { mayLeave, setLeaveGuard } from "../src/lib/leave-guard.ts"
+import { mayLeave, setLeaveGuard } from "../src/lib/leaveGuard.ts"
 
 test("no guard: every move passes", () => {
   assert.equal(mayLeave("/content/tasks/a", "/content/projects"), true)

@@ -8,11 +8,11 @@
  * enum, an object), then the wire type. Anything unrecognized lands on `note`, the neutral "some
  * text" glyph, never a blank cell.
  *
- * Every name below is checked against the bundled font's manifest (lib/icon-names.ts); a name the
+ * Every name below is checked against the bundled font's manifest (lib/iconNames.ts); a name the
  * font can't render would show as literal ligature text, which is worse than no icon at all.
  */
 import type { FieldRow } from "../api/types.ts"
-import { choicesOf, isBodyField, isRelationField } from "./field-row.ts"
+import { choicesOf, isBodyField, isRelationField } from "./fieldRow.ts"
 
 const FALLBACK = "note"
 

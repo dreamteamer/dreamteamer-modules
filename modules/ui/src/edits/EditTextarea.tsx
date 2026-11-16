@@ -1,7 +1,7 @@
 /**
  * `textarea` — several lines of plain text (a `markdown` field that is not the body). `dir` as EditInput's.
  */
-import { inputText, textOrNull } from "../lib/edit-values.ts"
+import { inputText, textOrNull } from "../lib/editValues.ts"
 import type { EditProps } from "../registry/props.ts"
 import { textarea } from "../styles/classes.ts"
 

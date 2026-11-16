@@ -1,8 +1,8 @@
-// The place a page reports (lib/pane-place.ts) — ported from the Vue ui's test/unit/pane-place.test.ts, over
+// The place a page reports (lib/panePlace.ts) — ported from the Vue ui's test/unit/pane-place.test.ts, over
 // ui's `pageOf` instead of a vue-router route. Four shapes only, and a namespaced collection keeps its slash.
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { placeOf, pushedIds, splitPaneRef } from "../src/lib/pane-place.ts"
+import { placeOf, pushedIds, splitPaneRef } from "../src/lib/panePlace.ts"
 import { pageOf } from "../src/lib/createRoute.ts"
 
 const COLLECTIONS = ["tasks", "rnd/change-requests", "rnd", "meetings"]

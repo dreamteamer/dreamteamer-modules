@@ -16,7 +16,7 @@
  *    back as unsaved rather than dropped silently — the remedy is a named view.
  */
 import type { UiViewRecord, ViewDisplay } from "./uiViews.ts"
-import { engineFieldName, engineSort } from "./builtin-fields.ts"
+import { engineFieldName, engineSort } from "./builtinFields.ts"
 
 /** What the screen shows, as a view's list block holds it. */
 export interface ListPresentation {
@@ -41,7 +41,7 @@ export interface ViewWrite {
 }
 
 /** The columns and the sort under the engine's names — a built-in is `last_modified` in every write,
- *  whatever the screen's state still spells it (`lib/builtin-fields.ts`, cr-vscode-011). */
+ *  whatever the screen's state still spells it (`lib/builtinFields.ts`, cr-vscode-011). */
 const engineColumns = (p: ListPresentation) => p.columns.map(engineFieldName)
 
 function listBlock(p: ListPresentation): NonNullable<ViewDisplay["list"]> {

@@ -6,8 +6,8 @@
  *
  * No chart library: a CSS grid whose columns are days. A bar is a grid item placed by grid LINES,
  * `columnOf(start) / columnOf(end) + 1` — never `span n`, which past a fold is no longer a day count. The axis
- * (scale, ticks, the FOLDS of runs in which nothing starts or ends, the day → column map) is lib/gantt-axis.ts; the
- * record-side decisions (spans, colours, labels, lane shapes) are lib/gantt-rows.ts.
+ * (scale, ticks, the FOLDS of runs in which nothing starts or ends, the day → column map) is lib/ganttAxis.ts; the
+ * record-side decisions (spans, colours, labels, lane shapes) are lib/ganttRows.ts.
  *
  *   · A record with no start is NOT dropped: it is listed in the undated tail under the chart, with a count.
  *   · An end before its start is DRAWN — a dashed point at the start whose tooltip says why.
@@ -24,8 +24,8 @@ import type { Row } from "../api/client.ts"
 import type { FieldRow } from "../api/types.ts"
 import { Icon } from "../components/Icon.tsx"
 import { GroupHeader } from "../browse/GroupHeader.tsx"
-import { themeColor } from "../lib/collection-display.ts"
-import { buildAxis, DAY_PX, todayNumber } from "../lib/gantt-axis.ts"
+import { themeColor } from "../lib/collectionDisplay.ts"
+import { buildAxis, DAY_PX, todayNumber } from "../lib/ganttAxis.ts"
 import {
   bandRange,
   bandShapeOf,
@@ -36,10 +36,10 @@ import {
   spansOf,
   type BandShape,
   type Span,
-} from "../lib/gantt-rows.ts"
-import { labelFor } from "../lib/group-label.ts"
+} from "../lib/ganttRows.ts"
+import { labelFor } from "../lib/groupLabel.ts"
 import { bucketize, type Bucket } from "../lib/grouping.ts"
-import { rowContext } from "../lib/vscode-context.ts"
+import { rowContext } from "../lib/vscodeContext.ts"
 import type { ListProps } from "../registry/props.ts"
 import { ListEmpty } from "./ListEmpty.tsx"
 import { useGroupLabels } from "./useGroupLabels.ts"
@@ -47,7 +47,7 @@ import { cx, iconButton, listEmpty, subtle } from "../styles/classes.ts"
 import { calChip } from "./looks.ts"
 
 // ---- the looks (was dt-gantt-*) ---------------------------------------------------------------------------------
-// The axis sizes ride on three variables the canvas sets (lib/gantt-axis.ts writes its grid in them): the gutter,
+// The axis sizes ride on three variables the canvas sets (lib/ganttAxis.ts writes its grid in them): the gutter,
 // a fold's column and a day's width at the scale. A lane's rail colour is `--dt-lane-rail`, set inline per band.
 const SCALE: Record<string, string> = {
   day: "[--dt-gantt-day:30px]",

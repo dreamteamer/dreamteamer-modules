@@ -9,7 +9,7 @@ import fs from "node:fs"
 import os from "node:os"
 import { DATA, templatize, isoWeek, isoWeekRange } from "../lib/workspace.ts"
 import { recordPath, writeRecord, readRecord, nowIso, contributorOf, writeSource } from "../lib/records.ts"
-import { claudeHomes, listTranscripts, reconcile } from "../lib/claude-trees.ts"
+import { claudeHomes, listTranscripts, reconcile } from "../lib/claudeTrees.ts"
 import { computeMetrics, INSPECTOR_VERSION, JUDGED_KEYS } from "../lib/metrics.ts"
 
 // Re-exported for anything that already imported it from here. Nothing SHOULD: this module runs on

@@ -3,9 +3,9 @@
 // reads, moved in from @dreamteamer/meetings with its id unchanged) — and one namespaced command,
 // `dreamteamer google-setup`, which reads the same inspect as the first unit. Nothing here starts the MCP
 // server, opens a browser, refreshes a token or reaches the network.
-import { inspect, plan, apply, redact, SetupRefusal } from "./google-setup.ts"
-import { SETUP_UNIT } from "./connectors-google-workspace-setup.ts"
-import { SETUP_UNIT as MEETINGS_UNIT } from "./meetings-setup.ts"
+import { inspect, plan, apply, redact, SetupRefusal } from "./googleSetup.ts"
+import { SETUP_UNIT } from "./connectorsGoogleWorkspaceSetup.ts"
+import { SETUP_UNIT as MEETINGS_UNIT } from "./meetingsSetup.ts"
 
 export const apiVersion = 1
 

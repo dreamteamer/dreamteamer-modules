@@ -5,12 +5,12 @@
  * the layout always has something to plot). A day shows four chips and says how many more.
  *
  * The month is the grid's own state — moving it never touches the browse's query, so the rows are the browse's
- * page and a record outside it is not on the grid. Pure month maths is lib/calendar-grid.ts.
+ * page and a record outside it is not on the grid. Pure month maths is lib/calendarGrid.ts.
  */
 import { useMemo, useState } from "react"
 import type { Row } from "../api/client.ts"
-import { addMonths, calendarWeeks, startOfMonth, WEEKDAYS } from "../lib/calendar-grid.ts"
-import { rowContext } from "../lib/vscode-context.ts"
+import { addMonths, calendarWeeks, startOfMonth, WEEKDAYS } from "../lib/calendarGrid.ts"
+import { rowContext } from "../lib/vscodeContext.ts"
 import type { ListProps } from "../registry/props.ts"
 import { ListEmpty } from "./ListEmpty.tsx"
 import { button, buttonSize, buttonTone, cx, listEmpty, subtle } from "../styles/classes.ts"

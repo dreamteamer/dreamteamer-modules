@@ -1,4 +1,4 @@
-import type { RemoteAccessProvider } from "./remote-access.js"
+import type { RemoteAccessProvider } from "./remoteAccess.js"
 export interface ApiResult {
   status: number
   body: unknown

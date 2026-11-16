@@ -8,12 +8,12 @@
  * A view row is not arranged: a drop on it is a drop after its collection.
  */
 
-/** What an op addresses (copied from @dreamteamer/protocol `nav-doc.d.ts` — ui takes no protocol dependency).
+/** What an op addresses (copied from @dreamteamer/protocol `navDoc.d.ts` — ui takes no protocol dependency).
  *  `name` is a collection or a namespace as nav.yaml writes it; `folder` is the label path from the top level, a
  *  namespace entry being the element `ns:<name>`. */
 export type NavTarget = { name: string } | { folder: string[] }
 
-/** One gesture — the body of `PATCH /nav` (copied from @dreamteamer/protocol `nav-doc.d.ts`). */
+/** One gesture — the body of `PATCH /nav` (copied from @dreamteamer/protocol `navDoc.d.ts`). */
 export type NavOp =
   | { op: "move"; target: NavTarget; into?: NavTarget; after?: NavTarget; position?: "top" | "bottom" }
   | { op: "new-folder"; label: string; into?: NavTarget }

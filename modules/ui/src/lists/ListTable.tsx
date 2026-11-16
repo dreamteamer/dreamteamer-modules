@@ -5,7 +5,7 @@
  *
  * GROUPED, it is one `<tbody>` per band — a table may have many, which is exactly what a band is, so the columns
  * stay aligned across all of them for free. A band's header carries the value's glyph, label and colour from the
- * enum map, and for a REFERENCE the referenced record's title (`lib/record-cache.ts`), the same name a relation
+ * enum map, and for a REFERENCE the referenced record's title (`lib/recordCache.ts`), the same name a relation
  * cell one row below shows; until it lands, the de-slugged reference. Ungrouped, it is one implicit band with no
  * header. Collapsing a band lasts as long as the table: a saved view reopening with bands shut would read as
  * missing data.
@@ -15,19 +15,19 @@
  * re-read is in flight.
  */
 import { useEffect, useMemo, useState } from "react"
-import { rowContext } from "../lib/vscode-context.ts"
+import { rowContext } from "../lib/vscodeContext.ts"
 import type { FieldRow } from "../api/types.ts"
 import type { Row } from "../api/client.ts"
 import { useApp, useSignal } from "../AppContext.tsx"
 import { Icon } from "../components/Icon.tsx"
 import { GroupHeader } from "../browse/GroupHeader.tsx"
-import { computedReason, isRelationField } from "../lib/field-row.ts"
-import { fileBases } from "../lib/file-record.ts"
+import { computedReason, isRelationField } from "../lib/fieldRow.ts"
+import { fileBases } from "../lib/fileRecord.ts"
 import { labelOf } from "../lib/formatTitle.ts"
 import { bucketize, UNGROUPED, type Bucket } from "../lib/grouping.ts"
 import { initialsOf } from "../lib/initialsOf.ts"
-import { askTitles, knownTitle, referenceTitlesChanged } from "../lib/record-cache.ts"
-import { resolveRowSize } from "../lib/row-size.ts"
+import { askTitles, knownTitle, referenceTitlesChanged } from "../lib/recordCache.ts"
+import { resolveRowSize } from "../lib/rowSize.ts"
 import { DUPLICATES_FIELD } from "../lib/sources.ts"
 import type { ListProps } from "../registry/props.ts"
 import { RenderView } from "../render/Render.tsx"

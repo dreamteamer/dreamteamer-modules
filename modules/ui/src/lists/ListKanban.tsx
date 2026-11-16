@@ -1,7 +1,7 @@
 /**
  * THE BOARD — the built-in `kanban` List (ported from the Vue ui's ListKanban.vue): columns by a field, a
  * card per record, a drag between columns writes that field. A thin renderer over the browse's state; every
- * decision a drag obeys is pure, in `lib/kanban-board.ts` and `lib/kanbanLock.ts`.
+ * decision a drag obeys is pure, in `lib/kanbanBoard.ts` and `lib/kanbanLock.ts`.
  *
  * COLUMNS COME FROM THE SCHEMA, IN SCHEMA ORDER: an `enum:` compiles to `editor_options.choices` in declared
  * order, so `todo, doing, done` reads left to right as authored and no second ordering is stored to drift from
@@ -23,18 +23,18 @@
  * list is the only scroll box — the header stays pinned above it.
  */
 import { useEffect, useMemo, useRef, useState, type DragEvent } from "react"
-import { rowContext } from "../lib/vscode-context.ts"
+import { rowContext } from "../lib/vscodeContext.ts"
 import { moveRecord, updateRecord, type Row } from "../api/client.ts"
 import { useApp, useSignal } from "../AppContext.tsx"
 import { Icon } from "../components/Icon.tsx"
 import { SourceMark } from "../components/SourceMark.tsx"
-import { themeColor } from "../lib/collection-display.ts"
-import { hasControl, isRelationField } from "../lib/field-row.ts"
+import { themeColor } from "../lib/collectionDisplay.ts"
+import { hasControl, isRelationField } from "../lib/fieldRow.ts"
 import { bucketize, buildLanes, ungroupedAllowed, UNGROUPED, valueOf, type Bucket } from "../lib/grouping.ts"
-import { templateOption } from "../lib/display-template.ts"
-import { addPrefill, columnFieldOf, laneFieldOf, planDrop, type Gap } from "../lib/kanban-board.ts"
+import { templateOption } from "../lib/displayTemplate.ts"
+import { addPrefill, columnFieldOf, laneFieldOf, planDrop, type Gap } from "../lib/kanbanBoard.ts"
 import { kanbanLock } from "../lib/kanbanLock.ts"
-import { askTitles, knownTitle, referenceTitlesChanged } from "../lib/record-cache.ts"
+import { askTitles, knownTitle, referenceTitlesChanged } from "../lib/recordCache.ts"
 import type { ListProps } from "../registry/props.ts"
 import { DisplayTemplate } from "../render/DisplayTemplate.tsx"
 import { cx, error, iconButton, listEmpty } from "../styles/classes.ts"

@@ -1,7 +1,7 @@
 /**
  * `relation-picker` — a reference to a record of the field's target collection (ported from the Vue ui's
  * EditRelation.vue). A closed control shows what is picked BY ITS TITLE — the target's `record_title`, the same
- * name a relation cell and the record header give it (`lib/record-cache.ts`) — with a clear button; a list
+ * name a relation cell and the record header give it (`lib/recordCache.ts`) — with a clear button; a list
  * reference shows a removable chip per record. A click opens a popover with a search box: the candidates are the
  * HOST's search (`q`, debounced), not a page filtered here, so a target of thousands still finds its record.
  * Arrow keys move, Enter picks, Escape closes; a click outside closes.
@@ -17,9 +17,9 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react"
 import { listRecords } from "../api/client.ts"
 import { useApp, useAsync, useSignal } from "../AppContext.tsx"
 import { Icon } from "../components/Icon.tsx"
-import { isRelationList } from "../lib/field-row.ts"
-import { askTitles, knownTitle, referenceTitlesChanged, refStem } from "../lib/record-cache.ts"
-import { bareRef, refsOf, toggleRef } from "../lib/edit-values.ts"
+import { isRelationList } from "../lib/fieldRow.ts"
+import { askTitles, knownTitle, referenceTitlesChanged, refStem } from "../lib/recordCache.ts"
+import { bareRef, refsOf, toggleRef } from "../lib/editValues.ts"
 import { recordLabel } from "../lib/schema.ts"
 import type { EditProps } from "../registry/props.ts"
 import { EditInput } from "./EditInput.tsx"

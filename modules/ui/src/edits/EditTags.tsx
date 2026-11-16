@@ -5,7 +5,7 @@
  */
 import { useState, type KeyboardEvent } from "react"
 import { Icon } from "../components/Icon.tsx"
-import { addTag, listOrNull, tagsOf } from "../lib/edit-values.ts"
+import { addTag, listOrNull, tagsOf } from "../lib/editValues.ts"
 import type { EditProps } from "../registry/props.ts"
 import { bareInput, controlFrame } from "../components/looks.ts"
 import { chip, chipRemove, cx } from "../styles/classes.ts"

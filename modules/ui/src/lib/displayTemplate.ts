@@ -15,7 +15,7 @@
  * host's file-base list, so there is no heuristic to be wrong about.
  */
 import type { FieldRow } from "../api/types.ts"
-import { fileRecordRef } from "./file-record.ts"
+import { fileRecordRef } from "./fileRecord.ts"
 import { respectLineBreaks, slotToken } from "./renderMd.ts"
 import { parseTemplate, renderToken } from "./template.ts"
 

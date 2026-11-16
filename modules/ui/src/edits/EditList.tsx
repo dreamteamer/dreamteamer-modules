@@ -10,7 +10,7 @@
 import { useRef, useState } from "react"
 import type { FieldRow } from "../api/types.ts"
 import { Icon } from "../components/Icon.tsx"
-import { listOrNull, moveItem, rowsOf } from "../lib/edit-values.ts"
+import { listOrNull, moveItem, rowsOf } from "../lib/editValues.ts"
 import { tryRenderDisplay } from "../lib/template.ts"
 import { OptionsForm } from "../render/OptionsForm.tsx"
 import type { EditProps } from "../registry/props.ts"

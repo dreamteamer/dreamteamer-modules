@@ -11,7 +11,7 @@
 // source is a stated gap, an unread one is a silent one.
 //
 // The shape it writes is the SAME conversations record the Claude reader writes — one collection,
-// one meaning per field, `harness` telling them apart. The differences are in `lib/codex-metrics.mjs`
+// one meaning per field, `harness` telling them apart. The differences are in `lib/codexMetrics.mjs`
 // and they are differences of ABSENCE: no interruption event, no permission-denial marker, no
 // skill-load signal, so those fields are left off rather than written as 0.
 import fs from "node:fs"
@@ -19,7 +19,7 @@ import os from "node:os"
 import path from "node:path"
 import { DATA, templatize, isoWeek, isoWeekRange } from "../lib/workspace.ts"
 import { recordPath, writeRecord, readRecord, nowIso, contributorOf, writeSource } from "../lib/records.ts"
-import { computeCodexMetrics, sessionIdOf, CODEX_INSPECTOR_VERSION } from "../lib/codex-metrics.ts"
+import { computeCodexMetrics, sessionIdOf, CODEX_INSPECTOR_VERSION } from "../lib/codexMetrics.ts"
 // From the LIB, never from the sibling reader: importing that module runs it, and its argument
 // check exits 2 at load.
 import { JUDGED_KEYS } from "../lib/metrics.ts"

@@ -1,7 +1,7 @@
 /**
  * A card's DISPLAY TEMPLATE, drawn: markdown whose `{{ field }}` tokens keep their own Views (ported from
  * the Vue ui's components/render/DisplayTemplate.vue). The compile — which token is a slot, what each slot's
- * text is, the line breaks a card keeps — is pure, in `lib/display-template.ts`; this only draws the result, each
+ * text is, the line breaks a card keeps — is pure, in `lib/displayTemplate.ts`; this only draws the result, each
  * slot as the field's View or, for a file-codec reference, as the file itself.
  *
  * One grammar, no plain-text mode: the `{{ field | filter }}` of `lib/template.ts` (the collection's
@@ -13,7 +13,7 @@ import { useMemo } from "react"
 import type { FieldRow } from "../api/types.ts"
 import { FileThumb } from "../components/FileThumb.tsx"
 import { MdNodes, mdTemplate } from "../components/Markdown.tsx"
-import { compileTemplate } from "../lib/display-template.ts"
+import { compileTemplate } from "../lib/displayTemplate.ts"
 import { renderMd } from "../lib/renderMd.ts"
 import { RenderView } from "./Render.tsx"
 

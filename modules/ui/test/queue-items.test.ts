@@ -2,8 +2,8 @@
 // where a hook ran for this workspace in the last 24 hours (`chat: true`) and the row has an invocation.
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { canAsk, itemLabel } from "../src/lib/queue-items.ts"
-import type { CommandRow } from "../src/lib/command-rows.ts"
+import { canAsk, itemLabel } from "../src/lib/queueItems.ts"
+import type { CommandRow } from "../src/lib/commandRows.ts"
 
 const item = (over: Record<string, unknown>) =>
   ({

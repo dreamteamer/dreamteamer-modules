@@ -8,7 +8,7 @@
  * What it knows comes from two reads: the engine's commands for this record (`GET /commands/:c?ids=` — the gate
  * states, the same call the Commands panel makes) and the reviews whose owning field names this record (the
  * `stage_reviews` mirror's `mirror_of`). Every reading — stage state, current stage, marks, where the card goes and
- * which card is open (a reducer over enter/leave/focus/blur/escape with a 200 ms grace) — is lib/stage-map.ts.
+ * which card is open (a reducer over enter/leave/focus/blur/escape with a 200 ms grace) — is lib/stageMap.ts.
  * Draws nothing for a collection that declares no stages.
  */
 import { useEffect, useRef, useState, type FocusEvent, type KeyboardEvent } from "react"
@@ -17,7 +17,7 @@ import type { FieldRow } from "../api/types.ts"
 import { useApp, useRouteBase } from "../AppContext.tsx"
 import { Icon } from "../components/Icon.tsx"
 import { Link } from "../components/Link.tsx"
-import type { CommandRow } from "../lib/command-rows.ts"
+import type { CommandRow } from "../lib/commandRows.ts"
 import { labelOf } from "../lib/formatTitle.ts"
 import { recordRoute } from "../lib/createRoute.ts"
 import {
@@ -36,7 +36,7 @@ import {
   stageState,
   type CardEvent,
   type CardState,
-} from "../lib/stage-map.ts"
+} from "../lib/stageMap.ts"
 import { RenderView } from "../render/Render.tsx"
 import { cx } from "../styles/classes.ts"
 import {
@@ -50,7 +50,7 @@ import {
   stagesListCls,
   stagesNextCls,
   stageTitleCls,
-} from "./stage-map-looks.ts"
+} from "./stageMapLooks.ts"
 
 /** A card's term and its value. */
 const keyCls = "mt-1 text-small text-fg-subtle"

@@ -11,7 +11,7 @@
  * no form — create included — may offer a control for it.
  */
 import type { FieldRow } from "../api/types.ts"
-import { isMirrorField } from "./field-row.ts"
+import { isMirrorField } from "./fieldRow.ts"
 
 export { isMirrorField }
 

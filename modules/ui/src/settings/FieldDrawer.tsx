@@ -11,14 +11,14 @@
  * declaring. A field DERIVED from a key elsewhere carries no presentation (the engine refuses one), so it opens
  * on its Relationship tab with no Edit or View tab.
  *
- * Everything edits a LOCAL draft (`lib/field-drawer.ts` decides what a change drops); nothing here writes —
+ * Everything edits a LOCAL draft (`lib/fieldDrawer.ts` decides what a change drops); nothing here writes —
  * Apply hands the field back to the designer, which stages it until Save.
  */
 import { useMemo, useState } from "react"
 import { useApp } from "../AppContext.tsx"
 import { Icon } from "../components/Icon.tsx"
 import { Select } from "../components/Select.tsx"
-import type { StagedField } from "../lib/designer-state.ts"
+import type { StagedField } from "../lib/designerState.ts"
 import {
   atMostOne,
   farFieldError,
@@ -38,9 +38,9 @@ import {
   withTwoWay,
   withType,
   withViewer,
-} from "../lib/field-drawer.ts"
+} from "../lib/fieldDrawer.ts"
 import { isUserCollection } from "../lib/okf.ts"
-import { baseNameOf, deleteRuleTarget, describeLink, singularOf } from "../lib/relation-meta.ts"
+import { baseNameOf, deleteRuleTarget, describeLink, singularOf } from "../lib/relationMeta.ts"
 import { slugify } from "../lib/slugify.ts"
 import { templateFields } from "../lib/template.ts"
 import { edits, kindDefaultEdits, kindDefaultViews, views } from "../registry/index.ts"

@@ -2,8 +2,8 @@
 // were wrong at once for months, so both directions are run here.
 import { test, describe } from "node:test"
 import assert from "node:assert/strict"
-import { seedFilter, filterToWrite, filterFromUrl } from "../src/lib/view-filter.ts"
-import { newRule, serializeFilterGroup, emptyFilterGroup, type FilterGroup } from "../src/lib/filter-query.ts"
+import { seedFilter, filterToWrite, filterFromUrl } from "../src/lib/viewFilter.ts"
+import { newRule, serializeFilterGroup, emptyFilterGroup, type FilterGroup } from "../src/lib/filterQuery.ts"
 
 const groupOf = (...rules: Parameters<typeof newRule>[0][]): FilterGroup => ({
   logic: "_and",

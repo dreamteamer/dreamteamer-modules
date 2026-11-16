@@ -8,7 +8,7 @@
 import type { FieldRow, SourceEntry } from "../api/types.ts"
 import { SourceMark } from "../components/SourceMark.tsx"
 import { formatFilesize } from "../lib/formatFilesize.ts"
-import { duplicatesOf } from "../lib/record-page.ts"
+import { duplicatesOf } from "../lib/recordPage.ts"
 import { SOURCE_FIELD, SOURCE_KIND_FIELD, isOwnSource } from "../lib/sources.ts"
 import { RenderView } from "../render/Render.tsx"
 import { mono, subtle } from "../styles/classes.ts"

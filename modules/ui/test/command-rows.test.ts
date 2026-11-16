@@ -1,7 +1,7 @@
-/** One row of the Commands panel (`lib/command-rows.ts`): its state word or counts, and a codicon for its icon. */
+/** One row of the Commands panel (`lib/commandRows.ts`): its state word or counts, and a codicon for its icon. */
 import assert from "node:assert/strict"
 import test from "node:test"
-import { commandAllDone, commandIcon, commandStatus, type CommandRow } from "../src/lib/command-rows.ts"
+import { commandAllDone, commandIcon, commandStatus, type CommandRow } from "../src/lib/commandRows.ts"
 
 const row = (over: Partial<CommandRow> = {}): CommandRow => ({
   binding: "command-bindings/review-project--projects",

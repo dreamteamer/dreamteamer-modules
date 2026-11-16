@@ -14,7 +14,7 @@
  */
 import type { FieldRow, SourceEntry } from "../api/types.ts"
 import { hasForeignSource, sourceFieldRow } from "./sources.ts"
-import { MODULE_FIELD } from "./module-scope.ts"
+import { MODULE_FIELD } from "./moduleScope.ts"
 
 export const MODIFIED_BY_FIELD = "$last-modified-by"
 export const CREATED_BY_FIELD = "$created-by"

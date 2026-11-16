@@ -25,7 +25,7 @@ import {
   readNavDoc,
   unknownNavNames,
   writeNavDoc,
-} from "./nav-doc.ts"
+} from "./navDoc.ts"
 import { hasNavSettings } from "./host/nav.ts"
 import { PANE_ROUTES, answerPane, defaultPane } from "./pane.ts"
 

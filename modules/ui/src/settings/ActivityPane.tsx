@@ -10,7 +10,7 @@
  * exists. The page does not wait for the slowest repo: the host answers with the repos that are in, names the
  * rest `pending`, and the page asks again with what it has (`settled`) until none is.
  *
- * A module's PAGE view (`lib/page-view.ts#modulePageView`) is drawn instead of this page when one names the module
+ * A module's PAGE view (`lib/pageView.ts#modulePageView`) is drawn instead of this page when one names the module
  * (SchemaTab); a page view's `activity` panel draws this one `embedded` — no heading, the panel has the title.
  */
 import { useEffect, useRef, useState } from "react"

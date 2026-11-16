@@ -1,4 +1,4 @@
-// The nav's gestures as NavOps (lib/nav-tree.ts) — the expectations of the Vue ui's render-tier
+// The nav's gestures as NavOps (lib/navTree.ts) — the expectations of the Vue ui's render-tier
 // test/webview/nav-sidebar-gestures.test.ts, over the same model, asked of the pure decision instead of a rendered
 // NavSidebar: a drop and a menu entry are ONE op built from the nodes' own targets; a layer means nothing.
 import { test } from "node:test"
@@ -16,7 +16,7 @@ import {
   tailOp,
   toolbarMenu,
   type NavNode,
-} from "../src/lib/nav-tree.ts"
+} from "../src/lib/navTree.ts"
 
 const col = (name: string, label: string): NavNode => ({
   kind: "collection",

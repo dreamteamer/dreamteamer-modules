@@ -6,7 +6,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useSignal } from "../AppContext.tsx"
 import { menuKeys } from "../lib/menuKeys.ts"
-import { menuUnder, rectOf, viewportWidth } from "../lib/menu-place.ts"
+import { menuUnder, rectOf, viewportWidth } from "../lib/menuPlace.ts"
 import { openMenu } from "../lib/openMenu.ts"
 
 /** The width the pane menus are placed for (`paneMenu` in looks.ts). */

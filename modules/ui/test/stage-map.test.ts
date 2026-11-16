@@ -14,8 +14,8 @@ import {
   stageReviewsField,
   stageSpecs,
   stageState,
-} from "../src/lib/stage-map.ts"
-import type { CommandRow } from "../src/lib/command-rows.ts"
+} from "../src/lib/stageMap.ts"
+import type { CommandRow } from "../src/lib/commandRows.ts"
 
 const OPTIONS = {
   stage_reviews: "reviews",
@@ -226,7 +226,7 @@ import {
   type CardEvent,
   type CardState,
   type GateEntry,
-} from "../src/lib/stage-map.ts"
+} from "../src/lib/stageMap.ts"
 
 const g = (letters: string): GateEntry[] =>
   [...letters].map((l, i) => ({

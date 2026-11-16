@@ -15,7 +15,7 @@ import path from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import yaml from "js-yaml"
 import { buildTree, tailOrder } from "../src/host/nav.ts"
-import { applyNavOp } from "../src/nav-doc.ts"
+import { applyNavOp } from "../src/navDoc.ts"
 import { ENGINE_DIR } from "../../../tests/helpers/fixture.ts"
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))

@@ -1,9 +1,9 @@
 // Ported from the Vue ui's test/unit/menu-place.test.ts (imports rewritten to ui's lib).
-// Where a toolbar menu opens (lib/menu-place.ts, the nav toolbar of cr-dt-008's 2026-11-14 revision): under its
+// Where a toolbar menu opens (lib/menuPlace.ts, the nav toolbar of cr-dt-008's 2026-11-14 revision): under its
 // button, by its start or end edge, and always inside the window — a 320 px desktop pane has a ~102 px nav.
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { menuUnder, rectOf, viewportWidth } from "../src/lib/menu-place.ts"
+import { menuUnder, rectOf, viewportWidth } from "../src/lib/menuPlace.ts"
 
 test("start: the menu's left edge on the button's, 2 px under it", () => {
   assert.deepEqual(menuUnder({ left: 40, right: 64, bottom: 28 }, "start", 220, 1200), { x: 40, y: 30 })

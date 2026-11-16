@@ -12,7 +12,7 @@ import type { Dispatch, SetStateAction } from "react"
 import type { SourceEntry } from "../api/types.ts"
 import { Icon } from "../components/Icon.tsx"
 import { SourceMark } from "../components/SourceMark.tsx"
-import type { FilterGroup } from "../lib/filter-query.ts"
+import type { FilterGroup } from "../lib/filterQuery.ts"
 import { selectedSources, sourceColor, toggleSource, viaWord, withSourceSelection } from "../lib/sources.ts"
 import { usePopover } from "./usePopover.ts"
 import {

@@ -3,9 +3,9 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
 import { originClassWord, originKindWord, recordOrigin } from "../src/lib/recordOrigin.ts"
-import { excludedBy, saveRoot, selectionFromQuery, widenedFor } from "../src/lib/created-visibility.ts"
-import { formSections } from "../src/lib/field-row.ts"
-import { emptyFilterGroup, type FilterGroup } from "../src/lib/filter-query.ts"
+import { excludedBy, saveRoot, selectionFromQuery, widenedFor } from "../src/lib/createdVisibility.ts"
+import { formSections } from "../src/lib/fieldRow.ts"
+import { emptyFilterGroup, type FilterGroup } from "../src/lib/filterQuery.ts"
 import { selectedSources, withSourceSelection } from "../src/lib/sources.ts"
 import { fieldRow } from "./field-rows.ts"
 
@@ -113,7 +113,7 @@ test("formSections: a collapsed section goes after the unclaimed fields and says
 })
 
 test("withComputedRows: nothing before the field rows load — not `$source` alone; after, the rows then $source then the rest", async () => {
-  const { withComputedRows } = await import("../src/lib/computed-fields.ts")
+  const { withComputedRows } = await import("../src/lib/computedFields.ts")
   const layered = SOURCES as any
   // measured in a dev host: the overview (with its sources) landed first, the selection initialised on
   // [$source], and the list drew one column, Source, for the whole visit

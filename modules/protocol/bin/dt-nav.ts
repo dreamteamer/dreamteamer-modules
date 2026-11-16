@@ -15,7 +15,7 @@ import path from "node:path"
 import { findWorkspace } from "../lib/findWorkspace.ts"
 import { initEngine } from "../src/host/engine.ts"
 import { workspaceNavSettings } from "../src/navModel.ts"
-import { migrateNavSettings } from "../src/nav-doc.ts"
+import { migrateNavSettings } from "../src/navDoc.ts"
 
 const USAGE = `usage: dt-nav migrate [root] [--json]
   migrate   write this workspace's old nav settings (navGroups, navOrder, navHidden) into nav.yaml, once

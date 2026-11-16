@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url"
 import { callUi } from "./callUi.ts"
 import { messageCoordinator } from "./messageCoordinator.ts"
 import { ensureRuntime, run } from "./install.ts"
-import { installVsix, installMarketplace } from "./extension-cache.ts"
+import { installVsix, installMarketplace } from "./extensionCache.ts"
 
 const usage = `dt-editor [start|url|message|state|claude] [workspace] [--port 0] [--vsix file] [--code-server executable]
   [--claude-vsix file] [--text 'Show the tasks board']

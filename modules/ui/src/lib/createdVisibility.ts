@@ -15,7 +15,7 @@
  *
  * The hand-off between the create page and the list is one module-level note, consumed once.
  */
-import type { FilterGroup } from "./filter-query.ts"
+import type { FilterGroup } from "./filterQuery.ts"
 import type { SourceEntry } from "../api/types.ts"
 import { keepsSource, ownSource, selectedSources, withSourceSelection } from "./sources.ts"
 

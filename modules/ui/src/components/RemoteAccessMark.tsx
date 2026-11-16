@@ -1,10 +1,10 @@
 /**
  * THE REMOTE MARK (cr-vscode-012; ported from the Vue ui's RemoteAccessMark.vue): what a source's REMOTE
  * grants, in words, beside the local source mark — a cloud, or a warning where a push would be refused. The words
- * and when they warn are `lib/remote-access.ts`'s.
+ * and when they warn are `lib/remoteAccess.ts`'s.
  */
 import type { OwnAccess, SourceAccess } from "../api/types.ts"
-import { remoteMark } from "../lib/remote-access.ts"
+import { remoteMark } from "../lib/remoteAccess.ts"
 import { Icon } from "./Icon.tsx"
 import { cx } from "../styles/classes.ts"
 

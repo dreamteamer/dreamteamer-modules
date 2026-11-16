@@ -14,7 +14,7 @@ import {
   stageCheck,
   stageChecksSpec,
   type Review,
-} from "../src/lib/stage-checks.ts"
+} from "../src/lib/stageChecks.ts"
 
 // the declaration the rnd module ships on rnd/change-requests.tags
 const OPTIONS = {

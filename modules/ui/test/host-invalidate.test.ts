@@ -1,14 +1,14 @@
 // Ported from the Vue ui's test/unit/host-invalidate.test.ts (imports rewritten to ui's lib).
 /**
  * What an app tab does with `dt:invalidate` (lib/handleInvalidate.ts), and the page-refresh signal the
- * record composables listen to (lib/page-refresh.ts). The order is the point: the ui-view table and
+ * record composables listen to (lib/pageRefresh.ts). The order is the point: the ui-view table and
  * the schema re-read SETTLE first, then the page re-fetches — and a schema re-read that fails must not
  * cancel the re-fetch the operator clicked for, only be logged.
  */
 import assert from "node:assert/strict"
 import test from "node:test"
 import { handleInvalidate } from "../src/lib/handleInvalidate.ts"
-import { onPageRefresh, requestPageRefresh } from "../src/lib/page-refresh.ts"
+import { onPageRefresh, requestPageRefresh } from "../src/lib/pageRefresh.ts"
 
 function deps(opts: { schemaFails?: boolean } = {}) {
   const log: string[] = []

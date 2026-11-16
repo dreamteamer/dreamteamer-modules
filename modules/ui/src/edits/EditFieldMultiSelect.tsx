@@ -4,8 +4,8 @@
  * ALL, and is stored as null rather than `[]`, so a saved view says "not narrowed" instead of a deliberate
  * nothing. With no field context, a comma-separated text input.
  */
-import { selectableFields } from "../lib/field-context.ts"
-import { listOrNull } from "../lib/edit-values.ts"
+import { selectableFields } from "../lib/fieldContext.ts"
+import { listOrNull } from "../lib/editValues.ts"
 import { useFieldContext } from "../render/FieldContext.tsx"
 import type { EditProps } from "../registry/props.ts"
 import { hint, input, mono } from "../styles/classes.ts"

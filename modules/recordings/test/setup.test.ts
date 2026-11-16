@@ -6,7 +6,7 @@ import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
 import { execFileSync, spawnSync } from "node:child_process"
-import { SETUP_UNIT } from "../lib/recordings-setup.ts"
+import { SETUP_UNIT } from "../lib/recordingsSetup.ts"
 import {
   virginWorkspace,
   packedInto,

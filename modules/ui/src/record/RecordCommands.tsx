@@ -13,9 +13,9 @@ import { useEffect, useRef, useState } from "react"
 import { getCommands, getQueue, queueCommand } from "../api/client.ts"
 import { useApp, useAsync, useSignal } from "../AppContext.tsx"
 import { Icon } from "../components/Icon.tsx"
-import { commandAllDone, commandIcon, commandStatus, type CommandRow } from "../lib/command-rows.ts"
+import { commandAllDone, commandIcon, commandStatus, type CommandRow } from "../lib/commandRows.ts"
 import { hostInfo } from "../lib/host.ts"
-import { canAsk, itemLabel, type QueueItem } from "../lib/queue-items.ts"
+import { canAsk, itemLabel, type QueueItem } from "../lib/queueItems.ts"
 import { button, buttonSize, buttonTone, code, cx, error, subtle, textarea, toolbar } from "../styles/classes.ts"
 
 export function RecordCommands({ collection, ids }: { collection: string; ids: string[] }) {

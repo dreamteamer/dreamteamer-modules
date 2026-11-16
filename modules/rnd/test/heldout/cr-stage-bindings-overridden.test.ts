@@ -23,7 +23,7 @@ import {
 } from "./lib/cr-stage-records.ts"
 
 after(() => cleanupAll())
-const { allowedStages } = await import(path.join(RND, "lib", "cr-stage.mjs"))
+const { allowedStages } = await import(path.join(RND, "lib", "crStage.mjs"))
 
 function seed(root) {
   product(root)

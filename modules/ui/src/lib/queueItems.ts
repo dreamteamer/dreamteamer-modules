@@ -6,7 +6,7 @@
  * @dreamteamer/protocol's pane.d.ts (ui takes no protocol dependency — the shape is the wire's, PROTOCOL.md
  * `POST /queue`).
  */
-import type { CommandRow } from "./command-rows.ts"
+import type { CommandRow } from "./commandRows.ts"
 
 /** One queued ask — `GET /queue`'s item (copied from @dreamteamer/protocol `pane.d.ts`). */
 export interface QueueItem {

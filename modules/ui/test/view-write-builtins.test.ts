@@ -3,10 +3,10 @@
 // writers as `last_modified`, and every seed reads it back the same way. Pure; the real engine's verdict is api-save-last-modified.test.ts.
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { collectionListWrite, namedViewWrite, newViewWrite, type ListPresentation } from "../src/lib/view-write.ts"
+import { collectionListWrite, namedViewWrite, newViewWrite, type ListPresentation } from "../src/lib/viewWrite.ts"
 import type { UiViewRecord } from "../src/lib/uiViews.ts"
 import { listSeed } from "../src/lib/listSeed.ts"
-import { DEFAULT_SORT } from "../src/lib/builtin-fields.ts"
+import { DEFAULT_SORT } from "../src/lib/builtinFields.ts"
 
 const LEGACY: ListPresentation = {
   layout: "table",

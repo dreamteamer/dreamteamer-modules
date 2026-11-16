@@ -18,7 +18,7 @@ import {
   compiledStorage,
   recordFilesOf,
 } from "../lib/records.ts"
-import { claudeHomes, walkJsonl } from "../lib/claude-trees.ts"
+import { claudeHomes, walkJsonl } from "../lib/claudeTrees.ts"
 import { readDescriptor } from "../lib/descriptors.ts"
 
 const argv = process.argv.slice(2)

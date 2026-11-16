@@ -50,7 +50,7 @@ import {
   shouldFoldOutOfRecordTree,
   tailOrder,
 } from "./host/nav.ts"
-import { navDocProblems, navProblemsSentence, readNavDoc } from "./nav-doc.ts"
+import { navDocProblems, navProblemsSentence, readNavDoc } from "./navDoc.ts"
 import { collectionSources, layerTitle, sourcesContext, sourcesStack } from "./host/sources.ts"
 import { codiconFor } from "./host/codiconFor.ts"
 

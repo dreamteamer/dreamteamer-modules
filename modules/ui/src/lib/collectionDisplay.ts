@@ -11,7 +11,7 @@
  * hex, which would be authored against one theme and wrong in the other.
  */
 import type { CollectionRow, FieldChoice, FieldRow } from "../api/types.ts"
-import { choicesOf, isRelationField } from "./field-row.ts"
+import { choicesOf, isRelationField } from "./fieldRow.ts"
 
 /** What this module reads of a field row: its name, its choices and its role. */
 type DisplayField = Pick<FieldRow, "field" | "editor_options" | "role">

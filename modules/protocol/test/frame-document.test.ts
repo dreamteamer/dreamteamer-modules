@@ -1,6 +1,6 @@
 import test from "node:test"
 import assert from "node:assert/strict"
-import { buildFrameDocument, FRAME_POLICY } from "../src/frame-document.ts"
+import { buildFrameDocument, FRAME_POLICY } from "../src/buildFrameDocument.ts"
 
 const bundle = 'export const X = "</script><b>Grüße ✓ 日本</b>";\nexport default async function register(api) {}\n'
 const dataOf = html => JSON.parse(html.match(/<script type="application\/json" id="dt-bundle">([\s\S]*?)<\/script>/)[1])

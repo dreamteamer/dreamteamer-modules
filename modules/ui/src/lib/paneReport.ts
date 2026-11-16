@@ -13,7 +13,7 @@
  */
 import type { Signal } from "./signal.ts"
 import { listRoute } from "./createRoute.ts"
-import { pageSelection, pushedSelection, splitPaneRef, type PaneView } from "./pane-place.ts"
+import { pageSelection, pushedSelection, splitPaneRef, type PaneView } from "./panePlace.ts"
 
 export const MAX_REPORTED = 50
 

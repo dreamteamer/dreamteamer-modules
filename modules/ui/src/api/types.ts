@@ -157,7 +157,7 @@ export interface FieldChoice {
   /** A string from the engine; the extension's own registry options also use numbers (page size). */
   value: string | number
   description?: string
-  /** A codicon name, or a reference to a binary record (`lib/file-record.ts`). */
+  /** A codicon name, or a reference to a binary record (`lib/fileRecord.ts`). */
   icon?: string
   /** A theme colour id. */
   color?: string

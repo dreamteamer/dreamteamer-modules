@@ -4,8 +4,8 @@
  * colour.
  */
 import type { CSSProperties } from "react"
-import { choiceOf, themeColor } from "../lib/collection-display.ts"
-import { tagsOf } from "../lib/edit-values.ts"
+import { choiceOf, themeColor } from "../lib/collectionDisplay.ts"
+import { tagsOf } from "../lib/editValues.ts"
 import type { ViewProps } from "../registry/props.ts"
 import { Empty } from "./Empty.tsx"
 import { chip, items, subtle } from "../styles/classes.ts"

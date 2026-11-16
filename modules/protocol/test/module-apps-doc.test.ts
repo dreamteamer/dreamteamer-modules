@@ -3,7 +3,7 @@ import test from "node:test"
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import { ROUTES } from "../src/routes.ts"
-import { MODULE_ROUTES } from "../src/module-scope.ts"
+import { MODULE_ROUTES } from "../src/buildModuleScope.ts"
 
 test("every module-scope route is named in PROTOCOL.md § Module apps", () => {
   const doc = readFileSync(new URL("../PROTOCOL.md", import.meta.url), "utf8")

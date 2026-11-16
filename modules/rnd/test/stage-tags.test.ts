@@ -116,7 +116,7 @@ describe("rnd/change-requests.tags and its stage declaration", () => {
 })
 
 describe("dt check: deployed and deployed_on agree, as a warning", async () => {
-  const { stageTagWarnings, checkStageTags } = await import(path.join(RND, "lib", "stage-tags.mjs"))
+  const { stageTagWarnings, checkStageTags } = await import(path.join(RND, "lib", "checkStageTags.mjs"))
   const engineApi = await import(path.join(ENGINE, "src", "api.js"))
   const HAS_CHANNEL = engineApi.CHECK_WARNINGS === true
 
@@ -177,7 +177,7 @@ describe("dt check: deployed and deployed_on agree, as a warning", async () => {
       r.stdout,
       /⚠ data\/rnd\/change-requests\/cr-dated\.change-request\.md — deployed_on is set but the record is not tagged deployed/
     )
-    // cr-both is consistent on the tag rule; rnd's stage rule (lib/cr-stage.mjs) may still name it, for its empty stage
+    // cr-both is consistent on the tag rule; rnd's stage rule (lib/crStage.mjs) may still name it, for its empty stage
     assert.doesNotMatch(r.stdout, /cr-both\.change-request\.md — (tagged deployed|deployed_on is set)/)
     assert.match(r.stdout, /✔ 0 violations/)
   })

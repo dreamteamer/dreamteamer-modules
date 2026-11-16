@@ -1,7 +1,7 @@
 // The Schema tab narrowed to one module — the module a nav click opened it on.
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { moduleScopeFilter, nextModuleScope, withModuleScope } from "../src/lib/module-scope.ts"
+import { moduleScopeFilter, nextModuleScope, withModuleScope } from "../src/lib/moduleScope.ts"
 
 test("the scope is one ordinary filter on $module, and rides on the path as ?module=", () => {
   assert.deepEqual(moduleScopeFilter("project-alpha"), { $module: { _eq: "project-alpha" } })

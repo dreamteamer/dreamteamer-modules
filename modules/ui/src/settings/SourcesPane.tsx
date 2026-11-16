@@ -17,7 +17,7 @@ import { useApp, useAsync } from "../AppContext.tsx"
 import { Icon } from "../components/Icon.tsx"
 import { RemoteAccessMark } from "../components/RemoteAccessMark.tsx"
 import { SourceMark } from "../components/SourceMark.tsx"
-import { recordCount, recordsIn, type StackEntry } from "../lib/sources-stack.ts"
+import { recordCount, recordsIn, type StackEntry } from "../lib/sourcesStack.ts"
 import {
   button,
   buttonSize,

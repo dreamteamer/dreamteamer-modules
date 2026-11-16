@@ -16,9 +16,9 @@
 import { useEffect, useState } from "react"
 import { useApp, useSignal } from "../AppContext.tsx"
 import { Icon } from "../components/Icon.tsx"
-import { displayValue, filterToProse, operatorLabel, operatorTakesPair } from "../lib/filter-query.ts"
+import { displayValue, filterToProse, operatorLabel, operatorTakesPair } from "../lib/filterQuery.ts"
 import { formatTitle } from "../lib/formatTitle.ts"
-import { unknownOptions } from "../lib/list-options.ts"
+import { unknownOptions } from "../lib/listOptions.ts"
 import {
   SOURCE_FIELD,
   hasForeignSource,
@@ -32,7 +32,7 @@ import { lists } from "../registry/index.ts"
 import type { ListProps } from "../registry/props.ts"
 import { CommitButton } from "../components/CommitButton.tsx"
 import { SourceMark } from "../components/SourceMark.tsx"
-import { pageSelection, pushedIds, pushedSelection } from "../lib/pane-place.ts"
+import { pageSelection, pushedIds, pushedSelection } from "../lib/panePlace.ts"
 import { RecordCommands } from "../record/RecordCommands.tsx"
 import { useBrowseState, type BrowseConfig, type BrowseState } from "./useBrowseState.ts"
 import { DensityMenu } from "./DensityMenu.tsx"
@@ -378,7 +378,7 @@ export function Browse({
 
       {state.createdNotice && (
         // a record just created from this list, which the Sources selection would have hidden: the selection
-        // widened to its root (`lib/created-visibility.ts`), said once
+        // widened to its root (`lib/createdVisibility.ts`), said once
         <p className={note} data-created-notice>
           <span>Showing</span>
           <SourceMark name={state.createdNotice.source} />

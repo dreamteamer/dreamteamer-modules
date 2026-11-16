@@ -1,9 +1,9 @@
 /**
  * `input-number` — an integer or a number. Empty clears to null; the field's unit sits beside the control
- * (`lib/field-unit.ts#unitSuffix`: a literal suffix, `%`, a currency's code once its sibling field holds one).
+ * (`lib/fieldUnit.ts#unitSuffix`: a literal suffix, `%`, a currency's code once its sibling field holds one).
  */
-import { unitSuffix } from "../lib/field-unit.ts"
-import { inputText, numberFromInput } from "../lib/edit-values.ts"
+import { unitSuffix } from "../lib/fieldUnit.ts"
+import { inputText, numberFromInput } from "../lib/editValues.ts"
 import type { EditProps } from "../registry/props.ts"
 import { subtle } from "../styles/classes.ts"
 

@@ -8,7 +8,7 @@
  * tests, pure logic only" directive — FilterBuilder.vue is the untested UI shell around this.
  */
 import type { FieldRow } from "../api/types.ts"
-import { choicesOf, isRelationField } from "./field-row.ts"
+import { choicesOf, isRelationField } from "./fieldRow.ts"
 
 export type FilterLogic = "_and" | "_or"
 

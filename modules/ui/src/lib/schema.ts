@@ -10,8 +10,8 @@
 import type { Presentation, Relation } from "../api/client.ts"
 import { collectionRows } from "../api/collectionRows.ts"
 import type { CollectionRow, FieldRow } from "../api/types.ts"
-import { drawnOn, hasControl, isBodyField, isRelationField } from "./field-row.ts"
-import { titleOf } from "./record-title.ts"
+import { drawnOn, hasControl, isBodyField, isRelationField } from "./fieldRow.ts"
+import { titleOf } from "./recordTitle.ts"
 import { templateFields, tryRenderDisplay, type RenderOptions } from "./template.ts"
 
 export interface Schema {

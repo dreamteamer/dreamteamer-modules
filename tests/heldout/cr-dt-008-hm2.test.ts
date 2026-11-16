@@ -99,7 +99,7 @@ describe("a fragment after the operator moved a row", { skip }, () => {
     assert.equal(ns.length, 1, `${ns.length} namespace: rnd entries`)
     assert.ok(!JSON.stringify(ns[0]).includes('"rnd/issues"'), "rnd/issues is back inside the namespace")
     assert.ok(k.hidden.includes("rnd/releases"), "rnd/releases left hidden")
-    // hide takes the row out of the tree and lists it in `hidden` (nav-doc.js; decisions/2026-11-14--hide-takes-a-row-
+    // hide takes the row out of the tree and lists it in `hidden` (navDoc.js; decisions/2026-11-14--hide-takes-a-row-
     // out-of-the-tree-and-lists-it-in-hidden-move-to-bottom-keeps-the-recorded-tails-first-rule): "not re-added" is no
     // new occurrence in the tree — as many as before the install, which is none
     assert.equal(

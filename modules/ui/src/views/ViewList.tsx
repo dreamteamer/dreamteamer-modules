@@ -6,7 +6,7 @@
 import { useState } from "react"
 import { Icon } from "../components/Icon.tsx"
 import { rowSummary } from "../edits/EditList.tsx"
-import { entriesOf, showValue } from "../lib/edit-values.ts"
+import { entriesOf, showValue } from "../lib/editValues.ts"
 import type { ViewProps } from "../registry/props.ts"
 import { Empty } from "./Empty.tsx"
 import { cx, kv, mono, subtle } from "../styles/classes.ts"

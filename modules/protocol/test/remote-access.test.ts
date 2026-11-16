@@ -10,7 +10,7 @@ import path from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import { ENGINE_DIR } from "../../../tests/helpers/fixture.ts"
 import { declaredUrl, withoutUserinfo } from "../src/host/sources.ts"
-import { accessTargets, redactSecrets, unavailableAccess, NOT_AVAILABLE } from "../src/host/remote-access.ts"
+import { accessTargets, redactSecrets, unavailableAccess, NOT_AVAILABLE } from "../src/host/remoteAccess.ts"
 
 const PKG = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 const load = rel => import(pathToFileURL(path.join(PKG, rel)).href)

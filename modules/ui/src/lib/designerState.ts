@@ -7,7 +7,7 @@
  *
  * WRITE PATH: the engine has PER-FIELD ops (`POST /fields/:c`, `PATCH`/`DELETE /fields/:c/:f`), each a
  * compile-gated descriptor source write that commits — so a save is a diff, each op a WHOLE v2 field built by
- * `lib/field-def.ts` over the field as its source authored it. What a v2 field has no place for (a note, a new
+ * `lib/fieldDef.ts` over the field as its source authored it. What a v2 field has no place for (a note, a new
  * object's sub-fields, pure reordering) is skipped with a returned warning instead of being silently eaten.
  *
  * ⚠ A RELATION IS AUTHORED FROM WHICHEVER SIDE THE OPERATOR IS LOOKING AT. Which collection stores the key is a
@@ -30,9 +30,9 @@ import {
   type Relation,
 } from "../api/client.ts"
 import type { FieldRow } from "../api/types.ts"
-import { fieldFromDef, SURFACES } from "./field-def.ts"
-import { isBodyField, isMirrorField, isReferenceField, isRelationField } from "./field-row.ts"
-import { isGeneratedDescription, mirrorOwnerOf, type MirrorOwner } from "./relation-meta.ts"
+import { fieldFromDef, SURFACES } from "./fieldDef.ts"
+import { isBodyField, isMirrorField, isReferenceField, isRelationField } from "./fieldRow.ts"
+import { isGeneratedDescription, mirrorOwnerOf, type MirrorOwner } from "./relationMeta.ts"
 
 export interface StagedField {
   /** Field name. */

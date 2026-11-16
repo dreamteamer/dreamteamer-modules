@@ -6,7 +6,7 @@
  *
  * Two kinds of write, and the page says which is which:
  *  - STAGED: the drawer's Apply, hide and delete change the grid only; the save bar's Save diffs the grid against
- *    what was loaded and writes one compile-gated op per field (`lib/designer-state.ts`), then re-reads. Discard
+ *    what was loaded and writes one compile-gated op per field (`lib/designerState.ts`), then re-reads. Discard
  *    re-reads. Leaving with staged changes asks first.
  *  - IMMEDIATE: a rename rewrites every record and every source that names the field or the value, so it is not
  *    a staged edit: its dialog shows the engine's dry-run plan first, and Rename writes and commits it at once
@@ -36,8 +36,8 @@ import {
   type Loaded,
   type SaveOutcome,
   type StagedField,
-} from "../lib/designer-state.ts"
-import { setLeaveGuard } from "../lib/leave-guard.ts"
+} from "../lib/designerState.ts"
+import { setLeaveGuard } from "../lib/leaveGuard.ts"
 import { SCHEMA_BASE } from "../lib/createRoute.ts"
 import {
   button,

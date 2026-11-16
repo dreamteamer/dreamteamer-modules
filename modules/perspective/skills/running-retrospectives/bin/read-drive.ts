@@ -22,7 +22,7 @@
 //   · A file the contributor read and never edited leaves no trace here. Reading is invisible.
 import { DATA, isoWeek, isoWeekRange } from "../lib/workspace.ts"
 import { recordPath, writeRecord, readRecord, contributorOf, writeSource } from "../lib/records.ts"
-import { accessTokenFor, googleAccounts, drive } from "../lib/google-auth.ts"
+import { accessTokenFor, googleAccounts, drive } from "../lib/googleAuth.ts"
 
 const READER = "read-drive@1"
 const argv = process.argv.slice(2)

@@ -1,6 +1,6 @@
 /**
  * THE MAP — the built-in `map` List (ported from the Vue ui's ListMap.vue): Leaflet over OpenStreetMap tiles,
- * one circle per record that has a position (`lib/map-coords.ts`), a click opening the record. Circles only — no
+ * one circle per record that has a position (`lib/mapCoords.ts`), a click opening the record. Circles only — no
  * icon assets to bundle; their colour is the theme's accent, set in CSS.
  *
  * THREE empty states, not one: no rows (loading, nothing matching, an empty collection — `ListEmpty`) is not rows
@@ -16,7 +16,7 @@ import "leaflet/dist/leaflet.css"
 import { useEffect, useMemo, useRef } from "react"
 import type { Row } from "../api/client.ts"
 import { Icon } from "../components/Icon.tsx"
-import { coordOf, fitKey } from "../lib/map-coords.ts"
+import { coordOf, fitKey } from "../lib/mapCoords.ts"
 import type { ListProps } from "../registry/props.ts"
 import { ListEmpty } from "./ListEmpty.tsx"
 import { listEmpty, subtle } from "../styles/classes.ts"

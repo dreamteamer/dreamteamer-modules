@@ -10,7 +10,7 @@
  */
 import assert from "node:assert/strict"
 import test from "node:test"
-import { idFor, bandTitleTemplate, labelFor } from "../src/lib/group-label.ts"
+import { idFor, bandTitleTemplate, labelFor } from "../src/lib/groupLabel.ts"
 import type { CollectionRow } from "../src/api/types.ts"
 
 test("idFor strips the target prefix, leading slash or not, and never guesses", () => {

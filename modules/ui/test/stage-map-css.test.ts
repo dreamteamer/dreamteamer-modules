@@ -1,5 +1,5 @@
 // THE STAGE MAP'S LOOKS (cr-vscode-015), ported from the Vue ui's stage-map-css test: Node has no layout, so the
-// rules that keep the map to two lines are read as the utilities record/stage-map-looks.ts gives each part — a
+// rules that keep the map to two lines are read as the utilities record/stageMapLooks.ts gives each part — a
 // non-wrapping row, capitalised titles, muted marks, the two width rules scoped to the chip, and a card that wraps.
 import { test } from "node:test"
 import assert from "node:assert/strict"
@@ -12,7 +12,7 @@ import {
   stagesListCls,
   stagesNextCls,
   stageTitleCls,
-} from "../src/record/stage-map-looks.ts"
+} from "../src/record/stageMapLooks.ts"
 
 const tokens = (cls: string | undefined) => new Set((cls ?? "").split(/\s+/).filter(Boolean))
 const has = (cls: string | undefined, ...want: string[]) => {

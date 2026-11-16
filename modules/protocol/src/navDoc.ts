@@ -1,6 +1,6 @@
 // THE NAV DOCUMENT — nav.yaml at a workspace's root, the left nav a person arranges (cr-dt-008). This file is
 // the protocol's half of the cross-repo contract: the types every host speaks (NavDoc, NavTarget, NavOp, in
-// nav-doc.d.ts) and `applyNavOp`, the one pure function every gesture goes through — a drop, a menu entry, a
+// navDoc.d.ts) and `applyNavOp`, the one pure function every gesture goes through — a drop, a menu entry, a
 // PATCH /nav. The engine reads, validates and writes the file (dreamteamer 0.49); a host turns a gesture into one
 // NavOp, applies it here and writes the result.
 //
@@ -255,8 +255,8 @@ function validLabel(label, what = "label") {
  * The next document after one operation. Pure: `doc` is never touched; an absent document is `{ tree: [], hidden: [] }`.
  * `ctx.collections` iterates in drawn tail order (by title — what the host's `tailOrder()` gives) and
  * `ctx.namespaces` lists the workspace's namespaces in drawn order.
- * @param {import('./nav-doc.ts').NavDoc | null | undefined} input
- * @param {import('./nav-doc.ts').NavOp} op
+ * @param {import('./navDoc.ts').NavDoc | null | undefined} input
+ * @param {import('./navDoc.ts').NavOp} op
  * @param {{ collections: Set<string>, namespaces: string[] }} ctx
  */
 export function applyNavOp(input, op, ctx) {

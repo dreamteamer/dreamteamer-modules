@@ -1,4 +1,4 @@
-import { themeColor } from "./collection-display.ts"
+import { themeColor } from "./collectionDisplay.ts"
 /**
  * WHERE A RECORD COMES FROM — the webview half of the source mark (host: `src/sources.ts`).
  *
@@ -20,7 +20,7 @@ import { themeColor } from "./collection-display.ts"
  * Pure and its own module so every rule here is a test, not a render.
  */
 import type { CollectionRow, FieldRow, SourceAccess, SourceEntry, SourceVia } from "../api/types.ts"
-import { newRule, type FilterGroup, type FilterRule } from "./filter-query.ts"
+import { newRule, type FilterGroup, type FilterRule } from "./filterQuery.ts"
 
 /** The wire key, and therefore the column's field name. `$`-prefixed like every synthetic key the
  *  adapter never persists — NOT `source`, which a module may author as a record field. */

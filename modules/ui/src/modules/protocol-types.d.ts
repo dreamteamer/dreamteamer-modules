@@ -2,7 +2,7 @@
 // `paths`). The package's own .d.ts files sit beside its .ts sources, and TypeScript reads `./gate.d.ts` (or the
 // exports' `./src/gate.js`) as gate.ts — the protocol's NON-strict source — so a strict consumer inherits every
 // error in it. These restate the package's declarations (gate.d.ts, routes.d.ts, reshape.d.ts, applyWrite.d.ts,
-// createFrameBridge.d.ts, module-scope.d.ts, frame-document.d.ts) as far as ui uses them. Runtime is untouched: Vite
+// createFrameBridge.d.ts, buildModuleScope.d.ts, buildFrameDocument.d.ts) as far as ui uses them. Runtime is untouched: Vite
 // bundles the package's own code. Drop this file once the protocol's sources typecheck strictly.
 export type Op = "create" | "update" | "delete" | "position"
 export interface WriteGrant {

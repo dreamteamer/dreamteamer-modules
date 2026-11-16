@@ -10,8 +10,8 @@
  * markdown body).
  */
 import type { FieldRow, SourceEntry } from "../api/types.ts"
-import { withComputedRows } from "./computed-fields.ts"
-import { choicesOf, drawnOn, isBodyField } from "./field-row.ts"
+import { withComputedRows } from "./computedFields.ts"
+import { choicesOf, drawnOn, isBodyField } from "./fieldRow.ts"
 import { SOURCE_FIELD, withSourceColumn } from "./sources.ts"
 
 /** A field some surface draws — `$source` is the one synthetic key that is a column; every other `$` key is a

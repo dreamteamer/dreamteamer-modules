@@ -9,10 +9,10 @@ import { AppContext, EMPTY_SCHEMA, RouteBase, useApp, useAsync, useSignal, type 
 import { Nav } from "./components/Nav.tsx"
 import { canEdit, hostInfo, loadHost, paneHost, SIGNED_OUT, signedOut } from "./lib/host.ts"
 import { navHistory, peek, step, visit } from "./lib/navHistory.ts"
-import { placeOf, type PaneView } from "./lib/pane-place.ts"
-import { receiveSelect, startPaneReport } from "./lib/pane-report.ts"
+import { placeOf, type PaneView } from "./lib/panePlace.ts"
+import { receiveSelect, startPaneReport } from "./lib/paneReport.ts"
 import { signal } from "./lib/signal.ts"
-import { mayLeave } from "./lib/leave-guard.ts"
+import { mayLeave } from "./lib/leaveGuard.ts"
 import { pageOf, pathOf, settingsRedirect } from "./lib/createRoute.ts"
 import { loadUiViews, uiViews } from "./lib/uiViews.ts"
 import { buildSchema } from "./lib/schema.ts"
@@ -26,7 +26,7 @@ import { SchemaTab } from "./settings/SchemaTab.tsx"
 import { AppPage } from "./modules/host.tsx"
 import { cx, error, page as pageFrame, subtle } from "./styles/classes.ts"
 
-/** The page's place, in the shapes the pane reports (lib/pane-place.ts) — set on every route change. */
+/** The page's place, in the shapes the pane reports (lib/panePlace.ts) — set on every route change. */
 const place = signal<PaneView>({ other: true })
 
 /** `onMounted` runs once, after the first commit: the message listener is in place, so the host's answer to

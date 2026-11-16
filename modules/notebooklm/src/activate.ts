@@ -9,7 +9,7 @@ import { render } from "./harness.ts"
 
 export const apiVersion = 1
 
-import { SETUP_UNIT } from "../lib/notebooklm-setup.ts"
+import { SETUP_UNIT } from "../lib/notebooklmSetup.ts"
 export default function activate(dt) {
   bind(dt)
   return {

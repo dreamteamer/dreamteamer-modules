@@ -6,7 +6,7 @@ import { filesCommand, USAGE } from "./cli.ts"
 import "./sync.ts" // registers filesCommand.handlers.sync
 import { doctorFiles } from "./status.ts" // also registers filesCommand.handlers.status
 import { checkFiles } from "./checkFiles.ts"
-import { SETUP_UNIT } from "../lib/files-setup.ts"
+import { SETUP_UNIT } from "../lib/filesSetup.ts"
 
 export const apiVersion = 1
 

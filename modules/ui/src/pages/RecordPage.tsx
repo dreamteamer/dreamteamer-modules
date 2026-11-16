@@ -2,7 +2,7 @@
  * ONE RECORD (ported from the Vue ui's pages/ContentDetail.vue). The page is a frame around a RECORD-SCOPED
  * Edit or View: the record's display (`display.record.layout` — a record-scope ui-view's when the page is that
  * view's route, else the collection's) names it, `page` means the built-in `properties`, and the registries
- * resolve it (`lib/record-display.ts`). An existing record opens READ; the pencil flips the same layout into
+ * resolve it (`lib/recordDisplay.ts`). An existing record opens READ; the pencil flips the same layout into
  * edit mode in place, where Cancel and Save replace the actions. The new-record form (no id) is edit mode from
  * the start.
  *
@@ -30,7 +30,7 @@ import { CommitButton } from "../components/CommitButton.tsx"
 import { Dialog } from "../components/Dialog.tsx"
 import { Icon } from "../components/Icon.tsx"
 import { Link } from "../components/Link.tsx"
-import { isReferenceField } from "../lib/collection-display.ts"
+import { isReferenceField } from "../lib/collectionDisplay.ts"
 import {
   excludedBy,
   noteCreated,
@@ -38,12 +38,12 @@ import {
   selectionFromQuery,
   SOURCES_QUERY,
   TARGET_QUERY,
-} from "../lib/created-visibility.ts"
-import { editsAnything } from "../lib/field-row.ts"
+} from "../lib/createdVisibility.ts"
+import { editsAnything } from "../lib/fieldRow.ts"
 import { hostInfo, isAdmin } from "../lib/host.ts"
-import { setLeaveGuard } from "../lib/leave-guard.ts"
-import { askTitles, knownTitle, referenceTitlesChanged } from "../lib/record-cache.ts"
-import { recordDisplayOf, recordRendererId } from "../lib/record-display.ts"
+import { setLeaveGuard } from "../lib/leaveGuard.ts"
+import { askTitles, knownTitle, referenceTitlesChanged } from "../lib/recordCache.ts"
+import { recordDisplayOf, recordRendererId } from "../lib/recordDisplay.ts"
 import { recordOrigin } from "../lib/recordOrigin.ts"
 import {
   commitInfo,
@@ -54,7 +54,7 @@ import {
   renameProblem,
   setEdit,
   withEdits,
-} from "../lib/record-page.ts"
+} from "../lib/recordPage.ts"
 import { recordPageFields } from "../lib/recordPageFields.ts"
 import { listRoute, queryOf, recordRoute } from "../lib/createRoute.ts"
 import { recordFacts, recordLabel } from "../lib/schema.ts"
@@ -266,7 +266,7 @@ export function RecordPage({
       if (create) {
         const body = Object.fromEntries(Object.entries(edits).filter(([, v]) => v !== null && v !== ""))
         const made = await createRecord(collection, body, target ?? undefined)
-        // the list it came from widens its Sources selection to show it (`lib/created-visibility.ts`)
+        // the list it came from widens its Sources selection to show it (`lib/createdVisibility.ts`)
         const root = saveRootFor(sources, target)?.name
         if (root && made.id) noteCreated({ collection, id: made.id, source: root })
         go(recordRoute(collection, made.id, base))

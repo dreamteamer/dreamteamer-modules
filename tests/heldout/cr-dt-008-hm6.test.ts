@@ -14,7 +14,7 @@ import { workspace, writeCollection, simpleCollection } from "../helpers/fixture
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..")
 const PROTOCOL = path.join(ROOT, "modules", "protocol")
 const { buildTree, tailOrder } = await import(pathToFileURL(path.join(PROTOCOL, "src", "host", "nav.js")).href)
-const { applyNavOp } = await import(pathToFileURL(path.join(PROTOCOL, "src", "nav-doc.js")).href)
+const { applyNavOp } = await import(pathToFileURL(path.join(PROTOCOL, "src", "navDoc.js")).href)
 
 const TITLES = {
   tasks: "Tasks",

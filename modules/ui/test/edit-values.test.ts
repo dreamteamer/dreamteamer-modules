@@ -16,8 +16,8 @@ import {
   tagsOf,
   textOrNull,
   toggleRef,
-} from "../src/lib/edit-values.ts"
-import { selectableFields } from "../src/lib/field-context.ts"
+} from "../src/lib/editValues.ts"
+import { selectableFields } from "../src/lib/fieldContext.ts"
 import type { FieldRow } from "../src/api/types.ts"
 
 test("text: an object shows as JSON, an emptied field clears", () => {

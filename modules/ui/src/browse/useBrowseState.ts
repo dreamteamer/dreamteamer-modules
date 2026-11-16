@@ -6,7 +6,7 @@
  *
  * WHERE IT STARTS (descriptor v2 §3.5): the governing ui-view's `display.list` merged key by key over the
  * collection's own (`lib/listSeed.ts`), the view's filter decompiled into editable conditions
- * (`lib/view-filter.ts`), and the URL's `?search`, `?filter`, `?layout` over both — the URL is the operator
+ * (`lib/viewFilter.ts`), and the URL's `?search`, `?filter`, `?layout` over both — the URL is the operator
  * having already edited this session. The schema is loaded before any page mounts, so all of it is decided once,
  * on the first render; the browse is remounted (keyed by its caller) when the view or the collection's list
  * block changes underneath it.
@@ -17,7 +17,7 @@
  * cannot drift apart across sessions. A tweak never carries a SOURCE selection to the next mount: which sources a
  * list shows is the navigation's fact.
  *
- * Paging is server-side (`limit`/`offset`); a grouped table defaults to every row (`lib/page-size.ts`). Any
+ * Paging is server-side (`limit`/`offset`); a grouped table defaults to every row (`lib/pageSize.ts`). Any
  * change to what is asked — search, filter, sort, page size — starts again at page 1, and drops the selection,
  * which is scoped to the rows on screen.
  */
@@ -26,13 +26,13 @@ import { listRecords, removeRecord, type Row } from "../api/client.ts"
 import type { FieldRow, SourceEntry } from "../api/types.ts"
 import { useApp, useAsync, useRouteBase } from "../AppContext.tsx"
 import { browseFields, moveItem, seedColumns, toggledSort } from "../lib/browseFields.ts"
-import { DEFAULT_SORT } from "../lib/builtin-fields.ts"
-import { colorByFor, tintOf as tintFor, tintStyle } from "../lib/collection-display.ts"
-import { SOURCES_QUERY, TARGET_QUERY, takeCreated, widenedFor, type CreatedNote } from "../lib/created-visibility.ts"
-import { compileFilter, emptyFilterGroup, serializeFilterGroup, type FilterGroup } from "../lib/filter-query.ts"
+import { DEFAULT_SORT } from "../lib/builtinFields.ts"
+import { colorByFor, tintOf as tintFor, tintStyle } from "../lib/collectionDisplay.ts"
+import { SOURCES_QUERY, TARGET_QUERY, takeCreated, widenedFor, type CreatedNote } from "../lib/createdVisibility.ts"
+import { compileFilter, emptyFilterGroup, serializeFilterGroup, type FilterGroup } from "../lib/filterQuery.ts"
 import { normalizeFilterRefs } from "../lib/normalizeFilterRefs.ts"
 import { listSeed, scratchKey as scratchKeyFor } from "../lib/listSeed.ts"
-import { effectiveLimit } from "../lib/page-size.ts"
+import { effectiveLimit } from "../lib/pageSize.ts"
 import { createRoute, pathOf, queryOf, recordRoute, withQuery } from "../lib/createRoute.ts"
 import { recordLabel } from "../lib/schema.ts"
 import { lists } from "../registry/index.ts"
@@ -48,7 +48,7 @@ import {
   type TargetChoice,
 } from "../lib/sources.ts"
 import { templateFields } from "../lib/template.ts"
-import { filterFromUrl, seedFilter } from "../lib/view-filter.ts"
+import { filterFromUrl, seedFilter } from "../lib/viewFilter.ts"
 
 /** What a governing ui-view pins (`lib/uiViews.ts#viewToConfig`); empty for a bare collection. */
 export interface BrowseConfig {

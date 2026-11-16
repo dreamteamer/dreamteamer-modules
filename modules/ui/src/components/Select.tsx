@@ -11,7 +11,7 @@
  * cannot show you where you are while you arrow past your own selection.
  */
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from "react"
-import { themeColor } from "../lib/collection-display.ts"
+import { themeColor } from "../lib/collectionDisplay.ts"
 import {
   SEARCH_THRESHOLD,
   filterChoices,

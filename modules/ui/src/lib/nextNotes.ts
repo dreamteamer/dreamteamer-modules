@@ -5,7 +5,7 @@
  * reads the words: the sentence is the extension's (core's "in session by …"), drawn verbatim.
  *
  * Copied from the Vue ui's lib/next-notes.ts. `NextNote` is copied from @dreamteamer/protocol's
- * `host/next-notes.d.ts` (+ `EngineNote`, `NoteRef`): ui takes no protocol dependency, and the shape is the wire's.
+ * `host/nextNotes.d.ts` (+ `EngineNote`, `NoteRef`): ui takes no protocol dependency, and the shape is the wire's.
  */
 
 /** A reference the host found in a note's text, at `[start, end)`, and whether this workspace holds it. */

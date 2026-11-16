@@ -17,7 +17,7 @@
  */
 import assert from "node:assert/strict"
 import { describe, test } from "node:test"
-import { ALL, DEFAULT_PAGE_SIZE, PAGE_SIZE_CHOICES, effectiveLimit, isAll } from "../src/lib/page-size.ts"
+import { ALL, DEFAULT_PAGE_SIZE, PAGE_SIZE_CHOICES, effectiveLimit, isAll } from "../src/lib/pageSize.ts"
 
 describe("the ALL sentinel", () => {
   test("is a large positive number, never -1", () => {

@@ -5,7 +5,7 @@
  * which would eat the keystrokes being typed.
  */
 import { useEffect, useRef, useState } from "react"
-import { jsonText, parseJsonDraft } from "../lib/edit-values.ts"
+import { jsonText, parseJsonDraft } from "../lib/editValues.ts"
 import type { EditProps } from "../registry/props.ts"
 import { code, cx, hintError, stack, textarea } from "../styles/classes.ts"
 

@@ -4,7 +4,7 @@
  * bar (ported from the Vue ui's browse/LayoutOptionsSection.vue and ViewSaveActions.vue; ui draws it in the
  * right rail, which ui does not have yet).
  *
- * SAVE writes what the screen shows to whichever governs the page (descriptor v2 §3.5, `lib/view-write.ts`):
+ * SAVE writes what the screen shows to whichever governs the page (descriptor v2 §3.5, `lib/viewWrite.ts`):
  *  - a NAMED ui-view → the view record, rewritten whole: its route, scope, collection, every display block it
  *    carried, `display.list` from the screen, and the builder's filter — except an opaque stored filter, which
  *    is kept as stored rather than flattened;
@@ -12,7 +12,7 @@
  *    option where they differ. A collection's display holds no filter, so one on screen is named as unsaved and
  *    the page stays dirty, rather than reading as saved and reverting on the next compile.
  * SAVE AS… writes a NEW ui-view at `/views/<collection>/<slug>`, titled in the nav. The answer — the engine's
- * sentence verbatim and the one next action it implies (`lib/save-answer.ts`) — drops down under the buttons, in
+ * sentence verbatim and the one next action it implies (`lib/saveAnswer.ts`) — drops down under the buttons, in
  * view by construction. The form picks the view's icon (components/IconPicker.tsx) and the module it is written into
  * (components/ViewModuleSelect.tsx — `?module=`, the workspace module by default).
  */
@@ -24,16 +24,16 @@ import { IconPicker } from "../components/IconPicker.tsx"
 import { Link } from "../components/Link.tsx"
 import { Select } from "../components/Select.tsx"
 import { ViewModuleSelect } from "../components/ViewModuleSelect.tsx"
-import { computedReason } from "../lib/field-row.ts"
-import { compileFilter } from "../lib/filter-query.ts"
+import { computedReason } from "../lib/fieldRow.ts"
+import { compileFilter } from "../lib/filterQuery.ts"
 import { labelOf } from "../lib/formatTitle.ts"
-import { refusalAnswer, savedAnswer, type SaveAnswer } from "../lib/save-answer.ts"
+import { refusalAnswer, savedAnswer, type SaveAnswer } from "../lib/saveAnswer.ts"
 import { signal } from "../lib/signal.ts"
 import { slugify } from "../lib/slugify.ts"
 import { SOURCE_FIELD } from "../lib/sources.ts"
 import { loadUiViews, uiViews } from "../lib/uiViews.ts"
-import { filterToWrite } from "../lib/view-filter.ts"
-import { collectionListWrite, namedViewWrite, newViewWrite, type ListPresentation } from "../lib/view-write.ts"
+import { filterToWrite } from "../lib/viewFilter.ts"
+import { collectionListWrite, namedViewWrite, newViewWrite, type ListPresentation } from "../lib/viewWrite.ts"
 import { viewModuleTargets } from "../lib/viewModuleTargets.ts"
 import { lists } from "../registry/index.ts"
 import { FieldContext } from "../render/FieldContext.tsx"
