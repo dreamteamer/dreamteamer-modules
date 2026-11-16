@@ -146,9 +146,32 @@ class Pin(Tmp):
             os.makedirs(os.path.dirname(p))
             Path(p).write_bytes(data)
             self.assertEqual(models.pin("stand-in", self.models_dir), store.Model("stand-in", sha, 8))
-            Path(p).write_bytes(b"another stand-in model")
+            Path(p).write_bytes(b"another stand-in model, longer")
             with self.assertRaises(models.ModelRefused):
                 models.pin("stand-in", self.models_dir)
+
+    def test_a_same_size_rewrite_with_the_old_mtime_restored_is_rehashed_and_refused(self):
+        """Review finding pin-sha-cache-keyed-on-mtime: a model file replaced in place by another of the
+        same size, its mtime put back, is refused by the next pin in the same process."""
+        data, other = b"stand-in speaker model", b"another stand-in model"
+        self.assertEqual(len(data), len(other))
+        sha = hashlib.sha256(data).hexdigest()
+        entry = {"id": "stand-in", "file": "stand-in.onnx", "url": models.RELEASE + "stand-in.onnx",
+                 "size": len(data), "sha256": sha, "dim": 8, "licence": "test"}
+        with mock.patch.dict(models.MODELS, {"stand-in": entry}):
+            p = models.model_path("stand-in", self.models_dir)
+            os.makedirs(os.path.dirname(p))
+            Path(p).write_bytes(data)
+            before = os.stat(p)
+            self.assertEqual(models.pin("stand-in", self.models_dir), store.Model("stand-in", sha, 8))
+            with open(p, "r+b") as f:
+                f.write(other)
+            os.utime(p, ns=(before.st_atime_ns, before.st_mtime_ns))
+            after = os.stat(p)
+            self.assertEqual((after.st_size, after.st_mtime_ns), (before.st_size, before.st_mtime_ns))
+            with self.assertRaises(models.ModelRefused) as cm:
+                models.pin("stand-in", self.models_dir)
+            self.assertIn(hashlib.sha256(other).hexdigest()[:12], str(cm.exception))
 
 
 class ActiveModel(Tmp):
@@ -211,6 +234,50 @@ class SetupArgs(unittest.TestCase):
             self.assertNotEqual(r.returncode, 0)
             self.assertIn("no-such-model", r.stderr)
             self.assertFalse(os.path.exists(os.path.join(home, "models")))
+
+    # Review finding setup-args-ignore-unknown-flags: anything after `setup` that is not
+    # `--speaker-models <value>` or `--speaker-models=<value>` is refused, so a typo never runs the whole setup.
+
+    def test_the_equals_form_is_accepted(self):
+        self.assertEqual(tm.setup_args(["--speaker-models=all"]), list(models.MODELS))
+        self.assertEqual(tm.setup_args([f"--speaker-models={CAMPP}"]), [CAMPP])
+
+    def test_the_equals_form_with_no_value_or_an_unknown_id_is_refused(self):
+        with self.assertRaises(models.ModelRefused):
+            tm.setup_args(["--speaker-models="])
+        with self.assertRaises(models.ModelRefused):
+            tm.setup_args(["--speaker-models=no-such-model"])
+
+    def test_an_unknown_or_misspelt_flag_is_refused_naming_it(self):
+        for args, named in ((["--speaker-model", "all"], "--speaker-model"),
+                            (["--speaker-model=all"], "--speaker-model=all"), (["--force"], "--force"),
+                            (["--speaker-models", "all", "--force"], "--force"), (["-x"], "-x")):
+            with self.subTest(args=args), self.assertRaises(tm.SetupUsage) as cm:
+                tm.setup_args(args)
+            self.assertIn(named, str(cm.exception))
+
+    def test_a_stray_argument_or_the_flag_twice_is_refused(self):
+        for args in (["all"], ["--speaker-models", "all", "all"],
+                     ["--speaker-models", "all", "--speaker-models", CAMPP],
+                     ["--speaker-models=all", "--speaker-models", CAMPP]):
+            with self.subTest(args=args), self.assertRaises(tm.SetupUsage):
+                tm.setup_args(args)
+
+    def test_a_flag_where_the_value_should_be_is_refused(self):
+        with self.assertRaises(models.ModelRefused):
+            tm.setup_args(["--speaker-models", "--force"])
+
+    def test_the_command_line_refuses_a_bad_setup_argument_before_anything_is_fetched(self):
+        for args in (["--speaker-model", "all"], ["--speaker-models=all", "--force"], ["--speaker-models="]):
+            with self.subTest(args=args), tempfile.TemporaryDirectory() as home:
+                env = dict(os.environ, TRANSCRIPTION_HOME=home, HOME=home)
+                r = subprocess.run([sys.executable, "-B", str(SKILL / "transcribe_meeting.py"), "setup", *args],
+                                   capture_output=True, text=True, env=env)
+                self.assertNotEqual(r.returncode, 0)
+                self.assertIn("✖", r.stderr)
+                self.assertIn("usage: transcribe_meeting.py setup", r.stderr)
+                self.assertNotIn("Traceback", r.stderr)
+                self.assertFalse(os.path.exists(os.path.join(home, "models")))
 
 
 class Setup(Tmp):

@@ -101,19 +101,15 @@ def missing(model_ids, models_dir):
     return lines
 
 
-_SHA_CACHE = {}
-
-
 def file_sha256(path):
-    st = os.stat(path)
-    key = (os.path.realpath(path), st.st_size, st.st_mtime_ns)
-    if key not in _SHA_CACHE:
-        h = hashlib.sha256()
-        with open(path, "rb") as f:
-            for chunk in iter(lambda: f.read(1 << 20), b""):
-                h.update(chunk)
-        _SHA_CACHE[key] = h.hexdigest()
-    return _SHA_CACHE[key]
+    """The sha256 of the bytes on disk, read every time: no cache keyed on size or timestamps, which a
+    file rewritten in place within one timestamp tick would slip past (`pin` runs once per Embedder,
+    and hashing the largest registered model takes about a tenth of a second)."""
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
 
 
 def pin(model_id, models_dir):

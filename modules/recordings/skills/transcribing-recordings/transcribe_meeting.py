@@ -91,14 +91,37 @@ def missing_models(engine, num_speakers, seg=None, emb=None, whisper_dir=None, s
     return missing
 
 
+SETUP_USAGE = "usage: transcribe_meeting.py setup [--speaker-models all|<id>[,<id>…]]"
+
+
+class SetupUsage(ValueError):
+    """An argument after `setup` that is not `--speaker-models <value>` (or `--speaker-models=<value>`)."""
+
+
 def setup_args(args):
-    """`setup [--speaker-models all|<id>[,<id>…]]` → the speaker model ids asked for, or None (no flag)."""
-    if "--speaker-models" not in args:
+    """`setup [--speaker-models all|<id>[,<id>…]]` → the speaker model ids asked for, or None (no flag).
+    The `--speaker-models=<value>` form is accepted too. Anything else — an unknown or misspelt flag, a
+    stray word, the flag twice — is refused (SetupUsage) rather than ignored, so a typo never runs the
+    whole setup; an unknown model id or a missing value is refused by the registry (ModelRefused)."""
+    value, seen, i = None, False, 0
+    while i < len(args):
+        a = args[i]
+        if a == "--speaker-models":
+            if i + 1 >= len(args):
+                raise vp_models.ModelRefused("--speaker-models needs `all` or a comma list of model ids")
+            v, i = args[i + 1], i + 2
+        elif a.startswith("--speaker-models="):
+            v, i = a[len("--speaker-models="):], i + 1
+        elif a.startswith("-"):
+            raise SetupUsage(f"setup does not know the flag {a!r}")
+        else:
+            raise SetupUsage(f"setup takes no argument {a!r}")
+        if seen:
+            raise SetupUsage("--speaker-models is given more than once")
+        seen, value = True, v
+    if not seen:
         return None
-    i = args.index("--speaker-models")
-    if i + 1 >= len(args):
-        raise vp_models.ModelRefused("--speaker-models needs `all` or a comma list of model ids")
-    return vp_models.parse_speaker_models(args[i + 1])
+    return vp_models.parse_speaker_models(value)
 
 
 def setup_speaker_models(model_ids, models_dir=None, download=None):
@@ -366,7 +389,11 @@ if __name__ == "__main__":
     args = sys.argv[1:]
     if args and args[0] == "setup":
         try:
-            setup(speaker_models=setup_args(args[1:]))
+            _speaker_models = setup_args(args[1:])
+        except (SetupUsage, vp_models.ModelRefused) as e:
+            sys.exit(f"✖ {e}\n  {SETUP_USAGE}")
+        try:
+            setup(speaker_models=_speaker_models)
         except (vp_models.ModelRefused, vp_models.CalibrationAmbiguous) as e:
             sys.exit(f"✖ {e}")
     elif len(args) == 3 and args[0] == "_diarize-worker":
