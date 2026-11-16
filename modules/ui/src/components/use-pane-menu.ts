@@ -9,7 +9,7 @@ import { menuKeys } from "../lib/menu-keys.ts"
 import { menuUnder, rectOf, viewportWidth } from "../lib/menu-place.ts"
 import { openMenu } from "../lib/open-menu.ts"
 
-/** The width the pane menus are placed for (`.dt-pane-menu`). */
+/** The width the pane menus are placed for (`paneMenu` in looks.ts). */
 export const PANE_MENU_WIDTH = 220
 
 export function usePaneMenu(id: string, align: "start" | "end") {

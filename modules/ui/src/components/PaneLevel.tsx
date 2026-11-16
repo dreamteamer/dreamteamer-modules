@@ -14,6 +14,8 @@ import { paneFetch } from "../lib/pane-api.ts"
 import { levelWord, lowerChoices, raiseNotice, type PaneLevel as Level } from "../lib/pane-level.ts"
 import { Icon } from "./Icon.tsx"
 import { usePaneMenu } from "./use-pane-menu.ts"
+import { cx } from "../styles/classes.ts"
+import { navTool, paneMenu, paneMenuError, paneMenuQuiet } from "./looks.ts"
 
 const ICONS: Record<Level, string> = { read: "eye", edit: "edit", admin: "shield" }
 
@@ -40,7 +42,10 @@ export function PaneLevel() {
       <button
         ref={m.button}
         type="button"
-        className="dt-nav-tool dt-pane-level"
+        className={cx(
+          navTool,
+          "aria-expanded:bg-bg-hover data-[level=admin]:text-warning data-[level=admin]:enabled:hover:text-warning"
+        )}
         data-level={level}
         title={`Level: ${levelWord(level)}${notice ? ` — ${notice}` : ""}`}
         aria-label={`Level: ${levelWord(level)}`}
@@ -59,7 +64,7 @@ export function PaneLevel() {
         createPortal(
           <div
             ref={m.menu}
-            className="dt-pane-menu"
+            className={paneMenu}
             role="menu"
             tabIndex={-1}
             style={{ left: m.at.x, top: m.at.y }}
@@ -67,9 +72,9 @@ export function PaneLevel() {
             onKeyDown={e => m.keys.keydown(e)}
             onFocus={e => m.keys.focusin(e)}
           >
-            {notice && <p className="dt-pane-menu-notice">{notice}</p>}
+            {notice && <p className={cx(paneMenuQuiet, "px-2 pt-1 pb-1.5 border-b border-border")}>{notice}</p>}
             {error && (
-              <p className="dt-pane-menu-error" role="alert">
+              <p className={paneMenuError} role="alert">
                 {error}
               </p>
             )}
@@ -78,7 +83,7 @@ export function PaneLevel() {
                 {levelWord(l)}
               </button>
             ))}
-            <p className="dt-pane-menu-hint">To raise it, ask in the chat</p>
+            <p className={cx(paneMenuQuiet, "px-2 py-1 border-t border-border")}>To raise it, ask in the chat</p>
           </div>,
           document.body
         )}

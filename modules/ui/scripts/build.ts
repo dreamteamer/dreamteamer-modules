@@ -9,6 +9,7 @@ import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { build, type InlineConfig } from "vite"
 import react from "@vitejs/plugin-react"
+import tailwindcss from "@tailwindcss/vite"
 
 const UI = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 const SRC = path.join(UI, "src")
@@ -18,7 +19,7 @@ const common: InlineConfig = {
   configFile: false,
   root: SRC,
   base: "./",
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
   logLevel: "error",
 }
 

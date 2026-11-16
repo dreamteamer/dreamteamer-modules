@@ -9,6 +9,19 @@
 import { useEffect, useRef, useState } from "react"
 import type { NavMenuItem } from "../lib/nav-tree.ts"
 import { IconGrid } from "./IconPicker.tsx"
+import { cx, input } from "../styles/classes.ts"
+
+const menuCls =
+  "fixed z-50 min-w-[180px] max-w-[calc(100vw-8px)] flex flex-col py-1 px-0 bg-bg border border-border rounded-dt shadow-[0_8px_24px_rgb(0_0_0/0.16)]"
+/** One entry; `ok` is the ask's confirming button. (was dt-nav-menu-item) */
+const itemCls = (ok?: boolean) =>
+  cx(
+    "text-left px-3 py-1 bg-transparent border-0 [font:inherit] cursor-pointer enabled:hover:bg-bg-hover disabled:text-fg-subtle disabled:cursor-default",
+    ok ? "text-link" : "text-fg"
+  )
+const askCls = "flex flex-col gap-1.5 px-2.5 py-1.5 w-[220px]"
+const titleCls = "text-fg-subtle text-small"
+const actionsCls = "flex justify-end gap-1"
 
 export function NavMenu({
   x,
@@ -51,7 +64,7 @@ export function NavMenu({
 
   return (
     <div
-      className="dt-nav-menu"
+      className={menuCls}
       role="menu"
       style={{ left: x, top: y }}
       onClick={e => e.stopPropagation()}
@@ -68,7 +81,7 @@ export function NavMenu({
             key={item.id}
             type="button"
             role="menuitem"
-            className="dt-nav-menu-item"
+            className={itemCls()}
             data-id={item.id}
             disabled={item.disabled}
             onClick={() => choose(item)}
@@ -78,16 +91,16 @@ export function NavMenu({
         ))}
       {asking?.ask === "text" && (
         <form
-          className="dt-nav-menu-ask"
+          className={askCls}
           onSubmit={e => {
             e.preventDefault()
             submit()
           }}
         >
-          <label className="dt-nav-menu-title">{title}</label>
+          <label className={titleCls}>{title}</label>
           <input
             ref={field}
-            className="dt-input"
+            className={input}
             type="text"
             value={text}
             placeholder={asking.placeholder ?? ""}
@@ -102,22 +115,22 @@ export function NavMenu({
               ))}
             </datalist>
           )}
-          <div className="dt-nav-menu-actions">
-            <button type="button" className="dt-nav-menu-item" data-id="cancel" onClick={onClose}>
+          <div className={actionsCls}>
+            <button type="button" className={itemCls()} data-id="cancel" onClick={onClose}>
               Cancel
             </button>
-            <button type="submit" className="dt-nav-menu-item is-ok" data-id="ok">
+            <button type="submit" className={itemCls(true)} data-id="ok">
               OK
             </button>
           </div>
         </form>
       )}
       {asking?.ask === "icon" && (
-        <div className="dt-nav-menu-ask">
-          <label className="dt-nav-menu-title">{title}</label>
+        <div className={askCls}>
+          <label className={titleCls}>{title}</label>
           <input
             ref={field}
-            className="dt-input"
+            className={input}
             type="search"
             value={text}
             placeholder="Search icons"
@@ -125,16 +138,16 @@ export function NavMenu({
             onChange={e => setText(e.target.value)}
           />
           <IconGrid query={text} current={asking.value} onPick={name => onPick({ id: asking.id, value: name })} />
-          <div className="dt-nav-menu-actions">
+          <div className={actionsCls}>
             <button
               type="button"
-              className="dt-nav-menu-item"
+              className={itemCls()}
               data-id="clear-icon"
               onClick={() => onPick({ id: asking.id, value: null })}
             >
               Clear icon
             </button>
-            <button type="button" className="dt-nav-menu-item" data-id="cancel" onClick={onClose}>
+            <button type="button" className={itemCls()} data-id="cancel" onClick={onClose}>
               Cancel
             </button>
           </div>

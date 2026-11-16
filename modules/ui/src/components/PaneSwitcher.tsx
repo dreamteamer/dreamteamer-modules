@@ -11,6 +11,8 @@ import { useApp, useSignal } from "../app-context.tsx"
 import { hostInfo } from "../lib/host.ts"
 import { paneFetch } from "../lib/pane-api.ts"
 import { usePaneMenu } from "./use-pane-menu.ts"
+import { cx } from "../styles/classes.ts"
+import { paneMenu, paneMenuError, paneMenuQuiet } from "./looks.ts"
 
 interface WorkspaceRow {
   id: string
@@ -18,6 +20,9 @@ interface WorkspaceRow {
   running: boolean
   current: boolean
 }
+
+/** A quiet line under the workspaces. (was dt-pane-menu-hint) */
+const PANE_HINT = "px-2 py-1 border-t border-border"
 
 /** The workspace settings — the toolbar name's click off a pane host. */
 export const SETTINGS_ROUTE = "/settings/schema/activity"
@@ -77,7 +82,7 @@ export function PaneSwitcher({ label }: { label?: string }) {
       <button
         ref={m.button}
         type="button"
-        className="dt-pane-switch"
+        className="inline-flex items-center gap-0.5 flex-[0_1_auto] min-w-[30px] max-w-full h-6 px-1 py-0 border-0 rounded-dt bg-transparent text-fg font-[inherit] text-[length:inherit] leading-[inherit] font-semibold hover:bg-bg-hover aria-expanded:bg-bg-hover"
         title={`${name} — switch workspace`}
         aria-haspopup="menu"
         aria-expanded={m.open}
@@ -86,14 +91,14 @@ export function PaneSwitcher({ label }: { label?: string }) {
           void toggle()
         }}
       >
-        <span className="dt-pane-switch-name">{name}</span>
-        <i className="codicon codicon-chevron-down dt-pane-switch-chevron" aria-hidden="true" />
+        <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">{name}</span>
+        <i className="codicon codicon-chevron-down flex-none text-[12px]! text-fg-subtle" aria-hidden="true" />
       </button>
       {m.open &&
         createPortal(
           <div
             ref={m.menu}
-            className="dt-pane-menu"
+            className={paneMenu}
             role="menu"
             tabIndex={-1}
             style={{ left: m.at.x, top: m.at.y }}
@@ -102,7 +107,7 @@ export function PaneSwitcher({ label }: { label?: string }) {
             onFocus={e => m.keys.focusin(e)}
           >
             {error && (
-              <p className="dt-pane-menu-error" role="alert">
+              <p className={paneMenuError} role="alert">
                 {error}
               </p>
             )}
@@ -115,20 +120,21 @@ export function PaneSwitcher({ label }: { label?: string }) {
                 aria-checked={w.current}
                 onClick={() => void pick(w)}
               >
-                {w.name} {!w.current && !w.running && <span className="dt-pane-menu-muted">starts when opened</span>}
+                {w.name} {!w.current && !w.running && <span className={paneMenuQuiet}>starts when opened</span>}
               </button>
             ))}
             {loading ? (
-              <p className="dt-pane-menu-hint" role="status">
+              <p className={cx(paneMenuQuiet, PANE_HINT)} role="status">
                 Loading…
               </p>
             ) : (
-              !others && !error && <p className="dt-pane-menu-hint">No other workspace was opened on this machine</p>
+              !others &&
+              !error && <p className={cx(paneMenuQuiet, PANE_HINT)}>No other workspace was opened on this machine</p>
             )}
             <button
               type="button"
               role="menuitem"
-              className="dt-pane-switch-settings"
+              className="border-t! border-border mt-0.5 pt-1.5! rounded-none!"
               onClick={() => {
                 m.close()
                 navigate(SETTINGS_ROUTE)

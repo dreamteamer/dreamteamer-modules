@@ -42,6 +42,8 @@ import { Icon } from "./Icon.tsx"
 import { NavMenu } from "./NavMenu.tsx"
 import { PaneLevel } from "./PaneLevel.tsx"
 import { PaneSwitcher } from "./PaneSwitcher.tsx"
+import { cx, iconButton } from "../styles/classes.ts"
+import { navTool } from "./looks.ts"
 
 /** The sentence the disabled arrange lock says at Read on a pane host. */
 const NEEDS_EDIT = "Arranging the nav needs Edit"
@@ -49,6 +51,23 @@ const NEEDS_EDIT = "Arranging the nav needs Edit"
 const TOOLBAR = "::toolbar"
 /** The width a toolbar menu is placed for (the text ask is 220 px wide plus its border). */
 const MENU_WIDTH = 224
+
+/** The nav column; its lists carry no bullets or indent. On a narrow window it stacks above the page. */
+const navCls =
+  "flex flex-col min-h-0 overflow-hidden bg-bg-subtle border-r border-border [&_ul]:list-none [&_ul]:m-0 [&_ul]:p-0 max-[720px]:max-h-[40vh] max-[720px]:border-r-0 max-[720px]:border-b"
+const toolbarCls =
+  "relative z-[2] flex-none flex flex-wrap justify-end items-center gap-1 min-h-8 pt-[3px] pr-1 pb-[3px] pl-2 bg-bg-subtle [transition:box-shadow_0.12s]"
+const toolbarLabel = "min-w-0 overflow-hidden text-ellipsis whitespace-nowrap font-semibold text-fg"
+const toolbarLabelButton =
+  "max-w-full h-6 px-1 py-0 border-0 rounded-dt bg-transparent font-[inherit] text-[length:inherit] leading-[inherit] text-left hover:bg-bg-hover"
+const TAIL_CLS = "flex-[1_0_24px]"
+const rowCls = "flex items-center gap-1.5 h-7 pr-2.5 cursor-pointer whitespace-nowrap [&[draggable=true]]:cursor-grab"
+/** The line (or the frame) a row shows where a dragged row would land. */
+const DROP_HINT: Record<DropHint["where"], string> = {
+  after: "shadow-[inset_0_-2px_0_var(--dt-accent)]",
+  before: "shadow-[inset_0_2px_0_var(--dt-accent)]",
+  into: "outline-1 outline-solid outline-accent -outline-offset-1 bg-bg-active",
+}
 
 type MenuAt = { key: string; x: number; y: number; start?: string }
 
@@ -185,21 +204,21 @@ export function Nav() {
 
   return (
     <nav
-      className={`dt-nav${arranging ? " is-arranging" : ""}`}
+      className={navCls}
       aria-label="Workspace"
       onDragEnd={() => {
         setHint(null)
         dragging.current = null
       }}
     >
-      <div className={`dt-nav-toolbar${scrolled ? " is-scrolled" : ""}`} role="toolbar" aria-label="Nav">
-        <div className="dt-nav-toolbar-name">
+      <div className={cx(toolbarCls, scrolled && "shadow-[0_1px_3px_rgb(0_0_0/0.14)]")} role="toolbar" aria-label="Nav">
+        <div className="flex-[1_0_30px] min-w-[30px] flex items-center overflow-hidden">
           {pane ? (
             <PaneSwitcher label={workspace?.label} />
           ) : workspace?.route ? (
             <button
               type="button"
-              className="dt-nav-toolbar-label is-button"
+              className={cx(toolbarLabel, toolbarLabelButton)}
               title={`${workspace.label} — Workspace settings`}
               onClick={e => {
                 e.stopPropagation()
@@ -209,15 +228,15 @@ export function Nav() {
               {workspace.label}
             </button>
           ) : (
-            <span className="dt-nav-toolbar-label" title={workspace?.label}>
+            <span className={toolbarLabel} title={workspace?.label}>
               {workspace?.label ?? ""}
             </span>
           )}
         </div>
-        <div className="dt-nav-toolbar-buttons">
+        <div className="contents">
           <button
             type="button"
-            className="dt-nav-tool"
+            className={navTool}
             data-tool="back"
             title="Back"
             aria-label="Back"
@@ -228,7 +247,7 @@ export function Nav() {
           </button>
           <button
             type="button"
-            className="dt-nav-tool"
+            className={navTool}
             data-tool="forward"
             title="Forward"
             aria-label="Forward"
@@ -241,7 +260,7 @@ export function Nav() {
             <>
               <button
                 type="button"
-                className="dt-nav-tool"
+                className={navTool}
                 data-tool="new-folder"
                 title="New folder…"
                 aria-label="New folder"
@@ -251,7 +270,7 @@ export function Nav() {
               </button>
               <button
                 type="button"
-                className="dt-nav-tool"
+                className={navTool}
                 data-tool="show-hidden"
                 title="Show hidden…"
                 aria-label="Show hidden"
@@ -263,7 +282,7 @@ export function Nav() {
           )}
           <button
             type="button"
-            className="dt-nav-tool dt-nav-lock"
+            className={navTool}
             data-tool="arrange"
             aria-pressed={arranging}
             aria-label="Arrange the nav"
@@ -277,7 +296,10 @@ export function Nav() {
           >
             <Icon name="list-tree" />
             <i
-              className={`dt-nav-lock-badge codicon codicon-${arranging ? "unlock" : "lock-small"}`}
+              className={cx(
+                "codicon absolute right-px bottom-px text-[10px]! leading-[10px]! rounded-[3px]",
+                arranging ? "bg-bg-active codicon-unlock" : "bg-bg-subtle codicon-lock-small"
+              )}
               aria-hidden="true"
             />
           </button>
@@ -285,23 +307,26 @@ export function Nav() {
         </div>
       </div>
       {notice && (
-        <p className="dt-nav-notice">
-          <span>{notice}</span>
-          <button type="button" className="dt-icon-button" title="Dismiss" onClick={() => setNotice(null)}>
+        <p className="flex-none flex items-start gap-1.5 mx-1.5 my-1 px-2 py-1.5 rounded-dt bg-bg-active text-small">
+          <span className="flex-1">{notice}</span>
+          <button type="button" className={iconButton} title="Dismiss" onClick={() => setNotice(null)}>
             <Icon name="close" />
           </button>
         </p>
       )}
-      {error && <p className="dt-nav-error">{error}</p>}
-      <div className="dt-nav-rows" onScroll={e => setScrolled(e.currentTarget.scrollTop > 0)}>
-        <ul className="dt-nav-tree" role="tree">
+      {error && <p className="flex-none m-0 px-2 py-1.5 text-danger">{error}</p>}
+      <div
+        className="flex-[1_1_auto] min-h-0 overflow-y-auto flex flex-col"
+        onScroll={e => setScrolled(e.currentTarget.scrollTop > 0)}
+      >
+        <ul className="flex-none pb-1!" role="tree">
           {ix.top.map(n => (
             <NavRow key={n.key} node={n} depth={0} ctx={rows} />
           ))}
         </ul>
         {arranging ? (
           <div
-            className={`dt-nav-tail${hint?.key === TAIL ? " is-drop-after" : ""}`}
+            className={cx(TAIL_CLS, hint?.key === TAIL && "shadow-[inset_0_2px_0_var(--dt-accent)]")}
             data-key={TAIL}
             onDragOver={e => {
               e.preventDefault()
@@ -317,7 +342,7 @@ export function Nav() {
             }}
           />
         ) : (
-          <div className="dt-nav-tail" data-key={TAIL} />
+          <div className={TAIL_CLS} data-key={TAIL} />
         )}
       </div>
       {menuAt && menu && (
@@ -363,7 +388,7 @@ function NavRow({ node, depth, ctx }: { node: NavNode; depth: number; ctx: RowCt
   const kids = node.children ?? []
   const open = ctx.isOpen(node.key)
   const active = rowActive(node.route, route)
-  const hinted = ctx.hint?.key === node.key ? ` is-drop-${ctx.hint.where}` : ""
+  const hinted = ctx.hint?.key === node.key ? ctx.hint.where : null
   const gestures = ctx.arranging
     ? {
         draggable: node.target ? true : undefined,
@@ -394,7 +419,12 @@ function NavRow({ node, depth, ctx }: { node: NavNode; depth: number; ctx: RowCt
   return (
     <li role="treeitem" aria-expanded={kids.length ? open : undefined} aria-selected={active}>
       <div
-        className={`dt-nav-row dt-nav-${node.kind}${active ? " is-active" : ""}${hinted}`}
+        className={cx(
+          rowCls,
+          active ? "bg-bg-active text-fg-active" : !hinted && "hover:bg-bg-hover",
+          hinted && DROP_HINT[hinted]
+        )}
+        data-kind={node.kind}
         style={{ paddingLeft: 8 + depth * 14 }}
         title={node.tooltip}
         data-key={node.key}
@@ -402,7 +432,7 @@ function NavRow({ node, depth, ctx }: { node: NavNode; depth: number; ctx: RowCt
         {...gestures}
       >
         <span
-          className="dt-nav-twisty"
+          className="w-4 inline-flex justify-center"
           onClick={e => {
             e.stopPropagation()
             if (kids.length) ctx.toggle(node.key)
@@ -411,9 +441,9 @@ function NavRow({ node, depth, ctx }: { node: NavNode; depth: number; ctx: RowCt
           {kids.length > 0 && <Icon name={open ? "chevron-down" : "chevron-right"} />}
         </span>
         <Icon name={node.icon} />
-        <span className="dt-nav-label">{node.label}</span>
-        {node.marks && <span className="dt-nav-marks">{node.marks}</span>}
-        {node.description && <span className="dt-nav-count">{node.description}</span>}
+        <span className="flex-1 overflow-hidden text-ellipsis">{node.label}</span>
+        {node.marks && <span className="text-fg-subtle text-small">{node.marks}</span>}
+        {node.description && <span className="text-fg-subtle text-small">{node.description}</span>}
       </div>
       {open && kids.length > 0 && (
         <ul role="group">

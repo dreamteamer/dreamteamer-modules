@@ -4,93 +4,7 @@
  * falls back to its own light or dark value in a browser. Classes are `dt-` prefixed so the app can share a
  * page with a host's own styles.
  */
-:root {
-  --dt-font: system-ui, -apple-system, "Segoe UI", sans-serif;
-  --dt-mono: ui-monospace, "SF Mono", Menlo, monospace;
-  --dt-text: 13px;
-  --dt-small: 11px;
-  --dt-radius: 6px;
-
-  --dt-bg: var(--vscode-editor-background, #ffffff);
-  --dt-bg-subtle: var(--vscode-sideBar-background, #f4f6fa);
-  --dt-bg-hover: var(--vscode-list-hoverBackground, #e9eef5);
-  --dt-bg-active: var(--vscode-list-activeSelectionBackground, #dfe7f1);
-  --dt-fg: var(--vscode-foreground, #172940);
-  --dt-fg-active: var(--vscode-list-activeSelectionForeground, #172940);
-  --dt-fg-subtle: var(--vscode-descriptionForeground, #67788f);
-  --dt-border: var(--vscode-panel-border, #e1e7ef);
-  --dt-accent: var(--vscode-button-background, #5b3df5);
-  --dt-accent-fg: var(--vscode-button-foreground, #ffffff);
-  --dt-link: var(--vscode-textLink-foreground, #2f6feb);
-  --dt-danger: var(--vscode-errorForeground, #d1435b);
-  --dt-warning: var(--vscode-editorWarning-foreground, #b7791f);
-  --dt-input-bg: var(--vscode-input-background, #ffffff);
-  --dt-input-border: var(--vscode-input-border, #d3dae4);
-  --dt-focus: var(--vscode-focusBorder, #5b3df5);
-
-  /* enum colours: the names descriptors use (`charts.green`) */
-  --dt-color-charts-green: var(--vscode-charts-green, #2e9d6e);
-  --dt-color-charts-orange: var(--vscode-charts-orange, #d9822b);
-  --dt-color-charts-red: var(--vscode-charts-red, #d1435b);
-  --dt-color-charts-blue: var(--vscode-charts-blue, #2f6feb);
-  --dt-color-charts-yellow: var(--vscode-charts-yellow, #c9a227);
-  --dt-color-charts-purple: var(--vscode-charts-purple, #8a4fd8);
-  --dt-unknown-color: var(--dt-fg-subtle);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --dt-bg: var(--vscode-editor-background, #16191f);
-    --dt-bg-subtle: var(--vscode-sideBar-background, #1d2129);
-    --dt-bg-hover: var(--vscode-list-hoverBackground, #262b35);
-    --dt-bg-active: var(--vscode-list-activeSelectionBackground, #2d3442);
-    --dt-fg: var(--vscode-foreground, #e3e8ef);
-    --dt-fg-active: var(--vscode-list-activeSelectionForeground, #ffffff);
-    --dt-fg-subtle: var(--vscode-descriptionForeground, #95a3b8);
-    --dt-border: var(--vscode-panel-border, #2c323d);
-    --dt-accent: var(--vscode-button-background, #7a63ff);
-    --dt-link: var(--vscode-textLink-foreground, #7aa7ff);
-    --dt-danger: var(--vscode-errorForeground, #ff7a8e);
-    --dt-warning: var(--vscode-editorWarning-foreground, #e0a84a);
-    --dt-input-bg: var(--vscode-input-background, #12151a);
-    --dt-input-border: var(--vscode-input-border, #363d4a);
-    --dt-color-charts-green: var(--vscode-charts-green, #4fc08d);
-    --dt-color-charts-orange: var(--vscode-charts-orange, #f0a050);
-  }
-}
-
-* {
-  box-sizing: border-box;
-}
-html,
-body {
-  margin: 0;
-  height: 100%;
-}
-body {
-  background: var(--dt-bg);
-  color: var(--dt-fg);
-  font: var(--dt-text) / 1.45 var(--dt-font);
-}
-#app {
-  height: 100%;
-}
-a {
-  color: var(--dt-link);
-  text-decoration: none;
-}
-a:hover {
-  text-decoration: underline;
-}
-:focus-visible {
-  outline: 2px solid var(--dt-focus);
-  outline-offset: 1px;
-}
-h1 {
-  font-size: 20px;
-  font-weight: 600;
-  margin: 0;
-}
+/* the tokens and the base live in app.css; this file holds the styles not yet moved into the components */
 
 /* ---- shell ---------------------------------------------------------------------------------- */
 .dt-shell {
@@ -570,28 +484,6 @@ h1 {
 }
 .dt-button.is-danger {
   color: var(--dt-danger);
-}
-input,
-select,
-textarea {
-  font: inherit;
-  color: var(--dt-fg);
-  background: var(--dt-input-bg);
-  border: 1px solid var(--dt-input-border);
-  border-radius: var(--dt-radius);
-  padding: 5px 8px;
-  min-height: 30px;
-}
-textarea {
-  resize: vertical;
-  font-family: var(--dt-mono);
-  font-size: 12px;
-}
-input[type="checkbox"] {
-  min-height: 0;
-  width: 16px;
-  height: 16px;
-  justify-self: start;
 }
 .dt-search {
   display: inline-flex;

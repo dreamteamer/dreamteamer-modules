@@ -20,6 +20,7 @@ import type { IncomingMessage, ServerResponse } from "node:http"
 import { fileURLToPath } from "node:url"
 import { createServer, type Plugin } from "vite"
 import react from "@vitejs/plugin-react"
+import tailwindcss from "@tailwindcss/vite"
 import { makeFixture } from "../modules/protocol/lib/contract/fixture.ts"
 import { createHandler } from "../modules/protocol/src/handler.ts"
 
@@ -116,7 +117,7 @@ fs.watch(root, { recursive: true }, (_type, file) => {
 const server = await createServer({
   configFile: false,
   root: UI_SRC,
-  plugins: [react(), api],
+  plugins: [react(), tailwindcss(), api],
   resolve: { alias: [{ find: /^@dreamteamer\/protocol\/(.*)$/, replacement: `${PROTOCOL_SRC}/$1.ts` }] },
   server: { port, strictPort: true, fs: { allow: [REPO] } },
 })

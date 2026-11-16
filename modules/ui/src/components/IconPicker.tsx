@@ -8,6 +8,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { ALL_ICONS, COMMON_ICONS } from "../lib/icon-names.ts"
 import { usePopover } from "../browse/use-popover.ts"
 import { Icon } from "./Icon.tsx"
+import { cx, hint, iconButton, input, subtle } from "../styles/classes.ts"
 
 /** At most this many icons are drawn for a search. */
 export const MAX_ICONS = 120
@@ -37,14 +38,21 @@ export function IconGrid({
 }) {
   const names = useMemo(() => iconMatches(query), [query])
   return (
-    <div className="dt-icon-grid" role="listbox" aria-label="Icons">
+    <div
+      className="grid grid-cols-[repeat(auto-fill,28px)] gap-0.5 max-h-[180px] overflow-y-auto"
+      role="listbox"
+      aria-label="Icons"
+    >
       {names.map(name => (
         <button
           key={name}
           type="button"
           role="option"
           aria-selected={name === current}
-          className={`dt-icon-grid-cell${name === current ? " is-current" : ""}`}
+          className={cx(
+            "w-7 h-7 inline-flex items-center justify-center border-0 rounded-dt text-fg hover:bg-bg-hover",
+            name === current ? "bg-bg-hover outline-1 outline-solid outline-accent" : "bg-transparent"
+          )}
           title={name}
           data-icon={name}
           onClick={() => onPick(name)}
@@ -52,7 +60,7 @@ export function IconGrid({
           <Icon name={name} />
         </button>
       ))}
-      {names.length === 0 && <p className="dt-subtle">No icon matches.</p>}
+      {names.length === 0 && <p className={subtle}>No icon matches.</p>}
     </div>
   )
 }
@@ -77,30 +85,30 @@ export function IconPicker({
   }, [open])
   const total = ALL_ICONS.length.toLocaleString("en")
   return (
-    <div ref={anchor} className="dt-iconpick" data-icon-picker>
-      <div className="dt-iconpick-trigger">
+    <div ref={anchor} className="grid gap-1" data-icon-picker>
+      <div className="flex items-center gap-1">
         <button
           type="button"
-          className="dt-iconpick-open"
+          className="flex flex-1 items-center gap-1.5 h-[30px] px-2 py-0 border border-input-border rounded-dt bg-input-bg text-fg [font:inherit] text-left cursor-pointer [&>span]:flex-1 [&>span]:min-w-0 [&>span]:overflow-hidden [&>span]:text-ellipsis [&>span]:whitespace-nowrap"
           title={value || placeholder}
           aria-expanded={open}
           onClick={() => setOpen(!open)}
         >
-          <Icon name={value || "symbol-color"} className={value ? "" : "dt-subtle"} />
-          <span className={value ? "" : "dt-subtle"}>{value || placeholder}</span>
-          <Icon name={open ? "chevron-up" : "chevron-down"} className="dt-subtle" />
+          <Icon name={value || "symbol-color"} className={value ? "" : subtle} />
+          <span className={value ? "" : subtle}>{value || placeholder}</span>
+          <Icon name={open ? "chevron-up" : "chevron-down"} className={subtle} />
         </button>
         {value && (
-          <button type="button" className="dt-icon-button" title="Clear icon" onClick={() => onChange("")}>
+          <button type="button" className={iconButton} title="Clear icon" onClick={() => onChange("")}>
             <Icon name="close" />
           </button>
         )}
       </div>
       {open && (
-        <div className="dt-iconpick-pop">
+        <div className="grid gap-1.5 p-1.5 border border-border rounded-dt bg-bg-subtle">
           <input
             ref={search}
-            className="dt-input"
+            className={input}
             type="search"
             value={query}
             placeholder={`Search ${total} icons…`}
@@ -115,7 +123,7 @@ export function IconPicker({
               setOpen(false)
             }}
           />
-          {!query && <p className="dt-hint">Common icons — type to search all {total}</p>}
+          {!query && <p className={cx(hint, "m-0")}>Common icons — type to search all {total}</p>}
         </div>
       )}
     </div>

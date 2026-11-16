@@ -1,0 +1,170 @@
+/*
+ * THE APP'S STYLES — Tailwind utilities in the components, over the tokens defined here.
+ *
+ * The tokens are CSS variables, never Tailwind's palette: each reads the VS Code theme variable first, so inside a
+ * webview the app wears the editor's theme, and falls back to its own light or dark value in a browser. The
+ * @theme block names them for Tailwind (`bg-bg-subtle`, `text-fg-subtle`, `border-border`, `text-danger`,
+ * `bg-chart-green`, `font-mono`, `text-ui`, `text-small`, `rounded-dt`, …) and clears Tailwind's own colours, so a
+ * component can only reach for a token. A token's value changes with the scheme; the utility never does.
+ *
+ * No preflight: the app's base (below) is small and deliberate — box sizing, the body's font and colours, links,
+ * the focus ring — and a full reset would restyle a host's page around a mounted app. The utilities are scanned
+ * from src/ only.
+ */
+/* the layer order, stated once: the base below must lose to every utility */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities) source(none);
+@source "../";
+
+@theme inline {
+  --color-*: initial;
+  --color-transparent: transparent;
+  --color-current: currentColor;
+  --color-white: #ffffff;
+  --color-black: #000000;
+
+  --color-bg: var(--dt-bg);
+  --color-bg-subtle: var(--dt-bg-subtle);
+  --color-bg-hover: var(--dt-bg-hover);
+  --color-bg-active: var(--dt-bg-active);
+  --color-fg: var(--dt-fg);
+  --color-fg-active: var(--dt-fg-active);
+  --color-fg-subtle: var(--dt-fg-subtle);
+  --color-border: var(--dt-border);
+  --color-accent: var(--dt-accent);
+  --color-accent-fg: var(--dt-accent-fg);
+  --color-link: var(--dt-link);
+  --color-danger: var(--dt-danger);
+  --color-warning: var(--dt-warning);
+  --color-input-bg: var(--dt-input-bg);
+  --color-input-border: var(--dt-input-border);
+  --color-focus: var(--dt-focus);
+  --color-unknown: var(--dt-unknown-color);
+  --color-chart-green: var(--dt-color-charts-green);
+  --color-chart-orange: var(--dt-color-charts-orange);
+  --color-chart-red: var(--dt-color-charts-red);
+  --color-chart-blue: var(--dt-color-charts-blue);
+  --color-chart-yellow: var(--dt-color-charts-yellow);
+  --color-chart-purple: var(--dt-color-charts-purple);
+
+  --font-sans: var(--dt-font);
+  --font-mono: var(--dt-mono);
+  --text-ui: var(--dt-text);
+  --text-small: var(--dt-small);
+  --radius-dt: var(--dt-radius);
+}
+
+/* ---- tokens --------------------------------------------------------------------------------------------------- */
+:root {
+  --dt-font: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --dt-mono: ui-monospace, "SF Mono", Menlo, monospace;
+  --dt-text: 13px;
+  --dt-small: 11px;
+  --dt-radius: 6px;
+
+  --dt-bg: var(--vscode-editor-background, #ffffff);
+  --dt-bg-subtle: var(--vscode-sideBar-background, #f4f6fa);
+  --dt-bg-hover: var(--vscode-list-hoverBackground, #e9eef5);
+  --dt-bg-active: var(--vscode-list-activeSelectionBackground, #dfe7f1);
+  --dt-fg: var(--vscode-foreground, #172940);
+  --dt-fg-active: var(--vscode-list-activeSelectionForeground, #172940);
+  --dt-fg-subtle: var(--vscode-descriptionForeground, #67788f);
+  --dt-border: var(--vscode-panel-border, #e1e7ef);
+  --dt-accent: var(--vscode-button-background, #5b3df5);
+  --dt-accent-fg: var(--vscode-button-foreground, #ffffff);
+  --dt-link: var(--vscode-textLink-foreground, #2f6feb);
+  --dt-danger: var(--vscode-errorForeground, #d1435b);
+  --dt-warning: var(--vscode-editorWarning-foreground, #b7791f);
+  --dt-input-bg: var(--vscode-input-background, #ffffff);
+  --dt-input-border: var(--vscode-input-border, #d3dae4);
+  --dt-focus: var(--vscode-focusBorder, #5b3df5);
+
+  /* enum colours: the names descriptors use (`charts.green`) */
+  --dt-color-charts-green: var(--vscode-charts-green, #2e9d6e);
+  --dt-color-charts-orange: var(--vscode-charts-orange, #d9822b);
+  --dt-color-charts-red: var(--vscode-charts-red, #d1435b);
+  --dt-color-charts-blue: var(--vscode-charts-blue, #2f6feb);
+  --dt-color-charts-yellow: var(--vscode-charts-yellow, #c9a227);
+  --dt-color-charts-purple: var(--vscode-charts-purple, #8a4fd8);
+  --dt-unknown-color: var(--dt-fg-subtle);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --dt-bg: var(--vscode-editor-background, #16191f);
+    --dt-bg-subtle: var(--vscode-sideBar-background, #1d2129);
+    --dt-bg-hover: var(--vscode-list-hoverBackground, #262b35);
+    --dt-bg-active: var(--vscode-list-activeSelectionBackground, #2d3442);
+    --dt-fg: var(--vscode-foreground, #e3e8ef);
+    --dt-fg-active: var(--vscode-list-activeSelectionForeground, #ffffff);
+    --dt-fg-subtle: var(--vscode-descriptionForeground, #95a3b8);
+    --dt-border: var(--vscode-panel-border, #2c323d);
+    --dt-accent: var(--vscode-button-background, #7a63ff);
+    --dt-link: var(--vscode-textLink-foreground, #7aa7ff);
+    --dt-danger: var(--vscode-errorForeground, #ff7a8e);
+    --dt-warning: var(--vscode-editorWarning-foreground, #e0a84a);
+    --dt-input-bg: var(--vscode-input-background, #12151a);
+    --dt-input-border: var(--vscode-input-border, #363d4a);
+    --dt-color-charts-green: var(--vscode-charts-green, #4fc08d);
+    --dt-color-charts-orange: var(--vscode-charts-orange, #f0a050);
+  }
+}
+
+/* ---- base: the few element defaults the app relies on ---------------------------------------------------------- */
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+  html,
+  body {
+    margin: 0;
+    height: 100%;
+  }
+  body {
+    background: var(--dt-bg);
+    color: var(--dt-fg);
+    font: var(--dt-text) / 1.45 var(--dt-font);
+  }
+  #app {
+    height: 100%;
+  }
+  a {
+    color: var(--dt-link);
+    text-decoration: none;
+  }
+  a:hover {
+    text-decoration: underline;
+  }
+  :focus-visible {
+    outline: 2px solid var(--dt-focus);
+    outline-offset: 1px;
+  }
+  h1 {
+    font-size: 20px;
+    font-weight: 600;
+    margin: 0;
+  }
+  input,
+  select,
+  textarea {
+    font: inherit;
+    color: var(--dt-fg);
+    background: var(--dt-input-bg);
+    border: 1px solid var(--dt-input-border);
+    border-radius: var(--dt-radius);
+    padding: 5px 8px;
+    min-height: 30px;
+  }
+  textarea {
+    resize: vertical;
+    font-family: var(--dt-mono);
+    font-size: 12px;
+  }
+  input[type="checkbox"] {
+    min-height: 0;
+    width: 16px;
+    height: 16px;
+    justify-self: start;
+  }
+}

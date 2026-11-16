@@ -24,6 +24,7 @@ import { PageView } from "./pages/PageView.tsx"
 import { ViewPage } from "./pages/ViewPage.tsx"
 import { SchemaTab } from "./settings/SchemaTab.tsx"
 import { AppPage } from "./modules/host.tsx"
+import { cx, error, page as pageFrame, subtle } from "./styles/classes.ts"
 
 /** The page's place, in the shapes the pane reports (lib/pane-place.ts) — set on every route change. */
 const place = signal<PaneView>({ other: true })
@@ -130,14 +131,14 @@ export function App({ onMounted }: { onMounted?: () => void }) {
     [route, navigate, go, schema, host, version]
   )
 
-  if (out) return <p className="dt-signed-out">{SIGNED_OUT}</p>
+  if (out) return <p className="p-6 text-fg-subtle">{SIGNED_OUT}</p>
 
   return (
     <AppContext.Provider value={app}>
-      <div className="dt-shell">
+      <div className="grid grid-cols-[260px_1fr] h-full max-[720px]:grid-cols-1 max-[720px]:grid-rows-[auto_1fr]">
         <Nav />
-        <main className="dt-main">
-          {presentation.error && <p className="dt-error">{presentation.error}</p>}
+        <main className="overflow-auto min-w-0">
+          {presentation.error && <p className={error}>{presentation.error}</p>}
           {schema && (
             // keyed on the PATH: a query (`?filter=…`) is the page's own state, written back as it changes; a module
             // app keeps its frame across its own routes (`/a/<id>/…`), which it hears as messages
@@ -188,11 +189,11 @@ function Page() {
       // ui: the registered app named by the view's `display.list.layout`, its index route
       return <AppPage id={page.layout} />
     case "unknown-collection":
-      return <p className="dt-page dt-error">No collection {page.path} in this workspace.</p>
+      return <p className={cx(pageFrame, error)}>No collection {page.path} in this workspace.</p>
     case "unsupported":
       if (views === null) return null // the view table is still being read
       return (
-        <p className="dt-page dt-subtle">
+        <p className={cx(pageFrame, subtle)}>
           <code>{page.route}</code> is not a page this app draws.
         </p>
       )
@@ -206,7 +207,7 @@ class Boundary extends Component<{ children: ReactNode }, { error: Error | null 
     return { error }
   }
   render() {
-    if (this.state.error) return <p className="dt-page dt-error">This page failed: {this.state.error.message}</p>
+    if (this.state.error) return <p className={cx(pageFrame, error)}>This page failed: {this.state.error.message}</p>
     return this.props.children
   }
 }
