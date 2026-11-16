@@ -47,13 +47,14 @@ def _windows(embedder, samples, sr, segs, label):
 
 
 def compute(embedder, samples, sr, segments, words, *, audio_sha256, diarization_id, speakers_hint, fallback,
-            removed=()):
+            removed=(), remove_all=False):
     """The signature file of one diarisation. `segments` empty (one speaker declared, or a fallback):
     the windows are cut from the recogniser's `words` under `speaker_0`. A label in `removed` keeps its
-    statistics and no windows, and nothing of it is handed to the embedder."""
+    statistics and no windows, and nothing of it is handed to the embedder; `remove_all` removes every
+    label (a forgotten speaker who cannot be placed in this transcript, `carry.forgotten_unplaced`)."""
     segs = list(segments or []) or word_segments(words)
     stats = vp_segments.label_stats(segs)
-    removed = set(removed or ())
+    removed = set(stats) if remove_all else set(removed or ())
     labels = {}
     for label in sorted(stats):
         st = stats[label]

@@ -465,6 +465,86 @@ class Line36(Harness):
         self.assertEqual(names["Dana Oren"]["source"]["person"], "users/dana-oren")
         self.assertEqual(self.t["speakers"], {})
 
+    # review round 1, second-run-erases-unoffered-names: no name is ever lost by transcribing again
+
+    def again(self, segments, cache=None):
+        """Transcribe the record the last run wrote once more, diarised as `segments`."""
+        first = copy.deepcopy(self.written)
+        self.fm, self.body = first, self.written_body
+        self.segments = segments
+        if cache is not None:
+            self.write_cache(cache, diar_id=first["transcription"]["diarization_id"])
+        self.run_it()
+        return {e["name"]: e for e in self.prev()["labels"].values()}
+
+    def test_a_second_run_keeps_the_names_the_first_run_did_not_offer(self):
+        # run 1: the diariser crashed, so both earlier names land on the one label and neither is offered
+        self.named_record(BODY_TWO)
+        self.segments, self.fallback = [], "diariser exited -10; one speaker"
+        self.run_it()
+        self.assertEqual({e["offered"] for e in self.prev()["labels"].values()}, {False})
+        # run 2: a proper diarisation; the names' time is the one label of run 1, so they still collide
+        self.fallback = None
+        names = self.again([seg("speaker_0", 0, 60), seg("speaker_1", 60, 120)])
+        self.assertEqual(set(names), {"Dana Oren", "Sam Diaz"})
+        self.assertEqual(names["Dana Oren"]["source"]["status"], "confirmed")
+        self.assertEqual(names["Dana Oren"]["source"]["person"], "users/dana-oren")
+        for e in names.values():
+            self.assertEqual(e["new_label"], names["Dana Oren"]["new_label"])
+            self.assertFalse(e["offered"])
+        self.assertEqual(self.t["speakers"], {})
+
+    def test_names_that_could_not_be_placed_survive_every_later_run(self):
+        self.named_record("## Transcript\n\nSpeaker 0: good morning\n\nSpeaker 1: thanks\n")
+        self.run_it()
+        for _ in range(2):
+            names = self.again([seg("speaker_0", 0, 60), seg("speaker_1", 60, 120)])
+            self.assertEqual(set(names), {"Dana Oren", "Sam Diaz"})
+            for e in names.values():
+                self.assertIsNone(e["new_label"])
+                self.assertEqual(e["share"], 0.0)
+                self.assertFalse(e["offered"])
+            self.assertEqual(names["Dana Oren"]["source"]["status"], "confirmed")
+
+    def test_names_on_the_record_and_earlier_names_merge_without_loss(self):
+        # identify named speaker_0 Priya Raman on a record that still holds two earlier names: Dana Oren
+        # carried onto speaker_0, Sam Diaz placed nowhere
+        self.fm = {"name": "Northwind weekly", "transcription": {
+            "diarization_id": "0123456789ab",
+            "speakers": {"speaker_0": "Priya Raman", "speaker_1": None},
+            "speaker_sources": {"speaker_0": {"name": "Priya Raman", "person": "contacts/priya-raman",
+                                              "status": "confirmed"}},
+            "previous_speakers": {"diarization_id": "aaaaaaaaaaaa", "labels": {
+                "speaker_3": {"name": "Dana Oren", "source": {"person": "users/dana-oren", "status": "confirmed"},
+                              "new_label": "speaker_0", "share": 0.9, "offered": True},
+                "speaker_1": {"name": "Sam Diaz", "new_label": None, "share": 0.0, "offered": False}}}}}
+        self.body = BODY_TWO
+        self.run_it()
+        names = {e["name"]: e for e in self.prev()["labels"].values()}
+        self.assertEqual(set(names), {"Priya Raman", "Dana Oren", "Sam Diaz"})
+        self.assertEqual(len(self.prev()["labels"]), 3)
+        # Priya and Dana claim the same earlier time: both land on speaker_0 and neither is offered
+        self.assertEqual(names["Priya Raman"]["new_label"], "speaker_0")
+        self.assertEqual(names["Dana Oren"]["new_label"], "speaker_0")
+        self.assertFalse(names["Priya Raman"]["offered"] or names["Dana Oren"]["offered"])
+        self.assertEqual(names["Dana Oren"]["source"]["status"], "confirmed")
+        self.assertIsNone(names["Sam Diaz"]["new_label"])
+        self.assertFalse(names["Sam Diaz"]["offered"])
+
+    def test_an_earlier_name_marked_forgotten_stays_forgotten_and_unoffered(self):
+        self.fm = {"name": "Northwind weekly", "transcription": {
+            "diarization_id": "0123456789ab", "speakers": {},
+            "previous_speakers": {"diarization_id": None, "labels": {
+                "speaker_0": {"name": "Dana Oren", "new_label": "speaker_0", "share": 1.0, "offered": True},
+                "speaker_1": {"name": "Sam Diaz", "new_label": "speaker_1", "share": 1.0, "offered": False,
+                              "forgotten": True}}}}}
+        self.body = BODY_TWO
+        self.run_it(context=None)
+        sam = {e["name"]: e for e in self.prev()["labels"].values()}["Sam Diaz"]
+        self.assertTrue(sam["forgotten"])
+        self.assertFalse(sam["offered"])
+        self.assertEqual(sam["new_label"], "speaker_1")
+
 
 # ------------------------------------------------------------------------------------------------------
 # Seam 5: a forgotten person is not carried (acceptance line 37)
@@ -541,11 +621,163 @@ class Line37(Harness):
             "speaker_1": {"name": "Sam Diaz", "new_label": "speaker_1", "share": 1.0, "offered": True}}}
         entries = [{"print": "p-1", "known_as": [{"workspace": WORKSPACE, "person": "contacts/sam-diaz",
                                                   "name": "Sam Diaz"}], "at": "2026-11-10T09:00:00+02:00"}]
+        fresh = copy.deepcopy(prev)
         self.assertEqual(carry.forgotten_new_labels(prev, entries, WORKSPACE), {"speaker_1"})
         self.assertEqual(prev["labels"]["speaker_1"]["forgotten"], True)
         self.assertFalse(prev["labels"]["speaker_1"]["offered"])
         self.assertEqual(carry.forgotten_new_labels(None, entries, WORKSPACE), set())
-        self.assertEqual(carry.forgotten_new_labels(prev, entries, "harbor-mutual"), set())
+        # (a fresh copy: a name already marked forgotten stays forgotten, review round 1)
+        self.assertEqual(carry.forgotten_new_labels(fresh, entries, "harbor-mutual"), set())
+        self.assertTrue(fresh["labels"]["speaker_1"]["offered"])
+
+    # review round 1, forgotten-label-by-old-argmax-not-new-majority
+
+    SAM_SOURCE = {"name": "Sam Diaz", "person": "contacts/sam-diaz", "origin": "hand", "status": "confirmed",
+                  "named": "2026-08-01T10:00:00+02:00"}
+
+    def test_an_over_split_forgotten_voice_keeps_no_windows_on_any_label_mostly_theirs(self):
+        # Sam spoke 40-120 s; transcribed again, his time is split over speaker_1 (40-90) and speaker_2 (90-120)
+        self.fm["transcription"]["speaker_sources"]["speaker_1"] = dict(self.SAM_SOURCE)
+        self.body = "## Transcript\n\n[00:00] Speaker 0: good morning\n\n[00:40] Speaker 1: thanks\n"
+        self.segments = [seg("speaker_0", 0, 40), seg("speaker_1", 40, 90), seg("speaker_2", 90, 120)]
+        self.forget()
+        self.run_it()
+        sig = self.only_signature()
+        self.assertEqual(sig["removed"], ["speaker_1", "speaker_2"])
+        self.assertEqual(sig["labels"]["speaker_2"]["windows"], [])
+        self.assertGreater(len(sig["labels"]["speaker_0"]["windows"]), 0)
+        self.assertTrue(all(e <= 40.0 + 1e-9 for s, e in self.embedded), "a forgotten voice was embedded")
+
+    def test_forgotten_new_labels_takes_every_new_label_mostly_a_forgotten_time(self):
+        entries = [{"print": "p-1", "known_as": [{"workspace": WORKSPACE, "person": "contacts/sam-diaz",
+                                                  "name": "Sam Diaz"}], "at": "2026-11-10T09:00:00+02:00"}]
+        new = [seg("speaker_0", 0, 40), seg("speaker_1", 40, 90), seg("speaker_2", 90, 120),
+               seg("speaker_3", 120, 200)]
+        prev = {"labels": {
+            "speaker_0": {"name": "Dana Oren", "new_label": "speaker_0", "share": 1.0, "offered": True},
+            "speaker_1": {"name": "Sam Diaz", "new_label": "speaker_1", "share": 0.62, "offered": True}}}
+        # speaker_3 is 30 of 80 s Sam's: not mostly his, kept
+        spans = {"speaker_0": [(0.0, 40.0)], "speaker_1": [(40.0, 150.0)]}
+        got = carry.forgotten_new_labels(prev, entries, WORKSPACE, spans=spans, new_segments=new)
+        self.assertEqual(got, {"speaker_1", "speaker_2"})
+        # previous() hands the old spans of each carried entry out for exactly this
+        out = {}
+        p = carry.previous({"transcription": {"speakers": {"speaker_0": "Dana Oren", "speaker_1": "Sam Diaz"}}},
+                           "## Transcript\n\n[00:00] Speaker 0: hi\n\n[00:40] Speaker 1: hi\n", None, new[:3], 120.0,
+                           spans_out=out)
+        self.assertEqual(out, {"speaker_0": [(0.0, 40.0)], "speaker_1": [(40.0, 120.0)]})
+        self.assertEqual(carry.forgotten_new_labels(p, entries, WORKSPACE, spans=out, new_segments=new[:3]),
+                         {"speaker_1", "speaker_2"})
+
+    # review round 1, unmapped-forgotten-label-stores-windows (ruling: privacy first)
+
+    def test_a_forgotten_name_that_cannot_be_placed_keeps_no_windows_of_any_label(self):
+        self.body = "## Transcript\n\nSpeaker 0: good morning\n\nSpeaker 1: thanks\n"
+        self.forget()
+        summary = self.run_it()
+        sig = self.only_signature()
+        self.assertEqual(sig["removed"], ["speaker_0", "speaker_1"])
+        self.assertTrue(all(v["windows"] == [] for v in sig["labels"].values()))
+        self.assertEqual(self.embedded, [], "a voice was embedded beside an unplaceable forgotten one")
+        self.assertEqual(summary["signatures"],
+                         "not kept — an earlier speaker who was forgotten cannot be placed in this transcript")
+        self.assertIn("## Transcript", self.written_body)
+        self.assertEqual(self.t["speakers"], {})
+        sam = self.t["previous_speakers"]["labels"]["speaker_1"]
+        self.assertTrue(sam["forgotten"])
+        self.assertFalse(sam["offered"])
+        printed = json.loads(self.stdout.strip().splitlines()[-1])
+        self.assertEqual(printed["signatures"], summary["signatures"])
+
+    def test_unplaceable_names_with_nobody_forgotten_keep_their_windows(self):
+        self.body = "## Transcript\n\nSpeaker 0: good morning\n\nSpeaker 1: thanks\n"
+        self.forget(workspace="harbor-mutual")
+        summary = self.run_it()
+        sig = self.only_signature()
+        self.assertEqual(sig["removed"], [])
+        self.assertTrue(summary["signatures"].startswith("kept"), summary["signatures"])
+
+    def test_an_earlier_forgotten_mark_removes_its_label_whatever_forgotten_json_says(self):
+        self.fm = {"name": "Northwind weekly", "transcription": {
+            "diarization_id": "0123456789ab", "speakers": {},
+            "previous_speakers": {"diarization_id": None, "labels": {
+                "speaker_1": {"name": "Sam Diaz", "new_label": "speaker_1", "share": 1.0, "offered": False,
+                              "forgotten": True}}}}}
+        self.run_it()
+        self.assertEqual(self.only_signature()["removed"], ["speaker_1"])
+
+
+# ------------------------------------------------------------------------------------------------------
+# Review round 1, malformed-speaker-map-fails-run-after-asr: an unreadable earlier map never fails run
+
+ODD_MAPS = (
+    ("transcription.speakers", {"speakers": ["Dana Oren", "Sam Diaz"]}),
+    ("transcription.speakers", {"speakers": "Dana Oren"}),
+    ("transcription.speaker_sources", {"speakers": {"speaker_0": "Dana Oren"}, "speaker_sources": ["x"]}),
+    ("transcription.previous_speakers.labels",
+     {"speakers": {"speaker_0": "Dana Oren"}, "previous_speakers": {"labels": ["x"]}}),
+    ("transcription.previous_speakers", {"speakers": {"speaker_0": "Dana Oren"}, "previous_speakers": "x"}),
+    ("transcription.speakers.speaker_1", {"speakers": {"speaker_0": "Dana Oren", "speaker_1": ["Sam"]}}),
+)
+
+
+class UnreadableNames(Harness):
+    def setUp(self):
+        super().setUp()
+        self.segments = [seg("speaker_0", 0, 60), seg("speaker_1", 60, 120)]
+
+    def test_an_earlier_map_that_cannot_be_read_still_writes_the_transcript_and_says_so(self):
+        for field, t in ODD_MAPS:
+            with self.subTest(field=field, t=t):
+                self.written = None
+                self.fm = {"name": "Northwind weekly", "transcription": dict(t, diarization_id="0123456789ab")}
+                self.body = BODY_TWO
+                summary = self.run_it()
+                self.assertIsNotNone(self.written, "the transcript was not written")
+                self.assertIn("## Transcript", self.written_body)
+                self.assertEqual(self.t["speakers"], {})
+                self.assertIn(field, summary["previous_speakers"]["unreadable"])
+                self.assertIn(field, self.stderr)
+                self.assertIn("not carried", self.stderr)
+                # nothing of the record is lost: what could not be read is kept as it was written
+                kept = {u["field"]: u["value"] for u in self.t["previous_speakers"]["unreadable"]}
+                self.assertIn(field, kept)
+                if "Dana Oren" in json.dumps(t.get("speakers")) and isinstance(t["speakers"], dict):
+                    names = [e["name"] for e in self.t["previous_speakers"]["labels"].values()]
+                    self.assertIn("Dana Oren", names)
+
+    def test_a_non_string_label_is_read_as_its_text(self):
+        self.fm = {"name": "Northwind weekly", "transcription": {"speakers": {0: "Dana Oren"}}}
+        self.body = BODY_TWO
+        self.run_it()
+        self.assertEqual(self.t["previous_speakers"]["labels"]["0"]["name"], "Dana Oren")
+
+    def test_the_earlier_names_are_read_before_decoding_starts(self):
+        self.named_record(BODY_TWO)
+        order = []
+        real_earlier = carry.earlier
+
+        def earlier(fm):
+            order.append("earlier")
+            return real_earlier(fm)
+
+        def decode(src, dst):
+            order.append("decode")
+            Path(dst).write_bytes(b"RIFF")
+
+        with mock.patch.object(carry, "earlier", earlier), mock.patch.object(tm, "decode_audio", decode):
+            self.run_it()
+        self.assertEqual(order, ["earlier", "decode"])
+
+    def test_previous_never_raises_on_an_odd_map(self):
+        new = [seg("speaker_0", 0, 60)]
+        for _, t in ODD_MAPS + (("", {"speakers": {0: "Dana"}}), ("", "a string"),
+                                ("", {"previous_speakers": {"labels": {"speaker_0": "x", "speaker_1": {"name": 3}}}})):
+            with self.subTest(t=t):
+                carry.previous({"transcription": t}, "[00:00] Speaker 0: hi\n", None, new, 60.0)
+        broken_cache = {"asr": "x", "segments": [{"speaker": "speaker_0"}, "x", None]}
+        p = carry.previous({"transcription": {"speakers": {"speaker_0": "Dana Oren"}}}, "", broken_cache, new, 60.0)
+        self.assertEqual(p["labels"]["speaker_0"]["name"], "Dana Oren")
 
 
 # ------------------------------------------------------------------------------------------------------

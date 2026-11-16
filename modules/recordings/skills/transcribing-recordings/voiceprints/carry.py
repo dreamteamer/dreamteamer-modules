@@ -16,6 +16,10 @@ the `[mm:ss] Speaker N:` turns of the body `run` is about to replace, each turn 
 starts. Two old labels on one new label are both `offered: false`; so is an old label mapped nowhere.
 `/identify-speakers` offers the others as proposals; nothing here is ever a name.
 
+No earlier name is ever lost by transcribing again: the entries of an earlier `previous_speakers` are
+carried too, offered or not, forgotten or not, and a part of the map that cannot be read is kept as it
+was written under `unreadable` (`earlier` reads it all, before any audio is decoded, and never raises).
+
 Standard library only.
 """
 from __future__ import annotations
@@ -46,67 +50,169 @@ def _named(v):
     return isinstance(v, str) and v.strip() != ""
 
 
-def _carried_names(t):
-    """`(names, sources)` of the old transcription: its `speakers` with a name, their `speaker_sources`
-    entries, and — for a record transcribed again before `/identify-speakers` ran — each still-offered
-    entry of its own `previous_speakers`, on the label it was mapped to (unless that label has a name)."""
-    names = {k: v.strip() for k, v in (t.get("speakers") or {}).items() if _named(v)}
-    sources = {k: dict(v) for k, v in (t.get("speaker_sources") or {}).items()
-               if k in names and isinstance(v, dict)}
-    prev = t.get("previous_speakers")
-    if isinstance(prev, dict):
-        for e in (prev.get("labels") or {}).values():
-            if not isinstance(e, dict) or not e.get("offered") or e.get("forgotten"):
-                continue
-            nl = e.get("new_label")
-            if nl and nl not in names and _named(e.get("name")):
-                names[nl] = e["name"].strip()
-                if isinstance(e.get("source"), dict):
-                    sources[nl] = dict(e["source"])
-    return names, sources
+def _unset(v):
+    return v is None or (isinstance(v, str) and v.strip() == "")
 
 
-def previous(fm, body, cache_or_none, new_segments, duration):
-    """`transcription.previous_speakers` for a record `run` is about to transcribe again, or None when its
-    transcription names nobody. `cache_or_none` is the old ASR cache, handed only when it matches the
-    record, the audio and the old diarisation id (`meeting_io.asr_cache_matches`); `body` is the body
-    about to be replaced; `new_segments` and `duration` are this run's."""
-    t = (fm or {}).get("transcription") or {}
+def _label(v):
+    return v.strip() if isinstance(v, str) and v.strip() else None
+
+
+def earlier(fm):
+    """`(entries, unreadable)`: every earlier name the record holds, read so that nothing in it can raise.
+
+    `entries` are `{key, at, name, source?, forgotten?}` — the names of `speakers` (with their
+    `speaker_sources` entry) on their own label, then every entry of an earlier `previous_speakers`,
+    offered or not, forgotten or not: on the label it was mapped to (`at`, a label of the diarisation the
+    record holds now) when that label is free, else under its own key as `earlier:<key>`; `at` is None
+    when it was mapped nowhere. The same name twice on one label is one entry. `unreadable` is
+    `[{field, value}]`, each part that is not the shape it should be, kept as it was written (with the
+    earlier run's own `unreadable`), so transcribing again loses nothing of the record."""
+    unreadable, entries = [], []
+    t = (fm or {}).get("transcription") if isinstance(fm, dict) else None
+    if t is None:
+        return entries, unreadable
     if not isinstance(t, dict):
+        return entries, [{"field": "transcription", "value": t}]
+
+    def a_map(v, field):
+        if v is None:
+            return {}
+        if isinstance(v, dict):
+            return v
+        unreadable.append({"field": field, "value": v})
+        return {}
+
+    names = {}
+    for k, v in a_map(t.get("speakers"), "transcription.speakers").items():
+        if _named(v):
+            names[str(k)] = v.strip()
+        elif not _unset(v):
+            unreadable.append({"field": f"transcription.speakers.{k}", "value": v})
+    sources = {}
+    for k, v in a_map(t.get("speaker_sources"), "transcription.speaker_sources").items():
+        if str(k) not in names:
+            continue
+        if isinstance(v, dict):
+            sources[str(k)] = dict(v)
+        elif v is not None:
+            unreadable.append({"field": f"transcription.speaker_sources.{k}", "value": v})
+    for k in sorted(names):
+        e = {"key": k, "at": k, "name": names[k]}
+        if k in sources:
+            e["source"] = sources[k]
+        entries.append(e)
+
+    prev = t.get("previous_speakers")
+    if prev is not None and not isinstance(prev, dict):
+        unreadable.append({"field": "transcription.previous_speakers", "value": prev})
+        prev = None
+    if prev is not None:
+        old = prev.get("unreadable")
+        if isinstance(old, list):
+            unreadable[:0] = [u for u in old if isinstance(u, dict) and "field" in u]
+        elif old is not None:
+            unreadable.append({"field": "transcription.previous_speakers.unreadable", "value": old})
+        keys = {e["key"] for e in entries}
+        for k, e in a_map(prev.get("labels"), "transcription.previous_speakers.labels").items():
+            k = str(k)
+            if not isinstance(e, dict) or not _named(e.get("name")):
+                unreadable.append({"field": f"transcription.previous_speakers.labels.{k}", "value": e})
+                continue
+            name, at = e["name"].strip(), _label(e.get("new_label"))
+            same = next((x for x in entries if x["at"] == at and _same_name(x["name"], name)), None)
+            if same is not None:   # the same claim twice: one entry, nothing of either lost
+                if "source" not in same and isinstance(e.get("source"), dict):
+                    same["source"] = dict(e["source"])
+                if e.get("forgotten") is True:
+                    same["forgotten"] = True
+                continue
+            key = at if at and at not in keys else (k if k.startswith("earlier:") else f"earlier:{k}")
+            base, n = key, 2
+            while key in keys:
+                key, n = f"{base}#{n}", n + 1
+            keys.add(key)
+            x = {"key": key, "at": at, "name": name}
+            if isinstance(e.get("source"), dict):
+                x["source"] = dict(e["source"])
+            if e.get("forgotten") is True:
+                x["forgotten"] = True
+            entries.append(x)
+    return entries, unreadable
+
+
+def _num(v):
+    try:
+        return float(v)
+    except (TypeError, ValueError):
         return None
-    names, sources = _carried_names(t)
-    if not names:
+
+
+def _cache_spans(cache, duration):
+    """`{label: [(start, end)]}` from a matching ASR cache's segments, any malformed segment left out."""
+    asr = cache.get("asr") if isinstance(cache.get("asr"), dict) else {}
+    old_duration = _num(asr.get("duration")) or duration
+    good = []
+    raw = cache.get("segments") if isinstance(cache.get("segments"), list) else []
+    for s in raw:
+        if isinstance(s, dict) and _label(s.get("speaker")) and _num(s.get("start")) is not None \
+                and _num(s.get("end")) is not None:
+            good.append({"speaker": s["speaker"].strip(), "start": _num(s["start"]), "end": _num(s["end"])})
+    spans = {}
+    for s in _effective(good, old_duration):
+        spans.setdefault(s["speaker"], []).append((float(s["start"]), float(s["end"])))
+    return spans
+
+
+def previous(fm, body, cache_or_none, new_segments, duration, earlier_names=None, spans_out=None):
+    """`transcription.previous_speakers` for a record `run` is about to transcribe again, or None when its
+    transcription holds no name and nothing unreadable. `cache_or_none` is the old ASR cache, handed only
+    when it matches the record, the audio and the old diarisation id (`meeting_io.asr_cache_matches`);
+    `body` is the body about to be replaced; `new_segments` and `duration` are this run's.
+    `earlier_names` is `earlier(fm)` when the caller read it already. `spans_out`, when given, is filled
+    with each carried entry's earlier time (`{key: [(start, end)]}`), for `forgotten_new_labels`.
+
+    Every earlier name survives: one whose time is known is mapped to the new label it overlaps most;
+    one whose time is not (mapped nowhere before, no timestamps) keeps `new_label: null`, `offered:
+    false`. A name marked forgotten stays forgotten and is never offered."""
+    entries, unreadable = earlier_names if earlier_names is not None else earlier(fm)
+    if not entries and not unreadable:
         return None
+    t = (fm or {}).get("transcription") if isinstance(fm, dict) else None
     note = None
-    if cache_or_none is not None:
-        old_duration = (cache_or_none.get("asr") or {}).get("duration") or duration
-        spans = {}
-        for s in _effective(cache_or_none.get("segments"), old_duration):
-            spans.setdefault(s["speaker"], []).append((float(s["start"]), float(s["end"])))
+    if isinstance(cache_or_none, dict):
+        spans = _cache_spans(cache_or_none, duration)
     else:
-        turns = vp_segments.parse_body_turns(body)
+        turns = vp_segments.parse_body_turns(body if isinstance(body, str) else "")
         spans = vp_segments.body_spans(turns, duration)
-        if not turns:
+        if not turns and entries:
             note = NO_TIMESTAMPS
-    mapped = vp_segments.overlap_map({old: spans.get(old, []) for old in names},
-                                     _effective(new_segments, duration))
+    placed = sorted({e["at"] for e in entries if e["at"]})
+    mapped = vp_segments.overlap_map({at: spans.get(at, []) for at in placed}, _effective(new_segments, duration))
     landed = {}
-    for m in mapped.values():
-        if m["new_label"]:
-            landed[m["new_label"]] = landed.get(m["new_label"], 0) + 1
+    for e in entries:
+        nl = mapped[e["at"]]["new_label"] if e["at"] else None
+        if nl:
+            landed[nl] = landed.get(nl, 0) + 1
     labels = {}
-    for old in sorted(names):
-        m = mapped[old]
-        e = {"name": names[old]}
-        if old in sources:
-            e["source"] = sources[old]
-        e["new_label"] = m["new_label"]
-        e["share"] = round(m["share"], 3)
-        e["offered"] = bool(m["new_label"]) and landed[m["new_label"]] == 1
-        labels[old] = e
-    out = {"diarization_id": t.get("diarization_id"), "labels": labels}
+    for e in entries:
+        m = mapped[e["at"]] if e["at"] else {"new_label": None, "share": 0.0}
+        x = {"name": e["name"]}
+        if "source" in e:
+            x["source"] = e["source"]
+        x["new_label"] = m["new_label"]
+        x["share"] = round(m["share"], 3)
+        x["offered"] = bool(m["new_label"]) and landed[m["new_label"]] == 1 and not e.get("forgotten")
+        if e.get("forgotten"):
+            x["forgotten"] = True
+        labels[e["key"]] = x
+        if spans_out is not None:
+            spans_out[e["key"]] = list(spans.get(e["at"], [])) if e["at"] else []
+    out = {"diarization_id": t.get("diarization_id") if isinstance(t, dict) else None, "labels": labels}
     if note:
         out["note"] = note
+    if unreadable:
+        out["unreadable"] = unreadable
     return out
 
 
@@ -145,17 +251,64 @@ def _forgotten(entry, forgotten_entries, workspace):
     return False
 
 
-def forgotten_new_labels(previous, forgotten_entries, workspace):
+FORGOTTEN_UNPLACED = "an earlier speaker who was forgotten cannot be placed in this transcript"
+
+
+def _union(spans):
+    out = []
+    for a, b in sorted(spans):
+        if b <= a:
+            continue
+        if out and a <= out[-1][1]:
+            out[-1][1] = max(out[-1][1], b)
+        else:
+            out.append([a, b])
+    return out
+
+
+def _mostly(forgotten_spans, new_segments):
+    """The new labels more than half of whose time lies inside `forgotten_spans`."""
+    cover = _union(forgotten_spans)
+    total, inside = {}, {}
+    for s in new_segments or []:
+        try:
+            label, a, b = s["speaker"], float(s["start"]), float(s["end"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if b <= a:
+            continue
+        total[label] = total.get(label, 0.0) + (b - a)
+        inside[label] = inside.get(label, 0.0) + sum(max(0.0, min(b, y) - max(a, x)) for x, y in cover)
+    return {label for label in total if inside[label] > 0.5 * total[label]}
+
+
+def forgotten_new_labels(previous, forgotten_entries, workspace, spans=None, new_segments=None):
     """The new labels that carry the earlier name of a person forgotten in `workspace` (seam 5): their
-    windows are never embedded and they go to the signature file's `removed`. Each such carried name is
-    marked in place `offered: false, forgotten: true`, so it is never proposed."""
+    windows are never embedded and they go to the signature file's `removed`. A carried name is
+    forgotten when `forgotten.json` says so (`_forgotten`) or an earlier run already marked it; each is
+    marked in place `offered: false, forgotten: true`, so it is never proposed. Removed are the new
+    label each such name was mapped to and — given `spans` (`previous(..., spans_out=)`) and this run's
+    `new_segments` — every new label whose time is mostly (over half) those names' earlier time, so an
+    over-split voice keeps no windows on any of its pieces."""
     out = set()
     if not previous or not workspace:
         return out
-    for e in (previous.get("labels") or {}).values():
-        if _forgotten(e, forgotten_entries, workspace):
+    gone = []
+    for key, e in (previous.get("labels") or {}).items():
+        if e.get("forgotten") is True or _forgotten(e, forgotten_entries, workspace):
             e["offered"] = False
             e["forgotten"] = True
             if e.get("new_label"):
                 out.add(e["new_label"])
+            gone.extend((spans or {}).get(key) or [])
+    if gone and new_segments:
+        out |= _mostly(gone, new_segments)
     return out
+
+
+def forgotten_unplaced(previous):
+    """Whether a carried name marked forgotten could not be placed in this transcript (`new_label`
+    null: no timestamps, no matching cache, no overlap). Then none of this diarisation's windows are
+    kept: there is no telling which label is that person's voice."""
+    return any(isinstance(e, dict) and e.get("forgotten") is True and not e.get("new_label")
+               for e in ((previous or {}).get("labels") or {}).values())

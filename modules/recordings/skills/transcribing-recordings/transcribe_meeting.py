@@ -403,10 +403,12 @@ def _diarized(result):
 
 
 def signature_step(context, wav, segments, words, previous, *, audio_sha256, diarization_id, speakers_hint,
-                   fallback):
+                   fallback, spans=None):
     """While the decoded WAV still exists: open the store, leave out the labels carrying a forgotten
-    person's earlier name (seam 5), embed every other label with the active model. Returns
-    `(signature, store, None)`, or `(None, None, reason)` when signatures will not be kept."""
+    person's earlier name or mostly their earlier time (seam 5, `spans` from `carry.previous`), embed
+    every other label with the active model. Returns `(signature, store, None)`, or `(None, None,
+    reason)` when signatures will not be kept. When a forgotten person's earlier name cannot be placed
+    in this transcript, no label keeps windows: `(signature with every label removed, store, reason)`."""
     if not context:
         return None, None, NO_CONTEXT
     if not context.get("workspace") or not context.get("record"):
@@ -414,13 +416,15 @@ def signature_step(context, wav, segments, words, previous, *, audio_sha256, dia
     try:
         store = open_store(context)
         store.ensure()
-        removed = vp_carry.forgotten_new_labels(previous, store.forgotten(), context["workspace"])
+        removed = vp_carry.forgotten_new_labels(previous, store.forgotten(), context["workspace"],
+                                                spans=spans, new_segments=segments)
+        unplaced = vp_carry.forgotten_unplaced(previous)
         embedder = load_embedder(vp_models.active_model(HERE))
-        samples, sr = read_samples(wav)
+        samples, sr = ([], 0) if unplaced else read_samples(wav)
         sig = vp_signatures.compute(embedder, samples, sr, segments, words, audio_sha256=audio_sha256,
                                     diarization_id=diarization_id, speakers_hint=speakers_hint,
-                                    fallback=fallback, removed=removed)
-        return sig, store, None
+                                    fallback=fallback, removed=removed, remove_all=unplaced)
+        return sig, store, (vp_carry.FORGOTTEN_UNPLACED if unplaced else None)
     except Exception as e:  # never stops the transcript
         return None, None, _not_kept(e)
 
@@ -445,6 +449,9 @@ def run(meeting_md, audio, generated, num_speakers=None, language=None, engine="
                          + "\n    ".join(missing))
     warn_if_venv_in_skill()
     old_t = fm.get("transcription") if isinstance(fm.get("transcription"), dict) else {}
+    # The earlier names are read now, before an hour of recognition: nothing in them can fail the run, and
+    # a part that cannot be read is kept as written and said so.
+    earlier = vp_carry.earlier(fm)
     record_ref = (context or {}).get("record")
     # The old cache is read before this run replaces it, and trusted only when it is this record's, this
     # audio's and the old diarisation's.
@@ -463,10 +470,12 @@ def run(meeting_md, audio, generated, num_speakers=None, language=None, engine="
         asr_seconds = round(time.monotonic() - t0, 1)
         diar_id = vp_segments.diarization_id(segments)
         cache = old_cache if asr_cache_matches(old_cache, record_ref, audio_sha, old_t.get("diarization_id")) else None
-        previous = vp_carry.previous(fm, body, cache, segments, asr["duration"])
+        spans = {}
+        previous = vp_carry.previous(fm, body, cache, segments, asr["duration"], earlier_names=earlier,
+                                     spans_out=spans)
         sig, store, not_kept = signature_step(
             context, wav, segments, asr["words"], previous, audio_sha256=audio_sha, diarization_id=diar_id,
-            speakers_hint=num_speakers or None, fallback=diar_fallback)
+            speakers_hint=num_speakers or None, fallback=diar_fallback, spans=spans)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     turns = align_words_to_speakers(asr["words"], segments)
@@ -513,6 +522,10 @@ def run(meeting_md, audio, generated, num_speakers=None, language=None, engine="
         print(f"  ⚠ {notice}", file=sys.stderr)
     if previous and previous.get("note"):
         print(f"  previous speakers: {previous['note']}", file=sys.stderr)
+    unreadable = [u["field"] for u in (previous or {}).get("unreadable") or []]
+    if unreadable:
+        print(f"  previous speakers: not carried — {', '.join(unreadable)} could not be read; kept as written "
+              "under previous_speakers.unreadable", file=sys.stderr)
 
     summary = {
         "language": asr["language"],
@@ -525,7 +538,8 @@ def run(meeting_md, audio, generated, num_speakers=None, language=None, engine="
         "previous_speakers": (
             {"labels": len(previous["labels"]),
              "offered": sum(1 for e in previous["labels"].values() if e.get("offered")),
-             **({"note": previous["note"]} if previous.get("note") else {})} if previous else None),
+             **({"note": previous["note"]} if previous.get("note") else {}),
+             **({"unreadable": unreadable} if unreadable else {})} if previous else None),
         "engine": engine,
         "engine_fallback": fallback,
         "asr_seconds": asr_seconds,
