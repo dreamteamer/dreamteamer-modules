@@ -52,7 +52,7 @@ import {
   input,
   menu as menuBox,
   menuItem,
-  menuItemDanger,
+  menuItemTone,
   mono,
   notice,
   noticeTone,
@@ -464,16 +464,34 @@ function FieldCard({
         </button>
         {menu.open && (
           <div className={menuBox} role="menu">
-            <button type="button" role="menuitem" className={menuItem} data-id="edit" onClick={pick(onEdit)}>
+            <button
+              type="button"
+              role="menuitem"
+              className={cx(menuItem, menuItemTone.default)}
+              data-id="edit"
+              onClick={pick(onEdit)}
+            >
               <Icon name="edit" /> Edit field
             </button>
             {onToggleHidden && (
-              <button type="button" role="menuitem" className={menuItem} data-id="hide" onClick={pick(onToggleHidden)}>
+              <button
+                type="button"
+                role="menuitem"
+                className={cx(menuItem, menuItemTone.default)}
+                data-id="hide"
+                onClick={pick(onToggleHidden)}
+              >
                 <Icon name={hidden ? "eye" : "eye-closed"} /> {hidden ? "Show field" : "Hide field"}
               </button>
             )}
             {onRename && (
-              <button type="button" role="menuitem" className={menuItem} data-id="rename" onClick={pick(onRename)}>
+              <button
+                type="button"
+                role="menuitem"
+                className={cx(menuItem, menuItemTone.default)}
+                data-id="rename"
+                onClick={pick(onRename)}
+              >
                 <Icon name="symbol-field" /> Rename field…
               </button>
             )}
@@ -481,7 +499,7 @@ function FieldCard({
               <button
                 type="button"
                 role="menuitem"
-                className={menuItem}
+                className={cx(menuItem, menuItemTone.default)}
                 data-id="rename-value"
                 onClick={pick(onRenameValue)}
               >
@@ -492,7 +510,7 @@ function FieldCard({
               <button
                 type="button"
                 role="menuitem"
-                className={cx(menuItem, menuItemDanger)}
+                className={cx(menuItem, menuItemTone.danger)}
                 data-id="delete"
                 onClick={pick(onRemove)}
               >

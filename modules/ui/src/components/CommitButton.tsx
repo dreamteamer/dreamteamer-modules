@@ -26,6 +26,7 @@ import {
   cx,
   menu as menuCls,
   menuItem,
+  menuItemTone,
   menuLabel,
   popoverAnchor,
   subtle,
@@ -130,7 +131,7 @@ export function CommitButton({
                 <button
                   key={r.repo}
                   type="button"
-                  className={menuItem}
+                  className={cx(menuItem, menuItemTone.default)}
                   role="menuitem"
                   data-repo={r.repo}
                   onClick={() => void run(r.only)}

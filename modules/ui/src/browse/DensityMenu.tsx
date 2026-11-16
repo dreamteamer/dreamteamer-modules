@@ -9,7 +9,17 @@ import { Icon } from "../components/Icon.tsx"
 import { ROW_SIZES, ROW_SIZE_LABELS, resolveRowSize } from "../lib/row-size.ts"
 import type { BrowseState } from "./browse-state.ts"
 import { usePopover } from "./use-popover.ts"
-import { button, buttonSize, buttonTone, cx, menu, menuCheck, menuItem, popoverAnchor } from "../styles/classes.ts"
+import {
+  button,
+  buttonSize,
+  buttonTone,
+  cx,
+  menu,
+  menuCheck,
+  menuItem,
+  menuItemTone,
+  popoverAnchor,
+} from "../styles/classes.ts"
 
 const LAYOUT = "table"
 
@@ -34,7 +44,7 @@ export function DensityMenu({ state }: { state: BrowseState }) {
             <button
               key={size}
               type="button"
-              className={menuItem}
+              className={cx(menuItem, menuItemTone.default)}
               role="menuitemradio"
               aria-checked={size === current}
               data-size={size}

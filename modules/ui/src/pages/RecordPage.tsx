@@ -84,7 +84,7 @@ import {
   input,
   menu as menuCls,
   menuItem,
-  menuItemDanger,
+  menuItemTone,
   mono,
   note,
   page,
@@ -395,13 +395,18 @@ export function RecordPage({
             {menu.open && (
               <div className={menuCls} role="menu">
                 {admin && (
-                  <button type="button" className={menuItem} role="menuitem" onClick={() => openDialog("rename")}>
+                  <button
+                    type="button"
+                    className={cx(menuItem, menuItemTone.default)}
+                    role="menuitem"
+                    onClick={() => openDialog("rename")}
+                  >
                     <Icon name="symbol-key" /> Rename…
                   </button>
                 )}
                 <button
                   type="button"
-                  className={cx(menuItem, menuItemDanger)}
+                  className={cx(menuItem, menuItemTone.danger)}
                   role="menuitem"
                   onClick={() => openDialog("delete")}
                 >

@@ -4,11 +4,12 @@
  * (a button, a menu, a hint, a notice, a chip, a page frame, a form row) comes from here. Each string is the old
  * `dt-*` rule it replaced, written as utilities over the tokens in app.css.
  *
- * `cx(...)` joins class names, dropping false, null and undefined: `cx(menuItem, danger && menuItemDanger)`.
+ * `cx(...)` joins class names, dropping false, null and undefined: `cx(hint, failed && "text-danger")`.
  *
- * A MODIFIER (menuItemDanger, menuItemAbsent) marks the properties it overrides `!important`:
- * two utilities that set one property are ordered by the stylesheet, never by the class list, so without it
- * `cx(menuItem, menuItemDanger)` could draw a plain entry. The old rules won the same way, by a compound selector.
+ * A LOOK WITH VARIANTS is a frame plus flat `as const satisfies Record<string, string>` maps, one entry from each:
+ * `cx(button, buttonTone.primary, buttonSize.small)`. Two utilities that set one property are ordered by the
+ * stylesheet, never by the class list, so the frame leaves out every property a variant sets and no two entries of
+ * one map are combined: no class needs `!important` to win.
  */
 export const cx = (...parts: Array<string | false | null | undefined | 0>): string => parts.filter(Boolean).join(" ")
 
@@ -90,13 +91,15 @@ export const popoverAnchor = "relative inline-flex"
 /** A menu hanging under its anchor. (was dt-menu) */
 export const menu =
   "absolute top-[calc(100%+4px)] right-0 z-20 min-w-[180px] max-w-[min(360px,calc(100vw-32px))] p-1 flex flex-col bg-bg border border-border rounded-dt shadow-[0_8px_24px_rgb(0_0_0/0.16)] [&>p]:mx-2 [&>p]:my-1"
-/** One entry of a menu. (was dt-menu-item) */
+/** One entry of a menu: the frame, and one entry of `menuItemTone`. (was dt-menu-item) */
 export const menuItem =
-  "flex items-center gap-2 px-2 py-[5px] border-0 rounded bg-transparent text-fg text-left cursor-pointer whitespace-nowrap hover:bg-bg-hover"
-/** …one that cannot be picked. (was dt-menu-item.is-absent) */
-export const menuItemAbsent = "opacity-55 cursor-default!"
-/** …destructive. (was dt-menu-item.is-danger) */
-export const menuItemDanger = "text-danger!"
+  "flex items-center gap-2 px-2 py-[5px] border-0 rounded bg-transparent text-left whitespace-nowrap hover:bg-bg-hover"
+/** An entry's colour and cursor: ordinary, destructive, one that cannot be picked. (was …, .is-danger, .is-absent) */
+export const menuItemTone = {
+  default: "text-fg cursor-pointer",
+  danger: "text-danger cursor-pointer",
+  absent: "text-fg opacity-55 cursor-default",
+} as const satisfies Record<string, string>
 /** The tick column of a menu entry. (was dt-menu-check) */
 export const menuCheck = "w-4 inline-flex"
 /** The label of a menu entry. (was dt-menu-label) */

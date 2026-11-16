@@ -14,7 +14,7 @@ import {
   type HoverLine,
   type TargetChoice as Choice,
 } from "../lib/sources.ts"
-import { cx, menu, menuItem, menuItemAbsent, subtle } from "../styles/classes.ts"
+import { cx, menu, menuItem, menuItemTone, subtle } from "../styles/classes.ts"
 import { capsLabel } from "./looks.ts"
 
 const words = (lines: HoverLine[]) => lines.map(l => l.text).join("\n")
@@ -34,7 +34,7 @@ export function TargetChoice({
           key={t.name}
           type="button"
           role="menuitem"
-          className={menuItem}
+          className={cx(menuItem, menuItemTone.default)}
           data-target={t.name}
           title={words(targetHoverLines(t))}
           onClick={() => onPick(t.name)}
@@ -45,7 +45,7 @@ export function TargetChoice({
       {!choice.targets.length && <p className={subtle}>No source of this list takes a new record from here.</p>}
       {choice.excluded.length > 0 && <p className={capsLabel}>Not offered</p>}
       {choice.excluded.map(x => (
-        <p key={x.source.name} className={cx(menuItem, menuItemAbsent)} title={words(excludedHoverLines(x))}>
+        <p key={x.source.name} className={cx(menuItem, menuItemTone.absent)} title={words(excludedHoverLines(x))}>
           <SourceMark name={x.source.name} access={x.source.access} via={x.source.via} />
           <span className={subtle}>{x.reason}</span>
         </p>

@@ -23,7 +23,7 @@ import {
   menu,
   menuCheck,
   menuItem,
-  menuItemAbsent,
+  menuItemTone,
   menuLabel,
   popoverAnchor,
   subtle,
@@ -90,7 +90,7 @@ export function SourcePicker({
             type="button"
             role="option"
             aria-selected={all}
-            className={menuItem}
+            className={cx(menuItem, menuItemTone.default)}
             onClick={() => setFilterGroup(g => withSourceSelection(g, null))}
           >
             <span className={menuCheck}>{all && <Icon name="check" />}</span>
@@ -105,7 +105,7 @@ export function SourcePicker({
                 role="option"
                 aria-selected={ticked(f.name)}
                 data-source={f.name}
-                className={menuItem}
+                className={cx(menuItem, menuItemTone.default)}
                 onClick={() => {
                   // one source: picking it is picking all, which is what is shown
                   if (available.length > 1) setFilterGroup(g => toggleSource(g, f.name, available))
@@ -125,7 +125,7 @@ export function SourcePicker({
             ) : (
               <span
                 key={f.name}
-                className={cx(menuItem, menuItemAbsent)}
+                className={cx(menuItem, menuItemTone.absent)}
                 data-source={f.name}
                 title={`${f.name} is not installed — its records are not read`}
               >
