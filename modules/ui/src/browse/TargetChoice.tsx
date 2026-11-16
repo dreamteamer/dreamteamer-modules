@@ -14,6 +14,8 @@ import {
   type HoverLine,
   type TargetChoice as Choice,
 } from "../lib/sources.ts"
+import { cx, menu, menuItem, menuItemAbsent, subtle } from "../styles/classes.ts"
+import { capsLabel } from "./looks.ts"
 
 const words = (lines: HoverLine[]) => lines.map(l => l.text).join("\n")
 
@@ -25,14 +27,14 @@ export function TargetChoice({
   onPick(name: string): void
 }) {
   return (
-    <div className="dt-menu dt-target-choice" role="menu" aria-label="New record in…" data-target-choice>
-      <p className="dt-menu-head">New record in…</p>
+    <div className={menu} role="menu" aria-label="New record in…" data-target-choice>
+      <p className={capsLabel}>New record in…</p>
       {choice.targets.map(t => (
         <button
           key={t.name}
           type="button"
           role="menuitem"
-          className="dt-menu-item"
+          className={menuItem}
           data-target={t.name}
           title={words(targetHoverLines(t))}
           onClick={() => onPick(t.name)}
@@ -40,16 +42,16 @@ export function TargetChoice({
           <SourceMark name={t.name} access={t.access} via={t.via} note={t.note} />
         </button>
       ))}
-      {!choice.targets.length && <p className="dt-subtle">No source of this list takes a new record from here.</p>}
-      {choice.excluded.length > 0 && <p className="dt-menu-head">Not offered</p>}
+      {!choice.targets.length && <p className={subtle}>No source of this list takes a new record from here.</p>}
+      {choice.excluded.length > 0 && <p className={capsLabel}>Not offered</p>}
       {choice.excluded.map(x => (
-        <p key={x.source.name} className="dt-menu-item is-absent" title={words(excludedHoverLines(x))}>
+        <p key={x.source.name} className={cx(menuItem, menuItemAbsent)} title={words(excludedHoverLines(x))}>
           <SourceMark name={x.source.name} access={x.source.access} via={x.source.via} />
-          <span className="dt-subtle">{x.reason}</span>
+          <span className={subtle}>{x.reason}</span>
         </p>
       ))}
       {choice.others.length > 0 && (
-        <p className="dt-subtle" title={words(othersHoverLines(choice.others))}>
+        <p className={subtle} title={words(othersHoverLines(choice.others))}>
           +{choice.others.length} not offered
         </p>
       )}

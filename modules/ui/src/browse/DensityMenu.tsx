@@ -9,6 +9,7 @@ import { Icon } from "../components/Icon.tsx"
 import { ROW_SIZES, ROW_SIZE_LABELS, resolveRowSize } from "../lib/row-size.ts"
 import type { BrowseState } from "./browse-state.ts"
 import { usePopover } from "./use-popover.ts"
+import { button, buttonActive, buttonIcon, cx, menu, menuCheck, menuItem, popoverAnchor } from "../styles/classes.ts"
 
 const LAYOUT = "table"
 
@@ -16,10 +17,10 @@ export function DensityMenu({ state }: { state: BrowseState }) {
   const { open, setOpen, anchor } = usePopover()
   const current = resolveRowSize(state.listOptions[LAYOUT])
   return (
-    <div ref={anchor} className="dt-popover-anchor">
+    <div ref={anchor} className={popoverAnchor}>
       <button
         type="button"
-        className={`dt-button is-icon${open ? " is-active" : ""}`}
+        className={cx(button, buttonIcon, open && buttonActive)}
         title={`Row density — ${ROW_SIZE_LABELS[current]}`}
         aria-haspopup="menu"
         aria-expanded={open}
@@ -28,12 +29,12 @@ export function DensityMenu({ state }: { state: BrowseState }) {
         <Icon name="list-flat" />
       </button>
       {open && (
-        <div className="dt-menu" role="menu" aria-label="Row density">
+        <div className={menu} role="menu" aria-label="Row density">
           {ROW_SIZES.map(size => (
             <button
               key={size}
               type="button"
-              className="dt-menu-item"
+              className={menuItem}
               role="menuitemradio"
               aria-checked={size === current}
               data-size={size}
@@ -42,7 +43,7 @@ export function DensityMenu({ state }: { state: BrowseState }) {
                 setOpen(false)
               }}
             >
-              <span className="dt-menu-check">{size === current && <Icon name="check" />}</span>
+              <span className={menuCheck}>{size === current && <Icon name="check" />}</span>
               {ROW_SIZE_LABELS[size]}
             </button>
           ))}

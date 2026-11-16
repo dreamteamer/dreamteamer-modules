@@ -11,6 +11,7 @@ import { useId } from "react"
 import type { FieldRow } from "../api/types.ts"
 import { OPTION_GROUPS, optionRow, type OptionFieldDef } from "../registry/index.ts"
 import { RenderEdit } from "./Render.tsx"
+import { cx, hint, required } from "../styles/classes.ts"
 
 interface Entry {
   row: FieldRow
@@ -56,18 +57,20 @@ export function OptionsForm({
   })
 
   return (
-    <div className="dt-options-form">
+    <div className="grid gap-3">
       {blocks.map(block => (
-        <div key={block.key} className="dt-options-block">
-          {block.heading && <h4 className="dt-options-heading">{block.heading}</h4>}
+        <div key={block.key} className="grid gap-2">
+          {block.heading && (
+            <h4 className="m-0 text-small font-semibold uppercase tracking-[0.04em] text-fg-subtle">{block.heading}</h4>
+          )}
           {block.entries.map(({ row, def }, i) => {
             const id = `${base}-${i}-${row.field}`
             const note = (row.description ?? "").trim()
             return (
-              <div key={`${i}:${row.field}`} className="dt-options-row" data-field={row.field}>
+              <div key={`${i}:${row.field}`} className="grid gap-1 [&>label]:text-fg-subtle" data-field={row.field}>
                 <label htmlFor={id} title={def ? undefined : note || undefined}>
                   {row.title}
-                  {row.required && <span className="dt-required"> *</span>}
+                  {row.required && <span className={required}> *</span>}
                 </label>
                 <RenderEdit
                   id={id}
@@ -75,7 +78,7 @@ export function OptionsForm({
                   value={value[row.field] ?? row.default ?? null}
                   onChange={v => onChange({ ...value, [row.field]: v })}
                 />
-                {def && note && <p className="dt-hint">{note}</p>}
+                {def && note && <p className={cx(hint, "m-0")}>{note}</p>}
               </div>
             )
           })}

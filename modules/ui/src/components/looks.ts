@@ -28,3 +28,8 @@ export const bareInput = "min-h-0 border-0 outline-none bg-transparent"
 
 /** The row list a dropdown draws its options in. (was dt-dd-list / dt-relation-list) */
 export const plainList = "list-none m-0 p-0 overflow-y-auto"
+
+/** A dropdown's closed control: an input-like button; add its border colour (input-border, or focus while open).
+ *  (was dt-dd-control) */
+export const ddControl =
+  "flex items-center gap-1.5 w-full min-h-[30px] px-2 py-1 text-left text-fg bg-input-bg border rounded-dt cursor-pointer disabled:cursor-default disabled:opacity-60"

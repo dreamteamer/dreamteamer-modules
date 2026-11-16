@@ -40,6 +40,27 @@ import { FieldContext } from "../render/FieldContext.tsx"
 import { OptionsForm } from "../render/OptionsForm.tsx"
 import { useModules } from "../settings/use-modules.ts"
 import type { BrowseState } from "./browse-state.ts"
+import { button, buttonPrimary, buttonSmall, cx, hint, iconButton, subtle } from "../styles/classes.ts"
+import { floatingPanel, panelHead, panelLabel, panelTitle, sidePanel } from "./looks.ts"
+
+// ---- the looks (was dt-lo-*) -----------------------------------------------------------------------------------
+/** A quiet text button in the title bar; `strong` while there is something to save. */
+const barButton = (strong?: boolean) =>
+  cx(
+    "inline-flex items-center gap-1 h-6 px-1.5 py-0 border-0 rounded bg-transparent text-small cursor-pointer whitespace-nowrap enabled:hover:bg-bg-hover enabled:hover:text-fg disabled:opacity-40 disabled:cursor-default",
+    strong ? "text-fg" : "text-fg-subtle"
+  )
+/** The Save as… form and the save's answer drop under the buttons. */
+const popCls = cx(floatingPanel, "absolute top-[calc(100%+6px)] right-0 z-10 w-[280px] flex flex-col gap-2 p-2.5")
+const rowCls = "flex items-center gap-2"
+/** One block of the panel: a label, its control. */
+const sectionCls = "flex flex-col gap-1"
+/** The small icon buttons of the sort direction and of a column row. */
+const tinyButton = (on = false) =>
+  cx(
+    "border-0 cursor-pointer px-1.5 py-0 disabled:opacity-35 disabled:cursor-default",
+    on ? "bg-bg-active text-fg" : "bg-transparent text-fg-subtle"
+  )
 
 const lastAnswer = signal<{ key: string; a: SaveAnswer; route?: string } | null>(null)
 
@@ -158,18 +179,18 @@ export function LayoutOptions({ state, onClose }: { state: BrowseState; onClose(
   }
 
   return (
-    <aside className="dt-layout-options" aria-label="Layout options">
-      <header className="dt-lo-head">
-        <span className="dt-lo-title">Layout options</span>
-        <div className="dt-lo-actions" data-view-save-actions>
+    <aside className={sidePanel} aria-label="Layout options">
+      <header className={panelHead}>
+        <span className={panelTitle}>Layout options</span>
+        <div className="relative flex items-center gap-0.5" data-view-save-actions>
           {state.dirty && (
-            <span className="dt-lo-dirty" title="Unsaved changes to this view">
+            <span className="text-chart-orange text-[9px]" title="Unsaved changes to this view">
               ●
             </span>
           )}
           <button
             type="button"
-            className={`dt-lo-btn${state.dirty ? " is-strong" : ""}`}
+            className={barButton(state.dirty)}
             data-action="save"
             disabled={!state.dirty || saving}
             title={
@@ -183,7 +204,7 @@ export function LayoutOptions({ state, onClose }: { state: BrowseState; onClose(
           </button>
           <button
             type="button"
-            className="dt-lo-btn"
+            className={barButton()}
             data-action="save-as"
             title="Save as a new named view"
             onClick={openForm}
@@ -192,7 +213,7 @@ export function LayoutOptions({ state, onClose }: { state: BrowseState; onClose(
           </button>
           <button
             type="button"
-            className="dt-lo-btn"
+            className={barButton()}
             data-action="reset"
             disabled={!state.dirty}
             title="Discard unsaved changes"
@@ -203,15 +224,21 @@ export function LayoutOptions({ state, onClose }: { state: BrowseState; onClose(
           >
             <Icon name="discard" />
           </button>
-          <button type="button" className="dt-lo-btn" title="Close" aria-label="Close layout options" onClick={onClose}>
+          <button
+            type="button"
+            className={barButton()}
+            title="Close"
+            aria-label="Close layout options"
+            onClick={onClose}
+          >
             <Icon name="close" />
           </button>
 
           {(formOpen || answer) && (
-            <div className="dt-lo-pop">
+            <div className={popCls}>
               {formOpen && (
-                <form className="dt-lo-form" data-save-as-form onSubmit={e => void saveAs(e)}>
-                  <p className="dt-lo-label">Save as a new view</p>
+                <form className="flex flex-col gap-1.5" data-save-as-form onSubmit={e => void saveAs(e)}>
+                  <p className={panelLabel}>Save as a new view</p>
                   <input
                     autoFocus
                     value={name}
@@ -221,7 +248,7 @@ export function LayoutOptions({ state, onClose }: { state: BrowseState; onClose(
                   />
                   <IconPicker value={icon} onChange={setIcon} placeholder="Icon (optional)" />
                   <ViewModuleSelect value={module} targets={targets} onChange={setModule} />
-                  <p className="dt-hint">
+                  <p className={cx(hint, "m-0")}>
                     Appears in the nav
                     {slug && (
                       <>
@@ -233,11 +260,11 @@ export function LayoutOptions({ state, onClose }: { state: BrowseState; onClose(
                       </>
                     )}
                   </p>
-                  <div className="dt-lo-row">
-                    <button type="submit" className="dt-button is-primary is-small" disabled={!slug || saving}>
+                  <div className={rowCls}>
+                    <button type="submit" className={cx(button, buttonPrimary, buttonSmall)} disabled={!slug || saving}>
                       {saving ? "Saving…" : "Save"}
                     </button>
-                    <button type="button" className="dt-button is-small" onClick={() => setFormOpen(false)}>
+                    <button type="button" className={cx(button, buttonSmall)} onClick={() => setFormOpen(false)}>
                       Cancel
                     </button>
                   </div>
@@ -245,22 +272,30 @@ export function LayoutOptions({ state, onClose }: { state: BrowseState; onClose(
               )}
               {answer && (
                 <div
-                  className={`dt-lo-answer ${answer.a.tone === "error" ? "is-error" : "is-ok"}`}
+                  className={cx(
+                    "pl-2 border-l-[3px] [&_p]:mt-0 [&_p]:mx-0 [&_p]:mb-1 [&_pre]:mt-0 [&_pre]:mx-0 [&_pre]:mb-1 [&_pre]:whitespace-pre-wrap [&_pre]:text-small [&_pre]:text-fg-subtle",
+                    answer.a.tone === "error" ? "border-l-danger [&_p]:text-danger" : "border-l-chart-green"
+                  )}
                   role={answer.a.tone === "error" ? "alert" : "status"}
                   data-save-answer
                 >
                   <p>{answer.a.sentence}</p>
                   {answer.a.detail && <pre>{answer.a.detail}</pre>}
-                  <div className="dt-lo-row">
+                  <div className={rowCls}>
                     {answer.route && <Link to={answer.route}>Open it</Link>}
                     {answer.a.next?.action ? (
-                      <button type="button" className="dt-button is-small" onClick={openForm}>
+                      <button type="button" className={cx(button, buttonSmall)} onClick={openForm}>
                         {answer.a.next.label}
                       </button>
                     ) : (
                       answer.a.next && <span>{answer.a.next.label}</span>
                     )}
-                    <button type="button" className="dt-icon-button" title="Dismiss" onClick={() => setAnswer(null)}>
+                    <button
+                      type="button"
+                      className={cx(iconButton, "ml-auto")}
+                      title="Dismiss"
+                      onClick={() => setAnswer(null)}
+                    >
                       <Icon name="close" />
                     </button>
                   </div>
@@ -271,8 +306,8 @@ export function LayoutOptions({ state, onClose }: { state: BrowseState; onClose(
         </div>
       </header>
 
-      <section className="dt-lo-section">
-        <p className="dt-lo-label">Layout</p>
+      <section className={sectionCls}>
+        <p className={panelLabel}>Layout</p>
         <Select
           value={state.layout}
           choices={layoutChoices}
@@ -281,9 +316,9 @@ export function LayoutOptions({ state, onClose }: { state: BrowseState; onClose(
         />
       </section>
 
-      <section className="dt-lo-section">
-        <p className="dt-lo-label">Sort</p>
-        <div className="dt-lo-sort">
+      <section className={sectionCls}>
+        <p className={panelLabel}>Sort</p>
+        <div className="flex gap-1.5 [&>div:first-child]:flex-1">
           <Select
             value={state.sortField}
             choices={state.fields.map(f => ({ text: labelOf(f), value: f.field }))}
@@ -294,13 +329,17 @@ export function LayoutOptions({ state, onClose }: { state: BrowseState; onClose(
               state.setSort(f ? (state.sortDesc ? `-${f}` : f) : "")
             }}
           />
-          <div className="dt-lo-dir" role="group" aria-label="Sort direction">
+          <div
+            className="inline-flex border border-input-border rounded-dt overflow-hidden"
+            role="group"
+            aria-label="Sort direction"
+          >
             {([false, true] as const).map(desc => (
               <button
                 key={String(desc)}
                 type="button"
                 title={desc ? "Descending" : "Ascending"}
-                className={state.sortField && state.sortDesc === desc ? "is-on" : undefined}
+                className={tinyButton(!!state.sortField && state.sortDesc === desc)}
                 disabled={!state.sortField}
                 onClick={() => state.setSort(desc ? `-${state.sortField}` : state.sortField)}
               >
@@ -312,8 +351,8 @@ export function LayoutOptions({ state, onClose }: { state: BrowseState; onClose(
       </section>
 
       {options.length > 0 && (
-        <section className="dt-lo-section">
-          {!selfHeaded && <p className="dt-lo-label">Options</p>}
+        <section className={sectionCls}>
+          {!selfHeaded && <p className={panelLabel}>Options</p>}
           <FieldContext.Provider value={{ collection, fields: state.fields }}>
             <OptionsForm
               options={options}
@@ -325,15 +364,19 @@ export function LayoutOptions({ state, onClose }: { state: BrowseState; onClose(
       )}
 
       {drawsTable && (
-        <section className="dt-lo-section">
-          <p className="dt-lo-label">Columns</p>
-          <ul className="dt-lo-cols">
+        <section className={sectionCls}>
+          <p className={panelLabel}>Columns</p>
+          <ul className="list-none m-0 p-0">
             {state.columns.map((f, i) => {
               const reason = computedReason(f, { create: false })
               return (
                 <li
                   key={f.field}
-                  className={`dt-lo-col${dragFrom === i ? " is-dragging" : ""}${dragOver === i && dragFrom !== i ? " is-over" : ""}`}
+                  className={cx(
+                    "flex items-center gap-1 py-[3px] px-1 rounded cursor-grab hover:bg-bg-hover",
+                    dragFrom === i && "opacity-40",
+                    dragOver === i && dragFrom !== i && "shadow-[inset_0_2px_0_var(--dt-focus)]"
+                  )}
                   draggable
                   onDragStart={e => onDragStart(i, e)}
                   onDragOver={e => {
@@ -351,30 +394,45 @@ export function LayoutOptions({ state, onClose }: { state: BrowseState; onClose(
                 >
                   <Icon name="gripper" />
                   <span
-                    className={`dt-lo-col-name${reason !== null ? " is-computed" : ""}`}
+                    className={cx(
+                      "flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap",
+                      reason !== null && "opacity-65 italic"
+                    )}
                     title={reason ?? undefined}
                   >
                     {labelOf(f)}
                   </span>
-                  <button type="button" title="Move up" disabled={i === 0} onClick={() => state.moveColumn(i, i - 1)}>
+                  <button
+                    type="button"
+                    className={tinyButton()}
+                    title="Move up"
+                    disabled={i === 0}
+                    onClick={() => state.moveColumn(i, i - 1)}
+                  >
                     <Icon name="chevron-up" />
                   </button>
                   <button
                     type="button"
+                    className={tinyButton()}
                     title="Move down"
                     disabled={i === state.columns.length - 1}
                     onClick={() => state.moveColumn(i, i + 1)}
                   >
                     <Icon name="chevron-down" />
                   </button>
-                  <button type="button" title="Hide column" onClick={() => state.toggleColumn(f.field)}>
+                  <button
+                    type="button"
+                    className={tinyButton()}
+                    title="Hide column"
+                    onClick={() => state.toggleColumn(f.field)}
+                  >
                     <Icon name="close" />
                   </button>
                 </li>
               )
             })}
           </ul>
-          {!state.columns.length && <p className="dt-subtle">No columns shown</p>}
+          {!state.columns.length && <p className={subtle}>No columns shown</p>}
           {state.hiddenFields.length > 0 && (
             <Select
               value=""

@@ -1,6 +1,6 @@
 /**
- * Tier 1 — ROW DENSITY (`row_size` on the table layout): which density wins, how it reaches the
- * stylesheet, where a browse's unsaved pick is kept, and which pictures are circles.
+ * Tier 1 — ROW DENSITY (`row_size` on the table layout): which density wins, where a browse's unsaved
+ * pick is kept, and which pictures are circles.
  *
  * The precedence is the one every layout option already has — the toolbar's pick is a write into
  * the browse's scratch slice, over the ui-view's `display.list.options`, over the collection's, over
@@ -11,14 +11,7 @@
 import assert from "node:assert/strict"
 import { describe, test } from "node:test"
 import { listSeed, scratchKey } from "../src/lib/list-seed.ts"
-import {
-  DEFAULT_ROW_SIZE,
-  ROW_SIZES,
-  isRowSize,
-  isSquarish,
-  resolveRowSize,
-  tableDensityClass,
-} from "../src/lib/row-size.ts"
+import { DEFAULT_ROW_SIZE, ROW_SIZES, isRowSize, isSquarish, resolveRowSize } from "../src/lib/row-size.ts"
 
 describe("resolveRowSize", () => {
   test("cozy is the default — a table nobody configured is the table that existed before the option", () => {
@@ -38,12 +31,6 @@ describe("resolveRowSize", () => {
     assert.equal(resolveRowSize({ row_size: 64 }), "cozy")
     assert.equal(resolveRowSize({ row_size: null }), "cozy")
     assert.equal(isRowSize("Comfortable"), false, "case matters — the option is the enum, not a label")
-  })
-
-  test("the density reaches the table as one class", () => {
-    assert.equal(tableDensityClass("compact"), "dt-table--compact")
-    assert.equal(tableDensityClass("cozy"), "dt-table--cozy")
-    assert.equal(tableDensityClass("comfortable"), "dt-table--comfortable")
   })
 })
 

@@ -41,6 +41,45 @@ import { LayoutOptions } from "./LayoutOptions.tsx"
 import { SourcePicker } from "./SourcePicker.tsx"
 import { TargetChoice } from "./TargetChoice.tsx"
 import { usePopover } from "./use-popover.ts"
+import {
+  button,
+  buttonActive,
+  buttonDanger,
+  buttonIcon,
+  buttonPrimary,
+  cx,
+  error,
+  iconButton,
+  linkButton,
+  note,
+  pageHead,
+  popoverAnchor,
+  subtle,
+  toolbar,
+} from "../styles/classes.ts"
+import { capsLabel, floatingPanel, panelHead, panelTitle, sidePanel, sourceDot } from "./looks.ts"
+
+// ---- the looks (was dt-browse-*, dt-search, dt-filter-*, dt-pager) -----------------------------------------------
+/** The search box: an input-like frame with the input bare inside. */
+const searchCls =
+  "inline-flex items-center gap-1.5 pl-2 border border-input-border rounded-dt bg-input-bg [&_input]:w-[200px] [&_input]:border-0 [&_input]:bg-transparent [&_input]:outline-none"
+/** The count on the filter button. */
+const badgeCls = "min-w-4 px-1 rounded-full bg-accent text-accent-fg text-[10px] leading-4 text-center"
+const filterPanelCls = cx(
+  floatingPanel,
+  "absolute top-[calc(100%+4px)] right-0 z-20 w-[min(640px,calc(100vw-48px))] max-h-[70vh] overflow-y-auto px-3 py-2.5"
+)
+/** An active filter, as a chip under the header. */
+const filterChipCls =
+  "inline-flex items-center gap-0.5 py-px pr-1 pl-2.5 border border-border rounded-full bg-bg-subtle text-small"
+/** A chip's ×. (was dt-chip-remove) */
+const chipRemoveCls =
+  "inline-flex p-0 -mr-1 border-0 bg-transparent text-inherit cursor-pointer opacity-70 hover:opacity-100 [&_.codicon]:text-[12px]!"
+/** The list and the panels beside it; stacked when narrow. */
+const bodyCls = "flex flex-auto gap-4 min-h-0 max-[900px]:flex-col"
+/** The List and its pager. The table's scroller fills it only when the browse fills the page. */
+const listCls = (fill: boolean) =>
+  cx("flex flex-auto flex-col min-w-0 min-h-0", !fill && "[&_[data-table-scroll]]:flex-none")
 
 /** The Layout options panel stays open across pages until closed — it is a working surface, not a dialog. */
 const optionsOpen = signal(false)
@@ -155,19 +194,19 @@ export function Browse({
   // the page. A List's own create gesture (a column's +) still asks its target choice, drawn above the List.
   if (config?.embedded)
     return (
-      <section className="dt-browse is-embedded" data-embedded-browse={collection}>
-        {state.error && <p className="dt-error">{state.error}</p>}
+      <section className="flex flex-col gap-1.5 p-0 min-h-0" data-embedded-browse={collection}>
+        {state.error && <p className={error}>{state.error}</p>}
         {!entry && (
-          <p className="dt-note" data-degraded>
+          <p className={note} data-degraded>
             <Icon name="info" /> Layout <code>{state.layout}</code> isn’t drawn by ui yet — showing the table instead.
           </p>
         )}
         {state.pendingCreate && (
-          <div className="dt-popover-anchor">
+          <div className={popoverAnchor}>
             <TargetChoice choice={state.pendingCreate.choice} onPick={state.chooseTarget} />
           </div>
         )}
-        <div className="dt-browse-list">
+        <div className={listCls(false)}>
           <List {...listProps} />
           {!list.summarizes && (state.hasNext || state.hasPrev) && <Pager state={state} />}
         </div>
@@ -175,16 +214,18 @@ export function Browse({
     )
 
   return (
-    <section className={`dt-browse${list.fillsHeight ? " is-fill" : ""}`}>
-      <header className="dt-page-head dt-browse-head">
+    <section className={cx("flex flex-col gap-2.5 min-h-full px-6 py-5", list.fillsHeight && "h-full")}>
+      <header className={cx(pageHead, "mb-0!")}>
         <div>
-          {segments.length > 1 && <p className="dt-crumbs dt-subtle">{segments.slice(0, -1).join("/")}</p>}
+          {segments.length > 1 && (
+            <p className={cx(subtle, "m-0! mb-1! text-small")}>{segments.slice(0, -1).join("/")}</p>
+          )}
           <h1>
             {row?.nav.icon && <Icon name={row.nav.icon} />} {heading}
           </h1>
         </div>
-        <div className="dt-toolbar">
-          <label className="dt-search">
+        <div className={toolbar}>
+          <label className={searchCls}>
             <Icon name="search" />
             <input
               type="search"
@@ -206,29 +247,29 @@ export function Browse({
             />
           )}
 
-          <div ref={filter.anchor} className="dt-popover-anchor">
+          <div ref={filter.anchor} className={popoverAnchor}>
             <button
               type="button"
-              className={`dt-button is-icon${filter.open ? " is-active" : ""}`}
+              className={cx(button, buttonIcon, filter.open && buttonActive)}
               title={prose ? `Filtered — ${prose}` : "Filter"}
               aria-expanded={filter.open}
               onClick={() => filter.setOpen(!filter.open)}
             >
               <Icon name="filter" />
-              {chips.length > 0 && <span className="dt-badge">{chips.length}</span>}
+              {chips.length > 0 && <span className={badgeCls}>{chips.length}</span>}
             </button>
             {filter.open && (
-              <div className="dt-filter-panel">
-                <div className="dt-filter-panel-head">
-                  <span className="dt-lo-label">Filter</span>
+              <div className={filterPanelCls}>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className={cx(capsLabel, "flex-1 m-0")}>Filter</span>
                   {state.filterGroup.rules.length > 0 && (
-                    <button type="button" className="dt-link-button" onClick={state.clearFilters}>
+                    <button type="button" className={linkButton} onClick={state.clearFilters}>
                       Clear all
                     </button>
                   )}
                   <button
                     type="button"
-                    className="dt-icon-button"
+                    className={iconButton}
                     aria-label="Close filter"
                     onClick={() => filter.setOpen(false)}
                   >
@@ -249,11 +290,11 @@ export function Browse({
 
           {state.selectedIds.size > 0 && (
             <>
-              <span className="dt-subtle">{state.selectedIds.size} selected</span>
+              <span className={subtle}>{state.selectedIds.size} selected</span>
               {editable && (
                 <button
                   type="button"
-                  className="dt-button is-icon is-danger"
+                  className={cx(button, buttonIcon, buttonDanger)}
                   title="Delete selected"
                   disabled={state.deleting}
                   onClick={() => {
@@ -269,7 +310,7 @@ export function Browse({
 
           <button
             type="button"
-            className={`dt-button is-icon${cmdsOpen ? " is-active" : ""}`}
+            className={cx(button, buttonIcon, cmdsOpen && buttonActive)}
             title="Commands — over the ticked rows"
             aria-pressed={cmdsOpen}
             data-commands-toggle
@@ -280,7 +321,7 @@ export function Browse({
 
           <button
             type="button"
-            className={`dt-button is-icon${panelOpen ? " is-active" : ""}`}
+            className={cx(button, buttonIcon, panelOpen && buttonActive)}
             title="Layout options"
             aria-pressed={panelOpen}
             onClick={() => optionsOpen.set(!panelOpen)}
@@ -289,10 +330,10 @@ export function Browse({
           </button>
 
           {canCreate && (
-            <div className="dt-popover-anchor">
+            <div className={popoverAnchor}>
               <button
                 type="button"
-                className="dt-button is-primary"
+                className={cx(button, buttonPrimary)}
                 aria-expanded={!!state.pendingCreate}
                 onClick={() => (state.pendingCreate ? state.cancelCreate() : state.createRecord())}
               >
@@ -305,29 +346,29 @@ export function Browse({
       </header>
 
       {chips.length > 0 && (
-        <div className="dt-chips dt-filter-chips">
+        <div className="inline-flex flex-wrap gap-1.5">
           {chips.map(chip => (
-            <span key={chip.id} className="dt-filter-chip" data-source-chip={chip.sources?.join(",")}>
+            <span key={chip.id} className={filterChipCls} data-source-chip={chip.sources?.join(",")}>
               {chip.sources ? (
                 <button
                   type="button"
-                  className="dt-link-button"
+                  className={linkButton}
                   title="Change the sources"
                   onClick={() => setSourcesOpen(true)}
                 >
                   {chip.sources.map(n => (
-                    <span key={n} className="dt-source-dot" style={{ background: sourceColor(n) }} aria-hidden="true" />
+                    <span key={n} className={sourceDot} style={{ background: sourceColor(n) }} aria-hidden="true" />
                   ))}
                   {chip.label}
                 </button>
               ) : (
-                <button type="button" className="dt-link-button" onClick={() => filter.setOpen(true)}>
+                <button type="button" className={linkButton} onClick={() => filter.setOpen(true)}>
                   {chip.label}
                 </button>
               )}
               <button
                 type="button"
-                className="dt-chip-remove"
+                className={chipRemoveCls}
                 aria-label="Remove filter"
                 onClick={() => removeRule(chip.id)}
               >
@@ -341,28 +382,28 @@ export function Browse({
       {state.createdNotice && (
         // a record just created from this list, which the Sources selection would have hidden: the selection
         // widened to its root (`lib/created-visibility.ts`), said once
-        <p className="dt-note dt-browse-created" data-created-notice>
+        <p className={note} data-created-notice>
           <span>Showing</span>
           <SourceMark name={state.createdNotice.source} />
           <span>too — the new record {state.createdNotice.id} was saved there.</span>
-          <button type="button" className="dt-icon-button" title="Dismiss" onClick={state.dismissCreated}>
+          <button type="button" className={iconButton} title="Dismiss" onClick={state.dismissCreated}>
             <Icon name="close" />
           </button>
         </p>
       )}
-      {state.error && <p className="dt-error">{state.error}</p>}
+      {state.error && <p className={error}>{state.error}</p>}
       {state.unavailable && (
-        <p className="dt-note" data-unavailable>
+        <p className={note} data-unavailable>
           <Icon name="info" /> Not read on this machine: {state.unavailable}
         </p>
       )}
       {!entry && (
-        <p className="dt-note" data-degraded>
+        <p className={note} data-degraded>
           <Icon name="info" /> Layout <code>{state.layout}</code> isn’t drawn by ui yet — showing the table instead.
         </p>
       )}
       {unknown.filter(o => o.renamedTo).length > 0 && (
-        <p className="dt-note">
+        <p className={note}>
           <Icon name="info" /> Renamed layout options:{" "}
           {unknown
             .filter(o => o.renamedTo)
@@ -372,7 +413,7 @@ export function Browse({
         </p>
       )}
       {unknown.filter(o => !o.renamedTo).length > 0 && (
-        <p className="dt-note">
+        <p className={note}>
           <Icon name="info" /> Layout options{" "}
           {unknown
             .filter(o => !o.renamedTo)
@@ -382,21 +423,21 @@ export function Browse({
         </p>
       )}
 
-      <div className="dt-browse-body">
-        <div className="dt-browse-list">
+      <div className={bodyCls}>
+        <div className={listCls(!!list.fillsHeight)}>
           <List {...listProps} />
           {!list.summarizes && <Pager state={state} />}
         </div>
         {cmdsOpen && (
-          <aside className="dt-layout-options dt-browse-commands" aria-label="Commands">
-            <header className="dt-lo-head">
-              <span className="dt-lo-title">Commands</span>
-              <span className="dt-subtle">
+          <aside className={sidePanel} aria-label="Commands">
+            <header className={panelHead}>
+              <span className={panelTitle}>Commands</span>
+              <span className={subtle}>
                 {state.selectedIds.size ? `${state.selectedIds.size} ticked` : "tick rows to run one on them"}
               </span>
               <button
                 type="button"
-                className="dt-icon-button"
+                className={iconButton}
                 aria-label="Close commands"
                 onClick={() => commandsOpen.set(false)}
               >
@@ -414,13 +455,13 @@ export function Browse({
 
 function Pager({ state }: { state: BrowseState }) {
   return (
-    <footer className="dt-pager">
-      <span className="dt-subtle">
+    <footer className="flex justify-end items-center gap-2 mt-2">
+      <span className={cx(subtle, "mr-auto")}>
         {state.loading && <Icon name="loading" />} {state.from}–{state.to} of {state.total}
       </span>
       <button
         type="button"
-        className="dt-button is-icon"
+        className={cx(button, buttonIcon)}
         disabled={!state.hasPrev}
         onClick={state.prevPage}
         title="Previous page"
@@ -429,7 +470,7 @@ function Pager({ state }: { state: BrowseState }) {
       </button>
       <button
         type="button"
-        className="dt-button is-icon"
+        className={cx(button, buttonIcon)}
         disabled={!state.hasNext}
         onClick={state.nextPage}
         title="Next page"

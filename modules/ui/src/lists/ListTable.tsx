@@ -31,6 +31,33 @@ import { resolveRowSize } from "../lib/row-size.ts"
 import { DUPLICATES_FIELD } from "../lib/sources.ts"
 import type { ListProps } from "../registry/props.ts"
 import { RenderView } from "../render/Render.tsx"
+import { cx, iconButton, linkButton } from "../styles/classes.ts"
+
+// ---- the looks (was dt-table, dt-table-scroll, dt-density-*, dt-group-row, …) --------------------------------------
+// Every cell carries its own classes, the density's padding chosen here: a rule on the <table> for the cells would
+// tie with a row's or a density's override, and Tailwind orders ties by the stylesheet, not by intent.
+/** What every cell shares. */
+const cellCore = "text-left px-3 border-b border-border whitespace-nowrap overflow-hidden text-ellipsis"
+/** …and a body cell, which also caps its width and keeps a cell's chips on one line. */
+const cellCapped = "max-w-[320px] [&_.dt-chips]:flex-nowrap! [&_.dt-labels]:flex-nowrap! [&_.dt-refs]:flex-nowrap!"
+const padY = (size: string, head = false) =>
+  size === "compact" ? "py-[3px]" : size === "comfortable" && !head ? "py-3" : "py-[7px]"
+const headCell = (size: string) =>
+  cx(
+    cellCore,
+    "max-w-[320px]",
+    padY(size, true),
+    "text-small uppercase tracking-[0.04em] text-fg-subtle font-semibold bg-bg-subtle sticky top-0 z-[2] [&_.codicon]:ml-1 [&_.codicon]:align-[-2px]"
+  )
+/** The checkbox column. */
+const checkCol = "w-8 pr-0"
+/** A row; the last one in its band draws no bottom border. */
+const rowCls = "cursor-pointer [&:last-child>td]:border-b-0"
+/** An empty picture in a comfortable lead column: the record's initials in a disc. */
+const avatarCls = "inline-grid place-items-center w-12 h-12 rounded-full bg-bg-active text-fg-subtle font-semibold"
+/** The duplicate-id mark. (was dt-dup-badge) */
+const dupBadge =
+  "inline-flex items-center gap-1 ml-1.5 px-2 h-5 rounded-full border border-[color-mix(in_srgb,var(--dt-color-charts-orange)_50%,transparent)] text-chart-orange text-small whitespace-nowrap"
 
 const isEmpty = (v: unknown) => v === null || v === undefined || v === "" || (Array.isArray(v) && v.length === 0)
 
@@ -90,11 +117,11 @@ export function ListTable({ state }: ListProps) {
   const span = columns.length + 1
 
   return (
-    <div className="dt-table-scroll">
-      <table className={`dt-table dt-density-${rowSize}`}>
+    <div className="flex-auto min-h-0 overflow-auto border border-border rounded-dt" data-table-scroll>
+      <table className="w-full border-collapse">
         <thead>
           <tr>
-            <th className="dt-check-col">
+            <th className={cx(headCell(rowSize), checkCol)}>
               <input
                 type="checkbox"
                 checked={state.allVisibleSelected}
@@ -108,7 +135,7 @@ export function ListTable({ state }: ListProps) {
               return (
                 <th
                   key={f.field}
-                  className={`is-sortable${reason !== null ? " is-computed" : ""}`}
+                  className={cx(headCell(rowSize), "cursor-pointer", reason !== null && "opacity-65 italic")}
                   title={f.description || reason || undefined}
                   style={columnStyle(f)}
                   onClick={() => state.toggleSort(f.field)}
@@ -122,8 +149,11 @@ export function ListTable({ state }: ListProps) {
         </thead>
         {records.length === 0 ? (
           <tbody>
-            <tr className="dt-empty-row">
-              <td colSpan={span}>
+            <tr className={cx(rowCls, "hover:bg-bg-hover")}>
+              <td
+                colSpan={span}
+                className={cx(cellCore, cellCapped, "text-fg-subtle cursor-default text-center! p-6!")}
+              >
                 {state.loading ? (
                   "Loading…"
                 ) : state.hasActiveQuery ? (
@@ -132,7 +162,7 @@ export function ListTable({ state }: ListProps) {
                   <>
                     No records yet.{" "}
                     {!state.unavailable && (
-                      <button type="button" className="dt-link-button" onClick={() => state.createRecord()}>
+                      <button type="button" className={linkButton} onClick={() => state.createRecord()}>
                         Create record
                       </button>
                     )}
@@ -143,14 +173,21 @@ export function ListTable({ state }: ListProps) {
           </tbody>
         ) : (
           bands.map(band => (
-            <tbody key={band.value} className={state.loading ? "is-revalidating" : undefined}>
+            <tbody key={band.value} className={state.loading ? "opacity-70" : undefined}>
               {groupField && (
-                <tr className="dt-group-row">
-                  <td colSpan={span}>
-                    <div className="dt-group-band">
+                <tr className={rowCls}>
+                  <td
+                    colSpan={span}
+                    className={cx(
+                      cellCore,
+                      padY(rowSize),
+                      "max-w-none bg-bg-subtle sticky top-[31px] z-[1] cursor-default"
+                    )}
+                  >
+                    <div className="flex items-center gap-1">
                       <button
                         type="button"
-                        className="dt-icon-button"
+                        className={iconButton}
                         aria-expanded={!collapsed.has(band.value)}
                         title={collapsed.has(band.value) ? "Expand" : "Collapse"}
                         onClick={() => toggleBand(band.value)}
@@ -176,12 +213,22 @@ export function ListTable({ state }: ListProps) {
                   return (
                     <tr
                       key={`${String(r["$source"] ?? "")}/${r.id}`}
-                      className={`${state.isSelected(r.id) ? "is-selected" : ""}${tint ? " is-tinted" : ""}`}
+                      className={cx(
+                        rowCls,
+                        tint
+                          ? "bg-[color-mix(in_srgb,var(--dt-tint-bg)_8%,transparent)]"
+                          : state.isSelected(r.id)
+                            ? "bg-bg-active"
+                            : "hover:bg-bg-hover"
+                      )}
                       style={tint}
                       data-vscode-context={rowContext(state.collection, r.id, state.selectedIds)}
                       onClick={() => state.openRecord(r)}
                     >
-                      <td className="dt-check-col" onClick={e => e.stopPropagation()}>
+                      <td
+                        className={cx(cellCore, cellCapped, padY(rowSize), checkCol)}
+                        onClick={e => e.stopPropagation()}
+                      >
                         <input
                           type="checkbox"
                           checked={state.isSelected(r.id)}
@@ -192,17 +239,27 @@ export function ListTable({ state }: ListProps) {
                       {columns.map((f, i) => (
                         <td
                           key={f.field}
-                          className={`${i === 0 ? "is-lead" : ""}${f.field === state.titleField ? " dt-cell-title" : ""}`}
+                          className={cx(
+                            cellCore,
+                            cellCapped,
+                            padY(rowSize),
+                            f.field === state.titleField &&
+                              (rowSize === "comfortable" ? "font-semibold" : "font-medium"),
+                            i === 0 && tint && "shadow-[inset_3px_0_0_var(--dt-tint)]",
+                            i === 0 &&
+                              rowSize === "comfortable" &&
+                              "[&_img]:w-12! [&_img]:h-12! [&_img]:max-h-none! [&_img]:object-cover!"
+                          )}
                         >
                           {rowSize === "comfortable" && i === 0 && leadIsPicture && isEmpty(r[f.field]) ? (
-                            <span className="dt-avatar-fallback" title={state.recordTitleOf(r)} aria-hidden="true">
+                            <span className={avatarCls} title={state.recordTitleOf(r)} aria-hidden="true">
                               {initialsOf(state.recordTitleOf(r))}
                             </span>
                           ) : (
                             <RenderView field={f} value={r[f.field]} record={r} />
                           )}
                           {i === 0 && dup && (
-                            <span className="dt-dup-badge" title={dup} role="img" aria-label="duplicate id">
+                            <span className={dupBadge} title={dup} role="img" aria-label="duplicate id">
                               <Icon name="warning" />
                             </span>
                           )}

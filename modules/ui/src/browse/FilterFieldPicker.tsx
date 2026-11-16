@@ -25,6 +25,13 @@ import {
 } from "../lib/filter-field-tree.ts"
 import { formatTitle } from "../lib/format-title.ts"
 import { usePopover } from "./use-popover.ts"
+import { ddControl } from "../components/looks.ts"
+import { cx, iconButton, subtle } from "../styles/classes.ts"
+
+/** The open tree: a tinted box under the control, its search full width, its rows scrolling. */
+const panelCls =
+  "mt-1 p-1.5 border border-border rounded-dt bg-bg-subtle [&_input]:w-full [&_ul]:list-none [&_ul]:mt-1.5 [&_ul]:mx-0 [&_ul]:mb-0 [&_ul]:p-0 [&_ul]:max-h-[240px] [&_ul]:overflow-y-auto"
+const optionCls = "flex-1 flex justify-between gap-2 py-1 px-1.5 border-0 rounded text-fg text-left cursor-pointer"
 
 export function FilterFieldPicker({
   value,
@@ -95,15 +102,15 @@ export function FilterFieldPicker({
   }
 
   return (
-    <div ref={anchor} className={`dt-fieldpicker${open ? " is-open" : ""}`} onKeyDown={onKey}>
-      <button type="button" className="dt-dd-control" onClick={toggle}>
-        <span className={value ? undefined : "dt-subtle"}>
+    <div ref={anchor} className={open ? "w-full -order-1" : "w-[180px]"} onKeyDown={onKey}>
+      <button type="button" className={cx(ddControl, "border-input-border")} onClick={toggle}>
+        <span className={value ? undefined : subtle}>
           {value ? labelForPath(value, fields, formatTitle) : "Field…"}
         </span>
         <Icon name="chevron-down" />
       </button>
       {open && (
-        <div className="dt-fieldpicker-panel">
+        <div className={panelCls}>
           <input
             ref={search}
             value={query}
@@ -112,14 +119,17 @@ export function FilterFieldPicker({
             aria-label="Search fields"
           />
           <ul role="listbox">
-            {!rows.length && <li className="dt-subtle">No matching field.</li>}
+            {!rows.length && <li className={subtle}>No matching field.</li>}
             {rows.map(n => (
-              <li key={n.path} className="dt-fieldpicker-row">
-                <span className="dt-fieldpicker-twisty" style={searching ? undefined : { marginLeft: n.depth * 14 }}>
+              <li key={n.path} className="flex items-center">
+                <span
+                  className="inline-flex flex-none w-6"
+                  style={searching ? undefined : { marginLeft: n.depth * 14 }}
+                >
                   {n.expandable && !searching && (
                     <button
                       type="button"
-                      className="dt-icon-button"
+                      className={iconButton}
                       aria-label={`${expanded.has(n.path) ? "Collapse" : "Expand"} ${n.label}`}
                       onClick={e => {
                         e.stopPropagation()
@@ -132,11 +142,11 @@ export function FilterFieldPicker({
                 </span>
                 <button
                   type="button"
-                  className={`dt-fieldpicker-option${n.path === value ? " is-current" : ""}`}
+                  className={cx(optionCls, n.path === value ? "bg-bg-active" : "bg-transparent hover:bg-bg-hover")}
                   onClick={() => choose(n)}
                 >
                   <span>{searching ? joinLabels(n.labels) : n.label}</span>
-                  {n.target && <span className="dt-subtle">{n.target}</span>}
+                  {n.target && <span className={subtle}>{n.target}</span>}
                 </button>
               </li>
             ))}

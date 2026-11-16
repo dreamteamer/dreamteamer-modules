@@ -13,6 +13,7 @@ import type { CSSProperties } from "react"
 import { useImageSrc } from "../components/FileThumb.tsx"
 import { Icon } from "../components/Icon.tsx"
 import { themeColor } from "../lib/collection-display.ts"
+import { cx } from "../styles/classes.ts"
 
 export function GroupHeader({
   label,
@@ -34,13 +35,16 @@ export function GroupHeader({
   if (background) style["--dt-group-bg"] = themeColor(background)
   return (
     <div
-      className={`dt-group-header${color ? " has-color" : ""}${background ? " has-bg" : ""}`}
+      className={cx(
+        "inline-flex items-center gap-1.5 [color:var(--dt-group-color,var(--dt-fg))] font-semibold",
+        background && "py-px px-2 rounded-full bg-[color-mix(in_srgb,var(--dt-group-bg)_18%,transparent)]"
+      )}
       style={style as CSSProperties}
     >
       {icon && (icon.includes("/") ? <GroupPicture value={icon} /> : <Icon name={icon} />)}
-      <span className="dt-group-label">{label}</span>
-      <span className="dt-group-count">{count}</span>
-      {description && <span className="dt-group-desc">{description}</span>}
+      <span>{label}</span>
+      <span className="text-fg-subtle font-normal text-small">{count}</span>
+      {description && <span className="text-fg-subtle font-normal">{description}</span>}
     </div>
   )
 }
@@ -48,5 +52,5 @@ export function GroupHeader({
 /** A band's picture; nothing at all until (or unless) the reference resolves to an image. */
 function GroupPicture({ value }: { value: string }) {
   const src = useImageSrc(value)
-  return src ? <img className="dt-group-picture" src={src} alt="" /> : null
+  return src ? <img className="w-[18px] h-[18px] rounded-full object-cover flex-none" src={src} alt="" /> : null
 }

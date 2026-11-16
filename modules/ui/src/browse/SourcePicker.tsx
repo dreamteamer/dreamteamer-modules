@@ -15,6 +15,19 @@ import { SourceMark } from "../components/SourceMark.tsx"
 import type { FilterGroup } from "../lib/filter-query.ts"
 import { selectedSources, sourceColor, toggleSource, viaWord, withSourceSelection } from "../lib/sources.ts"
 import { usePopover } from "./use-popover.ts"
+import {
+  button,
+  buttonActive,
+  cx,
+  menu,
+  menuCheck,
+  menuItem,
+  menuItemAbsent,
+  menuLabel,
+  popoverAnchor,
+  subtle,
+} from "../styles/classes.ts"
+import { sourceDot } from "./looks.ts"
 
 /** A row's class and writability in words: `record layer · writes`, `installed package · read-only`. */
 function pickerWords(f: SourceEntry): string {
@@ -43,10 +56,10 @@ export function SourcePicker({
   const ticked = (name: string) => selected.includes(name) || (all && available.length === 1)
 
   return (
-    <div ref={anchor} className="dt-popover-anchor">
+    <div ref={anchor} className={popoverAnchor}>
       <button
         type="button"
-        className={`dt-button${open ? " is-active" : ""}`}
+        className={cx(button, open && buttonActive)}
         aria-expanded={open}
         aria-haspopup="listbox"
         title={all ? "Sources — showing all" : `Sources — showing ${selected.join(", ")}`}
@@ -60,9 +73,9 @@ export function SourcePicker({
           <SourceMark name={selected[0]!} />
         ) : (
           <>
-            <span className="dt-source-dots" aria-hidden="true">
+            <span className="inline-flex gap-0.5" aria-hidden="true">
               {selected.map(n => (
-                <span key={n} className="dt-source-dot" style={{ background: sourceColor(n) }} />
+                <span key={n} className={sourceDot} style={{ background: sourceColor(n) }} />
               ))}
             </span>
             {selected.length} sources
@@ -71,17 +84,17 @@ export function SourcePicker({
         <Icon name="chevron-down" />
       </button>
       {open && (
-        <div className="dt-menu dt-source-menu" role="listbox" aria-multiselectable="true" aria-label="Sources">
+        <div className={menu} role="listbox" aria-multiselectable="true" aria-label="Sources">
           <button
             type="button"
             role="option"
             aria-selected={all}
-            className="dt-menu-item"
+            className={menuItem}
             onClick={() => setFilterGroup(g => withSourceSelection(g, null))}
           >
-            <span className="dt-menu-check">{all && <Icon name="check" />}</span>
-            <span className="dt-menu-label">All sources</span>
-            <span className="dt-subtle">{total}</span>
+            <span className={menuCheck}>{all && <Icon name="check" />}</span>
+            <span className={menuLabel}>All sources</span>
+            <span className={subtle}>{total}</span>
           </button>
           {facets.map(f =>
             f.installed ? (
@@ -91,35 +104,35 @@ export function SourcePicker({
                 role="option"
                 aria-selected={ticked(f.name)}
                 data-source={f.name}
-                className="dt-menu-item"
+                className={menuItem}
                 onClick={() => {
                   // one source: picking it is picking all, which is what is shown
                   if (available.length > 1) setFilterGroup(g => toggleSource(g, f.name, available))
                 }}
               >
-                <span className="dt-menu-check">{ticked(f.name) && <Icon name="check" />}</span>
-                <span className="dt-menu-label">
+                <span className={menuCheck}>{ticked(f.name) && <Icon name="check" />}</span>
+                <span className={menuLabel}>
                   <SourceMark name={f.name} access={f.access} via={f.via} note={f.note} />
                 </span>
                 {f.access && (
-                  <span className="dt-subtle" title={f.note}>
+                  <span className={subtle} title={f.note}>
                     {pickerWords(f)}
                   </span>
                 )}
-                <span className="dt-subtle">{f.count}</span>
+                <span className={subtle}>{f.count}</span>
               </button>
             ) : (
               <span
                 key={f.name}
-                className="dt-menu-item is-absent"
+                className={cx(menuItem, menuItemAbsent)}
                 data-source={f.name}
                 title={`${f.name} is not installed — its records are not read`}
               >
-                <span className="dt-menu-check" />
-                <span className="dt-menu-label">
+                <span className={menuCheck} />
+                <span className={menuLabel}>
                   <SourceMark name={f.name} access={f.access} via={f.via} note={f.note} />
                 </span>
-                <span className="dt-subtle">not installed</span>
+                <span className={subtle}>not installed</span>
               </span>
             )
           )}

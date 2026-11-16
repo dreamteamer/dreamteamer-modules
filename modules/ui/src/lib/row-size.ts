@@ -8,9 +8,8 @@
  * merges those two), and the default closes the gap. `cozy` IS today's density — a table nobody
  * configured draws byte-identically to the one that existed before the option.
  *
- * ⚠ The value reaches the table as a CSS CLASS and nothing else (`dt-table--<size>`): every number —
- * the row height, the picture box, the title weight — is a stylesheet rule keyed off that class, so a
- * density is one place to read and the render tier can pin the class without a DOM.
+ * The table (lists/ListTable.tsx) turns the density into its cells' classes in one place: the row
+ * padding, the picture box, the title weight.
  *
  * Pure and its own module, because "which density wins" is a decision, and a decision buried in a
  * component can only be tested by rendering it.
@@ -41,11 +40,6 @@ export function isRowSize(value: unknown): value is RowSize {
 export function resolveRowSize(options: Record<string, unknown> | undefined | null): RowSize {
   const value = options?.["row_size"]
   return isRowSize(value) ? value : DEFAULT_ROW_SIZE
-}
-
-/** The class `.dt-table` carries for a density — the ONLY way a density reaches the stylesheet. */
-export function tableDensityClass(size: RowSize): string {
-  return `dt-table--${size}`
 }
 
 /**

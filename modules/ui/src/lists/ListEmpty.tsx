@@ -5,10 +5,11 @@
  */
 import { Icon } from "../components/Icon.tsx"
 import type { ListProps } from "../registry/props.ts"
+import { button, listEmpty } from "../styles/classes.ts"
 
 export function ListEmpty({ state }: { state: ListProps["state"] }) {
   return (
-    <div className="dt-list-empty">
+    <div className={listEmpty}>
       <Icon name={state.loading ? "loading" : "inbox"} />
       <p>
         {state.loading
@@ -18,7 +19,7 @@ export function ListEmpty({ state }: { state: ListProps["state"] }) {
             : "No records yet."}
       </p>
       {!state.loading && !state.hasActiveQuery && !state.unavailable && (
-        <button type="button" className="dt-button" onClick={() => state.createRecord()}>
+        <button type="button" className={button} onClick={() => state.createRecord()}>
           Create record
         </button>
       )}

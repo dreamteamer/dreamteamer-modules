@@ -37,6 +37,13 @@ import { filterValueField } from "../lib/filter-widget.ts"
 import { RenderEdit } from "../render/Render.tsx"
 import { useFieldValues } from "./field-values.ts"
 import { FilterFieldPicker } from "./FilterFieldPicker.tsx"
+import { button, buttonActive, buttonSmall, cx, iconButton, subtle } from "../styles/classes.ts"
+
+/** A value control's box; a text input in it fills it. (was dt-filter-value) */
+const valueCls = "flex-1 min-w-0 [&_input:not([type=checkbox])]:w-full"
+/** The values of one condition: stacked, or side by side for a pair. (was dt-filter-values) */
+const valuesCls = (pair = false) =>
+  cx("flex-[1_1_200px] min-w-0 flex gap-1", pair ? "flex-row items-center" : "flex-col")
 
 const isBlank = (v: unknown) => v === "" || v === null || v === undefined
 
@@ -133,21 +140,21 @@ export function FilterBuilder({
   }
 
   const control = (rule: FilterRule, row: FieldRow, value: unknown, onChange: (v: unknown) => void, slot: string) => (
-    <div className="dt-filter-value">
+    <div className={valueCls}>
       <RenderEdit id={`filter-${rule.id}-${slot}`} field={row} value={value} onChange={onChange} />
     </div>
   )
 
   return (
-    <div className="dt-filter-builder">
+    <div className="flex flex-col gap-2 items-start [&>p]:m-0">
       {group.rules.length > 1 && (
-        <div className="dt-filter-logic">
+        <div className="flex items-center gap-1.5 text-fg-subtle">
           <span>Match</span>
           {(["_and", "_or"] as const).map(logic => (
             <button
               key={logic}
               type="button"
-              className={`dt-button is-small${group.logic === logic ? " is-active" : ""}`}
+              className={cx(button, buttonSmall, group.logic === logic && buttonActive)}
               onClick={() => setValue(g => ({ ...g, logic }))}
             >
               {logic === "_and" ? "All" : "Any"}
@@ -156,12 +163,12 @@ export function FilterBuilder({
           <span>of the following</span>
         </div>
       )}
-      {!group.rules.length && <p className="dt-subtle">No conditions yet.</p>}
+      {!group.rules.length && <p className={subtle}>No conditions yet.</p>}
       {group.rules.map(rule => {
         const row = valueField(rule)
         const takes = row && operatorTakesValue(rule.operator)
         return (
-          <div key={rule.id} className="dt-filter-rule">
+          <div key={rule.id} className="flex flex-wrap items-start gap-1.5 w-full">
             <FilterFieldPicker
               value={rule.field}
               collection={collection}
@@ -169,7 +176,7 @@ export function FilterBuilder({
               relationOf={relationOf}
               onChange={path => onField(rule, path)}
             />
-            <div className="dt-filter-op">
+            <div className="w-[140px]">
               <Select
                 value={rule.operator}
                 choices={operatorsFor(rule).map(op => ({ text: operatorLabel(op), value: op }))}
@@ -183,14 +190,14 @@ export function FilterBuilder({
               />
             </div>
             {takes && operatorTakesList(rule.operator) && (
-              <div className="dt-filter-values">
+              <div className={valuesCls()}>
                 {[...valueList(rule.value), null].map((entry, i, all) => (
-                  <div key={i} className="dt-filter-slot">
+                  <div key={i} className="flex gap-1 items-center">
                     {control(rule, row, entry, v => setListValue(rule, i, v), String(i))}
                     {i < all.length - 1 && (
                       <button
                         type="button"
-                        className="dt-icon-button"
+                        className={iconButton}
                         aria-label="Remove value"
                         onClick={() => setListValue(rule, i, null)}
                       >
@@ -202,7 +209,7 @@ export function FilterBuilder({
               </div>
             )}
             {takes && operatorTakesPair(rule.operator) && (
-              <div className="dt-filter-values is-pair">
+              <div className={valuesCls(true)}>
                 {control(
                   rule,
                   row,
@@ -210,7 +217,7 @@ export function FilterBuilder({
                   v => setPairValue(rule, 0, v),
                   "a"
                 )}
-                <span className="dt-subtle">and</span>
+                <span className={subtle}>and</span>
                 {control(
                   rule,
                   row,
@@ -221,13 +228,13 @@ export function FilterBuilder({
               </div>
             )}
             {takes && !operatorTakesList(rule.operator) && !operatorTakesPair(rule.operator) && (
-              <div className="dt-filter-values">
+              <div className={valuesCls()}>
                 {control(rule, row, rule.value, v => updateRule(rule.id, () => ({ value: v })), "v")}
               </div>
             )}
             <button
               type="button"
-              className="dt-icon-button"
+              className={iconButton}
               aria-label="Remove condition"
               title="Remove condition"
               onClick={() => setValue(g => ({ ...g, rules: g.rules.filter(r => r.id !== rule.id) }))}
@@ -237,7 +244,7 @@ export function FilterBuilder({
           </div>
         )
       })}
-      <button type="button" className="dt-button is-small" onClick={addRule}>
+      <button type="button" className={cx(button, buttonSmall)} onClick={addRule}>
         <Icon name="add" /> Add condition
       </button>
     </div>

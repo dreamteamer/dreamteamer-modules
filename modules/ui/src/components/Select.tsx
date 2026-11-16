@@ -22,6 +22,17 @@ import {
   type Choice,
 } from "../lib/listbox.ts"
 import { Icon } from "./Icon.tsx"
+import { ddControl, dropPanel, plainList } from "./looks.ts"
+import { cx } from "../styles/classes.ts"
+
+// ---- the looks (was dt-dd-*) ---------------------------------------------------------------------------------
+/** The closed control: an input-like button. `dt-dd-control` (with its old `is-open`) stays as a marker while the
+ *  record page's property rows still restyle it from ui.css, whose unlayered rules outrank these. */
+const controlCls = cx("dt-dd-control", ddControl)
+const labelCls = "flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap"
+const hintCls = "flex-none text-small opacity-60"
+const panelCls = cx(dropPanel, "fixed z-[1000] flex flex-col gap-1.5 p-1.5 overflow-hidden")
+const optionCls = "flex items-center gap-2 w-full px-2 py-[5px] border-0 rounded text-left cursor-pointer"
 
 export function Select({
   value,
@@ -92,7 +103,7 @@ export function Select({
   useLayoutEffect(() => {
     if (!open) return
     if (showSearch) search.current?.focus()
-    panel.current?.querySelector<HTMLElement>(".dt-dd-option.is-active")?.scrollIntoView({ block: "nearest" })
+    panel.current?.querySelector<HTMLElement>("[data-active]")?.scrollIntoView({ block: "nearest" })
   }, [open, showSearch])
 
   useEffect(() => {
@@ -114,7 +125,7 @@ export function Select({
 
   const scrollActive = () =>
     requestAnimationFrame(() =>
-      panel.current?.querySelector<HTMLElement>(".dt-dd-option.is-active")?.scrollIntoView({ block: "nearest" })
+      panel.current?.querySelector<HTMLElement>("[data-active]")?.scrollIntoView({ block: "nearest" })
     )
 
   const onKeyDown = (e: KeyboardEvent) => {
@@ -159,18 +170,18 @@ export function Select({
 
   const glyph = (c: Choice) =>
     c.icon ? (
-      <span className="dt-dd-icon" style={c.color ? { color: themeColor(c.color) } : undefined}>
+      <span className="flex-none inline-flex" style={c.color ? { color: themeColor(c.color) } : undefined}>
         <Icon name={c.icon} />
       </span>
     ) : null
 
   return (
-    <div className="dt-dd">
+    <div className="relative min-w-0">
       <button
         ref={control}
         id={id}
         type="button"
-        className={`dt-dd-control${open ? " is-open" : ""}${!selected && empty ? " is-placeholder" : ""}`}
+        className={cx(controlCls, open ? "is-open border-focus" : "border-input-border")}
         disabled={disabled}
         aria-label={ariaLabel}
         title={selected?.title}
@@ -181,12 +192,12 @@ export function Select({
         onKeyDown={onKeyDown}
       >
         {selected && glyph(selected)}
-        <span className="dt-dd-label">{label}</span>
-        {selected?.hint && <span className="dt-dd-hint">{selected.hint}</span>}
-        <Icon name="chevron-down" className="dt-dd-caret" />
+        <span className={cx(labelCls, !selected && empty && "opacity-60")}>{label}</span>
+        {selected?.hint && <span className={hintCls}>{selected.hint}</span>}
+        <Icon name="chevron-down" className="flex-none opacity-70" />
       </button>
       {open && (
-        <div ref={panel} className="dt-dd-panel" style={style} onKeyDown={onKeyDown}>
+        <div ref={panel} className={panelCls} style={style} onKeyDown={onKeyDown}>
           {showSearch && (
             <input
               ref={search}
@@ -201,8 +212,8 @@ export function Select({
               }}
             />
           )}
-          <ul className="dt-dd-list" role="listbox">
-            {!visible.length && <li className="dt-dd-empty">No match.</li>}
+          <ul className={cx(plainList, "min-h-0")} role="listbox">
+            {!visible.length && <li className="p-2 opacity-70">No match.</li>}
             {visible.map((c, i) => {
               const isSel = sameValue(c.value, value)
               return (
@@ -210,15 +221,24 @@ export function Select({
                   <button
                     type="button"
                     role="option"
-                    className={`dt-dd-option${i === active ? " is-active" : ""}${isSel ? " is-selected" : ""}`}
+                    className={cx(
+                      optionCls,
+                      isSel && "font-semibold",
+                      i !== active
+                        ? "bg-transparent text-inherit"
+                        : isSel
+                          ? "bg-bg-active text-fg-active"
+                          : "bg-bg-hover text-inherit"
+                    )}
+                    data-active={i === active || undefined}
                     title={c.title}
                     aria-selected={isSel}
                     onClick={() => choose(c)}
                     onMouseMove={() => setActive(i)}
                   >
                     {glyph(c)}
-                    <span className="dt-dd-label">{c.text}</span>
-                    {c.hint && <span className="dt-dd-hint">{c.hint}</span>}
+                    <span className={labelCls}>{c.text}</span>
+                    {c.hint && <span className={hintCls}>{c.hint}</span>}
                   </button>
                 </li>
               )
