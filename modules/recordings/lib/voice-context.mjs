@@ -122,36 +122,57 @@ async function snapshot(root) {
 	const known = {};
 	for (const p of [...C, ...U]) known[p.ref] = p.name;
 	const humans = U.filter((u) => u.kind !== 'agent').sort((a, b) => a.ref.localeCompare(b.ref));
-	const documents = DOCUMENT_KINDS.flatMap(([c, kind], i) => docs[i].map((d) => ({ ref: refOf(c, d), kind, created: d.created ?? null, source: arr(d.source).filter((x) => typeof x === 'string').map((x) => x.trim()) })));
+	const strings = (v) => arr(v).filter((x) => typeof x === 'string').map((x) => x.trim());
+	// a document names a recording or a meeting by `source` (any kind), a summary its meeting by `meeting`,
+	// an analysis the calls it reviews by `meetings`
+	const documents = DOCUMENT_KINDS.flatMap(([c, kind], i) => docs[i].map((d) => ({ ref: refOf(c, d), kind, created: d.created ?? null,
+		names: [...strings(d.source), ...(kind === 'summary' ? strings(d.meeting) : []), ...(kind === 'analysis' ? strings(d.meetings) : [])] })));
 	return {
 		base: { workspace, guard: guardFrom(root, files, inboxRaw), known, workspace_users: humans.map((u) => ({ person: u.ref, name: u.name })) },
 		users: U, humans, contacts: C, documents,
 	};
 }
 
-/** Design section 10 step 1: the meeting's `ours` users and `attendees_contacts`, made distinct. A user is
- *  the contact when its `contact` points at it, or its `email` or one of its `handles` equals the contact's
- *  email (case-insensitively). A user joinable to no contact at all while `attendees_contacts` is not empty
- *  makes the count uncertain. `users` and `contacts` are `{ref, name, email, handles?, contact?}` rows. */
+/** Design section 10 step 1, the sameness rule, decided per (user, contact) pair: a contact IS the user when
+ *  the user's `contact` points at it, or the user's `email` or one of its `handles` equals the contact's
+ *  email (case-insensitively). Every contact of `contacts` the user is, in their order. */
+function contactsOfUser(u, contacts) {
+	const addresses = new Set([lower(u.email), ...arr(u.handles).map(lower)].filter(Boolean));
+	return contacts.filter((c) => (u.contact && c.ref === u.contact) || (c.email && addresses.has(lower(c.email))));
+}
+
+/** A user as a candidate: the contact it carries is one the meeting lists when it is joined to such a
+ *  contact, else its own `contact`, else the first it is joined to. */
+function userCandidate(u, joined, listed, selves) {
+	const cand = { person: u.ref, name: u.name, kind: 'user' };
+	const pick = joined.find((c) => listed.has(c.ref)) ?? joined.find((c) => c.ref === u.contact) ?? joined[0];
+	if (pick) cand.contact = pick.ref;
+	const addresses = [lower(u.email), ...arr(u.handles).map(lower), ...joined.map((c) => lower(c.email))];
+	if (addresses.some((a) => a && selves.has(a))) cand.you = true;
+	return cand;
+}
+
+/** Design section 10 step 1: the meeting's `ours` users and `attendees_contacts`, made distinct — one
+ *  candidate per person. A user takes EVERY attendee contact it is the same person as (`contactsOfUser`),
+ *  so a second contact record of the user is not a second person. A user joinable to no contact at all
+ *  while `attendees_contacts` is not empty makes the count uncertain. `users` and `contacts` are
+ *  `{ref, name, email, handles?, contact?}` rows. */
 export function distinctAttendees(meeting, users, contacts, selfEmails = []) {
 	const byRef = (rows) => new Map(rows.map((r) => [r.ref, r]));
 	const U = byRef(users), C = byRef(contacts);
 	const ourRefs = [...new Set(arr(meeting?.ours))];
 	const contactRefs = [...new Set(arr(meeting?.attendees_contacts))];
+	const listed = new Set(contactRefs);
 	const selves = new Set(arr(selfEmails).map(lower).filter(Boolean));
 	const candidates = [];
 	const taken = new Set();
 	let certain = true;
 	for (const ref of ourRefs) {
 		const u = U.get(ref) ?? { ref, name: ref.split('/').pop() };
-		const addresses = new Set([lower(u.email), ...arr(u.handles).map(lower)].filter(Boolean));
-		const joined = (u.contact && C.get(u.contact)) || contacts.find((c) => c.email && addresses.has(lower(c.email))) || null;
-		if (!joined && contactRefs.length) certain = false;
-		if (joined && contactRefs.includes(joined.ref)) taken.add(joined.ref);
-		const cand = { person: ref, name: u.name, kind: 'user' };
-		if (joined) cand.contact = joined.ref;
-		if ([...addresses, lower(joined?.email)].some((a) => a && selves.has(a))) cand.you = true;
-		candidates.push(cand);
+		const joined = contactsOfUser(u, contacts);
+		if (!joined.length && contactRefs.length) certain = false;
+		for (const c of joined) if (listed.has(c.ref)) taken.add(c.ref);
+		candidates.push(userCandidate(u, joined, listed, selves));
 	}
 	for (const ref of contactRefs) {
 		if (taken.has(ref)) continue;
@@ -163,6 +184,21 @@ export function distinctAttendees(meeting, users, contacts, selfEmails = []) {
 	return { candidates, count: candidates.length, certain };
 }
 
+/** With no meeting (design section 10 step 1): the workspace's human users, then every contact that is no
+ *  human user — a contact joined to a user is that user, one candidate. Naming proposes a contact here and
+ *  never writes it. */
+function workspaceCandidates(snap) {
+	const taken = new Set();
+	const users = snap.humans.map((u) => {
+		const joined = contactsOfUser(u, snap.contacts);
+		for (const c of joined) taken.add(c.ref);
+		return userCandidate(u, joined, new Set(), new Set());
+	});
+	const contacts = snap.contacts.filter((c) => !taken.has(c.ref)).sort((a, b) => a.ref.localeCompare(b.ref))
+		.map((c) => ({ person: c.ref, name: c.name, kind: 'contact' }));
+	return [...users, ...contacts];
+}
+
 function selfEmailsOf(meeting) {
 	const out = arr(meeting?.attendees).filter((a) => a && a.self && a.email).map((a) => a.email);
 	if (meeting?.organizer?.self && meeting.organizer.email) out.push(meeting.organizer.email);
@@ -171,7 +207,7 @@ function selfEmailsOf(meeting) {
 
 function documentsFor(snap, recRef, meetingRef) {
 	const names = new Set([recRef, meetingRef].filter(Boolean));
-	return snap.documents.filter((d) => d.source.some((s) => names.has(s))).map(({ ref, kind, created }) => ({ ref, kind, created }));
+	return snap.documents.filter((d) => d.names.some((s) => names.has(s))).map(({ ref, kind, created }) => ({ ref, kind, created }));
 }
 
 function contextOf(root, snap, rec, audio, meeting) {
@@ -182,7 +218,7 @@ function contextOf(root, snap, rec, audio, meeting) {
 		const d = distinctAttendees(meeting, snap.users, snap.contacts, selfEmailsOf(meeting));
 		({ candidates, count, certain } = d);
 	} else {
-		candidates = snap.humans.map((u) => ({ person: u.ref, name: u.name, kind: 'user' }));
+		candidates = workspaceCandidates(snap);
 	}
 	return {
 		...snap.base,

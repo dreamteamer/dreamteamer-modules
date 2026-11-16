@@ -16,7 +16,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import yaml from 'js-yaml';
 import { virginWorkspace, installCopied, closure, run, cleanup } from '../../../tests/helpers/workspace.mjs';
 import { recordingContext, personRecords, distinctAttendees } from '../lib/voice-context.mjs';
@@ -114,6 +114,9 @@ function seed() {
 	S.analysis = `meeting-analyses/${idOf(dt('add', 'meeting-analyses', '--name', 'Northwind weekly critique', '--source', S.oneToOne))}`;
 	S.task = `tasks/${idOf(dt('add', 'tasks', '--name', 'Send Sam the pricing sheet', '--source', S.rec1))}`;
 	S.otherTask = `tasks/${idOf(dt('add', 'tasks', '--name', 'Book the Harbor onsite', '--source', S.rec2))}`;
+	// linked to the Harbor review by `meeting` / `meetings` alone, with no `source` naming it
+	S.summary2 = `meeting-summaries/${idOf(dt('add', 'meeting-summaries', '--name', 'Harbor review summary', '--meeting', S.byHandle))}`;
+	S.analysis2 = `meeting-analyses/${idOf(dt('add', 'meeting-analyses', '--name', 'Harbor arc critique', '--meetings', S.byHandle, '--source', 'file:notes.txt'))}`;
 	S.done = true;
 	return S;
 }
@@ -158,13 +161,37 @@ describe('recordingContext — the attendees, made distinct (design section 10 s
 		assert.deepEqual([alone.count, alone.certain], [1, true], 'no attendees_contacts: nothing to double-count');
 	});
 
-	test('line 10 no linked meeting gives `meeting: null`, no count, and the workspace\'s users as candidates', async () => {
+	test('line 03 a user is EVERY contact it joins: a second contact record matching its email is not a second person', () => {
+		// Dana's user points at her older contact (another address) by `contact`; the calendar filed the
+		// meeting's attendee as a second contact whose email is the user's own email. Both rules join her.
+		const users = [{ ref: 'users/dana-oren', name: 'Dana Oren', email: 'dana.o@harbor.example', contact: 'contacts/dana-oren' }];
+		const contacts = [
+			{ ref: 'contacts/dana-oren', name: 'Dana Oren', email: 'dana@harbor.example' },
+			{ ref: 'contacts/dana-o', name: 'Dana O', email: 'dana.o@harbor.example' },
+			{ ref: 'contacts/sam-diaz', name: 'Sam Diaz', email: 'sam@northwind.example' },
+		];
+		const d = distinctAttendees({ ours: ['users/dana-oren'], attendees_contacts: ['contacts/dana-o', 'contacts/sam-diaz'] }, users, contacts);
+		assert.deepEqual([d.count, d.certain], [2, true]);
+		assert.deepEqual(d.candidates.map((c) => [c.person, c.kind]), [['users/dana-oren', 'user'], ['contacts/sam-diaz', 'contact']], 'Dana is one choice, not two');
+		assert.equal(d.candidates[0].contact, 'contacts/dana-o', 'the joined contact the meeting lists travels with the user');
+		// both of her contact records in the meeting: still two people
+		const both = distinctAttendees({ ours: ['users/dana-oren'], attendees_contacts: ['contacts/dana-oren', 'contacts/dana-o', 'contacts/sam-diaz'] }, users, contacts);
+		assert.deepEqual([both.count, both.certain], [2, true]);
+		assert.deepEqual(both.candidates.map((c) => c.person), ['users/dana-oren', 'contacts/sam-diaz']);
+	});
+
+	test('line 10 no linked meeting gives `meeting: null`, no count, and the workspace\'s users and contacts as candidates', async () => {
 		seed();
 		const ctx = await recordingContext(root, S.rec5);
 		assert.equal(ctx.meeting, null);
 		assert.equal(ctx.attendee_count, null);
 		assert.equal(ctx.attendee_count_certain, false);
-		assert.deepEqual(people(ctx), [['users/dana-oren', 'user'], ['users/priya-raman', 'user'], ['users/tom-w', 'user']], 'humans only: an agent row is no voice');
+		// humans only (an agent row is no voice); a contact joined to a user (Dana's by `contact`, Priya's by a
+		// handle) is that user, one candidate; the rest are contacts, which naming proposes and never writes
+		assert.deepEqual(people(ctx), [['contacts/sam-diaz', 'contact'], ['contacts/tom-whitfield', 'contact'],
+			['users/dana-oren', 'user'], ['users/priya-raman', 'user'], ['users/tom-w', 'user']]);
+		assert.equal(ctx.candidates.find((c) => c.person === 'users/dana-oren').contact, 'contacts/dana-oren');
+		assert.equal(ctx.candidates.find((c) => c.person === 'contacts/sam-diaz').name, 'Sam Diaz');
 		assert.deepEqual(ctx.workspace_users.map((u) => u.person), ['users/dana-oren', 'users/priya-raman', 'users/tom-w']);
 	});
 
@@ -196,9 +223,16 @@ describe('recordingContext — the rest of one record\'s context', () => {
 	test('documents: the summaries, analyses and tasks whose `source` names the recording or its meeting', async () => {
 		seed();
 		const ctx = await recordingContext(root, S.rec1);
+		// the summary names the meeting by `meeting` AND the recording by `source`: listed once
 		assert.deepEqual(ctx.documents.map((d) => [d.ref, d.kind]).sort(), [[S.analysis, 'analysis'], [S.summary, 'summary'], [S.task, 'task']].sort());
 		assert.ok(ctx.documents.every((d) => typeof d.created === 'string' && d.created.length > 9), JSON.stringify(ctx.documents));
 		assert.deepEqual((await recordingContext(root, S.rec4)).documents, []);
+	});
+
+	test('documents: a summary whose `meeting` and an analysis whose `meetings` name the recording\'s meeting', async () => {
+		seed();
+		const ctx = await recordingContext(root, S.rec2);
+		assert.deepEqual(ctx.documents.map((d) => [d.ref, d.kind]).sort(), [[S.analysis2, 'analysis'], [S.otherTask, 'task'], [S.summary2, 'summary']].sort());
 	});
 });
 
@@ -337,6 +371,35 @@ describe('transcribe.mjs hands the child its context', () => {
 		assert.equal(r.status, 2);
 		assert.equal(argv, null, 'nothing was spawned');
 		for (const v of ['sync', 'setup', 'verify', 'run', 'identify', 'prints', 'label', 'evaluate-speakers']) assert.match(r.stderr, new RegExp(`\\b${v}\\b`));
+	});
+
+	test('an interrupted child (SIGINT or SIGTERM to the entry) still leaves no context file behind', async () => {
+		seed();
+		// a stand-in uv that notes where its context is, then becomes a long sleep — the child still running
+		const slow = tmp('dtm-vc-slow-');
+		fs.writeFileSync(path.join(slow, 'uv'), [
+			'#!/bin/sh',
+			'prev=""; for a in "$@"; do if [ "$prev" = "--context" ]; then printf "%s" "$a" > "$CAPTURE/context_path.tmp"; mv "$CAPTURE/context_path.tmp" "$CAPTURE/context_path"; fi; prev="$a"; done',
+			'exec sleep 60', ''].join('\n'), { mode: 0o755 });
+		for (const [sig, code] of [['SIGINT', 130], ['SIGTERM', 143]]) {
+			const capture = tmp('dtm-vc-cap-');
+			const env = { ...process.env, PATH: `${slow}${path.delimiter}${process.env.PATH}`, CAPTURE: capture, TRANSCRIPTION_HOME: tmp('dtm-vc-th-') };
+			delete env.VOICE_PRINTS_HOME;
+			const child = spawn(process.execPath, [ENTRY, 'identify', S.rec1], { cwd: root, env, stdio: 'ignore' });
+			const exited = new Promise((res) => child.on('exit', (c, s) => res([c, s])));
+			const at = path.join(capture, 'context_path');
+			for (let i = 0; i < 600 && !fs.existsSync(at); i++) await new Promise((res) => setTimeout(res, 100));
+			assert.ok(fs.existsSync(at), `${sig}: the child never started`);
+			const contextPath = fs.readFileSync(at, 'utf8');
+			assert.ok(fs.existsSync(contextPath), `${sig}: the context exists while the child runs`);
+			const t0 = Date.now();
+			child.kill(sig);
+			const [status, signal] = await exited;
+			assert.deepEqual([status, signal], [code, null], `${sig}: the entry exits 128 + the signal's number`);
+			assert.ok(Date.now() - t0 < 30_000, `${sig}: the entry waited for the child's sleep instead of stopping it`);
+			assert.ok(!fs.existsSync(contextPath), `${sig}: the context file outlived the interrupted child`);
+			assert.ok(!fs.existsSync(path.dirname(contextPath)), `${sig}: the context's temp folder outlived the interrupted child`);
+		}
 	});
 
 	test('a record the workspace does not hold is refused before the child starts', () => {

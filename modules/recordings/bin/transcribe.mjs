@@ -7,7 +7,8 @@
 // The verbs that read or name voices also get the recording's CONTEXT (lib/voice-context.mjs): what the
 // engine knows that the Python does not read for itself — the meeting, its distinct attendees, the
 // workspace's people, the documents written from the transcript, the folders the voice-print store may not
-// live in. It is written to a temp file, passed as `--context <file>`, and removed when the child exits. A
+// live in. It is written to a temp file, passed as `--context <file>`, and removed when the child exits —
+// also when the entry is interrupted (SIGINT, SIGTERM, SIGHUP: passed to the child, then exit 128+n). A
 // record argument (a reference, a bare id or a path) reaches the child as the path of the record's file.
 //
 //   node <this> sync                                uv sync (the venv)
@@ -22,7 +23,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { findWorkspace } from '../lib/workspace-root.mjs';
 
@@ -122,12 +123,38 @@ async function withContext(verbName, args) {
 	}
 	const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dt-voice-context-'));
 	const file = path.join(dir, 'context.json');
+	const remove = () => fs.rmSync(dir, { recursive: true, force: true });
+	process.on('exit', remove);   // whatever ends this process, the context goes with it
 	try {
 		fs.writeFileSync(file, JSON.stringify(planned.context ?? {}, null, 2), { mode: 0o600 });
-		return py([verbName, ...planned.args, '--context', file]);
+		return await interruptible(['run', 'python', 'transcribe_meeting.py', verbName, ...planned.args, '--context', file]);
 	} finally {
-		fs.rmSync(dir, { recursive: true, force: true });
+		remove();
 	}
+}
+
+/** uv as a child the entry outlives: SIGINT, SIGTERM or SIGHUP to the entry is passed to the child (a
+ *  terminal's Ctrl-C reaches it anyway), the entry waits for it to exit and then exits 128 + the signal's
+ *  number — so the `finally` above runs and no context file is left in the temp folder. A second signal
+ *  stops waiting. */
+function interruptible(args) {
+	const SIGNALS = { SIGHUP: 1, SIGINT: 2, SIGTERM: 15 };
+	return new Promise((resolve) => {
+		const child = spawn('uv', args, { cwd: skill, env, stdio: 'inherit' });
+		let caught = null;
+		const on = (sig) => {
+			if (caught) { process.exit(128 + SIGNALS[caught]); }   // the 'exit' listener removes the context
+			caught = sig;
+			try { child.kill(sig); } catch { /* already gone */ }
+		};
+		const handlers = Object.keys(SIGNALS).map((sig) => { const h = () => on(sig); process.on(sig, h); return [sig, h]; });
+		const done = (status) => { for (const [sig, h] of handlers) process.off(sig, h); resolve({ status }); };
+		child.on('error', (e) => { console.error(`✖ uv: ${e.message}`); done(1); });
+		child.on('exit', (code, signal) => {
+			if (caught) done(128 + SIGNALS[caught]);
+			else done(code ?? (signal ? 128 + (os.constants.signals[signal] ?? 0) : 1));
+		});
+	});
 }
 
 let r;
