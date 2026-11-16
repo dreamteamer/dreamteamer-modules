@@ -16,11 +16,16 @@ import time
 import urllib.request
 
 from render import align_words_to_speakers, render_transcript_body, fmt_ts
-from meeting_io import read_meeting, write_meeting, count_attendees, asr_cache_path_for, replace_transcript_section
+from meeting_io import (read_meeting, write_meeting, count_attendees, asr_cache_path_for, replace_transcript_section,
+                        read_asr_cache, asr_cache_matches)
 from text_source import parse_labeled, log as log_text_source
 import engines
 import locations
+from voiceprints import carry as vp_carry
 from voiceprints import models as vp_models
+from voiceprints import segments as vp_segments
+from voiceprints import signatures as vp_signatures
+from voiceprints import store as vp_store
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 # Everything under $TRANSCRIPTION_HOME/models (locations.py).
@@ -219,9 +224,13 @@ def diarize_safe(wav, num_speakers=None):
     we still have a transcript, just an undiarized one. Two layers:
       · num_speakers == 1 → skip sherpa entirely. Correct for a solo recording AND crash-free.
       · otherwise → diarize in a child; on any abnormal exit fall back to one speaker.
+
+    Returns `(segments, fallback)`: `fallback` is why diarisation fell back to one speaker
+    (`"diariser exited -10; one speaker"`), None when it did not — a declared single speaker is not a
+    fallback. `run` records it as `transcription.diarization_fallback` (design section 7, seam 1).
     """
     if num_speakers == 1:
-        return []  # one speaker for the whole file; align_words_to_speakers handles the empty case
+        return [], None  # one speaker for the whole file; align_words_to_speakers handles the empty case
 
     import subprocess as _sp
     proc = _sp.run(
@@ -231,9 +240,14 @@ def diarize_safe(wav, num_speakers=None):
     )
     if proc.returncode == 0:
         try:
-            return json.loads(proc.stdout)
-        except json.JSONDecodeError:
+            segments = json.loads(proc.stdout)
+            if isinstance(segments, list):
+                return segments, None
+        except (json.JSONDecodeError, UnicodeDecodeError):
             pass
+        reason = "diariser output unreadable; one speaker"
+    else:
+        reason = f"diariser exited {proc.returncode}; one speaker"
     # -10 is SIGBUS on macOS, -7 on Linux; any abnormal exit gets the same treatment.
     print(
         f"  diarization failed (exit {proc.returncode}) — falling back to a single speaker.\n"
@@ -242,8 +256,10 @@ def diarize_safe(wav, num_speakers=None):
         file=sys.stderr,
     )
     if proc.stderr:
-        print("    " + proc.stderr.decode("utf-8", "replace").strip().splitlines()[-1], file=sys.stderr)
-    return []
+        lines = proc.stderr.decode("utf-8", "replace").strip().splitlines()
+        if lines:
+            print("    " + lines[-1], file=sys.stderr)
+    return [], reason
 
 
 def diarize(wav, num_speakers=None):
@@ -321,7 +337,99 @@ def transcribe(wav, language=None, engine="cpu"):
     }
 
 
-def run(meeting_md, audio, generated, num_speakers=None, language=None, engine="auto"):
+# ── voice signatures (design section 7, seams 3 and 4) ──────────────────────────────────────────────
+# `run` keeps a signature of every diarisation in the user's voice-print store and never lets that
+# stop a transcript: no context, a refused or unwritable store, or a missing speaker model each leave
+# the transcript written and the summary saying `signatures: not kept — <reason>` (ruling D16).
+
+ONE_SPEAKER_DECLARED = "skipped — one speaker declared"
+NO_CONTEXT = ("no voice context — run it through the module's entry (`transcribe.mjs run <record>`) so the "
+              "record's workspace and the store's guard are known")
+
+
+class SpeakerModelMissing(Exception):
+    """The active speaker model is not on disk: signatures are not kept, the transcript is."""
+
+
+def load_embedder(model_id):
+    """The window embedder for `model_id` (the active model — `models.active_model`), pinned by sha256.
+    Imports numpy and sherpa-onnx, so it is only called where audio is embedded; tests replace it."""
+    if not vp_models.ready(model_id, MODELS_DIR):
+        raise SpeakerModelMissing(f"speaker model {model_id} missing; run setup")
+    from voiceprints import embed
+    return embed.Embedder(model_id, MODELS_DIR)
+
+
+def read_samples(wav):
+    """(samples, sample rate) of the decoded WAV, for the embedder. Tests replace it."""
+    from voiceprints import embed
+    return embed.read_audio(wav)
+
+
+def open_store(context):
+    """The user's voice-print store (VOICE_PRINTS_HOME, else the platform default), guarded by the
+    context's workspace, files and inbox folders: a refused location raises StoreRefused before anything
+    is made."""
+    return vp_store.Store(vp_store.default_home(), guard=context.get("guard") or {})
+
+
+def audio_key(context, audio):
+    """The store's key for the recording: the record's `fingerprint` (`sha256:<hex>`, or the bare hex),
+    else the sha256 of the audio file (design section 8)."""
+    fp = (context or {}).get("fingerprint")
+    if isinstance(fp, str):
+        h = fp.strip().lower()
+        h = h[len("sha256:"):] if h.startswith("sha256:") else h
+        if len(h) == 64 and all(c in "0123456789abcdef" for c in h):
+            return h
+    return vp_models.file_sha256(audio)
+
+
+def _not_kept(e):
+    if isinstance(e, (vp_store.StoreRefused, vp_store.ModelMismatch, SpeakerModelMissing,
+                      vp_models.ModelRefused, vp_models.CalibrationAmbiguous)):
+        return str(e)
+    if isinstance(e, OSError):
+        return f"the voice-print store could not be written ({e})"
+    return f"{type(e).__name__}: {e}"
+
+
+def _diarized(result):
+    """`diarize_safe`'s `(segments, fallback)`; a bare segment list (a stand-in written before 0.6.0
+    returns one) is `(list, None)`."""
+    if isinstance(result, tuple) and len(result) == 2:
+        return list(result[0] or []), result[1]
+    return list(result or []), None
+
+
+def signature_step(context, wav, segments, words, previous, *, audio_sha256, diarization_id, speakers_hint,
+                   fallback):
+    """While the decoded WAV still exists: open the store, leave out the labels carrying a forgotten
+    person's earlier name (seam 5), embed every other label with the active model. Returns
+    `(signature, store, None)`, or `(None, None, reason)` when signatures will not be kept."""
+    if not context:
+        return None, None, NO_CONTEXT
+    if not context.get("workspace") or not context.get("record"):
+        return None, None, "the voice context names no workspace or no record"
+    try:
+        store = open_store(context)
+        store.ensure()
+        removed = vp_carry.forgotten_new_labels(previous, store.forgotten(), context["workspace"])
+        embedder = load_embedder(vp_models.active_model(HERE))
+        samples, sr = read_samples(wav)
+        sig = vp_signatures.compute(embedder, samples, sr, segments, words, audio_sha256=audio_sha256,
+                                    diarization_id=diarization_id, speakers_hint=speakers_hint,
+                                    fallback=fallback, removed=removed)
+        return sig, store, None
+    except Exception as e:  # never stops the transcript
+        return None, None, _not_kept(e)
+
+
+def run(meeting_md, audio, generated, num_speakers=None, language=None, engine="auto", context=None):
+    """Transcribe one recording into its record. Writes no name: `transcription.speakers` is `{}`, earlier
+    names move to `previous_speakers` (seam 5), and the top-level `speaker_naming` is cleared. `context`
+    is the node entry's one-record voice context (lib/voice-context.mjs); without it the transcript is
+    written and signatures are not kept."""
     try:
         engine, fallback = choose_engine(engine)
     except engines.EngineUnavailable as e:
@@ -336,29 +444,46 @@ def run(meeting_md, audio, generated, num_speakers=None, language=None, engine="
         raise SystemExit("✖ models missing — run `uv run python transcribe_meeting.py setup` first:\n    "
                          + "\n    ".join(missing))
     warn_if_venv_in_skill()
-    # The decoded WAV is a full copy of the call. Its folder goes when the decode, diarization and
-    # recognition are done — on success and on any failure alike, ^C included.
+    old_t = fm.get("transcription") if isinstance(fm.get("transcription"), dict) else {}
+    record_ref = (context or {}).get("record")
+    # The old cache is read before this run replaces it, and trusted only when it is this record's, this
+    # audio's and the old diarisation's.
+    asr_json = asr_cache_path_for(meeting_md)
+    old_cache = read_asr_cache(asr_json)
+    # The decoded WAV is a full copy of the call. Its folder goes when the decode, diarization,
+    # recognition and embedding are done — on success and on any failure alike, ^C included.
     tmp = tempfile.mkdtemp(prefix="transcribe-")
     try:
         wav = os.path.join(tmp, "audio.wav")
         decode_audio(audio, wav)
-        segments = diarize_safe(wav, num_speakers=num_speakers)
+        audio_sha = audio_key(context, audio)
+        segments, diar_fallback = _diarized(diarize_safe(wav, num_speakers=num_speakers))
         t0 = time.monotonic()
         asr = transcribe(wav, language=language, engine=engine)
         asr_seconds = round(time.monotonic() - t0, 1)
+        diar_id = vp_segments.diarization_id(segments)
+        cache = old_cache if asr_cache_matches(old_cache, record_ref, audio_sha, old_t.get("diarization_id")) else None
+        previous = vp_carry.previous(fm, body, cache, segments, asr["duration"])
+        sig, store, not_kept = signature_step(
+            context, wav, segments, asr["words"], previous, audio_sha256=audio_sha, diarization_id=diar_id,
+            speakers_hint=num_speakers or None, fallback=diar_fallback)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     turns = align_words_to_speakers(asr["words"], segments)
 
-    asr_json = asr_cache_path_for(meeting_md)
     with open(asr_json, "w", encoding="utf-8") as f:
-        json.dump({"asr": asr, "segments": segments}, f, ensure_ascii=False)
+        json.dump({"asr": asr, "segments": segments, "diarization_id": diar_id, "audio_sha256": audio_sha,
+                   "record": record_ref}, f, ensure_ascii=False)
 
+    fm.pop("speaker_naming", None)   # written only by identify; a new transcript has no names to judge
     fm["transcription"] = {
         "generated": generated,
         "engine": engines.LABELS[engine],
         **({"engine_fallback": fallback} if fallback else {}),
-        "diarization": DIARIZATION,
+        "diarization": ONE_SPEAKER_DECLARED if num_speakers == 1 else DIARIZATION,
+        **({"diarization_fallback": diar_fallback} if diar_fallback else {}),
+        **({"speakers_hint": num_speakers} if num_speakers else {}),
+        "diarization_id": diar_id,
         "language": asr["language"],
         # Whether the language was forced or detected — a detected one on a code-switched
         # call is what produces a transliterated transcript.
@@ -366,15 +491,41 @@ def run(meeting_md, audio, generated, num_speakers=None, language=None, engine="
         "duration": fmt_ts(asr["duration"]),
         "speaker_count": len({t["speaker"] for t in turns}),
         "speakers": {},
+        **({"previous_speakers": previous} if previous else {}),
     }
     body = replace_transcript_section(body, render_transcript_body(turns, timestamps=True))
     write_meeting(meeting_md, fm, body)
+
+    # The transcript is on the record; only now is the signature written, so a store that fails here
+    # (full, unwritable, swapped for a link into a synced folder) costs the signature and nothing else.
+    if sig is not None:
+        try:
+            store.write_signature(sig["model"]["id"], sig, record={"workspace": context["workspace"],
+                                                                  "record": record_ref})
+        except Exception as e:  # never stops the transcript
+            not_kept = _not_kept(e)
+    if not_kept:
+        signatures = f"not kept — {not_kept}"
+        print(f"  signatures: {signatures}", file=sys.stderr)
+    else:
+        signatures = f"kept — {sig['model']['id']}, {len(sig['labels'])} labels, diarisation {diar_id}"
+    for notice in (store.notices if store is not None else []):
+        print(f"  ⚠ {notice}", file=sys.stderr)
+    if previous and previous.get("note"):
+        print(f"  previous speakers: {previous['note']}", file=sys.stderr)
 
     summary = {
         "language": asr["language"],
         "duration": fmt_ts(asr["duration"]),
         "speaker_count": fm["transcription"]["speaker_count"],
         "speakers_hint": num_speakers,
+        "diarization_id": diar_id,
+        "diarization_fallback": diar_fallback,
+        "signatures": signatures,
+        "previous_speakers": (
+            {"labels": len(previous["labels"]),
+             "offered": sum(1 for e in previous["labels"].values() if e.get("offered")),
+             **({"note": previous["note"]} if previous.get("note") else {})} if previous else None),
         "engine": engine,
         "engine_fallback": fallback,
         "asr_seconds": asr_seconds,
@@ -383,6 +534,57 @@ def run(meeting_md, audio, generated, num_speakers=None, language=None, engine="
     }
     print(json.dumps(summary, ensure_ascii=False))
     return summary
+
+
+RUN_USAGE = ("run <meeting.md> <audio> [--date YYYY-MM-DD] [--speakers N] [--language en|he]"
+             " [--engine auto|metal|cpu] [--context <file.json>]")
+
+
+def context_from_args(args):
+    """`--context <file.json>` (the node entry writes it, lib/voice-context.mjs) → `(context, warning)`.
+    No flag is `(None, None)`; an unreadable file is `(None, why)`, and run transcribes without it. A
+    several-records context gives the entry whose `record_path` is this run's record."""
+    if "--context" not in args:
+        return None, None
+    i = args.index("--context")
+    if i + 1 >= len(args):
+        return None, "--context needs a file"
+    path = args[i + 1]
+    try:
+        with open(path, encoding="utf-8") as f:
+            ctx = json.load(f)
+    except (OSError, ValueError) as e:
+        return None, f"the voice context {path} cannot be read ({e})"
+    if not isinstance(ctx, dict):
+        return None, f"the voice context {path} is not an object"
+    if isinstance(ctx.get("records"), list):
+        record = os.path.abspath(args[1]) if len(args) > 1 else None
+        for c in ctx["records"]:
+            if isinstance(c, dict) and c.get("record_path") and os.path.abspath(c["record_path"]) == record:
+                return c, None
+        return None, f"the voice context {path} has no entry for {args[1] if len(args) > 1 else 'this record'}"
+    return ctx, None
+
+
+def main_run(args):
+    """`run <meeting.md> <audio> [flags…]` from the command line."""
+    date = datetime.date.today().isoformat()
+    if "--date" in args:
+        date = args[args.index("--date") + 1]
+    spk = None
+    if "--speakers" in args:
+        spk = int(args[args.index("--speakers") + 1])
+    lang = None
+    if "--language" in args:
+        lang = args[args.index("--language") + 1]
+    try:
+        eng = engines.parse_engine_arg(args)
+    except ValueError as e:
+        sys.exit(f"✖ {e}")
+    context, warning = context_from_args(args)
+    if warning:
+        print(f"  ⚠ {warning} — transcribing without it; signatures will not be kept", file=sys.stderr)
+    return run(args[1], args[2], date, num_speakers=spk, language=lang, engine=eng, context=context)
 
 
 if __name__ == "__main__":
@@ -401,20 +603,7 @@ if __name__ == "__main__":
         n = int(args[2]) or None
         print(json.dumps(diarize(args[1], num_speakers=n), ensure_ascii=False))
     elif len(args) >= 3 and args[0] == "run":
-        date = datetime.date.today().isoformat()
-        if "--date" in args:
-            date = args[args.index("--date") + 1]
-        spk = None
-        if "--speakers" in args:
-            spk = int(args[args.index("--speakers") + 1])
-        lang = None
-        if "--language" in args:
-            lang = args[args.index("--language") + 1]
-        try:
-            eng = engines.parse_engine_arg(args)
-        except ValueError as e:
-            sys.exit(f"✖ {e}")
-        run(args[1], args[2], date, num_speakers=spk, language=lang, engine=eng)
+        main_run(args)
     elif len(args) >= 3 and args[0] == "log":
         date = datetime.date.today().isoformat()
         if "--date" in args:
@@ -428,8 +617,7 @@ if __name__ == "__main__":
     else:
         sys.exit(
             "usage: transcribe_meeting.py setup [--speaker-models all|<id>[,<id>…]]"
-            " | run <meeting.md> <audio> [--date YYYY-MM-DD] [--speakers N] [--language en|he]"
-            " [--engine auto|metal|cpu]"
+            " | " + RUN_USAGE +
             " | log <meeting.md> <turns.json> [--date YYYY-MM-DD]"
             " | parse-labeled <text-file>"
         )
