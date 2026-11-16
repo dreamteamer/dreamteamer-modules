@@ -149,6 +149,12 @@
 	--dt-menu-radius: var(--dt-radius);
 	--dt-menu-border: var(--dt-border);
 	--dt-z-menu: 1000;
+
+	/* The browser shell's nav (cr-modules-022 follow-up): its width at first load, and the bounds a drag or the arrow
+	   keys keep it inside (lib/nav-width.ts reads all three). Shell-only: the editor draws no nav of ours. */
+	--dt-nav-width: 260px;
+	--dt-nav-width-min: 180px;
+	--dt-nav-width-max: 480px;
 }
 
 @media (prefers-reduced-motion: reduce) {

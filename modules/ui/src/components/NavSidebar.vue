@@ -30,6 +30,7 @@ import NavMenu, { type NavMenuItem } from './NavMenu.vue';
 import DtIcon from './DtIcon.vue';
 import { menuUnder, rectOf, viewportWidth } from '../lib/menu-place';
 import { openMenu } from '../lib/open-menu';
+import { dragWidth, keyWidth, loadNavWidth, navWidthBounds, saveNavWidth } from '../lib/nav-width';
 
 interface NavNode { kind: string; key: string; label: string; icon?: string; description?: string; tooltip?: string; route?: string; marks?: string; target?: NavTarget; notice?: string; children?: NavNode[] }
 
@@ -351,14 +352,71 @@ function onPick(p: { id: string; value?: string | null }) {
 	void send(op);
 }
 
+// ---- the nav's width (browser host; the editor never draws this nav) ------------------------------------------------
+// A drag on the edge, the arrow keys on it (Home/End: the bounds) or a double-click (the default). Kept per browser by
+// lib/nav-width.ts; with nothing kept the token's default governs, so the stylesheet alone draws a fresh nav.
+const navEl = ref<HTMLElement | null>(null);
+const bounds = ref(navWidthBounds());
+/** The width a person chose, or null: the token's default. */
+const chosen = ref<number | null>(loadNavWidth(bounds.value));
+const navWidth = computed(() => chosen.value ?? bounds.value.def);
+/** A drag in progress: no transition runs while the edge follows the pointer. */
+const resizing = ref(false);
+const navStyle = computed(() => (chosen.value == null ? undefined : { '--dt-nav-w': `${chosen.value}px` }));
+let drag: { x: number; w: number } | null = null;
+
+function navDir(): 'ltr' | 'rtl' {
+	try { return navEl.value && typeof getComputedStyle === 'function' && getComputedStyle(navEl.value).direction === 'rtl' ? 'rtl' : 'ltr'; } catch { return 'ltr'; }
+}
+function setWidth(w: number) {
+	chosen.value = w;
+	saveNavWidth(w);
+}
+function onResizeKey(e: KeyboardEvent) {
+	const next = keyWidth(navWidth.value, e.key, bounds.value, { shift: e.shiftKey, dir: navDir() });
+	if (next == null) return;
+	e.preventDefault();
+	setWidth(next);
+}
+function onResizeDown(e: PointerEvent) {
+	if (e.button !== 0) return;
+	e.preventDefault();
+	drag = { x: e.clientX, w: navWidth.value };
+	resizing.value = true;
+	try { (e.currentTarget as Element | null)?.setPointerCapture?.(e.pointerId); } catch { /* no capture: moves still arrive while over the edge */ }
+}
+function onResizeMove(e: PointerEvent) {
+	if (!drag) return;
+	chosen.value = dragWidth(drag.w, drag.x, e.clientX, bounds.value, navDir());
+}
+function onResizeEnd() {
+	if (!drag) return;
+	drag = null;
+	resizing.value = false;
+	if (chosen.value != null) saveNavWidth(chosen.value);
+}
+function resetWidth() {
+	drag = null;
+	resizing.value = false;
+	chosen.value = null;
+	saveNavWidth(null);
+}
+
 const onMessage = (e: MessageEvent) => { if (e.data?.type === 'dt:invalidate') void load(); };
 const onAway = () => { menuAt.value = null; };
-onMounted(() => { void load(); window.addEventListener('message', onMessage); window.addEventListener('click', onAway); });
+onMounted(() => {
+	void load();
+	window.addEventListener('message', onMessage);
+	window.addEventListener('click', onAway);
+	// the stylesheet is in by now: read the bounds it declares, and keep a kept width inside them
+	bounds.value = navWidthBounds();
+	if (chosen.value != null) chosen.value = loadNavWidth(bounds.value);
+});
 onUnmounted(() => { window.removeEventListener('message', onMessage); window.removeEventListener('click', onAway); });
 </script>
 
 <template>
-	<nav class="dt-nav" :class="{ 'dt-nav--arranging': arranging }" aria-label="Workspace" @dragend="hint = null; dragging = null">
+	<nav ref="navEl" class="dt-nav" :class="{ 'dt-nav--arranging': arranging, 'dt-nav--resizing': resizing }" :style="navStyle" aria-label="Workspace" @dragend="hint = null; dragging = null">
 		<div class="dt-nav-toolbar" :class="{ 'dt-nav-toolbar--scrolled': scrolled }" role="toolbar" aria-label="Nav">
 			<div class="dt-nav-toolbar__name">
 				<slot name="name" :label="workspace?.label ?? ''">
@@ -407,6 +465,24 @@ onUnmounted(() => { window.removeEventListener('message', onMessage); window.rem
 			<div v-if="arranging" class="dt-nav-tail" :class="{ 'dt-nav-drop-tail': hint?.key === TAIL }" data-key="::tail" @dragover="onTailOver" @drop="onTailDrop"></div>
 			<div v-else class="dt-nav-tail" data-key="::tail"></div>
 		</div>
+		<div
+			class="dt-nav-resize"
+			role="separator"
+			aria-orientation="vertical"
+			aria-label="Nav width"
+			:aria-valuenow="navWidth"
+			:aria-valuemin="bounds.min"
+			:aria-valuemax="bounds.max"
+			tabindex="0"
+			title="Drag to resize the nav — double-click to reset"
+			@pointerdown="onResizeDown"
+			@pointermove="onResizeMove"
+			@pointerup="onResizeEnd"
+			@pointercancel="onResizeEnd"
+			@lostpointercapture="onResizeEnd"
+			@keydown="onResizeKey"
+			@dblclick="resetWidth"
+		></div>
 		<NavMenu v-if="menuAt && menu" :key="`${menuAt.key}:${menuAt.start ?? ''}`" :x="menuAt.x" :y="menuAt.y" :items="menu.items" :start="menuAt.start" @pick="onPick" @close="menuAt = null" />
 	</nav>
 </template>
@@ -414,9 +490,18 @@ onUnmounted(() => { window.removeEventListener('message', onMessage); window.rem
 <style scoped>
 /* The nav is a column: the toolbar never scrolls, the rows scroll beneath it. */
 /* On the canvas (cr-modules-022): no ground of its own and no line — the sheet beside it carries the edge. */
-.dt-nav { width: 260px; flex: none; display: flex; flex-direction: column; min-height: 0; overflow: hidden; background: transparent; font-size: var(--dt-text); cursor: default; }
+.dt-nav { position: relative; width: var(--dt-nav-w, var(--dt-nav-width)); flex: none; display: flex; flex-direction: column; min-height: 0; overflow: hidden; background: transparent; font-size: var(--dt-text); cursor: default; }
 /* a narrow pane (a desktop side pane can be 320 px): the nav gives up most of its width, so the page keeps a usable column */
-@media (max-width: 560px) { .dt-nav { width: clamp(96px, 32vw, 260px); } }
+@media (max-width: 560px) { .dt-nav { width: clamp(96px, 32vw, var(--dt-nav-w, var(--dt-nav-width))); } }
+/* THE EDGE (browser host): a 6 px strip on the nav's inline end — col-resize, a hairline on hover, the focus colour while
+   focused or dragged. Nothing animates while a drag is on: the edge follows the pointer, not a transition. */
+.dt-nav-resize { position: absolute; top: 0; bottom: 0; inset-inline-end: 0; z-index: 3; width: 6px; cursor: col-resize; touch-action: none; outline: none; }
+.dt-nav-resize::after { content: ''; position: absolute; top: 0; bottom: 0; inset-inline-end: 0; width: 2px; background: transparent; transition: background-color var(--dt-dur-fast) var(--dt-ease); }
+.dt-nav-resize:hover::after { background: var(--dt-ink-4); }
+.dt-nav-resize:focus-visible::after, .dt-nav--resizing .dt-nav-resize::after { background: var(--dt-focus-ring); }
+/* the width itself never transitions; while dragging, the rows' hover fades are off too so nothing lags the pointer */
+.dt-nav--resizing .dt-nav-resize::after, .dt-nav--resizing :deep(.dt-nav-row)::before { transition: none; }
+.dt-nav--resizing { user-select: none; cursor: col-resize; }
 /* 32 px: the page header's first row (history, path, search, refresh), so the two read as one band across the window.
    Narrow, the name gives way first (its basis is 0, its min-width 0) and the buttons, which shrink only once it is
    gone, wrap to a second line rather than being clipped. */
