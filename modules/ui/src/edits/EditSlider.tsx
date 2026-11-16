@@ -8,17 +8,20 @@ import type { EditProps } from "../registry/props.ts"
 export function EditSlider({ value, onChange, id, options }: EditProps) {
   const { min, max, step, at } = sliderScale(options, value)
   return (
-    <span className="dt-slider">
+    <span className="flex items-center gap-3">
       <input
         id={id}
         type="range"
+        className="flex-auto min-h-0 p-0 border-0 bg-transparent accent-accent"
         min={min}
         max={max}
         step={step}
         value={at}
         onChange={e => onChange(Number(e.target.value))}
       />
-      <span className="dt-slider-value">{at}</span>
+      <span className="min-w-9 py-px px-2 rounded-full text-center font-semibold text-accent bg-[color-mix(in_srgb,var(--dt-accent)_14%,transparent)]">
+        {at}
+      </span>
     </span>
   )
 }

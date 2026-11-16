@@ -3,13 +3,15 @@
  */
 import { inputText, textOrNull } from "../lib/edit-values.ts"
 import type { EditProps } from "../registry/props.ts"
+import { textarea } from "../styles/classes.ts"
 
 export function EditTextarea({ field, value, onChange, id }: EditProps) {
   return (
     <textarea
       id={id}
       rows={4}
-      className="dt-textarea"
+      className={textarea}
+      data-control="text"
       value={inputText(value)}
       placeholder={field.placeholder}
       dir={field.direction ?? "auto"}

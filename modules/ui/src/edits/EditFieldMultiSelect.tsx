@@ -8,6 +8,7 @@ import { selectableFields } from "../lib/field-context.ts"
 import { listOrNull } from "../lib/edit-values.ts"
 import { useFieldContext } from "../render/FieldContext.tsx"
 import type { EditProps } from "../registry/props.ts"
+import { hint, input, mono } from "../styles/classes.ts"
 
 export function EditFieldMultiSelect({ field, value, onChange, id }: EditProps) {
   const context = useFieldContext()
@@ -17,7 +18,8 @@ export function EditFieldMultiSelect({ field, value, onChange, id }: EditProps) 
       <input
         id={id}
         type="text"
-        className="dt-input"
+        className={input}
+        data-control="text"
         defaultValue={selected.join(", ")}
         placeholder="field names, comma separated"
         onBlur={e =>
@@ -33,15 +35,18 @@ export function EditFieldMultiSelect({ field, value, onChange, id }: EditProps) 
       />
     )
   const candidates = selectableFields(context.fields, field.editor_options)
-  if (!candidates.length) return <span className="dt-hint">no matching fields on this collection</span>
+  if (!candidates.length) return <span className={hint}>no matching fields on this collection</span>
   const toggle = (name: string) =>
     onChange(listOrNull(selected.includes(name) ? selected.filter(f => f !== name) : [...selected, name]))
   return (
-    <div className="dt-field-multi" id={id}>
+    <div
+      className="grid gap-0.5 [&_label]:flex [&_label]:items-center [&_label]:gap-1.5 [&_label]:cursor-pointer"
+      id={id}
+    >
       {candidates.map(f => (
         <label key={f.field}>
           <input type="checkbox" checked={selected.includes(f.field)} onChange={() => toggle(f.field)} />
-          <span className="dt-mono">{f.field}</span>
+          <span className={mono}>{f.field}</span>
         </label>
       ))}
     </div>

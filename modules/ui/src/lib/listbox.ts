@@ -100,7 +100,7 @@ export interface Placement {
  * Place a panel under (or over) its control.
  *
  * ⚠ `position: fixed`, and the reason matters: an absolutely positioned panel is CLIPPED by any
- * ancestor that scrolls, and this app puts dropdowns inside exactly that — `.dt-browse-filter-panel`
+ * ancestor that scrolls, and this app puts dropdowns inside exactly that — the browse's filter panel
  * is `overflow-y: auto`. Fixed elements are positioned against the viewport and escape ancestor
  * overflow without a teleport, which is what lets these panels live in their component's own DOM
  * (see FilterFieldPicker's header for why teleporting is refused here). Fixed is defeated by an

@@ -26,9 +26,9 @@ import { ddControl, dropPanel, plainList } from "./looks.ts"
 import { cx } from "../styles/classes.ts"
 
 // ---- the looks (was dt-dd-*) ---------------------------------------------------------------------------------
-/** The closed control: an input-like button. `dt-dd-control` (with its old `is-open`) stays as a marker while the
- *  record page's property rows still restyle it from ui.css, whose unlayered rules outrank these. */
-const controlCls = cx("dt-dd-control", ddControl)
+/** The closed control: an input-like button (`data-control="select"`, which a record page's property row
+ *  restyles). */
+const controlCls = ddControl
 const labelCls = "flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap"
 const hintCls = "flex-none text-small opacity-60"
 const panelCls = cx(dropPanel, "fixed z-[1000] flex flex-col gap-1.5 p-1.5 overflow-hidden")
@@ -181,7 +181,8 @@ export function Select({
         ref={control}
         id={id}
         type="button"
-        className={cx(controlCls, open ? "is-open border-focus" : "border-input-border")}
+        className={cx(controlCls, open ? "border-focus" : "border-input-border")}
+        data-control="select"
         disabled={disabled}
         aria-label={ariaLabel}
         title={selected?.title}

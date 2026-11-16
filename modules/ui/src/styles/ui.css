@@ -3003,25 +3003,6 @@
   min-height: 0;
   gap: 6px;
 }
-/* in edit mode a property's control loses its chrome until it is touched — a boxed input per row would rebuild
-   the form this layout replaces */
-.dt-prop-value .dt-input,
-.dt-prop-value .dt-textarea,
-.dt-prop-value .dt-dd-control {
-  background: transparent;
-  border-color: transparent;
-}
-.dt-prop:hover .dt-prop-value .dt-input,
-.dt-prop:hover .dt-prop-value .dt-textarea,
-.dt-prop:hover .dt-prop-value .dt-dd-control {
-  background: var(--dt-bg-subtle);
-  border-color: var(--dt-border);
-}
-.dt-prop-value .dt-input:focus,
-.dt-prop-value .dt-textarea:focus {
-  background: var(--dt-input-bg);
-  border-color: var(--dt-focus);
-}
 
 /* ---- settings: the Schema tab ------------------------------------------------------------------------------- */
 .dt-schema {

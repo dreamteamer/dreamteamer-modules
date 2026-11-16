@@ -13,6 +13,7 @@ import { hasChoices, selectableFields } from "../lib/field-context.ts"
 import { inputText, textOrNull } from "../lib/edit-values.ts"
 import { useFieldContext } from "../render/FieldContext.tsx"
 import type { EditProps } from "../registry/props.ts"
+import { input } from "../styles/classes.ts"
 
 export function EditFieldSelect({ field, value, onChange, id }: EditProps) {
   const context = useFieldContext()
@@ -22,7 +23,8 @@ export function EditFieldSelect({ field, value, onChange, id }: EditProps) {
       <input
         id={id}
         type="text"
-        className="dt-input"
+        className={input}
+        data-control="text"
         value={current}
         placeholder="field name"
         onChange={e => onChange(textOrNull(e.target.value))}

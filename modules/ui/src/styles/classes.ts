@@ -103,6 +103,8 @@ export const formRow =
 export const input = "w-full"
 /** A full-width textarea. (was dt-textarea) */
 export const textarea = "w-full"
+/** Code in a textarea: mono, two-space tabs. (was dt-code) */
+export const code = "font-mono text-[12px] [tab-size:2]"
 /** A checkbox with its label beside it. (was dt-check) */
 export const check = "flex items-start gap-2 [&_input]:mt-0.5 [&_input]:mb-0 [&_input]:mx-0"
 /** A control showing an invalid value. (was is-invalid) */
@@ -114,6 +116,9 @@ export const kv =
   "grid grid-cols-[minmax(90px,max-content)_1fr] gap-x-3.5 gap-y-1 m-0 [&>div]:contents [&_dt]:text-fg-subtle [&_dd]:m-0 [&_dd]:whitespace-pre-wrap [&_dd]:[overflow-wrap:anywhere]"
 /** A row of chips, labels or references; a table cell keeps it on one line by its `data-items`. (was dt-chips) */
 export const items = "inline-flex flex-wrap gap-1"
+/** A chip's × button. (was dt-chip-remove) */
+export const chipRemove =
+  "inline-flex p-0 -mr-1 border-0 bg-transparent text-inherit cursor-pointer opacity-70 hover:opacity-100 [&_.codicon]:text-[12px]!"
 /** A value chip; set `--chip` (and optionally `--chip-bg`) inline for its colour. (was dt-chip) */
 export const chip =
   "[--chip:var(--dt-unknown-color)] [--chip-bg:color-mix(in_srgb,var(--chip)_14%,transparent)] inline-flex items-center gap-1 px-2 py-px rounded-full text-small text-(--chip) bg-(--chip-bg) border border-[color-mix(in_srgb,var(--chip)_35%,transparent)] whitespace-nowrap"

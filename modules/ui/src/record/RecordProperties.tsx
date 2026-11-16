@@ -36,6 +36,13 @@ import { RenderEdit, RenderView } from "../render/Render.tsx"
 import { RelationField } from "./RelationField.tsx"
 import { StageMap } from "./StageMap.tsx"
 import { useSections } from "./use-sections.ts"
+import { cx } from "../styles/classes.ts"
+
+/** In edit mode a property's control loses its chrome until it is touched — a boxed input per row would rebuild
+ *  the form this layout replaces. Hovering the row shows the box (that rule sits on the row, and outranks focus);
+ *  a focused text control shows the input's own. The controls carry `data-control` (edits/*, Select). */
+const CONTROL_CHROME =
+  "[&_[data-control]]:bg-transparent [&_[data-control]]:border-transparent [&_[data-control=text]:focus]:bg-input-bg [&_[data-control=text]:focus]:border-focus"
 
 export function RecordProperties(props: RecordLayoutProps) {
   const { collection, fields, record, edits, setField, readonly, create, options } = props
@@ -114,7 +121,10 @@ export function RecordProperties(props: RecordLayoutProps) {
     return (
       <div
         key={f.field}
-        className={`dt-prop${plan ? " is-stacked" : ""}${w !== null ? " is-computed" : ""}`}
+        className={cx(
+          `dt-prop${plan ? " is-stacked" : ""}${w !== null ? " is-computed" : ""}`,
+          "[&:hover_[data-prop-value]_[data-control]]:bg-bg-subtle [&:hover_[data-prop-value]_[data-control]]:border-border"
+        )}
         data-field={f.field}
       >
         <HoverCard lines={hoverLines(f)} className={`dt-prop-key${f.description ? " is-documented" : ""}`}>
@@ -137,7 +147,8 @@ export function RecordProperties(props: RecordLayoutProps) {
           </HoverCard>
         ) : (
           <div
-            className={`dt-prop-value${w !== null && !plan ? " dt-computed" : ""}`}
+            className={cx(`dt-prop-value${w !== null && !plan ? " dt-computed" : ""}`, CONTROL_CHROME)}
+            data-prop-value
             title={plan ? undefined : (w ?? undefined)}
             dir={f.direction}
           >

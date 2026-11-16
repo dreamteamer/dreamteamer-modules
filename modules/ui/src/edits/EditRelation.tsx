@@ -24,6 +24,10 @@ import { recordLabel } from "../lib/schema.ts"
 import type { EditProps } from "../registry/props.ts"
 import { EditInput } from "./EditInput.tsx"
 import { EditTags } from "./EditTags.tsx"
+import { dropPanel, plainList } from "../components/looks.ts"
+import { chip, chipRemove, cx, hint, iconButton } from "../styles/classes.ts"
+
+const emptyCls = "py-1.5 px-2 text-fg-subtle"
 
 const PAGE = 50
 const DEBOUNCE_MS = 200
@@ -113,27 +117,32 @@ export function EditRelation(props: EditProps) {
   }
 
   return (
-    <div ref={root} className="dt-relation" onKeyDown={onKeyDown}>
-      <div className={`dt-relation-control${open ? " is-open" : ""}`}>
+    <div ref={root} className="relative min-w-0" onKeyDown={onKeyDown}>
+      <div
+        className={cx(
+          "flex items-center gap-1.5 min-h-[30px] py-0.5 pr-1 pl-0 bg-input-bg border rounded-dt",
+          open ? "border-focus" : "border-input-border focus-within:border-focus"
+        )}
+      >
         <button
           id={id}
           type="button"
-          className="dt-relation-open"
+          className="flex-auto min-w-10 self-stretch py-0 pr-0 pl-2 border-0 bg-transparent text-fg text-left cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap"
           aria-haspopup="listbox"
           aria-expanded={open}
           onClick={() => setOpen(o => !o)}
         >
-          {!selected.length && <span className="dt-relation-placeholder">Select…</span>}
-          {!list && selected[0] && <span className="dt-relation-text">{labelOf(selected[0])}</span>}
+          {!selected.length && <span className="text-fg-subtle">Select…</span>}
+          {!list && selected[0] && <span>{labelOf(selected[0])}</span>}
         </button>
         {list && selected.length > 0 && (
-          <span className="dt-relation-chips">
+          <span className="flex flex-wrap gap-1 -order-1 pl-1.5">
             {selected.map(ref => (
-              <span key={ref} className="dt-chip" title={ref}>
+              <span key={ref} className={chip} title={ref}>
                 {labelOf(ref)}
                 <button
                   type="button"
-                  className="dt-chip-remove"
+                  className={chipRemove}
                   aria-label={`Remove ${labelOf(ref)}`}
                   onClick={() => onChange(toggleRef(selected, ref))}
                 >
@@ -143,26 +152,25 @@ export function EditRelation(props: EditProps) {
             ))}
           </span>
         )}
-        <span className="dt-relation-actions">
+        <span className={cx("inline-flex flex-none", list && selected.length > 0 && "ml-auto")}>
           {selected.length > 0 && (
-            <button type="button" className="dt-icon-button" aria-label="Clear" title="Clear" onClick={clear}>
+            <button type="button" className={iconButton} aria-label="Clear" title="Clear" onClick={clear}>
               <Icon name="close" />
             </button>
           )}
-          <button
-            type="button"
-            className="dt-icon-button"
-            tabIndex={-1}
-            aria-label="Open"
-            onClick={() => setOpen(o => !o)}
-          >
+          <button type="button" className={iconButton} tabIndex={-1} aria-label="Open" onClick={() => setOpen(o => !o)}>
             <Icon name="triangle-down" />
           </button>
         </span>
       </div>
 
       {open && (
-        <div className="dt-relation-popover">
+        <div
+          className={cx(
+            dropPanel,
+            "absolute top-[calc(100%+4px)] left-0 right-0 z-20 flex flex-col gap-1.5 max-h-80 p-2 [&_input]:w-full"
+          )}
+        >
           <input
             ref={search}
             type="text"
@@ -172,10 +180,10 @@ export function EditRelation(props: EditProps) {
             aria-label="Search records"
             onChange={e => setQuery(e.target.value)}
           />
-          <ul className="dt-relation-list" role="listbox" aria-multiselectable={list}>
-            {page.loading && !page.data && <li className="dt-relation-empty">Loading…</li>}
-            {page.error && <li className="dt-relation-empty is-error">{page.error}</li>}
-            {!page.loading && !page.error && !options.length && <li className="dt-relation-empty">No matches</li>}
+          <ul className={plainList} role="listbox" aria-multiselectable={list}>
+            {page.loading && !page.data && <li className={emptyCls}>Loading…</li>}
+            {page.error && <li className="py-1.5 px-2 text-danger">{page.error}</li>}
+            {!page.loading && !page.error && !options.length && <li className={emptyCls}>No matches</li>}
             {options.map((o, i) => {
               const isSel = selected.includes(bareRef(o.ref))
               return (
@@ -183,18 +191,22 @@ export function EditRelation(props: EditProps) {
                   key={o.ref}
                   role="option"
                   aria-selected={isSel}
-                  className={`dt-relation-item${isSel ? " is-selected" : ""}${i === active ? " is-active" : ""}`}
+                  className={cx(
+                    "flex items-center gap-1.5 py-1.5 px-2 rounded cursor-pointer",
+                    isSel && "font-semibold",
+                    i === active && "bg-bg-hover"
+                  )}
                   onMouseMove={() => setActive(i)}
                   onClick={() => pick(o.ref)}
                 >
-                  <Icon name={isSel ? "check" : "blank"} className="dt-relation-check" />
+                  <Icon name={isSel ? "check" : "blank"} className="flex-none text-accent" />
                   <span>{o.label}</span>
                 </li>
               )
             })}
           </ul>
           {(page.data?.total ?? 0) > options.length && (
-            <p className="dt-hint">
+            <p className={hint}>
               {options.length} of {page.data?.total} — type to narrow
             </p>
           )}

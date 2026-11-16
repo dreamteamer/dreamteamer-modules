@@ -69,7 +69,7 @@ export function OptionsForm({
             return (
               <div
                 key={`${i}:${row.field}`}
-                className="grid gap-1 [&>label]:text-fg-subtle [&_.dt-hint]:m-0"
+                className="grid gap-1 [&>label]:text-fg-subtle [&_[data-hint]]:m-0"
                 data-field={row.field}
               >
                 <label htmlFor={id} title={def ? undefined : note || undefined}>

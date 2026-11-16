@@ -11,6 +11,7 @@ import { inputText, textOrNull } from "../lib/edit-values.ts"
 import { templateFields } from "../lib/template.ts"
 import { useFieldContext } from "../render/FieldContext.tsx"
 import type { EditProps } from "../registry/props.ts"
+import { code, cx, hint, items, stack, subtle, textarea } from "../styles/classes.ts"
 
 export function EditDisplayTemplate({ field, value, onChange, id }: EditProps) {
   const context = useFieldContext()
@@ -34,31 +35,37 @@ export function EditDisplayTemplate({ field, value, onChange, id }: EditProps) {
   }
 
   return (
-    <div className="dt-stack">
+    <div className={stack}>
       <textarea
         ref={area}
         id={id}
         rows={3}
         spellCheck={false}
-        className="dt-textarea dt-code"
+        className={cx(textarea, code)}
+        data-control="text"
         value={text}
         placeholder={typeof declared === "string" && declared ? declared : "**{{ name }}**\n{{ status }} · {{ due }}"}
         onChange={e => onChange(textOrNull(e.target.value))}
       />
-      <p className="dt-hint">
+      <p className={hint} data-hint>
         Markdown — <code>**bold**</code>, <code>- lists</code>, <code># heading</code>.
       </p>
       {candidates.length > 0 && (
-        <details className="dt-tpl-fields">
-          <summary className="dt-hint">
-            Insert a field <span className="dt-subtle">{candidates.length}</span>
+        <details className="[&>summary]:cursor-pointer [&>summary]:select-none">
+          <summary className={hint} data-hint>
+            Insert a field <span className={subtle}>{candidates.length}</span>
           </summary>
-          <div className="dt-chips">
+          <div className={cx(items, "mt-1.5")}>
             {candidates.map(f => (
               <button
                 key={f.field}
                 type="button"
-                className={`dt-tpl-token${used.has(f.field) ? " is-used" : ""}`}
+                className={cx(
+                  "py-px px-2 border rounded-full bg-bg-subtle cursor-pointer [font:var(--dt-small)_var(--dt-mono)]",
+                  used.has(f.field)
+                    ? "text-fg border-accent"
+                    : "text-fg-subtle border-border hover:text-fg hover:border-accent"
+                )}
                 title={`Insert {{ ${f.field} }}`}
                 onClick={() => insert(f.field)}
               >

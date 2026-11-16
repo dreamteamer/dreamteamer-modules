@@ -5,21 +5,23 @@
 import { unitSuffix } from "../lib/field-unit.ts"
 import { inputText, numberFromInput } from "../lib/edit-values.ts"
 import type { EditProps } from "../registry/props.ts"
+import { subtle } from "../styles/classes.ts"
 
 export function EditNumber({ field, value, onChange, id, record }: EditProps) {
   const suffix = unitSuffix(field, record ?? null)
   return (
-    <span className="dt-with-unit">
+    <span className="inline-flex items-center gap-1.5">
       <input
         id={id}
         type="number"
-        className="dt-input"
+        className="w-auto flex-auto"
+        data-control="text"
         step={field.type === "integer" ? 1 : "any"}
         value={inputText(value)}
         placeholder={field.placeholder}
         onChange={e => onChange(numberFromInput(e.target.value))}
       />
-      {suffix && <span className="dt-subtle">{suffix}</span>}
+      {suffix && <span className={subtle}>{suffix}</span>}
     </span>
   )
 }

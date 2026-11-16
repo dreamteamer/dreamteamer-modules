@@ -4,14 +4,15 @@
  */
 import { swatchValue, textOrNull } from "../lib/edit-values.ts"
 import type { EditProps } from "../registry/props.ts"
+import { input } from "../styles/classes.ts"
 
 export function EditColor({ value, onChange, id }: EditProps) {
   const text = typeof value === "string" ? value : ""
   return (
-    <span className="dt-color-edit">
+    <span className="flex items-center gap-2">
       <input
         type="color"
-        className="dt-color-swatch"
+        className="flex-none w-11 h-[30px] p-0.5 cursor-pointer"
         aria-label="Pick a colour"
         value={swatchValue(value)}
         onChange={e => onChange(e.target.value)}
@@ -19,7 +20,8 @@ export function EditColor({ value, onChange, id }: EditProps) {
       <input
         id={id}
         type="text"
-        className="dt-input"
+        className={input}
+        data-control="text"
         value={text}
         placeholder="#rrggbb"
         onChange={e => onChange(textOrNull(e.target.value))}

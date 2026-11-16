@@ -5,6 +5,7 @@
 import { useRef, type KeyboardEvent } from "react"
 import { inputText, textOrNull } from "../lib/edit-values.ts"
 import type { EditProps } from "../registry/props.ts"
+import { code, cx, textarea } from "../styles/classes.ts"
 
 export function EditCode({ value, onChange, id }: EditProps) {
   const caret = useRef<number | null>(null)
@@ -26,7 +27,8 @@ export function EditCode({ value, onChange, id }: EditProps) {
     <textarea
       id={id}
       rows={10}
-      className="dt-textarea dt-code"
+      className={cx(textarea, code)}
+      data-control="text"
       spellCheck={false}
       value={inputText(value)}
       onChange={e => onChange(textOrNull(e.target.value))}

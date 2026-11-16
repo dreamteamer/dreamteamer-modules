@@ -11,7 +11,7 @@ export function EditNested({ value, onChange, options, id }: EditProps) {
     value !== null && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {}
   const fields = Array.isArray(options?.fields) ? options.fields : []
   return (
-    <div className="dt-nested-edit" id={id}>
+    <div className="py-2.5 px-3 border border-border rounded-dt" id={id}>
       <OptionsForm fields={fields} value={model} onChange={onChange} />
     </div>
   )

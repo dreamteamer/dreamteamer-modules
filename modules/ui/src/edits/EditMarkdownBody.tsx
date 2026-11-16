@@ -22,6 +22,17 @@ import { insertLink, setHeading, toggleFence, toggleInline, toggleLinePrefix } f
 import { pushEmitted, shouldReset } from "../lib/editor-guard.ts"
 import { livePreview } from "../lib/editor-preview.ts"
 import type { EditProps } from "../registry/props.ts"
+import { controlFrame } from "../components/looks.ts"
+import { cx } from "../styles/classes.ts"
+
+/** A toolbar button: a quiet icon or label, tinted while its mode is on (and still tinted under the pointer). */
+const toolButton = (active: boolean) =>
+  cx(
+    "inline-flex items-center justify-center min-w-[26px] h-[26px] py-0 px-1 border-0 rounded [font:600_11px/1_var(--dt-font)] cursor-pointer",
+    active
+      ? "bg-[color-mix(in_srgb,var(--dt-accent)_16%,transparent)] text-accent"
+      : "bg-transparent text-fg-subtle hover:bg-bg-hover hover:text-fg"
+  )
 
 const SOURCE_MODE_KEY = "ui.mdSource"
 
@@ -132,17 +143,18 @@ export function EditMarkdownBody({ value, onChange, id }: EditProps) {
   }
 
   return (
-    <div className="dt-markdown-edit">
-      <div className="dt-markdown-toolbar">
+    <div className={controlFrame}>
+      <div className="flex flex-wrap items-center gap-0.5 py-1 px-1.5 border-b border-border">
         {TOOLBAR.map((tool, i) =>
           tool === "gap" ? (
-            <span key={i} className="dt-toolbar-gap" />
+            <span key={i} className="w-2" />
           ) : (
             // mousedown is prevented so the editor keeps its selection through the click
             <button
               key={i}
               type="button"
               tabIndex={-1}
+              className={toolButton(false)}
               title={tool.title}
               aria-label={tool.title}
               onMouseDown={e => e.preventDefault()}
@@ -152,11 +164,11 @@ export function EditMarkdownBody({ value, onChange, id }: EditProps) {
             </button>
           )
         )}
-        <span className="dt-toolbar-spacer" />
+        <span className="flex-1" />
         <button
           type="button"
           tabIndex={-1}
-          className={sourceMode ? "is-active" : ""}
+          className={toolButton(sourceMode)}
           title={sourceMode ? "Switch to live preview" : "Switch to source (raw markdown)"}
           aria-label={sourceMode ? "Switch to live preview" : "Switch to source"}
           onMouseDown={e => e.preventDefault()}
@@ -165,7 +177,7 @@ export function EditMarkdownBody({ value, onChange, id }: EditProps) {
           <Icon name={sourceMode ? "open-preview" : "markdown"} />
         </button>
       </div>
-      <div ref={host} className="dt-markdown-editor" />
+      <div ref={host} />
     </div>
   )
 }

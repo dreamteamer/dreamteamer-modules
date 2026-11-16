@@ -5,6 +5,7 @@
  */
 import { inputText, textOrNull } from "../lib/edit-values.ts"
 import type { EditProps } from "../registry/props.ts"
+import { input } from "../styles/classes.ts"
 
 export function EditInput({ field, value, onChange, id }: EditProps) {
   const type = field.type === "url" ? "url" : field.type === "email" ? "email" : "text"
@@ -12,7 +13,8 @@ export function EditInput({ field, value, onChange, id }: EditProps) {
     <input
       id={id}
       type={type}
-      className="dt-input"
+      className={input}
+      data-control="text"
       value={inputText(value)}
       placeholder={field.placeholder}
       dir={field.direction ?? "auto"}

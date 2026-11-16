@@ -7,6 +7,7 @@
 import { useEffect, useRef, useState } from "react"
 import { jsonText, parseJsonDraft } from "../lib/edit-values.ts"
 import type { EditProps } from "../registry/props.ts"
+import { code, cx, hintError, stack, textarea } from "../styles/classes.ts"
 
 export function EditJson({ value, onChange, id }: EditProps) {
   const [text, setText] = useState(() => jsonText(value))
@@ -22,12 +23,13 @@ export function EditJson({ value, onChange, id }: EditProps) {
   }, [value])
 
   return (
-    <span className="dt-stack">
+    <span className={stack}>
       <textarea
         id={id}
         rows={8}
         spellCheck={false}
-        className={`dt-textarea dt-code${invalid ? " is-invalid" : ""}`}
+        className={cx(textarea, code, invalid && "text-danger border-danger")}
+        data-control="text"
         value={text}
         onChange={e => {
           setText(e.target.value)
@@ -38,7 +40,7 @@ export function EditJson({ value, onChange, id }: EditProps) {
           onChange(parsed.value)
         }}
       />
-      {invalid && <span className="dt-hint is-error">Not valid JSON — the last valid value is kept.</span>}
+      {invalid && <span className={hintError}>Not valid JSON — the last valid value is kept.</span>}
     </span>
   )
 }

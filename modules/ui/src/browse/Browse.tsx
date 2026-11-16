@@ -47,6 +47,7 @@ import {
   buttonDanger,
   buttonIcon,
   buttonPrimary,
+  chipRemove,
   cx,
   error,
   iconButton,
@@ -72,9 +73,6 @@ const filterPanelCls = cx(
 /** An active filter, as a chip under the header. */
 const filterChipCls =
   "inline-flex items-center gap-0.5 py-px pr-1 pl-2.5 border border-border rounded-full bg-bg-subtle text-small"
-/** A chip's ×. (was dt-chip-remove) */
-const chipRemoveCls =
-  "inline-flex p-0 -mr-1 border-0 bg-transparent text-inherit cursor-pointer opacity-70 hover:opacity-100 [&_.codicon]:text-[12px]!"
 /** The list and the panels beside it; stacked when narrow. */
 const bodyCls = "flex flex-auto gap-4 min-h-0 max-[900px]:flex-col"
 /** The List and its pager. The table's scroller fills it only when the browse fills the page. */
@@ -368,7 +366,7 @@ export function Browse({
               )}
               <button
                 type="button"
-                className={chipRemoveCls}
+                className={chipRemove}
                 aria-label="Remove filter"
                 onClick={() => removeRule(chip.id)}
               >

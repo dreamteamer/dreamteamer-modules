@@ -14,6 +14,7 @@ import { listOrNull, moveItem, rowsOf } from "../lib/edit-values.ts"
 import { tryRenderDisplay } from "../lib/template.ts"
 import { OptionsForm } from "../render/OptionsForm.tsx"
 import type { EditProps } from "../registry/props.ts"
+import { button, cx, iconButton } from "../styles/classes.ts"
 
 export function rowSummary(
   row: Record<string, unknown>,
@@ -84,19 +85,19 @@ export function EditList({ value, onChange, options, id }: EditProps) {
   }
 
   return (
-    <div className="dt-list-edit" id={id}>
+    <div className="flex flex-col gap-1.5 min-w-0" id={id}>
       {rows.map((row, i) => {
         const open = expanded.has(uidOf(row))
         return (
           <div
             key={uidOf(row)}
-            className={`dt-list-row${dragging === i ? " is-dragging" : ""}`}
+            className={cx("border border-border rounded-dt bg-bg", dragging === i && "opacity-50")}
             onDragOver={e => e.preventDefault()}
             onDrop={() => drop(i)}
           >
-            <div className="dt-list-row-head">
+            <div className="flex items-center gap-1 py-0.5 pr-1.5 pl-0.5">
               <span
-                className="dt-list-grip"
+                className="inline-flex p-1 text-fg-subtle cursor-grab"
                 title="Drag to reorder"
                 draggable
                 onDragStart={e => {
@@ -107,29 +108,30 @@ export function EditList({ value, onChange, options, id }: EditProps) {
               >
                 <Icon name="gripper" />
               </span>
-              <button type="button" className="dt-list-summary" aria-expanded={open} onClick={() => toggle(row)}>
-                <Icon name={open ? "chevron-down" : "chevron-right"} />
-                <span className="dt-list-label">{rowSummary(row, i, fields, template)}</span>
-              </button>
               <button
                 type="button"
-                className="dt-icon-button"
-                title="Remove"
-                aria-label="Remove"
-                onClick={() => remove(i)}
+                className="flex items-center gap-1.5 flex-auto min-w-0 w-full py-1.5 pr-2 pl-0 border-0 bg-transparent text-fg text-left cursor-pointer"
+                aria-expanded={open}
+                onClick={() => toggle(row)}
               >
+                <Icon name={open ? "chevron-down" : "chevron-right"} />
+                <span className="overflow-hidden text-ellipsis whitespace-nowrap">
+                  {rowSummary(row, i, fields, template)}
+                </span>
+              </button>
+              <button type="button" className={iconButton} title="Remove" aria-label="Remove" onClick={() => remove(i)}>
                 <Icon name="close" />
               </button>
             </div>
             {open && (
-              <div className="dt-list-row-body">
+              <div className="pt-2 pr-3 pb-3 pl-[30px] border-t border-border">
                 <OptionsForm fields={fields} value={row} onChange={next => update(i, next)} />
               </div>
             )}
           </div>
         )
       })}
-      <button type="button" className="dt-button dt-list-add" onClick={add}>
+      <button type="button" className={cx(button, "self-start")} onClick={add}>
         <Icon name="add" /> Add item
       </button>
     </div>
