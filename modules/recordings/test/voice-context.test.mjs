@@ -19,7 +19,9 @@ import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import yaml from 'js-yaml';
 import { virginWorkspace, installCopied, closure, run, cleanup } from '../../../tests/helpers/workspace.mjs';
-import { recordingContext, personRecords, distinctAttendees } from '../lib/voice-context.mjs';
+import * as voiceContext from '../lib/voice-context.mjs';
+const { recordingContext, personRecords, distinctAttendees } = voiceContext;
+const normName = (s) => voiceContext.normName(s);
 
 const temps = [];
 after(() => { cleanup(); for (const d of temps.splice(0)) fs.rmSync(d, { recursive: true, force: true }); });
@@ -270,6 +272,36 @@ describe('personRecords — this workspace\'s recordings that name a person', ()
 			{ label: 'speaker_0', where: 'previous_speakers', diarization_id: 'aabbccddeeff', new_label: 'speaker_1' },
 			{ label: 'earlier:speaker_4', where: 'previous_speakers', diarization_id: 'aabbccddeeff', new_label: null }]]]);
 	});
+
+	test('line 24 a name typed in another case or spacing names the person, as the Python halves match it (finding forget-misses-a-name-in-another-case)', async () => {
+		seed();
+		const out = dt('add', 'meeting-recordings', '--name', 'Northwind standup', '--date', '2026-09-06T10:00:00+03:00');
+		const ref = `meeting-recordings/${idOf(out)}`;
+		// prints._norm / identify._norm / naming._key: whitespace collapsed, casefolded — no reference on any of these
+		patch(ref, { transcription: { speakers: { speaker_0: 'tom whitfield', speaker_1: 'Tom  Whitfield', speaker_2: 'Tom Whitfield-Smith' },
+			previous_speakers: { diarization_id: 'aabbccddee00', labels: { speaker_0: { name: 'TOM WHITFIELD', new_label: 'speaker_1', share: 1, offered: true } } },
+			speaker_questions: { speaker_3: { quotes: [], proposed: { name: ' tom\twhitfield ', origin: 'previous' } } } } });
+		const tom = await personRecords(root, 'contacts/tom-whitfield');
+		const row = tom.find((r) => r.record === ref);
+		assert.ok(row, `the record naming 'tom whitfield' is not found: ${JSON.stringify(tom.map((r) => r.record))}`);
+		assert.deepEqual(row.matches, [
+			{ label: 'speaker_0', where: 'speakers', diarization_id: null },
+			{ label: 'speaker_1', where: 'speakers', diarization_id: null },
+			{ label: 'speaker_0', where: 'previous_speakers', diarization_id: 'aabbccddee00', new_label: 'speaker_1' },
+			{ label: 'speaker_3', where: 'speaker_questions', diarization_id: null }]);
+	});
+});
+
+describe('normName — the one name rule, as the Python halves have it', () => {
+	test('line 24 case and every run of whitespace fold; nothing else does', () => {
+		assert.equal(normName('  Dana \t Oren\n'), 'dana oren');
+		assert.equal(normName('STRASSE'), normName('stra\u00dfe'), 'casefold, not lower: the sharp s folds to ss');
+		assert.equal(normName(null), '');
+		assert.equal(normName('Dana\u00a0Oren'), 'dana oren', 'a no-break space is whitespace to str.split()');
+		assert.equal(normName('Dana\u001fOren'), 'dana oren', 'so is a unit separator');
+		assert.equal(normName('Dana\ufeffOren'), 'dana\ufeffOren'.toLowerCase(), 'a byte-order mark is not (JavaScript\'s \\s says it is)');
+		assert.notEqual(normName('Dana Oren'), normName('Dana-Oren'));
+	});
 });
 
 // ── the node entry: a stand-in transcriber copies what it was handed ────────────────────────────────
@@ -382,6 +414,21 @@ describe('transcribe.mjs hands the child its context', () => {
 		assert.deepEqual([rebuild.context.workspace, rebuild.context.record, rebuild.context.known['users/dana-oren']], ['probe', undefined, 'Dana Oren']);
 		// rebuild computes from the diarised recordings what the active model lacks (finding rebuild-before-new-model-signatures-drops-sources)
 		assert.deepEqual(rebuild.context.records.map((c) => c.record).sort(), [S.rec1, S.rec2, S.rec3].sort());
+	});
+
+	test('line 27 the text routes go through the entry too: `log` and `parse-labeled` reach the script on the entry\'s venv, with no context, each path made absolute (finding transcribe-skill-runs-the-python-without-a-context)', () => {
+		const dir = tmp('dtm-vc-text-');
+		const turns = path.join(dir, 'turns.json'), text = path.join(dir, 'transcript.txt'), rec = path.join(dir, 'x.meeting-recording.md');
+		for (const f of [turns, text, rec]) fs.writeFileSync(f, '');
+		const log = entry(['log', path.relative(root, rec), turns, '--date', '2026-09-01']);
+		assert.equal(log.r.status, 0, log.r.stderr);
+		assert.deepEqual(log.argv, ['run', 'python', 'transcribe_meeting.py', 'log', rec, turns, '--date', '2026-09-01'], 'a relative path is made absolute: the child runs in the skill folder');
+		const parse = entry(['parse-labeled', text]);
+		assert.equal(parse.r.status, 0, parse.r.stderr);
+		assert.deepEqual(parse.argv, ['run', 'python', 'transcribe_meeting.py', 'parse-labeled', text]);
+		assert.equal(parse.context, null, 'a text route keeps no voice: no context');
+		const usage = entry(['nonsense']).r.stderr;
+		for (const v of ['log', 'parse-labeled']) assert.match(usage, new RegExp(`\\b${v}\\b`));
 	});
 
 	test('an unknown verb prints the usage line naming every verb, and exits 2', () => {

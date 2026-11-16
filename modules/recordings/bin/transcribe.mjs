@@ -14,6 +14,7 @@
 //   node <this> sync                                uv sync (the venv)
 //   node <this> setup [--speaker-models …]          uv run python transcribe_meeting.py setup … (the models)
 //   node <this> verify                              transcribe lib/clip.wav on the CPU; prints the transcript
+//   node <this> log <record.md> <turns.json> [--date …] | parse-labeled <text-file>   the text routes: no audio, no context
 //   node <this> run <record> <audio> [--engine …]   transcribe, with the record's context
 //   node <this> identify <record>… [--question | --shown | --answer | --confirm | --correct | --revert] …
 //   node <this> identify --revert --person <ref>    across this workspace's recordings naming the person
@@ -29,6 +30,7 @@ import { findWorkspace } from '../lib/workspace-root.mjs';
 
 const USAGE = 'usage: transcribe.mjs sync | setup [--speaker-models …] | verify'
 	+ ' | run <record.md> <audio> [--engine …] [--language …] [--speakers N]'
+	+ ' | log <record.md> <turns.json> [--date YYYY-MM-DD] | parse-labeled <text-file>'
 	+ ' | identify <record>… [--question | --shown | --answer <record> <label>=<answer>… | --confirm <record> [label…] | --correct <record> <label> <person> | --revert <record> | --revert --person <ref>]'
 	+ ' | prints list | rebuild | forget <person> | never <person> | forget-recording <record> | link <person> | reseed <person>'
 	+ ' | label <record> [--only <label>]'
@@ -47,7 +49,7 @@ if (env.VOICE_PRINTS_HOME && env.VOICE_PRINTS_HOME.trim()) env.VOICE_PRINTS_HOME
 else delete env.VOICE_PRINTS_HOME;
 
 const [verb, ...rest] = process.argv.slice(2);
-const VERBS = new Set(['sync', 'setup', 'verify', 'run', 'identify', 'prints', 'label', 'evaluate-speakers']);
+const VERBS = new Set(['sync', 'setup', 'verify', 'run', 'identify', 'prints', 'label', 'evaluate-speakers', 'log', 'parse-labeled']);
 if (!VERBS.has(verb)) { console.error(USAGE); process.exit(2); }
 
 const skill = path.join(root, '.dreamteamer', 'skills', 'transcribing-recordings');
@@ -162,6 +164,8 @@ function interruptible(args) {
 let r;
 if (verb === 'sync') r = uv(['sync']);
 else if (verb === 'setup') r = py(['setup', ...rest]);
+// the text routes keep no voice, so no context: a path argument is made absolute, as the child runs in the skill folder
+else if (verb === 'log' || verb === 'parse-labeled') r = py([verb, ...rest.map((a, i) => (!a.startsWith('--') && rest[i - 1] !== '--date' && fs.existsSync(a) ? path.resolve(a) : a))]);
 else if (verb === 'verify') {
 	// a throwaway recording record in a temp folder, the shipped clip, the CPU engine; the transcript is
 	// read back off the record and printed — the unit keeps it as the receipt

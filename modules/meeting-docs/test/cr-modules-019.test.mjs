@@ -196,6 +196,36 @@ test('line 34 the attended fold covers the meetings an earlier run left waiting,
 	assert.match(ATTENDED, /for every held-back meeting, \*\*answered or skipped\*\*, every meeting step 4b took up from an earlier run included/);
 });
 
+// Whole-branch review, `skipped-label-critiqued-again-at-every-attended-run`, and the agent decision
+// `…-build-a-meeting-is-held-only-while-its-question-has-not-been-shown`: a label a person skipped leaves its
+// recording waiting for ever, so a hold that read `waiting` alone critiqued M1 again at every attended run and
+// held its engagement whole at every unattended one. The hold reads whether a question was SHOWN.
+
+test('line 34 a meeting is held only while a question of its recordings has not been shown: the hold reads `speaker_questions.<label>.shown`', () => {
+	assert.match(FLAT, /\*\*Steps 8 and 9 are held back\*\* for every meeting with a recording still `waiting` after step 4b — [^:]*— \*\*while one of its questions has not yet been shown\*\*/);
+	assert.match(FLAT, /A question is \*\*not yet shown\*\* while its `transcription\.speaker_questions\.<label>` carries no `shown` stamp/);
+});
+
+test('line 34 a question a person was shown and skipped is asked again but holds nothing: its meeting is not critiqued or folded again', () => {
+	assert.match(FLAT, /A recording whose every open question was shown — a label a person skipped at an earlier attended run — still waits and is asked again at the end of the run, but it holds nothing/);
+	assert.match(FLAT, /is not held, critiqued or folded again/);
+	assert.match(ATTENDED, /A label they skip stays open for the next attended run's question — asked again, but it no longer holds its meeting/);
+	assert.match(ATTENDED, /none of these: its question is asked again, but it is not critiqued or folded again/);
+});
+
+test('line 34 the unattended hold reads each waiting recording\'s questions; a recording whose open questions were all shown holds nothing', () => {
+	assert.match(UNATTENDED, /\*\*none of whose meetings has a recording still `waiting`\*\* with a question not yet shown after step 4b/);
+	assert.match(UNATTENDED, /each one's `meeting` and `transcription\.speaker_questions`/);
+	assert.match(UNATTENDED, /A recording whose open questions all carry `shown` [^.]*holds nothing/);
+	assert.match(UNATTENDED, /Step 8 runs only for meetings with no open question not yet shown/);
+});
+
+test('line 34 the README says a skipped question is asked again and holds nothing', () => {
+	const readme = flat(read('meeting-docs/README.md'));
+	assert.match(readme, /a question not yet shown/);
+	assert.match(readme, /A question a person was shown and skipped is asked again at the next attended run, but its meeting is not held, critiqued or folded again/);
+});
+
 // Review round 1, `confirmed-provisional-name-keeps-its-unconfirmed-mark`: a person who answers ① correct to a
 // provisional name changes no name, but the summary still says "(unconfirmed)" — it is written again too.
 

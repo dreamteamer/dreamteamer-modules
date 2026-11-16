@@ -23,6 +23,51 @@ const RECEIPT = 'cpu-run.verified.json';
 /** The three model paths the CPU pass needs; the ggml weights (Apple Silicon + whisper-cli only) are evidence, never required. */
 const MODELS = (home) => ({ 'whisper-ct2': path.join(home, 'models', 'whisper-ct2'), 'segmentation.onnx': path.join(home, 'models', 'diarization', 'segmentation.onnx'), 'embedding.onnx': path.join(home, 'models', 'diarization', 'embedding.onnx') });
 
+/** The speaker models voice signatures are embedded with, as `voiceprints/models.py` registers them (MODELS:
+ *  id → the file it lands as under `models/speaker/`, and its size), and its DEFAULT_MODEL. A test pins this
+ *  copy against models.py. The CPU pass never uses them; naming does, so the models check counts the active one —
+ *  a 0.5.x home has the transcription models and not this, and `setup` is what fetches it. */
+export const SPEAKER_MODELS = Object.freeze({
+	'campp-en-voxceleb-lm': { file: 'wespeaker_en_voxceleb_CAM++_LM.onnx', size: 29292687 },
+	'eres2netv2-zh-cn-16k-common': { file: '3dspeaker_speech_eres2netv2_sv_zh-cn_16k-common.onnx', size: 71441526 },
+});
+export const DEFAULT_SPEAKER_MODEL = 'campp-en-voxceleb-lm';
+
+/** models.active_model: the model the ONE file in the skill's `calibration/` folder names (its `model`, an id or
+ *  `{id}`, else its file name `<id>.json` / `calibration-<id>.json`), else the default. `{id}` or `{error}`. The
+ *  skill is the compiled copy `setup` runs in, else this package's own. */
+function activeSpeakerModel(root) {
+	const compiled = path.join(root, '.dreamteamer', 'skills', 'transcribing-recordings');
+	const skill = exists(compiled) ? compiled : fileURLToPath(new URL('../skills/transcribing-recordings', import.meta.url));
+	const folder = path.join(skill, 'calibration');
+	let names;
+	try { names = fs.readdirSync(folder).filter((n) => !n.startsWith('.') && isFileAt(path.join(folder, n))).sort(); }
+	catch { return { id: DEFAULT_SPEAKER_MODEL }; }
+	if (!names.length) return { id: DEFAULT_SPEAKER_MODEL };
+	if (names.length > 1) return { error: `the skill's calibration folder holds ${names.length} files (${names.join(', ')}); exactly one names the active speaker model` };
+	const name = names[0];
+	let stem = name.endsWith('.json') ? name.slice(0, -5) : name;
+	if (stem.startsWith('calibration-')) stem = stem.slice('calibration-'.length);
+	let named = null;
+	try {
+		const obj = JSON.parse(fs.readFileSync(path.join(folder, name), 'utf8'));
+		const m = obj && typeof obj === 'object' && !Array.isArray(obj) ? obj.model : null;
+		named = m && typeof m === 'object' ? m.id : m;
+	} catch { return { error: `calibration file ${name} cannot be read as JSON` }; }
+	if (named && SPEAKER_MODELS[stem] && named !== stem) return { error: `calibration file ${name} names model ${named}, its file name says ${stem}` };
+	const id = named || stem;
+	return SPEAKER_MODELS[id] ? { id } : { error: `calibration file ${name} names model ${JSON.stringify(id)}, which is not registered` };
+}
+/** Why the active speaker model is not usable on disk (models.ready: the file at its registered size), or null. */
+function speakerModelAbsent(root, home) {
+	const active = activeSpeakerModel(root);
+	if (active.error) return active.error;
+	const m = SPEAKER_MODELS[active.id];
+	const file = path.join(home, 'models', 'speaker', m.file);
+	try { if (fs.statSync(file).isFile() && fs.statSync(file).size === m.size) return null; } catch { /* absent */ }
+	return `speaker model ${active.id}`;
+}
+
 const onPath = (env, bin) => (env.PATH ?? '').split(path.delimiter).some((d) => { if (!d) return false; try { fs.accessSync(path.join(d, bin), fs.constants.X_OK); return fs.statSync(path.join(d, bin)).isFile(); } catch { return false; } });
 const expand = (p) => (p && (p === '~' || p.startsWith('~/')) ? path.join(os.homedir(), p.slice(1)) : p);
 const homeOf = (ctx, inputs = {}) => expand(inputs.transcription_home ?? ctx.env.TRANSCRIPTION_HOME ?? DEFAULT_HOME);
@@ -59,9 +104,11 @@ export function inspect(ctx) {
 		: { id: 'recordings.venv', status: 'missing', title: 'python venv', detail: 'not provisioned', fix: 'dt setup recordings --allow machine' });
 	const models = MODELS(home);
 	const absent = Object.keys(models).filter((k) => (k === 'whisper-ct2' ? !holds(models[k], 'model.bin') : !exists(models[k])));
+	const speaker = speakerModelAbsent(ctx.root, home);
+	if (speaker) absent.push(speaker);
 	checks.push(absent.length
 		? { id: 'recordings.models', status: 'missing', title: 'models', detail: `${absent.join(', ')} not downloaded`, fix: 'dt setup recordings --allow download' }
-		: { id: 'recordings.models', status: 'configured', title: 'models', detail: 'the CPU pass\'s weights are on disk', evidence: { ggml: exists(path.join(home, 'models', 'whisper-ggml')) } });
+		: { id: 'recordings.models', status: 'configured', title: 'models', detail: 'the CPU pass\'s weights and the speaker model are on disk', evidence: { ggml: exists(path.join(home, 'models', 'whisper-ggml')) } });
 	const receipt = receiptOf(ctx);
 	const fresh = receipt && new Date(receipt.atMs ?? 0).getTime() >= newest(Object.values(models));
 	checks.push(fresh
@@ -138,7 +185,7 @@ export function plan(ctx, inputs = {}) {
 	const actions = [
 		setHome,
 		{ id: 'provision-venv', title: 'provision the pinned Python venv (uv sync)', effects: [{ kind: 'machine', detail: `${home}/venv — a Python environment from the skill's uv.lock` }], runBy: 'engine', command: bin ? ['node', bin, 'sync'] : null, state: status['recordings.venv'] === 'configured' ? 'done' : 'ready', ...gate(tools, 'ffmpeg and uv must be on PATH first') },
-		{ id: 'download-models', title: 'download the transcription models (~1.6 GB)', effects: [{ kind: 'download', detail: `${home}/models — the CPU pass's weights from the sources the skill names` }], runBy: 'engine', command: bin ? ['node', bin, 'setup'] : null, state: status['recordings.models'] === 'configured' ? 'done' : 'ready', ...gate(tools && status['recordings.venv'] === 'configured', 'the venv first') },
+		{ id: 'download-models', title: 'download the transcription models (~1.6 GB)', effects: [{ kind: 'download', detail: `${home}/models — the CPU pass's weights and the active speaker model, from the sources the skill names; only what is missing` }], runBy: 'engine', command: bin ? ['node', bin, 'setup'] : null, state: status['recordings.models'] === 'configured' ? 'done' : 'ready', ...gate(tools && status['recordings.venv'] === 'configured', 'the venv first') },
 		{ id: 'verify-cpu', title: 'transcribe the synthetic clip on the CPU and keep the receipt', kind: 'verify', effects: [{ kind: 'machine', detail: 'one CPU transcription of lib/clip.wav; writes the receipt under .dreamteamer/setup/recordings/' }], runBy: 'engine', command: bin ? ['node', bin, 'verify'] : null, state: status['recordings.cpu-run'] === 'ready' ? 'done' : 'ready', ...gate(tools && status['recordings.venv'] === 'configured' && status['recordings.models'] === 'configured', 'the venv and the models first') },
 	];
 	const needs = inputs.files_folder || ctx.env.FILES_FOLDER ? [] : ['files_folder'];

@@ -8,6 +8,11 @@ load the `transcribing-recordings` skill. for each recording ref in: $ARGUMENTS 
 caveats in `transcription.notes`. Names are written by `/identify-speakers`; transcription leaves `speakers` empty
 — run `/identify-speakers` next.
 
+transcribe through the node entry, `node node_modules/@dreamteamer/recordings/bin/transcribe.mjs run
+meeting-recordings/<id> "<audio>" --speakers N`, never the skill's Python script directly: the entry hands the run
+the recording's voice context, without which no voice signature is kept and `/identify-speakers` cannot name
+anyone.
+
 speaker count, in order: the linked meeting's `attendees_contacts | length`; no meeting or a free/busy stub →
 default 2; and **never block on the number** — if the diarizer finds materially more clusters than
 expected, re-run with the observed count and note the correction in `transcription.notes`.

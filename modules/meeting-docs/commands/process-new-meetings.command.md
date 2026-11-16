@@ -46,9 +46,14 @@ end of the run like any other — naming is part of the transcript, and the voic
 **Steps 6 and 7 run for every meeting with the names that exist** — a name step 4b wrote from a voice
 print is provisional, and the summary and tasks mark it `(unconfirmed)`. **Steps 8 and 9 are held back** for
 every meeting with a recording still `waiting` after step 4b — one this run transcribed, or one an earlier run
-left waiting that step 4b took up again, whether or not the meeting is in this run's range: they run once,
-after the end-of-run answer (below). Such a meeting joins the batch of steps 8 and 9 and of the end of the
-run. A meeting with no open question runs steps 6 to 9 in one pass, as today.
+left waiting that step 4b took up again, whether or not the meeting is in this run's range — **while one of its
+questions has not yet been shown**: they run once, after the end-of-run answer (below). Such a meeting joins
+the batch of steps 8 and 9 and of the end of the run. A question is **not yet shown** while its
+`transcription.speaker_questions.<label>` carries no `shown` stamp (and no `closed`): no person has been put
+its quotes. A recording whose every open question was shown — a label a person skipped at an earlier attended
+run — still waits and is asked again at the end of the run, but it holds nothing: its meeting was critiqued
+and its engagement folded once, at the attended run that showed it, and is not held, critiqued or folded again.
+A meeting with no open question runs steps 6 to 9 in one pass, as today.
 
 6. **`/summarize-meeting <meeting refs>`** — transcript + visuals → a `meeting-summary`.
 7. **`/extract-tasks-from-meetings <meeting refs>`** — only if the summary produced action items worth tracking.
@@ -94,7 +99,7 @@ in the middle of the run:
 2. **Attended run** — a person is in the conversation. Wait for the reply, then, in this order:
    1. `identify --answer`, one call per recording, with only the labels the person answered (the
       `identifying-speakers` skill has the answer strings). A label they skip stays open for the next attended
-      run's question.
+      run's question — asked again, but it no longer holds its meeting: `--shown` stamped it.
    2. for each meeting whose names changed or whose provisional names were confirmed — every meeting whose
       `identify --answer` reply names documents written before the names, never a `privacy: restricted` one —
       `/summarize-meeting` and `/extract-tasks-from-meetings` again, so no `(unconfirmed)` mark outlives the
@@ -102,21 +107,28 @@ in the middle of the run:
    3. the held-back critiques, `/analyze-meetings` — this run's and those an earlier unattended run held back —
       still gated as step 8 is.
    4. then one `/update-engagements` over the batch, for every held-back meeting, **answered or skipped**, every
-      meeting step 4b took up from an earlier run included: a skipped label stays open for the next attended
-      run's question, but its meeting's engagement takes the call now, once, with the names that exist.
+      meeting step 4b took up from an earlier run included while its question was not yet shown: a skipped label
+      stays open for the next attended run's question, but its meeting's engagement takes the call now, once,
+      with the names that exist.
+
+   A meeting whose recording still waits only on questions an earlier attended run showed — a label skipped
+   then — is none of these: its question is asked again, but it is not critiqued or folded again. Its summary
+   and tasks are written again only when this answer changes or confirms its names (2.2).
 
    That is the pipeline's own order — summary, tasks, critique, then one engagement update — so each
    engagement folds each call once, from the named summary, and absorbs the critique.
 3. **Unattended run** — nobody is there to answer. Ask nothing, run no `--shown` and no `--answer`; the
-   recordings stay `waiting`. Step 8 runs only for meetings with no open question. Step 9 runs as
+   recordings stay `waiting`. Step 8 runs only for meetings with no open question not yet shown. Step 9 runs as
    `/update-engagements engagements/<id>`, once for each engagement **none of whose meetings has a recording
-   still `waiting`** after step 4b — this run's or one an earlier run left waiting, whatever its date: read
-   them all with `dt list meeting-recordings --filter speaker_naming=waiting`, each one's `meeting`, and that
-   meeting's engagement, never only the range's meetings, because `/update-engagements` folds every summary
-   written since the engagement was last updated. An engagement with a waiting meeting is held whole — none of
-   its calls folded, not even for a call of it with every name known — and listed in the report. The next
-   attended run picks those recordings up at step 4b, asks their questions, and folds each held engagement
-   once.
+   still `waiting`** with a question not yet shown after step 4b — this run's or one an earlier run left
+   waiting, whatever its date: read them all with `dt list meeting-recordings --filter speaker_naming=waiting`,
+   each one's `meeting` and `transcription.speaker_questions`, and that meeting's engagement, never only the
+   range's meetings, because `/update-engagements` folds every summary written since the engagement was last
+   updated. A recording whose open questions all carry `shown` — a person was asked and skipped — holds
+   nothing: its engagement took the call at that attended run. An engagement with a held meeting is held
+   whole — none of its calls folded, not even for a call of it with every name known — and listed in the
+   report. The next attended run picks those recordings up at step 4b, asks their questions, and folds each
+   held engagement once.
 
 **Only a person answers.** An agent never answers the question itself and never runs `identify --answer` or
 `--confirm` without a person's reply in the conversation — not from the attendee list, not from the
@@ -145,7 +157,7 @@ step 4b (or that step 4b was skipped, and why), how many visuals landed, whether
 **every correction the visuals forced**. Then **every document written before a name it now carries**: the
 summary, tasks and critique that `identify --answer`'s reply names as written from the transcript before the
 names — each one written again in this run, or listed as written before the name. Then every meeting whose
-steps 8 and 9 were held back and why (its question open, or the run unattended), and every engagement held
+steps 8 and 9 were held back and why (its question not yet shown, or the run unattended), and every engagement held
 whole. Then, for each meeting step 8
 reviewed, its one-line verdict and any conflict it flagged with the engagement's existing records — and
 which meetings were deliberately not reviewed, and which were skipped as `privacy: restricted` — named and

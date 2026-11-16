@@ -1,9 +1,12 @@
 // Tier 3 of cr-modules-019 (design section 16, acceptance line 22): the repository stays clean. The module's
 // tests name and enrol synthetic voices made at test time — so no recorded voice and no stored voice vector
 // is ever in the tree:
-//   · no file under modules/recordings is audio, except the setup clip `lib/clip.wav`;
-//   · no JSON or YAML file the repository tracks holds an array of more than 64 numbers (a voice print or a
-//     window vector is 192 or 512 of them; a signature holds dozens);
+//   · no file under modules/recordings is audio, except the setup clip `lib/clip.wav`, and no file the
+//     repository tracks is audio, except that clip (whole-branch review, audio-guard-reaches-only-modules-recordings);
+//   · no file the repository tracks holds an array of more than 64 numbers (a voice print or a window vector is
+//     192 or 512 of them; a signature holds dozens): JSON and YAML parsed, a Markdown file's frontmatter parsed
+//     (every record is one — whole-branch review, vector-guard-skips-markdown-frontmatter), and any text file
+//     read for `[` and more than 64 numbers in a row;
 //   · the leak gate (tests/leak-gate.test.mjs) passes.
 // The first two are checks over the tree, so each is also run against a planted fixture, to show it sees
 // what it looks for — a check that never fires proves nothing.
@@ -20,6 +23,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const MODULE = path.resolve(HERE, '..');
 const ROOT = path.resolve(MODULE, '..', '..');
 const CLIP = path.join('lib', 'clip.wav');
+const CLIP_IN_REPO = 'modules/recordings/lib/clip.wav';
 const MAX_NUMBERS = 64;
 
 const AUDIO_EXT = /\.(wav|wave|mp3|m4a|m4b|aac|flac|ogg|oga|opus|aif|aiff|aifc|caf|wma|webm|amr|3gp|mka|mp4|mov|m4v|mkv)$/i;
@@ -86,15 +90,36 @@ function mostNumbers(value) {
 // A file that does not parse is read as text: `[` then more than 64 comma-separated numbers.
 const NUMBER_RUN = new RegExp(`\\[\\s*(?:-?(?:\\d+\\.?\\d*|\\.\\d+)(?:[eE][+-]?\\d+)?\\s*,\\s*){${MAX_NUMBERS}}-?(?:\\d|\\.\\d)`);
 
-/** Every JSON or YAML file among `files` (paths relative to `dir`) holding an array of more than 64
- *  numbers, as `relative path (n numbers)`. */
+/** A Markdown file's YAML frontmatter, or null when it has none. */
+const frontmatter = (text) => /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/.exec(text)?.[1] ?? null;
+
+/** Every file among `files` (paths relative to `dir`) holding an array of more than 64 numbers, as
+ *  `relative path (why)`: JSON and YAML parsed (read as text when they do not parse), a Markdown file's
+ *  frontmatter parsed and the whole file read as text, every other text file read as text. A file with a NUL
+ *  byte in its first 8 KB is binary and not read. */
 function numericArrays(dir, files) {
 	const out = [];
 	for (const rel of files) {
-		if (!/\.(json|ya?ml)$/i.test(rel)) continue;
 		const file = path.join(dir, rel);
-		if (!fs.existsSync(file)) continue;     // tracked, deleted in the working tree
-		const text = fs.readFileSync(file, 'utf8');
+		if (!fs.existsSync(file) || !fs.statSync(file).isFile()) continue;     // tracked, deleted in the working tree (or a link to a folder)
+		const bytes = fs.readFileSync(file);
+		if (bytes.subarray(0, 8192).includes(0)) continue;
+		const text = bytes.toString('utf8');
+		if (/\.md$/i.test(rel)) {
+			const fm = frontmatter(text);
+			let n = 0;
+			if (fm !== null) {
+				try { n = Math.max(0, ...yaml.loadAll(fm).map(mostNumbers)); }
+				catch { /* an unparseable frontmatter is still read as text, below */ }
+			}
+			if (n > MAX_NUMBERS) out.push(`${rel} (${n} numbers in its frontmatter)`);
+			else if (NUMBER_RUN.test(text)) out.push(`${rel} (more than ${MAX_NUMBERS} numbers in a row)`);
+			continue;
+		}
+		if (!/\.(json|ya?ml)$/i.test(rel)) {
+			if (NUMBER_RUN.test(text)) out.push(`${rel} (more than ${MAX_NUMBERS} numbers in a row)`);
+			continue;
+		}
 		let n;
 		try {
 			n = /\.json$/i.test(rel)
@@ -115,6 +140,18 @@ function tracked(dir) {
 	return r.stdout.split('\0').filter(Boolean);
 }
 
+/** Every file the repository at `dir` tracks that is audio, by name or by its bytes, except the `allowed`
+ *  paths (repository-relative, `/`-separated), as `path (why)`. */
+function trackedAudio(dir, allowed = []) {
+	const out = [];
+	for (const rel of tracked(dir)) {
+		if (allowed.includes(rel)) continue;
+		const magic = audioMagic(path.join(dir, rel));
+		if (AUDIO_EXT.test(rel) || magic) out.push(`${rel} (${magic ?? 'audio by its name'})`);
+	}
+	return out.sort();
+}
+
 describe('line 22 — no recorded voice and no stored voice vector in the repository', () => {
 	test('line 22 no file under modules/recordings is audio except lib/clip.wav', () => {
 		assert.ok(fs.existsSync(path.join(MODULE, CLIP)), 'the setup clip is where the allowance says');
@@ -127,9 +164,15 @@ describe('line 22 — no recorded voice and no stored voice vector in the reposi
 		assert.deepEqual(inGit, []);
 	});
 
-	test('line 22 no tracked JSON or YAML file holds an array of more than 64 numbers', () => {
+	test('line 22 no file the repository tracks is audio except modules/recordings/lib/clip.wav', () => {
+		assert.ok(tracked(ROOT).includes(CLIP_IN_REPO), 'the allowance names a tracked file');
+		assert.deepEqual(trackedAudio(ROOT, [CLIP_IN_REPO]), []);
+	});
+
+	test('line 22 no tracked file holds an array of more than 64 numbers — JSON, YAML, Markdown frontmatter, or a run in any text file', () => {
 		const files = tracked(ROOT);
 		assert.ok(files.filter((f) => /\.(json|ya?ml)$/i.test(f)).length > 50, 'the scan is not vacuous');
+		assert.ok(files.filter((f) => /\.md$/i.test(f)).length > 50, 'the Markdown scan is not vacuous');
 		assert.deepEqual(numericArrays(ROOT, files), []);
 	});
 
@@ -170,6 +213,31 @@ describe('the checks see what they look for (planted fixtures in a temp folder)'
 		}
 	});
 
+	// Whole-branch review, `audio-guard-reaches-only-modules-recordings`: the tracked-file audio check reaches the
+	// whole repository, and the setup clip is the one allowance.
+	test('a tracked audio file anywhere in a repository is found, by name or by bytes; only modules/recordings/lib/clip.wav is allowed', () => {
+		const dir = tmp();
+		try {
+			const put = (rel, bytes) => { fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true }); fs.writeFileSync(path.join(dir, rel), bytes); };
+			const wav = Buffer.concat([Buffer.from('RIFF'), Buffer.alloc(4), Buffer.from('WAVEfmt '), Buffer.alloc(16)]);
+			put('modules/recordings/lib/clip.wav', wav);
+			put('modules/meeting-docs/test/fixtures/call.m4a', 'not really audio');
+			put('tests/memo.txt', Buffer.concat([Buffer.from('ID3'), Buffer.alloc(9)]));
+			put('docs/clip.wav', wav);
+			put('README.md', '# a text file\n');
+			put('untracked.wav', wav);
+			spawnSync('git', ['init', '-q'], { cwd: dir });
+			spawnSync('git', ['add', '--', 'modules', 'tests', 'docs', 'README.md'], { cwd: dir });
+			assert.deepEqual(trackedAudio(dir, [CLIP_IN_REPO]), [
+				'docs/clip.wav (wav)',
+				'modules/meeting-docs/test/fixtures/call.m4a (audio by its name)',
+				'tests/memo.txt (mp3)',
+			]);
+		} finally {
+			fs.rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
 	test('an array of 65 numbers is found in JSON, YAML and unparseable JSON; 64 numbers and long string arrays are not', () => {
 		const dir = tmp();
 		try {
@@ -180,13 +248,22 @@ describe('the checks see what they look for (planted fixtures in a temp folder)'
 				'broken.json': `{ "vector": ${JSON.stringify(v(65))}, }`,
 				'edge.json': JSON.stringify({ vector: v(64) }),
 				'names.yml': yaml.dump({ ids: Array.from({ length: 200 }, (_, i) => `id-${i}`) }),
+				// whole-branch review, `vector-guard-skips-markdown-frontmatter`: Markdown and every other text file are read too
 				'readme.md': JSON.stringify(v(300)),
+				'x.meeting-recording.md': `---\n${yaml.dump({ name: 'Northwind weekly', transcription: { signature: v(65) } })}---\n\n## Transcript\n`,
+				'edge.meeting-recording.md': `---\n${yaml.dump({ name: 'Harbor review', vector: v(64) })}---\n`,
+				'fixture.py': `VECTOR = [\n    ${v(65).join(',\n    ')},\n]\n`,
+				'small.py': `VECTOR = ${JSON.stringify(v(12))}\n`,
+				'blob.bin': Buffer.concat([Buffer.from([0, 1, 2]), Buffer.from(JSON.stringify(v(300)))]),
 			};
 			for (const [n, text] of Object.entries(files)) fs.writeFileSync(path.join(dir, n), text);
 			assert.deepEqual(numericArrays(dir, Object.keys(files)), [
 				'broken.json (unparseable, more than 64 numbers in a row)',
+				'fixture.py (more than 64 numbers in a row)',
 				'print.yaml (65 numbers)',
+				'readme.md (more than 64 numbers in a row)',
 				'sig.json (65 numbers)',
+				'x.meeting-recording.md (65 numbers in its frontmatter)',
 			]);
 		} finally {
 			fs.rmSync(dir, { recursive: true, force: true });

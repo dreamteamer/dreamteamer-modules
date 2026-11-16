@@ -77,6 +77,18 @@ const arr = (v) => (v == null ? [] : Array.isArray(v) ? v : [v]);
 const lower = (s) => (typeof s === 'string' ? s.trim().toLowerCase() : '');
 const fileOf = (root, rec) => (rec.$file ? path.join(root, rec.$file) : null);
 
+// Python's str.split() whitespace (str.isspace), which is not JavaScript's \s: it adds \x1c-\x1f and \x85
+// and leaves out the byte-order mark U+FEFF.
+const PY_SPACE = /[\t\n\v\f\r\x1c-\x1f \x85\xa0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]+/;
+/** A person's name as every Python half compares it — prints._norm, identify._norm, enrol._norm,
+ *  naming._key: `" ".join(str(s or "").split()).casefold()`. Casefold is upper-then-lower here (the sharp s
+ *  folds to ss), with the final sigma folded to sigma as casefold does. One rule in both languages: a name
+ *  the Python finds is a name `personRecords` finds (finding forget-misses-a-name-in-another-case). */
+export function normName(s) {
+	const str = s ? String(s) : '';
+	return str.split(PY_SPACE).filter(Boolean).join(' ').toUpperCase().toLowerCase().replace(/\u03c2/g, '\u03c3');
+}
+
 /** A record argument as a `meeting-recordings/<id>` reference: a reference, a bare id, or a path to the
  *  record's file (matched against the engine's own `$file`). */
 export async function recordRef(root, given) {
@@ -293,7 +305,10 @@ export async function baseContext(root) {
 export async function personRecords(root, personRef, snap = null) {
 	const [s, all] = await Promise.all([snap ?? snapshot(root), list(root, RECORDINGS)]);
 	const name = s.base.known[personRef] ?? null;
-	const names = (entryName, entryPerson) => (entryPerson ? entryPerson === personRef : !!name && entryName === name);
+	// prints._theirs: a reference decides when there is one; else the name, folded the way the Python folds it
+	const key = normName(name);
+	const sameName = (n) => !!name && normName(n) === key;
+	const names = (entryName, entryPerson) => (entryPerson ? entryPerson === personRef : sameName(entryName));
 	const rows = [];
 	for (const rec of all) {
 		const t = rec.transcription;
@@ -304,7 +319,7 @@ export async function personRecords(root, personRef, snap = null) {
 		for (const [label, n] of Object.entries(t.speakers && typeof t.speakers === 'object' ? t.speakers : {})) {
 			const src = sources[label];
 			if (src && src.person) { if (src.person === personRef) matches.push({ label, where: 'speaker_sources', diarization_id: did }); }
-			else if (name && n === name) matches.push({ label, where: 'speakers', diarization_id: did });
+			else if (sameName(n)) matches.push({ label, where: 'speakers', diarization_id: did });
 		}
 		for (const [label, src] of Object.entries(sources)) {
 			if (src && src.person === personRef && !matches.some((m) => m.label === label)) matches.push({ label, where: 'speaker_sources', diarization_id: did });

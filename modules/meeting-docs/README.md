@@ -45,11 +45,12 @@ step 4b, after transcription and before the summary, with no command typed: it n
 prints kept on this computer and leaves an open question on the rest. The questions of every recording come
 as **one question at the end of the run**, with the pipeline's other end-of-run questions, and only a person
 answers them. The summary and the tasks are written with the names that exist; the critique and the
-engagement update of a meeting with an open question wait for the answer, so each engagement takes each call
-once. After the answer, the summary and tasks of a meeting whose names changed, or whose provisional names
+engagement update of a meeting with a question not yet shown to a person wait for the answer, so each
+engagement takes each call once. A question a person was shown and skipped is asked again at the next attended
+run, but its meeting is not held, critiqued or folded again. After the answer, the summary and tasks of a meeting whose names changed, or whose provisional names
 were confirmed, are written again, and the report lists every document written before a name it now carries.
-An unattended run asks nothing: it holds back the critique of each meeting with an open question and the
-update of each engagement with such a meeting — a meeting an earlier run left waiting included, whatever its
+An unattended run asks nothing: it holds back the critique of each meeting with a question not yet shown and
+the update of each engagement with such a meeting — a meeting an earlier run left waiting included, whatever its
 date — and lists them for the next attended run. Where the installed recordings has no
 `/identify-speakers`, the step is skipped and the run says so.
 

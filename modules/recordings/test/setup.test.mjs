@@ -6,7 +6,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { SETUP_UNIT } from '../lib/recordings-setup.mjs';
+import * as unit from '../lib/recordings-setup.mjs';
+const { SETUP_UNIT, SPEAKER_MODELS, DEFAULT_SPEAKER_MODEL } = unit;
 import { virginWorkspace, packedInto, run, cleanup, ENGINE_VERSION, engineMeets, closure } from '../../../tests/helpers/workspace.mjs';
 
 after(cleanup);
@@ -16,7 +17,7 @@ function fakeBins(names) {
 	const dir = tmp('dtm-bin-');
 	for (const n of names) {
 		fs.writeFileSync(path.join(dir, n), n === 'uv'
-			? '#!/bin/sh\ncase "$1" in sync) mkdir -p "$UV_PROJECT_ENVIRONMENT/bin" && : > "$UV_PROJECT_ENVIRONMENT/bin/python" && chmod +x "$UV_PROJECT_ENVIRONMENT/bin/python";; run) case "$*" in *setup*) mkdir -p "$TRANSCRIPTION_HOME/models/whisper-ct2" "$TRANSCRIPTION_HOME/models/diarization" && : > "$TRANSCRIPTION_HOME/models/whisper-ct2/model.bin" && : > "$TRANSCRIPTION_HOME/models/diarization/segmentation.onnx" && : > "$TRANSCRIPTION_HOME/models/diarization/embedding.onnx";; *" run "*) rec="$5"; printf "%s\\n%s\\n" "$(cat "$rec")" "testing one two three, this is a dreamteamer check" > "$rec";; esac;; esac; exit 0\n'
+			? '#!/bin/sh\ncase "$1" in sync) mkdir -p "$UV_PROJECT_ENVIRONMENT/bin" && : > "$UV_PROJECT_ENVIRONMENT/bin/python" && chmod +x "$UV_PROJECT_ENVIRONMENT/bin/python";; run) case "$*" in *setup*) mkdir -p "$TRANSCRIPTION_HOME/models/whisper-ct2" "$TRANSCRIPTION_HOME/models/diarization" && : > "$TRANSCRIPTION_HOME/models/whisper-ct2/model.bin" && : > "$TRANSCRIPTION_HOME/models/diarization/segmentation.onnx" && : > "$TRANSCRIPTION_HOME/models/diarization/embedding.onnx" && mkdir -p "$TRANSCRIPTION_HOME/models/speaker" && dd if=/dev/zero of="$TRANSCRIPTION_HOME/models/speaker/wespeaker_en_voxceleb_CAM++_LM.onnx" bs=1 count=0 seek=29292687 2>/dev/null;; *" run "*) rec="$5"; printf "%s\\n%s\\n" "$(cat "$rec")" "testing one two three, this is a dreamteamer check" > "$rec";; esac;; esac; exit 0\n'
 			: '#!/bin/sh\nexit 0\n', { mode: 0o755 });
 	}
 	return dir;
@@ -28,6 +29,15 @@ function repo() {
 	return root;
 }
 const ctxFor = (root, env) => ({ root, env, tty: false, receiptDir: path.join(root, '.dreamteamer', 'setup', 'recordings') });
+/** The active speaker model as `transcribe_meeting.py setup` leaves it: the registered file at its registered
+ *  size under models/speaker/ — written sparse, so no 28 MB lands on the disk. */
+const SPEAKER_FILE = 'models/speaker/wespeaker_en_voxceleb_CAM++_LM.onnx';
+function speakerModel(home, size = 29292687) {
+	const f = path.join(home, SPEAKER_FILE);
+	fs.mkdirSync(path.dirname(f), { recursive: true });
+	fs.writeFileSync(f, '');
+	fs.truncateSync(f, size);
+}
 
 describe('the unit, pure', () => {
 	test('inputs: transcription_home defaulted, files_folder required, inbox_folders optional; version 1', () => {
@@ -62,6 +72,7 @@ describe('the unit, pure', () => {
 		const root = repo(), home = tmp('dtm-home-');
 		const ctx = ctxFor(root, { PATH: fakeBins(['uv', 'ffmpeg']), TRANSCRIPTION_HOME: home, FILES_FOLDER: root, INBOX_FOLDERS: root });
 		for (const rel of ['venv/bin/python', 'models/whisper-ct2/model.bin', 'models/diarization/segmentation.onnx', 'models/diarization/embedding.onnx']) { fs.mkdirSync(path.dirname(path.join(home, rel)), { recursive: true }); fs.writeFileSync(path.join(home, rel), ''); }
+		speakerModel(home);
 		fs.mkdirSync(ctx.receiptDir, { recursive: true });
 		fs.writeFileSync(path.join(ctx.receiptDir, 'cpu-run.verified.json'), JSON.stringify({ at: '2026-11-13', atMs: Date.now() + 1000 }));
 		const ready = SETUP_UNIT.inspect(ctx).checks;
@@ -90,6 +101,7 @@ describe('the unit, pure', () => {
 		const root = repo(), home = tmp('dtm-home-');
 		const ctx = ctxFor(root, { PATH: fakeBins(['uv', 'ffmpeg']), TRANSCRIPTION_HOME: home, FILES_FOLDER: root });
 		for (const rel of ['venv/bin/python', 'models/whisper-ct2/models--x/snapshots/1/model.bin', 'models/diarization/segmentation.onnx', 'models/diarization/embedding.onnx']) { fs.mkdirSync(path.dirname(path.join(home, rel)), { recursive: true }); fs.writeFileSync(path.join(home, rel), ''); }
+		speakerModel(home);
 		assert.equal(SETUP_UNIT.inspect(ctx).checks.find((c) => c.id === 'recordings.models').status, 'configured', 'the weights nested as the hub cache nests them');
 		fs.rmSync(path.join(home, 'models/whisper-ct2/models--x/snapshots/1/model.bin'));
 		const row = SETUP_UNIT.inspect(ctx).checks.find((c) => c.id === 'recordings.models');
@@ -102,6 +114,7 @@ describe('the unit, pure', () => {
 		const root = repo(), home = tmp('dtm-home-');
 		const ctx = ctxFor(root, { PATH: fakeBins(['uv', 'ffmpeg']), TRANSCRIPTION_HOME: home, FILES_FOLDER: root });
 		for (const rel of ['venv/bin/python', 'models/diarization/segmentation.onnx', 'models/diarization/embedding.onnx']) { fs.mkdirSync(path.dirname(path.join(home, rel)), { recursive: true }); fs.writeFileSync(path.join(home, rel), ''); }
+		speakerModel(home);
 		const repoDir = path.join(home, 'models/whisper-ct2/models--x');
 		fs.mkdirSync(path.join(repoDir, 'blobs'), { recursive: true }); fs.mkdirSync(path.join(repoDir, 'snapshots/1'), { recursive: true });
 		fs.writeFileSync(path.join(repoDir, 'blobs/abc123'), 'weights');
@@ -117,6 +130,68 @@ describe('the unit, pure', () => {
 		assert.equal(r.status, 2);
 		assert.match(r.stderr, /not inside a dreamteamer workspace/);
 		assert.doesNotMatch(r.stderr, /TypeError|at Object/);
+	});
+	// Whole-branch review, `upgrade-never-fetches-the-speaker-model` (re-raising task 11's
+	// `setup-again-does-not-fetch-the-speaker-model`): a 0.5.x home has the transcription models and no speaker
+	// model, and the models check read only the former — so `dt setup` planned download-models as done and nothing
+	// the user could run fetched the model voice signatures are embedded with.
+	test('line 07 a home set up by 0.5.x (transcription models, no speaker model) reads missing naming the speaker model, and the setup fetches it', () => {
+		const root = repo(), home = tmp('dtm-home-');
+		// a workspace the node entry recognises, with the skill "compiled" (the entry only checks the script is there)
+		fs.writeFileSync(path.join(root, 'package.json'), '{"name":"probe"}\n');
+		fs.writeFileSync(path.join(root, 'package-lock.json'), '{"lockfileVersion": 3}\n');
+		fs.mkdirSync(path.join(root, '.dreamteamer', 'skills', 'transcribing-recordings'), { recursive: true });
+		fs.writeFileSync(path.join(root, '.dreamteamer', 'skills', 'transcribing-recordings', 'transcribe_meeting.py'), '');
+		// the stand-ins first, then the system's mkdir and dd the stand-in uv runs
+		const ctx = ctxFor(root, { PATH: `${fakeBins(['uv', 'ffmpeg'])}${path.delimiter}${process.env.PATH}`, TRANSCRIPTION_HOME: home, FILES_FOLDER: root });
+		for (const rel of ['venv/bin/python', 'models/whisper-ct2/model.bin', 'models/diarization/segmentation.onnx', 'models/diarization/embedding.onnx']) { fs.mkdirSync(path.dirname(path.join(home, rel)), { recursive: true }); fs.writeFileSync(path.join(home, rel), ''); }
+		const row = SETUP_UNIT.inspect(ctx).checks.find((c) => c.id === 'recordings.models');
+		assert.equal(row.status, 'missing', 'the speaker model is part of the models');
+		assert.match(row.detail, /speaker model campp-en-voxceleb-lm/);
+		assert.equal(row.fix, 'dt setup recordings --allow download');
+		const download = SETUP_UNIT.plan(ctx, { files_folder: root }).actions.find((a) => a.id === 'download-models');
+		assert.equal(download.state, 'ready', 'the setup offers the download again');
+		assert.deepEqual(download.command.slice(-1), ['setup'], 'through the entry\'s setup, which fetches the active speaker model');
+		const done = SETUP_UNIT.apply(ctx, download, { files_folder: root });
+		assert.equal(done.ok, true, done.message);
+		assert.equal(fs.statSync(path.join(home, SPEAKER_FILE)).size, 29292687, 'the stand-in setup fetched it');
+		assert.equal(SETUP_UNIT.inspect(ctx).checks.find((c) => c.id === 'recordings.models').status, 'configured');
+		assert.equal(SETUP_UNIT.plan(ctx, { files_folder: root }).actions.find((a) => a.id === 'download-models').state, 'done');
+	});
+	test('line 07 a speaker model file at another size (an interrupted download) reads missing; the receipt does not depend on it', () => {
+		const root = repo(), home = tmp('dtm-home-');
+		const ctx = ctxFor(root, { PATH: fakeBins(['uv', 'ffmpeg']), TRANSCRIPTION_HOME: home, FILES_FOLDER: root, INBOX_FOLDERS: root });
+		for (const rel of ['venv/bin/python', 'models/whisper-ct2/model.bin', 'models/diarization/segmentation.onnx', 'models/diarization/embedding.onnx']) { fs.mkdirSync(path.dirname(path.join(home, rel)), { recursive: true }); fs.writeFileSync(path.join(home, rel), ''); }
+		speakerModel(home, 1024);
+		assert.equal(SETUP_UNIT.inspect(ctx).checks.find((c) => c.id === 'recordings.models').status, 'missing');
+		fs.mkdirSync(ctx.receiptDir, { recursive: true });
+		fs.writeFileSync(path.join(ctx.receiptDir, 'cpu-run.verified.json'), JSON.stringify({ at: '2026-11-13', atMs: Date.now() + 1000 }));
+		speakerModel(home);
+		assert.equal(SETUP_UNIT.inspect(ctx).checks.find((c) => c.id === 'recordings.models').status, 'configured');
+		assert.equal(SETUP_UNIT.inspect(ctx).checks.find((c) => c.id === 'recordings.cpu-run').status, 'ready', 'the CPU run never uses the speaker model: fetching it later does not stale the receipt');
+	});
+	test('line 07 the unit\'s speaker-model registry is the one voiceprints/models.py registers, and the default is its DEFAULT_MODEL', () => {
+		const py = fs.readFileSync(new URL('../skills/transcribing-recordings/voiceprints/models.py', import.meta.url), 'utf8');
+		const registered = {};
+		for (const m of py.matchAll(/"([a-z0-9-]+)": \{\s*"id": "\1",\s*"file": "([^"]+)",[\s\S]*?"size": (\d+),/g)) registered[m[1]] = { file: m[2], size: Number(m[3]) };
+		assert.ok(Object.keys(registered).length >= 2, 'models.py\'s MODELS read');
+		assert.deepEqual(SPEAKER_MODELS, registered);
+		assert.equal(DEFAULT_SPEAKER_MODEL, /^DEFAULT_MODEL = "([^"]+)"$/m.exec(py)[1]);
+		assert.equal(SPEAKER_FILE, `models/speaker/${SPEAKER_MODELS[DEFAULT_SPEAKER_MODEL].file}`);
+	});
+	test('line 07 the active speaker model follows the ONE file in the skill\'s calibration folder, as models.active_model does', () => {
+		const root = repo(), home = tmp('dtm-home-');
+		const skill = path.join(root, '.dreamteamer', 'skills', 'transcribing-recordings');
+		fs.mkdirSync(path.join(skill, 'calibration'), { recursive: true });
+		fs.writeFileSync(path.join(skill, 'calibration', 'calibration-eres2netv2-zh-cn-16k-common.json'), JSON.stringify({ model: { id: 'eres2netv2-zh-cn-16k-common' } }));
+		const ctx = ctxFor(root, { PATH: fakeBins(['uv', 'ffmpeg']), TRANSCRIPTION_HOME: home, FILES_FOLDER: root });
+		for (const rel of ['venv/bin/python', 'models/whisper-ct2/model.bin', 'models/diarization/segmentation.onnx', 'models/diarization/embedding.onnx']) { fs.mkdirSync(path.dirname(path.join(home, rel)), { recursive: true }); fs.writeFileSync(path.join(home, rel), ''); }
+		speakerModel(home);
+		const row = SETUP_UNIT.inspect(ctx).checks.find((c) => c.id === 'recordings.models');
+		assert.equal(row.status, 'missing', 'the default model on disk is not the calibrated one');
+		assert.match(row.detail, /speaker model eres2netv2-zh-cn-16k-common/);
+		fs.writeFileSync(path.join(skill, 'calibration', 'other.json'), '{}');
+		assert.match(SETUP_UNIT.inspect(ctx).checks.find((c) => c.id === 'recordings.models').detail, /calibration folder holds 2 files/);
 	});
 	// The prompt asks for the inbox roots comma-separated; INBOX_FOLDERS is a newline-separated list (README), and the
 	// ingest script reads it one root per line. 0.5.1 wrote the comma list verbatim: one root that does not exist.
@@ -155,6 +230,22 @@ describe('through the engine', { skip: !engineMeets('recordings') && `needs engi
 		assert.match(v.stdout, /✔ recordings: ready · verified \d{4}-\d{2}-\d{2}/);
 		assert.match(run(root, ['status'], env).stdout, /recordings\s+ready · verified/);
 		assert.match(run(root, ['status'], { ...env, PATH: fakeBins(['uv']) }).stdout, /recordings\s+blocked\s+ffmpeg and uv — ffmpeg not on PATH/);
+	});
+	test('line 07 an upgrade from 0.5.x: with the speaker model gone, status says the models are missing and `dt setup recordings --allow download` fetches it', () => {
+		const root = virginWorkspace();
+		const from = packedInto(fs.mkdtempSync(path.join(os.tmpdir(), 'dtm-from-')), ...closure('recordings'));
+		const home = tmp('dtm-home-'), files = tmp('dtm-files-');
+		const env = { PATH: `${fakeBins(['uv', 'ffmpeg'])}:${process.env.PATH}`, HOME: tmp('dtm-HOME-') };
+		const r = run(root, ['install', '@dreamteamer/recordings', '--from', from, '--input', `transcription_home=${home}`, '--input', `files_folder=${files}`, '--allow', 'download', '--allow', 'machine', '--no-input'], env);
+		assert.equal(r.status, 0, r.stderr + r.stdout);
+		// the home a 0.5.x setup left: everything but the speaker model
+		fs.rmSync(path.join(home, 'models', 'speaker'), { recursive: true });
+		assert.match(run(root, ['status'], env).stdout, /recordings\s+\S+\s+models missing[^\n]*→ dt setup recordings --allow download/);
+		const s = run(root, ['setup', 'recordings', '--allow', 'download', '--no-input'], env);
+		assert.equal(s.status, 0, s.stderr + s.stdout);
+		assert.match(s.stdout, /✔ download-models/);
+		assert.equal(fs.statSync(path.join(home, SPEAKER_FILE)).size, 29292687);
+		assert.match(run(root, ['status'], env).stdout, /recordings\s+configured\s+CPU run unverified/);
 	});
 	test('set-home through the engine: written once, then done; a .env already holding a multi-line quoted INBOX_FOLDERS is done, never rewritten', () => {
 		const root = virginWorkspace();
