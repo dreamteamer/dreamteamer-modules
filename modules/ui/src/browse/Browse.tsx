@@ -215,7 +215,7 @@ export function Browse({
       <header className={cx(pageHead, pageHeadSpace.column)}>
         <div>
           {segments.length > 1 && (
-            <p className={cx(subtle, "m-0! mb-1! text-small")}>{segments.slice(0, -1).join("/")}</p>
+            <div className={cx(subtle, "mb-1 text-small")}>{segments.slice(0, -1).join("/")}</div>
           )}
           <h1>
             {row?.nav.icon && <Icon name={row.nav.icon} />} {heading}
