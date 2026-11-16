@@ -733,9 +733,19 @@ _REFUSALS = identify._REFUSALS
 
 
 def main(args, *, skill_dir=None, read=None, write=None, store=None, active=None, compute=None, audio_key=None,
-         out=print, now=None):
+         out=print, err=None, now=None):
     """`prints …` (args[0] is the verb). Prints one JSON object. Returns 0, 1 (refused: no print here, nothing
-    resembles, the store or model refused) or 2 (usage)."""
+    resembles, the store or model refused) or 2 (usage). A store that could not be excluded from backups is
+    said through `err` (stderr), once (whole-branch review, `time-machine-exclusion-only-when-the-store-is-made`)."""
+    held = {"store": store}
+    try:
+        return _main(args, skill_dir=skill_dir, read=read, write=write, store=store, active=active, compute=compute,
+                     audio_key=audio_key, out=out, now=now, held=held)
+    finally:
+        vp_store.say_notices(held["store"], err or identify._stderr)
+
+
+def _main(args, *, skill_dir, read, write, store, active, compute, audio_key, out, now, held):
     clock = now or vp_store.now
     try:
         a = list(args[1:])
@@ -763,7 +773,7 @@ def main(args, *, skill_dir=None, read=None, write=None, store=None, active=None
         if not isinstance(ctx, dict):
             raise Usage("the voice context is not an object")
         if store is None:
-            store = vp_store.Store(vp_store.default_home(), guard=ctx.get("guard") or {})
+            store = held["store"] = vp_store.Store(vp_store.default_home(), guard=ctx.get("guard") or {})
         store.ensure()
         if active is None:
             active = identify.resolve_active(skill_dir, store)

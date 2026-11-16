@@ -376,11 +376,53 @@ class EnsureTest(Tmp):
         self.assertTrue(os.path.isdir(s.home))
         self.assertTrue(any("Time Machine" in n or "backup" in n for n in s.notices), s.notices)
 
-    def test_an_existing_store_is_not_excluded_again(self):
+    # whole-branch review, `time-machine-exclusion-only-when-the-store-is-made`: the exclusion no longer
+    # depends on ensure() making the folder. It was `test_an_existing_store_is_not_excluded_again`, which
+    # asserted the defect (a folder the user made first was never excluded); a store already excluded is still
+    # not excluded again — by its mark, below.
+    def test_a_folder_the_user_made_first_is_excluded_too(self):
         os.makedirs(self.path("vp"))
         calls = []
         store.Store(self.path("vp"), exclude_backup=calls.append).ensure()
-        self.assertEqual(calls, [])
+        self.assertEqual(calls, [self.path("vp")])
+
+    def test_a_store_already_excluded_is_not_excluded_again(self):
+        calls = []
+        store.Store(self.path("vp"), exclude_backup=calls.append).ensure()
+        store.Store(self.path("vp"), exclude_backup=calls.append).ensure()   # the next verb, the next process
+        self.assertEqual(calls, [self.path("vp")])
+        self.assertTrue(os.path.isfile(os.path.join(self.path("vp"), store.EXCLUDED_MARK)))
+
+    def test_a_failed_exclusion_is_tried_again_by_the_next_verb(self):
+        tried = []
+
+        def boom(home):
+            tried.append(home)
+            raise OSError("tmutil: not permitted")
+        first = store.Store(self.path("vp"), exclude_backup=boom)
+        first.ensure()
+        first.ensure()
+        first.write_json(os.path.join(first.home, "x.json"), {"n": 1})        # every write ensures
+        self.assertEqual(len(tried), 1, "tried once per verb, not on every write")
+        self.assertEqual(len(first.notices), 1, first.notices)
+        self.assertFalse(os.path.exists(os.path.join(first.home, store.EXCLUDED_MARK)))
+        calls = []
+        second = store.Store(self.path("vp"), exclude_backup=calls.append)
+        second.ensure()
+        self.assertEqual(calls, [self.path("vp")])
+        self.assertEqual(second.notices, [])
+
+    def test_say_notices_says_each_notice_once(self):
+        def boom(home):
+            raise OSError("tmutil: not permitted")
+        s = store.Store(self.path("vp"), exclude_backup=boom)
+        s.ensure()
+        said = []
+        store.say_notices(s, said.append)
+        store.say_notices(s, said.append)
+        store.say_notices(None, said.append)
+        self.assertEqual(len(said), 1, said)
+        self.assertTrue(said[0].startswith("⚠ ") and "Time Machine" in said[0], said)
 
     @unittest.skipUnless(POSIX, "symlinks")
     def test_a_store_linked_to_an_allowed_folder_not_yet_made_is_made_at_the_target(self):
@@ -438,7 +480,7 @@ class AtomicWriteTest(Tmp):
             with self.assertRaises(OSError):
                 s.write_json(p, {"v": "new"})
         self.assertEqual(s.read_json(p), {"v": "old"})
-        self.assertEqual(sorted(os.listdir(s.home)), ["README.txt", "x.json"])
+        self.assertEqual(sorted(os.listdir(s.home)), sorted([store.EXCLUDED_MARK, "README.txt", "x.json"]))
 
 
 # --------------------------------------------------------------------------------------------------

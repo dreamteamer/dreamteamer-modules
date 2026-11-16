@@ -24,6 +24,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import unicodedata
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -36,6 +37,7 @@ sys.path.insert(0, str(SKILL))
 import vp_records  # noqa: E402
 import vp_synth  # noqa: E402
 from voiceprints import enrol, identify, models, naming, quotes, store, vec  # noqa: E402
+from voiceprints import segments as segments_mod  # noqa: E402
 
 TH = dict(enrol.PLACEHOLDERS)
 MODEL = store.Model("campp-test", "c" * 64, 64)
@@ -324,6 +326,39 @@ class Quotes(unittest.TestCase):
             self.assertNotIn(yes, q["text"].split())
             self.assertTrue(10 <= len(q["text"].split()) <= 25)
 
+    # whole-branch review, review_focus 1: the quotes are whole words of THAT label's speech, 10 to 25 words,
+    # on a code-switched Hebrew and English turn read from the transcript body as `run` reads it
+    def test_code_switched_quotes_are_10_to_25_whole_words_of_that_labels_own_turn(self):
+        he = ["\u05d0\u05e0\u05d9", "\u05d7\u05d5\u05e9\u05d1", "\u05e9\u05d4", "\u05e6\u05e8\u05d9\u05da",
+              "\u05dc\u05e9\u05dc\u05d5\u05d7", "\u05d1\u05d9\u05d5\u05dd"]
+        en = ["deck", "budget", "review", "Friday", "the", "launch"]
+
+        def turn(k):
+            words = []
+            for i in range(42):
+                w = (he[i % len(he)] if i % 3 else en[i % len(en)]) + (str(k) if i % 7 == 0 else "")
+                words.append(w + ("." if i % 9 == 8 else ""))
+            return " ".join(words)
+        other = "\u05db\u05df yes \u05d1\u05e1\u05d3\u05e8 okay " * 4
+        lines = []
+        for k in range(4):
+            lines.append(f"[{k:02d}:00] Speaker 0: {turn(k)}")
+            lines.append(f"[{k:02d}:30] Speaker 1: {other.strip()}")
+        body = "# Northwind code-switched\n\n## Transcript\n\n" + "\n\n".join(lines) + "\n"
+        ts = segments_mod.parse_body_turns(body)
+        mine = [t["text"].split() for t in ts if t["label"] == "speaker_0"]
+        ws = [{"start": 60.0 * k, "end": 60.0 * k + 6, "vector": v} for k, v in
+              enumerate(vp_synth.windows(DANA, 2, seed="q-cs-a") + vp_synth.windows(SAM, 2, seed="q-cs-b"))]
+        got = quotes.pick(ws, ts, "speaker_0")
+        self.assertEqual(len(got), 2, got)
+        for q in got:
+            w = q["text"].split()
+            self.assertTrue(10 <= len(w) <= 25, q)
+            # a contiguous run of one of that label's turns, cut at word boundaries
+            self.assertTrue(any(w == t[i:i + len(w)] for t in mine for i in range(len(t) - len(w) + 1)), q)
+            for x in ("\u05db\u05df", "yes", "\u05d1\u05e1\u05d3\u05e8", "okay"):
+                self.assertNotIn(x, w)
+
     def test_timestamps_are_mm_ss(self):
         ts = [{"label": "speaker_0", "start": 3725.0, "text": sentence(0, 1)},
               {"label": "speaker_0", "start": 65.0, "text": sentence(0, 2)}]
@@ -336,6 +371,135 @@ class Quotes(unittest.TestCase):
 
     def test_no_turn_of_the_label_no_quote(self):
         self.assertEqual(quotes.pick([], self.turns(n=2), "speaker_7"), [])
+
+
+# ======================================================================================================
+# right to left (whole-branch review, `hebrew-quotes-pair-with-the-wrong-timestamp`; review_focus 1)
+
+FSI, LRI, RLI, PDI = "\u2068", "\u2066", "\u2067", "\u2069"
+OBJ = "\ufffc"                                                     # bidi class ON, an isolate seen from outside
+HE_A = "\u05d0\u05d0\u05d0 \u05d0\u05d0\u05d0 \u05d0\u05d0\u05d0."          # quote A, Hebrew letters as escapes
+HE_B = "\u05d1\u05d1\u05d1 \u05d1\u05d1\u05d1 \u05d1\u05d1\u05d1."          # quote B
+HE_DANA = "\u05d3\u05e0\u05d4 \u05d0\u05d5\u05e8\u05df"                      # Dana Oren, written in Hebrew
+HE_SAM = "\u05e1\u05dd \u05d3\u05d9\u05d0\u05d6"                             # Sam Diaz, written in Hebrew
+HE_TITLE = "\u05e4\u05d2\u05d9\u05e9\u05d4 \u05e9\u05d1\u05d5\u05e2\u05d9\u05ea"   # a weekly meeting
+
+
+def isolates(text):
+    """`(outer, inner)`: the text with every directional isolate (FSI/LRI/RLI ... PDI) replaced by one U+FFFC
+    (bidi class ON: the Unicode bidi algorithm treats an isolate as one neutral in the text around it, BD8 and
+    X5a-X6a), and each top-level isolate's content. Fails on an unbalanced isolate."""
+    outer, inner, depth, cur = [], [], 0, []
+    for ch in text:
+        if ch in (FSI, LRI, RLI):
+            if depth == 0:
+                outer.append(OBJ)
+                cur = []
+            else:
+                cur.append(ch)
+            depth += 1
+        elif ch == PDI and depth:
+            depth -= 1
+            if depth == 0:
+                inner.append("".join(cur))
+            else:
+                cur.append(ch)
+        elif depth:
+            cur.append(ch)
+        else:
+            outer.append(ch)
+    assert depth == 0, f"an isolate is not closed in {text!r}"
+    return "".join(outer), inner
+
+
+def assert_reads_in_order(tc, paragraph):
+    """The stdlib stand-in for the reviewer's fribidi run. Outside the isolates the paragraph holds no
+    right-to-left character (bidi class R, AL or AN) and no embedding or override, and its first strong
+    character is left to right (or there is none, P2 skipping isolates). Under the Unicode bidi algorithm every
+    character outside the isolates then resolves to level 0 — an EN digit after sos L becomes L (W7), a neutral
+    between two L becomes L (N1) — so the paragraph displays in its logical order with each isolate as one unit
+    in its own place: no timestamp can move next to another quote."""
+    outer, _ = isolates(paragraph)
+    bad = [(c, unicodedata.bidirectional(c)) for c in outer
+           if unicodedata.bidirectional(c) in ("R", "AL", "AN", "LRE", "RLE", "LRO", "RLO", "PDF")]
+    tc.assertEqual(bad, [], f"right-to-left text outside an isolate in {paragraph!r}")
+    strong = [unicodedata.bidirectional(c) for c in outer if unicodedata.bidirectional(c) in ("L", "R", "AL")]
+    tc.assertIn(strong[:1], ([], ["L"]), paragraph)
+
+
+def assert_pairs(tc, line, qs):
+    """Each quote's `[mm:ss]` is followed by that quote alone, in its own isolate: `[at] "<FSI>text<PDI>"`, in
+    time order, and nothing else of the quotes stands outside an isolate."""
+    outer, inner = isolates(line)
+    texts = [q["text"] for q in qs]
+    tc.assertEqual([x for x in inner if x in texts], texts, line)
+    pos = -1
+    for q in qs:
+        piece = f'[{q["at"]}] "{FSI}{q["text"]}{PDI}"'
+        i = line.find(piece, pos + 1)
+        tc.assertGreater(i, pos, f"{piece!r} does not follow the quote before it in {line!r}")
+        pos = i
+    tc.assertGreaterEqual(outer.count(f'"{OBJ}"'), len(qs), line)
+
+
+class RightToLeft(unittest.TestCase):
+    """The end-of-run question, a not-shown reply and `--confirm`'s head read right to left in the chat: each
+    timestamp stays with its own quote, and a Hebrew name, title or choice never pulls the text around it into
+    its run. The records' data keeps the plain text."""
+
+    QS = [{"at": "02:14", "text": HE_A}, {"at": "10:05", "text": HE_B}]
+    STAMP = "2026-11-20T11:00:00+02:00"
+
+    def test_the_reviewers_probe(self):
+        line = "**Speaker 1** — " + identify._quote_line(self.QS)
+        assert_pairs(self, line, self.QS)
+        assert_reads_in_order(self, line)
+
+    def fm(self):
+        src = {"name": HE_DANA, "person": DANA_REF, "origin": "print", "status": "provisional", "score": 0.91,
+               "margin": 0.2, "seconds": 80.0, "model": MODEL.id, "named": "2026-11-20T10:00:00+02:00"}
+        prop = {"person": SAM_REF, "name": HE_SAM, "origin": "attendees", "why": "the only attendee left"}
+        return {"name": "Northwind he", "date": "2026-11-20",
+                "transcription": {"diarization_id": "0123456789ab",
+                                  "speakers": {"speaker_1": HE_DANA, "speaker_2": HE_SAM},
+                                  "speaker_sources": {"speaker_1": src},
+                                  "speaker_questions": {
+                                      "speaker_0": {"quotes": copy.deepcopy(self.QS), "flags": [], "proposed": prop},
+                                      "speaker_1": {"quotes": copy.deepcopy(self.QS)},
+                                      "speaker_2": {"quotes": copy.deepcopy(self.QS)}}}}
+
+    def ctx(self):
+        return {"record": "meeting-recordings/2026/11/2026-11-20--he", "workspace": WS,
+                "meeting": {"name": HE_TITLE, "date": "2026-11-20"},
+                "candidates": [{"person": DANA_REF, "name": HE_DANA, "you": True},
+                               {"person": SAM_REF, "name": HE_SAM}]}
+
+    def test_every_paragraph_of_the_question_reads_in_order(self):
+        msg = identify.question([(self.fm(), self.ctx(), "")])
+        text = msg["message"]
+        quote_lines = [ln for ln in text.splitlines() if "[02:14]" in ln]
+        self.assertEqual(len(quote_lines), 3, text)                  # ask, unconfirmed, unverified
+        for ln in quote_lines:
+            assert_pairs(self, ln, self.QS)
+        for paragraph in text.split("\n\n"):
+            assert_reads_in_order(self, paragraph)
+        for row in msg["records"][0]["labels"]:                     # the data keeps the plain text
+            for q in row["quotes"]:
+                self.assertNotIn(FSI, q["text"])
+            for c in row["choices"]:
+                self.assertNotIn(FSI, c["text"])
+
+    def test_a_not_shown_reply_and_confirms_head_read_in_order(self):
+        fm = self.fm()
+        _, lines = identify.answer(fm, self.ctx(), None, ACTIVE, [("speaker_1", "correct")], self.STAMP)
+        reply = "\n".join(lines)
+        self.assertIn("[02:14]", reply)
+        assert_pairs(self, reply, self.QS)
+        assert_reads_in_order(self, reply)
+        _, lines = identify.confirm_names(fm, "", self.ctx(), None, None, ["speaker_1"], self.STAMP)
+        for ln in lines:
+            assert_reads_in_order(self, ln)
+        assert_pairs(self, lines[0], self.QS)
 
 
 # ======================================================================================================
@@ -1136,6 +1300,74 @@ class Line39(Harness):
         self.identify(rec)
         out = self.answer(rec, "speaker_0=skip")
         self.assertNotIn(docs[0]["ref"], out["reply"])
+
+    # whole-branch review, `removed-machine-name-leaves-its-documents-unlisted`: an answer that removes a
+    # machine-written name changes what the documents attribute, so it lists them too
+    def provisional(self, name):
+        self.teach(DANA_REF, DANA)
+        docs = [{"ref": f"meeting-summaries/2026/11/2026-11-20--northwind-{name}", "kind": "summary",
+                 "created": "2026-11-20"},
+                {"ref": f"tasks/2026-11-20--send-the-deck-{name}", "kind": "task", "created": "2026-11-20"}]
+        rec = self.two(name, a=DANA, b=STRANGER, documents=docs)
+        self.identify(rec)
+        self.assertEqual(self.t(rec)["speaker_sources"]["speaker_0"]["status"], "provisional")
+        return rec, docs
+
+    def test_removing_a_provisional_name_lists_the_documents(self):
+        for i, value in enumerate(("different", "nobody")):
+            rec, docs = self.provisional(f"docs-removed-{i}")
+            out = self.answer(rec, f"speaker_0={value}")
+            self.assertNotIn("speaker_0", self.t(rec)["speakers"])
+            for d in docs:
+                self.assertIn(d["ref"], out["reply"], value)
+            self.assertIn("Written from this transcript before these names", out["reply"])
+
+    def test_another_person_on_a_provisional_name_lists_the_documents(self):
+        rec, docs = self.provisional("docs-other")
+        out = self.answer(rec, f"speaker_0={SAM_REF}")
+        for d in docs:
+            self.assertIn(d["ref"], out["reply"])
+
+    def test_closing_a_label_with_no_name_lists_no_document(self):
+        rec, docs = self.provisional("docs-closed")
+        out = self.answer(rec, "speaker_1=nobody")                 # speaker_1 had no name to remove
+        for d in docs:
+            self.assertNotIn(d["ref"], out["reply"])
+
+
+class BackupNotice(Harness):
+    """Whole-branch review, `time-machine-exclusion-only-when-the-store-is-made`: a store `identify` cannot
+    exclude from Time Machine is said so in the verb's output, whichever verb opened it — once."""
+
+    def failing_store(self, name):
+        calls = []
+
+        def boom(home):
+            calls.append(home)
+            raise OSError("tmutil: not permitted")
+        return store.Store(str(self.root / name), exclude_backup=boom), calls
+
+    def run_main(self, st, *args, recs):
+        cf = self.root / f"ctx-notice-{len(self.records.writes)}-{os.path.basename(st.home)}.json"
+        cf.write_text(json.dumps(recs[0].ctx), encoding="utf-8")
+        outs, errs = [], []
+        code = identify.main(["identify", *args, "--context", str(cf)], read=self.records.read,
+                             write=self.records.write, store=st, active=ACTIVE, out=outs.append, err=errs.append,
+                             now=self.now)
+        return code, outs, errs
+
+    def test_every_identify_verb_says_the_store_is_not_excluded(self):
+        rec = self.two("notice")
+        self.identify(rec)
+        for i, args in enumerate((("--question", rec.path), ("--answer", rec.path, "speaker_1=skip"),
+                                  (rec.path,), ("--shown", rec.path), ("--revert", rec.path))):
+            st, calls = self.failing_store(f"vp-notice-{i}")
+            code, outs, errs = self.run_main(st, *args, recs=[rec])
+            self.assertIn(code, (0, 1), (args, outs))            # bare identify: this store has no signature
+            said = [e for e in errs if "Time Machine" in e]
+            self.assertEqual(len(said), 1, (args, errs))
+            self.assertIn(st.home, said[0])
+            self.assertEqual(len(calls), 1, args)                 # tried once in the verb, not on every write
 
 
 class Line40(Harness):

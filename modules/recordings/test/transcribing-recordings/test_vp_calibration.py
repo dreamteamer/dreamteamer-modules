@@ -556,6 +556,21 @@ class LabelSession(Tmp):
         self.assertTrue(data["complete"])
         self.assertEqual(oct(os.stat(path).st_mode & 0o777), oct(0o600))
 
+    # whole-branch review, `time-machine-exclusion-only-when-the-store-is-made`: a labelling session whose
+    # store cannot be excluded from Time Machine says so, once
+    def test_a_store_that_cannot_be_excluded_is_said_so(self):
+        tried = []
+
+        def boom(home):
+            tried.append(home)
+            raise OSError("tmutil: not permitted")
+        self.store = store.Store(os.path.join(self.root, "store-notice"), exclude_backup=boom)
+        path, asked, played, cut, shown = self.go(["1"] * 12)
+        said = [s for s in shown if "Time Machine" in s]
+        self.assertEqual(len(said), 1, shown)
+        self.assertIn(self.store.home, said[0])
+        self.assertEqual(len(tried), 1)
+
     def test_only_one_label_keeps_the_others(self):
         self.go(["1"] * 12)
         path, asked, *_ = self.go(["2"] * 6, only="speaker_1")
@@ -893,6 +908,18 @@ class Write(Tmp):
         self.assertNotEqual(code, 0)
         self.assertTrue(any("insufficient, label more" in l for l in out), out)
         self.assertFalse(Path(self.store.calibration_labels_dir(), f"calibration-{CAMPP}.json").exists())
+
+    # whole-branch review, `time-machine-exclusion-only-when-the-store-is-made`
+    def test_a_store_that_cannot_be_excluded_is_said_so(self):
+        def boom(home):
+            raise OSError("tmutil: not permitted")
+        self.store = store.Store(os.path.join(self.root, "store-notice"), exclude_backup=boom)
+        w = World(self.store, self.root)
+        code, out = self.main(w, "--write")
+        self.assertEqual(code, 0, "\n".join(out))
+        said = [s for s in out if "Time Machine" in s]
+        self.assertEqual(len(said), 1, out)
+        self.assertIn(self.store.home, said[0])
 
     def test_plan_prints_and_writes_nothing(self):
         w = World(self.store, self.root)

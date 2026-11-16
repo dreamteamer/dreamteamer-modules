@@ -5,6 +5,7 @@ One store per user, shared by all of that user's workspaces:
 
     <store>/
       README.txt
+      .backup-excluded                written once Time Machine excluded the store (darwin)
       never.json                      people whose voice must not be stored
       forgotten.json                  who was forgotten and when
       .lock                           Store.lock(None): never.json and forgotten.json
@@ -63,7 +64,7 @@ biometric data: keep this folder on this machine only.
 
 Do not sync, share, back up to a cloud service, or commit this folder. dreamteamer refuses a store
 inside a git working tree, a workspace, a files or inbox folder, or a folder of a sync or cloud
-service, and marks it excluded from Time Machine when it creates it.
+service, and on a Mac marks it excluded from Time Machine (and tries again, saying so, until that works).
 
 To remove a person's voice, run `prints forget <person>` in the workspace that knows them; to remove
 one recording's signatures, `prints forget-recording <record>`. Delete the whole folder to remove
@@ -221,6 +222,9 @@ def check_location(home, guard=None):
 # --------------------------------------------------------------------------------------------------
 # Backup exclusion
 
+EXCLUDED_MARK = ".backup-excluded"
+
+
 def _tmutil_exclude(home):
     r = subprocess.run(["tmutil", "addexclusion", home], capture_output=True, text=True, timeout=60)
     if r.returncode != 0:
@@ -228,9 +232,17 @@ def _tmutil_exclude(home):
 
 
 def default_exclude_backup(platform=sys.platform):
-    """The callable `Store` runs once when it creates the store: on darwin `tmutil addexclusion
-    <home>`, elsewhere none."""
+    """The callable `Store.ensure` runs until the store carries its `EXCLUDED_MARK`: on darwin `tmutil
+    addexclusion <home>`, elsewhere none."""
     return _tmutil_exclude if platform == "darwin" else None
+
+
+def say_notices(store, say):
+    """Say every notice `store` has not said yet (a backup exclusion that failed), each as `⚠ <notice>`
+    through `say`; nothing for no store (or a stand-in that is not a Store). Every verb that opens the store
+    calls it before it returns."""
+    for n in (store.unsaid_notices() if isinstance(store, Store) else []):
+        say(f"⚠ {n}")
 
 
 # --------------------------------------------------------------------------------------------------
@@ -362,10 +374,13 @@ def _check_no_names(obj, where="signature"):
 class Store:
     """The store at `home`. Nothing touches the disk until `ensure()` (which every write and `lock`
     call first): it checks the location against `guard` (see `check_location`) every time, so a
-    refused store creates nothing, then creates the folder 0700 with `README.txt` and, only when it
-    created the folder, runs `exclude_backup(home)` — by default `default_exclude_backup()`, which on
-    darwin runs `tmutil`. A failing exclusion is appended to `notices`, never raised. Tests inject
-    a fake `exclude_backup`.
+    refused store creates nothing, then creates the folder 0700 with `README.txt` and runs
+    `exclude_backup(home)` — by default `default_exclude_backup()`, which on darwin runs `tmutil` —
+    whether or not the folder was there before, until it succeeds: a success leaves `EXCLUDED_MARK` in
+    the store, so a later Store (the next verb, the next process) does not run it again; a failure is
+    appended to `notices`, never raised, and tried again by the next Store, not by this one's next
+    write (whole-branch review, `time-machine-exclusion-only-when-the-store-is-made`). Every verb says
+    its notices (`say_notices`). Tests inject a fake `exclude_backup`.
 
     `lock(model_id)` serialises read-modify-write across processes (an advisory `flock` /
     `msvcrt.locking` on `<model>/.lock`, or `<store>/.lock` for `None`). It is RE-ENTRANT within a
@@ -379,6 +394,8 @@ class Store:
         self.exclude_backup = exclude_backup if exclude_backup is not None else default_exclude_backup()
         self.guard = guard or {}
         self.notices = []
+        self._said = 0
+        self._exclusion_tried = False
 
     # -- the folder ---------------------------------------------------------------------------------
     def ensure(self):
@@ -401,13 +418,32 @@ class Store:
         readme = os.path.join(real, "README.txt")
         if not os.path.exists(readme):
             _atomic_write(readme, README.encode("utf-8"))
-        if created and self.exclude_backup:
-            try:
-                self.exclude_backup(real)
-            except Exception as e:  # reported, never fatal
-                self.notices.append(f"the voice-print store could not be excluded from Time Machine "
-                                    f"backups ({e}); exclude {real} by hand")
+        self._exclude(real)
         return self
+
+    def _exclude(self, real):
+        """Exclude the store from backups unless its mark says that was done; once per Store object."""
+        mark = os.path.join(real, EXCLUDED_MARK)
+        if not self.exclude_backup or self._exclusion_tried or os.path.isfile(mark):
+            return
+        self._exclusion_tried = True
+        try:
+            self.exclude_backup(real)
+        except Exception as e:  # reported, never fatal
+            self.notices.append(f"the voice-print store could not be excluded from Time Machine "
+                                f"backups ({e}); exclude {real} by hand (`tmutil addexclusion {real}`) — "
+                                f"the next run tries again")
+            return
+        try:
+            _atomic_write(mark, f"excluded from Time Machine backups {now()}\n".encode("utf-8"))
+        except OSError:
+            pass  # excluded; the next Store excludes it again, which changes nothing
+
+    def unsaid_notices(self):
+        """The notices not said yet, now marked said: a verb says each once however often it asks."""
+        new = self.notices[self._said:]
+        self._said = len(self.notices)
+        return new
 
     def _refuse_outside(self, path, what="folder"):
         """Raise `StoreRefused` unless the real path of `path` (symlinks resolved, also a link that

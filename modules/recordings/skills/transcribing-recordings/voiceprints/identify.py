@@ -37,6 +37,8 @@ import copy
 import json
 import os
 import re
+import sys
+import unicodedata
 
 from voiceprints import calibration, carry, enrol, models, naming, quotes
 from voiceprints import segments as vp_segments
@@ -584,8 +586,28 @@ def _n(i):
     return _CIRCLED[i - 1] if 1 <= i <= len(_CIRCLED) else f"({i})"
 
 
+# Right to left in the chat (whole-branch review, `hebrew-quotes-pair-with-the-wrong-timestamp`): a Hebrew quote,
+# name, title or choice is shown as a first-strong isolate (FSI ... PDI, Unicode bidi algorithm), so it takes its
+# own direction inside and is one neutral unit outside: the timestamps, quote marks, scores and the other quote
+# of the line keep their places, and each `[mm:ss]` stays with its own quote. Text with no right-to-left
+# character is shown as it is. Only the message is touched; the records and the reply's data keep the text.
+FSI, PDI = "\u2068", "\u2069"
+_RTL = frozenset(("R", "AL", "AN"))
+_FORMATTING = frozenset(("LRE", "RLE", "LRO", "RLO", "PDF", "LRI", "RLI", "FSI", "PDI"))
+
+
+def _iso(text):
+    """`text` for the chat: wrapped in FSI ... PDI when it holds a right-to-left character (its own explicit
+    embeddings and isolates dropped first, so nothing inside can close the isolate early), else unchanged."""
+    s = str(text if text is not None else "")
+    kinds = [unicodedata.bidirectional(c) for c in s]
+    if not any(k in _RTL or k in _FORMATTING for k in kinds):
+        return s
+    return FSI + "".join(c for c, k in zip(s, kinds) if k not in _FORMATTING) + PDI
+
+
 def _quote_line(qs):
-    return " · ".join(f'[{x["at"]}] "{x["text"]}"' for x in qs or [])
+    return " · ".join(f'[{x["at"]}] "{_iso(x["text"])}"' for x in qs or [])
 
 
 def _choices(ctx, label, proposed):
@@ -649,9 +671,9 @@ def question(items, quotes_of=None):
         if ask:
             n = len(ask)
             word = {1: "One voice", 2: "Two voices", 3: "Three voices", 4: "Four voices"}.get(n, f"{n} voices")
-            lines.append(f"{word} in **{title}** ({date}) {'is' if n == 1 else 'are'} not named yet.")
+            lines.append(f"{word} in **{_iso(title)}** ({date}) {'is' if n == 1 else 'are'} not named yet.")
         else:
-            lines.append(f"**{title}** ({date})")
+            lines.append(f"**{_iso(title)}** ({date})")
         for label in ask:
             q = qs[label]
             disp = naming.display(label)
@@ -661,7 +683,7 @@ def question(items, quotes_of=None):
             if fl:
                 lines.append(f"This label {'; '.join(fl)}.")
             ch = _choices(ctx, label, q.get("proposed"))
-            lines.append("Who is this? " + " ".join(f"{_n(i)} {c['text']}" for i, c in enumerate(ch, 1)))
+            lines.append("Who is this? " + " ".join(f"{_n(i)} {_iso(c['text'])}" for i, c in enumerate(ch, 1)))
             labels.append({"label": label, "kind": "ask", "quotes": q.get("quotes") or [], "flags": q.get("flags") or [],
                            "proposed": q.get("proposed"), "choices": ch})
         if unconfirmed:
@@ -672,7 +694,8 @@ def question(items, quotes_of=None):
                 q, s = qs[label], src[label]
                 disp = naming.display(label)
                 ch = _confirm_choices(label)
-                lines.append(f"**{disp} → {s['name']}** ({float(s.get('score') or 0):.2f}) — {_quote_line(q.get('quotes'))}  "
+                lines.append(f"**{disp} → {_iso(s['name'])}** ({float(s.get('score') or 0):.2f}) — "
+                             f"{_quote_line(q.get('quotes'))}  "
                              + " ".join(f"{_n(i)} {c['text']}" for i, c in enumerate(ch, 1)))
                 labels.append({"label": label, "kind": "unconfirmed", "name": s["name"], "person": s.get("person"),
                                "score": s.get("score"), "quotes": q.get("quotes") or [], "choices": ch})
@@ -685,7 +708,7 @@ def question(items, quotes_of=None):
                 name = _map(t.get("speakers"))[label].strip()
                 disp = naming.display(label)
                 ch = _confirm_choices(label)
-                lines.append(f"**{disp} → {name}** — {_quote_line(qq)}  "
+                lines.append(f"**{disp} → {_iso(name)}** — {_quote_line(qq)}  "
                              + " ".join(f"{_n(i)} {c['text']}" for i, c in enumerate(ch, 1)))
                 labels.append({"label": label, "kind": "unverified", "name": name, "quotes": qq, "choices": ch})
         blocks.append("\n".join(lines))
@@ -791,7 +814,7 @@ def _advice(ctx, t):
 
 
 def not_shown_line(disp, name):
-    return (f"{disp} → {name}: not confirmed — its two quotes were not shown to a person yet. Show them "
+    return (f"{disp} → {_iso(name)}: not confirmed — its two quotes were not shown to a person yet. Show them "
             "(`identify --question <record>`), stamp them (`identify --shown <record>`), and confirm after the "
             "person has heard them.")
 
@@ -847,7 +870,7 @@ def answer(fm, ctx, store, active, pairs, stamp, *, audio_key=None):
             raise Usage(f"{label} is already confirmed as {speakers[label]}; use --correct")
         plan.append((label, "name", person, name, diff))
 
-    lines, confs, corrections, named_any = [], [], [], False
+    lines, confs, corrections, named_any, removed_any = [], [], [], False, False
     for label, kind, person, name, diff in plan:
         disp = naming.display(label)
         q = qs.get(label) if isinstance(qs.get(label), dict) else {}
@@ -861,8 +884,11 @@ def answer(fm, ctx, store, active, pairs, stamp, *, audio_key=None):
             continue
         if kind in ("nobody", "different"):
             if st == "provisional":
+                # a machine-written name removed: what was written with it is listed below (whole-branch review,
+                # `removed-machine-name-leaves-its-documents-unlisted`)
                 speakers.pop(label, None)
                 sources.pop(label, None)
+                removed_any = True
             if kind == "nobody":
                 qs[label] = {"quotes": q.get("quotes") or [], "closed": "nobody"}
                 lines.append(f"{disp}: closed — it stays {disp} and is not asked about again.")
@@ -912,7 +938,7 @@ def answer(fm, ctx, store, active, pairs, stamp, *, audio_key=None):
         before = {p["id"] for p in store.prints(active["model"], model=active["pin"])}
         rep = enrol.confirm(store, active["pin"], _thresholds(active), confs)
         lines.extend(enrol_lines(rep, confs, before))
-    if named_any:
+    if named_any or removed_any:
         docs = [d for d in ctx.get("documents") or [] if d.get("ref")]
         if docs:
             lines.append("Written from this transcript before these names: "
@@ -966,7 +992,7 @@ def confirm_names(fm, body, ctx, store, active, labels, stamp, *, audio_key=None
             raise Usage(f"{label} has no name to confirm")
         name = _map(t.get("speakers"))[label]
         disp = naming.display(label)
-        head.append(f"**{disp} → {name}** — "
+        head.append(f"**{disp} → {_iso(name)}** — "
                     f"{_quote_line(label_quotes(fm, body, ctx, store, active, label, audio_key))}")
         if st == "confirmed":
             head.append(f"{disp}: already confirmed.")
@@ -1083,10 +1109,25 @@ _REFUSALS = (vp_store.StoreRefused, vp_store.ModelMismatch, models.CalibrationAm
              calibration.CalibrationInvalid, OSError, ValueError, KeyError)
 
 
+def _stderr(line):
+    print(line, file=sys.stderr)
+
+
 def main(args, *, skill_dir=None, read=None, write=None, store=None, active=None, compute=None, audio_key=None,
-         out=print, now=None):
+         out=print, err=None, now=None):
     """`identify …` (args[0] is the verb). Prints one JSON object (none for `--question` with nothing open).
-    Returns the exit code: 0, 1 (a record could not be named, or the store or model refused), 2 (usage)."""
+    Returns the exit code: 0, 1 (a record could not be named, or the store or model refused), 2 (usage).
+    A store that could not be excluded from backups is said through `err` (stderr), once, whatever the
+    verb (whole-branch review, `time-machine-exclusion-only-when-the-store-is-made`)."""
+    held = {"store": store}
+    try:
+        return _main(args, skill_dir=skill_dir, read=read, write=write, store=store, active=active, compute=compute,
+                     audio_key=audio_key, out=out, now=now, held=held)
+    finally:
+        vp_store.say_notices(held["store"], err or _stderr)
+
+
+def _main(args, *, skill_dir, read, write, store, active, compute, audio_key, out, now, held):
     clock = now or vp_store.now
     try:
         a = list(args[1:])
@@ -1121,7 +1162,7 @@ def main(args, *, skill_dir=None, read=None, write=None, store=None, active=None
         if verb in (None, "--answer", "--confirm", "--correct"):
             # naming and enrolment need the store and the calibration: a refusal stops them and says why
             if store is None:
-                store = vp_store.Store(vp_store.default_home(), guard=ctx.get("guard") or {})
+                store = held["store"] = vp_store.Store(vp_store.default_home(), guard=ctx.get("guard") or {})
             store.ensure()
             if active is None:
                 active = resolve_active(skill_dir, store)
@@ -1131,7 +1172,7 @@ def main(args, *, skill_dir=None, read=None, write=None, store=None, active=None
             # unverified name's quotes from its signature
             try:
                 if store is None:
-                    store = vp_store.Store(vp_store.default_home(), guard=ctx.get("guard") or {})
+                    store = held["store"] = vp_store.Store(vp_store.default_home(), guard=ctx.get("guard") or {})
                 store.ensure()
             except _REFUSALS:
                 store = None

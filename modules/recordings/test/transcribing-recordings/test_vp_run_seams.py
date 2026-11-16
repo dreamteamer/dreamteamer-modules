@@ -869,6 +869,25 @@ class Signatures(Harness):
             self.run_it()
         self.assertEqual(self.events, ["record", "signature"])
 
+    # whole-branch review, `time-machine-exclusion-only-when-the-store-is-made`
+    def test_a_store_folder_made_before_the_run_is_excluded_too(self):
+        self.vp_home.mkdir()                                  # the user made VOICE_PRINTS_HOME first
+        self.run_it()
+        self.assertEqual(self.excluded, [str(self.vp_home)])
+        self.run_it()
+        self.assertEqual(self.excluded, [str(self.vp_home)], "an excluded store is not excluded again")
+
+    def test_a_failed_exclusion_is_said_and_tried_again_on_the_next_run(self):
+        def boom(home):
+            raise OSError("tmutil: not permitted")
+        with mock.patch.object(vp_store, "default_exclude_backup", lambda *a, **k: boom):
+            self.run_it()
+        self.assertEqual(self.stderr.count("Time Machine"), 1, self.stderr)
+        self.assertEqual(self.excluded, [])
+        self.run_it()
+        self.assertEqual(self.excluded, [str(self.vp_home)])
+        self.assertNotIn("Time Machine", self.stderr)
+
     def test_a_second_workspace_on_the_same_audio_and_diarisation_shares_the_file(self):
         self.run_it()
         self.context = dict(self.context, workspace="harbor-mutual", record="meeting-recordings/2026/08/hm-weekly")

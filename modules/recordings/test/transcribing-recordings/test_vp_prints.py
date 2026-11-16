@@ -1279,6 +1279,27 @@ class TheVerb(Harness):
         self.assertEqual(p.returncode, 2, p.stderr + p.stdout)
         self.assertIn("--context", p.stdout + p.stderr)
 
+    # whole-branch review, `time-machine-exclusion-only-when-the-store-is-made`: `prints` says when it cannot
+    # exclude the store from Time Machine, once
+    def test_a_store_that_cannot_be_excluded_is_said_so(self):
+        tried = []
+
+        def boom(home):
+            tried.append(home)
+            raise OSError("tmutil: not permitted")
+        st = store.Store(str(self.root / "vp-notice"), exclude_backup=boom)
+        cf = self.root / "pctx-notice.json"
+        cf.write_text(json.dumps(self.base()), encoding="utf-8")
+        outs, errs = [], []
+        code = prints.main(["prints", "list", "--context", str(cf)], skill_dir=None, read=self.records.read,
+                           write=self.records.write, store=st, active=ACTIVE, out=outs.append, err=errs.append,
+                           now=self.now)
+        self.assertEqual(code, 0, outs)
+        said = [e for e in errs if "Time Machine" in e]
+        self.assertEqual(len(said), 1, errs)
+        self.assertIn(st.home, said[0])
+        self.assertEqual(len(tried), 1)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -302,6 +302,7 @@ def session(rctx, store, *, audio_sha, segments, ask, play, cut, out, only=None,
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     out(f"answers written: {path}")
+    vp_store.say_notices(store, out)      # a store that could not be excluded from backups, said once
     return path
 
 
@@ -317,7 +318,19 @@ def _flag(args, name):
 
 def main(args, *, ctx=None, store=None, read=None, read_cache=None, cache_path_for=None, matches=None,
          audio_key=None, which=shutil.which, platform=sys.platform, ask=input, out=print, runner=subprocess.run):
-    """`label <record.md> [--only <label>] --context <file>` (args[0] is `label`). Returns the exit code."""
+    """`label <record.md> [--only <label>] --context <file>` (args[0] is `label`). Returns the exit code. A
+    store that could not be excluded from backups is said, once, however the verb ends."""
+    held = {"store": store}
+    try:
+        return _main(args, ctx=ctx, store=store, read=read, read_cache=read_cache, cache_path_for=cache_path_for,
+                     matches=matches, audio_key=audio_key, which=which, platform=platform, ask=ask, out=out,
+                     runner=runner, held=held)
+    finally:
+        vp_store.say_notices(held["store"], out)
+
+
+def _main(args, *, ctx, store, read, read_cache, cache_path_for, matches, audio_key, which, platform, ask, out,
+          runner, held):
     try:
         play = player(find_player(which=which, platform=platform), runner=runner)
         cut = ffmpeg_cutter(which=which, runner=runner)
@@ -336,7 +349,7 @@ def main(args, *, ctx=None, store=None, read=None, read_cache=None, cache_path_f
         if isinstance(ctx.get("records"), list):
             raise LabelError("label takes one recording")
         if store is None:
-            store = vp_store.Store(vp_store.default_home(), guard=ctx.get("guard") or {})
+            store = held["store"] = vp_store.Store(vp_store.default_home(), guard=ctx.get("guard") or {})
         audio_sha = audio_key(ctx, ctx.get("audio"))
         segs, where = recording_segments(ctx, audio_sha, read=read, read_cache=read_cache,
                                          cache_path_for=cache_path_for, matches=matches)

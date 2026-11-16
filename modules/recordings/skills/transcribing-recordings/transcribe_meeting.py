@@ -413,6 +413,7 @@ def signature_step(context, wav, segments, words, previous, *, audio_sha256, dia
         return None, None, NO_CONTEXT
     if not context.get("workspace") or not context.get("record"):
         return None, None, "the voice context names no workspace or no record"
+    store = None
     try:
         store = open_store(context)
         store.ensure()
@@ -426,6 +427,8 @@ def signature_step(context, wav, segments, words, previous, *, audio_sha256, dia
                                     fallback=fallback, removed=removed, remove_all=unplaced)
         return sig, store, (vp_carry.FORGOTTEN_UNPLACED if unplaced else None)
     except Exception as e:  # never stops the transcript
+        # a store that could not be excluded from backups is said even when no signature is kept
+        vp_store.say_notices(store, lambda line: print(f"  {line}", file=sys.stderr))
         return None, None, _not_kept(e)
 
 
@@ -518,8 +521,7 @@ def run(meeting_md, audio, generated, num_speakers=None, language=None, engine="
         print(f"  signatures: {signatures}", file=sys.stderr)
     else:
         signatures = f"kept — {sig['model']['id']}, {len(sig['labels'])} labels, diarisation {diar_id}"
-    for notice in (store.notices if store is not None else []):
-        print(f"  ⚠ {notice}", file=sys.stderr)
+    vp_store.say_notices(store, lambda line: print(f"  {line}", file=sys.stderr))
     if previous and previous.get("note"):
         print(f"  previous speakers: {previous['note']}", file=sys.stderr)
     unreadable = [u["field"] for u in (previous or {}).get("unreadable") or []]

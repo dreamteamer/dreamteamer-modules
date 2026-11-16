@@ -847,7 +847,17 @@ def _parse(args):
 
 def main(args, *, skill_dir=None, models_dir=None, read=None, audio_key=None, compute=None, ctx=None, store=None,
          pins=None, out=print, today=None):
-    """`evaluate-speakers …` (args[0] is the verb). Returns the exit code."""
+    """`evaluate-speakers …` (args[0] is the verb). Returns the exit code. A store that could not be excluded
+    from backups is said, once, however the verb ends."""
+    held = {"store": store}
+    try:
+        return _main(args, skill_dir=skill_dir, models_dir=models_dir, read=read, audio_key=audio_key,
+                     compute=compute, ctx=ctx, store=store, pins=pins, out=out, today=today, held=held)
+    finally:
+        vp_store.say_notices(held["store"], out)
+
+
+def _main(args, *, skill_dir, models_dir, read, audio_key, compute, ctx, store, pins, out, today, held):
     try:
         opts = _parse(list(args[1:]))
         if ctx is None:
@@ -858,7 +868,7 @@ def main(args, *, skill_dir=None, models_dir=None, read=None, audio_key=None, co
         if not isinstance(ctx, dict) or not isinstance(ctx.get("records"), list):
             raise Usage("the context holds no recordings")
         if store is None:
-            store = vp_store.Store(vp_store.default_home(), guard=ctx.get("guard") or {})
+            store = held["store"] = vp_store.Store(vp_store.default_home(), guard=ctx.get("guard") or {})
         if opts["plan"]:
             me = opts["me"] or guess_me(ctx)
             for line in plan_lines(plan(ctx, me, rooms=opts["rooms"], pilot=opts["pilot"], read=read), me):
