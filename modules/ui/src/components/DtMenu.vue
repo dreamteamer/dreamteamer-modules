@@ -16,15 +16,21 @@
 	many listeners see the same key); focus then goes back to the trigger — unless the press outside put it somewhere
 	else. The caller owns whether the menu is drawn (`v-if`) and what a pick does.
 
-	Placement: `at` is a fixed point in the viewport (a context menu, a menu hung from a toolbar button — the caller
-	computes it with lib/menu-place.ts), nudged up above its trigger when it would run off the bottom of the window.
-	Without `at` the menu hangs under its parent element (which is `position: relative` and holds the trigger), on its
-	start or `end` edge. `teleport` hangs it in <body> so no ancestor can clip or cover it (the render test tier has no
-	body, and draws it in place).
+	Placement: ALWAYS `position: fixed`, so no scrolling or `overflow: hidden` ancestor clips it (a menu in a table cell, a
+	VS Code webview's scroll container), on `--dt-z-menu`. Without `at` the menu hangs under its parent element (the box
+	that holds the trigger — the trigger itself when teleported), on its start or `end` edge, computed from that box's
+	rect (lib/menu-place.ts `placeMenu`): FLIPPED above it when there is no room below, and kept inside the window
+	horizontally. It is placed again on every scroll (any scroller, capture phase) and resize, so it stays with its
+	trigger. `at` is a fixed point in the viewport (a context menu, a menu hung from a toolbar button — the caller
+	computes it with lib/menu-place.ts `menuUnder`), flipped above its trigger and clamped the same way (again on a
+	resize), but not moved on scroll: a point has nothing to follow. `teleport` hangs it in <body> as well (the pane's menus) — the render test tier
+	has no body, and draws it in place. Not teleporting is the default because a caller's scoped styles reach its menu's
+	root only in place.
 -->
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, toRaw } from 'vue';
 import { MENU_ITEM_SELECTOR, menuMove, typeahead, typeaheadIndex, typedChar } from '../lib/menu-keys';
+import { placeMenu, type Box } from '../lib/menu-place';
 
 defineOptions({ inheritAttrs: false });
 
@@ -35,7 +41,8 @@ type El = {
 	getAttribute?: (n: string) => string | null;
 	textContent?: string | null;
 	parentElement?: El | null;
-	getBoundingClientRect?: () => { top: number; bottom: number; left: number; right: number; height: number };
+	parentNode?: El | null;
+	getBoundingClientRect?: () => { top: number; bottom: number; left: number; right: number; width: number; height: number };
 };
 
 const props = withDefaults(defineProps<{
@@ -72,8 +79,8 @@ const el = shallowRef<El | null>(null);
 /** A document to hang the menu in (the render test tier has none). */
 const hasBody = typeof document !== 'undefined' && !!(document as { body?: unknown }).body;
 const portal = computed(() => props.teleport && hasBody);
-/** Where the menu was nudged to fit the window (a fixed menu near the bottom opens above its trigger). */
-const shiftY = ref(0);
+/** Where the menu was placed to fit the window — null until it has been measured (the render tier never is). */
+const placed = ref<{ left: number; top: number; flipped: boolean } | null>(null);
 
 const raw = <T,>(x: T): T => (x && typeof x === 'object' ? (toRaw(x as object) as T) : x);
 /** Who gets focus back: the trigger, else whatever had focus when the menu opened. */
@@ -89,12 +96,15 @@ const triggerEl = (): El | null => {
 	return ((t as { $el?: El }).$el ?? t) as El;
 };
 
-const classes = computed(() => ['dt-menu', props.at ? 'dt-menu--fixed' : props.anchor === 'below' ? 'dt-menu--below' : null, props.align === 'end' ? 'dt-menu--end' : null]);
+const classes = computed(() => ['dt-menu', props.at ? 'dt-menu--fixed' : props.anchor === 'below' ? 'dt-menu--below' : null, props.align === 'end' ? 'dt-menu--end' : null, placed.value?.flipped ? 'dt-menu--flipped' : null]);
 const style = computed(() => {
 	const s: Record<string, string> = {};
-	if (props.at) {
+	if (placed.value) {
+		s.left = `${placed.value.left}px`;
+		s.top = `${placed.value.top}px`;
+	} else if (props.at) {
 		s.left = `${props.at.x}px`;
-		s.top = `${props.at.y + shiftY.value}px`;
+		s.top = `${props.at.y}px`;
 	}
 	if (props.minWidth) s.minWidth = `${props.minWidth}px`;
 	return Object.keys(s).length ? s : undefined;
@@ -185,15 +195,35 @@ function onDocKeydown(e: Key): void {
 	if (e.key === 'Escape') onKeydown({ ...e, key: 'Escape', preventDefault: () => e.preventDefault?.(), stopPropagation: () => e.stopPropagation?.() });
 }
 
-/** A fixed menu that would run off the bottom of the window opens above its trigger instead (or as low as fits). */
-function fit(): void {
-	if (!props.at || typeof window === 'undefined') return;
+/** The box an anchored menu hangs from: its parent element in place (the box holding the trigger), the trigger when
+ *  teleported. */
+function anchorBox(): El | null {
+	if (portal.value) return triggerEl();
+	const self = raw(el.value);
+	return self?.parentElement ?? self?.parentNode ?? triggerEl();
+}
+/** Place the menu inside the window (see the header): measured, so only where there is layout. */
+function place(): void {
+	if (props.anchor === 'none' || typeof window === 'undefined') return;
+	const w = window as { innerWidth?: number; innerHeight?: number };
 	const r = raw(el.value)?.getBoundingClientRect?.();
-	const vh = (window as { innerHeight?: number }).innerHeight;
-	if (!r || !r.height || typeof vh !== 'number' || r.bottom <= vh - 4) return;
-	const t = triggerEl()?.getBoundingClientRect?.();
-	const top = t && t.top - 2 - r.height >= 4 ? t.top - 2 - r.height : Math.max(4, vh - 4 - r.height);
-	shiftY.value = top - props.at.y;
+	if (!r || !(r.width || r.height) || typeof w.innerWidth !== 'number' || typeof w.innerHeight !== 'number') return;
+	const viewport = { width: w.innerWidth, height: w.innerHeight };
+	const size = { width: r.width, height: r.height };
+	if (props.at) {
+		// a point: under it as asked, above the trigger (or the point) when that does not fit
+		const t = triggerEl()?.getBoundingClientRect?.();
+		const box: Box = { left: props.at.x, right: props.at.x + r.width, top: t && t.height ? t.top : props.at.y, bottom: props.at.y };
+		placed.value = placeMenu(box, size, viewport, 'start', 0);
+		return;
+	}
+	const a = anchorBox()?.getBoundingClientRect?.();
+	if (!a) return;
+	placed.value = placeMenu(a, size, viewport, props.align);
+}
+/** A scroll: an anchored menu follows its trigger; a point menu stays where it is. */
+function onScroll(): void {
+	if (!props.at) place();
 }
 
 onMounted(() => {
@@ -201,13 +231,23 @@ onMounted(() => {
 		document.addEventListener?.('mousedown', onDocMousedown as unknown as EventListener);
 		document.addEventListener?.('keydown', onDocKeydown as unknown as EventListener);
 	}
-	void nextTick(fit);
+	// before the first paint: an anchored menu never shows at the window's corner first
+	place();
+	void nextTick(place);
+	if (props.anchor !== 'none' && typeof window !== 'undefined') {
+		window.addEventListener?.('scroll', onScroll, true);
+		window.addEventListener?.('resize', place);
+	}
 	if (props.keys && props.autofocus) void nextTick(() => focusAt(props.autofocus === 'menu' ? -1 : 0));
 });
 onBeforeUnmount(() => {
 	if (typeof document !== 'undefined') {
 		document.removeEventListener?.('mousedown', onDocMousedown as unknown as EventListener);
 		document.removeEventListener?.('keydown', onDocKeydown as unknown as EventListener);
+	}
+	if (typeof window !== 'undefined') {
+		window.removeEventListener?.('scroll', onScroll, true);
+		window.removeEventListener?.('resize', place);
 	}
 	if (!props.keys || closedBy === 'outside') return;
 	// focus goes back to the trigger only when it was in the menu (or nowhere): a press elsewhere keeps its own
@@ -257,17 +297,9 @@ onBeforeUnmount(() => {
 	outline: none;
 	text-align: left;
 }
-.dt-menu--fixed {
-	position: fixed;
-}
-/* hung under its parent (which holds the trigger), on the parent's start edge or its end edge */
+/* fixed in both placements — coordinates come from the anchor's rect (see the header) */
+.dt-menu--fixed,
 .dt-menu--below {
-	position: absolute;
-	top: calc(100% + 6px);
-	left: 0;
-}
-.dt-menu--below.dt-menu--end {
-	left: auto;
-	right: 0;
+	position: fixed;
 }
 </style>

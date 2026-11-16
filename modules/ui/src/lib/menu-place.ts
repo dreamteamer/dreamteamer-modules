@@ -29,3 +29,32 @@ export function viewportWidth(): number | undefined {
 	const w = (globalThis as { window?: { innerWidth?: unknown } }).window;
 	return typeof w?.innerWidth === 'number' ? w.innerWidth : undefined;
 }
+
+/** A box in viewport coordinates (an element's `getBoundingClientRect`). */
+export interface Box { left: number; right: number; top: number; bottom: number }
+
+/**
+ * Where a `position: fixed` menu goes against the box it hangs from (DtMenu): under it by `gap`, its start edge on the
+ * box's (`start`) or its end edge on the box's (`end`) — FLIPPED above the box when there is no room below and there is
+ * room above, else as low as fits — and always inside the window horizontally, `edge` from either side. Fixed, so no
+ * scrolling or `overflow: hidden` ancestor clips it.
+ */
+export function placeMenu(
+	anchor: Box,
+	size: { width: number; height: number },
+	viewport: { width: number; height: number },
+	align: 'start' | 'end' = 'start',
+	gap = 6,
+	edge = EDGE,
+): { left: number; top: number; flipped: boolean } {
+	const below = anchor.bottom + gap;
+	const above = anchor.top - gap - size.height;
+	let top: number;
+	let flipped = false;
+	if (below + size.height <= viewport.height - edge) top = below;
+	else if (above >= edge) { top = above; flipped = true; }
+	else top = Math.max(edge, Math.min(below, viewport.height - edge - size.height));
+	const want = align === 'end' ? anchor.right - size.width : anchor.left;
+	const left = Math.max(edge, Math.min(want, viewport.width - size.width - edge));
+	return { left, top, flipped };
+}
