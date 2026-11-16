@@ -87,7 +87,7 @@ describe("tasks 0.3.0 ships no lane", () => {
   })
   test("no shipped view, skill or README line names the field", () => {
     for (const dir of ["ui-views", "skills"]) {
-      for (const f of fs.readdirSync(path.join(MODULE, dir), { recursive: true })) {
+      for (const f of fs.readdirSync(path.join(MODULE, dir), { recursive: true, encoding: "utf8" })) {
         const p = path.join(MODULE, dir, f)
         if (fs.statSync(p).isFile()) assert.doesNotMatch(fs.readFileSync(p, "utf8"), /\blane\b/, `${dir}/${f}`)
       }

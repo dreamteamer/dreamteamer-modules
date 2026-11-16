@@ -27,7 +27,7 @@ export function startFakeDocker(socketPath, { images = [], plain = [] } = {}) {
     networks: new Map(), // name -> { Name, Driver, Labels }
     execs: [], // { id, container, Cmd, User, code } of every exec created
     tokens: {}, // container name -> its url token, as the image's dt-url-token would hold it
-    hangNext: false, // POST /_fake/hang[?path=<prefix>] arms it: the next real request (whose path starts with the prefix) is accepted and never answered
+    hangNext: false as string | false, // POST /_fake/hang[?path=<prefix>] arms it: the next real request (whose path starts with the prefix) is accepted and never answered
     hung: [], // { method, path } of every request left hanging, so a test can prove it arrived
     failExec: null, // POST /_fake/fail-exec?match=<argv prefix>: the next such exec exits 1
     truncateOnExec: null, // POST /_fake/truncate-on-exec?match=…&file=…&(bytes=n|copy=<src>): that exec first truncates (or overwrites) a HOST file — "the export changed between the two passes"
@@ -141,7 +141,7 @@ export function startFakeDocker(socketPath, { images = [], plain = [] } = {}) {
 
   // `rm -rf -- <p>…` · `rmdir <p>` · `mv -t <dir> -- <p>…` over a container's folder, as root only →
   // [exit code, stderr]
-  const run = (c, argv, user) => {
+  const run = (c, argv, user): [number, string] => {
     const [cmd, ...rest] = argv
     const a = rest.filter(w => w !== "--")
     if (user !== "root") return [1, `${cmd}: Permission denied\n`]
@@ -193,7 +193,7 @@ export function startFakeDocker(socketPath, { images = [], plain = [] } = {}) {
       const body = raw ? JSON.parse(raw) : undefined
       if (!u.pathname.startsWith("/_fake/"))
         state.requests.push({ method: req.method, path: u.pathname + u.search, body }) // the control routes are the test's, not the driver's
-      const json = (status, obj) => {
+      const json = (status, obj?) => {
         res.writeHead(status, { "Content-Type": "application/json" })
         res.end(obj === undefined ? "" : JSON.stringify(obj))
       }
@@ -473,8 +473,8 @@ export function startFakeDocker(socketPath, { images = [], plain = [] } = {}) {
       json(404, { message: `fake docker: no route for ${req.method} ${p}` })
     })
   })
-  return new Promise(resolve =>
-    server.listen(socketPath, () => resolve({ server, state, close: () => new Promise(r => server.close(r)) }))
+  return new Promise<any>(resolve =>
+    server.listen(socketPath, () => resolve({ server, state, close: () => new Promise<any>(r => server.close(r)) }))
   )
 }
 

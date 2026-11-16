@@ -9,6 +9,9 @@ import fs from "node:fs"
 import path from "node:path"
 import { appDir, browser, checks, go, northwind, serve, shot, signedIn } from "./support.ts"
 
+// Browser globals: these callbacks run in the page, not in Node.
+declare const document: any
+
 export const BUNDLE = `// a prebuilt module app: no imports, no framework — the component is a mount function
 export default ({ registerApp }) => {
 	const Stats = {
@@ -19,7 +22,7 @@ export default ({ registerApp }) => {
 			el.appendChild(line);
 			(async () => {
 				const res = await fetch('/api/collections/projects/records?limit=100');
-				const body = await res.json();
+				const body: any = await res.json();
 				const n = Array.isArray(body) ? body.length : (body.records ?? body.data ?? []).length;
 				line.textContent = res.ok ? 'Northwind projects: ' + n : 'refused: ' + res.status;
 			})();

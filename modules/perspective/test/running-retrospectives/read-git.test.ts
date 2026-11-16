@@ -35,7 +35,7 @@ function seedSession(data) {
 }
 
 /** git with the developer's own global config kept out of it — a fixture must not read ~/.gitconfig. */
-const git = (dir, args, when) =>
+const git = (dir, args, when?) =>
   execFileSync("git", ["-c", "user.name=Fixture", "-c", "user.email=f@x.test", "-C", dir, ...args], {
     encoding: "utf8",
     env: {
@@ -902,7 +902,7 @@ test("a re-read that comes out SMALLER is counted, and its usual cause named", (
   gitAs(repo, BO, ["commit", "-q", "-m", "work nobody on the checked-out branch can see"], "2026-09-09T11:00:00Z")
   gitAs(repo, BO, ["checkout", "-q", "-"], "2026-09-09T11:00:00Z")
 
-  const args = extra => [
+  const args = (extra): [string, string[]] => [
     "node",
     [
       BIN,

@@ -45,7 +45,7 @@ const migrate = (...args) => {
 const planLine = out =>
   out.split("\n").find(l => /^journeys \d+ · steps \d+ · stories cleared \d+ · screens \d+$/.test(l))
 
-function story(key, { journey, step, screen = "rnd/screens/np-apply", persona = true, crlf = false } = {}) {
+function story(key, { journey, step, screen = "rnd/screens/np-apply", persona = true, crlf = false }: any = {}) {
   const lines = ["---", `key: ${key}`, `name: As an applicant I ${key.replace(/-/g, " ")}`]
   if (screen) lines.push(`screen: ${screen}`)
   if (persona) lines.push("personas:", `  - ${PERSONA}`)

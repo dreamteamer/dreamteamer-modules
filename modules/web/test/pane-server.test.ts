@@ -28,13 +28,13 @@ after(async () => {
 })
 
 const JSON_TYPE = { "content-type": "application/json" }
-const page = (p, method = "GET", body) =>
+const page = (p, method = "GET", body?) =>
   call(`${web.url}${p}`, {
     method,
     headers: { cookie, ...sameOrigin(), ...(body ? JSON_TYPE : {}) },
     body: body ? JSON.stringify(body) : undefined,
   })
-const control = (p, method = "GET", body) =>
+const control = (p, method = "GET", body?) =>
   call(`${web.url}/_dt${p}`, {
     method,
     headers: { authorization: `Bearer ${web.controlToken}`, ...(body ? JSON_TYPE : {}) },
@@ -42,7 +42,7 @@ const control = (p, method = "GET", body) =>
   })
 
 /** An open /api/events stream: `next(type)` resolves the next message of that type (3 s), `close()` ends it. */
-async function stream(headers = { cookie, ...sameOrigin() }) {
+async function stream(headers: Record<string, string> = { cookie, ...sameOrigin() }) {
   const ctrl = new AbortController()
   const res = await fetch(`${web.url}/api/events`, { headers, signal: ctrl.signal })
   assert.equal(res.status, 200)
@@ -67,21 +67,21 @@ async function stream(headers = { cookie, ...sameOrigin() }) {
       /* aborted */
     }
   })()
-  await new Promise(r => setTimeout(r, 50))
+  await new Promise<any>(r => setTimeout(r, 50))
   return {
     async next(type) {
       const t0 = Date.now()
       while (Date.now() - t0 < 3000) {
         const i = seen.findIndex(m => m.type === type)
         if (i >= 0) return seen.splice(i, 1)[0]
-        await new Promise(r => setTimeout(r, 20))
+        await new Promise<any>(r => setTimeout(r, 20))
       }
       throw new Error(`no ${type} within 3 s`)
     },
     async close() {
       ctrl.abort()
       await pump
-      await new Promise(r => setTimeout(r, 50))
+      await new Promise<any>(r => setTimeout(r, 50))
     },
   }
 }
@@ -361,7 +361,7 @@ describe("a client token's event stream", () => {
       assert.equal((await control("/push", "POST", { type: "navigate", target: "tasks" })).json.delivered, 1)
       assert.equal((await control("/revoke", "POST", { token: "watcher-2" })).json.revoked, 1)
       assert.equal(
-        await Promise.race([ended, new Promise(r => setTimeout(() => r("still open"), 2000))]),
+        await Promise.race([ended, new Promise<any>(r => setTimeout(() => r("still open"), 2000))]),
         true,
         "the revoked token's stream stayed open"
       )

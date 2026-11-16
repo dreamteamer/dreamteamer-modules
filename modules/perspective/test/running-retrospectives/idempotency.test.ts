@@ -107,7 +107,7 @@ function addAnUnattachedGoal(f) {
   })
 }
 
-for (const [stage, script, extra, prereqs = [], prepare] of STAGES) {
+for (const [stage, script, extra, prereqs = [], prepare] of STAGES as any[]) {
   test(`${stage} — ${script} writes the same tree twice`, () => {
     const f = fixtureWorkspace()
     const invoke = (s, args = []) =>

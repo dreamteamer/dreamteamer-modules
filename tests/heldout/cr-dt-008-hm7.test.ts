@@ -11,7 +11,7 @@ import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
 import { spawnSync, execFileSync } from "node:child_process"
-import { createWorkspace, run as engineRun } from "dreamteamer/testing"
+import { createWorkspace, run as engineRun, type Workspace } from "dreamteamer/testing"
 import {
   ROOT,
   BIN,
@@ -31,7 +31,7 @@ const skip =
 const SID = "3e880550-0000-4000-8000-0000000000c7"
 const tmp = p => fs.mkdtempSync(path.join(os.tmpdir(), p))
 const ENV = (() => {
-  const e = {
+  const e: NodeJS.ProcessEnv = {
     ...process.env,
     GIT_AUTHOR_NAME: "probe",
     GIT_AUTHOR_EMAIL: "probe@example.invalid",
@@ -110,7 +110,7 @@ function core011Record() {
     path.join(root, "package-lock.json"),
     JSON.stringify({ name: pj.name, lockfileVersion: 3, requires: true, packages: {} }, null, "\t") + "\n"
   )
-  const c = engineRun({ root, engine }, ["compile"], { timeoutMs: 120_000 })
+  const c = engineRun({ root, engine } as Workspace, ["compile"], { timeoutMs: 120_000 })
   assert.equal(c.status, 0, c.stderr)
   const r = node(root, path.join(at, "bin", "session-save.mjs"), HOOK_ARGS, payload(root))
   assert.equal(r.code, 0, `core 0.11's bin: ${r.out}`)
@@ -202,7 +202,7 @@ describe("sessions without core", { skip }, () => {
     const t = dt(root, ["add", "tasks", "--name", "Send the Northwind quote"])
     assert.equal(t.code, 0, t.out)
     const taskId = fs
-      .readdirSync(path.join(root, "data", "tasks"), { recursive: true })
+      .readdirSync(path.join(root, "data", "tasks"), { recursive: true, encoding: "utf8" })
       .find(f => f.endsWith(".task.md"))
       .replace(/\.task\.md$/, "")
     const s = dt(root, ["set", `sessions/${SID}`, "project=projects/northwind-portal", `tasks=tasks/${taskId}`])

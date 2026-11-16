@@ -15,8 +15,8 @@ export const HQ = "ghcr.io/dreamteamer/hq:0.6.0" // the package's pinned default
 export const SPAWN_TIMEOUT_MS = 30_000
 
 /** One request to the fake's control routes, bounded at 5 s. */
-export function fakeRequest(sock, method, urlPath, body) {
-  return new Promise((resolve, reject) => {
+export function fakeRequest(sock, method, urlPath, body?) {
+  return new Promise<any>((resolve, reject) => {
     const payload = body === undefined ? undefined : JSON.stringify(body)
     // agent:false — a kept-alive socket the fake closed while idle fails EPIPE on reuse (seen on Node 26)
     const req = http.request(
@@ -50,8 +50,8 @@ export function fakeRequest(sock, method, urlPath, body) {
 
 /** The fake as a child process; resolves once it prints `ready` (or fails after 10 s). `fsRoot` gives
  *  every container a real folder for `/`, so …/archive is the system tar over real files. */
-export function startFakeDocker(sock, { images = [], plain = [], fsRoot } = {}) {
-  return new Promise((resolve, reject) => {
+export function startFakeDocker(sock, { images = [], plain = [], fsRoot }: any = {}) {
+  return new Promise<any>((resolve, reject) => {
     const child = spawn(process.execPath, [FAKE, sock, JSON.stringify(images), JSON.stringify(plain)], {
       stdio: ["ignore", "pipe", "inherit"],
       env: { ...process.env, ...(fsRoot ? { FAKE_DOCKER_FS: fsRoot } : {}) },
@@ -93,7 +93,7 @@ export function startFakeDocker(sock, { images = [], plain = [], fsRoot } = {}) 
         ),
       post: (p, body) => fakeRequest(sock, "POST", p, body),
       close: () =>
-        new Promise(ok => {
+        new Promise<void>(ok => {
           const t = setTimeout(() => {
             child.kill("SIGKILL")
             ok()

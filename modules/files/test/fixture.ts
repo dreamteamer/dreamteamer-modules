@@ -8,7 +8,7 @@
 //
 // SPEED: `init` + `git init` is paid once per engine into `<tmp>/base-<key>` and copied per test.
 import { execFileSync } from "node:child_process"
-import { createWorkspace, run as engineRun } from "dreamteamer/testing"
+import { createWorkspace, run as engineRun, type Workspace } from "dreamteamer/testing"
 import fs from "node:fs"
 import path from "node:path"
 import { createHash } from "node:crypto"
@@ -147,13 +147,13 @@ export function workspace({ module = true, pkg: extra = {}, compile = true } = {
 
 /** The real CLI in a workspace. Never throws on a non-zero exit. */
 export function dt(cwd, ...args) {
-  const r = engineRun({ root: cwd, engine: ENGINE_DIR }, args, { timeoutMs: SPAWN_TIMEOUT_MS })
+  const r = engineRun({ root: cwd, engine: ENGINE_DIR } as Workspace, args, { timeoutMs: SPAWN_TIMEOUT_MS })
   return { code: r.status, stdout: r.stdout ?? "", stderr: r.stderr ?? "" }
 }
 
 /** The CLI with a JSON payload on stdin — what a harness hook does. */
 export function dtStdin(cwd, input, ...args) {
-  const r = engineRun({ root: cwd, engine: ENGINE_DIR }, args, { input, timeoutMs: SPAWN_TIMEOUT_MS })
+  const r = engineRun({ root: cwd, engine: ENGINE_DIR } as Workspace, args, { input, timeoutMs: SPAWN_TIMEOUT_MS })
   return { code: r.status, stdout: r.stdout ?? "", stderr: r.stderr ?? "" }
 }
 
@@ -177,7 +177,7 @@ export function writeSource(root, rel, text) {
 /** The CLI with extra environment variables — e.g. a PATH whose only copy of a binary is a test stub.
  *  Bounded like every other spawn here. */
 export function dtEnv(cwd, env, ...args) {
-  const r = engineRun({ root: cwd, engine: ENGINE_DIR }, args, { env, timeoutMs: SPAWN_TIMEOUT_MS })
+  const r = engineRun({ root: cwd, engine: ENGINE_DIR } as Workspace, args, { env, timeoutMs: SPAWN_TIMEOUT_MS })
   return { code: r.status, stdout: r.stdout ?? "", stderr: r.stderr ?? "" }
 }
 

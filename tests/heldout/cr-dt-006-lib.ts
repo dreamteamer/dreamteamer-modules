@@ -150,7 +150,7 @@ sys.exit(os.WEXITSTATUS(status) if os.WIFEXITED(status) else 1)
 /** The setup section of `dt status --json`. */
 export const statusLines = (root, env) => {
   const r = dt(root, ["status", "--json"], env)
-  if (r.status !== 0 && r.code !== 0) throw new Error(`status --json: ${r.stderr}`)
+  if ((r as any).status !== 0 && r.code !== 0) throw new Error(`status --json: ${r.stderr}`)
   return JSON.parse(r.stdout).setup
 }
 /** Unpack a module's tarball straight into node_modules and declare it — bypassing `dt install`. */

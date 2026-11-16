@@ -204,7 +204,7 @@ describe("the push verbs", () => {
       .read()
       .catch(() => {})
     try {
-      await new Promise(r => setTimeout(r, 50))
+      await new Promise<any>(r => setTimeout(r, 50))
       // spawnSync would block this process's event loop, and the stream with it: the push goes from a child, the
       // stream only has to be open
       const show = run("show", "tasks/brief-dana")
@@ -334,10 +334,10 @@ describe("stop and come back", () => {
 
 describe("start, detached, with its flags", () => {
   const freePort = () =>
-    new Promise(resolve => {
+    new Promise<any>(resolve => {
       const s = http.createServer()
       s.listen(0, "127.0.0.1", () => {
-        const p = s.address().port
+        const p = (s.address() as any).port
         s.close(() => resolve(p))
       })
     })
@@ -402,7 +402,7 @@ describe("start, detached, with its flags", () => {
       run("stop")
       assert.equal(run("status").status, 1, "stopped")
       const at = args =>
-        new Promise(resolve => {
+        new Promise<any>(resolve => {
           const c = spawn(process.execPath, [BIN, f.root, ...args], { env, stdio: ["ignore", "pipe", "pipe"] })
           let out = ""
           c.stdout.on("data", b => {
@@ -431,8 +431,8 @@ describe("start, detached, with its flags", () => {
       run("stop")
       assert.equal(run("status").status, 1, "stopped")
       const holder = http.createServer()
-      await new Promise(resolve => holder.listen(0, "127.0.0.1", resolve))
-      const taken = holder.address().port
+      await new Promise<void>(resolve => holder.listen(0, "127.0.0.1", resolve))
+      const taken = (holder.address() as any).port
       try {
         const r = run("start", "--port", String(taken))
         assert.notEqual(r.status, 0, r.stdout + r.stderr)
@@ -440,7 +440,7 @@ describe("start, detached, with its flags", () => {
         assert.match(r.stdout + r.stderr, new RegExp(`port ${taken} is taken`))
         assert.equal(run("status").status, 1, "nothing runs")
       } finally {
-        await new Promise(resolve => holder.close(resolve))
+        await new Promise<any>(resolve => holder.close(resolve))
       }
       assert.equal(run("start").status, 0)
     }

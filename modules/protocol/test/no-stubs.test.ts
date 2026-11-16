@@ -20,7 +20,7 @@ test("the host side computes no $stubs and reads no stub field", () => {
     .flatMap(f =>
       read(path.join("src", "host", f))
         .split("\n")
-        .map((l, i) => [f, i + 1, l])
+        .map((l, i): [string, number, string] => [f, i + 1, l])
     )
     .filter(([, , l]) => /stub/i.test(l))
     .map(([f, n, l]) => `src/host/${f}:${n}  ${l.trim().slice(0, 100)}`)

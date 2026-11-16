@@ -201,7 +201,7 @@ test(
     const { createHandler } = await load("src/createHandler.js")
     fixture = makeFixture({ engineDir: ENGINE_DIR })
     const handler = await createHandler({ root: fixture.root })
-    const request = (m, p, b) => quietly(() => handler.handle(m, p, b))
+    const request = (m, p, b?) => quietly(() => handler.handle(m, p, b))
 
     assert.equal(handler.api.hasRemoteAccess(), false)
     const none = await request("GET", "/sources/access")

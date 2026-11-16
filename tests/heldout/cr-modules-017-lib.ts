@@ -31,7 +31,7 @@ export const workspaceKey = runtime.workspaceKey
 export const runtimeFile = (root, dir) => runtime.stateFile(root, dir)
 export const stateFileOf = (root, dir) => stateMod.workspaceStateFile(root, dir)
 
-export const sleep = ms => new Promise(r => setTimeout(r, ms))
+export const sleep = ms => new Promise<any>(r => setTimeout(r, ms))
 const tmps = []
 export function tmpDir(prefix) {
   const d = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), prefix)))
@@ -63,7 +63,7 @@ export function cleanupTmps() {
 }
 
 /** A Northwind workspace (the contract fixture) named `name`, with this package linked in as node_modules/@dreamteamer/web. */
-export function workspaceNamed(name, { tmp } = {}) {
+export function workspaceNamed(name, { tmp }: any = {}) {
   const f = tmp ? makeFixture({ engineDir: ENGINE_DIR, tmp }) : makeFixture({ engineDir: ENGINE_DIR })
   const pkgFile = path.join(f.root, "package.json")
   const pkg = JSON.parse(fs.readFileSync(pkgFile, "utf8"))
@@ -82,7 +82,7 @@ export function dtWeb(root, args, env, { timeout = 60_000, bin = BIN, node = pro
 }
 /** The same, as a promise (for two verbs at the same instant). */
 export function dtWebAsync(root, args, env, { timeout = 60_000 } = {}) {
-  return new Promise(resolve => {
+  return new Promise<any>(resolve => {
     const t0 = Date.now()
     const c = spawn(process.execPath, [BIN, root, ...args], { env, stdio: ["ignore", "pipe", "pipe"] })
     let stdout = ""
@@ -136,7 +136,7 @@ export async function signIn(url) {
   return r.headers.get("set-cookie").split(";")[0]
 }
 /** A request from the pane's page: the cookie and Sec-Fetch-Site: same-origin. */
-export async function page(base, cookie, method, p, body, headers = {}) {
+export async function page(base, cookie, method, p, body?, headers = {}) {
   return call(`${base}${p}`, {
     method,
     headers: {
@@ -150,8 +150,8 @@ export async function page(base, cookie, method, p, body, headers = {}) {
 }
 
 /** A raw request with node:http: the path goes out exactly as written. → { status, headers, body } */
-export function raw(url, { method = "GET", headers = {}, body, path: p } = {}) {
-  return new Promise((resolve, reject) => {
+export function raw(url, { method = "GET", headers = {}, body, path: p }: any = {}) {
+  return new Promise<any>((resolve, reject) => {
     const u = new URL(url)
     const req = http.request(
       { host: u.hostname, port: u.port, path: p ?? u.pathname + u.search, method, headers, timeout: 20_000 },
@@ -213,7 +213,7 @@ export async function stream(base, cookie) {
 
 /** The prompt hook bin, as the harness runs it: the payload on stdin; → { code, stdout, stderr, ms }. */
 export function hook(payload, env, { node = process.execPath, bin = HOOK_BIN } = {}) {
-  return new Promise(resolve => {
+  return new Promise<any>(resolve => {
     const t0 = Date.now()
     const c = spawn(node, [bin], { env, stdio: ["pipe", "pipe", "pipe"] })
     let stdout = ""
@@ -280,10 +280,10 @@ export function stopAll(roots, m) {
 
 /** A free TCP port on 127.0.0.1. */
 export function freePort() {
-  return new Promise(resolve => {
+  return new Promise<any>(resolve => {
     const s = http.createServer()
     s.listen(0, "127.0.0.1", () => {
-      const p = s.address().port
+      const p = (s.address() as any).port
       s.close(() => resolve(p))
     })
   })

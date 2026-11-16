@@ -17,7 +17,10 @@ test("h5 — migration edges", () => {
   const ws = rndWorkspace()
   assert.equal(fs.existsSync(path.join(ws, "data/rnd/change-requests")), false)
   // 1: from the root
-  const runs = [[], ["--json"], ["--write"], ["--write", "--json"]].map(args => [args, migrate(ws, { args })])
+  const runs: [string[], any][] = [[], ["--json"], ["--write"], ["--write", "--json"]].map(args => [
+    args,
+    migrate(ws, { args }),
+  ])
   for (const [args, r] of runs) {
     assert.equal(r.code, 0, `${args}: ${r.out}${r.err}`)
     assert.equal(r.err, "", `${args}: no stderr`)

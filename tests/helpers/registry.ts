@@ -59,10 +59,10 @@ export async function serveRegistry(tarballs) {
     res.writeHead(200, { "content-type": "application/json" })
     res.end(JSON.stringify(packument))
   })
-  await new Promise(resolve => server.listen(0, "127.0.0.1", resolve))
+  await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve))
   return {
-    url: `http://127.0.0.1:${server.address().port}/`,
-    close: () => new Promise(resolve => server.close(resolve)),
+    url: `http://127.0.0.1:${(server.address() as any).port}/`,
+    close: () => new Promise<any>(resolve => server.close(resolve)),
   }
 }
 
@@ -83,7 +83,7 @@ export function npmInstall(cwd, args, registry) {
     `--cache=${cache}`,
     ...args,
   ]
-  return new Promise(resolve => {
+  return new Promise<any>(resolve => {
     execFile("npm", argv, { cwd, env, encoding: "utf8", timeout: 120_000 }, (err, stdout, stderr) => {
       fs.rmSync(cache, { recursive: true, force: true })
       resolve({ code: err ? (typeof err.code === "number" ? err.code : 1) : 0, out: `${stdout}\n${stderr}` })

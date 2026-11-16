@@ -25,7 +25,7 @@ const quietly = async fn => {
     console.log = log
   }
 }
-const req = (m, p, b) => quietly(() => handler.handle(m, p, b))
+const req = (m, p, b?) => quietly(() => handler.handle(m, p, b))
 const bytes = () => fs.readFileSync(navFile, "utf8")
 const doc = () => yaml.load(bytes())
 const writeNav = d => fs.writeFileSync(navFile, `${HEADER}\n${yaml.dump(d)}`)

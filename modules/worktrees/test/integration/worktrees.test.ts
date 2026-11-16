@@ -361,7 +361,7 @@ describe("worktrees are an observed entity", () => {
     for (const [shape, brokenGit] of Object.entries(shapes)) {
       assert.throws(
         () => removeWorktree(wsObj, dir, {}, brokenGit),
-        e => {
+        (e: any) => {
           assert.match(e.message, /could not be measured/, `${shape}: ${e.message}`)
           assert.match(e.message, new RegExp(head), `${shape}: the sha must be named — no branch does`)
           assert.match(e.message, /--force/, `${shape}: the override must be named`)

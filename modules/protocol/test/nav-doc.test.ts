@@ -10,7 +10,7 @@ import assert from "node:assert/strict"
 import { applyNavOp, NavOpError } from "../src/navDoc.ts"
 
 /** The design's §3 example document. */
-const EXAMPLE = () => ({
+const EXAMPLE = (): any => ({
   tree: [
     {
       folder: "Work",

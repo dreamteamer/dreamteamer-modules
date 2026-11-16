@@ -735,7 +735,7 @@ const wanted = v => {
  * Pass `resolve` whenever the condition may hop a reference: a non-`_` key under a field is a
  * one-hop reference traversal, and `matchesFilter` narrows to false with no resolver wired.
  */
-export function verdictLine(expectation, actual, resolve) {
+export function verdictLine(expectation, actual, resolve?) {
   const entries = Object.entries(expectation ?? {})
   const bare = entries.length > 0 && entries.every(([k]) => k.startsWith("_"))
   if (!bare && entries.length !== 1)
@@ -813,7 +813,7 @@ export function countMatching(store, collection, where, resolve) {
  * `override` is `--record <collection>/<id>`, and it replaces the selection rather than filtering
  * through it: a person naming a record is saying which one to use.
  */
-export function pickFixture(store, given, override) {
+export function pickFixture(store, given, override?) {
   const collection = String(given?.collection ?? "")
   if (override) {
     const parsed = dt.parseRef(String(override), store.namespaces)

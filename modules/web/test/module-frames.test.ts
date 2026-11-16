@@ -92,7 +92,7 @@ test("without the guest from @dreamteamer/ui the frame says so, 503", async () =
   assert.match(r.text, /@dreamteamer\/ui/)
 })
 test("a page at [::1] is redirected to 127.0.0.1 before the app boots", async () => {
-  const status = await new Promise((resolve, reject) => {
+  const status = await new Promise<any>((resolve, reject) => {
     const q = http.request(
       { host: "127.0.0.1", port: web.port, path: "/some/route?x=1", headers: { host: `[::1]:${web.port}`, cookie } },
       res => {
@@ -123,7 +123,7 @@ test("the README says what the bridge enforces and what a module app can still d
 })
 
 test("a page opened at localhost frames from localhost, so its frames are same-origin", async () => {
-  const r = await new Promise((resolve, reject) => {
+  const r = await new Promise<any>((resolve, reject) => {
     const q = http.request(
       { host: "127.0.0.1", port: web.port, path: "/app/", headers: { host: `localhost:${web.port}` } },
       res => {

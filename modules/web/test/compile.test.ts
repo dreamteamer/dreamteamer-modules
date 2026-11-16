@@ -114,7 +114,7 @@ test(
       stdio: ["ignore", "pipe", "pipe"],
     })
     children.push(child)
-    const first = await new Promise((resolve, reject) => {
+    const first = await new Promise<any>((resolve, reject) => {
       let out = "",
         err = ""
       child.stdout.on("data", b => {
@@ -137,7 +137,7 @@ test(
     )
     const stop = dt(ws, "web", "stop")
     assert.equal(stop.status, 0, stop.stderr + stop.stdout)
-    const gone = await new Promise(r => {
+    const gone = await new Promise<any>(r => {
       if (child.exitCode !== null) return r(true)
       const t = setTimeout(() => r(false), 15_000)
       child.once("exit", () => {

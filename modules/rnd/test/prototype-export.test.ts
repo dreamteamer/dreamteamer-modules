@@ -15,7 +15,7 @@ after(() => {
   for (const d of made) fs.rmSync(d, { recursive: true, force: true })
 })
 
-const rows = () => ({
+const rows = (): any => ({
   products: [
     { id: "grantee-portal", name: "Grantee portal" },
     { id: "back-office", name: "Back office" },
@@ -337,7 +337,7 @@ describe("the portal read from a tag", () => {
 })
 
 describe("the failures — nothing written", () => {
-  const fails = (mutate, pattern, opts = {}) => {
+  const fails = (mutate, pattern, opts: any = {}) => {
     const data = rows()
     mutate(data)
     const r = build(config(opts.config), data, { playback: opts.playback ?? PB, store: opts.store })

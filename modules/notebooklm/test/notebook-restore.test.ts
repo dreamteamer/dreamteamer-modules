@@ -300,7 +300,7 @@ describe("the record file round-trips", () => {
 })
 
 describe("npx dt-notebook restore / capture", () => {
-  function consumer(frontmatter) {
+  function consumer(frontmatter?) {
     const ws = fs.mkdtempSync(path.join(os.tmpdir(), "ext-nbr-"))
     made.push(ws)
     fs.writeFileSync(

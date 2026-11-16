@@ -28,6 +28,7 @@ test("auth makes one consent attempt, waits, verifies once and closes", async ()
     closed = false,
     printed = 0
   const result = await authorize({
+    signal: undefined,
     account,
     env,
     fileExists: p => p === env.GOOGLE_CLIENT_SECRET_PATH || exists,
@@ -51,6 +52,7 @@ test("auth makes one consent attempt, waits, verifies once and closes", async ()
 })
 test("existing credentials are not deleted or renewed implicitly", async () => {
   const result = await authorize({
+    signal: undefined,
     account,
     env,
     fileExists: () => true,
@@ -66,6 +68,7 @@ test("auth timeout does not poll the server or leave process alive", async () =>
     closed = false
   await assert.rejects(
     authorize({
+      signal: undefined,
       account,
       env,
       waitMs: 10,
@@ -97,6 +100,7 @@ test("auth refuses non-Google consent links and failed verification", async () =
   ]) {
     await assert.rejects(
       authorize({
+        signal: undefined,
         account,
         env,
         fileExists: p => p === env.GOOGLE_CLIENT_SECRET_PATH,
@@ -146,7 +150,7 @@ test("direct API refresh uses fixed endpoint, preserves raw fields and never wri
           ? { installed: { client_id: "synthetic-client", client_secret: "synthetic-secret" } }
           : { refresh_token: "synthetic-refresh", scopes: ["https://www.googleapis.com/auth/calendar.readonly"] }
       ),
-    fetchImpl: async (url, options) => {
+    fetchImpl: async (url, options): Promise<any> => {
       calls.push({ url: String(url), options })
       return calls.length === 1
         ? { ok: true, json: async () => ({ access_token: "synthetic-access" }) }
@@ -181,9 +185,9 @@ test("token refresh errors are redacted and wrong scope prevents refresh", async
     createGoogleRequest(account, "drive", {
       env,
       readFile,
-      fetchImpl: async () => ({ ok: false, json: async () => ({ error: "synthetic-sensitive-error" }) }),
+      fetchImpl: async (): Promise<any> => ({ ok: false, json: async () => ({ error: "synthetic-sensitive-error" }) }),
     }),
-    error => !error.message.includes("synthetic-sensitive-error") && /refresh failed/.test(error.message)
+    (error: any) => !error.message.includes("synthetic-sensitive-error") && /refresh failed/.test(error.message)
   )
 })
 
@@ -225,7 +229,7 @@ test("tool discovery paginates and filters to the bridge read allowlist by defau
       close: () => {
         closed = true
       },
-      send: async (method, params) => {
+      send: async (method, params: any) => {
         assert.equal(method, "tools/list")
         calls++
         if (calls === 1)
@@ -259,6 +263,7 @@ test("calendar page sizes respect calendar-list and event API limits on every pa
 test("auth does not falsely promise broader scopes for existing credentials", async () => {
   await assert.rejects(
     authorize({
+      signal: undefined,
       account,
       env,
       allowWrite: true,
@@ -275,6 +280,7 @@ test("new-account write consent omits read-only but cannot inherit scope overrid
   let exists = false,
     calls = 0
   await authorize({
+    signal: undefined,
     account,
     env: { ...env, GOOGLE_OAUTH_SCOPES: "hostile-scope" },
     allowWrite: true,
@@ -320,6 +326,7 @@ test("consent URLs require a single local callback and complete authorization-co
       closed = false
     await assert.rejects(
       authorize({
+        signal: undefined,
         account,
         env,
         fileExists: p => p === env.GOOGLE_CLIENT_SECRET_PATH,
@@ -344,6 +351,7 @@ test("consent URLs require a single local callback and complete authorization-co
 test("Windows authorization fails before credential access or process creation", async () => {
   await assert.rejects(
     authorize({
+      signal: undefined,
       account,
       platform: "win32",
       env,
@@ -396,6 +404,7 @@ test("call discovery and auth always select only the three pilot services", asyn
     await listTools({ env, allowWrite, connectionFactory: factory })
     await assert.rejects(
       authorize({
+        signal: undefined,
         account,
         env,
         allowWrite,

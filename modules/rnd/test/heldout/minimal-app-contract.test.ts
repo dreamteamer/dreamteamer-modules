@@ -9,6 +9,9 @@ import { loadConfig } from "../../lib/prototype/node/config.ts"
 import { buildHP, play } from "./lib/hp-fixture.ts"
 import { cleanup } from "./lib/common.ts"
 
+// Browser globals: these callbacks run in the page, not in Node.
+declare const document: any, window: any
+
 after(cleanup)
 
 describe("held-out: the minimal app contract", () => {

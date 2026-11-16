@@ -80,7 +80,7 @@ after(
 
 /** Stop a child for good: ask it (IPC), then SIGKILL after a second; resolves once it has exited. */
 function stopChild(child) {
-  return new Promise(resolve => {
+  return new Promise<void>(resolve => {
     if (child.exitCode !== null || child.signalCode !== null) {
       children.delete(child)
       return resolve()
@@ -296,7 +296,7 @@ loop();
       const notOnTop = []
       let ok = 0
       try {
-        await new Promise((resolve, reject) => {
+        await new Promise<any>((resolve, reject) => {
           child.once("message", resolve)
           child.once("exit", (code, signal) =>
             reject(new Error(`the hand writer exited before it was ready (${code ?? signal})`))

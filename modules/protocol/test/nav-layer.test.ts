@@ -39,7 +39,7 @@ const draw = doc =>
     namespaces: ["rnd", "lab"],
     titleOf: d => d.title,
     namespaceTitle: ns => (ns === "rnd" ? "R&D" : ns),
-  })
+  } as any)
 
 describe("layerTree: buildTree's rules over the rows a layer holds", () => {
   test("the document's folders in order, a name the layer does not hold skipped, hidden names out, the unplaced rows by title, then the held namespace", () => {

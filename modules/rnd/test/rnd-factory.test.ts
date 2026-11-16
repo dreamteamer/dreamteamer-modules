@@ -39,10 +39,10 @@ describe("extract-frames — the ffmpeg plan", () => {
     assert.match(calls[1].argv.join(" "), /fps=1\/8,scale=500:-1,tile=4x6/)
   })
   test("refuses a missing input or output, and a non-positive interval or width, by name", () => {
-    assert.throws(() => ffmpegArgs({ out: "x" }), /--in/)
-    assert.throws(() => ffmpegArgs({ input: "x" }), /--out/)
+    assert.throws(() => ffmpegArgs({ out: "x" } as any), /--in/)
+    assert.throws(() => ffmpegArgs({ input: "x" } as any), /--out/)
     assert.throws(() => ffmpegArgs({ input: "x", out: "y", every: 0 }), /--every/)
-    assert.throws(() => ffmpegArgs({ input: "x", out: "y", width: "wide" }), /--width/)
+    assert.throws(() => ffmpegArgs({ input: "x", out: "y", width: "wide" } as any), /--width/)
   })
   test("parseArgs reads the flags and defaults the rest", () => {
     assert.deepEqual(parseArgs(["--in", "a.mp4", "--out", "d", "--sheet"]), {

@@ -20,7 +20,7 @@ const REQUEST_TIMEOUT_MS = 30_000
 let server
 let fixture
 after(async () => {
-  if (server) await new Promise(r => server.close(r))
+  if (server) await new Promise<any>(r => server.close(r))
   fixture?.cleanup()
 })
 
@@ -33,7 +33,7 @@ test("the contract on dt serve: the failures are exactly gaps/http.json", { time
   await once(server, "listening")
   const base = `http://127.0.0.1:${server.address().port}/api`
   const request = async (method, p, body) => {
-    const init = { method, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS), headers: {} }
+    const init: any = { method, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS), headers: {} }
     if (body !== undefined) {
       init.body = JSON.stringify(body)
       init.headers["content-type"] = "application/json"

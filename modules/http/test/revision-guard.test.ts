@@ -14,8 +14,8 @@ import { httpWorkspace, simpleCollection, mount } from "./support.ts"
 let h, srv, port, id, first, head, tmp
 
 /** One request through node:http (which sends any header it is given), the answer parsed when JSON. */
-function raw(method, urlPath, { headers = {}, body } = {}) {
-  return new Promise((resolve, reject) => {
+function raw(method, urlPath, { headers = {}, body }: any = {}) {
+  return new Promise<any>((resolve, reject) => {
     const data = body === undefined ? undefined : JSON.stringify(body)
     const req = http.request(
       {
@@ -138,7 +138,7 @@ describe("response headers", () => {
       403: await raw("GET", "/info", { headers: { "sec-fetch-site": "cross-site" } }),
       404: await raw("GET", "/no-such-route"),
     }
-    answers[302] = await new Promise((resolve, reject) => {
+    answers[302] = await new Promise<any>((resolve, reject) => {
       http
         .get({ host: "127.0.0.1", port, path: "/", timeout: 20_000 }, res => {
           res.resume()

@@ -62,7 +62,7 @@ const byId = checks => Object.fromEntries(checks.map(c => [c.id, c]))
 /** Run `fn` with every write, process and network entry point replaced by a thrower. */
 function readOnly(fn) {
   const calls = []
-  const targets = [
+  const targets: any[] = [
     ...[
       "writeFileSync",
       "appendFileSync",
@@ -286,7 +286,7 @@ describe("the existing doctor surfaces", () => {
   })
   test("the extension activates as API 1 with one namespaced command and two setup units, the account unit first (its rows are the doctor's)", () => {
     assert.equal(apiVersion, 1)
-    const ext = activate()
+    const ext: any = activate()
     assert.deepEqual(Object.keys(ext.commands), ["google-setup"])
     assert.match(ext.commands["google-setup"].usage, /google-setup/)
     assert.equal(ext.doctor, undefined, "the engine renders the unit's inspect as this capability's rows")
@@ -383,7 +383,7 @@ describe("plan", () => {
             target: m.storeDir,
             parentId: "x",
           }),
-        e => e.code === "blocked"
+        (e: any) => e.code === "blocked"
       )
       assert.equal(fs.statSync(m.storeDir).mode & 0o777, 0o755, "permissions untouched")
       fs.chmodSync(m.storeDir, 0o700)
@@ -482,13 +482,13 @@ describe("apply", () => {
     const moved = { ...m.env, WORKSPACE_MCP_CREDENTIALS_DIR: path.join(path.dirname(m.storeDir), "elsewhere") }
     assert.throws(
       () => create(m, p, moved),
-      e => e.code === "stale" && /not the one previewed/.test(e.message)
+      (e: any) => e.code === "stale" && /not the one previewed/.test(e.message)
     )
     assert.ok(!fs.existsSync(moved.WORKSPACE_MCP_CREDENTIALS_DIR) && !fs.existsSync(m.storeDir))
     fs.mkdirSync(moved.WORKSPACE_MCP_CREDENTIALS_DIR, { mode: 0o700 })
     assert.throws(
       () => create(m, p, moved),
-      e => e.code === "stale",
+      (e: any) => e.code === "stale",
       "even when the other path already exists"
     )
   })
@@ -500,7 +500,7 @@ describe("apply", () => {
     fs.mkdirSync(parent, { mode: 0o700 })
     assert.throws(
       () => create(m, p),
-      e => e.code === "stale" && /parent folder was replaced/.test(e.message)
+      (e: any) => e.code === "stale" && /parent folder was replaced/.test(e.message)
     )
     assert.deepEqual(fs.readdirSync(parent), [])
   })
@@ -510,20 +510,20 @@ describe("apply", () => {
     fs.writeFileSync(m.storeDir, "appeared after the preview")
     assert.throws(
       () => create(m, p),
-      e => e.code === "blocked"
+      (e: any) => e.code === "blocked"
     )
     assert.equal(fs.readFileSync(m.storeDir, "utf8"), "appeared after the preview", "nothing replaced")
     fs.rmSync(m.storeDir)
     // the race itself: the path appears between the last check and mkdir
     const mkdir = fs.mkdirSync
-    fs.mkdirSync = (dir, ...rest) => {
+    ;(fs as any).mkdirSync = (dir, ...rest) => {
       mkdir(dir, { mode: 0o755 })
       return mkdir(dir, ...rest)
     }
     try {
       assert.throws(
         () => create(m, p),
-        e => e.code === "stale"
+        (e: any) => e.code === "stale"
       )
     } finally {
       fs.mkdirSync = mkdir
@@ -545,21 +545,21 @@ describe("apply", () => {
           target: p.creates,
           parentId: p.parentId,
         }),
-      e => e.code === "workspace"
+      (e: any) => e.code === "workspace"
     )
     assert.throws(
       () =>
         apply({ root: m.root, env: m.env, action: "create-credential-store", target: p.creates, parentId: p.parentId }),
-      e => e.code === "workspace"
+      (e: any) => e.code === "workspace"
     )
     assert.throws(
       () => apply({ root: m.root, env: m.env, action: "create-credential-store", workspace: m.root }),
-      e => e.code === "usage"
+      (e: any) => e.code === "usage"
     )
     for (const action of ["authorize-account", "verify-account-read"])
       assert.throws(
         () => apply({ root: m.root, env: m.env, action, workspace: m.root }),
-        e => e.code === "action" && /owner/.test(e.message)
+        (e: any) => e.code === "action" && /owner/.test(e.message)
       )
     assert.ok(!fs.existsSync(m.storeDir))
   })

@@ -72,7 +72,7 @@ describe("a restart", () => {
     const old = a.port
     await a.close()
     const squatter = net.createServer()
-    await new Promise((r, j) => {
+    await new Promise<void>((r, j) => {
       squatter.once("error", j)
       squatter.listen(old, "127.0.0.1", r)
     })
@@ -98,17 +98,17 @@ describe("a restart", () => {
       assert.equal(stateText().includes(sidOf(fresh)), false)
       await b.close()
     } finally {
-      await new Promise(r => squatter.close(r))
+      await new Promise<any>(r => squatter.close(r))
     }
   })
 
   test("an explicit port that is taken is an error naming it — the person chose it", async () => {
     const squatter = net.createServer()
-    await new Promise(r => squatter.listen(0, "127.0.0.1", r))
+    await new Promise<void>(r => squatter.listen(0, "127.0.0.1", r))
     try {
-      await assert.rejects(start({ port: squatter.address().port }), /EADDRINUSE|in use/)
+      await assert.rejects(start({ port: (squatter.address() as any).port }), /EADDRINUSE|in use/)
     } finally {
-      await new Promise(r => squatter.close(r))
+      await new Promise<any>(r => squatter.close(r))
     }
   })
 })
@@ -117,7 +117,7 @@ describe("the idle stop", () => {
   test("no page and no bearer request: it stops with idle, and the next start has the pane signed out", async () => {
     const w = await start({ idleMinutes: 0.01 })
     const cookie = await pair(w)
-    const why = await Promise.race([w.closed, new Promise(r => setTimeout(() => r("still up"), 3000))])
+    const why = await Promise.race([w.closed, new Promise<any>(r => setTimeout(() => r("still up"), 3000))])
     assert.equal(why, "idle")
     const b = await start()
     assert.equal(b.port, w.port)
@@ -133,10 +133,10 @@ describe("the idle stop", () => {
     const ctrl = new AbortController()
     const res = await fetch(`${w.url}/api/events`, { headers: { cookie, ...sameOrigin() }, signal: ctrl.signal })
     assert.equal(res.status, 200)
-    const early = await Promise.race([w.closed, new Promise(r => setTimeout(() => r("still up"), 1500))])
+    const early = await Promise.race([w.closed, new Promise<any>(r => setTimeout(() => r("still up"), 1500))])
     assert.equal(early, "still up")
     ctrl.abort()
-    const why = await Promise.race([w.closed, new Promise(r => setTimeout(() => r("still up"), 3000))])
+    const why = await Promise.race([w.closed, new Promise<any>(r => setTimeout(() => r("still up"), 3000))])
     assert.equal(why, "idle")
   })
 
@@ -154,7 +154,7 @@ describe("the idle stop", () => {
     })
     assert.equal(res.status, 200)
     try {
-      const why = await Promise.race([w.closed, new Promise(r => setTimeout(() => r("still up"), 3000))])
+      const why = await Promise.race([w.closed, new Promise<any>(r => setTimeout(() => r("still up"), 3000))])
       assert.equal(why, "idle")
     } finally {
       ctrl.abort()
@@ -174,11 +174,11 @@ describe("the idle stop", () => {
       up = false
     })
     for (let i = 0; i < 6; i++) {
-      await new Promise(r => setTimeout(r, 300))
+      await new Promise<any>(r => setTimeout(r, 300))
       assert.equal(up, true, `stopped after ${(i + 1) * 300} ms of client requests`)
       assert.equal((await call(`${w.url}/api/info`, { headers: { authorization: `Bearer ${token}` } })).status, 200)
     }
-    const why = await Promise.race([w.closed, new Promise(r => setTimeout(() => r("still up"), 3000))])
+    const why = await Promise.race([w.closed, new Promise<any>(r => setTimeout(() => r("still up"), 3000))])
     assert.equal(why, "idle")
   })
 })

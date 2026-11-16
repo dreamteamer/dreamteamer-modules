@@ -111,8 +111,8 @@ describe("the unit, pure", () => {
     const client = path.join(tmp(), "client.json")
     fs.writeFileSync(client, "{}")
     const ctx = ctxFor(root, { PATH: "" })
-    const p = plan(ctx, { credentials_dir: store, client_secret: client })
-    const rec = p.actions.find(a => a.id === "record-settings")
+    const p: any = plan(ctx, { credentials_dir: store, client_secret: client })
+    const rec: any = p.actions.find(a => a.id === "record-settings")
     assert.equal(rec.state, "ready", rec.reason)
     assert.deepEqual(
       rec.env,
@@ -121,7 +121,7 @@ describe("the unit, pure", () => {
     )
     assert.equal(p.actions[0].id, "record-settings", "first: the next plan reads what it wrote")
     assert.deepEqual(
-      Object.keys(plan(ctx, { credentials_dir: store }).actions[0].env),
+      Object.keys((plan(ctx, { credentials_dir: store }) as any).actions[0].env),
       ["WORKSPACE_MCP_CREDENTIALS_DIR"],
       "an unnamed client file is left out, not blanked"
     )
@@ -140,7 +140,7 @@ describe("the unit, pure", () => {
       const home = tmp()
       const store = path.join(home, ".config", "google-workspace-mcp", "credentials")
       const ctx = ctxFor(root, { PATH: "", HOME: home })
-      const create = plan(ctx, { credentials_dir: store }).actions.find(a => a.id === "create-credential-store")
+      const create: any = plan(ctx, { credentials_dir: store }).actions.find(a => a.id === "create-credential-store")
       assert.equal(create.state, "ready", create.reason)
       assert.deepEqual(create.preview.also, [
         path.join(home, ".config"),
@@ -153,7 +153,7 @@ describe("the unit, pure", () => {
       for (const d of [path.join(home, ".config"), path.join(home, ".config", "google-workspace-mcp"), store])
         assert.equal(fs.statSync(d).mode & 0o777, 0o700, d)
       // outside the home the old rule holds: only the last folder, inside an existing parent
-      const outside = plan(ctx, { credentials_dir: path.join(tmp(), "no-such-parent", "creds") }).actions.find(
+      const outside: any = plan(ctx, { credentials_dir: path.join(tmp(), "no-such-parent", "creds") }).actions.find(
         a => a.id === "create-credential-store"
       )
       assert.equal(outside.state, "blocked")
@@ -164,9 +164,9 @@ describe("the unit, pure", () => {
   test("plan names client_secret and account in needs, the store creation as a machine effect, the owner's steps as account", () => {
     const root = tmp()
     const store = path.join(tmp(), "creds")
-    const p = plan(ctxFor(root, { PATH: "" }), { credentials_dir: store })
+    const p: any = plan(ctxFor(root, { PATH: "" }), { credentials_dir: store })
     assert.deepEqual(p.needs, ["client_secret", "account"])
-    const create = p.actions.find(a => a.id === "create-credential-store")
+    const create: any = p.actions.find(a => a.id === "create-credential-store")
     assert.equal(create.state, "ready")
     assert.deepEqual(
       create.effects.map(e => e.kind),
@@ -174,8 +174,8 @@ describe("the unit, pure", () => {
     )
     assert.equal(create.preview.creates, store)
     assert.equal(create.runBy, "engine")
-    const withAccount = plan(ctxFor(root, { PATH: "" }), { credentials_dir: store, account: "a@example.invalid" })
-    const auth = withAccount.actions.find(a => a.id === "authorize-account")
+    const withAccount: any = plan(ctxFor(root, { PATH: "" }), { credentials_dir: store, account: "a@example.invalid" })
+    const auth: any = withAccount.actions.find(a => a.id === "authorize-account")
     assert.equal(auth.runBy, "owner")
     assert.ok(auth.effects.some(e => e.kind === "account"))
     assert.equal(withAccount.actions.find(a => a.id === "verify-account-read").kind, "verify")
@@ -186,8 +186,8 @@ describe("the unit, pure", () => {
     const root = tmp()
     const store = path.join(tmp(), "creds")
     const ctx = ctxFor(root, { PATH: "" })
-    const p = plan(ctx, { credentials_dir: store })
-    const create = p.actions.find(a => a.id === "create-credential-store")
+    const p: any = plan(ctx, { credentials_dir: store })
+    const create: any = p.actions.find(a => a.id === "create-credential-store")
     const r = apply(ctx, create, { credentials_dir: store })
     assert.equal(r.ok, true, r.message)
     assert.deepEqual(r.changed, [store])
@@ -201,7 +201,7 @@ describe("the unit, pure", () => {
     assert.deepEqual(again.changed, [])
     // a stale preview: the parent replaced after the plan — on a store that does not exist yet
     const store2 = path.join(tmp(), "creds2")
-    const create2 = plan(ctx, { credentials_dir: store2 }).actions.find(a => a.id === "create-credential-store")
+    const create2: any = plan(ctx, { credentials_dir: store2 }).actions.find(a => a.id === "create-credential-store")
     const stale = apply(
       ctx,
       { ...create2, preview: { ...create2.preview, parentId: "nope" } },

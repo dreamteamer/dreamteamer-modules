@@ -50,7 +50,7 @@ function seed(root) {
 for (const [how, make] of [
   ["copied", rndWorkspace],
   ["packed", packedWorkspace],
-]) {
+] as any[]) {
   describe(`${how}: one release per product, package and version — the id is the identity (acceptance 1)`, () => {
     const root = make()
     seed(root)

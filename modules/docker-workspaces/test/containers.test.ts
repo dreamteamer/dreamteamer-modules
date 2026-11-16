@@ -10,7 +10,7 @@ import path from "node:path"
 import { PKG, HQ, harness as base, startFakeDocker } from "./helpers/harness.ts"
 
 function harness(
-  images = [
+  images: { ref: string; labels: Record<string, string> }[] = [
     {
       ref: HQ,
       labels: { "dreamteamer.template": "hq", "dreamteamer.ports": "8080", "dreamteamer.modules": "users,contacts" },
@@ -212,7 +212,7 @@ describe("host mode — the verbs answer with NO workspace", () => {
       [["open", "container", "hq-dana", "--rotate-token"], "rotate-token"],
       [["start", "container", "hq-dana", "--templte", "hq"], "templte"],
       [["add", "image", "--template", "x", "--force"], "force"],
-    ]) {
+    ] as [string[], string][]) {
       const r = h.dt(...args)
       assert.equal(r.code, 1, `${args.join(" ")}: ${r.out}`)
       assert.match(

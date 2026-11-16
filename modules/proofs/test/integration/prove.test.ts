@@ -55,8 +55,8 @@ const load = api.loadYaml
  *  both of its inputs answer the same thing. */
 function runtimeEntries(root) {
   const manifest = readManifest(root)
-  return new Map(
-    Object.entries(manifest.entries).map(([rt, e]) => [
+  return new Map<string, any>(
+    Object.entries<any>(manifest.entries).map(([rt, e]) => [
       rt,
       {
         sources: e.sources,
@@ -940,7 +940,7 @@ const PROOFS = {
 
 /** The fixture, compiled, with every proof above on disk.
  *  `records` overrides the two default notes (both `open`, so `pick: latest` is `notes/b`). */
-function proveWorkspace(opts = {}) {
+function proveWorkspace(opts: any = {}): any {
   const ws = workspace({
     // PROVE_TEST_VAR is declared and NEVER given a value (the UNAVAILABLE state); PROVE_FIX_DIR is
     // declared AND valued, so a `path:` expectation has a real machine-dependent folder to render.
@@ -958,7 +958,7 @@ function proveWorkspace(opts = {}) {
   // resolver `dt resolve` uses — reads `.env` for values and package.json for what is DECLARED, so
   // exporting the var into the test process would render nothing and prove nothing.
   fs.writeFileSync(ws.root + "/.env", `PROVE_DECOY_KEY=${DECOY}\nPROVE_FIX_DIR=${path.join(ws.root, "made")}\n`)
-  for (const [id, fields] of Object.entries({ ...PROOFS, ...(opts.proofs ?? {}) })) {
+  for (const [id, fields] of Object.entries<any>({ ...PROOFS, ...(opts.proofs ?? {}) })) {
     writeProof(ws.root, id, { about: ["skills/using-dreamteamer"], ...fields })
   }
   const compiled = ws.dt("compile")

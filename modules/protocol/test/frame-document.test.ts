@@ -56,7 +56,7 @@ test("a script text that would close its own block is refused", () => {
     /closes its own block/
   )
   assert.throws(
-    () => buildFrameDocument({ guestText: "x", scripts: [{ text: "y", type: "text/x" }] }),
+    () => buildFrameDocument({ guestText: "x", scripts: [{ text: "y", type: "text/x" as any }] }),
     /classic or module/
   )
 })

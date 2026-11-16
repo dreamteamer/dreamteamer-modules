@@ -60,7 +60,7 @@ const RULES = [
 for (const m of moduleIds()) {
   describe(`module ${m} speaks in one voice`, () => {
     const files = shipped(m)
-    for (const [name, re] of RULES) {
+    for (const [name, re] of RULES as any[]) {
       test(`no ${name}`, () => {
         const hits = []
         for (const f of files)

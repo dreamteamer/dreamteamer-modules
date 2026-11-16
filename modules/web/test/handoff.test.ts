@@ -67,7 +67,7 @@ after(async () => {
       /* gone */
     }
   await web?.close()
-  await new Promise(r => setTimeout(r, 300))
+  await new Promise<any>(r => setTimeout(r, 300))
   for (const [k, v] of Object.entries(saved)) {
     if (v === undefined) delete process.env[k]
     else process.env[k] = v
@@ -77,13 +77,13 @@ after(async () => {
 })
 
 const JSON_TYPE = { "content-type": "application/json" }
-const page = (p, method = "GET", body, c = cookie) =>
+const page = (p, method = "GET", body?, c = cookie) =>
   call(`${web.url}${p}`, {
     method,
     headers: { cookie: c, ...sameOrigin(), ...(body ? JSON_TYPE : {}) },
     body: body ? JSON.stringify(body) : undefined,
   })
-const control = (p, method = "GET", body) =>
+const control = (p, method = "GET", body?) =>
   call(`${web.url}/_dt${p}`, {
     method,
     headers: { authorization: `Bearer ${web.controlToken}`, ...(body ? JSON_TYPE : {}) },
@@ -112,7 +112,7 @@ describe("the list", () => {
     for (const [p, method, body] of [
       ["/_dt/workspaces", "GET"],
       ["/_dt/handoff", "POST", { id: workspaceKey(b.root) }],
-    ]) {
+    ] as any[]) {
       assert.equal(
         (
           await call(`${web.url}${p}`, {
@@ -162,7 +162,7 @@ describe("the handoff", () => {
       assert.equal(signIn.headers.get("location"), "/app/#/")
       const bCookie = signIn.headers.get("set-cookie").split(";")[0]
       assert.ok(bCookie.startsWith(`dt_pane_${rb.port}=`))
-      const atB = (p, method = "GET", body) =>
+      const atB = (p, method = "GET", body?) =>
         call(`http://127.0.0.1:${rb.port}${p}`, {
           method,
           headers: { cookie: bCookie, ...sameOrigin(), ...(body ? JSON_TYPE : {}) },

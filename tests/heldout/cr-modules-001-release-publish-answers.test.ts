@@ -61,7 +61,7 @@ for (const shell of [["-e"], ["-eo", "pipefail"]]) {
       ["false", 1],
       ["", 22, true],
     ]
-    for (const [answer, rc = 0, silent = false] of cases) {
+    for (const [answer, rc = 0, silent = false] of cases as any[]) {
       const r = go(answer, rc, shell, silent)
       assert.notEqual(r.status, 0, `answer ${JSON.stringify(answer)} rc ${rc} must fail`)
       assert.equal(r.npm, null, `npm ran on answer ${JSON.stringify(answer)} rc ${rc}`)

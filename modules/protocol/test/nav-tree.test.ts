@@ -29,7 +29,7 @@ const descriptors = [...DESC.core, ...DESC.rnd]
 const titleOf = d => d.title
 const namespaces = ["rnd"]
 const namespaceTitle = ns => (ns === "rnd" ? "R&D" : ns)
-const draw = (doc, extra = {}) => buildTree({ descriptors, doc, namespaces, titleOf, namespaceTitle, ...extra })
+const draw = (doc, extra = {}) => buildTree({ descriptors, doc, namespaces, titleOf, namespaceTitle, ...extra } as any)
 const EXAMPLE = () => ({
   tree: [
     {

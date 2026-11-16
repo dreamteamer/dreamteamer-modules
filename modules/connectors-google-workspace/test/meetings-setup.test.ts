@@ -54,7 +54,7 @@ const meetingsBytes = text =>
     .join("\n")
 
 /** A workspace with a .gitignore ignoring .env, and a separate synthetic home for the reader's defaults. */
-function workspace({ env, gitignore = "node_modules/\n.env\n" } = {}) {
+function workspace({ env, gitignore = "node_modules/\n.env\n" }: any = {}) {
   const base = tmp("meetings-setup-")
   const root = path.join(base, "workspace")
   fs.mkdirSync(root)
@@ -81,7 +81,7 @@ function credentials(home, accounts) {
 
 function readOnly(fn) {
   const calls = []
-  const targets = [
+  const targets: any[] = [
     ...[
       "writeFileSync",
       "appendFileSync",
@@ -200,7 +200,7 @@ describe("add-calendar-rows — the value the env action names", () => {
   const value = p => rowsAction(p).env?.WORK_CALENDARS
   test("fills a blank key; a second plan with the rows already present is done", () => {
     const w = workspace({ env: "# ── dreamteamer modules ──\nFILES_FOLDER=\nWORK_CALENDARS=\nUNKNOWN_KEY=kept\n" })
-    const step = rowsAction(plan({ root: w.root, env: {}, home: w.home, rows: [ROW] }))
+    const step: any = rowsAction(plan({ root: w.root, env: {}, home: w.home, rows: [ROW] }))
     assert.equal(step.state, "ready")
     assert.deepEqual(step.effects, [
       { kind: "workspace-files", detail: ".env (WORK_CALENDARS only; every other line is kept byte for byte)" },
@@ -217,7 +217,7 @@ describe("add-calendar-rows — the value the env action names", () => {
     const w = workspace({
       env: `# private\nA=1\nWORK_CALENDARS="${ROW}\n# kept comment"\n\nZ='two words'  # trailing\n`,
     })
-    const step = rowsAction(plan({ root: w.root, env: {}, home: w.home, rows: [ROW, ROW2] }))
+    const step: any = rowsAction(plan({ root: w.root, env: {}, home: w.home, rows: [ROW, ROW2] }))
     assert.equal(step.preview.keeps, 1)
     assert.equal(step.preview.adds, 1)
     assert.equal(
@@ -231,13 +231,13 @@ describe("add-calendar-rows — the value the env action names", () => {
   })
   test("a mixed batch adds the valid rows and names the malformed ones by input number", () => {
     const w = workspace({ env: "A=1\n" })
-    const step = rowsAction(plan({ root: w.root, env: {}, home: w.home, rows: [ROW, "not | a row", ROW2] }))
+    const step: any = rowsAction(plan({ root: w.root, env: {}, home: w.home, rows: [ROW, "not | a row", ROW2] }))
     assert.equal(step.state, "ready")
     assert.deepEqual(step.preview.skipped, [2])
     assert.equal(step.env.WORK_CALENDARS, `${ROW}\n${ROW2}`)
   })
   test("refuses, naming why: a company conflict, a doubled key, a malformed existing row, a shadowing process value", () => {
-    const cases = [
+    const cases: any[] = [
       [`WORK_CALENDARS="${ROW}"\n`, {}, [ROW.replace("northwind |", "harbor-mutual |")], /different default company/],
       [`WORK_CALENDARS="${ROW}"\nWORK_CALENDARS=""\n`, {}, [ROW2], /more than once/],
       ['WORK_CALENDARS="a | b"\n', {}, [ROW2], /malformed line\(s\) 1/],
@@ -245,7 +245,7 @@ describe("add-calendar-rows — the value the env action names", () => {
     ]
     for (const [text, env, rows, reason] of cases) {
       const w = workspace({ env: text })
-      const step = rowsAction(plan({ root: w.root, env, home: w.home, rows }))
+      const step: any = rowsAction(plan({ root: w.root, env, home: w.home, rows }))
       assert.equal(step.state, "blocked", text)
       assert.match(step.reason, reason)
       assert.equal(step.env, undefined, "a refused action names nothing to write")
@@ -265,7 +265,7 @@ describe("add-calendar-rows — the value the env action names", () => {
     ]) {
       assert.equal(parseRow(bad), null, bad)
       const w = workspace({ env: "A=1\n" })
-      const step = rowsAction(plan({ root: w.root, env: {}, home: w.home, rows: [bad] }))
+      const step: any = rowsAction(plan({ root: w.root, env: {}, home: w.home, rows: [bad] }))
       assert.equal(step.state, "blocked", bad)
       assert.ok(!step.reason.includes("dana@"), "a refused value is not echoed")
     }
@@ -285,11 +285,15 @@ describe("add-calendar-rows — the value the env action names", () => {
 describe("the live step", () => {
   test("verify-calendar-access is the owner's, names its effects, and waits for every local prerequisite", () => {
     const w = workspace({ env: `WORK_CALENDARS="${ROW}"\n` })
-    const blocked = plan({ root: w.root, env: {}, home: w.home }).actions.find(a => a.id === "verify-calendar-access")
+    const blocked: any = plan({ root: w.root, env: {}, home: w.home }).actions.find(
+      a => a.id === "verify-calendar-access"
+    )
     assert.equal(blocked.state, "blocked")
     assert.match(blocked.reason, /meetings\.credential-files/)
     credentials(w.home, ["dana@northwind.example"])
-    const ready = plan({ root: w.root, env: {}, home: w.home }).actions.find(a => a.id === "verify-calendar-access")
+    const ready: any = plan({ root: w.root, env: {}, home: w.home }).actions.find(
+      a => a.id === "verify-calendar-access"
+    )
     assert.equal(ready.state, "ready")
     assert.equal(ready.kind, "live")
     assert.equal(ready.runBy, "owner")

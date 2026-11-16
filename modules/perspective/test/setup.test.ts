@@ -31,7 +31,7 @@ describe("perspective: ASANA_PAT in .env", () => {
     const c = ctx(root, { PATH: process.env.PATH })
     assert.equal(SETUP_UNIT.inspect(c).checks[0].status, "missing")
     assert.equal(SETUP_UNIT.inputs[0].required, false)
-    assert.equal(SETUP_UNIT.apply, undefined)
+    assert.equal((SETUP_UNIT as any).apply, undefined)
     const p = SETUP_UNIT.plan(c, { asana_pat: "secret-token-123" })
     assert.equal(p.checks[0].status, "configured")
     assert.doesNotMatch(JSON.stringify(p.checks), /secret-token-123/)

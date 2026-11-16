@@ -109,7 +109,7 @@ test(
     }
     const dry = mig()
     assert.doesNotMatch(dry.out + dry.err, /^\s+at /m, `3: no stack trace\n${dry.out}${dry.err}`)
-    test.diagnostic?.(`3: the migration on 0.42.0 exits ${dry.code}: ${dry.out.trim().split("\n").join(" | ")}`)
+    ;(test as any).diagnostic?.(`3: the migration on 0.42.0 exits ${dry.code}: ${dry.out.trim().split("\n").join(" | ")}`)
     if (dry.code === 0) {
       assert.match(dry.out, /would set rnd\/change-requests\/wrong stage=plan \(was design-review\)/)
       assert.match(dry.out, /would set rnd\/change-requests\/empty stage=plan \(was empty\)/)

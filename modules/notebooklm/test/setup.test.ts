@@ -28,6 +28,6 @@ describe("notebooklm: the vendor CLI, and a login nothing local proves", () => {
     const withIt = SETUP_UNIT.inspect(ctx(root, { PATH: bins(["notebooklm"]) })).checks
     assert.equal(withIt.find(c => c.id === "notebooklm.cli").status, "configured")
     assert.equal(withIt.find(c => c.id === "notebooklm.login").status, "unverified")
-    assert.deepEqual(SETUP_UNIT.plan(ctx(root, {}), {}).actions, [])
+    assert.deepEqual(SETUP_UNIT.plan(ctx(root, {})).actions, [])
   })
 })

@@ -27,7 +27,7 @@ const FILES = [...walk(ROOT)].filter(f => !f.endsWith(path.join("tests", "leak-g
 const rel = f => path.relative(ROOT, f)
 /** Every line matching `re`, as `file:line: text` (text trimmed for display). `keep(file, line)` sees the
  *  FULL line — an allow-list must decide on what is actually there, not on the first 120 characters. */
-const hits = (re, keep = () => true, files = FILES) => {
+const hits = (re, keep: (file, line) => boolean = () => true, files = FILES) => {
   const out = []
   for (const f of files) {
     fs.readFileSync(f, "utf8")

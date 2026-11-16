@@ -168,7 +168,7 @@ export function sourceFileName(index, title) {
 }
 
 /** The source's path INSIDE `sources/`, POSIX-spelled: a section becomes one subfolder. */
-export function sourcePath(index, title, section) {
+export function sourcePath(index, title, section?) {
   const file = sourceFileName(index, title)
   const dir = slug(section)
   return dir ? `${dir}/${file}` : file

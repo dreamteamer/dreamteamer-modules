@@ -7,8 +7,8 @@ import path from "node:path"
 import { spawnSync } from "node:child_process"
 import { virginWorkspace, installPacked, closure, BIN } from "../../../tests/helpers/workspace.ts"
 
-export function dt(root, args, { input, env = {} } = {}) {
-  const base = {
+export function dt(root, args, { input, env = {} }: any = {}) {
+  const base: NodeJS.ProcessEnv = {
     ...process.env,
     GIT_AUTHOR_NAME: "probe",
     GIT_AUTHOR_EMAIL: "probe@example.invalid",
@@ -29,7 +29,7 @@ export function dt(root, args, { input, env = {} } = {}) {
 
 /** A virgin workspace with sessions (and each module of `also`, with its closure), compiled;
  *  `extra(root)` runs before the compile. */
-export function sessionsWorkspace(extra, { also = [] } = {}) {
+export function sessionsWorkspace(extra?, { also = [] } = {}) {
   const root = virginWorkspace()
   const set = new Set(closure("sessions"))
   for (const m of also) closure(m, set)

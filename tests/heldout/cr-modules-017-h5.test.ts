@@ -55,7 +55,7 @@ const ourEntries = s =>
     .filter(h => String(h.command).includes("dt-web-hook.mjs"))
 /** Run a hook command as a harness does: /bin/sh -c '<command>', the payload on stdin. */
 function sh(command, input, env) {
-  return new Promise(resolve => {
+  return new Promise<any>(resolve => {
     const t0 = Date.now()
     const c = spawn("/bin/sh", ["-c", command], { env, stdio: ["pipe", "pipe", "pipe"] })
     let stdout = ""
@@ -75,8 +75,8 @@ function sh(command, input, env) {
   })
 }
 
-const spaced = { folder: 'my ws "q"' }
-const spacesOnly = { folder: "my ws" }
+const spaced: any = { folder: 'my ws "q"' }
+const spacesOnly: any = { folder: "my ws" }
 let m
 before(() => {
   m = machine()

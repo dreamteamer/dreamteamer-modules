@@ -14,7 +14,7 @@ function mocked(files = [binary]) {
   return {
     writes,
     reads,
-    request: async (endpoint, opts = {}) => {
+    request: async (endpoint, opts: any = {}) => {
       if (opts.method && opts.method !== "GET") {
         writes.push({ endpoint, opts })
         return { id: "saved", mimeType: opts.body?.mimeType, md5Checksum: md5("payload") }
@@ -60,11 +60,11 @@ test("ambiguous names and native permanent removal are refused", async () => {
 test("mutations default to dry-run, explicit apply sends patch, rm requires extra opt-in", async () => {
   const m = mocked(),
     d = createDrive(m.request)
-  assert.equal((await d.mutate("trash", "root/report.txt")).dry_run, true)
+  assert.equal((await d.mutate("trash", "root/report.txt", undefined)).dry_run, true)
   assert.equal(m.writes.length, 0)
   await d.mutate("trash", "root/report.txt", null, { apply: true })
   assert.deepEqual(m.writes[0].opts.body, { trashed: true })
-  await assert.rejects(d.mutate("rm", "root/report.txt"), /permanent/)
+  await assert.rejects(d.mutate("rm", "root/report.txt", undefined), /permanent/)
 })
 test("read verifies bytes, reuses checksum match and refuses overwriting drift", async () => {
   const dir = temporary()
@@ -137,7 +137,7 @@ test("copy uses verified idempotence and refuses conflicting target content", as
 test("recursive copy plans and applies a tree, rejects descendant target", async () => {
   const source = { id: "source-dir", name: "bundle", mimeType: "application/vnd.google-apps.folder" },
     writes = []
-  const request = async (endpoint, opts = {}) => {
+  const request = async (endpoint, opts: any = {}) => {
     if (opts.method) {
       writes.push({ endpoint, opts })
       return { id: "new-item", md5Checksum: binary.md5Checksum }
@@ -258,7 +258,7 @@ test("fatal tier errors preserve prior deletions and current upload result", asy
     try {
       for (const name of ["a.txt", "b.txt", "c.txt"]) fs.writeFileSync(path.join(dir, name), "payload")
       let uploads = 0
-      const d = createDrive(async (_, options = {}) => {
+      const d = createDrive(async (_, options: any = {}) => {
         if (options.method === "POST") {
           uploads++
           if (uploads === 2) {
@@ -269,7 +269,7 @@ test("fatal tier errors preserve prior deletions and current upload result", asy
         }
         return { files: [] }
       })
-      await assert.rejects(d.tier(dir, "root", { apply: true, deleteLocal: true, layout: "flat" }), error => {
+      await assert.rejects(d.tier(dir, "root", { apply: true, deleteLocal: true, layout: "flat" }), (error: any) => {
         const results = error.partialResults
         assert.equal(results[0].name, "a.txt")
         assert.equal(results[0].deleted, true)

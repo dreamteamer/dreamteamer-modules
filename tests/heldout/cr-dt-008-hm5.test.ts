@@ -175,7 +175,7 @@ const migrate = root =>
 for (const [variant, make, candidate] of [
   ["candidate engine, core preset + rnd from this repo", candidateWorkspace, true],
   [`published engine ${OLD_VERSION}, composed core 0.11.0 + rnd 0.10.1`, publishedWorkspace, false],
-]) {
+] as any[]) {
   describe(variant, () => {
     let root, legacy, legacyTop
     test("step 1: the workspace compiles", { timeout: 120_000 }, () => {

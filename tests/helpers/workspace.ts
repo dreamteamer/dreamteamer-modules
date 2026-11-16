@@ -25,6 +25,7 @@ import {
   run as engineRun,
   engineMeets as engineSatisfies,
   ENGINE as TESTING_ENGINE,
+  type Workspace,
 } from "dreamteamer/testing"
 
 export const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..", "..")
@@ -37,7 +38,8 @@ export const SCOPE = "@dreamteamer"
 
 /** Run the engine in `cwd` through `dreamteamer/testing`, with a hard timer (a hang is a failure, never a
  *  stuck suite); `env` lays extra variables (a PATH of stand-ins, a unit's keys) over the process's. */
-export const run = (cwd, args, env = {}) => engineRun({ root: cwd, engine: ENGINE }, args, { env, timeoutMs: 60_000 })
+export const run = (cwd, args, env = {}) =>
+  engineRun({ root: cwd, engine: ENGINE } as Workspace, args, { env, timeoutMs: 60_000 })
 
 export const moduleIds = () =>
   fs
@@ -182,7 +184,7 @@ let readsFloors
 export function engineReadsFloors() {
   if (readsFloors !== undefined) return readsFloors
   const root = virginWorkspace()
-  for (const [id, peers] of [["floor-a", { "floor-b": ">=2.0.0" }], ["floor-b"]]) {
+  for (const [id, peers] of [["floor-a", { "floor-b": ">=2.0.0" }], ["floor-b"]] as any[]) {
     fs.mkdirSync(path.join(root, "modules", id), { recursive: true })
     fs.writeFileSync(
       path.join(root, "modules", id, "package.json"),

@@ -90,7 +90,7 @@ describe("a workspace with old nav settings and no nav.yaml", () => {
     while (!got.includes("dt:invalidate") && Date.now() - t0 < 5000) {
       const { value, done } = await Promise.race([
         reader.read(),
-        new Promise(r => setTimeout(() => r({ value: undefined }), 5000)),
+        new Promise<any>(r => setTimeout(() => r({ value: undefined }), 5000)),
       ])
       if (done) break
       if (value) got += Buffer.from(value).toString()
@@ -139,7 +139,7 @@ describe("at Read, a workspace with old nav settings and no nav.yaml", () => {
     for (const [who, headers] of [
       ["the Read page", auth(web)],
       ["a read client token", { authorization: `Bearer ${token}` }],
-    ]) {
+    ] as any[]) {
       const r = await call(`${web.url}/api/nav`, { headers })
       assert.equal(r.status, 200, `${who}: ${r.text}`)
       assert.equal(r.json[0].notice, undefined, who)

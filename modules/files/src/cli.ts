@@ -22,7 +22,7 @@ export const BOOLEAN_FLAGS = ["hash", "rehash", "prune", "dry-run", "json"]
  *  For each switch in BOOLEAN_FLAGS that came back holding words, the words go back to `pos` and the
  *  switch becomes `true`. Given the `argv` that was parsed, `pos` is rebuilt in the order it was
  *  typed; without it the recovered words are appended. Pure: the input is not changed. */
-export function normalizeArgs({ flags, pos }, argv) {
+export function normalizeArgs({ flags, pos }, argv?) {
   const out = { ...flags }
   const recovered = []
   for (const k of BOOLEAN_FLAGS) {

@@ -25,7 +25,7 @@ after(async () => {
   f?.cleanupAll()
 })
 
-const api = (p, o = {}) =>
+const api = (p, o: any = {}) =>
   call(`${web.url}/api${p}`, { ...o, headers: { cookie, ...sameOrigin(), ...(o.headers ?? {}) } })
 const files = rel => `${web.url}/_files/${web.filesKey}${rel}`
 
@@ -38,7 +38,7 @@ describe("the shell", () => {
 
   test("the shell answers without a cookie, under the app policy for the request's Host, with __DT_HOST__ only", async () => {
     for (const host of [`127.0.0.1:${web.port}`, `localhost:${web.port}`]) {
-      const r = await new Promise((resolve, reject) => {
+      const r = await new Promise<any>((resolve, reject) => {
         const q = http.request({ host: "127.0.0.1", port: web.port, path: "/app/", headers: { host } }, res => {
           let b = ""
           res.on("data", c => {
@@ -249,7 +249,7 @@ describe("the cookie on /api/", () => {
     const res = await fetch(`${web.url}/api/events`, { headers: { cookie, ...sameOrigin() }, signal: ctrl.signal })
     assert.equal(res.status, 200)
     const reader = res.body.getReader()
-    await new Promise(r => setTimeout(r, 50))
+    await new Promise<any>(r => setTimeout(r, 50))
     assert.equal(web.clients(), 1)
     const t0 = Date.now()
     setTimeout(() => f.dt("set", "projects/northwind-launch", "status=paused"), 200)
@@ -257,7 +257,7 @@ describe("the cookie on /api/", () => {
     while (!got.includes("dt:invalidate") && Date.now() - t0 < 5000) {
       const { value, done } = await Promise.race([
         reader.read(),
-        new Promise(r => setTimeout(() => r({ value: undefined }), 5000)),
+        new Promise<any>(r => setTimeout(() => r({ value: undefined }), 5000)),
       ])
       if (done) break
       if (value) got += Buffer.from(value).toString()
@@ -269,7 +269,7 @@ describe("the cookie on /api/", () => {
     assert.match(got, /"type":"dt:invalidate","scope":"data"/)
     assert.match(got, /data: \{"type":"dt:navigate","route":"\/content\/tasks"\}/)
     assert.ok(Date.now() - t0 < 5000)
-    await new Promise(r => setTimeout(r, 100))
+    await new Promise<any>(r => setTimeout(r, 100))
     assert.equal(web.clients(), 0)
   })
 })
@@ -364,7 +364,7 @@ describe("OPTIONS", () => {
       `/_frames/${web.filesKey}/probe/app.html`,
     ]
     for (const p of paths) {
-      for (const headers of [{ cookie, ...sameOrigin() }, {}]) {
+      for (const headers of [{ cookie, ...sameOrigin() }, {}] as any[]) {
         const r = await call(`${web.url}${p}`, { method: "OPTIONS", headers })
         assert.equal(r.status, 405, `OPTIONS ${p} (${headers.cookie ? "cookie" : "nothing"}): ${r.status} ${r.text}`)
         assert.match(r.headers.get("allow") ?? "", /^[A-Z, ]+$/, `OPTIONS ${p}: Allow ${r.headers.get("allow")}`)
@@ -390,7 +390,7 @@ describe("OPTIONS", () => {
 
 describe("[::1]", () => {
   test("a request at [::1] is sent to 127.0.0.1, path and query kept", async () => {
-    const viaHost = await new Promise((resolve, reject) => {
+    const viaHost = await new Promise<any>((resolve, reject) => {
       const q = http.request(
         { host: "127.0.0.1", port: web.port, path: "/app/?x=1", headers: { host: `[::1]:${web.port}` } },
         res => {
@@ -403,7 +403,7 @@ describe("[::1]", () => {
       q.end()
     })
     assert.deepEqual(viaHost, [302, `http://127.0.0.1:${web.port}/app/?x=1`])
-    const v6 = await new Promise(resolve => {
+    const v6 = await new Promise<any>(resolve => {
       const q = http.request({ host: "::1", port: web.port, path: "/api/info", family: 6 }, res => {
         res.resume()
         resolve([res.statusCode, res.headers.location])
@@ -424,7 +424,7 @@ describe("a bad request never stops the server", () => {
       assert.equal((await call(`${web.url}/app/assets/%E0%A4%A`)).status, 400)
       assert.equal((await api("/collections/tasks/records/%E0%A4%A")).status, 400)
       assert.equal((await call(files("/v/DT_WEB_TEST_MEDIA/%E0%A4%A"))).status, 400)
-      await new Promise(resolve => {
+      await new Promise<void>(resolve => {
         const req = http.request(`${web.url}/api/collections/tasks/records`, {
           method: "POST",
           headers: { cookie, ...sameOrigin(), "content-type": "application/json", "content-length": "1000" },
@@ -436,7 +436,7 @@ describe("a bad request never stops the server", () => {
           resolve()
         }, 200)
       })
-      const raw = await new Promise(resolve => {
+      const raw = await new Promise<any>(resolve => {
         const s = net.connect(web.port, "127.0.0.1", () =>
           s.write(`GET http://[ HTTP/1.1\r\nHost: 127.0.0.1:${web.port}\r\nConnection: close\r\n\r\n`)
         )
@@ -453,7 +453,7 @@ describe("a bad request never stops the server", () => {
       fs.chmodSync(locked, 0o000)
       assert.ok((await call(files("/v/DT_WEB_TEST_MEDIA/locked.png"))).status >= 400)
       fs.chmodSync(locked, 0o600)
-      await new Promise(r => setTimeout(r, 200))
+      await new Promise<any>(r => setTimeout(r, 200))
       assert.equal((await api("/info")).status, 200, "the server died")
       assert.equal((await call(files("/v/DT_WEB_TEST_MEDIA/locked.png"))).status, 200)
     }
@@ -467,7 +467,7 @@ describe("a watcher error never stops the server", () => {
   test("an ENOENT from the .dreamteamer watch reaches the page as a schema invalidation, and the server still serves", async () => {
     const made = []
     const real = fs.watch
-    fs.watch = (...args) => {
+    ;(fs as any).watch = (...args: [any, any?, any?]) => {
       const w = real(...args)
       made.push({ dir: String(args[0]), recursive: args[1]?.recursive === true, w })
       return w
@@ -498,7 +498,7 @@ describe("a watcher error never stops the server", () => {
       while (!got.includes("dt:invalidate") && Date.now() - t0 < 3000) {
         const { value, done } = await Promise.race([
           reader.read(),
-          new Promise(r => setTimeout(() => r({ value: undefined }), 3000)),
+          new Promise<any>(r => setTimeout(() => r({ value: undefined }), 3000)),
         ])
         if (done) break
         if (value) got += Buffer.from(value).toString()
@@ -527,7 +527,7 @@ describe("a watcher Node closed after an error is opened again", () => {
   async function watchedServer() {
     const made = []
     const real = fs.watch
-    fs.watch = (...args) => {
+    ;(fs as any).watch = (...args: [any, any?, any?]) => {
       const w = real(...args)
       made.push({ dir: String(args[0]), recursive: args[1]?.recursive === true, w })
       return w
@@ -566,7 +566,7 @@ describe("a watcher Node closed after an error is opened again", () => {
         const t0 = Date.now()
         while (Date.now() - t0 < ms) {
           if (got.slice(from).includes('"type":"dt:invalidate"')) return got.slice(from)
-          await new Promise(r => setTimeout(r, 50))
+          await new Promise<any>(r => setTimeout(r, 50))
         }
         return null
       },
@@ -575,10 +575,10 @@ describe("a watcher Node closed after an error is opened again", () => {
   }
   const until = async (cond, ms = 5000) => {
     const t0 = Date.now()
-    while (!cond() && Date.now() - t0 < ms) await new Promise(r => setTimeout(r, 50))
+    while (!cond() && Date.now() - t0 < ms) await new Promise<any>(r => setTimeout(r, 50))
     return cond()
   }
-  const quiet = ms => new Promise(r => setTimeout(r, ms))
+  const quiet = ms => new Promise<any>(r => setTimeout(r, ms))
 
   test(
     "the data/ watch: reopened, and a record edited after the reopen reaches the page",

@@ -8,6 +8,9 @@ import path from "node:path"
 import { execFileSync } from "node:child_process"
 import { appDir, browser, checks, go, northwind, serve, shot, signedIn } from "./support.ts"
 
+// Browser globals: these callbacks run in the page, not in Node.
+declare const document: any
+
 export const PROBE = `export default ({ registerApp, registerEdit, registerKindDefault, registerList }) => {
 	const tag = (name, text, cls) => { const e = document.createElement(name); if (cls) e.className = cls; e.textContent = text; return e; };
 	const out = (k, v) => { document.body.dataset[k] = String(v); };

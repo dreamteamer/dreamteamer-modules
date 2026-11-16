@@ -23,7 +23,7 @@ bind(api)
  * @param {object} [opts.records]      collection → [fields], added through the Store (not committed)
  * @param {boolean}[opts.compile]      false → leave it uncompiled
  */
-export function workspace(opts = {}) {
+export function workspace(opts: any = {}) {
   const w = fixture.workspace({ packages: ["worktrees"], pkg: opts.pkg ?? {}, compile: false })
   for (const [name, d] of Object.entries(opts.collections ?? {})) writeCollection(w.root, name, d)
   const ws = api.findWorkspace(w.root)

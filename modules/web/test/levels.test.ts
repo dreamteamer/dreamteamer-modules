@@ -34,7 +34,7 @@ after(async () => {
 })
 
 const JSON_TYPE = { "content-type": "application/json" }
-const api = (p, { method = "GET", body, headers = {}, as = cookie } = {}) =>
+const api = (p, { method = "GET", body, headers = {}, as = cookie }: any = {}) =>
   call(`${web.url}/api${p}`, {
     method,
     headers: {
@@ -175,7 +175,7 @@ describe("the control token raises", () => {
     let got = ""
     const t0 = Date.now()
     while (!got.includes("dt:host") && Date.now() - t0 < 3000) {
-      const { value, done } = await Promise.race([reader.read(), new Promise(r => setTimeout(() => r({}), 3000))])
+      const { value, done } = await Promise.race([reader.read(), new Promise<any>(r => setTimeout(() => r({}), 3000))])
       if (done || !value) break
       got += Buffer.from(value).toString()
     }

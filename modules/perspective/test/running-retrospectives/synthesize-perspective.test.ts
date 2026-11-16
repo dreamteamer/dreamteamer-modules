@@ -347,7 +347,7 @@ test("it writes no back-link — the run record's perspective field is the engin
   )
   const offenders = src
     .split("\n")
-    .map((l, i) => [i + 1, l])
+    .map((l, i): [number, string] => [i + 1, l])
     .filter(([, l]) => !/^\s*(\/\/|\*)/.test(l))
     .filter(([, l]) => /dt\(\s*\[\s*'set'/.test(l) && /retrospective/.test(l))
   assert.deepEqual(

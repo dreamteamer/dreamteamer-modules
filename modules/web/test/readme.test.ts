@@ -122,7 +122,7 @@ test("the README speaks in one voice", () => {
     }
     return !fenced
   })
-  for (const [name, re] of RULES) {
+  for (const [name, re] of RULES as any[]) {
     const hits = prose.filter(l => re.test(l))
     assert.deepEqual(hits, [], `no ${name}`)
   }

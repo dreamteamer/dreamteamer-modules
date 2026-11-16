@@ -32,7 +32,7 @@ const files = () => {
   const dir = path.join(root, "data", "meetings")
   if (!fs.existsSync(dir)) return []
   return fs
-    .readdirSync(dir, { recursive: true })
+    .readdirSync(dir, { recursive: true, encoding: "utf8" })
     .filter(f => f.endsWith(".md"))
     .map(f => path.join(dir, f))
 }

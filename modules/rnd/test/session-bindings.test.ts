@@ -47,7 +47,7 @@ const RND = path.join(MODULES, "rnd")
 
 /** The environment every child runs in: no harness session id leaking in from whatever runs the suite. */
 const ENV = (() => {
-  const env = {
+  const env: NodeJS.ProcessEnv = {
     ...process.env,
     GIT_AUTHOR_NAME: "probe",
     GIT_AUTHOR_EMAIL: "probe@example.invalid",

@@ -14,6 +14,9 @@ import fs from "node:fs"
 import path from "node:path"
 import { appDir, browser, checks, northwind, serve } from "./support.ts"
 
+// Browser globals: these callbacks run in the page, not in Node.
+declare const document: any, getComputedStyle: any, location: any, window: any
+
 const shots = path.resolve(process.argv[2] ?? path.join(process.cwd(), "heldout-pane-page-shots"))
 fs.mkdirSync(shots, { recursive: true })
 const shot = name => path.join(shots, `${name}.png`)

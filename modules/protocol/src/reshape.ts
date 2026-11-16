@@ -14,7 +14,7 @@ function row(r, scope, collection) {
  * @param {object} scope the gate scope
  * @param {string} [collection] the collection the answer is about (list and record routes)
  */
-export function reshape(routeId, body, scope, collection) {
+export function reshape(routeId, body, scope, collection?) {
   const reads = scope.reads ?? new Set()
   switch (routeId) {
     case "records-list": {

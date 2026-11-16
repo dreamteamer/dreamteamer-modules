@@ -11,6 +11,9 @@ import fs from "node:fs"
 import path from "node:path"
 import { appDir, browser, checks, go, northwind, serve, shot, signedIn } from "./support.ts"
 
+// Browser globals: these callbacks run in the page, not in Node.
+declare const document: any, window: any
+
 appDir()
 const { ok, done } = checks()
 const f = await northwind()

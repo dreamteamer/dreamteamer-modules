@@ -47,8 +47,8 @@ const quietly = async fn => {
   }
 }
 const hosts = {
-  handler: async (method, p, body) => quietly(() => handler.handle(method, p, body)),
-  http: async (method, p, body) => {
+  handler: async (method, p, body?) => quietly(() => handler.handle(method, p, body)),
+  http: async (method, p, body?) => {
     let r
     try {
       r = await call(`${apiBase(web)}/api${p}`, {
@@ -115,7 +115,7 @@ for (const [id, c] of Object.entries(CASES)) {
           const t0 = Date.now()
           const res = await Promise.race([
             host("GET", "/nav"),
-            new Promise(r => setTimeout(() => r({ status: "hang" }), 5_000)),
+            new Promise<any>(r => setTimeout(() => r({ status: "hang" }), 5_000)),
           ])
           const ms = Date.now() - t0
           assert.equal(res.status, 200, `GET answered ${res.status}: ${inspect(res.body, { depth: 4 })}`)

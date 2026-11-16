@@ -17,10 +17,10 @@ const PY = process.env.PYTHON || "python3"
 for (const [suite, atLeast] of [
   ["test_run_cleanup", 13],
   ["test_locations", 13],
-]) {
+] as [string, number][]) {
   test(`${suite} passes under a bare python3`, () => {
     const r = spawnSync(PY, ["-B", "-m", "unittest", "-v", suite], { cwd: HERE, encoding: "utf8" })
-    assert.ok(!r.error, `${PY} did not start (${r.error?.code}) — these cases need a python3 on PATH`)
+    assert.ok(!r.error, `${PY} did not start (${(r.error as any)?.code}) — these cases need a python3 on PATH`)
     const ran = /Ran (\d+) tests?/.exec(r.stderr)
     assert.equal(r.status, 0, r.stderr)
     assert.ok(

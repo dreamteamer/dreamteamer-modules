@@ -43,7 +43,7 @@ function start(args = [], extraEnv = {}) {
     stdio: ["ignore", "pipe", "pipe"],
   })
   children.push(c)
-  const first = new Promise((resolve, reject) => {
+  const first = new Promise<any>((resolve, reject) => {
     let out = ""
     c.stdout.on("data", b => {
       out += b
@@ -56,7 +56,7 @@ function start(args = [], extraEnv = {}) {
   return { child: c, first }
 }
 const exited = (c, ms) =>
-  new Promise(resolve => {
+  new Promise<any>(resolve => {
     if (c.exitCode !== null) return resolve(true)
     const t = setTimeout(() => resolve(false), ms)
     c.once("exit", () => {
@@ -145,7 +145,7 @@ test(
     })
     children.push(a, b)
     const firstLine = c =>
-      new Promise(resolve => {
+      new Promise<any>(resolve => {
         let out = ""
         c.stdout.on("data", x => {
           out += x
@@ -219,7 +219,7 @@ test(
       { stdio: ["ignore", "pipe", "ignore"] }
     )
     children.push(stranger)
-    const port = await new Promise((resolve, reject) => {
+    const port = await new Promise<any>((resolve, reject) => {
       stranger.stdout.once("data", b => resolve(Number(String(b).trim())))
       stranger.once("exit", () => reject(new Error("the stranger exited")))
     })
@@ -386,7 +386,7 @@ test(
       { stdio: ["ignore", "pipe", "ignore"] }
     )
     children.push(stranger)
-    const port = await new Promise((resolve, reject) => {
+    const port = await new Promise<any>((resolve, reject) => {
       stranger.stdout.once("data", b => resolve(Number(String(b).trim())))
       stranger.once("exit", () => reject(new Error("the stranger exited")))
     })
@@ -453,7 +453,7 @@ test(
       { stdio: ["ignore", "pipe", "ignore"] }
     )
     children.push(held)
-    const { port, pstart } = await new Promise((resolve, reject) => {
+    const { port, pstart } = await new Promise<any>((resolve, reject) => {
       held.stdout.once("data", b => resolve(JSON.parse(String(b))))
       held.once("exit", () => reject(new Error("it exited")))
     })

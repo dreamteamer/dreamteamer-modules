@@ -39,7 +39,7 @@ export function repo() {
   return { dir, git, write, commit }
 }
 
-export function runStep(run, { cwd, env = {}, shell = ["-e"] } = {}) {
+export function runStep(run, { cwd, env = {}, shell = ["-e"] }: any = {}) {
   return spawnSync("bash", ["--noprofile", "--norc", ...shell, "-c", run], {
     cwd,
     env: { ...process.env, ...env },

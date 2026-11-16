@@ -49,7 +49,10 @@ describe("dt session send", () => {
         stderr: "",
       }
     }
-    const r = sendTo({ session_id: SID, harness: "claude-code" }, "--what is the code word?", { spawn, env })
+    const r = sendTo({ session_id: SID, harness: "claude-code" }, "--what is the code word?", {
+      spawn: spawn as any,
+      env,
+    })
     assert.equal(r.reply.result, "The code word is HERON-9")
     assert.equal(calls.length, 1)
     assert.equal(calls[0].cmd, "claude")
@@ -76,14 +79,14 @@ describe("dt session send", () => {
     const empty = { CLAUDE_CONFIG_DIR: configWith(null) }
     assert.throws(
       () => sendTo({ session_id: SID, harness: "claude-code" }, "hi", { spawn, env: empty }),
-      e => e.message.includes(SID) && e.message.includes("projects")
+      (e: any) => e.message.includes(SID) && e.message.includes("projects")
     )
     assert.throws(() => sendTo({ session_id: SID, harness: "codex" }, "hi", { spawn, env: empty }), /codex/)
     assert.throws(() => sendTo({ harness: "claude-code" }, "hi", { spawn, env: empty }), /session_id/)
     const env = { CLAUDE_CONFIG_DIR: configWith(SID) }
     const missing = () => ({ error: Object.assign(new Error("spawn claude ENOENT"), { code: "ENOENT" }) })
     assert.throws(
-      () => sendTo({ session_id: SID, harness: "claude-code" }, "hi", { spawn: missing, env }),
+      () => sendTo({ session_id: SID, harness: "claude-code" }, "hi", { spawn: missing as any, env }),
       /claude.*PATH|PATH.*claude/
     )
     assert.equal(transcriptOf(SID, env), path.join(env.CLAUDE_CONFIG_DIR, "projects", "-x-northwind", `${SID}.jsonl`))

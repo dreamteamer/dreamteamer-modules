@@ -17,7 +17,7 @@ const { STAGES, GATES, expectedStage, stageContradictions, allowedStages, stageW
 
 // a request's own facts, by the state it is in
 const base = { status: "suggested", design_docs: [], implementation_plans: [] }
-const at = {
+const at: Record<string, any> = {
   design: { ...base },
   "design-review": { ...base, design_docs: ["rnd/design-docs/d"] },
   acceptance: { ...base, design_docs: ["rnd/design-docs/d"] },

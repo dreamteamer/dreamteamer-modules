@@ -54,7 +54,15 @@ const STALE_SOCKET = new Set(["ECONNRESET", "UND_ERR_SOCKET", "EPIPE"])
 
 /** One request; `headers` override; the body parsed when it is JSON. Node's fetch sends no Origin and no
  *  Sec-Fetch-* headers unless given — a script, not a browser. */
-export async function call(url, { method = "GET", headers = {}, body, redirect = "manual" } = {}) {
+export async function call(
+  url,
+  {
+    method = "GET",
+    headers = {},
+    body,
+    redirect = "manual",
+  }: { method?: string; headers?: any; body?: any; redirect?: any } = {}
+) {
   const go = () => fetch(url, { method, headers, body, redirect, signal: AbortSignal.timeout(20_000) })
   // a server restarted on the same port (cr-modules-017 task 10): fetch's pool may hand the first request a socket
   // the old server closed — once, the request goes again on a fresh one. macOS reports that socket as ECONNRESET;
@@ -82,7 +90,7 @@ export async function call(url, { method = "GET", headers = {}, body, redirect =
 
 /** A raw request whose Host header is ours to set (fetch will not let a caller choose it). */
 export function rawGet(url, headers) {
-  return new Promise((resolve, reject) => {
+  return new Promise<any>((resolve, reject) => {
     const u = new URL(url)
     const req = http.request(
       { host: u.hostname, port: u.port, path: u.pathname, method: "GET", headers, timeout: 20_000 },
@@ -98,7 +106,7 @@ export function rawGet(url, headers) {
 }
 
 /** Sign in the way the pane does — a code from `web.pair()` — and answer the cookie pair `dt_pane_<port>=<sid>`. */
-export async function pair(web, route) {
+export async function pair(web, route?) {
   const r = await call(web.pair(route ? { route } : {}))
   if (r.status !== 302) throw new Error(`sign-in answered ${r.status}: ${r.text}`)
   return r.headers.get("set-cookie").split(";")[0]

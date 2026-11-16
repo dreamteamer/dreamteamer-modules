@@ -9,12 +9,15 @@ import {
   coverageOf,
   groupJourneys,
   resolveUser,
-  mergeStep,
+  mergeStep as mergeStepJs,
   nextPlayable,
   stepsFor,
 } from "../lib/prototype/browser/player.js"
 import { layerFor, ids } from "../lib/prototype/browser/meta.js"
 import { coverage } from "../lib/prototype/browser/catalog.js"
+
+// The browser file is unchecked JavaScript; its inferred return type knows no optional keys.
+const mergeStep: (record, step) => any = mergeStepJs
 
 const BROWSER = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..", "lib", "prototype", "browser")
 const J = [

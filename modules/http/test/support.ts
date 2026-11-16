@@ -20,7 +20,7 @@ export function simpleCollection(extra = {}) {
  *   records      collection → [fields], added through the engine's Store (uncommitted)
  *   namespaces   `dreamteamer.namespaces`
  */
-export async function httpWorkspace({ collections = {}, records = {}, namespaces } = {}) {
+export async function httpWorkspace({ collections = {}, records = {}, namespaces }: any = {}) {
   const h = workspace({ packages: ["http"], compile: false, pkg: namespaces ? { namespaces } : {} })
   for (const [name, d] of Object.entries(collections))
     writeSource(h.root, `collections/${name}.collection.yaml`, api.dumpYaml({ name, ...d }))
@@ -35,14 +35,14 @@ export async function httpWorkspace({ collections = {}, records = {}, namespaces
 
 /** The app on 127.0.0.1:<ephemeral>, built with `opts` (`{host, token}`). Returns the api base url
  *  and a close(). */
-export async function mount(ws, opts) {
+export async function mount(ws, opts?) {
   bind(api)
   const server = createApp(ws, opts).listen(0, "127.0.0.1")
   await once(server, "listening")
   return {
-    base: `http://127.0.0.1:${server.address().port}/api`,
-    port: server.address().port,
-    close: () => new Promise(r => server.close(r)),
+    base: `http://127.0.0.1:${(server.address() as any).port}/api`,
+    port: (server.address() as any).port,
+    close: () => new Promise<any>(r => server.close(r)),
   }
 }
 
@@ -51,7 +51,7 @@ export async function mount(ws, opts) {
  * request with a body, says `content-type: application/json` unless `headers` overrides it; a string
  * body is sent as-is.
  */
-export async function call(method, url, body, headers = {}) {
+export async function call(method, url, body?, headers = {}) {
   const json = body !== undefined || method === "POST" || method === "PATCH"
   const res = await fetch(url, {
     method,

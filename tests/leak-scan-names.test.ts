@@ -33,7 +33,7 @@ function run(pattern, added = "a clean line\n") {
       .map(l => (l ? `+${l}` : l))
       .join("\n")
   )
-  const env = { ...process.env, RUNNER_TEMP: tmp }
+  const env: NodeJS.ProcessEnv = { ...process.env, RUNNER_TEMP: tmp }
   if (pattern !== undefined) env.LEAK_NAMES = pattern
   else delete env.LEAK_NAMES
   const r = spawnSync("bash", ["--noprofile", "--norc", "-e", "-c", step.run], { env, encoding: "utf8" })

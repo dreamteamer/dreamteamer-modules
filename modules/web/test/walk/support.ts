@@ -8,6 +8,9 @@ import os from "node:os"
 import path from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 
+// Browser globals: these callbacks run in the page, not in Node.
+declare const location: any
+
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 export const WEB = path.resolve(HERE, "..", "..")
 export const MODULES = path.resolve(WEB, "..")
@@ -91,13 +94,13 @@ export async function serve(root, { limitMs = 10 * 60_000, idle = 10, env = {}, 
   child.stderr.on("data", b => {
     err += b
   })
-  const exited = new Promise(r =>
+  const exited = new Promise<any>(r =>
     child.once("exit", (code, signal) => {
       clearTimeout(killer)
       r({ code, signal })
     })
   )
-  await new Promise((resolve, reject) => {
+  await new Promise<void>((resolve, reject) => {
     let out = ""
     child.stdout.on("data", b => {
       out += b

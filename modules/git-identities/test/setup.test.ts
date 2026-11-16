@@ -38,6 +38,6 @@ describe("git-identities: a committer identity in this repository", () => {
       "values are never shown"
     )
     assert.equal(SETUP_UNIT.inspect(ctx(root, { PATH: bins([]) })).checks[0].status, "blocked")
-    assert.deepEqual(SETUP_UNIT.plan(ctx(root, env), {}).actions, [])
+    assert.deepEqual(SETUP_UNIT.plan(ctx(root, env)).actions, [])
   })
 })

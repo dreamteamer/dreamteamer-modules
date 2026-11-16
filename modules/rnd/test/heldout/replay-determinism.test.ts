@@ -84,7 +84,7 @@ describe("held-out: replay is deterministic", () => {
     for (let i = 0; i < MOD.steps.length; i++) {
       const A = fakeStore()
       A.loadFixture("default")
-      for (let k = 0; k <= i; k++) applyStep(A, MOD.steps[k], { mod: MOD })
+      for (let k = 0; k <= i; k++) applyStep(A, MOD.steps[k], { mod: MOD } as any)
       const B = fakeStore()
       stateAt(B, MOD, i)
       assert.equal(B.snapshot(), A.snapshot(), `step index ${i}`)

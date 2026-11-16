@@ -53,7 +53,7 @@ test("absent state reads as the defaults; a write is 0700 / 0600; garbage reads 
   assert.deepEqual(readWorkspaceState(root, dir), DEFAULT_STATE)
   assert.equal(DEFAULT_STATE.level, "edit")
   assert.equal(DEFAULT_STATE.port, null)
-  const s = readWorkspaceState(root, dir)
+  const s: any = readWorkspaceState(root, dir)
   s.port = 4870
   s.level = "read"
   writeWorkspaceState(root, s, dir)
@@ -86,7 +86,7 @@ test("absent state reads as the defaults; a write is 0700 / 0600; garbage reads 
 test("the written file holds no session: a state carrying one is refused, a file that has one drops it on the next write", () => {
   const root = workspace("hashes")
   const dir = path.join(tmp, "state-b")
-  const s = readWorkspaceState(root, dir)
+  const s: any = readWorkspaceState(root, dir)
   assert.equal("sessions" in DEFAULT_STATE, false)
   assert.throws(
     () => writeWorkspaceState(root, { ...s, sessions: { ["a".repeat(64)]: { created: 1, seen: 1 } } }, dir),
@@ -180,7 +180,7 @@ describe(
       try {
         assert.throws(
           () => writeState(path.join(dir, "b.json"), { pid: 1 }),
-          e => e.message.includes(dir) && /chmod 700/.test(e.message) && /DT_WEB_RUNTIME_DIR/.test(e.message)
+          (e: any) => e.message.includes(dir) && /chmod 700/.test(e.message) && /DT_WEB_RUNTIME_DIR/.test(e.message)
         )
         assert.equal(fs.statSync(dir).mode & 0o777, 0o500)
       } finally {

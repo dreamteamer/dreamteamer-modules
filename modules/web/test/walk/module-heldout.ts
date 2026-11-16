@@ -7,6 +7,9 @@ import { execFileSync } from "node:child_process"
 import { appDir, browser, checks, go, northwind, serve, shot, signedIn } from "./support.ts"
 import { addHeldout } from "./heldout-fixture.ts"
 
+// Browser globals: these callbacks run in the page, not in Node.
+declare const document: any, location: any
+
 const { ok, done } = checks()
 appDir()
 const f = await northwind()
@@ -260,7 +263,7 @@ try {
     )
     // the grant the page boots with: GET /api/host behind the cookie (cr-modules-017), no longer a shell global
     const grants = await page.evaluate(
-      async () => (await (await fetch("/api/host", { credentials: "same-origin" })).json()).moduleGrants
+      async () => ((await (await fetch("/api/host", { credentials: "same-origin" })).json()) as any).moduleGrants
     )
     ok(
       loaded && JSON.stringify(grants) === "{}",

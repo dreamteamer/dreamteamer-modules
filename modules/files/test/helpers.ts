@@ -19,7 +19,7 @@ export function makeTree(dir, spec) {
 }
 
 // Every temp folder this process made, removed by one exit listener.
-const tmpDirs = new Set()
+const tmpDirs = new Set<string>()
 process.on("exit", () => {
   if (process.env.DT_KEEP_FIXTURES) return
   for (const d of tmpDirs) fs.rmSync(d, { recursive: true, force: true })
@@ -56,7 +56,7 @@ export function driveWorkspace({
   include = ["docs", "media", "empty"],
   exclude = ["trash", "*.log"],
   tree = TREE,
-} = {}) {
+}: { drives?: boolean; include?: string[]; exclude?: string[]; tree?: Record<string, any> } = {}) {
   const ws = workspace({ pkg: { vars: ["DRIVE", "INBOXES"] } })
   const drive = makeTree(tmpDir("dt-files-drive-"), tree)
   const inboxA = makeTree(tmpDir("dt-files-inbox-a-"), {

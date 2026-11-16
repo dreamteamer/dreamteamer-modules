@@ -26,7 +26,7 @@ describe("files: FILES_FOLDER in .env, and the folder on disk", () => {
     const folder = tmp()
     const c = ctx(root, { PATH: process.env.PATH })
     assert.equal(SETUP_UNIT.inspect(c).checks[0].status, "missing")
-    assert.equal(SETUP_UNIT.apply, undefined, "the engine performs the env action; the unit declares no apply")
+    assert.equal((SETUP_UNIT as any).apply, undefined, "the engine performs the env action; the unit declares no apply")
     const p = SETUP_UNIT.plan(c, { files_folder: folder })
     assert.deepEqual(p.needs, [])
     assert.equal(p.checks[0].status, "configured", "the plan judges the folder the person named")

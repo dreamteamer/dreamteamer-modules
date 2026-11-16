@@ -16,7 +16,7 @@ import { initEngine } from "../src/host/engine.ts"
 import { navModel } from "../src/navModel.ts"
 import { legacyDoc, migrateNavSettings, NAV_HEADER } from "../src/navDoc.ts"
 
-const SETTINGS = {
+const SETTINGS: any = {
   navOrder: ["core", "rnd", "ws-a"],
   navGroups: { Plans: ["deliverables", "risks"], Solo: ["solo"] },
   navHidden: ["ws-b"],

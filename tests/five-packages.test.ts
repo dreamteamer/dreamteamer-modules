@@ -59,7 +59,7 @@ describe("the sessions verbs without core", () => {
       const root = virginWorkspace()
       installPacked(root, [...closure("sessions")])
       assert.deepEqual([...closure("sessions")].sort(), ["sessions", "users"])
-      const env = {
+      const env: NodeJS.ProcessEnv = {
         ...process.env,
         GIT_AUTHOR_NAME: "probe",
         GIT_AUTHOR_EMAIL: "probe@example.invalid",

@@ -101,7 +101,7 @@ const parseUntil = v => {
 }
 
 // ---- English, the way the calendar dialog phrases it -----------------------------------------
-export function toEnglish(rrule, anchor) {
+export function toEnglish(rrule, anchor?) {
   const r = typeof rrule === "string" ? parse(rrule) : rrule
   const a = anchor ? toDate(anchor) : null
   const unit = { DAILY: "day", WEEKLY: "week", MONTHLY: "month", YEARLY: "year" }[r.freq]

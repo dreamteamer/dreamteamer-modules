@@ -42,7 +42,7 @@ after(async () => {
 })
 
 const JSON_TYPE = { "content-type": "application/json" }
-const page = (p, method = "GET", body) =>
+const page = (p, method = "GET", body?) =>
   call(`${web.url}${p}`, {
     method,
     headers: { cookie, ...sameOrigin(), ...(body ? JSON_TYPE : {}) },
@@ -50,8 +50,8 @@ const page = (p, method = "GET", body) =>
   })
 
 /** The bin as Claude Code runs it: the payload on stdin; → { out, err, code, ms }. */
-function runBin(stdin, { runtimeDir = runtime, home } = {}) {
-  return new Promise(resolve => {
+function runBin(stdin, { runtimeDir = runtime, home }: any = {}) {
+  return new Promise<any>(resolve => {
     const t0 = Date.now()
     const env = { ...process.env, DT_WEB_RUNTIME_DIR: runtimeDir, ...(home ? { HOME: home } : {}) }
     const child = spawn(process.execPath, [BIN], { env, stdio: ["pipe", "pipe", "pipe"] })
@@ -78,11 +78,11 @@ async function stream() {
     .getReader()
     .read()
     .catch(() => {})
-  await new Promise(r => setTimeout(r, 50))
+  await new Promise<any>(r => setTimeout(r, 50))
   return {
     close: async () => {
       ctrl.abort()
-      await new Promise(r => setTimeout(r, 80))
+      await new Promise<any>(r => setTimeout(r, 80))
     },
   }
 }
@@ -310,7 +310,7 @@ describe("the bin", () => {
       assert.equal(r.out, "")
       assert.equal(r.err, "")
       assert.ok(r.ms < 2000, `${r.ms} ms`)
-      await new Promise(res => setTimeout(res, 300))
+      await new Promise<any>(res => setTimeout(res, 300))
       assert.deepEqual(fs.readdirSync(empty), [], "the runtime dir stays empty")
     } finally {
       fs.rmSync(empty, { recursive: true, force: true })
@@ -342,17 +342,17 @@ describe("the bin", () => {
         res.end('{"connected":true,"place":"tasks · List","refs":[],"queue":[]}')
       }, 3000)
     )
-    await new Promise(r => slow.listen(0, "127.0.0.1", r))
+    await new Promise<void>(r => slow.listen(0, "127.0.0.1", r))
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dt-web-runtime-"))
     try {
-      writeState(stateFile(f.root, dir), { pid: process.pid, port: slow.address().port, token: "t" })
+      writeState(stateFile(f.root, dir), { pid: process.pid, port: (slow.address() as any).port, token: "t" })
       const r = await runBin(prompt(f.root), { runtimeDir: dir })
       assert.equal(r.code, 0)
       assert.equal(r.out, "")
       assert.ok(r.ms < 2000, `${r.ms} ms`)
     } finally {
       slow.closeAllConnections()
-      await new Promise(r => slow.close(r))
+      await new Promise<any>(r => slow.close(r))
       fs.rmSync(dir, { recursive: true, force: true })
     }
   })
@@ -370,12 +370,12 @@ describe("the bin", () => {
         })
       )
     })
-    await new Promise(r => stub.listen(0, "127.0.0.1", r))
+    await new Promise<void>(r => stub.listen(0, "127.0.0.1", r))
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dt-web-runtime-"))
     try {
       writeState(stateFile(f.root, dir), {
         pid: 999999,
-        port: stub.address().port,
+        port: (stub.address() as any).port,
         token: "the-dead-servers-token",
         instance: "the-dead-servers-instance",
       })
@@ -386,7 +386,7 @@ describe("the bin", () => {
       assert.deepEqual(seen, [], "the hook asked a process that is not the runtime file's")
     } finally {
       stub.closeAllConnections()
-      await new Promise(r => stub.close(r))
+      await new Promise<any>(r => stub.close(r))
       fs.rmSync(dir, { recursive: true, force: true })
     }
   })
@@ -409,12 +409,12 @@ describe("the bin", () => {
         )
       )
     })
-    await new Promise(r => stub.listen(0, "127.0.0.1", r))
+    await new Promise<void>(r => stub.listen(0, "127.0.0.1", r))
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dt-web-runtime-"))
     try {
       writeState(stateFile(f.root, dir), {
         pid: process.pid,
-        port: stub.address().port,
+        port: (stub.address() as any).port,
         token: "the-dead-servers-token",
         instance: "the-dead-servers-instance",
       })
@@ -435,7 +435,7 @@ describe("the bin", () => {
       // and a runtime file that names no instance (an older server) is not trusted either
       writeState(stateFile(f.root, dir), {
         pid: process.pid,
-        port: stub.address().port,
+        port: (stub.address() as any).port,
         token: "the-dead-servers-token",
       })
       assert.equal((await runBin(prompt(f.root), { runtimeDir: dir })).out, "")
@@ -445,7 +445,7 @@ describe("the bin", () => {
       )
     } finally {
       stub.closeAllConnections()
-      await new Promise(r => stub.close(r))
+      await new Promise<any>(r => stub.close(r))
       fs.rmSync(dir, { recursive: true, force: true })
     }
   })

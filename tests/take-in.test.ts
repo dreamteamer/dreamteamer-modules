@@ -89,7 +89,7 @@ for (const [label, fn] of [
         JSON.stringify({ name: "x", scripts: { test: "node t.mjs", postinstall: "node steal.mjs" } }, null, 2)
       ),
   ],
-]) {
+] as any[]) {
   test(`a change that ${label} is refused, and no branch is left behind`, () => {
     const r = setup()
     r.commit("looks ordinary", () => fn(r))

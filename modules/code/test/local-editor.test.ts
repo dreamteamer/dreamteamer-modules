@@ -26,14 +26,14 @@ test("HTTP and WebSocket gateway require credentials, exact Host and same origin
     reached++
     socket.end("HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n\r\n")
   })
-  await new Promise(resolve => backend.listen(socketPath, resolve))
+  await new Promise<void>(resolve => backend.listen(socketPath, resolve))
   const proxy = await gateway({ socketPath, workspace: "/workspace with spaces" })
   try {
     assert.equal(new URL(proxy.origin).hostname, "127.0.0.1")
     assert.equal((await fetch(proxy.origin)).status, 401)
     assert.equal((await fetch(proxy.origin + "/_dt/open?token=wrong")).status, 401)
     assert.equal((await fetch(proxy.link(), { headers: { Origin: "https://other.example" } })).status, 403)
-    const rebinding = await new Promise(resolve => {
+    const rebinding = await new Promise<any>(resolve => {
       http.get(proxy.origin, { headers: { Host: "other.example", Authorization: `Bearer ${proxy.token}` } }, res => {
         res.resume()
         resolve(res.statusCode)
@@ -53,12 +53,12 @@ test("HTTP and WebSocket gateway require credentials, exact Host and same origin
     const response = await fetch(proxy.origin, {
       headers: { Cookie: cookie.split(";")[0], "x-forwarded-host": "other.example" },
     })
-    const forwarded = await response.json()
+    const forwarded: any = await response.json()
     assert.equal(forwarded.authorization, undefined)
     assert.equal(forwarded["x-forwarded-host"], undefined)
     assert.equal(forwarded.cookie, "")
     const upgrade = headers =>
-      new Promise((resolve, reject) => {
+      new Promise<string>((resolve, reject) => {
         const url = new URL(proxy.origin)
         const socket = net.connect(+url.port, url.hostname)
         let data = ""
@@ -79,7 +79,7 @@ test("HTTP and WebSocket gateway require credentials, exact Host and same origin
     )
   } finally {
     await proxy.close()
-    await new Promise(resolve => backend.close(resolve))
+    await new Promise<any>(resolve => backend.close(resolve))
     await fs.rm(dir, { recursive: true })
   }
 })
@@ -96,14 +96,14 @@ test("MCP translates tools into bounded UI actions and reports UI failures as to
     if (value.action === "file") res.writeHead(400).end(JSON.stringify({ error: "File must be inside the workspace" }))
     else res.end(JSON.stringify({ route: value.route ?? "/tasks/board" }))
   })
-  await new Promise(resolve => server.listen(socketPath, resolve))
+  await new Promise<void>(resolve => server.listen(socketPath, resolve))
   try {
     const child = spawn(process.execPath, [new URL("../bin/ui-mcp.mjs", import.meta.url).pathname], {
       env: { ...process.env, DT_EDITOR_CONTROL_SOCKET: socketPath },
     })
     let output = ""
     child.stdout.on("data", b => (output += b))
-    const done = new Promise(resolve => child.on("exit", resolve))
+    const done = new Promise<any>(resolve => child.on("exit", resolve))
     for (const request of [
       { id: 1, method: "initialize" },
       { id: 2, method: "tools/list" },
@@ -117,13 +117,16 @@ test("MCP translates tools into bounded UI actions and reports UI failures as to
       child.stdin.write(JSON.stringify({ jsonrpc: "2.0", ...request }) + "\n")
     child.stdin.end()
     assert.equal(await done, 0)
-    const messages = output.trim().split("\n").map(JSON.parse)
+    const messages = output
+      .trim()
+      .split("\n")
+      .map(line => JSON.parse(line))
     assert.equal(messages[1].result.tools.length, 4)
     assert.equal(requests[0].action, "open")
     assert.equal(messages[3].result.isError, true)
     await assert.rejects(callUi(socketPath, { action: "file", path: "../outside" }), /inside the workspace/)
   } finally {
-    await new Promise(resolve => server.close(resolve))
+    await new Promise<any>(resolve => server.close(resolve))
     await fs.rm(dir, { recursive: true })
   }
 })

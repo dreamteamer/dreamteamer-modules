@@ -110,7 +110,7 @@ function operandProblem(v) {
 /**
  * @returns {{ok: true, call: {method, path, query, body, routeId, collection?}, needsSource?: 'home', commit?: {only: string[]|null, message: string}} | {ok: false, status: number, error: string}}
  */
-export function gate(scope, descriptors, method, path, query, body): Record<string, any> {
+export function gate(scope, descriptors, method, path, query?, body?): Record<string, any> {
   const m = String(method).toUpperCase()
   const hit = matchRoute(m, path)
   if (!hit) return refuse(404, `no route ${m} ${String(path).split("?")[0]}`)

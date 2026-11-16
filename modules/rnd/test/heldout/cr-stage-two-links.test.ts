@@ -62,7 +62,7 @@ test("h2 — two plans, two designs", () => {
     ["rnd--review--change-requests--plan"]
   )
   const tdAvail = available(root, "td-empty")
-  test.diagnostic?.(`two designs: dt next available = ${tdAvail.join(", ")}`)
+  ;(test as any).diagnostic?.(`two designs: dt next available = ${tdAvail.join(", ")}`)
   assert.ok(tdAvail.includes("rnd--review--change-requests"), `the acceptance review is open: ${tdAvail}`)
   assert.ok(
     !tdAvail.includes("rnd--review--change-requests--design"),

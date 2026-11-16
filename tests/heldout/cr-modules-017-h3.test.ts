@@ -235,7 +235,7 @@ describe("steps 2-3: a collection that becomes internal; a level lowered mid-wri
       descriptor,
       fs.readFileSync(descriptor, "utf8").replace(/^description:/m, "internal: true\ndescription:")
     )
-    const c = await new Promise(resolve => {
+    const c = await new Promise<any>(resolve => {
       const ch = spawn(process.execPath, [path.join(ENGINE_DIR, "bin", "dreamteamer.js"), "compile"], {
         cwd: f.root,
         stdio: ["ignore", "pipe", "pipe"],
@@ -290,7 +290,7 @@ describe("steps 2-3: a collection that becomes internal; a level lowered mid-wri
     const body = JSON.stringify({ name: "Brief Dana — the in-flight edit" })
     const half = Math.floor(body.length / 2)
     const u = new URL(web.url)
-    const inflight = new Promise((resolve, reject) => {
+    const inflight = new Promise<any>((resolve, reject) => {
       const req = http.request(
         {
           host: u.hostname,

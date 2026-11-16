@@ -22,7 +22,7 @@ const VERSION = pkgOf("rnd").version
 /** relative imports (static and dynamic, template prefixes resolved against `expand`) of one source file */
 function importsOf(file) {
   const text = fs.readFileSync(file, "utf8")
-  const out = new Set()
+  const out = new Set<string>()
   for (const m of text.matchAll(/(?:^|[^\w.])(?:import|export)\s[^'"`;]*?from\s*['"](\.{1,2}\/[^'"]+)['"]/gm))
     out.add(m[1])
   for (const m of text.matchAll(/^\s*import\s*['"](\.{1,2}\/[^'"]+)['"]/gm)) out.add(m[1])
@@ -40,7 +40,7 @@ describe("held-out: the packed install", () => {
     // the bin loads each verb's module by a template path: `../lib/prototype/node/${file}.mjs`
     const verbs = [...fs.readFileSync(bin, "utf8").matchAll(/^\t(\w+): \['(\w+)'/gm)].map(m => m[2])
     assert.deepEqual([...new Set(verbs)].sort(), ["check", "export", "play", "shoot", "vendor", "walk"])
-    const seen = new Set()
+    const seen = new Set<string>()
     const todo = [bin, ...verbs.map(v => path.join(RND, "lib", "prototype", "node", `${v}.mjs`))]
     while (todo.length) {
       const f = todo.pop()

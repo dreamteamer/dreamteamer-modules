@@ -21,6 +21,9 @@ import os from "node:os"
 import path from "node:path"
 import { appDir, browser, checks, go, paneWorkspace, serve, shot, signedIn, WEB } from "./support.ts"
 
+// Browser globals: these callbacks run in the page, not in Node.
+declare const document: any, getComputedStyle: any, location: any, window: any
+
 if (process.argv[2]) process.env.DT_WALK_SHOTS = path.resolve(process.argv[2])
 appDir()
 const { ok, done } = checks()
@@ -45,7 +48,7 @@ const urlOf = out => /^✔ open in the pane: (\S+)$/m.exec(out ?? "")?.[1]
 const chip = page =>
   page.$eval("[data-pane-level]", e => (e.getAttribute("aria-label") ?? "").replace(/^Level: /, "")).catch(() => "")
 const hash = page => page.evaluate(() => decodeURIComponent(location.hash.slice(1)))
-const until = (page, fn, arg, ms = 10_000) =>
+const until = (page, fn, arg?, ms = 10_000) =>
   page.waitForFunction(fn, arg, { timeout: ms }).then(
     () => true,
     () => false
@@ -99,8 +102,8 @@ fetch('/api/info', { credentials: 'include' }).then(async (r) => parent.postMess
 </script>`
   )
   const probe = await page.evaluate(async () => {
-    const host = await (await fetch("/api/host", { credentials: "same-origin" })).json()
-    return await new Promise(resolve => {
+    const host: any = await (await fetch("/api/host", { credentials: "same-origin" })).json()
+    return await new Promise<any>(resolve => {
       const f = document.createElement("iframe")
       f.setAttribute("sandbox", "allow-scripts")
       f.src = `${host.filesBase}/w/data/notes/probe.html?frame=1`

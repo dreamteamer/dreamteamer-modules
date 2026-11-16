@@ -7,6 +7,9 @@
 // usage: node modules/web/test/walk/theme.mjs        (DT_WEB_APP_DIR, DT_ENGINE_DIR, DT_WALK_SHOTS optional)
 import { appDir, browser, checks, go, northwind, serve, shot, signedIn } from "./support.ts"
 
+// Browser globals: these callbacks run in the page, not in Node.
+declare const document: any, getComputedStyle: any
+
 appDir()
 const { ok, done } = checks()
 const f = await northwind()
@@ -17,7 +20,7 @@ const lum = rgb => {
   return (0.2126 * r + 0.7152 * g + 0.0722 * bl) / 255
 }
 try {
-  const seen = {}
+  const seen: any = {}
   let url = s.url
   for (const scheme of ["light", "dark"]) {
     const { page, errors, context } = await signedIn(b, url, { colorScheme: scheme })

@@ -164,7 +164,7 @@ describe("dt check: deployed and deployed_on agree, as a warning", async () => {
     if (!HAS_CHANNEL) {
       // published engines before the channel: the rule is silent rather than red
       assert.doesNotMatch(r.stdout, /deployed_on/)
-      test.diagnostic?.(
+      ;(test as any).diagnostic?.(
         `engine ${engineApi.engineVersion?.()} has no CHECK_WARNINGS — the warning half runs with DT_ENGINE_DIR at the check-warnings branch`
       )
       return

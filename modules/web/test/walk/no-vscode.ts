@@ -15,6 +15,9 @@ import os from "node:os"
 import path from "node:path"
 import { browser, checks, go, northwind, shot } from "./support.ts"
 
+// Browser globals: these callbacks run in the page, not in Node.
+declare const document: any
+
 const [protocolTgz, uiTgz, webTgz] = process.argv.slice(2).map(p => path.resolve(p))
 if (!protocolTgz || !uiTgz || !webTgz) {
   console.error("usage: no-vscode.mjs <protocol.tgz> <ui.tgz> <web.tgz>")

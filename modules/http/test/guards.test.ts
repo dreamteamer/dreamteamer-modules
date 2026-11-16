@@ -17,7 +17,7 @@ const records = () => fs.readdirSync(path.join(h.root, "data", "notes")).sort()
 
 /** A request through node:http, which lets a test set the Host header. */
 function rawGet(port, hostHeader) {
-  return new Promise((resolve, reject) => {
+  return new Promise<any>((resolve, reject) => {
     const req = http.request(
       { host: "127.0.0.1", port, path: "/api/info", headers: { host: hostHeader }, timeout: 20_000 },
       res => {
@@ -177,7 +177,7 @@ describe("a host beyond loopback", () => {
     bind(engine)
     // the listening line would land on the stdout the test runner reads its reports from
     const log = t.mock.method(console, "log", () => {})
-    const server = await serve(h.ws, { host: "0.0.0.0", port: 0, token: "correct-horse" })
+    const server: any = await serve(h.ws, { host: "0.0.0.0", port: 0, token: "correct-horse" })
     try {
       const base = `http://127.0.0.1:${server.address().port}/api`
       assert.equal((await call("GET", `${base}/info`)).status, 401)
@@ -187,7 +187,7 @@ describe("a host beyond loopback", () => {
       )
       assert.match(String(log.mock.calls[0]?.arguments[0]), /dreamteamer api at http:\/\/0\.0\.0\.0:\d+\/api/)
     } finally {
-      await new Promise(r => server.close(r))
+      await new Promise<any>(r => server.close(r))
     }
   })
 

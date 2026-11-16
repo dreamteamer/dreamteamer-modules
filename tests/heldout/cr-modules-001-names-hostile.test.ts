@@ -15,7 +15,7 @@ const shape = people => `northwind|harbor-mutual|\\b(${people.join("|")})\\b`
 const fp = v => createHash("sha256").update(Buffer.from(v, "utf8")).digest("hex").slice(0, 12)
 const flip = s => [...s].map(c => (c === c.toLowerCase() ? c.toUpperCase() : c.toLowerCase())).join("")
 
-function run(value, addedLine) {
+function run(value, addedLine?) {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "runner-"))
   fs.writeFileSync(path.join(tmp, "added.txt"), addedLine ? `+${addedLine}\n` : "")
   return runStep(step.run, { env: { RUNNER_TEMP: tmp, LEAK_NAMES: value } })

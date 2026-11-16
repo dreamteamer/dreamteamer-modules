@@ -150,7 +150,7 @@ describe("step 2: a target whose engine does not open", () => {
       },
     ],
   ]
-  for (const [name, how, breakIt] of broken) {
+  for (const [name, how, breakIt] of broken as any[]) {
     test(`${name} (${how}): 409 or 502 within 12 s naming the workspace and what failed; A keeps working; no orphan of C listens`, async () => {
       const C = ws(name)
       const o = dtWeb(C.root, ["open"], m.env)

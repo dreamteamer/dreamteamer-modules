@@ -187,7 +187,7 @@ const probeOf = run => {
 for (const [label, run] of [
   ["leak-scan.yml private names", () => namesStep.run],
   ["release.yml leak gate", () => leakGate.run],
-]) {
+] as any[]) {
   test(`${label}: a malformed LEAK_NAMES exits 1; a valid one carries on`, async () => {
     const { spawnSync } = await import("node:child_process")
     const probe = probeOf(run())

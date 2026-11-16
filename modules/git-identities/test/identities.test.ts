@@ -53,7 +53,12 @@ test("rejects unsafe lines, globs, relative roots and overlapping identities", (
 
 test("real Git includeIf resolves nested repo; local override is detected; no files changed", () => {
   const home = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "git-identities-")))
-  const env = { ...process.env, HOME: home, GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: path.join(home, ".gitconfig") }
+  const env: NodeJS.ProcessEnv = {
+    ...process.env,
+    HOME: home,
+    GIT_CONFIG_NOSYSTEM: "1",
+    GIT_CONFIG_GLOBAL: path.join(home, ".gitconfig"),
+  }
   delete env.GIT_CONFIG_COUNT
   delete env.GIT_CONFIG_PARAMETERS
   const git = (args, cwd) => execFileSync("git", args, { cwd, env, stdio: ["ignore", "pipe", "pipe"] })
@@ -104,7 +109,12 @@ test("CLI rejects malformed config without echoing input values", () => {
 
 test("distinct folders select distinct identities and never use a global fallback as success", () => {
   const home = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "git-identities-")))
-  const env = { ...process.env, HOME: home, GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: path.join(home, ".gitconfig") }
+  const env: NodeJS.ProcessEnv = {
+    ...process.env,
+    HOME: home,
+    GIT_CONFIG_NOSYSTEM: "1",
+    GIT_CONFIG_GLOBAL: path.join(home, ".gitconfig"),
+  }
   delete env.GIT_CONFIG_COUNT
   delete env.GIT_CONFIG_PARAMETERS
   const git = (args, cwd) => execFileSync("git", args, { cwd, env, stdio: ["ignore", "pipe", "pipe"] })

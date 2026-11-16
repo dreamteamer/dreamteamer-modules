@@ -26,6 +26,14 @@ export function buildFrameDocument({
   policy = FRAME_POLICY,
   bodyHtml = "",
   scripts = [],
+}: {
+  guestText: string
+  bundleText?: string
+  styleText?: string
+  meta?: boolean
+  policy?: string
+  bodyHtml?: string
+  scripts?: Array<{ text: string; type?: "classic" | "module" }>
 }) {
   const scriptTexts = [inline(guestText)]
   const tail = scripts

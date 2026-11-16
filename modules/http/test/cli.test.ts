@@ -24,10 +24,10 @@ function startServe(cwd, args) {
   })
   let stdout = "",
     stderr = ""
-  const exited = new Promise(resolve => child.once("exit", (code, signal) => resolve({ code, signal })))
+  const exited = new Promise<any>(resolve => child.once("exit", (code, signal) => resolve({ code, signal })))
   const killer = setTimeout(() => child.kill("SIGKILL"), START_TIMEOUT_MS * 2)
   exited.then(() => clearTimeout(killer))
-  const listening = new Promise((resolve, reject) => {
+  const listening = new Promise<any>((resolve, reject) => {
     const t = setTimeout(
       () => reject(new Error(`no listening line within ${START_TIMEOUT_MS}ms\nstdout: ${stdout}\nstderr: ${stderr}`)),
       START_TIMEOUT_MS
@@ -59,7 +59,7 @@ describe("dt serve", () => {
       assert.match(base, /^http:\/\/127\.0\.0\.1:\d+\/api$/, "loopback by default")
       const res = await fetch(`${base}/info`, { signal: AbortSignal.timeout(20_000) })
       assert.equal(res.status, 200)
-      const info = await res.json()
+      const info: any = await res.json()
       assert.equal(info.name, h.pkg.name)
       assert.ok(Array.isArray(info.collections) && info.collections.length > 0)
       assert.equal(s.child.exitCode, null, "still running after answering — the verb keeps the process alive")

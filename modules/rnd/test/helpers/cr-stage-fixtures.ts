@@ -42,7 +42,10 @@ export function seedStates(root, { prefix = "s", stageOf = s => s, states = STAT
   const planOf = { "plan-review": "status: draft\n", implement: "status: approved\n", "code-review": "status: done\n" }
   for (const s of ["test", "test-review", "deploy", "live-check", "done"])
     planOf[s] = `status: done\ncode_approved_on: '${T}'\n`
-  const dates = { "test-review": `tested_on: '${T}'\n`, deploy: `tested_on: '${T}'\nverified_on: '${T}'\n` }
+  const dates: Record<string, string> = {
+    "test-review": `tested_on: '${T}'\n`,
+    deploy: `tested_on: '${T}'\nverified_on: '${T}'\n`,
+  }
   dates["live-check"] = dates.deploy + `deployed_on: '${T}'\ntags:\n  - deployed\n`
   dates.done = dates["live-check"]
   for (const s of states) {

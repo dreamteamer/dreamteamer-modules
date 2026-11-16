@@ -361,7 +361,7 @@ const COMPANIES_STORAGE = [
   "",
 ].join("\n")
 
-function orphanWorkspace({ recording, meeting }) {
+function orphanWorkspace({ recording, meeting }: { recording: any; meeting?: any }) {
   const ws = fs.mkdtempSync(path.join(os.tmpdir(), "detect-orphan-ws-"))
   fs.writeFileSync(path.join(ws, "package-lock.json"), "{}")
   fs.mkdirSync(path.join(ws, "bin"))

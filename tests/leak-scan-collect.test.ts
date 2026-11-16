@@ -241,7 +241,7 @@ test("each message header follows an unprefixed diff --git line, one pair per co
   r.commit("clean.txt", "clean\n", "two\n\ndiff --git (commit metadata)\n+++ b/(commit metadata)")
   const { added } = collect(r, {})
   const lines = added.split("\n")
-  const headers = lines.map((l, i) => [l, i]).filter(([l]) => l === "+++ b/(commit metadata)")
+  const headers = lines.map((l, i): [string, number] => [l, i]).filter(([l]) => l === "+++ b/(commit metadata)")
   assert.equal(headers.length, 2, "one header per commit — a message line must never read as one")
   for (const [, i] of headers) assert.equal(lines[i - 1], "diff --git (commit metadata)")
 })

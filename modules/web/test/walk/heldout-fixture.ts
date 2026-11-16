@@ -55,7 +55,7 @@ const PROBE2 = `export default ({ registerApp, registerEdit, registerView, regis
 		host.innerHTML = '<img src=x onerror="' + mark + '">' + '<svg onload="' + mark + '"></svg>' + '<a id="js" href="javascript:' + mark + '">x</a>';
 		try { document.getElementById('js').click(); } catch {}
 		out('h4location', location.href.slice(0, 40));
-		const ext = (attrs, key) => new Promise((res) => { const s = document.createElement('script'); Object.assign(s, attrs); s.onerror = () => res('refused'); s.onload = () => res('LOADED'); document.head.appendChild(s); setTimeout(() => res('timeout'), 3000); }).then((v) => out(key, v));
+		const ext = (attrs, key) => new Promise<any>((res) => { const s = document.createElement('script'); Object.assign(s, attrs); s.onerror = () => res('refused'); s.onload = () => res('LOADED'); document.head.appendChild(s); setTimeout(() => res('timeout'), 3000); }).then((v) => out(key, v));
 		await ext({ src: 'https://example.com/x.js', integrity: window.__guestHash || 'sha256-AAAA', crossOrigin: 'anonymous' }, 'h5integrity');
 		await ext({ src: 'https://example.com/y.js', nonce: 'anything' }, 'h5nonce');
 		await ext({ src: 'data:text/javascript,document.body.dataset.marker=%22data%22' }, 'h5data');

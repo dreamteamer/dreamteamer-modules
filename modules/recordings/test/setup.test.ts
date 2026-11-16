@@ -84,7 +84,7 @@ describe("the unit, pure", () => {
       files = tmp("dtm-files-")
     const ctx = ctxFor(root, { PATH: fakeBins(["uv", "ffmpeg"]), TRANSCRIPTION_HOME: home })
     const p = SETUP_UNIT.plan(ctx, { transcription_home: home, files_folder: files })
-    const by = Object.fromEntries(p.actions.map(a => [a.id, a]))
+    const by: Record<string, any> = Object.fromEntries(p.actions.map(a => [a.id, a]))
     assert.equal(by["set-home"].state, "ready")
     assert.deepEqual(
       Object.keys(by["set-home"].env),
@@ -157,12 +157,12 @@ describe("the unit, pure", () => {
     fs.symlinkSync(path.join(root, "not-yet"), dangling)
     for (const home of [inside, link, dangling]) {
       const p = SETUP_UNIT.plan(ctx, { transcription_home: home, files_folder: root })
-      const set = p.actions.find(a => a.id === "set-home")
+      const set: any = p.actions.find(a => a.id === "set-home")
       assert.equal(set.state, "blocked", home)
       assert.match(set.reason, /inside the workspace/)
       // nothing else runs through a refused home: the venv, the download and the verify are blocked on it
       for (const id of ["provision-venv", "download-models", "verify-cpu"]) {
-        const a = p.actions.find(x => x.id === id)
+        const a: any = p.actions.find(x => x.id === id)
         assert.equal(a.state, "blocked", `${id} for ${home}`)
         assert.match(a.reason, /inside the workspace/)
       }
@@ -241,7 +241,7 @@ describe("the unit, pure", () => {
     const root = repo(),
       home = tmp("dtm-home-"),
       files = tmp("dtm-files-")
-    const setHome = (env, inputs) =>
+    const setHome = (env, inputs): any =>
       SETUP_UNIT.plan(ctxFor(root, { PATH: fakeBins(["uv", "ffmpeg"]), ...env }), {
         transcription_home: home,
         files_folder: files,

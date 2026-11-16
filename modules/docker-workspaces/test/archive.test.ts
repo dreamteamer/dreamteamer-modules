@@ -667,9 +667,9 @@ describe("export and import a container's workspaces", () => {
         DT_EXPORT_PASSPHRASE: PASS,
         DT_DOCKER_TIMEOUT: "60",
       })
-      const exited = new Promise(ok => child.on("exit", (c, s) => ok({ c, s })))
+      const exited = new Promise<any>(ok => child.on("exit", (c, s) => ok({ c, s })))
       const until = Date.now() + 15_000
-      while (!fs.existsSync(`${file}.partial`) && Date.now() < until) await new Promise(r => setTimeout(r, 50))
+      while (!fs.existsSync(`${file}.partial`) && Date.now() < until) await new Promise<any>(r => setTimeout(r, 50))
       assert.ok(fs.existsSync(`${file}.partial`), "the export never started writing")
       child.kill(sig)
       const timer = setTimeout(() => child.kill("SIGKILL"), 10_000)

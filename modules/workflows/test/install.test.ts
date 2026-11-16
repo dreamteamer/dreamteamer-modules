@@ -43,7 +43,7 @@ steps:
 `
 
 /** A hand-built compiled runtime: a manifest naming one npm module that ships the probe workflow. */
-function fakeWorkspace({ compiled = ["fetch-meetings"], collections = ["meetings", "workflows"] } = {}) {
+function fakeWorkspace({ compiled = ["fetch-meetings"], collections = ["meetings", "workflows"] }: any = {}) {
   const ws = fs.mkdtempSync(path.join(os.tmpdir(), "dtw-"))
   made.push(ws)
   const mod = path.join(ws, "node_modules", "@dreamteamer", "probe")

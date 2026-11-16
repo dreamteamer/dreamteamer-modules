@@ -17,7 +17,7 @@ const account = "dana@northwind.example"
 const tool = "search_gmail_messages"
 const success = { content: [{ type: "text", text: "synthetic message" }] }
 function fake(result = success) {
-  const observed = { closed: false, calls: [] }
+  const observed: any = { closed: false, calls: [] }
   return {
     observed,
     factory: options => (
@@ -54,7 +54,7 @@ test("missing account credentials make no connection and do not initiate consent
       tool,
       env,
       fileExists: p => p === env.GOOGLE_CLIENT_SECRET_PATH,
-      connectionFactory: () => {
+      connectionFactory: (): any => {
         starts++
       },
     }),
@@ -231,7 +231,7 @@ test("hostile inherited configuration cannot change local transport, auth or cre
     USER_GOOGLE_EMAIL: "sam@northwind.example",
     UNRELATED_SECRET: "synthetic-value",
   }
-  const actual = configuration(hostile)
+  const actual: any = configuration(hostile)
   assert.equal(actual.PATH, hostile.PATH)
   assert.equal(actual.HOME, hostile.HOME)
   assert.equal(actual.GOOGLE_CLIENT_SECRET_PATH, env.GOOGLE_CLIENT_SECRET_PATH)

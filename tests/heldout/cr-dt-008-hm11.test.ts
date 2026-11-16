@@ -77,7 +77,7 @@ describe("dt check modules/core --alone with a member missing", { skip, concurre
     assert.equal(members.length, 17)
     // steps 3–5 are judged softly and asserted together at the end, so one refusal's wording does not hide the next step
     const failures = []
-    const soft = new Proxy(
+    const soft: any = new Proxy(
       {},
       {
         get:

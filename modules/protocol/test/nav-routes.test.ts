@@ -40,7 +40,7 @@ const quietly = async fn => {
     console.log = log
   }
 }
-const request = (m, p, b) => quietly(() => handler.handle(m, p, b))
+const request = (m, p, b?) => quietly(() => handler.handle(m, p, b))
 const bytes = () => (fs.existsSync(navFile) ? fs.readFileSync(navFile, "utf8") : null)
 const reset = () => {
   fs.rmSync(navFile, { force: true })
@@ -156,7 +156,7 @@ test("PUT with a malformed document is 400 naming the problem", async () => {
     [{ tree: [], hidden: [7] }, /hidden/],
     [{ tree: [{ folder: "ns:x", items: [] }] }, /ns:/],
     [null, /NavDoc|tree/],
-  ]) {
+  ] as any[]) {
     const res = await request("PUT", "/nav", doc)
     assert.equal(res.status, 400, `${JSON.stringify(doc)} answered ${res.status}`)
     assert.match(res.body.error, why)

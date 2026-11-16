@@ -73,8 +73,8 @@ export function fixture({
   records = DEFAULT_RECORDS,
   harnesses = ["claude-code", "notebooklm"],
   module = true,
-} = {}) {
-  const ws = workspace({ module, pkg: { harnesses }, compile: false })
+}: any = {}) {
+  const ws: any = workspace({ module, pkg: { harnesses }, compile: false })
   for (const [name, d] of Object.entries(collections)) writeCollection(ws.root, name, d)
   ws.compileOut = ws.dt("compile")
   if (ws.compileOut.code !== 0)

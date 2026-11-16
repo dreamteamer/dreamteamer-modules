@@ -146,7 +146,7 @@ describe("the refusals — --write exits 1 and writes nothing", () => {
     mutate(root)
     const snapshot = dir =>
       Object.fromEntries(
-        [...fs.readdirSync(dir, { recursive: true })]
+        [...fs.readdirSync(dir, { recursive: true, encoding: "utf8" })]
           .filter(f => f.endsWith(".md"))
           .map(f => [f, fs.readFileSync(path.join(dir, f), "utf8")])
       )

@@ -20,6 +20,7 @@
 		"noUnusedLocals": false,
 		"noUnusedParameters": false
 	},
+	"files": ["suite-types.d.ts"],
 	"include": ["**/*.ts", "../modules/*/test/**/*.ts"],
 	"exclude": [
 		"**/node_modules/**",

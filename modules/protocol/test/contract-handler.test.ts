@@ -33,7 +33,7 @@ test(
     const { createHandler } = await load("src/createHandler.js")
     fixture = makeFixture({ engineDir: ENGINE_DIR })
     const handler = await createHandler({ root: fixture.root })
-    const request = (m, p, b) => quietly(() => handler.handle(m, p, b))
+    const request = (m, p, b?) => quietly(() => handler.handle(m, p, b))
 
     const { failed, skipped } = await runContract({ request, fixture })
     // this host serves every optional route (its core keeps running sessions): a skip here is a route it dropped
@@ -69,7 +69,7 @@ test(
       getQueue: () => [],
       addQueue: i => ({ id: "q1", ...i, state: "waiting", queuedAt: "now" }),
     }
-    const viaPane = (m, p, b) =>
+    const viaPane = (m, p, b?) =>
       quietly(() =>
         route(handler.api, m, p, b, {
           root: fixture.root,

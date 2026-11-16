@@ -48,7 +48,7 @@ test("turns_user counts operator turns only; assistant turns fold on message.id"
       "This session is being continued from a previous conversation that ran out of context. Summary: please add a test…"
     ), // compaction replay — envelope
   ])
-  const m = await computeMetrics(file, { session_id: "fx-1", account: "default" })
+  const m: any = await computeMetrics(file, { session_id: "fx-1", account: "default" })
   assert.equal(m.turns_user, 2)
   assert.equal(m.turns_assistant, 2)
   assert.equal(m.user_directive, 1)
@@ -71,7 +71,7 @@ test("the volume gate: one prompt and no work is minimal, with every mechanical 
     user(1, "hi"),
     asst(2, "m1", [{ type: "text", text: "Hello." }], { input_tokens: 5, output_tokens: 2 }),
   ])
-  const m = await computeMetrics(file, { session_id: "fx-2", account: "default" })
+  const m: any = await computeMetrics(file, { session_id: "fx-2", account: "default" })
   assert.equal(m.candidate, false)
   assert.match(m.gate_reason, /false start|trivial/)
   for (const k of [
@@ -106,7 +106,7 @@ test("a transcript with no timestamp anywhere is dated from the file mtime, and 
   )
   const mtime = new Date("2026-08-14T08:30:00.000Z")
   fs.utimesSync(file, mtime, mtime)
-  const m = await computeMetrics(file, { session_id: "fx-3", account: "default" })
+  const m: any = await computeMetrics(file, { session_id: "fx-3", account: "default" })
   assert.equal(m.dated_from_mtime, true)
   assert.equal(m.started_at, mtime.toISOString())
   assert.equal(m.ended_at, mtime.toISOString())
@@ -120,7 +120,7 @@ test("a transcript that HAS timestamps never claims the mtime fallback", async (
     user(1, "a real turn with a real timestamp"),
     asst(2, "m1", [{ type: "text", text: "ok" }], { input_tokens: 1, output_tokens: 1 }),
   ])
-  const m = await computeMetrics(file, { session_id: "fx-4", account: "default" })
+  const m: any = await computeMetrics(file, { session_id: "fx-4", account: "default" })
   assert.equal(m.dated_from_mtime, undefined)
   assert.equal(m.started_at, ts(1))
 })
@@ -135,7 +135,7 @@ test("metrics/2 counts the words on both sides, and the correction ratio is corr
     user(3, "that's wrong, you missed the header row"), // 7 words · correction
     asst(4, "m2", [{ type: "text", text: "six seven eight nine ten" }], { input_tokens: 10, output_tokens: 5 }),
   ])
-  const m = await computeMetrics(file, { session_id: "fx-w", account: "default" })
+  const m: any = await computeMetrics(file, { session_id: "fx-w", account: "default" })
   assert.equal(m.input_words, 14, "both operator turns counted, envelope stripped")
   assert.equal(m.output_words, 10, "assistant text only — tool inputs are not deliverable words")
   assert.equal(m.correction_ratio, 0.7, "7 corrected words over 10 produced")
@@ -149,7 +149,7 @@ test("a session that produced no words has NO correction_ratio rather than a fla
       output_tokens: 1,
     }),
   ])
-  const m = await computeMetrics(file, { session_id: "fx-z", account: "default" })
+  const m: any = await computeMetrics(file, { session_id: "fx-z", account: "default" })
   assert.equal(m.output_words, 0)
   assert.equal(m.correction_ratio, undefined, "absent, not 0 — 0 would read as a clean session")
 })
@@ -171,7 +171,7 @@ test("the tool mix, the MCP servers behind it, and skills USED as a subset of sk
       { input_tokens: 10, output_tokens: 5 }
     ),
   ])
-  const m = await computeMetrics(file, { session_id: "fx-t", account: "default" })
+  const m: any = await computeMetrics(file, { session_id: "fx-t", account: "default" })
   assert.deepEqual(m.mcp_servers, ["etherscan", "google-workspace"], "one entry per server, not per tool")
   assert.deepEqual(m.skills_used, ["processing-finance-invoices"], "a typed slash command is not proof a skill ran")
   assert.deepEqual(m.skills_loaded, ["close-financial-month", "processing-finance-invoices"], "loaded is the wider set")
@@ -189,7 +189,7 @@ test("interruptions are counted, still count as a turn, and are not classified a
     user(4, "[Request interrupted by user]"),
     asst(5, "m2", [{ type: "text", text: "stopped" }], { input_tokens: 5, output_tokens: 1 }),
   ])
-  const m = await computeMetrics(file, { session_id: "fx-i", account: "default" })
+  const m: any = await computeMetrics(file, { session_id: "fx-i", account: "default" })
   assert.equal(m.interruptions, 2)
   assert.equal(m.turns_user, 3, "the operator did speak — an interruption is the cheapest thing they can say")
   assert.equal(m.user_directive, 1, "and it is not a directive")
@@ -221,7 +221,7 @@ test("cache tokens are captured, and tokens_total is the number to quote", async
       cache_creation_input_tokens: 0,
     }),
   ])
-  const m = await computeMetrics(file, { session_id: "fx-c", account: "default" })
+  const m: any = await computeMetrics(file, { session_id: "fx-c", account: "default" })
   assert.equal(m.tokens_input, 20, "still counted once per message.id")
   assert.equal(m.tokens_cache_read, 81000)
   assert.equal(m.tokens_cache_write, 1500)

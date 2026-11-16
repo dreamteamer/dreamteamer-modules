@@ -23,7 +23,7 @@ bind(api)
  * @param {object} [opts.records]      collection → [fields], added through the Store (not committed)
  * @param {boolean}[opts.compile]      false → leave it uncompiled
  */
-export function workspace(opts = {}) {
+export function workspace(opts: any = {}): any {
   const w = fixture.workspace({ packages: ["proofs"], pkg: opts.pkg ?? {}, compile: false })
   for (const [name, d] of Object.entries(opts.collections ?? {})) writeCollection(w.root, name, d)
   const ws = api.findWorkspace(w.root)
@@ -32,7 +32,7 @@ export function workspace(opts = {}) {
   const out = w.dt("compile")
   if (out.code !== 0) throw new Error(`fixture compile failed:\n${out.stdout}\n${out.stderr}`)
   const store = new api.Store(ws)
-  for (const [collection, rows] of Object.entries(opts.records ?? {})) {
+  for (const [collection, rows] of Object.entries<any>(opts.records ?? {})) {
     for (const fields of rows) store.add(collection, { ...fields })
   }
   return { ...handle, store, out }
