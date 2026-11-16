@@ -1,15 +1,19 @@
 <script setup lang="ts">
 /**
  * The browser host's ONE SEARCH (cr-modules-022): Cmd/Ctrl-K opens a centred field and nothing else until you type;
- * then the records whose rows match, across every collection the nav lists, best title match first. ↑↓ move, Enter
- * opens the record in a tab, Escape or a click outside closes. lib/search.ts says how the collections are asked.
+ * then the records whose title (or another field) matches, across every collection the nav lists, best title match
+ * first — at most a few per collection, and a "N more in <collection>" line that opens that list searched. ↑↓ move,
+ * Enter opens the record in a tab, Escape or a click outside closes. lib/search.ts says how the collections are asked.
+ * Typing is debounced; a search overtaken by the next keystroke stops asking and its answers are dropped.
  */
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { hostRequest } from '../api/transport';
 import { useCollections } from '../composables/collections';
 import { recordTitle } from '../lib/record-titles';
-import { searchRecords, type SearchHit, type SearchTarget } from '../lib/search';
+import { searchRecords, type SearchHit, type SearchMore, type SearchTarget } from '../lib/search';
+import { templateFields } from '../lib/template';
+import { seedTitle } from '../lib/tabs';
 import DtIcon from './DtIcon.vue';
 
 const router = useRouter();
@@ -17,12 +21,18 @@ const { tree } = useCollections();
 const open = ref(false);
 const term = ref('');
 const hits = ref<SearchHit[]>([]);
+const more = ref<SearchMore[]>([]);
+/** What ↑↓ walk and Enter opens: the hits, then the "more" lines. */
+const entries = computed<Array<SearchHit | SearchMore>>(() => [...hits.value, ...more.value]);
+const isMore = (e: SearchHit | SearchMore): e is SearchMore => 'count' in e;
 const busy = ref(false);
 const active = ref(0);
 const field = ref<HTMLInputElement | null>(null);
 const navCollections = ref<string[] | null>(null);
 let seq = 0;
 let timer: ReturnType<typeof setTimeout> | null = null;
+/** How long typing must pause before the collections are asked. */
+const SEARCH_DEBOUNCE_MS = 160;
 
 interface NavNode { kind: string; target?: { name?: string }; children?: NavNode[] }
 /** The collections the nav lists, in its order (layers' own rows are theirs, not this workspace's). */
@@ -41,7 +51,7 @@ const targets = computed<SearchTarget[]>(() => {
 	const names = navCollections.value ?? rows.map((r) => r.collection);
 	return names.flatMap((name) => {
 		const row = rows.find((r) => r.collection === name);
-		return row ? [{ collection: name, title: row.title, icon: row.nav?.icon, titleOf: (rec: Record<string, unknown>) => recordTitle(row, rec, String(rec['id'] ?? '')) }] : [];
+		return row ? [{ collection: name, title: row.title, icon: row.nav?.icon, titleFields: templateFields(row.record_title ?? ''), titleOf: (rec: Record<string, unknown>) => recordTitle(row, rec, String(rec['id'] ?? '')) }] : [];
 	});
 });
 
@@ -49,6 +59,7 @@ function show() {
 	open.value = true;
 	term.value = '';
 	hits.value = [];
+	more.value = [];
 	active.value = 0;
 	void loadNav();
 	void nextTick(() => field.value?.focus());
@@ -58,26 +69,30 @@ function hide() { open.value = false; seq++; }
 watch(term, (t) => {
 	if (timer) clearTimeout(timer);
 	const mine = ++seq;
-	if (t.trim().length < 2) { hits.value = []; busy.value = false; return; }
+	if (t.trim().length < 2) { hits.value = []; more.value = []; busy.value = false; return; }
 	busy.value = true;
 	timer = setTimeout(async () => {
 		const found = await searchRecords(t, targets.value, hostRequest, () => mine !== seq);
 		if (mine !== seq) return;
-		hits.value = found;
+		hits.value = found.hits;
+		more.value = found.more;
 		active.value = 0;
 		busy.value = false;
-	}, 160);
+	}, SEARCH_DEBOUNCE_MS);
 });
 
-function go(hit: SearchHit | undefined) {
-	if (!hit) return;
+function go(entry: SearchHit | SearchMore | undefined) {
+	if (!entry) return;
 	hide();
-	void router.push(hit.route);
+	// the tab opens already named (lib/tabs.ts): the hit's title, or the list's own title for a "more" line
+	if (isMore(entry)) seedTitle(entry.route, entry.collectionTitle, entry.icon);
+	else seedTitle(entry.route, entry.title, entry.icon);
+	void router.push(entry.route);
 }
 function onFieldKey(e: KeyboardEvent) {
-	if (e.key === 'ArrowDown') { e.preventDefault(); active.value = Math.min(active.value + 1, hits.value.length - 1); scrollActive(); }
+	if (e.key === 'ArrowDown') { e.preventDefault(); active.value = Math.min(active.value + 1, entries.value.length - 1); scrollActive(); }
 	else if (e.key === 'ArrowUp') { e.preventDefault(); active.value = Math.max(active.value - 1, 0); scrollActive(); }
-	else if (e.key === 'Enter') { e.preventDefault(); go(hits.value[active.value]); }
+	else if (e.key === 'Enter') { e.preventDefault(); go(entries.value[active.value]); }
 	else if (e.key === 'Escape') { e.preventDefault(); hide(); }
 }
 function scrollActive() { void nextTick(() => document.querySelector('.dt-search__hit.is-active')?.scrollIntoView({ block: 'nearest' })); }
@@ -110,14 +125,14 @@ defineExpose({ show });
 						spellcheck="false"
 						role="combobox"
 						aria-controls="dt-search-results"
-						:aria-expanded="hits.length ? 'true' : 'false'"
+						:aria-expanded="entries.length ? 'true' : 'false'"
 						@keydown="onFieldKey"
 					/>
 					<DtIcon v-if="busy" name="loading" class="dt-search__spin codicon-modifier-spin" />
 					<kbd class="dt-search__kbd">esc</kbd>
 				</div>
 				<template v-if="term.trim().length >= 2">
-					<ul v-if="hits.length" id="dt-search-results" class="dt-search__hits" role="listbox">
+					<ul v-if="entries.length" id="dt-search-results" class="dt-search__hits" role="listbox">
 						<li
 							v-for="(hit, i) in hits"
 							:key="`${hit.collection}/${hit.id}`"
@@ -132,9 +147,24 @@ defineExpose({ show });
 							<span class="dt-search__title">{{ hit.title }}</span>
 							<span class="dt-search__where">{{ hit.collectionTitle }}</span>
 						</li>
+						<li
+							v-for="(m, j) in more"
+							:key="`more:${m.collection}`"
+							class="dt-search__hit dt-search__more"
+							:class="{ 'is-active': hits.length + j === active }"
+							role="option"
+							:data-more="m.collection"
+							:aria-selected="hits.length + j === active ? 'true' : 'false'"
+							@mousemove="active = hits.length + j"
+							@click="go(m)"
+						>
+							<span class="dt-search__icon"><DtIcon name="list-flat" /></span>
+							<span class="dt-search__title">{{ m.count }} more in {{ m.collectionTitle }}</span>
+							<span class="dt-search__where">open the list</span>
+						</li>
 					</ul>
 					<p v-else-if="!busy" class="dt-search__none">No record matches “{{ term.trim() }}”.</p>
-					<p class="dt-search__foot">Searches the {{ targets.length }} collections the nav lists, a few rows each · Enter opens in a tab</p>
+					<p class="dt-search__foot">Searches the titles in the {{ targets.length }} collections the nav lists · Enter opens in a tab</p>
 				</template>
 			</div>
 		</div>
@@ -238,6 +268,9 @@ defineExpose({ show });
 	white-space: nowrap;
 	color: var(--dt-fg-muted);
 	font-size: var(--dt-text-sm);
+}
+.dt-search__more .dt-search__title {
+	color: var(--dt-fg-subtle);
 }
 .dt-search__none {
 	padding: var(--dt-space-4);
