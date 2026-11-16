@@ -286,6 +286,7 @@ export function Nav() {
             data-tool="arrange"
             aria-pressed={arranging}
             aria-label="Arrange the nav"
+            data-nav-lock
             title={lockTitle}
             disabled={!!blocked && !arranging}
             onClick={e => {
@@ -428,6 +429,7 @@ function NavRow({ node, depth, ctx }: { node: NavNode; depth: number; ctx: RowCt
         style={{ paddingLeft: 8 + depth * 14 }}
         title={node.tooltip}
         data-key={node.key}
+        data-nav-row
         onClick={() => ctx.activate(node)}
         {...gestures}
       >
@@ -441,7 +443,9 @@ function NavRow({ node, depth, ctx }: { node: NavNode; depth: number; ctx: RowCt
           {kids.length > 0 && <Icon name={open ? "chevron-down" : "chevron-right"} />}
         </span>
         <Icon name={node.icon} />
-        <span className="flex-1 overflow-hidden text-ellipsis">{node.label}</span>
+        <span className="flex-1 overflow-hidden text-ellipsis" data-nav-label>
+          {node.label}
+        </span>
         {node.marks && <span className="text-fg-subtle text-small">{node.marks}</span>}
         {node.description && <span className="text-fg-subtle text-small">{node.description}</span>}
       </div>

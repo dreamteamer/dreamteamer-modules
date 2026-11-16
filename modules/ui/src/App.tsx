@@ -135,7 +135,10 @@ export function App({ onMounted }: { onMounted?: () => void }) {
 
   return (
     <AppContext.Provider value={app}>
-      <div className="grid grid-cols-[260px_1fr] h-full max-[720px]:grid-cols-1 max-[720px]:grid-rows-[auto_1fr]">
+      <div
+        className="grid grid-cols-[260px_1fr] h-full max-[720px]:grid-cols-1 max-[720px]:grid-rows-[auto_1fr]"
+        data-shell
+      >
         <Nav />
         <main className="overflow-auto min-w-0">
           {presentation.error && <p className={error}>{presentation.error}</p>}

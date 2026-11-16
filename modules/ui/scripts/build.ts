@@ -1,8 +1,9 @@
 #!/usr/bin/env node
-// Two builds of one source, as the Vue ui makes them:
-//   dist/lib/   the library a host bundles — index.js (`mount`, the transports), index.d.ts, style.css
+// Two builds of one source:
+//   dist/lib/   the library a host bundles — index.js (`mount`, the transports), index.d.ts, style.css (the tokens,
+//               the base and the Tailwind utilities, through @tailwindcss/vite)
 //   dist/app/   the browser page a web host serves — index.html + assets/, over the HTTP transport
-// then dist/guest/ (scripts/build-guest.ts): the module frames' guest, Vue and all, with this stylesheet.
+// then dist/guest/ (scripts/build-guest.ts): the module frames' guest, no framework, with this stylesheet.
 // Both relative (`base: './'`), so a webview can rewrite `./assets/*` and a web host can serve the page at `/`.
 import fs from "node:fs"
 import path from "node:path"

@@ -55,7 +55,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
         loaded.push(`${r.status()} ${new URL(r.url()).pathname.replace(/^\/_frames\/[^/]+/, "/_frames")}`)
     })
     await page.reload()
-    await page.waitForSelector(".dt-nav-row", { timeout: 30_000 })
+    await page.waitForSelector("[data-nav-row]", { timeout: 30_000 })
     await go(page, "/a/northwind-stats")
     const frame = await (
       await page.waitForSelector('iframe[title="module app default"]:not([style*="display:none"])', { timeout: 15_000 })

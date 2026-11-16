@@ -16,11 +16,12 @@ npm install @dreamteamer/ui
 ## what is in the package
 
 - `dist/lib/` — the library a host bundles: `index.js` (`mount`, `httpTransport`, `HostError`),
-  `index.d.ts` and `style.css` (icons, tokens and styles, light and dark). Each colour reads the VS Code
-  theme variable first, so inside a webview the app takes on the editor's theme.
+  `index.d.ts` and `style.css` (icons, the `--dt-*` tokens light and dark, a small base, and the Tailwind
+  utilities the app's components use). Each colour reads the VS Code theme variable first, so inside a webview
+  the app takes on the editor's theme.
 - `dist/app/` — the browser page (`index.html` + `assets/`) over the HTTP transport.
 - `dist/guest/` — the module frames' guest: `guest.js` (the guest runtime, no framework, as one inline text) and
-  `guest.css` (this app's stylesheet, fonts inlined). See
+  `guest.css` (this app's stylesheet, fonts inlined: the tokens a module draws with). See
   [module apps](#module-apps).
 - `src/` — the source all three are built from.
 
@@ -237,6 +238,10 @@ Through 0.3 the guest carried Vue and a module's components were Vue components 
 built that way must be rebuilt as mount functions (wrapping its Vue components in `createApp(…).mount(el)` is
 enough).
 
+A frame's document carries `guest.css`: the tokens (`var(--dt-fg)`, `var(--dt-border)`, `var(--dt-accent)`, …) and
+the base, so a module that draws in the tokens wears the editor's theme. The app's own looks are Tailwind utilities
+generated for its components, not a class vocabulary — a module brings its own CSS in its bundle.
+
 No module code runs in this page. Before the first render, `mount` opens one hidden **registry frame** per module
 (sandboxed, `allow-scripts` only, the frame policy loading nothing by URL), which loads the bundle with the guest
 and reports what it registered. For each id nobody holds yet, the app registers a React **proxy** in its own registry
@@ -276,6 +281,29 @@ Not drawn since the React rewrite (0.3 had them): registering an unregistered fo
 data model and module lists; note marks on rows and cards; file uploads. A module's panels are registered and held,
 and drawn nowhere, as in 0.3.
 
+## styling
+
+The app is styled with [Tailwind](https://tailwindcss.com) v4 (`@tailwindcss/vite`), in the components, over the
+tokens — never Tailwind's palette:
+
+- `src/styles/app.css` — the tokens (`--dt-*`, each reading the VS Code variable first, light and dark), a small base
+  layer (box sizing, the body's font and colours, links, the focus ring, form controls; no preflight, so a host's page
+  around a mounted app is left alone), and a `@theme` that names the tokens for Tailwind and clears its colours:
+  `bg-bg-subtle`, `text-fg-subtle`, `border-border`, `text-danger`, `bg-chart-green`, `font-mono`, `text-small`,
+  `rounded-dt`, … A component can only reach for a token.
+- `src/styles/classes.ts` — the looks several parts share, as class strings (`button`, `buttonPrimary`, `menu`,
+  `menuItem`, `hint`, `notice`, `chip`, `page`, `formRow`, …) and `cx(...)` to join them; a folder's own shared looks
+  sit in its `looks.ts` (`browse/`, `lists/`, `record/`, `settings/`, `components/`).
+- `src/styles/vendor.css` — the few rules for DOM a library draws (Leaflet's markers, React Flow's canvas and
+  handles), hooked on a class the app hands the library. CodeMirror is themed in code.
+
+Three rules keep it honest. Two utilities that set one property are ordered by the stylesheet, not the class list,
+so a modifier marks what it overrides `!important` (`buttonPrimary`), or the choice is made in code
+(`open ? "border-focus" : "border-input-border"`), and a parent's `[&_td]:…` is never overridden by a class on the
+child — the child carries its own. A class is written out whole in the source: Tailwind finds class names by reading
+the files, so one built at run time is never generated. And code never finds an element by its look: a hook is a
+`data-*` attribute (`data-nav-row`, `data-control`, `data-items`, `data-md`).
+
 ## building and testing
 
 ```bash
@@ -300,7 +328,7 @@ The build runs before every publish (`prepublishOnly`). Nothing under `dist/` is
 
 | @dreamteamer/ui | @dreamteamer/protocol | engine (`dreamteamer`) |
 |---|---|---|
-| 0.4.x | ^0.3.0 | `>=0.43.0`; the app is React (Vue through 0.3) over the same transport, routes and host messages. A module app's components are mount functions, with no framework from the guest (0.3 handed modules `window.Vue`): a 0.3 bundle must be rebuilt. Module frames get this app's stylesheet (`dt-` classes and tokens), so a bundle styled against 0.3's class names may look different |
+| 0.4.x | ^0.3.0 | `>=0.43.0`; the app is React (Vue through 0.3) over the same transport, routes and host messages, styled with Tailwind over the same `--dt-*` tokens. A module app's components are mount functions, with no framework from the guest (0.3 handed modules `window.Vue`): a 0.3 bundle must be rebuilt. Module frames get this app's stylesheet — the tokens and the base, and only the utilities the app itself uses; 0.3's `dt-` classes are gone, so a bundle styled with them carries its own CSS (drawn in the tokens, it still wears the editor's theme) |
 | 0.3.x | ^0.3.0 | `>=0.43.0`; the pane routes (`GET /host`, selection, queue) are the protocol's |
 | 0.2.x | ^0.2.0 | `>=0.43.0`; the nav is `nav.yaml` (module fragments from 0.49) |
 | 0.1.x | ^0.1.0 | `>=0.43.0` |

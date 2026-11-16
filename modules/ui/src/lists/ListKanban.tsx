@@ -267,6 +267,7 @@ export function ListKanban({ state }: ListProps) {
                     <div
                       key={column.value}
                       className={columnCls(dropTarget === key, !!column.ungrouped)}
+                      data-kanban-column
                       onDragOver={e => {
                         if (lock.columns) return
                         e.preventDefault()
@@ -330,6 +331,7 @@ export function ListKanban({ state }: ListProps) {
                               )}
                               <div
                                 className={cx(recordCard(!!tint), drag?.id === r.id && "opacity-50")}
+                                data-record-card
                                 style={tint}
                                 data-vscode-context={rowContext(state.collection, r.id)}
                                 title={lock.reason ?? undefined}

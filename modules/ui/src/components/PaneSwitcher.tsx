@@ -84,6 +84,7 @@ export function PaneSwitcher({ label }: { label?: string }) {
         type="button"
         className="inline-flex items-center gap-0.5 flex-[0_1_auto] min-w-[30px] max-w-full h-6 px-1 py-0 border-0 rounded-dt bg-transparent text-fg font-[inherit] text-[length:inherit] leading-[inherit] font-semibold hover:bg-bg-hover aria-expanded:bg-bg-hover"
         title={`${name} — switch workspace`}
+        data-pane-switch
         aria-haspopup="menu"
         aria-expanded={m.open}
         onClick={e => {

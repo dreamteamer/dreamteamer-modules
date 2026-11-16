@@ -43,7 +43,7 @@ const runOther = (...args) =>
 const urlOf = out => /^✔ open in the pane: (\S+)$/m.exec(out ?? "")?.[1]
 // the level is an icon in the nav toolbar (2026-11-14 16:30 revision): its word is its aria-label, "Level: <word>"
 const chip = page =>
-  page.$eval(".dt-pane-level", e => (e.getAttribute("aria-label") ?? "").replace(/^Level: /, "")).catch(() => "")
+  page.$eval("[data-pane-level]", e => (e.getAttribute("aria-label") ?? "").replace(/^Level: /, "")).catch(() => "")
 const hash = page => page.evaluate(() => decodeURIComponent(location.hash.slice(1)))
 const until = (page, fn, arg, ms = 10_000) =>
   page.waitForFunction(fn, arg, { timeout: ms }).then(
@@ -125,7 +125,7 @@ fetch('/api/info', { credentials: 'include' }).then(async (r) => parent.postMess
   const atRead = s.run("open", "--read", "tasks/brief-dana")
   ok(/^level: Read$/m.test(atRead.stdout), "c: dt web open --read sets the level", atRead.stdout.split("\n")[1])
   await page.goto(urlOf(atRead.stdout))
-  await page.waitForSelector(".dt-pane-level", { timeout: 30_000 })
+  await page.waitForSelector("[data-pane-level]", { timeout: 30_000 })
   ok((await chip(page)) === "Read", "c: after the reload the level icon reads Read", await chip(page))
   // the record page has drawn its value before the edit starts (an Edit pressed on a page still loading is lost)
   await until(
@@ -159,24 +159,24 @@ fetch('/api/info', { credentials: 'include' }).then(async (r) => parent.postMess
   // lowered from Edit in the menu
   const atEdit = s.run("open", "--edit", "tasks")
   await page.goto(urlOf(atEdit.stdout))
-  await page.waitForSelector(".dt-pane-level", { timeout: 30_000 })
+  await page.waitForSelector("[data-pane-level]", { timeout: 30_000 })
   ok((await chip(page)) === "Edit", "c: raised from the chat, the level icon reads Edit", await chip(page))
-  const notice = await page.$eval(".dt-pane-level", e => e.title).catch(() => "")
+  const notice = await page.$eval("[data-pane-level]", e => e.title).catch(() => "")
   ok(
     /^Level: Edit — Edit since \d\d:\d\d — opened from the chat$/.test(notice),
     "c: the level icon's tooltip names the level and the raise",
     notice
   )
-  await page.click(".dt-pane-level")
+  await page.click("[data-pane-level]")
   const lowers = await page.$$eval(".dt-pane-level__lower", e => e.map(x => x.textContent.trim()))
   ok(JSON.stringify(lowers) === '["Read"]', "c: the menu offers Read only", JSON.stringify(lowers))
   await page.click('.dt-pane-level__lower[data-level="read"]')
   ok(
-    await until(page, () => document.querySelector(".dt-pane-level")?.dataset.level === "read"),
+    await until(page, () => document.querySelector("[data-pane-level]")?.dataset.level === "read"),
     "c: lowered in the menu, the level icon reads Read",
     await chip(page)
   )
-  await page.click(".dt-pane-level")
+  await page.click("[data-pane-level]")
   const after = await page.$$eval(".dt-pane-level__lower", e => e.length)
   const hint = await page.$eval(".dt-pane-level__menu .dt-pane-menu__hint", e => e.textContent.trim()).catch(() => "")
   ok(
@@ -186,12 +186,12 @@ fetch('/api/info', { credentials: 'include' }).then(async (r) => parent.postMess
   )
   ok(/level Read/.test(s.run("status").stdout), "c: dt web status reads the lowered level")
   await page.screenshot({ path: step("c-lowered") })
-  await page.click(".dt-pane-level")
+  await page.click("[data-pane-level]")
 
   // d — the selection both ways (story s3); back at Edit so the rest of the walk can queue
   s.run("open", "--edit")
   await page.reload()
-  await page.waitForSelector(".dt-pane-level", { timeout: 30_000 })
+  await page.waitForSelector("[data-pane-level]", { timeout: 30_000 })
   await go(page, "/content/tasks")
   await page.waitForSelector("tbody tr", { timeout: 15_000 })
   await tick(page, "Brief Dana")
@@ -264,7 +264,7 @@ fetch('/api/info', { credentials: 'include' }).then(async (r) => parent.postMess
   await tick(page, "Northwind launch")
   const rail = await page.$('button.dt-rsb-rail-btn[title^="Commands"]')
   if (rail) await rail.click()
-  else await page.click(".dt-rsb-tab >> text=Commands")
+  else await page.click("[role=tab] >> text=Commands")
   await page.waitForSelector(".dt-cmds__row.is-runnable", { timeout: 10_000 })
   await page.click(".dt-cmds__row.is-runnable")
   const ask = await page.waitForSelector(".dt-cmds__ask", { timeout: 10_000 }).then(
@@ -320,7 +320,7 @@ fetch('/api/info', { credentials: 'include' }).then(async (r) => parent.postMess
     "f: and it was stopped before the switch",
     stopped.stdout.trim()
   )
-  await page.click(".dt-pane-switch")
+  await page.click("[data-pane-switch]")
   await page.waitForSelector(".dt-pane-switch__item", { timeout: 10_000 })
   const listed = await page.$$eval(".dt-pane-switch__item", e => e.map(x => x.textContent.replace(/\s+/g, " ").trim()))
   ok(
@@ -339,11 +339,11 @@ fetch('/api/info', { credentials: 'include' }).then(async (r) => parent.postMess
     )
   const nav =
     landed &&
-    (await page.waitForSelector(".dt-nav-row", { timeout: 30_000 }).then(
+    (await page.waitForSelector("[data-nav-row]", { timeout: 30_000 }).then(
       () => true,
       () => false
     ))
-  const name = await page.$eval(".dt-pane-switch", e => e.textContent.trim()).catch(() => "")
+  const name = await page.$eval("[data-pane-switch]", e => e.textContent.trim()).catch(() => "")
   ok(
     landed && nav && name === "harbor",
     "f: choosing it lands on its page, signed in, with no sign-in step",
@@ -372,8 +372,8 @@ fetch('/api/info', { credentials: 'include' }).then(async (r) => parent.postMess
   const SIGNED_OUT = "This pane is signed out. Ask the chat to show it again — it runs dt web open."
   const admin = s.run("open", "--admin")
   const narrow = await signedIn(b, urlOf(admin.stdout), { viewport: { width: 320, height: 640 } })
-  await narrow.page.waitForSelector(".dt-pane-level", { timeout: 10_000 })
-  await narrow.page.click(".dt-pane-level")
+  await narrow.page.waitForSelector("[data-pane-level]", { timeout: 10_000 })
+  await narrow.page.click("[data-pane-level]")
   await narrow.page.waitForSelector(".dt-pane-level__menu", { timeout: 5_000 }).catch(() => null)
   const fit = await narrow.page.evaluate(() => {
     const box = sel => {
@@ -393,10 +393,10 @@ fetch('/api/info', { credentials: 'include' }).then(async (r) => parent.postMess
     const name = document.querySelector(".dt-pane-switch__name")
     return {
       area,
-      chip: box(".dt-pane-level"),
+      chip: box("[data-pane-level]"),
       menu: box(".dt-pane-level__menu"),
       notice: box(".dt-pane-level__menu .dt-pane-menu__notice"),
-      chipTop: topmost(".dt-pane-level"),
+      chipTop: topmost("[data-pane-level]"),
       itemTop: topmost(".dt-pane-level__lower"),
       nameFits: name
         ? name.scrollWidth <= name.clientWidth || getComputedStyle(name).textOverflow === "ellipsis"
@@ -426,7 +426,8 @@ fetch('/api/info', { credentials: 'include' }).then(async (r) => parent.postMess
   )
   await narrow.page.screenshot({ path: step("g-narrow") })
   await narrow.page.keyboard.press("Escape")
-  const toolbarH = () => narrow.page.$eval(".dt-nav-toolbar", e => e.getBoundingClientRect().height).catch(() => -1)
+  const toolbarH = () =>
+    narrow.page.$eval("[role=toolbar][aria-label=Nav]", e => e.getBoundingClientRect().height).catch(() => -1)
   const lockedH = await toolbarH()
   ok(
     lockedH > 0 && lockedH <= 32.5,
@@ -438,7 +439,7 @@ fetch('/api/info', { credentials: 'include' }).then(async (r) => parent.postMess
   const unlockedH = await toolbarH()
   ok(unlockedH > 0 && unlockedH <= 60, "g: unlocked at 320 px it wraps to two lines at most", String(unlockedH))
   const sw = await narrow.page.evaluate(() => {
-    const e = document.querySelector(".dt-pane-switch")
+    const e = document.querySelector("[data-pane-switch]")
     if (!e) return null
     const r = e.getBoundingClientRect()
     const t = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)
@@ -454,7 +455,7 @@ fetch('/api/info', { credentials: 'include' }).then(async (r) => parent.postMess
     "g: unlocked at 320 px the switcher keeps its chevron and a hit target nothing covers",
     JSON.stringify(sw)
   )
-  await narrow.page.click(".dt-pane-switch")
+  await narrow.page.click("[data-pane-switch]")
   ok(
     await narrow.page.waitForSelector(".dt-pane-switch__menu", { timeout: 5_000 }).then(
       () => true,

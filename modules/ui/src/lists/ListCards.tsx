@@ -161,6 +161,7 @@ export function ListCards({ state }: ListProps) {
                   <article
                     key={`${String(r["$source"] ?? "")}/${r.id}`}
                     className={cx(recordCard(!!tint), "flex flex-col")}
+                    data-record-card
                     style={tint}
                     data-vscode-context={rowContext(state.collection, r.id)}
                     onClick={() => state.openRecord(r)}

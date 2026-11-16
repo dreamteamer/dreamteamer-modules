@@ -31,8 +31,8 @@ try {
     await page.waitForTimeout(1200)
     const look = await page.evaluate(() => {
       const cs = el => (el ? getComputedStyle(el) : null)
-      const surface = cs(document.querySelector(".dt-page-area")) ?? cs(document.body)
-      const shell = cs(document.querySelector(".dt-shell"))
+      const surface = cs(document.querySelector("main")) ?? cs(document.body)
+      const shell = cs(document.querySelector("[data-shell]"))
       const bg =
         [surface?.backgroundColor, shell?.backgroundColor, cs(document.body).backgroundColor].find(
           c => c && c !== "rgba(0, 0, 0, 0)"

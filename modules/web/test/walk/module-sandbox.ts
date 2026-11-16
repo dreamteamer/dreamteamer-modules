@@ -152,7 +152,7 @@ try {
   )
   const t0 = Date.now()
   await go(r.page, "/content/projects")
-  await r.page.waitForSelector(".dt-table, table", { timeout: 5000 }).catch(() => {})
+  await r.page.waitForSelector("table", { timeout: 5000 }).catch(() => {})
   ok(Date.now() - t0 < 2000 + 800, "line 10: the editor still answers within 2 s", `${Date.now() - t0} ms`)
   const html = await r.page.content()
   ok(

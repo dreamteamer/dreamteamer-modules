@@ -72,7 +72,7 @@ try {
     if (!/^(http:\/\/(127\.0\.0\.1|localhost)|blob:|data:)/.test(r.url())) outbound.push(r.url())
   })
   await page.reload()
-  await page.waitForSelector(".dt-nav-row", { timeout: 30_000 })
+  await page.waitForSelector("[data-nav-row]", { timeout: 30_000 })
   await page.waitForTimeout(12_000)
 
   // h1 — bundles that are not one self-contained ES module
@@ -82,11 +82,11 @@ try {
     ok(lines.length === 1, `h1: ${m} — exactly one line (the held-out expectation)`, `${lines.length} lines`)
   }
   await go(page, "/content/named-items")
-  const listOk = await page.waitForSelector("table, .dt-table", { timeout: 5000 }).then(
+  const listOk = await page.waitForSelector("table", { timeout: 5000 }).then(
     () => true,
     () => false
   )
-  ok(listOk && !(await page.$(".dt-module-frame")), "h1: the built-in list draws for a broken module's collection")
+  ok(listOk && !(await page.$("[data-module-frame]")), "h1: the built-in list draws for a broken module's collection")
 
   // h2 + h6 — pattern's attempts
   await go(page, "/a/pattern")
@@ -191,7 +191,7 @@ try {
   )
   await go(page, "/content/probe-items")
   await page.waitForTimeout(2500)
-  const cells = await page.$$eval(".dt-module-cell", es => es.slice(0, 5).map(e => e.innerHTML))
+  const cells = await page.$$eval("[data-module-cell]", es => es.slice(0, 5).map(e => e.innerHTML))
   ok(
     cells.length > 0 && cells.every(h => !/\son\w+=|href=|style=|class=/i.test(h)),
     "h4: the list cell view is sanitized — no on*, href, style or class",
@@ -254,7 +254,7 @@ try {
     fs.writeFileSync(settings, text)
     const n = consoleLines.length
     await page.reload()
-    const loaded = await page.waitForSelector(".dt-nav-row", { timeout: 30_000 }).then(
+    const loaded = await page.waitForSelector("[data-nav-row]", { timeout: 30_000 }).then(
       () => true,
       () => false
     )
@@ -282,10 +282,10 @@ try {
   lp.on("console", m => globalThis.__lpLines.push(m.text().slice(0, 200)))
   lp.on("pageerror", e => globalThis.__lpLines.push("PAGEERROR " + String(e).slice(0, 200)))
   await lp.goto(signIn.replace("127.0.0.1", "localhost"))
-  await lp.waitForSelector(".dt-nav-row", { timeout: 30_000 }).catch(() => {})
+  await lp.waitForSelector("[data-nav-row]", { timeout: 30_000 }).catch(() => {})
   fs.writeFileSync(settings, JSON.stringify({ "dreamteamer.moduleApps": GRANT }))
   await lp.reload()
-  await lp.waitForSelector(".dt-nav-row", { timeout: 30_000 }).catch(() => {})
+  await lp.waitForSelector("[data-nav-row]", { timeout: 30_000 }).catch(() => {})
   await lp.waitForTimeout(12_000)
   await lp.evaluate(() => {
     location.hash = "/a/pattern"

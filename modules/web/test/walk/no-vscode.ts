@@ -65,8 +65,8 @@ try {
   const errors = []
   page.on("pageerror", e => errors.push(String(e)))
   await page.goto(url)
-  await page.waitForSelector(".dt-nav-row", { timeout: 30_000 })
-  const rows = await page.$$eval(".dt-nav-row .dt-nav-label", e => e.map(x => x.textContent.trim()))
+  await page.waitForSelector("[data-nav-row]", { timeout: 30_000 })
+  const rows = await page.$$eval("[data-nav-row] [data-nav-label]", e => e.map(x => x.textContent.trim()))
   ok(rows.includes("Projects") && rows.includes("Layers"), "the nav draws, with its Layers folder", rows.join(" · "))
   await go(page, "/content/projects")
   const seen = await page

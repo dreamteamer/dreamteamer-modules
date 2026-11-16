@@ -1,10 +1,12 @@
 /*
- * THE RULES FOR DOM THE APP DOES NOT RENDER — what a library draws (Leaflet's map, React Flow's canvas, CodeMirror's
- * editor) and the app restyles in its tokens. Utilities cannot reach it: the library builds those elements itself,
- * and its own stylesheet is unlayered, so it outranks any utility. Everything the app renders is styled in place
- * with Tailwind (app.css); this file holds only these bridges, each hooked on a class the app hands the library.
+ * THE RULES FOR DOM THE APP DOES NOT RENDER — what a library draws (Leaflet's map, React Flow's canvas) and the app
+ * restyles in its tokens. Utilities cannot reach it: the library builds those elements itself, and its own
+ * stylesheet is unlayered, so it outranks any utility. Everything the app renders is styled in place with Tailwind
+ * (app.css); this file holds only these bridges, each hooked on a class the app hands the library. (CodeMirror is
+ * themed in code: edits/EditMarkdownBody.tsx and lib/editor-preview.ts.)
  *
- * Unlayered, and imported where ui.css was, so the order against the libraries' stylesheets is the one it had.
+ * Unlayered, and imported by index.ts before any component, so a library's own stylesheet (imported by the component
+ * that uses it) comes after it: where a selector here ties with the library's, the library's wins, as it always did.
  */
 
 /* ---- the map (lists/ListMap.tsx): Leaflet's circle markers ---------------------------------------------------- */

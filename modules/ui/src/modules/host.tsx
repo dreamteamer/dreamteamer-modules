@@ -416,7 +416,7 @@ function ModuleFrame({ module, kind, defId, collection, frameProps, listState, o
           {stopped}
         </div>
       )}
-      <div ref={host} className={cx("[&_iframe]:[color-scheme:normal]", fills && "flex-1 min-h-0")} />
+      <div ref={host} className={cx("[&_iframe]:[color-scheme:normal]", fills && "flex-1 min-h-0")} data-module-frame />
     </div>
   )
 }
@@ -478,6 +478,7 @@ function fieldProxy(module: string, kind: "edit" | "view", defId: string): Compo
       return (
         <span
           className="align-bottom"
+          data-module-cell
           style={{ contain: "paint", overflow: "hidden", display: "inline-block", maxWidth: "100%" }}
           dangerouslySetInnerHTML={{ __html: html }}
         />

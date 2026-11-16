@@ -36,7 +36,8 @@ import type { ListProps } from "../registry/props.ts"
 import { listEmpty } from "../styles/classes.ts"
 
 /** Entity node size has to be known BEFORE the DOM exists — the solver places boxes, not elements. These track the
- *  entity node's row padding and font size in ui.css; change them together. A dot is uniform. */
+ *  entity node's row padding and font size in components/diagram/DiagramNodes.tsx; change them together. A dot is
+ *  uniform. */
 const HEAD_H = 30
 const ROW_H = 23
 const NODE_W = 232

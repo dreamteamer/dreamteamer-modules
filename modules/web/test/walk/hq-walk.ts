@@ -36,7 +36,7 @@ try {
   const { page, errors } = await signedIn(b, s.url)
   console.log(`  the nav drew in ${Date.now() - t0} ms`)
   const nav = await page.evaluate(async () => (await fetch("/api/nav")).json())
-  const drawn = async () => page.$$eval(".dt-nav-row .dt-nav-label", e => e.map(x => x.textContent.trim()))
+  const drawn = async () => page.$$eval("[data-nav-row] [data-nav-label]", e => e.map(x => x.textContent.trim()))
   const top = nav.flatMap(n => (n.kind === "workspace" ? [n, ...(n.children ?? [])] : [n])).map(n => n.label)
   const rows = await drawn()
   ok(
@@ -51,7 +51,7 @@ try {
     .filter(n => (n.children ?? []).length && !n.route)
   let foldersOk = 0
   for (const folder of folders) {
-    const row = page.locator(".dt-nav-row", { hasText: folder.label }).first()
+    const row = page.locator("[data-nav-row]", { hasText: folder.label }).first()
     await row.click()
     await page.waitForTimeout(200)
     const now = await drawn()
@@ -77,10 +77,10 @@ try {
   if (list) {
     await go(page, list.route)
     const rowsDrawn = await page
-      .waitForSelector("tbody tr, .dt-card", { timeout: 15_000 })
+      .waitForSelector("tbody tr, [data-record-card]", { timeout: 15_000 })
       .then(() => page.waitForTimeout(1000))
       .then(
-        () => page.$$eval("tbody tr, .dt-card", e => e.length),
+        () => page.$$eval("tbody tr, [data-record-card]", e => e.length),
         () => 0
       )
     ok(rowsDrawn > 0, "the list renders its records", `${rowsDrawn} rows`)
@@ -92,7 +92,7 @@ try {
     const first = (Array.isArray(recs) ? recs : (recs.records ?? []))[0]
     if (first) {
       await go(page, `/content/${contentOf(list)}/${first.id}`)
-      const header = await page.waitForSelector(".dt-page-header, header", { timeout: 15_000 }).then(
+      const header = await page.waitForSelector("header", { timeout: 15_000 }).then(
         e => e.textContent(),
         () => ""
       )
@@ -103,10 +103,7 @@ try {
   if (board) {
     await go(page, board.route)
     await page.waitForTimeout(1500)
-    const lanes = await page.$$eval(
-      '.dt-kanban-lane, [class*="kanban"] [class*="lane"], [class*="column"]',
-      e => e.length
-    )
+    const lanes = await page.$$eval("[data-kanban-column]", e => e.length)
     ok(lanes > 0, "a board renders its lanes", `${board.label} → ${board.route} · ${lanes} lane elements`)
     await page.screenshot({ path: shot("hq-walk-board") })
   } else console.log("  (the nav names no board)")

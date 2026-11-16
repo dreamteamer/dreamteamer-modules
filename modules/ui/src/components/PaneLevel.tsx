@@ -47,6 +47,7 @@ export function PaneLevel() {
           "aria-expanded:bg-bg-hover data-[level=admin]:text-warning data-[level=admin]:enabled:hover:text-warning"
         )}
         data-level={level}
+        data-pane-level
         title={`Level: ${levelWord(level)}${notice ? ` — ${notice}` : ""}`}
         aria-label={`Level: ${levelWord(level)}`}
         aria-haspopup="menu"

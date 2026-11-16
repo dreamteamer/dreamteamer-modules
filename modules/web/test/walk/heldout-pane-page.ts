@@ -88,7 +88,7 @@ const fresh = async (url, viewport = { width: 1200, height: 800 }) => {
   watch(page)
   const res = await page.goto(url)
   if (!res || res.status() !== 200) throw new Error(`sign-in answered ${res?.status()}`)
-  await page.waitForSelector(".dt-nav-row", { timeout: 30_000 })
+  await page.waitForSelector("[data-nav-row]", { timeout: 30_000 })
   return { context, page }
 }
 
@@ -132,7 +132,7 @@ try {
     // the sentence must still be there 3 s later (it does not flicker away, and a click never brings the view back).
     if (!(await text(page)).includes(SIGNED_OUT))
       await page
-        .locator(".dt-nav-row")
+        .locator("[data-nav-row]")
         .nth(2)
         .click({ timeout: 5000 })
         .catch(e => info(`step 1: the click did not land (${String(e.message).split("\n")[0]})`))
@@ -167,7 +167,7 @@ try {
     await page.waitForTimeout(500)
     if (!(await text(page)).includes(SIGNED_OUT))
       await page
-        .locator(".dt-nav-row")
+        .locator("[data-nav-row]")
         .nth(1)
         .click({ timeout: 5000 })
         .catch(e => info(`step 2: the click did not land (${String(e.message).split("\n")[0]})`))
@@ -205,7 +205,7 @@ try {
   // ---- step 3: the switcher with no other workspace ----------------------------------------------------------
   {
     const { context, page } = await fresh(await s.signInUrl())
-    await page.click(".dt-pane-switch")
+    await page.click("[data-pane-switch]")
     await page.waitForTimeout(800)
     const menu = await page.evaluate(() => {
       const m = document.querySelector(".dt-pane-switch__menu")
@@ -235,7 +235,7 @@ try {
     ok(Boolean(url), "step 4: dt web open --admin", up.stdout.trim().split("\n").join(" · "))
     const { context, page } = await fresh(url, { width: 320, height: 640 })
     await page.waitForTimeout(800)
-    await page.click(".dt-pane-level")
+    await page.click("[data-pane-level]")
     await page.waitForTimeout(600)
     const m = await page.evaluate(() => {
       const r = sel => {
@@ -282,14 +282,14 @@ try {
       }
       return {
         reach: {
-          chip: top(".dt-pane-level"),
+          chip: top("[data-pane-level]"),
           menu: top(".dt-pane-level__menu button") || top(".dt-pane-level__menu .dt-pane-menu__hint"),
         },
-        clip: { chip: clipped(".dt-pane-level"), menu: clipped(".dt-pane-level__menu") },
+        clip: { chip: clipped("[data-pane-level]"), menu: clipped(".dt-pane-level__menu") },
         vw: window.innerWidth,
         docSW: document.documentElement.scrollWidth,
         docCW: document.documentElement.clientWidth,
-        chip: r(".dt-pane-level"),
+        chip: r("[data-pane-level]"),
         menu: r(".dt-pane-level__menu"),
         name: r(".dt-pane-switch__name"),
         notice: r(".dt-pane-level__menu .dt-pane-menu__notice"),
@@ -346,7 +346,7 @@ try {
     // clickable = a click opens the switcher's menu, inside the viewport, with the current workspace checked.
     const switcher = async state => {
       const v = await page.evaluate(() => {
-        const btn = document.querySelector(".dt-pane-switch")
+        const btn = document.querySelector("[data-pane-switch]")
         if (!btn) return null
         const b = btn.getBoundingClientRect()
         const at = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2)
@@ -386,7 +386,7 @@ try {
         JSON.stringify(v && { nameW: v.nameW, chevronW: v.chevronW, chevronInside: v.chevronInside })
       )
       if (!v?.topmost) return
-      await page.click(".dt-pane-switch")
+      await page.click("[data-pane-switch]")
       const opened = await page
         .waitForSelector('.dt-pane-switch__menu [aria-checked="true"]', { timeout: 10_000 })
         .then(
@@ -419,9 +419,9 @@ try {
     await page.mouse.click(250, 600)
     await page.waitForTimeout(300)
     await switcher("locked")
-    await page.click(".dt-nav-lock")
+    await page.click("[data-nav-lock]")
     const unlocked = await page
-      .waitForFunction(() => document.querySelector(".dt-nav-lock")?.getAttribute("aria-pressed") === "true", null, {
+      .waitForFunction(() => document.querySelector("[data-nav-lock]")?.getAttribute("aria-pressed") === "true", null, {
         timeout: 5_000,
       })
       .then(
