@@ -22,7 +22,7 @@ import { createServer, type Plugin } from "vite"
 import react from "@vitejs/plugin-react"
 import tailwindcss from "@tailwindcss/vite"
 import { makeFixture } from "../modules/protocol/lib/contract/fixture.ts"
-import { createHandler } from "../modules/protocol/src/handler.ts"
+import { createHandler } from "../modules/protocol/src/createHandler.ts"
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 const PROTOCOL_SRC = path.join(REPO, "modules", "protocol", "src")
