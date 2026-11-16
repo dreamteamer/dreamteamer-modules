@@ -18,8 +18,14 @@ the workspace the node entry hands in (`{records: [...]}`, plan Revisions entry 
 
 What a label is: the developer's answers (`label`) make each heard label GOLD — its majority speaker, its
 purity (the share of heard windows that speaker holds). A label heard as mixed (purity under 0.80), or
-mostly `x`, is no trial. SILVER labels are unheard hand maps in `previous_speakers` that pass checks 4 and
-5: printed apart, never counted.
+mostly `x`, is no trial. A label whose labelling was interrupted before all its windows were answered is
+`unfinished`: no purity, no trial, no teaching, and the output names the recording (`label <record>`
+resumes it). SILVER labels are unheard hand maps in `previous_speakers` that pass checks 4 and 5: printed
+apart, never counted. A name the replay writes on a label nobody heard (mostly `x`, unfinished, never
+labelled) is neither right nor wrong: it is left out of n and listed with its record and label.
+
+The deliberately mixed sets that decide `split_weak` give the second voice a fifth of the windows — check
+5's line and acceptance line 8's; sets at 30% are printed beside them as a second look and decide nothing.
 
 The judged recordings (folds) are the labelled recordings of two or more labels, except `--pilot`; the
 solo memo and the pilot still teach prints and give trials in every fold. For each fold R:
@@ -59,7 +65,8 @@ from voiceprints import signatures as vp_signatures
 from voiceprints import store as vp_store
 
 PURE = 0.80              # a heard label whose majority speaker holds less than this share is mixed
-MIXED_SHARE = 0.30       # the second voice's share in a deliberately mixed set
+MIXED_SHARE = (1, 5)           # the second voice's share in a deliberately mixed set: check 5's fifth
+SECOND_LOOK_SHARE = (3, 10)    # a second look at 30%, printed, never deciding
 SMALL_GROUP = naming.SMALL_GROUP
 TARGETS = (("room", 2), ("three or more", 4), ("1:1", 8))
 PLAN_SIZE = sum(n for _, n in TARGETS)
@@ -77,11 +84,22 @@ class Usage(Exception):
 
 
 # -- gold -----------------------------------------------------------------------------------------------
+def finished(answers):
+    """The labels of a labels file that were labelled to the end: every label of a `complete` file, else
+    those marked `complete` themselves (`label` marks a label once every window chosen for it is answered)."""
+    labels = (answers or {}).get("labels") or {}
+    if (answers or {}).get("complete") is True:
+        return set(labels)
+    return {lab for lab, e in labels.items() if isinstance(e, dict) and e.get("complete") is True}
+
+
 def gold(answers):
     """`{label: {speaker, purity, heard, unsure, kind}}` from a labels file. `kind` is `pure` (the
-    majority speaker holds at least PURE of the heard windows), `mixed`, or `unheard` (mostly `x`, or
-    nothing heard): only `pure` is a trial."""
+    majority speaker holds at least PURE of the heard windows), `mixed`, `unheard` (mostly `x`, or
+    nothing heard), or `unfinished` (its labelling was interrupted: no speaker, no purity): only `pure` is
+    a trial, and only `pure` and `mixed` teach."""
     out = {}
+    done = finished(answers)
     for lab, entry in sorted(((answers or {}).get("labels") or {}).items()):
         said = [w.get("answer") for w in (entry or {}).get("windows") or [] if w.get("answer")]
         heard = [a for a in said if a != "x"]
@@ -89,6 +107,10 @@ def gold(answers):
         for a in heard:
             counts[a] = counts.get(a, 0) + 1
         top = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
+        if lab not in done:
+            out[lab] = {"speaker": None, "heard": len(heard), "unsure": len(said) - len(heard), "purity": None,
+                        "kind": "unfinished"}
+            continue
         g = {"speaker": top[0][0] if top else None, "heard": len(heard), "unsure": len(said) - len(heard),
              "purity": (top[0][1] / len(heard)) if heard else 0.0}
         if not heard or len(heard) * 2 < len(said):
@@ -136,9 +158,11 @@ def load(ctx_all, store, *, read, audio_key, out=lambda s: None):
             out(f"  {rctx.get('record')}: left out — the record cannot be read ({e})")
             continue
         answers = store.read_json(vp_label.labels_path(store, audio, diar))
+        g = gold(answers) if answers else {}
         recs.append({"ctx": rctx, "ref": rctx.get("record"), "audio": audio, "diar": diar,
                      "date": _date_of(fm, rctx), "t": (fm or {}).get("transcription") or {},
-                     "answers": answers, "gold": gold(answers) if answers else {}})
+                     "answers": answers, "gold": g,
+                     "unfinished": sorted((lab for lab, x in g.items() if x["kind"] == "unfinished"), key=_label_key)})
     return recs
 
 
@@ -372,6 +396,24 @@ def _spread_take(vs, k):
     return [vs[int(round(i * (len(vs) - 1) / (k - 1)))] for i in range(k)]
 
 
+def mixed_set(wa, wb, share):
+    """A deliberately mixed set: windows of one heard-pure label `wa` with windows of another speaker's
+    `wb` making up EXACTLY `share` (`(num, den)`) of the set — as many windows as both labels allow, each
+    side spread over its label. None when the labels are too short for that share (at a fifth: four
+    windows of `wa` and one of `wb`)."""
+    num, den = share
+    k = min(len(wb) // num, len(wa) // (den - num))
+    if k < 1:
+        return None
+    return _spread_take(wa, k * (den - num)) + _spread_take(wb, k * num)
+
+
+def _two_group_cos(vs):
+    """Check 5 on a set: the two-group cosine, or 1.0 (passing) when the smaller group is under a fifth."""
+    big, small, share, _ = vec.two_means(vs)
+    return vec.cos(big, small) if share >= SMALL_GROUP else 1.0
+
+
 class _Model:
     """Everything one speaker model's evaluation computes once: centroids, the pure labels by person, and
     per recording the label pairs, the pure labels' two-group cosines and the mixed sets."""
@@ -381,7 +423,7 @@ class _Model:
         self.recs = [r for r in recs if r["audio"] in sigs and r["answers"]]
         self.sigs = sigs
         self.cent, self.pure, self.by_person = {}, [], {}
-        self.cross, self.split, self.mixed = {}, {}, {}
+        self.cross, self.split, self.mixed, self.mixed_second = {}, {}, {}, {}
         for r in self.recs:
             sig = sigs[r["audio"]]
             removed = set(sig.get("removed") or [])
@@ -403,7 +445,7 @@ class _Model:
                 if len(vs) >= 2:
                     big, small, _, _ = vec.two_means(vs)
                     self.split[r["audio"]].append(vec.cos(big, small))
-            self.cross[r["audio"]], self.mixed[r["audio"]] = [], []
+            self.cross[r["audio"]], self.mixed[r["audio"]], self.mixed_second[r["audio"]] = [], [], []
             for i in range(len(labs)):
                 for j in range(i + 1, len(labs)):
                     a, b = labs[i], labs[j]
@@ -411,11 +453,10 @@ class _Model:
                         continue
                     self.cross[r["audio"]].append(vec.cos(self.cent[(r["audio"], a)], self.cent[(r["audio"], b)]))
                     wa, wb = _windows(sig, a), _windows(sig, b)
-                    if len(wa) < 2 or not wb:
-                        continue
-                    nb = max(1, int(round(len(wa) * MIXED_SHARE / (1.0 - MIXED_SHARE))))
-                    big, small, share, _ = vec.two_means(wa + _spread_take(wb, nb))
-                    self.mixed[r["audio"]].append(vec.cos(big, small) if share >= SMALL_GROUP else 1.0)
+                    for share, into in ((MIXED_SHARE, self.mixed), (SECOND_LOOK_SHARE, self.mixed_second)):
+                        s = mixed_set(wa, wb, share)
+                        if s is not None:
+                            into[r["audio"]].append(_two_group_cos(s))
 
     def trials(self, exclude):
         """The gold trials over the recordings not in `exclude`, each scored against the speaker's (or the
@@ -442,11 +483,13 @@ class _Model:
                         C.append(s)
         pick = lambda d: [x for a, xs in d.items() if a not in exclude for x in xs]
         return {"genuine": G, "closed": C, "open": O, "behind": behind, "recordings": len(used),
-                "cross": pick(self.cross), "split": pick(self.split), "mixed": pick(self.mixed)}
+                "cross": pick(self.cross), "split": pick(self.split), "mixed": pick(self.mixed),
+                "mixed_second": pick(self.mixed_second)}
 
     def fit(self, exclude):
         t = self.trials(exclude)
-        return t, calibration.fit(t["genuine"], t["closed"], t["open"], t["cross"], t["split"], t["mixed"])
+        return t, calibration.fit(t["genuine"], t["closed"], t["open"], t["cross"], t["split"], t["mixed"],
+                                  t["mixed_second"])
 
 
 def _confirmations(m, exclude):
@@ -499,19 +542,25 @@ def _replay(tmp, m, exclude, th, known):
     return prints, audios
 
 
+UNHEARD_WHY = {"unheard": "heard mostly as unsure", "unfinished": "labelling unfinished", None: "never labelled"}
+
+
 def _tally(names, g):
-    written = wrong = unchecked = 0
-    wrongs = []
-    for lab, n in sorted(names.items()):
+    """`(written, wrong, unheard, wrongs)`: names on heard labels (pure or mixed) are written and checked;
+    a name on a label nobody heard is neither right nor wrong — `unheard` lists them as `(label, person,
+    why)`, left out of written."""
+    written = wrong = 0
+    wrongs, unheard = [], []
+    for lab, n in sorted(names.items(), key=lambda kv: _label_key(kv[0])):
         h = g.get(lab)
-        if h is None or h["kind"] == "unheard":
-            unchecked += 1
+        if h is None or h["kind"] not in ("pure", "mixed"):
+            unheard.append((lab, n["person"], UNHEARD_WHY.get(h["kind"] if h else None, "never labelled")))
             continue
         written += 1
         if h["kind"] == "mixed" or n["person"] != h["speaker"]:
             wrong += 1
             wrongs.append((lab, n["person"], h["speaker"], h["kind"]))
-    return written, wrong, unchecked, wrongs
+    return written, wrong, unheard, wrongs
 
 
 def evaluate_model(pin, recs, sigs, *, pilot=None, known=None, out=lambda s: None):
@@ -526,7 +575,7 @@ def evaluate_model(pin, recs, sigs, *, pilot=None, known=None, out=lambda s: Non
            "evidence": {"genuine": len(t_all["genuine"]), "impostor": len(t_all["open"]),
                         "closed": len(t_all["closed"]), "recordings": t_all["recordings"], "people": len(m.by_person)},
            "scores": {"genuine": t_all["genuine"], "closed": t_all["closed"], "open": t_all["open"]},
-           "fit": fit_all, "folds": [], "written": 0, "wrong": 0, "unchecked": 0, "judged": 0, "eligible": 0,
+           "fit": fit_all, "folds": [], "written": 0, "wrong": 0, "unheard": [], "judged": 0, "eligible": 0,
            "named_eligible": 0, "open_written": 0, "open_wrong": 0, "enrolled_mixed": 0, "thin": 0,
            "wrongs": [], "silver": [], "purity": [], "check4": {}, "extras": [r["ref"] for r in m.recs if r not in folds_of],
            "gold_labels": [(r["ref"], lab, g["kind"]) for r in m.recs for lab, g in r["gold"].items()]}
@@ -559,7 +608,7 @@ def evaluate_model(pin, recs, sigs, *, pilot=None, known=None, out=lambda s: Non
             fold = {"n": i, "record": R["ref"], "recordings": t["recordings"], "genuine": len(t["genuine"]),
                     "impostor": len(t["open"]), "closed": len(t["closed"]), "thin": len(t["genuine"]) < calibration.THIN_BELOW,
                     "trial_audios": set(t["behind"]), "naming_audios": set(), "fit_fails": f.get("fails"),
-                    "written": 0, "wrong": 0, "judged": 0, "eligible": 0, "named_eligible": 0,
+                    "written": 0, "wrong": 0, "unheard": 0, "judged": 0, "eligible": 0, "named_eligible": 0,
                     "open_written": 0, "open_wrong": 0, "enrolled_mixed": 0}
             res["thin"] += fold["thin"]
             pure_here = [lab for lab, g in R["gold"].items() if g["kind"] == "pure"]
@@ -576,8 +625,9 @@ def evaluate_model(pin, recs, sigs, *, pilot=None, known=None, out=lambda s: Non
                 sig = m.sigs[R["audio"]]
                 d = naming.decide(sig, R["ctx"], prints, {}, calib)
                 w, wr, un, wrongs = _tally(d["names"], R["gold"])
-                fold.update(written=w, wrong=wr)
-                res["unchecked"] += un
+                fold.update(written=w, wrong=wr, unheard=len(un))
+                res["unheard"].extend({"fold": i, "record": R["ref"], "label": lab, "person": p, "set": "closed",
+                                       "why": why} for lab, p, why in un)
                 res["wrongs"].extend((R["ref"],) + x for x in wrongs)
                 trusted = [lab for lab in pure_here if (prints.get(R["gold"][lab]["speaker"]) or {}).get("trust") == "trusted"]
                 fold["eligible"] = len(trusted)
@@ -587,8 +637,10 @@ def evaluate_model(pin, recs, sigs, *, pilot=None, known=None, out=lambda s: Non
                                 candidates=[{"person": p, "name": known.get(p) or p,
                                              "kind": "user" if p.startswith("users/") else "contact"} for p in sorted(prints)])
                 do = naming.decide(sig, open_ctx, prints, {}, calib)
-                ow, owr, _, _ = _tally(do["names"], R["gold"])
+                ow, owr, oun, _ = _tally(do["names"], R["gold"])
                 fold.update(open_written=ow, open_wrong=owr)
+                res["unheard"].extend({"fold": i, "record": R["ref"], "label": lab, "person": p, "set": "open",
+                                       "why": why} for lab, p, why in oun)
             for k in ("written", "wrong", "judged", "eligible", "named_eligible", "open_written", "open_wrong",
                       "enrolled_mixed"):
                 res[k] += fold[k]
@@ -660,7 +712,7 @@ def run(ctx_all, store, pins, *, read, audio_key, compute=None, only=None, pilot
             sigs, computed[mid] = _signatures(pins[mid], labelled, store, compute, out)
             per_model[mid] = evaluate_model(pins[mid], labelled, sigs, pilot=pilot, known=known, out=lambda s: None)
     return {"recordings": len(recs), "labelled": len(labelled), "per_model": per_model, "computed": computed,
-            "pilot": pilot}
+            "pilot": pilot, "unfinished": [(r["ref"], r["unfinished"]) for r in labelled if r["unfinished"]]}
 
 
 def _dist(name, xs):
@@ -679,12 +731,21 @@ def render(result):
     """The printed evaluation: per model, purity per label, check 4, the score distributions, the fit on
     all recordings, one line per fold, the replay's totals and the silver second look; then the verdict."""
     lines = [f"evaluate-speakers — {result['labelled']} labelled of {result['recordings']} diarised recordings"]
+    if result.get("unfinished"):
+        lines.append("labelling unfinished — these labels give no purity, no trial and no teaching until labelled to "
+                     "the end:")
+        for ref, labs in result["unfinished"]:
+            lines.append(f"  {ref}: {', '.join(_display(l) for l in labs)} — `label {ref}` resumes it")
     for mid, r in result["per_model"].items():
         lines.append(f"model {mid}")
         lines.append(f"  signatures: {result['computed'].get(mid, 0)} computed now; judged {len(r['folds'])} recordings, "
                      f"{len(r['extras'])} apart ({', '.join(r['extras']) or 'none'})")
         lines.append("  purity per label (the share of heard windows its majority speaker holds):")
         for p in r["purity"]:
+            if p["kind"] == "unfinished":
+                lines.append(f"    {p['record']} {_display(p['label'])}: labelling unfinished ({p['heard']} heard windows) "
+                             f"— no purity, no trial; `label {p['record']}` resumes it")
+                continue
             what = {"pure": "pure", "mixed": "heard as mixed — no trial", "unheard": "mostly unsure — no trial"}[p["kind"]]
             lines.append(f"    {p['record']} {_display(p['label'])}: purity {p['purity']:.2f} of {p['heard']} heard windows "
                          f"— {what}" + (f", {p['speaker']}" if p["speaker"] and p["kind"] != "unheard" else "")
@@ -706,8 +767,10 @@ def render(result):
         else:
             lines.append("  thresholds on all labelled recordings (the ones that ship): "
                          + " · ".join(f"{k} {f[k]:.4f}" for k in calibration.THRESHOLDS)
-                         + f"; mixed sets passing split: {f['mixed']['pass']} of {f['mixed']['sets']}"
-                         + (" — the embedding check is WEAK for this model" if f["split_weak"] else ""))
+                         + f"; mixed sets passing split: {f['mixed']['pass']} of {f['mixed']['sets']} with the second "
+                         f"voice at a fifth of the windows"
+                         + (" — the embedding check is WEAK for this model" if f["split_weak"] else "")
+                         + f" (at 30%, a second look: {f['mixed_second']['pass']} of {f['mixed_second']['sets']})")
         lines.append("  folds — each recording judged by prints and thresholds that never saw it:")
         for fo in r["folds"]:
             head = (f"    fold {fo['n']} · {fo['record']}: fitted on {fo['recordings']} labelled recordings, "
@@ -725,10 +788,18 @@ def render(result):
         lines.append(f"  replay: {r['written']} names written, {r['wrong']} wrong, over {len(r['folds'])} folds; named "
                      f"{r['named_eligible']} of {r['eligible']} labels whose speaker had a trusted print; enrolled from "
                      f"{r['enrolled_mixed']} labels heard as mixed; open set {r['open_written']} names, {r['open_wrong']} "
-                     f"wrong; thin folds {r['thin']}"
-                     + (f"; {r['unchecked']} names on labels nobody heard (not counted)" if r["unchecked"] else ""))
+                     f"wrong; thin folds {r['thin']}")
         for rec, lab, said, heard, kind in r["wrongs"]:
             lines.append(f"    wrong: {rec} {_display(lab)} named {said}, heard {heard}" + (" (heard as mixed)" if kind == "mixed" else ""))
+        if r["unheard"]:
+            closed = sum(1 for u in r["unheard"] if u["set"] == "closed")
+            lines.append(f"  names written on labels nobody heard — {closed} closed set (not in n: neither right nor "
+                         f"wrong can be said of them), {len(r['unheard']) - closed} open set; listen to each, then run "
+                         f"this again:")
+            for u in r["unheard"]:
+                lines.append(f"    fold {u['fold']} · {u['record']} {_display(u['label'])} ({u['why']}): named {u['person']}"
+                             f"{' (open set)' if u['set'] == 'open' else ''} — listen with "
+                             f"`label {u['record']} --only {u['label']}`")
         lines.append(f"  silver (unheard hand maps passing checks 4 and 5 — a second look, never counted): {len(r['silver'])}")
         for s in r["silver"]:
             own = "no print" if s["own"] is None else f"{s['own']:.3f}"

@@ -166,7 +166,7 @@ class World:
             self.truth[(rid, lab)] = who
         if label_it:
             data = {"version": 1, "audio": audio, "diarization": diar, "record": {"workspace": WS, "record": ref_of(rid)},
-                    "candidates": people, "labels": {}}
+                    "candidates": people, "labels": {}, "complete": True}
             for lab, who in labels.items():
                 said = (answers or {}).get(lab) or [who] * 6
                 data["labels"][lab] = {"windows": [{"start": 10.0 * i, "end": 10.0 * i + 6.0, "answer": a}
@@ -268,6 +268,19 @@ class Fit(unittest.TestCase):
         self.assertEqual(f["mixed"], {"pass": 1, "sets": 5})
         self.assertFalse(f["split_weak"])
 
+    def test_split_weak_is_decided_on_the_fifth_and_the_thirty_percent_sets_are_a_second_look(self):
+        # review finding mixed-sets-at-thirty-percent-not-the-fifth-line-8-names: at 30% every set separates,
+        # at a fifth two of five pass `split` — the check is weak, whatever the 30% sets say
+        f = calibration.fit(GEN, IMP_C, IMP_O, [0.1], [0.80, 0.85, 0.90], mixed_split=[0.90, 0.95, 0.30, 0.40, 0.50],
+                            mixed_second=[0.10, 0.20, 0.30, 0.40, 0.50])
+        self.assertTrue(f["split_weak"])
+        self.assertEqual(f["mixed"], {"pass": 2, "sets": 5})
+        self.assertEqual(f["mixed_second"], {"pass": 0, "sets": 5})
+        f = calibration.fit(GEN, IMP_C, IMP_O, [0.1], [0.80, 0.85, 0.90], mixed_split=[0.10, 0.20, 0.30, 0.40, 0.50],
+                            mixed_second=[0.90, 0.95, 0.96, 0.97, 0.98])
+        self.assertFalse(f["split_weak"], "the 30% sets never decide")
+        self.assertEqual(f["mixed_second"], {"pass": 5, "sets": 5})
+
 
 # ---------------------------------------------------------------------------------------------------------
 # calibration: the decision rule (rules 1, 3, 4, 5) and the verdict line
@@ -354,6 +367,16 @@ class Verdict(unittest.TestCase):
         self.assertIn("13 labelled recordings", v)
         self.assertIn("18–19 genuine", v)
         self.assertIn("the judged recording was in none of them", v)
+
+    def test_beside_n_the_names_on_labels_nobody_heard_counted_apart(self):
+        # review finding names-on-unheard-labels-neither-counted-nor-listed: not in n, but printed beside it
+        r = dict(result(written=12), unheard=[{"fold": 3, "record": "meeting-recordings/2026/r03", "label": "speaker_1",
+                                               "person": SAM, "set": "closed", "why": "heard mostly as unsure"}] * 2)
+        v = calibration.verdict({CAMPP: r})
+        self.assertIn("n = 12 names written, 0 wrong", v)
+        self.assertIn("2 more names written on labels nobody heard, not in n", v)
+        self.assertTrue(calibration.qualifies(r)[0], "a name nobody heard is neither right nor wrong")
+        self.assertNotIn("nobody heard", calibration.verdict({CAMPP: result(written=12)}))
 
     def test_the_file_holds_numbers_and_counts_only(self):
         f = calibration.build_file(result(), chosen=True, generated="2026-11-16")
@@ -541,6 +564,65 @@ class LabelSession(Tmp):
         self.assertEqual({w["answer"] for w in data["labels"]["speaker_0"]["windows"]}, {DANA})
         self.assertEqual({w["answer"] for w in data["labels"]["speaker_1"]["windows"]}, {SAM})
 
+    def interrupted(self, after, only=None):
+        """A sitting stopped (Ctrl-C) after `after` answers, all `1`."""
+        answers = ["1"] * after
+
+        def ask(prompt):
+            if not answers:
+                raise KeyboardInterrupt
+            return answers.pop(0)
+
+        with self.assertRaises(KeyboardInterrupt):
+            label.session(self.ctx(), self.store, audio_sha=audio_of("r21"), segments=self.segs(), ask=ask,
+                          play=lambda p: None, cut=lambda a, s, e, d: Path(d).write_bytes(b"RIFF"), out=lambda s: None,
+                          only=only)
+        return json.loads(Path(label.labels_path(self.store, audio_of("r21"), diar_of("r21"))).read_text())
+
+    def test_an_interrupted_sitting_marks_only_the_labels_it_finished(self):
+        # review finding interrupted-label-file-counts-as-gold
+        data = self.interrupted(4)
+        self.assertFalse(data["complete"])
+        self.assertEqual(sum(len(e["windows"]) for e in data["labels"].values()), 4)
+        for lab, e in data["labels"].items():
+            self.assertEqual(e["complete"], len(e["windows"]) == 6, lab)
+        self.assertFalse(any(e["complete"] for e in data["labels"].values()))
+
+    def test_label_again_resumes_an_interrupted_recording_where_it_stopped(self):
+        first = self.interrupted(4)
+        kept = {(lab, w["start"], w["end"], w["answer"]) for lab, e in first["labels"].items() for w in e["windows"]}
+        path, asked, played, cut, shown = self.go(["2"] * 8)
+        self.assertEqual(len(asked), 8, "only the 8 windows not answered yet are played")
+        self.assertTrue(any("resum" in s for s in shown), shown)
+        data = json.loads(Path(path).read_text())
+        self.assertTrue(data["complete"])
+        self.assertTrue(all(e["complete"] for e in data["labels"].values()))
+        now = {(lab, w["start"], w["end"], w["answer"]) for lab, e in data["labels"].items() for w in e["windows"]}
+        self.assertTrue(kept <= now, "the first sitting's answers are kept")
+        self.assertEqual(len(now), 12)
+        self.assertEqual(sorted(len(e["windows"]) for e in data["labels"].values()), [6, 6])
+        self.assertTrue(set((a, b) for _, a, b in cut).isdisjoint({(k[1], k[2]) for k in kept}))
+
+    def test_label_again_on_a_finished_recording_starts_it_over(self):
+        self.go(["1"] * 12)
+        path, asked, _, _, shown = self.go(["2"] * 12)
+        self.assertEqual(len(asked), 12)
+        self.assertTrue(any("start" in s and "over" in s for s in shown), shown)
+        data = json.loads(Path(path).read_text())
+        self.assertEqual({w["answer"] for e in data["labels"].values() for w in e["windows"]}, {SAM})
+
+    def test_only_one_label_of_an_unfinished_recording_leaves_it_unfinished(self):
+        self.interrupted(4)
+        path, asked, *_ = self.go(["2"] * 6, only="speaker_1")
+        data = json.loads(Path(path).read_text())
+        self.assertTrue(data["labels"]["speaker_1"]["complete"])
+        self.assertFalse(data["labels"]["speaker_0"]["complete"])
+        self.assertFalse(data["complete"], "the other label is still unfinished")
+        k = len(data["labels"]["speaker_0"]["windows"])
+        path, asked, *_ = self.go(["1"] * 6)
+        self.assertEqual(len(asked), 6 - k, "label without --only resumes the label left unfinished")
+        self.assertTrue(json.loads(Path(path).read_text())["complete"])
+
     def test_no_player_stops_before_anything_is_written(self):
         shown = []
         code = label.main(["label", "/nonexistent/r21.meeting-recording.md"], ctx=self.ctx(), store=self.store,
@@ -556,12 +638,26 @@ class LabelSession(Tmp):
 class Gold(unittest.TestCase):
     def test_majority_purity_and_what_is_no_trial(self):
         win = lambda said: {"windows": [{"start": 0.0, "end": 6.0, "answer": a} for a in said]}
-        g = evaluate.gold({"labels": {"speaker_0": win([DANA] * 5 + ["x"]), "speaker_1": win([SAM] * 4 + [DANA] * 2),
+        g = evaluate.gold({"complete": True, "labels": {"speaker_0": win([DANA] * 5 + ["x"]), "speaker_1": win([SAM] * 4 + [DANA] * 2),
                                       "speaker_2": win(["x"] * 4 + [SAM] * 2), "speaker_3": win([SAM] * 5 + [TOM])}})
         self.assertEqual((g["speaker_0"]["kind"], g["speaker_0"]["purity"], g["speaker_0"]["speaker"]), ("pure", 1.0, DANA))
         self.assertEqual((g["speaker_1"]["kind"], round(g["speaker_1"]["purity"], 2)), ("mixed", 0.67))
         self.assertEqual(g["speaker_2"]["kind"], "unheard")
         self.assertEqual(g["speaker_3"]["kind"], "pure")
+
+    def test_an_unfinished_labelling_gives_nothing_for_the_labels_it_did_not_finish(self):
+        # review finding interrupted-label-file-counts-as-gold: one heard window of an interrupted sitting is
+        # not a pure label
+        win = lambda said, done: {"windows": [{"start": 0.0, "end": 6.0, "answer": a} for a in said], "complete": done}
+        g = evaluate.gold({"complete": False, "labels": {"speaker_0": win([DANA], False), "speaker_1": win([], False),
+                                                          "speaker_2": win([SAM] * 6, True)}})
+        self.assertEqual((g["speaker_0"]["kind"], g["speaker_0"]["purity"]), ("unfinished", None))
+        self.assertEqual(g["speaker_1"]["kind"], "unfinished")
+        self.assertEqual((g["speaker_2"]["kind"], g["speaker_2"]["speaker"]), ("pure", SAM))
+        # no flag at all is not finished either; a finished file counts every label in it
+        self.assertEqual(evaluate.gold({"labels": {"speaker_0": win([DANA] * 6, None)}})["speaker_0"]["kind"], "unfinished")
+        self.assertEqual(evaluate.gold({"complete": True, "labels": {"speaker_0": {"windows": [
+            {"start": 0.0, "end": 6.0, "answer": DANA}] * 6}}})["speaker_0"]["kind"], "pure")
 
 
 class Plan(Tmp):
@@ -654,6 +750,88 @@ class Evaluation(Tmp):
         self.assertTrue(m["silver"][0]["disagrees"])
         # silver never counts: the guest's unheard label is no gold trial
         self.assertNotIn((ref_of("r12"), "speaker_2"), {(t[0], t[1]) for t in m["gold_labels"]})
+
+    def test_the_deliberately_mixed_sets_give_the_second_voice_a_fifth(self):
+        # review finding mixed-sets-at-thirty-percent-not-the-fifth-line-8-names
+        a, b = label_windows("z", "speaker_0", DANA), label_windows("z", "speaker_1", SAM)
+        for wa, wb in ((a, b), (a[:9], b), (a[:4], b[:1]), (a, b[:3])):
+            s = evaluate.mixed_set(wa, wb, evaluate.MIXED_SHARE)
+            nb = sum(1 for v in s if v in wb)
+            self.assertEqual(5 * nb, len(s), (len(wa), len(wb)))
+        self.assertIsNone(evaluate.mixed_set(a[:3], b, evaluate.MIXED_SHARE), "under four windows no set is a fifth")
+        s = evaluate.mixed_set(a, b, evaluate.SECOND_LOOK_SHARE)
+        self.assertEqual(10 * sum(1 for v in s if v in b), 3 * len(s))
+        made = []
+        real = evaluate.mixed_set
+
+        def spy(wa, wb, share):
+            s = real(wa, wb, share)
+            if s is not None:
+                made.append((share, sum(1 for v in s if v in wb), len(s)))
+            return s
+
+        w = World(self.store, self.root)
+        evaluate.mixed_set = spy
+        try:
+            res, lines = run_world(w)
+        finally:
+            evaluate.mixed_set = real
+        self.assertTrue(made)
+        fifth = [(nb, n) for share, nb, n in made if share == evaluate.MIXED_SHARE]
+        self.assertTrue(fifth and all(5 * nb == n for nb, n in fifth), fifth)
+        f = res["per_model"][CAMPP]["fit"]
+        self.assertEqual(f["mixed"]["sets"], len(fifth), "split_weak is decided on the sets at a fifth")
+        self.assertIn("mixed_second", f)
+        text = "\n".join(lines)
+        self.assertIn(f"mixed sets passing split: {f['mixed']['pass']} of {f['mixed']['sets']} with the second voice "
+                      f"at a fifth of the windows", text)
+        self.assertIn(f"at 30%, a second look: {f['mixed_second']['pass']} of {f['mixed_second']['sets']}", text)
+
+    def test_an_interrupted_labelling_gives_no_trial_and_is_named(self):
+        # review finding interrupted-label-file-counts-as-gold
+        other = store.Store(os.path.join(self.root, "store-base"), exclude_backup=no_exclude)
+        base, _ = run_world(World(other, os.path.join(self.root, "base")))
+        w = World(self.store, self.root)
+        path = w.answers_path("r05")
+        data = json.loads(Path(path).read_text())
+        data["complete"] = False
+        data["labels"]["speaker_0"]["complete"] = True
+        data["labels"]["speaker_1"] = {"windows": data["labels"]["speaker_1"]["windows"][:1], "complete": False}
+        self.store.write_json(path, data)
+        res, lines = run_world(w)
+        m, m0 = res["per_model"][CAMPP], base["per_model"][CAMPP]
+        self.assertIn((ref_of("r05"), "speaker_1", "unfinished"), m["gold_labels"])
+        self.assertIn((ref_of("r05"), "speaker_0", "pure"), m["gold_labels"])
+        self.assertLess(m["evidence"]["genuine"], m0["evidence"]["genuine"], "the one heard window is no trial")
+        self.assertEqual(res["unfinished"], [(ref_of("r05"), ["speaker_1"])])
+        text = "\n".join(lines)
+        self.assertNotIn(f"{ref_of('r05')} Speaker 1: purity", text, "no purity for a label not labelled to the end")
+        self.assertIn(f"{ref_of('r05')} Speaker 1: labelling unfinished", text)
+        self.assertIn(f"`label {ref_of('r05')}` resumes it", text)
+
+    def test_names_written_on_labels_nobody_heard_are_listed_and_left_out_of_n(self):
+        # review finding names-on-unheard-labels-neither-counted-nor-listed
+        w = World(self.store, self.root)
+        path = w.answers_path("r03")
+        data = json.loads(Path(path).read_text())
+        for i, win in enumerate(data["labels"]["speaker_1"]["windows"]):
+            win["answer"] = "x" if i < 4 else SAM          # mostly x: not a trial, not judgeable
+        self.store.write_json(path, data)
+        res, lines = run_world(w)
+        m = res["per_model"][CAMPP]
+        hits = [u for u in m["unheard"] if u["record"] == ref_of("r03") and u["label"] == "speaker_1"]
+        self.assertTrue(hits, m["unheard"])
+        self.assertEqual(hits[0]["why"], "heard mostly as unsure")
+        closed = [u for u in m["unheard"] if u["set"] == "closed"]
+        self.assertEqual(m["written"], sum(f["written"] for f in m["folds"]))
+        fold3 = next(f for f in m["folds"] if f["record"] == ref_of("r03"))
+        self.assertEqual(fold3["unheard"], sum(1 for u in closed if u["record"] == ref_of("r03")))
+        text = "\n".join(lines)
+        self.assertIn(f"{ref_of('r03')} Speaker 1 (heard mostly as unsure): named {hits[0]['person']}", text)
+        self.assertIn(f"`label {ref_of('r03')} --only speaker_1`", text)
+        i = next(i for i, l in enumerate(lines) if l.startswith("verdict:"))
+        self.assertIn(f"{len(closed)} more name{'' if len(closed) == 1 else 's'} written on labels nobody heard, not in n",
+                      "\n".join(lines[i + 1:]))
 
     def test_only_one_model(self):
         w = World(self.store, self.root)

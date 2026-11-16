@@ -146,24 +146,27 @@ def _r(x):
 
 
 # -- rule 2 -------------------------------------------------------------------------------------------
-def fit(genuine, impostor_closed, impostor_open, cross_label, pure_split, mixed_split):
+def fit(genuine, impostor_closed, impostor_open, cross_label, pure_split, mixed_split, mixed_second=()):
     """Rule 2 of design section 13, exactly, for one model on its own scale.
 
     `genuine` are label-against-own-print scores; `impostor_open` every label-against-another-print score
     (the closed-set ones included); `impostor_closed` the subset whose print is an attendee of the label's
     recording; `cross_label` centroid cosines between labels of different heard speakers; `pure_split` the
     two-group cosine of each heard-pure label; `mixed_split` the two-group cosine of each deliberately mixed
-    set (a set whose smaller group is under a fifth counts as passing: check 5 cannot fire on it).
+    set whose second voice holds a fifth of the windows — check 5's line and acceptance line 8's (a set whose
+    smaller group is under a fifth counts as passing: check 5 cannot fire on it); `mixed_second` the same
+    for sets at 30%, a second look that is counted and printed and decides nothing.
 
     - accept: the highest closed-set impostor plus one (sample) standard deviation of the impostor
       scores; the model FAILS when that is above the 10th percentile of genuine scores;
     - accept_open: the same with the open-set impostors;
     - margin: half the gap between the median genuine and the 95th percentile of impostors, at least 0.05;
     - suggest: the 95th percentile of impostors; same: the 95th percentile of `cross_label`;
-    - split: the 5th percentile of `pure_split`; `split_weak` when more than one in five mixed sets pass
-      (their cosine reaches `split`).
+    - split: the 5th percentile of `pure_split`; `split_weak` when more than one in five of the mixed sets
+      at a fifth pass (their cosine reaches `split`).
 
-    Returns the six thresholds plus `split_weak` and `mixed: {pass, sets}`, or `{fails: reason}`."""
+    Returns the six thresholds plus `split_weak`, `mixed: {pass, sets}` and `mixed_second: {pass, sets}`,
+    or `{fails: reason}`."""
     if not genuine:
         return {"fails": "no genuine trial"}
     if not impostor_closed:
@@ -182,10 +185,12 @@ def fit(genuine, impostor_closed, impostor_open, cross_label, pure_split, mixed_
     split = percentile(pure_split, 5)
     passing = sum(1 for x in mixed_split if x >= split)
     sets = len(mixed_split)
+    second = {"pass": sum(1 for x in mixed_second if x >= split), "sets": len(mixed_second)}
     return {"accept": _r(accept), "accept_open": _r(max(impostor_open) + sd),
             "margin": _r(max(MIN_MARGIN, (percentile(genuine, 50) - p95) / 2.0)),
             "same": _r(percentile(cross_label, 95)), "split": _r(split), "suggest": _r(p95),
-            "split_weak": bool(sets) and passing / sets > WEAK_SHARE, "mixed": {"pass": passing, "sets": sets}}
+            "split_weak": bool(sets) and passing / sets > WEAK_SHARE, "mixed": {"pass": passing, "sets": sets},
+            "mixed_second": second}
 
 
 def thresholds(f):
@@ -283,6 +288,12 @@ def beside(mid, r):
                 f"{n} says only that the error rate is probably below {300.0 / n:.0f}%")
     else:
         head = f"{mid}: n = 0 names written, {wrong} wrong — no error bound"
+    # a name on a label nobody heard (mostly `x`, unfinished, never labelled) is neither right nor wrong: it
+    # is not in n, whose bound speaks only of names checked against what a person heard; it is counted here
+    unheard = sum(1 for u in r.get("unheard") or [] if u.get("set") == "closed")
+    if unheard:
+        head += (f"; {unheard} more name{'' if unheard == 1 else 's'} written on labels nobody heard, not in n "
+                 f"(listed above: listen to each)")
     folds = r.get("folds") or []
     if folds:
         tail = (f"thresholds fitted per fold on {_span([f['recordings'] for f in folds])} labelled recordings and "

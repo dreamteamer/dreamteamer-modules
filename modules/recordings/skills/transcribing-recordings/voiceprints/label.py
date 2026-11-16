@@ -7,10 +7,13 @@ or `r` to replay. The answers go to
 
     <store>/calibration-labels/<audio>/<diarization>.json
       {version, audio, diarization, record: {workspace, record}, candidates: [<person ref>…],
-       labels: {<label>: {windows: [{start, end, answer: <person ref> | "x"}]}}, complete, updated}
+       labels: {<label>: {windows: [{start, end, answer: <person ref> | "x"}], complete}}, complete, updated}
 
-written after every answer, so an interrupted session keeps what was heard. `--only <label>` replays one
-label and keeps the others' answers. Nothing else is written anywhere.
+written after every answer, so an interrupted session keeps what was heard. A label is `complete` once
+every window chosen for it is answered, the file once every label is. `label <record>` again RESUMES an
+unfinished recording (its answered windows are kept and not played again) and STARTS OVER a finished one;
+`--only <label>` hears one label again from scratch and keeps the others' answers. The evaluation counts
+only finished labels. Nothing else is written anywhere.
 
 A window is cut from the recording by ffmpeg into a temp file, played with `afplay` on macOS or
 `ffplay -nodisp -autoexit` elsewhere, and removed after; with neither player it stops before anything
@@ -202,7 +205,8 @@ def session(rctx, store, *, audio_sha, segments, ask, play, cut, out, only=None,
         raise LabelError(f"{rctx.get('record')} has no diarisation id — transcribe it again first (step 0)")
     if not rctx.get("audio"):
         raise LabelError(f"{rctx.get('record')} has no audio this machine can read")
-    labels = sorted({s["speaker"] for s in segments}, key=_label_key)
+    every = sorted({s["speaker"] for s in segments}, key=_label_key)
+    labels = every
     if only is not None:
         if only not in labels:
             raise LabelError(f"{rctx.get('record')} has no label {only} in this diarisation")
@@ -214,21 +218,54 @@ def session(rctx, store, *, audio_sha, segments, ask, play, cut, out, only=None,
             cands.append(c)
     cands = cands[:MAX_DIGITS]
     path = labels_path(store, audio_sha, diar)
-    data = store.read_json(path) if only is not None else None
-    if not isinstance(data, dict) or data.get("diarization") != diar:
-        data = _fresh(rctx, audio_sha, diar, cands)
+    old = store.read_json(path)
+    if not isinstance(old, dict) or old.get("diarization") != diar or not isinstance(old.get("labels"), dict):
+        old = None
+    if old is not None and old.get("complete"):
+        for e in old["labels"].values():           # a finished file: every label in it is finished
+            if isinstance(e, dict):
+                e.setdefault("complete", True)
+    # `--only` hears one label again and keeps the rest; without it an unfinished recording RESUMES (the
+    # windows already answered are kept and not played again) and a finished one STARTS OVER
+    if only is not None:
+        data, mode = old or _fresh(rctx, audio_sha, diar, cands), "one label"
+    elif old is not None and not old.get("complete"):
+        data, mode = old, "resume"
+    else:
+        data, mode = _fresh(rctx, audio_sha, diar, cands), ("start over" if old is not None else "start")
     data["candidates"] = [c["person"] for c in cands]
     data["complete"] = False
-    items = []
+    items, left, kept = [], {}, 0
     for lab in labels:
-        data["labels"][lab] = {"windows": []}
-        items.extend((lab, w) for w in choose_windows(segments, lab))
+        entry = data["labels"].get(lab) if mode == "resume" else None
+        answered = [w for w in (entry or {}).get("windows") or [] if isinstance(w, dict) and w.get("answer")]
+        done = {(w.get("start"), w.get("end")) for w in answered}
+        todo = [w for w in choose_windows(segments, lab) if (w[0], w[1]) not in done]
+        data["labels"][lab] = {"windows": answered, "complete": not todo}
+        kept += len(answered)
+        left[lab] = len(todo)
+        items.extend((lab, w) for w in todo)
     random.Random(seed if seed is not None else f"label:{audio_sha}:{diar}:{only or ''}").shuffle(items)
 
+    def finished():
+        return all((data["labels"].get(lab) or {}).get("complete") for lab in every)
+
     choices = "  ".join(f"{i} {c.get('name') or c['person']}" for i, c in enumerate(cands, 1))
+    if mode == "resume":
+        out(f"{rctx.get('record')}: resuming an unfinished labelling — {kept} windows answered in an earlier sitting "
+            f"are kept and not played again")
+    elif mode == "start over":
+        out(f"{rctx.get('record')}: this recording was labelled to the end before; starting it over — its earlier "
+            f"answers are replaced (`--only <label>` hears one label again instead)")
     out(f"{rctx.get('record')}: {len(items)} windows of {len(labels)} diarised label"
         f"{'' if len(labels) == 1 else 's'}, shuffled. Answer {choices or 'x'}"
         f"{'' if not cands else ', x'} for unsure, overlap, noise or anyone else, r to replay.")
+    if not items:
+        data["complete"] = finished()
+        data["updated"] = vp_store.now()
+        store.write_json(path, data)
+        out(f"answers written: {path}")
+        return path
     tmp = tempfile.mkdtemp(prefix="dt-label-")
     try:
         for i, (lab, (a, b)) in enumerate(items, 1):
@@ -254,9 +291,12 @@ def session(rctx, store, *, audio_sha, segments, ask, play, cut, out, only=None,
                 except FileNotFoundError:
                     pass
             data["labels"][lab]["windows"].append({"start": a, "end": b, "answer": answer})
+            left[lab] -= 1
+            if not left[lab]:
+                data["labels"][lab]["complete"] = True
             data["updated"] = vp_store.now()
             store.write_json(path, data)
-        data["complete"] = True
+        data["complete"] = finished()
         data["updated"] = vp_store.now()
         store.write_json(path, data)
     finally:
@@ -307,5 +347,6 @@ def main(args, *, ctx=None, store=None, read=None, read_cache=None, cache_path_f
         out(f"✖ {e}")
         return 1
     except (KeyboardInterrupt, EOFError):
-        out("stopped — the answers given so far are kept")
+        out("stopped — the answers given so far are kept; `label <record>` again resumes where you stopped "
+            "(until then the labels not finished count for nothing)")
         return 130

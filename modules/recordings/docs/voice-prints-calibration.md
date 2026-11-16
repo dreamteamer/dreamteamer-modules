@@ -41,8 +41,15 @@ node <worktree>/modules/recordings/bin/transcribe.mjs setup --speaker-models all
 
 They were transcribed before this feature: no diarisation id, no voice signature. Transcribing again
 gives both; the names already on them move to `previous_speakers`, which is where the evaluation reads the
-hand maps it prints as a silver second look. For each recording (step 2 says which, but every recording
-you might label can be done now; the pilot too):
+hand maps it prints as a silver second look.
+
+**The plan (step 2) can only choose among recordings already transcribed again here.** A recording
+transcribed before this feature is invisible to it, so on a workspace where nothing has been re-run it
+lists 0 recordings. Choose the candidates yourself first, from the meetings alone: about 20 recordings
+with you in all of them — 1:1 calls with the three or four people you meet most (each in three or more),
+five or six calls with three or more speakers, two or three recorded in a room — plus the pilot. Transcribe
+those now, then run the plan; when it prints `short of the session's mix`, transcribe a few more of the
+kind it names and run it again. For each recording:
 
 ```bash
 node <worktree>/modules/recordings/bin/transcribe.mjs run meeting-recordings/<record> "$(npx dt resolve meeting-recordings/<record> recording_file)" --speakers <N>
@@ -68,7 +75,8 @@ node <worktree>/modules/recordings/bin/transcribe.mjs run meeting-recordings/<re
 node <worktree>/modules/recordings/bin/transcribe.mjs evaluate-speakers plan --pilot meeting-recordings/<pilot>
 ```
 
-It reads every recording that has a diarisation id and lists **14**: you in all of them; at least three
+It reads every recording that has a diarisation id — only those transcribed again in step 0 — and lists
+**14**: you in all of them; at least three
 other people who each appear in at least two (three or more preferred); eight 1:1 calls, four with three
 or more speakers, two recorded in a room. A room is a meeting whose `location` is not a URL; name one by
 hand with `--room meeting-recordings/<record>` (repeatable). Apart from the 14 it lists the solo memo (the
@@ -95,8 +103,14 @@ of any turn longer than five minutes — shuffled, without saying which label a 
 
 About 15 windows a recording, a little over 200 in all. Sound comes from `afplay` (macOS) or `ffplay`;
 each window is cut by `ffmpeg` into a temp file removed after. The answers are written after every one,
-to `<store>/calibration-labels/<audio>/<diarization>.json`: an interrupted recording keeps what was heard
-— label it again to start that recording over.
+to `<store>/calibration-labels/<audio>/<diarization>.json`.
+
+**Stopping in the middle** (Ctrl-C) keeps every answer given. Running the same `label` command again
+**resumes** that recording: the windows already answered are kept and not played again, only the rest are
+asked. Until a recording is labelled to the end, its unfinished labels count for nothing — no purity, no
+trial, no print — and step 4 names the recording to resume. Running `label` on a recording that was
+labelled to the end **starts it over** (its earlier answers are replaced); to hear one label again
+instead, add `--only speaker_<n>` (step 4).
 
 ## Step 4 — evaluate
 
@@ -104,22 +118,36 @@ to `<store>/calibration-labels/<audio>/<diarization>.json`: an interrupted recor
 node <worktree>/modules/recordings/bin/transcribe.mjs evaluate-speakers --pilot meeting-recordings/<pilot>
 ```
 
-Per speaker model it prints, before anything else: the purity of each label (the share of its heard
-windows the majority speaker holds; under 0.80 is heard as mixed, mostly `x` is unheard — neither is a
-trial); check 4's hits and misses; the genuine (true match) and impostor (false match) scores, closed set
-and open set; the thresholds fitted on all labelled recordings; then one line per judged recording — the
-prints and thresholds that judged it were rebuilt and fitted without it, and the line says on how many
-recordings and trials — and the replay's totals. Last, the verdict line, and beside it the names written
-(`n`), the bound `3/n`, the fit counts per fold, and that the judged recording was in none of them.
+First, if any labelling was stopped before the end, a `labelling unfinished` block names each such
+recording and its labels: resume it with `label meeting-recordings/<record>` (step 3) and run step 4
+again. Then, per speaker model, before anything else: the purity of each label (the share of its heard
+windows the majority speaker holds; under 0.80 is heard as mixed, mostly `x` is unheard, an unfinished
+label has no purity — none of them is a trial); check 4's hits and misses; the genuine (true match) and
+impostor (false match) scores, closed set and open set; the thresholds fitted on all labelled recordings,
+with how many deliberately mixed sets pass `split` — sets whose second voice holds a fifth of the windows,
+the line check 5 and acceptance line 8 draw; more than one in five passing makes the embedding check
+**weak** — and, beside it, the same count at 30% as a second look that decides nothing; then one line per
+judged recording — the prints and thresholds that judged it were rebuilt and fitted without it, and the
+line says on how many recordings and trials — and the replay's totals. Last, the verdict line, and beside
+it the names written (`n`), the bound `3/n`, the fit counts per fold, and that the judged recording was in
+none of them.
 
-The **silver** section lists unheard hand maps that disagree with the prints. Listen to each:
+Two lists say where to listen. Each takes the same command:
 
 ```bash
 node <worktree>/modules/recordings/bin/transcribe.mjs label meeting-recordings/<record> --only speaker_<n>
 ```
 
-and run step 4 again; a silver label you heard is gold from then on. `--only <model id>` evaluates one
-model. A model with no signature file for a recording is embedded from the audio once, written to the
+- **Names written on labels nobody heard** — a name the replay wrote on a label you answered mostly `x`,
+  did not finish, or never labelled, with its fold, record and label. Such a name is neither right nor
+  wrong, so it is **not in `n`** (the bound `3/n` speaks only of names checked against what you heard);
+  their count is printed beside `n`. Listen to each; if you can now tell who speaks, it becomes gold.
+- **Silver** — unheard hand maps that disagree with the prints. A silver label you heard is gold from then
+  on.
+
+After listening, run step 4 again.
+
+`--only <model id>` evaluates one model. A model with no signature file for a recording is embedded from the audio once, written to the
 store as `run` writes one, and read from there the next time; the folds themselves replay prints in a
 temporary store and write nothing to yours.
 
