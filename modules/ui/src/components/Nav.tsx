@@ -52,9 +52,9 @@ const TOOLBAR = "::toolbar"
 /** The width a toolbar menu is placed for (the text ask is 220 px wide plus its border). */
 const MENU_WIDTH = 224
 
-/** The nav column; its lists carry no bullets or indent. On a narrow window it stacks above the page. */
+/** The nav column. On a narrow window it stacks above the page. */
 const navCls =
-  "flex flex-col min-h-0 overflow-hidden bg-bg-subtle border-r border-border [&_ul]:list-none [&_ul]:m-0 [&_ul]:p-0 max-[720px]:max-h-[40vh] max-[720px]:border-r-0 max-[720px]:border-b"
+  "flex flex-col min-h-0 overflow-hidden bg-bg-subtle border-r border-border max-[720px]:max-h-[40vh] max-[720px]:border-r-0 max-[720px]:border-b"
 const toolbarCls =
   "relative z-[2] flex-none flex flex-wrap justify-end items-center gap-1 min-h-8 pt-[3px] pr-1 pb-[3px] pl-2 bg-bg-subtle [transition:box-shadow_0.12s]"
 const toolbarLabel = "min-w-0 overflow-hidden text-ellipsis whitespace-nowrap font-semibold text-fg"
@@ -320,7 +320,7 @@ export function Nav() {
         className="flex-[1_1_auto] min-h-0 overflow-y-auto flex flex-col"
         onScroll={e => setScrolled(e.currentTarget.scrollTop > 0)}
       >
-        <ul className="flex-none pb-1!" role="tree">
+        <ul className="flex-none list-none m-0 px-0 pt-0 pb-1" role="tree">
           {ix.top.map(n => (
             <NavRow key={n.key} node={n} depth={0} ctx={rows} />
           ))}
@@ -450,7 +450,7 @@ function NavRow({ node, depth, ctx }: { node: NavNode; depth: number; ctx: RowCt
         {node.description && <span className="text-fg-subtle text-small">{node.description}</span>}
       </div>
       {open && kids.length > 0 && (
-        <ul role="group">
+        <ul className="list-none m-0 p-0" role="group">
           {kids.map(k => (
             <NavRow key={k.key} node={k} depth={depth + 1} ctx={ctx} />
           ))}
