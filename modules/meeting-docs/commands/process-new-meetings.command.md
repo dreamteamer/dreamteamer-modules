@@ -39,11 +39,16 @@ just running this again.
 **A meeting with `privacy: restricted` stops here.** It holds a third party's private material, so
 steps 6-9 skip it: no summary, no tasks, no review, no engagement update. Name each one skipped in the
 report. A meeting with no `privacy` value is `open`.
+The gate stops the documents, not the naming: its recording is still named at step 4b and asked about at the
+end of the run like any other — naming is part of the transcript, and the voice prints stay on this computer
+— but no document is written for it, before or after the answer.
 
 **Steps 6 and 7 run for every meeting with the names that exist** — a name step 4b wrote from a voice
 print is provisional, and the summary and tasks mark it `(unconfirmed)`. **Steps 8 and 9 are held back** for
-every meeting with a recording still `waiting` after step 4b: they run once, after the end-of-run answer
-(below). A meeting with no open question runs steps 6 to 9 in one pass, as today.
+every meeting with a recording still `waiting` after step 4b — one this run transcribed, or one an earlier run
+left waiting that step 4b took up again, whether or not the meeting is in this run's range: they run once,
+after the end-of-run answer (below). Such a meeting joins the batch of steps 8 and 9 and of the end of the
+run. A meeting with no open question runs steps 6 to 9 in one pass, as today.
 
 6. **`/summarize-meeting <meeting refs>`** — transcript + visuals → a `meeting-summary`.
 7. **`/extract-tasks-from-meetings <meeting refs>`** — only if the summary produced action items worth tracking.
@@ -55,7 +60,8 @@ every meeting with a recording still `waiting` after step 4b: they run once, aft
    (both of a day's calls with the same client → one record), and it needs the transcript, so it
    cannot run where step 4 was skipped. `--no-analyze` skips it outright.
 9. **`/update-engagements`** — fold the new summaries into each account's `engagements` record,
-   **once at the end over every meeting processed**, not per meeting — an account should take one
+   **once at the end over every meeting processed** (the range's meetings and every meeting whose recording
+   step 4b took up from an earlier run), not per meeting — an account should take one
    coherent update from the whole batch rather than a commit per call. When a question is open, step 9
    waits for the end of the run (below).
 10. **`/update-contacts-from-meetings <meeting refs>`** — stamp every attendee's contact record with
@@ -89,21 +95,28 @@ in the middle of the run:
    1. `identify --answer`, one call per recording, with only the labels the person answered (the
       `identifying-speakers` skill has the answer strings). A label they skip stays open for the next attended
       run's question.
-   2. for each meeting whose names changed, `/summarize-meeting` and `/extract-tasks-from-meetings` again —
-      the summary is updated in place, and a task already tracked is not written twice.
-   3. the held-back critiques, `/analyze-meetings` — still gated as step 8 is.
-   4. then one `/update-engagements` over the batch, for every held-back meeting, **answered or skipped**: a
-      skipped label stays open for the next attended run's question, but its meeting's engagement takes the
-      call now, once, with the names that exist.
+   2. for each meeting whose names changed or whose provisional names were confirmed — every meeting whose
+      `identify --answer` reply names documents written before the names, never a `privacy: restricted` one —
+      `/summarize-meeting` and `/extract-tasks-from-meetings` again, so no `(unconfirmed)` mark outlives the
+      answer: the summary is updated in place, and a task already tracked is not written twice.
+   3. the held-back critiques, `/analyze-meetings` — this run's and those an earlier unattended run held back —
+      still gated as step 8 is.
+   4. then one `/update-engagements` over the batch, for every held-back meeting, **answered or skipped**, every
+      meeting step 4b took up from an earlier run included: a skipped label stays open for the next attended
+      run's question, but its meeting's engagement takes the call now, once, with the names that exist.
 
    That is the pipeline's own order — summary, tasks, critique, then one engagement update — so each
    engagement folds each call once, from the named summary, and absorbs the critique.
 3. **Unattended run** — nobody is there to answer. Ask nothing, run no `--shown` and no `--answer`; the
    recordings stay `waiting`. Step 8 runs only for meetings with no open question. Step 9 runs as
-   `/update-engagements engagements/<id>`, once for each engagement **none of whose meetings in this batch
-   waits**; an engagement with a waiting meeting is held whole — none of its calls folded — and listed in the
-   report. The next attended run picks those recordings up at step 4b, asks their questions, and folds each
-   held engagement once.
+   `/update-engagements engagements/<id>`, once for each engagement **none of whose meetings has a recording
+   still `waiting`** after step 4b — this run's or one an earlier run left waiting, whatever its date: read
+   them all with `dt list meeting-recordings --filter speaker_naming=waiting`, each one's `meeting`, and that
+   meeting's engagement, never only the range's meetings, because `/update-engagements` folds every summary
+   written since the engagement was last updated. An engagement with a waiting meeting is held whole — none of
+   its calls folded, not even for a call of it with every name known — and listed in the report. The next
+   attended run picks those recordings up at step 4b, asks their questions, and folds each held engagement
+   once.
 
 **Only a person answers.** An agent never answers the question itself and never runs `identify --answer` or
 `--confirm` without a person's reply in the conversation — not from the attendee list, not from the
@@ -135,8 +148,8 @@ names — each one written again in this run, or listed as written before the na
 steps 8 and 9 were held back and why (its question open, or the run unattended), and every engagement held
 whole. Then, for each meeting step 8
 reviewed, its one-line verdict and any conflict it flagged with the engagement's existing records — and
-which meetings were deliberately not reviewed, and which were skipped as `privacy: restricted`, so
-each gate is visible rather than silent. Then which engagements step 9 moved, and what it could not
-place. Then the leftovers — unmatched screenshots, recordings with
+which meetings were deliberately not reviewed, and which were skipped as `privacy: restricted` — named and
+asked about like any other at step 4b, with no document written — so each gate is visible rather than
+silent. Then which engagements step 9 moved, and what it could not place. Then the leftovers — unmatched screenshots, recordings with
 no meeting, meetings with no recording. End with the two inboxes' state, because an empty inbox is the
 signal that nothing is pending.

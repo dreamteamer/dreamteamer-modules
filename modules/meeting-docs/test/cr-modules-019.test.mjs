@@ -4,9 +4,12 @@
 // plan" and the agent decision `…-plan-an-unattended-run-holds-a-whole-engagement`):
 //   - /process-new-meetings runs step 4b, /identify-speakers, after transcription and before the summary, with no
 //     command typed; asks every recording's question as one message at the end of the run; folds every held
-//     meeting once after the reply, answered or skipped; holds a whole engagement in an unattended run; lists
-//     the documents written before a name;
-//   - summary, critique and tasks write a provisional speaker as `<Name> (unconfirmed)`.
+//     meeting once after the reply, answered or skipped; holds a whole engagement in an unattended run while any
+//     of its meetings has a recording waiting, from this run or an earlier one; writes again a meeting whose
+//     names changed or were confirmed; lists the documents written before a name; names a restricted meeting
+//     and says so;
+//   - summary, critique and tasks write a provisional speaker as `<Name> (unconfirmed)` only while the map's
+//     name equals its `speaker_sources` entry's (design section 11: a name that differs is unverified).
 // Text only: nothing here runs a command or touches a record. Test names starting `line 20 `, `line 27 `,
 // `line 30 `, `line 34 ` and `line 39 ` are the node half of those acceptance lines, run by name pattern.
 import { test } from 'node:test';
@@ -156,15 +159,51 @@ test('line 34 the refresh order is summary, tasks, critique, then one engagement
 	assert.match(ATTENDED, /still gated as step 8 is/);
 });
 
-test('line 34 an unattended run holds a whole engagement while any of its meetings in the batch waits', () => {
+test('line 34 an unattended run holds a whole engagement while any of its meetings waits', () => {
 	assert.ok(UNATTENDED, 'the end-of-run section has an **Unattended run** part');
 	assert.match(UNATTENDED, /Ask nothing, run no `--shown` and no `--answer`/);
 	assert.match(UNATTENDED, /Step 8 runs only for meetings with no open question/);
 	assert.match(UNATTENDED, /`\/update-engagements engagements\/<id>`/);
-	assert.match(UNATTENDED, /\*\*none of whose meetings in this batch waits\*\*/);
+	assert.match(UNATTENDED, /\*\*none of whose meetings has a recording still `waiting`\*\*/);
 	assert.match(UNATTENDED, /held whole/);
 	assert.match(UNATTENDED, /listed in the report/);
 	assert.match(UNATTENDED, /next attended run/);
+});
+
+// Review round 1, `unattended-hold-misses-a-meeting-waiting-from-an-earlier-run`: Monday's unattended run leaves
+// M1 of Harbor Mutual waiting; Tuesday's syncs M2, every name known. Step 4b takes M1's recording up again and it
+// still waits — the hold must see M1 although it is not one of Tuesday's range, or /update-engagements folds M1's
+// unnamed summary. A recording left waiting by an earlier run is held, joins the batch, and is folded once.
+
+test('line 34 a meeting is held while a recording an earlier run left waiting still waits, whatever its date', () => {
+	assert.match(FLAT, /\*\*Steps 8 and 9 are held back\*\* for every meeting with a recording still `waiting` after step 4b — one this run transcribed, or one an earlier run left waiting that step 4b took up again, whether or not the meeting is in this run's range/);
+	assert.match(FLAT, /Such a meeting joins the batch/);
+});
+
+test('line 34 the unattended hold counts a recording an earlier run left waiting, not only the range\'s meetings', () => {
+	assert.doesNotMatch(UNATTENDED, /in this batch/, 'the hold is not limited to this run\'s batch');
+	assert.match(UNATTENDED, /this run's or one an earlier run left waiting, whatever its date/);
+	assert.match(UNATTENDED, /`dt list meeting-recordings --filter speaker_naming=waiting`/, 'the hold reads every waiting recording, not the range');
+	assert.match(UNATTENDED, /not even for a call of it with every name known/);
+});
+
+test('line 34 step 9\'s batch takes in every meeting whose recording step 4b took up from an earlier run', () => {
+	assert.match(step('9'), /the range's meetings and every meeting whose recording step 4b took up from an earlier run/);
+});
+
+test('line 34 the attended fold covers the meetings an earlier run left waiting, once: their critiques and their engagements', () => {
+	assert.match(ATTENDED, /the held-back critiques, `\/analyze-meetings` — this run's and those an earlier unattended run held back —/);
+	assert.match(ATTENDED, /for every held-back meeting, \*\*answered or skipped\*\*, every meeting step 4b took up from an earlier run included/);
+});
+
+// Review round 1, `confirmed-provisional-name-keeps-its-unconfirmed-mark`: a person who answers ① correct to a
+// provisional name changes no name, but the summary still says "(unconfirmed)" — it is written again too.
+
+test('line 34 a meeting whose provisional names were confirmed is summarised again before the engagement update', () => {
+	const again = ATTENDED.search(/whose provisional names were confirmed/);
+	const engagements = ATTENDED.indexOf('`/update-engagements`');
+	assert.ok(again > 0, 'the attended run writes again a meeting whose provisional names were confirmed');
+	assert.ok(engagements > again, 'before the one engagement update');
 });
 
 test('line 34 only a person answers: the agent never answers the question itself', () => {
@@ -178,8 +217,9 @@ test('line 34 the report names the held-back meetings and the engagements held w
 
 // ── line 39: documents written before the name ───────────────────────────────────────────────────────────
 
-test('line 39 after the reply, every meeting whose names changed is summarised and its tasks extracted again', () => {
-	assert.match(ATTENDED, /for each meeting whose names changed, `\/summarize-meeting` and `\/extract-tasks-from-meetings` again/);
+test('line 39 after the reply, every meeting whose names changed or were confirmed is summarised and its tasks extracted again', () => {
+	assert.match(ATTENDED, /for each meeting whose names changed or whose provisional names were confirmed — every meeting whose `identify --answer` reply names documents written before the names, never a `privacy: restricted` one — `\/summarize-meeting` and `\/extract-tasks-from-meetings` again/);
+	assert.match(ATTENDED, /no `\(unconfirmed\)` mark outlives the answer/);
 });
 
 test('line 39 the report lists every document written before a name it now carries', () => {
@@ -212,4 +252,44 @@ for (const file of ['commands/analyze-meetings.command.md', 'skills/analyzing-me
 
 test('line 30 a task marks a provisional speaker as unconfirmed: commands/extract-tasks-from-meetings.command.md', () => {
 	MARK('commands/extract-tasks-from-meetings.command.md');
+});
+
+// Review round 1, `hand-edited-name-marked-unconfirmed`: design section 11 — a name whose string differs from its
+// `speaker_sources` entry's `name` is unverified. Step 4b writes speaker_1 → Sam Diaz (provisional); a person types
+// "Dana Oren" over it; the entry still says Sam Diaz, provisional. The critique and the tasks must write Dana Oren
+// unmarked, as the summary does: "(unconfirmed)" only when the map's name still equals a provisional entry's.
+
+const RULE = (file) => {
+	const text = flat(read(`meeting-docs/${file}`));
+	assert.match(text, /only when the label's name in `transcription\.speakers` still equals its entry's `name` and that entry has `status: provisional`/, `${file}: the mark needs the map's name to equal the entry's`);
+	assert.match(text, /A name whose text differs from its entry's `name` — edited by hand — is unverified/i, `${file}: a hand-edited name is unverified`);
+	assert.doesNotMatch(text, /no entry — every name written before voice prints, or edited by hand/, `${file}: a hand edit has an entry`);
+};
+
+test('line 20 a name whose text differs from its speaker_sources entry is unverified and written unmarked: commands/summarize-meeting.command.md', () => RULE('commands/summarize-meeting.command.md'));
+for (const file of ['commands/analyze-meetings.command.md', 'skills/analyzing-meetings/SKILL.md', 'commands/extract-tasks-from-meetings.command.md']) {
+	test(`line 30 a name whose text differs from its speaker_sources entry is unverified and written unmarked: ${file}`, () => RULE(file));
+}
+
+// Review round 1, `restricted-meeting-voices-asked-about-unsaid`, and the coordinator's ruling
+// `decisions/2026-11-16--cr-modules-019-build-task-12-restricted-meetings-are-named-and-the-pipeline-says-so`: step 4b
+// stays before the restricted gate (line 27: each recording the pipeline transcribes), and the pipeline says so where
+// the gate is stated, in the report's line for restricted meetings, and in the README.
+
+test('line 27 the restricted gate says a restricted meeting is still named and asked about, and gets no document', () => {
+	const at = FLAT.indexOf('**A meeting with `privacy: restricted` stops here.**');
+	assert.ok(at > 0, 'the gate is stated');
+	const gate = FLAT.slice(at, FLAT.indexOf('**Steps 6 and 7 run'));
+	assert.match(gate, /its recording is still named at step 4b and asked about at the end of the run like any other/);
+	assert.match(gate, /no document is written for it, before or after the answer/);
+});
+
+test('line 27 the report line for restricted meetings says their voices were named and asked about', () => {
+	assert.match(REPORT, /skipped as `privacy: restricted` — named and asked about like any other at step 4b, with no document written/);
+});
+
+test('line 27 the README says a restricted meeting\'s recording is named and asked about, its documents unwritten', () => {
+	const readme = flat(section(read('meeting-docs/README.md'), 'Speakers named after transcription'));
+	assert.match(readme, /A meeting whose `privacy` is `restricted` is named and asked about like any other/);
+	assert.match(readme, /its summary, tasks, critique and engagement update stay unwritten, before the answer and after it/i);
 });

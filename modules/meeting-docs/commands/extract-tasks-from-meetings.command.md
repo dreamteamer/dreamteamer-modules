@@ -17,8 +17,11 @@ ref. A meeting with no `privacy` value is `open`.
 each name in `transcription.speakers`: a label whose entry has `status: provisional` was named from a voice
 print and no person has confirmed it. write that speaker as `<Name> (unconfirmed)` wherever a statement is
 attributed to them — in a task's body, and when deciding whose commitment it is — and say in
-`creation_context` that the names were machine-written from voice prints. a confirmed or unverified name is
-used as today, unmarked. With no `speaker_sources` key at all, read the names as today.
+`creation_context` that the names were machine-written from voice prints. mark it only when the label's name
+in `transcription.speakers` still equals its entry's `name` and that entry has `status: provisional`. a name
+whose text differs from its entry's `name` — edited by hand — is unverified, and so is a name with no entry
+(every name written before voice prints): a confirmed or unverified name is used as today, unmarked. With no
+`speaker_sources` key at all, read the names as today.
 
 **do not task-bomb.** a task is something I said I would do, concretely enough that I would recognise it
 as owed. what somebody else took on belongs in the summary, not in my inbox — name them in the body of a
