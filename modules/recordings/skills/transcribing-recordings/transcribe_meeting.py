@@ -643,6 +643,19 @@ if __name__ == "__main__":
                 read_meeting=read_meeting, read_asr_cache=read_asr_cache, asr_cache_path_for=asr_cache_path_for,
                 asr_cache_matches=asr_cache_matches),
             out=lambda s: print(s, flush=True)))
+    elif args and args[0] == "identify":
+        # Names, proposals, the end-of-run question and a person's answer (design sections 6, 10, 11). A
+        # diarisation with no signature file for the active model is computed from the audio and a matching
+        # ASR cache, the way evaluate-speakers computes one.
+        from voiceprints import evaluate as vp_evaluate
+        from voiceprints import identify as vp_identify
+        sys.exit(vp_identify.main(
+            args, skill_dir=HERE, read=read_meeting, write=write_meeting, audio_key=audio_key,
+            compute=vp_evaluate.signature_maker(
+                decode_audio=decode_audio, load_embedder=load_embedder, read_samples=read_samples,
+                read_meeting=read_meeting, read_asr_cache=read_asr_cache, asr_cache_path_for=asr_cache_path_for,
+                asr_cache_matches=asr_cache_matches),
+            out=lambda s: print(s, flush=True)))
     else:
         sys.exit(
             "usage: transcribe_meeting.py setup [--speaker-models all|<id>[,<id>…]]"
@@ -652,4 +665,7 @@ if __name__ == "__main__":
             " | label <record.md> [--only <label>] [--context <file.json>]"
             " | evaluate-speakers [plan] [--write [--install-local]] [--only <model id>] [--room <record>]…"
             " [--pilot <record>] [--me <person>] [--context <file.json>]"
+            " | identify <record>… [--question | --shown | --answer <record> <label>=<answer>… | --confirm <record>"
+            " [label…] | --correct <record> <label> <person> | --revert <record> | --revert --person <ref>]"
+            " --context <file.json>"
         )
