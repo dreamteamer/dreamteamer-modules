@@ -10,7 +10,7 @@
   "files": ["README.md", "bin", "src"],
   "engines": { "node": ">=20" },
   "dreamteamer": {
-    "extension": "./src/extension.mjs",
+    "extension": "./src/activate.mjs",
     "title": "Code",
     "description": "dt editor starts code-server over the existing workspace without Docker. The authenticated URL listens only on IPv4 loopback. A Claude coordinator receives cross-session messages and uses scoped MCP tools to navigate the data app; files stay on the host and processes run as the current user.",
     "engine": ">=0.33.0"

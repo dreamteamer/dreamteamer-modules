@@ -23,7 +23,7 @@ import fs from "node:fs"
 import path from "node:path"
 import { spawnSync } from "node:child_process"
 import { fileURLToPath } from "node:url"
-import { findWorkspace } from "../lib/workspace-root.ts"
+import { findWorkspace } from "../lib/findWorkspace.ts"
 import { transcriptOf } from "../src/sessions/send.ts"
 
 const HOOK = /dt-hook\.sh"?\s+session heartbeat --hook\s*$/

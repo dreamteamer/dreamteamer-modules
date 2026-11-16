@@ -5,7 +5,7 @@
 // blocks a stop (bin/sessions-migrate.mjs removes it).
 import os from "node:os"
 import path from "node:path"
-import { findWorkspace } from "../../lib/workspace-root.ts"
+import { findWorkspace } from "../../lib/findWorkspace.ts"
 import { sendTo } from "./send.ts"
 
 export const SESSION_USAGE = [

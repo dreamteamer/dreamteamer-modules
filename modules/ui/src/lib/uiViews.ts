@@ -8,7 +8,7 @@
  * from the view: its layout, columns, sort, layout options and filter — `viewToConfig` is the one place that
  * splits a view's `display.list` into those, so the view page and anything embedding a view cannot disagree.
  *
- * Unlike ui, nothing here registers routes: `lib/route.ts#pageOf` is handed the views and resolves a path to
+ * Unlike ui, nothing here registers routes: `lib/createRoute.ts#pageOf` is handed the views and resolves a path to
  * one. the Vue ui's `@me` resolution is gone with the `users` collection (compile refuses a filter holding it).
  */
 import { request } from "../api/client.ts"

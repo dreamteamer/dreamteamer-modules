@@ -6,7 +6,7 @@ import { spawnSync } from "node:child_process"
 import path from "node:path"
 import { pathToFileURL } from "node:url"
 import { api, packageDir, SPAWN_TIMEOUT_MS } from "../../../tests/helpers/fixture.ts"
-import activate, { apiVersion, parseServeArgs } from "../src/extension.ts"
+import activate, { apiVersion, parseServeArgs } from "../src/activate.ts"
 
 const SRC = path.join(packageDir("http"), "src")
 
@@ -14,8 +14,8 @@ describe("importing the package", () => {
   test("binds no port and prints nothing — the process exits on its own, silently", () => {
     // an open listener would keep the event loop alive; the hard timeout turns that into a failure
     const script = `
-			await import(${JSON.stringify(pathToFileURL(path.join(SRC, "app.js")).href)});
-			const ext = await import(${JSON.stringify(pathToFileURL(path.join(SRC, "extension.js")).href)});
+			await import(${JSON.stringify(pathToFileURL(path.join(SRC, "createApp.js")).href)});
+			const ext = await import(${JSON.stringify(pathToFileURL(path.join(SRC, "activate.js")).href)});
 			const dt = await import(${JSON.stringify(pathToFileURL(path.join(api.engineRoot, "src", "api.js")).href)});
 			ext.default(dt);
 		`

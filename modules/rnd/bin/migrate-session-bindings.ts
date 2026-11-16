@@ -26,7 +26,7 @@ import { spawnSync } from "node:child_process"
 import { createRequire } from "node:module"
 import { fileURLToPath } from "node:url"
 import yaml from "js-yaml"
-import { findWorkspace } from "../lib/workspace-root.ts"
+import { findWorkspace } from "../lib/findWorkspace.ts"
 
 /** The bindings rnd 0.6.0–0.7.0 shipped, as a session record names them. */
 export const REMOVED = ["design", "build", "review"].map(s => `session-bindings/change-requests--${s}`)

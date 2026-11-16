@@ -6,7 +6,7 @@
  * force, the rename and Mod-S are ui's own, over the routes PROTOCOL.md names.
  */
 import { DUPLICATES_FIELD } from "./sources.ts"
-import { listRoute } from "./route.ts"
+import { listRoute } from "./createRoute.ts"
 
 export interface Crumb {
   label: string

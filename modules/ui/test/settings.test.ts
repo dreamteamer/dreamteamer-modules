@@ -19,7 +19,7 @@ import {
 } from "../src/lib/field-drawer.ts"
 import { moduleEntries, shipsOf } from "../src/lib/modules.ts"
 import { remoteMark } from "../src/lib/remote-access.ts"
-import { createRoute, listRoute, pageOf, recordRoute, settingsRedirect } from "../src/lib/route.ts"
+import { createRoute, listRoute, pageOf, recordRoute, settingsRedirect } from "../src/lib/createRoute.ts"
 import { recordCount, recordsIn } from "../src/lib/sources-stack.ts"
 import type { FieldRow } from "../src/api/types.ts"
 

@@ -18,7 +18,7 @@ import path from "node:path"
 import { spawnSync } from "node:child_process"
 import { createRequire } from "node:module"
 import { fileURLToPath, pathToFileURL } from "node:url"
-import { findWorkspace } from "../lib/workspace-root.ts"
+import { findWorkspace } from "../lib/findWorkspace.ts"
 import { COLLECTION, compilesStage, readRequests, allowedStages, stageContradictions } from "../lib/cr-stage.ts"
 
 /** The workspace's own engine: its API module and its CLI, with no harness session id leaking in. */

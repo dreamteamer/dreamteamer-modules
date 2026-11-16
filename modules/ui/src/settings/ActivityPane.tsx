@@ -19,7 +19,7 @@ import { Icon } from "../components/Icon.tsx"
 import { Link } from "../components/Link.tsx"
 import { SourceMark } from "../components/SourceMark.tsx"
 import { byDay, entryRest, type Activity, type ActivityEntry } from "../lib/activity.ts"
-import { recordRoute } from "../lib/route.ts"
+import { recordRoute } from "../lib/createRoute.ts"
 import {
   button,
   buttonSize,

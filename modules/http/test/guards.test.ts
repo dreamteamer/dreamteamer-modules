@@ -7,8 +7,8 @@ import http from "node:http"
 import path from "node:path"
 import { api as engine } from "../../../tests/helpers/fixture.ts"
 import { httpWorkspace, simpleCollection, mount, call } from "./support.ts"
-import { bind, serve } from "../src/app.ts"
-import { parseServeArgs } from "../src/extension.ts"
+import { bind, serve } from "../src/createApp.ts"
+import { parseServeArgs } from "../src/activate.ts"
 
 let h, srv, api, pendingId
 

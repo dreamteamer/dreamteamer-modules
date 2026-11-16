@@ -19,7 +19,7 @@ import { Icon } from "../components/Icon.tsx"
 import { Link } from "../components/Link.tsx"
 import type { CommandRow } from "../lib/command-rows.ts"
 import { labelOf } from "../lib/formatTitle.ts"
-import { recordRoute } from "../lib/route.ts"
+import { recordRoute } from "../lib/createRoute.ts"
 import {
   bareRef,
   CARD_CLOSED,

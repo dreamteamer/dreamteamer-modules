@@ -374,7 +374,7 @@ test("SETUP.md is shipped and names every action and status this provider has", 
   assert.ok(pkg.files.includes("SETUP.md") && pkg.files.includes("lib"))
   assert.equal(
     pkg.dreamteamer.extension,
-    "./lib/extension.mjs",
+    "./lib/activate.mjs",
     "the setup unit rides on the module's own extension entry"
   )
   const text = fs.readFileSync(new URL("../SETUP.md", import.meta.url), "utf8")

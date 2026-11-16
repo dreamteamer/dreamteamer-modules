@@ -12,7 +12,7 @@
 // Exit 0 when done or nothing to do; 1 on any failure (✖ and the reason); 2 on an unknown subcommand.
 import fs from "node:fs"
 import path from "node:path"
-import { findWorkspace } from "../lib/workspace-root.ts"
+import { findWorkspace } from "../lib/findWorkspace.ts"
 import { initEngine } from "../src/host/engine.ts"
 import { workspaceNavSettings } from "../src/navModel.ts"
 import { migrateNavSettings } from "../src/nav-doc.ts"

@@ -2,7 +2,7 @@
 // written as module sources, and the app mounted on an ephemeral loopback port.
 import { once } from "node:events"
 import { api, workspace, writeSource } from "../../../tests/helpers/fixture.ts"
-import { bind, createApp } from "../src/app.ts"
+import { bind, createApp } from "../src/createApp.ts"
 
 /** A minimal valid v2 descriptor, so a test states only the part it is about. */
 export function simpleCollection(extra = {}) {

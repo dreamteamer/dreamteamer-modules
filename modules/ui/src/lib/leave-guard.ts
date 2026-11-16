@@ -5,7 +5,7 @@
  *
  * One guard at a time: there is one page. A change of query alone (`?filter=` on a browse) is not leaving.
  */
-import { pathOf } from "./route.ts"
+import { pathOf } from "./createRoute.ts"
 
 type Guard = () => boolean
 

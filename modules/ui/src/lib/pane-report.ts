@@ -12,7 +12,7 @@
  * Node's test runner as is.
  */
 import type { Signal } from "./signal.ts"
-import { listRoute } from "./route.ts"
+import { listRoute } from "./createRoute.ts"
 import { pageSelection, pushedSelection, splitPaneRef, type PaneView } from "./pane-place.ts"
 
 export const MAX_REPORTED = 50

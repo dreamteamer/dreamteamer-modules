@@ -21,7 +21,7 @@ import os from "node:os"
 import path from "node:path"
 import { spawnSync } from "node:child_process"
 import { fileURLToPath } from "node:url"
-import { findWorkspace } from "../lib/workspace-root.ts"
+import { findWorkspace } from "../lib/findWorkspace.ts"
 
 /** List price per token, by model id prefix: input · output · cache write (5 min · 1 h) · cache read.
  *  Used only when the transcript carries no `cost-state`; a model not listed leaves `cost_usd` empty. */
@@ -187,7 +187,7 @@ export function fieldsOf(parsed, { sessionId, transcript }: Record<string, any> 
 }
 
 /** The workspace root — one function for session-save and `dt session bind`, so a session is written to
- *  one workspace whichever writes first (lib/workspace-root.mjs: never a folder directly inside git_modules/). */
+ *  one workspace whichever writes first (lib/findWorkspace.mjs: never a folder directly inside git_modules/). */
 export { findWorkspace }
 
 /** Where a session's transcript copy is kept, as the template the record carries — the one place

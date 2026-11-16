@@ -34,7 +34,7 @@
 		"dependencies": [
 			"@dreamteamer/meetings"
 		],
-		"extension": "./lib/extension.mjs",
+		"extension": "./lib/activate.mjs",
 		"env": [
 			"TRANSCRIPTION_HOME"
 		],

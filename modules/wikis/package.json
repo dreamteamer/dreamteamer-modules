@@ -39,6 +39,6 @@
 		"peer_collections": [
 			"notebooks"
 		],
-		"extension": "./lib/extension.mjs"
+		"extension": "./lib/activate.mjs"
 	}
 }

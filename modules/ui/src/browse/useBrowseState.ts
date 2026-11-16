@@ -33,7 +33,7 @@ import { compileFilter, emptyFilterGroup, serializeFilterGroup, type FilterGroup
 import { normalizeFilterRefs } from "../lib/normalizeFilterRefs.ts"
 import { listSeed, scratchKey as scratchKeyFor } from "../lib/listSeed.ts"
 import { effectiveLimit } from "../lib/page-size.ts"
-import { createRoute, pathOf, queryOf, recordRoute, withQuery } from "../lib/route.ts"
+import { createRoute, pathOf, queryOf, recordRoute, withQuery } from "../lib/createRoute.ts"
 import { recordLabel } from "../lib/schema.ts"
 import { lists } from "../registry/index.ts"
 import { resolveView } from "../registry/resolve.ts"

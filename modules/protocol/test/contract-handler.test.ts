@@ -30,7 +30,7 @@ test(
   async () => {
     const { makeFixture } = await load("lib/contract/fixture.js")
     const { runContract, cases } = await load("lib/contract/run.js")
-    const { createHandler } = await load("src/handler.js")
+    const { createHandler } = await load("src/createHandler.js")
     fixture = makeFixture({ engineDir: ENGINE_DIR })
     const handler = await createHandler({ root: fixture.root })
     const request = (m, p, b) => quietly(() => handler.handle(m, p, b))
@@ -60,7 +60,7 @@ test(
 
     // the pane routes answer a host's own PaneStore when it passes one (dt web), and refuse a selection before the
     // store sees it; without one, a per-api memory store answers at admin (the editor)
-    const { route } = await load("src/handler.js")
+    const { route } = await load("src/createHandler.js")
     const seen = []
     const pane = {
       host: () => ({ level: "read", chat: true, workspace: { id: "w1", name: "northwind" } }),

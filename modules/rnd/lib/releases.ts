@@ -6,7 +6,7 @@
 // naming its own fields — a hand-written copy under another id, or `dt set … version=` on a record, which
 // writes the field and leaves the id where it was — and then a second release of one version is possible.
 // `unique` in the engine is per scalar field, and the pair is two, so the rule is this module's to check:
-// `dt check` runs it through the extension (lib/extension.mjs).
+// `dt check` runs it through the extension (lib/activate.mjs).
 import path from "node:path"
 
 export const COLLECTION = "rnd/releases"

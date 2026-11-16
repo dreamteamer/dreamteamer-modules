@@ -63,7 +63,7 @@ before(async () => {
     fs.existsSync(path.join(ws.root, ".dreamteamer", "collections", "notes.collection.yaml")),
     "the starter notes collection is missing"
   )
-  const { createHandler } = await import(pathToFileURL(path.join(PROTOCOL, "src", "handler.js")).href)
+  const { createHandler } = await import(pathToFileURL(path.join(PROTOCOL, "src", "createHandler.js")).href)
   handler = await createHandler({ root: ws.root })
   navFile = path.join(ws.root, "nav.yaml")
   writeNav(START())

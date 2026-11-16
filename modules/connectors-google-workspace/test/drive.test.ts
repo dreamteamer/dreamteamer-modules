@@ -4,7 +4,7 @@ import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
 import { createHash } from "node:crypto"
-import { createDrive, parseRef } from "../lib/drive.ts"
+import { createDrive, parseRef } from "../lib/createDrive.ts"
 const md5 = value => createHash("md5").update(value).digest("hex")
 const binary = { id: "file-one", name: "report.txt", mimeType: "text/plain", md5Checksum: md5("payload"), size: "7" }
 const temporary = () => fs.mkdtempSync(path.join(os.tmpdir(), "drive-helper-"))

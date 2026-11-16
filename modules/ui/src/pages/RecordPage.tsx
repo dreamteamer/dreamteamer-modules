@@ -56,7 +56,7 @@ import {
   withEdits,
 } from "../lib/record-page.ts"
 import { recordPageFields } from "../lib/recordPageFields.ts"
-import { listRoute, queryOf, recordRoute } from "../lib/route.ts"
+import { listRoute, queryOf, recordRoute } from "../lib/createRoute.ts"
 import { recordFacts, recordLabel } from "../lib/schema.ts"
 import { hasForeignSource, isTarget, notTargetReason, sourceEntry, stubNoteOf } from "../lib/sources.ts"
 import { templateFields, tryRenderDisplay } from "../lib/template.ts"

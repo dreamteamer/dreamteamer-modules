@@ -16,7 +16,7 @@ import {
 } from "../src/lib/gantt-rows.ts"
 import { iconOf } from "../src/lib/group-label.ts"
 import { placeOf } from "../src/lib/pane-place.ts"
-import { pageOf } from "../src/lib/route.ts"
+import { pageOf } from "../src/lib/createRoute.ts"
 import { enumRow, fieldRow } from "./field-rows.ts"
 
 test("calendar: six Monday-first weeks around the month, today marked, the outside days flagged", () => {

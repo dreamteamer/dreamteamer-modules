@@ -7,7 +7,7 @@
  * the Vue ui's SourceMark.vue, with StubNote.vue beside it.
  */
 import type { SourceAccess, SourceEntry, SourceVia } from "../api/types.ts"
-import { recordRoute } from "../lib/route.ts"
+import { recordRoute } from "../lib/createRoute.ts"
 import { splitRef } from "../lib/schema.ts"
 import {
   ACCESS_GLYPH,

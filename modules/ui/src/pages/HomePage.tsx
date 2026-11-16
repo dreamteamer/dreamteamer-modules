@@ -2,7 +2,7 @@
 import { useApp } from "../AppContext.tsx"
 import { Icon } from "../components/Icon.tsx"
 import { Link } from "../components/Link.tsx"
-import { listRoute } from "../lib/route.ts"
+import { listRoute } from "../lib/createRoute.ts"
 import { cx, page, pageHead, pageHeadSpace, subtle } from "../styles/classes.ts"
 
 /** The collections as a grid of cards. (was dt-cards / dt-card) */

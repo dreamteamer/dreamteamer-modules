@@ -55,7 +55,7 @@ test("the tarball ships the bin, the source, the skill and the README — never 
     "UPDATING.md",
     "src/cli.js",
     "src/server.js",
-    "src/extension.js",
+    "src/activate.js",
     "src/runtime.js",
     "src/headers.js",
     "README.md",

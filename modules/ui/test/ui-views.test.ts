@@ -20,7 +20,7 @@ import {
   viewToConfig,
   type UiViewRecord,
 } from "../src/lib/uiViews.ts"
-import { pageOf, pathOf, queryOf, withQuery } from "../src/lib/route.ts"
+import { pageOf, pathOf, queryOf, withQuery } from "../src/lib/createRoute.ts"
 
 /** A collection-scope view whose drawn `display.list` is `table` plus the given keys. */
 const view = (list: Record<string, unknown>): UiViewRecord => ({

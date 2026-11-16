@@ -202,7 +202,7 @@ describe("step 4: PUT /nav with (a), and with a variant naming rnd/ghost", () =>
     for (const [name, title] of Object.entries(TITLES)) writeCollection(ws.root, name, simpleCollection({ title }))
     const r = ws.dt("compile")
     assert.equal(r.code, 0, `${r.stdout}\n${r.stderr}`)
-    const { createHandler } = await import(pathToFileURL(path.join(PROTOCOL, "src", "handler.js")).href)
+    const { createHandler } = await import(pathToFileURL(path.join(PROTOCOL, "src", "createHandler.js")).href)
     handler = await createHandler({ root: ws.root })
     navFile = path.join(ws.root, "nav.yaml")
   })

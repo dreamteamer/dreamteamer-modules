@@ -1,7 +1,7 @@
 // The routes ui shares with the Vue ui: a collection name may hold `/`, an id may hold `/`, `+` is new.
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { pageOf, recordRoute, resolveContentPath } from "../src/lib/route.ts"
+import { pageOf, recordRoute, resolveContentPath } from "../src/lib/createRoute.ts"
 
 const COLLECTIONS = ["projects", "tasks", "lab/samples", "lab"]
 

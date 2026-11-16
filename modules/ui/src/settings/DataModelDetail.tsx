@@ -38,7 +38,7 @@ import {
   type StagedField,
 } from "../lib/designer-state.ts"
 import { setLeaveGuard } from "../lib/leave-guard.ts"
-import { SCHEMA_BASE } from "../lib/route.ts"
+import { SCHEMA_BASE } from "../lib/createRoute.ts"
 import {
   button,
   buttonSize,

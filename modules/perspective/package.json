@@ -48,6 +48,6 @@
 			"deliverables",
 			"decisions"
 		],
-		"extension": "./lib/extension.mjs"
+		"extension": "./lib/activate.mjs"
 	}
 }

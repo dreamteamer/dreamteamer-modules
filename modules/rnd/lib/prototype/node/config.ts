@@ -3,7 +3,7 @@
 import fs from "node:fs"
 import path from "node:path"
 import { pathToFileURL } from "node:url"
-import { findWorkspace } from "../../workspace-root.ts"
+import { findWorkspace } from "../../findWorkspace.ts"
 
 export const CONFIG_FILE = "harness.config.mjs"
 export const KNOWN = [

@@ -3,7 +3,7 @@ import fs from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { createGoogleRequest } from "../lib/createGoogleRequest.ts"
-import { createDrive } from "../lib/drive.ts"
+import { createDrive } from "../lib/createDrive.ts"
 
 export async function main(
   argv = process.argv.slice(2),

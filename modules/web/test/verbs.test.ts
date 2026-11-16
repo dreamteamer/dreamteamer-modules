@@ -61,7 +61,7 @@ const signIn = async url => {
 }
 const host = (port, cookie) => call(`http://127.0.0.1:${port}/api/host`, { headers: { cookie, ...sameOrigin() } })
 async function serve(argv) {
-  const { default: activate } = await import("../src/extension.ts")
+  const { default: activate } = await import("../src/activate.ts")
   const out = []
   const err = []
   const [log, error] = [console.log, console.error]

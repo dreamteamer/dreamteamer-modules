@@ -3,7 +3,7 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
 import { placeOf, pushedIds, splitPaneRef } from "../src/lib/pane-place.ts"
-import { pageOf } from "../src/lib/route.ts"
+import { pageOf } from "../src/lib/createRoute.ts"
 
 const COLLECTIONS = ["tasks", "rnd/change-requests", "rnd", "meetings"]
 const VIEWS = [

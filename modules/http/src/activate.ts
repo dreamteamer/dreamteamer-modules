@@ -1,7 +1,7 @@
 // The engine extension: `dt serve [--port <n>] [--host <addr>] [--token <secret>]`. Activation binds the running engine
 // and nothing else — no port is bound and nothing is printed until the verb runs.
 import { bind, dt } from "./engine.ts"
-import { assertExposure, serve } from "./app.ts"
+import { assertExposure, serve } from "./createApp.ts"
 
 export const apiVersion = 1
 

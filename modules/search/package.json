@@ -31,6 +31,6 @@
 		"peer_collections": [
 			"wikis"
 		],
-		"extension": "./lib/extension.mjs"
+		"extension": "./lib/activate.mjs"
 	}
 }

@@ -30,7 +30,7 @@ its `"dreamteamer": {}` key exists only so a clone can be previewed as a bundle 
    harness. Design history lives in `modules/<id>/docs/` and is not shipped.
 6. **A script a person runs has its own entry.** Realpath both sides of the main guard, resolve the
    workspace by walking up to `package-lock.json` and skipping a folder directly inside
-   `git_modules/` (`lib/workspace-root.mjs`, one copy per module). A skill script is run from the
+   `git_modules/` (`lib/findWorkspace.mjs`, one copy per module). A skill script is run from the
    workspace root as `.dreamteamer/skills/<skill>/bin/<script>`; a module script as
    `node node_modules/@dreamteamer/<id>/bin/<script>`, or through the module's npm `bin`.
 7. **A module that states a rule ships the script that enforces it** (`bin/check-records.mjs` in

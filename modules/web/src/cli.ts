@@ -31,7 +31,7 @@ import {
 } from "./runtime.ts"
 import { nameNow, readRegistry, readWorkspaceState, register, stateDir, writeWorkspaceState } from "./state.ts"
 import { hookInstalled, installHook } from "./hook.ts"
-import { workspaceName } from "./pane-store.ts"
+import { workspaceName } from "./createPaneStore.ts"
 
 const BIN = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "bin", "dt-web.mjs")
 // the browser page @dreamteamer/ui builds, served as it is

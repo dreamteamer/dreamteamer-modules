@@ -19,7 +19,7 @@
 		"./contract": "./lib/contract/run.js",
 		"./contract/fixture": "./lib/contract/fixture.js",
 		"./package.json": "./package.json",
-		"./handler": "./src/handler.js",
+		"./handler": "./src/createHandler.js",
 		"./host/*": "./src/host/*.js",
 		"./nav-model": "./src/navModel.js",
 		"./nav-doc": "./src/nav-doc.js",

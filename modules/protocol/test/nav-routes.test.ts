@@ -18,7 +18,7 @@ import { ENGINE_DIR } from "../../../tests/helpers/fixture.ts"
 const PKG = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 const load = rel => import(pathToFileURL(path.join(PKG, rel)).href)
 const { makeFixture } = await load("lib/contract/fixture.js")
-const { createHandler } = await load("src/handler.js")
+const { createHandler } = await load("src/createHandler.js")
 const { engine } = await load("src/host/engine.js")
 const { meetsFloor } = await load("src/host/floor.js")
 const { isWatchedChange, changeScope } = await load("src/host/changes.js")

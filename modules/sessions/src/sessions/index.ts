@@ -1,4 +1,4 @@
-// the sessions extension — what src/entry.js activates (until core 0.12.0 it was core's own half of core's
+// the sessions extension — what src/activate.js activates (until core 0.12.0 it was core's own half of core's
 // entry, merged there with the files origin's). It contributes the `session` verb (bind · end · send), the sessions a record was
 // worked on in `dt next`, and the RETIRED session-bindings kind: core 0.9.0 removed live sessions, so a
 // session-bindings folder a layer or an older package still ships compiles with one line and is ignored.

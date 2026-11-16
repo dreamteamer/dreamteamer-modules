@@ -6,7 +6,7 @@ import { test } from "node:test"
 import assert from "node:assert/strict"
 import fs from "node:fs"
 import path from "node:path"
-import { gitModifiedMap } from "../src/app.ts"
+import { gitModifiedMap } from "../src/createApp.ts"
 import { httpWorkspace, mount, call, simpleCollection } from "./support.ts"
 import { api } from "../../../tests/helpers/fixture.ts"
 

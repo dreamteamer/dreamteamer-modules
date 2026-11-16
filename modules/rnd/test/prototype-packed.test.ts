@@ -22,7 +22,7 @@ test("the tarball ships the bin and the whole harness behind it", () => {
     "lib/prototype/browser/harness.css",
     "lib/prototype/node/export.mjs",
     "lib/prototype/node/play.mjs",
-    "lib/workspace-root.mjs",
+    "lib/findWorkspace.mjs",
   ])
     assert.ok(files.includes(f), `${f} is not in the tarball`)
   assert.ok(!files.some(f => f.startsWith("test/")), "tests do not ship")

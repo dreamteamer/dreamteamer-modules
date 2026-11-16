@@ -4,8 +4,8 @@
 import test from "node:test"
 import assert from "node:assert/strict"
 import crypto from "node:crypto"
-import { createPairing, PAIR_TTL_MS } from "../src/pairing.ts"
-import { createSessions, SESSION_IDLE_MS } from "../src/sessions.ts"
+import { createPairing, PAIR_TTL_MS } from "../src/createPairing.ts"
+import { createSessions, SESSION_IDLE_MS } from "../src/createSessions.ts"
 import { mintClientToken, matchClientToken } from "../src/tokens.ts"
 
 const DAY = 86_400_000

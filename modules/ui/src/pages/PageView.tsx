@@ -1,7 +1,7 @@
 /**
  * A PAGE ui-view (ported from the Vue ui's pages/UiPageView.vue) — a `scope: page` view this app draws itself:
  * layout `page`, which NESTS other ui-views as panels (dashboards are nested ui-views, not a panel vocabulary), or
- * `activity`, a module's feed. Reached at the view's own route (`lib/route.ts` → `{ kind: "page-view" }`), and from
+ * `activity`, a module's feed. Reached at the view's own route (`lib/createRoute.ts` → `{ kind: "page-view" }`), and from
  * the Schema tab as a module's page when a page view names that module (`modulePageView`).
  *
  * What it draws is decided by lib/page-view.ts (pure): one panel per entry of `display.list.options.views`, in a

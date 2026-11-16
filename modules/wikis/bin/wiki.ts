@@ -982,7 +982,7 @@ const __isMain = () => {
   return real(process.argv[1]) === real(__fileURLToPath(import.meta.url))
 }
 if (__isMain()) {
-  const { findWorkspace } = await import("../lib/workspace-root.ts")
+  const { findWorkspace } = await import("../lib/findWorkspace.ts")
   const ws = findWorkspace()
   if (!ws) {
     console.error(

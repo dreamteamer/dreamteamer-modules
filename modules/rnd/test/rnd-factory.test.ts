@@ -438,7 +438,7 @@ describe("the commands, the bindings and the agent — every entry names a skill
 
 describe("the extension", () => {
   test("rnd contributes its check and no setup unit — wikis and notebooklm bring their own (CR-dt-008)", async () => {
-    const { default: activate, apiVersion } = await import("../lib/extension.ts")
+    const { default: activate, apiVersion } = await import("../lib/activate.ts")
     assert.equal(apiVersion, 1)
     const ext = activate({})
     assert.deepEqual(Object.keys(ext), ["check"])
@@ -1050,8 +1050,8 @@ describe("0.6.0 — releases: a product's versions, each listing what it ships",
   })
   test("dt check reads releases through rnd's own extension", async () => {
     const pkg = JSON.parse(read("package.json"))
-    assert.equal(pkg.dreamteamer.extension, "./lib/extension.mjs")
-    assert.match(read("lib/extension.mjs"), /from '\.\/releases\.mjs'/)
+    assert.equal(pkg.dreamteamer.extension, "./lib/activate.mjs")
+    assert.match(read("lib/activate.mjs"), /from '\.\/releases\.mjs'/)
     const { expectedId, releaseViolations } = await import("../lib/releases.ts")
     assert.equal(expectedId({ product: "rnd/products/grantee-portal", version: "1.4.0" }), "grantee-portal/1.4.0")
     assert.equal(

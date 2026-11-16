@@ -2,11 +2,11 @@
  * Where the page is, in the four shapes the server stores (cr-modules-017 §5): `{ collection }`, `{ collection, id }`,
  * `{ uiView }` — and `{ other: true }` for everything else (home, a module app, settings), so a page outside the three
  * view shapes still reports that it is somewhere. Ported from the Vue ui's lib/pane-place.ts, over ui's `Page`
- * (lib/route.ts `pageOf`) instead of a vue-router route: pageOf already split the path at the LONGEST registered
+ * (lib/createRoute.ts `pageOf`) instead of a vue-router route: pageOf already split the path at the LONGEST registered
  * collection, so a namespaced collection (`rnd/change-requests`) and an id with slashes (`2026/11/standup`) arrive
  * whole.
  */
-import type { Page } from "./route.ts"
+import type { Page } from "./createRoute.ts"
 import { signal } from "./signal.ts"
 
 /** The place a page reports — copied from @dreamteamer/protocol `pane.d.ts` (ui takes no protocol dependency). */

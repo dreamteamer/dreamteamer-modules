@@ -50,7 +50,7 @@ describe("rnd bins after the decomposition", { skip }, () => {
     // step 1 — the tarball, and rnd alone from it
     assert.equal(pkgOf("rnd").version, "0.11.0")
     const files = packedFiles("rnd")
-    assert.ok(files.includes("lib/workspace-root.mjs"), "lib/workspace-root.mjs is not in the tarball")
+    assert.ok(files.includes("lib/findWorkspace.mjs"), "lib/findWorkspace.mjs is not in the tarball")
     for (const f of ["SETUP.md", "compose.json", "lib/wiki.mjs", "bin/notebooklm-notebook.mjs", "bin/wikis-wiki.mjs"])
       assert.ok(!files.includes(f), `${f} ships`)
     assert.deepEqual(
@@ -140,7 +140,7 @@ describe("rnd bins after the decomposition", { skip }, () => {
       `rnd contributes a setup unit:\n${s.stdout}`
     )
     return import(
-      pathToFileURL(path.join(root, "node_modules", "@dreamteamer", "rnd", "lib", "extension.mjs")).href
+      pathToFileURL(path.join(root, "node_modules", "@dreamteamer", "rnd", "lib", "activate.mjs")).href
     ).then(ext => {
       assert.equal(ext.apiVersion, 1)
       assert.deepEqual(Object.keys(ext.default({})), ["check"], "rnd's extension contributes more than its check")
