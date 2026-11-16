@@ -15,6 +15,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { BrowseState } from '../composables/browse-state';
 import { titleOf } from '../lib/record-title';
+import { resolveColor } from '../lib/css-token';
 import type { ItemRecord } from '../api/types';
 import DtIcon from '../components/DtIcon.vue';
 
@@ -66,8 +67,10 @@ function render() {
 	if (!map || !layer) return;
 	layer.clearLayers();
 	const pts = plotted.value;
+	// Leaflet writes the colour into an SVG attribute, where var() does not resolve: read the token's value
+	const marker = resolveColor('var(--dt-map-marker)');
 	for (const { r, coord } of pts) {
-		const m = L.circleMarker(coord, { radius: 8, weight: 2, color: '#6644ec', fillColor: '#6644ec', fillOpacity: 0.35 });
+		const m = L.circleMarker(coord, { radius: 8, weight: 2, color: marker, fillColor: marker, fillOpacity: 0.35 });
 		m.bindTooltip(titleOf(r));
 		m.on('click', () => props.state.openRecord(r));
 		layer.addLayer(m);

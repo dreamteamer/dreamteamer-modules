@@ -59,7 +59,7 @@ function onKeydown(event: KeyboardEvent): void {
 	border: 1px solid var(--dt-border-strong);
 	border-radius: var(--dt-radius);
 	font-family: var(--dt-font-mono);
-	font-size: 12.5px;
+	font-size: var(--dt-text-mono);
 	line-height: 1.6;
 	color: var(--dt-fg);
 	background: var(--dt-bg-subtle);

@@ -67,7 +67,7 @@ export default defineComponent({
 .dt-md h1 { font-size: var(--dt-text-xl); font-weight: 700; margin: 14px 0 6px; }
 .dt-md h2 { font-size: var(--dt-text-lg); font-weight: 700; margin: 14px 0 4px; }
 .dt-md h3 { font-size: var(--dt-text-md); font-weight: 700; margin: 12px 0 3px; }
-.dt-md h4 { font-size: 13px; font-weight: 700; margin: 10px 0 2px; }
+.dt-md h4 { font-size: var(--dt-text); font-weight: 700; margin: 10px 0 2px; }
 .dt-md > :first-child { margin-top: 0; }
 .dt-md p { margin: 6px 0; }
 /*
@@ -117,7 +117,7 @@ export default defineComponent({
 .dt-md td {
 	border-bottom: 1px solid var(--dt-border);
 	padding: 5px 9px;
-	font-size: 13px;
+	font-size: var(--dt-text);
 	text-align: start;
 	vertical-align: top;
 }

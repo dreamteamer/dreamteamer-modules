@@ -72,7 +72,7 @@ function onAux(e: MouseEvent, path: string) {
 	overflow-y: hidden;
 	scrollbar-width: none;
 	/* the strip's end fades when the tabs outrun it */
-	mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+	mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); /* literal-ok: a mask's opacity, never a colour anyone sees */
 }
 .dt-tabs::-webkit-scrollbar {
 	display: none;

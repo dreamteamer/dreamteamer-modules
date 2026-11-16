@@ -18,6 +18,7 @@ import DotNode from './DotNode.vue';
 import GroupNode from './GroupNode.vue';
 import type { DiagramModel } from '../../lib/diagram/types';
 import type { LayoutBox } from '../../lib/diagram/layout';
+import { resolveColor } from '../../lib/css-token';
 
 import '@vue-flow/core/dist/style.css';
 import '@vue-flow/core/dist/theme-default.css';
@@ -46,8 +47,9 @@ const emit = defineEmits<{
 
 /** Fixed hues rather than generated ones: checked to read on both themes, and a stable palette
  *  means the same model draws the same colours every time it is opened. */
-const ACCENTS = ['#7c5cff', '#0e9f6e', '#e2a300', '#e5484d', '#3b82f6', '#c026d3', '#0891b2', '#ea580c'];
-const UNGROUPED_ACCENT = '#64748b';
+// the hues are tokens (tokens.css --dt-diagram-*): drawn in CSS as var(), resolved for the minimap's SVG attribute
+const ACCENTS = [1, 2, 3, 4, 5, 6, 7, 8].map((i) => `var(--dt-diagram-${i})`);
+const UNGROUPED_ACCENT = 'var(--dt-diagram-ungrouped)';
 
 const accentOf = computed(() => {
 	const map = new Map<string, string>();
@@ -223,7 +225,7 @@ function isModelNode(id: string): boolean {
 		<Controls :show-interactive="false" />
 		<!-- maskColor is a PROP, not CSS, so it can't take a `--dt-*` token; a neutral at low alpha
 		     is the one value that reads on both themes. -->
-		<MiniMap pannable zoomable mask-color="rgba(127,127,127,0.32)" :node-color="(n: any) => n.data?.accent ?? '#888'" />
+		<MiniMap pannable zoomable mask-color="rgba(127,127,127,0.32)" :node-color="(n: any) => resolveColor(n.data?.accent ?? 'var(--dt-diagram-node)')" />
 
 		<template #node-dtentity="nodeProps">
 			<EntityNode v-bind="nodeProps" />
@@ -252,7 +254,7 @@ function isModelNode(id: string): boolean {
 }
 .dt-diagram__flow .vue-flow__edge-text {
 	fill: var(--dt-fg-subtle);
-	font-size: 9px;
+	font-size: var(--dt-text-3xs);
 	font-family: var(--dt-font-mono);
 }
 .dt-diagram__flow .vue-flow__edge-textbg {

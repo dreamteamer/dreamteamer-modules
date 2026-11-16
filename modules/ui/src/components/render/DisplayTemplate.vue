@@ -147,7 +147,7 @@ export default defineComponent({
 }
 .dt-md--tpl h1,
 .dt-md--tpl h2 {
-	font-size: calc(1em + 1px);
+	font-size: calc(1em + 1px); /* literal-ok: one pixel over whatever text the template sits in (a card, a cell) */
 }
 .dt-md--tpl ul,
 .dt-md--tpl ol {

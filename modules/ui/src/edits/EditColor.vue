@@ -22,7 +22,7 @@ const emit = defineEmits<{ 'update:value': [value: unknown] }>();
 const HEX_RE = /^#([0-9a-f]{6}|[0-9a-f]{3})$/i;
 
 const text = computed(() => (typeof props.value === 'string' ? props.value : ''));
-const swatchValue = computed(() => (HEX_RE.test(text.value) ? text.value : '#cccccc'));
+const swatchValue = computed(() => (HEX_RE.test(text.value) ? text.value : '#cccccc')); // literal-ok: <input type=color> takes only a #rrggbb value
 
 function onSwatchInput(event: Event): void {
 	emit('update:value', (event.target as HTMLInputElement).value);

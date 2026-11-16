@@ -171,7 +171,7 @@ watch(() => props.answer, async (a) => {
 }
 .dt-lo-dirty {
 	color: var(--vscode-gitDecoration-modifiedResourceForeground, var(--dt-warning));
-	font-size: 9px;
+	font-size: var(--dt-text-3xs);
 	line-height: 1;
 }
 

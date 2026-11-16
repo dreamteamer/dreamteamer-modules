@@ -202,7 +202,7 @@ body {
 	color: var(--dt-link);
 	text-decoration: none;
 	cursor: pointer;
-	border-radius: 2px;
+	border-radius: var(--dt-radius-2xs);
 }
 
 .dt-link:hover {
@@ -548,7 +548,7 @@ body {
 }
 
 .dt-empty .codicon {
-	font-size: 48px;
+	font-size: var(--dt-icon-xl);
 	color: var(--dt-fg-muted);
 }
 
@@ -592,7 +592,7 @@ body {
 }
 
 .dt-dialog__title {
-	font-size: 18px;
+	font-size: var(--dt-text-dialog-title);
 	font-weight: 600;
 	margin-bottom: 16px;
 }

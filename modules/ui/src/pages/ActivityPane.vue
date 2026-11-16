@@ -207,7 +207,7 @@ const failed = computed(() => activity.value?.failed ?? []);
 }
 .dt-activity__title {
 	margin: 0 0 4px;
-	font-size: calc(var(--dt-text) + 2px);
+	font-size: var(--dt-text-heading);
 	font-weight: 600;
 }
 .dt-activity__lead,

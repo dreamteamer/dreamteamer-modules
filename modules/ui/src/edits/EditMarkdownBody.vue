@@ -59,7 +59,7 @@ function setSourceMode(on: boolean): void {
 }
 
 const theme = EditorView.theme({
-	'&': { backgroundColor: 'transparent', color: 'var(--dt-fg)', fontSize: '13px' },
+	'&': { backgroundColor: 'transparent', color: 'var(--dt-fg)', fontSize: 'var(--dt-text)' },
 	'&.cm-focused': { outline: 'none' },
 	'.cm-scroller': { fontFamily: 'var(--dt-font-mono)', lineHeight: '1.6', minHeight: '260px' },
 	'.cm-content': { padding: '14px', caretColor: 'var(--dt-accent)' },

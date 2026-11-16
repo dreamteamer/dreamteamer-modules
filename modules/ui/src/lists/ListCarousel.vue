@@ -172,14 +172,14 @@ function text(record: ItemRecord): string {
 .dt-carousel-card:focus-visible { box-shadow: 0 0 0 2px var(--vscode-focusBorder, var(--dt-focus-ring)); }
 .dt-carousel-head { cursor: pointer; }
 .dt-carousel-title { margin: 0 0 4px; }
-.dt-carousel-text { margin: 0; color: var(--vscode-descriptionForeground, var(--dt-fg-subtle)); font-size: 12.5px; line-height: 1.45; }
-.dt-carousel-stage { position: relative; display: flex; align-items: center; justify-content: center; min-height: 160px; max-height: 60vh; background: var(--vscode-editorWidget-background, var(--dt-bg-subtle)); border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, var(--dt-border))); border-radius: 6px; overflow: hidden; }
+.dt-carousel-text { margin: 0; color: var(--vscode-descriptionForeground, var(--dt-fg-subtle)); font-size: var(--dt-text-sm); line-height: 1.45; }
+.dt-carousel-stage { position: relative; display: flex; align-items: center; justify-content: center; min-height: 160px; max-height: 60vh; background: var(--vscode-editorWidget-background, var(--dt-bg-subtle)); border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, var(--dt-border))); border-radius: var(--dt-radius-md); overflow: hidden; }
 .dt-carousel-img { max-width: 100%; max-height: 60vh; object-fit: contain; display: block; }
 .dt-carousel-nav { position: absolute; top: 50%; transform: translateY(-50%); background: var(--vscode-button-secondaryBackground, var(--dt-bg-hover)); color: var(--vscode-button-secondaryForeground, var(--dt-fg)); border: none; border-radius: var(--dt-radius-pill); width: 30px; height: 30px; display: grid; place-items: center; cursor: pointer; opacity: 0.85; }
 .dt-carousel-nav:hover { opacity: 1; }
 .dt-carousel-nav--prev { left: 8px; }
 .dt-carousel-nav--next { right: 8px; }
-.dt-carousel-counter { position: absolute; bottom: 6px; right: 10px; font-size: var(--dt-label); padding: 2px 8px; border-radius: var(--dt-radius-pill); background: var(--vscode-badge-background, var(--dt-accent)); color: var(--vscode-badge-foreground, #ffffff); }
+.dt-carousel-counter { position: absolute; bottom: 6px; right: 10px; font-size: var(--dt-label); padding: 2px 8px; border-radius: var(--dt-radius-pill); background: var(--vscode-badge-background, var(--dt-accent)); color: var(--vscode-badge-foreground, var(--dt-on-accent)); }
 .dt-carousel-empty { display: flex; align-items: center; gap: 8px; padding: 24px; color: var(--vscode-descriptionForeground, var(--dt-fg-subtle)); font-size: var(--dt-text-sm); }
 .dt-carousel-strip { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; }
 .dt-carousel-thumb { flex: 0 0 auto; width: 84px; height: 52px; padding: 0; border: 2px solid transparent; border-radius: var(--dt-radius-sm); overflow: hidden; background: var(--vscode-editorWidget-background, var(--dt-bg-subtle)); cursor: pointer; }

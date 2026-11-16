@@ -64,7 +64,7 @@ const rows = computed(() => props.stubs.map((name) => ({ name, entry: sourceEntr
 	column-gap: 4px;
 	padding: 0 6px;
 	border: 1px dashed var(--dt-border);
-	border-radius: 10px;
+	border-radius: var(--dt-radius-chip);
 }
 .dt-stub-note__item > * {
 	flex-shrink: 0;

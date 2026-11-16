@@ -68,7 +68,7 @@ const preview = computed(() => {
 	border-radius: var(--dt-radius);
 	background: var(--dt-bg);
 	font-family: var(--dt-font-mono);
-	font-size: 12.5px;
+	font-size: var(--dt-text-mono);
 	line-height: 1.5;
 	max-height: 420px;
 	overflow: auto;

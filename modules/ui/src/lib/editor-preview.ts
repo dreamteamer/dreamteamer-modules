@@ -207,13 +207,14 @@ const linkClickHandler = EditorView.domEventHandlers({
 });
 
 const baseTheme = EditorView.baseTheme({
-	'.cm-lp-h1': { fontSize: '1.5em', fontWeight: '700', lineHeight: '1.3' },
-	'.cm-lp-h2': { fontSize: '1.25em', fontWeight: '700', lineHeight: '1.3' },
-	'.cm-lp-h3': { fontSize: '1.1em', fontWeight: '700', lineHeight: '1.3' },
+	// headings scale the editor's own text (EditMarkdownBody sets it to --dt-text)
+	'.cm-lp-h1': { fontSize: 'calc(var(--dt-text) * 1.5)', fontWeight: '700', lineHeight: '1.3' },
+	'.cm-lp-h2': { fontSize: 'calc(var(--dt-text) * 1.25)', fontWeight: '700', lineHeight: '1.3' },
+	'.cm-lp-h3': { fontSize: 'calc(var(--dt-text) * 1.1)', fontWeight: '700', lineHeight: '1.3' },
 	'.cm-lp-strong': { fontWeight: '700' },
 	'.cm-lp-em': { fontStyle: 'italic' },
 	'.cm-lp-strike': { textDecoration: 'line-through' },
-	'.cm-lp-code': { fontFamily: 'var(--dt-font-mono)', fontSize: '0.92em', backgroundColor: 'var(--dt-bg-subtle)', borderRadius: '3px' },
+	'.cm-lp-code': { fontFamily: 'var(--dt-font-mono)', fontSize: '0.92em', backgroundColor: 'var(--dt-bg-subtle)', borderRadius: 'var(--dt-radius-xs)' }, // literal-ok: code shrinks with the line it sits in, a heading's included
 	'.cm-lp-codeblock': { fontFamily: 'var(--dt-font-mono)', backgroundColor: 'var(--dt-bg-subtle)' },
 	'.cm-lp-link': { color: 'var(--dt-accent)', textDecoration: 'underline', cursor: 'pointer' },
 	'.cm-lp-quote': { borderLeft: '3px solid var(--dt-border-strong)', paddingLeft: '8px', color: 'var(--dt-fg-subtle)' },

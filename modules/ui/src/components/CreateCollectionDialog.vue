@@ -195,7 +195,7 @@ async function onSubmit(): Promise<void> {
 }
 .dt-mixins__order {
 	color: var(--vscode-descriptionForeground, var(--dt-fg-subtle));
-	font-size: var(--vscode-font-size, 13px);
+	font-size: var(--dt-text);
 }
 .dt-mixins__none {
 	margin: 0;

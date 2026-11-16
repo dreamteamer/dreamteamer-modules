@@ -479,7 +479,7 @@ const addableChoices = computed(() => addableFields.value.map((f) => ({ text: la
 	display: flex;
 	flex-shrink: 0;
 	border: 1px solid var(--vscode-dropdown-border, var(--dt-border));
-	border-radius: 2px;
+	border-radius: var(--dt-radius-2xs);
 	overflow: hidden;
 }
 .dt-lo-dir button {

@@ -681,7 +681,7 @@ async function onConfirmDeleteCollection(): Promise<void> {
 }
 .dt-badge-implicit {
 	background: color-mix(in srgb, var(--dt-warning) 18%, transparent);
-	color: color-mix(in srgb, var(--dt-warning) 80%, #000);
+	color: var(--dt-warning-strong);
 }
 .dt-badge-mirror {
 	background: color-mix(in srgb, var(--dt-accent) 14%, transparent);
@@ -700,7 +700,7 @@ async function onConfirmDeleteCollection(): Promise<void> {
 	margin: 0 24px 16px;
 	padding: 12px 20px;
 	background: var(--dt-fg);
-	color: #fff;
+	color: var(--dt-on-accent);
 	border-radius: var(--dt-radius-lg);
 	box-shadow: var(--dt-shadow-lg);
 	z-index: 40;
@@ -716,7 +716,7 @@ async function onConfirmDeleteCollection(): Promise<void> {
 	font-size: var(--dt-icon);
 }
 .dt-save-bar__error {
-	color: #ffb4c0;
+	color: var(--dt-danger-inverse);
 	font-size: var(--dt-text);
 }
 .dt-save-bar__actions {

@@ -537,7 +537,7 @@ async function onDrop(column: Column): Promise<void> {
 .dt-kanban-core-col.is-drop { border-color: var(--dt-accent); }
 /* Insertion gaps. Nearly invisible until hovered — they exist only during a drag, and a permanent
    4px band between every card would read as a layout bug rather than as a target. */
-.dt-kanban-core-slot { height: 8px; margin: -2px 0; border-radius: 2px; }
+.dt-kanban-core-slot { height: 8px; margin: -2px 0; border-radius: var(--dt-radius-2xs); }
 .dt-kanban-core-slot--end { height: 24px; }
 .dt-kanban-core-slot.is-over { background: var(--dt-accent); height: 3px; margin: 0.5rem 0; }
 /* The ungrouped bucket is a real column but not a real value — a dashed edge says "dropping here

@@ -71,7 +71,7 @@ function onInput(event: Event): void {
 	resize: vertical;
 }
 .dt-json-edit.is-invalid {
-	border-color: var(--dt-danger, #e35169);
-	outline-color: var(--dt-danger, #e35169);
+	border-color: var(--dt-danger);
+	outline-color: var(--dt-danger);
 }
 </style>

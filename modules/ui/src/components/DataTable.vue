@@ -495,7 +495,7 @@ function toggleBand(value: string): void {
 	border: 1px solid var(--dt-border);
 	background: var(--dt-bg-subtle);
 	color: var(--dt-fg-subtle);
-	font-size: 15px;
+	font-size: var(--dt-text-md);
 	font-weight: 600;
 	letter-spacing: 0.02em;
 	user-select: none;

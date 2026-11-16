@@ -88,7 +88,7 @@ function onGrab(event: PointerEvent): void {
 	cursor: nwse-resize;
 	border-right: 2px solid var(--group-accent);
 	border-bottom: 2px solid var(--group-accent);
-	border-bottom-right-radius: 10px;
+	border-bottom-right-radius: var(--dt-radius-chip);
 	opacity: 0.6;
 }
 .dt-diagram-group__label {

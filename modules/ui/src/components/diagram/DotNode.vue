@@ -83,7 +83,7 @@ const dot = computed(() => `${props.data.size}px`);
 	left: calc(100% + 6px);
 	top: 50%;
 	transform: translateY(-50%);
-	font-size: 10.5px;
+	font-size: var(--dt-text-2xs);
 	line-height: 1.3;
 	color: var(--dt-fg);
 	white-space: nowrap;

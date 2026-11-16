@@ -311,7 +311,7 @@ a.dt-page-nav__crumb:hover {
 }
 
 .dt-page-header-title {
-	font-size: calc(var(--dt-text) + 2px);
+	font-size: var(--dt-text-heading);
 	font-weight: 600;
 	line-height: 1.35;
 	color: var(--dt-fg);
@@ -345,11 +345,11 @@ a.dt-page-nav__crumb:hover {
 	height: 16px;
 	border-radius: 50%;
 	background: var(--dt-module-bg-active, var(--dt-accent));
-	color: var(--dt-module-fg-active, #ffffff);
+	color: var(--dt-module-fg-active);
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	font-size: 8px;
+	font-size: var(--dt-text-3xs);
 	font-weight: 700;
 	opacity: 0.8;
 }

@@ -155,6 +155,34 @@
 	--dt-nav-width: 260px;
 	--dt-nav-width-min: 180px;
 	--dt-nav-width-max: 480px;
+
+	/* ---- THE LITERAL SWEEP (cr-modules-022 follow-up) ---------------------------------------------------------------
+	   Sizes, radii and colours that were written as literals in components (test/unit/literal-scan.test.ts now fails on
+	   one). Each keeps exactly the value it replaced, so nothing moves by more than a pixel in either host, and none is
+	   mapped by vscode.css — they draw the same in the editor as before. */
+	--dt-text-3xs: 9px; /* a dot or a badge letter: the unsaved-changes dot, a diagram's tiny caption, a 16 px avatar */
+	--dt-text-heading: calc(var(--dt-text) + 2px); /* a pane's own heading, two steps above the text it heads */
+	--dt-text-figure: calc(var(--dt-text) + 6px); /* a number read at a glance (a count's total) */
+	--dt-text-dialog-title: 18px;
+	--dt-icon-xl: 48px; /* an empty state's glyph */
+	--dt-radius-2xs: 2px; /* a hairline mark, a link's focus box, a bar on a track */
+	--dt-radius-md: 6px; /* a fixed 6px corner: --dt-radius is 6 here but 4 in VS Code */
+	--dt-radius-chip: 10px; /* a chip that may wrap to two lines */
+	--dt-success-strong: color-mix(in srgb, var(--dt-success) 80%, #000); /* the success colour as legible text */
+	--dt-warning-strong: color-mix(in srgb, var(--dt-warning) 80%, #000);
+	--dt-danger-inverse: #ffb4c0; /* an error on an inverted (foreground-coloured) bar */
+	--dt-map-marker: #6644ec; /* a map's record marker (Leaflet takes a resolved colour: lib/css-token.ts) */
+	/* A diagram's group hues, by group index, and the hue of a node in no group; the minimap's node with neither. */
+	--dt-diagram-1: #7c5cff;
+	--dt-diagram-2: #0e9f6e;
+	--dt-diagram-3: #e2a300;
+	--dt-diagram-4: #e5484d;
+	--dt-diagram-5: #3b82f6;
+	--dt-diagram-6: #c026d3;
+	--dt-diagram-7: #0891b2;
+	--dt-diagram-8: #ea580c;
+	--dt-diagram-ungrouped: #64748b;
+	--dt-diagram-node: #888888;
 }
 
 @media (prefers-reduced-motion: reduce) {
