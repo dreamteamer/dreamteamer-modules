@@ -3,9 +3,9 @@
  * registered component to render it with, degrading gracefully — never throwing —
  * when the schema names something this build doesn't have registered.
  */
-import type { FieldRow } from "../api/types"
-import { choicesOf, isBodyField, isRelationField, subFieldsOf } from "../lib/field-row"
-import { type ExtensionDefinition, edits, kindDefaultEdits, kindDefaultViews, views } from "./index"
+import type { FieldRow } from "../api/types.ts"
+import { choicesOf, isBodyField, isRelationField, subFieldsOf } from "../lib/field-row.ts"
+import { type ExtensionDefinition, edits, kindDefaultEdits, kindDefaultViews, views } from "./index.ts"
 
 export interface Resolved<T> {
   entry: T
@@ -110,8 +110,9 @@ export function resolveEdit(field: FieldRow): Resolved<ExtensionDefinition> {
     shapeEdit(field) ?? moduleKindDefault.find?.("edit", field) ?? kindDefaultEdits[field.type] ?? EDIT_FALLBACK
   const explicitId = field.editor
   if (explicitId) {
+    // a record-scoped Edit draws a whole record page, never one value
     const explicitEntry = edits.get(explicitId)
-    if (explicitEntry) return { entry: explicitEntry, degraded: null }
+    if (explicitEntry && explicitEntry.scope !== "record") return { entry: explicitEntry, degraded: null }
     warnUnregistered("editor", field, explicitId)
     return resolveChain(edits, kindDefaultId, kindDefaultId, EDIT_FALLBACK, `missing-edit-${explicitId}`)
   }
@@ -128,7 +129,7 @@ export function resolveView(field: FieldRow, context: "cell" | "record" = "cell"
   const explicitId = field.viewer
   if (explicitId) {
     const explicitEntry = views.get(explicitId)
-    if (explicitEntry) return { entry: explicitEntry, degraded: null }
+    if (explicitEntry && explicitEntry.scope !== "record") return { entry: explicitEntry, degraded: null }
     warnUnregistered("viewer", field, explicitId)
     return resolveChain(views, kindDefaultId, kindDefaultId, VIEW_FALLBACK, `missing-view-${explicitId}`)
   }

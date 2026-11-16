@@ -11,8 +11,8 @@
  * Every name below is checked against the bundled font's manifest (lib/icon-names.ts); a name the
  * font can't render would show as literal ligature text, which is worse than no icon at all.
  */
-import type { FieldRow } from "../api/types"
-import { choicesOf, isBodyField, isRelationField } from "./field-row"
+import type { FieldRow } from "../api/types.ts"
+import { choicesOf, isBodyField, isRelationField } from "./field-row.ts"
 
 const FALLBACK = "note"
 

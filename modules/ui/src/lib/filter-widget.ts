@@ -23,8 +23,8 @@
  *     `interface-input` for that whole operator family.
  *   - `required`, `kind` and `editable` are properties of the record, not of a query about it.
  */
-import type { FieldRow } from "../api/types"
-import { kindOfField } from "./filter-query"
+import type { FieldRow } from "../api/types.ts"
+import { kindOfField } from "./filter-query.ts"
 
 /** `{text, value}` pairs, as `GET …/values/:field` arrives (composables/field-values.ts). */
 interface Choice {

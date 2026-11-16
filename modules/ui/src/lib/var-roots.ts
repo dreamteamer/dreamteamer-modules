@@ -1,5 +1,5 @@
 /**
- * Declared-variable roots in the app: the folders outside the workspace a webview may read, and the
+ * Declared-variable roots in the app (copied from the Vue ui's lib/var-roots.ts): the folders outside the workspace a webview may read, and the
  * webview uri each maps to. Injected by `panel.ts` as `window.__DT_VAR_ROOTS__` (`{ name, path, uri }`
  * per variable that renders to a directory) beside `__DT_FILE_BASES__`, for the same reason: a webview
  * uri carries the webview's origin token and the app cannot mint one.
@@ -7,7 +7,7 @@
  * ⚠ Nothing here knows a variable's name. The dogfood vault declares FILES_FOLDER; another workspace
  * declares whatever it declares. Only the injected LIST decides.
  */
-import { hostInfo } from "./host-boot"
+import { hostInfo } from "./host.ts"
 
 export interface VarRoot {
   name: string
@@ -21,7 +21,7 @@ declare global {
 }
 /** GET /host's roots (dt web, cr-modules-017), else the injected ones (the editor). */
 export function varRoots(): VarRoot[] {
-  const fromHost = hostInfo.value?.varRoots as VarRoot[] | undefined
+  const fromHost = hostInfo.get()?.["varRoots"] as VarRoot[] | undefined
   if (Array.isArray(fromHost)) return fromHost
   return (typeof window !== "undefined" && window.__DT_VAR_ROOTS__) || []
 }

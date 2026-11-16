@@ -1,6 +1,7 @@
 /**
- * WHAT A PAGE VIEW DRAWS — a ui-view that nests other ui-views (decision: dashboards are nested
- * ui-views, not a panel vocabulary). Pure, so tier 1 pins it (`test/unit/page-view.test.ts`).
+ * WHAT A PAGE VIEW DRAWS (ported from the Vue ui's lib/page-view.ts; the page's scope travels by React context,
+ * `pages/PageView.tsx` PageSource, instead of a Vue injection key) — a ui-view that nests other ui-views (decision: dashboards are nested
+ * ui-views, not a panel vocabulary). Pure, so tier 1 pins it (`test/page-view.test.ts`).
  *
  * The vocabulary is the SURFACE's, and the engine needs no change for it: a view's `display` is a free
  * map compile merges and never validates a layout name against, and `options` is open. So:
@@ -11,7 +12,7 @@
  *                                                options.module — the module this page is FOR
  *   scope: page · display.list.layout: activity  options.module — that module's feed (ActivityPane)
  *   scope: collection · layout: counts           options.group_by — a field option, so compile CHECKS
- *                                                it; one number per value (lists/ListCounts.vue)
+ *                                                it; one number per value (lists/ListCounts.tsx)
  *
  * A child keeps its own collection, filter and layout: a panel IS the view, so every view feature
  * (Save as, overlay, move, the compile checks on its columns and filter) applies to it unchanged.
@@ -25,18 +26,13 @@
  * a `record` view (a page has no record to show it), and a page whose layout is a module's APP (its
  * component owns a whole route; a panel links to it instead). A refusal never takes its siblings down.
  */
-import type { InjectionKey, Ref } from "vue"
-import type { UiViewRecord, ViewDisplay } from "../ui-views"
-import { SOURCE_FIELD } from "./sources"
-import { decompileFilter } from "./filter-query"
+import type { UiViewRecord, ViewDisplay } from "./ui-views.ts"
+import { SOURCE_FIELD } from "./sources.ts"
+import { decompileFilter } from "./filter-query.ts"
 
 /** What a view draws — `ui-views.ts#drawnDisplay`'s rule (compile's merge, else what it authored),
- *  restated here because importing that module pulls in the host transport, which tier 1 cannot load. */
+ *  restated here so this file stays free of the view table's fetch. */
 const drawnDisplay = (view: UiViewRecord): ViewDisplay => view.compiled?.display ?? view.display ?? {}
-
-/** The source (a record layer) a page is scoped to, provided by the page to every panel under it —
- *  what a `counts` link carries so a click lands on the same rows the number counted. */
-export const PAGE_SOURCE: InjectionKey<Readonly<Ref<string | undefined>>> = Symbol("dt-page-source")
 
 export const PAGE_LAYOUT = "page"
 export const ACTIVITY_LAYOUT = "activity"

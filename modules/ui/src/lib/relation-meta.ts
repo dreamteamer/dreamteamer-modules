@@ -10,8 +10,8 @@
  * ⚠ A mirror is locked by its `kind`, which nothing relaxes: every writer is refused by the store, so
  * no form — create included — may offer a control for it.
  */
-import type { FieldRow } from "../api/types"
-import { isMirrorField } from "./field-row"
+import type { FieldRow } from "../api/types.ts"
+import { isMirrorField } from "./field-row.ts"
 
 export { isMirrorField }
 

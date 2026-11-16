@@ -12,7 +12,7 @@
  * record's compile-written `compiled.module` says the module that owns it — the one partition the
  * nav draws, so a group box reads exactly as the nav folder does.
  */
-import type { DiagramModel, DiagramField, DiagramNode, DiagramEdge } from "../types"
+import type { DiagramModel, DiagramField, DiagramNode, DiagramEdge } from "../types.ts"
 
 /** One collection row of the display contract — the keys the diagram reads. */
 export interface SchemaCollectionRow {

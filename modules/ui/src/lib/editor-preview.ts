@@ -220,14 +220,18 @@ const baseTheme = EditorView.baseTheme({
   ".cm-lp-em": { fontStyle: "italic" },
   ".cm-lp-strike": { textDecoration: "line-through" },
   ".cm-lp-code": {
-    fontFamily: "var(--dt-font-mono)",
+    fontFamily: "var(--dt-mono)",
     fontSize: "0.92em",
     backgroundColor: "var(--dt-bg-subtle)",
     borderRadius: "3px",
   },
-  ".cm-lp-codeblock": { fontFamily: "var(--dt-font-mono)", backgroundColor: "var(--dt-bg-subtle)" },
-  ".cm-lp-link": { color: "var(--dt-accent)", textDecoration: "underline", cursor: "pointer" },
-  ".cm-lp-quote": { borderLeft: "3px solid var(--dt-border-strong)", paddingLeft: "8px", color: "var(--dt-fg-subtle)" },
+  ".cm-lp-codeblock": { fontFamily: "var(--dt-mono)", backgroundColor: "var(--dt-bg-subtle)" },
+  ".cm-lp-link": { color: "var(--dt-link)", textDecoration: "underline", cursor: "pointer" },
+  ".cm-lp-quote": {
+    borderLeft: "3px solid var(--dt-input-border)",
+    paddingLeft: "8px",
+    color: "var(--dt-fg-subtle)",
+  },
   ".cm-lp-checkbox": { verticalAlign: "middle", margin: "0 4px 0 0", cursor: "pointer" },
 })
 

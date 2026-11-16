@@ -15,8 +15,8 @@
  *    a collection's display (§3.5: a view carries `filter`, a collection does not), so it is named
  *    back as unsaved rather than dropped silently — the remedy is a named view.
  */
-import type { UiViewRecord, ViewDisplay } from "../ui-views"
-import { engineFieldName, engineSort } from "./builtin-fields"
+import type { UiViewRecord, ViewDisplay } from "./ui-views.ts"
+import { engineFieldName, engineSort } from "./builtin-fields.ts"
 
 /** What the screen shows, as a view's list block holds it. */
 export interface ListPresentation {

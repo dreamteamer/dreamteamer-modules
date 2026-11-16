@@ -15,8 +15,8 @@
  * Manual ordering (a `position_field`) writes its own field, not the column's, so it stays available
  * within a card's column — the reason says so when it is on.
  */
-import type { FieldRow } from "../api/types"
-import { hasControl } from "./field-row"
+import type { FieldRow } from "../api/types.ts"
+import { hasControl } from "./field-row.ts"
 
 export interface KanbanLock {
   columns: boolean

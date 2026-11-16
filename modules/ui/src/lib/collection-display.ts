@@ -10,8 +10,8 @@
  * ⚠ COLOURS ARE THEME COLOUR IDS (`charts.blue`), rendered as `var(--vscode-charts-blue, var(--dt-color-charts-blue, var(--dt-unknown-color)))` — never a
  * hex, which would be authored against one theme and wrong in the other.
  */
-import type { CollectionRow, FieldChoice, FieldRow } from "../api/types"
-import { choicesOf, isRelationField } from "./field-row"
+import type { CollectionRow, FieldChoice, FieldRow } from "../api/types.ts"
+import { choicesOf, isRelationField } from "./field-row.ts"
 
 /** What this module reads of a field row: its name, its choices and its role. */
 type DisplayField = Pick<FieldRow, "field" | "editor_options" | "role">

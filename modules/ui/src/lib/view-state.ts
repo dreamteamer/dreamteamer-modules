@@ -5,7 +5,7 @@
  * `lib/filter-query.ts`'s pure-logic-plus-thin-UI split: `composables/browse-state.ts` and
  * `composables/saved-views.ts` are the Vue-facing shells around this.
  */
-import { emptyFilterGroup, type FilterGroup } from "./filter-query"
+import { emptyFilterGroup, type FilterGroup } from "./filter-query.ts"
 
 /**
  * A registered list-layout id. Was the closed union `'table' | 'cards'`; widened to `string` for

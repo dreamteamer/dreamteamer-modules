@@ -8,7 +8,7 @@
  * has been looking at since the kanban shipped, so the presence of this file changes nothing on a
  * ui-view that never asked for lanes.
  */
-import type { FieldRow, ItemRecord } from "../api/types"
+import type { FieldRow, ItemRecord } from "../api/types.ts"
 
 /** Column key for "no value" — not a legal field value, so it can never collide with a real one.
  *  Also used for a lane whose records have no lane-field value. */

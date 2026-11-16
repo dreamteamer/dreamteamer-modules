@@ -14,8 +14,8 @@
  *
  * Pure, so every wording here is a test (`test/unit/record-origin.test.ts`).
  */
-import type { SourceVia } from "../api/types"
-import { SOURCE_FIELD, SOURCE_KIND_FIELD } from "./sources"
+import type { SourceVia } from "../api/types.ts"
+import { SOURCE_FIELD, SOURCE_KIND_FIELD } from "./sources.ts"
 
 export const REPO_FIELD = "$repo"
 export const DIRTY_FIELD = "$dirty"

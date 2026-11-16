@@ -1,6 +1,9 @@
 #!/usr/bin/env node
-// cr-modules-008 task 4: the frame guest as ONE text — the Vue runtime the app pins, then the guest — written to
-// dist/guest/guest.js, with dist/guest/guest.css (the app's stylesheet) and SOURCE.json (the Vue version).
+// The frame guest as ONE text, as the Vue ui builds it (cr-modules-008 task 4): the Vue runtime, then the
+// guest — dist/guest/guest.js, with dist/guest/guest.css (this app's stylesheet, fonts inlined) and SOURCE.json
+// (the Vue version). Vue, in the React app's package, on purpose: a module's prebuilt `ui/app.js` draws with
+// `window.Vue`, and the frame is the module's world (src/modules/guest/guest.ts). A host reads the pair from
+// here the way dt web reads the Vue ui's (`resolveGuest`).
 import fs from "node:fs"
 import path from "node:path"
 import { createRequire } from "node:module"
@@ -27,7 +30,7 @@ fs.mkdirSync(dir, { recursive: true })
 fs.writeFileSync(path.join(dir, "guest.js"), guest)
 const css = path.join(ROOT, "dist", "lib", "style.css")
 // fonts and images the stylesheet names are inlined as data: — the frame policy loads nothing by URL
-const MIME = {
+const MIME: Record<string, string> = {
   ".ttf": "font/ttf",
   ".woff": "font/woff",
   ".woff2": "font/woff2",
@@ -35,7 +38,7 @@ const MIME = {
   ".png": "image/png",
 }
 const inlined = fs.existsSync(css)
-  ? fs.readFileSync(css, "utf8").replace(/url\((['"]?)([^'")]+)\1\)/g, (all, q, ref) => {
+  ? fs.readFileSync(css, "utf8").replace(/url\((['"]?)([^'")]+)\1\)/g, (all, _q, ref: string) => {
       if (/^(data:|#)/.test(ref)) return all
       const file = path.resolve(path.dirname(css), ref.split(/[?#]/)[0])
       const type = MIME[path.extname(file).toLowerCase()]

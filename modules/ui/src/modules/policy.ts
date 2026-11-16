@@ -2,6 +2,9 @@
  * cr-modules-008 — the host's pure checks on everything that crosses a module frame other than a request
  * (requests go through @dreamteamer/protocol's gate): the cell sanitizer (D5), the list snapshot (D16), intents
  * (D13), navigation and keys (§2), the bridge bounds (D17), invalidation (D7) and the Delete dialog's titles.
+ *
+ * Copied verbatim from the Vue ui's src/modules/policy.ts: what a module frame may do is the HOST's rule, not
+ * the app's, so both apps enforce the same one (test/module-policy.test.ts is the Vue ui's test, re-pointed).
  */
 export interface FrameScope {
   module: string

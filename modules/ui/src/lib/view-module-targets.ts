@@ -15,9 +15,9 @@
  * no path in its label or hint: the path is the option's hover (`title`) and one line under the
  * control for the selected module (`whereOf`).
  */
-import { isUnwritableModule } from "./module-writable"
-import type { ModuleEntry } from "../composables/modules"
-import type { Choice } from "./listbox"
+import { isUnwritableModule } from "./module-writable.ts"
+import type { ModuleEntry } from "./modules.ts"
+import type { Choice } from "./listbox.ts"
 
 export interface ViewModuleTarget {
   /** The `?module=` value; `null` is the workspace module — the engine's default, sent as no selector. */

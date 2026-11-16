@@ -44,10 +44,12 @@
  * params by iterating the array, so `{id:{_in:[]}}` produces NO params at all — the adapter then
  * sees no filter and renders THE WHOLE COLLECTION. `embeddedRelationPlan` therefore refuses to
  * embed an empty relation (the caller falls back), and that refusal is what the test pins.
+ *
+ * Copied from the Vue ui's lib/relation-view.ts; the embedded browse is ui's `record/RelationField.tsx`.
  */
-import type { FieldRow } from "../api/types"
-import type { UiViewRecord } from "../ui-views"
-import { isRelationField, isRelationList } from "./field-row"
+import type { FieldRow } from "../api/types.ts"
+import type { UiViewRecord } from "./ui-views.ts"
+import { isRelationField, isRelationList } from "./field-row.ts"
 
 export { isRelationField, isRelationList }
 

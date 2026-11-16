@@ -1,4 +1,4 @@
-import type { CollectionRow } from "../api/types"
+import type { CollectionRow } from "../api/types.ts"
 
 /**
  * OKF-registered rows carry a `provenance` key ('disk' | 'built-in' — every registered row does

@@ -8,7 +8,7 @@
 //    json_schema — as one JSON row larger than everything the operator authored above it. It is build
 //    output, never authored, and the engine's own description of it says so. `display` is authored and
 //    stays.
-import type { FieldRow } from "../api/types"
+import type { FieldRow } from "../api/types.ts"
 
 /** collection → the fields of it that compile writes and nobody authors */
 const COMPILE_WRITTEN: Record<string, ReadonlySet<string>> = {

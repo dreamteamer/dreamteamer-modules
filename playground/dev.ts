@@ -2,7 +2,6 @@
 // THE UI IN A BROWSER, FROM SOURCE — a dev harness, not a host: no sign-in, no levels, no file serving.
 //
 //   node playground/dev.ts            serve modules/ui/src with Vite (hot reload) on http://localhost:5173
-//   node playground/dev.ts --app=ui2  serve modules/ui2/src instead (the React app), same API
 //   node playground/dev.ts --fresh    build a new sample workspace first
 //   node playground/dev.ts --port=n   another port
 //
@@ -20,7 +19,6 @@ import path from "node:path"
 import type { IncomingMessage, ServerResponse } from "node:http"
 import { fileURLToPath } from "node:url"
 import { createServer, type Plugin } from "vite"
-import vue from "@vitejs/plugin-vue"
 import react from "@vitejs/plugin-react"
 import { makeFixture } from "../modules/protocol/lib/contract/fixture.ts"
 import { createHandler } from "../modules/protocol/src/handler.ts"
@@ -33,9 +31,7 @@ const WORKSPACES = path.join(REPO, "playground", ".workspaces")
 const args = process.argv.slice(2)
 const fresh = args.includes("--fresh")
 const port = Number(args.find(a => a.startsWith("--port="))?.split("=")[1] ?? 5173)
-const app = args.find(a => a.startsWith("--app="))?.split("=")[1] ?? "ui"
-if (app !== "ui" && app !== "ui2") throw new Error(`--app=${app}: expected ui or ui2`)
-const UI_SRC = path.join(REPO, "modules", app, "src")
+const UI_SRC = path.join(REPO, "modules", "ui", "src")
 
 /** The newest sample workspace under playground/.workspaces, or a new one. */
 function workspace(): string {
@@ -120,10 +116,10 @@ fs.watch(root, { recursive: true }, (_type, file) => {
 const server = await createServer({
   configFile: false,
   root: UI_SRC,
-  plugins: [app === "ui2" ? react() : vue(), api],
+  plugins: [react(), api],
   resolve: { alias: [{ find: /^@dreamteamer\/protocol\/(.*)$/, replacement: `${PROTOCOL_SRC}/$1.ts` }] },
   server: { port, strictPort: true, fs: { allow: [REPO] } },
 })
 await server.listen()
-console.log(`app: @dreamteamer/${app}\nworkspace: ${root}`)
+console.log(`workspace: ${root}`)
 server.printUrls()

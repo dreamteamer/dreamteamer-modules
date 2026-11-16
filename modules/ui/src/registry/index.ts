@@ -6,7 +6,7 @@
  * through the same door module `app` entries use (see register-defaults.ts and modules.ts), so the
  * shell dogfoods the extension API.
  *
- * An `ExtensionDefinition` (used by both `edits` and `views`) carries the Vue component to render,
+ * An `ExtensionDefinition` (used by both `edits` and `views`) carries the React component to render,
  * the field `type`s it is a kind-default candidate for, and a `scope`: a `'field'` entry renders
  * one value; a `'record'` entry renders a whole record page (the old `form`/`doc` item-layouts —
  * terminology decision 1: "a record page is an Edit/View too"). See lib/presets.ts for how a
@@ -17,10 +17,9 @@
  * subtree + a nav icon. Content and Settings are the first two registered apps (the shell
  * dogfoods the app API); module apps mount under `/a/<id>`.
  */
-import type { Component } from "vue"
-import type { RouteRecordRaw } from "vue-router"
-import type { FieldComponentOptions, FieldRow, FieldType } from "../api/types"
-import { formatTitle } from "../lib/format-title"
+import type { ComponentType } from "react"
+import type { FieldComponentOptions, FieldRow, FieldType } from "../api/types.ts"
+import { formatTitle } from "../lib/format-title.ts"
 
 /**
  * One option an extension exposes, declared as a field definition (Directus research item 1:
@@ -118,7 +117,7 @@ export const OPTION_GROUPS: Record<string, string> = {
 export interface ExtensionDefinition {
   id: string
   name: string
-  component: Component
+  component: ComponentType<any>
   /** Wire types this entry is a kind-default candidate for ([] = explicit opt-in only). */
   types: string[]
   /** 'field' (default) renders one value; 'record' renders a whole record page. */
@@ -128,6 +127,8 @@ export interface ExtensionDefinition {
   /** Views that pair well with this Edit, best first — a hint the future field editor surfaces
    *  when a field uses this Edit (no runtime consumer yet; contract-only for now). */
   recommendedViews?: string[]
+  /** The module whose frame draws this entry (modules/host.tsx registers a proxy); absent on a built-in. */
+  module?: string
 }
 
 /**
@@ -140,7 +141,7 @@ export interface ExtensionDefinition {
 export interface ListDefinition {
   id: string
   name: string
-  component: Component
+  component: ComponentType<any>
   /** Self-describing settings, drawn by OptionsForm through the Edit resolution chain. */
   options?: OptionFieldDef[]
   /**
@@ -159,23 +160,23 @@ export interface ListDefinition {
    * pager and no `1–25 of 40` under it: there is no next page of a number.
    */
   summarizes?: boolean
+  /** The module whose frame draws this List; absent on a built-in. */
+  module?: string
 }
 
 /**
- * App registry entry (spec §8). `routes` is a vue-router subtree; for module apps it is mounted
- * under `/a/<id>` (see modules.ts). `to`/`match` describe the ModuleBar nav target and the
- * route-prefixes that light its icon active — built-in apps (content/settings) override these
- * because their routes live at absolute paths (`/content`, `/settings`), not under `/a/<id>`.
+ * App registry entry (spec §8): a page tree mounted under a route prefix. In ui an app is a component
+ * handed the route below its prefix (no router library); module apps mount under `/a/<id>`.
  */
 export interface AppDefinition {
   id: string
   icon: string
   label: string
-  routes: RouteRecordRaw[]
-  /** Nav target for the ModuleBar icon. Defaults to `/a/<id>`. */
-  to?: string
-  /** Route-path prefixes that mark this app active. Defaults to `[to]`. */
-  match?: string[]
+  /** The route prefix the app answers (`/a/<id>` for a module app). */
+  prefix: string
+  component: ComponentType<{ route: string }>
+  /** The module whose frame draws this app; absent on a built-in. */
+  module?: string
 }
 
 export function defineRegistry<T extends { id: string }>(kind: string) {

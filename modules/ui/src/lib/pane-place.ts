@@ -1,23 +1,25 @@
 /**
  * Where the page is, in the four shapes the server stores (cr-modules-017 §5): `{ collection }`, `{ collection, id }`,
  * `{ uiView }` — and `{ other: true }` for everything else (home, a module app, settings), so a page outside the three
- * view shapes still reports that it is somewhere (round-3 finding a-page-outside-the-three-view-shapes…).
- *
- * ⚠ A collection name can carry a slash (`rnd/change-requests`) and so can an id (`2026/11/standup`): the split is
- * the LONGEST registered collection that prefixes the path, never the first slash.
+ * view shapes still reports that it is somewhere. Ported from the Vue ui's lib/pane-place.ts, over ui's `Page`
+ * (lib/route.ts `pageOf`) instead of a vue-router route: pageOf already split the path at the LONGEST registered
+ * collection, so a namespaced collection (`rnd/change-requests`) and an id with slashes (`2026/11/standup`) arrive
+ * whole.
  */
-import { ref } from "vue"
-import type { PaneView } from "@dreamteamer/protocol/pane"
+import type { Page } from "./route.ts"
+import { signal } from "./signal.ts"
 
-export type { PaneView }
+/** The place a page reports — copied from @dreamteamer/protocol `pane.d.ts` (ui takes no protocol dependency). */
+export type PaneView =
+  { collection: string } | { collection: string; id: string } | { uiView: string } | { other: true }
 
-/** The browse on screen writes its ticked rows here (BrowseView); the reporter sends them. */
-export const pageSelection = ref<{ collection: string; ids: string[] } | null>(null)
+/** The browse on screen writes its ticked rows here; the reporter sends them. */
+export const pageSelection = signal<{ collection: string; ids: string[] } | null>(null)
 /** The chat's push (`dt:select`), held until the list of its collection applies it. */
-export const pushedSelection = ref<{ refs: string[]; at: number } | null>(null)
+export const pushedSelection = signal<{ refs: string[]; at: number } | null>(null)
 
 /** `{ collection, id }` of a reference, split at the end of the longest registered collection; null when none. */
-export function splitRef(ref: string, collections: string[]): { collection: string; id: string } | null {
+export function splitPaneRef(ref: string, collections: readonly string[]): { collection: string; id: string } | null {
   const norm = ref.replace(/^\/+/, "")
   for (const c of [...collections].sort((a, b) => b.length - a.length)) {
     if (norm.startsWith(c + "/") && norm.length > c.length + 1) return { collection: c, id: norm.slice(c.length + 1) }
@@ -25,20 +27,27 @@ export function splitRef(ref: string, collections: string[]): { collection: stri
   return null
 }
 
-export function placeOf(
-  route: { name?: string | symbol | null; params: Record<string, unknown> },
-  collections: string[]
-): PaneView {
-  const name = typeof route.name === "string" ? route.name : ""
-  if (name.startsWith("ui-view:") && name.length > "ui-view:".length) return { uiView: name.slice("ui-view:".length) }
-  if (name !== "content") return { other: true }
-  const raw = route.params["path"]
-  const path = (Array.isArray(raw) ? raw.join("/") : typeof raw === "string" ? raw : "").replace(/^\/+|\/+$/g, "")
-  if (!path) return { other: true }
-  if (collections.includes(path)) return { collection: path }
-  const split = splitRef(path, collections)
-  if (!split) return { other: true }
-  // a lone trailing `+` is the create page — the collection, client-side only (lib/content-path.ts)
-  if (split.id === "+") return { collection: split.collection }
-  return split
+export function placeOf(page: Page): PaneView {
+  switch (page.kind) {
+    case "list":
+    case "create": // the create page is the collection
+      return { collection: page.collection }
+    case "record":
+      // a record-scope ui-view's page is the view, as the Vue ui's `ui-view:<id>` route names it
+      return page.viewId ? { uiView: page.viewId } : { collection: page.collection, id: page.id }
+    case "view":
+    case "page-view": // a page view is a ui-view too, named the way ui names its route
+    case "app-page": // …and so is one whose layout names a module app
+      return { uiView: page.id }
+    default:
+      return { other: true }
+  }
+}
+
+/** The ids of `collection` among pushed refs: null when the push is for another collection (leave it held), `[]`
+ *  for a push that clears. */
+export function pushedIds(push: { refs: string[] }, collection: string): string[] | null {
+  const prefix = collection + "/"
+  const mine = push.refs.filter(r => r.startsWith(prefix)).map(r => r.slice(prefix.length))
+  return push.refs.length && !mine.length ? null : mine
 }

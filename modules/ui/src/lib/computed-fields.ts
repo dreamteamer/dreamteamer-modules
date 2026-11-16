@@ -12,9 +12,9 @@
  * own row and its own condition (`lib/sources.ts` sourceFieldRow): it is a column only where a record
  * CAN come from somewhere else.
  */
-import type { FieldRow, SourceEntry } from "../api/types"
-import { hasForeignSource, sourceFieldRow } from "./sources"
-import { MODULE_FIELD } from "./module-scope"
+import type { FieldRow, SourceEntry } from "../api/types.ts"
+import { hasForeignSource, sourceFieldRow } from "./sources.ts"
+import { MODULE_FIELD } from "./module-scope.ts"
 
 export const MODIFIED_BY_FIELD = "$last-modified-by"
 export const CREATED_BY_FIELD = "$created-by"

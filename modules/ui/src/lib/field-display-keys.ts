@@ -8,7 +8,7 @@
  *   form_section · placeholder · unit · unit_field · direction · width — one value each; an empty
  *                 value removes the key, so an untouched field writes nothing it did not have.
  */
-import { SURFACES, hiddenSurfaces } from "./field-def"
+import { SURFACES, hiddenSurfaces } from "./field-def.ts"
 
 type Def = Record<string, unknown>
 export type Editable = "true" | "false" | "create"

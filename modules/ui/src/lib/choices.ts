@@ -4,8 +4,8 @@
  * in one place: the contract says `label`, the widget vocabulary the whole app's dropdowns share says
  * `text`, and nothing reads a choice row's label anywhere else.
  */
-import type { FieldChoice } from "../api/types"
-import type { Choice } from "./listbox"
+import type { FieldChoice } from "../api/types.ts"
+import type { Choice } from "./listbox.ts"
 
 export function normalizeChoices(raw: readonly FieldChoice[] | null | undefined): Choice[] {
   return (raw ?? []).map(c => ({

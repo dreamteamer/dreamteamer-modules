@@ -11,7 +11,7 @@
  * Framework-free on purpose (no Vue), like `filter-query.ts`: the parts worth arguing about — the
  * depth cap, the cycle guard, what search matches — are then testable by running them.
  */
-import type { FieldRow } from "../api/types"
+import type { FieldRow } from "../api/types.ts"
 
 /** One row in the picker. `path` is what a rule's `field` holds: `flag`, `person.name`. */
 export interface FieldNode {

@@ -3,6 +3,12 @@
  * script. It recreates the module-app contract a bundle was built against (window.Vue, the register API, a
  * router, fetch('/api/…')) and talks only to window.parent: every /api call, intent and navigation is a message
  * the host checks. It imports the bundle from the document's JSON data block as a blob: module.
+ *
+ * Copied verbatim from the Vue ui's src/modules/guest/guest.ts. It stays VUE, in the React app's package,
+ * because the frame side is the MODULE's world, not the host's: a module ships a prebuilt `ui/app.js` whose
+ * components are Vue (`window.Vue`, `h`, `defineComponent`) and whose default export takes this register API —
+ * the contract a bundle was built against does not change with the app that frames it. Nothing in the frame
+ * talks to React; the bridge's messages are the whole interface (scripts/build-guest.ts).
  */
 declare const Vue: any
 type Msg = { dt: 1; id: number; op?: string; reply?: any; [k: string]: any }

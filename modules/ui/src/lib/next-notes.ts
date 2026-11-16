@@ -1,13 +1,34 @@
 /**
- * WHAT AN EXTENSION SAYS ABOUT A RECORD, as the webview draws it (cr-vscode-005). The host sends the
- * engine's `contributedNotes` lines — on a browse row as `$notes`, on the record page from `GET /notes`,
- * under each record on the Activity page — each with its `<collection>/<id>` references already found
- * and marked by whether this workspace holds them (`src/next-notes.ts`, `src/note-refs.ts`). Nothing
- * here reads the words: the sentence is the extension's (core's "in session by …"), drawn verbatim.
+ * WHAT AN EXTENSION SAYS ABOUT A RECORD, as the page draws it (cr-vscode-005). The host sends the engine's
+ * `contributedNotes` lines — on a browse row as `$notes`, on the record page from `GET /notes` — each with its
+ * `<collection>/<id>` references already found and marked by whether this workspace holds them. Nothing here
+ * reads the words: the sentence is the extension's (core's "in session by …"), drawn verbatim.
+ *
+ * Copied from the Vue ui's lib/next-notes.ts. `NextNote` is copied from @dreamteamer/protocol's
+ * `host/next-notes.d.ts` (+ `EngineNote`, `NoteRef`): ui takes no protocol dependency, and the shape is the wire's.
  */
-import type { NextNote } from "@dreamteamer/protocol/host/next-notes"
 
-export type { NextNote }
+/** A reference the host found in a note's text, at `[start, end)`, and whether this workspace holds it. */
+export interface NoteRef {
+  ref: string
+  collection?: string
+  id?: string
+  start: number
+  end: number
+  exists: boolean
+}
+
+/** One note line: `GET /notes/:collection`'s `notes[]`. */
+export interface NextNote {
+  id: string | null
+  text: string
+  by: string
+  error?: true
+  refs: NoteRef[]
+}
+
+/** Where the workspace's sessions were read from — drawn beside the notes, note or not. */
+export type SessionsFrom = { roots: string[] } | { unavailable: string } | null
 
 export const NOTES_KEY = "$notes"
 
@@ -22,8 +43,8 @@ export function markTitle(notes: readonly NextNote[]): string {
   return notes.map(n => n.text).join("\n")
 }
 
-/** A note's text cut into plain runs and references at the host's offsets; a reference whose record
- *  this workspace does not hold stays text, so no link opens onto nothing. */
+/** A note's text cut into plain runs and references at the host's offsets; a reference whose record this
+ *  workspace does not hold stays text, so no link opens onto nothing. */
 export function textParts(note: NextNote): Array<{ text: string; ref?: string }> {
   const out: Array<{ text: string; ref?: string }> = []
   let at = 0

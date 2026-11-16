@@ -13,7 +13,7 @@
  *    only. The CLI and syncs still write such a field; only this surface declines to.
  *  - `hidden` — the surfaces not to draw it on: `list`, `form` (edit and create), `record` (the read).
  */
-import type { FieldChoice, FieldRow, FieldSurface } from "../api/types"
+import type { FieldChoice, FieldRow, FieldSurface } from "../api/types.ts"
 
 /** The record's prose — drawn last, label-less, as the page. */
 export function isBodyField(field: Pick<FieldRow, "role">): boolean {

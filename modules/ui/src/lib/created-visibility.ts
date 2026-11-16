@@ -15,9 +15,9 @@
  *
  * The hand-off between the create page and the list is one module-level note, consumed once.
  */
-import type { FilterGroup } from "./filter-query"
-import type { SourceEntry } from "../api/types"
-import { keepsSource, ownSource, selectedSources, withSourceSelection } from "./sources"
+import type { FilterGroup } from "./filter-query.ts"
+import type { SourceEntry } from "../api/types.ts"
+import { keepsSource, ownSource, selectedSources, withSourceSelection } from "./sources.ts"
 
 /** The create route's query key carrying the browse's source selection. */
 export const SOURCES_QUERY = "sources"

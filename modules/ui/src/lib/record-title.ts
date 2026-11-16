@@ -1,5 +1,5 @@
 /** Shared record-title resolution for EditRelation and ViewRelation. */
-import type { ItemRecord } from "../api/types"
+import type { ItemRecord } from "../api/types.ts"
 
 /** Best-effort human title for a relation-target record: explicit titleField, then title, then name, then id. */
 export function titleOf(record: ItemRecord | null | undefined, titleField?: string): string {

@@ -1,35 +1,33 @@
 #!/usr/bin/env node
-// Two builds of one source:
+// Two builds of one source, as the Vue ui makes them:
 //   dist/lib/   the library a host bundles — index.js (`mount`, the transports), index.d.ts, style.css
 //   dist/app/   the browser page a web host serves — index.html + assets/, over the HTTP transport
-// Both relative (`base: './'`): the VS Code webview rewrites `./assets/*` to webview URIs, and dt web
-// serves the page at `/`.
+// then dist/guest/ (scripts/build-guest.ts): the module frames' guest, Vue and all, with this stylesheet.
+// Both relative (`base: './'`), so a webview can rewrite `./assets/*` and a web host can serve the page at `/`.
 import fs from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { build, type InlineConfig } from "vite"
-import vue from "@vitejs/plugin-vue"
+import react from "@vitejs/plugin-react"
 
-const UI = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
-const SRC = path.join(UI, "src")
-const DIST = path.join(UI, "dist")
+const UI2 = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
+const SRC = path.join(UI2, "src")
+const DIST = path.join(UI2, "dist")
 
 const common: InlineConfig = {
   configFile: false,
   root: SRC,
   base: "./",
-  plugins: [vue()],
+  plugins: [react()],
   logLevel: "error",
 }
 
 await build({
   ...common,
-  // an application build with its entry's exports kept, rather than vite's library mode: library mode
-  // leaves an ES bundle unminified, comments and all, and a host re-bundles this anyway
   build: {
     outDir: path.join(DIST, "lib"),
     emptyOutDir: true,
-    chunkSizeWarningLimit: 4000,
+    chunkSizeWarningLimit: 2000,
     rollupOptions: {
       input: path.join(SRC, "index.ts"),
       preserveEntrySignatures: "exports-only",
@@ -66,7 +64,7 @@ await build({
   build: {
     outDir: path.join(DIST, "app"),
     emptyOutDir: true,
-    chunkSizeWarningLimit: 4000,
+    chunkSizeWarningLimit: 2000,
     rollupOptions: { input: path.join(SRC, "index.html") },
   },
 })

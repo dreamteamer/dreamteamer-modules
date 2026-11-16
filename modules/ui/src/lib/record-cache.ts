@@ -1,46 +1,93 @@
 /**
- * ONE fetch cache for "give me this record, by reference", shared across every component instance.
+ * ONE fetch cache for "give me this record, by reference", and the TITLES it answers — shared by every relation
+ * cell, the relation picker's chips and the hover card (ported from the Vue ui's lib/record-cache.ts and
+ * lib/record-titles.ts).
  *
- * ⚠ It has to live in a plain module. Bindings declared inside `<script setup>` run PER INSTANCE, so
- * a cache there dedupes nothing across the cells of a column — which is the whole reason this
- * exists: a table of 90 rows pointing at 20 distinct logos should issue 20 requests, not 90.
+ * A plain module, not a hook's state: a column of 90 rows naming 20 distinct records issues 20 requests, not
+ * 90. A failure resolves to null rather than rejecting, so a stale reference neither wedges the cache nor
+ * re-fires on every render.
  *
- * Keyed `collection/id`. A miss issues one `GET /items/:collection/:id`; a failure resolves to null
- * rather than rejecting, so a bad or stale reference neither wedges the cache with a rejected
- * promise nor re-fires on every re-render.
+ * ⚠ The cache follows the app's invalidation counter (`version`): a caller hands the version it renders under,
+ * and a new one drops every fetched record — STALE-WHILE-REVALIDATE for the titles, which stay drawn until the
+ * new ones land, so no cell flashes back to its bare reference after a write.
  *
- * ⚠ BOTH HALVES ARE ENCODED, and the collection is the half that was missed. The adapter splits that
- * path on `/` and takes ONE segment as the collection (`api/adapter.ts`, the `items` branch), which
- * is why every other caller passes `encodeURIComponent(collection)`. This one did not — so a
- * NAMESPACED target (`perspective/collaborators`) was cut at its first slash, the request went to
- * a collection called `perspective` with a nonsense id, and the fetch resolved to null. Silently:
- * a null here is indistinguishable from a dangling reference, so every relation cell and every band
- * header pointing at a namespaced collection just kept showing the de-slugged path and looked like
- * a display choice. Found 2026-09-08 by a gantt banded on `collaborators`.
- *
- * Extracted from ViewRelation (0.12.0) when group headers needed the same thing for their icons —
- * two caches would have been two answers to "what is this reference", and the second one would have
- * been a cache miss for every row the first had already paid for.
+ * ⚠ ONE HOP: a target's own `record_title` renders with no resolver.
  */
-import { api } from "../api/client"
-import type { ItemRecord } from "../api/types"
+import { getRecord } from "../api/client.ts"
+import type { Schema } from "./schema.ts"
+import { recordLabel, splitRef } from "./schema.ts"
+import { signal } from "./signal.ts"
 
-const recordCache = new Map<string, Promise<ItemRecord | null>>()
-
-/** Forget every fetched record — the refresh button's first step, so the next read goes to the host. */
-export function resetRecordCache(): void {
-  recordCache.clear()
+export interface FetchedRecord {
+  id: string
+  collection: string
+  fields: Record<string, unknown>
 }
 
-export function fetchRecord(collection: string, id: string): Promise<ItemRecord | null> {
+const records = new Map<string, Promise<FetchedRecord | null>>()
+let cachedVersion: number | null = null
+
+/** Forget every fetched record when the workspace changed under it. */
+function sync(version: number): void {
+  if (cachedVersion === version) return
+  cachedVersion = version
+  records.clear()
+  asked.clear()
+}
+
+export function fetchRecord(collection: string, id: string, version: number): Promise<FetchedRecord | null> {
+  sync(version)
   const key = `${collection}/${id}`
-  let promise = recordCache.get(key)
+  let promise = records.get(key)
   if (!promise) {
-    promise = api
-      .get<ItemRecord>(`/items/${encodeURIComponent(collection)}/${encodeURIComponent(id)}`)
-      .then(res => res.data)
-      .catch(() => null)
-    recordCache.set(key, promise)
+    promise = getRecord(collection, id).then(
+      doc => (doc ? { id: doc.id ?? id, collection, fields: doc.fields ?? {} } : null),
+      () => null
+    )
+    records.set(key, promise)
   }
   return promise
+}
+
+/** reference → the target's rendered title; bumped on every landing so subscribers re-render. */
+const titles = new Map<string, string>()
+const asked = new Set<string>()
+/** A counter React subscribes to (`useSignal(referenceTitlesChanged)`): it moves whenever a title lands. */
+export const referenceTitlesChanged = signal(0)
+
+const bare = (ref: string): string => ref.replace(/^\/+/, "")
+
+/** A reference's title when one has landed, else null (the caller draws its fallback meanwhile). Pure read. */
+export function knownTitle(ref: string): string | null {
+  return titles.get(bare(ref)) ?? null
+}
+
+/**
+ * Start fetching the titles of `refs` not yet asked under `version`. A reference that names no collection of
+ * the schema is left alone; one whose record is gone loses a title it had (a refresh agrees with the disk).
+ */
+export function askTitles(refs: readonly string[], schema: Schema, version: number): void {
+  sync(version)
+  for (const raw of refs) {
+    const ref = bare(raw)
+    if (asked.has(ref)) continue
+    const at = splitRef(ref, schema.names)
+    if (!at) continue
+    asked.add(ref)
+    const asOf = version
+    void fetchRecord(at.collection, at.id, version).then(rec => {
+      if (cachedVersion !== asOf) return
+      const before = titles.get(ref)
+      if (!rec) titles.delete(ref)
+      else titles.set(ref, recordLabel(schema.collection(at.collection), rec.fields, at.id))
+      if (titles.get(ref) !== before) referenceTitlesChanged.set(referenceTitlesChanged.get() + 1)
+    })
+  }
+}
+
+/** The de-slugged last segment of a reference — what a relation draws until (or unless) its title lands. */
+export function refStem(ref: string): string {
+  const last = bare(ref).split("/").pop() ?? ref
+  const dot = last.indexOf(".")
+  return dot > 0 ? last.slice(0, dot) : last
 }

@@ -1,45 +1,36 @@
 /**
- * THE REVIEWS A LIST'S STAGE CHECKS READ — fetched once per list, never once per cell.
+ * THE REVIEWS A LIST'S STAGE CHECKS READ — fetched once per list, never once per cell (ported from
+ * the Vue ui's lib/stage-reviews.ts).
  *
- * ⚠ It has to live in a plain module (the `lib/record-cache.ts` reason): bindings in `<script setup>` run
- * per instance, and a table of 50 rows must cost one request, not 50.
+ * A plain module, for the record cache's reason: a table of 50 rows must cost one request, not 50. Every call
+ * made in one microtask joins ONE request per collection — the union of the subjects asked for, as
+ * `filter={"subject":{"_in":[…]}}` — and each caller gets the reviews of ITS subjects. Three rules, each a defect
+ * the Vue ui's first draft had:
  *
- * Every call made in one microtask joins ONE request per collection — the union of the subjects asked
- * for, as `filter={"subject":{"_in":[…]}}` — and each caller gets the reviews of ITS subjects. Three rules,
- * each a defect the first draft had:
+ *   - `limit=ALL`: a list request with no limit is paged, and a list with more reviews than a page lost checks.
+ *   - an empty set issues NO request: `_in: []` would read the whole collection.
+ *   - a finding's `review` holds the review's REFERENCE, so the findings filter is built from references; the
+ *     counts come back keyed by the bare id the review rows carry.
  *
- *   - `limit=100000` (`ALL`, never -1): the adapter slices every list request to 25 rows when none is
- *     given, so a list of requests with more than 25 reviews silently lost checks.
- *   - an empty set issues NO request: the client flattens `_in: []` into no filter at all, which reads the
- *     whole collection.
- *   - a finding's `review` holds the review's REFERENCE (`rnd/reviews/<id>`), so the findings filter is
- *     built from references; the counts come back keyed by the bare id the review rows carry.
- *
- * A failed batch rejects every caller that joined it and caches nothing, so the next render retries.
- * `invalidateStageReviews()` (App.vue, on every `dt:invalidate`) drops both caches and bumps
- * `stageReviewsRevision`, which the View's fetch depends on — a review written in a terminal recolours
- * its check without waiting for the panel to regain focus.
+ * A failed batch rejects every caller that joined it and caches nothing, so the next render retries. The caches
+ * follow the app's invalidation counter: a caller hands its `version`, and a new one drops both.
  */
-import { ref } from "vue"
-import { api, buildQuery } from "../api/client"
-import { ALL } from "./page-size"
-import { bareRef, type Review } from "./stage-checks"
-
-/** Bumped on every invalidation; a View that reads it re-fetches. */
-export const stageReviewsRevision = ref(0)
+import { listRecords } from "../api/client.ts"
+import { ALL } from "./page-size.ts"
+import { bareRef, type Review } from "./stage-checks.ts"
 
 interface Batch<T> {
   keys: Set<string>
-  waiters: Array<{ keys: string[]; resolve: (v: Map<string, T>) => void; reject: (e: unknown) => void }>
+  waiters: Array<{ resolve: (v: Map<string, T>) => void; reject: (e: unknown) => void }>
 }
 
-/** One batching cache: `load(keys)` answers a map key → value for the union of the keys asked in a tick. */
 function batcher<T>(
   load: (collection: string, keys: string[], extra: string) => Promise<Map<string, T>>,
   empty: () => T
 ) {
-  const cache = new Map<string, Promise<T>>() // `${collection}\0${extra}\0${key}`
-  const pending = new Map<string, Batch<T>>() // `${collection}\0${extra}`
+  const cache = new Map<string, Promise<T>>()
+  const pending = new Map<string, Batch<T>>()
+
   function flush(scope: string, collection: string, extra: string): void {
     const batch = pending.get(scope)!
     pending.delete(scope)
@@ -53,6 +44,7 @@ function batcher<T>(
       }
     )
   }
+
   function get(collection: string, keys: string[], extra = ""): Promise<T[]> {
     const scope = `${collection}\0${extra}`
     const missing = keys.filter(k => !cache.has(`${scope}\0${k}`))
@@ -64,9 +56,8 @@ function batcher<T>(
         queueMicrotask(() => flush(scope, collection, extra))
       }
       for (const k of missing) batch.keys.add(k)
-      const all = new Promise<Map<string, T>>((resolve, reject) =>
-        batch!.waiters.push({ keys: missing, resolve, reject })
-      )
+      const joined = batch
+      const all = new Promise<Map<string, T>>((resolve, reject) => joined.waiters.push({ resolve, reject }))
       for (const k of missing)
         cache.set(
           `${scope}\0${k}`,
@@ -75,14 +66,13 @@ function batcher<T>(
     }
     return Promise.all(keys.map(k => cache.get(`${scope}\0${k}`)!))
   }
+
   return { get, clear: () => cache.clear() }
 }
 
 async function listAll(collection: string, filter: Record<string, unknown>): Promise<Array<Record<string, unknown>>> {
-  const res = await api.get<Array<Record<string, unknown>>>(
-    `/items/${encodeURIComponent(collection)}${buildQuery({ limit: ALL, filter })}`
-  )
-  return Array.isArray(res.data) ? res.data : []
+  const page = await listRecords(collection, { limit: ALL, filter })
+  return Array.isArray(page?.records) ? page.records : []
 }
 
 const reviews = batcher<Review[]>(
@@ -115,8 +105,17 @@ const findings = batcher<number>(
   () => 0
 )
 
+let cachedVersion: number | null = null
+function sync(version: number): void {
+  if (cachedVersion === version) return
+  cachedVersion = version
+  reviews.clear()
+  findings.clear()
+}
+
 /** The reviews whose `subject` is any of `subjects` (bare references), from `reviewsFrom`. */
-export async function reviewsFor(reviewsFrom: string, subjects: string[]): Promise<Review[]> {
+export async function reviewsFor(reviewsFrom: string, subjects: string[], version: number): Promise<Review[]> {
+  sync(version)
   const keys = [...new Set(subjects.map(bareRef).filter(Boolean))]
   if (!keys.length) return []
   return (await reviews.get(reviewsFrom, keys)).flat()
@@ -126,17 +125,12 @@ export async function reviewsFor(reviewsFrom: string, subjects: string[]): Promi
 export async function openFindingsFor(
   findingsFrom: string,
   reviewsFrom: string,
-  reviewIds: string[]
+  reviewIds: string[],
+  version: number
 ): Promise<Map<string, number>> {
+  sync(version)
   const ids = [...new Set(reviewIds.map(String).filter(Boolean))]
   if (!ids.length) return new Map()
   const counts = await findings.get(findingsFrom, ids, reviewsFrom)
   return new Map(ids.map((id, i) => [id, counts[i]!] as [string, number]).filter(([, n]) => n > 0))
-}
-
-/** Drop both caches and tell every stage-checks View to fetch again. */
-export function invalidateStageReviews(): void {
-  reviews.clear()
-  findings.clear()
-  stageReviewsRevision.value++
 }

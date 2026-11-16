@@ -7,8 +7,8 @@
  * Pure and its own module, because precedence is a decision and a decision buried in a composable
  * that drags a router can only be tested by mounting one.
  */
-import type { CollectionRow } from "../api/types"
-import { engineFieldName, engineSort } from "./builtin-fields"
+import type { CollectionRow } from "../api/types.ts"
+import { engineFieldName, engineSort } from "./builtin-fields.ts"
 
 /** What a governing view record contributes (`collection-views.ts#viewToConfig`, or a page's props). */
 export interface ViewSeed {

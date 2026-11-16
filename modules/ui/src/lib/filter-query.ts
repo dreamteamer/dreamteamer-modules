@@ -7,8 +7,8 @@
  * Kept framework-free (no Vue imports) so it's cheaply unit-testable per the plan's "LIGHT
  * tests, pure logic only" directive — FilterBuilder.vue is the untested UI shell around this.
  */
-import type { FieldRow } from "../api/types"
-import { choicesOf, isRelationField } from "./field-row"
+import type { FieldRow } from "../api/types.ts"
+import { choicesOf, isRelationField } from "./field-row.ts"
 
 export type FilterLogic = "_and" | "_or"
 

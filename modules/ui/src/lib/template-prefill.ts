@@ -14,8 +14,8 @@
  * collection's field descriptors, produce the subset of field values worth copying into a new
  * (unsaved) record.
  */
-import type { FieldRow, ItemRecord } from "../api/types"
-import { hasControl } from "./field-row"
+import type { FieldRow, ItemRecord } from "../api/types.ts"
+import { hasControl } from "./field-row.ts"
 
 /**
  * Copy exactly what the CREATE form offers a control for — a duplicate is the create form, prefilled.

@@ -5,7 +5,7 @@
  * decision worth a test, and `adapter.ts` cannot be imported by one — it pulls in `transport.ts`,
  * which registers a `window` listener at module scope. Same reasoning as `lib/schema-rail.ts`.
  */
-import type { CollectionRow } from "./types"
+import type { CollectionRow } from "./types.ts"
 
 /** A collection row exactly as the engine's `presentation()` emits it (descriptor v2, §4.3). */
 export type PresentationCollection = Omit<CollectionRow, "provenance" | "layer">
