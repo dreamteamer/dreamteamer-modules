@@ -5,7 +5,8 @@ one React app written in TypeScript. A host mounts it and hands it a **transport
 and how the host's notifications come back. The app speaks one REST contract, written in
 [`@dreamteamer/protocol`](../protocol/PROTOCOL.md), on every host.
 
-> It is `0.x`: 0.4 rewrote the app in React (it was Vue through 0.3) over the same host contract — see
+> It is `0.x`: 0.4 rewrote the app in React (it was Vue through 0.3) over the same host contract, and a module app
+> now draws with its own framework — see
 > [versions](#versions). Apache-2.0.
 
 ```bash
@@ -18,12 +19,12 @@ npm install @dreamteamer/ui
   `index.d.ts` and `style.css` (icons, tokens and styles, light and dark). Each colour reads the VS Code
   theme variable first, so inside a webview the app takes on the editor's theme.
 - `dist/app/` — the browser page (`index.html` + `assets/`) over the HTTP transport.
-- `dist/guest/` — the module frames' guest: `guest.js` (the Vue runtime, then the guest runtime, as one inline
-  text), `guest.css` (this app's stylesheet, fonts inlined) and `SOURCE.json` (the Vue version). See
+- `dist/guest/` — the module frames' guest: `guest.js` (the guest runtime, no framework, as one inline text) and
+  `guest.css` (this app's stylesheet, fonts inlined). See
   [module apps](#module-apps).
 - `src/` — the source all three are built from.
 
-React is bundled into the library and the page, Vue into the guest, so a host installs neither.
+React is bundled into the library and the page, so a host does not install it.
 
 ## mounting it
 
@@ -199,9 +200,42 @@ view's icon and module too.
 A module's own UI is a prebuilt bundle, `ui/app.js` in the module, which `dt compile` stages to
 `.dreamteamer/ui/<module>/app.js` and `GET /info` names in `ui` (cr-modules-005, cr-modules-008). Its default export
 takes the register API — `registerEdit`, `registerView`, `registerList`, `registerApp`, `registerPanel`,
-`registerKindDefault` and a `router` — and its components are **Vue**, read from `window.Vue`, because that is what
-the bundle was built against. That contract is the module's, not the app's: it did not change when the app moved
-from Vue to React, and a module built for 0.3 runs unchanged.
+`registerKindDefault` and a `router` — and registers **components that are mount functions**, not components of any
+framework. A module draws with whatever it bundles — plain DOM, React, Vue — so neither this app nor a later rewrite
+of it constrains a module:
+
+```js
+export default function register({ registerView, registerEdit, registerList, registerApp, router }) {
+  registerView({
+    id: "northwind-badge",
+    name: "Badge",
+    types: ["string"],
+    component: {
+      // el: the element to draw into; props: { field, value, options, context, … }; ctx: { emit, router }
+      mount(el, props, ctx) {
+        el.textContent = String(props.value ?? "")
+        return {
+          update: next => (el.textContent = String(next.value ?? "")), // new props from the host
+          unmount: () => el.replaceChildren(), //                          the frame is done with it
+        }
+      },
+    },
+  })
+}
+```
+
+A component is `{ mount(el, props, ctx) }` or the bare function; it returns (or resolves to) `{ update?, unmount? }`
+or nothing. An **Edit** says a new value with `ctx.emit("update:value", v)` or the `onChange(v)` prop. A **List** is
+handed `props.state` — the browse's rows (`items`), `columns`, selection, sort and paging as plain values, and its
+actions (`openRecord`, `toggleSelect`, `setSort`, `nextPage`, …) as functions — and a new one through `update` when
+the browse changes. An **app** lists `routes: [{ path, component }]`; the route component is handed `props.route`,
+and `router` (`push`, `replace`, `currentRoute`, `onChange`) moves it. A View drawn in a table cell is mounted into a
+detached element, read back as markup after one task (so a framework that renders asynchronously can finish) and
+unmounted.
+
+Through 0.3 the guest carried Vue and a module's components were Vue components read from `window.Vue`; a bundle
+built that way must be rebuilt as mount functions (wrapping its Vue components in `createApp(…).mount(el)` is
+enough).
 
 No module code runs in this page. Before the first render, `mount` opens one hidden **registry frame** per module
 (sandboxed, `allow-scripts` only, the frame policy loading nothing by URL), which loads the bundle with the guest
@@ -266,7 +300,7 @@ The build runs before every publish (`prepublishOnly`). Nothing under `dist/` is
 
 | @dreamteamer/ui | @dreamteamer/protocol | engine (`dreamteamer`) |
 |---|---|---|
-| 0.4.x | ^0.3.0 | `>=0.43.0`; the app is React (Vue through 0.3) over the same transport, routes and host messages; module frames get this app's stylesheet (`dt-` classes and tokens), so a module bundle styled against 0.3's class names may look different |
+| 0.4.x | ^0.3.0 | `>=0.43.0`; the app is React (Vue through 0.3) over the same transport, routes and host messages. A module app's components are mount functions, with no framework from the guest (0.3 handed modules `window.Vue`): a 0.3 bundle must be rebuilt. Module frames get this app's stylesheet (`dt-` classes and tokens), so a bundle styled against 0.3's class names may look different |
 | 0.3.x | ^0.3.0 | `>=0.43.0`; the pane routes (`GET /host`, selection, queue) are the protocol's |
 | 0.2.x | ^0.2.0 | `>=0.43.0`; the nav is `nav.yaml` (module fragments from 0.49) |
 | 0.1.x | ^0.1.0 | `>=0.43.0` |

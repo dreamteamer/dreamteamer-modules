@@ -1,20 +1,13 @@
 #!/usr/bin/env node
-// The frame guest as ONE text, as the Vue ui builds it (cr-modules-008 task 4): the Vue runtime, then the
-// guest — dist/guest/guest.js, with dist/guest/guest.css (this app's stylesheet, fonts inlined) and SOURCE.json
-// (the Vue version). Vue, in the React app's package, on purpose: a module's prebuilt `ui/app.js` draws with
-// `window.Vue`, and the frame is the module's world (src/modules/guest/guest.ts). A host reads the pair from
-// here the way dt web reads the Vue ui's (`resolveGuest`).
+// The frame guest as ONE text (cr-modules-008 task 4): dist/guest/guest.js, with dist/guest/guest.css (this app's
+// stylesheet, fonts inlined). No framework: a module bundles its own and hands the guest mount functions
+// (src/modules/guest/guest.ts). A host reads the pair from here (dt web's `resolveGuest`).
 import fs from "node:fs"
 import path from "node:path"
-import { createRequire } from "node:module"
 import { fileURLToPath } from "node:url"
 import * as esbuild from "esbuild"
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
-const require = createRequire(path.join(ROOT, "package.json"))
-const vueDir = path.dirname(require.resolve("vue/package.json"))
-const vue = fs.readFileSync(path.join(vueDir, "dist", "vue.runtime.global.prod.js"), "utf8")
-const { version } = JSON.parse(fs.readFileSync(path.join(vueDir, "package.json"), "utf8"))
 const out = await esbuild.build({
   entryPoints: [path.join(ROOT, "src", "modules", "guest", "guest.ts")],
   bundle: true,
@@ -23,9 +16,11 @@ const out = await esbuild.build({
   minify: true,
   write: false,
 })
-const guest = `${vue}\n${out.outputFiles[0].text}`
+const guest = out.outputFiles[0].text
 if (/<\/script/i.test(guest)) throw new Error("the guest text contains </script — it cannot be one inline block")
 const dir = path.join(ROOT, "dist", "guest")
+// from empty: a file an earlier build wrote (0.3's SOURCE.json) must not ride along into the tarball
+fs.rmSync(dir, { recursive: true, force: true })
 fs.mkdirSync(dir, { recursive: true })
 fs.writeFileSync(path.join(dir, "guest.js"), guest)
 const css = path.join(ROOT, "dist", "lib", "style.css")
@@ -48,5 +43,4 @@ const inlined = fs.existsSync(css)
     })
   : ""
 fs.writeFileSync(path.join(dir, "guest.css"), inlined)
-fs.writeFileSync(path.join(dir, "SOURCE.json"), JSON.stringify({ vue: version }, null, "\t") + "\n")
-console.log(`built dist/guest/ (vue ${version}, ${guest.length} chars)`)
+console.log(`built dist/guest/ (${guest.length} chars)`)

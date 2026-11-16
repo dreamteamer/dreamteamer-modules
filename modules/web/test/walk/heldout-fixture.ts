@@ -17,11 +17,11 @@ const coll = (name, fields, extra = "") =>
     .join("\n")}\n${extra}`
 
 const PATTERN = `export default ({ registerApp, registerEdit, registerView }) => {
-	const { defineComponent, h, onMounted } = window.Vue;
+	const tag = (name, text, cls) => { const e = document.createElement(name); if (cls) e.className = cls; if (text) e.textContent = text; return e; };
 	const st = async (p, init) => { try { const r = await fetch(p, init); return r.status + ':' + JSON.stringify(await r.json()).slice(0, 240); } catch { return 'threw'; } };
 	const J = (m, b) => ({ method: m, headers: { 'content-type': 'application/json' }, body: b === undefined ? undefined : JSON.stringify(b) });
 	const out = (k, v) => { document.body.dataset[k] = String(v); };
-	const App = defineComponent({ setup() { onMounted(async () => {
+	const App = { mount(el) { el.appendChild(tag('p', 'pattern')); (async () => {
 		for (const c of ['collections', 'other-items', 'tasks']) { const e = encodeURIComponent(c);
 			out('h2read_' + c.replace(/-/g, ''), await st('/api/collections/' + e + '/records'));
 			out('h2write_' + c.replace(/-/g, ''), await st('/api/collections/' + e + '/records', J('POST', { name: 'h2' }))); }
@@ -33,24 +33,24 @@ const PATTERN = `export default ({ registerApp, registerEdit, registerView }) =>
 		out('h6target', await st('/api/collections/pattern-items/records?target=hq', J('POST', { name: 'h6 target' })));
 		out('h6clean', await st('/api/collections/pattern-items/records', J('POST', { name: 'h6 clean' })));
 		out('done', 1);
-	}); return () => h('p', 'pattern'); } });
+	})(); } };
 	registerApp({ id: 'pattern', label: 'Pattern', icon: 'beaker', routes: [{ path: '', component: App }] });
-	const Edit = defineComponent({ props: ['value', 'field', 'record'], emits: ['update:value'], setup() { onMounted(async () => {
+	const Edit = { mount(el) { el.appendChild(tag('input', '', 'pattern-edit')); (async () => {
 		out('h3read', await st('/api/collections/pattern-items/records'));
 		out('h3save', await st('/api/collections/pattern-items/records/pattern-one', J('PATCH', { name: 'Pattern one saved' })));
 		out('done', 1);
-	}); return () => h('input', { class: 'pattern-edit' }); } });
+	})(); } };
 	registerEdit({ id: 'pattern-edit', name: 'pattern edit', types: ['string'], component: Edit });
 	registerView({ id: 'pattern-view', name: 'pattern view', types: ['string'], component: Edit });
 };
 `
 
 const PROBE2 = `export default ({ registerApp, registerEdit, registerView, registerList }) => {
-	const { defineComponent, h, onMounted } = window.Vue;
+	const tag = (name, text, cls) => { const e = document.createElement(name); if (cls) e.className = cls; if (text) e.textContent = text; return e; };
 	const st = async (p, init) => { try { const r = await fetch(p, init); return r.status + ':' + JSON.stringify(await r.json()).slice(0, 200); } catch { return 'threw'; } };
 	const out = (k, v) => { document.body.dataset[k] = String(v); };
 	const mark = "document.body.dataset.marker='ran';fetch('/api/commit',{method:'POST'});parent.postMessage({dt:1,id:999,op:'request',method:'POST',path:'/commit'},'*')";
-	const App = defineComponent({ setup() { onMounted(async () => {
+	const App = { mount(el) { el.appendChild(tag('p', 'probe2')); (async () => {
 		const host = document.createElement('div'); document.body.appendChild(host);
 		host.innerHTML = '<img src=x onerror="' + mark + '">' + '<svg onload="' + mark + '"></svg>' + '<a id="js" href="javascript:' + mark + '">x</a>';
 		try { document.getElementById('js').click(); } catch {}
@@ -64,22 +64,29 @@ const PROBE2 = `export default ({ registerApp, registerEdit, registerView, regis
 		await ext({ src: local }, 'h5localblob'); out('h5localblobran', String(!!window.__blobRan));
 		out('h5commit', await st('/api/commit', { method: 'POST', body: '{}' }));
 		setTimeout(() => { out('h4marker', document.body.dataset.marker ?? 'none'); out('h4location2', location.href.slice(0, 40)); out('done', 1); }, 1500);
-	}); return () => h('p', 'probe2'); } });
+	})(); } };
 	registerApp({ id: 'probe2', label: 'Probe 2', icon: 'beaker', routes: [{ path: '', component: App }] });
-	const Edit = defineComponent({ props: ['value', 'field', 'record'], setup() { onMounted(async () => {
+	const Edit = { mount(el) { el.appendChild(tag('i', 'probe-edit')); (async () => {
 		const flood = await Promise.all(Array.from({ length: 120 }, () => fetch('/api/collections/probe-items/records?limit=1').then((r) => r.status)));
 		out('h3flood429', flood.filter((x) => x === 429).length);
 		parent.postMessage({ dt: 1, id: 1, op: 'request', module: 'pattern', method: 'PATCH', path: '/collections/pattern-items/records/pattern-one', body: { name: 'spoofed' } }, '*');
 		out('h3write', await st('/api/collections/pattern-items/records/pattern-one', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'probe wrote' }) }));
 		out('done', 1);
-	}); return () => h('i', 'probe-edit'); } });
+	})(); } };
 	registerEdit({ id: 'probe-edit', name: 'probe edit', types: ['string'], component: Edit });
 	registerView({ id: 'probe-view', name: 'probe view', types: ['string'], component: Edit });
-	registerView({ id: 'probe-cell', name: 'probe cell', types: ['string'], component: { props: ['value'], render() { return h('span', { class: 'evil', style: 'position:fixed', onclick: 'x()', title: 't' }, [h('a', { href: 'javascript:alert(1)' }, String(this.value ?? ''))]); } } });
-	const List = defineComponent({ props: ['state', 'collection'], setup(p) { return () => { const s = p.state; const rows = s.items.items.value;
-		document.body.dataset.h7rows = String(rows.length); document.body.dataset.h7titles = rows.slice(0, 6).map((r) => s.recordTitleOf(r)).join('|');
-		document.body.dataset.h7keys = rows.slice(0, 50).some((r) => '$last-commit-message' in r) ? 'leaked' : 'clean';
-		return h('ul', rows.slice(0, 20).map((r) => h('li', s.recordTitleOf(r)))); }; } });
+	registerView({ id: 'probe-cell', name: 'probe cell', types: ['string'], component: (el, props) => {
+		const span = document.createElement('span'); span.setAttribute('class', 'evil'); span.setAttribute('style', 'position:fixed'); span.setAttribute('onclick', 'x()'); span.setAttribute('title', 't');
+		const a = document.createElement('a'); a.setAttribute('href', 'javascript:alert(1)'); a.textContent = String(props.value ?? ''); span.appendChild(a); el.appendChild(span);
+	} });
+	const List = { mount(el, props) {
+		const draw = (p) => { const s = p.state; const rows = s.items;
+			document.body.dataset.h7rows = String(rows.length); document.body.dataset.h7titles = rows.slice(0, 6).map((r) => s.recordTitleOf(r)).join('|');
+			document.body.dataset.h7keys = rows.slice(0, 50).some((r) => '$last-commit-message' in r) ? 'leaked' : 'clean';
+			const ul = document.createElement('ul'); for (const r of rows.slice(0, 20)) ul.appendChild(tag('li', s.recordTitleOf(r))); el.replaceChildren(ul); };
+		draw(props);
+		return { update: draw };
+	} };
 	registerList({ id: 'probe-list', name: 'probe list', component: List, fillsHeight: true });
 };
 `

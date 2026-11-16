@@ -10,9 +10,9 @@ import { fileURLToPath } from "node:url"
 import { build, type InlineConfig } from "vite"
 import react from "@vitejs/plugin-react"
 
-const UI2 = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
-const SRC = path.join(UI2, "src")
-const DIST = path.join(UI2, "dist")
+const UI = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
+const SRC = path.join(UI, "src")
+const DIST = path.join(UI, "dist")
 
 const common: InlineConfig = {
   configFile: false,

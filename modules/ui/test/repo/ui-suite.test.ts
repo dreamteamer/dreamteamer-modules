@@ -9,13 +9,13 @@ import { createRequire } from "node:module"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 
-const UI2 = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..")
+const UI = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..")
 const require = createRequire(import.meta.url)
 
 test("the unit tests pass", { timeout: 300_000 }, () => {
   // listed here, not globbed: Node 20 does not expand a pattern
   const files = fs
-    .readdirSync(path.join(UI2, "test"))
+    .readdirSync(path.join(UI, "test"))
     .filter(f => f.endsWith(".test.ts"))
     .sort()
     .map(f => path.join("test", f))
@@ -23,7 +23,7 @@ test("the unit tests pass", { timeout: 300_000 }, () => {
   // without the runner's own context: a `node --test` that inherits NODE_TEST_CONTEXT skips every file and exits 0
   const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith("NODE_TEST_")))
   const r = spawnSync(process.execPath, ["--test", "--test-reporter=tap", ...files], {
-    cwd: UI2,
+    cwd: UI,
     encoding: "utf8",
     env,
     timeout: 280_000,
@@ -36,7 +36,7 @@ test("the unit tests pass", { timeout: 300_000 }, () => {
 test("the source typechecks", { timeout: 300_000 }, () => {
   const bin = path.join(path.dirname(require.resolve("typescript/package.json")), "bin", "tsc")
   const r = spawnSync(process.execPath, [bin, "-p", "src/tsconfig.json"], {
-    cwd: UI2,
+    cwd: UI,
     encoding: "utf8",
     timeout: 280_000,
   })

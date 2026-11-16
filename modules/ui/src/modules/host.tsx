@@ -1,13 +1,13 @@
 /**
- * MODULE APPS (cr-modules-008) — ported from the Vue ui's modules.ts, same contract, same checks. A module's
+ * MODULE APPS (cr-modules-008) — ported from the Vue ui's modules.ts, the same frames, messages and checks. A module's
  * `ui/app.js` never runs in this page. Each module gets a hidden REGISTRY frame that loads its bundle and says
  * what it registered; the host registers a PROXY for each free id (D9) in this app's registries — a React
  * component that draws a SURFACE frame where the mount rule allows (D10), else the built-in. Every request,
  * intent, navigation and value a frame sends is checked here: requests by @dreamteamer/protocol's gate under the
  * module's scope (built from the compiled runtime and the person's grant), the rest by modules/policy.ts.
  *
- * The frame side is framework-free from here: the bridge's messages are the whole interface, so a module built
- * for ui runs unchanged under ui — its Vue lives in the frame, with the guest (modules/guest/guest.ts).
+ * The frame side is framework-free: the bridge's messages are the whole interface, and a module's components are
+ * mount functions the guest calls (modules/guest/guest.ts), drawn with whatever the module bundles.
  *
  * Differences from ui, on purpose: a host that can frame nothing (no frames base, no guest URL — the playground)
  * loads no module rather than framing an error page; a frame's `--dt-*` tokens travel with the theme too.

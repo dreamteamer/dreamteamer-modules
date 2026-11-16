@@ -49,8 +49,7 @@ fs.writeFileSync(
 fs.writeFileSync(
   path.join(mod, "ui", "app.js"),
   `export default ({ registerApp }) => {
-	const { defineComponent, h, onMounted } = window.Vue;
-	const App = defineComponent({ setup() { onMounted(() => { document.body.dataset.h8 = 'drawn'; }); return () => h('p', { class: 'h8-app' }, 'H8 frame drawn'); } });
+	const App = { mount(el) { const p = document.createElement('p'); p.className = 'h8-app'; p.textContent = 'H8 frame drawn'; el.appendChild(p); document.body.dataset.h8 = 'drawn'; } };
 	registerApp({ id: 'h8frame', label: 'H8 frame', icon: 'beaker', routes: [{ path: '', component: App }] });
 };
 `

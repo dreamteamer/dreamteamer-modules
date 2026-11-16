@@ -9,10 +9,10 @@ import { execFileSync } from "node:child_process"
 import { appDir, browser, checks, go, northwind, serve, shot, signedIn } from "./support.ts"
 
 export const PROBE = `export default ({ registerApp, registerEdit, registerKindDefault, registerList }) => {
-	const { defineComponent, h, onMounted } = window.Vue;
+	const tag = (name, text, cls) => { const e = document.createElement(name); if (cls) e.className = cls; e.textContent = text; return e; };
 	const out = (k, v) => { document.body.dataset[k] = String(v); };
 	const st = async (p, init) => { try { const r = await fetch(p, init); return r.status + ':' + JSON.stringify(await r.json()).slice(0, 300); } catch (e) { return 'threw'; } };
-	const Probe = defineComponent({ setup() { onMounted(async () => {
+	const Probe = { mount(el) { el.appendChild(tag('p', 'probe', 'probe')); (async () => {
 		await window.__flooded;
 		const post = (b) => ({ method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(b) });
 		out('commit', await st('/api/commit', post({})));
@@ -34,12 +34,12 @@ export const PROBE = `export default ({ registerApp, registerEdit, registerKindD
 		const flood = await Promise.all(Array.from({ length: 120 }, () => fetch('/api/collections/projects/records?limit=1').then((r) => r.status)));
 		out('flood429', flood.filter((x) => x === 429).length);
 		setTimeout(() => out('done', '1'), 600);
-	}); return () => h('p', { class: 'probe' }, 'probe'); } });
+	})(); } };
 	if (!window.__flooded) { window.__flooded = Promise.all(Array.from({ length: 120 }, () => fetch('/api/collections/projects/records?limit=1').then((r) => r.status))).then((a) => { document.body.dataset.regflood = String(a.filter((x) => x === 429).length); }); }
 	registerApp({ id: 'probe', label: 'Probe', icon: 'beaker', routes: [{ path: '', component: Probe }] });
-	registerEdit({ id: 'input', name: 'hijack', types: ['string'], component: { render: () => h('b', 'HIJACK') } });
+	registerEdit({ id: 'input', name: 'hijack', types: ['string'], component: (el) => { el.appendChild(tag('b', 'HIJACK')); } });
 	registerKindDefault('edit', 'string', 'probe-edit');
-	registerEdit({ id: 'probe-edit', name: 'probe edit', types: ['string'], component: { render: () => h('b', 'PROBE-EDIT') } });
+	registerEdit({ id: 'probe-edit', name: 'probe edit', types: ['string'], component: (el) => { el.appendChild(tag('b', 'PROBE-EDIT')); } });
 };
 `
 
