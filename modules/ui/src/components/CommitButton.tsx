@@ -19,6 +19,16 @@ import { usePopover } from "../browse/use-popover.ts"
 import { hostInfo, isAdmin } from "../lib/host.ts"
 import { commitRepoLabel, pendingByRepo } from "../lib/sources.ts"
 import { Icon } from "./Icon.tsx"
+import {
+  button,
+  buttonActive,
+  cx,
+  menu as menuCls,
+  menuItem,
+  menuLabel,
+  popoverAnchor,
+  subtle,
+} from "../styles/classes.ts"
 
 export function CommitButton({
   onCommitted,
@@ -82,16 +92,16 @@ export function CommitButton({
   if (!pending && !note) return null
   const s = pending === 1 ? "" : "s"
   return (
-    <div className="dt-commit dt-popover-anchor" ref={menu.anchor} data-commit>
+    <div className={cx(popoverAnchor, "gap-2 items-center")} ref={menu.anchor} data-commit>
       {note && (
-        <span className="dt-commit-note" title={note}>
+        <span className="max-w-[260px] overflow-hidden text-ellipsis whitespace-nowrap text-fg-subtle" title={note}>
           {note}
         </span>
       )}
       {repos.length === 1 && (
         <button
           type="button"
-          className="dt-button"
+          className={button}
           disabled={busy}
           data-repo={repos[0]!.repo}
           title={`Commit ${pending} pending record change${s} to ${label(repos[0]!.repo)}`}
@@ -104,7 +114,7 @@ export function CommitButton({
         <>
           <button
             type="button"
-            className={`dt-button${menu.open ? " is-active" : ""}`}
+            className={cx(button, menu.open && buttonActive)}
             disabled={busy}
             title={`${pending} pending record change${s} across ${repos.length} repos`}
             aria-haspopup="menu"
@@ -114,18 +124,18 @@ export function CommitButton({
             <Icon name="git-commit" /> Commit {pending} <Icon name="chevron-down" />
           </button>
           {menu.open && (
-            <div className="dt-menu" role="menu" aria-label="Commit to">
+            <div className={menuCls} role="menu" aria-label="Commit to">
               {repos.map(r => (
                 <button
                   key={r.repo}
                   type="button"
-                  className="dt-menu-item"
+                  className={menuItem}
                   role="menuitem"
                   data-repo={r.repo}
                   onClick={() => void run(r.only)}
                 >
-                  <span className="dt-menu-label">Commit to {label(r.repo)}</span>
-                  <span className="dt-subtle">{r.count}</span>
+                  <span className={menuLabel}>Commit to {label(r.repo)}</span>
+                  <span className={subtle}>{r.count}</span>
                 </button>
               ))}
             </div>

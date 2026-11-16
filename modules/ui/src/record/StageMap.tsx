@@ -38,6 +38,23 @@ import {
   type CardState,
 } from "../lib/stage-map.ts"
 import { RenderView } from "../render/Render.tsx"
+import { cx } from "../styles/classes.ts"
+import {
+  stageCardCls,
+  stageCardTitleCls,
+  stageChipCls,
+  stageCls,
+  stageIconCls,
+  stagesCls,
+  stagesCmdCls,
+  stagesListCls,
+  stagesNextCls,
+  stageTitleCls,
+} from "./stage-map-looks.ts"
+
+/** A card's term and its value. */
+const keyCls = "mt-1 text-small text-fg-subtle"
+const valueCls = "m-0 min-w-0 [overflow-wrap:anywhere]"
 
 const MARK_ICON = {
   passed: "pass-filled",
@@ -216,12 +233,12 @@ export function StageMap({
   const cardId = (i: number) => `dt-stage-card-${id}-${i}`
 
   return (
-    <section ref={section} className="dt-stages" aria-label="Lifecycle">
-      <ol className="dt-stages-list">
+    <section ref={section} className={stagesCls} aria-label="Lifecycle">
+      <ol className={stagesListCls}>
         {stages.map(stage => (
           <li
             key={stage.spec.title}
-            className="dt-stage"
+            className={stageCls}
             data-stage={stage.spec.title}
             data-state={stage.state}
             data-mark={stage.mark}
@@ -237,15 +254,15 @@ export function StageMap({
                 chips.current[stage.i] = el
               }}
               type="button"
-              className="dt-stage-chip"
+              className={stageChipCls(stage.mark)}
               aria-current={stage.mark === "current" ? "step" : undefined}
               aria-expanded={card.open === stage.i}
               aria-controls={cardId(stage.i)}
               aria-label={`${stage.i + 1} ${stage.spec.title} — ${stateWord(stage)}`}
             >
-              <Icon name={MARK_ICON[stage.mark]} className="dt-stage-icon" />
-              <span className="dt-stage-index">{stage.i + 1}</span>{" "}
-              <span className="dt-stage-title">{stage.spec.title}</span>
+              <Icon name={MARK_ICON[stage.mark]} className={stageIconCls(stage.mark)} />
+              <span className="tabular-nums">{stage.i + 1}</span>{" "}
+              <span className={stageTitleCls(stage.mark === "current")}>{stage.spec.title}</span>
             </button>
             {card.open === stage.i && (
               <div
@@ -253,25 +270,25 @@ export function StageMap({
                 ref={el => {
                   cardEls.current[stage.i] = el
                 }}
-                className="dt-stage-card"
+                className={stageCardCls}
                 role="group"
                 aria-label={stage.spec.title}
                 style={{ left: cardX }}
               >
-                <header className="dt-stage-head">
-                  <span className="dt-stage-card-title">{stage.spec.title}</span>
-                  <span className="dt-stage-state">· {stateWord(stage)}</span>
+                <header className="flex items-baseline gap-1 mb-1">
+                  <span className={stageCardTitleCls}>{stage.spec.title}</span>
+                  <span className="text-fg-subtle text-small">· {stateWord(stage)}</span>
                 </header>
-                <dl className="dt-stage-body">
+                <dl className="m-0">
                   {stage.spec.fields.map(name => {
                     const row = fields.find(f => f.field === name)
                     const value = record?.[name]
                     return (
                       <div key={name}>
-                        <dt className="dt-stage-key">{row ? labelOf(row) : name}</dt>
-                        <dd className="dt-stage-value" data-field={name}>
+                        <dt className={keyCls}>{row ? labelOf(row) : name}</dt>
+                        <dd className={valueCls} data-field={name}>
                           {isEmptyValue(value) || !row ? (
-                            <span className="dt-stage-empty">Empty</span>
+                            <span className="text-fg-subtle">Empty</span>
                           ) : (
                             <RenderView field={row} value={value} context="record" {...(record ? { record } : {})} />
                           )}
@@ -280,21 +297,17 @@ export function StageMap({
                     )
                   })}
                   <div>
-                    <dt className="dt-stage-key">Reviews</dt>
-                    <dd className="dt-stage-value" data-field="$reviews">
+                    <dt className={keyCls}>Reviews</dt>
+                    <dd className={valueCls} data-field="$reviews">
                       {!stage.reviews.length ? (
-                        <span className="dt-stage-empty">No review yet</span>
+                        <span className="text-fg-subtle">No review yet</span>
                       ) : (
                         stage.reviews.map(r => (
-                          <span
-                            key={String(r["id"])}
-                            className="dt-stage-review"
-                            data-verdict={String(r["verdict"] ?? "")}
-                          >
+                          <span key={String(r["id"])} className="block" data-verdict={String(r["verdict"] ?? "")}>
                             <Link to={recordRoute(reviewsTarget, bareRef(r["id"]), base)}>
                               {String(r["name"] ?? r["id"] ?? "")}
                             </Link>
-                            <span className="dt-stage-verdict">
+                            <span className="text-fg-subtle text-small ml-1.5">
                               {r["verdict"] ? String(r["verdict"]) : "no verdict"}
                             </span>
                           </span>
@@ -303,12 +316,12 @@ export function StageMap({
                     </dd>
                   </div>
                   <div>
-                    <dt className="dt-stage-key">Gate</dt>
-                    <dd className="dt-stage-value dt-stage-gate" data-field="$gate">
+                    <dt className={keyCls}>Gate</dt>
+                    <dd className={valueCls} data-field="$gate">
                       {stage.gate.map(g => (
                         <span
                           key={g.binding}
-                          className="dt-stage-binding"
+                          className={cx("block text-small", g.state === "available" ? "text-accent" : "text-fg-subtle")}
                           data-binding={g.binding}
                           data-state={g.state}
                           title={g.binding}
@@ -324,7 +337,7 @@ export function StageMap({
           </li>
         ))}
       </ol>
-      <p className="dt-stages-next">
+      <p className={stagesNextCls}>
         {next.kind === "loading" ? (
           " "
         ) : next.kind === "text" ? (
@@ -334,14 +347,14 @@ export function StageMap({
             {next.invocation ? (
               <button
                 type="button"
-                className="dt-stages-cmd"
+                className={stagesCmdCls}
                 title={next.invocation}
                 onClick={() => void copy(next.invocation!)}
               >
                 {copied ? "Copied" : next.name}
               </button>
             ) : (
-              <span className="dt-stages-cmd-name">{next.name}</span>
+              <span>{next.name}</span>
             )}{" "}
             available
           </>

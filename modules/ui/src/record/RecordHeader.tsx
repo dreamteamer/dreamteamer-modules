@@ -23,6 +23,31 @@ import { initialsOf } from "../lib/initials.ts"
 import { originClassWord, type RecordOrigin } from "../lib/record-origin.ts"
 import type { CommitInfo, Crumb } from "../lib/record-page.ts"
 import { relativeTime } from "../lib/relative-time.ts"
+import { cx, iconButton, subtle, toolbar } from "../styles/classes.ts"
+
+// ---- the header's bands: fixed at the top of the page while the body scrolls under them ----
+const header = "flex-[0_0_auto] border-b border-border"
+const navRow = "flex items-center gap-2 pt-2 px-6 pb-0 text-small"
+const titleRow = "flex items-center justify-between gap-4 flex-wrap pt-1.5 px-6 pb-2.5"
+const titleBox = "flex items-center gap-2.5 min-w-0"
+const titleText = "m-0 text-[20px] truncate"
+const titleIcon =
+  "inline-flex items-center justify-center w-7 h-7 flex-[0_0_auto] rounded-dt bg-bg-subtle text-fg-subtle"
+const commitRow = "flex items-center gap-2 py-1.5 px-6 border-t border-border text-small min-w-0"
+/** A person's initials in a round chip. (was dt-avatar) */
+export const avatar =
+  "inline-flex items-center justify-center w-5 h-5 rounded-full bg-bg-active text-[9px] font-semibold"
+const commitMessage = "flex-1 min-w-0 truncate"
+const originBox = "inline-flex items-center gap-1.5 flex-wrap"
+const warm = "text-chart-orange"
+
+// ---- the display line under the header ----
+const displayLine = "flex items-center flex-wrap gap-2 py-1.5 px-6 border-l-[3px] text-fg-subtle"
+const displayTinted = "border-l-(--dt-tint) bg-[color-mix(in_srgb,var(--dt-tint-bg)_8%,transparent)]"
+const badgeChip = "inline-flex items-center gap-1 h-5 px-2 rounded-full border text-small whitespace-nowrap"
+const badgePlain = "border-border text-fg"
+const badgeColored = "border-[color-mix(in_srgb,var(--dt-chip-color)_45%,transparent)] text-(--dt-chip-color)"
+const badgeFilled = "bg-[color-mix(in_srgb,var(--dt-chip-bg)_15%,transparent)]"
 
 export type HeaderOrigin = RecordOrigin & {
   record?: string | null
@@ -57,13 +82,13 @@ export function RecordHeader({
   const whenText = commit ? (when && !Number.isNaN(when.getTime()) ? relativeTime(when) : commit.date) : ""
   const classWord = origin ? originClassWord(origin.kind, origin.via) : ""
   return (
-    <header className="dt-record-header">
-      <div className="dt-record-nav">
-        <nav className="dt-record-path" aria-label="Path">
+    <header className={header}>
+      <div className={navRow}>
+        <nav className="flex-1 min-w-0 truncate" aria-label="Path">
           {crumbs.map((c, i) => (
-            <span key={i} className="dt-record-crumb">
+            <span key={i}>
               {i > 0 && (
-                <span className="dt-subtle" aria-hidden="true">
+                <span className={subtle} aria-hidden="true">
                   {" / "}
                 </span>
               )}
@@ -72,43 +97,43 @@ export function RecordHeader({
           ))}
         </nav>
         {onRefresh && (
-          <button type="button" className="dt-icon-button" title="Refresh" onClick={onRefresh}>
+          <button type="button" className={iconButton} title="Refresh" onClick={onRefresh}>
             <Icon name="refresh" />
           </button>
         )}
       </div>
-      <div className="dt-record-title-row">
-        <div className="dt-record-title">
-          <span className="dt-record-icon">
+      <div className={titleRow}>
+        <div className={titleBox}>
+          <span className={titleIcon}>
             <Icon name={icon || "file"} />
           </span>
-          <h1 title={title}>{title}</h1>
+          <h1 className={titleText} title={title}>
+            {title}
+          </h1>
           {badge}
         </div>
-        <div className="dt-toolbar">{actions}</div>
+        <div className={toolbar}>{actions}</div>
       </div>
       {(commit || origin) && (
-        <div className="dt-record-commit">
+        <div className={commitRow}>
           {commit ? (
             <>
-              <span className="dt-avatar" title={commit.author}>
+              <span className={avatar} title={commit.author}>
                 {initialsOf(commit.author)}
               </span>
               <span>{commit.author}</span>
-              <span className="dt-record-commit-message dt-subtle" title={commit.message}>
+              <span className={cx(commitMessage, subtle)} title={commit.message}>
                 {commit.message}
               </span>
-              <span className="dt-subtle" title={commit.date}>
+              <span className={subtle} title={commit.date}>
                 {whenText}
               </span>
             </>
           ) : (
-            <span className="dt-record-commit-message dt-subtle">
-              {origin?.inRepo ? "no commit holds this record yet" : ""}
-            </span>
+            <span className={cx(commitMessage, subtle)}>{origin?.inRepo ? "no commit holds this record yet" : ""}</span>
           )}
           {origin && (
-            <span className="dt-record-origin" title={origin.tooltip} data-origin-kind={origin.kind}>
+            <span className={originBox} title={origin.tooltip} data-origin-kind={origin.kind}>
               {origin.name && (
                 <SourceMark
                   name={origin.name}
@@ -119,20 +144,20 @@ export function RecordHeader({
                   note={origin.note}
                 />
               )}
-              {classWord && <span className="dt-subtle">{classWord}</span>}
+              {classWord && <span className={subtle}>{classWord}</span>}
               {origin.access === "read" && (
                 <>
-                  <span className="dt-subtle" aria-hidden="true">
+                  <span className={subtle} aria-hidden="true">
                     ·
                   </span>
-                  <span className="dt-record-readonly" data-read-only>
+                  <span className={warm} data-read-only>
                     read-only{origin.note ? ` — ${origin.note}` : ""}
                   </span>
                 </>
               )}
               {origin.stub && (
                 <>
-                  <span className="dt-subtle" aria-hidden="true">
+                  <span className={subtle} aria-hidden="true">
                     ·
                   </span>
                   <StubNote
@@ -144,8 +169,8 @@ export function RecordHeader({
                 </>
               )}
               {origin.state.map(part => (
-                <span key={part} className={`dt-record-state is-${part.split(" ")[0]}`}>
-                  <span className="dt-subtle" aria-hidden="true">
+                <span key={part} className={cx(["uncommitted", "never"].includes(part.split(" ")[0]!) && warm)}>
+                  <span className={subtle} aria-hidden="true">
                     ·{" "}
                   </span>
                   {part}
@@ -176,16 +201,16 @@ export function RecordDisplayLine({
   const tint = tintStyle(tintOf(row?.record.color_by, fields, record))
   if (!subtitle && !chips.length && !tint) return null
   return (
-    <div className={`dt-record-display${tint ? " is-tinted" : ""}`} style={tint} data-record-display>
+    <div className={cx(displayLine, tint ? displayTinted : "border-l-transparent")} style={tint} data-record-display>
       {subtitle && (
-        <span className="dt-record-subtitle" title={subtitle}>
+        <span className="min-w-0 truncate" title={subtitle}>
           {subtitle}
         </span>
       )}
       {chips.map(chip => (
         <span
           key={chip.value}
-          className={`dt-record-badge${chip.color ? " has-color" : ""}${chip.background ? " has-bg" : ""}`}
+          className={cx(badgeChip, chip.color ? badgeColored : badgePlain, chip.background && badgeFilled)}
           style={
             chip.color || chip.background
               ? ({

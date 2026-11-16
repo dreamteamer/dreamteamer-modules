@@ -36,7 +36,19 @@ import { RenderEdit, RenderView } from "../render/Render.tsx"
 import { RelationField } from "./RelationField.tsx"
 import { StageMap } from "./StageMap.tsx"
 import { useSections } from "./use-sections.ts"
-import { cx } from "../styles/classes.ts"
+import { cx, required } from "../styles/classes.ts"
+import { computed, sectionHead, sectionToggle } from "./looks.ts"
+
+// ---- the looks (was dt-prop*, dt-props*) ----------------------------------------------------------------------------
+/** A property's value cell. */
+const valueCls = "flex flex-col justify-center min-h-[30px] min-w-0 py-[3px] px-0"
+/** The read value inside it; a relation drawn as its own view (stacked) takes the full width. */
+const readCls = (stacked: boolean) => (stacked ? "block p-0 min-w-0" : "py-0 px-[9px] min-w-0")
+/** "Empty", and the notes beside a value. */
+const quiet = "text-fg-subtle opacity-80"
+const aside = "ml-2 text-small"
+/** The document under the properties: ruled off, unless it is all there is. */
+const bodyCls = "mt-5 pt-5 border-t border-border first:mt-0 first:pt-0 first:border-t-0"
 
 /** In edit mode a property's control loses its chrome until it is touched — a boxed input per row would rebuild
  *  the form this layout replaces. Hovering the row shows the box (that rule sits on the row, and outranks focus);
@@ -122,49 +134,59 @@ export function RecordProperties(props: RecordLayoutProps) {
       <div
         key={f.field}
         className={cx(
-          `dt-prop${plan ? " is-stacked" : ""}${w !== null ? " is-computed" : ""}`,
+          "grid items-start min-h-[30px] rounded-dt hover:bg-[color-mix(in_srgb,var(--dt-bg-subtle)_60%,transparent)]",
+          plan
+            ? "grid-cols-[minmax(0,1fr)] gap-0 mb-3"
+            : "grid-cols-[172px_minmax(0,1fr)] gap-2 max-[720px]:grid-cols-[minmax(0,1fr)] max-[720px]:gap-0",
           "[&:hover_[data-prop-value]_[data-control]]:bg-bg-subtle [&:hover_[data-prop-value]_[data-control]]:border-border"
         )}
         data-field={f.field}
       >
-        <HoverCard lines={hoverLines(f)} className={`dt-prop-key${f.description ? " is-documented" : ""}`}>
-          <Icon name={fieldIcon(f)} className="dt-prop-icon" />
-          <label className="dt-prop-label" htmlFor={ro ? undefined : `f-${f.field}`}>
+        <HoverCard
+          lines={hoverLines(f)}
+          className={cx(
+            "flex items-center gap-2 min-h-[30px] pl-1 min-w-0 text-fg-subtle",
+            f.description &&
+              "cursor-help [&:hover_label]:underline [&:hover_label]:decoration-dotted [&:hover_label]:decoration-current [&:hover_label]:underline-offset-3"
+          )}
+        >
+          <Icon name={fieldIcon(f)} className="flex-none" />
+          <label className="overflow-hidden text-ellipsis whitespace-nowrap" htmlFor={ro ? undefined : `f-${f.field}`}>
             {labelOf(f)}
           </label>
           {f.required && (
-            <span className="dt-required" aria-hidden="true">
+            <span className={required} aria-hidden="true">
               *
             </span>
           )}
         </HoverCard>
         {ro && isEmptyValue(value) ? (
-          <HoverCard lines={hoverLines(f)} className="dt-prop-value">
-            <span className="dt-prop-read">
-              <span className="dt-prop-empty">Empty</span>
-              {more > 0 && <span className="dt-prop-soft">+{more} elsewhere</span>}
+          <HoverCard lines={hoverLines(f)} className={valueCls}>
+            <span className={readCls(false)}>
+              <span className={quiet}>Empty</span>
+              {more > 0 && <span className={cx(quiet, aside)}>+{more} elsewhere</span>}
             </span>
           </HoverCard>
         ) : (
           <div
-            className={cx(`dt-prop-value${w !== null && !plan ? " dt-computed" : ""}`, CONTROL_CHROME)}
+            className={cx(valueCls, w !== null && !plan && computed, CONTROL_CHROME)}
             data-prop-value
             title={plan ? undefined : (w ?? undefined)}
             dir={f.direction}
           >
             {ro ? (
-              <span className="dt-prop-read">
+              <span className={readCls(!!plan)}>
                 {plan ? (
                   <RelationField plan={plan} />
                 ) : (
                   <RenderView field={f} value={value} context="record" record={current} />
                 )}
                 {hint && (
-                  <span className="dt-prop-generated" title={hint}>
+                  <span className={cx(quiet, aside)} title={hint}>
                     <Icon name="lock" /> {hint}
                   </span>
                 )}
-                {more > 0 && <span className="dt-prop-soft">{more} more from other sources</span>}
+                {more > 0 && <span className={cx(quiet, aside)}>{more} more from other sources</span>}
               </span>
             ) : (
               <RenderEdit
@@ -183,26 +205,21 @@ export function RecordProperties(props: RecordLayoutProps) {
   }
 
   return (
-    <div className="dt-props" data-layout="properties">
+    <div className="flex flex-col" data-layout="properties">
       {/* the lifecycle its collection declares, on the read only — nothing at all for a collection with no stages */}
       {readonly && !create && record && (
         <StageMap collection={collection} record={record} fields={fields} options={options} />
       )}
-      {sections.map(s => (
+      {sections.map((s, i) => (
         <section
           key={s.title}
-          className={`dt-props-list${s.title ? " is-named" : ""}`}
+          className={i > 0 && (s.title || sections[i - 1]!.title) ? "mt-4" : undefined}
           data-section={s.title}
           data-collapsed={s.collapsed ? (isShut(s) ? "shut" : "open") : undefined}
         >
-          {s.title && !s.collapsed && <h3 className="dt-props-section">{s.title}</h3>}
+          {s.title && !s.collapsed && <h3 className={sectionHead}>{s.title}</h3>}
           {s.title && s.collapsed && (
-            <button
-              type="button"
-              className="dt-props-section dt-link-button"
-              aria-expanded={!isShut(s)}
-              onClick={() => toggle(s)}
-            >
+            <button type="button" className={sectionToggle} aria-expanded={!isShut(s)} onClick={() => toggle(s)}>
               <Icon name={isShut(s) ? "chevron-right" : "chevron-down"} /> {s.title}
             </button>
           )}
@@ -212,7 +229,7 @@ export function RecordProperties(props: RecordLayoutProps) {
       {/* the document: no label, no box — an empty body on the read draws nothing, not even the rule */}
       {bodyFields.map(f =>
         !isReadonly(f) ? (
-          <section key={f.field} className="dt-props-body" dir={f.direction}>
+          <section key={f.field} className={bodyCls} dir={f.direction}>
             <RenderEdit
               id={`f-${f.field}`}
               field={f}
@@ -223,7 +240,7 @@ export function RecordProperties(props: RecordLayoutProps) {
             />
           </section>
         ) : isEmptyValue(valueOf(f)) ? null : (
-          <section key={f.field} className="dt-props-body" dir={f.direction}>
+          <section key={f.field} className={bodyCls} dir={f.direction}>
             <RenderView field={f} value={valueOf(f)} context="record" record={current} />
           </section>
         )

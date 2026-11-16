@@ -11,11 +11,12 @@ import { useApp, useAsync } from "../app-context.tsx"
 import { Icon } from "../components/Icon.tsx"
 import { Link } from "../components/Link.tsx"
 import { textParts, type NextNote } from "../lib/next-notes.ts"
+import { subtle } from "../styles/classes.ts"
 
 function NoteText({ note }: { note: NextNote }) {
   const parts = note.error ? [{ text: `${note.by}: ${note.text}` }] : textParts(note)
   return (
-    <span className="dt-next-notes-text">
+    <span>
       {parts.map((p, i) =>
         "ref" in p && p.ref ? (
           <Link key={i} to={`/content/${p.ref}`}>
@@ -36,16 +37,19 @@ export function NextNotes({ collection, id }: { collection: string; id: string }
   const from = answer.data?.sessionsFrom ?? null
   if (!notes.length && !from) return null
   return (
-    <div className="dt-next-notes" aria-label="Notes from extensions">
+    <div
+      className="grid gap-0.5 pt-1 px-6 pb-1.5 text-[12px] [&_p]:m-0 [&_p]:flex [&_p]:items-baseline [&_p]:gap-1.5"
+      aria-label="Notes from extensions"
+    >
       {notes.map((n, i) => (
-        <p key={i} className={`dt-next-notes-line${n.error ? " is-error" : ""}`}>
+        <p key={i} className={n.error ? "[&_.codicon]:text-chart-orange" : "[&_.codicon]:text-chart-blue"}>
           <Icon name={n.error ? "warning" : "broadcast"} />
           <NoteText note={n} />
-          {!n.error && <span className="dt-subtle">{n.by}</span>}
+          {!n.error && <span className={subtle}>{n.by}</span>}
         </p>
       ))}
       {from && (
-        <p className="dt-subtle" data-sessions-from>
+        <p className={subtle} data-sessions-from>
           {"roots" in from
             ? `Sessions read from: ${from.roots.join(", ")}`
             : `Sessions not read on this machine: ${from.unavailable}`}

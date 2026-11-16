@@ -8,6 +8,7 @@
  */
 import type { SourceAccess, SourceVia } from "../api/types.ts"
 import { SourceMark } from "../components/SourceMark.tsx"
+import { cx, subtle } from "../styles/classes.ts"
 
 export function SaveTarget({
   root,
@@ -24,11 +25,14 @@ export function SaveTarget({
 }) {
   return (
     <p
-      className={`dt-save-target${excluded.length || dropped ? " is-warning" : ""}`}
+      className={cx(
+        "m-0 flex flex-wrap items-center gap-1.5",
+        (excluded.length > 0 || !!dropped) && "text-chart-orange"
+      )}
       data-save-target
       data-save-root={root}
     >
-      <span className="dt-subtle">Saves to</span>
+      <span className={subtle}>Saves to</span>
       <SourceMark name={root} access={access} via={via} />
       {dropped && (
         <span data-save-target-dropped>

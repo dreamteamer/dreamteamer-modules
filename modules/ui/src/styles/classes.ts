@@ -116,6 +116,9 @@ export const kv =
   "grid grid-cols-[minmax(90px,max-content)_1fr] gap-x-3.5 gap-y-1 m-0 [&>div]:contents [&_dt]:text-fg-subtle [&_dd]:m-0 [&_dd]:whitespace-pre-wrap [&_dd]:[overflow-wrap:anywhere]"
 /** A row of chips, labels or references; a table cell keeps it on one line by its `data-items`. (was dt-chips) */
 export const items = "inline-flex flex-wrap gap-1"
+/** "This id is held by more than one root": an orange pill. (was dt-dup-badge) */
+export const dupBadge =
+  "inline-flex items-center gap-1 ml-1.5 px-2 h-5 rounded-full border border-[color-mix(in_srgb,var(--dt-color-charts-orange)_50%,transparent)] text-chart-orange text-small whitespace-nowrap"
 /** A chip's × button. (was dt-chip-remove) */
 export const chipRemove =
   "inline-flex p-0 -mr-1 border-0 bg-transparent text-inherit cursor-pointer opacity-70 hover:opacity-100 [&_.codicon]:text-[12px]!"

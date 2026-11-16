@@ -11,6 +11,8 @@ import { formatFilesize } from "../lib/format-filesize.ts"
 import { duplicatesOf } from "../lib/record-page.ts"
 import { SOURCE_FIELD, SOURCE_KIND_FIELD, isOwnSource } from "../lib/sources.ts"
 import { RenderView } from "../render/Render.tsx"
+import { mono, subtle } from "../styles/classes.ts"
+import { computed } from "./looks.ts"
 
 const META: [string, string][] = [
   ["$created-by", "Created by"],
@@ -47,14 +49,17 @@ export function RecordInfo({
       a !== null && typeof a === "object" && typeof (a as { name?: unknown }).name === "string"
   )
   return (
-    <dl className="dt-info" data-info>
+    <dl
+      className="m-0 grid gap-2.5 [&_dt]:text-small [&_dt]:uppercase [&_dt]:tracking-[0.04em] [&_dt]:text-fg-subtle [&_dd]:mt-0.5 [&_dd]:mx-0 [&_dd]:mb-0 [&_dd]:[overflow-wrap:anywhere]"
+      data-info
+    >
       <div>
         <dt>Collection</dt>
         <dd title={collection}>{collection}</dd>
       </div>
       <div>
         <dt>Id</dt>
-        <dd title={id} className="dt-mono">
+        <dd title={id} className={mono}>
           {id}
         </dd>
       </div>
@@ -77,7 +82,7 @@ export function RecordInfo({
       {foreign && (
         <div data-field="source">
           <dt>Source</dt>
-          <dd className="dt-computed" title={`read from ${foreign}${kind ? ` (${kind})` : ""}`}>
+          <dd className={computed} title={`read from ${foreign}${kind ? ` (${kind})` : ""}`}>
             <SourceMark
               name={foreign}
               record={entry?.record ?? null}
@@ -101,11 +106,11 @@ export function RecordInfo({
         <div>
           <dt>Attachments</dt>
           <dd>
-            <ul className="dt-info-attachments">
+            <ul className="m-0 p-0 list-none">
               {attachments.map(a => (
                 <li key={a.name}>
                   <span title={a.name}>{a.name}</span>{" "}
-                  {typeof a.size === "number" && <span className="dt-subtle">{formatFilesize(a.size)}</span>}
+                  {typeof a.size === "number" && <span className={subtle}>{formatFilesize(a.size)}</span>}
                 </li>
               ))}
             </ul>
@@ -115,7 +120,7 @@ export function RecordInfo({
       {path && (
         <div>
           <dt>File</dt>
-          <dd className="dt-mono">{path}</dd>
+          <dd className={mono}>{path}</dd>
         </div>
       )}
     </dl>

@@ -6,12 +6,13 @@
  */
 import type { RecordLayoutProps } from "../registry/props.ts"
 import { DataModelDetail } from "../settings/DataModelDetail.tsx"
+import { subtle } from "../styles/classes.ts"
 
 export function DataModelRecord({ record }: RecordLayoutProps) {
   const name = String(record?.["name"] ?? record?.["id"] ?? "").trim()
   if (!name)
     return (
-      <p className="dt-subtle">
+      <p className={subtle}>
         no collection on this record — the designer draws records of <code>collections</code>
       </p>
     )

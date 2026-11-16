@@ -16,6 +16,7 @@ import { Icon } from "../components/Icon.tsx"
 import { commandAllDone, commandIcon, commandStatus, type CommandRow } from "../lib/command-rows.ts"
 import { hostInfo } from "../lib/host.ts"
 import { canAsk, itemLabel, type QueueItem } from "../lib/queue-items.ts"
+import { button, code, cx, error, subtle, textarea, toolbar } from "../styles/classes.ts"
 
 export function RecordCommands({ collection, ids }: { collection: string; ids: string[] }) {
   const { version } = useApp()
@@ -89,59 +90,64 @@ export function RecordCommands({ collection, ids }: { collection: string; ids: s
 
   const here = queue.filter(i => i.refs.some(r => r.startsWith(`${collection}/`)))
   return (
-    <div className="dt-cmds" data-commands>
-      {answer.error && <p className="dt-error">{answer.error}</p>}
+    <div className="flex flex-col gap-2.5" data-commands>
+      {answer.error && <p className={error}>{answer.error}</p>}
       {!answer.loading && !answer.error && rows.length === 0 && (
-        <p className="dt-subtle">
+        <p className={subtle}>
           No commands bound to <strong>{collection}</strong> — add a <code>command-bindings</code> record.
         </p>
       )}
-      <ul className="dt-cmds-list">
+      <ul className="list-none m-0 p-0">
         {rows.map(row => (
           <li key={row.binding}>
             <button
               type="button"
-              className={`dt-cmds-row${row.invocation !== null ? " is-runnable" : ""}${commandAllDone(row, ids) ? " is-done" : ""}${picked?.binding === row.binding ? " is-picked" : ""}`}
+              className={cx(
+                "w-full flex items-center gap-2 py-1.5 px-2 border-0 rounded-dt text-fg text-left",
+                row.invocation !== null ? "cursor-pointer opacity-100 hover:bg-bg-hover" : "cursor-default opacity-60",
+                picked?.binding === row.binding ? "bg-bg-hover" : "bg-transparent",
+                commandAllDone(row, ids) && "[&_.codicon]:text-chart-green"
+              )}
               disabled={row.invocation === null}
               title={row["argument-hint"] ? `/${row.name} ${row["argument-hint"]}` : `/${row.name}`}
               data-command={row.name}
               onClick={() => pick(row)}
             >
               <Icon name={commandIcon(row)} />
-              <span className="dt-cmds-text">
-                <span className="dt-cmds-name">/{row.name}</span>
-                <span className="dt-subtle">{row.description}</span>
+              <span className="flex-1 min-w-0 grid">
+                <span className="font-mono text-[12px]">/{row.name}</span>
+                <span className={subtle}>{row.description}</span>
               </span>
-              <span className="dt-cmds-state">{commandStatus(row, ids)}</span>
+              <span className="text-small text-fg-subtle whitespace-nowrap">{commandStatus(row, ids)}</span>
             </button>
           </li>
         ))}
       </ul>
       <textarea
         ref={box}
-        className="dt-textarea dt-cmds-box"
+        className={cx(textarea, code)}
         rows={3}
         value={invocation}
         onChange={e => setInvocation(e.target.value)}
         placeholder="pick a command — its invocation lands here, ready to paste into your session"
         spellCheck={false}
       />
-      <div className="dt-toolbar">
+      <div className={toolbar}>
         {picked && canAsk({ chat }, picked) && (
-          <button type="button" className="dt-button" disabled={asking} onClick={() => void ask()}>
+          <button type="button" className={button} disabled={asking} onClick={() => void ask()}>
             <Icon name="comment-discussion" /> Ask in chat
           </button>
         )}
-        <button type="button" className="dt-button" disabled={!invocation} onClick={() => void copy()}>
+        <button type="button" className={button} disabled={!invocation} onClick={() => void copy()}>
           <Icon name={copied ? "check" : "copy"} /> {copied ? "Copied" : "Copy"}
         </button>
       </div>
-      {askError && <p className="dt-error">{askError}</p>}
+      {askError && <p className={error}>{askError}</p>}
       {here.length > 0 && (
-        <ul className="dt-cmds-queue">
+        <ul className="list-none m-0 p-0">
           {here.map(item => (
             <li key={item.id} data-state={item.state}>
-              <code>{item.invocation}</code> <span className="dt-subtle">{itemLabel(item)}</span>
+              <code>{item.invocation}</code> <span className={subtle}>{itemLabel(item)}</span>
             </li>
           ))}
         </ul>

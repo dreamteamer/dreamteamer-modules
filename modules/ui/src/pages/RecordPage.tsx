@@ -72,6 +72,28 @@ import { RecordInfo } from "../record/RecordInfo.tsx"
 import { RecordSidebar } from "../record/RecordSidebar.tsx"
 import { SaveTarget } from "../record/SaveTarget.tsx"
 import { TemplatePicker } from "../record/TemplatePicker.tsx"
+import {
+  button,
+  buttonActive,
+  buttonDanger,
+  buttonIcon,
+  buttonPrimary,
+  cx,
+  dialogActions,
+  dupBadge,
+  error as errorCls,
+  hintError,
+  input,
+  menu as menuCls,
+  menuItem,
+  menuItemDanger,
+  mono,
+  note,
+  page,
+  popoverAnchor,
+  stack,
+  subtle,
+} from "../styles/classes.ts"
 
 const DISCARD = "Discard unsaved changes?"
 
@@ -353,7 +375,7 @@ export function RecordPage({
   // ---- drawing ---------------------------------------------------------------------------------------------------
   if (id && doc.error) return <Problem collection={collection} text={doc.error} />
   // the previous record stays in hand while the next one loads: draw neither until it arrives
-  if (id && doc.data?.id !== id) return <section className="dt-page dt-subtle">Loading…</section>
+  if (id && doc.data?.id !== id) return <section className={cx(page, subtle)}>Loading…</section>
 
   const duplicates = duplicatesOf(record)
   const actions =
@@ -361,10 +383,10 @@ export function RecordPage({
       <>
         <CommitButton sample={commitSample} onCommitted={() => setReloads(n => n + 1)} />
         {!readOnlySource && editable && (
-          <div className="dt-popover-anchor" ref={menu.anchor}>
+          <div className={popoverAnchor} ref={menu.anchor}>
             <button
               type="button"
-              className={`dt-button is-icon${menu.open ? " is-active" : ""}`}
+              className={cx(button, buttonIcon, menu.open && buttonActive)}
               title="More actions"
               aria-haspopup="menu"
               aria-expanded={menu.open}
@@ -373,15 +395,15 @@ export function RecordPage({
               <Icon name="ellipsis" />
             </button>
             {menu.open && (
-              <div className="dt-menu" role="menu">
+              <div className={menuCls} role="menu">
                 {admin && (
-                  <button type="button" className="dt-menu-item" role="menuitem" onClick={() => openDialog("rename")}>
+                  <button type="button" className={menuItem} role="menuitem" onClick={() => openDialog("rename")}>
                     <Icon name="symbol-key" /> Rename…
                   </button>
                 )}
                 <button
                   type="button"
-                  className="dt-menu-item is-danger"
+                  className={cx(menuItem, menuItemDanger)}
                   role="menuitem"
                   onClick={() => openDialog("delete")}
                 >
@@ -392,19 +414,19 @@ export function RecordPage({
           </div>
         )}
         {canEdit && (
-          <button type="button" className="dt-button is-primary" title="Edit" onClick={() => setEditing(true)}>
+          <button type="button" className={cx(button, buttonPrimary)} title="Edit" onClick={() => setEditing(true)}>
             <Icon name="edit" /> Edit
           </button>
         )}
       </>
     ) : (
       <>
-        <button type="button" className="dt-button" title="Cancel" onClick={cancel} disabled={busy}>
+        <button type="button" className={button} title="Cancel" onClick={cancel} disabled={busy}>
           <Icon name="close" /> Cancel
         </button>
         <button
           type="button"
-          className="dt-button is-primary"
+          className={cx(button, buttonPrimary)}
           title={create ? "Create" : "Save (⌘S / Ctrl-S)"}
           disabled={busy || (!create && !dirty)}
           onClick={() => void save()}
@@ -461,7 +483,7 @@ export function RecordPage({
       : []
 
   return (
-    <section className="dt-record-page" data-mode={mode} data-layout={layoutId}>
+    <section className="flex flex-col h-full min-h-0" data-mode={mode} data-layout={layoutId}>
       <RecordHeader
         icon={row?.nav.icon}
         title={title}
@@ -471,7 +493,7 @@ export function RecordPage({
         badge={
           duplicates && (
             <span
-              className="dt-dup-badge"
+              className={dupBadge}
               data-duplicates={duplicates.join(",")}
               title={`Held by both ${duplicates.join(" and ")} — ${duplicates[0]}'s copy is the one read`}
             >
@@ -485,22 +507,22 @@ export function RecordPage({
       {!create && <RecordDisplayLine row={row} fields={all} record={current} subtitle={subtitle} />}
       {!create && id && <NextNotes collection={collection} id={id} />}
 
-      <div className="dt-record-body">
-        <div className="dt-record-main">
+      <div className="flex flex-auto min-h-0 max-[900px]:flex-col">
+        <div className="flex flex-auto flex-col gap-3 min-w-0 overflow-auto pt-4 px-6 pb-8">
           {!create && fields.length > 0 && !editsFields && (
-            <p className="dt-note">
+            <p className={note}>
               <Icon name="info" /> Nothing here is edited by hand — every field is read from the record&rsquo;s file or
               computed.
             </p>
           )}
           {changedUnder && (
-            <p className="dt-note" data-changed-under>
+            <p className={note} data-changed-under>
               <Icon name="warning" /> This record changed on disk while you were editing — Save writes your edits over
               it; Cancel takes the new version.
             </p>
           )}
           {error && (
-            <p className="dt-error" role="alert">
+            <p className={errorCls} role="alert">
               {error}
             </p>
           )}
@@ -515,12 +537,12 @@ export function RecordPage({
             />
           )}
           {/* Enter in a field does not save (as in ui) — Save and Mod-S do */}
-          <form className="dt-record-form" onSubmit={e => e.preventDefault()}>
+          <form className="max-w-[920px]" onSubmit={e => e.preventDefault()}>
             <ErrorBoundary
               key={layoutId}
               name={`record:${layoutId}`}
               fallback={err => (
-                <p className="dt-error">
+                <p className={errorCls}>
                   The {layoutId} layout failed: {err.message}
                 </p>
               )}
@@ -535,20 +557,20 @@ export function RecordPage({
 
       {dialog === "delete" && (
         <Dialog title="Delete this record?" onClose={() => setDialog(null)}>
-          <p className="dt-subtle">
+          <p className={subtle}>
             {referenced
               ? "Other records point at this one. Deleting it anyway leaves their references naming a record that is gone."
               : "This removes its file. It is recoverable from git history, not from here."}
           </p>
-          {dialogError && <p className="dt-error">{dialogError}</p>}
-          <div className="dt-dialog-actions">
-            <button type="button" className="dt-button" onClick={() => setDialog(null)}>
+          {dialogError && <p className={errorCls}>{dialogError}</p>}
+          <div className={dialogActions}>
+            <button type="button" className={button} onClick={() => setDialog(null)}>
               Cancel
             </button>
             {referenced ? (
               <button
                 type="button"
-                className="dt-button is-danger"
+                className={cx(button, buttonDanger)}
                 disabled={busy}
                 data-force
                 onClick={() => void remove(true)}
@@ -556,7 +578,12 @@ export function RecordPage({
                 {busy ? "Deleting…" : "Delete anyway"}
               </button>
             ) : (
-              <button type="button" className="dt-button is-danger" disabled={busy} onClick={() => void remove(false)}>
+              <button
+                type="button"
+                className={cx(button, buttonDanger)}
+                disabled={busy}
+                onClick={() => void remove(false)}
+              >
                 {busy ? "Deleting…" : "Delete"}
               </button>
             )}
@@ -566,29 +593,29 @@ export function RecordPage({
       {dialog === "rename" && id && (
         <Dialog title="Rename this record" onClose={() => setDialog(null)}>
           <form
-            className="dt-stack"
+            className={stack}
             onSubmit={e => {
               e.preventDefault()
               void rename()
             }}
           >
-            <label className="dt-subtle" htmlFor="dt-rename-id">
+            <label className={subtle} htmlFor="dt-rename-id">
               New id — every reference to <code>{id}</code> is rewritten.
             </label>
             <input
               id="dt-rename-id"
-              className="dt-input dt-mono"
+              className={cx(input, mono)}
               value={newId}
               onChange={e => setNewId(e.target.value)}
               spellCheck={false}
             />
-            {newId !== id && renameProblem(id, newId) && <p className="dt-hint is-error">{renameProblem(id, newId)}</p>}
-            {dialogError && <p className="dt-error">{dialogError}</p>}
-            <div className="dt-dialog-actions">
-              <button type="button" className="dt-button" onClick={() => setDialog(null)}>
+            {newId !== id && renameProblem(id, newId) && <p className={hintError}>{renameProblem(id, newId)}</p>}
+            {dialogError && <p className={errorCls}>{dialogError}</p>}
+            <div className={dialogActions}>
+              <button type="button" className={button} onClick={() => setDialog(null)}>
                 Cancel
               </button>
-              <button type="submit" className="dt-button is-primary" disabled={busy || !!renameProblem(id, newId)}>
+              <button type="submit" className={cx(button, buttonPrimary)} disabled={busy || !!renameProblem(id, newId)}>
                 {busy ? "Renaming…" : "Rename"}
               </button>
             </div>
@@ -603,11 +630,11 @@ function Problem({ collection, text }: { collection: string; text: string }) {
   const { schema } = useApp()
   const base = useRouteBase()
   return (
-    <section className="dt-page">
-      <p className="dt-crumbs">
+    <section className={page}>
+      <p className="mt-0 mx-0 mb-1 text-small">
         <Link to={listRoute(collection, base)}>{schema.collection(collection)?.title ?? collection}</Link>
       </p>
-      <p className="dt-error">{text}</p>
+      <p className={errorCls}>{text}</p>
     </section>
   )
 }

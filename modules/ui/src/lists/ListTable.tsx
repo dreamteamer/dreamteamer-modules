@@ -31,7 +31,7 @@ import { resolveRowSize } from "../lib/row-size.ts"
 import { DUPLICATES_FIELD } from "../lib/sources.ts"
 import type { ListProps } from "../registry/props.ts"
 import { RenderView } from "../render/Render.tsx"
-import { cx, iconButton, linkButton } from "../styles/classes.ts"
+import { cx, dupBadge, iconButton, linkButton } from "../styles/classes.ts"
 
 // ---- the looks (was dt-table, dt-table-scroll, dt-density-*, dt-group-row, …) --------------------------------------
 // Every cell carries its own classes, the density's padding chosen here: a rule on the <table> for the cells would
@@ -55,9 +55,6 @@ const checkCol = "w-8 pr-0"
 const rowCls = "cursor-pointer [&:last-child>td]:border-b-0"
 /** An empty picture in a comfortable lead column: the record's initials in a disc. */
 const avatarCls = "inline-grid place-items-center w-12 h-12 rounded-full bg-bg-active text-fg-subtle font-semibold"
-/** The duplicate-id mark. (was dt-dup-badge) */
-const dupBadge =
-  "inline-flex items-center gap-1 ml-1.5 px-2 h-5 rounded-full border border-[color-mix(in_srgb,var(--dt-color-charts-orange)_50%,transparent)] text-chart-orange text-small whitespace-nowrap"
 
 const isEmpty = (v: unknown) => v === null || v === undefined || v === "" || (Array.isArray(v) && v.length === 0)
 

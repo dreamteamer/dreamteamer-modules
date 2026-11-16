@@ -17,6 +17,15 @@ import { classifyDiffLines, type ClassifiedDiffLine } from "../lib/diff-lines.ts
 import { hostInfo, isAdmin } from "../lib/host.ts"
 import { revertRefused, revertRefusedSentence } from "../lib/readonly-source.ts"
 import { relativeTime } from "../lib/relative-time.ts"
+import { button, buttonDanger, cx, dialogActions, error, subtle } from "../styles/classes.ts"
+import { linkAction } from "./looks.ts"
+
+/** A diff line's colour by its kind: added green, removed red, the hunk headers quiet. */
+const DIFF_LINE: Partial<Record<ClassifiedDiffLine["kind"], string>> = {
+  add: "text-chart-green",
+  remove: "text-danger",
+  meta: "text-fg-subtle",
+}
 
 interface DiffState {
   open: boolean
@@ -98,29 +107,29 @@ export function RecordHistory({
 
   const entries = history.data ?? []
   return (
-    <section className="dt-history" data-history>
-      {history.loading && !history.data && <p className="dt-subtle">Loading…</p>}
-      {history.error && <p className="dt-error">{history.error}</p>}
-      {!history.loading && !history.error && entries.length === 0 && <p className="dt-subtle">No history yet.</p>}
-      <ul className="dt-history-list">
+    <section data-history>
+      {history.loading && !history.data && <p className={subtle}>Loading…</p>}
+      {history.error && <p className={error}>{history.error}</p>}
+      {!history.loading && !history.error && entries.length === 0 && <p className={subtle}>No history yet.</p>}
+      <ul className="list-none m-0 p-0">
         {entries.map(entry => {
           const diff = diffs[entry.hash]
           return (
-            <li key={entry.hash} className="dt-history-entry" data-hash={entry.hash}>
-              <div className="dt-history-subject" title={entry.subject}>
+            <li key={entry.hash} className="py-2 px-0 border-b border-border last:border-b-0" data-hash={entry.hash}>
+              <div className="overflow-hidden text-ellipsis whitespace-nowrap" title={entry.subject}>
                 {entry.subject || "(no message)"}
               </div>
-              <div className="dt-history-meta">
+              <div className="flex flex-wrap items-baseline gap-2 text-small text-fg-subtle">
                 <span>{entry.author}</span>
                 <span title={entry.date}>{when(entry.date)}</span>
                 <code>{entry.hash.slice(0, 7)}</code>
-                <button type="button" className="dt-link-button dt-link" onClick={() => toggleDiff(entry)}>
+                <button type="button" className={linkAction} onClick={() => toggleDiff(entry)}>
                   {diff?.open ? "hide diff" : "diff"}
                 </button>
                 {mayRestore && (
                   <button
                     type="button"
-                    className="dt-link-button dt-link"
+                    className={linkAction}
                     disabled={refused}
                     title={restoreHint}
                     onClick={() => {
@@ -133,14 +142,14 @@ export function RecordHistory({
                 )}
               </div>
               {diff?.open && (
-                <div className="dt-diff">
-                  {diff.loading && <p className="dt-subtle">Loading diff…</p>}
-                  {diff.error && <p className="dt-error">{diff.error}</p>}
-                  {diff.lines && diff.lines.length === 0 && <p className="dt-subtle">No changes.</p>}
+                <div>
+                  {diff.loading && <p className={subtle}>Loading diff…</p>}
+                  {diff.error && <p className={error}>{diff.error}</p>}
+                  {diff.lines && diff.lines.length === 0 && <p className={subtle}>No changes.</p>}
                   {diff.lines && diff.lines.length > 0 && (
-                    <pre className="dt-diff-pre">
+                    <pre className="mt-1.5 mx-0 mb-0 p-1.5 max-h-80 overflow-auto rounded-dt bg-bg font-mono text-[11px] leading-[1.5]">
                       {diff.lines.map((line, i) => (
-                        <span key={i} className={`dt-diff-line is-${line.kind}`}>
+                        <span key={i} className={DIFF_LINE[line.kind]}>
                           {line.text}
                           {"\n"}
                         </span>
@@ -155,16 +164,21 @@ export function RecordHistory({
       </ul>
       {asking && (
         <Dialog title="Restore this version?" onClose={() => setAsking(null)}>
-          <p className="dt-subtle">
+          <p className={subtle}>
             This writes the record&rsquo;s content as of <code>{asking.hash.slice(0, 7)}</code> back as a pending change
             — commit it to publish. Unsaved edits on the page aren&rsquo;t affected.
           </p>
-          {revertError && <p className="dt-error">{revertError}</p>}
-          <div className="dt-dialog-actions">
-            <button type="button" className="dt-button" onClick={() => setAsking(null)}>
+          {revertError && <p className={error}>{revertError}</p>}
+          <div className={dialogActions}>
+            <button type="button" className={button} onClick={() => setAsking(null)}>
               Cancel
             </button>
-            <button type="button" className="dt-button is-danger" disabled={reverting} onClick={() => void restore()}>
+            <button
+              type="button"
+              className={cx(button, buttonDanger)}
+              disabled={reverting}
+              onClick={() => void restore()}
+            >
               {reverting ? "Restoring…" : "Restore"}
             </button>
           </div>
