@@ -36,10 +36,17 @@ import { cx, dupBadge, iconButton, linkButton } from "../styles/classes.ts"
 // ---- the looks (was dt-table, dt-table-scroll, dt-density-*, dt-group-row, …) --------------------------------------
 // Every cell carries its own classes, the density's padding chosen here: a rule on the <table> for the cells would
 // tie with a row's or a density's override, and Tailwind orders ties by the stylesheet, not by intent.
-/** What every cell shares. */
-const cellCore = "text-left px-3 border-b border-border whitespace-nowrap overflow-hidden text-ellipsis"
+/** What every cell shares, and one entry of `cellLayout`. */
+const cellCore = "border-b border-border whitespace-nowrap overflow-hidden text-ellipsis"
 /** …and a body cell, which also caps its width and keeps a View's row of chips, labels or references on one line. */
 const cellCapped = "max-w-[320px] [&_[data-items]]:flex-nowrap"
+/** A cell's alignment and padding: a header or record cell (its height from the density), the checkbox column's, or
+ * an empty list's one cell. */
+const cellLayout = {
+  data: "text-left px-3",
+  check: "text-left w-8 pl-3 pr-0",
+  empty: "text-center p-6",
+} as const satisfies Record<string, string>
 const padY = (size: string, head = false) =>
   size === "compact" ? "py-[3px]" : size === "comfortable" && !head ? "py-3" : "py-[7px]"
 const headCell = (size: string) =>
@@ -49,8 +56,6 @@ const headCell = (size: string) =>
     padY(size, true),
     "text-small uppercase tracking-[0.04em] text-fg-subtle font-semibold bg-bg-subtle sticky top-0 z-[2] [&_.codicon]:ml-1 [&_.codicon]:align-[-2px]"
   )
-/** The checkbox column. */
-const checkCol = "w-8 pr-0"
 /** A row; the last one in its band draws no bottom border. */
 const rowCls = "cursor-pointer [&:last-child>td]:border-b-0"
 /** An empty picture in a comfortable lead column: the record's initials in a disc. */
@@ -118,7 +123,7 @@ export function ListTable({ state }: ListProps) {
       <table className="w-full border-collapse">
         <thead>
           <tr>
-            <th className={cx(headCell(rowSize), checkCol)}>
+            <th className={cx(headCell(rowSize), cellLayout.check)}>
               <input
                 type="checkbox"
                 checked={state.allVisibleSelected}
@@ -132,7 +137,12 @@ export function ListTable({ state }: ListProps) {
               return (
                 <th
                   key={f.field}
-                  className={cx(headCell(rowSize), "cursor-pointer", reason !== null && "opacity-65 italic")}
+                  className={cx(
+                    headCell(rowSize),
+                    cellLayout.data,
+                    "cursor-pointer",
+                    reason !== null && "opacity-65 italic"
+                  )}
                   title={f.description || reason || undefined}
                   style={columnStyle(f)}
                   onClick={() => state.toggleSort(f.field)}
@@ -149,7 +159,7 @@ export function ListTable({ state }: ListProps) {
             <tr className={cx(rowCls, "hover:bg-bg-hover")}>
               <td
                 colSpan={span}
-                className={cx(cellCore, cellCapped, "text-fg-subtle cursor-default text-center! p-6!")}
+                className={cx(cellCore, cellLayout.empty, cellCapped, "text-fg-subtle cursor-default")}
               >
                 {state.loading ? (
                   "Loading…"
@@ -177,6 +187,7 @@ export function ListTable({ state }: ListProps) {
                     colSpan={span}
                     className={cx(
                       cellCore,
+                      cellLayout.data,
                       padY(rowSize),
                       "max-w-none bg-bg-subtle sticky top-[31px] z-[1] cursor-default"
                     )}
@@ -223,7 +234,7 @@ export function ListTable({ state }: ListProps) {
                       onClick={() => state.openRecord(r)}
                     >
                       <td
-                        className={cx(cellCore, cellCapped, padY(rowSize), checkCol)}
+                        className={cx(cellCore, cellLayout.check, cellCapped, padY(rowSize))}
                         onClick={e => e.stopPropagation()}
                       >
                         <input
@@ -238,6 +249,7 @@ export function ListTable({ state }: ListProps) {
                           key={f.field}
                           className={cx(
                             cellCore,
+                            cellLayout.data,
                             cellCapped,
                             padY(rowSize),
                             f.field === state.titleField &&
