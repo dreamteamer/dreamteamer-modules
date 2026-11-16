@@ -335,7 +335,7 @@ async function onConfirmDelete(): Promise<void> {
 
 <template>
 	<div class="dt-content-detail">
-		<PageHeader :icon="collectionIcon" :title="title" :breadcrumb="pathCrumbs" :commit="commitInfo" :origin="origin">
+		<PageHeader :icon="collectionIcon" :title="title" :title-pending="!create && !item.record.value" :breadcrumb="pathCrumbs" :commit="commitInfo" :origin="origin">
 			<!-- View mode: pencil (rightmost — the primary action) enters edit; destructive/rare
 			     actions live in the ⋯ overflow menu to its left. -->
 			<template v-if="mode === 'view'">

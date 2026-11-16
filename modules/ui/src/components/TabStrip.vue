@@ -3,24 +3,49 @@
  * The browser host's TAB STRIP (cr-modules-022): pill tabs in a 32px row at the top of the sheet — the nav toolbar's
  * height, so the two still read as one band. A tab's × space is always reserved (the × only shows on hover and on the
  * open tab), so a tab never changes width under the pointer. × or a middle click closes; closing the open tab opens its
- * neighbour. The strip scrolls sideways and fades at its end when the tabs outrun it.
+ * neighbour. Tabs shrink to a minimum before the strip scrolls sideways (a wheel scrolls it too, and the open tab is
+ * always scrolled into view); it fades at its end when the tabs outrun it. At most TAB_CAP tabs (lib/tabs.ts).
+ *
+ * A RELOAD restores the tabs and the selected one: the list and the selected path are kept (lib/tabs.ts), the page's
+ * own address (its hash) wins when it names a page, and a page that opens on a transit route (`/`, `/content/` — a
+ * fresh `dt web open`) goes to the tab that was selected instead of opening a tab for the first collection.
  */
-import { computed, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { closeTab, restoreTabs, saveTabs, tabPath, tabs, visit } from '../lib/tabs';
+import { closeTab, isTransit, openTab, restoreActive, restoreTabs, saveActive, saveTabs, startTabs, tabPath, tabs } from '../lib/tabs';
 import DtIcon from './DtIcon.vue';
 
 const route = useRoute();
 const router = useRouter();
 const activePath = computed(() => tabPath(route.fullPath));
+const strip = ref<HTMLElement | null>(null);
 
 restoreTabs();
+startTabs();
 watch(() => route.fullPath, (full) => {
-	// '/' and the bare '/content/' are transit routes: ContentBrowse sends them on to the first collection
-	if (!full || full === '/' || tabPath(full) === '/content') return;
-	const next = visit(tabs.value, full);
-	if (next !== tabs.value) { tabs.value = next; saveTabs(); }
+	if (isTransit(full)) {
+		// a fresh page or Home: back to the tab that was selected, when there still is one
+		const kept = restoreActive();
+		const tab = kept ? tabs.value.find((t) => t.path === kept) : undefined;
+		if (tab) void router.replace(tab.route);
+		return;
+	}
+	openTab(full);
+	void nextTick(showActive);
 }, { immediate: true });
+
+/** The open tab is never scrolled out of sight. */
+function showActive() {
+	const el = strip.value?.querySelector?.('.dt-tab.is-active') as { scrollIntoView?: (o: unknown) => void } | null | undefined;
+	el?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+}
+/** A vertical wheel over the strip scrolls it sideways. */
+function onWheel(e: WheelEvent) {
+	const el = strip.value;
+	if (!el || Math.abs(e.deltaY) <= Math.abs(e.deltaX) || el.scrollWidth <= el.clientWidth) return;
+	e.preventDefault();
+	el.scrollLeft += e.deltaY;
+}
 
 function open(route: string) { void router.push(route); }
 function close(path: string) {
@@ -28,6 +53,7 @@ function close(path: string) {
 	tabs.value = rest;
 	saveTabs();
 	if (next) void router.push(next);
+	else if (!rest.length) saveActive('');
 }
 function onAux(e: MouseEvent, path: string) {
 	if (e.button !== 1) return;
@@ -37,7 +63,7 @@ function onAux(e: MouseEvent, path: string) {
 </script>
 
 <template>
-	<div class="dt-tabs" role="tablist" aria-label="Open pages">
+	<div ref="strip" class="dt-tabs" role="tablist" aria-label="Open pages" @wheel="onWheel">
 		<div
 			v-for="t in tabs"
 			:key="t.path"
@@ -79,8 +105,9 @@ function onAux(e: MouseEvent, path: string) {
 }
 .dt-tab {
 	position: relative;
+	/* shrink first (the label ellipsises, the × keeps its room), scroll only past the minimum */
 	flex: 0 1 200px;
-	min-width: 96px;
+	min-width: 72px;
 	max-width: 200px;
 	height: 26px;
 	display: flex;

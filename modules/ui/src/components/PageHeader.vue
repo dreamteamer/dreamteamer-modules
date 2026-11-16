@@ -52,6 +52,9 @@ const props = withDefaults(
 		/** Material Symbols Outlined icon name shown in the row-2 icon chip. */
 		icon: string;
 		title: string;
+		/** The title is a stand-in until the page's data arrives (a record page names its id): its tab keeps the name it
+		 *  has rather than flicker through it (lib/tabs.ts). */
+		titlePending?: boolean;
 		/** Row 1's path. Crumbs with a `to` are links; the rest (id segments) are plain text. */
 		breadcrumb?: Array<{ label: string; to?: string }>;
 		commit?: { author: string; message: string; date: string } | null;
@@ -65,14 +68,14 @@ const props = withDefaults(
 			  })
 			| null;
 	}>(),
-	{ breadcrumb: () => [], commit: null, origin: null },
+	{ breadcrumb: () => [], commit: null, origin: null, titlePending: false },
 );
 
 const { canBack, canForward, back, forward } = useNavHistory();
 
 // the browser host's tab strip (cr-modules-022) titles the open page's tab with what this header says
 const route = appShell ? useRoute() : null;
-if (route) watch(() => [route.fullPath, props.title, props.icon] as const, ([full, title, icon]) => titleTab(full, title, icon), { immediate: true });
+if (route) watch(() => [route.fullPath, props.title, props.icon, props.titlePending] as const, ([full, title, icon, pending]) => titleTab(full, title, icon, pending), { immediate: true });
 
 const commitRelativeTime = computed(() => {
 	if (!props.commit) return '';

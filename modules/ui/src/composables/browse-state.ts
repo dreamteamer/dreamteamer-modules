@@ -39,6 +39,7 @@ import { resolveView } from '../registry/resolve';
 import { listSeed, scratchKey as scratchKeyFor } from '../lib/list-seed';
 import { templateFields } from '../lib/template';
 import { recordTitle, referenceTitles } from '../lib/record-titles';
+import { seedTitle } from '../lib/tabs';
 import { colorByFor, isReferenceField, tintOf as tintOf_, tintStyle } from '../lib/collection-display';
 import { SOURCE_FIELD, isMixed, isOwnSource, selectedSources, sourceEntry, stubNoteOf, targetChoice, withSourceColumn, withSourceSelection, type SourceMarkProps, type TargetChoice } from '../lib/sources';
 import type { BrowseLayout, ViewState } from '../lib/view-state';
@@ -591,11 +592,10 @@ export function useBrowseState(collection: string, rowTo?: (record: ItemRecord) 
 	}
 
 	function openRecord(record: ItemRecord): void {
-		if (rowTo) {
-			void router.push(rowTo(record));
-			return;
-		}
-		void router.push(`${currentContentBasePath(route)}${collection}/${pkOf(record)}`);
+		const to = rowTo ? rowTo(record) : `${currentContentBasePath(route)}${collection}/${pkOf(record)}`;
+		// the browser host's tab opens already named by the row that was clicked (lib/tabs.ts) — no id flashes first
+		if (typeof to === 'string') seedTitle(to, recordTitle(collectionRow.value, record, pkOf(record), { resolve: resolveReference, isReference }), collectionRow.value?.nav?.icon);
+		void router.push(to);
 	}
 
 	/**

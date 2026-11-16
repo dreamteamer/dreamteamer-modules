@@ -30,6 +30,7 @@ import NavMenu, { type NavMenuItem } from './NavMenu.vue';
 import DtIcon from './DtIcon.vue';
 import { menuUnder, rectOf, viewportWidth } from '../lib/menu-place';
 import { openMenu } from '../lib/open-menu';
+import { seedTitle } from '../lib/tabs';
 import { dragWidth, keyWidth, loadNavWidth, navWidthBounds, saveNavWidth } from '../lib/nav-width';
 
 interface NavNode { kind: string; key: string; label: string; icon?: string; description?: string; tooltip?: string; route?: string; marks?: string; target?: NavTarget; notice?: string; children?: NavNode[] }
@@ -193,7 +194,7 @@ function openSettings() {
 }
 
 function activate(n: NavNode) {
-	if (n.route) void router.push(n.route);
+	if (n.route) { seedTitle(n.route, n.label, n.icon); void router.push(n.route); }
 	else if (n.children?.length) toggle(n);
 }
 
