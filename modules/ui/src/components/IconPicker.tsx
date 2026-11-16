@@ -89,7 +89,7 @@ export function IconPicker({
       <div className="flex items-center gap-1">
         <button
           type="button"
-          className="flex flex-1 items-center gap-1.5 h-[30px] px-2 py-0 border border-input-border rounded-dt bg-input-bg text-fg [font:inherit] text-left cursor-pointer [&>span]:flex-1 [&>span]:min-w-0 [&>span]:overflow-hidden [&>span]:text-ellipsis [&>span]:whitespace-nowrap"
+          className="flex flex-1 items-center gap-1.5 h-[30px] px-2 py-0 border border-input-border rounded-dt bg-input-bg text-fg text-left cursor-pointer [&>span]:flex-1 [&>span]:min-w-0 [&>span]:overflow-hidden [&>span]:text-ellipsis [&>span]:whitespace-nowrap"
           title={value || placeholder}
           aria-expanded={open}
           onClick={() => setOpen(!open)}

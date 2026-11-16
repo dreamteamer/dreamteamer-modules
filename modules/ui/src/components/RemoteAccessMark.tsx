@@ -6,6 +6,7 @@
 import type { OwnAccess, SourceAccess } from "../api/types.ts"
 import { remoteMark } from "../lib/remote-access.ts"
 import { Icon } from "./Icon.tsx"
+import { cx } from "../styles/classes.ts"
 
 export function RemoteAccessMark({
   source,
@@ -19,7 +20,7 @@ export function RemoteAccessMark({
   const view = remoteMark(access, local)
   return (
     <span
-      className={`dt-remote-access${view.warning ? " is-warning" : ""}`}
+      className={cx("inline-flex items-center gap-1 text-small", view.warning ? "text-warning" : "text-fg-subtle")}
       data-source={source}
       data-state={view.state}
       title={view.title}

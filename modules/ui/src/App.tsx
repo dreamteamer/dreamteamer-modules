@@ -189,7 +189,7 @@ function Page() {
       // ui: the registered app named by the view's `display.list.layout`, its index route
       return <AppPage id={page.layout} />
     case "unknown-collection":
-      return <p className={cx(pageFrame, error)}>No collection {page.path} in this workspace.</p>
+      return <p className={error}>No collection {page.path} in this workspace.</p>
     case "unsupported":
       if (views === null) return null // the view table is still being read
       return (
@@ -207,7 +207,7 @@ class Boundary extends Component<{ children: ReactNode }, { error: Error | null 
     return { error }
   }
   render() {
-    if (this.state.error) return <p className={cx(pageFrame, error)}>This page failed: {this.state.error.message}</p>
+    if (this.state.error) return <p className={error}>This page failed: {this.state.error.message}</p>
     return this.props.children
   }
 }

@@ -14,34 +14,36 @@ import { shipsOf } from "../lib/modules.ts"
 import { SCHEMA_BASE } from "../lib/route.ts"
 import { schemaRowContext } from "../lib/vscode-context.ts"
 import { useModules } from "./use-modules.ts"
+import { button, chip, cx, error as errorBox, mono, page, pageHead, subtle } from "../styles/classes.ts"
+import { table } from "./looks.ts"
 
 export function ModuleList({ only }: { only: readonly string[] | null }) {
   const { modules, loading, error } = useModules()
   const shown = modules.filter(m => !only || only.includes(m.id))
   return (
-    <section className="dt-page dt-modules">
-      <header className="dt-page-head">
+    <section className={page}>
+      <header className={pageHead}>
         <div>
           <h1>
             <Icon name="package" /> Modules
           </h1>
-          <p className="dt-subtle">
+          <p className={subtle}>
             What this workspace is compiled from — its own module, linked clones, installed packages.
           </p>
         </div>
         <button
           type="button"
-          className="dt-button"
+          className={button}
           title="New module (a host command)"
           onClick={() => notify("dt:command", { command: "dreamteamer.newModule" })}
         >
           <Icon name="add" /> New module
         </button>
       </header>
-      {error && <p className="dt-error">{error}</p>}
-      {loading && !modules.length && <p className="dt-subtle">Loading…</p>}
+      {error && <p className={errorBox}>{error}</p>}
+      {loading && !modules.length && <p className={subtle}>Loading…</p>}
       {shown.length > 0 && (
-        <table className="dt-table">
+        <table className={table}>
           <thead>
             <tr>
               <th>Module</th>
@@ -61,20 +63,18 @@ export function ModuleList({ only }: { only: readonly string[] | null }) {
                   </Link>
                 </td>
                 <td>
-                  <span className={`dt-chip${m.location === "node_modules" ? " is-readonly" : ""}`}>
-                    {m.location || "—"}
-                  </span>
+                  <span className={cx(chip, m.location === "node_modules" && "opacity-70")}>{m.location || "—"}</span>
                 </td>
-                <td className="dt-mono dt-subtle">{m.path || "—"}</td>
-                <td className="dt-mono">{m.name}</td>
-                <td className="dt-subtle">{m.namespaces.join(", ") || "—"}</td>
-                <td className="dt-subtle">{shipsOf(m) || "—"}</td>
+                <td className={cx(mono, subtle)}>{m.path || "—"}</td>
+                <td className={mono}>{m.name}</td>
+                <td className={subtle}>{m.namespaces.join(", ") || "—"}</td>
+                <td className={subtle}>{shipsOf(m) || "—"}</td>
               </tr>
             ))}
           </tbody>
         </table>
       )}
-      {!loading && !shown.length && !error && <p className="dt-empty">No modules{only ? " here" : ""}.</p>}
+      {!loading && !shown.length && !error && <p className={subtle}>No modules{only ? " here" : ""}.</p>}
     </section>
   )
 }

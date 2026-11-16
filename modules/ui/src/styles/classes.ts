@@ -5,6 +5,10 @@
  * `dt-*` rule it replaced, written as utilities over the tokens in app.css.
  *
  * `cx(...)` joins class names, dropping false, null and undefined: `cx(button, primary && buttonPrimary)`.
+ *
+ * A MODIFIER (buttonPrimary, menuItemDanger, noticeOk, invalid, …) marks the properties it overrides `!important`:
+ * two utilities that set one property are ordered by the stylesheet, never by the class list, so without it
+ * `cx(button, buttonPrimary)` could draw a plain button. The old rules won the same way, by a compound selector.
  */
 export const cx = (...parts: Array<string | false | null | undefined | 0>): string => parts.filter(Boolean).join(" ")
 
@@ -31,11 +35,11 @@ export const note = "m-0 flex items-center gap-1.5 text-fg-subtle"
 /** A boxed notice; add one of the tones. (was dt-notice) */
 export const notice = "flex items-start gap-2 max-w-[920px] mb-1.5 px-3 py-[7px] border border-border rounded-dt"
 export const noticeOk =
-  "border-[color-mix(in_srgb,var(--dt-color-charts-green)_40%,transparent)] bg-[color-mix(in_srgb,var(--dt-color-charts-green)_9%,transparent)] font-mono text-[12px] [&_.codicon]:text-chart-green"
+  "border-[color-mix(in_srgb,var(--dt-color-charts-green)_40%,transparent)]! bg-[color-mix(in_srgb,var(--dt-color-charts-green)_9%,transparent)] font-mono text-[12px] [&_.codicon]:text-chart-green"
 export const noticeWarning =
-  "border-[color-mix(in_srgb,var(--dt-warning)_40%,transparent)] bg-[color-mix(in_srgb,var(--dt-warning)_9%,transparent)] [&_.codicon]:text-warning"
+  "border-[color-mix(in_srgb,var(--dt-warning)_40%,transparent)]! bg-[color-mix(in_srgb,var(--dt-warning)_9%,transparent)] [&_.codicon]:text-warning"
 export const noticeError =
-  "border-[color-mix(in_srgb,var(--dt-danger)_40%,transparent)] bg-[color-mix(in_srgb,var(--dt-danger)_9%,transparent)] [&_.codicon]:text-danger"
+  "border-[color-mix(in_srgb,var(--dt-danger)_40%,transparent)]! bg-[color-mix(in_srgb,var(--dt-danger)_9%,transparent)] [&_.codicon]:text-danger"
 /** A list or page with nothing to show: centred, quiet. (was dt-list-empty) */
 export const listEmpty = "flex flex-col items-center justify-center gap-2 px-4 py-10 text-fg-subtle [&_p]:m-0"
 
@@ -54,24 +58,24 @@ export const stack = "grid gap-1"
 // ---- buttons -------------------------------------------------------------------------------------------------------
 /** The ordinary button. (was dt-button) */
 export const button =
-  "inline-flex items-center gap-1.5 h-[30px] px-3 border border-input-border rounded-dt bg-bg text-fg [font:inherit] cursor-pointer enabled:hover:bg-bg-hover disabled:opacity-50 disabled:cursor-default"
+  "inline-flex items-center gap-1.5 h-[30px] px-3 py-0 border border-input-border rounded-dt bg-bg text-fg cursor-pointer enabled:hover:bg-bg-hover disabled:opacity-50 disabled:cursor-default"
 /** …the one action of a form or dialog. (was dt-button.is-primary) — use with `button`. */
 export const buttonPrimary =
-  "bg-accent border-accent text-accent-fg enabled:hover:bg-[color-mix(in_srgb,var(--dt-accent)_88%,black)]"
+  "bg-accent! border-accent! text-accent-fg! enabled:hover:bg-[color-mix(in_srgb,var(--dt-accent)_88%,black)]!"
 /** …destructive. (was dt-button.is-danger) */
-export const buttonDanger = "text-danger"
+export const buttonDanger = "text-danger!"
 /** …small. (was dt-button.is-small) */
-export const buttonSmall = "h-6 px-2 text-small"
+export const buttonSmall = "h-6! px-2! text-small!"
 /** …an icon only. (was dt-button.is-icon) */
-export const buttonIcon = "px-2"
-/** …pressed / open. (was dt-button.is-active) */
-export const buttonActive = "border-focus bg-bg-active"
+export const buttonIcon = "px-2!"
+/** …pressed / open; hovering still shows the hover ground. (was dt-button.is-active) */
+export const buttonActive = "border-focus! bg-bg-active! enabled:hover:bg-bg-hover!"
 /** A round icon button with no frame. (was dt-icon-button) */
 export const iconButton =
   "inline-flex items-center justify-center w-[22px] h-[22px] p-0 border-0 rounded-full bg-transparent text-fg-subtle cursor-pointer hover:bg-bg-hover hover:text-fg"
 /** A button that reads as text. (was dt-link-button) */
 export const linkButton =
-  "inline-flex items-center gap-1 bg-transparent border-0 p-0 [font:inherit] text-inherit [text-transform:inherit] [letter-spacing:inherit] cursor-pointer"
+  "inline-flex items-center gap-1 bg-transparent border-0 p-0 text-inherit [text-transform:inherit] [letter-spacing:inherit] cursor-pointer"
 
 // ---- menus and popovers --------------------------------------------------------------------------------------------
 /** The relative box a popover hangs from. (was dt-popover-anchor) */
@@ -81,11 +85,11 @@ export const menu =
   "absolute top-[calc(100%+4px)] right-0 z-20 min-w-[180px] max-w-[min(360px,calc(100vw-32px))] p-1 flex flex-col bg-bg border border-border rounded-dt shadow-[0_8px_24px_rgb(0_0_0/0.16)] [&>p]:mx-2 [&>p]:my-1"
 /** One entry of a menu. (was dt-menu-item) */
 export const menuItem =
-  "flex items-center gap-2 px-2 py-[5px] border-0 rounded bg-transparent text-fg [font:inherit] text-left cursor-pointer whitespace-nowrap hover:bg-bg-hover"
+  "flex items-center gap-2 px-2 py-[5px] border-0 rounded bg-transparent text-fg text-left cursor-pointer whitespace-nowrap hover:bg-bg-hover"
 /** …one that cannot be picked. (was dt-menu-item.is-absent) */
-export const menuItemAbsent = "opacity-55 cursor-default"
+export const menuItemAbsent = "opacity-55 cursor-default!"
 /** …destructive. (was dt-menu-item.is-danger) */
-export const menuItemDanger = "text-danger"
+export const menuItemDanger = "text-danger!"
 /** The tick column of a menu entry. (was dt-menu-check) */
 export const menuCheck = "w-4 inline-flex"
 /** The label of a menu entry. (was dt-menu-label) */
@@ -102,7 +106,7 @@ export const textarea = "w-full"
 /** A checkbox with its label beside it. (was dt-check) */
 export const check = "flex items-start gap-2 [&_input]:mt-0.5 [&_input]:mb-0 [&_input]:mx-0"
 /** A control showing an invalid value. (was is-invalid) */
-export const invalid = "text-danger border-danger"
+export const invalid = "text-danger! border-danger!"
 
 // ---- values --------------------------------------------------------------------------------------------------------
 /** A value chip; set `--chip` (and optionally `--chip-bg`) inline for its colour. (was dt-chip) */

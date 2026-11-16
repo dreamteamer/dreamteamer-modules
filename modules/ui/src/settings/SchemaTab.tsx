@@ -39,6 +39,12 @@ import { ModuleList } from "./ModuleList.tsx"
 import { SourcesPane } from "./SourcesPane.tsx"
 import { useModules } from "./use-modules.ts"
 import { ViewModulePanel } from "./ViewModulePanel.tsx"
+import { cx, error, iconButton } from "../styles/classes.ts"
+
+/** One line of the rail: icon, label, count. (was dt-schema-kind, dt-schema-kind-label, dt-schema-kind-count) */
+const kindRow =
+  "flex items-center gap-2 px-2 py-[5px] border-0 rounded font-[inherit] text-[length:inherit] leading-[inherit] text-left cursor-pointer [&_.codicon]:text-fg-subtle"
+const label = "flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap max-[640px]:hidden"
 
 const ACTIVITY = "activity"
 const SOURCES = "sources"
@@ -96,15 +102,18 @@ export function SchemaTab({ tail }: { tail: string }) {
   const select = (kind: string) => navigate(withModuleScope(`${SCHEMA_BASE}/${kind}`, scope))
 
   return (
-    <div className="dt-schema">
-      <nav className="dt-schema-rail" aria-label="Schema kinds">
+    <div className="grid grid-cols-[minmax(170px,210px)_1fr] min-h-full max-[640px]:grid-cols-[40px_1fr]">
+      <nav className="flex flex-col gap-px py-2.5 px-1.5 border-r border-border bg-bg-subtle" aria-label="Schema kinds">
         {scope && (
-          <div className="dt-schema-scope" title={`Showing only what belongs to ${scope}`}>
+          <div
+            className="flex items-center gap-1.5 mb-1.5 py-1 pr-1 pl-2 rounded-dt bg-bg-active"
+            title={`Showing only what belongs to ${scope}`}
+          >
             <Icon name="filter" />
-            <span className="dt-schema-scope-label">{scopeTitle}</span>
+            <span className={cx(label, "font-semibold")}>{scopeTitle}</span>
             <button
               type="button"
-              className="dt-icon-button"
+              className={iconButton}
               title="Show the whole schema"
               onClick={() => {
                 scopeMemory.set(undefined)
@@ -119,22 +128,27 @@ export function SchemaTab({ tail }: { tail: string }) {
           <button
             key={row.kind}
             type="button"
-            className={`dt-schema-kind${row.kind === selection.kind ? " is-selected" : ""}`}
+            className={cx(
+              kindRow,
+              row.kind === selection.kind
+                ? "bg-bg-active text-fg-active font-semibold"
+                : "bg-transparent text-fg hover:bg-bg-hover"
+            )}
             data-kind={row.kind}
             data-vscode-context={schemaKindContext(row.kind)}
             title={row.title}
             onClick={() => select(row.kind)}
           >
             <Icon name={row.icon} />
-            <span className="dt-schema-kind-label">{row.title}</span>
+            <span className={label}>{row.title}</span>
             {counts.data?.[row.kind] !== undefined && (
-              <span className="dt-schema-kind-count">{counts.data[row.kind]}</span>
+              <span className="text-fg-subtle tabular-nums text-small max-[640px]:hidden">{counts.data[row.kind]}</span>
             )}
           </button>
         ))}
       </nav>
       <section
-        className="dt-schema-pane"
+        className="min-w-0"
         data-vscode-context={PAGE_KINDS.has(selection.kind) ? undefined : schemaKindContext(selection.kind)}
       >
         <RouteBase.Provider value={SCHEMA_BASE}>
@@ -190,7 +204,7 @@ function Pane({
   }
   if (kind === "modules" && !id) return <ModuleList only={scope ? (only?.modules ?? []) : null} />
   const row = schema.collection(kind)
-  if (!row) return <p className="dt-page dt-error">No schema kind {kind} in this workspace.</p>
+  if (!row) return <p className={error}>No schema kind {kind} in this workspace.</p>
   if (id === "+") return <RecordPage key={`${kind}:+`} collection={kind} id={null} />
   if (id)
     return (

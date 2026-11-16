@@ -5,11 +5,11 @@
 
 /** A 24 px icon button in the nav's toolbar (Back, Forward, the arrange lock, the pane level). (was dt-nav-tool) */
 export const navTool =
-  "relative flex-none inline-flex items-center justify-center w-6 h-6 p-0 border-0 rounded-dt bg-transparent text-fg-subtle [font:inherit] enabled:hover:bg-bg-hover enabled:hover:text-fg disabled:opacity-45 aria-pressed:bg-bg-active aria-pressed:text-accent"
+  "relative flex-none inline-flex items-center justify-center w-6 h-6 p-0 border-0 rounded-dt bg-transparent text-fg-subtle enabled:hover:bg-bg-hover enabled:hover:text-fg disabled:opacity-45 aria-pressed:bg-bg-active aria-pressed:text-accent"
 
 /** A menu a nav toolbar button opens, portalled to the body and placed fixed. (was dt-pane-menu) */
 export const paneMenu =
-  "fixed z-60 w-[220px] max-w-[calc(100vw-8px)] flex flex-col p-1 border border-border rounded-dt bg-bg shadow-[0_8px_24px_rgb(0_0_0/0.16)] outline-none [&>button]:overflow-hidden [&>button]:text-ellipsis [&>button]:whitespace-nowrap [&>button]:text-left [&>button]:border-0 [&>button]:bg-transparent [&>button]:text-fg [&>button]:px-2 [&>button]:py-1 [&>button]:rounded-dt [&>button]:[font:inherit] [&>button:hover]:bg-bg-hover [&>button:focus-visible]:bg-bg-hover [&>button:focus-visible]:outline-none [&>button[aria-checked=true]]:font-semibold"
+  "fixed z-60 w-[220px] max-w-[calc(100vw-8px)] flex flex-col p-1 border border-border rounded-dt bg-bg shadow-[0_8px_24px_rgb(0_0_0/0.16)] outline-none [&>button]:overflow-hidden [&>button]:text-ellipsis [&>button]:whitespace-nowrap [&>button]:text-left [&>button]:border-0 [&>button]:bg-transparent [&>button]:text-fg [&>button]:px-2 [&>button]:py-1 [&>button]:rounded-dt [&>button:hover]:bg-bg-hover [&>button:focus-visible]:bg-bg-hover [&>button:focus-visible]:outline-none [&>button[aria-checked=true]]:font-semibold"
 /** A quiet line in a pane menu. (was dt-pane-menu-hint / -muted / -notice) */
 export const paneMenuQuiet = "text-fg-subtle m-0"
 /** A refusal shown inside a pane menu. (was dt-pane-menu-error) */

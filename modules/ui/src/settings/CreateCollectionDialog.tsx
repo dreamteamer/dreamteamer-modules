@@ -20,6 +20,20 @@ import { isOkfRow } from "../lib/okf.ts"
 import { SCHEMA_BASE } from "../lib/route.ts"
 import { joinCollectionPath, slugify } from "../lib/slugify.ts"
 import { viewModuleTargets } from "../lib/view-module-targets.ts"
+import {
+  button,
+  buttonPrimary,
+  check,
+  cx,
+  dialogActions,
+  error as errorBox,
+  formRow,
+  hint,
+  input,
+  mono,
+  subtle,
+} from "../styles/classes.ts"
+import { dialogForm } from "./looks.ts"
 import { useModules } from "./use-modules.ts"
 
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e))
@@ -84,11 +98,11 @@ export function CreateCollectionDialog({ module, onClose }: { module?: string; o
 
   return (
     <Dialog title="New collection" onClose={onClose}>
-      <form className="dt-dialog-form" data-create-collection onSubmit={e => void submit(e)}>
-        <label className="dt-form-row">
+      <form className={dialogForm} data-create-collection onSubmit={e => void submit(e)}>
+        <label className={formRow}>
           <span>Parent namespace</span>
           <input
-            className="dt-input"
+            className={input}
             list="dt-namespaces"
             value={parent}
             placeholder="(root)"
@@ -100,26 +114,26 @@ export function CreateCollectionDialog({ module, onClose }: { module?: string; o
             ))}
           </datalist>
         </label>
-        <label className="dt-form-row">
+        <label className={formRow}>
           <span>Name</span>
           <input
-            className="dt-input"
+            className={input}
             value={name}
             placeholder="Contacts"
             aria-label="Collection name"
             onChange={e => setName(e.target.value)}
           />
         </label>
-        <p className="dt-hint">
+        <p className={hint}>
           Collection path: <code>{path || "—"}</code>
         </p>
-        <fieldset className="dt-form-row dt-mixins">
+        <fieldset className={formRow}>
           <legend>Mixins</legend>
           {!choices.data?.length && (
-            <p className="dt-hint">None — the collection starts with a name field; grow it in the designer.</p>
+            <p className={hint}>None — the collection starts with a name field; grow it in the designer.</p>
           )}
           {choices.data?.map(m => (
-            <label key={m.id} className="dt-check" title={m.description}>
+            <label key={m.id} className={check} title={m.description}>
               <input
                 type="checkbox"
                 data-mixin={m.id}
@@ -127,31 +141,31 @@ export function CreateCollectionDialog({ module, onClose }: { module?: string; o
                 onChange={() => setMixins(v => toggleMixin(v, m.id))}
               />
               <span>{m.label}</span>
-              {mixins.includes(m.id) && <span className="dt-subtle">{mixins.indexOf(m.id) + 1}</span>}
+              {mixins.includes(m.id) && <span className={subtle}>{mixins.indexOf(m.id) + 1}</span>}
             </label>
           ))}
         </fieldset>
-        <label className="dt-form-row">
+        <label className={formRow}>
           <span>Id template</span>
           <input
-            className="dt-input dt-mono"
+            className={cx(input, mono)}
             value={idFrom}
             placeholder="the engine's default — e.g. {{ name | slug }}"
             onChange={e => setIdFrom(e.target.value)}
           />
         </label>
-        <div className="dt-form-row">
+        <div className={formRow}>
           <span>Icon</span>
           <IconPicker value={icon} onChange={setIcon} placeholder="Icon (optional)" />
         </div>
         {!module && <ViewModuleSelect value={target} targets={targets} onChange={setTarget} />}
-        {module && <p className="dt-hint">Written into the module {module}.</p>}
-        {error && <p className="dt-error">{error}</p>}
-        <div className="dt-dialog-actions">
-          <button type="button" className="dt-button" onClick={onClose}>
+        {module && <p className={hint}>Written into the module {module}.</p>}
+        {error && <p className={errorBox}>{error}</p>}
+        <div className={dialogActions}>
+          <button type="button" className={button} onClick={onClose}>
             Cancel
           </button>
-          <button type="submit" className="dt-button is-primary" disabled={busy || !slug}>
+          <button type="submit" className={cx(button, buttonPrimary)} disabled={busy || !slug}>
             {busy ? "Creating…" : "Create"}
           </button>
         </div>

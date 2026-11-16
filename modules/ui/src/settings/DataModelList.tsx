@@ -15,6 +15,8 @@ import { SCHEMA_BASE } from "../lib/route.ts"
 import { schemaRowContext } from "../lib/vscode-context.ts"
 import { CreateCollectionDialog } from "./CreateCollectionDialog.tsx"
 import type { CollectionRow } from "../api/types.ts"
+import { button, buttonPrimary, cx, page, pageHead, subtle } from "../styles/classes.ts"
+import { num, table } from "./looks.ts"
 
 /** Rows by namespace: un-namespaced first, then each namespace in first-seen order. */
 export function namespaceGroups(rows: readonly CollectionRow[]): Array<{ name: string; rows: CollectionRow[] }> {
@@ -36,17 +38,17 @@ export function DataModelList({ only }: { only: readonly string[] | null }) {
   const rows = schema.collections.filter(r => isOkfRow(r) && (!only || only.includes(r.collection)))
   const groups = namespaceGroups(rows)
   return (
-    <section className="dt-page dt-dm">
-      <header className="dt-page-head">
+    <section className={page}>
+      <header className={pageHead}>
         <div>
           <h1>
             <Icon name="symbol-structure" /> Data Model
           </h1>
-          <p className="dt-subtle">Every collection this workspace compiles. Open one to edit its fields.</p>
+          <p className={subtle}>Every collection this workspace compiles. Open one to edit its fields.</p>
         </div>
         <button
           type="button"
-          className="dt-button is-primary"
+          className={cx(button, buttonPrimary)}
           data-action="new-collection"
           onClick={() => setCreating(true)}
         >
@@ -54,11 +56,11 @@ export function DataModelList({ only }: { only: readonly string[] | null }) {
         </button>
       </header>
       {groups.map(group => (
-        <section key={group.name || "__root"} className="dt-dm-group">
+        <section key={group.name || "__root"} className="mb-5">
           {group.name && (
             <button
               type="button"
-              className="dt-dm-group-head"
+              className="inline-flex items-center gap-1 py-1 px-0 border-0 bg-transparent text-fg-subtle text-small font-bold tracking-[0.04em] uppercase cursor-pointer"
               aria-expanded={!closed[group.name]}
               onClick={() => setClosed(c => ({ ...c, [group.name]: !c[group.name] }))}
             >
@@ -66,26 +68,29 @@ export function DataModelList({ only }: { only: readonly string[] | null }) {
             </button>
           )}
           {!closed[group.name] && (
-            <table className="dt-table">
+            <table className={table}>
               <thead>
                 <tr>
                   <th>Collection</th>
                   <th>Title</th>
                   <th>Read from</th>
-                  <th className="is-num">Records</th>
+                  <th className={num}>Records</th>
                 </tr>
               </thead>
               <tbody>
                 {group.rows.map(row => (
                   <tr key={row.collection} data-vscode-context={schemaRowContext("collections", row.collection)}>
                     <td>
-                      <Link to={`${SCHEMA_BASE}/collections/${row.collection}`} className="dt-dm-link">
+                      <Link
+                        to={`${SCHEMA_BASE}/collections/${row.collection}`}
+                        className="inline-flex items-center gap-1.5 text-fg font-semibold"
+                      >
                         <Icon name={row.nav.icon ?? "database"} /> {row.collection}
                       </Link>
                     </td>
-                    <td className="dt-subtle">{row.title}</td>
-                    <td className="dt-subtle">{(row.sources ?? []).map(s => s.name).join(", ") || "—"}</td>
-                    <td className="is-num">{(row.sources ?? []).reduce((n, s) => n + s.count, 0)}</td>
+                    <td className={subtle}>{row.title}</td>
+                    <td className={subtle}>{(row.sources ?? []).map(s => s.name).join(", ") || "—"}</td>
+                    <td className={num}>{(row.sources ?? []).reduce((n, s) => n + s.count, 0)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -93,7 +98,7 @@ export function DataModelList({ only }: { only: readonly string[] | null }) {
           )}
         </section>
       ))}
-      {!rows.length && <p className="dt-empty">No collections{only ? " in this module" : " yet"}.</p>}
+      {!rows.length && <p className={subtle}>No collections{only ? " in this module" : " yet"}.</p>}
       {creating && <CreateCollectionDialog onClose={() => setCreating(false)} />}
     </section>
   )

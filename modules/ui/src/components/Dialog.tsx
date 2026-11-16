@@ -6,6 +6,7 @@
  */
 import { useEffect, useRef, type ReactNode } from "react"
 import { Icon } from "./Icon.tsx"
+import { iconButton } from "../styles/classes.ts"
 
 export function Dialog({ title, children, onClose }: { title: string; children: ReactNode; onClose: () => void }) {
   const box = useRef<HTMLDivElement>(null)
@@ -17,15 +18,29 @@ export function Dialog({ title, children, onClose }: { title: string; children: 
       if (e.key === "Escape") close.current()
     }
     document.addEventListener("keydown", onKey)
-    box.current?.querySelector<HTMLElement>("input, textarea, button.is-primary, button.is-danger")?.focus()
+    // the first field takes the focus; a dialog with none focuses its action — the last button, after Cancel
+    const el = box.current
+    const first =
+      el?.querySelector<HTMLElement>("[data-autofocus], input, textarea") ??
+      [...(el?.querySelectorAll<HTMLElement>("button") ?? [])].at(-1)
+    first?.focus()
     return () => document.removeEventListener("keydown", onKey)
   }, [])
   return (
-    <div className="dt-dialog-overlay" onMouseDown={e => e.target === e.currentTarget && onClose()}>
-      <div className="dt-dialog" role="dialog" aria-modal="true" aria-label={title} ref={box}>
-        <header className="dt-dialog-head">
-          <h2>{title}</h2>
-          <button type="button" className="dt-icon-button" aria-label="Close" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[rgb(0_0_0/0.35)]"
+      onMouseDown={e => e.target === e.currentTarget && onClose()}
+    >
+      <div
+        className="w-[min(440px,100%)] grid gap-3 px-[18px] py-4 bg-bg text-fg border border-border rounded-[8px] shadow-[0_12px_32px_rgb(0_0_0/0.24)] [&_p]:m-0"
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        ref={box}
+      >
+        <header className="flex items-center justify-between">
+          <h2 className="m-0 text-[15px]">{title}</h2>
+          <button type="button" className={iconButton} aria-label="Close" onClick={onClose}>
             <Icon name="close" />
           </button>
         </header>

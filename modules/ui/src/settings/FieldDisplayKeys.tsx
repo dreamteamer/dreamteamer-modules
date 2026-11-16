@@ -19,6 +19,8 @@ import {
   type Editable,
   type Surface,
 } from "../lib/field-display-keys.ts"
+import { check, formRow, input } from "../styles/classes.ts"
+import { checks, formPair, panel } from "./looks.ts"
 
 type Def = Record<string, unknown>
 
@@ -58,8 +60,8 @@ export function FieldDisplayKeys({
   const text = (key: "form_section" | "placeholder" | "unit" | "unit_field") =>
     typeof def[key] === "string" ? (def[key] as string) : ""
   return (
-    <div className="dt-display-keys">
-      <label className="dt-form-row">
+    <div className={panel}>
+      <label className={formRow}>
         <span>Editable</span>
         <Select
           value={editableOf(def)}
@@ -68,11 +70,11 @@ export function FieldDisplayKeys({
           onChange={v => edit(d => setEditable(d, v as Editable))}
         />
       </label>
-      <fieldset className="dt-form-row">
+      <fieldset className={formRow}>
         <legend>Hidden on</legend>
-        <div className="dt-checks">
+        <div className={checks}>
           {SURFACES.map(s => (
-            <label key={s.id} className="dt-check">
+            <label key={s.id} className={check}>
               <input
                 type="checkbox"
                 data-surface={s.id}
@@ -84,10 +86,10 @@ export function FieldDisplayKeys({
           ))}
         </div>
       </fieldset>
-      <label className="dt-form-row">
+      <label className={formRow}>
         <span>Form section</span>
         <input
-          className="dt-input"
+          className={input}
           list="dt-form-sections"
           value={text("form_section")}
           placeholder="none"
@@ -99,26 +101,26 @@ export function FieldDisplayKeys({
           ))}
         </datalist>
       </label>
-      <label className="dt-form-row">
+      <label className={formRow}>
         <span>Placeholder</span>
         <input
-          className="dt-input"
+          className={input}
           value={text("placeholder")}
           onChange={e => edit(d => setText(d, "placeholder", e.target.value))}
         />
       </label>
-      <div className="dt-form-pair">
-        <label className="dt-form-row">
+      <div className={formPair}>
+        <label className={formRow}>
           <span>Unit</span>
           <input
-            className="dt-input"
+            className={input}
             value={text("unit")}
             placeholder="currency · percent · bytes · kg"
             onChange={e => edit(d => setText(d, "unit", e.target.value))}
           />
         </label>
         {unitFieldApplies(def) && (
-          <label className="dt-form-row">
+          <label className={formRow}>
             <span>Currency field</span>
             <Select
               value={text("unit_field")}
@@ -130,8 +132,8 @@ export function FieldDisplayKeys({
           </label>
         )}
       </div>
-      <div className="dt-form-pair">
-        <label className="dt-form-row">
+      <div className={formPair}>
+        <label className={formRow}>
           <span>Direction</span>
           <Select
             value={def["direction"] === "rtl" ? "rtl" : "ltr"}
@@ -140,10 +142,10 @@ export function FieldDisplayKeys({
             onChange={v => edit(d => setDirection(d, String(v)))}
           />
         </label>
-        <label className="dt-form-row">
+        <label className={formRow}>
           <span>Width (characters)</span>
           <input
-            className="dt-input"
+            className={input}
             inputMode="numeric"
             value={widthOf(def)}
             onChange={e => edit(d => setWidth(d, e.target.value))}

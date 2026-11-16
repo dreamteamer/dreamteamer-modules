@@ -13,6 +13,7 @@ import { isUnwritableModule } from "../lib/module-writable.ts"
 import { refusalAnswer, type SaveAnswer } from "../lib/save-answer.ts"
 import { loadUiViews } from "../lib/ui-views.ts"
 import { recordPageTargets, viewModuleTargets } from "../lib/view-module-targets.ts"
+import { cx, subtle } from "../styles/classes.ts"
 import { useModules } from "./use-modules.ts"
 
 export function ViewModulePanel({ viewId }: { viewId: string }) {
@@ -49,11 +50,11 @@ export function ViewModulePanel({ viewId }: { viewId: string }) {
   }
 
   return (
-    <section className="dt-view-module" data-view-module>
+    <section className="grid gap-1 max-w-[420px] mt-5 [&_p]:m-0" data-view-module>
       {readOnly ? (
         <>
-          <p className="dt-vms-label">Module</p>
-          <p className="dt-subtle" data-readonly>
+          <p className="font-semibold">Module</p>
+          <p className={subtle} data-readonly>
             <strong>{current}</strong> — shipped by an installed package, so it moves with the package. Save it from its
             list to change it here (an overlay in the workspace module), or Save as… a new name and move that.
           </p>
@@ -61,10 +62,13 @@ export function ViewModulePanel({ viewId }: { viewId: string }) {
       ) : (
         <ViewModuleSelect value={current ?? null} targets={targets} disabled={busy} onChange={v => void move(v)} />
       )}
-      {busy && <p className="dt-subtle">Moving…</p>}
+      {busy && <p className={subtle}>Moving…</p>}
       {answer && (
         <div
-          className={`dt-lo-answer ${answer.tone === "error" ? "is-error" : "is-ok"}`}
+          className={cx(
+            "pl-2 border-l-[3px] border-solid [&_pre]:mt-0 [&_pre]:mx-0 [&_pre]:mb-1 [&_pre]:whitespace-pre-wrap [&_pre]:text-small [&_pre]:text-fg-subtle",
+            answer.tone === "error" ? "border-l-danger [&_p]:text-danger" : "border-l-chart-green"
+          )}
           role={answer.tone === "error" ? "alert" : "status"}
         >
           <p>{answer.sentence}</p>

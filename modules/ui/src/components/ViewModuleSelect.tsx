@@ -7,6 +7,7 @@
  */
 import { lockedNote, moduleChoices, whereOf, type ViewModuleTarget } from "../lib/view-module-targets.ts"
 import { Select } from "./Select.tsx"
+import { hint } from "../styles/classes.ts"
 
 export function ViewModuleSelect({
   value,
@@ -22,8 +23,8 @@ export function ViewModuleSelect({
   const split = moduleChoices(targets)
   const selected = targets.find(t => !t.locked && t.id === value) ?? null
   return (
-    <div className="dt-vms" data-view-module-select>
-      <p className="dt-vms-label">Module</p>
+    <div className="grid gap-1 [&_p]:m-0" data-view-module-select>
+      <p className="font-semibold">Module</p>
       <Select
         value={value}
         choices={split.choices}
@@ -32,12 +33,12 @@ export function ViewModuleSelect({
         onChange={v => onChange(typeof v === "string" ? v : null)}
       />
       {selected && (
-        <p className="dt-hint" data-module-where>
+        <p className={hint} data-module-where>
           {whereOf(selected)}
         </p>
       )}
       {split.locked.length > 0 && (
-        <p className="dt-hint" title={split.locked.map(t => t.label).join(", ")}>
+        <p className={hint} title={split.locked.map(t => t.label).join(", ")}>
           {lockedNote(split.locked.length)}
         </p>
       )}

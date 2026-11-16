@@ -46,7 +46,9 @@ import { templateFields } from "../lib/template.ts"
 import { edits, kindDefaultEdits, kindDefaultViews, views } from "../registry/index.ts"
 import { FieldContext } from "../render/FieldContext.tsx"
 import { OptionsForm } from "../render/OptionsForm.tsx"
+import { button, buttonPrimary, check, cx, formRow, hint, iconButton, input, mono } from "../styles/classes.ts"
 import { FieldDisplayKeys } from "./FieldDisplayKeys.tsx"
+import { hintErr, panel } from "./looks.ts"
 
 type Def = Record<string, unknown>
 type Tab = "field" | "edit" | "view" | "relationship"
@@ -179,27 +181,33 @@ export function FieldDrawer({
   }
 
   return (
-    <div className="dt-drawer-overlay" onMouseDown={e => e.target === e.currentTarget && onClose()}>
+    <div
+      className="fixed inset-0 z-40 flex justify-end bg-[rgb(0_0_0/0.24)]"
+      onMouseDown={e => e.target === e.currentTarget && onClose()}
+    >
       <aside
-        className="dt-drawer"
+        className="flex flex-col w-[min(520px,100%)] h-full bg-bg border-l border-border shadow-[-12px_0_32px_rgb(0_0_0/0.18)]"
         role="dialog"
         aria-label={editing ? `Edit field ${field.key}` : "New field"}
         data-field-drawer
       >
-        <header className="dt-drawer-head">
-          <h2>{editing ? `Edit field: ${field.key}` : "New field"}</h2>
-          <button type="button" className="dt-icon-button" aria-label="Close" onClick={onClose}>
+        <header className="flex items-center justify-between py-3 px-4 border-b border-border">
+          <h2 className="m-0 text-[15px]">{editing ? `Edit field: ${field.key}` : "New field"}</h2>
+          <button type="button" className={iconButton} aria-label="Close" onClick={onClose}>
             <Icon name="close" />
           </button>
         </header>
-        <nav className="dt-drawer-tabs" role="tablist">
+        <nav className="flex gap-0.5 px-3 border-b border-border" role="tablist">
           {tabs.map(t => (
             <button
               key={t.id}
               type="button"
               role="tab"
               aria-selected={shown === t.id}
-              className={`dt-drawer-tab${shown === t.id ? " is-active" : ""}`}
+              className={cx(
+                "py-2 px-2.5 border-x-0 border-t-0 border-b-2 border-solid bg-transparent cursor-pointer",
+                shown === t.id ? "border-b-accent text-fg font-semibold" : "border-b-transparent text-fg-subtle"
+              )}
               data-tab={t.id}
               onClick={() => setTab(t.id)}
             >
@@ -207,13 +215,13 @@ export function FieldDrawer({
             </button>
           ))}
         </nav>
-        <div className="dt-drawer-body">
+        <div className="flex-1 overflow-auto py-3.5 px-4">
           {shown === "field" && (
-            <section className="dt-drawer-panel">
-              <label className="dt-form-row">
+            <section className={panel}>
+              <label className={formRow}>
                 <span>Key</span>
                 <input
-                  className="dt-input dt-mono"
+                  className={cx(input, mono)}
                   value={key}
                   disabled={editing}
                   placeholder="due_date"
@@ -223,19 +231,17 @@ export function FieldDrawer({
                 />
               </label>
               {!editing && key && slug !== key && (
-                <p className="dt-hint">
+                <p className={hint}>
                   Will be saved as <code>{slug}</code>
                 </p>
               )}
-              {editing && (
-                <p className="dt-hint">Rename a field from its ⋯ menu — every record and view is rewritten.</p>
-              )}
+              {editing && <p className={hint}>Rename a field from its ⋯ menu — every record and view is rewritten.</p>}
               {collision && (
-                <p className="dt-hint is-error">
+                <p className={hintErr}>
                   A field named <code>{slug}</code> already exists.
                 </p>
               )}
-              <label className="dt-form-row">
+              <label className={formRow}>
                 <span>Type</span>
                 <Select
                   value={type}
@@ -244,10 +250,10 @@ export function FieldDrawer({
                   onChange={v => setDef(d => withType(d, String(v), { editing, sideTouched }))}
                 />
               </label>
-              <label className="dt-form-row">
+              <label className={formRow}>
                 <span>Description</span>
                 <input
-                  className="dt-input"
+                  className={input}
                   value={typeof def["description"] === "string" ? def["description"] : ""}
                   placeholder="What this field means"
                   onChange={e => {
@@ -263,7 +269,7 @@ export function FieldDrawer({
               </label>
               {!derived ? (
                 <>
-                  <label className="dt-check">
+                  <label className={check}>
                     <input
                       type="checkbox"
                       checked={def["required"] === true}
@@ -282,7 +288,7 @@ export function FieldDrawer({
                   <FieldDisplayKeys def={def} onChange={setDef} sections={sections} siblings={siblings} />
                 </>
               ) : (
-                <p className="dt-hint">
+                <p className={hint}>
                   This field's value is kept in step with the link, so it is not typed into a record — width, editor and
                   view settings have nothing to apply to.
                 </p>
@@ -291,8 +297,8 @@ export function FieldDrawer({
           )}
 
           {shown === "edit" && (
-            <section className="dt-drawer-panel">
-              <label className="dt-form-row">
+            <section className={panel}>
+              <label className={formRow}>
                 <span>Edit</span>
                 <Select
                   value={editor}
@@ -311,14 +317,14 @@ export function FieldDrawer({
                   />
                 </FieldContext.Provider>
               ) : (
-                <p className="dt-hint">This Edit has no options.</p>
+                <p className={hint}>This Edit has no options.</p>
               )}
             </section>
           )}
 
           {shown === "view" && (
-            <section className="dt-drawer-panel">
-              <label className="dt-form-row">
+            <section className={panel}>
+              <label className={formRow}>
                 <span>View</span>
                 <Select
                   value={viewer}
@@ -337,14 +343,14 @@ export function FieldDrawer({
                   />
                 </FieldContext.Provider>
               ) : (
-                <p className="dt-hint">This View has no options.</p>
+                <p className={hint}>This View has no options.</p>
               )}
             </section>
           )}
 
           {shown === "relationship" && (
-            <section className="dt-drawer-panel">
-              <label className="dt-form-row">
+            <section className={panel}>
+              <label className={formRow}>
                 <span>Target collection</span>
                 <Select
                   value={target}
@@ -360,17 +366,17 @@ export function FieldDrawer({
                 />
               </label>
               {derived && (
-                <p className="dt-hint">
+                <p className={hint}>
                   The two collections a link joins are fixed once it exists — a new field is how you point somewhere
                   else.
                 </p>
               )}
               {named && (
-                <div className="dt-rel">
-                  <fieldset className="dt-form-row">
+                <div className={panel}>
+                  <fieldset className={formRow}>
                     <legend>Where the link is kept</legend>
                     {(["here", "target"] as const).map(s => (
-                      <label key={s} className="dt-check">
+                      <label key={s} className={check}>
                         <input
                           type="radio"
                           name="dt-link-side"
@@ -389,14 +395,14 @@ export function FieldDrawer({
                       </label>
                     ))}
                     {editing && (
-                      <p className="dt-hint">
+                      <p className={hint}>
                         Which side keeps it is where the values physically live, so moving it would move data.
                         Everything else about the link is editable from here.
                       </p>
                     )}
                   </fieldset>
                   {side === "here" && (
-                    <label className="dt-check">
+                    <label className={check}>
                       <input
                         type="checkbox"
                         checked={twoWay}
@@ -408,12 +414,12 @@ export function FieldDrawer({
                     </label>
                   )}
                   {twoWay && (
-                    <label className="dt-form-row">
+                    <label className={formRow}>
                       <span>
                         Field on <code>{targetBase}</code>
                       </span>
                       <input
-                        className="dt-input dt-mono"
+                        className={cx(input, mono)}
                         value={intent.farField}
                         placeholder={suggestedFarField(def, collection) ?? "field name"}
                         aria-label={`Field name on ${target}`}
@@ -425,10 +431,10 @@ export function FieldDrawer({
                     </label>
                   )}
                   {farError ? (
-                    <p className="dt-hint is-error">{farError}</p>
+                    <p className={hintErr}>{farError}</p>
                   ) : (
                     !twoWay && (
-                      <p className="dt-hint">
+                      <p className={hint}>
                         One-way: a <code>{targetOne}</code> will not show what points at it, and "which {targetBase}{" "}
                         have none" is not a filter.
                       </p>
@@ -437,7 +443,7 @@ export function FieldDrawer({
                   {twoWay && (
                     <>
                       {(side === "target" || type !== "relation-list") && (
-                        <label className="dt-check">
+                        <label className={check}>
                           <input
                             type="checkbox"
                             checked={atMostOne(def)}
@@ -449,8 +455,8 @@ export function FieldDrawer({
                           </span>
                         </label>
                       )}
-                      <p className="dt-hint">{describeLink(intent, collection)}</p>
-                      <fieldset className="dt-form-row">
+                      <p className={hint}>{describeLink(intent, collection)}</p>
+                      <fieldset className={formRow}>
                         <legend>
                           When a <code>{deleteSubject}</code> is deleted
                         </legend>
@@ -460,7 +466,7 @@ export function FieldDrawer({
                             ["set-null", "Clear the link — the delete goes through and the link is emptied"],
                           ] as const
                         ).map(([rule, text]) => (
-                          <label key={rule} className="dt-check">
+                          <label key={rule} className={check}>
                             <input
                               type="radio"
                               name="dt-on-delete"
@@ -482,21 +488,21 @@ export function FieldDrawer({
                   )}
                 </div>
               )}
-              <label className="dt-form-row">
+              <label className={formRow}>
                 <span>Display template</span>
                 <input
-                  className="dt-input dt-mono"
+                  className={cx(input, mono)}
                   value={template}
                   placeholder="{{ name }}"
                   onChange={e => setTemplate(e.target.value)}
                 />
               </label>
-              <p className="dt-hint">
+              <p className={hint}>
                 A template rendered against the related record, e.g. <code>{"{{ name }}"}</code>. Blank shows the
                 record's title.
               </p>
               {template && templateFields(template).length > 0 && (
-                <p className="dt-hint">
+                <p className={hint}>
                   References:{" "}
                   {templateFields(template).map(f => (
                     <code key={f}>{f} </code>
@@ -506,13 +512,13 @@ export function FieldDrawer({
             </section>
           )}
         </div>
-        <footer className="dt-drawer-foot">
-          <button type="button" className="dt-button" onClick={onClose}>
+        <footer className="flex justify-end gap-2 py-2.5 px-4 border-t border-border">
+          <button type="button" className={button} onClick={onClose}>
             Cancel
           </button>
           <button
             type="button"
-            className="dt-button is-primary"
+            className={cx(button, buttonPrimary)}
             data-action="apply"
             disabled={!canApply}
             onClick={apply}

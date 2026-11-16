@@ -16,7 +16,7 @@ const menuCls =
 /** One entry; `ok` is the ask's confirming button. (was dt-nav-menu-item) */
 const itemCls = (ok?: boolean) =>
   cx(
-    "text-left px-3 py-1 bg-transparent border-0 [font:inherit] cursor-pointer enabled:hover:bg-bg-hover disabled:text-fg-subtle disabled:cursor-default",
+    "text-left px-3 py-1 bg-transparent border-0 cursor-pointer enabled:hover:bg-bg-hover disabled:text-fg-subtle disabled:cursor-default",
     ok ? "text-link" : "text-fg"
   )
 const askCls = "flex flex-col gap-1.5 px-2.5 py-1.5 w-[220px]"

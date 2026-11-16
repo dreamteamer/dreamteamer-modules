@@ -8,6 +8,7 @@ import { Icon } from "../components/Icon.tsx"
 import { isUnwritableModule } from "../lib/module-writable.ts"
 import { CreateCollectionDialog } from "./CreateCollectionDialog.tsx"
 import { useModules } from "./use-modules.ts"
+import { button } from "../styles/classes.ts"
 
 export function ModuleCollections({ moduleId }: { moduleId: string }) {
   const { modules } = useModules()
@@ -16,10 +17,10 @@ export function ModuleCollections({ moduleId }: { moduleId: string }) {
   if (!entry) return null
   const readOnly = isUnwritableModule(entry)
   return (
-    <section className="dt-module-collections">
+    <section className="max-w-[420px] mt-5">
       <button
         type="button"
-        className="dt-button"
+        className={button}
         data-action="new-collection-in-module"
         disabled={readOnly}
         title={

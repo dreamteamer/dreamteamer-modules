@@ -39,11 +39,47 @@ import {
 } from "../lib/designer-state.ts"
 import { setLeaveGuard } from "../lib/leave-guard.ts"
 import { SCHEMA_BASE } from "../lib/route.ts"
+import {
+  button,
+  buttonDanger,
+  buttonPrimary,
+  cx,
+  dialogActions,
+  error as errorBox,
+  formRow,
+  hint,
+  iconButton,
+  input,
+  menu as menuBox,
+  menuItem,
+  menuItemDanger,
+  mono,
+  notice,
+  noticeError,
+  noticeOk,
+  noticeWarning,
+  page,
+  pageHead,
+  popoverAnchor,
+  subtle,
+  toolbar,
+} from "../styles/classes.ts"
 import { FieldDrawer } from "./FieldDrawer.tsx"
+import { dialogForm, hintErr, sectionLabel } from "./looks.ts"
 
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e))
 const DISCARD = "Discard unsaved field changes?"
 const WIDE = new Set(["markdown", "object", "map", "list", "tags"])
+
+/** The two-column field grid, one column when narrow. (was dt-field-grid) */
+const fieldGrid = "grid grid-cols-2 gap-2.5 max-w-[920px] items-start max-[720px]:grid-cols-1"
+/** A field's small tag; the tone adds its colours. (was dt-field-badge) */
+const badge = "px-1.5 rounded text-small font-semibold"
+const badgePlain = "bg-bg-hover text-fg-subtle"
+const badgeAccent = "bg-[color-mix(in_srgb,var(--dt-accent)_14%,transparent)] text-accent"
+const badgeImplicit = "bg-[color-mix(in_srgb,var(--dt-warning)_16%,transparent)] text-warning"
+/** A field's name: mono, one line. (was dt-field-card-name) */
+const fieldName = "overflow-hidden text-ellipsis whitespace-nowrap font-mono font-semibold"
 
 type Rename = { kind: "field"; field: StagedField } | { kind: "value"; field: StagedField }
 
@@ -135,12 +171,12 @@ export function DataModelDetail({
   const free = fields.filter(f => !f.implicit)
   const actions = (
     <>
-      <button type="button" className="dt-button" data-action="add-field" onClick={() => setDrawer({ field: null })}>
+      <button type="button" className={button} data-action="add-field" onClick={() => setDrawer({ field: null })}>
         <Icon name="add" /> Add field
       </button>
       <button
         type="button"
-        className="dt-button is-danger"
+        className={cx(button, buttonDanger)}
         data-action="delete-collection"
         onClick={() => setDeleting(true)}
       >
@@ -150,26 +186,26 @@ export function DataModelDetail({
   )
 
   return (
-    <section className={embedded ? "dt-designer is-embedded" : "dt-page dt-designer"} data-designer={collection}>
+    <section className={embedded ? "pb-[72px]" : cx(page, "pb-[72px]")} data-designer={collection}>
       {embedded ? (
-        <div className="dt-toolbar dt-designer-actions">{actions}</div>
+        <div className={cx(toolbar, "justify-end mb-2")}>{actions}</div>
       ) : (
-        <header className="dt-page-head">
+        <header className={pageHead}>
           <div>
-            <p className="dt-crumbs">
+            <p className="mt-0! mb-1! text-small">
               <Link to={`${SCHEMA_BASE}/collections`}>Data Model</Link>
             </p>
             <h1>
               <Icon name={row?.nav.icon ?? "database"} /> {collection}
             </h1>
-            {row && row.title !== collection && <p className="dt-subtle">{row.title}</p>}
+            {row && row.title !== collection && <p className={subtle}>{row.title}</p>}
           </div>
-          <div className="dt-toolbar">{actions}</div>
+          <div className={toolbar}>{actions}</div>
         </header>
       )}
 
       {row && (
-        <dl className="dt-kv dt-designer-overview">
+        <dl className="grid grid-cols-[minmax(90px,max-content)_1fr] gap-x-3.5 gap-y-1 m-0 max-w-[720px] py-3 px-3.5 border border-border rounded-dt [&_dt]:text-fg-subtle [&_dd]:m-0 [&_dd]:whitespace-pre-wrap [&_dd]:[overflow-wrap:anywhere]">
           <dt>Record type</dt>
           <dd>{row.record_type}</dd>
           <dt>Record title</dt>
@@ -181,26 +217,26 @@ export function DataModelDetail({
         </dl>
       )}
 
-      <h2 className="dt-section-label">Fields</h2>
-      {loadError && <p className="dt-error">{loadError}</p>}
+      <h2 className={sectionLabel}>Fields</h2>
+      {loadError && <p className={errorBox}>{loadError}</p>}
       {outcome?.notices.map((n, i) => (
-        <p key={`n${i}`} className="dt-notice is-ok" data-save-notice>
+        <p key={`n${i}`} className={cx(notice, "mt-0", noticeOk)} data-save-notice>
           <Icon name="check" /> {n}
         </p>
       ))}
       {outcome?.errors.map((n, i) => (
-        <p key={`e${i}`} className="dt-notice is-error" role="alert" data-save-error>
+        <p key={`e${i}`} className={cx(notice, "mt-0", noticeError)} role="alert" data-save-error>
           <Icon name="error" /> {n}
         </p>
       ))}
       {outcome?.warnings.map((n, i) => (
-        <p key={`w${i}`} className="dt-notice is-warning" data-save-warning>
+        <p key={`w${i}`} className={cx(notice, "mt-0", noticeWarning)} data-save-warning>
           <Icon name="warning" /> {n}
         </p>
       ))}
 
       {locked.length > 0 && (
-        <div className="dt-field-grid is-locked">
+        <div className={cx(fieldGrid, "mb-2.5")}>
           {locked.map(f => (
             <FieldCard
               key={f.key}
@@ -213,7 +249,7 @@ export function DataModelDetail({
           ))}
         </div>
       )}
-      <div className="dt-field-grid">
+      <div className={fieldGrid}>
         {free.map(f => (
           <FieldCard
             key={f.key}
@@ -244,21 +280,24 @@ export function DataModelDetail({
           />
         ))}
       </div>
-      {loaded && !fields.length && <p className="dt-empty">No fields yet.</p>}
+      {loaded && !fields.length && <p className={subtle}>No fields yet.</p>}
 
       {(dirty || saving) && (
-        <div className="dt-save-bar" data-save-bar>
+        <div
+          className="sticky bottom-3 z-15 flex items-center gap-3 max-w-[920px] mt-4 py-2.5 px-3.5 border border-border rounded-lg bg-bg shadow-[0_8px_24px_rgb(0_0_0/0.18)] font-semibold"
+          data-save-bar
+        >
           <span>
             <Icon name="edit" /> Unsaved field changes
           </span>
-          {saveError && <span className="dt-save-bar-error">{saveError}</span>}
-          <span className="dt-toolbar-spacer" />
-          <button type="button" className="dt-button" disabled={saving} onClick={() => void discard()}>
+          {saveError && <span className="text-danger font-normal">{saveError}</span>}
+          <span className="flex-1" />
+          <button type="button" className={button} disabled={saving} onClick={() => void discard()}>
             Discard
           </button>
           <button
             type="button"
-            className="dt-button is-primary"
+            className={cx(button, buttonPrimary)}
             data-action="save"
             disabled={saving}
             onClick={() => void save()}
@@ -350,15 +389,13 @@ function FieldCard({
   const linked = field.mirror ? `${field.mirror.collection}.${field.mirror.field}` : ""
   return (
     <div
-      className={[
-        "dt-field-card",
-        WIDE.has(type) ? "is-wide" : "",
-        locked ? "is-locked" : "",
-        dragging ? "is-dragging" : "",
-        over ? "is-over" : "",
-      ]
-        .filter(Boolean)
-        .join(" ")}
+      className={cx(
+        "flex items-center gap-2 py-[9px] pr-1.5 pl-2.5 border rounded-dt",
+        WIDE.has(type) && "col-span-full",
+        locked ? "bg-bg-subtle" : "bg-bg",
+        dragging && "opacity-40",
+        over ? "border-focus shadow-[0_0_0_1px_var(--dt-focus)]" : "border-border"
+      )}
       data-field={field.key}
       draggable={!locked}
       onDragStart={e => {
@@ -376,37 +413,40 @@ function FieldCard({
       }}
       onDragEnd={onDragEnd}
     >
-      {!locked && <Icon name="gripper" className="dt-field-card-grip" />}
-      <div className="dt-field-card-main">
+      {!locked && <Icon name="gripper" className="text-fg-subtle" />}
+      <div className="flex flex-col gap-[3px] flex-1 min-w-0">
         {locked && !field.mirror ? (
-          <span className="dt-field-card-name">{field.key}</span>
+          <span className={fieldName}>{field.key}</span>
         ) : (
           <button
             type="button"
-            className="dt-field-card-name is-button"
+            className={cx(
+              fieldName,
+              "p-0 border-0 bg-transparent text-fg text-left cursor-pointer hover:text-link hover:underline"
+            )}
             title={field.mirror ? `Two-way link with ${linked} — edit it here` : "Edit field"}
             onClick={onEdit}
           >
             {field.key}
           </button>
         )}
-        <span className="dt-field-badges">
-          <span className="dt-mono dt-subtle">{type}</span>
+        <span className="flex flex-wrap items-center gap-1.5">
+          <span className={cx(mono, subtle)}>{type}</span>
           {field.mirror ? (
-            <span className="dt-field-badge is-linked" title={`Two-way link with ${linked} — kept in step for you`}>
+            <span className={cx(badge, badgeAccent)} title={`Two-way link with ${linked} — kept in step for you`}>
               ↔ linked
             </span>
           ) : (
-            locked && <span className="dt-field-badge is-implicit">implicit</span>
+            locked && <span className={cx(badge, badgeImplicit)}>implicit</span>
           )}
-          {field.def["required"] === true && <span className="dt-field-badge is-required">★ required</span>}
-          {hidden && <span className="dt-field-badge">hidden</span>}
+          {field.def["required"] === true && <span className={cx(badge, badgeAccent)}>★ required</span>}
+          {hidden && <span className={cx(badge, badgePlain)}>hidden</span>}
         </span>
       </div>
-      <div ref={menu.anchor} className="dt-popover-anchor">
+      <div ref={menu.anchor} className={popoverAnchor}>
         <button
           type="button"
-          className="dt-icon-button"
+          className={iconButton}
           title="Field actions"
           aria-label={`Actions for ${field.key}`}
           aria-expanded={menu.open}
@@ -415,23 +455,17 @@ function FieldCard({
           <Icon name="ellipsis" />
         </button>
         {menu.open && (
-          <div className="dt-menu" role="menu">
-            <button type="button" role="menuitem" className="dt-menu-item" data-id="edit" onClick={pick(onEdit)}>
+          <div className={menuBox} role="menu">
+            <button type="button" role="menuitem" className={menuItem} data-id="edit" onClick={pick(onEdit)}>
               <Icon name="edit" /> Edit field
             </button>
             {onToggleHidden && (
-              <button
-                type="button"
-                role="menuitem"
-                className="dt-menu-item"
-                data-id="hide"
-                onClick={pick(onToggleHidden)}
-              >
+              <button type="button" role="menuitem" className={menuItem} data-id="hide" onClick={pick(onToggleHidden)}>
                 <Icon name={hidden ? "eye" : "eye-closed"} /> {hidden ? "Show field" : "Hide field"}
               </button>
             )}
             {onRename && (
-              <button type="button" role="menuitem" className="dt-menu-item" data-id="rename" onClick={pick(onRename)}>
+              <button type="button" role="menuitem" className={menuItem} data-id="rename" onClick={pick(onRename)}>
                 <Icon name="symbol-field" /> Rename field…
               </button>
             )}
@@ -439,7 +473,7 @@ function FieldCard({
               <button
                 type="button"
                 role="menuitem"
-                className="dt-menu-item"
+                className={menuItem}
                 data-id="rename-value"
                 onClick={pick(onRenameValue)}
               >
@@ -450,7 +484,7 @@ function FieldCard({
               <button
                 type="button"
                 role="menuitem"
-                className="dt-menu-item is-danger"
+                className={cx(menuItem, menuItemDanger)}
                 data-id="delete"
                 onClick={pick(onRemove)}
               >
@@ -517,14 +551,14 @@ function RenameDialog({
       title={what === "field" ? `Rename ${collection}.${key}` : `Rename a value of ${collection}.${key}`}
       onClose={onClose}
     >
-      <form className="dt-dialog-form" data-rename={what} onSubmit={e => void submit(e)}>
-        <p className="dt-subtle">
+      <form className={dialogForm} data-rename={what} onSubmit={e => void submit(e)}>
+        <p className={subtle}>
           {what === "field"
             ? "Every record, descriptor, view and binding that names the field is rewritten, and committed."
             : "Every record and descriptor holding the value is rewritten, and committed."}
         </p>
         {what === "value" && (
-          <label className="dt-form-row">
+          <label className={formRow}>
             <span>Value</span>
             <Select
               value={from}
@@ -534,37 +568,40 @@ function RenameDialog({
             />
           </label>
         )}
-        <label className="dt-form-row">
+        <label className={formRow}>
           <span>New {what === "field" ? "name" : "value"}</span>
           <input
-            className="dt-input dt-mono"
+            className={cx(input, mono)}
             value={to}
             aria-label={`New ${what}`}
             spellCheck={false}
             onChange={e => setTo(e.target.value)}
           />
         </label>
-        {to.trim() !== from && to.trim() !== "" && problem && <p className="dt-hint is-error">{problem}</p>}
+        {to.trim() !== from && to.trim() !== "" && problem && <p className={hintErr}>{problem}</p>}
         {planned && (
-          <div className="dt-plan" data-plan>
+          <div
+            className="py-2 px-2.5 border border-border rounded-dt bg-bg-subtle [&_p]:m-0 [&_ul]:mt-1 [&_ul]:mx-0 [&_ul]:mb-0 [&_ul]:pl-[18px]"
+            data-plan
+          >
             <p>{renamePlanLine(plan.answer)}</p>
-            <ul className="dt-hint">
+            <ul className={hint}>
               {planFiles(plan.answer).map(f => (
-                <li key={f} className="dt-mono">
+                <li key={f} className={mono}>
                   {f}
                 </li>
               ))}
             </ul>
           </div>
         )}
-        {error && <p className="dt-error">{error}</p>}
-        <div className="dt-dialog-actions">
-          <button type="button" className="dt-button" onClick={onClose}>
+        {error && <p className={errorBox}>{error}</p>}
+        <div className={dialogActions}>
+          <button type="button" className={button} onClick={onClose}>
             Cancel
           </button>
           <button
             type="submit"
-            className="dt-button is-primary"
+            className={cx(button, buttonPrimary)}
             data-action={planned ? "rename" : "preview"}
             disabled={busy || !!problem}
           >
@@ -604,24 +641,24 @@ function DeleteCollectionDialog({
   }
   return (
     <Dialog title="Delete collection?" onClose={onClose}>
-      <form className="dt-dialog-form" data-delete-collection onSubmit={e => void remove(e)}>
-        <p className="dt-subtle">
+      <form className={dialogForm} data-delete-collection onSubmit={e => void remove(e)}>
+        <p className={subtle}>
           This removes the descriptor — the collection leaves the schema. The engine refuses while records remain under
           it (remove them first). Type <code>{collection}</code> to confirm.
         </p>
         <input
-          className="dt-input dt-mono"
+          className={cx(input, mono)}
           value={typed}
           placeholder={collection}
           aria-label="Collection name"
           onChange={e => setTyped(e.target.value)}
         />
-        {error && <p className="dt-error">{error}</p>}
-        <div className="dt-dialog-actions">
-          <button type="button" className="dt-button" onClick={onClose}>
+        {error && <p className={errorBox}>{error}</p>}
+        <div className={dialogActions}>
+          <button type="button" className={button} onClick={onClose}>
             Cancel
           </button>
-          <button type="submit" className="dt-button is-danger" disabled={typed !== collection || busy}>
+          <button type="submit" className={cx(button, buttonDanger)} disabled={typed !== collection || busy}>
             {busy ? "Deleting…" : "Delete descriptor"}
           </button>
         </div>

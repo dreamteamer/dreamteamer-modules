@@ -18,6 +18,25 @@ import { Icon } from "../components/Icon.tsx"
 import { RemoteAccessMark } from "../components/RemoteAccessMark.tsx"
 import { SourceMark } from "../components/SourceMark.tsx"
 import { recordCount, recordsIn, type StackEntry } from "../lib/sources-stack.ts"
+import {
+  button,
+  buttonSmall,
+  cx,
+  error,
+  hint,
+  linkButton,
+  mono,
+  page,
+  pageHead,
+  subtle,
+  toolbar,
+} from "../styles/classes.ts"
+import { num, table } from "./looks.ts"
+
+/** A block of the stack: its heading, its line, its entries. (was dt-sources-block, -heading, -line) */
+const block = "mb-6"
+const heading = "flex items-center gap-1.5 mt-0 mx-0 mb-2 text-[14px]"
+const line = "flex flex-wrap items-center gap-x-3.5 gap-y-1.5 mb-1.5"
 
 export function SourcesPane() {
   const { version } = useApp()
@@ -69,7 +88,7 @@ export function SourcesPane() {
     <>
       {!accessError && <RemoteAccessMark source={e.name} access={access?.[e.name]} local={e.access} />}
       {askable(e.name) && (
-        <button type="button" className="dt-link-button" data-source={e.name} onClick={() => void toggleWho(e.name)}>
+        <button type="button" className={linkButton} data-source={e.name} onClick={() => void toggleWho(e.name)}>
           Who has access
         </button>
       )}
@@ -78,13 +97,13 @@ export function SourcesPane() {
   const who = (name: string) => {
     if (!open[name]) return null
     const m = members[name]
-    if (m === "loading") return <p className="dt-subtle">Asking…</p>
+    if (m === "loading") return <p className={subtle}>Asking…</p>
     if (!m) return null
     return (
-      <div className="dt-remote-members">
-        {m.reason && <p className="dt-subtle">{m.reason}</p>}
+      <div className="mt-1 mx-0 mb-2">
+        {m.reason && <p className={subtle}>{m.reason}</p>}
         {m.members.length > 0 && (
-          <table className="dt-table">
+          <table className={table}>
             <tbody>
               {m.members.map(p => (
                 <tr key={p.kind + p.name} title={p.role}>
@@ -103,22 +122,22 @@ export function SourcesPane() {
   const s = stack.data
 
   return (
-    <section className="dt-page dt-sources">
-      <header className="dt-page-head">
+    <section className={page}>
+      <header className={pageHead}>
         <div>
           <h1>Sources</h1>
-          <p className="dt-subtle">
+          <p className={subtle}>
             Where this workspace reads its records from, top to bottom — the first root to hold an id is the one read.
           </p>
         </div>
         {s && (
-          <div className="dt-toolbar">
-            <span className="dt-hint">
+          <div className={toolbar}>
+            <span className={hint}>
               Remote access is asked live, as the account each remote pushes as — never stored.
             </span>
             <button
               type="button"
-              className="dt-button is-small"
+              className={cx(button, buttonSmall)}
               disabled={checking}
               onClick={() => void loadAccess(true)}
             >
@@ -127,45 +146,46 @@ export function SourcesPane() {
           </div>
         )}
       </header>
-      {accessError && <p className="dt-error">remote access could not be read</p>}
-      {stack.error && <p className="dt-error">{stack.error}</p>}
-      {!s && !stack.error && <p className="dt-subtle">Loading…</p>}
+      {accessError && <p className={error}>remote access could not be read</p>}
+      {stack.error && <p className={error}>{stack.error}</p>}
+      {!s && !stack.error && <p className={subtle}>Loading…</p>}
       {s && (
         <>
-          <section className="dt-sources-block" data-kind="own">
-            <h2 className="dt-sources-heading">
-              <Icon name="root-folder" /> {s.workspace.name} <span className="dt-subtle">this workspace</span>
+          <section className={block} data-kind="own">
+            <h2 className={heading}>
+              <Icon name="root-folder" /> {s.workspace.name}{" "}
+              <span className={cx(subtle, "font-normal")}>this workspace</span>
             </h2>
-            <div className="dt-sources-line">{remote(s.workspace)}</div>
+            <div className={line}>{remote(s.workspace)}</div>
             {who(s.workspace.name)}
             {s.workspace.collections.length ? (
-              <table className="dt-table">
+              <table className={table}>
                 <thead>
                   <tr>
                     <th>Collection</th>
                     <th>Folder</th>
-                    <th className="is-num">Records</th>
+                    <th className={num}>Records</th>
                   </tr>
                 </thead>
                 <tbody>
                   {s.workspace.collections.map(c => (
                     <tr key={c.collection}>
                       <td>{c.collection}</td>
-                      <td className="dt-mono dt-subtle">{c.path}</td>
-                      <td className="is-num">{c.count}</td>
+                      <td className={cx(mono, subtle)}>{c.path}</td>
+                      <td className={num}>{c.count}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             ) : (
-              <p className="dt-subtle">No collection keeps records in the workspace's own folder.</p>
+              <p className={subtle}>No collection keeps records in the workspace's own folder.</p>
             )}
           </section>
 
-          <section className="dt-sources-block" data-kind="layers">
-            <h2 className="dt-sources-heading">
+          <section className={block} data-kind="layers">
+            <h2 className={heading}>
               <Icon name="layers" /> Record layers{" "}
-              <span className="dt-subtle">{s.layers.length || "none declared"}</span>
+              <span className={cx(subtle, "font-normal")}>{s.layers.length || "none declared"}</span>
             </h2>
             {s.layers.map(layer => (
               <Entry
@@ -175,11 +195,11 @@ export function SourcesPane() {
                 remote={remote(layer)}
                 who={who(layer.name)}
               >
-                <span className="dt-mono dt-subtle">{layer.repo}</span>
+                <span className={cx(mono, subtle)}>{layer.repo}</span>
                 {layer.installed ? (
-                  <span className="dt-subtle">{recordCount(recordsIn(layer), " read")}</span>
+                  <span className={subtle}>{recordCount(recordsIn(layer), " read")}</span>
                 ) : (
-                  <span className="dt-warning-text">
+                  <span className="text-warning">
                     not installed — run <code>dreamteamer install</code>
                   </span>
                 )}
@@ -187,15 +207,15 @@ export function SourcesPane() {
             ))}
           </section>
 
-          <section className="dt-sources-block" data-kind="modules">
-            <h2 className="dt-sources-heading">
+          <section className={block} data-kind="modules">
+            <h2 className={heading}>
               <Icon name="package" /> Module-owned collections{" "}
-              <span className="dt-subtle">{s.modules.length || "none"}</span>
+              <span className={cx(subtle, "font-normal")}>{s.modules.length || "none"}</span>
             </h2>
             {s.modules.map(mod => (
               <Entry key={mod.name} entry={mod} remote={mod.via !== "package" ? remote(mod) : null} who={who(mod.name)}>
-                <span className="dt-mono dt-subtle">{mod.repo === "." ? "commits to this workspace" : mod.repo}</span>
-                <span className="dt-subtle">{recordCount(recordsIn(mod))}</span>
+                <span className={cx(mono, subtle)}>{mod.repo === "." ? "commits to this workspace" : mod.repo}</span>
+                <span className={subtle}>{recordCount(recordsIn(mod))}</span>
               </Entry>
             ))}
           </section>
@@ -219,8 +239,11 @@ function Entry({
   children: ReactNode
 }) {
   return (
-    <article className={`dt-sources-entry${absent ? " is-absent" : ""}`} data-source={entry.name}>
-      <div className="dt-sources-line">
+    <article
+      className={cx("mb-3 py-2.5 px-3 border border-border rounded-dt [&_p]:my-1", absent && "opacity-60")}
+      data-source={entry.name}
+    >
+      <div className={line}>
         <SourceMark
           name={entry.name}
           record={entry.record}
@@ -233,19 +256,19 @@ function Entry({
         {remote}
       </div>
       {who}
-      {entry.url && <p className="dt-mono dt-subtle">{entry.url}</p>}
+      {entry.url && <p className={cx(mono, subtle)}>{entry.url}</p>}
       {entry.collections.length ? (
-        <ul className="dt-sources-list">
+        <ul className="mt-1 mx-0 mb-0 p-0 list-none [&_li]:flex [&_li]:gap-3 [&_li]:py-0.5 [&_li]:px-0">
           {entry.collections.map(c => (
             <li key={c.collection}>
               <span>{c.collection}</span>
-              <span className="dt-mono dt-subtle">{c.path}</span>
-              {!absent && <span className="is-num">{c.count}</span>}
+              <span className={cx(mono, subtle)}>{c.path}</span>
+              {!absent && <span className="ml-auto tabular-nums">{c.count}</span>}
             </li>
           ))}
         </ul>
       ) : (
-        <p className="dt-subtle">
+        <p className={subtle}>
           Contributes to no compiled collection — its <code>records</code> list names none this workspace has.
         </p>
       )}

@@ -145,6 +145,10 @@
     font-weight: 600;
     margin: 0;
   }
+  /* a button reads in the page's font; a utility may still set its size or weight */
+  button {
+    font: inherit;
+  }
   input,
   select,
   textarea {

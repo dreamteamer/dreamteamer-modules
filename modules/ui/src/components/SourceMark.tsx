@@ -21,6 +21,15 @@ import {
 import { useApp } from "../app-context.tsx"
 import { Icon } from "./Icon.tsx"
 import { Link } from "./Link.tsx"
+import { cx, subtle } from "../styles/classes.ts"
+
+/** The colour dot. (was dt-source-dot) */
+const sourceDot = "inline-block flex-none w-2 h-2 mr-1 rounded-full"
+/** The stub note's row of items. (was dt-stub-note) */
+const sourceCell = "inline-flex flex-wrap items-center gap-2 min-w-0"
+/** One dashed pill of the stub note. (was dt-stub-item) */
+const stubItem =
+  "inline-flex flex-wrap items-center gap-x-1 px-1.5 border border-dashed border-border rounded-[10px] text-small"
 
 export function SourceMark({
   name,
@@ -41,14 +50,14 @@ export function SourceMark({
   const at = context === "record" && record ? splitRef(record, schema.names) : null
   return (
     <span
-      className="dt-source-mark"
+      className="inline-flex items-center gap-[5px] whitespace-nowrap text-fg-subtle"
       title={markTitle(name, { via, access, note, record })}
       data-source={name}
       data-access={access}
     >
-      <span className="dt-source-dot" style={{ background: sourceColor(name) }} aria-hidden="true" />
+      <span className={sourceDot} style={{ background: sourceColor(name) }} aria-hidden="true" />
       {at ? <Link to={recordRoute(at.collection, at.id)}>{name}</Link> : <span>{name}</span>}
-      {access && <Icon name={ACCESS_GLYPH[access]} className="dt-source-access" />}
+      {access && <Icon name={ACCESS_GLYPH[access]} className="opacity-85" />}
     </span>
   )
 }
@@ -66,10 +75,10 @@ export function StubNote({
   sources?: readonly SourceEntry[]
 }) {
   return (
-    <span className="dt-stub-note" data-stub-note>
+    <span className={sourceCell} data-stub-note>
       {self && (
         <span
-          className="dt-stub-item dt-subtle"
+          className={cx(stubItem, subtle)}
           title="This record is a stub (stub: true): any non-stub of its id, in any root, is read instead — none is read here"
         >
           {SELF_STUB_WORDS}
@@ -80,7 +89,7 @@ export function StubNote({
         return (
           <span
             key={name}
-            className="dt-stub-item"
+            className={stubItem}
             data-stub-root={name}
             title={
               self
@@ -89,7 +98,7 @@ export function StubNote({
             }
           >
             <SourceMark name={name} access={entry?.access} via={entry?.via} />
-            <span className="dt-subtle">{self ? ALSO_STUB_WORDS : yieldsWords(winner)}</span>
+            <span className={subtle}>{self ? ALSO_STUB_WORDS : yieldsWords(winner)}</span>
           </span>
         )
       })}
