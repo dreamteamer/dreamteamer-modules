@@ -152,6 +152,27 @@ class StoreCase(unittest.TestCase):
     def confirm(self, *confs, th=TH, st=None):
         return enrol.confirm(st or self.store, MODEL, th, list(confs))
 
+    def strip(self, model=MODEL, scramble=True):
+        """The prints reduced to their inputs (identity and confirmations), sources in a scrambled order."""
+        for p in self.store.prints(model.id, model=model):
+            p["vector"], p["trust"], p["seconds"] = None, "proposing", 0.0
+            srcs = []
+            for s in p["sources"]:
+                s = dict(s)
+                if s.get("status") not in ("reseeded", "corrected"):
+                    s.pop("status", None), s.pop("reason", None)
+                srcs.append(s)
+            p["sources"] = list(reversed(srcs)) if scramble else srcs
+            self.store.write_print(model.id, p)
+
+    def assert_a_replay_reproduces_it(self):
+        """The prints as live answers left them equal a replay from their inputs alone."""
+        live = {k: essence(v) for k, v in self.prints().items()}
+        self.strip()
+        rep = enrol.replay(self.store, MODEL, TH)
+        self.assertEqual({k: essence(v) for k, v in self.prints().items()}, live)
+        return rep
+
     def two_dana(self, secs=(120.0, 120.0)):
         """Two clean recordings of Dana with Sam, each confirmed: a trusted print."""
         self.rec("r1", {"speaker_0": label(DANA, "r1-dana", seconds=secs[0]), "speaker_1": label(SAM, "r1-sam")})
@@ -356,19 +377,33 @@ class Admission(StoreCase):
         self.assertEqual([s["status"] for s in p["sources"]], ["admitted", "admitted"])
         self.assertEqual(p["trust"], "proposing")
 
-    def test_a_label_kept_out_is_not_stored_and_says_why(self):
+    def kept_held(self, rep, check):
+        """Review round 1 (`kept-out-confirmations-never-judged-again`): a confirmation failing a check is
+        stored as a `held` source with its check and reason, out of the vector, and listed as kept out."""
+        p = self.print_of(DANA_P)
+        self.assertIsNotNone(p)
+        self.assertEqual([s["status"] for s in p["sources"]], ["held"])
+        self.assertIn(f"check {check}:", p["sources"][0]["reason"])
+        self.assertIsNone(p["vector"])
+        self.assertEqual(p["trust"], "proposing")
+        self.assertEqual([s["status"] for s in rep["stored"]], ["held"])
+        self.assertEqual([c["check"] for c in rep["kept_out"][0]["checks"]], [check])
+        self.assertEqual(rep["kept_out"][0]["person"], DANA_P["person"])
+        self.assertEqual(rep["kept_out"][0]["print"], p["id"])
+        return p
+
+    def test_a_label_failing_a_check_is_kept_held_out_of_the_vector_and_says_why(self):
         self.rec("r1", {"speaker_0": label(DANA, "r1-dana", seconds=12.0), "speaker_1": label(SAM, "r1-sam")})
         rep = self.confirm(conf("r1", "speaker_0", DANA_P, at(1)))
-        self.assertIsNone(self.print_of(DANA_P))
-        self.assertEqual(rep["stored"], [])
-        self.assertEqual([c["check"] for c in rep["kept_out"][0]["checks"]], [3])
-        self.assertEqual(rep["kept_out"][0]["person"], DANA_P["person"])
+        self.kept_held(rep, 3)
 
-    def test_the_user_saying_different_keeps_the_label_out(self):
+    def test_the_user_saying_different_keeps_the_label_held_in_every_replay(self):
         self.rec("r1", {"speaker_0": label(DANA, "r1-dana"), "speaker_1": label(SAM, "r1-sam")})
         rep = self.confirm(conf("r1", "speaker_0", DANA_P, at(1), different=True))
-        self.assertIsNone(self.print_of(DANA_P))
-        self.assertEqual([c["check"] for c in rep["kept_out"][0]["checks"]], [10])
+        p = self.kept_held(rep, 10)
+        self.assertIs(p["sources"][0]["different"], True)
+        enrol.replay(self.store, MODEL, TH)
+        self.assertEqual(essence(self.print_of(DANA_P)), essence(p))
 
     def test_a_person_in_never_stores_nothing(self):
         self.rec("r1", {"speaker_0": label(DANA, "r1-dana"), "speaker_1": label(SAM, "r1-sam")})
@@ -381,14 +416,22 @@ class Admission(StoreCase):
         mixed = vp_synth.mixed(DANA, TOM, 40, 0.4, seed="r1-mixed", noise=0.05)
         self.rec("r1", {"speaker_0": label(None, None, vectors=mixed), "speaker_1": label(SAM, "r1-sam")})
         rep = self.confirm(conf("r1", "speaker_0", DANA_P, at(1)))
-        self.assertIsNone(self.print_of(DANA_P))
-        self.assertEqual([c["check"] for c in rep["kept_out"][0]["checks"]], [5])
+        self.kept_held(rep, 5)
 
     def test_a_long_turn_never_teaches(self):
         self.rec("r1", {"speaker_0": label(DANA, "r1-dana", longest=400.0), "speaker_1": label(SAM, "r1-sam")})
         rep = self.confirm(conf("r1", "speaker_0", DANA_P, at(1)))
+        self.kept_held(rep, 4)
+
+    def test_a_label_with_no_windows_is_kept_out_and_not_stored(self):
+        """Nothing to judge again: a replay drops such a source, so a live answer does not store it."""
+        self.rec("r1", {"speaker_0": label(DANA, "r1-dana"), "speaker_1": label(SAM, "r1-sam")})
+        self.store.remove_windows(MODEL.id, audio_of("r1"), diar_of("r1"), "speaker_0")
+        rep = self.confirm(conf("r1", "speaker_0", DANA_P, at(1)))
         self.assertIsNone(self.print_of(DANA_P))
-        self.assertEqual([c["check"] for c in rep["kept_out"][0]["checks"]], [4])
+        self.assertEqual(rep["stored"], [])
+        self.assertEqual([c["check"] for c in rep["kept_out"][0]["checks"]], [3])
+        self.assertIsNone(rep["kept_out"][0]["print"])
 
     def test_confirming_the_same_label_again_adds_nothing(self):
         self.two_dana()
@@ -456,10 +499,10 @@ class Uncalibrated(StoreCase):
         self.assertEqual([s["status"] for s in p["sources"]], ["admitted", "admitted"])
         self.assertEqual(p["trust"], "trusted")
 
-    def test_an_uncalibrated_confirmation_failing_another_check_is_not_stored(self):
+    def test_an_uncalibrated_confirmation_failing_another_check_is_stored_held(self):
         self.rec("r1", {"speaker_0": label(DANA, "r1-dana", seconds=10.0), "speaker_1": label(SAM, "r1-sam")})
         rep = self.confirm(conf("r1", "speaker_0", DANA_P, at(1)), th=None)
-        self.assertIsNone(self.print_of(DANA_P))
+        self.assertEqual([s["status"] for s in self.print_of(DANA_P)["sources"]], ["held"])
         self.assertEqual([c["check"] for c in rep["kept_out"][0]["checks"]], [2, 3])
 
 
@@ -472,19 +515,6 @@ class Replay(StoreCase):
         self.confirm(conf("r1", "speaker_0", DANA_P, at(1)))
         self.confirm(conf("r2", "speaker_1", SAM_P, at(2)), conf("r2", "speaker_0", DANA_P, at(2)))
         self.confirm(conf("r3", "speaker_1", SAM_P, at(3)))
-
-    def strip(self, model=MODEL, scramble=True):
-        """The prints reduced to their inputs (identity and confirmations), sources in a scrambled order."""
-        for p in self.store.prints(model.id, model=model):
-            p["vector"], p["trust"], p["seconds"] = None, "proposing", 0.0
-            srcs = []
-            for s in p["sources"]:
-                s = dict(s)
-                if s.get("status") not in ("reseeded", "corrected"):
-                    s.pop("status", None), s.pop("reason", None)
-                srcs.append(s)
-            p["sources"] = list(reversed(srcs)) if scramble else srcs
-            self.store.write_print(model.id, p)
 
     def test_replay_twice_gives_identical_prints_and_statuses(self):
         self.build()
@@ -720,7 +750,8 @@ class Corrections(StoreCase):
         rep3 = self.confirm(conf("r3", "speaker_1", SAM_P, at(3)))
         self.assertEqual([s["status"] for s in self.print_of(DANA_P)["sources"]], ["admitted", "held"])
         self.assertEqual([c["check"] for c in rep3["kept_out"][0]["checks"]], [8])
-        self.assertIsNone(self.print_of(SAM_P))
+        self.assertEqual([(s["audio"], s["status"]) for s in self.print_of(SAM_P)["sources"]],
+                         [(audio_of("r3"), "held")])                 # kept, so a later replay judges it again
 
         pid = self.print_of(DANA_P)["id"]
         rep = enrol.correct_confirmed(self.store, MODEL, TH, ref("r1", "speaker_0"), pid, SAM_P, at=at(4))
@@ -729,13 +760,13 @@ class Corrections(StoreCase):
                          [(audio_of("r1"), "corrected"), (audio_of("r2"), "admitted")])
         self.assertGreater(vec.cos(dana["vector"], DANA), 0.99)
         sams = self.print_of(SAM_P)
-        self.assertEqual([(s["audio"], s["status"]) for s in sams["sources"]], [(audio_of("r1"), "admitted")])
+        # r3, kept out by check 8 against the mistaken print, now teaches without being confirmed again
+        self.assertEqual([(s["audio"], s["status"]) for s in sams["sources"]],
+                         [(audio_of("r3"), "admitted"), (audio_of("r1"), "admitted")])
+        self.assertEqual(sams["trust"], "trusted")
         self.assertEqual(rep["corrected"]["print"], pid)
         self.assertIn(pid, rep["changed"])
         self.assertIn(sams["id"], rep["changed"])
-
-        self.confirm(conf("r3", "speaker_1", SAM_P, at(5)))
-        self.assertEqual(self.print_of(SAM_P)["trust"], "trusted")
 
         before = {k: essence(v) for k, v in self.prints().items()}
         enrol.replay(self.store, MODEL, TH)                              # the correction is an input of every replay
@@ -810,6 +841,219 @@ class Corrections(StoreCase):
         self.rec("r4", {"speaker_0": label(DANA, "r4-dana"), "speaker_1": label(SAM, "r4-sam")})
         self.confirm(conf("r4", "speaker_0", DANA_P, at(4)))
         self.assertTrue(self.print_of(DANA_P)["auto"])
+
+    def test_the_hold_once_met_is_cleared_so_a_later_forget_recording_leaves_auto_on(self):
+        """Review round 1 (`auto-hold-never-cleared`): one new source and a passed trust test met the hold;
+        removing one of the three recordings later leaves two admitted, trusted, no negative: `auto` stays."""
+        self.test_a_negative_whose_windows_are_gone_is_dropped_and_auto_waits_for_a_new_source()
+        p = self.print_of(DANA_P)
+        self.assertNotIn("auto_hold", p)
+        os.remove(self.store.signature_path(MODEL.id, audio_of("r2"), diar_of("r2")))   # forget-recording r2
+        enrol.replay(self.store, MODEL, TH)
+        p = self.print_of(DANA_P)
+        self.assertEqual([(s["audio"], s["status"]) for s in p["sources"]],
+                         [(audio_of("r1"), "admitted"), (audio_of("r4"), "admitted")])
+        self.assertEqual(p["trust"], "trusted")
+        self.assertTrue(p["auto"])
+
+
+# -- a recording teaches a print once (review round 1, `one-recording-teaches-a-print-twice`) ------------------
+DANA_B = {"workspace": WS_B, "person": "contacts/d-oren", "name": "Dana Oren"}
+
+
+def rediarised(name, diar, labels, hint=2):
+    """Another diarisation of the SAME audio as `name` (a transcription run again)."""
+    sig = signature(name, labels, hint=hint)
+    sig["diarization"]["id"] = diar
+    return sig
+
+
+def conf_diar(name, diar, lab, who, when):
+    c = conf(name, lab, who, when)
+    c["diarization"] = diar
+    return c
+
+
+class OneRecordingOnce(StoreCase):
+    def test_two_diarisations_of_one_recording_teach_a_print_once(self):
+        self.rec("r1", {"speaker_0": label(DANA, "r1a-dana", seconds=40.0), "speaker_1": label(SAM, "r1a-sam")})
+        self.put(rediarised("r1", "bbbbbbbbbbbb", {"speaker_0": label(SAM, "r1b-sam"),
+                                                   "speaker_1": label(DANA, "r1b-dana", seconds=40.0)}))
+        self.confirm(conf("r1", "speaker_0", DANA_P, at(1)))
+        rep = self.confirm(conf_diar("r1", "bbbbbbbbbbbb", "speaker_1", DANA_P, at(2)))
+        p = self.print_of(DANA_P)
+        self.assertEqual([(s["diarization"], s["status"]) for s in p["sources"]],
+                         [(diar_of("r1"), "admitted"), ("bbbbbbbbbbbb", "held")])
+        self.assertIn("same recording already teaches", p["sources"][1]["reason"])
+        self.assertEqual(rep["stored"][0]["status"], "held")
+        self.assertEqual(p["trust"], "proposing")
+        self.assertEqual(p["seconds"], 40.0)
+        self.assert_a_replay_reproduces_it()
+
+    def test_one_label_confirmed_from_two_workspaces_of_one_print_teaches_once(self):
+        """A print known in both workspaces (as `prints link` leaves it): the same label confirmed in each."""
+        self.rec("r1", {"speaker_0": label(DANA, "r1-dana", seconds=40.0), "speaker_1": label(SAM, "r1-sam")})
+        self.confirm(conf("r1", "speaker_0", DANA_P, at(1)))
+        p = self.print_of(DANA_P)
+        p["known_as"].append(dict(DANA_B))
+        self.store.write_print(MODEL.id, p)
+        self.confirm(conf("r1", "speaker_0", DANA_B, at(2)))
+        p = self.print_of(DANA_P)
+        self.assertEqual([(s["workspace"], s["status"]) for s in p["sources"]], [(WS, "admitted"), (WS_B, "held")])
+        self.assertEqual(p["trust"], "proposing")
+        self.assertEqual(p["seconds"], 40.0)
+        self.assert_a_replay_reproduces_it()
+
+    def test_holds_that_say_nothing_about_the_first_source_give_no_reseed_notice(self):
+        """Two more diarisations of the first recording, and two labels kept by check 3, are held; none of
+        them scored against the print, so the reseed notice does not come."""
+        self.rec("r1", {"speaker_0": label(DANA, "r1a-dana", seconds=40.0), "speaker_1": label(SAM, "r1a-sam")})
+        for d in ("bbbbbbbbbbbb", "cccccccccccc"):
+            self.put(rediarised("r1", d, {"speaker_0": label(DANA, f"r1{d[0]}-dana", seconds=40.0),
+                                          "speaker_1": label(SAM, f"r1{d[0]}-sam")}))
+        for i in (2, 3):
+            self.rec(f"r{i}", {"speaker_0": label(DANA, f"r{i}-dana", seconds=12.0), "speaker_1": label(SAM, f"r{i}-sam")})
+        reps = [self.confirm(conf("r1", "speaker_0", DANA_P, at(1))),
+                self.confirm(conf_diar("r1", "bbbbbbbbbbbb", "speaker_0", DANA_P, at(2))),
+                self.confirm(conf_diar("r1", "cccccccccccc", "speaker_0", DANA_P, at(3))),
+                self.confirm(conf("r2", "speaker_0", DANA_P, at(4))),
+                self.confirm(conf("r3", "speaker_0", DANA_P, at(5)))]
+        p = self.print_of(DANA_P)
+        self.assertEqual([s["status"] for s in p["sources"]], ["admitted", "held", "held", "held", "held"])
+        for rep in reps:
+            self.assertEqual([n for n in rep["notices"] if n["kind"] == "reseed"], [])
+            self.assertEqual(rep["stuck"], [])
+
+
+# -- every confirmation is kept and judged again (review round 1, `kept-out-confirmations-never-judged-again`) --
+class KeptAndJudgedAgain(StoreCase):
+    def test_a_forget_elsewhere_lets_a_confirmation_kept_by_check_8_teach(self):
+        self.rec("r1", {"speaker_0": label(SAM, "r1-sam"), "speaker_1": label(TOM, "r1-tom")})
+        self.rec("r3", {"speaker_0": label(TOM, "r3-tom"), "speaker_1": label(SAM, "r3-sam")})
+        self.confirm(conf("r1", "speaker_0", DANA_P, at(1)))            # Sam's voice, confirmed as Dana
+        rep = self.confirm(conf("r3", "speaker_1", SAM_P, at(3)))
+        self.assertEqual([c["check"] for c in rep["kept_out"][0]["checks"]], [8])
+        dana = self.print_of(DANA_P)
+        # what `prints forget` (task 10) does to the store, then its replay
+        os.remove(self.store.print_path(MODEL.id, dana["id"]))
+        self.store.remove_windows(MODEL.id, audio_of("r1"), diar_of("r1"), "speaker_0")
+        self.store.add_forgotten({"print": dana["id"], "known_as": dana["known_as"], "at": at(4)})
+        enrol.replay(self.store, MODEL, TH)
+        self.assertEqual([(s["audio"], s["status"]) for s in self.print_of(SAM_P)["sources"]],
+                         [(audio_of("r3"), "admitted")])
+
+    def test_a_new_calibration_lets_a_confirmation_kept_by_check_6_teach(self):
+        alike = plane(DANA, SAM, 25.0)                                  # cos 0.91, above same 0.75
+        self.rec("r1", {"speaker_0": label(DANA, "r1-dana"), "speaker_1": label(alike, "r1-alike")})
+        rep = self.confirm(conf("r1", "speaker_0", DANA_P, at(1)))
+        self.assertEqual([c["check"] for c in rep["kept_out"][0]["checks"]], [6])
+        enrol.replay(self.store, MODEL, dict(TH, same=0.95))
+        self.assertEqual([s["status"] for s in self.print_of(DANA_P)["sources"]], ["admitted"])
+
+
+# -- one person in two workspaces (design section 8; review round 1, `one-person-two-workspaces-two-prints`) ---
+class AcrossWorkspaces(StoreCase):
+    def test_an_equal_name_joins_the_other_workspaces_print_and_says_recognised(self):
+        a = self.two_dana()
+        self.rec("r3", {"speaker_0": label(DANA, "r3-dana"), "speaker_1": label(SAM, "r3-sam")})
+        rep = self.confirm(conf("r3", "speaker_0", DANA_B, at(3)))
+        p = self.print_of(DANA_B)
+        self.assertEqual(p["id"], a["id"])
+        self.assertEqual([(k["workspace"], k["person"], k["name"]) for k in p["known_as"]],
+                         [(WS, DANA_P["person"], "Dana Oren"), (WS_B, DANA_B["person"], "Dana Oren")])
+        self.assertEqual([(s["workspace"], s["status"]) for s in p["sources"]],
+                         [(WS, "admitted"), (WS, "admitted"), (WS_B, "admitted")])
+        seen = [n for n in rep["notices"] if n["kind"] == "recognised"]
+        self.assertEqual(len(seen), 1)
+        self.assertEqual(seen[0]["text"], "recognised from your other workspace")
+        self.assertEqual((seen[0]["workspace"], seen[0]["person"], seen[0]["print"]), (WS_B, DANA_B["person"], a["id"]))
+        rep = self.confirm(conf("r2", "speaker_0", DANA_B, at(4)))     # the shared recording, now from B
+        self.assertEqual(rep["stored"][0]["status"], "held")
+        self.assertEqual(len(self.prints()), 1)
+        self.assert_a_replay_reproduces_it()
+
+    def test_a_different_name_keeps_its_own_print_and_names_nothing_from_elsewhere(self):
+        a = self.two_dana()
+        d_oren = dict(DANA_B, name="D. Oren")
+        self.rec("r3", {"speaker_0": label(DANA, "r3-dana"), "speaker_1": label(SAM, "r3-sam")})
+        rep = self.confirm(conf("r3", "speaker_0", d_oren, at(3)))
+        b = self.print_of(d_oren)
+        self.assertNotEqual(b["id"], a["id"])
+        self.assertEqual(essence(self.print_of(DANA_P)), essence(a))
+        self.assertEqual([n["kind"] for n in rep["notices"]], ["resembles"])
+        self.assertIn("resembles a voice print from another workspace", rep["notices"][0]["text"])
+        self.assertNotIn("Dana Oren", json.dumps(rep))
+        # the shared recording confirmed in B is not judged against A's print, which holds this very label
+        rep = self.confirm(conf("r2", "speaker_0", d_oren, at(4)))
+        self.assertEqual([s["status"] for s in self.print_of(d_oren)["sources"]], ["admitted", "admitted"])
+        self.assertEqual(self.print_of(d_oren)["trust"], "trusted")
+        self.assertNotIn("Dana Oren", json.dumps(rep))
+        self.assert_a_replay_reproduces_it()
+
+    def test_a_join_counts_from_its_own_confirmation_in_every_replay(self):
+        """B's earlier confirmation of another person is not checked against the joined print (check 8),
+        live or in a replay, because B did not know that print yet."""
+        self.two_dana()
+        sam_like = plane(DANA, SAM, 30.0)                              # 0.87 to Dana: above accept
+        sam_b = dict(SAM_P, workspace=WS_B)
+        self.rec("r5", {"speaker_0": label(sam_like, "r5-sam"), "speaker_1": label(TOM, "r5-tom")})
+        self.rec("r3", {"speaker_0": label(DANA, "r3-dana"), "speaker_1": label(TOM, "r3-tom")})
+        self.confirm(conf("r5", "speaker_0", sam_b, at(3)))
+        self.confirm(conf("r3", "speaker_0", DANA_B, at(4)))
+        self.assertEqual(self.print_of(DANA_B)["id"], self.print_of(DANA_P)["id"])
+        self.assertEqual([s["status"] for s in self.print_of(sam_b)["sources"]], ["admitted"])
+        self.assert_a_replay_reproduces_it()
+
+
+# -- a live answer judges only what is new (review round 1, `every-answer-replays-every-source`) --------------
+class LiveAnswer(StoreCase):
+    def bullet_4_case(self):
+        """Admission bullet 4 and check 8 both read other prints; the second and third answers sort after
+        every stored source."""
+        sam_b = dict(SAM_P, workspace=WS_B)
+        samx = plane(DANA, SAM, 78.0)
+        close = plane(DANA, SAM, 35.0)
+        self.rec("r1", {"speaker_0": label(DANA, "r1-dana", noise=0.01), "speaker_1": label(TOM, "r1-tom")})
+        self.rec("r2", {"speaker_0": label(samx, "r2-samx", noise=0.01), "speaker_1": label(TOM, "r2-tom")})
+        self.rec("r3", {"speaker_0": label(close, "r3-close", noise=0.01),
+                        "speaker_1": label(samx, "r3-samx", noise=0.01)})
+        self.rec("r4", {"speaker_0": label(DANA, "r4-dana"), "speaker_1": label(TOM, "r4-tom")})
+        self.rec("r6", {"speaker_0": label(TOM, "r6-tom"), "speaker_1": label(PRIYA, "r6-priya")})
+        reps = [self.confirm(conf("r1", "speaker_0", DANA_P, at(1)), conf("r2", "speaker_0", sam_b, at(1)),
+                             conf("r6", "speaker_1", PRIYA_P, at(1))),
+                self.confirm(conf("r3", "speaker_0", DANA_P, at(3)), conf("r3", "speaker_1", sam_b, at(3))),
+                self.confirm(conf("r4", "speaker_0", DANA_P, at(4)), conf("r4", "speaker_1", TOM_P, at(4)))]
+        return reps
+
+    def test_an_answer_after_every_stored_source_judges_only_it_and_equals_a_replay(self):
+        reps = self.bullet_4_case()
+        self.assertEqual([r["pass"] for r in reps], ["full", "fast", "fast"])
+        dana = self.print_of(DANA_P)
+        self.assertEqual([s["status"] for s in dana["sources"]], ["admitted", "held", "admitted"])
+        self.assertIn("another voice print", dana["sources"][1]["reason"])
+        self.assertEqual(dana["trust"], "trusted")
+        rep = self.assert_a_replay_reproduces_it()
+        self.assertEqual(rep["pass"], "full")
+
+    def test_an_answer_before_a_stored_source_replays_everything(self):
+        self.bullet_4_case()
+        self.rec("r7", {"speaker_0": label(DANA, "r7-dana"), "speaker_1": label(TOM, "r7-tom")})
+        rep = self.confirm(conf("r7", "speaker_0", DANA_P, at(2)))
+        self.assertEqual(rep["pass"], "full")
+        self.assert_a_replay_reproduces_it()
+
+    def test_a_print_written_outside_a_pass_or_other_thresholds_replay_everything(self):
+        reps = self.bullet_4_case()
+        dana = self.print_of(DANA_P)
+        enrol.correct_provisional(self.store, MODEL, ref("r6", "speaker_0"), dana["id"])
+        self.rec("r8", {"speaker_0": label(DANA, "r8-dana"), "speaker_1": label(TOM, "r8-tom")})
+        self.assertEqual(self.confirm(conf("r8", "speaker_0", DANA_P, at(8)))["pass"], "full")
+        self.rec("r9", {"speaker_0": label(DANA, "r9-dana"), "speaker_1": label(TOM, "r9-tom")})
+        self.assertEqual(self.confirm(conf("r9", "speaker_0", DANA_P, at(9)))["pass"], "fast")
+        self.rec("r10", {"speaker_0": label(DANA, "r10-dana"), "speaker_1": label(TOM, "r10-tom")})
+        self.assertEqual(self.confirm(conf("r10", "speaker_0", DANA_P, at(10)), th=dict(TH, margin=0.12))["pass"],
+                         "full")
+        self.assertEqual(len(reps), 3)
 
 
 # -- what a print holds -----------------------------------------------------------------------------------------

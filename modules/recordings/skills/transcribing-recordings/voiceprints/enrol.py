@@ -9,14 +9,36 @@ A print's `sources` are the confirmation log. Each source is
 `status` is either COMPUTED by the replay — `admitted`, `held`, `uncalibrated` (ruling D4: the
 confirmation failed only check 2) — and judged again from the start by every replay, or a person's
 EXCLUSION stored as an input to every replay — `reseeded` (`prints reseed`) and `corrected` (a confirmed
-name corrected to another person); an exclusion also carries `at`. A source holds a person's reference,
-never their name: the only name in a print is in `known_as`.
+name corrected to another person); an exclusion also carries `at`. A source the user said holds
+different people also carries `different: true`, so every replay keeps check 10. A source holds a
+person's reference, never their name: the only name in a print is in `known_as`.
+
+Every confirmation is a source (review round 1), except one of a person in never.json (check 1: nothing
+of them is stored), one made before a matching forgotten.json entry, and one whose label has no voice
+windows (a replay drops it). A confirmation failing any other check is `held` with its checks and
+reasons, out of the vector, and every replay judges it again, so a correction, a forget or a calibration
+elsewhere can later let it teach. A recording (its audio key) teaches a print once: a second source of
+the same audio — another diarisation, or the same label confirmed from a second workspace of the print —
+is `held` ("the same recording already teaches this voice print").
+
+One person in two workspaces (design section 8): a confirmation in workspace B of a person B has no
+print for, whose label passes the label checks and reaches `accept` against a print B does not know, joins
+that print when B's name equals that print's name elsewhere — B's `known_as` entry is added with `since`
+(the joining confirmation's instant; the entry counts from that confirmation on, in every replay) and the
+report says `recognised from your other workspace` — and otherwise starts B's own print and reports only
+that the voice resembles a print from another workspace. No report names anything from elsewhere.
 
 The replay (`replay`, ruling D6) is one pass over every source of every print of a model, in the total
 order `(confirmed, workspace, audio, diarization, label)` (person last, as a tie that should never
 arise); checks 7 and 8 and admission bullet 4 read the other prints as they stand at that point of the
 pass. `confirm` runs the same pass with the new confirmations in it, so a live answer and a rebuild from
-nothing give the same prints and statuses. Both hold `Store.lock(model id)` (ruling D3).
+nothing give the same prints and statuses. When every new confirmation sorts after every stored source
+and the store is as the last pass left it (`<model>/enrolment.json` holds a digest of the thresholds,
+never.json, forgotten.json and the prints that pass wrote), `confirm` judges only the new confirmations
+against the prints as they stand: a computed status depends only on what precedes it, so this is the
+full pass's result without re-judging every source. Anything else — an earlier instant, a print written
+outside a pass (a correction, a reseed, `carry`), other thresholds, a never or forget entry — replays
+everything. Both hold `Store.lock(model id)` (ruling D3).
 
 Checks 4 and 5, the label centroid and step 3 are `naming`'s (ruling D15): imported, never re-implemented.
 
@@ -26,7 +48,9 @@ from __future__ import annotations
 
 import copy
 import hashlib
+import json
 import os
+import re
 from datetime import timezone
 
 from . import naming, vec
@@ -43,14 +67,23 @@ ADMITTED, HELD, UNCALIBRATED = "admitted", "held", "uncalibrated"
 RESEEDED, CORRECTED = "reseeded", "corrected"
 EXCLUSIONS = (RESEEDED, CORRECTED)  # a person's act, stored; every replay reads it
 
-# Checks whose failure keeps a confirmation as a source rather than out of the print: 2 (no
-# calibration: `uncalibrated`, judged again by the next replay with thresholds) and 7 as amended in
-# design review round 5 (below `accept` against the person's print so far: `held`, counted by the
-# reseed notice and replayed).
+# Checks whose failure alone leaves a source that may still be admitted later in the pass's terms: 2 (no
+# calibration: `uncalibrated`) and 7 as amended in design review round 5 (below `accept` against the
+# person's print so far: `held`, counted by the reseed notice). Any other failing check also stores the
+# confirmation `held` (review round 1), with every failing check in its reason and in `kept_out`.
 _KEEPS_A_SOURCE = (2, 7)
 
 _SOURCE_KEYS = ("audio", "diarization", "label", "workspace", "person", "condition", "seconds", "confirmed",
                 "status", "reason")
+
+SAME_RECORDING = "admission: the same recording already teaches this voice print; kept aside"
+RECOGNISED = "recognised from your other workspace"
+_CHECKS_IN = re.compile(r"(?:^|; )check (\d+):")
+
+
+def _resembles_notice(person):
+    return (f"this voice resembles a voice print from another workspace; if they are one person, "
+            f"`prints link {person}` joins them")
 
 
 def reseed_notice(name, person):
@@ -308,6 +341,8 @@ def _source(item, sig, status, reason):
     s["seconds"] = float((_labels(sig).get(item["label"]) or {}).get("seconds") or 0.0) if sig else \
         float(item.get("seconds") or 0.0)
     s["status"], s["reason"] = status, reason
+    if item.get("different"):
+        s["different"] = True
     return s
 
 
@@ -315,29 +350,76 @@ def _essence(p):
     return {k: v for k, v in p.items() if k not in ("created", "updated")}
 
 
+def _speaks_to_the_seed(s):
+    """A held source that scored poorly against the print: check 7 alone, or admission. A hold from a
+    check on the label itself, or from a recording the print already learns from, says nothing about the
+    first source and is not counted by the reseed notice."""
+    if s.get("status") != HELD:
+        return False
+    reason = s.get("reason") or ""
+    if reason == SAME_RECORDING:
+        return False
+    found = set(_CHECKS_IN.findall(reason))
+    return not found or found == {"7"}
+
+
 def _stuck(p):
     ss = p.get("sources") or []
-    return sum(s.get("status") == ADMITTED for s in ss) == 1 and sum(s.get("status") == HELD for s in ss) >= 2
+    adm = {s.get("audio") for s in ss if s.get("status") == ADMITTED}
+    held = {s.get("audio") for s in ss if _speaks_to_the_seed(s) and s.get("audio") not in adm}
+    return len(adm) == 1 and len(held) >= 2
 
 
-def _run(store, model, th, stored, new=(), order=None):
-    """The one pass. `stored` are the prints as read (inputs only are used), `new` confirmations not yet
-    stored. Returns `(work, report)`, `work` the prints by id as they should now be stored."""
+class _Stale(Exception):
+    """The store is not as the last pass left it; the caller replays everything."""
+
+
+def _run(store, model, th, stored, new=(), order=None, fast=False):
+    """The one pass. `stored` are the prints as read, `new` confirmations not yet stored. Full (`fast`
+    False): every stored print is reduced to its inputs and every source judged again in order. Fast: the
+    stored prints are taken as they stand (the last pass's output) and only `new` is judged — the caller
+    has checked that every new confirmation sorts after every stored source. Returns `(work, report)`,
+    `work` the prints by id as they should now be stored. A fast pass that meets a source whose voice
+    windows are gone raises `_Stale`."""
     never, forgotten = store.never(), store.forgotten()
-    work, cents, adm_audio = {}, {}, {}
+    key = _key_fn(order)
+    work, cents, adm, since = {}, {}, {}, {}
     for p in stored:
-        work[p["id"]] = _shell(p, model)
-        cents[p["id"]], adm_audio[p["id"]] = [], set()
+        pid = p["id"]
+        if fast:
+            work[pid] = copy.deepcopy(p)
+            cents[pid] = None            # computed when the print learns a new source
+            adm[pid] = [_ref_key(s) for s in p.get("sources") or [] if s.get("status") == ADMITTED]
+        else:
+            work[pid] = _shell(p, model)
+            cents[pid], adm[pid] = [], []
+        for e in p.get("known_as") or []:
+            if e.get("since"):
+                ks = [key(s) for s in p.get("sources") or []
+                      if s.get("workspace") == e.get("workspace") and s.get("person") == e.get("person")]
+                since[(pid, e.get("workspace"), e.get("person"))] = \
+                    min(ks) if ks else (None if order is not None else (_instant(e["since"]),))
     report = {"stored": [], "kept_out": [], "dropped": [], "skipped": [], "notices": [], "changed": [],
               "removed": [], "prints": {}}
 
+    def active(q, ws, person, k):
+        """q's `known_as` entry for ws (and person) that counts at the pass's point k: an entry added by a
+        join counts from its joining confirmation on."""
+        for e in q.get("known_as") or []:
+            if e.get("workspace") != ws or (person is not None and e.get("person") != person):
+                continue
+            sk = since.get((q["id"], ws, e.get("person"))) if e.get("since") else None
+            if sk is None or k >= sk:
+                return e
+        return None
+
     items = []
-    for p in stored:
-        for s in p.get("sources") or []:
-            items.append(("stored", p["id"], dict(s)))
+    if not fast:
+        for p in stored:
+            for s in p.get("sources") or []:
+                items.append(("stored", p["id"], dict(s)))
     for c in new:
         items.append(("new", None, dict(c)))
-    key = _key_fn(order)
     items.sort(key=lambda it: (key(it[2]), 0 if it[0] == "stored" else 1))
 
     sigs = {}
@@ -349,11 +431,52 @@ def _run(store, model, th, stored, new=(), order=None):
         return sigs[k]
 
     seen = set()
+    if fast:
+        for p in stored:
+            for s in p.get("sources") or []:
+                seen.add((_ref_key(s), s.get("workspace"), s.get("person")))
     namesakes = set()
     memo = _Memo()
-    for kind, pid, s in items:
+
+    def join(s, sig, who, k):
+        """Design section 8: the print from another workspace this label reaches `accept` against, joined
+        when the names are equal. Returns `(print or None, notice or None)`."""
+        if _judge(s["label"], sig, who, None, [], never, th, s.get("different"), memo):
+            return None, None            # a label that cannot teach decides nothing
         ws, person = s.get("workspace"), s.get("person")
-        target = work.get(pid) if kind == "stored" else _print_of(work.values(), ws, person)
+        cent = memo.centroid(sig, s["label"])
+        best = None
+        for q in sorted(work.values(), key=lambda q: q["id"]):
+            if not q.get("vector") or active(q, ws, None, k):
+                continue
+            sc = vec.cos(cent, q["vector"])
+            if sc >= th["accept"] and (best is None or sc > best[0]):
+                best = (sc, q)
+        if best is None:
+            return None, None
+        q = best[1]
+        mine = _norm(s.get("name"))
+        theirs = {_norm(e.get("name")) for e in q.get("known_as") or [] if e.get("workspace") != ws}
+        if not mine or mine not in theirs:
+            return None, {"kind": "resembles", "workspace": ws, "person": person,
+                          "text": _resembles_notice(person)}
+        e = _known(q, ws, person)
+        if e is None:
+            e = {"workspace": ws, "person": person, "name": s.get("name") or "", "since": s.get("confirmed")}
+            q["known_as"].append(e)
+        elif _instant(s.get("confirmed")) < _instant(e.get("since")):
+            e["since"] = s.get("confirmed")
+        sk = since.get((q["id"], ws, person))
+        since[(q["id"], ws, person)] = k if sk is None or k < sk else sk
+        return q, {"kind": "recognised", "workspace": ws, "person": person, "text": RECOGNISED}
+
+    for kind, pid, s in items:
+        k = key(s)
+        ws, person = s.get("workspace"), s.get("person")
+        if kind == "stored":
+            target = work.get(pid)
+        else:
+            target = next((q for q in work.values() if active(q, ws, person, k)), None)
         name = (_known(target, ws, person) or {}).get("name") if target else None
         who = {"workspace": ws, "person": person, "name": s.get("name") if kind == "new" else name}
         where = dict(_ref(s), workspace=ws, person=person)
@@ -368,16 +491,16 @@ def _run(store, model, th, stored, new=(), order=None):
             if kind == "stored":
                 report["skipped"].append(dict(where, print=pid, why="never"))
             else:
-                report["kept_out"].append(dict(where, checks=[{"check": 1, "reason":
-                                                               "check 1: this person's voice must not be stored"}]))
+                report["kept_out"].append(dict(where, print=None, checks=[
+                    {"check": 1, "reason": "check 1: this person's voice must not be stored"}]))
             continue
         f = _forgotten_entry(who, s.get("confirmed"), forgotten)
         if f:
             if kind == "stored":
                 report["skipped"].append(dict(where, print=pid, why="forgotten"))
             else:
-                report["kept_out"].append(dict(where, checks=[{"check": None, "reason":
-                                                               "this person was forgotten after this confirmation"}]))
+                report["kept_out"].append(dict(where, print=None, checks=[
+                    {"check": None, "reason": "this person was forgotten after this confirmation"}]))
             continue
         if _namesake(who, forgotten) and (pid or person, ws) not in namesakes:
             namesakes.add((pid or person, ws))
@@ -385,35 +508,42 @@ def _run(store, model, th, stored, new=(), order=None):
                                       "text": _namesake_notice()})
 
         sig = sig_of(s["audio"], s["diarization"])
-        if kind == "stored" and (sig is None or not _has_windows(sig, s["label"])):
-            why = "its diarisation file is gone" if sig is None else "its voice windows are gone"
-            report["dropped"].append(dict(where, print=pid, why=why))
+        if sig is None or not _has_windows(sig, s["label"]):
+            if kind == "stored":
+                why = "its diarisation file is gone" if sig is None else "its voice windows are gone"
+                report["dropped"].append(dict(where, print=pid, why=why))
+            else:                        # nothing to judge, now or in any replay: not stored
+                why = ("no voice signature is kept for this diarisation" if sig is None
+                       else "no voice windows are kept for this speaker label")
+                report["kept_out"].append(dict(where, print=None, checks=[{"check": 3, "reason": f"check 3: {why}"}]))
             continue
         seen.add(dup)
 
         if kind == "stored" and s.get("status") in EXCLUSIONS:
-            kept = {k: s.get(k) for k in _SOURCE_KEYS}
+            kept = {k2: s.get(k2) for k2 in _SOURCE_KEYS}
             kept["at"] = s.get("at")
+            if s.get("different"):
+                kept["different"] = True
             target["sources"].append(kept)
             continue
 
-        others = [q for q in work.values() if q is not target and _known(q, ws)]
-        fails = _judge(s["label"], sig, who, target, others, never, th, s.get("different"), memo) if sig else \
-            [{"check": 3, "reason": "check 3: no voice signature is kept for this diarisation"}]
+        notice = None
+        if kind == "new" and target is None and th is not None:
+            target, notice = join(s, sig, who, k)
+
+        others = [q for q in work.values() if q is not target and active(q, ws, None, k)]
+        fails = _judge(s["label"], sig, who, target, others, never, th, s.get("different"), memo)
         out = [x for x in fails if x["check"] not in _KEEPS_A_SOURCE]
         cent = None
-        if out and kind == "new":
-            report["kept_out"].append(dict(where, checks=fails))
-            continue
         if out:
-            status, reason = HELD, "; ".join(x["reason"] for x in out)
+            status, reason = HELD, "; ".join(x["reason"] for x in fails)
         elif any(x["check"] == 2 for x in fails):
             status, reason = UNCALIBRATED, "; ".join(x["reason"] for x in fails)
         elif fails:
             status, reason = HELD, "; ".join(x["reason"] for x in fails)
         else:
             cent = memo.centroid(sig, s["label"])
-            status, reason = _admit(s, sig, cent, target, cents, work, adm_audio, th, memo)
+            status, reason = _admit(s, sig, cent, target, adm, work, th, memo)
 
         if target is None:
             pid = _new_pid(ws, person, set(work))
@@ -422,16 +552,26 @@ def _run(store, model, th, stored, new=(), order=None):
                                   "model": _model_dict(model), "vector": None, "seconds": 0.0, "trust": "proposing",
                                   "auto": True, "sources": [], "negatives": [], "created": _today(),
                                   "updated": _today()}
-            cents[pid], adm_audio[pid] = [], set()
+            cents[pid], adm[pid] = [], []
         pid = target["id"]
-        src = _source(s, sig, status, reason)
-        target["sources"].append(src)
+        target["sources"].append(_source(s, sig, status, reason))
         if status == ADMITTED:
+            if cents[pid] is None:
+                cents[pid] = []
+                for a, d, lab in adm[pid]:
+                    c = memo.centroid(sig_of(a, d), lab) if sig_of(a, d) is not None else None
+                    if c is None:
+                        raise _Stale(f"voice print {pid}: the windows of an admitted source are gone")
+                    cents[pid].append(c)
             cents[pid].append(cent)
-            adm_audio[pid].add(s["audio"])
+            adm[pid].append(_ref_key(s))
             target["vector"] = vec.mean_unit(cents[pid])
         if kind == "new":
             report["stored"].append(dict(where, print=pid, status=status, reason=reason))
+            if out:
+                report["kept_out"].append(dict(where, print=pid, checks=fails))
+            if notice is not None:
+                report["notices"].append(dict(notice, print=pid))
 
     by_id = {p["id"]: p for p in stored}
     for pid, p in work.items():
@@ -443,10 +583,16 @@ def _run(store, model, th, stored, new=(), order=None):
     return work, report
 
 
-def _admit(s, sig, cent, target, cents, work, adm_audio, th, memo):
-    """Admission (design section 9) of a source that passed checks 1 to 10: the first is admitted; a later
-    one is judged once against the print as it stands before it."""
-    if target is None or not cents.get(target["id"]):
+def _admit(s, sig, cent, target, adm, work, th, memo):
+    """Admission (design section 9) of a source that passed checks 1 to 10: a recording already teaching
+    the print is held; the first source is admitted; a later one is judged once against the print as it
+    stands before it."""
+    if target is None:
+        return ADMITTED, None
+    mine = adm.get(target["id"]) or []
+    if any(r[0] == s["audio"] for r in mine):
+        return HELD, SAME_RECORDING
+    if not mine:
         return ADMITTED, None
     P = target["vector"]
     label = s["label"]
@@ -466,9 +612,13 @@ def _admit(s, sig, cent, target, cents, work, adm_audio, th, memo):
         if c is not None and score - vec.cos(c, P) < th["margin"]:
             return HELD, (f"admission: it does not beat {naming.display(other)} of the same recording against "
                           f"the voice print by the margin ({score - vec.cos(c, P):.2f}); kept aside")
+    me = _ref_key(s)
     for q in work.values():
-        if q is target or not q.get("vector") or s["audio"] not in adm_audio.get(q["id"], ()):
+        if q is target or not q.get("vector"):
             continue
+        here = [r for r in adm.get(q["id"]) or [] if r[0] == s["audio"]]
+        if not here or all(r == me for r in here):
+            continue                  # a print taught by this very label is not another voice in it
         lead = score - vec.cos(cent, q["vector"])
         if lead < th["margin"]:
             return HELD, (f"admission: it does not beat another voice print admitted in this recording by the "
@@ -493,10 +643,13 @@ def _finish(p, old, th, sig_of, memo):
         # Design section 8: the print then needs one new source and a passed trust test before `auto`.
         p["auto_hold"] = sum(s.get("status") == ADMITTED for s in old.get("sources") or [])
     hold = p.get("auto_hold")
+    if hold is not None and th is not None and p["trust"] == "trusted" and len(adm) > hold:
+        del p["auto_hold"]            # met once: a later forget-recording cannot bring it back
+        hold = None
     if not kept and hold is None:
         p["auto"] = True
         return
-    ok = th is not None and bool(p["vector"]) and p["trust"] == "trusted" and (hold is None or len(adm) > hold)
+    ok = th is not None and bool(p["vector"]) and p["trust"] == "trusted" and hold is None
     if ok:
         for n in kept:
             c = memo.centroid(sig_of(n["audio"], n["diarization"]), n["label"])
@@ -529,6 +682,32 @@ def _stored_prints(store, model):
     return store.prints(model.id, model=model)
 
 
+# -- what the last pass left (so a live answer judges only what is new) ---------------------------------------
+def _state_path(store, model):
+    return os.path.join(store.model_dir(model.id), "enrolment.json")
+
+
+def _digest(th, never, forgotten, prints):
+    body = {"thresholds": th, "never": never, "forgotten": forgotten,
+            "prints": sorted((_essence(p) for p in prints if p.get("sources")), key=lambda p: p["id"])}
+    return hashlib.sha256(json.dumps(body, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+
+
+def _save_state(store, model, th, work, order=None):
+    """Written by every pass: what it read and the prints it left. A custom-order pass leaves no state a
+    live answer can build on."""
+    d = None if order is not None else _digest(th, store.never(), store.forgotten(), list(work.values()))
+    store.write_json(_state_path(store, model), {"version": 1, "digest": d})
+
+
+def _can_judge_only_new(store, model, th, stored, new):
+    state = store.read_json(_state_path(store, model)) or {}
+    if not state.get("digest") or state["digest"] != _digest(th, store.never(), store.forgotten(), stored):
+        return False
+    last = max((total_order(s) for p in stored for s in p.get("sources") or []), default=None)
+    return last is None or all(total_order(c) >= last for c in new)
+
+
 def replay(store, model, thresholds, order=None):
     """Rebuild every print of `model` from its sources, from nothing: one pass over all of them in the
     total order (`order=None`) or by `order(source)` with the total order breaking ties (ruling D6: the
@@ -538,26 +717,32 @@ def replay(store, model, thresholds, order=None):
     label windows are gone; removes a print left with no source. Holds `store.lock(model.id)`.
 
     Returns `{prints: {pid: {trust, auto, admitted, held, sources}}, changed, removed, dropped, skipped,
-    notices, stuck}`. A print of another model raises `store.ModelMismatch`."""
+    notices, stuck, pass: "full"}`. A print of another model raises `store.ModelMismatch`."""
     with store.lock(model.id):
         stored = _stored_prints(store, model)
         work, report = _run(store, model, thresholds, stored, (), order)
         _persist(store, model, stored, work, report)
+        _save_state(store, model, thresholds, work, order)
     report["stuck"] = sorted(pid for pid, p in work.items() if _stuck(p))
+    report["pass"] = "full"
     return report
 
 
 def confirm(store, model, thresholds, confirmations):
     """Apply a person's confirmations (`{audio, diarization, label, workspace, person, name, confirmed,
     condition?, different?}`; `confirmed` an instant, `now()` when absent) in the same pass and order as
-    `replay`, so the result is what a rebuild from nothing gives. A confirmation failing a check other
-    than 2 or 7 is not stored (`kept_out`, with every failing check); check 2 alone stores it
-    `uncalibrated`; check 7 stores it `held`. Confirming a label already a source of that person adds
-    nothing.
+    `replay`, so the result is what a rebuild from nothing gives. Every confirmation is stored as a source
+    except one of a person in never.json, one before a matching forget, and one whose label has no voice
+    windows; a confirmation failing a check other than 2 or 7 is stored `held` and listed in `kept_out`
+    with every failing check; check 2 alone stores it `uncalibrated`; check 7 `held`. Confirming a label
+    already a source of that person adds nothing.
 
-    Returns `replay`'s report plus `stored` (each confirmation stored, with its print, status and reason)
-    and `kept_out`; `notices` carries the reseed notice once, when a print first has one admitted and two
-    held sources, in the confirming workspace's name for the person."""
+    Returns `replay`'s report plus `stored` (each confirmation stored, with its print, status and reason),
+    `kept_out` (`{audio, diarization, label, workspace, person, print, checks}`, `print` None when nothing
+    was stored) and `pass` (`fast` when only the new confirmations were judged, else `full`); `notices`
+    carries the reseed notice once, when a print first has one admitted and two held sources that scored
+    against it, in the confirming workspace's name for the person, and `recognised` / `resembles` for a
+    voice known from another workspace (section 8), naming nothing from elsewhere."""
     stamp = now()
     new = []
     for c in confirmations or []:
@@ -572,8 +757,14 @@ def confirm(store, model, thresholds, confirmations):
     with store.lock(model.id):
         stored = _stored_prints(store, model)
         before = {p["id"] for p in stored if _stuck(p)}
-        work, report = _run(store, model, thresholds, stored, new)
+        fast = _can_judge_only_new(store, model, thresholds, stored, new)
+        try:
+            work, report = _run(store, model, thresholds, stored, new, fast=fast)
+        except _Stale:
+            fast = False
+            work, report = _run(store, model, thresholds, stored, new)
         _persist(store, model, stored, work, report)
+        _save_state(store, model, thresholds, work)
     touched = {}
     for s in report["stored"]:
         touched.setdefault(s["print"], s["workspace"])
@@ -584,6 +775,7 @@ def confirm(store, model, thresholds, confirmations):
             report["notices"].append({"kind": "reseed", "print": pid, "workspace": ws, "person": k.get("person"),
                                       "text": reseed_notice(k.get("name"), k.get("person"))})
     report["stuck"] = sorted(pid for pid, p in work.items() if _stuck(p))
+    report["pass"] = "fast" if fast else "full"
     return report
 
 
@@ -670,7 +862,7 @@ def carry(store, from_model_id, model):
             q = _shell(p, model)
             q["auto"] = p.get("auto", True)
             for s in p.get("sources") or []:
-                s = {k: s.get(k) for k in _SOURCE_KEYS + ("at",) if k in s}
+                s = {k: s.get(k) for k in _SOURCE_KEYS + ("at", "different") if k in s}
                 if s.get("status") not in EXCLUSIONS:
                     s.pop("status", None)
                     s.pop("reason", None)

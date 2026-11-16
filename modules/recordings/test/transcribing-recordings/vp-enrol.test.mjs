@@ -15,7 +15,7 @@ import { fileURLToPath } from 'node:url';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PY = process.env.PYTHON || 'python3';
 
-for (const [suite, atLeast] of [['test_vp_enrol', 69]]) {
+for (const [suite, atLeast] of [['test_vp_enrol', 82]]) {
 	test(`${suite} passes under a bare python3`, () => {
 		const r = spawnSync(PY, ['-B', '-m', 'unittest', '-v', suite], { cwd: HERE, encoding: 'utf8' });
 		assert.ok(!r.error, `${PY} did not start (${r.error?.code}) — these cases need a python3 on PATH`);
