@@ -8,7 +8,7 @@
 import { notify } from "../api/client.ts"
 import { formatWithUnit } from "../lib/field-unit.ts"
 import type { ViewProps } from "../registry/props.ts"
-import { CELL_MAX, Empty, isEmpty } from "./empty.tsx"
+import { CELL_MAX, Empty, isEmpty } from "./Empty.tsx"
 import { wrap } from "../styles/classes.ts"
 
 const LOCAL_PAGE = /^(?!\/)(?!.*(?:^|[/\\])\.\.(?:[/\\]|$))[\w./-]+\.html?$/i

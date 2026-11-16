@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Small stdio MCP adapter. Tools only navigate; all data edits stay with the Dreamteamer API/CLI.
 import readline from "node:readline"
-import { callUi } from "../src/control.ts"
+import { callUi } from "../src/callUi.ts"
 const socket = process.env.DT_EDITOR_CONTROL_SOCKET
 const tools = [
   {

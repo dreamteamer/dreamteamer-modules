@@ -14,8 +14,8 @@
  */
 import { useEffect, useState } from "react"
 import { commit, type CommitPlan } from "../api/client.ts"
-import { useApp, useSignal } from "../app-context.tsx"
-import { usePopover } from "../browse/use-popover.ts"
+import { useApp, useSignal } from "../AppContext.tsx"
+import { usePopover } from "../browse/usePopover.ts"
 import { hostInfo, isAdmin } from "../lib/host.ts"
 import { commitRepoLabel, pendingByRepo } from "../lib/sources.ts"
 import { Icon } from "./Icon.tsx"

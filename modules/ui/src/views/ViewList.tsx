@@ -8,7 +8,7 @@ import { Icon } from "../components/Icon.tsx"
 import { rowSummary } from "../edits/EditList.tsx"
 import { entriesOf, showValue } from "../lib/edit-values.ts"
 import type { ViewProps } from "../registry/props.ts"
-import { Empty } from "./empty.tsx"
+import { Empty } from "./Empty.tsx"
 import { cx, kv, mono, subtle } from "../styles/classes.ts"
 
 export function ViewList({ value, options, context }: ViewProps) {

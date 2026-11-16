@@ -1,5 +1,5 @@
 import { type EngineNote } from "./engine.js"
-import { type NoteRef } from "./note-refs.js"
+import { type NoteRef } from "./refsIn.js"
 export interface NextNote extends EngineNote {
   refs: Array<
     NoteRef & {

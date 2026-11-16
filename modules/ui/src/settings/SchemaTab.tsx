@@ -1,7 +1,7 @@
 /**
  * THE SCHEMA TAB (ported from the Vue ui's pages/SchemaTab.vue) — `/settings/schema[/<kind>[/<id>]]`: the
  * workspace's schema as a place you go. Left, the RAIL: Activity, every internal collection the engine marks
- * (`lib/schema-rail.ts` — derived, never listed; modules and collections pinned first), Sources. Right, the kind's
+ * (`lib/schemaRail.ts` — derived, never listed; modules and collections pinned first), Sources. Right, the kind's
  * list, or the one row picked.
  *
  * ⚠ SELECTION IS ROUTE STATE: `/settings/schema/<kind>/<id>` is deep-linkable and reachable from a host
@@ -18,18 +18,18 @@
  */
 import { useEffect, useMemo } from "react"
 import { listRecords } from "../api/client.ts"
-import { RouteBase, useApp, useAsync, useSignal } from "../app-context.tsx"
+import { RouteBase, useApp, useAsync, useSignal } from "../AppContext.tsx"
 import { Browse } from "../browse/Browse.tsx"
 import { Icon } from "../components/Icon.tsx"
 import { moduleScopeFilter, nextModuleScope, withModuleScope } from "../lib/module-scope.ts"
 import { queryOf, SCHEMA_BASE } from "../lib/route.ts"
-import { schemaRail, splitSchemaRoute } from "../lib/schema-rail.ts"
+import { schemaRail, splitSchemaRoute } from "../lib/schemaRail.ts"
 import { signal } from "../lib/signal.ts"
 import { sourcesKey } from "../lib/sources.ts"
 import { schemaKindContext } from "../lib/vscode-context.ts"
 import { RecordPage } from "../pages/RecordPage.tsx"
 import { modulePageView } from "../lib/page-view.ts"
-import { uiViews } from "../lib/ui-views.ts"
+import { uiViews } from "../lib/uiViews.ts"
 import { PageView } from "../pages/PageView.tsx"
 import { ActivityPane } from "./ActivityPane.tsx"
 import { DataModelDetail } from "./DataModelDetail.tsx"
@@ -37,7 +37,7 @@ import { DataModelList } from "./DataModelList.tsx"
 import { ModuleCollections } from "./ModuleCollections.tsx"
 import { ModuleList } from "./ModuleList.tsx"
 import { SourcesPane } from "./SourcesPane.tsx"
-import { useModules } from "./use-modules.ts"
+import { useModules } from "./useModules.ts"
 import { ViewModulePanel } from "./ViewModulePanel.tsx"
 import { cx, error, iconButton } from "../styles/classes.ts"
 

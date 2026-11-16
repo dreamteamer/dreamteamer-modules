@@ -11,9 +11,9 @@ import { createRoot } from "react-dom/client"
 import { StrictMode } from "react"
 import { App } from "./App.tsx"
 import { request, setTransport } from "./api/client.ts"
-import { installApiFetchShim } from "./api/fetch-shim.ts"
+import { installApiFetchShim } from "./api/installApiFetchShim.ts"
 import { loadModules } from "./modules/host.tsx"
-import type { Transport } from "./transport/types.ts"
+import type { Transport } from "./transport/HostError.ts"
 
 export interface MountOptions {
   transport: Transport

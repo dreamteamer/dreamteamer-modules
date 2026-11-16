@@ -10,7 +10,7 @@
  */
 import { useEffect, useState } from "react"
 import type { FieldRow } from "../api/types.ts"
-import { useApp } from "../app-context.tsx"
+import { useApp } from "../AppContext.tsx"
 import { bandTitleTemplate, iconOf, idFor } from "../lib/group-label.ts"
 import { UNGROUPED } from "../lib/grouping.ts"
 import { fetchRecord } from "../lib/record-cache.ts"

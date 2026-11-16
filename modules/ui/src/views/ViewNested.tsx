@@ -5,7 +5,7 @@
  */
 import { entriesOf, showValue } from "../lib/edit-values.ts"
 import type { ViewProps } from "../registry/props.ts"
-import { Empty } from "./empty.tsx"
+import { Empty } from "./Empty.tsx"
 import { kv } from "../styles/classes.ts"
 
 export function ViewNested({ value, options, context }: ViewProps) {

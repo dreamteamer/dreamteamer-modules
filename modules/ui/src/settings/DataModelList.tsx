@@ -7,7 +7,7 @@
  * `data-vscode-context`, so an editor host gets its native Rename… / Move to Module… / Delete… menu.
  */
 import { useState } from "react"
-import { useApp } from "../app-context.tsx"
+import { useApp } from "../AppContext.tsx"
 import { Icon } from "../components/Icon.tsx"
 import { Link } from "../components/Link.tsx"
 import { isOkfRow } from "../lib/okf.ts"

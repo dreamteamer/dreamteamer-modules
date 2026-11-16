@@ -14,11 +14,11 @@
 import { useEffect, useRef, useState, type FocusEvent, type KeyboardEvent } from "react"
 import { getCommands, listRecords } from "../api/client.ts"
 import type { FieldRow } from "../api/types.ts"
-import { useApp, useRouteBase } from "../app-context.tsx"
+import { useApp, useRouteBase } from "../AppContext.tsx"
 import { Icon } from "../components/Icon.tsx"
 import { Link } from "../components/Link.tsx"
 import type { CommandRow } from "../lib/command-rows.ts"
-import { labelOf } from "../lib/format-title.ts"
+import { labelOf } from "../lib/formatTitle.ts"
 import { recordRoute } from "../lib/route.ts"
 import {
   bareRef,

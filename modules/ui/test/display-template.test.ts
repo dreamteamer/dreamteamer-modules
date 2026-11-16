@@ -3,7 +3,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import { compileTemplate, templateOption } from "../src/lib/display-template.ts"
-import { renderMd, slotToken } from "../src/lib/render-md.ts"
+import { renderMd, slotToken } from "../src/lib/renderMd.ts"
 import { enumRow, fieldRow } from "./field-rows.ts"
 
 const fields = [fieldRow("name"), enumRow("status", ["active", "paused"]), fieldRow("due", { type: "date" })]

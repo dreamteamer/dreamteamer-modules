@@ -1,6 +1,6 @@
 // Ported from the dreamteamer VS Code extension's host side (src/next-notes.ts); PROTOCOL.md is the contract it answers.
 import { engine } from "./engine.ts"
-import { refsIn } from "./note-refs.ts"
+import { refsIn } from "./refsIn.ts"
 export function notesFor(store, collection, ids) {
   const eng = engine()
   if (!ids.length || typeof eng.contributedNotes !== "function") return []

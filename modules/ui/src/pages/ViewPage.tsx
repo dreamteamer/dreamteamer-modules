@@ -7,10 +7,10 @@
  * The view is looked up LIVE in the view table, and the browse is keyed on a fingerprint of it: the browse reads
  * its config once, so a record edited or compiled after the page opened reaches the screen through a remount.
  */
-import { useApp, useSignal } from "../app-context.tsx"
+import { useApp, useSignal } from "../AppContext.tsx"
 import { Browse } from "../browse/Browse.tsx"
 import { sourcesKey } from "../lib/sources.ts"
-import { collectionOf, drawnDisplay, uiViewFingerprint, uiViews, viewLabel, viewToConfig } from "../lib/ui-views.ts"
+import { collectionOf, drawnDisplay, uiViewFingerprint, uiViews, viewLabel, viewToConfig } from "../lib/uiViews.ts"
 import { cx, error, page, subtle } from "../styles/classes.ts"
 
 export function ViewPage({ id }: { id: string }) {

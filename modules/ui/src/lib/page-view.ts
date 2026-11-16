@@ -26,11 +26,11 @@
  * a `record` view (a page has no record to show it), and a page whose layout is a module's APP (its
  * component owns a whole route; a panel links to it instead). A refusal never takes its siblings down.
  */
-import type { UiViewRecord, ViewDisplay } from "./ui-views.ts"
+import type { UiViewRecord, ViewDisplay } from "./uiViews.ts"
 import { SOURCE_FIELD } from "./sources.ts"
 import { decompileFilter } from "./filter-query.ts"
 
-/** What a view draws — `ui-views.ts#drawnDisplay`'s rule (compile's merge, else what it authored),
+/** What a view draws — `uiViews.ts#drawnDisplay`'s rule (compile's merge, else what it authored),
  *  restated here so this file stays free of the view table's fetch. */
 const drawnDisplay = (view: UiViewRecord): ViewDisplay => view.compiled?.display ?? view.display ?? {}
 

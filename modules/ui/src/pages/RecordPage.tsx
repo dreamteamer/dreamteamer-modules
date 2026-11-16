@@ -24,8 +24,8 @@
  */
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { createRecord, getRecord, removeRecord, renameRecord, updateRecord, type RecordDoc } from "../api/client.ts"
-import { useApp, useAsync, useRouteBase, useSignal } from "../app-context.tsx"
-import { usePopover } from "../browse/use-popover.ts"
+import { useApp, useAsync, useRouteBase, useSignal } from "../AppContext.tsx"
+import { usePopover } from "../browse/usePopover.ts"
 import { CommitButton } from "../components/CommitButton.tsx"
 import { Dialog } from "../components/Dialog.tsx"
 import { Icon } from "../components/Icon.tsx"
@@ -44,7 +44,7 @@ import { hostInfo, isAdmin } from "../lib/host.ts"
 import { setLeaveGuard } from "../lib/leave-guard.ts"
 import { askTitles, knownTitle, referenceTitlesChanged } from "../lib/record-cache.ts"
 import { recordDisplayOf, recordRendererId } from "../lib/record-display.ts"
-import { recordOrigin } from "../lib/record-origin.ts"
+import { recordOrigin } from "../lib/recordOrigin.ts"
 import {
   commitInfo,
   duplicatesOf,
@@ -55,12 +55,12 @@ import {
   setEdit,
   withEdits,
 } from "../lib/record-page.ts"
-import { recordPageFields } from "../lib/record-page-fields.ts"
+import { recordPageFields } from "../lib/recordPageFields.ts"
 import { listRoute, queryOf, recordRoute } from "../lib/route.ts"
 import { recordFacts, recordLabel } from "../lib/schema.ts"
 import { hasForeignSource, isTarget, notTargetReason, sourceEntry, stubNoteOf } from "../lib/sources.ts"
 import { templateFields, tryRenderDisplay } from "../lib/template.ts"
-import { uiViews } from "../lib/ui-views.ts"
+import { uiViews } from "../lib/uiViews.ts"
 import { edits as editRegistry, views as viewRegistry } from "../registry/index.ts"
 import type { RecordLayoutProps } from "../registry/props.ts"
 import { ErrorBoundary } from "../render/ErrorBoundary.tsx"

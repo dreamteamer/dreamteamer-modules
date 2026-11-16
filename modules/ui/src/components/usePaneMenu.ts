@@ -1,13 +1,13 @@
 /**
  * One of the nav toolbar's hanging menus (the switcher, the level): open while `openMenu` names it — so opening any
  * other nav menu closes it — closed by a click anywhere else, placed under its button inside the window, with
- * lib/menu-keys.ts's keyboard. The button and the menu stop their own clicks.
+ * lib/menuKeys.ts's keyboard. The button and the menu stop their own clicks.
  */
 import { useEffect, useMemo, useRef, useState } from "react"
-import { useSignal } from "../app-context.tsx"
-import { menuKeys } from "../lib/menu-keys.ts"
+import { useSignal } from "../AppContext.tsx"
+import { menuKeys } from "../lib/menuKeys.ts"
 import { menuUnder, rectOf, viewportWidth } from "../lib/menu-place.ts"
-import { openMenu } from "../lib/open-menu.ts"
+import { openMenu } from "../lib/openMenu.ts"
 
 /** The width the pane menus are placed for (`paneMenu` in looks.ts). */
 export const PANE_MENU_WIDTH = 220

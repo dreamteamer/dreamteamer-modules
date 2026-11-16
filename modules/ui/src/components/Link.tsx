@@ -3,7 +3,7 @@
  * which opens the hash in a new tab under dt web.
  */
 import type { MouseEvent, ReactNode } from "react"
-import { useApp } from "../app-context.tsx"
+import { useApp } from "../AppContext.tsx"
 
 export function Link({
   to,

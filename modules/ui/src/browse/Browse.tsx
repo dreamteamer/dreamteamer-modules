@@ -1,6 +1,6 @@
 /**
  * THE BROWSE — a collection's records, drawn by whichever List its layout names (ported from the Vue ui's
- * BrowseView.vue). It owns ONE browse state (`browse-state.ts`) and draws the frame around the List: the header
+ * BrowseView.vue). It owns ONE browse state (`useBrowseState.ts`) and draws the frame around the List: the header
  * (search, the source picker, the filter, the table's density, the batch delete, Layout options, New), the active
  * filter as chips, what it could not draw, the List, and the pager.
  *
@@ -14,10 +14,10 @@
  * a change to any of them remounts it.
  */
 import { useEffect, useState } from "react"
-import { useApp, useSignal } from "../app-context.tsx"
+import { useApp, useSignal } from "../AppContext.tsx"
 import { Icon } from "../components/Icon.tsx"
 import { displayValue, filterToProse, operatorLabel, operatorTakesPair } from "../lib/filter-query.ts"
-import { formatTitle } from "../lib/format-title.ts"
+import { formatTitle } from "../lib/formatTitle.ts"
 import { unknownOptions } from "../lib/list-options.ts"
 import {
   SOURCE_FIELD,
@@ -34,13 +34,13 @@ import { CommitButton } from "../components/CommitButton.tsx"
 import { SourceMark } from "../components/SourceMark.tsx"
 import { pageSelection, pushedIds, pushedSelection } from "../lib/pane-place.ts"
 import { RecordCommands } from "../record/RecordCommands.tsx"
-import { useBrowseState, type BrowseConfig, type BrowseState } from "./browse-state.ts"
+import { useBrowseState, type BrowseConfig, type BrowseState } from "./useBrowseState.ts"
 import { DensityMenu } from "./DensityMenu.tsx"
 import { FilterBuilder } from "./FilterBuilder.tsx"
 import { LayoutOptions } from "./LayoutOptions.tsx"
 import { SourcePicker } from "./SourcePicker.tsx"
 import { TargetChoice } from "./TargetChoice.tsx"
-import { usePopover } from "./use-popover.ts"
+import { usePopover } from "./usePopover.ts"
 import {
   button,
   buttonSize,

@@ -27,7 +27,7 @@ import {
   sourcesStack,
   withoutSourceClauses,
 } from "./sources.ts"
-import { createInLayer } from "./layer-write.ts"
+import { createInLayer } from "./createInLayer.ts"
 import { accessTargets, redactSecrets, unavailableAccess, NOT_AVAILABLE } from "./remote-access.ts"
 import { byId, notesFor } from "./next-notes.ts"
 import { recordDirsOrNone, unreadableReason } from "./record-dirs.ts"

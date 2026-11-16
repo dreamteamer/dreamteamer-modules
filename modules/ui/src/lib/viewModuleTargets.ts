@@ -6,7 +6,7 @@
  * linked clone's (`git_modules/<clone>/modules/*`), which is how a view authored here reaches a module's
  * own repo. A module `npm install` put in `node_modules/` is never a choice — a write there is erased
  * by the next install — and the form says so ONCE (`lockedNote`), with their names on hover, the same
- * judgement as the native picker (`lib/module-writable.ts`): a picker that hides them in silence
+ * judgement as the native picker (`lib/isUnwritableModule.ts`): a picker that hides them in silence
  * answers "there is no such module", which is worse than one sentence saying why.
  *
  * ⚠ ONE DROPDOWN, NOT A LIST (cr-vscode-010). Until 0.24.26 each target was a radio row with its full
@@ -15,7 +15,7 @@
  * no path in its label or hint: the path is the option's hover (`title`) and one line under the
  * control for the selected module (`whereOf`).
  */
-import { isUnwritableModule } from "./module-writable.ts"
+import { isUnwritableModule } from "./isUnwritableModule.ts"
 import type { ModuleEntry } from "./modules.ts"
 import type { Choice } from "./listbox.ts"
 

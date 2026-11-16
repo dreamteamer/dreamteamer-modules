@@ -4,8 +4,8 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
 import { collectionListWrite, namedViewWrite, newViewWrite, type ListPresentation } from "../src/lib/view-write.ts"
-import type { UiViewRecord } from "../src/lib/ui-views.ts"
-import { listSeed } from "../src/lib/list-seed.ts"
+import type { UiViewRecord } from "../src/lib/uiViews.ts"
+import { listSeed } from "../src/lib/listSeed.ts"
 import { DEFAULT_SORT } from "../src/lib/builtin-fields.ts"
 
 const LEGACY: ListPresentation = {

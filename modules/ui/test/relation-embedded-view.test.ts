@@ -12,7 +12,7 @@ import assert from "node:assert/strict"
 import test from "node:test"
 import type { FieldRow } from "../src/api/types.ts"
 import { fieldRow, mirrorRow, referenceRow } from "./field-rows.ts"
-import type { UiViewRecord } from "../src/lib/ui-views.ts"
+import type { UiViewRecord } from "../src/lib/uiViews.ts"
 import {
   embeddedRelationPlan,
   isRelationField,

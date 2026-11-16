@@ -4,7 +4,7 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
 import type { SourceEntry } from "../src/api/types.ts"
-import { browseFields, defaultColumns, moveItem, seedColumns, toggledSort } from "../src/lib/browse-fields.ts"
+import { browseFields, defaultColumns, moveItem, seedColumns, toggledSort } from "../src/lib/browseFields.ts"
 import { enumRow, fieldRow } from "./field-rows.ts"
 
 const rows = [

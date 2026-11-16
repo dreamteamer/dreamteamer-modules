@@ -1,6 +1,6 @@
 import { Descriptor, type ModuleRecord } from "./fsdata.js"
 import type { NavDoc, NavTarget } from "../nav-doc.js"
-import type { NavNode } from "../nav-model.js"
+import type { NavNode } from "../navModel.js"
 import { type SourceEntry } from "./sources.js"
 export declare function keepsRuntimeRecords(d: Descriptor): boolean
 export declare function shouldFoldOutOfRecordTree(d: Descriptor): boolean

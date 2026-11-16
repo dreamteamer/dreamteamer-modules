@@ -7,14 +7,14 @@
  * generated mirror saying where it is set. Wide fields (markdown, objects, maps, lists) span both columns.
  */
 import type { FieldRow } from "../api/types.ts"
-import { useApp } from "../app-context.tsx"
+import { useApp } from "../AppContext.tsx"
 import { Icon } from "../components/Icon.tsx"
 import { computedReason, hasControl, isMirrorField } from "../lib/field-row.ts"
-import { labelOf } from "../lib/format-title.ts"
+import { labelOf } from "../lib/formatTitle.ts"
 import { withEdits } from "../lib/record-page.ts"
 import type { RecordLayoutProps } from "../registry/props.ts"
 import { RenderEdit, RenderView } from "../render/Render.tsx"
-import { useSections } from "./use-sections.ts"
+import { useSections } from "./useSections.ts"
 import { cx, hint as hintCls, required } from "../styles/classes.ts"
 import { computed, sectionHead, sectionToggle } from "./looks.ts"
 

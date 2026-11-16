@@ -11,7 +11,7 @@
  */
 import { useEffect, useRef, useState } from "react"
 import { getCommands, getQueue, queueCommand } from "../api/client.ts"
-import { useApp, useAsync, useSignal } from "../app-context.tsx"
+import { useApp, useAsync, useSignal } from "../AppContext.tsx"
 import { Icon } from "../components/Icon.tsx"
 import { commandAllDone, commandIcon, commandStatus, type CommandRow } from "../lib/command-rows.ts"
 import { hostInfo } from "../lib/host.ts"

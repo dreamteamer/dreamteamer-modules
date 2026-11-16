@@ -19,7 +19,7 @@
  */
 import type { ComponentType } from "react"
 import type { FieldComponentOptions, FieldRow, FieldType } from "../api/types.ts"
-import { formatTitle } from "../lib/format-title.ts"
+import { formatTitle } from "../lib/formatTitle.ts"
 
 /**
  * One option an extension exposes, declared as a field definition (Directus research item 1:

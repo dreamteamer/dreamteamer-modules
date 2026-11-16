@@ -4,7 +4,7 @@
  * Three sources, one precedence, and it is the precedence every other layout option already has, so
  * nothing here invents a second one: the toolbar's pick (written into the browse's in-memory
  * scratch through `setListOptions`, exactly as the Layout options drawer writes) sits over whatever
- * `display.list.options.row_size` the governing ui-view or the collection authored (`lib/list-seed.ts`
+ * `display.list.options.row_size` the governing ui-view or the collection authored (`lib/listSeed.ts`
  * merges those two), and the default closes the gap. `cozy` IS today's density — a table nobody
  * configured draws byte-identically to the one that existed before the option.
  *

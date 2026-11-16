@@ -7,7 +7,7 @@
  * a note is context, never the page.
  */
 import { getNotes } from "../api/client.ts"
-import { useApp, useAsync } from "../app-context.tsx"
+import { useApp, useAsync } from "../AppContext.tsx"
 import { Icon } from "../components/Icon.tsx"
 import { Link } from "../components/Link.tsx"
 import { textParts, type NextNote } from "../lib/next-notes.ts"

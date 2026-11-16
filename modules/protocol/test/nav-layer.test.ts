@@ -72,7 +72,7 @@ describe("navModel: the contract fixture's layer, git_modules/northwind-archive"
     fixture = makeFixture({ engineDir: ENGINE_DIR })
     const { initEngine } = await load("src/host/engine.js")
     await initEngine(fixture.root)
-    ;({ navModel } = await load("src/nav-model.js"))
+    ;({ navModel } = await load("src/navModel.js"))
   })
   after(() => fixture?.cleanup())
   const layerNav = () => path.join(fixture.layer, "nav.yaml")

@@ -4,7 +4,7 @@
  * whole value, pretty-printed. Never "[object Object]".
  */
 import type { ViewProps } from "../registry/props.ts"
-import { Empty } from "./empty.tsx"
+import { Empty } from "./Empty.tsx"
 import { chip, cx } from "../styles/classes.ts"
 
 const PREVIEW = 120

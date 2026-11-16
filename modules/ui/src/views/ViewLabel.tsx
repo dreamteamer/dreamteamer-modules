@@ -7,7 +7,7 @@
 import { Icon } from "../components/Icon.tsx"
 import { choiceOf, themeColor } from "../lib/collection-display.ts"
 import type { ViewProps } from "../registry/props.ts"
-import { Empty, isEmpty } from "./empty.tsx"
+import { Empty, isEmpty } from "./Empty.tsx"
 import { cx } from "../styles/classes.ts"
 
 /** A label's dot when its choice names no colour: the tone its value conventionally reads in. */

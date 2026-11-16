@@ -10,7 +10,7 @@ import { useState } from "react"
 import { useImageSrc } from "../components/FileThumb.tsx"
 import { isSquarish } from "../lib/row-size.ts"
 import type { ViewProps } from "../registry/props.ts"
-import { Empty } from "./empty.tsx"
+import { Empty } from "./Empty.tsx"
 import { cx, subtle } from "../styles/classes.ts"
 
 export function ViewImage({ value, context }: ViewProps) {

@@ -15,7 +15,7 @@
  * Apply hands the field back to the designer, which stages it until Save.
  */
 import { useMemo, useState } from "react"
-import { useApp } from "../app-context.tsx"
+import { useApp } from "../AppContext.tsx"
 import { Icon } from "../components/Icon.tsx"
 import { Select } from "../components/Select.tsx"
 import type { StagedField } from "../lib/designer-state.ts"

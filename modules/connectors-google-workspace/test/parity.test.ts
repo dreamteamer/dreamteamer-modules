@@ -2,9 +2,9 @@ import { test } from "node:test"
 import assert from "node:assert/strict"
 import { listTools, call } from "../lib/access.ts"
 import { storedAccounts, authorize } from "../lib/auth.ts"
-import { connect } from "../lib/client.ts"
-import { calendarReader } from "../lib/calendar.ts"
-import { createGoogleRequest } from "../lib/direct.ts"
+import { connect } from "../lib/connect.ts"
+import { calendarReader } from "../lib/calendarReader.ts"
+import { createGoogleRequest } from "../lib/createGoogleRequest.ts"
 const account = "dana@northwind.example"
 const env = { GOOGLE_CLIENT_SECRET_PATH: "/tmp/client.json", WORKSPACE_MCP_CREDENTIALS_DIR: "/tmp/accounts" }
 const consent = {

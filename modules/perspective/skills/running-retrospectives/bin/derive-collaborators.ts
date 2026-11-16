@@ -38,7 +38,7 @@ import fs from "node:fs"
 import path from "node:path"
 import { DATA, SCRATCH } from "../lib/workspace.ts"
 import { listRecords, readRecord, writeRecord, contributorOf, collectionDir, recordId } from "../lib/records.ts"
-import { upsertCollaborators } from "../lib/collaborators.ts"
+import { upsertCollaborators } from "../lib/upsertCollaborators.ts"
 import { contributorHandles } from "../lib/identity.ts"
 
 const argv = process.argv.slice(2)

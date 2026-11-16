@@ -13,7 +13,7 @@
  * collection it lives in, the reference itself.
  */
 import { useEffect, useState } from "react"
-import { useApp, useSignal } from "../app-context.tsx"
+import { useApp, useSignal } from "../AppContext.tsx"
 import { HoverCard } from "../components/HoverCard.tsx"
 import { Link } from "../components/Link.tsx"
 import { refsOf } from "../lib/edit-values.ts"
@@ -22,7 +22,7 @@ import { askTitles, fetchRecord, knownTitle, referenceTitlesChanged, refStem } f
 import { recordRoute } from "../lib/route.ts"
 import { splitRef } from "../lib/schema.ts"
 import type { ViewProps } from "../registry/props.ts"
-import { Empty } from "./empty.tsx"
+import { Empty } from "./Empty.tsx"
 import { cx, subtle } from "../styles/classes.ts"
 
 /** A file-codec reference's image src, once its record (and so its extension) has landed. */

@@ -11,7 +11,7 @@
 import { test, describe, beforeEach, afterEach } from "node:test"
 import assert from "node:assert/strict"
 
-// (Ported from the Vue ui's collection-views.test.ts; ui's `viewToConfig` lives in lib/ui-views.ts.)
+// (Ported from the Vue ui's collection-views.test.ts; ui's `viewToConfig` lives in lib/uiViews.ts.)
 import {
   collectionOf,
   uiViewFingerprint,
@@ -19,7 +19,7 @@ import {
   viewLabel,
   viewToConfig,
   type UiViewRecord,
-} from "../src/lib/ui-views.ts"
+} from "../src/lib/uiViews.ts"
 import { pageOf, pathOf, queryOf, withQuery } from "../src/lib/route.ts"
 
 /** A collection-scope view whose drawn `display.list` is `table` plus the given keys. */

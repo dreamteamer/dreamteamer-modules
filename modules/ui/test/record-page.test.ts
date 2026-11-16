@@ -16,7 +16,7 @@ import {
   setEdit,
   withEdits,
 } from "../src/lib/record-page.ts"
-import { HostError } from "../src/transport/types.ts"
+import { HostError } from "../src/transport/HostError.ts"
 
 test("the path row: the collection links back to its browse, the id's folders are plain words, a new record ends in new", () => {
   assert.deepEqual(pathCrumbs("tasks", "2026/07/kickoff"), [

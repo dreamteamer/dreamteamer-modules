@@ -13,7 +13,7 @@
  *   · An end before its start is DRAWN — a dashed point at the start whose tooltip says why.
  *   · Folds start folded (`fold_gaps`, default on); a header cell opens one. A grouped chart starts with every
  *     lane COLLAPSED (`start_collapsed`, default on) — each lane one row carrying its extent, one segment per run.
- *   · A lane grouped by a reference is named after the record it points at (`use-group-labels.ts`): the view's
+ *   · A lane grouped by a reference is named after the record it points at (`useGroupLabels.ts`): the view's
  *     `group_title`, else the target's `record_title`; its picture and one-line summary come from the same record.
  *   · The bar's text rides in the timeline — inside when the bar is wide enough, beside it from its start when not.
  *
@@ -42,7 +42,7 @@ import { bucketize, type Bucket } from "../lib/grouping.ts"
 import { rowContext } from "../lib/vscode-context.ts"
 import type { ListProps } from "../registry/props.ts"
 import { ListEmpty } from "./ListEmpty.tsx"
-import { useGroupLabels } from "./use-group-labels.ts"
+import { useGroupLabels } from "./useGroupLabels.ts"
 import { cx, iconButton, listEmpty, subtle } from "../styles/classes.ts"
 import { calChip } from "./looks.ts"
 

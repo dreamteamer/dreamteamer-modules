@@ -17,7 +17,7 @@ import {
   scopedFilter,
   type PanelPlan,
 } from "../src/lib/page-view.ts"
-import type { UiViewRecord } from "../src/lib/ui-views.ts"
+import type { UiViewRecord } from "../src/lib/uiViews.ts"
 
 const page = (id: string, options: Record<string, unknown>, route = `/${id}`): UiViewRecord => ({
   id,

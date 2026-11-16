@@ -7,7 +7,7 @@ import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
 import { recordPath, writeRecord, readRecord, listRecords } from "../../skills/running-retrospectives/lib/records.ts"
-import { upsertCollaborators } from "../../skills/running-retrospectives/lib/collaborators.ts"
+import { upsertCollaborators } from "../../skills/running-retrospectives/lib/upsertCollaborators.ts"
 
 const BASE = "2026-09-08--fx",
   REF = `perspective/retrospective-sessions/${BASE}`

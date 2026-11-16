@@ -11,7 +11,7 @@
  */
 import { useMemo, useState, type FormEvent } from "react"
 import { createCollection, listRecords, setCollectionKeys } from "../api/client.ts"
-import { useApp, useAsync } from "../app-context.tsx"
+import { useApp, useAsync } from "../AppContext.tsx"
 import { Dialog } from "../components/Dialog.tsx"
 import { IconPicker } from "../components/IconPicker.tsx"
 import { ViewModuleSelect } from "../components/ViewModuleSelect.tsx"
@@ -19,7 +19,7 @@ import { createCollectionBody, mixinChoices, toggleMixin } from "../lib/create-c
 import { isOkfRow } from "../lib/okf.ts"
 import { SCHEMA_BASE } from "../lib/route.ts"
 import { joinCollectionPath, slugify } from "../lib/slugify.ts"
-import { viewModuleTargets } from "../lib/view-module-targets.ts"
+import { viewModuleTargets } from "../lib/viewModuleTargets.ts"
 import {
   button,
   buttonSize,
@@ -35,7 +35,7 @@ import {
   subtle,
 } from "../styles/classes.ts"
 import { dialogForm } from "./looks.ts"
-import { useModules } from "./use-modules.ts"
+import { useModules } from "./useModules.ts"
 
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e))
 

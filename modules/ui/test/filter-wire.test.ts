@@ -4,7 +4,7 @@
 // `contacts/ada` and matched nothing — measured on the real vault as 17 rows vs 0.
 import { test, describe } from "node:test"
 import assert from "node:assert/strict"
-import { normalizeFilterRefs } from "../src/lib/filter-wire.ts"
+import { normalizeFilterRefs } from "../src/lib/normalizeFilterRefs.ts"
 
 const REL: Record<string, Record<string, string>> = {
   meetings: { attendees: "contacts", company: "companies" },

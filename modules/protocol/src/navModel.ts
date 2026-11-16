@@ -52,7 +52,7 @@ import {
 } from "./host/nav.ts"
 import { navDocProblems, navProblemsSentence, readNavDoc } from "./nav-doc.ts"
 import { collectionSources, layerTitle, sourcesContext, sourcesStack } from "./host/sources.ts"
-import { codiconFor } from "./host/icon-name.ts"
+import { codiconFor } from "./host/codiconFor.ts"
 
 /** The four nav settings, read from a workspace's `.vscode/settings.json` (JSON with comments) — what
  *  http and web hosts use; the extension passes VS Code's merged configuration instead. */

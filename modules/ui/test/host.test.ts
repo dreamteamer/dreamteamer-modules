@@ -3,7 +3,7 @@
 // without the route leaves it null; and only a host that answers a workspace id is a PANE host.
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { HostError } from "../src/transport/types.ts"
+import { HostError } from "../src/transport/HostError.ts"
 import { canEdit, filesBase, hostInfo, isAdmin, loadHost, paneHost, signedOut } from "../src/lib/host.ts"
 
 const host = (key: string) => ({

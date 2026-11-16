@@ -6,7 +6,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from "react"
 import { ALL_ICONS, COMMON_ICONS } from "../lib/icon-names.ts"
-import { usePopover } from "../browse/use-popover.ts"
+import { usePopover } from "../browse/usePopover.ts"
 import { Icon } from "./Icon.tsx"
 import { cx, hint, iconButton, input, subtle } from "../styles/classes.ts"
 

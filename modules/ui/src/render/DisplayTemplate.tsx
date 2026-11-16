@@ -14,7 +14,7 @@ import type { FieldRow } from "../api/types.ts"
 import { FileThumb } from "../components/FileThumb.tsx"
 import { MdNodes, mdTemplate } from "../components/Markdown.tsx"
 import { compileTemplate } from "../lib/display-template.ts"
-import { renderMd } from "../lib/render-md.ts"
+import { renderMd } from "../lib/renderMd.ts"
 import { RenderView } from "./Render.tsx"
 
 export function DisplayTemplate({

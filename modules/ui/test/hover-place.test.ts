@@ -6,7 +6,7 @@
  */
 import assert from "node:assert/strict"
 import { describe, it } from "node:test"
-import { hoverPlace } from "../src/lib/hover-place.ts"
+import { hoverPlace } from "../src/lib/hoverPlace.ts"
 
 const VIEW = { width: 1000, height: 800 }
 const rect = (top: number, left = 100, height = 28, width = 160) => ({

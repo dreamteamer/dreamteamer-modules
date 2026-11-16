@@ -5,9 +5,9 @@
  */
 import { useState } from "react"
 import { Icon } from "../components/Icon.tsx"
-import { isUnwritableModule } from "../lib/module-writable.ts"
+import { isUnwritableModule } from "../lib/isUnwritableModule.ts"
 import { CreateCollectionDialog } from "./CreateCollectionDialog.tsx"
-import { useModules } from "./use-modules.ts"
+import { useModules } from "./useModules.ts"
 import { button, buttonSize, buttonTone, cx } from "../styles/classes.ts"
 
 export function ModuleCollections({ moduleId }: { moduleId: string }) {

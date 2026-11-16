@@ -329,7 +329,7 @@ describe("navModel on a real workspace (the contract fixture, on the engine unde
     fixture = makeFixture({ engineDir: ENGINE_DIR })
     const { initEngine, engine } = await load("src/host/engine.js")
     await initEngine(fixture.root)
-    ;({ navModel } = await load("src/nav-model.js"))
+    ;({ navModel } = await load("src/navModel.js"))
     ;({ legacyTree, groupLabel } = await load("src/host/nav.js"))
     const fsdata = await load("src/host/fsdata.js")
     ctxOf = root => ({

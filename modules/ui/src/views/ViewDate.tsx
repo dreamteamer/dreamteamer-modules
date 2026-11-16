@@ -3,9 +3,9 @@
  * across a timezone; a datetime is compact in a cell and long on the record page. `viewer_options.relative`
  * draws "3 days ago". The stored value is the hover.
  */
-import { relativeTime } from "../lib/relative-time.ts"
+import { relativeTime } from "../lib/relativeTime.ts"
 import type { ViewProps } from "../registry/props.ts"
-import { Empty, isEmpty } from "./empty.tsx"
+import { Empty, isEmpty } from "./Empty.tsx"
 
 export function formatDate(value: string, type: string, context: "cell" | "record", relative = false): string {
   const dateOnly = type === "date" || /^\d{4}-\d{2}-\d{2}$/.test(value)

@@ -3,7 +3,7 @@
  * read before mount and again after every reconnect. A 401 from anywhere means the session is gone: the app
  * draws the signed-out sentence instead of itself. Ported from the Vue ui's lib/host-boot.ts.
  */
-import { HostError } from "../transport/types.ts"
+import { HostError } from "../transport/HostError.ts"
 import { signal } from "./signal.ts"
 
 export interface HostInfo {

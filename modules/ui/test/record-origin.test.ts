@@ -2,7 +2,7 @@
 // saves (`webview/src/lib/created-visibility.ts`), as pure functions. Synthetic names only.
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { originClassWord, originKindWord, recordOrigin } from "../src/lib/record-origin.ts"
+import { originClassWord, originKindWord, recordOrigin } from "../src/lib/recordOrigin.ts"
 import { excludedBy, saveRoot, selectionFromQuery, widenedFor } from "../src/lib/created-visibility.ts"
 import { formSections } from "../src/lib/field-row.ts"
 import { emptyFilterGroup, type FilterGroup } from "../src/lib/filter-query.ts"

@@ -2,8 +2,8 @@
 import fs from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
-import { createGoogleRequest } from "../lib/direct.ts"
-import { calendarReader } from "../lib/calendar.ts"
+import { createGoogleRequest } from "../lib/createGoogleRequest.ts"
+import { calendarReader } from "../lib/calendarReader.ts"
 export async function main(argv = process.argv.slice(2)) {
   const [command, account, ...args] = argv
   if (!command || command === "--help") {

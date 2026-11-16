@@ -9,7 +9,7 @@
  * reviews come through `lib/stage-reviews.ts` — one batched request per list, re-read on every invalidation.
  */
 import { useEffect, useState } from "react"
-import { useApp } from "../app-context.tsx"
+import { useApp } from "../AppContext.tsx"
 import { Icon } from "../components/Icon.tsx"
 import {
   bareRef,

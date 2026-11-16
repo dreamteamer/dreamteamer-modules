@@ -5,7 +5,7 @@
  * A template is MARKDOWN whose `{{ field }}` tokens keep their own Views. Substituting the tokens into text first
  * would print a status as `todo` instead of its chip; drawing them as components first would split `**` from its
  * closing `**`. So each bare token becomes a `slotToken` placeholder in the markdown source, and the renderer
- * splices the field's View in where the placeholder lands (`lib/render-md.ts`): `**{{ name }}**` comes out bold AND
+ * splices the field's View in where the placeholder lands (`lib/renderMd.ts`): `**{{ name }}**` comes out bold AND
  * `{{ status }}` as its chip.
  *
  * Only a BARE token naming a field is a slot; a token carrying a filter (`{{ due | date:DD/MM }}`) asked for a
@@ -16,7 +16,7 @@
  */
 import type { FieldRow } from "../api/types.ts"
 import { fileRecordRef } from "./file-record.ts"
-import { respectLineBreaks, slotToken } from "./render-md.ts"
+import { respectLineBreaks, slotToken } from "./renderMd.ts"
 import { parseTemplate, renderToken } from "./template.ts"
 
 export interface TemplateSlot {

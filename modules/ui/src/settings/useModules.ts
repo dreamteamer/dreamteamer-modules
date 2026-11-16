@@ -3,7 +3,7 @@
  * manifest) — what the Modules list, a module's page, the Schema tab's scope banner and every module picker share.
  */
 import { getInfo, listRecords } from "../api/client.ts"
-import { useApp, useAsync } from "../app-context.tsx"
+import { useApp, useAsync } from "../AppContext.tsx"
 import { moduleEntries, type ModuleEntry } from "../lib/modules.ts"
 
 export interface Modules {

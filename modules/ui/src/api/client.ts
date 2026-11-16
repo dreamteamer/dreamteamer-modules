@@ -2,9 +2,9 @@
  * THE API CLIENT — the slice of the protocol (PROTOCOL.md in @dreamteamer/protocol) this app reads and writes,
  * typed. Every call goes through the transport `mount` was handed; nothing here knows HTTP or postMessage.
  */
-import type { Transport } from "../transport/types.ts"
+import type { Transport } from "../transport/HostError.ts"
 import type { FieldRow, SourceEntry } from "./types.ts"
-import type { PresentationCollection } from "./collection-rows.ts"
+import type { PresentationCollection } from "./collectionRows.ts"
 import type { NavNode } from "../lib/nav-tree.ts"
 
 let current: Transport | null = null

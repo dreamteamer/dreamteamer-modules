@@ -2,8 +2,8 @@
 // left to the browser, a host error kept as its status.
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { installApiFetchShim } from "../src/api/fetch-shim.ts"
-import { HostError } from "../src/transport/types.ts"
+import { installApiFetchShim } from "../src/api/installApiFetchShim.ts"
+import { HostError } from "../src/transport/HostError.ts"
 
 test("/api goes through the transport; the rest is the browser's", async () => {
   const asked: unknown[] = []

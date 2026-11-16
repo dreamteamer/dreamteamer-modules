@@ -14,7 +14,7 @@ import fs from "node:fs"
 import path from "node:path"
 import { findWorkspace } from "../lib/workspace-root.ts"
 import { initEngine } from "../src/host/engine.ts"
-import { workspaceNavSettings } from "../src/nav-model.ts"
+import { workspaceNavSettings } from "../src/navModel.ts"
 import { migrateNavSettings } from "../src/nav-doc.ts"
 
 const USAGE = `usage: dt-nav migrate [root] [--json]

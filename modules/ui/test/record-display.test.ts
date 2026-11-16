@@ -5,7 +5,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import { BUILTIN_RECORD_LAYOUT, recordDisplayOf, recordRendererId } from "../src/lib/record-display.ts"
-import type { UiViewRecord } from "../src/lib/ui-views.ts"
+import type { UiViewRecord } from "../src/lib/uiViews.ts"
 
 const view = (over: Partial<UiViewRecord>): UiViewRecord => ({ id: "v", route: "/v", scope: "record", ...over })
 

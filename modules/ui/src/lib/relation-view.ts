@@ -48,7 +48,7 @@
  * Copied from the Vue ui's lib/relation-view.ts; the embedded browse is ui's `record/RelationField.tsx`.
  */
 import type { FieldRow } from "../api/types.ts"
-import type { UiViewRecord } from "./ui-views.ts"
+import type { UiViewRecord } from "./uiViews.ts"
 import { isRelationField, isRelationList } from "./field-row.ts"
 
 export { isRelationField, isRelationList }

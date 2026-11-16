@@ -6,7 +6,7 @@
  */
 import assert from "node:assert/strict"
 import test from "node:test"
-import { kanbanLock } from "../src/lib/kanban-lock.ts"
+import { kanbanLock } from "../src/lib/kanbanLock.ts"
 import { enumRow } from "./field-rows.ts"
 
 const field = (overrides: Parameters<typeof enumRow>[2] = {}) =>

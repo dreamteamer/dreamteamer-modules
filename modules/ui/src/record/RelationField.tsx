@@ -13,7 +13,7 @@
  */
 import { Browse } from "../browse/Browse.tsx"
 import type { EmbeddedRelationPlan } from "../lib/relation-view.ts"
-import { drawnDisplay, uiViewFingerprint, viewToConfig } from "../lib/ui-views.ts"
+import { drawnDisplay, uiViewFingerprint, viewToConfig } from "../lib/uiViews.ts"
 
 export function RelationField({ plan }: { plan: EmbeddedRelationPlan }) {
   const config = plan.view ? viewToConfig(plan.view) : undefined

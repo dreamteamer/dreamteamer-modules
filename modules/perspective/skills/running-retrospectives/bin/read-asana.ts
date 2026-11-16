@@ -15,7 +15,7 @@ import fs from "node:fs"
 import path from "node:path"
 import { DATA, readEnv, slug } from "../lib/workspace.ts"
 import { recordPath, writeRecord, contributorOf, writeSource } from "../lib/records.ts"
-import { upsertCollaborators } from "../lib/collaborators.ts"
+import { upsertCollaborators } from "../lib/upsertCollaborators.ts"
 
 const argv = process.argv.slice(2)
 const flag = n => argv.includes(`--${n}`)

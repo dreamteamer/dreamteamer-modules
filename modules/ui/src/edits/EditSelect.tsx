@@ -4,7 +4,7 @@
  * Choosing the placeholder row clears to null (a required field offers no such row).
  */
 import { Select } from "../components/Select.tsx"
-import { normalizeChoices } from "../lib/choices.ts"
+import { normalizeChoices } from "../lib/normalizeChoices.ts"
 import { choicesOf } from "../lib/field-row.ts"
 import type { Choice } from "../lib/listbox.ts"
 import type { EditProps } from "../registry/props.ts"

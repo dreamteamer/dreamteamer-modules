@@ -13,7 +13,7 @@ import path from "node:path"
 import yaml from "js-yaml"
 import { workspace } from "../../../tests/helpers/fixture.ts"
 import { initEngine } from "../src/host/engine.ts"
-import { navModel } from "../src/nav-model.ts"
+import { navModel } from "../src/navModel.ts"
 import { legacyDoc, migrateNavSettings, NAV_HEADER } from "../src/nav-doc.ts"
 
 const SETTINGS = {

@@ -1,16 +1,16 @@
 /**
- * Markdown as React elements: `lib/render-md.ts` parses into a plain node tree, this draws it. No
+ * Markdown as React elements: `lib/renderMd.ts` parses into a plain node tree, this draws it. No
  * `dangerouslySetInnerHTML` anywhere — an untrusted record body cannot inject markup by construction.
  *
  * `slot(i)` draws the node a display template spliced in at `slotToken(i)` (a field's own View); without it a
  * slot draws nothing.
  */
 import { createElement, type ReactNode } from "react"
-import { renderMd, type MdNode } from "../lib/render-md.ts"
+import { renderMd, type MdNode } from "../lib/renderMd.ts"
 import { cx } from "../styles/classes.ts"
 
 // ---- the looks (was dt-md, dt-md-tpl, dt-md-*) ------------------------------------------------------------------
-// Set on the container and reaching each node by its tag or its `data-md` (lib/render-md.ts). Direction is decided
+// Set on the container and reaching each node by its tag or its `data-md` (lib/renderMd.ts). Direction is decided
 // per block, so a list keeps its gutter on the item, where an RTL item indents on its own side. The document and
 // the template are two whole looks, not one with overrides: an override of a descendant rule ties with it. Every
 // class is written out whole, as Tailwind finds them only so. The first block's `mt-0` outranks every block margin by

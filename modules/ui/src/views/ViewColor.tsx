@@ -3,7 +3,7 @@
  */
 import { hexOf } from "../lib/edit-values.ts"
 import type { ViewProps } from "../registry/props.ts"
-import { Empty } from "./empty.tsx"
+import { Empty } from "./Empty.tsx"
 import { mono } from "../styles/classes.ts"
 
 export function ViewColor({ value }: ViewProps) {

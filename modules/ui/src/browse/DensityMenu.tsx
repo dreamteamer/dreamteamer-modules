@@ -7,8 +7,8 @@
  */
 import { Icon } from "../components/Icon.tsx"
 import { ROW_SIZES, ROW_SIZE_LABELS, resolveRowSize } from "../lib/row-size.ts"
-import type { BrowseState } from "./browse-state.ts"
-import { usePopover } from "./use-popover.ts"
+import type { BrowseState } from "./useBrowseState.ts"
+import { usePopover } from "./usePopover.ts"
 import {
   button,
   buttonSize,

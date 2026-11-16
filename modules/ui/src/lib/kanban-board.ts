@@ -9,7 +9,7 @@
  *
  * A drop is one or two independent writes to one record, each validated by the engine:
  *  - onto a COLUMN: the column field, set to the column's value (`null` on the ungrouped column) — nothing when
- *    the card is already there, the column field is locked (`lib/kanban-lock.ts`; a text selection dragged out
+ *    the card is already there, the column field is locked (`lib/kanbanLock.ts`; a text selection dragged out
  *    of a card still fires `dragstart`, so the guard is here, not only on `draggable`), or the field may not be
  *    empty;
  *  - into a GAP between cards, while the list is sorted by the collection's `position_field`: the column field

@@ -4,8 +4,8 @@
  * `lib/filter-query.ts`'s group: the browse owns the one copy, compiles it and sends it to the host as `filter`.
  *
  * The value control is the RECORD FORM'S OWN Edit, resolved through the registry over a synthetic per-operator
- * field row (`lib/filter-widget.ts`): a reference filters with the record picker, an enum with its choices, a
- * date with the date control, a plain string with the values its records actually hold (`field-values.ts`), and
+ * field row (`lib/filterValueField.ts`): a reference filters with the record picker, an enum with its choices, a
+ * date with the date control, a plain string with the values its records actually hold (`useFieldValues.ts`), and
  * a text operator (`contains`) with free text whatever the field. `_in` draws one control per entry plus a blank
  * one to add the next; `_between` draws two bounds.
  *
@@ -15,7 +15,7 @@
  */
 import type { Dispatch, SetStateAction } from "react"
 import type { FieldRow } from "../api/types.ts"
-import { useApp } from "../app-context.tsx"
+import { useApp } from "../AppContext.tsx"
 import { Icon } from "../components/Icon.tsx"
 import { Select } from "../components/Select.tsx"
 import { resolvePathTarget, type RelationLookup } from "../lib/filter-field-tree.ts"
@@ -33,9 +33,9 @@ import {
   type FilterGroup,
   type FilterRule,
 } from "../lib/filter-query.ts"
-import { filterValueField } from "../lib/filter-widget.ts"
+import { filterValueField } from "../lib/filterValueField.ts"
 import { RenderEdit } from "../render/Render.tsx"
-import { useFieldValues } from "./field-values.ts"
+import { useFieldValues } from "./useFieldValues.ts"
 import { FilterFieldPicker } from "./FilterFieldPicker.tsx"
 import { button, buttonSize, buttonTone, cx, iconButton, subtle } from "../styles/classes.ts"
 

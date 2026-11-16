@@ -1,7 +1,7 @@
 /**
  * `markdown-body` — the record's body in CodeMirror 6 with Obsidian-style live preview (ported from
  * the Vue ui's EditMarkdownBody.vue). The text stays source-canonical markdown; the decorations
- * (`lib/editor-preview.ts`) are visual only, revealed under the cursor.
+ * (`lib/livePreview.ts`) are visual only, revealed under the cursor.
  *
  * Two modes, one document: LIVE PREVIEW (markers hide until the cursor reaches them) and SOURCE (raw markdown).
  * The toggle swaps the preview extension through a Compartment, so switching never remounts the editor or loses
@@ -20,7 +20,7 @@ import { markdown, markdownLanguage } from "@codemirror/lang-markdown"
 import { Icon } from "../components/Icon.tsx"
 import { insertLink, setHeading, toggleFence, toggleInline, toggleLinePrefix } from "../lib/editor-commands.ts"
 import { pushEmitted, shouldReset } from "../lib/editor-guard.ts"
-import { livePreview } from "../lib/editor-preview.ts"
+import { livePreview } from "../lib/livePreview.ts"
 import type { EditProps } from "../registry/props.ts"
 import { controlFrame } from "../components/looks.ts"
 import { cx } from "../styles/classes.ts"

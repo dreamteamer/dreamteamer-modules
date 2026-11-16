@@ -1,7 +1,7 @@
 // The shared gate (cr-modules-007 design §4c; cr-modules-008 §4). Pure: no I/O, no clock, no headers.
 // It decides WHAT a scope may call — the host adapter decides WHO and HOW MUCH around it.
 import { matchRoute } from "./routes.ts"
-import { levelRank, RECORD_WRITE_ROUTES } from "./pane-scope.ts"
+import { levelRank, RECORD_WRITE_ROUTES } from "./paneScope.ts"
 
 /** The engine's filter operators (0.44 `KNOWN_OPERATORS`) minus the `_regex` family and the `_and`/`_or` structure keys. */
 export const OPERATORS = new Set([

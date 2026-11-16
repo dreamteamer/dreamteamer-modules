@@ -13,7 +13,7 @@ import { Link } from "../components/Link.tsx"
 import { shipsOf } from "../lib/modules.ts"
 import { SCHEMA_BASE } from "../lib/route.ts"
 import { schemaRowContext } from "../lib/vscode-context.ts"
-import { useModules } from "./use-modules.ts"
+import { useModules } from "./useModules.ts"
 import {
   button,
   buttonSize,

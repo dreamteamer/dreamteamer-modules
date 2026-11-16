@@ -1,8 +1,8 @@
-// Back and forward (lib/nav-history.ts): a browser's rule — a new place truncates what was ahead — except that a
+// Back and forward (lib/navHistory.ts): a browser's rule — a new place truncates what was ahead — except that a
 // move changing only the query (the browse writing `?filter=` back) replaces the entry rather than adding one.
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { canBack, canForward, peek, step, visit, type HistoryState } from "../src/lib/nav-history.ts"
+import { canBack, canForward, peek, step, visit, type HistoryState } from "../src/lib/navHistory.ts"
 
 const empty: HistoryState = { entries: [], at: -1 }
 const walk = (...routes: string[]) => routes.reduce(visit, empty)

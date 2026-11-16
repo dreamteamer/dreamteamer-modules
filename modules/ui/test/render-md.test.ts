@@ -2,7 +2,7 @@
 // markup of its own (a `javascript:` link stays text).
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { mdToPlainText, renderMd, respectLineBreaks, slotToken, type MdNode } from "../src/lib/render-md.ts"
+import { mdToPlainText, renderMd, respectLineBreaks, slotToken, type MdNode } from "../src/lib/renderMd.ts"
 
 const tags = (nodes: MdNode[]) => nodes.map(n => (typeof n === "string" ? "#text" : "slot" in n ? "#slot" : n.tag))
 

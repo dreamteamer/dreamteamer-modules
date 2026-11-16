@@ -20,7 +20,7 @@ import path from "node:path"
 import yaml from "js-yaml"
 import { WORKSPACE_ROOT, DATA, dt, slug } from "../lib/workspace.ts"
 import { recordPath, writeRecord, readRecord, listRecords, contributorOf, collectionDir } from "../lib/records.ts"
-import { numberedListItems } from "../lib/markdown.ts"
+import { numberedListItems } from "../lib/numberedListItems.ts"
 
 const argv = process.argv.slice(2)
 const flag = n => argv.includes(`--${n}`)

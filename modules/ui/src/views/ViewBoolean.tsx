@@ -3,7 +3,7 @@
  */
 import { Icon } from "../components/Icon.tsx"
 import type { ViewProps } from "../registry/props.ts"
-import { Empty } from "./empty.tsx"
+import { Empty } from "./Empty.tsx"
 import { subtle } from "../styles/classes.ts"
 
 export function ViewBoolean({ value }: ViewProps) {

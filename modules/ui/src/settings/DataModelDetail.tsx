@@ -16,8 +16,8 @@
  */
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
 import { deleteCollection, renameField, renameFieldValue } from "../api/client.ts"
-import { useApp } from "../app-context.tsx"
-import { usePopover } from "../browse/use-popover.ts"
+import { useApp } from "../AppContext.tsx"
+import { usePopover } from "../browse/usePopover.ts"
 import { Dialog } from "../components/Dialog.tsx"
 import { Icon } from "../components/Icon.tsx"
 import { Link } from "../components/Link.tsx"

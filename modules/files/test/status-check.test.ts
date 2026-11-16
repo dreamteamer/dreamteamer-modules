@@ -5,7 +5,7 @@ import path from "node:path"
 import { api } from "./fixture.ts"
 import { driveWorkspace } from "./helpers.ts"
 import { doctorFiles } from "../src/status.ts"
-import { checkFiles } from "../src/check.ts"
+import { checkFiles } from "../src/checkFiles.ts"
 import { bind } from "../src/engine.ts"
 
 bind(api)

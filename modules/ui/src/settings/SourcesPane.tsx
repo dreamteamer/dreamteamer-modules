@@ -13,7 +13,7 @@
 import { useEffect, useState, type ReactNode } from "react"
 import { getSources, getSourceMembers, getSourcesAccess } from "../api/client.ts"
 import type { OwnAccess, RemoteMembers } from "../api/types.ts"
-import { useApp, useAsync } from "../app-context.tsx"
+import { useApp, useAsync } from "../AppContext.tsx"
 import { Icon } from "../components/Icon.tsx"
 import { RemoteAccessMark } from "../components/RemoteAccessMark.tsx"
 import { SourceMark } from "../components/SourceMark.tsx"

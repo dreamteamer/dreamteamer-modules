@@ -5,7 +5,7 @@
  * and — only when some module is installed by npm — one sentence saying those are not offered, their names on
  * hover. A list of every module with a path under each ran a popover past the window. Presentational.
  */
-import { lockedNote, moduleChoices, whereOf, type ViewModuleTarget } from "../lib/view-module-targets.ts"
+import { lockedNote, moduleChoices, whereOf, type ViewModuleTarget } from "../lib/viewModuleTargets.ts"
 import { Select } from "./Select.tsx"
 import { hint } from "../styles/classes.ts"
 

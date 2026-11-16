@@ -1,7 +1,7 @@
 /**
  * THE BOARD — the built-in `kanban` List (ported from the Vue ui's ListKanban.vue): columns by a field, a
  * card per record, a drag between columns writes that field. A thin renderer over the browse's state; every
- * decision a drag obeys is pure, in `lib/kanban-board.ts` and `lib/kanban-lock.ts`.
+ * decision a drag obeys is pure, in `lib/kanban-board.ts` and `lib/kanbanLock.ts`.
  *
  * COLUMNS COME FROM THE SCHEMA, IN SCHEMA ORDER: an `enum:` compiles to `editor_options.choices` in declared
  * order, so `todo, doing, done` reads left to right as authored and no second ordering is stored to drift from
@@ -25,7 +25,7 @@
 import { useEffect, useMemo, useRef, useState, type DragEvent } from "react"
 import { rowContext } from "../lib/vscode-context.ts"
 import { moveRecord, updateRecord, type Row } from "../api/client.ts"
-import { useApp, useSignal } from "../app-context.tsx"
+import { useApp, useSignal } from "../AppContext.tsx"
 import { Icon } from "../components/Icon.tsx"
 import { SourceMark } from "../components/SourceMark.tsx"
 import { themeColor } from "../lib/collection-display.ts"
@@ -33,7 +33,7 @@ import { hasControl, isRelationField } from "../lib/field-row.ts"
 import { bucketize, buildLanes, ungroupedAllowed, UNGROUPED, valueOf, type Bucket } from "../lib/grouping.ts"
 import { templateOption } from "../lib/display-template.ts"
 import { addPrefill, columnFieldOf, laneFieldOf, planDrop, type Gap } from "../lib/kanban-board.ts"
-import { kanbanLock } from "../lib/kanban-lock.ts"
+import { kanbanLock } from "../lib/kanbanLock.ts"
 import { askTitles, knownTitle, referenceTitlesChanged } from "../lib/record-cache.ts"
 import type { ListProps } from "../registry/props.ts"
 import { DisplayTemplate } from "../render/DisplayTemplate.tsx"

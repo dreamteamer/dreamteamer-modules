@@ -6,7 +6,7 @@ import fs from "node:fs/promises"
 import { spawn } from "node:child_process"
 import { gateway } from "../src/gateway.ts"
 import { parseArgs } from "../src/cli.ts"
-import { callUi } from "../src/control.ts"
+import { callUi } from "../src/callUi.ts"
 
 test("the launcher refuses network bind overrides and malformed ports", () => {
   assert.throws(() => parseArgs(["--host", "0.0.0.0"]), /Unknown option/)

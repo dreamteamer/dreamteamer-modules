@@ -19,7 +19,7 @@ import {
   collectionDir,
   recordId,
 } from "../lib/records.ts"
-import { commitIntent } from "../lib/commit-intent.ts"
+import { commitIntent } from "../lib/commitIntent.ts"
 
 const argv = process.argv.slice(2)
 const flag = n => argv.includes(`--${n}`)

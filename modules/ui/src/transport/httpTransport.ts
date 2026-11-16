@@ -14,7 +14,7 @@
  * It keeps the browser's OWN fetch, taken when the transport is made, so nothing that patches `fetch` later
  * can route the transport's requests back into itself.
  */
-import { HostError, type Transport } from "./types.ts"
+import { HostError, type Transport } from "./HostError.ts"
 import { filesBase, loadHost, signedOut } from "../lib/host.ts"
 
 const STREAM_OPEN = 1

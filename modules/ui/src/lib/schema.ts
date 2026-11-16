@@ -8,7 +8,7 @@
  * Pure: no React, no transport — `buildSchema` is handed the answer.
  */
 import type { Presentation, Relation } from "../api/client.ts"
-import { collectionRows } from "../api/collection-rows.ts"
+import { collectionRows } from "../api/collectionRows.ts"
 import type { CollectionRow, FieldRow } from "../api/types.ts"
 import { drawnOn, hasControl, isBodyField, isRelationField } from "./field-row.ts"
 import { titleOf } from "./record-title.ts"

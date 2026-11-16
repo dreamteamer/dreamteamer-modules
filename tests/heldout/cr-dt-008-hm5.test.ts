@@ -139,7 +139,7 @@ function navModelOf(root) {
   fs.writeFileSync(
     script,
     `import { initEngine } from ${JSON.stringify(path.join(PROTOCOL, "src", "host", "engine.js"))};
-import { navModel, workspaceNavSettings } from ${JSON.stringify(path.join(PROTOCOL, "src", "nav-model.js"))};
+import { navModel, workspaceNavSettings } from ${JSON.stringify(path.join(PROTOCOL, "src", "navModel.js"))};
 const root = process.argv[2];
 const log = console.log; console.log = () => {};
 await initEngine(root);

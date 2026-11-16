@@ -14,14 +14,14 @@
  * why.
  */
 import { useContext, useMemo } from "react"
-import { useSignal } from "../app-context.tsx"
+import { useSignal } from "../AppContext.tsx"
 import { Icon } from "../components/Icon.tsx"
 import { Link } from "../components/Link.tsx"
 import { themeColor } from "../lib/collection-display.ts"
 import { bucketize, type Bucket } from "../lib/grouping.ts"
 import { countLink, UNLINKED_COUNT } from "../lib/page-view.ts"
-import { uiViews, type UiViewRecord } from "../lib/ui-views.ts"
-import { PageSource } from "../pages/page-source.ts"
+import { uiViews, type UiViewRecord } from "../lib/uiViews.ts"
+import { PageSource } from "../pages/PageSource.ts"
 import type { ListProps } from "../registry/props.ts"
 import { cx } from "../styles/classes.ts"
 

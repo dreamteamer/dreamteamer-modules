@@ -10,7 +10,7 @@
  */
 import assert from "node:assert/strict"
 import { describe, test } from "node:test"
-import { listSeed, scratchKey } from "../src/lib/list-seed.ts"
+import { listSeed, scratchKey } from "../src/lib/listSeed.ts"
 import { DEFAULT_ROW_SIZE, ROW_SIZES, isRowSize, isSquarish, resolveRowSize } from "../src/lib/row-size.ts"
 
 describe("resolveRowSize", () => {

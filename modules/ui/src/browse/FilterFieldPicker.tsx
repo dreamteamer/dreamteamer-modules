@@ -12,7 +12,7 @@
  */
 import { useRef, useState, type KeyboardEvent } from "react"
 import type { FieldRow } from "../api/types.ts"
-import { useApp } from "../app-context.tsx"
+import { useApp } from "../AppContext.tsx"
 import { Icon } from "../components/Icon.tsx"
 import {
   childNodes,
@@ -23,8 +23,8 @@ import {
   type FieldNode,
   type RelationLookup,
 } from "../lib/filter-field-tree.ts"
-import { formatTitle } from "../lib/format-title.ts"
-import { usePopover } from "./use-popover.ts"
+import { formatTitle } from "../lib/formatTitle.ts"
+import { usePopover } from "./usePopover.ts"
 import { ddControl } from "../components/looks.ts"
 import { cx, iconButton, subtle } from "../styles/classes.ts"
 

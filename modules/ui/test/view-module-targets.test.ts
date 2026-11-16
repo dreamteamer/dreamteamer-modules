@@ -13,7 +13,7 @@ import {
   viewModuleTargets,
   whereOf,
   type ViewModuleTarget,
-} from "../src/lib/view-module-targets.ts"
+} from "../src/lib/viewModuleTargets.ts"
 
 const inline = (id: string) => ({ id, title: id, location: "modules", path: `modules/${id}` })
 const linked = (id: string) => ({

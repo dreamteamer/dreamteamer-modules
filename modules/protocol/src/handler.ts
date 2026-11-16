@@ -13,7 +13,7 @@ import { join as pathJoin } from "node:path"
 import { ROUTES, matchRoute } from "./routes.ts"
 import { initEngine, refreshWorkspace } from "./host/engine.ts"
 import { WorkspaceApi } from "./host/api.ts"
-import { navModel, navOpContext, workspaceNavSettings } from "./nav-model.ts"
+import { navModel, navOpContext, workspaceNavSettings } from "./navModel.ts"
 import {
   NAV_FILE,
   NavDocError,

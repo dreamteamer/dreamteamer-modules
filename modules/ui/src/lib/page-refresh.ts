@@ -5,7 +5,7 @@
  * lifetime; `requestPageRefresh` runs them all. A plain module-level list rather than a Vue event,
  * because a list layout and a record page are not each other's parents and both must hear it, and
  * because this file imports NOTHING — tier 1 bundles it, and a Vue or transport import here would put
- * `window` in that bundle (see `schema-refresh.ts`).
+ * `window` in that bundle (see `refreshSchema.ts`).
  *
  * Only the refresh button fires it (`dt:invalidate` with `pages: true`). The watcher does not: it
  * fires on every agent write, and a page re-fetch on each would be a request storm.

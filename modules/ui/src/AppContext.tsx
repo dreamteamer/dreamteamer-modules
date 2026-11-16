@@ -10,7 +10,7 @@ import type { Signal } from "./lib/signal.ts"
 export interface AppState {
   route: string
   navigate(route: string): void
-  /** Back (−1) or forward (+1) in the app's own history (lib/nav-history.ts); a page may refuse to be left. */
+  /** Back (−1) or forward (+1) in the app's own history (lib/navHistory.ts); a page may refuse to be left. */
   go(delta: number): void
   schema: Schema
   editable: boolean

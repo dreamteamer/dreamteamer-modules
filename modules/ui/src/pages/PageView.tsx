@@ -18,7 +18,7 @@
  * The view is looked up LIVE by id, and each embedded browse is keyed on its child's fingerprint: a browse reads its
  * config once, so an edited child reaches the screen through a remount.
  */
-import { useSignal } from "../app-context.tsx"
+import { useSignal } from "../AppContext.tsx"
 import { Browse } from "../browse/Browse.tsx"
 import { Icon } from "../components/Icon.tsx"
 import { Link } from "../components/Link.tsx"
@@ -42,10 +42,10 @@ import {
   viewLabel,
   viewToConfig,
   type UiViewRecord,
-} from "../lib/ui-views.ts"
+} from "../lib/uiViews.ts"
 import { ActivityPane } from "../settings/ActivityPane.tsx"
-import { useModules } from "../settings/use-modules.ts"
-import { PageSource } from "./page-source.ts"
+import { useModules } from "../settings/useModules.ts"
+import { PageSource } from "./PageSource.ts"
 import { cx, listEmpty, page, pageHead, pageHeadSpace, subtle } from "../styles/classes.ts"
 
 /** A panel's title: plain text, or a link that reads as one until hovered. (was dt-panel-title) */

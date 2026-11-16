@@ -12,8 +12,8 @@
  * Copied from the Vue ui's lib/record-display.ts; `recordRendererId` is the Vue ui's `lib/presets.ts` item-target
  * resolution, without the `.schema/presets` path the Vue ui's adapter answers with nothing.
  */
-import type { UiViewRecord } from "./ui-views.ts"
-import { drawnDisplay } from "./ui-views.ts"
+import type { UiViewRecord } from "./uiViews.ts"
+import { drawnDisplay } from "./uiViews.ts"
 
 export interface RecordDisplay {
   /** A registered record renderer id, or undefined for the built-in record page. */

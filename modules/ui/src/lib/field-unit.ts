@@ -12,7 +12,7 @@
  * caller draws it with the field's own View, because a unit on a value it does not describe is a
  * wrong answer, not a decoration.
  */
-import { formatFilesize } from "./format-filesize.ts"
+import { formatFilesize } from "./formatFilesize.ts"
 
 /** The two display keys a unit is read from — a field row's `unit` and `unit_field`. */
 interface UnitField {

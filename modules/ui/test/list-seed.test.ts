@@ -3,7 +3,7 @@
 // variant merged over it key by key — a key the view sets wins, a key it omits is the collection's.
 import { test, describe } from "node:test"
 import assert from "node:assert/strict"
-import { listSeed } from "../src/lib/list-seed.ts"
+import { listSeed } from "../src/lib/listSeed.ts"
 import type { CollectionRow } from "../src/api/types.ts"
 
 const LIST: CollectionRow["list"] = {

@@ -18,7 +18,7 @@ import {
   sourceEntry,
   yieldsWords,
 } from "../lib/sources.ts"
-import { useApp } from "../app-context.tsx"
+import { useApp } from "../AppContext.tsx"
 import { Icon } from "./Icon.tsx"
 import { Link } from "./Link.tsx"
 import { cx, subtle } from "../styles/classes.ts"

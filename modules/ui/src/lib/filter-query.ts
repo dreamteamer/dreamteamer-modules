@@ -389,7 +389,7 @@ function clauseRules(clause: unknown, path: string[] = []): FilterRule[] | null 
  * One filter value, as a human reads it.
  *
  * ⚠ Strips the components' wire slash: a relation value travels as `/contacts/ada` (see
- * `filter-wire.ts`) and a chip reading "Attendees is /contacts/ada" shows plumbing. What it does
+ * `normalizeFilterRefs.ts`) and a chip reading "Attendees is /contacts/ada" shows plumbing. What it does
  * NOT do is resolve the reference to that record's title — that needs a fetch per reference, and a
  * label that is sometimes a title and sometimes a raw ref, depending on what happens to be cached,
  * is worse than one that is always the reference.

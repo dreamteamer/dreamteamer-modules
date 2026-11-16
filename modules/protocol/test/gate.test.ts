@@ -3,8 +3,8 @@ import test from "node:test"
 import assert from "node:assert/strict"
 import { gate, OPERATORS } from "../src/gate.ts"
 import { reshape } from "../src/reshape.ts"
-import { applyWrite } from "../src/apply-write.ts"
-import { createFrameBridge } from "../src/frame-bridge.ts"
+import { applyWrite } from "../src/applyWrite.ts"
+import { createFrameBridge } from "../src/createFrameBridge.ts"
 
 const descriptors = [
   {
@@ -339,7 +339,7 @@ test("module: no commit-derived key in a filter or sort, and no q, on a collecti
 // pane kind (cr-modules-017 §4): the route's level against the pane's; record writes on an internal collection need admin
 {
   const { ROUTES } = await import("../src/routes.ts")
-  const { paneScope, internalCollections, levelRank, lowerLevel, LEVELS } = await import("../src/pane-scope.ts")
+  const { paneScope, internalCollections, levelRank, lowerLevel, LEVELS } = await import("../src/paneScope.ts")
   const paneDescriptors = [
     ...descriptors,
     { name: "ui-views", fields: { title: { type: "string" } } },

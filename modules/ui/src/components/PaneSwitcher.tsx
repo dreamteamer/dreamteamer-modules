@@ -7,10 +7,10 @@
  */
 import { useState } from "react"
 import { createPortal } from "react-dom"
-import { useApp, useSignal } from "../app-context.tsx"
+import { useApp, useSignal } from "../AppContext.tsx"
 import { hostInfo } from "../lib/host.ts"
-import { paneFetch } from "../lib/pane-api.ts"
-import { usePaneMenu } from "./use-pane-menu.ts"
+import { paneFetch } from "../lib/paneFetch.ts"
+import { usePaneMenu } from "./usePaneMenu.ts"
 import { cx } from "../styles/classes.ts"
 import { paneMenu, paneMenuError, paneMenuItem, paneMenuItemPlace, paneMenuQuiet } from "./looks.ts"
 

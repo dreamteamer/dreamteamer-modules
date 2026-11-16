@@ -1,5 +1,5 @@
 /** THE WORKSPACE'S FIRST PAGE — its own collections (not the engine's runtime ones) as cards to open. */
-import { useApp } from "../app-context.tsx"
+import { useApp } from "../AppContext.tsx"
 import { Icon } from "../components/Icon.tsx"
 import { Link } from "../components/Link.tsx"
 import { listRoute } from "../lib/route.ts"

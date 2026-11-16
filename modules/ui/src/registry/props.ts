@@ -39,7 +39,7 @@ export interface ViewProps {
  * (`filter` is the effective one, ready for the records API), and the options its view or preset gave it.
  */
 export interface ListProps {
-  state: import("../browse/browse-state.ts").BrowseState
+  state: import("../browse/useBrowseState.ts").BrowseState
   collection: string
   query: { search: string; filter: Record<string, unknown> | undefined; sort: string }
   options: Record<string, unknown>
@@ -53,7 +53,7 @@ export interface ListProps {
  */
 export interface RecordLayoutProps {
   collection: string
-  /** The fields a record page draws (`lib/record-page-fields.ts`), unfiltered by surface. */
+  /** The fields a record page draws (`lib/recordPageFields.ts`), unfiltered by surface. */
   fields: FieldRow[]
   /** The record as read; null on the create form. */
   record: Record<string, unknown> | null

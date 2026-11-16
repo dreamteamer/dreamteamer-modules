@@ -72,7 +72,7 @@ import {
   compiledStorage,
   recordFilesOf,
 } from "../lib/records.ts"
-import { upsertCollaborators } from "../lib/collaborators.ts"
+import { upsertCollaborators } from "../lib/upsertCollaborators.ts"
 import { contributorHandles as handlesOf } from "../lib/identity.ts"
 
 const READER = "read-meetings@1"

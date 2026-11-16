@@ -15,10 +15,10 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type MouseEvent } from "react"
 import { getNav, request } from "../api/client.ts"
-import { useApp, useSignal } from "../app-context.tsx"
+import { useApp, useSignal } from "../AppContext.tsx"
 import { hostInfo, paneHost } from "../lib/host.ts"
 import { menuUnder, rectOf, viewportWidth } from "../lib/menu-place.ts"
-import { canBack, canForward, navHistory } from "../lib/nav-history.ts"
+import { canBack, canForward, navHistory } from "../lib/navHistory.ts"
 import {
   NAV_DRAG_TYPE,
   TAIL,
@@ -37,7 +37,7 @@ import {
   type NavNode,
   type NavOp,
 } from "../lib/nav-tree.ts"
-import { openMenu } from "../lib/open-menu.ts"
+import { openMenu } from "../lib/openMenu.ts"
 import { Icon } from "./Icon.tsx"
 import { NavMenu } from "./NavMenu.tsx"
 import { PaneLevel } from "./PaneLevel.tsx"
@@ -111,7 +111,7 @@ export function Nav() {
     }
   }, [version, reads])
 
-  // one nav menu at a time (lib/open-menu.ts): a row menu or a toolbar ask closes a pane menu, and the other way
+  // one nav menu at a time (lib/openMenu.ts): a row menu or a toolbar ask closes a pane menu, and the other way
   const setMenuAt = useCallback((m: MenuAt | null) => {
     setMenuAtRaw(m)
     if (m) openMenu.set("nav")

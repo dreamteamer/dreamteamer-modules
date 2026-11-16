@@ -6,7 +6,7 @@ import path from "node:path"
 import { spawnSync } from "node:child_process"
 import { fileURLToPath } from "node:url"
 import { call, validateCall, credentialPath, configuration } from "../lib/access.ts"
-import { connect } from "../lib/client.ts"
+import { connect } from "../lib/connect.ts"
 import { doctor } from "../lib/doctor.ts"
 
 const env = {

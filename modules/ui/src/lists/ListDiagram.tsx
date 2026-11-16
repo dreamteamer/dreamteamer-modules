@@ -4,7 +4,7 @@
  *
  * There is no separate "schema diagram": `collections` is a collection whose records are descriptors, and a diagram
  * over it is this layout with `link_by: schema` — collection descriptors drawn as ENTITY nodes (a table with its
- * field rows), grouped by module, an edge per reference (`lib/diagram/providers/schema-refs.ts`, over the display
+ * field rows), grouped by module, an edge per reference (`lib/diagram/providers/buildSchemaRefs.ts`, over the display
  * contract: the presentation's collection rows, field rows and relation rows). Over any other collection a record
  * is a DOT and an edge is a typed reference, a shared value, or a value drawn as a node of its own
  * (`providers/record-links.ts`).
@@ -20,7 +20,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from "react"
 import { getPresentation, listRecords, type Row } from "../api/client.ts"
-import { useApp, useAsync } from "../app-context.tsx"
+import { useApp, useAsync } from "../AppContext.tsx"
 import { DiagramCanvas } from "../components/diagram/DiagramCanvas.tsx"
 import { layoutForce, layoutGrouped, type LayoutBox, type SizedNode } from "../lib/diagram/layout.ts"
 import { buildRecordLinks, type LinkMode } from "../lib/diagram/providers/record-links.ts"
@@ -29,7 +29,7 @@ import {
   type SchemaCollectionRow,
   type SchemaFieldRow,
   type SchemaRelationRow,
-} from "../lib/diagram/providers/schema-refs.ts"
+} from "../lib/diagram/providers/buildSchemaRefs.ts"
 import { isRelationField } from "../lib/field-row.ts"
 import { tryRenderDisplay } from "../lib/template.ts"
 import type { ListProps } from "../registry/props.ts"

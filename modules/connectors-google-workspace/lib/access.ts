@@ -1,7 +1,7 @@
 import fs from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
-import { connect } from "./client.ts"
+import { connect } from "./connect.ts"
 
 // Unknown tools fail closed, including tools whose name merely starts with "get".
 export const READ_TOOLS = new Set([

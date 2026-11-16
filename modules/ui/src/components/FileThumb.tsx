@@ -9,7 +9,7 @@
  * Anything else has no source. A result that lands after the value changed is dropped.
  */
 import { useEffect, useState } from "react"
-import { useApp } from "../app-context.tsx"
+import { useApp } from "../AppContext.tsx"
 import { fileRecordRef, isImageExt, srcForRecord } from "../lib/file-record.ts"
 import { fetchRecord } from "../lib/record-cache.ts"
 import { subtle } from "../styles/classes.ts"

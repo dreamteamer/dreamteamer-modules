@@ -40,7 +40,7 @@ export const READ_QUERY_KEYS: Set<string>
 export const SYSTEM_COLLECTIONS: Set<string>
 export const BOUNDS: { operand: number; list: number; conditions: number; q: number; limit: number }
 export function gate(
-  scope: Scope | import("./pane-scope.d.ts").PaneScope,
+  scope: Scope | import("./paneScope.d.ts").PaneScope,
   descriptors: Array<{ name: string; fields?: Record<string, any>; runtime?: boolean }> | Map<string, any>,
   method: string,
   path: string,

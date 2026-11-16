@@ -4,7 +4,7 @@
  */
 import { progressOf } from "../lib/edit-values.ts"
 import type { ViewProps } from "../registry/props.ts"
-import { Empty } from "./empty.tsx"
+import { Empty } from "./Empty.tsx"
 import { subtle } from "../styles/classes.ts"
 
 export function ViewProgress({ value, options }: ViewProps) {

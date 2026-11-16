@@ -3,7 +3,7 @@
  *
  * Its own module, importing NOTHING, for two reasons that point the same way: the carry below is a
  * decision worth a test, and `adapter.ts` cannot be imported by one — it pulls in `transport.ts`,
- * which registers a `window` listener at module scope. Same reasoning as `lib/schema-rail.ts`.
+ * which registers a `window` listener at module scope. Same reasoning as `lib/schemaRail.ts`.
  */
 import type { CollectionRow } from "./types.ts"
 

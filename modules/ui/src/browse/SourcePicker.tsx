@@ -14,7 +14,7 @@ import { Icon } from "../components/Icon.tsx"
 import { SourceMark } from "../components/SourceMark.tsx"
 import type { FilterGroup } from "../lib/filter-query.ts"
 import { selectedSources, sourceColor, toggleSource, viaWord, withSourceSelection } from "../lib/sources.ts"
-import { usePopover } from "./use-popover.ts"
+import { usePopover } from "./usePopover.ts"
 import {
   button,
   buttonSize,

@@ -29,7 +29,7 @@ import {
 } from "../lib/records.ts"
 import { accessTokenFor, googleAccounts, gmail } from "../lib/google-auth.ts"
 import { summarizeThread } from "../lib/gmail.ts"
-import { upsertCollaborators } from "../lib/collaborators.ts"
+import { upsertCollaborators } from "../lib/upsertCollaborators.ts"
 import path from "node:path"
 
 const READER = "read-gmail@1"

@@ -1,6 +1,6 @@
 /**
  * WHAT A BAND IS CALLED WHEN ITS VALUE IS A REFERENCE — the pure half of the Vue ui's lib/group-label.ts; the
- * fetching half is the hook `lists/use-group-labels.ts`.
+ * fetching half is the hook `lists/useGroupLabels.ts`.
  *
  * A grouped layout's band value is whatever the field holds. For an enum that is a declared choice with an
  * authored label, and `bucketize` uses it. For a REFERENCE it is a workspace path, and the band would print the

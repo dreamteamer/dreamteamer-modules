@@ -5,7 +5,7 @@
  * the Vue ui's composables/browse-state.ts.
  *
  * WHERE IT STARTS (descriptor v2 §3.5): the governing ui-view's `display.list` merged key by key over the
- * collection's own (`lib/list-seed.ts`), the view's filter decompiled into editable conditions
+ * collection's own (`lib/listSeed.ts`), the view's filter decompiled into editable conditions
  * (`lib/view-filter.ts`), and the URL's `?search`, `?filter`, `?layout` over both — the URL is the operator
  * having already edited this session. The schema is loaded before any page mounts, so all of it is decided once,
  * on the first render; the browse is remounted (keyed by its caller) when the view or the collection's list
@@ -24,14 +24,14 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { listRecords, removeRecord, type Row } from "../api/client.ts"
 import type { FieldRow, SourceEntry } from "../api/types.ts"
-import { useApp, useAsync, useRouteBase } from "../app-context.tsx"
-import { browseFields, moveItem, seedColumns, toggledSort } from "../lib/browse-fields.ts"
+import { useApp, useAsync, useRouteBase } from "../AppContext.tsx"
+import { browseFields, moveItem, seedColumns, toggledSort } from "../lib/browseFields.ts"
 import { DEFAULT_SORT } from "../lib/builtin-fields.ts"
 import { colorByFor, tintOf as tintFor, tintStyle } from "../lib/collection-display.ts"
 import { SOURCES_QUERY, TARGET_QUERY, takeCreated, widenedFor, type CreatedNote } from "../lib/created-visibility.ts"
 import { compileFilter, emptyFilterGroup, serializeFilterGroup, type FilterGroup } from "../lib/filter-query.ts"
-import { normalizeFilterRefs } from "../lib/filter-wire.ts"
-import { listSeed, scratchKey as scratchKeyFor } from "../lib/list-seed.ts"
+import { normalizeFilterRefs } from "../lib/normalizeFilterRefs.ts"
+import { listSeed, scratchKey as scratchKeyFor } from "../lib/listSeed.ts"
 import { effectiveLimit } from "../lib/page-size.ts"
 import { createRoute, pathOf, queryOf, recordRoute, withQuery } from "../lib/route.ts"
 import { recordLabel } from "../lib/schema.ts"
@@ -50,7 +50,7 @@ import {
 import { templateFields } from "../lib/template.ts"
 import { filterFromUrl, seedFilter } from "../lib/view-filter.ts"
 
-/** What a governing ui-view pins (`lib/ui-views.ts#viewToConfig`); empty for a bare collection. */
+/** What a governing ui-view pins (`lib/uiViews.ts#viewToConfig`); empty for a bare collection. */
 export interface BrowseConfig {
   layout?: string
   /** The view's filter, in the engine's shape — decompiled into the builder where it can be. */

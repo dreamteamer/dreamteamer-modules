@@ -8,7 +8,7 @@
  * wrong — wrap-around, what search matches, flipping the panel — are testable by running them.
  */
 
-/** `{text, value}` — the dropdown's own row; `lib/choices.ts` turns an enum's choice rows into these. */
+/** `{text, value}` — the dropdown's own row; `lib/normalizeChoices.ts` turns an enum's choice rows into these. */
 export interface Choice {
   text: string
   value: unknown

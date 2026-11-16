@@ -1,6 +1,6 @@
 import fs from "node:fs"
 import { configuration, credentialPath, validateCall } from "./access.ts"
-import { connect } from "./client.ts"
+import { connect } from "./connect.ts"
 
 export function storedAccounts({ env = process.env, list = p => fs.readdirSync(p) } = {}) {
   const config = configuration(env)

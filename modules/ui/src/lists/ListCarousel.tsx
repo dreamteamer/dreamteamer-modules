@@ -4,7 +4,7 @@
  * at (a reference product's frames, a meeting's screenshots).
  *
  * The images are NOT in a field: the record carries a folder TEMPLATE, the host renders it for this machine and
- * lists the files (`GET /folder/:collection/*id?field=…`), and `lib/var-roots.ts` maps the rendered folder onto the
+ * lists the files (`GET /folder/:collection/*id?field=…`), and `lib/varRoots.ts` maps the rendered folder onto the
  * URL of the declared-variable root it sits under. A folder that cannot be shown says WHY under the card (an unset
  * variable, an empty folder, a folder outside every root) — an empty box with no reason reads as "no screenshots".
  *
@@ -13,9 +13,9 @@
  */
 import { useEffect, useState, type KeyboardEvent, type MouseEvent } from "react"
 import { getFolder, type Row } from "../api/client.ts"
-import { useApp } from "../app-context.tsx"
+import { useApp } from "../AppContext.tsx"
 import { Icon } from "../components/Icon.tsx"
-import { uriForPath } from "../lib/var-roots.ts"
+import { uriForPath } from "../lib/varRoots.ts"
 import { rowContext } from "../lib/vscode-context.ts"
 import type { ListProps } from "../registry/props.ts"
 import { ListEmpty } from "./ListEmpty.tsx"

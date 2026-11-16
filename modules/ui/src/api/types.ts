@@ -2,7 +2,7 @@
 
 /**
  * ONE COLLECTION ROW OF THE DISPLAY CONTRACT — the engine's `presentation()` (descriptor format v2,
- * §4.3), carried VERBATIM by `api/collection-rows.ts`, plus the two webview constants below.
+ * §4.3), carried VERBATIM by `api/collectionRows.ts`, plus the two webview constants below.
  *
  * `display` is resolved by the engine (what the author wrote over what compile supplied), so every
  * sub-block is present and a surface never re-derives a default: `list.layout` is always set, and

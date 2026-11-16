@@ -1,13 +1,13 @@
 /**
  * AN INSTANT HOVER CARD (ported from the Vue ui's HoverCard.vue, cr-vscode-013). The browser's `title`
  * tooltip shows after a delay a page cannot shorten; this card opens the moment the pointer enters. It is drawn
- * `position: fixed` against the trigger's rect (`lib/hover-place.ts`) — first at a provisional size, then, in a
+ * `position: fixed` against the trigger's rect (`lib/hoverPlace.ts`) — first at a provisional size, then, in a
  * layout effect (after the DOM update, before paint), at its MEASURED size, so a wrapped line never pushes it off
  * the bottom edge. `pointer-events: none`: it never takes the pointer from the row beneath it. A trigger wrapped
  * here must carry no `title` of its own, or the slow native copy follows the instant one.
  */
 import { useId, useLayoutEffect, useRef, useState, type ReactNode } from "react"
-import { hoverPlace } from "../lib/hover-place.ts"
+import { hoverPlace } from "../lib/hoverPlace.ts"
 
 export interface HoverLine {
   text: string

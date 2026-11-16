@@ -268,7 +268,7 @@ guest at `__DT_GUEST_URL__`, the stylesheet beside it and the bundle under `__DT
 neither loads no module app and says so in the console — the playground is one: a page view naming an app then
 draws "Page '<id>' is not registered".
 
-`mount` also teaches the page's `fetch` to answer `/api/*` through the transport (`src/api/fetch-shim.ts`), for any
+`mount` also teaches the page's `fetch` to answer `/api/*` through the transport (`src/api/installApiFetchShim.ts`), for any
 code in the page that still speaks the HTTP contract.
 
 **The React contract.** Inside the app everything drawable is a React component in a registry: an Edit takes

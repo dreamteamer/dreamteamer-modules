@@ -15,7 +15,7 @@
  */
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react"
 import { listRecords } from "../api/client.ts"
-import { useApp, useAsync, useSignal } from "../app-context.tsx"
+import { useApp, useAsync, useSignal } from "../AppContext.tsx"
 import { Icon } from "../components/Icon.tsx"
 import { isRelationList } from "../lib/field-row.ts"
 import { askTitles, knownTitle, referenceTitlesChanged, refStem } from "../lib/record-cache.ts"

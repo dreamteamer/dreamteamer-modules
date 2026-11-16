@@ -5,7 +5,7 @@
  * opens on that tab); the open state and the tab survive navigation — it is a working surface, not a dialog.
  */
 import type { ReactNode } from "react"
-import { useSignal } from "../app-context.tsx"
+import { useSignal } from "../AppContext.tsx"
 import { Icon } from "../components/Icon.tsx"
 import { signal } from "../lib/signal.ts"
 import { cx, iconButton } from "../styles/classes.ts"

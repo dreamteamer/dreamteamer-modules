@@ -8,11 +8,11 @@
 import { useState } from "react"
 import { listRecords } from "../api/client.ts"
 import type { FieldRow } from "../api/types.ts"
-import { useApp, useAsync } from "../app-context.tsx"
+import { useApp, useAsync } from "../AppContext.tsx"
 import { Icon } from "../components/Icon.tsx"
 import { Select } from "../components/Select.tsx"
 import { recordLabel } from "../lib/schema.ts"
-import { prefillFromRecord } from "../lib/template-prefill.ts"
+import { prefillFromRecord } from "../lib/prefillFromRecord.ts"
 import { button, buttonSize, buttonTone, cx } from "../styles/classes.ts"
 
 export function TemplatePicker({

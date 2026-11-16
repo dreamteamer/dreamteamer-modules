@@ -1,7 +1,7 @@
 /**
  * REVISIONS — one record's git history (ported from the Vue ui's ItemHistory.vue): `GET /history/:c/*id`,
  * one row per commit (subject, author, when, short hash). `diff` fetches that commit's diff of the record's file
- * against its parent (`GET /history-diff`) and colours it per line (`lib/diff-lines.ts`). `restore` asks, then
+ * against its parent (`GET /history-diff`) and colours it per line (`lib/classifyDiffLines.ts`). `restore` asks, then
  * `POST /collections/:c/records-revert/*id {hash}`: the server restores the record's CONTENT as of that commit,
  * validated against today's schema, as a pending write (`dt revert`) — and a refusal is shown in the dialog, verbatim.
  *
@@ -11,12 +11,12 @@
  */
 import { useState } from "react"
 import { getHistory, getHistoryDiff, revertRecord, type HistoryEntry } from "../api/client.ts"
-import { useApp, useAsync, useSignal } from "../app-context.tsx"
+import { useApp, useAsync, useSignal } from "../AppContext.tsx"
 import { Dialog } from "../components/Dialog.tsx"
-import { classifyDiffLines, type ClassifiedDiffLine } from "../lib/diff-lines.ts"
+import { classifyDiffLines, type ClassifiedDiffLine } from "../lib/classifyDiffLines.ts"
 import { hostInfo, isAdmin } from "../lib/host.ts"
 import { revertRefused, revertRefusedSentence } from "../lib/readonly-source.ts"
-import { relativeTime } from "../lib/relative-time.ts"
+import { relativeTime } from "../lib/relativeTime.ts"
 import { button, buttonSize, buttonTone, cx, dialogActions, error, subtle } from "../styles/classes.ts"
 import { linkAction } from "./looks.ts"
 

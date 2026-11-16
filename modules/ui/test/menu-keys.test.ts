@@ -1,8 +1,8 @@
-// The keyboard of a hanging menu (lib/menu-keys.ts, ported from the Vue ui): focus to the first item on open,
+// The keyboard of a hanging menu (lib/menuKeys.ts, ported from the Vue ui): focus to the first item on open,
 // Tab / arrows cycle and never leave, Escape and a pick that stays close it and give focus back to the button.
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { menuKeys } from "../src/lib/menu-keys.ts"
+import { menuKeys } from "../src/lib/menuKeys.ts"
 
 function setup(n: number) {
   let focused = ""

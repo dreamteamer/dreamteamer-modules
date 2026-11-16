@@ -8,7 +8,7 @@
  *           DO  Dana Oren   fixture: Northwind   2 hours ago   ● lab · uncommitted
  *
  * The third band is a footnote about the file: the last commit touching it, then where the record is READ FROM
- * and its repo state (`lib/record-origin.ts`) — the one place a record page says its source; a read-only root
+ * and its repo state (`lib/recordOrigin.ts`) — the one place a record page says its source; a read-only root
  * says why there, and a stub says what it shadows. Under it, the collection's `display.record` line: the
  * `subtitle` template (a reference in it reads as the target's title), the `badge` field as chips decorated by
  * their enum choice, and the `color_by` tint as a rail — nothing at all for a collection that asks for none.
@@ -19,10 +19,10 @@ import { Icon } from "../components/Icon.tsx"
 import { Link } from "../components/Link.tsx"
 import { SourceMark, StubNote } from "../components/SourceMark.tsx"
 import { badgeChips, themeColor, tintOf, tintStyle } from "../lib/collection-display.ts"
-import { initialsOf } from "../lib/initials.ts"
-import { originClassWord, type RecordOrigin } from "../lib/record-origin.ts"
+import { initialsOf } from "../lib/initialsOf.ts"
+import { originClassWord, type RecordOrigin } from "../lib/recordOrigin.ts"
 import type { CommitInfo, Crumb } from "../lib/record-page.ts"
-import { relativeTime } from "../lib/relative-time.ts"
+import { relativeTime } from "../lib/relativeTime.ts"
 import { cx, iconButton, subtle, toolbar } from "../styles/classes.ts"
 
 // ---- the header's bands: fixed at the top of the page while the body scrolls under them ----

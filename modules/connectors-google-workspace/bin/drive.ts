@@ -2,7 +2,7 @@
 import fs from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
-import { createGoogleRequest } from "../lib/direct.ts"
+import { createGoogleRequest } from "../lib/createGoogleRequest.ts"
 import { createDrive } from "../lib/drive.ts"
 
 export async function main(

@@ -7,14 +7,14 @@
  */
 import { useMemo, useState } from "react"
 import { getRecord, moveUiView } from "../api/client.ts"
-import { useApp, useAsync } from "../app-context.tsx"
+import { useApp, useAsync } from "../AppContext.tsx"
 import { ViewModuleSelect } from "../components/ViewModuleSelect.tsx"
-import { isUnwritableModule } from "../lib/module-writable.ts"
+import { isUnwritableModule } from "../lib/isUnwritableModule.ts"
 import { refusalAnswer, type SaveAnswer } from "../lib/save-answer.ts"
-import { loadUiViews } from "../lib/ui-views.ts"
-import { recordPageTargets, viewModuleTargets } from "../lib/view-module-targets.ts"
+import { loadUiViews } from "../lib/uiViews.ts"
+import { recordPageTargets, viewModuleTargets } from "../lib/viewModuleTargets.ts"
 import { cx, subtle } from "../styles/classes.ts"
-import { useModules } from "./use-modules.ts"
+import { useModules } from "./useModules.ts"
 
 export function ViewModulePanel({ viewId }: { viewId: string }) {
   const { version, refresh } = useApp()

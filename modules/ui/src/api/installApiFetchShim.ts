@@ -10,7 +10,7 @@
  * Installed by `mount` before anything else runs. Safe under the HTTP transport too: that transport keeps the
  * browser's own fetch, taken when it was made, so its requests never come back through here.
  */
-import { HostError } from "../transport/types.ts"
+import { HostError } from "../transport/HostError.ts"
 
 type Request = (method: string, path: string, body?: unknown) => Promise<unknown>
 
