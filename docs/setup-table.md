@@ -22,6 +22,7 @@ holds its `dt status` line to the outcome this table declares. Four outcomes:
 | companies | assets | no setup | |
 | connectors-google-workspace | meetings | unit | credentials_dir, client_secret, account (unit google-workspace); calendar (unit meetings) |
 | connectors-linkedin | contacts, companies, assets | no setup (needs LINKEDIN_USER_AGENT) | |
+| connectors-macos | recordings | no setup | |
 | contacts | assets, companies | no setup | |
 | core | members: seventeen | preset | the members' |
 | docker-workspaces | — | no setup | |
