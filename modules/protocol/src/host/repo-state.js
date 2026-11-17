@@ -1,5 +1,6 @@
 // Ported from the dreamteamer VS Code extension's host side (src/repo-state.ts); PROTOCOL.md is the contract it answers.
 import { execFileSync } from "node:child_process";
+import { GIT_SYNC } from "./git-exec.js";
 import * as path from "node:path";
 export const REPO_KEY = "$repo";
 export const DIRTY_KEY = "$dirty";
@@ -19,7 +20,7 @@ const aheadCache = new Map();
 export function forgetAhead() {
     aheadCache.clear();
 }
-const QUIET = { stdio: ["ignore", "pipe", "ignore"], timeout: 15_000 };
+const QUIET = GIT_SYNC;
 export function aheadOf(repoAbs, now = Date.now()) {
     const hit = aheadCache.get(repoAbs);
     if (hit && now - hit.at < AHEAD_TTL_MS)

@@ -138,6 +138,8 @@ export async function ensureRunning(root, { log = console.log, env = process.env
 	const from = fs.fstatSync(fd).size;
 	const child = spawn(process.execPath, [bin, root, 'start', '--foreground', ...args], {
 		detached: true,
+		// no console window for the server on Windows; the git it runs hides its own (protocol host/git-exec.js)
+		windowsHide: true,
 		stdio: ['ignore', fd, fd],
 		env: { ...env, ...(appDir ? { DT_WEB_APP_DIR: appDir } : {}) },
 	});

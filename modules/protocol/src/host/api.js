@@ -2,6 +2,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { execFileSync } from "node:child_process";
+import { GIT_SYNC } from "./git-exec.js";
 import { engine, refreshWorkspace } from "./engine.js";
 import { listFolderImages } from "./folder-images.js";
 import { contestedIds, fileToRecord, loadDescriptors, loadModules, repoOfPath, workspaceModule } from "./fsdata.js";
@@ -31,7 +32,7 @@ export class WorkspaceApi {
         this.root = root;
         this.reload();
         try {
-            const name = execFileSync("git", ["config", "user.name"], { cwd: root }).toString().trim();
+            const name = execFileSync("git", ["config", "user.name"], { cwd: root, ...GIT_SYNC }).toString().trim();
             this.operatorId = engine().slugOrHash(name);
         }
         catch {
@@ -693,7 +694,7 @@ export function gitHistoryMap(root, dirs, repoOf = () => ".") {
             continue;
         let out;
         try {
-            out = execFileSync("git", ["log", "--format=%x01%aI%x02%an", "--name-only", "--relative", "--", ...rels], { cwd, stdio: ["ignore", "pipe", "ignore"] }).toString();
+            out = execFileSync("git", ["log", "--format=%x01%aI%x02%an", "--name-only", "--relative", "--", ...rels], { cwd, ...GIT_SYNC }).toString();
         }
         catch {
             continue;
@@ -728,7 +729,7 @@ function gitLastCommit(root, file) {
     if (rel.startsWith(".."))
         return null;
     try {
-        const out = execFileSync("git", ["log", "-1", "--format=%aI%x00%an%x00%s", "--", path.basename(file)], { cwd: path.dirname(file), stdio: ["ignore", "pipe", "ignore"] })
+        const out = execFileSync("git", ["log", "-1", "--format=%aI%x00%an%x00%s", "--", path.basename(file)], { cwd: path.dirname(file), ...GIT_SYNC })
             .toString()
             .trim();
         if (!out)

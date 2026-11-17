@@ -5,12 +5,13 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { execFileSync } from "node:child_process";
+import { GIT_SYNC } from "./git-exec.js";
 
 /** @typedef {(args: string[], cwd: string) => string | undefined} Git */
 /** @type {Git} */
 const realGit = (args, cwd) => {
     try {
-        return execFileSync("git", args, { cwd, stdio: ["ignore", "pipe", "ignore"] }).toString().trim() || undefined;
+        return execFileSync("git", args, { cwd, ...GIT_SYNC }).toString().trim() || undefined;
     }
     catch {
         return undefined;
