@@ -36,7 +36,8 @@
 		],
 		"extension": "./lib/extension.mjs",
 		"env": [
-			"TRANSCRIPTION_HOME"
+			"TRANSCRIPTION_HOME",
+			"VOICE_PRINTS_HOME"
 		],
 		"vars": [
 			"FILES_FOLDER",

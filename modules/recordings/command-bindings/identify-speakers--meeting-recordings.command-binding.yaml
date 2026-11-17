@@ -1,0 +1,24 @@
+command: commands/identify-speakers
+# The names live on the recording's transcript, so the recording is what the command acts on.
+collection: collections/meeting-recordings
+scope: record
+# Top-level fields only: a condition on a key inside the `transcription` map evaluates false for every
+# record, which is why `speaker_naming` exists at all. A recording with audio and a transcript is offered
+# while the step has not run on it (`speaker_naming` empty — what `run` leaves) or while a question is open
+# (`waiting`: an unnamed or flagged label, a carried proposal, a machine-written name never shown to a person).
+available_when:
+  recording_file:
+    _nempty: true
+  transcription:
+    _nempty: true
+  _or:
+    - speaker_naming:
+        _empty: true
+    - speaker_naming:
+        _eq: waiting
+# `named`: every voice answered, shown or closed by a person. `closed`: nothing to name until it is
+# transcribed again (collapsed, or transcribed before voice prints) — and `run` clearing the field offers it again.
+done_when:
+  speaker_naming:
+    _in: [named, closed]
+description: name this recording's speakers from voice prints, and ask about the rest once, at the end of the run

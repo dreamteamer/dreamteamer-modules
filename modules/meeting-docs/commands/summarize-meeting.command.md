@@ -31,6 +31,14 @@ dt add meeting-summaries --id <meeting id> --name "<the meeting's name>" \
    - `transcription.speakers` — the map from transcript labels (`speaker_0`) to people. A label the
      map does not name has no person behind it: never attribute a quote through an unmapped label,
      or through labels the map or the notes say are conflated.
+   - `transcription.speaker_sources` — who wrote each name. A label whose entry has `status: provisional`
+     was named by a machine from a voice print and no person has confirmed it: write that speaker as
+     `<Name> (unconfirmed)` — "Dana Oren (unconfirmed)" — wherever a statement is attributed to them, and
+     say in `creation_context` that the names were machine-written from voice prints. Mark it only when the
+     label's name in `transcription.speakers` still equals its entry's `name` and that entry has
+     `status: provisional`. A name whose text differs from its entry's `name` — edited by hand — is
+     unverified, and so is a name with no entry (every name written before voice prints): a confirmed or
+     unverified name is used as today, unmarked. With no `speaker_sources` key at all, read the map as today.
    - `transcription.notes` — the transcriber's own caveats, written inside the block it produces:
      a speaker count it corrected, labels it could not map, attribution it does not trust.
    - `notes` — the recording's top-level field, a person's note about the capture itself: bad

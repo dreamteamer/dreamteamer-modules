@@ -34,6 +34,15 @@ Read in this order:
    and say so once, at the top of the body. Set `evidence_quality` from these (`weak` when findings
    rest on inference, `strong` when attribution and audio are clean), independently of `confidence`,
    which is about the record.
+   **A name a machine wrote is unconfirmed.** `transcription.speaker_sources` says who wrote each name: a
+   label whose entry has `status: provisional` was named from a voice print and no person has confirmed
+   it. Write that speaker as `<Name> (unconfirmed)` — "Dana Oren (unconfirmed)" — wherever a statement is
+   attributed to them, in the findings and the quotes alike, and say in `creation_context` that the names
+   were machine-written from voice prints. Mark it only when the label's name in `transcription.speakers`
+   still equals its entry's `name` and that entry has `status: provisional`. A name whose text differs from
+   its entry's `name` — edited by hand — is unverified, and so is a name with no entry (every name written
+   before voice prints): a confirmed or unverified name is used as today, unmarked. With no
+   `speaker_sources` key at all, read the map as today.
 2. **The transcript bodies** — the meeting's `recordings` → each recording, in date order.
 3. **The summaries** last, and only to check you have not just rewritten them.
 4. **The visuals**, if the meeting has `screenshots_folder` — mechanics in `summarize-meeting`.

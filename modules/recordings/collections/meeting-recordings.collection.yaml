@@ -77,7 +77,14 @@ fields:
   transcription:
     type: map
     description: >-
-      The provenance block the transcribe skill writes — `engine`/`diarization`/`duration` or `source`/`method`, `language`, `speaker_count`, `speakers` (label → person), `generated`, and `notes`: the transcriber's own caveats. THIS is the "is it transcribed?" signal, never the body — a body pasted by hand with no block is exactly the case worth flagging.
+      The provenance block the transcribe skill writes — `engine`/`diarization`/`duration` or `source`/`method`, `language`, `speaker_count`, `speakers` (label → display name, written by /identify-speakers and never by transcription), `generated`, and `notes`: the transcriber's own caveats. THIS is the "is it transcribed?" signal, never the body — a body pasted by hand with no block is exactly the case worth flagging. For naming voices, `run` adds `speakers_hint` (the speaker count the run was given; absent when the diariser was unconstrained), `diarization_fallback` (why diarisation fell back to one speaker), `diarization_id` (which diarisation the labels belong to) and `previous_speakers` (the names a re-run moved aside, proposed again by /identify-speakers); /identify-speakers adds `speaker_sources` (who wrote each name: origin print or hand, status provisional or confirmed, the score), `speaker_questions` (each open label's two quotes, proposal, flags and when it was `shown` to a person) and `identification` (the last naming run: model, calibration, attendees, outcome). No voice print or vector is ever written here.
+  # The one top-level field of voice naming (cr-modules-019): a command binding can gate only on a top-level
+  # field, and every other naming key lives inside `transcription`.
+  speaker_naming:
+    type: string
+    enum: [waiting, named, closed]
+    description: >-
+      Where naming this recording's voices stands — written only by /identify-speakers and cleared when the recording is transcribed again; empty means the step has not run on it. `waiting`: at least one open question — an unnamed label that can be asked about, a flagged label (suspect, mixed-suspected, a conflict), a carried proposal, or a machine-written name not yet shown to a person. `named`: no open question — every label has a name that is confirmed, unverified, or provisional and already shown, or was closed by a person ("nobody", "different people"). `closed`: nothing to name until it is transcribed again — collapsed to one label, transcribed before voice prints, or no diarised label at all.
   transcript:
     type: markdown
     body: true

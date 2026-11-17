@@ -1,0 +1,365 @@
+"""`label <record> [--only <label>]` — the developer's listening session (design section 13).
+
+For each diarised label it picks 6 windows of 4 to 8 s spread over the recording, always including the
+first, middle and last third of any turn longer than five minutes, and plays them in shuffled order
+WITHOUT showing the label. The person answers a digit for an attendee, `x` for unsure, overlap or noise,
+or `r` to replay. The answers go to
+
+    <store>/calibration-labels/<audio>/<diarization>.json
+      {version, audio, diarization, record: {workspace, record}, candidates: [<person ref>…],
+       labels: {<label>: {windows: [{start, end, answer: <person ref> | "x"}], complete}}, complete, updated}
+
+written after every answer, so an interrupted session keeps what was heard. A label is `complete` once
+every window chosen for it is answered, the file once every label is. `label <record>` again RESUMES an
+unfinished recording (its answered windows are kept and not played again) and STARTS OVER a finished one;
+`--only <label>` hears one label again from scratch and keeps the others' answers. The evaluation counts
+only finished labels. Nothing else is written anywhere.
+
+A window is cut from the recording by ffmpeg into a temp file, played with `afplay` on macOS or
+`ffplay -nodisp -autoexit` elsewhere, and removed after; with neither player it stops before anything
+and names both.
+
+Standard library only (the `engines.py` rule); the record is read through an injected reader.
+"""
+from __future__ import annotations
+
+import os
+import random
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+
+from voiceprints import segments as vp_segments
+from voiceprints import signatures as vp_signatures
+from voiceprints import store as vp_store
+
+WINDOWS = 6           # windows per label
+WIN_MIN, WIN_MAX = 4.0, 8.0
+LONG_TURN = 300.0     # a turn longer than this gets a window in each of its thirds
+JOIN_GAP = 1.0        # a label's segments closer than this are one stretch to cut windows from
+MAX_DIGITS = 9
+
+USAGE = "label <record.md> [--only <label>] --context <file.json>"
+
+
+class NoPlayer(Exception):
+    """Neither afplay nor ffplay is on PATH."""
+
+
+class LabelError(Exception):
+    """The recording cannot be labelled (no diarisation, no audio, no segments)."""
+
+
+# -- the store path -----------------------------------------------------------------------------------
+_SAFE = re.compile(r"[0-9A-Za-z_.-]+")
+
+
+def labels_path(store, audio, diarization):
+    """`<store>/calibration-labels/<audio>/<diarization>.json`."""
+    for what, v in (("audio key", audio), ("diarisation id", diarization)):
+        if not isinstance(v, str) or not _SAFE.fullmatch(v) or v in (".", ".."):
+            raise ValueError(f"not a usable {what}: {v!r}")
+    return os.path.join(store.calibration_labels_dir(), audio, f"{diarization}.json")
+
+
+# -- which windows ------------------------------------------------------------------------------------
+def _label_key(label):
+    m = re.fullmatch(r"(.*?)(\d+)", label or "")
+    return (m.group(1), int(m.group(2))) if m else (label or "", -1)
+
+
+def _stretches(segs, label):
+    """The label's segments, those under JOIN_GAP apart joined: `[(start, end)]` in time order."""
+    out = []
+    for s in sorted((s for s in segs if s["speaker"] == label), key=lambda s: (float(s["start"]), float(s["end"]))):
+        a, b = float(s["start"]), float(s["end"])
+        if b <= a:
+            continue
+        if out and a - out[-1][1] < JOIN_GAP:
+            out[-1][1] = max(out[-1][1], b)
+        else:
+            out.append([a, b])
+    return [(a, b) for a, b in out]
+
+
+def _pieces(a, b):
+    """`[a, b]` cut into windows of at most WIN_MAX seconds; a remainder under WIN_MIN is left out."""
+    out = []
+    while b - a >= WIN_MIN - 1e-9:
+        e = min(b, a + WIN_MAX)
+        out.append((round(a, 3), round(e, 3)))
+        a = e
+    return out
+
+
+def choose_windows(segs, label, n=WINDOWS):
+    """`[(start, end)]` in time order: `n` windows of 4 to 8 s of `label`, spread over the label's whole
+    time range, always including a window in the first, middle and last third of every turn of the label
+    longer than five minutes (so a long turn may give more than `n`). A label with no stretch of 4 s gets
+    its longest stretches as they are."""
+    segs = [{"speaker": s["speaker"], "start": float(s["start"]), "end": float(s["end"])} for s in segs]
+    stretches = _stretches(segs, label)
+    cands = [p for a, b in stretches for p in _pieces(a, b)]
+    if not cands:
+        return sorted(sorted(stretches, key=lambda w: (-(w[1] - w[0]), w[0]))[:n])
+    must = []
+    for t in vp_segments.turns(segs):
+        if t["speaker"] != label or t["end"] - t["start"] <= LONG_TURN:
+            continue
+        third = (t["end"] - t["start"]) / 3.0
+        for i in range(3):
+            lo, hi = t["start"] + i * third, t["start"] + (i + 1) * third
+            centre = (lo + hi) / 2.0
+            inside = [w for w in cands if lo <= (w[0] + w[1]) / 2.0 <= hi]
+            if inside:
+                w = min(inside, key=lambda w: (abs((w[0] + w[1]) / 2.0 - centre), w[0]))
+            else:
+                w = (round(max(t["start"], centre - WIN_MAX / 2), 3), round(min(t["end"], centre + WIN_MAX / 2), 3))
+            if w not in must:
+                must.append(w)
+    rest = [w for w in cands if w not in must]
+    k = max(0, n - len(must))
+    return sorted(set(must) | set(vp_segments.spread(rest, k) if k else []))
+
+
+# -- the player ---------------------------------------------------------------------------------------
+def find_player(which=shutil.which, platform=sys.platform):
+    """The command that plays a WAV and returns when it ends: `afplay` on macOS, `ffplay -nodisp
+    -autoexit` elsewhere (or on a Mac without afplay). Neither: NoPlayer naming both."""
+    if platform == "darwin" and which("afplay"):
+        return ["afplay"]
+    if which("ffplay"):
+        return ["ffplay", "-nodisp", "-autoexit", "-loglevel", "error"]
+    raise NoPlayer("label needs an audio player and found none: afplay (macOS) or ffplay (part of ffmpeg: "
+                   "`brew install ffmpeg`, `apt install ffmpeg`) on PATH")
+
+
+def ffmpeg_cutter(which=shutil.which, runner=subprocess.run):
+    """`cut(audio, start, end, dst)`: one window of the recording into a mono 16 kHz WAV with ffmpeg."""
+    if not which("ffmpeg"):
+        raise NoPlayer("label cuts each window with ffmpeg, which is not on PATH")
+
+    def cut(audio, start, end, dst):
+        r = runner(["ffmpeg", "-nostdin", "-loglevel", "error", "-y", "-ss", f"{start:.3f}", "-t",
+                    f"{max(0.1, end - start):.3f}", "-i", audio, "-vn", "-ac", "1", "-ar", "16000", dst],
+                   capture_output=True, text=True)
+        if r.returncode != 0:
+            raise LabelError(f"ffmpeg could not cut {start:.1f}-{end:.1f} s: {(r.stderr or '').strip()[:200]}")
+    return cut
+
+
+def player(cmd, runner=subprocess.run):
+    def play(path):
+        runner(cmd + [path], capture_output=True)
+    return play
+
+
+# -- the segments of the diarisation ------------------------------------------------------------------
+def _seconds(ts):
+    try:
+        parts = [int(p) for p in str(ts).split(":")]
+    except ValueError:
+        return None
+    total = 0
+    for p in parts:
+        total = total * 60 + p
+    return float(total)
+
+
+def recording_segments(rctx, audio_sha, *, read, read_cache, cache_path_for, matches):
+    """The diarisation segments of the record's current transcript: the ASR cache when it is this
+    record's, this audio's and this diarisation's (its words under `speaker_0` when diarisation was
+    skipped), else the transcript's own `[mm:ss] Speaker N:` turns. Returns `(segments, where)`."""
+    fm, body = read(rctx["record_path"])
+    t = (fm or {}).get("transcription") or {}
+    diar = t.get("diarization_id") or rctx.get("diarization_id")
+    cache = read_cache(cache_path_for(rctx["record_path"]))
+    if matches(cache, rctx.get("record"), audio_sha, diar):
+        segs = list(cache.get("segments") or [])
+        if not segs:
+            segs = vp_signatures.word_segments((cache.get("asr") or {}).get("words") or [])
+        if segs:
+            return segs, "the ASR cache"
+    spans = vp_segments.body_spans(vp_segments.parse_body_turns(body), _seconds(t.get("duration")))
+    segs = [{"speaker": lab, "start": a, "end": b} for lab, ss in spans.items() for a, b in ss]
+    if segs:
+        return segs, "the transcript's timestamps"
+    raise LabelError("no diarisation segments: no ASR cache of this transcript and no timestamped turns in it — "
+                     "transcribe it again (step 0)")
+
+
+# -- the session --------------------------------------------------------------------------------------
+def _fresh(rctx, audio, diar, cands):
+    return {"version": 1, "audio": audio, "diarization": diar,
+            "record": {"workspace": rctx.get("workspace"), "record": rctx.get("record")},
+            "candidates": [c["person"] for c in cands], "labels": {}, "complete": False}
+
+
+def session(rctx, store, *, audio_sha, segments, ask, play, cut, out, only=None, seed=None):
+    """Play every chosen window of every label (or of `only`) shuffled, ask who speaks, write the answers.
+    Returns the answers file's path."""
+    diar = rctx.get("diarization_id")
+    if not diar:
+        raise LabelError(f"{rctx.get('record')} has no diarisation id — transcribe it again first (step 0)")
+    if not rctx.get("audio"):
+        raise LabelError(f"{rctx.get('record')} has no audio this machine can read")
+    every = sorted({s["speaker"] for s in segments}, key=_label_key)
+    labels = every
+    if only is not None:
+        if only not in labels:
+            raise LabelError(f"{rctx.get('record')} has no label {only} in this diarisation")
+        labels = [only]
+    seen, cands = set(), []
+    for c in rctx.get("candidates") or []:
+        if c.get("person") and c["person"] not in seen:
+            seen.add(c["person"])
+            cands.append(c)
+    cands = cands[:MAX_DIGITS]
+    path = labels_path(store, audio_sha, diar)
+    old = store.read_json(path)
+    if not isinstance(old, dict) or old.get("diarization") != diar or not isinstance(old.get("labels"), dict):
+        old = None
+    if old is not None and old.get("complete"):
+        for e in old["labels"].values():           # a finished file: every label in it is finished
+            if isinstance(e, dict):
+                e.setdefault("complete", True)
+    # `--only` hears one label again and keeps the rest; without it an unfinished recording RESUMES (the
+    # windows already answered are kept and not played again) and a finished one STARTS OVER
+    if only is not None:
+        data, mode = old or _fresh(rctx, audio_sha, diar, cands), "one label"
+    elif old is not None and not old.get("complete"):
+        data, mode = old, "resume"
+    else:
+        data, mode = _fresh(rctx, audio_sha, diar, cands), ("start over" if old is not None else "start")
+    data["candidates"] = [c["person"] for c in cands]
+    data["complete"] = False
+    items, left, kept = [], {}, 0
+    for lab in labels:
+        entry = data["labels"].get(lab) if mode == "resume" else None
+        answered = [w for w in (entry or {}).get("windows") or [] if isinstance(w, dict) and w.get("answer")]
+        done = {(w.get("start"), w.get("end")) for w in answered}
+        todo = [w for w in choose_windows(segments, lab) if (w[0], w[1]) not in done]
+        data["labels"][lab] = {"windows": answered, "complete": not todo}
+        kept += len(answered)
+        left[lab] = len(todo)
+        items.extend((lab, w) for w in todo)
+    random.Random(seed if seed is not None else f"label:{audio_sha}:{diar}:{only or ''}").shuffle(items)
+
+    def finished():
+        return all((data["labels"].get(lab) or {}).get("complete") for lab in every)
+
+    choices = "  ".join(f"{i} {c.get('name') or c['person']}" for i, c in enumerate(cands, 1))
+    if mode == "resume":
+        out(f"{rctx.get('record')}: resuming an unfinished labelling — {kept} windows answered in an earlier sitting "
+            f"are kept and not played again")
+    elif mode == "start over":
+        out(f"{rctx.get('record')}: this recording was labelled to the end before; starting it over — its earlier "
+            f"answers are replaced (`--only <label>` hears one label again instead)")
+    out(f"{rctx.get('record')}: {len(items)} windows of {len(labels)} diarised label"
+        f"{'' if len(labels) == 1 else 's'}, shuffled. Answer {choices or 'x'}"
+        f"{'' if not cands else ', x'} for unsure, overlap, noise or anyone else, r to replay.")
+    if not items:
+        data["complete"] = finished()
+        data["updated"] = vp_store.now()
+        store.write_json(path, data)
+        out(f"answers written: {path}")
+        return path
+    tmp = tempfile.mkdtemp(prefix="dt-label-")
+    try:
+        for i, (lab, (a, b)) in enumerate(items, 1):
+            clip = os.path.join(tmp, f"window-{i}.wav")
+            cut(rctx["audio"], a, b, clip)
+            try:
+                play(clip)
+                while True:
+                    ans = (ask(f"[{i}/{len(items)}] who speaks? {choices}  x unsure  r replay > ") or "").strip().lower()
+                    if ans == "r":
+                        play(clip)
+                        continue
+                    if ans == "x":
+                        answer = "x"
+                        break
+                    if ans.isdigit() and 1 <= int(ans) <= len(cands):
+                        answer = cands[int(ans) - 1]["person"]
+                        break
+                    out(f"answer a digit from 1 to {len(cands)}, x or r")
+            finally:
+                try:
+                    os.remove(clip)
+                except FileNotFoundError:
+                    pass
+            data["labels"][lab]["windows"].append({"start": a, "end": b, "answer": answer})
+            left[lab] -= 1
+            if not left[lab]:
+                data["labels"][lab]["complete"] = True
+            data["updated"] = vp_store.now()
+            store.write_json(path, data)
+        data["complete"] = finished()
+        data["updated"] = vp_store.now()
+        store.write_json(path, data)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    out(f"answers written: {path}")
+    vp_store.say_notices(store, out)      # a store that could not be excluded from backups, said once
+    return path
+
+
+# -- the verb -----------------------------------------------------------------------------------------
+def _flag(args, name):
+    if name in args:
+        i = args.index(name)
+        if i + 1 >= len(args):
+            raise LabelError(f"{name} needs a value")
+        return args[i + 1]
+    return None
+
+
+def main(args, *, ctx=None, store=None, read=None, read_cache=None, cache_path_for=None, matches=None,
+         audio_key=None, which=shutil.which, platform=sys.platform, ask=input, out=print, runner=subprocess.run):
+    """`label <record.md> [--only <label>] --context <file>` (args[0] is `label`). Returns the exit code. A
+    store that could not be excluded from backups is said, once, however the verb ends."""
+    held = {"store": store}
+    try:
+        return _main(args, ctx=ctx, store=store, read=read, read_cache=read_cache, cache_path_for=cache_path_for,
+                     matches=matches, audio_key=audio_key, which=which, platform=platform, ask=ask, out=out,
+                     runner=runner, held=held)
+    finally:
+        vp_store.say_notices(held["store"], out)
+
+
+def _main(args, *, ctx, store, read, read_cache, cache_path_for, matches, audio_key, which, platform, ask, out,
+          runner, held):
+    try:
+        play = player(find_player(which=which, platform=platform), runner=runner)
+        cut = ffmpeg_cutter(which=which, runner=runner)
+    except NoPlayer as e:
+        out(f"✖ {e}")
+        return 1
+    try:
+        only = _flag(args, "--only")
+        if ctx is None:
+            import json
+            path = _flag(args, "--context")
+            if not path:
+                raise LabelError("no --context: run it through the module's entry (`transcribe.mjs label <record>`)")
+            with open(path, encoding="utf-8") as f:
+                ctx = json.load(f)
+        if isinstance(ctx.get("records"), list):
+            raise LabelError("label takes one recording")
+        if store is None:
+            store = held["store"] = vp_store.Store(vp_store.default_home(), guard=ctx.get("guard") or {})
+        audio_sha = audio_key(ctx, ctx.get("audio"))
+        segs, where = recording_segments(ctx, audio_sha, read=read, read_cache=read_cache,
+                                         cache_path_for=cache_path_for, matches=matches)
+        out(f"segments from {where}")
+        session(ctx, store, audio_sha=audio_sha, segments=segs, ask=ask, play=play, cut=cut, out=out, only=only)
+        return 0
+    except (LabelError, vp_store.StoreRefused, OSError, ValueError) as e:
+        out(f"✖ {e}")
+        return 1
+    except (KeyboardInterrupt, EOFError):
+        out("stopped — the answers given so far are kept; `label <record>` again resumes where you stopped "
+            "(until then the labels not finished count for nothing)")
+        return 130

@@ -8,6 +8,7 @@ beside the skill.
 
 PyYAML is imported where it is used, so the path helpers load under a bare python3.
 """
+import json
 import os
 import re
 
@@ -95,6 +96,26 @@ def asr_cache_path_for(record_md):
     os.makedirs(folder, exist_ok=True)
     base = re.sub(r"\.[a-z-]+\.md$", "", os.path.basename(record_md))
     return os.path.join(folder, f"{base}.asr.json")
+
+
+def read_asr_cache(path):
+    """A record's ASR cache as a dict, or None when it is missing or not a JSON object."""
+    try:
+        with open(path, encoding="utf-8") as f:
+            cache = json.load(f)
+    except (OSError, ValueError):
+        return None
+    return cache if isinstance(cache, dict) else None
+
+
+def asr_cache_matches(cache, record_ref, audio_sha256, diarization_id):
+    """Whether an ASR cache may be read for this record (design section 7, seam 2): it names the same
+    record, the same audio sha256 and the same diarisation id. A cache written before 0.6.0 carries none
+    of the three and is never read; nor is one when any of the three is unknown here."""
+    if not isinstance(cache, dict) or not (record_ref and audio_sha256 and diarization_id):
+        return False
+    return (cache.get("record") == record_ref and cache.get("audio_sha256") == audio_sha256
+            and cache.get("diarization_id") == diarization_id)
 
 
 def replace_transcript_section(body, new_section):

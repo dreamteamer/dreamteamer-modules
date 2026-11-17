@@ -35,8 +35,36 @@ and a critique.
 A prep can be written for any meeting, with no recording. A summary, its tasks and a critique need a
 transcribed recording; their commands are offered on a meeting only once one of its recordings has
 been transcribed, and never on a meeting whose `privacy` is `restricted` — one that holds a third
-party's private material, whose pipeline ends at the transcript. The three bindings name the
+party's private material, whose pipeline ends at the transcript (its speakers are still named — below). The three bindings name the
 `privacy` field, so this module needs a `@dreamteamer/meetings` that declares it.
+
+## Speakers named after transcription
+
+Where the installed `@dreamteamer/recordings` ships `/identify-speakers`, `/process-new-meetings` runs it as
+step 4b, after transcription and before the summary, with no command typed: it names each speaker from voice
+prints kept on this computer and leaves an open question on the rest. The questions of every recording come
+as **one question at the end of the run**, with the pipeline's other end-of-run questions, and only a person
+answers them. The summary and the tasks are written with the names that exist; the critique and the
+engagement update of a meeting with a question not yet shown to a person wait for the answer, so each
+engagement takes each call once. A question a person was shown and skipped is asked again at the next attended
+run, but its meeting is not held, critiqued or folded again. After the answer, the summary and tasks of a meeting whose names changed, or whose provisional names
+were confirmed, are written again, and the report lists every document written before a name it now carries.
+An unattended run asks nothing: it holds back the critique of each meeting with a question not yet shown and
+the update of each engagement with such a meeting — a meeting an earlier run left waiting included, whatever its
+date — and lists them for the next attended run. Where the installed recordings has no
+`/identify-speakers`, the step is skipped and the run says so.
+
+A meeting whose `privacy` is `restricted` is named and asked about like any other: naming is part of the
+transcript, so step 4b runs on its recording, its voices are quoted in the end-of-run question, and an answer
+teaches their voice prints, which stay on this computer. Its summary, tasks, critique and engagement update
+stay unwritten, before the answer and after it.
+
+A name a machine wrote from a voice print is provisional until a person confirms it: a summary, a critique
+and a task write that speaker as `<Name> (unconfirmed)` — "Dana Oren (unconfirmed)" — and say the names
+were machine-written. A name a person gave, one written before voice prints, or one typed over a machine
+name by hand is used as before.
+
+## Summaries
 
 A summary's id is its meeting's id, passed as `--id`, so it is filed under the month the call was
 held. Its `source` lists every recording whose transcript was read, one element each; a summary that

@@ -10,7 +10,8 @@ the body of `data/meeting-recordings/<id>.meeting-recording.md`, plus a `transcr
 frontmatter. Never a separate transcript file, and never on the meeting: N recordings of one meeting
 are N records with N transcripts, so nothing ever has to be merged by hand.
 
-**this skill transcribes. it does not summarize, and it never guesses who a speaker is.**
+**this skill transcribes. it does not summarize, and it never guesses who a speaker is.** Names are written
+by `/identify-speakers`; transcription leaves `speakers` empty (the `identifying-speakers` skill).
 
 ## when to use
 
@@ -19,8 +20,8 @@ session; a recording record has a `recording_file` but no `transcription:`.
 
 **not for:** writing the summary or pulling out action items (`/summarize-meeting`,
 `/extract-tasks-from-meetings`), creating the recording record (`ingesting-recordings`), linking it to a meeting
-(`/match-recording-to-meeting`), or resolving `speaker_0` → a real person on thin evidence — leave it
-unmapped and say so.
+(`/match-recording-to-meeting`), or putting a person's name on `speaker_0` — names are written by
+`/identify-speakers`, from voice prints and a person's answers.
 
 ## paths — read before running anything
 
@@ -153,8 +154,8 @@ node .dreamteamer/skills/ingesting-recordings/bin/detect.mjs import <uploaded-fi
      --id <recording-id>
 
 # 3. transcribe. <audio> is the uploaded path, or the printed recording_file if you ran step 2.
-cd "$SK" && uv run python transcribe_meeting.py \
-     run "<abs/record.meeting-recording.md>" "<abs/audio>" --speakers N --language he|en
+node node_modules/@dreamteamer/recordings/bin/transcribe.mjs \
+     run meeting-recordings/<id> "<abs/audio>" --speakers N --language he|en
 ```
 
 **What `import` does:** it sha256-fingerprints the bytes, copies them to
@@ -167,8 +168,12 @@ rather than silently creating directories inside the repo. Steps 1 and 3 are the
 route, and skipping step 2 costs little: the **transcript** is what gets committed, and it is the
 durable artifact. Say so rather than implying the audio was kept.
 
-full script usage: `setup | run <record.md> <audio> [--date YYYY-MM-DD] [--speakers N] [--language en|he]
-[--engine auto|metal|cpu] | log <record.md> <turns.json> [--date YYYY-MM-DD] | parse-labeled <text-file>`.
+full usage: `transcribe.mjs setup | run <record> <audio> [--date YYYY-MM-DD] [--speakers N] [--language en|he]
+[--engine auto|metal|cpu] | log <record.md> <turns.json> [--date YYYY-MM-DD] | parse-labeled <text-file>`, where
+`run`'s `<record>` is a `meeting-recordings/<id>` reference, a bare id or the record's path. **`run` always goes
+through the entry**: the entry hands it the
+recording's voice context (`--context`), without which the transcript keeps no voice signature and
+`/identify-speakers` can never name its speakers — never the Python script's own `run` called by hand.
 
 ## audio route
 
@@ -217,26 +222,30 @@ full script usage: `setup | run <record.md> <audio> [--date YYYY-MM-DD] [--speak
    the fallback loses speaker turns, not words.
 4. **transcribe.** read **only the printed JSON summary** — never the transcript body:
    ```bash
-   cd "$SK" && uv run python transcribe_meeting.py run <abs/record.meeting-recording.md> "<abs/audio>" --speakers N
+   node node_modules/@dreamteamer/recordings/bin/transcribe.mjs run meeting-recordings/<id> "<abs/audio>" --speakers N
    ```
    raw ASR JSON goes to `$TRANSCRIPTION_HOME/asr/` (default `~/.cache/dreamteamer/transcription/asr/`).
    The decoded WAV the run makes in `$TMPDIR` is removed when it finishes or fails.
 5. **check the count against reality.** If `speaker_count` in the printed summary is materially higher
    than what you passed, the number was wrong, not the audio: re-run with the observed count and note
    the correction in `transcription.notes`. **Never block a transcription on not knowing the number.**
-6. **fill the speaker name-map.** skim just enough to map labels to people; edit
-   `transcription.speakers:` (`speaker_0: Dana Oren`). unsure → leave unmapped, say why in
-   `transcription.notes:`.
+6. **names are written by `/identify-speakers`; transcription leaves `speakers` empty.** `run` writes no
+   name. Over a record that already had names it moves them, with `speaker_sources` and the old
+   `diarization_id`, to `transcription.previous_speakers`, and `/identify-speakers` proposes them again. Run
+   `/identify-speakers` next (`dt next meeting-recordings/<id>` offers it).
 7. **commit** (`dt commit meeting-recordings/<id>`) and **report** language(s), duration,
-   speaker count, recording id, meeting id, speaker map — no transcript body in the report.
+   speaker count, recording id, meeting id — no transcript body and no names in the report.
 
 ## text routes
 
-**labeled paste** — parse, review/fix the auto-filled speakers map in turns.json, then log:
+The text routes have no audio and no voice to keep: the entry runs them with no context.
+
+**labeled paste** — parse (it takes `speakers` from the text's own `Name:` labels, never from a guess), check
+turns.json, then log:
 
 ```bash
-cd "$SK" && uv run python transcribe_meeting.py parse-labeled /tmp/transcript.txt > /tmp/turns.json
-cd "$SK" && uv run python transcribe_meeting.py log <abs/record.meeting-recording.md> /tmp/turns.json
+node node_modules/@dreamteamer/recordings/bin/transcribe.mjs parse-labeled /tmp/transcript.txt > /tmp/turns.json
+node node_modules/@dreamteamer/recordings/bin/transcribe.mjs log <record.meeting-recording.md> /tmp/turns.json
 ```
 
 **unlabeled paste** — default to **single speaker** (`speaker_0`, method `verbatim-single`) unless there
@@ -257,15 +266,18 @@ file — because the transcript has to hang off *something*, and the recording i
 `transcription:` carries only source-relevant fields: `engine` (which recognizer ran — whisper.cpp on
 Metal or faster-whisper on the CPU), `engine_fallback` (why `auto` did not get the GPU, only when it
 did not) /`diarization`/`duration` (audio),
-`source`/`method` (text), plus `language`, `speaker_count`, `speakers` (you fill), `generated`, and
-free-text `notes` (you fill — caveats, confidence, attribution issues). `[mm:ss]` timestamps appear in
+`source`/`method` (text), plus `language`, `speaker_count`, `speakers` (left empty by an audio run: names are
+written by `/identify-speakers`), `generated`, and free-text `notes` (you fill — caveats, confidence,
+attribution issues). An audio run also writes `diarization_id`, `speakers_hint` and `diarization_fallback`
+when they apply, and keeps voice signatures in the voice-print store (the README's "Voice prints"); its
+summary says when they were not kept. `[mm:ss]` timestamps appear in
 the body for audio only. the body keeps raw `Speaker N` labels; real names live only in
 `transcription.speakers:`. Notes *about the meeting* belong on the meeting's `description:`, not here.
 The recording also carries the provenance quad (`author`, `creation_context`, `source`, `confidence`) —
 Hebrew ASR that came out rough is `confidence: low` with the reason in `creation_context`.
 
 **several recordings of one meeting need no merging.** Each is its own recording record with its own
-transcript and its own speaker map, and the meeting's `recordings:` array lists them all in date order.
+transcript and its own names, and the meeting's `recordings:` array lists them all in date order.
 If you find yourself merging transcripts, stop.
 
 after transcribing, run `dt check` — the recording must validate. The meeting's `recordings:`
@@ -276,14 +288,15 @@ is generated from each recording's `meeting:`, so the link is written once, on t
 | mistake | reality |
 |---|---|
 | writing the transcript onto the meeting | it lives on the RECORDING; the meeting's body is its own |
-| running from `.claude/skills/transcribing-recordings/` | a harness copy, regenerated by compile. run from `$SK`. |
-| reading the transcript body after `run` | read the JSON summary; skim only far enough to map speakers. |
+| running from `.claude/skills/transcribing-recordings/` | a harness copy, regenerated by compile. every command goes through the entry, which runs the compiled skill. |
+| calling the Python script's `run` (or `identify`, `prints`) by hand | no `--context`: no voice signature is kept and `/identify-speakers` cannot name the speakers. Run `transcribe.mjs run`. |
+| reading the transcript body after `run` | read the JSON summary. |
 | letting the language be DETECTED on a call that isn't Hebrew | detection reads one window, and a Hebrew intro is that window — pass `--language`. |
-| guessing `speaker_0: <name>` from thin evidence | leave it unmapped and say so in `transcription.notes:`. |
+| writing a name into `transcription.speakers` | names are written by `/identify-speakers`; transcription leaves `speakers` empty. |
 | blocking because the attendee count is unknown | pass 2, let the diarizer disagree, re-run if it does. |
 | merging several recordings into one transcript | N recordings = N records; never merge them. |
 | `recording_file` on the meeting | the meeting has `recordings:` (refs); the recording holds the path template. |
-| re-running `run`/`log` over a hand-filled speaker map | it replaces the block. warn first. |
+| re-running `run` over a record that has names | `run` moves them to `previous_speakers` and `/identify-speakers` proposes them again; `log`, the text route, still replaces the block — warn first. |
 | summarizing or extracting tasks here | different commands, different steps. transcription only. |
 | committing the audio, the models or the ASR cache | binaries never get committed. |
 | running `uv sync` without the `UV_PROJECT_ENVIRONMENT` export | the venv lands inside the skill and the next `npm install` deletes it. |
