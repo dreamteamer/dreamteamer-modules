@@ -105,7 +105,7 @@ describe("tasks 0.3.0 ships no lane", () => {
     const [major, minor] = pkg.version.split(".").map(Number)
     assert.ok(major > 0 || minor >= 3, `tasks ${pkg.version} predates the migration`)
     assert.equal(pkg.bin["dt-migrate-lanes-to-tags"], "bin/migrate-lanes-to-tags.mjs")
-    assert.ok(pkg.files.includes("bin") && pkg.files.includes("lib"))
+    assert.ok(pkg.files.includes("bin") && pkg.files.includes("dist"))
     assert.doesNotMatch(pkg.dreamteamer.description, /\blane\b/)
   })
 })

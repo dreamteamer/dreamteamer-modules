@@ -1,4 +1,4 @@
-// THE RULES A WIKI IS JUDGED BY, pinned. Every case here fails without `lib/wiki.mjs`, and every
+// THE RULES A WIKI IS JUDGED BY, pinned. Every case here fails without `lib/wiki.ts`, and every
 // fixture is synthetic.
 //
 // ⚠ The one that earns the whole design is `classify`. A corpus that is half fetched and LOOKS

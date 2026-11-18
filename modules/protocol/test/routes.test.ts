@@ -8,7 +8,7 @@ import path from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 
 const PKG = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
-const { ROUTES, matchRoute } = await import(pathToFileURL(path.join(PKG, "src", "routes.js")).href)
+const { ROUTES, matchRoute } = await import(pathToFileURL(path.join(PKG, "src", "routes.ts")).href)
 
 const pair = r => `${r.method} ${r.pattern}`
 const documented = () =>
@@ -121,7 +121,7 @@ describe("the route table", () => {
   })
 
   test("every pair has at least one contract case", async () => {
-    const casesFile = path.join(PKG, "lib", "contract", "cases.js")
+    const casesFile = path.join(PKG, "lib", "contract", "cases.ts")
     if (!fs.existsSync(casesFile)) return test.todo?.("the contract suite lands in task 2")
     const { cases } = await import(pathToFileURL(casesFile).href)
     const covered = new Set(cases.map(c => c.route))

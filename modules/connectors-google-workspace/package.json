@@ -26,16 +26,18 @@
 		"README.md",
 		"SETUP.md",
 		"bin",
-		"lib",
 		"skills",
 		"commands",
-		"command-bindings"
+		"command-bindings",
+		"dist",
+		"!bin/**/*.ts",
+		"!skills/**/*.mts"
 	],
 	"engines": {
 		"node": ">=20"
 	},
 	"dreamteamer": {
-		"extension": "./lib/activate.mjs",
+		"extension": "./dist/lib/activate.js",
 		"title": "Google Workspace connector",
 		"engine": ">=0.48.0",
 		"description": "Access an explicitly selected Google account through a local workspace-mcp process — a fixed read-only tool set by default, no call without a stored credential, credentials kept outside the workspace — and sync work calendars into `meetings` records (`/fetch-meetings`). Two setup units: `google-workspace` (the account) and `meetings` (`WORK_CALENDARS`). Authorize each account per computer.",
@@ -50,5 +52,8 @@
 	},
 	"peerDependencies": {
 		"@dreamteamer/meetings": ">=0.4.0"
+	},
+	"scripts": {
+		"prepack": "node ../../scripts/build.ts --module=connectors-google-workspace"
 	}
 }

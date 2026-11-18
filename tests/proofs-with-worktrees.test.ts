@@ -104,7 +104,7 @@ describe("ORDINARY: both modules installed by npm from their tarballs, beside a 
     fs.mkdirSync(vendor)
     const deps = {}
     for (const m of ["proofs", "worktrees"]) {
-      const pack = spawnSync("npm", ["pack", "--silent", "--pack-destination", vendor], {
+      const pack = spawnSync("npm", ["pack", "--silent", "--ignore-scripts", "--pack-destination", vendor], {
         cwd: fixture.packageDir(m),
         encoding: "utf8",
         timeout: NPM_TIMEOUT,

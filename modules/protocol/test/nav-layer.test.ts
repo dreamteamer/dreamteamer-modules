@@ -68,11 +68,11 @@ describe("navModel: the contract fixture's layer, git_modules/northwind-archive"
   const load = rel => import(pathToFileURL(path.join(PKG, rel)).href)
   let fixture, navModel
   before(async () => {
-    const { makeFixture } = await load("lib/contract/fixture.js")
+    const { makeFixture } = await load("lib/contract/fixture.ts")
     fixture = makeFixture({ engineDir: ENGINE_DIR })
-    const { initEngine } = await load("src/host/engine.js")
+    const { initEngine } = await load("src/host/engine.ts")
     await initEngine(fixture.root)
-    ;({ navModel } = await load("src/navModel.js"))
+    ;({ navModel } = await load("src/navModel.ts"))
   })
   after(() => fixture?.cleanup())
   const layerNav = () => path.join(fixture.layer, "nav.yaml")

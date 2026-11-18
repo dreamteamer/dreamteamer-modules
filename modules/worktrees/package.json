@@ -15,13 +15,16 @@
 	],
 	"files": [
 		"README.md",
-		"src",
-		"skills"
+		"skills",
+		"dist"
 	],
 	"dreamteamer": {
-		"extension": "./src/activate.js",
+		"extension": "./dist/src/activate.js",
 		"title": "Worktrees",
 		"description": "Parallel checkouts of a workspace. `dt worktree add|list|get|rm` cuts, lists, inspects and removes linked worktrees, each installed and compiled; `dt land` brings a worktree's committed records back onto the primary branch and stops on any conflict. Ships WorktreeCreate and WorktreeRemove hooks for a coding agent, and the `working-in-worktrees` skill.",
 		"engine": ">=0.33.0"
+	},
+	"scripts": {
+		"prepack": "node ../../scripts/build.ts --module=worktrees"
 	}
 }

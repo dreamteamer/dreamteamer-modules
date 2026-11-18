@@ -8,7 +8,8 @@ import { pathToFileURL } from "node:url"
 import { api, packageDir, SPAWN_TIMEOUT_MS } from "../../../tests/helpers/fixture.ts"
 import activate, { apiVersion, parseServeArgs } from "../src/activate.ts"
 
-const SRC = path.join(packageDir("http"), "src")
+// the package as npm ships it: the build of src/ (scripts/build.ts)
+const SRC = path.join(packageDir("http"), "dist", "src")
 
 describe("importing the package", () => {
   test("binds no port and prints nothing — the process exits on its own, silently", () => {

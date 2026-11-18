@@ -11,12 +11,12 @@
 import { spawnSync } from "node:child_process"
 import fs from "node:fs"
 import path from "node:path"
-import { fileURLToPath } from "node:url"
+import { packageRoot } from "./packageRoot.ts"
 import { alive, proves, readState, runtimeDir as defaultRuntimeDir, stateFile } from "./runtime.ts"
 
 export const HOOK_BUDGET_MS = 1500
 export const MAX_HOOK_LINES = 3
-export const HOOK_BIN = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "bin", "dt-web-hook.mjs")
+export const HOOK_BIN = path.join(packageRoot(import.meta.url), "bin", "dt-web-hook.mjs")
 const SETTINGS = path.join(".claude", "settings.local.json")
 const OURS = "dt-web-hook.mjs"
 
@@ -86,7 +86,12 @@ export function installHook(root, opts = {}) {
     fs.renameSync(tmp, file)
   }
   const ignored =
-    spawnSync("git", ["check-ignore", "-q", SETTINGS], { cwd: root, stdio: "ignore", timeout: 10_000, windowsHide: true }).status === 0
+    spawnSync("git", ["check-ignore", "-q", SETTINGS], {
+      cwd: root,
+      stdio: "ignore",
+      timeout: 10_000,
+      windowsHide: true,
+    }).status === 0
   return { file, command, wrote, ignored }
 }
 

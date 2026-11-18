@@ -5,8 +5,8 @@ import os from "node:os"
 import path from "node:path"
 import { spawnSync } from "node:child_process"
 import { fileURLToPath } from "node:url"
-import { isoWeek, isoWeekRange } from "../../skills/running-retrospectives/lib/workspace.ts"
-import { recordPath, writeRecord, readRecord } from "../../skills/running-retrospectives/lib/records.ts"
+import { isoWeek, isoWeekRange } from "../../skills/running-retrospectives/lib/workspace.mts"
+import { recordPath, writeRecord, readRecord } from "../../skills/running-retrospectives/lib/records.mts"
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 

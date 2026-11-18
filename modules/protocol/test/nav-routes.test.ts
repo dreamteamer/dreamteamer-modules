@@ -17,11 +17,11 @@ import { ENGINE_DIR } from "../../../tests/helpers/fixture.ts"
 
 const PKG = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 const load = rel => import(pathToFileURL(path.join(PKG, rel)).href)
-const { makeFixture } = await load("lib/contract/fixture.js")
-const { createHandler } = await load("src/createHandler.js")
-const { engine } = await load("src/host/engine.js")
-const { meetsFloor } = await load("src/host/floor.js")
-const { isWatchedChange, changeScope } = await load("src/host/changes.js")
+const { makeFixture } = await load("lib/contract/fixture.ts")
+const { createHandler } = await load("src/createHandler.ts")
+const { engine } = await load("src/host/engine.ts")
+const { meetsFloor } = await load("src/host/floor.ts")
+const { isWatchedChange, changeScope } = await load("src/host/changes.ts")
 
 const HEADER = "# The left nav of this workspace. Drag and drop writes this file; so may you."
 const ENGINE_VERSION = JSON.parse(fs.readFileSync(path.join(ENGINE_DIR, "package.json"), "utf8")).version

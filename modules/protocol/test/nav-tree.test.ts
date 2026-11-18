@@ -325,13 +325,13 @@ describe("navModel on a real workspace (the contract fixture, on the engine unde
   const load = rel => import(pathToFileURL(path.join(PKG, rel)).href)
   let fixture, navModel, ctxOf, legacyTree, groupLabel
   before(async () => {
-    const { makeFixture } = await load("lib/contract/fixture.js")
+    const { makeFixture } = await load("lib/contract/fixture.ts")
     fixture = makeFixture({ engineDir: ENGINE_DIR })
-    const { initEngine, engine } = await load("src/host/engine.js")
+    const { initEngine, engine } = await load("src/host/engine.ts")
     await initEngine(fixture.root)
-    ;({ navModel } = await load("src/navModel.js"))
-    ;({ legacyTree, groupLabel } = await load("src/host/nav.js"))
-    const fsdata = await load("src/host/fsdata.js")
+    ;({ navModel } = await load("src/navModel.ts"))
+    ;({ legacyTree, groupLabel } = await load("src/host/nav.ts"))
+    const fsdata = await load("src/host/fsdata.ts")
     ctxOf = root => ({
       declared: engine().namespaces,
       workspaceModule: fsdata.workspaceModule(root),

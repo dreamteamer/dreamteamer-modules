@@ -14,6 +14,9 @@ import fs from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 
+/** The verbs' modules are siblings in this tree: .ts beside the source, .js in the build (dist/). */
+const OWN_EXT = import.meta.url.endsWith(".ts") ? ".ts" : ".js"
+
 export const USAGE = "usage: dt-prototype <init|vendor|export|check|play|shoot|walk> [flags] [--dir <prototype>]"
 const VERBS = {
   init: ["vendor", (m, dir, f, io) => m.run(dir, { init: true, force: f.force, ...io })],
@@ -55,7 +58,7 @@ export async function main(argv, { log = console.log, error = console.error } = 
     return 2
   }
   const [file, call] = VERBS[verb]
-  const mod = await import(new URL(`../lib/prototype/node/${file}.mjs`, import.meta.url).href)
+  const mod = await import(new URL(`../lib/prototype/node/${file}${OWN_EXT}`, import.meta.url).href)
   try {
     return await call(mod, path.resolve(flags.dir), flags, { log, error })
   } catch (e) {

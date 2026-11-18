@@ -20,7 +20,7 @@ import { spawnSync } from "node:child_process"
 // standalone in a consumer's workspace, where a repo-root tests/ directory does not exist.
 import { treeHash, treeDiff } from "./helpers/tree-hash.ts"
 import { fixtureWorkspace, REF, SLUG, BASE } from "./helpers/fixture.ts"
-import { readRecord, writeRecord, recordPath } from "../../skills/running-retrospectives/lib/records.ts"
+import { readRecord, writeRecord, recordPath } from "../../skills/running-retrospectives/lib/records.mts"
 
 const BIN = path.join(
   path.dirname(new URL(import.meta.url).pathname),

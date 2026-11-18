@@ -12,7 +12,7 @@ import os from "node:os"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import yaml from "js-yaml"
-import { readRecord, listRecords } from "../../skills/running-retrospectives/lib/records.ts"
+import { readRecord, listRecords } from "../../skills/running-retrospectives/lib/records.mts"
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const BIN = path.join(HERE, "..", "..", "skills", "running-retrospectives", "bin", "init.mjs")

@@ -7,7 +7,7 @@ import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
 import yaml from "js-yaml"
-import { ffmpegArgs, parseArgs, main } from "../../../modules/rnd/skills/building-from-references/bin/extract-frames.ts"
+import { ffmpegArgs, parseArgs, main } from "../../../modules/rnd/skills/building-from-references/bin/extract-frames.mts"
 
 // the repo root — these tests were written at the root of dreamteamer/extensions, whose modules/ layout
 // this repo keeps, so every `ROOT/modules/<m>/…` path still names the same file
@@ -1050,8 +1050,8 @@ describe("0.6.0 — releases: a product's versions, each listing what it ships",
   })
   test("dt check reads releases through rnd's own extension", async () => {
     const pkg = JSON.parse(read("package.json"))
-    assert.equal(pkg.dreamteamer.extension, "./lib/activate.mjs")
-    assert.match(read("lib/activate.mjs"), /from '\.\/releases\.mjs'/)
+    assert.equal(pkg.dreamteamer.extension, "./dist/lib/activate.js")
+    assert.match(read("lib/activate.ts"), /from "\.\/releases\.ts"/)
     const { expectedId, releaseViolations } = await import("../lib/releases.ts")
     assert.equal(expectedId({ product: "rnd/products/grantee-portal", version: "1.4.0" }), "grantee-portal/1.4.0")
     assert.equal(

@@ -103,7 +103,7 @@ describe("rnd/change-requests.tags and its stage declaration", () => {
   test("the declaration reaches the presentation contract the editor reads, as the field row's viewer and viewer_options", async () => {
     const root = rndWorkspace()
     const { presentation } = await import(path.join(ENGINE, "src", "records-api.js"))
-    const { loadDescriptors } = await import(path.join(ENGINE, "src", "runtime.js"))
+    const { loadDescriptors } = await import(path.join(ENGINE, "src", "runtime.ts"))
     const p = presentation(loadDescriptors(root))
     const row = p.fields["rnd/change-requests"].find(f => f.field === "tags")
     assert.equal(row.viewer, "stage-checks")
@@ -116,7 +116,7 @@ describe("rnd/change-requests.tags and its stage declaration", () => {
 })
 
 describe("dt check: deployed and deployed_on agree, as a warning", async () => {
-  const { stageTagWarnings, checkStageTags } = await import(path.join(RND, "lib", "checkStageTags.mjs"))
+  const { stageTagWarnings, checkStageTags } = await import(path.join(RND, "lib", "checkStageTags.ts"))
   const engineApi = await import(path.join(ENGINE, "src", "api.js"))
   const HAS_CHANNEL = engineApi.CHECK_WARNINGS === true
 

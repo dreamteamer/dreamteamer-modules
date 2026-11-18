@@ -96,7 +96,7 @@ describe("rnd/change-requests.stage", () => {
   test("the presentation contract the editor reads: the choices in order, and not editable", async () => {
     const root = rndWorkspace()
     const { presentation } = await import(path.join(ENGINE, "src", "records-api.js"))
-    const { loadDescriptors } = await import(path.join(ENGINE, "src", "runtime.js"))
+    const { loadDescriptors } = await import(path.join(ENGINE, "src", "runtime.ts"))
     const row = presentation(loadDescriptors(root)).fields["rnd/change-requests"].find(f => f.field === "stage")
     assert.ok(row, "the stage row")
     assert.equal(row.editable, false)

@@ -27,15 +27,15 @@
 		"collections",
 		"command-bindings",
 		"commands",
-		"lib",
 		"skills",
-		"src"
+		"dist",
+		"!bin/**/*.ts"
 	],
 	"dependencies": {
 		"js-yaml": "^4.1.0"
 	},
 	"dreamteamer": {
-		"extension": "./src/activate.js",
+		"extension": "./dist/src/activate.js",
 		"title": "NotebookLM",
 		"engine": ">=0.47.0",
 		"description": "NotebookLM for a dreamteamer workspace. `dt notebooklm` exports the schema and records as sources and syncs them into a notebook; the `notebooklm` harness keeps NOTEBOOKLM.md's persona and settings current. A `notebooks` record holds a notebook's ordered sources, chat settings, id and login, which `npx dt-notebook` restores and captures. Sensitive collections and fields never travel.",
@@ -43,5 +43,8 @@
 			"wikis",
 			"companies"
 		]
+	},
+	"scripts": {
+		"prepack": "node ../../scripts/build.ts --module=notebooklm"
 	}
 }

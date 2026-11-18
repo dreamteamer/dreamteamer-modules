@@ -25,7 +25,9 @@ import {
 } from "../helpers/workspace.ts"
 
 after(cleanup)
-const { createHandler } = await import(pathToFileURL(path.join(ROOT, "modules", "protocol", "src", "createHandler.js")).href)
+const { createHandler } = await import(
+  pathToFileURL(path.join(ROOT, "modules", "protocol", "src", "createHandler.js")).href
+)
 const skip = !engineMeets("rnd") && `rnd's nav fragment installs on engine 0.49.0 or later; testing ${ENGINE_VERSION}`
 const HOME = () => ({ HOME: fs.mkdtempSync(path.join(os.tmpdir(), "dtm-HOME-")) })
 const tmp = p => fs.mkdtempSync(path.join(os.tmpdir(), p))
@@ -151,7 +153,7 @@ describe("a fragment after the operator moved a row", { skip }, () => {
     const frag = yaml.load(fs.readFileSync(path.join(copy, "nav.yaml"), "utf8"))
     frag.tree.find(e => e.namespace === "rnd").items.push("rnd/extras")
     fs.writeFileSync(path.join(copy, "nav.yaml"), yaml.dump(frag))
-    execFileSync("npm", ["pack", copy, "--pack-destination", folder, "--silent"], {
+    execFileSync("npm", ["pack", copy, "--pack-destination", folder, "--silent", "--ignore-scripts"], {
       encoding: "utf8",
       timeout: 120_000,
     })

@@ -8,6 +8,7 @@
 		"modules/*"
 	],
 	"scripts": {
+		"build": "node scripts/build.ts",
 		"test": "node scripts/test.ts",
 		"typecheck": "tsc -p tsconfig.json",
 		"typecheck:test": "tsc -p tests/tsconfig.json",

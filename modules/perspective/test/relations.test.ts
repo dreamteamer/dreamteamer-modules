@@ -21,7 +21,7 @@ import { test } from "node:test"
 import assert from "node:assert"
 import fs from "node:fs"
 import path from "node:path"
-import { shippedDescriptor } from "../skills/running-retrospectives/lib/descriptors.ts"
+import { shippedDescriptor } from "../skills/running-retrospectives/lib/descriptors.mts"
 import { targetsOf } from "../../../tests/helpers/descriptors.ts"
 
 const COLS = path.resolve(

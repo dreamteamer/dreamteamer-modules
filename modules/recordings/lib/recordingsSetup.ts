@@ -16,6 +16,7 @@ import os from "node:os"
 import path from "node:path"
 import { spawnSync } from "node:child_process"
 import { fileURLToPath } from "node:url"
+import { packageRoot } from "./packageRoot.ts"
 
 export const UNIT_ID = "recordings"
 const DEFAULT_HOME = path.join(os.homedir(), ".cache", "dreamteamer", "transcription")
@@ -78,9 +79,16 @@ const receiptOf = ctx => {
 }
 /** This module's node entry, resolved from where this unit was loaded (the package, or a composed copy), relative to the workspace. */
 function entry(root) {
-  const own = ["../bin/recordings-transcribe.mjs", "../bin/transcribe.mjs"]
-    .map(rel => fileURLToPath(new URL(rel, import.meta.url)))
-    .find(f => fs.existsSync(f))
+  let pkg = null
+  try {
+    pkg = packageRoot(import.meta.url)
+  } catch {}
+  const own = [
+    ...(pkg ? [path.join(pkg, "bin", "recordings-transcribe.mjs"), path.join(pkg, "bin", "transcribe.mjs")] : []),
+    ...["../bin/recordings-transcribe.mjs", "../bin/transcribe.mjs"].map(rel =>
+      fileURLToPath(new URL(rel, import.meta.url))
+    ),
+  ].find(f => fs.existsSync(f))
   return own ? path.relative(root, own).split(path.sep).join("/") : null
 }
 const clip = () => fileURLToPath(new URL("./clip.wav", import.meta.url))

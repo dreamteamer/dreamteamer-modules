@@ -129,7 +129,7 @@ test(
     const api = await import(pathToFileURL(path.join(ENGINE, "src", "api.js")).href)
     assert.notEqual(api.CHECK_WARNINGS, true, "below the warning channel")
     const { checkChangeRequestStage } = await import(
-      pathToFileURL(path.join(root, "modules/rnd/lib/crStage.mjs")).href
+      pathToFileURL(path.join(root, "modules/rnd/lib/crStage.ts")).href
     )
     let opened = 0
     const spy = {

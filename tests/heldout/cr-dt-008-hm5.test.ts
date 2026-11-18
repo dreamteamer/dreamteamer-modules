@@ -138,8 +138,8 @@ function navModelOf(root) {
   const script = path.join(os.tmpdir(), `hm5-draw-${process.pid}.mjs`)
   fs.writeFileSync(
     script,
-    `import { initEngine } from ${JSON.stringify(path.join(PROTOCOL, "src", "host", "engine.js"))};
-import { navModel, workspaceNavSettings } from ${JSON.stringify(path.join(PROTOCOL, "src", "navModel.js"))};
+    `import { initEngine } from ${JSON.stringify(path.join(PROTOCOL, "src", "host", "engine.ts"))};
+import { navModel, workspaceNavSettings } from ${JSON.stringify(path.join(PROTOCOL, "src", "navModel.ts"))};
 const root = process.argv[2];
 const log = console.log; console.log = () => {};
 await initEngine(root);

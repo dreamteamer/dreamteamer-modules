@@ -23,8 +23,9 @@
 		"skills",
 		"commands",
 		"bin",
-		"lib",
-		"data"
+		"data",
+		"dist",
+		"!bin/**/*.ts"
 	],
 	"dreamteamer": {
 		"title": "Workflows",
@@ -33,5 +34,8 @@
 		"ignore": [
 			"data"
 		]
+	},
+	"scripts": {
+		"prepack": "node ../../scripts/build.ts --module=workflows"
 	}
 }

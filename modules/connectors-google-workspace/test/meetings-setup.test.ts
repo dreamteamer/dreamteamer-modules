@@ -375,10 +375,10 @@ describe(
 
 test("SETUP.md is shipped and names every action and status this provider has", () => {
   const pkg = JSON.parse(fs.readFileSync(new URL("../package.json", import.meta.url), "utf8"))
-  assert.ok(pkg.files.includes("SETUP.md") && pkg.files.includes("lib"))
+  assert.ok(pkg.files.includes("SETUP.md") && pkg.files.includes("dist"))
   assert.equal(
     pkg.dreamteamer.extension,
-    "./lib/activate.mjs",
+    "./dist/lib/activate.js",
     "the setup unit rides on the module's own extension entry"
   )
   const text = fs.readFileSync(new URL("../SETUP.md", import.meta.url), "utf8")

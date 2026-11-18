@@ -223,7 +223,7 @@ describe("core over existing members", { skip }, () => {
       const p = JSON.parse(fs.readFileSync(path.join(copy, "package.json"), "utf8"))
       p.version = old
       fs.writeFileSync(path.join(copy, "package.json"), JSON.stringify(p, null, "\t") + "\n")
-      execFileSync("npm", ["pack", copy, "--pack-destination", folder(), "--silent"], {
+      execFileSync("npm", ["pack", copy, "--pack-destination", folder(), "--silent", "--ignore-scripts"], {
         encoding: "utf8",
         timeout: 120_000,
       })

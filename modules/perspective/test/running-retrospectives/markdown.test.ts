@@ -3,7 +3,7 @@
 // prose around the list that must stay out of it.
 import { test } from "node:test"
 import assert from "node:assert"
-import { numberedListItems } from "../../skills/running-retrospectives/lib/numberedListItems.ts"
+import { numberedListItems } from "../../skills/running-retrospectives/lib/numberedListItems.mts"
 
 test("a single-line item is its own content, marker stripped", () => {
   const items = numberedListItems("1. **2026-08-16 — the first.** Because so.\n")

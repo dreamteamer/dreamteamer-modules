@@ -605,7 +605,7 @@ describe("the google-setup command", () => {
 test("SETUP.md is shipped and names every action and command this provider has", () => {
   const pkg = JSON.parse(fs.readFileSync(new URL("../package.json", import.meta.url), "utf8"))
   assert.ok(pkg.files.includes("SETUP.md"))
-  assert.equal(pkg.dreamteamer.extension, "./lib/activate.mjs")
+  assert.equal(pkg.dreamteamer.extension, "./dist/lib/activate.js")
   const text = fs.readFileSync(new URL("../SETUP.md", import.meta.url), "utf8")
   for (const id of ["create-credential-store", "authorize-account", "verify-account-read"])
     assert.match(text, new RegExp(`\\b${id}\\b`))

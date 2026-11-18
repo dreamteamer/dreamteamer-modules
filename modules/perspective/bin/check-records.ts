@@ -59,7 +59,7 @@ import {
   collectionStorage,
   recordPath,
   recordId,
-} from "../skills/running-retrospectives/lib/records.ts"
+} from "../skills/running-retrospectives/lib/records.mts"
 // `lib/workspace.mjs`'s DATA is deliberately NOT imported — see `workspaceRootFromCwd` below. It
 // resolves from the SCRIPT, which is the wrong question the moment the module is linked for
 // preview.

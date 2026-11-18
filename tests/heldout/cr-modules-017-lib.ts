@@ -20,13 +20,13 @@ if (!fs.existsSync(path.join(APP_DIR, "index.html")))
 
 const support = await import(pathToFileURL(path.join(WEB, "test", "support.mjs")).href)
 export const { fixture, call, pair, sameOrigin } = support
-export const { startWeb } = await import(pathToFileURL(path.join(WEB, "src", "server.js")).href)
+export const { startWeb } = await import(pathToFileURL(path.join(WEB, "src", "server.ts")).href)
 export const { ENGINE_DIR } = await import(pathToFileURL(path.join(ROOT, "tests", "helpers", "fixture.mjs")).href)
 export const { makeFixture } = await import(
   pathToFileURL(path.join(ROOT, "modules", "protocol", "lib", "contract", "fixture.js")).href
 )
-const runtime = await import(pathToFileURL(path.join(WEB, "src", "runtime.js")).href)
-const stateMod = await import(pathToFileURL(path.join(WEB, "src", "state.js")).href)
+const runtime = await import(pathToFileURL(path.join(WEB, "src", "runtime.ts")).href)
+const stateMod = await import(pathToFileURL(path.join(WEB, "src", "state.ts")).href)
 export const workspaceKey = runtime.workspaceKey
 export const runtimeFile = (root, dir) => runtime.stateFile(root, dir)
 export const stateFileOf = (root, dir) => stateMod.workspaceStateFile(root, dir)

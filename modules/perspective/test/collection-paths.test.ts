@@ -13,8 +13,8 @@ import {
   recordPath,
   recordId,
   shippedCollections,
-} from "../skills/running-retrospectives/lib/records.ts"
-import { readDescriptor } from "../skills/running-retrospectives/lib/descriptors.ts"
+} from "../skills/running-retrospectives/lib/records.mts"
+import { readDescriptor } from "../skills/running-retrospectives/lib/descriptors.mts"
 import { virginWorkspace, installCopied, run, cleanup } from "../../../tests/helpers/workspace.ts"
 
 const MODULE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")

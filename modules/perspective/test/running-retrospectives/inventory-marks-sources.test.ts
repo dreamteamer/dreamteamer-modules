@@ -20,7 +20,7 @@ import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
 import { spawnSync } from "node:child_process"
-import { readRecord, writeRecord, recordPath, listRecords } from "../../skills/running-retrospectives/lib/records.ts"
+import { readRecord, writeRecord, recordPath, listRecords } from "../../skills/running-retrospectives/lib/records.mts"
 
 const HERE = path.dirname(new URL(import.meta.url).pathname)
 const INVENTORY = path.join(HERE, "..", "..", "skills", "running-retrospectives", "bin", "inventory.mjs")

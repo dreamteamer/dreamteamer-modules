@@ -23,9 +23,9 @@
 		"bin",
 		"collections",
 		"commands",
-		"lib",
 		"skills",
-		"src"
+		"dist",
+		"!bin/**/*.ts"
 	],
 	"peerDependencies": {
 		"@dreamteamer/users": ">=0.3.0"
@@ -34,7 +34,7 @@
 		"title": "Sessions",
 		"description": "`sessions`: one sitting of work — an agent session, an agent run, a person's focused block — with who, when, how long, what it cost and what came out. /session:save reads the metrics from the transcript, /session:analyze writes the critique, `dt session bind` names the records a session worked on and `dt next` lists them. Draws `agents` in the nav. Depends on `users`; peers `projects`, `tasks`.",
 		"engine": ">=0.48.0",
-		"extension": "./src/activate.js",
+		"extension": "./dist/src/activate.js",
 		"vars": [
 			"SESSIONS_FOLDER"
 		],
@@ -45,5 +45,8 @@
 			"projects",
 			"tasks"
 		]
+	},
+	"scripts": {
+		"prepack": "node ../../scripts/build.ts --module=sessions"
 	}
 }

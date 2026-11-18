@@ -19,7 +19,7 @@ import assert from "node:assert"
 import fs from "node:fs"
 import path from "node:path"
 import yaml from "js-yaml"
-import { shippedDescriptor } from "../skills/running-retrospectives/lib/descriptors.ts"
+import { shippedDescriptor } from "../skills/running-retrospectives/lib/descriptors.mts"
 import { fieldsOf, targetsOf } from "../../../tests/helpers/descriptors.ts"
 
 // the repo root — these tests were written at the root of dreamteamer/extensions, whose modules/ layout

@@ -43,7 +43,7 @@ before(() => {
   ws = fixture.workspace({ compile: false })
   const vendor = path.join(ws.root, "vendor")
   fs.mkdirSync(vendor)
-  const pack = spawnSync("npm", ["pack", "--silent", "--pack-destination", vendor], {
+  const pack = spawnSync("npm", ["pack", "--silent", "--ignore-scripts", "--pack-destination", vendor], {
     cwd: fixture.packageDir("proofs"),
     encoding: "utf8",
     timeout: NPM_TIMEOUT,

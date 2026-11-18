@@ -5,7 +5,7 @@ import assert from "node:assert"
 import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
-import { computeMetrics, INSPECTOR_VERSION } from "../../skills/running-retrospectives/lib/metrics.ts"
+import { computeMetrics, INSPECTOR_VERSION } from "../../skills/running-retrospectives/lib/metrics.mts"
 
 const ts = i => new Date(Date.UTC(2026, 8, 1, 10, i)).toISOString()
 const base = (i, extra) => ({

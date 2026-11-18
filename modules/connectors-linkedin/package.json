@@ -21,7 +21,8 @@
 		"skills",
 		"commands",
 		"command-bindings",
-		"ui-views"
+		"ui-views",
+		"!skills/**/*.mts"
 	],
 	"dreamteamer": {
 		"title": "LinkedIn connector",
@@ -43,5 +44,8 @@
 		"@dreamteamer/contacts": ">=0.2.0",
 		"@dreamteamer/companies": ">=0.1.1",
 		"@dreamteamer/assets": ">=0.1.0"
+	},
+	"scripts": {
+		"prepack": "node ../../scripts/build.ts --module=connectors-linkedin"
 	}
 }

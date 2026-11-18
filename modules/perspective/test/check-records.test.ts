@@ -8,7 +8,7 @@ import os from "node:os"
 import path from "node:path"
 import { spawnSync } from "node:child_process"
 import { fileURLToPath } from "node:url"
-import { recordPath, writeRecord } from "../skills/running-retrospectives/lib/records.ts"
+import { recordPath, writeRecord } from "../skills/running-retrospectives/lib/records.mts"
 
 /** This module's own root — `modules/perspective`. */
 const MODULE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")

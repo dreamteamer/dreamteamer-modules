@@ -189,6 +189,13 @@ node scripts/test.mjs --module=users       # tests/ + one module's suite — wha
 node scripts/test.mjs --shard=2/4          # one of CI's four balanced shards (--list to see its files)
 ```
 
+The code is TypeScript, run as it is in a checkout (Node's type stripping, Node 22.18 or later). npm cannot
+run TypeScript from `node_modules`, so a module ships its build: `npm run build` (`scripts/build.ts`, also
+each module's `prepack` and the first step of `npm test`) compiles `src/`, `lib/` and `bin/` into `dist/`,
+and each skill's `.mts` into the `.mjs` beside it that its `SKILL.md` runs. A module's manifest names
+`dist/`; a published script keeps its path through a one-line shim (`bin/<name>.mjs` runs
+`dist/bin/<name>.js`). Both are gitignored, so a clone linked into a workspace is built after each edit.
+
 `npm test` installs every module into fresh workspaces twice — once from its packed tarball, the way
 npm delivers it, and once as a copied folder — and checks that each compiles with only what it
 declares, that the modules work together on real records, that every module's own suite passes, and

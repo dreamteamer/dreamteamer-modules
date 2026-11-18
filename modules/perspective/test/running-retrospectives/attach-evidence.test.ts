@@ -9,7 +9,7 @@ import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
-import { readRecord } from "../../skills/running-retrospectives/lib/records.ts"
+import { readRecord } from "../../skills/running-retrospectives/lib/records.mts"
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const BIN = path.join(HERE, "..", "..", "skills", "running-retrospectives", "bin", "attach-evidence.mjs")

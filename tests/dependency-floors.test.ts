@@ -65,7 +65,7 @@ function standIn(id, version = OLD[id]) {
 /** `npm pack` a folder; returns the tarball path. */
 const packDir = dir => {
   const dest = fs.mkdtempSync(path.join(tmp, "pack-"))
-  const out = execFileSync("npm", ["pack", dir, "--pack-destination", dest, "--json", "--silent"], {
+  const out = execFileSync("npm", ["pack", dir, "--pack-destination", dest, "--json", "--silent", "--ignore-scripts"], {
     encoding: "utf8",
     timeout: 60_000,
   })

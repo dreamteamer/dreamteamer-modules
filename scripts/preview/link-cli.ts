@@ -160,6 +160,17 @@ export async function main(argv, root, verb) {
           `  pre-commit guard installed — a commit touching ${dataPathOf(root)}/ or ${HARNESS_FILES.join("/")} is refused while linked`
         )
   )
+  // a module's extension and bins run from its dist/, which a clone makes with its own build — and remakes
+  // after an edit to its TypeScript (npm run build in the clone)
+  const build = path.join(abs, "scripts", "build.ts")
+  if (fs.existsSync(build)) {
+    const b = spawnSync(process.execPath, [build], { cwd: abs, encoding: "utf8" })
+    say(
+      b.status === 0
+        ? dim("  built the clone's modules — after editing its TypeScript, run `npm run build` in the clone")
+        : `  ${paint("▲", "33")} the clone's build failed — run \`node ${build}\` and read it`
+    )
+  }
   recompile(root)
   return status(root)
 }

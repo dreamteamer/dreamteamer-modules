@@ -94,12 +94,27 @@ for (const m of moduleIds()) {
       }
     })
     test("`files` lists every folder the module carries, and the tarball ships them", () => {
-      const present = [...KINDS, "bin", "src", "lib", "data"].filter(k => fs.existsSync(path.join(MODULES, m, k)))
+      // ui and ui2 are browser apps built by Vite into their own dist/, and ship their source on purpose
+      const app = m === "ui" || m === "ui2"
+      const present = [...KINDS, "bin", "data", ...(app ? ["src"] : [])].filter(k =>
+        fs.existsSync(path.join(MODULES, m, k))
+      )
       for (const k of present)
         assert.ok(pkg.files.includes(k), `${k}/ exists but is not in files — npm would leave it out`)
-      const shipped = new Set(packedFiles(m).map(f => f.split("/")[0]))
+      // src/ and lib/ ship as their build: dist/src and dist/lib (scripts/build.ts), never the TypeScript
+      const built = app ? [] : ["src", "lib"].filter(k => fs.existsSync(path.join(MODULES, m, k)))
+      if (built.length) assert.ok(pkg.files.includes("dist"), `${built.join(", ")} exist but dist is not in files`)
+      const files = packedFiles(m)
+      const shipped = new Set(files.map(f => f.split("/")[0]))
       for (const k of [...present, "README.md", "package.json"])
         assert.ok(shipped.has(k), `the tarball does not ship ${k}`)
+      for (const k of built)
+        assert.ok(
+          files.some(f => f.startsWith(`dist/${k}/`)),
+          `the tarball does not ship dist/${k}`
+        )
+      const ts = files.filter(f => /\.m?ts$/.test(f) && !f.endsWith(".d.ts"))
+      if (!app) assert.deepEqual(ts, [], "the TypeScript source ships — npm ships its build")
     })
     test("the tarball ships no tests, caches or virtualenvs", () => {
       const junk = packedFiles(m).filter(f => /(^|\/)(tests?|__pycache__|\.venv|\.pytest_cache|node_modules)\//.test(f))

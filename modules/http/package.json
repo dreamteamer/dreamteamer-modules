@@ -14,23 +14,26 @@
 		"dreamteamer-module"
 	],
 	"exports": {
-		".": "./src/createApp.js",
-		"./extension": "./src/activate.js",
+		".": "./dist/src/createApp.js",
+		"./extension": "./dist/src/activate.js",
 		"./package.json": "./package.json"
 	},
 	"files": [
 		"README.md",
 		"UPDATING.md",
-		"src"
+		"dist"
 	],
 	"dependencies": {
 		"express": "^5.2.1",
 		"@dreamteamer/protocol": "^0.3.0"
 	},
 	"dreamteamer": {
-		"extension": "./src/activate.js",
+		"extension": "./dist/src/activate.js",
 		"title": "HTTP",
 		"description": "Deprecated: dt serve moved to @dreamteamer/web (dt web token), and this package gets no new routes. dt serve here is a JSON REST api at /api over a dreamteamer workspace, through the same validating store the CLI uses: records, collections and fields behind a real compile, history and bound commands. Loopback by default; a wider host needs a bearer token.",
 		"engine": ">=0.33.0"
+	},
+	"scripts": {
+		"prepack": "node ../../scripts/build.ts --module=http"
 	}
 }

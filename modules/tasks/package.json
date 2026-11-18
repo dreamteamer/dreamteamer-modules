@@ -19,10 +19,11 @@
 	"files": [
 		"README.md",
 		"bin",
-		"lib",
 		"collections",
 		"skills",
-		"ui-views"
+		"ui-views",
+		"dist",
+		"!bin/**/*.ts"
 	],
 	"dreamteamer": {
 		"title": "Tasks",
@@ -41,5 +42,8 @@
 	},
 	"peerDependencies": {
 		"@dreamteamer/users": ">=0.2.1"
+	},
+	"scripts": {
+		"prepack": "node ../../scripts/build.ts --module=tasks"
 	}
 }

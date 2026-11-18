@@ -5,10 +5,13 @@
 import fs from "node:fs"
 import path from "node:path"
 import { pathToFileURL } from "node:url"
+import { packageRoot } from "../../packageRoot.ts"
 import { loadConfig, productKey, portalValue, portalSource } from "./config.ts"
 import { readRecords } from "./records.ts"
 
-export const VERSION = JSON.parse(fs.readFileSync(new URL("../../../package.json", import.meta.url), "utf8")).version
+export const VERSION = JSON.parse(
+  fs.readFileSync(path.join(packageRoot(import.meta.url), "package.json"), "utf8")
+).version
 export const STEP_KEYS = ["screen", "story", "persona", "system", "caption", "scope_rows", "open"]
 export const DENY = ["content", "source_files", "source", "creation_context", "author", "reads", "writes"]
 const DONE = new Set(["resolved", "obsolete"])

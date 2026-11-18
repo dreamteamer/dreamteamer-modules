@@ -18,14 +18,16 @@ test("the tarball ships the bin and the whole harness behind it", () => {
   for (const f of [
     "bin/dt-prototype.mjs",
     "bin/migrate-journey-steps.mjs",
-    "lib/prototype/browser/player.js",
-    "lib/prototype/browser/harness.css",
-    "lib/prototype/node/export.mjs",
-    "lib/prototype/node/play.mjs",
-    "lib/findWorkspace.mjs",
+    "dist/bin/dt-prototype.js",
+    "dist/lib/prototype/browser/player.js",
+    "dist/lib/prototype/browser/harness.css",
+    "dist/lib/prototype/node/export.js",
+    "dist/lib/prototype/node/play.js",
+    "dist/lib/findWorkspace.js",
   ])
     assert.ok(files.includes(f), `${f} is not in the tarball`)
   assert.ok(!files.some(f => f.startsWith("test/")), "tests do not ship")
+  assert.ok(!files.some(f => f.endsWith(".ts") && !f.endsWith(".d.ts")), "the TypeScript source does not ship, its build does")
 })
 
 test("the installed dt-prototype vendors into a prototype and exports its records", () => {

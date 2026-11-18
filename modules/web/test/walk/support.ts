@@ -33,7 +33,7 @@ export const ENGINE_DIR = fs.realpathSync(
 /** The contract's synthetic Northwind workspace (one git_modules layer holding a projects record). */
 export async function northwind() {
   const { makeFixture } = await import(
-    pathToFileURL(path.join(MODULES, "protocol", "lib", "contract", "fixture.js")).href
+    pathToFileURL(path.join(MODULES, "protocol", "lib", "contract", "fixture.ts")).href
   )
   return makeFixture({ engineDir: ENGINE_DIR })
 }
@@ -61,7 +61,7 @@ export async function paneWorkspace(name, { tasks = [] } = {}) {
 /** Headless Chromium through rnd's resolver (playwright-core from the npx cache, or PLAYWRIGHT_CHROMIUM_EXECUTABLE). */
 export async function browser() {
   const { chromium } = await import(
-    pathToFileURL(path.join(MODULES, "rnd", "lib", "prototype", "node", "devdep.mjs")).href
+    pathToFileURL(path.join(MODULES, "rnd", "lib", "prototype", "node", "devdep.ts")).href
   )
   return (await chromium(REPO)).launch()
 }

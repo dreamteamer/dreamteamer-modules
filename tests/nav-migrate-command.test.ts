@@ -28,7 +28,7 @@ const shipped = (() => {
   let cache
   return () =>
     (cache ??= JSON.parse(
-      execFileSync("npm", ["pack", "--dry-run", "--json", "--workspaces"], {
+      execFileSync("npm", ["pack", "--dry-run", "--json", "--workspaces", "--ignore-scripts"], {
         cwd: ROOT,
         encoding: "utf8",
         stdio: ["ignore", "pipe", "ignore"],
@@ -66,8 +66,8 @@ describe("shipped text", () => {
       .filter(m => fs.existsSync(path.join(ROOT, "modules", m, "package.json")))
     assert.equal(pkgs.size, dirs.length, `npm pack listed ${pkgs.size} packages, modules/ holds ${dirs.length}`)
     assert.ok(
-      shipped().some(f => f.pkg === "@dreamteamer/protocol" && f.file === "src/createHandler.ts"),
-      "protocol src/createHandler.ts is not in the list"
+      shipped().some(f => f.pkg === "@dreamteamer/protocol" && f.file === "dist/src/createHandler.js"),
+      "protocol dist/src/createHandler.js is not in the list"
     )
   })
   test("no shipped file spells the never-published @dreamteamer/protocol@0.2", () => {

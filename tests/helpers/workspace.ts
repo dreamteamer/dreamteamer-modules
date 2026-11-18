@@ -97,11 +97,15 @@ export function packed(m) {
   if (tarballs.has(m)) return tarballs.get(m)
   const dest = fs.mkdtempSync(path.join(os.tmpdir(), "dtm-pack-"))
   made.push(dest)
-  const out = execFileSync("npm", ["pack", path.join(MODULES, m), "--pack-destination", dest, "--json", "--silent"], {
-    cwd: ROOT,
-    encoding: "utf8",
-    timeout: 60_000,
-  })
+  const out = execFileSync(
+    "npm",
+    ["pack", path.join(MODULES, m), "--pack-destination", dest, "--json", "--silent", "--ignore-scripts"],
+    {
+      cwd: ROOT,
+      encoding: "utf8",
+      timeout: 60_000,
+    }
+  )
   const file = path.join(dest, JSON.parse(out)[0].filename)
   tarballs.set(m, file)
   return file

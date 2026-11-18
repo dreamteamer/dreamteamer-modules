@@ -28,9 +28,9 @@ test(
   "the handler passes the contract except the ledger, refuses undocumented routes, and re-opens before a schema write",
   { timeout: 300_000 },
   async () => {
-    const { makeFixture } = await load("lib/contract/fixture.js")
-    const { runContract, cases } = await load("lib/contract/run.js")
-    const { createHandler } = await load("src/createHandler.js")
+    const { makeFixture } = await load("lib/contract/fixture.ts")
+    const { runContract, cases } = await load("lib/contract/run.ts")
+    const { createHandler } = await load("src/createHandler.ts")
     fixture = makeFixture({ engineDir: ENGINE_DIR })
     const handler = await createHandler({ root: fixture.root })
     const request = (m, p, b?) => quietly(() => handler.handle(m, p, b))
@@ -60,7 +60,7 @@ test(
 
     // the pane routes answer a host's own PaneStore when it passes one (dt web), and refuse a selection before the
     // store sees it; without one, a per-api memory store answers at admin (the editor)
-    const { route } = await load("src/createHandler.js")
+    const { route } = await load("src/createHandler.ts")
     const seen = []
     const pane = {
       host: () => ({ level: "read", chat: true, workspace: { id: "w1", name: "northwind" } }),

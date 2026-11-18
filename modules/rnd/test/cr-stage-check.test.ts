@@ -12,7 +12,7 @@ import { seedStates, settleAll, T } from "./helpers/cr-stage-fixtures.ts"
 after(() => cleanupAll())
 
 const RND = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..")
-const lib = await import(path.join(RND, "lib", "crStage.mjs"))
+const lib = await import(path.join(RND, "lib", "crStage.ts"))
 const { STAGES, GATES, expectedStage, stageContradictions, allowedStages, stageWarnings, gateCommand } = lib
 
 // a request's own facts, by the state it is in

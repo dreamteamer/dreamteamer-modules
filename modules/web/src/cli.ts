@@ -10,7 +10,7 @@ import { spawn, spawnSync } from "node:child_process"
 import fs from "node:fs"
 import { createRequire } from "node:module"
 import path from "node:path"
-import { fileURLToPath } from "node:url"
+import { packageRoot } from "./packageRoot.ts"
 import {
   alive,
   claimStart,
@@ -33,7 +33,7 @@ import { nameNow, readRegistry, readWorkspaceState, register, stateDir, writeWor
 import { hookInstalled, installHook } from "./hook.ts"
 import { workspaceName } from "./createPaneStore.ts"
 
-const BIN = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "bin", "dt-web.mjs")
+const BIN = path.join(packageRoot(import.meta.url), "bin", "dt-web.mjs")
 // the browser page @dreamteamer/ui builds, served as it is
 const appDirOf = () =>
   path.join(path.dirname(createRequire(import.meta.url).resolve("@dreamteamer/ui/package.json")), "dist", "app")

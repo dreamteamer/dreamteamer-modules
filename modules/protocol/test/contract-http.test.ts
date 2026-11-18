@@ -12,9 +12,9 @@ import { fileURLToPath, pathToFileURL } from "node:url"
 import { api, ENGINE_DIR } from "../../../tests/helpers/fixture.ts"
 
 const PKG = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
-const { makeFixture } = await import(pathToFileURL(path.join(PKG, "lib", "contract", "fixture.js")).href)
-const { runContract, cases } = await import(pathToFileURL(path.join(PKG, "lib", "contract", "run.js")).href)
-const { bind, createApp } = await import(pathToFileURL(path.join(PKG, "..", "http", "src", "createApp.js")).href)
+const { makeFixture } = await import(pathToFileURL(path.join(PKG, "lib", "contract", "fixture.ts")).href)
+const { runContract, cases } = await import(pathToFileURL(path.join(PKG, "lib", "contract", "run.ts")).href)
+const { bind, createApp } = await import(pathToFileURL(path.join(PKG, "..", "http", "src", "createApp.ts")).href)
 
 const REQUEST_TIMEOUT_MS = 30_000
 let server

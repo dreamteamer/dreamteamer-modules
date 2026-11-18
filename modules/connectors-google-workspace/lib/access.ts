@@ -1,6 +1,6 @@
 import fs from "node:fs"
 import path from "node:path"
-import { fileURLToPath } from "node:url"
+import { packageRoot } from "./packageRoot.ts"
 import { connect } from "./connect.ts"
 
 // Unknown tools fail closed, including tools whose name merely starts with "get".
@@ -71,7 +71,7 @@ export function configuration(env = process.env) {
     OAUTH_CUSTOM_REDIRECT_URIS: "",
     PYTHON_DOTENV_DISABLED: "1",
     UV_NO_CONFIG: "1",
-    BROWSER: fileURLToPath(new URL("../bin/no-browser.mjs", import.meta.url)),
+    BROWSER: path.join(packageRoot(import.meta.url), "bin", "no-browser.mjs"),
   }
 }
 export function credentialPath(directory, email) {

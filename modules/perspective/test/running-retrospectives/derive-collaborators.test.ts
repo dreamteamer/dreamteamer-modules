@@ -10,7 +10,7 @@ import os from "node:os"
 import path from "node:path"
 import { execFileSync } from "node:child_process"
 import { fileURLToPath } from "node:url"
-import { recordPath, writeRecord, readRecord } from "../../skills/running-retrospectives/lib/records.ts"
+import { recordPath, writeRecord, readRecord } from "../../skills/running-retrospectives/lib/records.mts"
 
 const BIN = fileURLToPath(new URL("../../skills/running-retrospectives/bin/derive-collaborators.mjs", import.meta.url))
 const BASE = "2026-09-08--fx",

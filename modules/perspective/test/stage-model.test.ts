@@ -10,7 +10,7 @@ import assert from "node:assert"
 import fs from "node:fs"
 import path from "node:path"
 import yaml from "js-yaml"
-import { enumValues } from "../skills/running-retrospectives/lib/descriptors.ts"
+import { enumValues } from "../skills/running-retrospectives/lib/descriptors.mts"
 
 // the repo root — these tests were written at the root of dreamteamer/extensions, whose modules/ layout
 // this repo keeps, so every `ROOT/modules/<m>/…` path still names the same file

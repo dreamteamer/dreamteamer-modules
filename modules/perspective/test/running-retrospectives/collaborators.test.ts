@@ -6,8 +6,8 @@ import assert from "node:assert"
 import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
-import { recordPath, writeRecord, readRecord, listRecords } from "../../skills/running-retrospectives/lib/records.ts"
-import { upsertCollaborators } from "../../skills/running-retrospectives/lib/upsertCollaborators.ts"
+import { recordPath, writeRecord, readRecord, listRecords } from "../../skills/running-retrospectives/lib/records.mts"
+import { upsertCollaborators } from "../../skills/running-retrospectives/lib/upsertCollaborators.mts"
 
 const BASE = "2026-09-08--fx",
   REF = `perspective/retrospective-sessions/${BASE}`

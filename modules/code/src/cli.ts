@@ -5,7 +5,7 @@ import http from "node:http"
 import { createHash, randomUUID } from "node:crypto"
 import { spawn } from "node:child_process"
 import { gateway } from "./gateway.ts"
-import { fileURLToPath } from "node:url"
+import { packageRoot } from "./packageRoot.ts"
 import { callUi } from "./callUi.ts"
 import { messageCoordinator } from "./messageCoordinator.ts"
 import { ensureRuntime, run } from "./install.ts"
@@ -177,7 +177,7 @@ export async function main(argv = process.argv.slice(2)) {
     const controlSocket = path.join(session, "control.sock")
     const coordinator = `dt-editor-${id}`
     const mcpFile = path.join(profile, "mcp.json")
-    const mcpScript = fileURLToPath(new URL("../bin/ui-mcp.mjs", import.meta.url))
+    const mcpScript = path.join(packageRoot(import.meta.url), "bin", "ui-mcp.mjs")
     await fs.writeFile(
       mcpFile,
       JSON.stringify({

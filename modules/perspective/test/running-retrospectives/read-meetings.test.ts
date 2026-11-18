@@ -19,8 +19,8 @@ import {
   recordPath,
   listRecords,
   collectionStorage,
-} from "../../skills/running-retrospectives/lib/records.ts"
-import { enumValues } from "../../skills/running-retrospectives/lib/descriptors.ts"
+} from "../../skills/running-retrospectives/lib/records.mts"
+import { enumValues } from "../../skills/running-retrospectives/lib/descriptors.mts"
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const BIN = path.join(HERE, "..", "..", "skills", "running-retrospectives", "bin", "read-meetings.mjs")

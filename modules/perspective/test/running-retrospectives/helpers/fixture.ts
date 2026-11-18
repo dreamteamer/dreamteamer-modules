@@ -4,7 +4,7 @@ import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
 import { execFileSync } from "node:child_process"
-import { writeRecord, recordPath } from "../../../skills/running-retrospectives/lib/records.ts"
+import { writeRecord, recordPath } from "../../../skills/running-retrospectives/lib/records.mts"
 
 export const BASE = "2026-09-09--dana-o"
 export const SLUG = "dana-o"

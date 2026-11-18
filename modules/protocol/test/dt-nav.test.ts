@@ -16,8 +16,8 @@ import { ENGINE_DIR, ROOT } from "../../../tests/helpers/fixture.ts"
 
 const PKG = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 const BIN = path.join(PKG, "bin", "dt-nav.mjs")
-const { makeFixture } = await import(pathToFileURL(path.join(PKG, "lib", "contract", "fixture.js")).href)
-const { meetsFloor } = await import(pathToFileURL(path.join(PKG, "src", "host", "floor.js")).href)
+const { makeFixture } = await import(pathToFileURL(path.join(PKG, "lib", "contract", "fixture.ts")).href)
+const { meetsFloor } = await import(pathToFileURL(path.join(PKG, "src", "host", "floor.ts")).href)
 
 // The engine BELOW the nav document's floor: the last 0.48, installed beside the current one under an alias
 // (the root devDependency `dreamteamer-0-48`), so the "older engine" half survives 0.49.0 being the published one.

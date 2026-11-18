@@ -9,7 +9,7 @@ import { ENGINE_DIR } from "../../../tests/helpers/fixture.ts"
 
 const MODULES = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..")
 const { makeFixture } = await import(
-  pathToFileURL(path.join(MODULES, "protocol", "lib", "contract", "fixture.js")).href
+  pathToFileURL(path.join(MODULES, "protocol", "lib", "contract", "fixture.ts")).href
 )
 
 export function fixture() {

@@ -7,7 +7,7 @@ import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
-import { writeRecord, readRecord, recordPath } from "../../skills/running-retrospectives/lib/records.ts"
+import { writeRecord, readRecord, recordPath } from "../../skills/running-retrospectives/lib/records.mts"
 
 // The script validates judged values against the conversations descriptor: the workspace's compiled
 // one when there is one, else the one this module ships — so these run standalone too.

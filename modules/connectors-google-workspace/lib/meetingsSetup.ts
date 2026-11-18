@@ -11,7 +11,7 @@ import { spawnSync } from "node:child_process"
 import os from "node:os"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
-import { parseWorkCalendars } from "../skills/fetching-meetings/bin/gcal.ts"
+import { parseWorkCalendars } from "../skills/fetching-meetings/bin/gcal.mts"
 
 /** The convention version and module name this setup's own reports carry (its rows, its plan). */
 const PROTOCOL = 1

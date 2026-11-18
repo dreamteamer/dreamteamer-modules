@@ -17,7 +17,9 @@
 		"README.md",
 		"UPDATING.md",
 		"bin",
-		"collections"
+		"collections",
+		"dist",
+		"!bin/**/*.ts"
 	],
 	"peerDependencies": {
 		"@dreamteamer/projects": ">=0.4.0"
@@ -36,5 +38,8 @@
 			"companies",
 			"assets"
 		]
+	},
+	"scripts": {
+		"prepack": "node ../../scripts/build.ts --module=users"
 	}
 }

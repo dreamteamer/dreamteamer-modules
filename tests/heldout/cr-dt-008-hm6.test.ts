@@ -13,8 +13,8 @@ import { workspace, writeCollection, simpleCollection } from "../helpers/fixture
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..")
 const PROTOCOL = path.join(ROOT, "modules", "protocol")
-const { buildTree, tailOrder } = await import(pathToFileURL(path.join(PROTOCOL, "src", "host", "nav.js")).href)
-const { applyNavOp } = await import(pathToFileURL(path.join(PROTOCOL, "src", "navDoc.js")).href)
+const { buildTree, tailOrder } = await import(pathToFileURL(path.join(PROTOCOL, "src", "host", "nav.ts")).href)
+const { applyNavOp } = await import(pathToFileURL(path.join(PROTOCOL, "src", "navDoc.ts")).href)
 
 const TITLES = {
   tasks: "Tasks",
@@ -202,7 +202,7 @@ describe("step 4: PUT /nav with (a), and with a variant naming rnd/ghost", () =>
     for (const [name, title] of Object.entries(TITLES)) writeCollection(ws.root, name, simpleCollection({ title }))
     const r = ws.dt("compile")
     assert.equal(r.code, 0, `${r.stdout}\n${r.stderr}`)
-    const { createHandler } = await import(pathToFileURL(path.join(PROTOCOL, "src", "createHandler.js")).href)
+    const { createHandler } = await import(pathToFileURL(path.join(PROTOCOL, "src", "createHandler.ts")).href)
     handler = await createHandler({ root: ws.root })
     navFile = path.join(ws.root, "nav.yaml")
   })

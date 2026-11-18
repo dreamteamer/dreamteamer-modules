@@ -8,7 +8,7 @@ import {
   parseAddressList,
   bareSubject,
   summarizeThread,
-} from "../../skills/running-retrospectives/lib/gmail.ts"
+} from "../../skills/running-retrospectives/lib/gmail.mts"
 
 test("addresses parse with or without a display name, lists split outside quotes", () => {
   assert.deepEqual(parseAddress('"Ada Lovelace" <Ada@Example.com>'), { email: "ada@example.com", name: "Ada Lovelace" })

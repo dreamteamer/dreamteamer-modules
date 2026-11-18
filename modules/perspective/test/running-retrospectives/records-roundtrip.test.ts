@@ -9,7 +9,7 @@ import assert from "node:assert"
 import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
-import { readRecord, writeRecord } from "../../skills/running-retrospectives/lib/records.ts"
+import { readRecord, writeRecord } from "../../skills/running-retrospectives/lib/records.mts"
 
 const tmp = () => path.join(fs.mkdtempSync(path.join(os.tmpdir(), "rt-")), "x.record.md")
 

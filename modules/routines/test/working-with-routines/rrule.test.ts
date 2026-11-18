@@ -1,6 +1,6 @@
 import { test } from "node:test"
 import assert from "node:assert"
-import { parse, toEnglish, nextDue } from "../../skills/working-with-routines/bin/rrule.ts"
+import { parse, toEnglish, nextDue } from "../../skills/working-with-routines/bin/rrule.mts"
 
 test("parse: accepts the Google-shaped string with or without the RRULE: prefix, rejects junk", () => {
   assert.equal(parse("RRULE:FREQ=WEEKLY;INTERVAL=2;BYDAY=MO,WE").interval, 2)

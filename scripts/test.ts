@@ -22,6 +22,7 @@
 // git, npm and dt subprocesses rather than burning CPU, so two at a time on two cores is not a loss.
 import { spawnSync } from "node:child_process"
 import os from "node:os"
+import path from "node:path"
 import { ROOT, collect, forModule, needsBrowser, shard } from "./test-files.ts"
 
 const arg = name =>
@@ -70,6 +71,16 @@ if (browserQuery) {
 if (!Number.isInteger(concurrency) || concurrency < 1) {
   console.error(`--concurrency takes a positive integer — got ${arg("concurrency")}`)
   process.exit(1)
+}
+
+// Every module's build first, once (scripts/build.ts): a suite that packs or installs a module ships its dist/,
+// and a sibling imported by package name resolves through its exports to dist/. Once and before any file runs,
+// because the build deletes dist/ before writing it; the suites pack with --ignore-scripts so no prepack
+// rebuilds a dist/ that another file is reading.
+const built = spawnSync(process.execPath, [path.join(ROOT, "scripts", "build.ts")], { stdio: "inherit", cwd: ROOT })
+if (built.status !== 0) {
+  console.error("✖ the build failed — the suites run the built modules and cannot start without them")
+  process.exit(built.status ?? 1)
 }
 
 console.log(

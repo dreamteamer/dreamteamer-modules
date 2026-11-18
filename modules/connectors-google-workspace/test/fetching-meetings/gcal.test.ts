@@ -8,7 +8,7 @@ import assert from "node:assert/strict"
 import fs from "node:fs"
 import path from "node:path"
 import { spawnSync } from "node:child_process"
-import { parseWorkCalendars, classifyAccess } from "../../skills/fetching-meetings/bin/gcal.ts"
+import { parseWorkCalendars, classifyAccess } from "../../skills/fetching-meetings/bin/gcal.mts"
 import {
   virginWorkspace,
   installPacked,

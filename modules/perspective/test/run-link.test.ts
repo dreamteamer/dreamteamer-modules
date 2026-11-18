@@ -10,7 +10,7 @@ import { test } from "node:test"
 import assert from "node:assert"
 import fs from "node:fs"
 import path from "node:path"
-import { shippedDescriptor } from "../skills/running-retrospectives/lib/descriptors.ts"
+import { shippedDescriptor } from "../skills/running-retrospectives/lib/descriptors.mts"
 
 const DIR = path.resolve(
   path.dirname(new URL(import.meta.url).pathname),

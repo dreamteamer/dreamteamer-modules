@@ -14,7 +14,7 @@ import { seedStates, settleAll, T } from "./helpers/cr-stage-fixtures.ts"
 after(() => cleanupAll())
 
 const RND = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..")
-const { GATES, STAGES } = await import(path.join(RND, "lib", "crStage.mjs"))
+const { GATES, STAGES } = await import(path.join(RND, "lib", "crStage.ts"))
 const skill = s => fs.readFileSync(path.join(RND, "skills", s, "SKILL.md"), "utf8")
 
 /** The backticked `dt set rnd/change-requests/<…> …` command in a skill that contains `has`. */

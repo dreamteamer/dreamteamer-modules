@@ -440,7 +440,11 @@ export async function startWeb({
       body
     )
     // no route: the handler answers its own 404, with the encoding hint
-    if (!decision.ok && decision.status !== 404) return json(res, decision.status, { error: decision.error })
+    if (!decision.ok) {
+      // the refusal's fields (the root tsconfig is not strict, so `ok` does not narrow the union)
+      const { status, error } = decision as { status: number; error: string }
+      if (status !== 404) return json(res, status, { error })
+    }
     if (hit?.route.id === "host") return json(res, 200, await store.host({ level }))
     const log = console.log
     console.log = () => {}
@@ -492,7 +496,7 @@ export async function startWeb({
   /** `dt web select`'s refs: existing records, at most 50, all of one collection (as PUT /selection checks them). */
   const checkRefs = async refs => {
     const r = await validateSelection(reader, { view: { other: true }, refs })
-    if (!r.ok) throw new HttpError(400, r.error)
+    if (!r.ok) throw new HttpError(400, (r as { error: string }).error)
     if (new Set(r.value.refs.map(x => parseRef(x)?.collection)).size > 1)
       throw new HttpError(400, "the refs of a selection are all of one collection")
     return r.value.refs

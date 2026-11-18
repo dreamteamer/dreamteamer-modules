@@ -46,25 +46,27 @@ const dt = (cwd, ...args) =>
   spawnSync(process.execPath, [BIN, ...args], { cwd, env, encoding: "utf8", timeout: 60_000, killSignal: "SIGKILL" })
 const webRow = out => out.split("\n").find(l => /\bweb\b/.test(l) && /running/.test(l)) ?? ""
 
-test("the tarball ships the bin, the source, the skill and the README — never the tests or an app of its own", () => {
+test("the tarball ships the bin, the build, the skill and the README — never the tests, the TypeScript or an app of its own", () => {
   const files = packedFiles("web")
   for (const f of [
     "bin/dt-web.mjs",
     "bin/dt-web-hook.mjs",
     "commands/web/show.command.md",
     "UPDATING.md",
-    "src/cli.js",
-    "src/server.js",
-    "src/activate.js",
-    "src/runtime.js",
-    "src/headers.js",
+    "dist/bin/dt-web.js",
+    "dist/src/cli.js",
+    "dist/src/server.js",
+    "dist/src/activate.js",
+    "dist/src/runtime.js",
+    "dist/src/headers.js",
     "README.md",
     "skills/serving-the-web-ui/SKILL.md",
   ])
     assert.ok(files.includes(f), `${f} is not in the tarball`)
   assert.ok(!files.some(f => f.startsWith("test/")), "tests do not ship")
+  assert.ok(!files.some(f => f.endsWith(".ts") && !f.endsWith(".d.ts")), "the TypeScript source does not ship, its build does")
   assert.ok(
-    !files.some(f => f.startsWith("dist/") || f.startsWith("scripts/")),
+    !files.some(f => f.startsWith("dist/app") || f.startsWith("dist/guest") || f.startsWith("scripts/")),
     "the app comes from @dreamteamer/ui, not a copy in this package"
   )
 })

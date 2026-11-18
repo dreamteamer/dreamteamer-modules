@@ -25,7 +25,7 @@
 		"noEmit": true,
 		"skipLibCheck": true
 	},
-	"include": ["modules/**/*.ts", "scripts/**/*.ts"],
+	"include": ["modules/**/*.ts", "modules/**/*.mts", "scripts/**/*.ts"],
 	"exclude": [
 		"**/node_modules/**",
 		"**/fixtures/**",
@@ -34,6 +34,7 @@
 		"modules/ui/src/**",
 		"modules/ui/dist/**",
 		"modules/ui2/src/**",
-		"modules/ui2/dist/**"
+		"modules/ui2/dist/**",
+		"modules/*/dist/**"
 	]
 }

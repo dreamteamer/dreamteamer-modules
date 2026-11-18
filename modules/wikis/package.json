@@ -1,7 +1,7 @@
 {
 	"name": "@dreamteamer/wikis",
 	"version": "0.2.1",
-	"description": "Local wikis for a dreamteamer workspace \u2014 corpora of markdown committed in the repo, grepped with nothing installed and asked by meaning once qmd is.",
+	"description": "Local wikis for a dreamteamer workspace — corpora of markdown committed in the repo, grepped with nothing installed and asked by meaning once qmd is.",
 	"license": "Apache-2.0",
 	"type": "module",
 	"repository": {
@@ -26,8 +26,9 @@
 		"SETUP.md",
 		"bin",
 		"collections",
-		"lib",
-		"skills"
+		"skills",
+		"dist",
+		"!bin/**/*.ts"
 	],
 	"dependencies": {
 		"js-yaml": "^4.1.0"
@@ -39,6 +40,9 @@
 		"peer_collections": [
 			"notebooks"
 		],
-		"extension": "./lib/activate.mjs"
+		"extension": "./dist/lib/activate.js"
+	},
+	"scripts": {
+		"prepack": "node ../../scripts/build.ts --module=wikis"
 	}
 }

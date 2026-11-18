@@ -3,6 +3,8 @@
 // is a refusal naming the flags that verb takes. `start` on a container that already exists ignores
 // the create-only flags (--template, --mount, --repo, --name, --email).
 import fs from "node:fs"
+import path from "node:path"
+import { packageRoot } from "./packageRoot.ts"
 import { spawn } from "node:child_process"
 import { emit } from "./util.ts"
 import {
@@ -163,7 +165,7 @@ const VERBS = new Set(["start", "stop", "open", "rm", "get", "list", "add", "exp
 export async function main(argv) {
   const [cmd, ...rest] = argv
   if (cmd === "--version" || cmd === "-v" || cmd === "version") {
-    const p = JSON.parse(fs.readFileSync(new URL("../package.json", import.meta.url), "utf8"))
+    const p = JSON.parse(fs.readFileSync(path.join(packageRoot(import.meta.url), "package.json"), "utf8"))
     console.log(`${p.name}@${p.version}`)
     return 0
   }

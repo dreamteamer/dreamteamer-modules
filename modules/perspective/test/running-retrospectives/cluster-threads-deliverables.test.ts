@@ -9,7 +9,7 @@ import os from "node:os"
 import path from "node:path"
 import { spawnSync } from "node:child_process"
 import { fileURLToPath } from "node:url"
-import { recordPath, writeRecord } from "../../skills/running-retrospectives/lib/records.ts"
+import { recordPath, writeRecord } from "../../skills/running-retrospectives/lib/records.mts"
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const SESSION = "2026-09-08--fx"
