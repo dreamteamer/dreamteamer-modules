@@ -19,24 +19,24 @@ export const TEXT_EXTS = new Set([
   "eml",
   "log",
 ])
-const LANG = { yml: "yaml", eml: "text", log: "text", txt: "text", htm: "html" }
+const LANG: Record<string, string> = { yml: "yaml", eml: "text", log: "text", txt: "text", htm: "html" }
 
-export const previewable = ext => TEXT_EXTS.has(ext)
+export const previewable = (ext: string) => TEXT_EXTS.has(ext)
 
 /** The preview markdown for `text` of a file with extension `ext`, cut at `cap` characters. */
-export function renderPreview(text, ext, cap = PREVIEW_CAP) {
+export function renderPreview(text: string, ext: string, cap = PREVIEW_CAP): string {
   const cut = text.length > cap
   const body = (cut ? text.slice(0, cap) : text).trimEnd()
   const note = cut ? `\n\n_(preview cut at ${Math.round(cap / 1024)} KB of ${text.length} characters)_` : ""
   if (ext === "md" || ext === "markdown") return body + note
   // The fence is longer than any run of backticks in the body, so the body cannot close it.
-  const longest = (body.match(/`+/g) ?? []).reduce((max, run) => Math.max(max, run.length), 0)
+  const longest = (body.match(/`+/g) ?? ([] as string[])).reduce((max, run) => Math.max(max, run.length), 0)
   const fence = "`".repeat(Math.max(4, longest + 1))
   return `${fence}${LANG[ext] ?? ext}\n${body}\n${fence}${note}`
 }
 
 /** The preview of the file at `abs`, or null when it is not text-like, larger than `maxBytes`, unreadable, or holds binary bytes. */
-export function previewOf(abs, ext, { cap = PREVIEW_CAP, maxBytes = PREVIEW_MAX_BYTES } = {}) {
+export function previewOf(abs: string, ext: string, { cap = PREVIEW_CAP, maxBytes = PREVIEW_MAX_BYTES } = {}) {
   if (!previewable(ext)) return null
   let text
   try {

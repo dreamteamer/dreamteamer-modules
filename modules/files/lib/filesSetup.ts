@@ -6,11 +6,17 @@ import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
 
-const KEY = "FILES_FOLDER"
-const expand = p => (p && (p === "~" || p.startsWith("~/")) ? path.join(os.homedir(), p.slice(1)) : p)
-const valueOf = (ctx, inputs: Record<string, any> = {}) => inputs.files_folder ?? ctx.env?.[KEY]
+/** What the engine hands a setup unit. */
+interface SetupContext {
+  root?: string
+  env?: NodeJS.ProcessEnv
+}
 
-export function inspect(ctx) {
+const KEY = "FILES_FOLDER"
+const expand = (p: string) => (p && (p === "~" || p.startsWith("~/")) ? path.join(os.homedir(), p.slice(1)) : p)
+const valueOf = (ctx: SetupContext, inputs: { files_folder?: string } = {}) => inputs.files_folder ?? ctx.env?.[KEY]
+
+export function inspect(ctx: SetupContext) {
   const v = ctx.env?.[KEY]
   const folder = v ? expand(v) : null
   const exists =
@@ -45,7 +51,7 @@ export function inspect(ctx) {
   }
 }
 
-export function plan(ctx, inputs = {}) {
+export function plan(ctx: SetupContext, inputs: { files_folder?: string } = {}) {
   const v = valueOf(ctx, inputs)
   const over = { ...ctx, env: { ...ctx.env, ...(v ? { [KEY]: v } : {}) } }
   const action = {

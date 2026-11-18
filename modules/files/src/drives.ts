@@ -3,8 +3,26 @@
 
 const ENV_TOKEN = /\$\{env:([A-Za-z0-9_]+)\}/g
 
+/** A file-drives record's fields as these rules read them. */
+export interface Drive {
+  path?: unknown
+  index?: unknown
+  include?: string[]
+  exclude?: string[]
+  [key: string]: unknown
+}
+
+/** The engine's env context: the values it resolved and the keys the workspace declares. */
+export interface EnvContext {
+  env: Map<string, string>
+  declared: string[]
+}
+
+/** The engine's `renderTemplate`. */
+export type Render = (template: string, ctx: EnvContext) => string
+
 /** The `${env:NAME}` keys a template names, in order. */
-export function envKeysOf(template) {
+export function envKeysOf(template: unknown): string[] {
   return [...String(template ?? "").matchAll(ENV_TOKEN)].map(m => m[1])
 }
 
@@ -14,7 +32,7 @@ export function envKeysOf(template) {
  * template names is a newline-separated list and line `index` of it renders; the rest of the
  * template is untouched. Without `index`, a variable of several lines skips the drive.
  */
-export function resolveDrivePath(drive, ctx, render) {
+export function resolveDrivePath(drive: Drive, ctx: EnvContext, render: Render): { path?: string; skipped?: string } {
   const template = String(drive.path ?? "").trim()
   if (!template) return { skipped: "no path" }
   const [key] = envKeysOf(template)
@@ -37,7 +55,7 @@ export function resolveDrivePath(drive, ctx, render) {
       context = { ...ctx, env }
     }
   }
-  let path
+  let path: string
   try {
     path = render(template, context)
   } catch (e) {
@@ -48,14 +66,14 @@ export function resolveDrivePath(drive, ctx, render) {
 }
 
 // NFC, so a rule typed decomposed matches the NFC paths the walk produces.
-const trimSlashes = s =>
+const trimSlashes = (s: unknown) =>
   String(s)
     .normalize("NFC")
     .replace(/^\/+|\/+$/g, "")
 
 /** Is `relpath` under one of the included top-level folders? An empty list includes everything.
  *  An entry is a top-level NAME: a nested `rnd/sub` names no top-level folder, so it matches nothing. */
-export function included(include, relpath) {
+export function included(include: string[] | null | undefined, relpath: string): boolean {
   const list = (include ?? []).map(trimSlashes).filter(Boolean)
   if (!list.length) return true
   return list.some(top => relpath === top || relpath.startsWith(`${top}/`))
@@ -66,7 +84,7 @@ export function included(include, relpath) {
  * a gitignore line is: `*.ext` by extension, a rule with no `/` as a name at any depth (`trash`), a
  * rule with a `/` as a path from the drive's folder (`rnd/old`).
  */
-export function excluded(exclude, relpath) {
+export function excluded(exclude: string[] | null | undefined, relpath: string): boolean {
   const segments = relpath.split("/")
   if (segments.some(s => s.startsWith("."))) return true
   const name = segments.at(-1)
@@ -91,7 +109,7 @@ export function excluded(exclude, relpath) {
  * scope that names no folder. Repeated slashes collapse and the text is NFC, so the subfolder is
  * the path the records use.
  */
-export function parseScope(arg) {
+export function parseScope(arg: unknown): { drive?: string; subfolder?: string | null; error?: string } | null {
   const s = String(arg ?? "")
     .normalize("NFC")
     .replace(/\/+/g, "/")

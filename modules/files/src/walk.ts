@@ -4,7 +4,7 @@ import fs from "node:fs"
 import path from "node:path"
 import { included, excluded } from "./drives.ts"
 
-export const MIME = {
+export const MIME: Record<string, string> = {
   pdf: "application/pdf",
   md: "text/markdown",
   markdown: "text/markdown",
@@ -42,20 +42,20 @@ export const MIME = {
 }
 
 /** The extension, lowercase, without the dot; '' for none or for a dotfile's "extension". */
-export function extOf(name) {
+export function extOf(name: string): string {
   const i = name.lastIndexOf(".")
   return i > 0 ? name.slice(i + 1).toLowerCase() : ""
 }
 
-export const mimeOf = ext => MIME[ext] ?? ""
+export const mimeOf = (ext: string) => MIME[ext] ?? ""
 
 /** Are the bytes on disk? A sync client that evicts a file leaves a size and zero blocks. */
-export const isLocal = st => st.blocks === undefined || st.size === 0 || st.blocks > 0
+export const isLocal = (st: fs.Stats) => st.blocks === undefined || st.size === 0 || st.blocks > 0
 
 /** An instant as ISO 8601 with the local offset, to the second — `2026-01-02T05:04:05+02:00`. */
-export function isoLocal(date) {
+export function isoLocal(date: Date | string | number): string {
   const d = new Date(date)
-  const pad = n => String(n).padStart(2, "0")
+  const pad = (n: number) => String(n).padStart(2, "0")
   const off = -d.getTimezoneOffset()
   const a = Math.abs(off)
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}${off < 0 ? "-" : "+"}${pad(Math.floor(a / 60))}:${pad(a % 60)}`
@@ -65,6 +65,22 @@ export function isoLocal(date) {
  *  custom icon), DEL, or a backslash. */
 export const UNSAFE_NAME = /[\u0000-\u001f\u007f\\]/
 
+/** One file or folder the walk found. `abs` keeps the name as the disk spells it. */
+export interface WalkEntry {
+  path: string
+  name: string
+  kind: "file" | "folder"
+  abs: string
+  ext?: string
+  mime?: string
+  bytes?: number
+  modified?: string
+  local?: boolean
+}
+
+/** The walk's entries, carrying the skipped paths as non-enumerable lists. */
+export type Walk = WalkEntry[] & { unsafe?: string[]; unreadable?: string[] }
+
 /**
  * Every file and folder under `root`, sorted by path. `include` limits the top level (empty = all),
  * `exclude` prunes anywhere, `subfolder` walks one subtree and lists that folder first. Paths and
@@ -73,14 +89,21 @@ export const UNSAFE_NAME = /[\u0000-\u001f\u007f\\]/
  * name holds a character an id cannot, and `unreadable`, the folders whose listing failed — what is
  * under them is unknown, not gone.
  */
-export function walkDrive(root, { include = [], exclude = [], subfolder = null } = {}) {
+export function walkDrive(
+  root: string,
+  {
+    include = [] as string[],
+    exclude = [] as string[],
+    subfolder = null as string | null,
+  }: { include?: string[]; exclude?: string[]; subfolder?: string | null } = {}
+): Walk {
   // the entries, with the skipped paths hung on as non-enumerable `unsafe` and `unreadable`
-  const out: any[] & { unsafe?: string[]; unreadable?: string[] } = []
-  const unsafe = [],
-    unreadable = []
+  const out: Walk = []
+  const unsafe: string[] = [],
+    unreadable: string[] = []
   Object.defineProperty(out, "unsafe", { value: unsafe })
   Object.defineProperty(out, "unreadable", { value: unreadable })
-  const entryOf = (relpath, name, st, abs) => {
+  const entryOf = (relpath: string, name: string, st: fs.Stats, abs: string): WalkEntry => {
     if (st.isDirectory()) return { path: relpath, name, kind: "folder", abs }
     const ext = extOf(name)
     return {
@@ -96,7 +119,7 @@ export function walkDrive(root, { include = [], exclude = [], subfolder = null }
     }
   }
   // `rel` is the NFC path the records use, `raw` the same folder as the disk spells it.
-  const visit = (rel, raw) => {
+  const visit = (rel: string, raw: string) => {
     let names
     try {
       names = fs.readdirSync(path.join(root, raw)).sort()

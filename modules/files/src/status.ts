@@ -1,12 +1,13 @@
 // `dt files status` and the doctor rows: what each drive looks like from this machine. No writes.
 import fs from "node:fs"
-import { dt } from "./engine.ts"
-import { filesCommand } from "./cli.ts"
-import { resolveDrivePath, envKeysOf } from "./drives.ts"
+import type { DoctorRow, ExtensionContext, Workspace } from "dreamteamer"
+import { dt, type Api } from "./engine.ts"
+import { filesCommand, type Flags } from "./cli.ts"
+import { resolveDrivePath, envKeysOf, type EnvContext } from "./drives.ts"
 
 /** One row per drive: resolution, existence and the index's counts. */
-export function driveRows(ws, store) {
-  const counts = new Map()
+export function driveRows(ws: Workspace, store: InstanceType<Api["Store"]>) {
+  const counts = new Map<string, { entries: number; missing: number; cloudOnly: number }>()
   for (const { fields } of store.readAll("files")) {
     const id = String(fields.drive ?? "")
       .split("/")
@@ -18,7 +19,7 @@ export function driveRows(ws, store) {
     if (fields.local === false && fields.status !== "missing") c.cloudOnly++
     counts.set(id, c)
   }
-  const ctx = dt.envContext(ws)
+  const ctx = dt.envContext(ws) as EnvContext
   return [...store.readAll("file-drives")].map(({ id, fields }) => {
     const where = resolveDrivePath(fields, ctx, dt.renderTemplate)
     const c = counts.get(id) ?? { entries: 0, missing: 0, cloudOnly: 0 }
@@ -36,7 +37,9 @@ export function driveRows(ws, store) {
   })
 }
 
-const describe = r =>
+type DriveRow = ReturnType<typeof driveRows>[number]
+
+const describe = (r: DriveRow) =>
   r.skipped
     ? r.skipped
     : !r.exists
@@ -44,7 +47,7 @@ const describe = r =>
       : `${r.entries} entries · ${r.missing} missing · ${r.cloudOnly} cloud-only · ${r.last_synced ? `synced ${r.last_synced}` : "never synced"}`
 
 /** `dt files status [--json]` */
-export function statusCommand(ws, pos, flags) {
+export function statusCommand(ws: Workspace, pos: string[], flags: Flags): number {
   const store = new dt.Store({ root: ws.root, pkg: ws.pkg })
   if (!store.descriptors.has("file-drives")) {
     console.error("dt files: the file-drives collection is not compiled — run `dreamteamer compile`")
@@ -57,11 +60,11 @@ export function statusCommand(ws, pos, flags) {
 }
 
 /** The doctor's rows: bad when a declared drive does not resolve or exist here, warn when never synced or cloud-only entries exist, ok otherwise. */
-export function doctorFiles({ root, ws, dt: api }) {
+export function doctorFiles({ root, ws, dt: api }: ExtensionContext): DoctorRow[] {
   const store = new api.Store({ root, pkg: ws.pkg })
   if (!store.descriptors.has("file-drives")) return []
-  const { declared } = api.envContext(ws)
-  const fixFor = r => {
+  const { declared } = api.envContext(ws) as EnvContext
+  const fixFor = (r: DriveRow) => {
     // every reason resolveDrivePath gives about `index` names it: out of range, several lines, no variable, not a whole number
     if (r.skipped && /\bindex\b/.test(r.skipped)) return `set or correct index on file-drives/${r.id}`
     if (!r.vars.length) return "give the drive a ${env:NAME} path"

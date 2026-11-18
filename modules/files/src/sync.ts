@@ -3,10 +3,11 @@
 // validated the way `dt add` validates it, and nothing is written when nothing changed.
 import fs from "node:fs"
 import { createHash } from "node:crypto"
-import { dt } from "./engine.ts"
-import { filesCommand } from "./cli.ts"
-import { resolveDrivePath, parseScope } from "./drives.ts"
-import { walkDrive, isoLocal } from "./walk.ts"
+import type { Workspace } from "dreamteamer"
+import { dt, type Api } from "./engine.ts"
+import { filesCommand, type Flags } from "./cli.ts"
+import { resolveDrivePath, parseScope, type Drive, type EnvContext } from "./drives.ts"
+import { walkDrive, isoLocal, type WalkEntry } from "./walk.ts"
 import { previewOf, previewable } from "./preview.ts"
 import { referencedBy, pointersOf } from "./references.ts"
 
@@ -28,7 +29,11 @@ export const DERIVED = [
 ]
 export const DEFAULT_HASH_MAX = 64 * 1024 * 1024
 
-export function sha256(abs) {
+/** A `files` record's fields, as read from the store or derived from the disk. */
+type Fields = Record<string, any>
+type Store = InstanceType<Api["Store"]>
+
+export function sha256(abs: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const h = createHash("sha256")
     fs.createReadStream(abs)
@@ -39,7 +44,7 @@ export function sha256(abs) {
 }
 
 /** The derived fields a walked entry contributes — never hash, preview or referenced_by, which the plan and apply decide. */
-export function derivedOf(driveId, e): Record<string, any> {
+export function derivedOf(driveId: string, e: WalkEntry): Fields {
   const f = { drive: `file-drives/${driveId}`, path: e.path, name: e.name, kind: e.kind, status: "present" }
   if (e.kind === "file")
     Object.assign(f, { ext: e.ext, mime: e.mime, bytes: e.bytes, modified: e.modified, local: e.local })
@@ -47,25 +52,27 @@ export function derivedOf(driveId, e): Record<string, any> {
 }
 
 /** Two datetimes name the same moment, whatever offset each is written in. A value that does not parse compares as a string. */
-const sameInstant = (a, b) => {
-  const x = Date.parse(a),
-    y = Date.parse(b)
+const sameInstant = (a: unknown, b: unknown) => {
+  const x = Date.parse(a as string),
+    y = Date.parse(b as string)
   return Number.isNaN(x) || Number.isNaN(y) ? a === b : x === y
 }
 
 /** Did the bytes change since the record was written? A folder never does. */
-export const bytesChanged = (prev, e) =>
+export const bytesChanged = (prev: Fields, e: WalkEntry) =>
   e.kind === "file" && (prev.bytes !== e.bytes || !sameInstant(prev.modified, e.modified))
 
 /** Must the file be read again — hashed and previewed? When its bytes changed, or when a file first seen evicted is now on disk. */
-const needsRead = (prev, e) => bytesChanged(prev, e) || (e.kind === "file" && prev.local === false && e.local === true)
+const needsRead = (prev: Fields, e: WalkEntry) =>
+  bytesChanged(prev, e) || (e.kind === "file" && prev.local === false && e.local === true)
 
-const norm = v => (v === undefined || v === null || v === "" || (Array.isArray(v) && v.length === 0) ? null : v)
-const same = (a, b) => JSON.stringify(norm(a)) === JSON.stringify(norm(b))
+const norm = (v: unknown) =>
+  v === undefined || v === null || v === "" || (Array.isArray(v) && v.length === 0) ? null : v
+const same = (a: unknown, b: unknown) => JSON.stringify(norm(a)) === JSON.stringify(norm(b))
 
 /** The `set` changes that take `prev` to `next` over the derived fields, or null when there are none. '' clears a key. */
-export function diffDerived(prev, next) {
-  const changes = {}
+export function diffDerived(prev: Fields, next: Fields): Fields | null {
+  const changes: Fields = {}
   for (const k of DERIVED) {
     if (same(prev[k], next[k])) continue
     if (k === "modified" && norm(prev[k]) !== null && norm(next[k]) !== null && sameInstant(prev[k], next[k])) continue
@@ -79,13 +86,24 @@ export function diffDerived(prev, next) {
  * `hashes`: Map<relpath, sha256> for the files that were hashed this run (new or changed ones).
  * Returns { adds, updates, moves, missing }; an update carries `changed` (the file must be read again) and `next`.
  */
-export function planDrive({ driveId, existing, walked, hashes = new Map() }) {
-  const adds = [],
-    updates = [],
-    moves = [],
-    missing = []
-  const seen = new Set()
-  const fresh = []
+export function planDrive({
+  driveId,
+  existing,
+  walked,
+  hashes = new Map(),
+}: {
+  driveId: string
+  existing: Map<string, Fields>
+  walked: WalkEntry[]
+  hashes?: Map<string, string>
+}) {
+  type Fresh = { id: string; e: WalkEntry; next: Fields }
+  const adds: Fresh[] = [],
+    updates: (Fresh & { prev: Fields; changed: boolean })[] = [],
+    moves: { from: string; to: string; e: WalkEntry; prev: Fields; next: Fields }[] = [],
+    missing: { id: string; prev: Fields }[] = []
+  const seen = new Set<string>()
+  const fresh: Fresh[] = []
   for (const e of walked) {
     const id = `${driveId}/${e.path}`
     seen.add(id)
@@ -121,10 +139,11 @@ export function planDrive({ driveId, existing, walked, hashes = new Map() }) {
   return { adds, updates, moves, missing }
 }
 
-const inScope = (relpath, subfolder) => !subfolder || relpath === subfolder || relpath.startsWith(`${subfolder}/`)
+const inScope = (relpath: string, subfolder: string | null) =>
+  !subfolder || relpath === subfolder || relpath.startsWith(`${subfolder}/`)
 /** Strictly under `folder` ('' is the drive's own folder). */
-const under = (relpath, folder) => !folder || relpath.startsWith(`${folder}/`)
-const hasAuthored = f =>
+const under = (relpath: string, folder: string) => !folder || relpath.startsWith(`${folder}/`)
+const hasAuthored = (f: Fields) =>
   Boolean(
     (f.description && String(f.description).trim()) ||
     (Array.isArray(f.tags) && f.tags.length) ||
@@ -132,7 +151,7 @@ const hasAuthored = f =>
   )
 
 /** Every record of every stored, non-runtime collection except `files`, for the pointer scan. */
-function* otherRecords(store) {
+function* otherRecords(store: Store) {
   for (const d of store.descriptors.values()) {
     // storageOf, not d.storage: `runtime` lives in the compiled block, not under the authored storage key
     const storage = dt.storageOf(d)
@@ -143,11 +162,18 @@ function* otherRecords(store) {
 
 /** One drive. Returns the summary row; writes unless `dryRun`. */
 export async function syncDrive(
-  store,
-  ws,
-  driveId,
-  drive,
-  { subfolder = null, hash = false, rehash = false, prune = false, dryRun = false, log = console.error } = {}
+  store: Store,
+  ws: Workspace,
+  driveId: string,
+  drive: Drive,
+  {
+    subfolder = null as string | null,
+    hash = false,
+    rehash = false,
+    prune = false,
+    dryRun = false,
+    log = console.error,
+  } = {}
 ) {
   const row: Record<string, any> = {
     id: driveId,
@@ -163,7 +189,7 @@ export async function syncDrive(
     unsafe: [],
     unreadable: [],
   }
-  const where = resolveDrivePath(drive, dt.envContext(ws), dt.renderTemplate)
+  const where = resolveDrivePath(drive, dt.envContext(ws) as EnvContext, dt.renderTemplate)
   if (where.skipped) {
     row.skipped = where.skipped
     log(`  (skipping drive ${driveId} — ${where.skipped})`)
@@ -179,19 +205,19 @@ export async function syncDrive(
   row.walked = walked.length
   row.unsafe = [...walked.unsafe]
   row.unreadable = [...walked.unreadable]
-  const existing = new Map()
+  const existing = new Map<string, Fields>()
   for (const { id, fields } of store.readAll("files")) {
-    if (fields.drive !== `file-drives/${driveId}` || !inScope(fields.path, subfolder)) continue
+    if (fields.drive !== `file-drives/${driveId}` || !inScope(String(fields.path), subfolder)) continue
     // Under a folder that could not be listed nothing is known: not missing, not pruned, not counted.
     // The folder itself was walked, so its own record is planned as usual.
-    if (row.unreadable.some(u => under(String(fields.path), u))) continue
+    if (row.unreadable.some((u: string) => under(String(fields.path), u))) continue
     existing.set(id, fields)
   }
 
   // hashes: new, changed or newly local files under the cap; --hash adds the unhashed; --rehash takes all.
   // A file that cannot be read (gone since the walk, no permission) is counted and left unhashed.
   const cap = Number(drive.hash_max_bytes ?? DEFAULT_HASH_MAX)
-  const hashes = new Map()
+  const hashes = new Map<string, string>()
   for (const e of walked) {
     if (e.kind !== "file" || !e.local || e.bytes > cap) continue
     const prev = existing.get(`${driveId}/${e.path}`)
@@ -211,7 +237,7 @@ export async function syncDrive(
   const stillMissing = [...existing].filter(([id, f]) => f.status === "missing" && !seen.has(id) && !movedFrom.has(id))
 
   // referenced_by for every entry in scope, the missing ones included, in one pass over the other collections
-  const entries = new Map()
+  const entries = new Map<string, { pointers: string[] }>()
   for (const x of [...plan.adds, ...plan.updates]) entries.set(x.id, { pointers: pointersOf(drive, driveId, x.e.path) })
   for (const g of plan.missing) entries.set(g.id, { pointers: pointersOf(drive, driveId, g.prev.path) })
   for (const [id, f] of stillMissing) entries.set(id, { pointers: pointersOf(drive, driveId, f.path) })
@@ -223,7 +249,7 @@ export async function syncDrive(
   const refs = referencedBy(otherRecords(store), entries)
   // One write that throws — a name the store refuses, a path too long for the disk, an id another
   // sync wrote first — is recorded on the row and the run goes on. True when it was written.
-  const write = (id, fn) => {
+  const write = (id: string, fn: () => void) => {
     if (dryRun) return true
     try {
       fn()
@@ -233,20 +259,20 @@ export async function syncDrive(
       return false
     }
   }
-  const previewFor = e =>
+  const previewFor = (e: WalkEntry) =>
     drive.preview !== false && e.kind === "file" && e.local && previewable(e.ext)
       ? (previewOf(e.abs, e.ext) ?? undefined)
       : undefined
 
   for (const a of plan.adds) {
-    const fields = { ...a.next, referenced_by: refs.get(a.id) }
+    const fields: Fields = { ...a.next, referenced_by: refs.get(a.id) }
     const p = previewFor(a.e)
     if (p) fields.preview = p
     for (const k of Object.keys(fields)) if (norm(fields[k]) === null) delete fields[k]
     if (write(`files/${a.id}`, () => store.add("files", fields, { id: a.id }))) row.added++
   }
   for (const m of plan.moves) {
-    const next = { ...m.next, referenced_by: refs.get(m.to) }
+    const next: Fields = { ...m.next, referenced_by: refs.get(m.to) }
     const p = previewFor(m.e)
     next.preview = p ?? m.prev.preview
     if (
@@ -259,7 +285,7 @@ export async function syncDrive(
       row.moved++
   }
   for (const u of plan.updates) {
-    const next = { ...u.next, referenced_by: refs.get(u.id) }
+    const next: Fields = { ...u.next, referenced_by: refs.get(u.id) }
     if (u.changed) next.preview = previewFor(u.e)
     const ch = diffDerived(u.prev, next)
     if (!ch) {
@@ -313,9 +339,9 @@ export async function syncDrive(
   return row
 }
 
-const tail = (label, n) => (n ? ` · ${label} ${n}` : "")
+const tail = (label: string, n: number | undefined) => (n ? ` · ${label} ${n}` : "")
 
-export const summaryLine = r =>
+export const summaryLine = (r: Fields) =>
   r.skipped
     ? `drive ${r.id} — skipped: ${r.skipped}`
     : `drive ${r.id} — walked ${r.walked} · added ${r.added} · updated ${r.updated} · moved ${r.moved} · missing ${r.missing} · unchanged ${r.unchanged}` +
@@ -327,8 +353,8 @@ export const summaryLine = r =>
 
 /** The per-entry lines behind the summary's failed · unsafe · unreadable counts, for stderr. A path is
  *  quoted as JSON, so a control character in it shows as an escape. */
-export function detailLines(r) {
-  const lines = []
+export function detailLines(r: Fields): string[] {
+  const lines: string[] = []
   for (const f of r.failed ?? []) lines.push(`  failed ${f.id}: ${f.message}`)
   for (const p of r.unsafe ?? []) lines.push(`  unsafe name, not indexed: drive ${r.id} ${JSON.stringify(p)}`)
   for (const p of r.unreadable ?? [])
@@ -337,7 +363,7 @@ export function detailLines(r) {
 }
 
 /** `dt files sync [<drive>[/<subfolder>]] [--hash] [--rehash] [--prune] [--dry-run] [--json]` */
-export async function syncCommand(ws, pos, flags) {
+export async function syncCommand(ws: Workspace, pos: string[], flags: Flags): Promise<number> {
   dt.warnIfStale(ws.root)
   const store = new dt.Store({ root: ws.root, pkg: ws.pkg })
   if (!store.descriptors.has("file-drives") || !store.descriptors.has("files")) {
