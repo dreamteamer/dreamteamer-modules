@@ -19,13 +19,26 @@ const USAGE = [
   "       npx dt-workflows install <id>… | --all  [--force] [--dry-run]",
 ].join("\n")
 
+/** A compiled module, as the manifest records it. */
+export interface ModuleRoot {
+  name: string
+  root: string
+}
+
+/** A workflow a module ships. */
+export interface ShippedWorkflow {
+  id: string
+  module: string
+  file: string
+}
+
 /** The module roots the last compile recorded, workspace-relative — the workspace's own root excluded. */
-export function moduleRoots(ws) {
+export function moduleRoots(ws: string): ModuleRoot[] | null {
   const manifest = path.join(ws, ".dreamteamer", "manifest.yaml")
   if (!fs.existsSync(manifest)) return null
   const text = fs.readFileSync(manifest, "utf8")
   const block = text.split(/^modules:\s*$/m)[1]?.split(/^\S/m)[0] ?? ""
-  const out = []
+  const out: ModuleRoot[] = []
   for (const entry of block.split(/^\s*-\s+(?=name:)/m).slice(1)) {
     const name = /name:\s*'?([^'\n]+)'?/.exec(entry)?.[1]?.trim()
     const root = /root:\s*'?([^'\n]+)'?/.exec(entry)?.[1]?.trim()
@@ -36,7 +49,7 @@ export function moduleRoots(ws) {
 }
 
 /** Does this module keep its LIVE records beside itself? Then its data/ is a store, not shipped workflows. */
-const ownsData = dir => {
+const ownsData = (dir: string) => {
   try {
     return JSON.parse(fs.readFileSync(path.join(dir, "package.json"), "utf8")).dreamteamer?.owns_data === true
   } catch {
@@ -45,9 +58,9 @@ const ownsData = dir => {
 }
 
 /** Every workflow the compiled modules ship: { id, module, file }. The first module to ship an id wins. */
-export function shippedWorkflows(ws) {
+export function shippedWorkflows(ws: string): ShippedWorkflow[] {
   const roots = moduleRoots(ws) ?? []
-  const seen = new Map()
+  const seen = new Map<string, ShippedWorkflow>()
   for (const { name, root } of roots) {
     const dir = path.join(ws, root)
     const wf = path.join(dir, "data", "workflows")
@@ -64,18 +77,18 @@ export function shippedWorkflows(ws) {
 }
 
 /** The frontmatter of a markdown record, as text. */
-const frontmatterOf = text =>
+const frontmatterOf = (text: string) =>
   text.startsWith("---") ? text.slice(3, text.indexOf("\n---", 3) === -1 ? undefined : text.indexOf("\n---", 3)) : ""
 
 /** Every `commands/<id>` and `collections/<name>` reference in a workflow's frontmatter, de-duplicated. */
-export function refsOf(text) {
+export function refsOf(text: string): string[] {
   return [
     ...new Set(frontmatterOf(text).match(/\b(?:commands|collections)\/[a-z0-9][a-z0-9/-]*[a-z0-9]/g) ?? []),
   ].sort()
 }
 
 /** The references this workspace has not compiled — a command or a collection no installed module provides. */
-export function missingRefs(ws, refs) {
+export function missingRefs(ws: string, refs: string[]): string[] {
   const rt = path.join(ws, ".dreamteamer")
   return refs.filter(ref => {
     const [kind, ...rest] = ref.split("/")
@@ -89,7 +102,7 @@ export function missingRefs(ws, refs) {
 }
 
 /** Where `workflows` records live in this workspace, from the compiled descriptor; null when it is not compiled. */
-export function workflowsDir(ws) {
+export function workflowsDir(ws: string): string | null {
   const f = path.join(ws, ".dreamteamer", "collections", "workflows.collection.yaml")
   if (!fs.existsSync(f)) return null
   const at = /^storage:\s*\n(?:[ \t]+.*\n)*?[ \t]+path:\s*'?([^'\n]+)'?/m.exec(fs.readFileSync(f, "utf8"))?.[1]?.trim()
@@ -97,14 +110,18 @@ export function workflowsDir(ws) {
 }
 
 /** The state of one shipped workflow in this workspace. */
-export function stateOf(ws, wf, dir = workflowsDir(ws)) {
+export function stateOf(ws: string, wf: ShippedWorkflow, dir = workflowsDir(ws)): "missing" | "installed" | "edited" {
   const at = dir && path.join(dir, `${wf.id}.workflow.md`)
   if (!at || !fs.existsSync(at)) return "missing"
   return fs.readFileSync(at).equals(fs.readFileSync(wf.file)) ? "installed" : "edited"
 }
 
 /** Install one shipped workflow. Returns { ok, line } — never throws for a refusal. */
-export function install(ws, wf, { force = false, dryRun = false } = {}) {
+export function install(
+  ws: string,
+  wf: ShippedWorkflow,
+  { force = false, dryRun = false } = {}
+): { ok: boolean; line: string } {
   const dir = workflowsDir(ws)
   if (!dir)
     return {
@@ -135,7 +152,7 @@ export function install(ws, wf, { force = false, dryRun = false } = {}) {
   }
 }
 
-export function main(argv, ws = findWorkspace()) {
+export function main(argv: string[], ws = findWorkspace()): number {
   const [verb, ...rest] = argv
   if (!verb || verb === "--help" || verb === "-h") {
     console.error(USAGE)
@@ -194,7 +211,7 @@ export function main(argv, ws = findWorkspace()) {
   return code
 }
 
-const real = p => {
+const real = (p: string) => {
   try {
     return fs.realpathSync(p)
   } catch {
