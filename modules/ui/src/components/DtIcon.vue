@@ -11,7 +11,7 @@
 -->
 <script setup lang="ts">
 import { computed } from 'vue';
-import { codiconFor } from '@dreamteamer/protocol/host/icon-name';
+import { codiconFor } from '@dreamteamer/protocol/host/codiconFor';
 
 const props = defineProps<{ name?: string | null }>();
 const glyph = computed(() => codiconFor(props.name));

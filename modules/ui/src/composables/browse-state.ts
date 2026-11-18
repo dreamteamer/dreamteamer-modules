@@ -21,6 +21,7 @@
  * Also adds batch-selection state (checkbox column + header-bar delete) — page/query-scoped, see
  * the watcher below.
  */
+import { reported } from '../lib/toasts';
 import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter, type RouteLocationRaw } from 'vue-router';
 import { api } from '../api/client';
@@ -38,6 +39,7 @@ import { resolveView } from '../registry/resolve';
 import { listSeed, scratchKey as scratchKeyFor } from '../lib/list-seed';
 import { templateFields } from '../lib/template';
 import { recordTitle, referenceTitles } from '../lib/record-titles';
+import { seedTitle } from '../lib/tabs';
 import { colorByFor, isReferenceField, tintOf as tintOf_, tintStyle } from '../lib/collection-display';
 import { SOURCE_FIELD, isMixed, isOwnSource, selectedSources, sourceEntry, stubNoteOf, targetChoice, withSourceColumn, withSourceSelection, type SourceMarkProps, type TargetChoice } from '../lib/sources';
 import type { BrowseLayout, ViewState } from '../lib/view-state';
@@ -590,11 +592,10 @@ export function useBrowseState(collection: string, rowTo?: (record: ItemRecord) 
 	}
 
 	function openRecord(record: ItemRecord): void {
-		if (rowTo) {
-			void router.push(rowTo(record));
-			return;
-		}
-		void router.push(`${currentContentBasePath(route)}${collection}/${pkOf(record)}`);
+		const to = rowTo ? rowTo(record) : `${currentContentBasePath(route)}${collection}/${pkOf(record)}`;
+		// the browser host's tab opens already named by the row that was clicked (lib/tabs.ts) — no id flashes first
+		if (typeof to === 'string') seedTitle(to, recordTitle(collectionRow.value, record, pkOf(record), { resolve: resolveReference, isReference }), collectionRow.value?.nav?.icon);
+		void router.push(to);
 	}
 
 	/**
@@ -686,7 +687,12 @@ export function useBrowseState(collection: string, rowTo?: (record: ItemRecord) 
 		if (!selectedIds.value.size) return;
 		deleting.value = true;
 		try {
-			await Promise.all([...selectedIds.value].map((id) => api.delete(`/items/${encodeURIComponent(collection)}/${encodeURIComponent(id)}`)));
+			const ids = [...selectedIds.value];
+			await reported(
+				() => Promise.all(ids.map((id) => api.delete(`/items/${encodeURIComponent(collection)}/${encodeURIComponent(id)}`))),
+				ids.length === 1 ? 'Record deleted' : `${ids.length} records deleted`,
+				'Not every record was deleted',
+			);
 			clearSelection();
 			await items.reload();
 		} finally {

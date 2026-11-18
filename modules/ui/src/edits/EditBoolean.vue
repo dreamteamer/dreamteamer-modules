@@ -38,7 +38,7 @@ function onUpdate(checked: boolean): void {
 	width: var(--_w);
 	height: var(--_h);
 	padding: var(--_pad);
-	border-radius: 999px;
+	border-radius: var(--dt-radius-pill);
 	background: var(--dt-border-strong);
 	border: none;
 	cursor: pointer;
@@ -59,7 +59,7 @@ function onUpdate(checked: boolean): void {
 	height: calc(var(--_h) - var(--_pad) * 2);
 	border-radius: 50%;
 	/* Not `#fff`: on a dark theme with a light button colour that was white-on-light. */
-	background: var(--vscode-button-foreground, #fff);
+	background: var(--vscode-button-foreground, var(--dt-on-accent));
 	transition: transform 0.15s;
 	transform: translateX(0);
 }

@@ -133,7 +133,7 @@ function onOpenChange(next: boolean): void {
 	width: 22px;
 	height: 22px;
 	border: none;
-	border-radius: 4px;
+	border-radius: var(--dt-radius-sm);
 	background: transparent;
 	color: var(--dt-fg-subtle);
 	cursor: pointer;

@@ -226,7 +226,7 @@ const total = (e: StackEntry) => e.collections.reduce((n, c) => n + c.count, 0);
 }
 .dt-sources__title {
 	margin: 0 0 4px;
-	font-size: calc(var(--dt-text) + 2px);
+	font-size: var(--dt-text-heading);
 	font-weight: 600;
 }
 .dt-sources__lead,

@@ -30,7 +30,7 @@
 	relays out.
 -->
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import type { FieldRow } from '../api/types';
 import type { BrowseState } from '../composables/browse-state';
 import { labelOf } from '../lib/format-title';
@@ -46,6 +46,7 @@ import GroupHeader from './browse/GroupHeader.vue';
 import DtIcon from './DtIcon.vue';
 import NoteMark from './NoteMark.vue';
 import { notesOfRow } from '../lib/next-notes';
+import { appShell } from '../lib/app-shell';
 
 const props = defineProps<{ state: BrowseState }>();
 
@@ -66,6 +67,26 @@ function onFocus(): void {
 }
 onMounted(() => window.addEventListener('focus', onFocus));
 onUnmounted(() => window.removeEventListener('focus', onFocus));
+
+// ---- skeleton (cr-modules-022) ----------------------------------------------------------------
+/**
+ * The FIRST load under the browser host's shell: nothing for SKELETON_HOLD_MS (a fast answer never flashes a
+ * placeholder), then skeleton rows at the table's own row height, one bar per column, so the frame the rows land in
+ * is already the right shape. Inside VS Code the first load still says Loading…, as it always has.
+ */
+const SKELETON_HOLD_MS = 90;
+const SKELETON_ROWS = 8;
+const firstLoad = computed(() => props.state.items.loading.value && !props.state.items.items.value.length);
+const skeletonDue = ref(false);
+let skeletonTimer: ReturnType<typeof setTimeout> | null = null;
+watch(firstLoad, (on) => {
+	if (skeletonTimer) { clearTimeout(skeletonTimer); skeletonTimer = null; }
+	skeletonDue.value = false;
+	if (on && appShell) skeletonTimer = setTimeout(() => { skeletonDue.value = true; }, SKELETON_HOLD_MS);
+}, { immediate: true });
+onUnmounted(() => { if (skeletonTimer) clearTimeout(skeletonTimer); });
+/** A bar's width, varied by row and column so the block reads as text rather than as a grid of identical slabs. */
+const barWidth = (row: number, col: number) => `${45 + ((row * 37 + col * 23) % 45)}%`;
 
 // ---- grouping (0.12.0) ------------------------------------------------------------------------
 /**
@@ -195,7 +216,15 @@ function toggleBand(value: string): void {
 			     FIRST load only, so filtering/sorting/paging never shifts the layout. -->
 			<!-- Loading and empty are NOT per band: they are statements about the whole result set, and
 			     repeating "No records yet" under six headers would read as six problems. -->
-			<tbody v-if="state.items.loading.value && !state.items.items.value.length">
+			<tbody v-if="firstLoad && appShell" class="dt-skeleton" aria-busy="true" aria-label="Loading records">
+				<tr v-for="r in (skeletonDue ? SKELETON_ROWS : 0)" :key="r" class="dt-skeleton__row">
+					<td class="dt-table__checkbox-col"></td>
+					<td v-for="(field, c) in state.columns.value" :key="field.field">
+						<span class="dt-skeleton__bar" :style="{ width: barWidth(r, c) }"></span>
+					</td>
+				</tr>
+			</tbody>
+			<tbody v-else-if="state.items.loading.value && !state.items.items.value.length">
 				<tr>
 					<td :colspan="state.columns.value.length + 1">
 						<div class="dt-empty">
@@ -291,6 +320,23 @@ function toggleBand(value: string): void {
 </template>
 
 <style scoped>
+/* skeleton rows: the table's own row height (`.dt-table tbody tr`), a bar per cell on the text's line */
+.dt-skeleton__row:hover {
+	background: transparent;
+}
+.dt-skeleton__bar {
+	display: block;
+	height: 10px;
+	border-radius: var(--dt-radius-pill);
+	background: linear-gradient(90deg, var(--dt-ink-2) 0%, var(--dt-ink-4) 50%, var(--dt-ink-2) 100%);
+	background-size: 200% 100%;
+	animation: dt-skeleton-shimmer 1.4s var(--dt-ease) infinite;
+}
+@keyframes dt-skeleton-shimmer {
+	from { background-position: 100% 0; }
+	to { background-position: -100% 0; }
+}
+
 /* A band header spans the whole table and sticks under the column header, so scrolling a long band
    keeps its name in view — the same reason `thead th` is sticky. `top` is the header's height. */
 .dt-group-row td {
@@ -449,7 +495,7 @@ function toggleBand(value: string): void {
 	border: 1px solid var(--dt-border);
 	background: var(--dt-bg-subtle);
 	color: var(--dt-fg-subtle);
-	font-size: 15px;
+	font-size: var(--dt-text-md);
 	font-weight: 600;
 	letter-spacing: 0.02em;
 	user-select: none;
@@ -467,7 +513,7 @@ function toggleBand(value: string): void {
 .dt-bundle-chip {
 	flex-shrink: 0;
 	padding: 0 6px;
-	border-radius: 999px;
+	border-radius: var(--dt-radius-pill);
 	border: 1px solid color-mix(in srgb, var(--dt-accent) 30%, transparent);
 	background: color-mix(in srgb, var(--dt-accent) 10%, transparent);
 	color: var(--dt-accent);

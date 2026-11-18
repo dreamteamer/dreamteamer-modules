@@ -8,6 +8,7 @@
  */
 import { nextTick, onMounted, ref, shallowRef, watch } from 'vue';
 import IconPicker from './IconPicker.vue';
+import DtMenu from './DtMenu.vue';
 
 export interface NavMenuItem {
 	id: string;
@@ -22,7 +23,7 @@ export interface NavMenuItem {
 	suggestions?: string[];
 }
 
-const props = defineProps<{ x: number; y: number; items: NavMenuItem[]; start?: string }>();
+const props = defineProps<{ x: number; y: number; items: NavMenuItem[]; start?: string; trigger?: unknown }>();
 const emit = defineEmits<{ pick: [{ id: string; value?: string | null }]; close: [] }>();
 
 const first = props.start ? props.items.find((i) => i.id === props.start && i.ask && !i.disabled) ?? null : null;
@@ -54,14 +55,15 @@ function onIcon(name: string): void {
 </script>
 
 <template>
-	<div class="dt-nav-menu" role="menu" :style="{ left: `${x}px`, top: `${y}px` }" @keydown.esc.stop="emit('close')" @click.stop>
+	<!-- DtMenu (the one menu): the surface, the keyboard over the entries, Escape and a press outside -->
+	<DtMenu class="dt-nav-menu" label="Nav" :at="{ x, y }" :trigger="trigger" @close="emit('close')" @click.stop>
 		<template v-if="!asking">
 			<button
 				v-for="item in items"
 				:key="item.id"
 				type="button"
 				role="menuitem"
-				class="dt-nav-menu-item"
+				class="dt-menu-item dt-nav-menu-item"
 				:data-id="item.id"
 				:disabled="item.disabled || undefined"
 				@click.stop="choose(item)"
@@ -97,17 +99,17 @@ function onIcon(name: string): void {
 				<button type="button" class="dt-nav-menu-item" data-id="cancel" @click.stop="emit('close')">Cancel</button>
 			</div>
 		</div>
-	</div>
+	</DtMenu>
 </template>
 
 <style scoped>
-.dt-nav-menu { position: fixed; z-index: 50; min-width: 180px; display: flex; flex-direction: column; padding: 4px 0; background: var(--dt-bg); border: 1px solid var(--dt-border-strong); border-radius: var(--dt-radius); box-shadow: var(--dt-shadow-lg); font-size: var(--dt-text); }
-.dt-nav-menu-item { text-align: left; padding: 4px 12px; background: none; border: 0; color: var(--dt-fg); font: inherit; cursor: pointer; }
-.dt-nav-menu-item:hover:not(:disabled) { background: var(--dt-bg-hover); }
-.dt-nav-menu-item:disabled { color: var(--dt-fg-subtle); cursor: default; }
+/* the surface and the entries' look are the one menu's (DtMenu, base.css .dt-menu / .dt-menu-item); an ask's two
+   buttons are plain text buttons */
+.dt-nav-menu-actions .dt-nav-menu-item { padding: 4px 12px; background: none; border: 0; border-radius: var(--dt-radius); color: var(--dt-fg); font: inherit; cursor: pointer; }
+.dt-nav-menu-actions .dt-nav-menu-item:hover { background: var(--dt-bg-hover); }
 .dt-nav-menu-ask { display: flex; flex-direction: column; gap: 6px; padding: 6px 10px; min-width: 220px; }
 .dt-nav-menu-title { color: var(--dt-fg-muted); font-size: var(--dt-label); }
 .dt-nav-menu-input { height: var(--dt-control-height); padding: 0 6px; border: 1px solid var(--dt-border); border-radius: var(--dt-radius); background: var(--dt-bg); color: var(--dt-fg); font: inherit; }
 .dt-nav-menu-actions { display: flex; justify-content: flex-end; gap: 4px; }
-.dt-nav-menu-ok { color: var(--dt-accent); }
+.dt-nav-menu-actions .dt-nav-menu-ok { color: var(--dt-accent); }
 </style>

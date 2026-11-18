@@ -170,6 +170,53 @@ class RunLeavesNoDecodedAudio(unittest.TestCase):
 
 
 
+class RunKeepsWhatOthersWroteMeanwhile(RunLeavesNoDecodedAudio):
+    """A run takes minutes, and the workspace keeps writing the record meanwhile — matching a recording
+    to its meeting sets `meeting:` on it while it transcribes, as the pipeline invites. Through 0.5.3
+    `run` wrote back the frontmatter it had read before decoding, and that field was silently lost.
+
+    The record is an in-memory store behind `read_meeting`/`write_meeting`, so the case stays stdlib;
+    the recognition pass stands in for the other writer."""
+
+    def setUp(self):
+        super().setUp()
+        self.store = {"fm": {"name": "Northwind weekly"}, "body": "# Northwind weekly\n"}
+        for name, value in {
+            "read_meeting": lambda p: (dict(self.store["fm"]), self.store["body"]),
+            "write_meeting": self.store_record,
+        }.items():
+            p = mock.patch.object(tm, name, value)
+            p.start()
+            self.addCleanup(p.stop)
+
+    def store_record(self, path, fm, body):
+        self.store = {"fm": dict(fm), "body": body}
+        self.written = fm
+
+    def test_a_field_set_during_recognition_survives_the_write(self):
+        def recognize_while_someone_matches(wav, language=None, engine="cpu"):
+            self.store_record(self.record, {**self.store["fm"], "meeting": "meetings/2026/08/northwind-weekly"},
+                              self.store["body"])
+            return self.fake_transcribe(wav, language, engine)
+        with mock.patch.object(tm, "transcribe", recognize_while_someone_matches):
+            self.run_quietly(self.clip)
+        self.assertEqual(self.store["fm"].get("meeting"), "meetings/2026/08/northwind-weekly",
+                         "run() wrote back the frontmatter it read before recognition")
+        self.assertIn("transcription", self.store["fm"])
+        self.assertEqual(self.store["fm"]["name"], "Northwind weekly")
+
+    def test_body_written_during_recognition_survives_above_the_transcript(self):
+        def recognize_while_someone_notes(wav, language=None, engine="cpu"):
+            self.store_record(self.record, self.store["fm"], "# Northwind weekly\n\nNotes added meanwhile.\n")
+            return self.fake_transcribe(wav, language, engine)
+        with mock.patch.object(tm, "transcribe", recognize_while_someone_notes):
+            self.run_quietly(self.clip)
+        body = self.store["body"]
+        self.assertIn("Notes added meanwhile.", body)
+        self.assertIn("## Transcript", body)
+        self.assertLess(body.index("Notes added meanwhile."), body.index("## Transcript"))
+
+
 class MissingModelsStopTheRun(unittest.TestCase):
     """A run without its models stops before decoding anything, naming what is missing — it never
     diarizes into one speaker or pulls 1.5 GB from the network mid-run."""

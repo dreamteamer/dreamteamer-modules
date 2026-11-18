@@ -183,7 +183,7 @@ that holds entries of no valid shape — `400` naming the file (and each such en
 it was. With no `nav.yaml` and any of
 `dreamteamer.navGroups`, `dreamteamer.navOrder`, `dreamteamer.navHidden` set (an empty list or object counts as
 unset), both write routes answer `409 your nav settings are not in nav.yaml yet — run: npx -p
-@dreamteamer/protocol@0.2 dt-nav migrate`, so the first write can never strand the settings.
+@dreamteamer/protocol@0.3 dt-nav migrate`, so the first write can never strand the settings.
 
 ### POST /fields/:collection
 
@@ -472,7 +472,7 @@ row); Move down is `after` the next sibling.
 **The old settings.** Before `nav.yaml`, `dreamteamer.navGroups`, `dreamteamer.navOrder` and `dreamteamer.navHidden`
 in `.vscode/settings.json` arranged the nav. While they are set and there is no `nav.yaml`, `GET /nav` draws the tree
 they drew and both write routes answer `409`. They are migrated once — by the editor on activation, by `dt web` on
-its first `GET /nav`, or by hand with `npx -p @dreamteamer/protocol@0.2 dt-nav migrate` — into a `nav.yaml` that draws
+its first `GET /nav`, or by hand with `npx -p @dreamteamer/protocol@0.3 dt-nav migrate` — into a `nav.yaml` that draws
 the same folders, rows and order (a hidden folder kept with `hidden: true`), after which they are no longer read. On
 an engine that merges module nav fragments (0.49) the migration applies them after; they place only what the
 document does not.

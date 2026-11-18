@@ -86,7 +86,7 @@ export function installHook(root, opts = {}) {
     fs.renameSync(tmp, file)
   }
   const ignored =
-    spawnSync("git", ["check-ignore", "-q", SETTINGS], { cwd: root, stdio: "ignore", timeout: 10_000 }).status === 0
+    spawnSync("git", ["check-ignore", "-q", SETTINGS], { cwd: root, stdio: "ignore", timeout: 10_000, windowsHide: true }).status === 0
   return { file, command, wrote, ignored }
 }
 

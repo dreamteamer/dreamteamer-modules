@@ -16,7 +16,7 @@ import {
   register,
   lookup,
 } from "../src/state.ts"
-import { stateFile, writeState } from "../src/runtime.ts"
+import { notWritable, privateDir, stateFile, writeState } from "../src/runtime.ts"
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "dt-web-state-"))
 after(() => fs.rmSync(tmp, { recursive: true, force: true }))
@@ -189,3 +189,16 @@ describe(
     })
   }
 )
+
+test("on Windows the dir is only made: no mode is read, tightened or checked, and the refusal names no chmod", () => {
+  // Windows stat reports a dir as 0666 (no x bit) and chmod only flips the read-only attribute: the POSIX check refused every dir there.
+  const dir = path.join(tmp, "win", "nested")
+  privateDir(dir, "DT_WEB_RUNTIME_DIR", "win32")
+  assert.ok(fs.statSync(dir).isDirectory(), "made, parents too")
+  fs.chmodSync(dir, 0o755)
+  privateDir(dir, "DT_WEB_RUNTIME_DIR", "win32")
+  assert.equal(fs.statSync(dir).mode & 0o777, 0o755, "no chmod on win32")
+  const e = notWritable(dir, "DT_WEB_STATE_DIR", null, "win32")
+  assert.equal(e.code, "EDTWEBDIR")
+  assert.ok(e.message.includes(dir) && /DT_WEB_STATE_DIR/.test(e.message) && !/chmod|mode/.test(e.message))
+})

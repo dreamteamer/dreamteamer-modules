@@ -16,7 +16,7 @@ defineProps<{ show: boolean }>();
 .dt-refresh-skipped {
 	margin: 0;
 	padding: 4px 24px 8px;
-	font-size: 12px;
+	font-size: var(--dt-text-sm);
 	color: var(--dt-fg-muted);
 }
 </style>

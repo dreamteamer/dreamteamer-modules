@@ -156,7 +156,7 @@ export const cases: Record<string, any>[] = [
         lab.children?.some(n => n.key === "c/lab/samples" && n.target?.name === "lab/samples"),
         "lab/samples is not drawn inside its namespace"
       )
-      check(!kids.some(n => n.kind === "group"), "a group node — protocol 0.2 draws folder and namespace nodes")
+      check(!kids.some(n => n.kind === "group"), "a group node — protocol 0.3 draws folder and namespace nodes")
       const walk = ns => ns.flatMap(n => [n, ...walk(n.children ?? [])])
       for (const n of walk(kids).filter(x => ["folder", "namespace", "collection"].includes(x.kind)))
         check(

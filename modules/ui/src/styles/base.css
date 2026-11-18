@@ -64,6 +64,16 @@ body {
 	line-height: 1;
 }
 
+/* ---------- Focus ---------- */
+/* THE focus ring (cr-modules-021): every control that takes keyboard focus shows the one ring the tokens define. Its
+   default is VS Code's own (1px focusBorder, inset — and vscode.css draws the same rule after this one), so the editor
+   looks as before; the browser host draws a softer outset ring. A component that hides it must draw focus another way
+   (a field's accent border, a carousel card's shadow). */
+:focus-visible {
+	outline: var(--dt-focus-outline);
+	outline-offset: var(--dt-focus-offset);
+}
+
 /* ---------- Scrollbars ---------- */
 * {
 	scrollbar-width: thin;
@@ -81,7 +91,7 @@ body {
 
 *::-webkit-scrollbar-thumb {
 	background: var(--dt-border-strong);
-	border-radius: 999px;
+	border-radius: var(--dt-radius-pill);
 }
 
 /* ---------- Page body layout ---------- */
@@ -98,40 +108,59 @@ body {
 }
 
 /* ---------- Dropdown menus ---------- */
-/* GLOBAL on purpose (moved out of ContentDetail/DataModelDetail's scoped blocks 2026-07-29,
-   operator: "menu for ⋯ opens below and not showing correctly").
-   `DropdownMenuPortal` teleports the panel to <body>, OUTSIDE the component's subtree — so
-   whether a scoped rule reaches it depends on reka-ui happening to carry the `data-v-…`
-   attribute onto the teleported node. When it doesn't, the panel renders with NO background,
-   NO border and NO z-index, which is exactly the symptom: bare menu text sitting behind the
-   page. Menu chrome is app-level furniture anyway, and both components had drifted copies of
-   it (z-index 100 vs 60, min-width 160 vs 180). One definition, no scoping to lose.
-   z-index sits above `.dt-page-header-wrap` (10) and the dialog overlay's own layer. */
+/* THE MENU SURFACE — drawn by DtMenu.vue, the one menu component (every dropdown, context menu and combobox panel).
+   GLOBAL on purpose: a menu hung in <body> (`teleport`) is outside its caller's subtree, where no scoped rule reaches.
+   One background, one border, one radius, one shadow, one layer — all tokens, so VS Code's theme mapping (vscode.css)
+   covers the editor and browser.css the browser. z-index sits above `.dt-page-header-wrap` (10), the drawers (200/201)
+   and the dialog overlay's own layer. */
 .dt-menu {
 	min-width: 180px;
 	padding: 4px;
 	background: var(--dt-bg);
-	border: 1px solid var(--dt-border);
-	border-radius: var(--dt-radius);
-	box-shadow: var(--dt-shadow-lg, 0 8px 24px rgb(0 0 0 / 0.12));
-	z-index: 1000;
+	border: 1px solid var(--dt-menu-border);
+	border-radius: var(--dt-menu-radius);
+	box-shadow: var(--dt-shadow-menu);
+	z-index: var(--dt-z-menu);
+	font-size: var(--dt-text);
+	font-weight: normal;
 }
 
+/* The box a menu hangs under (DtMenu without `at`): it holds the trigger, and the menu lines up with its edge. */
+.dt-menu-anchor {
+	position: relative;
+	display: inline-flex;
+}
+
+/* An item: a <button> with an item role. Hover and keyboard focus draw the same ground. */
 .dt-menu-item {
 	display: flex;
 	align-items: center;
 	gap: 8px;
+	width: 100%;
+	box-sizing: border-box;
 	padding: 7px 10px;
+	border: 0;
+	background: none;
+	font-family: inherit;
 	font-size: var(--dt-text);
 	color: var(--dt-fg);
+	text-align: left;
 	border-radius: var(--dt-radius);
 	cursor: pointer;
 	user-select: none;
 	outline: none;
 }
 
+.dt-menu-item:hover:not(:disabled),
+.dt-menu-item:focus-visible,
 .dt-menu-item[data-highlighted] {
-	background: var(--dt-bg-subtle);
+	background: var(--dt-bg-hover);
+}
+
+.dt-menu-item:disabled,
+.dt-menu-item[aria-disabled='true'] {
+	color: var(--dt-fg-subtle);
+	cursor: default;
 }
 
 .dt-menu-item .codicon {
@@ -173,7 +202,7 @@ body {
 	color: var(--dt-link);
 	text-decoration: none;
 	cursor: pointer;
-	border-radius: 2px;
+	border-radius: var(--dt-radius-2xs);
 }
 
 .dt-link:hover {
@@ -197,19 +226,25 @@ body {
 	border: none;
 	border-radius: var(--dt-radius);
 	background: var(--dt-accent);
-	color: #ffffff;
+	color: var(--dt-on-accent);
 	font-family: var(--dt-font);
 	font-size: var(--dt-text);
 	font-weight: 400;
 	cursor: pointer;
 	transition:
-		background-color 0.12s ease,
-		color 0.12s ease,
-		border-color 0.12s ease;
+		background-color var(--dt-dur-fast) ease,
+		color var(--dt-dur-fast) ease,
+		border-color var(--dt-dur-fast) ease,
+		transform var(--dt-dur-fast) var(--dt-ease);
 }
 
 .dt-btn:hover {
 	background: var(--dt-accent-hover);
+}
+
+/* PRESSED: every button gives under the pointer and never changes size mid-action (a transform, not a box change). */
+.dt-btn:active:not(:disabled) {
+	transform: scale(0.97);
 }
 
 .dt-btn:disabled {
@@ -228,7 +263,7 @@ body {
 
 .dt-btn--danger {
 	background: var(--dt-danger);
-	color: #ffffff;
+	color: var(--dt-on-accent);
 }
 
 .dt-btn--danger:hover {
@@ -256,11 +291,13 @@ body {
 	background: var(--dt-bg-subtle);
 }
 
+/* ONE icon-button shape (cr-modules-021): a rounded square at the control radius — the page's icon buttons, the nav
+   toolbar's tools and the right panel's rail are the same shape (they were a circle, a 6px square and another). */
 .dt-btn--icon {
 	width: var(--dt-control-height);
 	height: var(--dt-control-height);
 	padding: 0;
-	border-radius: 50%;
+	border-radius: var(--dt-radius);
 }
 
 .dt-btn--sm {
@@ -327,7 +364,7 @@ body {
 	height: 16px;
 	margin: 0;
 	border: 1px solid var(--dt-border-strong);
-	border-radius: 4px;
+	border-radius: var(--dt-radius-sm);
 	background: var(--dt-bg);
 	accent-color: var(--dt-accent);
 	cursor: pointer;
@@ -352,7 +389,7 @@ body {
 	top: 1px;
 	width: 5px;
 	height: 9px;
-	border: solid #ffffff;
+	border: solid var(--dt-on-accent);
 	border-width: 0 2px 2px 0;
 	transform: rotate(45deg);
 }
@@ -370,7 +407,7 @@ body {
 	height: 20px;
 	padding: 0 8px;
 	border: 1px solid var(--dt-border);
-	border-radius: 999px;
+	border-radius: var(--dt-radius-pill);
 	background: var(--dt-bg-subtle);
 	color: var(--dt-fg);
 	font-size: var(--dt-text);
@@ -511,7 +548,7 @@ body {
 }
 
 .dt-empty .codicon {
-	font-size: 48px;
+	font-size: var(--dt-icon-xl);
 	color: var(--dt-fg-muted);
 }
 
@@ -527,7 +564,7 @@ body {
 .dt-dialog-overlay {
 	position: fixed;
 	inset: 0;
-	background: rgba(23, 41, 64, 0.5);
+	background: var(--dt-backdrop);
 	z-index: 300;
 }
 
@@ -555,14 +592,14 @@ body {
 }
 
 .dt-dialog__title {
-	font-size: 18px;
+	font-size: var(--dt-text-dialog-title);
 	font-weight: 600;
 	margin-bottom: 16px;
 }
 
 /* ---------- Typography helpers ---------- */
 .dt-page-title {
-	font-size: 20px;
+	font-size: var(--dt-text-xl);
 	font-weight: 600;
 }
 

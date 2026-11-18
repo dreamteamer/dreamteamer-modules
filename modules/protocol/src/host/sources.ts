@@ -2,6 +2,7 @@
 import * as fs from "node:fs"
 import * as path from "node:path"
 import { execFileSync } from "node:child_process"
+import { GIT_SYNC } from "./gitExec.ts"
 import { engine } from "./engine.ts"
 import { collectionRoots, listRecords, loadModules, walkIds, workspaceName } from "./fsdata.ts"
 export function sourcesContext(root, iterable) {
@@ -32,7 +33,7 @@ export function sourcesContext(root, iterable) {
     try {
       origins.set(
         repo,
-        execFileSync("git", ["remote", "get-url", "origin"], { cwd: dir, stdio: ["ignore", "pipe", "ignore"] })
+        execFileSync("git", ["remote", "get-url", "origin"], { cwd: dir, ...GIT_SYNC })
           .toString()
           .trim() || undefined
       )

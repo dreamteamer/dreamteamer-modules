@@ -4,15 +4,15 @@
  * toolbar's right end): `eye` Read, `edit` Edit, `shield` Admin (in the warning colour), the tooltip naming the level
  * and, while a raise holds, since when. Its menu LOWERS the level (`POST /_dt/level`) and never raises it — the last
  * line sends a person to the chat, where `dt web open --edit|--admin` is. A raise in force is said at the menu's top;
- * a refused lower shows inside the menu. Keyboard: lib/menu-keys.ts. One nav menu at a time: lib/open-menu.ts.
+ * a refused lower shows inside the menu. Keyboard: lib/menu-keys.ts, through DtMenu (the one menu). One nav menu at a time: lib/open-menu.ts.
  */
-import { computed, onUnmounted, ref, shallowRef, watch } from 'vue';
+import { computed, ref, shallowRef } from 'vue';
 import DtIcon from './DtIcon.vue';
 import { hostInfo, loadHost } from '../lib/host-boot';
 import { levelWord, lowerChoices, raiseNotice, type PaneLevel } from '../lib/pane-level';
 import { paneFetch, paneMenu } from '../lib/pane-api';
 import { menuUnder, rectOf, viewportWidth } from '../lib/menu-place';
-import { menuKeys } from '../lib/menu-keys';
+import DtMenu from './DtMenu.vue';
 
 const MENU_WIDTH = 220;
 const ICONS: Record<PaneLevel, string> = { read: 'eye', edit: 'edit', admin: 'shield' };
@@ -23,40 +23,28 @@ const lowers = computed(() => lowerChoices(level.value));
 const title = computed(() => `Level: ${levelWord(level.value)}${notice.value ? ` — ${notice.value}` : ''}`);
 const open = computed(() => paneMenu.value === 'level');
 const at = ref({ x: 0, y: 0 });
-/** A document to hang the menu in (the render test tier has none, and draws it in place). */
-const hasBody = typeof document !== 'undefined' && !!(document as { body?: unknown }).body;
 const error = ref<string | null>(null);
 
 const button = shallowRef<{ focus?: () => void } | null>(null);
-const menuEl = shallowRef<{ focus?: () => void } | null>(null);
-const itemEls = shallowRef<Array<{ focus?: () => void } | null>>([]);
-const keys = menuKeys({ items: () => itemEls.value, menu: () => menuEl.value, button: () => button.value, close: () => { paneMenu.value = null; } });
+const close = () => { paneMenu.value = null; };
 
 function toggle(e: MouseEvent): void {
 	if (open.value) { paneMenu.value = null; return; }
 	at.value = menuUnder(rectOf(e?.currentTarget), 'end', MENU_WIDTH, viewportWidth());
 	error.value = null;
 	paneMenu.value = 'level';
-	keys.opened();
 }
 
 async function lower(to: PaneLevel): Promise<void> {
 	error.value = null;
 	try {
 		await paneFetch('POST', '/_dt/level', { level: to });
-		keys.done();
+		close();
 		await loadHost();
 	} catch (err) {
 		error.value = (err as Error).message;
 	}
 }
-
-const away = () => { if (open.value) paneMenu.value = null; };
-watch(open, (on) => {
-	if (on) window.addEventListener('click', away);
-	else window.removeEventListener('click', away);
-});
-onUnmounted(() => window.removeEventListener('click', away));
 </script>
 
 <template>
@@ -72,14 +60,12 @@ onUnmounted(() => window.removeEventListener('click', away));
 		@click.stop="toggle"
 	><DtIcon :name="ICONS[level]" /></button>
 	<!-- in the body, so no ancestor of the nav (its toolbar, its overflow) can clip or cover it; in place where there is no body -->
-	<Teleport to="body" :disabled="!hasBody">
-		<div v-if="open" ref="menuEl" class="dt-pane-menu dt-pane-level__menu" role="menu" tabindex="-1" :style="{ left: `${at.x}px`, top: `${at.y}px` }" @click.stop @keydown="keys.keydown" @focusin="keys.focusin">
+	<DtMenu v-if="open" teleport class="dt-pane-menu dt-pane-level__menu" label="Level" :at="at" :trigger="button" @close="close" @click.stop>
 			<p v-if="notice" class="dt-pane-menu__notice">{{ notice }}</p>
 			<p v-if="error" class="dt-pane-menu__error" role="alert">{{ error }}</p>
-			<button v-for="l in lowers" :key="l" ref="itemEls" type="button" role="menuitem" class="dt-pane-level__lower" :data-level="l" @click.stop="lower(l)">{{ levelWord(l) }}</button>
+			<button v-for="l in lowers" :key="l" type="button" role="menuitem" class="dt-menu-item dt-pane-level__lower" :data-level="l" @click.stop="lower(l)">{{ levelWord(l) }}</button>
 			<p class="dt-pane-menu__hint">To raise it, ask in the chat</p>
-		</div>
-	</Teleport>
+	</DtMenu>
 </template>
 
 <style scoped>

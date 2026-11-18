@@ -11,6 +11,23 @@ npx dreamteamer check
 
 ---
 
+## 0.13.2 — recordings 0.5.4: a transcription run keeps what was written to the record while it ran
+
+Nothing to do but `npx dreamteamer update @dreamteamer/core`. The preset pins `@dreamteamer/recordings` 0.5.4, whose
+transcriber no longer writes back a record it read before decoding — a `meeting:` set while a recording was being
+transcribed survives. No other pin moves.
+
+---
+
+## 0.13.1 — the nav migration step names a protocol version npm holds
+
+Nothing to do but `npx dreamteamer update @dreamteamer/core`. The first step of the 0.12.0 section below named a
+version of `@dreamteamer/protocol` that was never published, so it could not run; it now reads
+`npx -p @dreamteamer/protocol@0.3 dt-nav migrate`, as the engine's refusal (dreamteamer 0.49.1) prints it. The preset's
+pins do not change.
+
+---
+
 ## 0.13.0 — LinkedIn and Google Calendar leave core (cr-modules-018)
 
 Nothing in core reaches LinkedIn or Google any more. The preset pins `@dreamteamer/contacts` 0.2.0 and
@@ -102,7 +119,7 @@ and `reports` on `users` now come from `@dreamteamer/users` itself (0.3.0).
 Do these, in this order, from the workspace root:
 
 ```bash
-npx -p @dreamteamer/protocol@0.2 dt-nav migrate   # only when .vscode/settings.json sets dreamteamer.navGroups, navOrder or navHidden
+npx -p @dreamteamer/protocol@0.3 dt-nav migrate   # only when .vscode/settings.json sets dreamteamer.navGroups, navOrder or navHidden
 npx dreamteamer update --engine                   # dreamteamer 0.49.0 or later
 npx dreamteamer update @dreamteamer/core          # the preset: installs the seventeen members
 npx dreamteamer update @dreamteamer/rnd           # when you have rnd: 0.11.0 stands alone of core

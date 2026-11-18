@@ -1,0 +1,148 @@
+#!/bin/bash
+# Copy new Apple Voice Memos into the recordings inbox, so /process-new-meetings imports, matches and
+# transcribes them with no renaming and no sharing by hand. It reads only a COPY of the store and never
+# writes to it. Run it from the workspace root, before /process-new-meetings.
+#
+# The store is readable only with Full Disk Access. That grant goes to ONE small helper
+# (voice-memos-helper.swift beside this file, built on first run with swiftc) started as a launchd job — not to Terminal or the editor.
+#
+#   npx dt-voice-memos [--dry-run] [--since YYYY-MM-DD] [--folder "<Voice Memos folder>"]
+#
+# --since    only memos that started on or after this day. Default: the day after the last memo copied,
+#            or the last 2 days on the first run (older memos usually came in through the inbox already,
+#            and a phone share is never byte-identical, so the inbox could not tell them apart).
+# --folder   only memos in this Voice Memos folder (default: every folder; Recently Deleted never).
+# Env: VOICE_MEMOS_STORE (the store folder), VOICE_MEMOS_INBOX (an inbox root; default the first
+#      INBOX_FOLDERS line in the workspace .env), VOICE_MEMOS_STATE (the ids already copied),
+#      VOICE_MEMOS_HELPER_DIR (where the helper is built), DT_WORKSPACE (the workspace; default the cwd).
+set -euo pipefail
+[ "$(uname)" = Darwin ] || { echo "dt-voice-memos reads Apple Voice Memos and runs on macOS only" >&2; exit 2; }
+
+DRY=0; SINCE=""; FOLDER=""
+while [ $# -gt 0 ]; do
+	case "$1" in
+		--dry-run) DRY=1 ;;
+		--since) SINCE="$2"; shift ;;
+		--folder) FOLDER="$2"; shift ;;
+		*) echo "unknown argument: $1" >&2; exit 2 ;;
+	esac
+	shift
+done
+
+# npm links this file into node_modules/.bin: follow the link to find the helper source beside it.
+SELF="$0"
+while [ -L "$SELF" ]; do
+	L="$(readlink "$SELF")"
+	case "$L" in /*) SELF="$L" ;; *) SELF="$(dirname "$SELF")/$L" ;; esac
+done
+HERE="$(cd "$(dirname "$SELF")" && pwd)"
+ROOT="${DT_WORKSPACE:-$PWD}"
+STORE="${VOICE_MEMOS_STORE:-$HOME/Library/Group Containers/group.com.apple.VoiceMemos.shared/Recordings}"
+STATE="${VOICE_MEMOS_STATE:-$HOME/.local/state/dreamteamer/voice-memos-copied.tsv}"
+
+INBOX="${VOICE_MEMOS_INBOX:-}"
+if [ -z "$INBOX" ] && [ -f "$ROOT/.env" ]; then
+	INBOX="$(sed -n '/^INBOX_FOLDERS=/,/"[[:space:]]*$/p' "$ROOT/.env" | sed -e 's/^INBOX_FOLDERS=//' -e 's/"//g' | tr ',' '\n' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' | grep -v '^$' | head -1)"
+	INBOX="${INBOX/#\~/$HOME}"
+fi
+[ -n "$INBOX" ] || { echo "no inbox: set INBOX_FOLDERS in .env or VOICE_MEMOS_INBOX" >&2; exit 2; }
+DEST="$INBOX/meeting-recordings"
+
+mkdir -p "$(dirname "$STATE")"; touch "$STATE"
+if [ -z "$SINCE" ]; then
+	LAST="$(cut -f2 "$STATE" | sort | tail -1)"
+	if [ -n "$LAST" ]; then SINCE="$LAST"; else SINCE="$(date -v-2d +%Y-%m-%d)"; fi
+fi
+SINCE_EPOCH="$(date -j -f '%Y-%m-%d %H:%M:%S' "$SINCE 00:00:00" +%s)"
+SINCE_APPLE=$((SINCE_EPOCH - 978307200))
+
+TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
+STAGE="$TMP/stage"; mkdir -p "$STAGE"
+
+# The helper: the only binary granted Full Disk Access. Built once (a rebuild voids the grant).
+HELPER_DIR="${VOICE_MEMOS_HELPER_DIR:-$HOME/Library/Application Support/dreamteamer/voice-memos-helper}"
+HELPER="$HELPER_DIR/voice-memos-helper"
+
+if [ -n "${VOICE_MEMOS_STORE:-}" ] && head -c 1 "$STORE/CloudRecordings.db" >/dev/null 2>&1; then
+	# a readable store named by hand (a test store): copy it directly
+	cp "$STORE"/CloudRecordings.db* "$STAGE"/
+	for a in "$STORE"/*.m4a "$STORE"/*.qta; do [ -f "$a" ] && cp "$a" "$STAGE"/; done
+else
+	if [ ! -x "$HELPER" ]; then
+		mkdir -p "$HELPER_DIR"
+		swiftc -O -o "$HELPER" "$HERE/voice-memos-helper.swift"
+		echo "built the helper: $HELPER"
+	fi
+	LABEL="dev.dreamteamer.voice-memos-helper.$$"
+	PLIST="$TMP/$LABEL.plist"
+	cat > "$PLIST" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+	<key>Label</key><string>$LABEL</string>
+	<key>ProgramArguments</key><array>
+		<string>$HELPER</string><string>$STORE</string><string>$STAGE</string><string>$((SINCE_EPOCH - 86400))</string>
+	</array>
+	<key>RunAtLoad</key><true/>
+	<key>LaunchOnlyOnce</key><true/>
+</dict></plist>
+EOF
+	launchctl bootstrap "gui/$(id -u)" "$PLIST"
+	for _ in $(seq 1 120); do [ -f "$STAGE/.done" ] && break; sleep 0.5; done
+	launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
+	RESULT="$(cat "$STAGE/.done" 2>/dev/null || echo 'error the helper did not finish')"
+	case "$RESULT" in
+		ok*) ;;
+		*)
+			echo "the helper could not read the Voice Memos store: ${RESULT#error }" >&2
+			echo "Grant Full Disk Access to this one file, then run again:" >&2
+			echo "  $HELPER" >&2
+			echo "  (System Settings > Privacy & Security > Full Disk Access > + , then Cmd-Shift-G and paste the path)" >&2
+			exit 3 ;;
+	esac
+fi
+
+FOLDER_SQL=""
+[ -n "$FOLDER" ] && FOLDER_SQL="AND f.ZENCRYPTEDNAME = '$(printf '%s' "$FOLDER" | sed "s/'/''/g")'"
+
+sqlite3 -readonly -separator $'\t' "$STAGE/CloudRecordings.db" "
+	SELECT r.ZUNIQUEID, CAST(r.ZDATE + 978307200 AS INTEGER), CAST(ROUND(r.ZDURATION) AS INTEGER),
+	       REPLACE(REPLACE(IFNULL(r.ZENCRYPTEDTITLE, ''), char(9), ' '), char(10), ' '), r.ZPATH
+	FROM ZCLOUDRECORDING r LEFT JOIN ZFOLDER f ON r.ZFOLDER = f.Z_PK
+	WHERE r.ZEVICTIONDATE IS NULL AND r.ZPATH IS NOT NULL AND r.ZDATE >= $SINCE_APPLE $FOLDER_SQL
+	ORDER BY r.ZDATE;" > "$TMP/memos.tsv"
+
+copied=0; skipped=0; missing=0
+[ "$DRY" = 1 ] || mkdir -p "$DEST"
+while IFS=$'\t' read -r uid epoch secs title path; do
+	[ -n "$uid" ] || continue
+	if cut -f1 "$STATE" | grep -qxF "$uid"; then skipped=$((skipped + 1)); continue; fi
+	src="$STAGE/$(basename "$path")"
+	if [ ! -f "$src" ]; then
+		echo "not on this Mac yet (still in iCloud?), or older than its file: $title" >&2; missing=$((missing + 1)); continue
+	fi
+	clean="$(printf '%s' "$title" | tr '/:' '--' | sed -e 's/[[:space:]]\{1,\}/ /g' -e 's/^ //' -e 's/ $//')"
+	if printf '%s' "$clean" | grep -Eq '^[0-9]{4}[ ._-][0-9]{1,2}[ ._-][0-9]{1,2}'; then
+		stem="$clean"   # already "YYYY MM DD HHMM names"
+	else
+		stem="$(date -r "$epoch" '+%Y-%m-%d %H%M') ${clean:-memo}"
+	fi
+	out="$DEST/$stem.m4a"; n=2
+	while [ -e "$out" ]; do out="$DEST/$stem ($n).m4a"; n=$((n + 1)); done
+	if [ "$DRY" = 1 ]; then
+		echo "would copy: $(basename "$out")  (${secs}s)"; copied=$((copied + 1)); continue
+	fi
+	part="$out.part"
+	case "$src" in
+		*.qta) ffmpeg -nostdin -loglevel error -y -i "$src" -map 0:a:0 -c copy -f ipod "$part" ;;
+		*) cp "$src" "$part" ;;
+	esac
+	mv "$part" "$out"
+	printf '%s\t%s\t%s\n' "$uid" "$(date -r "$epoch" +%Y-%m-%d)" "$(basename "$out")" >> "$STATE"
+	echo "copied: $(basename "$out")  (${secs}s)"
+	copied=$((copied + 1))
+done < "$TMP/memos.tsv"
+
+verb="copied"; [ "$DRY" = 1 ] && verb="to copy"
+echo "voice memos since $SINCE: $copied $verb, $skipped already copied, $missing not downloaded — into $DEST"
+[ "$DRY" = 1 ] || [ "$copied" = 0 ] || echo "next: /process-new-meetings (or /fetch-new-recordings)"

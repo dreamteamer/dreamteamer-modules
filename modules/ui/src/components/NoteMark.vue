@@ -29,6 +29,6 @@ const title = computed(() => markTitle(props.notes));
 	color: var(--vscode-charts-blue, var(--dt-color-charts-blue, var(--dt-unknown-color)));
 }
 .dt-note-mark :deep(.codicon) {
-	font-size: 12px;
+	font-size: var(--dt-text-sm);
 }
 </style>

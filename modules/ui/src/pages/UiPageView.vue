@@ -146,7 +146,7 @@ function browseOf(child: UiViewRecord) {
 }
 .dt-page-view__title {
 	margin: 0 0 4px;
-	font-size: calc(var(--dt-text) + 2px);
+	font-size: var(--dt-text-heading);
 	font-weight: 600;
 }
 .dt-page-view__lead,
@@ -169,7 +169,7 @@ function browseOf(child: UiViewRecord) {
 	min-width: 0;
 	padding: 12px;
 	border: 1px solid var(--dt-border);
-	border-radius: 4px;
+	border-radius: var(--dt-radius-sm);
 	display: flex;
 	flex-direction: column;
 	gap: 8px;

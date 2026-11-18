@@ -32,8 +32,11 @@
 	The band draws for an origin alone too — a record no commit holds yet still says where it lives.
 -->
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import DtLink from './DtLink.vue';
+import { appShell } from '../lib/app-shell';
+import { titleTab } from '../lib/tabs';
 import { useNavHistory } from '../composables/nav-history';
 import { initialsOf } from '../lib/initials';
 import { relativeTime } from '../lib/relative-time';
@@ -49,6 +52,9 @@ const props = withDefaults(
 		/** Material Symbols Outlined icon name shown in the row-2 icon chip. */
 		icon: string;
 		title: string;
+		/** The title is a stand-in until the page's data arrives (a record page names its id): its tab keeps the name it
+		 *  has rather than flicker through it (lib/tabs.ts). */
+		titlePending?: boolean;
 		/** Row 1's path. Crumbs with a `to` are links; the rest (id segments) are plain text. */
 		breadcrumb?: Array<{ label: string; to?: string }>;
 		commit?: { author: string; message: string; date: string } | null;
@@ -62,10 +68,14 @@ const props = withDefaults(
 			  })
 			| null;
 	}>(),
-	{ breadcrumb: () => [], commit: null, origin: null },
+	{ breadcrumb: () => [], commit: null, origin: null, titlePending: false },
 );
 
 const { canBack, canForward, back, forward } = useNavHistory();
+
+// the browser host's tab strip (cr-modules-022) titles the open page's tab with what this header says
+const route = appShell ? useRoute() : null;
+if (route) watch(() => [route.fullPath, props.title, props.icon, props.titlePending] as const, ([full, title, icon, pending]) => titleTab(full, title, icon, pending), { immediate: true });
 
 const commitRelativeTime = computed(() => {
 	if (!props.commit) return '';
@@ -304,7 +314,7 @@ a.dt-page-nav__crumb:hover {
 }
 
 .dt-page-header-title {
-	font-size: calc(var(--dt-text) + 2px);
+	font-size: var(--dt-text-heading);
 	font-weight: 600;
 	line-height: 1.35;
 	color: var(--dt-fg);
@@ -338,11 +348,11 @@ a.dt-page-nav__crumb:hover {
 	height: 16px;
 	border-radius: 50%;
 	background: var(--dt-module-bg-active, var(--dt-accent));
-	color: var(--dt-module-fg-active, #ffffff);
+	color: var(--dt-module-fg-active);
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	font-size: 8px;
+	font-size: var(--dt-text-3xs);
 	font-weight: 700;
 	opacity: 0.8;
 }

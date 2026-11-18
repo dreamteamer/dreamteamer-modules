@@ -371,7 +371,7 @@ function removeRule(id: string): void {
 	border: 1px solid var(--dt-border-strong);
 	background: var(--dt-bg);
 	color: var(--dt-fg);
-	border-radius: 999px;
+	border-radius: var(--dt-radius-pill);
 	padding: 2px 10px;
 	font-size: var(--dt-text);
 	cursor: pointer;
@@ -379,7 +379,7 @@ function removeRule(id: string): void {
 .dt-filter-logic-btn.active {
 	background: var(--dt-accent);
 	border-color: var(--dt-accent);
-	color: #fff;
+	color: var(--dt-on-accent);
 }
 .dt-filter-empty {
 	font-size: var(--dt-text);

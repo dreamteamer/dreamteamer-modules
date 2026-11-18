@@ -933,7 +933,7 @@ const targetChoices = computed(() => targetOptions.value.map((c) => ({ text: c, 
 .dt-field-tokchip {
 	display: inline-block;
 	background: var(--dt-bg-subtle);
-	border-radius: 4px;
+	border-radius: var(--dt-radius-sm);
 	padding: 1px 5px;
 	margin-right: 4px;
 }

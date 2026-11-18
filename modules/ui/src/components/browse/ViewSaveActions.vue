@@ -146,7 +146,7 @@ watch(() => props.answer, async (a) => {
 	height: 22px;
 	padding: 0 8px;
 	border: none;
-	border-radius: 4px;
+	border-radius: var(--dt-radius-sm);
 	background: transparent;
 	color: var(--dt-fg-subtle);
 	font-family: inherit;
@@ -171,7 +171,7 @@ watch(() => props.answer, async (a) => {
 }
 .dt-lo-dirty {
 	color: var(--vscode-gitDecoration-modifiedResourceForeground, var(--dt-warning));
-	font-size: 9px;
+	font-size: var(--dt-text-3xs);
 	line-height: 1;
 }
 
@@ -193,7 +193,7 @@ watch(() => props.answer, async (a) => {
 	gap: var(--dt-space-2);
 	padding: var(--dt-space-3);
 	border: 1px solid var(--dt-border);
-	border-radius: 4px;
+	border-radius: var(--dt-radius-sm);
 	background: var(--dt-bg);
 	box-shadow: var(--dt-shadow-lg);
 }
@@ -258,7 +258,7 @@ watch(() => props.answer, async (a) => {
 	width: 20px;
 	height: 20px;
 	border: none;
-	border-radius: 3px;
+	border-radius: var(--dt-radius-xs);
 	background: transparent;
 	color: var(--dt-fg-subtle);
 	cursor: pointer;

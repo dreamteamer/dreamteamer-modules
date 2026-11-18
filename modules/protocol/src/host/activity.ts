@@ -69,7 +69,7 @@ export function readLog(root, scope, limit, timeoutMs = ACTIVITY_GIT_TIMEOUT_MS)
     execFile(
       "git",
       logArgs(scope, limit),
-      { cwd: path.join(root, scope.repo), timeout: timeoutMs, maxBuffer: 64 * 1024 * 1024 },
+      { cwd: path.join(root, scope.repo), timeout: timeoutMs, windowsHide: true, maxBuffer: 64 * 1024 * 1024 },
       (err, out) => {
         if (err) return err.killed ? reject(err) : resolve([])
         resolve(

@@ -41,3 +41,29 @@ test('rectOf reads an element\'s rect, or null; viewportWidth reads the window, 
 	assert.equal(viewportWidth(), undefined);
 	g.window = had;
 });
+
+// ---- placeMenu: the one menu (DtMenu) against the box it hangs from — fixed, flipped, clamped -------------------------
+
+import { placeMenu } from '../../src/lib/menu-place';
+
+const VIEW = { width: 1000, height: 800 };
+const SIZE = { width: 200, height: 150 };
+
+test('placeMenu: under the box by the gap, on its start or end edge', () => {
+	const box = { left: 400, right: 440, top: 100, bottom: 126 };
+	assert.deepEqual(placeMenu(box, SIZE, VIEW, 'start'), { left: 400, top: 132, flipped: false });
+	assert.deepEqual(placeMenu(box, SIZE, VIEW, 'end'), { left: 240, top: 132, flipped: false });
+});
+
+test('placeMenu: flips above the box when there is no room below and there is above', () => {
+	const box = { left: 400, right: 440, top: 700, bottom: 726 };
+	assert.deepEqual(placeMenu(box, SIZE, VIEW, 'end'), { left: 240, top: 544, flipped: true });
+	// no room either way (a short window): as low as fits, never above the top edge
+	assert.deepEqual(placeMenu({ left: 10, right: 50, top: 60, bottom: 80 }, { width: 100, height: 150 }, { width: 1000, height: 180 }), { left: 10, top: 26, flipped: false });
+});
+
+test('placeMenu: stays inside the window horizontally, 4 px from either edge', () => {
+	assert.equal(placeMenu({ left: 950, right: 990, top: 10, bottom: 30 }, SIZE, VIEW, 'start').left, 1000 - 200 - 4, 'off the right edge');
+	assert.equal(placeMenu({ left: 2, right: 40, top: 10, bottom: 30 }, SIZE, VIEW, 'end').left, 4, 'off the left edge');
+	assert.equal(placeMenu({ left: 0, right: 30, top: 10, bottom: 30 }, { width: 400, height: 100 }, { width: 300, height: 800 }, 'start').left, 4, 'wider than the window: its start stays on screen');
+});

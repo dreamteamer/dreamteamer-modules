@@ -1,0 +1,39 @@
+{
+	"name": "@dreamteamer/connectors-macos",
+	"version": "0.1.0",
+	"description": "Apple Voice Memos into the recordings inbox on a Mac: dt-voice-memos copies new memos through one helper granted Full Disk Access.",
+	"license": "Apache-2.0",
+	"type": "module",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/dreamteamer/dreamteamer-modules.git",
+		"directory": "modules/connectors-macos"
+	},
+	"keywords": [
+		"dreamteamer",
+		"dreamteamer-module",
+		"connectors",
+		"macos",
+		"voice-memos",
+		"recordings"
+	],
+	"bin": {
+		"dt-voice-memos": "bin/dt-voice-memos"
+	},
+	"files": [
+		"README.md",
+		"bin",
+		"skills"
+	],
+	"dreamteamer": {
+		"title": "macOS connector",
+		"description": "Reaches Apple Voice Memos for `recordings` on a Mac: `npx dt-voice-memos` copies each new memo into the first `INBOX_FOLDERS` root's `meeting-recordings/`, so `/process-new-meetings` imports, matches and transcribes it. One small helper, started as a launchd job, holds the Full Disk Access grant. The `importing-voice-memos` skill runs it before the pipeline.",
+		"engine": ">=0.49.0",
+		"dependencies": [
+			"@dreamteamer/recordings"
+		]
+	},
+	"peerDependencies": {
+		"@dreamteamer/recordings": ">=0.5.3"
+	}
+}

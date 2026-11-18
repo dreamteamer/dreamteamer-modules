@@ -48,6 +48,7 @@ import { useCollections } from '../composables/collections';
 import { pathStem, titleOf } from '../lib/record-title';
 import { recordTitle } from '../lib/record-titles';
 import DtIcon from '../components/DtIcon.vue';
+import DtMenu from '../components/DtMenu.vue';
 
 const props = defineProps<{
 	value: unknown;
@@ -207,7 +208,8 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown));
 			</span>
 		</button>
 
-		<div v-if="open" class="dt-relation-popover">
+		<!-- the one menu's surface (DtMenu); the search field keeps focus and the picker its own Escape and outside press -->
+		<DtMenu v-if="open" class="dt-relation-popover" role="presentation" anchor="none" :keys="false" :dismiss="false">
 			<input ref="searchInputEl" v-model="search" dir="auto" class="dt-input dt-relation-search" type="text" placeholder="Search…" />
 			<ul class="dt-relation-list">
 				<li v-if="loading" class="dt-relation-empty">Loading…</li>
@@ -222,7 +224,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown));
 					{{ titleFor(record) }}
 				</li>
 			</ul>
-		</div>
+		</DtMenu>
 	</div>
 </template>
 
@@ -306,11 +308,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown));
 	top: calc(100% + 4px);
 	left: 0;
 	right: 0;
-	z-index: 20;
-	background: var(--dt-bg);
-	border: 1px solid var(--dt-border);
-	border-radius: var(--dt-radius);
-	box-shadow: var(--dt-shadow-lg);
+	min-width: 0;
 	padding: 8px;
 	max-height: 320px;
 	display: flex;
@@ -341,7 +339,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown));
 }
 .dt-relation-item.selected {
 	background: var(--dt-accent);
-	color: #ffffff;
+	color: var(--dt-on-accent);
 }
 .dt-relation-empty {
 	padding: 8px 10px;

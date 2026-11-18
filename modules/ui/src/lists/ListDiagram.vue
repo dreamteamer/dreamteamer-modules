@@ -398,6 +398,6 @@ const emptyReason = computed(() => {
 .dt-empty {
 	padding: 24px;
 	color: var(--dt-fg-subtle);
-	font-size: 12px;
+	font-size: var(--dt-text-sm);
 }
 </style>

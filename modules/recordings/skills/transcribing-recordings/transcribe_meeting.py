@@ -291,6 +291,11 @@ def run(meeting_md, audio, generated, num_speakers=None, language=None, engine="
     with open(asr_json, "w", encoding="utf-8") as f:
         json.dump({"asr": asr, "segments": segments}, f, ensure_ascii=False)
 
+    # Read the record AGAIN: the one read above is minutes old, and the workspace writes this record
+    # meanwhile (matching it to its meeting sets `meeting:` while it transcribes). Writing that stale copy
+    # back silently dropped whatever was set during the run. Only `transcription` and the
+    # `## Transcript` section are this run's to change.
+    fm, body = read_meeting(meeting_md)
     fm["transcription"] = {
         "generated": generated,
         "engine": engines.LABELS[engine],

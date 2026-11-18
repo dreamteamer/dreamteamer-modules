@@ -15,7 +15,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url))
 const PY = process.env.PYTHON || "python3"
 
 for (const [suite, atLeast] of [
-  ["test_run_cleanup", 13],
+  ["test_run_cleanup", 21],
   ["test_locations", 13],
 ] as [string, number][]) {
   test(`${suite} passes under a bare python3`, () => {

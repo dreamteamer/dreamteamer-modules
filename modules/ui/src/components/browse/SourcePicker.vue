@@ -22,12 +22,13 @@
 	Modules tables hand it their own (`composables/source-filter.ts`) — every list has the picker.
 -->
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, type Ref } from 'vue';
+import { computed, ref, type Ref } from 'vue';
 import type { SourceEntry } from '../../api/types';
 import type { FilterGroup } from '../../lib/filter-query';
 import { selectedSources, sourceColor, toggleSource, viaWord, withSourceSelection } from '../../lib/sources';
 import DtIcon from '../DtIcon.vue';
 import SourceMark from '../SourceMark.vue';
+import DtMenu from '../DtMenu.vue';
 
 /** What a browse's state carries for it — or a hand-built list's (`composables/source-filter.ts`). */
 interface SourcePickerState {
@@ -74,28 +75,6 @@ function show(): void {
 }
 defineExpose({ show });
 
-function onDocumentMousedown(event: MouseEvent): void {
-	if (!open.value) return;
-	const target = event.target as Node | null;
-	if (target && anchor.value?.contains(target)) return;
-	open.value = false;
-}
-
-function onDocumentKeydown(event: KeyboardEvent): void {
-	if (event.key === 'Escape' && open.value) open.value = false;
-}
-
-onMounted(() => {
-	if (typeof document === 'undefined') return;
-	document.addEventListener('mousedown', onDocumentMousedown);
-	document.addEventListener('keydown', onDocumentKeydown);
-});
-
-onUnmounted(() => {
-	if (typeof document === 'undefined') return;
-	document.removeEventListener('mousedown', onDocumentMousedown);
-	document.removeEventListener('keydown', onDocumentKeydown);
-});
 </script>
 
 <template>
@@ -123,7 +102,8 @@ onUnmounted(() => {
 			<DtIcon class="dt-source-picker__chevron" name="chevron-down" />
 		</button>
 
-		<div v-if="open" class="dt-source-picker__panel" role="listbox" aria-multiselectable="true" aria-label="Sources">
+		<!-- DtMenu (the one menu): a listbox of options, hung under the trigger, closed by Escape or a press outside -->
+		<DtMenu v-if="open" class="dt-source-picker__panel" role="listbox" multiselectable label="Sources" align="end" :min-width="240" @close="open = false">
 			<button type="button" role="option" class="dt-source-picker__row dt-source-picker__all" :aria-selected="isAll" @click="pickAll">
 				<span class="dt-source-picker__check"><DtIcon v-if="isAll" name="check" /></span>
 				<span class="dt-source-picker__name">All sources</span>
@@ -157,7 +137,7 @@ onUnmounted(() => {
 					<span class="dt-source-picker__note">not installed</span>
 				</span>
 			</template>
-		</div>
+		</DtMenu>
 	</div>
 </template>
 
@@ -204,23 +184,10 @@ onUnmounted(() => {
 .dt-source-picker__chevron {
 	color: var(--dt-fg-subtle);
 }
-/* Anchored under its trigger, right-aligned — the filter panel's technique (BrowseView). */
+/* DtMenu hangs it under the trigger, right-aligned, and draws the surface; the list scrolls past a tall screen */
 .dt-source-picker__panel {
-	position: absolute;
-	top: calc(100% + 6px);
-	right: 0;
-	z-index: 30;
-	min-width: 240px;
 	max-height: min(60vh, 480px);
 	overflow-y: auto;
-	display: flex;
-	flex-direction: column;
-	padding: 4px;
-	background: var(--dt-bg);
-	border: 1px solid var(--dt-border);
-	border-radius: var(--dt-radius-lg);
-	box-shadow: var(--dt-shadow-lg);
-	text-align: left;
 }
 .dt-source-picker__row {
 	display: flex;
@@ -235,7 +202,8 @@ onUnmounted(() => {
 	text-align: left;
 	cursor: pointer;
 }
-button.dt-source-picker__row:hover:not([aria-disabled='true']) {
+button.dt-source-picker__row:hover:not([aria-disabled='true']),
+button.dt-source-picker__row:focus-visible {
 	background: var(--dt-bg-hover);
 }
 button.dt-source-picker__row[aria-disabled='true'] {

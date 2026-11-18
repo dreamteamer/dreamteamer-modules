@@ -12,6 +12,7 @@
  * view is responsible for navigating to the new record's id afterward (this composable
  * instance stays bound to `id === null` for its lifetime — mirrors T2's stateless design).
  */
+import { reported } from '../lib/toasts';
 import { computed, getCurrentScope, onScopeDispose, ref, watch } from 'vue';
 import { onPageRefresh } from '../lib/page-refresh';
 import { api, buildQuery, type QueryParams } from '../api/client';
@@ -173,7 +174,7 @@ export function useItem(collection: string, id: string | null) {
 	/** `target` — a create only: the root the create form chose (cr-vscode-004), sent as `?target=`. */
 	async function save(target?: string | null): Promise<ItemRecord | null> {
 		if (id === null) {
-			const res = await api.post<ItemRecord>(`/items/${encodeURIComponent(collection)}${target ? `?target=${encodeURIComponent(target)}` : ''}`, edits.value);
+			const res = await reported(() => api.post<ItemRecord>(`/items/${encodeURIComponent(collection)}${target ? `?target=${encodeURIComponent(target)}` : ''}`, edits.value), 'Record created', 'The record was not created');
 			record.value = res.data;
 			loaded.value = { ...res.data };
 			edits.value = {};
@@ -182,7 +183,7 @@ export function useItem(collection: string, id: string | null) {
 
 		if (!dirty.value) return record.value;
 
-		const res = await api.patch<ItemRecord>(`/items/${encodeURIComponent(collection)}/${encodeURIComponent(id)}`, edits.value);
+		const res = await reported(() => api.patch<ItemRecord>(`/items/${encodeURIComponent(collection)}/${encodeURIComponent(id)}`, edits.value), 'Saved', 'The change was not saved');
 		record.value = res.data;
 		loaded.value = { ...res.data };
 		edits.value = {};
@@ -196,7 +197,7 @@ export function useItem(collection: string, id: string | null) {
 
 	async function remove(): Promise<void> {
 		if (id === null) return;
-		await api.delete(`/items/${encodeURIComponent(collection)}/${encodeURIComponent(id)}`);
+		await reported(() => api.delete(`/items/${encodeURIComponent(collection)}/${encodeURIComponent(id)}`), 'Record deleted', 'The record was not deleted');
 	}
 
 	return { record, edits, dirty, loading, error, refreshSkipped, setField, load, save, remove, discard };

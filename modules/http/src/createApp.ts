@@ -197,6 +197,7 @@ export function gitModifiedMap(root, dirs) {
     out = execFileSync("git", ["log", "--format=%x01%aI", "--name-only", "--", ...rels], {
       cwd: root,
       timeout: GIT_TIMEOUT_MS,
+      windowsHide: true,
       stdio: ["ignore", "pipe", "ignore"],
     }).toString()
   } catch {
@@ -221,6 +222,7 @@ function gitLastCommit(root, file) {
     const out = execFileSync("git", ["log", "-1", "--format=%aI%x00%an%x00%s", "--", rel], {
       cwd: root,
       timeout: GIT_TIMEOUT_MS,
+      windowsHide: true,
       stdio: ["ignore", "pipe", "ignore"],
     })
       .toString()

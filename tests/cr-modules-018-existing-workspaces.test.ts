@@ -165,10 +165,10 @@ describe("t6 a 0.12.0 workspace updated keeps everything (line 6)", { skip }, ()
       [0, 3]
     )
   })
-  test("core is 0.13.0 and both connectors are installed", () => {
+  test("core is 0.13.x and both connectors are installed", () => {
     const v = n =>
       JSON.parse(fs.readFileSync(path.join(root, "node_modules", "@dreamteamer", n, "package.json"), "utf8")).version
-    assert.equal(v("core"), "0.13.0")
+    assert.match(v("core"), /^0\.13\.\d+$/) // this repo's core: a 0.13 patch carries the move cr-modules-018 proves
     assert.equal(v("contacts"), "0.2.0")
     assert.equal(v("meetings"), "0.4.0")
     assert.ok(v("connectors-linkedin"))

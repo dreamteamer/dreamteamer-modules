@@ -89,7 +89,7 @@ a.dt-source-mark__name:hover {
 /* the writability glyph: the mark's size, in the mark's colour — a property of the root, not an alarm */
 .dt-source-mark__access {
 	flex-shrink: 0;
-	font-size: 12px;
+	font-size: var(--dt-text-sm);
 	opacity: 0.85;
 }
 .dt-source-mark[data-access='read'] .dt-source-mark__access {

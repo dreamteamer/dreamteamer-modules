@@ -789,14 +789,14 @@ function toggleBand(value: string): void {
 .dt-gantt-bar {
 	position: relative;
 	height: 16px;
-	border-radius: 3px;
+	border-radius: var(--dt-radius-xs);
 	background: var(--dt-gantt-bar, var(--dt-accent));
 	min-width: 3px;
 	display: flex;
 	align-items: center;
 }
 .dt-gantt-bar--point {
-	border-radius: 999px;
+	border-radius: var(--dt-radius-pill);
 }
 /* THE LABEL IN THE TIMELINE. Two placements, one element — see the script for why a point-sized bar
    must be able to speak. */
@@ -813,7 +813,7 @@ function toggleBand(value: string): void {
 	padding: 0 6px;
 	overflow: hidden;
 	text-overflow: ellipsis;
-	color: var(--vscode-editor-background, #fff);
+	color: var(--vscode-editor-background, var(--dt-on-accent));
 	font-weight: 500;
 }
 /* BESIDE: drawn INLINE FROM THE BAR'S START — the text begins on the day the record begins and runs
@@ -826,8 +826,8 @@ function toggleBand(value: string): void {
 	position: absolute;
 	left: 0;
 	padding: 0 4px;
-	border-radius: 2px;
-	background: color-mix(in srgb, var(--vscode-editor-background, #fff) 72%, transparent);
+	border-radius: var(--dt-radius-2xs);
+	background: color-mix(in srgb, var(--vscode-editor-background, var(--dt-on-accent)) 72%, transparent);
 	color: var(--dt-fg-subtle);
 	max-width: 60ch;
 	overflow: hidden;
@@ -896,7 +896,7 @@ function toggleBand(value: string): void {
 .dt-gantt-band-bar {
 	position: relative;
 	height: 3px;
-	border-radius: 999px;
+	border-radius: var(--dt-radius-pill);
 	background: var(--dt-lane-rail, var(--dt-border-strong));
 	min-width: 2px;
 }
@@ -907,7 +907,7 @@ function toggleBand(value: string): void {
 	top: -3px;
 	width: 2px;
 	height: 9px;
-	border-radius: 1px;
+	border-radius: var(--dt-radius-2xs);
 	background: inherit;
 }
 .dt-gantt-band-bar::before {
@@ -1033,7 +1033,7 @@ function toggleBand(value: string): void {
 .dt-gantt-chip {
 	background: var(--dt-bg-subtle);
 	border: 1px solid var(--dt-border);
-	border-radius: 4px;
+	border-radius: var(--dt-radius-sm);
 	padding: 2px 6px;
 	font-size: var(--dt-label);
 	cursor: pointer;

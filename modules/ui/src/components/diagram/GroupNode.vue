@@ -58,7 +58,7 @@ function onGrab(event: PointerEvent): void {
 	height: 100%;
 	box-sizing: border-box;
 	border: 1.5px solid var(--group-accent);
-	border-radius: 12px;
+	border-radius: var(--dt-radius-xl);
 	/* The tint has to read on both themes, so it is the accent at low alpha over the page rather
 	   than a fixed pastel — `color-mix` keeps one declaration doing both. */
 	background: color-mix(in srgb, var(--group-accent) 7%, transparent);
@@ -74,7 +74,7 @@ function onGrab(event: PointerEvent): void {
 	cursor: grabbing;
 }
 .dt-diagram-group__grip {
-	font-size: 14px;
+	font-size: var(--dt-text-md);
 	color: var(--group-accent);
 	opacity: 0.7;
 	margin-top: -1px;
@@ -88,12 +88,12 @@ function onGrab(event: PointerEvent): void {
 	cursor: nwse-resize;
 	border-right: 2px solid var(--group-accent);
 	border-bottom: 2px solid var(--group-accent);
-	border-bottom-right-radius: 10px;
+	border-bottom-right-radius: var(--dt-radius-chip);
 	opacity: 0.6;
 }
 .dt-diagram-group__label {
 	font-family: var(--dt-font);
-	font-size: 12px;
+	font-size: var(--dt-text-sm);
 	font-weight: 600;
 	color: var(--group-accent);
 	letter-spacing: 0.01em;

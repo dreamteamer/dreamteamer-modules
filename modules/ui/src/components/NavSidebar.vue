@@ -22,7 +22,7 @@
  * the toggle is disabled with that reason as its tooltip, and an unlocked nav locks.
  */
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import type { NavOp, NavTarget } from '@dreamteamer/protocol/nav-doc';
 import { hostRequest } from '../api/transport';
 import NavRow, { NAV_DRAG_TYPE, type DropWhere } from './NavRow';
@@ -30,6 +30,8 @@ import NavMenu, { type NavMenuItem } from './NavMenu.vue';
 import DtIcon from './DtIcon.vue';
 import { menuUnder, rectOf, viewportWidth } from '../lib/menu-place';
 import { openMenu } from '../lib/open-menu';
+import { seedTitle } from '../lib/tabs';
+import { dragWidth, keyWidth, loadNavWidth, navWidthBounds, saveNavWidth } from '../lib/nav-width';
 
 interface NavNode { kind: string; key: string; label: string; icon?: string; description?: string; tooltip?: string; route?: string; marks?: string; target?: NavTarget; notice?: string; children?: NavNode[] }
 
@@ -48,13 +50,14 @@ const props = defineProps<{
 }>();
 
 const router = useRouter();
+const route = useRoute();
 const nodes = ref<NavNode[]>([]);
 const open = ref<Set<string>>(new Set());
 const error = ref<string | null>(null);
 const notice = ref<string | null>(null);
 const dragging = ref<string | null>(null);
 const hint = ref<{ key: string; where: DropWhere } | null>(null);
-const menuAt = ref<{ key: string; x: number; y: number; start?: string } | null>(null);
+const menuAt = ref<{ key: string; x: number; y: number; start?: string; trigger?: unknown } | null>(null);
 /** Unlocked: rows drag, take drops and have menus. Starts locked on every load; kept nowhere. */
 const arranging = ref(false);
 /** The rows are scrolled under the toolbar (its shadow shows). */
@@ -75,6 +78,33 @@ const index = computed(() => {
 	};
 	walk(nodes.value);
 	return { byKey, parentOf };
+});
+
+/** A route compared as text: decoded, without its query or a trailing slash. */
+const routeText = (r: string) => { let p = r.split('?')[0].replace(/\/+$/, ''); try { p = decodeURIComponent(p); } catch { /* keep it as it is */ } return p; };
+/** The CURRENT row (cr-modules-021): the row whose route is the open page's, or the deepest one the page sits under (a
+ *  record page marks its collection). The workspace node is the toolbar's name, never a row, so it is never current. */
+const currentKey = computed<string | null>(() => {
+	const here = routeText(route?.path ?? '');
+	if (!here) return null;
+	let best: { key: string; len: number } | null = null;
+	for (const n of index.value.byKey.values()) {
+		if (!n.route || n.kind === 'workspace') continue;
+		const r = routeText(n.route);
+		if (!r || (here !== r && !here.startsWith(`${r}/`))) continue;
+		if (!best || r.length > best.len) best = { key: n.key, len: r.length };
+	}
+	return best?.key ?? null;
+});
+// the current row is never hidden inside a closed folder: its folders open when the page changes
+watch(currentKey, (key) => {
+	if (!key) return;
+	const s = new Set(open.value);
+	let grew = false;
+	for (let p = index.value.parentOf.get(key); p && p.kind !== 'workspace'; p = index.value.parentOf.get(p.key)) {
+		if (!s.has(p.key)) { s.add(p.key); grew = true; }
+	}
+	if (grew) open.value = s;
 });
 
 /** The workspace node — drawn as the toolbar's name, never as a row. */
@@ -164,7 +194,7 @@ function openSettings() {
 }
 
 function activate(n: NavNode) {
-	if (n.route) void router.push(n.route);
+	if (n.route) { seedTitle(n.route, n.label, n.icon); void router.push(n.route); }
 	else if (n.children?.length) toggle(n);
 }
 
@@ -313,7 +343,7 @@ function openToolbarMenu(id: 'new-folder' | 'show-hidden', e: MouseEvent) {
 	if (!arranging.value) return;
 	if (menuAt.value?.key === TOOLBAR && menuAt.value.start === id) { menuAt.value = null; return; }
 	const at = menuUnder(rectOf(e.currentTarget), 'start', MENU_WIDTH, viewportWidth());
-	menuAt.value = { key: TOOLBAR, ...at, start: id };
+	menuAt.value = { key: TOOLBAR, ...at, start: id, trigger: e.currentTarget };
 }
 function onRowsScroll(e: Event) {
 	scrolled.value = ((e.target as { scrollTop?: number } | null)?.scrollTop ?? 0) > 0;
@@ -323,14 +353,71 @@ function onPick(p: { id: string; value?: string | null }) {
 	void send(op);
 }
 
+// ---- the nav's width (browser host; the editor never draws this nav) ------------------------------------------------
+// A drag on the edge, the arrow keys on it (Home/End: the bounds) or a double-click (the default). Kept per browser by
+// lib/nav-width.ts; with nothing kept the token's default governs, so the stylesheet alone draws a fresh nav.
+const navEl = ref<HTMLElement | null>(null);
+const bounds = ref(navWidthBounds());
+/** The width a person chose, or null: the token's default. */
+const chosen = ref<number | null>(loadNavWidth(bounds.value));
+const navWidth = computed(() => chosen.value ?? bounds.value.def);
+/** A drag in progress: no transition runs while the edge follows the pointer. */
+const resizing = ref(false);
+const navStyle = computed(() => (chosen.value == null ? undefined : { '--dt-nav-w': `${chosen.value}px` }));
+let drag: { x: number; w: number } | null = null;
+
+function navDir(): 'ltr' | 'rtl' {
+	try { return navEl.value && typeof getComputedStyle === 'function' && getComputedStyle(navEl.value).direction === 'rtl' ? 'rtl' : 'ltr'; } catch { return 'ltr'; }
+}
+function setWidth(w: number) {
+	chosen.value = w;
+	saveNavWidth(w);
+}
+function onResizeKey(e: KeyboardEvent) {
+	const next = keyWidth(navWidth.value, e.key, bounds.value, { shift: e.shiftKey, dir: navDir() });
+	if (next == null) return;
+	e.preventDefault();
+	setWidth(next);
+}
+function onResizeDown(e: PointerEvent) {
+	if (e.button !== 0) return;
+	e.preventDefault();
+	drag = { x: e.clientX, w: navWidth.value };
+	resizing.value = true;
+	try { (e.currentTarget as Element | null)?.setPointerCapture?.(e.pointerId); } catch { /* no capture: moves still arrive while over the edge */ }
+}
+function onResizeMove(e: PointerEvent) {
+	if (!drag) return;
+	chosen.value = dragWidth(drag.w, drag.x, e.clientX, bounds.value, navDir());
+}
+function onResizeEnd() {
+	if (!drag) return;
+	drag = null;
+	resizing.value = false;
+	if (chosen.value != null) saveNavWidth(chosen.value);
+}
+function resetWidth() {
+	drag = null;
+	resizing.value = false;
+	chosen.value = null;
+	saveNavWidth(null);
+}
+
 const onMessage = (e: MessageEvent) => { if (e.data?.type === 'dt:invalidate') void load(); };
 const onAway = () => { menuAt.value = null; };
-onMounted(() => { void load(); window.addEventListener('message', onMessage); window.addEventListener('click', onAway); });
+onMounted(() => {
+	void load();
+	window.addEventListener('message', onMessage);
+	window.addEventListener('click', onAway);
+	// the stylesheet is in by now: read the bounds it declares, and keep a kept width inside them
+	bounds.value = navWidthBounds();
+	if (chosen.value != null) chosen.value = loadNavWidth(bounds.value);
+});
 onUnmounted(() => { window.removeEventListener('message', onMessage); window.removeEventListener('click', onAway); });
 </script>
 
 <template>
-	<nav class="dt-nav" :class="{ 'dt-nav--arranging': arranging }" aria-label="Workspace" @dragend="hint = null; dragging = null">
+	<nav ref="navEl" class="dt-nav" :class="{ 'dt-nav--arranging': arranging, 'dt-nav--resizing': resizing }" :style="navStyle" aria-label="Workspace" @dragend="hint = null; dragging = null">
 		<div class="dt-nav-toolbar" :class="{ 'dt-nav-toolbar--scrolled': scrolled }" role="toolbar" aria-label="Nav">
 			<div class="dt-nav-toolbar__name">
 				<slot name="name" :label="workspace?.label ?? ''">
@@ -373,38 +460,68 @@ onUnmounted(() => { window.removeEventListener('message', onMessage); window.rem
 		<div class="dt-nav-rows" @scroll="onRowsScroll">
 			<ul class="dt-nav-list" role="tree">
 				<template v-for="n in topLevel" :key="n.key">
-					<NavRow :node="n" :depth="0" :open="open" :hint="hint" :arrange="arranging" @toggle="toggle" @activate="activate" @drag="onDrag" @hover="onHover" @move="onMove" @menu="onMenu" />
+					<NavRow :node="n" :depth="0" :open="open" :hint="hint" :arrange="arranging" :current="currentKey" @toggle="toggle" @activate="activate" @drag="onDrag" @hover="onHover" @move="onMove" @menu="onMenu" />
 				</template>
 			</ul>
 			<div v-if="arranging" class="dt-nav-tail" :class="{ 'dt-nav-drop-tail': hint?.key === TAIL }" data-key="::tail" @dragover="onTailOver" @drop="onTailDrop"></div>
 			<div v-else class="dt-nav-tail" data-key="::tail"></div>
 		</div>
-		<NavMenu v-if="menuAt && menu" :key="`${menuAt.key}:${menuAt.start ?? ''}`" :x="menuAt.x" :y="menuAt.y" :items="menu.items" :start="menuAt.start" @pick="onPick" @close="menuAt = null" />
+		<div
+			class="dt-nav-resize"
+			role="separator"
+			aria-orientation="vertical"
+			aria-label="Nav width"
+			:aria-valuenow="navWidth"
+			:aria-valuemin="bounds.min"
+			:aria-valuemax="bounds.max"
+			tabindex="0"
+			title="Drag to resize the nav — double-click to reset"
+			@pointerdown="onResizeDown"
+			@pointermove="onResizeMove"
+			@pointerup="onResizeEnd"
+			@pointercancel="onResizeEnd"
+			@lostpointercapture="onResizeEnd"
+			@keydown="onResizeKey"
+			@dblclick="resetWidth"
+		></div>
+		<NavMenu v-if="menuAt && menu" :key="`${menuAt.key}:${menuAt.start ?? ''}`" :x="menuAt.x" :y="menuAt.y" :items="menu.items" :start="menuAt.start" :trigger="menuAt.trigger" @pick="onPick" @close="menuAt = null" />
 	</nav>
 </template>
 
 <style scoped>
 /* The nav is a column: the toolbar never scrolls, the rows scroll beneath it. */
-.dt-nav { width: 260px; flex: none; display: flex; flex-direction: column; min-height: 0; overflow: hidden; background: var(--dt-bg-subtle); border-right: 1px solid var(--dt-border); font-size: var(--dt-text); cursor: default; }
+/* On the canvas (cr-modules-022): no ground of its own and no line — the sheet beside it carries the edge. */
+.dt-nav { position: relative; width: var(--dt-nav-w, var(--dt-nav-width)); flex: none; display: flex; flex-direction: column; min-height: 0; overflow: hidden; background: transparent; font-size: var(--dt-text); cursor: default; }
 /* a narrow pane (a desktop side pane can be 320 px): the nav gives up most of its width, so the page keeps a usable column */
-@media (max-width: 560px) { .dt-nav { width: clamp(96px, 32vw, 260px); } }
+@media (max-width: 560px) { .dt-nav { width: clamp(96px, 32vw, var(--dt-nav-w, var(--dt-nav-width))); } }
+/* THE EDGE (browser host): a 6 px strip on the nav's inline end — col-resize, a hairline on hover, the focus colour while
+   focused or dragged. Nothing animates while a drag is on: the edge follows the pointer, not a transition. */
+.dt-nav-resize { position: absolute; top: 0; bottom: 0; inset-inline-end: 0; z-index: 3; width: 6px; cursor: col-resize; touch-action: none; outline: none; }
+.dt-nav-resize::after { content: ''; position: absolute; top: 0; bottom: 0; inset-inline-end: 0; width: 2px; background: transparent; transition: background-color var(--dt-dur-fast) var(--dt-ease); }
+.dt-nav-resize:hover::after { background: var(--dt-ink-4); }
+.dt-nav-resize:focus-visible::after, .dt-nav--resizing .dt-nav-resize::after { background: var(--dt-focus-ring); }
+/* the width itself never transitions; while dragging, the rows' hover fades are off too so nothing lags the pointer */
+.dt-nav--resizing .dt-nav-resize::after, .dt-nav--resizing :deep(.dt-nav-row)::before { transition: none; }
+.dt-nav--resizing { user-select: none; cursor: col-resize; }
 /* 32 px: the page header's first row (history, path, search, refresh), so the two read as one band across the window.
    Narrow, the name gives way first (its basis is 0, its min-width 0) and the buttons, which shrink only once it is
    gone, wrap to a second line rather than being clipped. */
-.dt-nav-toolbar { position: relative; z-index: 2; flex: none; display: flex; align-items: center; gap: 4px; box-sizing: border-box; min-height: 32px; padding: 3px 4px 3px 10px; background: var(--dt-bg-subtle); transition: box-shadow 0.12s; }
+.dt-nav-toolbar { position: relative; z-index: 2; flex: none; display: flex; align-items: center; gap: 4px; box-sizing: border-box; min-height: 32px; padding: 3px 4px 3px 10px; background: var(--dt-canvas); transition: box-shadow var(--dt-dur-fast) var(--dt-ease); }
 .dt-nav-toolbar--scrolled { box-shadow: 0 1px 3px rgb(0 0 0 / 0.14); }
 .dt-nav-toolbar__name { flex: 1 1 0; min-width: 0; display: flex; align-items: center; overflow: hidden; }
 .dt-nav-toolbar__label, :deep(.dt-nav-toolbar__label) { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; color: var(--dt-fg); }
 .dt-nav-toolbar__settings { max-width: 100%; height: 24px; margin: 0; padding: 0 4px; border: 0; border-radius: var(--dt-radius); background: transparent; font: inherit; font-weight: 600; text-align: left; cursor: default; }
-.dt-nav-toolbar__settings:hover { background: var(--dt-bg-hover); }
+.dt-nav-toolbar__settings:hover { background: var(--dt-ink-3); }
 .dt-nav-toolbar__buttons { flex: 0 1 auto; min-width: 0; display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 2px; }
-.dt-nav-tool, :deep(.dt-nav-tool) { position: relative; flex: none; display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; padding: 0; border: 0; border-radius: var(--dt-radius); background: transparent; color: var(--dt-fg-subtle); font: inherit; cursor: default; }
-.dt-nav-tool:hover:not(:disabled), :deep(.dt-nav-tool:hover:not(:disabled)) { background: var(--dt-bg-hover); color: var(--dt-fg); }
+/* the one icon-button shape (base.css .dt-btn--icon): the control height, the control radius, a press */
+.dt-nav-tool, :deep(.dt-nav-tool) { position: relative; flex: none; display: inline-flex; align-items: center; justify-content: center; width: var(--dt-control-height); height: var(--dt-control-height); padding: 0; border: 0; border-radius: var(--dt-radius); background: transparent; color: var(--dt-fg-subtle); font: inherit; cursor: default; transition: background-color var(--dt-dur-fast) ease, transform var(--dt-dur-fast) var(--dt-ease); }
+.dt-nav-tool:active:not(:disabled), :deep(.dt-nav-tool:active:not(:disabled)) { transform: scale(0.97); }
+.dt-nav-tool:hover:not(:disabled), :deep(.dt-nav-tool:hover:not(:disabled)) { background: var(--dt-ink-3); color: var(--dt-fg); }
 .dt-nav-tool:disabled { opacity: 0.45; }
 .dt-nav-tool[aria-pressed='true'] { background: var(--dt-accent-subtle); color: var(--dt-accent); }
-.dt-nav-tool .codicon, :deep(.dt-nav-tool .codicon) { font-size: 16px; }
+.dt-nav-tool .codicon, :deep(.dt-nav-tool .codicon) { font-size: var(--dt-icon); }
 /* the lock is a badge on the tree: bottom-right, cut out of the button's ground so it reads at 16 px */
-.dt-nav-lock .dt-nav-lock__badge { position: absolute; right: 1px; bottom: 1px; font-size: 10px; line-height: 10px; border-radius: 3px; background: var(--dt-bg-subtle); }
+.dt-nav-lock .dt-nav-lock__badge { position: absolute; right: 1px; bottom: 1px; font-size: var(--dt-text-2xs); line-height: 10px; border-radius: var(--dt-radius-xs); background: var(--dt-canvas); }
 .dt-nav-lock[aria-pressed='true'] .dt-nav-lock__badge { background: var(--dt-accent-subtle); }
 .dt-nav-error { color: var(--dt-danger); padding: 6px 8px; margin: 0; flex: none; }
 .dt-nav-notice { flex: none; display: flex; align-items: flex-start; gap: 6px; margin: 4px 6px; padding: 6px 8px; border-radius: var(--dt-radius); background: var(--dt-accent-subtle); color: var(--dt-fg); font-size: var(--dt-label); }
@@ -415,14 +532,29 @@ onUnmounted(() => { window.removeEventListener('message', onMessage); window.rem
 /* the empty area under the last row: the bottom of the top level as a drop, its line on the top edge */
 .dt-nav-tail { flex: 1 0 24px; }
 .dt-nav-drop-tail { box-shadow: inset 0 2px 0 var(--dt-accent); }
-/* the ordinary arrow everywhere; the grab hand only on a row that can be dragged, which is only while arranging */
-:deep(.dt-nav-row) { display: flex; align-items: center; gap: 4px; height: 24px; cursor: default; color: var(--dt-fg); white-space: nowrap; }
-:deep(.dt-nav-row:hover) { background: var(--dt-bg-hover); }
+/* the ordinary arrow everywhere; the grab hand only on a row that can be dragged, which is only while arranging.
+   ROWS (cr-modules-021): 30 px tall on one x-grid — a 14 px twisty slot, a 16 px icon box and the label, then ONE right-hand
+   column for marks and counts. The highlight is a ::before layer inset 6 px from each side, so hover (a light accent tint)
+   and the current row (a white card with a hairline ring, weight 600) never move the icon or the label. */
+:deep(.dt-nav-row) { position: relative; isolation: isolate; display: flex; align-items: center; gap: 6px; height: 30px; padding-right: 14px; cursor: default; color: var(--dt-fg); white-space: nowrap; }
+:deep(.dt-nav-row)::before { content: ''; position: absolute; inset: 1px 6px; z-index: -1; border-radius: var(--dt-radius-lg); background: transparent; transition: background-color var(--dt-dur-fast) var(--dt-ease), box-shadow var(--dt-dur-fast) var(--dt-ease); }
+:deep(.dt-nav-row:hover)::before { background: var(--dt-accent-tint); }
+:deep(.dt-nav-row.is-current)::before { background: var(--dt-surface); box-shadow: var(--dt-shadow-card); }
+:deep(.dt-nav-row.is-current) { font-weight: var(--dt-weight-strong); }
+:deep(.dt-nav-row.is-current .dt-nav-icon) { color: var(--dt-accent); }
+:deep(.dt-nav-row:focus-visible) { outline: none; }
+:deep(.dt-nav-row:focus-visible)::before { outline: var(--dt-focus-outline); outline-offset: var(--dt-focus-offset); }
 :deep(.dt-nav-row[draggable='true']) { cursor: grab; }
 :deep(.dt-nav-drop-after) { box-shadow: inset 0 -2px 0 var(--dt-accent); }
 :deep(.dt-nav-drop-before) { box-shadow: inset 0 2px 0 var(--dt-accent); }
-:deep(.dt-nav-drop-into) { background: var(--dt-accent-subtle); outline: 1px solid var(--dt-accent); outline-offset: -1px; }
-:deep(.dt-nav-twisty) { width: 12px; color: var(--dt-fg-subtle); }
-:deep(.dt-nav-label) { flex: 1; overflow: hidden; text-overflow: ellipsis; }
-:deep(.dt-nav-count), :deep(.dt-nav-marks) { color: var(--dt-fg-subtle); font-size: var(--dt-label); padding-right: 8px; }
+:deep(.dt-nav-drop-into)::before { background: var(--dt-accent-subtle); box-shadow: 0 0 0 1px var(--dt-accent); }
+:deep(.dt-nav-twisty) { flex: none; width: 14px; display: inline-flex; justify-content: center; color: var(--dt-fg-muted); }
+:deep(.dt-nav-twisty .codicon) { font-size: var(--dt-label); }
+:deep(.dt-nav-icon) { flex: none; width: var(--dt-icon); height: var(--dt-icon); display: inline-flex; align-items: center; justify-content: center; color: var(--dt-fg-subtle); }
+:deep(.dt-nav-label) { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+:deep(.dt-nav-end) { flex: none; min-width: 24px; display: inline-flex; align-items: center; justify-content: flex-end; gap: 4px; color: var(--dt-fg-muted); font-size: var(--dt-label); font-variant-numeric: tabular-nums; }
+/* A SECTION — a folder, namespace or layers row at the top level: a small uppercase, letter-spaced, muted label */
+:deep(.dt-nav-section) { margin-top: 2px; color: var(--dt-fg-subtle); }
+:deep(.dt-nav-section .dt-nav-label) { font-size: var(--dt-label); font-weight: var(--dt-weight-strong); text-transform: uppercase; letter-spacing: 0.05em; }
+:deep(.dt-nav-section .dt-nav-icon) { color: var(--dt-fg-muted); }
 </style>

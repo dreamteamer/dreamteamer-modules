@@ -118,7 +118,7 @@ watch(open, (isOpen) => {
 	height: 26px;
 	padding: 0 4px 0 6px;
 	border: 1px solid var(--vscode-dropdown-border, var(--dt-border));
-	border-radius: 2px;
+	border-radius: var(--dt-radius-2xs);
 	background: var(--vscode-dropdown-background, var(--dt-bg-subtle));
 	color: var(--dt-fg);
 	font-family: inherit;
@@ -162,7 +162,7 @@ watch(open, (isOpen) => {
 	width: 18px;
 	height: 18px;
 	border: none;
-	border-radius: 3px;
+	border-radius: var(--dt-radius-xs);
 	background: transparent;
 	cursor: pointer;
 	padding: 0;
@@ -190,7 +190,7 @@ watch(open, (isOpen) => {
 	margin-bottom: 6px;
 	padding: 0 6px;
 	border: 1px solid var(--vscode-input-border, var(--dt-border));
-	border-radius: 2px;
+	border-radius: var(--dt-radius-2xs);
 	background: var(--vscode-input-background, var(--dt-bg));
 	color: var(--vscode-input-foreground, var(--dt-fg));
 	font-family: inherit;
@@ -215,7 +215,7 @@ watch(open, (isOpen) => {
 	justify-content: center;
 	aspect-ratio: 1;
 	border: none;
-	border-radius: 3px;
+	border-radius: var(--dt-radius-xs);
 	background: transparent;
 	color: var(--dt-fg-subtle);
 	cursor: pointer;

@@ -21,6 +21,7 @@ test("the repo carries every module it is meant to", () => {
     "companies",
     "connectors-google-workspace",
     "connectors-linkedin",
+    "connectors-macos",
     "contacts",
     "core",
     "docker-workspaces",

@@ -83,19 +83,19 @@ function onText(event: Event): void {
 	display: flex;
 	align-items: center;
 	gap: 6px;
-	font-size: 12px;
+	font-size: var(--dt-text-sm);
 	color: var(--dt-fg);
 	cursor: pointer;
 }
 .dt-field-multi__name {
 	font-family: var(--dt-font-mono);
-	font-size: 11px;
+	font-size: var(--dt-label);
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
 .dt-field-multi__empty {
-	font-size: 11px;
+	font-size: var(--dt-label);
 	color: var(--dt-fg-subtle);
 }
 </style>

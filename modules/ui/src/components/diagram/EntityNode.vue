@@ -57,7 +57,7 @@ const fields = computed(() => props.data.fields ?? []);
 	min-width: 232px;
 	background: var(--dt-bg);
 	border: 1px solid var(--dt-border);
-	border-radius: var(--dt-radius-lg, 10px);
+	border-radius: var(--dt-radius-lg);
 	box-shadow: var(--dt-shadow);
 	overflow: hidden;
 	font-family: var(--dt-font);
@@ -75,13 +75,13 @@ const fields = computed(() => props.data.fields ?? []);
 	align-items: center;
 	gap: 6px;
 	padding: 7px 10px;
-	color: #fff;
+	color: var(--dt-on-accent);
 	font-weight: 600;
-	font-size: 12px;
+	font-size: var(--dt-text-sm);
 	letter-spacing: 0.01em;
 }
 .dt-entity__icon {
-	font-size: 15px;
+	font-size: var(--dt-text-md);
 	opacity: 0.9;
 }
 .dt-entity__title {
@@ -89,12 +89,12 @@ const fields = computed(() => props.data.fields ?? []);
 	white-space: nowrap;
 }
 .dt-entity__sys {
-	font-size: 9px;
+	font-size: var(--dt-text-3xs);
 	text-transform: uppercase;
 	letter-spacing: 0.06em;
 	opacity: 0.75;
 	border: 1px solid rgba(255, 255, 255, 0.5);
-	border-radius: 3px;
+	border-radius: var(--dt-radius-xs);
 	padding: 0 3px;
 }
 
@@ -104,7 +104,7 @@ const fields = computed(() => props.data.fields ?? []);
 	align-items: center;
 	gap: 6px;
 	padding: 4px 10px;
-	font-size: 11.5px;
+	font-size: var(--dt-text-sm);
 	border-top: 1px solid var(--dt-border);
 	color: var(--dt-fg);
 }
@@ -119,12 +119,12 @@ const fields = computed(() => props.data.fields ?? []);
 	white-space: nowrap;
 }
 .dt-entity-row__key {
-	font-size: 13px;
+	font-size: var(--dt-text);
 	color: var(--dt-fg-subtle);
 }
 .dt-entity-row__type {
 	font-family: var(--dt-font-mono);
-	font-size: 10.5px;
+	font-size: var(--dt-text-2xs);
 	color: var(--dt-fg-subtle);
 	white-space: nowrap;
 }

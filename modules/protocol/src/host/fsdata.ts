@@ -2,6 +2,7 @@
 import * as fs from "node:fs"
 import * as path from "node:path"
 import { execFileSync } from "node:child_process"
+import { GIT_SYNC } from "./gitExec.ts"
 import * as yaml from "js-yaml"
 export const EXT = { md: ".md", yaml: ".yaml", json: ".json" }
 const acc = () => engine().descriptor
@@ -323,7 +324,7 @@ export function loadUiViews(root) {
 }
 export function operatorId(root) {
   try {
-    const name = execFileSync("git", ["config", "user.name"], { cwd: root }).toString().trim()
+    const name = execFileSync("git", ["config", "user.name"], { cwd: root, ...GIT_SYNC }).toString().trim()
     const s = name
       .normalize("NFKD")
       .replace(/[̀-ͯ]/g, "")

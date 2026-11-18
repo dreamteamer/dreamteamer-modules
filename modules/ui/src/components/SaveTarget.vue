@@ -50,7 +50,7 @@ defineProps<{
 	gap: 6px;
 	margin: 0 0 16px;
 	padding: 8px 12px;
-	border-radius: var(--dt-radius, 6px);
+	border-radius: var(--dt-radius);
 	border: 1px solid var(--dt-border);
 	font-size: var(--dt-text);
 	color: var(--dt-fg-muted);

@@ -10,6 +10,9 @@ import { onMounted, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import RightSidebar from './components/RightSidebar.vue';
 import AppNav from './components/AppNav.vue';
+import ToastHost from './components/ToastHost.vue';
+import TabStrip from './components/TabStrip.vue';
+import SearchModal from './components/SearchModal.vue';
 import { hostNotify, hostSetState } from './api/transport';
 import { loadUiViews } from './ui-views';
 import { refreshSchema } from './lib/schema-refresh';
@@ -28,6 +31,8 @@ const router = useRouter();
 const route = useRoute();
 /** A host with no native tree (dt web) asks the app to draw the nav; VS Code never does. */
 const appNav = (window as any).__DT_HOST__?.nav === 'app';
+/** The browser shell draws its own pill tabs unless the host declares it draws tabs itself (VS Code: `tabs: true`). */
+const appTabs = appNav && (window as any).__DT_HOST__?.tabs !== true;
 
 // This tab's identity, mirrored into webview state on every change so a window reload restores
 // each tab on its own route with its own pinning (the host is the authority; we just persist).
@@ -102,13 +107,22 @@ onMounted(() => hostNotify('dt:ready'));
 </script>
 
 <template>
-	<div class="dt-shell">
+	<div class="dt-shell" :class="{ 'dt-shell--app': appNav, 'dt-shell--tabs': appTabs }">
 		<!-- the nav, and on a pane host its switcher and level in the nav's toolbar (no bar above the page) -->
 		<AppNav v-if="appNav" />
-		<main class="dt-page-area">
-			<router-view />
+		<main class="dt-page-area" :class="{ 'dt-page-area--tabs': appTabs }">
+			<template v-if="appTabs">
+				<TabStrip />
+				<!-- the page scrolls under the strip, which stays put -->
+				<div class="dt-page-scroll"><router-view /></div>
+			</template>
+			<router-view v-else />
 		</main>
 		<RightSidebar />
+		<!-- the browser host's shell reports writes as toasts (cr-modules-022); the editor has its own notifications -->
+		<ToastHost v-if="appNav" />
+		<!-- Cmd/Ctrl-K: one search across the nav's collections (cr-modules-022); the editor has its own quick open -->
+		<SearchModal v-if="appTabs" />
 		<!-- cr-modules-017: a 401 from any request means the session is gone; the chat is where a person gets back in -->
 		<div v-if="signedOut" class="dt-signed-out" role="alert">
 			<p>{{ SIGNED_OUT }}</p>
@@ -129,6 +143,39 @@ onMounted(() => hostNotify('dt:ready'));
 	display: flex;
 	flex-direction: column;
 	background: var(--dt-bg);
+	overflow-y: auto;
+}
+
+/* The browser host's shell (cr-modules-022): the nav sits on the warm canvas and the page is a sheet laid on it —
+   a rounded top-left corner, a hairline ring and a soft shadow instead of a border line between the two. Only under a
+   host that draws the app's own nav (dt web); inside VS Code the page area is the whole webview, as before. The 8px
+   above both keeps the nav's toolbar and the page's first header row one band, and lets the corner read. */
+.dt-shell--app {
+	padding-top: var(--dt-space-2);
+	background: var(--dt-canvas);
+}
+
+.dt-shell--app .dt-page-area {
+	position: relative;
+	background: var(--dt-surface);
+	border-top-left-radius: var(--dt-radius-sheet);
+	box-shadow: var(--dt-shadow-sheet);
+}
+
+.dt-shell--tabs {
+	/* the slide-over right panel opens under the 32px tab strip (RightSidebar.vue) */
+	--dt-rsb-top: calc(var(--dt-space-2) + 32px);
+}
+
+.dt-page-area--tabs {
+	overflow: hidden;
+}
+
+.dt-page-scroll {
+	flex: 1;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
 	overflow-y: auto;
 }
 

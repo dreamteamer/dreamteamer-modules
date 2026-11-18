@@ -43,6 +43,7 @@
 	card's own column only.
 -->
 <script setup lang="ts">
+import { reported } from '../lib/toasts';
 import { computed, ref } from 'vue';
 import type { BrowseState } from '../composables/browse-state';
 import { rowContext } from '../lib/vscode-context';
@@ -318,7 +319,11 @@ async function onDrop(column: Column): Promise<void> {
 	saving.value = true;
 	moveError.value = null;
 	try {
-		await api.patch(`/items/${encodeURIComponent(props.state.collection)}/${encodeURIComponent(pk)}`, { [field.field]: next });
+		await reported(
+			() => api.patch(`/items/${encodeURIComponent(props.state.collection)}/${encodeURIComponent(pk)}`, { [field.field]: next }),
+			`Moved to ${column.ungrouped ? `no ${field.field}` : column.value}`,
+			'The card was not moved',
+		);
 		await props.state.items.reload();
 	} catch (error) {
 		// The engine validates on write, so a rejected move is real information (a required field, a
@@ -506,7 +511,7 @@ async function onDrop(column: Column): Promise<void> {
 .dt-kanban-core-lane-count {
 	margin-left: auto;
 	padding: 0 8px;
-	border-radius: 999px;
+	border-radius: var(--dt-radius-pill);
 	border: 1px solid var(--dt-border-strong);
 	background: var(--dt-bg);
 	font-size: var(--dt-label);
@@ -532,7 +537,7 @@ async function onDrop(column: Column): Promise<void> {
 .dt-kanban-core-col.is-drop { border-color: var(--dt-accent); }
 /* Insertion gaps. Nearly invisible until hovered — they exist only during a drag, and a permanent
    4px band between every card would read as a layout bug rather than as a target. */
-.dt-kanban-core-slot { height: 8px; margin: -2px 0; border-radius: 2px; }
+.dt-kanban-core-slot { height: 8px; margin: -2px 0; border-radius: var(--dt-radius-2xs); }
 .dt-kanban-core-slot--end { height: 24px; }
 .dt-kanban-core-slot.is-over { background: var(--dt-accent); height: 3px; margin: 0.5rem 0; }
 /* The ungrouped bucket is a real column but not a real value — a dashed edge says "dropping here
@@ -541,7 +546,7 @@ async function onDrop(column: Column): Promise<void> {
 /* `flex: 0 0 auto` — the header never shrinks and never scrolls away. */
 .dt-kanban-core-header { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; padding: 2px 0 10px 4px; font-size: var(--dt-label); font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--dt-fg-subtle); }
 .dt-kanban-core-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dt-kanban-core-count { margin-left: auto; padding: 0 8px; border-radius: 999px; border: 1px solid var(--dt-border-strong); background: var(--dt-bg); font-size: var(--dt-label); font-weight: 600; }
+.dt-kanban-core-count { margin-left: auto; padding: 0 8px; border-radius: var(--dt-radius-pill); border: 1px solid var(--dt-border-strong); background: var(--dt-bg); font-size: var(--dt-label); font-weight: 600; }
 /* Always present (it is an affordance, not an easter egg), but quiet: a ghost icon button that
    comes up to full strength on column hover so it never competes with the page header's own
    accent-filled create action. */

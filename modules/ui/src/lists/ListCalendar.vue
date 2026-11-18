@@ -139,9 +139,9 @@ const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 .dt-cal-weekday { background: var(--dt-bg-subtle); padding: 6px 8px; font-size: var(--dt-label); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--dt-fg-subtle); }
 .dt-cal-cell { background: var(--dt-bg); min-height: 96px; padding: 6px; }
 .dt-cal-cell.is-out { background: var(--dt-bg-subtle); opacity: 0.6; }
-.dt-cal-cell.is-today .dt-cal-day { background: var(--dt-accent); color: #fff; }
-.dt-cal-day { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 999px; font-size: var(--dt-text); margin-bottom: 4px; }
-.dt-cal-chip { background: var(--dt-bg-subtle); border: 1px solid var(--dt-border); border-radius: 4px; padding: 2px 6px; margin-bottom: 3px; font-size: var(--dt-label); cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dt-cal-cell.is-today .dt-cal-day { background: var(--dt-accent); color: var(--dt-on-accent); }
+.dt-cal-day { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: var(--dt-radius-pill); font-size: var(--dt-text); margin-bottom: 4px; }
+.dt-cal-chip { background: var(--dt-bg-subtle); border: 1px solid var(--dt-border); border-radius: var(--dt-radius-sm); padding: 2px 6px; margin-bottom: 3px; font-size: var(--dt-label); cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dt-cal-chip:hover { border-color: var(--dt-accent); }
 .dt-cal-more { font-size: var(--dt-label); color: var(--dt-fg-subtle); }
 </style>

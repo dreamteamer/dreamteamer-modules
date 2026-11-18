@@ -248,7 +248,7 @@ const openRowMenu = async (root: TestNode) => {
 	(row.props['onContextmenu'] as (e: unknown) => void)({ clientX: 40, clientY: 60, preventDefault() {}, stopPropagation() {} });
 	await flush();
 };
-const navMenus = (root: TestNode) => all(root, (n) => n.props['class'] === 'dt-nav-menu').length;
+const navMenus = (root: TestNode) => all(root, (n) => hasClass(n, 'dt-nav-menu')).length;
 
 test('the switcher\'s last entry is Settings, which opens the workspace settings; in the pane the name opens the switcher', async () => {
 	const r = router();

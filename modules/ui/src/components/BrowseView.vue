@@ -665,9 +665,9 @@ async function onConfirmDelete(): Promise<void> {
 	min-width: 16px;
 	height: 16px;
 	padding: 0 4px;
-	border-radius: 999px;
+	border-radius: var(--dt-radius-pill);
 	background: var(--dt-accent);
-	color: #fff;
+	color: var(--dt-on-accent);
 	font-size: var(--dt-label);
 	font-weight: 700;
 }
@@ -787,10 +787,10 @@ async function onConfirmDelete(): Promise<void> {
 	border-radius: var(--dt-radius);
 	background: var(--dt-bg-subtle);
 	color: var(--dt-fg-muted);
-	font-size: 12px;
+	font-size: var(--dt-text-sm);
 }
 .dt-browse-degraded .codicon {
-	font-size: 16px;
+	font-size: var(--dt-icon);
 	color: var(--dt-warning);
 }
 .dt-browse-error {

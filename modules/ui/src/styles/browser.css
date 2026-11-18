@@ -33,6 +33,50 @@
 	--dt-color-terminal-ansiBrightWhite: #a5a5a5;
 }
 
+/* The WARM LIGHT set (2026-11-16, cr-modules-021): a warm off-white canvas, a white sheet, and every hairline and
+   fill an alpha of one warm ink — the browser host's own look. Our accent (#6644ff) and Inter stay. Browser-only,
+   like the dark set below: tokens.css gives each of these a neutral default that VS Code maps onto its theme. */
+:root {
+	--dt-ink: 34 30 27;
+	--dt-ink-1: rgb(var(--dt-ink) / 0.03);
+	--dt-ink-2: rgb(var(--dt-ink) / 0.05);
+	--dt-ink-3: rgb(var(--dt-ink) / 0.075);
+	--dt-ink-4: rgb(var(--dt-ink) / 0.1);
+	--dt-ink-5: rgb(var(--dt-ink) / 0.15);
+
+	--dt-fg: #1e1b19;
+	--dt-fg-subtle: #615c57;
+	--dt-fg-muted: #9b958e;
+
+	--dt-canvas: #f5f3ef;
+	--dt-bg: #ffffff;
+	--dt-surface: var(--dt-bg);
+	--dt-bg-subtle: #f3f1ed;
+	--dt-subtle: var(--dt-bg-subtle);
+	--dt-fill: #ece9e4;
+	--dt-bg-hover: #efece8;
+	--dt-bg-active: #e8e5e0;
+
+	--dt-border: rgb(var(--dt-ink) / 0.09);
+	--dt-border-strong: rgb(var(--dt-ink) / 0.16);
+	--dt-hairline: rgb(var(--dt-ink) / 0.07);
+	--dt-accent-tint: color-mix(in srgb, var(--dt-accent) 8%, transparent);
+
+	--dt-radius-lg: 10px;
+	--dt-menu-radius: 10px;
+	--dt-menu-border: rgb(var(--dt-ink) / 0.08);
+
+	--dt-shadow: 0 1px 2px rgb(var(--dt-ink) / 0.05), 0 1px 4px rgb(var(--dt-ink) / 0.04);
+	--dt-shadow-lg: 0 0 0 1px rgb(var(--dt-ink) / 0.05), 0 12px 32px -8px rgb(var(--dt-ink) / 0.22);
+	--dt-shadow-card: 0 0 0 1px rgb(var(--dt-ink) / 0.07), 0 1px 2px rgb(var(--dt-ink) / 0.04), 0 8px 20px -10px rgb(var(--dt-ink) / 0.14);
+	--dt-shadow-sheet: 0 0 0 1px rgb(var(--dt-ink) / 0.06), 0 6px 22px rgb(var(--dt-ink) / 0.05);
+	--dt-shadow-menu: 0 0 0 1px rgb(var(--dt-ink) / 0.04), 0 2px 6px rgb(var(--dt-ink) / 0.06), 0 12px 28px -6px rgb(var(--dt-ink) / 0.2);
+	--dt-backdrop: rgb(var(--dt-ink) / 0.24);
+
+	--dt-focus-outline: 2px solid color-mix(in srgb, var(--dt-focus-ring) 55%, transparent);
+	--dt-focus-offset: 1px;
+}
+
 @media (prefers-color-scheme: dark) {
 	:root {
 		--dt-color-charts-red: #f14c4c;
@@ -64,32 +108,67 @@
 
 /* The DARK token set — what a browser host draws when the system asks for dark. Here and not in
    tokens.css: VS Code maps most colour tokens onto the editor theme in vscode.css, but not all of them, so a
-   dark set the VS Code entry loaded would change the editor's look on a dark OS. */
+   dark set the VS Code entry loaded would change the editor's look on a dark OS.
+   Warm since 2026-11-16 (cr-modules-021): a near-black canvas with a brown cast, the sheet one step up, and every
+   hairline an alpha of a warm white ink. */
 @media (prefers-color-scheme: dark) {
 	:root {
+		--dt-ink: 255 248 236;
+		--dt-ink-1: rgb(var(--dt-ink) / 0.03);
+		--dt-ink-2: rgb(var(--dt-ink) / 0.05);
+		--dt-ink-3: rgb(var(--dt-ink) / 0.075);
+		--dt-ink-4: rgb(var(--dt-ink) / 0.1);
+		--dt-ink-5: rgb(var(--dt-ink) / 0.15);
 		--dt-accent: #8a73ff;
 		--dt-accent-hover: #9d8aff;
 		--dt-accent-subtle: #2a2350;
+		--dt-accent-tint: color-mix(in srgb, var(--dt-accent) 16%, transparent);
 		--dt-link: #6ea8ff;
 		--dt-link-hover: #93beff;
-		--dt-module-bg: #0f151d;
-		--dt-module-fg: #7d8ea6;
+		--dt-module-bg: #121110;
+		--dt-module-fg: #8f887e;
 		--dt-module-fg-active: #ffffff;
-		--dt-module-bg-active: #1b2533;
-		--dt-fg: #e3e9f1;
-		--dt-fg-subtle: #9aa9bd;
-		--dt-fg-muted: #66768c;
-		--dt-bg: #141a22;
-		--dt-bg-subtle: #1b222c;
-		--dt-bg-hover: #232c38;
-		--dt-bg-active: #2a3442;
-		--dt-border: #2a3340;
-		--dt-border-strong: #3a4554;
+		--dt-module-bg-active: #2a2825;
+		--dt-fg: #ece7e0;
+		--dt-fg-subtle: #b0a99f;
+		--dt-fg-muted: #7f786f;
+		--dt-canvas: #141312;
+		--dt-bg: #1c1b19;
+		--dt-surface: var(--dt-bg);
+		--dt-bg-subtle: #22201e;
+		--dt-subtle: var(--dt-bg-subtle);
+		--dt-fill: #292724;
+		--dt-bg-hover: #2a2825;
+		--dt-bg-active: #322f2c;
+		--dt-border: rgb(var(--dt-ink) / 0.09);
+		--dt-border-strong: rgb(var(--dt-ink) / 0.16);
+		--dt-hairline: rgb(var(--dt-ink) / 0.07);
+		--dt-menu-border: rgb(var(--dt-ink) / 0.1);
 		--dt-focus-ring: #8a73ff;
 		--dt-danger: #ff6b81;
 		--dt-success: #38d9b4;
 		--dt-warning: #ffb45c;
-		--dt-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
-		--dt-shadow-lg: 0 4px 24px rgba(0, 0, 0, 0.5);
+		--dt-shadow: 0 1px 4px rgb(0 0 0 / 0.4);
+		--dt-shadow-lg: 0 0 0 1px rgb(var(--dt-ink) / 0.06), 0 12px 32px -6px rgb(0 0 0 / 0.6);
+		--dt-shadow-card: 0 0 0 1px rgb(var(--dt-ink) / 0.07), 0 8px 20px -10px rgb(0 0 0 / 0.5);
+		--dt-shadow-sheet: 0 0 0 1px rgb(var(--dt-ink) / 0.06), 0 8px 24px rgb(0 0 0 / 0.35);
+		--dt-shadow-menu: 0 0 0 1px rgb(var(--dt-ink) / 0.08), 0 12px 28px -6px rgb(0 0 0 / 0.6);
+		/* The slide-over panel's edge is a DARK hairline here: the menu's ring is the light ink, which along a panel's full
+		   height read as a faint light edge — and the sheet's own light ring showed just outside the panel's right side. A
+		   1px dark ring covers that one too. */
+		--dt-shadow-panel: 0 0 0 1px rgb(0 0 0 / 0.45), -8px 0 28px -6px rgb(0 0 0 / 0.6);
+		--dt-backdrop: rgb(0 0 0 / 0.5);
+	}
+}
+
+/* Reduced motion: nothing slides, fades or springs — the tokens are already zero (tokens.css), and this catches every
+   transition and animation that names its own time. Browser-only: VS Code has its own setting for this. */
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
 	}
 }

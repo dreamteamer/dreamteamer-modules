@@ -28,6 +28,7 @@
 		"**/*.d.ts",
 		"heldout/*.sidebar.ts",
 		"../modules/ui/test/unit/**",
-		"../modules/ui/test/webview/**"
+		"../modules/ui/test/webview/**",
+		"../modules/ui2/test/**"
 	]
 }

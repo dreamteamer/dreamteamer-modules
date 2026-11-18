@@ -234,7 +234,7 @@ async function onRegister(path: string): Promise<void> {
 }
 .dt-chip--disk {
 	background: color-mix(in srgb, var(--dt-success) 15%, transparent);
-	color: color-mix(in srgb, var(--dt-success) 80%, #000);
+	color: var(--dt-success-strong);
 	border-color: color-mix(in srgb, var(--dt-success) 30%, transparent);
 }
 .dt-chip--bundle {

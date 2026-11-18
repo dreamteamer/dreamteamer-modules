@@ -46,7 +46,7 @@ function onLoad(event: Event): void {
 	width: 32px;
 	height: 32px;
 	object-fit: cover;
-	border-radius: 4px;
+	border-radius: var(--dt-radius-sm);
 	border: 1px solid var(--dt-border);
 }
 .dt-display-image-empty {

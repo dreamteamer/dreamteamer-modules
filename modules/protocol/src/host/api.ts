@@ -2,6 +2,7 @@
 import * as fs from "node:fs"
 import * as path from "node:path"
 import { execFileSync } from "node:child_process"
+import { GIT_SYNC } from "./gitExec.ts"
 import { engine, refreshWorkspace } from "./engine.ts"
 import { listFolderImages } from "./listFolderImages.ts"
 import { contestedIds, fileToRecord, loadDescriptors, loadModules, repoOfPath, workspaceModule } from "./fsdata.ts"
@@ -48,7 +49,7 @@ export class WorkspaceApi {
     this.root = root
     this.reload()
     try {
-      const name = execFileSync("git", ["config", "user.name"], { cwd: root }).toString().trim()
+      const name = execFileSync("git", ["config", "user.name"], { cwd: root, ...GIT_SYNC }).toString().trim()
       this.operatorId = engine().slugOrHash(name)
     } catch {}
   }
@@ -752,7 +753,7 @@ export function gitHistoryMap(root, dirs, repoOf: (dir: string) => string = () =
     try {
       out = execFileSync("git", ["log", "--format=%x01%aI%x02%an", "--name-only", "--relative", "--", ...rels], {
         cwd,
-        stdio: ["ignore", "pipe", "ignore"],
+        ...GIT_SYNC,
       }).toString()
     } catch {
       continue
@@ -785,7 +786,7 @@ function gitLastCommit(root, file) {
   try {
     const out = execFileSync("git", ["log", "-1", "--format=%aI%x00%an%x00%s", "--", path.basename(file)], {
       cwd: path.dirname(file),
-      stdio: ["ignore", "pipe", "ignore"],
+      ...GIT_SYNC,
     })
       .toString()
       .trim()

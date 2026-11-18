@@ -99,7 +99,7 @@ const loading = computed(() => props.state.items.loading.value && !props.state.i
 	min-width: 72px;
 	padding: 6px 10px;
 	border: 1px solid var(--dt-border);
-	border-radius: 4px;
+	border-radius: var(--dt-radius-sm);
 	color: var(--dt-fg);
 	text-decoration: none;
 }
@@ -114,7 +114,7 @@ const loading = computed(() => props.state.items.loading.value && !props.state.i
 	border-color: var(--vscode-focusBorder, var(--dt-focus-ring));
 }
 .dt-counts__num {
-	font-size: calc(var(--dt-text) + 6px);
+	font-size: var(--dt-text-figure);
 	font-weight: 600;
 	font-variant-numeric: tabular-nums;
 	line-height: 1.2;

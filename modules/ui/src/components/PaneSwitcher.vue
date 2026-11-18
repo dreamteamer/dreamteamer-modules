@@ -5,14 +5,14 @@
  * on this machine, and a pick asks this server to hand the whole pane — nav and page — to that workspace's server
  * (`POST /_dt/handoff`), then goes to the URL it answers. Its last entry, Settings, opens the workspace settings (the
  * name's click off a pane host). The menu hangs from the toolbar's left; a refusal (the list, a handoff) shows inside
- * it. Keyboard: lib/menu-keys.ts. One nav menu at a time: lib/open-menu.ts.
+ * it. Keyboard: lib/menu-keys.ts, through DtMenu (the one menu). One nav menu at a time: lib/open-menu.ts.
  */
-import { computed, onUnmounted, ref, shallowRef, watch } from 'vue';
+import { computed, ref, shallowRef } from 'vue';
 import { useRouter } from 'vue-router';
 import { hostInfo } from '../lib/host-boot';
 import { paneFetch, paneMenu } from '../lib/pane-api';
 import { menuUnder, rectOf, viewportWidth } from '../lib/menu-place';
-import { menuKeys } from '../lib/menu-keys';
+import DtMenu from './DtMenu.vue';
 
 interface WorkspaceRow { id: string; name: string; running: boolean; current: boolean }
 
@@ -27,8 +27,6 @@ const router = useRouter();
 const name = computed(() => hostInfo.value?.workspace?.name || props.label || '');
 const open = computed(() => paneMenu.value === 'switch');
 const at = ref({ x: 0, y: 0 });
-/** A document to hang the menu in (the render test tier has none, and draws it in place). */
-const hasBody = typeof document !== 'undefined' && !!(document as { body?: unknown }).body;
 const workspaces = ref<WorkspaceRow[]>([]);
 const error = ref<string | null>(null);
 /** The list always holds the current workspace once `dt web open` registered it: the line says there is nothing else. */
@@ -38,10 +36,8 @@ const busy = ref(false);
 const loading = ref(false);
 
 const button = shallowRef<{ focus?: () => void } | null>(null);
-const menuEl = shallowRef<{ focus?: () => void } | null>(null);
-const itemEls = shallowRef<Array<{ focus?: () => void } | null>>([]);
-const settingsEl = shallowRef<{ focus?: () => void } | null>(null);
-const keys = menuKeys({ items: () => [...itemEls.value, settingsEl.value], menu: () => menuEl.value, button: () => button.value, close: () => { paneMenu.value = null; } });
+const menu = shallowRef<{ focusFirst?: () => void } | null>(null);
+const close = () => { paneMenu.value = null; };
 
 async function toggle(e: MouseEvent): Promise<void> {
 	if (open.value) { paneMenu.value = null; return; }
@@ -58,17 +54,18 @@ async function toggle(e: MouseEvent): Promise<void> {
 	} finally {
 		loading.value = false;
 	}
-	if (open.value) keys.opened();
+	// the items arrived after the menu opened: focus goes to the first now
+	if (open.value) menu.value?.focusFirst?.();
 }
 
 async function pick(w: WorkspaceRow): Promise<void> {
-	if (w.current || busy.value) { keys.done(); return; }
+	if (w.current || busy.value) { close(); return; }
 	busy.value = true;
 	error.value = null;
 	try {
 		const answer = await paneFetch('POST', '/_dt/handoff', { id: w.id });
 		if (typeof answer?.url === 'string') { paneMenu.value = null; window.location.href = answer.url; }
-		else keys.done();
+		else close();
 	} catch (err) {
 		error.value = (err as Error).message;
 	} finally {
@@ -80,14 +77,6 @@ function settings(): void {
 	paneMenu.value = null;
 	void router.push(SETTINGS);
 }
-
-// a click anywhere else closes the menu (the button and the menu stop their own clicks)
-const away = () => { if (open.value) paneMenu.value = null; };
-watch(open, (on) => {
-	if (on) window.addEventListener('click', away);
-	else window.removeEventListener('click', away);
-});
-onUnmounted(() => window.removeEventListener('click', away));
 </script>
 
 <template>
@@ -101,25 +90,22 @@ onUnmounted(() => window.removeEventListener('click', away));
 		@click.stop="toggle"
 	><span class="dt-pane-switch__name">{{ name }}</span><span class="codicon codicon-chevron-down dt-pane-switch__chevron" aria-hidden="true"></span></button>
 	<!-- in the body, so no ancestor of the nav (its toolbar, its overflow) can clip or cover it; in place where there is no body -->
-	<Teleport to="body" :disabled="!hasBody">
-		<div v-if="open" ref="menuEl" class="dt-pane-menu dt-pane-switch__menu" role="menu" tabindex="-1" :style="{ left: `${at.x}px`, top: `${at.y}px` }" @click.stop @keydown="keys.keydown" @focusin="keys.focusin">
+	<DtMenu v-if="open" ref="menu" teleport class="dt-pane-menu dt-pane-switch__menu" label="Switch workspace" :at="at" :trigger="button" :autofocus="false" @close="close" @click.stop>
 			<p v-if="error" class="dt-pane-menu__error" role="alert">{{ error }}</p>
 			<button
 				v-for="w in workspaces"
 				:key="w.id"
-				ref="itemEls"
 				type="button"
 				role="menuitemradio"
-				class="dt-pane-switch__item"
+				class="dt-menu-item dt-pane-switch__item"
 				:data-id="w.id"
 				:aria-checked="w.current ? 'true' : 'false'"
 				@click.stop="pick(w)"
 			>{{ w.name }} <span v-if="!w.current && !w.running" class="dt-pane-menu__muted">starts when opened</span></button>
 			<p v-if="loading" class="dt-pane-menu__hint dt-pane-switch__loading" role="status">Loading…</p>
 			<p v-else-if="!others && !error" class="dt-pane-menu__hint">No other workspace was opened on this machine</p>
-			<button ref="settingsEl" type="button" role="menuitem" class="dt-pane-switch__settings" @click.stop="settings">Settings</button>
-		</div>
-	</Teleport>
+			<button type="button" role="menuitem" class="dt-menu-item dt-pane-switch__settings" @click.stop="settings">Settings</button>
+	</DtMenu>
 </template>
 
 <style scoped>
@@ -127,7 +113,7 @@ onUnmounted(() => window.removeEventListener('click', away));
 .dt-pane-switch { display: inline-flex; align-items: center; gap: 2px; flex: 0 1 auto; min-width: 30px; max-width: 100%; height: 24px; padding: 0 4px; border: 0; border-radius: var(--dt-radius); background: transparent; color: var(--dt-fg); font: inherit; font-weight: 600; cursor: default; }
 .dt-pane-switch:hover, .dt-pane-switch[aria-expanded='true'] { background: var(--dt-bg-hover); }
 .dt-pane-switch__name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dt-pane-switch__chevron { flex: none; font-size: 12px; color: var(--dt-fg-subtle); }
+.dt-pane-switch__chevron { flex: none; font-size: var(--dt-text-sm); color: var(--dt-fg-subtle); }
 </style>
 
 <style>
@@ -139,11 +125,11 @@ onUnmounted(() => window.removeEventListener('click', away));
 .dt-nav .dt-nav-toolbar:has(> .dt-nav-toolbar__name > .dt-pane-switch) { flex-wrap: wrap; justify-content: flex-end; row-gap: 2px; padding-left: 6px; }
 .dt-nav .dt-nav-toolbar:has(> .dt-nav-toolbar__name > .dt-pane-switch) > .dt-nav-toolbar__buttons { display: contents; }
 .dt-nav .dt-nav-toolbar__name:has(> .dt-pane-switch) { flex: 1 0 30px; min-width: 30px; }
-/* The pane's two toolbar menus (this one and PaneLevel's): fixed, placed under their button inside the window. */
-.dt-pane-menu { position: fixed; z-index: 60; box-sizing: border-box; width: 220px; max-width: calc(100vw - 8px); display: flex; flex-direction: column; padding: 4px; border: 1px solid var(--dt-border-strong, var(--dt-border)); border-radius: var(--dt-radius); background: var(--dt-bg); box-shadow: var(--dt-shadow-lg, var(--dt-shadow)); font-size: var(--dt-text, 13px); font-weight: normal; outline: none; }
-.dt-pane-menu > button { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; border: 0; background: none; color: var(--dt-fg); padding: 4px 8px; border-radius: var(--dt-radius); cursor: default; font: inherit; }
-.dt-pane-menu > button:hover, .dt-pane-menu > button:focus-visible { background: var(--dt-bg-hover); outline: none; }
-.dt-pane-menu > button[aria-checked='true'] { font-weight: 600; }
+/* The pane's two toolbar menus (this one and PaneLevel's): DtMenu draws the surface and places them under their button
+   inside the window; these fix their width and keep a long workspace name to one line. */
+.dt-menu.dt-pane-menu { width: 220px; min-width: 0; max-width: calc(100vw - 8px); }
+.dt-pane-menu > .dt-menu-item { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: default; }
+.dt-pane-menu > .dt-menu-item[aria-checked='true'] { font-weight: 600; }
 .dt-pane-menu > .dt-pane-switch__settings { border-top: 1px solid var(--dt-border); border-radius: 0; margin-top: 2px; padding-top: 6px; }
 .dt-pane-menu__hint, .dt-pane-menu__muted, .dt-pane-menu__notice { color: var(--dt-fg-muted); margin: 0; }
 .dt-pane-menu__hint { padding: 4px 8px; border-top: 1px solid var(--dt-border); }
