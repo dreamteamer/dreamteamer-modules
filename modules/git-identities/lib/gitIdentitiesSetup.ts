@@ -4,12 +4,18 @@
 // only says whether a commit here would carry a name.
 import { spawnSync } from "node:child_process"
 
-const config = (ctx, key) => {
+/** What the engine hands a setup unit: the workspace root and the environment to run in. */
+interface SetupContext {
+  root: string
+  env?: NodeJS.ProcessEnv
+}
+
+const config = (ctx: SetupContext, key: string) => {
   const r = spawnSync("git", ["config", "--get", key], { cwd: ctx.root, env: ctx.env, encoding: "utf8" })
   return r.status === 0 ? (r.stdout ?? "").trim() : ""
 }
 
-export function inspect(ctx) {
+export function inspect(ctx: SetupContext) {
   const git = spawnSync("git", ["--version"], { env: ctx.env, encoding: "utf8" }).status === 0
   if (!git)
     return {
@@ -39,10 +45,14 @@ export function inspect(ctx) {
     ],
   }
 }
-export const plan = ctx => ({ checks: inspect(ctx).checks, actions: [], needs: [] })
-export const apply = (ctx, action) => ({
+export const plan = (ctx: SetupContext) => ({
+  checks: inspect(ctx).checks,
+  actions: [] as never[],
+  needs: [] as never[],
+})
+export const apply = (_ctx: SetupContext, action: { id: string }) => ({
   ok: false,
-  changed: [],
+  changed: [] as string[],
   message: `no action ${action.id} — an identity is chosen by the person (managing-git-identities)`,
 })
 export const SETUP_UNIT = Object.freeze({ id: "git-identities", version: 1, inputs: [], inspect, plan, apply })

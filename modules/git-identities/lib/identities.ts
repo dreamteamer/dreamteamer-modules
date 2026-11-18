@@ -3,25 +3,51 @@ import fs from "node:fs"
 import os from "node:os"
 import { spawnSync } from "node:child_process"
 
-function line(value, label) {
+/** One identity as the owner writes it; validateConfig checks every field. */
+export interface IdentityInput {
+  id?: string
+  sshAlias?: unknown
+  host?: unknown
+  root?: unknown
+  name?: unknown
+  email?: unknown
+  keyPath?: unknown
+}
+
+/** One validated identity. */
+export interface Identity {
+  id: string
+  root: string
+  name: string
+  email: string
+  sshAlias: string
+  host: string
+  keyPath: string
+  configPath: string
+}
+
+function line(value: unknown, label: string): string {
   if (typeof value !== "string" || !value.trim() || /[\x00-\x1f\x7f]/.test(value)) throw new Error(`Invalid ${label}`)
   return value
 }
-function absolute(value, home, label) {
-  value = line(value, label)
-  if (value.startsWith("~/")) value = path.join(home, value.slice(2))
-  if (!path.isAbsolute(value)) throw new Error(`${label} must be absolute or home-relative`)
-  return path.normalize(value)
+function absolute(value: unknown, home: string, label: string): string {
+  let p = line(value, label)
+  if (p.startsWith("~/")) p = path.join(home, p.slice(2))
+  if (!path.isAbsolute(p)) throw new Error(`${label} must be absolute or home-relative`)
+  return path.normalize(p)
 }
-const quote = value => JSON.stringify(value)
-const within = (root, candidate) => candidate === root || candidate.startsWith(root + path.sep)
+const quote = (value: string) => JSON.stringify(value)
+const within = (root: string, candidate: string) => candidate === root || candidate.startsWith(root + path.sep)
 
-export function validateConfig(input, { home = os.homedir() } = {}) {
+export function validateConfig(
+  input: { identities?: IdentityInput[] } | null | undefined,
+  { home = os.homedir() } = {}
+): Identity[] {
   if (!input || !Array.isArray(input.identities) || !input.identities.length)
     throw new Error("Provide a nonempty identities array")
-  const ids = new Set()
-  const aliases = new Set()
-  const rows = input.identities.map(r => {
+  const ids = new Set<string>()
+  const aliases = new Set<string>()
+  const rows = input.identities.map((r): Identity => {
     if (!r || !/^[a-z][a-z0-9-]*$/.test(r.id ?? "")) throw new Error("Invalid identity id")
     if (ids.has(r.id)) throw new Error("Duplicate identity id")
     ids.add(r.id)
@@ -55,7 +81,7 @@ export function validateConfig(input, { home = os.homedir() } = {}) {
 }
 
 /** Pure proposal: no configuration or key files are read or written. */
-export function renderPlan(input, options?) {
+export function renderPlan(input: { identities?: IdentityInput[] }, options?: { home?: string }) {
   const rows = validateConfig(input, options)
   return {
     warning:
@@ -82,15 +108,19 @@ export function renderPlan(input, options?) {
 }
 
 /** Local Git config checks only. Never invokes SSH or reads key contents. */
-export function inspectRepository(repo, input, { home = os.homedir(), env = process.env } = {}) {
+export function inspectRepository(
+  repo: string,
+  input: { identities?: IdentityInput[] },
+  { home = os.homedir(), env = process.env } = {}
+) {
   const rows = validateConfig(input, { home })
   const cwd = path.resolve(repo)
-  const run = args =>
+  const run = (args: string[]) =>
     spawnSync("git", args, { cwd, env, encoding: "utf8", timeout: 5000, stdio: ["ignore", "pipe", "ignore"] })
   const top = run(["rev-parse", "--show-toplevel"])
   if (top.error || top.status !== 0)
     return { state: "unavailable", reason: "Not a readable local Git working tree, or Git unavailable" }
-  const canonical = p => {
+  const canonical = (p: string) => {
     try {
       return fs.realpathSync(p)
     } catch {
@@ -99,7 +129,7 @@ export function inspectRepository(repo, input, { home = os.homedir(), env = proc
   }
   const selected = rows.find(r => within(canonical(r.root), canonical(top.stdout.trim())))
   if (!selected) return { state: "unconfigured", reason: "Repository is outside configured identity roots" }
-  const value = key => {
+  const value = (key: string) => {
     const r = run(["config", "--get", key])
     return r.status === 0 ? r.stdout.trim() : null
   }
