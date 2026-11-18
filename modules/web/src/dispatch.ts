@@ -11,8 +11,8 @@ export const PREFIXES = [
   { kind: "frames", prefix: "/_frames/" },
 ]
 
-/** @param {string} pathname the request's path as it arrived, query removed @returns {string|null} */
-export function classify(pathname) {
+/** `pathname` is the request's path as it arrived, query removed. */
+export function classify(pathname: unknown): string | null {
   if (typeof pathname !== "string") return null
   for (const p of PREFIXES) {
     if (p.exact !== undefined ? pathname === p.exact : pathname.startsWith(p.prefix)) return p.kind

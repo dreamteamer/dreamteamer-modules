@@ -8,7 +8,7 @@ let out = ""
 try {
   const { runHook, HOOK_BUDGET_MS } = await import("../src/hook.ts")
   const t0 = Date.now()
-  const chunks = []
+  const chunks: Buffer[] = []
   await new Promise(resolve => {
     process.stdin.on("data", c => chunks.push(c))
     process.stdin.on("end", resolve)

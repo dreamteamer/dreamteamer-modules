@@ -7,6 +7,7 @@
 import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
+import type { PaneLevel, PaneView, QueueItem } from "@dreamteamer/protocol/pane"
 import { alive, privateDir, workspaceKey, writingInto } from "./runtime.ts"
 
 export { workspaceKey }
@@ -20,8 +21,44 @@ export function stateDir(env = process.env, platform = process.platform, home = 
   return path.join(home, ".local", "state", "dreamteamer", "web")
 }
 
+/** The pane's persisted part: place, selection, queue and where it moved. */
+export interface PaneState {
+  view: PaneView | null
+  refs: string[]
+  place: string | null
+  at: string | null
+  queue: QueueItem[]
+  connectedAt: string | null
+  movedTo: unknown
+}
+
+/** A client token as the state file keeps it: its hash and its level, never the token. */
+export interface ClientToken {
+  sha256: string
+  level: PaneLevel
+  [key: string]: unknown
+}
+
+/** One workspace's state file. */
+export interface WorkspaceState {
+  port: number | null
+  level: PaneLevel
+  raisedAt: string | null
+  hookSeenAt: string | null
+  clientTokens: ClientToken[]
+  pane: PaneState
+}
+
+/** One registered workspace. */
+export interface RegistryEntry {
+  id: string
+  root: string
+  name: string
+  lastOpened?: string
+}
+
 const LEVELS = new Set(["read", "edit", "admin"])
-const PANE = { view: null, refs: [], place: null, at: null, queue: [], connectedAt: null, movedTo: null }
+const PANE: PaneState = { view: null, refs: [], place: null, at: null, queue: [], connectedAt: null, movedTo: null }
 export const DEFAULT_STATE = Object.freeze({
   port: null,
   level: "edit",
@@ -30,15 +67,15 @@ export const DEFAULT_STATE = Object.freeze({
   clientTokens: Object.freeze([]),
   pane: Object.freeze({ ...PANE, refs: Object.freeze([]), queue: Object.freeze([]) }),
 })
-const defaults = () => ({ ...DEFAULT_STATE, clientTokens: [], pane: { ...PANE, refs: [], queue: [] } })
+const defaults = (): WorkspaceState => ({ ...DEFAULT_STATE, clientTokens: [], pane: { ...PANE, refs: [], queue: [] } })
 const HEX64 = /^[0-9a-f]{64}$/
-const isPlain = o => o !== null && typeof o === "object" && !Array.isArray(o)
-const validPort = p => Number.isInteger(p) && p > 0 && p < 65536
+const isPlain = (o: unknown): o is Record<string, any> => o !== null && typeof o === "object" && !Array.isArray(o)
+const validPort = (p: unknown): p is number => typeof p === "number" && Number.isInteger(p) && p > 0 && p < 65536
 
 // the state dir is this user's (runtime.js privateDir): tightened to 0700 when others can read it, never widened when
 // the person made it read-only — a write there fails naming the dir, chmod 700 and DT_WEB_STATE_DIR
-const ensureDir = dir => privateDir(dir, "DT_WEB_STATE_DIR")
-function writeFileAtomic(file, text) {
+const ensureDir = (dir: string) => privateDir(dir, "DT_WEB_STATE_DIR")
+function writeFileAtomic(file: string, text: string) {
   const dir = path.dirname(file)
   ensureDir(dir)
   const tmp = `${file}.${process.pid}.${Math.random().toString(16).slice(2)}.tmp`
@@ -48,11 +85,11 @@ function writeFileAtomic(file, text) {
   })
 }
 
-export const workspaceStateFile = (root, dir = stateDir()) => path.join(dir, `${workspaceKey(root)}.json`)
+export const workspaceStateFile = (root: string, dir = stateDir()) => path.join(dir, `${workspaceKey(root)}.json`)
 
 /** The workspace's state; the defaults when absent or unreadable. A file that parses keeps each part that has the
  *  right shape (a port, a level, …); a half-written one reads as the defaults, and the next write replaces it. */
-export function readWorkspaceState(root, dir = stateDir()) {
+export function readWorkspaceState(root: string, dir = stateDir()): WorkspaceState {
   const out = defaults()
   let text
   try {
@@ -71,32 +108,34 @@ export function readWorkspaceState(root, dir = stateDir()) {
   if (!isPlain(raw)) return out
   if (validPort(raw.port)) out.port = raw.port
   if (LEVELS.has(raw.level)) out.level = raw.level
-  for (const k of ["raisedAt", "hookSeenAt"]) if (typeof raw[k] === "string") out[k] = raw[k]
+  for (const k of ["raisedAt", "hookSeenAt"] as const) if (typeof raw[k] === "string") out[k] = raw[k]
   // a `sessions` key (an earlier candidate's) is never read, and the next write drops it
   if (Array.isArray(raw.clientTokens))
-    out.clientTokens = raw.clientTokens.filter(t => isPlain(t) && HEX64.test(String(t.sha256)) && LEVELS.has(t.level))
+    out.clientTokens = raw.clientTokens.filter(
+      (t: unknown) => isPlain(t) && HEX64.test(String(t.sha256)) && LEVELS.has(t.level)
+    )
   if (isPlain(raw.pane)) {
     const p = raw.pane
-    if (isPlain(p.view)) out.pane.view = p.view
-    if (Array.isArray(p.refs)) out.pane.refs = p.refs.filter(r => typeof r === "string")
-    for (const k of ["place", "at", "connectedAt"]) if (typeof p[k] === "string") out.pane[k] = p[k]
-    if (Array.isArray(p.queue)) out.pane.queue = p.queue.filter(isPlain)
+    if (isPlain(p.view)) out.pane.view = p.view as PaneView
+    if (Array.isArray(p.refs)) out.pane.refs = p.refs.filter((r: unknown) => typeof r === "string")
+    for (const k of ["place", "at", "connectedAt"] as const) if (typeof p[k] === "string") out.pane[k] = p[k]
+    if (Array.isArray(p.queue)) out.pane.queue = p.queue.filter(isPlain) as QueueItem[]
     if (isPlain(p.movedTo) || typeof p.movedTo === "string") out.pane.movedTo = p.movedTo
   }
   return out
 }
 
 /** Written whole, atomically: dir 0700, file 0600. Refuses a state that carries sessions: they live in memory only. */
-export function writeWorkspaceState(root, state, dir = stateDir()) {
+export function writeWorkspaceState(root: string, state: WorkspaceState, dir = stateDir()) {
   if (state && Object.hasOwn(state, "sessions"))
     throw new Error("the pane's sessions live in the server's memory only, never in the state file")
   writeFileAtomic(workspaceStateFile(root, dir), JSON.stringify(state, null, "\t") + "\n")
 }
 
-const registryFile = dir => path.join(dir, "registry.json")
+const registryFile = (dir: string) => path.join(dir, "registry.json")
 
 /** The registered workspaces, `[{ id, root, name, lastOpened }]`; `[]` when absent or unreadable. */
-export function readRegistry(dir = stateDir()) {
+export function readRegistry(dir = stateDir()): RegistryEntry[] {
   try {
     const raw = JSON.parse(fs.readFileSync(registryFile(dir), "utf8"))
     return Array.isArray(raw)
@@ -107,13 +146,13 @@ export function readRegistry(dir = stateDir()) {
   }
 }
 
-export function lookup(id, dir = stateDir()) {
+export function lookup(id: string, dir = stateDir()): RegistryEntry | null {
   return readRegistry(dir).find(e => e.id === id) ?? null
 }
 
 /** A registered workspace's name as its root holds it NOW: the folder may hold another workspace since `dt web open`
  *  registered it (same path, so the same id). The registered name when the root or its package.json is gone. */
-export function nameNow(entry) {
+export function nameNow(entry: { root: string; name: string }): string {
   try {
     const name = JSON.parse(fs.readFileSync(path.join(entry.root, "package.json"), "utf8")).name
     if (typeof name === "string" && name) return name
@@ -125,11 +164,11 @@ export function nameNow(entry) {
 
 const LOCK_TRIES = 20
 const LOCK_WAIT_MS = 50
-const sleep = ms => new Promise(r => setTimeout(r, ms))
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 
 /** Upsert a workspace by id under registry.json.lock (exclusive create, 20 tries × 50 ms). A lock whose
  *  process is gone is taken over; a live one past the last try is an error naming the registry. */
-export async function register({ root, name }, dir = stateDir(), now = Date.now) {
+export async function register({ root, name }: { root: string; name: string }, dir = stateDir(), now = Date.now) {
   ensureDir(dir)
   const lock = `${registryFile(dir)}.lock`
   for (let attempt = 0; attempt < LOCK_TRIES; attempt++) {

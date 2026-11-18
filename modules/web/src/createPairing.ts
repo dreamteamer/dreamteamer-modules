@@ -2,13 +2,14 @@
 // it is minted, carrying the route the page lands on and an optional level cap for the session it becomes. Held in
 // this process's memory only: a code minted before a restart is refused after it.
 import crypto from "node:crypto"
+import type { PaneLevel } from "@dreamteamer/protocol/pane"
 
 export const PAIR_TTL_MS = 60_000
 
 /** @returns {{ mint(o?: { route?: string, cap?: 'read'|'edit'|'admin'|null }): string, take(code: string): { route: string, cap: string|null } | null }} */
 export function createPairing({ ttlMs = PAIR_TTL_MS, now = Date.now } = {}) {
-  const codes = new Map()
-  const prune = t => {
+  const codes = new Map<string, { at: number; route: string; cap: PaneLevel | null }>()
+  const prune = (t: number) => {
     for (const [c, v] of codes) if (t - v.at >= ttlMs) codes.delete(c)
   }
   return {
@@ -19,7 +20,7 @@ export function createPairing({ ttlMs = PAIR_TTL_MS, now = Date.now } = {}) {
       codes.set(code, { route, cap, at: t })
       return code
     },
-    take(code) {
+    take(code: string) {
       if (typeof code !== "string" || !codes.has(code)) return null
       const v = codes.get(code)
       codes.delete(code)

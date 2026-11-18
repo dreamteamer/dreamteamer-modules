@@ -12,7 +12,7 @@ import { lookup, nameNow, readRegistry, readWorkspaceState } from "./state.ts"
 
 const TARGET_BIN = path.join("node_modules", "@dreamteamer", "web", "dist", "bin", "dt-web.js")
 /** Running = the server its runtime file names proves it is that server (runtime.js `probeServer`), not a live pid. */
-const isRunning = async (root, rdir) => {
+const isRunning = async (root: string, rdir: string) => {
   try {
     return (await probeServer(stateFile(root, rdir), { timeoutMs: 1000 }))?.proven === true
   } catch {
@@ -21,7 +21,15 @@ const isRunning = async (root, rdir) => {
 }
 
 /** `GET /_dt/workspaces`: `[{ id, name, running, current }]` — never a root path. */
-export async function listWorkspaces({ selfId, stateDir, runtimeDir = defaultRuntimeDir() }) {
+export async function listWorkspaces({
+  selfId,
+  stateDir,
+  runtimeDir = defaultRuntimeDir(),
+}: {
+  selfId: string
+  stateDir: string
+  runtimeDir?: string
+}) {
   return Promise.all(
     readRegistry(stateDir).map(async e => ({
       id: e.id,
@@ -33,7 +41,7 @@ export async function listWorkspaces({ selfId, stateDir, runtimeDir = defaultRun
 }
 
 /** What a registered root lacks to be handed the pane, or null. */
-export function missingFor(root) {
+export function missingFor(root: string): string | null {
   let pkg = null
   try {
     pkg = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"))
@@ -50,8 +58,6 @@ export function missingFor(root) {
 /**
  * `POST /_dt/handoff { id }`. → `{ status, body }`: 200 `{ url }`, 404 for an id never registered, 409 for a root
  * that cannot serve, 400 for this workspace itself, 502 when the target did not pair.
- * @param {{ id: unknown, pageLevel: 'read'|'edit'|'admin', selfId: string, stateDir: string, runtimeDir?: string,
- *           moved: (to: { name: string, at: string }) => void, now?: () => number }} o
  */
 export async function handoff({
   id,
@@ -61,6 +67,14 @@ export async function handoff({
   runtimeDir = defaultRuntimeDir(),
   moved,
   now = Date.now,
+}: {
+  id: unknown
+  pageLevel: "read" | "edit" | "admin"
+  selfId: string
+  stateDir: string
+  runtimeDir?: string
+  moved: (to: { name: string; at: string }) => void
+  now?: () => number
 }) {
   const found = typeof id === "string" && /^[0-9a-f]{16}$/.test(id) ? lookup(id, stateDir) : null
   if (!found) return { status: 404, body: { error: `no workspace ${String(id)} was opened on this machine` } }

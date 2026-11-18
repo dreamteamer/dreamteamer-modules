@@ -11,7 +11,7 @@ export const FRAME_KINDS = new Set(["registry", "app", "list", "edit", "view", "
 const NAME = /^[a-z0-9@][a-z0-9._-]*$/i
 
 /** The guest @dreamteamer/ui builds (dist/guest/guest.js + guest.css), or null when that package is absent. */
-export function resolveGuest(from) {
+export function resolveGuest(from: string) {
   try {
     const req = createRequire(path.join(from, "package.json"))
     const js = req.resolve("@dreamteamer/ui/dist/guest/guest.js")
@@ -22,12 +22,17 @@ export function resolveGuest(from) {
   }
 }
 
-/**
- * The frame route startWeb serves under /_frames/<key>/: the segments after the key are [module, "<kind>.html"].
- * @param {{ root: string, appPort: () => number, guest: {guestText: string, styleText?: string} | null }} o
- */
-export function moduleFrameRoute({ root, appPort, guest }) {
-  return (segments, _req?) => {
+/** The frame route startWeb serves under /_frames/<key>/: the segments after the key are [module, "<kind>.html"]. */
+export function moduleFrameRoute({
+  root,
+  appPort,
+  guest,
+}: {
+  root: string
+  appPort: () => number
+  guest: { guestText: string; styleText?: string } | null
+}) {
+  return (segments: string[], _req?: unknown) => {
     if (segments.length !== 2) return null
     const [module, file] = segments
     const kind = file.endsWith(".html") ? file.slice(0, -5) : ""

@@ -1,5 +1,6 @@
 // The engine extension: `dt web …` (cli.js's grammar), `dt serve` — a client token of the pane's own server, the
 // one process (cr-modules-017 §8) — and a `web` row in `dt doctor`: running or not, the level, and the hook.
+import type { Contribution, DoctorRow } from "dreamteamer"
 import { main, parseArgs, USAGE } from "./cli.ts"
 import { hookInstalled } from "./hook.ts"
 import { probeServer, stateFile } from "./runtime.ts"
@@ -12,7 +13,7 @@ const WEB_USAGE = `  web [open|show|select|selection|hook|token|list|revoke|stat
 const SERVE_USAGE =
   "  serve [--read|--edit] [--name <n>]   a client token and the API base of this workspace's dt web server (dt web token)"
 
-export default function activate() {
+export default function activate(): Contribution {
   return {
     commands: {
       web: {
@@ -47,7 +48,7 @@ export default function activate() {
         /* unreadable: the default */
       }
       const word = level[0].toUpperCase() + level.slice(1)
-      const rows = [
+      const rows: DoctorRow[] = [
         p?.state === "silent"
           ? {
               label: "web",

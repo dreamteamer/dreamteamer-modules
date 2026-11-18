@@ -28,6 +28,7 @@ import {
   stateFile,
   workspaceKey,
   writeState,
+  type Probe,
 } from "./runtime.ts"
 import { nameNow, readRegistry, readWorkspaceState, register, stateDir, writeWorkspaceState } from "./state.ts"
 import { hookInstalled, installHook } from "./hook.ts"
@@ -53,7 +54,7 @@ const VERBS = new Set([
   "start",
 ])
 /** Each verb's flags: `level` (one of --read/--edit/--admin), `true` (a switch) or `value` (takes one). */
-const FLAGS = {
+const FLAGS: Record<string, Record<string, string | true>> = {
   open: { "--read": "level", "--edit": "level", "--admin": "level", "--browser": true },
   show: {},
   select: { "--clear": true },
@@ -66,7 +67,7 @@ const FLAGS = {
   stop: { "--revoke": true, "--force": true },
   start: { "--foreground": true, "--port": "value", "--idle": "value", "--owner-pid": "value" },
 }
-const SWITCH = {
+const SWITCH: Record<string, string> = {
   "--browser": "browser",
   "--clear": "clear",
   "--json": "json",
@@ -76,25 +77,25 @@ const SWITCH = {
   "--foreground": "foreground",
 }
 const START_WAIT_MS = 10_000
-const LEVEL_WORD = l => l[0].toUpperCase() + l.slice(1)
-const bad = why => {
+const LEVEL_WORD = (l: string) => l[0].toUpperCase() + l.slice(1)
+const bad = (why: string) => {
   const e: Error & { usage?: boolean } = new Error(`${why} — ${USAGE}`)
   e.usage = true
   return e
 }
-const wholeNumber = (flag, v, max = Infinity) => {
+const wholeNumber = (flag: string, v: string | undefined, max = Infinity) => {
   if (v === undefined || !/^\d+$/.test(v) || Number(v) > max)
     throw bad(`${flag} needs a whole number${max < Infinity ? ` up to ${max}` : ""}`)
   return Number(v)
 }
 
 /** → { cmd, target?, refs?, clear?, level?, name?, token?, revoke?, browser?, foreground?, port?, idle?, ownerPid?, json?, install? } */
-export function parseArgs(argv, env = process.env) {
+export function parseArgs(argv: string[], env = process.env): Record<string, any> {
   const args = [...argv]
   const cmd = args.length && !args[0].startsWith("-") ? args.shift() : "open"
   if (!VERBS.has(cmd)) throw bad(`dt web has no verb "${cmd}"`)
   const out: Record<string, any> = { cmd }
-  const positional = []
+  const positional: string[] = []
   const flags = FLAGS[cmd]
   for (let i = 0; i < args.length; i++) {
     const a = args[i]
@@ -138,9 +139,34 @@ export function parseArgs(argv, env = process.env) {
   return out
 }
 
-const sleep = ms => new Promise(r => setTimeout(r, ms))
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 /** A request to the running server under its control token: → { status, body } (status 0 when it did not answer). */
-async function ask(rt, method, p, body?, timeoutMs = 10_000) {
+/** The running server as a verb talks to it. */
+interface Running {
+  port: number
+  controlToken: string
+  pid: number
+  movedFrom?: number
+  owner?: number | null
+  idle?: unknown
+}
+
+/** A verb's context: where it logs, its environment, and how it reaches the server. */
+interface VerbContext {
+  log: (line: string) => void
+  env: NodeJS.ProcessEnv
+  appDir?: string
+  sdir?: string
+  ensure?: () => Promise<Running>
+}
+
+async function ask(
+  rt: { port: number; controlToken: string },
+  method: string,
+  p: string,
+  body?: unknown,
+  timeoutMs = 10_000
+): Promise<{ status: number; body: Record<string, any> | null }> {
   try {
     const r = await fetch(`http://127.0.0.1:${rt.port}${p}`, {
       method,
@@ -151,7 +177,7 @@ async function ask(rt, method, p, body?, timeoutMs = 10_000) {
       body: body !== undefined ? JSON.stringify(body) : undefined,
       signal: AbortSignal.timeout(timeoutMs),
     })
-    let json = null
+    let json: Record<string, any> | null = null
     try {
       json = await r.json()
     } catch {
@@ -162,24 +188,36 @@ async function ask(rt, method, p, body?, timeoutMs = 10_000) {
     return { status: 0, body: null }
   }
 }
-const fileOf = (root, env) => stateFile(root, runtimeDir(env))
+const fileOf = (root: string, env: NodeJS.ProcessEnv) => stateFile(root, runtimeDir(env))
 /** The workspace's server when it proves it is the runtime file's: `{ port, controlToken, pid, movedFrom }`, else null. */
 /** What a verb that needs the server throws when a live server does not answer: it prints the line and exits 1. */
 class NotAnswering extends Error {
   declare notAnswering: boolean
-  constructor(p) {
+  constructor(p: { pid: number; port: number }) {
     super(notAnsweringLine(p))
     this.notAnswering = true
   }
 }
-const current = async (root, env, timeoutMs = 2000, { refuseSilent = true } = {}) => {
+const current = async (
+  root: string,
+  env: NodeJS.ProcessEnv,
+  timeoutMs = 2000,
+  { refuseSilent = true } = {}
+): Promise<Running | null> => {
   const p = await probeServer(fileOf(root, env), { timeoutMs })
   if (p?.state === "silent" && refuseSilent) throw new NotAnswering(p)
   return p?.proven && typeof p.token === "string"
-    ? { port: p.port, controlToken: p.token, pid: p.pid, movedFrom: p.movedFrom, owner: p.owner ?? null, idle: p.idle }
+    ? {
+        port: p.port,
+        controlToken: p.token,
+        pid: p.pid,
+        movedFrom: p.movedFrom as number | undefined,
+        owner: (p.owner as number | null) ?? null,
+        idle: p.idle,
+      }
     : null
 }
-const failed = (log, r) => {
+const failed = (log: (line: string) => void, r: { status: number; body: Record<string, any> | null }) => {
   // the server refused a state write on the dir's mode: the verb fails as open does on the same dir — the sentence
   // naming the dir and the fix, exit 2
   if (r.body?.code === "EDTWEBDIR") throw Object.assign(new Error(r.body.error), { code: r.body.code })
@@ -195,7 +233,7 @@ const failed = (log, r) => {
  * @returns {Promise<{ port: number, controlToken: string }>}
  */
 export async function ensureRunning(
-  root,
+  root: string,
   { log = console.log, env = process.env, appDir, bin = BIN, args = [] }: Record<string, any> = {}
 ) {
   // a live server that does not answer throws NotAnswering here: never a second server beside it
@@ -215,7 +253,7 @@ export async function ensureRunning(
     stdio: ["ignore", fd, fd],
     env: { ...env, ...(appDir ? { DT_WEB_APP_DIR: appDir } : {}) },
   })
-  let exited = null
+  let exited: number | null = null
   child.once("exit", code => {
     exited = code
   })
@@ -245,8 +283,8 @@ export async function ensureRunning(
 }
 
 /** Another live process holds this workspace's start lock (runtime.js claimStart): a server is on its way up. */
-function startingElsewhere(file, childPid) {
-  let holder = null
+function startingElsewhere(file: string, childPid: number | undefined) {
+  let holder: number | null = null
   try {
     holder = Number(fs.readFileSync(`${file}.lock`, "utf8"))
   } catch {
@@ -256,7 +294,7 @@ function startingElsewhere(file, childPid) {
 }
 
 /** The last line the child wrote to its log since `from` (the log is kept across starts). */
-function logTail(file, from) {
+function logTail(file: string, from: number): string {
   try {
     const text = fs.readFileSync(file).subarray(from).toString("utf8")
     return (
@@ -273,17 +311,22 @@ function logTail(file, from) {
 }
 
 /** The `start` flags as given (`--port` from DT_WEB_PORT too) — what the detached child is started with. */
-const startFlags = o => [
+const startFlags = (o: Record<string, any>) => [
   ...(o.port !== undefined ? ["--port", String(o.port)] : []),
   ...(o.idle !== undefined ? ["--idle", String(o.idle)] : []),
   ...(o.ownerPid !== undefined ? ["--owner-pid", String(o.ownerPid)] : []),
 ]
 
 export async function main(
-  root,
-  argv,
-  { log = console.log, env = process.env, appDir = env.DT_WEB_APP_DIR || undefined } = {}
-) {
+  root: string,
+  argv: string[],
+  {
+    log = console.log as (line: string) => void,
+    env = process.env as NodeJS.ProcessEnv,
+    appDir = undefined as string | undefined,
+  } = {}
+): Promise<number> {
+  appDir ??= env.DT_WEB_APP_DIR || undefined
   const o = parseArgs(argv, env)
   const sdir = stateDir(env)
   const ensure = () => ensureRunning(root, { log, env, appDir })
@@ -296,7 +339,11 @@ export async function main(
   }
 }
 
-async function verb(root, o, { log, env, appDir, sdir, ensure }) {
+async function verb(
+  root: string,
+  o: Record<string, any>,
+  { log, env, appDir, sdir, ensure }: VerbContext
+): Promise<number> {
   if (o.cmd === "status") {
     const now = await probeServer(fileOf(root, env))
     if (now?.state === "silent") {
@@ -462,7 +509,7 @@ async function verb(root, o, { log, env, appDir, sdir, ensure }) {
 }
 
 /** A pid that is running: alive, and not a zombie its parent has yet to reap. */
-const running = pid => {
+const running = (pid: number) => {
   if (!alive(pid)) return false
   try {
     return !String(
@@ -485,7 +532,7 @@ const running = pid => {
  * suspended process can act on it; after FORCE_GRACE_MS, with the start shown again, SIGKILL. A process that ends
  * without removing its runtime file and lock (SIGKILL) has them removed here.
  */
-async function forceStop(now, { log }) {
+async function forceStop(now: Probe, { log }: { log: (line: string) => void }) {
   const { pid } = now
   if (now.sameProcess !== true) {
     log(
@@ -527,8 +574,8 @@ async function forceStop(now, { log }) {
 }
 
 /** `dt web revoke [--token <n>]`: through the server when it runs, else in the state file under the start lock. */
-async function revoke(root, { token }: { token?: any }, { log, env }) {
-  const said = n => {
+async function revoke(root: string, { token }: { token?: any }, { log, env }: VerbContext) {
+  const said = (n: number) => {
     log(
       token !== undefined
         ? n
@@ -564,7 +611,7 @@ async function revoke(root, { token }: { token?: any }, { log, env }) {
 }
 
 /** `dt web start --foreground`: serve in this process — what the detached child runs, and a launch.json entry. */
-async function foreground(root, o, { log, env, appDir = appDirOf() }) {
+async function foreground(root: string, o: Record<string, any>, { log, env, appDir = appDirOf() }: VerbContext) {
   const file = fileOf(root, env)
   const was = await probeServer(file)
   if (was?.proven) {
@@ -628,7 +675,7 @@ async function foreground(root, o, { log, env, appDir = appDirOf() }) {
   return 0
 }
 
-function openBrowser(url) {
+function openBrowser(url: string) {
   const cmd = process.platform === "darwin" ? "open" : "xdg-open"
   try {
     spawn(cmd, [url], { stdio: "ignore", detached: true }).unref()

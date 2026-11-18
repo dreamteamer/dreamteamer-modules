@@ -22,11 +22,34 @@ import { classify } from "./dispatch.ts"
 import { moduleFrameRoute, resolveGuest } from "./moduleFrames.ts"
 import { createPairing } from "./createPairing.ts"
 import { createSessions } from "./createSessions.ts"
-import { readWorkspaceState, stateDir as defaultStateDir, workspaceKey, writeWorkspaceState } from "./state.ts"
+import {
+  readWorkspaceState,
+  stateDir as defaultStateDir,
+  workspaceKey,
+  writeWorkspaceState,
+  type ClientToken,
+} from "./state.ts"
 import { matchClientToken, mintClientToken } from "./tokens.ts"
 import { createPaneStore, workspaceName } from "./createPaneStore.ts"
 import { CHALLENGE, IDENTITY_PATH, identityProof } from "./runtime.ts"
 import { handoff, listWorkspaces } from "./handoff.ts"
+
+import type { PaneLevel } from "@dreamteamer/protocol/pane"
+import type { ChangeScope } from "@dreamteamer/protocol/host/changes"
+
+type Req = http.IncomingMessage
+type Res = http.ServerResponse
+/** Who a request is: the control token, the pane's cookie (a session, maybe capped), or a client token. */
+interface Who {
+  kind: "control" | "cookie" | "client"
+  record?: ClientToken
+  cap?: PaneLevel | null
+  sid?: string
+}
+/** An /api/ caller, or why it is refused. */
+type Caller = Who & { refuse?: [number, string] }
+/** One /_dt/ route: the JSON body, the caller and the URL in, `[status, body]` out. */
+type DtRoute = (body: any, who: Who, url: URL) => [number, unknown] | Promise<[number, unknown]>
 
 const DEBOUNCE_MS = 150
 // a watcher an error closed is opened again after REWATCH_FIRST_MS, doubling to REWATCH_MAX_MS while it keeps failing
@@ -39,7 +62,8 @@ export const SIGN_IN_REFUSED =
   "This sign-in link was used or is older than a minute — ask the chat to show the pane again (dt web open)."
 export const NOT_FROM_THE_PANE = "a request with the pane's cookie must come from the pane"
 export const CLIENT_NOT_PANE = "a client token cannot set the pane's selection or queue — they are the page's"
-export const PAGE_CANNOT_RAISE = level => `the page cannot raise the level — ask in the chat (dt web open --${level})`
+export const PAGE_CANNOT_RAISE = (level: string) =>
+  `the page cannot raise the level — ask in the chat (dt web open --${level})`
 const SIGN_IN_FIRST = "sign in: ask the chat to show the pane (dt web open)"
 export const HOST_CAPABILITIES = {
   nav: "app",
@@ -50,12 +74,12 @@ export const HOST_CAPABILITIES = {
   moduleFrames: "url",
 }
 const random = (n = 24) => crypto.randomBytes(n).toString("base64url")
-const same = (a, b) =>
+const same = (a: unknown, b: unknown) =>
   typeof a === "string" &&
   typeof b === "string" &&
   a.length === b.length &&
   crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b))
-const MIME = {
+const MIME: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
   ".mjs": "text/javascript; charset=utf-8",
@@ -81,7 +105,7 @@ const WRITES = new Set(["POST", "PUT", "PATCH", "DELETE"])
 const JSON_TYPE = /^application\/json\s*(;|$)/i
 
 /** `file` under `root` after resolving every link, or null — `..`, absolute paths and links out are refused. */
-export function contained(root, rel) {
+export function contained(root: string, rel: unknown): string | null {
   if (
     typeof rel !== "string" ||
     !rel ||
@@ -100,9 +124,9 @@ export function contained(root, rel) {
   return real === realRoot || real.startsWith(realRoot + path.sep) ? real : null
 }
 
-const hostNames = port => new Set([`127.0.0.1:${port}`, `localhost:${port}`, `[::1]:${port}`])
+const hostNames = (port: number) => new Set([`127.0.0.1:${port}`, `localhost:${port}`, `[::1]:${port}`])
 /** The methods each prefix answers, for the Allow header of a 405 to OPTIONS. */
-const ALLOW = {
+const ALLOW: Record<string, string> = {
   root: "GET, HEAD",
   shell: "GET, HEAD",
   "sign-in": "GET",
@@ -113,12 +137,12 @@ const ALLOW = {
 }
 class HttpError extends Error {
   declare status: number
-  constructor(status, message) {
+  constructor(status: number, message: string) {
     super(message)
     this.status = status
   }
 }
-const decode = s => {
+const decode = (s: string) => {
   try {
     return decodeURIComponent(s)
   } catch {
@@ -145,7 +169,18 @@ export async function startWeb({
   stateDir = defaultStateDir(),
   moduleGuest,
   pane,
-}: Record<string, any> = {}) {
+}: {
+  root?: string
+  appDir?: string
+  port?: number
+  idleMinutes?: number
+  ownerPid?: number
+  onStop?: (why: string) => void
+  now?: () => number
+  stateDir?: string
+  moduleGuest?: { guestText: string; styleText?: string } | null
+  pane?: ReturnType<typeof createPaneStore>
+} = {}) {
   if (!fs.existsSync(path.join(appDir, "index.html"))) {
     throw new Error(
       `the app is missing: ${path.join(appDir, "index.html")} — @dreamteamer/ui is installed without its build (see the README)`
@@ -154,7 +189,7 @@ export async function startWeb({
   const state = readWorkspaceState(root, stateDir)
   const save = () => writeWorkspaceState(root, state, stateDir)
   /** The client tokens as `next`: the state file first, then memory — a write that throws changes neither. */
-  const saveTokens = next => {
+  const saveTokens = (next: ClientToken[]) => {
     writeWorkspaceState(root, { ...state, clientTokens: next }, stateDir)
     state.clientTokens = next
   }
@@ -163,7 +198,7 @@ export async function startWeb({
   const controlToken = random(32)
   const instance = random(32)
   const filesKey = random(18)
-  let handler = null
+  let handler: Awaited<ReturnType<typeof createHandler>> | null = null
   const store =
     pane ??
     createPaneStore({
@@ -175,7 +210,7 @@ export async function startWeb({
       workspace: { id: workspaceKey(root), name: workspaceName(root) },
       fileBases: () => fileBases(),
       varRoots: () => varRoots(),
-      onChange: type => broadcast({ type }),
+      onChange: (type?: string) => broadcast({ type }),
     })
   handler = await createHandler({ root, pane: store })
   // cr-dt-008: the old nav settings are written into nav.yaml on the first GET /nav of this server's life, once; a
@@ -198,14 +233,14 @@ export async function startWeb({
 
   // the event streams: the PAGES (the cookie) are what `dt web show` delivers to, what the hook calls connected and
   // what keeps the server from its idle stop; a client token's stream hears the same messages and counts for none of it
-  const pageStreams = new Set<any>()
-  /** @type {Map<import('node:http').ServerResponse, object>} each client token's stream → its token record */
-  const clientStreams = new Map()
+  const pageStreams = new Set<Res>()
+  /** each client token's stream → its token record */
+  const clientStreams = new Map<Res, ClientToken>()
   /** End the streams of a client token that is no longer in the state (revoked, or minted again under its name). */
   const endRevokedStreams = () => {
     for (const [res, rec] of clientStreams) if (!state.clientTokens.includes(rec)) res.end()
   }
-  let listenPort
+  let listenPort: number
   const cookieName = () => `dt_pane_${listenPort}`
 
   // ---- record files and module frames --------------------------------------------------------
@@ -218,7 +253,7 @@ export async function startWeb({
     }
   }
   const fileBases = () => {
-    const out = []
+    const out: { collection: string; path: string; suffix: string }[] = []
     try {
       const { isBinary, storageOf } = engine().descriptor
       for (const d of handler.api.descriptors().values())
@@ -236,7 +271,7 @@ export async function startWeb({
     guest: moduleGuest === undefined ? resolveGuest(path.dirname(new URL(import.meta.url).pathname)) : moduleGuest,
   })
 
-  const serveFile = (req, res, url, rest) => {
+  const serveFile = (req: Req, res: Res, url: URL, rest: string[]) => {
     res.setHeader("Content-Security-Policy", FILE_CSP)
     if (req.method !== "GET" && req.method !== "HEAD") return send(res, 405, "read only")
     const [key, kind, ...tail] = rest
@@ -255,13 +290,13 @@ export async function startWeb({
     }
     if (!file || !fs.statSync(file).isFile()) return send(res, 404, "not found")
     const ext = path.extname(file).toLowerCase()
-    const headers = {}
+    const headers: Record<string, string> = {}
     if ((ext === ".svg" || ext === ".html") && url.searchParams.get("frame") !== "1")
       headers["Content-Disposition"] = "attachment"
     const type = NEVER_ACTIVE.has(ext) ? "application/octet-stream" : (MIME[ext] ?? "application/octet-stream")
     return sendFile(res, fs.readFileSync(file), type, headers, req.method === "HEAD")
   }
-  const serveFrame = (req, res, rest) => {
+  const serveFrame = (req: Req, res: Res, rest: string[]) => {
     if (req.method !== "GET" && req.method !== "HEAD") return send(res, 405, "read only")
     const [key, ...tail] = rest
     if (!same(key, filesKey)) return send(res, 404, "not found")
@@ -273,11 +308,11 @@ export async function startWeb({
 
   // ---- the shell -----------------------------------------------------------------------------
   const appHtml = fs.readFileSync(path.join(appDir, "index.html"), "utf8")
-  const boot = nonce => {
+  const boot = (nonce: string) => {
     const json = JSON.stringify({ __DT_HOST__: HOST_CAPABILITIES }).replace(/</g, "\\u003c")
     return `<script nonce="${nonce}">Object.assign(window, ${json});</script>`
   }
-  const serveShell = (req, res, url, host) => {
+  const serveShell = (req: Req, res: Res, url: URL, host: string) => {
     if (req.method !== "GET" && req.method !== "HEAD") return send(res, 405, "the app is read only")
     const rel = url.pathname.slice("/app/".length)
     if (rel === "" || rel === "index.html") {
@@ -304,7 +339,7 @@ export async function startWeb({
   }
 
   // ---- sign-in -------------------------------------------------------------------------------
-  const signIn = (req, res, url) => {
+  const signIn = (req: Req, res: Res, url: URL) => {
     if (req.method !== "GET") return send(res, 405, "sign in with GET")
     const taken = pairing.take(url.pathname.slice("/sign-in/".length))
     if (!taken) return page(res, 401, SIGN_IN_REFUSED)
@@ -319,12 +354,12 @@ export async function startWeb({
     res.writeHead(302, { Location: `/app/#${taken.route}` })
     return res.end()
   }
-  const pairUrl = ({ route = "/", cap = null } = {}) =>
+  const pairUrl = ({ route = "/", cap = null as PaneLevel | null } = {}) =>
     `http://127.0.0.1:${listenPort}/sign-in/${pairing.mint({ route, cap })}`
 
   // ---- who is asking -------------------------------------------------------------------------
-  const bearerOf = req => /^Bearer (.+)$/.exec(req.headers.authorization ?? "")?.[1] ?? null
-  const cookieOf = req => {
+  const bearerOf = (req: Req) => /^Bearer (.+)$/.exec(req.headers.authorization ?? "")?.[1] ?? null
+  const cookieOf = (req: Req) => {
     const name = cookieName()
     for (const part of String(req.headers.cookie ?? "").split(";")) {
       const i = part.indexOf("=")
@@ -333,7 +368,7 @@ export async function startWeb({
     return null
   }
   /** A cookie counts only from the pane's own page: Sec-Fetch-Site same-origin, or an Origin equal to this request's. */
-  const fromThePane = req => {
+  const fromThePane = (req: Req) => {
     const site = req.headers["sec-fetch-site"]
     const origin = req.headers.origin
     if (origin !== undefined)
@@ -344,9 +379,9 @@ export async function startWeb({
     return site === "same-origin"
   }
 
-  const readBody = async req => {
+  const readBody = async (req: Req) => {
     let size = 0
-    const chunks = []
+    const chunks: Buffer[] = []
     for await (const chunk of req) {
       size += chunk.length
       if (size > MAX_BODY_BYTES) throw new HttpError(413, "the body is too large")
@@ -355,7 +390,7 @@ export async function startWeb({
     return Buffer.concat(chunks).toString("utf8")
   }
   /** A write's body: JSON only, by Content-Type — 415 for any other type, 400 for JSON that does not parse. */
-  const jsonBody = async req => {
+  const jsonBody = async (req: Req) => {
     const raw = await readBody(req)
     if (!WRITES.has(req.method) || !raw.length) return undefined
     if (!JSON_TYPE.test(String(req.headers["content-type"] ?? "")))
@@ -369,12 +404,12 @@ export async function startWeb({
 
   // ---- levels ---------------------------------------------------------------------------------
   // the collections whose record WRITES need admin (reading 1), recomputed when the descriptors change
-  let internalFor = null
-  let internal = null
+  let internalFor: unknown = null
+  let internal: ReturnType<typeof internalCollections> | null = null
   const internalNow = () => {
     const d = handler.api.descriptors()
     if (d !== internalFor) {
-      let e = {}
+      let e: Record<string, any> = {}
       try {
         e = engine().descriptor
       } catch {
@@ -386,8 +421,9 @@ export async function startWeb({
     return internal
   }
   /** The level a request is answered at: the stored level lowered by the session's cap, or the client token's own. */
-  const levelOf = who => (who.kind === "client" ? who.record.level : lowerLevel(state.level, who.cap ?? "admin"))
-  const setLevel = level => {
+  const levelOf = (who: Who): PaneLevel =>
+    who.kind === "client" ? who.record.level : lowerLevel(state.level, who.cap ?? "admin")
+  const setLevel = (level: PaneLevel) => {
     const was = state.level
     if (levelRank(level) > levelRank(was)) state.raisedAt = new Date(now()).toISOString()
     else if (levelRank(level) < levelRank(was)) state.raisedAt = null
@@ -398,7 +434,7 @@ export async function startWeb({
 
   // ---- /api/ and /_dt/ -----------------------------------------------------------------------
   /** Who asks /api/: a client token (bearer), or the cookie from the pane's own page. The control token is not one. */
-  const apiCaller = req => {
+  const apiCaller = (req: Req): Caller => {
     const bearer = bearerOf(req)
     if (bearer !== null) {
       const record = matchClientToken(state.clientTokens, bearer)
@@ -410,17 +446,17 @@ export async function startWeb({
               ? "the control token opens /_dt/ only — /api/ takes the cookie or a client token (dt web token)"
               : "not a client token of this server",
           ],
-        }
+        } as Caller
       return { kind: "client", record }
     }
     const sid = cookieOf(req)
     const session = sid ? sessions.check(sid) : null
-    if (!session) return { refuse: [401, SIGN_IN_FIRST] }
-    if (!fromThePane(req)) return { refuse: [403, NOT_FROM_THE_PANE] }
+    if (!session) return { refuse: [401, SIGN_IN_FIRST] } as Caller
+    if (!fromThePane(req)) return { refuse: [403, NOT_FROM_THE_PANE] } as Caller
     return { kind: "cookie", cap: session.cap, sid }
   }
 
-  const serveApi = async (req, res, url) => {
+  const serveApi = async (req: Req, res: Res, url: URL) => {
     const who = apiCaller(req)
     if (who.refuse) return json(res, who.refuse[0], { error: who.refuse[1] })
     if (who.kind === "client") idle.reset()
@@ -466,8 +502,11 @@ export async function startWeb({
   }
 
   // ---- the push's targets --------------------------------------------------------------------
-  const reader = { descriptors: () => handler.api.descriptors(), handle: (m, p) => handler.handle(m, p) }
-  const parseRef = ref => {
+  const reader = {
+    descriptors: () => handler.api.descriptors(),
+    handle: (m: string, p: string) => handler.handle(m, p),
+  }
+  const parseRef = (ref: string) => {
     try {
       return engine().parseRef(ref)
     } catch {
@@ -475,7 +514,7 @@ export async function startWeb({
     }
   }
   /** `dt web show`'s target → the app route: a collection, then a record ref, then a ui-view id; null for none. */
-  const resolveTarget = async target => {
+  const resolveTarget = async (target: unknown): Promise<string | null> => {
     if (typeof target !== "string" || !target || target.length > 500) return null
     if (handler.api.descriptors().has(target)) return `/content/${target}`
     const ref = parseRef(target)
@@ -488,13 +527,13 @@ export async function startWeb({
     }
     if (!target.includes("/")) {
       const v = await handler.handle("GET", `/collections/ui-views/records/${encodeURIComponent(target)}`)
-      const route = v.status === 200 ? v.body?.fields?.route : null
+      const route = v.status === 200 ? (v.body as Record<string, any>)?.fields?.route : null
       if (typeof route === "string" && route.startsWith("/")) return route
     }
     return null
   }
   /** `dt web select`'s refs: existing records, at most 50, all of one collection (as PUT /selection checks them). */
-  const checkRefs = async refs => {
+  const checkRefs = async (refs: unknown) => {
     const r = await validateSelection(reader, { view: { other: true }, refs })
     if (!r.ok) throw new HttpError(400, (r as { error: string }).error)
     if (new Set(r.value.refs.map(x => parseRef(x)?.collection)).size > 1)
@@ -502,12 +541,12 @@ export async function startWeb({
     return r.value.refs
   }
 
-  const levelIn = body => {
-    if (!LEVELS.includes(body?.level)) throw new HttpError(400, `a level is ${LEVELS.join(", ")}`)
-    return body.level
+  const levelIn = (body: { level?: string } | undefined): PaneLevel => {
+    if (!LEVELS.includes(body?.level as PaneLevel)) throw new HttpError(400, `a level is ${LEVELS.join(", ")}`)
+    return body.level as PaneLevel
   }
   /** /_dt/ under the control token: the verbs' routes. */
-  const controlRoutes = {
+  const controlRoutes: Record<string, DtRoute> = {
     "POST /_dt/pair": async body => {
       let route = typeof body?.route === "string" && body.route.startsWith("/") ? body.route : "/"
       // `dt web open <target>`: the same resolver as the push
@@ -571,7 +610,7 @@ export async function startWeb({
     "POST /_dt/pane/delivered": body => [200, { delivered: store.delivered(body?.ids) }],
   }
   /** /_dt/ under the cookie: the page's own routes. */
-  const pageRoutes = {
+  const pageRoutes: Record<string, DtRoute> = {
     "POST /_dt/level": (body, who) => {
       const level = levelIn(body)
       if (levelRank(level) > levelRank(levelOf(who))) return [403, { error: PAGE_CANNOT_RAISE(level) }]
@@ -592,7 +631,7 @@ export async function startWeb({
     },
   }
 
-  const serveDt = async (req, res, url) => {
+  const serveDt = async (req: Req, res: Res, url: URL) => {
     const key = `${req.method} ${url.pathname}`
     // anyone may ask the server to prove it is the one its runtime file names: a fresh challenge in, an HMAC under the
     // per-start instance out — no token, no data, and nothing that names the instance (runtime.js `proves`)
@@ -614,7 +653,7 @@ export async function startWeb({
       const body = await jsonBody(req)
       const fn = controlRoutes[key]
       if (!fn) return json(res, 404, { error: `no route ${key}` })
-      let answer
+      let answer: [number, unknown]
       // a state write refused by the dir's mode answers its sentence, with the code the verbs refuse on as open does
       try {
         answer = await fn(body, { kind: "control" }, url)
@@ -640,7 +679,7 @@ export async function startWeb({
   }
 
   // ---- the event stream ----------------------------------------------------------------------
-  const openStream = (req, res, who) => {
+  const openStream = (req: Req, res: Res, who: Who) => {
     res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-store", Connection: "keep-alive" })
     res.write(": open\n\n")
     if (who.kind === "client") clientStreams.set(res, who.record)
@@ -652,14 +691,14 @@ export async function startWeb({
       idle.reset()
     })
   }
-  const broadcast = msg => {
+  const broadcast = (msg: unknown) => {
     const data = `data: ${JSON.stringify(msg)}\n\n`
     for (const c of pageStreams) c.write(data)
     for (const c of clientStreams.keys()) c.write(data)
   }
 
   // ---- one request ---------------------------------------------------------------------------
-  const handle = async (req, res) => {
+  const handle = async (req: Req, res: Res) => {
     baseHeaders(res)
     const host = String(req.headers.host ?? "").toLowerCase()
     if (!hostNames(listenPort).has(host))
@@ -732,9 +771,9 @@ export async function startWeb({
   })
 
   // ---- live updates ------------------------------------------------------------------------
-  let pending = null
-  let timer = null
-  const changed = file => {
+  let pending: ChangeScope | null = null
+  let timer: NodeJS.Timeout | null = null
+  const changed = (file: string) => {
     const scope = changeScope(root, file)
     pending = pending === "schema" || scope === "schema" ? "schema" : "data"
     clearTimeout(timer)
@@ -745,8 +784,8 @@ export async function startWeb({
     }, DEBOUNCE_MS)
   }
   let stopped = false
-  const watchers = new Set<any>()
-  const rewatches = new Set<any>()
+  const watchers = new Set<fs.FSWatcher>()
+  const rewatches = new Set<NodeJS.Timeout>()
   // A watcher reports trouble as an 'error' event, and an EventEmitter with no 'error' listener throws it — out of the
   // server, uncaught. On Linux a recursive watch is Node's own walk (readdir of each new folder), so a folder that a
   // compile creates and removes again (.dreamteamer/skills) fails that walk with ENOENT. That is a change, not a fault:
@@ -757,8 +796,8 @@ export async function startWeb({
   // delay that doubles while the folder keeps failing (REWATCH_FIRST_MS up to REWATCH_MAX_MS, never a loop), back to
   // the first once a watcher has lived REWATCH_HEALTHY_MS. The reopen is sent as a change too: what was written while
   // nothing listened reaches the page. Nothing is reopened once the server stops.
-  const watch = (dir, open, delay = 0) => {
-    let w
+  const watch = (dir: string, open: () => fs.FSWatcher, delay = 0) => {
+    let w: fs.FSWatcher
     try {
       w = open()
     } catch {
@@ -769,7 +808,7 @@ export async function startWeb({
     const opened = Date.now()
     let failed = false
     watchers.add(w)
-    w.on("error", e => {
+    w.on("error", (e: NodeJS.ErrnoException) => {
       if (failed) return // one reopen per watcher, however many errors it reports
       failed = true
       watchers.delete(w)
@@ -788,7 +827,7 @@ export async function startWeb({
     })
     if (delay) changed(dir)
   }
-  const rewatch = (dir, open, delay) => {
+  const rewatch = (dir: string, open: () => fs.FSWatcher, delay: number) => {
     if (stopped) return
     const t = setTimeout(() => {
       rewatches.delete(t)
@@ -803,7 +842,7 @@ export async function startWeb({
     for (const w of watchers) w.close()
     watchers.clear()
   }
-  const watchDir = dir => {
+  const watchDir = (dir: string) => {
     if (!fs.existsSync(dir)) return
     watch(dir, () => fs.watch(dir, { recursive: true }, (_e, f) => f && changed(path.join(dir, String(f)))))
   }
@@ -819,11 +858,11 @@ export async function startWeb({
   }
 
   // ---- lifetime ----------------------------------------------------------------------------
-  let resolveClosed
-  const closed = new Promise(r => {
+  let resolveClosed: (why: string) => void
+  const closed = new Promise<string>(r => {
     resolveClosed = r
   })
-  let v6 = null
+  let v6: http.Server | null = null
   const close = async (why = "stopped") => {
     try {
       v6?.close()
@@ -851,7 +890,7 @@ export async function startWeb({
     return closed
   }
   const idle = {
-    t: null,
+    t: null as NodeJS.Timeout | null,
     clear() {
       clearTimeout(this.t)
       this.t = null
@@ -875,9 +914,9 @@ export async function startWeb({
   // the port: the one asked for, else the stored one, else any. A stored port another process took moves the server and
   // the caller says where from (no session outlives a process, so the old port's cookie names nothing here); a port the
   // person asked for is theirs, and taken it is an error. The port is stored at once.
-  const listenOn = p =>
-    new Promise((resolve, reject) => {
-      const fail = e => reject(e)
+  const listenOn = (p: number) =>
+    new Promise<number>((resolve, reject) => {
+      const fail = (e: Error) => reject(e)
       server.once("error", fail)
       server.listen(p, "127.0.0.1", () => {
         server.off("error", fail)
@@ -885,7 +924,7 @@ export async function startWeb({
       })
     })
   const stored = port ? null : state.port
-  let movedFrom
+  let movedFrom: number | undefined
   try {
     try {
       listenPort = await listenOn(port || stored || 0)
@@ -931,11 +970,11 @@ export async function startWeb({
   }
 }
 
-function send(res, status, text) {
+function send(res: Res, status: number, text: string) {
   res.writeHead(status, { "Content-Type": "text/plain; charset=utf-8" })
   res.end(text)
 }
-function json(res, status, body) {
+function json(res: Res, status: number, body: unknown) {
   // serialised before the head is written: a body that cannot be (a cycle) is a 500 that says so, never a dropped
   // connection
   let text
@@ -948,13 +987,19 @@ function json(res, status, body) {
   res.writeHead(status, { "Content-Type": "application/json" })
   res.end(text)
 }
-function page(res, status, text) {
+function page(res: Res, status: number, text: string) {
   res.writeHead(status, { "Content-Type": "text/html; charset=utf-8", "Content-Security-Policy": "default-src 'none'" })
   res.end(
     `<!doctype html><meta charset="utf-8"><title>dreamteamer</title><p style="font:14px system-ui;margin:2em">${text.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</p>`
   )
 }
-function sendFile(res, body, type, headers = {}, headOnly = false) {
+function sendFile(
+  res: Res,
+  body: Buffer | string,
+  type: string,
+  headers: Record<string, string> = {},
+  headOnly = false
+) {
   res.writeHead(200, { "Content-Type": type, "Content-Length": Buffer.byteLength(body), ...headers })
   res.end(headOnly ? undefined : body)
 }

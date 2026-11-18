@@ -1,6 +1,6 @@
 // The headers every response carries, and the policies (README § security; cr-modules-017 §1 with the 03:45
 // revision's form-action 'none' and the plan's reading 6: record files frame inline under /_files/).
-export function baseHeaders(res) {
+export function baseHeaders(res: import("node:http").ServerResponse) {
   res.setHeader("Referrer-Policy", "no-referrer")
   res.setHeader("X-Content-Type-Options", "nosniff")
   res.removeHeader("X-Powered-By")
@@ -8,7 +8,7 @@ export function baseHeaders(res) {
 
 /** The app page's policy on the one listener, `host` the Host the request arrived on: scripts are this page's nonce
  *  plus the app path only, so nothing under /_files/ or /_frames/ can run as app code. */
-export function appCsp(nonce, host) {
+export function appCsp(nonce: string, host: string): string {
   return [
     "default-src 'none'",
     `script-src 'nonce-${nonce}' http://${host}/app/`,

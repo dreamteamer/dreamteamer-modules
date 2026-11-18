@@ -18,21 +18,39 @@ export function runtimeDir(env = process.env, platform = process.platform, home 
 
 /** A workspace's key: the first 16 hex of the SHA-256 of its real path — the runtime file's name, the state
  *  file's (state.js) and the registry id. */
-export function workspaceKey(root) {
+/** The runtime file a running server writes: who it is, where it listens, and how to prove it. */
+export interface RuntimeState {
+  pid: number
+  port: number
+  instance: string
+  pstart?: number
+  [key: string]: unknown
+}
+
+/** What `probeServer` makes of a runtime file. */
+export type Probe = RuntimeState & {
+  file: string
+  state: "running" | "stale" | "silent"
+  proven: boolean
+  sameProcess: boolean | null
+}
+
+export function workspaceKey(root: string): string {
   return crypto.createHash("sha256").update(fs.realpathSync(root)).digest("hex").slice(0, 16)
 }
 
 /** What a start that could not take its stored port says (the runtime file carries `movedFrom` for the verbs). */
-export const movedLine = (from, to) => `port ${from} was taken; moved to ${to} — open the pane again: dt web open`
+export const movedLine = (from: number, to: number) =>
+  `port ${from} was taken; moved to ${to} — open the pane again: dt web open`
 
 /** The runtime file of one workspace's server: `{ pid, port, started, owner, token, instance, pstart, movedFrom? }` — `pstart` the process's start in epoch milliseconds (ownStart). */
-export function stateFile(root, dir = runtimeDir()) {
+export function stateFile(root: string, dir = runtimeDir()): string {
   return path.join(dir, `${workspaceKey(root)}.json`)
 }
 
 /** What a write into a dir the person made read-only (or a dir of another user's) throws: the dir, its mode, and the
  *  two ways out. `envName` is the variable that moves the dir (DT_WEB_STATE_DIR, DT_WEB_RUNTIME_DIR). */
-export function notWritable(dir, envName, mode = null, platform = process.platform) {
+export function notWritable(dir: string, envName: string, mode: number | null = null, platform = process.platform) {
   const kind = envName === "DT_WEB_STATE_DIR" ? "state" : "runtime"
   // Windows has no mode bits (stat reports 0666/0444 from the read-only attribute alone), so neither a mode nor chmod is named.
   if (platform === "win32")
@@ -60,7 +78,7 @@ export function notWritable(dir, envName, mode = null, platform = process.platfo
 }
 const DENIED = new Set(["EACCES", "EPERM", "EROFS"])
 /** Run `fn` (a write into `dir`); a refusal by the file system becomes notWritable. */
-export function writingInto(dir, envName, fn) {
+export function writingInto<T>(dir: string, envName: string, fn: () => T): T {
   try {
     return fn()
   } catch (e) {
@@ -76,7 +94,7 @@ export function writingInto(dir, envName, fn) {
  * refuse) and chmod only flips the read-only attribute — so the dir is only made; the user's profile folders are
  * already private by ACL, and a write the file system denies still becomes notWritable through writingInto.
  */
-export function privateDir(dir, envName, platform = process.platform) {
+export function privateDir(dir: string, envName: string, platform = process.platform) {
   writingInto(dir, envName, () => fs.mkdirSync(dir, { recursive: true, mode: 0o700 }))
   if (platform === "win32") return
   const mode = fs.statSync(dir).mode & 0o777
@@ -84,7 +102,7 @@ export function privateDir(dir, envName, platform = process.platform) {
   if ((mode & 0o300) !== 0o300) throw notWritable(dir, envName, mode)
 }
 
-export function writeState(file, state) {
+export function writeState(file: string, state: RuntimeState) {
   const dir = path.dirname(file)
   privateDir(dir, "DT_WEB_RUNTIME_DIR")
   const tmp = `${file}.${process.pid}.tmp`
@@ -94,7 +112,7 @@ export function writeState(file, state) {
   })
 }
 
-export function readState(file) {
+export function readState(file: string): RuntimeState | null {
   try {
     return JSON.parse(fs.readFileSync(file, "utf8"))
   } catch {
@@ -102,12 +120,12 @@ export function readState(file) {
   }
 }
 
-export function removeState(file, pid = process.pid) {
+export function removeState(file: string, pid = process.pid) {
   const s = readState(file)
   if (s && s.pid === pid) fs.rmSync(file, { force: true })
 }
 
-export function alive(pid) {
+export function alive(pid: number): boolean {
   if (!Number.isInteger(pid) || pid <= 0) return false
   try {
     process.kill(pid, 0)
@@ -129,7 +147,7 @@ export const IDENTITY_PATH = "/_dt/identity"
 export const CHALLENGE = /^[A-Za-z0-9_-]{16,128}$/
 
 /** What the server holding `instance` answers to `challenge`. */
-export function identityProof(instance, challenge) {
+export function identityProof(instance: string, challenge: string): string {
   return crypto.createHmac("sha256", String(instance)).update(`dt-web identity ${challenge}`).digest("base64url")
 }
 
@@ -142,7 +160,10 @@ export function identityProof(instance, challenge) {
  * @param {{ fetchImpl?: typeof fetch, timeoutMs?: number }} [o]
  * @returns {Promise<'proven'|'stranger'|'silent'>}
  */
-export async function identify(rt, { fetchImpl = fetch, timeoutMs = 2000 } = {}) {
+export async function identify(
+  rt: Partial<RuntimeState> | null | undefined,
+  { fetchImpl = fetch, timeoutMs = 2000 } = {}
+): Promise<"proven" | "stranger" | "silent"> {
   if (
     !rt ||
     !Number.isInteger(rt.port) ||
@@ -163,9 +184,9 @@ export async function identify(rt, { fetchImpl = fetch, timeoutMs = 2000 } = {})
     return e?.cause?.code === "ECONNREFUSED" || e?.code === "ECONNREFUSED" ? "stranger" : "silent"
   }
   if (res.status !== 200) return "stranger"
-  let body
+  let body: { proof?: unknown }
   try {
-    body = await res.json()
+    body = (await res.json()) as { proof?: unknown }
   } catch (e) {
     return e?.name === "TimeoutError" || e?.name === "AbortError" ? "silent" : "stranger"
   }
@@ -179,7 +200,7 @@ export async function identify(rt, { fetchImpl = fetch, timeoutMs = 2000 } = {})
 }
 
 /** Does the server on `rt.port` hold `rt.instance`? (`identify` is 'proven'.) What the hook asks. */
-export async function proves(rt, o) {
+export async function proves(rt: Partial<RuntimeState>, o?: Parameters<typeof identify>[1]) {
   return (await identify(rt, o)) === "proven"
 }
 
@@ -200,7 +221,7 @@ export function ownStart(now = Date.now()) {
 }
 
 /** `[[dd-]hh:]mm:ss` (ps's etime) → seconds, or null. */
-export function etimeSeconds(text) {
+export function etimeSeconds(text: unknown): number | null {
   const m = /^(?:(?:(\d+)-)?(\d+):)?(\d+):(\d+)$/.exec(String(text ?? "").trim())
   if (!m) return null
   const [, d = 0, h = 0, mm, ss] = m
@@ -208,7 +229,7 @@ export function etimeSeconds(text) {
 }
 
 /** When `pid` started, in epoch milliseconds (now minus its elapsed time), or null when it cannot be read. */
-export function processStartMs(pid, now = Date.now()) {
+export function processStartMs(pid: number, now = Date.now()): number | null {
   if (!Number.isInteger(pid) || pid <= 0) return null
   try {
     const r = spawnSync("ps", ["-o", "etime=", "-p", String(pid)], {
@@ -224,10 +245,10 @@ export function processStartMs(pid, now = Date.now()) {
 }
 
 /** true — `pid` started when `recorded` says; false — it did not (a reused pid); null — it cannot be shown. */
-export function sameStart(pid, recorded) {
+export function sameStart(pid: number, recorded: unknown): boolean | null {
   if (!Number.isFinite(recorded)) return null
   const now = processStartMs(pid)
-  return now === null ? null : Math.abs(now - recorded) <= START_TOLERANCE_MS
+  return now === null ? null : Math.abs(now - (recorded as number)) <= START_TOLERANCE_MS
 }
 
 /**
@@ -241,7 +262,7 @@ export function sameStart(pid, recorded) {
  *   pid's own, within START_TOLERANCE_MS (what lets `dt web stop --force` signal it), null when that cannot be shown.
  * Every verb reads the server through this.
  */
-export async function probeServer(file, o?) {
+export async function probeServer(file: string, o?: Parameters<typeof identify>[1]): Promise<Probe | null> {
   const s = readState(file)
   if (!s || typeof s !== "object") return null
   if (!alive(s.pid)) {
@@ -256,12 +277,12 @@ export async function probeServer(file, o?) {
 }
 
 /** The one line every verb prints for a server that is alive and not answering (probeServer state 'silent'). */
-export function notAnsweringLine(p) {
+export function notAnsweringLine(p: { pid: number; port: number }): string {
   return `not answering: pid ${p.pid} at http://127.0.0.1:${p.port} is alive but gave no identity proof within 2 s — it may be suspended or busy; nothing was started, stopped or removed. Try again, or end it: dt web stop --force`
 }
 
 /** Remove a stale runtime file — only while it still names that pid and instance — and its lock when that pid holds it. */
-export function clearStale(file, stale) {
+export function clearStale(file: string, stale: { pid: number; instance?: unknown }) {
   const now = readState(file)
   if (now && now.pid === stale.pid && now.instance === stale.instance) fs.rmSync(file, { force: true })
   const lock = `${file}.lock`
@@ -278,7 +299,7 @@ export function clearStale(file, stale) {
  * alive" — and takes the lock over: two servers on two ports, seen on Linux CI (cr-modules-017, four starts at once).
  * So the pid is written to a temp file of this claimant's first, and the lock appears by link(2), whole or not at all.
  */
-function createHolding(file, pid) {
+function createHolding(file: string, pid: number) {
   const tmp = `${file}.${pid}.${crypto.randomBytes(6).toString("hex")}.tmp`
   fs.writeFileSync(tmp, String(pid), { flag: "wx", mode: 0o600 })
   try {
@@ -294,10 +315,10 @@ function createHolding(file, pid) {
  * running" check — only one creates the lock. A lock whose process is gone is taken over by one starter
  * only: the takeover itself is an exclusive file, so two starters after a crash cannot both clear it.
  */
-export function claimStart(file, pid = process.pid) {
+export function claimStart(file: string, pid = process.pid) {
   const lock = `${file}.lock`
   const take = `${lock}.takeover`
-  const holder = f => {
+  const holder = (f: string) => {
     try {
       return Number(fs.readFileSync(f, "utf8"))
     } catch {

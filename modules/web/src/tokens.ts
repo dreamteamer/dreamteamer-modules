@@ -2,7 +2,7 @@
 // asked, never admin. The state keeps the SHA-256 and the name; the token itself is printed once and never stored.
 import crypto from "node:crypto"
 
-const hash = s => crypto.createHash("sha256").update(s).digest()
+const hash = (s: string) => crypto.createHash("sha256").update(s).digest()
 
 export function mintClientToken({ name, level = "read", now = Date.now }: Record<string, any> = {}) {
   if (typeof name !== "string" || !name.trim()) throw new Error("a client token needs a name")
@@ -15,12 +15,15 @@ export function mintClientToken({ name, level = "read", now = Date.now }: Record
 }
 
 /** The record whose hash the bearer has, compared in constant time; null for anything else. */
-export function matchClientToken(records, bearer) {
+export function matchClientToken<R extends { sha256?: unknown }>(
+  records: R[] | null | undefined,
+  bearer: unknown
+): R | null {
   if (typeof bearer !== "string" || !bearer) return null
   const h = hash(bearer)
-  let found = null
+  let found: R | null = null
   for (const r of records ?? []) {
-    const want = /^[0-9a-f]{64}$/.test(String(r?.sha256)) ? Buffer.from(r.sha256, "hex") : null
+    const want = /^[0-9a-f]{64}$/.test(String(r?.sha256)) ? Buffer.from(String(r.sha256), "hex") : null
     if (want && crypto.timingSafeEqual(want, h) && !found) found = r
   }
   return found
