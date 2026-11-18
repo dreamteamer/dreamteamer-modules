@@ -23,13 +23,13 @@ import fs from "node:fs"
 import path from "node:path"
 import { createRequire } from "node:module"
 import { fileURLToPath, pathToFileURL } from "node:url"
-import { attendeeOf } from "./event-people.ts"
+import { attendeeOf, type ApiAttendee, type Attendee } from "./event-people.ts"
 
 export const RESIDUE_HEADING = "## attendee notes (carried from attendees_raw)"
 
 const EMAIL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g
 const FLAGS = new Set(["self", "organizer", "optional"])
-const STATUS = {
+const STATUS: Record<string, string> = {
   accepted: "accepted",
   needsaction: "needsAction",
   "needs-action": "needsAction",
@@ -38,19 +38,19 @@ const STATUS = {
 }
 
 /** Latin words capitalised, or any non-Latin script — the shape of a person's name, never of a remark. */
-const nameLike = (s, min, max) => {
+const nameLike = (s: string, min: number, max: number) => {
   const words = s.split(/\s+/).filter(Boolean)
   if (words.length < min || words.length > max) return false
   return words.every(w => /^[\p{L}'./-]+$/u.test(w) && (!/^[A-Za-z]/.test(w) || /^[A-Z]/.test(w)))
 }
 /** Strip ONE matching pair of quotes around the whole string — a quote inside it is content. */
-const unquote = s => {
+const unquote = (s: string) => {
   const t = s.trim()
   return /^(['"]).*\1$/.test(t) ? t.slice(1, -1).trim() : t
 }
 
 /** Split a raw string at the first `;` that sits OUTSIDE brackets: the structured head and a free remark. */
-function splitRemark(s) {
+function splitRemark(s: string): [string, string] {
   let depth = 0
   for (let i = 0; i < s.length; i++) {
     const c = s[i]
@@ -67,21 +67,25 @@ function splitRemark(s) {
  * address; `remarks` is every fragment that is neither an address, a name nor a known flag; `resource`
  * marks a string the sync itself labelled a room.
  */
-export function parseRawAttendee(raw) {
+export function parseRawAttendee(raw: unknown): {
+  attendee: ApiAttendee | null
+  remarks: string[]
+  resource: boolean
+} {
   const s = String(raw ?? "").trim()
-  const remarks = []
+  const remarks: string[] = []
   const [head, tail] = splitRemark(s)
   if (tail) remarks.push(tail)
   // the bracket groups of the head, and the head with them removed
-  const groups = []
-  const bare = head.replace(/[(\[]([^()\[\]]*)[)\]]/g, (_, g) => {
+  const groups: string[] = []
+  const bare = head.replace(/[(\[]([^()\[\]]*)[)\]]/g, (_, g: string) => {
     groups.push(g)
     return " "
   })
   const emails = bare.match(EMAIL) ?? []
   if (emails.length !== 1) return { attendee: null, remarks: [s], resource: false }
   const email = emails[0]
-  const a: Record<string, any> = { email }
+  const a: ApiAttendee = { email }
   // the display name: `Name <email>` (explicit, taken verbatim) or `email — Name` (checked for shape)
   const before = bare.slice(0, bare.indexOf(email)).replace(/<\s*$/, "").trim()
   const after = bare
@@ -100,7 +104,7 @@ export function parseRawAttendee(raw) {
       const token = tokenRaw.trim()
       if (!token) continue
       const key = token.toLowerCase()
-      if (FLAGS.has(key)) a[key] = true
+      if (FLAGS.has(key)) a[key as "organizer" | "self" | "optional"] = true
       else if (STATUS[key]) a.responseStatus = STATUS[key]
       else if (/\broom resource\b/i.test(token)) resource = true
       else if (!a.displayName && nameLike(token, 2, 4)) a.displayName = token
@@ -114,9 +118,9 @@ export function parseRawAttendee(raw) {
  * The 0.1.2 fields for one record, or null when it is already there. Pure: `fields` in, the
  * `changes` for `Store.set` out, plus the report line's numbers.
  */
-export function planRecord(fields) {
-  const refs = Array.isArray(fields.attendees) && fields.attendees.every(a => typeof a === "string")
-  const raw = Array.isArray(fields.attendees_raw)
+export function planRecord(fields: Record<string, unknown>) {
+  const refs = Array.isArray(fields.attendees) && fields.attendees.every((a: unknown) => typeof a === "string")
+  const raw: unknown[] = Array.isArray(fields.attendees_raw)
     ? fields.attendees_raw
     : fields.attendees_raw
       ? [fields.attendees_raw]
@@ -124,10 +128,10 @@ export function planRecord(fields) {
   const organizerIsString = typeof fields.organizer === "string"
   if (!refs && !raw.length && !organizerIsString) return null
 
-  const changes: Record<string, any> = {}
-  const residue = []
-  const attendees = []
-  const seen = new Set()
+  const changes: Record<string, unknown> = {}
+  const residue: string[] = []
+  const attendees: Attendee[] = []
+  const seen = new Set<string>()
   let rooms = 0
   for (const line of raw) {
     const { attendee, remarks, resource } = parseRawAttendee(line)
@@ -149,13 +153,14 @@ export function planRecord(fields) {
   if (attendees.length) changes.attendees = attendees
   if (raw.length) changes.attendees_raw = null
   if (organizerIsString) {
-    const email = (fields.organizer.match(EMAIL) ?? [])[0]
-    if (email && fields.organizer.trim() === email) {
-      const o: Record<string, any> = { email: email.toLowerCase() }
+    const organizer = fields.organizer as string
+    const email = (organizer.match(EMAIL) ?? [])[0]
+    if (email && organizer.trim() === email) {
+      const o: Attendee = { email: email.toLowerCase() }
       if (attendees.some(a => a.email === o.email && a.self)) o.self = true
       changes.organizer = o
     } else {
-      residue.push(`organizer: ${fields.organizer}`)
+      residue.push(`organizer: ${organizer}`)
       changes.organizer = null
     }
   }
@@ -167,7 +172,7 @@ export function planRecord(fields) {
     changes,
     counts: {
       attendees: attendees.length,
-      contacts: refs ? fields.attendees.length : 0,
+      contacts: refs ? (fields.attendees as string[]).length : 0,
       residue: residue.length,
       rooms,
     },
@@ -175,7 +180,7 @@ export function planRecord(fields) {
 }
 
 // ── plumbing ─────────────────────────────────────────────────────────────────────────────────
-function workspaceRoot(from) {
+function workspaceRoot(from: string): string | null {
   // package-lock.json, not package.json — a module folder carries the latter too. And a folder sitting directly inside `git_modules/` is a module clone, never the workspace, even when `npm install` left it a lockfile.
   for (let d = from; d !== path.dirname(d); d = path.dirname(d)) {
     const inGitModules = path.basename(path.dirname(d)) === "git_modules"
@@ -184,7 +189,7 @@ function workspaceRoot(from) {
   return null
 }
 
-async function main(argv) {
+async function main(argv: string[]) {
   const write = argv.includes("--write")
   const json = argv.includes("--json")
   const only = new Set(argv.filter(a => a.startsWith("meetings/")).map(r => r.slice("meetings/".length)))
@@ -205,7 +210,7 @@ async function main(argv) {
       "the compiled meetings descriptor still declares `attendees_raw` — this is the 0.1.1 shape; upgrade the module and compile first"
     )
 
-  const rows = []
+  const rows: { id: string; attendees: number; contacts: number; residue: number; rooms: number }[] = []
   let scanned = 0,
     unchanged = 0
   for (const { id, fields } of store.readAll("meetings")) {
@@ -246,7 +251,7 @@ async function main(argv) {
  *  `git_modules/<name>` symlink a plain `===` is false and the script would exit 0 having done nothing. */
 const isMain = () => {
   if (!process.argv[1]) return false
-  const real = p => {
+  const real = (p: string) => {
     try {
       return fs.realpathSync(p)
     } catch {

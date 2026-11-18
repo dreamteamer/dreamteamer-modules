@@ -23,14 +23,31 @@ import { execFileSync } from "node:child_process"
 import { fileURLToPath } from "node:url"
 
 // ── the rule ─────────────────────────────────────────────────────────────────────────────────
-/**
- * @param {Array<{id:string, starts?:string, status?:string, attendees_contacts?:string[]}>} meetings
- * @param {Array<{id:string, recent_meeting?:string, recent_meeting_date?:string}>} contacts
- * @param {Date} now
- * @returns {Array<{contact:string, recent_meeting:string, recent_meeting_date:string, previous?:string}>}
- */
-export function computeRecent(meetings, contacts, now = new Date()) {
-  const latest = new Map() // contactId → { ref, starts }
+/** The meeting fields the rule reads. */
+export interface MeetingRow {
+  id: string
+  starts?: string
+  status?: string
+  attendees_contacts?: unknown[]
+}
+
+/** The contact fields the rule reads. */
+export interface ContactRow {
+  id: string
+  recent_meeting?: string
+  recent_meeting_date?: string
+}
+
+/** One contact to stamp. */
+export interface RecentChange {
+  contact: string
+  recent_meeting: string
+  recent_meeting_date: string
+  previous?: string
+}
+
+export function computeRecent(meetings: MeetingRow[], contacts: ContactRow[], now = new Date()): RecentChange[] {
+  const latest = new Map<string, { ref: string; starts: string; t: number }>() // contactId → { ref, starts }
   for (const m of meetings) {
     if (!m.starts || m.status === "cancelled") continue
     const t = Date.parse(m.starts)
@@ -42,9 +59,9 @@ export function computeRecent(meetings, contacts, now = new Date()) {
     }
   }
   const byId = new Map(contacts.map(c => [`contacts/${c.id}`, c]))
-  const changes = []
+  const changes: RecentChange[] = []
   for (const [contactRef, best] of latest) {
-    const c: any = byId.get(contactRef)
+    const c = byId.get(contactRef)
     if (!c) continue // an attendee ref with no record — check reports that, not this script
     const have = c.recent_meeting_date ? Date.parse(c.recent_meeting_date) : NaN
     if (!Number.isNaN(have) && have > best.t) continue // only move forward
@@ -60,7 +77,7 @@ export function computeRecent(meetings, contacts, now = new Date()) {
 }
 
 // ── plumbing ─────────────────────────────────────────────────────────────────────────────────
-function workspaceRoot(from) {
+function workspaceRoot(from: string): string | null {
   // package-lock.json, not package.json — a module folder carries the latter too. And a folder sitting directly inside `git_modules/` is a module clone, never the workspace, even when `npm install` left it a lockfile.
   for (let d = path.resolve(from); d !== path.dirname(d); d = path.dirname(d)) {
     const inGitModules = path.basename(path.dirname(d)) === "git_modules"
@@ -77,14 +94,14 @@ function findRoot() {
   return root
 }
 
-function engineBin(root) {
+function engineBin(root: string): string {
   const pkgPath = path.join(root, "node_modules", "dreamteamer", "package.json")
   const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"))
   const bin = typeof pkg.bin === "string" ? pkg.bin : (pkg.bin.dreamteamer ?? Object.values(pkg.bin)[0])
   return path.join(path.dirname(pkgPath), bin)
 }
 
-function dt(root, args, { capture = true } = {}) {
+function dt(root: string, args: string[], { capture = true } = {}): string {
   return execFileSync(process.execPath, [engineBin(root), ...args], {
     cwd: root,
     encoding: "utf8",
@@ -93,7 +110,7 @@ function dt(root, args, { capture = true } = {}) {
   })
 }
 
-function main(argv) {
+function main(argv: string[]) {
   const flags = new Set(argv.filter(a => a.startsWith("--")))
   const refs = argv.filter(a => !a.startsWith("--"))
   const all = flags.has("--all")
@@ -108,7 +125,7 @@ function main(argv) {
   }
 
   const root = findRoot()
-  let meetings = JSON.parse(dt(root, ["list", "meetings", "--json"]))
+  let meetings: MeetingRow[] = JSON.parse(dt(root, ["list", "meetings", "--json"]))
   if (!all) {
     const want = new Set(refs.map(r => r.slice("meetings/".length)))
     meetings = meetings.filter(m => want.has(m.id))
@@ -118,7 +135,7 @@ function main(argv) {
       process.exit(1)
     }
   }
-  const contacts = JSON.parse(dt(root, ["list", "contacts", "--json"]))
+  const contacts: ContactRow[] = JSON.parse(dt(root, ["list", "contacts", "--json"]))
   const changes = computeRecent(meetings, contacts)
 
   const dryRun = flags.has("--dry-run")
@@ -156,7 +173,7 @@ function main(argv) {
  *  `git_modules/<name>` symlink a plain `===` is false and the script would exit 0 having done nothing. */
 const isMain = () => {
   if (!process.argv[1]) return false
-  const real = p => {
+  const real = (p: string) => {
     try {
       return fs.realpathSync(p)
     } catch {

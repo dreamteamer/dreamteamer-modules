@@ -20,37 +20,64 @@ import { fileURLToPath, pathToFileURL } from "node:url"
 
 // ── the mapping, pure ──────────────────────────────────────────────────────────────────────────
 /** The API's `responseStatus` spellings → the descriptor's enum (kebab-case, as every v2 enum is). */
-export const RESPONSE_STATUS = {
+export const RESPONSE_STATUS: Record<string, string> = {
   needsAction: "needs-action",
   declined: "declined",
   tentative: "tentative",
   accepted: "accepted",
 }
 
+/** An attendee as the Calendar API sends it. */
+export interface ApiAttendee {
+  email?: string
+  displayName?: string
+  responseStatus?: string
+  organizer?: boolean
+  self?: boolean
+  optional?: boolean
+  resource?: boolean
+}
+
+/** The part of a Calendar API event this script reads. */
+export interface ApiEvent {
+  id?: string
+  attendees?: ApiAttendee[]
+  organizer?: ApiAttendee
+}
+
+/** An attendee as the record stores it. */
+export interface Attendee {
+  email: string
+  displayName?: string
+  responseStatus?: string
+  organizer?: true
+  self?: true
+  optional?: true
+}
+
 /**
  * One API attendee → the record's attendee object, or null for a room/resource or an entry with no address.
  * Only the keys the descriptor declares survive; a false flag is dropped rather than written as `false`.
- * @param {{email?:string, displayName?:string, responseStatus?:string, organizer?:boolean, self?:boolean, optional?:boolean, resource?:boolean}} a
  */
-export function attendeeOf(a) {
+export function attendeeOf(a: ApiAttendee | null | undefined): Attendee | null {
   if (!a || typeof a !== "object" || a.resource === true) return null
   const email = String(a.email ?? "")
     .trim()
     .toLowerCase()
   if (!email.includes("@")) return null
-  const out: Record<string, any> = { email }
+  const out: Attendee = { email }
   const name = String(a.displayName ?? "").trim()
   if (name) out.displayName = name
   const status = RESPONSE_STATUS[a.responseStatus]
   if (status) out.responseStatus = status
-  for (const flag of ["organizer", "self", "optional"]) if (a[flag] === true) out[flag] = true
+  for (const flag of ["organizer", "self", "optional"] as const) if (a[flag] === true) out[flag] = true
   return out
 }
 
 /** The event's attendee list as the record stores it: people only, in the API's order, deduped by address. */
-export function attendeesOf(event) {
-  const seen = new Set()
-  const out = []
+export function attendeesOf(event: ApiEvent | null | undefined): Attendee[] {
+  const seen = new Set<string>()
+  const out: Attendee[] = []
   for (const a of event?.attendees ?? []) {
     const row = attendeeOf(a)
     if (!row || seen.has(row.email)) continue
@@ -61,14 +88,14 @@ export function attendeesOf(event) {
 }
 
 /** The event's organizer as the record stores it, or null when the API carries none. */
-export function organizerOf(event) {
+export function organizerOf(event: ApiEvent | null | undefined): Attendee | null {
   const o = event?.organizer
   if (!o || typeof o !== "object") return null
   const email = String(o.email ?? "")
     .trim()
     .toLowerCase()
   if (!email.includes("@")) return null
-  const out: Record<string, any> = { email }
+  const out: Attendee = { email }
   const name = String(o.displayName ?? "").trim()
   if (name) out.displayName = name
   if (o.self === true) out.self = true
@@ -76,12 +103,12 @@ export function organizerOf(event) {
 }
 
 /** Both fields at once — what the script writes. `organizer: null` clears the field when the API has none. */
-export function peopleOf(event) {
+export function peopleOf(event: ApiEvent | null | undefined) {
   return { attendees: attendeesOf(event), organizer: organizerOf(event) }
 }
 
 // ── plumbing ─────────────────────────────────────────────────────────────────────────────────
-function workspaceRoot(from) {
+function workspaceRoot(from: string): string | null {
   // package-lock.json, not package.json — a module folder carries the latter too. And a folder sitting directly inside `git_modules/` is a module clone, never the workspace, even when `npm install` left it a lockfile.
   for (let d = path.resolve(from); d !== path.dirname(d); d = path.dirname(d)) {
     const inGitModules = path.basename(path.dirname(d)) === "git_modules"
@@ -98,16 +125,16 @@ function findRoot() {
   return root
 }
 
-async function engineStore(root) {
+async function engineStore(root: string) {
   const entry = createRequire(path.join(root, "package.json")).resolve("dreamteamer/records")
   const { Store } = await import(pathToFileURL(entry).href)
   return new Store({ root })
 }
 
-function readEvent(argv) {
+function readEvent(argv: string[]): ApiEvent {
   const at = argv.indexOf("--event")
   const text = at >= 0 && argv[at + 1] ? fs.readFileSync(argv[at + 1], "utf8") : fs.readFileSync(0, "utf8")
-  let json
+  let json: ApiEvent | ApiEvent[]
   try {
     json = JSON.parse(text)
   } catch (e) {
@@ -124,7 +151,7 @@ function readEvent(argv) {
   return json
 }
 
-async function main(argv) {
+async function main(argv: string[]) {
   const flags = new Set(argv.filter(a => a.startsWith("--")))
   const refs = argv.filter((a, i) => !a.startsWith("--") && !["--event", "--event-id"].includes(argv[i - 1]))
   if (refs.length !== 1 || !refs[0].startsWith("meetings/")) {
@@ -165,7 +192,7 @@ async function main(argv) {
  *  `git_modules/<name>` symlink a plain `===` is false and the script would exit 0 having done nothing. */
 const isMain = () => {
   if (!process.argv[1]) return false
-  const real = p => {
+  const real = (p: string) => {
     try {
       return fs.realpathSync(p)
     } catch {

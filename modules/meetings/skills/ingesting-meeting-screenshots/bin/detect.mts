@@ -55,10 +55,15 @@ const RECORDINGS_DIR = path.join(ROOT, "data/meeting-recordings")
  * engine's own dump, read with no YAML dependency. A list item, and a block scalar (`>-`, `|`), is
  * skipped along with everything nested in it: the keys read here are maps of scalars.
  */
-function yamlMaps(text) {
-  const root = {}
-  const stack = [{ indent: -1, node: root }]
-  let skipDeeperThan = null
+/** A YAML block map as yamlMaps reads it: scalars as strings, maps nested. */
+interface YamlMap {
+  [key: string]: string | YamlMap
+}
+
+function yamlMaps(text: string): YamlMap {
+  const root: YamlMap = {}
+  const stack: { indent: number; node: YamlMap }[] = [{ indent: -1, node: root }]
+  let skipDeeperThan: number | null = null
   for (const raw of text.split("\n")) {
     if (!raw.trim() || /^\s*#/.test(raw)) continue
     const indent = raw.length - raw.trimStart().length
@@ -78,8 +83,9 @@ function yamlMaps(text) {
     const key = m[1].replace(/^['"]|['"]$/g, "")
     const value = m[2]
     if (value === undefined || value === "") {
-      parent[key] = {}
-      stack.push({ indent, node: parent[key] })
+      const node: YamlMap = {}
+      parent[key] = node
+      stack.push({ indent, node })
     } else if (/^[>|][+-]?$/.test(value)) skipDeeperThan = indent
     else parent[key] = value.replace(/^['"]|['"]$/g, "")
   }
@@ -93,7 +99,7 @@ function yamlMaps(text) {
  * the subfolder. Null when the workspace has no compiled runtime, which leaves the module defaults in
  * force.
  */
-function compiledStorage(name) {
+function compiledStorage(name: string) {
   let text
   try {
     text = readFileSync(path.join(ROOT, ".dreamteamer", "collections", `${name}.collection.yaml`), "utf8")
@@ -125,7 +131,7 @@ function meetingRoots() {
   const storage = compiledStorage("meetings")
   const own = storage?.path ? path.join(ROOT, storage.path) : MEETINGS
   const tail = `.${storage?.suffix || "meeting"}.md`
-  const roots = [[own, tail]]
+  const roots: [string, string][] = [[own, tail]]
   const under = storage?.under
   const parent = under ? compiledStorage(under.collection) : null
   if (under && parent?.path && existsSync(path.join(ROOT, parent.path))) {
@@ -144,7 +150,7 @@ const IMAGE = new Set([".png", ".jpg", ".jpeg", ".gif", ".webp", ".heic"])
 // within ±1 hour. Outside that, out of scope — reported, never filed. See the block at `slackFrom`.
 const SLACK_MS = 60 * 60000
 
-const die = m => {
+const die = (m: string): never => {
   console.error(`✖ ${m}`)
   process.exit(1)
 }
@@ -152,7 +158,7 @@ const die = m => {
 // ── declared vars: resolved by the engine, never by a second .env read ─────────────────────────────
 // `dt resolve '${env:NAME}'` is the one resolver for a declared var. Each skill script carries its
 // own copy of this helper rather than importing across skills.
-function resolveVar(name) {
+function resolveVar(name: string): string | undefined {
   const engine = path.join(ROOT, "node_modules/.bin/dreamteamer")
   if (!existsSync(engine)) return undefined
   try {
@@ -172,10 +178,10 @@ function resolveVar(name) {
 // Newline-separated. Splits on newlines, trims, drops blanks, and skips a root that does not exist on
 // this machine with a printed note rather than dying. `override` mirrors `--files-folder`: a fixture
 // pins this without touching `.env` or a real synced folder.
-function resolveInboxRoots(override) {
+function resolveInboxRoots(override: string | undefined): string[] {
   const raw = override ?? resolveVar("INBOX_FOLDERS")
   if (!raw) return []
-  const roots = []
+  const roots: string[] = []
   for (const line of raw.split("\n")) {
     const root = line.trim()
     if (!root) continue
@@ -191,8 +197,13 @@ function resolveInboxRoots(override) {
 // ── the inbox log, working memory beside the payload ───────────────────────────────────────────────
 // `<exact-payload-filename>.log`, append-only, narrative only: the payload's presence and location is
 // the only truth this script or anything downstream decides from.
-const logPathOf = payload => `${payload}.log`
-function logEvent(payload, event, kv = {}, actor = "screenshots-detect@desktop") {
+const logPathOf = (payload: string) => `${payload}.log`
+function logEvent(
+  payload: string,
+  event: string,
+  kv: Record<string, unknown> = {},
+  actor = "screenshots-detect@desktop"
+) {
   const parts = Object.entries(kv)
     .map(([k, v]) => `${k}=${v}`)
     .join(" ")
@@ -200,7 +211,7 @@ function logEvent(payload, event, kv = {}, actor = "screenshots-detect@desktop")
 }
 
 // `<date>--` prefix on a name collision — never overwrite, never guess which file wins.
-function uniqueTrashPath(trashDir, name) {
+function uniqueTrashPath(trashDir: string, name: string): string {
   mkdirSync(trashDir, { recursive: true })
   let dest = path.join(trashDir, name)
   if (!existsSync(dest)) return dest
@@ -212,7 +223,7 @@ function uniqueTrashPath(trashDir, name) {
 
 // At scan start: a `*.log` whose payload is gone is moot, so it moves to `<root>/trash/`. Removal is
 // always a rename, never an unlink.
-function cleanMootLogs(root, kind) {
+function cleanMootLogs(root: string, kind: string): void {
   const dir = path.join(root, kind)
   if (!existsSync(dir)) return
   for (const name of readdirSync(dir)) {
@@ -224,7 +235,7 @@ function cleanMootLogs(root, kind) {
   }
 }
 
-const walk = (d, out = []) => {
+const walk = (d: string, out: string[] = []): string[] => {
   if (!existsSync(d)) return out
   for (const e of readdirSync(d, { withFileTypes: true })) {
     if (e.name.startsWith(".")) continue
@@ -236,14 +247,23 @@ const walk = (d, out = []) => {
   return out
 }
 
-const sha256 = f => `sha256:${createHash("sha256").update(readFileSync(f)).digest("hex")}`
+const sha256 = (f: string) => `sha256:${createHash("sha256").update(readFileSync(f)).digest("hex")}`
 
 // ── the capture time ─────────────────────────────────────────────────────────────────────────────
 // macOS names a screenshot "Screenshot YYYY-MM-DD at HH.MM.SS.png": a wall-clock time with no zone.
 // It is kept as `wall` and turned into an instant per meeting, in that meeting's own zone, so the
 // match does not depend on the zone of the machine running the scan. A file whose name carries no
 // time falls back to mtime, which is already an instant, with `confident: false`.
-function capturedAt(file) {
+/** When a screenshot was taken: a wall-clock time from its name, or its mtime as an instant. */
+interface Capture {
+  at: string
+  wall?: number[]
+  instant?: number
+  source: string
+  confident: boolean
+}
+
+function capturedAt(file: string): Capture {
   const stem = path.basename(file, path.extname(file))
   const m = stem.match(/(\d{4})-(\d{2})-(\d{2})[ _]+at[ _]+(\d{1,2})[.:](\d{2})[.:](\d{2})/i)
   if (m) {
@@ -260,7 +280,7 @@ function capturedAt(file) {
 }
 
 // The UTC offset (ms) of an IANA zone at instant `t`.
-function zoneOffset(t, zone) {
+function zoneOffset(t: number, zone: string): number {
   const parts = Object.fromEntries(
     new Intl.DateTimeFormat("en-US", {
       timeZone: zone,
@@ -283,7 +303,10 @@ function zoneOffset(t, zone) {
  * has a valid one, else the offset written on its `starts`, else the machine zone. Returns the
  * instant and the zone used, so a scan row can say which reading it matched on.
  */
-function wallToInstant([y, mo, d, h, mi, s]: number[], { timezone, startsOffset }: Record<string, any> = {}) {
+function wallToInstant(
+  [y, mo, d, h, mi, s]: number[],
+  { timezone, startsOffset }: { timezone?: string; startsOffset?: string } = {}
+) {
   const asUtc = Date.UTC(y, mo - 1, d, h, mi, s)
   if (timezone) {
     try {
@@ -302,9 +325,10 @@ function wallToInstant([y, mo, d, h, mi, s]: number[], { timezone, startsOffset 
 }
 
 // ── record reads (frontmatter only, no yaml dependency) ─────────────────────────────────────────────
-const fmOf = src => (src.match(/^---\n([\s\S]*?)\n---/) ?? [])[1] ?? ""
-const field = (fm, k) => (fm.match(new RegExp(`^${k}:\\s*(.+)$`, "m")) ?? [])[1]?.trim().replace(/^["']|["']$/g, "")
-const listOf = (fm, k) => {
+const fmOf = (src: string): string => (src.match(/^---\n([\s\S]*?)\n---/) ?? [])[1] ?? ""
+const field = (fm: string, k: string): string | undefined =>
+  (fm.match(new RegExp(`^${k}:\\s*(.+)$`, "m")) ?? [])[1]?.trim().replace(/^["']|["']$/g, "")
+const listOf = (fm: string, k: string): string[] => {
   const m = fm.match(new RegExp(`^${k}:\\n((?:\\s+-\\s+.+\\n?)+)`, "m"))
   return m
     ? m[1]
@@ -314,7 +338,7 @@ const listOf = (fm, k) => {
     : []
 }
 
-const walkRecords = (dir, suffix, out = []) => {
+const walkRecords = (dir: string, suffix: string, out: string[] = []): string[] => {
   if (!existsSync(dir)) return out
   for (const e of readdirSync(dir, { withFileTypes: true })) {
     const p = path.join(dir, e.name)
@@ -324,19 +348,35 @@ const walkRecords = (dir, suffix, out = []) => {
   return out
 }
 
-const idOf = (file, base, suffix) => path.relative(base, file).replace(suffix, "")
+const idOf = (file: string, base: string, suffix: string) => path.relative(base, file).replace(suffix, "")
 
 // "51:33" → seconds
-const durSecs = d => {
+const durSecs = (d: string | undefined) => {
   if (!d) return null
   const p = String(d).split(":").map(Number)
   return p.length === 3 ? p[0] * 3600 + p[1] * 60 + p[2] : p.length === 2 ? p[0] * 60 + p[1] : null
 }
-const ms = s => (s ? Date.parse(s) : NaN)
+const ms = (s: string | undefined) => (s ? Date.parse(s) : NaN)
 
-function meetings() {
+/** A meeting as the matcher sees it: its windows and what is already filed on it. */
+interface MeetingWindow {
+  id: string
+  name?: string
+  company?: string
+  timezone?: string
+  startsOffset?: string
+  from: number | null
+  to: number | null
+  slackFrom: number
+  slackTo: number
+  basis: string | null
+  recordings: string[]
+  screenshots: string[]
+}
+
+function meetings(): MeetingWindow[] {
   // recordings indexed by the meeting they belong to, so a meeting can be matched on real span
-  const recs = []
+  const recs: { id: string; meeting?: string; recorded_at?: string; duration?: string }[] = []
   for (const f of walkRecords(RECORDINGS_DIR, ".meeting-recording.md")) {
     const fm = fmOf(readFileSync(f, "utf8"))
     recs.push({
@@ -346,16 +386,16 @@ function meetings() {
       duration: field(fm, "duration"),
     })
   }
-  const out = []
+  const out: MeetingWindow[] = []
   for (const [root, tail] of meetingRoots())
     for (const f of walkRecords(root, tail)) {
       const fm = fmOf(readFileSync(f, "utf8"))
       const id = idOf(f, root, tail)
       const mine = recs.filter(c => c.meeting === `meetings/${id}`)
       // Real span from any recording that has an anchor; widest window across parts.
-      let from = null,
-        to = null,
-        basis = null
+      let from: number | null = null,
+        to: number | null = null,
+        basis: string | null = null
       for (const c of mine) {
         const st = ms(c.recorded_at),
           d = durSecs(c.duration)
@@ -408,7 +448,7 @@ const MEETING_FILES = "meetings"
 
 // ── commands ─────────────────────────────────────────────────────────────────────────────────────
 const verb = process.argv[2] ?? "scan"
-const argOf = name => {
+const argOf = (name: string) => {
   const i = process.argv.indexOf(name)
   return i > 0 ? process.argv[i + 1] : undefined
 }
@@ -453,7 +493,7 @@ if (verb === "scan") {
       const fp = sha256(file)
       // The capture instant is read in each meeting's own zone (see `wallToInstant`).
       const when = new Map(ms_.map(m => [m, c.wall ? wallToInstant(c.wall, m) : { instant: c.instant, zone: "mtime" }]))
-      const tOf = m => when.get(m).instant
+      const tOf = (m: MeetingWindow) => when.get(m).instant
       // Exact hits first; only if there are none does slack get a say. Tightest window wins inside a
       // tier, so a 30-minute call beats an all-day block that happens to contain the same instant.
       const exact = ms_.filter(m => tOf(m) >= m.from && tOf(m) <= m.to)
