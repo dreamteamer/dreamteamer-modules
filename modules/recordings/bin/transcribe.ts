@@ -95,7 +95,7 @@ else if (verb === "verify") {
   r = { status: 0 }
 } else {
   console.error(
-    "usage: transcribe.mjs sync | setup | verify | run <record.md> <audio> [--engine …] [--language …] [--speakers N]"
+    "usage: dreamteamer run @dreamteamer/recordings transcribe sync | setup | verify | run <record.md> <audio> [--engine …] [--language …] [--speakers N]"
   )
   process.exit(2)
 }

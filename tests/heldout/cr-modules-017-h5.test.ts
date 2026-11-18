@@ -52,7 +52,7 @@ const readSettings = root => JSON.parse(fs.readFileSync(settingsFile(root), "utf
 const ourEntries = s =>
   (s.hooks?.UserPromptSubmit ?? [])
     .flatMap(e => e.hooks ?? [])
-    .filter(h => String(h.command).includes("dt-web-hook.mjs"))
+    .filter(h => /dt-web-hook\.m?js/.test(String(h.command)))
 /** Run a hook command as a harness does: /bin/sh -c '<command>', the payload on stdin. */
 function sh(command, input, env) {
   return new Promise<any>(resolve => {

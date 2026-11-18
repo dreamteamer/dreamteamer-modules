@@ -96,19 +96,19 @@ class Inside(unittest.TestCase):
 
 class SkillDocumentsTheSameDefault(unittest.TestCase):
     """uv picks the environment before Python starts, so the venv location is set by the module's node
-    entry (bin/transcribe.mjs: UV_PROJECT_ENVIRONMENT = $TRANSCRIPTION_HOME/venv) — it must name the
+    entry (bin/transcribe.ts, run as `dreamteamer run @dreamteamer/recordings transcribe`: UV_PROJECT_ENVIRONMENT = $TRANSCRIPTION_HOME/venv) — it must name the
     same variable and default as here, and SKILL.md must route every command through it."""
 
     def text(self):
         return (SKILL / "SKILL.md").read_text(encoding="utf-8")
 
     def test_the_entry_sets_the_venv_under_the_home(self):
-        entry = (SKILL.parent.parent / "bin" / "transcribe.mjs").read_text(encoding="utf-8")
-        self.assertIn("env.UV_PROJECT_ENVIRONMENT = path.join(home, 'venv')", entry)
-        m = re.search(r"path\.join\(os\.homedir\(\), '([^']+)', '([^']+)', '([^']+)'\)", entry)
+        entry = (SKILL.parent.parent / "bin" / "transcribe.ts").read_text(encoding="utf-8")
+        self.assertRegex(entry, r"""env\.UV_PROJECT_ENVIRONMENT = path\.join\(home, ["']venv["']\)""")
+        m = re.search(r"""path\.join\(os\.homedir\(\), ["']([^"']+)["'], ["']([^"']+)["'], ["']([^"']+)["']\)""", entry)
         self.assertIsNotNone(m, "the entry does not spell the default home")
         self.assertEqual("/home/dana/" + "/".join(m.groups()) + "/venv", locations.venv_dir(HOME))
-        self.assertIn("bin/transcribe.mjs", self.text())
+        self.assertIn("dreamteamer run @dreamteamer/recordings transcribe", self.text())
         self.assertNotIn("export UV_PROJECT_ENVIRONMENT", self.text())
 
     def test_the_old_variables_and_folders_are_gone_from_the_skill(self):

@@ -42,14 +42,18 @@ const hits = (re, keep: (file, line) => boolean = () => true, files = FILES) => 
 // Hebrew is allowed exactly where `.leak-scan-allow` says, and nowhere else — the SAME file the
 // leak-scan workflow reads, parsed the same way. Two gates with separate ideas of what is allowed is
 // worse than one gate that knows, and this half covers the WHOLE tree where CI covers added lines.
+/** `rule` → the files allowed it; RENAMED: `rule\tfile` → the path an entry says the file was renamed to. */
+const RENAMED = new Map()
 const ALLOW = (() => {
   const byRule = new Map()
   for (const line of fs.readFileSync(path.join(ROOT, ".leak-scan-allow"), "utf8").split("\n")) {
     if (!line.trim() || line.trimStart().startsWith("#")) continue
-    const [file, rule] = line.split("\t")
+    const [file, rule, why = ""] = line.split("\t")
     if (!rule) continue
     if (!byRule.has(rule)) byRule.set(rule, new Set())
     byRule.get(rule).add(file)
+    const renamed = /^renamed to (\S+)/.exec(why)
+    if (renamed) RENAMED.set(`${rule}\t${file}`, renamed[1])
   }
   return byRule
 })()
@@ -132,7 +136,14 @@ describe("the leak gate", () => {
       HEBREW_ALLOWED.size >= 1,
       `.leak-scan-allow parsed to ${HEBREW_ALLOWED.size} hebrew entries — the parser or the file is broken, and an empty allow-list would make the rule below vacuous in the other direction`
     )
-    for (const f of HEBREW_ALLOWED)
-      assert.ok(fs.existsSync(path.join(ROOT, f)), `${f} is allow-listed but gone — remove the entry`)
+    for (const f of HEBREW_ALLOWED) {
+      if (fs.existsSync(path.join(ROOT, f))) continue
+      // A file renamed on a branch is still in that branch's history, which the leak-scan workflow reads commit by
+      // commit: its entry stays while the history does, but only as a rename of a file that exists and is allowed.
+      const to = RENAMED.get(`hebrew\t${f}`)
+      assert.ok(to, `${f} is allow-listed but gone — remove the entry`)
+      assert.ok(fs.existsSync(path.join(ROOT, to)), `${f} names its rename ${to}, which is gone too`)
+      assert.ok(HEBREW_ALLOWED.has(to), `${f} names its rename ${to}, which is not allow-listed itself`)
+    }
   })
 })

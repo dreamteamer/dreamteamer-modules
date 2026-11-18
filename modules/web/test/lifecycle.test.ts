@@ -288,7 +288,7 @@ test(
     assert.ok(Math.abs(rt.pstart - Date.now()) < 60_000, `pstart ${rt.pstart} is not this start`)
     assert.equal("lstart" in rt, false, "no start time as locale text")
     const servers = () =>
-      spawnSync("pgrep", ["-f", `dt-web.mjs ${f.root} start`], { encoding: "utf8" })
+      spawnSync("pgrep", ["-f", `dt-web\\.m?js ${f.root} start`], { encoding: "utf8" })
         .stdout.trim()
         .split("\n")
         .filter(Boolean)
