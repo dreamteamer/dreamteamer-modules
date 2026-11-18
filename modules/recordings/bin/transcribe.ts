@@ -48,7 +48,7 @@ if (!fs.existsSync(path.join(skill, "transcribe_meeting.py"))) {
   console.error(`✖ the transcribing-recordings skill is not compiled at ${path.relative(root, skill)} — dt compile`)
   process.exit(1)
 }
-const uv = args => spawnSync("uv", args, { cwd: skill, env, stdio: "inherit" })
+const uv = (args: string[]) => spawnSync("uv", args, { cwd: skill, env, stdio: "inherit" })
 const [verb, ...rest] = process.argv.slice(2)
 let r
 if (verb === "sync") r = uv(["sync"])

@@ -18,17 +18,49 @@ import { spawnSync } from "node:child_process"
 import { fileURLToPath } from "node:url"
 import { packageRoot } from "./packageRoot.ts"
 
+/** What the engine hands a setup unit. */
+interface SetupContext {
+  root: string
+  env: NodeJS.ProcessEnv
+  receiptDir?: string
+}
+
+/** The inputs this unit declares, as `dt setup` collects them. */
+interface Inputs {
+  transcription_home?: string
+  files_folder?: string
+  inbox_folders?: string
+}
+
+/** One check row of `inspect`. */
+interface Check {
+  id: string
+  status: string
+  title: string
+  detail: string
+  fix?: string
+  evidence?: Record<string, unknown>
+}
+
+/** An action of the plan, as `apply` receives it back. */
+interface Action {
+  id: string
+  state?: string
+  reason?: string
+  command?: string[] | null
+}
+
 export const UNIT_ID = "recordings"
 const DEFAULT_HOME = path.join(os.homedir(), ".cache", "dreamteamer", "transcription")
 const RECEIPT = "cpu-run.verified.json"
 /** The three model paths the CPU pass needs; the ggml weights (Apple Silicon + whisper-cli only) are evidence, never required. */
-const MODELS = home => ({
+const MODELS = (home: string): Record<string, string> => ({
   "whisper-ct2": path.join(home, "models", "whisper-ct2"),
   "segmentation.onnx": path.join(home, "models", "diarization", "segmentation.onnx"),
   "embedding.onnx": path.join(home, "models", "diarization", "embedding.onnx"),
 })
 
-const onPath = (env, bin) =>
+const onPath = (env: NodeJS.ProcessEnv, bin: string) =>
   (env.PATH ?? "").split(path.delimiter).some(d => {
     if (!d) return false
     try {
@@ -38,10 +70,10 @@ const onPath = (env, bin) =>
       return false
     }
   })
-const expand = p => (p && (p === "~" || p.startsWith("~/")) ? path.join(os.homedir(), p.slice(1)) : p)
-const homeOf = (ctx, inputs: Record<string, any> = {}) =>
+const expand = (p: string) => (p && (p === "~" || p.startsWith("~/")) ? path.join(os.homedir(), p.slice(1)) : p)
+const homeOf = (ctx: SetupContext, inputs: Inputs = {}) =>
   expand(inputs.transcription_home ?? ctx.env.TRANSCRIPTION_HOME ?? DEFAULT_HOME)
-const exists = p => {
+const exists = (p: string) => {
   try {
     fs.statSync(p)
     return true
@@ -50,7 +82,7 @@ const exists = p => {
   }
 }
 /** A regular file at that path, following a link — the hub cache's snapshots/<rev>/<file> is a link into blobs/, and a dangling one is an interrupted download. */
-const isFileAt = p => {
+const isFileAt = (p: string) => {
   try {
     return fs.statSync(p).isFile()
   } catch {
@@ -58,7 +90,7 @@ const isFileAt = p => {
   }
 }
 /** Whether a file of that name sits anywhere under the folder (the hub cache nests the weights a few levels down) — a half-downloaded model folder holds none. Linked folders are not walked. */
-const holds = (dir, name, depth = 6) => {
+const holds = (dir: string, name: string, depth = 6): boolean => {
   try {
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
       if (e.name === name && (e.isFile() || (e.isSymbolicLink() && isFileAt(path.join(dir, e.name))))) return true
@@ -69,8 +101,8 @@ const holds = (dir, name, depth = 6) => {
   }
   return false
 }
-const newest = paths => Math.max(0, ...paths.filter(exists).map(p => fs.statSync(p).mtimeMs))
-const receiptOf = ctx => {
+const newest = (paths: string[]) => Math.max(0, ...paths.filter(exists).map(p => fs.statSync(p).mtimeMs))
+const receiptOf = (ctx: SetupContext) => {
   try {
     return JSON.parse(fs.readFileSync(path.join(ctx.receiptDir, RECEIPT), "utf8"))
   } catch {
@@ -78,8 +110,8 @@ const receiptOf = ctx => {
   }
 }
 /** This module's node entry, resolved from where this unit was loaded (the package, or a composed copy), relative to the workspace. */
-function entry(root) {
-  let pkg = null
+function entry(root: string): string | null {
+  let pkg: string | null = null
   try {
     pkg = packageRoot(import.meta.url)
   } catch {}
@@ -93,10 +125,10 @@ function entry(root) {
 }
 const clip = () => fileURLToPath(new URL("./clip.wav", import.meta.url))
 
-export function inspect(ctx) {
+export function inspect(ctx: SetupContext): { checks: Check[] } {
   const env = ctx.env ?? {}
   const home = homeOf(ctx)
-  const checks = []
+  const checks: Check[] = []
   const missingTools = ["ffmpeg", "uv"].filter(b => !onPath(env, b))
   checks.push(
     missingTools.length
@@ -194,7 +226,7 @@ export function inspect(ctx) {
 /** INBOX_FOLDERS is a newline-separated list of roots (README); the prompt takes them comma-separated. Each line is
  *  trimmed and blanks dropped; a line that is not an existing path and holds a comma is split on commas — so a folder
  *  whose name holds a comma stays one root. The ingest script reads the variable by the same rule. */
-export function inboxList(value) {
+export function inboxList(value: unknown): string {
   return String(value)
     .split("\n")
     .map(l => l.trim())
@@ -215,7 +247,7 @@ export function inboxList(value) {
  *  the workspace. Whether the file already holds them, and the write, are the engine's. The engine fills an
  *  input from .env when no flag gives it, so an inbox_folders equal to the stored value IS the stored value,
  *  carried as it is: a value already in .env is never rewritten unless the person gives another. */
-function homeAction(ctx, inputs) {
+function homeAction(ctx: SetupContext, inputs: Inputs) {
   const inbox =
     inputs.inbox_folders == null || inputs.inbox_folders === ctx.env.INBOX_FOLDERS
       ? ctx.env.INBOX_FOLDERS
@@ -238,13 +270,13 @@ function homeAction(ctx, inputs) {
 }
 
 /** Is `child` the same as, or inside, `parent`? Both real, absolute paths. */
-function within(parent, child) {
+function within(parent: string, child: string): boolean {
   const rel = path.relative(parent, child)
   return rel === "" || (!rel.startsWith("..") && !path.isAbsolute(rel))
 }
 /** The real path of `p`, or of its nearest existing ancestor joined with the missing remainder. */
-function realish(p) {
-  const missing = []
+function realish(p: string): string {
+  const missing: string[] = []
   for (let d = path.resolve(p); ; d = path.dirname(d)) {
     try {
       return path.join(fs.realpathSync(d), ...missing.reverse())
@@ -257,7 +289,7 @@ function realish(p) {
 
 /** Where a path really leads: a symlink is followed even when its target does not exist yet (a dangling
  *  link into the workspace is still a link into the workspace), then the deepest existing ancestor is resolved. */
-function realTarget(p, depth = 8) {
+function realTarget(p: string, depth = 8): string {
   const abs = path.resolve(p)
   try {
     if (depth > 0 && fs.lstatSync(abs).isSymbolicLink())
@@ -269,7 +301,7 @@ function realTarget(p, depth = 8) {
 }
 /** The models and the venv must sit outside the workspace — compile and npm wipe what is inside it. The
  *  reason when the home resolves inside, else null; every action of the plan is gated on it. */
-function homeInsideWorkspace(ctx, home) {
+function homeInsideWorkspace(ctx: SetupContext, home: string | undefined): string | null {
   if (!home) return null
   return within(realish(ctx.root), realTarget(expand(String(home))))
     ? `TRANSCRIPTION_HOME resolves inside the workspace (${home}) — choose a folder outside it`
@@ -277,7 +309,7 @@ function homeInsideWorkspace(ctx, home) {
 }
 
 /** The inputs laid over the environment — the plan judges the home the person named, not the one .env holds yet. */
-const withInputs = (ctx, inputs: Record<string, any> = {}) => ({
+const withInputs = (ctx: SetupContext, inputs: Inputs = {}): SetupContext => ({
   ...ctx,
   env: {
     ...ctx.env,
@@ -287,7 +319,7 @@ const withInputs = (ctx, inputs: Record<string, any> = {}) => ({
   },
 })
 
-export function plan(ctx, inputs: Record<string, any> = {}) {
+export function plan(ctx: SetupContext, inputs: Inputs = {}) {
   const { checks } = inspect(withInputs(ctx, inputs))
   const status = Object.fromEntries(checks.map(c => [c.id, c.status]))
   const home = homeOf(ctx, inputs)
@@ -295,7 +327,8 @@ export function plan(ctx, inputs: Record<string, any> = {}) {
   const bin = entry(ctx.root)
   const tools = status["recordings.tools"] === "configured"
   const inside = homeInsideWorkspace(ctx, inputs.transcription_home ?? ctx.env.TRANSCRIPTION_HOME ?? DEFAULT_HOME)
-  const gate = (ok, reason) => (inside ? { state: "blocked", reason: inside } : ok ? {} : { state: "blocked", reason })
+  const gate = (ok: boolean, reason: string) =>
+    inside ? { state: "blocked", reason: inside } : ok ? {} : { state: "blocked", reason }
   const actions = [
     setHome,
     {
@@ -341,7 +374,11 @@ export function plan(ctx, inputs: Record<string, any> = {}) {
   return { checks, actions, needs }
 }
 
-export function apply(ctx, action, inputs = {}) {
+export function apply(
+  ctx: SetupContext,
+  action: Action,
+  inputs: Inputs = {}
+): { ok: boolean; changed: string[]; message: string } {
   try {
     if (action.state === "done")
       return { ok: true, changed: [], message: `nothing to do — ${action.reason ?? "already done"}` }

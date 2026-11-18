@@ -46,7 +46,7 @@ const RECORDINGS_DIR = path.join(ROOT, "data/meeting-recordings")
 // ---------------------------------------------------------------- declared vars
 // Resolved by the ENGINE (`dt resolve`), never by reading `.env` a second way, so a declared var has
 // exactly one resolver.
-function resolveVar(name) {
+function resolveVar(name: string): string | undefined {
   const engine = path.join(ROOT, "node_modules/.bin/dreamteamer")
   if (!fs.existsSync(engine)) return undefined
   try {
@@ -69,10 +69,10 @@ function resolveVar(name) {
 // is a comma-separated list (what the recordings setup wrote before 0.5.2) and is split on commas; a
 // folder whose name holds a comma stays one root. The setup writes the variable by the same rule.
 // `override` mirrors `--files-folder`, so a fixture pins this without touching `.env` or a real synced folder.
-function resolveInboxRoots(override) {
+function resolveInboxRoots(override: string | undefined): string[] {
   const raw = override ?? resolveVar("INBOX_FOLDERS")
   if (!raw) return []
-  const roots = []
+  const roots: string[] = []
   for (const line of raw.split("\n")) {
     const entry = line.trim()
     if (!entry) continue
@@ -97,8 +97,13 @@ function resolveInboxRoots(override) {
 // ── the inbox log — working memory beside the payload ────────────────────────────────────────────
 // `<exact-payload-filename>.log`, append-only, narrative only: the PAYLOAD's presence/location is
 // the only truth this script or anything downstream ever decides from.
-const logPathOf = payload => `${payload}.log`
-function logEvent(payload, event, kv = {}, actor = "recordings-detect@desktop") {
+const logPathOf = (payload: string) => `${payload}.log`
+function logEvent(
+  payload: string,
+  event: string,
+  kv: Record<string, unknown> = {},
+  actor = "recordings-detect@desktop"
+) {
   const parts = Object.entries(kv)
     .map(([k, v]) => `${k}=${v}`)
     .join(" ")
@@ -106,7 +111,7 @@ function logEvent(payload, event, kv = {}, actor = "recordings-detect@desktop") 
 }
 
 // `<date>--` prefix on a name collision — never overwrite, never guess which file wins.
-function uniqueTrashPath(trashDir, name) {
+function uniqueTrashPath(trashDir: string, name: string): string {
   fs.mkdirSync(trashDir, { recursive: true })
   let dest = path.join(trashDir, name)
   if (!fs.existsSync(dest)) return dest
@@ -117,7 +122,7 @@ function uniqueTrashPath(trashDir, name) {
 }
 
 /** Every file under `dir`, at any depth, sorted; dotfiles and any `trash/` folder (discards, never input) skipped. */
-function walkFiles(dir, out = []) {
+function walkFiles(dir: string, out: string[] = []): string[] {
   if (!fs.existsSync(dir)) return out
   for (const e of fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
     if (e.name.startsWith(".")) continue
@@ -131,7 +136,7 @@ function walkFiles(dir, out = []) {
 
 // At scan start: a `*.log` whose payload is gone is moot — move it to `<root>/trash/`. Removal is
 // never a delete, so this is a rename, never an unlink. Walks the subtree for the same reason `scan` does.
-function cleanMootLogs(root, kind) {
+function cleanMootLogs(root: string, kind: string): void {
   for (const logP of walkFiles(path.join(root, kind))) {
     if (!logP.endsWith(".log")) continue
     const payload = logP.slice(0, -".log".length)
@@ -141,7 +146,20 @@ function cleanMootLogs(root, kind) {
 }
 
 // ---------------------------------------------------------------- filename → date + hint
-const MONTHS = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 }
+const MONTHS: Record<string, number> = {
+  jan: 1,
+  feb: 2,
+  mar: 3,
+  apr: 4,
+  may: 5,
+  jun: 6,
+  jul: 7,
+  aug: 8,
+  sep: 9,
+  oct: 10,
+  nov: 11,
+  dec: 12,
+}
 const HE_MONTHS = {
   ינואר: 1,
   פברואר: 2,
@@ -159,7 +177,7 @@ const HE_MONTHS = {
 }
 
 /** Hebrew → latin, enough for a filesystem slug. Not a translation — the agent supplies that. */
-const HE_MAP = {
+const HE_MAP: Record<string, string> = {
   א: "a",
   ב: "b",
   ג: "g",
@@ -188,9 +206,9 @@ const HE_MAP = {
   ש: "sh",
   ת: "t",
 }
-const translit = s => [...s].map(c => HE_MAP[c] ?? c).join("")
+const translit = (s: string) => [...s].map(c => HE_MAP[c] ?? c).join("")
 
-const slug = s =>
+const slug = (s: string) =>
   translit(s)
     .normalize("NFKD")
     .replace(/[̀-ͯ]/g, "")
@@ -199,14 +217,23 @@ const slug = s =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
 
-const pad = n => String(n).padStart(2, "0")
-const iso = (y, m, d) => `${y}-${pad(m)}-${pad(d)}`
+const pad = (n: number | string) => String(n).padStart(2, "0")
+const iso = (y: number, m: number, d: number) => `${y}-${pad(m)}-${pad(d)}`
 
 /**
  * Returns { date, time, hint, how, confident }.
  * Recordings are named "[date] [context, company, contacts]" by hand, in a few dialects.
  */
-function parseName(stem, mtime) {
+/** What a recording's filename says about it. */
+interface ParsedName {
+  date: string
+  time: string | null
+  hint: string
+  how: string
+  confident: boolean
+}
+
+function parseName(stem: string, mtime: Date): ParsedName {
   const clean = stem.replace(/[‎‏‪-‮⁦-⁩]/g, "").trim()
   const mtimeYear = mtime.getFullYear()
 
@@ -248,20 +275,20 @@ function parseName(stem, mtime) {
 }
 
 /** a bare month+day has no year: assume the mtime's, unless that lands in the future */
-function yearFor(mo, d, year) {
+function yearFor(mo: number, d: number, year: number): { date: string; time: string | null } {
   let date = iso(year, mo, d)
   if (new Date(date).getTime() - Date.now() > 30 * 864e5) date = iso(year - 1, mo, d)
   return { date, time: null }
 }
 
 // ---------------------------------------------------------------- file facts
-const sha256 = f => {
+const sha256 = (f: string) => {
   const h = crypto.createHash("sha256")
   h.update(fs.readFileSync(f))
   return `sha256:${h.digest("hex")}`
 }
 
-function duration(f) {
+function duration(f: string): string | null {
   try {
     const s = +execFileSync("ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", f], {
       encoding: "utf8",
@@ -273,7 +300,7 @@ function duration(f) {
   }
 }
 
-const walk = (d, out = []) => {
+const walk = (d: string, out: string[] = []): string[] => {
   for (const e of fs.readdirSync(d, { withFileTypes: true })) {
     const p = path.join(d, e.name)
     e.isDirectory() ? walk(p, out) : out.push(p)
@@ -287,7 +314,7 @@ const walk = (d, out = []) => {
  * it, not recomputed on every scan.
  */
 function knownFingerprints() {
-  const known = new Map() // fingerprint -> recording id
+  const known = new Map<string, string>() // fingerprint -> recording id
   if (!fs.existsSync(RECORDINGS_DIR)) return known
   for (const f of walk(RECORDINGS_DIR).filter(f => /\.meeting-recording\.(md|yaml)$/.test(f))) {
     const id = path.relative(RECORDINGS_DIR, f).replace(/\.meeting-recording\.(md|yaml)$/, "")
@@ -298,7 +325,7 @@ function knownFingerprints() {
 }
 
 /** A top-level frontmatter scalar with its surrounding quotes removed, or null. */
-const fmValue = (text, key) =>
+const fmValue = (text: string, key: string): string | null =>
   (new RegExp(`^${key}:[ \\t]*(.*?)\\s*$`, "m").exec(text)?.[1] ?? "").replace(/^(['"])(.*)\1$/, "$2") || null
 
 /**
@@ -307,8 +334,17 @@ const fmValue = (text, key) =>
  * decides. A record (the recording or its meeting) that names the incoming filename is the strong
  * signal; the same day and a duration within 15 s is the plausible one (ASR durations drift by seconds).
  */
-function recordingsWithoutFile() {
-  const out = []
+/** A recording record still waiting for its binary. */
+interface Orphan {
+  id: string
+  meeting: string | null
+  date: string | null
+  duration: string | null
+  _hay?: string
+}
+
+function recordingsWithoutFile(): Orphan[] {
+  const out: Orphan[] = []
   if (!fs.existsSync(RECORDINGS_DIR)) return out
   for (const f of walk(RECORDINGS_DIR).filter(f => f.endsWith(".meeting-recording.md"))) {
     const text = fs.readFileSync(f, "utf8")
@@ -339,10 +375,15 @@ function recordingsWithoutFile() {
  * engine's own dump, read with no YAML dependency. A list item, and a block scalar (`>-`, `|`), is
  * skipped along with everything nested in it: the keys read here are maps of scalars.
  */
-function yamlMaps(text) {
-  const root = {}
-  const stack = [{ indent: -1, node: root }]
-  let skipDeeperThan = null
+/** A YAML block map as yamlMaps reads it: scalars as strings, maps nested. */
+interface YamlMap {
+  [key: string]: string | YamlMap
+}
+
+function yamlMaps(text: string): YamlMap {
+  const root: YamlMap = {}
+  const stack: { indent: number; node: YamlMap }[] = [{ indent: -1, node: root }]
+  let skipDeeperThan: number | null = null
   for (const raw of text.split("\n")) {
     if (!raw.trim() || /^\s*#/.test(raw)) continue
     const indent = raw.length - raw.trimStart().length
@@ -362,8 +403,9 @@ function yamlMaps(text) {
     const key = m[1].replace(/^['"]|['"]$/g, "")
     const value = m[2]
     if (value === undefined || value === "") {
-      parent[key] = {}
-      stack.push({ indent, node: parent[key] })
+      const node: YamlMap = {}
+      parent[key] = node
+      stack.push({ indent, node })
     } else if (/^[>|][+-]?$/.test(value)) skipDeeperThan = indent
     else parent[key] = value.replace(/^['"]|['"]$/g, "")
   }
@@ -377,7 +419,7 @@ function yamlMaps(text) {
  * the subfolder. Null when the workspace has no compiled runtime, which leaves the module defaults in
  * force.
  */
-function compiledStorage(name) {
+function compiledStorage(name: string) {
   let text
   try {
     text = fs.readFileSync(path.join(ROOT, ".dreamteamer", "collections", `${name}.collection.yaml`), "utf8")
@@ -405,7 +447,7 @@ function compiledStorage(name) {
  * collection's own root every parent record's child folder is probed too. A probe, not a walk: this
  * runs once per recording that lacks its binary.
  */
-function meetingFile(id) {
+function meetingFile(id: string): string | null {
   let parent = null
   const storage = compiledStorage("meetings")
   const dir = path.join(ROOT, String(storage?.path || "data/meetings"))
@@ -425,13 +467,13 @@ function meetingFile(id) {
 }
 
 /** `m:ss` or `h:mm:ss` → seconds, for a tolerant duration comparison */
-function secs(d) {
+function secs(d: unknown): number | null {
   const m = String(d ?? "").match(/^(?:(\d+):)?(\d+):(\d{2})$/)
   return m ? +(m[1] ?? 0) * 3600 + +m[2] * 60 + +m[3] : null
 }
 
 /** The local calendar day (`YYYY-MM-DD`) of a date or date-time value, or null. */
-function localDay(v) {
+function localDay(v: string | null): string | null {
   if (!v) return null
   if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v
   const t = new Date(v)
@@ -442,7 +484,7 @@ function localDay(v) {
 const verb = process.argv[2] ?? "scan"
 // `--files-folder` and `--inbox-folders` (a newline-separated list) override the two declared vars,
 // so a caller or a test fixture never touches `.env` or a real synced folder.
-const argOf = name => {
+const argOf = (name: string) => {
   const i = process.argv.indexOf(name)
   return i > 0 ? process.argv[i + 1] : undefined
 }
@@ -458,8 +500,27 @@ if (verb === "scan") {
   const inboxDirs = roots.map(r => path.join(r, "meeting-recordings"))
   const known = knownFingerprints()
 
-  const out = []
-  const seenFingerprints = new Map() // fingerprint -> first inbox_path, for the cross-root duplicate note
+  /** One audio file found in an inbox, as scan reports it. */
+  interface Candidate {
+    inbox_path: string
+    duplicate_of: string | null
+    known: string | null
+    proposed_id: string
+    name: string
+    name_is_transliterated: boolean
+    date: string
+    time_hint: string | null
+    duration: string | null
+    fingerprint: string
+    size_mb: number
+    mtime: string
+    date_source: string
+    confident: boolean
+    ext: string
+    orphan_candidates?: Record<string, unknown>[]
+  }
+  const out: Candidate[] = []
+  const seenFingerprints = new Map<string, string>() // fingerprint -> first inbox_path, for the cross-root duplicate note
   for (const root of roots) cleanMootLogs(root, "meeting-recordings") // scan-start: heal any stray log
   for (const inbox of inboxDirs) {
     if (!fs.existsSync(inbox)) {
@@ -663,7 +724,7 @@ if (verb === "scan") {
   die(`unknown verb "${verb}" (scan | import)`)
 }
 
-function die(msg) {
+function die(msg: string): never {
   console.error(`✖ ${msg}`)
   process.exit(1)
 }
