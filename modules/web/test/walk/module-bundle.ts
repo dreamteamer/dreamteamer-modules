@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // The module-bundle walk (cr-modules-005 line 9, the browser half): a workspace module ships a PREBUILT app
-// bundle (`modules/default/ui/app.js`, no build step, plain DOM — a component is a mount function) whose page calls fetch('/api/…');
+// bundle (`modules/default/ui/app.js`, no build step, Vue from window.Vue) whose page calls fetch('/api/…');
 // `dt compile` stages it to .dreamteamer/ui/; dt web serves it inside a sandboxed module frame under
 // /_frames/<key>/ on its one listener, and the frame renders the count the bridge answered. The same file, unchanged, is what the extension loads (the VS Code
 // half: the CDP smoke on the same fixture).
@@ -12,22 +12,21 @@ import { appDir, browser, checks, go, northwind, serve, shot, signedIn } from ".
 // Browser globals: these callbacks run in the page, not in Node.
 declare const document: any
 
-export const BUNDLE = `// a prebuilt module app: no imports, no framework — the component is a mount function
+export const BUNDLE = `// a prebuilt module app: no imports, Vue from the host
 export default ({ registerApp }) => {
-	const Stats = {
-		mount(el) {
-			const line = document.createElement('p');
-			line.className = 'northwind-stats';
-			line.textContent = 'counting…';
-			el.appendChild(line);
-			(async () => {
+	const { defineComponent, h, ref, onMounted } = window.Vue;
+	const Stats = defineComponent({
+		setup() {
+			const line = ref('counting…');
+			onMounted(async () => {
 				const res = await fetch('/api/collections/projects/records?limit=100');
-				const body: any = await res.json();
+				const body = await res.json();
 				const n = Array.isArray(body) ? body.length : (body.records ?? body.data ?? []).length;
-				line.textContent = res.ok ? 'Northwind projects: ' + n : 'refused: ' + res.status;
-			})();
+				line.value = res.ok ? 'Northwind projects: ' + n : 'refused: ' + res.status;
+			});
+			return () => h('p', { class: 'northwind-stats' }, line.value);
 		},
-	};
+	});
 	registerApp({ id: 'northwind-stats', name: 'Northwind stats', icon: 'graph', routes: [{ path: '', component: Stats }] });
 };
 `
@@ -58,7 +57,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
         loaded.push(`${r.status()} ${new URL(r.url()).pathname.replace(/^\/_frames\/[^/]+/, "/_frames")}`)
     })
     await page.reload()
-    await page.waitForSelector("[data-nav-row]", { timeout: 30_000 })
+    await page.waitForSelector(".dt-nav-row", { timeout: 30_000 })
     await go(page, "/a/northwind-stats")
     const frame = await (
       await page.waitForSelector('iframe[title="module app default"]:not([style*="display:none"])', { timeout: 15_000 })

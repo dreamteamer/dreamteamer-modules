@@ -139,7 +139,7 @@ export async function signedIn(b, url, { colorScheme = "light", viewport = { wid
   })
   const res = await page.goto(url)
   if (!res || res.status() !== 200) throw new Error(`sign-in answered ${res?.status()}`)
-  await page.waitForSelector("[data-nav-row]", { timeout: 30_000 })
+  await page.waitForSelector(".dt-nav-row", { timeout: 30_000 })
   return { page, context, errors }
 }
 

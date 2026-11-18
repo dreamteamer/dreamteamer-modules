@@ -4,13 +4,18 @@
 // and nothing else on screen. Five collections whose titles are their names; the document places Work (holding tasks)
 // and contacts, so the top level draws Work, contacts, then the tail assets, companies, users. Each recipe op is
 // applied with applyNavOp, drawn with buildTree, and the top-level labels compared with the held-out's expected; the
-// same gestures are asked of the ui's own gesture rules (modules/ui/src/lib/navTree.ts; until ui 0.4 the real
-// NavSidebar.vue, rendered) and the ops they send compared with the recipes; with no document the same Move gestures
-// move one row one place.
-import { test, describe } from "node:test"
+// same gestures are made on the REAL NavSidebar.vue (bundled with the ui runner's own SFC compile and host stub) and
+// the ops it sends compared with the recipes; with no document the same Move gestures move one row one place.
+import { test, describe, after } from "node:test"
 import assert from "node:assert/strict"
+import fs from "node:fs"
+import os from "node:os"
 import path from "node:path"
+import { spawnSync } from "node:child_process"
 import { fileURLToPath, pathToFileURL } from "node:url"
+import { readFileSync } from "node:fs"
+import * as esbuild from "esbuild"
+import * as sfc from "vue/compiler-sfc"
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.resolve(HERE, "..", "..")
@@ -195,49 +200,98 @@ describe("steps 2-3: each recipe op through applyNavOp, drawn with buildTree", (
   }
 })
 
-// ── step 4: the ui's own gesture rules ─────────────────────────────────────────────────────────────────────────────
-// The sidebar was Vue through @dreamteamer/ui 0.3, and this step rendered the real NavSidebar.vue. The React app (0.4)
-// keeps what each gesture sends in pure functions — `rowMenu` (the row menu's entries and the op each sends) and
-// `dropOp` (a drop as an op) in modules/ui/src/lib/navTree.ts — so the same gestures are asked of them over the same
-// drawing. The old harness dropped 18 px into the target row, its lower part: `after`.
-const { navIndex, rowMenu, dropOp } = await import(
-  pathToFileURL(path.join(ROOT, "modules", "ui", "src", "lib", "navTree.ts")).href
-)
+// ── step 4: the REAL sidebar ───────────────────────────────────────────────────────────────────────────────────
+const UI = path.join(ROOT, "modules", "ui")
+const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "hm10-"))
+after(() => fs.rmSync(tmp, { recursive: true, force: true }))
+async function bundleSidebar() {
+  const out = path.join(tmp, "sidebar.mjs")
+  await esbuild.build({
+    entryPoints: [path.join(HERE, "cr-dt-008-hm10.sidebar.ts")],
+    outfile: out,
+    bundle: true,
+    platform: "node",
+    format: "esm",
+    target: "node20",
+    external: ["node:*"],
+    logLevel: "silent",
+    plugins: [
+      {
+        name: "stub-vscode",
+        setup(build) {
+          build.onResolve({ filter: /^vscode$/ }, () => ({ path: "vscode", namespace: "stub" }))
+          build.onLoad({ filter: /.*/, namespace: "stub" }, () => ({ contents: "export default {};", loader: "js" }))
+        },
+      },
+      {
+        // the ui runner's own SFC compile (modules/ui/scripts/test.mjs, the render tier)
+        name: "vue-sfc",
+        setup(build) {
+          build.onLoad({ filter: /\.vue$/ }, ({ path: p }) => {
+            const { descriptor } = sfc.parse(readFileSync(p, "utf8"), { filename: p })
+            const id = path.basename(p)
+            if (!descriptor.script && !descriptor.scriptSetup) {
+              const template = sfc.compileTemplate({ source: descriptor.template?.content ?? "", filename: p, id })
+              return { contents: `${template.code}\nexport default { render };`, loader: "ts" }
+            }
+            const compiled = sfc.compileScript(descriptor, { id, inlineTemplate: !!descriptor.template })
+            return {
+              contents: `${compiled.content.replace(/export default/, "const __sfc__ =")}\nexport default __sfc__;`,
+              loader: "ts",
+            }
+          })
+        },
+      },
+      {
+        name: "host-stub",
+        setup(build) {
+          const stub = path.join(UI, "test", "webview", "host-stub.ts")
+          build.onResolve({ filter: /(^|\/)transport$/ }, () => ({ path: stub }))
+        },
+      },
+    ],
+  })
+  return out
+}
 const wsModel = nodes => [
   { kind: "workspace", key: "workspace", label: "hm10", route: "/settings/schema/activity", children: nodes },
 ]
-/** One gesture over a drawing: what it sends, or that the entry is disabled. */
-function gesture(model, g) {
-  const ix = navIndex(model)
-  const open = new Set(g.open ?? [])
-  if (g.drop) {
-    const op = dropOp(ix, g.drop[0], g.drop[1], "after", key => open.has(key))
-    return { patches: op ? [op] : [] }
-  }
-  const [key, id] = g.menu
-  const menu = rowMenu(ix, key)
-  const item = menu?.items.find(i => i.id === id)
-  if (!item || item.disabled) return { state: "disabled", patches: [] }
-  const op = menu.act(id)
-  return { patches: op ? [op] : [] }
+function sidebar(bundle, cases) {
+  const r = spawnSync(process.execPath, [bundle], {
+    encoding: "utf8",
+    env: { ...process.env, HM10_CASES: JSON.stringify(cases) },
+    timeout: 60_000,
+  })
+  const line = (r.stdout ?? "").split("\n").find(l => l.startsWith("HM10:"))
+  assert.ok(line, `the sidebar harness printed nothing:\n${r.stdout}\n${r.stderr}`)
+  return JSON.parse(line.slice(5))
 }
 
-describe("step 4: the same gestures through the ui's gesture rules send exactly the recipe ops", () => {
+describe("step 4: the same gestures through the ui sidebar send exactly the recipe ops", () => {
+  let bundle
+  test("the sidebar harness bundles with the ui runner's SFC compile", { timeout: 120_000 }, async () => {
+    bundle = await bundleSidebar()
+    assert.ok(fs.existsSync(bundle))
+  })
   test("each Move entry (and the drop) sends the recipe op", { timeout: 120_000 }, () => {
     const model = wsModel(draw(ORIGINAL()))
+    const sent = sidebar(
+      bundle,
+      CASES.map(c => ({ id: c.id, model, gesture: c.gesture }))
+    )
     const wrong = []
     for (const c of CASES) {
-      const got = gesture(model, c.gesture)
-      if (JSON.stringify(got.patches) !== JSON.stringify(c.sends ?? [c.op]))
+      const got = sent[c.id]
+      if (JSON.stringify(got?.patches) !== JSON.stringify(c.sends ?? [c.op]))
         wrong.push(
-          `(${c.id}) ${c.gesture.menu?.join(" ") ?? `drop ${c.gesture.drop.join(" onto ")}`}: sent ${JSON.stringify(got.patches)}${got.state === "disabled" ? " (the entry is disabled)" : ""}, the recipe is ${JSON.stringify(c.op)}`
+          `(${c.id}) ${c.gesture.menu?.join(" ") ?? `drop ${c.gesture.drop.join(" onto ")}`}: sent ${JSON.stringify(got?.patches)}${got?.state === "disabled" ? " (the entry is disabled)" : ""}, the recipe is ${JSON.stringify(c.op)}`
         )
     }
     assert.deepEqual(wrong, [])
   })
 
   // with no document: the flat five, assets · companies · contacts · tasks · users; the same Move gestures (a)-(e)
-  // computed from the flat drawing, applied, move that one row one place
+  // computed by the sidebar from the flat drawing, applied, move that one row one place
   const FLAT = [
     { id: "a", row: "assets", menu: "move-up" },
     { id: "b", row: "companies", menu: "move-up" },
@@ -245,28 +299,39 @@ describe("step 4: the same gestures through the ui's gesture rules send exactly 
     { id: "d", row: "contacts", menu: "move-down" },
     { id: "e", row: "assets", menu: "move-down" },
   ]
-  test("doc = null: (a)-(e) move the row one place over the flat five", { timeout: 120_000 }, () => {
-    const flat = top(null)
-    assert.deepEqual(flat, ["assets", "companies", "contacts", "tasks", "users"])
-    for (const f of FLAT) {
-      const sent = gesture(wsModel(draw(null)), { menu: [`c/${f.row}`, f.menu] })
-      const i = flat.indexOf(f.row)
-      const edge = (f.menu === "move-up" && i === 0) || (f.menu === "move-down" && i === flat.length - 1)
-      if (edge) {
-        assert.equal(sent.state, "disabled", `(${f.id}) ${f.menu} on the ${i === 0 ? "first" : "last"} row is offered`)
-        continue
+  test(
+    "doc = null: (a)-(e) through the sidebar move the row one place over the flat five",
+    { timeout: 120_000 },
+    () => {
+      const flat = top(null)
+      assert.deepEqual(flat, ["assets", "companies", "contacts", "tasks", "users"])
+      const sent = sidebar(
+        bundle,
+        FLAT.map(f => ({ id: f.id, model: wsModel(draw(null)), gesture: { menu: [`c/${f.row}`, f.menu] } }))
+      )
+      for (const f of FLAT) {
+        const i = flat.indexOf(f.row)
+        const edge = (f.menu === "move-up" && i === 0) || (f.menu === "move-down" && i === flat.length - 1)
+        if (edge) {
+          assert.equal(
+            sent[f.id].state,
+            "disabled",
+            `(${f.id}) ${f.menu} on the ${i === 0 ? "first" : "last"} row is offered`
+          )
+          continue
+        }
+        assert.equal(sent[f.id].patches.length, 1, `(${f.id}) sent ${JSON.stringify(sent[f.id].patches)}`)
+        const next = applyNavOp(null, sent[f.id].patches[0], ctx)
+        const drawn = top(next)
+        const want = [...flat]
+        const j = f.menu === "move-up" ? i - 1 : i + 1
+        ;[want[i], want[j]] = [want[j], want[i]]
+        assert.deepEqual(drawn, want, `(${f.id}) ${f.menu} on ${f.row}: ${JSON.stringify(sent[f.id].patches[0])}`)
+        for (const [name, n] of namedCounts(next)) assert.equal(n, 1, `(${f.id}) ${name} named ${n} times`)
+        assert.doesNotThrow(() => applyNavOp(next, sent[f.id].patches[0], ctx))
       }
-      assert.equal(sent.patches.length, 1, `(${f.id}) sent ${JSON.stringify(sent.patches)}`)
-      const next = applyNavOp(null, sent.patches[0], ctx)
-      const drawn = top(next)
-      const want = [...flat]
-      const j = f.menu === "move-up" ? i - 1 : i + 1
-      ;[want[i], want[j]] = [want[j], want[i]]
-      assert.deepEqual(drawn, want, `(${f.id}) ${f.menu} on ${f.row}: ${JSON.stringify(sent.patches[0])}`)
-      for (const [name, n] of namedCounts(next)) assert.equal(n, 1, `(${f.id}) ${name} named ${n} times`)
-      assert.doesNotThrow(() => applyNavOp(next, sent.patches[0], ctx))
     }
-  })
+  )
 })
 
 test("NavOpError is what a refusal throws (sanity: an unknown anchor)", { timeout: 120_000 }, () => {

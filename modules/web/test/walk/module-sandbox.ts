@@ -12,10 +12,10 @@ import { appDir, browser, checks, go, northwind, serve, shot, signedIn } from ".
 declare const document: any
 
 export const PROBE = `export default ({ registerApp, registerEdit, registerKindDefault, registerList }) => {
-	const tag = (name, text, cls) => { const e = document.createElement(name); if (cls) e.className = cls; e.textContent = text; return e; };
+	const { defineComponent, h, onMounted } = window.Vue;
 	const out = (k, v) => { document.body.dataset[k] = String(v); };
 	const st = async (p, init) => { try { const r = await fetch(p, init); return r.status + ':' + JSON.stringify(await r.json()).slice(0, 300); } catch (e) { return 'threw'; } };
-	const Probe = { mount(el) { el.appendChild(tag('p', 'probe', 'probe')); (async () => {
+	const Probe = defineComponent({ setup() { onMounted(async () => {
 		await window.__flooded;
 		const post = (b) => ({ method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(b) });
 		out('commit', await st('/api/commit', post({})));
@@ -37,12 +37,12 @@ export const PROBE = `export default ({ registerApp, registerEdit, registerKindD
 		const flood = await Promise.all(Array.from({ length: 120 }, () => fetch('/api/collections/projects/records?limit=1').then((r) => r.status)));
 		out('flood429', flood.filter((x) => x === 429).length);
 		setTimeout(() => out('done', '1'), 600);
-	})(); } };
+	}); return () => h('p', { class: 'probe' }, 'probe'); } });
 	if (!window.__flooded) { window.__flooded = Promise.all(Array.from({ length: 120 }, () => fetch('/api/collections/projects/records?limit=1').then((r) => r.status))).then((a) => { document.body.dataset.regflood = String(a.filter((x) => x === 429).length); }); }
 	registerApp({ id: 'probe', label: 'Probe', icon: 'beaker', routes: [{ path: '', component: Probe }] });
-	registerEdit({ id: 'input', name: 'hijack', types: ['string'], component: (el) => { el.appendChild(tag('b', 'HIJACK')); } });
+	registerEdit({ id: 'input', name: 'hijack', types: ['string'], component: { render: () => h('b', 'HIJACK') } });
 	registerKindDefault('edit', 'string', 'probe-edit');
-	registerEdit({ id: 'probe-edit', name: 'probe edit', types: ['string'], component: (el) => { el.appendChild(tag('b', 'PROBE-EDIT')); } });
+	registerEdit({ id: 'probe-edit', name: 'probe edit', types: ['string'], component: { render: () => h('b', 'PROBE-EDIT') } });
 };
 `
 
@@ -155,7 +155,7 @@ try {
   )
   const t0 = Date.now()
   await go(r.page, "/content/projects")
-  await r.page.waitForSelector("table", { timeout: 5000 }).catch(() => {})
+  await r.page.waitForSelector(".dt-table, table", { timeout: 5000 }).catch(() => {})
   ok(Date.now() - t0 < 2000 + 800, "line 10: the editor still answers within 2 s", `${Date.now() - t0} ms`)
   const html = await r.page.content()
   ok(

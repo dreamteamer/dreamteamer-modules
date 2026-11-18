@@ -1,0 +1,95 @@
+/**
+ * The BROWSER host's colours (dt web) — loaded only by the browser entry (main-browser.ts), never inside
+ * VS Code. A theme colour id (`charts.blue`, `terminal.ansiRed`) is drawn as
+ * `var(--vscode-<id>, var(--dt-color-<id>, var(--dt-unknown-color)))` (lib/collection-display.ts
+ * `themeColor`): VS Code resolves the first term; a browser has no `--vscode-*`, so it takes the chart and
+ * ANSI colours defined here, light and dark, and any other id falls back to a visible neutral.
+ */
+:root {
+	--dt-unknown-color: var(--dt-fg-subtle);
+	--dt-color-charts-red: #d73a49;
+	--dt-color-charts-orange: #d97706;
+	--dt-color-charts-yellow: #b58900;
+	--dt-color-charts-green: #2e8b57;
+	--dt-color-charts-blue: #1f6feb;
+	--dt-color-charts-purple: #8250df;
+	--dt-color-charts-foreground: #3b4b5f;
+	--dt-color-charts-lines: #a2b5cd;
+	--dt-color-terminal-ansiBlack: #000000;
+	--dt-color-terminal-ansiBrightBlack: #666666;
+	--dt-color-terminal-ansiRed: #cd3131;
+	--dt-color-terminal-ansiBrightRed: #cd3131;
+	--dt-color-terminal-ansiGreen: #107c10;
+	--dt-color-terminal-ansiBrightGreen: #14ce14;
+	--dt-color-terminal-ansiYellow: #949800;
+	--dt-color-terminal-ansiBrightYellow: #b5ba00;
+	--dt-color-terminal-ansiBlue: #0451a5;
+	--dt-color-terminal-ansiBrightBlue: #0451a5;
+	--dt-color-terminal-ansiMagenta: #bc05bc;
+	--dt-color-terminal-ansiBrightMagenta: #bc05bc;
+	--dt-color-terminal-ansiCyan: #0598bc;
+	--dt-color-terminal-ansiBrightCyan: #0598bc;
+	--dt-color-terminal-ansiWhite: #555555;
+	--dt-color-terminal-ansiBrightWhite: #a5a5a5;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root {
+		--dt-color-charts-red: #f14c4c;
+		--dt-color-charts-orange: #ff9f43;
+		--dt-color-charts-yellow: #e5c07b;
+		--dt-color-charts-green: #89d185;
+		--dt-color-charts-blue: #3794ff;
+		--dt-color-charts-purple: #b180d7;
+		--dt-color-charts-foreground: #cccccc;
+		--dt-color-charts-lines: #66768c;
+		--dt-color-terminal-ansiBlack: #000000;
+		--dt-color-terminal-ansiBrightBlack: #666666;
+		--dt-color-terminal-ansiRed: #cd3131;
+		--dt-color-terminal-ansiBrightRed: #f14c4c;
+		--dt-color-terminal-ansiGreen: #0dbc79;
+		--dt-color-terminal-ansiBrightGreen: #23d18b;
+		--dt-color-terminal-ansiYellow: #e5e510;
+		--dt-color-terminal-ansiBrightYellow: #f5f543;
+		--dt-color-terminal-ansiBlue: #2472c8;
+		--dt-color-terminal-ansiBrightBlue: #3b8eea;
+		--dt-color-terminal-ansiMagenta: #bc3fbc;
+		--dt-color-terminal-ansiBrightMagenta: #d670d6;
+		--dt-color-terminal-ansiCyan: #11a8cd;
+		--dt-color-terminal-ansiBrightCyan: #29b8db;
+		--dt-color-terminal-ansiWhite: #e5e5e5;
+		--dt-color-terminal-ansiBrightWhite: #e5e5e5;
+	}
+}
+
+/* The DARK token set — what a browser host draws when the system asks for dark. Here and not in
+   tokens.css: VS Code maps most colour tokens onto the editor theme in vscode.css, but not all of them, so a
+   dark set the VS Code entry loaded would change the editor's look on a dark OS. */
+@media (prefers-color-scheme: dark) {
+	:root {
+		--dt-accent: #8a73ff;
+		--dt-accent-hover: #9d8aff;
+		--dt-accent-subtle: #2a2350;
+		--dt-link: #6ea8ff;
+		--dt-link-hover: #93beff;
+		--dt-module-bg: #0f151d;
+		--dt-module-fg: #7d8ea6;
+		--dt-module-fg-active: #ffffff;
+		--dt-module-bg-active: #1b2533;
+		--dt-fg: #e3e9f1;
+		--dt-fg-subtle: #9aa9bd;
+		--dt-fg-muted: #66768c;
+		--dt-bg: #141a22;
+		--dt-bg-subtle: #1b222c;
+		--dt-bg-hover: #232c38;
+		--dt-bg-active: #2a3442;
+		--dt-border: #2a3340;
+		--dt-border-strong: #3a4554;
+		--dt-focus-ring: #8a73ff;
+		--dt-danger: #ff6b81;
+		--dt-success: #38d9b4;
+		--dt-warning: #ffb45c;
+		--dt-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+		--dt-shadow-lg: 0 4px 24px rgba(0, 0, 0, 0.5);
+	}
+}

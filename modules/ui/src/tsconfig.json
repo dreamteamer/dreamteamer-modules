@@ -1,25 +1,13 @@
 {
-	// The React app, checked strictly: `npm run typecheck -w modules/ui`. Bundled by Vite, so bundler
-	// resolution and the DOM; relative imports name the .ts/.tsx file, as the repo's Node code does.
 	"compilerOptions": {
-		"target": "es2022",
-		"module": "esnext",
+		"target": "ES2022",
+		"module": "ESNext",
 		"moduleResolution": "bundler",
-		"lib": ["es2023", "dom", "dom.iterable"],
-		"jsx": "react-jsx",
-		"types": [],
 		"strict": true,
-		"noUnusedLocals": true,
-		"noUnusedParameters": true,
-		"noFallthroughCasesInSwitch": true,
-		"allowImportingTsExtensions": true,
-		"verbatimModuleSyntax": true,
-		"isolatedModules": true,
-		"skipLibCheck": true,
+		"jsx": "preserve",
 		"noEmit": true,
-		// @dreamteamer/protocol's declarations resolve to its non-strict .ts sources: read them restated
-		// (modules/protocol-types.d.ts says why)
-		"paths": { "@dreamteamer/protocol/*": ["./modules/protocol-types.d.ts"] }
+		"skipLibCheck": true,
+		"types": ["vite/client", "node"]
 	},
-	"include": ["./**/*.ts", "./**/*.tsx", "./vite-env.d.ts"]
+	"include": ["**/*.ts", "**/*.vue"]
 }

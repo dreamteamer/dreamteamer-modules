@@ -15,7 +15,9 @@ __pycache__/
 .dreamteamer/
 .env.example
 .vscode/
-# the ui build, never a source
+# the ui and ui2 builds and the render-tier bundles, never sources
 modules/ui/dist/
+modules/ui2/dist/
+modules/ui/.test-build/
 # the ui playground's sample workspaces (playground/dev.ts)
 playground/.workspaces/

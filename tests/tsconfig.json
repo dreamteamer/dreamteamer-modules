@@ -4,9 +4,9 @@
 	// purpose, as the engine keeps its test/tsconfig.json: the suites are not shipped code, so they are
 	// checked permissively (no strict, implicit any allowed) and never gate the modules' own typecheck.
 	//
-	// Not here: the ui module's suites, which import its React app (DOM, bundler resolution) and are checked
-	// with it by its own runner (modules/ui/test/repo/ui-suite.test.ts); test fixtures, which stand for a
-	// consumer's files.
+	// Not here: the ui module's webview and unit suites and the held-out sidebar (tests/heldout/*.sidebar.ts),
+	// which import the Vue app with bundler resolution and are checked with it by vue-tsc; test fixtures,
+	// which stand for a consumer's files.
 	"extends": "../tsconfig.json",
 	"compilerOptions": {
 		// The rnd prototype's browser files stay JavaScript; suites import them, so they lend their types
@@ -26,6 +26,8 @@
 		"**/node_modules/**",
 		"**/fixtures/**",
 		"**/*.d.ts",
-		"../modules/ui/test/**"
+		"heldout/*.sidebar.ts",
+		"../modules/ui/test/unit/**",
+		"../modules/ui/test/webview/**"
 	]
 }

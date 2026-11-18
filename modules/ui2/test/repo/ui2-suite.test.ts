@@ -1,4 +1,4 @@
-// ui's own suites, run from the repo's runner as the Vue ui's test/ui-suite.test.ts runs the Vue ui's: the unit tests
+// ui2's own suites, run from the repo's runner as the Vue ui's test/ui-suite.test.ts runs the Vue ui's: the unit tests
 // (test/*.test.ts, Node's type stripping, no browser) and the types (tsc, strict). Each is a child with a timeout.
 // It lives one folder down so ui's `npm test` (`node --test test/*.test.ts`) never runs itself.
 import { test } from "node:test"

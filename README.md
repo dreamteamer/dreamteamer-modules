@@ -102,7 +102,8 @@ rows as `core` does, unfolded.
 Two libraries sit under `web`, `http` and the VS Code extension and give a workspace nothing on their
 own: [`@dreamteamer/protocol`](modules/protocol) — the host protocol the UI speaks, the nav document
 (`nav.yaml`) every host reads and writes, and `dt-nav migrate`, which writes a workspace's old nav
-settings into it — and [`@dreamteamer/ui`](modules/ui), the UI as one React app any host mounts.
+settings into it — and [`@dreamteamer/ui`](modules/ui), the UI as one Vue app any host mounts.
+[`@dreamteamer/ui2`](modules/ui2) is the same app in React, over the same host contract; `dt web` serves `ui` for now.
 
 ## Optional personal workspace capabilities
 
