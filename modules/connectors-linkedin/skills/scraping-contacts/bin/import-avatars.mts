@@ -37,7 +37,7 @@ if (!file) {
 }
 
 /** Magic-byte sniff → extension, or null when these bytes are not an image we accept. */
-function extOf(buf) {
+function extOf(buf: Buffer): string | null {
   if (buf.length < 12) return null
   const hex = buf.subarray(0, 12).toString("hex")
   if (hex.startsWith("89504e47")) return "png"
@@ -50,16 +50,23 @@ function extOf(buf) {
 }
 
 // The workspace's own installed engine, run directly: a workspace need not define an npm `dt` script.
-function engineBin(root) {
+function engineBin(root: string): string {
   const pkgPath = path.join(root, "node_modules", "dreamteamer", "package.json")
   const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"))
   const bin = typeof pkg.bin === "string" ? pkg.bin : (pkg.bin.dreamteamer ?? Object.values(pkg.bin)[0])
   return path.join(path.dirname(pkgPath), bin)
 }
-const dt = (...args) =>
+const dt = (...args: string[]) =>
   execFileSync(process.execPath, [engineBin(WORKSPACE), ...args], { cwd: WORKSPACE, encoding: "utf8" })
 
-const rows = JSON.parse(fs.readFileSync(file, "utf8"))
+/** One harvested entry, as the scraping skill writes it. */
+interface HarvestedRow {
+  id?: string
+  photo?: string | null
+  note?: string
+}
+
+const rows: HarvestedRow[] = JSON.parse(fs.readFileSync(file, "utf8"))
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "avatars-"))
 let ok = 0,
   skipped = 0,

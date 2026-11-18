@@ -55,7 +55,7 @@ const readLock = () => {
     return null
   }
 }
-const alive = pid => {
+const alive = (pid: number) => {
   try {
     process.kill(pid, 0)
     return true
@@ -72,7 +72,7 @@ const release = () => {
 }
 
 /** read one key from the nearest ancestor .env — the workspace convention for machine config */
-function readEnvFile(key) {
+function readEnvFile(key: string): string | null {
   let dir = process.cwd()
   for (let i = 0; i < 6; i++) {
     const f = path.join(dir, ".env")
@@ -195,8 +195,25 @@ function strandedClients() {
   }
 }
 
+/** One tool call of a batch, as `--stdin` takes it. */
+interface Call {
+  tool: string
+  args?: Record<string, unknown>
+}
+
+/** A JSON-RPC response line from the server. */
+interface RpcMessage {
+  id?: number
+  error?: unknown
+  result?: {
+    isError?: boolean
+    serverInfo?: { name?: string; version?: string }
+    content?: { type: string; text?: string }[]
+  }
+}
+
 // ---------- one container, N calls ---------------------------------------------------------------
-async function runBatch(calls) {
+async function runBatch(calls: Call[]) {
   // USER_AGENT exists to reduce anti-scraping detection: the session is minted on the host and used
   // from a Linux container. Set LINKEDIN_USER_AGENT in .env to the browser the session came from.
   const ua = process.env.LINKEDIN_USER_AGENT || readEnvFile("LINKEDIN_USER_AGENT")
@@ -218,7 +235,7 @@ async function runBatch(calls) {
     IMAGE,
   ]
   const p = spawn("docker", args, { stdio: ["pipe", "pipe", "pipe"] })
-  const pending = new Map()
+  const pending = new Map<number, (m: RpcMessage) => void>()
   let buf = ""
   let nextId = 1
 
@@ -229,7 +246,7 @@ async function runBatch(calls) {
       const line = buf.slice(0, i).trim()
       buf = buf.slice(i + 1)
       if (!line) continue
-      let m
+      let m: RpcMessage
       try {
         m = JSON.parse(line)
       } catch {
@@ -247,15 +264,15 @@ async function runBatch(calls) {
     if (/ERROR|WARNING|Traceback|session/i.test(s)) process.stderr.write("[server] " + s)
   })
 
-  const rpc = (method, params) =>
-    new Promise((resolve, reject) => {
+  const rpc = (method: string, params: Record<string, unknown>) =>
+    new Promise<RpcMessage>((resolve, reject) => {
       const id = nextId++
       pending.set(id, resolve)
       const t = setTimeout(() => {
         pending.delete(id)
         reject(new Error(`timeout after ${CALL_TIMEOUT_MS}ms`))
       }, CALL_TIMEOUT_MS)
-      const done = v => {
+      const done = (v: RpcMessage) => {
         clearTimeout(t)
         resolve(v)
       }
@@ -263,7 +280,7 @@ async function runBatch(calls) {
       p.stdin.write(JSON.stringify({ jsonrpc: "2.0", id, method, params }) + "\n")
     })
 
-  const init: any = await rpc("initialize", {
+  const init = await rpc("initialize", {
     protocolVersion: "2024-11-05",
     capabilities: {},
     clientInfo: { name: "dt-li", version: "1" },
@@ -275,7 +292,7 @@ async function runBatch(calls) {
     console.error(`[li] ${n + 1}/${calls.length} ${c.tool} ${JSON.stringify(c.args ?? {})}`)
     let row: Record<string, any> = { tool: c.tool, args: c.args ?? {} }
     try {
-      const m: any = await rpc("tools/call", { name: c.tool, arguments: c.args ?? {} })
+      const m = await rpc("tools/call", { name: c.tool, arguments: c.args ?? {} })
       if (m.error) row = { ...row, ok: false, error: m.error }
       else {
         const text = (m.result?.content ?? [])
@@ -320,7 +337,7 @@ if (argv[0] === "--doctor") {
   process.exit(0)
 }
 
-let calls
+let calls: Call[]
 if (argv[0] === "--stdin") {
   calls = JSON.parse(fs.readFileSync(0, "utf8"))
   if (!Array.isArray(calls)) {
