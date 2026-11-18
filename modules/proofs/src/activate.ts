@@ -4,13 +4,14 @@
 // receives the running engine's public API, and every engine call in this package goes through it
 // (src/engine.js). The same package.json key makes this package a content module, so compile also
 // discovers `collections/proofs.collection.yaml` and the `proving-artifacts` skill.
-import { bind, dt } from "./engine.ts"
+import type { Contribution } from "dreamteamer"
+import { bind, dt, type Api } from "./engine.ts"
 import { proveCommand, PROVE_USAGE } from "./prove.ts"
 import { analyze } from "./analyze.ts"
 
 export const apiVersion = 1
 
-export default function activate(api) {
+export default function activate(api: Api): Contribution {
   bind(api)
   return {
     commands: {

@@ -6,6 +6,7 @@
 import fs from "node:fs"
 import path from "node:path"
 import { spawnSync } from "node:child_process"
+import type { Workspace } from "dreamteamer"
 import { dt } from "./engine.ts"
 import { defaultGit, real, resolves, isLink } from "./git.ts"
 
@@ -17,7 +18,7 @@ const INSTALL_TIMEOUT_MS = 10 * 60_000
  *  `ahead` is null for a detached worktree, not 0 — there is no branch to count against, and
  *  `--detach` is ordinary (every --temp sandbox is detached). `dirtyRecords` is scoped to the DATA
  *  path: uncommitted records are the thing the primary cannot see and cannot recover. */
-export function listWorktrees(ws, git = defaultGit) {
+export function listWorktrees(ws: Workspace, git = defaultGit) {
   const c = dt.describeCheckout(ws.root, git)
   const primaryBranch = git(["rev-parse", "--abbrev-ref", "HEAD"], c.primary)
   const dataPath = ws.pkg.dreamteamer?.data_path ?? "data"
@@ -69,7 +70,7 @@ export function listWorktrees(ws, git = defaultGit) {
  *
  *  An ambiguous name is refused, never resolved to whichever row git listed first: two --temp
  *  sandboxes may share a name, and a removal landing on the wrong one takes work with it. */
-export function findWorktree(ws, ref, git = defaultGit) {
+export function findWorktree(ws: Workspace, ref: string | undefined, git = defaultGit) {
   if (!ref) return null
   const rows = listWorktrees(ws, git)
   const byPath = rows.find(w => real(w.path) === real(path.resolve(ws.root, ref)))
@@ -91,7 +92,7 @@ export function findWorktree(ws, ref, git = defaultGit) {
  * shadowing `git_modules/<name>` link: without it the copy falls back to the pinned engine and
  * compiles against a different compiler. LINKS ONLY — a real clone is per-checkout working state.
  */
-export function mirrorLinkedDeps(fromRoot, pkg, toRoot) {
+export function mirrorLinkedDeps(fromRoot: string, pkg: Workspace["pkg"] | null | undefined, toRoot: string) {
   const deps = new Set(["dreamteamer", ...Object.keys({ ...pkg?.dependencies, ...pkg?.devDependencies })])
   for (const dep of deps) {
     const from = path.join(fromRoot, "node_modules", dep)
@@ -118,7 +119,7 @@ export function mirrorLinkedDeps(fromRoot, pkg, toRoot) {
  * object on stdout would have a compile transcript spliced in ahead of it.
  */
 export function createWorktree(
-  ws,
+  ws: Workspace,
   { name, dir, base = "HEAD", temp = false, quiet = false }: Record<string, any>,
   git = defaultGit
 ) {
@@ -186,7 +187,7 @@ export function createWorktree(
 /** What a failed `dt install` said that NAMES the failure: its ✖ lines and npm's error lines, in
  *  order, bounded — the board around them is noise to someone reading one reason string. Falls back to
  *  the last lines when neither form appears. */
-export function installDiagnosis(output, { lines = 12, width = 300 } = {}) {
+export function installDiagnosis(output: unknown, { lines = 12, width = 300 } = {}): string[] {
   const all = String(output)
     .split("\n")
     .map(l => l.trimEnd())
@@ -206,7 +207,7 @@ export function installDiagnosis(output, { lines = 12, width = 300 } = {}) {
 /** It refuses by default, and names why. A worktree holds two things the primary cannot see:
  *  records written but not committed, and commits not yet landed. `git worktree remove` checks a
  *  dirty tree and stops there — the records are exactly what a bare remove would take with it. */
-export function removeWorktree(ws, ref, { force = false } = {}, git = defaultGit) {
+export function removeWorktree(ws: Workspace, ref: string, { force = false } = {}, git = defaultGit) {
   const w = findWorktree(ws, ref, git)
   if (!w) throw new Error(`no worktree "${ref}" — dt worktree list`)
   if (w.primary) throw new Error("refusing to remove the primary checkout")

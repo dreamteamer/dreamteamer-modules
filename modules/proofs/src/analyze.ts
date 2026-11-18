@@ -8,26 +8,23 @@
 //
 // The draft is data only (the staged entries, the FINAL merged descriptors, the modules, declared
 // var and env NAMES, the previous manifest), and this returns data only — nothing is printed here.
+import type { CompileDraft } from "dreamteamer"
 import { artifactRefs, proofPathFor, validateProofShape, stepWarnings } from "./prove.ts"
 
 /** Is this workspace-relative source path inside an installed package? A nudge to write a file
  *  there would name a path the next `npm install` erases. */
-const inNodeModules = p => /(^|[\\/])node_modules([\\/]|$)/.test(String(p))
+const inNodeModules = (p: unknown) => /(^|[\\/])node_modules([\\/]|$)/.test(String(p))
 
-/**
- * @param {import('dreamteamer').CompileDraft} draft
- * @returns {{ errors: string[], warnings: string[], notes: string[] }}
- */
-export function analyze(draft) {
-  const errors = []
-  const warnings = []
-  const notes = []
+export function analyze(draft: CompileDraft): { errors: string[]; warnings: string[]; notes: string[] } {
+  const errors: string[] = []
+  const warnings: string[] = []
+  const notes: string[] = []
   const { entries } = draft
   // computed unconditionally: the coverage line prints its denominators on every compile
   const artifacts = artifactRefs(entries)
   const proofEntries = [...entries].filter(([rt]) => rt.startsWith("proofs/"))
   /** every artifact ref named by at least one proof — the coverage numerators, and the nudge's silencer */
-  const proven = new Set()
+  const proven = new Set<string>()
   const ctx = {
     descriptors: draft.descriptors,
     declaredVars: draft.declaredVars,
@@ -50,7 +47,7 @@ export function analyze(draft) {
   }
 
   // ---- coverage: one line on every compile, even at zero
-  const covered = list => `${list.filter(a => proven.has(a)).length}/${list.length}`
+  const covered = (list: string[]) => `${list.filter(a => proven.has(a)).length}/${list.length}`
   notes.push(
     `proofs: ${proofEntries.length} declared · commands ${covered(artifacts.commands)} · skills ${covered(artifacts.skills)} · scripts ${covered(artifacts.scripts)} · bindings ${covered(artifacts.bindings)}`
   )
@@ -69,8 +66,9 @@ export function analyze(draft) {
     const roots = draft.modules
       .map(m => ({ id: m.id, root: m.root || "." }))
       .sort((a, b) => b.root.length - a.root.length)
-    const ownerRoot = src => roots.find(({ root: r }) => r === "." || src === r || src.startsWith(`${r}/`))?.root ?? "."
-    const sourceOf = ref => {
+    const ownerRoot = (src: string) =>
+      roots.find(({ root: r }) => r === "." || src === r || src.startsWith(`${r}/`))?.root ?? "."
+    const sourceOf = (ref: string) => {
       const key = ref.startsWith("commands/")
         ? `${ref}.command.md`
         : ref.startsWith("skills/")

@@ -14,7 +14,8 @@ import os from "node:os"
 import path from "node:path"
 import { spawnSync } from "node:child_process"
 import { createHash } from "node:crypto"
-import { dt } from "./engine.ts"
+import type { Descriptor, Descriptors, Workspace } from "dreamteamer"
+import { dt, type Api } from "./engine.ts"
 import { createWorktree, removeWorktree } from "./sandbox.ts"
 
 export const PROOF_KINDS = ["gate", "live"]
@@ -28,6 +29,21 @@ export const EXIT = { PASS: 0, FAIL: 1, USAGE: 2, UNAVAILABLE: 3, NO_FIXTURE: 4,
 /** How many rows one proof's ledger keeps. Per proof, per machine — a ledger answers "what happened
  *  recently", and an unbounded one is a file nobody ever reads the end of. */
 export const LEDGER_CAP = 50
+
+/** A parsed proof file — YAML, so its shape is the one validateProofShape checks, read loosely. */
+type Proof = Record<string, any>
+/** A ledger row, a step result, a verdict: JSON objects this file writes and reads back. */
+type Row = Record<string, any>
+type Flags = Record<string, any>
+type Store = InstanceType<Api["Store"]>
+/** The four artifact lists, and `all` once finished. */
+interface ArtifactRefs {
+  skills: string[]
+  commands: string[]
+  bindings: string[]
+  scripts: string[]
+  all?: Set<string>
+}
 
 /**
  * The dot matters. `.dreamteamer/proofs/` is a kind folder (this package contributes it), and compile
@@ -55,23 +71,24 @@ export const LEDGER_DIR = ".proofs"
  * @param {Map|{entries: Map}|object} source   compile entries, or the engine's Store
  * @returns {{skills: string[], commands: string[], bindings: string[], scripts: string[], all: Set<string>}}
  */
-export function artifactRefs(source) {
-  const entries = source instanceof Map ? source : source?.entries instanceof Map ? source.entries : null
+export function artifactRefs(source: unknown): ArtifactRefs & { all: Set<string> } {
+  const src = source as { entries?: unknown; readAll?: unknown } | null | undefined
+  const entries = source instanceof Map ? source : src?.entries instanceof Map ? src.entries : null
   if (entries) return finish(fromEntries(entries))
-  if (source && typeof source.readAll === "function") return finish(fromStore(source))
+  if (src && typeof src.readAll === "function") return finish(fromStore(source as Store))
   throw new Error("artifactRefs needs compile entries (a Map) or a Store")
 }
 
-const blank = () => ({ skills: [], commands: [], bindings: [], scripts: [] })
+const blank = (): ArtifactRefs => ({ skills: [], commands: [], bindings: [], scripts: [] })
 
-function finish(out) {
-  for (const k of Object.keys(out)) out[k].sort()
+function finish(out: ArtifactRefs): ArtifactRefs & { all: Set<string> } {
+  for (const k of ["skills", "commands", "bindings", "scripts"] as const) out[k].sort()
   out.all = new Set([...out.skills, ...out.commands, ...out.bindings, ...out.scripts])
-  return out
+  return out as ArtifactRefs & { all: Set<string> }
 }
 
 /** From compile's `entries` — runtime path → {sources, bytes}. */
-function fromEntries(entries) {
+function fromEntries(entries: Map<string, { bytes: Buffer }>): ArtifactRefs {
   const out = blank()
   for (const [rt, e] of entries) {
     let m
@@ -94,9 +111,9 @@ function fromEntries(entries) {
 }
 
 /** From a Store — the same four collections, read out of the compiled runtime. */
-function fromStore(store) {
+function fromStore(store: Store): ArtifactRefs {
   const out = blank()
-  const has = c => store.descriptors?.has?.(c)
+  const has = (c: string) => store.descriptors?.has?.(c)
   for (const [collection, sink, prefix] of [
     ["skills", out.skills, "skills/"],
     ["commands", out.commands, "commands/"],
@@ -107,7 +124,7 @@ function fromStore(store) {
   }
   if (has("modules")) {
     for (const { id, fields } of store.readAll("modules")) {
-      for (const f of fields?.bin ?? []) out.scripts.push(`${id}/${f}`)
+      for (const f of (fields?.bin as string[]) ?? []) out.scripts.push(`${id}/${f}`)
     }
   }
   return out
@@ -115,7 +132,7 @@ function fromStore(store) {
 
 /** The proof file an artifact's proof would be written to, given the module root that ships it —
  *  what the nudge names, so the reader never has to derive a path from a rule. */
-export function proofPathFor(artifactRef, moduleRoot) {
+export function proofPathFor(artifactRef: string, moduleRoot: string): string {
   const id = path.basename(artifactRef).replace(/\.[^.]+$/, "")
   // `.` is the root layout's module root (a workspace with no `workspace_module`): its sources sit
   // at the workspace root, so the path has no prefix at all
@@ -138,7 +155,7 @@ const COUNT_OPERATORS = ["_eq", "_neq", "_gt", "_gte", "_lt", "_lte", "_delta"]
 /** The literal values an operand stands for. `_in`/`_nin` accept a comma string — the engine's
  *  filter splits a non-array operand — so `_in: 'open,done'` is a two-value filter. Every other
  *  op takes its operand whole: a comma in an `_eq` is part of the value. */
-function literalsFor(op, operand) {
+function literalsFor(op: string, operand: unknown) {
   if (op !== "_in" && op !== "_nin") return [operand]
   return Array.isArray(operand)
     ? operand
@@ -162,7 +179,7 @@ function literalsFor(op, operand) {
  * @param {Set<string>} ctx.artifacts        `artifactRefs(...).all`
  * @returns {string[]}
  */
-export function validateProofShape(proof, ctx) {
+export function validateProofShape(proof: Proof, ctx: Record<string, any>): string[] {
   const errors = []
   const p = proof ?? {}
   const descriptors = ctx?.descriptors ?? new Map()
@@ -198,7 +215,7 @@ export function validateProofShape(proof, ctx) {
       p.given !== undefined ||
       p.expect !== undefined ||
       !steps.length ||
-      steps.some(s => !s || s.run === undefined)
+      steps.some((s: Row) => !s || s.run === undefined)
     ) {
       errors.push("a gate proof has run steps only and no given or expect")
     }
@@ -232,8 +249,8 @@ export function validateProofShape(proof, ctx) {
  * sandbox a `run` step may not write `data/`, so such a row needs a `perform` step or a fixture —
  * otherwise it can only answer VACUOUS or FAIL.
  */
-function storeExpectErrors(expect, given, steps) {
-  if (!steps.length || given?.fixture === true || steps.some(s => s?.perform !== undefined)) return []
+function storeExpectErrors(expect: Row[], given: Row, steps: Row[]): string[] {
+  if (!steps.length || given?.fixture === true || steps.some((s: Row) => s?.perform !== undefined)) return []
   const errors = []
   for (const [i, e] of expect.entries()) {
     if (formsIn(e).length > 1) continue // a mixed row is refused on its own
@@ -247,13 +264,13 @@ function storeExpectErrors(expect, given, steps) {
   return errors
 }
 
-function pushTimeout(errors, p) {
+function pushTimeout(errors: string[], p: Proof) {
   if (p.timeout === undefined) return
   if (!Number.isInteger(p.timeout) || p.timeout <= 0) errors.push("timeout must be a positive integer of seconds")
 }
 
 /** Every `where` map a proof carries, plus the output matchers, which are filter maps too. */
-function everyWhere(p) {
+function everyWhere(p: Proof) {
   const out = []
   if (p.given?.where && typeof p.given.where === "object") out.push(p.given.where)
   for (const e of Array.isArray(p.expect) ? p.expect : []) {
@@ -266,7 +283,7 @@ function everyWhere(p) {
   return out
 }
 
-function givenErrors(given, descriptors) {
+function givenErrors(given: Row, descriptors: Descriptors): string[] {
   if (given === undefined) return [] // a live proof may judge only steps, paths and collection counts
   const errors = []
   const collection = String(given?.collection ?? "")
@@ -313,7 +330,7 @@ function givenErrors(given, descriptors) {
  * @param {object} row  one entry of `expect[]`
  * @returns {'collection'|'record'|'step'|'path'|null}
  */
-export function formOf(row) {
+export function formOf(row: Row | null | undefined): string | null {
   const r = row ?? {}
   if ("collection" in r && "where" in r && "count" in r) return "collection"
   if ("record" in r && "where" in r) return "record"
@@ -324,7 +341,7 @@ export function formOf(row) {
 
 /** Which form each DISCRIMINATING key belongs to — `where` is deliberately absent (it belongs to
  *  two), and so is a bare `step:` index, which is meaningless without something to assert. */
-const FORM_OF_KEY = {
+const FORM_OF_KEY: Record<string, string> = {
   collection: "collection",
   count: "collection",
   record: "record",
@@ -337,13 +354,13 @@ const FORM_OF_KEY = {
 
 /** Every form this row's keys reach into — one entry for a well-formed row, two or more for a
  *  mixture compile refuses. */
-function formsIn(row) {
+function formsIn(row: Row | null | undefined) {
   const out = new Set()
   for (const k of Object.keys(row ?? {})) if (FORM_OF_KEY[k]) out.add(FORM_OF_KEY[k])
   return [...out]
 }
 
-function expectErrors(expect, given, descriptors, stepCount = 0) {
+function expectErrors(expect: Row[], given: Row, descriptors: Descriptors, stepCount = 0): string[] {
   const errors = []
   for (const [i, e] of expect.entries()) {
     const row = e ?? {}
@@ -414,14 +431,14 @@ function expectErrors(expect, given, descriptors, stepCount = 0) {
 
 /** A YAML mapping and nothing else — not null (a bare `key:`), not an array, not a scalar. The one
  *  test three separate guards need, because every one of them is a key whose VALUE is a filter. */
-function isPlainMap(v) {
+function isPlainMap(v: unknown): v is Record<string, unknown> {
   return v !== null && typeof v === "object" && !Array.isArray(v)
 }
 
 /** A count map's operators and operands. Its own closed set (see COUNT_OPERATORS), and every
  *  operand an integer: a count is a number of records, so `_gte: 'one'` and `_eq: 1.5` could never
  *  be satisfied. A bare scalar is the `_eq` it stands for. */
-function countErrors(count, index) {
+function countErrors(count: unknown, index: number): string[] {
   const errors = []
   const isMap = isPlainMap(count)
   // `count: {}` compares nothing, so the expectation holds for EVERY possible count — the same
@@ -429,7 +446,7 @@ function countErrors(count, index) {
   if (isMap && !Object.keys(count).length) return [`expect[${index}] count must name one operator`]
   const pairs = isMap ? Object.entries(count) : [["_eq", count]]
   for (const [op, operand] of pairs) {
-    if (!COUNT_OPERATORS.includes(op)) {
+    if (!COUNT_OPERATORS.includes(op as string)) {
       errors.push(`count operator "${op}" is not one of ${COUNT_OPERATORS.join(" ")}`)
       continue
     }
@@ -443,14 +460,14 @@ function countErrors(count, index) {
  * else the field its own list is sorted on (`display.list.sort`, the direction dropped — `latest` is
  * always the HIGHEST value). Undefined when the collection declares neither.
  */
-export function orderingFieldOf(d) {
+export function orderingFieldOf(d: Descriptor) {
   if (!d) return undefined
   const position = dt.positionFieldOf(d)
   if (position) return position
   const sort = dt.displayOf(d).list?.sort
   return typeof sort === "string" && sort ? sort.split(",")[0].trim().replace(/^-/, "") : undefined
 }
-const LATEST_NEEDS = collection =>
+const LATEST_NEEDS = (collection: string) =>
   `pick: latest needs an ordering on ${collection} — a type: position field, or display.list.sort — or name the record (pick: <id>), or use a fixture`
 
 /**
@@ -462,7 +479,7 @@ const LATEST_NEEDS = collection =>
  * with no warning at all. So a nested key under a non-reference field is refused BY NAME, with what
  * a nested key actually means, rather than left to fail closed at run time.
  */
-function whereErrors(where, collection, descriptors, errors = []) {
+function whereErrors(where: unknown, collection: string, descriptors: Descriptors, errors: string[] = []): string[] {
   const d = descriptors.get(collection)
   const props = d ? dt.fieldsOf(d) : {}
   for (const [key, cond] of Object.entries(where)) {
@@ -532,7 +549,7 @@ function whereErrors(where, collection, descriptors, errors = []) {
 
 /** A literal compared against a closed enum must be one of its values — otherwise the filter is
  *  well-formed and returns zero rows forever. */
-function enumErrors(errors, field, prop, values) {
+function enumErrors(errors: string[], field: string, prop: Row, values: unknown) {
   // a v2 enum is a list of values, or a map of value → its decoration
   const options = Array.isArray(prop?.enum)
     ? prop.enum
@@ -542,7 +559,7 @@ function enumErrors(errors, field, prop, values) {
   if (!options?.length) return
   // `looseEq`, not `includes`: the filter compares as strings, so on a numeric enum `5` and `'5'`
   // are one filter at run time. The option plays the record-value role, as at run time.
-  for (const v of values) {
+  for (const v of values as unknown[]) {
     if (v == null || options.some(o => dt.looseEq(o, v))) continue
     // a `{record…}` literal is a runtime value: the judge substitutes it before evaluating
     if (isSubstitutable(v)) continue
@@ -580,7 +597,7 @@ function enumErrors(errors, field, prop, values) {
  * @param {{record?: {ref: string, fields: object}}} ctx
  * @param {{strict?: boolean}} [options]
  */
-export function substitute(text, ctx, options?) {
+export function substitute(text: string, ctx: Row, options?: { strict?: boolean }): string {
   if (typeof text !== "string") return text
   if (options?.strict) {
     for (const [, dollar, token] of text.matchAll(BRACE_TOKEN)) {
@@ -605,12 +622,12 @@ const BRACE_TOKEN = /(\$?)\{([A-Za-z_][A-Za-z0-9_.-]*)\}/g
 
 /** Does this value carry a brace `substitute` will render? The validator uses it to leave a runtime
  *  value alone. It asks about `{record…}` only — every other brace is the resolver's or the shell's. */
-const isSubstitutable = v => typeof v === "string" && /\{record(\.[^{}]*)?\}/.test(v)
+const isSubstitutable = (v: unknown) => typeof v === "string" && /\{record(\.[^{}]*)?\}/.test(v)
 
 /** Does any string anywhere in this filter node carry a `{record…}` brace? `given.where` may not
  *  carry one at all, and an expectation's may only when a `given` exists to bind it. Keys are never
  *  examined: a filter's keys are field names and operators. */
-function hasSubstitutable(node) {
+function hasSubstitutable(node: unknown): boolean {
   if (typeof node === "string") return isSubstitutable(node)
   if (Array.isArray(node)) return node.some(hasSubstitutable)
   if (node === null || typeof node !== "object") return false
@@ -635,11 +652,11 @@ function hasSubstitutable(node) {
  * @param {*} where     any filter node — map, array or scalar
  * @param {{record?: {ref: string, fields: object}}} ctx
  */
-export function substituteWhere(where, ctx) {
+export function substituteWhere(where: unknown, ctx: Row): any {
   if (typeof where === "string") return substitute(where, ctx, { strict: true })
-  if (Array.isArray(where)) return where.map(v => substituteWhere(v, ctx))
+  if (Array.isArray(where)) return where.map((v: unknown) => substituteWhere(v, ctx))
   if (where === null || typeof where !== "object") return where
-  const out = {}
+  const out: Record<string, unknown> = {}
   // keys are field names and operators — never substituted
   for (const [k, v] of Object.entries(where)) out[k] = substituteWhere(v, ctx)
   return out
@@ -653,7 +670,7 @@ export function substituteWhere(where, ctx) {
  * positive costs one line of output rather than a refused proof. It judges shape only: a
  * `$`-prefixed brace is exempt, and a token with a space in it is not flagged.
  */
-export function stepWarnings(proof) {
+export function stepWarnings(proof: Proof): string[] {
   const out = []
   for (const [i, step] of (Array.isArray(proof?.steps) ? proof.steps : []).entries()) {
     for (const text of [step?.run, step?.perform]) {
@@ -676,14 +693,14 @@ export function stepWarnings(proof) {
  *
  * The `cap <= 0` guard is arithmetic: `slice(-0)` is `slice(0)`, the whole array.
  */
-export function applyCap(rows, row, cap = LEDGER_CAP) {
+export function applyCap<T>(rows: T[], row: T, cap = LEDGER_CAP): T[] {
   return cap <= 0 ? [] : [...rows, row].slice(-cap)
 }
 
 /** The closed glyph set. Operators with no glyph print their own name: the filter set is open
  *  enough (`_regex`, `_starts_with`, `_between`) that a glyph per member would be a second
  *  vocabulary to keep in sync with the engine's filter. */
-const GLYPH = {
+const GLYPH: Record<string, string> = {
   _eq: "=",
   _neq: "≠",
   _gte: "≥",
@@ -699,11 +716,11 @@ const GLYPH = {
 
 /** A count is a NUMBER OF RECORDS and a delta is a DIFFERENCE between two of them; `count 1 = 1`
  *  and `count +1 = +1` say different things, and only the second says which number is a difference. */
-const signed = n => (Number(n) >= 0 ? `+${Number(n)}` : String(Number(n)))
+const signed = (n: unknown) => (Number(n) >= 0 ? `+${Number(n)}` : String(Number(n)))
 
 /** The ACTUAL value: bare when it is a number, JSON-quoted otherwise — a string is where a trailing
  *  space or an empty value hides, and `status  = done` names neither. */
-function shown(v) {
+function shown(v: unknown): string {
   if (typeof v === "number") return String(v)
   const json = JSON.stringify(v)
   return json === undefined ? String(v) : json // `undefined` has no JSON form
@@ -711,7 +728,7 @@ function shown(v) {
 
 /** The wanted value, bare: an array renders as the list a reader would type back, and a nested
  *  condition (a one-hop reference expectation, `owner: { name: { _eq: Ada } }`) as its JSON. */
-const wanted = v => {
+const wanted = (v: unknown): string => {
   if (Array.isArray(v)) return `[${v.join(", ")}]`
   return v !== null && typeof v === "object" ? JSON.stringify(v) : String(v)
 }
@@ -735,7 +752,7 @@ const wanted = v => {
  * Pass `resolve` whenever the condition may hop a reference: a non-`_` key under a field is a
  * one-hop reference traversal, and `matchesFilter` narrows to false with no resolver wired.
  */
-export function verdictLine(expectation, actual, resolve?) {
+export function verdictLine(expectation: Row, actual: unknown, resolve?: (ref: string) => unknown): string {
   const entries = Object.entries(expectation ?? {})
   const bare = entries.length > 0 && entries.every(([k]) => k.startsWith("_"))
   if (!bare && entries.length !== 1)
@@ -758,15 +775,16 @@ export function verdictLine(expectation, actual, resolve?) {
 
 /** State → exit code. Six states, six codes, and an unknown one throws rather than defaulting to a
  *  plausible number. */
-export function exitFor(state) {
-  const code = {
+export function exitFor(state: string): number {
+  const codes: Record<string, number> = {
     PASS: EXIT.PASS,
     FAIL: EXIT.FAIL,
     UNAVAILABLE: EXIT.UNAVAILABLE,
     "NO-FIXTURE": EXIT.NO_FIXTURE,
     PENDING: EXIT.PENDING,
     VACUOUS: EXIT.VACUOUS,
-  }[state]
+  }
+  const code = codes[state]
   if (code === undefined)
     throw new Error(`unknown proof state "${state}" — one of PASS, FAIL, UNAVAILABLE, NO-FIXTURE, PENDING, VACUOUS`)
   return code
@@ -787,7 +805,7 @@ export function exitFor(state) {
  * `resolve` is the caller's — `recordResolver(store)` when the filter hops a reference, `null` when
  * it does not. A hop with no resolver narrows, which is the engine filter's fail-closed posture.
  */
-export function countMatching(store, collection, where, resolve) {
+export function countMatching(store: Store, collection: string, where: unknown, resolve?: unknown): number {
   let n = 0
   for (const { id, fields } of store.readAll(collection)) {
     if (where && !dt.matchesFilter({ ...fields, id }, where, resolve)) continue
@@ -813,7 +831,7 @@ export function countMatching(store, collection, where, resolve) {
  * `override` is `--record <collection>/<id>`, and it replaces the selection rather than filtering
  * through it: a person naming a record is saying which one to use.
  */
-export function pickFixture(store, given, override?) {
+export function pickFixture(store: Store, given: Row, override?: string) {
   const collection = String(given?.collection ?? "")
   if (override) {
     const parsed = dt.parseRef(String(override), store.namespaces)
@@ -845,7 +863,7 @@ export function pickFixture(store, given, override?) {
 
 /** One record as `{ ref, fields }`, or null when it is not there. The id travels IN the fields, the
  *  same row shape the filter sees, so `{record.id}` and a filter on `id` cannot disagree. */
-function readOne(store, collection, id) {
+function readOne(store: Store, collection: string, id: string) {
   try {
     const { fields } = store.read(collection, id)
     return { ref: `${collection}/${id}`, fields: { ...fields, id } }
@@ -870,7 +888,11 @@ function readOne(store, collection, id) {
  * `names` is a parameter because the key set belongs to the machine, not the proof: `dt prove --list`
  * reads `.env` once and passes it to every row.
  */
-export function resolveRequires(ws, requires, names = envKeys(ws.root)) {
+export function resolveRequires(
+  ws: Workspace,
+  requires: { env?: string[]; bin?: string[] } | null | undefined,
+  names = envKeys(ws.root)
+) {
   const missing = []
   for (const name of requires?.env ?? []) {
     if (process.env[String(name)] !== undefined || names.has(String(name))) continue
@@ -886,7 +908,7 @@ export function resolveRequires(ws, requires, names = envKeys(ws.root)) {
 /** The key names this machine's `.env` declares. Absent file → no names, which is the ordinary state
  *  in a cloud session and not an error. Exported so a caller that asks `resolveRequires` many times
  *  in a row (`dt prove --list`) can read the file ONCE and hand the set down. */
-export function envKeys(root) {
+export function envKeys(root: string): Set<string> {
   try {
     return new Set(dt.parseEnvValues(fs.readFileSync(path.join(root, ".env"), "utf8")).keys())
   } catch {
@@ -897,7 +919,7 @@ export function envKeys(root) {
 /** `accessSync(X_OK)` alone is not enough: on a directory the execute bit means "searchable", so a
  *  folder named `ffmpeg` on PATH must not satisfy `requires: { bin: [ffmpeg] }`. `statSync` follows
  *  symlinks, which is what most binaries on PATH are. */
-function onPath(name) {
+function onPath(name: string): boolean {
   for (const dir of (process.env.PATH ?? "").split(path.delimiter)) {
     if (!dir) continue
     const file = path.join(dir, name)
@@ -918,7 +940,7 @@ function onPath(name) {
 // resumable: the PENDING row is where the run stopped.
 
 /** `<root>/.dreamteamer/.proofs/<proof-id>.jsonl` — see LEDGER_DIR for why the dot matters. */
-export function ledgerPath(root, proofId) {
+export function ledgerPath(root: string, proofId: string): string {
   return path.join(dt.runtimeDir(root), LEDGER_DIR, `${proofId}.jsonl`)
 }
 
@@ -930,7 +952,7 @@ export function ledgerPath(root, proofId) {
  * a partial line, and refusing to read the ledger would make `prove` unrunnable.
  * The next `appendLedger` rewrites the file, so the bad line is repaired rather than accumulating.
  */
-export function readLedger(root, proofId) {
+export function readLedger(root: string, proofId: string): Row[] {
   let text
   try {
     text = fs.readFileSync(ledgerPath(root, proofId), "utf8")
@@ -958,7 +980,7 @@ export function readLedger(root, proofId) {
  *  arbitrary commands, so a run can be killed mid-write, and a half-written ledger line is exactly
  *  the malformed row `readLedger` has to warn about. Write-to-temp + rename means the file on disk is
  *  always a whole ledger. */
-export function appendLedger(root, proofId, row) {
+export function appendLedger(root: string, proofId: string, row: Row) {
   const file = ledgerPath(root, proofId)
   const rows = applyCap(readLedger(root, proofId), row)
   fs.mkdirSync(path.dirname(file), { recursive: true })
@@ -973,7 +995,7 @@ export function appendLedger(root, proofId, row) {
  * Only the last row for that record counts: once the record has a later verdict, the earlier PENDING
  * is superseded, so a resume never asks you to perform a step you already performed.
  */
-export function pendingFor(root, proofId, record) {
+export function pendingFor(root: string, proofId: string, record?: string | null) {
   const want = record ?? null
   const rows = readLedger(root, proofId).filter(r => (r?.record ?? null) === want)
   const last = rows[rows.length - 1]
@@ -1010,7 +1032,7 @@ const VALUE_FLAGS = new Set(["kind", "record"])
 const FALSEY = new Set(["false", "0", "no", "off"])
 
 /** `--flag=false` means false (see FALSEY); a bare `--flag` is true. */
-export const flagValue = v =>
+export const flagValue = (v: unknown) =>
   typeof v === "string" ? !FALSEY.has(v.trim().toLowerCase()) : v !== undefined && v !== false
 
 /**
@@ -1019,7 +1041,7 @@ export const flagValue = v =>
  * The last occurrence wins: `--strict=false --strict` is a person changing their mind at the end of
  * a line, and reading the first would answer the version they edited away.
  */
-export function flagEnabled(args, name) {
+export function flagEnabled(args: string[] | null | undefined, name: string): boolean {
   let on = false
   for (const a of args ?? []) {
     if (!a.startsWith("--")) continue
@@ -1030,7 +1052,7 @@ export function flagEnabled(args, name) {
   return on
 }
 
-function parseProveArgs(rest) {
+function parseProveArgs(rest: string[]) {
   const flags: Record<string, any> = {}
   const targets = []
   for (let i = 0; i < rest.length; i++) {
@@ -1057,8 +1079,8 @@ function parseProveArgs(rest) {
  * know that `--all` is meaningless once a proof is named. Deciding which form was typed means
  * resolving the target, so the refusal lives beside that resolution.
  */
-function refuseStray(rest, form, allowed) {
-  const given = [...new Set(rest.filter(a => a.startsWith("--")).map(a => a.split("=")[0]))]
+function refuseStray(rest: string[], form: string, allowed: string[]) {
+  const given = [...new Set(rest.filter((a: string) => a.startsWith("--")).map(a => a.split("=")[0]))]
   const stray = given.filter(f => !allowed.includes(f))
   if (!stray.length) return
   throw new Error(
@@ -1083,7 +1105,7 @@ export const PROVE_FLAGS = [...new Set([...ONE_FORM, ...MANY_FORM, ...LIST_FORM]
  *
  * @returns {{code: number}} — never `process.exit`; the extension's command returns the code.
  */
-export function proveCommand(ws, rest) {
+export function proveCommand(ws: Workspace, rest: string[]): ProveResult {
   const { flags, targets } = parseProveArgs(rest)
   const store = new dt.Store(ws)
   if (!store.descriptors.has("proofs"))
@@ -1128,7 +1150,7 @@ export function proveCommand(ws, rest) {
   // does anybody claim about this thing, and does it hold" — which is what `about` exists for.
   if (artifactRefs(store).all.has(target)) {
     refuseStray(rest, `dt prove ${target}`, ["--kind", "--json", "--external", "--strict"])
-    const about = p => (p.about ?? []).map(String).includes(target)
+    const about = (p: Proof) => (p.about ?? []).map(String).includes(target)
     // an artifact nothing proves is VACUOUS, not proved: a check that cannot fail is not a check.
     // `--all` keeps its zero — "this workspace declares no proofs" is a true, green answer to "run
     // everything"; "this artifact has no proof" is not a green answer to "prove this artifact".
@@ -1146,7 +1168,7 @@ export function proveCommand(ws, rest) {
 
 /** The last `n` lines of a captured stream — what a step failure prints. Display only: expectations
  *  judge the whole capture. */
-function lastLines(text, n = 10) {
+function lastLines(text: unknown, n = 10) {
   return String(text ?? "")
     .replace(/\n+$/, "")
     .split("\n")
@@ -1165,7 +1187,7 @@ function lastLines(text, n = 10) {
  */
 const STDOUT_CAP = 64 * 1024
 
-function captured(text) {
+function captured(text: unknown) {
   const whole = String(text ?? "")
   return whole.length > STDOUT_CAP
     ? { text: whole.slice(0, STDOUT_CAP), truncated: true }
@@ -1174,13 +1196,13 @@ function captured(text) {
 
 /** The first line of a thrown message — what a `failure_reason` carries. A multi-line reason inside
  *  a JSONL row is legal and unreadable, and the first line is the sentence that names the cause. */
-const firstLine = message => String(message ?? "").split("\n")[0]
+const firstLine = (message: unknown) => String(message ?? "").split("\n")[0]
 
 /**
  * One builder for every ledger row, used by `proveOne`'s `settle` and by `--all`'s catch, so a proof
  * that threw still gets a row of the same shape.
  */
-function ledgerRow(state, started, over = {}) {
+function ledgerRow(state: string, started: number, over: Row = {}): Row {
   return {
     when: new Date().toISOString(),
     record: null,
@@ -1216,11 +1238,16 @@ const MAX_OUTPUT_MB = 16
  *
  * `index` and `want` let the whole message be assembled here, where a test can pin it.
  */
-export function stepOutcome(res, timeoutSeconds, index = 1, want = 0) {
+export function stepOutcome(
+  res: { status: number | null; signal?: string | null; error?: Error },
+  timeoutSeconds: number,
+  index = 1,
+  want = 0
+) {
   // a killed step has a null status and a signal — reporting `exit null` would read as success
   const exit = res?.status ?? (res?.signal ? 124 : 1)
-  const code = res?.error?.code ?? null
-  const reason = text => ({ exit, failure_reason: `step ${index} ${text}` })
+  const code = (res?.error as NodeJS.ErrnoException | undefined)?.code ?? null
+  const reason = (text: string) => ({ exit, failure_reason: `step ${index} ${text}` })
   if (code === "ETIMEDOUT") return reason(`timed out after ${timeoutSeconds}s`)
   if (code === "ENOBUFS")
     return reason(`produced more than ${MAX_OUTPUT_MB} MB of output — write it to a file and assert with path:`)
@@ -1229,16 +1256,17 @@ export function stepOutcome(res, timeoutSeconds, index = 1, want = 0) {
   return exit === want ? { exit, failure_reason: null } : reason(`exited ${exit}`)
 }
 
-const isDelta = count => count !== null && typeof count === "object" && !Array.isArray(count) && "_delta" in count
+const isDelta = (count: unknown) =>
+  count !== null && typeof count === "object" && !Array.isArray(count) && "_delta" in count
 
 /** An expectation that can be judged against the store, and so can be pre-checked before any step
  *  runs. A `step`/`path` one cannot: there is no step result yet, and a path a step will create is
  *  supposed to be absent. */
-const isStoreBased = e => ["collection", "record"].includes(formOf(e))
+const isStoreBased = (e: Row) => ["collection", "record"].includes(formOf(e))
 
 /** The 1-based index of the last `run` step — the default a `step:` expectation resolves to, so the
  *  commonest shape ("the command I ran exited 0") needs no index at all. */
-function lastRunIndex(proof) {
+function lastRunIndex(proof: Proof): number {
   const steps = Array.isArray(proof.steps) ? proof.steps : []
   for (let i = steps.length - 1; i >= 0; i--) if (steps[i]?.run !== undefined) return i + 1
   return 0
@@ -1246,7 +1274,7 @@ function lastRunIndex(proof) {
 
 /** The `step:` expectation aimed at step `n`, if any — what decides whether a non-zero exit is a
  *  failure or the thing being asserted. */
-function stepExpect(proof, n) {
+function stepExpect(proof: Proof, n: number) {
   for (const e of Array.isArray(proof.expect) ? proof.expect : []) {
     // the same form test the judge dispatches on
     if (formOf(e) !== "step") continue
@@ -1256,8 +1284,8 @@ function stepExpect(proof, n) {
 }
 
 /** A dotted path into a parsed JSON value — `stdout_json: { data.count: { _gte: 1 } }`. */
-function valueAt(json, dotted) {
-  let v = json
+function valueAt(json: unknown, dotted: string): unknown {
+  let v = json as any
   for (const key of String(dotted).split(".")) v = v == null ? undefined : v[key]
   return v
 }
@@ -1274,17 +1302,26 @@ function valueAt(json, dotted) {
  *
  * `storeOnly` is the pre-check pass: the store-based forms only, judged before any step has run.
  */
-function judge(ws, store, proof, id, record, before, stepResults, storeOnly) {
-  const verdicts = []
+function judge(
+  ws: Workspace,
+  store: Store,
+  proof: Proof,
+  id: string,
+  record: Row | null,
+  before: Row,
+  stepResults: Row[],
+  storeOnly: boolean
+): Row[] {
+  const verdicts: Row[] = []
   const resolve = dt.recordResolver(store)
   const ctx = record ? { record } : {}
-  const push = (expectation, actual) => {
+  const push = (expectation: Row, actual: unknown) => {
     const line = verdictLine(expectation, actual, resolve)
     verdicts.push({ expect: expectation, actual, ok: line.endsWith("✔"), line })
   }
   /** A ✖ that no filter produced — the two states where the question could not be asked. It carries
    *  its own `reason`, because a `failure_reason` must not end in a glyph. */
-  const fail = (expectation, actual, reason) => {
+  const fail = (expectation: Row, actual: unknown, reason: string) => {
     verdicts.push({ expect: expectation, actual, ok: false, line: `${reason} ✖`, reason })
   }
   for (const [i, raw] of (Array.isArray(proof.expect) ? proof.expect : []).entries()) {
@@ -1354,7 +1391,7 @@ function judge(ws, store, proof, id, record, before, stepResults, storeOnly) {
 /** `commands/<id>`'s source file, when a `perform` text opens with `/<command-id>` and that command
  *  is compiled. The reader of a PERFORM block opens the command to act on it, so the path comes off
  *  the manifest, which records what was actually compiled, rather than from a rule. */
-function commandSource(root, performText) {
+function commandSource(root: string, performText: string) {
   const m = /^\/(\S+)/.exec(String(performText ?? ""))
   if (!m) return null
   const src = dt.readManifest(root)?.entries?.[`commands/${m[1]}.command.md`]?.sources?.[0]
@@ -1366,7 +1403,7 @@ function commandSource(root, performText) {
  * `pendingFor` answers for one named record; a fresh run does not know the record yet. All of them,
  * not the last one: a proof can be pending for several records at once, and the refusal names each.
  */
-function allPending(root, proofId) {
+function allPending(root: string, proofId: string) {
   const last = new Map()
   for (const r of readLedger(root, proofId)) last.set(r?.record ?? null, r)
   return [...last.values()].filter(r => r?.verdict === "PENDING")
@@ -1382,8 +1419,8 @@ function allPending(root, proofId) {
  *
  * It never throws, because every caller is already in the middle of deciding a verdict.
  */
-function captureLog(fn) {
-  const lines = []
+function captureLog<T>(fn: () => T): { value?: T; error?: unknown; lines: string[] } {
+  const lines: string[] = []
   const log = console.log
   const err = console.error
   console.log = (...a) => lines.push(a.map(String).join(" "))
@@ -1400,14 +1437,14 @@ function captureLog(fn) {
 
 /** The module root that ships this proof, off the manifest — the same read `commandSource` makes,
  *  and for the same reason. */
-function proofModuleRoot(root, id) {
+function proofModuleRoot(root: string, id: string) {
   const src = dt.readManifest(root)?.entries?.[`proofs/${id}.proof.yaml`]?.sources?.[0]
   const p = src ? (typeof src === "string" ? src : src.path) : null
   return p ? path.dirname(path.dirname(p)) : null
 }
 
 /** `modules/<m>/proofs/fixtures/<id>` — where a fixture proof's records live, absolute. */
-function fixtureDir(root, moduleRoot, id) {
+function fixtureDir(root: string, moduleRoot: string, id: string) {
   return path.join(root, moduleRoot && moduleRoot !== "." ? moduleRoot : "", "proofs", "fixtures", id)
 }
 
@@ -1418,7 +1455,7 @@ function fixtureDir(root, moduleRoot, id) {
  * validator, but `modules/<m>/proofs/fixtures/` is hand-authored bytes. So the engine's own `check`
  * runs against the sandbox before any step does, and the first violation is what the failure names.
  */
-function sandboxUnfit(root, collections) {
+function sandboxUnfit(root: string, collections: (string | null | undefined)[]) {
   // a sandbox is cut from HEAD, so a descriptor that is not committed is not compiled inside it —
   // and `check` cannot see that: the fixture's records would be invisible rather than invalid. This
   // covers every collection the proof reads, not only `given`'s.
@@ -1445,7 +1482,7 @@ function sandboxUnfit(root, collections) {
  * and the per-file hash is what catches a second edit to an already-dirty file. `null` when the
  * workspace is not a git checkout.
  */
-export function dataState(root) {
+export function dataState(root: string): string | null {
   const r = spawnSync("git", ["status", "--porcelain=v1", "-z", "--untracked-files=all", "--", "data/"], {
     cwd: root,
     encoding: "utf8",
@@ -1477,12 +1514,12 @@ export function dataState(root) {
  * uncommitted records and unlanded commits, but a proof sandbox is disposable by design — cut from
  * HEAD, holding only the fixture and what the proof wrote, none of which may ever land.
  */
-function removeSandbox(ws, dir) {
+function removeSandbox(ws: Workspace, dir: string): boolean {
   const { error } = captureLog(() => removeWorktree(ws, dir, { force: true }))
   if (!error) return true
   // the failure is recorded on the row, not only warned: `sandbox_removed: false` is what
   // `dt prove --list` counts
-  console.warn(`⚠ sandbox ${dir} could not be removed: ${firstLine(error.message)} — remove it by hand`)
+  console.warn(`⚠ sandbox ${dir} could not be removed: ${firstLine((error as Error).message)} — remove it by hand`)
   return false
 }
 
@@ -1492,18 +1529,26 @@ function removeSandbox(ws, dir) {
  * `flags.silent` suppresses the human output without emitting JSON — what `--all` runs each proof
  * with, so a board is a board rather than a step transcript per proof.
  */
-function proveOne(ws, id, proof, flags) {
+/** What one proof run answers: its exit code, and the state and ledger row behind it. */
+interface ProveResult {
+  code: number
+  state?: string
+  row?: Row
+  [key: string]: unknown
+}
+
+function proveOne(ws: Workspace, id: string, proof: Proof, flags: Flags): ProveResult {
   const started = Date.now()
-  const say = flags.silent || flags.json ? () => {} : line => console.log(line)
+  const say = flags.silent || flags.json ? (_line: string) => {} : (line: string) => console.log(line)
   const timeout = Number.isInteger(proof.timeout) ? proof.timeout : DEFAULT_TIMEOUT
 
   /** The throwaway worktree this run is happening in, once there is one — `null` for every proof
    *  without a fixture and every `--here` run, which run in the invoking checkout itself. */
-  let sandbox = null
+  let sandbox: string | null = null
   /** The workspace everything after `requires` runs against: the sandbox when there is one, the
    *  invoking checkout otherwise. The ledger is the deliberate exception (see `settle`). */
   let tws = ws
-  const enter = dir => {
+  const enter = (dir: string | null) => {
     sandbox = dir
     tws = dir ? { ...ws, root: dir } : ws
   }
@@ -1513,7 +1558,7 @@ function proveOne(ws, id, proof, flags) {
    *
    *  The ledger is always the invoking checkout's — `ws.root`, never `tws.root`. A sandbox is
    *  deleted the moment the verdict is in, so evidence written inside one would go with it. */
-  const settle = (state, over = {}, verdicts = []) => {
+  const settle = (state: string, over: Row = {}, verdicts: Row[] = []) => {
     // a sandbox is never left behind, except while PENDING (you are about to act inside it) or
     // under `--keep`. Removal happens before the row is built, so the row says what became of the
     // directory. `kept` is `null` while PENDING — nothing has been decided yet — the same
@@ -1538,7 +1583,7 @@ function proveOne(ws, id, proof, flags) {
    * `over` is built before the run, and its `steps` is the live array — so a throw halfway through
    * the loop still records the steps that did complete.
    */
-  const ledgering = (over, run) => {
+  const ledgering = (over: Row, run: () => ProveResult) => {
     try {
       return run()
     } catch (e) {
@@ -1558,7 +1603,7 @@ function proveOne(ws, id, proof, flags) {
     throw new Error(`--keep keeps a fixture proof's sandbox — ${id} runs in the workspace, so there is nothing to keep`)
   }
   /** `data/` as it stood before the first step, when this run may not write it. */
-  let dataBefore = null
+  let dataBefore: string | null = null
   /** Why this run fails for writing `data/`, or null when it wrote nothing it was not allowed to. */
   const wroteLive = () => {
     if (!guarded || dataBefore === null || dataState(ws.root) === dataBefore) return null
@@ -1580,7 +1625,7 @@ function proveOne(ws, id, proof, flags) {
   //
   // A discard attempts the removal first and the row says what happened to the directory:
   // `.worktrees/` is gitignored, so the ledger is the only record of a leaked sandbox.
-  const discard = (row, reason) => {
+  const discard = (row: Row, reason: string) => {
     const removed = !row.sandbox ? null : fs.existsSync(row.sandbox) ? removeSandbox(ws, row.sandbox) : true
     appendLedger(ws.root, id, {
       ...row,
@@ -1634,12 +1679,12 @@ function proveOne(ws, id, proof, flags) {
   // `over` is mutated as each phase learns its part and read at the moment of the throw, so a
   // failure halfway through records what was known by then. Teardown comes free: `ledgering`'s
   // catch goes through `settle`, and `settle` is what removes the sandbox.
-  let record = null
-  let ref = null
-  let ctx = {}
-  const before = {}
-  const steps = []
-  const over = { record: null, steps, before }
+  let record: Row | null = null
+  let ref: string | null = null
+  let ctx: Row = {}
+  const before: Row = {}
+  const steps: Row[] = []
+  const over: Row = { record: null, steps, before }
   return ledgering(over, phases)
 
   function phases() {
@@ -1690,7 +1735,10 @@ function proveOne(ws, id, proof, flags) {
         return settle("FAIL", { failure_reason: "fixture data/ must be a directory" })
       }
       fs.cpSync(path.join(src, "data"), path.join(sandbox, "data"), { recursive: true })
-      const unfit = sandboxUnfit(sandbox, [proof.given?.collection, ...(proof.expect ?? []).map(e => e?.collection)])
+      const unfit = sandboxUnfit(sandbox, [
+        proof.given?.collection,
+        ...(proof.expect ?? []).map((e: Row) => e?.collection),
+      ])
       if (unfit) {
         say(`FAIL  ${id} — fixture does not validate:`)
         say(`  ${unfit}`)
@@ -1738,7 +1786,7 @@ function proveOne(ws, id, proof, flags) {
 
   /** What a FAIL row for a resumed run carries: the pending row's own record, steps and snapshot,
    *  because those are the facts of the run being finished — this invocation only judged it. */
-  function rowOf(pending) {
+  function rowOf(pending: Row) {
     return {
       record: pending.record ?? null,
       steps: pending.steps ?? [],
@@ -1751,7 +1799,7 @@ function proveOne(ws, id, proof, flags) {
    * Finish a PENDING run — in the place that run actually happened. A sandbox that is gone cannot
    * be judged: falling back to the primary would answer about records this proof never touched.
    */
-  function resume(pend) {
+  function resume(pend: Row) {
     enter(pend.sandbox ?? null)
     if (sandbox && !fs.existsSync(sandbox)) {
       const gone = `sandbox ${sandbox} is gone (removed by hand?)`
@@ -1842,7 +1890,7 @@ function proveOne(ws, id, proof, flags) {
    * A fresh `Store`, always: the instance that took the before-count may serve a stale index after
    * steps that wrote without committing (see `countMatching`).
    */
-  function decide(rec, snapshot, stepResults) {
+  function decide(rec: Row | null, snapshot: Row, stepResults: Row[]) {
     const fresh = new dt.Store(tws)
     // the picked record is re-read so the verdict is judged on its state after the steps ran. When
     // the steps deleted or renamed it, the pre-step snapshot (`rec`) is judged instead: the run did
@@ -1880,7 +1928,7 @@ function proveOne(ws, id, proof, flags) {
 
   /** The resume half: the steps already ran (in an earlier process, and the perform by a human), so
    *  there is nothing to do but judge — against the `before` the PENDING row carries. */
-  function verify(pending) {
+  function verify(pending: Row) {
     const fresh = new dt.Store(tws)
     const rec = pending.record && proof.given ? pickFixture(fresh, proof.given, pending.record) : null
     if (pending.record && proof.given && !rec) {
@@ -1901,21 +1949,26 @@ function proveOne(ws, id, proof, flags) {
  * `external: true` is opt-in for the same reason from the other side: a proof needing the network
  * should be invisible to the default run, not red on it.
  */
-function proveMany(ws, proofs, flags, select) {
-  const tally = { PASS: 0, FAIL: 0, UNAVAILABLE: 0, "NO-FIXTURE": 0, VACUOUS: 0 }
-  const actors = []
-  const rows = []
-  const say = flags.json ? () => {} : line => console.log(line)
+function proveMany(
+  ws: Workspace,
+  proofs: Map<string, Proof>,
+  flags: Flags,
+  select: (proof: Proof, id: string) => boolean
+) {
+  const tally: Record<string, number> = { PASS: 0, FAIL: 0, UNAVAILABLE: 0, "NO-FIXTURE": 0, VACUOUS: 0 }
+  const actors: string[] = []
+  const rows: Row[] = []
+  const say = flags.json ? (_line: string) => {} : (line: string) => console.log(line)
   for (const [id, proof] of proofs) {
     if (!select(proof, id)) continue
     if (typeof flags.kind === "string" && proof.kind !== flags.kind) continue
     if (proof.external === true && !flags.external) continue
-    if ((Array.isArray(proof.steps) ? proof.steps : []).some(s => s?.perform !== undefined)) {
+    if ((Array.isArray(proof.steps) ? proof.steps : []).some((s: Row) => s?.perform !== undefined)) {
       actors.push(id)
       continue
     }
     const t0 = Date.now()
-    let state
+    let state: string
     let reason
     try {
       // every proof runs silent here: a transcript is what a single-proof run is for
@@ -1962,7 +2015,7 @@ function proveMany(ws, proofs, flags, select) {
  * A `fixture` proof brings its own record and a gate needs none. `last` is the tail of this machine's
  * ledger — a proof that failed and then passed is passing — or null (`never`).
  */
-export function proofFacts(ws, store, id, proof, names) {
+export function proofFacts(ws: Workspace, store: Store, id: string, proof: Proof, names: Set<string>) {
   const need = resolveRequires(ws, proof.requires, names ?? envKeys(ws.root))
   let availability = need.ok ? "available" : `unavailable (${need.missing[0].fix})`
   if (need.ok && proof.given !== undefined && proof.given?.fixture !== true) {
@@ -1984,13 +2037,14 @@ export function proofFacts(ws, store, id, proof, names) {
 }
 
 /** The `last` column: `<verdict> <YYYY-MM-DD> [<record>]`, or `never`. */
-const lastCell = last => (last ? `${last.verdict} ${last.when}${last.record ? ` [${last.record}]` : ""}` : "never")
+const lastCell = (last: Row | null | undefined) =>
+  last ? `${last.verdict} ${last.when}${last.record ? ` [${last.record}]` : ""}` : "never"
 
 /** A kept or un-removable sandbox nothing will come back for: a terminal row with a sandbox whose
  *  removal failed, or was never attempted (what `--keep` leaves). `.worktrees/` is gitignored, so the
  *  ledger is the only thing that knows the directory exists; `existsSync` drops one already gone. */
-function leftBehind(rows) {
-  const left = new Set()
+function leftBehind(rows: Row[]): Set<string> {
+  const left = new Set<string>()
   for (const r of rows) {
     const behind = r.sandbox_removed === false || (r.verdict !== "PENDING" && r.sandbox_removed === null)
     if (r.sandbox && behind && fs.existsSync(r.sandbox)) left.add(r.sandbox)
@@ -2006,7 +2060,7 @@ function leftBehind(rows) {
  * The tally is counted as the walk goes, and the walk is not wrapped: a throw partway through (an
  * unreadable ledger, a record that will not parse) fails loudly rather than reading zero failures.
  */
-function listProofs(ws, store, proofs, target, flags) {
+function listProofs(ws: Workspace, store: Store, proofs: Map<string, Proof>, target: string | undefined, flags: Flags) {
   if (flags.missing) {
     const narrowing = ["kind", "strict"].filter(f => f in flags)
     if (target || narrowing.length)
@@ -2037,12 +2091,12 @@ function listProofs(ws, store, proofs, target, flags) {
       )
   }
   const names = envKeys(ws.root) // one .env parse for the whole listing
-  const tally = { PASS: 0, FAIL: 0, UNAVAILABLE: 0 }
+  const tally: Record<string, number> = { PASS: 0, FAIL: 0, UNAVAILABLE: 0 }
   let declared = 0
   let never = 0
   let other = 0
-  const left = new Set()
-  const rows = []
+  const left = new Set<string>()
+  const rows: Row[] = []
   for (const [id, proof] of [...proofs].sort(([a], [b]) => a.localeCompare(b))) {
     if (!select(id, proof)) continue
     if (typeof flags.kind === "string" && proof.kind !== flags.kind) continue
