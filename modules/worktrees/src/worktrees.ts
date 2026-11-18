@@ -7,6 +7,7 @@
 import fs from "node:fs"
 import path from "node:path"
 import { spawnSync } from "node:child_process"
+import type { Workspace } from "dreamteamer"
 import { dt } from "./engine.ts"
 import { defaultGit, real, resolves, isLink, parseFlags } from "./git.ts"
 
@@ -18,7 +19,7 @@ const INSTALL_TIMEOUT_MS = 10 * 60_000
  *  `ahead` is null for a detached worktree, not 0 — there is no branch to count against, and
  *  `--detach` is ordinary (every --temp sandbox is detached). `dirtyRecords` is scoped to the DATA
  *  path: uncommitted records are the thing the primary cannot see and cannot recover. */
-export function listWorktrees(ws, git = defaultGit) {
+export function listWorktrees(ws: Workspace, git = defaultGit) {
   const c = dt.describeCheckout(ws.root, git)
   const primaryBranch = git(["rev-parse", "--abbrev-ref", "HEAD"], c.primary)
   const dataPath = ws.pkg.dreamteamer?.data_path ?? "data"
@@ -70,7 +71,7 @@ export function listWorktrees(ws, git = defaultGit) {
  *
  *  An ambiguous name is refused, never resolved to whichever row git listed first: two --temp
  *  sandboxes may share a name, and a removal landing on the wrong one takes work with it. */
-export function findWorktree(ws, ref, git = defaultGit) {
+export function findWorktree(ws: Workspace, ref: string | undefined, git = defaultGit) {
   if (!ref) return null
   const rows = listWorktrees(ws, git)
   const byPath = rows.find(w => real(w.path) === real(path.resolve(ws.root, ref)))
@@ -92,7 +93,7 @@ export function findWorktree(ws, ref, git = defaultGit) {
  * shadowing `git_modules/<name>` link: without it the copy falls back to the pinned engine and
  * compiles against a different compiler. LINKS ONLY — a real clone is per-checkout working state.
  */
-export function mirrorLinkedDeps(fromRoot, pkg, toRoot) {
+export function mirrorLinkedDeps(fromRoot: string, pkg: Workspace["pkg"] | null | undefined, toRoot: string) {
   const deps = new Set(["dreamteamer", ...Object.keys({ ...pkg?.dependencies, ...pkg?.devDependencies })])
   for (const dep of deps) {
     const from = path.join(fromRoot, "node_modules", dep)
@@ -117,7 +118,7 @@ export function mirrorLinkedDeps(fromRoot, pkg, toRoot) {
  * object on stdout does not get a compile transcript spliced in ahead of it.
  */
 export function createWorktree(
-  ws,
+  ws: Workspace,
   { name, dir, base = "HEAD", temp = false, quiet = false }: Record<string, any>,
   git = defaultGit
 ) {
@@ -185,7 +186,7 @@ export function createWorktree(
 /** What a failed `dt install` said that NAMES the failure: its ✖ lines and npm's error lines, in
  *  order, bounded — the board around them is noise to someone reading one reason string. Falls back to
  *  the last lines when neither form appears. */
-export function installDiagnosis(output, { lines = 12, width = 300 } = {}) {
+export function installDiagnosis(output: unknown, { lines = 12, width = 300 } = {}): string[] {
   const all = String(output)
     .split("\n")
     .map(l => l.trimEnd())
@@ -204,7 +205,7 @@ export function installDiagnosis(output, { lines = 12, width = 300 } = {}) {
 
 /** `dt worktree add`. Contract: the PATH is the LAST line (a creation hook echoes it), code 0.
  *  Under `--json` stdout carries ONE object and nothing else. */
-export function addWorktree(ws, opts, git = defaultGit) {
+export function addWorktree(ws: Workspace, opts: Record<string, any>, git = defaultGit) {
   const json = !!opts.json
   const target = createWorktree(ws, { ...opts, quiet: json }, git)
   json ? dt.emit(JSON.stringify({ path: target })) : console.log(target)
@@ -214,7 +215,7 @@ export function addWorktree(ws, opts, git = defaultGit) {
 /** Refuses by default, and names why. A worktree holds two things the primary cannot see:
  *  records written but not committed, and commits not yet landed. `git worktree remove` checks a
  *  dirty tree and stops there — the records are exactly what a bare remove would take with it. */
-export function removeWorktree(ws, ref, { force = false } = {}, git = defaultGit) {
+export function removeWorktree(ws: Workspace, ref: string, { force = false } = {}, git = defaultGit) {
   const w = findWorktree(ws, ref, git)
   if (!w) throw new Error(`no worktree "${ref}" — dt worktree list`)
   if (w.primary) throw new Error("refusing to remove the primary checkout")
@@ -293,13 +294,13 @@ export function removeWorktree(ws, ref, { force = false } = {}, git = defaultGit
 /** `dt worktree rm --hook` — the WorktreeRemove handler. A harness whose WorktreeCreate hook cut the
  *  tree leaves deleting it to this hook, so it removes the tree `worktree_path` names under the same
  *  guard as `rm`; a refusal exits 1 and leaves the directory, which the harness reads as kept. */
-export function removeWorktreeHook(ws, argv, git = defaultGit) {
+export function removeWorktreeHook(ws: Workspace, argv: string[], git = defaultGit) {
   const { pos } = parseFlags(argv, { bool: ["hook"] }, "dt worktree rm --hook")
   // refused before the read, so a mistake is not answered by a blocking wait on a pipe
   if (pos.length) throw new Error(`--hook reads the worktree from stdin — drop "${pos[0]}"`)
   const input = dt.readHookInput(dt.readStdin())
   // `worktree_path` only, never `cwd`: every hook payload carries `cwd`, and it names the primary
-  const ref = input.raw.worktree_path
+  const ref = input.raw.worktree_path as string | undefined
   if (!ref)
     throw new Error(
       `hook input carries no worktree_path — nothing removed (keys received: ${Object.keys(input.raw).join(", ") || "none"})`
@@ -334,7 +335,7 @@ export const WORKTREE_USAGE = `  worktree add --name <n> [--path <dir>] [--base 
               remove the worktree a WorktreeRemove payload on stdin names, under the same guard`
 
 /** `dt worktree <sub> …` — the surface. Returns the exit code; a refusal throws. */
-export function worktreeCommand(ws, argv) {
+export function worktreeCommand(ws: Workspace, argv: string[]) {
   const [sub, ...rest] = argv
   switch (sub) {
     case "list": {

@@ -16,8 +16,10 @@ import fs from "node:fs"
 import path from "node:path"
 import { spawnSync } from "node:child_process"
 import { randomBytes } from "node:crypto"
-import { dt } from "./engine.ts"
-import { defaultGit, gitLines, gitZ, parseFlags, logToStderr } from "./git.ts"
+import type { SpawnSyncOptions, SpawnSyncReturns } from "node:child_process"
+import type { Descriptors, Workspace } from "dreamteamer"
+import { dt, type Api } from "./engine.ts"
+import { defaultGit, gitLines, gitZ, parseFlags, logToStderr, type Git } from "./git.ts"
 import { findWorktree, removeWorktree } from "./worktrees.ts"
 
 /** The advisory mutex, a directory under the repo's common dir — every worktree of a repo contends
@@ -30,15 +32,15 @@ export const LAND_LOCK = "dreamteamer-land.lock"
  * LONGEST `storage.path` wins, so `data/hr` cannot swallow `data/hr/people`. Runtime collections are
  * skipped: `.dreamteamer/` is build output, never a record.
  */
-export function groupByCollection(paths, descriptors, dataPath = "data") {
-  const bases = []
+export function groupByCollection(paths: string[], descriptors: Descriptors, dataPath = "data"): Map<string, string[]> {
+  const bases: { name: string; prefix: string }[] = []
   for (const d of descriptors.values()) {
     const { path: p, runtime } = dt.storageOf(d)
     if (!p || runtime || !(p + "/").startsWith(dataPath + "/")) continue
     bases.push({ name: d.name, prefix: p + "/" })
   }
   bases.sort((a, b) => b.prefix.length - a.prefix.length)
-  const groups = new Map()
+  const groups = new Map<string, string[]>()
   for (const p of paths) {
     const hit = bases.find(b => p.startsWith(b.prefix))
     const key = hit ? hit.name : p.startsWith(dataPath + "/") ? "data (no collection)" : "other files"
@@ -48,14 +50,14 @@ export function groupByCollection(paths, descriptors, dataPath = "data") {
   return groups
 }
 
-const age = s => (s < 90 ? `${s}s` : `${Math.round(s / 60)}m`)
+const age = (s: number) => (s < 90 ? `${s}s` : `${Math.round(s / 60)}m`)
 
 /**
  * The landing as DATA: everything refused, and — only if nothing is — every step that would run.
  * `--dry-run` prints this object and the runner executes it, so what is shown is what happens.
  * EVERY refusal is reported, not just the first: two problems are one fix list, not two runs.
  */
-export function planLand(state) {
+export function planLand(state: LandState) {
   const { name, worktree, branch, primaryBranch, upstream, dirtyPrimaryTouched: touched, range, lock } = state
   const refusals = []
   if (worktree.kind === "primary") refusals.push("it is the primary checkout")
@@ -135,14 +137,14 @@ const FF_ATTEMPTS = 3
 /** Every raw git spawn in the runner is bounded. */
 const GIT_TIMEOUT_MS = 5 * 60_000
 const NPM_TIMEOUT_MS = 10 * 60_000
-const spawnGit = (args, env?) =>
+const spawnGit = (args: string[], env?: NodeJS.ProcessEnv) =>
   spawnSync("git", args, { encoding: "utf8", timeout: GIT_TIMEOUT_MS, killSignal: "SIGKILL", ...(env ? { env } : {}) })
 
 /** `git status --porcelain -z` paths. A rename is two records in the `-z` format — the source
  *  follows in its own record and is consumed rather than read as a status line. */
-const statusPaths = (git, root) => {
+const statusPaths = (git: Git, root: string) => {
   const parts = gitZ(git, root, ["status", "--porcelain", "-z"])
-  const paths = []
+  const paths: string[] = []
   for (let i = 0; i < parts.length; i++) {
     const xy = parts[i].slice(0, 2)
     paths.push(parts[i].slice(3))
@@ -152,7 +154,7 @@ const statusPaths = (git, root) => {
 }
 
 /** Is that pid a process we could signal? EPERM means it exists and is someone else's — alive. */
-const alive = pid => {
+const alive = (pid: number | null) => {
   if (!pid) return false
   try {
     process.kill(pid, 0)
@@ -163,8 +165,16 @@ const alive = pid => {
 }
 
 /** The lock as data: whether a LIVE process holds it, and for how long. A dead pid reads as free. */
-function readLock(lockPath) {
-  const state = { held: false, pid: null, age_s: 0, path: lockPath }
+/** The land lock as read from disk. */
+interface LockState {
+  held: boolean
+  pid: number | null
+  age_s: number
+  path: string
+}
+
+function readLock(lockPath: string): LockState {
+  const state: LockState = { held: false, pid: null, age_s: 0, path: lockPath }
   let st
   try {
     st = fs.statSync(lockPath)
@@ -183,7 +193,7 @@ function readLock(lockPath) {
 
 /** Take it, or say who has it. `mkdir` is the mutex (atomic everywhere this runs). A dead holder is
  *  reclaimed OUT LOUD — a lock that silently reclaims itself is a lock nobody can trust. */
-function takeLock(lock, log = console.log) {
+function takeLock(lock: LockState, log = console.log): { refused: string | null } {
   try {
     fs.mkdirSync(lock.path)
   } catch (e) {
@@ -202,7 +212,7 @@ function takeLock(lock, log = console.log) {
 }
 
 /** The branch's upstream, or null (git exits non-zero for none). */
-function upstreamOf(git, primary, branch) {
+function upstreamOf(git: Git, primary: string, branch: string): string | null {
   try {
     return git(["rev-parse", "--abbrev-ref", "--symbolic-full-name", `${branch}@{upstream}`], primary) || null
   } catch {
@@ -211,7 +221,12 @@ function upstreamOf(git, primary, branch) {
 }
 
 /** The state a landing is planned from. Every field is READ — nothing here writes. */
-export function observeLand(ws, ref, { keep = false, assumeBranch = null } = {}, git = defaultGit) {
+export function observeLand(
+  ws: Workspace,
+  ref: string,
+  { keep = false, assumeBranch = null as string | null } = {},
+  git = defaultGit
+) {
   const c = dt.describeCheckout(ws.root, git)
   const w = findWorktree(ws, ref, git)
   if (!w) throw new Error(`no worktree "${ref}" — dt worktree list`)
@@ -220,7 +235,7 @@ export function observeLand(ws, ref, { keep = false, assumeBranch = null } = {},
   // make — the range is measured from the worktree's own HEAD, which is what that branch would be
   const branch = w.primary ? null : (w.branch ?? (assumeBranch ? `worktree-${assumeBranch}` : null))
   const rev = w.primary ? null : (w.branch ?? (branch ? w.head : null))
-  const range = { commits: 0, files: [] }
+  const range = { commits: 0, files: [] as string[] }
   if (rev) {
     range.commits = Number(gitLines(git, c.primary, ["rev-list", "--count", `${primaryBranch}..${rev}`])[0] ?? 0)
     // `...`: what THIS branch added — a file the primary changed underneath it is not landing
@@ -249,10 +264,20 @@ export function observeLand(ws, ref, { keep = false, assumeBranch = null } = {},
   }
 }
 
-const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`
+/** What a landing did: `landed` counts what arrived, by collection; `refused` says why not. */
+export interface LandResult {
+  code: number
+  landed: { records: Map<string, number>; commits: number } | null
+  refused: string[] | null
+}
+
+/** Everything a landing is planned from — what observeLand reads. */
+export type LandState = ReturnType<typeof observeLand>
+
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`
 
 /** What the range holds, by collection — the conflict report's grouping, counted. */
-const recordsIn = (range, descriptors, dataPath) => {
+const recordsIn = (range: LandState["range"], descriptors: Descriptors, dataPath: string) => {
   const groups = groupByCollection(
     range.files.filter(f => f.startsWith(dataPath + "/")),
     descriptors,
@@ -261,14 +286,14 @@ const recordsIn = (range, descriptors, dataPath) => {
   return new Map([...groups].map(([k, v]) => [k, v.length]))
 }
 
-const summarize = (range, records) =>
+const summarize = (range: LandState["range"], records: Map<string, number>) =>
   `${plural(range.commits, "commit")} · ${plural(
     [...records.values()].reduce((a, b) => a + b, 0),
     "record file"
   )} in ${plural(records.size, "collection")}`
 
 /** Print a refusal on stderr. */
-function printRefusal(name, reasons) {
+function printRefusal(name: string, reasons: string[]) {
   const block = `✖ cannot land ${name}:\n${reasons.map(r => `  ${r}`).join("\n")}`
   console.error(block)
 }
@@ -280,8 +305,8 @@ function printRefusal(name, reasons) {
  * only when the landing retired it.
  */
 export async function landWorktree(
-  ws,
-  ref,
+  ws: Workspace,
+  ref: string,
   { keep = false, dryRun = false, branch = null, npmRun }: Record<string, any> = {},
   git = defaultGit
 ) {
@@ -331,12 +356,18 @@ export async function landWorktree(
 /** Compile a checkout WITH its extensions — `openWorkspace` activates what that checkout's
  *  node_modules declares. A bare `{ root, pkg }` would reject every contributed kind (`proofs/`)
  *  as an unknown folder. */
-async function compileAt(root) {
+async function compileAt(root: string) {
   return dt.compile(await dt.openWorkspace(root))
 }
 
 /** The mutating half, under the lock. */
-async function runLanding(ws, c, state, { descriptors, dataPath, npmRun }, git) {
+async function runLanding(
+  ws: Workspace,
+  c: ReturnType<Api["describeCheckout"]>,
+  state: LandState,
+  { descriptors, dataPath, npmRun }: { descriptors: Descriptors; dataPath: string; npmRun?: NpmRun },
+  git: Git
+): Promise<LandResult> {
   const { name, worktree, branch, primaryBranch, range, keep } = state
   const copy = `land/${name}`
   // A leftover copy is evidence, not scratch — it survives exactly one failure (a `check` that
@@ -461,7 +492,7 @@ async function runLanding(ws, c, state, { descriptors, dataPath, npmRun }, git) 
  *  extension. One symlink to the whole node_modules (gitignored, so it can never dirty the tree being
  *  landed), plus the same for each shadowing `git_modules/<name>` LINK; a real clone is per-checkout
  *  working state and is never linked. */
-export function mirrorModules(primary, temp) {
+export function mirrorModules(primary: string, temp: string): void {
   const src = path.join(primary, "node_modules")
   const at = path.join(temp, "node_modules")
   if (fs.existsSync(src) && !fs.existsSync(at)) {
@@ -492,9 +523,9 @@ export function mirrorModules(primary, temp) {
 
 /** Rebase the copy onto the primary branch. Returns null when it lands, or `{ at, subject, paths }`
  *  after ABORTING on the first conflict — nothing is resolved for you. */
-function rebaseCopy(temp, onto, git) {
+function rebaseCopy(temp: string, onto: string, git: Git) {
   // GIT_EDITOR=true: a rebase that stops to open an editor would hang
-  const step = (...args) => spawnGit(["-C", temp, ...args], { ...process.env, GIT_EDITOR: "true" })
+  const step = (...args: string[]) => spawnGit(["-C", temp, ...args], { ...process.env, GIT_EDITOR: "true" })
   const r = step("rebase", onto)
   if (r.status === 0) return null
   const unmerged = gitZ(git, temp, ["diff", "--name-only", "-z", "--diff-filter=U", "--no-relative"])
@@ -517,7 +548,10 @@ function rebaseCopy(temp, onto, git) {
 
 /** `npm ci` in the primary when the landing moved the lockfile. `!== 0`, not truthiness: a spawn
  *  that never started has `status: null`. */
-function installDeps(primaryWs, run = (npm, args, opts) => spawnSync(npm, args, opts)) {
+/** How the runner spawns npm — a test passes a fake. */
+type NpmRun = (npm: string, args: string[], opts: SpawnSyncOptions) => SpawnSyncReturns<string | Buffer> | undefined
+
+function installDeps(primaryWs: Workspace, run: NpmRun = (npm, args, opts) => spawnSync(npm, args, opts)) {
   const npm = dt.resolveNpm()
   if (!npm)
     return console.warn(
@@ -545,7 +579,7 @@ export const LAND_USAGE = `  land <name|path> [--keep] [--dry-run] [--branch <na
               worktree its branch worktree-<name> first · --dry-run print the plan, change nothing`
 
 /** `dt land …` — the surface. */
-export async function landCommand(ws, argv, { npmRun }: Record<string, any> = {}) {
+export async function landCommand(ws: Workspace, argv: string[], { npmRun }: { npmRun?: NpmRun } = {}) {
   const { flags, pos } = parseFlags(argv, { bool: ["keep", "dry-run", "json"], value: ["branch"] }, "dt land <name>")
   const ref = pos[0]
   if (pos.length > 1) throw new Error(`dt land takes ONE worktree — got ${pos.join(", ")}`)

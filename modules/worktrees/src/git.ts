@@ -5,7 +5,10 @@ import { execFileSync } from "node:child_process"
 
 /** `git <args>` in `cwd`, trimmed stdout. On failure GIT'S REASON LEADS the message: execFileSync
  *  puts `Command failed: git <argv>` first, and every summary here reads the first line. */
-export const defaultGit = (args, cwd) => {
+/** Runs git: argv and cwd in, trimmed stdout out. A test passes a fake. */
+export type Git = (args: string[], cwd: string) => string
+
+export const defaultGit: Git = (args, cwd) => {
   try {
     return execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim()
   } catch (e) {
@@ -20,7 +23,7 @@ export const defaultGit = (args, cwd) => {
 
 /** Git answers paths as REALPATHS (macOS /var → /private/var), so both sides of a comparison are
  *  spelled that way. A path that cannot be resolved keeps the spelling it came with. */
-export const real = p => {
+export const real = (p: string) => {
   try {
     return fs.realpathSync(p)
   } catch {
@@ -28,9 +31,9 @@ export const real = p => {
   }
 }
 /** Present means it RESOLVES — a dangling link is absent. */
-export const resolves = p => fs.existsSync(p)
+export const resolves = (p: string) => fs.existsSync(p)
 /** A symlink that resolves. */
-export const isLink = p => {
+export const isLink = (p: string) => {
   try {
     return fs.lstatSync(p).isSymbolicLink() && fs.existsSync(p)
   } catch {
@@ -40,13 +43,13 @@ export const isLink = p => {
 
 /** Root-relative paths out of a path-producing git call. `-C <root>` (and `--no-relative` at the
  *  call site) because `diff.relative=true` in a user's gitconfig answers relative to the CWD. */
-export const gitLines = (git, root, args) =>
+export const gitLines = (git: Git, root: string, args: string[]) =>
   git(["-C", root, ...args], root)
     .split("\n")
     .filter(Boolean)
 /** The same for a `-z` command — NUL-separated and UNQUOTED, so a path with an accent, a space or a
  *  quote reads the same out of every command. */
-export const gitZ = (git, root, args) =>
+export const gitZ = (git: Git, root: string, args: string[]) =>
   git(["-C", root, ...args], root)
     .split("\0")
     .filter(Boolean)
@@ -58,9 +61,13 @@ export const gitZ = (git, root, args) =>
  *
  * @returns {{ flags: Record<string, true|string>, pos: string[] }}
  */
-export function parseFlags(argv, { bool = [], value = [] }, form) {
+export function parseFlags(
+  argv: string[],
+  { bool = [] as string[], value = [] as string[] },
+  form: string
+): { flags: Record<string, any>; pos: string[] } {
   const flags: Record<string, any> = {}
-  const pos = []
+  const pos: string[] = []
   const all = [...bool, ...value]
   const unknown = argv
     .filter(a => a.startsWith("--"))
@@ -94,8 +101,8 @@ export function parseFlags(argv, { bool = [], value = [] }, form) {
 }
 
 /** The known flag within edit distance 2 of a typo, or null — `--tmep` → `temp`. */
-function nearest(word, candidates) {
-  let best = null
+function nearest(word: string, candidates: string[]): string | null {
+  let best: string | null = null
   let bestD = 3
   for (const c of candidates) {
     const d = Array.from({ length: word.length + 1 }, (_, i) => [i, ...Array(c.length).fill(0)])
@@ -116,7 +123,7 @@ function nearest(word, candidates) {
 
 /** Run `fn` with console.log pointed at stderr — how a `--json` form keeps stdout for ONE object
  *  while compile, check and git reporting still reach a human. */
-export async function logToStderr(on, fn) {
+export async function logToStderr<T>(on: boolean, fn: () => T | Promise<T>): Promise<T> {
   if (!on) return fn()
   const log = console.log
   console.log = console.error

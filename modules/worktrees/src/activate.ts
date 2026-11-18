@@ -4,13 +4,14 @@
 // receives the running engine's public API, and every engine call in this package goes through it
 // (src/engine.js). The same package.json key makes this package a content module, so compile also
 // discovers the `working-in-worktrees` skill.
-import { bind } from "./engine.ts"
+import type { Contribution } from "dreamteamer"
+import { bind, type Api } from "./engine.ts"
 import { landCommand, LAND_USAGE } from "./land.ts"
 import { worktreeCommand, WORKTREE_USAGE } from "./worktrees.ts"
 
 export const apiVersion = 1
 
-export default function activate(api) {
+export default function activate(api: Api): Contribution {
   bind(api)
   return {
     // A thrown refusal (a stray flag, a target that names nothing) reaches the engine's handler:
