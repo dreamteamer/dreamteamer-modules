@@ -12,16 +12,20 @@ import path from "node:path"
 import { fileURLToPath } from "node:url"
 
 /** A reference as it may be written — `users/dana-oren` or the bare id — reduced to the id. */
-const idOf = ref => String(ref).trim().replace(/^.*\//, "")
+const idOf = (ref: unknown): string => String(ref).trim().replace(/^.*\//, "")
 
 /** The violations in one `users` record. Pure. `usersById` maps user id → frontmatter. */
-export function userViolationsOf(id, record, usersById = new Map()) {
-  const out = []
-  const has = f =>
+export function userViolationsOf(
+  id: string,
+  record: Record<string, unknown>,
+  usersById: Map<string, Record<string, unknown>> = new Map()
+): string[] {
+  const out: string[] = []
+  const has = (f: string) =>
     record[f] !== undefined &&
     record[f] !== null &&
     record[f] !== "" &&
-    !(Array.isArray(record[f]) && !record[f].length)
+    !(Array.isArray(record[f]) && !(record[f] as unknown[]).length)
   const kind = record.kind ?? "human"
   if (kind === "agent") {
     if (!has("human_owner"))
@@ -47,11 +51,11 @@ export function userViolationsOf(id, record, usersById = new Map()) {
 }
 
 /** Frontmatter scalars only — no rule here reads a list or the body. */
-export function frontmatter(text) {
+export function frontmatter(text: string): Record<string, string> {
   if (!text.startsWith("---\n")) return {}
   const end = text.indexOf("\n---", 4)
   if (end < 0) return {}
-  const out = {}
+  const out: Record<string, string> = {}
   for (const line of text.slice(4, end).split("\n")) {
     const m = /^([a-z_]+):\s*(.*)$/.exec(line)
     if (!m) continue
@@ -65,12 +69,15 @@ function main() {
   const argv = process.argv.slice(2)
   const i = argv.indexOf("--data-root")
   const dir = path.join(path.resolve(i >= 0 && argv[i + 1] ? argv[i + 1] : "data"), "users")
-  const users = fs.existsSync(dir)
+  const users: [string, Record<string, string>][] = fs.existsSync(dir)
     ? fs
         .readdirSync(dir, { recursive: true })
         .map(String)
         .filter(f => f.endsWith(".user.md"))
-        .map(f => [f.replace(/\.user\.md$/, ""), frontmatter(fs.readFileSync(path.join(dir, f), "utf8"))])
+        .map((f): [string, Record<string, string>] => [
+          f.replace(/\.user\.md$/, ""),
+          frontmatter(fs.readFileSync(path.join(dir, f), "utf8")),
+        ])
     : []
   const usersById = new Map(users.map(([id, fm]) => [idOf(id), fm]))
   const violations = users.flatMap(([id, fm]) => userViolationsOf(id, fm, usersById))
@@ -86,7 +93,7 @@ function main() {
 // path and the resolved one differ, and a guard that silently never runs reads as a clean pass.
 const isMain = () => {
   if (!process.argv[1]) return false
-  const real = p => {
+  const real = (p: string) => {
     try {
       return fs.realpathSync(p)
     } catch {
