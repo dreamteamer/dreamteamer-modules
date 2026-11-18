@@ -38,7 +38,7 @@ export const PERSONA_MAX = 10000
  *  Both markers, not just `end`. The hand-written additions sit ABOVE the block, so a capture that
  *  stopped only at `## ` would run straight through `<!-- dreamteamer:begin -->` and swallow the
  *  block's own preamble into the persona. */
-export function section(md, heading) {
+export function section(md: string, heading: string): string {
   const esc = heading.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
   const re = new RegExp(`^## ${esc}\\s*$([\\s\\S]*?)(?=^## |<!-- dreamteamer:(?:begin|end)|$(?![\\s\\S]))`, "m")
   return (re.exec(md)?.[1] ?? "").trim()
@@ -47,7 +47,7 @@ export function section(md, heading) {
 /** The first `## custom instructions — … additions` heading, whatever the possessive: "this
  *  workspace's", "this team's". The generated block owns the bare heading; anything
  *  hand-written hangs off a dash. */
-function additionsHeading(md) {
+function additionsHeading(md: string): string | null {
   return /^## (custom instructions — .*additions)\s*$/m.exec(md)?.[1] ?? null
 }
 
@@ -55,7 +55,7 @@ function additionsHeading(md) {
  *  additions after. The generated half cannot go stale; the hand-written half knows things a
  *  descriptor cannot. Warning-glyph lines and a pointer to a persona script are prose about the
  *  section, not persona. */
-export function personaFrom(md) {
+export function personaFrom(md: string): string {
   const generated = section(md, "custom instructions")
   if (!generated)
     throw new Error(
@@ -79,7 +79,7 @@ const USAGE = [
 ].join("\n")
 
 /** Returns the exit code. `argv` is everything after the `notebook` verb. */
-export function main(argv, root) {
+export function main(argv: string[], root: string): number {
   const [sub, ...rest] = argv
   if (sub === "restore") return restoreMain(rest, root)
   if (sub === "capture") return captureMain(rest, root)
@@ -160,9 +160,13 @@ export const SOURCE = "<SOURCE>"
 
 /** `${env:NAME}` → the value from `env`, or a refusal naming the var. A record never carries a
  *  machine path; the plan renders the template where it runs. */
-function renderEnv(template, env, where) {
-  let missing = null
-  const out = String(template).replace(/\$\{env:([A-Z0-9_]+)\}/g, (_, name) => {
+function renderEnv(
+  template: unknown,
+  env: Record<string, string | undefined>,
+  where: string
+): { value?: string; refusal?: string } {
+  let missing: string | null = null
+  const out = String(template).replace(/\$\{env:([A-Z0-9_]+)\}/g, (_, name: string) => {
     if (env[name] == null || env[name] === "") {
       missing = missing ?? name
       return ""
@@ -178,7 +182,12 @@ function renderEnv(template, env, where) {
 
 /** The persona a record's `chat` resolves to: inline `persona` wins; else `persona_file`, which is
  *  NOTEBOOKLM.md cut the way the persona verb cuts it, or any other file taken whole. */
-function resolvePersona(chat, root, exists, read) {
+function resolvePersona(
+  chat: Record<string, any>,
+  root: string,
+  exists: (file: string) => boolean,
+  read: (file: string) => string
+): { value?: string; refusal?: string } {
   if (chat.persona) return { value: String(chat.persona) }
   if (!chat.persona_file) return { value: "" }
   const file = path.isAbsolute(chat.persona_file) ? chat.persona_file : path.join(root, chat.persona_file)
@@ -202,18 +211,26 @@ function resolvePersona(chat, root, exists, read) {
  * `opts`: `title` overrides the notebook title · `env` (default process.env) renders `${env:…}` ·
  * `root` locates `persona_file` · `exists`/`read` are injectable for tests.
  */
-export function restorePlan(record, opts: Record<string, any> = {}) {
+/** One CLI call of a restore. `at` is the source index it is about; `personaLength` what configure must echo. */
+export interface RestoreStep {
+  purpose: string
+  argv: string[]
+  at?: number
+  personaLength?: number
+}
+
+export function restorePlan(record: Record<string, any>, opts: Record<string, any> = {}) {
   const env = opts.env ?? process.env
   const exists = opts.exists ?? fs.existsSync
-  const read = opts.read ?? (f => fs.readFileSync(f, "utf8"))
+  const read = opts.read ?? ((f: string) => fs.readFileSync(f, "utf8"))
   const root = opts.root ?? process.cwd()
-  const steps = []
-  const refusals = []
+  const steps: RestoreStep[] = []
+  const refusals: string[] = []
   const title = opts.title ?? record.name
   if (!title) refusals.push("the record has no `name` and no --title was given")
   steps.push({ purpose: "create", argv: ["create", String(title), "--json"] })
 
-  ;(record.sources ?? []).forEach((src, i) => {
+  ;(record.sources ?? []).forEach((src: Record<string, any>, i: number) => {
     const at = `sources[${i}]`
     const kind = src.kind
     if (!SOURCE_KINDS.includes(kind)) {
@@ -335,7 +352,15 @@ export function restorePlan(record, opts: Record<string, any> = {}) {
 }
 
 /** One live `source list` entry → a record source, plus what the list could NOT recover. */
-export function sourceFromLive(live) {
+/** One entry of a live `source list`. */
+interface LiveSource {
+  id: string
+  type?: string
+  title?: string
+  url?: string
+}
+
+export function sourceFromLive(live: LiveSource): { source: Record<string, any>; needs: string | null } {
   const type = String(live.type ?? "")
     .replace(/^SourceType\./, "")
     .toLowerCase()
@@ -383,10 +408,10 @@ export function sourceFromLive(live) {
 
 /** The whole list → the record's `sources`, keeping ref/text/mime from an existing entry with the
  *  same live id, and naming every source the list could not make restorable. */
-export function captureSources(listJson, existing = []) {
+export function captureSources(listJson: { sources?: LiveSource[] }, existing: Record<string, any>[] = []) {
   const byId = new Map((existing ?? []).filter(s => s.source_id).map(s => [s.source_id, s]))
-  const sources = []
-  const unresolved = []
+  const sources: Record<string, any>[] = []
+  const unresolved: { title: string; kind: string; source_id: string; needs: string }[] = []
   for (const live of listJson.sources ?? []) {
     const { source, needs } = sourceFromLive(live)
     const prior = byId.get(live.id)
@@ -412,19 +437,19 @@ export function captureSources(listJson, existing = []) {
 // ─── the record file ────────────────────────────────────────────────────────────────────────────────
 
 /** Read a `<id>.notebook.md` — frontmatter as an object, body verbatim. */
-export function readRecord(file): { fields: Record<string, any>; body: string } {
+export function readRecord(file: string): { fields: Record<string, any>; body: string } {
   const text = fs.readFileSync(file, "utf8")
   if (!text.startsWith("---\n")) return { fields: {}, body: text }
   const end = text.indexOf("\n---", 4)
   if (end < 0) return { fields: {}, body: text }
-  const fields = yaml.load(text.slice(4, end)) ?? {}
+  const fields = (yaml.load(text.slice(4, end)) ?? {}) as Record<string, any>
   let body = text.slice(end + 4)
   if (body.startsWith("\n")) body = body.slice(1)
   return { fields, body }
 }
 
 /** Write frontmatter back; the body is untouched. */
-export function writeRecord(file, { fields, body }) {
+export function writeRecord(file: string, { fields, body }: { fields: Record<string, any>; body: string }) {
   const fm = yaml.dump(fields, { lineWidth: -1, noRefs: true, quotingType: "'" })
   fs.writeFileSync(file, `---\n${fm}---\n${body}`)
 }
@@ -432,8 +457,8 @@ export function writeRecord(file, { fields, body }) {
 /** A collection's storage as the COMPILED descriptor resolves it, or null when it is not compiled:
  *  the path compile decided (`compiled.defaults`, over the authored one), the suffix, and the parent
  *  collection a `storage.under` names (`compiled.under_collection`). */
-function compiledStorage(root, name) {
-  let d
+function compiledStorage(root: string, name: string) {
+  let d: any
   try {
     d = yaml.load(fs.readFileSync(path.join(root, ".dreamteamer", "collections", `${name}.collection.yaml`), "utf8"))
   } catch {
@@ -455,7 +480,7 @@ function compiledStorage(root, name) {
 
 /** Where a consumer keeps its notebooks records: the compiled descriptor's storage, else the module
  *  default. */
-export function recordFile(root, id) {
+export function recordFile(root: string, id: string): string {
   const s = compiledStorage(root, "notebooks")
   const dir = s?.path ?? "data/notebooks"
   const suffix = s?.suffix ?? "notebook"
@@ -473,16 +498,16 @@ export function recordFile(root, id) {
   return own
 }
 
-function flag(argv, name) {
+function flag(argv: string[], name: string): string | undefined {
   const i = argv.indexOf(name)
   return i >= 0 ? argv[i + 1] : undefined
 }
-const quote = a => (/[\s"]/.test(a) ? JSON.stringify(a.length > 60 ? a.slice(0, 57) + "…" : a) : a)
-const show = argv => argv.map(quote).join(" ")
+const quote = (a: string) => (/[\s"]/.test(a) ? JSON.stringify(a.length > 60 ? a.slice(0, 57) + "…" : a) : a)
+const show = (argv: string[]) => argv.map(quote).join(" ")
 
 /** Run one notebooklm call, returning its parsed JSON. Throws with the CLI's own stderr. */
-function nlm(argv) {
-  let out
+function nlm(argv: string[]): any {
+  let out: string
   try {
     out = execFileSync("notebooklm", ["--quiet", ...argv], {
       encoding: "utf8",
@@ -500,7 +525,7 @@ function nlm(argv) {
   return i >= 0 ? JSON.parse(out.slice(i)) : {}
 }
 
-function restoreMain(rest, root) {
+function restoreMain(rest: string[], root: string): number {
   const id = rest.find(a => !a.startsWith("-"))
   if (!id) {
     console.error(USAGE.split("\n")[1])
@@ -532,8 +557,9 @@ function restoreMain(rest, root) {
   if (dry) return 0
 
   const ids = new Map() // source index → live id
-  let notebookId
-  const fill = (argv, at?) => argv.map(a => (a === NOTEBOOK ? notebookId : a === SOURCE ? ids.get(at) : a))
+  let notebookId: string | undefined
+  const fill = (argv: string[], at?: number) =>
+    argv.map(a => (a === NOTEBOOK ? notebookId : a === SOURCE ? ids.get(at) : a))
   try {
     for (const s of plan.steps) {
       if (s.purpose === "create") {
@@ -585,7 +611,7 @@ function restoreMain(rest, root) {
   }
   rec.fields.notebook_id = notebookId
   if (account) rec.fields.account = account
-  rec.fields.sources = (rec.fields.sources ?? []).map((src, i) =>
+  rec.fields.sources = (rec.fields.sources ?? []).map((src: Record<string, any>, i: number) =>
     ids.has(i) ? { ...src, source_id: ids.get(i) } : src
   )
   writeRecord(file, rec)
@@ -595,7 +621,7 @@ function restoreMain(rest, root) {
   return 0
 }
 
-function captureMain(rest, root) {
+function captureMain(rest: string[], root: string): number {
   const id = rest.find(a => !a.startsWith("-"))
   if (!id) {
     console.error(USAGE.split("\n")[2])
@@ -639,7 +665,7 @@ function captureMain(rest, root) {
 // invoked path and the resolved one differ, and a guard that never fires reads as a clean run.
 const __isMain = () => {
   if (!process.argv[1]) return false
-  const real = p => {
+  const real = (p: string) => {
     try {
       return __fs.realpathSync(p)
     } catch {

@@ -7,19 +7,24 @@
 // user-owned file, removed on the next compile once this package is uninstalled or the harness is
 // switched off); this module only renders the block's text from the read-only indexes compile hands
 // every contributed harness.
+import type { HarnessContext } from "dreamteamer"
 import { PLANS } from "./export.ts"
 
 /** Chats per day, per plan — Google's published table, beside the source cap the export budgets
  *  against. Stated because the number decides the SHAPE of the export: a workspace with more
  *  collections than the plan has slots has to be narrowed or packed, and that is a decision you make
  *  before running anything. */
-const CHATS_PER_DAY = { standard: 50, plus: 200, pro: 500, ultra: 2500 }
+const CHATS_PER_DAY: Record<string, number> = { standard: 50, plus: 200, pro: 500, ultra: 2500 }
 
 /** The notebook's configuration, generated: what to paste as custom instructions, which settings to
  *  pick, and the limits that bind. Derived from the compiled DESCRIPTORS only (`ctx.collections`) —
  *  never from `data/`, for the same reason the orientation block carries no record counts: this lands
  *  in a committed file and a count would re-dirty it on every write. */
-export function notebooklmBlock({ collections, modules, version }) {
+export function notebooklmBlock({
+  collections,
+  modules,
+  version,
+}: Pick<HarnessContext, "collections" | "modules" | "version">): string {
   // `generated`, NOT `systemGroup`. The question here is a STORAGE question, because every number
   // and name below has to describe what `dt notebooklm` will actually ship, and the export ships by
   // storage (`dt.isRuntime` — export.js). The presentational partition would leave a
@@ -33,7 +38,7 @@ export function notebooklmBlock({ collections, modules, version }) {
   // grouped by module from the COLLECTIONS index, which carries each collection's owning module —
   // the modules index reports skills, commands and bin, not collections
   const title = new Map(modules.map(m => [m.id, m.title]))
-  const byModule = new Map()
+  const byModule = new Map<string, string[]>()
   for (const c of data) {
     const k = c.module || ""
     if (!byModule.has(k)) byModule.set(k, [])
@@ -105,6 +110,6 @@ export function notebooklmBlock({ collections, modules, version }) {
 }
 
 /** The harness adapter the engine calls on every compile while `notebooklm` is in dreamteamer.harnesses. */
-export function render(ctx) {
+export function render(ctx: HarnessContext) {
   return { blocks: { "NOTEBOOKLM.md": notebooklmBlock(ctx) }, summary: "notebooklm → NOTEBOOKLM.md block" }
 }

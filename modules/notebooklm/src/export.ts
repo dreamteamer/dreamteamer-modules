@@ -22,11 +22,12 @@ import fs from "node:fs"
 import path from "node:path"
 import { createHash } from "node:crypto"
 import { spawnSync } from "node:child_process"
-import { dt } from "./engine.ts"
+import type { Workspace } from "dreamteamer"
+import { dt, type Api } from "./engine.ts"
 
 /** Sources per notebook, per plan — Google's published table (support.google.com/notebooklm/answer/16213268).
  *  A bare number is accepted too, for a Workspace or Enterprise tier the table does not name. */
-export const PLANS = { standard: 50, plus: 100, pro: 300, ultra: 600 }
+export const PLANS: Record<string, number> = { standard: 50, plus: 100, pro: 300, ultra: 600 }
 /** The persona cap `notebooklm configure --persona` states. */
 export const PERSONA_MAX = 10000
 /** Google documents 500,000 words per source; the default leaves room for the shard header and for
@@ -50,19 +51,50 @@ export const FLAGS = [
   "json",
 ]
 
-export const words = text => {
+export const words = (text: unknown) => {
   const t = String(text ?? "").trim()
   return t ? t.split(/\s+/).length : 0
 }
-const sha256 = text => createHash("sha256").update(text).digest("hex")
-const flat = s =>
+const sha256 = (text: string) => createHash("sha256").update(text).digest("hex")
+const flat = (s: unknown) =>
   String(s ?? "")
     .replace(/\s+/g, " ")
     .trim()
 
 // ---- projection -----------------------------------------------------------------------------------
 
-export function omittedFields(d) {
+type Descriptor = import("dreamteamer").Descriptor
+type Descriptors = import("dreamteamer").Descriptors
+
+/** A module record as the schema source reads it, with what is found under its path. */
+interface ModuleEntry {
+  id: string
+  title: string
+  description: string
+  namespaces: string[]
+  collections: string[]
+  skills: string[]
+  commands: string[]
+}
+
+/** What the export leaves out: whole collections, and fields by collection. */
+interface Omitted {
+  collections: string[]
+  fields: Record<string, string[]>
+}
+
+/** One rendered source of the bundle. */
+export interface BundleSource {
+  title: string
+  file: string
+  text: string
+  words: number
+  records: string[]
+  collection: string | null
+  shard: [number, number]
+}
+
+export function omittedFields(d: Descriptor): string[] {
   return Object.entries<any>(dt.fieldsOf(d))
     .filter(([, f]) => f?.sensitive === true)
     .map(([k]) => k)
@@ -70,23 +102,23 @@ export function omittedFields(d) {
 }
 
 /** The fields a record of `d` carries into the export: what it stores, less the sensitive ones. */
-export function exportedFieldsOf(d) {
+export function exportedFieldsOf(d: Descriptor): string[] {
   const drop = new Set(omittedFields(d))
   return Object.keys(dt.storedFieldsOf(d)).filter(k => !drop.has(k))
 }
 
 /** Why a collection is not exported as records, or null when it is. */
-export function exportability(d) {
+export function exportability(d: Descriptor): "system" | "file" | "sensitive" | null {
   if (dt.isRuntime(d)) return "system"
   if (dt.isBinary(d)) return "file"
   if (dt.isSensitive(d)) return "sensitive"
   return null
 }
 
-export function projectRecord(d, fields) {
+export function projectRecord(d: Descriptor, fields: Record<string, unknown>) {
   const drop = new Set(omittedFields(d))
-  const kept = {}
-  const dropped = []
+  const kept: Record<string, unknown> = {}
+  const dropped: string[] = []
   for (const [k, v] of Object.entries(fields)) (drop.has(k) ? dropped : null)?.push(k) ?? (kept[k] = v)
   return { kept, dropped }
 }
@@ -94,9 +126,9 @@ export function projectRecord(d, fields) {
 // ---- rendering ------------------------------------------------------------------------------------
 
 /** One field of the schema source, from its v2 definition. */
-function fieldLine(name, f) {
-  const bits = []
-  const targets = dt.targetsOf(f)
+function fieldLine(name: string, f: Record<string, any>): string {
+  const bits: string[] = []
+  const targets = dt.targetsOf(f as import("dreamteamer").Field)
   const values = Array.isArray(f.enum) ? f.enum : f.enum && typeof f.enum === "object" ? Object.keys(f.enum) : null
   if (targets)
     bits.push(`reference → ${targets === "*" ? "any collection" : targets.join(" | ")}${f.many ? ", many" : ""}`)
@@ -114,16 +146,17 @@ function fieldLine(name, f) {
 
 /** The module records compile projected, each with the skills and commands found under its path.
  *  Read from disk rather than the manifest because the manifest names roots and not what is in them. */
-function modulesIndex(store, root) {
-  const out = []
+function modulesIndex(store: InstanceType<Api["Store"]>, root: string): ModuleEntry[] {
+  const out: ModuleEntry[] = []
   if (!store.descriptors.has("modules")) return out
-  for (const { id, fields: m } of store.readAll("modules")) {
+  for (const { id, fields } of store.readAll("modules")) {
+    const m = fields as Record<string, any>
     const modRoot = m.path && m.path !== "." ? path.join(root, m.path) : root
     const skills = safeList(
       path.join(modRoot, "skills"),
-      e => e.isDirectory() && fs.existsSync(path.join(modRoot, "skills", e.name, "SKILL.md"))
+      (e: fs.Dirent) => e.isDirectory() && fs.existsSync(path.join(modRoot, "skills", e.name, "SKILL.md"))
     )
-    const commands = safeList(path.join(modRoot, "commands"), e => e.name.endsWith(".command.md")).map(c =>
+    const commands = safeList(path.join(modRoot, "commands"), (e: fs.Dirent) => e.name.endsWith(".command.md")).map(c =>
       c.replace(/\.command\.md$/, "")
     )
     out.push({
@@ -131,14 +164,14 @@ function modulesIndex(store, root) {
       title: m.title ?? id,
       description: flat(m.description),
       namespaces: m.namespaces ?? [],
-      collections: (m.collections ?? []).map(r => String(r).replace(/^collections\//, "")),
+      collections: (m.collections ?? []).map((r: unknown) => String(r).replace(/^collections\//, "")),
       skills,
       commands,
     })
   }
   return out.sort((a, b) => a.title.localeCompare(b.title))
 }
-const safeList = (dir, keep) => {
+const safeList = (dir: string, keep: (e: fs.Dirent) => boolean): string[] => {
   try {
     return fs
       .readdirSync(dir, { withFileTypes: true })
@@ -151,7 +184,23 @@ const safeList = (dir, keep) => {
 }
 
 /** The schema source: workspace → module → collection → field, one heading level per step. */
-export function renderSchema({ workspace, version, exportedAt, modules, descriptors, omitted, selected }) {
+export function renderSchema({
+  workspace,
+  version,
+  exportedAt,
+  modules,
+  descriptors,
+  omitted,
+  selected,
+}: {
+  workspace: string
+  version: string
+  exportedAt: string
+  modules: ModuleEntry[]
+  descriptors: Descriptors
+  omitted: Omitted
+  selected: Set<string> | null
+}): string {
   const data = [...descriptors.values()].filter(d => !dt.isRuntime(d)).sort((a, b) => a.name.localeCompare(b.name))
   const system = [...descriptors.values()]
     .filter(d => dt.isRuntime(d))
@@ -166,7 +215,7 @@ export function renderSchema({ workspace, version, exportedAt, modules, descript
   ]
   const placed = new Set()
   const groups = modules.filter(m => m.collections.some(c => descriptors.get(c) && !dt.isRuntime(descriptors.get(c))))
-  const renderCollection = d => {
+  const renderCollection = (d: Descriptor) => {
     placed.add(d.name)
     const why = exportability(d)
     lines.push("", `### collection: ${d.name}`)
@@ -222,9 +271,9 @@ export function renderSchema({ workspace, version, exportedAt, modules, descript
 }
 
 /** module → its collections, one line each: what the persona can afford of the schema. */
-export function schemaBrief(modules, descriptors, omitted) {
+export function schemaBrief(modules: ModuleEntry[], descriptors: Descriptors, omitted: Omitted): string {
   const skip = new Set(omitted.collections)
-  const lines = []
+  const lines: string[] = []
   for (const m of modules) {
     const own = m.collections.filter(c => descriptors.get(c) && !dt.isRuntime(descriptors.get(c)))
     if (!own.length) continue
@@ -233,7 +282,7 @@ export function schemaBrief(modules, descriptors, omitted) {
   return lines.join("\n")
 }
 
-const demote = md => String(md).replace(/^(#{1,4})(\s)/gm, (_, h, s) => `${h}##${s}`)
+const demote = (md: unknown) => String(md).replace(/^(#{1,4})(\s)/gm, (_, h, s) => `${h}##${s}`)
 
 /** A REFERENCE INTO A WITHHELD COLLECTION IS ITSELF A DISCLOSURE, and the sharper half is that an
  *  id is not an opaque handle here — ids are authored, so they carry account numbers, people's names
@@ -245,7 +294,7 @@ const demote = md => String(md).replace(/^(#{1,4})(\s)/gm, (_, h, s) => `${h}##$
  *  collection NAME survives, because "there is a finance account behind this and you were not given
  *  it" is a true and useful sentence; the id does not. Longest name first, so `finance/accounts`
  *  cannot claim a reference belonging to `finance/account-source-artifacts`. */
-export function redactWithheld(text, withheld) {
+export function redactWithheld(text: unknown, withheld: Iterable<string>): string {
   let out = String(text)
   for (const name of [...withheld].sort((a, b) => b.length - a.length)) {
     out = out.replace(
@@ -256,7 +305,7 @@ export function redactWithheld(text, withheld) {
   return out
 }
 
-function value(v, labels) {
+function value(v: unknown, labels: Map<string, string>): string {
   if (Array.isArray(v)) return v.map(x => value(x, labels)).join(", ")
   if (v && typeof v === "object") return JSON.stringify(v)
   const s = String(v)
@@ -265,7 +314,12 @@ function value(v, labels) {
 }
 
 /** One record as a `## <collection>/<id>` section: kept fields as a list, the body after a blank line. */
-export function renderRecord(d, id, fields, labels) {
+export function renderRecord(
+  d: Descriptor,
+  id: string,
+  fields: Record<string, unknown>,
+  labels: Map<string, string>
+): string {
   const bf = dt.bodyField(d)
   const { kept } = projectRecord(d, fields)
   const lines = [`## ${d.name}/${id}`]
@@ -280,7 +334,14 @@ export function renderRecord(d, id, fields, labels) {
 /** NO TIMESTAMP AND NO ENGINE VERSION IN A SHARD. The sync decides "unchanged" by hashing the
  *  bytes, so anything volatile here would re-upload every source on every run. Dates live in the
  *  manifest and the persona, which are rewritten anyway. */
-function shardHeader(d, exported, n, m, count, meta) {
+function shardHeader(
+  d: Descriptor,
+  exported: string[],
+  n: number,
+  m: number,
+  count: number,
+  meta: { workspace: string }
+): string {
   const lines = [`# ${d.name}${d.description ? ` — ${flat(d.description)}` : ""}`]
   if (d.use_when) lines.push(`use when: ${flat(d.use_when)}`)
   lines.push(`fields exported: ${exported.join(", ")}`)
@@ -289,8 +350,8 @@ function shardHeader(d, exported, n, m, count, meta) {
 }
 
 /** Greedy, in id order: a shard closes when the next section would push it over `maxWords`. */
-export function shardSections(sections, maxWords) {
-  const shards = [[]]
+export function shardSections<S extends { id: string; text: string }>(sections: S[], maxWords: number): S[][] {
+  const shards: S[][] = [[]]
   let used = 0
   for (const s of sections) {
     const w = words(s.text)
@@ -308,11 +369,12 @@ export function shardSections(sections, maxWords) {
   return shards
 }
 
-export const sourceTitle = (collection, n, m) => `${OWNED_PREFIX}${collection}${m > 1 ? ` [${n}/${m}]` : ""}`
-export const sourceFile = (collection, n, m) =>
+export const sourceTitle = (collection: string, n: number, m: number) =>
+  `${OWNED_PREFIX}${collection}${m > 1 ? ` [${n}/${m}]` : ""}`
+export const sourceFile = (collection: string, n: number, m: number) =>
   `${collection.replace(/\//g, "--")}${m > 1 ? `--${String(n).padStart(2, "0")}` : ""}.md`
 
-export function sourceLimit(plan) {
+export function sourceLimit(plan: string): number {
   if (/^\d+$/.test(String(plan))) return Number(plan)
   if (plan in PLANS) return PLANS[plan]
   throw new Error(`unknown plan "${plan}" — one of ${Object.keys(PLANS).join(", ")}, or a bare number of sources`)
@@ -331,7 +393,7 @@ Not in this notebook, deliberately: {{omitted}}. If asked about them, say they w
 
 When a question names a person, an organisation or a thing, find its record first and answer from the fields on it; when it asks what recurs, read across the collection. Give record ids in the form <collection>/<id> so the reader can open them.`
 
-export function renderInstructions(template, vars) {
+export function renderInstructions(template: string, vars: Record<string, unknown>): string {
   const out = String(template).replace(/\{\{\s*([a-z_]+)\s*\}\}/g, (_, key) => {
     if (!(key in vars))
       throw new Error(
@@ -348,7 +410,7 @@ export function renderInstructions(template, vars) {
 
 // ---- the bundle -----------------------------------------------------------------------------------
 
-export function buildBundle(ws, flags: Record<string, any> = {}) {
+export function buildBundle(ws: Workspace, flags: Record<string, any> = {}) {
   const store = new dt.Store(ws)
   const version = dt.engineVersion()
   const exportedAt = new Date().toISOString().slice(0, 16).replace("T", " ") + "Z"
@@ -370,8 +432,8 @@ export function buildBundle(ws, flags: Record<string, any> = {}) {
   const descriptors = store.descriptors
   const modules = modulesIndex(store, ws.root)
 
-  const omitted = { collections: [], fields: {} }
-  const exportable = []
+  const omitted: Omitted = { collections: [], fields: {} }
+  const exportable: Descriptor[] = []
   for (const d of [...descriptors.values()].sort((a, b) => a.name.localeCompare(b.name))) {
     const why = exportability(d)
     if (why === "sensitive") omitted.collections.push(d.name)
@@ -383,8 +445,8 @@ export function buildBundle(ws, flags: Record<string, any> = {}) {
   }
 
   // labels first, so a reference renders as `companies/acme (Acme Ltd)` whichever shard it lands in
-  const labels = new Map()
-  const rows = new Map()
+  const labels = new Map<string, string>()
+  const rows = new Map<string, { id: string; fields: Record<string, any> }[]>()
   for (const d of exportable) {
     const list = [...store.readAll(d.name)].sort((a, b) => a.id.localeCompare(b.id))
     rows.set(d.name, list)
@@ -399,7 +461,7 @@ export function buildBundle(ws, flags: Record<string, any> = {}) {
 
   const meta = { workspace, version, exportedAt }
   const withheld = new Set(omitted.collections)
-  const sources = []
+  const sources: BundleSource[] = []
   const schemaText = redactWithheld(
     renderSchema({ workspace, version, exportedAt, modules, descriptors, omitted, selected }),
     withheld
@@ -486,7 +548,10 @@ export function buildBundle(ws, flags: Record<string, any> = {}) {
 }
 
 /** Write the bundle, pruning shards a previous export left. `notebook.json` (sync state) is kept. */
-export function writeBundle(outDir, bundle) {
+/** What buildBundle renders, before it is written. */
+export type Bundle = ReturnType<typeof buildBundle>
+
+export function writeBundle(outDir: string, bundle: Bundle) {
   fs.mkdirSync(outDir, { recursive: true })
   const keep = new Set([...bundle.sources.map(s => s.file), "instructions.md", "manifest.json", "notebook.json"])
   for (const f of fs.readdirSync(outDir))
@@ -527,14 +592,32 @@ export function writeBundle(outDir, bundle) {
  *  back wrong. Ownership — what may be REMOVED — is: an id the state tracks, a title carrying
  *  OWNED_PREFIX, or a title equal to one of the bundle's file names (the shape the dropped title
  *  leaves behind). Anything else was added by a person and is never removed. */
-export function planSync(wanted, existing, state = {}, ownedFiles = new Set()) {
-  const plan = { add: [], replace: [], skip: [], remove: [] }
+/** One source a sync wants in the notebook. */
+interface Wanted {
+  title: string
+  file: string
+  sha256: string
+  words?: number
+}
+
+export function planSync(
+  wanted: Wanted[],
+  existing: { id: string; title: string }[],
+  state: Record<string, { source_id: string; sha256: string }> = {},
+  ownedFiles: Set<string> = new Set()
+) {
+  const plan = {
+    add: [] as Wanted[],
+    replace: [] as (Wanted & { oldId: string })[],
+    skip: [] as (Wanted & { sourceId: string; renameFrom: string | null })[],
+    remove: [] as { title: string; id: string }[],
+  }
   const byId = new Map(existing.map(e => [e.id, e]))
-  const tracked = new Set(Object.values(state).map((s: any) => s.source_id))
-  const accounted = new Set()
+  const tracked = new Set(Object.values(state).map(s => s.source_id))
+  const accounted = new Set<string>()
   for (const w of wanted) {
     const prev = state[w.title]
-    const live: any = prev ? byId.get(prev.source_id) : undefined
+    const live = prev ? byId.get(prev.source_id) : undefined
     if (live && prev.sha256 === w.sha256) {
       plan.skip.push({ ...w, sourceId: live.id, renameFrom: live.title !== w.title ? live.title : null })
       accounted.add(live.id)
@@ -557,7 +640,7 @@ const NOT_INSTALLED = "the `notebooklm` CLI is not on PATH — `pip install -U n
  *  timeout — a hung vendor call fails with a message, it never waits. Every call names the notebook
  *  explicitly; `notebooklm use` is never run, because that writes a single shared context file that
  *  concurrent sessions would overwrite. */
-function vendor(args, timeoutMs) {
+function vendor(args: string[], timeoutMs: number) {
   const res = spawnSync("notebooklm", args, {
     encoding: "utf8",
     timeout: timeoutMs,
@@ -576,7 +659,7 @@ function vendor(args, timeoutMs) {
   return res
 }
 
-function nlm(args, { json = true, timeoutMs = 600000 } = {}) {
+function nlm(args: string[], { json = true, timeoutMs = 600000 } = {}): any {
   const res = vendor(["--quiet", ...args, ...(json ? ["--json"] : [])], timeoutMs)
   if (res.status !== 0)
     throw new Error(
@@ -607,7 +690,12 @@ function preflight() {
   return ver
 }
 
-export function syncNotebook(outDir, manifest, flags, log = line => dt.emit(line)) {
+export function syncNotebook(
+  outDir: string,
+  manifest: ReturnType<typeof writeBundle>,
+  flags: Record<string, any>,
+  log = (line: string) => dt.emit(line)
+) {
   preflight()
   let notebookId = flags.notebook !== undefined ? String(flags.notebook) : undefined
   const stateFile = path.join(outDir, "notebook.json")
@@ -631,12 +719,18 @@ export function syncNotebook(outDir, manifest, flags, log = line => dt.emit(line
   if (state.notebook_id && state.notebook_id !== notebookId) state = {} // a different notebook: no prior source ids apply
 
   const listed = nlm(["source", "list", "-n", notebookId])
-  const existing = (Array.isArray(listed) ? listed : (listed?.sources ?? [])).map(s => ({
-    id: s.id,
-    title: s.title ?? "",
-  }))
+  const existing = (Array.isArray(listed) ? listed : (listed?.sources ?? [])).map(
+    (s: { id: string; title?: string }) => ({
+      id: s.id,
+      title: s.title ?? "",
+    })
+  )
   const plan = planSync(manifest.sources, existing, state.sources ?? {}, new Set(manifest.sources.map(s => s.file)))
-  const next = { notebook_id: notebookId, synced_at: new Date().toISOString(), sources: {} }
+  const next = {
+    notebook_id: notebookId,
+    synced_at: new Date().toISOString(),
+    sources: {} as Record<string, { source_id: string; sha256: string }>,
+  }
   for (const s of plan.skip) {
     next.sources[s.title] = { source_id: s.sourceId, sha256: s.sha256 }
     if (s.renameFrom) {
@@ -648,7 +742,7 @@ export function syncNotebook(outDir, manifest, flags, log = line => dt.emit(line
     nlm(["source", "delete", r.id, "-n", notebookId, "-y"])
     log(`  - removed  ${r.title}`)
   }
-  const added = []
+  const added: { id: string; title: string }[] = []
   for (const r of plan.replace) {
     nlm(["source", "delete", r.oldId, "-n", notebookId, "-y"])
   }
@@ -674,7 +768,7 @@ export function syncNotebook(outDir, manifest, flags, log = line => dt.emit(line
     nlm(["source", "rename", id, s.title, "-n", notebookId])
     next.sources[s.title] = { source_id: id, sha256: s.sha256 }
     added.push({ id, title: s.title })
-    log(`  ${plan.replace.includes(s) ? "~ replaced" : "+ added   "} ${s.title} (${s.words} words)`)
+    log(`  ${(plan.replace as Wanted[]).includes(s) ? "~ replaced" : "+ added   "} ${s.title} (${s.words} words)`)
   }
   fs.writeFileSync(stateFile, JSON.stringify(next, null, 2) + "\n") // state lands before configure, so a failure there loses nothing
   const persona = fs.readFileSync(path.join(outDir, "instructions.md"), "utf8")
@@ -684,7 +778,7 @@ export function syncNotebook(outDir, manifest, flags, log = line => dt.emit(line
   log(
     `✔ persona set (${persona.length} chars${flags["response-length"] ? `, response length ${flags["response-length"]}` : ""})`
   )
-  const waited = []
+  const waited: { title: string; ready: boolean }[] = []
   if (flags.wait && added.length) {
     for (const a of added) {
       if (!a.id) continue
@@ -722,7 +816,7 @@ export const USAGE = `  notebooklm  render the workspace for NotebookLM, and opt
 
 /** `dt notebooklm …` — argv is everything after the verb. Unknown flags and stray words are refused:
  *  a flag swallowed in silence turns a request into a different export. */
-export function notebooklmCommand(ws, argv) {
+export function notebooklmCommand(ws: Workspace, argv: string[]): number {
   const { flags, pos } = dt.parseArgs(argv)
   const bad = Object.keys(flags).find(f => !FLAGS.includes(f))
   if (bad)
@@ -741,7 +835,7 @@ export function notebooklmCommand(ws, argv) {
   const quiet = !!flags.json
   // `dt.emit` (a synchronous write that appends the newline), never console.log: the engine exits
   // the process as soon as this returns, and an asynchronous pipe write would be cut off mid-JSON.
-  const log = quiet ? () => {} : line => dt.emit(line)
+  const log = quiet ? () => {} : (line: string) => dt.emit(line)
   if (!quiet) {
     log(
       `✔ ${rel}/ — ${manifest.sources.length} sources (${manifest.budget.used}/${manifest.budget.limit} on plan ${manifest.budget.plan}), persona ${bundle.instructions.length}/${PERSONA_MAX} chars`
