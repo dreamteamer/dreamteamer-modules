@@ -11,7 +11,7 @@
 //      not tell a record a run FOUND from one a person WROTE.
 //   3. THE JOIN IS `real`: ONE-WAY, SOFT, AND POINTED AT ITS OWN COLLECTION. Soft means a plain
 //      string rather than a reference type, so the engine's `check` never resolves it; the module's
-//      own guard (`bin/check-records.mjs`) holds the target and reports one that resolves to nothing.
+//      own guard (`dist/bin/check-records.js`) holds the target and reports one that resolves to nothing.
 //   4. AND `real` IS THE ONLY CROSSING. Every other reference resolves inside `perspective/`, or names
 //      a peer with no observed half (`companies`, `contacts`, `meetings`, `repos`).
 import { test, describe } from "node:test"

@@ -36,9 +36,9 @@ const a = await paneWorkspace("northwind", { tasks: ["Call the bank", "File taxe
 const other = await paneWorkspace("harbor")
 const s = await serve(a.root, { dirs })
 const b = await browser()
-const HOOK = path.join(WEB, "bin", "dt-web-hook.mjs")
+const HOOK = path.join(WEB, "dist", "bin", "dt-web-hook.js")
 const runOther = (...args) =>
-  spawnSync(process.execPath, [path.join(WEB, "bin", "dt-web.mjs"), other.root, ...args], {
+  spawnSync(process.execPath, [path.join(WEB, "dist", "bin", "dt-web.js"), other.root, ...args], {
     env: s.env,
     encoding: "utf8",
     timeout: 30_000,

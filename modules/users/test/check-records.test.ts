@@ -7,7 +7,7 @@ import os from "node:os"
 import path from "node:path"
 import { userViolationsOf } from "../bin/check-records.ts"
 
-const BIN = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..", "bin", "check-records.mjs")
+const BIN = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..", "dist", "bin", "check-records.js")
 
 describe("users — the agent fold", () => {
   test("an agent with no owner is unsupervised automation — refused", () => {

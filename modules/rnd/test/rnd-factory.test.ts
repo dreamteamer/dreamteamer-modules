@@ -7,7 +7,11 @@ import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
 import yaml from "js-yaml"
-import { ffmpegArgs, parseArgs, main } from "../../../modules/rnd/skills/building-from-references/bin/extract-frames.mts"
+import {
+  ffmpegArgs,
+  parseArgs,
+  main,
+} from "../../../modules/rnd/skills/building-from-references/bin/extract-frames.mts"
 
 // the repo root — these tests were written at the root of dreamteamer/extensions, whose modules/ layout
 // this repo keeps, so every `ROOT/modules/<m>/…` path still names the same file
@@ -325,9 +329,10 @@ describe("the lifecycle stages — one plainly written skill each, to one contra
   test("building-from-references hands prototypes to rnd-prototype instead of restating them", () => {
     assert.match(skill("building-from-references"), /rnd-prototype/)
   })
-  test("the package ships the skills folder", () => {
+  test("the package ships its skills, built into dist/skills, and stages them from there", () => {
     const pkg = JSON.parse(fs.readFileSync(path.join(RND, "package.json"), "utf8"))
-    assert.ok(pkg.files.includes("skills"))
+    assert.ok(pkg.files.includes("dist"))
+    assert.equal(pkg.dreamteamer.skills, "dist/skills")
   })
 })
 
@@ -562,7 +567,7 @@ describe("0.3.0 — one persona collection", () => {
     assert.equal(f.journeys.mirror_of, "personas")
   })
   test("the migration script ships in bin/ and the list view shows the kind", () => {
-    assert.ok(fs.existsSync(path.join(RND, "bin", "migrate-personas.mjs")))
+    assert.ok(fs.existsSync(path.join(RND, "dist", "bin", "migrate-personas.js")))
     assert.ok(personas.display.list.columns.includes("kind"))
   })
 })

@@ -33,7 +33,7 @@ import { nameNow, readRegistry, readWorkspaceState, register, stateDir, writeWor
 import { hookInstalled, installHook } from "./hook.ts"
 import { workspaceName } from "./createPaneStore.ts"
 
-const BIN = path.join(packageRoot(import.meta.url), "bin", "dt-web.mjs")
+const BIN = path.join(packageRoot(import.meta.url), "dist", "bin", "dt-web.js")
 // the browser page @dreamteamer/ui builds, served as it is
 const appDirOf = () =>
   path.join(path.dirname(createRequire(import.meta.url).resolve("@dreamteamer/ui/package.json")), "dist", "app")

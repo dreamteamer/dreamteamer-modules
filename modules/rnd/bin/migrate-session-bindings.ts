@@ -5,8 +5,8 @@
 // `dt check` fails once per such record, and `dt session end` refuses a running one. This script clears
 // `binding` on those records and keeps the old binding in a tag, so every record stays.
 //
-//   node node_modules/@dreamteamer/rnd/bin/migrate-session-bindings.mjs            # the plan, nothing written
-//   node node_modules/@dreamteamer/rnd/bin/migrate-session-bindings.mjs --write    # apply it
+//   npx dreamteamer run @dreamteamer/rnd migrate-session-bindings            # the plan, nothing written
+//   npx dreamteamer run @dreamteamer/rnd migrate-session-bindings --write    # apply it
 //   … [--root <workspace>] [--json]
 //
 // What changes, per record whose `binding` is one of the three and is not a binding this workspace still

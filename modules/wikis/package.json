@@ -19,16 +19,14 @@
 		"qmd"
 	],
 	"bin": {
-		"dt-wiki": "bin/wiki.mjs"
+		"dt-wiki": "dist/bin/wiki.js"
 	},
 	"files": [
 		"README.md",
 		"SETUP.md",
-		"bin",
 		"collections",
 		"skills",
-		"dist",
-		"!bin/**/*.ts"
+		"dist"
 	],
 	"dependencies": {
 		"js-yaml": "^4.1.0"
@@ -36,11 +34,14 @@
 	"dreamteamer": {
 		"title": "Wikis",
 		"description": "Local wikis: corpora of markdown committed in the repo, grepped with nothing installed and asked by meaning once qmd is. A `wikis` record points at a folder of sources; a source nothing has fetched yet is a stub marked `completeness: pending`, and `dt-wiki incomplete` exits 1 while any remain. `dt-wiki pull` mirrors a NotebookLM notebook into a folder; `ask` prints file:line, never an answer.",
-		"engine": ">=0.47.0",
+		"engine": ">=0.50.0",
 		"peer_collections": [
 			"notebooks"
 		],
-		"extension": "./dist/lib/activate.js"
+		"extension": "./dist/lib/activate.js",
+		"scripts": {
+			"wiki": "dist/bin/wiki.js"
+		}
 	},
 	"scripts": {
 		"prepack": "node ../../scripts/build.ts --module=wikis"

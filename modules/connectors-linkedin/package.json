@@ -18,16 +18,15 @@
 	],
 	"files": [
 		"README.md",
-		"skills",
 		"commands",
 		"command-bindings",
 		"ui-views",
-		"!skills/**/*.mts"
+		"dist"
 	],
 	"dreamteamer": {
 		"title": "LinkedIn connector",
 		"description": "Reaches LinkedIn for `contacts`: the `scraping-contacts` skill and `/scrape-contact` fill a person in from their LinkedIn profile, one batched container per run, and from web search, with their `companies` record and an avatar in `assets`. Every `draft` contact is queued; two views list who still needs a LinkedIn link and who needs review. Optional key: `LINKEDIN_USER_AGENT`.",
-		"engine": ">=0.33.0",
+		"engine": ">=0.50.0",
 		"dependencies": [
 			"@dreamteamer/contacts",
 			"@dreamteamer/companies",
@@ -38,7 +37,8 @@
 		],
 		"env": [
 			"LINKEDIN_USER_AGENT"
-		]
+		],
+		"skills": "dist/skills"
 	},
 	"peerDependencies": {
 		"@dreamteamer/contacts": ">=0.2.0",

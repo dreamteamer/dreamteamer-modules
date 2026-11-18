@@ -49,7 +49,7 @@ test("backfill-week-dates writes the pair once, keeps summary, and is idempotent
   const run = () =>
     spawnSync(
       process.execPath,
-      [path.join(HERE, "../../skills/running-retrospectives/bin/backfill-week-dates.mjs"), "--data-root", root],
+      [path.join(HERE, "../../skills/running-retrospectives/bin/backfill-week-dates.mts"), "--data-root", root],
       { encoding: "utf8" }
     )
   let r = run()

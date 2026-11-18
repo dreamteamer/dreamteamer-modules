@@ -14,7 +14,7 @@ You turn one sitting of agent work into a `sessions` record, in two steps that a
 
 ```bash
 echo $CLAUDE_CODE_SESSION_ID                                  # the session you are in — every Bash and hook subprocess has it
-node node_modules/@dreamteamer/sessions/bin/session-save.mjs --json   # the fields, read from the transcript, written nowhere
+npx dreamteamer run @dreamteamer/sessions session-save --json   # the fields, read from the transcript, written nowhere
 dt get sessions/$CLAUDE_CODE_SESSION_ID                       # whether a record exists already (a hook may have written it)
 dt resolve '${env:SESSIONS_FOLDER}'                           # where the transcript copy will go; unset, the record points at the harness's own file
 ```
@@ -27,7 +27,7 @@ The reader takes `--session <id>` for another session and `--transcript <path>` 
 
 **Save** (`/session:save`):
 
-1. `node node_modules/@dreamteamer/sessions/bin/session-save.mjs --write` — adds `sessions/<session id>` or updates it, copies the transcript to `${env:SESSIONS_FOLDER}/<yyyy>/<mm>/<id>.jsonl` when `SESSIONS_FOLDER` resolves, and prints `added|updated sessions/<id>: N turns · M tool calls · $ USD`. Quote that line.
+1. `npx dreamteamer run @dreamteamer/sessions session-save --write` — adds `sessions/<session id>` or updates it, copies the transcript to `${env:SESSIONS_FOLDER}/<yyyy>/<mm>/<id>.jsonl` when `SESSIONS_FOLDER` resolves, and prints `added|updated sessions/<id>: N turns · M tool calls · $ USD`. Quote that line.
 2. Set what the transcript cannot know, as `--set` pairs on the same call or a `dt set` after it: `worker=users/<me>` (or `agents/<id>` for an unattended run), `project=projects/<id>`, `repo=repos/<id>`, `tasks=tasks/<id>` for each task the session produced or closed.
 3. Write `outcome` — the body — in the session's own words: what was asked, what landed (commits by subject, records by id, decisions by id), what is left. Short, and from what you actually did, not from the plan. `dt set sessions/<id> outcome="…"`.
 4. Commit it by id — `dt commit sessions/<id>` — when the person keeps sessions in the shared workspace; it is a record like any other.
@@ -54,7 +54,7 @@ The reader takes `--session <id>` for another session and `--transcript <path>` 
 
 - Don't compute the metrics yourself from the transcript — the reader does, and `cost-state` is the harness's own figure. A session with no `cost-state` line gets the usage sum at the list prices the reader carries, and a model it does not price leaves `cost_usd` empty rather than guessed.
 - Don't write `outcome` or `analysis` from memory when the transcript is there. Memory is what the session already believed about itself.
-- Don't look for session records under `SESSIONS_FOLDER`: since core 0.9.0 they are under `data/sessions/`; a workspace that still has some there runs `node node_modules/@dreamteamer/sessions/bin/sessions-migrate.mjs` (dry run first).
+- Don't look for session records under `SESSIONS_FOLDER`: since core 0.9.0 they are under `data/sessions/`; a workspace that still has some there runs `npx dreamteamer run @dreamteamer/sessions sessions-migrate` (dry run first).
 - Don't put a machine path in `transcript`. The reader writes a `${env:SESSIONS_FOLDER}` or `${userHome}` template; keep it that way.
 - Don't treat a binding as a claim. It says who worked on a record; it holds nothing.
 - Don't `dt session send` to change anything: the fork has no tools on purpose.

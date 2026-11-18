@@ -7,7 +7,7 @@
 //   line 4     `dt next` says nothing about a session holding a request, lists the same command bindings,
 //              and `dt session start` on a request is refused
 //   goal 3     rnd's agents no longer tell a session to claim a request
-//   goal 5     the migration (bin/migrate-session-bindings.mjs) unbinds the session records the removed
+//   goal 5     the migration (dist/bin/migrate-session-bindings.js) unbinds the session records the removed
 //              bindings opened, keeps every one, and `dt check` is green after it
 // Core and rnd installed the npm way into a virgin workspace on a real engine; the migration is run from
 // the PACKED path, so the tarball's bin is what is tested.
@@ -111,7 +111,7 @@ function available(root, ref) {
 
 /** The migration, from the packed module in the workspace. */
 function migrate(root, ...args) {
-  const script = path.join(root, "node_modules", "@dreamteamer", "rnd", "bin", "migrate-session-bindings.mjs")
+  const script = path.join(root, "node_modules", "@dreamteamer", "rnd", "dist", "bin", "migrate-session-bindings.js")
   const r = spawnSync(process.execPath, [script, ...args], { cwd: root, encoding: "utf8", env: ENV, timeout: 120_000 })
   return { code: r.status, out: (r.stdout ?? "") + (r.stderr ?? "") }
 }

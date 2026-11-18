@@ -81,7 +81,7 @@ test("threads bucket by counterpart domain, deliverables by container, and the c
   const r = spawnSync(
     process.execPath,
     [
-      path.join(HERE, "../../skills/running-retrospectives/bin/cluster-activities.mjs"),
+      path.join(HERE, "../../skills/running-retrospectives/bin/cluster-activities.mts"),
       "--retrospective",
       REF,
       "--data-root",

@@ -861,6 +861,6 @@ describe("the no-dependency promise", () => {
       assert.equal(pkg[k], undefined, `package.json declares ${k}`)
     // a module (it ships a skill), but never code the engine loads: dt-docker must run with no workspace
     assert.equal(pkg.dreamteamer?.extension, undefined, "host declares an engine extension")
-    assert.deepEqual(pkg.bin, { "dt-docker": "bin/dt-docker.js" })
+    assert.deepEqual(pkg.bin, { "dt-docker": "dist/bin/dt-docker.js" })
   })
 })

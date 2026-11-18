@@ -98,7 +98,7 @@ test("MCP translates tools into bounded UI actions and reports UI failures as to
   })
   await new Promise<void>(resolve => server.listen(socketPath, resolve))
   try {
-    const child = spawn(process.execPath, [new URL("../bin/ui-mcp.mjs", import.meta.url).pathname], {
+    const child = spawn(process.execPath, [new URL("../dist/bin/ui-mcp.js", import.meta.url).pathname], {
       env: { ...process.env, DT_EDITOR_CONTROL_SOCKET: socketPath },
     })
     let output = ""

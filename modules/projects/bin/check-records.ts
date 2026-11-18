@@ -2,7 +2,7 @@
 // The plan guard: the rules `dreamteamer check` cannot express, because they are conditional on a
 // field's value or on a value in a different record.
 //
-//   node node_modules/@dreamteamer/projects/bin/check-records.mjs [--data-root <dir>] [--json]
+//   npx dreamteamer run @dreamteamer/projects check-records [--data-root <dir>] [--json]
 //
 // Chain it after `dreamteamer check` in the workspace's `check` script. Exit 0 clean, 1 with
 // violations, 2 on a usage error.

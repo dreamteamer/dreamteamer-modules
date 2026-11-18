@@ -15,7 +15,7 @@ import yaml from "js-yaml"
 import { ENGINE_DIR, ROOT } from "../../../tests/helpers/fixture.ts"
 
 const PKG = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
-const BIN = path.join(PKG, "bin", "dt-nav.mjs")
+const BIN = path.join(PKG, "dist", "bin", "dt-nav.js")
 const { makeFixture } = await import(pathToFileURL(path.join(PKG, "lib", "contract", "fixture.ts")).href)
 const { meetsFloor } = await import(pathToFileURL(path.join(PKG, "src", "host", "floor.ts")).href)
 

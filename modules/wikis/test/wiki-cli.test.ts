@@ -27,7 +27,7 @@ import {
 // this repo keeps, so every `ROOT/modules/<m>/…` path still names the same file
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..", "..", "..")
 // `dt-wiki` — the module's own command since the pack's dispatcher was split by owner
-const CLI = path.join(ROOT, "modules", "wikis", "bin", "wiki.mjs")
+const CLI = path.join(ROOT, "modules", "wikis", "dist", "bin", "wiki.js")
 const made = []
 after(() => {
   for (const d of made) fs.rmSync(d, { recursive: true, force: true })

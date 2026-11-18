@@ -226,7 +226,11 @@ describe("on the engine, from the packed module", () => {
   test("event-people writes two attendee objects and the organizer from the event, and no room", () => {
     const eventFile = path.join(root, "event.json")
     fs.writeFileSync(eventFile, JSON.stringify(EVENT))
-    const r = runScript(path.join(pkg, "bin", "event-people.mjs"), [`meetings/${meetingId}`, "--event", eventFile])
+    const r = runScript(path.join(pkg, "dist", "bin", "event-people.js"), [
+      `meetings/${meetingId}`,
+      "--event",
+      eventFile,
+    ])
     assert.equal(r.status, 0, r.stderr + r.stdout)
     assert.match(r.stdout, /wrote 2 attendee\(s\) and the organizer .* \(1 room\(s\) dropped\)/)
     const fm = frontmatter(meetingFile)
@@ -270,7 +274,7 @@ describe("on the engine, from the packed module", () => {
         "",
       ].join("\n")
     )
-    const script = path.join(pkg, "bin", "migrate-attendees.mjs")
+    const script = path.join(pkg, "dist", "bin", "migrate-attendees.js")
     const plan = runScript(script, [])
     assert.equal(plan.status, 0, plan.stderr + plan.stdout)
     assert.match(

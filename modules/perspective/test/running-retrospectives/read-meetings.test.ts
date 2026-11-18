@@ -23,7 +23,7 @@ import {
 import { enumValues } from "../../skills/running-retrospectives/lib/descriptors.mts"
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
-const BIN = path.join(HERE, "..", "..", "skills", "running-retrospectives", "bin", "read-meetings.mjs")
+const BIN = path.join(HERE, "..", "..", "skills", "running-retrospectives", "bin", "read-meetings.mts")
 const COLLECTIONS = path.join(HERE, "..", "..", "collections", "perspective")
 
 const BASE = "2026-09-09--dana-o"

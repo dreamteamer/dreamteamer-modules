@@ -28,16 +28,16 @@ its `"dreamteamer": {}` key exists only so a clone can be previewed as a bundle 
 5. **A module ships only what its `files` list names.** Tests live in `modules/<id>/test/` — a skill's
    tests in `test/<skill>/` — never inside a skill, because compile copies a skill folder into every
    harness. Design history lives in `modules/<id>/docs/` and is not shipped. Code is TypeScript and ships as
-   its build (`scripts/build.ts`): `src/`, `lib/` and `bin/` compile into `dist/`, which the manifest names;
-   a skill script is `.mts` and compiles in place to the `.mjs` its SKILL.md runs; a published bin path
-   stays a committed one-line shim into `dist/bin/`. The `.ts`/`.mts` never ship.
-6. **A script a person runs has its own entry.** Realpath both sides of the main guard (a bin shim sets
-   `argv[1]` to the built file, so the guard holds through it), resolve the
+   its build (`scripts/build.ts`), and every generated file is under the module's `dist/`, never beside its
+   source: `src/`, `lib/` and `bin/` compile into `dist/src`, `dist/lib` and `dist/bin`, and a module whose
+   skills hold `.mts` is built whole into `dist/skills` (`dreamteamer.skills: "dist/skills"`). The manifest
+   names `dist/` for main, exports, the extension, `bin` and `dreamteamer.scripts`. The source never ships.
+6. **A script a person runs has its own entry.** Realpath both sides of the main guard, resolve the
    workspace by walking up to `package-lock.json` and skipping a folder directly inside
    `git_modules/` (`lib/findWorkspace.mjs`, one copy per module). A skill script is run from the
-   workspace root as `.dreamteamer/skills/<skill>/bin/<script>`; a module script as
-   `node node_modules/@dreamteamer/<id>/bin/<script>`, or through the module's npm `bin`.
-7. **A module that states a rule ships the script that enforces it** (`bin/check-records.mjs` in
+   workspace root as `.dreamteamer/skills/<skill>/bin/<script>`; a module script by name, never by path —
+   `dt run @dreamteamer/<id> <script>` (declared in `dreamteamer.scripts`), or through the module's npm `bin`.
+7. **A module that states a rule ships the script that enforces it** (`check-records`, from `bin/check-records.ts`, in
    users, projects and perspective), and its README names the line that chains it into `npm run check`.
 8. **A module declares every npm package its shipped code imports** (`js-yaml`, `express`). The
    repo's devDependencies are not there for a consumer.

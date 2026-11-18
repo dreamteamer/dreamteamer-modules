@@ -74,13 +74,13 @@ describe("meetings alone: no calendar sync, no setup unit, no Google", () => {
     assert.doesNotMatch(d.stdout + d.stderr, /WORK_CALENDARS|google/i)
   })
 
-  test("node node_modules/@dreamteamer/meetings/bin/touch-contacts.mjs --all --dry-run, from the workspace root, exits 0", () => {
+  test("node node_modules/@dreamteamer/meetings/dist/bin/touch-contacts.js --all --dry-run, from the workspace root, exits 0", () => {
     // every consumer workspace has a lockfile; the script resolves the workspace by it
     if (!fs.existsSync(path.join(root, "package-lock.json")))
       fs.writeFileSync(path.join(root, "package-lock.json"), "{}\n")
     const r = spawnSync(
       process.execPath,
-      [path.join("node_modules", "@dreamteamer", "meetings", "bin", "touch-contacts.mjs"), "--all", "--dry-run"],
+      [path.join("node_modules", "@dreamteamer", "meetings", "dist", "bin", "touch-contacts.js"), "--all", "--dry-run"],
       { cwd: root, encoding: "utf8", timeout: 60_000 }
     )
     assert.equal(r.status, 0, r.stderr + r.stdout)

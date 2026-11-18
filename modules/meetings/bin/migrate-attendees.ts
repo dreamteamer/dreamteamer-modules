@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // migrate-attendees — move every `meetings` record from the 0.1.1 people fields to the 0.1.2 ones.
 //
-//   node node_modules/@dreamteamer/meetings/bin/migrate-attendees.mjs            # the plan, nothing written
-//   node node_modules/@dreamteamer/meetings/bin/migrate-attendees.mjs --write    # apply it
+//   npx dreamteamer run @dreamteamer/meetings migrate-attendees            # the plan, nothing written
+//   npx dreamteamer run @dreamteamer/meetings migrate-attendees --write    # apply it
 //   … [meetings/<id> …] [--json]                                                   # only these records
 //
 // What changes on a record, and why it is lossless where it can be:

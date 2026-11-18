@@ -12,7 +12,7 @@ import { fileURLToPath } from "node:url"
 import { recordPath, writeRecord, readRecord } from "../../skills/running-retrospectives/lib/records.mts"
 
 const BIN = fileURLToPath(
-  new URL("../../skills/running-retrospectives/bin/compose-week-summaries.mjs", import.meta.url)
+  new URL("../../skills/running-retrospectives/bin/compose-week-summaries.mts", import.meta.url)
 )
 const BASE = "2026-09-08--fx",
   REF = `perspective/retrospective-sessions/${BASE}`

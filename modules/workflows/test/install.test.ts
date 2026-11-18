@@ -168,7 +168,7 @@ describe("on the real engine, from the packed tarball", () => {
   const tool = (root, ...args) =>
     spawnSync(
       process.execPath,
-      [path.join(root, "node_modules", "@dreamteamer", "workflows", "bin", "install.mjs"), ...args],
+      [path.join(root, "node_modules", "@dreamteamer", "workflows", "dist", "bin", "install.js"), ...args],
       { cwd: root, encoding: "utf8" }
     )
 

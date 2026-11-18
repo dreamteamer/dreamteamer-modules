@@ -75,8 +75,8 @@ describe("the runner", () => {
   })
   test("dt-workflows is the npm bin, and the script it names ships", () => {
     const pkg = JSON.parse(read(HERE, "package.json"))
-    assert.equal(pkg.bin["dt-workflows"], "bin/install.mjs")
-    assert.ok(fs.existsSync(path.join(HERE, "bin", "install.mjs")))
+    assert.equal(pkg.bin["dt-workflows"], "dist/bin/install.js")
+    assert.ok(fs.existsSync(path.join(HERE, "dist", "bin", "install.js")))
     assert.ok(pkg.files.includes("data"), "data/ holds the shipped workflows and must be in the tarball")
   })
 })

@@ -227,7 +227,7 @@ describe("the unit, pure", () => {
   })
   test("the transcriber entry outside a workspace says so in one line, exit 2 — no stack trace", () => {
     const nowhere = tmp("dtm-nowhere-")
-    const r = spawnSync(process.execPath, [new URL("../bin/transcribe.mjs", import.meta.url).pathname, "sync"], {
+    const r = spawnSync(process.execPath, [new URL("../dist/bin/transcribe.js", import.meta.url).pathname, "sync"], {
       cwd: nowhere,
       encoding: "utf8",
     })
@@ -397,7 +397,7 @@ describe(
       const resolved = run(root, ["resolve", "${env:INBOX_FOLDERS}"], env)
       assert.equal(resolved.status, 0, resolved.stderr)
       assert.equal(resolved.stdout.trim(), roots.join("\n"))
-      const detect = new URL("../skills/ingesting-recordings/bin/detect.mjs", import.meta.url).pathname
+      const detect = new URL("../skills/ingesting-recordings/bin/detect.mts", import.meta.url).pathname
       const scan = JSON.parse(
         execFileSync(process.execPath, [detect, "scan", "--inbox-folders", resolved.stdout.trim()], {
           encoding: "utf8",

@@ -16,9 +16,10 @@ import { alive, proves, readState, runtimeDir as defaultRuntimeDir, stateFile } 
 
 export const HOOK_BUDGET_MS = 1500
 export const MAX_HOOK_LINES = 3
-export const HOOK_BIN = path.join(packageRoot(import.meta.url), "bin", "dt-web-hook.mjs")
+export const HOOK_BIN = path.join(packageRoot(import.meta.url), "dist", "bin", "dt-web-hook.js")
 const SETTINGS = path.join(".claude", "settings.local.json")
-const OURS = "dt-web-hook.mjs"
+// ours by the script's name: bin/dt-web-hook.mjs as an older install wrote it, dist/bin/dt-web-hook.js since
+const OURS = /dt-web-hook\.m?js\b/
 
 /** One argument for the shell the harness runs the command in. A path with none of the four characters the shell
  *  still reads inside double quotes (`"`, `\`, `$`, a backquote) keeps the double-quoted form an earlier install
@@ -52,11 +53,12 @@ const readSettings = file => {
     throw new Error(`${file}: .claude/settings.local.json is not JSON object`)
   return parsed
 }
-const isOurs = h => typeof h?.command === "string" && h.command.includes(OURS)
+const isOurs = h => typeof h?.command === "string" && OURS.test(h.command)
 
 /**
  * Merge the one entry into `<root>/.claude/settings.local.json` under `hooks.UserPromptSubmit`, replacing any hook
- * whose command names dt-web-hook.mjs and keeping every other key and hook.
+ * whose command names the hook script (dt-web-hook.mjs as older installs wrote it, or dist/bin/dt-web-hook.js) and
+ * keeping every other key and hook.
  * @returns {{ file: string, command: string, wrote: boolean, ignored: boolean }}
  */
 export function installHook(root, opts = {}) {

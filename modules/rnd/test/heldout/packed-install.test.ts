@@ -36,7 +36,7 @@ describe("held-out: the packed install", () => {
 
   test("steps 2–3: every file the bin reaches and every browser file vendor copies is in the tarball", () => {
     const files = new Set(packedFiles("rnd"))
-    const bin = path.join(RND, "bin", "dt-prototype.mjs")
+    const bin = path.join(RND, "dist", "bin", "dt-prototype.js")
     // the bin loads each verb's module by a template path: `../lib/prototype/node/${file}.mjs`
     const verbs = [...fs.readFileSync(bin, "utf8").matchAll(/^\t(\w+): \['(\w+)'/gm)].map(m => m[2])
     assert.deepEqual([...new Set(verbs)].sort(), ["check", "export", "play", "shoot", "vendor", "walk"])
@@ -78,7 +78,7 @@ describe("held-out: the packed install", () => {
 
     const dir = path.join(ws, "prototypes", "northwind")
     fs.mkdirSync(dir, { recursive: true })
-    const installed = path.join(ws, "node_modules", "@dreamteamer", "rnd", "bin", "dt-prototype.mjs")
+    const installed = path.join(ws, "node_modules", "@dreamteamer", "rnd", "dist", "bin", "dt-prototype.js")
     const i = spawnSync(process.execPath, [installed, "init"], { cwd: dir, encoding: "utf8", timeout: 60_000 })
     assert.equal(i.status, 0, `${i.stdout}\n${i.stderr}`)
     const player = path.join(dir, "public", "harness", "player.js")

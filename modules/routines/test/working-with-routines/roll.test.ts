@@ -11,7 +11,7 @@ import { fileURLToPath } from "node:url"
 
 const SCRIPT = path.join(
   path.dirname(fileURLToPath(import.meta.url)),
-  "../../skills/working-with-routines/bin/rrule.mjs"
+  "../../skills/working-with-routines/bin/rrule.mts"
 )
 const run = (dir, today) =>
   JSON.parse(execFileSync("node", [SCRIPT, "roll", "--dir", dir, "--today", today], { encoding: "utf8" }))

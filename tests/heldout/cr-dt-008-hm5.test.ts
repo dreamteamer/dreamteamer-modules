@@ -6,7 +6,7 @@
 // published engine 0.48 (this repo's devDependency) with the published composed core 0.11.0 and rnd 0.10.1. Both carry
 // workspace modules ws-a (three collections), ws-solo (one: solos) and ws-solo-2 (one: solo-twos) and the old settings.
 // The legacy tree is drawn by protocol 0.2.0's navModel (its legacyTree path: settings, no nav.yaml); the migration is
-// bin/dt-nav.mjs migrate run in the workspace; the drawing after it is navModel from the written file.
+// dist/bin/dt-nav.js migrate run in the workspace; the drawing after it is navModel from the written file.
 import { test, describe, after } from "node:test"
 import assert from "node:assert/strict"
 import fs from "node:fs"
@@ -20,7 +20,7 @@ import { ENGINE, closure, installPacked, editPkg, run, SCOPE } from "../helpers/
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..")
 const PROTOCOL = path.join(ROOT, "modules", "protocol")
-const DT_NAV = path.join(PROTOCOL, "bin", "dt-nav.mjs")
+const DT_NAV = path.join(PROTOCOL, "dist", "bin", "dt-nav.js")
 // the last engine below 0.49, under the root devDependency alias `dreamteamer-0-48` (0.49.0 is the published one now)
 const OLD_ENGINE = fs.realpathSync(path.join(ROOT, "node_modules", "dreamteamer-0-48"))
 const OLD_VERSION = JSON.parse(fs.readFileSync(path.join(OLD_ENGINE, "package.json"), "utf8")).version

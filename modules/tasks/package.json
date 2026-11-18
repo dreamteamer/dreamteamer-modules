@@ -14,21 +14,19 @@
 		"dreamteamer-module"
 	],
 	"bin": {
-		"dt-migrate-lanes-to-tags": "bin/migrate-lanes-to-tags.mjs"
+		"dt-migrate-lanes-to-tags": "dist/bin/migrate-lanes-to-tags.js"
 	},
 	"files": [
 		"README.md",
-		"bin",
 		"collections",
 		"skills",
 		"ui-views",
-		"dist",
-		"!bin/**/*.ts"
+		"dist"
 	],
 	"dreamteamer": {
 		"title": "Tasks",
 		"description": "`tasks`: concrete commitments with owners, dates, tags and source links. Default Board and List show suggested, todo, doing and blocked work. Older inbox, by-person and Gantt routes remain accessible without extra navigation entries. The working-with-tasks skill manages the existing lifecycle; no records are migrated by this display update.",
-		"engine": ">=0.33.0",
+		"engine": ">=0.50.0",
 		"dependencies": [
 			"@dreamteamer/users"
 		],
@@ -38,7 +36,10 @@
 			"rnd/user-stories",
 			"rnd/user-journeys",
 			"rnd/change-requests"
-		]
+		],
+		"scripts": {
+			"migrate-lanes-to-tags": "dist/bin/migrate-lanes-to-tags.js"
+		}
 	},
 	"peerDependencies": {
 		"@dreamteamer/users": ">=0.2.1"

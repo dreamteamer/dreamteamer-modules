@@ -177,7 +177,7 @@ export async function main(argv = process.argv.slice(2)) {
     const controlSocket = path.join(session, "control.sock")
     const coordinator = `dt-editor-${id}`
     const mcpFile = path.join(profile, "mcp.json")
-    const mcpScript = path.join(packageRoot(import.meta.url), "bin", "ui-mcp.mjs")
+    const mcpScript = path.join(packageRoot(import.meta.url), "dist", "bin", "ui-mcp.js")
     await fs.writeFile(
       mcpFile,
       JSON.stringify({

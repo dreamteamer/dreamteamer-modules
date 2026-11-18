@@ -192,9 +192,10 @@ node scripts/test.ts --shard=2/4          # one of CI's four balanced shards (--
 The code is TypeScript, run as it is in a checkout (Node's type stripping, Node 22.18 or later). npm cannot
 run TypeScript from `node_modules`, so a module ships its build: `npm run build` (`scripts/build.ts`, also
 each module's `prepack` and the first step of `npm test`) compiles `src/`, `lib/` and `bin/` into `dist/`,
-and each skill's `.mts` into the `.mjs` beside it that its `SKILL.md` runs. A module's manifest names
-`dist/`; a published script keeps its path through a one-line shim (`bin/<name>.mjs` runs
-`dist/bin/<name>.js`). Both are gitignored, so a clone linked into a workspace is built after each edit.
+and a module's skills (`.mts` beside each `SKILL.md`) into `dist/skills`, which `dt compile` stages from
+(`dreamteamer.skills`). Nothing generated sits beside its source. A module's script is run by name, not by
+path: `npx dreamteamer run @dreamteamer/<id> <script>` (each module lists its own under
+`dreamteamer.scripts`). `dist/` is gitignored, so a clone linked into a workspace is built after each edit.
 
 `npm test` installs every module into fresh workspaces twice — once from its packed tarball, the way
 npm delivers it, and once as a copied folder — and checks that each compiles with only what it

@@ -34,19 +34,20 @@
 		"./frame-document": "./dist/src/buildFrameDocument.js"
 	},
 	"bin": {
-		"dt-nav": "bin/dt-nav.mjs"
+		"dt-nav": "dist/bin/dt-nav.js"
 	},
 	"files": [
 		"README.md",
 		"PROTOCOL.md",
-		"bin",
-		"dist",
-		"!bin/**/*.ts"
+		"dist"
 	],
 	"dreamteamer": {
 		"title": "Protocol",
 		"description": "The host protocol the dreamteamer UI speaks to whatever hosts it — the VS Code extension in-process, dt serve and dt web over HTTP: every route with its shapes and errors, the notifications, boot globals and host capabilities in PROTOCOL.md, a contract suite every host runs, and the shared handler that answers it. A library: no collection, no verb.",
-		"engine": ">=0.43.0"
+		"engine": ">=0.50.0",
+		"scripts": {
+			"dt-nav": "dist/bin/dt-nav.js"
+		}
 	},
 	"dependencies": {
 		"js-yaml": "^4.1.0"

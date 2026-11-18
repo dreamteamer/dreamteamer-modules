@@ -141,7 +141,7 @@ test("goals is written by the inferred stage, and by that stage alone", () => {
 
 test("the inference stage has a script to run", () => {
   assert.ok(
-    fs.existsSync(path.join(MOD, "skills", "running-retrospectives", "bin", "infer-goals.mjs")),
+    fs.existsSync(path.join(MOD, "skills", "running-retrospectives", "bin", "infer-goals.mts")),
     "the `inferred` row promises a script that does not exist"
   )
 })

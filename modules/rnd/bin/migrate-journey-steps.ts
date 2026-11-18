@@ -4,8 +4,8 @@
 // `step` (the position). This script writes that order onto each journey as `steps` and clears the two
 // legacy fields, so the order lives once.
 //
-//   node node_modules/@dreamteamer/rnd/bin/migrate-journey-steps.mjs --dry-run   # the plan, nothing written
-//   node node_modules/@dreamteamer/rnd/bin/migrate-journey-steps.mjs --write     # apply it
+//   npx dreamteamer run @dreamteamer/rnd migrate-journey-steps --dry-run   # the plan, nothing written
+//   npx dreamteamer run @dreamteamer/rnd migrate-journey-steps --write     # apply it
 //   … [--root <workspace>] [--json] [--screen-rules <field>]
 //
 // What changes:

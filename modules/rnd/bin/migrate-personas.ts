@@ -3,8 +3,8 @@
 // `rnd/product-user-personas` folds into `rnd/personas` under `kind: product-role`, every existing
 // persona becomes `kind: panel`, and `rnd/persona-probes` is dropped.
 //
-//   node node_modules/@dreamteamer/rnd/bin/migrate-personas.mjs --dry-run   # the plan, nothing written
-//   node node_modules/@dreamteamer/rnd/bin/migrate-personas.mjs --write     # apply it
+//   npx dreamteamer run @dreamteamer/rnd migrate-personas --dry-run   # the plan, nothing written
+//   npx dreamteamer run @dreamteamer/rnd migrate-personas --write     # apply it
 //   … [--root <workspace>] [--json]
 //
 // What changes, file by file:

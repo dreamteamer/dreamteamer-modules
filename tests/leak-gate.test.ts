@@ -16,11 +16,9 @@ function* walk(dir) {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
     if (e.name === "node_modules" || e.name === ".git" || e.name.startsWith(".")) continue
     const p = path.join(dir, e.name)
-    // a module's build is not source and is never committed: dist/ (scripts/build.ts, and Vite's minified ui
-    // bundles, whose tables are not reviewable text) and a skill's .mjs compiled from the .mts beside it —
-    // the gate reads that .mts, under the name its allow-list entry carries
+    // a module's build is not source and is never committed: its dist/ (scripts/build.ts, and Vite's minified ui
+    // bundles, whose tables are not reviewable text). The gate reads the source it is built from.
     if (e.isDirectory() && e.name === "dist" && path.dirname(path.relative(ROOT, dir)) === "modules") continue
-    if (e.name.endsWith(".mjs") && fs.existsSync(p.replace(/\.mjs$/, ".mts"))) continue
     if (e.isDirectory()) yield* walk(p)
     else if (/\.(md|yaml|yml|json|mjs|js|ts|mts|tsx|py|toml|sh|txt)$/.test(e.name)) yield p
   }

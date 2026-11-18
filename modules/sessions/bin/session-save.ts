@@ -3,8 +3,8 @@
 // record — turns, tool calls, tokens, cache, cost, durations, models, lines changed, and where the
 // transcript is. The harness already keeps the figures; this script only reads them.
 //
-//   node node_modules/@dreamteamer/sessions/bin/session-save.mjs --json            print the fields
-//   node node_modules/@dreamteamer/sessions/bin/session-save.mjs --write           upsert sessions/<session id>
+//   npx dreamteamer run @dreamteamer/sessions session-save --json            print the fields
+//   npx dreamteamer run @dreamteamer/sessions session-save --write           upsert sessions/<session id>
 //   … [--session <id>] [--transcript <path>] [--hook] [--quiet] [--set <field>=<value> …]
 //
 // The session is `$CLAUDE_CODE_SESSION_ID` (set in every Bash and hook subprocess) unless `--session`

@@ -102,14 +102,16 @@ test(
     const mig = (...a) => {
       const r = spawnSync(
         process.execPath,
-        [path.join(root, "modules/rnd/bin/migrate-change-request-stage.mjs"), ...a],
+        [path.join(root, "modules/rnd/dist/bin/migrate-change-request-stage.js"), ...a],
         { cwd: root, encoding: "utf8", timeout: 120_000 }
       )
       return { code: r.status, out: r.stdout ?? "", err: r.stderr ?? "" }
     }
     const dry = mig()
     assert.doesNotMatch(dry.out + dry.err, /^\s+at /m, `3: no stack trace\n${dry.out}${dry.err}`)
-    ;(test as any).diagnostic?.(`3: the migration on 0.42.0 exits ${dry.code}: ${dry.out.trim().split("\n").join(" | ")}`)
+    ;(test as any).diagnostic?.(
+      `3: the migration on 0.42.0 exits ${dry.code}: ${dry.out.trim().split("\n").join(" | ")}`
+    )
     if (dry.code === 0) {
       assert.match(dry.out, /would set rnd\/change-requests\/wrong stage=plan \(was design-review\)/)
       assert.match(dry.out, /would set rnd\/change-requests\/empty stage=plan \(was empty\)/)
@@ -128,9 +130,7 @@ test(
 
     const api = await import(pathToFileURL(path.join(ENGINE, "src", "api.js")).href)
     assert.notEqual(api.CHECK_WARNINGS, true, "below the warning channel")
-    const { checkChangeRequestStage } = await import(
-      pathToFileURL(path.join(root, "modules/rnd/lib/crStage.ts")).href
-    )
+    const { checkChangeRequestStage } = await import(pathToFileURL(path.join(root, "modules/rnd/lib/crStage.ts")).href)
     let opened = 0
     const spy = {
       ...api,

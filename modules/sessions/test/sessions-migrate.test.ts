@@ -126,7 +126,7 @@ function fixture() {
 const migrate = (root, args = []) => {
   const r = spawnSync(
     process.execPath,
-    [path.join(root, "node_modules", "@dreamteamer", "sessions", "bin", "sessions-migrate.mjs"), ...args],
+    [path.join(root, "node_modules", "@dreamteamer", "sessions", "dist", "bin", "sessions-migrate.js"), ...args],
     { cwd: root, encoding: "utf8", env: { ...process.env, CLAUDE_CONFIG_DIR: claudeDir } }
   )
   return { code: r.status, out: (r.stdout ?? "") + (r.stderr ?? "") }

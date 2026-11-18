@@ -15,17 +15,15 @@
 		"sessions"
 	],
 	"bin": {
-		"dt-sessions-migrate": "bin/sessions-migrate.mjs"
+		"dt-sessions-migrate": "dist/bin/sessions-migrate.js"
 	},
 	"files": [
 		"README.md",
 		"UPDATING.md",
-		"bin",
 		"collections",
 		"commands",
 		"skills",
-		"dist",
-		"!bin/**/*.ts"
+		"dist"
 	],
 	"peerDependencies": {
 		"@dreamteamer/users": ">=0.3.0"
@@ -33,7 +31,7 @@
 	"dreamteamer": {
 		"title": "Sessions",
 		"description": "`sessions`: one sitting of work — an agent session, an agent run, a person's focused block — with who, when, how long, what it cost and what came out. /session:save reads the metrics from the transcript, /session:analyze writes the critique, `dt session bind` names the records a session worked on and `dt next` lists them. Draws `agents` in the nav. Depends on `users`; peers `projects`, `tasks`.",
-		"engine": ">=0.48.0",
+		"engine": ">=0.50.0",
 		"extension": "./dist/src/activate.js",
 		"vars": [
 			"SESSIONS_FOLDER"
@@ -44,7 +42,11 @@
 		"peer_collections": [
 			"projects",
 			"tasks"
-		]
+		],
+		"scripts": {
+			"session-save": "dist/bin/session-save.js",
+			"sessions-migrate": "dist/bin/sessions-migrate.js"
+		}
 	},
 	"scripts": {
 		"prepack": "node ../../scripts/build.ts --module=sessions"

@@ -40,7 +40,7 @@ const shipped = new Map(
 const SCRIPTS = [
   ...fs.readdirSync(path.join(SKILL, "bin")).map(f => path.join(SKILL, "bin", f)),
   ...fs.readdirSync(path.join(SKILL, "lib")).map(f => path.join(SKILL, "lib", f)),
-  path.join(MODULE, "bin", "check-records.mjs"),
+  path.join(MODULE, "dist", "bin", "check-records.js"),
 ].filter(f => f.endsWith(".mjs"))
 
 /** `[file, collection name]` for every literal collection argument handed to a path helper, or to a

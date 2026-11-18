@@ -26,7 +26,7 @@ const all = re => TEXT.flatMap(([file, text]) => [...text.matchAll(re)].map(m =>
 // The contacts descriptor stayed in @dreamteamer/contacts (cr-modules-018); the repo's leak gate still covers it.
 test("the scan reads the skill and the scripts", () => {
   const files = TEXT.map(([f]) => f)
-  for (const f of ["skills/scraping-contacts/SKILL.md", "skills/scraping-contacts/bin/li.mjs"]) {
+  for (const f of ["skills/scraping-contacts/SKILL.md", "skills/scraping-contacts/bin/li.mts"]) {
     assert.ok(files.includes(f), `${f} was not scanned`)
   }
 })

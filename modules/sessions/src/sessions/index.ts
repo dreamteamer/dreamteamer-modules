@@ -13,7 +13,7 @@ export function retiredBindings(draft) {
     errors: [],
     warnings: files.map(
       f =>
-        `${f}: retired in core 0.9.0, ignored — sessions are plain records now (dt session bind); node node_modules/@dreamteamer/sessions/bin/sessions-migrate.mjs removes a workspace's own`
+        `${f}: retired in core 0.9.0, ignored — sessions are plain records now (dt session bind); npx dreamteamer run @dreamteamer/sessions sessions-migrate removes a workspace's own`
     ),
     notes: [],
   }

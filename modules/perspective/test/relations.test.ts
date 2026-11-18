@@ -129,7 +129,7 @@ const ONE_WAY = {
   // ── THE OBSERVED WORLD'S JOIN OUT TO THE REAL ONE. One-way BY DESIGN, and it is the whole point:
   // the real world is what a person authored, and stamping `observed_as[]` onto their record would
   // be a finding writing into somebody else's schema. Soft as well (a plain string, not a reference
-  // type), so an absent collection and an absent record are both tolerated; `bin/check-records.mjs`
+  // type), so an absent collection and an absent record are both tolerated; `dist/bin/check-records.js`
   // warns rather than the engine failing.
   "users.real": "the real world never points back at a finding",
   "users.company": "a peer — companies belongs to another module",

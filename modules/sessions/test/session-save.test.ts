@@ -212,7 +212,7 @@ describe("finding the transcript", () => {
   test("run as a script, --json prints the same fields", () => {
     const r = spawnSync(
       process.execPath,
-      [path.join(SESSIONS, "bin", "session-save.mjs"), "--json", "--session", SESSION, "--transcript", FIXTURE],
+      [path.join(SESSIONS, "dist", "bin", "session-save.js"), "--json", "--session", SESSION, "--transcript", FIXTURE],
       { encoding: "utf8" }
     )
     assert.equal(r.status, 0, r.stderr)

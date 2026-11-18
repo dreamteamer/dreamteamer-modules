@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url"
 import { readRecord, recordPath, writeRecord } from "../../skills/running-retrospectives/lib/records.mts"
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
-const BIN = path.join(HERE, "..", "..", "skills", "running-retrospectives", "bin", "rollup-metrics.mjs")
+const BIN = path.join(HERE, "..", "..", "skills", "running-retrospectives", "bin", "rollup-metrics.mts")
 const SESSION = "perspective/retrospective-sessions/2026-09-08--fx"
 const SLUG = "fx" // the contributor — evidence and model ids are keyed by it, not by the run
 

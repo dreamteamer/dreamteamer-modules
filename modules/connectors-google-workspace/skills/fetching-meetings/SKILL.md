@@ -202,8 +202,8 @@ are written by a script that ships with `@dreamteamer/meetings` (`bin/event-peop
 of objects cannot be spelled on the `dt` command line, and retyping it would lose the structure:
 
 ```bash
-node node_modules/@dreamteamer/meetings/bin/event-people.mjs meetings/<id> --event <event.json>
-node node_modules/@dreamteamer/meetings/bin/event-people.mjs meetings/<id> --event <events.json> --event-id <eventId>
+npx dreamteamer run @dreamteamer/meetings event-people meetings/<id> --event <event.json>
+npx dreamteamer run @dreamteamer/meetings event-people meetings/<id> --event <events.json> --event-id <eventId>
 ```
 
 It validates through the engine's store exactly as `dt set` does, maps the API's `needsAction` to the
@@ -425,7 +425,7 @@ Match these keywords against the **translated meaning** of a non-English title.
    this sync created, adopted or changed the `attendees_contacts` of:
 
    ```bash
-   node node_modules/@dreamteamer/meetings/bin/touch-contacts.mjs meetings/<id> [meetings/<id> …]
+   npx dreamteamer run @dreamteamer/meetings touch-contacts meetings/<id> [meetings/<id> …]
    ```
 
    It sets each attendee's `recent_meeting` and `recent_meeting_date` to their latest meeting that

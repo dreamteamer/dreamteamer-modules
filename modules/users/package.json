@@ -16,10 +16,8 @@
 	"files": [
 		"README.md",
 		"UPDATING.md",
-		"bin",
 		"collections",
-		"dist",
-		"!bin/**/*.ts"
+		"dist"
 	],
 	"peerDependencies": {
 		"@dreamteamer/projects": ">=0.4.0"
@@ -32,12 +30,15 @@
 	"dreamteamer": {
 		"title": "Users",
 		"description": "The people and agents work is assigned to: `users`, which the owner, lead, seat and assignee fields of other modules point at, and the `teams` they form (each person reads `teams` and `led_teams`). A user links to their `contacts` record rather than merging with it, nothing here authenticates anyone, and every agent row names its human owner. Peers `contacts`, `companies` and `assets`.",
-		"engine": ">=0.33.0",
+		"engine": ">=0.50.0",
 		"peer_collections": [
 			"contacts",
 			"companies",
 			"assets"
-		]
+		],
+		"scripts": {
+			"check-records": "dist/bin/check-records.js"
+		}
 	},
 	"scripts": {
 		"prepack": "node ../../scripts/build.ts --module=users"

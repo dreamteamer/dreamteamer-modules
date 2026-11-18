@@ -24,7 +24,7 @@ import {
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..", "..", "..")
 // `dt-notebook` — the module's own command since the pack's dispatcher was split by owner; the
 // wrapper below takes the old leading `notebook` word so every call site reads as it did
-const CLI = path.join(ROOT, "modules", "notebooklm", "bin", "notebook.mjs")
+const CLI = path.join(ROOT, "modules", "notebooklm", "dist", "bin", "notebook.js")
 const SETUP = path.join(ROOT, "modules", "setup", "bin", "setup.mjs")
 const made = []
 after(() => {

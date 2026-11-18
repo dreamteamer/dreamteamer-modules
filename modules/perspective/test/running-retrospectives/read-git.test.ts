@@ -13,7 +13,7 @@ import { readRecord, listRecords, recordPath, writeRecord } from "../../skills/r
 import { commitIntent } from "../../skills/running-retrospectives/lib/commitIntent.mts"
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
-const BIN = path.join(HERE, "..", "..", "skills", "running-retrospectives", "bin", "read-git.mjs")
+const BIN = path.join(HERE, "..", "..", "skills", "running-retrospectives", "bin", "read-git.mts")
 const SESSION = "perspective/retrospective-sessions/2026-09-07--fx"
 // The fixtures commit on fixed September 2026 dates, and the reader's default window is the last four
 // weeks from TODAY — so without an explicit --since these tests went red on 2026-09-30, when the

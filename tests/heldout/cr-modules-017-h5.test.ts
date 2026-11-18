@@ -43,7 +43,7 @@ function installedWorkspace(folder) {
     filter: s => !/node_modules|[/\\]test([/\\]|$)/.test(path.relative(WEB, s)),
   })
   for (const dep of ["protocol", "ui"]) fs.symlinkSync(path.join(ROOT, "modules", dep), path.join(at, dep), "dir")
-  const bin = path.join(at, "web", "bin", "dt-web.mjs")
+  const bin = path.join(at, "web", "dist", "bin", "dt-web.js")
   fs.mkdirSync(path.join(f.root, "data", "tasks", "deep"), { recursive: true })
   return { f, root: f.root, bin }
 }
@@ -97,7 +97,10 @@ for (const w of [spaced, spacesOnly]) {
       const ours = ourEntries(readSettings(w.root))
       assert.equal(ours.length, 1)
       cmd = ours[0].command
-      assert.ok(cmd.includes(path.join(w.root, "node_modules", "@dreamteamer", "web", "bin", "dt-web-hook.mjs")), cmd)
+      assert.ok(
+        cmd.includes(path.join(w.root, "node_modules", "@dreamteamer", "web", "dist", "bin", "dt-web-hook.js")),
+        cmd
+      )
     })
     test("run through /bin/sh -c with cwd <root>/data/tasks/deep, a page connected and a selection put: prints the pane line", async () => {
       const open = dtWeb(w.root, ["open"], m.env, { bin: w.bin })
@@ -177,7 +180,7 @@ describe("step 4: a node path that no longer exists", () => {
     let rt = rtOf(spaced.root, m)
     let cookie = await signIn(urlOf(open.stdout))
     const ok = await sh(
-      `"${process.execPath}" "${path.join(spaced.root, "node_modules", "@dreamteamer", "web", "bin", "dt-web-hook.mjs").replace(/"/g, '\\"')}"`,
+      `"${process.execPath}" "${path.join(spaced.root, "node_modules", "@dreamteamer", "web", "dist", "bin", "dt-web-hook.js").replace(/"/g, '\\"')}"`,
       payload(spaced.root),
       m.env
     )

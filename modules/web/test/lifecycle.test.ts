@@ -11,7 +11,7 @@ import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { fixture } from "./support.ts"
 
-const BIN = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "bin", "dt-web.mjs")
+const BIN = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "dist", "bin", "dt-web.js")
 let f, runtime, env
 const children = []
 before(() => {
@@ -277,7 +277,7 @@ test(
   { timeout: 180_000 },
   async () => {
     const { readState, stateFile } = await import("../src/runtime.ts")
-    const HOOK = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "bin", "dt-web-hook.mjs")
+    const HOOK = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "dist", "bin", "dt-web-hook.js")
     const { child, first } = start()
     await first
     const file = stateFile(f.root, env.DT_WEB_RUNTIME_DIR)

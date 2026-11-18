@@ -2,9 +2,8 @@
 // The users guard: the agent rules the `users` schema does not state. An agent row names a
 // `human_owner`, that owner is itself a human, and a human row carries no agent-only field.
 //
-//   node node_modules/@dreamteamer/users/bin/check-records.mjs   (installed from npm)
-//   node modules/users/bin/check-records.mjs                      (a copy under modules/)
-//   … [--data-root <dir>] [--json]
+//   npx dreamteamer run @dreamteamer/users check-records [--data-root <dir>] [--json]
+//   (the same for a copy under modules/ or a git_modules/ clone: the engine resolves the module)
 //
 // Chain it after `dreamteamer check` in the workspace's `check` script. Exit 0 clean, 1 with
 // violations. An agent owned by nobody, or by another agent, has no human accountable for it.

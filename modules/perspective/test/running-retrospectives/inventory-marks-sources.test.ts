@@ -23,7 +23,7 @@ import { spawnSync } from "node:child_process"
 import { readRecord, writeRecord, recordPath, listRecords } from "../../skills/running-retrospectives/lib/records.mts"
 
 const HERE = path.dirname(new URL(import.meta.url).pathname)
-const INVENTORY = path.join(HERE, "..", "..", "skills", "running-retrospectives", "bin", "inventory.mjs")
+const INVENTORY = path.join(HERE, "..", "..", "skills", "running-retrospectives", "bin", "inventory.mts")
 const BASE = "2026-09-09--dana-o"
 const SLUG = "dana-o"
 const REF = `perspective/retrospective-sessions/${BASE}`

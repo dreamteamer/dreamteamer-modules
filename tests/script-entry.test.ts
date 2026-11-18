@@ -10,7 +10,7 @@
 // `===` is false and the guard never fires.
 //
 // ⚠ AND THE FAILURE IS SILENT — no output, exit 0. Measured 2026-09-11 on a linked consumer holding
-// 52 activities, 35 decisions and 8 phases: `modules/projects/bin/check-records.mjs` printed nothing
+// 52 activities, 35 decisions and 8 phases: `modules/projects/dist/bin/check-records.js` printed nothing
 // and exited 0, which reads on a terminal exactly like a clean run. Four other scripts in the package
 // carried the same pattern. This file pins BOTH halves: the shape, over every script, so a new one
 // cannot reintroduce it; and the behaviour, by actually invoking one through a symlink.
@@ -75,7 +75,7 @@ describe("and it actually runs, through a real symlink", () => {
     const link = path.join(tmp, "linked-package")
     fs.symlinkSync(ROOT, link)
 
-    const r = spawnSync(process.execPath, [path.join(link, "modules/users/bin/check-records.mjs")], {
+    const r = spawnSync(process.execPath, [path.join(link, "modules/users/dist/bin/check-records.js")], {
       cwd: tmp,
       encoding: "utf8",
     })

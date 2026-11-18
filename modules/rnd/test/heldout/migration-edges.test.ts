@@ -12,7 +12,7 @@ import yaml from "js-yaml"
 import { workspace } from "../../../../tests/helpers/fixture.ts"
 import { RND } from "./lib/common.ts"
 
-const SCRIPT = path.join(RND, "bin", "migrate-journey-steps.mjs")
+const SCRIPT = path.join(RND, "dist", "bin", "migrate-journey-steps.js")
 const STORY = k => `data/rnd/user-stories/2026-01-10--${k}.user-story.md`
 const AFG = "data/rnd/user-journeys/apply-for-a-grant.user-journey.md"
 const CS = "data/rnd/user-journeys/check-status.user-journey.md"

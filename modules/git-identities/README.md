@@ -52,7 +52,7 @@ npx dt-git-identities plan /path/to/private-config.json
 npx dt-git-identities doctor /path/to/private-config.json /path/to/repository
 ```
 
-Equivalent package invocation: `node node_modules/@dreamteamer/git-identities/bin/git-identities.mjs`.
+Equivalent package invocation: `npx dreamteamer run @dreamteamer/git-identities git-identities`.
 The explicit paths avoid guessing an identity from the current workspace or a compiled skill directory.
 
 `plan` prints proposed include rules, identity files, SSH host blocks and clone URL patterns. It

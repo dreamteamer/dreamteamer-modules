@@ -20,19 +20,15 @@
 	"files": [
 		"README.md",
 		"SETUP.md",
-		"bin",
 		"collections",
 		"command-bindings",
 		"commands",
-		"skills",
-		"dist",
-		"!bin/**/*.ts",
-		"!skills/**/*.mts"
+		"dist"
 	],
 	"dreamteamer": {
 		"title": "Recordings",
 		"description": "One audio file and its transcript per `meeting-recordings` record. Audio dropped into an `${env:INBOX_FOLDERS}` root is deduped by content hash, archived under `${env:FILES_FOLDER}`, matched to its meeting (stamping `meetings.recordings`) and transcribed offline with speaker diarisation, in Hebrew and English. Summaries, tasks and critiques built on a transcript are the `meeting-docs` module.",
-		"engine": ">=0.48.0",
+		"engine": ">=0.50.0",
 		"dependencies": [
 			"@dreamteamer/meetings"
 		],
@@ -43,7 +39,11 @@
 		"vars": [
 			"FILES_FOLDER",
 			"INBOX_FOLDERS"
-		]
+		],
+		"skills": "dist/skills",
+		"scripts": {
+			"transcribe": "dist/bin/transcribe.js"
+		}
 	},
 	"peerDependencies": {
 		"@dreamteamer/meetings": ">=0.1.2"

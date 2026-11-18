@@ -13,7 +13,7 @@ import { fileURLToPath } from "node:url"
 import { readRecord, recordPath, writeRecord, listRecords } from "../../skills/running-retrospectives/lib/records.mts"
 
 const BIN = fileURLToPath(
-  new URL("../../skills/running-retrospectives/bin/read-codex-transcripts.mjs", import.meta.url)
+  new URL("../../skills/running-retrospectives/bin/read-codex-transcripts.mts", import.meta.url)
 )
 const BASE = "2026-09-08--fx",
   SESSION = `perspective/retrospective-sessions/${BASE}`

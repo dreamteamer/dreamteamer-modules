@@ -10,7 +10,7 @@ import { spawnSync } from "node:child_process"
 import yaml from "js-yaml"
 import { plan, apply, stampKind, main } from "../bin/migrate-personas.ts"
 
-const SCRIPT = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..", "bin", "migrate-personas.mjs")
+const SCRIPT = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..", "dist", "bin", "migrate-personas.js")
 const made = []
 after(() => {
   for (const d of made) fs.rmSync(d, { recursive: true, force: true })

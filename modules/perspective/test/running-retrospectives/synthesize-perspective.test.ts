@@ -13,7 +13,7 @@ import { fileURLToPath } from "node:url"
 import { recordPath, writeRecord, readRecord } from "../../skills/running-retrospectives/lib/records.mts"
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
-const BIN = path.join(HERE, "..", "..", "skills", "running-retrospectives", "bin", "synthesize-perspective.mjs")
+const BIN = path.join(HERE, "..", "..", "skills", "running-retrospectives", "bin", "synthesize-perspective.mts")
 const RUN = "perspective/retrospective-sessions/2026-09-07--fx"
 const BASE = "2026-09-07--fx"
 const SLUG = "fx" // the contributor — evidence and model ids are keyed by it, not by the run
@@ -342,7 +342,7 @@ test("--dry-run writes nothing", () => {
 // only place a test can stand is on the code that would make it.
 test("it writes no back-link — the run record's perspective field is the engine's to generate", () => {
   const src = fs.readFileSync(
-    fileURLToPath(new URL("../../skills/running-retrospectives/bin/synthesize-perspective.mjs", import.meta.url)),
+    fileURLToPath(new URL("../../skills/running-retrospectives/bin/synthesize-perspective.mts", import.meta.url)),
     "utf8"
   )
   const offenders = src

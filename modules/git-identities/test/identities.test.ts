@@ -96,7 +96,7 @@ test("CLI rejects malformed config without echoing input values", () => {
   try {
     const file = path.join(home, "bad.json")
     fs.writeFileSync(file, "PRIVATE INVALID INPUT")
-    const r = spawnSync(process.execPath, ["modules/git-identities/bin/git-identities.mjs", "plan", file], {
+    const r = spawnSync(process.execPath, ["modules/git-identities/dist/bin/git-identities.js", "plan", file], {
       encoding: "utf8",
     })
     assert.equal(r.status, 2)

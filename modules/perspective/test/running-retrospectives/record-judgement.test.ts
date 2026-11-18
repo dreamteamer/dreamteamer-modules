@@ -13,7 +13,7 @@ import { writeRecord, readRecord, recordPath } from "../../skills/running-retros
 // one when there is one, else the one this module ships — so these run standalone too.
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
-const BIN = path.join(HERE, "..", "..", "skills", "running-retrospectives", "bin", "record-judgement.mjs")
+const BIN = path.join(HERE, "..", "..", "skills", "running-retrospectives", "bin", "record-judgement.mts")
 const ID = "claude-code/2026/09/22222222-2222-4222-8222-222222222222"
 
 /** The minimum body the gate accepts — a title line and the exportable recap. */

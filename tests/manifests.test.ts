@@ -96,13 +96,23 @@ for (const m of moduleIds()) {
     test("`files` lists every folder the module carries, and the tarball ships them", () => {
       // ui and ui2 are browser apps built by Vite into their own dist/, and ship their source on purpose
       const app = m === "ui" || m === "ui2"
-      const present = [...KINDS, "bin", "data", ...(app ? ["src"] : [])].filter(k =>
-        fs.existsSync(path.join(MODULES, m, k))
+      // what ships as its build (scripts/build.ts) rather than as itself: src/ and lib/, a bin/ of TypeScript,
+      // and the skills of a module that stages them from dist/skills
+      const tsIn = d => fs.existsSync(d) && fs.readdirSync(d).some(f => f.endsWith(".ts") && !f.endsWith(".d.ts"))
+      const built = app
+        ? []
+        : ["src", "lib", "bin", "skills"].filter(k =>
+            k === "skills"
+              ? pkg.dreamteamer?.skills === "dist/skills"
+              : k === "bin"
+                ? tsIn(path.join(MODULES, m, "bin"))
+                : fs.existsSync(path.join(MODULES, m, k))
+          )
+      const present = [...KINDS, "bin", "data", ...(app ? ["src"] : [])].filter(
+        k => !built.includes(k) && fs.existsSync(path.join(MODULES, m, k))
       )
       for (const k of present)
         assert.ok(pkg.files.includes(k), `${k}/ exists but is not in files — npm would leave it out`)
-      // src/ and lib/ ship as their build: dist/src and dist/lib (scripts/build.ts), never the TypeScript
-      const built = app ? [] : ["src", "lib"].filter(k => fs.existsSync(path.join(MODULES, m, k)))
       if (built.length) assert.ok(pkg.files.includes("dist"), `${built.join(", ")} exist but dist is not in files`)
       const files = packedFiles(m)
       const shipped = new Set(files.map(f => f.split("/")[0]))

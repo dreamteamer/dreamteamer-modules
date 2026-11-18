@@ -49,8 +49,8 @@ const webRow = out => out.split("\n").find(l => /\bweb\b/.test(l) && /running/.t
 test("the tarball ships the bin, the build, the skill and the README — never the tests, the TypeScript or an app of its own", () => {
   const files = packedFiles("web")
   for (const f of [
-    "bin/dt-web.mjs",
-    "bin/dt-web-hook.mjs",
+    "dist/bin/dt-web.js",
+    "dist/bin/dt-web-hook.js",
     "commands/web/show.command.md",
     "UPDATING.md",
     "dist/bin/dt-web.js",
@@ -64,7 +64,10 @@ test("the tarball ships the bin, the build, the skill and the README — never t
   ])
     assert.ok(files.includes(f), `${f} is not in the tarball`)
   assert.ok(!files.some(f => f.startsWith("test/")), "tests do not ship")
-  assert.ok(!files.some(f => f.endsWith(".ts") && !f.endsWith(".d.ts")), "the TypeScript source does not ship, its build does")
+  assert.ok(
+    !files.some(f => f.endsWith(".ts") && !f.endsWith(".d.ts")),
+    "the TypeScript source does not ship, its build does"
+  )
   assert.ok(
     !files.some(f => f.startsWith("dist/app") || f.startsWith("dist/guest") || f.startsWith("scripts/")),
     "the app comes from @dreamteamer/ui, not a copy in this package"

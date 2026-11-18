@@ -1,6 +1,6 @@
 // HELD-OUT cr-modules-017-h6 (rnd/tests dreamteamer-modules/heldout-m017-m-port-and-lifetime-edges), written by the
 // test stage from the record alone: the stored port taken by another workspace's dt web, --port different from the
-// stored one, two dt web open at the same instant, and a read-only state dir. bin/dt-web.mjs is driven as a session
+// stored one, two dt web open at the same instant, and a read-only state dir. dist/bin/dt-web.js is driven as a session
 // drives `dt web`, with per-test state and runtime dirs.
 import { test, describe, before, after } from "node:test"
 import assert from "node:assert/strict"

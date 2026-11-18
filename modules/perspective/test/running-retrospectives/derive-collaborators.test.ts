@@ -12,7 +12,7 @@ import { execFileSync } from "node:child_process"
 import { fileURLToPath } from "node:url"
 import { recordPath, writeRecord, readRecord } from "../../skills/running-retrospectives/lib/records.mts"
 
-const BIN = fileURLToPath(new URL("../../skills/running-retrospectives/bin/derive-collaborators.mjs", import.meta.url))
+const BIN = fileURLToPath(new URL("../../skills/running-retrospectives/bin/derive-collaborators.mts", import.meta.url))
 const BASE = "2026-09-08--fx",
   REF = `perspective/retrospective-sessions/${BASE}`
 const SLUG = "fx" // the contributor — evidence and model ids are keyed by it, not by the run

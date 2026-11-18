@@ -71,8 +71,8 @@ These commands read the direct Google Calendar API using the selected account's 
 `/fetch-meetings` loads the `fetching-meetings` skill, which reads each work calendar with
 `.dreamteamer/skills/fetching-meetings/bin/gcal.mjs`, dedupes across calendars, classifies companies
 and writes `meetings` records through `dt add` / `dt set`. The people on an invite are written by
-`node node_modules/@dreamteamer/meetings/bin/event-people.mjs`, and each attendee's contact is stamped
-by `node node_modules/@dreamteamer/meetings/bin/touch-contacts.mjs` — both ship with
+`npx dreamteamer run @dreamteamer/meetings event-people`, and each attendee's contact is stamped
+by `npx dreamteamer run @dreamteamer/meetings touch-contacts` — both ship with
 `@dreamteamer/meetings`, which this package needs. Which calendars count as work is the `meetings`
 setup unit:
 

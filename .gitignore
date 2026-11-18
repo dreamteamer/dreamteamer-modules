@@ -17,8 +17,6 @@ __pycache__/
 .vscode/
 # every module's build (scripts/build.ts; ui and ui2 by Vite) and the render-tier bundles, never sources
 modules/*/dist/
-# a skill's .mjs, compiled in place from its .mts
-modules/*/skills/**/*.mjs
 modules/ui/.test-build/
 # the ui playground's sample workspaces (playground/dev.ts)
 playground/.workspaces/

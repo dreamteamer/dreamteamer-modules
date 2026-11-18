@@ -18,20 +18,16 @@
 		"connectors"
 	],
 	"bin": {
-		"dt-google": "bin/google.mjs",
-		"dt-google-calendar": "bin/calendar.mjs",
-		"dt-google-drive": "bin/drive.mjs"
+		"dt-google": "dist/bin/google.js",
+		"dt-google-calendar": "dist/bin/calendar.js",
+		"dt-google-drive": "dist/bin/drive.js"
 	},
 	"files": [
 		"README.md",
 		"SETUP.md",
-		"bin",
-		"skills",
 		"commands",
 		"command-bindings",
-		"dist",
-		"!bin/**/*.ts",
-		"!skills/**/*.mts"
+		"dist"
 	],
 	"engines": {
 		"node": ">=20"
@@ -39,7 +35,7 @@
 	"dreamteamer": {
 		"extension": "./dist/lib/activate.js",
 		"title": "Google Workspace connector",
-		"engine": ">=0.48.0",
+		"engine": ">=0.50.0",
 		"description": "Access an explicitly selected Google account through a local workspace-mcp process — a fixed read-only tool set by default, no call without a stored credential, credentials kept outside the workspace — and sync work calendars into `meetings` records (`/fetch-meetings`). Two setup units: `google-workspace` (the account) and `meetings` (`WORK_CALENDARS`). Authorize each account per computer.",
 		"env": [
 			"GOOGLE_CLIENT_SECRET_PATH",
@@ -48,7 +44,14 @@
 		],
 		"dependencies": [
 			"@dreamteamer/meetings"
-		]
+		],
+		"skills": "dist/skills",
+		"scripts": {
+			"calendar": "dist/bin/calendar.js",
+			"drive": "dist/bin/drive.js",
+			"google": "dist/bin/google.js",
+			"no-browser": "dist/bin/no-browser.js"
+		}
 	},
 	"peerDependencies": {
 		"@dreamteamer/meetings": ">=0.4.0"

@@ -235,7 +235,7 @@ bring an existing record to that shape, and why an `acceptance` list of sentence
 
 Additive. `rnd/user-journeys` gains `steps` (the journey's order, one item per step) and `failures`;
 `rnd/user-stories.journey` and `step` are legacy. A workspace that ordered its stories with them runs
-`node node_modules/@dreamteamer/rnd/bin/migrate-journey-steps.mjs --dry-run`, then `--write` (add
+`npx dreamteamer run @dreamteamer/rnd migrate-journey-steps --dry-run`, then `--write` (add
 `--screen-rules <field>` when rule ids sit in a screen field of their own), then
 `npx dreamteamer relations rebuild rnd/user-journeys` and `npx dreamteamer check`. The prototype
 harness (above) is new.
@@ -262,7 +262,7 @@ are required of it) or `product-role` (a product user role: `key`, `products`, `
 `user_stories` that name it. `rnd/persona-probes` is dropped: the held-out questions a panel was scored
 against keep no collection; `fidelity` still says how a panel scored, and the questions live in its body
 or beside it. `user-stories.personas` and `user-journeys.personas` now point at `rnd/personas`. Migrate
-with `node node_modules/@dreamteamer/rnd/bin/migrate-personas.mjs --dry-run` (the plan, ending in
+with `npx dreamteamer run @dreamteamer/rnd migrate-personas --dry-run` (the plan, ending in
 `records N · refs M`) and then `--write`: it moves every role to `data/rnd/personas/<id>.persona.md`
 with `kind: product-role`, stamps `kind: panel` on every persona already there, rewrites
 `rnd/product-user-personas/<id>` to `rnd/personas/<id>` in every text file under `data/`, deletes

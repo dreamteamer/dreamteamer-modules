@@ -35,11 +35,15 @@ export const stageLines = out => out.split("\n").filter(l => /— stage /.test(l
 export const linesFor = (out, id) => stageLines(out).filter(l => l.includes(`/${id}.change-request.md`))
 /** The workspace's own copy of the migration, run as a person runs it. */
 export function migrate(ws, { cwd = ws, args = [] } = {}) {
-  const r = spawnSync(process.execPath, [path.join(ws, "modules/rnd/bin/migrate-change-request-stage.mjs"), ...args], {
-    cwd,
-    encoding: "utf8",
-    timeout: 120_000,
-  })
+  const r = spawnSync(
+    process.execPath,
+    [path.join(ws, "modules/rnd/dist/bin/migrate-change-request-stage.js"), ...args],
+    {
+      cwd,
+      encoding: "utf8",
+      timeout: 120_000,
+    }
+  )
   return { code: r.status, out: r.stdout ?? "", err: r.stderr ?? "" }
 }
 export const accepted = [`status: accepted`, `accepted_on: '${T}'`]

@@ -15,7 +15,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url))
 export const WEB = path.resolve(HERE, "..", "..")
 export const MODULES = path.resolve(WEB, "..")
 export const REPO = path.resolve(MODULES, "..")
-export const BIN = path.join(WEB, "bin", "dt-web.mjs")
+export const BIN = path.join(WEB, "dist", "bin", "dt-web.js")
 
 /** The built app the walk serves: DT_WEB_APP_DIR, else @dreamteamer/ui's dist/app. A walk without one stops here, by name. */
 export function appDir() {

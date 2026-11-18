@@ -12,7 +12,7 @@ import yaml from "js-yaml"
 import { plan, migrateText, kebab, main } from "../bin/migrate-lanes-to-tags.ts"
 
 const MODULE = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..")
-const SCRIPT = path.join(MODULE, "bin", "migrate-lanes-to-tags.mjs")
+const SCRIPT = path.join(MODULE, "dist", "bin", "migrate-lanes-to-tags.js")
 const made = []
 after(() => {
   for (const d of made) fs.rmSync(d, { recursive: true, force: true })
@@ -104,8 +104,9 @@ describe("tasks 0.3.0 ships no lane", () => {
     // the release that dropped lane is 0.3.0; a later patch still ships the migration
     const [major, minor] = pkg.version.split(".").map(Number)
     assert.ok(major > 0 || minor >= 3, `tasks ${pkg.version} predates the migration`)
-    assert.equal(pkg.bin["dt-migrate-lanes-to-tags"], "bin/migrate-lanes-to-tags.mjs")
-    assert.ok(pkg.files.includes("bin") && pkg.files.includes("dist"))
+    assert.equal(pkg.bin["dt-migrate-lanes-to-tags"], "dist/bin/migrate-lanes-to-tags.js")
+    assert.ok(pkg.files.includes("dist"))
+    assert.equal(pkg.dreamteamer.scripts["migrate-lanes-to-tags"], "dist/bin/migrate-lanes-to-tags.js")
     assert.doesNotMatch(pkg.dreamteamer.description, /\blane\b/)
   })
 })

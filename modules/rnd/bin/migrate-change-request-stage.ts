@@ -3,8 +3,8 @@
 // names on each (lib/crStage.mjs, read through the workspace's own engine), dry run first. Also the repair
 // for a stage that drifted — a card dragged on the board, a lifecycle step that skipped the write.
 //
-//   node node_modules/@dreamteamer/rnd/bin/migrate-change-request-stage.mjs            # the plan, nothing written
-//   node node_modules/@dreamteamer/rnd/bin/migrate-change-request-stage.mjs --write    # apply it
+//   npx dreamteamer run @dreamteamer/rnd migrate-change-request-stage            # the plan, nothing written
+//   npx dreamteamer run @dreamteamer/rnd migrate-change-request-stage --write    # apply it
 //   … [--root <workspace>] [--json]
 //
 // Per change request in the workspace's OWN root:

@@ -21,7 +21,7 @@ const WORKSPACE = (() => {
     if (path.dirname(d) === d) return MODULE_ROOT
   }
 })()
-const SCRIPT = path.join(HERE, "..", "..", "skills", "ingesting-recordings", "bin", "detect.mjs")
+const SCRIPT = path.join(HERE, "..", "..", "dist", "skills", "ingesting-recordings", "bin", "detect.mjs")
 
 // `scan` is read-only, so it is safe to run for real against whatever `INBOX_FOLDERS` resolves to on
 // THIS machine — unlike `import`'s archive step (see below), nothing here can write into a real

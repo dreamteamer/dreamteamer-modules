@@ -1,4 +1,4 @@
-// THE STAGE MIGRATION — bin/migrate-change-request-stage.mjs fills `stage` on a workspace's own change
+// THE STAGE MIGRATION — dist/bin/migrate-change-request-stage.js fills `stage` on a workspace's own change
 // requests from the gate `dt next` names on each, dry run first, and repairs one that drifted. A layer's
 // requests are its own workspace's to migrate: counted and named, never written. A request with no gate
 // open is reported with the stages its record allows, never guessed.
@@ -13,7 +13,7 @@ import { seedStates, settleAll } from "./helpers/cr-stage-fixtures.ts"
 after(() => cleanupAll())
 
 const RND = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..")
-const BIN = path.join(RND, "bin", "migrate-change-request-stage.mjs")
+const BIN = path.join(RND, "dist", "bin", "migrate-change-request-stage.js")
 const migrate = (root, ...args) => {
   const r = spawnSync(process.execPath, [BIN, "--root", root, ...args], {
     cwd: root,

@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url"
 
 export const RND = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..")
 export const REPO = path.resolve(RND, "..", "..")
-export const BIN = path.join(RND, "bin", "dt-prototype.mjs")
+export const BIN = path.join(RND, "dist", "bin", "dt-prototype.js")
 
 const made = []
 export const cleanup = () => {

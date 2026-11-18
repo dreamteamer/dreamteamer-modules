@@ -84,8 +84,8 @@ function entry(root) {
     pkg = packageRoot(import.meta.url)
   } catch {}
   const own = [
-    ...(pkg ? [path.join(pkg, "bin", "recordings-transcribe.mjs"), path.join(pkg, "bin", "transcribe.mjs")] : []),
-    ...["../bin/recordings-transcribe.mjs", "../bin/transcribe.mjs"].map(rel =>
+    ...(pkg ? [path.join(pkg, "dist", "bin", "transcribe.js")] : []),
+    ...["../bin/transcribe.js", "../bin/recordings-transcribe.mjs", "../bin/transcribe.mjs"].map(rel =>
       fileURLToPath(new URL(rel, import.meta.url))
     ),
   ].find(f => fs.existsSync(f))

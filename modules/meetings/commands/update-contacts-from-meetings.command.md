@@ -12,8 +12,8 @@ a contact's recent meeting is the latest by `starts` that lists them in `attende
 started, and is not cancelled; a record only ever moves forward, so re-running over any subset is safe.
 
 ```bash
-node node_modules/@dreamteamer/meetings/bin/touch-contacts.mjs <meetings/id …> [--dry-run]
-node node_modules/@dreamteamer/meetings/bin/touch-contacts.mjs --all [--dry-run]
+npx dreamteamer run @dreamteamer/meetings touch-contacts <meetings/id …> [--dry-run]
+npx dreamteamer run @dreamteamer/meetings touch-contacts --all [--dry-run]
 ```
 
 It reads through `dt list --json` and writes through `dt set`, so every write is schema-validated and

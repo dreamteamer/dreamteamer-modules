@@ -10,7 +10,7 @@ import { ensureRunning } from "./cli.ts"
 import { probeServer, runtimeDir as defaultRuntimeDir, stateFile } from "./runtime.ts"
 import { lookup, nameNow, readRegistry, readWorkspaceState } from "./state.ts"
 
-const TARGET_BIN = path.join("node_modules", "@dreamteamer", "web", "bin", "dt-web.mjs")
+const TARGET_BIN = path.join("node_modules", "@dreamteamer", "web", "dist", "bin", "dt-web.js")
 /** Running = the server its runtime file names proves it is that server (runtime.js `probeServer`), not a live pid. */
 const isRunning = async (root, rdir) => {
   try {

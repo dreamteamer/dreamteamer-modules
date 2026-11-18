@@ -3,7 +3,7 @@
 //
 // ⚠ The fold's whole risk is a shape that can LIE: nothing in JSON Schema stops a `work` row carrying
 // `passes_when`, or a gate reaching `done` with nothing behind it. Those rules live in
-// modules/projects/bin/check-records.mjs and are the bulk of what is pinned here.
+// modules/projects/dist/bin/check-records.js and are the bulk of what is pinned here.
 import { test, describe } from "node:test"
 import assert from "node:assert"
 import fs from "node:fs"

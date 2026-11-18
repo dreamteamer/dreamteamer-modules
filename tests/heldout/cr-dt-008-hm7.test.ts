@@ -1,7 +1,7 @@
 // HELD-OUT (cr-dt-008, rnd/tests dreamteamer-modules/heldout-dt008-m-sessions-package-without-core).
 //
 // In a workspace with @dreamteamer/sessions and no core: dt session bind · end work, the Stop-hook reader
-// bin/session-save.mjs writes a session from its own package path (from the root, a subdirectory and through a
+// dist/bin/session-save.js writes a session from its own package path (from the root, a subdirectory and through a
 // symlink), the record lands where core 0.11's bin put it for the same payload, dt-sessions-migrate runs from the
 // sessions package, and nothing the package ships names @dreamteamer/core.
 // Written by the test stage from the record's steps and expected; the builder never read it.
@@ -112,7 +112,7 @@ function core011Record() {
   )
   const c = engineRun({ root, engine } as Workspace, ["compile"], { timeoutMs: 120_000 })
   assert.equal(c.status, 0, c.stderr)
-  const r = node(root, path.join(at, "bin", "session-save.mjs"), HOOK_ARGS, payload(root))
+  const r = node(root, path.join(at, "dist", "bin", "session-save.js"), HOOK_ARGS, payload(root))
   assert.equal(r.code, 0, `core 0.11's bin: ${r.out}`)
   return {
     files: sessionFiles(root),
@@ -158,8 +158,8 @@ describe("sessions without core", { skip }, () => {
     assert.equal(ended.code, 0, `end: ${ended.out}`)
     assert.match(fs.readFileSync(path.join(root, "data", "sessions", `${SID}.session.md`), "utf8"), /^ended: /m)
     // step 4 — the hook reader from its own package path: root, a subdirectory, a symlink
-    const bin = path.join(root, "node_modules", "@dreamteamer", "sessions", "bin", "session-save.mjs")
-    const r1 = node(root, "node_modules/@dreamteamer/sessions/bin/session-save.mjs", HOOK_ARGS, payload(root))
+    const bin = path.join(root, "node_modules", "@dreamteamer", "sessions", "dist", "bin", "session-save.js")
+    const r1 = node(root, "node_modules/@dreamteamer/sessions/dist/bin/session-save.js", HOOK_ARGS, payload(root))
     assert.equal(r1.code, 0, `hook from the root: ${r1.out}`)
     const sub = path.join(root, "data", "sessions")
     const r2 = node(sub, bin, HOOK_ARGS, payload(root))
@@ -185,7 +185,7 @@ describe("sessions without core", { skip }, () => {
     assert.equal(mig.status, 0, `${mig.stdout}\n${mig.stderr}`)
     assert.equal(
       fs.realpathSync(path.join(root, "node_modules", ".bin", "dt-sessions-migrate")),
-      fs.realpathSync(path.join(root, "node_modules", "@dreamteamer", "sessions", "bin", "sessions-migrate.mjs"))
+      fs.realpathSync(path.join(root, "node_modules", "@dreamteamer", "sessions", "dist", "bin", "sessions-migrate.js"))
     )
     // step 6
     const g = spawnSync(

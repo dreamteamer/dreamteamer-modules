@@ -163,7 +163,7 @@ test("CLI help works via symlink and doctor has nonzero unavailable exit", () =>
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "google-cli-test-"))
   try {
     const link = path.join(dir, "google.mjs")
-    fs.symlinkSync(fileURLToPath(new URL("../bin/google.mjs", import.meta.url)), link)
+    fs.symlinkSync(fileURLToPath(new URL("../dist/bin/google.js", import.meta.url)), link)
     const help = spawnSync(process.execPath, [link, "--help"], { encoding: "utf8" })
     assert.equal(help.status, 0)
     assert.match(help.stdout, /dt-google call/)

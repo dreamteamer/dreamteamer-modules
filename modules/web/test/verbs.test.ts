@@ -13,7 +13,7 @@ import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { fixture, call, sameOrigin } from "./support.ts"
 
-const BIN = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "bin", "dt-web.mjs")
+const BIN = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "dist", "bin", "dt-web.js")
 let f, tmp, env
 before(() => {
   f = fixture()

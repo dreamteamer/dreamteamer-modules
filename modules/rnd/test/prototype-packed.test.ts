@@ -16,8 +16,8 @@ const FIXTURE = path.resolve(path.dirname(new URL(import.meta.url).pathname), "f
 test("the tarball ships the bin and the whole harness behind it", () => {
   const files = packedFiles("rnd")
   for (const f of [
-    "bin/dt-prototype.mjs",
-    "bin/migrate-journey-steps.mjs",
+    "dist/bin/dt-prototype.js",
+    "dist/bin/migrate-journey-steps.js",
     "dist/bin/dt-prototype.js",
     "dist/lib/prototype/browser/player.js",
     "dist/lib/prototype/browser/harness.css",
@@ -27,7 +27,10 @@ test("the tarball ships the bin and the whole harness behind it", () => {
   ])
     assert.ok(files.includes(f), `${f} is not in the tarball`)
   assert.ok(!files.some(f => f.startsWith("test/")), "tests do not ship")
-  assert.ok(!files.some(f => f.endsWith(".ts") && !f.endsWith(".d.ts")), "the TypeScript source does not ship, its build does")
+  assert.ok(
+    !files.some(f => f.endsWith(".ts") && !f.endsWith(".d.ts")),
+    "the TypeScript source does not ship, its build does"
+  )
 })
 
 test("the installed dt-prototype vendors into a prototype and exports its records", () => {
@@ -40,7 +43,7 @@ test("the installed dt-prototype vendors into a prototype and exports its record
   settle(ws)
   const dir = path.join(ws, "prototypes", "northwind")
   fs.cpSync(FIXTURE, dir, { recursive: true })
-  const bin = path.join(ws, "node_modules", "@dreamteamer", "rnd", "bin", "dt-prototype.mjs")
+  const bin = path.join(ws, "node_modules", "@dreamteamer", "rnd", "dist", "bin", "dt-prototype.js")
   const dt = (...args) =>
     spawnSync(process.execPath, [bin, ...args, "--dir", dir], { encoding: "utf8", timeout: 60_000 })
   const v = dt("vendor")

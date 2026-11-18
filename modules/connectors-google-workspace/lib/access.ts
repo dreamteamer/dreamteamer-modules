@@ -71,7 +71,7 @@ export function configuration(env = process.env) {
     OAUTH_CUSTOM_REDIRECT_URIS: "",
     PYTHON_DOTENV_DISABLED: "1",
     UV_NO_CONFIG: "1",
-    BROWSER: path.join(packageRoot(import.meta.url), "bin", "no-browser.mjs"),
+    BROWSER: path.join(packageRoot(import.meta.url), "dist", "bin", "no-browser.js"),
   }
 }
 export function credentialPath(directory, email) {

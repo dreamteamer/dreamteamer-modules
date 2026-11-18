@@ -9,7 +9,7 @@ import { spawn, spawnSync } from "node:child_process"
 import { fileURLToPath } from "node:url"
 
 export const PKG = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..")
-export const BIN = path.join(PKG, "bin", "dt-docker.js")
+export const BIN = path.join(PKG, "dist", "bin", "dt-docker.js")
 const FAKE = path.join(PKG, "test", "helpers", "fake-docker.js")
 export const HQ = "ghcr.io/dreamteamer/hq:0.6.0" // the package's pinned default template tag
 export const SPAWN_TIMEOUT_MS = 30_000

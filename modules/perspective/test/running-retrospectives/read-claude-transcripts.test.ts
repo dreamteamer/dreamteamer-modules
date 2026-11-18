@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url"
 import { readRecord, listRecords, recordPath, writeRecord } from "../../skills/running-retrospectives/lib/records.mts"
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
-const BIN = path.join(HERE, "..", "..", "skills", "running-retrospectives", "bin", "read-claude-transcripts.mjs")
+const BIN = path.join(HERE, "..", "..", "skills", "running-retrospectives", "bin", "read-claude-transcripts.mts")
 const SESSION = "perspective/retrospective-sessions/2026-09-07--fx"
 const SLUG = "fx" // the contributor — every source and conversation id is keyed by it, not by the run
 const line = o => JSON.stringify(o) + "\n"

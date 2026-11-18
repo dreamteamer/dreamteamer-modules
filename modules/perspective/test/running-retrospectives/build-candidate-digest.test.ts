@@ -10,7 +10,7 @@ import path from "node:path"
 import { fileURLToPath } from "node:url"
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
-const BIN = path.join(HERE, "..", "..", "skills", "running-retrospectives", "bin", "build-candidate-digest.mjs")
+const BIN = path.join(HERE, "..", "..", "skills", "running-retrospectives", "bin", "build-candidate-digest.mts")
 const BASE = "2026-09-08--fx"
 const SLUG = "fx" // the contributor — evidence and model ids are keyed by it, not by the run
 

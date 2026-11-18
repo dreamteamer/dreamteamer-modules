@@ -16,15 +16,11 @@
 	"files": [
 		"README.md",
 		"SETUP.md",
-		"bin",
 		"collections",
 		"commands",
 		"mixins",
-		"skills",
 		"ui-views",
-		"dist",
-		"!bin/**/*.ts",
-		"!skills/**/*.mts"
+		"dist"
 	],
 	"dependencies": {
 		"js-yaml": "^4.1.0"
@@ -37,7 +33,7 @@
 		"env": [
 			"ASANA_PAT"
 		],
-		"engine": ">=0.48.0",
+		"engine": ">=0.50.0",
 		"description": "Reads a person's past work — git history, coding-agent sessions, tickets, mail, Drive files and notes — and builds the operating model it runs on: activities, projects, decisions, workflows, vocabulary, goals, findings and the assumptions under them, ending in proposals for what your workspace should track. Every record is found, never authored. Start with /run-retrospective.",
 		"peer_collections": [
 			"contacts",
@@ -50,7 +46,11 @@
 			"deliverables",
 			"decisions"
 		],
-		"extension": "./dist/lib/activate.js"
+		"extension": "./dist/lib/activate.js",
+		"skills": "dist/skills",
+		"scripts": {
+			"check-records": "dist/bin/check-records.js"
+		}
 	},
 	"scripts": {
 		"prepack": "node ../../scripts/build.ts --module=perspective"

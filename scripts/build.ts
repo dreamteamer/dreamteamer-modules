@@ -6,13 +6,14 @@
 //   node scripts/build.ts                  every module
 //   node scripts/build.ts --module=web     one module (repeatable); a module's `prepack` runs this
 //
-// Two layouts, by what reads the file:
-//   • src/, lib/, bin/ → dist/, mirroring the module root (src/x.ts → dist/src/x.js), so a relative import
-//     between them resolves the same in either tree. Files beside the code that are not TypeScript (assets,
-//     the hand-written .d.ts) are copied across. A bin keeps its published path through a committed shim
-//     (bin/<name>.mjs → dist/bin/<name>.js); a manifest names dist/ for main, exports and the extension.
-//   • skills/**/*.mts → .mjs IN PLACE: `dt compile` copies a skill folder as it is, so a skill script ships
-//     under the name its SKILL.md runs. The .mjs is gitignored and the .mts is left out of the tarball.
+// Everything it writes is under the module's dist/, which mirrors the module root, so a relative import between
+// folders resolves the same in either tree:
+//   • src/, lib/, bin/ → dist/src, dist/lib, dist/bin (x.ts → x.js). The manifest names dist/ for main, exports,
+//     the extension, its npm `bin` and its `dreamteamer.scripts` (run by name: `dt run <module> <script>`).
+//   • a module whose skills hold TypeScript is built whole into dist/skills (x.mts → x.mjs, every other file
+//     copied), and its manifest's `dreamteamer.skills: "dist/skills"` has `dt compile` stage its skills from
+//     there — to the same .dreamteamer/skills/<name>/ paths their SKILL.md runs.
+// Files beside the code that are not TypeScript (assets, the hand-written .d.ts) are copied across.
 // Types are not checked here (`npm run typecheck` does that); a file tsc cannot emit fails the build.
 // ui and ui2 are browser apps with their own Vite build and are skipped.
 import { execFileSync } from "node:child_process"
@@ -51,7 +52,7 @@ const OPTIONS = [
 function walk(dir: string, out: string[] = []): string[] {
   if (!fs.existsSync(dir)) return out
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (e.name === "node_modules" || e.name === "dist" || e.name.startsWith(".")) continue
+    if (["node_modules", "dist", "__pycache__"].includes(e.name) || e.name.startsWith(".")) continue
     const p = path.join(dir, e.name)
     if (e.isDirectory()) walk(p, out)
     else out.push(p)
@@ -60,8 +61,6 @@ function walk(dir: string, out: string[] = []): string[] {
 }
 
 const isSource = (f: string) => f.endsWith(".ts") && !f.endsWith(".d.ts")
-/** A committed bin shim (bin/x.mjs beside bin/x.ts) is the package's, not the build's. */
-const isShim = (f: string) => /\.(m?js)$/.test(f) && fs.existsSync(f.replace(/\.(m?js)$/, ".ts"))
 
 function tsc(files: string[], rootDir: string, outDir: string) {
   // the file list goes through a generated tsconfig: a command line has a length limit on Windows
@@ -96,7 +95,7 @@ export function buildModule(id: string): { code: number; skills: number } {
   fs.rmSync(dist, { recursive: true, force: true })
   if (code.length) {
     tsc(code, dir, dist)
-    for (const f of inCode.filter(f => !isSource(f) && !isShim(f))) {
+    for (const f of inCode.filter(f => !isSource(f))) {
       const to = path.join(dist, path.relative(dir, f))
       fs.mkdirSync(path.dirname(to), { recursive: true })
       if (f.endsWith(".d.ts")) {
@@ -109,8 +108,15 @@ export function buildModule(id: string): { code: number; skills: number } {
   }
   if (skills.length) {
     const skillsDir = path.join(dir, "skills")
-    tsc(skills, skillsDir, skillsDir)
-    for (const f of skills) keepRunnable(f.replace(/\.mts$/, ".mjs"))
+    const out = path.join(dist, "skills")
+    tsc(skills, skillsDir, out)
+    for (const f of walk(skillsDir).filter(f => !f.endsWith(".mts"))) {
+      const to = path.join(out, path.relative(skillsDir, f))
+      fs.mkdirSync(path.dirname(to), { recursive: true })
+      fs.copyFileSync(f, to)
+      fs.chmodSync(to, fs.statSync(f).mode)
+    }
+    for (const f of skills) keepRunnable(path.join(out, path.relative(skillsDir, f)).replace(/\.mts$/, ".mjs"))
   }
   return { code: code.length, skills: skills.length }
 }

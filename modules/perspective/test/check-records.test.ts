@@ -14,7 +14,7 @@ import { recordPath, writeRecord } from "../skills/running-retrospectives/lib/re
 const MODULE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
-const SCRIPT = path.join(HERE, "..", "bin", "check-records.mjs")
+const SCRIPT = path.join(HERE, "..", "dist", "bin", "check-records.js")
 const SESSION = "2026-09-07--fx"
 const SLUG = "fx" // the contributor — evidence and model ids are keyed by it, not by the run
 
@@ -112,7 +112,7 @@ test("a clean fixture passes and reports what it checked", () => {
 
 // Every name the guard calls evidence must be a collection this package ships (or the `meetings` peer).
 test("every collection the guard calls evidence is one this package actually ships", () => {
-  const src = fs.readFileSync(path.join(MODULE, "bin", "check-records.mjs"), "utf8")
+  const src = fs.readFileSync(path.join(MODULE, "dist", "bin", "check-records.js"), "utf8")
   const m = /const EVIDENCE_COLLECTIONS = \[([^\]]*)\]/.exec(src)
   assert.ok(m, "EVIDENCE_COLLECTIONS is not where this test expects it")
   const names = [...m[1].matchAll(/'([^']+)'/g)].map(x => x[1])

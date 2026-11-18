@@ -27,7 +27,7 @@ npx dreamteamer compile
 
 None. Meeting records, screenshots and contact stamps work with nothing set up, and the module asks for
 no account and no `.env` key. Its two commands are `/fetch-meeting-screenshots` and
-`/update-contacts-from-meetings`; the second runs `node node_modules/@dreamteamer/meetings/bin/touch-contacts.mjs`.
+`/update-contacts-from-meetings`; the second runs `npx dreamteamer run @dreamteamer/meetings touch-contacts`.
 
 The Google Calendar sync — `/fetch-meetings`, the `fetching-meetings` skill, `WORK_CALENDARS` and the
 `meetings` setup unit (`dt setup meetings …`) — ships in `@dreamteamer/connectors-google-workspace`:
@@ -41,7 +41,7 @@ objects (`email`, `displayName`, `responseStatus`, `organizer`, `self`, `optiona
 `attendees_contacts` is those people as `contacts` refs — the list every reader uses — and `ours` is
 the subset who are `users`. `organizer` is the API's object too. `attendees` and `organizer` carry
 addresses, so they are `sensitive` and never travel in an export. The calendar sync writes the two API
-fields with `node node_modules/@dreamteamer/meetings/bin/event-people.mjs` from the raw event; the refs are a plain `npx dreamteamer set`.
+fields with `npx dreamteamer run @dreamteamer/meetings event-people` from the raw event; the refs are a plain `npx dreamteamer set`.
 
 ## upgrading from 0.1.1
 
@@ -51,8 +51,8 @@ and `organizer` was an address. 0.1.2 deletes `attendees_raw` outright — a rec
 
 ```bash
 npx dreamteamer compile                                                   # on the 0.1.2 module
-node node_modules/@dreamteamer/meetings/bin/migrate-attendees.mjs         # the plan, nothing written
-node node_modules/@dreamteamer/meetings/bin/migrate-attendees.mjs --write
+npx dreamteamer run @dreamteamer/meetings migrate-attendees         # the plan, nothing written
+npx dreamteamer run @dreamteamer/meetings migrate-attendees --write
 npx dreamteamer check
 ```
 

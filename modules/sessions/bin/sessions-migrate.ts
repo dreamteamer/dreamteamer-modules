@@ -2,8 +2,8 @@
 // sessions-migrate — core 0.9.0 keeps sessions as plain records in the workspace's own data. This moves
 // a workspace from core 0.8.0, dry-run by default:
 //
-//   node node_modules/@dreamteamer/sessions/bin/sessions-migrate.mjs                 the plan, nothing written
-//   node node_modules/@dreamteamer/sessions/bin/sessions-migrate.mjs --write         apply it
+//   npx dreamteamer run @dreamteamer/sessions sessions-migrate                 the plan, nothing written
+//   npx dreamteamer run @dreamteamer/sessions sessions-migrate --write         apply it
 //   … --write --take <id>…                                                         also move named records it left
 //
 //   records      each *.session.md under SESSIONS_FOLDER that belongs to THIS workspace (the cwd its

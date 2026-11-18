@@ -22,7 +22,7 @@ const VAULT = (() => {
     if (path.dirname(d) === d) return MODULE_ROOT
   }
 })()
-const SCRIPT = path.join(HERE, "..", "..", "skills", "ingesting-meeting-screenshots", "bin", "detect.mjs")
+const SCRIPT = path.join(HERE, "..", "..", "dist", "skills", "ingesting-meeting-screenshots", "bin", "detect.mjs")
 
 // `scan` is read-only, so it is safe to run for real against whatever `INBOX_FOLDERS` resolves to on
 // THIS machine. Mid migration `INBOX_FOLDERS` has no value at all (Task 7 sets it), so `scan`

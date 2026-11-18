@@ -12,8 +12,8 @@ import { fileURLToPath, pathToFileURL } from "node:url"
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..")
 export const WEB = path.join(ROOT, "modules", "web")
-export const BIN = path.join(WEB, "bin", "dt-web.mjs")
-export const HOOK_BIN = path.join(WEB, "bin", "dt-web-hook.mjs")
+export const BIN = path.join(WEB, "dist", "bin", "dt-web.js")
+export const HOOK_BIN = path.join(WEB, "dist", "bin", "dt-web-hook.js")
 export const APP_DIR = path.resolve(process.env.DT_WEB_APP_DIR ?? path.join(ROOT, "modules", "ui", "dist", "app"))
 if (!fs.existsSync(path.join(APP_DIR, "index.html")))
   throw new Error(`no built app at ${APP_DIR} — npm run build -w modules/ui`)
