@@ -1,8 +1,10 @@
-export function calendarReader(request) {
-  async function pages(resource, params, maxResults) {
-    const output = [],
-      seen = new Set()
-    let pageToken
+import type { GoogleRequest } from "./createGoogleRequest.ts"
+
+export function calendarReader(request: GoogleRequest) {
+  async function pages(resource: string, params: Record<string, unknown>, maxResults: number): Promise<any[]> {
+    const output: any[] = [],
+      seen = new Set<string>()
+    let pageToken: string | undefined
     do {
       const response = await request(resource, { params: { ...params, pageToken, maxResults } })
       if (!Array.isArray(response.items ?? [])) throw new Error("Calendar API returned invalid items.")
@@ -15,7 +17,12 @@ export function calendarReader(request) {
   }
   return {
     calendars: () => pages("users/me/calendarList", {}, 250),
-    events: (calendar, from, to, { timeZone, showDeleted = false }: Record<string, any> = {}) => {
+    events: (
+      calendar: string,
+      from: string,
+      to: string,
+      { timeZone, showDeleted = false }: Record<string, any> = {}
+    ) => {
       if (
         !calendar ||
         !Number.isFinite(Date.parse(from)) ||
@@ -36,7 +43,7 @@ export function calendarReader(request) {
         2500
       )
     },
-    event: (calendar, event) => {
+    event: (calendar: string, event: string) => {
       if (!calendar || !event) throw new Error("Calendar and event identifiers are required.")
       return request(`calendars/${encodeURIComponent(calendar)}/events/${encodeURIComponent(event)}`)
     },

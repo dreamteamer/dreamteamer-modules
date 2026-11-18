@@ -75,7 +75,7 @@ export async function main(argv = process.argv.slice(2)) {
   console.log(JSON.stringify(result))
   return 0
 }
-const real = p => {
+const real = (p: string) => {
   try {
     return fs.realpathSync(p)
   } catch {

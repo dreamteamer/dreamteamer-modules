@@ -14,20 +14,46 @@ import { validateCall, credentialPath } from "./access.ts"
 const PROTOCOL = 1
 const MODULE = "@dreamteamer/connectors-google-workspace"
 const ACTIONS = ["create-credential-store", "authorize-account", "verify-account-read"]
+/** One check row of `inspect`. It never carries a configured path, an address or file contents. */
+export interface CheckRow {
+  id: string
+  label: string
+  status: string
+  detail: string
+  fix?: string
+  evidence?: unknown
+  state?: string
+}
+
+/** One action of `plan`, with its effects as 'kind: detail' strings. */
+export interface PlanAction {
+  id: string
+  title?: string
+  kind?: string
+  runBy?: string
+  state: string
+  reason?: string
+  account?: string
+  effects?: string[]
+  preview?: Record<string, any>
+  command?: string[]
+  evidence?: unknown
+}
+
 /** A refusal the module's own CLI prints as is (code: usage, workspace, action, stale, blocked, path). */
 export class SetupRefusal extends Error {
   declare code: string
-  constructor(code, message) {
+  constructor(code: string, message: string) {
     super(message)
     this.code = code
   }
 }
 /** A board row's state: present facts are ok, everything else warns. */
-const boardState = status => (status === "ready" || status === "configured" ? "ok" : "warn")
+const boardState = (status: string) => (status === "ready" || status === "configured" ? "ok" : "warn")
 /** The workspace an action is scoped to, by real path and package name. */
-function workspaceIdentity(root) {
+function workspaceIdentity(root: string): { root: string; name: string | null } {
   const real = fs.realpathSync(root)
-  let name = null
+  let name: string | null = null
   try {
     name = JSON.parse(fs.readFileSync(path.join(real, "package.json"), "utf8")).name ?? null
   } catch {
@@ -36,13 +62,13 @@ function workspaceIdentity(root) {
   return { root: real, name }
 }
 /** Is `child` the same as, or inside, `parent`? Both real, absolute paths. */
-function within(parent, child) {
+function within(parent: string, child: string): boolean {
   const rel = path.relative(parent, child)
   return rel === "" || (!rel.startsWith("..") && !path.isAbsolute(rel))
 }
 /** The real path of `p`, or of its nearest existing ancestor joined with the missing remainder. */
-function realish(p) {
-  const missing = []
+function realish(p: string): string {
+  const missing: string[] = []
   for (let d = path.resolve(p); ; d = path.dirname(d)) {
     try {
       return path.join(fs.realpathSync(d), ...missing.reverse())
@@ -53,7 +79,7 @@ function realish(p) {
   }
 }
 /** What a diagnostic the module's own CLI prints must never carry: addresses, absolute paths, long tokens. */
-export function redact(text) {
+export function redact(text: unknown): string {
   return String(text ?? "")
     .replace(/[^\s@"'<>()]+@[^\s@"'<>()]+\.[A-Za-z]{2,}/g, "<email>")
     .replace(/(^|[\s"'=(:])(?:~|[A-Za-z]:)?[\\/][^\s"')]+/g, "$1<path>")
@@ -69,7 +95,7 @@ export const LEGACY_DOCTOR_IDS = Object.freeze([
 ])
 
 const PROBE = JSON.stringify({ query: "trashed = false", page_size: 1 })
-const readable = p => {
+const readable = (p: string) => {
   try {
     fs.accessSync(p, fs.constants.R_OK)
     return true
@@ -78,7 +104,7 @@ const readable = p => {
   }
 }
 
-function hasUvx(env, platform) {
+function hasUvx(env: NodeJS.ProcessEnv, platform: string): boolean {
   return (env.PATH ?? "").split(path.delimiter).some(dir => {
     if (!dir) return false
     try {
@@ -91,8 +117,8 @@ function hasUvx(env, platform) {
 }
 
 /** Account filenames in the store, by name only. A token is never opened. */
-function storedAccountNames(dir) {
-  const out = []
+function storedAccountNames(dir: string): string[] {
+  const out: string[] = []
   for (const name of fs.readdirSync(dir)) {
     if (!name.endsWith(".json")) continue
     try {
@@ -108,9 +134,14 @@ function storedAccountNames(dir) {
 
 /** Every local fact this module can establish without the network, a process or a secret's value.
  *  Check rows never carry a configured path, an account address or file contents. */
-export function inspect({ root = null, env = process.env, platform = process.platform, accessible = readable } = {}) {
-  const checks = []
-  const add = row => checks.push({ ...row, state: boardState(row.status) })
+export function inspect({
+  root = null as string | null,
+  env = process.env,
+  platform = process.platform as string,
+  accessible = readable,
+} = {}): { protocol: number; module: string; checks: CheckRow[] } {
+  const checks: CheckRow[] = []
+  const add = (row: CheckRow) => checks.push({ ...row, state: boardState(row.status) })
 
   const uvx = hasUvx(env, platform)
   add({
@@ -231,8 +262,14 @@ export function inspect({ root = null, env = process.env, platform = process.pla
 }
 
 /** `dt-google doctor`'s report, unchanged: the legacy rows, with absence as `bad`. */
-export function legacyDoctor(options) {
-  const state = { ready: "ok", configured: "ok", unverified: "warn", missing: "bad", blocked: "bad" }
+export function legacyDoctor(options: Parameters<typeof inspect>[0]) {
+  const state: Record<string, string> = {
+    ready: "ok",
+    configured: "ok",
+    unverified: "warn",
+    missing: "bad",
+    blocked: "bad",
+  }
   const byId = new Map(inspect(options).checks.map(c => [c.id, c]))
   return {
     checks: LEGACY_DOCTOR_IDS.map(id => {
@@ -246,14 +283,14 @@ export function legacyDoctor(options) {
  *  nothing is `bad`. The authorization row is left out because no local check can ever make it ok,
  *  which would keep every workspace that installs this module from a READY board; each ok detail
  *  says it is not verified, and SETUP.md owns the live check. */
-export function engineDoctorRows(options) {
+export function engineDoctorRows(options: Parameters<typeof inspect>[0]) {
   return inspect(options)
     .checks.filter(c => c.id !== "google.account-authorization")
     .map(c => ({ label: c.label, state: c.state, detail: c.detail, ...(c.state === "ok" ? {} : { fix: c.fix }) }))
 }
 
-const cliArgs = (root, rest) => ["npx", "dreamteamer", "google-setup", ...rest, "--workspace", root]
-const identity = p => {
+const cliArgs = (root: string, rest: string[]) => ["npx", "dreamteamer", "google-setup", ...rest, "--workspace", root]
+const identity = (p: string) => {
   const st = fs.lstatSync(p, { bigint: true })
   return `${st.dev}:${st.ino}`
 }
@@ -265,7 +302,7 @@ const identity = p => {
  *  folder is created, inside an existing parent; UNDER the home the missing folders between are made
  *  too, each owner-only, so the declared default (`~/.config/google-workspace-mcp/credentials`) is one
  *  the action can make on a machine that never ran the bridge. */
-const present = p => {
+const present = (p: string) => {
   try {
     fs.lstatSync(p)
     return true
@@ -273,7 +310,7 @@ const present = p => {
     return false
   }
 }
-function storeTarget(dir, workspaceRoot, platform, home = os.homedir()) {
+function storeTarget(dir: string | undefined, workspaceRoot: string, platform: string, home = os.homedir()) {
   if (!dir || !path.isAbsolute(dir))
     return {
       state: "needs-input",
@@ -355,7 +392,7 @@ export function plan({
   const workspace = workspaceIdentity(root)
   const { checks } = inspect({ root: workspace.root, env, platform, accessible })
   const status = Object.fromEntries(checks.map(c => [c.id, c.status]))
-  const actions = []
+  const actions: PlanAction[] = []
 
   // 1. the local credential directory — the one action this module performs itself
   {
@@ -401,7 +438,7 @@ export function plan({
   const prerequisites = ["google.runtime", "google.client-config", "google.credential-store"].filter(
     id => !["ready", "configured"].includes(status[id])
   )
-  const live = account => {
+  const live = (account: string): PlanAction[] => {
     const valid = (() => {
       try {
         validateCall(account, "search_drive_files")
@@ -506,7 +543,7 @@ export function apply({
     )
   const after = () => inspect({ root: workspace.root, env, platform, accessible }).checks
   const step = storeTarget(env.WORKSPACE_MCP_CREDENTIALS_DIR, workspace.root, platform, home)
-  const stale = why => new SetupRefusal("stale", `${why} Nothing was changed; inspect and plan again.`)
+  const stale = (why: string) => new SetupRefusal("stale", `${why} Nothing was changed; inspect and plan again.`)
   if (!target || !parentId)
     throw new SetupRefusal(
       "usage",

@@ -1,5 +1,21 @@
 import { spawn } from "node:child_process"
 
+/** An MCP result as the bridge's callers read it: a tool call's content, or a page of the tool catalog. */
+export interface McpResult {
+  isError?: boolean
+  content?: { type: string; text?: string }[]
+  tools?: { name: string; [key: string]: unknown }[]
+  nextCursor?: string
+  [key: string]: unknown
+}
+
+/** The bridge `connect` returns. */
+export interface McpConnection {
+  ready(): Promise<void>
+  send(method: string, params?: Record<string, unknown>): Promise<McpResult>
+  close(): void
+}
+
 // JSON-RPC over MCP's newline-delimited stdio transport. Server diagnostics stay private.
 export function connect({
   platform = process.platform,
@@ -17,18 +33,21 @@ export function connect({
   ],
   env = process.env,
   timeoutMs = 30000,
-  spawnProcess = spawn,
-} = {}) {
+  spawnProcess = spawn as typeof spawn,
+} = {}): McpConnection {
   if (platform === "win32")
     throw new Error(
       "The MCP bridge is not supported on Windows: its manual-browser boundary is not verified. No server was started."
     )
   const child = spawnProcess(command, args, { env, stdio: ["pipe", "pipe", "pipe"], shell: false })
-  const pending = new Map()
+  const pending = new Map<
+    number,
+    { resolve: (r: McpResult) => void; reject: (e: Error) => void; timer: NodeJS.Timeout }
+  >()
   let nextId = 0,
     buffer = "",
     stopped = false
-  const fail = message => {
+  const fail = (message: string) => {
     stopped = true
     for (const p of pending.values()) {
       clearTimeout(p.timer)
@@ -64,8 +83,8 @@ export function connect({
       else p.resolve(msg.result)
     }
   })
-  const send = (method, params = {}) =>
-    new Promise((resolve, reject) => {
+  const send = (method: string, params: Record<string, unknown> = {}) =>
+    new Promise<McpResult>((resolve, reject) => {
       if (stopped) {
         reject(new Error("MCP process is closed."))
         return

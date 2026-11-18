@@ -2,7 +2,7 @@
 import fs from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
-import { createGoogleRequest } from "../lib/createGoogleRequest.ts"
+import { createGoogleRequest, type GoogleRequest } from "../lib/createGoogleRequest.ts"
 import { calendarReader } from "../lib/calendarReader.ts"
 export async function main(argv = process.argv.slice(2)) {
   const [command, account, ...args] = argv
@@ -13,8 +13,8 @@ export async function main(argv = process.argv.slice(2)) {
     return
   }
   if (!["calendars", "events", "event"].includes(command)) throw new Error("Unknown calendar command.")
-  let request
-  const reader = calendarReader(async (...params) => {
+  let request: GoogleRequest | undefined
+  const reader = calendarReader(async (...params: Parameters<GoogleRequest>) => {
     request ??= await createGoogleRequest(account, "calendar")
     return request(...params)
   })
@@ -39,7 +39,7 @@ export async function main(argv = process.argv.slice(2)) {
   // Let stdout drain naturally; do not truncate large event lists with process.exit().
   console.log(JSON.stringify(result))
 }
-const real = p => {
+const real = (p: string) => {
   try {
     return fs.realpathSync(p)
   } catch {

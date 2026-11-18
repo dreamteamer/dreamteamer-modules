@@ -1,17 +1,17 @@
 import fs from "node:fs"
-import { configuration, credentialPath, validateCall } from "./access.ts"
-import { connect } from "./connect.ts"
+import { configuration, credentialPath, validateCall, type ConnectionFactory } from "./access.ts"
+import { connect, type McpResult } from "./connect.ts"
 
-export function storedAccounts({ env = process.env, list = p => fs.readdirSync(p) } = {}) {
+export function storedAccounts({ env = process.env, list = (p: string): string[] => fs.readdirSync(p) } = {}) {
   const config = configuration(env)
-  let names
+  let names: string[]
   try {
     names = list(config.WORKSPACE_MCP_CREDENTIALS_DIR)
   } catch (error) {
     if (error.code === "ENOENT") return []
     throw new Error("Credential directory could not be listed.")
   }
-  const accounts = []
+  const accounts: { account: string; state: string }[] = []
   for (const name of names) {
     if (!name.endsWith(".json")) continue
     try {
@@ -24,7 +24,7 @@ export function storedAccounts({ env = process.env, list = p => fs.readdirSync(p
   }
   return accounts.sort((a, b) => a.account.localeCompare(b.account))
 }
-function consentUrl(result) {
+function consentUrl(result: McpResult | null | undefined): string | null {
   const text = (result?.content ?? [])
     .filter(c => c.type === "text")
     .map(c => c.text)
@@ -68,13 +68,25 @@ export async function authorize({
   platform = process.platform,
   allowWrite = false,
   env = process.env,
-  connectionFactory = connect,
-  fileExists = fs.existsSync,
-  onConsentUrl = (_url?: string) => {},
+  connectionFactory = connect as ConnectionFactory,
+  fileExists = fs.existsSync as (p: string) => boolean,
+  onConsentUrl = (_url?: string): void | Promise<void> => {},
   signal,
   waitMs = 9 * 60 * 1000,
   now = Date.now,
-  sleep = ms => new Promise(resolve => setTimeout(resolve, ms)),
+  sleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms)),
+}: {
+  account: string
+  platform?: string
+  allowWrite?: boolean
+  env?: NodeJS.ProcessEnv
+  connectionFactory?: ConnectionFactory
+  fileExists?: (p: string) => boolean
+  onConsentUrl?: (url?: string) => void | Promise<void>
+  signal?: AbortSignal
+  waitMs?: number
+  now?: () => number
+  sleep?: (ms: number) => Promise<void>
 }) {
   if (platform === "win32")
     throw new Error(
@@ -132,7 +144,7 @@ export async function authorize({
     }
     if (signal?.aborted) throw new Error("Authorization cancelled.")
     if (!fileExists(credential)) throw new Error("Consent timed out. Start a fresh explicit authorization when ready.")
-    const verification: any = await probe()
+    const verification = await probe()
     const text = (verification?.content ?? []).map(c => c.text ?? "").join("\n")
     if (
       !verification ||

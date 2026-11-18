@@ -2,12 +2,18 @@
 import fs from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
-import { createGoogleRequest } from "../lib/createGoogleRequest.ts"
+import { createGoogleRequest, type GoogleRequest } from "../lib/createGoogleRequest.ts"
 import { createDrive } from "../lib/createDrive.ts"
 
 export async function main(
   argv = process.argv.slice(2),
-  { requestFactory = createGoogleRequest, output = value => console.log(value) } = {}
+  {
+    requestFactory = createGoogleRequest as (
+      account: string,
+      service: string
+    ) => GoogleRequest | Promise<GoogleRequest>,
+    output = (value: string) => console.log(value),
+  } = {}
 ) {
   if (!argv.length || argv[0] === "--help") {
     console.log(
@@ -15,8 +21,8 @@ export async function main(
     )
     return 0
   }
-  const positional = [],
-    flags = {}
+  const positional: string[] = [],
+    flags: Record<string, string | true> = {}
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]
     if (a.startsWith("--") && Object.hasOwn(flags, a)) throw new Error("Repeated flag.")
@@ -40,18 +46,18 @@ export async function main(
   if (verb === "rm" && !flags["--permanent"]) throw new Error("Permanent removal requires --permanent; prefer trash.")
   if (["read", "write", "mv", "rename", "cp", "check-mount", "tier"].includes(verb) && !target)
     throw new Error("This command requires a target.")
-  let request
-  const drive = createDrive(async (...args) => {
-    request ??= Promise.resolve(requestFactory(flags["--as"], "drive"))
+  let request: Promise<GoogleRequest> | undefined
+  const drive = createDrive(async (...args: Parameters<GoogleRequest>) => {
+    request ??= Promise.resolve(requestFactory(flags["--as"] as string, "drive"))
     return (await request)(...args)
   })
   const opts = {
     apply: !!flags["--apply"],
     permanent: !!flags["--permanent"],
     deleteLocal: !!flags["--delete-local"],
-    layout: flags["--layout"] ?? "year-month",
+    layout: (flags["--layout"] as string) ?? "year-month",
   }
-  let result
+  let result: any
   if (verb === "ls") result = await drive.list(ref)
   else if (verb === "exists") result = await drive.exists(ref)
   else if (verb === "read") result = await drive.read(ref, target)
@@ -67,7 +73,7 @@ export async function main(
     ? 1
     : 0
 }
-const real = p => {
+const real = (p: string) => {
   try {
     return fs.realpathSync(p)
   } catch {

@@ -1,7 +1,7 @@
 import fs from "node:fs"
 import path from "node:path"
 import { packageRoot } from "./packageRoot.ts"
-import { connect } from "./connect.ts"
+import { connect, type McpConnection, type McpResult } from "./connect.ts"
 
 // Unknown tools fail closed, including tools whose name merely starts with "get".
 export const READ_TOOLS = new Set([
@@ -13,7 +13,10 @@ export const READ_TOOLS = new Set([
   "search_drive_files",
   "get_drive_file_content",
 ])
-export function validateCall(account, tool, args: Record<string, any> = {}, allowWrite = false) {
+/** What opens the MCP bridge — `connect`, or a test's fake. */
+export type ConnectionFactory = (options: { env: Record<string, string>; args: string[] }) => McpConnection
+
+export function validateCall(account: unknown, tool: unknown, args: Record<string, any> = {}, allowWrite = false) {
   if (typeof account !== "string" || !/^[A-Za-z0-9.!#$%&'*+_=~-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(account))
     throw new Error("An explicit valid account email is required.")
   if (!tool || typeof tool !== "string") throw new Error("A tool name is required.")
@@ -30,7 +33,7 @@ export function configuration(env = process.env) {
   }
   // Deliberately do not inherit application secrets, proxy settings, runtime injection,
   // alternative credential stores, service accounts or remote callback configuration.
-  const runtime = {}
+  const runtime: Record<string, string> = {}
   for (const key of [
     "PATH",
     "HOME",
@@ -74,7 +77,7 @@ export function configuration(env = process.env) {
     BROWSER: path.join(packageRoot(import.meta.url), "dist", "bin", "no-browser.js"),
   }
 }
-export function credentialPath(directory, email) {
+export function credentialPath(directory: string, email: string): string {
   // Match Python quote(email, safe="@._-") without allowing path traversal.
   const filename = encodeURIComponent(email)
     .replace(/[!'()*]/g, c => `%${c.charCodeAt(0).toString(16).toUpperCase()}`)
@@ -87,8 +90,16 @@ export async function call({
   args = {},
   allowWrite = false,
   env = process.env,
-  connectionFactory = connect,
-  fileExists = fs.existsSync,
+  connectionFactory = connect as ConnectionFactory,
+  fileExists = fs.existsSync as (p: string) => boolean,
+}: {
+  account: string
+  tool: string
+  args?: Record<string, any>
+  allowWrite?: boolean
+  env?: NodeJS.ProcessEnv
+  connectionFactory?: ConnectionFactory
+  fileExists?: (p: string) => boolean
 }) {
   const arguments_ = validateCall(account, tool, args, allowWrite)
   const serverEnv = configuration(env)
@@ -115,7 +126,7 @@ export async function call({
   })
   try {
     await client.ready()
-    const result: any = await client.send("tools/call", { name: tool, arguments: arguments_ })
+    const result = await client.send("tools/call", { name: tool, arguments: arguments_ })
     if (!result || result.isError)
       throw new Error("Google Workspace tool failed. Check authorization and arguments locally.")
     const text = (result.content ?? [])
@@ -130,7 +141,11 @@ export async function call({
   }
 }
 
-export async function listTools({ env = process.env, allowWrite = false, connectionFactory = connect } = {}) {
+export async function listTools({
+  env = process.env,
+  allowWrite = false,
+  connectionFactory = connect as ConnectionFactory,
+} = {}) {
   const client = connectionFactory({
     env: configuration(env),
     args: [
@@ -148,11 +163,11 @@ export async function listTools({ env = process.env, allowWrite = false, connect
   })
   try {
     await client.ready()
-    const tools = [],
-      seen = new Set()
-    let cursor
+    const tools: McpResult["tools"] = [],
+      seen = new Set<string>()
+    let cursor: string | undefined
     do {
-      const response: any = await client.send("tools/list", cursor ? { cursor } : {})
+      const response = await client.send("tools/list", cursor ? { cursor } : {})
       if (!Array.isArray(response?.tools)) throw new Error("Server returned an invalid tool catalog.")
       tools.push(...response.tools.filter(tool => allowWrite || READ_TOOLS.has(tool.name)))
       cursor = response.nextCursor

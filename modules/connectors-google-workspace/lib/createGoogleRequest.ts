@@ -1,11 +1,19 @@
 import fs from "node:fs"
 import { configuration, credentialPath, validateCall } from "./access.ts"
 
+/** A request against one Google API: a relative resource path, and the options of the call. */
+export type GoogleRequest = (resource: string, options?: Record<string, any>) => Promise<any>
+
 export async function createGoogleRequest(
-  account,
-  service,
-  { env = process.env, readFile = p => fs.readFileSync(p, "utf8"), fetchImpl = fetch, timeoutMs = 30000 } = {}
-) {
+  account: string,
+  service: string,
+  {
+    env = process.env,
+    readFile = (p: string): string => fs.readFileSync(p, "utf8"),
+    fetchImpl = fetch,
+    timeoutMs = 30000,
+  } = {}
+): Promise<GoogleRequest> {
   validateCall(account, "search_gmail_messages")
   if (!["calendar", "drive"].includes(service)) throw new Error("Unsupported direct API service.")
   const config = configuration(env)
@@ -41,16 +49,16 @@ export async function createGoogleRequest(
       grant_type: "refresh_token",
     }),
   })
-  let token
+  let token: { access_token?: unknown }
   try {
-    token = await refresh.json()
+    token = (await refresh.json()) as { access_token?: unknown }
   } catch {
     throw new Error("OAuth token refresh returned an invalid response.")
   }
   if (!refresh.ok || typeof token.access_token !== "string" || !token.access_token)
     throw new Error("OAuth token refresh failed; complete account authorization separately.")
   return async (
-    resource,
+    resource: string,
     { method = "GET", params = {}, body, raw = false, upload = false, headers = {} }: Record<string, any> = {}
   ) => {
     if (typeof resource !== "string" || resource.startsWith("/") || resource.includes("..") || /[?#:\\]/.test(resource))

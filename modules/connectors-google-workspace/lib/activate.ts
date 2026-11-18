@@ -12,8 +12,8 @@ export const apiVersion = 1
 export const USAGE =
   "  google-setup inspect|plan [--account <email>]…|apply create-credential-store --target <dir> --parent-id <id> --workspace <root>  [--json]   Google Workspace setup: local checks, next steps and their effects (SETUP.md)"
 
-const take = (argv, name) => {
-  const values = []
+const take = (argv: string[], name: string) => {
+  const values: string[] = []
   for (let i = 0; i < argv.length; i++)
     if (argv[i] === name) {
       if (argv[i + 1] === undefined || argv[i + 1].startsWith("--"))
@@ -23,8 +23,8 @@ const take = (argv, name) => {
   return values
 }
 
-function render(result) {
-  const lines = []
+function render(result: Record<string, any>): string {
+  const lines: string[] = []
   if (result.workspace) lines.push(`workspace: ${result.workspace.name ?? "(unnamed)"}  ${result.workspace.root}`)
   for (const c of result.checks ?? [])
     lines.push(`${c.state.padEnd(4)} ${c.status.padEnd(10)} ${c.label} — ${c.detail}`)
@@ -38,14 +38,31 @@ function render(result) {
 }
 
 /** The command body, with its inputs explicit so it can be exercised without the engine. */
-export function setupCommand({ root, argv = [], env = process.env, out = console.log, err = console.error }) {
+export function setupCommand({
+  root,
+  argv = [],
+  env = process.env,
+  out = console.log,
+  err = console.error,
+}: {
+  root: string
+  argv?: string[]
+  env?: NodeJS.ProcessEnv
+  out?: (line: string) => void
+  err?: (line: string) => void
+}): number {
   const json = argv.includes("--json")
   const args = argv.filter(a => a !== "--json")
   try {
     const verb = args[0]
-    const allowed = { inspect: [], plan: ["--account"], apply: ["--workspace", "--target", "--parent-id"] }[verb]
+    const allowed = (
+      { inspect: [] as string[], plan: ["--account"], apply: ["--workspace", "--target", "--parent-id"] } as Record<
+        string,
+        string[]
+      >
+    )[verb]
     if (!allowed) throw new SetupRefusal("usage", `Expected inspect, plan or apply.\n${USAGE}`)
-    const positional = []
+    const positional: string[] = []
     for (let i = 1; i < args.length; i++) {
       if (args[i].startsWith("--")) {
         if (!allowed.includes(args[i])) throw new SetupRefusal("usage", `Unknown option ${args[i]}.`)
@@ -53,7 +70,7 @@ export function setupCommand({ root, argv = [], env = process.env, out = console
       } else positional.push(args[i])
     }
     if (positional.length > (verb === "apply" ? 1 : 0)) throw new SetupRefusal("usage", "Unexpected argument.")
-    let result
+    let result: Record<string, any>
     if (verb === "inspect") result = inspect({ root, env })
     else if (verb === "plan") result = plan({ root, env, accounts: take(args, "--account") })
     else
@@ -81,7 +98,12 @@ export default function activate() {
     // the setup UNITS the engine drives (dt install / dt setup / dt status), the account unit first; the
     // `google-setup` verb stays as the alias the earlier SETUP.md taught
     setup: [SETUP_UNIT, MEETINGS_UNIT],
-    commands: { "google-setup": { usage: USAGE, run: (ws, argv) => setupCommand({ root: ws.root, argv }) } },
+    commands: {
+      "google-setup": {
+        usage: USAGE,
+        run: (ws: { root: string }, argv: string[]) => setupCommand({ root: ws.root, argv }),
+      },
+    },
     // no `doctor` of its own any more: the engine renders the unit's inspect as this capability's rows,
     // the never-locally-verifiable authorization row included — shown as unverified, never left out
   }

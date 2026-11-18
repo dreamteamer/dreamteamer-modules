@@ -11,17 +11,32 @@ import { spawnSync } from "node:child_process"
 import os from "node:os"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
-import { parseWorkCalendars } from "../skills/fetching-meetings/bin/gcal.mts"
+import { parseWorkCalendars, type CalendarRow } from "../skills/fetching-meetings/bin/gcal.mts"
+import type { CheckRow, PlanAction } from "./googleSetup.ts"
+
+/** What the engine hands a setup unit. */
+interface SetupContext {
+  root: string
+  env?: NodeJS.ProcessEnv
+  receiptDir?: string
+}
+
+/** A meetings action: the module's own fields, effects either as strings or as the engine's objects. */
+interface MeetingsAction extends Omit<PlanAction, "effects"> {
+  effects?: (string | { kind: string; detail: string })[]
+  env?: Record<string, string>
+  preview?: Record<string, unknown>
+}
 
 /** The convention version and module name this setup's own reports carry (its rows, its plan). */
 const PROTOCOL = 1
 const MODULE = "@dreamteamer/connectors-google-workspace"
 /** A board row's state: present facts are ok, everything else warns. */
-const boardState = status => (status === "ready" || status === "configured" ? "ok" : "warn")
+const boardState = (status: string) => (status === "ready" || status === "configured" ? "ok" : "warn")
 
 const KEY = "WORK_CALENDARS"
 const GCAL = ".dreamteamer/skills/fetching-meetings/bin/gcal.mjs"
-const nonemptyFile = p => {
+const nonemptyFile = (p: string) => {
   try {
     const st = fs.statSync(p)
     return st.isFile() && st.size > 0
@@ -30,13 +45,14 @@ const nonemptyFile = p => {
   }
 }
 // gcal.mjs names a credential file this way; the board must look where the reader will.
-const credentialFile = (dir, email) => path.resolve(dir, `${encodeURIComponent(email).replace(/%40/g, "@")}.json`)
-const lineNumbers = errors => errors.map(e => Number(/line (\d+)/.exec(e)?.[1])).filter(Number.isFinite)
+const credentialFile = (dir: string, email: string) =>
+  path.resolve(dir, `${encodeURIComponent(email).replace(/%40/g, "@")}.json`)
+const lineNumbers = (errors: string[]) => errors.map(e => Number(/line (\d+)/.exec(e)?.[1])).filter(Number.isFinite)
 
 /** Where WORK_CALENDARS comes from, as gcal.mjs reads it: a nonempty process value, else `.env`. */
-function workCalendars(root, env) {
+function workCalendars(root: string, env: NodeJS.ProcessEnv): { source: string; text: string } {
   if (env[KEY]) return { source: "environment", text: env[KEY] }
-  let text = null
+  let text: string | null = null
   try {
     text = fs.readFileSync(path.join(root, ".env"), "utf8")
   } catch {
@@ -48,8 +64,8 @@ function workCalendars(root, env) {
 
 /** Every value `.env` text assigns to `key`, read the way the engine reads `.env` (KEY=value, an optional
  *  `export `, a single- or double-quoted value that may span lines). Read-only: the write is the engine's. */
-function dotenvValues(text, key) {
-  const out = []
+function dotenvValues(text: unknown, key: string): string[] {
+  const out: string[] = []
   for (const m of String(text).matchAll(
     /^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)=("(?:[^"\\]|\\.)*"|'[^']*'|[^\n]*)$/gm
   )) {
@@ -62,9 +78,17 @@ function dotenvValues(text, key) {
 
 /** Every local fact, without the network, a process or any credential's contents. Rows carry counts
  *  and line numbers, never a calendar id, an account address or a path. */
-export function inspect({ root, env = process.env, home = os.homedir() }: Record<string, any> = {}) {
-  const checks = []
-  const add = row => checks.push({ ...row, state: boardState(row.status) })
+export function inspect({
+  root,
+  env = process.env,
+  home = os.homedir(),
+}: {
+  root: string
+  env?: NodeJS.ProcessEnv
+  home?: string
+}): { protocol: number; module: string; checks: CheckRow[] } {
+  const checks: CheckRow[] = []
+  const add = (row: CheckRow) => checks.push({ ...row, state: boardState(row.status) })
   const config = workCalendars(root, env)
   const { rows, errors } = parseWorkCalendars(config.text)
   const valid = rows.length > 0 && errors.length === 0
@@ -160,7 +184,7 @@ const CALENDAR = /^[A-Za-z0-9._+#-]+(@[A-Za-z0-9._-]+)?$/
 const COMPANY = /^(mixed|[a-z0-9][a-z0-9-]*)$/
 const ACCOUNT = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/
 /** One `calendar-id | default-company | account-email` row, validated, or null. */
-export function parseRow(text) {
+export function parseRow(text: unknown) {
   const cols = String(text ?? "")
     .split("|")
     .map(c => c.trim())
@@ -173,7 +197,7 @@ export function parseRow(text) {
 /** The calendar-row action for these inputs: the merged WORK_CALENDARS the engine is to write, or why it
  *  will not. The merge is the unit's — keep every configured row, add the new ones, refuse a conflict or a
  *  malformed existing row; whether the file already holds the value, and the write, are the engine's. */
-function calendarRowsAction(root, env, inputs) {
+function calendarRowsAction(root: string, env: NodeJS.ProcessEnv, inputs: string[]): MeetingsAction {
   const action = {
     id: "add-calendar-rows",
     title: "Add work calendar rows to the workspace .env",
@@ -231,14 +255,14 @@ function calendarRowsAction(root, env, inputs) {
       state: "blocked",
       reason: `The existing WORK_CALENDARS has malformed line(s) ${lineNumbers(existing.errors).join(", ")}; fix them by hand first.`,
     }
-  const additions = []
-  const conflicts = []
+  const additions: ReturnType<typeof parseRow>[] = []
+  const conflicts: string[] = []
   for (const [i, row] of parsed.entries()) {
     const same =
       existing.rows.find(r => r.calendar === row.calendar && r.account === row.account) ??
       additions.find(r => r.calendar === row.calendar && r.account === row.account)
     if (!same) additions.push(row)
-    else if ((same.mixed ? "mixed" : same.company) !== row.company)
+    else if (("mixed" in same && same.mixed ? "mixed" : same.company) !== row.company)
       conflicts.push(
         `row input ${i + 1} names a calendar and account already configured with a different default company`
       )
@@ -270,7 +294,17 @@ function calendarRowsAction(root, env, inputs) {
 }
 
 /** What can be done next, each with its effects. Writes nothing and starts nothing. */
-export function plan({ root, env = process.env, home = os.homedir(), rows = [] }: Record<string, any> = {}) {
+export function plan({
+  root,
+  env = process.env,
+  home = os.homedir(),
+  rows = [],
+}: {
+  root: string
+  env?: NodeJS.ProcessEnv
+  home?: string
+  rows?: string[]
+}) {
   const workspace = { root: fs.realpathSync(root) }
   const { checks } = inspect({ root: workspace.root, env, home })
   const status = Object.fromEntries(checks.map(c => [c.id, c.status]))
@@ -278,7 +312,7 @@ export function plan({ root, env = process.env, home = os.homedir(), rows = [] }
   const unmet = ["meetings.work-calendars", "meetings.oauth-client", "meetings.credential-files"].filter(
     id => status[id] !== "configured"
   )
-  const verify = {
+  const verify: MeetingsAction = {
     id: "verify-calendar-access",
     title: "Owner-approved live check of every configured calendar",
     kind: "live",
@@ -302,7 +336,7 @@ export function plan({ root, env = process.env, home = os.homedir(), rows = [] }
 // calendar check is the owner's — runBy 'owner', run only under `dt setup meetings --verify --authorize`
 // in a terminal — and a passing one leaves a dated receipt the next inspect turns into `ready`.
 const RECEIPT = "calendar-access.verified.json"
-const receiptOf = ctx => {
+const receiptOf = (ctx: SetupContext) => {
   try {
     return JSON.parse(fs.readFileSync(path.join(ctx.receiptDir, RECEIPT), "utf8"))
   } catch {
@@ -310,7 +344,7 @@ const receiptOf = ctx => {
   }
 }
 /** What a receipt proved — the configured calendar/account pairs — as a short digest, never the addresses. */
-export const calendarsDigest = rows =>
+export const calendarsDigest = (rows: { calendar: string; account: string }[]) =>
   createHash("sha256")
     .update(
       rows
@@ -324,7 +358,7 @@ export const calendarsDigest = rows =>
  *  process environment, so a WORK_CALENDARS it merged from .env would read here as a shadowing process
  *  value and block every later row: a value equal to what .env holds is .env's, and is left out. A
  *  genuinely different process value still wins, as the calendar reader reads it. */
-function moduleEnv(ctx) {
+function moduleEnv(ctx: SetupContext): NodeJS.ProcessEnv {
   const env = { ...ctx.env }
   if (env[KEY] !== undefined) {
     let text = ""
@@ -338,14 +372,18 @@ function moduleEnv(ctx) {
   }
   return env
 }
-const unitEffect = text => {
+const unitEffect = (text: string) => {
   const m = /^([a-z-]+):\s*(.*)$/s.exec(text)
-  const kind =
-    { "workspace-file": "workspace-files", "account-access": "account", network: "network" }[m?.[1]] ?? "machine"
+  const kinds: Record<string, string> = {
+    "workspace-file": "workspace-files",
+    "account-access": "account",
+    network: "network",
+  }
+  const kind = kinds[m?.[1]] ?? "machine"
   return { kind, detail: m ? m[2] : text }
 }
 
-function unitInspect(ctx) {
+function unitInspect(ctx: SetupContext) {
   const env = moduleEnv(ctx)
   const { checks } = inspect({ root: ctx.root, env })
   const receipt = receiptOf(ctx)
@@ -377,8 +415,8 @@ function unitInspect(ctx) {
   }
 }
 
-function unitPlan(ctx, inputs: Record<string, any> = {}) {
-  const rows = Array.isArray(inputs.calendar) ? inputs.calendar : inputs.calendar ? [inputs.calendar] : []
+function unitPlan(ctx: SetupContext, inputs: { calendar?: string | string[] } = {}) {
+  const rows: string[] = Array.isArray(inputs.calendar) ? inputs.calendar : inputs.calendar ? [inputs.calendar] : []
   const p = plan({ root: ctx.root, env: moduleEnv(ctx), rows })
   const actions = p.actions.map((a: Record<string, any>) =>
     a.env !== undefined || a.id === "add-calendar-rows"
@@ -395,7 +433,11 @@ function unitPlan(ctx, inputs: Record<string, any> = {}) {
   return { checks: unitInspect(ctx).checks, actions, needs: rows.length || rowsDone ? [] : ["calendar"] }
 }
 
-function unitApply(ctx, action, inputs = {}) {
+function unitApply(
+  ctx: SetupContext,
+  action: MeetingsAction,
+  _inputs = {}
+): { ok: boolean; changed: string[]; message: string } {
   try {
     if (action.state === "done")
       return { ok: true, changed: [], message: `nothing to do — ${action.reason ?? "already configured"}` }

@@ -1,38 +1,55 @@
 import fs from "node:fs"
 import path from "node:path"
 import { createHash, randomUUID } from "node:crypto"
+import type { GoogleRequest } from "./createGoogleRequest.ts"
+
+/** A Drive file as the `fields` below ask for it. */
+interface DriveFile {
+  id: string
+  name: string
+  mimeType?: string
+  size?: string
+  md5Checksum?: string
+  parents?: string[]
+  trashed?: boolean
+  webViewLink?: string
+}
+
+/** One row of a copy, a mount check or a tier — reported as JSON, read back by the CLI. */
+type ResultRow = Record<string, any>
 
 const FOLDER = "application/vnd.google-apps.folder"
 const STUB = /\.(gdoc|gsheet|gslides|gform|gdraw|gmap|gsite|glink|gjam|gtable|gscript|icloud)$/i
-const digest = bytes => createHash("md5").update(bytes).digest("hex")
-const esc = value => value.replace(/\\/g, "\\\\").replace(/'/g, "\\'")
-const native = file => file?.mimeType?.startsWith("application/vnd.google-apps.") && file.mimeType !== FOLDER
+const digest = (bytes: Buffer) => createHash("md5").update(bytes).digest("hex")
+const esc = (value: string) => value.replace(/\\/g, "\\\\").replace(/'/g, "\\'")
+const native = (file: DriveFile | null | undefined) =>
+  file?.mimeType?.startsWith("application/vnd.google-apps.") && file.mimeType !== FOLDER
 const fields = "id,name,mimeType,size,md5Checksum,parents,trashed,webViewLink"
-export function parseRef(ref) {
+export function parseRef(ref: unknown): { root: string; parts: string[] } {
   if (typeof ref !== "string" || !ref) throw new Error("A Drive root/path reference is required.")
   const [root, ...parts] = ref.split("/")
   if (!/^[A-Za-z0-9_-]+$/.test(root) || parts.some(p => !p || p === "." || p === ".." || /[\\\x00-\x1f]/.test(p)))
     throw new Error("Invalid Drive reference.")
   return { root, parts }
 }
-const requireFile = ref => {
+const requireFile = (ref: string) => {
   const parsed = parseRef(ref)
   if (!parsed.parts.length) throw new Error("A path beneath the root is required.")
   return parsed
 }
-const safeName = name => {
+const safeName = (name: unknown): string => {
   if (typeof name !== "string" || !name || [".", ".."].includes(name) || /[/\\\x00-\x1f]/.test(name))
     throw new Error("Expected a single safe filename.")
   return name
 }
 
-export function createDrive(request) {
-  const api = (endpoint, options: Record<string, any> = {}) =>
+export function createDrive(request: GoogleRequest) {
+  const api = (endpoint: string, options: Record<string, any> = {}) =>
     request(endpoint, { ...options, params: { supportsAllDrives: "true", ...options.params } })
-  async function listChildren(parent, name?) {
-    const files = [],
-      seen = new Set()
-    let pageToken
+  async function listChildren(parent: string, name?: string): Promise<DriveFile[]> {
+    const files: DriveFile[] = [],
+      seen = new Set<string>()
+    let pageToken: string | undefined
     do {
       const result = await api("files", {
         params: {
@@ -50,12 +67,12 @@ export function createDrive(request) {
     } while (pageToken)
     return files
   }
-  async function child(parent, name) {
+  async function child(parent: string, name: string): Promise<DriveFile | null> {
     const matches = await listChildren(parent, name)
     if (matches.length > 1) throw new Error("Ambiguous Drive name; resolve duplicates before acting.")
     return matches[0] ?? null
   }
-  async function folder(ref, { create = false } = {}) {
+  async function folder(ref: string, { create = false } = {}): Promise<string | null> {
     const { root, parts } = parseRef(ref)
     let parent = root
     for (const name of parts) {
@@ -72,27 +89,27 @@ export function createDrive(request) {
     }
     return parent
   }
-  async function locate(ref) {
+  async function locate(ref: string) {
     const { root, parts } = requireFile(ref),
       name = parts.pop()
     const parent = await folder([root, ...parts].join("/"))
     return { parent, file: parent ? await child(parent, name) : null, name }
   }
-  const needed = async ref => {
+  const needed = async (ref: string) => {
     const hit = await locate(ref)
     if (!hit.file) throw new Error("Drive file was not found.")
     return hit
   }
-  async function list(ref) {
+  async function list(ref: string) {
     const parent = await folder(ref)
     if (!parent) throw new Error("Drive folder was not found.")
     return listChildren(parent)
   }
-  async function exists(ref) {
+  async function exists(ref: string) {
     const hit = await locate(ref)
     return { exists: !!hit.file, file: hit.file }
   }
-  async function read(ref, destination) {
+  async function read(ref: string, destination: string) {
     const { file } = await needed(ref)
     if (native(file) || file.mimeType === FOLDER)
       throw new Error("Only binary files can be materialized; export native documents explicitly.")
@@ -111,7 +128,7 @@ export function createDrive(request) {
     fs.writeFileSync(destination, bytes, { flag: "wx", mode: 0o600 })
     return { path: destination, reused: false, content_verified: !!file.md5Checksum }
   }
-  async function write(ref, local, { apply = false } = {}) {
+  async function write(ref: string, local: string, { apply = false } = {}): Promise<ResultRow> {
     const { root, parts } = requireFile(ref),
       name = parts.pop()
     if (STUB.test(local) || STUB.test(name))
@@ -144,7 +161,12 @@ export function createDrive(request) {
     })
     return { id: saved.id, md5, content_verified: saved.md5Checksum === md5, reused: false }
   }
-  async function mutate(operation, ref, value, { apply = false, permanent = false } = {}) {
+  async function mutate(
+    operation: string,
+    ref: string,
+    value: string | undefined,
+    { apply = false, permanent = false } = {}
+  ) {
     if (operation === "rm" && !permanent)
       throw new Error("Permanent removal requires --permanent; prefer recoverable trash.")
     if (!["trash", "rm", "mv", "rename"].includes(operation)) throw new Error("Unknown Drive mutation.")
@@ -160,7 +182,7 @@ export function createDrive(request) {
       if (!target) throw new Error("Target folder was not found.")
       if (target === parent) return { id: file.id, unchanged: true }
       if (file.mimeType === FOLDER) {
-        const seen = new Set()
+        const seen = new Set<string>()
         let queue = [target]
         while (queue.length) {
           const current = queue.shift()
@@ -185,25 +207,26 @@ export function createDrive(request) {
     await api(`files/${encodeURIComponent(file.id)}`, { method: operation === "rm" ? "DELETE" : "PATCH", params, body })
     return { id: file.id, operation, applied: true, permanent: operation === "rm" }
   }
-  async function copy(ref, destination, { apply = false } = {}) {
+  async function copy(ref: string, destination: string, { apply = false } = {}) {
     const { file } = await needed(ref),
       target = await folder(destination)
     if (!target) throw new Error("Destination folder was not found.")
-    const nodes = new Map(),
-      visiting = new Set()
-    async function collect(entry) {
+    type Node = DriveFile & { children: Node[] }
+    const nodes = new Map<string, Node>(),
+      visiting = new Set<string>()
+    async function collect(entry: DriveFile): Promise<Node> {
       safeName(entry.name)
       if (visiting.has(entry.id)) throw new Error("Source folder graph contains a cycle.")
       if (nodes.has(entry.id)) throw new Error("Source contains a repeated file identifier.")
       if (nodes.size >= 10000) throw new Error("Copy exceeds the safety limit.")
       if (entry.mimeType === "application/vnd.google-apps.shortcut")
         throw new Error("Resolve shortcuts explicitly before copying.")
-      const node = { ...entry, children: [] }
+      const node: Node = { ...entry, children: [] }
       nodes.set(entry.id, node)
       if (entry.mimeType === FOLDER) {
         visiting.add(entry.id)
         const children = await listChildren(entry.id),
-          names = new Set()
+          names = new Set<string>()
         for (const item of children) {
           if (names.has(item.name)) throw new Error("Source contains duplicate names.")
           names.add(item.name)
@@ -215,8 +238,8 @@ export function createDrive(request) {
     }
     const tree = await collect(file)
     if (nodes.has(target)) throw new Error("Cannot copy into the source or its descendants.")
-    const results = []
-    async function copyNode(node, parent) {
+    const results: ResultRow[] = []
+    async function copyNode(node: Node, parent: string): Promise<void> {
       const collision = parent ? await child(parent, node.name) : null
       if (node.mimeType === FOLDER) {
         if (collision && collision.mimeType !== FOLDER)
@@ -268,13 +291,13 @@ export function createDrive(request) {
     }
     return file.mimeType === FOLDER ? { dry_run: !apply, results } : results[0]
   }
-  async function checkMount(ref, local) {
+  async function checkMount(ref: string, local: string) {
     const root = await folder(ref)
     if (!root) throw new Error("Drive folder was not found.")
-    const mismatches = [],
-      visited = new Set()
+    const mismatches: { name: string; state: string }[] = [],
+      visited = new Set<string>()
     let checked = 0
-    async function inspect(parent, directory, prefix = "") {
+    async function inspect(parent: string, directory: string, prefix = ""): Promise<void> {
       if (visited.has(parent)) throw new Error("Remote folder graph contains a cycle or repeated identifier.")
       visited.add(parent)
       if (visited.size > 10000) throw new Error("Mount traversal exceeds the safety limit.")
@@ -286,7 +309,7 @@ export function createDrive(request) {
         return
       }
       const remote = await listChildren(parent),
-        names = new Set()
+        names = new Set<string>()
       for (const file of remote) {
         safeName(file.name)
         if (names.has(file.name)) throw new Error("Remote folder contains duplicate names.")
@@ -321,11 +344,11 @@ export function createDrive(request) {
     await inspect(root, local)
     return { checked, matches: mismatches.length === 0, mismatches, recursive: true }
   }
-  async function tier(local, root, { apply = false, deleteLocal = false, layout = "year-month" } = {}) {
+  async function tier(local: string, root: string, { apply = false, deleteLocal = false, layout = "year-month" } = {}) {
     parseRef(root)
     if (!["flat", "year-month"].includes(layout)) throw new Error("Unsupported tier layout.")
-    const results = []
-    let active
+    const results: ResultRow[] = []
+    let active: ResultRow | undefined
     try {
       for (const name of fs.readdirSync(local).sort()) {
         if (name.startsWith(".") || STUB.test(name)) continue

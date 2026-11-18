@@ -11,26 +11,57 @@ import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
 import { spawnSync } from "node:child_process"
-import { inspect as inspectLocal, plan as planLocal, apply as applyLocal } from "./googleSetup.ts"
+import { inspect as inspectLocal, plan as planLocal, apply as applyLocal, type CheckRow } from "./googleSetup.ts"
 import { credentialPath } from "./access.ts"
+
+/** What the engine hands a setup unit. */
+interface SetupContext {
+  root: string
+  env?: NodeJS.ProcessEnv
+  receiptDir?: string
+}
+
+/** The inputs this unit declares. */
+interface Inputs {
+  credentials_dir?: string
+  client_secret?: string
+  account?: string
+}
+
+/** An action of the plan, as `apply` receives it back. */
+interface UnitAction {
+  id: string
+  title?: string
+  state?: string
+  reason?: string
+  account?: string
+  effects?: { kind: string; detail: string }[]
+  preview?: Record<string, any>
+  command?: string[]
+  evidence?: unknown
+  runBy?: string
+  kind?: string
+  env?: Record<string, string | undefined>
+}
 
 export const UNIT_ID = "google-workspace"
 const DEFAULT_STORE = path.join(os.homedir(), ".config", "google-workspace-mcp", "credentials")
 const KEYS = { credentials_dir: "WORKSPACE_MCP_CREDENTIALS_DIR", client_secret: "GOOGLE_CLIENT_SECRET_PATH" }
 
 /** The home the unit judges paths against: the environment's (a test's temp HOME included), else the process's. */
-const homeOf = ctx => (ctx.env?.HOME && String(ctx.env.HOME).trim() ? ctx.env.HOME : os.homedir())
+const homeOf = (ctx: SetupContext) => (ctx.env?.HOME && String(ctx.env.HOME).trim() ? ctx.env.HOME : os.homedir())
 
 /** The environment the module's own functions read, with the unit's inputs laid over it. */
-const envWith = (ctx, inputs: Record<string, any> = {}) => ({
+const envWith = (ctx: SetupContext, inputs: Inputs = {}): NodeJS.ProcessEnv => ({
   ...ctx.env,
   ...(inputs.client_secret ? { GOOGLE_CLIENT_SECRET_PATH: inputs.client_secret } : {}),
   ...(inputs.credentials_dir ? { WORKSPACE_MCP_CREDENTIALS_DIR: inputs.credentials_dir } : {}),
 })
 const SUFFIX = ".verified.json"
-const receiptFile = (ctx, account) => path.join(ctx.receiptDir, `${encodeURIComponent(account)}${SUFFIX}`)
+const receiptFile = (ctx: SetupContext, account: string) =>
+  path.join(ctx.receiptDir, `${encodeURIComponent(account)}${SUFFIX}`)
 /** Every receipt, with the account it was written for (an older receipt carries it only in its name). */
-const receipts = ctx => {
+const receipts = (ctx: SetupContext): { account?: string; at?: string }[] => {
   try {
     return fs
       .readdirSync(ctx.receiptDir)
@@ -46,19 +77,19 @@ const receipts = ctx => {
 
 /** One effect string of the module ('kind: detail') as the engine's { kind, detail }; the module's
  *  'machine-file' and 'account-access' spellings map onto the engine's five kinds. */
-const KIND = {
+const KIND: Record<string, string> = {
   "machine-file": "machine",
   "account-access": "account",
   network: "network",
   download: "download",
   "workspace-file": "workspace-files",
 }
-const effect = text => {
+const effect = (text: string) => {
   const m = /^([a-z-]+):\s*(.*)$/s.exec(text)
   return m ? { kind: KIND[m[1]] ?? m[1], detail: m[2] } : { kind: "machine", detail: text }
 }
 
-export function inspect(ctx) {
+export function inspect(ctx: SetupContext) {
   const env = envWith(ctx)
   const { checks } = inspectLocal({ root: ctx.root, env })
   const by = Object.fromEntries(checks.map(c => [c.id, c.status]))
@@ -71,7 +102,7 @@ export function inspect(ctx) {
   // is kept for what nothing the person does next fixes: a store other users can read, a client file
   // inside the workspace — the rows that must be undone first
   const pathsMissing = by["google.client-config"] !== "configured" || by["google.credential-store"] !== "configured"
-  const status = c => {
+  const status = (c: CheckRow) => {
     if (c.status !== "blocked") return c.status
     if (c.id === "google.runtime") return "missing" // uvx absent: an owner install fixes it — the module degrades to configured, naming it (D59)
     if (c.id === "google.stored-accounts" && by["google.credential-store"] !== "configured") return "missing"
@@ -109,7 +140,7 @@ export function inspect(ctx) {
 
 /** The unit's own action: the paths the person named, as an env action — the two keys in one action, so a
  *  half-written .env cannot happen; whether .env already holds them, and the write, are the engine's. */
-function settingsAction(ctx, inputs: Record<string, any> = {}) {
+function settingsAction(ctx: SetupContext, inputs: Inputs = {}): UnitAction {
   const want = {
     [KEYS.credentials_dir]: inputs.credentials_dir ?? ctx.env?.WORKSPACE_MCP_CREDENTIALS_DIR,
     [KEYS.client_secret]: inputs.client_secret ?? ctx.env?.GOOGLE_CLIENT_SECRET_PATH,
@@ -129,15 +160,15 @@ function settingsAction(ctx, inputs: Record<string, any> = {}) {
     : { ...action, state: "needs-input", reason: "credentials_dir is required" }
 }
 
-export function plan(ctx, inputs: Record<string, any> = {}) {
+export function plan(ctx: SetupContext, inputs: Inputs = {}) {
   const env = envWith(ctx, inputs)
   const accounts = inputs.account ? [inputs.account] : []
   const p = planLocal({ root: ctx.root, env, accounts, home: homeOf(ctx) })
-  const needs = []
+  const needs: string[] = []
   if (!env.GOOGLE_CLIENT_SECRET_PATH) needs.push("client_secret") // a sign-in prerequisite, not an install one (D41)
   if (!accounts.length) needs.push("account")
   const settings = settingsAction(ctx, inputs)
-  const actions = [
+  const actions: UnitAction[] = [
     settings,
     ...p.actions.map(a => ({
       id: a.id,
@@ -156,7 +187,11 @@ export function plan(ctx, inputs: Record<string, any> = {}) {
   return { checks: inspect(ctx).checks, actions, needs }
 }
 
-export function apply(ctx, action, inputs = {}) {
+export function apply(
+  ctx: SetupContext,
+  action: UnitAction,
+  inputs: Inputs = {}
+): { ok: boolean; changed: string[]; message: string } {
   const env = envWith(ctx, inputs)
   try {
     if (action.state === "done")
