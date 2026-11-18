@@ -4,7 +4,7 @@ import { createHash } from "node:crypto"
 import { spawn } from "node:child_process"
 
 export const CODE_SERVER_VERSION = "4.138.0"
-export function run(file, args, opts = {}) {
+export function run(file: string, args: string[], opts: import("node:child_process").SpawnOptions = {}) {
   return new Promise<void>((resolve, reject) => {
     const child = spawn(file, args, { stdio: ["ignore", "inherit", "inherit"], ...opts })
     child.once("error", reject)
@@ -13,7 +13,7 @@ export function run(file, args, opts = {}) {
     )
   })
 }
-export async function ensureRuntime(home, explicit) {
+export async function ensureRuntime(home: string, explicit?: string): Promise<string> {
   if (explicit) return path.resolve(explicit)
   if (!["darwin", "linux"].includes(process.platform) || !["arm64", "x64"].includes(process.arch))
     throw new Error("Supported hosts: macOS and Linux, arm64 or x64.")
@@ -30,7 +30,9 @@ export async function ensureRuntime(home, explicit) {
     signal: AbortSignal.timeout(30000),
   })
   if (!response.ok) throw new Error(`Release lookup failed: ${response.status}`)
-  const release: any = await response.json()
+  const release = (await response.json()) as {
+    assets?: { name: string; digest?: string; browser_download_url: string }[]
+  }
   const asset = release.assets?.find(a => a.name === name + ".tar.gz")
   if (!asset || !/^sha256:[a-f0-9]{64}$/.test(asset.digest ?? ""))
     throw new Error(

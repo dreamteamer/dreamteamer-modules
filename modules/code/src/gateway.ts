@@ -1,35 +1,46 @@
 import http from "node:http"
 import { randomBytes, timingSafeEqual } from "node:crypto"
 
-const equals = (a, b) =>
+const equals = (a: unknown, b: string) =>
   typeof a === "string" &&
   Buffer.byteLength(a) === Buffer.byteLength(b) &&
   timingSafeEqual(Buffer.from(a), Buffer.from(b))
-export async function gateway({ socketPath, workspace, port = 0, token = randomBytes(32).toString("base64url") }) {
+export async function gateway({
+  socketPath,
+  workspace,
+  port = 0,
+  token = randomBytes(32).toString("base64url"),
+}: {
+  socketPath: string
+  workspace: string
+  port?: number
+  token?: string
+}) {
   const cookieName = `dt_editor_${randomBytes(8).toString("hex")}`
-  let origin
-  const sockets = new Set<any>()
-  const cookies = req =>
+  let origin: string
+  const sockets = new Set<import("node:net").Socket | import("node:stream").Duplex>()
+  const cookies = (req: http.IncomingMessage) =>
     (req.headers.cookie ?? "")
       .split(";")
-      .map(v => v.trim())
-      .find(v => v.startsWith(cookieName + "="))
+      .map((v: string) => v.trim())
+      .find((v: string) => v.startsWith(cookieName + "="))
       ?.slice(cookieName.length + 1)
-  const authenticated = req => equals(cookies(req), token) || equals(req.headers.authorization, `Bearer ${token}`)
-  const allowed = req =>
+  const authenticated = (req: http.IncomingMessage) =>
+    equals(cookies(req), token) || equals(req.headers.authorization, `Bearer ${token}`)
+  const allowed = (req: http.IncomingMessage) =>
     req.headers.host === new URL(origin).host && (!req.headers.origin || req.headers.origin === origin)
-  const headers = req => {
-    const h = { ...req.headers, host: new URL(origin).host }
+  const headers = (req: http.IncomingMessage) => {
+    const h: http.IncomingHttpHeaders = { ...req.headers, host: new URL(origin).host }
     delete h.authorization
     for (const k of Object.keys(h)) if (k.startsWith("x-forwarded-") || k === "forwarded") delete h[k]
     h.cookie = (h.cookie ?? "")
       .split(";")
-      .filter(v => !v.trim().startsWith(cookieName + "="))
+      .filter((v: string) => !v.trim().startsWith(cookieName + "="))
       .join(";")
     return h
   }
   const server = http.createServer(async (req, res) => {
-    const end = (status, text) => {
+    const end = (status: number, text: string) => {
       res.writeHead(status, {
         "Content-Type": "text/plain",
         "Cache-Control": "no-store",

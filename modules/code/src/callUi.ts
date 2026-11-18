@@ -1,5 +1,5 @@
 import http from "node:http"
-export function callUi(socketPath, input) {
+export function callUi(socketPath: string, input: Record<string, unknown>): Promise<unknown> {
   return new Promise((resolve, reject) => {
     const request = http.request(
       { socketPath, path: "/ui", method: "POST", timeout: 15000, headers: { "Content-Type": "application/json" } },

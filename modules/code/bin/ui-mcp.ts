@@ -41,8 +41,20 @@ const tools = [
     },
   },
 ]
-const actions = { editor_state: "state", open_view: "open", select_collection: "select", open_file: "file" }
-async function respond(message) {
+const actions: Record<string, string> = {
+  editor_state: "state",
+  open_view: "open",
+  select_collection: "select",
+  open_file: "file",
+}
+/** A JSON-RPC request line from the MCP client. */
+interface RpcRequest {
+  id?: number | string
+  method?: string
+  params?: { name?: string; arguments?: Record<string, unknown> }
+}
+
+async function respond(message: RpcRequest) {
   if (message.id === undefined) return
   try {
     let result

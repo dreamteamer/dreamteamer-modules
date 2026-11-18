@@ -1,16 +1,42 @@
 import fs from "node:fs/promises"
 import path from "node:path"
 import { createHash } from "node:crypto"
-const digest = data => createHash("sha256").update(data).digest("hex")
+const digest = (data: Buffer) => createHash("sha256").update(data).digest("hex")
+
+/** Where code-server keeps things, and how to run it. */
+export interface ExtensionTarget {
+  runtime: string
+  common: string[]
+  extensions: string
+  profile: string
+  id: string
+  run: (file: string, args: string[]) => Promise<void>
+}
+
+/** One row of code-server's extensions.json. */
+interface InventoryEntry {
+  identifier?: { id?: string }
+  version?: string
+  relativeLocation?: string
+  location?: { path?: string }
+}
 
 // Cache installation, never authentication or workspace data. The inventory must still match.
-export async function installVsix({ runtime, common, extensions, profile, vsix, id, run }) {
+export async function installVsix({
+  runtime,
+  common,
+  extensions,
+  profile,
+  vsix,
+  id,
+  run,
+}: ExtensionTarget & { vsix: string }) {
   const file = path.resolve(vsix),
     hash = digest(await fs.readFile(file))
   const marker = path.join(profile, `installed-${id}.json`)
   const inventory = async () => {
     const bytes = await fs.readFile(path.join(extensions, "extensions.json"))
-    const entries = JSON.parse(bytes.toString())
+    const entries: InventoryEntry[] = JSON.parse(bytes.toString())
     const entry = entries.find(e => e.identifier?.id?.toLowerCase() === id.toLowerCase())
     if (!entry) throw new Error("Extension absent from inventory")
     const location = entry.relativeLocation ? path.join(extensions, entry.relativeLocation) : entry.location?.path
@@ -39,12 +65,20 @@ export async function installVsix({ runtime, common, extensions, profile, vsix, 
 }
 
 // Require marketplace provenance, not just an identical version from a local development VSIX.
-export async function installMarketplace({ runtime, common, extensions, profile, id, version, run }) {
+export async function installMarketplace({
+  runtime,
+  common,
+  extensions,
+  profile,
+  id,
+  version,
+  run,
+}: ExtensionTarget & { version: string }) {
   if (!/^\d+\.\d+\.\d+$/.test(version)) throw new Error("Extension version must be an exact x.y.z version")
   const marker = path.join(profile, `marketplace-${id}.json`)
   const verify = async () => {
     const bytes = await fs.readFile(path.join(extensions, "extensions.json"))
-    const entry = JSON.parse(String(bytes)).find(
+    const entry = (JSON.parse(String(bytes)) as InventoryEntry[]).find(
       e => e.identifier?.id?.toLowerCase() === id.toLowerCase() && e.version === version
     )
     if (!entry?.relativeLocation) throw new Error("Marketplace extension missing from inventory")
@@ -63,9 +97,9 @@ export async function installMarketplace({ runtime, common, extensions, profile,
   // code-server may skip an identical version even with --force; remove unverified provenance first.
   let present = false
   try {
-    present = JSON.parse(await fs.readFile(path.join(extensions, "extensions.json"), "utf8")).some(
-      e => e.identifier?.id?.toLowerCase() === id.toLowerCase()
-    )
+    present = (
+      JSON.parse(await fs.readFile(path.join(extensions, "extensions.json"), "utf8")) as InventoryEntry[]
+    ).some(e => e.identifier?.id?.toLowerCase() === id.toLowerCase())
   } catch {}
   if (present) await run(runtime, [...common, "--uninstall-extension", id])
   await run(runtime, [...common, "--install-extension", `${id}@${version}`, "--force"])

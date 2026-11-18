@@ -3,7 +3,19 @@ import { randomUUID } from "node:crypto"
 import readline from "node:readline"
 
 // Keep stdin open after the sender's first turn, so its inbox remains available for the reply.
-export async function messageCoordinator({ coordinator, text, workspace, timeout = 90000, executable = "claude" }) {
+export async function messageCoordinator({
+  coordinator,
+  text,
+  workspace,
+  timeout = 90000,
+  executable = "claude",
+}: {
+  coordinator: string
+  text: string
+  workspace: string
+  timeout?: number
+  executable?: string
+}) {
   const requestId = randomUUID()
   const child = spawn(
     executable,
@@ -25,8 +37,8 @@ export async function messageCoordinator({ coordinator, text, workspace, timeout
   child.stdin.write(JSON.stringify({ type: "user", message: { role: "user", content: instruction } }) + "\n")
   let pending = false,
     replied = false,
-    resultError,
-    exitCode
+    resultError: Error | undefined,
+    exitCode: number | null | undefined
   const exited = new Promise<void>(resolve => {
     child.once("error", error => {
       resultError = error

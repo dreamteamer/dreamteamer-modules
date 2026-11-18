@@ -1,6 +1,7 @@
+import type { Contribution } from "dreamteamer"
 import { main } from "./cli.ts"
 export const apiVersion = 1
-export default function activate() {
+export default function activate(): Contribution {
   return {
     commands: {
       editor: {

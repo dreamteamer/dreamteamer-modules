@@ -3,7 +3,7 @@ import path from "node:path"
 import os from "node:os"
 import http from "node:http"
 import { createHash, randomUUID } from "node:crypto"
-import { spawn } from "node:child_process"
+import { spawn, type ChildProcess } from "node:child_process"
 import { gateway } from "./gateway.ts"
 import { packageRoot } from "./packageRoot.ts"
 import { callUi } from "./callUi.ts"
@@ -16,7 +16,7 @@ const usage = `dt-editor [start|url|message|state|claude] [workspace] [--port 0]
 start runs in the foreground. Ctrl-C stops the editor. url prints a URL; message asks the coordinator; state inspects UI tools.
 Defaults to Dreamteamer 0.23.3 from the code-server marketplace. --extension-version pins another release; --vsix is a development override.`
 
-export function parseArgs(argv) {
+export function parseArgs(argv: string[]) {
   const opts: Record<string, any> = { verb: "start", workspace: "." }
   let positional = false
   if (["start", "url", "message", "state", "claude"].includes(argv[0])) opts.verb = argv.shift()
@@ -40,11 +40,11 @@ export function parseArgs(argv) {
   return opts
 }
 
-async function privateDirectory(dir) {
+async function privateDirectory(dir: string) {
   await fs.mkdir(dir, { recursive: true, mode: 0o700 })
   await fs.chmod(dir, 0o700)
 }
-async function healthy(socketPath) {
+async function healthy(socketPath: string) {
   return new Promise(resolve => {
     const req = http.get({ socketPath, path: "/healthz", timeout: 1000 }, res => {
       res.resume()
@@ -57,7 +57,7 @@ async function healthy(socketPath) {
 export async function main(argv = process.argv.slice(2)) {
   const opts = parseArgs([...argv])
   const started = Date.now()
-  const phase = label => {
+  const phase = (label: string) => {
     if (opts.verb === "start") console.error(`[dt-editor] ${label}: ${Date.now() - started}ms`)
   }
   if (opts.help) {
@@ -106,7 +106,7 @@ export async function main(argv = process.argv.slice(2)) {
   } catch {
     throw new Error(`Editor already running, or a previous process was killed. Check it before removing ${lock}`)
   }
-  let child,
+  let child: ChildProcess | undefined,
     proxy,
     session,
     exited = false
@@ -205,7 +205,7 @@ export async function main(argv = process.argv.slice(2)) {
         `const child=spawn(exe,args,{stdio:'inherit',env:process.env}); child.on('error',e=>{console.error(e.message);process.exitCode=1}); child.on('exit',(code)=>process.exit(code??1)); for(const sig of ['SIGINT','SIGTERM'])process.on(sig,()=>child.kill(sig));\n`,
       { mode: 0o700 }
     )
-    const quote = value => "'" + value.replaceAll("'", "'\\''") + "'"
+    const quote = (value: string) => "'" + value.replaceAll("'", "'\\''") + "'"
     await fs.writeFile(wrapper, `#!/bin/sh\nexec ${quote(process.execPath)} ${quote(wrapperScript)} "$@"\n`, {
       mode: 0o700,
     })
@@ -227,7 +227,7 @@ export async function main(argv = process.argv.slice(2)) {
     await fs.writeFile(settingsFile, JSON.stringify(settings, null, 2))
     const machineFile = path.join(data, "Machine/settings.json")
     await fs.mkdir(path.dirname(machineFile), { recursive: true })
-    let machineSettings = {}
+    let machineSettings: Record<string, unknown> = {}
     try {
       machineSettings = JSON.parse(await fs.readFile(machineFile, "utf8"))
     } catch (e) {
