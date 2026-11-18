@@ -12,7 +12,7 @@ import path from "node:path"
 import { fileURLToPath } from "node:url"
 
 /** A reference as it may be written — `decisions/2026-01-02--x` or the bare id — reduced to the id. */
-const idOf = ref => String(ref).trim().replace(/^.*\//, "")
+const idOf = (ref: unknown): string => String(ref).trim().replace(/^.*\//, "")
 
 /**
  * The violations in one `decisions` record. Pure.
@@ -22,13 +22,13 @@ const idOf = ref => String(ref).trim().replace(/^.*\//, "")
  * cannot make conditional on a value. Both directions are checked: a missing identity leaves the
  * record unattributable, and the wrong one reads as attributed when it is not.
  */
-export function decisionViolationsOf(id, record) {
-  const out = []
-  const has = f =>
+export function decisionViolationsOf(id: string, record: Record<string, unknown>): string[] {
+  const out: string[] = []
+  const has = (f: string) =>
     record[f] !== undefined &&
     record[f] !== null &&
     record[f] !== "" &&
-    !(Array.isArray(record[f]) && !record[f].length)
+    !(Array.isArray(record[f]) && !(record[f] as unknown[]).length)
   const by = record.decided_by
 
   if (by === "person") {
@@ -76,13 +76,13 @@ export function decisionViolationsOf(id, record) {
  * `accepted` is the receiving side's act, so it requires `accepted_by`. `delivered` needs no such
  * proof: handing something over is a thing you do and can assert.
  */
-export function deliverableViolationsOf(id, record) {
-  const out = []
-  const has = f =>
+export function deliverableViolationsOf(id: string, record: Record<string, unknown>): string[] {
+  const out: string[] = []
+  const has = (f: string) =>
     record[f] !== undefined &&
     record[f] !== null &&
     record[f] !== "" &&
-    !(Array.isArray(record[f]) && !record[f].length)
+    !(Array.isArray(record[f]) && !(record[f] as unknown[]).length)
 
   if (record.status === "accepted" && !has("accepted_by")) {
     out.push(
@@ -104,13 +104,13 @@ export function deliverableViolationsOf(id, record) {
  * A risk closes only through a documented change (`mitigation` says which), and
  * `accepted` needs `mitigation` to name who decided to live with it.
  */
-export function riskViolationsOf(id, record) {
-  const out = []
-  const has = f =>
+export function riskViolationsOf(id: string, record: Record<string, unknown>): string[] {
+  const out: string[] = []
+  const has = (f: string) =>
     record[f] !== undefined &&
     record[f] !== null &&
     record[f] !== "" &&
-    !(Array.isArray(record[f]) && !record[f].length)
+    !(Array.isArray(record[f]) && !(record[f] as unknown[]).length)
   if (record.status === "closed" && !has("mitigation")) {
     out.push(
       `${id}: a risk cannot be \`closed\` with no \`mitigation\` — say what retired it, quotably, or leave it open`
@@ -125,19 +125,19 @@ export function riskViolationsOf(id, record) {
 /** Runs only as a script, so importing the pure functions does not scan the workspace or exit. */
 function main() {
   const argv = process.argv.slice(2)
-  const opt = (n, d) => {
+  const opt = (n: string, d: string) => {
     const i = argv.indexOf(`--${n}`)
     return i >= 0 && argv[i + 1] ? argv[i + 1] : d
   }
   const dataRoot = path.resolve(opt("data-root", "data"))
 
   /** Frontmatter only — the body is prose and no rule here reads it. */
-  function frontmatter(file) {
+  function frontmatter(file: string): Record<string, string | boolean> {
     const text = fs.readFileSync(file, "utf8")
     if (!text.startsWith("---\n")) return {}
     const end = text.indexOf("\n---", 4)
     if (end < 0) return {}
-    const out = {}
+    const out: Record<string, string | boolean> = {}
     for (const line of text.slice(4, end).split("\n")) {
       const m = /^([a-z_]+):\s*(.*)$/.exec(line)
       if (!m) continue
@@ -151,13 +151,16 @@ function main() {
   }
 
   /** Every record of one collection as `[id, frontmatter]`, or [] where the folder does not exist. */
-  function records(folder, suffix) {
+  function records(folder: string, suffix: string): [string, Record<string, string | boolean>][] {
     const dir = path.join(dataRoot, folder)
     if (!fs.existsSync(dir)) return []
     return fs
       .readdirSync(dir, { recursive: true })
       .filter(f => String(f).endsWith(`.${suffix}.md`))
-      .map(f => [String(f).replace(new RegExp(`\\.${suffix}\\.md$`), ""), frontmatter(path.join(dir, String(f)))])
+      .map((f): [string, Record<string, string | boolean>] => [
+        String(f).replace(new RegExp(`\\.${suffix}\\.md$`), ""),
+        frontmatter(path.join(dir, String(f))),
+      ])
   }
 
   const decisions = records("decisions", "decision")
@@ -201,7 +204,7 @@ function main() {
  *  `git_modules/<name>`. */
 const isMain = () => {
   if (!process.argv[1]) return false
-  const real = p => {
+  const real = (p: string) => {
     try {
       return fs.realpathSync(p)
     } catch {
