@@ -24,11 +24,11 @@ const vaultRoot = () => {
 }
 // the engine under test is the one tests/helpers/workspace.mjs resolves — DT_ENGINE_DIR (a checkout), else the
 // engine `dreamteamer/testing` belongs to (the candidate, before a release) — one resolution everywhere
-import { ENGINE } from "../../../tests/helpers/workspace.ts"
+import { ENGINE, engineEntry } from "../../../tests/helpers/workspace.ts"
 export const ENGINE_DIR = fs.realpathSync(ENGINE)
 export const BIN = path.join(ENGINE_DIR, "bin", "dreamteamer.js")
 /** The engine's public API — what `activate(dt)` is handed in a real workspace. */
-export const api = await import(pathToFileURL(path.join(ENGINE_DIR, "src", "api.js")).href)
+export const api = await import(pathToFileURL(engineEntry(ENGINE_DIR)).href)
 
 /** Every spawn is bounded: a hung command fails its test instead of hanging the suite. */
 export const SPAWN_TIMEOUT_MS = 60_000
@@ -52,7 +52,9 @@ export function git(root, args) {
 function baseKey() {
   const h = createHash("sha256")
   h.update(ENGINE_DIR)
-  h.update(fs.readFileSync(path.join(ENGINE_DIR, "src", "init.js")))
+  // the engine's identity: its manifest (the version) and its API entry, wherever its layout keeps it
+  h.update(fs.readFileSync(path.join(ENGINE_DIR, "package.json")))
+  h.update(fs.readFileSync(engineEntry(ENGINE_DIR)))
   h.update(fs.readFileSync(fileURLToPath(import.meta.url)))
   for (const f of fs.readdirSync(path.join(ENGINE_DIR, "collections")).sort())
     h.update(fs.readFileSync(path.join(ENGINE_DIR, "collections", f)))
@@ -115,6 +117,7 @@ export function workspace({ module = true, pkg: extra = {}, compile = true } = {
     const at = path.join(root, "modules", "files")
     for (const part of [
       "package.json",
+      "dist",
       "src",
       "lib",
       "collections",

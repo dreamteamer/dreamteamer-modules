@@ -20,7 +20,7 @@ const BIN = path.join(SKILLS, "bin")
 function flagsOf(script) {
   const src = fs.readFileSync(path.join(BIN, script), "utf8")
   const found = new Set()
-  for (const m of src.matchAll(/\b(?:opt|flag)\(\s*'([a-z0-9-]+)'/g)) found.add(m[1])
+  for (const m of src.matchAll(/\b(?:opt|flag)\(\s*["']([a-z0-9-]+)["']/g)) found.add(m[1])
   return found
 }
 
@@ -36,7 +36,8 @@ function documentedCalls() {
     const body = fs.readFileSync(doc, "utf8")
     // `bin/thing.mjs` followed by whatever precedes the next backtick-fenced boundary or newline.
     for (const m of body.matchAll(/bin\/([a-z-]+)\.mjs((?:\s+(?:--[a-z0-9-]+|<[^>]*>|\[[^\]]*\]|[^\s`|]+))*)/g)) {
-      const script = `${m[1]}.mjs`
+      // the skill runs the compiled bin/<name>.mjs; its source here is bin/<name>.mts
+      const script = `${m[1]}.mts`
       if (!fs.existsSync(path.join(BIN, script))) continue // a script named in prose that does not exist is a different test
       const flags = [...m[2].matchAll(/--([a-z0-9-]+)/g)].map(x => x[1])
       if (flags.length) calls.push({ doc: path.relative(SKILLS, doc), script, flags })

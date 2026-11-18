@@ -31,8 +31,8 @@ import {
 
 after(cleanup)
 const SRC = path.join(ROOT, "modules", "protocol", "src")
-const { initEngine } = await import(pathToFileURL(path.join(SRC, "host", "engine.js")).href)
-const { navModel } = await import(pathToFileURL(path.join(SRC, "navModel.js")).href)
+const { initEngine } = await import(pathToFileURL(path.join(SRC, "host", "engine.ts")).href)
+const { navModel } = await import(pathToFileURL(path.join(SRC, "navModel.ts")).href)
 
 const MEMBERS = Object.keys(pkgOf("core").dreamteamer.preset ?? {}).map(d => d.replace(/^@dreamteamer\//, ""))
 const skip =

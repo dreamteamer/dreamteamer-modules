@@ -10,7 +10,7 @@ import os from "node:os"
 import path from "node:path"
 import { execFileSync, spawnSync } from "node:child_process"
 import { pathToFileURL } from "node:url"
-import { installCopied } from "../../../../tests/helpers/workspace.ts"
+import { engineEntry, installCopied } from "../../../../tests/helpers/workspace.ts"
 import { RND, T, docRef } from "./lib/cr-stage-records.ts"
 
 const made = []
@@ -128,7 +128,7 @@ test(
       assert.equal(dry.out.trim().split("\n").length, 1, dry.out)
     }
 
-    const api = await import(pathToFileURL(path.join(ENGINE, "src", "api.js")).href)
+    const api = await import(pathToFileURL(engineEntry(ENGINE)).href)
     assert.notEqual(api.CHECK_WARNINGS, true, "below the warning channel")
     const { checkChangeRequestStage } = await import(pathToFileURL(path.join(root, "modules/rnd/lib/crStage.ts")).href)
     let opened = 0

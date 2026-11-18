@@ -15,10 +15,11 @@ const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..")
 
 function* walk(dir) {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (e.name === "node_modules" || e.name.startsWith(".")) continue
+    // the sources, not their build (dist/ is scripts/build.ts's output of the same code)
+    if (e.name === "node_modules" || e.name === "dist" || e.name.startsWith(".")) continue
     const p = path.join(dir, e.name)
     if (e.isDirectory()) yield* walk(p)
-    else if (/\.(mjs|js)$/.test(e.name)) yield p
+    else if (/\.m?[jt]s$/.test(e.name) && !e.name.endsWith(".d.ts")) yield p
   }
 }
 

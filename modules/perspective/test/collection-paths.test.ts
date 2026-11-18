@@ -40,17 +40,17 @@ const shipped = new Map(
 const SCRIPTS = [
   ...fs.readdirSync(path.join(SKILL, "bin")).map(f => path.join(SKILL, "bin", f)),
   ...fs.readdirSync(path.join(SKILL, "lib")).map(f => path.join(SKILL, "lib", f)),
-  path.join(MODULE, "dist", "bin", "check-records.js"),
-].filter(f => f.endsWith(".mjs"))
+  path.join(MODULE, "bin", "check-records.ts"),
+].filter(f => /\.m?ts$/.test(f) && !f.endsWith(".d.ts"))
 
 /** `[file, collection name]` for every literal collection argument handed to a path helper, or to a
  *  script's own thin wrapper around one. */
 function helperArguments() {
   const out = []
   const first =
-    /\b(?:collectionDir|collectionStorage|recordPath|recordId|underRun|refsUnderRun|existingRefs)\(\s*'([^']+)'/g
-  const loadArg = /\bload\(\s*'([^']+)'\s*\)/g // infer-goals' wrapper
-  const refOfArg = /\brefOf\(\s*\w+\s*,\s*'([^']+)'\s*\)/g // derive-collaborators' wrapper
+    /\b(?:collectionDir|collectionStorage|recordPath|recordId|underRun|refsUnderRun|existingRefs)\(\s*["']([^"']+)["']/g
+  const loadArg = /\bload\(\s*["']([^"']+)["']\s*\)/g // infer-goals' wrapper
+  const refOfArg = /\brefOf\(\s*\w+\s*,\s*["']([^"']+)["']\s*\)/g // derive-collaborators' wrapper
   for (const file of SCRIPTS) {
     const src = fs.readFileSync(file, "utf8")
     for (const re of [first, loadArg, refOfArg])
@@ -65,7 +65,7 @@ test("the module ships the flat observed collections and none of the deleted one
     assert.ok(shipped.has(c), c)
   for (const c of ["phases", "activity-lanes", "tasks"]) assert.ok(!shipped.has(c), `${c} is deleted`)
   assert.ok(!fs.existsSync(path.join(COLS, "world")))
-  assert.ok(!fs.existsSync(path.join(SKILL, "bin", "derive-tasks.mjs")))
+  assert.ok(!fs.existsSync(path.join(SKILL, "bin", "derive-tasks.mts")))
 })
 
 test("every helper argument names a collection this module ships", () => {
@@ -76,7 +76,7 @@ test("every helper argument names a collection this module ships", () => {
 })
 
 test("every literal suffix handed to recordPath is the one its descriptor declares", () => {
-  const re = /\brecordPath\(\s*'([^']+)',.*?,\s*'([a-z-]+)',\s*(?:dataRoot|root|data)\b/g
+  const re = /\brecordPath\(\s*["']([^"']+)["'],.*?,\s*["']([a-z-]+)["'],\s*(?:dataRoot|root|data)\b/g
   const wrong = []
   let seen = 0
   for (const file of SCRIPTS) {

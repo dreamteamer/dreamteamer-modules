@@ -9,7 +9,8 @@ import fs from "node:fs"
 import path from "node:path"
 import yaml from "js-yaml"
 import { rndWorkspace, put, run, cleanupAll } from "./helpers/rnd-workspace.ts"
-import { ENGINE } from "../../../tests/helpers/workspace.ts"
+import { ENGINE, engineEntry } from "../../../tests/helpers/workspace.ts"
+import { pathToFileURL } from "node:url"
 
 after(() => cleanupAll())
 
@@ -31,6 +32,9 @@ const settle = root => {
   const r = run(root, ["relations", "rebuild", "rnd/products"])
   assert.equal(r.status, 0, r.stderr + r.stdout)
 }
+
+/** The minor of a `>=0.x.y` floor, for "never below" checks (0.50: the engine that stages dist/skills and runs `dt run`). */
+const floorMinor = range => Number(/^>=0\.(\d+)\./.exec(range)?.[1] ?? NaN)
 
 describe("rnd/change-requests.tags and its stage declaration", () => {
   test("the descriptor: free tags, the four stages declared in order for the stage-checks viewer, tags a list column", () => {
@@ -102,8 +106,7 @@ describe("rnd/change-requests.tags and its stage declaration", () => {
 
   test("the declaration reaches the presentation contract the editor reads, as the field row's viewer and viewer_options", async () => {
     const root = rndWorkspace()
-    const { presentation } = await import(path.join(ENGINE, "src", "records-api.js"))
-    const { loadDescriptors } = await import(path.join(ENGINE, "src", "runtime.ts"))
+    const { presentation, loadDescriptors } = await import(pathToFileURL(engineEntry(ENGINE, "./records")).href)
     const p = presentation(loadDescriptors(root))
     const row = p.fields["rnd/change-requests"].find(f => f.field === "tags")
     assert.equal(row.viewer, "stage-checks")
@@ -117,7 +120,7 @@ describe("rnd/change-requests.tags and its stage declaration", () => {
 
 describe("dt check: deployed and deployed_on agree, as a warning", async () => {
   const { stageTagWarnings, checkStageTags } = await import(path.join(RND, "lib", "checkStageTags.ts"))
-  const engineApi = await import(path.join(ENGINE, "src", "api.js"))
+  const engineApi = await import(pathToFileURL(engineEntry(ENGINE)).href)
   const HAS_CHANNEL = engineApi.CHECK_WARNINGS === true
 
   test("the rule: both directions warn, a consistent pair and a look-alike tag do not", () => {
@@ -258,10 +261,9 @@ describe("the 0.7.0 release", () => {
   test("released as 0.7.0, with UPDATING.md and the README release note, the engine floor unmoved", () => {
     const pkg = JSON.parse(read("package.json"))
     // the warning is silent on an engine without CHECK_WARNINGS, so the floor does not move
-    assert.equal(
-      pkg.dreamteamer.engine,
-      ">=0.49.0" /* CR-dt-008: rnd ships a nav fragment (dreamteamer.nav), a 0.49 key */
-    )
+    // never below 0.49 (CR-dt-008: rnd ships a nav fragment, dreamteamer.nav, a 0.49 key); raised since, by the
+    // modules that stage skills from dist/skills and run scripts by name
+    assert.ok(floorMinor(pkg.dreamteamer.engine) >= 49, `engine floor ${pkg.dreamteamer.engine} is >=0.49.0 or later`)
     assert.match(read("UPDATING.md"), /## 0\.7\.0 — /)
     // the stage tags' Unreleased section became 0.7.0; a later Unreleased section (the next release's) is not it
     assert.doesNotMatch(read("UPDATING.md"), /## Unreleased[^\n]*stage tags/)

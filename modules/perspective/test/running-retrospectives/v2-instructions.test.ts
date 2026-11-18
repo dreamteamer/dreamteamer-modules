@@ -100,7 +100,7 @@ test("no v1 descriptor spelling anywhere in the skill folder", () => {
         walk(p)
         continue
       }
-      if (!/\.(md|mjs|js|ya?ml)$/.test(e.name)) continue
+      if (!/\.(md|mts|ts|mjs|js|ya?ml)$/.test(e.name)) continue
       fs.readFileSync(p, "utf8")
         .split("\n")
         .forEach((line, i) => {

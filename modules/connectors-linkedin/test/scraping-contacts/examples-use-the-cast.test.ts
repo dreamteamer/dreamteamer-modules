@@ -12,10 +12,11 @@ const CAST_FIRST_NAMES = new Set(["Dana", "Sam", "Priya", "Tom"])
 
 function* shipped(dir) {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (e.name === "test" || e.name === "node_modules" || e.name.startsWith(".")) continue
+    // the sources: dist/ is their build (scripts/build.ts), the same text again
+    if (e.name === "test" || e.name === "node_modules" || e.name === "dist" || e.name.startsWith(".")) continue
     const p = path.join(dir, e.name)
     if (e.isDirectory()) yield* shipped(p)
-    else if (/\.(md|ya?ml|json|mjs)$/.test(e.name)) yield p
+    else if (/\.(md|ya?ml|json|mjs|mts|ts)$/.test(e.name)) yield p
   }
 }
 const TEXT = [...shipped(MODULE)].map(f => [path.relative(MODULE, f), fs.readFileSync(f, "utf8")])

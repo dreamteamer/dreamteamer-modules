@@ -19,9 +19,14 @@ import path from "node:path"
 import yaml from "js-yaml"
 import { fileURLToPath } from "node:url"
 
-// `collections/` and `mixins/` sit three levels above this file both in the package and in
-// `.dreamteamer/`, where compile copies the skill.
-const MODULE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..")
+// `collections/` and `mixins/` sit three levels above this file in the package source and in `.dreamteamer/`,
+// where compile copies the skill. The package's build is one level deeper (dist/skills/…), so a `dist` three
+// levels up that sits in a package is stepped out of, to the package root beside it.
+const THREE_UP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..")
+const MODULE_ROOT =
+  path.basename(THREE_UP) === "dist" && fs.existsSync(path.join(path.dirname(THREE_UP), "package.json"))
+    ? path.dirname(THREE_UP)
+    : THREE_UP
 export const SHIPPED_COLLECTIONS = path.join(MODULE_ROOT, "collections")
 const SHIPPED_MIXINS = path.join(MODULE_ROOT, "mixins")
 export const NAMESPACE = "perspective"

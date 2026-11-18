@@ -26,7 +26,7 @@ import {
 
 after(cleanup)
 const { createHandler } = await import(
-  pathToFileURL(path.join(ROOT, "modules", "protocol", "src", "createHandler.js")).href
+  pathToFileURL(path.join(ROOT, "modules", "protocol", "src", "createHandler.ts")).href
 )
 const skip = !engineMeets("rnd") && `rnd's nav fragment installs on engine 0.49.0 or later; testing ${ENGINE_VERSION}`
 const HOME = () => ({ HOME: fs.mkdtempSync(path.join(os.tmpdir(), "dtm-HOME-")) })

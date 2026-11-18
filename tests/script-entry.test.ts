@@ -22,15 +22,15 @@ import path from "node:path"
 import { spawnSync } from "node:child_process"
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..")
-const SKIP = new Set(["node_modules", ".git", "git_modules", ".dreamteamer", ".claude", "tests"])
+const SKIP = new Set(["node_modules", ".git", "git_modules", ".dreamteamer", ".claude", "tests", "dist"])
 
-/** Every `.mjs` in the package that could be run as a script. */
+/** Every script source in the package that could be run as a script (dist/ is its build). */
 function scripts(dir = ROOT, out = []) {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
     if (SKIP.has(e.name)) continue
     const p = path.join(dir, e.name)
     if (e.isDirectory()) scripts(p, out)
-    else if (e.name.endsWith(".mjs") && !e.name.endsWith(".test.mjs")) out.push(p)
+    else if (/\.m?[jt]s$/.test(e.name) && !/\.test\.m?[jt]s$|\.d\.ts$/.test(e.name)) out.push(p)
   }
   return out
 }

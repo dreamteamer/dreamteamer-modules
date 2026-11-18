@@ -112,7 +112,8 @@ function core011Record() {
   )
   const c = engineRun({ root, engine } as Workspace, ["compile"], { timeoutMs: 120_000 })
   assert.equal(c.status, 0, c.stderr)
-  const r = node(root, path.join(at, "dist", "bin", "session-save.js"), HOOK_ARGS, payload(root))
+  // core 0.11.0 as npm published it: its bin is bin/session-save.mjs
+  const r = node(root, path.join(at, "bin", "session-save.mjs"), HOOK_ARGS, payload(root))
   assert.equal(r.code, 0, `core 0.11's bin: ${r.out}`)
   return {
     files: sessionFiles(root),

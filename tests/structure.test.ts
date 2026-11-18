@@ -194,7 +194,8 @@ describe("setup units, repo-wide", () => {
             .readdirSync(lib)
             .filter(
               f =>
-                /-setup\.mjs$/.test(f) && /export const SETUP_UNIT\b/.test(fs.readFileSync(path.join(lib, f), "utf8"))
+                /(-setup\.mjs|Setup\.ts)$/.test(f) &&
+                /export const SETUP_UNIT\b/.test(fs.readFileSync(path.join(lib, f), "utf8"))
             )
         : []
       if (!units.length) continue
@@ -202,11 +203,17 @@ describe("setup units, repo-wide", () => {
       assert.ok(fs.existsSync(path.join(MODULES, m, "SETUP.md")), `${m} has ${units.join(", ")} but no SETUP.md`)
       assert.ok(pkgOf(m).files.includes("SETUP.md"), `${m}: SETUP.md is not in files — npm would leave it out`)
       const text = fs.readFileSync(path.join(MODULES, m, "SETUP.md"), "utf8")
-      for (const [, script] of text.matchAll(/node node_modules\/@dreamteamer\/[\w-]+\/(bin\/[\w.-]+\.mjs)/g))
+      // a script is run by name (`dt run @dreamteamer/<id> <script>`); the one named must be one that module declares
+      for (const [, id, script] of text.matchAll(/\bdt run @dreamteamer\/([\w-]+) ([\w-]+)/g))
         assert.ok(
-          fs.existsSync(path.join(MODULES, m, script)),
-          `${m}/SETUP.md names ${script}, which ${m} does not ship`
+          Object.hasOwn(pkgOf(id).dreamteamer?.scripts ?? {}, script),
+          `${m}/SETUP.md runs ${id} ${script}, which ${id} does not declare in dreamteamer.scripts`
         )
+      assert.doesNotMatch(
+        text,
+        /node node_modules\/@dreamteamer\/[\w-]+\/bin\//,
+        `${m}/SETUP.md runs a module script by path`
+      )
       assert.doesNotMatch(text, /dt-setup/, `${m}/SETUP.md still names dt-setup`)
     }
     assert.ok(seen >= 5, `only ${seen} modules carry a setup unit — the scan is broken, not the repo`)

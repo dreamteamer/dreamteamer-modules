@@ -42,8 +42,9 @@ describe("sessions are kept in the workspace's own data", { skip }, () => {
     assert.match(tracked, /2026-10-28--northwind-calendar-sync\.session\.md/)
   })
 
-  test("sessions' engine floor is 0.48.0 — the floor core 0.11 shipped it under (0.42 `next`, which this still needs)", () => {
-    assert.equal(pkgOf("sessions").dreamteamer.engine, ">=0.48.0")
+  test("sessions' engine floor is never below 0.48.0 — the floor core 0.11 shipped it under (0.42 `next`, which this still needs)", () => {
+    // raised since to 0.50 (dist/skills and `dt run`); what this pins is that it never drops below 0.48
+    assert.ok(Number(/^>=0\.(\d+)\./.exec(pkgOf("sessions").dreamteamer.engine)?.[1]) >= 48)
   })
 })
 

@@ -34,6 +34,6 @@ test("the command runs the verb and reports its summary; the binding targets fil
 
 test("the shipped folders are all in the manifest", () => {
   const pkg = JSON.parse(read("package.json"))
-  for (const k of ["collections", "ui-views", "skills", "commands", "command-bindings", "src", "README.md"])
+  for (const k of ["collections", "ui-views", "skills", "commands", "command-bindings", "dist", "README.md"])
     assert.ok(pkg.files.includes(k), k)
 })

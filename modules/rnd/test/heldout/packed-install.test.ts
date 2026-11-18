@@ -37,19 +37,19 @@ describe("held-out: the packed install", () => {
   test("steps 2–3: every file the bin reaches and every browser file vendor copies is in the tarball", () => {
     const files = new Set(packedFiles("rnd"))
     const bin = path.join(RND, "dist", "bin", "dt-prototype.js")
-    // the bin loads each verb's module by a template path: `../lib/prototype/node/${file}.mjs`
-    const verbs = [...fs.readFileSync(bin, "utf8").matchAll(/^\t(\w+): \['(\w+)'/gm)].map(m => m[2])
+    // the built bin loads each verb's module by a template path: `../lib/prototype/node/${file}.js` in dist/
+    const verbs = [...fs.readFileSync(bin, "utf8").matchAll(/^\s+(\w+): \[["'](\w+)["']/gm)].map(m => m[2])
     assert.deepEqual([...new Set(verbs)].sort(), ["check", "export", "play", "shoot", "vendor", "walk"])
     const seen = new Set<string>()
-    const todo = [bin, ...verbs.map(v => path.join(RND, "lib", "prototype", "node", `${v}.mjs`))]
+    const todo = [bin, ...verbs.map(v => path.join(RND, "dist", "lib", "prototype", "node", `${v}.js`))]
     while (todo.length) {
       const f = todo.pop()
       if (seen.has(f)) continue
       seen.add(f)
-      assert.ok(fs.existsSync(f), `${path.relative(RND, f)} is imported but does not exist in the source`)
+      assert.ok(fs.existsSync(f), `${path.relative(RND, f)} is imported but does not exist in the build`)
       for (const d of importsOf(f)) if (d.startsWith(RND)) todo.push(d)
     }
-    const browser = path.join(RND, "lib", "prototype", "browser")
+    const browser = path.join(RND, "dist", "lib", "prototype", "browser")
     for (const f of fs.readdirSync(browser).filter(x => /\.(js|css)$/.test(x))) seen.add(path.join(browser, f))
     const missing = [...seen]
       .map(f => path.relative(RND, f).split(path.sep).join("/"))

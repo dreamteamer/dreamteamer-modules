@@ -26,7 +26,7 @@ import {
   stream,
 } from "./cr-modules-017-lib.ts"
 
-const { ROUTES } = await import(pathToFileURL(path.join(ROOT, "modules", "protocol", "src", "routes.js")).href)
+const { ROUTES } = await import(pathToFileURL(path.join(ROOT, "modules", "protocol", "src", "routes.ts")).href)
 const RANK = { read: 0, edit: 1, admin: 2 }
 const WORD = { read: "read", edit: "edit", admin: "admin" }
 

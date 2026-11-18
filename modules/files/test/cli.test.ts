@@ -1,7 +1,7 @@
 // The `dt files` dispatch: switches never swallow a positional, and only registered subcommands run.
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { parseArgs } from "../../../node_modules/dreamteamer/src/api.js"
+import { parseArgs } from "dreamteamer"
 import { bind } from "../src/engine.ts"
 import { filesCommand, normalizeArgs } from "../src/cli.ts"
 

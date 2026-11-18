@@ -38,11 +38,12 @@ const sh = (cmd, args, cwd) => {
   const r = spawnSync(cmd, args, { cwd, encoding: "utf8", timeout: 120_000, env: { ...process.env, HOME } })
   return { code: r.status, out: `${r.stdout}\n${r.stderr}`, stdout: r.stdout }
 }
+// the installed bins, as built into dist/bin (scripts/build.ts)
 const MIGRATIONS = [
-  "migrate-change-request-stage.mjs",
-  "migrate-journey-steps.mjs",
-  "migrate-personas.mjs",
-  "migrate-session-bindings.mjs",
+  "migrate-change-request-stage.js",
+  "migrate-journey-steps.js",
+  "migrate-personas.js",
+  "migrate-session-bindings.js",
 ]
 
 describe("rnd bins after the decomposition", { skip }, () => {
@@ -51,7 +52,13 @@ describe("rnd bins after the decomposition", { skip }, () => {
     assert.match(pkgOf("rnd").version, /^0\.11\.\d+$/) // rnd 0.11.x: the decomposition shipped in 0.11.0; a patch keeps it
     const files = packedFiles("rnd")
     assert.ok(files.includes("dist/lib/findWorkspace.js"), "dist/lib/findWorkspace.js is not in the tarball")
-    for (const f of ["SETUP.md", "compose.json", "dist/lib/wiki.js", "bin/notebooklm-notebook.mjs", "bin/wikis-wiki.mjs"])
+    for (const f of [
+      "SETUP.md",
+      "compose.json",
+      "dist/lib/wiki.js",
+      "bin/notebooklm-notebook.mjs",
+      "bin/wikis-wiki.mjs",
+    ])
       assert.ok(!files.includes(f), `${f} ships`)
     assert.deepEqual(
       files.filter(f => f.startsWith("src/")),
@@ -59,9 +66,9 @@ describe("rnd bins after the decomposition", { skip }, () => {
       "src/ ships"
     )
     assert.deepEqual(
-      files.filter(f => /^lib\/[^/]*-setup\.mjs$/.test(f)),
+      files.filter(f => /^(dist\/)?lib\/[^/]*(-setup\.mjs|Setup\.js)$/.test(f)),
       [],
-      "a lib/*-setup.mjs ships"
+      "a setup unit ships"
     )
     assert.ok(!("provides" in pkgOf("rnd").dreamteamer), "package.json still declares provides")
     assert.deepEqual(
@@ -83,8 +90,8 @@ describe("rnd bins after the decomposition", { skip }, () => {
     settle(root)
     const dir = path.join(root, "prototypes", "northwind")
     fs.cpSync(FIXTURE, dir, { recursive: true })
-    const binDir = path.join(root, "node_modules", "@dreamteamer", "rnd", "bin")
-    const v = sh(process.execPath, [path.join(binDir, "dt-prototype.mjs"), "vendor", "--dir", dir], root)
+    const binDir = path.join(root, "node_modules", "@dreamteamer", "rnd", "dist", "bin")
+    const v = sh(process.execPath, [path.join(binDir, "dt-prototype.js"), "vendor", "--dir", dir], root)
     assert.equal(v.code, 0, `vendor (setup): ${v.out}`)
     // step 2 — three working directories
     const sub = path.join(root, "data", "rnd")

@@ -23,13 +23,24 @@ import {
 after(cleanup)
 const TABLE = fs.readFileSync(path.join(ROOT, "docs", "setup-table.md"), "utf8")
 const rows = Object.fromEntries(
-  [...TABLE.matchAll(/^\| ([a-z-]+) \| ([^|]*) \| ([^|]*) \|/gm)]
+  [...TABLE.matchAll(/^\| ([a-z0-9-]+) \| ([^|]*) \| ([^|]*) \|/gm)]
     .filter(m => m[1] !== "module")
     .map(m => [m[1], m[3].trim()])
 )
-const unitFile = m => path.join(MODULES, m, "lib", `${m}-setup.mjs`)
-const shipsUnit = m =>
-  fs.existsSync(unitFile(m)) && /export const SETUP_UNIT\b/.test(fs.readFileSync(unitFile(m), "utf8"))
+/** A setup unit: a lib/ file named for it (`<name>Setup.ts`, or `<id>-setup.mjs` before the TypeScript rename) exporting SETUP_UNIT. */
+const shipsUnit = m => {
+  const lib = path.join(MODULES, m, "lib")
+  return (
+    fs.existsSync(lib) &&
+    fs
+      .readdirSync(lib)
+      .some(
+        f =>
+          /(Setup\.ts|-setup\.mjs)$/.test(f) &&
+          /export const SETUP_UNIT\b/.test(fs.readFileSync(path.join(lib, f), "utf8"))
+      )
+  )
+}
 let FROM
 before(() => {
   FROM = packedInto(fs.mkdtempSync(path.join(os.tmpdir(), "dtm-all-")), ...moduleIds())

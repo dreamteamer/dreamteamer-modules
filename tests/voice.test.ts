@@ -9,7 +9,9 @@ import path from "node:path"
 import { moduleIds, pkgOf, MODULES } from "./helpers/workspace.ts"
 
 const PROSE = /\.(md|ya?ml|json)$/
-const CODE = /\.(m?js|py|sh)$/
+const CODE = /\.(m?[jt]s|py|sh)$/
+// ui and ui2 ship their app source as it is; its TypeScript was never read by this gate, only shipped JavaScript
+const APP_CODE = /\.(m?js|py|sh)$/
 const SKIP_DIRS = new Set(["node_modules", "test", "tests", "docs", "dist", "__pycache__", ".venv"])
 
 /** Every file the module's `files` list ships, plus package.json. */
@@ -24,8 +26,13 @@ function shipped(m) {
     }
     for (const e of fs.readdirSync(p, { withFileTypes: true })) if (!SKIP_DIRS.has(e.name)) walk(path.join(p, e.name))
   }
-  for (const f of pkgOf(m).files ?? []) walk(path.join(root, f))
-  return out.filter(f => PROSE.test(f) || CODE.test(f))
+  const files = pkgOf(m).files ?? []
+  for (const f of files) walk(path.join(root, f))
+  // a module that ships its build (dist/) is read in the source that build is generated from — the same comments
+  if (files.includes("dist") && m !== "ui" && m !== "ui2")
+    for (const d of ["src", "lib", "bin", "skills"]) if (!files.includes(d)) walk(path.join(root, d))
+  const code = m === "ui" || m === "ui2" ? APP_CODE : CODE
+  return out.filter(f => PROSE.test(f) || code.test(f))
 }
 
 /** The lines a rule applies to: every line of prose, only the comment lines of code. */

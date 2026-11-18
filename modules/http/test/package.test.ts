@@ -6,6 +6,7 @@ import { spawnSync } from "node:child_process"
 import path from "node:path"
 import { pathToFileURL } from "node:url"
 import { api, packageDir, SPAWN_TIMEOUT_MS } from "../../../tests/helpers/fixture.ts"
+import { engineEntry } from "../../../tests/helpers/workspace.ts"
 import activate, { apiVersion, parseServeArgs } from "../src/activate.ts"
 
 // the package as npm ships it: the build of src/ (scripts/build.ts)
@@ -17,7 +18,7 @@ describe("importing the package", () => {
     const script = `
 			await import(${JSON.stringify(pathToFileURL(path.join(SRC, "createApp.js")).href)});
 			const ext = await import(${JSON.stringify(pathToFileURL(path.join(SRC, "activate.js")).href)});
-			const dt = await import(${JSON.stringify(pathToFileURL(path.join(api.engineRoot, "src", "api.js")).href)});
+			const dt = await import(${JSON.stringify(pathToFileURL(engineEntry(api.engineRoot)).href)});
 			ext.default(dt);
 		`
     const r = spawnSync(process.execPath, ["--input-type=module", "-e", script], {

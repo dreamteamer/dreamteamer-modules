@@ -25,9 +25,11 @@ const probe = fromDir =>
     { encoding: "utf8" }
   )
 
+// the built helper (dist/skills, scripts/build.ts): it is copied into fake trees and run from there as JavaScript
 const LIB = path.join(
   path.dirname(new URL(import.meta.url).pathname),
   "..",
+  "dist",
   "skills",
   "running-retrospectives",
   "lib",

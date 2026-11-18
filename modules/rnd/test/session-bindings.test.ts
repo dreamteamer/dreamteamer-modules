@@ -116,6 +116,9 @@ function migrate(root, ...args) {
   return { code: r.status, out: (r.stdout ?? "") + (r.stderr ?? "") }
 }
 
+/** The minor of a `>=0.x.y` floor, for "never below" checks (0.50: the engine that stages dist/skills and runs `dt run`). */
+const floorMinor = range => Number(/^>=0\.(\d+)\./.exec(range)?.[1] ?? NaN)
+
 describe("rnd ships no session bindings", () => {
   test("line 1: rnd ships no session-bindings folder, names it in neither files nor ignore, and its tarball has none", () => {
     assert.equal(fs.existsSync(path.join(RND, "session-bindings")), false, "modules/rnd/session-bindings/ is gone")
@@ -399,10 +402,9 @@ describe("the 0.8.0 release, and every release after it", () => {
     const pkg = JSON.parse(read("package.json"))
     const [maj, min] = pkg.version.split(".").map(Number)
     assert.ok(maj > 0 || min >= 8, `version ${pkg.version} is 0.8.0 or later`)
-    assert.equal(
-      pkg.dreamteamer.engine,
-      ">=0.49.0" /* CR-dt-008: rnd ships a nav fragment (dreamteamer.nav), a 0.49 key */
-    )
+    // never below 0.49 (CR-dt-008: rnd ships a nav fragment, dreamteamer.nav, a 0.49 key); raised since, by the
+    // modules that stage skills from dist/skills and run scripts by name
+    assert.ok(floorMinor(pkg.dreamteamer.engine) >= 49, `engine floor ${pkg.dreamteamer.engine} is >=0.49.0 or later`)
     assert.match(read("UPDATING.md"), /## 0\.8\.0 — rnd ships no session bindings/)
     assert.match(read("UPDATING.md"), /migrate-session-bindings\.mjs --write/)
     assert.match(read("README.md"), /## 0\.8\.0 — from 0\.7\.0/)

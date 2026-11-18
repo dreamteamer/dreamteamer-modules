@@ -27,7 +27,7 @@ import {
 
 after(cleanup)
 const SRC = path.join(ROOT, "modules", "protocol", "src")
-const { createHandler } = await import(pathToFileURL(path.join(SRC, "createHandler.js")).href)
+const { createHandler } = await import(pathToFileURL(path.join(SRC, "createHandler.ts")).href)
 
 const PRESET = pkgOf("core").dreamteamer.preset
 const MEMBERS = Object.keys(PRESET).map(d => d.replace(/^@dreamteamer\//, ""))

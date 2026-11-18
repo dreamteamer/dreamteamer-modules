@@ -15,7 +15,7 @@ import { apiBase, authHeaders, TIMEOUT } from "./cr-dt-008-web.ts"
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..")
 const MODULES = path.join(ROOT, "modules")
-const { fixture, call } = await import(pathToFileURL(path.join(MODULES, "web", "test", "support.mjs")).href)
+const { fixture, call } = await import(pathToFileURL(path.join(MODULES, "web", "test", "support.ts")).href)
 const { startWeb } = await import(pathToFileURL(path.join(MODULES, "web", "src", "server.ts")).href)
 const { createHandler } = await import(pathToFileURL(path.join(MODULES, "protocol", "src", "createHandler.ts")).href)
 

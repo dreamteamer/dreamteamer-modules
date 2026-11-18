@@ -10,10 +10,10 @@ import path from "node:path"
 import { ROOT } from "./helpers/workspace.ts"
 
 const HELPERS = [
-  "tests/helpers/workspace.mjs",
-  "tests/helpers/fixture.mjs",
-  "modules/files/test/fixture.mjs",
-  "modules/notebooklm/test/fixture.mjs",
+  "tests/helpers/workspace.ts",
+  "tests/helpers/fixture.ts",
+  "modules/files/test/fixture.ts",
+  "modules/notebooklm/test/fixture.ts",
 ]
 // code only: a comment may describe what the helper no longer does
 const code = f =>
@@ -25,15 +25,15 @@ const code = f =>
 
 describe("the helpers stand on dreamteamer/testing", () => {
   test("dreamteamer/testing resolves from this repo", () => {
-    assert.ok(import.meta.resolve("dreamteamer/testing").endsWith("/src/testing.js"))
+    assert.match(import.meta.resolve("dreamteamer/testing"), /\/(src|dist)\/testing\.js$/)
   })
   for (const f of HELPERS) {
     test(`${f}: imports it, spawns no engine binary, builds no workspace with its own init`, () => {
       const src = code(f)
-      assert.match(src, /from 'dreamteamer\/testing'/, "imports dreamteamer/testing")
+      assert.match(src, /from ["']dreamteamer\/testing["']/, "imports dreamteamer/testing")
       assert.doesNotMatch(
         src,
-        /process\.execPath,\s*\[\s*(BIN|path\.join\([^)]*'bin',\s*'dreamteamer\.js'\))/,
+        /process\.execPath,\s*\[\s*(BIN|path\.join\([^)]*["']bin["'],\s*["']dreamteamer\.js["']\))/,
         "spawns the engine binary itself"
       )
       assert.doesNotMatch(src, /\[\s*BIN\s*,/, "spawns the engine binary itself")

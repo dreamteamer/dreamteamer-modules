@@ -15,7 +15,7 @@ import { workspace, writeCollection, simpleCollection } from "../helpers/fixture
 import { apiBase, authHeaders, TIMEOUT } from "./cr-dt-008-web.ts"
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..")
-const { startWeb } = await import(pathToFileURL(path.join(ROOT, "modules", "web", "src", "server.js")).href)
+const { startWeb } = await import(pathToFileURL(path.join(ROOT, "modules", "web", "src", "server.ts")).href)
 const HEADER = "# The left nav of this workspace. Drag and drop writes this file; so may you."
 const ROWS = Array.from({ length: 15 }, (_, i) => `row_${i}`)
 

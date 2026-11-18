@@ -18,6 +18,7 @@ import path from "node:path"
 import { spawnSync } from "node:child_process"
 import { createRequire } from "node:module"
 import { fileURLToPath, pathToFileURL } from "node:url"
+import { engineEntry } from "../lib/engineEntry.ts"
 import { findWorkspace } from "../lib/findWorkspace.ts"
 import { COLLECTION, compilesStage, readRequests, allowedStages, stageContradictions } from "../lib/crStage.ts"
 
@@ -25,7 +26,9 @@ import { COLLECTION, compilesStage, readRequests, allowedStages, stageContradict
 async function engineOf(root) {
   const pkg = createRequire(path.join(root, "package.json")).resolve("dreamteamer/package.json")
   const dir = path.dirname(pkg)
-  const dt = await import(pathToFileURL(path.join(dir, "src", "api.js")).href)
+  const apiFile = engineEntry(dir)
+  if (!apiFile) throw new Error(`${dir}: the engine's package.json exports no API`)
+  const dt = await import(pathToFileURL(apiFile).href)
   const bin = path.join(dir, "bin", "dreamteamer.js")
   const env = { ...process.env }
   delete env.CLAUDE_CODE_SESSION_ID

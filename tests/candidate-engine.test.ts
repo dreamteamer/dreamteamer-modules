@@ -1,4 +1,4 @@
-// scripts/use-candidate.mjs (cr-dt-007, D60, D72): the candidate engine installed over
+// scripts/use-candidate.ts (cr-dt-007, D60, D72): the candidate engine installed over
 // node_modules/dreamteamer, verified by hash first — a missing tarball, a wrong hash or a tarball that is
 // not the engine is a refusal; package.json and the lockfile are never touched. Run against a scratch
 // root, never this repo's own node_modules. When DT_CANDIDATES is set (CI after the step), the engine in
@@ -13,7 +13,7 @@ import { execFileSync, spawnSync } from "node:child_process"
 import { ROOT } from "./helpers/workspace.ts"
 import { engineMeets } from "dreamteamer/testing"
 
-const SCRIPT = path.join(ROOT, "scripts", "use-candidate.mjs")
+const SCRIPT = path.join(ROOT, "scripts", "use-candidate.ts")
 const made = []
 after(() => {
   for (const d of made) fs.rmSync(d, { recursive: true, force: true })

@@ -1,10 +1,10 @@
 # Every module on the setup contract (CR-dt-006, phase 2)
 
-`tests/install-contract.test.mjs` installs every package below into a fresh workspace on the candidate
+`tests/install-contract.test.ts` installs every package below into a fresh workspace on the candidate
 engine — `dt install @dreamteamer/<module> --from <one folder of tarballs>`, never the registry — and
 holds its `dt status` line to the outcome this table declares. Four outcomes:
 
-- **unit** — the module ships a setup unit (`lib/<module>-setup.mjs` exporting `SETUP_UNIT`): it has
+- **unit** — the module ships a setup unit (`lib/<name>Setup.ts` exporting `SETUP_UNIT`): it has
   inputs or a machine prerequisite, and `status` reads `configured` / `blocked` / `ready` honestly.
 - **no setup** — nothing to set up; `status` reads `no setup`, with `needs: KEY` when the module
   declares an env key or var nobody set.
@@ -48,6 +48,7 @@ holds its `dt status` line to the outcome this table declares. Four outcomes:
 | sessions | users | no setup (needs SESSIONS_FOLDER) | |
 | tasks | users | no setup | |
 | ui | — | library | |
+| ui2 | — | library | |
 | users | — | no setup | |
 | web | — | no setup | |
 | wikis | — | unit | — (qmd on PATH) |

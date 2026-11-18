@@ -478,8 +478,15 @@ export function startFakeDocker(socketPath, { images = [], plain = [] } = {}) {
   )
 }
 
-// standalone: node fake-docker.js <socket-path> [<images-json>]
-if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+// standalone: node fake-docker.ts <socket-path> [<images-json>]
+const real = p => {
+  try {
+    return fs.realpathSync(p)
+  } catch {
+    return path.resolve(p)
+  }
+}
+if (process.argv[1] && real(fileURLToPath(import.meta.url)) === real(process.argv[1])) {
   const [sock, imagesJson, plainJson] = process.argv.slice(2)
   startFakeDocker(sock, {
     images: imagesJson ? JSON.parse(imagesJson) : [],

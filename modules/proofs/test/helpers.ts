@@ -1,6 +1,6 @@
 // Test support for @dreamteamer/proofs: the shared tier-2 fixture with THIS package installed.
 //
-// `workspace()` is `tests/helpers/fixture.mjs`'s workspace with `packages: ['proofs']` — the
+// `workspace()` is `tests/helpers/fixture.ts`'s workspace with `packages: ['proofs']` — the
 // package linked under node_modules and declared as a dependency, so the engine activates the
 // extension and discovers its content module exactly as it would in a stranger's workspace. Every
 // command runs through the real CLI (`ws.dt(...)`); an in-process call binds the SAME engine API the

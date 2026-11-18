@@ -22,10 +22,12 @@ import { treeHash, treeDiff } from "./helpers/tree-hash.ts"
 import { fixtureWorkspace, REF, SLUG, BASE } from "./helpers/fixture.ts"
 import { readRecord, writeRecord, recordPath } from "../../skills/running-retrospectives/lib/records.mts"
 
+// the skill as it ships: its build (dist/skills), run under the .mjs names the skill documents
 const BIN = path.join(
   path.dirname(new URL(import.meta.url).pathname),
   "..",
   "..",
+  "dist",
   "skills",
   "running-retrospectives",
   "bin"

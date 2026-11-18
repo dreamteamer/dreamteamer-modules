@@ -12,7 +12,7 @@
 //   copy  the module folder copied into the workspace's `modules/` — an ejected or inlined copy.
 //
 // The engine is the one `dreamteamer/testing` runs (cr-dt-007): this repo's devDependency — or, before an
-// engine is published, the candidate `scripts/use-candidate.mjs` put over node_modules/dreamteamer — or the
+// engine is published, the candidate `scripts/use-candidate.ts` put over node_modules/dreamteamer — or the
 // checkout DT_ENGINE_DIR names. Every workspace is made and every engine run goes through that export
 // (D69, D71); what stays here is this repo's own: packing, unpacking and copying modules, and reading git.
 import fs from "node:fs"
@@ -34,6 +34,19 @@ export const MODULES = path.join(ROOT, "modules")
 /** The engine under test: DT_ENGINE_DIR when set, else the one `dreamteamer/testing` belongs to. */
 export const ENGINE = process.env.DT_ENGINE_DIR ? path.resolve(process.env.DT_ENGINE_DIR) : TESTING_ENGINE
 export const BIN = path.join(ENGINE, "bin", "dreamteamer.js")
+/**
+ * The file the engine at `base` resolves `subpath` to (`"."` its API, `"./records"` its records API), from its
+ * package.json `exports` — `src/` on an engine through 0.49, `dist/` on a TypeScript one. Throws when it names none.
+ */
+export function engineEntry(base = ENGINE, subpath = ".") {
+  const pick = e =>
+    typeof e === "string" ? e : e && typeof e === "object" ? (pick(e.import) ?? pick(e.node) ?? pick(e.default)) : null
+  const pkg = JSON.parse(fs.readFileSync(path.join(base, "package.json"), "utf8"))
+  const target = pick(pkg.exports?.[subpath]) ?? (subpath === "." ? pkg.main : null)
+  const file = target ? path.join(base, target) : null
+  if (!file || !fs.existsSync(file)) throw new Error(`${base}: its package.json exports no ${subpath}`)
+  return file
+}
 export const SCOPE = "@dreamteamer"
 
 /** Run the engine in `cwd` through `dreamteamer/testing`, with a hard timer (a hang is a failure, never a

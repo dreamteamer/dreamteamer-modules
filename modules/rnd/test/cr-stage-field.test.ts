@@ -8,7 +8,8 @@ import fs from "node:fs"
 import path from "node:path"
 import yaml from "js-yaml"
 import { rndWorkspace, put, run, cleanupAll } from "./helpers/rnd-workspace.ts"
-import { ENGINE } from "../../../tests/helpers/workspace.ts"
+import { ENGINE, engineEntry } from "../../../tests/helpers/workspace.ts"
+import { pathToFileURL } from "node:url"
 
 after(() => cleanupAll())
 
@@ -95,8 +96,7 @@ describe("rnd/change-requests.stage", () => {
 
   test("the presentation contract the editor reads: the choices in order, and not editable", async () => {
     const root = rndWorkspace()
-    const { presentation } = await import(path.join(ENGINE, "src", "records-api.js"))
-    const { loadDescriptors } = await import(path.join(ENGINE, "src", "runtime.ts"))
+    const { presentation, loadDescriptors } = await import(pathToFileURL(engineEntry(ENGINE, "./records")).href)
     const row = presentation(loadDescriptors(root)).fields["rnd/change-requests"].find(f => f.field === "stage")
     assert.ok(row, "the stage row")
     assert.equal(row.editable, false)

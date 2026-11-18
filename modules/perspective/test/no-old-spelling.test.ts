@@ -22,7 +22,7 @@ const EXEMPT = new Set([
   "docs/extensions-CHANGELOG.md",
   "docs/extensions-README.md",
   "docs/2026-09-09-extensions-module-design.md",
-  "modules/perspective/test/no-old-spelling.test.mjs",
+  "modules/perspective/test/no-old-spelling.test.ts",
 ])
 /** Exempt only within one named section, which the second test pins. */
 const README = "modules/perspective/README.md"
@@ -50,7 +50,7 @@ for (const f of walk(ROOT)) {
     offenders.push(`${rel} (path)`)
     continue
   }
-  // ⚠ NEVER skip a file for looking binary. `modules/perspective/dist/bin/check-records.js` carried two
+  // ⚠ NEVER skip a file for looking binary. `modules/perspective/bin/check-records.mjs` carried two
   // literal NUL bytes as a Map key separator, so `grep -I`, this gate and the repo's leak scan all
   // classified 24 KB of live JavaScript as binary and read none of it — the rename missed the file
   // entirely and only a broken import revealed it (2026-09-09). NULs are stripped, not respected.

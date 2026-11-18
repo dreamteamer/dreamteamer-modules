@@ -6,7 +6,7 @@
 // reaches the host, so an undocumented route cannot exist (the router is the table).
 //
 // The engine is the WORKSPACE's own — `initEngine(root)` loads `<root>/node_modules/dreamteamer`'s public
-// API (`src/api.js`) the way the extension always has, and every compile-gated write re-opens the
+// API (its package.json `exports`) the way the extension always has, and every compile-gated write re-opens the
 // workspace first (`refreshWorkspace`), refusing with 409 when it will not open (review R5's fix).
 import fs from "node:fs"
 import { join as pathJoin } from "node:path"

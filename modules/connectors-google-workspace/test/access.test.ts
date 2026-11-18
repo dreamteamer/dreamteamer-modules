@@ -270,5 +270,5 @@ test("hostile inherited configuration cannot change local transport, auth or cre
     assert.equal(Object.hasOwn(actual, key), false)
   assert.equal(actual.PYTHON_DOTENV_DISABLED, "1")
   assert.equal(actual.UV_NO_CONFIG, "1")
-  assert.match(actual.BROWSER, /no-browser\.mjs$/)
+  assert.match(actual.BROWSER, /dist\/bin\/no-browser\.js$/)
 })

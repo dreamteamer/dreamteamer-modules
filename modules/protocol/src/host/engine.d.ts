@@ -191,6 +191,7 @@ export declare function engineBase(): string | null
 export declare function engine(): EngineModules
 export declare function engineLoaded(): boolean
 export declare function engineRoot(root: string): string
+export declare function engineEntry(base: string, subpath?: string): string | null
 export declare function readEngineVersion(engineDir: string): string | null
 export interface InitEngineOptions {
   minEngine?: string

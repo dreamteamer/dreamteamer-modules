@@ -119,7 +119,7 @@ const LAYER = "northwind-archive"
 
 /**
  * Build the fixture with the engine at `engineDir` (a dreamteamer checkout or package with `bin/` and
- * `src/api.js`). Returns `{ root, layer, git, dt, head, cleanup }`.
+ * public API, resolved through its package.json `exports`). Returns `{ root, layer, git, dt, head, cleanup }`.
  */
 export function makeFixture({ engineDir: given, tmp = os.tmpdir() }: Record<string, any> = {}) {
   const engineDir = given && path.resolve(given)

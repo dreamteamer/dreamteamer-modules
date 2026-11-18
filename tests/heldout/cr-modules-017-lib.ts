@@ -18,12 +18,12 @@ export const APP_DIR = path.resolve(process.env.DT_WEB_APP_DIR ?? path.join(ROOT
 if (!fs.existsSync(path.join(APP_DIR, "index.html")))
   throw new Error(`no built app at ${APP_DIR} — npm run build -w modules/ui`)
 
-const support = await import(pathToFileURL(path.join(WEB, "test", "support.mjs")).href)
+const support = await import(pathToFileURL(path.join(WEB, "test", "support.ts")).href)
 export const { fixture, call, pair, sameOrigin } = support
 export const { startWeb } = await import(pathToFileURL(path.join(WEB, "src", "server.ts")).href)
-export const { ENGINE_DIR } = await import(pathToFileURL(path.join(ROOT, "tests", "helpers", "fixture.mjs")).href)
+export const { ENGINE_DIR } = await import(pathToFileURL(path.join(ROOT, "tests", "helpers", "fixture.ts")).href)
 export const { makeFixture } = await import(
-  pathToFileURL(path.join(ROOT, "modules", "protocol", "lib", "contract", "fixture.js")).href
+  pathToFileURL(path.join(ROOT, "modules", "protocol", "lib", "contract", "fixture.ts")).href
 )
 const runtime = await import(pathToFileURL(path.join(WEB, "src", "runtime.ts")).href)
 const stateMod = await import(pathToFileURL(path.join(WEB, "src", "state.ts")).href)
