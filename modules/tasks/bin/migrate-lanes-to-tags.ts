@@ -31,8 +31,41 @@ const FRONTMATTER = /^---\r?\n([\s\S]*?)\r?\n---(\r?\n|$)/
 const KEY = /^([A-Za-z_][\w-]*)\s*:(.*)$/
 const MENTION = /\blane\b/
 
+/** A top-level frontmatter key and the line range it spans, `end` exclusive. */
+export interface KeyRange {
+  key: string
+  start: number
+  end: number
+}
+
+/** What migrateText makes of one record: the rewritten text, or why it was skipped. */
+export interface Migration {
+  lane: string | null
+  skip?: string
+  text?: string
+  tag?: string | null
+  added?: boolean
+}
+
+/** A workspace source line that still names the field. */
+export interface Leftover {
+  file: string
+  line: number
+  text: string
+}
+
+/** The plan for one workspace, as plan() reads it. */
+export interface Plan {
+  root: string
+  dir: string
+  records: { file: string; lane: string | null; tag?: string | null; added?: boolean; text?: string }[]
+  skipped: { file: string; lane: string | null; why: string }[]
+  refs: number
+  leftovers: Leftover[]
+}
+
 /** A lane value as a tag: accents dropped, lowercase, every run of other characters one hyphen. */
-export function kebab(value) {
+export function kebab(value: unknown): string {
   return String(value ?? "")
     .normalize("NFKD")
     .replace(/[̀-ͯ]/g, "")
@@ -42,7 +75,7 @@ export function kebab(value) {
 }
 
 /** One YAML scalar as written inline — plain, 'single' or "double" quoted — or null for an empty one. */
-export function scalar(raw) {
+export function scalar(raw: string): string | null {
   const s = raw.trim()
   if (s.startsWith("'")) {
     let out = ""
@@ -66,8 +99,8 @@ export function scalar(raw) {
 /** The top-level keys of a frontmatter, each with the line range it spans: `{ key, start, end }`,
  *  `end` exclusive. A key runs until the next line at column 0 that is not a sequence item; blank lines
  *  and comments at its tail are left to whatever follows. */
-export function keysOf(lines) {
-  const keys = []
+export function keysOf(lines: string[]): KeyRange[] {
+  const keys: KeyRange[] = []
   for (let i = 0; i < lines.length; i++) {
     const m = KEY.exec(lines[i])
     if (!m) continue
@@ -81,7 +114,7 @@ export function keysOf(lines) {
 }
 
 /** The value of a lane key block: an inline scalar, or a folded/literal block joined into one line. */
-function laneValue(block) {
+function laneValue(block: string[]): string | null {
   const inline = KEY.exec(block[0])[2].trim()
   if (/^[>|][+-]?\d*\s*(#.*)?$/.test(inline))
     return (
@@ -96,7 +129,7 @@ function laneValue(block) {
 }
 
 /** The tags of a tags key block — a block sequence, a flow sequence or one scalar — or an error. */
-function tagsValue(block) {
+function tagsValue(block: string[]): { tags?: string[]; error?: string } {
   const inline = KEY.exec(block[0])[2]
     .trim()
     .replace(/\s+#.*$/, "")
@@ -114,7 +147,7 @@ function tagsValue(block) {
   }
   if (inline)
     return block.length > 1 ? { error: "a multi-line scalar" } : { tags: [scalar(inline)].filter(t => t != null) }
-  const tags = []
+  const tags: string[] = []
   for (const l of block.slice(1)) {
     if (l.trim() === "" || l.trim().startsWith("#")) continue
     const m = /^\s*-\s+(.*)$/.exec(l) ?? /^\s*-()$/.exec(l)
@@ -129,7 +162,7 @@ function tagsValue(block) {
  * One record's text → `{ text, lane, tag, added }` when it carries a lane, `{ skip }` when it carries one
  * this script will not convert, or null when it has none. Pure: the input is never written.
  */
-export function migrateText(text) {
+export function migrateText(text: string): Migration | null {
   const fm = FRONTMATTER.exec(text)
   if (!fm) return null
   const eol = fm[0].includes("\r\n") ? "\r\n" : "\n"
@@ -142,7 +175,7 @@ export function migrateText(text) {
   if (value != null && !TAG.test(tag ?? ""))
     return { lane: value, skip: `kebab-cases to ${tag ? `"${tag}", not a valid tag` : "nothing"}` }
   const tagsKey = keys.find(k => k.key === "tags")
-  let current = []
+  let current: string[] = []
   if (tagsKey) {
     const parsed = tagsValue(lines.slice(tagsKey.start, tagsKey.end))
     if (parsed.error) return { lane: value, skip: `its tags are ${parsed.error}` }
@@ -151,7 +184,7 @@ export function migrateText(text) {
   const added = tag != null && !current.includes(tag)
   const out = [...lines]
   // edit from the bottom up, so the range still to be edited keeps its line numbers
-  const edits = [{ start: lane.start, end: lane.end, with: [] }]
+  const edits: { start: number; end: number; with: string[] }[] = [{ start: lane.start, end: lane.end, with: [] }]
   if (added) {
     if (!tagsKey) edits[0].with = ["tags:", `  - ${tag}`]
     else {
@@ -168,16 +201,16 @@ export function migrateText(text) {
   return { text: head + text.slice(fm[0].length), lane: value, tag, added }
 }
 
-const isDir = p => {
+const isDir = (p: string) => {
   try {
     return fs.statSync(p).isDirectory()
   } catch {
     return false
   }
 }
-const rel = (root, p) => path.relative(root, p).split(path.sep).join("/")
+const rel = (root: string, p: string) => path.relative(root, p).split(path.sep).join("/")
 
-function* walk(dir, test) {
+function* walk(dir: string, test: (name: string) => boolean): Generator<string> {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
     if (e.name.startsWith(".") || e.name === "node_modules") continue
     const p = path.join(dir, e.name)
@@ -187,7 +220,7 @@ function* walk(dir, test) {
 }
 
 /** Where the workspace keeps its tasks: the compiled descriptor's `storage.path`, else the default. */
-export function tasksDir(root) {
+export function tasksDir(root: string): string {
   const compiled = path.join(root, ".dreamteamer", "collections", "tasks.collection.yaml")
   const at = fs.existsSync(compiled)
     ? /^storage:\s*\r?\n(?:[ \t]+.*\r?\n)*?[ \t]+path:\s*['"]?([^'"\s]+)/m.exec(fs.readFileSync(compiled, "utf8"))?.[1]
@@ -196,10 +229,10 @@ export function tasksDir(root) {
 }
 
 /** The workspace's own sources that still name the field: an overlay of `tasks`, or a view of it. */
-export function leftovers(root) {
+export function leftovers(root: string): Leftover[] {
   const dir = path.join(root, "modules")
   if (!isDir(dir)) return []
-  const out = []
+  const out: Leftover[] = []
   for (const file of walk(dir, n => /\.(collection|ui-view)\.ya?ml$/.test(n))) {
     const text = fs.readFileSync(file, "utf8")
     const ofTasks =
@@ -215,10 +248,10 @@ export function leftovers(root) {
 }
 
 /** The plan for one workspace — pure, reads only. */
-export function plan(root) {
+export function plan(root: string): Plan {
   const dir = tasksDir(root)
-  const records = []
-  const skipped = []
+  const records: Plan["records"] = []
+  const skipped: Plan["skipped"] = []
   if (isDir(dir)) {
     for (const file of [...walk(dir, n => n.endsWith(".md"))].sort()) {
       const r = migrateText(fs.readFileSync(file, "utf8"))
@@ -231,11 +264,11 @@ export function plan(root) {
 }
 
 /** Apply a plan: each changed record rewritten in place. */
-export function apply(p) {
+export function apply(p: Plan): void {
   for (const r of p.records) fs.writeFileSync(r.file, r.text)
 }
 
-export function render(p, { write }) {
+export function render(p: Plan, { write }: { write: boolean }): string {
   // the workspace first, always: the resolver falls back to the script's own tree when there is no
   // lockfile above the current folder, and a plan for the wrong workspace must be visible as one
   const lines = [`workspace ${p.root}`]
@@ -257,12 +290,12 @@ export function render(p, { write }) {
 
 const USAGE = "usage: migrate-lanes-to-tags.mjs [--dry-run | --write] [--root <workspace>] [--json]"
 
-export function main(argv, { cwd = process.cwd(), log = console.log, error = console.error } = {}) {
+export function main(argv: string[], { cwd = process.cwd(), log = console.log, error = console.error } = {}): number {
   const args = [...argv]
   let write = false,
     dry = false,
     json = false,
-    root = null
+    root: string | null = null
   while (args.length) {
     const a = args.shift()
     if (a === "--write") write = true
@@ -314,7 +347,7 @@ export function main(argv, { cwd = process.cwd(), log = console.log, error = con
  *  `import.meta.url` the path resolved, so both are realpathed before they are compared. */
 const isMain = () => {
   if (!process.argv[1]) return false
-  const real = p => {
+  const real = (p: string) => {
     try {
       return fs.realpathSync(p)
     } catch {
