@@ -164,7 +164,8 @@ export async function main(argv, root, verb) {
   // after an edit to its TypeScript (npm run build in the clone)
   const build = path.join(abs, "scripts", "build.ts")
   if (fs.existsSync(build)) {
-    const b = spawnSync(process.execPath, [build], { cwd: abs, encoding: "utf8" })
+    // --root: the clone, never the tree the script's real path is in (a clone may reach it through a symlink)
+    const b = spawnSync(process.execPath, [build, `--root=${abs}`], { cwd: abs, encoding: "utf8" })
     say(
       b.status === 0
         ? dim("  built the clone's modules — after editing its TypeScript, run `npm run build` in the clone")

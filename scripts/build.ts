@@ -5,6 +5,7 @@
 //
 //   node scripts/build.ts                  every module
 //   node scripts/build.ts --module=web     one module (repeatable); a module's `prepack` runs this
+//   node scripts/build.ts --root=<clone>   the modules of another checkout (what `preview.mjs link` builds)
 //
 // Everything it writes is under the module's dist/, which mirrors the module root, so a relative import between
 // folders resolves the same in either tree:
@@ -21,11 +22,16 @@ import fs from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
+// The checkout to build: --root, else the one this script sits in. Explicit because a caller may reach this file
+// through a symlink, and Node resolves the entry's real path — the script's own location is not the caller's tree.
+const rootArg = process.argv.find(a => a.startsWith("--root="))?.slice("--root=".length)
+const ROOT = rootArg ? path.resolve(rootArg) : path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 const MODULES = path.join(ROOT, "modules")
+// tsc is this script's own dependency, wherever the checkout it builds is
+const TOOLS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 const CODE_DIRS = ["src", "lib", "bin"]
 const BROWSER_APPS = new Set(["ui", "ui2"])
-const TSC = path.join(ROOT, "node_modules", "typescript", "bin", "tsc")
+const TSC = path.join(TOOLS, "node_modules", "typescript", "bin", "tsc")
 
 const OPTIONS = [
   "--target",
@@ -122,6 +128,7 @@ export function buildModule(id: string): { code: number; skills: number } {
 }
 
 export function modulesToBuild(): string[] {
+  if (!fs.existsSync(MODULES)) return []
   return fs
     .readdirSync(MODULES)
     .filter(m => !BROWSER_APPS.has(m) && fs.existsSync(path.join(MODULES, m, "package.json")))
