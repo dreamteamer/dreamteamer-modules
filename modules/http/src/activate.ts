@@ -1,6 +1,8 @@
 // The engine extension: `dt serve [--port <n>] [--host <addr>] [--token <secret>]`. Activation binds the running engine
 // and nothing else — no port is bound and nothing is printed until the verb runs.
-import { bind, dt } from "./engine.ts"
+import type { Contribution } from "dreamteamer"
+import { bind, dt, type Api } from "./engine.ts"
+import type http from "node:http"
 import { assertExposure, serve } from "./createApp.ts"
 
 export const apiVersion = 1
@@ -9,8 +11,15 @@ const USAGE = `  serve [--port <n>] [--host <addr>] [--token <secret>]   the RES
 
 /** `--port`, `--host` and `--token`, each spaced or with `=`; anything else is refused, and so is a
  *  host beyond loopback without a token. */
-export function parseServeArgs(argv) {
-  const out: Record<string, any> = { port: 8080, host: "127.0.0.1" }
+/** What `dt serve` was asked for. */
+export interface ServeOptions {
+  port: number
+  host: string
+  token?: string
+}
+
+export function parseServeArgs(argv: string[]): ServeOptions {
+  const out: ServeOptions = { port: 8080, host: "127.0.0.1" }
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]
     const m = /^--(port|host|token)(?:=(.*))?$/.exec(a)
@@ -25,13 +34,13 @@ export function parseServeArgs(argv) {
       if (!/^\d+$/.test(value) || Number(value) > 65535)
         throw new Error(`--port must be a number from 0 to 65535 (got "${value}")`)
       out.port = Number(value)
-    } else out[m[1]] = value
+    } else out[m[1] as "host" | "token"] = value
   }
   assertExposure(out.host, out.token)
   return out
 }
 
-export default function activate(api) {
+export default function activate(api: Api): Contribution {
   bind(api)
   return {
     commands: {
@@ -40,7 +49,7 @@ export default function activate(api) {
         async run(ws, argv) {
           const opts = parseServeArgs(argv)
           dt.warnIfStale(ws.root)
-          const server: any = await serve(ws, opts)
+          const server: http.Server = await serve(ws, opts)
           // the verb's promise IS the process lifetime: it settles only when the server closes
           await new Promise(resolve => server.once("close", resolve))
           return 0

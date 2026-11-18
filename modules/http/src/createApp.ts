@@ -8,6 +8,8 @@ import net from "node:net"
 import path from "node:path"
 import { execFileSync } from "node:child_process"
 import express from "express"
+import type { NextFunction, Request, Response } from "express"
+import type { Workspace } from "dreamteamer"
 import { dt } from "./engine.ts"
 import { createHandler } from "@dreamteamer/protocol/handler"
 
@@ -31,7 +33,7 @@ const GIT_TIMEOUT_MS = 30_000
  * `host` is the name the server was bound to; `token`, when set, is required on every request as
  * `Authorization: Bearer <token>`.
  */
-export function createApp(ws, { host, token }: Record<string, any> = {}) {
+export function createApp(ws: Workspace, { host, token }: { host?: string; token?: string } = {}) {
   if (!dt)
     throw new Error(
       "@dreamteamer/http: no engine bound — activate(dt) binds it; a tool mounting createApp calls bind(api) first"
@@ -45,11 +47,11 @@ export function createApp(ws, { host, token }: Record<string, any> = {}) {
     next()
   })
   app.use(requestGuard({ host, token }))
-  let handler = null
+  let handler: ReturnType<typeof createHandler> | null = null
   const ready = () => (handler ??= createHandler({ root: ws.root }))
 
   app.use("/api", express.text({ type: () => true, limit: "10mb" }), async (req, res) => {
-    let body
+    let body: unknown
     if (!READS.has(req.method) && typeof req.body === "string" && req.body.length) {
       try {
         body = JSON.parse(req.body)
@@ -65,7 +67,10 @@ export function createApp(ws, { host, token }: Record<string, any> = {}) {
       // a repository blocked by an in-progress merge or rebase: the results say which, and over HTTP
       // the status says so too (the protocol's transport rule for POST /commit)
       const blocked =
-        req.method === "POST" && req.path === "/commit" && Array.isArray(out.body) && out.body.some(r => r?.blocked)
+        req.method === "POST" &&
+        req.path === "/commit" &&
+        Array.isArray(out.body) &&
+        out.body.some((r: { blocked?: unknown } | null) => r?.blocked)
       res.status(blocked ? 409 : out.status).json(out.body ?? null)
     } catch (e) {
       res.status(500).json({ error: String(e?.message ?? e) })
@@ -76,7 +81,7 @@ export function createApp(ws, { host, token }: Record<string, any> = {}) {
 }
 
 /** The engine's schema ops REPORT by printing; a server's stdout is not the place for a write's report. */
-async function quietly(fn) {
+async function quietly<T>(fn: () => T | Promise<T>): Promise<T> {
   const log = console.log
   console.log = () => {}
   try {
@@ -88,10 +93,13 @@ async function quietly(fn) {
 
 /** Listen on `host:port` (loopback by default). Resolves with the http.Server once it is listening.
  *  A host beyond loopback is refused unless `token` is set. */
-export async function serve(ws, { port = 8080, host = "127.0.0.1", token }: Record<string, any> = {}) {
+export async function serve(
+  ws: Workspace,
+  { port = 8080, host = "127.0.0.1", token }: { port?: number; host?: string; token?: string } = {}
+): Promise<http.Server> {
   assertExposure(host, token)
   const server = http.createServer(createApp(ws, { host, token }))
-  return new Promise((resolve, reject) => {
+  return new Promise<http.Server>((resolve, reject) => {
     server.once("error", reject)
     server.listen(port, host, () => {
       server.off("error", reject)
@@ -107,7 +115,7 @@ export async function serve(ws, { port = 8080, host = "127.0.0.1", token }: Reco
 // ---- request guards ---------------------------------------------------------------------------
 
 /** True when `host` names this machine's loopback interface. */
-function isLoopbackHost(host) {
+function isLoopbackHost(host: string): boolean {
   const h = String(host)
     .toLowerCase()
     .replace(/^\[|\]$/g, "")
@@ -116,7 +124,7 @@ function isLoopbackHost(host) {
 }
 
 /** A host beyond loopback needs a token; refused before anything listens. */
-export function assertExposure(host, token) {
+export function assertExposure(host: string, token: string | undefined): void {
   if (!isLoopbackHost(host) && !token) {
     throw new Error(
       `--host ${host} is beyond loopback and needs --token <secret>; every request then sends "Authorization: Bearer <secret>"`
@@ -125,7 +133,7 @@ export function assertExposure(host, token) {
 }
 
 /** An address as it appears in a Host header: lower-case, IPv6 bracketed, IPv4-mapped unwrapped. */
-const hostLiteral = h => {
+const hostLiteral = (h: string) => {
   const bare = String(h)
     .toLowerCase()
     .replace(/^\[|\]$/g, "")
@@ -133,7 +141,7 @@ const hostLiteral = h => {
   return net.isIPv6(bare) ? `[${bare}]` : bare
 }
 const WILDCARD = new Set(["0.0.0.0", "[::]"])
-const sha = s => crypto.createHash("sha256").update(String(s)).digest()
+const sha = (s: string) => crypto.createHash("sha256").update(String(s)).digest()
 
 /**
  * Every request: `Host` is the address the connection arrived on, the bound `--host` name, or (on a
@@ -142,9 +150,9 @@ const sha = s => crypto.createHash("sha256").update(String(s)).digest()
  * another origin — by its `Origin`, or by the `Sec-Fetch-Site: cross-site` a browser sends even on an
  * image or a navigation — or a DNS name rebound to this address, is answered 403 before any route runs.
  */
-function requestGuard({ host, token }) {
+function requestGuard({ host, token }: { host?: string; token?: string }) {
   const tokenHash = token ? sha(token) : null
-  return (req, res, next) => {
+  return (req: Request, res: Response, next: NextFunction) => {
     const port = req.socket.localPort
     const local = hostLiteral(req.socket.localAddress ?? "")
     const names = new Set([local])
@@ -185,9 +193,9 @@ const READS = new Set(["GET", "HEAD", "OPTIONS"])
 // runtime), degrades to an empty map — every row gets `null`.
 /** Workspace-relative path → the instant of its last commit, for every file under `dirs` (one or
  *  several folders — one git call either way). Exported for its test; the app is its consumer. */
-export function gitModifiedMap(root, dirs) {
-  const map = new Map()
-  const rels = []
+export function gitModifiedMap(root: string, dirs: string | string[]): Map<string, string | null> {
+  const map = new Map<string, string | null>()
+  const rels = ([] as string[])
     .concat(dirs)
     .map(dir => path.relative(root, dir))
     .filter(rel => rel && !rel.startsWith(".."))
@@ -203,7 +211,7 @@ export function gitModifiedMap(root, dirs) {
   } catch {
     return map
   }
-  let date = null
+  let date: string | null = null
   for (const line of out.split("\n")) {
     if (line.startsWith("\x01")) {
       date = line.slice(1)
@@ -215,7 +223,7 @@ export function gitModifiedMap(root, dirs) {
 }
 
 /** One record's last commit — date, author name, subject. */
-function gitLastCommit(root, file) {
+function gitLastCommit(root: string, file: string) {
   const rel = path.relative(root, file)
   if (rel.startsWith("..")) return null
   try {
