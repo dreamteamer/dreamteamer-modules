@@ -67,7 +67,7 @@ export function logArgs(scope, limit) {
 export function readLog(root, scope, limit, timeoutMs = ACTIVITY_GIT_TIMEOUT_MS) {
     const prefix = scope.repo === "." ? "" : `${scope.repo}/`;
     return new Promise((resolve, reject) => {
-        execFile("git", logArgs(scope, limit), { cwd: path.join(root, scope.repo), timeout: timeoutMs, maxBuffer: 64 * 1024 * 1024 }, (err, out) => {
+        execFile("git", logArgs(scope, limit), { cwd: path.join(root, scope.repo), timeout: timeoutMs, windowsHide: true, maxBuffer: 64 * 1024 * 1024 }, (err, out) => {
             if (err)
                 return err.killed ? reject(err) : resolve([]);
             resolve(parseActivityLog(String(out), scope.repo).map((e) => ({ ...e, paths: e.paths.map((p) => `${prefix}${p}`) })));

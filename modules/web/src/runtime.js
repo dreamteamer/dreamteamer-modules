@@ -32,9 +32,11 @@ export function stateFile(root, dir = runtimeDir()) {
 
 /** What a write into a dir the person made read-only (or a dir of another user's) throws: the dir, its mode, and the
  *  two ways out. `envName` is the variable that moves the dir (DT_WEB_STATE_DIR, DT_WEB_RUNTIME_DIR). */
-export function notWritable(dir, envName, mode = null) {
-	const m = mode ?? (() => { try { return fs.statSync(dir).mode & 0o777; } catch { return null; } })();
+export function notWritable(dir, envName, mode = null, platform = process.platform) {
 	const kind = envName === 'DT_WEB_STATE_DIR' ? 'state' : 'runtime';
+	// Windows has no mode bits (stat reports 0666/0444 from the read-only attribute alone), so neither a mode nor chmod is named.
+	if (platform === 'win32') return Object.assign(new Error(`the dt web ${kind} dir ${dir} is not writable — dt web keeps its files there and never changes the permissions you set: give your user write access to "${dir}", or point ${envName} at another folder`), { code: 'EDTWEBDIR' });
+	const m = mode ?? (() => { try { return fs.statSync(dir).mode & 0o777; } catch { return null; } })();
 	return Object.assign(new Error(`the dt web ${kind} dir ${dir} is not writable${m === null ? '' : ` (mode ${m.toString(8)})`} — dt web keeps its files there and never widens a mode you set: chmod 700 "${dir}", or point ${envName} at another folder`), { code: 'EDTWEBDIR' });
 }
 const DENIED = new Set(['EACCES', 'EPERM', 'EROFS']);
@@ -47,9 +49,13 @@ export function writingInto(dir, envName, fn) {
  * Make `dir` for this user's files: 0700 when created. A mode that lets the group or others in is tightened to the
  * owner's bits — what is kept there is this user's alone. A mode the person narrowed (the owner cannot write into it or
  * enter it) is theirs: it is never widened, and the write is refused naming the dir (notWritable).
+ * On Windows there are no mode bits — stat reports a directory as 0666 (no x bit, so the check below would always
+ * refuse) and chmod only flips the read-only attribute — so the dir is only made; the user's profile folders are
+ * already private by ACL, and a write the file system denies still becomes notWritable through writingInto.
  */
-export function privateDir(dir, envName) {
+export function privateDir(dir, envName, platform = process.platform) {
 	writingInto(dir, envName, () => fs.mkdirSync(dir, { recursive: true, mode: 0o700 }));
+	if (platform === 'win32') return;
 	const mode = fs.statSync(dir).mode & 0o777;
 	if (mode & 0o077) writingInto(dir, envName, () => fs.chmodSync(dir, mode & 0o700));
 	if ((mode & 0o300) !== 0o300) throw notWritable(dir, envName, mode);

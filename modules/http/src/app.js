@@ -164,7 +164,7 @@ export function gitModifiedMap(root, dirs) {
 	if (!rels.length) return map;
 	let out;
 	try {
-		out = execFileSync('git', ['log', '--format=%x01%aI', '--name-only', '--', ...rels], { cwd: root, timeout: GIT_TIMEOUT_MS, stdio: ['ignore', 'pipe', 'ignore'] }).toString();
+		out = execFileSync('git', ['log', '--format=%x01%aI', '--name-only', '--', ...rels], { cwd: root, timeout: GIT_TIMEOUT_MS, windowsHide: true, stdio: ['ignore', 'pipe', 'ignore'] }).toString();
 	} catch { return map; }
 	let date = null;
 	for (const line of out.split('\n')) {
@@ -179,7 +179,7 @@ function gitLastCommit(root, file) {
 	const rel = path.relative(root, file);
 	if (rel.startsWith('..')) return null;
 	try {
-		const out = execFileSync('git', ['log', '-1', '--format=%aI%x00%an%x00%s', '--', rel], { cwd: root, timeout: GIT_TIMEOUT_MS, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
+		const out = execFileSync('git', ['log', '-1', '--format=%aI%x00%an%x00%s', '--', rel], { cwd: root, timeout: GIT_TIMEOUT_MS, windowsHide: true, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
 		if (!out) return null;
 		const [date, author, message] = out.split('\0');
 		return { date, author, message };

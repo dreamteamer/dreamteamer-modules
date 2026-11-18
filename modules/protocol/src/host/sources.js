@@ -2,6 +2,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { execFileSync } from "node:child_process";
+import { GIT_SYNC } from "./git-exec.js";
 import { engine } from "./engine.js";
 import { collectionRoots, listRecords, loadModules, walkIds, workspaceName } from "./fsdata.js";
 export function sourcesContext(root, iterable) {
@@ -38,7 +39,7 @@ export function sourcesContext(root, iterable) {
         if (!fs.existsSync(path.join(dir, ".git")))
             continue;
         try {
-            origins.set(repo, execFileSync("git", ["remote", "get-url", "origin"], { cwd: dir, stdio: ["ignore", "pipe", "ignore"] }).toString().trim() || undefined);
+            origins.set(repo, execFileSync("git", ["remote", "get-url", "origin"], { cwd: dir, ...GIT_SYNC }).toString().trim() || undefined);
         }
         catch {
             origins.set(repo, undefined);
