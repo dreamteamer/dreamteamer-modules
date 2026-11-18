@@ -3,7 +3,13 @@ import fs from "node:fs"
 import path from "node:path"
 import { spawnSync } from "node:child_process"
 
-const onPath = (env, bin) =>
+/** What the engine hands a setup unit: the workspace root and the environment to run in. */
+interface SetupContext {
+  root: string
+  env?: NodeJS.ProcessEnv
+}
+
+const onPath = (env: NodeJS.ProcessEnv, bin: string) =>
   (env.PATH ?? "").split(path.delimiter).some(d => {
     if (!d) return false
     try {
@@ -14,7 +20,7 @@ const onPath = (env, bin) =>
     }
   })
 
-export function inspect(ctx) {
+export function inspect(ctx: SetupContext) {
   const env = ctx.env ?? {}
   const present = onPath(env, "qmd")
   return {
@@ -32,12 +38,12 @@ export function inspect(ctx) {
   }
 }
 
-export function plan(ctx, inputs = {}) {
+export function plan(ctx: SetupContext, _inputs = {}) {
   const { checks } = inspect(ctx)
   const present = checks[0].status === "configured"
   return {
     checks,
-    needs: [],
+    needs: [] as never[],
     actions: [
       {
         id: "install-qmd",
@@ -53,8 +59,9 @@ export function plan(ctx, inputs = {}) {
   }
 }
 
-export function apply(ctx, action) {
-  if (action.state === "done") return { ok: true, changed: [], message: "nothing to do — already installed" }
+export function apply(ctx: SetupContext, action: { id: string; state?: string }) {
+  if (action.state === "done")
+    return { ok: true, changed: [] as string[], message: "nothing to do — already installed" }
   if (action.id === "install-qmd") {
     const r = spawnSync("npm", ["install", "-g", "@tobilu/qmd", "--no-audit", "--no-fund"], {
       cwd: ctx.root,

@@ -37,8 +37,8 @@ const USAGE = [
   "    only a caller who knows the domain can write them.",
 ].join("\n")
 
-const has = (a, f) => a.includes(`--${f}`)
-const opt = (a, f) => {
+const has = (a: string[], f: string) => a.includes(`--${f}`)
+const opt = (a: string[], f: string) => {
   const i = a.indexOf(`--${f}`)
   return i >= 0 ? a[i + 1] : undefined
 }
@@ -54,7 +54,7 @@ const QMD_MISSING = [
 ].join("\n")
 
 /** Read one record's frontmatter field, without a YAML parser — one flat scalar, first match wins. */
-export function frontmatterField(file, field) {
+export function frontmatterField(file: string, field: string): string | null {
   let text
   try {
     text = fs.readFileSync(file, "utf8")
@@ -68,7 +68,7 @@ export function frontmatterField(file, field) {
   return m ? m[1].trim().replace(/^['"]|['"]$/g, "") : null
 }
 
-export function main(argv, root) {
+export function main(argv: string[], root: string): number {
   const flagAt = argv.findIndex(a => a.startsWith("--") || a === "-c" || a === "-n")
   const question = (flagAt === -1 ? argv : argv.slice(0, flagAt)).join(" ").trim()
   if (!question) {
@@ -150,7 +150,7 @@ export function main(argv, root) {
 }
 
 /** Where a qmd collection's files actually live on disk. Answered once per collection per run. */
-function collectionRoot(name, cache) {
+function collectionRoot(name: string, cache: Map<string, string | null>): string | null {
   if (cache.has(name)) return cache.get(name)
   const r = spawnSync("qmd", ["collection", "show", name], { encoding: "utf8" })
   const p = /^\s*Path:\s*(\S+)/m.exec(r.stdout ?? "")?.[1] ?? null
@@ -159,12 +159,12 @@ function collectionRoot(name, cache) {
 }
 
 /** Rung 3: the reference the hits agree on, then the engine's own filter. */
-function expand(hits, root, argv) {
+function expand(hits: { collection: string; file: string }[], root: string, argv: string[]) {
   const field = opt(argv, "ref-field") ?? "repo"
-  const cache = new Map()
+  const cache = new Map<string, string | null>()
   // Collect each hit's reference and its collection together: the collection to expand is the one the
   // hits CARRYING the agreed reference live in, never simply the first hit's.
-  const carried = []
+  const carried: { ref: string | null; collection: string }[] = []
   for (const hit of hits) {
     const base = collectionRoot(hit.collection, cache)
     if (!base) continue
@@ -198,7 +198,7 @@ function expand(hits, root, argv) {
 // invoked path and the resolved one differ, and a guard that never fires reads as a clean run.
 const __isMain = () => {
   if (!process.argv[1]) return false
-  const real = p => {
+  const real = (p: string) => {
     try {
       return __fs.realpathSync(p)
     } catch {

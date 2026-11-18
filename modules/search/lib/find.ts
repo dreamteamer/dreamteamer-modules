@@ -57,7 +57,7 @@ const STOP = new Set([
 /** The question reduced to its content words — the mechanical `lex:` default when a caller supplies
  *  none. It is a floor, not a good expansion: it cannot help a question that shares no vocabulary
  *  with its answer, which is exactly when a caller should pass `--lex`. */
-export function contentWords(question) {
+export function contentWords(question: unknown): string[] {
   // The leading dot is part of the token: `.env` and `.gitignore` are rare, decisive domain nouns, and
   // dropping the dot turns a filename into a generic word.
   return (
@@ -95,7 +95,7 @@ export function buildQueryDocument({ question, lex, vec, hyde }: Record<string, 
  * A hit's path without its `:line` anchor. qmd returns `path:line`, which makes a citation openable,
  * but `data/notes/x.md:8` is not a file: resolving the anchored path finds nothing, silently.
  */
-export function stripLineAnchor(hit) {
+export function stripLineAnchor(hit: unknown): string {
   return String(hit ?? "").replace(/:\d+(?::\d+)?$/, "")
 }
 
@@ -109,8 +109,11 @@ export function stripLineAnchor(hit) {
  * threshold is a MAJORITY of the hits that carry the field at all, and at least two of them — one hit
  * agreeing with itself is not agreement.
  */
-export function agreedReference(refsPerHit, { min = 2, ratio = 0.5 } = {}) {
-  const counts = new Map()
+export function agreedReference(
+  refsPerHit: (string | null | undefined)[] | null | undefined,
+  { min = 2, ratio = 0.5 } = {}
+): { ref: string; agreeing: number; carrying: number } | null {
+  const counts = new Map<string, number>()
   let carrying = 0
   for (const ref of refsPerHit ?? []) {
     if (!ref) continue
@@ -118,7 +121,7 @@ export function agreedReference(refsPerHit, { min = 2, ratio = 0.5 } = {}) {
     counts.set(ref, (counts.get(ref) ?? 0) + 1)
   }
   if (carrying === 0) return null
-  let best = null
+  let best: string | null = null
   let bestN = 0
   for (const [ref, n] of counts)
     if (n > bestN) {
@@ -130,7 +133,14 @@ export function agreedReference(refsPerHit, { min = 2, ratio = 0.5 } = {}) {
 }
 
 /** The rungs, named. `effort` is the caller's budget, not a quality dial — see the header. */
-export const RUNGS = {
+/** One rung of the ladder: its name, the qmd verb it runs, and when to pick it. */
+export interface Rung {
+  name: string
+  verb: string
+  why: string
+}
+
+export const RUNGS: Record<number, Rung> = {
   0: {
     name: "lexical",
     verb: "search",
@@ -154,7 +164,7 @@ export const RUNGS = {
  * Nothing here tries to detect a set-shaped question: that is rung 3, and it is a decision about
  * what the ASKER wants back, which a heuristic on wording has no business making for them.
  */
-export function suggestEffort(question) {
+export function suggestEffort(question: unknown): number {
   const q = String(question ?? "").trim()
   if (/^".*"$/.test(q) || /^'.*'$/.test(q)) return 0
   return 2
@@ -167,11 +177,14 @@ export function suggestEffort(question) {
  * records the set is made of; the first hit may be a record with no such field at all. Several
  * collections may qualify — an issue and a feature can both point at one repo — so the commonest wins.
  */
-export function collectionOfAgreeing(carried, ref) {
-  const counts = new Map()
+export function collectionOfAgreeing(
+  carried: ({ ref: string | null; collection: string } | null | undefined)[] | null | undefined,
+  ref: string
+): string | null {
+  const counts = new Map<string, number>()
   for (const c of carried ?? [])
     if (c && c.ref === ref && c.collection) counts.set(c.collection, (counts.get(c.collection) ?? 0) + 1)
-  let best = null
+  let best: string | null = null
   let bestN = 0
   for (const [c, n] of counts)
     if (n > bestN) {
