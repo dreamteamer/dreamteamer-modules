@@ -59,12 +59,13 @@ const USAGE = [
   "       npx dt-wiki pull <record-id> [--notebook <uuid>] [--wiki <id>] [--refresh] [--limit N] [--dry-run]",
 ].join("\n")
 
-const opt = (argv, name) => {
+const opt = (argv: string[], name: string) => {
   const i = argv.indexOf(`--${name}`)
   return i >= 0 ? argv[i + 1] : undefined
 }
-const has = (argv, name) => argv.includes(`--${name}`)
-const positional = argv => argv.filter((a, i) => !a.startsWith("-") && !(i > 0 && VALUE_FLAGS.has(argv[i - 1])))
+const has = (argv: string[], name: string) => argv.includes(`--${name}`)
+const positional = (argv: string[]) =>
+  argv.filter((a, i) => !a.startsWith("-") && !(i > 0 && VALUE_FLAGS.has(argv[i - 1])))
 const VALUE_FLAGS = new Set([
   "--title",
   "--description",
@@ -83,8 +84,8 @@ const VALUE_FLAGS = new Set([
 /** A collection's storage as the COMPILED descriptor resolves it, or null when it is not compiled:
  *  the path compile decided (`compiled.defaults`, over the authored one), the suffix, and the parent
  *  collection a `storage.under` names (`compiled.under_collection`). */
-function compiledStorage(root, name) {
-  let d
+function compiledStorage(root: string, name: string) {
+  let d: any
   try {
     d = yaml.load(fs.readFileSync(path.join(root, ".dreamteamer", "collections", `${name}.collection.yaml`), "utf8"))
   } catch {
@@ -107,7 +108,7 @@ function compiledStorage(root, name) {
 /** Where a consumer keeps a collection's records: the COMPILED descriptor's storage, else the module
  *  default. Reading the compiled copy is what makes this work in a workspace that re-typed or
  *  re-homed the collection in an overlay. */
-export function recordPath(root, collection, id) {
+export function recordPath(root: string, collection: string, id: string): string {
   const s = compiledStorage(root, collection) // an uncompiled workspace still has the module default
   const dir = s?.path ?? `data/${collection}`
   const suffix = s?.suffix ?? collection.replace(/s$/, "")
@@ -127,17 +128,23 @@ export function recordPath(root, collection, id) {
   return own
 }
 
-function readRecord(file): { fields: Record<string, any>; body: string } {
+/** A record file as read: its frontmatter and its body. */
+interface RecordFile {
+  fields: Record<string, any>
+  body: string
+}
+
+function readRecord(file: string): { fields: Record<string, any>; body: string } {
   const text = fs.readFileSync(file, "utf8")
   if (!text.startsWith("---\n")) return { fields: {}, body: text }
   const end = text.indexOf("\n---", 4)
   if (end < 0) return { fields: {}, body: text }
   let body = text.slice(end + 4)
   if (body.startsWith("\n")) body = body.slice(1)
-  return { fields: yaml.load(text.slice(4, end)) ?? {}, body }
+  return { fields: (yaml.load(text.slice(4, end)) ?? {}) as Record<string, any>, body }
 }
 
-function writeRecord(file, { fields, body }) {
+function writeRecord(file: string, { fields, body }: RecordFile) {
   fs.mkdirSync(path.dirname(file), { recursive: true })
   fs.writeFileSync(
     file,
@@ -149,12 +156,23 @@ function writeRecord(file, { fields, body }) {
 
 /** A wiki id → its folder on this machine, plus its record if one exists. Returns `{ refusal }` when
  *  the record's `${env:…}` template cannot be rendered here, rather than guessing. */
-function resolveWiki(root, id) {
+/** A wiki resolved on this machine. When `refusal` is set the template could not be rendered and
+ *  nothing else is: the caller reports it and moves on. */
+interface Wiki {
+  refusal?: string
+  id: string
+  dir: string
+  rec: RecordFile | null
+  file: string
+  paths: ReturnType<typeof wikiPaths>
+}
+
+function resolveWiki(root: string, id: string): Wiki {
   const file = recordPath(root, "wikis", id)
   const rec = fs.existsSync(file) ? readRecord(file) : null
   const template = rec?.fields?.folder ?? defaultFolder(id)
   const r = renderTemplate(template, envFrom(root))
-  if (r.refusal) return { refusal: `wikis/${id}: ${r.refusal}` }
+  if (r.refusal) return { refusal: `wikis/${id}: ${r.refusal}`, id, dir: null, rec, file, paths: null }
   // A relative folder resolves against the workspace root, never the current directory, so the verb
   // reads the same tree wherever it is run from. An absolute path is used as it is.
   let dir = path.isAbsolute(r.value) ? r.value : path.resolve(root, r.value)
@@ -171,10 +189,19 @@ function resolveWiki(root, id) {
 /** Every source file under `sources/`, in corpus order — frontmatter spread flat, body attached.
  *  Ordered by the filename number, not the directory walk, so a section subfolder's sources stay in
  *  place among the ones around them. */
-function listSources(dir) {
+/** One source file: its frontmatter spread flat, with where it is and its body. */
+type SourceEntry = Record<string, any> & {
+  path: string
+  abs: string
+  body: string
+  bodyLine: number
+  completeness?: string
+}
+
+function listSources(dir: string): SourceEntry[] {
   const base = wikiPaths(dir).sources
-  const out = []
-  const walk = (d, prefix) => {
+  const out: SourceEntry[] = []
+  const walk = (d: string, prefix: string) => {
     if (!fs.existsSync(d)) return
     for (const e of fs.readdirSync(d, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
       const p = path.join(d, e.name)
@@ -186,14 +213,14 @@ function listSources(dir) {
     }
   }
   walk(base, "")
-  const num = s => Number(/(\d+)/.exec(path.basename(s.path))?.[1] ?? 0)
+  const num = (s: SourceEntry) => Number(/(\d+)/.exec(path.basename(s.path))?.[1] ?? 0)
   return out.sort((a, b) => num(a) - num(b))
 }
 
-const nextIndex = sources =>
+const nextIndex = (sources: { path: string }[]) =>
   sources.reduce((m, s) => Math.max(m, Number(/(\d+)/.exec(path.basename(s.path))?.[1] ?? 0)), 0) + 1
 
-function writeSource(dir, relPath, fields, body) {
+function writeSource(dir: string, relPath: string, fields: Record<string, unknown>, body: string): string {
   const abs = path.join(dir, relPath)
   fs.mkdirSync(path.dirname(abs), { recursive: true })
   fs.writeFileSync(abs, renderSource(fields, body))
@@ -201,8 +228,8 @@ function writeSource(dir, relPath, fields, body) {
 }
 
 /** Every wiki this workspace knows: a record under the collection, or a folder carrying a manifest. */
-function allWikiIds(root) {
-  const ids = new Set()
+function allWikiIds(root: string): string[] {
+  const ids = new Set<string>()
   const dir = path.dirname(recordPath(root, "wikis", "x"))
   if (fs.existsSync(dir))
     for (const f of fs.readdirSync(dir)) {
@@ -228,17 +255,17 @@ function allWikiIds(root) {
 
 /** The corpus's own frontmatter. `index.md` wins; a bare-YAML `wiki.yaml` is read when it is all the
  *  folder has, and is never rewritten. */
-const indexOf = (w): { fields: Record<string, any>; body: string } => {
+const indexOf = (w: Wiki): { fields: Record<string, any>; body: string } => {
   for (const f of [w.paths.index, w.paths.legacyManifest]) {
     if (fs.existsSync(f)) return parseIndex(fs.readFileSync(f, "utf8"))
   }
   return { fields: {}, body: "" }
 }
-const manifestOf = w => indexOf(w).fields
+const manifestOf = (w: Wiki) => indexOf(w).fields
 
 /** The rollup written back onto the `wikis` record. It is a CACHE and the field descriptions say so;
  *  this is the only place it is produced, and `verify` is what re-derives it. */
-function stampRollup(w, sources) {
+function stampRollup(w: Wiki, sources: { completeness?: string }[]) {
   if (!w.rec) return null
   const s = summarise(sources)
   w.rec.fields.sources_total = s.total
@@ -251,9 +278,22 @@ function stampRollup(w, sources) {
 
 // ─── the verbs ──────────────────────────────────────────────────────────────────────────────────────
 
-export function main(argv, root) {
+export function main(argv: string[], root: string): number {
   const [sub, ...rest] = argv
-  const table = { init, list, show, add, status, incomplete, verify, search, ask, index, outline: outlineCmd, pull }
+  const table: Record<string, (argv: string[], root: string) => number> = {
+    init,
+    list,
+    show,
+    add,
+    status,
+    incomplete,
+    verify,
+    search,
+    ask,
+    index,
+    outline: outlineCmd,
+    pull,
+  }
   const fn = Object.hasOwn(table, sub ?? "") ? table[sub] : null
   if (!fn) {
     console.error(`unknown wiki command "${sub ?? ""}"\n${USAGE}`)
@@ -262,7 +302,7 @@ export function main(argv, root) {
   return fn(rest, root)
 }
 
-function init(argv, root) {
+function init(argv: string[], root: string): number {
   const id = positional(argv)[0]
   if (!id) {
     console.error(USAGE.split("\n")[0])
@@ -337,7 +377,7 @@ const QMD_MISSING = [
  * It prints locations, never an answer: the reading is the caller's job, so every claim drawn from the
  * corpus stays checkable at its `file:line`.
  */
-function ask(argv, root) {
+function ask(argv: string[], root: string): number {
   const pos = positional(argv)
   const id = pos[0]
   const question = pos.slice(1).join(" ")
@@ -388,7 +428,7 @@ function ask(argv, root) {
  * commentary on it. It comes from the record's `description`, so that field shapes ranking once a
  * corpus is indexed.
  */
-function index(argv, root) {
+function index(argv: string[], root: string): number {
   if (!qmdPresent()) {
     console.error(QMD_MISSING)
     return 1
@@ -442,8 +482,8 @@ function index(argv, root) {
   return 0
 }
 
-function list(argv, root) {
-  const rows = []
+function list(argv: string[], root: string): number {
+  const rows: Record<string, any>[] = []
   for (const id of allWikiIds(root)) {
     const w = resolveWiki(root, id)
     if (w.refusal) {
@@ -479,7 +519,7 @@ function list(argv, root) {
   return 0
 }
 
-function show(argv, root) {
+function show(argv: string[], root: string): number {
   const id = positional(argv)[0]
   if (!id) {
     console.error(USAGE.split("\n")[2])
@@ -512,7 +552,7 @@ function show(argv, root) {
   return 0
 }
 
-function add(argv, root) {
+function add(argv: string[], root: string): number {
   const [id, ...others] = positional(argv)
   const ref = others.join(" ")
   if (!id || !ref) {
@@ -586,10 +626,10 @@ function add(argv, root) {
 }
 
 /** Every source of every named wiki, flattened — the shared read behind status, incomplete and verify. */
-function scan(argv, root) {
+function scan(argv: string[], root: string) {
   const ids = positional(argv).length ? positional(argv) : allWikiIds(root)
-  const rows = []
-  const errors = []
+  const rows: (SourceEntry & { wiki: string; w: Wiki })[] = []
+  const errors: string[] = []
   for (const id of ids) {
     const w = resolveWiki(root, id)
     if (w.refusal) {
@@ -601,7 +641,7 @@ function scan(argv, root) {
   return { ids, rows, errors }
 }
 
-function status(argv, root) {
+function status(argv: string[], root: string): number {
   const { ids, rows, errors } = scan(argv, root)
   for (const e of errors) console.error(`✖ ${e}`)
   const s = summarise(rows)
@@ -616,7 +656,7 @@ function status(argv, root) {
 }
 
 /** THE QUERY THE WHOLE DESIGN EXISTS FOR. Exits 1 when anything is short, so it gates a pipeline. */
-function incomplete(argv, root) {
+function incomplete(argv: string[], root: string): number {
   const { rows, errors } = scan(argv, root)
   for (const e of errors) console.error(`✖ ${e}`)
   const short = rows.filter(r => r.completeness !== "complete")
@@ -651,7 +691,7 @@ function incomplete(argv, root) {
 }
 
 /** Re-derive every marker from the files and name the drift between them and the rollup. */
-function verify(argv, root) {
+function verify(argv: string[], root: string): number {
   const { ids, rows, errors } = scan(argv, root)
   for (const e of errors) console.error(`✖ ${e}`)
   const minBytes = Number(opt(argv, "min-bytes")) || MIN_BYTES
@@ -704,7 +744,7 @@ function verify(argv, root) {
   return has(argv, "fix") ? 0 : 1
 }
 
-function search(argv, root) {
+function search(argv: string[], root: string): number {
   const [id, ...pat] = positional(argv)
   const pattern = pat.join(" ")
   if (!id || !pattern) {
@@ -738,7 +778,7 @@ function search(argv, root) {
 
 /** A table of contents for a corpus — the mechanical stand-in for a summary, which nothing here
  *  generates. */
-function outlineCmd(argv, root) {
+function outlineCmd(argv: string[], root: string): number {
   const id = positional(argv)[0]
   if (!id) {
     console.error(USAGE.split("\n")[8])
@@ -781,7 +821,7 @@ function outlineCmd(argv, root) {
 
 /** One vendor call, or a throw carrying the vendor's own words. `vendorResult` in lib/wiki.mjs decides
  *  which, because the vendor's exit code alone does not say whether the call failed. */
-function nlm(args) {
+function nlm(args: string[]): Record<string, any> {
   let out = ""
   let stderr = ""
   let status = 0
@@ -805,7 +845,7 @@ function nlm(args) {
 /** Markdown first, plain text as the fallback — and only for the one failure a lossier format fixes
  *  (`MARKDOWN_EXTRA_MISSING`). Falling back keeps the content (with `-o` the text path is not
  *  truncated) and loses headings, tables and links, a downgrade recorded on the file. */
-function fetchFulltext(uuid, sourceId, tmp) {
+function fetchFulltext(uuid: string, sourceId: string, tmp: string) {
   let lastError = ""
   for (const format of ["markdown", "text"]) {
     try {
@@ -819,10 +859,13 @@ function fetchFulltext(uuid, sourceId, tmp) {
       break
     }
   }
-  return { observation: { attempted: true, status: 1, bytes: 0, body: "", error: lastError }, format: null }
+  return {
+    observation: { attempted: true, status: 1, bytes: 0, body: "", error: lastError },
+    format: null as string | null,
+  }
 }
 
-function pull(argv, root) {
+function pull(argv: string[], root: string): number {
   const recordId = positional(argv)[0]
   let uuid = opt(argv, "notebook")
   let nbFile = null
@@ -972,7 +1015,7 @@ function pull(argv, root) {
 // invoked path and the resolved one differ, and a guard that never fires reads as a clean run.
 const __isMain = () => {
   if (!process.argv[1]) return false
-  const real = p => {
+  const real = (p: string) => {
     try {
       return __fs.realpathSync(p)
     } catch {

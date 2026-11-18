@@ -49,7 +49,7 @@ export function classify({
   status = 0,
   bytes = 0,
   truncated = false,
-  expectedBytes = null,
+  expectedBytes = null as number | null,
   error = "",
   minBytes = MIN_BYTES,
 } = {}) {
@@ -76,10 +76,10 @@ export function classify({
 
 /** Counts by state, plus the two numbers a rollup carries. `sources` is anything with a
  *  `completeness`; an unknown or absent one counts as `pending` rather than being dropped. */
-export function summarise(sources = []) {
+export function summarise(sources: ({ completeness?: unknown } | null | undefined)[] = []) {
   const by = Object.fromEntries(COMPLETENESS.map(s => [s, 0]))
   for (const s of sources) {
-    const state = COMPLETENESS.includes(s?.completeness) ? s.completeness : "pending"
+    const state = COMPLETENESS.includes(s?.completeness as string) ? (s.completeness as string) : "pending"
     by[state] += 1
   }
   const total = sources.length
@@ -97,7 +97,7 @@ export const ADAPTERS = ["local", "notebooklm"]
  * served by NotebookLM, one without is a folder. Setting it overrides that, for a notebook that
  * exists upstream but should be served from its folder.
  */
-export function adapterOf(record: Record<string, any> = {}, override?) {
+export function adapterOf(record: Record<string, any> = {}, override?: string): string {
   const pick = override ?? record.adapter
   if (pick) {
     if (!ADAPTERS.includes(pick)) throw new Error(`unknown adapter "${pick}" — one of ${ADAPTERS.join(" · ")}`)
@@ -123,13 +123,13 @@ export function adapterOf(record: Record<string, any> = {}, override?) {
  * record works on every machine with no variable to set. A record carrying an `${env:…}` template
  * still renders and works.
  */
-export const defaultFolder = id => `wikis/${id}`
+export const defaultFolder = (id: string) => `wikis/${id}`
 
 /** The folder every wiki sits under, relative to the workspace root. */
 export const WIKI_ROOT = "wikis"
 
 /** Everything inside a wiki folder, once the template has been rendered. */
-export function wikiPaths(root) {
+export function wikiPaths(root: string) {
   return {
     root,
     // `index.md`, so every file in a corpus is markdown with frontmatter. `legacyManifest` is a
@@ -144,7 +144,7 @@ export function wikiPaths(root) {
 
 /** Lowercase kebab, capped — the slug half of a source filename and of a section folder. Returns ''
  *  when the title carries nothing latin-alphanumeric, which the caller reads as "use the number". */
-export function slug(text, max = 48) {
+export function slug(text: unknown, max = 48): string {
   const s = String(text ?? "")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
@@ -161,14 +161,14 @@ export function slug(text, max = 48) {
  * to disagree. A gap left by a delete is never closed up: renumbering would move every file a link
  * points at.
  */
-export function sourceFileName(index, title) {
+export function sourceFileName(index: number, title: unknown): string {
   const nn = String(index).padStart(3, "0")
   const s = slug(title)
   return s ? `${nn}--${s}.md` : `${nn}.md`
 }
 
 /** The source's path INSIDE `sources/`, POSIX-spelled: a section becomes one subfolder. */
-export function sourcePath(index, title, section?) {
+export function sourcePath(index: number, title: unknown, section?: unknown): string {
   const file = sourceFileName(index, title)
   const dir = slug(section)
   return dir ? `${dir}/${file}` : file
@@ -181,12 +181,12 @@ export function sourcePath(index, title, section?) {
  *
  *  `bodyLine` is the 1-based line of the file that `body` starts on. A hit numbered inside the body
  *  alone would be short by the frontmatter's height and open the wrong line. */
-export function parseSource(text): { fields: Record<string, any>; body: string; bodyLine: number } {
+export function parseSource(text: unknown): { fields: Record<string, any>; body: string; bodyLine: number } {
   const s = String(text ?? "")
   if (!s.startsWith("---\n")) return { fields: {}, body: s, bodyLine: 1 }
   const end = s.indexOf("\n---", 4)
   if (end < 0) return { fields: {}, body: s, bodyLine: 1 }
-  const fields = yaml.load(s.slice(4, end)) ?? {}
+  const fields = (yaml.load(s.slice(4, end)) ?? {}) as Record<string, any>
   const consumed = s.slice(0, end + 4)
   let body = s.slice(end + 4)
   let bodyLine = consumed.split("\n").length
@@ -199,7 +199,7 @@ export function parseSource(text): { fields: Record<string, any>; body: string; 
 
 /** `{ fields, body }` → a source file. The body is written verbatim — including a `---` line of its
  *  own, which `parseSource` reads back unharmed because only the FIRST closing marker is a boundary. */
-export function renderSource(fields, body = "") {
+export function renderSource(fields: Record<string, unknown>, body = ""): string {
   const fm = yaml.dump(fields, { lineWidth: -1, noRefs: true, quotingType: "'" })
   return `---\n${fm}---\n${body}`
 }
@@ -242,7 +242,18 @@ export function stubFields({
  *
  * The body is a person's and is preserved: re-rendering keeps whatever prose is under the frontmatter.
  */
-export function renderIndex(m, body = "") {
+/** What `index.md` carries in its frontmatter. */
+export interface WikiIndex {
+  id: string
+  title?: string
+  adapter?: string
+  upstream?: unknown
+  persona?: unknown
+  synced_at?: string
+  counts?: unknown
+}
+
+export function renderIndex(m: WikiIndex, body: unknown = ""): string {
   const fm = yaml.dump(
     {
       id: m.id,
@@ -261,24 +272,24 @@ export function renderIndex(m, body = "") {
 
 /** The frontmatter of an `index.md`, or of a bare-YAML `wiki.yaml` — both are accepted, told apart
  *  by whether the text opens a frontmatter fence. */
-export function parseIndex(text) {
+export function parseIndex(text: unknown): { fields: Record<string, any>; body: string } {
   const t = String(text ?? "")
   const m = /^---\n([\s\S]*?)\n---\n?([\s\S]*)$/.exec(t)
-  if (!m) return { fields: yaml.load(t) ?? {}, body: "" } // legacy wiki.yaml
-  return { fields: yaml.load(m[1]) ?? {}, body: m[2] }
+  if (!m) return { fields: (yaml.load(t) ?? {}) as Record<string, any>, body: "" } // legacy wiki.yaml
+  return { fields: (yaml.load(m[1]) ?? {}) as Record<string, any>, body: m[2] }
 }
 
 /** Aliases of `renderIndex` and `parseIndex` under their manifest names; both read and write the
  *  markdown `index.md`. */
-export const renderManifest = m => renderIndex(m)
-export const parseManifest = text => parseIndex(text).fields
+export const renderManifest = (m: WikiIndex) => renderIndex(m)
+export const parseManifest = (text: unknown) => parseIndex(text).fields
 
 // ─── reading a corpus without a model ───────────────────────────────────────────────────────────────
 
 /** A body's headings, in order — the mechanical stand-in for a summary the local adapter cannot
  *  generate. Fenced code is skipped, because a `# comment` in a shell block is not a heading. */
-export function outline(body, maxLevel = 2) {
-  const out = []
+export function outline(body: unknown, maxLevel = 2): { level: number; text: string }[] {
+  const out: { level: number; text: string }[] = []
   let fenced = false
   for (const line of String(body ?? "").split("\n")) {
     if (/^\s*(```|~~~)/.test(line)) {
@@ -297,8 +308,8 @@ export function outline(body, maxLevel = 2) {
  *
  *  Pass the source's `bodyLine`. The default of 1 is right only for a string that is the whole file;
  *  for a parsed source the body starts below the frontmatter. */
-export function searchBody(body, re, cap = 200, firstLine = 1) {
-  const out = []
+export function searchBody(body: unknown, re: RegExp, cap = 200, firstLine = 1): { line: number; text: string }[] {
+  const out: { line: number; text: string }[] = []
   String(body ?? "")
     .split("\n")
     .forEach((text, i) => {
@@ -312,9 +323,12 @@ export function searchBody(body, re, cap = 200, firstLine = 1) {
 
 /** `${env:NAME}` → its value, or a refusal naming the variable. Records carry the template; only the
  *  machine that runs the verb renders it. */
-export function renderTemplate(template, env = process.env) {
-  let missing = null
-  const value = String(template ?? "").replace(/\$\{env:([A-Z0-9_]+)\}/g, (_, name) => {
+export function renderTemplate(
+  template: unknown,
+  env: Record<string, string | undefined> = process.env
+): { value?: string; refusal?: string } {
+  let missing: string | null = null
+  const value = String(template ?? "").replace(/\$\{env:([A-Z0-9_]+)\}/g, (_, name: string) => {
     if (env[name] == null || env[name] === "") {
       missing = missing ?? name
       return ""
@@ -328,8 +342,8 @@ export function renderTemplate(template, env = process.env) {
 
 /** `.env` text → its key/value pairs. Values are read so a verb can render `FILES_FOLDER` into a
  *  folder it is about to write to on this machine; no value is ever printed. */
-export function parseEnv(text) {
-  const out = {}
+export function parseEnv(text: unknown): Record<string, string> {
+  const out: Record<string, string> = {}
   for (const line of String(text ?? "").split("\n")) {
     const m = /^\s*(?:export\s+)?([A-Z_][A-Z0-9_]*)\s*=\s*(.*)$/.exec(line)
     if (!m) continue
@@ -343,8 +357,8 @@ export function parseEnv(text) {
 /** The environment a verb renders templates against: the workspace's `.env`, overridden by anything
  *  actually exported. Without this, `${env:FILES_FOLDER}` renders only when the variable happens to be
  *  in the shell — which it almost never is under `npx`. */
-export function envFrom(root, base = process.env) {
-  let fromFile = {}
+export function envFrom(root: string, base: NodeJS.ProcessEnv = process.env): Record<string, string> {
+  let fromFile: Record<string, string> = {}
   try {
     fromFile = parseEnv(fs.readFileSync(path.join(root, ".env"), "utf8"))
   } catch {
@@ -385,7 +399,7 @@ export const MARKDOWN_EXTRA_MISSING = /markdownify/i
 // ─── the pull ───────────────────────────────────────────────────────────────────────────────────────
 
 /** One upstream `source list` entry's type → the kind a local source file carries. */
-export function kindFromUpstream(type) {
+export function kindFromUpstream(type: unknown): string {
   const t = String(type ?? "")
     .replace(/^SourceType\./, "")
     .toLowerCase()
@@ -407,12 +421,37 @@ export function kindFromUpstream(type) {
  * Every live source produces a step, including the ones being skipped: the plan is the inventory,
  * and a dropped step would be a source that stops being counted.
  */
-export function pullPlan(live, existing = [], opts: Record<string, any> = {}) {
+/** One upstream `source list` row. */
+export interface UpstreamSource {
+  id?: string
+  index?: number
+  type?: string
+  title?: string
+  url?: string
+}
+
+/** One step of a pull. */
+export interface PullStep {
+  action: "fetch" | "skip"
+  index: number
+  upstream_id: string
+  kind: string
+  file: string
+  title: string
+  ref: string
+  reason: string
+}
+
+export function pullPlan(
+  live: UpstreamSource[] | { sources?: UpstreamSource[] } | null | undefined,
+  existing: ({ upstream_id?: string; completeness?: string; path?: string } | null)[] = [],
+  opts: Record<string, any> = {}
+): { steps: PullStep[]; refusals: string[] } {
   const rows = Array.isArray(live) ? live : (live?.sources ?? [])
   const by = new Map(existing.filter(e => e?.upstream_id).map(e => [e.upstream_id, e]))
   const section = opts.section ?? (() => "")
-  const steps = []
-  const refusals = []
+  const steps: PullStep[] = []
+  const refusals: string[] = []
   if (!rows.length) refusals.push("the upstream notebook reports no sources — nothing to pull")
 
   rows.forEach((row, i) => {
