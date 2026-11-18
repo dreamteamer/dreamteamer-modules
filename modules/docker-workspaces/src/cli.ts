@@ -82,7 +82,7 @@ The export format: FORMAT.md in this package.`
 
 // ---- flags -------------------------------------------------------------------------------------
 /** The flags each form takes. A form absent here is not a verb on that noun. */
-export const FLAGS = {
+export const FLAGS: Record<string, string[]> = {
   "start containers": ["template", "name", "email", "no-open", "json", "mount", "repo", "rotate-token", "workspace"],
   "stop containers": ["json"],
   "open containers": ["json", "no-open", "vscode", "workspace"],
@@ -102,10 +102,10 @@ const BOOLEAN = new Set(["no-open", "json", "force", "vscode", "rotate-token", "
 
 /** `--k v`, `--k=v`, bare `--k` → true. `--mount` repeats into an array; `--workspace` repeats into
  *  `workspaces` (export/import read every value; start/open keep the last). Any other repeat: last wins. */
-export function parseFlags(args) {
+export function parseFlags(args: string[]) {
   const flags: Record<string, any> = {}
-  const pos = []
-  const put = (k, v) => {
+  const pos: string[] = []
+  const put = (k: string, v: string | true) => {
     if (k === "mount") flags.mount = [...(flags.mount ?? []), v]
     else flags[k] = v
     if (k === "workspace") flags.workspaces = [...(flags.workspaces ?? []), v]
@@ -125,7 +125,7 @@ export function parseFlags(args) {
   return { flags, pos }
 }
 
-function refuseUnknown(flags, known, spelling) {
+function refuseUnknown(flags: Record<string, any>, known: string[], spelling: string) {
   if ("passphrase" in flags)
     throw new Error(
       "the passphrase is never a flag (every local user's `ps` reads argv) — set DT_EXPORT_PASSPHRASE, or let the prompt ask"
@@ -138,14 +138,14 @@ function refuseUnknown(flags, known, spelling) {
 }
 
 /** `containers`, `container`, `containers/<id>` → { collection, id }; null when the word is not ours. */
-export function target(word) {
+export function target(word: string | undefined) {
   if (!word || word.startsWith("--")) return null
   const slash = word.indexOf("/")
   const collection = NOUNS[slash === -1 ? word : word.slice(0, slash)]
   return collection ? { collection, id: slash === -1 ? undefined : word.slice(slash + 1) } : null
 }
 
-const table = (rows, cols) => {
+const table = (rows: Record<string, unknown>[], cols: string[]) => {
   if (!rows.length) return "(none)"
   const w = cols.map(c => Math.max(c.length, ...rows.map(r => String(r[c] ?? "").length)))
   return rows
@@ -162,7 +162,7 @@ const VERBS = new Set(["start", "stop", "open", "rm", "get", "list", "add", "exp
 
 // ---- dispatch ----------------------------------------------------------------------------------
 /** `dt-docker …` → a promise of the exit code. Throws a sentence on a refusal. */
-export async function main(argv) {
+export async function main(argv: string[]): Promise<number> {
   const [cmd, ...rest] = argv
   if (cmd === "--version" || cmd === "-v" || cmd === "version") {
     const p = JSON.parse(fs.readFileSync(path.join(packageRoot(import.meta.url), "package.json"), "utf8"))
@@ -204,7 +204,7 @@ export async function main(argv) {
   // under --json stdout is the JSON document and nothing else — every human line (the URL carrying
   // the image's token among them) goes to stderr, so a script parsing or logging stdout never holds it
   const say = json ? console.error : console.log
-  const out = v => emit(JSON.stringify(v, null, 2))
+  const out = (v: unknown) => emit(JSON.stringify(v, null, 2))
 
   if (t.collection === "images") {
     if (cmd === "list") {

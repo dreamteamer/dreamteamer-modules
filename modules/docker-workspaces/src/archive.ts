@@ -50,7 +50,7 @@ const LEFT_BEHIND = new Set(["node_modules", ".files"])
 // and the dotfiles package managers and git keep tokens in — FORMAT.md
 const SECRET_FILES = new Set([".env", ".envrc", ".npmrc", ".netrc", ".git-credentials", ".pypirc"])
 const ENV_TEMPLATES = new Set([".env.example", ".env.sample", ".env.template"])
-export const isSecretFile = segs => {
+export const isSecretFile = (segs: string[]) => {
   const b = segs[segs.length - 1]
   return (
     SECRET_FILES.has(b) ||
@@ -61,7 +61,7 @@ export const isSecretFile = segs => {
 /** A `.git/config` minus its credentials: every `[credential]` / `[credential "…"]` section dropped
  *  (an inline `!` helper can hold a password), every `extraheader` line dropped (where CI parks a
  *  token), and the userinfo cut from every http(s) URL — values and `[url "…"]` section names alike. */
-export function stripGitConfig(text) {
+export function stripGitConfig(text: string): string {
   let drop = false
   const kept = text.split(/(?<=\n)/).filter(line => {
     const head = /^\s*\[\s*([^\]\s."]+)/.exec(line)
@@ -75,22 +75,43 @@ const FILE = "0",
   SYMLINK = "2"
 
 // ---- tar: read any of ustar · PAX · GNU long names, write ustar (+ PAX when a name is long) -------
-const str = (b, o, n) => {
+const str = (b: Buffer, o: number, n: number) => {
   const e = b.indexOf(0, o)
   return b.toString("utf8", o, e === -1 || e > o + n ? o + n : e)
 }
-const num = (b, o, n) => (b[o] & 0x80 ? b.readUIntBE(o + n - 6, 6) : parseInt(str(b, o, n).trim() || "0", 8)) // base-256 above 8 GiB
-const sum = h => {
+const num = (b: Buffer, o: number, n: number) =>
+  b[o] & 0x80 ? b.readUIntBE(o + n - 6, 6) : parseInt(str(b, o, n).trim() || "0", 8) // base-256 above 8 GiB
+const sum = (h: Buffer) => {
   let s = 0
   for (let i = 0; i < 512; i++) s += i >= 148 && i < 156 ? 32 : h[i]
   return s
 }
-const pad = n => (512 - (n % 512)) % 512
+const pad = (n: number) => (512 - (n % 512)) % 512
 export const TAR_END = Buffer.alloc(1024)
 
-function header({ name, type, mode, size, mtime, linkname = "" }: Record<string, any>) {
+/** One tar entry's header fields. */
+export interface TarEntry {
+  name: string
+  type: string
+  mode: number
+  size: number
+  mtime: number
+  linkname?: string
+}
+
+/** What `retar`'s caller answers per entry: the name to write it under, null to drop it, or a body rewrite. */
+export type Decision =
+  string | null | { name: string; rewrite: (body: Buffer) => Buffer; tooBig: (size: number) => Error }
+
+/** The two keys scrypt derives from the passphrase. */
+interface Keys {
+  enc: Buffer
+  mac: Buffer
+}
+
+function header({ name, type, mode, size, mtime, linkname = "" }: TarEntry): Buffer {
   const h = Buffer.alloc(512)
-  const oct = (v, o, n) =>
+  const oct = (v: number, o: number, n: number) =>
     h.write(
       `${Math.floor(v)
         .toString(8)
@@ -116,7 +137,7 @@ function header({ name, type, mode, size, mtime, linkname = "" }: Record<string,
   h[155] = 32
   if (Buffer.byteLength(name) <= 100 && Buffer.byteLength(linkname) <= 100) return h
   // a PAX record's length counts its own digits
-  const rec = (k, v) => {
+  const rec = (k: string, v: string) => {
     const body = ` ${k}=${v}\n`
     const n = Buffer.byteLength(body)
     return `${n + String(n + String(n).length).length}${body}`
@@ -136,10 +157,10 @@ function header({ name, type, mode, size, mtime, linkname = "" }: Record<string,
  *  sanitizer, and a sanitizer that gives up must fail closed). Headers are rewritten (owner 0,
  *  permission bits only); bodies stream through. No end marker — the caller adds one. */
 export const REWRITE_MAX = 1 << 20
-export async function* retar(source, decide) {
+export async function* retar(source: AsyncIterable<Buffer>, decide: (e: TarEntry) => Decision): AsyncGenerator<Buffer> {
   const it = source[Symbol.asyncIterator]()
   let buf = Buffer.alloc(0)
-  const fill = async n => {
+  const fill = async (n: number) => {
     while (buf.length < n) {
       const r = await it.next()
       if (r.done) return false
@@ -147,7 +168,7 @@ export async function* retar(source, decide) {
     }
     return true
   }
-  const take = async n => {
+  const take = async (n: number) => {
     if (!(await fill(n))) throw new Error("the archive ends in the middle of an entry")
     const b = buf.subarray(0, n)
     buf = buf.subarray(n)
@@ -170,18 +191,19 @@ export async function* retar(source, decide) {
       continue
     }
     const prefix = str(h, 345, 155)
-    const e: Record<string, any> = {
+    const e: TarEntry = {
       name: ext.path ?? (prefix ? `${prefix}/${str(h, 0, 100)}` : str(h, 0, 100)),
       linkname: ext.linkpath ?? str(h, 157, 100),
       type: type === "7" ? FILE : type,
       mode: num(h, 100, 8) & 0o777,
       mtime: num(h, 136, 12),
+      size: 0,
     }
     size = ext.size !== undefined ? Number(ext.size) : size
     e.size = e.type === FILE ? size : 0
     ext = {}
     const d = decide(e)
-    if (d?.rewrite && e.type === FILE) {
+    if (d && typeof d === "object" && e.type === FILE) {
       if (size > REWRITE_MAX) throw d.tooBig(size)
       const body = d.rewrite((await take(size + pad(size))).subarray(0, size))
       yield header({ ...e, name: d.name, size: body.length })
@@ -189,7 +211,7 @@ export async function* retar(source, decide) {
       yield Buffer.alloc(pad(body.length))
       continue
     }
-    const name = d?.name ?? d
+    const name = typeof d === "string" ? d : (d?.name ?? null)
     if (name) yield header({ ...e, name })
     const keep = name && e.type === FILE // only a file's body is written; any other entry's is read past
     for (let left = size + pad(size); left > 0;) {
@@ -209,15 +231,15 @@ const HEAD = 40,
   CHUNK = 64 * 1024
 const KDF = { log2N: 17, r: 8, p: 1 } // the ONLY parameters v1 writes or reads — see openSeal
 
-function scryptKeys(pass, salt, log2N, r, p) {
+function scryptKeys(pass: string, salt: Buffer, log2N: number, r: number, p: number): Promise<Keys> {
   return new Promise((resolve, reject) =>
     crypto.scrypt(pass.normalize("NFC"), salt, 64, { N: 2 ** log2N, r, p, maxmem: 256 * 2 ** log2N * r * p }, (e, k) =>
       e ? reject(e) : resolve({ enc: k.subarray(0, 32), mac: k.subarray(32) })
     )
   )
 }
-const hmac = (key, b) => crypto.createHmac("sha256", key).update(b).digest()
-const nonce = (prefix, i, last) => {
+const hmac = (key: Buffer, b: Buffer) => crypto.createHmac("sha256", key).update(b).digest()
+const nonce = (prefix: Buffer, i: number, last: boolean) => {
   const n = Buffer.alloc(12)
   prefix.copy(n)
   n.writeUInt32BE(i, 7)
@@ -225,7 +247,7 @@ const nonce = (prefix, i, last) => {
   return n
 }
 
-async function newSeal(pass) {
+async function newSeal(pass: string) {
   const h = Buffer.alloc(HEAD)
   MAGIC.copy(h)
   h[8] = 1
@@ -234,7 +256,7 @@ async function newSeal(pass) {
   h[11] = KDF.p
   h.writeUInt32BE(CHUNK, 12)
   crypto.randomFillSync(h, 16, 23) // salt 16..31 · nonce prefix 32..38 · 39 reserved
-  const keys: any = await scryptKeys(pass, h.subarray(16, 32), KDF.log2N, KDF.r, KDF.p)
+  const keys = await scryptKeys(pass, h.subarray(16, 32), KDF.log2N, KDF.r, KDF.p)
   return { keys, head: Buffer.concat([h, hmac(keys.mac, h)]) }
 }
 
@@ -242,7 +264,7 @@ async function newSeal(pass) {
  *  The KDF parameters are read BEFORE the MAC can be checked (the MAC needs the key they derive), so
  *  they are an attacker's to choose: only the exact values this version writes are accepted, before
  *  scrypt runs and before the passphrase is even asked for (`pass` may be a function that asks). */
-export async function openSeal(file, pass) {
+export async function openSeal(file: string, pass: string | (() => Promise<string>)) {
   const fd = fs.openSync(file, "r")
   const h = Buffer.alloc(HEAD + MAC)
   const n = fs.readSync(fd, h, 0, h.length, 0)
@@ -257,15 +279,15 @@ export async function openSeal(file, pass) {
     throw new Error(
       `${file}: its header asks for scrypt N=2^${log2N} r=${r} p=${p} and ${chunk}-byte chunks — version 1 is exactly N=2^${KDF.log2N} r=${KDF.r} p=${KDF.p}, ${CHUNK}; refusing these parameters before any work`
     )
-  const keys: any = await scryptKeys(typeof pass === "function" ? await pass() : pass, h.subarray(16, 32), log2N, r, p)
+  const keys = await scryptKeys(typeof pass === "function" ? await pass() : pass, h.subarray(16, 32), log2N, r, p)
   if (!crypto.timingSafeEqual(hmac(keys.mac, h.subarray(0, HEAD)), h.subarray(HEAD)))
     throw new Error(`wrong passphrase for ${file} (or its header is damaged) — nothing was written`)
   return { keys, prefix: h.subarray(32, 39), chunk }
 }
 
-export async function* seal(src, { keys, head }) {
+export async function* seal(src: AsyncIterable<Buffer>, { keys, head }: { keys: Keys; head: Buffer }) {
   const prefix = head.subarray(32, 39)
-  const box = (pt, i, last) => {
+  const box = (pt: Buffer, i: number, last: boolean) => {
     const c = crypto.createCipheriv("aes-256-gcm", keys.enc, nonce(prefix, i, last))
     return Buffer.concat([c.update(pt), c.final(), c.getAuthTag()])
   }
@@ -282,8 +304,11 @@ export async function* seal(src, { keys, head }) {
   yield box(buf, i, true) // a final chunk always exists, empty or not — its flag is what makes truncation visible
 }
 
-export async function* unseal(src, { keys, prefix, chunk }) {
-  const open = (b, i, last) => {
+export async function* unseal(
+  src: AsyncIterable<Buffer>,
+  { keys, prefix, chunk }: { keys: Keys; prefix: Buffer; chunk: number }
+) {
+  const open = (b: Buffer, i: number, last: boolean) => {
     const d = crypto.createDecipheriv("aes-256-gcm", keys.enc, nonce(prefix, i, last))
     d.setAuthTag(b.subarray(b.length - 16))
     try {
@@ -306,7 +331,7 @@ export async function* unseal(src, { keys, prefix, chunk }) {
 }
 
 // ---- the passphrase: env or a no-echo prompt, never argv -----------------------------------------
-async function passphrase({ confirm }) {
+async function passphrase({ confirm }: { confirm: boolean }): Promise<string> {
   let v = process.env.DT_EXPORT_PASSPHRASE
   if (v === undefined) {
     if (!process.stdin.isTTY)
@@ -321,18 +346,18 @@ async function passphrase({ confirm }) {
   return v
 }
 
-function ask(prompt) {
+function ask(prompt: string): Promise<string> {
   return new Promise<string>((resolve, reject) => {
     const s = process.stdin
     let v = ""
-    const done = f => {
+    const done = (f: () => void) => {
       s.off("data", on)
       s.setRawMode(false)
       s.pause()
       process.stderr.write("\n")
       f()
     }
-    const on = d => {
+    const on = (d: string) => {
       for (const ch of d) {
         if (ch === "\r" || ch === "\n") return done(() => resolve(v))
         if (ch === "\u0003" || ch === "\u0004") return done(() => reject(new Error("cancelled — nothing was written")))
@@ -352,17 +377,17 @@ function ask(prompt) {
  *  climbing above it lexically — including a climb back in by the workspace's own name, which breaks
  *  the moment import re-roots it (`--as`). What this keeps, import accepts under any name; the link
  *  is never followed, only its text read. */
-export function leavesWorkspace(inner, linkname) {
+export function leavesWorkspace(inner: string, linkname: string): boolean {
   if (linkname.startsWith("/")) return true
   const to = path.posix.normalize(path.posix.join(path.posix.dirname(inner), linkname))
   return to === ".." || to.startsWith("../")
 }
 
-export async function exportContainer(name, flags, log = console.log) {
+export async function exportContainer(name: string, flags: Record<string, any>, log = console.log) {
   const out = typeof flags.out === "string" ? path.resolve(flags.out) : null
   if (!out) throw new Error(`dt-docker export container ${name} --out <file> — where the export is written`)
   if (fs.existsSync(out)) throw new Error(`${out} already exists — name a new file`)
-  const only = flags.workspaces ?? []
+  const only: string[] = flags.workspaces ?? []
   for (const w of only)
     if (typeof w !== "string" || !WS_NAME.test(w))
       throw new Error(`--workspace takes a workspace folder name under ${ROOT} — got "${w}"`)
@@ -375,53 +400,55 @@ export async function exportContainer(name, flags, log = console.log) {
   const sources = only.length
     ? only.map(w => ({ at: `${ROOT}/${w}`, strip: "" }))
     : [{ at: ROOT, strip: `${path.posix.basename(ROOT)}/` }]
-  const stats = new Map()
-  const left = new Set()
-  const skipped = []
-  const decide = strip => e => {
-    const rel = e.name.slice(strip.length).replace(/\/+$/, "")
-    if (!e.name.startsWith(strip) || !rel) return null
-    const segs = rel.split("/")
-    if (segs.some(s => LEFT_BEHIND.has(s))) {
-      left.add(segs.slice(0, segs.findIndex(s => LEFT_BEHIND.has(s)) + 1).join("/"))
-      return null
-    }
-    if (!WS_NAME.test(segs[0]) || (segs.length === 1 && e.type !== DIR)) {
-      if (segs.length === 1) skipped.push(`${rel} (not a workspace folder)`)
-      return null
-    }
-    if (!secrets && isSecretFile(segs) && e.type !== DIR) {
-      left.add(rel)
-      return null
-    }
-    if (![FILE, DIR, SYMLINK].includes(e.type)) {
-      skipped.push(`${rel} (${e.type === "1" ? "hard link" : "device or fifo"})`)
-      return null
-    }
-    if (e.type === SYMLINK && leavesWorkspace(segs.slice(1).join("/"), e.linkname)) {
-      skipped.push(
-        `${rel} (symlink to ${e.linkname}: import takes only a relative link that stays inside its workspace)`
-      )
-      return null
-    }
-    const s = stats.get(segs[0]) ?? { files: 0, bytes: 0 }
-    stats.set(segs[0], s)
-    if (e.type === FILE) {
-      s.files++
-      s.bytes += e.size
-    }
-    if (!secrets && e.type === FILE && rel.endsWith("/.git/config")) {
-      return {
-        name: rel,
-        rewrite: b => Buffer.from(stripGitConfig(b.toString("utf8"))),
-        tooBig: size =>
-          new Error(
-            `${rel} is ${(size / 1e6).toFixed(1)} MB — over the 1 MiB a .git/config is sanitized in; refusing to export it with its credentials. Nothing was written (shrink it, leave that workspace out with --workspace, or --with-secrets to carry it unchanged)`
-          ),
+  const stats = new Map<string, { files: number; bytes: number }>()
+  const left = new Set<string>()
+  const skipped: string[] = []
+  const decide =
+    (strip: string) =>
+    (e: TarEntry): Decision => {
+      const rel = e.name.slice(strip.length).replace(/\/+$/, "")
+      if (!e.name.startsWith(strip) || !rel) return null
+      const segs = rel.split("/")
+      if (segs.some(s => LEFT_BEHIND.has(s))) {
+        left.add(segs.slice(0, segs.findIndex(s => LEFT_BEHIND.has(s)) + 1).join("/"))
+        return null
       }
+      if (!WS_NAME.test(segs[0]) || (segs.length === 1 && e.type !== DIR)) {
+        if (segs.length === 1) skipped.push(`${rel} (not a workspace folder)`)
+        return null
+      }
+      if (!secrets && isSecretFile(segs) && e.type !== DIR) {
+        left.add(rel)
+        return null
+      }
+      if (![FILE, DIR, SYMLINK].includes(e.type)) {
+        skipped.push(`${rel} (${e.type === "1" ? "hard link" : "device or fifo"})`)
+        return null
+      }
+      if (e.type === SYMLINK && leavesWorkspace(segs.slice(1).join("/"), e.linkname)) {
+        skipped.push(
+          `${rel} (symlink to ${e.linkname}: import takes only a relative link that stays inside its workspace)`
+        )
+        return null
+      }
+      const s = stats.get(segs[0]) ?? { files: 0, bytes: 0 }
+      stats.set(segs[0], s)
+      if (e.type === FILE) {
+        s.files++
+        s.bytes += e.size
+      }
+      if (!secrets && e.type === FILE && rel.endsWith("/.git/config")) {
+        return {
+          name: rel,
+          rewrite: (b: Buffer) => Buffer.from(stripGitConfig(b.toString("utf8"))),
+          tooBig: (size: number) =>
+            new Error(
+              `${rel} is ${(size / 1e6).toFixed(1)} MB — over the 1 MiB a .git/config is sanitized in; refusing to export it with its credentials. Nothing was written (shrink it, leave that workspace out with --workspace, or --with-secrets to carry it unchanged)`
+            ),
+        }
+      }
+      return e.type === DIR ? `${rel}/` : rel
     }
-    return e.type === DIR ? `${rel}/` : rel
-  }
   async function* tar() {
     for (const s of sources) {
       const r: any = await api("GET", `/containers/${c.Id}/archive?path=${encodeURIComponent(s.at)}`, undefined, {
@@ -435,7 +462,7 @@ export async function exportContainer(name, flags, log = console.log) {
   }
   const tmp = `${out}.partial`
   // an interrupted export leaves nothing: not a half file that looks like a whole one, not ciphertext
-  const onSignal = sig => {
+  const onSignal = (sig: NodeJS.Signals) => {
     fs.rmSync(tmp, { force: true })
     process.exit(sig === "SIGINT" ? 130 : 143)
   }
@@ -445,7 +472,7 @@ export async function exportContainer(name, flags, log = console.log) {
     await pipeline(
       Readable.from(tar()),
       zlib.createGzip(),
-      ...(sealer ? [src => seal(src, sealer)] : []),
+      ...(sealer ? [(src: AsyncIterable<Buffer>) => seal(src, sealer)] : []),
       fs.createWriteStream(tmp, { flags: "wx", mode: 0o600 })
     )
     fs.renameSync(tmp, out)
@@ -488,11 +515,18 @@ export async function exportContainer(name, flags, log = console.log) {
 // ---- import --------------------------------------------------------------------------------------
 /** The name to upload an entry under — re-rooted at `as` when given — null to leave it out
  *  (`--workspace`), or a refusal. `found` collects the SOURCE workspace names. */
-function checkEntry(e, only, found, as, stage, checked) {
+function checkEntry(
+  e: TarEntry,
+  only: Set<string>,
+  found: Set<string>,
+  as: string | undefined,
+  stage: string | undefined,
+  checked: Set<string> | undefined
+): string | null {
   const name = e.name.replace(/^(\.\/)+/, "")
   const rel = name.replace(/\/+$/, "")
   const segs = rel.split("/")
-  const refuse = why => {
+  const refuse = (why: string): never => {
     throw new Error(`the export holds "${e.name}", which ${why} — nothing was written`)
   }
   if (name.startsWith("/")) refuse("is an absolute path")
@@ -518,7 +552,7 @@ function checkEntry(e, only, found, as, stage, checked) {
   return e.type === DIR ? `${up}/` : up
 }
 
-export async function importContainer(name, file, flags, log = console.log) {
+export async function importContainer(name: string, file: string, flags: Record<string, any>, log = console.log) {
   if (!file) throw new Error(`dt-docker import container ${name} <file>`)
   const c = await inspectContainer(name)
   if (!c) throw new Error(`no container "${name}" — dt-docker list containers`)
@@ -541,18 +575,18 @@ export async function importContainer(name, file, flags, log = console.log) {
     throw new Error(
       `--as takes a workspace name: 1–40 of a-z, 0-9 and '-', starting with a letter or digit, not files · lost-found · trash (got "${as === true ? "" : as}")`
     )
-  const read = (found, stage?, checked?) => [
+  const read = (found: Set<string>, stage?: string, checked?: Set<string>) => [
     fs.createReadStream(file, { start: sealed ? HEAD + MAC : 0 }),
-    ...(key ? [src => unseal(src, key)] : []),
+    ...(key ? [(src: AsyncIterable<Buffer>) => unseal(src, key)] : []),
     zlib.createGunzip(),
-    async function* (src) {
+    async function* (src: AsyncIterable<Buffer>) {
       yield* retar(src, e => checkEntry(e, only, found, as, stage, checked))
       yield TAR_END
     },
   ]
   // pass 1: every chunk authenticated and every entry checked before anything is written
   const found = new Set<string>()
-  await pipeline(...read(found), async src => {
+  await pipeline(...read(found), async (src: AsyncIterable<Buffer>) => {
     for await (const _ of src);
   })
   const installs = [...found]
@@ -596,7 +630,7 @@ export async function importContainer(name, file, flags, log = console.log) {
   // pass 2 that fails part-way leaves every target as it was. Only a complete upload is switched in.
   const stage = `.dt-import-${crypto.randomBytes(6).toString("hex")}`
   try {
-    await pipeline(...read(new Set(), stage, new Set(found)), async src => {
+    await pipeline(...read(new Set(), stage, new Set(found)), async (src: AsyncIterable<Buffer>) => {
       // A failure upstream ENDS the upload rather than cutting the connection, and Docker's answer is
       // awaited either way: the staging folder is removed only once the daemon has stopped writing it.
       let broke = null
@@ -634,7 +668,7 @@ export async function importContainer(name, file, flags, log = console.log) {
   const done = []
   for (const t of targets) {
     const staged = `${t}/${stage}`
-    const steps = [
+    const steps: [string[], string][] = [
       [
         ["find", t, "-mindepth", "1", "-maxdepth", "1", "!", "-name", stage, "-exec", "rm", "-rf", "--", "{}", "+"],
         `removing its old contents — ${t} may still hold some of them, and the complete import is in ${staged}`,

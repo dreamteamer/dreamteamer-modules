@@ -29,10 +29,18 @@ import { parseEnvValues } from "./util.ts"
 // ---- the two nouns, singular and plural --------------------------------------------------------
 // `dt-docker start container hq-dana` and `dt-docker list containers`; both spellings resolve, and so
 // does `containers/<name>`.
-export const NOUNS = { containers: "containers", container: "containers", images: "images", image: "images" }
+export const NOUNS: Record<string, string> = {
+  containers: "containers",
+  container: "containers",
+  images: "images",
+  image: "images",
+}
 
 // ---- host configuration: ~/.dreamteamer/.env ---------------------------------------------------
-export const HOST_DEFAULTS = {
+/** The host's DT_* configuration, by key. */
+export type HostEnv = Record<string, string>
+
+export const HOST_DEFAULTS: HostEnv = {
   DT_PORT_BASE: "8100", // NOT 8080: that is code-server's in-container port and the engine's REST default
   DT_BIND: "127.0.0.1", // loopback only; a remote tier puts auth in front before this changes
   DT_REGISTRY: "ghcr.io/dreamteamer", // `<registry>/<template>:<tag>` is the image a template name resolves to — the public images repo publishes here
@@ -45,11 +53,11 @@ export function hostDir() {
 }
 
 /** Defaults, then the file, then the process env — the same precedence a shell would give. */
-export function hostEnv() {
+export function hostEnv(): HostEnv {
   const file = path.join(hostDir(), ".env")
   // parseEnvValues answers a Map — spread it as entries, or the file silently contributes nothing.
   const fromFile = fs.existsSync(file) ? Object.fromEntries(parseEnvValues(fs.readFileSync(file, "utf8"))) : {}
-  const out = { ...HOST_DEFAULTS, ...fromFile }
+  const out: HostEnv = { ...HOST_DEFAULTS, ...fromFile }
   for (const k of Object.keys(process.env))
     if (k.startsWith("DT_") && process.env[k] !== undefined) out[k] = process.env[k]
   return out
@@ -69,7 +77,7 @@ export function socketPath() {
   return "/var/run/docker.sock"
 }
 
-function unreachable(sock) {
+function unreachable(sock: string) {
   const hint =
     process.platform === "darwin"
       ? " — is Docker Desktop running? `open -a Docker` starts it"
@@ -90,7 +98,22 @@ export function dockerTimeoutSeconds() {
  *  `send` streams a body (a tar upload) instead of JSON; `stream` resolves a 2xx with the response
  *  itself, unread (a tar download) — both under the same idle timer, which keeps running while the
  *  bytes move. */
-export function api(method, urlPath, body?, { onLine, raw, send, stream }: Record<string, any> = {}): Promise<any> {
+export function api(
+  method: string,
+  urlPath: string,
+  body?: unknown,
+  {
+    onLine,
+    raw,
+    send,
+    stream,
+  }: {
+    onLine?: (line: Record<string, any>) => void
+    raw?: boolean
+    send?: NodeJS.ReadableStream | AsyncIterable<Buffer>
+    stream?: boolean
+  } = {}
+): Promise<any> {
   const sock = socketPath()
   const seconds = dockerTimeoutSeconds()
   return new Promise((resolve, reject) => {
@@ -114,7 +137,7 @@ export function api(method, urlPath, body?, { onLine, raw, send, stream }: Recor
         if (stream && res.statusCode < 300) return resolve({ status: res.statusCode, res })
         let text = ""
         let pending = ""
-        const bufs = [] // `raw`: an exec's multiplexed stream is binary framing, so it stays bytes
+        const bufs: Buffer[] = [] // `raw`: an exec's multiplexed stream is binary framing, so it stays bytes
         if (!raw) res.setEncoding("utf8")
         res.on("data", chunk => {
           if (raw) {
@@ -170,7 +193,7 @@ export function api(method, urlPath, body?, { onLine, raw, send, stream }: Recor
 }
 
 /** Throw the daemon's own sentence on a non-2xx, so a refusal reads as Docker's rather than ours. */
-export function ok(res, what) {
+export function ok<T = any>(res: { status: number; body?: any }, what: string): T {
   if (res.status >= 200 && res.status < 400) return res.body
   const msg =
     res.body && typeof res.body === "object" && res.body.message ? res.body.message : String(res.body ?? "").trim()
@@ -185,16 +208,46 @@ const LABEL = {
   modules: "dreamteamer.modules",
   workdir: "dreamteamer.workdir",
 }
-const filters = label => encodeURIComponent(JSON.stringify({ label: [label] }))
+const filters = (label: string) => encodeURIComponent(JSON.stringify({ label: [label] }))
 
 // ---- images ------------------------------------------------------------------------------------
-export function imageRef(template, env = hostEnv()) {
+export function imageRef(template: string, env = hostEnv()) {
   // `DT_IMAGE_<template>=<ref>` pins one template to any image, which is how a local build or a
   // private registry is reached without the registry default changing for every other template.
   return env[`DT_IMAGE_${template}`] ?? `${env.DT_REGISTRY}/${template}:${env.DT_TEMPLATE_TAG}`
 }
 
-export const imageRow = i => ({
+/** An image as `GET /images/json` lists it. */
+interface DockerImage {
+  Id: string
+  RepoTags?: string[]
+  Labels?: Record<string, string>
+  Size?: number
+  Created?: number
+}
+
+/** A container as `GET /containers/json` lists it. */
+interface DockerContainer {
+  Id: string
+  Names?: string[]
+  Labels?: Record<string, string>
+  Ports?: { PublicPort?: number; PrivatePort?: number; IP?: string }[]
+  State?: string
+  Status?: string
+  Image?: string
+  Created?: number
+}
+
+/** One mount of an inspected container. */
+interface DockerMount {
+  Type: string
+  Name?: string
+  Source?: string
+  Destination: string
+  RW?: boolean
+}
+
+export const imageRow = (i: DockerImage) => ({
   image: (i.RepoTags ?? []).find(t => t !== "<none>:<none>") ?? i.Id.slice(7, 19),
   template: i.Labels?.[LABEL.template] ?? "",
   ports: i.Labels?.[LABEL.ports] ?? "",
@@ -205,16 +258,16 @@ export const imageRow = i => ({
 })
 
 export async function listImages() {
-  const body = ok(await api("GET", `/images/json?filters=${filters(LABEL.template)}`), "list images")
+  const body = ok<DockerImage[]>(await api("GET", `/images/json?filters=${filters(LABEL.template)}`), "list images")
   return body.map(imageRow).sort((a, b) => a.image.localeCompare(b.image))
 }
 
-export async function inspectImage(ref) {
+export async function inspectImage(ref: string) {
   const res: any = await api("GET", `/images/${encodeURIComponent(ref)}/json`)
   return res.status === 404 ? null : ok(res, `get image ${ref}`)
 }
 
-export async function pullImage(ref, log = console.error) {
+export async function pullImage(ref: string, log = console.error) {
   const [name, tag] = splitTag(ref)
   let last = ""
   const res: any = await api(
@@ -222,7 +275,7 @@ export async function pullImage(ref, log = console.error) {
     `/images/create?fromImage=${encodeURIComponent(name)}&tag=${encodeURIComponent(tag)}`,
     undefined,
     {
-      onLine: l => {
+      onLine: (l: Record<string, any>) => {
         if (l.status && l.status !== last) {
           last = l.status
           log(`  … ${l.status}${l.id ? ` ${l.id}` : ""}`)
@@ -237,14 +290,14 @@ export async function pullImage(ref, log = console.error) {
     )
 }
 
-function splitTag(ref) {
+function splitTag(ref: string) {
   const at = ref.lastIndexOf(":")
   const slash = ref.lastIndexOf("/")
   return at > slash ? [ref.slice(0, at), ref.slice(at + 1)] : [ref, "latest"]
 }
 
 // ---- containers --------------------------------------------------------------------------------
-const containerRow = c => {
+const containerRow = (c: DockerContainer) => {
   const name = (c.Names?.[0] ?? "").replace(/^\//, "")
   const port = (c.Ports ?? []).find(p => p.PublicPort)?.PublicPort
   return {
@@ -261,16 +314,17 @@ const containerRow = c => {
 }
 /** The dev-container convention: the workspace is mounted at `/workspaces/<name>`, so the folder the
  *  editor opens, the URL, and a VS Code attach all name the workspace rather than a fixed word. */
-export const workspaceDir = name => `/workspaces/${name}`
+export const workspaceDir = (name: string) => `/workspaces/${name}`
 /** A bare URL opens the machine home (`/opt/dt-launcher`: every workspace, create, clone) — `?folder=`
  *  only when the caller asks for one workspace (`--workspace`). */
-const editorUrl = (port, folder?) => `http://localhost:${port}/${folder ? `?folder=${folder}` : ""}`
+const editorUrl = (port: number | string, folder?: string) =>
+  `http://localhost:${port}/${folder ? `?folder=${folder}` : ""}`
 /** Where `--mount` may land: the image's own trees. Anywhere else (`/etc`, `/usr/local/bin`, `/opt`)
  *  replaces what the image runs — a mount there is a way round the image, not a mount. */
 export const MOUNT_ROOTS = ["/workspaces", "/home/node", "/files", "/mnt"]
 /** `--mount <host-path|volume>:<container-path>[:ro]` → a Docker Mount. A source starting with `/`,
  *  `~` or `.` is a bind mount of a host path (resolved against cwd); anything else is a named volume. */
-export function parseMount(spec) {
+export function parseMount(spec: string) {
   const parts = String(spec).split(":")
   if (parts.length < 2 || parts.length > 3 || !parts[0] || !parts[1].startsWith("/"))
     throw new Error(`--mount takes <host-path|volume>:<container-path>[:ro] — got "${spec}"`)
@@ -288,26 +342,29 @@ export function parseMount(spec) {
 }
 /** The URI VS Code on the host opens to attach to this container (Dev Containers extension). The
  *  container name is hex-encoded, as the extension spells it. */
-export const attachUri = name =>
+export const attachUri = (name: string) =>
   `vscode-remote://attached-container+${Buffer.from(name, "utf8").toString("hex")}${workspaceDir(name)}`
 /** Each container gets its OWN user-defined bridge, so it shares no network with another
  *  workspace and its network carries its name. That is naming, not isolation: on Docker Desktop a
  *  container on one user-defined bridge reaches another's by IP and via
  *  host.docker.internal:<its published port>. What isolates is the image's egress firewall (see
  *  CapAdd below); the bridge still helps where the platform does separate bridges. */
-export const networkName = name => `dreamteamer-${name}`
-const volumeNames = name => ({
+export const networkName = (name: string) => `dreamteamer-${name}`
+const volumeNames = (name: string) => ({
   workspace: `dreamteamer-${name}-workspace`,
   home: `dreamteamer-${name}-home`,
   files: `dreamteamer-${name}-files`,
 })
 
 export async function listContainers() {
-  const body = ok(await api("GET", `/containers/json?all=1&filters=${filters(LABEL.workspace)}`), "list containers")
+  const body = ok<DockerContainer[]>(
+    await api("GET", `/containers/json?all=1&filters=${filters(LABEL.workspace)}`),
+    "list containers"
+  )
   return body.map(containerRow).sort((a, b) => a.name.localeCompare(b.name))
 }
 
-export async function inspectContainer(name) {
+export async function inspectContainer(name: string) {
   const res: any = await api("GET", `/containers/${encodeURIComponent(name)}/json`)
   if (res.status === 404) return null
   const c = ok(res, `get container ${name}`)
@@ -319,12 +376,17 @@ export async function inspectContainer(name) {
 }
 
 /** The shape `dt-docker get container <name>` prints: the categorised view over `docker inspect`. */
-export function containerDetail(c) {
+/** What `get` reports about one workspace container. */
+export type ContainerDetail = ReturnType<typeof containerDetail>
+
+export function containerDetail(c: any) {
   const binding: any = Object.values(c.HostConfig?.PortBindings ?? {}).flat()[0]
   const name = c.Name.replace(/^\//, "")
   const wsDir = c.Config.Labels?.[LABEL.workdir] ?? workspaceDir(name)
   const own = new Set([wsDir, "/home/node", "/files"])
-  const mounts = Object.fromEntries((c.Mounts ?? []).filter(m => m.Type === "volume").map(m => [m.Destination, m.Name]))
+  const mounts = Object.fromEntries(
+    (c.Mounts ?? []).filter((m: DockerMount) => m.Type === "volume").map((m: DockerMount) => [m.Destination, m.Name])
+  )
   return {
     name,
     id: c.Id.slice(0, 12),
@@ -340,9 +402,11 @@ export function containerDetail(c) {
     workspace_dir: wsDir,
     volumes: { workspace: mounts[wsDir] ?? "", home: mounts["/home/node"] ?? "", files: mounts["/files"] ?? "" },
     mounts: (c.Mounts ?? [])
-      .filter(m => !own.has(m.Destination))
-      .map(m => `${m.Type === "bind" ? m.Source : m.Name}:${m.Destination}${m.RW === false ? ":ro" : ""}`),
-    repo: (c.Config.Env ?? []).find(e => e.startsWith("DT_REPO="))?.slice(8) ?? "",
+      .filter((m: DockerMount) => !own.has(m.Destination))
+      .map(
+        (m: DockerMount) => `${m.Type === "bind" ? m.Source : m.Name}:${m.Destination}${m.RW === false ? ":ro" : ""}`
+      ),
+    repo: (c.Config.Env ?? []).find((e: string) => e.startsWith("DT_REPO="))?.slice(8) ?? "",
     person: c.Config.Labels[LABEL.person] ?? "",
     created: c.Created,
     labels: c.Config.Labels,
@@ -354,7 +418,10 @@ export async function allocatePort(env = hostEnv()) {
   const base = Number(env.DT_PORT_BASE)
   if (!Number.isInteger(base) || base < 1024)
     throw new Error(`DT_PORT_BASE must be an integer port above 1023 (got "${env.DT_PORT_BASE}")`)
-  const all = ok(await api("GET", `/containers/json?all=1&filters=${filters(LABEL.workspace)}`), "list containers")
+  const all = ok<DockerContainer[]>(
+    await api("GET", `/containers/json?all=1&filters=${filters(LABEL.workspace)}`),
+    "list containers"
+  )
   const taken = new Set(all.flatMap(c => (c.Ports ?? []).map(p => p.PublicPort)).filter(Boolean))
   // A stopped container publishes nothing in /containers/json, so read its binding from inspect —
   // otherwise the second workspace lands on the first one's port the moment the first is stopped.
@@ -368,8 +435,8 @@ export async function allocatePort(env = hostEnv()) {
   return port
 }
 
-function person(flags, env) {
-  const git = k => {
+function person(flags: Record<string, any>, env: HostEnv) {
+  const git = (k: string) => {
     try {
       return execFileSync("git", ["config", "--global", k], {
         encoding: "utf8",
@@ -389,7 +456,7 @@ function person(flags, env) {
 /** Create-if-absent and start. Idempotent: a second call on an existing name starts it and prints
  *  the same URL. Never injects a credential — the person logs in INSIDE, once, and the home volume
  *  keeps it. The one secret that crosses is the image's own URL token, read back OUT (launchUrl). */
-export async function startContainer(name, flags, log = console.log) {
+export async function startContainer(name: string, flags: Record<string, any>, log = console.log) {
   if (!/^[a-z0-9][a-z0-9_.-]*$/.test(name))
     throw new Error(`"${name}" is not a container name — lowercase letters, digits, "-", "_" and "."; e.g. hq-dana`)
   const env = hostEnv()
@@ -416,7 +483,7 @@ export async function startContainer(name, flags, log = console.log) {
     const wsDir = workspaceDir(name)
     // `--mount` adds bind or volume mounts beside the three the container always has; a mount aimed
     // at one of those three targets is refused rather than silently shadowing the volume.
-    const extra = (flags.mount ?? []).map(parseMount)
+    const extra: ReturnType<typeof parseMount>[] = (flags.mount ?? []).map(parseMount)
     for (const m of extra)
       if ([wsDir, "/workspaces", "/home/node", "/files"].includes(m.Target))
         throw new Error(
@@ -427,7 +494,7 @@ export async function startContainer(name, flags, log = console.log) {
     // in it: `evil -> /opt` inside /workspaces/<name> makes a mount at /workspaces/<name>/evil land
     // on the image's real /opt (measured with plain Docker). Only the image's own filesystem — no
     // symlinks on these roots, which the image pins with a test — may lie between / and a mount point.
-    const under = (t, r) => t === r || t.startsWith(`${r}/`)
+    const under = (t: string, r: string) => t === r || t.startsWith(`${r}/`)
     const targets = [wsDir, "/home/node", "/files", ...extra.map(m => m.Target)]
     extra.forEach((m, i) => {
       for (const [j, t] of targets.entries())
@@ -444,14 +511,14 @@ export async function startContainer(name, flags, log = console.log) {
     // rules (case, Unicode normalisation) answer, none guessed here. A source that does not exist has
     // no inode (Docker refuses the bind anyway); it falls back to a path compare, case-folded where
     // the platform's default volume folds.
-    const real = p => {
+    const real = (p: string) => {
       try {
         return fs.realpathSync(p)
       } catch {
         return p
       }
     }
-    const ident = p => {
+    const ident = (p: string) => {
       try {
         const s = fs.statSync(p, { bigint: true })
         return `${s.dev}:${s.ino}`
@@ -459,8 +526,8 @@ export async function startContainer(name, flags, log = console.log) {
         return null
       }
     }
-    const fold = p => (["darwin", "win32"].includes(process.platform) ? p.toLowerCase() : p)
-    const inside = (a, b) => {
+    const fold = (p: string) => (["darwin", "win32"].includes(process.platform) ? p.toLowerCase() : p)
+    const inside = (a: { real: string }, b: { real: string }) => {
       const want = ident(b.real)
       if (!want) return !path.relative(fold(b.real), fold(a.real)).startsWith("..")
       for (let p = a.real; ; p = path.dirname(p)) {
@@ -556,7 +623,7 @@ export async function startContainer(name, flags, log = console.log) {
   return detail
 }
 
-async function ensureNetwork(name) {
+async function ensureNetwork(name: string) {
   const net = networkName(name)
   const res: any = await api("GET", `/networks/${encodeURIComponent(net)}`)
   if (res.status === 404) {
@@ -580,7 +647,7 @@ async function ensureNetwork(name) {
 /** Run `cmd` (an argv, never a shell line) in a running container as `user` — one Docker exec under
  *  the same idle timer as every request. Answers { code, stdout, stderr }; a non-zero exit is the
  *  caller's to judge. */
-export async function exec(name, cmd, { user }: Record<string, any> = {}) {
+export async function exec(name: string, cmd: string[], { user }: Record<string, any> = {}) {
   const what = `exec ${cmd[0]} in ${name}`
   const { Id } = ok(
     await api("POST", `/containers/${encodeURIComponent(name)}/exec`, {
@@ -607,7 +674,7 @@ export async function exec(name, cmd, { user }: Record<string, any> = {}) {
  *  holds a secret its proxy checks; it is read by exec as root, lives in this process only, and
  *  reaches the person as `?tkn=` on the ONE line that prints the URL. An older image has no file and
  *  gets the plain URL. `text` is that line's URL; `secret` says the token rides on it. */
-export async function launchUrl(detail, flags) {
+export async function launchUrl(detail: ContainerDetail, flags: Record<string, any>) {
   const folder =
     flags.workspace === true
       ? detail.workspace_dir
@@ -637,7 +704,7 @@ export async function launchUrl(detail, flags) {
 }
 
 /** Poll code-server's /healthz so the URL printed is one that already answers. */
-async function waitHealthy(detail, log) {
+async function waitHealthy(detail: ContainerDetail, log: (line: string) => void) {
   const seconds = process.env.DT_HEALTH_TIMEOUT !== undefined ? Number(process.env.DT_HEALTH_TIMEOUT) : 90
   if (!seconds || !detail.port) return
   const until = Date.now() + seconds * 1000
@@ -670,7 +737,7 @@ async function waitHealthy(detail, log) {
 /** Printing the URL is the contract; opening it is a courtesy. A tokened URL never becomes a process
  *  ARGUMENT (every local user's `ps` reads those): on macOS it reaches `osascript` on stdin; where no
  *  opener takes stdin (xdg-open, start) it is printed and left for the person to open. */
-export function openUrl({ text, secret }, log) {
+export function openUrl({ text, secret }: { text: string; secret?: boolean }, log: (line: string) => void) {
   try {
     if (secret && process.platform === "darwin") {
       const p = spawn("osascript", ["-"], { stdio: ["pipe", "ignore", "ignore"], detached: true })
@@ -697,7 +764,7 @@ export function openUrl({ text, secret }, log) {
   }
 }
 
-export async function stopContainer(name) {
+export async function stopContainer(name: string) {
   const c = await inspectContainer(name)
   if (!c) throw new Error(`no container "${name}" — dt-docker list containers`)
   const res: any = await api("POST", `/containers/${c.Id}/stop?t=10`)
@@ -706,7 +773,7 @@ export async function stopContainer(name) {
 }
 
 /** Plain `rm` keeps the three volumes — the workspace, the login, the files. `--force` removes them too. */
-export async function removeContainer(name, { force = false } = {}, log = console.log) {
+export async function removeContainer(name: string, { force = false } = {}, log = console.log) {
   const c = await inspectContainer(name)
   if (!c) throw new Error(`no container "${name}" — dt-docker list containers`)
   const vols = containerDetail(c).volumes
@@ -734,7 +801,7 @@ export async function removeContainer(name, { force = false } = {}, log = consol
 /** Write the host defaults the `.env` lacks, then report Docker, the templates present and the
  *  running containers. Answers { code, report } — `report` is what `--json` prints; `log` gets the
  *  human board line by line. */
-export async function setup(flags, log = console.log) {
+export async function setup(flags: Record<string, any>, log = console.log) {
   const dir = hostDir()
   const file = path.join(dir, ".env")
   fs.mkdirSync(dir, { recursive: true })
@@ -749,10 +816,10 @@ export async function setup(flags, log = console.log) {
   const report = {
     host_env: file,
     defaults_written: missing.map(([k]) => k),
-    docker: null,
-    templates: [],
-    pulled: null,
-    running: [],
+    docker: null as Record<string, unknown> | null,
+    templates: [] as { template: string; image: string }[],
+    pulled: null as { image: string; already_present: boolean } | null,
+    running: [] as { name: string; editor_url: string }[],
   }
   log(`host env    ${file} · ${missing.length ? `${missing.length} default(s) written` : "present"}`)
   try {
