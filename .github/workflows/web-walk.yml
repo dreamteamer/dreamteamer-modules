@@ -35,8 +35,10 @@ jobs:
           command -v code || echo "no code on PATH"
           ls ~/.vscode 2>/dev/null || echo "no ~/.vscode"
 
-      - name: the app — @dreamteamer/ui built
-        run: npm run build -w modules/ui
+      - name: the modules, then the app — @dreamteamer/ui built
+        run: |
+          npm run build
+          npm run build -w modules/ui
 
       - name: pack protocol, ui and web
         run: |
@@ -52,7 +54,7 @@ jobs:
       - name: the walk
         env:
           DT_WALK_SHOTS: ${{ runner.temp }}/shots
-        run: timeout 900 node modules/web/test/walk/no-vscode.mjs "$RUNNER_TEMP"/packs/dreamteamer-protocol-*.tgz "$RUNNER_TEMP"/packs/dreamteamer-ui-*.tgz "$RUNNER_TEMP"/packs/dreamteamer-web-*.tgz
+        run: timeout 900 node modules/web/test/walk/no-vscode.ts "$RUNNER_TEMP"/packs/dreamteamer-protocol-*.tgz "$RUNNER_TEMP"/packs/dreamteamer-ui-*.tgz "$RUNNER_TEMP"/packs/dreamteamer-web-*.tgz
 
       - name: screenshots
         if: always()

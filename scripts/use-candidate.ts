@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // THE CANDIDATE ENGINE IN PLACE — before an engine is published, this repo's suites run on it, never
-// skipped (D60). `node scripts/use-candidate.mjs <folder> [--root <repo>]`:
+// skipped (D60). `node scripts/use-candidate.ts <folder> [--root <repo>]`:
 //
 //   <folder> holds exactly one `dreamteamer-<version>.tgz` and a `SHA256SUMS` (the `shasum -c` format).
 //   The tarball is verified against its listed hash, then extracted OVER `<repo>/node_modules/dreamteamer`

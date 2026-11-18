@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 // THIS REPO'S SUITES ON AN ENGINE CHECKOUT — the whole candidate loop in one command, for a local engine
-// branch that is not published yet. `node scripts/test-candidate.mjs <engine-checkout> [test.mjs args…]`:
+// branch that is not published yet. `node scripts/test-candidate.ts <engine-checkout> [test.ts args…]`:
 //
 //   1. packs the checkout with `npm pack` (its prepack builds dist/) into a temp folder and writes the
 //      SHA256SUMS beside the tarball;
-//   2. installs it over node_modules/dreamteamer with `scripts/use-candidate.mjs` — the same verified
+//   2. installs it over node_modules/dreamteamer with `scripts/use-candidate.ts` — the same verified
 //      step CI runs — after setting the published engine aside;
-//   3. runs `scripts/test.mjs` with the remaining arguments (`--only=…`, `--module=…`) and DT_CANDIDATES
-//      set, so `tests/candidate-engine.test.mjs` also checks the engine in place is the one packed;
+//   3. runs `scripts/test.ts` with the remaining arguments (`--only=…`, `--module=…`) and DT_CANDIDATES
+//      set, so `tests/candidate-engine.test.ts` also checks the engine in place is the one packed;
 //   4. puts the published engine back, whatever the suite did (pass `--keep` to stay on the candidate;
 //      `npm ci` restores it later).
 //
@@ -30,7 +30,7 @@ const args = process.argv.slice(2)
 const keep = args.includes("--keep")
 const engineArg = args.find(a => !a.startsWith("--"))
 const testArgs = args.filter(a => a !== engineArg && a !== "--keep")
-if (!engineArg) die("usage: node scripts/test-candidate.mjs <engine-checkout> [--keep] [scripts/test.mjs args…]")
+if (!engineArg) die("usage: node scripts/test-candidate.ts <engine-checkout> [--keep] [scripts/test.ts args…]")
 
 const engine = path.resolve(engineArg)
 const enginePkgFile = path.join(engine, "package.json")
@@ -94,13 +94,13 @@ try {
 
   fs.cpSync(installed, saved, { recursive: true, verbatimSymlinks: true })
   swapped = true
-  const used = spawnSync(process.execPath, [path.join(ROOT, "scripts", "use-candidate.mjs"), folder, "--root", ROOT], {
+  const used = spawnSync(process.execPath, [path.join(ROOT, "scripts", "use-candidate.ts"), folder, "--root", ROOT], {
     stdio: "inherit",
   })
   if (used.status !== 0) throw new Error("use-candidate refused the tarball (above)")
 
-  console.log(`▶ node scripts/test.mjs ${testArgs.join(" ")}`.trimEnd())
-  const tested = spawnSync(process.execPath, [path.join(ROOT, "scripts", "test.mjs"), ...testArgs], {
+  console.log(`▶ node scripts/test.ts ${testArgs.join(" ")}`.trimEnd())
+  const tested = spawnSync(process.execPath, [path.join(ROOT, "scripts", "test.ts"), ...testArgs], {
     cwd: ROOT,
     stdio: "inherit",
     env: { ...process.env, DT_CANDIDATES: folder },

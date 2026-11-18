@@ -16,16 +16,16 @@ function* walk(dir) {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
     if (e.name === "node_modules" || e.name === ".git" || e.name.startsWith(".")) continue
     const p = path.join(dir, e.name)
-    // the ui and ui2 builds (gitignored, rebuilt from the src/ this gate scans) are not source: their
-    // minified tables (an editor grammar's parse states) are not reviewable text, and they are never committed
-    const rel = path.relative(ROOT, p)
-    if ((rel === path.join("modules", "ui", "dist") || rel === path.join("modules", "ui2", "dist")) && e.isDirectory())
-      continue
+    // a module's build is not source and is never committed: dist/ (scripts/build.ts, and Vite's minified ui
+    // bundles, whose tables are not reviewable text) and a skill's .mjs compiled from the .mts beside it —
+    // the gate reads that .mts, under the name its allow-list entry carries
+    if (e.isDirectory() && e.name === "dist" && path.dirname(path.relative(ROOT, dir)) === "modules") continue
+    if (e.name.endsWith(".mjs") && fs.existsSync(p.replace(/\.mjs$/, ".mts"))) continue
     if (e.isDirectory()) yield* walk(p)
-    else if (/\.(md|yaml|yml|json|mjs|js|py|toml|sh|txt)$/.test(e.name)) yield p
+    else if (/\.(md|yaml|yml|json|mjs|js|ts|mts|tsx|py|toml|sh|txt)$/.test(e.name)) yield p
   }
 }
-const FILES = [...walk(ROOT)].filter(f => !f.endsWith(path.join("tests", "leak-gate.test.mjs")))
+const FILES = [...walk(ROOT)].filter(f => !f.endsWith(path.join("tests", "leak-gate.test.ts")))
 const rel = f => path.relative(ROOT, f)
 /** Every line matching `re`, as `file:line: text` (text trimmed for display). `keep(file, line)` sees the
  *  FULL line — an allow-list must decide on what is actually there, not on the first 120 characters. */
@@ -96,8 +96,8 @@ describe("the leak gate", () => {
     assert.deepEqual(out, [])
   })
   test("no machine path", () => {
-    // `/Users/someone` and `/Users/me` are the synthetic fixtures' spelling; anything else is a leak.
-    assert.deepEqual(hits(/\/Users\/(?!someone\b|me\b)[A-Za-z]/), [])
+    // `/Users/someone`, `/Users/me` and `/Users/x` are the synthetic fixtures' spelling; anything else is a leak.
+    assert.deepEqual(hits(/\/Users\/(?!someone\b|me\b|x\b)[A-Za-z]/), [])
   })
   test("no real-looking address — every example lives under .example or example.*", () => {
     // `git@github.com:…` is an SSH remote, not a person; the rest is case-insensitive because a fixture
@@ -107,8 +107,7 @@ describe("the leak gate", () => {
     // One fixture NEEDS a personal-mail domain: the thread reader must bucket `@gmail.com` as "not an
     // organisation", and only a real personal domain exercises that branch. It is allow-listed by file
     // and by exact address, so nothing else in that file gets a pass.
-    const PERSONAL_MAIL_FIXTURE =
-      "modules/perspective/test/running-retrospectives/cluster-threads-deliverables.test.mjs"
+    const PERSONAL_MAIL_FIXTURE = "modules/perspective/test/running-retrospectives/cluster-threads-deliverables.test.ts"
     const keep = (file, line) =>
       !/git@github\.com/.test(line) && !(file === PERSONAL_MAIL_FIXTURE && /friend@gmail\.com/.test(line))
     assert.deepEqual(hits(re, keep), [])

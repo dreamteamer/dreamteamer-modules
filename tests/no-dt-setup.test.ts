@@ -8,7 +8,7 @@ import assert from "node:assert/strict"
 import { execFileSync } from "node:child_process"
 import { ROOT } from "./helpers/workspace.ts"
 
-const ALLOWED = [/(^|\/)UPDATING\.md$/, /(^|\/)tests?\//, /^scripts\/preview\/link\.mjs$/]
+const ALLOWED = [/(^|\/)UPDATING\.md$/, /(^|\/)tests?\//, /^scripts\/preview\/link\.ts$/]
 
 test("no file outside UPDATING history and the tests of its absence names dt-setup or @dreamteamer/setup", () => {
   const files = execFileSync("git", ["ls-files"], { cwd: ROOT, encoding: "utf8" }).split("\n").filter(Boolean)

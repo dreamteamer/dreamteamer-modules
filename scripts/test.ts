@@ -8,13 +8,13 @@
 // red on that line alone. The engine declares `engines.node >= 20`, so 20 is a version consumers
 // actually run and dropping it from the matrix would have hidden the problem rather than fixed it.
 //
-//   node scripts/test.mjs                  every suite
-//   node scripts/test.mjs --only=leak      just the files whose path contains "leak"
-//   node scripts/test.mjs --module=users   tests/ (the repo-wide checks) + modules/users — a release
-//   node scripts/test.mjs --shard=2/4      the second of four balanced shards (scripts/test-files.mjs)
-//   node scripts/test.mjs --list           print the selected files and run nothing
-//   node scripts/test.mjs --needs-browser  print true when a selected file drives Chromium, else false
-//   node scripts/test.mjs --concurrency=3  files run at once (default: every CPU, at least 2)
+//   node scripts/test.ts                  every suite
+//   node scripts/test.ts --only=leak      just the files whose path contains "leak"
+//   node scripts/test.ts --module=users   tests/ (the repo-wide checks) + modules/users — a release
+//   node scripts/test.ts --shard=2/4      the second of four balanced shards (scripts/test-files.ts)
+//   node scripts/test.ts --list           print the selected files and run nothing
+//   node scripts/test.ts --needs-browser  print true when a selected file drives Chromium, else false
+//   node scripts/test.ts --concurrency=3  files run at once (default: every CPU, at least 2)
 //
 // ⚠ WHY AN EXPLICIT CONCURRENCY. `node --test` defaults to availableParallelism() - 1, and a private
 // repo's GitHub runner has 2 vCPUs — so CI ran ONE file at a time: the sum of the top-level test

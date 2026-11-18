@@ -1,5 +1,5 @@
 // Which test files a run executes — collected once, then narrowed by module, by substring and by shard.
-// Split from test.mjs so `tests/test-shards.test.mjs` can prove the partition without spawning a run.
+// Split from test.ts so `tests/test-shards.test.ts` can prove the partition without spawning a run.
 //
 // ⚠ THE ONE PROPERTY THAT MATTERS: across the shards of one run, every collected file runs EXACTLY
 // once. A file no shard picks passes silently in every job, which is worse than a red build. The
@@ -10,14 +10,26 @@ import { fileURLToPath } from "node:url"
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 
-/** Every `*.test.mjs` and `*.test.js` under `dir`, skipping installed and generated trees. */
+/** A test file by name: TypeScript (most suites), or JavaScript where a module still has some. */
+export const TEST_FILE = /\.test\.(ts|mjs|js)$/
+
+/**
+ * The browser apps run their own unit suites — the Vue ui's with its SFC compile (test/ui-suite.test.mjs),
+ * ui2's under its strict tsconfig (test/repo/ui2-suite.test.ts) — so the runner takes only their repo-level
+ * files, or each unit file would run twice and once outside the environment it needs.
+ */
+export function ownedByAnApp(rel) {
+  return /^modules\/ui2?\//.test(rel) && rel.endsWith(".test.ts") && !rel.includes("/test/repo/")
+}
+
+/** Every test file under `dir`, skipping installed and generated trees and test fixtures. */
 function walk(dir, out = []) {
   if (!fs.existsSync(dir)) return out
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (e.name === "node_modules" || e.name.startsWith(".")) continue
+    if (e.name === "node_modules" || e.name === "dist" || e.name === "fixtures" || e.name.startsWith(".")) continue
     const p = path.join(dir, e.name)
     if (e.isDirectory()) walk(p, out)
-    else if (e.name.endsWith(".test.mjs") || e.name.endsWith(".test.js")) out.push(p)
+    else if (TEST_FILE.test(e.name)) out.push(p)
   }
   return out
 }
@@ -26,6 +38,7 @@ function walk(dir, out = []) {
 export function collect(root = ROOT) {
   return [...walk(path.join(root, "tests")), ...walk(path.join(root, "modules"))]
     .map(f => path.relative(root, f).split(path.sep).join("/"))
+    .filter(f => !ownedByAnApp(f))
     .sort()
 }
 
@@ -40,26 +53,26 @@ export function forModule(files, id) {
 // Seconds per file on a 2-vCPU GitHub runner, node 20, run 41100010853 (2026-10-30): the files above
 // ~8 s. Everything else counts DEFAULT_WEIGHT. Re-measure when a shard runs far longer than the rest.
 export const WEIGHTS = {
-  "modules/proofs/test/integration/prove.test.js": 170,
-  "modules/worktrees/test/integration/land.test.js": 65,
-  "tests/compiles-alone.test.mjs": 65,
+  "modules/proofs/test/integration/prove.test.ts": 170,
+  "modules/worktrees/test/integration/land.test.ts": 65,
+  "tests/compiles-alone.test.ts": 65,
   // measured 61 s on a developer machine (2026-11-14, engine 0.49 candidate, concurrency 4); re-measure on a runner
-  "tests/check-alone.test.mjs": 61,
+  "tests/check-alone.test.ts": 61,
   // measured 18 s on a developer machine (2026-11-14, engine 0.49 candidate): nineteen dt installs in three workspaces
-  "tests/nav-workspaces.test.mjs": 18,
-  "modules/files/test/sync.test.mjs": 45,
-  "modules/worktrees/test/integration/worktrees.test.js": 36,
-  "modules/rnd/test/prototype-play.test.mjs": 21,
-  "modules/notebooklm/test/export.test.mjs": 20,
-  "modules/notebooklm/test/sync.test.mjs": 16,
-  "modules/rnd/test/heldout/play-fails-honestly.test.mjs": 15,
-  "tests/interplay.test.mjs": 14,
-  "modules/proofs/test/integration/extension.test.js": 12,
-  "modules/rnd/test/prototype-packed.test.mjs": 10,
-  "modules/workflows/test/install.test.mjs": 9,
-  "modules/rnd/test/prototype-schema.test.mjs": 9,
-  "tests/proofs-with-worktrees.test.mjs": 8,
-  "modules/rnd/test/heldout/minimal-app-contract.test.mjs": 8,
+  "tests/nav-workspaces.test.ts": 18,
+  "modules/files/test/sync.test.ts": 45,
+  "modules/worktrees/test/integration/worktrees.test.ts": 36,
+  "modules/rnd/test/prototype-play.test.ts": 21,
+  "modules/notebooklm/test/export.test.ts": 20,
+  "modules/notebooklm/test/sync.test.ts": 16,
+  "modules/rnd/test/heldout/play-fails-honestly.test.ts": 15,
+  "tests/interplay.test.ts": 14,
+  "modules/proofs/test/integration/extension.test.ts": 12,
+  "modules/rnd/test/prototype-packed.test.ts": 10,
+  "modules/workflows/test/install.test.ts": 9,
+  "modules/rnd/test/prototype-schema.test.ts": 9,
+  "tests/proofs-with-worktrees.test.ts": 8,
+  "modules/rnd/test/heldout/minimal-app-contract.test.ts": 8,
 }
 export const DEFAULT_WEIGHT = 2
 

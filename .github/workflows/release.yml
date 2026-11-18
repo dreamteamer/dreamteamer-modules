@@ -150,7 +150,7 @@ jobs:
 
       - name: does this module's suite drive a browser
         id: browser
-        run: echo "needed=$(node scripts/test.mjs --module=${{ steps.mod.outputs.id }} --needs-browser)" >> "$GITHUB_OUTPUT"
+        run: echo "needed=$(node scripts/test.ts --module=${{ steps.mod.outputs.id }} --needs-browser)" >> "$GITHUB_OUTPUT"
 
       # rnd's prototype harness drives a real browser, and its held-out tests fail honestly rather than
       # skip when none resolves (play-fails-honestly), so the runner installs it — through npx, because
@@ -168,11 +168,13 @@ jobs:
       # tree that publishes, and again by its prepublishOnly inside npm publish.
       # Built on EVERY tag, not only ui's: tests/ holds the pane's held-out tests, which import the built app, so a
       # tag for any other module died at that import (protocol-v0.3.0, 2026-11-15) — the same gap ci.yml closed.
-      - name: build the ui
-        run: npm run build -w modules/ui
+      - name: build the modules, then the ui (its bundle imports @dreamteamer/protocol's dist/)
+        run: |
+          npm run build
+          npm run build -w modules/ui
 
       - name: tests
-        run: node scripts/test.mjs --module=${{ steps.mod.outputs.id }}
+        run: node scripts/test.ts --module=${{ steps.mod.outputs.id }}
 
       - name: publish
         working-directory: modules/${{ steps.mod.outputs.id }}

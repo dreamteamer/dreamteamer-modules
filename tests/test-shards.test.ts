@@ -35,7 +35,7 @@ function assertPartition(n) {
 
 test("the collector finds the suite — a partition of nothing would pass vacuously", () => {
   assert.ok(all.length > 100, `only ${all.length} test files collected`)
-  assert.ok(all.includes("tests/test-shards.test.mjs"), "the collector does not see this very file")
+  assert.ok(all.includes("tests/test-shards.test.ts"), "the collector does not see this very file")
 })
 
 test("ci.yml shards the run as 1..N, and the test step passes the same N", () => {
@@ -63,7 +63,7 @@ test("the runner CLI agrees with the partition", () => {
   const n = shards.length
   const union = []
   for (let i = 1; i <= n; i++) {
-    const r = spawnSync(process.execPath, [path.join(ROOT, "scripts", "test.mjs"), `--shard=${i}/${n}`, "--list"], {
+    const r = spawnSync(process.execPath, [path.join(ROOT, "scripts", "test.ts"), `--shard=${i}/${n}`, "--list"], {
       cwd: ROOT,
       encoding: "utf8",
     })
@@ -99,9 +99,9 @@ test("a module release runs every repo-wide check and its whole module suite, no
     .filter(d => fs.existsSync(path.join(ROOT, "modules", d, "package.json")))
   const shared = all.filter(f => f.startsWith("tests/"))
   assert.ok(
-    shared.includes("tests/compiles-alone.test.mjs") &&
-      shared.includes("tests/structure.test.mjs") &&
-      shared.includes("tests/leak-gate.test.mjs")
+    shared.includes("tests/compiles-alone.test.ts") &&
+      shared.includes("tests/structure.test.ts") &&
+      shared.includes("tests/leak-gate.test.ts")
   )
   for (const id of ids) {
     const sel = forModule(all, id)
