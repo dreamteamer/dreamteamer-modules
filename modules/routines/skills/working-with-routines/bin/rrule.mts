@@ -19,7 +19,7 @@ import { execFileSync } from "node:child_process"
 import { fileURLToPath } from "node:url"
 
 const DAYS = ["MO", "TU", "WE", "TH", "FR", "SA", "SU"]
-const DAY_NAMES = {
+const DAY_NAMES: Record<string, string> = {
   MO: "Monday",
   TU: "Tuesday",
   WE: "Wednesday",
@@ -42,19 +42,38 @@ const MONTHS = [
   "November",
   "December",
 ]
-const ORD = { 1: "first", 2: "second", 3: "third", 4: "fourth", 5: "fifth", "-1": "last", "-2": "second-to-last" }
+const ORD: Record<number, string> = {
+  1: "first",
+  2: "second",
+  3: "third",
+  4: "fourth",
+  5: "fifth",
+  "-1": "last",
+  "-2": "second-to-last",
+}
 
-export function parse(rrule) {
+/** A parsed RRULE: the parts this module supports. */
+export interface Rule {
+  freq?: "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY"
+  interval: number
+  count?: number
+  until?: string
+  byday: { ord: number; day: string }[]
+  bymonthday: number[]
+  bymonth: number[]
+}
+
+export function parse(rrule: unknown): Rule {
   if (typeof rrule !== "string") throw new Error("recurrence must be a string")
   const body = rrule.startsWith("RRULE:") ? rrule.slice(6) : rrule
-  const r: Record<string, any> = { interval: 1, byday: [], bymonthday: [], bymonth: [] }
+  const r: Rule = { interval: 1, byday: [], bymonthday: [], bymonth: [] }
   for (const part of body.split(";").filter(Boolean)) {
     const [k, v] = part.split("=")
     if (v === undefined) throw new Error(`malformed part "${part}"`)
     switch (k) {
       case "FREQ":
         if (!["DAILY", "WEEKLY", "MONTHLY", "YEARLY"].includes(v)) throw new Error(`unsupported FREQ=${v}`)
-        r.freq = v
+        r.freq = v as Rule["freq"]
         break
       case "INTERVAL":
         r.interval = int(v, k)
@@ -90,18 +109,18 @@ export function parse(rrule) {
   return r
 }
 
-const int = (v, k) => {
+const int = (v: string, k: string) => {
   if (!/^-?\d+$/.test(v)) throw new Error(`${k} must be an integer, got "${v}"`)
   return parseInt(v, 10)
 }
-const parseUntil = v => {
+const parseUntil = (v: string) => {
   const m = /^(\d{4})(\d{2})(\d{2})/.exec(v)
   if (!m) throw new Error(`bad UNTIL "${v}"`)
   return `${m[1]}-${m[2]}-${m[3]}`
 }
 
 // ---- English, the way the calendar dialog phrases it -----------------------------------------
-export function toEnglish(rrule, anchor?) {
+export function toEnglish(rrule: string | Rule, anchor?: string): string {
   const r = typeof rrule === "string" ? parse(rrule) : rrule
   const a = anchor ? toDate(anchor) : null
   const unit = { DAILY: "day", WEEKLY: "week", MONTHLY: "month", YEARLY: "year" }[r.freq]
@@ -130,25 +149,25 @@ export function toEnglish(rrule, anchor?) {
   return `${head}${on}${tail}`
 }
 
-const fmtLong = iso => {
+const fmtLong = (iso: string) => {
   const d = toDate(iso)
   return `${MONTHS[d.getUTCMonth()].slice(0, 3)} ${d.getUTCDate()}, ${d.getUTCFullYear()}`
 }
 
 // ---- occurrences -----------------------------------------------------------------------------
-const toDate = iso => {
+const toDate = (iso: unknown) => {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso))
   if (!m) throw new Error(`bad date "${iso}" — want YYYY-MM-DD`)
   return new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]))
 }
-const iso = d => d.toISOString().slice(0, 10)
-const addDays = (d, n) => new Date(d.getTime() + n * 86400000)
-const weekday = d => DAYS[(d.getUTCDay() + 6) % 7] // MO=0
-const daysInMonth = (y, m0) => new Date(Date.UTC(y, m0 + 1, 0)).getUTCDate()
-const mondayOf = d => addDays(d, -((d.getUTCDay() + 6) % 7))
+const iso = (d: Date) => d.toISOString().slice(0, 10)
+const addDays = (d: Date, n: number) => new Date(d.getTime() + n * 86400000)
+const weekday = (d: Date) => DAYS[(d.getUTCDay() + 6) % 7] // MO=0
+const daysInMonth = (y: number, m0: number) => new Date(Date.UTC(y, m0 + 1, 0)).getUTCDate()
+const mondayOf = (d: Date) => addDays(d, -((d.getUTCDay() + 6) % 7))
 
 // does `d` satisfy the BYDAY ordinal rule inside its month?
-function matchesByDayInMonth(d, byday) {
+function matchesByDayInMonth(d: Date, byday: Rule["byday"]): boolean {
   const wd = weekday(d),
     y = d.getUTCFullYear(),
     m0 = d.getUTCMonth()
@@ -157,10 +176,10 @@ function matchesByDayInMonth(d, byday) {
   return byday.some(b => b.day === wd && (b.ord === 0 || b.ord === nth || b.ord === nthFromEnd))
 }
 
-function matches(d, r, a) {
+function matches(d: Date, r: Rule, a: Date): boolean {
   switch (r.freq) {
     case "DAILY":
-      return Math.round((d - a) / 86400000) % r.interval === 0
+      return Math.round((d.getTime() - a.getTime()) / 86400000) % r.interval === 0
     case "WEEKLY": {
       const weeks = Math.round((mondayOf(d).getTime() - mondayOf(a).getTime()) / (7 * 86400000))
       if (weeks % r.interval !== 0) return false
@@ -188,7 +207,7 @@ function matches(d, r, a) {
 
 // First occurrence on or after `today`. Walks day by day from the anchor (so COUNT can be honoured)
 // with a hard horizon, and returns null when the series has ended or the rule is not trackable.
-export function nextDue(rrule, anchor, today) {
+export function nextDue(rrule: string | Rule, anchor: string | undefined, today: string): string | null {
   const r = typeof rrule === "string" ? parse(rrule) : rrule
   if (r.freq === "DAILY") return null // by design — see the descriptor
   if (!anchor) return null
@@ -207,12 +226,12 @@ export function nextDue(rrule, anchor, today) {
   return null
 }
 
-export function render(rrule, anchor, today) {
+export function render(rrule: string | Rule, anchor: string | undefined, today: string) {
   return { text: toEnglish(rrule, anchor), next_due: nextDue(rrule, anchor, today) }
 }
 
 // ---- CLI -------------------------------------------------------------------------------------
-const flag = (argv, name) => {
+const flag = (argv: string[], name: string) => {
   const i = argv.indexOf(`--${name}`)
   return i === -1 ? undefined : argv[i + 1]
 }
@@ -220,7 +239,7 @@ const todayIso = () => new Date().toISOString().slice(0, 10)
 
 /** The workspace: the nearest folder above `from` holding a package-lock.json, skipping a folder
  *  directly inside `git_modules/`, which is a cloned module and never the workspace. */
-function workspaceRoot(from) {
+function workspaceRoot(from: string): string {
   for (let d = from; ; d = path.dirname(d)) {
     if (fs.existsSync(path.join(d, "package-lock.json")) && path.basename(path.dirname(d)) !== "git_modules") return d
     if (path.dirname(d) === d) throw new Error("no workspace found (no package-lock.json above " + from + ")")
@@ -231,11 +250,11 @@ function workspaceRoot(from) {
  *  descriptor carries at `compiled.defaults.storage.path` (the authored `storage.path` when the
  *  author wrote one), else the module default. Read by indentation, since this module declares no
  *  YAML dependency and the engine dumps block maps. */
-function routinesDir(root) {
+function routinesDir(root: string): string {
   const compiled = path.join(root, ".dreamteamer", "collections", "routines.collection.yaml")
-  const at = { resolved: null, authored: null }
+  const at: { resolved: string | null; authored: string | null } = { resolved: null, authored: null }
   if (fs.existsSync(compiled)) {
-    const trail = []
+    const trail: string[] = []
     for (const raw of fs.readFileSync(compiled, "utf8").split("\n")) {
       const m = /^( *)([a-z_]+):\s*(.*)$/.exec(raw)
       if (!m) continue
@@ -252,10 +271,10 @@ function routinesDir(root) {
 }
 
 // Minimal frontmatter read — enough for the four scalar fields `roll` inspects. Writes go through dt.
-function readRecord(file) {
+function readRecord(file: string): Record<string, string> {
   const src = fs.readFileSync(file, "utf8")
   const m = /^---\n([\s\S]*?)\n---/.exec(src)
-  const fm = {}
+  const fm: Record<string, string> = {}
   if (m)
     for (const line of m[1].split("\n")) {
       const kv = /^([a-z_]+):\s*(.*)$/.exec(line)
@@ -264,19 +283,19 @@ function readRecord(file) {
   return fm
 }
 
-function roll(argv) {
+function roll(argv: string[]) {
   const dir = flag(argv, "dir") ?? routinesDir(workspaceRoot(process.cwd()))
   const root = flag(argv, "dir") ? process.cwd() : workspaceRoot(process.cwd())
   const today = flag(argv, "today") ?? todayIso()
   const apply = argv.includes("--apply")
-  const out = []
+  const out: Record<string, unknown>[] = []
   if (!fs.existsSync(dir)) return out
   for (const f of fs
     .readdirSync(dir)
     .filter(x => x.endsWith(".routine.md"))
     .sort()) {
     const id = f.replace(/\.routine\.md$/, "")
-    const rec: any = readRecord(path.join(dir, f))
+    const rec = readRecord(path.join(dir, f))
     if ((rec.status ?? "active") !== "active") continue
     let want
     try {
@@ -302,7 +321,7 @@ function roll(argv) {
   return out
 }
 
-const real = p => {
+const real = (p: string) => {
   try {
     return fs.realpathSync(p)
   } catch {
