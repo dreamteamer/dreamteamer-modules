@@ -29,20 +29,30 @@ import { transcriptOf } from "../src/sessions/send.ts"
 const HOOK = /dt-hook\.sh"?\s+session heartbeat --hook\s*$/
 const DROP = ["status", "binding", "heartbeat"]
 
-function dt(ws, args) {
+/** The hook part of a harness settings.json this script edits. */
+interface HookGroup {
+  hooks?: { command?: unknown }[]
+  [key: string]: unknown
+}
+interface Settings {
+  hooks?: { Stop?: HookGroup[]; [event: string]: unknown }
+  [key: string]: unknown
+}
+
+function dt(ws: string, args: string[]) {
   const local = path.join(ws, "node_modules", "dreamteamer", "bin", "dreamteamer.js")
   return fs.existsSync(local)
     ? spawnSync(process.execPath, [local, ...args], { cwd: ws, encoding: "utf8" })
     : spawnSync("npx", ["--no-install", "dreamteamer", ...args], { cwd: ws, encoding: "utf8" })
 }
 /** A `${env:NAME}` rendered for this workspace, or null when unset. */
-function rendered(ws, name) {
+function rendered(ws: string, name: string): string | null {
   const r = dt(ws, ["resolve", `\${env:${name}}`])
   const v = r.status === 0 ? r.stdout.trim() : ""
   return v && !v.includes("${") ? v : null
 }
-function walk(dir, suffix, out = []) {
-  let entries = []
+function walk(dir: string, suffix: string, out: string[] = []): string[] {
+  let entries: fs.Dirent[] = []
   try {
     entries = fs.readdirSync(dir, { withFileTypes: true })
   } catch {
@@ -55,7 +65,7 @@ function walk(dir, suffix, out = []) {
   }
   return out
 }
-const real = p => {
+const real = (p: string) => {
   try {
     return fs.realpathSync(p)
   } catch {
@@ -63,18 +73,18 @@ const real = p => {
   }
 }
 /** Is `p` the workspace or under it — both realpath'd, since a temp folder is reached through /var and /private/var. */
-const inside = (p, root) => {
+const inside = (p: string, root: string) => {
   const r = path.relative(real(root), real(p))
   return r === "" || (!r.startsWith("..") && !path.isAbsolute(r))
 }
 /** One top-level front-matter key's raw value (first line), or null. */
-const keyOf = (fm, k) => {
+const keyOf = (fm: string, k: string) => {
   const m = fm.match(new RegExp(`^${k}:\\s*(.*)$`, "m"))
   return m ? m[1].replace(/^['"]|['"]$/g, "").trim() : null
 }
 /** The front matter without the named top-level keys (a key's indented continuation lines go with it). */
-function dropKeys(fm, keys) {
-  const out = []
+function dropKeys(fm: string, keys: string[]): string {
+  const out: string[] = []
   let skipping = false
   for (const line of fm.split("\n")) {
     const top = line.match(/^([A-Za-z_][\w-]*):/)
@@ -85,7 +95,7 @@ function dropKeys(fm, keys) {
   return out.join("\n")
 }
 /** The cwd a transcript was recorded in: the first line that names one. */
-function cwdOf(file) {
+function cwdOf(file: string): string | null {
   try {
     for (const line of fs.readFileSync(file, "utf8").split("\n").slice(0, 50)) {
       if (!line.trim()) continue
@@ -101,12 +111,12 @@ function cwdOf(file) {
   }
   return null
 }
-const split = text => {
+const split = (text: string) => {
   const m = text.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/)
   return m ? { fm: m[1], body: m[2] } : null
 }
 
-export function main(argv) {
+export function main(argv: string[]): number {
   const write = argv.includes("--write")
   const take = new Set(argv.flatMap((a, i) => (argv[i - 1] === "--take" ? [a.replace(/^sessions\//, "")] : [])))
   const ws = findWorkspace()
@@ -117,7 +127,7 @@ export function main(argv) {
   const sessionsFolder = rendered(ws, "SESSIONS_FOLDER")
   const filesFolder = rendered(ws, "FILES_FOLDER")
   const n = { records: 0, transcripts: 0, sources: 0, hooks: 0, left: 0 }
-  const say = s => console.log(`${write ? "" : "(dry run) "}${s}`)
+  const say = (s: string) => console.log(`${write ? "" : "(dry run) "}${s}`)
 
   // sessions records and their transcripts
   if (sessionsFolder) {
@@ -198,7 +208,7 @@ export function main(argv) {
   // core 0.8.0's Stop entry
   const settings = path.join(ws, ".claude", "settings.json")
   if (fs.existsSync(settings)) {
-    let s
+    let s: Settings | null
     try {
       s = JSON.parse(fs.readFileSync(settings, "utf8"))
     } catch {
@@ -259,7 +269,7 @@ export function main(argv) {
 
 const isMain = () => {
   if (!process.argv[1]) return false
-  const real = p => {
+  const real = (p: string) => {
     try {
       return fs.realpathSync(p)
     } catch {

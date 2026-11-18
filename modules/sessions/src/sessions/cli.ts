@@ -6,7 +6,11 @@
 import os from "node:os"
 import path from "node:path"
 import { findWorkspace } from "../../lib/findWorkspace.ts"
+import type { Workspace } from "dreamteamer"
 import { sendTo } from "./send.ts"
+
+export type Api = typeof import("dreamteamer")
+type Store = InstanceType<Api["Store"]>
 
 export const SESSION_USAGE = [
   "  session bind <collection>/<id>… [--session <id>] [--json]",
@@ -19,8 +23,8 @@ export const SESSION_USAGE = [
 
 const SWITCHES = new Set(["json", "hook", "force"])
 /** argv → { pos, flags }; a switch never swallows the next word, and a repeated flag is refused. */
-export function parse(argv) {
-  const pos = []
+export function parse(argv: string[]) {
+  const pos: string[] = []
   const flags: Record<string, any> = {}
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]
@@ -42,34 +46,34 @@ export function parse(argv) {
   return { pos, flags }
 }
 
-export const strip = (ref, kind) => String(ref ?? "").replace(new RegExp(`^${kind}/`), "")
-const pad = n => String(n).padStart(2, "0")
+export const strip = (ref: unknown, kind: string) => String(ref ?? "").replace(new RegExp(`^${kind}/`), "")
+const pad = (n: number) => String(n).padStart(2, "0")
 /** A local timestamp with its offset, to the second — how every datetime in a record reads. */
 export function stamp(d = new Date()) {
   const o = -d.getTimezoneOffset()
   const a = Math.abs(o)
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}${o >= 0 ? "+" : "-"}${pad(Math.floor(a / 60))}:${pad(a % 60)}`
 }
-const shown = v => (v instanceof Date ? stamp(v) : String(v ?? ""))
+const shown = (v: unknown) => (v instanceof Date ? stamp(v) : String(v ?? ""))
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 /** The workspace a session record is written to: the one the session runs in — the nearest workspace
  *  above `from` that is not a folder directly inside git_modules/ (session-save resolves it the same way),
  *  else `from` itself. One harness session is therefore one record. */
-export const writeRootOf = from => findWorkspace(from) ?? path.resolve(from)
+export const writeRootOf = (from: string) => findWorkspace(from) ?? path.resolve(from)
 
 /** The workspace handle to write sessions in, opened only when it is not the one already open. */
-async function writeWorkspace(ws, dt) {
+async function writeWorkspace(ws: Workspace, dt: Api): Promise<Workspace> {
   const root = writeRootOf(ws.root)
   return path.resolve(root) === path.resolve(ws.root) ? ws : dt.openWorkspace(root)
 }
 
-const sessionOf = (flags, pos, env) => {
+const sessionOf = (flags: Record<string, any>, pos: string | null | undefined, env: NodeJS.ProcessEnv) => {
   const sid = strip(flags.session ?? pos ?? env.CLAUDE_CODE_SESSION_ID ?? "", "sessions")
   return sid || null
 }
 
-function readSession(store, sid) {
+function readSession(store: Store, sid: string) {
   try {
     return store.read("sessions", sid).fields
   } catch {
@@ -77,7 +81,7 @@ function readSession(store, sid) {
   }
 }
 
-export async function bind(ws, dt, refs, flags: Record<string, any> = {}, env = process.env) {
+export async function bind(ws: Workspace, dt: Api, refs: string[], flags: Record<string, any> = {}, env = process.env) {
   const sid = sessionOf(flags, null, env)
   if (!sid)
     throw new Error(
@@ -86,8 +90,8 @@ export async function bind(ws, dt, refs, flags: Record<string, any> = {}, env = 
   if (!refs.length) throw new Error("dt session bind needs at least one record: dt session bind <collection>/<id>…")
   const w = await writeWorkspace(ws, dt)
   const store = new dt.Store(w)
-  const resolved = []
-  const titles = new Map()
+  const resolved: string[] = []
+  const titles = new Map<string, string>()
   for (const raw of refs) {
     let ref
     try {
@@ -95,7 +99,7 @@ export async function bind(ws, dt, refs, flags: Record<string, any> = {}, env = 
       if (!id) throw new Error("no id")
       ref = `${collection}/${id}`
       const { fields } = store.read(collection, id)
-      titles.set(ref, fields.name ?? fields.title ?? ref)
+      titles.set(ref, String(fields.name ?? fields.title ?? ref))
     } catch {
       throw new Error(`${raw}: no such record — nothing was written`)
     }
@@ -145,7 +149,7 @@ export async function bind(ws, dt, refs, flags: Record<string, any> = {}, env = 
   }
 }
 
-export async function end(ws, dt, pos, flags: Record<string, any> = {}, env = process.env) {
+export async function end(ws: Workspace, dt: Api, pos: string[], flags: Record<string, any> = {}, env = process.env) {
   const sid = sessionOf({}, pos[0], env)
   if (!sid)
     throw new Error("dt session end needs a session: dt session end <session id>, or run it inside the harness session")
@@ -159,7 +163,7 @@ export async function end(ws, dt, pos, flags: Record<string, any> = {}, env = pr
 
 /** send's argv → { sid, text, json }: `--json` is its one option, read only before `--`; the first other
  *  word is the session and EVERYTHING after it is the message, an unknown `--word` included. */
-export function messageOf(args) {
+export function messageOf(args: string[]) {
   const cut = args.indexOf("--")
   const head = cut === -1 ? args : args.slice(0, cut)
   const tail = cut === -1 ? [] : args.slice(cut + 1)
@@ -170,7 +174,12 @@ export function messageOf(args) {
   return { sid, text, json }
 }
 
-export async function send(ws, dt, args, { env = process.env, spawn }: Record<string, any> = {}) {
+export async function send(
+  ws: Workspace,
+  dt: Api,
+  args: string[],
+  { env = process.env, spawn }: Record<string, any> = {}
+) {
   const { sid, text } = messageOf(args)
   if (!sid || !text)
     throw new Error(
@@ -182,7 +191,7 @@ export async function send(ws, dt, args, { env = process.env, spawn }: Record<st
 
 // ---- the verb ---------------------------------------------------------------------------------------
 
-export async function sessionCommand(ws, argv, dt, { env = process.env } = {}) {
+export async function sessionCommand(ws: Workspace, argv: string[], dt: Api, { env = process.env } = {}) {
   const [sub, ...rest] = argv
   // retired in 0.9.0: a heartbeat — hook or not — is a no-op at exit 0 through 0.9.x, so the 0.8.0 Stop
   // hook a workspace merged never blocks its harness's stop; bin/sessions-migrate.mjs removes the entry
@@ -194,7 +203,7 @@ export async function sessionCommand(ws, argv, dt, { env = process.env } = {}) {
     return 0
   }
   const { pos, flags } = parse(rest)
-  const out = (o, text) => {
+  const out = (o: unknown, text: string) => {
     if (flags.json) dt.emit(JSON.stringify(o, null, 2))
     else console.log(text)
   }
@@ -225,7 +234,7 @@ export async function sessionCommand(ws, argv, dt, { env = process.env } = {}) {
 /** What `dt next <ref>` says about the sessions that bound a record — read at call time from every root
  *  the workspace reads, one note per session, its ref in the text (the engine keeps id, text and by). A
  *  record no session lists gets nothing. Synchronous and read-only; a failure to read is no note. */
-export function nextNotes(ws, dt, { collection, ids }) {
+export function nextNotes(ws: Workspace, dt: Api, { collection, ids }: { collection: string; ids: string[] }) {
   let sessions
   try {
     sessions = [...new dt.Store(ws).readAll("sessions")]

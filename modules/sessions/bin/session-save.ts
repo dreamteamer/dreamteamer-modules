@@ -25,23 +25,70 @@ import { findWorkspace } from "../lib/findWorkspace.ts"
 
 /** List price per token, by model id prefix: input · output · cache write (5 min · 1 h) · cache read.
  *  Used only when the transcript carries no `cost-state`; a model not listed leaves `cost_usd` empty. */
-export const PRICES = {
+/** One model's list price per token. */
+export interface Price {
+  input: number
+  output: number
+  write5m: number
+  write1h: number
+  read: number
+}
+
+export const PRICES: Record<string, Price> = {
   "claude-opus-5": { input: 4e-6, output: 2e-5, write5m: 5e-6, write1h: 8e-6, read: 2e-7 },
   "claude-fable-5": { input: 1e-5, output: 5e-5, write5m: 1.25e-5, write1h: 2e-5, read: 2.5e-7 },
   "claude-sonnet-5": { input: 2e-6, output: 1e-5, write5m: 2.5e-6, write1h: 4e-6, read: 1e-7 },
   "claude-haiku-5": { input: 1e-6, output: 5e-6, write5m: 1.25e-6, write1h: 2e-6, read: 1e-7 },
 }
-const priceOf = model => PRICES[Object.keys(PRICES).find(k => String(model).startsWith(k))]
+const priceOf = (model: unknown): Price | undefined =>
+  PRICES[Object.keys(PRICES).find(k => String(model).startsWith(k))]
 
 /** The encoded project folder the harness keeps a cwd's transcripts under. */
-export const encodeCwd = cwd => cwd.replace(/[^A-Za-z0-9]/g, "-")
+export const encodeCwd = (cwd: string) => cwd.replace(/[^A-Za-z0-9]/g, "-")
 export const configDir = (env = process.env) => env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), ".claude")
-export const transcriptPathOf = (sessionId, cwd = process.cwd(), env = process.env) =>
+export const transcriptPathOf = (sessionId: string, cwd = process.cwd(), env = process.env) =>
   path.join(configDir(env), "projects", encodeCwd(cwd), `${sessionId}.jsonl`)
 
 /** Parse a transcript's text. Pure: counts, the cost-state line, and one usage per distinct request. */
-export function parseTranscript(text) {
-  const p = {
+/** A request's `usage` block, as the API reports it. */
+export interface Usage {
+  input_tokens?: number
+  output_tokens?: number
+  cache_read_input_tokens?: number
+  cache_creation_input_tokens?: number
+  cache_creation?: { ephemeral_5m_input_tokens?: number; ephemeral_1h_input_tokens?: number }
+}
+
+/** The harness's `cost-state` line. */
+export interface CostState {
+  modelUsage?: Record<string, Record<string, number>>
+  totalCostUSD?: number
+  hasUnknownModelCost?: boolean
+  startTime?: string | number
+  totalDuration?: number
+  totalAPIDuration?: number
+  totalLinesAdded?: number
+  totalLinesRemoved?: number
+}
+
+/** What parseTranscript reads out of a transcript. */
+export interface ParsedTranscript {
+  turns: number
+  toolCalls: number
+  compactions: number
+  first: string | null
+  last: string | null
+  costState: CostState | null
+  title: string | null
+  lastPrompt: string | null
+  sessionId: string | null
+  cwd: string | null
+  requests: Map<string, { model: string | undefined; usage: Usage }>
+  models: Set<string>
+}
+
+export function parseTranscript(text: string): ParsedTranscript {
+  const p: ParsedTranscript = {
     turns: 0,
     toolCalls: 0,
     compactions: 0,
@@ -108,7 +155,7 @@ export function parseTranscript(text) {
 }
 
 /** Tokens, cost and models from the `usage` blocks — the fallback when no `cost-state` was written. */
-export function usageTotals(requests) {
+export function usageTotals(requests: ParsedTranscript["requests"]) {
   const t = {
     input_tokens: 0,
     output_tokens: 0,
@@ -140,14 +187,17 @@ export function usageTotals(requests) {
   return t
 }
 
-const round = (n, d) => (n == null ? n : Math.round(n * 10 ** d) / 10 ** d)
-const minutes = ms => (ms == null ? null : round(ms / 60000, 1))
+const round = (n: number | null | undefined, d: number) => (n == null ? n : Math.round(n * 10 ** d) / 10 ** d)
+const minutes = (ms: number | null) => (ms == null ? null : round(ms / 60000, 1))
 
 /** The record's fields, from a parsed transcript. `cost-state` wins; the usage sum fills what it lacks. */
-export function fieldsOf(parsed, { sessionId, transcript }: Record<string, any> = {}) {
+export function fieldsOf(
+  parsed: ParsedTranscript,
+  { sessionId, transcript }: { sessionId?: string; transcript?: string } = {}
+): Record<string, unknown> {
   const c = parsed.costState
   const models = c?.modelUsage ? Object.keys(c.modelUsage) : [...parsed.models]
-  const sum = k => Object.values(c.modelUsage).reduce((n, m) => n + (m[k] ?? 0), 0)
+  const sum = (k: string) => Object.values(c.modelUsage).reduce((n, m) => n + (m[k] ?? 0), 0)
   const u = c?.modelUsage
     ? {
         input_tokens: sum("inputTokens"),
@@ -162,7 +212,7 @@ export function fieldsOf(parsed, { sessionId, transcript }: Record<string, any> 
   const wall =
     c?.totalDuration ?? (parsed.first && parsed.last ? Date.parse(parsed.last) - Date.parse(parsed.first) : null)
   const id = sessionId ?? parsed.sessionId
-  const out = {
+  const out: Record<string, unknown> = {
     name: parsed.title ?? parsed.lastPrompt?.slice(0, 80) ?? `session ${String(id).slice(0, 8)}`,
     started,
     ended: parsed.last,
@@ -192,11 +242,11 @@ export { findWorkspace }
 
 /** Where a session's transcript copy is kept, as the template the record carries — the one place
  *  SESSIONS_FOLDER appears: `${env:SESSIONS_FOLDER}/<yyyy>/<mm>/<session id>.jsonl`. */
-export const transcriptTemplate = (id, started) =>
+export const transcriptTemplate = (id: string, started: string | null | undefined) =>
   `\${env:SESSIONS_FOLDER}/${(started ?? new Date().toISOString()).slice(0, 7).replace("-", "/")}/${id}.jsonl`
 
 /** `dt <args>` in the workspace: the installed engine's bin when there is one, `npx dreamteamer` otherwise. */
-function dt(ws, args, quiet) {
+function dt(ws: string, args: string[], quiet: boolean) {
   const local = path.join(ws, "node_modules", "dreamteamer", "bin", "dreamteamer.js")
   const r = fs.existsSync(local)
     ? spawnSync(process.execPath, [local, ...args], { cwd: ws, encoding: "utf8" })
@@ -208,7 +258,7 @@ function dt(ws, args, quiet) {
 
 /** Keep a copy of the transcript under SESSIONS_FOLDER, and say how the record should point at it. Unset,
  *  the record points at the harness's own copy (swept after a month) and every record verb still works. */
-function keepTranscript(ws, file, id, started, quiet) {
+function keepTranscript(ws: string, file: string, id: string, started: string | null, quiet: boolean): string {
   const r = dt(ws, ["resolve", "${env:SESSIONS_FOLDER}"], true)
   const folder = r.status === 0 ? r.stdout.trim() : ""
   if (!folder || folder.includes("${"))
@@ -224,8 +274,8 @@ function keepTranscript(ws, file, id, started, quiet) {
   return template
 }
 
-export function main(argv, env = process.env) {
-  const flag = f => {
+export function main(argv: string[], env = process.env): number {
+  const flag = (f: string) => {
     const i = argv.indexOf(f)
     return i >= 0 ? argv[i + 1] : undefined
   }
@@ -301,7 +351,7 @@ export function main(argv, env = process.env) {
 // a guard that silently never runs reads as a clean pass.
 const isMain = () => {
   if (!process.argv[1]) return false
-  const real = p => {
+  const real = (p: string) => {
     try {
       return fs.realpathSync(p)
     } catch {

@@ -10,7 +10,7 @@ import path from "node:path"
 import { spawnSync } from "node:child_process"
 
 /** The exact `claude` argv for a send: a json fork of the session with every tool, server and hook off. */
-export const sendArgv = sessionId => [
+export const sendArgv = (sessionId: string) => [
   "-p",
   "--resume",
   sessionId,
@@ -24,12 +24,12 @@ export const sendArgv = sessionId => [
   '{"disableAllHooks":true}',
 ]
 
-const configDir = env => env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), ".claude")
+const configDir = (env: NodeJS.ProcessEnv) => env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), ".claude")
 
 /** The harness's transcript of a session on this machine, or null: `<config dir>/projects/<any>/<id>.jsonl`. */
-export function transcriptOf(sessionId, env = process.env) {
+export function transcriptOf(sessionId: string, env = process.env): string | null {
   const projects = path.join(configDir(env), "projects")
-  let dirs = []
+  let dirs: fs.Dirent[] = []
   try {
     dirs = fs.readdirSync(projects, { withFileTypes: true }).filter(d => d.isDirectory())
   } catch {
@@ -45,7 +45,11 @@ export function transcriptOf(sessionId, env = process.env) {
 /** Send `text` to the session whose record fields are `fields`; returns { reply, raw }. Throws, naming the
  *  reason, when it cannot: no session_id, a harness other than claude-code, no transcript on this
  *  machine, claude missing, or claude failing. */
-export function sendTo(fields, text, { spawn = spawnSync, env = process.env } = {}) {
+export function sendTo(
+  fields: Record<string, any>,
+  text: string,
+  { spawn = spawnSync as typeof spawnSync, env = process.env } = {}
+) {
   if (!fields.session_id)
     throw new Error(
       "this session has no session_id — only a session bound or saved by its harness can be sent a message"
