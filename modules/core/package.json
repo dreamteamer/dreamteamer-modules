@@ -1,6 +1,6 @@
 {
 	"name": "@dreamteamer/core",
-	"version": "0.13.1",
+	"version": "0.13.2",
 	"description": "Every core noun from one install line: a module preset of seventeen small modules, installed and moved as one set by dt install and dt update.",
 	"license": "Apache-2.0",
 	"type": "module",
@@ -50,7 +50,7 @@
 			"@dreamteamer/tasks": "0.3.4",
 			"@dreamteamer/projects": "0.4.3",
 			"@dreamteamer/meetings": "0.4.0",
-			"@dreamteamer/recordings": "0.5.3",
+			"@dreamteamer/recordings": "0.5.4",
 			"@dreamteamer/meeting-docs": "0.1.5",
 			"@dreamteamer/files": "0.3.1",
 			"@dreamteamer/workflows": "0.1.3",

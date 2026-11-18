@@ -136,7 +136,9 @@ describe('task 3: the commands that run the sync or the scraper degrade by name'
 	});
 	test('versions: meeting-docs 0.1.5, recordings 0.5.3, workflows 0.1.3, each with a "nothing to do" README section', () => {
 		for (const [m, v] of [['meeting-docs', '0.1.5'], ['recordings', '0.5.3'], ['workflows', '0.1.3']]) {
-			assert.equal(pkgOf(m).version, v, m);
+			// recordings 0.5.4 (the transcription write-back fix) keeps the 0.5.3 section; the others are still exact
+			if (m === 'recordings') assert.ok(pkgOf(m).version.split('.').map(Number).reduce((d, x, i) => d || x - v.split('.').map(Number)[i], 0) >= 0, m);
+			else assert.equal(pkgOf(m).version, v, m);
 			const section = read(`modules/${m}/README.md`).split(new RegExp(`^## ${v.replace(/\./g, '\\.')}\\b`, 'm'))[1];
 			assert.ok(section, `${m}: no ## ${v} section`);
 			assert.match(section.split(/^## /m)[0], /wording only; nothing to do/i, `${m}: the ## ${v} section`);

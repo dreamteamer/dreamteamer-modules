@@ -11,6 +11,14 @@ npx dreamteamer check
 
 ---
 
+## 0.13.2 — recordings 0.5.4: a transcription run keeps what was written to the record while it ran
+
+Nothing to do but `npx dreamteamer update @dreamteamer/core`. The preset pins `@dreamteamer/recordings` 0.5.4, whose
+transcriber no longer writes back a record it read before decoding — a `meeting:` set while a recording was being
+transcribed survives. No other pin moves.
+
+---
+
 ## 0.13.1 — the nav migration step names a protocol version npm holds
 
 Nothing to do but `npx dreamteamer update @dreamteamer/core`. The first step of the 0.12.0 section below named a

@@ -52,6 +52,14 @@ or machine change waits for its own `--allow`. [SETUP.md](SETUP.md) lists the in
 what each status means, and the `ingesting-recordings` and `transcribing-recordings` skills carry the
 procedures behind the three slash commands of the flow.
 
+## 0.5.4 — a transcription run keeps what was written to the record while it ran
+
+Nothing to do but update. `transcribe_meeting.py run` read the recording record before decoding and wrote that copy
+back minutes later, so a field set on the record during the run — `meeting:` from `/match-recording-to-meeting`, the
+pipeline's own next step, or a note added to the body — was silently dropped. The run now reads the record again just
+before writing, and changes only `transcription` and the `## Transcript` section. A recording that lost its `meeting`
+this way keeps it lost: set it again with `dt set meeting-recordings/<id> meeting=meetings/<id>`.
+
 ## 0.5.3 — matching a recording without the calendar sync (cr-modules-018)
 
 Wording only; nothing to do. From core 0.13.0 the `fetching-meetings` skill ships with
