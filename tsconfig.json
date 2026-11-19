@@ -7,7 +7,7 @@
 	// Node's type stripping, so only erasable syntax is allowed and a relative import names the .ts file.
 	//
 	// Not here: the two browser apps, each bundled with bundler resolution and checked by its own config —
-	// ui's Vue app by `vue-tsc -p modules/ui/src/tsconfig.json`, ui2's React app by `tsc -p modules/ui2/src/tsconfig.json`;
+	// ui-legacy's Vue app by `vue-tsc -p modules/ui-legacy/src/tsconfig.json`, ui's React app by `tsc -p modules/ui/src/tsconfig.json`;
 	// and the rnd prototype's browser files, which are served to a browser as-is.
 	"compilerOptions": {
 		"target": "es2023",
@@ -33,8 +33,8 @@
 		"modules/*/test/**",
 		"modules/ui/src/**",
 		"modules/ui/dist/**",
-		"modules/ui2/src/**",
-		"modules/ui2/dist/**",
+		"modules/ui-legacy/src/**",
+		"modules/ui-legacy/dist/**",
 		"modules/*/dist/**"
 	]
 }

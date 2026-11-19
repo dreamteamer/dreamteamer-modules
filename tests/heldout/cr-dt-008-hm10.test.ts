@@ -201,7 +201,7 @@ describe("steps 2-3: each recipe op through applyNavOp, drawn with buildTree", (
 })
 
 // ── step 4: the REAL sidebar ───────────────────────────────────────────────────────────────────────────────────
-const UI = path.join(ROOT, "modules", "ui")
+const UI = path.join(ROOT, "modules", "ui-legacy")
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "hm10-"))
 after(() => fs.rmSync(tmp, { recursive: true, force: true }))
 async function bundleSidebar() {
@@ -224,7 +224,7 @@ async function bundleSidebar() {
         },
       },
       {
-        // the ui runner's own SFC compile (modules/ui/scripts/test.mjs, the render tier)
+        // the ui runner's own SFC compile (modules/ui-legacy/scripts/test.mjs, the render tier)
         name: "vue-sfc",
         setup(build) {
           build.onLoad({ filter: /\.vue$/ }, ({ path: p }) => {

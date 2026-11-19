@@ -16,7 +16,7 @@
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",
 		"ui": "node playground/dev.ts",
-		"ui2": "node playground/dev.ts --app=ui2"
+		"ui-legacy": "node playground/dev.ts --app=ui-legacy"
 	},
 	"devDependencies": {
 		"@types/express": "^5.0.6",

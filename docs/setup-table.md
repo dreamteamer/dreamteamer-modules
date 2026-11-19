@@ -48,7 +48,7 @@ holds its `dt status` line to the outcome this table declares. Four outcomes:
 | sessions | users | no setup (needs SESSIONS_FOLDER) | |
 | tasks | users | no setup | |
 | ui | — | library | |
-| ui2 | — | library | |
+| ui-legacy | — | library | |
 | users | — | no setup | |
 | web | — | no setup | |
 | wikis | — | unit | — (qmd on PATH) |

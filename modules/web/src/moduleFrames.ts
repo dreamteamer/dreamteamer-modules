@@ -1,6 +1,6 @@
 // cr-modules-008 task 6, on the one listener since cr-modules-017: /_frames/<key>/<module>/<kind>.html serves each
 // module surface as ONE self-contained frame document under `sandbox allow-scripts` —
-// the module's app.js read once and embedded as data, the guest (Vue + the guest runtime) from @dreamteamer/ui,
+// the module's app.js read once and embedded as data, the guest from the UI package the page comes from,
 // the frame policy with no host, hash or nonce. Nothing in the frame is fetched afterwards.
 import fs from "node:fs"
 import path from "node:path"
@@ -27,7 +27,7 @@ export function guestOf(pkgDir: string): Guest | null {
   }
 }
 
-/** The guest @dreamteamer/ui builds, or null when that package is absent. */
+/** The guest @dreamteamer/ui builds, or null when that package is absent — startWeb's default. */
 export function resolveGuest(from: string): Guest | null {
   try {
     const req = createRequire(path.join(from, "package.json"))

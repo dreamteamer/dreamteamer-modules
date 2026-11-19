@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // THE UI IN A BROWSER, FROM SOURCE — a dev harness, not a host: no sign-in, no levels, no file serving.
 //
-//   node playground/dev.ts            serve modules/ui/src with Vite (hot reload) on http://localhost:5173
-//   node playground/dev.ts --app=ui2  serve modules/ui2/src instead (the React app), same API
+//   node playground/dev.ts                  serve modules/ui/src (the React app) with Vite (hot reload) on http://localhost:5173
+//   node playground/dev.ts --app=ui-legacy  serve modules/ui-legacy/src instead (the Vue app), same API
 //   node playground/dev.ts --fresh    build a new sample workspace first
 //   node playground/dev.ts --port=n   another port
 //
@@ -35,7 +35,7 @@ const args = process.argv.slice(2)
 const fresh = args.includes("--fresh")
 const port = Number(args.find(a => a.startsWith("--port="))?.split("=")[1] ?? 5173)
 const app = args.find(a => a.startsWith("--app="))?.split("=")[1] ?? "ui"
-if (app !== "ui" && app !== "ui2") throw new Error(`--app=${app}: expected ui or ui2`)
+if (app !== "ui" && app !== "ui-legacy") throw new Error(`--app=${app}: expected ui or ui-legacy`)
 const UI_SRC = path.join(REPO, "modules", app, "src")
 
 /** The newest sample workspace under playground/.workspaces, or a new one. */
@@ -121,7 +121,7 @@ fs.watch(root, { recursive: true }, (_type, file) => {
 const server = await createServer({
   configFile: false,
   root: UI_SRC,
-  plugins: app === "ui2" ? [react(), tailwindcss(), api] : [vue(), api],
+  plugins: app === "ui" ? [react(), tailwindcss(), api] : [vue(), api],
   resolve: { alias: [{ find: /^@dreamteamer\/protocol\/(.*)$/, replacement: `${PROTOCOL_SRC}/$1.ts` }] },
   server: { port, strictPort: true, fs: { allow: [REPO] } },
 })

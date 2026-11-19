@@ -21,7 +21,7 @@ const TEXT = /\.(md|js|mjs|cjs|ts|json|yaml|yml|vue|html|css|sh|txt)$/
 
 /** Every text file each package ships, as `{ pkg, file, abs }`, from `npm pack --dry-run --json --workspaces`.
  *  ⚠ Less @dreamteamer/ui's `dist/`: gitignored build output of the `src/` this scan reads, and rebuilt (vite
- *  `emptyOutDir`) by modules/ui/test/tarball.test.mjs in the same run — read while it is emptied, a listed file is
+ *  `emptyOutDir`) by modules/ui-legacy/test/tarball.test.mjs in the same run — read while it is emptied, a listed file is
  *  gone and the scan fails on ENOENT though nothing changed (code review finding scan-races-ui-rebuild; reproduced
  *  2 of 42 scans beside a build). The leak gate leaves it out for the same reason. */
 const shipped = (() => {

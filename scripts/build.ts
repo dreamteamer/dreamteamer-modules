@@ -17,7 +17,7 @@
 // Each code .ts emits its .d.ts beside its .js (skills, which nothing imports, emit none), generated from the source's own types, so the declarations a consumer
 // compiles against cannot drift from the code. Files beside the code that are not TypeScript (assets) are copied.
 // Types are not checked here (`npm run typecheck` does that); a file tsc cannot emit fails the build.
-// ui and ui2 are browser apps with their own Vite build and are skipped.
+// ui and ui-legacy are browser apps with their own Vite build and are skipped.
 import { execFileSync } from "node:child_process"
 import fs from "node:fs"
 import path from "node:path"
@@ -31,7 +31,7 @@ const MODULES = path.join(ROOT, "modules")
 // tsc is this script's own dependency, wherever the checkout it builds is
 const TOOLS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 const CODE_DIRS = ["src", "lib", "bin"]
-const BROWSER_APPS = new Set(["ui", "ui2"])
+const BROWSER_APPS = new Set(["ui", "ui-legacy"])
 const TSC = path.join(TOOLS, "node_modules", "typescript", "bin", "tsc")
 
 const OPTIONS = [

@@ -4,10 +4,10 @@
  * gesture per case through the row menu (move-up · move-down · move-top · move-bottom) or a drop (drop: [from, to]),
  * then prints the PATCH /nav bodies it sent as one JSON line prefixed HM10:.
  */
-import { onHostRequest, requests, resetHost } from "../../modules/ui/test/webview/host-stub"
-import { all, flush, render, unmountAll, type TestNode } from "../../modules/ui/test/webview/render"
+import { onHostRequest, requests, resetHost } from "../../modules/ui-legacy/test/webview/host-stub"
+import { all, flush, render, unmountAll, type TestNode } from "../../modules/ui-legacy/test/webview/render"
 import { createMemoryHistory, createRouter } from "vue-router"
-import NavSidebar from "../../modules/ui/src/components/NavSidebar.vue"
+import NavSidebar from "../../modules/ui-legacy/src/components/NavSidebar.vue"
 
 type Case = {
   id: string

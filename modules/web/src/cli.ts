@@ -36,7 +36,7 @@ import { isApp, resolveApp, type AppName } from "./resolveApp.ts"
 
 const BIN = path.join(packageRoot(import.meta.url), "dist", "bin", "dt-web.js")
 export const USAGE =
-  "usage: dt web [open [<ref>|<collection>|<ui-view>] [--read|--edit|--admin] [--browser] [--app ui|ui2]] · show <target> · select <ref>… | --clear · selection [--json] · hook --install · token [--read|--edit] [--name <n>] · list · revoke [--token <n>] · status · stop [--revoke] [--force] · start [--foreground] [--port <n>] [--idle <minutes>] [--owner-pid <pid>] [--app ui|ui2]"
+  "usage: dt web [open [<ref>|<collection>|<ui-view>] [--read|--edit|--admin] [--browser] [--app ui|legacy-ui]] · show <target> · select <ref>… | --clear · selection [--json] · hook --install · token [--read|--edit] [--name <n>] · list · revoke [--token <n>] · status · stop [--revoke] [--force] · start [--foreground] [--port <n>] [--idle <minutes>] [--owner-pid <pid>] [--app ui|legacy-ui]"
 const VERBS = new Set([
   "open",
   "show",
@@ -119,7 +119,7 @@ export function parseArgs(argv: string[], env = process.env): Record<string, any
       if (name === "--idle") out.idle = wholeNumber("--idle", v)
       if (name === "--owner-pid") out.ownerPid = wholeNumber("--owner-pid", v)
       if (name === "--app") {
-        if (!isApp(v)) throw bad(`--app takes ui or ui2, not "${v}"`)
+        if (!isApp(v)) throw bad(`--app takes ui or legacy-ui, not "${v}"`)
         out.app = v
       }
     }

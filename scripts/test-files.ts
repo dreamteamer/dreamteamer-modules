@@ -14,12 +14,12 @@ export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "
 export const TEST_FILE = /\.test\.(ts|mjs|js)$/
 
 /**
- * The browser apps run their own unit suites — the Vue ui's with its SFC compile (test/ui-suite.test.mjs),
- * ui2's under its strict tsconfig (test/repo/ui2-suite.test.ts) — so the runner takes only their repo-level
+ * The browser apps run their own unit suites — ui-legacy's with its SFC compile (test/ui-suite.test.mjs),
+ * ui's under its strict tsconfig (test/repo/ui-suite.test.ts) — so the runner takes only their repo-level
  * files, or each unit file would run twice and once outside the environment it needs.
  */
 export function ownedByAnApp(rel: string): boolean {
-  return /^modules\/ui2?\//.test(rel) && rel.endsWith(".test.ts") && !rel.includes("/test/repo/")
+  return /^modules\/ui(-legacy)?\//.test(rel) && rel.endsWith(".test.ts") && !rel.includes("/test/repo/")
 }
 
 /** Every test file under `dir`, skipping installed and generated trees and test fixtures. */

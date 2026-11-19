@@ -18,6 +18,6 @@ modules/connectors-google-workspace/skills/fetching-meetings/SKILL.md	hebrew	one
 modules/recordings/skills/ingesting-recordings/bin/detect.mts	hebrew	the month-name and transliteration maps a non-latin recording filename is parsed with
 modules/perspective/skills/running-retrospectives/lib/gmail.mts	hebrew	the reply/forward subject-prefix regex, which must match the localised prefixes too
 modules/perspective/test/running-retrospectives/import-paste-back.test.ts	hebrew	pins that a non-latin line survives import unmangled — the assertion IS the literal
-modules/ui2/test/render-md.test.ts	hebrew	an RTL table (the words "name" and "value", the first two letters) that pins a right-to-left direction
+modules/ui/test/render-md.test.ts	hebrew	an RTL table (the words "name" and "value", the first two letters) that pins a right-to-left direction
 modules/recordings/skills/ingesting-recordings/bin/detect.ts	hebrew	renamed to modules/recordings/skills/ingesting-recordings/bin/detect.mts — the same maps under the name the TypeScript branch first gave them
 modules/perspective/skills/running-retrospectives/lib/gmail.ts	hebrew	renamed to modules/perspective/skills/running-retrospectives/lib/gmail.mts — the same prefix regex under the name the TypeScript branch first gave it

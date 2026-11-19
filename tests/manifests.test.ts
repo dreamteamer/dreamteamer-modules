@@ -47,7 +47,7 @@ test("the repo carries every module it is meant to", () => {
     "sessions",
     "tasks",
     "ui",
-    "ui2",
+    "ui-legacy",
     "users",
     "web",
     "wikis",
@@ -94,8 +94,8 @@ for (const m of moduleIds()) {
       }
     })
     test("`files` lists every folder the module carries, and the tarball ships them", () => {
-      // ui and ui2 are browser apps built by Vite into their own dist/, and ship their source on purpose
-      const app = m === "ui" || m === "ui2"
+      // ui and ui-legacy are browser apps built by Vite into their own dist/, and ship their source on purpose
+      const app = m === "ui" || m === "ui-legacy"
       // what ships as its build (scripts/build.ts) rather than as itself: src/ and lib/, a bin/ of TypeScript,
       // and the skills of a module that stages them from dist/skills
       const tsIn = d => fs.existsSync(d) && fs.readdirSync(d).some(f => f.endsWith(".ts") && !f.endsWith(".d.ts"))

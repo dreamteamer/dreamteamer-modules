@@ -12,23 +12,23 @@
 /** Lowercase, dash-separated slug: strips anything that isn't alphanumeric/dash/underscore,
  * collapses whitespace/underscores to a single dash, trims leading/trailing dashes. */
 export function slugify(text: string): string {
-	return text
-		.toLowerCase()
-		.trim()
-		.replace(/['"]/g, '')
-		.replace(/[^a-z0-9]+/g, '-')
-		.replace(/^-+|-+$/g, '');
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/['"]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
 }
 
 /** Singularize a collection name's last segment for the record-type default guess (naive
  * trailing-'s' strip — same heuristic the server falls back to when `record_type` is omitted). */
 export function defaultRecordType(name: string): string {
-	const base = name.split('/').pop() ?? name;
-	return base.replace(/s$/, '') || base;
+  const base = name.split("/").pop() ?? name
+  return base.replace(/s$/, "") || base
 }
 
 /** Join an optional parent namespace + a slug into a full collection path (posix `/`-joined). */
 export function joinCollectionPath(parent: string, slug: string): string {
-	const trimmedParent = parent.replace(/^\/+|\/+$/g, '');
-	return trimmedParent ? `${trimmedParent}/${slug}` : slug;
+  const trimmedParent = parent.replace(/^\/+|\/+$/g, "")
+  return trimmedParent ? `${trimmedParent}/${slug}` : slug
 }

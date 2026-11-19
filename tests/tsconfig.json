@@ -27,8 +27,8 @@
 		"**/fixtures/**",
 		"**/*.d.ts",
 		"heldout/*.sidebar.ts",
-		"../modules/ui/test/unit/**",
-		"../modules/ui/test/webview/**",
-		"../modules/ui2/test/**"
+		"../modules/ui-legacy/test/unit/**",
+		"../modules/ui-legacy/test/webview/**",
+		"../modules/ui/test/**"
 	]
 }

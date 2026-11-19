@@ -1,13 +1,13 @@
-// Which UI `dt web` serves (`--app ui|ui2`): the page AND the module frames' guest come from the SAME package, so a
-// React page never hosts frames drawn with the Vue guest. @dreamteamer/ui is this package's dependency; ui2 is not —
-// it is found where the workspace installed it.
+// Which UI `dt web` serves (`--app ui|legacy-ui`): the page AND the module frames' guest come from the SAME package, so
+// a React page never hosts frames drawn with the Vue guest. @dreamteamer/ui (React) is this package's dependency;
+// @dreamteamer/ui-legacy (Vue) is not — it is found where the workspace installed it.
 import fs from "node:fs"
 import { createRequire } from "node:module"
 import path from "node:path"
 import { pathToFileURL } from "node:url"
 import { guestOf, type Guest } from "./moduleFrames.ts"
 
-export const APPS = { ui: "@dreamteamer/ui", ui2: "@dreamteamer/ui2" } as const
+export const APPS = { ui: "@dreamteamer/ui", "legacy-ui": "@dreamteamer/ui-legacy" } as const
 export type AppName = keyof typeof APPS
 export const isApp = (v: unknown): v is AppName => typeof v === "string" && Object.hasOwn(APPS, v)
 
@@ -32,7 +32,7 @@ export interface AppChoice {
 
 /**
  * The app the server starts with: `--app` when given, else a DT_WEB_APP_DIR page (`appDir`), else ui. Nothing is
- * remembered — ui2 is served only when the flag names it, and only when it is already installed: a named app that is
+ * remembered — the legacy UI is served only when the flag names it, and only when it is already installed: a named app that is
  * not, or is installed without its build, throws naming the fix.
  */
 export function resolveApp(
