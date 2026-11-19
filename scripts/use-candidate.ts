@@ -20,13 +20,13 @@ import { execFileSync } from "node:child_process"
 import { fileURLToPath } from "node:url"
 
 const argv = process.argv.slice(2)
-const flag = n => {
+const flag = (n: string) => {
   const i = argv.indexOf(`--${n}`)
   return i > -1 ? argv[i + 1] : null
 }
 const root = path.resolve(flag("root") ?? path.join(path.dirname(fileURLToPath(import.meta.url)), ".."))
 const folderArg = argv.find((a, i) => !a.startsWith("--") && argv[i - 1] !== "--root") ?? process.env.DT_CANDIDATES
-const die = m => {
+const die = (m: string): never => {
   console.error(`✖ ${m}`)
   process.exit(1)
 }

@@ -25,7 +25,7 @@ import os from "node:os"
 import path from "node:path"
 import { ROOT, collect, forModule, needsBrowser, shard } from "./test-files.ts"
 
-const arg = name =>
+const arg = (name: string) =>
   process.argv
     .slice(2)
     .find(a => a.startsWith(`--${name}=`))

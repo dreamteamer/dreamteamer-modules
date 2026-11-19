@@ -31,11 +31,11 @@ import path from "node:path"
 
 export const LINK_DIR = "git_modules"
 export const LINK_NAME = "dreamteamer-modules"
-export const linkPath = root => path.join(root, LINK_DIR, LINK_NAME)
+export const linkPath = (root: string) => path.join(root, LINK_DIR, LINK_NAME)
 
 /** What is at git_modules/dreamteamer-modules: 'off' | 'link' (ours, safe to remove) | 'real' (a genuine
  *  clone or checkout someone put there — reported, never touched). */
-export function linkState(root) {
+export function linkState(root: string) {
   const p = linkPath(root)
   let st
   try {
@@ -48,7 +48,7 @@ export function linkState(root) {
 
 /** Where the link points, or null. Not resolved through the target — the raw link is what a reader
  *  needs to see, so a stale link reads as a stale path rather than as an error. */
-export function linkTarget(root) {
+export function linkTarget(root: string): string | null {
   try {
     return fs.readlinkSync(linkPath(root))
   } catch {
@@ -57,7 +57,7 @@ export function linkTarget(root) {
 }
 
 /** Is `dir` a clone of dreamteamer-modules — a bundle root with a `modules/` folder and our name? */
-export function looksLikeClone(dir) {
+export function looksLikeClone(dir: string): string | null {
   try {
     const pkg = JSON.parse(fs.readFileSync(path.join(dir, "package.json"), "utf8"))
     if (!("dreamteamer" in pkg)) return 'no "dreamteamer" section in its package.json — not a dreamteamer package'
@@ -76,13 +76,21 @@ export const HARNESS_FILES = ["CLAUDE.md", "AGENTS.md", "GEMINI.md"]
 
 /** Which of `staged` this guard refuses, given the workspace's data path. Pure, so the rule is
  *  testable without a repo: paths are workspace-relative, forward-slashed, as `git diff` prints. */
-export function refusedPaths(staged, dataPath = "data") {
+export function refusedPaths(staged: string[], dataPath = "data"): string[] {
   const d = `${String(dataPath).replace(/\/+$/, "")}/`
   return staged.filter(p => p === dataPath || p.startsWith(d) || HARNESS_FILES.includes(p))
 }
 
 /** The whole verdict: null when the commit may proceed, else the message to print and exit 1 on. */
-export function guardVerdict({ state, staged, dataPath = "data" }) {
+export function guardVerdict({
+  state,
+  staged,
+  dataPath = "data",
+}: {
+  state: ReturnType<typeof linkState>
+  staged: string[]
+  dataPath?: string
+}) {
   if (state === "off") return null
   const refused = refusedPaths(staged, dataPath)
   if (!refused.length) return null

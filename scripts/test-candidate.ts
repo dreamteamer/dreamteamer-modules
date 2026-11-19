@@ -21,7 +21,7 @@ import { execFileSync, spawnSync } from "node:child_process"
 import { fileURLToPath } from "node:url"
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
-const die = m => {
+const die = (m: string): never => {
   console.error(`✖ ${m}`)
   process.exit(1)
 }
@@ -38,7 +38,7 @@ if (!fs.existsSync(enginePkgFile)) die(`${engine}: no package.json — not an en
 const enginePkg = JSON.parse(fs.readFileSync(enginePkgFile, "utf8"))
 if (enginePkg.name !== "dreamteamer") die(`${engine} is ${enginePkg.name}, not the engine`)
 
-const git = (...a) => {
+const git = (...a: string[]) => {
   try {
     return execFileSync("git", ["-C", engine, ...a], { encoding: "utf8" }).trim()
   } catch {

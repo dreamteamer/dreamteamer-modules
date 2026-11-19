@@ -18,12 +18,12 @@ export const TEST_FILE = /\.test\.(ts|mjs|js)$/
  * ui2's under its strict tsconfig (test/repo/ui2-suite.test.ts) — so the runner takes only their repo-level
  * files, or each unit file would run twice and once outside the environment it needs.
  */
-export function ownedByAnApp(rel) {
+export function ownedByAnApp(rel: string): boolean {
   return /^modules\/ui2?\//.test(rel) && rel.endsWith(".test.ts") && !rel.includes("/test/repo/")
 }
 
 /** Every test file under `dir`, skipping installed and generated trees and test fixtures. */
-function walk(dir, out = []) {
+function walk(dir: string, out: string[] = []): string[] {
   if (!fs.existsSync(dir)) return out
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
     if (e.name === "node_modules" || e.name === "dist" || e.name === "fixtures" || e.name.startsWith(".")) continue
@@ -46,13 +46,13 @@ export function collect(root = ROOT) {
  * The files a module's release runs: the repo-wide checks under `tests/` (structure, leak gate, and
  * compiles-alone, which installs EVERY module from its packed tarball) plus that module's own suite.
  */
-export function forModule(files, id) {
+export function forModule(files: string[], id: string): string[] {
   return files.filter(f => f.startsWith("tests/") || f.startsWith(`modules/${id}/`))
 }
 
 // Seconds per file on a 2-vCPU GitHub runner, node 20, run 41100010853 (2026-10-30): the files above
 // ~8 s. Everything else counts DEFAULT_WEIGHT. Re-measure when a shard runs far longer than the rest.
-export const WEIGHTS = {
+export const WEIGHTS: Record<string, number> = {
   "modules/proofs/test/integration/prove.test.ts": 170,
   "modules/worktrees/test/integration/land.test.ts": 65,
   "tests/compiles-alone.test.ts": 65,
@@ -83,7 +83,7 @@ export const DEFAULT_WEIGHT = 2
  * rather than skip when no Chromium resolves, so a file this misses goes red, not quietly green.
  */
 export const BROWSER_USE = /\bchromium\s*\(|\bfrom\s+['"]playwright(?:-core)?['"]/
-export function needsBrowser(file, root = ROOT) {
+export function needsBrowser(file: string, root = ROOT): boolean {
   return BROWSER_USE.test(fs.readFileSync(path.join(root, file), "utf8"))
 }
 
@@ -92,13 +92,18 @@ export function needsBrowser(file, root = ROOT) {
  * path, so every machine computes the same partition from the same file list. The browser files are
  * placed first, together, so only ONE shard pays for a Chromium install.
  */
-export function shard(files, index, total, { browser = f => needsBrowser(f) } = {}) {
+export function shard(
+  files: string[],
+  index: number,
+  total: number,
+  { browser = (f: string) => needsBrowser(f) } = {}
+): string[] {
   if (!Number.isInteger(total) || total < 1) throw new Error(`shard total must be a positive integer, got ${total}`)
   if (!Number.isInteger(index) || index < 1 || index > total)
     throw new Error(`shard index must be 1..${total}, got ${index}`)
-  const weight = f => WEIGHTS[f] ?? DEFAULT_WEIGHT
-  const byWeight = (a, b) => weight(b) - weight(a) || (a < b ? -1 : a > b ? 1 : 0)
-  const bins = Array.from({ length: total }, () => ({ load: 0, files: [] }))
+  const weight = (f: string) => WEIGHTS[f] ?? DEFAULT_WEIGHT
+  const byWeight = (a: string, b: string) => weight(b) - weight(a) || (a < b ? -1 : a > b ? 1 : 0)
+  const bins = Array.from({ length: total }, () => ({ load: 0, files: [] as string[] }))
   const lightest = () => bins.reduce((best, b) => (b.load < best.load ? b : best), bins[0])
   const browserFiles = files.filter(browser)
   if (browserFiles.length) {

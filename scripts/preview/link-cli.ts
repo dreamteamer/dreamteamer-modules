@@ -22,26 +22,26 @@ import {
 } from "./link.ts"
 
 const C = process.stdout.isTTY && !process.env.NO_COLOR
-const paint = (s, code) => (C ? `\x1b[${code}m${s}\x1b[0m` : s)
-const dim = s => paint(s, "2")
-const say = (...a) => console.log(...a)
-const die = m => {
+const paint = (s: string, code: string) => (C ? `\x1b[${code}m${s}\x1b[0m` : s)
+const dim = (s: string) => paint(s, "2")
+const say = (...a: unknown[]) => console.log(...a)
+const die = (m: string): number => {
   console.error(paint("✖", "31"), m)
   return 1
 }
 
-const readPkg = root => {
+const readPkg = (root: string) => {
   try {
     return JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"))
   } catch {
     return {}
   }
 }
-const dataPathOf = root => readPkg(root)?.dreamteamer?.data_path ?? "data"
+const dataPathOf = (root: string) => readPkg(root)?.dreamteamer?.data_path ?? "data"
 
 /** The engine as this workspace has it — never a global `dreamteamer`, which may be a different
  *  version than the one the workspace pinned. Absent is a real answer, not a crash. */
-function recompile(root) {
+function recompile(root: string) {
   const bin = path.join(root, "node_modules", ".bin", "dreamteamer")
   if (!fs.existsSync(bin)) {
     say(dim("  ▲ no node_modules/.bin/dreamteamer here — run `npm install`, then `npx dreamteamer compile`"))
@@ -53,7 +53,7 @@ function recompile(root) {
 }
 
 /** git_modules/ must be ignored, or the symlink itself gets staged into someone's commit. */
-function ensureIgnored(root) {
+function ensureIgnored(root: string) {
   const f = path.join(root, ".gitignore")
   const body = fs.existsSync(f) ? fs.readFileSync(f, "utf8") : ""
   if (body.split("\n").some(l => l.trim().replace(/\/$/, "") === LINK_DIR)) return false
@@ -61,7 +61,7 @@ function ensureIgnored(root) {
   return true
 }
 
-function installHook(root) {
+function installHook(root: string) {
   // --git-dir, not .git/: a worktree's .git is a FILE pointing elsewhere, and writing a hook into
   // a path that does not exist would fail silently on exactly the setup most likely to need it.
   let gitDir
@@ -85,7 +85,7 @@ function installHook(root) {
   return null
 }
 
-function status(root) {
+function status(root: string) {
   const state = linkState(root)
   if (state === "off") {
     const deps = Object.entries(readPkg(root)?.dependencies ?? {}).filter(([n]) => n.startsWith("@dreamteamer/"))
@@ -106,7 +106,7 @@ function status(root) {
   return 0
 }
 
-export async function main(argv, root, verb) {
+export async function main(argv: string[], root: string, verb: string) {
   if (verb === "guard") {
     let staged = []
     try {
