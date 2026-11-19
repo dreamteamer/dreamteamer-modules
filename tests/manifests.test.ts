@@ -123,7 +123,8 @@ for (const m of moduleIds()) {
           files.some(f => f.startsWith(`dist/${k}/`)),
           `the tarball does not ship dist/${k}`
         )
-      const ts = files.filter(f => /\.m?ts$/.test(f) && !f.endsWith(".d.ts"))
+      // a declaration is the build's too: a skill module the package code imports gets its .d.mts beside its .mjs
+      const ts = files.filter(f => /\.m?ts$/.test(f) && !/\.d\.m?ts$/.test(f))
       if (!app) assert.deepEqual(ts, [], "the TypeScript source ships — npm ships its build")
     })
     test("the tarball ships no tests, caches or virtualenvs", () => {
