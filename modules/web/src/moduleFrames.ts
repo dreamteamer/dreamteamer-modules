@@ -10,13 +10,28 @@ import { buildFrameDocument, FRAME_POLICY } from "@dreamteamer/protocol/frame-do
 export const FRAME_KINDS = new Set(["registry", "app", "list", "edit", "view", "panel"])
 const NAME = /^[a-z0-9@][a-z0-9._-]*$/i
 
-/** The guest @dreamteamer/ui builds (dist/guest/guest.js + guest.css), or null when that package is absent. */
-export function resolveGuest(from: string) {
+/** A UI package's frame guest: the runtime text and the stylesheet a module draws with. */
+export interface Guest {
+  guestText: string
+  styleText?: string
+}
+
+/** The guest a UI package at `pkgDir` builds (dist/guest/guest.js + guest.css), or null when it has none. */
+export function guestOf(pkgDir: string): Guest | null {
+  const js = path.join(pkgDir, "dist", "guest", "guest.js")
+  const css = path.join(pkgDir, "dist", "guest", "guest.css")
+  try {
+    return { guestText: fs.readFileSync(js, "utf8"), styleText: fs.existsSync(css) ? fs.readFileSync(css, "utf8") : "" }
+  } catch {
+    return null
+  }
+}
+
+/** The guest @dreamteamer/ui builds, or null when that package is absent. */
+export function resolveGuest(from: string): Guest | null {
   try {
     const req = createRequire(path.join(from, "package.json"))
-    const js = req.resolve("@dreamteamer/ui/dist/guest/guest.js")
-    const css = path.join(path.dirname(js), "guest.css")
-    return { guestText: fs.readFileSync(js, "utf8"), styleText: fs.existsSync(css) ? fs.readFileSync(css, "utf8") : "" }
+    return guestOf(path.dirname(req.resolve("@dreamteamer/ui/package.json")))
   } catch {
     return null
   }

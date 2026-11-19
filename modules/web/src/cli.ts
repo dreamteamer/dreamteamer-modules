@@ -8,7 +8,6 @@
 // recorded start time is that process's own.
 import { spawn, spawnSync } from "node:child_process"
 import fs from "node:fs"
-import { createRequire } from "node:module"
 import path from "node:path"
 import { packageRoot } from "./packageRoot.ts"
 import {
@@ -33,13 +32,11 @@ import {
 import { nameNow, readRegistry, readWorkspaceState, register, stateDir, writeWorkspaceState } from "./state.ts"
 import { hookInstalled, installHook } from "./hook.ts"
 import { workspaceName } from "./createPaneStore.ts"
+import { isApp, resolveApp, type AppName } from "./resolveApp.ts"
 
 const BIN = path.join(packageRoot(import.meta.url), "dist", "bin", "dt-web.js")
-// the browser page @dreamteamer/ui builds, served as it is
-const appDirOf = () =>
-  path.join(path.dirname(createRequire(import.meta.url).resolve("@dreamteamer/ui/package.json")), "dist", "app")
 export const USAGE =
-  "usage: dt web [open [<ref>|<collection>|<ui-view>] [--read|--edit|--admin] [--browser]] · show <target> · select <ref>… | --clear · selection [--json] · hook --install · token [--read|--edit] [--name <n>] · list · revoke [--token <n>] · status · stop [--revoke] [--force] · start [--foreground] [--port <n>] [--idle <minutes>] [--owner-pid <pid>]"
+  "usage: dt web [open [<ref>|<collection>|<ui-view>] [--read|--edit|--admin] [--browser] [--app ui|ui2]] · show <target> · select <ref>… | --clear · selection [--json] · hook --install · token [--read|--edit] [--name <n>] · list · revoke [--token <n>] · status · stop [--revoke] [--force] · start [--foreground] [--port <n>] [--idle <minutes>] [--owner-pid <pid>] [--app ui|ui2]"
 const VERBS = new Set([
   "open",
   "show",
@@ -55,7 +52,7 @@ const VERBS = new Set([
 ])
 /** Each verb's flags: `level` (one of --read/--edit/--admin), `true` (a switch) or `value` (takes one). */
 const FLAGS: Record<string, Record<string, string | true>> = {
-  open: { "--read": "level", "--edit": "level", "--admin": "level", "--browser": true },
+  open: { "--read": "level", "--edit": "level", "--admin": "level", "--browser": true, "--app": "value" },
   show: {},
   select: { "--clear": true },
   selection: { "--json": true },
@@ -65,7 +62,7 @@ const FLAGS: Record<string, Record<string, string | true>> = {
   revoke: { "--token": "value" },
   status: {},
   stop: { "--revoke": true, "--force": true },
-  start: { "--foreground": true, "--port": "value", "--idle": "value", "--owner-pid": "value" },
+  start: { "--foreground": true, "--port": "value", "--idle": "value", "--owner-pid": "value", "--app": "value" },
 }
 const SWITCH: Record<string, string> = {
   "--browser": "browser",
@@ -89,7 +86,7 @@ const wholeNumber = (flag: string, v: string | undefined, max = Infinity) => {
   return Number(v)
 }
 
-/** → { cmd, target?, refs?, clear?, level?, name?, token?, revoke?, browser?, foreground?, port?, idle?, ownerPid?, json?, install? } */
+/** → { cmd, target?, refs?, clear?, level?, name?, token?, revoke?, browser?, foreground?, port?, idle?, ownerPid?, app?, json?, install? } */
 export function parseArgs(argv: string[], env = process.env): Record<string, any> {
   const args = [...argv]
   const cmd = args.length && !args[0].startsWith("-") ? args.shift() : "open"
@@ -121,6 +118,10 @@ export function parseArgs(argv: string[], env = process.env): Record<string, any
       if (name === "--port") out.port = wholeNumber("--port", v, 65535)
       if (name === "--idle") out.idle = wholeNumber("--idle", v)
       if (name === "--owner-pid") out.ownerPid = wholeNumber("--owner-pid", v)
+      if (name === "--app") {
+        if (!isApp(v)) throw bad(`--app takes ui or ui2, not "${v}"`)
+        out.app = v
+      }
     }
   }
   if (cmd === "open" && positional.length > 1) throw bad("dt web open takes one target")
@@ -149,6 +150,8 @@ interface Running {
   movedFrom?: number
   owner?: number | null
   idle?: unknown
+  /** The UI it serves; null: a DT_WEB_APP_DIR page. */
+  app?: AppName | null
 }
 
 /** A verb's context: where it logs, its environment, and how it reaches the server. */
@@ -214,6 +217,8 @@ const current = async (
         movedFrom: p.movedFrom as number | undefined,
         owner: (p.owner as number | null) ?? null,
         idle: p.idle,
+        // a runtime file from before --app: that server serves ui
+        app: p.app === undefined ? "ui" : (p.app as AppName | null),
       }
     : null
 }
@@ -315,6 +320,7 @@ const startFlags = (o: Record<string, any>) => [
   ...(o.port !== undefined ? ["--port", String(o.port)] : []),
   ...(o.idle !== undefined ? ["--idle", String(o.idle)] : []),
   ...(o.ownerPid !== undefined ? ["--owner-pid", String(o.ownerPid)] : []),
+  ...(o.app !== undefined ? ["--app", o.app] : []),
 ]
 
 export async function main(
@@ -329,7 +335,7 @@ export async function main(
   appDir ??= env.DT_WEB_APP_DIR || undefined
   const o = parseArgs(argv, env)
   const sdir = stateDir(env)
-  const ensure = () => ensureRunning(root, { log, env, appDir })
+  const ensure = () => ensureRunning(root, { log, env, appDir, args: o.app ? ["--app", o.app] : [] })
   try {
     return await verb(root, o, { log, env, appDir, sdir, ensure })
   } catch (e) {
@@ -355,7 +361,7 @@ async function verb(
       return 1
     }
     log(
-      `running at http://127.0.0.1:${now.port} · pid ${now.pid} · level ${LEVEL_WORD(readWorkspaceState(root, sdir).level)}${now.owner ? ` · owner ${now.owner}` : ""} · since ${now.started}`
+      `running at http://127.0.0.1:${now.port} · pid ${now.pid} · level ${LEVEL_WORD(readWorkspaceState(root, sdir).level)} · app ${now.app === undefined ? "ui" : (now.app ?? "custom")}${now.owner ? ` · owner ${now.owner}` : ""} · since ${now.started}`
     )
     return 0
   }
@@ -433,6 +439,7 @@ async function verb(
           `${o.portFromEnv ? "DT_WEB_PORT=" : "--port "}${o.port}`,
         o.idle !== undefined && o.idle !== was.idle && `--idle ${o.idle}`,
         o.ownerPid !== undefined && o.ownerPid !== was.owner && `--owner-pid ${o.ownerPid}`,
+        o.app !== undefined && o.app !== was.app && `--app ${o.app}`,
       ].filter(Boolean)
       if (differs.length) {
         log(
@@ -450,6 +457,12 @@ async function verb(
   if (o.cmd === "open") {
     await register({ root, name: workspaceName(root) }, sdir)
     const rt = await ensure()
+    if (o.app !== undefined && o.app !== rt.app) {
+      log(
+        `already running at http://127.0.0.1:${rt.port} with ${rt.app ? `--app ${rt.app}` : "a DT_WEB_APP_DIR page"} — --app ${o.app} applies only to a server this verb starts: dt web stop, then dt web open --app ${o.app}`
+      )
+      return 1
+    }
     if (o.level) {
       const r = await ask(rt, "POST", "/_dt/level", { level: o.level })
       if (r.status !== 200) return failed(log, r)
@@ -611,7 +624,7 @@ async function revoke(root: string, { token }: { token?: any }, { log, env }: Ve
 }
 
 /** `dt web start --foreground`: serve in this process — what the detached child runs, and a launch.json entry. */
-async function foreground(root: string, o: Record<string, any>, { log, env, appDir = appDirOf() }: VerbContext) {
+async function foreground(root: string, o: Record<string, any>, { log, env, appDir }: VerbContext) {
   const file = fileOf(root, env)
   const was = await probeServer(file)
   if (was?.proven) {
@@ -624,6 +637,8 @@ async function foreground(root: string, o: Record<string, any>, { log, env, appD
   }
   // a runtime file whose process lives but cannot prove it is this server: stale, with its lock when that pid holds it
   if (was) clearStale(file, was)
+  // resolved before anything is claimed: a missing app is an error with nothing to clean up
+  const choice = resolveApp(root, { app: o.app, appDir })
   const { startWeb } = await import("./server.ts")
   const lock = claimStart(file)
   if (!lock.ok) {
@@ -634,7 +649,8 @@ async function foreground(root: string, o: Record<string, any>, { log, env, appD
   try {
     web = await startWeb({
       root,
-      appDir,
+      appDir: choice.appDir,
+      ...(choice.guest !== undefined ? { moduleGuest: choice.guest } : {}),
       port: o.port ?? 0,
       idleMinutes: o.idle ?? 60,
       ownerPid: o.ownerPid,
@@ -657,6 +673,7 @@ async function foreground(root: string, o: Record<string, any>, { log, env, appD
     started: new Date().toISOString(),
     owner: o.ownerPid ?? null,
     idle: o.idle ?? 60,
+    app: choice.app,
     token: web.controlToken,
     instance: web.instance,
     pstart: ownStart(),

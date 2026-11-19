@@ -44,6 +44,11 @@ what you asked it to do from there.
 The package ships no app of its own: the page is `@dreamteamer/ui`'s browser build. The first run needs no
 network, and nothing is written into the workspace except the hook entry you ask for.
 
+To try the React UI, install it in the workspace (`npm install @dreamteamer/ui2`) and pass `--app ui2` to `open` or
+`start`: the page and the module frames' guest then both come from `@dreamteamer/ui2`. It is never remembered —
+without the flag the server serves `ui` — and a server already running with the other app exits 1:
+`dt web stop`, then open again. ui2 not installed is an error naming the install, never a fallback to ui.
+
 Uninstall: `npm uninstall @dreamteamer/web`, then remove the `UserPromptSubmit` entry from
 `.claude/settings.local.json`.
 
@@ -51,7 +56,7 @@ Uninstall: `npm uninstall @dreamteamer/web`, then remove the `UserPromptSubmit` 
 
 | command | does |
 |---|---|
-| `npx dt web open [<ref>\|<collection>\|<ui-view>]` | starts the server when it is not running, registers the workspace, prints a sign-in URL for the target as the first line and the level as the second. `--read`, `--edit` or `--admin` set the level first; `--browser` also opens your browser |
+| `npx dt web open [<ref>\|<collection>\|<ui-view>]` | starts the server when it is not running, registers the workspace, prints a sign-in URL for the target as the first line and the level as the second. `--read`, `--edit` or `--admin` set the level first; `--browser` also opens your browser; `--app ui2` starts the server with the React UI (see below) |
 | `npx dt web show <target>` | moves every connected page of this workspace to the target. Exit 1 with `no page is connected` when none is |
 | `npx dt web select <ref>…` / `--clear` | ticks those rows on the connected pages, moving to their collection first; `--clear` unticks |
 | `npx dt web selection [--json]` | prints what the page shows and the rows ticked there |
@@ -61,7 +66,7 @@ Uninstall: `npm uninstall @dreamteamer/web`, then remove the `UserPromptSubmit` 
 | `npx dt web revoke [--token <n>]` | ends every session (the page signs out), or removes one client token |
 | `npx dt web status` | `running at http://127.0.0.1:<port> · pid <n> · level <Level> · since <time>` and exit 0, or `not running` or `not answering: …` and exit 1. It writes nothing |
 | `npx dt web stop [--revoke] [--force]` | stops the server, and with it every session: the page signs out (`--revoke` ends them first, the same end). `--force` stops a server that is not answering (`SIGTERM` and `SIGCONT`, then `SIGKILL` after 5 seconds), only when the start recorded in its runtime file is that process's own |
-| `npx dt web start [--foreground] [--port <n>] [--idle <minutes>] [--owner-pid <pid>]` | starts the server without pairing. `--foreground` serves in this process (for a launch entry). `--port` or `DT_WEB_PORT` picks the port; `--idle` the minutes with no page and no token request before it stops (default 60, `0` never); `--owner-pid` stops it when that process exits. A port named here is never swapped for another: taken, the start fails naming it. A server already running keeps its own: a flag asking for another value exits 1, naming the server — `dt web stop`, then start again (`--port 0`, any port, agrees with whatever port it has) |
+| `npx dt web start [--foreground] [--port <n>] [--idle <minutes>] [--owner-pid <pid>] [--app ui\|ui2]` | starts the server without pairing. `--foreground` serves in this process (for a launch entry). `--port` or `DT_WEB_PORT` picks the port; `--idle` the minutes with no page and no token request before it stops (default 60, `0` never); `--owner-pid` stops it when that process exits. A port named here is never swapped for another: taken, the start fails naming it. A server already running keeps its own: a flag asking for another value exits 1, naming the server — `dt web stop`, then start again (`--port 0`, any port, agrees with whatever port it has) |
 | `npx dt serve [--read\|--edit] [--name <n>]` | `dt web token --name serve`: a client token of this workspace's server |
 
 One server serves one workspace, on a port it keeps: the first start picks a free one and stores it, and later
