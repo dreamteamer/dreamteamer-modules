@@ -67,7 +67,7 @@ test("a Hebrew exemption on a source path covers what that source ships as", () 
     "modules/connectors-google-workspace/skills/fetching-meetings/SKILL.md\thebrew\twhy",
   ].join("\n")
   const allowed = hebrewAllowedIn(allow, "recordings")
-  const heb = "שלום"
+  const heb = "\u05E9\u05DC\u05D5\u05DD"
   const hits = scan(
     [
       file("dist/skills/ingesting-recordings/bin/detect.mjs", heb),

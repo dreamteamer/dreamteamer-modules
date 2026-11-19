@@ -33,7 +33,7 @@ const SCOPE = "@dreamteamer/"
 // carries scripts between the two repositories. Change one, change both.
 export const SECRET_SHAPES =
   /sk-ant-[A-Za-z0-9_-]{20}|sk-[A-Za-z0-9]{32}|ghp_[A-Za-z0-9]{36}|gho_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{50}|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{35}|xox[baprs]-[0-9A-Za-z-]{10,}|glpat-[0-9A-Za-z_-]{20}|npm_[A-Za-z0-9]{36}|-----BEGIN [A-Z ]*PRIVATE KEY-----/
-const HEBREW = /[֐-׿]/
+const HEBREW = /[\u0590-\u05FF]/
 
 export function nextVersion(current: string, now: Date, sha: string): string {
   const m = /^(\d+)\.(\d+)\.(\d+)(-.+)?$/.exec(current)
