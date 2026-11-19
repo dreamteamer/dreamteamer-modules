@@ -21,3 +21,6 @@ modules/perspective/test/running-retrospectives/import-paste-back.test.ts	hebrew
 modules/ui/test/render-md.test.ts	hebrew	an RTL table (the words "name" and "value", the first two letters) that pins a right-to-left direction
 modules/recordings/skills/ingesting-recordings/bin/detect.ts	hebrew	renamed to modules/recordings/skills/ingesting-recordings/bin/detect.mts — the same maps under the name the TypeScript branch first gave them
 modules/perspective/skills/running-retrospectives/lib/gmail.ts	hebrew	renamed to modules/perspective/skills/running-retrospectives/lib/gmail.mts — the same prefix regex under the name the TypeScript branch first gave it
+modules/ui2/test/render-md.test.ts	hebrew	renamed to modules/ui/test/render-md.test.ts — the same RTL table under the name the React app had before it became ui
+scripts/release-next.ts	hebrew	the Hebrew range the release scan rejects; the file now writes it as an escape, but the branch history added it as the literal range
+tests/release-next.test.ts	hebrew	the word that test feeds the release scan; the file now writes it as escapes, but the branch history added it literally
