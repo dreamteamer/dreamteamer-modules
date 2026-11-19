@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 // THIS REPO'S SUITES ON AN ENGINE CHECKOUT — the whole candidate loop in one command, for a local engine
 // branch that is not published yet. `node scripts/test-candidate.ts <engine-checkout> [test.ts args…]`:
+// (or an already-packed `dreamteamer-<version>.tgz` in place of the checkout — release:next passes the
+// engine it fetched from npm as `dreamteamer@next`, and step 1 copies that tarball instead of packing)
 //
 //   1. packs the checkout with `npm pack` (its prepack builds dist/) into a temp folder and writes the
 //      SHA256SUMS beside the tarball;
@@ -30,23 +32,31 @@ const args = process.argv.slice(2)
 const keep = args.includes("--keep")
 const engineArg = args.find(a => !a.startsWith("--"))
 const testArgs = args.filter(a => a !== engineArg && a !== "--keep")
-if (!engineArg) die("usage: node scripts/test-candidate.ts <engine-checkout> [--keep] [scripts/test.ts args…]")
+if (!engineArg)
+  die("usage: node scripts/test-candidate.ts <engine-checkout | engine.tgz> [--keep] [scripts/test.ts args…]")
 
 const engine = path.resolve(engineArg)
+const packedEngine = engine.endsWith(".tgz")
 const enginePkgFile = path.join(engine, "package.json")
-if (!fs.existsSync(enginePkgFile)) die(`${engine}: no package.json — not an engine checkout`)
-const enginePkg = JSON.parse(fs.readFileSync(enginePkgFile, "utf8"))
+if (!packedEngine && !fs.existsSync(enginePkgFile)) die(`${engine}: no package.json — not an engine checkout`)
+if (packedEngine && !fs.existsSync(engine)) die(`${engine}: no such tarball`)
+const enginePkg = JSON.parse(
+  packedEngine
+    ? execFileSync("tar", ["-xzOf", engine, "package/package.json"], { encoding: "utf8" })
+    : fs.readFileSync(enginePkgFile, "utf8")
+)
 if (enginePkg.name !== "dreamteamer") die(`${engine} is ${enginePkg.name}, not the engine`)
 
 const git = (...a: string[]) => {
+  if (packedEngine) return null
   try {
     return execFileSync("git", ["-C", engine, ...a], { encoding: "utf8" }).trim()
   } catch {
     return null
   }
 }
-const branch = git("branch", "--show-current") || "(detached)"
-const commit = git("rev-parse", "--short", "HEAD") ?? "(not a git checkout)"
+const branch = packedEngine ? "(packed)" : git("branch", "--show-current") || "(detached)"
+const commit = packedEngine ? path.basename(engine) : (git("rev-parse", "--short", "HEAD") ?? "(not a git checkout)")
 const dirty = git("status", "--porcelain") ? " + uncommitted changes" : ""
 console.log(`▶ engine ${enginePkg.version} from ${engine} — ${branch} @ ${commit}${dirty}`)
 
@@ -78,13 +88,16 @@ for (const sig of ["SIGINT", "SIGTERM"])
 
 let status = 1
 try {
-  console.log("▶ packing (the engine's prepack builds dist/)…")
-  const packed = spawnSync("npm", ["pack", "--pack-destination", folder, "--json"], {
-    cwd: engine,
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "inherit"],
-  })
-  if (packed.status !== 0) throw new Error(`npm pack in ${engine} failed (exit ${packed.status})`)
+  if (packedEngine) fs.copyFileSync(engine, path.join(folder, path.basename(engine)))
+  else {
+    console.log("▶ packing (the engine's prepack builds dist/)…")
+    const packed = spawnSync("npm", ["pack", "--pack-destination", folder, "--json"], {
+      cwd: engine,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "inherit"],
+    })
+    if (packed.status !== 0) throw new Error(`npm pack in ${engine} failed (exit ${packed.status})`)
+  }
   const tgz = fs.readdirSync(folder).find(f => f.endsWith(".tgz"))
   if (!tgz) throw new Error("npm pack wrote no tarball")
   const sha = createHash("sha256")
