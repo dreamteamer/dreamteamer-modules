@@ -10,6 +10,13 @@ npx dreamteamer check
 
 ---
 
+## 0.12.0 — the code ships as its build
+
+Nothing to do but `npx dreamteamer update @dreamteamer/rnd`. The package's code is TypeScript now and ships as its build, `dist/`; no collection, field, record or command changes. Its bins (`dt-prototype` and the rest) are the same names, now under `dist/bin/`; call them by name or through
+`npx dreamteamer run @dreamteamer/rnd <bin>`, never by a path inside the package.
+
+---
+
 ## 0.11.1 — the nav migration step names a protocol version npm holds
 
 Nothing to do but `npx dreamteamer update @dreamteamer/rnd`. The nav paragraph of the 0.11.0 section below named a

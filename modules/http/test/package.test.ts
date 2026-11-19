@@ -47,7 +47,8 @@ describe("the README", () => {
     )
     const pkg = JSON.parse(fs.readFileSync(path.join(packageDir("http"), "package.json"), "utf8"))
     assert.match(pkg.description, /^Deprecated:/)
-    assert.equal(pkg.version, "0.2.2")
+    // deprecated from 0.2.2 on: every later release keeps the sentence
+    assert.doesNotMatch(pkg.version, /^0\.([01]\.|2\.[01]$)/, "http is at 0.2.2 or later")
   })
 })
 

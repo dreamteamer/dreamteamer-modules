@@ -11,6 +11,18 @@ npx dreamteamer check
 
 ---
 
+## 0.2.0 — the hook runs session-save by name
+
+The code ships as its build, so `bin/session-save.mjs` is gone: the script is `dist/bin/session-save.js`. A `Stop`
+hook that names the old path stops saving sessions. Repoint it at the runner, which does not depend on where the
+script sits:
+
+```
+npx dreamteamer run @dreamteamer/sessions session-save --write --hook --quiet
+```
+
+No collection, field or record changes.
+
 ## 0.1.0 — out of core, a package of its own
 
 `sessions` shipped inside the core module through core 0.11; from core 0.12.0 core is a preset of the small
