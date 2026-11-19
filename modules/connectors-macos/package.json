@@ -1,6 +1,6 @@
 {
 	"name": "@dreamteamer/connectors-macos",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "Apple Voice Memos into the recordings inbox on a Mac: dt-voice-memos copies new memos through one helper granted Full Disk Access.",
 	"license": "Apache-2.0",
 	"type": "module",
