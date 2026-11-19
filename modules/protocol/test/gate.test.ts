@@ -1,7 +1,7 @@
 // The shared gate contract (cr-modules-007 §4c): one case list per scope kind.
 import test from "node:test"
 import assert from "node:assert/strict"
-import { gate, OPERATORS } from "../src/gate.ts"
+import { gate as gateOf, OPERATORS, type Decision, type Scope } from "../src/gate.ts"
 import { reshape } from "../src/reshape.ts"
 import { applyWrite } from "../src/applyWrite.ts"
 import { createFrameBridge } from "../src/createFrameBridge.ts"
@@ -30,7 +30,7 @@ const sentences = {
   query: (s, d) => `${s.label} cannot pass ${d.key} on a write`,
 }
 const READ_ROUTES = ["records-list", "record-read", "values"]
-const artifact = {
+const artifact: Scope = {
   kind: "artifact",
   label: "artifacts/board",
   routes: new Set(READ_ROUTES),
@@ -38,7 +38,7 @@ const artifact = {
   writes: new Map(),
   sentences,
 }
-const moduleScope = {
+const moduleScope: Scope = {
   kind: "module",
   label: "module app northwind",
   home: "northwind-layer",
@@ -69,6 +69,12 @@ const moduleScope = {
   sentences,
 }
 const q = o => new URLSearchParams(o)
+/** A decision read whole: the cases assert on `status` and `error` without narrowing on `ok` first. */
+type Seen = { ok: boolean } & Partial<Omit<Extract<Decision, { ok: true }>, "ok">> &
+  Partial<Omit<Extract<Decision, { ok: false }>, "ok">>
+const gate = (...a: Parameters<typeof gateOf>): Seen => gateOf(...a)
+/** A records listing as reshape answers it — typed `unknown`, since the body's shape is the route's. */
+const listed = (...a: Parameters<typeof reshape>) => reshape(...a) as { records: Record<string, unknown>[] }
 
 // artifact kind (007 §4, §4b)
 test("artifact: a declared collection reads; an undeclared one is 403", () => {
@@ -211,10 +217,10 @@ test("reshape: lists and records keep only their allow-listed shape; module scop
     $dirty: false,
     $ahead: 0,
   }
-  const list = reshape("records-list", { records: [row], total: 1, sources: [{ name: "hq" }] }, moduleScope)
+  const list = listed("records-list", { records: [row], total: 1, sources: [{ name: "hq" }] }, moduleScope)
   assert.deepEqual(Object.keys(list), ["records", "total"])
   assert.deepEqual(list.records[0], { id: "u1", name: "Dana Oren", $source: "hq" })
-  const own = reshape(
+  const own = listed(
     "records-list",
     { records: [{ ...row, id: "n1" }], total: 1 },
     { ...moduleScope, own: new Set(["users"]) },
@@ -238,7 +244,7 @@ test("reshape: lists and records keep only their allow-listed shape; module scop
     reshape("presentation", { collections: [{ name: "notes" }, { name: "tasks" }], other: 1 }, moduleScope),
     { collections: [{ name: "notes" }] }
   )
-  const views = reshape(
+  const views = listed(
     "records-list",
     {
       records: [
@@ -364,7 +370,8 @@ test("module: no commit-derived key in a filter or sort, and no q, on a collecti
   test("pane: internal is the system collections plus what the engine reports internal or runtime", () => {
     assert.equal(internal.has("ui-views") && internal.has("collections") && internal.has("modules"), true)
     assert.equal(internal.has("tasks"), false)
-    const more = internalCollections([{ name: "secrets", internal: true }], {
+    const reported = [{ name: "secrets", internal: true }]
+    const more = internalCollections(reported, {
       isInternal: d => d.internal === true,
       isRuntime: () => false,
     })
@@ -429,6 +436,9 @@ test("module: no commit-derived key in a filter or sort, and no q, on a collecti
     assert.equal(gate(pane("admin"), paneDescriptors, "GET", "/records-batch", q({})).status, 404)
   })
   test("pane: an unknown level refuses everything", () => {
-    assert.equal(gate(paneScope({ level: "root", internal }), paneDescriptors, "GET", "/info", q({})).status, 403)
+    assert.equal(
+      gate(paneScope({ level: "root" as any, internal }), paneDescriptors, "GET", "/info", q({})).status,
+      403
+    )
   })
 }

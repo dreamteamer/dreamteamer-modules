@@ -16,7 +16,7 @@ import {
   register,
   lookup,
 } from "../src/state.ts"
-import { notWritable, privateDir, stateFile, writeState } from "../src/runtime.ts"
+import { notWritable, privateDir, stateFile, writeState, type RuntimeState } from "../src/runtime.ts"
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "dt-web-state-"))
 after(() => fs.rmSync(tmp, { recursive: true, force: true }))
@@ -77,7 +77,7 @@ test("absent state reads as the defaults; a write is 0700 / 0600; garbage reads 
   assert.equal("sessions" in odd, false, "a sessions key is never read: sessions live in memory only")
   assert.deepEqual(odd.pane, DEFAULT_STATE.pane)
   const fresh = readWorkspaceState(root, dir)
-  fresh.clientTokens.push(1)
+  fresh.clientTokens.push(1 as any)
   fresh.pane.refs.push("x")
   assert.deepEqual(DEFAULT_STATE.clientTokens, [], "the defaults are never shared by reference")
   assert.deepEqual(DEFAULT_STATE.pane.refs, [])
@@ -174,12 +174,12 @@ describe(
       const dir = path.join(tmp, "rt-ro")
       fs.mkdirSync(dir, { recursive: true, mode: 0o700 })
       fs.chmodSync(dir, 0o755)
-      writeState(path.join(dir, "a.json"), { pid: 1 })
+      writeState(path.join(dir, "a.json"), { pid: 1 } as RuntimeState)
       assert.equal(fs.statSync(dir).mode & 0o777, 0o700)
       fs.chmodSync(dir, 0o500)
       try {
         assert.throws(
-          () => writeState(path.join(dir, "b.json"), { pid: 1 }),
+          () => writeState(path.join(dir, "b.json"), { pid: 1 } as RuntimeState),
           (e: any) => e.message.includes(dir) && /chmod 700/.test(e.message) && /DT_WEB_RUNTIME_DIR/.test(e.message)
         )
         assert.equal(fs.statSync(dir).mode & 0o777, 0o500)

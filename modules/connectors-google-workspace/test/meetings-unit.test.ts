@@ -7,7 +7,7 @@ import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
 import { execFileSync } from "node:child_process"
-import { SETUP_UNIT, calendarsDigest } from "../lib/meetingsSetup.ts"
+import { SETUP_UNIT, calendarsDigest, type MeetingsAction } from "../lib/meetingsSetup.ts"
 import { parseWorkCalendars } from "../skills/fetching-meetings/bin/gcal.mts"
 import {
   virginWorkspace,
@@ -18,6 +18,13 @@ import {
   engineMeets,
   closure,
 } from "../../../tests/helpers/workspace.ts"
+
+type Apply = Parameters<typeof SETUP_UNIT.apply>
+/** apply with an action carrying only what the live check reads — its id and its command. */
+const applyAction = (ctx: Apply[0], action: Partial<MeetingsAction>, o: Apply[2]) =>
+  SETUP_UNIT.apply(ctx, action as MeetingsAction, o)
+/** A check's evidence, which the setup convention types `unknown`, read as the fields these checks write. */
+const evidence = (c): { at?: string; rows?: number } => c.evidence
 
 after(cleanup)
 const ROW = "team@example.invalid | mixed | me@example.invalid"
@@ -63,7 +70,7 @@ describe("the unit, pure", () => {
     assert.equal(verify.kind, "verify")
     assert.equal(verify.runBy, "owner")
     assert.ok(verify.effects.some(e => e.kind === "account"))
-    assert.equal(SETUP_UNIT.apply(ctx, add, {}).ok, false, "apply only knows the live check")
+    assert.equal(applyAction(ctx, add, {}).ok, false, "apply only knows the live check")
     fs.writeFileSync(path.join(root, ".env"), `OTHER=keep\nWORK_CALENDARS="${ROW}"\n`)
     assert.equal(
       SETUP_UNIT.plan(ctx, { calendar: [ROW] }).actions.find(a => a.id === "add-calendar-rows").state,
@@ -99,7 +106,7 @@ describe("the unit, pure", () => {
     )
     const after = SETUP_UNIT.inspect(ctx).checks.find(c => c.id === "meetings.account-access")
     assert.equal(after.status, "ready")
-    assert.equal(after.evidence.at, "2026-11-13")
+    assert.equal(evidence(after).at, "2026-11-13")
   })
   test("a mixed batch: the valid rows are merged and the malformed ones are named by input number — never the whole batch refused (hm2)", () => {
     const root = repo()
@@ -131,11 +138,11 @@ describe("the unit, pure", () => {
       id: "verify-calendar-access",
       command: fake([{ calendar: "team@example.invalid", account: "me@example.invalid", verdict: "absent" }]),
     }
-    const bad = SETUP_UNIT.apply(ctx, action, {})
+    const bad = applyAction(ctx, action, {})
     assert.equal(bad.ok, false)
     assert.match(bad.message, /1 of 1 calendar\(s\) not readable \(absent: 1\)/)
     assert.ok(!fs.existsSync(path.join(ctx.receiptDir, "calendar-access.verified.json")), "no receipt")
-    const ok = SETUP_UNIT.apply(
+    const ok = applyAction(
       ctx,
       {
         ...action,
@@ -153,7 +160,7 @@ describe("the unit, pure", () => {
     const ctx = ctxFor(root)
     fs.mkdirSync(path.dirname(ctx.receiptDir), { recursive: true })
     fs.writeFileSync(ctx.receiptDir, "a file where the folder should be")
-    const r = SETUP_UNIT.apply(
+    const r = applyAction(
       ctx,
       {
         id: "verify-calendar-access",
@@ -174,9 +181,11 @@ describe("the unit, pure", () => {
     assert.equal(add.state, "ready", add.reason)
     assert.equal(add.env.WORK_CALENDARS, `${ROW}\n${row2}`, "the second row joins the first")
     assert.equal(
-      SETUP_UNIT.inspect(ctxFor(root, { WORK_CALENDARS: `${ROW}\n${row2}` })).checks.find(
-        c => c.id === "meetings.work-calendars"
-      ).evidence.rows,
+      evidence(
+        SETUP_UNIT.inspect(ctxFor(root, { WORK_CALENDARS: `${ROW}\n${row2}` })).checks.find(
+          c => c.id === "meetings.work-calendars"
+        )
+      ).rows,
       2
     )
     const shadow = ctxFor(root, { WORK_CALENDARS: "other@example.invalid | mixed | me@example.invalid" })

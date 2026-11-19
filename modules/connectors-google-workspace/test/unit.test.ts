@@ -66,7 +66,7 @@ describe("the unit, pure", () => {
     )
     const after = inspect(ctx).checks.find(c => c.id === "google.account-authorization")
     assert.equal(after.status, "ready")
-    assert.equal(after.evidence.at, "2026-11-13")
+    assert.equal((after.evidence as { at?: string }).at, "2026-11-13")
     // the credential gone: the receipt no longer counts
     fs.rmSync(path.join(store, "a@example.invalid.json"))
     assert.equal(inspect(ctx).checks.find(c => c.id === "google.account-authorization").status, "unverified")

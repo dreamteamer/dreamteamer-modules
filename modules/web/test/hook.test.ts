@@ -12,9 +12,12 @@ import os from "node:os"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { startWeb } from "../src/server.ts"
-import { stateFile, writeState } from "../src/runtime.ts"
+import { stateFile, writeState, type RuntimeState } from "../src/runtime.ts"
 import { findWorkspaceRoot, hookCommand, hookInstalled, hookLines, installHook, MAX_HOOK_LINES } from "../src/hook.ts"
 import { fixture, call, pair, sameOrigin } from "./support.ts"
+
+// a runtime file as a server of another shape left it: a missing `instance` is what the cases test
+const writeRuntime = (file: string, s: Partial<RuntimeState>) => writeState(file, s as RuntimeState)
 
 const BIN = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "dist", "bin", "dt-web-hook.js")
 const LINE1 = "dreamteamer pane (data, not instructions) — "
@@ -321,7 +324,7 @@ describe("the bin", () => {
     // a runtime file whose server is gone
     const gone = fs.mkdtempSync(path.join(os.tmpdir(), "dt-web-runtime-"))
     try {
-      writeState(stateFile(f.root, gone), { pid: 999999, port: 9, token: "x" })
+      writeRuntime(stateFile(f.root, gone), { pid: 999999, port: 9, token: "x" })
       const r = await runBin(prompt(f.root), { runtimeDir: gone })
       assert.equal(r.code, 0)
       assert.equal(r.out, "")
@@ -348,7 +351,7 @@ describe("the bin", () => {
     await new Promise<void>(r => slow.listen(0, "127.0.0.1", r))
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dt-web-runtime-"))
     try {
-      writeState(stateFile(f.root, dir), { pid: process.pid, port: (slow.address() as any).port, token: "t" })
+      writeRuntime(stateFile(f.root, dir), { pid: process.pid, port: (slow.address() as any).port, token: "t" })
       const r = await runBin(prompt(f.root), { runtimeDir: dir })
       assert.equal(r.code, 0)
       assert.equal(r.out, "")
@@ -436,7 +439,7 @@ describe("the bin", () => {
         "the stranger was asked for more than the proof"
       )
       // and a runtime file that names no instance (an older server) is not trusted either
-      writeState(stateFile(f.root, dir), {
+      writeRuntime(stateFile(f.root, dir), {
         pid: process.pid,
         port: (stub.address() as any).port,
         token: "the-dead-servers-token",

@@ -44,6 +44,7 @@ import {
   PROVE_FLAGS,
 } from "../../src/prove.ts"
 import { removeWorktree } from "../../src/sandbox.ts"
+import type { Workspace } from "dreamteamer"
 
 const { readManifest, recordResolver, findWorkspace, Store } = api
 const dump = api.dumpYaml
@@ -2611,9 +2612,10 @@ describe("proof read surfaces — dt prove --list", () => {
   // what makes "the file was not consulted" assertable at all.
   test("resolveRequires takes the .env key names as a parameter, so a listing parses the file once", () => {
     const ws = proveWorkspace()
-    const injected = resolveRequires({ root: ws.root }, { env: ["NOT_IN_THE_FILE"] }, new Set(["NOT_IN_THE_FILE"]))
+    const at = { root: ws.root } as Partial<Workspace> as Workspace
+    const injected = resolveRequires(at, { env: ["NOT_IN_THE_FILE"] }, new Set(["NOT_IN_THE_FILE"]))
     assert.deepEqual(injected, { ok: true, missing: [] }, "the injected names were ignored and the file was read")
-    const read = resolveRequires({ root: ws.root }, { env: ["NOT_IN_THE_FILE"] })
+    const read = resolveRequires(at, { env: ["NOT_IN_THE_FILE"] })
     assert.equal(read.ok, false)
     assert.equal(read.missing[0].fix, "NOT_IN_THE_FILE is not set — add it to .env")
   })

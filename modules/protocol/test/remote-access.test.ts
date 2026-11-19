@@ -89,7 +89,7 @@ describe("withoutUserinfo — what the host may send", () => {
 })
 
 describe("accessTargets — which remote each entry is checked against", () => {
-  const stack = {
+  const stack: Parameters<typeof accessTargets>[0] = {
     workspace: { name: "my-hq", kind: "own", repo: ".", installed: true, via: "own", access: "write", collections: [] },
     layers: [
       {

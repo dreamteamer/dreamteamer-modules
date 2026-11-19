@@ -61,7 +61,8 @@ const CTX = {
   namespaces: ["rnd"],
 }
 const FIVE = { collections: new Set(["assets", "companies", "contacts", "tasks", "users"]), namespaces: [] }
-const apply = (doc, op, ctx = CTX) => applyNavOp(doc, op, ctx)
+// the cases read an entry of any shape (a bare name, a row, a folder, a namespace) without narrowing it first
+const apply = (doc, op, ctx = CTX) => applyNavOp(doc, op, ctx) as { tree: any[]; hidden: string[] }
 const at = (doc, ...labels) =>
   labels.reduce(
     (items, l) => items.find(e => e.folder === l || (l.startsWith("ns:") && e.namespace === l.slice(3))).items,

@@ -1,8 +1,8 @@
 // The `dt files` dispatch: switches never swallow a positional, and only registered subcommands run.
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { parseArgs } from "dreamteamer"
-import { bind } from "../src/engine.ts"
+import { parseArgs, type Workspace } from "dreamteamer"
+import { bind, type Api } from "../src/engine.ts"
 import { filesCommand, normalizeArgs } from "../src/cli.ts"
 
 test("a positional after a switch goes back to pos", () => {
@@ -36,7 +36,9 @@ test("the input is not changed", () => {
 })
 
 test("filesCommand dispatches to a registered handler, and refuses everything else", async () => {
-  bind({ parseArgs })
+  // a stub carrying only the one engine call the dispatch makes
+  bind({ parseArgs } as Partial<Api> as Api)
+  const ws = {} as Partial<Workspace> as Workspace
   let seen = null
   filesCommand.handlers.ping = (ws, pos, flags) => {
     seen = { pos, flags }
@@ -48,14 +50,14 @@ test("filesCommand dispatches to a registered handler, and refuses everything el
     errors.push(a.join(" "))
   }
   try {
-    assert.equal(await filesCommand({}, ["ping", "--json", "x"]), 0)
+    assert.equal(await filesCommand(ws, ["ping", "--json", "x"]), 0)
     assert.deepEqual(seen, { pos: ["x"], flags: { json: true } })
-    assert.equal(await filesCommand({}, ["--json", "ping", "y"]), 0)
+    assert.equal(await filesCommand(ws, ["--json", "ping", "y"]), 0)
     assert.deepEqual(seen.pos, ["y"])
-    assert.equal(await filesCommand({}, ["nope"]), 2)
-    assert.equal(await filesCommand({}, []), 2)
-    assert.equal(await filesCommand({}, ["constructor"]), 2)
-    assert.equal(await filesCommand({}, ["toString"]), 2)
+    assert.equal(await filesCommand(ws, ["nope"]), 2)
+    assert.equal(await filesCommand(ws, []), 2)
+    assert.equal(await filesCommand(ws, ["constructor"]), 2)
+    assert.equal(await filesCommand(ws, ["toString"]), 2)
   } finally {
     console.error = original
     delete filesCommand.handlers.ping

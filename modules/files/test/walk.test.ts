@@ -1,6 +1,6 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import fs from "node:fs"
+import fs, { type Stats } from "node:fs"
 import path from "node:path"
 import { walkDrive, extOf, mimeOf, isLocal, isoLocal } from "../src/walk.ts"
 import { makeTree, tmpDir, TREE } from "./helpers.ts"
@@ -182,10 +182,11 @@ test("extOf and mimeOf", () => {
 })
 
 test("isLocal reads the block count: a size with no blocks is a file evicted to the cloud", () => {
-  assert.equal(isLocal({ size: 10, blocks: 8 }), true)
-  assert.equal(isLocal({ size: 10, blocks: 0 }), false)
-  assert.equal(isLocal({ size: 0, blocks: 0 }), true)
-  assert.equal(isLocal({ size: 10 }), true, "no block count (another platform) means local")
+  const isLocalOf = (s: Partial<Stats>) => isLocal(s as Stats)
+  assert.equal(isLocalOf({ size: 10, blocks: 8 }), true)
+  assert.equal(isLocalOf({ size: 10, blocks: 0 }), false)
+  assert.equal(isLocalOf({ size: 0, blocks: 0 }), true)
+  assert.equal(isLocalOf({ size: 10 }), true, "no block count (another platform) means local")
 })
 
 test("isoLocal renders seconds and the local offset, and round-trips", () => {

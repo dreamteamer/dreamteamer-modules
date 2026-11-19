@@ -445,7 +445,8 @@ describe("the extension", () => {
   test("rnd contributes its check and no setup unit — wikis and notebooklm bring their own (CR-dt-008)", async () => {
     const { default: activate, apiVersion } = await import("../lib/activate.ts")
     assert.equal(apiVersion, 1)
-    const ext = activate({})
+    // rnd's check reads the engine only when it runs; activating needs none of it
+    const ext = activate({} as Parameters<typeof activate>[0])
     assert.deepEqual(Object.keys(ext), ["check"])
     assert.equal(typeof ext.check, "function")
     assert.ok(!fs.existsSync(path.join(RND, "SETUP.md")), "no SETUP.md: rnd has nothing to set up")

@@ -5,7 +5,12 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { buildModuleScope, MODULE_ROUTES } from "../src/buildModuleScope.ts"
 import { readModuleGrant, readModuleGrantResult } from "../src/readModuleGrant.ts"
-import { gate } from "../src/gate.ts"
+import { gate as gateOf, type Decision } from "../src/gate.ts"
+
+/** A decision read whole: the cases assert on `error` without narrowing on `ok` first. */
+type Seen = { ok: boolean } & Partial<Omit<Extract<Decision, { ok: true }>, "ok">> &
+  Partial<Omit<Extract<Decision, { ok: false }>, "ok">>
+const gate = (...a: Parameters<typeof gateOf>): Seen => gateOf(...a)
 
 const descriptors = [
   {

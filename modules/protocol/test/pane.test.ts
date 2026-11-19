@@ -10,6 +10,7 @@ import {
   renderPlace,
   expireQueue,
   memoryPane,
+  type QueueItem,
 } from "../src/pane.ts"
 
 const NAMESPACES = ["rnd"]
@@ -141,7 +142,7 @@ test("expireQueue turns a waiting item older than an hour into expired and leave
   const now = Date.parse("2026-11-14T12:00:00Z")
   const old = new Date(now - QUEUE_TTL_MS - 1).toISOString()
   const fresh = new Date(now - 1000).toISOString()
-  const items = [
+  const items: QueueItem[] = [
     { id: "a", command: "c", refs: [], invocation: "/c", state: "waiting", queuedAt: old },
     { id: "b", command: "c", refs: [], invocation: "/c", state: "delivered", queuedAt: old, deliveredAt: old },
     { id: "c", command: "c", refs: [], invocation: "/c", state: "waiting", queuedAt: fresh },
@@ -192,11 +193,12 @@ test("memoryPane: the selection round-trips; the queue is newest first, at most 
     place: "tasks · List",
     at: "x",
   })
+  // the memory pane answers at once; only a host backed by storage answers a promise
   const first = pane.addQueue({
     command: "commands/close-task",
     refs: ["tasks/t1"],
     invocation: "/close-task tasks/t1",
-  })
+  }) as QueueItem
   assert.equal(first.state, "waiting")
   assert.equal(typeof first.id, "string")
   for (let i = 0; i < 24; i++) {

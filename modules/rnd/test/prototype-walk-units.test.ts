@@ -1,14 +1,15 @@
 // walk and shoot choose the screens they visit — pure, so pinned here without a browser.
 import { test } from "node:test"
 import assert from "node:assert"
-import { visitable, portalsOf } from "../lib/prototype/node/walk.ts"
+import { visitable, portalsOf, type Screen } from "../lib/prototype/node/walk.ts"
 
+// the fields the walk chooses by; a screen's stub and sample matter only to the shoot
 const ALL = [
   { key: "home", portal: null, route: "/" },
   { key: "gp-home", portal: "gp", route: "/gp/home" },
   { key: "bo-item", portal: "bo", route: "/bo/item/:id" },
   { key: "bo-list", portal: "bo", route: "/bo/list" },
-]
+] as Screen[]
 test("the product form visits its portals' screens with parameterless routes", () => {
   const c = {
     portal: { from: "product" },
@@ -46,5 +47,6 @@ test("the favicon a full Chromium requests unasked is browser noise, never a pag
   assert.equal(browserNoise(msg("http://127.0.0.1:64480/favicon.ico")), true)
   assert.equal(browserNoise(msg("http://127.0.0.1:64480/app/favicon.ico?v=2")), true)
   assert.equal(browserNoise(msg("http://127.0.0.1:64480/app/main.js")), false)
-  assert.equal(browserNoise({ type: () => "error", text: () => "boom", location: () => ({}) }), false)
+  const unlocated = { type: () => "error", text: () => "boom", location: () => ({}) }
+  assert.equal(browserNoise(unlocated), false)
 })

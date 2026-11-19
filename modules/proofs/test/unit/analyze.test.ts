@@ -26,8 +26,8 @@ function draft({ proofs = {}, extra = {}, previousManifest = null, declaredVars 
     entries,
     descriptors: new Map([["notes", NOTES]]),
     modules: [
-      { id: "default", name: "default", root: "modules/default", channel: "inline" },
-      { id: "dreamteamer", name: "dreamteamer", root: "node_modules/dreamteamer", channel: "npm" },
+      { id: "default", name: "default", root: "modules/default", channel: "inline" as const },
+      { id: "dreamteamer", name: "dreamteamer", root: "node_modules/dreamteamer", channel: "npm" as const },
     ],
     declaredVars,
     declaredEnv: [],

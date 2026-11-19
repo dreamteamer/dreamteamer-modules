@@ -11,6 +11,7 @@ import http from "node:http"
 import os from "node:os"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
+import type { Workspace } from "dreamteamer"
 import { fixture, call, sameOrigin } from "./support.ts"
 
 const BIN = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "dist", "bin", "dt-web.js")
@@ -68,7 +69,11 @@ async function serve(argv) {
   console.log = (...a) => out.push(a.join(" "))
   console.error = (...a) => err.push(a.join(" "))
   try {
-    return { code: await activate().commands.serve.run({ root: f.root }, argv), out, err }
+    return {
+      code: await activate().commands.serve.run({ root: f.root } as Partial<Workspace> as Workspace, argv),
+      out,
+      err,
+    }
   } finally {
     console.log = log
     console.error = error

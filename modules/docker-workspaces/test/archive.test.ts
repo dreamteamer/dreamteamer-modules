@@ -741,6 +741,10 @@ describe("the v1 format is preserved byte for byte", () => {
     for await (const b of it) parts.push(b)
     return Buffer.concat(parts)
   }
+  /** Chunks as the stream seal and unseal read: the archive's file read, here a few buffers. */
+  const stream = async function* (...chunks: Buffer[]) {
+    yield* chunks
+  }
 
   test("the pre-extraction export decrypts to exactly the pre-extraction plain export, and re-sealing it under its own header reproduces the file", async () => {
     const { openSeal, unseal, seal } = await import("../src/archive.ts")
@@ -748,11 +752,11 @@ describe("the v1 format is preserved byte for byte", () => {
     const tgz = fs.readFileSync(path.join(FIX, "golden-v1.tar.gz"))
     const key = await openSeal(path.join(FIX, "golden-v1.dtx"), GOLDEN_PASS)
     assert.ok(
-      (await collect(unseal([dtx.subarray(72)], key))).equals(tgz),
+      (await collect(unseal(stream(dtx.subarray(72)), key))).equals(tgz),
       "the golden export no longer decrypts to its plain twin"
     )
     assert.ok(
-      (await collect(seal([tgz], { keys: key.keys, head: dtx.subarray(0, 72) }))).equals(dtx),
+      (await collect(seal(stream(tgz), { keys: key.keys, head: dtx.subarray(0, 72) }))).equals(dtx),
       "this writer no longer produces the v1 bytes"
     )
   })
@@ -772,7 +776,7 @@ describe("the v1 format is preserved byte for byte", () => {
     const full = Buffer.concat([head, crypto.createHmac("sha256", mac).update(head).digest()])
     const plain = crypto.randomBytes(3 * 65536 + 1234)
     const file = await collect(
-      seal([plain.subarray(0, 100_000), plain.subarray(100_000)], { keys: { enc, mac }, head: full })
+      seal(stream(plain.subarray(0, 100_000), plain.subarray(100_000)), { keys: { enc, mac }, head: full })
     )
     assert.ok(file.subarray(0, 72).equals(full))
     assert.equal(file.length, 72 + 3 * (65536 + 16) + 1234 + 16)

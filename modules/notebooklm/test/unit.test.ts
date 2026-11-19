@@ -21,23 +21,26 @@ import {
   sourceLimit,
 } from "../src/export.ts"
 import { notebooklmBlock, render } from "../src/harness.ts"
+import type { Descriptor } from "dreamteamer"
 import { bind } from "../src/engine.ts"
 import { api } from "./fixture.ts"
 
 // the engine's descriptor accessors, which the export reads every compiled descriptor through
 bind(api)
 
-/** A compiled v2 descriptor: the authored keys, and what compile resolved under `compiled`. */
-const compiled = (name, { fields = {}, runtime = false, storage = {}, ...authored } = {}) => ({
-  name,
-  ...authored,
-  storage,
-  compiled: {
-    defaults: { storage: { path: `data/${name}`, format: "md", shape: "file", suffix: name.replace(/s$/, "") } },
-    runtime,
-    fields,
-  },
-})
+/** A compiled v2 descriptor: the authored keys, and what compile resolved under `compiled` — only the part the
+ *  export reads, so a stub of the engine's Descriptor. */
+const compiled = (name, { fields = {}, runtime = false, storage = {}, ...authored } = {}): Descriptor =>
+  ({
+    name,
+    ...authored,
+    storage,
+    compiled: {
+      defaults: { storage: { path: `data/${name}`, format: "md", shape: "file", suffix: name.replace(/s$/, "") } },
+      runtime,
+      fields,
+    },
+  }) as unknown as Descriptor
 const PEOPLE = compiled("people", {
   fields: {
     name: { type: "string" },
@@ -117,7 +120,9 @@ describe("titles and files", () => {
 })
 
 describe("planSync — what a sync would do, decided before any call is made", () => {
-  const src = (title, sha) => ({ title, sha256: sha })
+  type Wanted = Parameters<typeof planSync>[0][number]
+  // the planner matches by title and hash and never reads `file`
+  const src = (title, sha): Wanted => ({ title, sha256: sha }) as Wanted
   const A = `${OWNED_PREFIX}a`,
     B = `${OWNED_PREFIX}b`,
     C = `${OWNED_PREFIX}c`

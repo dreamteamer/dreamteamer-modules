@@ -1,8 +1,9 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
 import { planDrive, derivedOf, diffDerived, bytesChanged } from "../src/sync.ts"
+import type { WalkEntry } from "../src/walk.ts"
 
-const file = (p, over = {}) => ({
+const file = (p, over = {}): WalkEntry => ({
   path: p,
   name: p.split("/").pop(),
   kind: "file",
@@ -14,7 +15,7 @@ const file = (p, over = {}) => ({
   abs: `/Users/someone/d/${p}`,
   ...over,
 })
-const folder = p => ({ path: p, name: p.split("/").pop(), kind: "folder", abs: `/Users/someone/d/${p}` })
+const folder = (p): WalkEntry => ({ path: p, name: p.split("/").pop(), kind: "folder", abs: `/Users/someone/d/${p}` })
 const rec = (p, over = {}) => ({
   drive: "file-drives/drive",
   path: p,

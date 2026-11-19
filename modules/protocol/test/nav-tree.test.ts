@@ -253,16 +253,12 @@ describe("every node's target round-trips through applyNavOp", () => {
     }
   })
   test("tailOrder is the unplaced-row order: by title, then name", () => {
-    const order = [
-      ...tailOrder(
-        [
-          { name: "b", title: "Same" },
-          { name: "a", title: "Same" },
-          { name: "c", title: "Alpha" },
-        ],
-        titleOf
-      ),
+    const titled = [
+      { name: "b", title: "Same" },
+      { name: "a", title: "Same" },
+      { name: "c", title: "Alpha" },
     ]
+    const order = [...tailOrder(titled, titleOf)]
     assert.deepEqual(order, ["c", "a", "b"])
   })
 })

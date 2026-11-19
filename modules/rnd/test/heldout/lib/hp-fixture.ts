@@ -9,6 +9,7 @@ import { spawnSync } from "node:child_process"
 import { pathToFileURL } from "node:url"
 import { normalize } from "../../../lib/prototype/node/config.ts"
 import { build } from "../../../lib/prototype/node/export.ts"
+import type { Records } from "../../../lib/prototype/node/records.ts"
 import { protoDir, put, js, BIN } from "./common.ts"
 
 export const CONFIG = {
@@ -176,7 +177,8 @@ export async function buildHP({ anchor = null, noExpectRefusal = false, lossyRes
     playback[k] = (
       await import(`${pathToFileURL(path.join(dir, `public/app/demo/journeys/${k}.js`)).href}?hp=${Date.now()}`)
     ).default
-  const r = build(normalize(CONFIG, dir), RECORDS(), { playback })
+  // the record sets the build reads, without the `descriptors` readRecords fills in and the build never reads
+  const r = build(normalize(CONFIG, dir), RECORDS() as unknown as Records, { playback })
   if (r.errors.length) throw new Error(`HP: build failed\n${r.errors.join("\n")}`)
   put(dir, "public/app/data/journeys.js", r.journeysJs)
   put(dir, "public/app/data/meta.js", r.metaJs)

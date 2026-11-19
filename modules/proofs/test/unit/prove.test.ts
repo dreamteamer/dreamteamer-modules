@@ -665,7 +665,8 @@ describe("substitute — strict mode, for the values the engine consumes rather 
 })
 
 describe("applyCap — the ledger is append-only and bounded", () => {
-  const rows = n => Array.from({ length: n }, (_, i) => ({ i }))
+  // a row is a number, and the appended one a marker string
+  const rows = (n): { i: number | string }[] => Array.from({ length: n }, (_, i) => ({ i }))
 
   test("the cap is 50", () => {
     assert.equal(LEDGER_CAP, 50)
