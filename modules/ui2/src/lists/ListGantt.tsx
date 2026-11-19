@@ -69,7 +69,7 @@ const track = (band = false) => cx("grid flex-none items-center", band ? "min-h-
 const barLabelBase = "text-small leading-none whitespace-nowrap pointer-events-none"
 /** A band's span under its header, with an end tick at either side. */
 const bandBar =
-  "relative h-[3px] min-w-[2px] rounded-full bg-[var(--dt-lane-rail,var(--dt-border))] before:content-[''] before:absolute before:-top-[3px] before:left-0 before:w-[2px] before:h-[9px] before:rounded-[1px] before:bg-inherit after:content-[''] after:absolute after:-top-[3px] after:right-0 after:w-[2px] after:h-[9px] after:rounded-[1px] after:bg-inherit"
+  "relative h-[3px] min-w-[2px] rounded-full bg-[var(--dt-lane-rail,var(--dt-border))] before:content-[''] before:absolute before:-top-[3px] before:left-0 before:w-[2px] before:h-[9px] before:rounded-2xs before:bg-inherit after:content-[''] after:absolute after:-top-[3px] after:right-0 after:w-[2px] after:h-[9px] after:rounded-2xs after:bg-inherit"
 const undatedCls = "flex flex-wrap items-center gap-1.5 flex-none pt-1.5 border-t border-border text-small"
 
 /** Roughly the narrowest bar that can hold readable text plus its own padding. */
@@ -318,7 +318,7 @@ export function ListGantt({ state }: ListProps) {
                             <div
                               className={cx(
                                 "relative flex items-center h-4 min-w-[3px]",
-                                s.start === s.end ? "rounded-full" : "rounded-[3px]",
+                                s.start === s.end ? "rounded-full" : "rounded-xs",
                                 s.inverted
                                   ? "bg-transparent border border-dashed border-danger"
                                   : "bg-[var(--dt-gantt-bar,var(--dt-accent))]"
@@ -333,7 +333,7 @@ export function ListGantt({ state }: ListProps) {
                                     inside
                                       ? cx(
                                           "py-0 px-1.5 overflow-hidden text-ellipsis font-medium",
-                                          s.inverted ? "text-danger" : "[color:var(--vscode-editor-background,#fff)]"
+                                          s.inverted ? "text-danger" : "text-on-accent"
                                         )
                                       : "absolute left-0 py-0 px-1 rounded-xs bg-[color-mix(in_srgb,var(--dt-bg)_72%,transparent)] text-fg-subtle max-w-[60ch] overflow-hidden text-ellipsis group-hover/row:text-fg"
                                   )}

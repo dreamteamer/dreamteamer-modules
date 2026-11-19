@@ -12,7 +12,7 @@ import { IconGrid } from "./IconPicker.tsx"
 import { cx, input } from "../styles/classes.ts"
 
 const menuCls =
-  "fixed z-50 min-w-[180px] max-w-[calc(100vw-8px)] flex flex-col py-1 px-0 bg-bg border border-border rounded-dt shadow-[0_8px_24px_rgb(0_0_0/0.16)]"
+  "fixed min-w-[180px] max-w-[calc(100vw-8px)] flex flex-col py-1 px-0 border border-(color:--dt-menu-border) rounded-menu bg-bg shadow-menu z-(--dt-z-menu)"
 /** One entry; `ok` is the ask's confirming button. (was dt-nav-menu-item) */
 const itemCls = (ok?: boolean) =>
   cx(

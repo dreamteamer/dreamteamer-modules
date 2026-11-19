@@ -33,12 +33,13 @@ import "@xyflow/react/dist/style.css"
 import { useEffect, useMemo, useRef, useState } from "react"
 import type { LayoutBox } from "../../lib/diagram/layout.ts"
 import type { DiagramModel } from "../../lib/diagram/types.ts"
+import { resolveColor } from "../../lib/cssToken.ts"
 import { DotNode, EntityNode, GroupNode } from "./DiagramNodes.tsx"
 
-/** Fixed hues rather than generated ones: checked to read on both themes, and a stable palette draws the same model
- *  the same colours every time it is opened. */
-const ACCENTS = ["#7c5cff", "#0e9f6e", "#e2a300", "#e5484d", "#3b82f6", "#c026d3", "#0891b2", "#ea580c"]
-const UNGROUPED_ACCENT = "#64748b"
+/** Fixed hues rather than generated ones (the --dt-diagram-* tokens): checked to read on both themes, and a stable
+ *  palette draws the same model the same colours every time it is opened. */
+const ACCENTS = [1, 2, 3, 4, 5, 6, 7, 8].map(i => `var(--dt-diagram-${i})`)
+const UNGROUPED_ACCENT = "var(--dt-diagram-ungrouped)"
 const LABEL_ZOOM = 0.72
 
 /** A declared relation's cardinality, read in the direction the arrow points (source = the side holding the key);
@@ -206,7 +207,7 @@ function Canvas({ model, positions, groupBoxes, fitToken, onMove, onDragging, on
         pannable
         zoomable
         maskColor="rgba(127,127,127,0.32)"
-        nodeColor={n => String((n.data as { accent?: string } | undefined)?.accent ?? "#888")}
+        nodeColor={n => resolveColor((n.data as { accent?: string } | undefined)?.accent ?? "var(--dt-diagram-node)")}
       />
     </ReactFlow>
   )

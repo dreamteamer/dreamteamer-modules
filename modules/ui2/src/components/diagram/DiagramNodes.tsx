@@ -51,13 +51,13 @@ export function DotNode({ data }: NodeProps<Node<DotData>>) {
     >
       <Handle type="target" position={Position.Left} className="dt-gnode-handle" />
       <span
-        className="block w-full h-full box-border rounded-full border-2 border-solid shadow-[0_1px_3px_rgb(0_0_0/0.25)]"
+        className="block w-full h-full box-border rounded-full border-2 border-solid shadow-card"
         style={{ background: data.ghost ? "transparent" : data.accent, borderColor: data.accent }}
       />
       {data.showLabel && (
         <span
           className={cx(
-            "absolute left-[calc(100%+6px)] top-1/2 -translate-y-1/2 text-[10.5px] leading-[1.3] whitespace-nowrap max-w-[150px] overflow-hidden text-ellipsis [text-shadow:0_0_3px_var(--dt-bg),0_0_3px_var(--dt-bg)]",
+            "absolute left-[calc(100%+6px)] top-1/2 -translate-y-1/2 text-2xs leading-[1.3] whitespace-nowrap max-w-[150px] overflow-hidden text-ellipsis [text-shadow:0_0_3px_var(--dt-bg),0_0_3px_var(--dt-bg)]",
             data.ghost ? "text-fg-subtle" : "text-fg"
           )}
         >
@@ -73,19 +73,19 @@ export function EntityNode({ data }: NodeProps<Node<EntityData>>) {
   return (
     <div
       className={cx(
-        "min-w-[232px] bg-bg border border-border rounded-[10px] shadow-[0_1px_4px_rgb(0_0_0/0.12)] overflow-hidden [transition:opacity_120ms_ease]",
+        "min-w-[232px] bg-bg border border-border rounded-chip shadow-card overflow-hidden [transition:opacity_120ms_ease]",
         data.dimmed && "opacity-35"
       )}
     >
       <div
-        className="flex items-center gap-1.5 py-[7px] px-2.5 text-white font-semibold text-[12px]"
+        className="flex items-center gap-1.5 py-[7px] px-2.5 text-white font-semibold text-sm"
         style={{ background: data.accent }}
       >
         <Icon name={data.icon || "table"} />
         <span className="flex-1 whitespace-nowrap">{data.label}</span>
         {data.system && (
           <span
-            className="text-[9px] uppercase tracking-[0.06em] opacity-75 border border-[rgb(255_255_255/0.5)] rounded-[3px] py-0 px-[3px]"
+            className="text-3xs uppercase tracking-[0.06em] opacity-75 border border-[rgb(255_255_255/0.5)] rounded-xs py-0 px-[3px]"
             title="engine collection"
           >
             sys
@@ -96,7 +96,7 @@ export function EntityNode({ data }: NodeProps<Node<EntityData>>) {
         <div
           key={f.name}
           className={cx(
-            "relative flex items-center gap-1.5 py-1 px-2.5 text-[11.5px] border-t border-border text-fg",
+            "relative flex items-center gap-1.5 py-1 px-2.5 text-small border-t border-border text-fg",
             f.isId && "font-semibold"
           )}
         >
@@ -104,7 +104,7 @@ export function EntityNode({ data }: NodeProps<Node<EntityData>>) {
           {f.isId && <Handle type="target" position={Position.Left} id="__id" className="dt-entity-handle" />}
           <span className={cx("flex-1 whitespace-nowrap", f.ref && "text-link")}>{f.name}</span>
           {f.isId && <Icon name="key" className="text-fg-subtle" />}
-          <span className="font-mono text-[10.5px] text-fg-subtle whitespace-nowrap">{f.label}</span>
+          <span className="font-mono text-2xs text-fg-subtle whitespace-nowrap">{f.label}</span>
           {f.ref && <Handle type="source" position={Position.Right} id={f.name} className="dt-entity-handle" />}
         </div>
       ))}
@@ -144,10 +144,10 @@ export function GroupNode({ id, data }: NodeProps<Node<GroupData>>) {
       data-diagram-group
     >
       <Icon name="gripper" className="[color:var(--dt-group-accent)] opacity-70" />
-      <span className="text-[12px] font-semibold [color:var(--dt-group-accent)]">{data.label}</span>
+      <span className="text-sm font-semibold [color:var(--dt-group-accent)]">{data.label}</span>
       {/* `nodrag`: React Flow's own class for "a drag starting here is not the node's" */}
       <span
-        className="nodrag absolute right-0.5 bottom-0.5 w-3.5 h-3.5 cursor-nwse-resize border-r-2 border-b-2 [border-color:var(--dt-group-accent)] rounded-br-[10px] opacity-60"
+        className="nodrag absolute right-0.5 bottom-0.5 w-3.5 h-3.5 cursor-nwse-resize border-r-2 border-b-2 [border-color:var(--dt-group-accent)] rounded-br-chip opacity-60"
         title="Resize"
         onPointerDown={onGrab}
       />

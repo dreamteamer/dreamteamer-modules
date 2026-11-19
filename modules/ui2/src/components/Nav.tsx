@@ -211,7 +211,7 @@ export function Nav() {
         dragging.current = null
       }}
     >
-      <div className={cx(toolbarCls, scrolled && "shadow-[0_1px_3px_rgb(0_0_0/0.14)]")} role="toolbar" aria-label="Nav">
+      <div className={cx(toolbarCls, scrolled && "shadow-card")} role="toolbar" aria-label="Nav">
         <div className="flex-[1_0_30px] min-w-[30px] flex items-center overflow-hidden">
           {pane ? (
             <PaneSwitcher label={workspace?.label} />
@@ -298,7 +298,7 @@ export function Nav() {
             <Icon name="list-tree" />
             <i
               className={cx(
-                "codicon absolute right-px bottom-px text-[10px]! leading-[10px]! rounded-[3px]",
+                "codicon absolute right-px bottom-px text-2xs! leading-[10px]! rounded-xs",
                 arranging ? "bg-bg-active codicon-unlock" : "bg-bg-subtle codicon-lock-small"
               )}
               aria-hidden="true"

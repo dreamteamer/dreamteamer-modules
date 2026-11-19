@@ -288,7 +288,7 @@ export function DataModelDetail({
 
       {(dirty || saving) && (
         <div
-          className="sticky bottom-3 z-15 flex items-center gap-3 max-w-[920px] mt-4 py-2.5 px-3.5 border border-border rounded-lg bg-bg shadow-[0_8px_24px_rgb(0_0_0/0.18)] font-semibold"
+          className="sticky bottom-3 z-15 flex items-center gap-3 max-w-[920px] mt-4 py-2.5 px-3.5 border border-border rounded-lg bg-bg shadow-menu font-semibold"
           data-save-bar
         >
           <span>

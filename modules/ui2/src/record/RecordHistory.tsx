@@ -147,7 +147,7 @@ export function RecordHistory({
                   {diff.error && <p className={error}>{diff.error}</p>}
                   {diff.lines && diff.lines.length === 0 && <p className={subtle}>No changes.</p>}
                   {diff.lines && diff.lines.length > 0 && (
-                    <pre className="mt-1.5 mx-0 mb-0 p-1.5 max-h-80 overflow-auto rounded-dt bg-bg font-mono text-[11px] leading-[1.5]">
+                    <pre className="mt-1.5 mx-0 mb-0 p-1.5 max-h-80 overflow-auto rounded-dt bg-bg font-mono text-small leading-[1.5]">
                       {diff.lines.map((line, i) => (
                         <span key={i} className={DIFF_LINE[line.kind]}>
                           {line.text}

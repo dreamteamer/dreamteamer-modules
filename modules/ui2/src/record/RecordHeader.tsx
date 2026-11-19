@@ -30,13 +30,13 @@ const header = "flex-[0_0_auto] border-b border-border"
 const navRow = "flex items-center gap-2 pt-2 px-6 pb-0 text-small"
 const titleRow = "flex items-center justify-between gap-4 flex-wrap pt-1.5 px-6 pb-2.5"
 const titleBox = "flex items-center gap-2.5 min-w-0"
-const titleText = "m-0 text-[20px] truncate"
+const titleText = "m-0 text-xl truncate"
 const titleIcon =
   "inline-flex items-center justify-center w-7 h-7 flex-[0_0_auto] rounded-dt bg-bg-subtle text-fg-subtle"
 const commitRow = "flex items-center gap-2 py-1.5 px-6 border-t border-border text-small min-w-0"
 /** A person's initials in a round chip. (was dt-avatar) */
 export const avatar =
-  "inline-flex items-center justify-center w-5 h-5 rounded-full bg-bg-active text-[9px] font-semibold"
+  "inline-flex items-center justify-center w-5 h-5 rounded-full bg-bg-active text-3xs font-semibold"
 const commitMessage = "flex-1 min-w-0 truncate"
 const originBox = "inline-flex items-center gap-1.5 flex-wrap"
 const warm = "text-chart-orange"

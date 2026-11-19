@@ -182,17 +182,17 @@ export function FieldDrawer({
 
   return (
     <div
-      className="fixed inset-0 z-40 flex justify-end bg-[rgb(0_0_0/0.24)]"
+      className="fixed inset-0 z-40 flex justify-end bg-backdrop"
       onMouseDown={e => e.target === e.currentTarget && onClose()}
     >
       <aside
-        className="flex flex-col w-[min(520px,100%)] h-full bg-bg border-l border-border shadow-[-12px_0_32px_rgb(0_0_0/0.18)]"
+        className="flex flex-col w-[min(520px,100%)] h-full bg-bg border-l border-border shadow-panel"
         role="dialog"
         aria-label={editing ? `Edit field ${field.key}` : "New field"}
         data-field-drawer
       >
         <header className="flex items-center justify-between py-3 px-4 border-b border-border">
-          <h2 className="m-0 text-[15px]">{editing ? `Edit field: ${field.key}` : "New field"}</h2>
+          <h2 className="m-0 text-heading">{editing ? `Edit field: ${field.key}` : "New field"}</h2>
           <button type="button" className={iconButton} aria-label="Close" onClick={onClose}>
             <Icon name="close" />
           </button>

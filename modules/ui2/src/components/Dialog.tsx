@@ -28,18 +28,18 @@ export function Dialog({ title, children, onClose }: { title: string; children: 
   }, [])
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[rgb(0_0_0/0.35)]"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-backdrop"
       onMouseDown={e => e.target === e.currentTarget && onClose()}
     >
       <div
-        className="w-[min(440px,100%)] grid gap-3 px-[18px] py-4 bg-bg text-fg border border-border rounded-[8px] shadow-[0_12px_32px_rgb(0_0_0/0.24)] [&_p]:m-0"
+        className="w-[min(440px,100%)] grid gap-3 px-[18px] py-4 bg-bg text-fg border border-border rounded-lg shadow-menu [&_p]:m-0"
         role="dialog"
         aria-modal="true"
         aria-label={title}
         ref={box}
       >
         <header className="flex items-center justify-between">
-          <h2 className="m-0 text-[15px]">{title}</h2>
+          <h2 className="m-0 text-heading">{title}</h2>
           <button type="button" className={iconButton} aria-label="Close" onClick={onClose}>
             <Icon name="close" />
           </button>

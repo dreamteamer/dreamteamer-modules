@@ -184,7 +184,7 @@ export function LayoutOptions({ state, onClose }: { state: BrowseState; onClose(
         <span className={panelTitle}>Layout options</span>
         <div className="relative flex items-center gap-0.5" data-view-save-actions>
           {state.dirty && (
-            <span className="text-chart-orange text-[9px]" title="Unsaved changes to this view">
+            <span className="text-chart-orange text-3xs" title="Unsaved changes to this view">
               ●
             </span>
           )}

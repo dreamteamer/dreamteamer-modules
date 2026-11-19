@@ -21,7 +21,7 @@ export const hint = "text-small text-fg-subtle [&_code]:font-mono [&_code]:text-
 /** …the same in the error colour. (was dt-hint.is-error) */
 export const hintError = "text-small text-danger"
 /** Ids, paths, code. (was dt-mono) */
-export const mono = "font-mono text-[12px] break-all"
+export const mono = "font-mono text-mono break-all"
 /** A value that keeps its line breaks and wraps anywhere. (was dt-wrap) */
 export const wrap = "whitespace-pre-wrap [overflow-wrap:anywhere]"
 /** The required mark after a label. (was dt-required) */
@@ -36,7 +36,7 @@ export const note = "m-0 flex items-center gap-1.5 text-fg-subtle"
 /** A boxed notice: the frame, and one entry of `noticeTone` for its colours. (was dt-notice) */
 export const notice = "flex items-start gap-2 max-w-[920px] mb-1.5 px-3 py-[7px] border rounded-dt"
 export const noticeTone = {
-  ok: "border-[color-mix(in_srgb,var(--dt-color-charts-green)_40%,transparent)] bg-[color-mix(in_srgb,var(--dt-color-charts-green)_9%,transparent)] font-mono text-[12px] [&_.codicon]:text-chart-green",
+  ok: "border-[color-mix(in_srgb,var(--dt-color-charts-green)_40%,transparent)] bg-[color-mix(in_srgb,var(--dt-color-charts-green)_9%,transparent)] font-mono text-mono [&_.codicon]:text-chart-green",
   warning:
     "border-[color-mix(in_srgb,var(--dt-warning)_40%,transparent)] bg-[color-mix(in_srgb,var(--dt-warning)_9%,transparent)] [&_.codicon]:text-warning",
   error:
@@ -69,11 +69,11 @@ export const stack = "grid gap-1"
  * set the same property and none needs `!`. (was dt-button and its is-* modifiers)
  */
 export const button =
-  "inline-flex items-center gap-1.5 py-0 border rounded-dt cursor-pointer disabled:opacity-50 disabled:cursor-default"
+  "inline-flex items-center gap-1.5 py-0 border rounded-dt cursor-pointer disabled:opacity-50 disabled:cursor-default [transition:background-color_var(--dt-dur-fast)_ease,color_var(--dt-dur-fast)_ease,border-color_var(--dt-dur-fast)_ease,transform_var(--dt-dur-fast)_var(--dt-ease)] enabled:active:scale-[0.97]"
 /** A button's colours: ordinary, the one action of a form or dialog, destructive, pressed / open. */
 export const buttonTone = {
   default: "border-input-border bg-bg text-fg enabled:hover:bg-bg-hover",
-  primary: "border-accent bg-accent text-accent-fg enabled:hover:bg-[color-mix(in_srgb,var(--dt-accent)_88%,black)]",
+  primary: "border-accent bg-accent text-on-accent enabled:hover:bg-accent-hover enabled:hover:border-accent-hover",
   danger: "border-input-border bg-bg text-danger enabled:hover:bg-bg-hover",
   active: "border-focus bg-bg-active text-fg enabled:hover:bg-bg-hover",
 } as const satisfies Record<string, string>
@@ -83,9 +83,10 @@ export const buttonSize = {
   small: "h-6 px-2 text-small",
   icon: "h-[30px] px-2",
 } as const satisfies Record<string, string>
-/** A round icon button with no frame. (was dt-icon-button) */
+/** An icon button with no frame: ONE shape — a rounded square at the control radius — for the page's icon buttons,
+ *  the nav toolbar's tools and the right panel's rail. Gives under the pointer like every button. (was dt-icon-button) */
 export const iconButton =
-  "inline-flex items-center justify-center w-[22px] h-[22px] p-0 border-0 rounded-full bg-transparent text-fg-subtle cursor-pointer hover:bg-bg-hover hover:text-fg"
+  "inline-flex items-center justify-center w-[22px] h-[22px] p-0 border-0 rounded-dt bg-transparent text-fg-subtle cursor-pointer hover:bg-bg-hover hover:text-fg [transition:background-color_var(--dt-dur-fast)_ease,transform_var(--dt-dur-fast)_var(--dt-ease)] enabled:active:scale-[0.97]"
 /** A button that reads as text. (was dt-link-button) */
 export const linkButton =
   "inline-flex items-center gap-1 bg-transparent border-0 p-0 text-inherit [text-transform:inherit] [letter-spacing:inherit] cursor-pointer"
@@ -95,7 +96,7 @@ export const linkButton =
 export const popoverAnchor = "relative inline-flex"
 /** A menu hanging under its anchor. (was dt-menu) */
 export const menu =
-  "absolute top-[calc(100%+4px)] right-0 z-20 min-w-[180px] max-w-[min(360px,calc(100vw-32px))] p-1 flex flex-col bg-bg border border-border rounded-dt shadow-[0_8px_24px_rgb(0_0_0/0.16)] [&>p]:mx-2 [&>p]:my-1"
+  "absolute top-[calc(100%+4px)] right-0 min-w-[180px] max-w-[min(360px,calc(100vw-32px))] p-1 flex flex-col border border-(color:--dt-menu-border) rounded-menu bg-bg shadow-menu z-(--dt-z-menu) [&>p]:mx-2 [&>p]:my-1"
 /** One entry of a menu: the frame, and one entry of `menuItemTone`. (was dt-menu-item) */
 export const menuItem =
   "flex items-center gap-2 px-2 py-[5px] border-0 rounded bg-transparent text-left whitespace-nowrap hover:bg-bg-hover"
@@ -119,7 +120,7 @@ export const input = "w-full"
 /** A full-width textarea. (was dt-textarea) */
 export const textarea = "w-full"
 /** Code in a textarea: mono, two-space tabs. (was dt-code) */
-export const code = "font-mono text-[12px] [tab-size:2]"
+export const code = "font-mono text-mono [tab-size:2]"
 /** A checkbox with its label beside it. (was dt-check) */
 export const check = "flex items-start gap-2 [&_input]:mt-0.5 [&_input]:mb-0 [&_input]:mx-0"
 
@@ -134,7 +135,7 @@ export const dupBadge =
   "inline-flex items-center gap-1 ml-1.5 px-2 h-5 rounded-full border border-[color-mix(in_srgb,var(--dt-color-charts-orange)_50%,transparent)] text-chart-orange text-small whitespace-nowrap"
 /** A chip's × button. (was dt-chip-remove) */
 export const chipRemove =
-  "inline-flex p-0 -mr-1 border-0 bg-transparent text-inherit cursor-pointer opacity-70 hover:opacity-100 [&_.codicon]:text-[12px]!"
+  "inline-flex p-0 -mr-1 border-0 bg-transparent text-inherit cursor-pointer opacity-70 hover:opacity-100 [&_.codicon]:text-sm!"
 /** A value chip; set `--chip` (and optionally `--chip-bg`) inline for its colour. (was dt-chip) */
 export const chip =
   "[--chip:var(--dt-unknown-color)] [--chip-bg:color-mix(in_srgb,var(--chip)_14%,transparent)] inline-flex items-center gap-1 px-2 py-px rounded-full text-small text-(--chip) bg-(--chip-bg) border border-[color-mix(in_srgb,var(--chip)_35%,transparent)] whitespace-nowrap"

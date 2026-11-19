@@ -38,7 +38,7 @@ export function NextNotes({ collection, id }: { collection: string; id: string }
   if (!notes.length && !from) return null
   return (
     <div
-      className="grid gap-0.5 pt-1 px-6 pb-1.5 text-[12px] [&_p]:m-0 [&_p]:flex [&_p]:items-baseline [&_p]:gap-1.5"
+      className="grid gap-0.5 pt-1 px-6 pb-1.5 text-sm [&_p]:m-0 [&_p]:flex [&_p]:items-baseline [&_p]:gap-1.5"
       aria-label="Notes from extensions"
     >
       {notes.map((n, i) => (

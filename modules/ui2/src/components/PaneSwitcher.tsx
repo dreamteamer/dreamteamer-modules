@@ -93,7 +93,7 @@ export function PaneSwitcher({ label }: { label?: string }) {
         }}
       >
         <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">{name}</span>
-        <i className="codicon codicon-chevron-down flex-none text-[12px]! text-fg-subtle" aria-hidden="true" />
+        <i className="codicon codicon-chevron-down flex-none text-sm! text-fg-subtle" aria-hidden="true" />
       </button>
       {m.open &&
         createPortal(

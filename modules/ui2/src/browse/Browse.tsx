@@ -64,7 +64,7 @@ import { capsLabel, floatingPanel, panelHead, panelTitle, sidePanel, sourceDot }
 const searchCls =
   "inline-flex items-center gap-1.5 pl-2 border border-input-border rounded-dt bg-input-bg [&_input]:w-[200px] [&_input]:border-0 [&_input]:bg-transparent [&_input]:outline-none"
 /** The count on the filter button. */
-const badgeCls = "min-w-4 px-1 rounded-full bg-accent text-accent-fg text-[10px] leading-4 text-center"
+const badgeCls = "min-w-4 px-1 rounded-full bg-accent text-accent-fg text-2xs leading-4 text-center"
 const filterPanelCls = cx(
   floatingPanel,
   "absolute top-[calc(100%+4px)] right-0 z-20 w-[min(640px,calc(100vw-48px))] max-h-[70vh] overflow-y-auto px-3 py-2.5"

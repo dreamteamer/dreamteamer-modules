@@ -115,7 +115,7 @@ export function RecordCommands({ collection, ids }: { collection: string; ids: s
             >
               <Icon name={commandIcon(row)} />
               <span className="flex-1 min-w-0 grid">
-                <span className="font-mono text-[12px]">/{row.name}</span>
+                <span className="font-mono text-mono">/{row.name}</span>
                 <span className={subtle}>{row.description}</span>
               </span>
               <span className="text-small text-fg-subtle whitespace-nowrap">{commandStatus(row, ids)}</span>

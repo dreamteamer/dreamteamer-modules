@@ -11,8 +11,8 @@
 
 /* ---- the map (lists/ListMap.tsx): Leaflet's circle markers ---------------------------------------------------- */
 .dt-map-marker {
-  stroke: var(--dt-accent);
-  fill: var(--dt-accent);
+  stroke: var(--dt-map-marker);
+  fill: var(--dt-map-marker);
 }
 
 /* ---- the diagram (components/diagram/*): React Flow's canvas around the app's nodes ------------------------------ */

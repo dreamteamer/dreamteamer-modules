@@ -14,7 +14,7 @@ export function ViewJson({ value, context }: ViewProps) {
     return value === null || value === undefined || value === "" ? <Empty /> : <span>{String(value)}</span>
   if (context === "record")
     return (
-      <pre className="m-0 font-mono text-[12px] whitespace-pre-wrap max-h-[420px] overflow-auto py-2.5 px-3 border border-border rounded-dt">
+      <pre className="m-0 font-mono text-mono whitespace-pre-wrap max-h-[420px] overflow-auto py-2.5 px-3 border border-border rounded-dt">
         {JSON.stringify(value, null, 2)}
       </pre>
     )

@@ -37,7 +37,7 @@ import { num, table } from "./looks.ts"
 
 /** A block of the stack: its heading, its line, its entries. (was dt-sources-block, -heading, -line) */
 const block = "mb-6"
-const heading = "flex items-center gap-1.5 mt-0 mx-0 mb-2 text-[14px]"
+const heading = "flex items-center gap-1.5 mt-0 mx-0 mb-2 text-md"
 const line = "flex flex-wrap items-center gap-x-3.5 gap-y-1.5 mb-1.5"
 
 export function SourcesPane() {

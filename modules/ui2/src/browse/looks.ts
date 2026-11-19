@@ -18,6 +18,6 @@ export const capsLabel = "text-small font-semibold tracking-[0.04em] uppercase t
 /** …with it. (was dt-lo-label) */
 export const panelLabel = cx(capsLabel, "mt-0 mx-0 mb-0.5")
 /** A floating panel under its anchor. (the dt-filter-panel, dt-lo-pop shadow and frame) */
-export const floatingPanel = "bg-bg border border-border rounded-dt shadow-[0_8px_24px_rgb(0_0_0/0.16)]"
+export const floatingPanel = "bg-bg border border-(color:--dt-menu-border) rounded-menu shadow-menu"
 /** A source's colour dot; its colour is set inline. (was dt-source-dot) */
 export const sourceDot = "inline-block flex-none w-2 h-2 mr-1 rounded-full"

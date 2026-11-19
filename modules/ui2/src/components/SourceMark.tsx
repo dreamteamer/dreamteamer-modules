@@ -29,7 +29,7 @@ const sourceDot = "inline-block flex-none w-2 h-2 mr-1 rounded-full"
 const sourceCell = "inline-flex flex-wrap items-center gap-2 min-w-0"
 /** One dashed pill of the stub note. (was dt-stub-item) */
 const stubItem =
-  "inline-flex flex-wrap items-center gap-x-1 px-1.5 border border-dashed border-border rounded-[10px] text-small"
+  "inline-flex flex-wrap items-center gap-x-1 px-1.5 border border-dashed border-border rounded-chip text-small"
 
 export function SourceMark({
   name,
