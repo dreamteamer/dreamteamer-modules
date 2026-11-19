@@ -361,7 +361,7 @@ async function verb(
       return 1
     }
     log(
-      `running at http://127.0.0.1:${now.port} · pid ${now.pid} · level ${LEVEL_WORD(readWorkspaceState(root, sdir).level)} · app ${now.app === undefined ? "ui" : (now.app ?? "custom")}${now.owner ? ` · owner ${now.owner}` : ""} · since ${now.started}`
+      `running at http://127.0.0.1:${now.port} · pid ${now.pid} · level ${LEVEL_WORD(readWorkspaceState(root, sdir).level)}${now.app === "legacy-ui" ? " · app legacy-ui" : ""}${now.owner ? ` · owner ${now.owner}` : ""} · since ${now.started}`
     )
     return 0
   }
