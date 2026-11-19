@@ -7,8 +7,9 @@ name: release-all
 # Why it exists beside release.yml: a wave of tags hits GitHub's limit — a push of more than three tags creates
 # no events, so no release runs at all — and every tag then has to be deleted and pushed again one at a time.
 # Here the plan comes from npm, the tree is checked once, each module publishes in its own job (one failing
-# never stops the others), and a module is tagged `<id>-v<version>` only after npm holds it. Tags pushed with the
-# workflow token start no workflow, so release.yml never publishes the same version twice.
+# never stops the others), and a module is tagged `<id>-v<version>` by its own job once `npm publish` succeeds —
+# not by asking npm, which validates a new version for minutes before it serves it. Tags pushed with the workflow
+# token start no workflow, so release.yml never publishes the same version twice.
 
 on:
   workflow_dispatch:
@@ -118,7 +119,7 @@ jobs:
     needs: [plan, gates]
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write # the release tag, pushed once the publish succeeds
       id-token: write # required for npm provenance
     strategy:
       fail-fast: false
@@ -173,42 +174,17 @@ jobs:
             exit 1
           fi
 
-  # A module is tagged only once npm holds it, so the tags still say what was released. Runs after a partial
-  # failure too, tagging the modules that did publish.
-  tag:
-    needs: [plan, release]
-    if: always() && needs.plan.outputs.count != '0'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v5
-
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 22
-
-      - name: tag what npm now holds
+      # npm accepted the version, so the commit that published it is tagged now. A tag already on the remote is
+      # left alone and reported: it names another commit only if it was pushed by hand.
+      - name: tag the release
         env:
-          PLAN: ${{ needs.plan.outputs.modules }}
+          TAG: ${{ matrix.module.id }}-v${{ matrix.module.version }}
         run: |
           set -euo pipefail
-          git fetch --tags --quiet origin
-          tagged=0
-          for row in $(node -e 'for (const m of JSON.parse(process.env.PLAN)) console.log(`${m.id}|${m.name}|${m.version}`)'); do
-            IFS='|' read -r id name version <<< "$row"
-            tag="$id-v$version"
-            if [ "$(npm view "$name@$version" version 2>/dev/null || true)" != "$version" ]; then
-              echo "not on npm, not tagged: $name@$version"
-              continue
-            fi
-            if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
-              echo "already tagged: $tag"
-              continue
-            fi
-            git tag "$tag" "$GITHUB_SHA"
-            git push --quiet origin "refs/tags/$tag"
-            echo "tagged $tag"
-            tagged=$((tagged + 1))
-          done
-          echo "$tagged tag(s) pushed"
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null; then
+            echo "::warning::$TAG already exists on the remote and is left as it is"
+          else
+            git tag "$TAG" "$GITHUB_SHA"
+            git push --quiet origin "refs/tags/$TAG"
+            echo "tagged $TAG at $GITHUB_SHA"
+          fi
