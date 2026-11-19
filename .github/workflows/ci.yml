@@ -21,9 +21,6 @@ jobs:
   # is the floor; more shards than this cannot go below it.
   verify:
     runs-on: ubuntu-latest
-    env:
-      # the engine branch the suites run on (the candidate step below)
-      ENGINE_REF: typescript
     strategy:
       fail-fast: false
       matrix:
@@ -39,24 +36,6 @@ jobs:
           cache: npm
 
       - run: npm ci
-
-      # THE ENGINE THIS BRANCH NEEDS, NOT YET PUBLISHED. The modules here floor the engine at the release that
-      # stages skills from dist/skills and runs `dt run`, so on the published engine their install tests would
-      # skip. The engine repository's branch is packed (its prepack builds dist/) and installed over
-      # node_modules/dreamteamer by scripts/use-candidate.ts, the verified step; DT_CANDIDATES lets
-      # tests/candidate-engine.test.ts check the engine in place is the one packed. Drop this step, or point
-      # ENGINE_REF at a tag, once that engine is published.
-      - name: the candidate engine — dreamteamer@${{ env.ENGINE_REF }}
-        run: |
-          set -euo pipefail
-          git clone --quiet --depth 1 --branch "$ENGINE_REF" https://github.com/dreamteamer/dreamteamer.git "$RUNNER_TEMP/engine"
-          echo "engine $ENGINE_REF @ $(git -C "$RUNNER_TEMP/engine" rev-parse --short HEAD)"
-          (cd "$RUNNER_TEMP/engine" && npm ci --no-audit --no-fund)
-          mkdir -p "$RUNNER_TEMP/candidates"
-          (cd "$RUNNER_TEMP/engine" && npm pack --silent --pack-destination "$RUNNER_TEMP/candidates")
-          (cd "$RUNNER_TEMP/candidates" && sha256sum dreamteamer-*.tgz > SHA256SUMS)
-          node scripts/use-candidate.ts "$RUNNER_TEMP/candidates"
-          echo "DT_CANDIDATES=$RUNNER_TEMP/candidates" >> "$GITHUB_ENV"
 
       # The pane's held-out tests (tests/heldout/cr-modules-017-*) serve @dreamteamer/ui's browser page, which is
       # built and gitignored. Without this step only the shard whose ui tarball test happened to build it first
