@@ -1,6 +1,11 @@
 // Runs a gate decision's call, then — only when it answered 2xx and the decision carries one — the one commit by id.
-/** @param {(method: string, path: string, body?: unknown) => Promise<{status: number, body: any}>} handle */
-export async function applyWrite(handle, decision) {
+
+import type { Decision } from "./gate.ts"
+
+export async function applyWrite(
+  handle: (method: string, path: string, body?: unknown) => Promise<{ status: number; body: any }>,
+  decision: Extract<Decision, { ok: true }>
+): Promise<{ status: number; body: any }> {
   const { method, path, query, body, collection } = decision.call
   const qs = new URLSearchParams(query ?? {}).toString()
   const answer = await handle(method, qs ? `${path}?${qs}` : path, body)

@@ -1,8 +1,17 @@
 // Ported from the dreamteamer VS Code extension's host side (src/note-refs.ts); PROTOCOL.md is the contract it answers.
+
+export interface NoteRef {
+  ref: string
+  collection: string
+  id: string
+  start: number
+  end: number
+}
+
 const CONTINUES = /[A-Za-z0-9_\-./]/
 const ID_END = /[\s)]/
 const TRAILING = /[.,;:]+$/
-export function refsIn(text, collections) {
+export function refsIn(text: string, collections: readonly string[]): NoteRef[] {
   const names = [...new Set(collections)].filter(Boolean).sort((a: any, b: any) => b.length - a.length)
   if (!names.length || !text) return []
   const out = []

@@ -15,14 +15,14 @@ import { parseWorkCalendars, type CalendarRow } from "../skills/fetching-meeting
 import type { CheckRow, PlanAction } from "./googleSetup.ts"
 
 /** What the engine hands a setup unit. */
-interface SetupContext {
+export interface SetupContext {
   root: string
   env?: NodeJS.ProcessEnv
   receiptDir?: string
 }
 
 /** A meetings action: the module's own fields, effects either as strings or as the engine's objects. */
-interface MeetingsAction extends Omit<PlanAction, "effects"> {
+export interface MeetingsAction extends Omit<PlanAction, "effects"> {
   effects?: (string | { kind: string; detail: string })[]
   env?: Record<string, string>
   preview?: Record<string, unknown>

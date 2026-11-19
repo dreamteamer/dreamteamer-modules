@@ -54,9 +54,45 @@ import { navDocProblems, navProblemsSentence, readNavDoc } from "./navDoc.ts"
 import { collectionSources, layerTitle, sourcesContext, sourcesStack } from "./host/sources.ts"
 import { codiconFor } from "./host/codiconFor.ts"
 
+import type { NavTarget, NavDoc } from "./navDoc.ts"
+import type { Descriptor, UiView } from "./host/fsdata.ts"
+
+export interface NavSettings {
+  navGroups?: unknown
+  navOrder?: unknown
+  navHidden?: unknown
+  layersFolder?: unknown
+}
+export interface NavNode {
+  kind:
+    | "workspace"
+    | "folder"
+    | "namespace"
+    | "collection"
+    | "view"
+    | "layers"
+    | "layer"
+    | "layer-group"
+    | "layer-collection"
+    | "layer-note"
+    | "message"
+  key: string
+  label: string
+  icon?: string
+  description?: string
+  tooltip?: string
+  route?: string
+  marks?: string
+  /** On folder, namespace and collection nodes: what a host sends back in a PATCH /nav op. */
+  target?: NavTarget
+  /** On the workspace node: a message to draw once above the tree (an unreadable nav.yaml). */
+  notice?: string
+  children?: NavNode[]
+}
+
 /** The four nav settings, read from a workspace's `.vscode/settings.json` (JSON with comments) — what
  *  http and web hosts use; the extension passes VS Code's merged configuration instead. */
-export function workspaceNavSettings(root) {
+export function workspaceNavSettings(root: string): NavSettings {
   try {
     const text = fs.readFileSync(path.join(root, ".vscode", "settings.json"), "utf8")
     const raw = JSON.parse(stripJsonComments(text))
@@ -72,7 +108,7 @@ export function workspaceNavSettings(root) {
 }
 
 /** Comments and trailing commas out of a JSONC text, strings left alone. */
-function stripJsonComments(text) {
+function stripJsonComments(text: string): string {
   let out = ""
   for (let i = 0, inStr = false; i < text.length; i++) {
     const c = text[i]
@@ -110,7 +146,7 @@ const orderOf = navOrderOf
 export { readNavDoc }
 
 /** A document as read, without the entries of no valid shape; `say` gets the sentence naming them, when any. */
-function drawable(doc, say) {
+function drawable(doc: NavDoc | null, say: (sentence: string) => void): NavDoc | null {
   if (!doc) return doc
   const { doc: clean, problems } = navDocProblems(doc)
   if (!problems.length) return doc
@@ -121,7 +157,11 @@ function drawable(doc, say) {
 /** What a nav write is checked against: the rows the tree can draw (`collections`, in drawn tail order — what
  *  applyNavOp places unplaced rows by), every compiled collection (`known`, what a PUT may name: an internal
  *  collection is not drawn but is not unknown) and the declared namespaces. */
-export function navOpContext(root) {
+export function navOpContext(root: string): {
+  collections: Set<string>
+  known: Set<string>
+  namespaces: string[]
+} {
   const descriptors = loadDescriptors(root)
   const { titleOf } = engine().descriptor
   return {
@@ -133,7 +173,7 @@ export function navOpContext(root) {
     namespaces: [...(engineLoaded() ? engine().namespaces : [])],
   }
 }
-const layerSettings = (root, key) => {
+const layerSettings = (root: string, key: string): Record<string, any> => {
   try {
     const raw = JSON.parse(
       stripJsonComments(fs.readFileSync(path.join(root, "git_modules", key, ".vscode", "settings.json"), "utf8"))
@@ -144,19 +184,22 @@ const layerSettings = (root, key) => {
   }
 }
 
-/**
- * The tree, top to bottom: one `workspace` node whose children are the top level.
- * @param {{ root: string, settings?: { navGroups?: unknown, navOrder?: unknown, navHidden?: unknown, layersFolder?: unknown } }} ctx
- */
-export function navModel({ root, settings = workspaceNavSettings(root) }) {
+/** The tree, top to bottom: one `workspace` node whose children are the top level. */
+export function navModel({
+  root,
+  settings = workspaceNavSettings(root),
+}: {
+  root: string
+  settings?: NavSettings
+}): NavNode[] {
   const descriptors = loadDescriptors(root)
   const modules = loadModules(root)
   const titleOf = new Map(modules.map(m => [m.id, m.title]))
   const byName = new Map(descriptors.map(d => [d.name, d]))
   const declared = engineLoaded() ? engine().namespaces : []
-  let srcCtx = null
+  let srcCtx: ReturnType<typeof sourcesContext> | null = null
   const ctx = () => (srcCtx ??= sourcesContext(root, descriptors))
-  const sourcesOf = d => {
+  const sourcesOf = (d: Descriptor) => {
     try {
       return collectionSources(root, d, ctx())
     } catch {
@@ -164,7 +207,7 @@ export function navModel({ root, settings = workspaceNavSettings(root) }) {
     }
   }
 
-  const present = (node, row, module, about, opts) => {
+  const present = (node: NavNode, row: string, module: string | undefined, about: string | undefined, opts: any) => {
     const p = folderPresentation(module, about, opts)
     node.icon = codiconFor(p.icon)
     if (p.tooltip) node.tooltip = p.tooltip
@@ -172,7 +215,7 @@ export function navModel({ root, settings = workspaceNavSettings(root) }) {
     if (p.route) node.route = p.route
     return node
   }
-  const folderLook = (module, collections?) => {
+  const folderLook = (module: string | undefined, collections?: Descriptor[]) => {
     const { displayOf } = engine().descriptor
     const iconName = module
       ? moduleIcon(
@@ -185,10 +228,10 @@ export function navModel({ root, settings = workspaceNavSettings(root) }) {
           }
         )
       : undefined
-    const shared = collections?.some(d => collectionRow(d, sourcesOf(d)).shared) ?? false
+    const shared = collections?.some((d: Descriptor) => collectionRow(d, sourcesOf(d)).shared) ?? false
     return { ...(iconName ? { icon: iconName } : {}), ...(shared ? { shared } : {}) }
   }
-  const viewNode = v => {
+  const viewNode = (v: UiView): NavNode => {
     const r = viewRow(v)
     return {
       kind: "view",
@@ -201,7 +244,7 @@ export function navModel({ root, settings = workspaceNavSettings(root) }) {
     }
   }
   const views = loadUiViews(root)
-  const collectionNode = d => {
+  const collectionNode = (d: Descriptor): NavNode => {
     const row = collectionRow(d, sourcesOf(d))
     const marks = rowMarks({ shared: row.shared })
     const kids = navViewsOf(views, d.name).map(viewNode)
@@ -221,7 +264,7 @@ export function navModel({ root, settings = workspaceNavSettings(root) }) {
   // the legacy tree's folders, keyed and targeted as the folders migrateNavSettings writes for them: a module or
   // group folder is { folder: <label as drawn> }, a namespace folder { namespace } — so a host's node keeps its
   // key across the migration
-  const groupNode = (f, label, path = []) => {
+  const groupNode = (f: any, label: string, path: string[] = []): NavNode => {
     const module = folderModule(f, modules)
     const look = folderLook(module, f.collections)
     const ns = f.key.startsWith("ns:") ? f.key.slice(3) : null
@@ -241,11 +284,11 @@ export function navModel({ root, settings = workspaceNavSettings(root) }) {
     )
     node.children = [
       ...f.collections.map(collectionNode),
-      ...f.children.map(c => groupNode(c, groupLabel(c.key, titleOf, f.key), p)),
+      ...f.children.map((c: any) => groupNode(c, groupLabel(c.key, titleOf, f.key), p)),
     ]
     return node
   }
-  const layerEntriesOf = layer => {
+  const layerEntriesOf = (layer: any) => {
     const s = layerSettings(root, layer.key)
     return layerEntries(layer.rows, descriptors, {
       declared,
@@ -257,7 +300,7 @@ export function navModel({ root, settings = workspaceNavSettings(root) }) {
       titleOf,
     })
   }
-  const layerRowNode = (layer, row) => ({
+  const layerRowNode = (layer: any, row: any): NavNode => ({
     kind: "layer-collection",
     key: `l/${layer}/c/${row.collection}`,
     label: row.title,
@@ -266,8 +309,8 @@ export function navModel({ root, settings = workspaceNavSettings(root) }) {
     tooltip: `${row.title} — ${row.count} record${row.count === 1 ? "" : "s"} from ${layer}`,
     route: row.route,
   })
-  const layerNodes = (layer, entries) =>
-    entries.map(e => {
+  const layerNodes = (layer: any, entries: any[]): NavNode[] =>
+    entries.map((e: any) => {
       if (e.kind === "row") return layerRowNode(layer, e.row)
       const module = folderModule(e.folder, modules)
       const node = present(
@@ -282,8 +325,8 @@ export function navModel({ root, settings = workspaceNavSettings(root) }) {
     })
   // buildTree's nodes as layer nodes: keys prefixed with the layer, a folder or namespace a layer-group (no module
   // look: a nav.yaml folder is the person's), a row the layer's row with the entry's icon when it names one
-  const layerDocNodes = (layer, nodes) =>
-    nodes.map(n => {
+  const layerDocNodes = (layer: any, nodes: any[]): NavNode[] =>
+    nodes.map((n: any): NavNode => {
       if (n.kind === "collection") return { ...layerRowNode(layer, n.row), ...(n.icon ? { icon: n.icon } : {}) }
       return {
         kind: "layer-group",
@@ -293,10 +336,10 @@ export function navModel({ root, settings = workspaceNavSettings(root) }) {
         children: layerDocNodes(layer, n.children ?? []),
       }
     })
-  const layerChildren = (l, node) => {
-    let doc = null
+  const layerChildren = (l: any, node: NavNode) => {
+    let doc: NavDoc | null = null
     try {
-      doc = drawable(readNavDoc(path.join(root, "git_modules", l.key)), problem => {
+      doc = drawable(readNavDoc(path.join(root, "git_modules", l.key)), (problem: string) => {
         node.notice = problem
       })
     } catch (e) {
@@ -315,11 +358,12 @@ export function navModel({ root, settings = workspaceNavSettings(root) }) {
         namespaces: declared,
         titleOf: title,
         icon: codiconFor,
-        namespaceTitle: (ns, parent) => groupLabel(`ns:${ns}`, titleOf, parent ? `ns:${parent}` : undefined),
+        namespaceTitle: (ns: string, parent?: string) =>
+          groupLabel(`ns:${ns}`, titleOf, parent ? `ns:${parent}` : undefined),
       })
     )
   }
-  const layerNode = l => {
+  const layerNode = (l: any): NavNode => {
     const module = folderModule({ layer: l.key }, modules)
     const node = present(
       { kind: "layer", key: `l/${l.key}`, label: l.label },
@@ -335,12 +379,12 @@ export function navModel({ root, settings = workspaceNavSettings(root) }) {
     return node
   }
 
-  let top
+  let top: NavNode[]
   let notice
   if (!descriptors.length) {
     top = [{ kind: "message", key: "message", label: "no compiled collections — run: npm run compile", icon: "info" }]
   } else {
-    let layerGroups = []
+    let layerGroups: { label: string; layers: any[] }[] = []
     try {
       const { layers } = sourcesStack(root, descriptors, ctx())
       layerGroups = groupedLayerFolders(
@@ -352,18 +396,18 @@ export function navModel({ root, settings = workspaceNavSettings(root) }) {
     } catch {
       /* a nav without the layers folder beats no nav */
     }
-    const layersEntries = layerGroups.map(g => ({ kind: "layers", label: g.label, layers: g.layers }))
-    const layersNode = e => ({
+    const layersEntries = layerGroups.map(g => ({ kind: "layers" as const, label: g.label, layers: g.layers }))
+    const layersNode = (e: { label: string; layers: any[] }): NavNode => ({
       kind: "layers",
       key: `layers/${e.label}`,
       label: e.label,
       icon: "layers",
       children: e.layers.map(layerNode),
     })
-    let doc = null
+    let doc: NavDoc | null = null
     let absent = false
     try {
-      doc = drawable(readNavDoc(root), problem => {
+      doc = drawable(readNavDoc(root), (problem: string) => {
         notice = problem
       })
       absent = doc === null
@@ -398,7 +442,8 @@ export function navModel({ root, settings = workspaceNavSettings(root) }) {
           nodeOf: collectionNode,
           icon: codiconFor,
           internal: shouldFoldOutOfRecordTree,
-          namespaceTitle: (ns, parent) => groupLabel(`ns:${ns}`, titleOf, parent ? `ns:${parent}` : undefined),
+          namespaceTitle: (ns: string, parent?: string) =>
+            groupLabel(`ns:${ns}`, titleOf, parent ? `ns:${parent}` : undefined),
         }),
         ...layersEntries.map(layersNode),
       ]

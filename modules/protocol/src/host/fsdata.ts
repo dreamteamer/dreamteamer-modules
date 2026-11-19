@@ -4,18 +4,89 @@ import * as path from "node:path"
 import { execFileSync } from "node:child_process"
 import { GIT_SYNC } from "./gitExec.ts"
 import * as yaml from "js-yaml"
-export const EXT = { md: ".md", yaml: ".yaml", json: ".json" }
+
+export interface Descriptor {
+  name: string
+  [key: string]: any
+}
+export interface ViewDisplay {
+  nav?: {
+    title?: string
+    icon?: string
+    order?: number
+  }
+  list?: {
+    layout?: string
+    columns?: string[]
+    sort?: string
+    options?: Record<string, any>
+  }
+  record?: {
+    layout?: string
+    subtitle?: string
+    badge?: string
+    color_by?: string
+    options?: Record<string, any>
+  }
+  form?: {
+    sections?: Array<{
+      title: string
+      fields: string[]
+    }>
+  }
+}
+export interface UiView {
+  id: string
+  name?: string
+  title?: string
+  description?: string
+  route: string
+  scope: "record" | "collection" | "page"
+  collection?: string
+  filter?: Record<string, any>
+  display?: ViewDisplay
+  compiled?: {
+    display?: ViewDisplay
+  }
+}
+export interface RecordEntry {
+  id: string
+  file: string
+  fields: Record<string, any>
+}
+export interface ModuleRecord {
+  id: string
+  name: string
+  title?: string
+  channel?: string
+  path?: string
+  location?: string
+  dependencies?: string[]
+  namespaces?: string[]
+  collections?: string[]
+}
+export interface CollectionRoot {
+  dir: string
+  repo: string
+  layer?: string
+}
+export const EXT: Record<string, string> = { md: ".md", yaml: ".yaml", json: ".json" }
 const acc = () => engine().descriptor
-export function viewDisplay(v) {
+export function viewDisplay(v: UiView): ViewDisplay {
   return v.compiled?.display ?? v.display ?? {}
 }
-export function viewLabel(v) {
+export function viewLabel(v: UiView): string {
   return v.display?.nav?.title ?? v.title ?? v.name ?? v.id
 }
-export function navViewsOf(views, collection) {
+export function navViewsOf(views: UiView[], collection: string): UiView[] {
   return views.filter(v => v.scope === "collection" && !!v.display?.nav && viewCollection(v) === collection)
 }
-export function viewRow(v) {
+export function viewRow(v: UiView): {
+  label: string
+  icon: string
+  description?: string
+  tooltip: string
+} {
   const layout = viewDisplay(v).list?.layout
   return {
     label: viewLabel(v),
@@ -24,10 +95,14 @@ export function viewRow(v) {
     tooltip: `\`${v.route}\`  \n_saved view of ${viewCollection(v)}_`,
   }
 }
-export function viewCollection(v) {
+export function viewCollection(v: UiView): string {
   return (v.collection ?? "").replace(/^collections\//, "")
 }
-export function findWorkspaceRoot(folders) {
+export function findWorkspaceRoot(
+  folders: readonly {
+    fsPath: string
+  }[]
+): string | undefined {
   for (const f of folders) {
     if (fs.existsSync(path.join(f.fsPath, ".dreamteamer", "manifest.yaml"))) return f.fsPath
     const pkg = path.join(f.fsPath, "package.json")
@@ -39,33 +114,33 @@ export function findWorkspaceRoot(folders) {
   }
   return undefined
 }
-export function isRuntime(d) {
+export function isRuntime(d: Descriptor): boolean {
   return acc().isRuntime(d)
 }
-export function isInternal(d) {
+export function isInternal(d: Descriptor): boolean {
   return acc().isInternal(d)
 }
-export function systemDir(root, kind) {
+export function systemDir(root: string, kind: string): string {
   const flat = path.join(root, ".dreamteamer", kind)
   if (fs.existsSync(flat)) return flat
   const nested = path.join(root, ".dreamteamer", "system", kind)
   return fs.existsSync(nested) ? nested : flat
 }
-export function moduleDependencies(root) {
+export function moduleDependencies(root: string): Map<string, string[]> {
   return new Map(
     loadModules(root)
       .filter(m => m.dependencies?.length)
       .map(m => [m.id, m.dependencies])
   )
 }
-export function moduleNamespaces(root) {
+export function moduleNamespaces(root: string): Map<string, string[]> {
   return new Map(
     loadModules(root)
       .filter(m => m.namespaces?.length)
       .map(m => [m.id, m.namespaces])
   )
 }
-export function loadModules(root) {
+export function loadModules(root: string): ModuleRecord[] {
   const dir = systemDir(root, "modules")
   if (!fs.existsSync(dir)) return []
   const out = []
@@ -78,7 +153,7 @@ export function loadModules(root) {
   }
   return out
 }
-export function workspaceModule(root) {
+export function workspaceModule(root: string): string | undefined {
   try {
     const pkg = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"))
     const v = pkg?.dreamteamer?.workspace_module
@@ -87,7 +162,7 @@ export function workspaceModule(root) {
     return undefined
   }
 }
-export function workspaceName(root) {
+export function workspaceName(root: string): string {
   try {
     const pkg = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"))
     const v = pkg?.name
@@ -96,23 +171,23 @@ export function workspaceName(root) {
     return path.basename(root)
   }
 }
-export function loadDescriptors(root) {
-  const order = d => acc().displayOf(d).nav?.order ?? 999
+export function loadDescriptors(root: string): Descriptor[] {
+  const order = (d: Descriptor) => acc().displayOf(d).nav?.order ?? 999
   return [...(engine().loadDescriptors(root)?.values() ?? [])].sort((a, b) => order(a) - order(b))
 }
-export function collectionRoots(root, d) {
+export function collectionRoots(root: string, d: Descriptor): CollectionRoot[] {
   const s = acc().storageOf(d)
   const base = isRuntime(d) ? path.join(root, ".dreamteamer") : root
-  return s.roots.map(r => ({
+  return s.roots.map((r: Record<string, any>) => ({
     dir: path.resolve(base, r.path),
     repo: r.repo ?? s.repo ?? ".",
     ...(r.layer ? { layer: r.layer } : {}),
   }))
 }
-export function collectionDir(root, d) {
+export function collectionDir(root: string, d: Descriptor): string {
   return collectionRoots(root, d)[0].dir
 }
-export function repoOfPath(root, descriptors, abs) {
+export function repoOfPath(root: string, descriptors: Iterable<Descriptor>, abs: string): string {
   const target = path.resolve(abs)
   let best
   for (const d of descriptors) {
@@ -124,7 +199,7 @@ export function repoOfPath(root, descriptors, abs) {
   }
   return best?.repo ?? "."
 }
-export function isUnderRecordRoot(root, descriptors, abs) {
+export function isUnderRecordRoot(root: string, descriptors: Iterable<Descriptor>, abs: string): boolean {
   const target = path.resolve(abs)
   for (const d of descriptors) {
     if (isRuntime(d)) continue
@@ -135,7 +210,7 @@ export function isUnderRecordRoot(root, descriptors, abs) {
   }
   return false
 }
-function* walk(dir) {
+function* walk(dir: string): Generator<string> {
   for (const e of fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
     if (e.name.startsWith(".")) continue
     const p = path.join(dir, e.name)
@@ -144,23 +219,32 @@ function* walk(dir) {
   }
 }
 import { engine } from "./engine.ts"
-export function parseRecordText(text, d, bodyField) {
+export function parseRecordText(text: string, d: Descriptor, bodyField?: string): Record<string, any> {
   return engine().parseRecordText(text, d, bodyField)
 }
-export function serializeRecord(d, fields) {
+export function serializeRecord(d: Descriptor, fields: Record<string, any>): string {
   return engine().serialize(d, fields)
 }
-export function bodyFieldOf(d) {
+export function bodyFieldOf(d: Descriptor): string | undefined {
   return engine().bodyField(d)
 }
-export function parseRecord(file, d) {
+export function parseRecord(file: string, d: Descriptor): Record<string, any> {
   try {
     return engine().parseRecordText(fs.readFileSync(file, "utf8"), d)
   } catch {
     return {}
   }
 }
-export function fileToRecord(root, descriptors, fsPath) {
+export function fileToRecord(
+  root: string,
+  descriptors: Descriptor[],
+  fsPath: string
+):
+  | {
+      d: Descriptor
+      id: string
+    }
+  | undefined {
   const candidates = descriptors
     .flatMap(d => collectionRoots(root, d).map(({ dir }) => ({ d, dir })))
     .filter(({ dir }) => fsPath.startsWith(dir + path.sep))
@@ -186,11 +270,11 @@ export function fileToRecord(root, descriptors, fsPath) {
   }
   return undefined
 }
-function recordTail(d) {
+function recordTail(d: Descriptor): string {
   const { suffix, format } = acc().storageOf(d)
   return `.${suffix}${EXT[format] ?? ""}`
 }
-function recordIdOf(rel, d) {
+function recordIdOf(rel: string, d: Descriptor) {
   const { suffix, format } = acc().storageOf(d)
   const slashed = rel.split(path.sep).join("/")
   if (format === "binary") {
@@ -200,10 +284,10 @@ function recordIdOf(rel, d) {
   const tail = recordTail(d)
   return slashed.endsWith(tail) ? slashed.slice(0, -tail.length) : undefined
 }
-function placedUnder(descriptors, parent) {
-  return descriptors.filter(c => acc().storageOf(c).under?.collection === parent.name)
+function placedUnder(descriptors: Descriptor[], parent: Descriptor) {
+  return descriptors.filter((c: Descriptor) => acc().storageOf(c).under?.collection === parent.name)
 }
-export function recordRoots(root, d, descriptors?) {
+export function recordRoots(root: string, d: Descriptor, descriptors?: Descriptor[]): string[] {
   const [own, ...layers] = collectionRoots(root, d).map(r => r.dir)
   const under = acc().storageOf(d).under
   if (!under?.collection) return [own, ...layers]
@@ -218,7 +302,7 @@ export function recordRoots(root, d, descriptors?) {
   }
   return roots
 }
-export function recordFileFor(root, d, id, descriptors?) {
+export function recordFileFor(root: string, d: Descriptor, id: string, descriptors?: Descriptor[]): string | undefined {
   const storage = acc().storageOf(d)
   const name = storage.shape === "folder" ? path.join(id, storage.entry ?? "SKILL.md") : `${id}${recordTail(d)}`
   for (const dir of recordRoots(root, d, descriptors)) {
@@ -227,7 +311,7 @@ export function recordFileFor(root, d, id, descriptors?) {
   }
   return undefined
 }
-export function listRecords(root, d) {
+export function listRecords(root: string, d: Descriptor): RecordEntry[] {
   const storage = acc().storageOf(d)
   const out = []
   if (storage.under?.collection) {
@@ -250,10 +334,10 @@ export function listRecords(root, d) {
   }
   return out
 }
-function listRoot(dir, d) {
+function listRoot(dir: string, d: Descriptor) {
   return [...walkIds(dir, d)].map(([id, file]) => ({ id, file, fields: parseRecord(file, d) }))
 }
-export function walkIds(dir, d) {
+export function walkIds(dir: string, d: Descriptor): Map<string, string> {
   const out = new Map()
   if (!fs.existsSync(dir)) return out
   const storage = acc().storageOf(d)
@@ -271,14 +355,19 @@ export function walkIds(dir, d) {
   }
   return out
 }
-export function duplicateIds(root, d) {
+export function duplicateIds(root: string, d: Descriptor): Map<string, CollectionRoot[]> {
   return contestedIds(root, d).duplicates
 }
-export function contestedIds(root, d) {
+export function contestedIds(
+  root: string,
+  d: Descriptor
+): {
+  duplicates: Map<string, CollectionRoot[]>
+} {
   const roots = collectionRoots(root, d)
   const duplicates = new Map()
   if (roots.length < 2 || acc().storageOf(d).under?.collection) return { duplicates }
-  const seen = new Map()
+  const seen = new Map<string, { r: CollectionRoot; file: string }[]>()
   for (const r of roots) {
     for (const [id, file] of walkIds(r.dir, d)) seen.set(id, [...(seen.get(id) ?? []), { r, file }])
   }
@@ -291,24 +380,24 @@ export function contestedIds(root, d) {
   }
   return { duplicates }
 }
-export function fieldVerbTargets(d) {
+export function fieldVerbTargets(d: Descriptor): string[] {
   return Object.entries<any>(acc().fieldsOf(d))
     .filter(([, f]) => !f.virtual && !f.derived)
     .map(([k]) => k)
 }
-export function titleField(d) {
+export function titleField(d: Descriptor): string | undefined {
   const fields = acc().fieldsOf(d)
   return ["title", "name", "subject"].find(f => f in fields && !fields[f].virtual)
 }
-export function recordLabel(d, r) {
+export function recordLabel(d: Descriptor, r: RecordEntry): string {
   const tf = titleField(d)
   const v = tf ? r.fields[tf] : undefined
   return typeof v === "string" && v.trim() ? v : r.id
 }
-export function uiViewFile(root, v) {
+export function uiViewFile(root: string, v: UiView): string {
   return path.join(systemDir(root, "ui-views"), `${v.id}.ui-view.yaml`)
 }
-export function loadUiViews(root) {
+export function loadUiViews(root: string): UiView[] {
   const dir = systemDir(root, "ui-views")
   if (!fs.existsSync(dir)) return []
   const out = []
@@ -322,9 +411,11 @@ export function loadUiViews(root) {
   }
   return out.sort((a, b) => (a.display?.nav?.order ?? 999) - (b.display?.nav?.order ?? 999))
 }
-export function operatorId(root) {
+export function operatorId(root: string): string | null {
   try {
-    const name = execFileSync("git", ["config", "user.name"], { cwd: root, ...GIT_SYNC }).toString().trim()
+    const name = execFileSync("git", ["config", "user.name"], { cwd: root, ...GIT_SYNC })
+      .toString()
+      .trim()
     const s = name
       .normalize("NFKD")
       .replace(/[̀-ͯ]/g, "")
@@ -339,13 +430,13 @@ export function operatorId(root) {
     return null
   }
 }
-export function matchesFilter(fields, filter, me) {
+export function matchesFilter(fields: Record<string, any>, filter: Record<string, any>, me: string | null): boolean {
   const meRef = me ? `users/${me}` : null
   for (const [k, v] of Object.entries<any>(filter ?? {})) {
     if (k === "_and") {
-      if (!v.every(f => matchesFilter(fields, f, me))) return false
+      if (!v.every((f: Record<string, any>) => matchesFilter(fields, f, me))) return false
     } else if (k === "_or") {
-      if (!v.some(f => matchesFilter(fields, f, me))) return false
+      if (!v.some((f: Record<string, any>) => matchesFilter(fields, f, me))) return false
     } else if (v !== null && typeof v === "object") {
       const expected = "_eq" in v ? v._eq : undefined
       const resolved = expected === "@me" ? meRef : expected

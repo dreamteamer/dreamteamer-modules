@@ -14,32 +14,35 @@ import {
   viewLabel,
 } from "./fsdata.ts"
 import { engine } from "./engine.ts"
-export function routeKey(route) {
+
+import type { Descriptor } from "./fsdata.ts"
+
+export function routeKey(route: string): string {
   const query = new URLSearchParams(route.split("#")[0].split("?")[1] ?? "")
   const place = ["filter", "module"].filter(k => query.get(k)).map(k => `${k}=${encodeURIComponent(query.get(k))}`)
   const bare = routePath(route)
   return place.length ? `${bare}?${place.join("&")}` : bare
 }
-export function routePath(route) {
+export function routePath(route: string): string {
   const head = route.split(/[?#]/)[0]
   return head.length > 1 && head.endsWith("/") ? head.slice(0, -1) : head
 }
-function splitContent(rest, descriptors) {
+function splitContent(rest: string, descriptors: Descriptor[]) {
   const segments = rest.split("/").filter(Boolean)
   for (let take = segments.length; take >= 1; take--) {
     const candidate = segments.slice(0, take).join("/")
-    const d = descriptors.find(x => x.name === candidate)
+    const d = descriptors.find((x: Descriptor) => x.name === candidate)
     if (!d) continue
     const id = segments.slice(take).join("/")
     return { d, id: id || undefined }
   }
   return {}
 }
-export function recordFile(root, d, id) {
+export function recordFile(root: string, d: Descriptor, id: string): string | undefined {
   return recordFileFor(root, d, id)
 }
-function schemaFile(root, tail) {
-  const exists = f => (fs.existsSync(f) ? f : undefined)
+function schemaFile(root: string, tail: string) {
+  const exists = (f: string) => (fs.existsSync(f) ? f : undefined)
   const segments = tail.split("/").filter(Boolean)
   const kind = segments[0]
   if (!kind) return exists(systemDir(root, "collections"))
@@ -51,9 +54,9 @@ function schemaFile(root, tail) {
   if (!storage?.suffix) return exists(dir)
   return exists(path.join(dir, `${id}.${storage.suffix}${EXT[storage.format] ?? ""}`))
 }
-export function fileForRoute(root, route) {
+export function fileForRoute(root: string, route: string): string | undefined {
   const p = routePath(route)
-  const exists = f => (fs.existsSync(f) ? f : undefined)
+  const exists = (f: string) => (fs.existsSync(f) ? f : undefined)
   if (p === "/settings/schema") return exists(systemDir(root, "collections"))
   if (p.startsWith("/settings/schema/")) return schemaFile(root, p.slice("/settings/schema/".length))
   if (p === "/settings/data-model") return exists(systemDir(root, "collections"))
@@ -72,16 +75,16 @@ export function fileForRoute(root, route) {
   return view ? exists(uiViewFile(root, view)) : undefined
 }
 const MAX_TAB_TITLE = 34
-function clipTitle(title) {
+function clipTitle(title: string): string {
   if (title.length <= MAX_TAB_TITLE) return title
   const head = title.slice(0, MAX_TAB_TITLE)
   const space = head.lastIndexOf(" ")
   return `${(space > MAX_TAB_TITLE * 0.6 ? head.slice(0, space) : head).trimEnd()}…`
 }
-export function titleForRoute(root, route) {
+export function titleForRoute(root: string, route: string): string {
   return clipTitle(fullTitleForRoute(root, route))
 }
-function fullTitleForRoute(root, route) {
+function fullTitleForRoute(root: string, route: string): string {
   const p = routePath(route)
   if (p === "/settings/schema") return "Schema"
   if (p.startsWith("/settings/schema/")) {
@@ -111,16 +114,16 @@ function fullTitleForRoute(root, route) {
   if (view) return viewLabel(view)
   return "dreamteamer"
 }
-function fullRecordTitle(root, d, id) {
+function fullRecordTitle(root: string, d: Descriptor, id: string): string {
   const file = recordFile(root, d, id)
   const tf = file ? titleField(d) : undefined
   const value = tf ? parseRecord(file, d)[tf] : undefined
   return typeof value === "string" && value.trim() ? value.trim() : id.split("/").pop()
 }
-export function recordTitle(root, d, id) {
+export function recordTitle(root: string, d: Descriptor, id: string): string {
   return clipTitle(fullRecordTitle(root, d, id))
 }
-function titleOfKind(root, kind) {
+function titleOfKind(root: string, kind: string): string {
   const d = loadDescriptors(root).find(x => x.name === kind)
   return d ? engine().descriptor.titleOf(d) : kind
 }

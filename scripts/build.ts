@@ -14,7 +14,8 @@
 //   • a module whose skills hold TypeScript is built whole into dist/skills (x.mts → x.mjs, every other file
 //     copied), and its manifest's `dreamteamer.skills: "dist/skills"` has `dt compile` stage its skills from
 //     there — to the same .dreamteamer/skills/<name>/ paths their SKILL.md runs.
-// Files beside the code that are not TypeScript (assets, the hand-written .d.ts) are copied across.
+// Each code .ts emits its .d.ts beside its .js (skills, which nothing imports, emit none), generated from the source's own types, so the declarations a consumer
+// compiles against cannot drift from the code. Files beside the code that are not TypeScript (assets) are copied.
 // Types are not checked here (`npm run typecheck` does that); a file tsc cannot emit fails the build.
 // ui and ui2 are browser apps with their own Vite build and are skipped.
 import { execFileSync } from "node:child_process"
@@ -47,8 +48,6 @@ const OPTIONS = [
   "--resolveJsonModule",
   "--skipLibCheck",
   "--noCheck",
-  "--declaration",
-  "false",
   "--sourceMap",
   "false",
   "--types",
@@ -68,15 +67,19 @@ function walk(dir: string, out: string[] = []): string[] {
 
 const isSource = (f: string) => f.endsWith(".ts") && !f.endsWith(".d.ts")
 
-function tsc(files: string[], rootDir: string, outDir: string) {
+function tsc(files: string[], rootDir: string, outDir: string, extra: string[] = []) {
   // the file list goes through a generated tsconfig: a command line has a length limit on Windows
   const config = path.join(rootDir, `.tsconfig.build.${process.pid}.json`)
   fs.writeFileSync(config, JSON.stringify({ files }))
   try {
-    execFileSync(process.execPath, [TSC, "-p", config, "--rootDir", rootDir, "--outDir", outDir, ...OPTIONS], {
-      cwd: ROOT,
-      stdio: "inherit",
-    })
+    execFileSync(
+      process.execPath,
+      [TSC, "-p", config, "--rootDir", rootDir, "--outDir", outDir, ...OPTIONS, ...extra],
+      {
+        cwd: ROOT,
+        stdio: "inherit",
+      }
+    )
   } finally {
     fs.rmSync(config, { force: true })
   }
@@ -100,17 +103,23 @@ export function buildModule(id: string): { code: number; skills: number } {
 
   fs.rmSync(dist, { recursive: true, force: true })
   if (code.length) {
-    tsc(code, dir, dist)
+    tsc(code, dir, dist, ["--declaration"])
     for (const f of inCode.filter(f => !isSource(f))) {
       const to = path.join(dist, path.relative(dir, f))
       fs.mkdirSync(path.dirname(to), { recursive: true })
-      if (f.endsWith(".d.ts")) {
-        // a consumer's TypeScript resolves the .js beside a declaration, never a .ts
-        const text = fs.readFileSync(f, "utf8")
-        fs.writeFileSync(to, text.replace(/((?:from\s+|import\(\s*)['"]\.\.?\/[\w./-]+)\.ts(['"])/g, "$1.js$2"))
-      } else fs.copyFileSync(f, to)
+      fs.copyFileSync(f, to)
     }
-    for (const f of walk(dist)) if (f.endsWith(".js")) keepRunnable(f)
+    for (const f of walk(dist)) {
+      if (f.endsWith(".js")) keepRunnable(f)
+      // tsc rewrites .ts specifiers in the .js only; a consumer's TypeScript resolves a declaration's .js import
+      else if (f.endsWith(".d.ts")) {
+        const text = fs.readFileSync(f, "utf8")
+        fs.writeFileSync(
+          f,
+          text.replace(/((?:from\s+|import\s+|import\(\s*)['"]\.\.?\/[\w./-]+)\.ts(['"])/g, "$1.js$2")
+        )
+      }
+    }
   }
   if (skills.length) {
     const skillsDir = path.join(dir, "skills")

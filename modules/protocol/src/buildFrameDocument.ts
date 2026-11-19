@@ -3,11 +3,11 @@
 // a blob; an artifact's page travels as bodyHtml and its scripts inline. The caller hashes `scriptTexts` when its
 // own page policy must admit them (VS Code); this package holds no crypto and no artifact or guest text.
 
-export const FRAME_POLICY =
+export const FRAME_POLICY: string =
   "default-src 'none'; script-src 'unsafe-inline' blob:; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; connect-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'; worker-src 'none'"
 
-const attr = s => s.replace(/&/g, "&amp;").replace(/"/g, "&quot;")
-function inline(text) {
+const attr = (s: string) => s.replace(/&/g, "&amp;").replace(/"/g, "&quot;")
+function inline(text: string): string {
   if (/<\/script/i.test(text))
     throw new Error("a script text closes its own block (</script) — escape it in the source")
   return text
@@ -34,7 +34,7 @@ export function buildFrameDocument({
   policy?: string
   bodyHtml?: string
   scripts?: Array<{ text: string; type?: "classic" | "module" }>
-}) {
+}): { html: string; scriptTexts: string[] } {
   const scriptTexts = [inline(guestText)]
   const tail = scripts
     .map(({ text, type = "classic" }) => {

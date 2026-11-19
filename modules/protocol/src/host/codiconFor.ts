@@ -1,5 +1,5 @@
 // Ported from the dreamteamer VS Code extension's host side (src/icon-name.ts); PROTOCOL.md is the contract it answers.
-const LEGACY = {
+const LEGACY: Record<string, string> = {
   close: "close",
   add: "add",
   delete: "trash",
@@ -101,7 +101,7 @@ const LEGACY = {
   image: "file-media",
   inventory_2: "package",
 }
-export function codiconFor(name) {
+export function codiconFor(name?: string | null): string {
   if (!name) return "circle-outline"
   return LEGACY[name] ?? name
 }

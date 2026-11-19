@@ -3,7 +3,16 @@ import * as fs from "node:fs"
 import * as path from "node:path"
 import { engine, openWorkspaceAt } from "./engine.ts"
 import { layerCompiles } from "./sources.ts"
-export async function createInLayer(root, layer, collection, fields, id) {
+export async function createInLayer(
+  root: string,
+  layer: string,
+  collection: string,
+  fields: Record<string, unknown>,
+  id?: string
+): Promise<{
+  id: string
+  file: string
+}> {
   const repo = path.posix.join("git_modules", layer)
   const dir = path.join(root, repo)
   if (!fs.existsSync(dir))

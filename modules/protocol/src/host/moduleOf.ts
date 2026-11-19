@@ -2,7 +2,13 @@
 import * as fs from "node:fs"
 import * as path from "node:path"
 import * as yaml from "js-yaml"
-export function moduleOfSource(source, modules) {
+
+import type { ModuleRecord } from "./fsdata.ts"
+
+export function moduleOfSource(
+  source: string,
+  modules: ReadonlyArray<Pick<ModuleRecord, "id" | "path">>
+): string | undefined {
   let best
   for (const m of modules) {
     const root = m.path?.replace(/\/+$/, "")
@@ -11,7 +17,20 @@ export function moduleOfSource(source, modules) {
   }
   return best?.id
 }
-export function runtimeModules(entries, modules) {
+export function runtimeModules(
+  entries:
+    | Record<
+        string,
+        | {
+            sources?: Array<{
+              path?: string
+            }>
+          }
+        | undefined
+      >
+    | undefined,
+  modules: ReadonlyArray<Pick<ModuleRecord, "id" | "path">>
+): Map<string, string> {
   const out = new Map()
   for (const [file, entry] of Object.entries<any>(entries ?? {})) {
     const source = entry?.sources?.[0]?.path
@@ -20,7 +39,7 @@ export function runtimeModules(entries, modules) {
   }
   return out
 }
-export function moduleOfRuntimeFile(rel, map) {
+export function moduleOfRuntimeFile(rel: string, map: Map<string, string>): string | undefined {
   const exact = map.get(rel)
   if (exact) return exact
   const parts = rel.split("/")
@@ -30,7 +49,10 @@ export function moduleOfRuntimeFile(rel, map) {
   }
   return undefined
 }
-export function loadRuntimeModules(root, modules) {
+export function loadRuntimeModules(
+  root: string,
+  modules: ReadonlyArray<Pick<ModuleRecord, "id" | "path">>
+): Map<string, string> {
   try {
     const doc: any = yaml.load(fs.readFileSync(path.join(root, ".dreamteamer", "manifest.yaml"), "utf8"))
     return runtimeModules(doc?.entries, modules)

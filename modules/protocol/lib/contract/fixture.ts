@@ -12,6 +12,15 @@ import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
 
+export interface Fixture {
+  root: string
+  layer: string
+  git: (args: string[], cwd?: string) => string
+  dt: (...args: string[]) => { status: number | null; stdout: string; stderr: string }
+  head: () => string
+  cleanup: () => void
+}
+
 const TIMEOUT = 60_000
 const GIT_ENV = {
   ...process.env,
@@ -121,15 +130,15 @@ const LAYER = "northwind-archive"
  * Build the fixture with the engine at `engineDir` (a dreamteamer checkout or package with `bin/` and
  * public API, resolved through its package.json `exports`). Returns `{ root, layer, git, dt, head, cleanup }`.
  */
-export function makeFixture({ engineDir: given, tmp = os.tmpdir() }: Record<string, any> = {}) {
+export function makeFixture({ engineDir: given, tmp = os.tmpdir() }: { engineDir: string; tmp?: string }): Fixture {
   const engineDir = given && path.resolve(given)
   if (!engineDir || !fs.existsSync(path.join(engineDir, "bin", "dreamteamer.js")))
     throw new Error(`makeFixture: no engine at ${engineDir}`)
   const root = fs.realpathSync(fs.mkdtempSync(path.join(tmp, "dt-contract-")))
   const bin = path.join(engineDir, "bin", "dreamteamer.js")
-  const git = (args, cwd = root) =>
+  const git = (args: string[], cwd: string = root): string =>
     execFileSync("git", args, { cwd, env: GIT_ENV, encoding: "utf8", timeout: TIMEOUT }).trim()
-  const dt = (...args) => {
+  const dt = (...args: string[]) => {
     const r = spawnSync(process.execPath, [bin, ...args], {
       cwd: root,
       env: GIT_ENV,
@@ -139,7 +148,7 @@ export function makeFixture({ engineDir: given, tmp = os.tmpdir() }: Record<stri
     })
     return { status: r.status, stdout: r.stdout ?? "", stderr: r.stderr ?? "" }
   }
-  const must = (r, what) => {
+  const must = <R extends { status: number | null; stdout: string; stderr: string }>(r: R, what: string): R => {
     if (r.status !== 0) throw new Error(`fixture ${what} failed:\n${r.stdout}\n${r.stderr}`)
     return r
   }

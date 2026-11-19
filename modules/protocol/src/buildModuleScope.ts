@@ -2,6 +2,8 @@
 // never from anything a module's own files declare beyond its own collections.
 import { SYSTEM_COLLECTIONS } from "./gate.ts"
 
+import type { Op, Scope, WriteGrant } from "./gate.ts"
+
 export const MODULE_READ_ROUTES = [
   "info",
   "schema",
@@ -20,7 +22,24 @@ const settings = "this workspace's .vscode/settings.json"
  *   descriptors: Array<{name: string, fields?: object, compiled?: {overlaid_by?: string[]}, runtime?: boolean}>,
  *   grant: Record<string, {reads?: string[], writes?: string[]}> }} input
  */
-export function buildModuleScope({ module, home, collectionsRows, descriptors, grant }) {
+export function buildModuleScope({
+  module,
+  home,
+  collectionsRows,
+  descriptors,
+  grant,
+}: {
+  module: string
+  home: string
+  collectionsRows: Array<{ id: string; $module?: string }>
+  descriptors: Array<{
+    name: string
+    fields?: Record<string, any>
+    compiled?: { overlaid_by?: string[] }
+    runtime?: boolean
+  }>
+  grant: Record<string, { reads?: string[]; writes?: string[] }>
+}): Scope & { kind: "module"; module: string; home: string; own: Set<string> } {
   const ownerOf = new Map(collectionsRows.map(r => [r.id, r.$module]))
   const byName = new Map<any, any>(descriptors.map(d => [d.name, d]))
   const own = new Set(
@@ -43,13 +62,13 @@ export function buildModuleScope({ module, home, collectionsRows, descriptors, g
     ...(g.reads ?? []).filter(c => referenced.has(c) && !SYSTEM_COLLECTIONS.has(c)),
     "ui-views",
   ])
-  const writes = new Map(
+  const writes = new Map<string, WriteGrant>(
     (g.writes ?? [])
-      .filter(c => own.has(c))
-      .map(c => [
+      .filter((c: string) => own.has(c))
+      .map((c: string): [string, WriteGrant] => [
         c,
         {
-          ops: new Set(["create", "update", "delete", "position"]),
+          ops: new Set<Op>(["create", "update", "delete", "position"]),
           fields: "own-fields",
           mirroredRefs: "refuse",
           commit: false,
@@ -58,7 +77,7 @@ export function buildModuleScope({ module, home, collectionsRows, descriptors, g
   )
   const label = `module app ${module}`
   const ownList = [...own].sort().join(", ")
-  const owner = c => ownerOf.get(c) ?? "no module"
+  const owner = (c: string) => ownerOf.get(c) ?? "no module"
   return {
     kind: "module",
     module,

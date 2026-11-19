@@ -1,12 +1,17 @@
 // Ported from the dreamteamer VS Code extension's host side (src/folder-images.ts); PROTOCOL.md is the contract it answers.
 import * as fs from "node:fs"
 import * as path from "node:path"
-export const IMAGE_EXTS = new Set(["png", "jpg", "jpeg", "webp", "gif", "svg"])
-export function isImageFile(name) {
+
+export interface EnvRoot {
+  name: string
+  path: string
+}
+export const IMAGE_EXTS: Set<string> = new Set(["png", "jpg", "jpeg", "webp", "gif", "svg"])
+export function isImageFile(name: string): boolean {
   const ext = name.slice(name.lastIndexOf(".") + 1).toLowerCase()
   return name.includes(".") && IMAGE_EXTS.has(ext)
 }
-export function naturalCompare(a, b) {
+export function naturalCompare(a: string, b: string): number {
   const re = /(\d+)|(\D+)/g
   const pa = a.match(re) ?? [],
     pb = b.match(re) ?? []
@@ -25,7 +30,7 @@ export function naturalCompare(a, b) {
   }
   return pa.length - pb.length
 }
-export function listFolderImages(dir) {
+export function listFolderImages(dir: string): string[] {
   try {
     return fs
       .readdirSync(dir, { withFileTypes: true })
@@ -36,7 +41,7 @@ export function listFolderImages(dir) {
     return []
   }
 }
-export function envRoots(declared, render) {
+export function envRoots(declared: string[], render: (template: string) => string): EnvRoot[] {
   const out = []
   for (const name of declared) {
     let value

@@ -4,7 +4,7 @@ import fs from "node:fs"
 import path from "node:path"
 
 /** What the engine hands a setup unit: the workspace root and the environment to run in. */
-interface SetupContext {
+export interface SetupContext {
   root?: string
   env?: NodeJS.ProcessEnv
 }

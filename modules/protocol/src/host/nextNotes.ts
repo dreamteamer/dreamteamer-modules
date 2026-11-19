@@ -1,7 +1,18 @@
 // Ported from the dreamteamer VS Code extension's host side (src/next-notes.ts); PROTOCOL.md is the contract it answers.
 import { engine } from "./engine.ts"
 import { refsIn } from "./refsIn.ts"
-export function notesFor(store, collection, ids) {
+
+import type { EngineNote } from "./engine.ts"
+import type { NoteRef } from "./refsIn.ts"
+
+export interface NextNote extends EngineNote {
+  refs: Array<
+    NoteRef & {
+      exists: boolean
+    }
+  >
+}
+export function notesFor(store: any, collection: string, ids: string[]): NextNote[] {
   const eng = engine()
   if (!ids.length || typeof eng.contributedNotes !== "function") return []
   let raw
@@ -12,7 +23,7 @@ export function notesFor(store, collection, ids) {
   }
   const collections = [...store.descriptors.keys()]
   const known = new Map()
-  const exists = (c, id) => {
+  const exists = (c: string, id: string) => {
     const key = `${c}/${id}`
     if (!known.has(key)) {
       let ok = false
@@ -29,7 +40,7 @@ export function notesFor(store, collection, ids) {
     refs: refsIn(n.text, collections).map(r => ({ ...r, exists: exists(r.collection, r.id) })),
   }))
 }
-export function byId(notes) {
+export function byId(notes: NextNote[]): Map<string, NextNote[]> {
   const out = new Map()
   for (const n of notes) {
     if (n.id == null) continue

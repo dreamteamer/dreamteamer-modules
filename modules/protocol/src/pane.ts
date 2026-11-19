@@ -11,6 +11,54 @@
 import { randomUUID } from "node:crypto"
 import { engine } from "./host/engine.ts"
 
+export type PaneLevel = "read" | "edit" | "admin"
+export type PaneView =
+  { collection: string } | { collection: string; id: string } | { uiView: string } | { other: true }
+export interface PaneSelection {
+  view: PaneView | null
+  refs: string[]
+  place: string | null
+  at: string | null
+}
+export interface QueueItem {
+  id: string
+  command: string
+  refs: string[]
+  invocation: string
+  state: "waiting" | "delivered" | "expired"
+  queuedAt: string
+  deliveredAt?: string
+}
+export interface HostInfo {
+  level: PaneLevel
+  chat: boolean
+  workspace: { id?: string; name: string }
+  raisedAt?: string
+  filesBase?: string
+  framesBase?: string
+  fileBases?: unknown[]
+  varRoots?: unknown[]
+  moduleGrants?: unknown
+  moduleGrantProblem?: unknown
+}
+export interface PaneStore {
+  host(): HostInfo | Promise<HostInfo>
+  getSelection(): PaneSelection
+  putSelection(s: PaneSelection): void
+  /** Expiry applied on read, newest first, at most 20. */
+  getQueue(now?: number): QueueItem[]
+  addQueue(i: { command: string; refs: string[]; invocation: string }): QueueItem | Promise<QueueItem>
+}
+/** What the validators read: the compiled descriptors and the host's own record and command reads. */
+export interface PaneReader {
+  descriptors(): Map<string, unknown>
+  handle(method: string, path: string): Promise<{ status: number; body?: any }>
+}
+/** THE parseRef seam: absent, the loaded engine's `engine().parseRef` (namespaces honoured). */
+export interface PaneOptions {
+  parseRef?: (ref: string) => { collection: string; id: string } | null
+}
+
 export const MAX_REFS = 50
 export const QUEUE_TTL_MS = 3_600_000
 export const QUEUE_LIST_MAX = 20
@@ -22,26 +70,32 @@ type Ref = { ref: string; collection: string; id: string }
 
 const VIEW_SHAPE = "a view is { collection }, { collection, id }, { uiView } or { other: true }"
 
-const isPlain = o => o !== null && typeof o === "object" && !Array.isArray(o)
-const keysAre = (o, keys) => {
+const isPlain = (o: unknown): o is Record<string, any> => o !== null && typeof o === "object" && !Array.isArray(o)
+const keysAre = (o: object, keys: string[]) => {
   const k = Object.keys(o).sort()
   return k.length === keys.length && k.every((x, i) => x === [...keys].sort()[i])
 }
-const nonEmpty = s => typeof s === "string" && s.length > 0
-const encId = id => id.split("/").map(encodeURIComponent).join("/")
+const nonEmpty = (s: unknown): s is string => typeof s === "string" && s.length > 0
+const encId = (id: string) => id.split("/").map(encodeURIComponent).join("/")
 const fail = (error: string): Result<never> => ({ ok: false, error })
-const defaultParseRef = ref => engine().parseRef(ref)
-const has = (descriptors, name) =>
-  descriptors instanceof Map ? descriptors.has(name) : ((descriptors ?? []).some?.(d => d?.name === name) ?? false)
+const defaultParseRef = (ref: string) => engine().parseRef(ref)
+const has = (descriptors: any, name: string): boolean =>
+  descriptors instanceof Map
+    ? descriptors.has(name)
+    : ((descriptors ?? []).some?.((d: { name?: string }) => d?.name === name) ?? false)
 
-async function exists(api, collection, id) {
+async function exists(api: PaneReader, collection: unknown, id: unknown) {
   if (!nonEmpty(collection) || !nonEmpty(id)) return false
   const res = await api.handle("GET", `/collections/${encodeURIComponent(collection)}/records/${encId(id)}`)
   return res?.status === 200
 }
 
 /** Each ref split and checked; `min` the least count. → { ok, value: [{ ref, collection, id }] } | { ok: false, error } */
-async function checkRefs(api, refs, { parseRef = defaultParseRef, min = 0 } = {}): Promise<Result<Ref[]>> {
+async function checkRefs(
+  api: PaneReader,
+  refs: unknown,
+  { parseRef = defaultParseRef as PaneOptions["parseRef"], min = 0 } = {}
+): Promise<Result<Ref[]>> {
   if (!Array.isArray(refs)) return fail("refs is a list of <collection>/<id>")
   if (refs.length > MAX_REFS) return fail(`more than ${MAX_REFS} refs`)
   if (refs.length < min) return fail("name at least one record")
@@ -65,7 +119,7 @@ async function checkRefs(api, refs, { parseRef = defaultParseRef, min = 0 } = {}
   return { ok: true, value: out }
 }
 
-async function checkView(api, view): Promise<Result<any>> {
+async function checkView(api: PaneReader, view: unknown): Promise<Result<PaneView>> {
   if (!isPlain(view)) return fail(VIEW_SHAPE)
   if (keysAre(view, ["other"])) return view.other === true ? { ok: true, value: { other: true } } : fail(VIEW_SHAPE)
   if (keysAre(view, ["uiView"])) {
@@ -89,10 +143,14 @@ async function checkView(api, view): Promise<Result<any>> {
  * `PUT /selection`'s body: `{ view, refs }` and nothing else.
  * @param {{ descriptors(): Map<string, unknown>, handle(method: string, path: string): Promise<{ status: number }> }} api
  */
-export async function validateSelection(api, body, opts = {}): Promise<Result<{ view: any; refs: string[] }>> {
+export async function validateSelection(
+  api: PaneReader,
+  body: unknown,
+  opts: PaneOptions = {}
+): Promise<Result<{ view: any; refs: string[] }>> {
   if (!isPlain(body) || !keysAre(body, ["view", "refs"])) return fail("a selection is { view, refs } and nothing else")
   const view = await checkView(api, body.view)
-  if (!view.ok) return view
+  if (!view.ok) return fail(view.error)
   const refs = await checkRefs(api, body.refs, opts)
   if (!refs.ok) return fail(refs.error)
   return { ok: true, value: { view: view.value, refs: refs.value.map(r => r.ref) } }
@@ -100,9 +158,9 @@ export async function validateSelection(api, body, opts = {}): Promise<Result<{ 
 
 /** `POST /queue`'s body: `{ command, refs }` — 1..50 refs of one collection, and a command bound to them with an invocation. */
 export async function validateQueue(
-  api,
-  body,
-  opts = {}
+  api: PaneReader,
+  body: unknown,
+  opts: PaneOptions = {}
 ): Promise<Result<{ command: string; refs: string[]; invocation: string }>> {
   if (!isPlain(body) || !keysAre(body, ["command", "refs"]) || !nonEmpty(body.command))
     return fail("a queued command is { command, refs } and nothing else")
@@ -115,36 +173,43 @@ export async function validateQueue(
   const res = await api.handle("GET", `/commands/${encodeURIComponent(collection)}?ids=${ids}`)
   const row =
     res?.status === 200
-      ? (res.body?.commands ?? []).find(r => r?.command === body.command && nonEmpty(r?.invocation))
+      ? (res.body?.commands ?? []).find(
+          (r: { command?: string; invocation?: string }) => r?.command === body.command && nonEmpty(r?.invocation)
+        )
       : undefined
   if (!row) return fail(`${body.command} is not available for these records`)
   return { ok: true, value: { command: body.command, refs: refs.value.map(r => r.ref), invocation: row.invocation } }
 }
 
 /** The place a view names, from ids: `tasks · List`, `rnd/change-requests/cr-x`, `<ui-view> · View`; `null` for none. */
-export function renderPlace(view, uiViewTitle?) {
-  if (!isPlain(view) || view.other === true) return null
-  if (nonEmpty(view.uiView)) return `${uiViewTitle?.(view.uiView) ?? view.uiView} · View`
-  if (nonEmpty(view.collection) && nonEmpty(view.id)) return `${view.collection}/${view.id}`
-  if (nonEmpty(view.collection)) return `${view.collection} · List`
+export function renderPlace(view: PaneView | null, uiViewTitle?: (id: string) => string | null): string | null {
+  if (!isPlain(view)) return null
+  const v = view as Record<string, any>
+  if (v.other === true) return null
+  if (nonEmpty(v.uiView)) return `${uiViewTitle?.(v.uiView) ?? v.uiView} · View`
+  if (nonEmpty(v.collection) && nonEmpty(v.id)) return `${v.collection}/${v.id}`
+  if (nonEmpty(v.collection)) return `${v.collection} · List`
   return null
 }
 
 /** A copy with every waiting item queued QUEUE_TTL_MS or more before `now` marked expired. */
-export function expireQueue(items, now) {
+export function expireQueue(items: QueueItem[], now: number): QueueItem[] {
   return (items ?? []).map(i =>
     i.state === "waiting" && now - Date.parse(i.queuedAt) >= QUEUE_TTL_MS ? { ...i, state: "expired" } : i
   )
 }
 
 /** Newest first, at most QUEUE_LIST_MAX, expiry applied. */
-export function listQueue(items, now) {
+export function listQueue(items: QueueItem[], now: number): QueueItem[] {
   return expireQueue(items, now)
     .sort((a, b) => Date.parse(b.queuedAt) - Date.parse(a.queuedAt))
     .slice(0, QUEUE_LIST_MAX)
 }
 
-export const newQueueItem = ({ command, refs, invocation }, now = Date.now()) => ({
+export const newQueueItem = (
+  { command, refs, invocation }: { command: string; refs: string[]; invocation: string },
+  now: number = Date.now()
+): QueueItem => ({
   id: randomUUID(),
   command,
   refs: [...refs],
@@ -154,9 +219,15 @@ export const newQueueItem = ({ command, refs, invocation }, now = Date.now()) =>
 })
 
 /** A PaneStore held in memory — the editor's, and any host's that passes none. */
-export function memoryPane({ host, now = Date.now }) {
-  let selection = { view: null, refs: [], place: null, at: null }
-  let queue = []
+export function memoryPane({
+  host,
+  now = Date.now,
+}: {
+  host: () => HostInfo | Promise<HostInfo>
+  now?: () => number
+}): PaneStore {
+  let selection: PaneSelection = { view: null, refs: [], place: null, at: null }
+  let queue: QueueItem[] = []
   return {
     host: () => host(),
     getSelection: () => ({ ...selection, refs: [...selection.refs] }),
@@ -174,7 +245,10 @@ export function memoryPane({ host, now = Date.now }) {
 
 const defaults = new WeakMap()
 /** The memory store a host that passes none gets — one per api, answering at admin with the workspace's name. */
-export function defaultPane(api, host) {
+export function defaultPane(
+  api: object,
+  host: (method: string, path: string) => Promise<{ status: number; body: any }>
+): PaneStore {
   let pane = defaults.get(api)
   if (!pane) {
     pane = memoryPane({
@@ -192,7 +266,11 @@ export function defaultPane(api, host) {
  * One pane route. `reader` is `{ descriptors(), handle(method, path) }` — the host the router fronts.
  * @returns {Promise<{ status: number, body: unknown }>}
  */
-export async function answerPane(id, body, { pane, reader, parseRef }: { pane: any; reader: any; parseRef?: any }) {
+export async function answerPane(
+  id: string,
+  body: unknown,
+  { pane, reader, parseRef }: { pane: PaneStore; reader: PaneReader; parseRef?: PaneOptions["parseRef"] }
+): Promise<{ status: number; body: unknown }> {
   try {
     if (id === "host") return { status: 200, body: await pane.host() }
     if (id === "selection-get") return { status: 200, body: pane.getSelection() }

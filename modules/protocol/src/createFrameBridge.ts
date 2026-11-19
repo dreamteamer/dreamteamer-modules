@@ -1,7 +1,20 @@
 // The frame bridge (cr-modules-008 §2; cr-modules-007 §4a): a message counts only when its source is a frame
 // the host registered, and a frame whose document is ever replaced stops counting.
-export function createFrameBridge() {
-  const frames = new Map() // window → { meta, loads }
+
+export interface FrameBridge<M = unknown> {
+  add(win: object, meta: M): void
+  remove(win: object): void
+  loaded(win: object): void
+  accept(event: {
+    source: unknown
+    data: unknown
+  }): { meta: M; msg: { dt: 1; id: unknown; op: string; [k: string]: unknown } } | null
+  reply(win: { postMessage(m: unknown, t: string): void }, id: unknown, reply: unknown): void
+  post(win: { postMessage(m: unknown, t: string): void }, msg: Record<string, unknown>): void
+}
+
+export function createFrameBridge<M = unknown>(): FrameBridge<M> {
+  const frames = new Map<unknown, { meta: M; loads: number }>() // window → { meta, loads }
   return {
     add(win, meta) {
       frames.set(win, { meta, loads: 0 })
@@ -15,10 +28,9 @@ export function createFrameBridge() {
       if (!f) return
       if (++f.loads > 1) frames.delete(win)
     },
-    /** @returns {{meta: unknown, msg: {dt: 1, id: unknown, op: string}} | null} */
     accept(event) {
       const f = frames.get(event?.source)
-      const d = event?.data
+      const d = event?.data as { dt: 1; id: unknown; op: string; [k: string]: unknown } | null
       if (!f || !d || d.dt !== 1 || d.id === undefined || typeof d.op !== "string") return null
       return { meta: f.meta, msg: d }
     },

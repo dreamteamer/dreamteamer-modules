@@ -32,41 +32,61 @@ import { createInLayer } from "./createInLayer.ts"
 import { accessTargets, redactSecrets, unavailableAccess, NOT_AVAILABLE } from "./remoteAccess.ts"
 import { byId, notesFor } from "./nextNotes.ts"
 import { recordDirsOrNone, unreadableReason } from "./recordDirs.ts"
+
+import type { RemoteAccessProvider } from "./remoteAccess.ts"
+import type { Descriptor, ModuleRecord } from "./fsdata.ts"
+import type { SourceEntry, SourcesContext } from "./sources.ts"
+import type { ActivityPage, ActivityScope, ScopeRead } from "./activity.ts"
+
+export interface ApiResult {
+  status: number
+  body: unknown
+}
+export interface FileHistory {
+  modified: string | null
+  by: string | null
+  createdBy: string | null
+}
 export class ApiFailure extends Error {
-  status
-  constructor(message, status) {
+  status: number
+  constructor(message: string, status: number) {
     super(message)
     this.status = status
   }
 }
 export class WorkspaceApi {
-  root
-  store
-  manifestMtime = 0
-  operatorId = null
-  onSystemWrite
-  constructor(root) {
+  root: string
+  /** The workspace engine's Store, loaded at run time. */
+  private store: any
+  private manifestMtime = 0
+  private operatorId: string | null = null
+  onSystemWrite: ((result: unknown) => void) | undefined
+  constructor(root: string) {
     this.root = root
     this.reload()
     try {
-      const name = execFileSync("git", ["config", "user.name"], { cwd: root, ...GIT_SYNC }).toString().trim()
+      const name = execFileSync("git", ["config", "user.name"], { cwd: root, ...GIT_SYNC })
+        .toString()
+        .trim()
       this.operatorId = engine().slugOrHash(name)
     } catch {}
   }
-  activityReads = new Map()
-  activityPages = new Map()
-  activityScopes(moduleId, source) {
+  private activityReads = new Map<string, ScopeRead>()
+  private activityPages = new Map<string, { at: number; scopes: ActivityScope[]; feed: ActivityPage; body: unknown }>()
+  private activityScopes(moduleId: string | undefined, source: string | undefined): ActivityScope[] {
     const eng = engine()
     const store = this.store
     const modules = loadModules(this.root)
     const ws = workspaceModule(this.root)
     const descs = [...store.descriptors.values()]
-    const recordDirsOf = id =>
+    const recordDirsOf = (id: string): string[] =>
       descs
-        .filter(d => !eng.descriptor.isRuntime(d) && eng.descriptor.moduleOf(d) === id)
-        .flatMap(d => recordDirsOrNone(store, d).map(dir => path.relative(this.root, dir).split(path.sep).join("/")))
+        .filter((d: Descriptor) => !eng.descriptor.isRuntime(d) && eng.descriptor.moduleOf(d) === id)
+        .flatMap((d: Descriptor) =>
+          recordDirsOrNone(store, d).map((dir: string) => path.relative(this.root, dir).split(path.sep).join("/"))
+        )
     const picked = moduleId ? modules.filter(m => m.id === moduleId) : modules
-    const npm = m => m.location === "node_modules" || (m.path ?? "").split("/").includes("node_modules")
+    const npm = (m: ModuleRecord) => m.location === "node_modules" || (m.path ?? "").split("/").includes("node_modules")
     let scopes = picked.flatMap(m => {
       const own = moduleScope(this.root, m, ws, recordDirsOf)
       if (own) return [own]
@@ -77,20 +97,26 @@ export class WorkspaceApi {
     if (source) scopes = scopes.filter(s => repoName(s.repo, workspaceName) === source)
     return scopes
   }
-  sessionsFrom() {
+  private sessionsFrom() {
     const d = this.store.descriptors.get("sessions")
     if (!d) return null
     const unavailable = unreadableReason(d, this.store.descriptors)
     if (unavailable) return { unavailable }
     return { roots: collectionSources(this.root, d, this.sourcesCtx()).map(s => s.name) }
   }
-  async activity(moduleId, limit, offset, settled, source) {
+  private async activity(
+    moduleId: string | undefined,
+    limit: number,
+    offset: number,
+    settled: number | undefined,
+    source: string | undefined
+  ) {
     const key = `${moduleId ?? ""}\0${source ?? ""}\0${limit}\0${offset}`
     for (const [k, p] of this.activityPages)
       if (Date.now() - p.at > ACTIVITY_READ_RETENTION_MS) this.activityPages.delete(k)
     const last = settled === undefined ? undefined : this.activityPages.get(key)
     const scopes = last?.scopes ?? this.activityScopes(moduleId, source)
-    let fsDescs
+    let fsDescs: Descriptor[] | undefined
     const feed = await activityFeed(
       this.root,
       scopes,
@@ -117,8 +143,8 @@ export class WorkspaceApi {
     this.sourcesCache = null
     this.runtimeModulesCache = null
   }
-  runtimeModulesCache = null
-  runtimeModules() {
+  private runtimeModulesCache: { files: any; ids: Set<string>; workspace: string | undefined } | null = null
+  private runtimeModules() {
     if (!this.runtimeModulesCache) {
       const modules = loadModules(this.root)
       this.runtimeModulesCache = {
@@ -129,53 +155,53 @@ export class WorkspaceApi {
     }
     return this.runtimeModulesCache
   }
-  sourcesCache = null
-  sourcesCtx() {
+  private sourcesCache: SourcesContext | null = null
+  private sourcesCtx() {
     return (this.sourcesCache ??= sourcesContext(this.root, this.store.descriptors.values()))
   }
-  runtimeModuleOf(file) {
+  private runtimeModuleOf(file: string) {
     return moduleOfRuntimeFile(
       path.relative(path.join(this.root, ".dreamteamer"), file).split(path.sep).join("/"),
       this.runtimeModules().files
     )
   }
-  sourcesOf(d) {
+  private sourcesOf(d: Descriptor): SourceEntry[] {
     if (!engine().descriptor.isRuntime(d)) return collectionSources(this.root, d, this.sourcesCtx())
     return runtimeSources(
-      [...this.store.readAll(d.name)].map(({ file }) => this.runtimeModuleOf(file)),
+      [...this.store.readAll(d.name)].map(({ file }: { file: string }) => this.runtimeModuleOf(file)),
       this.sourcesCtx()
     )
   }
-  contested(d) {
+  private contested(d: Descriptor) {
     return contestedIds(this.root, d)
   }
-  sourceOfFile(d, file, sources) {
+  private sourceOfFile(d: Descriptor, file: string, sources: SourceEntry[]) {
     if (!engine().descriptor.isRuntime(d)) return sourceOfFile(this.root, d, file, sources)
     const id = this.runtimeModuleOf(file)
     const name = moduleSource(id ? this.sourcesCtx().modules.find(m => m.id === id) : undefined, this.sourcesCtx()).name
     return sources.find(s => s.name === name)
   }
-  mtime() {
+  private mtime(): number {
     const p = path.join(this.root, ".dreamteamer", "manifest.yaml")
     return fs.existsSync(p) ? fs.statSync(p).mtimeMs : 0
   }
-  fresh() {
+  private fresh() {
     if (this.mtime() !== this.manifestMtime) this.reload()
     return this.store
   }
-  descriptors() {
+  descriptors(): Map<string, any> {
     return this.fresh().descriptors
   }
   /** The remote-access seam (cr-vscode-012): a host injects its providers; absent, `/sources/access` says every
    *  source is not checked, and why. */
-  remoteAccess
-  useRemoteAccess(ra) {
+  private remoteAccess: RemoteAccessProvider | undefined
+  useRemoteAccess(ra: RemoteAccessProvider | undefined): void {
     this.remoteAccess = ra
   }
-  hasRemoteAccess() {
+  hasRemoteAccess(): boolean {
     return !!this.remoteAccess
   }
-  async handle(method, rawPath, body) {
+  async handle(method: string, rawPath: string, body?: any): Promise<ApiResult> {
     try {
       return { status: 200, body: await this.route(method, rawPath, body) }
     } catch (err) {
@@ -198,7 +224,7 @@ export class WorkspaceApi {
       return { status, body: { error: msg } }
     }
   }
-  async route(method, rawPath, body) {
+  private async route(method: string, rawPath: string, body: any): Promise<any> {
     const qIndex = rawPath.indexOf("?")
     const pathname = qIndex === -1 ? rawPath : rawPath.slice(0, qIndex)
     const query = new URLSearchParams(qIndex === -1 ? "" : rawPath.slice(qIndex + 1))
@@ -233,7 +259,7 @@ export class WorkspaceApi {
       }
     }
     if (seg[0] === "schema" && seg.length === 1 && method === "GET") {
-      const order = d => eng.descriptor.displayOf(d).nav?.order ?? 999
+      const order = (d: Descriptor) => eng.descriptor.displayOf(d).nav?.order ?? 999
       return [...store.descriptors.values()].sort((a, b) => order(a) - order(b))
     }
     if (seg[0] === "presentation" && method === "GET") {
@@ -439,7 +465,7 @@ export class WorkspaceApi {
       )
     }
   }
-  hintUnencoded(seg, name) {
+  private hintUnencoded(seg: string[], name: string | undefined) {
     if (!name || this.store.descriptors.has(name)) return
     for (let take = seg.length; take > 2; take--) {
       const candidate = seg.slice(1, take).join("/")
@@ -452,12 +478,13 @@ export class WorkspaceApi {
       )
     }
   }
-  listRecords(name, query, opts: Record<string, any> = {}) {
+  private listRecords(name: string, query: URLSearchParams, opts: Record<string, any> = {}) {
     const store = this.store
     const eng = engine()
     const d = store.descriptor(name)
     const unavailable = unreadableReason(d, store.descriptors)
-    if (unavailable) return { records: [], total: 0, sources: [], unavailable }
+    if (unavailable)
+      return { records: [] as Record<string, any>[], total: 0, sources: [] as SourceEntry[], unavailable }
     const bf = eng.bodyField(d)
     const descriptors = [...store.descriptors.values()]
     const history = gitHistoryMap(this.root, store.recordDirs(d), dir => repoOfPath(this.root, descriptors, dir))
@@ -466,7 +493,7 @@ export class WorkspaceApi {
     const dupes = contested.duplicates
     const runtime = eng.descriptor.isRuntime(d)
     const mods = this.runtimeModules()
-    const moduleOfRow = (file, source) => {
+    const moduleOfRow = (file: string, source: SourceEntry | undefined) => {
       const id = runtime
         ? this.runtimeModuleOf(file)
         : source?.kind === "own"
@@ -510,7 +537,7 @@ export class WorkspaceApi {
     }
     const KNOWN = new Set(["limit", "offset", "sort", "q", "filter", "with-body", "notes"])
     const q = query.get("q")?.toLowerCase()
-    const narrow = list => {
+    const narrow = (list: Record<string, any>[]) => {
       for (const [k, v] of query.entries()) {
         if (KNOWN.has(k)) continue
         const key = k.startsWith("filter[") ? k.slice(7, -1) : k
@@ -543,7 +570,7 @@ export class WorkspaceApi {
     if (bf && query.get("with-body") !== "true") for (const r of rows) delete r[bf]
     return { records: rows, total, sources: sources.map(x => ({ ...x, count: facet.get(x.name) ?? 0 })) }
   }
-  readRecord(name, id) {
+  private readRecord(name: string, id: string) {
     const { fields, file } = this.store.read(name, id)
     const commit = gitLastCommit(this.root, file)
     const created = this.store.createdOf(name, id, fields, file)
@@ -577,7 +604,7 @@ export class WorkspaceApi {
       path: path.relative(this.root, file),
     }
   }
-  async createRecord(name, body, target) {
+  private async createRecord(name: string, body: any, target: string | null) {
     const { id: explicitId, ...fields } = body ?? {}
     const d = this.store.descriptor(name)
     const sources = d ? this.sourcesOf(d) : []
@@ -598,13 +625,13 @@ export class WorkspaceApi {
     this.reload()
     return { id, path: path.relative(this.root, file), source: chosen.name }
   }
-  patchRecord(name, id, body) {
+  private patchRecord(name: string, id: string, body: any) {
     const { id: _id, path: _path, "last-modified": _lm, last_modified: _lm2, ...rest } = body ?? {}
     const changes = Object.fromEntries(Object.entries(rest).filter(([k]) => !k.startsWith("$")))
     this.store.set(name, id, changes)
     return { id }
   }
-  systemWrite(verb, kind, id, query, body) {
+  private systemWrite(verb: string, kind: string, id: string, query: URLSearchParams, body: any) {
     const { schema, ws } = engine()
     const store = this.store
     const b = body ?? {}
@@ -686,7 +713,7 @@ export class WorkspaceApi {
     if (!dryRun) this.onSystemWrite?.(out)
     return out
   }
-  fieldWrite(method, seg, query, body) {
+  private fieldWrite(method: string, seg: string[], query: URLSearchParams, body: any) {
     const { schema, ws } = engine()
     const store = this.store
     const b = body ?? {}
@@ -726,20 +753,24 @@ export class WorkspaceApi {
     }
     throw new ApiFailure(`unhandled field op ${method} /fields/${seg.join("/")}`, 404)
   }
-  afterFieldWrite(out, dryRun) {
+  private afterFieldWrite(out: unknown, dryRun: boolean) {
     if (!dryRun) this.onSystemWrite?.(out)
     return out
   }
-  history(name, id) {
+  private history(name: string, id: string) {
     return engine().history(this.store, name, id)
   }
-  historyDiff(name, id, hash) {
+  private historyDiff(name: string, id: string, hash: string) {
     return engine().historyDiff(this.store, name, id, hash)
   }
 }
-export function gitHistoryMap(root, dirs, repoOf: (dir: string) => string = () => ".") {
-  const map = new Map()
-  const byRepo = new Map()
+export function gitHistoryMap(
+  root: string,
+  dirs: string[],
+  repoOf: (dir: string) => string = () => "."
+): Map<string, FileHistory> {
+  const map = new Map<string, FileHistory>()
+  const byRepo = new Map<string, string[]>()
   for (const dir of dirs) {
     if (path.relative(root, dir).startsWith("..")) continue
     const repo = repoOf(dir)
@@ -762,7 +793,11 @@ export function gitHistoryMap(root, dirs, repoOf: (dir: string) => string = () =
   }
   return map
 }
-export function parseGitHistory(out, keyOf, into = new Map()) {
+export function parseGitHistory(
+  out: string,
+  keyOf: (line: string) => string,
+  into: Map<string, FileHistory> = new Map()
+): Map<string, FileHistory> {
   let date = null
   let author = null
   for (const line of out.split("\n")) {
@@ -780,7 +815,7 @@ export function parseGitHistory(out, keyOf, into = new Map()) {
   }
   return into
 }
-function gitLastCommit(root, file) {
+function gitLastCommit(root: string, file: string) {
   const rel = path.relative(root, file)
   if (rel.startsWith("..")) return null
   try {
@@ -801,22 +836,22 @@ export const SOURCE_KEY = "$source"
 export const SOURCE_KIND_KEY = "$source-kind"
 export const MODIFIED_BY_KEY = "$last-modified-by"
 export const CREATED_BY_KEY = "$created-by"
-function historyKeys(h) {
+function historyKeys(h: FileHistory | undefined): Record<string, string> {
   return {
     ...lastModifiedKeys(h?.modified ?? null),
     [MODIFIED_BY_KEY]: h?.by ?? null,
     [CREATED_BY_KEY]: h?.createdBy ?? null,
   }
 }
-function lastModifiedKeys(date) {
+function lastModifiedKeys(date: string | null | undefined): Record<string, string> {
   return { "last-modified": date, last_modified: date }
 }
 export const MODULE_KEY = "$module"
 export const DUPLICATES_KEY = "$duplicates"
-function sourceKeys(source) {
+function sourceKeys(source: SourceEntry | undefined): Record<string, string> {
   return source ? { [SOURCE_KEY]: source.name, [SOURCE_KIND_KEY]: source.kind } : {}
 }
-function setDotted(obj, dotted, value) {
+function setDotted(obj: Record<string, any>, dotted: string, value: unknown) {
   const keys = dotted.split(".")
   let at = obj
   for (const k of keys.slice(0, -1)) {
@@ -827,8 +862,8 @@ function setDotted(obj, dotted, value) {
 }
 const DRY_RUNNABLE = new Set(["modules:rm", "collections:set", "ui-views:set"])
 const OPTIONAL_OPS = new Set(["moveUiView"])
-function opOf(schema, kind, verb) {
-  return name => {
+function opOf(schema: Record<string, any>, kind: string, verb: string) {
+  return (name: string) => {
     const fn = schema[name]
     if (typeof fn !== "function") {
       throw new ApiFailure(
@@ -843,7 +878,7 @@ function opOf(schema, kind, verb) {
     return fn
   }
 }
-export function revisionParam(value) {
+export function revisionParam(value: unknown): string {
   const v = typeof value === "string" ? value : ""
   if (v === "HEAD" || /^[0-9a-f]{4,40}$/.test(v)) return v
   throw new ApiFailure(

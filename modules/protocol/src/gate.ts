@@ -1,10 +1,48 @@
 // The shared gate (cr-modules-007 design §4c; cr-modules-008 §4). Pure: no I/O, no clock, no headers.
 // It decides WHAT a scope may call — the host adapter decides WHO and HOW MUCH around it.
-import { matchRoute } from "./routes.ts"
-import { levelRank, RECORD_WRITE_ROUTES } from "./paneScope.ts"
+import { matchRoute, type Route } from "./routes.ts"
+import { levelRank, RECORD_WRITE_ROUTES, type PaneScope } from "./paneScope.ts"
+
+export type Op = "create" | "update" | "delete" | "position"
+export interface WriteGrant {
+  ops: Set<Op>
+  fields: Set<string> | "own-fields"
+  mirroredRefs: "refuse" | "allow"
+  commit: boolean
+}
+export interface Sentences {
+  route(scope: Scope, d: { method: string; pattern: string }): string
+  collectionRead(scope: Scope, d: { collection: string }): string
+  collectionWrite(scope: Scope, d: { collection?: string; op?: Op; reason?: string }): string
+  field(scope: Scope, d: { collection: string; field: string }): string
+  filter(scope: Scope, d: { reason: string }): string
+  query(scope: Scope, d: { key: string }): string
+}
+export interface Scope {
+  kind: "artifact" | "module"
+  label: string
+  routes: Set<string>
+  reads: Set<string>
+  writes: Map<string, WriteGrant>
+  home?: string
+  module?: string
+  own?: Set<string>
+  sentences: Sentences
+}
+export interface Call {
+  method: string
+  path: string
+  query: Record<string, string>
+  body: unknown
+  routeId: string
+  collection?: string
+}
+export type Decision =
+  | { ok: true; call: Call; needsSource?: "home"; commit?: { only: string[] | null; message: string } }
+  | { ok: false; status: number; error: string }
 
 /** The engine's filter operators (0.44 `KNOWN_OPERATORS`) minus the `_regex` family and the `_and`/`_or` structure keys. */
-export const OPERATORS = new Set([
+export const OPERATORS: Set<string> = new Set([
   "_eq",
   "_neq",
   "_ieq",
@@ -29,9 +67,15 @@ export const OPERATORS = new Set([
   "_between",
   "_nbetween",
 ])
-export const READ_QUERY_KEYS = new Set(["limit", "offset", "sort", "q", "filter", "with-body"])
-export const BOUNDS = { operand: 200, list: 200, conditions: 50, q: 200, limit: 2000 }
-export const SYSTEM_COLLECTIONS = new Set([
+export const READ_QUERY_KEYS: Set<string> = new Set(["limit", "offset", "sort", "q", "filter", "with-body"])
+export const BOUNDS: { operand: number; list: number; conditions: number; q: number; limit: number } = {
+  operand: 200,
+  list: 200,
+  conditions: 50,
+  q: 200,
+  limit: 2000,
+}
+export const SYSTEM_COLLECTIONS: Set<string> = new Set([
   "collections",
   "modules",
   "skills",
@@ -41,7 +85,7 @@ export const SYSTEM_COLLECTIONS = new Set([
   "ui-views",
   "mixins",
 ])
-const WRITE_OPS = {
+const WRITE_OPS: Record<string, Op> = {
   "records-create": "create",
   "record-update": "update",
   "record-remove": "delete",
@@ -58,13 +102,22 @@ export const COMMIT_KEYS = new Set([
   "$ahead",
 ])
 
-const refuse = (status, error) => ({ ok: false, status, error })
-const entries = q => (q instanceof URLSearchParams ? [...q.entries()] : Object.entries<any>(q ?? {}))
-const descriptorOf = (descriptors, name) =>
+const refuse = (status: number, error: string): Decision => ({ ok: false, status, error })
+const entries = (q: URLSearchParams | Record<string, string> | undefined): [string, string][] =>
+  q instanceof URLSearchParams ? [...q.entries()] : Object.entries(q ?? {})
+/** The descriptors a gate reads: a list, or a Map by name. */
+type GateDescriptors = Array<{ name: string; fields?: Record<string, any>; runtime?: boolean }> | Map<string, any>
+
+const descriptorOf = (descriptors: GateDescriptors, name: string) =>
   descriptors instanceof Map ? descriptors.get(name) : (descriptors ?? []).find(d => d.name === name)
 
 /** Walks a filter; returns a reason string, or null when it is inside the grammar. */
-function filterProblem(node, fields, budget, hidden = new Set()) {
+function filterProblem(
+  node: unknown,
+  fields: Set<string>,
+  budget: { n: number },
+  hidden: Set<string> = new Set()
+): string | null {
   if (node === null || typeof node !== "object" || Array.isArray(node)) return "a filter is an object"
   for (const [key, value] of Object.entries(node)) {
     if (key === "_and" || key === "_or") {
@@ -100,23 +153,28 @@ function filterProblem(node, fields, budget, hidden = new Set()) {
   }
   return null
 }
-function operandProblem(v) {
+function operandProblem(v: unknown): string | null {
   if (v !== null && typeof v === "object")
     return "no relational conditions — query the other collection and join in the page"
   if (typeof v === "string" && v.length > BOUNDS.operand) return `an operand longer than ${BOUNDS.operand} characters`
   return null
 }
 
-/**
- * @returns {{ok: true, call: {method, path, query, body, routeId, collection?}, needsSource?: 'home', commit?: {only: string[]|null, message: string}} | {ok: false, status: number, error: string}}
- */
-export function gate(scope, descriptors, method, path, query?, body?): Record<string, any> {
+/** The decision on one call: refused with a status and a sentence, or the call a host may make. */
+export function gate(
+  scope: Scope | PaneScope,
+  descriptors: GateDescriptors,
+  method: string,
+  path: string,
+  query?: URLSearchParams | Record<string, string>,
+  body?: unknown
+): Decision {
   const m = String(method).toUpperCase()
   const hit = matchRoute(m, path)
   if (!hit) return refuse(404, `no route ${m} ${String(path).split("?")[0]}`)
   const { route, params } = hit
-  const s = scope.sentences
   if (scope.kind === "pane") return paneGate(scope, m, route, params, path, query, body)
+  const s = scope.sentences
   if (!scope.routes.has(route.id)) return refuse(403, s.route(scope, { method: m, pattern: route.pattern }))
   const collection = params.collection
   const pathname = String(path).split("?")[0]
@@ -128,7 +186,7 @@ export function gate(scope, descriptors, method, path, query?, body?): Record<st
     const d = collection !== undefined ? descriptorOf(descriptors, collection) : undefined
     const fields = new Set(Object.keys(d?.fields ?? {}))
     const foreign = scope.kind === "module" && collection !== undefined && !scope.own?.has(collection)
-    const hidden = foreign ? COMMIT_KEYS : new Set()
+    const hidden = foreign ? COMMIT_KEYS : new Set<string>()
     for (const [key, value] of pairs) {
       if (READ_QUERY_KEYS.has(key)) {
         if (key === "q" && foreign)
@@ -180,7 +238,7 @@ export function gate(scope, descriptors, method, path, query?, body?): Record<st
   const d = descriptorOf(descriptors, collection)
   if (!d || d.runtime === true) return refuse(403, s.collectionWrite(scope, { collection, op }))
   const fields = d.fields ?? {}
-  const mirrored = f => fields[f]?.mirror_of !== undefined
+  const mirrored = (f: string) => fields[f]?.mirror_of !== undefined
   if (op === "create" || op === "update") {
     for (const key of Object.keys(body ?? {})) {
       const allowed =
@@ -200,7 +258,7 @@ export function gate(scope, descriptors, method, path, query?, body?): Record<st
       400,
       s.collectionWrite(scope, { collection, op, reason: "a commit by id cannot carry a moved mirror" })
     )
-  const decision: Record<string, any> = {
+  const decision: Extract<Decision, { ok: true }> = {
     ok: true,
     call: {
       method: m,
@@ -221,7 +279,15 @@ export function gate(scope, descriptors, method, path, query?, body?): Record<st
 }
 
 /** The pane kind (cr-modules-017 §4): the route's level against the pane's — no query, filter or body rules. */
-function paneGate(scope, m, route, params, path, query, body) {
+function paneGate(
+  scope: PaneScope,
+  m: string,
+  route: Route,
+  params: Record<string, string>,
+  path: string,
+  query: URLSearchParams | Record<string, string> | undefined,
+  body: unknown
+): Decision {
   const collection = params.collection
   const need =
     RECORD_WRITE_ROUTES.has(route.id) && collection !== undefined && scope.internal?.has(collection)

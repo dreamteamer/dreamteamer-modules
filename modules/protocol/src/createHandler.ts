@@ -18,6 +18,7 @@ import {
   NAV_FILE,
   NavDocError,
   NavOpError,
+  type NavOp,
   applyNavOp,
   checkNavDoc,
   navDocProblems,
@@ -27,22 +28,28 @@ import {
   writeNavDoc,
 } from "./navDoc.ts"
 import { hasNavSettings } from "./host/nav.ts"
-import { PANE_ROUTES, answerPane, defaultPane } from "./pane.ts"
+import { PANE_ROUTES, answerPane, defaultPane, type PaneStore } from "./pane.ts"
 
-/**
- * @param {{ root: string, onSystemWrite?: (result: unknown) => void,
- *           settings?: () => object, pane?: import('./pane.d.ts').PaneStore }} opts — `settings` answers the four nav
- *           settings (default: the workspace's .vscode/settings.json); `pane` the store the five pane routes answer from
- *           (default: one in memory, at admin)
- * @returns {Promise<{ handle: (method: string, path: string, body?: unknown) => Promise<{ status: number, body: unknown }>,
- *                    readonly api: WorkspaceApi, reopen: () => Promise<void> }>}
- */
+export interface Handler {
+  handle(method: string, path: string, body?: unknown): Promise<{ status: number; body: unknown }>
+  readonly api: WorkspaceApi
+  reopen(): Promise<void>
+}
+
+/** `settings` answers the four nav settings (default: the workspace's .vscode/settings.json); `pane` the store the
+ *  five pane routes answer from (default: one in memory, at admin). */
 export async function createHandler({
   root,
   onSystemWrite,
   settings = () => workspaceNavSettings(root),
   pane,
-}: Record<string, any> = {}) {
+}: {
+  root: string
+  onSystemWrite?: (result: unknown) => void
+  settings?: () => object
+  /** The store the five pane routes answer from; absent, one in memory at admin. */
+  pane?: PaneStore
+}): Promise<Handler> {
   if (!root) throw new Error("createHandler: no workspace root")
   await initEngine(root)
   const api = new WorkspaceApi(root)
@@ -50,8 +57,13 @@ export async function createHandler({
   return {
     api,
     reopen: () => refreshWorkspace(),
-    handle: (method, path, body) =>
-      route(api, method, path, body, { root, settings, host: (m, p, b) => api.handle(m, p, b), pane }),
+    handle: (method: string, path: string, body?: unknown) =>
+      route(api, method, path, body, {
+        root,
+        settings,
+        host: (m: string, p: string, b?: unknown) => api.handle(m, p, b),
+        pane,
+      }),
   }
 }
 
@@ -61,11 +73,24 @@ export async function createHandler({
  * unnamed method and path is 404 `unhandled request`, an unreadable `?dry-run` is 400, `GET /nav` is the nav
  * model, `PATCH /nav` and `PUT /nav` write nav.yaml, the five pane routes answer from `pane` (a memory store per
  * api when absent), and everything else is the host's.
- * @param {{ descriptors(): unknown }} api
- * @param {{ root: string, settings: () => object, host: (method: string, path: string, body?: unknown) => Promise<{ status: number, body: unknown }>,
- *           pane?: import('./pane.d.ts').PaneStore }} opts
  */
-export async function route(api, method, path, body, { root, settings, host, pane }) {
+export async function route(
+  api: { descriptors(): unknown },
+  method: string,
+  path: string,
+  body: unknown,
+  {
+    root,
+    settings,
+    host,
+    pane,
+  }: {
+    root: string
+    settings: () => object
+    host: (method: string, path: string, body?: unknown) => Promise<{ status: number; body: unknown }>
+    pane?: PaneStore
+  }
+): Promise<{ status: number; body: unknown }> {
   const m = String(method).toUpperCase()
   const hit = matchRoute(m, path)
   if (!hit) {
@@ -86,10 +111,13 @@ export async function route(api, method, path, body, { root, settings, host, pan
   if (hit.route.id === "nav-patch" || hit.route.id === "nav-put")
     return navWrite(api, hit.route.id, body, { root, settings })
   if (PANE_ROUTES.has(hit.route.id)) {
-    const reader = { descriptors: () => api.descriptors(), handle: (m2, p2) => host(m2, p2) }
+    const reader = {
+      descriptors: () => api.descriptors() as Map<string, unknown>,
+      handle: (m2: string, p2: string) => host(m2, p2) as Promise<{ status: number; body?: any }>,
+    }
     return answerPane(hit.route.id, body, { pane: pane ?? defaultPane(api, host), reader })
   }
-  const res = await host(m, path, body)
+  const res = (await host(m, path, body)) as { status: number; body: any }
   // a greedy route (history) hands the split name to the host, which refuses the first half: say why
   if (res?.status >= 400 && !/percent-encoded/.test(String(res.body?.error ?? ""))) {
     const hint = unencodedHint(api, path)
@@ -108,7 +136,12 @@ export const NAV_UNMIGRATED =
  * under a PATCH (400 naming the file — a gesture never starts over from an empty document; PUT replaces it); and no
  * nav.yaml while an old nav setting is still set (409 naming the migration, so the first write never strands them).
  */
-async function navWrite(api, id, body, { root, settings }) {
+async function navWrite(
+  api: { descriptors(): unknown },
+  id: string,
+  body: unknown,
+  { root, settings }: { root: string; settings: () => object }
+) {
   try {
     try {
       api.descriptors()
@@ -130,7 +163,7 @@ async function navWrite(api, id, body, { root, settings }) {
             error: `${navProblemsSentence(problems)} — fix them by hand, or PUT a whole document; nothing was written`,
           },
         }
-      doc = applyNavOp(current, body, ctx)
+      doc = applyNavOp(current, body as NavOp, ctx)
     } else {
       doc = checkNavDoc(body)
       const unknown = unknownNavNames(doc, { collections: ctx.known, namespaces: ctx.namespaces })
@@ -162,7 +195,7 @@ async function navWrite(api, id, body, { root, settings }) {
   }
 }
 
-const isDirectory = file => {
+const isDirectory = (file: string) => {
   try {
     return fs.statSync(file).isDirectory()
   } catch {
@@ -177,7 +210,7 @@ const COLLECTION_HEADS = new Set(
 
 /** A collection name with a slash sent unencoded splits into extra segments and matches no route: say which
  *  collection the caller meant, and why, rather than only "unhandled". */
-function unencodedHint(api, path) {
+function unencodedHint(api: { descriptors(): unknown }, path: string): string | null {
   const seg = String(path)
     .split("?")[0]
     .replace(/^\/+/, "")
@@ -192,7 +225,7 @@ function unencodedHint(api, path) {
   if (!COLLECTION_HEADS.has(seg[0]) || seg.length < 3) return null
   let names
   try {
-    names = api.descriptors()
+    names = api.descriptors() as Map<string, unknown>
   } catch {
     return null
   }
@@ -211,7 +244,7 @@ function unencodedHint(api, path) {
 
 /** A write's `?dry-run` is absent, `true` or `false`; anything else — `yes`, a bare `?dry-run`, a repeat —
  *  is refused rather than read as "no", so a caller who meant a plan never gets a write. */
-export function unreadableDryRun(method, path) {
+export function unreadableDryRun(method: string, path: string): string | null {
   if (method === "GET") return null
   const q = String(path).split("?")[1]
   if (q === undefined) return null

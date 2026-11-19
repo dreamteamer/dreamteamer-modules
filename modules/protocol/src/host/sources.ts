@@ -5,7 +5,52 @@ import { execFileSync } from "node:child_process"
 import { GIT_SYNC } from "./gitExec.ts"
 import { engine } from "./engine.ts"
 import { collectionRoots, listRecords, loadModules, walkIds, workspaceName } from "./fsdata.ts"
-export function sourcesContext(root, iterable) {
+
+import type { CollectionRoot, Descriptor, ModuleRecord } from "./fsdata.ts"
+
+export type SourceKind = "own" | "layer" | "module"
+export type SourceVia = "own" | "clone" | "layer" | "package"
+export type SourceAccess = "write" | "edit" | "read"
+export interface SourceEntry {
+  name: string
+  kind: SourceKind
+  repo: string
+  path: string
+  installed: boolean
+  count: number
+  record?: string
+  via: SourceVia
+  access: SourceAccess
+  note?: string
+}
+export interface SourcesContext {
+  root?: string
+  workspace: string
+  modules: ModuleRecord[]
+  gitModules: Record<
+    string,
+    {
+      url?: string
+      records?: string[]
+      module?: boolean
+    }
+  >
+  layers: Set<string>
+  repos: Array<{
+    id: string
+    url: string
+  }>
+  origins: Map<string, string | undefined>
+}
+export interface SourceStackEntry extends Omit<SourceEntry, "count" | "path"> {
+  url?: string
+  collections: Array<{
+    collection: string
+    path: string
+    count: number
+  }>
+}
+export function sourcesContext(root: string, iterable: Iterable<Descriptor>): SourcesContext {
   const descriptors = [...iterable]
   let gitModules = {}
   try {
@@ -51,16 +96,16 @@ export function sourcesContext(root, iterable) {
     layers: layerKeys(gitModules, descriptors),
   }
 }
-export function layerKeys(gitModules, descriptors) {
-  const out = new Set()
+export function layerKeys(gitModules: SourcesContext["gitModules"], descriptors: Iterable<Descriptor>): Set<string> {
+  const out = new Set<string>()
   for (const [name, entry] of Object.entries<any>(gitModules)) if (entry && entry.records !== undefined) out.add(name)
   for (const d of descriptors)
     for (const l of engine().descriptor.storageOf(d).layers ?? []) if (l.name in gitModules) out.add(l.name)
   return out
 }
-export function sameRemote(a, b) {
+export function sameRemote(a: string | undefined, b: string | undefined): boolean {
   if (!a || !b) return false
-  const norm = u =>
+  const norm = (u: string) =>
     u
       .trim()
       .toLowerCase()
@@ -68,14 +113,19 @@ export function sameRemote(a, b) {
       .replace(/\.git$/, "")
   return norm(a) === norm(b)
 }
-export function repoRecordFor(remotes, repos) {
+export function repoRecordFor(remotes: Array<string | undefined>, repos: SourcesContext["repos"]): string | undefined {
   for (const remote of remotes) {
     const hit = repos.find(r => sameRemote(remote, r.url))
     if (hit) return `repos/${hit.id}`
   }
   return undefined
 }
-function owningModule(root, d, write, ctx) {
+function owningModule(
+  root: string,
+  d: Descriptor,
+  write: { dir: string; repo: string },
+  ctx: SourcesContext
+): ModuleRecord | undefined {
   const id = engine().descriptor.moduleOf(d)
   if (!id) return undefined
   const mod = ctx.modules.find(m => m.id === id)
@@ -84,10 +134,10 @@ function owningModule(root, d, write, ctx) {
   if (!mod?.path && write.repo !== ".") return mod ?? { id, name: id }
   return undefined
 }
-export function collectionSources(root, d, ctx) {
+export function collectionSources(root: string, d: Descriptor, ctx: SourcesContext): SourceEntry[] {
   const roots = collectionRoots(root, d)
   const counts = countsByRoot(root, d, roots)
-  return roots.map((r, i) => {
+  return roots.map((r, i): SourceEntry => {
     const rel = path.relative(root, r.dir).split(path.sep).join("/")
     if (r.layer) {
       const declared = ctx.gitModules[r.layer]?.url
@@ -130,7 +180,7 @@ export function collectionSources(root, d, ctx) {
     }
   })
 }
-export function isInstalledPackage(rel, root) {
+export function isInstalledPackage(rel: string, root?: string): boolean {
   if (!rel.split("/").includes("node_modules")) return false
   if (!root) return true
   try {
@@ -139,7 +189,11 @@ export function isInstalledPackage(rel, root) {
     return true
   }
 }
-function moduleFolderAccess(id, rel, root) {
+function moduleFolderAccess(
+  id: string,
+  rel: string,
+  root: string | undefined
+): { via: SourceVia; access: SourceAccess; note?: string } {
   return isInstalledPackage(rel, root)
     ? {
         via: "package",
@@ -148,7 +202,13 @@ function moduleFolderAccess(id, rel, root) {
       }
     : { via: "clone", access: "write" }
 }
-export function layerAccess(root, layer, repo, collection, installed) {
+export function layerAccess(
+  root: string,
+  layer: string,
+  repo: string,
+  collection: string | undefined,
+  installed: boolean
+): Pick<SourceEntry, "via" | "access" | "note"> {
   if (!installed)
     return {
       via: "layer",
@@ -162,7 +222,7 @@ export function layerAccess(root, layer, repo, collection, installed) {
     note: `${layer} has no compiled ${collection ?? "runtime"} — its records are edited in place, and a new one is added there once \`dt compile -w ${layer}\` has run`,
   }
 }
-export function layerCompiles(root, repo, collection) {
+export function layerCompiles(root: string, repo: string, collection: string | undefined): boolean {
   const runtime = path.join(root, repo, ".dreamteamer")
   return fs.existsSync(
     collection === undefined
@@ -170,7 +230,10 @@ export function layerCompiles(root, repo, collection) {
       : path.join(runtime, "collections", `${collection}.collection.yaml`)
   )
 }
-export function moduleSource(mod, ctx) {
+export function moduleSource(
+  mod: Pick<ModuleRecord, "id" | "path"> | undefined,
+  ctx: SourcesContext
+): Omit<SourceEntry, "count"> {
   const p = mod?.path?.replace(/\/+$/, "") ?? ""
   const parts = p.split("/")
   const clone = parts[0] === "git_modules" && parts[1] ? parts[1] : undefined
@@ -192,22 +255,22 @@ export function moduleSource(mod, ctx) {
     ...moduleFolderAccess(mod.id, p, ctx.root),
   }
 }
-export function runtimeSources(modules, ctx) {
-  const byName = new Map()
+export function runtimeSources(modules: Iterable<string | undefined>, ctx: SourcesContext): SourceEntry[] {
+  const byName = new Map<string, SourceEntry>()
   for (const id of modules) {
     const s = moduleSource(id ? ctx.modules.find(m => m.id === id) : undefined, ctx)
     const entry = byName.get(s.name) ?? byName.set(s.name, { ...s, count: 0 }).get(s.name)
     entry.count++
   }
-  const rank = { own: 0, layer: 1, module: 2 }
+  const rank: Record<SourceKind, number> = { own: 0, layer: 1, module: 2 }
   return [...byName.values()].sort((a, b) => rank[a.kind] - rank[b.kind] || a.name.localeCompare(b.name))
 }
-function withRecord(record) {
+function withRecord(record: string | undefined): { record?: string } {
   return record ? { record } : {}
 }
-function countsByRoot(root, d, roots) {
+function countsByRoot(root: string, d: Descriptor, roots: CollectionRoot[]): number[] {
   if (engine().descriptor.storageOf(d).under?.collection) return [listRecords(root, d).length]
-  const seen = new Set()
+  const seen = new Set<string>()
   return roots.map(r => {
     let n = 0
     for (const id of walkIds(r.dir, d).keys()) {
@@ -218,7 +281,12 @@ function countsByRoot(root, d, roots) {
     return n
   })
 }
-export function sourceOfFile(root, d, file, sources) {
+export function sourceOfFile(
+  root: string,
+  d: Descriptor,
+  file: string,
+  sources: SourceEntry[]
+): SourceEntry | undefined {
   const target = path.resolve(file)
   let best
   for (const s of sources) {
@@ -228,7 +296,10 @@ export function sourceOfFile(root, d, file, sources) {
   }
   return best
 }
-export function describeSources(sources) {
+export function describeSources(sources: SourceEntry[]): {
+  description?: string
+  detail: string[]
+} {
   const foreign = sources.filter(s => s.kind !== "own")
   const holding = foreign.filter(s => s.count > 0)
   const absent = foreign.filter(s => !s.installed)
@@ -246,24 +317,32 @@ export function describeSources(sources) {
   )
   return { ...(parts.length ? { description: parts.join(" · ") } : {}), detail }
 }
-export function withoutSourceClauses(filter) {
-  const isSource = c =>
+export function withoutSourceClauses(filter: unknown): unknown {
+  const isSource = (c: unknown) =>
     !!c && typeof c === "object" && !Array.isArray(c) && Object.keys(c).length === 1 && "$source" in c
   if (isSource(filter)) return undefined
   if (
     filter &&
     typeof filter === "object" &&
     !Array.isArray(filter) &&
-    Array.isArray(filter._and) &&
+    Array.isArray((filter as Record<string, unknown>)._and) &&
     Object.keys(filter).length === 1
   ) {
-    const rest = filter._and.filter(c => !isSource(c))
+    const rest = ((filter as Record<string, unknown>)._and as unknown[]).filter(c => !isSource(c))
     return rest.length === 0 ? undefined : rest.length === 1 ? rest[0] : { _and: rest }
   }
   return filter
 }
-export function sourcesStack(root, descriptors, ctx) {
-  const workspace = {
+export function sourcesStack(
+  root: string,
+  descriptors: Descriptor[],
+  ctx: SourcesContext
+): {
+  workspace: SourceStackEntry
+  layers: SourceStackEntry[]
+  modules: SourceStackEntry[]
+} {
+  const workspace: SourceStackEntry = {
     name: ctx.workspace,
     kind: "own",
     repo: ".",
@@ -272,8 +351,8 @@ export function sourcesStack(root, descriptors, ctx) {
     access: "write",
     collections: [],
   }
-  const layers = new Map()
-  const modules = new Map()
+  const layers = new Map<string, SourceStackEntry>()
+  const modules = new Map<string, SourceStackEntry>()
   for (const [name, entry] of Object.entries<any>(ctx.gitModules)) {
     if (!entry || !ctx.layers.has(name)) continue
     const repo = path.posix.join("git_modules", name)
@@ -309,11 +388,11 @@ export function sourcesStack(root, descriptors, ctx) {
   }
   return { workspace, layers: [...layers.values()], modules: [...modules.values()] }
 }
-function stripCount(s) {
+function stripCount(s: SourceEntry): Omit<SourceEntry, "count" | "path"> {
   const { count: _c, path: _p, ...rest } = s
   return rest
 }
-export function layerTitle(root, key) {
+export function layerTitle(root: string, key: string): string | undefined {
   try {
     const pkg = JSON.parse(fs.readFileSync(path.join(root, "git_modules", key, "package.json"), "utf8"))
     const title = pkg?.dreamteamer?.title ?? pkg?.title
@@ -333,7 +412,7 @@ export function layerTitle(root, key) {
  * and a login-free `host:path` are returned unchanged. Matching a remote (`repoRecordFor`) still reads
  * the raw url: that is local and never sent.
  */
-export function withoutUserinfo(url) {
+export function withoutUserinfo(url: string | undefined): string | undefined {
   if (typeof url !== "string") return url
   const m = /^([a-z][a-z0-9+.-]*:\/\/)(.*)$/is.exec(url)
   if (!m) {
@@ -360,6 +439,6 @@ export function withoutUserinfo(url) {
 }
 /** The declared `git_modules` url of a key, as the host may send it — the ONE reader `sourcesStack` uses
  *  for a layer's and a module bundle's `url`, so neither site can send userinfo. */
-export function declaredUrl(ctx, key) {
+export function declaredUrl(ctx: Pick<SourcesContext, "gitModules">, key: string | undefined): string | undefined {
   return key ? withoutUserinfo(ctx.gitModules[key]?.url) || undefined : undefined
 }

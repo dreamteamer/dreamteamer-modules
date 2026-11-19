@@ -1,18 +1,27 @@
 // The contract runner: every case against ONE host, in order, on one fixture (writes accumulate, so the
 // order in cases.js is part of the contract). A host is a function `request(method, path, body)` that
 // resolves `{ status, body }` — the extension's in-process handler, or an HTTP client of dt serve.
-import { cases } from "./cases.ts"
+import { cases, type ContractContext } from "./cases.ts"
+import type { Fixture } from "./fixture.ts"
+import type { HostRequest } from "./shape.ts"
 
-/**
- * @param {{ request: (method: string, path: string, body?: unknown) => Promise<{ status: number, body: any }>,
- *           fixture: { root: string, layer: string, git: Function, head: () => string }, only?: string[] }} opts
- * @returns {Promise<{ passed: string[], failed: Array<{ id: string, why: string }> }>}
- */
-export async function runContract({ request, fixture, only }) {
-  const passed = []
-  const failed = []
-  const skipped = []
-  const ctx = { fixture, request, state: {} }
+export type { Case, ContractContext } from "./cases.ts"
+export type { Fixture } from "./fixture.ts"
+export type { HostRequest, HostResponse } from "./shape.ts"
+
+export async function runContract({
+  request,
+  fixture,
+  only,
+}: {
+  request: HostRequest
+  fixture: Fixture
+  only?: string[]
+}): Promise<{ passed: string[]; failed: Array<{ id: string; why: string }>; skipped: string[] }> {
+  const passed: string[] = []
+  const failed: Array<{ id: string; why: string }> = []
+  const skipped: string[] = []
+  const ctx: ContractContext = { fixture, request, state: {} }
   for (const c of cases) {
     if (only && !only.includes(c.id)) continue
     try {

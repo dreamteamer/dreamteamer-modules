@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs"
 import { join } from "node:path"
 
 /** JSON with comments and trailing commas → JSON, leaving strings untouched. */
-export function stripJsonc(text) {
+export function stripJsonc(text: string): string {
   let out = "",
     i = 0,
     inString = false
@@ -45,10 +45,13 @@ export function stripJsonc(text) {
   return out.replace(/,(\s*[}\]])/g, "$1")
 }
 
-const strings = v => (Array.isArray(v) ? v.filter(x => typeof x === "string") : [])
+const strings = (v: unknown): string[] => (Array.isArray(v) ? v.filter(x => typeof x === "string") : [])
 
 /** The grant and, when it could not be read, why — an absent file or key is no problem, just no grant. */
-export function readModuleGrantResult(root) {
+/** A module's grant: the collections it may read and write. */
+export type ModuleGrant = Record<string, { reads: string[]; writes: string[] }>
+
+export function readModuleGrantResult(root: string): { grant: ModuleGrant; problem: string | null } {
   let text
   try {
     text = readFileSync(join(root, ".vscode", "settings.json"), "utf8")
@@ -73,7 +76,6 @@ export function readModuleGrantResult(root) {
   }
 }
 
-/** @returns {Record<string, {reads: string[], writes: string[]}>} */
-export function readModuleGrant(root) {
+export function readModuleGrant(root: string): ModuleGrant {
   return readModuleGrantResult(root).grant
 }

@@ -9,8 +9,22 @@
 // still reports its place), `edit` (record writes, the nav writes, POST /queue), `admin` (fields, rename, revert,
 // commit, reload). A host that enforces levels (dt web) refuses a route above the pane's; the editor answers all.
 
-/** @type {import('./routes.d.ts').Route[]} */
-export const ROUTES = [
+export type Method = "GET" | "POST" | "PATCH" | "PUT" | "DELETE"
+/** The least a pane must be at for the route to be answered. */
+export type RouteLevel = "read" | "edit" | "admin"
+export interface Route {
+  /** Stable id; contract cases name the route they exercise by it. */
+  id: string
+  method: Method
+  /** After `/api`. `:name` one decoded segment; `*name` greedy, last. */
+  pattern: string
+  /** The section anchor in PROTOCOL.md. */
+  doc: string
+  /** read: every GET and PUT /selection; edit: record and nav writes, POST /queue; admin: the rest. */
+  level: RouteLevel
+}
+
+export const ROUTES: Route[] = [
   { id: "info", method: "GET", pattern: "/info", doc: "get-info", level: "read" },
   { id: "schema", method: "GET", pattern: "/schema", doc: "get-schema", level: "read" },
   { id: "presentation", method: "GET", pattern: "/presentation", doc: "get-presentation", level: "read" },
@@ -153,7 +167,7 @@ export const ROUTES = [
 ]
 
 const compiled = ROUTES.map(route => {
-  const names = []
+  const names: string[] = []
   const source = route.pattern
     .split("/")
     .map(seg => {
@@ -174,11 +188,9 @@ const compiled = ROUTES.map(route => {
 /**
  * The route a request names, and its params (each `:param` percent-decoded; a `*param` kept as the
  * path it is, each segment decoded). The query string is ignored. `null` when no route has that
- * method and path — the "no route" a host answers 404.
- * @param {string} method
- * @param {string} rawPath everything after `/api`, query included or not
+ * method and path — the "no route" a host answers 404. `rawPath` is everything after `/api`, query included or not.
  */
-export function matchRoute(method, rawPath) {
+export function matchRoute(method: string, rawPath: string): { route: Route; params: Record<string, string> } | null {
   const pathname = String(rawPath).split("?")[0]
   const m = String(method).toUpperCase()
   for (const { route, names, re } of compiled) {

@@ -4,21 +4,46 @@
 // A dry-run case asserts nothing was written: the workspace's HEAD and `git status` are unchanged.
 import fs from "node:fs"
 import path from "node:path"
-import { check, shape, status } from "./shape.ts"
+import type { Fixture } from "./fixture.ts"
+import { check, shape, status, type HostRequest, type HostResponse } from "./shape.ts"
 
-const NULL_PLAN = res => {
+export interface ContractContext {
+  fixture: Fixture
+  request: HostRequest
+  state: Record<string, any>
+}
+interface Snapshot {
+  head: string
+  status: string
+}
+export interface Case {
+  id: string
+  route: string
+  method: string
+  path: string | ((ctx: ContractContext) => string)
+  body?: unknown
+  /** a route a host may not serve: its 404 skips the case */
+  optional?: boolean
+  before?: (ctx: ContractContext) => unknown
+  expect: (res: HostResponse, ctx: ContractContext, snap?: any) => unknown
+}
+
+const NULL_PLAN = (res: HostResponse) => {
   status(res, 200)
   check(
     res.body && res.body.plan === null && res.body["dry-run"] === "unsupported",
     `expected the null plan, got ${JSON.stringify(res.body).slice(0, 160)}`
   )
 }
-const snapshot = ({ fixture }) => ({ head: fixture.head(), status: fixture.git(["status", "--porcelain"]) })
-const unchanged = ({ fixture }, snap) => {
+const snapshot = ({ fixture }: ContractContext): Snapshot => ({
+  head: fixture.head(),
+  status: fixture.git(["status", "--porcelain"]),
+})
+const unchanged = ({ fixture }: ContractContext, snap: Snapshot) => {
   check(fixture.head() === snap.head, "a commit was made")
   check(fixture.git(["status", "--porcelain"]) === snap.status, "a file changed")
 }
-const A_PLAN = (res, ctx, snap) => {
+const A_PLAN = (res: HostResponse, ctx: ContractContext, snap: Snapshot) => {
   status(res, 200)
   check(
     res.body && typeof res.body === "object" && res.body["dry-run"] !== "unsupported",
@@ -26,16 +51,16 @@ const A_PLAN = (res, ctx, snap) => {
   )
   unchanged(ctx, snap)
 }
-const schemaOf = async ({ request }, name) => {
+const schemaOf = async ({ request }: ContractContext, name: string) => {
   const res = await request("GET", "/schema")
   status(res, 200)
-  return res.body.find(d => d.name === name)
+  return res.body.find((d: any) => d.name === name)
 }
-const ok = res => status(res, 200)
-const layerFile = ({ fixture }) => path.join(fixture.layer, "data", "projects", "harbor-mutual-archive.project.md")
+const ok = (res: HostResponse) => status(res, 200)
+const layerFile = ({ fixture }: ContractContext) =>
+  path.join(fixture.layer, "data", "projects", "harbor-mutual-archive.project.md")
 
-/** @type {Array<{ id: string, route: string, method: string, path: string | Function, body?: unknown, before?: Function, expect: Function }>} */
-export const cases: Record<string, any>[] = [
+export const cases: Case[] = [
   // ---- reads ---------------------------------------------------------------------------------
   {
     id: "info",
@@ -66,7 +91,7 @@ export const cases: Record<string, any>[] = [
     expect: res => {
       ok(res)
       shape(res.body, { collections: "array" })
-      const row = res.body.collections.find(r => r.collection === "projects")
+      const row = res.body.collections.find((r: any) => r.collection === "projects")
       check(row, "no projects row")
       check(
         Array.isArray(row.sources) && row.sources.length >= 2,
@@ -84,7 +109,7 @@ export const cases: Record<string, any>[] = [
       ok(res)
       shape(res.body, { workspace: "object", layers: "array", modules: "array" })
       check(
-        res.body.layers.some(l => l.name === "northwind-archive"),
+        res.body.layers.some((l: any) => l.name === "northwind-archive"),
         "the layer is not in the stack"
       )
     },
@@ -147,18 +172,18 @@ export const cases: Record<string, any>[] = [
       // protocol 0.2 (cr-dt-008): with no nav.yaml and no nav settings the tree is flat — rows, then the lab
       // namespace as a `namespace` node; every folder, namespace and collection node carries its NavTarget
       const kids = Array.isArray(res.body[0].children) ? res.body[0].children : []
-      const lab = kids.find(n => n.kind === "namespace")
+      const lab = kids.find((n: any) => n.kind === "namespace")
       check(
         lab && lab.key === "n/ns%3Alab" && lab.target?.name === "lab",
         "no namespace node n/ns%3Alab with target { name: lab }"
       )
       check(
-        lab.children?.some(n => n.key === "c/lab/samples" && n.target?.name === "lab/samples"),
+        lab.children?.some((n: any) => n.key === "c/lab/samples" && n.target?.name === "lab/samples"),
         "lab/samples is not drawn inside its namespace"
       )
-      check(!kids.some(n => n.kind === "group"), "a group node — protocol 0.3 draws folder and namespace nodes")
-      const walk = ns => ns.flatMap(n => [n, ...walk(n.children ?? [])])
-      for (const n of walk(kids).filter(x => ["folder", "namespace", "collection"].includes(x.kind)))
+      check(!kids.some((n: any) => n.kind === "group"), "a group node — protocol 0.3 draws folder and namespace nodes")
+      const walk = (ns: any) => ns.flatMap((n: any) => [n, ...walk(n.children ?? [])])
+      for (const n of walk(kids).filter((x: any) => ["folder", "namespace", "collection"].includes(x.kind)))
         check(
           n.target && (typeof n.target.name === "string" || Array.isArray(n.target.folder)),
           `${n.key} carries no target`
@@ -185,7 +210,7 @@ export const cases: Record<string, any>[] = [
       ok(res)
       shape(res.body, { values: "array" })
       check(
-        res.body.values.some(v => v.value === "active"),
+        res.body.values.some((v: any) => v.value === "active"),
         "status values lack active"
       )
     },
@@ -198,10 +223,10 @@ export const cases: Record<string, any>[] = [
     expect: res => {
       ok(res)
       shape(res.body, { records: "array", total: "number" })
-      const ids = res.body.records.map(r => r.id)
+      const ids = res.body.records.map((r: any) => r.id)
       for (const id of ["northwind-launch", "harbor-mutual-renewal", "harbor-mutual-archive"])
         check(ids.includes(id), `no row ${id} (the layer's record included)`)
-      const layer = res.body.records.find(r => r.id === "harbor-mutual-archive")
+      const layer = res.body.records.find((r: any) => r.id === "harbor-mutual-archive")
       shape(layer, { $source: "string", "last-modified": "string|null" }, "the layer row")
       check(!("notes" in res.body.records[0]), "the body field came back without with-body=true")
     },
@@ -236,7 +261,7 @@ export const cases: Record<string, any>[] = [
     ["commands", "GET", "/commands/lab/samples"],
     ["history", "GET", "/history/lab/samples/sample-one"],
     ["history-diff", "GET", "/history-diff/lab/samples/sample-one?sha=HEAD"],
-  ].map(([route, method, path]) => ({
+  ].map(([route, method, path]): Case => ({
     id: `${route}-namespaced-unencoded`,
     route,
     method,
@@ -258,7 +283,7 @@ export const cases: Record<string, any>[] = [
     expect: res => {
       ok(res)
       check(
-        res.body.records.every(r => r.status === "active") && res.body.records.length >= 1,
+        res.body.records.every((r: any) => r.status === "active") && res.body.records.length >= 1,
         "the filter did not narrow to active"
       )
     },
@@ -301,7 +326,7 @@ export const cases: Record<string, any>[] = [
     expect: res => {
       ok(res)
       shape(res.body, { collection: "string", ids: "array", commands: "array" })
-      const row = res.body.commands.find(r => r.name === "review-project")
+      const row = res.body.commands.find((r: any) => r.name === "review-project")
       check(row, "review-project is not bound")
       check(
         row.states?.["northwind-launch"] === "available",
@@ -331,7 +356,7 @@ export const cases: Record<string, any>[] = [
       check(["read", "edit", "admin"].includes(res.body.level), `level ${res.body.level}`)
       shape(res.body.workspace, { name: "string" }, "workspace")
       const roots = [fixture.root, fs.realpathSync(fixture.root)]
-      const walk = (v, at) => {
+      const walk = (v: unknown, at: string): void => {
         if (typeof v === "string") {
           check(
             !(path.isAbsolute(v) && (fs.existsSync(v) || roots.some(r => v.startsWith(r)))),
@@ -433,7 +458,7 @@ export const cases: Record<string, any>[] = [
       ok(res)
       shape(res.body, { items: "array" })
       check(
-        res.body.items.some(i => i.id === ctx.state.queued && i.state === "waiting"),
+        res.body.items.some((i: any) => i.id === ctx.state.queued && i.state === "waiting"),
         "the posted item is not listed waiting"
       )
     },
@@ -623,7 +648,7 @@ export const cases: Record<string, any>[] = [
     route: "revert",
     method: "POST",
     path: "/collections/projects/records-revert/northwind-launch",
-    body: ctx => ({ hash: ctx.state.fixtureHash }),
+    body: (ctx: ContractContext) => ({ hash: ctx.state.fixtureHash }),
     before: async ({ request }) => {
       await request("PATCH", "/collections/projects/records/northwind-launch", { status: "paused" })
     },
@@ -1083,16 +1108,16 @@ export const cases: Record<string, any>[] = [
       ok(res)
       shape(res.body, { doc: "object" })
       shape(res.body.doc, { tree: "array", hidden: "array" }, "doc")
-      const ns = res.body.doc.tree.find(e => e && e.namespace === "lab")
+      const ns = res.body.doc.tree.find((e: any) => e && e.namespace === "lab")
       check(
         ns && Array.isArray(ns.items) && ns.items.includes("lab/samples"),
         `lab/samples is not placed in the lab namespace: ${JSON.stringify(res.body.doc)}`
       )
       check(fs.existsSync(path.join(fixture.root, "nav.yaml")), "no nav.yaml written")
       const nav = await request("GET", "/nav")
-      const lab = (nav.body?.[0]?.children ?? []).find(n => n.key === "n/ns%3Alab")
+      const lab = (nav.body?.[0]?.children ?? []).find((n: any) => n.key === "n/ns%3Alab")
       check(
-        lab?.children?.some(n => n.key === "c/lab/samples"),
+        lab?.children?.some((n: any) => n.key === "c/lab/samples"),
         "GET /nav does not draw the written document"
       )
     },
@@ -1123,7 +1148,7 @@ export const cases: Record<string, any>[] = [
       check(
         kids[0]?.kind === "folder" &&
           kids[0].label === "Work" &&
-          kids[0].children?.map(n => n.key).join(",") === "c/tasks,c/projects",
+          kids[0].children?.map((n: any) => n.key).join(",") === "c/tasks,c/projects",
         "GET /nav does not draw the PUT document"
       )
     },
