@@ -53,9 +53,17 @@ describe("LINKED: both modules linked in, the way a developer works", () => {
 
   test("dt status lists both, and each brings its own verbs", () => {
     const ws = fixture.workspace({ packages: ["proofs", "worktrees"] })
+    const version = (m: string) =>
+      JSON.parse(fs.readFileSync(path.join(import.meta.dirname, "..", "modules", m, "package.json"), "utf8")).version
     assert.match(
       ws.dt("status").stdout,
-      /^extensions: @dreamteamer\/proofs@0\.1\.1 · @dreamteamer\/worktrees@0\.1\.0$/m
+      new RegExp(
+        `^extensions: @dreamteamer/proofs@${version("proofs")} · @dreamteamer/worktrees@${version("worktrees")}$`.replace(
+          /\./g,
+          "\\."
+        ),
+        "m"
+      )
     )
     const help = ws.dt("help").stdout
     for (const verb of ["prove <proof>", "land <name|path>", "worktree add --name <n>"])

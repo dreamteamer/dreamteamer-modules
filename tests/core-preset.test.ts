@@ -25,6 +25,7 @@ import {
   engineMeets,
   ENGINE_VERSION,
 } from "./helpers/workspace.ts"
+import { atLeast } from "./helpers/atLeast.ts"
 
 after(cleanup)
 const MEMBERS = [
@@ -76,7 +77,7 @@ describe("the preset map", () => {
     for (const k of ["extension", "env", "vars", "provides", "peer_collections", "dependencies"])
       assert.ok(!(k in pkg.dreamteamer), `dreamteamer.${k} is still declared`)
     assert.ok(!("bin" in pkg), "bin is still declared")
-    assert.equal(pkg.version, "0.13.2")
+    assert.ok(atLeast(pkg.version, "0.13.2"), `core ${pkg.version} is below 0.13.2`)
     assert.equal(pkg.dreamteamer.engine, ">=0.49.0")
     assert.equal(pkg.dreamteamer.nav, "nav.yaml")
     assert.deepEqual([...pkg.files].sort(), ["README.md", "UPDATING.md", "nav.yaml"])

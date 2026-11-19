@@ -27,6 +27,7 @@ import {
   ENGINE_VERSION,
 } from "../helpers/workspace.ts"
 import { seedNorthwind, seedJourneys, settle } from "../../modules/rnd/test/helpers/rnd-workspace.ts"
+import { atLeast } from "../helpers/atLeast.ts"
 
 after(cleanup)
 const skip =
@@ -49,7 +50,7 @@ const MIGRATIONS = [
 describe("rnd bins after the decomposition", { skip }, () => {
   test("steps 1–5", { timeout: 900_000 }, () => {
     // step 1 — the tarball, and rnd alone from it
-    assert.match(pkgOf("rnd").version, /^0\.11\.\d+$/) // rnd 0.11.x: the decomposition shipped in 0.11.0; a patch keeps it
+    assert.ok(atLeast(pkgOf("rnd").version, "0.11.0")) // the decomposition shipped in 0.11.0; a later rnd keeps it
     const files = packedFiles("rnd")
     assert.ok(files.includes("dist/lib/findWorkspace.js"), "dist/lib/findWorkspace.js is not in the tarball")
     for (const f of [

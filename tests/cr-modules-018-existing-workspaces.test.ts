@@ -27,6 +27,7 @@ import {
   engineMeets,
   ENGINE_VERSION,
 } from "./helpers/workspace.ts"
+import { atLeast } from "./helpers/atLeast.ts"
 
 const made = []
 after(() => {
@@ -168,9 +169,10 @@ describe("t6 a 0.12.0 workspace updated keeps everything (line 6)", { skip }, ()
   test("core is 0.13.x and both connectors are installed", () => {
     const v = n =>
       JSON.parse(fs.readFileSync(path.join(root, "node_modules", "@dreamteamer", n, "package.json"), "utf8")).version
-    assert.match(v("core"), /^0\.13\.\d+$/) // this repo's core: a 0.13 patch carries the move cr-modules-018 proves
-    assert.equal(v("contacts"), "0.2.0")
-    assert.equal(v("meetings"), "0.4.0")
+    // this repo's set: a later release carries the move cr-modules-018 proves
+    assert.ok(atLeast(v("core"), "0.13.0"), v("core"))
+    assert.ok(atLeast(v("contacts"), "0.2.0"), v("contacts"))
+    assert.ok(atLeast(v("meetings"), "0.4.0"), v("meetings"))
     assert.ok(v("connectors-linkedin"))
     assert.ok(v("connectors-google-workspace"))
   })

@@ -49,7 +49,14 @@ export function unreleased(root: string, has: Lookup, only?: string[]): Planned[
   return out
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+const real = (p: string) => {
+  try {
+    return fs.realpathSync(p)
+  } catch {
+    return path.resolve(p)
+  }
+}
+if (process.argv[1] && real(process.argv[1]) === real(fileURLToPath(import.meta.url))) {
   const at = process.argv.indexOf("--modules")
   const only =
     at < 0
