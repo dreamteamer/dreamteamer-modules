@@ -153,10 +153,10 @@ jobs:
       #   canary       the pattern's own plain literals and name pairs, one per line, must ALL match
       #                through the same names_grep the scan uses, and there must be at least 100
       #                literals — an organisations-only, truncated or mangled value fails here
-      # ⚠ TEMPORARILY OFF (2026-11-19). It fails on the typescript branch — a line added since 2611810 matches the
-      # list, and the list lives only in hq-gilad and this secret, so the hit cannot be located from here. A skipped
-      # gate is not a passed gate: the task in giladkhen-project-dreamteamer ("find the leak-scan private-names hit
-      # on dreamteamer-modules and turn the step back on") tracks removing this `if`.
+      # ⚠ TEMPORARILY OFF (2026-11-19). A line added since 2611810 matches the list, and the list is not in this
+      # repository, so the hit could not be located from a checkout. A skipped gate is not a passed gate: a task in
+      # the project records ("find the leak-scan private-names hit on dreamteamer-modules and turn the step back
+      # on") tracks removing this `if`.
       - name: private names
         if: false
         env:
