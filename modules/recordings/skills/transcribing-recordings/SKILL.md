@@ -27,8 +27,8 @@ unmapped and say so.
 run from the workspace root, against the compiled copy of this skill. every command below assumes:
 
 ```bash
-node node_modules/@dreamteamer/recordings/bin/transcribe.mjs sync     # the venv (uv sync)
-node node_modules/@dreamteamer/recordings/bin/transcribe.mjs setup    # the models — audio route only
+npx dreamteamer run @dreamteamer/recordings transcribe sync     # the venv (uv sync)
+npx dreamteamer run @dreamteamer/recordings transcribe setup    # the models — audio route only
 ```
 
 The node entry reads the workspace `.env` (`TRANSCRIPTION_HOME`), sets `UV_PROJECT_ENVIRONMENT` and

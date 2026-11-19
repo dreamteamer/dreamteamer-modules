@@ -5,7 +5,7 @@ The host protocol the dreamteamer UI speaks — written down once, as a document
 - `PROTOCOL.md` — every method and path, request and response shapes, the error maps, dry run, the
   notifications and gestures, the boot globals and the host capabilities.
 - `src/routes.js` — `ROUTES` (the same routes as data) and `matchRoute(method, path)`.
-- `src/nav-doc.js` (`@dreamteamer/protocol/nav-doc`) — the nav document every host speaks: the `NavDoc`,
+- `src/navDoc.js` (`@dreamteamer/protocol/nav-doc`) — the nav document every host speaks: the `NavDoc`,
   `NavTarget` and `NavOp` types, `applyNavOp` (the one pure function every gesture goes through), the reader and
   writer of `nav.yaml`, and `migrateNavSettings`.
 - `bin/dt-nav.mjs` — `dt-nav migrate`: a workspace's old nav settings written into `nav.yaml`, once.

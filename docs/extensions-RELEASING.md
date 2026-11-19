@@ -68,7 +68,27 @@ Delivering these modules as one package — through npm or as a `git_modules/` c
 folder into `modules/` works on older engines. Each module declares the engine range *it* needs in
 its own `package.json`; the package-level floor is enforced by `npx dt-extensions doctor`.
 
+## a `next` prerelease, with the engine's `next`
+
+A prerelease set is the one thing published from a laptop, because it is opt-in and never `latest`:
+
+```bash
+npm login                                   # an account in the dreamteamer npm org
+export LEAK_NAMES='…'                       # the same pattern as the repo secret, or pass --no-names
+npm run release:next                        # needs a published dreamteamer@next first
+```
+
+Every module already on npm gets one stamp, `<next patch>-next.<utc>.g<commit>`, published with
+`--tag next`. The tarballs floor the engine at `>=<dreamteamer@next>` and pin their `@dreamteamer/*`
+siblings, peers and preset members to the set's exact next versions, so `npm install
+dreamteamer@next @dreamteamer/<id>@next` installs one coherent set from one commit. Before it asks
+y/N, the script runs the whole suite on `dreamteamer@next` (`scripts/test-candidate.ts`), leak-scans
+every unpacked tarball, and installs the set beside the engine in a fresh workspace to compile and
+check it. `package.json` files are stamped only for the pack and restored byte for byte; no tag, no
+commit. A module never published is skipped — its first publish is a release.
+
 ## what the release must never do
 
-Publish locally. Run `npm publish` from a laptop and there is no provenance, no gate, and no record of
-what shipped. CI does it, or it does not happen.
+Publish a release locally. Run `npm publish` from a laptop and there is no provenance, no gate, and no
+record of what shipped. CI does it, or it does not happen. The one exception is the `next` prerelease
+above, which carries its commit in its version and never moves `latest`.

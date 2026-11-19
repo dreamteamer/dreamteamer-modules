@@ -1,0 +1,494 @@
+// The rules a wiki is judged by — pure, so a fixture can pin every one of them without a network
+// call, a login or a folder. `bin/wiki.mjs` does the disk; this file does the deciding.
+//
+// A wiki is a collection of markdown sources serialised as a FOLDER: `index.md`, then
+// `sources/<nn>--<slug>.md`, nested into subfolders when the corpus has sections. Every source is a
+// file — including one nothing has downloaded yet, which exists as a stub carrying
+// `completeness: pending` and no body.
+//
+// The stub is what keeps a half-fetched corpus from looking finished: absence is the one state a
+// reader cannot see, so the inventory is laid out complete-and-empty first and filled second. The
+// marker travels in the frontmatter of the file it judges, so copying the folder copies it, deleting
+// the file deletes it, and `grep -l 'completeness: pending'` works with no tool installed.
+import fs from "node:fs"
+import path from "node:path"
+import yaml from "js-yaml"
+
+// ─── the completeness marker ────────────────────────────────────────────────────────────────────────
+
+/** The five states, worst first. Each is separated from its neighbour by an OBSERVATION, never by a
+ *  shade of meaning — see `classify`, which is the only thing allowed to assign one. */
+export const COMPLETENESS = ["pending", "failed", "empty", "partial", "complete"]
+
+/** Under this many bytes of body, a fetch that exited 0 returned nothing worth keeping. A blocked
+ *  page, a paywall and a Drive doc the login cannot read all come back as a short stub, and a real
+ *  markdown source is kilobytes. Movable per run with `--min-bytes`; the judged byte count is kept on
+ *  the file, so re-classifying never needs a re-download. */
+export const MIN_BYTES = 256
+
+/** `notebooklm source fulltext` in text mode truncates its stdout here. A fetch that is known to have
+ *  hit the cap is `partial`, not `complete`, because it exits 0 and looks like a finished source. */
+export const TEXT_TRUNCATION = 2000
+
+/**
+ * One fetch's OBSERVATIONS → one state, with the reason a later pass needs.
+ *
+ *   attempted      false means nothing has run yet — the stub
+ *   status         the adapter's exit code
+ *   bytes          the body actually written
+ *   truncated      the adapter itself said it stopped early
+ *   expectedBytes  a length known in advance, when the adapter reports one
+ *   error          the adapter's stderr; only its first line is kept
+ *
+ * The order is load-bearing: a non-zero exit is `failed` even when it wrote nothing, because the
+ * remedy is retry; a clean exit that wrote nothing is `empty`, because the remedy is a different
+ * route entirely.
+ */
+export function classify({
+  attempted = false,
+  status = 0,
+  bytes = 0,
+  truncated = false,
+  expectedBytes = null as number | null,
+  error = "",
+  minBytes = MIN_BYTES,
+} = {}) {
+  if (!attempted) return { completeness: "pending", reason: "never fetched" }
+  if (status !== 0)
+    return {
+      completeness: "failed",
+      reason:
+        String(error || "")
+          .split("\n")[0]
+          .trim() || `the adapter exited ${status}`,
+    }
+  if (bytes < minBytes)
+    return {
+      completeness: "empty",
+      reason: `${bytes} bytes, under the ${minBytes}-byte floor — the route works, the content is not there`,
+    }
+  if (truncated)
+    return { completeness: "partial", reason: `truncated at ${bytes} bytes — refetch in a format that does not cap` }
+  if (expectedBytes != null && bytes < expectedBytes)
+    return { completeness: "partial", reason: `${bytes} of ${expectedBytes} bytes — the fetch stopped early` }
+  return { completeness: "complete", reason: "" }
+}
+
+/** Counts by state, plus the two numbers a rollup carries. `sources` is anything with a
+ *  `completeness`; an unknown or absent one counts as `pending` rather than being dropped. */
+export function summarise(sources: ({ completeness?: unknown } | null | undefined)[] = []) {
+  const by = Object.fromEntries(COMPLETENESS.map(s => [s, 0]))
+  for (const s of sources) {
+    const state = COMPLETENESS.includes(s?.completeness as string) ? (s.completeness as string) : "pending"
+    by[state] += 1
+  }
+  const total = sources.length
+  return { total, by, complete: by.complete, incomplete: total - by.complete }
+}
+
+// ─── which adapter answers for a record ─────────────────────────────────────────────────────────────
+
+export const ADAPTERS = ["local", "notebooklm"]
+
+/**
+ * The adapter a `notebooks` record is served by.
+ *
+ * The field has no default: when it is absent the answer is derived — a record with a live uuid is
+ * served by NotebookLM, one without is a folder. Setting it overrides that, for a notebook that
+ * exists upstream but should be served from its folder.
+ */
+export function adapterOf(record: Record<string, any> = {}, override?: string): string {
+  const pick = override ?? record.adapter
+  if (pick) {
+    if (!ADAPTERS.includes(pick)) throw new Error(`unknown adapter "${pick}" — one of ${ADAPTERS.join(" · ")}`)
+    return pick
+  }
+  return record.notebook_id ? "notebooklm" : "local"
+}
+
+// ─── the folder ─────────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Where a new wiki's `folder` field points: `wikis/<id>`, inside the workspace and at its root.
+ *
+ * The corpus is committed: it is markdown a coding agent greps and cites by `file:line`, so it has to
+ * be in a bare clone, reachable from a cloud session, and reviewable in a diff. Scraped PDFs,
+ * recordings and scans stay under `${env:FILES_FOLDER}`; only text meant to be read lives here.
+ *
+ * It is not under `data/`: every path there belongs to some collection's storage, and
+ * `dreamteamer check` warns on each file in a collection's folder that is not a record. `wikis/` is
+ * owned by no collection, so a corpus is invisible to the record layer.
+ *
+ * The value is relative and resolves against the workspace root (see `resolveWiki`), so the same
+ * record works on every machine with no variable to set. A record carrying an `${env:…}` template
+ * still renders and works.
+ */
+export const defaultFolder = (id: string) => `wikis/${id}`
+
+/** The folder every wiki sits under, relative to the workspace root. */
+export const WIKI_ROOT = "wikis"
+
+/** Everything inside a wiki folder, once the template has been rendered. */
+export function wikiPaths(root: string) {
+  return {
+    root,
+    // `index.md`, so every file in a corpus is markdown with frontmatter. `legacyManifest` is a
+    // bare-YAML `wiki.yaml`, still read when a folder has no `index.md`; nothing rewrites one until
+    // the wiki is next written.
+    index: path.join(root, "index.md"),
+    legacyManifest: path.join(root, "wiki.yaml"),
+    sources: path.join(root, "sources"),
+    notes: path.join(root, "notes"),
+  }
+}
+
+/** Lowercase kebab, capped — the slug half of a source filename and of a section folder. Returns ''
+ *  when the title carries nothing latin-alphanumeric, which the caller reads as "use the number". */
+export function slug(text: unknown, max = 48): string {
+  const s = String(text ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+  if (s.length <= max) return s
+  const cut = s.slice(0, max)
+  return cut.slice(0, cut.lastIndexOf("-") > 8 ? cut.lastIndexOf("-") : max).replace(/-+$/, "")
+}
+
+/**
+ * `<nn>--<slug>.md`, or `<nn>.md` when the title slugs to nothing.
+ *
+ * The number is the corpus order and it is global, so `ls -R` is the order with no second copy of it
+ * to disagree. A gap left by a delete is never closed up: renumbering would move every file a link
+ * points at.
+ */
+export function sourceFileName(index: number, title: unknown): string {
+  const nn = String(index).padStart(3, "0")
+  const s = slug(title)
+  return s ? `${nn}--${s}.md` : `${nn}.md`
+}
+
+/** The source's path INSIDE `sources/`, POSIX-spelled: a section becomes one subfolder. */
+export function sourcePath(index: number, title: unknown, section?: unknown): string {
+  const file = sourceFileName(index, title)
+  const dir = slug(section)
+  return dir ? `${dir}/${file}` : file
+}
+
+// ─── the file format ────────────────────────────────────────────────────────────────────────────────
+
+/** A source file → `{ fields, body, bodyLine }`. A file with no frontmatter is all body, so a
+ *  hand-written markdown file dropped into `sources/` is still readable.
+ *
+ *  `bodyLine` is the 1-based line of the file that `body` starts on. A hit numbered inside the body
+ *  alone would be short by the frontmatter's height and open the wrong line. */
+export function parseSource(text: unknown): { fields: Record<string, any>; body: string; bodyLine: number } {
+  const s = String(text ?? "")
+  if (!s.startsWith("---\n")) return { fields: {}, body: s, bodyLine: 1 }
+  const end = s.indexOf("\n---", 4)
+  if (end < 0) return { fields: {}, body: s, bodyLine: 1 }
+  const fields = (yaml.load(s.slice(4, end)) ?? {}) as Record<string, any>
+  const consumed = s.slice(0, end + 4)
+  let body = s.slice(end + 4)
+  let bodyLine = consumed.split("\n").length
+  if (body.startsWith("\n")) {
+    body = body.slice(1)
+    bodyLine += 1
+  }
+  return { fields, body, bodyLine }
+}
+
+/** `{ fields, body }` → a source file. The body is written verbatim — including a `---` line of its
+ *  own, which `parseSource` reads back unharmed because only the FIRST closing marker is a boundary. */
+export function renderSource(fields: Record<string, unknown>, body = ""): string {
+  const fm = yaml.dump(fields, { lineWidth: -1, noRefs: true, quotingType: "'" })
+  return `---\n${fm}---\n${body}`
+}
+
+/** The frontmatter a source carries before anything has been fetched. */
+export function stubFields({
+  kind,
+  ref = "",
+  title = "",
+  upstream_id,
+  adapter,
+  section,
+  source_file,
+}: Record<string, any>) {
+  return {
+    kind,
+    ref,
+    title,
+    // Where the original is kept, as a `${env:FILES_FOLDER}/…` template, never a machine path: the
+    // bytes stay out of the repo, the corpus carries the text, and this field carries the pointer.
+    // Keep an original only when restoring it would cost effort (a login-walled document, a one-off
+    // export, a file that exists nowhere else) or when it holds more than the extraction does
+    // (figures, tables, pagination a citation depends on). A document re-fetchable from a stable
+    // URL needs none: `ref` is already that pointer. Absent is the normal state.
+    ...(source_file ? { source_file } : {}),
+    ...(section ? { section } : {}),
+    ...(adapter ? { adapter } : {}),
+    ...(upstream_id ? { upstream_id } : {}),
+    completeness: "pending",
+    bytes: 0,
+  }
+}
+
+/**
+ * `index.md` — the corpus's own page: identity, adapter, upstream and the counts as of the last sync
+ * in frontmatter, then whatever a person wrote about what this corpus covers.
+ *
+ * It lists no sources: the folder already indexes itself by filename, and `dt-wiki status` renders
+ * the list from it on demand, so there is no second list to go stale.
+ *
+ * The body is a person's and is preserved: re-rendering keeps whatever prose is under the frontmatter.
+ */
+/** What `index.md` carries in its frontmatter. */
+export interface WikiIndex {
+  id: string
+  title?: string
+  adapter?: string
+  upstream?: unknown
+  persona?: unknown
+  synced_at?: string
+  counts?: unknown
+}
+
+export function renderIndex(m: WikiIndex, body: unknown = ""): string {
+  const fm = yaml.dump(
+    {
+      id: m.id,
+      title: m.title ?? m.id,
+      adapter: m.adapter ?? "local",
+      ...(m.upstream ? { upstream: m.upstream } : {}),
+      ...(m.persona ? { persona: m.persona } : {}),
+      ...(m.synced_at ? { synced_at: m.synced_at } : {}),
+      ...(m.counts ? { counts: m.counts } : {}),
+    },
+    { lineWidth: -1, noRefs: true, quotingType: "'" }
+  )
+  const prose = String(body ?? "").trim()
+  return `---\n${fm}---\n${prose ? `\n${prose}\n` : "\n"}`
+}
+
+/** The frontmatter of an `index.md`, or of a bare-YAML `wiki.yaml` — both are accepted, told apart
+ *  by whether the text opens a frontmatter fence. */
+export function parseIndex(text: unknown): { fields: Record<string, any>; body: string } {
+  const t = String(text ?? "")
+  const m = /^---\n([\s\S]*?)\n---\n?([\s\S]*)$/.exec(t)
+  if (!m) return { fields: (yaml.load(t) ?? {}) as Record<string, any>, body: "" } // legacy wiki.yaml
+  return { fields: (yaml.load(m[1]) ?? {}) as Record<string, any>, body: m[2] }
+}
+
+/** Aliases of `renderIndex` and `parseIndex` under their manifest names; both read and write the
+ *  markdown `index.md`. */
+export const renderManifest = (m: WikiIndex) => renderIndex(m)
+export const parseManifest = (text: unknown) => parseIndex(text).fields
+
+// ─── reading a corpus without a model ───────────────────────────────────────────────────────────────
+
+/** A body's headings, in order — the mechanical stand-in for a summary the local adapter cannot
+ *  generate. Fenced code is skipped, because a `# comment` in a shell block is not a heading. */
+export function outline(body: unknown, maxLevel = 2): { level: number; text: string }[] {
+  const out: { level: number; text: string }[] = []
+  let fenced = false
+  for (const line of String(body ?? "").split("\n")) {
+    if (/^\s*(```|~~~)/.test(line)) {
+      fenced = !fenced
+      continue
+    }
+    if (fenced) continue
+    const m = /^(#{1,6})\s+(.*\S)\s*$/.exec(line)
+    if (m && m[1].length <= maxLevel) out.push({ level: m[1].length, text: m[2] })
+  }
+  return out
+}
+
+/** Every line of `body` matching `re`, as `{ line, text }` — numbered from `firstLine`, so a hit reads
+ *  as a citation (`<file>:<line>`).
+ *
+ *  Pass the source's `bodyLine`. The default of 1 is right only for a string that is the whole file;
+ *  for a parsed source the body starts below the frontmatter. */
+export function searchBody(body: unknown, re: RegExp, cap = 200, firstLine = 1): { line: number; text: string }[] {
+  const out: { line: number; text: string }[] = []
+  String(body ?? "")
+    .split("\n")
+    .forEach((text, i) => {
+      if (out.length < cap && re.test(text)) out.push({ line: firstLine + i, text: text.trim() })
+      re.lastIndex = 0
+    })
+  return out
+}
+
+// ─── templates and the environment ──────────────────────────────────────────────────────────────────
+
+/** `${env:NAME}` → its value, or a refusal naming the variable. Records carry the template; only the
+ *  machine that runs the verb renders it. */
+export function renderTemplate(
+  template: unknown,
+  env: Record<string, string | undefined> = process.env
+): { value?: string; refusal?: string } {
+  let missing: string | null = null
+  const value = String(template ?? "").replace(/\$\{env:([A-Z0-9_]+)\}/g, (_, name: string) => {
+    if (env[name] == null || env[name] === "") {
+      missing = missing ?? name
+      return ""
+    }
+    return env[name]
+  })
+  return missing
+    ? { refusal: `\${env:${missing}} is not set in this environment — export it, or add it to .env, and re-run` }
+    : { value }
+}
+
+/** `.env` text → its key/value pairs. Values are read so a verb can render `FILES_FOLDER` into a
+ *  folder it is about to write to on this machine; no value is ever printed. */
+export function parseEnv(text: unknown): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const line of String(text ?? "").split("\n")) {
+    const m = /^\s*(?:export\s+)?([A-Z_][A-Z0-9_]*)\s*=\s*(.*)$/.exec(line)
+    if (!m) continue
+    let v = m[2].trim()
+    if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) v = v.slice(1, -1)
+    if (v !== "") out[m[1]] = v
+  }
+  return out
+}
+
+/** The environment a verb renders templates against: the workspace's `.env`, overridden by anything
+ *  actually exported. Without this, `${env:FILES_FOLDER}` renders only when the variable happens to be
+ *  in the shell — which it almost never is under `npx`. */
+export function envFrom(root: string, base: NodeJS.ProcessEnv = process.env): Record<string, string> {
+  let fromFile: Record<string, string> = {}
+  try {
+    fromFile = parseEnv(fs.readFileSync(path.join(root, ".env"), "utf8"))
+  } catch {
+    /* no .env is a normal, working state */
+  }
+  return { ...fromFile, ...Object.fromEntries(Object.entries(base).filter(([, v]) => v != null && v !== "")) }
+}
+
+// ─── reading the vendor's answer ────────────────────────────────────────────────────────────────────
+
+/**
+ * One `notebooklm` invocation's raw result → `{ json }` or `{ error }`.
+ *
+ * The vendor reports failure as a JSON payload on stdout (`{"error": true, "message": …}`), sometimes
+ * at exit 0 and with stderr empty, and the payload's message names the fix. So the payload is read
+ * first, whatever the exit code says.
+ */
+export function vendorResult({ stdout = "", stderr = "", status = 0 } = {}) {
+  const i = String(stdout).indexOf("{")
+  let json = null
+  if (i >= 0) {
+    try {
+      json = JSON.parse(String(stdout).slice(i))
+    } catch {
+      /* not JSON — the exit code decides */
+    }
+  }
+  if (json?.error) return { error: String(json.message ?? json.code ?? "the call reported an error") }
+  if (status !== 0) return { error: String(stderr).trim() || `notebooklm exited ${status}` }
+  return { json: json ?? {} }
+}
+
+/** The ONE fetch failure a lossier format actually fixes: `--format markdown` needs the vendor's
+ *  optional `markdownify` extra, which a plain install does not bring. Any other error is left alone —
+ *  retrying a real failure in a lossier format is how a bad answer gets written down as a good one. */
+export const MARKDOWN_EXTRA_MISSING = /markdownify/i
+
+// ─── the pull ───────────────────────────────────────────────────────────────────────────────────────
+
+/** One upstream `source list` entry's type → the kind a local source file carries. */
+export function kindFromUpstream(type: unknown): string {
+  const t = String(type ?? "")
+    .replace(/^SourceType\./, "")
+    .toLowerCase()
+  if (t === "web_page") return "url"
+  if (t.startsWith("youtube")) return "youtube"
+  if (t === "pasted_text") return "text"
+  if (t.startsWith("google_")) return "drive"
+  return "file"
+}
+
+/**
+ * The ordered work a `dt-wiki pull` becomes — pure, so a fixture pins it without a network call.
+ *
+ * `live`      the upstream `source list --json` payload (or its `sources` array)
+ * `existing`  the source files already on disk, as `{ upstream_id, completeness, path }`
+ * `opts`      `refresh` re-fetches what is already complete · `limit` caps the run · `section(live)`
+ *             assigns a subfolder
+ *
+ * Every live source produces a step, including the ones being skipped: the plan is the inventory,
+ * and a dropped step would be a source that stops being counted.
+ */
+/** One upstream `source list` row. */
+export interface UpstreamSource {
+  id?: string
+  index?: number
+  type?: string
+  title?: string
+  url?: string
+}
+
+/** One step of a pull. */
+export interface PullStep {
+  action: "fetch" | "skip"
+  index: number
+  upstream_id: string
+  kind: string
+  file: string
+  title: string
+  ref: string
+  reason: string
+}
+
+export function pullPlan(
+  live: UpstreamSource[] | { sources?: UpstreamSource[] } | null | undefined,
+  existing: ({ upstream_id?: string; completeness?: string; path?: string } | null)[] = [],
+  opts: Record<string, any> = {}
+): { steps: PullStep[]; refusals: string[] } {
+  const rows = Array.isArray(live) ? live : (live?.sources ?? [])
+  const by = new Map(existing.filter(e => e?.upstream_id).map(e => [e.upstream_id, e]))
+  const section = opts.section ?? (() => "")
+  const steps: PullStep[] = []
+  const refusals: string[] = []
+  if (!rows.length) refusals.push("the upstream notebook reports no sources — nothing to pull")
+
+  rows.forEach((row, i) => {
+    const index = Number.isInteger(row.index) ? row.index : i + 1
+    const id = row.id
+    if (!id) {
+      refusals.push(`sources[${i}]: the upstream list gave no id — it cannot be tracked or resumed`)
+      return
+    }
+    const kind = kindFromUpstream(row.type)
+    const prior = by.get(id)
+    const file = prior?.path ?? `sources/${sourcePath(index, row.title, section(row))}`
+    const done = prior?.completeness === "complete"
+    steps.push({
+      action: done && !opts.refresh ? "skip" : "fetch",
+      index,
+      upstream_id: id,
+      kind,
+      file,
+      title: row.title ?? "",
+      ref: row.url ?? "",
+      reason: done && !opts.refresh ? "already complete — pass --refresh to fetch it again" : "",
+    })
+  })
+
+  const limit = Number(opts.limit) || 0
+  if (limit > 0) {
+    let budget = limit
+    for (const s of steps) {
+      if (s.action !== "fetch") continue
+      if (budget > 0) {
+        budget -= 1
+        continue
+      }
+      s.action = "skip"
+      s.reason = `over --limit ${limit}`
+    }
+  }
+  return { steps, refusals }
+}

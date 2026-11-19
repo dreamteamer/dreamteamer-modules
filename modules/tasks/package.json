@@ -3,6 +3,7 @@
 	"version": "0.3.4",
 	"description": "Concrete commitments with a focused unfinished-work Board and List, creation dates and preserved task history.",
 	"license": "Apache-2.0",
+	"type": "module",
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/dreamteamer/dreamteamer-modules.git",
@@ -13,20 +14,19 @@
 		"dreamteamer-module"
 	],
 	"bin": {
-		"dt-migrate-lanes-to-tags": "bin/migrate-lanes-to-tags.mjs"
+		"dt-migrate-lanes-to-tags": "dist/bin/migrate-lanes-to-tags.js"
 	},
 	"files": [
 		"README.md",
-		"bin",
-		"lib",
 		"collections",
 		"skills",
-		"ui-views"
+		"ui-views",
+		"dist"
 	],
 	"dreamteamer": {
 		"title": "Tasks",
 		"description": "`tasks`: concrete commitments with owners, dates, tags and source links. Default Board and List show suggested, todo, doing and blocked work. Older inbox, by-person and Gantt routes remain accessible without extra navigation entries. The working-with-tasks skill manages the existing lifecycle; no records are migrated by this display update.",
-		"engine": ">=0.33.0",
+		"engine": ">=0.50.0",
 		"dependencies": [
 			"@dreamteamer/users"
 		],
@@ -36,9 +36,15 @@
 			"rnd/user-stories",
 			"rnd/user-journeys",
 			"rnd/change-requests"
-		]
+		],
+		"scripts": {
+			"migrate-lanes-to-tags": "dist/bin/migrate-lanes-to-tags.js"
+		}
 	},
 	"peerDependencies": {
 		"@dreamteamer/users": ">=0.2.1"
+	},
+	"scripts": {
+		"prepack": "node ../../scripts/build.ts --module=tasks"
 	}
 }

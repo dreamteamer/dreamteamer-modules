@@ -15,23 +15,28 @@
 		"workflows"
 	],
 	"bin": {
-		"dt-workflows": "bin/install.mjs"
+		"dt-workflows": "dist/bin/install.js"
 	},
 	"files": [
 		"README.md",
 		"collections",
 		"skills",
 		"commands",
-		"bin",
-		"lib",
-		"data"
+		"data",
+		"dist"
 	],
 	"dreamteamer": {
 		"title": "Workflows",
 		"description": "`workflows`: a chain of commands written down — each step a command, the records it walks (a `dt list --where` filter) and where a person decides. `/workflow:run <id>` walks one with `dt next` and records nothing about the run: the records the commands touch are the progress. `npx dt-workflows install <id>` copies a shipped workflow in; `customer-factory` ships here.",
-		"engine": ">=0.38.0",
+		"engine": ">=0.50.0",
 		"ignore": [
 			"data"
-		]
+		],
+		"scripts": {
+			"install": "dist/bin/install.js"
+		}
+	},
+	"scripts": {
+		"prepack": "node ../../scripts/build.ts --module=workflows"
 	}
 }

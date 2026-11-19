@@ -3,22 +3,22 @@
  * registered component to render it with, degrading gracefully — never throwing —
  * when the schema names something this build doesn't have registered.
  */
-import type { FieldRow } from '../api/types';
-import { choicesOf, isBodyField, isRelationField, subFieldsOf } from '../lib/field-row';
-import { type ExtensionDefinition, edits, kindDefaultEdits, kindDefaultViews, views } from './index';
+import type { FieldRow } from "../api/types.ts"
+import { choicesOf, isBodyField, isRelationField, subFieldsOf } from "../lib/fieldRow.ts"
+import { type ExtensionDefinition, edits, kindDefaultEdits, kindDefaultViews, views } from "./index.ts"
 
 export interface Resolved<T> {
-	entry: T;
-	degraded: string | null;
+  entry: T
+  degraded: string | null
 }
 
 // The kind-default maps (`kindDefaultEdits`/`kindDefaultViews`) live in ./index so a module can
 // extend them (`registerKindDefault`) without touching this file; resolve.ts only reads them.
 
-const EDIT_FALLBACK = 'input';
-const VIEW_FALLBACK = 'text';
+const EDIT_FALLBACK = "input"
+const VIEW_FALLBACK = "text"
 
-type Lookup = { get(id: string): ExtensionDefinition | undefined };
+type Lookup = { get(id: string): ExtensionDefinition | undefined }
 
 /**
  * Resolve `primaryId` against `registry`, falling back through `kindDefaultId`
@@ -28,31 +28,31 @@ type Lookup = { get(id: string): ExtensionDefinition | undefined };
  * always the *original* missing id, not a later one in the fallback chain).
  */
 function resolveChain(
-	registry: Lookup,
-	primaryId: string,
-	kindDefaultId: string,
-	ultimateId: string,
-	degradedLabel: string | null,
+  registry: Lookup,
+  primaryId: string,
+  kindDefaultId: string,
+  ultimateId: string,
+  degradedLabel: string | null
 ): Resolved<ExtensionDefinition> {
-	const direct = registry.get(primaryId);
-	if (direct) return { entry: direct, degraded: degradedLabel };
+  const direct = registry.get(primaryId)
+  if (direct) return { entry: direct, degraded: degradedLabel }
 
-	const label = degradedLabel ?? `missing-edit-${primaryId}`;
+  const label = degradedLabel ?? `missing-edit-${primaryId}`
 
-	if (kindDefaultId !== primaryId) {
-		const kindEntry = registry.get(kindDefaultId);
-		if (kindEntry) return { entry: kindEntry, degraded: label };
-	}
+  if (kindDefaultId !== primaryId) {
+    const kindEntry = registry.get(kindDefaultId)
+    if (kindEntry) return { entry: kindEntry, degraded: label }
+  }
 
-	if (ultimateId !== primaryId && ultimateId !== kindDefaultId) {
-		const ultimateEntry = registry.get(ultimateId);
-		if (ultimateEntry) return { entry: ultimateEntry, degraded: label };
-	}
+  if (ultimateId !== primaryId && ultimateId !== kindDefaultId) {
+    const ultimateEntry = registry.get(ultimateId)
+    if (ultimateEntry) return { entry: ultimateEntry, degraded: label }
+  }
 
-	// Nothing in the chain is registered. This only happens in an incomplete
-	// build/test setup (register-defaults.ts always registers the ultimate
-	// fallback) — fail loudly rather than fabricate a component to render.
-	throw new Error(`registry: no '${ultimateId}' fallback registered (resolving '${primaryId}')`);
+  // Nothing in the chain is registered. This only happens in an incomplete
+  // build/test setup (register-defaults.ts always registers the ultimate
+  // fallback) — fail loudly rather than fabricate a component to render.
+  throw new Error(`registry: no '${ultimateId}' fallback registered (resolving '${primaryId}')`)
 }
 
 /**
@@ -61,29 +61,29 @@ function resolveChain(
  * rather than from the wire type alone.
  */
 function shapeEdit(field: FieldRow): string | null {
-	if (isBodyField(field)) return 'markdown-body';
-	if (isRelationField(field)) return 'relation-picker';
-	if (field.many) {
-		if (field.type === 'object') return 'list';
-		return 'tags';
-	}
-	if (choicesOf(field)) return 'select-dropdown';
-	if (field.type === 'object' && subFieldsOf(field).length) return 'nested';
-	return null;
+  if (isBodyField(field)) return "markdown-body"
+  if (isRelationField(field)) return "relation-picker"
+  if (field.many) {
+    if (field.type === "object") return "list"
+    return "tags"
+  }
+  if (choicesOf(field)) return "select-dropdown"
+  if (field.type === "object" && subFieldsOf(field).length) return "nested"
+  return null
 }
 
 /** The View twin of `shapeEdit`. `context` matters for the body alone: a cell gets the type's own
  *  default, the record page the rendered document. */
-function shapeView(field: FieldRow, context: 'cell' | 'record'): string | null {
-	if (isBodyField(field)) return context === 'record' ? 'markdown' : null;
-	if (isRelationField(field)) return 'relation';
-	if (field.many) {
-		if (field.type === 'object') return 'list';
-		return 'tags';
-	}
-	if (choicesOf(field)) return 'label';
-	if (field.type === 'object' && subFieldsOf(field).length) return 'nested';
-	return null;
+function shapeView(field: FieldRow, context: "cell" | "record"): string | null {
+  if (isBodyField(field)) return context === "record" ? "markdown" : null
+  if (isRelationField(field)) return "relation"
+  if (field.many) {
+    if (field.type === "object") return "list"
+    return "tags"
+  }
+  if (choicesOf(field)) return "label"
+  if (field.type === "object" && subFieldsOf(field).length) return "nested"
+  return null
 }
 
 /**
@@ -92,8 +92,10 @@ function shapeView(field: FieldRow, context: 'cell' | 'record'): string | null {
  * implies; a badge in the form would be a message to the person filling it in about a descriptor
  * they did not write.
  */
-function warnUnregistered(axis: 'editor' | 'viewer', field: FieldRow, id: string): void {
-	console.warn(`dreamteamer: ${field.collection ?? '?'}.${field.field} names ${axis} '${id}', which is not registered — drawing the ${field.type} default`);
+function warnUnregistered(axis: "editor" | "viewer", field: FieldRow, id: string): void {
+  console.warn(
+    `dreamteamer: ${field.collection ?? "?"}.${field.field} names ${axis} '${id}', which is not registered — drawing the ${field.type} default`
+  )
 }
 
 /**
@@ -101,29 +103,35 @@ function warnUnregistered(axis: 'editor' | 'viewer', field: FieldRow, id: string
  * a reference, a list, an enum, an object with sub-fields), else the wire type's.
  */
 /** cr-modules-008 D9: a module's kind defaults apply only to fields of its own collections — the module host sets this. */
-export const moduleKindDefault: { find?: (kind: 'edit' | 'view', field: FieldRow) => string | undefined } = {};
+export const moduleKindDefault: { find?: (kind: "edit" | "view", field: FieldRow) => string | undefined } = {}
 
 export function resolveEdit(field: FieldRow): Resolved<ExtensionDefinition> {
-	const kindDefaultId = shapeEdit(field) ?? moduleKindDefault.find?.('edit', field) ?? kindDefaultEdits[field.type] ?? EDIT_FALLBACK;
-	const explicitId = field.editor;
-	if (explicitId) {
-		const explicitEntry = edits.get(explicitId);
-		if (explicitEntry) return { entry: explicitEntry, degraded: null };
-		warnUnregistered('editor', field, explicitId);
-		return resolveChain(edits, kindDefaultId, kindDefaultId, EDIT_FALLBACK, `missing-edit-${explicitId}`);
-	}
-	return resolveChain(edits, kindDefaultId, kindDefaultId, EDIT_FALLBACK, null);
+  const kindDefaultId =
+    shapeEdit(field) ?? moduleKindDefault.find?.("edit", field) ?? kindDefaultEdits[field.type] ?? EDIT_FALLBACK
+  const explicitId = field.editor
+  if (explicitId) {
+    // a record-scoped Edit draws a whole record page, never one value
+    const explicitEntry = edits.get(explicitId)
+    if (explicitEntry && explicitEntry.scope !== "record") return { entry: explicitEntry, degraded: null }
+    warnUnregistered("editor", field, explicitId)
+    return resolveChain(edits, kindDefaultId, kindDefaultId, EDIT_FALLBACK, `missing-edit-${explicitId}`)
+  }
+  return resolveChain(edits, kindDefaultId, kindDefaultId, EDIT_FALLBACK, null)
 }
 
 /** Mirrors `resolveEdit` on the read side, with the authored `viewer` first. */
-export function resolveView(field: FieldRow, context: 'cell' | 'record' = 'cell'): Resolved<ExtensionDefinition> {
-	const kindDefaultId = shapeView(field, context) ?? moduleKindDefault.find?.('view', field) ?? kindDefaultViews[field.type] ?? VIEW_FALLBACK;
-	const explicitId = field.viewer;
-	if (explicitId) {
-		const explicitEntry = views.get(explicitId);
-		if (explicitEntry) return { entry: explicitEntry, degraded: null };
-		warnUnregistered('viewer', field, explicitId);
-		return resolveChain(views, kindDefaultId, kindDefaultId, VIEW_FALLBACK, `missing-view-${explicitId}`);
-	}
-	return resolveChain(views, kindDefaultId, kindDefaultId, VIEW_FALLBACK, null);
+export function resolveView(field: FieldRow, context: "cell" | "record" = "cell"): Resolved<ExtensionDefinition> {
+  const kindDefaultId =
+    shapeView(field, context) ??
+    moduleKindDefault.find?.("view", field) ??
+    kindDefaultViews[field.type] ??
+    VIEW_FALLBACK
+  const explicitId = field.viewer
+  if (explicitId) {
+    const explicitEntry = views.get(explicitId)
+    if (explicitEntry && explicitEntry.scope !== "record") return { entry: explicitEntry, degraded: null }
+    warnUnregistered("viewer", field, explicitId)
+    return resolveChain(views, kindDefaultId, kindDefaultId, VIEW_FALLBACK, `missing-view-${explicitId}`)
+  }
+  return resolveChain(views, kindDefaultId, kindDefaultId, VIEW_FALLBACK, null)
 }

@@ -1,0 +1,231 @@
+// A VIRGIN WORKSPACE ON A REAL ENGINE — the instrument every behaviour test here measures with.
+//
+// ⚠ Carried from dreamteamer/extensions, where a fully green suite proved nothing four times running:
+// a fixture and the script it exercised drifted together, so they agreed and neither matched the
+// descriptors. Run the real engine instead.
+//
+// Two ways a module reaches a workspace, and both are tested, because they are different code paths in
+// the engine and a consumer uses either:
+//   npm   the module PACKED with `npm pack` (so its `files` list is what is tested — a folder left out
+//         of it fails here, not in a stranger's install), unpacked under node_modules/@dreamteamer/<id>,
+//         and declared as a direct dependency.
+//   copy  the module folder copied into the workspace's `modules/` — an ejected or inlined copy.
+//
+// The engine is the one `dreamteamer/testing` runs (cr-dt-007): this repo's devDependency — or, before an
+// engine is published, the candidate `scripts/use-candidate.ts` put over node_modules/dreamteamer — or the
+// checkout DT_ENGINE_DIR names. Every workspace is made and every engine run goes through that export
+// (D69, D71); what stays here is this repo's own: packing, unpacking and copying modules, and reading git.
+import fs from "node:fs"
+import os from "node:os"
+import path from "node:path"
+import assert from "node:assert"
+import { execFileSync } from "node:child_process"
+import {
+  createWorkspace,
+  run as engineRun,
+  engineMeets as engineSatisfies,
+  ENGINE as TESTING_ENGINE,
+  type Workspace,
+} from "dreamteamer/testing"
+
+export const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..", "..")
+export const MODULES = path.join(ROOT, "modules")
+
+/** The engine under test: DT_ENGINE_DIR when set, else the one `dreamteamer/testing` belongs to. */
+export const ENGINE = process.env.DT_ENGINE_DIR ? path.resolve(process.env.DT_ENGINE_DIR) : TESTING_ENGINE
+export const BIN = path.join(ENGINE, "bin", "dreamteamer.js")
+/**
+ * The file the engine at `base` resolves `subpath` to (`"."` its API, `"./records"` its records API), from its
+ * package.json `exports` — `src/` on an engine through 0.49, `dist/` on a TypeScript one. Throws when it names none.
+ */
+export function engineEntry(base = ENGINE, subpath = ".") {
+  const pick = e =>
+    typeof e === "string" ? e : e && typeof e === "object" ? (pick(e.import) ?? pick(e.node) ?? pick(e.default)) : null
+  const pkg = JSON.parse(fs.readFileSync(path.join(base, "package.json"), "utf8"))
+  const target = pick(pkg.exports?.[subpath]) ?? (subpath === "." ? pkg.main : null)
+  const file = target ? path.join(base, target) : null
+  if (!file || !fs.existsSync(file)) throw new Error(`${base}: its package.json exports no ${subpath}`)
+  return file
+}
+export const SCOPE = "@dreamteamer"
+
+/** Run the engine in `cwd` through `dreamteamer/testing`, with a hard timer (a hang is a failure, never a
+ *  stuck suite); `env` lays extra variables (a PATH of stand-ins, a unit's keys) over the process's. */
+export const run = (cwd, args, env = {}) =>
+  engineRun({ root: cwd, engine: ENGINE } as Workspace, args, { env, timeoutMs: 60_000 })
+
+export const moduleIds = () =>
+  fs
+    .readdirSync(MODULES)
+    .filter(m => fs.existsSync(path.join(MODULES, m, "package.json")))
+    .sort()
+export const pkgOf = m => JSON.parse(fs.readFileSync(path.join(MODULES, m, "package.json"), "utf8"))
+
+/** The folder a dependency lives in. The ENGINE keys a module by its full package name
+ *  (`@dreamteamer/assets`) for `dependencies` and `extends`, so that is how a manifest spells one. */
+export const folderOf = dep => dep.replace(/^@dreamteamer\//, "")
+
+/** A module plus everything it transitively declares as a hard dependency, as folder names. A module
+ *  preset (`dreamteamer.preset`, engine 0.49) brings its members, and theirs, the way `dt install` does. */
+export function closure(m, acc = new Set()) {
+  if (acc.has(m)) return acc
+  acc.add(m)
+  const dt = pkgOf(m).dreamteamer
+  for (const d of [...(dt.dependencies ?? []), ...Object.keys(dt.preset ?? {})]) closure(folderOf(d), acc)
+  return acc
+}
+
+const made = []
+/** Remove every temporary directory this process made. Call from an `after` hook. */
+export const cleanup = () => {
+  for (const r of made.splice(0)) fs.rmSync(r, { recursive: true, force: true })
+}
+
+/** A fresh `dreamteamer init` workspace with the three template variables declared and set. */
+export function virginWorkspace() {
+  assert.ok(fs.existsSync(BIN), `no engine at ${ENGINE} — run npm install, or point DT_ENGINE_DIR at a checkout`)
+  const { root } = createWorkspace({ engine: ENGINE })
+  made.push(root)
+  editPkg(root, pkg => {
+    pkg.name = "probe"
+    pkg.dreamteamer.vars = ["FILES_FOLDER", "INBOX_FOLDERS", "REPOS_FOLDER"]
+  })
+  fs.writeFileSync(
+    path.join(root, ".env"),
+    `FILES_FOLDER=${root}/files\nINBOX_FOLDERS=${root}/inbox\nREPOS_FOLDER=${root}\n`
+  )
+  return root
+}
+
+export function editPkg(root, fn) {
+  const f = path.join(root, "package.json")
+  const pkg = JSON.parse(fs.readFileSync(f, "utf8"))
+  fn(pkg)
+  fs.writeFileSync(f, JSON.stringify(pkg, null, "\t") + "\n")
+}
+
+const tarballs = new Map()
+/** `npm pack` one module once per process; returns the tarball path. */
+export function packed(m) {
+  if (tarballs.has(m)) return tarballs.get(m)
+  const dest = fs.mkdtempSync(path.join(os.tmpdir(), "dtm-pack-"))
+  made.push(dest)
+  const out = execFileSync(
+    "npm",
+    ["pack", path.join(MODULES, m), "--pack-destination", dest, "--json", "--silent", "--ignore-scripts"],
+    {
+      cwd: ROOT,
+      encoding: "utf8",
+      timeout: 60_000,
+    }
+  )
+  const file = path.join(dest, JSON.parse(out)[0].filename)
+  tarballs.set(m, file)
+  return file
+}
+
+/** Pack several modules into ONE folder — what `dt install --from <dir>` reads; returns the folder. */
+export function packedInto(dir, ...names) {
+  fs.mkdirSync(dir, { recursive: true })
+  for (const m of names) fs.copyFileSync(packed(m), path.join(dir, path.basename(packed(m))))
+  return dir
+}
+
+/** The files a module's tarball ships, as paths relative to the package root. */
+export function packedFiles(m) {
+  return execFileSync("tar", ["-tzf", packed(m)], { encoding: "utf8" })
+    .split("\n")
+    .filter(Boolean)
+    .map(f => f.replace(/^package\//, ""))
+}
+
+/** Install modules the npm way: unpack each tarball and declare it as a direct dependency. A
+ *  module's own npm `dependencies` (express, for http) are linked from this repo's install, where npm
+ *  put them — offline, and enough to prove the declared list is the whole list the code needs. */
+export function installPacked(root, names) {
+  for (const m of names) {
+    const dir = path.join(root, "node_modules", SCOPE, m)
+    fs.mkdirSync(dir, { recursive: true })
+    execFileSync("tar", ["-xzf", packed(m), "-C", dir, "--strip-components", "1"])
+    linkNpmDeps(root, m)
+  }
+  editPkg(root, pkg => {
+    for (const m of names) pkg.dependencies[`${SCOPE}/${m}`] = pkgOf(m).version
+  })
+}
+
+/** A module's own npm `dependencies`, linked into the workspace from this repo's install. Either
+ *  channel needs them: a copy under modules/ resolves `express` from the workspace's node_modules too. */
+function linkNpmDeps(root, m) {
+  for (const dep of Object.keys(pkgOf(m).dependencies ?? {})) {
+    const at = path.join(root, "node_modules", dep)
+    if (fs.existsSync(at)) continue
+    const from = path.join(ROOT, "node_modules", dep)
+    assert.ok(
+      fs.existsSync(from),
+      `${m} depends on ${dep}, which this repo's npm install does not hold — run npm install`
+    )
+    fs.mkdirSync(path.dirname(at), { recursive: true })
+    fs.symlinkSync(from, at, "dir")
+  }
+}
+
+const NEVER_COPY = /node_modules|__pycache__|\.venv|\.pytest_cache/
+/** Install modules the copy way: each folder under the workspace's `modules/`. */
+export function installCopied(root, names) {
+  for (const m of names) {
+    fs.cpSync(path.join(MODULES, m), path.join(root, "modules", m), {
+      recursive: true,
+      filter: src => !NEVER_COPY.test(src),
+    })
+    linkNpmDeps(root, m)
+  }
+}
+
+export const CHANNELS = { npm: installPacked, copy: installCopied }
+
+/** The version of the engine under test. */
+export const ENGINE_VERSION = JSON.parse(fs.readFileSync(path.join(ENGINE, "package.json"), "utf8")).version
+
+/** Does the engine under test meet a module's `dreamteamer.engine` floor (`>=x.y.z`)? */
+export function engineMeets(m) {
+  const floor = pkgOf(m).dreamteamer.engine
+  return floor ? engineSatisfies(floor) : true
+}
+
+/** Does the engine under test refuse a module whose npm `peerDependencies` floor a present sibling
+ *  misses (engine 0.42.0 or later)? Probed once per process on two synthetic modules, never read off the
+ *  output of the test that depends on it — a test that picks its assertion from the stderr it is
+ *  judging passes whatever the module under test declares. */
+let readsFloors
+export function engineReadsFloors() {
+  if (readsFloors !== undefined) return readsFloors
+  const root = virginWorkspace()
+  for (const [id, peers] of [["floor-a", { "floor-b": ">=2.0.0" }], ["floor-b"]] as any[]) {
+    fs.mkdirSync(path.join(root, "modules", id), { recursive: true })
+    fs.writeFileSync(
+      path.join(root, "modules", id, "package.json"),
+      JSON.stringify({ name: id, version: "1.0.0", ...(peers ? { peerDependencies: peers } : {}), dreamteamer: {} })
+    )
+  }
+  readsFloors = /\(its peerDependencies\)/.test(run(root, ["compile"]).stderr)
+  return readsFloors
+}
+
+/** compile, then check — asserting both exit 0 and that nothing printed is an error. */
+export function compileAndCheck(root) {
+  const compiled = run(root, ["compile"])
+  assert.equal(compiled.status, 0, `compile failed:\n${compiled.stderr}\n${compiled.stdout}`)
+  const hard = compiled.stderr.split("\n").filter(l => l.startsWith("✖") || /error/i.test(l))
+  assert.deepEqual(hard, [], compiled.stderr)
+  const checked = run(root, ["check"])
+  assert.equal(checked.status, 0, `check failed:\n${checked.stderr}\n${checked.stdout}`)
+  assert.match(checked.stdout + checked.stderr, /0 violations/)
+  return { compiled, checked }
+}
+
+/** A compiled descriptor, read back from the workspace's runtime. */
+export function compiledDescriptor(root, collection) {
+  const f = path.join(root, ".dreamteamer", "collections", `${collection}.collection.yaml`)
+  return fs.existsSync(f) ? fs.readFileSync(f, "utf8") : null
+}

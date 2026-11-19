@@ -16,7 +16,7 @@ npx dreamteamer compile
 
 Through core 0.11 this shipped inside the core module, before core became the module preset; the records,
 their folder (`data/sessions/`) and their ids are unchanged. A `Stop` hook written for core names core's copy of `session-save.mjs` —
-repoint it at `@dreamteamer/sessions/bin/session-save.mjs` (below).
+repoint it at `npx dreamteamer run @dreamteamer/sessions session-save` (below).
 
 ## sessions: save and analyze
 
@@ -44,7 +44,7 @@ workspace's `.claude/settings.json` — the module ships the reader, not the bin
         "hooks": [
           {
             "type": "command",
-            "command": "node node_modules/@dreamteamer/sessions/bin/session-save.mjs --write --hook --quiet",
+            "command": "npx dreamteamer run @dreamteamer/sessions session-save --write --hook --quiet",
             "timeout": 30
           }
         ]

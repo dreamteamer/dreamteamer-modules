@@ -1,0 +1,51 @@
+import type { GoogleRequest } from "./createGoogleRequest.ts"
+
+export function calendarReader(request: GoogleRequest) {
+  async function pages(resource: string, params: Record<string, unknown>, maxResults: number): Promise<any[]> {
+    const output: any[] = [],
+      seen = new Set<string>()
+    let pageToken: string | undefined
+    do {
+      const response = await request(resource, { params: { ...params, pageToken, maxResults } })
+      if (!Array.isArray(response.items ?? [])) throw new Error("Calendar API returned invalid items.")
+      output.push(...(response.items ?? []))
+      pageToken = response.nextPageToken
+      if (pageToken && seen.has(pageToken)) throw new Error("Calendar API repeated a pagination token.")
+      if (pageToken) seen.add(pageToken)
+    } while (pageToken)
+    return output
+  }
+  return {
+    calendars: () => pages("users/me/calendarList", {}, 250),
+    events: (
+      calendar: string,
+      from: string,
+      to: string,
+      { timeZone, showDeleted = false }: Record<string, any> = {}
+    ) => {
+      if (
+        !calendar ||
+        !Number.isFinite(Date.parse(from)) ||
+        !Number.isFinite(Date.parse(to)) ||
+        Date.parse(from) >= Date.parse(to)
+      )
+        throw new Error("Calendar and an increasing date range are required.")
+      if (timeZone) {
+        try {
+          new Intl.DateTimeFormat("en", { timeZone })
+        } catch {
+          throw new Error("Invalid time zone.")
+        }
+      }
+      return pages(
+        `calendars/${encodeURIComponent(calendar)}/events`,
+        { timeMin: from, timeMax: to, singleEvents: true, orderBy: "startTime", showDeleted, timeZone },
+        2500
+      )
+    },
+    event: (calendar: string, event: string) => {
+      if (!calendar || !event) throw new Error("Calendar and event identifiers are required.")
+      return request(`calendars/${encodeURIComponent(calendar)}/events/${encodeURIComponent(event)}`)
+    },
+  }
+}

@@ -1,4 +1,4 @@
-import type { CollectionRow } from '../api/types';
+import type { CollectionRow } from "../api/types.ts"
 
 /**
  * OKF-registered rows carry a `provenance` key ('disk' | 'built-in' — every registered row does
@@ -8,7 +8,7 @@ import type { CollectionRow } from '../api/types';
  * and the nav must never show unregistered plumbing.
  */
 export function isOkfRow(row: CollectionRow): boolean {
-	return row.provenance !== undefined;
+  return row.provenance !== undefined
 }
 
 /**
@@ -19,10 +19,10 @@ export function isOkfRow(row: CollectionRow): boolean {
  * instead of the user's actual data the moment it happens to sort first (C1 E2E gate finding).
  */
 export function isUserCollection(row: CollectionRow): boolean {
-	return isOkfRow(row) && !row.collection.startsWith('.schema/');
+  return isOkfRow(row) && !row.collection.startsWith(".schema/")
 }
 
 /** True when the row is a `.schema/*` system collection (views/users/settings plumbing). */
 export function isSystemCollection(row: CollectionRow): boolean {
-	return row.collection.startsWith('.schema/');
+  return row.collection.startsWith(".schema/")
 }

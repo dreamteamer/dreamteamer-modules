@@ -14,41 +14,45 @@
 		"dreamteamer-module"
 	],
 	"exports": {
-		".": "./src/routes.js",
-		"./routes": "./src/routes.js",
-		"./contract": "./lib/contract/run.js",
-		"./contract/fixture": "./lib/contract/fixture.js",
+		".": "./dist/src/routes.js",
+		"./routes": "./dist/src/routes.js",
+		"./contract": "./dist/lib/contract/run.js",
+		"./contract/fixture": "./dist/lib/contract/fixture.js",
 		"./package.json": "./package.json",
-		"./handler": "./src/handler.js",
-		"./host/*": "./src/host/*.js",
-		"./nav-model": "./src/nav-model.js",
-		"./nav-doc": "./src/nav-doc.js",
-		"./gate": "./src/gate.js",
-		"./pane-scope": "./src/pane-scope.js",
-		"./pane": "./src/pane.js",
-		"./reshape": "./src/reshape.js",
-		"./apply-write": "./src/apply-write.js",
-		"./frame-bridge": "./src/frame-bridge.js",
-		"./module-scope": "./src/module-scope.js",
-		"./module-grant": "./src/module-grant.js",
-		"./frame-document": "./src/frame-document.js"
+		"./handler": "./dist/src/createHandler.js",
+		"./host/*": "./dist/src/host/*.js",
+		"./nav-model": "./dist/src/navModel.js",
+		"./nav-doc": "./dist/src/navDoc.js",
+		"./gate": "./dist/src/gate.js",
+		"./pane-scope": "./dist/src/paneScope.js",
+		"./pane": "./dist/src/pane.js",
+		"./reshape": "./dist/src/reshape.js",
+		"./apply-write": "./dist/src/applyWrite.js",
+		"./frame-bridge": "./dist/src/createFrameBridge.js",
+		"./module-scope": "./dist/src/buildModuleScope.js",
+		"./module-grant": "./dist/src/readModuleGrant.js",
+		"./frame-document": "./dist/src/buildFrameDocument.js"
 	},
 	"bin": {
-		"dt-nav": "bin/dt-nav.mjs"
+		"dt-nav": "dist/bin/dt-nav.js"
 	},
 	"files": [
 		"README.md",
 		"PROTOCOL.md",
-		"bin",
-		"src",
-		"lib"
+		"dist"
 	],
 	"dreamteamer": {
 		"title": "Protocol",
-		"description": "The host protocol the dreamteamer UI speaks to whatever hosts it \u2014 the VS Code extension in-process, dt serve and dt web over HTTP: every route with its shapes and errors, the notifications, boot globals and host capabilities in PROTOCOL.md, a contract suite every host runs, and the shared handler that answers it. A library: no collection, no verb.",
-		"engine": ">=0.43.0"
+		"description": "The host protocol the dreamteamer UI speaks to whatever hosts it — the VS Code extension in-process, dt serve and dt web over HTTP: every route with its shapes and errors, the notifications, boot globals and host capabilities in PROTOCOL.md, a contract suite every host runs, and the shared handler that answers it. A library: no collection, no verb.",
+		"engine": ">=0.50.0",
+		"scripts": {
+			"dt-nav": "dist/bin/dt-nav.js"
+		}
 	},
 	"dependencies": {
 		"js-yaml": "^4.1.0"
+	},
+	"scripts": {
+		"prepack": "node ../../scripts/build.ts --module=protocol"
 	}
 }

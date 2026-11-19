@@ -70,7 +70,7 @@ fields:
         type: boolean
         description: True when the invite marked them optional.
     description: >-
-      The invite's attendee list as the Calendar API returns it, one object per person, rooms (`resource: true`) dropped at ingest. Sensitive because it carries addresses. Written by the calendar sync (`@dreamteamer/connectors-google-workspace`) through `node_modules/@dreamteamer/meetings/bin/event-people.mjs`, never typed by hand; who these people are to us is `attendees_contacts`.
+      The invite's attendee list as the Calendar API returns it, one object per person, rooms (`resource: true`) dropped at ingest. Sensitive because it carries addresses. Written by the calendar sync (`@dreamteamer/connectors-google-workspace`) through `dt run @dreamteamer/meetings event-people`, never typed by hand; who these people are to us is `attendees_contacts`.
   attendees_contacts:
     type: contacts
     many: true

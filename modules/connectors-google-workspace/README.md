@@ -71,8 +71,8 @@ These commands read the direct Google Calendar API using the selected account's 
 `/fetch-meetings` loads the `fetching-meetings` skill, which reads each work calendar with
 `.dreamteamer/skills/fetching-meetings/bin/gcal.mjs`, dedupes across calendars, classifies companies
 and writes `meetings` records through `dt add` / `dt set`. The people on an invite are written by
-`node node_modules/@dreamteamer/meetings/bin/event-people.mjs`, and each attendee's contact is stamped
-by `node node_modules/@dreamteamer/meetings/bin/touch-contacts.mjs` — both ship with
+`npx dreamteamer run @dreamteamer/meetings event-people`, and each attendee's contact is stamped
+by `npx dreamteamer run @dreamteamer/meetings touch-contacts` — both ship with
 `@dreamteamer/meetings`, which this package needs. Which calendars count as work is the `meetings`
 setup unit:
 
@@ -146,7 +146,7 @@ are.
 ## 0.3.0 — on engine 0.48.0: the engine writes `.env` (CR-dt-007)
 
 Nothing to do but `dt update @dreamteamer/google-workspace` on dreamteamer 0.48.0 or later, then `dt compile`; nothing a
-workspace's records do changes. `record-settings` is now one env action the engine writes into `.env` — both paths at once, an unnamed client file left out rather than blanked; `google-setup.mjs` keeps the module's own inspect, plan and the owner-only credential store, without the old provider object or the setup kit.
+workspace's records do changes. `record-settings` is now one env action the engine writes into `.env` — both paths at once, an unnamed client file left out rather than blanked; `googleSetup.mjs` keeps the module's own inspect, plan and the owner-only credential store, without the old provider object or the setup kit.
 
 ## 0.2.0 — on engine 0.47.0 (CLI-first module lifecycle, CR-dt-006)
 

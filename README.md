@@ -102,7 +102,8 @@ rows as `core` does, unfolded.
 Two libraries sit under `web`, `http` and the VS Code extension and give a workspace nothing on their
 own: [`@dreamteamer/protocol`](modules/protocol) — the host protocol the UI speaks, the nav document
 (`nav.yaml`) every host reads and writes, and `dt-nav migrate`, which writes a workspace's old nav
-settings into it — and [`@dreamteamer/ui`](modules/ui), the UI as one Vue app any host mounts.
+settings into it — and [`@dreamteamer/ui`](modules/ui), the UI as one React app any host mounts.
+[`@dreamteamer/ui-legacy`](modules/ui-legacy) is the Vue app `ui` was through 0.3, over the same host contract; `dt web --app legacy-ui` serves it.
 
 ## Optional personal workspace capabilities
 
@@ -180,10 +181,21 @@ before taking it in.
 ```bash
 npm install
 npm test                                   # every gate, against the engine in devDependencies
-DT_ENGINE_DIR=../dreamteamer npm test      # the same, against an engine checkout
-node scripts/test.mjs --module=users       # tests/ + one module's suite — what its release tag runs
-node scripts/test.mjs --shard=2/4          # one of CI's four balanced shards (--list to see its files)
+DT_ENGINE_DIR=../dreamteamer npm test      # the same, spawning dt from an engine checkout
+node scripts/test-candidate.ts ../dreamteamer [--only=… | --module=…]
+                                           # the checkout packed and installed over node_modules/dreamteamer
+                                           # (dreamteamer/testing too), the suite run, the published engine put back
+node scripts/test.ts --module=users       # tests/ + one module's suite — what its release tag runs
+node scripts/test.ts --shard=2/4          # one of CI's four balanced shards (--list to see its files)
 ```
+
+The code is TypeScript, run as it is in a checkout (Node's type stripping, Node 22.18 or later). npm cannot
+run TypeScript from `node_modules`, so a module ships its build: `npm run build` (`scripts/build.ts`, also
+each module's `prepack` and the first step of `npm test`) compiles `src/`, `lib/` and `bin/` into `dist/`,
+and a module's skills (`.mts` beside each `SKILL.md`) into `dist/skills`, which `dt compile` stages from
+(`dreamteamer.skills`). Nothing generated sits beside its source. A module's script is run by name, not by
+path: `npx dreamteamer run @dreamteamer/<id> <script>` (each module lists its own under
+`dreamteamer.scripts`). `dist/` is gitignored, so a clone linked into a workspace is built after each edit.
 
 `npm test` installs every module into fresh workspaces twice — once from its packed tarball, the way
 npm delivers it, and once as a copied folder — and checks that each compiles with only what it

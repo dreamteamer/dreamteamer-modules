@@ -424,7 +424,7 @@ for a module that lives in a `git_modules` clone.
 ## The nav document
 
 `nav.yaml` at the workspace root is the left nav, arranged by a person and tracked like any other file. Every host
-reads and writes it through one grammar (`src/nav-doc.js`, typed in `nav-doc.d.ts`; the engine's own reader and
+reads and writes it through one grammar (`src/navDoc.js`, typed in `navDoc.d.ts`; the engine's own reader and
 writer from 0.49):
 
 ```yaml
@@ -542,7 +542,7 @@ Code the app teaches `fetch` to answer `/api/…` from the host.
 ## Module apps
 
 A module's `ui/app.js` never runs in the app's page. The host loads each module surface in a sandboxed frame
-(`sandbox="allow-scripts"`, never `allow-same-origin`) built by `frame-document.js` — one document, the bundle
+(`sandbox="allow-scripts"`, never `allow-same-origin`) built by `buildFrameDocument.js` — one document, the bundle
 embedded as data and imported as a `blob:`, a frame policy with no host, hash or nonce — and answers the frame's
 `/api` calls itself, through `gate()` and `reshape()` under the module's scope. A frame holds no token, cookie
 or nonce, and makes no network request.

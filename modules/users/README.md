@@ -25,5 +25,5 @@ npx dreamteamer compile
 this module ships a guard. Chain it after check in your workspace's `package.json`:
 
 ```json
-"scripts": { "check": "dreamteamer check && node node_modules/@dreamteamer/users/bin/check-records.mjs" }
+"scripts": { "check": "dreamteamer check && dreamteamer run @dreamteamer/users check-records" }
 ```

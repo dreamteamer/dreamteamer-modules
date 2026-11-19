@@ -1,0 +1,31 @@
+/**
+ * `color` — a swatch and the hex beside it. The native picker takes `#rrggbb` only; the text accepts anything,
+ * so a value mid-edit or seeded as `#abc` is never clobbered, and only the swatch falls back to grey. Opt-in.
+ */
+import { swatchValue, textOrNull } from "../lib/editValues.ts"
+import type { EditProps } from "../registry/props.ts"
+import { input } from "../styles/classes.ts"
+
+export function EditColor({ value, onChange, id }: EditProps) {
+  const text = typeof value === "string" ? value : ""
+  return (
+    <span className="flex items-center gap-2">
+      <input
+        type="color"
+        className="flex-none w-11 h-[30px] p-0.5 cursor-pointer"
+        aria-label="Pick a colour"
+        value={swatchValue(value)}
+        onChange={e => onChange(e.target.value)}
+      />
+      <input
+        id={id}
+        type="text"
+        className={input}
+        data-control="text"
+        value={text}
+        placeholder="#rrggbb"
+        onChange={e => onChange(textOrNull(e.target.value))}
+      />
+    </span>
+  )
+}

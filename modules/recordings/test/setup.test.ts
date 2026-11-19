@@ -1,0 +1,434 @@
+// The recordings SETUP UNIT — pure, with a fake home and PATH; and through the engine under test with
+// stand-in uv and ffmpeg (no download, no venv, no network) in a virgin workspace, offline.
+import { test, describe, after } from "node:test"
+import assert from "node:assert/strict"
+import fs from "node:fs"
+import os from "node:os"
+import path from "node:path"
+import { execFileSync, spawnSync } from "node:child_process"
+import { SETUP_UNIT } from "../lib/recordingsSetup.ts"
+import {
+  virginWorkspace,
+  packedInto,
+  run,
+  cleanup,
+  ENGINE_VERSION,
+  engineMeets,
+  closure,
+} from "../../../tests/helpers/workspace.ts"
+
+after(cleanup)
+const tmp = (p = "dtm-rec-") => fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), p)))
+/** A PATH holding only the named stand-ins (and nothing else), each a shell script that creates what the checks look for. */
+function fakeBins(names) {
+  const dir = tmp("dtm-bin-")
+  for (const n of names) {
+    fs.writeFileSync(
+      path.join(dir, n),
+      n === "uv"
+        ? '#!/bin/sh\ncase "$1" in sync) mkdir -p "$UV_PROJECT_ENVIRONMENT/bin" && : > "$UV_PROJECT_ENVIRONMENT/bin/python" && chmod +x "$UV_PROJECT_ENVIRONMENT/bin/python";; run) case "$*" in *setup*) mkdir -p "$TRANSCRIPTION_HOME/models/whisper-ct2" "$TRANSCRIPTION_HOME/models/diarization" && : > "$TRANSCRIPTION_HOME/models/whisper-ct2/model.bin" && : > "$TRANSCRIPTION_HOME/models/diarization/segmentation.onnx" && : > "$TRANSCRIPTION_HOME/models/diarization/embedding.onnx";; *" run "*) rec="$5"; printf "%s\\n%s\\n" "$(cat "$rec")" "testing one two three, this is a dreamteamer check" > "$rec";; esac;; esac; exit 0\n'
+        : "#!/bin/sh\nexit 0\n",
+      { mode: 0o755 }
+    )
+  }
+  return dir
+}
+function repo() {
+  const root = tmp()
+  execFileSync("git", ["init", "-q"], { cwd: root })
+  fs.writeFileSync(path.join(root, ".gitignore"), ".env\n")
+  return root
+}
+const ctxFor = (root, env) => ({
+  root,
+  env,
+  tty: false,
+  receiptDir: path.join(root, ".dreamteamer", "setup", "recordings"),
+})
+
+describe("the unit, pure", () => {
+  test("inputs: transcription_home defaulted, files_folder required, inbox_folders optional; version 1", () => {
+    assert.deepEqual(
+      SETUP_UNIT.inputs.map(i => [i.id, i.kind, i.env, i.required]),
+      [
+        ["transcription_home", "path", "TRANSCRIPTION_HOME", false],
+        ["files_folder", "path", "FILES_FOLDER", true],
+        ["inbox_folders", "string", "INBOX_FOLDERS", false],
+      ]
+    )
+    assert.equal(SETUP_UNIT.version, 1)
+  })
+  test("no ffmpeg → blocked naming it; tools present but nothing else → every check missing, the run unverified", () => {
+    const root = repo(),
+      home = tmp("dtm-home-")
+    const without = SETUP_UNIT.inspect(ctxFor(root, { PATH: fakeBins(["uv"]), TRANSCRIPTION_HOME: home })).checks
+    assert.equal(without.find(c => c.id === "recordings.tools").status, "blocked")
+    assert.match(without.find(c => c.id === "recordings.tools").detail, /ffmpeg not on PATH/)
+    const checks = SETUP_UNIT.inspect(
+      ctxFor(root, { PATH: fakeBins(["uv", "ffmpeg"]), TRANSCRIPTION_HOME: home })
+    ).checks
+    assert.deepEqual(
+      checks.map(c => [c.id, c.status]),
+      [
+        ["recordings.tools", "configured"],
+        ["recordings.home", "missing"],
+        ["recordings.venv", "missing"],
+        ["recordings.models", "missing"],
+        ["recordings.cpu-run", "unverified"],
+      ]
+    )
+  })
+  test("plan gates the machine steps on the tools, the download on the venv, the verify on both; set-home writes the keys and is idempotent", () => {
+    const root = repo(),
+      home = tmp("dtm-home-"),
+      files = tmp("dtm-files-")
+    const ctx = ctxFor(root, { PATH: fakeBins(["uv", "ffmpeg"]), TRANSCRIPTION_HOME: home })
+    const p = SETUP_UNIT.plan(ctx, { transcription_home: home, files_folder: files })
+    const by: Record<string, any> = Object.fromEntries(p.actions.map(a => [a.id, a]))
+    assert.equal(by["set-home"].state, "ready")
+    assert.deepEqual(
+      Object.keys(by["set-home"].env),
+      ["TRANSCRIPTION_HOME", "FILES_FOLDER"],
+      "an env action; INBOX_FOLDERS left out when nobody gave it"
+    )
+    assert.equal(
+      SETUP_UNIT.apply(ctx, { id: "unknown", command: null }, {}).ok,
+      false,
+      "apply only knows the machine steps"
+    )
+    assert.equal(by["provision-venv"].state, "ready")
+    assert.deepEqual(
+      by["provision-venv"].effects.map(e => e.kind),
+      ["machine"]
+    )
+    assert.equal(by["download-models"].state, "blocked")
+    assert.deepEqual(
+      by["download-models"].effects.map(e => e.kind),
+      ["download"]
+    )
+    assert.equal(by["verify-cpu"].state, "blocked")
+    assert.equal(by["verify-cpu"].kind, "verify")
+    assert.deepEqual(p.needs, [])
+    assert.deepEqual(SETUP_UNIT.plan(ctx, {}).needs, ["files_folder"])
+    assert.deepEqual(by["set-home"].env, { TRANSCRIPTION_HOME: home, FILES_FOLDER: files })
+    assert.equal(SETUP_UNIT.plan(ctx, {}).actions.find(a => a.id === "set-home").state, "needs-input")
+  })
+  test("the receipt makes the CPU run ready, unless it predates the models", () => {
+    const root = repo(),
+      home = tmp("dtm-home-")
+    const ctx = ctxFor(root, {
+      PATH: fakeBins(["uv", "ffmpeg"]),
+      TRANSCRIPTION_HOME: home,
+      FILES_FOLDER: root,
+      INBOX_FOLDERS: root,
+    })
+    for (const rel of [
+      "venv/bin/python",
+      "models/whisper-ct2/model.bin",
+      "models/diarization/segmentation.onnx",
+      "models/diarization/embedding.onnx",
+    ]) {
+      fs.mkdirSync(path.dirname(path.join(home, rel)), { recursive: true })
+      fs.writeFileSync(path.join(home, rel), "")
+    }
+    fs.mkdirSync(ctx.receiptDir, { recursive: true })
+    fs.writeFileSync(
+      path.join(ctx.receiptDir, "cpu-run.verified.json"),
+      JSON.stringify({ at: "2026-11-13", atMs: Date.now() + 1000 })
+    )
+    const ready = SETUP_UNIT.inspect(ctx).checks
+    assert.ok(
+      ready.every(c => ["ready", "configured"].includes(c.status)),
+      JSON.stringify(ready.map(c => [c.id, c.status]))
+    )
+    assert.equal(ready.find(c => c.id === "recordings.cpu-run").evidence.at, "2026-11-13")
+    fs.writeFileSync(path.join(ctx.receiptDir, "cpu-run.verified.json"), JSON.stringify({ at: "2020-01-01", atMs: 0 }))
+    assert.equal(SETUP_UNIT.inspect(ctx).checks.find(c => c.id === "recordings.cpu-run").status, "unverified")
+  })
+  test("a transcription home inside the workspace — even through a symlink from outside — is refused: compile and npm would wipe it", () => {
+    const root = repo()
+    const inside = path.join(root, "cache")
+    fs.mkdirSync(inside)
+    const link = path.join(tmp("dtm-link-"), "home")
+    fs.symlinkSync(inside, link)
+    const ctx = ctxFor(root, { PATH: fakeBins(["uv", "ffmpeg"]) })
+    // a dangling link whose target would be inside the workspace is refused the same way
+    const dangling = path.join(tmp("dtm-link-"), "home2")
+    fs.symlinkSync(path.join(root, "not-yet"), dangling)
+    for (const home of [inside, link, dangling]) {
+      const p = SETUP_UNIT.plan(ctx, { transcription_home: home, files_folder: root })
+      const set: any = p.actions.find(a => a.id === "set-home")
+      assert.equal(set.state, "blocked", home)
+      assert.match(set.reason, /inside the workspace/)
+      // nothing else runs through a refused home: the venv, the download and the verify are blocked on it
+      for (const id of ["provision-venv", "download-models", "verify-cpu"]) {
+        const a: any = p.actions.find(x => x.id === id)
+        assert.equal(a.state, "blocked", `${id} for ${home}`)
+        assert.match(a.reason, /inside the workspace/)
+      }
+    }
+    assert.ok(!fs.existsSync(path.join(root, ".env")), "nothing written")
+  })
+  test("a model folder without its weights (an interrupted download) reads missing, and the download is offered again", () => {
+    const root = repo(),
+      home = tmp("dtm-home-")
+    const ctx = ctxFor(root, { PATH: fakeBins(["uv", "ffmpeg"]), TRANSCRIPTION_HOME: home, FILES_FOLDER: root })
+    for (const rel of [
+      "venv/bin/python",
+      "models/whisper-ct2/models--x/snapshots/1/model.bin",
+      "models/diarization/segmentation.onnx",
+      "models/diarization/embedding.onnx",
+    ]) {
+      fs.mkdirSync(path.dirname(path.join(home, rel)), { recursive: true })
+      fs.writeFileSync(path.join(home, rel), "")
+    }
+    assert.equal(
+      SETUP_UNIT.inspect(ctx).checks.find(c => c.id === "recordings.models").status,
+      "configured",
+      "the weights nested as the hub cache nests them"
+    )
+    fs.rmSync(path.join(home, "models/whisper-ct2/models--x/snapshots/1/model.bin"))
+    const row = SETUP_UNIT.inspect(ctx).checks.find(c => c.id === "recordings.models")
+    assert.equal(row.status, "missing")
+    assert.match(row.detail, /whisper-ct2/)
+    assert.equal(
+      SETUP_UNIT.plan(ctx, { files_folder: root }).actions.find(a => a.id === "download-models").state,
+      "ready"
+    )
+  })
+  test("weights the hub cache keeps as a snapshot SYMLINK into blobs/ read configured; a dangling one reads missing", () => {
+    // huggingface_hub writes snapshots/<rev>/model.bin as a relative link to ../../blobs/<sha> — a
+    // directory walk that asks the entry itself whether it is a file never sees the weights
+    const root = repo(),
+      home = tmp("dtm-home-")
+    const ctx = ctxFor(root, { PATH: fakeBins(["uv", "ffmpeg"]), TRANSCRIPTION_HOME: home, FILES_FOLDER: root })
+    for (const rel of [
+      "venv/bin/python",
+      "models/diarization/segmentation.onnx",
+      "models/diarization/embedding.onnx",
+    ]) {
+      fs.mkdirSync(path.dirname(path.join(home, rel)), { recursive: true })
+      fs.writeFileSync(path.join(home, rel), "")
+    }
+    const repoDir = path.join(home, "models/whisper-ct2/models--x")
+    fs.mkdirSync(path.join(repoDir, "blobs"), { recursive: true })
+    fs.mkdirSync(path.join(repoDir, "snapshots/1"), { recursive: true })
+    fs.writeFileSync(path.join(repoDir, "blobs/abc123"), "weights")
+    fs.symlinkSync("../../blobs/abc123", path.join(repoDir, "snapshots/1/model.bin"))
+    assert.equal(
+      SETUP_UNIT.inspect(ctx).checks.find(c => c.id === "recordings.models").status,
+      "configured",
+      "a snapshot link to a present blob is the weights on disk"
+    )
+    fs.rmSync(path.join(repoDir, "blobs/abc123"))
+    const row = SETUP_UNIT.inspect(ctx).checks.find(c => c.id === "recordings.models")
+    assert.equal(row.status, "missing", "a link whose blob is gone is an interrupted download")
+    assert.match(row.detail, /whisper-ct2/)
+  })
+  test("the transcriber entry outside a workspace says so in one line, exit 2 — no stack trace", () => {
+    const nowhere = tmp("dtm-nowhere-")
+    const r = spawnSync(process.execPath, [new URL("../dist/bin/transcribe.js", import.meta.url).pathname, "sync"], {
+      cwd: nowhere,
+      encoding: "utf8",
+    })
+    assert.equal(r.status, 2)
+    assert.match(r.stderr, /not inside a dreamteamer workspace/)
+    assert.doesNotMatch(r.stderr, /TypeError|at Object/)
+  })
+  // The prompt asks for the inbox roots comma-separated; INBOX_FOLDERS is a newline-separated list (README), and the
+  // ingest script reads it one root per line. 0.5.1 wrote the comma list verbatim: one root that does not exist.
+  test("0.5.2 inbox_folders input: a comma list is written one root per line; a folder named with a comma, a single root and a stored value are kept", () => {
+    const root = repo(),
+      home = tmp("dtm-home-"),
+      files = tmp("dtm-files-")
+    const setHome = (env, inputs): any =>
+      SETUP_UNIT.plan(ctxFor(root, { PATH: fakeBins(["uv", "ffmpeg"]), ...env }), {
+        transcription_home: home,
+        files_folder: files,
+        ...inputs,
+      }).actions.find(a => a.id === "set-home")
+    assert.equal(
+      setHome({}, { inbox_folders: "/inbox/desktop, /inbox/phone," }).env.INBOX_FOLDERS,
+      "/inbox/desktop\n/inbox/phone"
+    )
+    const comma = path.join(tmp("dtm-inbox-"), "north,wind")
+    fs.mkdirSync(comma)
+    assert.equal(
+      setHome({}, { inbox_folders: comma }).env.INBOX_FOLDERS,
+      comma,
+      "an existing folder whose name holds a comma is one root"
+    )
+    assert.equal(setHome({}, { inbox_folders: "/inbox/desktop" }).env.INBOX_FOLDERS, "/inbox/desktop")
+    // the engine fills an input from .env when no flag gives it: a value equal to the stored one is the stored one
+    for (const stored of ["/inbox/desktop,/inbox/phone", "\n/inbox/one\n/inbox/two\n"]) {
+      assert.equal(
+        setHome({ INBOX_FOLDERS: stored }, { inbox_folders: stored }).env.INBOX_FOLDERS,
+        stored,
+        `${JSON.stringify(stored)} rewritten`
+      )
+      assert.equal(setHome({ INBOX_FOLDERS: stored }, {}).env.INBOX_FOLDERS, stored)
+    }
+  })
+})
+
+describe(
+  "through the engine",
+  {
+    skip:
+      !engineMeets("recordings") &&
+      `needs engine ${JSON.parse(fs.readFileSync(new URL("../package.json", import.meta.url), "utf8")).dreamteamer.engine}, this is ${ENGINE_VERSION}`,
+  },
+  () => {
+    test("install with --allow download --allow machine provisions through the stand-ins; --verify writes the receipt; status reads ready · verified; blocked without ffmpeg", () => {
+      const root = virginWorkspace()
+      const from = packedInto(fs.mkdtempSync(path.join(os.tmpdir(), "dtm-from-")), ...closure("recordings"))
+      const home = tmp("dtm-home-"),
+        files = tmp("dtm-files-")
+      const bins = fakeBins(["uv", "ffmpeg"])
+      // HOME is a temp dir: the default transcription home must never be the machine's own
+      const env = { PATH: `${bins}:${process.env.PATH}`, HOME: tmp("dtm-HOME-") }
+      const r = run(
+        root,
+        [
+          "install",
+          "@dreamteamer/recordings",
+          "--from",
+          from,
+          "--input",
+          `transcription_home=${home}`,
+          "--input",
+          `files_folder=${files}`,
+          "--allow",
+          "download",
+          "--allow",
+          "machine",
+          "--no-input",
+        ],
+        env
+      )
+      assert.equal(r.status, 0, r.stderr + r.stdout)
+      assert.match(r.stdout, /✔ set-home — wrote \.env/)
+      assert.match(r.stdout, /✔ provision-venv/)
+      assert.match(r.stdout, /✔ download-models/)
+      assert.ok(
+        fs.existsSync(path.join(home, "venv", "bin", "python")) &&
+          fs.existsSync(path.join(home, "models", "whisper-ct2", "model.bin")),
+        "the stand-ins made what the checks look for"
+      )
+      assert.match(run(root, ["status"], env).stdout, /recordings\s+configured\s+CPU run unverified/)
+      const v = run(root, ["setup", "recordings", "--verify", "--allow", "machine", "--no-input"], env)
+      assert.equal(v.status, 0, v.stderr + v.stdout)
+      assert.match(v.stdout, /✔ recordings: ready · verified \d{4}-\d{2}-\d{2}/)
+      assert.match(run(root, ["status"], env).stdout, /recordings\s+ready · verified/)
+      assert.match(
+        run(root, ["status"], { ...env, PATH: fakeBins(["uv"]) }).stdout,
+        /recordings\s+blocked\s+ffmpeg and uv — ffmpeg not on PATH/
+      )
+    })
+    test("set-home through the engine: written once, then done; a .env already holding a multi-line quoted INBOX_FOLDERS is done, never rewritten", () => {
+      const root = virginWorkspace()
+      const from = packedInto(fs.mkdtempSync(path.join(os.tmpdir(), "dtm-from-")), ...closure("recordings"))
+      const home = tmp("dtm-home-"),
+        files = tmp("dtm-files-")
+      const env = { PATH: `${fakeBins(["uv", "ffmpeg"])}:${process.env.PATH}`, HOME: tmp("dtm-HOME-") }
+      const inbox = "\n/inbox/one\n/inbox/two\n"
+      fs.writeFileSync(
+        path.join(root, ".env"),
+        `TRANSCRIPTION_HOME="${home}"\nFILES_FOLDER="${files}"\nINBOX_FOLDERS="${inbox}"\n`
+      )
+      const before = fs.readFileSync(path.join(root, ".env"), "utf8")
+      const r = run(root, ["install", "@dreamteamer/recordings", "--from", from, "--no-input"], env)
+      assert.equal(r.status, 0, r.stderr + r.stdout)
+      assert.doesNotMatch(r.stdout, /✔ set-home/, "nothing to write")
+      assert.equal(fs.readFileSync(path.join(root, ".env"), "utf8"), before, "byte-identical")
+      const other = tmp("dtm-files2-")
+      const w = run(root, ["setup", "recordings", "--input", `files_folder=${other}`, "--no-input"], env)
+      assert.match(w.stdout, /✔ set-home — wrote \.env \(FILES_FOLDER\)/)
+      assert.ok(
+        fs.readFileSync(path.join(root, ".env"), "utf8").includes(`INBOX_FOLDERS="${inbox}"`),
+        "the multi-line neighbour untouched"
+      )
+      const again = run(root, ["setup", "recordings", "--input", `files_folder=${other}`, "--no-input"], env)
+      assert.doesNotMatch(again.stdout, /✔ set-home/)
+    })
+    test("0.5.2 comma list through the engine: stored one root per line, resolved as two, scanned as two; never rewritten unasked; a value the engine will not write leaves .env alone", () => {
+      const root = virginWorkspace()
+      const from = packedInto(fs.mkdtempSync(path.join(os.tmpdir(), "dtm-from-")), ...closure("recordings"))
+      const home = tmp("dtm-home-"),
+        files = tmp("dtm-files-")
+      const env = { PATH: `${fakeBins(["uv", "ffmpeg"])}:${process.env.PATH}`, HOME: tmp("dtm-HOME-") }
+      const roots = [tmp("dtm-inbox-desktop-"), tmp("dtm-inbox-phone-")]
+      for (const r of roots) fs.mkdirSync(path.join(r, "meeting-recordings"))
+      const i = run(
+        root,
+        [
+          "install",
+          "@dreamteamer/recordings",
+          "--from",
+          from,
+          "--input",
+          `transcription_home=${home}`,
+          "--input",
+          `files_folder=${files}`,
+          "--no-input",
+        ],
+        env
+      )
+      assert.equal(i.status, 0, i.stderr + i.stdout)
+      const s = run(
+        root,
+        [
+          "setup",
+          "recordings",
+          "--input",
+          `files_folder=${files}`,
+          "--input",
+          `inbox_folders=${roots.join(",")}`,
+          "--no-input",
+        ],
+        env
+      )
+      assert.equal(s.status, 0, s.stderr + s.stdout)
+      const dotenv = () => fs.readFileSync(path.join(root, ".env"), "utf8")
+      assert.ok(
+        dotenv().includes(`INBOX_FOLDERS="${roots.join("\n")}"`),
+        `INBOX_FOLDERS is not one root per line:\n${dotenv()}`
+      )
+      const resolved = run(root, ["resolve", "${env:INBOX_FOLDERS}"], env)
+      assert.equal(resolved.status, 0, resolved.stderr)
+      assert.equal(resolved.stdout.trim(), roots.join("\n"))
+      const detect = new URL("../skills/ingesting-recordings/bin/detect.mts", import.meta.url).pathname
+      const scan = JSON.parse(
+        execFileSync(process.execPath, [detect, "scan", "--inbox-folders", resolved.stdout.trim()], {
+          encoding: "utf8",
+          stdio: ["ignore", "pipe", "pipe"],
+        })
+      )
+      assert.deepEqual(
+        scan.inbox_roots,
+        roots.map(r => path.join(r, "meeting-recordings"))
+      )
+      const before = dotenv()
+      const unasked = run(root, ["setup", "recordings", "--input", `files_folder=${files}`, "--no-input"], env)
+      assert.doesNotMatch(unasked.stdout, /✔ set-home/, "nothing to write")
+      assert.equal(dotenv(), before, "byte-identical")
+      // two roots are written double-quoted, and the engine's writer refuses a backslash inside quotes: set-home is
+      // blocked naming the key, and nothing is written
+      const refused = run(
+        root,
+        [
+          "setup",
+          "recordings",
+          "--input",
+          `files_folder=${files}`,
+          "--input",
+          "inbox_folders=C:\\inbox\\a,C:\\inbox\\b",
+          "--no-input",
+        ],
+        env
+      )
+      assert.match(refused.stdout + refused.stderr, /INBOX_FOLDERS/)
+      assert.equal(dotenv(), before, "a refused value wrote nothing")
+    })
+  }
+)

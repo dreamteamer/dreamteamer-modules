@@ -20,7 +20,7 @@ npx dreamteamer compile
 The module ships no commands, skills or views of its own, and needs no setup: the four collections
 appear in the navigation, and the guard below is the one script. Chain it into your workspace's
 `check` script, after `dreamteamer check`:
-`node node_modules/@dreamteamer/projects/bin/check-records.mjs`.
+`npx dreamteamer run @dreamteamer/projects check-records`.
 
 ## what a descriptor cannot say
 

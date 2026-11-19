@@ -1,7 +1,7 @@
 {
 	"name": "@dreamteamer/recordings",
 	"version": "0.5.4",
-	"description": "Meeting recordings for a dreamteamer workspace \u2014 imported by content hash, matched to their meeting, and transcribed offline in Hebrew and English.",
+	"description": "Meeting recordings for a dreamteamer workspace — imported by content hash, matched to their meeting, and transcribed offline in Hebrew and English.",
 	"license": "Apache-2.0",
 	"type": "module",
 	"repository": {
@@ -20,30 +20,35 @@
 	"files": [
 		"README.md",
 		"SETUP.md",
-		"bin",
 		"collections",
 		"command-bindings",
 		"commands",
-		"lib",
-		"skills"
+		"dist"
 	],
 	"dreamteamer": {
 		"title": "Recordings",
 		"description": "One audio file and its transcript per `meeting-recordings` record. Audio dropped into an `${env:INBOX_FOLDERS}` root is deduped by content hash, archived under `${env:FILES_FOLDER}`, matched to its meeting (stamping `meetings.recordings`) and transcribed offline with speaker diarisation, in Hebrew and English. Summaries, tasks and critiques built on a transcript are the `meeting-docs` module.",
-		"engine": ">=0.48.0",
+		"engine": ">=0.50.0",
 		"dependencies": [
 			"@dreamteamer/meetings"
 		],
-		"extension": "./lib/extension.mjs",
+		"extension": "./dist/lib/activate.js",
 		"env": [
 			"TRANSCRIPTION_HOME"
 		],
 		"vars": [
 			"FILES_FOLDER",
 			"INBOX_FOLDERS"
-		]
+		],
+		"skills": "dist/skills",
+		"scripts": {
+			"transcribe": "dist/bin/transcribe.js"
+		}
 	},
 	"peerDependencies": {
 		"@dreamteamer/meetings": ">=0.1.2"
+	},
+	"scripts": {
+		"prepack": "node ../../scripts/build.ts --module=recordings"
 	}
 }

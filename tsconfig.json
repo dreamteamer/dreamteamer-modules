@@ -1,0 +1,40 @@
+{
+	// Type-checks this repo's Node code without emitting: `npm run typecheck`. Every module's bin/, lib/,
+	// src/ and skills/, and the root scripts/,. Implicit any is an error. The suites (tests/ and modules/*/test/) are checked by
+	// tests/tsconfig.json, `npm run typecheck:test`, and never gate this one.
+	//
+	// Settings are the engine's (dreamteamer's own tsconfig.json): a checkout RUNS these .ts files through
+	// Node's type stripping, so only erasable syntax is allowed and a relative import names the .ts file.
+	//
+	// Not here: the two browser apps, each bundled with bundler resolution and checked by its own config —
+	// ui-legacy's Vue app by `vue-tsc -p modules/ui-legacy/src/tsconfig.json`, ui's React app by `tsc -p modules/ui/src/tsconfig.json`;
+	// and the rnd prototype's browser files, which are served to a browser as-is.
+	"compilerOptions": {
+		"target": "es2023",
+		"module": "nodenext",
+		"moduleResolution": "nodenext",
+		"lib": ["es2023"],
+		"types": ["node"],
+		"erasableSyntaxOnly": true,
+		"verbatimModuleSyntax": true,
+		"allowImportingTsExtensions": true,
+		"rewriteRelativeImportExtensions": true,
+		"resolveJsonModule": true,
+		"strict": false,
+		"noImplicitAny": true,
+		"noEmit": true,
+		"skipLibCheck": true
+	},
+	"include": ["modules/**/*.ts", "modules/**/*.mts", "scripts/**/*.ts"],
+	"exclude": [
+		"**/node_modules/**",
+		"**/fixtures/**",
+		"**/*.d.ts",
+		"modules/*/test/**",
+		"modules/ui/src/**",
+		"modules/ui/dist/**",
+		"modules/ui-legacy/src/**",
+		"modules/ui-legacy/dist/**",
+		"modules/*/dist/**"
+	]
+}

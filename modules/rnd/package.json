@@ -16,33 +16,31 @@
 		"lifecycle"
 	],
 	"bin": {
-		"dt-prototype": "bin/dt-prototype.mjs"
+		"dt-prototype": "dist/bin/dt-prototype.js"
 	},
 	"files": [
 		"README.md",
 		"UPDATING.md",
 		"nav.yaml",
 		"collections",
-		"skills",
 		"commands",
 		"command-bindings",
 		"ui-views",
 		"agents",
-		"bin",
-		"lib",
-		"data"
+		"data",
+		"dist"
 	],
 	"dependencies": {
 		"js-yaml": "^4.1.0"
 	},
 	"dreamteamer": {
-		"extension": "./lib/extension.mjs",
+		"extension": "./dist/lib/activate.js",
 		"title": "R&D",
 		"namespaces": [
 			"rnd"
 		],
 		"description": "What a workspace builds and investigates: `products`, `design-docs`, `implementation-plans`, `user-stories`, `screens`, `prototypes`, `tests`, `reviews`, `change-requests`, `features`, `issues`, `research-docs`, `open-questions`, `personas`, `releases` — the lifecycle, /rnd:design to /rnd:release, gated per record (dt next).",
-		"engine": ">=0.49.0",
+		"engine": ">=0.50.0",
 		"nav": "nav.yaml",
 		"ignore": [
 			"data"
@@ -52,6 +50,17 @@
 			"companies",
 			"projects",
 			"workflows"
-		]
+		],
+		"skills": "dist/skills",
+		"scripts": {
+			"dt-prototype": "dist/bin/dt-prototype.js",
+			"migrate-change-request-stage": "dist/bin/migrate-change-request-stage.js",
+			"migrate-journey-steps": "dist/bin/migrate-journey-steps.js",
+			"migrate-personas": "dist/bin/migrate-personas.js",
+			"migrate-session-bindings": "dist/bin/migrate-session-bindings.js"
+		}
+	},
+	"scripts": {
+		"prepack": "node ../../scripts/build.ts --module=rnd"
 	}
 }

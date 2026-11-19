@@ -3,6 +3,7 @@
 	"version": "0.4.0",
 	"description": "Your meetings as records, with attendees as contacts and screenshots filed beside each call; the calendar sync is @dreamteamer/connectors-google-workspace.",
 	"license": "Apache-2.0",
+	"type": "module",
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/dreamteamer/dreamteamer-modules.git",
@@ -17,26 +18,34 @@
 	],
 	"files": [
 		"README.md",
-		"bin",
 		"collections",
-		"skills",
 		"commands",
 		"command-bindings",
-		"ui-views"
+		"ui-views",
+		"dist"
 	],
 	"dreamteamer": {
 		"title": "Meetings",
 		"description": "Your meetings as records — written by hand, by `/create-meeting` or by the calendar sync in `@dreamteamer/connectors-google-workspace` — with attendees as `contacts`, the company as `companies` and your people in the room as `users` (`ours`). Files a call's screenshots beside it (`/fetch-meeting-screenshots`) and stamps each attendee's contact with their latest meeting.",
-		"engine": ">=0.48.0",
+		"engine": ">=0.50.0",
 		"dependencies": [
 			"@dreamteamer/contacts",
 			"@dreamteamer/companies",
 			"@dreamteamer/users"
-		]
+		],
+		"skills": "dist/skills",
+		"scripts": {
+			"event-people": "dist/bin/event-people.js",
+			"migrate-attendees": "dist/bin/migrate-attendees.js",
+			"touch-contacts": "dist/bin/touch-contacts.js"
+		}
 	},
 	"peerDependencies": {
 		"@dreamteamer/companies": ">=0.1.1",
 		"@dreamteamer/contacts": ">=0.1.1",
 		"@dreamteamer/users": ">=0.2.1"
+	},
+	"scripts": {
+		"prepack": "node ../../scripts/build.ts --module=meetings"
 	}
 }

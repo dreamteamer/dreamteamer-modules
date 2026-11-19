@@ -14,16 +14,17 @@ permissions:
 jobs:
   # ⚠ WHY SHARDS. When this repo was private its runner had 2 vCPUs, so `node --test` ran one file at a
   # time and one job was ~11 minutes, almost all of it inside `npm test` (run 41100010853: 674 s of
-  # top-level tests in a 725 s run). The public runner has 4 vCPUs; the shard count is unchanged. The suite is split into balanced shards (scripts/test-files.mjs) on BOTH Node
-  # versions — every file still runs on 20 and on 22, and tests/test-shards.test.mjs fails if any file
-  # would fall outside every shard. The longest single file (proofs' prove.test.js, ~170 s on a runner)
+  # top-level tests in a 725 s run). The public runner has 4 vCPUs; the shard count is unchanged. The suite is split into balanced shards (scripts/test-files.ts), and
+  # tests/test-shards.test.ts fails if any file would fall outside every shard. Node 22 only: the suites and
+  # scripts are TypeScript run through Node's type stripping, which Node 20 does not have (what npm ships is
+  # the build, plain JavaScript). The longest single file (proofs' prove.test.js, ~170 s on a runner)
   # is the floor; more shards than this cannot go below it.
   verify:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        node: [20, 22]
+        node: [22]
         shard: [1, 2, 3, 4]
     name: node ${{ matrix.node }} · shard ${{ matrix.shard }}/4
     steps:
@@ -39,12 +40,17 @@ jobs:
       # The pane's held-out tests (tests/heldout/cr-modules-017-*) serve @dreamteamer/ui's browser page, which is
       # built and gitignored. Without this step only the shard whose ui tarball test happened to build it first
       # could run them; every other shard died at import with "no built app".
+      # Every module's dist/ (scripts/build.ts) before the ui: the ui's bundle imports @dreamteamer/protocol, whose
+      # exports name its build. The test runner builds again before the suites; this one is for the ui.
+      - name: the modules built
+        run: npm run build
+
       - name: the app dt web serves — @dreamteamer/ui built
         run: npm run build -w modules/ui
 
       - name: does this shard drive a browser
         id: browser
-        run: echo "needed=$(node scripts/test.mjs --shard=${{ matrix.shard }}/4 --needs-browser)" >> "$GITHUB_OUTPUT"
+        run: echo "needed=$(node scripts/test.ts --shard=${{ matrix.shard }}/4 --needs-browser)" >> "$GITHUB_OUTPUT"
 
       # rnd's prototype harness drives a real browser, and its held-out tests fail honestly rather than
       # skip when none resolves (play-fails-honestly), so the runner installs it — through npx, because
@@ -59,13 +65,13 @@ jobs:
       # the resolver rule — plus every module's own suite, split across the shards. The packed-tarball
       # install IS the distribution smoke the old single package needed a separate step for.
       - name: tests
-        run: node scripts/test.mjs --shard=${{ matrix.shard }}/4
+        run: node scripts/test.ts --shard=${{ matrix.shard }}/4
 
   # THE ONE CONTEXT BRANCH PROTECTION REQUIRES. Protection on main names `ci`, never the eight shard
   # names above: a change to the shard count would otherwise leave a required context that never
   # reports, and every push to main would wait on it. `if: always()` makes this job report even when a
   # shard failed or was cancelled — and then it fails, so a red shard can never read as a green `ci`.
-  # tests/workflow-contexts.test.mjs pins the name.
+  # tests/workflow-contexts.test.ts pins the name.
   ci:
     name: ci
     runs-on: ubuntu-latest

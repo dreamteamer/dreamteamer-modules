@@ -1,0 +1,151 @@
+/**
+ * THE WORKSPACE SWITCHER (cr-modules-017 §7; the 2026-11-14 16:30 revision moved it into the nav's toolbar), ported
+ * from the Vue ui's PaneSwitcher.vue. On a pane host the toolbar's name is this button; its menu lists the
+ * workspaces `dt web open` registered on this machine (`GET /_dt/workspaces`), and a pick asks this server to hand
+ * the whole pane to that workspace's server (`POST /_dt/handoff`), then goes to the URL it answers. Its last entry,
+ * Settings, opens the workspace settings (the name's click off a pane host). A refusal shows inside the menu.
+ */
+import { useState } from "react"
+import { useApp, useSignal } from "../AppContext.tsx"
+import { hostInfo } from "../lib/host.ts"
+import { paneFetch } from "../lib/paneFetch.ts"
+import { Menu } from "./Menu.tsx"
+import { usePaneMenu } from "./usePaneMenu.ts"
+import { cx } from "../styles/classes.ts"
+import { paneMenu, paneMenuError, paneMenuItem, paneMenuItemPlace, paneMenuQuiet } from "./looks.ts"
+
+interface WorkspaceRow {
+  id: string
+  name: string
+  running: boolean
+  current: boolean
+}
+
+/** A quiet line under the workspaces. (was dt-pane-menu-hint) */
+const PANE_HINT = "px-2 py-1 border-t border-border"
+
+/** The workspace settings — the toolbar name's click off a pane host. */
+export const SETTINGS_ROUTE = "/settings/schema/activity"
+
+/** `label` is the nav's workspace label — drawn only when the host names no workspace: the host's name is the one
+ *  the switcher's own list (and `dt web list`) shows, which a folder-named nav label need not be. */
+export function PaneSwitcher({ label }: { label?: string }) {
+  const { navigate } = useApp()
+  const host = useSignal(hostInfo)
+  const name = host?.workspace?.name || label || ""
+  const m = usePaneMenu("switch", "start")
+  const [workspaces, setWorkspaces] = useState<WorkspaceRow[]>([])
+  const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [busy, setBusy] = useState(false)
+  // the list always holds the current workspace once `dt web open` registered it: the line says there is no other
+  const others = workspaces.some(w => !w.current)
+
+  const toggle = async () => {
+    if (!m.toggle()) return
+    setError(null)
+    setWorkspaces([])
+    setLoading(true)
+    try {
+      const rows = await paneFetch("GET", "/_dt/workspaces")
+      setWorkspaces(Array.isArray(rows) ? (rows as WorkspaceRow[]) : [])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setLoading(false)
+    }
+    // the rows arrived after the menu opened: focus goes to the first of them
+    m.menu.current?.focusFirst()
+  }
+
+  const pick = async (w: WorkspaceRow) => {
+    if (w.current || busy) {
+      m.close()
+      return
+    }
+    setBusy(true)
+    setError(null)
+    try {
+      const answer = (await paneFetch("POST", "/_dt/handoff", { id: w.id })) as { url?: unknown } | null
+      if (typeof answer?.url === "string") {
+        m.close()
+        window.location.href = answer.url
+      } else m.close()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <>
+      <button
+        ref={m.button}
+        type="button"
+        className="inline-flex items-center gap-0.5 flex-[0_1_auto] min-w-[30px] max-w-full h-6 px-1 py-0 border-0 rounded-dt bg-transparent text-fg font-[inherit] text-[length:inherit] leading-[inherit] font-semibold hover:bg-bg-hover aria-expanded:bg-bg-hover"
+        title={`${name} — switch workspace`}
+        data-pane-switch
+        aria-haspopup="menu"
+        aria-expanded={m.open}
+        onClick={e => {
+          e.stopPropagation()
+          void toggle()
+        }}
+      >
+        <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">{name}</span>
+        <i className="codicon codicon-chevron-down flex-none text-sm! text-fg-subtle" aria-hidden="true" />
+      </button>
+      {m.open && (
+        <Menu
+          ref={m.menu}
+          className={paneMenu}
+          label="Workspaces"
+          portal
+          at={m.at}
+          trigger={m.button}
+          onClick={e => e.stopPropagation()}
+          onClose={m.close}
+        >
+          {error && (
+            <p className={paneMenuError} role="alert">
+              {error}
+            </p>
+          )}
+          {workspaces.map(w => (
+            <button
+              key={w.id}
+              type="button"
+              role="menuitemradio"
+              className={cx(paneMenuItem, paneMenuItemPlace.default)}
+              data-id={w.id}
+              aria-checked={w.current}
+              onClick={() => void pick(w)}
+            >
+              {w.name} {!w.current && !w.running && <span className={paneMenuQuiet}>starts when opened</span>}
+            </button>
+          ))}
+          {loading ? (
+            <p className={cx(paneMenuQuiet, PANE_HINT)} role="status">
+              Loading…
+            </p>
+          ) : (
+            !others &&
+            !error && <p className={cx(paneMenuQuiet, PANE_HINT)}>No other workspace was opened on this machine</p>
+          )}
+          <button
+            type="button"
+            role="menuitem"
+            className={cx(paneMenuItem, paneMenuItemPlace.footer)}
+            onClick={() => {
+              m.close()
+              navigate(SETTINGS_ROUTE)
+            }}
+          >
+            Settings
+          </button>
+        </Menu>
+      )}
+    </>
+  )
+}

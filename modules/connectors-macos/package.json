@@ -3,6 +3,7 @@
 	"version": "0.1.0",
 	"description": "Apple Voice Memos into the recordings inbox on a Mac: dt-voice-memos copies new memos through one helper granted Full Disk Access.",
 	"license": "Apache-2.0",
+	"type": "module",
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/dreamteamer/dreamteamer-modules.git",

@@ -1,0 +1,12 @@
+# Prettier formats the CODE: every module's .ts/.js/.vue/.css, scripts/ and the suites. Everything else
+# here is engine input or prose whose exact bytes matter — collection and record YAML, skills, commands
+# and docs (Markdown), package.json (npm keeps its own indentation) — so it is never reformatted, and
+# neither are test fixtures, which stand for a consumer's files.
+node_modules/
+dist/
+.dreamteamer/
+**/fixtures/
+*.md
+*.yaml
+*.yml
+*.json

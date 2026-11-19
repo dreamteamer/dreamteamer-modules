@@ -1,0 +1,72 @@
+/*
+ * THE RULES FOR DOM THE APP DOES NOT RENDER — what a library draws (Leaflet's map, React Flow's canvas) and the app
+ * restyles in its tokens. Utilities cannot reach it: the library builds those elements itself, and its own
+ * stylesheet is unlayered, so it outranks any utility. Everything the app renders is styled in place with Tailwind
+ * (app.css); this file holds only these bridges, each hooked on a class the app hands the library. (CodeMirror is
+ * themed in code: edits/EditMarkdownBody.tsx and lib/livePreview.ts.)
+ *
+ * Unlayered, and imported by index.ts before any component, so a library's own stylesheet (imported by the component
+ * that uses it) comes after it: where a selector here ties with the library's, the library's wins, as it always did.
+ */
+
+/* ---- the map (lists/ListMap.tsx): Leaflet's circle markers ---------------------------------------------------- */
+.dt-map-marker {
+  stroke: var(--dt-map-marker);
+  fill: var(--dt-map-marker);
+}
+
+/* ---- the diagram (components/diagram/*): React Flow's canvas around the app's nodes ------------------------------ */
+.dt-diagram-flow.react-flow {
+  background: var(--dt-bg);
+}
+.dt-diagram-flow .react-flow__edge-path {
+  stroke: var(--dt-fg-subtle);
+  stroke-width: 1.3;
+}
+.dt-diagram-flow .react-flow__edge-text {
+  fill: var(--dt-fg-subtle);
+  font-size: 9px;
+  font-family: var(--dt-mono);
+}
+.dt-diagram-flow .react-flow__edge-textbg {
+  fill: var(--dt-bg);
+}
+.dt-diagram-flow .react-flow__controls-button {
+  background: var(--dt-bg);
+  border-bottom: 1px solid var(--dt-border);
+  fill: var(--dt-fg);
+  color: var(--dt-fg);
+}
+.dt-diagram-flow .react-flow__minimap {
+  background-color: var(--dt-bg);
+  border: 1px solid var(--dt-border);
+  border-radius: var(--dt-radius);
+}
+/* React Flow's own node chrome off: each kind draws itself (DiagramNodes.tsx) */
+.dt-diagram-flow .react-flow__node-dtentity,
+.dt-diagram-flow .react-flow__node-dtdot,
+.dt-diagram-flow .react-flow__node-dtgroup {
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  border-radius: 0;
+}
+/* the handles are React Flow's elements, given these classes: a dot's are invisible, an entity's small */
+.dt-gnode-handle {
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  min-width: 0;
+  min-height: 0;
+  border: 0;
+  pointer-events: none;
+}
+.dt-diagram-flow .dt-entity-handle {
+  width: 7px;
+  height: 7px;
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid var(--dt-bg);
+  background: var(--dt-fg-subtle);
+}

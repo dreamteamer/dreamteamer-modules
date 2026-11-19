@@ -16,8 +16,8 @@
 	"files": [
 		"README.md",
 		"UPDATING.md",
-		"bin",
-		"collections"
+		"collections",
+		"dist"
 	],
 	"peerDependencies": {
 		"@dreamteamer/users": ">=0.2.0"
@@ -25,7 +25,7 @@
 	"dreamteamer": {
 		"title": "Projects",
 		"description": "The plan and everyone in it: projects, decisions, deliverables and risks, staffed with the `teams` users ships (projects adds `teams.projects`). The work itself is planned as `tasks` (the tasks module); a project is the effort they hang off. Owners and leads point at `users`, outside parties at `contacts`. `bin/check-records.mjs` enforces what a schema cannot.",
-		"engine": ">=0.33.0",
+		"engine": ">=0.50.0",
 		"peer_collections": [
 			"companies",
 			"contacts",
@@ -34,6 +34,12 @@
 		],
 		"dependencies": [
 			"@dreamteamer/users"
-		]
+		],
+		"scripts": {
+			"check-records": "dist/bin/check-records.js"
+		}
+	},
+	"scripts": {
+		"prepack": "node ../../scripts/build.ts --module=projects"
 	}
 }
