@@ -24,7 +24,8 @@ import { recordLabel } from "../lib/schema.ts"
 import type { EditProps } from "../registry/props.ts"
 import { EditInput } from "./EditInput.tsx"
 import { EditTags } from "./EditTags.tsx"
-import { dropPanel, plainList } from "../components/looks.ts"
+import { plainList } from "../components/looks.ts"
+import { Menu } from "../components/Menu.tsx"
 import { chip, chipRemove, cx, hint, iconButton } from "../styles/classes.ts"
 
 const emptyCls = "py-1.5 px-2 text-fg-subtle"
@@ -165,11 +166,13 @@ export function EditRelation(props: EditProps) {
       </div>
 
       {open && (
-        <div
-          className={cx(
-            dropPanel,
-            "absolute top-[calc(100%+4px)] left-0 right-0 z-20 flex flex-col gap-1.5 max-h-80 p-2 [&_input]:w-full"
-          )}
+        // the one menu's surface, as wide as the control; the picker keeps its own keyboard and dismissal
+        <Menu
+          className="gap-1.5 max-h-80 p-2 [&_input]:w-full"
+          role="presentation"
+          matchWidth
+          keys={false}
+          dismiss={false}
         >
           <input
             ref={search}
@@ -210,7 +213,7 @@ export function EditRelation(props: EditProps) {
               {options.length} of {page.data?.total} — type to narrow
             </p>
           )}
-        </div>
+        </Menu>
       )}
     </div>
   )

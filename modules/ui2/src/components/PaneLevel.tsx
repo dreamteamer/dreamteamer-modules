@@ -6,13 +6,13 @@
  * is said at the menu's top; a refused lower shows inside the menu. Drawn only on a pane host.
  */
 import { useState } from "react"
-import { createPortal } from "react-dom"
 import { request } from "../api/client.ts"
 import { useSignal } from "../AppContext.tsx"
 import { hostInfo, loadHost } from "../lib/host.ts"
 import { paneFetch } from "../lib/paneFetch.ts"
 import { levelWord, lowerChoices, raiseNotice, type PaneLevel as Level } from "../lib/paneLevel.ts"
 import { Icon } from "./Icon.tsx"
+import { Menu } from "./Menu.tsx"
 import { usePaneMenu } from "./usePaneMenu.ts"
 import { cx } from "../styles/classes.ts"
 import { navTool, paneMenu, paneMenuError, paneMenuItem, paneMenuItemPlace, paneMenuQuiet } from "./looks.ts"
@@ -30,7 +30,7 @@ export function PaneLevel() {
     setError(null)
     try {
       await paneFetch("POST", "/_dt/level", { level: to })
-      m.keys.done()
+      m.close()
       await loadHost(request)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -55,46 +55,44 @@ export function PaneLevel() {
         onClick={e => {
           e.stopPropagation()
           setError(null)
-          if (m.toggle()) m.keys.opened()
+          m.toggle()
         }}
       >
         <Icon name={ICONS[level]} />
       </button>
-      {m.open &&
+      {m.open && (
         // in the body, so no ancestor of the nav (its toolbar, its overflow) can clip or cover it
-        createPortal(
-          <div
-            ref={m.menu}
-            className={paneMenu}
-            role="menu"
-            tabIndex={-1}
-            style={{ left: m.at.x, top: m.at.y }}
-            onClick={e => e.stopPropagation()}
-            onKeyDown={e => m.keys.keydown(e)}
-            onFocus={e => m.keys.focusin(e)}
-          >
-            {notice && <p className={cx(paneMenuQuiet, "px-2 pt-1 pb-1.5 border-b border-border")}>{notice}</p>}
-            {error && (
-              <p className={paneMenuError} role="alert">
-                {error}
-              </p>
-            )}
-            {lowerChoices(level).map(l => (
-              <button
-                key={l}
-                type="button"
-                role="menuitem"
-                className={cx(paneMenuItem, paneMenuItemPlace.default)}
-                data-level={l}
-                onClick={() => void lower(l)}
-              >
-                {levelWord(l)}
-              </button>
-            ))}
-            <p className={cx(paneMenuQuiet, "px-2 py-1 border-t border-border")}>To raise it, ask in the chat</p>
-          </div>,
-          document.body
-        )}
+        <Menu
+          ref={m.menu}
+          className={paneMenu}
+          label="Level"
+          portal
+          at={m.at}
+          trigger={m.button}
+          onClick={e => e.stopPropagation()}
+          onClose={m.close}
+        >
+          {notice && <p className={cx(paneMenuQuiet, "px-2 pt-1 pb-1.5 border-b border-border")}>{notice}</p>}
+          {error && (
+            <p className={paneMenuError} role="alert">
+              {error}
+            </p>
+          )}
+          {lowerChoices(level).map(l => (
+            <button
+              key={l}
+              type="button"
+              role="menuitem"
+              className={cx(paneMenuItem, paneMenuItemPlace.default)}
+              data-level={l}
+              onClick={() => void lower(l)}
+            >
+              {levelWord(l)}
+            </button>
+          ))}
+          <p className={cx(paneMenuQuiet, "px-2 py-1 border-t border-border")}>To raise it, ask in the chat</p>
+        </Menu>
+      )}
     </>
   )
 }

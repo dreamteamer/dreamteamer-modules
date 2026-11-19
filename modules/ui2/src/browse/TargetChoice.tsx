@@ -6,6 +6,7 @@
  *
  * Simplified from ui: the words about a root ride on the row's tooltip rather than on the Vue ui's own hover card.
  */
+import { Menu } from "../components/Menu.tsx"
 import { SourceMark } from "../components/SourceMark.tsx"
 import {
   excludedHoverLines,
@@ -22,12 +23,15 @@ const words = (lines: HoverLine[]) => lines.map(l => l.text).join("\n")
 export function TargetChoice({
   choice,
   onPick,
+  onClose,
 }: {
   choice: Extract<Choice, { mode: "choose" }>
   onPick(name: string): void
+  /** Escape or a press outside: no record is made. */
+  onClose(): void
 }) {
   return (
-    <div className={menu} role="menu" aria-label="New record in…" data-target-choice>
+    <Menu className={menu} label="New record in…" align="end" onClose={onClose} data-target-choice>
       <p className={capsLabel}>New record in…</p>
       {choice.targets.map(t => (
         <button
@@ -55,6 +59,6 @@ export function TargetChoice({
           +{choice.others.length} not offered
         </p>
       )}
-    </div>
+    </Menu>
   )
 }

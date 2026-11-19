@@ -109,7 +109,7 @@ const DROP_HINT: Record<DropHint["where"], string> = {
   into: "before:bg-accent-tint before:shadow-[0_0_0_1px_var(--dt-accent)]",
 }
 
-type MenuAt = { key: string; x: number; y: number; start?: string }
+type MenuAt = { key: string; x: number; y: number; start?: string; trigger?: HTMLElement | null }
 
 export function Nav() {
   const { version, navigate, go, route } = useApp()
@@ -277,7 +277,12 @@ export function Nav() {
     e.stopPropagation()
     if (!arranging) return
     if (menuAt?.key === TOOLBAR && menuAt.start === id) return setMenuAt(null)
-    setMenuAt({ key: TOOLBAR, ...menuUnder(rectOf(e.currentTarget), "start", MENU_WIDTH, viewportWidth()), start: id })
+    setMenuAt({
+      key: TOOLBAR,
+      ...menuUnder(rectOf(e.currentTarget), "start", MENU_WIDTH, viewportWidth()),
+      start: id,
+      trigger: e.currentTarget,
+    })
   }
 
   const rows: RowCtx = {
@@ -436,7 +441,9 @@ export function Nav() {
             <i
               className={cx(
                 "codicon absolute right-px bottom-px text-2xs! leading-[10px]! rounded-xs",
-                arranging ? "bg-bg-active codicon-unlock" : cx(appShell ? "bg-canvas" : "bg-bg-subtle", "codicon-lock-small")
+                arranging
+                  ? "bg-bg-active codicon-unlock"
+                  : cx(appShell ? "bg-canvas" : "bg-bg-subtle", "codicon-lock-small")
               )}
               aria-hidden="true"
             />
@@ -490,6 +497,7 @@ export function Nav() {
           y={menuAt.y}
           items={menu.items}
           start={menuAt.start}
+          trigger={menuAt.trigger}
           onPick={p => void send(menu.act(p.id, p.value))}
           onClose={() => setMenuAt(null)}
         />
@@ -596,7 +604,11 @@ function NavRow({ node, depth, ctx }: { node: NavNode; depth: number; ctx: RowCt
         >
           {kids.length > 0 && <Icon name={open ? "chevron-down" : "chevron-right"} />}
         </span>
-        <span className="flex-none w-4 h-4 inline-flex items-center justify-center text-fg-subtle" data-nav-icon aria-hidden="true">
+        <span
+          className="flex-none w-4 h-4 inline-flex items-center justify-center text-fg-subtle"
+          data-nav-icon
+          aria-hidden="true"
+        >
           {node.icon && <Icon name={node.icon} />}
         </span>
         <span className="flex-1 min-w-0 overflow-hidden text-ellipsis" data-nav-label>

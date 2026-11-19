@@ -200,7 +200,11 @@ export function Browse({
         )}
         {state.pendingCreate && (
           <div className={popoverAnchor}>
-            <TargetChoice choice={state.pendingCreate.choice} onPick={state.chooseTarget} />
+            <TargetChoice
+              choice={state.pendingCreate.choice}
+              onPick={state.chooseTarget}
+              onClose={state.cancelCreate}
+            />
           </div>
         )}
         <div className={listCls(false)}>
@@ -336,7 +340,13 @@ export function Browse({
               >
                 <Icon name="add" /> New {row?.record_type ?? "record"}
               </button>
-              {state.pendingCreate && <TargetChoice choice={state.pendingCreate.choice} onPick={state.chooseTarget} />}
+              {state.pendingCreate && (
+                <TargetChoice
+                  choice={state.pendingCreate.choice}
+                  onPick={state.chooseTarget}
+                  onClose={state.cancelCreate}
+                />
+              )}
             </div>
           )}
         </div>

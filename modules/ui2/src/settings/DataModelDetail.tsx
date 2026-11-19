@@ -15,6 +15,7 @@
  * `embedded` drops the page header — the record-scoped `data-model` layout draws this inside a record page.
  */
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
+import { Menu } from "../components/Menu.tsx"
 import { deleteCollection, renameField, renameFieldValue } from "../api/client.ts"
 import { useApp } from "../AppContext.tsx"
 import { usePopover } from "../browse/usePopover.ts"
@@ -464,7 +465,7 @@ function FieldCard({
           <Icon name="ellipsis" />
         </button>
         {menu.open && (
-          <div className={menuBox} role="menu">
+          <Menu className={menuBox} label={`Actions for ${field.key}`} align="end" onClose={() => menu.setOpen(false)}>
             <button
               type="button"
               role="menuitem"
@@ -518,7 +519,7 @@ function FieldCard({
                 <Icon name="trash" /> Delete field
               </button>
             )}
-          </div>
+          </Menu>
         )}
       </div>
     </div>

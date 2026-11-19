@@ -6,10 +6,10 @@
  * Settings, opens the workspace settings (the name's click off a pane host). A refusal shows inside the menu.
  */
 import { useState } from "react"
-import { createPortal } from "react-dom"
 import { useApp, useSignal } from "../AppContext.tsx"
 import { hostInfo } from "../lib/host.ts"
 import { paneFetch } from "../lib/paneFetch.ts"
+import { Menu } from "./Menu.tsx"
 import { usePaneMenu } from "./usePaneMenu.ts"
 import { cx } from "../styles/classes.ts"
 import { paneMenu, paneMenuError, paneMenuItem, paneMenuItemPlace, paneMenuQuiet } from "./looks.ts"
@@ -54,12 +54,13 @@ export function PaneSwitcher({ label }: { label?: string }) {
     } finally {
       setLoading(false)
     }
-    m.keys.opened()
+    // the rows arrived after the menu opened: focus goes to the first of them
+    m.menu.current?.focusFirst()
   }
 
   const pick = async (w: WorkspaceRow) => {
     if (w.current || busy) {
-      m.keys.done()
+      m.close()
       return
     }
     setBusy(true)
@@ -69,7 +70,7 @@ export function PaneSwitcher({ label }: { label?: string }) {
       if (typeof answer?.url === "string") {
         m.close()
         window.location.href = answer.url
-      } else m.keys.done()
+      } else m.close()
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     } finally {
@@ -95,58 +96,56 @@ export function PaneSwitcher({ label }: { label?: string }) {
         <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">{name}</span>
         <i className="codicon codicon-chevron-down flex-none text-sm! text-fg-subtle" aria-hidden="true" />
       </button>
-      {m.open &&
-        createPortal(
-          <div
-            ref={m.menu}
-            className={paneMenu}
-            role="menu"
-            tabIndex={-1}
-            style={{ left: m.at.x, top: m.at.y }}
-            onClick={e => e.stopPropagation()}
-            onKeyDown={e => m.keys.keydown(e)}
-            onFocus={e => m.keys.focusin(e)}
-          >
-            {error && (
-              <p className={paneMenuError} role="alert">
-                {error}
-              </p>
-            )}
-            {workspaces.map(w => (
-              <button
-                key={w.id}
-                type="button"
-                role="menuitemradio"
-                className={cx(paneMenuItem, paneMenuItemPlace.default)}
-                data-id={w.id}
-                aria-checked={w.current}
-                onClick={() => void pick(w)}
-              >
-                {w.name} {!w.current && !w.running && <span className={paneMenuQuiet}>starts when opened</span>}
-              </button>
-            ))}
-            {loading ? (
-              <p className={cx(paneMenuQuiet, PANE_HINT)} role="status">
-                Loading…
-              </p>
-            ) : (
-              !others &&
-              !error && <p className={cx(paneMenuQuiet, PANE_HINT)}>No other workspace was opened on this machine</p>
-            )}
+      {m.open && (
+        <Menu
+          ref={m.menu}
+          className={paneMenu}
+          label="Workspaces"
+          portal
+          at={m.at}
+          trigger={m.button}
+          onClick={e => e.stopPropagation()}
+          onClose={m.close}
+        >
+          {error && (
+            <p className={paneMenuError} role="alert">
+              {error}
+            </p>
+          )}
+          {workspaces.map(w => (
             <button
+              key={w.id}
               type="button"
-              role="menuitem"
-              className={cx(paneMenuItem, paneMenuItemPlace.footer)}
-              onClick={() => {
-                m.close()
-                navigate(SETTINGS_ROUTE)
-              }}
+              role="menuitemradio"
+              className={cx(paneMenuItem, paneMenuItemPlace.default)}
+              data-id={w.id}
+              aria-checked={w.current}
+              onClick={() => void pick(w)}
             >
-              Settings
+              {w.name} {!w.current && !w.running && <span className={paneMenuQuiet}>starts when opened</span>}
             </button>
-          </div>,
-          document.body
-        )}
+          ))}
+          {loading ? (
+            <p className={cx(paneMenuQuiet, PANE_HINT)} role="status">
+              Loading…
+            </p>
+          ) : (
+            !others &&
+            !error && <p className={cx(paneMenuQuiet, PANE_HINT)}>No other workspace was opened on this machine</p>
+          )}
+          <button
+            type="button"
+            role="menuitem"
+            className={cx(paneMenuItem, paneMenuItemPlace.footer)}
+            onClick={() => {
+              m.close()
+              navigate(SETTINGS_ROUTE)
+            }}
+          >
+            Settings
+          </button>
+        </Menu>
+      )}
     </>
   )
 }

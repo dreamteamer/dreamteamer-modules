@@ -11,6 +11,7 @@
 import type { Dispatch, SetStateAction } from "react"
 import type { SourceEntry } from "../api/types.ts"
 import { Icon } from "../components/Icon.tsx"
+import { Menu } from "../components/Menu.tsx"
 import { SourceMark } from "../components/SourceMark.tsx"
 import type { FilterGroup } from "../lib/filterQuery.ts"
 import { selectedSources, sourceColor, toggleSource, viaWord, withSourceSelection } from "../lib/sources.ts"
@@ -85,7 +86,14 @@ export function SourcePicker({
         <Icon name="chevron-down" />
       </button>
       {open && (
-        <div className={menu} role="listbox" aria-multiselectable="true" aria-label="Sources">
+        <Menu
+          className={menu}
+          role="listbox"
+          multiselectable
+          label="Sources"
+          align="end"
+          onClose={() => setOpen(false)}
+        >
           <button
             type="button"
             role="option"
@@ -137,7 +145,7 @@ export function SourcePicker({
               </span>
             )
           )}
-        </div>
+        </Menu>
       )}
     </div>
   )

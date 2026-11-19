@@ -1,13 +1,13 @@
 /**
  * One of the nav toolbar's hanging menus (the switcher, the level): open while `openMenu` names it — so opening any
- * other nav menu closes it — closed by a click anywhere else, placed under its button inside the window, with
- * lib/menuKeys.ts's keyboard. The button and the menu stop their own clicks.
+ * other nav menu closes it — placed under its button inside the window, and drawn by components/Menu.tsx, which owns
+ * the keyboard, the dismissal and focus going back to the button. The button and the menu stop their own clicks.
  */
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useSignal } from "../AppContext.tsx"
-import { menuKeys } from "../lib/menuKeys.ts"
 import { menuUnder, rectOf, viewportWidth } from "../lib/menuPlace.ts"
 import { openMenu } from "../lib/openMenu.ts"
+import type { MenuHandle } from "./Menu.tsx"
 
 /** The width the pane menus are placed for (`paneMenu` in looks.ts). */
 export const PANE_MENU_WIDTH = 220
@@ -16,17 +16,7 @@ export function usePaneMenu(id: string, align: "start" | "end") {
   const open = useSignal(openMenu) === id
   const [at, setAt] = useState({ x: 0, y: 0 })
   const button = useRef<HTMLButtonElement>(null)
-  const menu = useRef<HTMLDivElement>(null)
-  const keys = useMemo(
-    () =>
-      menuKeys({
-        items: () => [...(menu.current?.querySelectorAll<HTMLButtonElement>("button") ?? [])],
-        menu: () => menu.current,
-        button: () => button.current,
-        close: () => openMenu.set(null),
-      }),
-    []
-  )
+  const menu = useRef<MenuHandle>(null)
   useEffect(() => {
     if (!open) return
     const away = () => openMenu.set(null)
@@ -38,7 +28,6 @@ export function usePaneMenu(id: string, align: "start" | "end") {
     at,
     button,
     menu,
-    keys,
     /** Open under the button (returns true), or close an open one (false). */
     toggle(): boolean {
       if (open) {

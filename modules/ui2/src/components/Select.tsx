@@ -22,7 +22,8 @@ import {
   type Choice,
 } from "../lib/listbox.ts"
 import { Icon } from "./Icon.tsx"
-import { ddControl, dropPanel, plainList } from "./looks.ts"
+import { ddControl, plainList } from "./looks.ts"
+import { Menu, type MenuHandle } from "./Menu.tsx"
 import { cx } from "../styles/classes.ts"
 
 // ---- the looks (was dt-dd-*) ---------------------------------------------------------------------------------
@@ -31,7 +32,7 @@ import { cx } from "../styles/classes.ts"
 const controlCls = ddControl
 const labelCls = "flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap"
 const hintCls = "flex-none text-small opacity-60"
-const panelCls = cx(dropPanel, "fixed z-[1000] flex flex-col gap-1.5 p-1.5 overflow-hidden")
+const panelCls = "gap-1.5 p-1.5 overflow-hidden"
 const optionCls = "flex items-center gap-2 w-full px-2 py-[5px] border-0 rounded text-left cursor-pointer"
 
 export function Select({
@@ -59,7 +60,7 @@ export function Select({
   const [active, setActive] = useState(-1)
   const [style, setStyle] = useState<CSSProperties>({})
   const control = useRef<HTMLButtonElement>(null)
-  const panel = useRef<HTMLDivElement>(null)
+  const panel = useRef<MenuHandle>(null)
   const search = useRef<HTMLInputElement>(null)
 
   const visible = useMemo(() => filterChoices(choices, query), [choices, query])
@@ -103,14 +104,14 @@ export function Select({
   useLayoutEffect(() => {
     if (!open) return
     if (showSearch) search.current?.focus()
-    panel.current?.querySelector<HTMLElement>("[data-active]")?.scrollIntoView({ block: "nearest" })
+    panel.current?.el?.querySelector<HTMLElement>("[data-active]")?.scrollIntoView({ block: "nearest" })
   }, [open, showSearch])
 
   useEffect(() => {
     if (!open) return
     const onDown = (e: MouseEvent) => {
       const t = e.target as Node
-      if (control.current?.contains(t) || panel.current?.contains(t)) return
+      if (control.current?.contains(t) || panel.current?.el?.contains(t)) return
       close()
     }
     document.addEventListener("mousedown", onDown)
@@ -125,7 +126,7 @@ export function Select({
 
   const scrollActive = () =>
     requestAnimationFrame(() =>
-      panel.current?.querySelector<HTMLElement>("[data-active]")?.scrollIntoView({ block: "nearest" })
+      panel.current?.el?.querySelector<HTMLElement>("[data-active]")?.scrollIntoView({ block: "nearest" })
     )
 
   const onKeyDown = (e: KeyboardEvent) => {
@@ -198,7 +199,17 @@ export function Select({
         <Icon name="chevron-down" className="flex-none opacity-70" />
       </button>
       {open && (
-        <div ref={panel} className={panelCls} style={style} onKeyDown={onKeyDown}>
+        // the one menu's surface; the combobox keeps its own keyboard, dismissal and placement
+        <Menu
+          ref={panel}
+          className={panelCls}
+          style={style}
+          role="presentation"
+          anchor="none"
+          keys={false}
+          dismiss={false}
+          onKeyDown={onKeyDown}
+        >
           {showSearch && (
             <input
               ref={search}
@@ -245,7 +256,7 @@ export function Select({
               )
             })}
           </ul>
-        </div>
+        </Menu>
       )}
     </div>
   )

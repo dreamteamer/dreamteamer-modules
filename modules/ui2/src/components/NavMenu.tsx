@@ -9,10 +9,10 @@
 import { useEffect, useRef, useState } from "react"
 import type { NavMenuItem } from "../lib/navTree.ts"
 import { IconGrid } from "./IconPicker.tsx"
+import { Menu } from "./Menu.tsx"
 import { cx, input } from "../styles/classes.ts"
 
-const menuCls =
-  "fixed min-w-[180px] max-w-[calc(100vw-8px)] flex flex-col py-1 px-0 border border-(color:--dt-menu-border) rounded-menu bg-bg shadow-menu z-(--dt-z-menu)"
+const menuCls = "min-w-[180px] max-w-[calc(100vw-8px)] py-1 px-0"
 /** One entry; `ok` is the ask's confirming button. (was dt-nav-menu-item) */
 const itemCls = (ok?: boolean) =>
   cx(
@@ -28,6 +28,7 @@ export function NavMenu({
   y,
   items,
   start,
+  trigger,
   onPick,
   onClose,
 }: {
@@ -35,6 +36,8 @@ export function NavMenu({
   y: number
   items: NavMenuItem[]
   start?: string
+  /** The toolbar button that opened it, if one did: a press on it is not outside, and focus goes back to it. */
+  trigger?: HTMLElement | null
   onPick: (p: { id: string; value?: string | null }) => void
   onClose: () => void
 }) {
@@ -63,17 +66,14 @@ export function NavMenu({
   const title = asking?.label.replace(/…$/, "")
 
   return (
-    <div
+    <Menu
       className={menuCls}
-      role="menu"
-      style={{ left: x, top: y }}
+      at={{ x, y }}
+      trigger={trigger}
+      // an ask's text field takes focus itself; a plain menu focuses its first entry
+      autofocus={!first}
       onClick={e => e.stopPropagation()}
-      onKeyDown={e => {
-        if (e.key === "Escape") {
-          e.stopPropagation()
-          onClose()
-        }
-      }}
+      onClose={onClose}
     >
       {!asking &&
         items.map(item => (
@@ -153,6 +153,6 @@ export function NavMenu({
           </div>
         </div>
       )}
-    </div>
+    </Menu>
   )
 }

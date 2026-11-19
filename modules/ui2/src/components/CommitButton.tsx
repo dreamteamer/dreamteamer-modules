@@ -19,6 +19,7 @@ import { usePopover } from "../browse/usePopover.ts"
 import { hostInfo, isAdmin } from "../lib/host.ts"
 import { commitRepoLabel, pendingByRepo } from "../lib/sources.ts"
 import { Icon } from "./Icon.tsx"
+import { Menu } from "./Menu.tsx"
 import {
   button,
   buttonSize,
@@ -126,7 +127,7 @@ export function CommitButton({
             <Icon name="git-commit" /> Commit {pending} <Icon name="chevron-down" />
           </button>
           {menu.open && (
-            <div className={menuCls} role="menu" aria-label="Commit to">
+            <Menu className={menuCls} label="Commit to" align="end" onClose={() => menu.setOpen(false)}>
               {repos.map(r => (
                 <button
                   key={r.repo}
@@ -140,7 +141,7 @@ export function CommitButton({
                   <span className={subtle}>{r.count}</span>
                 </button>
               ))}
-            </div>
+            </Menu>
           )}
         </>
       )}

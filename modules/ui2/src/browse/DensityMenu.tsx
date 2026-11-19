@@ -5,10 +5,11 @@
  * rest of that slice — so the panel, Save and the modified dot all see the pick, and it never drops the grouping
  * or the page size the same slice holds.
  */
+import { useRef, useState } from "react"
 import { Icon } from "../components/Icon.tsx"
+import { Menu } from "../components/Menu.tsx"
 import { ROW_SIZES, ROW_SIZE_LABELS, resolveRowSize } from "../lib/rowSize.ts"
 import type { BrowseState } from "./useBrowseState.ts"
-import { usePopover } from "./usePopover.ts"
 import {
   button,
   buttonSize,
@@ -24,11 +25,13 @@ import {
 const LAYOUT = "table"
 
 export function DensityMenu({ state }: { state: BrowseState }) {
-  const { open, setOpen, anchor } = usePopover()
+  const [open, setOpen] = useState(false)
+  const trigger = useRef<HTMLButtonElement>(null)
   const current = resolveRowSize(state.listOptions[LAYOUT])
   return (
-    <div ref={anchor} className={popoverAnchor}>
+    <div className={popoverAnchor}>
       <button
+        ref={trigger}
         type="button"
         className={cx(button, buttonTone[open ? "active" : "default"], buttonSize.icon)}
         title={`Row density — ${ROW_SIZE_LABELS[current]}`}
@@ -39,7 +42,7 @@ export function DensityMenu({ state }: { state: BrowseState }) {
         <Icon name="list-flat" />
       </button>
       {open && (
-        <div className={menu} role="menu" aria-label="Row density">
+        <Menu className={menu} label="Row density" align="end" trigger={trigger} onClose={() => setOpen(false)}>
           {ROW_SIZES.map(size => (
             <button
               key={size}
@@ -57,7 +60,7 @@ export function DensityMenu({ state }: { state: BrowseState }) {
               {ROW_SIZE_LABELS[size]}
             </button>
           ))}
-        </div>
+        </Menu>
       )}
     </div>
   )

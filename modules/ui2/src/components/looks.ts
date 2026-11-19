@@ -8,8 +8,7 @@ export const navTool =
   "relative flex-none inline-flex items-center justify-center w-6 h-6 p-0 border-0 rounded-dt bg-transparent text-fg-subtle enabled:hover:bg-bg-hover enabled:hover:text-fg disabled:opacity-45 aria-pressed:bg-accent-tint aria-pressed:text-accent [transition:background-color_var(--dt-dur-fast)_ease,transform_var(--dt-dur-fast)_var(--dt-ease)] enabled:active:scale-[0.97]"
 
 /** A menu a nav toolbar button opens, portalled to the body and placed fixed. (was dt-pane-menu) */
-export const paneMenu =
-  "fixed w-[220px] max-w-[calc(100vw-8px)] flex flex-col p-1 border border-(color:--dt-menu-border) rounded-menu bg-bg shadow-menu z-(--dt-z-menu) outline-none"
+export const paneMenu = "w-[220px] max-w-[calc(100vw-8px)] p-1"
 /** One entry of a pane menu, and one entry of `paneMenuItemPlace`. (was dt-pane-menu > button) */
 export const paneMenuItem =
   "overflow-hidden text-ellipsis whitespace-nowrap text-left bg-transparent text-fg px-2 pb-1 hover:bg-bg-hover focus-visible:bg-bg-hover focus-visible:outline-none aria-checked:font-semibold"
@@ -26,10 +25,6 @@ export const paneMenuError = "m-0 px-2 py-1 text-danger"
 /** An edit control's frame: the input's background and border, the focus colour while anything inside has focus.
  *  (the frame dt-tags-edit, dt-relation-control and dt-markdown-edit shared) */
 export const controlFrame = "bg-input-bg border border-input-border rounded-dt focus-within:border-focus"
-
-/** A dropdown panel: the quick-input widget's colours, a deeper shadow. (dt-dd-panel, dt-relation-popover) */
-export const dropPanel =
-  "text-fg bg-[var(--vscode-quickInput-background,var(--vscode-editorWidget-background,var(--dt-bg)))] border border-[var(--vscode-widget-border,var(--dt-border))] rounded-menu shadow-menu"
 
 /** A text input that sits inside a frame: no frame of its own. */
 export const bareInput = "min-h-0 border-0 outline-none bg-transparent"

@@ -94,9 +94,12 @@ export const linkButton =
 // ---- menus and popovers --------------------------------------------------------------------------------------------
 /** The relative box a popover hangs from. (was dt-popover-anchor) */
 export const popoverAnchor = "relative inline-flex"
-/** A menu hanging under its anchor. (was dt-menu) */
-export const menu =
-  "absolute top-[calc(100%+4px)] right-0 min-w-[180px] max-w-[min(360px,calc(100vw-32px))] p-1 flex flex-col border border-(color:--dt-menu-border) rounded-menu bg-bg shadow-menu z-(--dt-z-menu) [&>p]:mx-2 [&>p]:my-1"
+/** THE ONE MENU SURFACE (components/Menu.tsx): fixed, one border, radius, shadow and layer for every dropdown, context
+ *  menu and combobox panel. */
+export const menuSurface =
+  "fixed box-border flex flex-col outline-none text-left bg-bg text-fg border border-(color:--dt-menu-border) rounded-menu shadow-menu z-(--dt-z-menu)"
+/** An action or choice menu's box inside the surface: its width and padding. (was dt-menu) */
+export const menu = "min-w-[180px] max-w-[min(360px,calc(100vw-32px))] p-1 [&>p]:mx-2 [&>p]:my-1"
 /** One entry of a menu: the frame, and one entry of `menuItemTone`. (was dt-menu-item) */
 export const menuItem =
   "flex items-center gap-2 px-2 py-[5px] border-0 rounded bg-transparent text-left whitespace-nowrap hover:bg-bg-hover"

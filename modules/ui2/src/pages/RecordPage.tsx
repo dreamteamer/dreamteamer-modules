@@ -26,6 +26,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { createRecord, getRecord, removeRecord, renameRecord, updateRecord, type RecordDoc } from "../api/client.ts"
 import { useApp, useAsync, useRouteBase, useSignal } from "../AppContext.tsx"
 import { usePopover } from "../browse/usePopover.ts"
+import { Menu } from "../components/Menu.tsx"
 import { CommitButton } from "../components/CommitButton.tsx"
 import { Dialog } from "../components/Dialog.tsx"
 import { Icon } from "../components/Icon.tsx"
@@ -393,7 +394,7 @@ export function RecordPage({
               <Icon name="ellipsis" />
             </button>
             {menu.open && (
-              <div className={menuCls} role="menu">
+              <Menu className={menuCls} label="More actions" align="end" onClose={() => menu.setOpen(false)}>
                 {admin && (
                   <button
                     type="button"
@@ -412,7 +413,7 @@ export function RecordPage({
                 >
                   <Icon name="trash" /> Delete…
                 </button>
-              </div>
+              </Menu>
             )}
           </div>
         )}
