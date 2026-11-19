@@ -14,6 +14,10 @@
 // has the field and wrote it; filling an empty one is that workspace's migration, never this one's.
 // On an engine without the warning channel or without `commandsFor` the rule says nothing.
 import path from "node:path"
+import type { ExtensionContext } from "dreamteamer"
+import type { Warning } from "./checkStageTags.ts"
+
+type Store = InstanceType<ExtensionContext["dt"]["Store"]>
 
 export const COLLECTION = "rnd/change-requests"
 
@@ -34,7 +38,7 @@ export const STAGES = [
 ]
 
 /** rnd's change-request bindings (ids without `command-bindings/`) → the stage their being open means. */
-export const GATES = {
+export const GATES: Record<string, string> = {
   "rnd--design--change-requests": "design",
   "rnd--review--change-requests--design": "design-review",
   "rnd--review--change-requests": "acceptance",
@@ -49,12 +53,12 @@ export const GATES = {
   "rnd--review--change-requests--deploy": "live-check",
 }
 
-const at = s => STAGES.indexOf(s)
-const within = (s, from, to) => at(s) >= at(from) && at(s) <= at(to)
-const set = v => v != null && v !== "" && !(Array.isArray(v) && v.length === 0)
+const at = (s: string) => STAGES.indexOf(s)
+const within = (s: string, from: string, to: string) => at(s) >= at(from) && at(s) <= at(to)
+const set = (v: unknown) => v != null && v !== "" && !(Array.isArray(v) && v.length === 0)
 
 /** The verb a binding id stands for, as a person reads it: `/rnd:plan`, `/rnd:review (code)`. */
-export function gateCommand(binding) {
+export function gateCommand(binding: string | null | undefined): string {
   const m = /^rnd--([a-z]+)--change-requests(?:--([a-z]+))?$/.exec(binding ?? "")
   if (!m) return binding ?? ""
   const [, verb, which] = m
@@ -63,14 +67,14 @@ export function gateCommand(binding) {
 }
 
 /** The earliest open gate in GATES, or null; `implemented` and `rejected` decide by status. */
-export function expectedGate({ status, available = [] }) {
+export function expectedGate({ status, available = [] }: { status?: unknown; available?: string[] }): string | null {
   if (status === "implemented" || status === "rejected") return null
   let best = null
   for (const b of available) if (GATES[b] && (best === null || at(GATES[b]) < at(GATES[best]))) best = b
   return best
 }
 
-export function expectedStage({ status, available = [] }) {
+export function expectedStage({ status, available = [] }: { status?: unknown; available?: string[] }): string | null {
   if (status === "implemented") return "done"
   if (status === "rejected") return "rejected"
   const g = expectedGate({ status, available })
@@ -78,7 +82,7 @@ export function expectedStage({ status, available = [] }) {
 }
 
 /** What the request's own record says against `stage` — one message per broken row, in table order. */
-export function stageContradictions(f: Record<string, any> = {}, stage) {
+export function stageContradictions(f: Record<string, any> = {}, stage: string): string[] {
   const out = []
   const s = stage
   const st = f.status ?? "(empty)"
@@ -111,16 +115,28 @@ export function stageContradictions(f: Record<string, any> = {}, stage) {
 }
 
 /** The stages the request's own record does not contradict. */
-export function allowedStages(f) {
+export function allowedStages(f: Record<string, any>): string[] {
   return STAGES.filter(s => stageContradictions(f, s).length === 0)
 }
 
 /** The warnings for rows `{ id, file, stage, expected, gate, fields, inLayer }` — pure; at most one per row. */
-export function stageWarnings(rows) {
-  const out = []
-  const warn = (file, message) => out.push({ file, message, warning: true })
+/** One change request as stageWarnings reads it. */
+export interface RequestRow {
+  id: string
+  file: string
+  fields: Record<string, any>
+  stage?: unknown
+  available?: string[]
+  gate?: string | null
+  expected?: string | null
+  inLayer?: string | null
+}
+
+export function stageWarnings(rows: RequestRow[]): Warning[] {
+  const out: Warning[] = []
+  const warn = (file: string, message: string) => out.push({ file, message, warning: true })
   for (const r of rows) {
-    const stage = set(r.stage) ? r.stage : null
+    const stage = set(r.stage) ? String(r.stage) : null
     if (r.inLayer && !stage) continue
     if (stage && r.expected && stage !== r.expected) {
       warn(
@@ -155,9 +171,9 @@ export function stageWarnings(rows) {
 }
 
 /** Does this workspace compile `rnd/change-requests` with a `stage` field? */
-export function compilesStage(store) {
+export function compilesStage(store: Store): boolean {
   try {
-    return Boolean(store.descriptor(COLLECTION)?.fields?.stage)
+    return Boolean((store.descriptor(COLLECTION) as { fields?: Record<string, unknown> })?.fields?.stage)
   } catch {
     return false
   }
@@ -165,14 +181,14 @@ export function compilesStage(store) {
 
 /** Every change request the store reads, with its expected stage and open gate — one `commandsFor` call.
  *  `inLayer` names the record layer that holds it (null for the workspace's own root). */
-export function readRequests(store, dt) {
+export function readRequests(store: Store, dt: ExtensionContext["dt"]): RequestRow[] {
   const d = store.descriptor(COLLECTION)
   const rows = [...store.readAll(COLLECTION)]
   const ids = rows.map(r => r.id)
   const res = dt.commandsFor(store, COLLECTION, ids)
-  const out = []
+  const out: RequestRow[] = []
   for (const { id, file, fields } of rows) {
-    const available = []
+    const available: string[] = []
     for (const c of res.commands ?? [])
       if (c.states?.[id] === "available") available.push(String(c.binding).replace(/^command-bindings\//, ""))
     const gate = expectedGate({ status: fields.status, available })
@@ -194,7 +210,7 @@ export function readRequests(store, dt) {
 /** The extension's `check`: the warnings for every change request this workspace reads, files named
  *  relative to the root. Nothing on an engine without the warning channel or `commandsFor`, or on a
  *  workspace whose compiled descriptor has no `stage`. */
-export function checkChangeRequestStage({ ws, dt }) {
+export function checkChangeRequestStage({ ws, dt }: Pick<ExtensionContext, "ws" | "dt">) {
   if (dt?.CHECK_WARNINGS !== true || typeof dt?.commandsFor !== "function") return []
   const store = new dt.Store(ws)
   if (!store.descriptors?.has?.(COLLECTION) || !compilesStage(store)) return []

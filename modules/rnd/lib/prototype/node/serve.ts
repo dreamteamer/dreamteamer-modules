@@ -2,9 +2,10 @@
 // http.server on 127.0.0.1), on a free port, stopped when the tool exits.
 import { spawn } from "node:child_process"
 import net from "node:net"
+import type { Config } from "./config.ts"
 
 export const freePort = () =>
-  new Promise((res, rej) => {
+  new Promise<number>((res, rej) => {
     const s = net.createServer()
     s.unref()
     s.on("error", rej)
@@ -15,15 +16,15 @@ export const freePort = () =>
   })
 
 /** split a command template into argv, filling {port} and {public} */
-export function command(template, { port, publicDir }) {
+export function command(template: string, { port, publicDir }: { port: number; publicDir: string }): string[] {
   return template
     .split(/\s+/)
     .filter(Boolean)
-    .map(a => a.replace("{port}", String(port)).replace("{public}", publicDir))
+    .map((a: string) => a.replace("{port}", String(port)).replace("{public}", publicDir))
 }
 
 /** → { base, stop } — base is `http://127.0.0.1:<port>/index.html` */
-export async function serve(c, port = null) {
+export async function serve(c: Config, port: number | null = null) {
   const p = port || (await freePort())
   const [cmd, ...args] = command(c.serve, { port: p, publicDir: c.paths.public })
   const proc = spawn(cmd, args, { stdio: "ignore", cwd: c.dir })

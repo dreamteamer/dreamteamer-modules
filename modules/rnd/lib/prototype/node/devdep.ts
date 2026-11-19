@@ -9,7 +9,11 @@ import { createRequire } from "node:module"
 
 export const INSTALL = "npm i --no-save playwright-core && npx playwright-core install chromium"
 
-function candidates(from) {
+/** A Playwright page, context or browser. Playwright is the person's own install, loaded at run time, so its
+ *  types are not a dependency of this package: what the harness calls on them is read as-is. */
+export type Page = any
+
+function candidates(from: string): string[] {
   const out = []
   try {
     out.push(createRequire(path.join(from, "noop.js")).resolve("playwright-core"))
@@ -43,8 +47,8 @@ export function installedChromiums(dir = browsersDir()) {
     "chrome.exe",
     "chrome-headless-shell.exe",
   ]
-  const found = []
-  const walk = (d, depth) => {
+  const found: string[] = []
+  const walk = (d: string, depth: number) => {
     if (depth > 6) return
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       const p = path.join(d, e.name)
@@ -74,7 +78,8 @@ export function installedChromiums(dir = browsersDir()) {
 /** a console error the BROWSER raised, not the page: the `/favicon.ico` a full Chromium requests unasked (the
  *  headless shell does not), which a static server without one answers 404 — on CI, where playwright's own build
  *  is installed, that failed every play. Any other failed load is still the page's. */
-export const browserNoise = m => /\/favicon\.ico(\?|$)/.test(m.location?.()?.url ?? "")
+export const browserNoise = (m: { location?: () => { url?: string } | undefined }) =>
+  /\/favicon\.ico(\?|$)/.test(m.location?.()?.url ?? "")
 
 /** → { chromium, executablePath } — `launch(opts)` is chromium.launch with the executable filled in */
 export async function chromium(from = process.cwd()) {

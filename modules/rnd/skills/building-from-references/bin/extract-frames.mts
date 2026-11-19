@@ -14,7 +14,19 @@ import { execFileSync } from "node:child_process"
 import { fileURLToPath } from "node:url"
 
 /** The ffmpeg argv lists a set of options becomes — pure, so a fixture can pin it. */
-export function ffmpegArgs({ input, out, every = 4, width = 1280, sheet = false }) {
+export function ffmpegArgs({
+  input,
+  out,
+  every = 4,
+  width = 1280,
+  sheet = false,
+}: {
+  input: string
+  out: string
+  every?: number | string
+  width?: number | string
+  sheet?: boolean
+}): { purpose: string; argv: string[] }[] {
   if (!input) throw new Error("--in <recording> is required")
   if (!out) throw new Error("--out <folder> is required")
   const e = Number(every),
@@ -46,8 +58,8 @@ export function ffmpegArgs({ input, out, every = 4, width = 1280, sheet = false 
   return calls
 }
 
-export function parseArgs(argv) {
-  const opt = n => {
+export function parseArgs(argv: string[]) {
+  const opt = (n: string) => {
     const i = argv.indexOf(`--${n}`)
     return i >= 0 ? argv[i + 1] : undefined
   }
@@ -61,7 +73,7 @@ export function parseArgs(argv) {
   }
 }
 
-export function main(argv) {
+export function main(argv: string[]) {
   let opts, calls
   try {
     opts = parseArgs(argv)
@@ -101,7 +113,7 @@ export function main(argv) {
  *  the same file, and an unresolved `===` would skip `main` and exit 0 with no output. */
 const isMain = () => {
   if (!process.argv[1]) return false
-  const real = p => {
+  const real = (p: string) => {
     try {
       return fs.realpathSync(p)
     } catch {

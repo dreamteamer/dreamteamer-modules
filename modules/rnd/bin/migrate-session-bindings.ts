@@ -31,22 +31,22 @@ import { findWorkspace } from "../lib/findWorkspace.ts"
 /** The bindings rnd 0.6.0–0.7.0 shipped, as a session record names them. */
 export const REMOVED = ["design", "build", "review"].map(s => `session-bindings/change-requests--${s}`)
 /** The tag that keeps the old binding on the record (a tag value may not carry `--`). */
-export const tagFor = binding => `rnd-binding:change-requests-${binding.split("--").pop()}`
+export const tagFor = (binding: string) => `rnd-binding:change-requests-${binding.split("--").pop()}`
 /** Minutes a running session may be silent before core's next session verb abandons it — core's default,
  *  which is what applies once the binding that set it is gone. rnd's three all used it. */
 export const STALE_AFTER = 30
-export const isStale = (s, now = Date.now()) => {
+export const isStale = (s: Record<string, any>, now = Date.now()) => {
   const last = Date.parse(s.heartbeat ?? s.started ?? "")
   return !Number.isFinite(last) || now - last > STALE_AFTER * 60_000
 }
 
 /** The CLI of the workspace's own engine, with no harness session id leaking in. */
-function cliOf(root) {
+function cliOf(root: string) {
   const pkg = createRequire(path.join(root, "package.json")).resolve("dreamteamer/package.json")
   const bin = path.join(path.dirname(pkg), "bin", "dreamteamer.js")
   const env = { ...process.env }
   delete env.CLAUDE_CODE_SESSION_ID
-  return args => {
+  return (args: string[]) => {
     const r = spawnSync(process.execPath, [bin, ...args], { cwd: root, encoding: "utf8", env, timeout: 120_000 })
     return { code: r.status, out: r.stdout ?? "", err: r.stderr ?? "" }
   }
@@ -54,10 +54,10 @@ function cliOf(root) {
 
 /** Which of the removed ids this workspace still compiles from a source on disk — its own binding — and
  *  which are compiled from a source that is gone: a compile that has not run since the upgrade. */
-export function compiledState(root) {
-  const live = new Set()
-  const stale = []
-  let entries = null
+export function compiledState(root: string) {
+  const live = new Set<string>()
+  const stale: string[] = []
+  let entries: Record<string, { sources?: { path?: string }[] }> | null = null
   for (const binding of REMOVED) {
     const name = `${binding}.session-binding.yaml`
     if (!fs.existsSync(path.join(root, ".dreamteamer", name))) continue
@@ -78,7 +78,7 @@ export function compiledState(root) {
 }
 
 export function main(argv = process.argv.slice(2), out = console.log) {
-  const flag = n => argv.includes(`--${n}`)
+  const flag = (n: string) => argv.includes(`--${n}`)
   const rootAt = argv.indexOf("--root")
   const root = rootAt >= 0 ? path.resolve(argv[rootAt + 1] ?? "") : findWorkspace()
   if (!root || !fs.existsSync(path.join(root, "package.json"))) {
@@ -110,17 +110,23 @@ export function main(argv = process.argv.slice(2), out = console.log) {
     return 1
   }
   const parsed = JSON.parse(listed.out || "[]")
-  const rows = Array.isArray(parsed) ? parsed : (parsed.rows ?? [])
+  const rows: Record<string, any>[] = Array.isArray(parsed) ? parsed : (parsed.rows ?? [])
   const candidates = rows.filter(s => REMOVED.includes(s.binding) && !live.has(s.binding))
 
-  const report = { candidates: candidates.map(s => s.id), unbound: [], running: [], stale: [], failed: [] }
+  const report = {
+    candidates: candidates.map(s => s.id),
+    unbound: [] as string[],
+    running: [] as string[],
+    stale: [] as string[],
+    failed: [] as Record<string, unknown>[],
+  }
   for (const s of candidates) {
     if (!write) {
       if (!json) out(`would unbind sessions/${s.id}  ${s.binding}  ${s.status ?? ""}`.trimEnd())
       continue
     }
     const tag = tagFor(s.binding)
-    const tags = [...(s.tags ?? []).filter(t => t !== tag), tag]
+    const tags = [...(s.tags ?? []).filter((t: string) => t !== tag), tag]
     const r = dt(["set", `sessions/${s.id}`, "binding=", ...tags.map(t => `tags=${t}`)])
     if (r.code !== 0) {
       report.failed.push(s.id)

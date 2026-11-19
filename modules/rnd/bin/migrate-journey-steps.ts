@@ -30,16 +30,16 @@ import yaml from "js-yaml"
 import { findWorkspace } from "../lib/findWorkspace.ts"
 
 const FRONTMATTER = /^---\r?\n([\s\S]*?)\r?\n---(\r?\n|$)/
-const isDir = p => {
+const isDir = (p: string) => {
   try {
     return fs.statSync(p).isDirectory()
   } catch {
     return false
   }
 }
-const rel = (root, p) => path.relative(root, p).split(path.sep).join("/")
+const rel = (root: string, p: string) => path.relative(root, p).split(path.sep).join("/")
 
-function* walk(dir) {
+function* walk(dir: string): Generator<string> {
   if (!isDir(dir)) return
   for (const e of fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
     if (e.name.startsWith(".")) continue
@@ -50,12 +50,20 @@ function* walk(dir) {
 }
 
 /** A record file under `dir`: its id (the path minus `.<suffix>.md`), its text and its front matter. */
-function records(dir) {
-  const out = []
+/** A record file: its path, id, text and parsed front matter. */
+interface RecordFile {
+  file: string
+  id: string
+  text: string
+  fm: Record<string, any>
+}
+
+function records(dir: string): RecordFile[] {
+  const out: RecordFile[] = []
   for (const file of walk(dir)) {
     const text = fs.readFileSync(file, "utf8")
     const m = FRONTMATTER.exec(text)
-    let fm = {}
+    let fm: Record<string, any> = {}
     try {
       fm = m ? (yaml.load(m[1]) ?? {}) : {}
     } catch (e) {
@@ -67,10 +75,10 @@ function records(dir) {
   return out
 }
 
-const eolOf = text => (text.includes("\r\n") ? "\r\n" : "\n")
+const eolOf = (text: string) => (text.includes("\r\n") ? "\r\n" : "\n")
 
 /** Remove top-level `keys` (with their continuation lines) from a record's front matter; nothing else moves. */
-export function dropKeys(text, keys) {
+export function dropKeys(text: string, keys: (string | null)[]): string {
   const m = FRONTMATTER.exec(text)
   if (!m) return text
   // each line keeps its own terminator, so a file with mixed endings is left mixed outside the moved keys
@@ -97,7 +105,7 @@ export function dropKeys(text, keys) {
 }
 
 /** Insert a top-level `key:` block (dumped as YAML) at the end of a record's front matter. */
-export function addBlock(text, key, value) {
+export function addBlock(text: string, key: string, value: unknown[]): string {
   const eol = eolOf(text)
   const block =
     `${key}:${eol}` +
@@ -113,10 +121,11 @@ export function addBlock(text, key, value) {
   return text.slice(0, at) + (m[1].length ? eol : "") + block + text.slice(at)
 }
 
-const splitRules = v => (Array.isArray(v) ? v : String(v ?? "").split(",")).map(x => String(x).trim()).filter(Boolean)
+const splitRules = (v: unknown): string[] =>
+  (Array.isArray(v) ? v : String(v ?? "").split(",")).map(x => String(x).trim()).filter(Boolean)
 
 /** The plan for one workspace — pure, reads only. */
-export function plan(root, { screenRules = null } = {}) {
+export function plan(root: string, { screenRules = null as string | null } = {}) {
   const data = path.join(root, "data", "rnd")
   const journeys = records(path.join(data, "user-journeys"))
   const stories = records(path.join(data, "user-stories")).filter(s => s.fm.journey != null && s.fm.journey !== "")
@@ -209,15 +218,18 @@ export function plan(root, { screenRules = null } = {}) {
 }
 
 /** Apply a plan: journeys first, then screens, then the stories are cleared. Refuses whole on any problem. */
-export function apply(p) {
+/** What `plan` answers. */
+export type Plan = ReturnType<typeof plan>
+
+export function apply(p: Plan) {
   if (p.problems.length) throw new Error(`refusing to write: ${p.problems.length} problem(s)`)
   for (const w of [...p.journeyWrites, ...p.screenWrites, ...p.storyWrites]) fs.writeFileSync(w.file, w.text)
 }
 
-export const planLine = p =>
+export const planLine = (p: Plan) =>
   `journeys ${p.journeys} · steps ${p.steps} · stories cleared ${p.stories} · screens ${p.screens}`
 
-export function render(p, { write }) {
+export function render(p: Plan, { write }: { write: boolean }): string {
   const lines = [`workspace ${p.root}`]
   for (const w of p.journeyWrites) lines.push(`${write ? "✔" : "·"} ${rel(p.root, w.file)}  steps ${w.steps}`)
   for (const w of p.screenWrites) lines.push(`${write ? "✔" : "·"} ${rel(p.root, w.file)}  scope_rows ${w.rows}`)
@@ -236,7 +248,7 @@ export function render(p, { write }) {
 const USAGE =
   "usage: migrate-journey-steps.mjs (--dry-run | --write) [--root <workspace>] [--json] [--screen-rules <field>]"
 
-export function main(argv, { cwd = process.cwd(), log = console.log, error = console.error } = {}) {
+export function main(argv: string[], { cwd = process.cwd(), log = console.log, error = console.error } = {}): number {
   const args = [...argv]
   let write = false,
     dry = false,
@@ -309,7 +321,7 @@ export function main(argv, { cwd = process.cwd(), log = console.log, error = con
 /** Run as a script, including through a symlink: both sides realpathed before they are compared. */
 const isMain = () => {
   if (!process.argv[1]) return false
-  const real = p => {
+  const real = (p: string) => {
     try {
       return fs.realpathSync(p)
     } catch {

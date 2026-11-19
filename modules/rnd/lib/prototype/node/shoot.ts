@@ -9,8 +9,15 @@ import { chromium } from "./devdep.ts"
 import { screensToVisit, visit } from "./walk.ts"
 
 export async function run(
-  dir,
-  { only = null, portal = null, out = null, port = null, log = console.log, error = console.error } = {}
+  dir: string,
+  {
+    only = null as string[] | null,
+    portal = null as string | null,
+    out = null as string | null,
+    port = null as number | null,
+    log = console.log,
+    error = console.error,
+  } = {}
 ) {
   const c = await loadConfig(dir)
   const outDir = path.resolve(c.dir, out ?? path.join("tools", "out", "shots"))
@@ -27,9 +34,11 @@ export async function run(
   const failures = []
   try {
     const page = await browser.newPage({ viewport: c.viewport, ...(c.locale ? { locale: c.locale } : {}) })
-    let errs = []
-    page.on("pageerror", e => errs.push((e.message || String(e)).split("\n")[0]))
-    const list = (await screensToVisit(page, srv.base, c, only)).filter(s => !portal || s.portal === portal)
+    let errs: string[] = []
+    page.on("pageerror", (e: Error) => errs.push((e.message || String(e)).split("\n")[0]))
+    const list = (await screensToVisit(page, srv.base, c, only)).filter(
+      (s: Record<string, any>) => !portal || s.portal === portal
+    )
     for (const s of list) {
       errs = []
       await visit(page, c, s)

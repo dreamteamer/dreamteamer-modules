@@ -3,9 +3,9 @@
 // `forbidden` file (one per line, `#` comments). The harness's own UI, `.meta-only`, `[data-meta]`, `code` and
 // `[data-ident]` are not product copy and are skipped. The vocabulary is the prototype's; the walk is generic.
 import fs from "node:fs"
-import { loadConfig } from "./config.ts"
+import { loadConfig, type Config } from "./config.ts"
 import { serve } from "./serve.ts"
-import { chromium, browserNoise } from "./devdep.ts"
+import { chromium, browserNoise, type Page } from "./devdep.ts"
 
 // The callbacks handed to page.evaluate / page.waitForFunction run in the prototype's page, not in Node: these
 // are that page's globals, declared here (type-only) rather than adding the DOM library to every Node file.
@@ -15,7 +15,7 @@ export const SKIP =
   ".demo-fab, .demo-bar, .demo-guide, #meta-pane, .harness-toasts, .meta-only, [data-meta], code, pre, [data-ident], script, style"
 
 /** the forbidden file → [RegExp], comments and blank lines skipped */
-export function forbiddenOf(text) {
+export function forbiddenOf(text: unknown): RegExp[] {
   return String(text || "")
     .split("\n")
     .map(l => l.trim())
@@ -25,7 +25,7 @@ export function forbiddenOf(text) {
 
 /** the prototype's portal keys */
 /** the prototype's portal keys, or null (every screen that has a portal) when a field or tag source has no map */
-export const portalsOf = c =>
+export const portalsOf = (c: Config): Set<unknown> | null =>
   c.portal.from === "product"
     ? new Set(Object.values(c.products).map((p: any) => p.key))
     : c.portal.map
@@ -34,7 +34,16 @@ export const portalsOf = c =>
 
 /** the registered screens to visit: in the prototype's portals (any portal when a field or tag source has no
     map), with a route that takes no parameter, and in --only when it is given */
-export function visitable(all, c, only = null) {
+/** A registered screen as the walk reads it off the app. */
+export interface Screen {
+  key: string
+  portal: string | null
+  route: string | null
+  stub: boolean
+  sample: string | null
+}
+
+export function visitable(all: Screen[], c: Config, only: string[] | null = null): Screen[] {
   const portals = portalsOf(c)
   return all.filter(
     s =>
@@ -46,12 +55,12 @@ export function visitable(all, c, only = null) {
 }
 
 /** open the app, list the screens to visit (registered in a portal, routes without parameters) */
-export async function screensToVisit(page, base, c, only = null) {
+export async function screensToVisit(page: Page, base: string, c: Config, only: string[] | null = null) {
   await page.goto(`${base}#/`)
-  await page.waitForFunction(app => !!window[app]?.screens, c.app, { timeout: 15000 })
+  await page.waitForFunction((app: string) => !!window[app]?.screens, c.app, { timeout: 15000 })
   const all = await page.evaluate(
-    app =>
-      window[app].screens.map(s => ({
+    (app: string) =>
+      window[app].screens.map((s: Record<string, any>) => ({
         key: s.key,
         portal: s.portal ?? null,
         route: s.route ?? null,
@@ -64,9 +73,9 @@ export async function screensToVisit(page, base, c, only = null) {
 }
 
 /** go to one screen as the portal's default user, layer off; resolves when it has rendered */
-export async function visit(page, c, s) {
+export async function visit(page: Page, c: Config, s: Screen) {
   await page.evaluate(
-    ({ app, s, user }) => {
+    ({ app, s, user }: { app: string; s: Screen; user: string | null }) => {
       const A = window[app]
       document.documentElement.dataset.metalayer = "off"
       if (user) A.session?.set?.(s.portal, user)
@@ -78,7 +87,7 @@ export async function visit(page, c, s) {
   )
   await page
     .waitForFunction(
-      ({ app, key }) => window[app].current()?.screen?.key === key,
+      ({ app, key }: { app: string; key: string }) => window[app].current()?.screen?.key === key,
       { app: c.app, key: s.key },
       { timeout: 4000 }
     )
@@ -89,7 +98,10 @@ export async function visit(page, c, s) {
   await page.waitForTimeout(80)
 }
 
-export async function run(dir, { only = null, port = null, log = console.log, error = console.error } = {}) {
+export async function run(
+  dir: string,
+  { only = null as string[] | null, port = null as number | null, log = console.log, error = console.error } = {}
+) {
   const c = await loadConfig(dir)
   const rules =
     c.paths.forbidden && fs.existsSync(c.paths.forbidden) ? forbiddenOf(fs.readFileSync(c.paths.forbidden, "utf8")) : []
@@ -106,9 +118,9 @@ export async function run(dir, { only = null, port = null, log = console.log, er
   let n = 0
   try {
     const page = await browser.newPage({ viewport: c.viewport, ...(c.locale ? { locale: c.locale } : {}) })
-    let errs = []
-    page.on("pageerror", e => errs.push(`pageerror: ${(e.message || String(e)).split("\n")[0]}`))
-    page.on("console", m => {
+    let errs: string[] = []
+    page.on("pageerror", (e: Error) => errs.push(`pageerror: ${(e.message || String(e)).split("\n")[0]}`))
+    page.on("console", (m: Page) => {
       if (m.type() === "error" && !browserNoise(m)) errs.push(`console.error: ${m.text().split("\n")[0]}`)
     })
     const list = await screensToVisit(page, srv.base, c, only)
@@ -116,7 +128,7 @@ export async function run(dir, { only = null, port = null, log = console.log, er
       errs = []
       await visit(page, c, s)
       n++
-      const texts = await page.evaluate(skip => {
+      const texts = await page.evaluate((skip: string) => {
         const out = []
         const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT)
         for (let t = w.nextNode(); t; t = w.nextNode()) {

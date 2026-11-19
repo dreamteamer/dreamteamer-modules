@@ -10,9 +10,9 @@
 import fs from "node:fs"
 import path from "node:path"
 import { pathToFileURL } from "node:url"
-import { loadConfig } from "./config.ts"
+import { loadConfig, type Config } from "./config.ts"
 import { serve } from "./serve.ts"
-import { chromium, browserNoise } from "./devdep.ts"
+import { chromium, browserNoise, type Page } from "./devdep.ts"
 import { vendorStatus } from "./vendor.ts"
 import { VERSION } from "./export.ts"
 
@@ -21,11 +21,11 @@ import { VERSION } from "./export.ts"
 declare const window: any, document: any, location: any, scrollY: number, CSS: any, NodeFilter: any
 
 /** the steps a journey plays: every index that is not out of scope, with the anchor the player will look for */
-export function playable(j, mod) {
+export function playable(j: Record<string, any>, mod: Record<string, any> | undefined) {
   return j.steps
-    .map((s, i) => ({ i, rec: s, m: mod?.steps?.[i] ?? {} }))
-    .filter(x => !x.rec.outOfScope)
-    .map(({ i, rec, m }) => ({
+    .map((s: Record<string, any>, i: number) => ({ i, rec: s, m: mod?.steps?.[i] ?? {} }))
+    .filter((x: { rec: Record<string, any> }) => !x.rec.outOfScope)
+    .map(({ i, rec, m }: { i: number; rec: Record<string, any>; m: Record<string, any> }) => ({
       i,
       screen: rec.screen,
       system: !!rec.system,
@@ -34,11 +34,11 @@ export function playable(j, mod) {
     }))
 }
 
-async function settle(page, app) {
+async function settle(page: Page, app: string) {
   let last = null
   let v = null
   for (let t = 0; t < 30; t++) {
-    v = await page.evaluate(app => {
+    v = await page.evaluate((app: string) => {
       const A = window[app]
       const d = A.demo.state()
       if (!d) return null
@@ -77,28 +77,34 @@ async function settle(page, app) {
   return v
 }
 
-async function playJourney(browser, base, c, j, mod) {
+async function playJourney(
+  browser: Page,
+  base: string,
+  c: Config,
+  j: Record<string, any>,
+  mod: Record<string, any> | undefined
+) {
   const ctx = await browser.newContext({ viewport: c.viewport, ...(c.locale ? { locale: c.locale } : {}) })
   const page = await ctx.newPage()
-  let errs = []
-  page.on("pageerror", e => errs.push(`pageerror: ${(e.message || String(e)).split("\n")[0]}`))
-  page.on("console", m => {
+  let errs: string[] = []
+  page.on("pageerror", (e: Error) => errs.push(`pageerror: ${(e.message || String(e)).split("\n")[0]}`))
+  page.on("console", (m: Page) => {
     if (m.type() === "error" && !browserNoise(m)) errs.push(`console.error: ${m.text().split("\n")[0]}`)
   })
   const out: Record<string, any> = { key: j.key, group: j.group, steps: [], restoreOk: null, fatal: null }
   const app = c.app
   try {
     await page.goto(`${base}#/`)
-    await page.waitForFunction(app => !!window[app]?.demo, app, { timeout: 15000 })
+    await page.waitForFunction((app: string) => !!window[app]?.demo, app, { timeout: 15000 })
     if (errs.length) out.loadErrors = errs.splice(0)
-    const before = await page.evaluate(app => JSON.stringify(window[app].store.snapshot()), app)
+    const before = await page.evaluate((app: string) => JSON.stringify(window[app].store.snapshot()), app)
     const plan = playable(j, mod)
     for (let k = 0; k < plan.length; k++) {
       const p = plan[k]
       errs = []
       const st: Record<string, any> = { n: p.i + 1, screen: p.screen, fail: [] }
       const call = await page.evaluate(
-        async ({ app, key, i, first }) => {
+        async ({ app, key, i, first }: { app: string; key: string; i: number; first: boolean }) => {
           try {
             const r = first ? await window[app].demo.play(key, i) : window[app].demo.next()
             return { ok: r !== false }
@@ -121,7 +127,7 @@ async function playJourney(browser, base, c, j, mod) {
         })
       await page
         .waitForFunction(
-          ({ app, n, screen }) => {
+          ({ app, n, screen }: { app: string; n: number; screen: string }) => {
             const d = window[app].demo.state()
             return d?.step === n && window[app].current()?.screen?.key === screen
           },
@@ -133,7 +139,7 @@ async function playJourney(browser, base, c, j, mod) {
       if (p.anchor)
         await page
           .waitForFunction(
-            ({ app, screen, anchor }) => {
+            ({ app, screen, anchor }: { app: string; screen: string; anchor: string }) => {
               const s = window[app].byKey[screen]
               return !s || s.stub || !!document.querySelector(`[data-demo~="${CSS.escape(anchor)}"]`)
             },
@@ -142,10 +148,10 @@ async function playJourney(browser, base, c, j, mod) {
           )
           .catch(() => {})
       const seen = await page.evaluate(
-        ({ app, screen, anchor }) => {
+        ({ app, screen, anchor }: { app: string; screen: string; anchor: string | null }) => {
           const A = window[app]
           const reg = A.byKey[screen] || null
-          const q = k => document.querySelector(`[data-demo~="${CSS.escape(k)}"]`)
+          const q = (k: string) => document.querySelector(`[data-demo~="${CSS.escape(k)}"]`)
           return {
             inRegistry: !!reg,
             stub: reg ? !!reg.stub : null,
@@ -202,9 +208,9 @@ async function playJourney(browser, base, c, j, mod) {
       out.steps.push(st)
     }
     errs = []
-    await page.evaluate(app => window[app].demo.stop(), app)
+    await page.evaluate((app: string) => window[app].demo.stop(), app)
     await page.waitForTimeout(100)
-    const after = await page.evaluate(app => JSON.stringify(window[app].store.snapshot()), app)
+    const after = await page.evaluate((app: string) => JSON.stringify(window[app].store.snapshot()), app)
     out.restoreOk = before === after
     if (errs.length) out.stopErrors = errs.splice(0)
   } catch (e) {
@@ -216,12 +222,21 @@ async function playJourney(browser, base, c, j, mod) {
     out.restoreOk !== false &&
     !out.stopErrors &&
     !out.loadErrors &&
-    out.steps.every(s => s.ok) &&
+    out.steps.every((s: { ok?: boolean }) => s.ok) &&
     out.steps.length > 0
   return out
 }
 
-export async function run(dir, { only = null, jobs = 4, port = null, log = console.log, error = console.error } = {}) {
+export async function run(
+  dir: string,
+  {
+    only = null as string[] | null,
+    jobs = 4,
+    port = null as number | null,
+    log = console.log,
+    error = console.error,
+  } = {}
+) {
   const c = await loadConfig(dir)
   const forks = vendorStatus(c.paths.harness).filter(v => v.state !== "ok" && v.state !== "stale")
   if (forks.length) {
@@ -237,8 +252,8 @@ export async function run(dir, { only = null, jobs = 4, port = null, log = conso
     return 1
   }
   const { journeys = [], groups = [] } = await import(`${pathToFileURL(data).href}?t=${fs.statSync(data).mtimeMs}`)
-  const todo = journeys.filter(j => !only || only.includes(j.key))
-  const mods = {}
+  const todo = journeys.filter((j: Record<string, any>) => !only || only.includes(j.key))
+  const mods: Record<string, Record<string, any>> = {}
   for (const j of todo) {
     const f = path.join(c.paths.playback, `${j.key}.js`)
     if (fs.existsSync(f)) mods[j.key] = (await import(`${pathToFileURL(f).href}?t=${fs.statSync(f).mtimeMs}`)).default
@@ -262,7 +277,7 @@ export async function run(dir, { only = null, jobs = 4, port = null, log = conso
           const k = next++
           const r = await playJourney(browser, srv.base, c, todo[k], mods[todo[k].key])
           results[k] = r
-          const bad = r.steps.filter(s => !s.ok).length
+          const bad = r.steps.filter((s: { ok?: boolean }) => !s.ok).length
           log(
             `${r.ok ? "PASS" : "FAIL"} ${r.key.padEnd(34)} ${r.steps.length} steps${bad ? ` · ${bad} failing` : ""}${r.restoreOk === false ? " · restore differs" : ""}${r.fatal ? ` · ${r.fatal}` : ""}`
           )
@@ -303,7 +318,7 @@ export async function run(dir, { only = null, jobs = 4, port = null, log = conso
     tool: `@dreamteamer/rnd ${VERSION} dt-prototype play`,
     elapsedSec: Math.round((Date.now() - t0) / 1000),
     totals,
-    groups: groups.map(g => ({
+    groups: groups.map((g: { key: string }) => ({
       group: g.key,
       journeys: results.filter(r => r.group === g.key).length,
       passing: results.filter(r => r.group === g.key && r.ok).length,
@@ -313,7 +328,7 @@ export async function run(dir, { only = null, jobs = 4, port = null, log = conso
       group: r.group,
       ok: r.ok,
       steps: r.steps.length,
-      stepsOk: r.steps.filter(s => s.ok).length,
+      stepsOk: r.steps.filter((s: { ok?: boolean }) => s.ok).length,
       restoreOk: r.restoreOk,
     })),
     failures,

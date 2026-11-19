@@ -5,18 +5,19 @@
 import fs from "node:fs"
 import path from "node:path"
 import { pathToFileURL } from "node:url"
-import { loadConfig, productKey, portalValue } from "./config.ts"
+import { loadConfig, productKey, portalValue, type Config } from "./config.ts"
 import { readRecords, dtRunner } from "./records.ts"
 import { vendorStatus } from "./vendor.ts"
 import { VERSION } from "./export.ts"
 
 const DONE = new Set(["resolved", "obsolete"])
 /** a route as a hash or a path: `#/a/b` and `/a/b` are the same route */
-const route = r => String(r).replace(/^#/, "")
-const same = (a, b) => JSON.stringify([...new Set(a)].sort()) === JSON.stringify([...new Set(b)].sort())
+const route = (r: unknown) => String(r).replace(/^#/, "")
+const same = (a: Iterable<unknown>, b: Iterable<unknown>) =>
+  JSON.stringify([...new Set(a)].sort()) === JSON.stringify([...new Set(b)].sort())
 
 /** the registry's screens: `export const screens`, or a default export that is the list */
-export async function loadRegistry(file) {
+export async function loadRegistry(file: string) {
   const m = await import(`${pathToFileURL(file).href}?t=${fs.statSync(file).mtimeMs}`)
   const list = m.screens ?? (Array.isArray(m.default) ? m.default : m.default?.screens)
   if (!Array.isArray(list)) throw new Error(`${file}: exports no screens list`)
@@ -24,11 +25,11 @@ export async function loadRegistry(file) {
 }
 
 /** compare (pure) → { mismatches: [{ kind, key, detail }], matched: [{ id, key, stub }] } */
-export function compare(c, records, registry) {
-  const mismatches = []
-  const matched = []
-  const add = (kind, key, detail) => mismatches.push({ kind, key, detail })
-  const portalOf = s => {
+export function compare(c: Config, records: Record<string, any>, registry: Record<string, any>[]) {
+  const mismatches: { kind: string; key: string; detail: string }[] = []
+  const matched: Record<string, unknown>[] = []
+  const add = (kind: string, key: string, detail: string) => mismatches.push({ kind, key, detail })
+  const portalOf = (s: Record<string, any>) => {
     if (c.portal.from === "product") return productKey(c, s.product)
     const v = portalValue(c, s)
     return v == null ? null : c.portal.map ? (c.portal.map[v] ?? null) : v
@@ -58,8 +59,10 @@ export function compare(c, records, registry) {
       add("duplicate route", m.key, `${m.route} is also ${seenRoute.get(m.route).key}`)
     else if (m.route) seenRoute.set(m.route, m)
   }
-  const blocking = id =>
-    records.questions.filter(q => !DONE.has(q.status) && (q.blocks ?? []).includes(`rnd/screens/${id}`)).map(q => q.id)
+  const blocking = (id: string) =>
+    records.questions
+      .filter((q: Record<string, any>) => !DONE.has(q.status) && (q.blocks ?? []).includes(`rnd/screens/${id}`))
+      .map((q: Record<string, any>) => q.id)
   for (const [key, s] of recs) {
     const m = seenKey.get(key)
     if (!m) {
@@ -78,12 +81,14 @@ export function compare(c, records, registry) {
     if (s.kind && m.kind && s.kind !== m.kind) add("kind", key, `record ${s.kind} · module ${m.kind}`)
     const p = portalOf(s)
     if (p && m.portal !== p) add("portal", key, `record ${p} · module ${m.portal}`)
-    const missingRows = (s.scope_rows ?? []).filter(r => !(m.prd ?? []).includes(r))
+    const missingRows = (s.scope_rows ?? []).filter((r: string) => !(m.prd ?? []).includes(r))
     if (missingRows.length) add("rules", key, `scope_rows not in the module's prd: ${missingRows.join(", ")}`)
-    const missingOpen = blocking(s.id).filter(q => !(m.open ?? []).includes(q))
+    const missingOpen = blocking(s.id).filter((q: string) => !(m.open ?? []).includes(q))
     if (missingOpen.length) add("open", key, `blocking questions not in the module's open: ${missingOpen.join(", ")}`)
     if (Array.isArray(m.stories)) {
-      const recStories = records.stories.filter(x => x.screen === `rnd/screens/${s.id}`).map(x => x.key ?? x.id)
+      const recStories = records.stories
+        .filter((x: Record<string, any>) => x.screen === `rnd/screens/${s.id}`)
+        .map((x: Record<string, any>) => x.key ?? x.id)
       if (!same(recStories, m.stories))
         add("stories", key, `records ${recStories.join(", ") || "—"} · module ${m.stories.join(", ") || "—"}`)
     }
@@ -94,7 +99,7 @@ export function compare(c, records, registry) {
 }
 
 export async function run(
-  dir,
+  dir: string,
   {
     json = false,
     apply = false,

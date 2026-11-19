@@ -18,7 +18,18 @@ import { fileURLToPath } from "node:url"
 const OWN_EXT = import.meta.url.endsWith(".ts") ? ".ts" : ".js"
 
 export const USAGE = "usage: dt-prototype <init|vendor|export|check|play|shoot|walk> [flags] [--dir <prototype>]"
-const VERBS = {
+/** A verb: its module's file, and how to call that module's `run`. */
+type Verb = [
+  string,
+  (
+    m: { run: (dir: string, o: Record<string, any>) => Promise<number> | number },
+    dir: string,
+    f: Record<string, any>,
+    io: Record<string, unknown>
+  ) => Promise<number> | number,
+]
+
+const VERBS: Record<string, Verb> = {
   init: ["vendor", (m, dir, f, io) => m.run(dir, { init: true, force: f.force, ...io })],
   vendor: ["vendor", (m, dir, f, io) => m.run(dir, { force: f.force, ...io })],
   export: ["export", (m, dir, f, io) => m.run(dir, { check: f.check, strict: f.strict, ...io })],
@@ -28,7 +39,7 @@ const VERBS = {
   walk: ["walk", (m, dir, f, io) => m.run(dir, { ...f, ...io })],
 }
 
-export function parse(argv) {
+export function parse(argv: string[]) {
   const [verb, ...rest] = argv
   const f: Record<string, any> = { dir: process.cwd() }
   while (rest.length) {
@@ -45,13 +56,13 @@ export function parse(argv) {
   if (f.only)
     f.only = f.only
       .split(",")
-      .map(s => s.trim())
+      .map((s: string) => s.trim())
       .filter(Boolean)
   for (const k of ["jobs", "port"]) if (f[k] != null) f[k] = Number(f[k])
   return { verb, flags: f }
 }
 
-export async function main(argv, { log = console.log, error = console.error } = {}) {
+export async function main(argv: string[], { log = console.log, error = console.error } = {}): Promise<number> {
   const { verb, flags, error: bad } = parse(argv)
   if (bad || !VERBS[verb]) {
     error(`${USAGE}${bad ? `\n${bad}` : verb ? `\nunknown verb: ${verb}` : ""}`)
@@ -69,7 +80,7 @@ export async function main(argv, { log = console.log, error = console.error } = 
 
 const isMain = () => {
   if (!process.argv[1]) return false
-  const real = p => {
+  const real = (p: string) => {
     try {
       return fs.realpathSync(p)
     } catch {

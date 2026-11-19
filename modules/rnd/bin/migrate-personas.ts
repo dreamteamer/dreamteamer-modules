@@ -35,23 +35,23 @@ const REF_PROBE = /\brnd\/persona-probes\//g
 const FRONTMATTER = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/
 
 /** `kind: <kind>` into a record's frontmatter when it has no top-level `kind`; a record with none gets one. */
-export function stampKind(text, kind) {
+export function stampKind(text: string, kind: string): { text: string; changed: boolean } {
   const m = FRONTMATTER.exec(text)
   if (!m) return { text: `---\nkind: ${kind}\n---\n${text}`, changed: true }
   if (/^kind:/m.test(m[1])) return { text, changed: false }
-  return { text: text.replace(/^---\r?\n/, head => `${head}kind: ${kind}\n`), changed: true }
+  return { text: text.replace(/^---\r?\n/, (head: string) => `${head}kind: ${kind}\n`), changed: true }
 }
 
-const isDir = p => {
+const isDir = (p: string) => {
   try {
     return fs.statSync(p).isDirectory()
   } catch {
     return false
   }
 }
-const rel = (root, p) => path.relative(root, p).split(path.sep).join("/")
+const rel = (root: string, p: string) => path.relative(root, p).split(path.sep).join("/")
 
-function* walk(dir) {
+function* walk(dir: string): Generator<string> {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
     if (e.name.startsWith(".")) continue
     const p = path.join(dir, e.name)
@@ -65,14 +65,22 @@ function* walk(dir) {
  * where it goes, the kind it gains and the references it rewrites; `records` counts the moved and the
  * stamped, `refs` the rewritten reference strings.
  */
-export function plan(root) {
+/** One file the migration moves, stamps or rewrites. */
+interface FilePlan {
+  from: string
+  to: string
+  kind: string | null
+  refs: number
+}
+
+export function plan(root: string) {
   const data = path.join(root, "data")
   const fromDir = path.join(data, FROM),
     toDir = path.join(data, TO),
     probesDir = path.join(data, PROBES)
-  const files = new Map()
-  const touch = from => files.get(from) ?? files.set(from, { from, to: from, kind: null, refs: 0 }).get(from)
-  const collisions = []
+  const files = new Map<string, FilePlan>()
+  const touch = (from: string) => files.get(from) ?? files.set(from, { from, to: from, kind: null, refs: 0 }).get(from)
+  const collisions: { id: string; role: string; persona: string }[] = []
   if (isDir(fromDir)) {
     for (const f of fs.readdirSync(fromDir).sort()) {
       const m = /^([^.]+)\.[^.]+\.md$/.exec(f)
@@ -92,7 +100,7 @@ export function plan(root) {
       if (stampKind(fs.readFileSync(file, "utf8"), "panel").changed) touch(file).kind = "panel"
     }
   }
-  const probeRefs = []
+  const probeRefs: string[] = []
   const probes = isDir(probesDir) ? [...walk(probesDir)].map(p => rel(root, p)) : []
   if (isDir(data)) {
     for (const file of walk(data)) {
@@ -113,7 +121,10 @@ export function plan(root) {
 }
 
 /** Apply a plan. Refuses whole on a collision, so a half-moved workspace is never left behind. */
-export function apply(p) {
+/** What `plan` answers. */
+export type Plan = ReturnType<typeof plan>
+
+export function apply(p: Plan) {
   if (p.collisions.length)
     throw new Error(`refusing to write: ${p.collisions.map(c => `${c.role} would land on ${c.persona}`).join("; ")}`)
   for (const f of p.files) {
@@ -130,7 +141,7 @@ export function apply(p) {
   if (isDir(fromDir) && fs.readdirSync(fromDir).length === 0) fs.rmdirSync(fromDir)
 }
 
-export function render(p, { write }) {
+export function render(p: Plan, { write }: { write: boolean }): string {
   // the workspace first, always: the resolver falls back to the script's own tree when there is no
   // lockfile above the current folder, and a plan for the wrong workspace must be visible as one
   const lines = [`workspace ${p.root}`]
@@ -157,7 +168,7 @@ export function render(p, { write }) {
 
 const USAGE = "usage: migrate-personas.mjs (--dry-run | --write) [--root <workspace>] [--json]"
 
-export function main(argv, { cwd = process.cwd(), log = console.log, error = console.error } = {}) {
+export function main(argv: string[], { cwd = process.cwd(), log = console.log, error = console.error } = {}): number {
   const args = [...argv]
   let write = false,
     dry = false,
@@ -219,7 +230,7 @@ export function main(argv, { cwd = process.cwd(), log = console.log, error = con
  *  `import.meta.url` the path resolved, so both are realpathed before they are compared. */
 const isMain = () => {
   if (!process.argv[1]) return false
-  const real = p => {
+  const real = (p: string) => {
     try {
       return fs.realpathSync(p)
     } catch {

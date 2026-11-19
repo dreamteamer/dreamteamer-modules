@@ -8,26 +8,29 @@
 // `unique` in the engine is per scalar field, and the pair is two, so the rule is this module's to check:
 // `dt check` runs it through the extension (lib/activate.mjs).
 import path from "node:path"
+import type { ExtensionContext } from "dreamteamer"
 
 export const COLLECTION = "rnd/releases"
 
-const last = ref =>
+const last = (ref: unknown) =>
   String(ref ?? "")
     .split("/")
     .pop()
 
 /** The id a release's own fields render to — the same two templates the descriptor declares, first whose
  *  fields are all present. Null when product or version is missing (the schema reports that). */
-export function expectedId(fields) {
+export function expectedId(fields: Record<string, any>): string | null {
   if (!fields?.product || !fields?.version) return null
   return [last(fields.product), fields.package, fields.version].filter(Boolean).join("/")
 }
 
 /** Every violation among release rows `{ id, file, fields }`: an id that does not name its own product,
  *  package and version, and a second release of one — both claimants named. */
-export function releaseViolations(rows) {
-  const out = []
-  const byKey = new Map()
+export function releaseViolations(
+  rows: { id: string; file: string; fields: Record<string, any> }[]
+): { file: string; message: string }[] {
+  const out: { file: string; message: string }[] = []
+  const byKey = new Map<string, { id: string; file: string }[]>()
   for (const { id, file, fields } of rows) {
     const want = expectedId(fields)
     if (!want) continue
@@ -53,7 +56,7 @@ export function releaseViolations(rows) {
 }
 
 /** The extension's `check`: reads every release through the running engine's Store. */
-export function checkReleases({ ws, dt }) {
+export function checkReleases({ ws, dt }: Pick<ExtensionContext, "ws" | "dt">) {
   const store = new dt.Store(ws)
   if (!store.descriptors.has(COLLECTION)) return []
   const rows = [...store.readAll(COLLECTION)]

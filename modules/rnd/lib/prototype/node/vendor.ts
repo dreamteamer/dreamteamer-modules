@@ -14,20 +14,20 @@ export const SOURCE = path.resolve(path.dirname(fileURLToPath(import.meta.url)),
 const STAMP =
   /^(?:\/\/ @dreamteamer\/rnd (\S+) prototype-harness — vendored, do not edit — sha256:([0-9a-f]{64})|\/\* @dreamteamer\/rnd (\S+) prototype-harness — vendored, do not edit — sha256:([0-9a-f]{64}) \*\/)\r?$/
 
-export const hashBody = body => createHash("sha256").update(body.replace(/\r\n/g, "\n")).digest("hex")
-export function stampLine(file, version, hash) {
+export const hashBody = (body: string) => createHash("sha256").update(body.replace(/\r\n/g, "\n")).digest("hex")
+export function stampLine(file: string, version: string, hash: string): string {
   const text = `@dreamteamer/rnd ${version} prototype-harness — vendored, do not edit — sha256:${hash}`
   return file.endsWith(".css") ? `/* ${text} */` : `// ${text}`
 }
 /** { version, hash, body } of a vendored file's text, or null when line 1 is not a stamp */
-export function parseStamp(text) {
+export function parseStamp(text: string) {
   const nl = text.indexOf("\n")
   const first = nl < 0 ? text : text.slice(0, nl)
   const m = STAMP.exec(first)
   return m ? { version: m[1] ?? m[3], hash: m[2] ?? m[4], body: nl < 0 ? "" : text.slice(nl + 1) } : null
 }
 /** the text `vendor` writes for one package file */
-export function vendored(file, source, version = VERSION) {
+export function vendored(file: string, source: string, version = VERSION) {
   return `${stampLine(file, version, hashBody(source))}\n${source}`
 }
 export const sourceFiles = () =>
@@ -38,7 +38,7 @@ export const sourceFiles = () =>
 
 /** the state of every vendored file: ok · stale (another version, or this version's number on bytes the package
     does not ship) · edited (body ≠ its own hash) · unstamped · missing */
-export function vendorStatus(harnessDir, version = VERSION) {
+export function vendorStatus(harnessDir: string, version = VERSION) {
   return sourceFiles().map(file => {
     const at = path.join(harnessDir, file)
     if (!fs.existsSync(at)) return { file, state: "missing" }
@@ -51,8 +51,8 @@ export function vendorStatus(harnessDir, version = VERSION) {
 }
 
 /** copy the browser half into `harnessDir` → { written, unchanged, refused } */
-export function vendorInto(harnessDir, { force = false, version = VERSION } = {}) {
-  const out = { written: [], unchanged: [], refused: [] }
+export function vendorInto(harnessDir: string, { force = false, version = VERSION } = {}) {
+  const out = { written: [] as string[], unchanged: [] as string[], refused: [] as { file: string; why: string }[] }
   fs.mkdirSync(harnessDir, { recursive: true })
   for (const file of sourceFiles()) {
     const want = vendored(file, fs.readFileSync(path.join(SOURCE, file), "utf8"), version)
@@ -88,7 +88,7 @@ export default {
 };
 `
 
-export async function run(dir, { force = false, init = false, log = console.log, error = console.error } = {}) {
+export async function run(dir: string, { force = false, init = false, log = console.log, error = console.error } = {}) {
   const cfgFile = path.join(path.resolve(dir), CONFIG_FILE)
   let harnessDir
   if (init) {

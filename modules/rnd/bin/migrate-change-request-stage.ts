@@ -23,7 +23,7 @@ import { findWorkspace } from "../lib/findWorkspace.ts"
 import { COLLECTION, compilesStage, readRequests, allowedStages, stageContradictions } from "../lib/crStage.ts"
 
 /** The workspace's own engine: its API module and its CLI, with no harness session id leaking in. */
-async function engineOf(root) {
+async function engineOf(root: string) {
   const pkg = createRequire(path.join(root, "package.json")).resolve("dreamteamer/package.json")
   const dir = path.dirname(pkg)
   const apiFile = engineEntry(dir)
@@ -32,7 +32,7 @@ async function engineOf(root) {
   const bin = path.join(dir, "bin", "dreamteamer.js")
   const env = { ...process.env }
   delete env.CLAUDE_CODE_SESSION_ID
-  const cli = args => {
+  const cli = (args: string[]) => {
     const r = spawnSync(process.execPath, [bin, ...args, "--workspace", root], {
       cwd: root,
       encoding: "utf8",
@@ -45,7 +45,7 @@ async function engineOf(root) {
 }
 
 export async function main(argv = process.argv.slice(2), out = console.log) {
-  const flag = n => argv.includes(`--${n}`)
+  const flag = (n: string) => argv.includes(`--${n}`)
   const rootAt = argv.indexOf("--root")
   const root = rootAt >= 0 ? path.resolve(argv[rootAt + 1] ?? "") : findWorkspace()
   if (!root || !fs.existsSync(path.join(root, "package.json"))) {
@@ -59,7 +59,7 @@ export async function main(argv = process.argv.slice(2), out = console.log) {
 
   const { dt, cli } = await engineOf(root)
   // read THIS workspace, even when it sits in another's git_modules/ (the engine climbs out otherwise)
-  globalThis[Symbol.for("dreamteamer.workspace")] = root
+  ;(globalThis as Record<symbol, unknown>)[Symbol.for("dreamteamer.workspace")] = root
   const ws = await dt.openWorkspace(root)
   const store = new dt.Store(ws)
   if (!store.descriptors?.has?.(COLLECTION)) {
@@ -75,13 +75,19 @@ export async function main(argv = process.argv.slice(2), out = console.log) {
     return 1
   }
 
-  const report = { planned: [], set: [], cannot_tell: [], layers: {}, failed: [] }
+  const report = {
+    planned: [] as { id: string; stage: string; was?: string | null }[],
+    set: [] as string[],
+    cannot_tell: [] as { id: string; reason: string; allowed: string[]; by: string }[],
+    layers: {} as Record<string, number>,
+    failed: [] as string[],
+  }
   for (const r of readRequests(store, dt)) {
     if (r.inLayer) {
       report.layers[r.inLayer] = (report.layers[r.inLayer] ?? 0) + 1
       continue
     }
-    const stage = r.stage || null
+    const stage = (r.stage as string) || null
     if (r.expected) {
       if (stage === r.expected) continue
       report.planned.push({ id: r.id, stage: r.expected, was: stage })
@@ -96,7 +102,7 @@ export async function main(argv = process.argv.slice(2), out = console.log) {
         by: "hand",
       })
     else {
-      const [why] = stageContradictions(r.fields, stage)
+      const [why] = stageContradictions(r.fields, String(stage))
       if (why)
         report.cannot_tell.push({
           id: r.id,
