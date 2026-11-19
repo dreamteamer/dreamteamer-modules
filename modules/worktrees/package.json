@@ -1,6 +1,6 @@
 {
 	"name": "@dreamteamer/worktrees",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"description": "Parallel checkouts of a dreamteamer workspace: dt worktree cuts and inspects them, and dt land brings a worktree's committed records home.",
 	"license": "Apache-2.0",
 	"type": "module",

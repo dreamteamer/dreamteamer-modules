@@ -1,6 +1,6 @@
 {
 	"name": "@dreamteamer/docker-workspaces",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"description": "Run a dreamteamer workspace as a local Docker container, and move its workspaces between containers as one encrypted file.",
 	"license": "Apache-2.0",
 	"type": "module",

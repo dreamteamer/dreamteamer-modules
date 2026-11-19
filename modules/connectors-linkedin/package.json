@@ -1,6 +1,6 @@
 {
 	"name": "@dreamteamer/connectors-linkedin",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"description": "Fill in contacts from LinkedIn and the web: /scrape-contact, the scraping-contacts skill and two LinkedIn views.",
 	"license": "Apache-2.0",
 	"type": "module",

@@ -1,6 +1,6 @@
 {
 	"name": "@dreamteamer/connectors-google-workspace",
-	"version": "0.4.0",
+	"version": "0.5.0",
 	"description": "Google Workspace connector: explicit-account access through a local MCP bridge, read-only by default, and the Google Calendar sync into meetings.",
 	"license": "Apache-2.0",
 	"type": "module",
