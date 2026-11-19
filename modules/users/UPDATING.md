@@ -11,6 +11,10 @@ npx dreamteamer check
 
 ---
 
+## 0.4.0 — the code ships as its build
+
+Nothing to do but `npx dreamteamer update @dreamteamer/users`. The package's code is TypeScript now and ships as its build, `dist/`; no collection, field, record or command changes.
+
 ## 0.3.0 — `manager` and `reports` are users' own
 
 `manager` (who a person reports to) and its generated far side `reports` moved in from the users overlay

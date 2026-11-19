@@ -11,6 +11,16 @@ npx dreamteamer check
 
 ---
 
+## 0.14.0 — the members ship as their build
+
+Nothing to do but `npx dreamteamer update @dreamteamer/core`. The members whose code is TypeScript now ship as
+their build, and the preset pins those releases: users 0.4.0, contacts 0.2.1, tasks 0.4.0, projects 0.5.0,
+meetings 0.5.0, recordings 0.6.0, meeting-docs 0.1.6, files 0.4.0, workflows 0.2.0, sessions 0.2.0. One thing to
+check: a `Stop` hook naming `@dreamteamer/sessions/bin/session-save.mjs` must be repointed — sessions' UPDATING
+0.2.0 says how.
+
+---
+
 ## 0.13.2 — recordings 0.5.4: a transcription run keeps what was written to the record while it ran
 
 Nothing to do but `npx dreamteamer update @dreamteamer/core`. The preset pins `@dreamteamer/recordings` 0.5.4, whose

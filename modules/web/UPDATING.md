@@ -6,6 +6,12 @@ One section per release, newest first. Each says what a person or a session usin
 npm install --save-dev @dreamteamer/web@latest
 ```
 
+## 0.4.0
+
+The page is `@dreamteamer/ui` 0.4, the React app, which this release depends on. Nothing to do but
+`npm install --save-dev @dreamteamer/web@latest` and `npx dt web stop`, so the next `dt web open` serves the new page.
+A module app bundle built for ui 0.3 must be rebuilt: the frame guest no longer hands modules `window.Vue`.
+The Vue app is `@dreamteamer/ui-legacy`; `dt web open --app legacy-ui` serves it when the workspace installed it.
 ## 0.3.1
 
 Nothing to do. The pane no longer stops refreshing after a file-watch error: on macOS, and for `nav.yaml` on

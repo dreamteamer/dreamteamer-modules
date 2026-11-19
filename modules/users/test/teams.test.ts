@@ -94,9 +94,12 @@ describe("users with projects — the plan adds its one mirror to the team", () 
 
 describe("the move is a release a workspace is told about", () => {
   test("users ships an UPDATING.md: 0.3.0 says manager and reports moved in, 0.2.1 says the pairing with projects is declared, 0.2.0 says teams moved here", () => {
-    assert.equal(pkgOf("users").version, "0.3.0")
+    // a later release adds its section above; these three are found by their headings
+    assert.doesNotMatch(pkgOf("users").version, /^0\.[0-2]\./, "users is at 0.3.0 or later")
     assert.ok(packedFiles("users").includes("UPDATING.md"), "UPDATING.md is in the tarball")
-    const [, newest, older, oldest] = fs.readFileSync(path.join(MODULES, "users", "UPDATING.md"), "utf8").split(/^## /m)
+    const sections = fs.readFileSync(path.join(MODULES, "users", "UPDATING.md"), "utf8").split(/^## /m)
+    const section = (v: string) => sections.find(s => s.startsWith(`${v} `)) ?? ""
+    const [newest, older, oldest] = [section("0.3.0"), section("0.2.1"), section("0.2.0")]
     assert.match(newest, /^0\.3\.0 — `manager` and `reports` are users' own/)
     assert.match(older, /^0\.2\.1 — the pairing with projects is declared/)
     assert.match(older, /peerOptional @dreamteamer\/projects@">=0\.4\.0"/)

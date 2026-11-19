@@ -84,7 +84,8 @@ describe("projects beside a users that ships no teams", () => {
 
 describe("the move is a release a workspace is told about", () => {
   test("projects 0.4.x ships an UPDATING.md: 0.4.1 says it floors users at 0.2.0, 0.4.0 says it now needs users 0.2.0 for teams", () => {
-    assert.match(pkgOf("projects").version, /^0\.4\.\d+$/)
+    // a later release adds its section above; these two stay as they were written
+    assert.doesNotMatch(pkgOf("projects").version, /^0\.([0-3]\.|4\.0$)/, "projects is at 0.4.1 or later")
     assert.ok(packedFiles("projects").includes("UPDATING.md"), "UPDATING.md is in the tarball")
     const sections = fs.readFileSync(path.join(MODULES, "projects", "UPDATING.md"), "utf8").split(/^## /m)
     const at = sections.findIndex(s => s.startsWith("0.4.1 "))

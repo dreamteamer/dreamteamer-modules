@@ -11,6 +11,10 @@ npx dreamteamer check
 
 ---
 
+## 0.5.0 — the code ships as its build
+
+Nothing to do but `npx dreamteamer update @dreamteamer/projects`. The package's code is TypeScript now and ships as its build, `dist/`; no collection, field, record or command changes.
+
 ## 0.4.3 — the nav is nav.yaml (cr-dt-008)
 
 `display.nav.order` and `display.nav.section` removed from its four descriptors — the nav is `nav.yaml` at the workspace root (engine 0.49), which you arrange; `display.nav.icon` stays. Nothing to do.

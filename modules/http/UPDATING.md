@@ -6,6 +6,10 @@ One section per release, newest first. Each says what a caller of `dt serve` has
 npm install --save-dev @dreamteamer/http@latest
 ```
 
+## 0.3.0
+
+Still **deprecated** — `dt serve` is `@dreamteamer/web`'s; see 0.2.2 below for the move. This release only ships
+the code as its build, `dist/`, and depends on `@dreamteamer/protocol` 0.4. No route changes.
 ## 0.2.2
 
 **Deprecated.** `dt serve` moved to `@dreamteamer/web`, and this package gets no new routes. To move:
